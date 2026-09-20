@@ -1701,21 +1701,23 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     o = { scheme: 'spark', base: '#d8cbb5', weather: '#c6b8a0',
       patches: ['#b4593a', '#3a3733'] };
   } else if (patternId === 'openai') {
-    // skins r1 (owner ask "add openai and xai and gemini skins"): ORIGINAL
-    // colourways and motifs, no third-party marks. Porcelain ring chains with
-    // one teal link on graphite; graphite held above the '#26' floor that
-    // still models light. Style-only, no biome bonus.
-    o = { scheme: 'openai', base: '#2c2e31', weather: '#343639',
-      patches: ['#ebebe7', '#19b08a'] };
+    o = { scheme: 'openai', base: '#b9bcb6', weather: '#aaafa8',
+      patches: ['#000000', '#737d77'], camoScale: 0.5 };
   } else if (patternId === 'xai') {
-    // skins r1: bone-white meteor streaks on carbon with cool-grey shadow
-    // trails. Style-only, no biome bonus.
-    o = { scheme: 'xai', base: '#282a2e', weather: '#2f3136',
-      patches: ['#f0f0ee', '#8a94a3'] };
+    // Saved xai selections retain their ID; the owner now requests X's mark.
+    o = { scheme: 'xai', base: '#2b2e34', weather: '#363b42',
+      patches: ['#ffffff', '#83909f'], camoScale: 0.5 };
   } else if (patternId === 'gemini') {
-    // skins r1: the twins' constellation in starlight over blue/violet/pink
-    // prism washes on indigo. Style-only, no biome bonus.
-    o = { scheme: 'gemini', base: '#2a3358', weather: '#303a62',
+    o = { scheme: 'gemini', base: '#293348', weather: '#35415a',
+      patches: ['#9168c0', '#5684d1', '#1ba1e3'], camoScale: 0.5 };
+  } else if (patternId === 'mono') {
+    o = { scheme: 'mono', base: '#303236', weather: '#3c3f43',
+      patches: ['#dddcd5', '#899296'] };
+  } else if (patternId === 'carbon') {
+    o = { scheme: 'carbon', base: '#282a2e', weather: '#2f3136',
+      patches: ['#f0f0ee', '#8a94a3'] };
+  } else if (patternId === 'prism') {
+    o = { scheme: 'prism', base: '#2a3358', weather: '#303a62',
       patches: ['#4f8cf0', '#a56ff0', '#ee82b0', '#eef0ff'] };
   } else if (patternId === 'ducky') {
     // camo r6 fun set: bath-toy gold on pond gray-blue, slate accents. All

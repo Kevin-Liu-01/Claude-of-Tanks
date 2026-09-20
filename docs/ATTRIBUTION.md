@@ -91,6 +91,20 @@ PNG exports are produced by `tools/brand-render.mjs` (export mode) and the og
 composition script; regenerate any raster from its SVG master rather than
 editing pixels.
 
+## Optional logo camouflage marks — 2026-09-20
+
+OpenAI, X, and Gemini camouflage uses the complete official vector marks.
+These trademarks belong to OpenAI, X Corp., and Google respectively and are
+not licensed as first-party project artwork. Their use does not imply
+endorsement. The independent Mono, Carbon, and Prism finishes are original
+unbranded paint designs.
+
+| Asset | Official source | Runtime and retained evidence |
+| --- | --- | --- |
+| OpenAI Blossom | [OpenAI brand guidelines](https://openai.com/brand/) | Exact black Blossom path in `src/vehicles/brandCamoMarks.ts`; official guideline SVG and SHA-256 in [brand-asset provenance](references/brand-assets/README.md). |
+| X logo | [X brand toolkit](https://about.x.com/en/who-we-are/brand-toolkit) | Exact `logo.svg` path in `src/vehicles/brandCamoMarks.ts`; original vector and SHA-256 in [brand-asset provenance](references/brand-assets/README.md). The saved camo ID remains `xai` for compatibility. |
+| Gemini sparkle v002 | [Google-hosted Gemini SVG](https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg) | Exact vector path and published gradient in `src/vehicles/brandCamoMarks.ts` / `brandCamoPainter.ts`; source bytes and SHA-256 in [brand-asset provenance](references/brand-assets/README.md). |
+
 ## Vehicles (public/models/tanks/) — comparison/reference assets
 
 All playable tank geometry is authored procedurally in this repository. The

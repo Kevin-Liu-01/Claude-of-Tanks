@@ -267,9 +267,27 @@ const catalogContract = {
   )),
   defaultCustom: normalizeCustomCamo(),
 };
+// Preserve the preceding full catalog receipt after reversing only this request's
+// four appended paints, Sabra default, and three corrected brand labels.
+const addedPaints = ['mono', 'carbon', 'prism', 'sig_sabra_mk2_x'];
+assert.deepEqual(CAMO_PATTERN_IDS.slice(-4), addedPaints);
+assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
+assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
+assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'sig_sabra_mk2_x');
+const historicalCatalog = structuredClone(catalogContract);
+historicalCatalog.patterns = historicalCatalog.patterns.filter(id => !addedPaints.includes(id));
+historicalCatalog.catalog = historicalCatalog.catalog.filter(id => !addedPaints.includes(id));
+for (const id of addedPaints) delete historicalCatalog.patternLabels[id];
+Object.assign(historicalCatalog.patternLabels, { openai: 'OpenAI Mono', xai: 'xAI Carbon', gemini: 'Gemini Prism' });
+historicalCatalog.presets = historicalCatalog.presets.filter(row => row.id !== 'sig_sabra_mk2_x');
+historicalCatalog.signatures = historicalCatalog.signatures.filter(id => id !== 'sabra_mk2_x');
+historicalCatalog.tagsByPatternAndNation = historicalCatalog.tagsByPatternAndNation.filter(([id]) => !addedPaints.includes(id));
+assert.equal(createHash('sha256').update(JSON.stringify(historicalCatalog)).digest('hex'),
+  '819bf810321f4580f7ea7748f31c48a91c14613b0f07404478a2fa2c5d2c63f5',
+  'all other catalog fields, order, recipes, tags and national routing remain exact');
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '819bf810321f4580f7ea7748f31c48a91c14613b0f07404478a2fa2c5d2c63f5', // September 19 Israeli defaults added; all previous recipes preserved.
+  'c441a52325e22692646ed378c13cb49cd2df03e1e8807d1d44cc55f918431ce2', // September 20 official marks, independent prints, Sabra default.
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

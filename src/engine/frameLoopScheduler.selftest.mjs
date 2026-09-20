@@ -706,6 +706,43 @@ function garageActivityFixture(harness, phase, legacy = false) {
   return { ...api, game, effects, listeners };
 }
 
+// A paint selection finishes after its input frame. Exercise the real inline
+// setters against the actual dormant scheduler, including the old missing-wake
+// negative, rather than accepting a changed picker label as a rendered paint.
+const camoSetters=mainBlock('    set: (specId: string, patternId: string) => {', '\n    },')
+  +mainBlock('    setCustom: (specId, value) => {', '\n    },');
+async function completedCamoWakes(method,legacy=false){
+  const harness=createHarness(),activity=garageActivityFixture(harness,'garage');
+  harness.setBoot(true);harness.setIdle(true);harness.scheduler.restart();
+  harness.fireFrame(harness.frames.keys().next().value,0);harness.scheduler.schedule();
+  assert.ok(harness.delayed,'settled Garage sleeps before selection');
+  let finishPaint;
+  const body=(legacy?camoSetters.replaceAll('.then(() => invalidateGaragePresentation())',''):camoSetters)
+    .replaceAll(': string','');
+  const camo=runInNewContext(`(() => {let camoSweepP;const api={${body}};
+    return {...api,completed:()=>camoSweepP};})()`,{
+    setCamoSelection(){},setCustomCamoSelection(){},currentNetworkRoom:()=>null,
+    applyCamoPatternsChunked:()=>new Promise(resolve=>{finishPaint=resolve;}),
+    invalidateGaragePresentation:activity.invalidate,
+  });
+  try{
+    camo[method]('sabra_mk2_x',method==='set'?'openai':{});
+    assert.equal(activity.isDirty(),false,'no repaint-completion signal before the pixels are ready');
+    assert.ok(harness.delayed,'painting retains the idle timer until completion');
+    finishPaint();await camo.completed();
+    assert.ok(activity.isDirty(),'finished camo must mark the actual Garage presentation dirty');
+    assert.equal(harness.delayed,null,'completion wakes the scheduler without another input');
+    assert.equal(harness.frames.size,1,'exactly one new frame is armed');
+    harness.fireFrame(harness.frames.keys().next().value,64);harness.scheduler.schedule();
+    assert.ok(harness.delayed,'the redraw returns to the existing idle cadence');
+  }finally{harness.scheduler.dispose();}
+}
+for(const method of['set','setCustom']){
+  await completedCamoWakes(method);
+  await assert.rejects(completedCamoWakes(method,true),/finished camo must mark/,
+    'the historical missing completion wake reproduces the stale visible paint');
+}
+
 for (const phase of ['battle', 'studio']) {
   const harness = createHarness(), activity = garageActivityFixture(harness, phase);
   harness.setBoot(true); harness.scheduler.schedule();

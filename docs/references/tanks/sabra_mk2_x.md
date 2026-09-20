@@ -1,5 +1,12 @@
 # Sabra Mk 2 X — run packet
 
+## 2026-09-20 default camouflage
+
+Sabra now defaults to the authored sand/olive **Sinai Contours** pattern.
+Saved selections and custom paint still override that default. Geometry and
+gameplay statistics are unchanged. See the actual Garage checks and current
+release status in the [repair record](../../research/merkava-camo-repairs-20260920.md).
+
 ## Current integrated status — 2026-09-18
 
 Implemented draft; final qualification and publication are pending. The owner

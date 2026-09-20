@@ -246,16 +246,18 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
       }
     });
     handrail(P,MK3,side*1.64,-2.33,-.05,2.18);
-    for(const z of[-2.38,-1.14,.24])put('turretDetail',torus(.035,.011,10,6),side*1.03,2.565,z,Math.PI/2);
+    // The forward eyes sit on unequal cheek slopes, not the rear roof datum.
+    for(const [z,y]of[[-2.38,2.565],[-1.14,2.565],[.24,side<0?2.213:2.426]])
+      put('turretDetail',torus(.035,.011,10,6),side*1.03,y,z,Math.PI/2);
   }
   merkava3SmokeBanks(P);
   for(const [x,z]of[[-.42,-1.55],[.42,-1.45]]){
     P.addCupola('turret',cylY(.303,.10,28),x,2.612+MK3.ground-MK3.y,z-MK3.center-MK3.z);
     put('turretDetail',box(.21,.027,.042),x,2.675,z+.10);
   }
-  put('turretDetail',cylY(.171,.27,24),-.41,2.711,-.98);
-  put('turretDark',box(.27,.15,.017),-.41,2.746,-.80);
-  put('turretGlass',box(.21,.095,.008),-.41,2.747,-.788);
+  put('turretDetail',cylY(.171,.27,24),-.41,2.671,-.98);
+  put('turretDark',box(.27,.15,.017),-.41,2.706,-.80);
+  put('turretGlass',box(.21,.095,.008),-.41,2.707,-.788);
   put('turretDetail',box(.42,.18,.37),-.91,2.529,-.34);
   put('turretDark',box(.31,.12,.02),-.91,2.537,-.14);
   put('turretGlass',box(.24,.083,.008),-.91,2.547,-.126);
@@ -299,8 +301,8 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
   put('turretDetail',box(.0581,.058,.5552),1.12405,2.7177,-.9707);
   put('turretDetail',box(.0581,.080,.091),1.12405,2.7567,-.7215);
   put('turretDetail',box(.0581,.052,.130),1.112,2.7758,-.6635);
-  for(const [x,y,z,cls,scale]of[[-.87,2.6619,-.91,'mag',.96],[1.12405,2.7498,-.61,'mag',.8667]] as const){
-    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false});
+  for(const [x,y,z,cls,scale]of[[-.87,2.528,-.91,'mag',.96],[1.12405,2.7498,-.61,'mag',.8667]] as const){
+    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:true});
     mg.position.set(x,y+MK3.ground-MK3.y,z-MK3.center-MK3.z);P.turretG.add(mg);
   }
 }
@@ -575,8 +577,9 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   }
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
-  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.48,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false});
-  mg.position.set(-.83,2.577-MK4.y,-.752-MK4.z);P.turretG.add(mg);
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.48,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'});
+  const mgSeatY={merkava4_x:2.577,merkava4_trophy:2.400}[candidate];
+  mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
 }
 
 function merkava4Basket(P: TankBuilderPort): void {
@@ -667,7 +670,14 @@ function addTrophySuite(P: TankBuilderPort, frame: Frame, configuration: TrophyC
     for(let row=0;row<2;row++)for(let i=0;i<3;i++)
       put('turretDark',cylZ(.033,.20,12),side*(sideX-.16)+(i-1)*.075,roof+.055+row*.075,launcherZ+.14,0,side*.12);
   }
-  if(configuration==='mk4')put('turretDetail',box(1.30,.10,.50),0,2.48,-2.30);
+  if(configuration==='mk4'){
+    // Outboard rear radar pedestals retain their silhouette. Short transverse
+    // mounting arms meet both their inboard faces and the real turret sides;
+    // basket strands are not structural substitutes for these receivers.
+    put('turretDetail',box(.36,.10,.24),-1.40,2.04,-2.75);
+    put('turretDetail',box(.36,.10,.24),1.40,2.04,-2.75);
+    put('turretDetail',box(1.30,.10,.50),0,2.48,-2.30);
+  }
   P.turretG.userData.trophySuiteReceipt=Object.freeze({configuration,radarFaces:4,launchers:2,owner:'rig_turret'});
 }
 

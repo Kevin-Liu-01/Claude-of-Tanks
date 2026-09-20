@@ -1,5 +1,5 @@
-// Authoring only: the source's exterior-facing rear bay must not become a
-// generated fill. This does not remove any native/source triangle from audits.
+// Authoring only: retain the measured rear room behind the owner's closed
+// door (2026-09-20). No native/source triangle is removed from any audit.
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -9,8 +9,9 @@ import {sourceOpeningRayProbe} from './source-opening-rays.mjs';
 const CONFIG=JSON.stringify(BARAK_SOURCE_CONFIGURATION);
 export const BARAK_BAY_STOCK_WITNESSES=Object.freeze([
   ...[-.15,0,.15].flatMap(x=>[
-    {key:`back_${x}`,origin:[x,.9,-4.3],direction:[0,0,1],axis:2,value:-.6815763,far:4},
-    {key:`slope_${x}`,origin:[x,1.35,-4.3],direction:[0,0,1],axis:2,value:-1.080278731,far:4},
+    {key:`closed-door_${x}`,origin:[x,.9,-4.3],direction:[0,0,1],axis:2,value:-2.633583,far:4},
+    {key:`back_${x}`,origin:[x,.9,-2.4],direction:[0,0,1],axis:2,value:-.6815763,far:4},
+    {key:`slope_${x}`,origin:[x,1.35,-2.4],direction:[0,0,1],axis:2,value:-1.080278731,far:4},
     {key:`header_${x}`,origin:[x,1.5,-4.3],direction:[0,0,1],axis:2,value:-2.5955832,far:4},
   ]),
   {key:'floor',origin:[0,1,-2],direction:[0,-1,0],axis:1,value:.5134441,far:1},
@@ -36,7 +37,7 @@ export function verifyBarakBayNativeStock(root){
 const ceiling=z=>z<=-1.481983?1.503806:1.503806-(z+1.481983)*(.306463/.800407);
 const overlaps=(min,max,lo,hi)=>max>lo+1e-9&&min<hi-1e-9;
 function portalOverlap(min,max){
-  if(!overlaps(min[2],max[2],-2.595583,-2.475583))return false;
+  if(!overlaps(min[2],max[2],-2.555583,-2.475583))return false;
   // Closest point of this voxel to the rounded rectangle's center. A voxel
   // touching only solid corner stock is not part of the opening.
   const x=Math.min(max[0],Math.max(min[0],-.0005))+.0005;
@@ -65,7 +66,7 @@ export function createBarakBayFillPolicy(id,root,{configuration=BARAK_SOURCE_CON
       cells.set(`${x},${y},${z}`,{index:[x,y,z],min,max});return true;
     },
     receipt(){return {id,source:BARAK_SOURCE_CONFIGURATION,structuralWitnesses,
-      rule:'Only voxel cells intersecting the measured rounded entrance or finite source bay air; complete source/native stock remains in all audits.',
+      rule:'Only voxel cells intersecting the remaining rounded entrance behind the owner-selected closed leaf or finite source bay air; complete source/native stock remains in all audits.',
       cells:[...cells.values()]};},
   };
 }

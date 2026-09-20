@@ -1,5 +1,13 @@
 # Merkava Mk.3D X — independent owner-source reconstruction
 
+## 2026-09-20 marked attachment repairs
+
+The forward lifting eyes and panoramic sight now meet their local turret
+surfaces, the left MAG foot is seated, and both MAG barrels have continuous
+receiver stock. The existing asymmetric shoulder repair is retained. Current
+HIGH/LOW pose tests, official source registration and visual/release status:
+[repair record](../../research/merkava-camo-repairs-20260920.md).
+
 ## 2026-09-19 owner-marked vehicle-left shoulder correction
 
 Status: **focused HIGH/LOW verification passed; composed regeneration and release pending**.

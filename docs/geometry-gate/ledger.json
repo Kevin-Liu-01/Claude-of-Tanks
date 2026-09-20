@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-19T19:53:52.458Z",
+ "generatedAt": "2026-09-20T10:11:49.556Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 81,
  "total": 182,
@@ -1722,6 +1722,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "merkava4_trophy",
+   "geoMin": 92.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.3,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "jpz_e100_x",
    "geoMin": 92.4,
    "requiredMinimum": 92,
@@ -1788,19 +1801,6 @@
    "components": {
     "wholeCurves": 92.5,
     "dims": 98,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "merkava4_trophy",
-   "geoMin": 92.5,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 92.5,
-    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

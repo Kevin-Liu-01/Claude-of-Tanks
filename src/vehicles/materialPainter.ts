@@ -1,5 +1,6 @@
 // Exact canvas painters shared by synchronous vehicle materials and optional
 // off-thread prebakes. No Three.js, fleet, DOM creation, or quality policy at import.
+import { paintBrandCamo } from './brandCamoPainter.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
 import type { CustomCamoStroke } from './camoPolicy.ts';
 
@@ -1815,14 +1816,13 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // ===================== END CAMO PATTERN SECTION =================
         }
       };
-      const paintOpenaiScheme = (): void => {
-        if (scheme === 'openai' && patches.length) {
+      const paintMonoScheme = (): void => {
+        if (scheme === 'mono' && patches.length) {
       // ===================== CAMO PATTERN SECTION =====================
-      // OPENAI MONO (skins r1, owner ask "add openai and xai and gemini
-      // skins"): an ORIGINAL monochrome print — no third-party mark. Chains of
+      // MONO: an original unbranded monochrome print. Chains of
       // hollow rings from hero to sprinkle scale in porcelain on graphite, one
-      // teal link per cluster, soft lighter washes for depth.
-      // patches = [porcelain, teal]. Style-only, no biome bonus.
+      // silver link per cluster, soft lighter washes for depth.
+      // patches = [porcelain, silver]. Style-only, no biome bonus.
       const ink = patches[0];
       const teal = patches[1] || patches[0];
       for (let i = 0; i < Math.max(2, Math.round(3 * nK)); i++) {
@@ -1837,7 +1837,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         p.arc(x, y, r, 0, Math.PI * 2);
         strokeWrapped(ctx, S, p, rgb(col, a), w);
       };
-      // the hero: three interlocked rings on a small triangle, one teal
+      // the hero: three interlocked rings on a small triangle, one silver
       const hx = S * (0.3 + rng() * 0.4), hy = S * (0.3 + rng() * 0.4);
       const hr = S * wk * (0.13 + rng() * 0.03), hw = hr * 0.24;
       const ha = rng() * Math.PI * 2;
@@ -1871,10 +1871,10 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // ===================== END CAMO PATTERN SECTION =================
         }
       };
-      const paintXaiScheme = (): void => {
-        if (scheme === 'xai' && patches.length) {
+      const paintCarbonScheme = (): void => {
+        if (scheme === 'carbon' && patches.length) {
       // ===================== CAMO PATTERN SECTION =====================
-      // XAI CARBON (skins r1): an ORIGINAL print — no third-party mark.
+      // CARBON: an original unbranded print.
       // Tapered meteor streaks all flying on one diagonal heading, bone white
       // over cool-grey shadow trails on carbon, plus hairline trails and dust.
       // patches = [bone, cool grey]. Style-only, no biome bonus.
@@ -1929,10 +1929,10 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // ===================== END CAMO PATTERN SECTION =================
         }
       };
-      const paintGeminiScheme = (): void => {
-        if (scheme === 'gemini' && patches.length) {
+      const paintPrismScheme = (): void => {
+        if (scheme === 'prism' && patches.length) {
       // ===================== CAMO PATTERN SECTION =====================
-      // GEMINI PRISM (skins r1): an ORIGINAL print — no third-party mark. The
+      // PRISM: an original unbranded print. The
       // twins' constellation (two star chains joined by two rungs, a white
       // Castor and a warm Pollux at the heads) over blue -> violet -> pink
       // prism washes on indigo, with four-point twinkles and star dust.
@@ -2016,11 +2016,12 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       paintBrushScheme();
       paintClaudeScheme();
       paintSparkScheme();
-      paintOpenaiScheme();
-      paintXaiScheme();
-      paintGeminiScheme();
+      paintMonoScheme();
+      paintCarbonScheme();
+      paintPrismScheme();
     };
     paintIdentitySchemes();
+    paintBrandCamo(ctx, S, scheme, rng);
 
     const paintNoveltySchemes = (): void => {
       const paintDuckyScheme = (): void => {

@@ -17,6 +17,38 @@ const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const count=(source,part)=>source.split(part).length-1;
 const read=file=>fs.readFileSync(new URL(file,import.meta.url),'utf8');
 
+// Reverse only the individually measured 2026-09-20 attachment changes.
+// The older complete-profile digest below stays immutable.
+function beforeAttachmentSeats(source){
+  const repairs=[
+  [
+    "    handrail(P,MK3,side*1.64,-2.33,-.05,2.18);\n    // The forward eyes sit on unequal cheek slopes, not the rear roof datum.\n    for(const [z,y]of[[-2.38,2.565],[-1.14,2.565],[.24,side<0?2.213:2.426]])\n      put('turretDetail',torus(.035,.011,10,6),side*1.03,y,z,Math.PI/2);\n",
+    "    handrail(P,MK3,side*1.64,-2.33,-.05,2.18);\n    for(const z of[-2.38,-1.14,.24])put('turretDetail',torus(.035,.011,10,6),side*1.03,2.565,z,Math.PI/2);\n"
+  ],
+  [
+    "  }\n  put('turretDetail',cylY(.171,.27,24),-.41,2.671,-.98);\n  put('turretDark',box(.27,.15,.017),-.41,2.706,-.80);\n  put('turretGlass',box(.21,.095,.008),-.41,2.707,-.788);\n",
+    "  }\n  put('turretDetail',cylY(.171,.27,24),-.41,2.711,-.98);\n  put('turretDark',box(.27,.15,.017),-.41,2.746,-.80);\n  put('turretGlass',box(.21,.095,.008),-.41,2.747,-.788);\n"
+  ],
+  [
+    "  put('turretDetail',box(.0581,.052,.130),1.112,2.7758,-.6635);\n  for(const [x,y,z,cls,scale]of[[-.87,2.528,-.91,'mag',.96],[1.12405,2.7498,-.61,'mag',.8667]] as const){\n    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:true});\n",
+    "  put('turretDetail',box(.0581,.052,.130),1.112,2.7758,-.6635);\n  for(const [x,y,z,cls,scale]of[[-.87,2.6619,-.91,'mag',.96],[1.12405,2.7498,-.61,'mag',.8667]] as const){\n    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false});\n"
+  ],
+  [
+    "  merkava4Basket(P);\n  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.48,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'});\n  const mgSeatY={merkava4_x:2.577,merkava4_trophy:2.400}[candidate];\n  mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);\n",
+    "  merkava4Basket(P);\n  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.48,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false});\n  mg.position.set(-.83,2.577-MK4.y,-.752-MK4.z);P.turretG.add(mg);\n"
+  ],
+  [
+    "  }\n  if(configuration==='mk4'){\n    // Outboard rear radar pedestals retain their silhouette. Short transverse\n    // mounting arms meet both their inboard faces and the real turret sides;\n    // basket strands are not structural substitutes for these receivers.\n    put('turretDetail',box(.36,.10,.24),-1.40,2.04,-2.75);\n    put('turretDetail',box(.36,.10,.24),1.40,2.04,-2.75);\n    put('turretDetail',box(1.30,.10,.50),0,2.48,-2.30);\n  }\n",
+    "  }\n  if(configuration==='mk4')put('turretDetail',box(1.30,.10,.50),0,2.48,-2.30);\n"
+  ]
+];
+  for(const [current,before]of repairs){
+    assert.equal(count(source,current),1,'One exact repaired attachment seam');
+    source=source.replace(current,before);
+  }
+  return source;
+}
+
 function beforeBarakBowRepair(source){
   const imported="import { addBarakBowEquipment } from './merkavaBarakBow.ts';\n";
   if(!source.includes(imported))return source;
@@ -463,6 +495,7 @@ export function authenticateMerkavaEndReturnHistory(requiredId, {
   source=read('merkavaX.ts'), readHelper=read,
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
+  source=beforeAttachmentSeats(source);
   source=beforeModernIsraeliFleet(source,readHelper);
   source=beforeMerkava3dLeftCheekRepair(source);
   let before=beforeMerkava3dRightCheekRepair(

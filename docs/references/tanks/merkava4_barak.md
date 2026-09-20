@@ -1,5 +1,14 @@
 # Merkava Mk.4 Barak (`merkava4_barak`) — run packet
 
+## 2026-09-20 owner-selected closed rear door
+
+The current target closes only the recessed central entrance with a finite,
+hinged door. The original source remains open and unchanged; the surrounding
+basket, stowage and passenger bay stay intact. This supersedes the old open-door
+presentation, not the source-stock preservation rules. Current verification
+and release status: [repair record](../../research/merkava-camo-repairs-20260920.md).
+Earlier whole-model assessments below remain historical evidence.
+
 ## Current integrated status — 2026-09-19
 
 Integration `575614227` passes the unchanged source geometry floor with an

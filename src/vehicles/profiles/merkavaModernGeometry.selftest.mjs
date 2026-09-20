@@ -98,7 +98,7 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
       const rearClosure = rayDown(tank.root.getObjectByName('hullDetail'), 0, -3.88);
       if(contract.barak){
         assert.equal(rearClosure,undefined,`${id}: source entrance is not bridged by the former flush slab`);
-        assert.equal(verifyBarakBayNativeStock(tank.root).length,15,`${id}: real floor, roof, sidewalls and recessed back remain physical`);
+        assert.equal(verifyBarakBayNativeStock(tank.root).length,18,`${id}: closed door plus real floor, roof, sidewalls and recessed back remain physical`);
       }
       if (contract.trophy === 'mk4') {
         const skirts = tank.root.getObjectByName('hullExternalArmor');

@@ -71,6 +71,14 @@ for(const [comment,other]of[
   assert.notEqual(moved,source);assert.throws(()=>authenticate('merkava4_x',{source:moved}),
     'Support comment cannot move to the sibling gear seam');rejected++;
 }
+for(const [from,to]of[
+  ['side<0?2.213:2.426','side<0?2.214:2.426'],
+  ["cylY(.171,.27,24),-.41,2.671,-.98","cylY(.171,.27,24),-.41,2.711,-.98"],
+  ["[-.87,2.528,-.91,'mag',.96]","[-.87,2.6619,-.91,'mag',.96]"],
+  ["barrelBridge:candidate==='merkava4_trophy'","barrelBridge:false"],
+  ["merkava4_x:2.577,merkava4_trophy:2.400","merkava4_x:2.577,merkava4_trophy:2.577"],
+  ['box(.36,.10,.24),-1.40,2.04,-2.75','box(.35,.10,.24),-1.40,2.04,-2.75'],
+])rejectMutation(from,to,'Actual repaired attachment seam drift');
 rejectMutation('wheelR:.371,wheelW:.38,wheelY:.446','wheelR:.371,wheelW:.38,wheelY:.447',
   'Unrelated road-axle geometry drift');
 rejectMutation("P.add('turret', module);","P.addExternalArmor('turret', module);",

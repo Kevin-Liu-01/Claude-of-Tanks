@@ -73,3 +73,30 @@ assert.ok(score(source,longitudinal,3.2,fixed).score<92,'real longitudinal outli
 assert.ok(Math.abs(score(source,vertical,3.2).score-100)<1e-10,'legacy translation behavior is preserved');
 assert.equal(SOURCE_WORLD_FRAMES.m1a2,undefined,'old fleet cannot silently change registration');
 console.log('source-world-registration: hashes/datums fail closed; exact scorer self100, displaced geometry fails92, legacy preserved');
+
+// Mk3D's source file is already normalized. Preserve the measured source
+// datums and expose only this missing evaluator row, never all WEST overrides.
+const mk3Packet=JSON.parse(readFileSync(new URL('../docs/references/tanks/merkava3d_x.source-measurements.json',import.meta.url),'utf8'));
+const mk3=SOURCE_WORLD_FRAMES.merkava3d_x;
+assert.deepEqual(mk3,{sha256:'68aab556c5202455881862e5beae79fbe6b6dec4cf690ab3f1c73716e3bb3a5c',
+  fused:true,turret:mk3Packet.turretPivotM,gun:mk3Packet.gunAxisM});
+assert.deepEqual(mk3Packet.normalization,{translationM:[0,.02034,.2258175],uniformScale:1,axes:'+Y up, +Z forward'});
+const mk3Sample=()=>({reference:{rootMatrix:frame().rootMatrix,hull:[0,0,0],turret:[0,0,0],gun:[0,0,0]},
+  procedural:{rootMatrix:frame().rootMatrix,hull:[0,0,0],turret:[...mk3Packet.turretPivotM],gun:[...mk3Packet.gunAxisM]}});
+const mk3Verify=f=>validateSourceWorldFrame(mk3,mk3.sha256,f);
+assert.equal(mk3Verify(mk3Sample()).passed,true,'fused source has no fabricated articulated pivots');
+assert.equal(validateSourceWorldFrame(mk3,'unverified',mk3Sample()).passed,false,'Mk3 source bytes are mandatory');
+for(const owner of ['reference','procedural'])for(const anchor of ['hull','turret','gun']){
+  const f=mk3Sample();f[owner][anchor][2]+=.04;
+  assert.equal(mk3Verify(f).passed,false,`${owner}/${anchor}: real Mk3 shift cannot fit itself away`);
+}
+for(const owner of ['reference','procedural'])for(const index of [0,5,10,12,13,14]){
+  const f=mk3Sample();f[owner].rootMatrix[index]+=.01;
+  assert.equal(mk3Verify(f).passed,false,'No additional scale, centering or ground correction');
+}
+const evaluator=readFileSync(new URL('./visual-evaluator-page.html',import.meta.url),'utf8');
+const mk3Rows=[...evaluator.matchAll(/^  merkava3d_x: (.+),$/gm)];assert.equal(mk3Rows.length,1,'one explicit Mk3 evaluator route');
+const mk3Route=Function(`return (${mk3Rows[0][1]});`)();
+assert.deepEqual(mk3Route,{source:'glb',qualityBar:'exemplar',glb:{path:'/models/community-candidates/merkava3d_x_source.glb',fixedMount:true,componentMasks:false,paintUntextured:true}});
+assert.ok(!evaluator.includes('WEST_X_REFERENCE_OVERRIDES'),'This registration does not add unrelated WEST routes');
+console.log('Mk3D: pinned independent source datums, fused owner checks, explicit evaluator row and displaced/scaled/hash negatives PASS');

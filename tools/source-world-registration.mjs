@@ -4,6 +4,12 @@ import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSour
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
 export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
+  // Mk3D: independent 2026-09-05 source-axis measurements, already baked
+  // to metres and ground zero. Mixed bone/material owners remain fused.
+  merkava3d_x: {
+    sha256:'68aab556c5202455881862e5beae79fbe6b6dec4cf690ab3f1c73716e3bb3a5c',
+    fused:true,turret:[0,1.68034,-.72418],gun:[0,2.0898,1.4258],
+  },
   // Israeli modern-family owner studies (2026-09-18): proper-rotation,
   // uniform-only source-x-oracle bakes.  The source meshes are fused for
   // scoring because their ownership is flattened or crosses both sides.

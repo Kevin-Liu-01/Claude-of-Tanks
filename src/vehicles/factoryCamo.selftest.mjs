@@ -89,7 +89,7 @@ for (const id of SIGNATURE_CAMO_TANK_IDS) {
 }
 
 const requestedIsraeliDefaults = [
-  'merkava2d', 'merkava3d_x', 'merkava4', 'merkava4_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv',
+  'merkava2d', 'merkava3d_x', 'merkava4', 'merkava4_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'sabra_mk2_x',
 ];
 for (const id of requestedIsraeliDefaults) {
   assert.ok(SIGNATURE_CAMO_TANK_IDS.includes(id), `${id} must retain its requested Signature entry`);
@@ -194,6 +194,14 @@ try {
     assert.equal(getCamoSelection(id), 'factory',
       `${id} explicit player Factory selection overrides the requested new default`);
   }
+  for (const pattern of ['factory', 'winter', 'suits', 'openai', 'xai', 'gemini', 'mono', 'carbon', 'prism']) {
+    globalThis.localStorage.getItem = key => key === 'cot.camo.sabra_mk2_x' ? pattern : null;
+    assert.equal(getCamoSelection('sabra_mk2_x'), pattern,
+      `Sabra's new default does not replace an explicit saved ${pattern} choice`);
+  }
+  globalThis.localStorage.getItem = key => key === 'cot.camo.sabra_mk2_x' ? 'custom'
+    : key === 'cot.camoCustom.v1.sabra_mk2_x' ? '{}' : null;
+  assert.equal(getCamoSelection('sabra_mk2_x'), 'custom', 'Sabra preserves device-local custom paint');
 } finally {
   if (previousLocalStorage === undefined) delete globalThis.localStorage;
   else globalThis.localStorage = previousLocalStorage;

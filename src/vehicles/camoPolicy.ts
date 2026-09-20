@@ -57,8 +57,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'berlin', 'oakleaf',
   'hexfield', 'midnight',
   'claude', 'spark',
-  // skins r1 (2026-09-19, owner ask): the AI-lab set — original colourways and
-  // motifs only, no third-party marks; grouped with the house schemes.
+  // Preserved saved IDs; xai now displays the owner-requested X platform mark.
   'openai', 'xai', 'gemini',
   'ducky', 'suits', 'flames', 'leopardprint', 'bolt',
   'stars', 'daisy', 'circuit', 'racing', 'paintball',
@@ -96,6 +95,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'sig_merkava2d', 'sig_merkava3d_x', 'sig_merkava4', 'sig_merkava4_x', 'sig_merkava4_trophy', 'sig_merkava4_barak', 'sig_namer_ifv',
   'sig_t84', 'sig_ua_challenger2', 'sig_ua_t64bv', 'sig_ua_t80bv',
   'sig_ua_t80u_kursk', 'sig_ua_t84_oplot_m', 'sig_ua_m1a1', 'sig_leo2a6_ua',
+  'mono', 'carbon', 'prism', 'sig_sabra_mk2_x',
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -118,7 +118,9 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   berlin: 'Berlin Bde', oakleaf: 'Oak Leaf',
   hexfield: 'Hex Mesh', midnight: 'Night Ops',
   claude: 'Claude', spark: 'Claude Spark',
-  openai: 'OpenAI Mono', xai: 'xAI Carbon', gemini: 'Gemini Prism',
+  openai: 'OpenAI', xai: 'X', gemini: 'Gemini',
+  mono: 'Mono', carbon: 'Carbon', prism: 'Prism',
+  sig_sabra_mk2_x: 'Sabra Sinai Contours',
   ducky: 'Rubber Ducky', suits: 'High Roller', flames: 'Hot Rod',
   leopardprint: 'Leopard Print', bolt: 'Thunderbolt', stars: 'Starfall',
   daisy: 'Flower Power', circuit: 'Circuit Board', racing: 'Racing Team',
@@ -448,6 +450,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#777f6b', weather: '#929b83', patches: ['#4d5b4e', '#b1ac8f', '#8b8065'], camoScale: 0.4 }),
   preset('sig_namer_ifv', 'namer_ifv', signatureTags('il', 'desert', 'organic'),
     { scheme: 'desert', base: '#858a74', weather: '#a0a48a', patches: ['#586350', '#bcb399', '#74674f'], camoScale: 0.5 }),
+  preset('sig_sabra_mk2_x', 'sabra_mk2_x', signatureTags('il', 'desert', 'stripes'),
+    { scheme: 'stripes', base: '#9a947a', weather: '#b0a68b', patches: ['#586456', '#c4b490', '#75644d'], camoScale: 0.46 }),
   preset('sig_t84', 't84', signatureTags('ua', 'woodland', 'organic'),
     { scheme: 'nato', base: '#3a4832', weather: '#44523c', patches: ['#272d22', '#71684a'], camoScale: 0.5 }),
   preset('sig_ua_challenger2', 'ua_challenger2', signatureTags('ua', 'woodland', 'digital'),
@@ -534,6 +538,9 @@ const CAMO_PATTERN_TAGS: Readonly<Partial<Record<CamoPatternId, readonly CamoTag
   midnight: ['night', 'special'],
   claude: ['geometric', 'special'],
   spark: ['geometric', 'special'],
+  mono: ['geometric', 'special'],
+  carbon: ['stripes', 'special'],
+  prism: ['geometric', 'special'],
   openai: ['geometric', 'special'],
   xai: ['stripes', 'special'],
   gemini: ['geometric', 'special'],
@@ -615,6 +622,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // Israel — distinct authored defaults alongside the shared Factory coat.
   'merkava1b', 'merkava2b', 'merkava3c', 'merkava3d', 'merkava4b',
   'merkava2d', 'merkava3d_x', 'merkava4', 'merkava4_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv',
+  'sabra_mk2_x',
   // Ukraine — the UA M2A3 Bradley owns the national Factory reference.
   't84', 'ua_challenger2', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk',
   'ua_t84_oplot_m', 'ua_m1a1', 'leo2a6_ua',

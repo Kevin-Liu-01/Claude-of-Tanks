@@ -1,5 +1,13 @@
 # Merkava Mk.4 Trophy (`merkava4_trophy`) — run packet
 
+## 2026-09-20 marked attachment repairs
+
+The two aft radar pedestals now connect to the turret through narrow transverse
+mounting arms. The roof MAG foot is seated and its barrel is connected to the
+receiver. Current physical, visual and release verification:
+[repair record](../../research/merkava-camo-repairs-20260920.md).
+This is scoped attachment work, not a new whole-model fidelity certification.
+
 ## Current integrated status — 2026-09-19
 
 Integration `575614227` passes the unchanged registered geometry floor at an

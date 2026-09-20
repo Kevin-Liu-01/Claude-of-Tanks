@@ -111,8 +111,10 @@ A regression test must allow a repaired seam to disappear. Never hand-edit a
 generated fill record.
 A source-real rear bay that spans two body skins needs a finite source-air
 recipe, not a broad fill exclusion. Barak's recipe authenticates the source
-hash and registration and verifies fifteen actual native wall/floor/roof
-first hits before preserving its measured air. Retain raw residuals, test
+hash and registration and verifies eighteen actual native door/wall/floor/roof
+first hits before preserving its measured room. The owner's 2026-09-20 closed
+door target supersedes the older open entrance: exterior rays must hit the
+finite leaf, while interior rays retain the bay walls. Retain raw residuals, test
 missing/moved stock and wrong-source negatives, and keep all geometry in the
 source and physical audits.
 

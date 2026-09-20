@@ -52,6 +52,20 @@ function portal(): THREE.BufferGeometry {
   g.translate(0,0,-2.595583);g.scale(1/XS,1,1);return g;
 }
 
+function closedRearDoor(): THREE.BufferGeometry {
+  // Owner-selected closed pose (2026-09-20). The leaf overlaps the existing
+  // rounded aperture by 24–29 mm, with 40 mm of actual frame engagement.
+  // Keep the deep exterior recess and the room behind it; this is a door,
+  // not a slab across the rear stowage or a fill of the passenger bay.
+  const cx=-.0005,cy=1.0078825,halfWidth=.300,halfHeight=.450,corner=.060;
+  const ring:XY[]=[[-halfWidth+corner,-halfHeight],[halfWidth-corner,-halfHeight],
+    [halfWidth,-halfHeight+corner],[halfWidth,halfHeight-corner],
+    [halfWidth-corner,halfHeight],[-halfWidth+corner,halfHeight],
+    [-halfWidth,halfHeight-corner],[-halfWidth,-halfHeight+corner]];
+  return sectionSolid([-2.633583,-2.555583].map(z=>({z,
+    ring:ring.map(([x,y])=>local(x+cx,y+cy))})));
+}
+
 export function barakHullBody(sections: readonly SolidSection[]): THREE.BufferGeometry {
   const rear=span(sections,sections[0].z,-2.595583).map(outerWings);
   const inner=span(sections,-2.475583,-.681676);
@@ -61,7 +75,7 @@ export function barakHullBody(sections: readonly SolidSection[]): THREE.BufferGe
   const entrance=span(sections,-2.595583,-2.475583).map(outerWings);
   const parts=[0,1].flatMap(i=>[sectionSolid(rear.map(row=>row[i])),sectionSolid(entrance.map(row=>row[i]))]);
   for(let i=0;i<4;i++)parts.push(sectionSolid(sectors.map(row=>row[i])));
-  parts.push(portal(),sectionSolid(span(sections,-.681576,sections[sections.length-1].z)));
+  parts.push(portal(),closedRearDoor(),sectionSolid(span(sections,-.681576,sections[sections.length-1].z)));
   const result=mergeGeometries(parts);for(const part of parts)part.dispose();
   if(!result)throw new Error('Barak measured rear boundary did not merge');return result;
 }
@@ -104,4 +118,12 @@ function rearLamps(P:TankBuilderPort):void {
 }
 export function addBarakRearCases(P:TankBuilderPort):void {
   caseFrame(P,-1);caseFrame(P,1);rearLamps(P);
+  // Two hinge barrels span the leaf/frame edge; each receiver overlaps both
+  // the real door and its header-side frame. The latch mounts into the leaf.
+  for(const y of[.7378825,1.2778825]){
+    stock(P,KIT.box(.094,.060,.040),-.2945,y,-2.630583);
+    stock(P,KIT.cylY(.022,.022,.110,P.q?12:8),-.3085,y,-2.638583);
+  }
+  stock(P,KIT.box(.084,.048,.032),.2035,1.0078825,-2.637583);
+  stock(P,KIT.box(.021,.125,.025),.2165,1.0078825,-2.661583,'hullDark');
 }

@@ -1078,7 +1078,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     battleIntent.invalidateMapPlan();
     selectedVehicle.select(specId);
     pedestal.set(specId);
-    applyCamoPatternsChunked({ priorityIds: [specId], onlySpecIds: [specId] });
+    applyCamoPatternsChunked({ priorityIds: [specId], onlySpecIds: [specId] })
+      .then(() => invalidateGaragePresentation());
     currentNetworkRoom()?.syncVehicle(specId);
     currentNetworkRoom()?.syncPendingLobbySelection();
   },
@@ -1174,6 +1175,9 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       openai: t('camoPattern.openai'),
       xai: t('camoPattern.xai'),
       gemini: t('camoPattern.gemini'),
+      mono: t('camoPattern.mono'),
+      carbon: t('camoPattern.carbon'),
+      prism: t('camoPattern.prism'),
       ducky: t('camoPattern.ducky'),
       suits: t('camoPattern.suits'),
       flames: t('camoPattern.flames'),
@@ -1254,6 +1258,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       sig_merkava4_x: t('camoPattern.sig_merkava4_x'),
       sig_merkava4_trophy: t('camoPattern.sig_merkava4_trophy'),
       sig_merkava4_barak: t('camoPattern.sig_merkava4_barak'),
+      sig_sabra_mk2_x: t('camoPattern.sig_sabra_mk2_x'),
       sig_namer_ifv: t('camoPattern.sig_namer_ifv'),
       sig_t84: t('camoPattern.sig_t84'),
       sig_ua_challenger2: t('camoPattern.sig_ua_challenger2'),
@@ -1279,7 +1284,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       // frame before a cold pattern bake instead of blocking the click.
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
-      });
+      }).then(() => invalidateGaragePresentation());
       currentNetworkRoom()?.syncCamo(specId);
       currentNetworkRoom()?.syncPendingLobbySelection();
     },
@@ -1287,7 +1292,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       setCustomCamoSelection(specId, value);
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
-      });
+      }).then(() => invalidateGaragePresentation());
       // Deliberately sends Factory: custom paint is local single-player only.
       currentNetworkRoom()?.syncCamo(specId);
       currentNetworkRoom()?.syncPendingLobbySelection();
@@ -1311,7 +1316,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     // first slice; parked/roster entries follow one frame apart.
     applyCamoPatternsChunked({
       priorityIds: [selectedVehicle.id], onlySpecIds: [selectedVehicle.id],
-    });
+    }).then(() => invalidateGaragePresentation());
     currentNetworkRoom()?.syncPendingLobbySelection();
   },
 }));

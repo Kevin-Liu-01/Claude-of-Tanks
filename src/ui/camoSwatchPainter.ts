@@ -5,6 +5,7 @@
  */
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
   from '../vehicles/materials.ts';
+import { paintBrandMark } from '../vehicles/brandCamoPainter.ts';
 import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 
@@ -525,9 +526,9 @@ function paintSparkScheme(ctx: SwatchPaintContext): void {
     spark(W * 0.88, H * 0.66, H * 0.4, terra, 0.8);
 }
 
-function paintOpenaiScheme(ctx: SwatchPaintContext): void {
+function paintMonoScheme(ctx: SwatchPaintContext): void {
   const { c, patches, W, H } = ctx;
-    // skins r1: porcelain ring chain with one teal link on graphite (an
+    // skins r1: porcelain ring chain with one silver link on graphite (an
     // original motif, no third-party mark) — hero pair, medium, sprinkle.
     const ink = patches[0], teal = patches[1] || patches[0];
     const ring = (x: number, y: number, r: number, w: number, col: SwatchRgb, a: number): void => {
@@ -542,7 +543,7 @@ function paintOpenaiScheme(ctx: SwatchPaintContext): void {
     c.beginPath(); c.arc(W * 0.78, H * 0.28, H * 0.05, 0, Math.PI * 2); c.fill();
 }
 
-function paintXaiScheme(ctx: SwatchPaintContext): void {
+function paintCarbonScheme(ctx: SwatchPaintContext): void {
   const { c, patches, W, H } = ctx;
     // skins r1: bone meteor streaks on one heading over carbon, with dust.
     const bone = patches[0], cool = patches[1] || patches[0];
@@ -566,9 +567,9 @@ function paintXaiScheme(ctx: SwatchPaintContext): void {
     }
 }
 
-function paintGeminiScheme(ctx: SwatchPaintContext): void {
+function paintPrismScheme(ctx: SwatchPaintContext): void {
   const { c, rng, patches, W, H } = ctx;
-    // skins r1: prism washes, the twins' constellation and twinkles.
+    // skins r1: prism washes, constellation lines and twinkles.
     const blue = patches[0], violet = patches[1] || patches[0], pink = patches[2] || violet;
     const star: SwatchRgb = patches[3] || [238, 240, 255];
     const washes: SwatchRgb[] = [blue, violet, pink];
@@ -915,6 +916,13 @@ function paintMudwashScheme(ctx: SwatchPaintContext): void {
     }
 }
 
+function paintOfficialBrandScheme({ c, scheme, W, H }: SwatchPaintContext): void {
+  if (scheme !== 'openai' && scheme !== 'xai' && scheme !== 'gemini') return;
+  // Rectangular picker tile: two complete, uniformly scaled marks using the
+  // exact same path, centering and gradient as the vehicle/worker painter.
+  for (const x of [.25, .75]) paintBrandMark(c, scheme, W * x, H * .5, H * .72);
+}
+
 const SWATCH_SCHEME_HANDLERS: Readonly<Record<string, SwatchSchemeHandler>> = {
   "drawn": { paint: paintDrawnScheme, requiresPatches: true },
   "nato": { paint: paintNatoScheme, requiresPatches: true },
@@ -938,9 +946,12 @@ const SWATCH_SCHEME_HANDLERS: Readonly<Record<string, SwatchSchemeHandler>> = {
   "hexfield": { paint: paintHexfieldScheme, requiresPatches: true },
   "claude": { paint: paintClaudeScheme, requiresPatches: true },
   "spark": { paint: paintSparkScheme, requiresPatches: true },
-  "openai": { paint: paintOpenaiScheme, requiresPatches: true },
-  "xai": { paint: paintXaiScheme, requiresPatches: true },
-  "gemini": { paint: paintGeminiScheme, requiresPatches: true },
+  "openai": { paint: paintOfficialBrandScheme, requiresPatches: false },
+  "xai": { paint: paintOfficialBrandScheme, requiresPatches: false },
+  "gemini": { paint: paintOfficialBrandScheme, requiresPatches: false },
+  "mono": { paint: paintMonoScheme, requiresPatches: true },
+  "carbon": { paint: paintCarbonScheme, requiresPatches: true },
+  "prism": { paint: paintPrismScheme, requiresPatches: true },
   "ducky": { paint: paintDuckyScheme, requiresPatches: true },
   "suits": { paint: paintSuitsScheme, requiresPatches: true },
   "flames": { paint: paintFlamesScheme, requiresPatches: true },
