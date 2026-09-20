@@ -1,16 +1,17 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { validateSelectedIds, partitionConceptIds, CONCEPT_DESIGN_PATH } from './first-party-concept-policy.mjs';
+import { validateSelectedIds, partitionConceptIds, conceptDesignPath } from './first-party-concept-policy.mjs';
+import {readConceptDesign} from './first-party-concept-record.mjs';
 
 // Execute the actual entrypoint with injected resource APIs, never a browser,
 // listener, cache directory or generated report on the real filesystem.
 const source = fs.readFileSync(new URL('./procedural-fidelity.mjs', import.meta.url), 'utf8');
 const imports = source.match(/^import .+;$/gm);
-assert.equal(imports.length, 7, 'keep every entrypoint dependency explicitly injected');
+assert.equal(imports.length, 8, 'keep every entrypoint dependency explicitly injected');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const run = new AsyncFunction('fs', 'path', 'tmpdir', 'createServer', 'puppeteer', 'process', 'console',
-  'FLEET_GROUP_BY_ID', 'validateSelectedIds', 'partitionConceptIds', 'CONCEPT_DESIGN_PATH',
+  'FLEET_GROUP_BY_ID', 'validateSelectedIds', 'partitionConceptIds', 'readConceptDesign',
   source.replace(/^import .+;\n/gm, ''));
 
 async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, ids = ['fixture_x']) {
@@ -91,8 +92,8 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
   let failure;
   try {
     await run(fakeFs, path, () => '/fixture/tmp', createServer, puppeteer, process, console,
-      { fixture_x:'fixture', ztz100_prototype:'modern2', object695_x:'modern2' },
-      validateSelectedIds, partitionConceptIds, CONCEPT_DESIGN_PATH);
+      { fixture_x:'fixture', ztz100_prototype:'modern2', object695_x:'modern2', type100:'modern2' },
+      validateSelectedIds, partitionConceptIds, readConceptDesign);
   }
   catch (error) { failure = error; }
   return { events, logs, writes, primary, cleanup, failure, process };
@@ -147,7 +148,7 @@ for (const gatePassed of [true, false]) {
   assert.equal(result.process.exitCode, gatePassed ? undefined : 1);
 }
 
-for (const ids of [['ztz100_prototype', 'object695_x'], ['fixture_x', 'ztz100_prototype']]) {
+for (const ids of [['ztz100_prototype', 'object695_x'], ['fixture_x', 'ztz100_prototype'], ['type100'], ['type100','object695_x','fixture_x']]) {
   const result = await scenario(null, [], true, ids);
   assert.equal(result.failure, undefined);
   const report = JSON.parse(result.writes[0].content);
@@ -159,7 +160,8 @@ for (const ids of [['ztz100_prototype', 'object695_x'], ['fixture_x', 'ztz100_pr
   for (const row of report.rows.filter(row => row.comparisonApplicable === false)) {
     assert.equal(row.score, null);
     assert.equal(row.gatePassed, null, 'comparison routing does not certify physical design');
-    assert.equal(row.designPath, CONCEPT_DESIGN_PATH);
+    assert.equal(row.designPath, conceptDesignPath(row.id));
+    assert.equal(row.designSha256, readConceptDesign(row.id).designSha256);
   }
   assert.equal(result.events.includes('browser:launch'), comparisons > 0);
   assert.deepEqual(result.events.filter(event => event.endsWith(':close')), comparisons ? allCleanup : []);

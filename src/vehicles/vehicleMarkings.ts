@@ -281,7 +281,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   amx56: anchor('turret', 'right', 0.31, 0.45, 0.24, -1),
   type99a: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   vt4a1: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
-  type100: anchor('hull', 'left', 0.30, 0.55, 0.26, 1),
+  type100: anchor('hull', 'left', 0.33, 0.77, 0.26, 1),
   // The missile banks leave the aft spine visible; the former mid-turret
   // number was hidden below their sides in ordinary quarter views.
   ztz100_prototype: anchor('turret', 'left', 0.18, 0.32, 0.24, 1),

@@ -135,9 +135,14 @@ for (const spec of Object.values(TANK_SPECS)) {
     if (!round.guided) continue;
     guidedRounds.push({ spec, round, slot });
     if (spec.gun.launcherMuzzles?.length) {
+      assert.equal(round.launcherTubes, spec.gun.launcherMuzzles.length,
+        `${spec.id}: physical launcher tips cover every ready tube`);
+    }
+    // Explicit launch points describe geometry, not which weapon is primary.
+    // Autocannon IFVs retain their auxiliary missile cadence with real tips.
+    if (spec.gun.primaryGuided && spec.gun.launcherMuzzles?.length) {
       const expected = spec.id === 'ztz100_prototype' ? [8.2, 9] : [5.8, 6.6];
       assert.equal(round.reloadS, expected[slot], `${spec.id}: independently authored missile-primary reload`);
-      assert.equal(round.launcherTubes, spec.gun.launcherMuzzles.length);
     } else if (spec.gun.primaryGuided) {
       assert.equal(round.reloadS, spec.gun.reloadS,
         `${spec.id} slot ${slot + 1}: primary missile follows the main-gun reload`);

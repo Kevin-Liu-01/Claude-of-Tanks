@@ -1,6 +1,6 @@
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
-import {createHash} from 'node:crypto';
-import {firstPartyConcept,partitionConceptIds,validateSelectedIds,conceptReceiptPassed,CONCEPT_DESIGN_PATH} from './first-party-concept-policy.mjs';
+import {readConceptDesign} from './first-party-concept-record.mjs';
+import {firstPartyConcept,partitionConceptIds,validateSelectedIds,conceptReceiptPassed} from './first-party-concept-policy.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 import { strictTrackClipPassed } from './track-clip-result.mjs';
 import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
@@ -73,13 +73,13 @@ if (forceGate && ids.length) {
 // Fresh native design proof replaces ONLY obsolete comparison assertions.
 const conceptStartedAt=Date.now();
 const conceptIds=partitionConceptIds(ids).concepts;
-const conceptDesignHash=createHash('sha256').update(readFileSync(CONCEPT_DESIGN_PATH)).digest('hex');
+const conceptDesignHashes=new Map(conceptIds.map(id=>[id,readConceptDesign(id).designSha256]));
 if(conceptIds.length) {
   const out=path.join(reportRoot,'concepts');
   await runCapturedCommand(process.execPath,['tools/first-party-concept-check.mjs',`--ids=${conceptIds.join(',')}`,`--out=${out}`]);
   for(const id of conceptIds) {
     const report=JSON.parse(readFileSync(path.join(out,`${id}.json`),'utf8'));
-    if(!conceptReceiptPassed(id,report,conceptStartedAt,conceptDesignHash))throw new Error(`${id}: missing/stale concept proof`);
+    if(!conceptReceiptPassed(id,report,conceptStartedAt,conceptDesignHashes.get(id)))throw new Error(`${id}: missing/stale concept proof`);
     conceptReports.set(id,report);
   }
 }
@@ -213,7 +213,7 @@ for (const id of ids) {
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
   const clipOk = strictTrackClipPassed(cl);
   const gateOk = concept
-    ? conceptReceiptPassed(id,conceptReports.get(id),conceptStartedAt,conceptDesignHash)
+    ? conceptReceiptPassed(id,conceptReports.get(id),conceptStartedAt,conceptDesignHashes.get(id))
     : forceGate ? gateApplicable && exactGatePassed : !gateApplicable || exactGatePassed;
   if(concept){row='concept: comparison N/A';gateRequired='N/A';}
 

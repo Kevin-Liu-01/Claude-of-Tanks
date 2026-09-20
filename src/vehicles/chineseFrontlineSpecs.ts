@@ -3,7 +3,7 @@
 // or source payload participates in this tank.
 
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
-import { shell, apfsdsPenetration, modernArmor, crewBox as cbox } from './specHelpers.ts';
+import { shell, apfsdsPenetration, modernArmor, crewBox as cbox, moduleBox } from './specHelpers.ts';
 import { createType99Armor } from './profiles/type99Armor.ts';
 import { bindFleetRegistries, registerFleetSpecs } from './fleetSpecRegistry.ts';
 import type { FleetTankSpec } from './specContracts.ts';
@@ -44,10 +44,8 @@ const CHINESE_FRONTLINE_SPECS = {
       marking: 'number', number: '401', trackWidthM: 0.63, camoScale: 0.46,
     },
   },
-  // Type 100 IFV (owner 2026-09-17: "make the type 100 into a new chinese ifv and make its turret smaller and
-  // less long"): the PLA's paraded next-generation tracked support vehicle — 30 mm autocannon and HJ-10 missiles
-  // in a compact unmanned turret with a commander's sensor mast, Puma-class angular hull with the IFV prow.
-  // First-party build (profiles/type100.ts).
+  // Owner-directed original Chinese IFV, 2026-09-19. Photo-informed body
+  // language, authored dimensions and unmanned layout; see the design contract.
   type100: {
     id: 'type100', name: 'Type 100 IFV', nation: 'China', era: 'next-generation', role: 'ifv',
     hp: 2700,
@@ -60,32 +58,42 @@ const CHINESE_FRONTLINE_SPECS = {
       caliberMm: 30, reloadS: 0.40, baseAccuracy: 0.24, aimTimeS: 1.0,
       muzzleBoreSegments: 14,
       soundProfile: 'mk30-2',
+      launcherMuzzles: [-1.18, 1.18].flatMap(x => [.12, .44].map(y => ({ x, y, z: 1.00 }))),
       bloom: { move: 0.036, hullRot: 0.050, turret: 0.034, afterShot: 1.30 },
       shells: [
         shell('DTW-30 APFSDS-T', 'APFSDS', 30, 235, 215, 92, 1400, { pen2000Mm: 195, reloadS: 0.40, count: 220 }),
         shell('HJ-10 ATGM', 'HEAT', 170, 1100, 1100, 700, 190,
-          { reloadS: 2.2, count: 8, guided: true, soundProfile: 'spike-launch', launcherTubes: 8 }),
+          { reloadS: 2.2, count: 8, guided: true, soundProfile: 'spike-launch', launcherTubes: 4 }),
         shell('DTB-30 ABM', 'HE', 30, 14, 14, 105, 1100, { reloadS: 0.40, count: 220 }),
       ],
     },
-    dims: { hullLengthM: 7.05, overallLengthM: 7.05, widthM: 3.66, heightM: 2.40, silhouetteHeightM: 3.65 },
+    dims: { hullLengthM: 7.13, overallLengthM: 7.30, widthM: 3.70, heightM: 2.80, silhouetteHeightM: 3.56 },
     armor: (() => {
       const a = modernArmor({
-        hl: 3.53, hw: 1.83, inW: 1.15, floor: 0.38, trkTop: 1.24, roofY: 1.80,
-        turretPivot: [0, 1.80, -0.95], gunPivot: [0, 0.30, 1.30],
-        barrelLenM: 2.85, barrelRadM: 0.045,
+        hl: 3.565, hw: 1.83, inW: 1.05, floor: 0.40, trkTop: 1.30, roofY: 2.00,
+        turretPivot: [0, 2.02, -0.15], gunPivot: [0, 0.53, 0.65],
+        barrelLenM: 2.35, barrelRadM: 0.045,
         glacis: [80, 300, 420], lower: [60, 220, 290], side: [50, 150, 210],
         skirt: [70, 250, 460], rear: 40, roof: 46,
-        tw: 1.10, tFrontZ: 1.75, tRearZ: -2.05, tH: 0.62,
+        tw: 0.96, tFrontZ: 1.20, tRearZ: -1.16, tH: 0.78,
         cheek: [110, 280, 370], tSide: [75, 175, 255], tRear: 50, tRoof: 44,
         mantlet: [120, 290, 380], loader: false,
       });
       // Unmanned combat module: the three operating stations stay below the hull roof, clear of the turret.
       a.crew = [
-        cbox('driver', [0.30, 0.56, 1.10], [1.00, 1.72, 2.20]),
-        cbox('gunner', [-0.20, 0.56, -0.50], [0.58, 1.70, 0.60]),
-        cbox('commander', [-1.00, 0.56, -0.50], [-0.20, 1.70, 0.60]),
+        cbox('driver', [-.98, .58, .70], [-.30, 1.81, 1.62]),
+        cbox('gunner', [.25, .56, -.80], [.92, 1.84, .20]),
+        cbox('commander', [-.92, .56, -.80], [-.25, 1.84, .20]),
       ];
+      // Authored front-right powerpack and front final drive leave the driver
+      // lane and rear troop compartment clear; no generic rear-engine remap.
+      a.modules = a.modules.filter(m => !['engine', 'transmission', 'ammoRack', 'fuelTank'].includes(m.module));
+      a.modules.push(
+        moduleBox('engine', [.10, .48, .48], [1.00, 1.82, 1.72]),
+        moduleBox('transmission', [-.90, .50, 1.82], [.95, 1.32, 2.36]),
+        moduleBox('ammoRack', [-.20, .65, -1.35], [.20, 1.65, -.75]),
+        moduleBox('fuelTank', [-.98, .50, -2.55], [-.60, 1.55, -1.55]),
+      );
       return a;
     })(),
     visual: {

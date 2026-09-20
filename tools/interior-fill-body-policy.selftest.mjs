@@ -28,8 +28,9 @@ for (const configuredId of configuredIds) {
   }
 }
 
-const launcherId = 'object695_x';
+const launcherIds = ['object695_x', 'type100'];
 const launcherBuckets = new Set(['gunMount', 'gunMountDark']);
+for (const launcherId of launcherIds) {
 const launcherSelected = interiorFillBoundaryTriangles(launcherId, triangles, names);
 const launcherExpected = triangles.filter(row => !launcherBuckets.has(names[row.mesh]));
 assert.deepEqual(launcherSelected, launcherExpected,
@@ -40,6 +41,8 @@ for (const missing of launcherBuckets) {
   assert.throws(() => interiorFillBoundaryTriangles(launcherId,
     triangles.filter(row => names[row.mesh] !== missing), names), /missing authored fill boundary/,
   'missing real launcher stock must not silently broaden the policy');
+}
+
 }
 
 function leaks(tris, meshes, voxel = .025) {
@@ -67,11 +70,13 @@ for (const configuredId of configuredIds) {
 }
 const brokenLauncher = [...broken, { ...isolated, mesh: 1 }, { ...isolated, mesh: 2 }];
 const launcherNames = ['hull', 'gunMount', 'gunMountDark'];
+for (const launcherId of launcherIds) {
 const brokenLauncherSelected = interiorFillBoundaryTriangles(launcherId, brokenLauncher, launcherNames);
 assert.deepEqual(brokenLauncherSelected, broken,
   'a deleted primary plate remains in scope even beside independent launcher fittings');
 assert.ok(leaks(brokenLauncherSelected, launcherNames, .1).count > 0,
   'the launcher policy cannot hide real body-shell leakage');
+}
 cube.geometry.dispose(); cube.material.dispose();
 
 const results = [];
@@ -90,7 +95,7 @@ for (const configuredId of configuredIds) for (const quality of ['high', 'low'])
       originalBodyTriangles: withFittings.bodyTriangles, primaryBodyTriangles: primary.bodyTriangles });
   } finally { tank.dispose(); }
 }
-for (const quality of ['high', 'low']) {
+for (const launcherId of launcherIds) for (const quality of ['high', 'low']) {
   const tank = createTank(launcherId, null, { proceduralOnly: true, quality, geometryReceipt: true });
   try {
     const { tris, meshes } = collectTriangles(tank.root);

@@ -9,7 +9,8 @@ import { tmpdir } from 'node:os';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
-import {validateSelectedIds,partitionConceptIds,CONCEPT_DESIGN_PATH} from './first-party-concept-policy.mjs';
+import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
+import {readConceptDesign} from './first-party-concept-record.mjs';
 
 const ROOT = process.cwd();
 const REPORT_DIR = path.join(ROOT, '.qa-dev', 'reports');
@@ -34,7 +35,7 @@ const VIEW_FLOOR = 90;
 const EXEMPLAR_PASS = 92;
 const PRESERVATION_PASS = 99;
 const rows = (requestedPartition?.concepts??[]).map(id=>({id,name:id,score:null,scores:{},
-  comparisonPurpose:'owner-authored-concept',comparisonApplicable:false,designPath:CONCEPT_DESIGN_PATH,
+  comparisonPurpose:'owner-authored-concept',comparisonApplicable:false,...readConceptDesign(id),
   gatePassed:null,fallback:'first-party concept; physical qualification is tank-standard-check --gate'}));
 const browserErrors = [];
 const metric = (value) => Number.isFinite(value) ? value.toFixed(0) : 'NA';

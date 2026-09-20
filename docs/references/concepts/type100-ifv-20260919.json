@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-19",
+    "request": "Completely redesign Type 100 as an original Chinese infantry fighting vehicle.",
+    "scope": "Replace the prior composite tank-like design with a coherent first-party IFV. The photograph guides visual hierarchy, not dimensions or exact hardware identification."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "designs": {
+    "type100": {
+      "id": "type100",
+      "test": "src/vehicles/profiles/type100.selftest.mjs",
+      "ring": [
+        0,
+        2.02,
+        -0.15
+      ],
+      "gunLocal": [
+        0,
+        0.53,
+        0.65
+      ],
+      "barrelLengthM": 2.35,
+      "barrelRadiusM": 0.045,
+      "pitchDeg": [
+        -10,
+        45
+      ],
+      "cells": 4,
+      "guidedAmmoTotal": 8,
+      "mainCaliberMm": 30,
+      "roofMachineGuns": 0,
+      "hullLengthM": 7.13,
+      "hullWidthM": 3.66,
+      "widthM": 3.7,
+      "overallLengthM": 7.3,
+      "tallestM": 3.56,
+      "silhouette": "Broad straight-shouldered Chinese heavy IFV, shallow prow, rear troop compartment and compact chamfered autocannon turret with four low guided cells"
+    }
+  },
+  "dimensionToleranceFraction": 0.03,
+  "configuration": {
+    "authority": "Owner-delegated design choices, not inferred service specifications",
+    "mainWeapon": "30 mm autocannon",
+    "guidedReadyCells": 4,
+    "guidedTotalAmmunition": 8,
+    "roofMachineGuns": 0,
+    "layout": "Low unmanned turret; explicit chosen game configuration. Visible crews in inspiration photographs do not define this concept."
+  },
+  "inspiration": [
+    {
+      "publisher": "Xinhua",
+      "date": "2025-09-03",
+      "url": "https://english.news.cn/20250903/1bcc7b653894433f8f00dbd9da386326/c.html",
+      "photographer": "Yang Guanyu",
+      "image": "v8v0t6PoxrAtfe2F.jpg",
+      "scope": "Autocannon-equipped LZ171 formation: broad shallow prow, straight shoulders, planar side armor, compact sloped turret and subordinate optics. Other images on the mixed-family page show tank configurations.",
+      "limitation": "No 3D measurement oracle, exact Type100 dimensional authority, troop layout or missile-round identification is claimed."
+    }
+  ],
+  "requiredProof": [
+    "Actual filled HIGH/LOW native fixtures: finite hull/ramp/roof stock, wheels and tracks, four real open missile cells, working cannon bore, sight/launcher seating and legal yaw/pitch/recoil, with missing/shifted-stock mutation negatives",
+    "Declared datums and measured complete neutral envelope; pending dimensions must fail closed until frozen",
+    "Unchanged strict bands/shoes0, unexpected continuity0, physical equipment census, sealed hull, bore/barrel, module/anatomy, assets/centering, tests and build",
+    "Independent actual14 native views and real Garage rendering against this original design contract; source fidelity is not applicable"
+  ],
+  "envelopeDefinition": "All declared dimensions are original authoring decisions. Authored hull length7.13m/width3.66m are distinct from the complete neutral exterior: declared width3.70m includes fittings, overallLengthM7.30m, tallestM3.56m. Actual filled HIGH/LOW measurements below fall within the unchanged3% tolerance; this does not certify other physical gates.",
+  "status": "Frozen original design contract and measured envelope; no implementation or qualification PASS is awarded by this document.",
+  "measuredEnvelope": {
+    "scope": "Root-reported actual neutral filled HIGH and LOW complete bounds, 2026-09-19; physical fixture still in progress when recorded.",
+    "min": [
+      -1.835000038,
+      null,
+      -3.752000093
+    ],
+    "max": [
+      1.847000003,
+      3.559999962,
+      3.547499895
+    ],
+    "minimumY": "Approximately zero; no unsupported extra precision supplied.",
+    "widthM": 3.682000041,
+    "overallLengthM": 7.299499988,
+    "tallestM": 3.559999962,
+    "declaredWidthM": 3.7,
+    "declaredOverallLengthM": 7.3,
+    "declaredTallestM": 3.56
+  }
+}

@@ -1,5 +1,9 @@
-// Two explicit owner-authored designs. This is not a fallback for failed sources.
-export const CONCEPT_DESIGN_PATH = 'docs/references/concepts/missile-turrets-20260919.json';
+// Explicit owner-authored designs. This is not a fallback for failed sources.
+const CONCEPT_DOCUMENTS = Object.freeze({
+  ztz100_prototype:'docs/references/concepts/missile-turrets-20260919.json',
+  object695_x:'docs/references/concepts/missile-turrets-20260919.json',
+  type100:'docs/references/concepts/type100-ifv-20260919.json',
+});
 export const FIRST_PARTY_CONCEPTS = Object.freeze({
   ztz100_prototype: Object.freeze({
     id:'ztz100_prototype', test:'src/vehicles/profiles/ztz100Prototype.selftest.mjs',
@@ -15,9 +19,38 @@ export const FIRST_PARTY_CONCEPTS = Object.freeze({
     hullLengthM:7.08, hullWidthM:3.985, widthM:3.985, overallLengthM:7.23, tallestM:3.90,
     silhouette:'Tall narrow pedestal with two separated six-cell pods and a short backup cannon',
   }),
+  type100: Object.freeze({
+    id:'type100', test:'src/vehicles/profiles/type100.selftest.mjs',
+    ring:[0,2.02,-.15], gunLocal:[0,.53,.65], barrelLengthM:2.35, barrelRadiusM:.045,
+    pitchDeg:[-10,45], cells:4, guidedAmmoTotal:8, mainCaliberMm:30, roofMachineGuns:0,
+    hullLengthM:7.13, hullWidthM:3.66, widthM:3.70, overallLengthM:7.30, tallestM:3.56,
+    silhouette:'Broad straight-shouldered Chinese heavy IFV, shallow prow, rear troop compartment and compact chamfered autocannon turret with four low guided cells',
+  }),
 });
 export function firstPartyConcept(id) {
   return Object.hasOwn(FIRST_PARTY_CONCEPTS,id) ? FIRST_PARTY_CONCEPTS[id] : null;
+}
+export function conceptDesignPath(id) {
+  return Object.hasOwn(CONCEPT_DOCUMENTS,id) ? CONCEPT_DOCUMENTS[id] : null;
+}
+export function conceptDesignReady(id) {
+  const design=firstPartyConcept(id);
+  return Boolean(design && ['widthM','overallLengthM','tallestM'].every(key=>
+    Number.isFinite(design[key]) && design[key]>0));
+}
+function exactDesign(actual,expected) {
+  return actual && Object.keys(actual).length===Object.keys(expected).length
+    && Object.keys(expected).every(key=>JSON.stringify(actual[key])===JSON.stringify(expected[key]));
+}
+/** Each document must contain exactly its assigned designs, never a transplanted approval. */
+export function conceptDocumentPassed(id,record) {
+  const document=conceptDesignPath(id);
+  if (!document || record?.schemaVersion!==1 || record.dimensionToleranceFraction!==.03
+      || record.comparisonPurpose!=='owner-authored-concept' || record.comparisonApplicable!==false
+      || record.sourceScore!==null || !record.designs) return false;
+  const members=Object.keys(CONCEPT_DOCUMENTS).filter(key=>CONCEPT_DOCUMENTS[key]===document);
+  return Object.keys(record.designs).length===members.length
+    && members.every(key=>Object.hasOwn(record.designs,key)&&exactDesign(record.designs[key],firstPartyConcept(key)));
 }
 export function validateSelectedIds(ids, knownIds) {
   if (!Array.isArray(ids) || !ids.length || new Set(ids).size!==ids.length
@@ -39,7 +72,7 @@ export function conceptEquipmentVerdict(id,census) {
   if (!design) throw new Error(`${id}: no first-party concept equipment authority`);
   const valid=Number.isInteger(census?.mg)&&census.mg>=0&&census.invalidWeaponMarkers===0;
   return {passed:valid&&census.mg===design.roofMachineGuns,
-    required:design.roofMachineGuns,observed:census?.mg,authority:CONCEPT_DESIGN_PATH};
+    required:design.roofMachineGuns,observed:census?.mg,authority:conceptDesignPath(id)};
 }
 function conceptDimensionsPassed(row,design) {
   const min=row?.bounds?.min,max=row?.bounds?.max;
@@ -53,8 +86,9 @@ function conceptDimensionsPassed(row,design) {
 }
 export function conceptReceiptPassed(id,report,startedAt,designHash) {
   const design=firstPartyConcept(id);
-  return Boolean(design && report?.id===id && report.comparisonPurpose==='owner-authored-concept'
+  return Boolean(design && conceptDesignReady(id) && report?.id===id && report.comparisonPurpose==='owner-authored-concept'
     && report.comparisonApplicable===false && report.score===null && report.passed===true
+    && report.designPath===conceptDesignPath(id) && /^[a-f0-9]{64}$/.test(designHash??'')
     && report.designSha256===designHash && Date.parse(report.startedAt)>=startedAt
     && report.test?.path===design.test && report.test.exitCode===0
     && report.inputSha256Before===report.inputSha256After

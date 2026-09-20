@@ -1,94 +1,47 @@
-# Type 100 IFV (`type100`) — reference packet (fifth build, 2026-09-17)
+# Type 100 IFV — Chinese IFV redesign, 2026-09-19
 
-**2026-09-17 (owner: "make the type 100 into a new chinese ifv and make its turret smaller and less long"):** the
-vehicle is now the PLA's next-generation tracked support vehicle / heavy IFV — `role: 'ifv'`, public name
-"Type 100 IFV", 30 mm autocannon belt (0.40 s, 220 rounds) with HJ-10 guided missiles (8) and programmable HE on
-a compact unmanned module 3.8 m long, 2.24 m wide and 0.60 m tall (fourth-build turret grammar at 72 % length /
-85 % width, autocannon in a ringed jacket, weapon station, pods, smoke banks and sensors re-seated), hp 2700,
-38 t, 76 km/h, crew stations in the hull; dims 7.05 / 7.05 / 3.66 / 2.40 (silhouette 3.65); camo label
-"Type 100 IFV Digital". The main battle tank the owner asked for is the separate `ztz100_x` ("ZTZ-100"), generated
-from the owner's supplied model (docs/references/tanks/ztz100_x.md). The fourth-build notes below describe the hull,
-which is unchanged.
+Owner request: redesign both hull and turret to look recognizably Chinese rather than generic. This original first-party concept supersedes the former T-90/T-14 mix. [Retired build history](type100-history.md) is preserved but is not a current geometry authority.
 
-# Type 100 (`type100`) — reference packet (fourth build, 2026-09-16)
+## Design authority and reference limits
 
-**Exact vehicle modeled:** the PLA's next-generation medium tank ZTZ-100 / "Type 100" as shown in
-the owner's ten RenderHub reference renders (renderhub.com/finiask/ztz-100-or-type-100-tank, studied
-twice on 2026-09-16). What the renders dictate: a long, low hull whose flank is ONE flat surface from
-the roof chamfer to the skirt hem, divided only by a horizontal hull/skirt joint seam and seven vertical
-panel seams with bolt rows; a single wide glacis over a steep, flaring lower bow with chamfered corner
-facets; a diagonal leading cut in the skirt over the idler; chamfered stern corners with three louvred
-grilles, tail-lamp clusters and two shackle plates; the front is an IFV prow in the game's Puma / CV90 / Light Tiger grammar (owner: "it should look like the
-Puma's or CV90's or Light Tiger's or PL-01's"): a shallow 20° trapezoidal upper glacis from the roof edge
-(±1.61, z 2.20) to the nose line (±1.12, y 1.40, z 3.31), a narrow 64° lower bow plate from the belly
-(z 2.85) to that nose line, the body narrowing in plan so the glacis side edges are cheek facets, fender
-shoulders carrying the glacis edges out to the skirt line, the leading curtain panel running to the nose at
-full height and the idler showing in the notch beneath the shoulder; both span the full width and the skirt planes
-end on the lower one, so the side profile around the tracks is a single steep "/" (owner: "there's no bow
-… the side profile around the tracks should look like /"; "push these glacis back by making the lower
-glacis larger"; "the upper glacis … a lot lot less steep and the lower glacis can expand"; CCTV photo:
-"closer to a T-14 Armata than an IFV"); two crew hatches with periscopes, a round vent, grab
-rails and recessed lamp pods on the glacis; a long low turret set well back (bustle almost to the stern),
-narrow louvred bustle, flanks in two steep facets under a chamfer band ("steeply sloped, but not flat"),
-a long wedge to a trapezoidal gun housing, the gunner's sight box right of the gun, commander's round hatch, panoramic drum,
-met mast, a pedestal-mounted automated weapon station (its own small turret with MG cradle, thermal sight
-and dome) at the rear centre, twin quad hard-kill pods on brackets at the rear roof corners, two smoke
-discharger banks, four active-protection radar panels on the upper facets, cupola periscopes, roof rails,
-lifting eyes, GPS dome, stowage boxes and three whip antennas ("a lot more decorations and equipment"). Digital woodland finish; hull
-number LZ|83 and the PLA star on the flank panel row; emblem on both cheeks.
+The new [owner design contract](../concepts/type100-ifv-20260919.json) defines authored dimensions and equipment. No GLB or registered 3D comparison oracle exists; source fidelity scores are not applicable, never fabricated. [Xinhua's 3 September 2025 parade photograph](https://english.news.cn/20250903/1bcc7b653894433f8f00dbd9da386326/c.html), autocannon LZ171 formation, informs the shallow broad bow, straight shoulders, large upper side armor, short lower skirt segments, compact sloping turret and perforated gun shroud. The same page also shows tank configurations; those are not IFV targets. The image does not establish dimensions, caliber or internal layout.
 
-## OWNERSHIP / ROUND STATE (2026-09-16, owner request)
-FOURTH BUILD ("MAKE THE HULL TAKE INSPO FROM THE T90M AND THE TURRET TAKE INSPIRATION FROM THE T14
-ARMATA AND REDESIGN FROM SCRATCH. RN YOU'RE USING THE PRIMITIVES ONLY"; earlier: "remade from scratch to
-look much better", "sideskirts and lower glacis … blend much better with the hull"). The hull follows the
-T-90M X study's grammar (bevelled-keel body loft, fender lip and hinge rail, HANGING curtain panels with
-hinge blocks / clip bolts / stiffeners, stepped glacis appliqué courses, guarded lamp clusters, bolted bow
-strip, louvred deck with hinged covers and exhaust housing, tow cable, pressed wheel faces); the turret
-follows the T-14 X study's grammar (chamfered core loft wrapped in facet skins, trapezoid housing with the
-mantlet on the gun, rimmed sight cavity, roof tile grid with bolts, drum-stack panoramic sight, pedestal
-weapon station with forked cradle and a real pintle machine-gun fitting, radar panels, corner receivers,
-bolted stowage, muzzle-reference bracket). Spec in
-`src/vehicles/chineseFrontlineSpecs.ts`; builder `buildType100` in `src/vehicles/profiles/type100.ts`
-(registered through `CHINESE_FRONTLINE_PROFILES`). The renders are references only: no model geometry,
-GLB or measurement oracle participates; every dimension below is a design decision read from the renders
-at the 3.66 m width anchor.
+Original layout choices are front-right engine, front-left driver, hull-seated gunner/commander, rear infantry roof and access ramp, unmanned turret, 30 mm cannon, four ready HJ-10 cells plus four stored rounds, no separate roof machine gun. Combat HP, mobility, cannon and missile damage/penetration/reload remain unchanged. These are game-design choices, not claims about a real classified vehicle.
 
-## DIMS DECISION — RENDER-PROPORTIONAL
-| Measure | Value | Basis |
-|---|---|---|
-| Hull length | 7.05 m | stern plate z −3.75 to nose z 3.31 |
-| Overall length (with gun) | 10.05 m | 105 mm muzzle at z 6.30 |
-| Width (over the flank) | 3.66 m | one lofted flank at ±1.83, skirt 0.12 thick; the upper band leans in 0.22 over its top 0.43 (roof ±1.61) |
-| Heights | belly 0.40, sponson floor 1.02, hem 0.62, roof 1.80 | wheels r 0.36 at y 0.42 |
-| Turret | pivot (0, 1.80, −0.95), roof 0.68, bustle −2.75 .. apex 2.35 (turret frame) | renders 5/6: bustle near the stern, long cheeks |
-| Gun | pivot (0, 0.34, 1.65) turret frame, 5.60 m tube | sleeve, evacuator, MRS collar |
-| Silhouette | 2.48 m (turret roof) / 3.70 m (weapon-station sight dome) | RWS top 1.87 above the ring |
-| Road wheels / rollers / sprocket | 6 / 3 / rear | idler forward, `flanged-twelve` faces |
+## Frozen design direction and budgets
 
-## Construction (first-party, `sectionSolid` lofts + facet slabs)
-- Hull: seven stations along z, each ring = bevelled keel, tub, sponson floor, upper flank (±1.78), inclined
-  band, roof (12 points); the curtains (±1.79..1.83) hang separately from the fender line (y 1.37) to the hem. Stern plate half-width 1.50 → flank 1.83 by z −3.42; ahead of the roof
-  edge (z 2.20) the prow stations narrow the plan from ±1.78 to ±1.12, the roof descends as the 20° upper
-  glacis to the nose line (y 1.40, z 3.31) and, from z 2.85, the belly rises as the 64° lower bow plate to
-  the same line; two convex fender-shoulder wedges span glacis edge → skirt line (bottom on the fender line
-  y 1.37, crown falling with the glacis). The idler sits at z 2.85 / y 0.70 in the notch under the shoulder. Everything else is engraved or seated on that body.
-- Turret: chamfered eight-point core loft (bustle 0.78 → main 1.04 → apex 0.42) wrapped in facet skins
-  (foot ±1.32, lower facet leans 0.16 over 0.38, upper facet 0.26 over 0.26 to the roof at 0.68; bustle
-  foot ±1.02; shoulder faces; hexagonal bustle face), roof plate loft; trapezoidal housing (foot ±0.50,
-  crown ±0.32) with the trapezoid mantlet ring pitching on the gun.
+Hull authored shell: stern -3.63, nose +3.50, belly .40, roof 2.00 m. The 1.05 m lower half-width clears the track lanes; sponsons start at 1.30 m. Six road-wheel stations/radii and belt gauge are preserved. Front sprocket and rear idler match the new front powerpack. Turret ring (0,2.02,-.15), gun trunnion (0,.53,.65), compact shell -1.16..+1.20 m, 30 mm tube 2.35 m. Legal elevation/depression remains +45/-10 degrees. Physical seats and legal articulation must pass before final acceptance.
 
-## Receipts
-`src/vehicles/profiles/type100.selftest.mjs` (identity, part census at the builder port, loft envelopes,
-seams engraved not proud, 3 stern grilles, 8 tubes + caps, three whips, weapon station tallest and inside
-the silhouette, muzzle anchor, build receipt `type100-ztz100-r3`); the registry receipts; the regeneration
-chain (`gen-interior-fills --ids=type100`, `presentation-centering --update --ids=type100`,
-`tank:anatomy:update`, `genIcons --ids=type100`, `tank-sealed-check --update-ledger`, `tank:freeze`,
-`tank:roster -- --write`) and the staged release check in the main worktree.
+Before optimization, active near-scene filled budgets were fixed at HIGH <=80,000 triangles, LOW <=55,000 and LOW <=75% of HIGH. Baseline actual instance-expanded counts were 99,158 HIGH /94,270 LOW, with LOW at 95.07% of HIGH. These counts exclude inactive alternate shoe LOD and shadow proxies. Performance evidence must include real Garage cold/warm/switch behavior, not only Node timings.
 
-## Release-gate fallout (2026-09-17 evening, IFV build)
+## Physical results
 
-`tank-standard-check` on the landing chain: the 28 mm band's real idler wrap met the prow's lower body and the
-sponson floor (front 324 vox, strict sweep 955). The hull tub now stays 5 cm inboard of the track lane at every
-station (1.15 → 1.06) and the sponson floor sits above the whole visible return run (`FLOOR` 1.02 → 1.26, hidden
-behind the curtains); clip 0/0+0/0, holes 0, mg1 (the pintle machine-gun fitting).
+Final native envelope is 3.682 m wide, 7.2995 m long and 3.560 m tall including aerials. The actual coaxial turret bearing, launcher journals and saddles, optics feet, deck handles, rear ramp, mudflaps and exhaust have finite supporting stock. The cannon bore, shroud slots, four canister mouths and wheel guide channels remain real air. The generator adds no buried fill boxes to this already closed body; its loaded empty record is required, and all visible geometry remains in the native audits.
 
+HIGH and LOW both pass 24 posed/recoiling observations across legal yaw and -10/+45 degree pitch, all four working launcher tips, two headlights and missing/blocked/floating-stock negative controls. Six paired road wheels per side retain the original stations and radii, with front drive sprockets, rear idlers and one suspension-owned belt course. Strict band and moving-shoe overlaps are zero. The rough-field checks pass both qualities without cutting or daylight at the belt contact; measured suspension travel is -220 to +38 mm.
+
+The hull houses three crew stations, the front-right powerpack, front transmission, ammunition and fuel. All 21 pairs of their actual finite damage shapes are separated. Fuel/ammunition clearance is 502 mm; engine/transmission clearance is 136 mm. This is an authored gameplay layout, not a reconstruction of undisclosed real internals. Existing missile-rack damage represents feed/stored stock; this change does not add individually damageable external launch tubes.
+
+Final active near-scene cost is **50,086 triangles HIGH / 37,108 LOW**: 49.49% and 60.64% below the respective baseline, with LOW at 74.09% of HIGH. All fixed budgets pass. The complete visibility census used by the sealed check includes alternate LOD stock and reports 54,310 triangles; it is not interchangeable with the active near-scene count. That check reports zero open or see-through pixels across 33 views and preserves the existing sealed ledger.
+
+## Browser review and performance
+
+Independent native review inspected all 14 required views at HIGH and LOW plus one oblique roof companion per quality: 30 originals, scored 9.0–9.2 for this original concept's presentation. All image hashes, 15 paired camera recipes and 1,190 acquisition input hashes matched. Neutral pose and shadow-disabled inspection lighting do not replace the separate articulation tests or actual Garage review. Overhead camouflage reduces apparent roof relief; oblique views confirm the equipment. LOW retains stronger repeating weather/normal-map motifs from the unchanged shared painter; this is a cosmetic quality-policy limitation, not additional geometry or a source-fidelity result.
+
+The actual Garage was tested at 4× CPU slowdown against Kurganets-25, retaining normal prefetch. Pedestal first visits were 450/440 ms respectively; cached visits were 0–1 ms. Real pointer selection in both orders measured Type 100 first visits at 476.2/634.5 ms, repeats at 90/119 ms and rapid final selection at 176.8 ms. Both orders converged on the correct model, title, country, selected card and refreshed technical diagram; all four settled-thumbnail checks passed. First timed screenshots retain the observed initial thumbnail delay.
+
+All three Garage jobs passed with 2,916 input hashes unchanged. The latency tool observed no page exceptions or console errors; pointer probes observed no page exceptions or failed HTTP resources. All 15 original screenshots were reviewed. These are development-server selection measurements, not a production cold-start, mobile, memory-budget or FPS certification. Full-showroom heap samples were 185.7–244.3 MB; resource samples are observations, not vehicle-only costs. The default Garage quarter view does not independently establish readable marking placement.
+
+## Qualification state and evidence
+
+Qualified on 2026-09-20. The complete third release run, `npm run tank:release:check -- --ids=type100 --gate`, exited zero in 20.3 minutes. All lifecycle suites passed: 388 preliminary, 674 core and 42 final entries. The standard runner reused 359 preliminary and five core PASS receipts whose observable inputs were unchanged; all other entries executed. Also completed: full anatomy update/check (199 playable records and 597 technical image checks), current Type 100 assets and centering, strict physical design/track/closure checks, independent native visual/code/attachment/internal-layout review, actual Garage checks, type checking, both builds with localization validation, staged repository hygiene, and attribution audit. No source-fidelity score is claimed: the selected target is the explicit original design contract.
+
+The first composed run passed its geometry/probe/build stages but failed one of 388 preliminary test files: the ammunition-flow fixture assumed that any explicit launcher tips meant a missile-primary loadout. It expected Object 695's reload for Type 100's auxiliary missile. The corrected fixture distinguishes `primaryGuided` from physical tips, retains all tube-count checks and exact existing missile-primary reloads, and preserves the 2–3 second auxiliary rule. Focused coverage passes all 33 guided authority launches and 674 fleet ammunition channels. No runtime balance changed. The initial failed run remains archived and is not counted as a complete suite pass.
+
+The second composed run passed the preliminary suite but stopped after a Node/V8 garbage-collection segmentation fault in the unchanged production-entry observer test (exit 139). The focused test passed unchanged in 140 ms, and the complete third run passed it again. No game or diagnostics code was changed for the crash, whose precise engine trigger remains unknown. The interrupted run and sanitized diagnosis are retained separately; they do not supply missing passes for the completed run.
+
+Only Type 100 rows change semantically in the asset manifest, anatomy, fill, marking-seat and presentation registries. The prior missile-concept authority and other vehicles' generated records are preserved. Both generated Type 100 markings resolve to supported turret surfaces with nine of nine visibility samples; the preferred hull candidate was unavailable behind the new armor.
+
+Ignored local evidence is retained in the owned worktree under `.qa-dev/type100-redesign/`, `.qa-dev/type100-final-native/` and `.qa-dev/type100-garage-final-r1/`. Garage summary SHA-256: `ae365328498700b1c274d339999a664104d20cf7da1305af5bfa3b6c370de86c`. Native review SHA-256: `3b09248ec58b9308a82d242d8279c572e187c7b2101800faa43d8c99f6d596ef`. Design-contract SHA-256: `d6b06c5c27be835cee63b169550d7efd1bb78f52d5142615cd202cdde1fb8585`. Failed private capture preparations remain archived: they initially assumed hull-owned markings and nonempty fill meshes; the completed third acquisition validates the actual supported turret seats and loaded empty fill record. Only packet prose and the described regression test changed after the final captures; rendering inputs remain unchanged.
+
+Reproduction: run `node tools/gen-interior-fills.mjs --ids=type100`, the complete `npm run tank:anatomy:update`, selected centering/assets generation, `npm run tank:anatomy:check`, then `npm run tank:release:check -- --ids=type100 --gate`, `npm run typecheck`, `npm run build` and `npm run attribution:check`. Browser-heavy generators and builds use the existing capture queue; do not wrap tools that already own their lease.

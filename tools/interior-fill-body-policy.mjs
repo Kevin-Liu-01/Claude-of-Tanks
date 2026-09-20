@@ -28,6 +28,10 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
 // This selection affects generation only; every mesh remains in native audits.
 const EXTERNAL_LAUNCHER_BUCKETS = Object.freeze({
   object695_x: Object.freeze(['gunMount', 'gunMountDark']),
+  // Type100's closed canisters and perforated cannon sleeve surround real
+  // exterior air. Never bridge their slots into a solid gun casing; the
+  // actual recoiling cannon and all native geometry remain audited.
+  type100: Object.freeze(['gunMount', 'gunMountDark']),
 });
 
 /** Select actual body-shell triangles without changing their positions or order. */

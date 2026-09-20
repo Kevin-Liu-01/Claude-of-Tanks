@@ -68,3 +68,12 @@ const mixed=tankReleaseSteps('ztz100_x,ztz100_prototype,object695_x',true,'node-
 assert.deepEqual(mixed.find(s=>s.args[0]==='tools/procedural-fidelity.mjs').args,
  ['tools/procedural-fidelity.mjs','--ids=ztz100_x','--check','--board','--neutral-board']);
 assert.throws(()=>tankReleaseSteps('unknown_x',true),/known playable/,'unknown IDs cannot obtain N/A qualification');
+
+const type100=tankReleaseSteps('type100',true,'node-test');
+assert.equal(type100.some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false);
+assert.equal(type100.length,12,'Type100 retains every physical/anatomy/assets/test/build release step');
+for(const step of type100.filter(step=>step.args.some(arg=>arg.startsWith('--ids='))))
+  assert.ok(step.args.includes('--ids=type100'));
+const allConcepts=tankReleaseSteps('type100,object695_x,ztz100_prototype,ztz100_x',true,'node-test');
+assert.deepEqual(allConcepts.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args,
+  ['tools/procedural-fidelity.mjs','--ids=ztz100_x','--check','--board','--neutral-board']);

@@ -7,17 +7,17 @@ import {spawnSync} from 'node:child_process';
 import * as THREE from 'three';
 import '../src/vehicles/tankFactory.ts';
 import {ALL_TANK_IDS,TANK_SPECS} from '../src/vehicles/specs.ts';
-import {firstPartyConcept,validateSelectedIds,FIRST_PARTY_CONCEPTS,CONCEPT_DESIGN_PATH} from './first-party-concept-policy.mjs';
+import {firstPartyConcept,validateSelectedIds,conceptDesignPath} from './first-party-concept-policy.mjs';
+import {readConceptDesign} from './first-party-concept-record.mjs';
+import {assertConceptDatums} from './first-party-concept-datums.mjs';
 const ids=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',')??[];
 validateSelectedIds(ids,ALL_TANK_IDS);
 assert.ok(ids.every(firstPartyConcept),'Only explicitly authored concepts use this gate');
 const output=path.resolve(process.argv.find(a=>a.startsWith('--out='))?.slice(6)??'.qa-dev/reports/first-party-concepts');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-const designBytes=fs.readFileSync(CONCEPT_DESIGN_PATH),designRecord=JSON.parse(designBytes);
-assert.deepEqual(designRecord.designs,FIRST_PARTY_CONCEPTS,'Authored design record and QA contract agree');
-assert.equal(designRecord.dimensionToleranceFraction,.03,'Existing dimension tolerance is unchanged');
+const documents=new Map(ids.map(id=>[id,readConceptDesign(id)]));
 function runtimeDigest() {
-  const files=['package.json','package-lock.json',CONCEPT_DESIGN_PATH];
+  const files=['package.json','package-lock.json',...new Set(ids.map(conceptDesignPath))];
   function walk(dir) {
     for(const entry of fs.readdirSync(dir,{withFileTypes:true})) {
       const p=path.join(dir,entry.name);
@@ -28,25 +28,11 @@ function runtimeDigest() {
   walk('src');walk('tools');
   return hash(files.sort().map(p=>`${p}:${hash(fs.readFileSync(p))}`).join('\n'));
 }
-function assertDatums(spec,design) {
-  assert.deepEqual(spec.armor.turretPivot,design.ring,'declared turret ring');
-  assert.deepEqual(spec.armor.gunPivot,design.gunLocal,'declared local gun trunnion');
-  assert.equal(spec.armor.gunBarrel.lengthM,design.barrelLengthM);
-  assert.equal(spec.armor.gunBarrel.radiusM,design.barrelRadiusM);
-  assert.equal(spec.dims.hullLengthM,design.hullLengthM,'preserved declared hull length');
-  assert.equal(spec.dims.widthM,design.widthM,'declared complete width');
-  assert.equal(spec.dims.overallLengthM,design.overallLengthM,'declared complete length');
-  assert.equal(spec.gunElevationDeg,design.pitchDeg[1]);
-  assert.equal(spec.gunDepressionDeg,-design.pitchDeg[0]);
-  assert.ok(spec.gun.shells.some(s=>!s.guided&&s.caliberMm===design.backupCaliberMm),'real backup ammunition caliber');
-  const missiles=spec.gun.shells.filter(s=>s.guided);
-  assert.ok(missiles.length>0&&missiles.every(s=>s.launcherTubes===design.cells),'all missile modes share the declared cells');
-}
 async function dimensions(id) {
   const {createTank}=await import('../src/vehicles/tankFactory.ts');
   const {ensureInteriorFills,hasInteriorFills}=await import('../src/vehicles/interiorFills.ts');
   await ensureInteriorFills([id]);assert.ok(hasInteriorFills(id),'Final generated fills must be loaded');
-  const design=firstPartyConcept(id);assertDatums(TANK_SPECS[id],design);
+  const design=firstPartyConcept(id);assertConceptDatums(TANK_SPECS[id],design);
   return ['high','low'].map(quality=>{
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
     try {
@@ -69,7 +55,7 @@ for(const id of ids) {
   const log=`${child.stdout??''}${child.stderr??''}`;
   fs.writeFileSync(path.join(output,`${id}.log`),log);
   const report={id,startedAt,comparisonPurpose:'owner-authored-concept',comparisonApplicable:false,score:null,
-    designPath:CONCEPT_DESIGN_PATH,designSha256:hash(designBytes),inputSha256Before,
+    ...documents.get(id),inputSha256Before,
     test:{path:design.test,exitCode:child.status,logSha256:hash(log)},dimensions:[],passed:false};
   try {
     assert.equal(child.status,0,'Actual profile preservation/stock/attachment fixture must pass');
