@@ -1,7 +1,7 @@
 /** Construction-only Mangrove wharf: adapt one accepted fishery, never add parts. */
 import { Box3, Matrix4, Vector3, type BufferGeometry } from 'three';
 import { convexHull2, type CollisionRecord } from './collision.ts';
-import { applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile } from './structureCollision.ts';
+import { applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile, mergeStructureCollisionBand } from './structureCollision.ts';
 import { planRiverLanding, type RiverLandingAnchor } from './maps/riverLandings.ts';
 
 type Buckets = Record<string, BufferGeometry[]>;
@@ -247,7 +247,9 @@ export function composeMangroveFisheryWharf(mapId: string, field: Field, packet:
     const piles = bodySupportMembers(local, p, field);
     checkMembers(local, p, field, dressing, anchor, piles);
     const profile = deriveRuntimeStructureCollisionProfile(local);
-    if (profile.shell.length + 1 !== packet.records.length) throw new Error('adaptation changes collision-band allocation');
+    // the adapted geometry may merge or split shell bands (2026-09-19 height-clipped bands); the placement's fixed
+    // record allocation packs surplus bands into its last record, whose parts keep their own vertical extents
+    if (packet.records.length < 2) throw new Error('adaptation changes collision-band allocation');
     const target = matrix(p), parts = Object.values(local).flat();
     for (const g of parts) g.applyMatrix4(target);
     const box = bounds(parts), spawns = field._layout.spawns;
@@ -261,11 +263,22 @@ export function composeMangroveFisheryWharf(mapId: string, field: Field, packet:
     // Commit only after all geometry, support and occupancy checks succeed.
     commitGeometry(packet, local);
     const bands = [profile.contact, ...profile.shell];
+    const last = packet.records.length - 1;
     bands.forEach((band, i) => {
-      const ob = packet.records[i];
-      ob.min[1] = p.y + band.minY; ob.max[1] = p.y + band.maxY;
-      applyStructureCollisionBand(ob, band, p.x, p.z, p.yaw);
+      if (i <= last) {
+        const ob = packet.records[i];
+        ob.min[1] = p.y + band.minY; ob.max[1] = p.y + band.maxY;
+        applyStructureCollisionBand(ob, band, p.x, p.z, p.yaw, p.y);
+        return;
+      }
+      mergeStructureCollisionBand(packet.records[last], band, p.x, p.z, p.yaw, p.y);
     });
+    for (let i = bands.length; i < packet.records.length; i++) {
+      // fewer bands than records: the spare records collapse to the last band's slab (no stray footprint)
+      const ob = packet.records[i];
+      ob.min[1] = ob.max[1] = p.y + bands[bands.length - 1].maxY;
+      applyStructureCollisionBand(ob, bands[bands.length - 1], p.x, p.z, p.yaw, p.y);
+    }
     Object.assign(packet.feature, { x: p.x, z: p.z, rot: p.yaw });
     return { status: 'placed', reason: '', pose: { x: p.x, y: p.y, z: p.z, yaw: p.yaw },
       step: p.step, annexBottom: p.annexBottom, parts: parts.length };

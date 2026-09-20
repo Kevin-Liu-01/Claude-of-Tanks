@@ -70,6 +70,7 @@ import {
 } from './loosePropPhysics.ts';
 import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
+  type SimpleCollisionShape,
 } from './collision.ts';
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
@@ -6611,25 +6612,29 @@ ${snowCap ? `
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
     for (const record of pool.records) {
       if (!record.ob) continue;
+      const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined
+        ? { y0: part.y0 * record.sc, y1: part.y1 * record.sc }
+        : {});
       const scaledBand = record.sc === 1 ? contactBand : {
         ...contactBand,
         parts: contactBand.parts.map((part) => part.kind === 'circle'
-          ? { ...part, cx: part.cx * record.sc, cz: part.cz * record.sc, r: part.r * record.sc }
+          ? { ...part, cx: part.cx * record.sc, cz: part.cz * record.sc, r: part.r * record.sc, ...scaledExtent(part) }
           : part.kind === 'obb'
             ? {
               ...part, cx: part.cx * record.sc, cz: part.cz * record.sc,
-              hw: part.hw * record.sc, hl: part.hl * record.sc,
+              hw: part.hw * record.sc, hl: part.hl * record.sc, ...scaledExtent(part),
             }
             : {
               ...part,
               cx: part.cx * record.sc,
               cz: part.cz * record.sc,
               points: part.points.map((value) => value * record.sc),
+              ...scaledExtent(part),
             }),
       };
-      applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw);
+      applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw, record.y);
       if (record.col) {
-        applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw);
+        applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw, record.y);
       }
     }
     if (!source) return null;

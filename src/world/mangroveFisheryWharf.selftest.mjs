@@ -369,14 +369,23 @@ function actualBudgetAndSupport() {
   assert.ok(certification.minimumScore > 90, `unchanged strict production collision certification: ${certification.minimumScore}`);
   const expected = [];
   for (const band of [profile.contact, ...profile.shell]) appendStructureCollisionBand(expected, band, pose.x, pose.y, pose.z, pose.yaw);
-  assert.equal(expected.length, packet.records.length);
-  for (let i = 0; i < expected.length; i++) {
+  // 2026-09-19: the height-clipped 0.5 m band ladder can outnumber the placement's record allocation; the wharf
+  // packs every surplus band into its last record, whose parts keep their own vertical extents.
+  assert.ok(expected.length >= packet.records.length, 'the adapted profile never has fewer bands than records');
+  const last = packet.records.length - 1;
+  for (let i = 0; i < last; i++) {
     const actual = packet.records[i];
     for (let j = 0; j < 3; j++) {
       assert.ok(Math.abs(actual.min[j] - expected[i].min[j]) < .0001);
       assert.ok(Math.abs(actual.max[j] - expected[i].max[j]) < .0001);
     }
   }
+  assert.ok(Math.abs(packet.records[last].min[1] - expected[last].min[1]) < .0001, 'the last record starts at its own band');
+  assert.ok(Math.abs(packet.records[last].max[1] - expected[expected.length - 1].max[1]) < .0001,
+    'the last record reaches the top of the final packed band');
+  // (band and part counts are not compared exactly: the receipt's own float32 round trip can partition nearly
+  // welded detail solids differently — the wharf's own derivation may merge the top bands that this one keeps
+  // apart — as the certification note above records; the span checks above cover the packing)
   for (const bucket of [old, local]) for (const values of Object.values(bucket)) for (const g of values) g.dispose();
   return { floorGap, annexGap, verticalOverlap, bodySupports, loadPath, collisionScore: certification.minimumScore };
 }

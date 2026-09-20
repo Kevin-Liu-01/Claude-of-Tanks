@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import { createTankState, SIM_DT } from './movement.ts';
 import {
   prefersVerticalTankContact,
+  tanksVerticallyClear,
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
 import { tankContactRect } from './tankContactShape.ts';
@@ -183,6 +184,21 @@ assert(exactRect.exact && exactRect.halfWidth === 1.8 && exactRect.halfLength ==
     'pitched asymmetric shells resolve vertical support');
   assert(upper.state.pos.y > 2.4,
     `nose-down support uses the canonical pitch sign (${upper.state.pos.y})`);
+}
+
+// Fly-over (2026-09-19, owner: "if you try to fly over a tank … you just hit an invisible wall"): an airborne hull
+// whose whole body is above another tank is neither pushed sideways nor stacked.
+{
+  const ground = entity('ground', 0, 0, 0, true);
+  const overflight = entity('overflight', 0.4, 3.6, 0.3, false);
+  assert(tanksVerticallyClear(overflight, ground) && tanksVerticallyClear(ground, overflight),
+    'a hull clearing another tank by more than the stacking approach is vertically clear');
+  assert(!prefersVerticalTankContact(overflight, ground), 'well above the approach it is not a stack contact either');
+  const beside = entity('beside', 0.4, 0, 0.3, true);
+  assert(!tanksVerticallyClear(beside, ground), 'two grounded hulls at one height are not clear');
+  const landing = entity('landing', 0.4, 2.62, 0.3, false);
+  assert(!tanksVerticallyClear(landing, ground), 'a hull inside the stacking approach is left to the vertical contact');
+  checks += 4;
 }
 
 console.log(`tankBodyContacts.selftest: ${checks} assertions passed`);

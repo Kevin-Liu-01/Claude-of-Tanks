@@ -11,10 +11,20 @@ const EPS = 1e-9;
 
 type Bounds3 = [number, number, number];
 
+/**
+ * `y0` / `y1` (2026-09-19, owner: "building hitboxes extend into empty air"): the optional world-space vertical
+ * extent of one part of a compound record — a structure's solids each keep their own height and every 0.5 m shell
+ * band carries the roof strip that actually lies in it. Absent, the part spans the record's own [min[1], max[1]].
+ */
 export type SimpleCollisionShape =
-  | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number }
-  | { kind: 'circle'; cx: number; cz: number; r: number }
-  | { kind: 'convex'; cx: number; cz: number; points: number[] };
+  | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number; y0?: number; y1?: number }
+  | { kind: 'circle'; cx: number; cz: number; r: number; y0?: number; y1?: number }
+  | { kind: 'convex'; cx: number; cz: number; points: number[]; y0?: number; y1?: number };
+
+/** A hull whose track bottom clears a part's top by this much passes over it (the record-level rule uses 0.5 too). */
+export const OVERPASS_CLEARANCE_M = 0.5;
+/** A hull whose body top stays this far under a part's bottom passes beneath it (an overhang, a bridge deck). */
+export const UNDERPASS_CLEARANCE_M = 0.15;
 
 export type CollisionShape = SimpleCollisionShape | {
   kind: 'compound';
@@ -497,19 +507,25 @@ export function pushHullFromObstacle(
   halfL: number, halfW: number,
   ob: CollisionRecord,
   outPush: Push2,
+  spanBottom = -Infinity,
+  spanTop = Infinity,
 ) {
   const sh = ob.shape2;
   if (sh && sh.kind === 'compound') {
     const startX = outPush.x;
     const startZ = outPush.z;
     let hit = false;
-    _compoundRec.min[1] = ob.min[1]; _compoundRec.max[1] = ob.max[1];
     for (const part of sh.parts) {
+      // per-part vertical extent: the hull passes over a part it clears (a low wing, a porch, a garage beside
+      // the tower) and under a part it stays below (an overhang); parts without their own extent use the record's
+      if (part.y1 !== undefined && spanBottom > part.y1 + OVERPASS_CLEARANCE_M) continue;
+      if (part.y0 !== undefined && spanTop < part.y0 - UNDERPASS_CLEARANCE_M) continue;
+      _compoundRec.min[1] = part.y0 ?? ob.min[1]; _compoundRec.max[1] = part.y1 ?? ob.max[1];
       _compoundRec.shape2 = part;
       _compoundPos.x = pos.x + outPush.x - startX;
       _compoundPos.z = pos.z + outPush.z - startZ;
       if (pushHullFromObstacle(
-        _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush,
+        _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush, spanBottom, spanTop,
       )) hit = true;
     }
     return hit;
@@ -936,8 +952,9 @@ export function rayCollisionRecord(
   if (!sh) return rayAabb(origin, dir, rec, maxDist, outNormal);
   if (sh.kind === 'compound') {
     let best = -1;
-    _compoundRayRec.min[1] = rec.min[1]; _compoundRayRec.max[1] = rec.max[1];
     for (const part of sh.parts) {
+      // a part with its own vertical extent is only as tall as the geometry that produced it
+      _compoundRayRec.min[1] = part.y0 ?? rec.min[1]; _compoundRayRec.max[1] = part.y1 ?? rec.max[1];
       _compoundRayRec.shape2 = part;
       const hit = rayCollisionRecord(
         origin, dir, _compoundRayRec, best < 0 ? maxDist : best, _compoundCandidateNormal,

@@ -1136,4 +1136,38 @@ if (failures > 0) {
   console.error(`movement.selftest: ${failures}/${checks} checks FAILED`);
   process.exit(1);
 }
+// Wrecks (2026-09-19, owner: "when a tank gets destroyed, it should continue being affected by physics"): a
+// destroyed hull skids to rest on its locked tracks and keeps its ballistic momentum in the air.
+{
+  const flat = makeField(() => 0);
+  const wreck = makeEntity(flat, 0, 0, 0);
+  wreck.combat = { destroyed: true };
+  wreck.state.speed = 12;
+  wreck.input.throttle = 1;
+  const startZ = wreck.state.pos.z;
+  run(wreck, flat, 30);
+  assert(wreck.state.speed > 6 && wreck.state.speed < 11.5,
+    `a fresh wreck is still sliding after half a second (${wreck.state.speed.toFixed(2)} m/s)`);
+  run(wreck, flat, 210);
+  assert(Math.abs(wreck.state.speed) < 0.05, `the wreck comes to rest within four seconds (${wreck.state.speed.toFixed(3)})`);
+  const slid = wreck.state.pos.z - startZ;
+  assert(slid > 10 && slid < 20, `the skid covers a real distance (${slid.toFixed(1)} m)`);
+  assert(wreck.state.yawRate === 0, 'no drive means no traverse');
+  checks += 4;
+
+  const drop = makeField(() => 0);
+  const flier = makeEntity(drop, 0, 0, 0);
+  flier.combat = { destroyed: true };
+  flier.state.pos.y = 12;
+  flier.state.grounded = false;
+  flier.state._ride.grounded = false;
+  flier.state._ride.y = 12;
+  flier.state.speed = 9;
+  const y0 = flier.state.pos.y;
+  run(flier, drop, 20);
+  assert(Math.abs(flier.state.speed - 9) < 1e-6, `an airborne wreck keeps its horizontal speed (${flier.state.speed})`);
+  assert(flier.state.pos.y < y0 - 0.4 && flier.state.verticalSpeed < 0, 'and keeps falling along its arc');
+  checks += 2;
+}
+
 console.log(`movement.selftest: all ${checks} checks passed`);

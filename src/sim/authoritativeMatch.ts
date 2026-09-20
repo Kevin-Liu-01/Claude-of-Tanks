@@ -29,9 +29,10 @@ import {
 import type { MovementCombatState, TankState } from './movement.ts';
 import {
   prefersVerticalTankContact,
+  tanksVerticallyClear,
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
-import { tankContactRect } from './tankContactShape.ts';
+import { tankBodyTopM, tankContactRect } from './tankContactShape.ts';
 import { requestTankSelfRight, stepRolloverLifecycle } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
@@ -990,6 +991,7 @@ export function createAuthoritativeMatch({
     outPush: Vector3,
   ): void {
     const broadRadius = Math.hypot(halfL, halfW) + 0.01;
+    const spanTop = pos.y + tankBodyTopM(entity.spec);
     for (const obstacle of obstacleCandidates(centerX, centerZ, broadRadius)) {
       if (obstacle.crushed || pos.y > obstacle.max[1] + 0.5) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
@@ -1000,7 +1002,7 @@ export function createAuthoritativeMatch({
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
       const pushed = pushHullFromObstacle(
-        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush,
+        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush, pos.y, spanTop,
       );
       if (!pushed || !obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) continue;
       outPush.x = beforeX;
@@ -1057,7 +1059,8 @@ export function createAuthoritativeMatch({
       const dx = centerX - otherCenterX;
       const dz = centerZ - otherCenterZ;
       const outer = Math.hypot(halfL, halfW) + Math.hypot(otherHalfL, otherHalfW);
-      if (dx * dx + dz * dz > outer * outer || prefersVerticalTankContact(entity, other)) {
+      if (dx * dx + dz * dz > outer * outer || prefersVerticalTankContact(entity, other)
+        || tanksVerticallyClear(entity, other)) {
         continue;
       }
       const beforeX = outPush.x;
@@ -1795,7 +1798,8 @@ export function createAuthoritativeMatch({
 
   function advanceTankMovement(dt: number): void {
     for (const entity of entities) {
-      if (entity.modeActive === false || entity.combat.destroyed) continue;
+      // wrecks keep moving (2026-09-19): applyNetworkInput already zeroes their input; readDebuffs skids them
+      if (entity.modeActive === false) continue;
       movingEntity = entity;
       updateTank(entity, heightField, dt, collideMovingEntity);
     }

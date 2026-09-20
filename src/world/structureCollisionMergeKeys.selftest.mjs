@@ -189,7 +189,7 @@ try {
     assert.ok(result.counts.candidate.keys < result.counts.original.keys / 2,
       `${api}: real geometry materially reduces keys, including the authoring caller`);
     const profile = result.actual.profile ?? result.actual;
-    assert.equal(profile.shell.length, 10);
+    assert.equal(profile.shell.length, 25); // 2026-09-19: 0.5 m height-clipped bands, identical wall bands merged
     samples.push({ api, geometries: geometries.length, outputSha256: fingerprint(result.actual),
       counts: result.counts, accepted: result.accepted });
   }

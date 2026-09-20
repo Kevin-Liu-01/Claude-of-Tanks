@@ -54,9 +54,10 @@ import {
 } from '../sim/movement.ts';
 import {
   prefersVerticalTankContact,
+  tanksVerticallyClear,
   resolveTankBodyContacts,
 } from '../sim/tankBodyContacts.ts';
-import { tankContactRect } from '../sim/tankContactShape.ts';
+import { tankBodyTopM, tankContactRect } from '../sim/tankContactShape.ts';
 import { stepRolloverLifecycle } from '../sim/rollover.ts';
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
@@ -1469,7 +1470,7 @@ function resolveTankCollisions(
     const outerRadius = Math.hypot(halfLength, halfWidth) +
       Math.hypot(footprint.halfLength, footprint.halfWidth);
     if (deltaX * deltaX + deltaZ * deltaZ > outerRadius * outerRadius ||
-        prefersVerticalTankContact(self, other)) continue;
+        prefersVerticalTankContact(self, other) || tanksVerticallyClear(self, other)) continue;
     const beforeX = outPush.x;
     const beforeZ = outPush.z;
     if (!pushHullFromHull(
@@ -1551,6 +1552,8 @@ function resolveObstacleCollisions(
     )
     : obstacles;
   const selfSpeed = self ? Math.abs(self.state.speed) : 0;
+  // the hull's vertical span: a structure part it clears or stays under is no obstacle (2026-09-19)
+  const spanTop = positionY + (self ? tankBodyTopM(self.spec) : 3);
   let pushed = false;
   for (const obstacle of candidates) {
     if (obstacle.crushed || positionY > obstacle.max[1] + 0.5) continue;
@@ -1571,6 +1574,8 @@ function resolveObstacleCollisions(
       halfWidth,
       obstacle,
       outPush,
+      positionY,
+      spanTop,
     )) continue;
     if (obstacle.crushable && self &&
         shouldCrushObstacle(game, self, obstacle, selfSpeed)) {
@@ -2261,7 +2266,9 @@ function stepTankMovement(
   collider: CollisionBundle,
 ): void {
   for (const entity of game.tanks) {
-    if (entity.modeActive === false || entity.combat.destroyed) continue;
+    // wrecks stay in the step (2026-09-19): readDebuffs marks them immobile / skidding, so a destroyed hull
+    // keeps its momentum, its ballistic arc and its ground contact instead of freezing where it died
+    if (entity.modeActive === false) continue;
     refreshContactGeometry(entity);
     collider.setSelf(entity);
     updateTank(entity, world.heightField, SIM_DT, collider.collide);

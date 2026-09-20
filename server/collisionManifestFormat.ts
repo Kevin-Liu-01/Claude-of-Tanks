@@ -34,8 +34,13 @@ function isFiniteTuple(value: RuntimeValue, length: number): value is number[] {
 
 export function isSimpleShape(value: RuntimeValue): value is PackedSimpleShape {
   if (!Array.isArray(value)) return false;
-  if (value[0] === 'o') return isFiniteTuple(value.slice(1), 5);
-  if (value[0] === 'c') return isFiniteTuple(value.slice(1), 3);
+  // 2026-09-19: parts may append a vertical extent (o/c: two trailing numbers; 'w': a convex polygon led by it)
+  if (value[0] === 'o') return isFiniteTuple(value.slice(1), 5) || isFiniteTuple(value.slice(1), 7);
+  if (value[0] === 'c') return isFiniteTuple(value.slice(1), 3) || isFiniteTuple(value.slice(1), 5);
+  if (value[0] === 'w') {
+    return value.length >= 9 && value.length <= 131 && value.length % 2 === 1 &&
+      value.slice(1).every((entry) => typeof entry === 'number' && Number.isFinite(entry));
+  }
   return value[0] === 'v' && value.length >= 7 && value.length <= 129 &&
     value.length % 2 === 1 &&
     value.slice(1).every((entry) => typeof entry === 'number' && Number.isFinite(entry));

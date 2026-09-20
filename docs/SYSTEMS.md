@@ -510,12 +510,24 @@ bounded and applied at the contact offset before the terrain spring blends
 back in, so hard or off-axis landings can initiate a physical tumble while
 ordinary landings retain the established suspension settle.
 
+Destroyed hulls stay in the movement step (2026-09-19, owner: "when a tank gets
+destroyed, it should continue being affected by physics"). `readDebuffs` marks a
+wreck immobile and skidding: no drive, no steering, no gun lay, a locked-track
+skid of 4.5 m/s² while grounded (`WRECK_SKID_DECEL_MPS2`), and the unchanged
+ballistic phase in the air, so a hull killed at speed slides to a stop and a hull
+killed mid-jump completes its arc and lands. The authority applies the same rule;
+its zeroed network input for a destroyed entity was already in place.
+
 `src/sim/tankBodyContacts.ts` adds the deliberately narrow three-dimensional
 dynamic-contact layer that the ground capsule solver does not own. Grounded
 tanks keep the established inexpensive two-dimensional collision path. A
 clearly vertically ordered overlapping pair can instead resolve roof/side
 support, mass-weighted vertical impulse, off-center pitch/roll torque, stacking,
-and rollover. At the fourteen-vehicle ceiling this is 91 allocation-free broad
+and rollover. A pair whose vertical extents do not overlap at all
+(`tanksVerticallyClear`, 2026-09-19) is exempt from the horizontal push in both
+the solo and authoritative solvers: an airborne hull passing more than the
+stacking approach above another tank flies over it instead of meeting an
+invisible wall. At the fourteen-vehicle ceiling this is 91 allocation-free broad
 phase checks per fixed tick; the capsule and vertical-box work runs only for
 horizontal overlaps. A side/roof-down tank remains physically recoverable: a
 teammate shove or renewed body motion restarts its stationary recovery timer.
@@ -633,6 +645,22 @@ The browser world exposes:
 The dedicated service inflates per-map shards from server/world-collision-manifests/ so it can
 run collision without WebGL or DOM dependencies. The manifest and browser
 world must describe matching obstacles and destructible identifiers.
+
+Structure collision heights (2026-09-19, owner: "building hitboxes extend into empty
+air and they will just block shots … you just hit an invisible wall"): every part of a
+compound collision record may carry its own world-space vertical extent (`y0`/`y1`
+on `SimpleCollisionShape`; packed as trailing numbers on `o`/`c` parts and as the
+`w` polygon form in shards, which older shards decode without). `structureCollision.ts`
+derives the ground-contact band with each solid's own height and the shell bands as
+0.5 m height-clipped slices (surface triangles clipped to the band plus the solid's
+closed section loops at the band planes; prismatic solids reuse their whole
+projection; identical wall bands merge back into one record; sub-5 cm² trim is shed
+before the 64-part raster fallback; scanned sandbag meshes stay on the five-point
+sampled raster). The hull push skips a part the tracks clear by 0.5 m or the body
+top stays 0.15 m under (`tankBodyTopM`), and the shell ray uses each part's own
+extent, so a low wing beside a tower, a porch, a raised deck or a sloped roof edge
+no longer blocks what visibly passes them. The release-gate certification scores
+each band against the same clipped source (all 82 families ≥ 90, sandbags ≥ 90).
 
 World instances may be cached between entries. Reset logic must clear
 match-specific destruction and visibility state without rebuilding immutable

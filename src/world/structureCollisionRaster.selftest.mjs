@@ -5,7 +5,8 @@ import { registerHooks } from 'node:module';
 import * as THREE from 'three';
 import { SOURCED_STRUCTURE_TYPES } from './sourcedStructureTypes.ts';
 
-// Verbatim pre-filter raster. Only this function is replaced in the control;
+// Verbatim pre-filter raster (2026-09-19: re-based on the five-point cell sampling of the height-clipped band
+// pass; the row-bounds filter is still the only difference). Only this function is replaced in the control;
 // projection reuse, polygon merging and all real dependencies stay identical.
 const originalRaster = `function rasterFootprintRectangles(source: number[][], resolution: number) {
   const bounds = boundsOf(source);
@@ -34,9 +35,9 @@ const originalRaster = `function rasterFootprintRectangles(source: number[][], r
       runStart = -1;
     };
     for (let xIndex = 0; xIndex < resolution; xIndex++) {
-      const x = bounds.minX + (xIndex + 0.5) * dx;
-      const z = bounds.minZ + (zIndex + 0.5) * dz;
-      const occupied = containsAny(x, z, source);
+      const cellX = bounds.minX + xIndex * dx;
+      const rowMinZ = bounds.minZ + zIndex * dz;
+      const occupied = RASTER_SUBSAMPLES.some(([u, v]) => containsAny(cellX + u * dx, rowMinZ + v * dz, source));
       if (occupied && runStart < 0) runStart = xIndex;
       if (!occupied && runStart >= 0) flush(xIndex);
     }

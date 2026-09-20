@@ -51,11 +51,19 @@ for (const mapId of options.mapIds) {
         n(record.max[0]), n(record.max[1]), n(record.max[2]),
       ] };
       const shape = record.shape2;
+      // per-part vertical extents (2026-09-19) ride as trailing numbers; a ranged polygon is tagged 'w'
+      // a part whose extent is the record's own range packs without it, so plain wall bands still dedupe in the
+      // primitive dictionary; only roof strips, porches and other parts with their own heights carry numbers
+      const packExtent = (value) => (value.y0 !== undefined && value.y1 !== undefined
+        && (Math.abs(value.y0 - record.min[1]) > 0.001 || Math.abs(value.y1 - record.max[1]) > 0.001)
+        ? [n(value.y0), n(value.y1)] : []);
       const packShape = (value) => value.kind === 'obb'
-        ? ['o', n(value.cx), n(value.cz), n(value.hw), n(value.hl), n(value.yaw)]
+        ? ['o', n(value.cx), n(value.cz), n(value.hw), n(value.hl), n(value.yaw), ...packExtent(value)]
         : value.kind === 'circle'
-          ? ['c', n(value.cx), n(value.cz), n(value.r)]
-          : ['v', ...value.points.map(n)];
+          ? ['c', n(value.cx), n(value.cz), n(value.r), ...packExtent(value)]
+          : packExtent(value).length
+            ? ['w', ...packExtent(value), ...value.points.map(n)]
+            : ['v', ...value.points.map(n)];
       if (shape?.kind === 'compound') out.s = ['m', ...shape.parts.map(packShape)];
       else if (shape) out.s = packShape(shape);
       if (record.crushable) out.q = 1;

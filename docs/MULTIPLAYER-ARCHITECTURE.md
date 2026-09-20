@@ -128,7 +128,9 @@ host migration or automatic match restoration after host loss.
 All thirty maps use the same authored collision, terrain, foliage concealment,
 destructible indices, and loadout rules in solo, browser-hosted, and dedicated play.
 Dedicated Node matches inflate collision from the generated
-checksummed per-map shards in `server/world-collision-manifests/`; browser hosts use the live `World`
+checksummed per-map shards in `server/world-collision-manifests/` (since 2026-09-19 a packed part may append its
+vertical extent — `o`/`c` with two trailing numbers, `w` for a ranged polygon — and older shards still decode);
+browser hosts use the live `World`
 collision facade.
 
 ## Protocol and authority

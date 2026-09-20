@@ -10,6 +10,9 @@ import { deriveRuntimeStructureCollisionProfile } from './structureCollision.ts'
 // bounds, sphere, collision bands and seeded RNG consumption; never rebake it
 // merely because a geometry/storage implementation changes.
 // [kind, builder, seed, logical corners, original bytes, indexed bytes, SHA]
+// 2026-09-19 hitbox pass: the 48 SHAs were re-baked once because the collision profile they include changed
+// (per-part vertical extents, 0.5 m clipped shell bands); a collision-free twin of this fingerprint matched
+// origin/main on every fixture, so the rendered attribute streams, bounds and RNG tails are unchanged.
 const fixtures = [
   [
     "truck",
@@ -18,7 +21,7 @@ const fixtures = [
     4668,
     205392,
     114056,
-    "65fc8a51c2b628cffaa439516170e66695cefc161e43d8bb5912db2f04a58317"
+    "4a8cbe2ef7ea47593976ccd4f688070d1233adaaad21d899d9e714415ec8ae70"
   ],
   [
     "truck",
@@ -27,7 +30,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "583250235507972320b98b6fd5bf739d44cbb57f89f33cf817896341e4eb4aff"
+    "a203b859bb9ae84f2a361fd09255e6894afa66e70ea94878d5d8a6b579ec5615"
   ],
   [
     "jeep",
@@ -36,7 +39,7 @@ const fixtures = [
     2730,
     120120,
     69876,
-    "8818e81785493574d5245effd26470909aa80c288c8e9896491c4d4d1f5072fa"
+    "0befcd5dea55aac3b322b30473bd41ef7bcff3f2e32504ee5f3c0cff798ef473"
   ],
   [
     "jeep",
@@ -45,7 +48,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "2ab111e3a9d6f06b1b71ba6bb68d0a3ba65e65bebc56936873510185391a9415"
+    "92b28b948eb6f0e818e044f39897e3c14bfb4f739ea76d9af238fa1113c115ef"
   ],
   [
     "sedan",
@@ -54,7 +57,7 @@ const fixtures = [
     2724,
     119856,
     76200,
-    "4724f9dad58fba35bf351f7904b8be38db94123e4c232dc926d9653b28fa85f8"
+    "d3dc940d6303615f167b208f8f7c17d3bdc3d2107d80c7b439bd740391eab8ee"
   ],
   [
     "sedan",
@@ -63,7 +66,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "2ab111e3a9d6f06b1b71ba6bb68d0a3ba65e65bebc56936873510185391a9415"
+    "92b28b948eb6f0e818e044f39897e3c14bfb4f739ea76d9af238fa1113c115ef"
   ],
   [
     "wagon",
@@ -72,7 +75,7 @@ const fixtures = [
     2724,
     119856,
     76200,
-    "ee270767d3b1913bf991154c102471a00acc813e0bd85e6d264d248d0fc7e4a9"
+    "24783b1e515711a5cff03539154e261bb458143d4bea0ec180842320f096ebfd"
   ],
   [
     "wagon",
@@ -81,7 +84,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "2ab111e3a9d6f06b1b71ba6bb68d0a3ba65e65bebc56936873510185391a9415"
+    "92b28b948eb6f0e818e044f39897e3c14bfb4f739ea76d9af238fa1113c115ef"
   ],
   [
     "pickup",
@@ -90,7 +93,7 @@ const fixtures = [
     2904,
     127776,
     81840,
-    "017f907df728e0e589e0acadce67f2dbed2cb25fdb22dda3151a55372276076f"
+    "8825e282f49ed074fa7bca47bbee4e6e05361734b5ddcb5bfe24e44d1535477c"
   ],
   [
     "pickup",
@@ -99,7 +102,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "4bfa1a559535238ec596de0d35691c5640d166565789453e667b34c184b87b7f"
+    "7411e3abd3c98bb85623d107333596954d227b0260ff8308da5949c49d4a44cc"
   ],
   [
     "van",
@@ -108,7 +111,7 @@ const fixtures = [
     2652,
     116688,
     73944,
-    "c261c6df431d3347f0a08d925578773506ac953bca910042cd0b1ee589fd11c4"
+    "24bf3610b43078498ae29454138fd4049029c6648f08ff6d15a246e66e59a80e"
   ],
   [
     "van",
@@ -117,7 +120,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "5e29043d5a0c45d80f7f02bd8ed179790b49eef9db68461601275ce0dd16852a"
+    "65f2a3ed865b556391812a4c942db92b8b708730f86c7bb64b050e46094d9388"
   ],
   [
     "truckbox",
@@ -126,7 +129,7 @@ const fixtures = [
     4560,
     200640,
     110672,
-    "8531ff07ab2d2f16e7b20e10982d307520fb83dd7bb28a87f3fc302f3add233e"
+    "e4130ed0b70b752e6d054a35c5ee3cf512e0b48aa7162170b7eb62ba11f1eb6f"
   ],
   [
     "truckbox",
@@ -135,7 +138,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "583250235507972320b98b6fd5bf739d44cbb57f89f33cf817896341e4eb4aff"
+    "a203b859bb9ae84f2a361fd09255e6894afa66e70ea94878d5d8a6b579ec5615"
   ],
   [
     "truckflatbed",
@@ -144,7 +147,7 @@ const fixtures = [
     4896,
     215424,
     119440,
-    "2f56859d84168f9091ecb84d037b77acd4fbbffd276c399dbdddaeb3245d96b3"
+    "50b7f514fde4cd2d83037c5a6af6608828b163be78aff528714373cdf21a36cc"
   ],
   [
     "truckflatbed",
@@ -153,7 +156,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "583250235507972320b98b6fd5bf739d44cbb57f89f33cf817896341e4eb4aff"
+    "a203b859bb9ae84f2a361fd09255e6894afa66e70ea94878d5d8a6b579ec5615"
   ],
   [
     "truck",
@@ -162,7 +165,7 @@ const fixtures = [
     4668,
     205392,
     114056,
-    "d1b3fbefcee8b64daffa5ace4886d43e6cd8f06ad904894b92a0093a8a97940c"
+    "ec8b952ae29b8bd5a556affb568645fd9257ee3af7834b68f60e84e9e02d460a"
   ],
   [
     "truck",
@@ -171,7 +174,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "87eedf66df2722ed85ed0720a6acd7e8359f88a988d2cc3cf237909517815c2a"
+    "49986fbbe430785d2934f8fca8aacb00ad5fe5d94368bfd299de169245b2a1c1"
   ],
   [
     "jeep",
@@ -180,7 +183,7 @@ const fixtures = [
     2730,
     120120,
     69876,
-    "705cf6d2ce3d2cebb7891518ef071ebdc351a33e85220009cd536e879541b1b5"
+    "9f178ecff64245174b136cae7beb95cb87a1c9c63c4e13a18d34c07f07e0561d"
   ],
   [
     "jeep",
@@ -189,7 +192,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "93590a8cbdd04910468ac3b94e30bd1454911cf4918052f15874212ed8345aa8"
+    "6b191283282c14b8b410759dfef968ad42c24ee130691df91526b9f128004ab1"
   ],
   [
     "sedan",
@@ -198,7 +201,7 @@ const fixtures = [
     2724,
     119856,
     76200,
-    "708df3e81824ab0135313de92a2e9272c638ba7cc828a9b81a0f0c97bee74b67"
+    "7df39cecc4a69dd0150535839ce37bec26094eb95276c93c7b47aedde16e0603"
   ],
   [
     "sedan",
@@ -207,7 +210,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "93590a8cbdd04910468ac3b94e30bd1454911cf4918052f15874212ed8345aa8"
+    "6b191283282c14b8b410759dfef968ad42c24ee130691df91526b9f128004ab1"
   ],
   [
     "wagon",
@@ -216,7 +219,7 @@ const fixtures = [
     2724,
     119856,
     76200,
-    "7774f4d431bf92cde9e12ec08311f9b3c03167c0cc0b18ddb58bdbcf9d084575"
+    "cf6b32cdc368d255fe04d7e48607567a1c8f0d962f6a4461749b1e182f34206f"
   ],
   [
     "wagon",
@@ -225,7 +228,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "93590a8cbdd04910468ac3b94e30bd1454911cf4918052f15874212ed8345aa8"
+    "6b191283282c14b8b410759dfef968ad42c24ee130691df91526b9f128004ab1"
   ],
   [
     "pickup",
@@ -234,7 +237,7 @@ const fixtures = [
     2904,
     127776,
     81840,
-    "4ab071ec236081b3314ef31ad3c4f9d4cc3951ab0b2ba65963799381bb23ce25"
+    "156df2ff104905459315b1ebe6b611b16277675819500c0100b701b98db5d859"
   ],
   [
     "pickup",
@@ -243,7 +246,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "069d87307f0232ffe1661557f2570ee7ebdeca6f0e9dc09ceaefe9d8149facc9"
+    "0816ff23a001cdb864d825aadd283a43a613819736ca423d9484bfb432374f85"
   ],
   [
     "van",
@@ -252,7 +255,7 @@ const fixtures = [
     2652,
     116688,
     73944,
-    "115eea92619dd7089851f2f7518d7a07a3ef7ce5fb150584f6faf9c27da2066b"
+    "e26df5c76a7c666e38a02604f2bb9a13f069ea41d4840d2f130723fd179c0345"
   ],
   [
     "van",
@@ -261,7 +264,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "d1b990e42f5bf523052f90330955b75e0cac67b2c3c6037b70289d8adebb62ac"
+    "edcf6b1e1bd69ce94cd79887cef10dba8de3c08bfd122e76850fa2a965535b38"
   ],
   [
     "truckbox",
@@ -270,7 +273,7 @@ const fixtures = [
     4560,
     200640,
     110672,
-    "1740e298a44478acf23dc2b7172b8d5ee4f4b6d4d337bb0e6d770c6a4d63996b"
+    "b2191b0c6d13be03f9a0264222987c486d2f7fa5e76f0e0295742feaa5ff5fec"
   ],
   [
     "truckbox",
@@ -279,7 +282,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "87eedf66df2722ed85ed0720a6acd7e8359f88a988d2cc3cf237909517815c2a"
+    "49986fbbe430785d2934f8fca8aacb00ad5fe5d94368bfd299de169245b2a1c1"
   ],
   [
     "truckflatbed",
@@ -288,7 +291,7 @@ const fixtures = [
     4896,
     215424,
     119440,
-    "5628a8bd8ac67032ac92b43a08634a345422e99639d8dd55500cd2c87edcc924"
+    "f3487887a88f68e6518ad500c656bc28498977ff6da08314cbf530b0b7c11da5"
   ],
   [
     "truckflatbed",
@@ -297,7 +300,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "87eedf66df2722ed85ed0720a6acd7e8359f88a988d2cc3cf237909517815c2a"
+    "49986fbbe430785d2934f8fca8aacb00ad5fe5d94368bfd299de169245b2a1c1"
   ],
   [
     "truck",
@@ -306,7 +309,7 @@ const fixtures = [
     4668,
     205392,
     114056,
-    "8328f74c90de0fe9773ec1d93574f9ba56b01909157deeab03bda306acdbd43d"
+    "7c6317103987e7637ea292f1990097743e534301c41ec3b97df4e251cf274e34"
   ],
   [
     "truck",
@@ -315,7 +318,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "a3843969abf5044f604ae728dc69a60875cc9e6fa2c06d98fa39595491dcb3f7"
+    "ca931e56faaec4db14479cb81dba8dfe3b04b436a5bae552c56c72ab95b7a501"
   ],
   [
     "jeep",
@@ -324,7 +327,7 @@ const fixtures = [
     2730,
     120120,
     69876,
-    "d6a9eeb288a8026e201df2388f13dba88b3e5c55ebe8d6eb79edc6726167b65e"
+    "8f082c32c11d7d2367bee103904b58af2ffc39567b7221794b33391999912af2"
   ],
   [
     "jeep",
@@ -333,7 +336,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "104b42b3f172e075a572380e78fbcb326dcbbd362aa7de9866714df4e478fc45"
+    "cbb71de2c70e92ac4a642b50eafb9ef2e9b9d18fc2decab032713417c55ff39f"
   ],
   [
     "sedan",
@@ -342,7 +345,7 @@ const fixtures = [
     2724,
     119856,
     76200,
-    "149c2ce052c99f1539617cfaf5a0f6cdc66a1d3b5ff641a487c814a734201393"
+    "d7180a25841cb8a03fcc9716ea3993c8eacab27035b58c2238be2ab7a33dd74b"
   ],
   [
     "sedan",
@@ -351,7 +354,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "104b42b3f172e075a572380e78fbcb326dcbbd362aa7de9866714df4e478fc45"
+    "cbb71de2c70e92ac4a642b50eafb9ef2e9b9d18fc2decab032713417c55ff39f"
   ],
   [
     "wagon",
@@ -360,7 +363,7 @@ const fixtures = [
     2724,
     119856,
     76200,
-    "cc66f61149f94d8d36cd676cc88fe32d42157207bf3e45d371d2b26b7253936d"
+    "46d0e9acce62c7b176f071d7141fdd8321cda76bc4da4a8d6c87d3a6341701fc"
   ],
   [
     "wagon",
@@ -369,7 +372,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "104b42b3f172e075a572380e78fbcb326dcbbd362aa7de9866714df4e478fc45"
+    "cbb71de2c70e92ac4a642b50eafb9ef2e9b9d18fc2decab032713417c55ff39f"
   ],
   [
     "pickup",
@@ -378,7 +381,7 @@ const fixtures = [
     2904,
     127776,
     81840,
-    "f0f43bb717afaca03f0f0bc103dedfd8dc3bb288c6f1c27c4105c04db4603a9f"
+    "71cbe3b4fd09aad3691b1d33918df953e486bbb6e5b3bee75b2dd2ae097d2298"
   ],
   [
     "pickup",
@@ -387,7 +390,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "aaefbe2acb237ab50e79a7c716e1318d1b5d9c8b030525d9608889e5906ca9c5"
+    "ca712a032f87d8960277cf372a6520e1cafd68f001da224aee4ceaf4e61ba7dc"
   ],
   [
     "van",
@@ -396,7 +399,7 @@ const fixtures = [
     2652,
     116688,
     73944,
-    "1301955806dd855447838099df844697606d18cd411c628f561e5ba8a54a6a9a"
+    "31bb1979a251640435c08b88eea759b4869468c9a5ebeb547de95d8d3d4f3416"
   ],
   [
     "van",
@@ -405,7 +408,7 @@ const fixtures = [
     432,
     19008,
     12304,
-    "239532371e21b8d7a6368c677bb486daca20306f25aa604145869de6a993855d"
+    "1c886d48e17bb8ef997c10e5d742c5d93b79fd020d57a60798e6dc0a6c4995f6"
   ],
   [
     "truckbox",
@@ -414,7 +417,7 @@ const fixtures = [
     4560,
     200640,
     110672,
-    "64061115e22b09b2fd202c44a84c132d93c743ffb7f850e858455db99b2cc4cd"
+    "7aaf5882bac8a929fee04af4619902ae515f6cee4f8fad6c154f8cf70d3475be"
   ],
   [
     "truckbox",
@@ -423,7 +426,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "a3843969abf5044f604ae728dc69a60875cc9e6fa2c06d98fa39595491dcb3f7"
+    "ca931e56faaec4db14479cb81dba8dfe3b04b436a5bae552c56c72ab95b7a501"
   ],
   [
     "truckflatbed",
@@ -432,7 +435,7 @@ const fixtures = [
     4896,
     215424,
     119440,
-    "332a8dc66982fb061ac85ef9051e7e23222392e368982e2995450c81a67fc061"
+    "4b94a74804c22f7322654dfefb5662f48d72700a423ff46058559cc4ca065b1c"
   ],
   [
     "truckflatbed",
@@ -441,7 +444,7 @@ const fixtures = [
     540,
     23760,
     15072,
-    "a3843969abf5044f604ae728dc69a60875cc9e6fa2c06d98fa39595491dcb3f7"
+    "ca931e56faaec4db14479cb81dba8dfe3b04b436a5bae552c56c72ab95b7a501"
   ]
 ];
 

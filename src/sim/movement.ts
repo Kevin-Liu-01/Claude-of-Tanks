@@ -105,6 +105,8 @@ export interface MovementCombatState {
 
 interface MovementDebuffs {
   immobile: boolean;
+  /** Destroyed hull: no drive, no brakes — locked tracks skid to rest, airborne momentum is kept. */
+  wreck: boolean;
   powerMult: number;
   accelMult: number;
   traverseMult: number;
@@ -328,6 +330,8 @@ export interface MovementShellSpec {
 
 /** Fixed simulation step in seconds (ARCHITECTURE §1.1). */
 export const SIM_DT = 1 / 60;
+/** Locked-track skid of a destroyed hull (dirt, ~0.45 g): a 12 m/s wreck slides about 16 m in 2.7 s. */
+export const WRECK_SKID_DECEL_MPS2 = 4.5;
 
 // ---------------------------------------------------------------------------
 // Tuning constants (movement-physics doc §3–§6, values locked by ARCHITECTURE §3.4)
@@ -930,6 +934,7 @@ function readDebuffs(
   out: MovementDebuffs,
 ): MovementDebuffs {
   out.immobile = combat?.destroyed === true;
+  out.wreck = out.immobile;
   out.powerMult = 1;
   out.accelMult = 1;
   out.traverseMult = 1;
@@ -1064,6 +1069,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _groundType: 'medium',
     _debuff: { // reused hot-loop output; readDebuffs allocates nothing per tick
       immobile: false,
+      wreck: false,
       powerMult: 1,
       accelMult: 1,
       traverseMult: 1,
@@ -2318,6 +2324,13 @@ function selectDriveRate(
 ): void {
   const state = entity.state;
   drive.spoolTarget = 0;
+  // Wrecks (2026-09-19, owner: "when a tank gets destroyed it should continue being affected by physics"):
+  // the drivetrain is gone, so a moving hull skids on its locked tracks instead of braking at engine rate;
+  // updateDriveSpool zeroes the rate in the air, so a launched wreck keeps its ballistic trajectory.
+  if (debuff.wreck) {
+    drive.rate = WRECK_SKID_DECEL_MPS2;
+    return;
+  }
   if (drive.braking || debuff.immobile || drive.targetSpeed * state.speed < 0) {
     drive.rate = drive.brakeRate;
     return;

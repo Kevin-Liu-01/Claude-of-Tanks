@@ -10,6 +10,8 @@ import { STRUCTURE_BUILDERS } from './maps/structureKit.ts';
 // Verbatim functions read from HEAD d942e1284a1130061387b4a4ac2e34c765b8f121.
 // Whole source SHA256: 260f8a6f1b6c5a54dffcbe237c25bc9a5c75a5dbd17d0665a032f2b0756d3b75.
 // Frozen here so ordinary/shallow/source-only test checkouts need no Git history.
+// 2026-09-19: the pre-cache component collector also keeps each triangle's corners (`triangles`), which the
+// height-clipped band pass needs; the vertex cache is still the only thing these originals lack.
 const originals = {
   joinTrianglesBySharedVertex: `function joinTrianglesBySharedVertex(
   position: PositionAttribute,
@@ -44,10 +46,12 @@ const originals = {
         maxY: -Infinity,
         vertices: new Map(),
         projectedTriangles: [],
+        triangles: [],
       };
       components.set(root, component);
     }
     const projected: number[] = [];
+    const corners: number[] = [];
     for (let corner = 0; corner < 3; corner++) {
       const vertex = streamVertex(index, triangle * 3 + corner);
       const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
@@ -58,7 +62,9 @@ const originals = {
         [x, z],
       );
       projected.push(x, z);
+      corners.push(x, y, z);
     }
+    component.triangles.push(corners);
     if (Math.abs(polygonArea(projected)) >= 1e-6) component.projectedTriangles.push(projected);
   }
   return components;

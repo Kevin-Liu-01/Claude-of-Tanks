@@ -281,6 +281,18 @@ export function prefersVerticalTankContact(
   return gap <= STACK_APPROACH_M;
 }
 
+/**
+ * True when one hull's whole vertical extent lies above the other's by more than the stacking approach: the
+ * ground OBB solver must not push the pair apart sideways. Before this (2026-09-19, owner: "if you try to fly
+ * over a tank … you just hit an invisible wall") an airborne hull clearing another tank by more than 14 cm was
+ * neither reserved for the vertical module nor exempt from the horizontal push.
+ */
+export function tanksVerticallyClear(a: TankBodyEntity, b: TankBodyEntity): boolean {
+  verticalBounds(a, _boundsA);
+  verticalBounds(b, _boundsB);
+  return _boundsA[0] > _boundsB[1] + STACK_APPROACH_M || _boundsB[0] > _boundsA[1] + STACK_APPROACH_M;
+}
+
 function setVerticalVelocity(state: TankBodyState, velocity: number): void {
   state.verticalSpeed = velocity;
   state._ride.v = velocity;

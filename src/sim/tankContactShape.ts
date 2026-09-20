@@ -18,7 +18,10 @@ interface TankContactRect {
 
 interface ContactSpec {
   dims: { widthM: number; hullLengthM: number; heightM: number };
-  armor?: { bodyContactPoints?: { hull?: readonly number[] } };
+  armor?: {
+    bodyContactPoints?: { hull?: readonly number[]; turret?: readonly number[] };
+    turretPivot?: readonly number[];
+  };
 }
 
 interface ContactBounds {
@@ -89,6 +92,26 @@ function contactRectFromBounds(bounds: ContactBounds, exact: boolean): TankConta
     height: Math.max(0.1, maxY - minY),
     exact,
   });
+}
+
+const topCache = new WeakMap<ContactSpec, number>();
+
+/**
+ * Height of the hull-plus-turret shell above ground contact — the body a structure part must clear for the hull to
+ * pass beneath it. Exact shells come from the same finalized armor as the contact rect; synthetic fixtures fall
+ * back to the published height.
+ */
+export function tankBodyTopM(spec: ContactSpec): number {
+  const cached = topCache.get(spec);
+  if (cached !== undefined) return cached;
+  let top = tankContactRect(spec).maxY;
+  const turret = spec?.armor?.bodyContactPoints?.turret;
+  if (hasExactContactPoints(turret)) {
+    top = Math.max(top, exactContactBounds(turret).maxY + (spec.armor?.turretPivot?.[1] ?? 0));
+  }
+  if (!(top > 0.1)) top = spec.dims.heightM;
+  topCache.set(spec, top);
+  return top;
 }
 
 export function tankContactRect(spec: ContactSpec): TankContactRect {

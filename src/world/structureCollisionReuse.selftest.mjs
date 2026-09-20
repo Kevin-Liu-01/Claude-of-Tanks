@@ -13,27 +13,28 @@ import { createGroundCoverClearance, createGroundCoverSolidProfile,
 
 // The complete pre-cache source algorithm, not a second handwritten geometry
 // implementation. Load it in memory over the same module and real dependencies.
-const uncachedCollisionSource = `function collisionSource(solids: LocalSolid[], groundContact: boolean): number[][] {
-  // Open-ended decorative cylinders high on towers (rails, collars and trim)
-  // have no projected cap area. Ground-bearing open solids remain physical
-  // because they can be structural walls or posts. Triangle-pair merging is
-  // useful for ordinary primitives but quadratic on dense scanned meshes.
-  const collisionSolids = groundContact
-    ? solids
-    : solids.filter((solid) => solid.projectedTriangles.length > 0 || solid.minY <= CONTACT_TOP);
-  const activeSolids = collisionSolids.length ? collisionSolids : solids;
+// (2026-09-19: re-based on the ranged contact source of the height-clipped band pass; the per-solid projection
+// cache is still the only thing removed.)
+const uncachedCollisionSource = `function collisionSource(solids: LocalSolid[], groundContact: boolean): RangedPolygon[] {
+  const activeSolids = contactSolidSelection(solids, groundContact);
   const projectedCount = activeSolids.reduce(
     (total, solid) => total + solid.projectedTriangles.length, 0,
   );
   if (projectedCount > 512) {
-    return activeSolids.flatMap((solid) => solid.projectedTriangles.length
+    return activeSolids.flatMap((solid) => (solid.projectedTriangles.length
       ? solid.projectedTriangles
-      : [solid.points]);
+      : [solid.points]).map((points) => ({ points, y0: solid.minY, y1: solid.maxY })));
   }
-  return uniquePolygons(activeSolids.flatMap((solid) => {
-    const projected = mergeProjectedTriangles(solid.projectedTriangles);
-    return projected.length ? projected : [solid.points];
-  }));
+  const ranged: RangedPolygon[] = [];
+  for (const solid of activeSolids) {
+    const merged = mergeProjectedTriangles(solid.projectedTriangles);
+    for (const points of (merged.length ? merged : [solid.points])) ranged.push({ points, y0: solid.minY, y1: solid.maxY });
+  }
+  return uniqueRangedPolygons(ranged, true);
+}`;
+const uncachedSolidProjection = `function solidProjection(solid: LocalSolid, _projectedCache?: Map<LocalSolid, number[][]>): number[][] {
+  const projected = mergeProjectedTriangles(solid.projectedTriangles);
+  return projected.length ? projected : [solid.points];
 }`;
 const moduleUrl = new URL('./structureCollision.ts', import.meta.url);
 const source = readFileSync(moduleUrl, 'utf8');
@@ -46,6 +47,11 @@ const hooks = registerHooks({ load(url, context, nextLoad) {
     const original = text.match(/function collisionSource\([\s\S]*?\n}/)?.[0];
     assert.ok(original, 'the original collision source boundary must exist');
     text = text.replace(original, uncachedCollisionSource);
+    // 2026-09-19: the per-solid projection helper is where the cache now lives (shell bands reuse it for
+    // prismatic solids); the control strips it there as well
+    const helper = text.match(/function solidProjection\([\s\S]*?\n}/)?.[0];
+    assert.ok(helper, 'the original per-solid projection boundary must exist');
+    text = text.replace(helper, uncachedSolidProjection);
   }
   const merge = 'function mergeProjectedTriangles(triangles: number[][]) {';
   const dense = 'if (projectedCount > 512) {';

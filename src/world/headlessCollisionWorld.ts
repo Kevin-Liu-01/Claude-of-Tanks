@@ -3,10 +3,18 @@ import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
 import type { CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 
+/**
+ * 'o' oriented box (cx, cz, hw, hl, yaw), 'c' circle (cx, cz, r), 'v' convex polygon (x, z pairs). Since 2026-09-19 a
+ * part may append its own vertical extent: 'o' and 'c' take two more numbers (y0, y1), a convex polygon with an
+ * extent is tagged 'w' (y0, y1, then the x, z pairs). Shards captured before that decode unchanged.
+ */
 export type PackedSimpleShape =
   | readonly ['o', number, number, number, number, number]
+  | readonly ['o', number, number, number, number, number, number, number]
   | readonly ['c', number, number, number]
-  | readonly ['v', ...number[]];
+  | readonly ['c', number, number, number, number, number]
+  | readonly ['v', ...number[]]
+  | readonly ['w', number, number, ...number[]];
 
 type PackedShape = PackedSimpleShape | readonly ['m', ...PackedSimpleShape[]];
 
@@ -71,11 +79,15 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
   const unpackSimpleShape = (value: PackedSimpleShape) => {
     if (value[0] === 'o') return {
       kind: 'obb' as const, cx: value[1], cz: value[2], hw: value[3], hl: value[4], yaw: value[5],
+      ...(value.length >= 8 ? { y0: value[6] as number, y1: value[7] as number } : {}),
     };
     if (value[0] === 'c') return {
       kind: 'circle' as const, cx: value[1], cz: value[2], r: value[3],
+      ...(value.length >= 6 ? { y0: value[4] as number, y1: value[5] as number } : {}),
     };
-    const points = value.slice(1) as number[];
+    const ranged = value[0] === 'w';
+    const extent = ranged ? { y0: value[1] as number, y1: value[2] as number } : {};
+    const points = value.slice(ranged ? 3 : 1) as number[];
     let cx = 0;
     let cz = 0;
     for (let index = 0; index < points.length; index += 2) {
@@ -83,7 +95,7 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
       cz += points[index + 1];
     }
     const count = Math.max(1, points.length / 2);
-    return { kind: 'convex' as const, cx: cx / count, cz: cz / count, points };
+    return { kind: 'convex' as const, cx: cx / count, cz: cz / count, points, ...extent };
   };
   if (shape?.[0] === 'm') {
     const parts = shape.slice(1).map((part) => unpackSimpleShape(part as PackedSimpleShape));

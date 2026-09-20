@@ -4,7 +4,7 @@ import {
   collisionFootprintContainsPoint, convexHull2, createObstacleGrid,
   pushHullFromObstacle, pushHullFromHull, rayCollisionFootprintEntry2,
   rayCollisionRecord, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
-  shellPassesThroughCollisionRecord,
+  shellPassesThroughCollisionRecord, cloneCollisionRecord,
 } from './collision.ts';
 
 const rec = (y1 = 3) => ({ min: [0, 0, 0], max: [0, y1, 0] });
@@ -161,5 +161,37 @@ assert.strictEqual(sharedOut[0], immutableRecord,
   'broad phase neither clones records nor filters gameplay state');
 immutableGrid(1.5, 1.5, 1.75, 1.75, sharedOut);
 assert.deepEqual(sharedOut, [], 'cell candidates still obey exact AABB rejection');
+
+// Per-part vertical extents (2026-09-19, owner: "building hitboxes extend into empty air … if you try to fly
+// over a building you just hit an invisible wall"): a low wing beside a tower, one compound record.
+{
+  const wingAndTower = setCompoundShape(rec(9), [
+    { kind: 'obb', cx: -2, cz: 0, hw: 1.5, hl: 1.5, yaw: 0, y0: 0, y1: 2.5 },
+    { kind: 'obb', cx: 2, cz: 0, hw: 1, hl: 1, yaw: 0, y0: 0, y1: 9 },
+  ]);
+  const lowHull = push(), highHull = push(), towerHull = push();
+  assert.equal(pushHullFromObstacle({ x: -2, z: 0 }, 0, 1, 1, 0, 0.3, 0.3, wingAndTower, lowHull, 0.0, 2.4), true,
+    'a hull on the ground is blocked by the low wing');
+  assert.equal(pushHullFromObstacle({ x: -2, z: 0 }, 0, 1, 1, 0, 0.3, 0.3, wingAndTower, highHull, 3.2, 5.6), false,
+    'a hull whose tracks clear the wing top passes over it');
+  assert.equal(pushHullFromObstacle({ x: 2, z: 0 }, 0, 1, 1, 0, 0.3, 0.3, wingAndTower, towerHull, 3.2, 5.6), true,
+    'the same hull is still blocked by the tower beside the wing');
+  const under = push();
+  const overhang = setCompoundShape(rec(6), [
+    { kind: 'obb', cx: 0, cz: 0, hw: 2, hl: 2, yaw: 0, y0: 4, y1: 6 },
+    { kind: 'obb', cx: 3, cz: 0, hw: 0.4, hl: 0.4, yaw: 0, y0: 0, y1: 6 },
+  ]);
+  assert.equal(pushHullFromObstacle({ x: 0, z: 0 }, 0, 1, 1, 0, 0.3, 0.3, overhang, under, 0.0, 2.6), false,
+    'a hull whose body top stays under a raised deck passes beneath it');
+  assert.ok(rayCollisionRecord(new Vector3(-2, 20, 0), new Vector3(0, -1, 0), wingAndTower, 40, n) > 17.4,
+    'a plunging shell over the wing reaches the wing roof at 2.5 m, not the tower top');
+  assert.equal(rayCollisionRecord(new Vector3(-2, 5, -10), new Vector3(0, 0, 1), wingAndTower, 20, n), -1,
+    'a flat shell above the wing but below the tower top passes over the wing');
+  assert.ok(rayCollisionRecord(new Vector3(2, 5, -10), new Vector3(0, 0, 1), wingAndTower, 20, n) >= 0,
+    'the same flat shell hits the tower');
+  const cloned = cloneCollisionRecord(wingAndTower);
+  assert.deepEqual(cloned.shape2.parts.map((part) => [part.y0, part.y1]), [[0, 2.5], [0, 9]],
+    'cloning keeps every part extent');
+}
 
 console.log('collision.selftest: exact environment shapes and spatial broad phase passed');

@@ -180,17 +180,19 @@ assert.deepEqual(readFileSync(new URL('index.json', directory)), indexBeforeReti
 // denser wadi scrub pool (599567 -> 617650 bytes, a content increase captured
 // natively, not a codec regression); the other eight redressed maps stayed
 // under their prior sizes. The budget is restated to that captured size.
+// 2026-09-19 hitbox pass: budgets re-based on the recaptured shards (+10 %) — every roof strip now carries its
+// own height, which made the city shards several times larger than the 1.5 m whole-projection slabs.
 const previousShardBytes = {
-  verdant: 1402315, desert: 617650, winter: 1177056, urban: 2645339,
-  coastal: 853167, autumn: 1372225, steppe: 719830, railyard: 872036,
-  frontier: 1667904, fjord: 1410232, delta: 1430739, badlands: 839003,
-  monsoon: 1888601, alpine: 1795157, caldera: 1218614, foundry: 1149519,
-  ruinspires: 2960310, blackglass: 1727148, titan_gorge: 849674, skybridge: 1097045,
-  polders: 953559, copper_mesa: 727167, airfield: 786018, oasis: 685786,
-  whiteout: 541698, orchard: 1135684, longleaf: 1218490, mangrove: 1055765,
-  saltwind: 873926, reservoir: 1282807,
+  verdant: 1854713, desert: 1138916, winter: 1630998, urban: 6905545,
+  coastal: 1355569, autumn: 1873510, steppe: 1095875, railyard: 1205662,
+  frontier: 2179727, fjord: 1982369, delta: 2150317, badlands: 1440584,
+  monsoon: 2456485, alpine: 2420855, caldera: 1746798, foundry: 1776506,
+  ruinspires: 8075245, blackglass: 3761374, titan_gorge: 1599752, skybridge: 1857511,
+  polders: 1519886, copper_mesa: 1028948, airfield: 1253337, oasis: 1196109,
+  whiteout: 928706, orchard: 1649684, longleaf: 1822150, mangrove: 1570684,
+  saltwind: 1484765, reservoir: 1769572,
   // 2026-09-19: Mars (Olympus Basin) joins at its first captured size.
-  mars: 501381,
+  mars: 669259,
 };
 assert.deepEqual(Object.keys(previousShardBytes), MAP_IDS, 'storage budget covers every canonical map');
 let rawBytes = 0, encodedBytes = 0, publishedBytes = 0;
@@ -221,7 +223,8 @@ for (const id of MAP_IDS) {
   encodedBytes += Buffer.byteLength(JSON.stringify(encoded));
 }
 assert.equal(encodedBytes, publishedBytes, 'published shards are the canonical exact dictionary encoding');
-assert.ok(publishedBytes <= 36936381, 'complete roster storage cannot exceed the frozen published budget');
+// 2026-09-19 hitbox pass: 57637660 bytes captured with per-part vertical extents (+10 % headroom); was 36936381
+assert.ok(publishedBytes <= 63401426, 'complete roster storage cannot exceed the frozen published budget');
 
 // Hash-valid corruptions must still be rejected by the loader's schema/census.
 const temporary = mkdtempSync(join(tmpdir(), 'cot-collision-codec-'));

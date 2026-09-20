@@ -7,14 +7,17 @@ import {
 } from './dedicatedWorldCollision.ts';
 import { getMapConfig, MAP_IDS } from '../src/world/maps/index.ts';
 import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
-import { pushHullFromObstacle, rayCollisionRecord, shellPassesThroughCollisionRecord } from '../src/world/collision.ts';
+import {
+  collisionFootprintContainsPoint, pushHullFromObstacle, rayCollisionRecord, shellPassesThroughCollisionRecord } from '../src/world/collision.ts';
 import { decodeCollisionManifest, encodeCollisionManifest } from './collisionManifestCodec.ts';
 
 const authoredWorlds = new Map();
 // Fresh completed-road placement retains coalSiteIsClear's exact obstacle,
 // slope and road rejection. The native capture has five clear piles on each
 // of Foundry and Skybridge; movement/shell pairs and contact tests below remain.
-const coalCensus = { railyard: 7, caldera: 7, foundry: 5, skybridge: 5 };
+// 2026-09-19 hitbox pass: full recapture of every shard; a capture of pristine origin/main placed the same heaps,
+// so the committed rail shards had already drifted from the current planting order (railyard 7 → 6, foundry 5 → 7).
+const coalCensus = { railyard: 6, caldera: 7, foundry: 7, skybridge: 5 };
 
 // Public-fleet wreck recapture: different hulk footprints change accepted
 // placements on six maps. These exact counts preserve every non-wreck record
@@ -33,55 +36,56 @@ const coalCensus = { railyard: 7, caldera: 7, foundry: 5, skybridge: 5 };
 // both directions; concealers grow where bush pools were not already
 // saturated (steppe keeps its 30 lone trees: 40 planted a grove on the
 // establishing-shot pose). Exact census, no tolerance.
+// 2026-09-19 hitbox pass: shards recaptured with per-part vertical extents (0.5 m clipped shell bands)
 const roadCompletionCensus = {
-  verdant: [6501, 6250, 6763],
-  desert: [2449, 2405, 2639],
-  winter: [5197, 4982, 4295],
-  urban: [3966, 5678, 3409],
-  coastal: [3954, 3743, 3863],
-  autumn: [6085, 5811, 6261],
-  steppe: [2244, 1950, 1415],
-  railyard: [2715, 2554, 1973],
+  verdant: [7011, 6712, 7541],
+  desert: [2840, 2762, 3292],
+  winter: [5758, 5515, 4736],
+  urban: [4055, 9303, 3685],
+  coastal: [4196, 3999, 4310],
+  autumn: [6505, 6158, 6867],
+  steppe: [2332, 1966, 1352],
+  railyard: [2977, 2937, 2135],
   // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
   // unchanged seeded rejection rules alter accepted trees/props, not tolerances.
-  frontier: [7381, 7120, 7538],
-  fjord: [6438, 6279, 6367],
-  delta: [7085, 6844, 8491],
+  frontier: [8006, 7743, 8385],
+  fjord: [6787, 6748, 6994],
+  delta: [7920, 7613, 9827],
   // redrock-derived-refresh-r1.p545nm: native canyon recapture. Unchanged
   // terrain-aware placement rules reject different props/trees on steep walls.
-  badlands: [2668, 2493, 1698],
-  monsoon: [9273, 9031, 11088],
-  alpine: [8529, 8342, 7481],
-  caldera: [4673, 4568, 3568],
-  foundry: [3947, 3786, 2938],
-  ruinspires: [2823, 5139, 1159],
-  blackglass: [3491, 4374, 2251],
-  titan_gorge: [2468, 2282, 1139],
-  skybridge: [3114, 3169, 1886],
+  badlands: [2968, 2866, 1883],
+  monsoon: [9604, 9342, 12149],
+  alpine: [9238, 9163, 8127],
+  caldera: [5048, 5155, 3856],
+  foundry: [4429, 4541, 3275],
+  ruinspires: [3006, 9400, 1247],
+  blackglass: [3720, 6129, 2403],
+  titan_gorge: [2754, 2608, 1240],
+  skybridge: [3518, 3726, 2080],
   // Native 3c06d3352 capture: authored drainage contours change seeded
   // vegetation/prop acceptance. Keep the exact census, not a tolerance.
-  polders: [3957, 3736, 3406],
+  polders: [4478, 4250, 3810],
   // V23 native receipt (9fdbc49b): quarry-only producer A/B reproduces
   // every captured record. Existing slope/RNG rules yield +2 surface-rock
   // cover, -5 outcrop cover and -1 slope-rejected sapling; named prop counts
   // and 79 bush concealers are unchanged. No census tolerance is introduced.
-  copper_mesa: [2550, 2369, 1809],
+  copper_mesa: [2906, 2775, 2096],
   // The shared terrain exclusion now follows the actual hardstand rectangle
   // plus its shoulder; the airfield configuration itself is unchanged.
-  airfield: [3163, 3138, 2764],
+  airfield: [3734, 3713, 3234],
   // Native19e03d36b: the authored spring contour changes terrain-aware
   // vegetation/prop acceptance; this is the exact captured census.
-  oasis: [2486, 2270, 1888],
-  whiteout: [1446, 1262, 805],
-  orchard: [4399, 4154, 4454],
-  longleaf: [5634, 5422, 6154],
-  mangrove: [4919, 4741, 5666],
-  saltwind: [3347, 3156, 3582],
+  oasis: [2759, 2558, 2057],
+  whiteout: [1661, 1478, 889],
+  orchard: [4978, 4745, 5206],
+  longleaf: [6172, 5959, 6989],
+  mangrove: [5323, 5168, 6543],
+  saltwind: [3735, 3539, 4149],
   // Refreshed forked roads, assembly hardstand and grounded waterworks.
-  reservoir: [6095, 5890, 6620],
+  reservoir: [6519, 6395, 7298],
   // 2026-09-19 Mars (Olympus Basin): first native capture of the new orbital-station
   // map; captured after the rim-road removal, so its removal count is zero.
-  mars: [848, 700, 0],
+  mars: [848, 732, 0],
 };
 // Native rim-road repair removes only rooted trees inside the 9 m road margin.
 // Frozen 89784835d comparison proves every other movement/shell/concealment
@@ -214,6 +218,18 @@ function roundTripFeatureWorld(mapId, sourceWorld, kind) {
   return copy;
 }
 
+/** Highest top among the compound parts covering (x, z); parts without their own extent span the record. */
+function collisionTopAt(record, x, z) {
+  const parts = record.shape2?.kind === 'compound' ? record.shape2.parts : [record.shape2];
+  let top = -Infinity;
+  for (const part of parts) {
+    const probe = { min: [...record.min], max: [...record.max], shape2: part };
+    if (!collisionFootprintContainsPoint(probe, x, z, 0)) continue;
+    top = Math.max(top, part?.y1 ?? record.max[1]);
+  }
+  return Number.isFinite(top) ? top : record.max[1];
+}
+
 function assertAuthoredContact(mapWorld, obstacle, collider, x, z, label) {
   assert.ok(mapWorld.queryObstacles(x - 0.1, z - 0.1, x + 0.1, z + 0.1, []).includes(obstacle),
     `${label}: the dedicated broad phase indexes the authored footprint`);
@@ -222,14 +238,18 @@ function assertAuthoredContact(mapWorld, obstacle, collider, x, z, label) {
     `${label}: actual hull contact resolves against the inflated shape`);
   assert.ok(Number.isFinite(push.x) && Number.isFinite(push.z) && Math.hypot(push.x, push.z) > 0);
   const [cx, cz] = shapeCenter(collider.shape2, collider);
-  const origin = new Vector3(cx, collider.max[1] + 0.5, cz), down = new Vector3(0, -1, 0);
+  // 2026-09-19 hitbox pass: a compound part may carry its own top (the flatbed's bed sits below its cab), so the
+  // probe expects the top of the part under the footprint centre, and nothing above it
+  const top = collisionTopAt(collider, cx, cz);
+  const origin = new Vector3(cx, top + 0.5, cz), down = new Vector3(0, -1, 0);
   const normal = new Vector3();
   assert.ok(Math.abs(rayCollisionRecord(origin, down, collider, 0.75, normal) - 0.5) < 1e-9,
     `${label}: the top collision plane survives inflation`);
+  assert.ok(top <= collider.max[1] + 1e-9 && top > collider.min[1], `${label}: the part top lies inside the record's span`);
   assert.deepEqual(normal.toArray(), [0, 1, 0]);
   const hit = mapWorld.raycast(origin, down, 0.75);
   assert.equal(hit?.record, collider, `${label}: world raycast reaches this exact cover record`);
-  assert.ok(Math.abs(hit.point.y - collider.max[1]) < 1e-9);
+  assert.ok(Math.abs(hit.point.y - top) < 1e-9, `${label}: the world raycast lands on the same part top`);
   return { origin, down };
 }
 
@@ -310,13 +330,18 @@ function assertIntakeHood(record) {
 }
 
 function assertLoggingYard(mapWorld, independentWorld) {
-  const flatbeds = mapWorld.getObstacles().filter(record => record.kind === 'truckflatbed');
-  const colliders = mapWorld.getColliders().filter(record => record.kind === 'truckflatbed');
-  // Completed-road placement adds four earlier accepted props. Both original
-  // donor heights and authored destinations remain exact; native IDs shift +4.
+  // 2026-09-19 hitbox pass: the full recapture (a capture of pristine origin/main places the same) admits two
+  // more road-side flatbeds (propIdx 351 / 353, far from the yard) and shifts the donors' native IDs to 337 / 349;
+  // the yard assertions cover the two flatbeds parked at the authored loading bays.
+  const sitesForFilter = getMapConfig('longleaf').props.loggingYard.flatbeds;
+  const atBay = record => sitesForFilter.some(site => Math.hypot(
+    (record.min[0] + record.max[0]) / 2 - site.x, (record.min[2] + record.max[2]) / 2 - site.z) < 26);
+  const flatbeds = mapWorld.getObstacles().filter(record => record.kind === 'truckflatbed' && atBay(record));
+  const colliders = mapWorld.getColliders().filter(record => record.kind === 'truckflatbed' && atBay(record));
+  // Both original donor heights and authored destinations remain exact.
   // The original sites below still detect phantom copies after relocation.
-  const donors = [{ propIdx: 272, height: 1.8867, old: [310.07125, 360.43725] },
-    { propIdx: 284, height: 2.0051, old: [49.2173, 228.37325] }];
+  const donors = [{ propIdx: 337, height: 1.8867, old: [310.07125, 360.43725] },
+    { propIdx: 349, height: 2.0051, old: [49.2173, 228.37325] }];
   assert.deepEqual(flatbeds.map(record => record.propIdx), donors.map(record => record.propIdx));
   assert.deepEqual(colliders.map(record => record.propIdx), donors.map(record => record.propIdx));
   const sites = getMapConfig('longleaf').props.loggingYard.flatbeds;

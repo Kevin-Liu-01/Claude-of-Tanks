@@ -197,8 +197,12 @@ const preLayoutTraffic = [
   { propIdx: 268, bounds: [307.7485, 1.2493, 357.2405, 312.394, 3.136, 363.634] },
   { propIdx: 280, bounds: [45.7761, -2.1775, 226.462, 52.6585, -0.1724, 230.2845] },
 ];
-const currentTraffic = canonical.filter(ob => ob.kind === 'truckflatbed');
-assert.equal(currentTraffic.length, 2, 'canonical Longleaf genuinely preserves two donors');
+// 2026-09-19 hitbox pass: the full shard recapture (a capture of pristine origin/main places the same) admits two
+// more road-side flatbeds far from the yard; the two preserved donors are the ones parked at the authored bays.
+const flatbedBays = longleaf.props.loggingYard.flatbeds;
+const currentTraffic = canonical.filter(ob => ob.kind === 'truckflatbed' && flatbedBays.some(point =>
+  Math.hypot((ob.min[0] + ob.max[0]) / 2 - point.x, (ob.min[2] + ob.max[2]) / 2 - point.z) < 26));
+assert.equal(currentTraffic.length, 2, 'canonical Longleaf genuinely preserves two donors at its loading bays');
 // propIdx is an ordinal in a particular collision corpus: newly admitted road
 // props shift it. Match the two preserved donors by their distinct physical
 // scales, then check their current authored destinations independently.
