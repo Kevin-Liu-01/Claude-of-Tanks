@@ -33,7 +33,13 @@ camera/aim source equals HEAD's `src/engine/cameraRig.ts` / `src/game/input.ts`.
    camera yaw drift and -0.02 deg of net gun-bearing change on BOTH builds.
 5. **Wheel zoom ladder:** arcade orbit steps [24,18,13,9,6,4] m, then sniper
    x2/x4/x8; FOV 60 in arcade, 60/zoom scoped. Mode boundary at the last
-   arcade step (wheel-in) / first sniper step (wheel-out).
+   arcade step (wheel-in) / first sniper step (wheel-out). The ladder steps
+   per **notch of travel**, not per wheel event (`src/game/wheelNotches.ts`,
+   2026-09-19): a mouse click is one notch, a trackpad two-finger scroll
+   accumulates its few-unit events into notches every 100 units, and a
+   trackpad pinch (ctrl+wheel) counts 2.5x so one pinch walks a few steps
+   instead of racing to the end of the ladder; the same model drives the
+   spectator orbit and the Garage showroom dolly.
 6. **Cursor-aim fallback (pointer lock denied — embedded panes):** the turret
    chases the terrain point under the real cursor; **the camera stays parked**
    behind the tank (no camera-follow scheme). Owner course-correction

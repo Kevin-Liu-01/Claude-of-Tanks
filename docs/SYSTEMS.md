@@ -385,7 +385,12 @@ pool before reveal.
 `garageShowroomRuntime.ts` presents one phase-scoped camera interface to the
 composition root. It owns primary-pointer capture, drag cancellation, wheel
 consumption, and listener lifetime. The existing engine orbit still computes
-every camera pose from the unchanged canonical hero frame.
+every camera pose from the unchanged canonical hero frame. Since 2026-09-19
+the dolly follows the distance scrolled (`game/wheelNotches.ts`: a mouse click
+is one notch, a trackpad scroll or ctrl+wheel pinch glides proportionally with
+fractional notches) and Safari's `gesturestart`/`gesturechange` pinch maps one
+notch per 1.25x of scale; `ui/touchControls.ts` cancels ctrl+wheel app-wide so
+a trackpad pinch never zooms the page over the Garage panels.
 
 `garageReturnRuntime.ts` owns the opposite transition through three operations:
 immediate covered entry, player-facing leave, and Battle Again. It clears

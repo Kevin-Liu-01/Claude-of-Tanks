@@ -1156,6 +1156,40 @@ body[data-cot-width='laptop'] .cot-country-rail{
   width:min(920px,calc(100vw - (var(--cot-garage-sidebar-width) * 2) - 92px));
 }
 
+/* 2026-09-19 panel policy: a fine-pointer window 900-1099 px wide keeps both sidebars (see responsiveLayout.ts);
+   it takes the laptop composition with narrower plates and a shorter country rail. */
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-garage{
+  --cot-garage-sidebar-width:clamp(204px,21vw,236px);
+}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .nv{width:34px;padding:0;justify-content:center;gap:0}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .nav-label{display:none}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .cot-locale-switcher{width:34px;padding:0}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .cot-locale-options{display:none}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .record-badge{
+  position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:6px;
+}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-nav .github-stars{
+  position:absolute;right:-7px;top:-6px;min-width:24px;height:14px;padding:0 3px;display:grid;place-items:center;
+  border:1px solid #ffc46b;background:#f0a030;color:#1a1105;font-size:5.5px;line-height:1;letter-spacing:0;
+}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-leftcol{left:clamp(14px,1.6vw,22px)}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-garage-variant-menu{left:clamp(14px,1.6vw,22px)}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-featured{display:none}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-garage .stats{right:clamp(14px,1.6vw,22px)}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-country-rail{
+  width:min(920px,calc(100vw - (var(--cot-garage-sidebar-width) * 2) - 72px));
+}
+
+/* 2026-09-19: narrow persistent plates (laptop, tablet-persistent) keep the whole dossier but drop the
+   silhouette badge and tighten the title so the vehicle name is not cut to "M1A3 Abra…". */
+body:is([data-cot-width='laptop'],[data-cot-width='tablet'][data-cot-panels='persistent']) .cot-garage .stats .stats-ti{display:none}
+body:is([data-cot-width='laptop'],[data-cot-width='tablet'][data-cot-panels='persistent']) .cot-garage .cot-dossier-title{padding-right:40px;gap:7px}
+body:is([data-cot-width='laptop'],[data-cot-width='tablet'][data-cot-panels='persistent']) .cot-garage .stats h3{font-size:15px;letter-spacing:.01em}
+body:is([data-cot-width='laptop'],[data-cot-width='tablet'][data-cot-panels='persistent']) .cot-garage .stats .sub{margin-left:30px;letter-spacing:.1em;gap:5px}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-garage .stats .sub{font-size:7.2px;letter-spacing:.06em;margin-left:26px}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-garage .stats h3{font-size:14px}
+body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-garage .cot-tier-plate{height:23px;min-width:28px;padding:0 5px;font-size:9px}
+
 body[data-cot-panels='overlay'] .cot-garage{
   --cot-overlay-edge:clamp(10px,2vw,18px);
   --cot-roster-bottom:max(8px,env(safe-area-inset-bottom));

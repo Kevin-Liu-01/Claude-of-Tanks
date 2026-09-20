@@ -16,6 +16,9 @@ export const VIEWPORT_WIDTH_BANDS = Object.freeze({
   desktop: Object.freeze({ min: 1440, max: Infinity }),
 });
 
+/** Fine-pointer windows at least this wide keep the persistent Garage sidebars. */
+export const PERSISTENT_PANELS_MIN_WIDTH = 900;
+
 export const VIEWPORT_HEIGHT_BANDS = Object.freeze({
   short: Object.freeze({ min: 0, max: 519 }),
   compact: Object.freeze({ min: 520, max: 719 }),
@@ -107,14 +110,17 @@ export function classifyViewport({
   const heightDensity = safeHeight <= 430 ? 'tight' : 'roomy';
   const orientation = safeWidth >= safeHeight ? 'landscape' : 'portrait';
   const input = coarsePointer || !hover ? 'coarse' : 'fine';
-  // Large iPads can expose a fine primary pointer while a trackpad is active.
-  // Keep panel composition driven by available stage space as well as input so
-  // attaching a keyboard cannot suddenly restore two permanent sidebars.
-  const pressuredLaptop = widthBand === 'laptop'
-    && (safeWidth < 1240 || heightBand === 'tall' || input === 'coarse');
+  // Panel policy (2026-09-19, owner: "the boundary for showing a lot of content is a lil off, we're cutting it
+  // all off a lil too early, it's not mobile yet but we already lost all the side panel details"): a fine-pointer
+  // window keeps its two persistent sidebars from 900 px of width up — the sidebars narrow and the UI scale
+  // falls to 0.78 before anything is hidden — and only phones, compact widths, short heights and coarse-pointer
+  // tablets/laptops (an iPad without a trackpad) fold the panels into overlays. The former laptop pressure rule
+  // (< 1240 px or a tall viewport) folded ordinary desktop windows.
+  const pressuredTablet = widthBand === 'tablet' && (safeWidth < PERSISTENT_PANELS_MIN_WIDTH || input === 'coarse');
+  const pressuredLaptop = widthBand === 'laptop' && input === 'coarse';
   const overlayPanels = heightBand === 'short'
-    || widthBand === 'phone' || widthBand === 'compact' || widthBand === 'tablet'
-    || pressuredLaptop;
+    || widthBand === 'phone' || widthBand === 'compact'
+    || pressuredTablet || pressuredLaptop;
   const compactHeader = overlayPanels;
   const scale = clamp(Math.min(safeWidth / 1440, safeHeight / 900), 0.78, 1.08);
 

@@ -440,9 +440,9 @@ export function createTouchControls({
   // index.html viewport meta (maximum-scale=1 covers spec-compliant mobile
   // browsers): iOS Safari ignores user-scalable, but its pinch runs through
   // the non-standard gesture* events — cancelling those kills page zoom
-  // without touching one-finger scrolling anywhere. The touchmove and
-  // ctrl+wheel (desktop trackpad pinch) guards are scoped to gameplay
-  // surfaces so menus/garage DOM keeps every native scroll it has.
+  // without touching one-finger scrolling anywhere. The touchmove guard is
+  // scoped to gameplay surfaces so menus/garage DOM keeps every native
+  // scroll it has; ctrl+wheel never scrolls anything, so it is blocked app-wide.
   function onGameplaySurface(t: EventTarget | null): boolean {
     if (battle && layout) return true; // live touch battle: the frame is HUD
     if (!(t instanceof Element)) return false;
@@ -456,8 +456,11 @@ export function createTouchControls({
   document.addEventListener('touchmove', (e) => {
     if (e.touches.length >= 2 && onGameplaySurface(e.target)) e.preventDefault();
   }, { passive: false });
+  // 2026-09-19: the ctrl+wheel (trackpad pinch) guard covers the whole app — a pinch over the Garage panels
+  // used to zoom the page while the same pinch over the canvas dollied the tank; the showroom and the sight
+  // read the pinch themselves (wheelNotches.ts).
   window.addEventListener('wheel', (e) => {
-    if (e.ctrlKey && onGameplaySurface(e.target)) e.preventDefault();
+    if (e.ctrlKey) e.preventDefault();
   }, { passive: false });
 
   function updateJoy(e: PointerEvent): void {

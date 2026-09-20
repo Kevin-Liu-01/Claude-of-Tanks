@@ -2034,9 +2034,9 @@ export function createShowroomOrbit(
      * @returns {void}
      */
     wheel(notches: number): void {
-      if (!haveBox || !notches) return;
-      const n = THREE.MathUtils.clamp(notches | 0, -3, 3) ||
-        (notches > 0 ? 1 : -1);
+      if (!haveBox || !notches || !Number.isFinite(notches)) return;
+      // fractional notches (2026-09-19): a trackpad scroll or pinch dollies proportionally to its travel
+      const n = THREE.MathUtils.clamp(notches, -3, 3);
       tZoom = THREE.MathUtils.clamp(tZoom * Math.pow(SHOW_ZOOM_STEP, n),
         SHOW_ZOOM_MIN, SHOW_ZOOM_MAX);
       sinceInputS = 0;

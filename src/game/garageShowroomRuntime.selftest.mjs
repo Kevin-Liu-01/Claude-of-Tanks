@@ -49,7 +49,7 @@ element.dispatchEvent(pointerEvent('pointermove', {
 }));
 assert.equal(showroom.update(1 / 60), true, 'captured drag advances the same orbit solver');
 
-const wheel = pointerEvent('wheel', { deltaY: -1 });
+const wheel = pointerEvent('wheel', { deltaY: -100 }); // one mouse click (2026-09-19: the dolly follows travel)
 assert.equal(element.dispatchEvent(wheel), false, 'active showroom wheel is consumed');
 assert.equal(wheel.defaultPrevented, true);
 element.dispatchEvent(pointerEvent('pointerup', { pointerId: 7 }));
@@ -105,7 +105,7 @@ showroom.stop();
   assert.equal(orbit.debugState().yawDeg, 45, 'explicit reset still restores the canonical hero pose');
   assert.equal(orbit.debugState().dragging, false);
   shownSubject = new THREE.Group();
-  dragElement.dispatchEvent(pointerEvent('wheel', { deltaY: -1 }));
+  dragElement.dispatchEvent(pointerEvent('wheel', { deltaY: -100 }));
   advance(12);
   assert.ok(orbit.debugState().zoom < 0.95, 'late subject measurement preserves a newer wheel gesture');
   clockMs += 5100; // An idle watchdog paints rarely and clamps its update delta.

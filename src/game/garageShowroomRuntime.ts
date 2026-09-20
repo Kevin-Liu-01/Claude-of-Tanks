@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { wheelNotchUnits } from './wheelNotches.ts';
 import type * as THREE from 'three';
 import { createShowroomOrbit } from '../engine/cameraRig.ts';
 
@@ -104,10 +105,31 @@ export function createGarageShowroomRuntime({
     dragPointer = -1;
     control.endDrag();
   };
+  // 2026-09-19: the dolly follows the DISTANCE scrolled (wheelNotches.ts) — a mouse click is one notch, a trackpad
+  // scroll or pinch (ctrl+wheel) glides proportionally instead of stepping once per event; Safari reports the
+  // pinch through gesture events, whose cumulative scale maps onto the same notch scale.
   const onWheel = (event: WheelEvent) => {
     if (!enabled) return;
-    control.wheel(event.deltaY < 0 ? 1 : -1);
     event.preventDefault();
+    const units = wheelNotchUnits(event);
+    if (units) control.wheel(-units);
+  };
+  let gestureScale = 1;
+  const onGestureStart = (event: Event) => {
+    if (!enabled) return;
+    event.preventDefault();
+    gestureScale = 1;
+  };
+  const onGestureChange = (event: Event) => {
+    if (!enabled) return;
+    event.preventDefault();
+    const scale = (event as Event & { scale?: number }).scale;
+    if (!(typeof scale === 'number' && scale > 0)) return;
+    const ratio = scale / gestureScale;
+    gestureScale = scale;
+    // one notch per 1.25x of pinch, the same feel as a pinch through ctrl+wheel
+    const units = Math.log(ratio) / Math.log(1.25);
+    if (units) control.wheel(units);
   };
 
   element.addEventListener('pointerdown', onPointerDown);
@@ -115,6 +137,8 @@ export function createGarageShowroomRuntime({
   element.addEventListener('pointerup', endDrag);
   element.addEventListener('pointercancel', endDrag);
   element.addEventListener('wheel', onWheel, { passive: false });
+  element.addEventListener('gesturestart', onGestureStart, { passive: false });
+  element.addEventListener('gesturechange', onGestureChange, { passive: false });
 
   return {
     start() {
@@ -137,6 +161,8 @@ export function createGarageShowroomRuntime({
       element.removeEventListener('pointerup', endDrag);
       element.removeEventListener('pointercancel', endDrag);
       element.removeEventListener('wheel', onWheel);
+      element.removeEventListener('gesturestart', onGestureStart);
+      element.removeEventListener('gesturechange', onGestureChange);
     },
     get active() { return enabled && control.active; },
     get moving() { return enabled && control.moving; },

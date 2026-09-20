@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createWheelNotcher } from './wheelNotches.ts';
 // src/game/input.ts — rebindable action-map input layer.
 //
 // Raw KeyboardEvent.code / mouse-button / mouse-wheel / gamepad events are
@@ -871,13 +872,19 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   // sits under the cursor, so scrolling a menu must never step the gun zoom.
   // CURSOR-AIM FALLBACK: with the lock unavailable, notches over the game
   // canvas itself do step the zoom (menus still own their own scroll).
+  // 2026-09-19: one press per NOTCH of travel (wheelNotches.ts), so a trackpad scroll or pinch — dozens of
+  // small events — walks the zoom ladder at the pace of the gesture instead of racing to its end.
+  const wheelNotcher = createWheelNotcher();
   const onWheel = (event: WheelEvent) => {
     if (!enabled || event.deltaY === 0) return;
     if (lockElement && document.pointerLockElement !== lockElement &&
         !(lockDenied && event.target === lockElement)) return;
-    const code = event.deltaY < 0 ? 'WheelUp' : 'WheelDown';
+    const notches = wheelNotcher.push(event);
+    if (!notches) return;
+    const code = notches < 0 ? 'WheelUp' : 'WheelDown';
     const actionId = codeToAction.get(code);
-    if (actionId) firePress(actionId, code, event);
+    if (!actionId) return;
+    for (let remaining = Math.min(Math.abs(notches), 3); remaining > 0; remaining--) firePress(actionId, code, event);
   };
   const onBlurClear = () => {
     down.clear();

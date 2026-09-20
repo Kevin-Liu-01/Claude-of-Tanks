@@ -794,6 +794,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/playSurfaceRuntime.selftest.mjs',
     'src/game/equipment.selftest.mjs',
     'src/game/consumables.selftest.mjs',
+    'src/game/wheelNotches.selftest.mjs',
     'src/game/input.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',

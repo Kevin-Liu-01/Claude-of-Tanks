@@ -71,6 +71,7 @@
  * external-pose API) — the rig is used, never modified.
  */
 import * as THREE from 'three';
+import { createWheelNotcher } from './wheelNotches.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
 import { createElement as el, ensureStyle } from '../ui/dom.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
@@ -5890,9 +5891,12 @@ export function createKillCam(deps: KillcamDeps) {
       if (dx || dy) rig.spectateLook(dx, dy);
     }
     // wheel zooms the orbit (chase-cam grammar; the rig clamps + eases)
+    const wheelNotcher = createWheelNotcher();
     function onWheel(e: WheelEvent): void {
       if (!on || isBattleEntryCovered() || !e.deltaY || !rig.spectateZoom) return;
-      rig.spectateZoom(e.deltaY > 0 ? 1 : -1);
+      // notches of travel, not events (wheelNotches.ts): a trackpad scroll or pinch eases the orbit
+      const notches = wheelNotcher.push(e);
+      for (let remaining = Math.min(Math.abs(notches), 3); remaining > 0; remaining--) rig.spectateZoom(notches > 0 ? 1 : -1);
     }
     function watchTarget(): void {
       if (!on) return;

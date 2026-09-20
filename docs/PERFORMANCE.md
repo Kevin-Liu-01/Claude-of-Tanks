@@ -548,6 +548,16 @@ their own device-label breakpoints. Native display density and internal scene
 resolution remain independent: phones retain native DOM/canvas presentation,
 while the 3D renderer may scale within the output-pixel and quality budgets.
 
+Panel policy (2026-09-19, owner: "we're cutting it all off a lil too early, it's
+not mobile yet but we already lost all the side panel details"): a fine-pointer
+window keeps the two persistent Garage sidebars from
+`PERSISTENT_PANELS_MIN_WIDTH` (900 px) up — the plates narrow through the
+tablet-persistent rules in `garage.css` and the UI scale falls to 0.78 before
+anything is hidden — and only phones, compact widths, short heights and
+coarse-pointer tablets or laptops fold the panels into overlays. The former
+laptop pressure rule (narrower than 1240 px or taller than 900 px) folded
+ordinary desktop windows.
+
 For multiplayer, release evidence must include two fresh browser profiles with
 empty storage and caches completing create, invite-link join, ready, an entire
 match, result, rematch, reload/reconnect, and explicit leave. Reusing a browser
