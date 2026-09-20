@@ -75,3 +75,4 @@ quickest proof that the live site is the gate build.
 | 41 | 2026-09-19 02:30 | 6432c05ef | Night starfield and moon, crisper clouds and textured horizon ranges | main-g7IFqypA.js | claude-of-tanks-qx7dzrpxd |
 | 42 | 2026-09-19 04:38 | acc04bb30 | Mars mode on the Olympus Basin station, with the OpenAI, xAI and Gemini skins | main-DUIiO2jL.js | claude-of-tanks-7m6acm8m8 |
 | 43 | 2026-09-19 14:37 | bc588917a | Vista pass: seated rim bands, layered horizon ranges and a real ring forest | main-H6vhWs3Y.js | claude-of-tanks-8v7j562ta |
+| 44 | 2026-09-19 19:09 | d0b637bce | Hitboxes with real tops, fly-over without invisible walls, and wrecks that keep their momentum | main-CNX6aWV9.js | claude-of-tanks-3k8zh03tk |
