@@ -77,3 +77,4 @@ quickest proof that the live site is the gate build.
 | 43 | 2026-09-19 14:37 | bc588917a | Vista pass: seated rim bands, layered horizon ranges and a real ring forest | main-H6vhWs3Y.js | claude-of-tanks-8v7j562ta |
 | 44 | 2026-09-19 19:09 | d0b637bce | Hitboxes with real tops, fly-over without invisible walls, and wrecks that keep their momentum | main-CNX6aWV9.js | claude-of-tanks-3k8zh03tk |
 | 45 | 2026-09-19 20:50 | d464a813f | Trackpad pinch and scroll zoom by travel, and persistent Garage sidebars down to 900 px | main-DbMA90Uk.js | claude-of-tanks-bltb1l48q |
+| 46 | 2026-09-20 12:21 | 952a205e7 | Pinch-zoom guard installed at boot for every device, and a clean build stamp | main-ORM88aeN.js | claude-of-tanks-nnglffupl |
