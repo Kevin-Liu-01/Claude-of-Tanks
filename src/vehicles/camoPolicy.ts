@@ -7,6 +7,8 @@
  * allowlist and remain local single-player presentation only.
  */
 
+import { AUTHORED_PAINT_ENTRIES, AUTHORED_PAINT_IDS } from './authoredPaintCatalog.ts';
+
 export const CUSTOM_CAMO_BRUSHES = Object.freeze([
   'round', 'flat', 'spray', 'pixel', 'eraser', 'stamp',
 ] as const);
@@ -46,7 +48,7 @@ function isExternalArray(value: ExternalValue): value is ExternalValue[] {
   return Array.isArray(value);
 }
 
-export const CAMO_PATTERN_IDS = Object.freeze([
+const BASE_CAMO_PATTERN_IDS = Object.freeze([
   'auto', 'factory', 'summer', 'desert', 'winter', 'digital',
   'merdc', 'tropic', 'ambushdot', 'splinter',
   'pinkdesert', 'autumn', 'urbanblock', 'washworn',
@@ -98,14 +100,29 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'mono', 'carbon', 'prism', 'sig_sabra_mk2_x', 'sig_tos1a_tagil',
 ] as const);
 
+/**
+ * Round 31 (owner 2026-09-20): the national colour schemes — one plain (monocolor) service colour per nation.
+ * Factory itself is the vehicle's own authored paint again; these are the standardized delivery colours.
+ */
+export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
+  'national_usa', 'national_de', 'national_ru', 'national_uk', 'national_fr', 'national_cn', 'national_it',
+  'national_jp', 'national_pl', 'national_kr', 'national_se', 'national_il', 'national_ua',
+] as const);
+
+/** Append-only: base catalog, then the national colours, then every distinct authored paint (generated). */
+export const CAMO_PATTERN_IDS = Object.freeze([
+  ...BASE_CAMO_PATTERN_IDS, ...NATIONAL_CAMO_PATTERN_IDS, ...AUTHORED_PAINT_IDS,
+] as const);
+
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
+export type NationalCamoPatternId = typeof NATIONAL_CAMO_PATTERN_IDS[number];
 
 /** Player-facing catalog; the generic Signature id remains decode-only. */
 export const CAMO_CATALOG_PATTERN_IDS: readonly CamoPatternId[] = Object.freeze(
   CAMO_PATTERN_IDS.filter((patternId) => patternId !== 'signature'),
 );
 
-export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Object.freeze({
+const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[number], string>> = Object.freeze({
   auto: 'Auto (map)', factory: 'Factory', summer: 'Summer',
   desert: 'Desert', winter: 'Winter', digital: 'Digital',
   merdc: 'MERDC', tropic: 'Tropic', ambushdot: 'Ambush', splinter: 'Splinter',
@@ -211,6 +228,19 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_leo2a6_ua: 'Leopard 2A6 UA',
 });
 
+export const NATIONAL_CAMO_PATTERN_LABEL: Readonly<Record<NationalCamoPatternId, string>> = Object.freeze({
+  national_usa: 'US Army Green', national_de: 'Bundeswehr Bronze Green', national_ru: 'Russian Khaki Green',
+  national_uk: 'British Bronze Green', national_fr: 'French NATO Green', national_cn: 'PLA Green',
+  national_it: 'Italian NATO Green', national_jp: 'JGSDF Dark Green', national_pl: 'Polish Khaki',
+  national_kr: 'ROK Olive', national_se: 'Swedish Forest Green', national_il: 'IDF Sinai Grey', national_ua: 'Ukrainian Green',
+});
+
+export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Object.freeze({
+  ...BASE_CAMO_PATTERN_LABEL,
+  ...NATIONAL_CAMO_PATTERN_LABEL,
+  ...Object.fromEntries(AUTHORED_PAINT_ENTRIES.map((entry) => [entry.id, entry.label])),
+} as Record<CamoPatternId, string>);
+
 /**
  * Browsing taxonomy for the garage camouflage catalog. Tags describe origin,
  * environment, and visual construction independently, so patterns can be
@@ -298,11 +328,36 @@ const preset = (
   patches: Object.freeze([...visual.patches]),
 }) });
 
+const CAMO_TAG_ID_SET = new Set<string>(CAMO_TAG_IDS);
+function isCamoTagId(value: string): value is CamoTagId {
+  return CAMO_TAG_ID_SET.has(value);
+}
+
+const nationalTags = (nation: CamoTagId, environment: 'woodland' | 'desert' | 'urban'): readonly CamoTagId[] =>
+  Object.freeze([nation, environment, 'geometric', 'factory']);
+const solid = (base: string, weather: string): SharedCamoVisual => ({ scheme: 'solid', base, weather, patches: [] });
+/** Round 31 (owner 2026-09-20): one plain national service colour per nation (see NATIONAL_CAMO_PATTERN_IDS). */
+const NATIONAL_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
+  preset('national_usa', null, nationalTags('usa', 'woodland'), solid('#4a5a3a', '#56664a')),
+  preset('national_de', null, nationalTags('de', 'woodland'), solid('#3f4a37', '#4a5642')),
+  preset('national_ru', null, nationalTags('ru', 'woodland'), solid('#44553a', '#4f6144')),
+  preset('national_uk', null, nationalTags('uk', 'woodland'), solid('#3b4a3c', '#465547')),
+  preset('national_fr', null, nationalTags('fr', 'woodland'), solid('#4a5a44', '#556550')),
+  preset('national_cn', null, nationalTags('cn', 'woodland'), solid('#4f5a41', '#5a664c')),
+  preset('national_it', null, nationalTags('it', 'woodland'), solid('#48533e', '#53604a')),
+  preset('national_jp', null, nationalTags('jp', 'woodland'), solid('#39463a', '#445144')),
+  preset('national_pl', null, nationalTags('pl', 'woodland'), solid('#4a5541', '#55614c')),
+  preset('national_kr', null, nationalTags('kr', 'woodland'), solid('#465341', '#51604c')),
+  preset('national_se', null, nationalTags('se', 'woodland'), solid('#3a4d3f', '#455a4a')),
+  preset('national_il', null, nationalTags('il', 'urban'), solid('#6f7566', '#7b8172')),
+  preset('national_ua', null, nationalTags('ua', 'woodland'), solid('#4c5142', '#575d4c')),
+]);
+
 /**
- * Named, reusable fleet colorways. Service presets own national Factory
- * baselines; Signature presets preserve the explicitly requested vehicle
- * personalities. Keeping the complete painter recipe here makes the result
- * independent of whichever tank happens to wear it.
+ * Named, reusable fleet colorways. Service presets keep the patterned national service coats, the national
+ * colours are the plain delivery colours, Signature presets preserve the explicitly requested vehicle
+ * personalities, and the authored paints (generated) let any hull wear any other hull's own finish. Keeping the
+ * complete painter recipe here makes the result independent of whichever tank happens to wear it.
  */
 export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
   preset('service_usa_desert', null, serviceTags('usa', 'desert', 'organic'),
@@ -471,6 +526,11 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#55594b', weather: '#69695a', patches: ['#393c34', '#77705b', '#82755c'], camoScale: 0.55 }),
   preset('sig_leo2a6_ua', 'leo2a6_ua', signatureTags('ua', 'woodland', 'digital'),
     { scheme: 'digital', base: '#4d5343', weather: '#686858', patches: ['#2d382f', '#6c654d', '#4b5141'], camoScale: 0.46 }),
+  // Round 31: the national colour schemes — plain single-colour service coats, one per nation.
+  ...NATIONAL_CAMO_PRESETS,
+  // Round 31: every distinct authored paint in the fleet, named after its lead vehicle (generated table).
+  ...AUTHORED_PAINT_ENTRIES.map((entry) => preset(entry.id, entry.lead,
+    Object.freeze(entry.tags.filter(isCamoTagId)), entry.visual as SharedCamoVisual)),
 ]);
 
 const SHARED_CAMO_PRESET_BY_ID = new Map(
@@ -481,31 +541,32 @@ export function sharedCamoPreset(patternId: string | null | undefined): SharedCa
   return SHARED_CAMO_PRESET_BY_ID.get(patternId as CamoPatternId) || null;
 }
 
+/**
+ * Round 31 (owner 2026-09-20): the national colour scheme of each nation — the plain delivery colour. Factory
+ * itself is the vehicle's own authored paint (materials.ts factoryVisual); this table names the monocolor scheme
+ * a nation's hulls share, used by the Garage workshop exhibits and offered in the catalog.
+ */
 export const FACTORY_CAMO_PATTERN_BY_NATION: Readonly<Record<string, CamoPatternId>> = Object.freeze({
-  USA: 'service_usa_desert',
-  Germany: 'service_leo2a6m',
-  Russia: 'service_t90m',
-  UK: 'service_challenger_3',
-  France: 'service_leclerc_xlr',
-  China: 'service_type99a',
-  Italy: 'service_ariete_c1',
-  Japan: 'service_type10',
-  Poland: 'service_pl01',
-  'South Korea': 'service_bmp3_rok',
-  Sweden: 'service_strv122',
-  Israel: 'service_merkava2d',
-  Ukraine: 'service_ua_m2a3_bradley',
+  USA: 'national_usa',
+  Germany: 'national_de',
+  Russia: 'national_ru',
+  UK: 'national_uk',
+  France: 'national_fr',
+  China: 'national_cn',
+  Italy: 'national_it',
+  Japan: 'national_jp',
+  Poland: 'national_pl',
+  'South Korea': 'national_kr',
+  Sweden: 'national_se',
+  Israel: 'national_il',
+  Ukraine: 'national_ua',
 });
 
-/** Era-aware Factory owner. Soviet vehicles retain period-specific field paint. */
-export function factoryCamoPatternIdFor(nation: string | undefined, era: string | null | undefined): CamoPatternId | null {
+/** The nation's plain colour scheme (Soviet-era hulls share the Russian khaki green). */
+export function factoryCamoPatternIdFor(nation: string | undefined, _era: string | null | undefined): CamoPatternId | null {
   const nationKey = nation === 'USSR' || nation === 'USSR/Russia'
     ? 'Russia'
     : nation;
-  if (nationKey === 'Russia') {
-    if (era === 'ww2' || era === 'interwar') return 'service_soviet_ww2';
-    if (era === 'cold-war') return 'service_soviet_coldwar';
-  }
   return FACTORY_CAMO_PATTERN_BY_NATION[nationKey as string] || null;
 }
 

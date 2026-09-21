@@ -17,11 +17,18 @@ assert.equal(tankTier('mbt70'), 10, 'MBT-70 occupies the German Tier X missile l
 assert.equal(MODEL_SOURCE.mbt70?.source, 'procedural', 'playable never loads the comparison GLB');
 assert.equal(spec.authorship?.runtimeExternalGeometry, false, 'runtime external geometry is prohibited');
 assert.equal(spec.nation, 'Germany', 'garage nation is Germany');
+// Round 31 (owner 2026-09-20): Factory is the hull's own authored paint — the MBT-70's modernized flecktarn — and the
+// nation's plain colour is its own catalog entry (`national_de`, Bundeswehr bronze green); the Leopard 2A6M donor
+// bands stay selectable as `service_leo2a6m`.
 const factoryVisual = resolveCamoVisual(spec, 'factory');
-assert.equal(factoryVisual.scheme, 'stripes',
-  'national Factory paint uses the Leopard 2A6M donor band language');
-assert.equal(factoryVisual.base, '#48503f',
-  'national Factory paint uses the Leopard 2A6M donor delivery coat');
+assert.equal(factoryVisual.scheme, 'fleck', 'Factory paint is the authored Bundeswehr flecktarn');
+assert.equal(factoryVisual.base, '#4b5142', 'Factory paint carries the authored base coat');
+const nationalVisual = resolveCamoVisual(spec, 'national_de');
+assert.equal(nationalVisual.scheme, 'solid', 'the national colour scheme is a plain coat');
+assert.equal(nationalVisual.base, '#3f4a37', 'Bundeswehr bronze green is the German national colour');
+assert.equal(nationalVisual.patches.length, 0, 'a national colour carries no camouflage patches');
+const donorVisual = resolveCamoVisual(spec, 'service_leo2a6m');
+assert.equal(donorVisual.scheme, 'stripes', 'the Leopard 2A6M donor band language stays selectable as a Service paint');
 const signatureVisual = resolveCamoVisual(spec, 'signature');
 assert.equal(signatureVisual.scheme, 'fleck',
   'MBT-70 retains its authored modernized Bundeswehr flecktarn as Signature paint');
