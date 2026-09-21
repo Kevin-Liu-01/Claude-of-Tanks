@@ -77,6 +77,9 @@ const BALANCE_METRICS = Object.freeze([
 
 export function sustainedPrimaryDpm(spec: FleetTankSpec): number {
   const round = spec.gun.shells[0];
+  const salvo = spec.gun.launcherSalvo;
+  if (salvo && round.guided) return round.dmg * salvo.rounds * 60 /
+    ((round.reloadS || spec.gun.reloadS) + (salvo.rounds - 1) * salvo.intervalS);
   const autoloader = spec.gun.autoloader;
   if (!autoloader) return round.dmg * 60 / spec.gun.reloadS;
   const rounds = Math.max(1, autoloader.magazineSize);

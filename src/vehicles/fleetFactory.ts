@@ -54,6 +54,7 @@ import { ABRAMS_SOURCE_X_IDS, synchronizeAbramsSourceXCombatMetadata } from './a
 import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './tos1aTagilSpecs.ts';
+import './griffinViperSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -145,6 +146,7 @@ const GROUP_LOADERS = Object.freeze({
   chieftain5X: () => import('./profiles/chieftain5X.ts').then((mod) => registerProfiles(mod.CHIEFTAIN5_X_PROFILES)),
   t90AwX: () => import('./profiles/t90AwX.ts').then((mod) => registerProfiles(mod.T90_AW_X_PROFILES)),
   t90BurlakX: () => import('./profiles/t90BurlakX.ts').then((mod) => registerProfiles(mod.T90_BURLAK_X_PROFILES)),
+  griffinViper: () => import('./profiles/griffinViper.ts').then(mod => registerProfiles(mod.GRIFFIN_VIPER_PROFILES)),
   tos1aTagil: () => import('./profiles/tos1aTagil.ts').then(mod => registerProfiles(mod.TOS1A_TAGIL_PROFILES)),
   t90msX: () => import('./profiles/t90msX.ts').then((mod) => registerProfiles(mod.T90MS_X_PROFILES)),
   leclercX: () => import('./profiles/leclercX.ts').then((mod) => registerProfiles(mod.LECLERC_X_PROFILES)),

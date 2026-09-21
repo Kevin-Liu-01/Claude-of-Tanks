@@ -8,6 +8,7 @@ import {
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import { vehicleEraForId } from './taxonomy.ts';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from './suppliedSourceStudyIndex.ts';
+import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_TURRET_PIVOT, GRIFFIN_TURRET_SCALE as GRIFFIN_T } from './profiles/griffinProportions.ts';
 
 const entries = [
   ['kurganets25_x', 'spz_puma_s1', 'Kurganets-25', 'Russia', 'ifv'],
@@ -61,7 +62,11 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
     spec.armor.hullPlates = spec.armor.hullPlates.filter(plate => plate.kind !== 'era');
     spec.armor.turretPlates = spec.armor.turretPlates.filter(plate => plate.kind !== 'era');
   }
-  const frame = sourceFrames[id];
+  const frame = id === 'griffin50_x' ? {
+    turret: GRIFFIN_TURRET_PIVOT,
+    gun: [0, 2.07 + .53 * GRIFFIN_T, GRIFFIN_TURRET_PIVOT[2] + 1.10 * GRIFFIN_T],
+    muzzleZ: GRIFFIN_TURRET_PIVOT[2] + (1.10 + 2.93194) * GRIFFIN_T,
+  } : sourceFrames[id];
   spec.armor.turretPivot = [...frame.turret];
   spec.armor.gunPivot = [
     frame.gun[0] - frame.turret[0],
@@ -231,6 +236,12 @@ for (const [id, donorId, name, nation, role] of entries) {
   spec.armor = structuredClone(structure.armor);
   const donorDimensions = { ...structure.dims };
   Object.assign(spec.dims, dimensions[id]);
+  if (id === 'griffin50_x') Object.assign(spec.dims, {
+    hullLengthM: GRIFFIN_HULL_LENGTH_M, overallLengthM: GRIFFIN_HULL_LENGTH_M,
+    heightM: 2.07 + (3.75 - 2.07) * GRIFFIN_T,
+    silhouetteHullLengthM: GRIFFIN_HULL_LENGTH_M, silhouetteOverallLengthM: GRIFFIN_HULL_LENGTH_M,
+    silhouetteHeightM: 2.07 + (3.75 - 2.07) * GRIFFIN_T,
+  });
   fitArmorToDims(spec.armor, donorDimensions, spec.dims);
   applySourceFrame(spec, id);
   spec.visual = {

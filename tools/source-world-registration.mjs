@@ -1,9 +1,10 @@
 import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
+import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
 // QA-only certificates for independently normalized local comparison files.
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
-export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
+export const SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSourceFrames({
   // Mk3D: independent 2026-09-05 source-axis measurements, already baked
   // to metres and ground zero. Mixed bone/material owners remain fused.
   merkava3d_x: {
@@ -44,11 +45,10 @@ export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
     fused:true,turret:[.0031,1.476,.36928],gun:[-.008067,1.859441,1.570],
   },
   ariete_c1_x: {
-    // Owner-directed 12% uniform enlargement; original raw file and original
-    // registration remain archived. No per-candidate normalization.
-    sha256:'1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68',
-    fused:true,turret:[0,1.4629751628800003,.3673923512],
-    gun:[0,1.8496791140800002,1.5025403680000002],
+    // Owner's further10% enlargement of the already1.12-scale C1; complete original source.
+    sha256:'1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177',
+    fused:true,turret:[0.0, 1.6092726791680003, 0.40413158632000007],
+    gun:[0.0, 2.0346470254880002, 1.6527944048000003],
   },
   challenger1_x: {
     sha256:'90a18f59e64509211fa15e4298fba40443766b8dbd9e6cfb1e7858ecad8f4e64',
@@ -167,7 +167,7 @@ export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
     sha256:'a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0',
     fused:true, turret:[0,2.21,-1.27], gun:[-.004,2.917,-.68],
   },
-}));
+}), griffin50_x: GRIFFIN_PROPORTION_REFERENCE.frame});
 
 const IDENTITY = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);

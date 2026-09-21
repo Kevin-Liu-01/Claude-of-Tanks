@@ -663,6 +663,7 @@
   "gallery.count": "{shown} of {total} records",
   "garage.stat.reload": "Reload",
   "garage.stat.magazineReload": "Magazine reload",
+  "garage.stat.missileSalvo": "Missile salvo",
   "garage.stat.magazineAutoloader": "Magazine autoloader",
   "garage.stat.rounds": "rounds",
   "garage.stat.cycle": "s cycle",

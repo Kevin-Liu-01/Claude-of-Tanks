@@ -28,6 +28,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "fv510MilanX": () => import('./combatAnatomyGroups/fv510MilanX.generated.ts'),
   "germany": () => import('./combatAnatomyGroups/germany.generated.ts'),
   "griffin50X": () => import('./combatAnatomyGroups/griffin50X.generated.ts'),
+  "griffinViper": () => import('./combatAnatomyGroups/griffinViper.generated.ts'),
   "italy": () => import('./combatAnatomyGroups/italy.generated.ts'),
   "jagdpanzerE100X": () => import('./combatAnatomyGroups/jagdpanzerE100X.generated.ts'),
   "japan": () => import('./combatAnatomyGroups/japan.generated.ts'),

@@ -197,12 +197,12 @@ const missileVelocityByVehicle = new Map([
   ['m1a3', 2050],
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
   ['kurganets25_x', 240], ['fv510_milan_x', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
-  ['object695_x', 340], ['ztz100_prototype', 320], // owner-authored missile concepts
+  ['object695_x', 380], ['griffin_viper', 400], ['ztz100_prototype', 320], // owner-authored missile concepts
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([
   ['kurganets25_x/Bulat guided missile', 240],
-  ['object695_x/9M-695 Blast', 340], ['ztz100_prototype/HJ-P9 Blast', 320],
+  ['object695_x/9M-695 Blast', 380], ['ztz100_prototype/HJ-P9 Blast', 320],
 ]);
 for (const id of SAVED_TANK_IDS) {
   for (const round of TANK_SPECS[id].gun.shells) {

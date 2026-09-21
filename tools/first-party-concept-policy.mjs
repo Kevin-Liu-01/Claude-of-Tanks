@@ -1,5 +1,6 @@
 // Explicit owner-authored designs. This is not a fallback for failed sources.
 const CONCEPT_DOCUMENTS = Object.freeze({
+  griffin_viper:'docs/references/concepts/griffin-viper-20260921.json',
   ariete_c2_x:'docs/references/concepts/ariete-c2-20260921.json',
   tos1a_tagil:'docs/references/concepts/tos1a-tagil-20260920.json',
   ztz100_prototype:'docs/references/concepts/missile-turrets-20260919.json',
@@ -7,16 +8,22 @@ const CONCEPT_DOCUMENTS = Object.freeze({
   type100:'docs/references/concepts/type100-ifv-20260919.json',
 });
 export const FIRST_PARTY_CONCEPTS = Object.freeze({
+  griffin_viper: Object.freeze({
+    id:'griffin_viper', test:'src/vehicles/profiles/griffinViper.selftest.mjs',
+    ring:[0,2.07,-.396], gunLocal:[0,1.08,0], barrelLengthM:1.188, barrelRadiusM:.07,
+    pitchDeg:[-6,25], cells:16, mainCaliberMm:140, weaponSystem:'guided-missile-carrier',
+    guidedAmmoTotal:64, reloadS:1, roofMachineGuns:0,
+    hullLengthM:7.26594, hullWidthM:3.8106, widthM:3.8106, overallLengthM:7.26594, tallestM:3.456,
+    silhouette:'Modern Griffin tracked hull, low central armored pedestal, two separated eight-cell open launch pods and central thermal sight',
+  }),
   ariete_c2_x: Object.freeze({
     id:'ariete_c2_x', test:'src/vehicles/profiles/arieteC2X.selftest.mjs',
-    ring:[0,1.4629751628800003,.3673923512],
-    gunLocal:[0,.3867039511999999,1.1351480168],
-    barrelLengthM:4.12892503856, barrelRadiusM:.1371776, pitchDeg:[-9,20],
+    ring:[0.0, 1.6092726791680003, 0.40413158632000007], gunLocal:[0.0, 0.42537434631999993, 1.2486628184800002],
+    barrelLengthM:5.54101740174752, barrelRadiusM:0.17805652480000003, pitchDeg:[-9,20],
     mainCaliberMm:120, weaponSystem:'conventional-cannon', roofMachineGuns:2,
-    hullLengthM:7.852776222592, hullWidthM:4.043200000000001,
-    widthM:4.043200000000001, overallLengthM:9.557853517520002,
-    tallestM:3.9923303918400004,
-    silhouette:'Enlarged definitive C1 hull and angular turret with wider tracks, four return rollers per side, finite side and cheek protection packs, modern commander and gunner sights, and two seated roof weapons',
+    hullLengthM:8.638053844851202, hullWidthM:4.447520000000001, widthM:4.447520000000001,
+    overallLengthM:11.512838728603523, tallestM:4.391563431024001,
+    silhouette:'Definitive enlarged C1-derived C2 with extended thick main gun, smaller decorative K2-style roof gun, 20 removable glacis/turret ERA cassettes, wide tracks and modern optics',
   }),
   tos1a_tagil: Object.freeze({
     id:'tos1a_tagil', test:'src/vehicles/profiles/tos1aTagil.selftest.mjs',

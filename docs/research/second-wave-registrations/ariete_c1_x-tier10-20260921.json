@@ -1,0 +1,18 @@
+{
+  "id": "ariete_c1_x",
+  "sourceSha256": "02043219575d2ac02c9846666efca20c8087727808e4c51245a28588242e26b4",
+  "axes": [
+    "x",
+    "y",
+    "z"
+  ],
+  "scale": 0.026320365106272007,
+  "translation": [
+    0.0,
+    0.003108704626582337,
+    0.9377925283609337
+  ],
+  "registrationReason": "Owner instruction 2026-09-21: both definitive Arietes another 10% larger than current 1.12-scale version. Complete original source retained at declared uniform 1.232 scale, no candidate fitting.",
+  "parentRegistration": "docs/research/second-wave-registrations/ariete_c1_x.json",
+  "ownerRequestedEnlargement": 1.2320000000000002
+}

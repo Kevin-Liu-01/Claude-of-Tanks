@@ -1,6 +1,14 @@
 # Griffin 50 mm X — source reconstruction packet
 
-## Current integrated status — 2026-09-18
+## Owner proportion update — 2026-09-21
+
+The current Griffin has a 10% longer hull and a uniformly 10% smaller turret.
+Wheel radii and the 50 mm weapon remain unchanged. The original source and
+its certificates below remain historical. The explicit source-only derivation,
+updated rig datums and current qualification are recorded in the
+[Griffin proportion correction](../../research/griffin-proportions-20260921.md).
+
+## Historical integrated status — 2026-09-18
 
 Implemented draft; final qualification and publication are pending. The owner
 approved correctly assembled sources, actual supplied equipment and measured

@@ -24,6 +24,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_FRANCECORE } from './vehicleMarkingSeatG
 import { VEHICLE_MARKING_SEATS as SEATS_FV510MILANX } from './vehicleMarkingSeatGroups/fv510MilanX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_GERMANY } from './vehicleMarkingSeatGroups/germany.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_GRIFFIN50X } from './vehicleMarkingSeatGroups/griffin50X.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_GRIFFINVIPER } from './vehicleMarkingSeatGroups/griffinViper.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_ITALY } from './vehicleMarkingSeatGroups/italy.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_JAGDPANZERE100X } from './vehicleMarkingSeatGroups/jagdpanzerE100X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_JAPAN } from './vehicleMarkingSeatGroups/japan.generated.ts';
@@ -99,6 +100,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_FV510MILANX,
   SEATS_GERMANY,
   SEATS_GRIFFIN50X,
+  SEATS_GRIFFINVIPER,
   SEATS_ITALY,
   SEATS_JAGDPANZERE100X,
   SEATS_JAPAN,

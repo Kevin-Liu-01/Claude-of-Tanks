@@ -79,3 +79,16 @@ construction on a temporary missing gun-clearance export during parallel
 integration, not on an opening assertion. The independent critic's tooling
 review found no blocking defect. This is the opening subsystem result, not
 an independent visual score or a complete vehicle release result.
+
+## Additional owner enlargement
+
+The subsequent 10% enlargement uses the complete original source under the
+`tier10-20260921` recipe and receipt. The retained coupler witnesses move by
+exactly 1.10, retaining the 2 mm source-stock tolerance. At the unchanged 60 mm
+raster step the enlarged silhouette contains five rear opening cells in each
+quality (rather than two at the former size). Both complete source and actual
+loaded HIGH/LOW geometry independently pass all 24 retained stock/air witnesses
+and all 45 subpixel rays. This authority remains limited to the rear coupler;
+it does not authorize new openings or qualify the C2 as a source reconstruction.
+Local evidence: `.qa-dev/reports/ariete_c1_x-openings-r2.json` and
+`.qa-dev/reports/ariete_c2_x-openings-r2.json`.

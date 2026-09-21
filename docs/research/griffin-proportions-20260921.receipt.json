@@ -1,0 +1,235 @@
+{
+  "inputSha256": "1aef6401c01b5d9a6adfc65838c94d350f4aa39afa039709241c426371ca2003",
+  "outputSha256": "89b52b83f0d69744a1c666a89b7b3fa921d2bfa9cb219d01168b982300cdfad3",
+  "hullLengthScale": 1.1,
+  "turretScale": 0.9,
+  "removedTriangles": 0,
+  "candidateGeometryUsed": false,
+  "meshes": [
+    {
+      "mesh": "Object_2",
+      "vertices": 1826,
+      "owners": {
+        "hull": 1826,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_3",
+      "vertices": 376,
+      "owners": {
+        "hull": 0,
+        "turret": 376,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_4",
+      "vertices": 48066,
+      "owners": {
+        "hull": 48066,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_5",
+      "vertices": 8,
+      "owners": {
+        "hull": 8,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_6",
+      "vertices": 226,
+      "owners": {
+        "hull": 0,
+        "turret": 226,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_7",
+      "vertices": 1350,
+      "owners": {
+        "hull": 1350,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_8",
+      "vertices": 1350,
+      "owners": {
+        "hull": 1350,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_9",
+      "vertices": 25,
+      "owners": {
+        "hull": 0,
+        "turret": 25,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_10",
+      "vertices": 835,
+      "owners": {
+        "hull": 835,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_11",
+      "vertices": 6747,
+      "owners": {
+        "hull": 0,
+        "turret": 6747,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_12",
+      "vertices": 48066,
+      "owners": {
+        "hull": 48066,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_13",
+      "vertices": 1472,
+      "owners": {
+        "hull": 0,
+        "turret": 1472,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_14",
+      "vertices": 1724,
+      "owners": {
+        "hull": 0,
+        "turret": 1724,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_15",
+      "vertices": 96,
+      "owners": {
+        "hull": 0,
+        "turret": 96,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_16",
+      "vertices": 16,
+      "owners": {
+        "hull": 0,
+        "turret": 16,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_17",
+      "vertices": 965,
+      "owners": {
+        "hull": 965,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_18",
+      "vertices": 10661,
+      "owners": {
+        "hull": 0,
+        "turret": 10661,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_19",
+      "vertices": 1980,
+      "owners": {
+        "hull": 0,
+        "turret": 1980,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_20",
+      "vertices": 18906,
+      "owners": {
+        "hull": 18906,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_21",
+      "vertices": 188,
+      "owners": {
+        "hull": 188,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_22",
+      "vertices": 12426,
+      "owners": {
+        "hull": 0,
+        "turret": 0,
+        "wheel": 12426
+      }
+    },
+    {
+      "mesh": "Object_23",
+      "vertices": 12426,
+      "owners": {
+        "hull": 0,
+        "turret": 0,
+        "wheel": 12426
+      }
+    },
+    {
+      "mesh": "Object_24",
+      "vertices": 838,
+      "owners": {
+        "hull": 264,
+        "turret": 574,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_25",
+      "vertices": 1411,
+      "owners": {
+        "hull": 1411,
+        "turret": 0,
+        "wheel": 0
+      }
+    },
+    {
+      "mesh": "Object_26",
+      "vertices": 3496,
+      "owners": {
+        "hull": 3496,
+        "turret": 0,
+        "wheel": 0
+      }
+    }
+  ]
+}

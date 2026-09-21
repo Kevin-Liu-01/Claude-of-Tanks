@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "recipe": "docs/research/second-wave-registrations/ariete_c1_x-tier10-20260921.json",
+  "sourceSha256": "02043219575d2ac02c9846666efca20c8087727808e4c51245a28588242e26b4",
+  "canonicalSha256": "1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177",
+  "meshCount": 11,
+  "omittedMeshes": [],
+  "omittedDetachedIslands": null,
+  "canonicalBounds": {
+    "min": [
+      -2.223759889602661,
+      1.2962721174236691e-15,
+      -4.319026947021484
+    ],
+    "max": [
+      2.223759889602661,
+      4.391563415527344,
+      6.1946120262146
+    ],
+    "size": [
+      4.447519779205322,
+      4.391563415527343,
+      10.513638973236084
+    ]
+  },
+  "comparisonPurpose": "owner-directed complete supplied C1 at 1.232 uniform scale",
+  "tool": "tools/source-x-oracle.mjs",
+  "status": "source registration only; candidate qualification separate"
+}

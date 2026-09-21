@@ -272,6 +272,23 @@ assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'si
 assert.equal(defaultCamoPatternId('tos1a_tagil'), 'sig_tos1a_tagil');
 assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
 const precedingCatalog = structuredClone(catalogContract);
+// The new American concept adds exactly one authored paint. Validate its
+// complete recipe, then retain the earlier catalog hashes unchanged.
+assert.equal(CAMO_PATTERN_LABEL.paint_griffin_viper, 'Griffin Viper Tri-Tone');
+assert.equal(networkCamoId('paint_griffin_viper'), 'paint_griffin_viper');
+assert.equal(defaultCamoPatternId('griffin_viper'), 'factory');
+assert.equal(hasSignatureCamo('griffin_viper'), false);
+assert.deepEqual(sharedCamoPreset('paint_griffin_viper'), {
+  id: 'paint_griffin_viper', sourceTankId: 'griffin_viper',
+  tags: ['usa', 'woodland', 'organic', 'signature'],
+  visual: { scheme: 'nato', base: '#555d42', weather: '#777864',
+    patches: ['#343a32', '#827756'], camoScale: .5 },
+});
+precedingCatalog.patterns = precedingCatalog.patterns.filter(id => id !== 'paint_griffin_viper');
+precedingCatalog.catalog = precedingCatalog.catalog.filter(id => id !== 'paint_griffin_viper');
+delete precedingCatalog.patternLabels.paint_griffin_viper;
+precedingCatalog.presets = precedingCatalog.presets.filter(row => row.id !== 'paint_griffin_viper');
+precedingCatalog.tagsByPatternAndNation = precedingCatalog.tagsByPatternAndNation.filter(([id]) => id !== 'paint_griffin_viper');
 precedingCatalog.patterns = precedingCatalog.patterns.filter(id => id !== 'sig_tos1a_tagil');
 precedingCatalog.catalog = precedingCatalog.catalog.filter(id => id !== 'sig_tos1a_tagil');
 delete precedingCatalog.patternLabels.sig_tos1a_tagil;

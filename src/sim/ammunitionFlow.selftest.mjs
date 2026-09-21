@@ -141,7 +141,7 @@ for (const spec of Object.values(TANK_SPECS)) {
     // Explicit launch points describe geometry, not which weapon is primary.
     // Autocannon IFVs retain their auxiliary missile cadence with real tips.
     if (spec.gun.primaryGuided && spec.gun.launcherMuzzles?.length) {
-      const expected = spec.id === 'ztz100_prototype' ? [8.2, 9] : [5.8, 6.6];
+      const expected = spec.id === 'ztz100_prototype' ? [12, 12] : spec.id === 'object695_x' ? [14, 14] : [1];
       assert.equal(round.reloadS, expected[slot], `${spec.id}: independently authored missile-primary reload`);
     } else if (spec.gun.primaryGuided) {
       assert.equal(round.reloadS, spec.gun.reloadS,
@@ -157,15 +157,15 @@ for (const spec of Object.values(TANK_SPECS)) {
 // Legacy guided channels and source-based additions retain their contracts;
 // the two owner-authored concepts add four explicitly checked missile modes.
 const suppliedIds = new Set(SUPPLIED_SOURCE_IDS);
-const conceptIds = new Set(['ztz100_prototype', 'object695_x']);
+const conceptIds = new Set(['ztz100_prototype', 'object695_x', 'griffin_viper']);
 const concepts = guidedRounds.filter(({spec}) => conceptIds.has(spec.id));
-assert.equal(concepts.length, 4);
+assert.equal(concepts.length, 5);
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id)).length, 23,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10_x', 'cv90_mkiv_x', 'fv510_milan_x', 'k21_x', 'kurganets25_x', 'kurganets25_x'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 33, 'the complete guided-ammunition fleet is covered');
+assert.equal(guidedRounds.length, 34, 'the complete guided-ammunition fleet is covered');
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.
@@ -180,7 +180,7 @@ assert.equal(addedXIds.size, 28, 'the two additive X batches have distinct ident
 const laterChannelCounts = {
   type100: 3, ztz100_x: 3, ztz100_prototype: 3, object695_x: 3,
   merkava4_trophy: 3, merkava4_barak: 3, namer_ifv: 2, ares_apc_x: 3,
-  tos1a_tagil: 1, ariete_c2_x: 3,
+  tos1a_tagil: 1, ariete_c2_x: 3, griffin_viper: 1,
 };
 const laterIds = new Set([...Object.keys(laterChannelCounts), ...SUPPLIED_SOURCE_IDS]);
 for (const [id, count] of Object.entries(laterChannelCounts)) {
@@ -202,7 +202,7 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
   ['DM12A1 HEAT-MP', 'HEAT', 120, false, 16],
   ['DM11 HE-FRAG', 'HE', 120, false, 12],
 ]);
-assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x, 675,
+assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper, 675,
   'all 675 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

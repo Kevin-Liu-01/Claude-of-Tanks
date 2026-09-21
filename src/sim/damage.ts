@@ -82,6 +82,7 @@ export type DamageArmorPlate = ArmorPlate;
 type DamageArmorModel = ArmorModel;
 
 export interface DamageGunSpec {
+  launcherSalvo?: { rounds: number; intervalS: number };
   fixedLaunchCanisters?: boolean;
   reloadS: number;
   /** Guided ammunition is chambered and fired through this main gun/launcher. */
@@ -119,6 +120,8 @@ interface ReloadState {
 export interface CombatState {
   /** Cycles a separate missile rack without advancing the cannon channel. */
   launcherCursor?: number;
+  /** Successful guided shots in the current rack salvo; ammunition switches do not reset it. */
+  launcherSalvoShots?: number;
   hp: number;
   maxHp: number;
   destroyed: boolean;
@@ -2244,7 +2247,18 @@ export function startPostShotReload(combatState: CombatState, spec: DamageTankSp
   // cannon has an autoloader. They neither consume nor wait on cannon-magazine
   // state; their authored per-shell duration is the complete launcher cycle.
   if (loaded?.guided === true) {
-    beginShellReload(combatState, spec, loaded);
+    const salvo = spec.gun.launcherSalvo;
+    if (salvo) {
+      const shots = (combatState.launcherSalvoShots ?? 0) + 1;
+      combatState.launcherSalvoShots = shots % salvo.rounds;
+      beginShellReload(combatState, spec, loaded);
+      if (combatState.launcherSalvoShots !== 0) {
+        const duration = salvo.intervalS * reloadMultiplier(combatState, true);
+        combatState.reload.t = duration;
+        combatState.reload.totalS = duration;
+        combatState.reload.kind = 'intraClip';
+      }
+    } else beginShellReload(combatState, spec, loaded);
     return;
   }
   const magazine = combatState.magazine;

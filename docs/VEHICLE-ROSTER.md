@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **230 saved vehicle records**: **191 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **231 saved vehicle records**: **192 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -98,7 +98,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 88 | PROD | `ariete` | C1 Ariete Preserie | Italy | VIII | Modern | Production |
 | 89 | PROD | `ariete_c1` | C1 Ariete Prototype (Serie 1) | Italy | IX | Modern | Production |
 | 90 | PROD | `ariete_c2` | C2 Ariete Prototype | Italy | X | Next Generation | Production |
-| 91 | PROD | `ariete_c1_x` | C1 Ariete | Italy | IX | Modern | Production |
+| 91 | PROD | `ariete_c1_x` | C1 Ariete | Italy | X | Modern | Production |
 | 92 | PROD | `ariete_c2_x` | C2 Ariete | Italy | X | Modern | Production |
 | 93 | PROD | `amx40` | AMX-40 Prototype | France | IX | Cold War | Production |
 | 94 | PROD | `leo1a5` | Leopard 1A5 | Germany | VII | Cold War | Production |
@@ -238,6 +238,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 228 | PROD | `m1a2_sepv2_x` | M1A2 Abrams SEPv2 | USA | X | Modern | Production |
 | 229 | PROD | `m1a2_sepv3_x` | M1A2 Abrams SEPv3 | USA | X | Modern | Production |
 | 230 | PROD | `ua_m1a1_x` | M1A2 Abrams UA | Ukraine | IX | Modern | Production |
+| 231 | PROD | `griffin_viper` | Griffin Viper | USA | X | Modern | Production |
 
 ## Policy ownership
 

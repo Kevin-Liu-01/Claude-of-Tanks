@@ -27,6 +27,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "fv510MilanX": () => import('./interiorFillGroups/fv510MilanX.generated.ts'),
   "germany": () => import('./interiorFillGroups/germany.generated.ts'),
   "griffin50X": () => import('./interiorFillGroups/griffin50X.generated.ts'),
+  "griffinViper": () => import('./interiorFillGroups/griffinViper.generated.ts'),
   "italy": () => import('./interiorFillGroups/italy.generated.ts'),
   "jagdpanzerE100X": () => import('./interiorFillGroups/jagdpanzerE100X.generated.ts'),
   "japan": () => import('./interiorFillGroups/japan.generated.ts'),

@@ -12,7 +12,20 @@ import {capturePrimaryHull,assertC2PrimaryHullDelta,assertC2ReceivingClearance} 
 
 const near=(a,b,e,label)=>assert(Number.isFinite(a)&&Math.abs(a-b)<=e,`${label}: ${a} != ${b} ±${e}`);
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
-function stock(root){const list=[];root.traverse(o=>{if(o.isMesh&&!o.userData.shadowOnly&&!o.userData.authoredShadowProxy&&!o.userData.vehicleMarking&&!o.name.startsWith('muzzleBoreShadowFallback')&&!(o.userData.mobileStaticBatch&&o.userData.coplanarDepthLayer===28))list.push(o);});return list;}
+function stock(root){
+  const list=[];
+  root.traverse(o=>{
+    if(!o.isMesh||o.userData.shadowOnly||o.userData.authoredShadowProxy||o.userData.vehicleMarking)return;
+    // LOW merges the same decorative muzzle shading meshes under a new name.
+    // Keep the existing authored-stock probe invariant across both qualities.
+    for(let owner=o;owner;owner=owner.parent)
+      if(owner.name.startsWith('muzzleBoreShadowFallback'))return;
+    if(o.userData.mobileStaticBatch&&o.userData.coplanarDepthLayer===28)return;
+    list.push(o);
+  });
+  return list;
+}
+
 function ray(t,from,dir,owner='hull',targets=stock(t.root),far=10){
   const frame=t.root.getObjectByName(owner==='turret'?'rig_turret':'rig_hull');
   const origin=new T.Vector3(...from).multiplyScalar(S);
@@ -29,25 +42,47 @@ function footprintAdapter(){
     conform:(frame,sampler,pitch,roll,dt)=>{conformFrame={pos:{...frame.pos},yaw:frame.yaw,pitch,roll,dt};sampled=sampler(frame.pos.x+1.18,frame.pos.z+2.02);return true;}};
   const P={hullG,turretG,gunG,recoilG,gear,muzzleZ:5,topY:2,scaleAllBuckets(){},scaleDecals(){}};
   enlargeArieteXFamily(P);
-  const state={pos:{x:11.2,y:2.24,z:22.4},yaw:.3,visualPitch:.1,visualRoll:.2},before=structuredClone(state);let sampledAt;
-  assert(gear.conform(state,(x,z)=>{sampledAt=[x,z];return 3.36;},.15,.25,1/60));
+  const state={pos:{x:10*S,y:2*S,z:20*S},yaw:.3,visualPitch:.1,visualRoll:.2},before=structuredClone(state);let sampledAt;
+  assert(gear.conform(state,(x,z)=>{sampledAt=[x,z];return 3*S;},.15,.25,1/60));
   assert.deepEqual(state,before,'adapter does not mutate authoritative tank state');
   for(const [key,value] of Object.entries({x:10,y:2,z:20}))near(conformFrame.pos[key],value,1e-12,'source state '+key);
   assert.deepEqual({...conformFrame,pos:null},{pos:null,yaw:.3,pitch:.15,roll:.25,dt:1/60});
-  near(sampledAt[0],11.2+1.18*S,1e-12,'expanded physical footprint X');
-  near(sampledAt[1],22.4+2.02*S,1e-12,'expanded physical footprint Z');near(sampled,3,1e-12,'terrain height source conversion');
-  gear.update(2.24,3.36,.02);gear.updateSurface(2.24,3.36);
+  near(sampledAt[0],(10+1.18)*S,1e-12,'expanded physical footprint X');
+  near(sampledAt[1],(20+2.02)*S,1e-12,'expanded physical footprint Z');near(sampled,3,1e-12,'terrain height source conversion');
+  gear.update(2*S,3*S,.02);gear.updateSurface(2*S,3*S);
   near(updateArgs[0],2,1e-12,'source wheel scroll');near(updateArgs[1],3,1e-12,'source right scroll');
   near(surfaceArgs[0],2,1e-12,'source surface left');near(surfaceArgs[1],3,1e-12,'source surface right');
 }
 function samePrimary(c1,c2){
-  for(const name of ['turret','gun','gunDark','gunMount']){
+  for(const name of ['turret','gunMount']){
     const a=c1.root.getObjectByName(name),b=c2.root.getObjectByName(name);
     assert(a&&b,`retained ${name}`);
     for(const key of ['position','normal'])assert.equal(hash(a.geometry.attributes[key]),hash(b.geometry.attributes[key]),`${name} ${key} retained`);
     assert.equal(a.geometry.index?hash(a.geometry.index):null,b.geometry.index?hash(b.geometry.index):null,`${name} topology retained`);
     assert.deepEqual(a.matrixWorld.toArray(),b.matrixWorld.toArray(),`${name} placement retained`);
   }
+}
+function outwardWheels(t) {
+  for(const side of [-1,1]) {
+    const geometry=t.root.getObjectByName(`arieteSuppliedRecessedWheelFace${side}`).geometry;
+    const p=geometry.attributes.position,index=geometry.index;
+    const v=i=>new T.Vector3().fromBufferAttribute(p,index?index.getX(i):i);
+    let volume=0;
+    for(let i=0;i<(index?.count??p.count);i+=3)volume+=v(i).dot(v(i+1).cross(v(i+2)))/6;
+    assert(volume>0,'closed recessed wheel stock has outward winding');
+  }
+}
+function reactiveCassettes(t) {
+  const rows=t.root.userData.eraVisualBindingReceipt.plates.filter(p=>p.name.startsWith('c2_'));
+  assert.equal(rows.length,20);
+  assert(rows.every(p=>p.registered&&p.ownerMatches&&p.partCount>0&&p.fittedSurfaces.length>0));
+  const digest=()=>stock(t.root).map(m=>hash(m.geometry.attributes.position)).join(':');
+  const before=digest();
+  for(const row of rows)assert.equal(t.stripEra(row.name),true,'each actual cassette can be removed');
+  assert.notEqual(digest(),before,'spent ERA removes real geometry');
+  const spent=digest();for(const row of rows)t.stripEra(row.name);
+  assert.equal(digest(),spent,'spending is idempotent');
+  t.resetEra();assert.equal(digest(),before,'reset restores the exact original ERA stock');
 }
 function gear(t){
   const road=t.root.getObjectByName('gearRoadWheelDiscs'),rollers=t.root.getObjectByName('gearReturnRollerTires'),m=new T.Matrix4(),p=new T.Vector3();
@@ -68,15 +103,14 @@ function opticsAndSeats(t,all=stock(t.root)){
     const hit=ray(t,[x,y,z],[0,0,-1],'turret',all);
     assert.equal(hit?.object.name,'turretGlass','actual exposed sight first hit');near(hit.point.z,face,2e-5,'finite optical surface');
   }
-  for(const [x,z,bottom]of[[.790,.430,2.023],[-.81,.720,1.877],[.830,-.340,2.001]]){
+  for(const [x,z,bottom]of[[.790,.430,2.023],[-.81,.720,1.877]]){
     const roof=ray(t,[x,2.2,z],[0,-1,0],'turret',primary)?.point.y;
     const lower=ray(t,[x,1.8,z],[0,1,0],'turret',detail)?.point.y;
     near(lower,bottom,2e-5,'actual fitting underside');assert(roof>=lower&&roof-lower<.04,'foot embeds in actual roof');
   }
-  const mg=t.root.getObjectByName('arieteC2CommanderM2');assert(mg&&mg.parent.name==='rig_turret');
-  const mgMeshes=stock(mg).filter(o=>all.includes(o)),footRay=[.95,2.097,-.340];
-  assert(ray(t,footRay,[-1,0,0],'turret',mgMeshes,.15),'actual MG lower flange');
-  assert(ray(t,footRay,[-1,0,0],'turret',detail,.15),'actual receiving foot at flange height');
+  const mg=t.root.getObjectByName('arieteC2CommanderK2');assert(mg&&mg.parent.name==='rig_turret');
+  assert(mg.position.distanceTo(new T.Vector3(.830*S,2.092*S-D.turretPivot[1],-.340*S-D.turretPivot[2]))<1e-10,'compact K2 roof fitting exact seated foot');
+  assert(!t.root.getObjectByName('rig_auxiliaryMuzzle'),'decorative fitting has no playable muzzle');
   assert.equal(t.root.userData.combatGeometryParts.filter(p=>p.module==='optics').length,19,'three modern surfaces plus16 retained hatch prisms');
   const panel=ray(t,[1.9,1.1,-1.70],[-1,0,0],'hull',all);assert.equal(panel?.object.name,'hullExternalArmor');near(panel.point.x,1.805,1e-5,'finite PSO face');
   assert(!ray(t,[1.9,1.1,-1.88],[-1,0,0],'hull',all.filter(o=>o.name==='hullExternalArmor'),.09),'real panel gap remains air');
@@ -94,7 +128,7 @@ function bore(t,complete=false){
   }
   }
   const start=gun.localToWorld(new T.Vector3(0,0,D.muzzleZ-D.trunnion[2]+.01));
-  const hit=new T.Raycaster(start,new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld),0,2).intersectObjects(targets,false)[0];
+  const hit=new T.Raycaster(start,new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld),0,3).intersectObjects(targets,false)[0];
   assert.equal(hit?.object.name,'gunDark',`bore floor obstruction at yaw${t.root.getObjectByName('rig_turret').rotation.y}, pitch${gun.rotation.x}, hit${hit?.point.toArray()}`);near(hit.distance,.01+D.muzzleZ-D.boreFloorZ,2e-5,'real original long blind bore');
 }
 function census(t){let triangles=0,draws=0;const resources=new Set();t.root.traverse(o=>{if(!o.isMesh)return;resources.add(o.geometry.uuid);let visible=true;for(let p=o;p;p=p.parent)visible&&=p.visible;
@@ -146,7 +180,7 @@ function lodPresentation(t,id,quality){
 
 
 function commanderFittingCrossings(t){
-  const group=t.root.getObjectByName('arieteC2CommanderM2'),parts=stock(group),bounds=new T.Box3().setFromObject(group);
+  const group=t.root.getObjectByName('arieteC2CommanderK2'),parts=stock(group),bounds=new T.Box3().setFromObject(group);
   const targets=stock(t.root).filter(o=>!parts.includes(o)&&new T.Box3().setFromObject(o).intersectsBox(bounds));
   const rays=[];
   for(const mesh of parts){
@@ -162,19 +196,39 @@ function commanderFittingCrossings(t){
       }
     }
   }
-  assert(rays.length>3000,'actual whole commander fitting edge census');
+  assert(rays.length>150,'actual whole commander fitting edge census');
   for(const ray of rays){const hit=ray.intersectObjects(targets,false)[0];if(hit)return{owner:hit.object.name,point:hit.point.toArray()};}
   return null;
 }
 function commanderClearance(t){
-  const gun=t.root.getObjectByName('arieteC2CommanderM2'),turret=t.root.getObjectByName('rig_turret'),originalYaw=turret.rotation.y;
+  const gun=t.root.getObjectByName('arieteC2CommanderK2'),turret=t.root.getObjectByName('rig_turret');
+  const before=gun.position.clone(),rest=gun.rotation.clone();
   for(const yaw of [0,.7,Math.PI]){
     turret.rotation.y=yaw;t.root.updateMatrixWorld(true);
-    assert.equal(commanderFittingCrossings(t),null,'complete commander receiver/shields/barrel clear nearby actual stock');
+    assert.equal(commanderFittingCrossings(t),null,'decorative receiver and barrel clear nearby actual stock');
+    assert(gun.rotation.equals(rest),'decorative fitting has no independent aiming');
   }
-  turret.rotation.y=0;gun.rotation.y=.14;t.root.updateMatrixWorld(true);
-  assert(commanderFittingCrossings(t),'old parked angle must detect actual panorama collision');
-  gun.rotation.y=.28;turret.rotation.y=originalYaw;t.root.updateMatrixWorld(true);
+  turret.rotation.y=0;gun.position.z=.430*S-D.turretPivot[2];t.root.updateMatrixWorld(true);
+  assert(commanderFittingCrossings(t),'moving roof fitting into panoramic sight must detect collision');
+  gun.position.copy(before);t.root.updateMatrixWorld(true);
+}
+
+function commanderDonor(t,options){
+  const donor=createTank('k2_x',null,options);
+  try{
+    const actual=t.root.getObjectByName('arieteC2CommanderK2');
+    const original=donor.root.getObjectByName('fitting_browningDerived_m2');
+    assert(actual&&original,'both actual K2-style fittings exist');
+    near(actual.scale.x,.70,1e-12,'installed roof fitting is 70% donor size');
+    for(const mesh of stock(original)){
+      const counterpart=actual.getObjectByName(mesh.name);
+      assert(counterpart,`same K2 fitting component ${mesh.name}`);
+      assert.equal(hash(counterpart.geometry.attributes.position),hash(mesh.geometry.attributes.position),
+        'exact K2 receiver, connected barrel, mount and ammunition housing');
+    }
+    assert(getSpec('ariete_c2_x').gun.shells.every(s=>s.caliberMm===120),
+      'decorative roof fitting cannot be selected as a playable weapon');
+  }finally{donor.dispose();}
 }
 
 function poses(t){
@@ -187,27 +241,27 @@ function poses(t){
   yaw.rotation.y=0;gun.rotation.x=0;t.root.updateMatrixWorld(true);assert.deepEqual(census(t),before,'poses create no new geometry/resources');
 }
 function negatives(t){
-  const glass=t.root.getObjectByName('turretGlass'),detail=t.root.getObjectByName('turretDetail'),mg=t.root.getObjectByName('arieteC2CommanderM2');
+  const glass=t.root.getObjectByName('turretGlass'),detail=t.root.getObjectByName('turretDetail'),mg=t.root.getObjectByName('arieteC2CommanderK2');
   for(const object of [glass,detail,mg]){object.position.x+=.70;t.root.updateMatrixWorld(true);assert.throws(()=>opticsAndSeats(t),undefined,`moved ${object.name} must fail actual stock proof`);object.position.x-=.70;t.root.updateMatrixWorld(true);}
 }
 const BARREL_STATIONS=[[1.95976235,.12248],[2.53507449,.12248],[2.71507,.09590],
   [3.23571,.09590],[3.23571,.11650],[3.73028,.11650],[3.73028,.09590],
   [3.84046,.08520],[4.16597,.08466],[4.17774,.09590],[4.23998,.09590],
   [4.28288,.07910],[4.87754,.06980],[5.028094113,.06980]];
-function physicalBarrelRadius(z){
+function physicalBarrelRadius(z,factor=1){
   for(let i=1;i<BARREL_STATIONS.length;i++){
     const [a,ra]=BARREL_STATIONS[i-1],[b,rb]=BARREL_STATIONS[i];
-    if(b>a&&z>=a&&z<=b)return(ra+(rb-ra)*(z-a)/(b-a))*S*Math.cos(Math.PI/48);
+    if(b>a&&z>=a&&z<=b)return(ra+(rb-ra)*(z-a)/(b-a))*S*factor*Math.cos(Math.PI/48);
   }
   return 0;
 }
 function barrelHullHits(t,targets){
-  const gun=t.root.getObjectByName('rig_gun'),mouth=D.muzzleZ-D.trunnion[2],length=(5.028094113-1.95976235)*S;
+  const gun=t.root.getObjectByName('rig_gun'),modern=!!t.root.getObjectByName('arieteC2CommanderK2'),stretch=modern?1.22:1,radial=modern?1.18:1,mouth=getSpec(modern?'ariete_c2_x':'ariete_c1_x').armor.gunBarrel.lengthM,length=(5.028094113-1.95976235)*S*stretch;
   const direction=new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld);
   for(const radius of [.061,.071,.091,.111,.131])for(let i=0;i<12;i++){
     const angle=(i+.2)*Math.PI/6,origin=gun.localToWorld(new T.Vector3(Math.cos(angle)*radius,Math.sin(angle)*radius,mouth-.001));
     const hits=new T.Raycaster(origin,direction,0,length-.002).intersectObjects(targets,false);
-    const hit=hits.find(h=>radius<=physicalBarrelRadius(5.028094113-(h.distance+.001)/S));
+    const hit=hits.find(h=>radius<=physicalBarrelRadius(5.028094113-(h.distance+.001)/(S*stretch),radial));
     if(hit)return{mesh:hit.object.name,radius,distanceBehindMuzzle:hit.distance+.001,world:hit.point.toArray()};
   }
   return null;
@@ -231,10 +285,10 @@ function mechanicalClearance(t,id){
 }
 
 function obstructedBoreNegative(t){
-  // Reintroduce the authenticated old hidden lower MRS box. A centerline-only
-  // test misses it; the upper wall witness inside that station must reject it.
+  // Place the prior class of hidden MRS intrusion at the enlarged muzzle.
+  // A centerline-only test misses it; the upper wall witness must reject it.
   const g=new T.BoxGeometry(.089*S,.014*S,.126165*S),m=new T.Mesh(g,t.root.getObjectByName('gun').material);
-  m.position.set(0,1.70265*S-D.trunnion[1],4.94062*S-D.trunnion[2]);
+  m.position.set(0,.054,D.barrelLengthM-.10);
   const recoil=t.root.getObjectByName('rig_recoil');recoil.add(m);t.root.updateMatrixWorld(true);
   try{assert.throws(()=>bore(t),undefined,'inherited hidden bore intrusion must fail');}
   finally{recoil.remove(m);g.dispose();}
@@ -246,7 +300,8 @@ const costs=[],lodCosts=[];let clearancePoses=0;
 for(const quality of ['high','low']){
   const opts={quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242};
   const first=capturePrimaryHull(createTank,'ariete_c1_x',opts),second=capturePrimaryHull(createTank,'ariete_c2_x',opts),c1=first.tank,c2=second.tank;
-  try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);assertC2PrimaryHullDelta(first.stocks,second.stocks);assertC2ReceivingClearance(c2,first.stocks,second.stocks);clearancePoses+=mechanicalClearance(c1,'ariete_c1_x');clearancePoses+=mechanicalClearance(c2,'ariete_c2_x');gear(c2);bore(c2,true);poses(c2);negatives(c2);obstructedBoreNegative(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'ariete_c1_x',quality),...lodPresentation(c2,'ariete_c2_x',quality));
+  commanderDonor(c2,opts);
+  try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);outwardWheels(c1);outwardWheels(c2);reactiveCassettes(c2);assertC2PrimaryHullDelta(first.stocks,second.stocks);assertC2ReceivingClearance(c2,first.stocks,second.stocks);clearancePoses+=mechanicalClearance(c1,'ariete_c1_x');clearancePoses+=mechanicalClearance(c2,'ariete_c2_x');gear(c2);bore(c2,true);poses(c2);negatives(c2);obstructedBoreNegative(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'ariete_c1_x',quality),...lodPresentation(c2,'ariete_c2_x',quality));
     const c=census(c2);assert(c.triangles<=100000,'C2 frozen whole-model HIGH ceiling');assert(c.draws<=65,'merged MBT batches');costs.push({quality,triangles:c.triangles,draws:c.draws});
   }finally{c1.dispose();c2.dispose();first.stocks.forEach(g=>g.dispose());second.stocks.forEach(g=>g.dispose());}
 }

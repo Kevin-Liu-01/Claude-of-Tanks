@@ -22,7 +22,9 @@ function face(side: -1 | 1, segments: number): THREE.BufferGeometry {
     [.13432, .065], [.105558, .073], [.105558, .21406], [.188827, .237],
     [.188827, .261], [.179827, .261], [.096558, .21406],
     [.096558, .073], [.200717, 0], [.209717, 0]];
-  const geometry = turned(rows, segments);
+  // The dish contour runs from its outer axle tip toward its back. Reverse
+  // that contour so the closed stock faces outward, like the wheel core.
+  const geometry = turned([...rows].reverse(), segments);
   if (side < 0) geometry.rotateY(Math.PI);
   return geometry;
 }
@@ -30,6 +32,9 @@ function face(side: -1 | 1, segments: number): THREE.BufferGeometry {
 export function addArieteXSuppliedGear(P: TankBuilderPort, modern = false): void {
   const wheelZs = [-2.055227, -1.376039, -.696431, -.016822, .662787, 1.342395, 2.021583];
   const segments = modern ? (P.q ? 32 : 12) : (P.q ? 40 : 24);
+  // C2's internal drum is enclosed by the tire and recessed face stock.
+  // Keep the visible 32-sided dish; avoid spending those facets on the core.
+  const coreSegments = modern && P.q ? 16 : segments;
   const idler = { z: 2.773106, y: .6741414, r: .28975886, trackR: .2744 };
   const sprocket = { z: -2.621708, y: .7246074, r: .285, trackR: .2752,
     toothTipRadiusM: .340225 };
@@ -47,7 +52,7 @@ export function addArieteXSuppliedGear(P: TankBuilderPort, modern = false): void
     wheelW: .377654, wheelZs, xc: D.trackX,
     roadWheelOutsetLeftM: .00336448, roadWheelOutsetRightM: .00336448,
     wheelCoreGeometry: { disc: turned([[-.111, 0], [-.111, .241],
-      [.106, .241], [.106, 0], [-.111, 0]], segments) },
+      [.106, .241], [.106, 0], [-.111, 0]], coreSegments) },
     wheelTireBands: [-.116491, .116491].map(centerM => ({
       centerM, widthM: .14467, innerRadiusM: .260,
     })),

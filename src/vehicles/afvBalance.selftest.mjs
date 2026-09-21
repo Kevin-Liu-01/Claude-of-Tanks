@@ -34,13 +34,14 @@ const EXPECTED = Object.freeze({
   ajax_x:            { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
   cv90_mkiv_x:       { hp: 2825, speed: 74, reverse: 42, traverse: 52, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
   // 2026-09-19 owner: missile-primary Object concept trades protection for handling.
-  object695_x:      { hp: 2150, speed: 84, reverse: 36, traverse: 60, damage: 560, pen: [1050, 1050, 1050], reload: 5.8, sound: 'konkurs-launch', missile: [560, 'konkurs-launch'] },
+  object695_x:      { hp: 2150, speed: 84, reverse: 36, traverse: 60, damage: 320, pen: [880, 880, 880], reload: 14, sound: 'konkurs-launch', missile: [320, 'konkurs-launch'] },
+  griffin_viper:    { hp: 2050, speed: 68, reverse: 30, traverse: 46, damage: 140, pen: [650, 650, 650], reload: 1, sound: 'konkurs-launch', missile: [140, 'konkurs-launch'] },
   namer_ifv:           { hp: 2650, speed: 54, reverse: 20, traverse: 34, damage: 70, pen: [180, 164, 148], reload: 0.35, sound: 'mk30-2', missile: null },
   ares_apc_x:          { hp: 1800, speed: 70, reverse: 30, traverse: 45, damage: 24, pen: [34, 24, 17], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 30, 'complete selectable IFV fleet');
+assert.equal(ifvIds.length, 31, 'complete selectable IFV fleet');
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 
@@ -79,8 +80,8 @@ for (const id of ifvIds) {
     assert.ok(guided, `${id}: guided weapon exists`);
     assert.equal(guided.dmg, expected.missile[0], `${id}: guided damage`);
     assert.equal(guided.soundProfile, expected.missile[1], `${id}: launcher report`);
-    assert.ok(id === 'object695_x' ? guided.reloadS === 5.8 : guided.reloadS >= 2 && guided.reloadS <= 3,
-      `${id}: guided launcher cycles independently in 2-3 seconds`);
+    assert.ok(spec.gun.primaryGuided ? guided.reloadS === expected.reload : guided.reloadS >= 2 && guided.reloadS <= 3,
+      `${id}: primary rack uses its authored cycle; auxiliary launcher remains independent`);
     missileDamage.add(guided.dmg);
   } else {
     assert.equal(guided, undefined, `${id}: gun-only vehicle stays gun-only`);

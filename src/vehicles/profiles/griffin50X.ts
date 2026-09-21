@@ -7,6 +7,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { GRIFFIN_HULL_LENGTH_SCALE as H, lengthenGriffinHull, reduceGriffinTurret } from './griffinProportions.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
 
@@ -119,11 +120,11 @@ function gear(P:TankBuilderPort):void {
       {centerM:.1424,widthM:.2622,innerRadiusM:.250},
     ],
     wheelCoreGeometry:{disc:core},
-    wheelZs:[-1.4585,-.7285,.0015,.7315,1.4885,2.2185],
+    wheelZs:[-1.4585,-.7285,.0015,.7315,1.4885,2.2185].map(z=>z*H),
     xc:1.4345,trackW:.575,trackTh:.032,
     trackShoeDimensions:{padHeight:.034,grouserHeight:.008,webHeight:.026,hornHeight:.08,pinRadius:.014},
-    sprocket:{z:2.8175,y:.9715,r:.3665},idler:{z:-1.9865,y:.997,r:.2615},
-    rollers:[-1.10,.12,1.38,2.14].map(z=>({z,y:1.18,r:.096})),
+    sprocket:{z:2.8175*H,y:.9715,r:.3665},idler:{z:-1.9865*H,y:.997,r:.2615},
+    rollers:[-1.10,.12,1.38,2.14].map(z=>({z:z*H,y:1.18,r:.096})),
     rollerR:.096,topY:1.31,botY:.054,coveredTop:true,paintedEnds:true,
     arms:true,dedupeLoopPoints:true,fitLoadedRun:true,
   });
@@ -448,13 +449,20 @@ function turretGunCorridor(P: TankBuilderPort): void {
   }
 }
 
+export function buildGriffin50Chassis(P: TankBuilderPort): void {
+  P.additionalShadowSources = { hull: ['hullExternalArmor'] };
+  P.hullG.position.set(0, 0, 0);
+  hull(P); lengthenGriffinHull(P); gear(P);
+}
+
 export function buildGriffin50X(P:TankBuilderPort):void {
   // Measured fixed armor extends the shadow silhouette; omit small fittings.
   P.additionalShadowSources = {
     hull: ['hullExternalArmor'],
   };
   P.hullG.position.set(0,0,0);P.turretG.position.set(0,2.07,-.36);P.gunG.position.set(0,.53,1.10);
-  hull(P);gear(P);turret(P);P.topY=3.01-2.07;
+  buildGriffin50Chassis(P);turret(P);P.topY=3.01-2.07;
   preserveSourceStudyGunMountAppearance(P);
+  reduceGriffinTurret(P);
   P.hullG.userData.xRebuild={candidate:'griffin50_x',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

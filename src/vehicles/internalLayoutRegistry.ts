@@ -37,6 +37,9 @@ type InternalCrewTuple = readonly [
 ];
 
 export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
+  ownerViper: Object.freeze({ title: 'Owner-directed modern American missile carrier, 2026-09-21',
+    url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/griffin_viper.md',
+    kind: 'owner-authored-concept' }),
   ownerTosTagil: Object.freeze({
     title: 'Owner-directed TOS-1A launcher on T-90MS Tagil chassis, 2026-09-20',
     url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/tos1a_tagil.md',
@@ -450,6 +453,12 @@ const LAYOUTS = Object.freeze({
       transmission: { placement: 'front', form: 'integratedFinalDrive' },
       ammoRack: { placement: 'mixed', form: 'hullAndTurretReadyRacks' },
     }) },
+  conceptViper: { confidence: 'owner-directed', sources: ['ownerViper'], crew: crew(
+    ['driver','hull','frontLeft'], ['gunner','hull','midRight'], ['commander','hull','midLeft'],
+  ), systems: systems({ engine: { placement:'front', form:'frontDieselPowerpack' },
+    transmission: { placement:'front', form:'integratedFinalDrive' },
+    ammoRack: { placement:'hull', form:'protectedMissileBins' },
+    missileRack: { placement:'turret', form:'sixteenCanisterLauncher' } }) },
   conceptMissilePrototype: { confidence: 'owner-directed', sources: ['ownerMissileConcepts'], crew: crew(
     ['driver', 'hull', 'frontCenter'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'protectedReadyBins' }, feedSystem: { placement: 'turret', form: 'cannonBeltFeed' }, missileRack: { placement: 'turret', form: 'eightCanisterLauncher' } }) },
@@ -480,6 +489,7 @@ const LAYOUTS = Object.freeze({
 
 const IDS_BY_LAYOUT = Object.freeze({
   conceptRocketBattery: ['tos1a_tagil'],
+  conceptViper: ['griffin_viper'],
   tigerI: ['tiger1'],
   panther: ['panther_g'],
   heavyWw2Six: ['kv2'],

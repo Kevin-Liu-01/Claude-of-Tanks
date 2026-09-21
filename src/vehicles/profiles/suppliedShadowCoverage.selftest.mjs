@@ -108,6 +108,10 @@ for (const quality of ['high', 'low']) for (const id of ids) {
     if (id === 'ajax_x' || id === 'griffin50_x') {
       const owner = root.getObjectByName('rig_hull');
       const direction = new THREE.Vector3(.6143820296592883, -.7708333333333333, .16837664283966375);
+      // The owner stretched Griffin's hull Z by 1.10. Apply the inverse
+      // transpose to this fixed caliper direction (without renormalizing),
+      // preserving the original source-stock support values and tolerances.
+      if (id === 'griffin50_x') direction.z /= 1.10;
       const baseline = ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber', 'hullFixedPaintedBodywork'].map(name => owner.getObjectByName(name));
       const original = support(baseline, owner, direction);
       const armor = support([owner.getObjectByName('hullExternalArmor')], owner, direction);

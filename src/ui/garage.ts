@@ -2412,6 +2412,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`;
   }
 
+  function magazineDescription(gun: FleetGunSpec, reloadS: number, reloadMultiplier: number): string {
+    const {autoloader, launcherSalvo: salvo} = gun;
+    return autoloader
+      ? `<div class="magazine-spec"><span>${t('garage.stat.magazineAutoloader')}</span>` +
+        `<b>${autoloader.magazineSize} ${t('garage.stat.rounds')} &middot; ${autoloader.intraClipS.toFixed(1)} ${t('garage.stat.cycle')} &middot; ` +
+        `${reloadS.toFixed(1)} ${t('garage.stat.fullReload')}</b></div>`
+      : salvo ? `<div class="magazine-spec"><span>${t('garage.stat.missileSalvo')}</span><b>` +
+        `${salvo.rounds} ${t('garage.stat.rounds')} &middot; ${(salvo.intervalS * reloadMultiplier).toFixed(2)} ${t('garage.stat.cycle')} &middot; ` +
+        `${reloadS.toFixed(1)} ${t('garage.stat.fullReload')}</b></div>` : '';
+  }
+
   function renderStats(spec: GarageTankSpec): void {
     if (technicalModal.isOpen()) technicalModal.close({ restoreFocus: false, immediate: true });
     statsEl.querySelectorAll<HTMLElement>('.cot-info-trigger').forEach((button) => {
@@ -2448,11 +2459,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const stockReloadS = autoloader?.fullReloadS || spec.gun.reloadS;
     const reloadS = stockReloadS * eqM.reload;
     const reloadLabel = autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload');
-    const magazineSpec = autoloader
-      ? `<div class="magazine-spec"><span>${t('garage.stat.magazineAutoloader')}</span>` +
-        `<b>${autoloader.magazineSize} ${t('garage.stat.rounds')} &middot; ${autoloader.intraClipS.toFixed(1)} ${t('garage.stat.cycle')} &middot; ` +
-        `${reloadS.toFixed(1)} ${t('garage.stat.fullReload')}</b></div>`
-      : '';
+    const magazineSpec = magazineDescription(spec.gun, reloadS, eqM.reload);
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
     const vrBase = viewRangeOf(spec);
     const vrMove = vrBase * equipViewMult(eqIds, true);   // always-on items

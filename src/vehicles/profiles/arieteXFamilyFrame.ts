@@ -2,7 +2,7 @@
 // metre datums are boot-light; the original source frame remains immutable.
 import { ARIETE_SUPPLIED_X_DATUMS as SOURCE } from './arieteXSuppliedFrame.ts';
 
-export const ARIETE_X_FAMILY_SCALE = 1.12;
+export const ARIETE_X_FAMILY_SCALE = 1.12 * 1.10;
 const S = ARIETE_X_FAMILY_SCALE;
 const point = (p: readonly number[]): [number, number, number] =>
   [p[0] * S, p[1] * S, p[2] * S];
@@ -25,7 +25,12 @@ export const ARIETE_C1_X_DATUMS = Object.freeze({
 
 export const ARIETE_C2_X_DATUMS = Object.freeze({
   ...ARIETE_C1_X_DATUMS,
-  dims: { ...ARIETE_C1_X_DATUMS.dims },
+  dims: { ...ARIETE_C1_X_DATUMS.dims,
+    overallLengthM: ARIETE_C1_X_DATUMS.dims.overallLengthM + ARIETE_C1_X_DATUMS.barrelLengthM * .22 },
+  muzzleZ: ARIETE_C1_X_DATUMS.trunnion[2] + ARIETE_C1_X_DATUMS.barrelLengthM * 1.22,
+  barrelLengthM: ARIETE_C1_X_DATUMS.barrelLengthM * 1.22,
+  boreFloorZ: ARIETE_C1_X_DATUMS.trunnion[2] + (ARIETE_C1_X_DATUMS.boreFloorZ - ARIETE_C1_X_DATUMS.trunnion[2]) * 1.22,
+  barrelRadiusM: ARIETE_C1_X_DATUMS.barrelRadiusM * 1.18,
   trackWidthM: .6497973 * S,
 });
 
@@ -39,5 +44,6 @@ export const ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG = Object.freeze([
   ...PITCH_FRONT_AND_SHOULDER, [170, 1], [180, 1],
 ] as const);
 export const ARIETE_C2_X_GUN_PITCH_BY_YAW_DEG = Object.freeze([
-  ...PITCH_FRONT_AND_SHOULDER, [160, 1], [170, 2], [180, 2],
+  [0,-8], [15,-8], [22,-6.5], [30,-5], [35,-4], [42,-6], [47,-8], [52,-9],
+  [120,-9], [130,-7], [135,-5], [145,0], [160,2], [170,3], [180,3],
 ] as const);

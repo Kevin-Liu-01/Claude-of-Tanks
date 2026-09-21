@@ -30,6 +30,8 @@ export interface AutoloaderSpec {
 
 export interface FleetGunSpec extends Record<string, RuntimeValue> {
   autoloader?: AutoloaderSpec;
+  /** Guided rack salvo: short cycling inside a group, then its normal reload. */
+  launcherSalvo?: { rounds: number; intervalS: number };
   /** Visual-only radial tessellation for unusually small cannon mouths. */
   muzzleBoreSegments?: number;
   /** Missile canister mouths select a launch origin without a cannon stroke. */

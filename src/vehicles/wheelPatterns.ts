@@ -78,7 +78,7 @@ export const WHEEL_PATTERN_IDS = Object.freeze(
 const FAMILY_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.freeze([
   // Supplied IFV families retain their measured wheel vocabulary. Resolve
   // these before shorter MBT names: k21 is not k2, and type100 is not type10.
-  [/^(?:aft10|ares_apc|griffin50|k21)(?:_|$)/, 'armored-hub-six'],
+  [/^(?:aft10|ares_apc|griffin50|griffin_viper|k21)(?:_|$)/, 'armored-hub-six'],
   [/^ajax(?:_|$)/, 'plain-dish-twelve'],
   [/^sabra(?:_|$)/, 'deep-dish-eight'],
   // Type 100's authored Chinese IFV and the T-90MS-based rocket carrier

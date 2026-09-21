@@ -33,9 +33,10 @@ assert.equal(packageJson.scripts.posttest, expectedScripts.post);
 // These independent whole-fleet CPU scans are long enough to exhaust the
 // runner's 45-second admission window. Keep them together, within their
 // existing lifecycle, so four workers do useful work before draining.
-assert.deepEqual(SELFTEST_SUITES.pre.slice(0,4),[
+assert.deepEqual(SELFTEST_SUITES.pre.slice(0,5),[
   'src/vehicles/fleetLazy.selftest.mjs',
   'src/vehicles/wheelQuality.selftest.mjs',
+  'tools/wheel-axial-extents.selftest.mjs',
   'src/vehicles/profiles/machineGunAttachment.selftest.mjs',
   'src/vehicles/eraGameplayRegistration.selftest.mjs',
 ]);

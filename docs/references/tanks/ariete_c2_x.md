@@ -1,6 +1,23 @@
 # C2 Ariete — definitive-family upgrade
 
-Status: qualified. Construction, independent visual review and the complete
+## Current owner upgrade — 2026-09-21
+
+The definitive C2 now uses the C1's additional 10% enlargement (1.232 times
+the original source frame). Its main barrel is another 22% longer and 18%
+thicker externally than the enlarged C1's, retaining a 120 mm physical bore.
+The roof gun reuses the K2 Black Panther X's two-tone M2 fitting at 70% of its
+installed size. It is decorative only; APFSDS, HEAT and HE remain the three
+selectable main-cannon ammunition types. Twenty independent ERA blocks
+cover the upper glacis and turret cheeks and disappear when spent. The loader
+GPMG remains. These are explicitly owner-authored game additions, not claims
+about the production C2's weapons. The measured gun-depression curve accounts
+for the larger barrel and ERA. The [upgrade packet](../../research/missile-roles-ariete-upgrade-20260921.md)
+records current checks and publication status; the earlier record below is
+historical. The frozen concept JSON describes the current geometry.
+
+## Earlier family revision
+
+Status of the earlier 1.12-scale revision: qualified. Construction, independent visual review and the complete
 targeted release pass. Source comparison is not
 applicable: no supplied C2 3D model exists for this explicitly requested
 first-party derivative. A missing comparison is not a perfect source score.

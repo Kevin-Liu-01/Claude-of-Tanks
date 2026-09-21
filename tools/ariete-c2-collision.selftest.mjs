@@ -62,7 +62,9 @@ function stockRays(stocks,cells){
     }
   }}finally{material.dispose();}return count;
 }
-const occupied=(cells,a,b)=>cells.some(c=>interval(c,V(a),V(b)));
+// Historical clearance witnesses follow the owner-requested uniform 10% growth.
+const oldFrame=p=>V(p).multiplyScalar(1.10);
+const occupied=(cells,a,b)=>cells.some(c=>interval(c,oldFrame(a),oldFrame(b)));
 function realAir(cells){
   for(const side of [-1,1]){
     assert(!occupied(cells,[side*.955,1.12,3.18],[side*.982,1.12,3.18]),'wider-shoe end-wrap relief stays real air');
@@ -83,7 +85,7 @@ function runtimeRays(captured){
     [[side*1.8,1.12,3.18],[side*.90,1.12,3.18]],
     [[side*1.75,1.19,-1.4],[side*1.66,1.19,-1.4]],
   ]){
-    const from=V(a),to=V(b),native=new T.Raycaster(from,to.clone().sub(from).normalize(),0,from.distanceTo(to)).intersectObjects(meshes);
+    const from=oldFrame(a),to=oldFrame(b),native=new T.Raycaster(from,to.clone().sub(from).normalize(),0,from.distanceTo(to)).intersectObjects(meshes);
     assert(native.length,'measured receiving surface remains');
     const rotation=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),yaw),origin=from.clone().applyQuaternion(rotation),target=to.clone().applyQuaternion(rotation);
     const pose=tankPoseFromState({pos:new T.Vector3(),yaw,visualPitch:0,visualRoll:0,turretYaw:.4,gunPitch:0});

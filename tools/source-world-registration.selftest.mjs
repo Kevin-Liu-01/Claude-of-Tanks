@@ -6,16 +6,16 @@ import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-re
 // including its ground translation. Moving just the mesh scale would drift
 // the source; moving just the candidate would silently invalidate the oracle.
 const originalAriete=JSON.parse(readFileSync(new URL('../docs/research/second-wave-registrations/ariete_c1_x.json',import.meta.url),'utf8'));
-const enlargedAriete=JSON.parse(readFileSync(new URL('../docs/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json',import.meta.url),'utf8'));
+const enlargedAriete=JSON.parse(readFileSync(new URL('../docs/research/second-wave-registrations/ariete_c1_x-tier10-20260921.json',import.meta.url),'utf8'));
 assert.equal(enlargedAriete.sourceSha256,originalAriete.sourceSha256,'same complete raw source');
 assert.deepEqual(enlargedAriete.axes,originalAriete.axes,'no new orientation fit');
-assert.equal(enlargedAriete.scale,originalAriete.scale*1.12,'prescribed uniform enlargement');
-assert.deepEqual(enlargedAriete.translation,originalAriete.translation.map(v=>v*1.12),'ground frame scales with source');
+assert.equal(enlargedAriete.scale,originalAriete.scale*(1.12*1.10),'prescribed uniform enlargement');
+assert.deepEqual(enlargedAriete.translation,originalAriete.translation.map(v=>v*(1.12*1.10)),'ground frame scales with source');
 for(const key of ['includeRoots','exactDuplicateMeshes','omitIslandsBelowY','omitIslandsInside'])
   assert.equal(enlargedAriete[key],undefined,'enlargement never drops source parts');
-assert.deepEqual(SOURCE_WORLD_FRAMES.ariete_c1_x.turret,[0,1.306227824,.328028885].map(v=>v*1.12));
-assert.deepEqual(SOURCE_WORLD_FRAMES.ariete_c1_x.gun,[0,1.651499209,1.3415539].map(v=>v*1.12));
-assert.equal(SOURCE_WORLD_FRAMES.ariete_c1_x.sha256,'1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68');
+assert.deepEqual(SOURCE_WORLD_FRAMES.ariete_c1_x.turret,[0,1.306227824,.328028885].map(v=>v*(1.12*1.10)));
+assert.deepEqual(SOURCE_WORLD_FRAMES.ariete_c1_x.gun,[0,1.651499209,1.3415539].map(v=>v*(1.12*1.10)));
+assert.equal(SOURCE_WORLD_FRAMES.ariete_c1_x.sha256,'1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177');
 
 const certificate=SOURCE_WORLD_FRAMES.leo2a5_x;
 const frame=()=>({rootMatrix:[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
@@ -117,3 +117,13 @@ const mk3Route=Function(`return (${mk3Rows[0][1]});`)();
 assert.deepEqual(mk3Route,{source:'glb',qualityBar:'exemplar',glb:{path:'/models/community-candidates/merkava3d_x_source.glb',fixedMount:true,componentMasks:false,paintUntextured:true}});
 assert.ok(!evaluator.includes('WEST_X_REFERENCE_OVERRIDES'),'This registration does not add unrelated WEST routes');
 console.log('Mk3D: pinned independent source datums, fused owner checks, explicit evaluator row and displaced/scaled/hash negatives PASS');
+
+// Owner-prescribed Griffin proportions have their own source-only receipt.
+const griffin=JSON.parse(readFileSync(new URL('../docs/research/griffin-proportions-20260921.receipt.json',import.meta.url),'utf8'));
+assert.equal(griffin.inputSha256,'1aef6401c01b5d9a6adfc65838c94d350f4aa39afa039709241c426371ca2003');
+assert.equal(griffin.hullLengthScale,1.1);assert.equal(griffin.turretScale,.9);
+assert.equal(griffin.removedTriangles,0);assert.equal(griffin.candidateGeometryUsed,false);
+assert.equal(griffin.meshes.length,25);
+assert.equal(SOURCE_WORLD_FRAMES.griffin50_x.sha256,griffin.outputSha256);
+assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50_x.turret,[0,2.07,-.396]);
+assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50_x.gun,[0,2.547,.594]);

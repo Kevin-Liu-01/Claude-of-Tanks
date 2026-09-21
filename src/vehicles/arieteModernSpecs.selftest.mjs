@@ -39,9 +39,9 @@ assert.equal(SECOND_WAVE_X_IDS.length, 23);
 assert.ok(!SECOND_WAVE_X_IDS.includes('ariete_c2_x'), 'new C2 is not inserted into the historical source wave');
 assert.deepEqual(FLEET_GROUP_IDS.arieteX, ['ariete_c1_x', 'ariete_c2_x']);
 
-assert.equal(ARIETE_X_FAMILY_SCALE, 1.12, 'fixed owner-directed enlargement');
+assert.equal(ARIETE_X_FAMILY_SCALE, 1.12 * 1.10, 'fixed owner-directed enlargement');
 const c1 = TANK_SPECS.ariete_c1_x, c2 = TANK_SPECS.ariete_c2_x;
-for (const [spec, datums, tier] of [[c1, C1, 9], [c2, C2, 10]]) {
+for (const [spec, datums, tier] of [[c1, C1, 10], [c2, C2, 10]]) {
   assert.equal(ALL_TANK_IDS.filter(id => id === spec.id).length, 1);
   assert.ok(PRODUCTION_TANK_IDS.includes(spec.id));
   assert.equal(tankTier(spec.id), tier);
@@ -52,13 +52,13 @@ for (const [spec, datums, tier] of [[c1, C1, 9], [c2, C2, 10]]) {
   assert.deepEqual(spec.dims, datums.dims);
   assert.deepEqual(spec.armor.turretPivot, datums.turretPivot);
   assert.deepEqual(spec.armor.gunPivot, datums.trunnion.map((v, i) => v - datums.turretPivot[i]));
-  assert.equal(spec.armor.gunBarrel.lengthM, datums.muzzleZ - datums.trunnion[2]);
-  assert.equal(spec.armor.gunBarrel.radiusM, .1371776);
+  assert.ok(Math.abs(spec.armor.gunBarrel.lengthM - (datums.muzzleZ - datums.trunnion[2])) < 1e-12);
+  assert.equal(spec.armor.gunBarrel.radiusM, datums.barrelRadiusM);
   assert.equal(spec.visual.trackWidthM, datums.trackWidthM);
   assert.equal(spec.gun.caliberMm, 120);
   assert.equal(spec.gun.autoloader, undefined);
   assert.ok(!spec.gun.shells.some(s => s.guided || s.launcherTubes));
-  assert.ok(!spec.armor.hullPlates.concat(spec.armor.turretPlates).some(p => p.era));
+  assert.equal(spec.armor.hullPlates.concat(spec.armor.turretPlates).filter(p => p.era).length, spec.id === 'ariete_c2_x' ? 20 : 0);
   assert.equal(spec.gunDepressionDeg, 9); assert.equal(spec.gunElevationDeg, 20);
   assert.equal(internalLayoutFor(spec.id).layoutKey, 'arieteManual');
   assert.equal(internalLayoutFor(spec.id).crew.length, 4);
@@ -70,7 +70,7 @@ assert.ok(c2.enginePowerHp / c2.weightTons > c1.enginePowerHp / c1.weightTons);
 for (const key of ['hp', 'topSpeedKmh', 'reverseSpeedKmh', 'turretTraverseDegS']) assert.ok(c2[key] > c1[key]);
 for (const key of ['reloadS', 'baseAccuracy', 'aimTimeS']) assert.ok(c2.gun[key] < c1.gun[key]);
 for (const key of ['move', 'hullRot', 'turret']) assert.ok(c2.gun.bloom[key] < c1.gun.bloom[key]);
-assert.deepEqual(c2.gun.shells, c1.gun.shells, 'no invented penetration/damage buff');
+assert.deepEqual(c2.gun.shells, c1.gun.shells, 'all three main-gun rounds retained; decorative roof weapon adds no ammunition');
 assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) > 1.09);
 assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) < 1.10);
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier)
@@ -92,7 +92,7 @@ function assertUpgradeFaces(spec) {
 }
 assertUpgradeFaces(c2);
 const missing = structuredClone(c2);
-missing.armor.turretPlates.pop();
+missing.armor.turretPlates = missing.armor.turretPlates.filter((p,i,a)=>i!==a.findIndex(p=>p.surfaceGroup?.startsWith('ariete_c2_x:')));
 assert.throws(() => assertUpgradeFaces(missing), 'missing actual pack face must fail');
 const shifted = structuredClone(c2);
 shifted.armor.hullPlates.find(p => p.surfaceGroup?.startsWith('ariete_c2_x:')).verts[0][0] += .1;
@@ -108,7 +108,7 @@ await import('./tankFactory.ts');
 const yawAxis = new Vector3(0, 1, 0);
 let runtimeTraceCount = 0;
 function posedPoint(raw, owner, yaw) {
-  const point = new Vector3(...raw).multiplyScalar(1.12);
+  const point = new Vector3(...raw).multiplyScalar(ARIETE_X_FAMILY_SCALE);
   if (owner === 'turret') point.sub(new Vector3(...C2.turretPivot))
     .applyAxisAngle(yawAxis, yaw).add(new Vector3(...C2.turretPivot));
   return point;
@@ -193,7 +193,7 @@ assert.throws(() => assertPack(wrongFrame, 'ariete_c2_x:war_cheek_1_0', [1.8, 1.
 
 const skirtX = Math.max(...c1.armor.hullPlates.filter(p => p.surfaceGroup?.startsWith('ariete_c1_x:'))
   .flatMap(p => p.verts.map(v => Math.abs(v[0]))));
-assert.ok(Math.abs(skirtX - 1.805 * 1.12) < 1e-9, 'C1 skirt damage follows the enlarged native panels');
+assert.ok(Math.abs(skirtX - 1.805 * ARIETE_X_FAMILY_SCALE) < 1e-9, 'C1 skirt damage follows the enlarged native panels');
 const c2BeforeSync = JSON.stringify(c2);
 synchronizeSecondWaveXCombatMetadata();
 assert.equal(JSON.stringify(c2), c2BeforeSync, 'historical donor resync cannot overwrite new C2 tuning');

@@ -8,6 +8,7 @@ import { replaySourceAssembly, prepareRegisteredSourceAssembly } from './source-
 import { SUPPLIED_SOURCE_ASSEMBLIES, withAssembledSourceFrames, assembledSourcePath } from './supplied-source-assemblies.mjs';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
 import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from './supplied-source-reference-overrides.mjs';
+import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
@@ -20,10 +21,10 @@ const originalArieteFrame = {
 function restoreArieteRegistration(frames) {
   assert.deepEqual(frames.ariete_c1_x, {
     ...originalArieteFrame,
-    sha256: '1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68',
-    turret: originalArieteFrame.turret.map(v => v * 1.12),
-    gun: originalArieteFrame.gun.map(v => v * 1.12),
-  }, 'only the exact owner-directed 1.12 C1 source frame may replace its historical registration');
+    sha256: '1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177',
+    turret: originalArieteFrame.turret.map(v => v * (1.12 * 1.10)),
+    gun: originalArieteFrame.gun.map(v => v * (1.12 * 1.10)),
+  }, 'only the exact owner-directed 1.232 C1 source frame may replace its historical registration');
   return { ...frames, ariete_c1_x: structuredClone(originalArieteFrame) };
 }
 function checkArieteRegistrationRecipe() {
@@ -153,9 +154,11 @@ try {
   assert.equal(SOURCE_WORLD_FRAMES.ariete_c2_x, undefined,
     'the new C2 concept must not inherit a whole-model C1 source certificate');
   for (const [id, assembly] of Object.entries(SUPPLIED_SOURCE_ASSEMBLIES)) {
-    assert.deepEqual(SOURCE_WORLD_FRAMES[id], { ...assembly.originalFrame, sha256: assembly.sha256 }, 'only approved source hash changes');
+    const assembledFrame={ ...assembly.originalFrame, sha256: assembly.sha256 };
+    const currentFrame=id==='griffin50_x'?GRIFFIN_PROPORTION_REFERENCE.frame:assembledFrame;
+    assert.deepEqual(SOURCE_WORLD_FRAMES[id], currentFrame, 'only approved source transformations');
     const reference = SUPPLIED_SOURCE_REFERENCE_OVERRIDES[id];
-    assert.equal(reference.glb.path, assembly.path);
+    assert.equal(reference.glb.path, id==='griffin50_x'?GRIFFIN_PROPORTION_REFERENCE.path:assembly.path);
     assert.equal(reference.qualityBar, 'exemplar');
     assert.equal(reference.glb.fixedMount, true);
     assert.equal(reference.glb.componentMasks, false);
@@ -163,16 +166,16 @@ try {
     const baseline = { [id]: structuredClone(assembly.originalFrame) };
     const selected = { [id]: assembly };
     const before = structuredClone(baseline);
-    assert.deepEqual(withAssembledSourceFrames(baseline, selected)[id], SOURCE_WORLD_FRAMES[id]);
+    assert.deepEqual(withAssembledSourceFrames(baseline, selected)[id], assembledFrame);
     assert.deepEqual(baseline, before, 'original certificate is immutable input');
     for (const mutate of [r => { r[id].sha256 = '0'.repeat(64); }, r => { r[id].turret[1] += .001; }, r => { r[id].gun[2] += .001; }, r => { r[id].fused = false; }]) {
       const wrong = structuredClone(baseline); mutate(wrong);
       assert.throws(() => withAssembledSourceFrames(wrong, selected), /original source certificate changed/);
     }
     assert.throws(() => assembledSourcePath(id, '/models/community-candidates/other.glb'), /original source path changed/);
-    const frame = { rootMatrix: IDENTITY, hull: [0, 0, 0], turret: assembly.originalFrame.turret, gun: assembly.originalFrame.gun };
+    const frame = { rootMatrix: IDENTITY, hull: [0, 0, 0], turret: currentFrame.turret, gun: currentFrame.gun };
     const frames = { procedural: frame, reference: { ...frame, turret: [0, 0, 0], gun: [0, 0, 0] } };
-    assert(validateSourceWorldFrame(SOURCE_WORLD_FRAMES[id], assembly.sha256, frames).passed);
+    assert(validateSourceWorldFrame(SOURCE_WORLD_FRAMES[id], currentFrame.sha256, frames).passed);
     assert(!validateSourceWorldFrame(SOURCE_WORLD_FRAMES[id], assembly.originalSha256, frames).passed, 'old bytes cannot certify as assembled');
     const recipePath = path.join(temp, assembly.recipePath);
     fs.mkdirSync(path.dirname(recipePath), { recursive: true });

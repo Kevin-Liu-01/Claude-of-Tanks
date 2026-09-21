@@ -2,7 +2,7 @@
 // battle loading, HUD target panels, killcam and generated asset manifests.
 
 export const TANK_TIER = Object.freeze({
-  tos1a_tagil: 10,
+  tos1a_tagil: 10, griffin_viper: 10,
   ares_apc_x: 7,
   leo2a6_x: 10, // owner 2026-09-15 (evening): the Leopard 2A6 study is tier X
   k1a1_x: 8, amx30_x: 7, t62mv1_x: 7,
@@ -13,7 +13,7 @@ export const TANK_TIER = Object.freeze({
   type10_x: 10,
   type90_x: 9,
   amx40_x: 9,
-  ariete_c1_x: 9, ariete_c2_x: 10,
+  ariete_c1_x: 10, ariete_c2_x: 10,
   strv122_x: 10,
   t72b3m_x: 9,
   challenger1_x: 9,

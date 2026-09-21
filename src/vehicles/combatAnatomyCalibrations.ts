@@ -23,6 +23,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_FRANCECORE } from './combat
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_FV510MILANX } from './combatAnatomyGroups/fv510MilanX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GERMANY } from './combatAnatomyGroups/germany.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GRIFFIN50X } from './combatAnatomyGroups/griffin50X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GRIFFINVIPER } from './combatAnatomyGroups/griffinViper.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ITALY } from './combatAnatomyGroups/italy.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_JAGDPANZERE100X } from './combatAnatomyGroups/jagdpanzerE100X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_JAPAN } from './combatAnatomyGroups/japan.generated.ts';
@@ -96,6 +97,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_FV510MILANX,
   CALIBRATIONS_GERMANY,
   CALIBRATIONS_GRIFFIN50X,
+  CALIBRATIONS_GRIFFINVIPER,
   CALIBRATIONS_ITALY,
   CALIBRATIONS_JAGDPANZERE100X,
   CALIBRATIONS_JAPAN,

@@ -46,6 +46,12 @@ export function assertConceptWeapons(shells,design) {
     assert.equal(rocket.count,design.ammoTotal);
     return;
   }
+  if (design.weaponSystem === 'guided-missile-carrier') {
+    assert.equal(shells.length,1,'one missile feed');
+    assert.equal(shells[0].guided,true); assert.equal(shells[0].caliberMm,design.mainCaliberMm);
+    assert.equal(shells[0].count,design.guidedAmmoTotal); assert.equal(shells[0].launcherTubes,design.cells);
+    assert.equal(shells[0].reloadS,design.reloadS); return;
+  }
   const caliber=design.mainCaliberMm??design.backupCaliberMm;
   assert.ok(shells.some(s=>!s.guided&&s.caliberMm===caliber),'declared working cannon ammunition caliber');
   const missiles=shells.filter(s=>s.guided);

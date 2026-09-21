@@ -60,12 +60,12 @@ function checkSourceConfigurations() {
 
 function checkObject695Loadout() {
   const vehicle = TANK_SPECS.object695_x, state = createCombatState(vehicle);
-  assert.deepEqual(state.ammo, [12, 12, 240], 'missile-primary concept carries twelve rounds per type and a backup belt');
+  assert.deepEqual(state.ammo, [24, 12, 240], 'four-shot ripple carrier has 24 tandem missiles, 12 blast missiles and a backup belt');
   assert.strictEqual(state.reloadChannels[0], state.reloadChannels[1], 'missile types share the actual launcher cycle');
   assert.notStrictEqual(state.reloadChannels[0], state.reloadChannels[2], 'backup cannon has its own feed');
   for (const slot of [0, 1]) {
     selectShell(state, slot, vehicle); startReload(state, vehicle);
-    assert.equal(state.reload.totalS, [5.8, 6.6][slot]);
+    assert.equal(state.reload.totalS, 14);
     assert.equal(state.reloadChannels[2].t, 0, 'launcher cycle does not consume cannon feed');
     state.ammo[slot] = 0;
     assert.equal(selectShell(state, slot, vehicle), false);

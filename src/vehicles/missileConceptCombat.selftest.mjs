@@ -8,8 +8,8 @@ import { createCombatState, selectShell, startReload, tickReload } from '../sim/
 import { SIM_DT, shotRecoilScale } from '../sim/movement.ts';
 
 const definitions = {
-  ztz100_prototype: { cells: 8, ammo: [12, 8, 180], reload: [8.2, 9, .30], counterpart: 'ztz100_x', caliber: 35 },
-  object695_x: { cells: 12, ammo: [12, 12, 240], reload: [5.8, 6.6, .22], counterpart: 'kurganets25_x', caliber: 30 },
+  ztz100_prototype: { cells: 8, ammo: [16, 8, 180], reload: [12, 12, .30], counterpart: 'ztz100_x', caliber: 35 },
+  object695_x: { cells: 12, ammo: [24, 12, 240], reload: [14, 14, .22], counterpart: 'kurganets25_x', caliber: 30 },
 };
 const input = (slot, fire = false) => ({ throttle: 0, steer: 0, brake: true, fire,
   aimYaw: .4, aimPitch: .1, aimDistance: 400, shellSlot: slot, actionBits: 0 });
@@ -75,6 +75,6 @@ for (const [id, expected] of Object.entries(definitions)) {
   } finally { visual.dispose(); }
 }
 assert(TANK_SPECS.object695_x.hp < TANK_SPECS.kurganets25_x.hp);
-assert(TANK_SPECS.object695_x.gun.shells[0].reloadS < TANK_SPECS.ztz100_prototype.gun.shells[0].reloadS);
+assert(TANK_SPECS.object695_x.gun.launcherSalvo.rounds > TANK_SPECS.ztz100_prototype.gun.launcherSalvo.rounds);
 assert(TANK_SPECS.object695_x.gun.shells[0].dmg < TANK_SPECS.ztz100_prototype.gun.shells[0].dmg);
 console.log('missile concepts: distinct roles, independent cannon feeds, shared missile reloads, 20 physical launchers and authoritative muzzle agreement PASS');

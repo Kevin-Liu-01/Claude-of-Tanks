@@ -3,6 +3,8 @@
 // receiving pieces are fitted to the wider links. Detail dimensions are game authoring, not metrology.
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
+import { ARIETE_C2_ERA } from './arieteC2Era.ts';
+import { markEraHitFaces } from './eraHitFaces.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { buildArieteXSupplied } from './arieteXSupplied.ts';
 import { ARIETE_SUPPLIED_X_DATUMS as SOURCE, arieteSourceTurret as add } from './arieteXSuppliedFrame.ts';
@@ -50,14 +52,15 @@ function panoramicSight(P: TankBuilderPort): void {
 
 function commanderWeapon(P: TankBuilderPort): void {
   const x = .830, z = -.340;
-  // This foot embeds into the right roof and meets the fitting's real flange.
   add(P, 'turretDetail', cylY(.055, .071, .100, P.q ? 16 : 10), x, 2.051, z);
-  const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark',
-    scale: .86, ammo: true, shield: 'armored', ring: false, seed: 7202 });
-  gun.name = 'arieteC2CommanderM2';
+  // Same two-tone M2 fitting as K2 Black Panther X, at 70% installed size.
+  // The family enlargement is applied afterwards, so compensate here once.
+  const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
+    scale: 1.275, ammo: true, shield: false, ring: false, seed: 2042 });
+  gun.scale.setScalar(.70 / S);
+  gun.name = 'arieteC2CommanderK2';
+  gun.userData.roofWeapon = { donor: 'k2_x', relativeScale: .70, decorative: true };
   gun.position.set(x, 2.092 - SOURCE.turretPivot[1], z - SOURCE.turretPivot[2]);
-  // The complete receiver/barrel/shield rotates on the same circular foot.
-  // This outboard parked angle clears the panoramic head with real air.
   gun.rotation.y = .28;
   P.turretG.add(gun);
 }
@@ -106,15 +109,30 @@ function protection(P: TankBuilderPort): void {
   }
 }
 
+function reactiveArmor(P: TankBuilderPort): void {
+  for (const tile of ARIETE_C2_ERA) {
+    const [x,y,z] = tile.center, [w,h,d] = tile.size;
+    const geometry = box(w,h,d);
+    const positions = geometry.getAttribute('position');
+    for (let i=0;i<positions.count;i++) positions.setY(i,positions.getY(i)-positions.getZ(i)*tile.slope);
+    geometry.computeVertexNormals();
+    markEraHitFaces(geometry,tile.owner==='hull'?[0,1,0]:[Math.sign(x),0,0]);
+    const pivot = tile.owner==='turret'?SOURCE.turretPivot:[0,0,0];
+    P.destructibleCluster(tile.name,()=>P.addExternalArmor(tile.owner,geometry,x-pivot[0],y-pivot[1],z-pivot[2]));
+  }
+}
+
 export function buildArieteC2X(P: TankBuilderPort): void {
-  buildArieteXSupplied(P, D.boreRadiusM / S, true);
-  gunnerSight(P); panoramicSight(P); commanderWeapon(P); coolingDeck(P); protection(P);
+  buildArieteXSupplied(P, D.boreRadiusM / S / 1.18, true);
+  P.scaleBuckets(['gun', 'gunDark'], 1.18, 1.18, 1.22);
+  P.muzzleZ *= 1.22;
+  gunnerSight(P); panoramicSight(P); commanderWeapon(P); coolingDeck(P); protection(P); reactiveArmor(P);
   enlargeArieteXFamily(P);
   P.hullG.userData.arieteC2Derivation = Object.freeze({ base: 'ariete_c1_x',
     originalPrimaryBodyRetained: false, unchangedPrimaryHullPieces: 9,
     primaryBodyChanges: ['closed lower-tub receiving walls', 'two skirt-carrier inner faces'],
     widerTracks: true, returnRollersPerSide: 4,
-    roofMachineGuns: ['7.62mm loader GPMG', '12.7mm commander M2'],
+    roofMachineGuns: ['7.62mm loader GPMG', 'compact K2-style commander gun'], roofWeaponDecorative: true,
     sights: ['Lothar-SD-inspired recessed head', 'Attila-D-inspired panoramic head'],
     protection: 'finite WAR/PSO-style stock and belly plate', activeProtection: false });
 }

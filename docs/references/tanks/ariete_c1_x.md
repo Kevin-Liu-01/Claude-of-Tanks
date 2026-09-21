@@ -1,6 +1,18 @@
 # C1 Ariete — definitive supplied-file reconstruction
 
-## Current family revision — 2026-09-21
+## Current Tier X revision — 2026-09-21
+
+The latest owner request adds another 10% to the definitive C1 and promotes it
+to Tier X. The complete source frame is now 1.232 times its original registered
+size; the physical bore remains 120 mm. The replayable registration is
+[`ariete_c1_x-tier10-20260921.json`](../../research/second-wave-registrations/ariete_c1_x-tier10-20260921.json),
+with canonical SHA-256 `1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177`.
+All original source meshes remain present. This changes the design size, not
+the historical manufacturer's dimensions. Current validation and publication
+status belongs to the [upgrade packet](../../research/missile-roles-ariete-upgrade-20260921.md).
+The following 1.12-scale qualification is historical.
+
+## Earlier family revision — 2026-09-21
 
 The owner selected this Tier IX C1 as the definitive Ariete and requested a
 larger model. The installed geometry now uses a prescribed uniform 1.12 scale;

@@ -9,7 +9,7 @@ import {readConceptDesign} from './first-party-concept-record.mjs';
 import {assertConceptDatums,assertConceptWeapons} from './first-party-concept-datums.mjs';
 const oldPath='docs/references/concepts/missile-turrets-20260919.json';
 const typePath='docs/references/concepts/type100-ifv-20260919.json';
-assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['ariete_c2_x','tos1a_tagil','ztz100_prototype','object695_x','type100']);
+assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['griffin_viper','ariete_c2_x','tos1a_tagil','ztz100_prototype','object695_x','type100']);
 assert.equal(conceptDesignPath('ztz100_prototype'),oldPath);
 assert.equal(conceptDesignPath('object695_x'),oldPath);
 assert.equal(conceptDesignPath('type100'),typePath);
@@ -62,6 +62,13 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
     gunElevationDeg:design.pitchDeg[1],gunDepressionDeg:-design.pitchDeg[0],
     gun:{shells:[{caliberMm:design.mainCaliberMm??design.backupCaliberMm,count:180},
       {guided:true,launcherTubes:design.cells,count:design.guidedAmmoTotal??12}]}};
+  if (design.weaponSystem === 'guided-missile-carrier') {
+    const shell={guided:true,caliberMm:140,count:64,launcherTubes:16,reloadS:1};
+    spec.gun={shells:[shell]};assertConceptDatums(spec,design);
+    for(const patch of [{guided:false},{count:0},{count:65},{launcherTubes:15},{reloadS:.5},{caliberMm:120}])
+      assert.throws(()=>assertConceptWeapons([{...shell,...patch}],design));
+    continue;
+  }
   if (design.weaponSystem === 'conventional-cannon') {
     const shell={type:'APFSDS',caliberMm:120,count:24};
     spec.gun={shells:[shell]};

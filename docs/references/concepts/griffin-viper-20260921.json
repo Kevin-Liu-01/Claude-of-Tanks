@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-21",
+    "request": "Modern American missile tank firing every second; C2 longer bigger cannon, roof autocannon, glacis/turret ERA; both definitive Arietes another 10% larger, C1 Tier X",
+    "proportionCorrection": "Both Griffin hulls 10% longer and both turrets 10% smaller; 2026-09-21."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "griffin_viper": {
+      "id": "griffin_viper",
+      "test": "src/vehicles/profiles/griffinViper.selftest.mjs",
+      "ring": [
+        0,
+        2.07,
+        -0.396
+      ],
+      "gunLocal": [
+        0,
+        1.08,
+        0
+      ],
+      "barrelLengthM": 1.188,
+      "barrelRadiusM": 0.07,
+      "pitchDeg": [
+        -6,
+        25
+      ],
+      "cells": 16,
+      "mainCaliberMm": 140,
+      "weaponSystem": "guided-missile-carrier",
+      "guidedAmmoTotal": 64,
+      "reloadS": 1,
+      "roofMachineGuns": 0,
+      "hullLengthM": 7.26594,
+      "hullWidthM": 3.8106,
+      "widthM": 3.8106,
+      "overallLengthM": 7.26594,
+      "tallestM": 3.456,
+      "silhouette": "Modern Griffin tracked hull, low central armored pedestal, two separated eight-cell open launch pods and central thermal sight"
+    }
+  }
+}

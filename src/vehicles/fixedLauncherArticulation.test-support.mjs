@@ -77,7 +77,9 @@ export function verifyFixedLauncherNoRecoil(tank, spec, pitchDeg) {
 
 export function fixedLauncherNegatives(tank, spec) {
   const gun = tank.root.getObjectByName('rig_gun'), mount = gun.getObjectByName('gunMount');
-  const tip = gun.getObjectByName('rig_launcher_tip_0'), support = tank.root.getObjectByName('turretEquipment');
+  const tip = gun.getObjectByName('rig_launcher_tip_0');
+  const support = tank.root.getObjectByName('turretEquipment') ?? tank.root.getObjectByName('turretDetail');
+  assert(support, 'actual fixed receiving support mesh exists');
   assert.throws(() => verifyFixedLauncherSeats(tank, { ...spec, gun: { ...spec.gun, fixedLaunchCanisters: false } }), assert.AssertionError);
   gun.remove(tip);
   try { assert.throws(() => verifyFixedLauncherSeats(tank, spec), assert.AssertionError, 'missing actual terminal fails'); }

@@ -142,6 +142,7 @@ assert.equal(articulated + hullAimed, ALL_TANK_IDS.length,
 assert.ok(articulated >= 110 && hullAimed >= 8,
   `fleet gate is non-vacuous (${articulated} articulated, ${hullAimed} hull-aimed)`);
 
-assert.equal(fixedBatteries, 1, 'the current fleet has exactly one explicit fixed-canister battery');
+assert.equal(fixedBatteries, 2, 'TOS and Griffin Viper own the two explicit fixed-canister batteries');
 assert.equal(getSpec('tos1a_tagil').gun.launcherMuzzles.length, 24, 'TOS has all 24 physical tubes');
+assert.equal(getSpec('griffin_viper').gun.launcherMuzzles.length, 16, 'Viper has all 16 physical tubes');
 console.log(`gunArticulation.selftest: ${articulated} turreted weapons pitch with seated housings (${fixedBatteries} physical fixed battery); ${hullAimed} hull-aimed guns retain fixed-mount contracts`);

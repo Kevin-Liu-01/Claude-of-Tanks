@@ -44,6 +44,7 @@ import { synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts'
 import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './tos1aTagilSpecs.ts';
+import './griffinViperSpecs.ts';
 
 import {
   SAVED_TANK_IDS,

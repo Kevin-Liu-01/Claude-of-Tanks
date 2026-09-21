@@ -23,18 +23,18 @@ const cases = {
 // the western native digests; values below are repinned from the current build.
   leo2a6_x: { main: 'e584febc104149d49e22b2c282253b337dbfa710d5d4591669c0fe3e02d6bf00', geometry: ['654715b7', '21bdb645'], counts: [20, 0] },
   strv122_x: { main: '3a1b5c2e572d3d800c6a4ec71fcaa19e4913294182c0af33f6b1a1f375db954b', geometry: ['f01b4212', '221b6425'], counts: [676, 66] },
-  // 2026-09-21 owner-selected definitive C1: complete1.12-scale frame,
+  // 2026-09-21 owner-selected definitive C1: complete1.232-scale frame,
   // corrected120mm physical bore and fresh anatomy. Previous main hash:
   // 5ec104dd88541f1526221ab452fabe2ba9b63bb9a1825e73dc7165b918465b59
   // Previous HIGH33372a11/LOW27af5e0c; finite-face/ray controls remain below.
-  ariete_c1_x: { main: 'c3b76013b85fa342ed8d2cf3f803015f1cdc785c620025b4b3549ae207040673', geometry: ['8119618a', '92d52813'], counts: [210, 0] },
+  ariete_c1_x: { main: 'a0b922dbe5da579937f27f8420ec41167ebe2c6d9634698b25ce0cfacfdd23fc', geometry: ['84ed9dc7', 'ec044ee3'], counts: [210, 0] },
   challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['c09cfc2c', 'f4989def'], counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });
 const auxiliary = armor => [...armor.hullPlates, ...armor.turretPlates].filter(p => p.surfaceGroup);
 const arietePoint = point => point.map(value => value * ARIETE_SCALE);
-assert.equal(ARIETE_SCALE, 1.12, 'owner-approved Ariete enlargement is fixed');
+assert.equal(ARIETE_SCALE, 1.12 * 1.10, 'owner-approved Ariete enlargement is fixed');
 const shot = (id, from, to) => traceTank(new THREE.Vector3(...from), new THREE.Vector3(...to), pose(0), TANK_SPECS[id].armor)
   .filter(hit => hit.plate?.surfaceGroup?.startsWith(`${id}:`));
 const close = (a, b, label) => assert.ok(Math.abs(a - b) < 4e-6, `${label}: ${a} versus ${b}`);

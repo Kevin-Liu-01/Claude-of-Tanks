@@ -663,6 +663,7 @@
   "gallery.count": "显示 {shown} / 共 {total} 条记录",
   "garage.stat.reload": "装填",
   "garage.stat.magazineReload": "弹夹装填",
+  "garage.stat.missileSalvo": "导弹齐射",
   "garage.stat.magazineAutoloader": "弹夹式自动装弹机",
   "garage.stat.rounds": "发",
   "garage.stat.cycle": "秒循环",

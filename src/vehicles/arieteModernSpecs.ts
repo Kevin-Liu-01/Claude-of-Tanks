@@ -6,6 +6,7 @@ import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs } from './fleetSpecRegistry.ts';
 import { ARIETE_C2_X_DATUMS as D, ARIETE_C2_X_GUN_PITCH_BY_YAW_DEG } from './profiles/arieteXFamilyFrame.ts';
 import { arieteC2ArmorFaces } from './profiles/arieteC2XArmor.ts';
+import { arieteC2EraPlates } from './profiles/arieteC2Era.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
@@ -49,10 +50,14 @@ function createArieteC2(): FleetTankSpec {
     reloadS: 5.4, baseAccuracy: .26, aimTimeS: 1.45,
     bloom: { move: .040, hullRot: .055, turret: .040, afterShot: 1.9 },
   });
+  spec.armor.gunBarrel.lengthM = D.barrelLengthM;
+  spec.armor.gunBarrel.radiusM = D.barrelRadiusM;
   spec.dims = { ...D.dims };
   spec.visual = { ...spec.visual, patches: [...spec.visual.patches],
     trackWidthM: D.trackWidthM, number: 'C2 02' };
   addUpgradeProtection(spec);
+  for (const {owner, plate} of arieteC2EraPlates())
+    (owner === 'hull' ? spec.armor.hullPlates : spec.armor.turretPlates).push(plate);
   return spec;
 }
 
