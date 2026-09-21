@@ -2603,7 +2603,8 @@ function buildMBT70(P: Modern2BuilderPort) {
   const GUN_ROOT_RECESS_SCALE: GeometryScale = [0.82, 1.14, 1];
   P.addGunExtraDark(scaledGeometryTransform(cylZ(GUN_ROOT_RECESS_RADIUS_M, 0.045, seg), 0, 0, 0, 0, 0, 0,
     GUN_ROOT_RECESS_SCALE), 0, 0, 0.94);
-  P.addGunExtra(cylZ(0.22, 0.25, seg, 0.17), 0, 0, 1.19);
+  // The wide rear end seats against the throat ring; taper toward the muzzle.
+  P.addGunExtra(cylZ(0.17, 0.25, seg, 0.22), 0, 0, 1.19);
   P.addGunExtraDark(cylZ(0.225, 0.035, seg), 0, 0, 1.085);
   buildGun(P, {
     len: 3.88, r: 0.098, sleeve: true, evac: 0.50,

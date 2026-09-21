@@ -126,6 +126,23 @@ assert.equal(mantlet.nearMuzzleSensor, true);
 const turretRig = tank.root.getObjectByName('rig_turret');
 const turretShell = turretRig.getObjectByName('turret');
 const gunMount = gunRig.getObjectByName('gunMount');
+// Owner's Gallery patch: the cone at Z 1.065..1.315 must narrow toward
+// the muzzle. Probe the actual side surface, not a builder receipt label.
+for (const quality of ['high', 'low']) {
+  const visual = createTank('mbt70', null, { proceduralOnly:true, geometryReceipt:true, quality });
+  try {
+    const pitch=visual.root.getObjectByName('rig_gun'),mount=pitch.getObjectByName('gunMount');
+    visual.root.updateMatrixWorld(true);
+    const radiusAt=z=>{
+      const hit=new THREE.Raycaster(pitch.localToWorld(new THREE.Vector3(0,.4,z)),
+        new THREE.Vector3(0,-1,0).transformDirection(pitch.matrixWorld),0,.4).intersectObject(mount,false)[0];
+      assert.ok(hit,`${quality}: launcher cone has a physical side surface`);
+      return pitch.worldToLocal(hit.point.clone()).y;
+    };
+    assert.ok(Math.abs(radiusAt(1.10)-.213)<.002,`${quality}: wide rear seats against the throat ring`);
+    assert.ok(Math.abs(radiusAt(1.29)-.175)<.002,`${quality}: narrow front points toward the muzzle`);
+  } finally {visual.dispose();}
+}
 const turretShellBounds = new THREE.Box3().setFromObject(turretShell);
 const gunMountBounds = new THREE.Box3().setFromObject(gunMount);
 assert.ok(gunMountBounds.max.y <= turretShellBounds.max.y + 0.005,

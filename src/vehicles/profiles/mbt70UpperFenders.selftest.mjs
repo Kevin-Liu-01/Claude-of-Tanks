@@ -12,8 +12,10 @@ import {matrix,rollerSuspensionFixtures} from '../returnRollerPhysicsTest.mjs';
 // These cover every original transformed builder emission, not a refreshed
 // image/shape golden. Only the named new folds/risers are excluded;
 // the two removed rails are reconstructed at their exact original slots.
-const ORIGINAL={high:['510e86fc834e35722777f8398b0f31e54b241ace2005b97e0296e17ba5df70b0',276],
- low:['57acb1c9b45cee483376641832b3461eedc491dab85122ea6baa7e69cec0f230',272]};
+// Refreshed only for the owner-requested gun-throat taper reversal (2026-09-21);
+// mbt70Fidelity independently checks its rear-wide, front-narrow orientation.
+const ORIGINAL={high:['f3e7d5727a4d60282b7c758dba2122930291cdd780e2a028ee683ad0a2021827',276],
+ low:['96cada597afaeacb824ae9db85c542109db8953022e6fcbe2ed0821270023fa3',272]};
 const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const v=a=>new T.Vector3(...a);
 const ray=(meshes,p,d,far)=>new T.Raycaster(v(p),v(d),0,far).intersectObjects(meshes,false);
