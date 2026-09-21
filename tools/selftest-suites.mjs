@@ -5,6 +5,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the 45-second FIFO drain. Every check stays in its original lifecycle.
     'src/vehicles/fleetLazy.selftest.mjs',
     'src/vehicles/wheelQuality.selftest.mjs',
+    'tools/wheel-axial-extents.selftest.mjs',
     'src/vehicles/profiles/machineGunAttachment.selftest.mjs',
     'src/vehicles/eraGameplayRegistration.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',

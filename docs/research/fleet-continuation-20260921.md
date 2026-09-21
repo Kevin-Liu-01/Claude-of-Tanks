@@ -1,6 +1,7 @@
 # Fleet continuation — 2026-09-21
 
-Status: Garage construction checkpoint verified; fleet fit reconciliation in progress.
+Status: Garage construction and wheel-policy checkpoints verified and published;
+broader fleet qualification remains open.
 This is the continuation of the owner's unfinished fleet/style/performance
 handoff, after the Ariete family release. It is not a new tank redesign or a
 claim that all historical fleet gates pass.
@@ -146,3 +147,91 @@ mean FSP-01 is still open.
 No vehicle builder, model profile, physical dimensions, paint definition or
 combat-anatomy input changed in this checkpoint. Existing generated model
 receipts remain untouched; no new geometry/source-gate pass is claimed.
+
+## Fleet wheel and rest-track reconciliation
+
+The [201-ID census and acceptance ledger](fleet-continuation-20260921-census.csv)
+records the frozen HIGH/LOW geometry costs, builder group, configured return
+stations, shared return-tire instances and current bounded audit results.
+`NOT RUN` means not requalified in this continuation, not that a historical
+receipt failed. Zero configured stations is not proof of missing real rollers:
+some authored families construct their supporting stock outside that shared
+config. The census is measured at the tool's 10 m inspection distance with
+geometry-receipt materials and static batching deferred; it is not a GPU budget.
+
+The current rest-track-wrap audit passes **201 tanks / 204 gear assemblies**:
+zero cuts and zero corner gaps at the road-wheel-to-end-wheel ramps. This
+centerline-at-rest measurement does not certify moving shoe stock, steering,
+terrain contact, return support or the country-matched tread thickness target.
+
+### Family policy correction
+
+The original wheel review reported nine policy mismatches. Builders already
+selected the intended motifs, but the central family resolver fell through to
+unrelated defaults. In particular, its substring rules confused `k21_x` with
+K2 and Chinese `type100` with Japanese Type 10.
+
+| Correct family | Existing authored motif, now also resolved centrally |
+| --- | --- |
+| Type 96B, Type 100 IFV, TOS-1A Tagil | pressed-six |
+| AFT-10, Ares, Griffin 50, K21 | armored-hub-six |
+| Ajax | plain-dish-twelve |
+| Sabra | deep-dish-eight |
+
+Specific family rules precede the broad legacy matches. No profile or actual
+wheel mesh changed. [24 before/after fingerprints](fleet-continuation-20260921-wheel-parity.json)
+cover all nine affected tanks plus Type 10 X, K2 X and T-90MS X controls at HIGH
+and LOW: geometry/index/instance buffers, transforms and material properties
+are identical. The full 201-ID wheel-quality test now also requires the central
+policy to agree with the actual built gear; all 12 wheel motifs remain used.
+The full suspension-policy check passes all 201 IDs across five families.
+
+### Namer measurement correction, without a gate waiver
+
+The old audit reported the Namer wheel dressing 230 mm proud of its tire. Its
+formula added absolute geometry bounds to absolute instance translation,
+reflecting the long **inboard** axle tail onto the outward face. It also ignored
+the side-specific rubber extensions and complete rig/root transforms.
+
+The replacement measures signed, actually referenced stock vertices through
+instance, mesh and root transforms, in metres along the vehicle's axle. Tire
+extensions participate, and left/right measurements stay separate. The helper
+has negative controls for a missing left tire and displaced wheel face, plus
+nonuniform nested scale and arbitrary vehicle rotation. A requested tank that
+fails to build now fails the CLI gate instead of silently counting as no flag.
+
+The Namer's actual outward tire face is **1.490957 m** and its hub tip is
+**1.522377 m** on both sides: **31.419995 mm** hub protrusion. The independent
+source-caliper test passes at HIGH and LOW, including 108 source-face rays,
+12 air guards, finite tire/rim seating and three physical negative controls
+per detail level. Its actual geometry is preserved.
+
+The generic 25 mm `PROUD` style threshold is unchanged and still flags that
+31.42 mm source-qualified hub. The corrected full wheel review therefore has
+**one explicit style flag**, not a blanket all-gates pass; zero mismatches,
+bright tires/paint or insufficient dish/tire contrast remain in that audit.
+
+The added axial-measurement regression is registered in `npm test`. Focused
+tests, whole-project typecheck/unused-code checks, changed helper complexity
+checks and the public production build pass. The complete pre/core/post suite
+was not rerun for these output-preserving policy/tooling changes.
+
+## Work still open
+
+- FSP-01: core construction and first-use GPU work still cause roughly 200 ms
+  worst gaps in the measured Garage sample; scheduling also raises median
+  reveal time. Eliminate those remaining stalls without discarding detail.
+- FSP-02: some LOW models still retain more than 90% of HIGH's selected
+  triangles. Start from the ledger's highest repeated-stock costs, preserve
+  wheel form and stock, then measure the actual browser result.
+- FSP-03/04: reference-backed roller eligibility and physically mounted return
+  support, country-paired tread sections and full moving-stock fit need final
+  per-ID evidence. The rest-wrap pass is only one part of this work.
+- FSP-05/06: finish per-ID native closure and material-role inspection against
+  the latest owner rulings and source targets; preserve real vents, sight
+  recesses and suspension air. Existing later model receipts take precedence
+  over obsolete September 10 defect descriptions.
+
+Completed recent model additions and redesigns listed above remain on main.
+These remaining fleet-wide gates have not been mislabeled as completed or
+silently relaxed to turn this continuation into a full launch certificate.

@@ -15,6 +15,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim
+import { roadWheelAxialExtents } from './wheel-axial-extents.mjs';
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
@@ -29,25 +30,28 @@ const { wheelPatternFor } = await import('../src/vehicles/wheelPatterns.ts');
 const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'm1a2,challenger2').split(',').filter(Boolean);
 
 function lightness(color) { if (!color) return null; const r = color.r, g = color.g, b = color.b; return +((Math.max(r, g, b) + Math.min(r, g, b)) / 2).toFixed(3); }
-function instanceXs(mesh) { const xs = []; const e = mesh.instanceMatrix?.array; if (!e) return xs; for (let i = 0; i < mesh.count; i++) xs.push(e[i * 16 + 12]); return xs; }
 
 const rows = []; let flagged = 0;
 for (const id of ids) {
-  let tank; try { tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, batchStatic: false }); } catch (error) { rows.push({ id, error: error.message }); continue; }
+  let tank; try { tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, batchStatic: false }); } catch (error) { rows.push({ id, error: error.message }); flagged++; continue; }
   const spec = TANK_SPECS[id]; const root = tank.root; root.updateMatrixWorld(true);
   const hull = root.getObjectByName('rig_hull');
   const receipts = hull?.userData?.runningGearReceipts || []; const patterns = hull?.userData?.nativeWheelPatterns || hull?.userData?.wheelPatternReceipts || [];
   const gear = receipts[0] || {};
   const specPattern = (() => { try { return wheelPatternFor(spec, gear.style)?.id ?? null; } catch { return null; } })();
   const builtPattern = typeof patterns[0] === 'string' ? patterns[0] : (patterns[0]?.id ?? null);
-  let tires = null, discs = null, tireFaceX = 0, dressingMaxX = 0, dressingName = '', hollow = [];
+  let tires = null, discs = null, hollow = [];
   root.traverse((o) => {
     if (!o.isInstancedMesh) return;
     const name = o.name || '';
-    if (name === 'gearRoadWheelTires') { tires = o; o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox; for (const x of instanceXs(o)) tireFaceX = Math.max(tireFaceX, Math.abs(x) + Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x))); }
+    if (name === 'gearRoadWheelTires') tires = o;
     if (name === 'gearRoadWheelDiscs') discs = o;
-    if (o.userData?.dynamicWheelFace) { o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox; for (const x of instanceXs(o)) { const outer = Math.abs(x) + Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)); if (outer > dressingMaxX) { dressingMaxX = outer; dressingName = name; } } }
   });
+  const axialSides = roadWheelAxialExtents(root);
+  const worst = axialSides.filter(row => row.proudM !== null)
+    .sort((a, b) => b.proudM - a.proudM)[0];
+  const tireFaceX = worst?.tireFaceM ?? Math.max(0, ...axialSides.map(row => row.tireFaceM ?? 0));
+  const dressingMaxX = worst?.dressingFaceM ?? 0, dressingName = worst?.dressingName ?? '';
   if (gear.wheelTireInnerRadiusM) hollow.push('open-annulus'); if (gear.wheelTireBands) hollow.push('tire-bands');
   if (tires) {
     // paired halves: turned stock with a real guide channel — tire vertices sit on inner channel walls
@@ -61,13 +65,13 @@ for (const id of ids) {
   }
   // camouflage-mapped wheel paint (the Patton family) carries a texture: its colour is only a multiplier, so lightness is not a paint read
   const paintL = discs?.material?.map ? null : lightness(discs?.material?.color), tireL = tires?.material?.map ? null : lightness(tires?.material?.color);
-  const proud = tireFaceX && dressingMaxX ? +(dressingMaxX - tireFaceX).toFixed(3) : 0;
+  const proud = worst?.proudM ?? 0;
   const flags = [];
   if (paintL !== null && paintL > MAX_L) flags.push('BRIGHT'); if (tireL !== null && tireL > MAX_TIRE_L) flags.push('BRIGHT-TIRE');
   if (proud > MAX_PROUD) flags.push('PROUD'); if (specPattern && builtPattern && specPattern !== builtPattern) flags.push('MISMATCH');
   if (paintL !== null && tireL !== null && paintL < tireL * MIN_DISH_TIRE_RATIO) flags.push('FLAT');
   if (flags.length) flagged++;
-  rows.push({ id, nation: spec?.nation ?? '?', specPattern, builtPattern, style: gear.style ?? null, wheelR: gear.wheelR ?? null, hollow: hollow.join('+') || 'solid', paintL, tireL, tireFaceX: +tireFaceX.toFixed(3), dressingMaxX: +dressingMaxX.toFixed(3), dressingName, proud, flags });
+  rows.push({ id, nation: spec?.nation ?? '?', specPattern, builtPattern, style: gear.style ?? null, wheelR: gear.wheelR ?? null, hollow: hollow.join('+') || 'solid', paintL, tireL, tireFaceX: +tireFaceX.toFixed(3), dressingMaxX: +dressingMaxX.toFixed(3), dressingName, proud: +proud.toFixed(3), axialSides, flags });
   tank.dispose?.();
 }
 console.log('id'.padEnd(22), 'nation'.padEnd(8), 'pattern (spec -> built)'.padEnd(34), 'hollow'.padEnd(26), 'paintL'.padStart(6), 'tireL'.padStart(6), 'proud'.padStart(7), ' flags');

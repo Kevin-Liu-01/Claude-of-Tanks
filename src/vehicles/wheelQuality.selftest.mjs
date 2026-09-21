@@ -22,6 +22,8 @@ for (const id of ALL_TANK_IDS) {
   const audit = auditTankWheelQuality(tank.root);
   assert.deepEqual(audit.issues, [], `${id}: ${JSON.stringify(audit.issues)}`);
   assert(audit.patterns.length >= 1, `${id}: runtime wheel pattern receipt`);
+  assert(audit.patterns.includes(resolvedA.id),
+    `${id}: the family policy must agree with the authored running gear`);
 
   for (const pattern of audit.patterns) {
     patternUse.set(pattern, (patternUse.get(pattern) || 0) + 1);
@@ -47,6 +49,10 @@ assert.equal(wheelPatternFor(getSpec('t90m')).id, 'pressed-six', 'T-90 pressed-w
 assert.equal(wheelPatternFor(getSpec('merkava4b')).id, 'deep-dish-eight', 'Merkava deep-dish identity');
 assert.equal(wheelPatternFor(getSpec('kf51b')).id, 'plain-dish-twelve', 'Leopard-hull family uses the plain dished disc');
 assert.equal(wheelPatternFor(getSpec('m60a1')).id, 'cast-five-spoke', 'Patton cast-wheel identity');
+assert.equal(wheelPatternFor(getSpec('k21_x')).id, 'armored-hub-six', 'K21 cannot inherit K2 MBT wheels');
+assert.equal(wheelPatternFor(getSpec('k2_x')).id, 'flanged-twelve', 'K2 retains its own wheel family');
+assert.equal(wheelPatternFor(getSpec('type100')).id, 'pressed-six', 'Chinese Type 100 cannot inherit Japanese Type 10 wheels');
+assert.equal(wheelPatternFor(getSpec('type10_x')).id, 'flanged-twelve', 'Japanese Type 10 retains its own wheel family');
 
 const uniqueGeometry = new Set();
 for (const signatures of geometrySignatures.values()) {

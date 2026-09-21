@@ -1,0 +1,175 @@
+{
+  "baselineCommit": "bb24e4b82",
+  "scope": "Default family policy correction; 12 IDs including controls, HIGH and LOW. Complete node transforms, geometry and instance buffers, material names/colors/roles/shader keys remain identical. Headless geometry-receipt builds, not native rendering or performance evidence.",
+  "unchangedBuilds": 24,
+  "rows": [
+    {
+      "id": "type96b_x",
+      "quality": "high",
+      "meshes": 39,
+      "triangles": 68326,
+      "sha256": "9a96164955e40772bce28e03faa89c723f7b17c29723daf9aeab6f5dd02ab4d9"
+    },
+    {
+      "id": "type96b_x",
+      "quality": "low",
+      "meshes": 37,
+      "triangles": 42274,
+      "sha256": "e7a76787950ed0144f14890502a635fa2c90800464d797655031b4c06833d864"
+    },
+    {
+      "id": "aft10_x",
+      "quality": "high",
+      "meshes": 39,
+      "triangles": 74448,
+      "sha256": "a73807c343e8a683781628c1024987f28ae74f36f0fe5955fa79d506824f078a"
+    },
+    {
+      "id": "aft10_x",
+      "quality": "low",
+      "meshes": 38,
+      "triangles": 44662,
+      "sha256": "3a19f4181c8f40b47b048667d96df7e47bd14154743b4e4be4eced83a1f7f377"
+    },
+    {
+      "id": "type100",
+      "quality": "high",
+      "meshes": 42,
+      "triangles": 54466,
+      "sha256": "e609da5185f6aa059e9d819e003fec4fed4d31743514e96c4006a7be0cf93aed"
+    },
+    {
+      "id": "type100",
+      "quality": "low",
+      "meshes": 40,
+      "triangles": 41484,
+      "sha256": "345be092153c125a4cc30a6606c4d51d01bf9ac1bf0e47d8810ddc19ecf51cc9"
+    },
+    {
+      "id": "ajax_x",
+      "quality": "high",
+      "meshes": 44,
+      "triangles": 83404,
+      "sha256": "c0bb72c8b9f941d50df5c31dd3efab60bb80c4a299ba10c66a68e5fc803438b6"
+    },
+    {
+      "id": "ajax_x",
+      "quality": "low",
+      "meshes": 42,
+      "triangles": 51520,
+      "sha256": "6ccec71cc0f15429e309e6f4cb909400cbfd8fcfe2abf5b9abe46b71b601a8c1"
+    },
+    {
+      "id": "ares_apc_x",
+      "quality": "high",
+      "meshes": 48,
+      "triangles": 79394,
+      "sha256": "e71f80d30970ca680a689e56b0276952aee377f579251da2c0e0354248ab8373"
+    },
+    {
+      "id": "ares_apc_x",
+      "quality": "low",
+      "meshes": 45,
+      "triangles": 60034,
+      "sha256": "8788d56e278901f0c82986768b74a8d4706f7d98409cf5b67a21abae9356a336"
+    },
+    {
+      "id": "sabra_mk2_x",
+      "quality": "high",
+      "meshes": 43,
+      "triangles": 77082,
+      "sha256": "bb4313e07973aac1e9ae6a45b732a532628005f50d01160c83fccb213d3c8e7c"
+    },
+    {
+      "id": "sabra_mk2_x",
+      "quality": "low",
+      "meshes": 41,
+      "triangles": 50684,
+      "sha256": "88e056c4f6b7523f4dc8a510881c3f9599ed36e5a7c66da3463a48ce9413de29"
+    },
+    {
+      "id": "tos1a_tagil",
+      "quality": "high",
+      "meshes": 38,
+      "triangles": 79196,
+      "sha256": "bd1b0f66b6665506fd0f1d6c87ebcb0537dd657dfcfa45820bfa6edfc42c0031"
+    },
+    {
+      "id": "tos1a_tagil",
+      "quality": "low",
+      "meshes": 37,
+      "triangles": 69050,
+      "sha256": "a85cd456b83173e8a41330849d61fbb6b757d8d1e083eee3d95b9dfd0d91c63e"
+    },
+    {
+      "id": "griffin50_x",
+      "quality": "high",
+      "meshes": 39,
+      "triangles": 64858,
+      "sha256": "997b08bcf49275aea1d040bdabdf3e0ca7f038496c9e93f477e2250debe47484"
+    },
+    {
+      "id": "griffin50_x",
+      "quality": "low",
+      "meshes": 37,
+      "triangles": 39048,
+      "sha256": "2b685e49239b6bec0fb5ef7ab5e87412fb784283ac026163dc11a9d75c80ef08"
+    },
+    {
+      "id": "k21_x",
+      "quality": "high",
+      "meshes": 40,
+      "triangles": 62356,
+      "sha256": "a61909fcf39423edb00559a83d0018939d9e1a59b68fb1cc8e7634afab878945"
+    },
+    {
+      "id": "k21_x",
+      "quality": "low",
+      "meshes": 38,
+      "triangles": 40358,
+      "sha256": "caddf9138c33b29cd0f69bb4246efa15dcebd5399af3cdb7f221dd0eebe07d57"
+    },
+    {
+      "id": "type10_x",
+      "quality": "high",
+      "meshes": 47,
+      "triangles": 68376,
+      "sha256": "3b5b1b0cd9f5a8cdd9b8e714d6af4f4e751537d27c4bc5b1bb1918d5ccca50bc"
+    },
+    {
+      "id": "type10_x",
+      "quality": "low",
+      "meshes": 45,
+      "triangles": 44614,
+      "sha256": "1848b163654456d20000b1cb1ebae358a56608e5f234428ac69732313864aff2"
+    },
+    {
+      "id": "k2_x",
+      "quality": "high",
+      "meshes": 45,
+      "triangles": 77874,
+      "sha256": "185c2ca69af6948fc1cff01b7d07ba077ec790d42358f07bd7ff1c187d364bbc"
+    },
+    {
+      "id": "k2_x",
+      "quality": "low",
+      "meshes": 43,
+      "triangles": 73158,
+      "sha256": "e55a94d05bd8f2b04d554c9e5e934f9e6f28b05ea6cf9cd6e0134810a6fb55b7"
+    },
+    {
+      "id": "t90ms_x",
+      "quality": "high",
+      "meshes": 44,
+      "triangles": 84306,
+      "sha256": "a5786f05f12c48be1f618ab1da4477c4d60809560f469d75723e108f20cb70d3"
+    },
+    {
+      "id": "t90ms_x",
+      "quality": "low",
+      "meshes": 41,
+      "triangles": 78930,
+      "sha256": "04e9f4a55596936d51829562704148c4eb1ac2a2aaacea79411611b940d07c2b"
+    }
+  ]
+}
