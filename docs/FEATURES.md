@@ -320,6 +320,13 @@ noise stream is keyed by the recipe and pattern id (`camoPatternStreamSeed`),
 not by the hull, so switching tanks never reseeds a shared pattern. Carousel and
 dossier portraits face left (`tools/portrait-camera.ts`, regenerated through the
 unchanged framing gate).
+The OpenAI, X and Gemini brand camos (2026-09-21, owner: "make the openai x
+and gemini camos more sporadic and random then predictably placed") share the
+Claude and Claude Spark composition: one hero mark, four mediums on a loosely
+jittered 2×2 with alternating weight and a sprinkle of small marks at any angle,
+every mark the complete official glyph wrapped across the tile seam
+(`src/vehicles/brandCamoPainter.ts`), laid out from the pattern-keyed camo
+stream so one seed reads the same on every hull.
 
 ## Multiplayer and persistent rooms
 

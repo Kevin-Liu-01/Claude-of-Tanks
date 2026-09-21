@@ -75,6 +75,46 @@ for (const pattern of ['openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'si
 }
 assert.equal(swatchHashes.size, 7, 'seven actual picker previews remain distinct');
 assert.equal(hashes.size, 7, 'seven paints render as independently distinct finishes');
+// Round 32 (owner 2026-09-21): "make the openai x and gemini camos more sporadic and random then predictably placed" —
+// the composition is a hero mark, four loosely jittered mediums and a sprinkle, every mark wrapped across the seam:
+// eleven or more stamps per tile (never the old four-on-a-grid), a different layout per rng stream, the same layout
+// for the same stream, and the source carries no fixed 2x2 grid loop any more.
+{
+  const countingContext = (canvas) => {
+    const ctx = canvas.getContext('2d'); let saves = 0;
+    const proxy = new Proxy(ctx, {
+      get(target, key) {
+        if (key === 'saves') return saves;
+        if (key === 'save') return () => { saves++; target.save(); };
+        const value = target[key]; return typeof value === 'function' ? value.bind(target) : value;
+      },
+      set(target, key, value) { target[key] = value; return true; },
+    });
+    return proxy;
+  };
+  const mulberry = (seed) => () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  for (const brand of ['openai', 'xai', 'gemini']) {
+    const a = createCanvas(256, 256), b = createCanvas(256, 256), c = createCanvas(256, 256);
+    const ctxA = countingContext(a);
+    paintBrandCamo(ctxA, 256, brand, mulberry(11)); paintBrandCamo(b.getContext('2d'), 256, brand, mulberry(11));
+    paintBrandCamo(c.getContext('2d'), 256, brand, mulberry(12));
+    // gemini saves once more per stamp for its gradient clip
+    const stamps = brand === 'gemini' ? ctxA.saves / 2 : ctxA.saves;
+    assert.ok(stamps >= 11, `${brand}: hero + four mediums + sprinkle is at least eleven stamps (${stamps})`);
+    assert.deepEqual(pixels(a), pixels(b), `${brand}: one rng stream lays out one composition`);
+    assert.notDeepEqual(pixels(a), pixels(c), `${brand}: another stream lays out another composition`);
+    // seam wrap: a stream of zeros parks the sprinkle on the tile corner, so its wrapped copies must ink all four corners
+    const d = createCanvas(256, 256); paintBrandCamo(d.getContext('2d'), 256, brand, () => 0);
+    const px = pixels(d), inked = (x, y) => px[(y * 256 + x) * 4 + 3] > 0;
+    const cornerInk = (x0, y0) => { let n = 0; for (let y = 0; y < 10; y++) for (let x = 0; x < 10; x++) n += inked(x0 + x, y0 + y) ? 1 : 0; return n; };
+    for (const [x0, y0] of [[0, 0], [246, 0], [0, 246], [246, 246]]) {
+      assert.ok(cornerInk(x0, y0) > 0, `${brand}: a mark on the seam wraps to the ${x0 ? 'right' : 'left'}-${y0 ? 'bottom' : 'top'} corner`);
+    }
+  }
+  const source = readFileSync(new URL('./brandCamoPainter.ts', import.meta.url), 'utf8');
+  assert.ok(!/for \(let row = 0; row < 2/.test(source), 'no fixed two-by-two grid remains');
+  assert.match(source, /sprinkle/, 'the sprinkle pass is part of the composition');
+}
 for (const scheme of ['mono', 'carbon', 'prism', 'digital', 'stripes']) {
   const canvas = createCanvas(64, 64), ctx = canvas.getContext('2d');
   const before = sha(pixels(canvas));
