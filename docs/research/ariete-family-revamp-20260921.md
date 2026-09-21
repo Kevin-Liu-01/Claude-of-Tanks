@@ -1,8 +1,7 @@
 # Ariete family revision — 2026-09-21
 
-Status: geometry, visual, anatomy, type and both builds pass; four stale
-fleet-preservation test expectations block the composed release and are being
-updated for this explicitly authorized Ariete revision.
+Status: qualified. The complete targeted release, independent visual review,
+anatomy, type checking, both builds and attribution audit pass.
 
 ## Owner target and scope
 
@@ -64,13 +63,30 @@ classified protection claims. No active protection system or guided missile
 armament is inferred. Add-on protection needs finite visible stock and matching
 gameplay faces; cosmetic sights and weapons must not inflate armor volumes.
 
+| Gameplay value | Definitive C1 | New C2 |
+| --- | ---: | ---: |
+| Tier | IX | X |
+| Health | 2,300 | 2,600 |
+| Engine | 1,270 hp | 1,500 hp |
+| Weight | 56 t | 62 t |
+| Forward / reverse speed | 63 / 25 km/h | 65 / 30 km/h |
+| Manual reload | 5.9 s | 5.4 s |
+| Aim time | 1.60 s | 1.45 s |
+| Turret traverse | 40°/s | 44°/s |
+
+The three 120 mm rounds retain identical damage and penetration. The C2's
+closed cheek, side and belly packs produce their actual finite gameplay
+surfaces; no broad invisible protection slab substitutes for the additions.
+Both definitive models start with `service_ariete_c1`; saved explicit paint
+selections continue to take precedence.
+
 ## Baseline and frozen rendering budgets
 
 Baseline: `b50b20878e2ec9218e522a874adff50e45e60e2e`, isolated branch
 `codex/ariete-family-revamp-20260921`.
 Native baseline receipt: `.qa-dev/ariete-family/baseline.json`.
-Main through `0e2f77db3489efdc114b18950f5aa824ec930275` was integrated before
-final qualification. Its movement changes, authored Factory paint, national
+Main through `805a54bd19e56731bb5fa1047ca78bf5babb9949` was integrated before
+final qualification. Its movement and map changes, authored Factory paint, national
 colors and left-facing portraits are preserved. The four Ariete asset sets
 were regenerated with that portrait policy; unrelated fleet asset rows remain
 unchanged.
@@ -250,6 +266,45 @@ strict tracks, bounded source openings, sealed surfaces and C1 fidelity
 (97.7 aggregate; 97.1 minimum), all fleet probes and the private build.
 Its pretest phase passed 395 of 399 files. Four historical whole-fleet
 expectations rejected the authorized prototype name changes, enlarged C1
-registration and new C2 ammunition/marking entries. Those expectations need
-narrowly authenticated Ariete deltas while preserving their historical
-non-Ariete assertions. No final composed release pass is claimed yet.
+registration and new C2 ammunition/marking entries. The corrected tests
+authenticate and reverse only the requested Ariete display/registration deltas
+before applying the original historical hashes. The original 535-channel and
+151-anchor baselines remain unchanged, with the new C2 checked separately.
+The marking test also checks the C2's actual HIGH/LOW readable surface support.
+All four focused checks pass; their receipt SHA-256 is
+`392f815fd30201a1f913ffe8f67c4a30af4f20905aaca589f828834d2ab552da`.
+
+### Final qualification
+
+Release attempt 5 passes the complete command
+`node tools/tank-release-check.mjs --ids=ariete_c1_x,ariete_c2_x --gate`
+on the integrated main state. All model gates, generated anatomy, centering,
+module alignment/hits, assets, duplicate tracks, bores, barrel circularity,
+private build and npm test phases pass. No gate floor was weakened.
+
+| Test phase | Entries | Re-executed | Unchanged-input PASS receipts reused |
+| --- | ---: | ---: | ---: |
+| Pre | 399 | 44 | 355 |
+| Core | 680 | 376 | 304 |
+| Post | 42 | 6 | 36 |
+
+The existing test runner authenticates reused receipts against unchanged
+observable inputs; the separate integrated core and post runs had already
+executed all 680 and 42 entries successfully. The earlier pre run executed
+all 399, with its four corrected failures subsequently re-executed and passed.
+The final composed release completed in 15.8 minutes.
+
+Final local evidence hashes (SHA-256):
+
+- `.qa-dev/ariete-family/release-r5.log`:
+  `23d79632d96556a8305c8db0cb6786d93de1a1d56959c1f5d10c65b7e2b8f115`
+- `.qa-dev/ariete-family/public-build-integrated-final.log`:
+  `78ca1af740245163903d16e63d144b46f67bb69e3abc87891be3d751807ddcc8`
+- `.qa-dev/ariete-family/typecheck-integrated-final.log`:
+  `cfb12a0ea23fdcc5f45fe5b3ae8380c814b42783ab471dc9cb44cfdc4a9f9824`
+- `.qa-dev/ariete-family/attribution-final.log`:
+  `3d4d430e8b8d75ad36c7062c63e28253ea8dde7c238a928df61b987d3b1f505a`
+
+The attribution audit covers 7,282 tracked files and 201 procedural playables.
+Only the four Ariete rows differ in the final asset manifest; incoming map
+code and every non-Ariete asset row are preserved from main.

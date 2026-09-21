@@ -15,6 +15,23 @@ const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
 // Repinned 2026-09-15: the owner roster pass renamed donor display names (AMX-30B -> AMX-30,
 // AMX-40 -> AMX-40 Prototype, C1 Ariete -> Serie 1, Challenger 1 Mk 3 -> Mk 2 ...); no armor row moved.
 const donorHash = '09842f4d09b48cef27744d80a99ac8e512084354a116f608492c0d85c8dac942';
+function historicalDonors(rows = donorRows()) {
+  const restored = structuredClone(rows);
+  const ariete = restored.find(([id]) => id === 'ariete_c1')[1];
+  // The 2026-09-21 owner rename is the only permitted donor delta. Authenticate
+  // the complete current label before reversing it for the original digest.
+  assert.equal(ariete.name, 'C1 Ariete Prototype (Serie 1)');
+  assert.deepEqual(ariete.label, {
+    id: 'ariete_c1', displayName: 'C1 Ariete Prototype (Serie 1)', shortName: 'C1 Prototype S1',
+    searchAliases: ['C1 Ariete Prototype (Serie 1)', 'C1 Prototype S1', 'ariete_c1', 'ariete c1'],
+  });
+  ariete.name = 'C1 Ariete (Serie 1)';
+  ariete.label = {
+    id: 'ariete_c1', displayName: 'C1 Ariete (Serie 1)', shortName: 'Ariete C1 S1',
+    searchAliases: ['C1 Ariete (Serie 1)', 'Ariete C1 S1', 'ariete_c1', 'ariete c1'],
+  };
+  return restored;
+}
 const hullHash = '60571a41bc152a5aae624f029db842df453b49d8b826dc153db541aa0834f833';
 const hullCellsHash = 'e546ccd22261d60cd24fd5eae85fc268d12a432437f0becce61bc67219cf3ce7';
 const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe60d7a55f';
@@ -69,7 +86,15 @@ function checkArmor(armor) {
     .some(hit => hit.kind === 'module' && hit.module === 'gun'), 'unchanged physical barrel remains hittable');
 }
 
-assert.equal(hash(donorRows()), donorHash, 'all 22 original donor specs unchanged');
+assert.equal(hash(historicalDonors()), donorHash,
+  'all 22 original donor specs unchanged apart from the authenticated C1 display rename');
+const wrongLabel = structuredClone(donorRows());
+wrongLabel.find(([id]) => id === 'ariete_c1')[1].label.shortName = 'unapproved';
+assert.throws(() => historicalDonors(wrongLabel), assert.AssertionError);
+const wrongArmor = structuredClone(donorRows());
+wrongArmor.find(([id]) => id === 'ariete_c1')[1].armor.hullPlates[0].physicalMm += 1;
+assert.notEqual(hash(historicalDonors(wrongArmor)), donorHash,
+  'the display-only reversal cannot conceal a donor armor mutation');
 checkArmor(TANK_SPECS.jpz_e100_x.armor);
 const armor = TANK_SPECS.jpz_e100_x.armor;
 

@@ -1,4 +1,4 @@
-# C1 Ariete X — independent supplied-file reconstruction
+# C1 Ariete — definitive supplied-file reconstruction
 
 ## Current family revision — 2026-09-21
 
@@ -16,7 +16,9 @@ every complete source mesh and yields canonical SHA-256
 `1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68`.
 No source geometry is repaired or fitted to the candidate. The original recipe
 and the measurements and receipts below remain historical evidence. Fresh
-geometry, physical, visual and release checks are required for the new size.
+geometry, physical, independent visual and complete release checks pass for
+the new size. The current family packet records the 97.1 minimum source score,
+measured articulation limits, final budgets and inherited limitations.
 
 ## Historical supplied-file reconstruction
 

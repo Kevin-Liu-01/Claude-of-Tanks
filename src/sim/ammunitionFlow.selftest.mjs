@@ -180,7 +180,7 @@ assert.equal(addedXIds.size, 28, 'the two additive X batches have distinct ident
 const laterChannelCounts = {
   type100: 3, ztz100_x: 3, ztz100_prototype: 3, object695_x: 3,
   merkava4_trophy: 3, merkava4_barak: 3, namer_ifv: 2, ares_apc_x: 3,
-  tos1a_tagil: 1,
+  tos1a_tagil: 1, ariete_c2_x: 3,
 };
 const laterIds = new Set([...Object.keys(laterChannelCounts), ...SUPPLIED_SOURCE_IDS]);
 for (const [id, count] of Object.entries(laterChannelCounts)) {
@@ -193,8 +193,17 @@ assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) &&
 assert.equal(SUPPLIED_SOURCE_IDS.length, 12, 'the supplied batch adds twelve distinct loadouts');
 assert.equal(SUPPLIED_SOURCE_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 32,
   'nine three-channel, two two-channel and one guided-primary loadout');
-assert.equal(authoredShellChannels, 675 /* preserved 628 + 32 supplied-source + 8 Israeli + 3 Ares + 3 prototype + 1 rocket channel */,
-  'every authored ammunition channel in the saved fleet is covered');
+const arieteC2Rounds = TANK_SPECS.ariete_c2_x.gun.shells;
+assert.deepEqual(arieteC2Rounds, TANK_SPECS.ariete_c1_x.gun.shells,
+  'the C2 upgrade retains the definitive C1 ammunition without invented penetration or missile rounds');
+assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.caliberMm,
+  round.guided === true, shellAmmunitionCapacity(round)]), [
+  ['CL3143 APFSDS', 'APFSDS', 120, false, 24],
+  ['DM12A1 HEAT-MP', 'HEAT', 120, false, 16],
+  ['DM11 HE-FRAG', 'HE', 120, false, 12],
+]);
+assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x, 675,
+  'all 675 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
 assert.ok(depletedChannelTransitions > 200,

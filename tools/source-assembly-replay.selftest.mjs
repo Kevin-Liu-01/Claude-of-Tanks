@@ -13,6 +13,32 @@ const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'cot-source-assembly-unit-'));
 const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+const originalArieteFrame = {
+  sha256: 'fec5f915eb6862ef4b6e3c442355b0ec9dd5df6f1357ec560490e43c84fda08c',
+  fused: true, turret: [0, 1.306227824, .328028885], gun: [0, 1.651499209, 1.3415539],
+};
+function restoreArieteRegistration(frames) {
+  assert.deepEqual(frames.ariete_c1_x, {
+    ...originalArieteFrame,
+    sha256: '1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68',
+    turret: originalArieteFrame.turret.map(v => v * 1.12),
+    gun: originalArieteFrame.gun.map(v => v * 1.12),
+  }, 'only the exact owner-directed 1.12 C1 source frame may replace its historical registration');
+  return { ...frames, ariete_c1_x: structuredClone(originalArieteFrame) };
+}
+function checkArieteRegistrationRecipe() {
+  const originalBytes = fs.readFileSync(path.join(root, 'docs/research/second-wave-registrations/ariete_c1_x.json'));
+  const enlargedBytes = fs.readFileSync(path.join(root, 'docs/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json'));
+  assert.equal(sha(originalBytes), '9cf61ecc80ee45152d7a743de8e029d1e0c2688aefba7996be782c32f245fb5d');
+  assert.equal(sha(enlargedBytes), '2fac6ad3b23939e4013002a8b53a1f3128eef16d028498ff5fd486a49694371c');
+  const original = JSON.parse(originalBytes), enlarged = JSON.parse(enlargedBytes);
+  assert.equal(enlarged.ownerRequestedEnlargement, 1.12);
+  assert.equal(enlarged.sourceSha256, original.sourceSha256);
+  assert.deepEqual(enlarged.axes, original.axes);
+  assert.equal(enlarged.scale, original.scale * 1.12);
+  assert.deepEqual(enlarged.translation, original.translation.map(v => v * 1.12));
+  assert.equal(enlarged.parentRegistration, 'docs/research/second-wave-registrations/ariete_c1_x.json');
+}
 function glb(json, bin) {
   const text = Buffer.from(JSON.stringify(json));
   const j = Buffer.concat([text, Buffer.alloc((4 - text.length % 4) % 4, 32)]);
@@ -116,7 +142,16 @@ try {
   }
   const legacyIds = ["aft10_x", "ajax_x", "amx30_x", "amx40_x", "ariete_c1_x", "challenger1_x", "chieftain5_x", "chieftain_mk10_x", "cv90105_tml_x", "cv90_mkiv_x", "jpz_e100_x", "k1a1_x", "kf41_lynx_x", "kf51_x", "leclerc_classic_x", "leclerc_x", "leo2a5_x", "leo2a6_x", "m1a2_sepv2_x", "sabra_mk2_x", "strv122_x", "t62mv1_x", "t72b3_x", "t72b3m_x", "t72b_1987_x", "t72bu_x", "t80u_x", "t90_x", "t90a_burlak_x", "t90a_x", "t90m_x", "t90ms_x", "t90sm_x", "type10_x", "type90_x", "type96b_x", "ztz100_x"];
   const legacy = Object.fromEntries(legacyIds.map(id => [id, SOURCE_WORLD_FRAMES[id]]));
-  assert.equal(sha(Buffer.from(JSON.stringify(legacy))), "55524fedcd0cc405dce90f47795ce6753c9bcd5dd1e6245473d1f2a45f2f0f7e", 'all prior non-assembled certificates preserve their exact hashes and datums');
+  checkArieteRegistrationRecipe();
+  assert.equal(sha(Buffer.from(JSON.stringify(restoreArieteRegistration(legacy)))), "55524fedcd0cc405dce90f47795ce6753c9bcd5dd1e6245473d1f2a45f2f0f7e", 'all historical certificates remain exact after reversing only the authenticated C1 enlargement');
+  for (const mutate of [frame => { frame.sha256 = originalArieteFrame.sha256; },
+    frame => { frame.turret[1] += .001; }, frame => { frame.gun[2] *= 1.01; },
+    frame => { frame.fused = false; }]) {
+    const wrong = structuredClone(legacy); mutate(wrong.ariete_c1_x);
+    assert.throws(() => restoreArieteRegistration(wrong), assert.AssertionError);
+  }
+  assert.equal(SOURCE_WORLD_FRAMES.ariete_c2_x, undefined,
+    'the new C2 concept must not inherit a whole-model C1 source certificate');
   for (const [id, assembly] of Object.entries(SUPPLIED_SOURCE_ASSEMBLIES)) {
     assert.deepEqual(SOURCE_WORLD_FRAMES[id], { ...assembly.originalFrame, sha256: assembly.sha256 }, 'only approved source hash changes');
     const reference = SUPPLIED_SOURCE_REFERENCE_OVERRIDES[id];

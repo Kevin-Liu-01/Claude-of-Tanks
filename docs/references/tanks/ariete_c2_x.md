@@ -1,7 +1,7 @@
 # C2 Ariete — definitive-family upgrade
 
-Status: construction and independent visual review pass; the composed release
-run is pending. Source comparison is not
+Status: qualified. Construction, independent visual review and the complete
+targeted release pass. Source comparison is not
 applicable: no supplied C2 3D model exists for this explicitly requested
 first-party derivative. A missing comparison is not a perfect source score.
 
@@ -52,6 +52,8 @@ measured gun-clearance curve preserves forward/side depression and raises the
 barrel around the skirt shoulders and rear deck; these model-specific stops
 are shared by live gameplay and presentation tools.
 
-Qualification requires real geometry, attachment, track motion, bore, armor,
-marking, anatomy and performance checks, an independent 14-view HIGH/LOW
-review, and the complete release sequence. This packet is not itself a pass.
+Qualification passed geometry, attachment, track motion, bore, finite armor,
+marking, anatomy and rendering-budget checks, an independent 14-view HIGH/LOW
+review and the complete release sequence. A further twelve original views
+verified the final wider-track clearance repair. Exact evidence, measured
+collision cost and inherited limitations are in the family work packet.
