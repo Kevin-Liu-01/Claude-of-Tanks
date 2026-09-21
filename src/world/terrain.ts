@@ -2550,8 +2550,13 @@ void splatCompute() {
   // vista pass (2026-09-19): the horizon ring's rim bands render with this material past the playable square,
   // where the clamped mask edge would drag any rim road, shoulder or town wear outward as a radial streak;
   // fade those channels to open ground there (the landform/marsh channel keeps its edge value)
-  float outsideW = smoothstep(0.0, 36.0, max(abs(wp.x), abs(wp.z)) - 512.0);
-  mk = mix(mk, vec4(0.0, 0.0, mk.b, 0.0), outsideW);
+  float edgeOut = max(abs(wp.x), abs(wp.z)) - 512.0;
+  float outsideW = smoothstep(0.0, 36.0, edgeOut);
+  // Round 29 (owner 2026-09-20, "see where the texture just stops"): a road that reaches the playable edge runs on
+  // into the ring on its clamped edge texels — a straight continuation of the carriageway and its shoulder — and
+  // fades out between 24 and 96 m instead of ending dead on the seam; wear still fades with the 36 m ramp.
+  float outsideRoadW = smoothstep(24.0, 96.0, edgeOut);
+  mk = vec4(mk.r * (1.0 - outsideRoadW), mk.g * (1.0 - outsideRoadW), mk.b, mk.a * (1.0 - outsideW));
   // r6 terrain_environment: on landform-gated maps (desert) the mask B
   // channel carries the MESA/RIM weight instead of marsh/ice — decode it and
   // zero the marsh weight so none of the wet/ice paths fire on sand.

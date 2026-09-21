@@ -37,7 +37,7 @@ function requireIntegration(source) {
   for (const [style, expected] of Object.entries(styleKeys)) {
     for (const mapId of ['titan_gorge', 'desert', 'winter', 'coastal', 'verdant']) {
       assert.equal(cacheKey(mapId, style, null), expected, 'Style cache identities remain exact and carry no map-specific branch');
-      assert.equal(cacheKey(mapId, style, {}), 'horizon-ring-vista-r1-' + style, 'The vista program carries one identity per style');
+      assert.equal(cacheKey(mapId, style, {}), 'horizon-ring-vista-r3-' + style, 'The vista program carries one identity per style');
     }
   }
   assert.doesNotMatch(source, /VERDANT_HORIZON_FRAGMENT|verdant-classic|horizon-verdant-watershed/,

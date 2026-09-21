@@ -36,6 +36,7 @@ import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
+  type VistaGround,
   type HorizonForestSpeciesPalette,
 } from '../horizonVista.ts';
 
@@ -58,6 +59,8 @@ interface HorizonConfig {
   finiteTableCaps?: boolean;
   redrockCanyon?: boolean;
   banding?: number;
+  /** Round 29: the vista's ground tile — 'sand' for arid rings (default for treeless mesa styles), else 'meadow'. */
+  ground?: 'meadow' | 'sand';
   rockHex?: number;
   snowHex?: number;
   forestHex?: number;
@@ -1366,7 +1369,11 @@ function rawHorizonGradients(
       const tangentDelta = (heights[after] - heights[before])
         / Math.max(1, Math.hypot(positions[after * 3] - positions[before * 3],
           positions[after * 3 + 2] - positions[before * 3 + 2]));
-      const inner = rowIndex > 0 ? index - HORIZON_SEGMENTS : index;
+      // Round 29 (owner 2026-09-20, Redrock Divide: "see where the texture just stops"): the first exposed row's
+      // radial gradient is one-sided. Its inner neighbour is the buried closing anchor — up to 110 m under
+      // Redrock's plateau — whose slope tilted every seam normal (~36° there) and made the terrain material paint
+      // a band of streaked rock on flat ground beyond every playable edge.
+      const inner = rowIndex > 1 ? index - HORIZON_SEGMENTS : index;
       const outer = rowIndex < rows.length - 1 ? index + HORIZON_SEGMENTS : index;
       const innerRadius = Math.hypot(positions[inner * 3], positions[inner * 3 + 2]);
       const outerRadius = Math.hypot(positions[outer * 3], positions[outer * 3 + 2]);
@@ -1671,6 +1678,8 @@ interface HorizonMaterialContext {
   fog: THREE.Color;
   haze: number;
   vista: boolean;
+  /** Round 29: which tile the vista samples as the ground layer. */
+  ground: VistaGround;
 }
 
 // Round 22 near-field surface (see buildHorizonMaterialSteps): runs after the style's map fragment on
@@ -1759,7 +1768,7 @@ float horizonWaterVariation = 0.0;
 
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
-  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista,
+  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground,
 }: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
@@ -1855,16 +1864,22 @@ function* buildHorizonMaterialSteps({
     // Vista pass (2026-09-19): one layered world-anchored material for every style on the desktop tier — see
     // horizonVista.ts. Tints are ratios to the base tone; amplitudes follow the style's landform language.
     const tiles = vista ? createVistaTiles() : null;
-    if (tiles) retainedTextures.push(tiles.meadow, tiles.canopy, tiles.rock, tiles.scree, tiles.snow);
+    if (tiles) retainedTextures.push(tiles.meadow, tiles.sand, tiles.canopy, tiles.rock, tiles.scree, tiles.snow);
     const ratio = (colour: THREE.Color, lo: number, hi: number): THREE.Vector3 => new THREE.Vector3(
       THREE.MathUtils.clamp(colour.r / Math.max(base.r, 1e-3), lo, hi),
       THREE.MathUtils.clamp(colour.g / Math.max(base.g, 1e-3), lo, hi),
       THREE.MathUtils.clamp(colour.b / Math.max(base.b, 1e-3), lo, hi));
-    const rockTint = ratio(rock, 0.3, 1.6);
+    // Round 29: the vista tints are absolute linear colours (the fragment divides the base-hued bake back out)
+    const rockTint = new THREE.Vector3(rock.r, rock.g, rock.b);
     const vistaUniforms: Record<string, THREE.IUniform> = tiles ? {
-      uVMeadow: { value: tiles.meadow }, uVCanopy: { value: tiles.canopy }, uVRock: { value: tiles.rock },
+      // round 29: arid rings sample the sand tile as their ground layer
+      uVMeadow: { value: ground === 'sand' ? tiles.sand : tiles.meadow }, uVCanopy: { value: tiles.canopy }, uVRock: { value: tiles.rock },
       uVScree: { value: tiles.scree }, uVSnow: { value: tiles.snow },
-      uVMeadowTint: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+      // the ground colour becomes the battlefield's own albedo mean once the terrain textures exist
+      // (horizonAutumnGround.refreshHorizonGroundTone); the base tone stands in until then
+      uVMeadowTint: { value: new THREE.Vector3(base.r, base.g, base.b) },
+      uVForestColor: { value: new THREE.Vector3(forest.r, forest.g, forest.b) },
+      uVSnowColor: { value: new THREE.Vector3(snow.r, snow.g, snow.b) },
       uVRockTint: { value: rockTint },
       uVScreeTint: { value: rockTint.clone().multiplyScalar(1.18) },
       uVRockAmp: { value: style === 'alpine' ? 1.0 : style === 'mesa' ? 1.0 : style === 'escarpment' ? 0.85 : 0.55 },
@@ -1876,8 +1891,9 @@ function* buildHorizonMaterialSteps({
       uVFogTint: { value: new THREE.Vector3(fog.r, fog.g, fog.b) },
       uVBanding: { value: style === 'mesa' ? Math.max(banding, 0.14) * 1.7 : Math.max(banding, 0.05) },
       uVRockSlope: { value: style === 'mesa' ? new THREE.Vector2(0.16, 0.42) : new THREE.Vector2(0.30, 0.58) },
-      uVAmbient: { value: 0.72 },
-      uVSunGain: { value: 0.60 },
+      // absolute colours meet the battlefield's lit ground: a sky term plus a Lambert sun term (about SUN / pi)
+      uVAmbient: { value: 0.46 },
+      uVSunGain: { value: 1.30 },
     } : {};
     mat.userData.horizonDetailNoise = detailNoise;
     if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone() };
@@ -2015,7 +2031,7 @@ function* buildHorizonMaterialSteps({
         diffuseColor.rgb = mix(diffuseColor.rgb,
           diffuse * vColor.rgb * (1.0 + horizonWaterVariation), horizonMarine);`);
     };
-    mat.customProgramCacheKey = () => tiles ? 'horizon-ring-vista-r1-' + style : style === 'mesa' ? 'horizon-ring-mesa-surface-r3'
+    mat.customProgramCacheKey = () => tiles ? 'horizon-ring-vista-r3-' + style : style === 'mesa' ? 'horizon-ring-mesa-surface-r3'
       : (style === 'alpine' ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r3-') + style;
   }
   return mat;
@@ -2532,11 +2548,14 @@ export function* buildHorizonRingSteps(
   // r1 (content_breadth): alpine 0.12 -> 0.06 — pairs with the segmented rib
   // cut in the snow pass; kills the last of the vertical smear on the wall
   const retainedTextures: THREE.Texture[] = [];
+  // Round 29: treeless mesa rings (Redrock, Copper Mesa, the desert, Mars, Titan, Skybridge) stand on sand /
+  // alluvium; a map can say so explicitly (Sunscar Oasis is a rolling dune field).
+  const vistaGround: VistaGround = H.ground ?? (style === 'mesa' && treeline < 0.25 ? 'sand' : 'meadow');
   const mat = yield* buildHorizonMaterialSteps({
     noise: gnoi, banding, snowline, treeline, grainAmp, style, seed,
     mapId,
     sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
-    base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista,
+    base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista, ground: vistaGround,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';

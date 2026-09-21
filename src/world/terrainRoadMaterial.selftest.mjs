@@ -55,4 +55,13 @@ assert.match(terrainSource, /\(streak - 0\.5\) \* 0\.16 \* max\(lane, 0\.35 \* c
   'tyre streaks are an along-lane modulation bounded to +/-8%');
 assert.doesNotMatch(terrainSource, /rutG/, 'the mask-gradient emboss of the old rut bytes is gone');
 
+// Round 29 (owner 2026-09-20, "see where the texture just stops"): a road that reaches the playable edge runs on
+// into the horizon ring on the mask's clamped edge texels and fades between 24 and 96 m past the edge; settlement
+// wear keeps its short fade and the landform/marsh channel its edge value.
+assert.match(terrainSource, /float edgeOut = max\(abs\(wp\.x\), abs\(wp\.z\)\) - 512\.0;/, 'the edge distance is measured once');
+assert.match(terrainSource, /float outsideRoadW = smoothstep\(24\.0, 96\.0, edgeOut\);/, 'roads fade out between 24 and 96 m past the edge');
+assert.match(terrainSource, /mk = vec4\(mk\.r \* \(1\.0 - outsideRoadW\), mk\.g \* \(1\.0 - outsideRoadW\), mk\.b, mk\.a \* \(1\.0 - outsideW\)\);/,
+  'only the road channels take the long fade; wear keeps the 36 m ramp and the landform/marsh channel its edge value');
+assert.doesNotMatch(terrainSource, /mk = mix\(mk, vec4\(0\.0, 0\.0, mk\.b, 0\.0\), outsideW\);/, 'the old all-channel 36 m fade is gone');
+
 console.log('terrainRoadMaterial self-test passed');

@@ -78,7 +78,10 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0.06, banding: 0.045,
+    // Round 29 (owner 2026-09-20, "see where the texture just stops"): treeline 0.06 let the vista paint every
+    // outland surface under 8 m — the canyon-mouth floors past both deployment ends — as dark woodland (green
+    // before the absolute tints, dark brown after). Redrock's outland is sand and rock; no ring forest.
+    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045,
     forestHex: 0x58402f, rockHex: 0x96533b, haze: 0.92, grain: 0.58,
   },
   sky: {

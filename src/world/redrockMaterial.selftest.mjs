@@ -14,7 +14,8 @@ const serialize = value => JSON.stringify(value, (_key, item) => typeof item ===
 
 // Material authoring only: existing canyon support, props, routes, water,
 // species, budgets, light and every unlisted material setting remain exact.
-const { banding: _candidateBanding, ...horizon } = badlands.horizon;
+// round 29 (2026-09-20): the vista ground kind and treeline 0 are projected back like the quiet bedding
+const horizon = historicalBadlandsInput(badlands).horizon;
 assert.equal(serialize({ ...badlands, horizon, splat: { ...badlands.splat,
   rippleAmp: original.splat.rippleAmp, strata: original.splat.strata,
   rockTone: original.splat.rockTone } }), serialize(original));
