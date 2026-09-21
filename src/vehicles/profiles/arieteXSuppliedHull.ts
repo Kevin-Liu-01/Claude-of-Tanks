@@ -70,11 +70,14 @@ function shoulders(P: TankBuilderPort, side: -1 | 1): void {
   }
 }
 
-function thinSkirts(P: TankBuilderPort, side: -1 | 1): void {
+function thinSkirts(P: TankBuilderPort, side: -1 | 1, modern: boolean): void {
   const x = side < 0 ? -1.521549 : 1.521970;
   // The thin outside return joins the skirt hinge to the shoulder wall. It
   // sits OUTSIDE the track envelope; do not fill the raised wheel-well roof.
-  P.add('hull', box(.047, .054, 3.092), side * 1.5105, 1.063, -1.62);
+  // C2's wider links need20.16mm more room at this concealed inner face.
+  // Retain the original outer face and the closed29mm load-bearing strip.
+  P.add('hull', box(modern ? .029 : .047, .054, 3.092),
+    side * (modern ? 1.5195 : 1.5105), 1.063, -1.62);
   P.addExternalArmor('hull', box(.0155, .209434, .548397), x, .971891, -2.890019);
   for (const [a, b] of [[-2.61582, -1.697339], [-1.687246, -.776335],
     [-.770447, .141305], [.148875, 1.059786], [1.06315, 1.974061],
@@ -115,6 +118,6 @@ function heavySkirts(P: TankBuilderPort, side: -1 | 1): void {
 export function addArieteXSuppliedHull(P: TankBuilderPort, modern = false): void {
   lowerTub(P, modern); bearingDeck(P);
   for (const side of [-1, 1] as const) {
-    shoulders(P, side); thinSkirts(P, side); heavySkirts(P, side);
+    shoulders(P, side); thinSkirts(P, side, modern); heavySkirts(P, side);
   }
 }

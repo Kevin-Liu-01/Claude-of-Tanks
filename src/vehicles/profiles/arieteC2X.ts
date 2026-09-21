@@ -1,6 +1,6 @@
 // Explicit first-party C2 modernization of the enlarged supplied C1. The
-// original hull/turret solids survive; these named upgrades are not a second
-// tank laid over a donor. Detail dimensions are game authoring, not metrology.
+// source turret and9 of12 primary hull pieces remain exact; three hidden
+// receiving pieces are fitted to the wider links. Detail dimensions are game authoring, not metrology.
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
@@ -111,7 +111,9 @@ export function buildArieteC2X(P: TankBuilderPort): void {
   gunnerSight(P); panoramicSight(P); commanderWeapon(P); coolingDeck(P); protection(P);
   enlargeArieteXFamily(P);
   P.hullG.userData.arieteC2Derivation = Object.freeze({ base: 'ariete_c1_x',
-    originalPrimaryBodyRetained: true, widerTracks: true, returnRollersPerSide: 4,
+    originalPrimaryBodyRetained: false, unchangedPrimaryHullPieces: 9,
+    primaryBodyChanges: ['closed lower-tub receiving walls', 'two skirt-carrier inner faces'],
+    widerTracks: true, returnRollersPerSide: 4,
     roofMachineGuns: ['7.62mm loader GPMG', '12.7mm commander M2'],
     sights: ['Lothar-SD-inspired recessed head', 'Attila-D-inspired panoramic head'],
     protection: 'finite WAR/PSO-style stock and belly plate', activeProtection: false });

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-18T22:11:28.488Z",
+ "generatedAt": "2026-09-21T10:53:35.801Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -1459,6 +1459,14 @@
    "insideOutPx": 600,
    "seeThroughPx": 0,
    "tris": 82582
+  },
+  "ariete_c2_x": {
+   "sealed": true,
+   "openPx": 160,
+   "openViews": 0,
+   "insideOutPx": 4917,
+   "seeThroughPx": 0,
+   "tris": 97514
   }
  }
 }

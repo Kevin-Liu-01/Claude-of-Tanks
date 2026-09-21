@@ -1,6 +1,8 @@
 # Ariete family revision — 2026-09-21
 
-Status: implementation in progress; qualification and publication pending.
+Status: geometry, visual, anatomy, type and both builds pass; four stale
+fleet-preservation test expectations block the composed release and are being
+updated for this explicitly authorized Ariete revision.
 
 ## Owner target and scope
 
@@ -67,6 +69,11 @@ gameplay faces; cosmetic sights and weapons must not inflate armor volumes.
 Baseline: `b50b20878e2ec9218e522a874adff50e45e60e2e`, isolated branch
 `codex/ariete-family-revamp-20260921`.
 Native baseline receipt: `.qa-dev/ariete-family/baseline.json`.
+Main through `0e2f77db3489efdc114b18950f5aa824ec930275` was integrated before
+final qualification. Its movement changes, authored Factory paint, national
+colors and left-facing portraits are preserved. The four Ariete asset sets
+were regenerated with that portrait policy; unrelated fleet asset rows remain
+unchanged.
 
 | Model / state | HIGH triangles / batches | LOW triangles / batches |
 | --- | --- | --- |
@@ -103,7 +110,7 @@ Final loaded-fill geometry (native rendered instances, not stored buffers):
 | Vehicle | HIGH triangles / batches | LOW triangles / batches |
 | --- | --- | --- |
 | Definitive C1 | 96,418 / 41 | 84,226 / 39 |
-| New C2 | 97,466 / 44 | 69,490 / 42 |
+| New C2 | 97,514 / 44 | 69,538 / 42 |
 
 C1 stays below the original filled budget. C2 LOW is 71.3% of HIGH, below both
 the 75% ceiling and the 74,000-triangle target. The C2 uses a dedicated simpler
@@ -114,7 +121,7 @@ supports disappearing through an inherited empty-far detail LOD. The final
 family-only assembly retains those fitted parts with their original materials
 and armor/equipment ownership. Running-gear LOD remains unchanged. Actual
 60 m rendered costs are 65,450 / 53,258 triangles for C1 HIGH / LOW and
-66,498 / 51,794 for C2. Visibility checks also cover 100 m, 200 m and mobile.
+66,546 / 51,842 for C2. Visibility checks also cover 100 m, 200 m and mobile.
 The C2 roof weapon was rotated on its circular mounting foot to clear the
 panoramic sight; receiver, barrel and mounting stock remain one seated assembly.
 
@@ -196,4 +203,53 @@ Release attempt 3 passed that concept check, sealed checks and C1 fidelity
 (97.7 aggregate; 97.1 minimum), but rejected two C2 shoe/hull contact cells.
 Finite investigation confirmed actual contact introduced by the wider shoes;
 the earlier suspension proof did not cover shoe-versus-hull intersections.
-That local clearance correction and the final composed release remain pending.
+That contact is now repaired in the C2's receiving hull stock. The lower tub
+retains its complete floor, roof heights and exterior envelope while its
+concealed end walls narrow through twelve longitudinal stations. Two skirt
+carriers retain their outer faces and 29 mm of closed stock, with inner faces
+moved outward by 20.16 mm in the installed frame. Nine of the twelve primary
+hull pieces remain exact. The tub removes 351.164 L (2.93%); each carrier
+removes 4.222 L. C1 and the prototype shapes are unaffected.
+
+The final fixture samples the complete moving course at four quarter-link
+phases in HIGH/LOW, including both native shoe LOD streams, against all three
+revised stocks. Restoring either the old tub or the old carriers fails the
+negative controls. Strict HIGH/LOW front, rear and full-sweep band/shoe checks
+now report zero intersections for both definitive tanks. This does not claim
+that every inherited edge contact is eliminated: the separate end-window
+fixture retains nine HIGH shoulder/floor contacts versus fourteen in C1,
+outside the three repaired stocks.
+
+The ordinary whole-hull collision slicing would bridge the new clearance air,
+so C2 alone now uses an offline producer for the twelve actual primary hull
+pieces. Its 225 cells and 2,086 faces preserve the bearing well, ring and track
+clearances. HIGH/LOW cells match exactly. Each quality passes 1,260 complete
+stock-interval rays, twelve actual runtime armor first-hit rays at hull yaw,
+and missing/shifted stock and filled-air negative controls. Published anatomy
+is checked against those produced cells, with unchanged render buffers and
+materials. No other tank's collision producer changes behavior.
+
+The exact C2 collision costs more than the old ten-cell approximation. Five
+alternating rounds of 5,200 mixed whole-model traces measured 11.412 µs before
+and 14.588 µs after (+3.177 µs, +27.8%); serialized collision data grows from
+6,199 to 166,125 bytes. These are native CPU microbenchmarks, not browser FPS
+claims. The detailed receipt is
+`.qa-dev/ariete-integration/c2-collision/bench-final.json`.
+
+After the repair, a separate critic inspected all twelve new C2 originals:
+front, rear, both hero angles and both underside views in HIGH/LOW. Grades
+were 9.0–9.2, with six exact quality/camera pairs, image hashes and 1,220 input
+pins verified. No new visible hole, unsupported carrier or silhouette defect
+was found. Review receipt SHA-256:
+`5708f0034f964ebd76f49ebdfb4225f1ab1384bf1760409842e3ffb059e9fdfa`.
+The earlier full C1 review remains valid for its unchanged geometry; this is
+not a claim of pixel equality across the incoming Factory-paint integration.
+
+Release attempt 4 passed geometry, physical concept, equipment,
+strict tracks, bounded source openings, sealed surfaces and C1 fidelity
+(97.7 aggregate; 97.1 minimum), all fleet probes and the private build.
+Its pretest phase passed 395 of 399 files. Four historical whole-fleet
+expectations rejected the authorized prototype name changes, enlarged C1
+registration and new C2 ammunition/marking entries. Those expectations need
+narrowly authenticated Ariete deltas while preserving their historical
+non-Ariete assertions. No final composed release pass is claimed yet.

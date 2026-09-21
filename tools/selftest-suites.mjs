@@ -62,6 +62,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/eraWholeFitReuse.selftest.mjs',
     'tools/chieftain10-collision.selftest.mjs',
     'tools/tos1a-tagil-collision.selftest.mjs',
+    'tools/ariete-c2-collision.selftest.mjs',
     'src/vehicles/jagdpanzerE100XArmor.selftest.mjs',
     'src/vehicles/sourceXOtherAuxArmor.selftest.mjs',
     'src/vehicles/convexArmorTraceBounds.selftest.mjs',

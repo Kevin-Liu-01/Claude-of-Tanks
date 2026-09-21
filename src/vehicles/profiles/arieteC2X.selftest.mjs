@@ -8,6 +8,7 @@ import {minimumMechanicalGunPitch} from '../../sim/gunPitchLimits.ts';
 import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {enlargeArieteXFamily} from './arieteXFamilyScale.ts';
+import {capturePrimaryHull,assertC2PrimaryHullDelta,assertC2ReceivingClearance} from './arieteC2Receiving.test-support.mjs';
 
 const near=(a,b,e,label)=>assert(Number.isFinite(a)&&Math.abs(a-b)<=e,`${label}: ${a} != ${b} ±${e}`);
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
@@ -40,7 +41,7 @@ function footprintAdapter(){
   near(surfaceArgs[0],2,1e-12,'source surface left');near(surfaceArgs[1],3,1e-12,'source surface right');
 }
 function samePrimary(c1,c2){
-  for(const name of ['hull','turret','gun','gunDark','gunMount']){
+  for(const name of ['turret','gun','gunDark','gunMount']){
     const a=c1.root.getObjectByName(name),b=c2.root.getObjectByName(name);
     assert(a&&b,`retained ${name}`);
     for(const key of ['position','normal'])assert.equal(hash(a.geometry.attributes[key]),hash(b.geometry.attributes[key]),`${name} ${key} retained`);
@@ -244,11 +245,11 @@ if(process.argv.includes('--filled'))await ensureInteriorFills(['ariete_c1_x','a
 const costs=[],lodCosts=[];let clearancePoses=0;
 for(const quality of ['high','low']){
   const opts={quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242};
-  const c1=createTank('ariete_c1_x',null,opts),c2=createTank('ariete_c2_x',null,opts);
-  try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);clearancePoses+=mechanicalClearance(c1,'ariete_c1_x');clearancePoses+=mechanicalClearance(c2,'ariete_c2_x');gear(c2);bore(c2,true);poses(c2);negatives(c2);obstructedBoreNegative(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'ariete_c1_x',quality),...lodPresentation(c2,'ariete_c2_x',quality));
+  const first=capturePrimaryHull(createTank,'ariete_c1_x',opts),second=capturePrimaryHull(createTank,'ariete_c2_x',opts),c1=first.tank,c2=second.tank;
+  try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);assertC2PrimaryHullDelta(first.stocks,second.stocks);assertC2ReceivingClearance(c2,first.stocks,second.stocks);clearancePoses+=mechanicalClearance(c1,'ariete_c1_x');clearancePoses+=mechanicalClearance(c2,'ariete_c2_x');gear(c2);bore(c2,true);poses(c2);negatives(c2);obstructedBoreNegative(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'ariete_c1_x',quality),...lodPresentation(c2,'ariete_c2_x',quality));
     const c=census(c2);assert(c.triangles<=100000,'C2 frozen whole-model HIGH ceiling');assert(c.draws<=65,'merged MBT batches');costs.push({quality,triangles:c.triangles,draws:c.draws});
-  }finally{c1.dispose();c2.dispose();}
+  }finally{c1.dispose();c2.dispose();first.stocks.forEach(g=>g.dispose());second.stocks.forEach(g=>g.dispose());}
 }
 assert(costs[1].triangles<=costs[0].triangles*.75,'C2 LOW <=75% HIGH');
-console.log(JSON.stringify({filled:process.argv.includes('--filled'),costs,poses:18,clearancePoses,lodCosts,negativeControls:22}));
-console.log('arieteC2X: retained primary C1 stock, physical120mm long bore, modern equipment seats/air, widened gear, all legal poses, negatives and budgets pass');
+console.log(JSON.stringify({filled:process.argv.includes('--filled'),costs,poses:18,clearancePoses,lodCosts,negativeControls:26}));
+console.log('arieteC2X: 9of12 retained C1 hull pieces plus closed receiving relief, physical120mm long bore, modern equipment seats/air, widened gear, all legal poses, negatives and budgets pass');

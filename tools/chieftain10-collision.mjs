@@ -34,6 +34,9 @@ function indexedHull(points,sourceStock) {
   if(mapped.length<4||faces.length<4)throw Error('Mk10 stock has no closed volume');
   return {...bounds(mapped),vertices:mapped,faces,interiorPoint:average(mapped),sourceStock};
 }
+// Shared offline primitive construction; callers must independently prove
+// that their selected points describe one occupied convex stock.
+export { indexedHull as convexStockCell };
 function volume(cell) {
   const c=cell.interiorPoint;
   return cell.faces.reduce((sum,face)=>{

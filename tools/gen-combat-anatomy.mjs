@@ -25,6 +25,7 @@ const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
 const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
+const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -516,7 +517,8 @@ function eraPlateReceipts(root) {
 function receiptFor(id) {
   const create = () => createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const stockCapture = id === 'chieftain_mk10_x' ? captureChieftain10Collision(create)
-    : id === 'tos1a_tagil' ? captureTos1aTagilCollision(create) : null;
+    : id === 'tos1a_tagil' ? captureTos1aTagilCollision(create)
+      : id === 'ariete_c2_x' ? captureArieteC2Collision(create) : null;
   const tank = stockCapture?.tank ?? create();
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');
@@ -545,7 +547,7 @@ function receiptFor(id) {
     return {
       hull,
       turret,
-      hullCollision: collisionCells(
+      hullCollision: stockCapture?.hullCollision ?? collisionCells(
         tank.root, hullRig, 'hull', hull, HULL_SLICE_TARGET_M, MAX_HULL_SLICES,
       ),
       turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(

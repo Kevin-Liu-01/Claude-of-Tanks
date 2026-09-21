@@ -1,6 +1,7 @@
 # C2 Ariete — definitive-family upgrade
 
-Status: authoring and verification in progress. Source comparison is not
+Status: construction and independent visual review pass; the composed release
+run is pending. Source comparison is not
 applicable: no supplied C2 3D model exists for this explicitly requested
 first-party derivative. A missing comparison is not a perfect source score.
 
