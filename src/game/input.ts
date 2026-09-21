@@ -62,6 +62,9 @@ const ACTION_DEFS = [
   { id: 'shell3', label: 'action.shell3', group: 'settings.group.combat' },
   { id: 'specialAction', label: 'action.specialAction', group: 'settings.group.combat' },
   { id: 'reloadMagazine', label: 'action.reloadMagazine', group: 'settings.group.combat' },
+  // round 30 (owner 2026-09-20): auto-aim and the armour overlay get desktop keys
+  { id: 'autoAim', label: 'action.autoAim', group: 'settings.group.combat' },
+  { id: 'hitboxOverlay', label: 'action.hitboxOverlay', group: 'settings.group.combat' },
   { id: 'consumable1', label: 'action.consumable1', group: 'settings.group.consumables' },
   { id: 'consumable2', label: 'action.consumable2', group: 'settings.group.consumables' },
   { id: 'consumable3', label: 'action.consumable3', group: 'settings.group.consumables' },
@@ -195,6 +198,8 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   shell3: 'Digit3',
   specialAction: 'KeyE',
   reloadMagazine: 'KeyC',
+  autoAim: 'KeyT', // round 30: lock the sight to the enemy nearest the reticle (T again releases)
+  hitboxOverlay: 'KeyH', // round 30: toggle the armour / hitbox overlay while aiming
   consumable1: 'Digit4',
   consumable2: 'Digit5',
   consumable3: 'Digit6',

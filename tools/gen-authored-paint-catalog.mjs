@@ -1,0 +1,110 @@
+// Round 31 (owner 2026-09-20): "make our tank specific camos into their own camos, combining ones that are
+// identical or same exact pattern just diff seed" — every distinct authored paint recipe in the fleet becomes a
+// selectable, reusable catalog entry (src/vehicles/authoredPaintCatalog.ts), named after its lead vehicle. Recipes
+// that already exist as a named Signature or Service preset are not duplicated. Run after changing any spec's
+// `visual`; the receipt `authoredPaintCatalog.selftest.mjs` fails when the generated table drifts from the fleet.
+//   node tools/gen-authored-paint-catalog.mjs [--check]
+import { readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import '../src/vehicles/tankFactory.ts';
+import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
+import { SHARED_CAMO_PRESETS, camoNationTag } from '../src/vehicles/camoPolicy.ts';
+import { tankDisplayName } from '../src/vehicles/tankLabels.ts';
+
+export const PAINT_ID_PREFIX = 'paint_';
+const SCHEME_WORD = {
+  solid: 'Plain', nato: 'Tri-Tone', stripes: 'Stripes', digital: 'Digital', 'russian-digital': 'Digital',
+  splinter: 'Splinter', desert: 'Desert', ambush: 'Ambush', fleck: 'Fleck', woodland: 'Woodland', blotch: 'Blotch',
+  amoeba: 'Amoeba', chip6: 'Chip', caunter: 'Caunter', hexfield: 'Hex',
+};
+// a plain (solid) coat has no pattern knobs — scale / patch / cell settings are noise there, so two solids with the
+// same colours are the same paint (the "same pattern, different seed" case the owner asked to combine)
+const recipeOf = (v) => {
+  const scheme = v.scheme || 'solid';
+  const solid = scheme === 'solid';
+  return {
+    scheme, base: v.base, weather: v.weather, patches: solid ? [] : [...(v.patches || [])],
+    ...(!solid && v.camoScale != null ? { camoScale: v.camoScale } : {}), ...(!solid && v.patchK != null ? { patchK: v.patchK } : {}),
+    ...(!solid && v.digitalCellK != null ? { digitalCellK: v.digitalCellK } : {}),
+    ...(v.solidWeatheringIntensity != null ? { solidWeatheringIntensity: v.solidWeatheringIntensity } : {}),
+  };
+};
+// identity: the visible pattern — scheme, colours and the pattern scale. The finer knobs (patchK, digitalCellK,
+// weathering intensity) are the "different seed" of the same pattern and never make a separate catalog entry.
+const recipeKey = (r) => { const n = recipeOf(r); return JSON.stringify(n.scheme === 'solid' ? ['solid', n.base, n.weather] : [n.scheme, n.base, n.weather, n.patches, n.camoScale ?? null]); };
+function luminance(hex) { const n = parseInt(hex.slice(1), 16); const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) / 255; }
+function environmentOf(r) {
+  const l = luminance(r.base); const n = parseInt(r.base.slice(1), 16); const red = (n >> 16) & 255, blue = n & 255, green = (n >> 8) & 255;
+  if (l > 0.62) return 'winter';
+  if (red > green + 8 && l > 0.42) return 'desert';
+  if (Math.abs(red - green) < 10 && Math.abs(green - blue) < 10 && l > 0.3) return 'urban';
+  return 'woodland';
+}
+function styleOf(r) {
+  if (r.scheme === 'digital' || r.scheme === 'russian-digital' || r.scheme === 'splinter' || r.scheme === 'hexfield') return 'digital';
+  if (r.scheme === 'stripes' || r.scheme === 'caunter') return 'stripes';
+  if (r.scheme === 'solid') return 'geometric';
+  return 'organic';
+}
+// dedupe against every NAMED preset (signature / service / national); the generated paint_* entries themselves are
+// excluded, or a regeneration would skip its own previous output
+const shared = new Set(SHARED_CAMO_PRESETS.filter((p) => !p.id.startsWith(PAINT_ID_PREFIX)).map((p) => recipeKey(p.visual)));
+const groups = new Map();
+for (const id of ALL_TANK_IDS) {
+  const spec = getSpec(id); const v = spec.visual || {};
+  if (!v.base) continue;
+  const key = recipeKey(v);
+  if (shared.has(key)) continue; // already a named Signature / Service preset
+  if (!groups.has(key)) groups.set(key, { recipe: recipeOf(v), ids: [] });
+  groups.get(key).ids.push(id);
+}
+// lead vehicle: the first non-X, non-legacy, non-variant id in fleet order; fall back to the first id
+const leadOf = (ids) => ids.find((id) => !/_x$/.test(id) && !/legacy|_proto|_prototype/.test(id)) || ids[0];
+const entries = [...groups.values()].map(({ recipe, ids }) => {
+  const lead = leadOf(ids); const spec = getSpec(lead);
+  const nationTag = camoNationTag(spec.nation) || null;
+  const env = environmentOf(recipe), style = styleOf(recipe);
+  const tags = [nationTag, env, style, 'signature'].filter(Boolean);
+  const word = SCHEME_WORD[recipe.scheme] || 'Livery';
+  return { id: `${PAINT_ID_PREFIX}${lead}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: `${tankDisplayName(spec)} ${word}`, tags, visual: recipe };
+}).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+const ids = entries.map((e) => e.id);
+if (new Set(ids).size !== ids.length) throw new Error('duplicate paint ids');
+const header = `// GENERATED by tools/gen-authored-paint-catalog.mjs — do not edit by hand.
+// Round 31 (owner 2026-09-20): every distinct authored paint recipe in the fleet as a reusable catalog entry, named
+// after its lead vehicle; recipes that already exist as a named Signature / Service preset are not repeated.
+// ${entries.length} entries over ${entries.reduce((n, e) => n + e.sourceTankIds.length, 0)} vehicles.
+`;
+const body = `export const AUTHORED_PAINT_IDS = Object.freeze([\n${ids.map((id) => `  '${id}',`).join('\n')}\n] as const);
+
+export type AuthoredPaintId = typeof AUTHORED_PAINT_IDS[number];
+
+export interface AuthoredPaintEntry {
+  readonly id: AuthoredPaintId;
+  readonly lead: string;
+  readonly sourceTankIds: readonly string[];
+  readonly nation: string | null;
+  readonly label: string;
+  readonly tags: readonly string[];
+  readonly visual: {
+    readonly scheme: string; readonly base: string; readonly weather: string; readonly patches: readonly string[];
+    readonly camoScale?: number; readonly patchK?: number; readonly digitalCellK?: number; readonly solidWeatheringIntensity?: number;
+  };
+}
+
+export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.freeze([
+${entries.map((e) => `  ${JSON.stringify(e).replace(/"([a-zA-Z]+)":/g, '$1: ').replace(/"/g, "'")},`).join('\n')}
+]);
+`;
+const out = header + '\n' + body;
+const target = fileURLToPath(new URL('../src/vehicles/authoredPaintCatalog.ts', import.meta.url));
+if (process.argv.includes('--check')) {
+  const current = readFileSync(target, 'utf8');
+  if (current !== out) { console.error('authoredPaintCatalog.ts is stale — run node tools/gen-authored-paint-catalog.mjs'); process.exit(1); }
+  console.log(`authoredPaintCatalog.ts is current (${entries.length} entries)`);
+} else {
+  writeFileSync(target, out);
+  console.log(`wrote ${entries.length} authored paint entries (${entries.reduce((n, e) => n + e.sourceTankIds.length, 0)} vehicles) to src/vehicles/authoredPaintCatalog.ts`);
+  const byNation = new Map(); for (const e of entries) byNation.set(e.nation, (byNation.get(e.nation) || 0) + 1);
+  console.log([...byNation.entries()].map(([n, c]) => `${n}:${c}`).join(' '));
+}

@@ -28,6 +28,7 @@ import {
   updateTank,
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
+import { createStructureSupportField } from './structureSupport.ts';
 import {
   prefersVerticalTankContact,
   tanksVerticallyClear,
@@ -79,7 +80,7 @@ import type {
 } from '../net/snapshot.ts';
 import {
   pushHullFromHull,
-  pushHullFromObstacle,
+  hullPassesObstacleTop, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -1004,7 +1005,7 @@ export function createAuthoritativeMatch({
     const broadRadius = Math.hypot(halfL, halfW) + 0.01;
     const spanTop = pos.y + tankBodyTopM(entity.spec);
     for (const obstacle of obstacleCandidates(centerX, centerZ, broadRadius)) {
-      if (obstacle.crushed || pos.y > obstacle.max[1] + 0.5) continue;
+      if (obstacle.crushed || hullPassesObstacleTop(pos.y, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
       const dx = centerX - closestX;
@@ -1813,12 +1814,21 @@ export function createAuthoritativeMatch({
     return movingEntity ? collideFor(movingEntity, pos, radius, out) : false;
   }
 
+  // round 30: hulls stand on the primitives they are above (structureSupport.ts), the same field the solo sim rides
+  const structureSupport = createStructureSupportField(heightField, {
+    queryObstacles: worldCollision && typeof worldCollision.queryObstacles === 'function'
+      ? worldCollision.queryObstacles.bind(worldCollision) : undefined,
+    getObstacles: worldCollision && typeof worldCollision.getObstacles === 'function'
+      ? worldCollision.getObstacles.bind(worldCollision) : undefined,
+  });
   function advanceTankMovement(dt: number): void {
     for (const entity of entities) {
       // wrecks keep moving (2026-09-19): applyNetworkInput already zeroes their input; readDebuffs skids them
       if (entity.modeActive === false) continue;
       movingEntity = entity;
-      updateTank(entity, heightField, dt, collideMovingEntity);
+      // the authority has no rendered contact geometry: the hull origin is its belly line (movement's default)
+      structureSupport.beginHull(entity.state.pos.x, entity.state.pos.z, entity.state.pos.y);
+      updateTank(entity, structureSupport, dt, collideMovingEntity);
     }
     movingEntity = null;
   }

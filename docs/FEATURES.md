@@ -294,6 +294,26 @@ structure support and collision audits, transition timing, and repeated-cycle
 memory checks enforce the release contract. See the
 [Garage environments guide](GARAGE-ENVIRONMENTS.md).
 
+## Camouflage catalog
+
+Every hull's own authored paint is a selectable camouflage (2026-09-20, owner:
+"make our tank specific camos into their own camos ... make factory camos be
+their tank specific camos, but then add national color schemes that are just
+the monocolor ones"). `tools/gen-authored-paint-catalog.mjs` reads each fleet
+vehicle's paint recipe and writes `src/vehicles/authoredPaintCatalog.ts`: one
+`paint_<lead vehicle>` entry per distinct visible pattern — the scheme, its
+colours and its pattern scale; the finer knobs and a plain coat's inert patch
+list are the "different seed" of the same paint and never make a second entry
+— skipping recipes that already exist as a named Signature or Service preset
+(44 entries over 119 hulls). Thirteen national colour schemes
+(`national_usa` … `national_ua`) are plain single-colour service coats. The
+Factory choice is the vehicle's own authored paint; the nation's plain colour is
+its own catalog entry and what the Garage workshop exhibits wear. Any hull can
+wear any other hull's paint identically, and the Garage labels every entry from
+the catalog (`camoPattern.<id>`, en-US and zh-CN). Carousel and dossier
+portraits face left (`tools/portrait-camera.ts`, regenerated through the
+unchanged framing gate).
+
 ## Multiplayer and persistent rooms
 
 ### Four authority arrangements

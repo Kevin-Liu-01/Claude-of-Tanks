@@ -25,6 +25,20 @@ export type SimpleCollisionShape =
 export const OVERPASS_CLEARANCE_M = 0.5;
 /** A hull whose body top stays this far under a part's bottom passes beneath it (an overhang, a bridge deck). */
 export const UNDERPASS_CLEARANCE_M = 0.15;
+/**
+ * Round 30 (owner 2026-09-20, hulls "on or in" buildings): a hull whose belly line is at most this far below a
+ * standable top is on that top, not beside it — the top is its floor (sim/structureSupport.ts lifts the ride onto
+ * it) and the part's walls do not push it. Real hulls climb a 0.8–1 m step; the step-up equals the support field's.
+ */
+export const HULL_STEP_UP_M = 0.55;
+/** Tops of parts shorter than this (kerbs, sandbags, wreck plates) are never floors: the ride drives over them. */
+export const HULL_STANDABLE_HEIGHT_M = 0.9;
+/** Does the hull span pass above this obstacle top — clearing it in the air, or standing on it? */
+export function hullPassesObstacleTop(spanBottom: number, top: number, bottom: number, standable = true): boolean {
+  if (spanBottom > top + OVERPASS_CLEARANCE_M) return true;
+  // crushable cover (sandbags, fences, light walls) is pushed and crushed as before, never mounted
+  return standable && top - bottom >= HULL_STANDABLE_HEIGHT_M && spanBottom > top - HULL_STEP_UP_M;
+}
 
 export type CollisionShape = SimpleCollisionShape | {
   kind: 'compound';
@@ -518,7 +532,7 @@ export function pushHullFromObstacle(
     for (const part of sh.parts) {
       // per-part vertical extent: the hull passes over a part it clears (a low wing, a porch, a garage beside
       // the tower) and under a part it stays below (an overhang); parts without their own extent use the record's
-      if (part.y1 !== undefined && spanBottom > part.y1 + OVERPASS_CLEARANCE_M) continue;
+      if (part.y1 !== undefined && hullPassesObstacleTop(spanBottom, part.y1, part.y0 ?? ob.min[1], !ob.crushable)) continue;
       if (part.y0 !== undefined && spanTop < part.y0 - UNDERPASS_CLEARANCE_M) continue;
       _compoundRec.min[1] = part.y0 ?? ob.min[1]; _compoundRec.max[1] = part.y1 ?? ob.max[1];
       _compoundRec.shape2 = part;
@@ -543,6 +557,42 @@ export function pushHullFromObstacle(
   if (!overlaps) return false;
   outPush.x += best.nx * best.overlap;
   outPush.z += best.nz * best.overlap;
+  return true;
+}
+
+/**
+ * Round 30: is the vertical line through (x, z) inside one primitive's footprint? Used by the structure support
+ * (sim/structureSupport.ts) so a hull can stand on the top of a part it is above. `part` null tests the record's
+ * own AABB footprint; a compound record is tested part by part by the caller.
+ */
+export function pointInsideCollisionRecord(
+  record: CollisionRecord, part: SimpleCollisionShape | null, x: number, z: number,
+): boolean {
+  if (!part) return x >= record.min[0] && x <= record.max[0] && z >= record.min[2] && z <= record.max[2];
+  if (part.kind === 'circle') {
+    const dx = x - part.cx, dz = z - part.cz;
+    return dx * dx + dz * dz <= part.r * part.r;
+  }
+  if (part.kind === 'obb') {
+    const dx = x - part.cx, dz = z - part.cz;
+    const c = Math.cos(part.yaw), s = Math.sin(part.yaw);
+    // the box's forward axis is (sin yaw, cos yaw) like a hull's; right is (cos yaw, -sin yaw)
+    const along = dx * s + dz * c;
+    const across = dx * c - dz * s;
+    return Math.abs(along) <= part.hl && Math.abs(across) <= part.hw;
+  }
+  const points = part.points;
+  if (points.length < 6) return false;
+  let sign = 0;
+  for (let i = 0; i < points.length; i += 2) {
+    const next = (i + 2) % points.length;
+    const ex = points[next] - points[i], ez = points[next + 1] - points[i + 1];
+    const cross = ex * (z - points[i + 1]) - ez * (x - points[i]);
+    if (Math.abs(cross) < 1e-9) continue;
+    const side = cross > 0 ? 1 : -1;
+    if (sign === 0) sign = side;
+    else if (side !== sign) return false;
+  }
   return true;
 }
 

@@ -65,9 +65,11 @@ const access = createMobileBattleInputAccess({
   },
 });
 
-assert.equal(await access.preload(), null, 'desktop boot transfers no mobile chunks');
-assert.equal(touchLoads, 0);
-assert.equal(autoAimLoads, 0);
+// round 30 (owner 2026-09-20): the auto-aim lock serves the desktop T key too, so a desktop boot loads that one
+// chunk (and surfaces its failure) while the touch controls stay touch-only
+await assert.rejects(access.preload(), /simulated auto-aim chunk failure/, 'desktop boot loads the auto-aim chunk and nothing else');
+assert.equal(touchLoads, 0, 'no touch controls on a desktop layout');
+assert.equal(autoAimLoads, 1);
 assert.equal(access.getAutoAim(), null);
 
 touchOptions.onToggleSound();
@@ -78,7 +80,7 @@ assert.equal(soundMuted, false);
 touchLayout = true;
 await assert.rejects(access.preload(), /simulated auto-aim chunk failure/);
 assert.equal(touchLoads, 1);
-assert.equal(autoAimLoads, 1);
+assert.equal(autoAimLoads, 2);
 assert.equal(access.getAutoAim(), null);
 failAutoAim = false;
 const first = access.preload();
@@ -87,10 +89,14 @@ assert.equal(first, joined, 'concurrent touch entry paths join one request');
 assert.equal(await first, controls);
 assert.equal(access.getAutoAim(), autoAim);
 assert.equal(touchLoads, 1);
-assert.equal(autoAimLoads, 2);
+assert.equal(autoAimLoads, 3);
 assert.equal(autoAimCreates, 1);
 assert.equal(await access.preload(), controls);
-assert.equal(autoAimLoads, 2, 'ready mobile input returns without retransferring chunks');
+assert.equal(autoAimLoads, 3, 'ready mobile input returns without retransferring chunks');
+touchLayout = false;
+assert.equal(await access.preload(), null, 'a ready auto-aim runtime makes a desktop preload a no-op');
+assert.equal(autoAimLoads, 3);
+touchLayout = true;
 
 assert.throws(() => createMobileBattleInputAccess({}),
   /requires every lifecycle port/);

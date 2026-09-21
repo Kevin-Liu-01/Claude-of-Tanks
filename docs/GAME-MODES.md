@@ -22,7 +22,7 @@ rule the battle does not keep.
 | Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables, no module, crew or fire damage, F jumps 9 m/s, ×12 recoil launch, ×2.5 impact knock | 3 s | First team to 5 goals, or the 10:00 clock (score) |
 | Endless Horde | Survive waves that grow without a cap and never repeat their line-up | +25 % hull, two allied bots (co-op humans join alpha), a fourteen-strong hostile pool drawn afresh every wave (five on wave one), 30 % repair for every survivor when a wave is cleared, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
 | Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
-| Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, jump 6.5 m/s (F), ×3 recoil launch, ×0.9 impact knock; boost caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
+| Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock; boost caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
 
 Horde (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time and
 they're the same tanks each round") fields `waveSize + (wave − 1) × waveStep +
@@ -58,7 +58,7 @@ palette, red mesas, a research station of domes, modules, comms masts, solar arr
 and a landing pad from `structureKit.ts`, and a `sky` preset that forces the night dome's starfield
 with a wide galactic band, magenta nebula clouds and a 3.4° planet). The map is reachable by
 choice and through the mode but never by the random draw (`RANDOM_BATTLE_MAP_IDS`). The ruleset
-is Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump on F, +25 % speed, +20 % hull, −10 %
+is Olympus Basin's own physics — 0.38 g, a 9.5 m/s rocket jump on F, +25 % speed, +20 % hull, −10 %
 damage, faster reloads, a ×3 recoil launch and a ×0.9 impact knock — on the Zone Control
 objective (the controller maps `mars` onto the zone code paths: `placeZones`, zone markers, the
 750-point target, 6 s respawns) with a twelve-minute clock. Boost caches: from 12 s a repair or
@@ -68,7 +68,7 @@ any wire mode with the map forced to `mars` (`resolvePrivateMatchMap`).
 
 **Settings (2026-09-19).** The Garage battle menu shows a *Mars settings* row while Mars is the
 selected rule (the play menu's arrangement panel carries the same two selects): the **gravity
-world** — Mars 0.38 g / 6.5 m/s jump / ×3 recoil launch, Moon 0.17 g / 8.5 m/s / ×4.5, Earth
+world** — Mars 0.38 g / 9.5 m/s jump / ×3 recoil launch, Moon 0.17 g / 12.5 m/s / ×4.5, Earth
 1 g / 4 m/s / ×1.5 (`MARS_GRAVITY_OPTIONS`) — and the **boost caches** — off, every 22 s from 12 s
 (standard) or every 11 s from 8 s (`MARS_CACHE_OPTIONS`). Both ride the mars entry of the team
 arrangement store (`game/teamArrangement.ts` `readMarsSettings` / `writeMarsSettings`, keys
@@ -214,11 +214,13 @@ Ram damage keeps its kinetic law (closing speed squared × reduced mass) multipl
 damage needs to scale a lot more").
 
 Turbo Ball adds three ruleset knobs (`jumpMps`, `recoilLaunchScale`, `shellKnockScale`) stamped on
-every entity by the mode controller: **F** launches a grounded, upright hull 9 m/s upward (the key
+every entity by the mode controller: **F** launches an upright hull 13 m/s upward — a rocket that boosts
+again after 0.35 s of flight (round 30, owner 2026-09-20) — (the key
 still self-rights an overturned hull), the firing recoil becomes a real launch opposite the muzzle
 (×12 — aim behind you and fire for a speed boost, aim down to hop), and impact knocks are ×2.5 —
 eight times the ×0.3 baseline. The
-HUD shows a JUMP · F keycap only in rulesets with a jump.
+HUD shows a rocket · JUMP · F keycap only in rulesets with a jump; the touch layer shows a rocket button there,
+which also flips an overturned hull.
 
 ## State machine
 

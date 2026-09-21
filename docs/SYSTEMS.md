@@ -544,9 +544,38 @@ invisible wall. At the fourteen-vehicle ceiling this is 91 allocation-free broad
 phase checks per fixed tick; the capsule and vertical-box work runs only for
 horizontal overlaps. A side/roof-down tank remains physically recoverable: a
 teammate shove or renewed body motion restarts its stationary recovery timer.
-After fifteen still seconds, a bounded righting actuator rolls the hull across
-its contact edge; it does not teleport the pose. This preserves visible flips
-and stacking without letting an overturned bot hold a match open forever.
+After five still seconds (2026-09-20, owner: "bots should also automatically
+right themselves after like 5 seconds being upside down"; `ROLLOVER_AUTO_RIGHT_S`),
+a bounded righting actuator rolls a bot's hull across its contact edge; it does
+not teleport the pose. Players keep the F key (touch layers get the rocket/jump
+button, whose press also flips an overturned hull). This preserves visible
+flips and stacking without letting an overturned bot hold a match open forever.
+
+Structures are floors as well as walls (2026-09-20, owner: tanks "glitch out and
+go crazy when they hit buildings or are on or in them ... it should literally
+just be in our engine as all just primitives"). `src/sim/structureSupport.ts`
+wraps the height field per hull: `beginHull` gathers the collision primitives
+within 6 m, and every support sample returns the highest standable top under
+the point — a part at least 0.9 m tall whose top is at most 0.55 m above the
+hull's belly line (`HULL_STANDABLE_HEIGHT_M`, `HULL_STEP_UP_M` in
+collision.ts) — so a hull that lands on a roof, a deck or a platform stands on
+it, drives across it and falls off its edge instead of dropping through the
+footprint and being shoved out sideways. The ground OBB solver applies the same
+rule (`hullPassesObstacleTop`): a part the hull clears by 0.5 m or stands on
+does not push it; a taller part beside it still does. A hull found deep inside
+a primitive leaves it at most 1 m per fixed step (`OBSTACLE_PUSH_MAX_M_PER_STEP`)
+rather than in one teleport. Ground rising steeper than `CLIFF_GRADE` (tan 52°,
+`sim/terrainMobility.ts`) within 1.5 m ahead of the leading track edge, above
+the step-up, and still 3 m higher 4.5 m on is a wall, not a climb (`cliffAhead`):
+the hull stops against it with an impact instead of riding the support solve up
+the face and launching off its top. A single steep step — a trench wall, a
+crater rim, a terrace lip — is crossed as before, a hull already flying above
+the rise passes, and crushable cover (sandbags, fences, light walls) is pushed
+and crushed rather than mounted. The same grade is a capability rejection in
+`terrainSlopeMargin`, so the bot route planner and the local recovery fan never
+send a hull into a face it cannot climb (the pacing receipt stranded bots when
+only the hull knew). Both the solo sim and the authority ride the same support
+field and rules.
 
 There is no universal climb angle. The
 solver compares gravity demand with engine acceleration and track grip derived

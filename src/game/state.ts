@@ -7,6 +7,7 @@ import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts'
  */
 import * as THREE from 'three';
 import type { ArmorIntersection, ArmorModel } from '../sim/armor.ts';
+import { createStructureSupportField, type StructureSupportField } from '../sim/structureSupport.ts';
 import type { BotNavigationGrid, BotRoutePoint } from '../sim/botRoutePlanner.ts';
 import type {
   DamageGunSpec,
@@ -84,7 +85,7 @@ import { createAI, roleOf } from './ai.ts';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
 import {
   pushHullFromHull,
-  pushHullFromObstacle,
+  hullPassesObstacleTop, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
@@ -1558,7 +1559,7 @@ function resolveObstacleCollisions(
   const spanTop = positionY + (self ? tankBodyTopM(self.spec) : 3);
   let pushed = false;
   for (const obstacle of candidates) {
-    if (obstacle.crushed || positionY > obstacle.max[1] + 0.5) continue;
+    if (obstacle.crushed || hullPassesObstacleTop(positionY, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
     const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
     const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
     const deltaX = centerX - closestX;
@@ -2268,6 +2269,18 @@ function emitTankImpact(
   });
 }
 
+const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
+
+/** Round 30: the height field every hull rides on — terrain plus the tops of the primitives it stands on. */
+function structureSupportFor(world: SoloWorld): StructureSupportField {
+  let field = structureSupportByWorld.get(world);
+  if (!field) {
+    field = createStructureSupportField(world.heightField, world);
+    structureSupportByWorld.set(world, field);
+  }
+  return field;
+}
+
 function stepTankMovement(
   game: SoloGameState,
   bus: EventBus,
@@ -2275,13 +2288,18 @@ function stepTankMovement(
   rig: CameraRig | null,
   collider: CollisionBundle,
 ): void {
+  const support = structureSupportFor(world);
   for (const entity of game.tanks) {
     // wrecks stay in the step (2026-09-19): readDebuffs marks them immobile / skidding, so a destroyed hull
     // keeps its momentum, its ballistic arc and its ground contact instead of freezing where it died
     if (entity.modeActive === false) continue;
     refreshContactGeometry(entity);
     collider.setSelf(entity);
-    updateTank(entity, world.heightField, SIM_DT, collider.collide);
+    // round 30: a hull above a building's roof stands on it (structureSupport.ts); the belly line is the hull
+    // origin plus the contact geometry's belly offset
+    support.beginHull(entity.state.pos.x, entity.state.pos.z,
+      entity.state.pos.y + (entity.contactGeom?.bottomYM ?? 0));
+    updateTank(entity, support, SIM_DT, collider.collide);
     emitTankImpact(game, entity, bus, rig);
   }
 }

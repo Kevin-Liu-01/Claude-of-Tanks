@@ -14,7 +14,6 @@ import {
   CUSTOM_CAMO_ID,
   customCamoPatternId,
   defaultCamoPatternId,
-  factoryCamoPatternIdFor,
   hasSignatureCamo,
   isBuiltInCamoId,
   networkCamoId,
@@ -1371,9 +1370,12 @@ function applySharedCamoVisual(
   };
 }
 
-function factoryVisual(spec: MaterialTankSpec, authored: MaterialVisual): MaterialVisual {
-  const patternId = factoryCamoPatternIdFor(spec.nation, spec.era);
-  return patternId ? applySharedCamoVisual(authored, patternId) || authored : authored;
+/**
+ * Round 31 (owner 2026-09-20: "make factory camos be their tank specific camos"): Factory is the vehicle's own
+ * authored paint again. The nation's plain colour is its own catalog entry (national_*), see camoPolicy.ts.
+ */
+function factoryVisual(_spec: MaterialTankSpec, authored: MaterialVisual): MaterialVisual {
+  return authored;
 }
 
 function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): MaterialVisual {

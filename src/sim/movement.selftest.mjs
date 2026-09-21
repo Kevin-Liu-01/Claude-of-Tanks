@@ -12,8 +12,7 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import {
   createTankState, fireRecoil, resetTankVerticalState, shotRecoilScale,
   IFV_AUTOCANNON_AFTER_SHOT_BLOOM, IFV_AUTOCANNON_RECOIL_SCALE,
-  updateTank, SIM_DT, requestTankJump, applyShellKnock, shellKnockMps,
-} from './movement.ts';
+  updateTank, SIM_DT, requestTankJump, applyShellKnock, shellKnockMps, cliffAhead } from './movement.ts';
 import { requestTankSelfRight } from './rollover.ts';
 
 // ---------------------------------------------------------------- harness --
@@ -577,8 +576,12 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   const startY = ent.state.pos.y;
   run(ent, field, 20);
   assert(ent.state.pos.y > startY + 0.5, `the hull leaves the ground (${(ent.state.pos.y - startY).toFixed(2)} m up)`);
-  assert(!requestTankJump(ent.state, 9), 'no double jump while airborne');
-  run(ent, field, 400);
+  assert(!requestTankJump(ent.state, 9), 'no second boost inside the first 0.35 s of flight');
+  run(ent, field, 20);
+  const beforeBoost = ent.state.verticalSpeed;
+  assert(requestTankJump(ent.state, 9), 'round 30: an airborne hull boosts again after 0.35 s of flight');
+  assert(ent.state.verticalSpeed > beforeBoost + 8, 'the boost adds its full launch on top of the flight');
+  run(ent, field, 600);
   assert(Math.abs(ent.state.pos.y - startY) < 0.3, 'it lands back on the field');
   const flipped = makeEntity(field, 0, 0, 0);
   flipped.state.overturned = true;
@@ -1168,6 +1171,55 @@ if (failures > 0) {
   assert(Math.abs(flier.state.speed - 9) < 1e-6, `an airborne wreck keeps its horizontal speed (${flier.state.speed})`);
   assert(flier.state.pos.y < y0 - 0.4 && flier.state.verticalSpeed < 0, 'and keeps falling along its arc');
   checks += 2;
+}
+
+
+// ---------------------------------------------------------- cliff wall (round 30) --
+// Owner 2026-09-20: hulls "going up walls, or sides of steep hills at high speeds". Ground rising steeper than
+// CLIFF_GRADE right ahead of the tracks is a wall: the hull stops against it with an impact instead of riding the
+// support solve up the face and launching off the top. A climbable ramp is untouched, and an airborne hull already
+// above the rise is not blocked.
+{
+  const cliffField = makeField((x, z) => (z < 20 ? 0 : (z - 20) * 1.8)); // a 61-degree face at z = 20
+  const charger = makeEntity(cliffField, 0, 0, 0);
+  charger.input.throttle = 1;
+  let peakSpeed = 0, peakImpact = 0, peakY = 0;
+  run(charger, cliffField, 360, () => {
+    peakSpeed = Math.max(peakSpeed, charger.state.speed);
+    peakImpact = Math.max(peakImpact, charger.state.impactMps);
+    peakY = Math.max(peakY, charger.state.pos.y);
+  });
+  assert(peakSpeed > 3, `the charger reached the face at speed (${peakSpeed.toFixed(2)} m/s)`);
+  assert(charger.state.pos.z < 20.6, `and stopped at its foot instead of climbing it (z ${charger.state.pos.z.toFixed(2)})`);
+  assert(peakY < 1.6, `without riding up the face (peak y ${peakY.toFixed(2)})`);
+  assert(peakImpact > 1, `the stop registered as an impact (${peakImpact.toFixed(2)} m/s)`);
+  assert(Math.abs(charger.state.speed) < 0.6, `and the hull is held against the wall (${charger.state.speed.toFixed(2)} m/s)`);
+
+  const rampField = makeField((x, z) => (z < 20 ? 0 : (z - 20) * 0.27)); // a 15-degree ramp
+  const climber = makeEntity(rampField, 0, 0, 0);
+  climber.input.throttle = 1;
+  run(climber, rampField, 360);
+  assert(climber.state.pos.z > 22, `a climbable ramp is still climbed (z ${climber.state.pos.z.toFixed(2)})`);
+
+  const probe = makeEntity(cliffField, 0, 18.8, 0);
+  probe.state.speed = 6;
+  assert(cliffAhead(cliffField, probe.state, 3.5, 0, 1) === true, 'cliffAhead: the face ahead of the leading edge is a wall');
+  probe.state.speed = -6;
+  assert(cliffAhead(cliffField, probe.state, 3.5, 0, 1) === false, 'cliffAhead: reversing away from it is not');
+  probe.state.speed = 6; probe.state.pos.y = 12;
+  assert(cliffAhead(cliffField, probe.state, 3.5, 0, 1) === false, 'cliffAhead: a hull flying above the rise passes');
+  const flat = makeEntity(makeField(() => 0), 0, 0, 0);
+  flat.state.speed = 6;
+  assert(cliffAhead(flat.spec ? makeField(() => 0) : null, flat.state, 3.5, 0, 1) === false, 'cliffAhead: flat ground never blocks');
+  // a 2 m trench wall is a step, not a wall: the face does not keep rising, so the hull crosses it as before
+  const trenchField = makeField((x, z) => (z < 20 ? 0 : 2.0));
+  const crosser = makeEntity(trenchField, 0, 18.8, 0);
+  crosser.state.speed = 6;
+  assert(cliffAhead(trenchField, crosser.state, 3.5, 0, 1) === false, 'cliffAhead: a single 2 m step (trench wall) is crossed');
+  const terraceField = makeField((x, z) => (z < 20 ? 0 : Math.min(2.6, (z - 20) * 1.8)));
+  const stepper = makeEntity(terraceField, 0, 18.8, 0);
+  stepper.state.speed = 6;
+  assert(cliffAhead(terraceField, stepper.state, 3.5, 0, 1) === false, 'cliffAhead: a 2.6 m terrace lip is crossed');
 }
 
 console.log(`movement.selftest: all ${checks} checks passed`);

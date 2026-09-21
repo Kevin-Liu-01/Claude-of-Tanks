@@ -31,6 +31,8 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   zoomIn: { id: 'zoomIn', tone: 'cyan' },
   zoomOut: { id: 'zoomOut', tone: 'cyan' },
   minimapZoom: { id: 'map', tone: 'green' },
+  autoAim: { id: 'autoAim', tone: 'amber' },
+  hitboxOverlay: { id: 'armorFlashlight' },
   shotLog: { id: 'battleRecord', tone: 'cyan' },
   perfHud: { id: 'performance', tone: 'green' },
   settingsMenu: { id: 'settings' },

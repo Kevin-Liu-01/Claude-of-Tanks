@@ -139,7 +139,9 @@ export function createMobileBattleInputAccess<
   };
 
   const preload = (): Promise<TouchControlsRuntime | null> => {
-    if (!input.isTouchLayout()) return Promise.resolve(null);
+    // round 30: the auto-aim lock serves the desktop T key as well, so the runtime loads on every layout;
+    // only the touch controls stay touch-only
+    if (!input.isTouchLayout()) return autoAim ? Promise.resolve(null) : ensureAutoAim().then(() => null);
     if (touch.current && autoAim) return Promise.resolve(touch.current);
     if (pending) return pending;
     const request = Promise.all([touch.preload(), ensureAutoAim()])

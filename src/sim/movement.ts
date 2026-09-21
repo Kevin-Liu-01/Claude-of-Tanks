@@ -21,7 +21,8 @@ import { usesLauncherMuzzles } from './launcherPolicy.ts';
  */
 
 import { Euler, Quaternion, Vector3 } from 'three';
-import {
+import { HULL_STEP_UP_M } from '../world/collision.ts';
+import { CLIFF_GRADE,
   DRIVE_ACCEL_PER_HPT as K_ACCEL,
   GRAVITY_MPS2 as GRAVITY,
   TERRAIN_MARGIN_EPS,
@@ -592,6 +593,20 @@ const RIDE_DETACH_REL_V_MPS = 0.20;
 const AIR_ANGULAR_DRAG_S = 0.055;
 const AIR_ANGULAR_SPEED_MAX = 1.15; // rad/s; ordinary launch-rate bound
 const TUMBLE_ANGULAR_SPEED_MAX = 2.8; // collisions/rollovers may rotate faster
+/** Round 30: the longest obstacle push one fixed step applies (60 steps/s → a 7 m intrusion resolves in ~120 ms). */
+export const OBSTACLE_PUSH_MAX_M_PER_STEP = 1.0;
+/**
+ * Round 30 (owner 2026-09-20: hulls "going up walls, or sides of steep hills at high speeds"): ground rising
+ * steeper than this grade (tan 52°) right ahead of the tracks is a wall, not a climb. The hull stops against it
+ * with an impact instead of riding the support solve up the face and launching off its top.
+ */
+export { CLIFF_GRADE } from './terrainMobility.ts';
+/** How far beyond the leading track edge the cliff probe looks (one hull step at speed, a track length at rest). */
+export const CLIFF_PROBE_M = 1.5;
+/** A wall keeps rising: the face must still be this much higher a few metres on, or it is a step a tank crosses
+ * (trench and crater walls, kerbs of terraces) — the pacing receipt showed bots stranded at 2 m trench walls. */
+export const CLIFF_WALL_PROBE_M = 4.5;
+export const CLIFF_WALL_RISE_M = 3.0;
 const LANDING_CONTACT_BLEND_S = 0.34;
 const LANDING_SPRING_MIN_SCALE = 0.28;
 const LANDING_TORQUE_GAIN = 0.22;
@@ -699,6 +714,9 @@ const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
 const LAUNCH_SPEED_CAP_MPS = 45; // ruleset launches never push the run speed past this
 const KNOCK_TRANSLATION_GAIN = 2.2; // impact shove → decaying translation impulse (≈ knock × 0.29 m of displacement)
 const JUMP_AIRTIME_GRACE_S = 0.05;
+// round 30 (owner 2026-09-20: the jump should "be a lot more powerful, and work even when you're not on ground"):
+// an airborne hull may fire its jump again once this much flight has passed since the last lift — a rocket boost
+const JUMP_AIR_REPEAT_S = 0.35;
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
 const RECOIL_KICK_MAX_DEGS = 15; // spring pitch-rate kick, heavy gun
 const OUTER_TRACK_ARM_M = 1.5;   // trackScroll differential arm: v ± yawRate × 1.5
@@ -1432,15 +1450,50 @@ function updateTrackScrollAndBloom(
   if (state.bloomF < 1) state.bloomF = 1;
 }
 
+/**
+ * Is the ground ahead of the leading track edge a cliff face the hull cannot climb? True when the surface rises
+ * above the hull's step-up within CLIFF_PROBE_M at more than CLIFF_GRADE. Airborne hulls already above the rise
+ * pass (a jump clearing a ridge is not a wall hit).
+ */
+export function cliffAhead(
+  heightField: MovementHeightField,
+  state: TankState,
+  halfLength: number,
+  forwardX: number,
+  forwardZ: number,
+): boolean {
+  if (Math.abs(state.speed) < 0.05) return false;
+  const dir = state.speed > 0 ? 1 : -1;
+  const edgeX = state.pos.x + forwardX * dir * halfLength;
+  const edgeZ = state.pos.z + forwardZ * dir * halfLength;
+  const sample = heightField.getHeightAtFast ?? heightField.getHeightAt;
+  const here = sample(edgeX, edgeZ);
+  const ahead = sample(edgeX + forwardX * dir * CLIFF_PROBE_M, edgeZ + forwardZ * dir * CLIFF_PROBE_M);
+  if (ahead <= state.pos.y + HULL_STEP_UP_M) return false;
+  if ((ahead - here) / CLIFF_PROBE_M <= CLIFF_GRADE) return false;
+  // a single steep step (a trench wall, a crater rim, a terrace) is crossed as before; only a face that keeps
+  // rising is a wall
+  const wall = sample(edgeX + forwardX * dir * CLIFF_WALL_PROBE_M, edgeZ + forwardZ * dir * CLIFF_WALL_PROBE_M);
+  return wall - here > CLIFF_WALL_RISE_M;
+}
+
 function integrateHorizontalMotion(
   spec: MovementSpec,
   state: TankState,
+  heightField: MovementHeightField,
   collide: MovementCollisionResolver | null,
   forwardX: number,
   forwardZ: number,
   dt: number,
 ): void {
   const spring = state._spring;
+  let cliffImpact = 0;
+  if (cliffAhead(heightField, state, spec.dims.hullLengthM * 0.5, forwardX, forwardZ)) {
+    cliffImpact = Math.abs(state.speed);
+    state.speed = 0;
+    if (cliffImpact > 1.5) state._spool = 0;
+  }
+  state.impactMps = cliffImpact;
   state.pos.x += (forwardX * state.speed + spring.recoilVX) * dt;
   state.pos.z += (forwardZ * state.speed + spring.recoilVZ) * dt;
   const recoilDecay = Math.exp(-dt / RECOIL_DECAY_TAU);
@@ -1450,8 +1503,11 @@ function integrateHorizontalMotion(
 
   const radiusM = spec.armor?.boundingRadiusM ?? spec.dims.hullLengthM * 0.5;
   _push.set(0, 0, 0);
-  state.impactMps = 0;
   if (!collide(state.pos, radiusM, _push)) return;
+  // Round 30: a hull found deep inside a primitive (a clip through a wall, a roof it fell through, a spawn inside a
+  // footprint) leaves it over a few steps instead of one 7 m teleport — the visible "goes crazy" pop.
+  const pushLen = Math.hypot(_push.x, _push.z);
+  if (pushLen > OBSTACLE_PUSH_MAX_M_PER_STEP) _push.multiplyScalar(OBSTACLE_PUSH_MAX_M_PER_STEP / pushLen);
   state.pos.add(_push);
   const pushForward = _push.x * forwardX + _push.z * forwardZ;
   const travel = Math.abs(state.speed) * dt;
@@ -1460,7 +1516,7 @@ function integrateHorizontalMotion(
   const blockedFraction = clamp(Math.abs(pushForward) / travel, 0, 1);
   const lostSpeed = Math.abs(state.speed) * blockedFraction;
   state.speed *= 1 - blockedFraction;
-  state.impactMps = lostSpeed;
+  state.impactMps = Math.max(cliffImpact, lostSpeed);
   if (lostSpeed > 1.5) state._spool = 0;
 }
 
@@ -2538,7 +2594,7 @@ export function updateTank(
 
   // ---- integrate position (+ decaying recoil translation) & stick to terrain ----
   const spr = state._spring;
-  integrateHorizontalMotion(spec, state, collide, drive.forwardX, drive.forwardZ, dt);
+  integrateHorizontalMotion(spec, state, heightField, collide, drive.forwardX, drive.forwardZ, dt);
 
   // ---- terrain contact: line sampling, plane fit, attitude spring, SUPPORT ----
   // r5 hard-gate fix. The old model snapped pos.y to the height under the hull
@@ -2711,13 +2767,16 @@ function liftTankRide(state: LiftableState, upMps: number): void {
 }
 
 /**
- * Jump (owner 2026-09-16, Turbo Ball F key): a grounded, upright hull gets `jumpMps` of upward velocity. Refused
- * while airborne, overturned or when the mode has no jump, so the key keeps its self-right meaning elsewhere.
+ * Jump (owner 2026-09-16, Turbo Ball F key): an upright hull gets `jumpMps` of upward velocity. Refused when
+ * overturned or when the mode has no jump, so the key keeps its self-right meaning elsewhere. Round 30 (owner
+ * 2026-09-20): it is a rocket — an airborne hull boosts again after JUMP_AIR_REPEAT_S of flight, so a held run
+ * of presses climbs, and the ruleset launches are stronger.
  */
 export function requestTankJump(state: LiftableState | null | undefined, jumpMps: number | null | undefined): boolean {
   if (!state || !(jumpMps != null && jumpMps > 0)) return false;
-  if (state.overturned === true || state.grounded === false) return false;
-  if (state._ride && (state._ride.airTime || 0) > JUMP_AIRTIME_GRACE_S) return false;
+  if (state.overturned === true) return false;
+  const airborne = state.grounded === false || (state._ride ? (state._ride.airTime || 0) > JUMP_AIRTIME_GRACE_S : false);
+  if (airborne && state._ride && (state._ride.airTime || 0) < JUMP_AIR_REPEAT_S) return false;
   liftTankRide(state, jumpMps);
   return true;
 }

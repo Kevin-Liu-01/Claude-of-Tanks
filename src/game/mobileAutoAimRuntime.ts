@@ -12,6 +12,7 @@ interface AutoAimTank extends MobileAutoAimCandidate {
   spec: MobileAutoAimCandidate['spec'] & { name?: string };
 }
 
+/** Kept for the access layer's port shape; round 30 made the lock layout-independent, so it is no longer read. */
 interface MobileAutoAimInput {
   isTouchLayout(): boolean;
 }
@@ -60,7 +61,7 @@ function eventPhase(payload: RuntimeValue): string | null {
  */
 export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
   bus,
-  input,
+  input: _input, // round 30: kept in the port shape, no longer read (the lock is layout-independent)
   camera,
   getPhase,
   getTanks,
@@ -92,8 +93,8 @@ export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
   const stopToggle = bus.on('ui:autoAimToggle', () => {
     if (disposed) return;
     const player = getPlayer();
-    if (getPhase() !== 'battle' || !input.isTouchLayout()
-        || !isMobileAutoAimEntity(player) || player.combat.destroyed) return;
+    // round 30 (owner 2026-09-20): the desktop T key toggles the same lock — the layout no longer gates it
+    if (getPhase() !== 'battle' || !isMobileAutoAimEntity(player) || player.combat.destroyed) return;
     if (targetId !== null) {
       clear('AUTO-AIM OFF');
       return;
@@ -119,7 +120,8 @@ export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
       // those states and resumed the same target afterwards.
       if (!active) return null;
       const target = getTankById(targetId);
-      if (!input.isTouchLayout() || !isMobileAutoAimEntity(target)
+      // round 30: the lock holds on every layout (the desktop T key owns it too)
+      if (!isMobileAutoAimEntity(target)
           || target.combat.destroyed || !isVisible(target)) {
         clear('TARGET LOST');
         return null;

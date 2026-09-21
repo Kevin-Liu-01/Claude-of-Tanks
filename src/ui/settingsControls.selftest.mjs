@@ -21,7 +21,8 @@ assert.deepEqual(classicGroups.find(([, actionIds]) => actionIds[0] === 'freeCam
   'controls reference follows the selected RMB behavior');
 
 const iconIds = new Set(uiIconIds());
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 24,
+// round 30 (2026-09-20): autoAim (T) and hitboxOverlay (H) join the remappable actions with their own icons
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 26,
   'every remappable action has a settings icon');
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay',

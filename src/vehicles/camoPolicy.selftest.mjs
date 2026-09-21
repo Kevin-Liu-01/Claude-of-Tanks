@@ -67,15 +67,15 @@ for (const tankId of SIGNATURE_CAMO_TANK_IDS) {
   assert.equal(sharedCamoPreset(patternId)?.sourceTankId, tankId,
     `${tankId} selects its own reusable colorway`);
 }
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'service_usa_desert');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'service_leo2a6m');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'service_t90m');
-assert.equal(factoryCamoPatternIdFor('USSR', 'ww2'), 'service_soviet_ww2');
-assert.equal(factoryCamoPatternIdFor('USSR/Russia', 'cold-war'), 'service_soviet_coldwar');
-assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'service_t90m');
-assert.equal(factoryCamoPatternIdFor('Russia', 'ww2'), 'service_soviet_ww2');
-assert.equal(factoryCamoPatternIdFor('Russia', 'cold-war'), 'service_soviet_coldwar');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.France, 'service_leclerc_xlr');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'national_usa', 'round 31: the national scheme is the plain colour');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'national_de');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'national_ru');
+assert.equal(factoryCamoPatternIdFor('USSR', 'ww2'), 'national_ru', 'Soviet hulls share the Russian khaki green');
+assert.equal(factoryCamoPatternIdFor('USSR/Russia', 'cold-war'), 'national_ru');
+assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'national_ru');
+assert.equal(factoryCamoPatternIdFor('Russia', 'ww2'), 'national_ru');
+assert.equal(factoryCamoPatternIdFor('Russia', 'cold-war'), 'national_ru');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.France, 'national_fr');
 assert.equal(factoryCamoPatternIdFor(null, 'modern'), null);
 assert.equal(factoryCamoPatternIdFor('Atlantis', 'modern'), null);
 
@@ -268,7 +268,7 @@ const catalogContract = {
   defaultCustom: normalizeCustomCamo(),
 };
 // The new signature appends one network ID; every preceding catalog byte stays fixed.
-assert.equal(CAMO_PATTERN_IDS.at(-1), 'sig_tos1a_tagil');
+assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'sig_tos1a_tagil'); // round 31: the base list ends here; national colours and generated paints follow
 assert.equal(defaultCamoPatternId('tos1a_tagil'), 'sig_tos1a_tagil');
 assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
 const precedingCatalog = structuredClone(catalogContract);
@@ -281,7 +281,12 @@ precedingCatalog.tagsByPatternAndNation = precedingCatalog.tagsByPatternAndNatio
 // Preserve the preceding full catalog receipt after reversing only the earlier
 // four appended paints, Sabra default, and three corrected brand labels.
 const addedPaints = ['mono', 'carbon', 'prism', 'sig_sabra_mk2_x'];
-assert.deepEqual(precedingCatalog.patterns.slice(-4), addedPaints);
+// round 31: the national colours and the generated authored paints append after the base catalog, so these four
+// close the BASE list (the TOS-1A signature now follows them there) rather than the whole one
+const basePreceding = precedingCatalog.patterns.filter((id) => !id.startsWith('national_') && !id.startsWith('paint_'));
+assert.deepEqual(basePreceding.slice(-4), addedPaints);
+assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil') + 1], 'national_usa', 'the national colours follow the base catalog');
+assert.ok(CAMO_PATTERN_IDS.at(-1).startsWith('paint_'), 'the generated authored paints close the catalog');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'sig_sabra_mk2_x');
@@ -294,11 +299,13 @@ historicalCatalog.presets = historicalCatalog.presets.filter(row => row.id !== '
 historicalCatalog.signatures = historicalCatalog.signatures.filter(id => id !== 'sabra_mk2_x');
 historicalCatalog.tagsByPatternAndNation = historicalCatalog.tagsByPatternAndNation.filter(([id]) => !addedPaints.includes(id));
 assert.equal(createHash('sha256').update(JSON.stringify(historicalCatalog)).digest('hex'),
-  '819bf810321f4580f7ea7748f31c48a91c14613b0f07404478a2fa2c5d2c63f5',
+// round 31 (2026-09-20): digest re-based — national colours, generated authored paints, Factory = authored paint
+  '54d0165b677e95098a990dfb373fe88546dc89398b29e57f45aaa639f99dd29d',
   'all other catalog fields, order, recipes, tags and national routing remain exact');
 assert.equal(
   createHash('sha256').update(JSON.stringify(precedingCatalog)).digest('hex'),
-  'c441a52325e22692646ed378c13cb49cd2df03e1e8807d1d44cc55f918431ce2', // September 20 official marks, independent prints, Sabra default.
+  // round 31 (2026-09-21): digest re-based — national colours, generated authored paints, Factory = authored paint
+  '984207956acabdb38da8c9a14a34962ac058d225d032f2520b3000aa7afa6eb8', // September 20 official marks, independent prints, Sabra default.
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 
