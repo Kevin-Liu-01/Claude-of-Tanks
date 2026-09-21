@@ -424,5 +424,18 @@ await facade.ensureTankBuilder('m1a1');
 const facadeVisual = drain(facade.createTankSteps('m1a1', null, baseOpts));
 equal(facadeVisual.specId, 'm1a1', 'ready demand facade delegates to the staged core');
 facadeVisual.dispose();
+// Garage uses rendered paint, decorated HIGH geometry, a static rest pose and
+// articulation-local batches. Slicing must preserve this exact caller policy.
+for (const id of ['m1a1', 'challenger_3x', 'ariete_c2_x']) {
+  await facade.ensureTankBuilder(id);
+  const options = { camoSeed: 4200, quality: 'ai', staticPreview: true,
+    batchStatic: true, eraVisualBindingReceipt: false };
+  const synchronous = facade.createTank(id, null, options);
+  const staged = drain(facade.createTankSteps(id, null, options));
+  try {
+    equal(receipt(staged), receipt(synchronous), `${id}: exact Garage geometry, materials, shadows and rig`);
+    equal(staged.root.parent, null, 'completed Garage graph remains private until caller publication');
+  } finally { staged.dispose(); synchronous.dispose(); }
+}
 hook.deregister();
 console.log(JSON.stringify({ checks, goldenSourceSha256, fixtures: goldenIndex, scope: "headless original-output and lifetime proof; not native performance acceptance" }));

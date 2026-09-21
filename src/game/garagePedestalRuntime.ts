@@ -47,6 +47,14 @@ interface InitialPedestalOptions {
   yieldForBudget?: BudgetYield;
 }
 
+interface PedestalVisualOptions {
+  camoSeed: number;
+  quality: 'ai';
+  staticPreview: true;
+  batchStatic: true;
+  eraVisualBindingReceipt: false;
+}
+
 interface GaragePedestalRuntimeOptions {
   scene: Scene;
   garagePosition: Vector3;
@@ -56,13 +64,12 @@ interface GaragePedestalRuntimeOptions {
   anisotropy: number;
   createVisual(
     specId: string,
-    options: {
-      camoSeed: number;
-      quality: 'ai';
-      staticPreview: true;
-      batchStatic: true;
-    },
+    options: PedestalVisualOptions,
   ): GaragePedestalVisual;
+  createVisualSteps(
+    specId: string,
+    options: PedestalVisualOptions,
+  ): Generator<void, GaragePedestalVisual, void>;
   getSpec(specId: string): GaragePedestalSpec;
   ensureTankBuilder(specId: string): Promise<RuntimeValue>;
   ensureTankBuilders(specIds: readonly string[]): Promise<RuntimeValue>;
@@ -133,6 +140,7 @@ export function createGaragePedestalRuntime({
   residentLimit,
   anisotropy,
   createVisual,
+  createVisualSteps,
   getSpec,
   ensureTankBuilder,
   ensureTankBuilders,
@@ -162,7 +170,7 @@ export function createGaragePedestalRuntime({
   warn = (message, error) => console.warn(message, error),
   invalidatePresentation = () => {},
 }: GaragePedestalRuntimeOptions): GaragePedestalRuntime {
-  const required = [createVisual, getSpec, ensureTankBuilder, ensureTankBuilders,
+  const required = [createVisual, createVisualSteps, getSpec, ensureTankBuilder, ensureTankBuilders,
     prebakeSharedTextures, discardSharedTextures, createBudgetYield, nextFrame,
     compilePrograms,
     getDeviceTier, getPhase, isBootComplete, getSelectedId, getNeighborIds,
@@ -358,8 +366,12 @@ export function createGaragePedestalRuntime({
     if (isBootComplete() && getPhase() === 'garage') preloader.queueNeighbors();
   };
 
-  const buildVisual = (specId: string, parked = false) => {
-    const visual = createVisual(specId, {
+  const buildVisual = async (
+    specId: string,
+    stillCurrent: () => boolean,
+    phases: Record<string, number>,
+  ): Promise<GaragePedestalVisual | null> => {
+    const options: PedestalVisualOptions = {
       camoSeed: 4200,
       quality: 'ai',
       staticPreview: true,
@@ -370,13 +382,51 @@ export function createGaragePedestalRuntime({
       // The same batched representation is already battle-safe and the
       // selected visual can still be lent directly to simulation.
       batchStatic: true,
-    });
-    visual.spec = getSpec(specId);
-    pose(visual);
-    if (parked) visual.root.position.y = garagePosition.y + PARK_OFFSET_Y;
-    scene.add(visual.root);
-    touch(specId, visual);
-    return visual;
+      // Live ERA clusters and checked anatomy remain present. The fitted-face
+      // report is only for authoring; battle construction already omits it.
+      eraVisualBindingReceipt: false,
+    };
+    const steps = isBootComplete() ? createVisualSteps(specId, options) : null;
+    const yieldForBudget = createBudgetYield(16);
+    let visual: GaragePedestalVisual | null = null;
+    let complete = false;
+    let transferred = false;
+    phases.buildYieldMs = 0;
+    phases.buildCheckpointCount = 0;
+    phases.maxBuildStepMs = 0;
+    try {
+      if (steps) {
+        while (stillCurrent()) {
+          const startedAt = now();
+          const result = steps.next();
+          const elapsed = now() - startedAt;
+          phases.buildMs += elapsed;
+          phases.maxBuildStepMs = Math.max(phases.maxBuildStepMs, elapsed);
+          if (result.done) {
+            complete = true;
+            visual = result.value;
+            break;
+          }
+          if (!stillCurrent()) return null;
+          const pausedAt = now();
+          await yieldForBudget();
+          phases.buildYieldMs += now() - pausedAt;
+          phases.buildCheckpointCount += 1;
+        }
+      } else {
+        const startedAt = now();
+        visual = createVisual(specId, options);
+        phases.buildMs = phases.maxBuildStepMs = now() - startedAt;
+      }
+      if (!visual || !stillCurrent()) return null;
+      transferred = true;
+      return visual;
+    } finally {
+      // A partial factory graph remains iterator-owned. Completion transfers
+      // ownership here, but never into the scene/cache after a stale selection.
+      if (steps && !complete) steps.return(undefined as never);
+      if (visual && !transferred) visual.dispose();
+    }
   };
 
   const warmPrograms = async (visual: GaragePedestalVisual) => {
@@ -395,7 +445,9 @@ export function createGaragePedestalRuntime({
   const set = (specId: string, force = false): Promise<void> => {
     if (!canStage()) return Promise.resolve();
     if (!force && current?.specId === specId) {
-      if (switchPending() || isOnStage(current)) {
+      // Returning to the still-visible outgoing hero must invalidate a newer
+      // in-flight selection. Its late completion cannot override this choice.
+      if (pollToken === shownToken && isOnStage(current)) {
         trace('same-spec-return', { id: specId, pv: visualState(current) });
         return Promise.resolve();
       }
@@ -410,7 +462,7 @@ export function createGaragePedestalRuntime({
     const previous = current;
     let previousRetired = false;
     const retirePrevious = () => {
-      if (previousRetired || !previous) return;
+      if (previousRetired || !previous || previous === current) return;
       previousRetired = true;
       park(previous);
     };
@@ -460,13 +512,23 @@ export function createGaragePedestalRuntime({
       phases.prebakeMs = Math.round(now() - phaseAt);
       if (!canStage() || buildToken !== pollToken) {
         trace('prebake-stale', { id: specId, tok: buildToken });
-        retirePrevious();
         return;
       }
 
+      const incoming = await buildVisual(specId,
+        () => canStage() && buildToken === pollToken, phases);
+      if (!incoming || !canStage() || buildToken !== pollToken) {
+        incoming?.dispose();
+        trace('build-stale', { id: specId, tok: buildToken });
+        return;
+      }
       phaseAt = now();
-      const incoming = buildVisual(specId, true);
-      phases.buildMs = Math.round(now() - phaseAt);
+      incoming.spec = getSpec(specId);
+      pose(incoming);
+      incoming.root.position.y = garagePosition.y + PARK_OFFSET_Y;
+      scene.add(incoming.root);
+      touch(specId, incoming);
+      phases.buildMs += now() - phaseAt;
       phases.decorMs = Math.round(Number(incoming.root.userData.decorBuildMs) || 0);
       incoming.__pedestalCompiling = true;
       phaseAt = now();

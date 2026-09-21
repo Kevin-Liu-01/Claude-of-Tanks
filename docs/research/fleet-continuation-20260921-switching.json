@@ -1,0 +1,2208 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "c74d1a2b2cf3579edc071527f303478abd9e8b57",
+  "scope": "Eight real Garage card selections, two cycles plus rapid convergence per tier; one fresh browser per run. Observational paired runs, not repeated statistical FPS or production-bundle certification.",
+  "runs": [
+    {
+      "run": "garage-baseline",
+      "tier": "desktop",
+      "cpuRate": 4,
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "browser": "Chrome/151.0.7922.47",
+      "cache": "Fresh browser; first cycle then repeat visits exceeding the pedestal cache; production prefetch remains enabled.",
+      "build": "Production UI paths served by the Vite development server; not a production-bundle timing test.",
+      "timing": "Pointerdown to observed UI/stage readiness; screenshot-completion upper bound on composited evidence. RAF gaps are callback intervals, not FPS.",
+      "inputSha256": "a4dd14171f4d38c8dddeae690cde3cc91a379ba17fccd35998b4406801ac0ba4",
+      "pedestalSha256": "bf810e91f42d130eebc8d9e6f34ac3cb494f58bc94e41b64295e45902dee2933",
+      "mainSha256": "01c659065d13c30b1493fff04b76e150e2e8d96255bec43150167479b9473f44",
+      "uiReady": {
+        "p50": 224.5,
+        "p95": 619.3000000715256,
+        "max": 619.3000000715256
+      },
+      "rafMaxGapMs": 425.7000000000007,
+      "converged": true,
+      "errors": [],
+      "resourceErrors": [],
+      "inputDrift": [],
+      "thumbnailsPass": true,
+      "rows": [
+        {
+          "id": "m1a2_sepv3",
+          "phase": "first-cycle",
+          "uiReadyMs": 619.3000000715256,
+          "compositedEvidenceUpperBoundMs": 834.1000000238419,
+          "rafMaxGapMs": 425.7000000000007,
+          "longTasks": [
+            {
+              "at": 7016,
+              "ms": 425
+            }
+          ],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 565,
+            "path": "procedural",
+            "prebakeMs": 110,
+            "buildMs": 360,
+            "compileMs": 95,
+            "decorMs": 77
+          },
+          "screenshotSha256": "6e8f7cb73a0b4af74487fdf58208f0c7416c703b5caa8a85f0ef893acc4df056",
+          "renderer": {
+            "geometries": 449,
+            "textures": 89,
+            "programs": 81,
+            "calls": 1563,
+            "triangles": 417732
+          },
+          "heapBytes": 202948103
+        },
+        {
+          "id": "challenger_3x",
+          "phase": "first-cycle",
+          "uiReadyMs": 55.799999952316284,
+          "compositedEvidenceUpperBoundMs": 288.2999999523163,
+          "rafMaxGapMs": 23.900000000001455,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "challenger_3x",
+            "ms": 5,
+            "path": "cached"
+          },
+          "screenshotSha256": "f13ba1b698285dff5864ec0d595eb50c58b4709034f176b1a7563133149c54a3",
+          "renderer": {
+            "geometries": 509,
+            "textures": 100,
+            "programs": 81,
+            "calls": 1555,
+            "triangles": 385690
+          },
+          "heapBytes": 246324581
+        },
+        {
+          "id": "challenger2",
+          "phase": "first-cycle",
+          "uiReadyMs": 375.60000002384186,
+          "compositedEvidenceUpperBoundMs": 596.3999999761581,
+          "rafMaxGapMs": 199.29999999999927,
+          "longTasks": [
+            {
+              "at": 9647.5,
+              "ms": 205
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger2",
+            "ms": 333,
+            "path": "procedural",
+            "prebakeMs": 109,
+            "buildMs": 175,
+            "compileMs": 49,
+            "decorMs": 66
+          },
+          "screenshotSha256": "b18e0af0e2fef15a963cb1417a0ad76a6237b143f8170c755d76a90c9e90bb65",
+          "renderer": {
+            "geometries": 573,
+            "textures": 111,
+            "programs": 82,
+            "calls": 1556,
+            "triangles": 404216
+          },
+          "heapBytes": 254217802
+        },
+        {
+          "id": "t90a_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 400.5,
+          "compositedEvidenceUpperBoundMs": 600.1000000238419,
+          "rafMaxGapMs": 147.10000000000036,
+          "longTasks": [
+            {
+              "at": 11394.600000023842,
+              "ms": 125
+            }
+          ],
+          "productionSwitch": {
+            "id": "t90a_x",
+            "ms": 352,
+            "path": "procedural",
+            "prebakeMs": 190,
+            "buildMs": 114,
+            "compileMs": 48,
+            "decorMs": 37
+          },
+          "screenshotSha256": "2e5dd8511eef7142d3086db2859f792d3efea04ffb550e9c29cbe3c46e9725f9",
+          "renderer": {
+            "geometries": 564,
+            "textures": 110,
+            "programs": 78,
+            "calls": 1571,
+            "triangles": 355570
+          },
+          "heapBytes": 310996754
+        },
+        {
+          "id": "leo2a7v_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 379.2000000476837,
+          "compositedEvidenceUpperBoundMs": 579.6000000238419,
+          "rafMaxGapMs": 146.70000000000073,
+          "longTasks": [
+            {
+              "at": 12822.299999952316,
+              "ms": 131
+            }
+          ],
+          "productionSwitch": {
+            "id": "leo2a7v_x",
+            "ms": 325,
+            "path": "procedural",
+            "prebakeMs": 158,
+            "buildMs": 122,
+            "compileMs": 44,
+            "decorMs": 37
+          },
+          "screenshotSha256": "25b48db30193a3b9acddc9a2785695bb56906b7ae150bab59c9e6c34fbca8314",
+          "renderer": {
+            "geometries": 553,
+            "textures": 109,
+            "programs": 72,
+            "calls": 1596,
+            "triangles": 353666
+          },
+          "heapBytes": 340535244
+        },
+        {
+          "id": "ariete_c2_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 51.40000009536743,
+          "compositedEvidenceUpperBoundMs": 297.10000002384186,
+          "rafMaxGapMs": 26,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "ariete_c2_x",
+            "ms": 5,
+            "path": "cached"
+          },
+          "screenshotSha256": "9b659b3d6459f454e38cfd068da08881ace54868107f0ba7b41ffe3a7073e9f6",
+          "renderer": {
+            "geometries": 554,
+            "textures": 109,
+            "programs": 71,
+            "calls": 1563,
+            "triangles": 359054
+          },
+          "heapBytes": 247196940
+        },
+        {
+          "id": "merkava4_barak",
+          "phase": "first-cycle",
+          "uiReadyMs": 324,
+          "compositedEvidenceUpperBoundMs": 549.8999999761581,
+          "rafMaxGapMs": 182.5,
+          "longTasks": [
+            {
+              "at": 15620.200000047684,
+              "ms": 173
+            }
+          ],
+          "productionSwitch": {
+            "id": "merkava4_barak",
+            "ms": 278,
+            "path": "procedural",
+            "prebakeMs": 82,
+            "buildMs": 143,
+            "compileMs": 53,
+            "decorMs": 53
+          },
+          "screenshotSha256": "96d487b638bfd7a7709ad3ae600972b62ca2c3392a83d9eaf36ec72b058bfea6",
+          "renderer": {
+            "geometries": 551,
+            "textures": 109,
+            "programs": 70,
+            "calls": 1561,
+            "triangles": 361366
+          },
+          "heapBytes": 264473250
+        },
+        {
+          "id": "kurganets25_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 393.39999997615814,
+          "compositedEvidenceUpperBoundMs": 599.3999999761581,
+          "rafMaxGapMs": 125.39999999999782,
+          "longTasks": [
+            {
+              "at": 17150.5,
+              "ms": 93
+            }
+          ],
+          "productionSwitch": {
+            "id": "kurganets25_x",
+            "ms": 346,
+            "path": "procedural",
+            "prebakeMs": 213,
+            "buildMs": 85,
+            "compileMs": 48,
+            "decorMs": 30
+          },
+          "screenshotSha256": "cff657565a105bbeed3dfe3d2c4b6ad3979b013dc52173dcb4618f6d10038310",
+          "renderer": {
+            "geometries": 655,
+            "textures": 109,
+            "programs": 71,
+            "calls": 1672,
+            "triangles": 322353
+          },
+          "heapBytes": 283600477
+        },
+        {
+          "id": "m1a2_sepv3",
+          "phase": "repeat-1",
+          "uiReadyMs": 45.60000002384186,
+          "compositedEvidenceUpperBoundMs": 260.10000002384186,
+          "rafMaxGapMs": 38,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 546,
+            "path": "procedural",
+            "prebakeMs": 125,
+            "buildMs": 322,
+            "compileMs": 99,
+            "decorMs": 78
+          },
+          "screenshotSha256": "0c313966d30ae67fac925a993738e070ec82fce3dfae4bf368f1ec074e9c9b9b",
+          "renderer": {
+            "geometries": 671,
+            "textures": 112,
+            "programs": 82,
+            "calls": 1695,
+            "triangles": 429061
+          },
+          "heapBytes": 268749260
+        },
+        {
+          "id": "challenger_3x",
+          "phase": "repeat-1",
+          "uiReadyMs": 348.7000000476837,
+          "compositedEvidenceUpperBoundMs": 547.6000000238419,
+          "rafMaxGapMs": 219.5,
+          "longTasks": [
+            {
+              "at": 20138.899999976158,
+              "ms": 210
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger_3x",
+            "ms": 309,
+            "path": "procedural",
+            "prebakeMs": 91,
+            "buildMs": 169,
+            "compileMs": 49,
+            "decorMs": 44
+          },
+          "screenshotSha256": "f973545e56ecdb06701dd72823c09185372751411645f0e13fb1ea4f1da1e732",
+          "renderer": {
+            "geometries": 696,
+            "textures": 112,
+            "programs": 84,
+            "calls": 1687,
+            "triangles": 397019
+          },
+          "heapBytes": 285473836
+        },
+        {
+          "id": "challenger2",
+          "phase": "repeat-1",
+          "uiReadyMs": 71.20000004768372,
+          "compositedEvidenceUpperBoundMs": 304,
+          "rafMaxGapMs": 68.29999999999927,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "challenger2",
+            "ms": 0,
+            "path": "cached"
+          },
+          "screenshotSha256": "30cdbf690d041cc375ce875eb208fd5aecab3759ea57a9d556944e66faa89b4d",
+          "renderer": {
+            "geometries": 440,
+            "textures": 112,
+            "programs": 85,
+            "calls": 394,
+            "triangles": 375679
+          },
+          "heapBytes": 296392842
+        },
+        {
+          "id": "t90a_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 224.5,
+          "compositedEvidenceUpperBoundMs": 439.89999997615814,
+          "rafMaxGapMs": 128.89999999999782,
+          "longTasks": [
+            {
+              "at": 22259.200000047684,
+              "ms": 126
+            }
+          ],
+          "productionSwitch": {
+            "id": "t90a_x",
+            "ms": 203,
+            "path": "procedural",
+            "prebakeMs": 66,
+            "buildMs": 100,
+            "compileMs": 37,
+            "decorMs": 35
+          },
+          "screenshotSha256": "1f02b22e400012cb2fbe5df031a5ce588568fa0ccd0a5dfd255812ad8daf6fa6",
+          "renderer": {
+            "geometries": 428,
+            "textures": 110,
+            "programs": 78,
+            "calls": 386,
+            "triangles": 324027
+          },
+          "heapBytes": 317748984
+        },
+        {
+          "id": "leo2a7v_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 177.39999997615814,
+          "compositedEvidenceUpperBoundMs": 399.7000000476837,
+          "rafMaxGapMs": 151.90000000000146,
+          "longTasks": [
+            {
+              "at": 23278.399999976158,
+              "ms": 133
+            }
+          ],
+          "productionSwitch": {
+            "id": "leo2a7v_x",
+            "ms": 166,
+            "path": "procedural",
+            "prebakeMs": 9,
+            "buildMs": 106,
+            "compileMs": 51,
+            "decorMs": 35
+          },
+          "screenshotSha256": "1dc95db801bff9a64136205268172b4039331e007bb3d819345990fcfbdb3143",
+          "renderer": {
+            "geometries": 419,
+            "textures": 110,
+            "programs": 77,
+            "calls": 411,
+            "triangles": 322123
+          },
+          "heapBytes": 311919606
+        },
+        {
+          "id": "ariete_c2_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 191.30000007152557,
+          "compositedEvidenceUpperBoundMs": 424.8000000715256,
+          "rafMaxGapMs": 160.79999999999927,
+          "longTasks": [
+            {
+              "at": 24287.600000023842,
+              "ms": 140
+            }
+          ],
+          "productionSwitch": {
+            "id": "ariete_c2_x",
+            "ms": 174,
+            "path": "procedural",
+            "prebakeMs": 10,
+            "buildMs": 113,
+            "compileMs": 51,
+            "decorMs": 46
+          },
+          "screenshotSha256": "b96f5d29d1226ab1946c59293e6af0530244be0e4307efb309575b6dec9fa478",
+          "renderer": {
+            "geometries": 421,
+            "textures": 109,
+            "programs": 72,
+            "calls": 378,
+            "triangles": 327511
+          },
+          "heapBytes": 341939655
+        },
+        {
+          "id": "merkava4_barak",
+          "phase": "repeat-1",
+          "uiReadyMs": 47.299999952316284,
+          "compositedEvidenceUpperBoundMs": 277.59999990463257,
+          "rafMaxGapMs": 40.400000000001455,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "merkava4_barak",
+            "ms": 30,
+            "path": "cached"
+          },
+          "screenshotSha256": "f365f44bc7a02428221200f1fe07a17d8360fd86193234b0af528b71acfe0c96",
+          "renderer": {
+            "geometries": 420,
+            "textures": 109,
+            "programs": 72,
+            "calls": 376,
+            "triangles": 329823
+          },
+          "heapBytes": 343057956
+        },
+        {
+          "id": "kurganets25_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 235.79999995231628,
+          "compositedEvidenceUpperBoundMs": 435.5,
+          "rafMaxGapMs": 102.20000000000073,
+          "longTasks": [
+            {
+              "at": 26498.799999952316,
+              "ms": 107
+            }
+          ],
+          "productionSwitch": {
+            "id": "kurganets25_x",
+            "ms": 213,
+            "path": "procedural",
+            "prebakeMs": 90,
+            "buildMs": 81,
+            "compileMs": 42,
+            "decorMs": 33
+          },
+          "screenshotSha256": "12ddb57d4458af100e732b28a55b8876e7b1a681759b093c364ed318aa3ad5e2",
+          "renderer": {
+            "geometries": 416,
+            "textures": 109,
+            "programs": 72,
+            "calls": 378,
+            "triangles": 282487
+          },
+          "heapBytes": 365339112
+        },
+        {
+          "id": "m1a2_sepv3",
+          "phase": "rapid-final",
+          "uiReadyMs": 116.69999992847443,
+          "compositedEvidenceUpperBoundMs": 337.1999999284744,
+          "rafMaxGapMs": 18.799999999999272,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 5,
+            "path": "cached"
+          },
+          "screenshotSha256": "a8f0bd4d0f9c59d79e8c8c0249c3e8cd3eb654c3f384ec547115ae86bc6418cb",
+          "renderer": {
+            "geometries": 469,
+            "textures": 112,
+            "programs": 85,
+            "calls": 401,
+            "triangles": 389195
+          },
+          "heapBytes": 285083438
+        }
+      ]
+    },
+    {
+      "run": "garage-desktop-verified",
+      "tier": "desktop",
+      "cpuRate": 4,
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "browser": "Chrome/151.0.7922.47",
+      "cache": "Fresh browser; first cycle then repeat visits exceeding the pedestal cache; production prefetch remains enabled.",
+      "build": "Production UI paths served by the Vite development server; not a production-bundle timing test.",
+      "timing": "Pointerdown to observed UI/stage readiness; screenshot-completion upper bound on composited evidence. RAF gaps are callback intervals, not FPS.",
+      "inputSha256": "aac4c39774374c77fa5e3049c39b8fb4f060d60b4e90d5bebcf75885d935e1a3",
+      "pedestalSha256": "935ad28c3e7fb439c0e66481f15a4275a32b17fcb3c154764d3db52928a6af8f",
+      "mainSha256": "192b399bcb93ecb3ba784419291fcd0ef43df93ada2049d2690194ceb34d623b",
+      "uiReady": {
+        "p50": 324,
+        "p95": 568.3000000715256,
+        "max": 568.3000000715256
+      },
+      "rafMaxGapMs": 212.5,
+      "converged": true,
+      "errors": [],
+      "resourceErrors": [],
+      "inputDrift": [],
+      "thumbnailsPass": true,
+      "rows": [
+        {
+          "id": "m1a2_sepv3",
+          "phase": "first-cycle",
+          "uiReadyMs": 568.3000000715256,
+          "compositedEvidenceUpperBoundMs": 785.2000000476837,
+          "rafMaxGapMs": 212.5,
+          "longTasks": [
+            {
+              "at": 7112.600000023842,
+              "ms": 212
+            },
+            {
+              "at": 7466,
+              "ms": 64
+            }
+          ],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 542,
+            "path": "procedural",
+            "prebakeMs": 113,
+            "buildMs": 262.2000000476837,
+            "compileMs": 73,
+            "buildYieldMs": 93.5,
+            "buildCheckpointCount": 225,
+            "maxBuildStepMs": 181.5,
+            "decorMs": 76
+          },
+          "screenshotSha256": "e55ae3a0f83a7d5fcbe7b3112e560caad5a0635af78f1fa7c5962720cd169e5e",
+          "renderer": {
+            "geometries": 449,
+            "textures": 89,
+            "programs": 81,
+            "calls": 1563,
+            "triangles": 417732
+          },
+          "heapBytes": 193109527
+        },
+        {
+          "id": "challenger_3x",
+          "phase": "first-cycle",
+          "uiReadyMs": 55.89999997615814,
+          "compositedEvidenceUpperBoundMs": 343.10000002384186,
+          "rafMaxGapMs": 53.5,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "challenger_3x",
+            "ms": 34,
+            "path": "cached"
+          },
+          "screenshotSha256": "6ded1a1c6ff08ddd409a137023f4d302070576d8a1c9051fb8a0054eb46b79fd",
+          "renderer": {
+            "geometries": 509,
+            "textures": 100,
+            "programs": 81,
+            "calls": 1555,
+            "triangles": 385690
+          },
+          "heapBytes": 228967418
+        },
+        {
+          "id": "challenger2",
+          "phase": "first-cycle",
+          "uiReadyMs": 567,
+          "compositedEvidenceUpperBoundMs": 799.7999999523163,
+          "rafMaxGapMs": 147.5,
+          "longTasks": [
+            {
+              "at": 9857.399999976158,
+              "ms": 147
+            },
+            {
+              "at": 10202.399999976158,
+              "ms": 98
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger2",
+            "ms": 542,
+            "path": "procedural",
+            "prebakeMs": 124,
+            "buildMs": 193.59999990463257,
+            "compileMs": 125,
+            "buildYieldMs": 99.30000007152557,
+            "buildCheckpointCount": 193,
+            "maxBuildStepMs": 114.79999995231628,
+            "decorMs": 74
+          },
+          "screenshotSha256": "a0498c604361182b46e97edd91276ed1c140a7af35e178c7a73943f92c1cbaff",
+          "renderer": {
+            "geometries": 573,
+            "textures": 112,
+            "programs": 82,
+            "calls": 1556,
+            "triangles": 404216
+          },
+          "heapBytes": 268024240
+        },
+        {
+          "id": "t90a_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 476.60000002384186,
+          "compositedEvidenceUpperBoundMs": 728.6000000238419,
+          "rafMaxGapMs": 110.70000000000073,
+          "longTasks": [
+            {
+              "at": 11782.799999952316,
+              "ms": 65
+            }
+          ],
+          "productionSwitch": {
+            "id": "t90a_x",
+            "ms": 432,
+            "path": "procedural",
+            "prebakeMs": 206,
+            "buildMs": 108.69999992847443,
+            "compileMs": 49,
+            "buildYieldMs": 67,
+            "buildCheckpointCount": 116,
+            "maxBuildStepMs": 61,
+            "decorMs": 40
+          },
+          "screenshotSha256": "599a6abb59bcc8429d734e3f6c99b572f31170235407f1b80b7450dda145afb2",
+          "renderer": {
+            "geometries": 584,
+            "textures": 111,
+            "programs": 84,
+            "calls": 1571,
+            "triangles": 355570
+          },
+          "heapBytes": 292975272
+        },
+        {
+          "id": "leo2a7v_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 538.5999999046326,
+          "compositedEvidenceUpperBoundMs": 749,
+          "rafMaxGapMs": 138.5,
+          "longTasks": [
+            {
+              "at": 13495.100000023842,
+              "ms": 88
+            }
+          ],
+          "productionSwitch": {
+            "id": "leo2a7v_x",
+            "ms": 493,
+            "path": "procedural",
+            "prebakeMs": 227,
+            "buildMs": 136.39999997615814,
+            "compileMs": 40,
+            "buildYieldMs": 87.79999995231628,
+            "buildCheckpointCount": 165,
+            "maxBuildStepMs": 84.69999992847443,
+            "decorMs": 49
+          },
+          "screenshotSha256": "0807ae4af102aed288334ffbfbd3a24973ef745eb87b56b73ec67f88d02567ad",
+          "renderer": {
+            "geometries": 668,
+            "textures": 110,
+            "programs": 77,
+            "calls": 1710,
+            "triangles": 361994
+          },
+          "heapBytes": 330718196
+        },
+        {
+          "id": "ariete_c2_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 53.89999997615814,
+          "compositedEvidenceUpperBoundMs": 320.7000000476837,
+          "rafMaxGapMs": 50.399999999999636,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "ariete_c2_x",
+            "ms": 37,
+            "path": "cached"
+          },
+          "screenshotSha256": "0fd360c07cb8d34a3687d9d6add908fd66ed772aca5c816707eb1f6a5346c013",
+          "renderer": {
+            "geometries": 657,
+            "textures": 110,
+            "programs": 76,
+            "calls": 1672,
+            "triangles": 367377
+          },
+          "heapBytes": 259838658
+        },
+        {
+          "id": "merkava4_barak",
+          "phase": "first-cycle",
+          "uiReadyMs": 392.8000000715256,
+          "compositedEvidenceUpperBoundMs": 609.8000000715256,
+          "rafMaxGapMs": 124.29999999999927,
+          "longTasks": [
+            {
+              "at": 16467.200000047684,
+              "ms": 115
+            }
+          ],
+          "productionSwitch": {
+            "id": "merkava4_barak",
+            "ms": 371,
+            "path": "procedural",
+            "prebakeMs": 78,
+            "buildMs": 146.20000004768372,
+            "compileMs": 39,
+            "buildYieldMs": 108.39999985694885,
+            "buildCheckpointCount": 167,
+            "maxBuildStepMs": 88.19999992847443,
+            "decorMs": 55
+          },
+          "screenshotSha256": "3677615446b606e9d2eded4762c1b90367526015df3749a7ec79caec88e2c79a",
+          "renderer": {
+            "geometries": 656,
+            "textures": 109,
+            "programs": 71,
+            "calls": 1670,
+            "triangles": 369689
+          },
+          "heapBytes": 283541720
+        },
+        {
+          "id": "kurganets25_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 398.60000002384186,
+          "compositedEvidenceUpperBoundMs": 649.1000000238419,
+          "rafMaxGapMs": 91.79999999999927,
+          "longTasks": [
+            {
+              "at": 17869.700000047684,
+              "ms": 61
+            }
+          ],
+          "productionSwitch": {
+            "id": "kurganets25_x",
+            "ms": 353,
+            "path": "procedural",
+            "prebakeMs": 169,
+            "buildMs": 97.89999997615814,
+            "compileMs": 49,
+            "buildYieldMs": 36.90000009536743,
+            "buildCheckpointCount": 108,
+            "maxBuildStepMs": 58.60000002384186,
+            "decorMs": 32
+          },
+          "screenshotSha256": "3fb466a7a9b1df7a9a33daef7ffc52b9ddc0abb5b43b8dac1642b60430f2c538",
+          "renderer": {
+            "geometries": 652,
+            "textures": 109,
+            "programs": 71,
+            "calls": 1672,
+            "triangles": 322353
+          },
+          "heapBytes": 281944869
+        },
+        {
+          "id": "m1a2_sepv3",
+          "phase": "repeat-1",
+          "uiReadyMs": 60.90000009536743,
+          "compositedEvidenceUpperBoundMs": 334.8000000715256,
+          "rafMaxGapMs": 25.899999999997817,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 5,
+            "path": "cached"
+          },
+          "screenshotSha256": "3c5649db984beee91222be0ca2b8cf586c530cacc67219eb2271c8e8a96e47af",
+          "renderer": {
+            "geometries": 415,
+            "textures": 112,
+            "programs": 83,
+            "calls": 401,
+            "triangles": 389195
+          },
+          "heapBytes": 255313570
+        },
+        {
+          "id": "challenger_3x",
+          "phase": "repeat-1",
+          "uiReadyMs": 344.7000000476837,
+          "compositedEvidenceUpperBoundMs": 565.2000000476837,
+          "rafMaxGapMs": 116.09999999999854,
+          "longTasks": [
+            {
+              "at": 20999,
+              "ms": 109
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger_3x",
+            "ms": 324,
+            "path": "procedural",
+            "prebakeMs": 68,
+            "buildMs": 147.10000002384186,
+            "compileMs": 30,
+            "buildYieldMs": 78.20000004768372,
+            "buildCheckpointCount": 173,
+            "maxBuildStepMs": 89.10000002384186,
+            "decorMs": 50
+          },
+          "screenshotSha256": "1505ff32535801e79e4aa196932eb56d4cb505cc7c486067a25ba8029cab4ecb",
+          "renderer": {
+            "geometries": 440,
+            "textures": 112,
+            "programs": 85,
+            "calls": 393,
+            "triangles": 357153
+          },
+          "heapBytes": 292222668
+        },
+        {
+          "id": "challenger2",
+          "phase": "repeat-1",
+          "uiReadyMs": 119.30000007152557,
+          "compositedEvidenceUpperBoundMs": 363.5,
+          "rafMaxGapMs": 75.80000000000291,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "challenger2",
+            "ms": 1,
+            "path": "cached"
+          },
+          "screenshotSha256": "6fbf81132f8ca7a3867f2cad63e5b92221d0366966a660a6fc53007cc832733f",
+          "renderer": {
+            "geometries": 440,
+            "textures": 112,
+            "programs": 85,
+            "calls": 394,
+            "triangles": 375679
+          },
+          "heapBytes": 268053767
+        },
+        {
+          "id": "t90a_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 324,
+          "compositedEvidenceUpperBoundMs": 602.1000000238419,
+          "rafMaxGapMs": 97.29999999999927,
+          "longTasks": [
+            {
+              "at": 23065,
+              "ms": 93
+            }
+          ],
+          "productionSwitch": {
+            "id": "t90a_x",
+            "ms": 303,
+            "path": "procedural",
+            "prebakeMs": 87,
+            "buildMs": 124.70000004768372,
+            "compileMs": 40,
+            "buildYieldMs": 50.699999928474426,
+            "buildCheckpointCount": 116,
+            "maxBuildStepMs": 69.79999995231628,
+            "decorMs": 47
+          },
+          "screenshotSha256": "245aa168303f7eeb8eadfea368708aed966c37f959150d3b0e9e3ceabda70a88",
+          "renderer": {
+            "geometries": 428,
+            "textures": 110,
+            "programs": 78,
+            "calls": 386,
+            "triangles": 324027
+          },
+          "heapBytes": 271850389
+        },
+        {
+          "id": "leo2a7v_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 46,
+          "compositedEvidenceUpperBoundMs": 287.2000000476837,
+          "rafMaxGapMs": 30.400000000001455,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "leo2a7v_x",
+            "ms": 315,
+            "path": "procedural",
+            "prebakeMs": 106,
+            "buildMs": 129.10000002384186,
+            "compileMs": 31,
+            "buildYieldMs": 47.60000002384186,
+            "buildCheckpointCount": 165,
+            "maxBuildStepMs": 81.20000004768372,
+            "decorMs": 43
+          },
+          "screenshotSha256": "34c53e16b3f8daa745f189fb28f8d24fd1bdfc0a24b0e088ca227b6866d750cc",
+          "renderer": {
+            "geometries": 419,
+            "textures": 110,
+            "programs": 77,
+            "calls": 411,
+            "triangles": 322123
+          },
+          "heapBytes": 267855503
+        },
+        {
+          "id": "ariete_c2_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 231.79999995231628,
+          "compositedEvidenceUpperBoundMs": 458.7000000476837,
+          "rafMaxGapMs": 132.8000000000029,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "ariete_c2_x",
+            "ms": 204,
+            "path": "procedural",
+            "prebakeMs": 2,
+            "buildMs": 118.60000026226044,
+            "compileMs": 30,
+            "buildYieldMs": 53.299999713897705,
+            "buildCheckpointCount": 158,
+            "maxBuildStepMs": 67.39999997615814,
+            "decorMs": 46
+          },
+          "screenshotSha256": "c3b556e46dd19bd18241c60eac2f9a3d5f239a8377748348de6daed789cbe609",
+          "renderer": {
+            "geometries": 421,
+            "textures": 109,
+            "programs": 72,
+            "calls": 378,
+            "triangles": 327511
+          },
+          "heapBytes": 290711220
+        },
+        {
+          "id": "merkava4_barak",
+          "phase": "repeat-1",
+          "uiReadyMs": 217.80000007152557,
+          "compositedEvidenceUpperBoundMs": 510.40000009536743,
+          "rafMaxGapMs": 127.5,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "merkava4_barak",
+            "ms": 200,
+            "path": "procedural",
+            "prebakeMs": 2,
+            "buildMs": 117.40000009536743,
+            "compileMs": 32,
+            "buildYieldMs": 47.59999990463257,
+            "buildCheckpointCount": 167,
+            "maxBuildStepMs": 65.79999995231628,
+            "decorMs": 48
+          },
+          "screenshotSha256": "145766e7fac5856333ab60f79fc324aaf1e8171f81e0938e53664a29ea583084",
+          "renderer": {
+            "geometries": 420,
+            "textures": 109,
+            "programs": 72,
+            "calls": 376,
+            "triangles": 329823
+          },
+          "heapBytes": 310513384
+        },
+        {
+          "id": "kurganets25_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 282.2999999523163,
+          "compositedEvidenceUpperBoundMs": 543.8999999761581,
+          "rafMaxGapMs": 73.39999999999782,
+          "longTasks": [
+            {
+              "at": 28085.600000023842,
+              "ms": 64
+            }
+          ],
+          "productionSwitch": {
+            "id": "kurganets25_x",
+            "ms": 252,
+            "path": "procedural",
+            "prebakeMs": 100,
+            "buildMs": 79.30000007152557,
+            "compileMs": 35,
+            "buildYieldMs": 37.799999952316284,
+            "buildCheckpointCount": 108,
+            "maxBuildStepMs": 42.40000009536743,
+            "decorMs": 31
+          },
+          "screenshotSha256": "a12542490f43b34e94f494f1d45b66053bf5e80e16eeb21b49f7b88a825c1fa7",
+          "renderer": {
+            "geometries": 416,
+            "textures": 109,
+            "programs": 72,
+            "calls": 378,
+            "triangles": 282487
+          },
+          "heapBytes": 333100163
+        },
+        {
+          "id": "m1a2_sepv3",
+          "phase": "rapid-final",
+          "uiReadyMs": 329.7999999523163,
+          "compositedEvidenceUpperBoundMs": 576.1000000238419,
+          "rafMaxGapMs": 170.20000000000073,
+          "longTasks": [
+            {
+              "at": 32416.100000023842,
+              "ms": 53
+            }
+          ],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 311,
+            "path": "procedural",
+            "prebakeMs": 3,
+            "buildMs": 186.00000023841858,
+            "compileMs": 61,
+            "buildYieldMs": 60.799999833106995,
+            "buildCheckpointCount": 225,
+            "maxBuildStepMs": 116.5,
+            "decorMs": 64
+          },
+          "screenshotSha256": "7ad56496747d6892d72e212158d9e063017865effbad444d0fe2cf28f50bdffe",
+          "renderer": {
+            "geometries": 469,
+            "textures": 113,
+            "programs": 85,
+            "calls": 409,
+            "triangles": 389328
+          },
+          "heapBytes": 326425542
+        }
+      ]
+    },
+    {
+      "run": "garage-mobile-baseline",
+      "tier": "mobile",
+      "cpuRate": 4,
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "browser": "Chrome/151.0.7922.47",
+      "cache": "Fresh browser; first cycle then repeat visits exceeding the pedestal cache; production prefetch remains enabled.",
+      "build": "Production UI paths served by the Vite development server; not a production-bundle timing test.",
+      "timing": "Pointerdown to observed UI/stage readiness; screenshot-completion upper bound on composited evidence. RAF gaps are callback intervals, not FPS.",
+      "inputSha256": "a4dd14171f4d38c8dddeae690cde3cc91a379ba17fccd35998b4406801ac0ba4",
+      "pedestalSha256": "bf810e91f42d130eebc8d9e6f34ac3cb494f58bc94e41b64295e45902dee2933",
+      "mainSha256": "01c659065d13c30b1493fff04b76e150e2e8d96255bec43150167479b9473f44",
+      "uiReady": {
+        "p50": 219.10000002384186,
+        "p95": 1178.8999999761581,
+        "max": 1178.8999999761581
+      },
+      "rafMaxGapMs": 668.3000000000002,
+      "converged": true,
+      "errors": [],
+      "resourceErrors": [],
+      "inputDrift": [],
+      "thumbnailsPass": true,
+      "rows": [
+        {
+          "id": "m1a2_sepv3",
+          "phase": "first-cycle",
+          "uiReadyMs": 1178.8999999761581,
+          "compositedEvidenceUpperBoundMs": 1408.5999999046326,
+          "rafMaxGapMs": 668.3000000000002,
+          "longTasks": [
+            {
+              "at": 7035.399999976158,
+              "ms": 384
+            },
+            {
+              "at": 7425.799999952316,
+              "ms": 660
+            }
+          ],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 472,
+            "path": "procedural",
+            "prebakeMs": 115,
+            "buildMs": 356,
+            "compileMs": 0,
+            "decorMs": 76
+          },
+          "screenshotSha256": "3e97c2b574ea45f9b1bee39a6aa7c52b556cfd3a8cdbb3b1f27f5c559d9f7d2e",
+          "renderer": {
+            "geometries": 449,
+            "textures": 81,
+            "programs": 76,
+            "calls": 1556,
+            "triangles": 352637
+          },
+          "heapBytes": 245341653
+        },
+        {
+          "id": "challenger_3x",
+          "phase": "first-cycle",
+          "uiReadyMs": 43.10000002384186,
+          "compositedEvidenceUpperBoundMs": 268.7999999523163,
+          "rafMaxGapMs": 31,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "challenger_3x",
+            "ms": 426,
+            "path": "procedural",
+            "prebakeMs": 251,
+            "buildMs": 174,
+            "compileMs": 0,
+            "decorMs": 47
+          },
+          "screenshotSha256": "42daf6655116f4e1c415bcee1b42b85ea228ca507138ec235fd09a5ee9b957f9",
+          "renderer": {
+            "geometries": 451,
+            "textures": 81,
+            "programs": 75,
+            "calls": 1547,
+            "triangles": 327603
+          },
+          "heapBytes": 234712183
+        },
+        {
+          "id": "challenger2",
+          "phase": "first-cycle",
+          "uiReadyMs": 429,
+          "compositedEvidenceUpperBoundMs": 636.6000000238419,
+          "rafMaxGapMs": 207.60000000000036,
+          "longTasks": [
+            {
+              "at": 10269.899999976158,
+              "ms": 111
+            },
+            {
+              "at": 10384.100000023842,
+              "ms": 205
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger2",
+            "ms": 344,
+            "path": "procedural",
+            "prebakeMs": 165,
+            "buildMs": 179,
+            "compileMs": 0,
+            "decorMs": 66
+          },
+          "screenshotSha256": "a1659848a5b5102e39533ebb572f66c72ffee395964bbab83be9a81a318d5248",
+          "renderer": {
+            "geometries": 447,
+            "textures": 79,
+            "programs": 68,
+            "calls": 1552,
+            "triangles": 340877
+          },
+          "heapBytes": 258567290
+        },
+        {
+          "id": "t90a_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 490.10000002384186,
+          "compositedEvidenceUpperBoundMs": 711.6000000238419,
+          "rafMaxGapMs": 299.89999999999964,
+          "longTasks": [
+            {
+              "at": 12104.699999928474,
+              "ms": 112
+            },
+            {
+              "at": 12218.5,
+              "ms": 188
+            }
+          ],
+          "productionSwitch": {
+            "id": "t90a_x",
+            "ms": 280,
+            "path": "procedural",
+            "prebakeMs": 171,
+            "buildMs": 109,
+            "compileMs": 0,
+            "decorMs": 35
+          },
+          "screenshotSha256": "5725cc2d4d8acc3f5751d4b85af168f2286d28182d9f4d98f7f0ecc705f82309",
+          "renderer": {
+            "geometries": 457,
+            "textures": 79,
+            "programs": 67,
+            "calls": 1576,
+            "triangles": 322963
+          },
+          "heapBytes": 276397780
+        },
+        {
+          "id": "leo2a7v_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 335.2999999523163,
+          "compositedEvidenceUpperBoundMs": 539.2999999523163,
+          "rafMaxGapMs": 160.1999999999989,
+          "longTasks": [
+            {
+              "at": 13674.799999952316,
+              "ms": 115
+            }
+          ],
+          "productionSwitch": {
+            "id": "leo2a7v_x",
+            "ms": 266,
+            "path": "procedural",
+            "prebakeMs": 155,
+            "buildMs": 112,
+            "compileMs": 0,
+            "decorMs": 34
+          },
+          "screenshotSha256": "be7ed6e9b53fb0b0403fc9b7afdd236164c479362ce464ac759f070fe0bbd0a9",
+          "renderer": {
+            "geometries": 449,
+            "textures": 79,
+            "programs": 65,
+            "calls": 1604,
+            "triangles": 315757
+          },
+          "heapBytes": 301400242
+        },
+        {
+          "id": "ariete_c2_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 39.5,
+          "compositedEvidenceUpperBoundMs": 251.5,
+          "rafMaxGapMs": 32.100000000000364,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "ariete_c2_x",
+            "ms": 412,
+            "path": "procedural",
+            "prebakeMs": 295,
+            "buildMs": 117,
+            "compileMs": 0,
+            "decorMs": 44
+          },
+          "screenshotSha256": "c7d07255875f16012740f8dbe8e9c911fc29c89d0a4d2d58348de3db5dc87411",
+          "renderer": {
+            "geometries": 453,
+            "textures": 79,
+            "programs": 65,
+            "calls": 1569,
+            "triangles": 315305
+          },
+          "heapBytes": 332483415
+        },
+        {
+          "id": "merkava4_barak",
+          "phase": "first-cycle",
+          "uiReadyMs": 345.5,
+          "compositedEvidenceUpperBoundMs": 553.4000000953674,
+          "rafMaxGapMs": 169.5,
+          "longTasks": [
+            {
+              "at": 16335.699999928474,
+              "ms": 167
+            }
+          ],
+          "productionSwitch": {
+            "id": "merkava4_barak",
+            "ms": 220,
+            "path": "procedural",
+            "prebakeMs": 75,
+            "buildMs": 145,
+            "compileMs": 0,
+            "decorMs": 53
+          },
+          "screenshotSha256": "a72460874bf49798bd7e06de1a73e1fb84af53301f7da2f7ce552e6c5e4b7d1e",
+          "renderer": {
+            "geometries": 451,
+            "textures": 79,
+            "programs": 65,
+            "calls": 1567,
+            "triangles": 319307
+          },
+          "heapBytes": 208816090
+        },
+        {
+          "id": "kurganets25_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 358.10000002384186,
+          "compositedEvidenceUpperBoundMs": 566.7000000476837,
+          "rafMaxGapMs": 131.10000000000218,
+          "longTasks": [
+            {
+              "at": 17876.600000023842,
+              "ms": 97
+            }
+          ],
+          "productionSwitch": {
+            "id": "kurganets25_x",
+            "ms": 300,
+            "path": "procedural",
+            "prebakeMs": 205,
+            "buildMs": 95,
+            "compileMs": 0,
+            "decorMs": 30
+          },
+          "screenshotSha256": "4f4fa42737bf7cf52836a8748190b98e56c9c7f87da07d5416353a182071e4dc",
+          "renderer": {
+            "geometries": 459,
+            "textures": 79,
+            "programs": 66,
+            "calls": 1567,
+            "triangles": 281799
+          },
+          "heapBytes": 235458747
+        },
+        {
+          "id": "m1a2_sepv3",
+          "phase": "repeat-1",
+          "uiReadyMs": 49.39999997615814,
+          "compositedEvidenceUpperBoundMs": 287,
+          "rafMaxGapMs": 34.400000000001455,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 410,
+            "path": "procedural",
+            "prebakeMs": 112,
+            "buildMs": 298,
+            "compileMs": 0,
+            "decorMs": 72
+          },
+          "screenshotSha256": "56537a96be0613e008fe6c7c6b23886e7a04ade83712673c1285208332edf891",
+          "renderer": {
+            "geometries": 572,
+            "textures": 82,
+            "programs": 76,
+            "calls": 1706,
+            "triangles": 367815
+          },
+          "heapBytes": 222273958
+        },
+        {
+          "id": "challenger_3x",
+          "phase": "repeat-1",
+          "uiReadyMs": 432.2000000476837,
+          "compositedEvidenceUpperBoundMs": 658.1000000238419,
+          "rafMaxGapMs": 191.59999999999854,
+          "longTasks": [
+            {
+              "at": 20715.399999976158,
+              "ms": 133
+            },
+            {
+              "at": 20850.699999928474,
+              "ms": 194
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger_3x",
+            "ms": 352,
+            "path": "procedural",
+            "prebakeMs": 187,
+            "buildMs": 165,
+            "compileMs": 0,
+            "decorMs": 48
+          },
+          "screenshotSha256": "96704364d0af9c257b7fa91f6e303977ed6b2bf87d4938651607580974040d88",
+          "renderer": {
+            "geometries": 581,
+            "textures": 80,
+            "programs": 69,
+            "calls": 1697,
+            "triangles": 342781
+          },
+          "heapBytes": 247113223
+        },
+        {
+          "id": "challenger2",
+          "phase": "repeat-1",
+          "uiReadyMs": 70.89999997615814,
+          "compositedEvidenceUpperBoundMs": 303.2999999523163,
+          "rafMaxGapMs": 66.19999999999709,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "challenger2",
+            "ms": 0,
+            "path": "cached"
+          },
+          "screenshotSha256": "64a88320ce4fb3e3f0b272c23c5354351f7a29cf70d38f1b9acf791c3cdc1d96",
+          "renderer": {
+            "geometries": 581,
+            "textures": 80,
+            "programs": 69,
+            "calls": 1702,
+            "triangles": 356055
+          },
+          "heapBytes": 252357427
+        },
+        {
+          "id": "t90a_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 286.90000009536743,
+          "compositedEvidenceUpperBoundMs": 498.8000000715256,
+          "rafMaxGapMs": 111.20000000000073,
+          "longTasks": [
+            {
+              "at": 23051.199999928474,
+              "ms": 116
+            },
+            {
+              "at": 23168.399999976158,
+              "ms": 51
+            }
+          ],
+          "productionSwitch": {
+            "id": "t90a_x",
+            "ms": 202,
+            "path": "procedural",
+            "prebakeMs": 109,
+            "buildMs": 92,
+            "compileMs": 0,
+            "decorMs": 34
+          },
+          "screenshotSha256": "ac731240a6751a591ddf34e9b01d280a5745fe86a7657b3323b2b1f61928d18b",
+          "renderer": {
+            "geometries": 577,
+            "textures": 79,
+            "programs": 66,
+            "calls": 1692,
+            "triangles": 335003
+          },
+          "heapBytes": 267412729
+        },
+        {
+          "id": "leo2a7v_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 43.699999928474426,
+          "compositedEvidenceUpperBoundMs": 260.89999997615814,
+          "rafMaxGapMs": 38.19999999999709,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "leo2a7v_x",
+            "ms": 192,
+            "path": "procedural",
+            "prebakeMs": 86,
+            "buildMs": 105,
+            "compileMs": 0,
+            "decorMs": 34
+          },
+          "screenshotSha256": "2890c00629b6fd1d7fd49f2fa1ed353695b28b75aa2bfe6b8f03fff1a01b74f7",
+          "renderer": {
+            "geometries": 325,
+            "textures": 79,
+            "programs": 67,
+            "calls": 402,
+            "triangles": 285523
+          },
+          "heapBytes": 293073631
+        },
+        {
+          "id": "ariete_c2_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 43,
+          "compositedEvidenceUpperBoundMs": 239.89999997615814,
+          "rafMaxGapMs": 33,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "ariete_c2_x",
+            "ms": 283,
+            "path": "procedural",
+            "prebakeMs": 160,
+            "buildMs": 123,
+            "compileMs": 0,
+            "decorMs": 47
+          },
+          "screenshotSha256": "b0a9ef55307642e3dacc897388d38c5f434df56ae636c9d43c7edb106014538a",
+          "renderer": {
+            "geometries": 318,
+            "textures": 79,
+            "programs": 66,
+            "calls": 367,
+            "triangles": 285071
+          },
+          "heapBytes": 316391108
+        },
+        {
+          "id": "merkava4_barak",
+          "phase": "repeat-1",
+          "uiReadyMs": 36.799999952316284,
+          "compositedEvidenceUpperBoundMs": 271.09999990463257,
+          "rafMaxGapMs": 29.599999999998545,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "merkava4_barak",
+            "ms": 192,
+            "path": "procedural",
+            "prebakeMs": 75,
+            "buildMs": 117,
+            "compileMs": 0,
+            "decorMs": 46
+          },
+          "screenshotSha256": "437a04e12b29d90582a98ba207bdd32b73386e8db99609cdb1902540fbaf9547",
+          "renderer": {
+            "geometries": 313,
+            "textures": 79,
+            "programs": 65,
+            "calls": 365,
+            "triangles": 289073
+          },
+          "heapBytes": 317093226
+        },
+        {
+          "id": "kurganets25_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 196.80000007152557,
+          "compositedEvidenceUpperBoundMs": 400.5,
+          "rafMaxGapMs": 80.60000000000218,
+          "longTasks": [
+            {
+              "at": 27432.799999952316,
+              "ms": 86
+            }
+          ],
+          "productionSwitch": {
+            "id": "kurganets25_x",
+            "ms": 144,
+            "path": "procedural",
+            "prebakeMs": 76,
+            "buildMs": 68,
+            "compileMs": 0,
+            "decorMs": 29
+          },
+          "screenshotSha256": "2ec27102f8228bd73e98702c73bc6601440efebe35ae37dc0af8c81dc3eac792",
+          "renderer": {
+            "geometries": 311,
+            "textures": 79,
+            "programs": 66,
+            "calls": 365,
+            "triangles": 251565
+          },
+          "heapBytes": 332858537
+        },
+        {
+          "id": "m1a2_sepv3",
+          "phase": "rapid-final",
+          "uiReadyMs": 219.10000002384186,
+          "compositedEvidenceUpperBoundMs": 435.10000002384186,
+          "rafMaxGapMs": 129,
+          "longTasks": [
+            {
+              "at": 31384.699999928474,
+              "ms": 112
+            }
+          ],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 311,
+            "path": "procedural",
+            "prebakeMs": 79,
+            "buildMs": 232,
+            "compileMs": 0,
+            "decorMs": 57
+          },
+          "screenshotSha256": "d8c7bc81bbc5afe13daea71d1973026113329649cfe987973e7cb06d861861dd",
+          "renderer": {
+            "geometries": 366,
+            "textures": 82,
+            "programs": 77,
+            "calls": 388,
+            "triangles": 325541
+          },
+          "heapBytes": 301970976
+        }
+      ]
+    },
+    {
+      "run": "garage-mobile-verified",
+      "tier": "mobile",
+      "cpuRate": 4,
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "browser": "Chrome/151.0.7922.47",
+      "cache": "Fresh browser; first cycle then repeat visits exceeding the pedestal cache; production prefetch remains enabled.",
+      "build": "Production UI paths served by the Vite development server; not a production-bundle timing test.",
+      "timing": "Pointerdown to observed UI/stage readiness; screenshot-completion upper bound on composited evidence. RAF gaps are callback intervals, not FPS.",
+      "inputSha256": "aac4c39774374c77fa5e3049c39b8fb4f060d60b4e90d5bebcf75885d935e1a3",
+      "pedestalSha256": "935ad28c3e7fb439c0e66481f15a4275a32b17fcb3c154764d3db52928a6af8f",
+      "mainSha256": "192b399bcb93ecb3ba784419291fcd0ef43df93ada2049d2690194ceb34d623b",
+      "uiReady": {
+        "p50": 297.60000002384186,
+        "p95": 523,
+        "max": 523
+      },
+      "rafMaxGapMs": 197.60000000000036,
+      "converged": true,
+      "errors": [],
+      "resourceErrors": [],
+      "inputDrift": [],
+      "thumbnailsPass": true,
+      "rows": [
+        {
+          "id": "m1a2_sepv3",
+          "phase": "first-cycle",
+          "uiReadyMs": 490.2999999523163,
+          "compositedEvidenceUpperBoundMs": 859.2000000476837,
+          "rafMaxGapMs": 197.60000000000036,
+          "longTasks": [
+            {
+              "at": 7086.600000023842,
+              "ms": 201
+            },
+            {
+              "at": 7451.399999976158,
+              "ms": 171
+            }
+          ],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 465,
+            "path": "procedural",
+            "prebakeMs": 120,
+            "buildMs": 254.60000026226044,
+            "compileMs": 0,
+            "buildYieldMs": 89.89999997615814,
+            "buildCheckpointCount": 225,
+            "maxBuildStepMs": 175.90000009536743,
+            "decorMs": 75
+          },
+          "screenshotSha256": "ed5e6743d82b2cde57c05cff80d61f860dc4dbd745b0d004bbb2c0c11501212e",
+          "renderer": {
+            "geometries": 449,
+            "textures": 81,
+            "programs": 76,
+            "calls": 1556,
+            "triangles": 352637
+          },
+          "heapBytes": 234321309
+        },
+        {
+          "id": "challenger_3x",
+          "phase": "first-cycle",
+          "uiReadyMs": 152.70000004768372,
+          "compositedEvidenceUpperBoundMs": 387.39999997615814,
+          "rafMaxGapMs": 143.39999999999964,
+          "longTasks": [
+            {
+              "at": 8841,
+              "ms": 126
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger_3x",
+            "ms": 462,
+            "path": "procedural",
+            "prebakeMs": 213,
+            "buildMs": 166.59999978542328,
+            "compileMs": 0,
+            "buildYieldMs": 82.00000011920929,
+            "buildCheckpointCount": 173,
+            "maxBuildStepMs": 100.09999990463257,
+            "decorMs": 53
+          },
+          "screenshotSha256": "84581a7ccf6e515d5bd7a76934e3729d0e8d58ee483f01e2a44590dc1403fcb9",
+          "renderer": {
+            "geometries": 451,
+            "textures": 81,
+            "programs": 75,
+            "calls": 1547,
+            "triangles": 327603
+          },
+          "heapBytes": 206244015
+        },
+        {
+          "id": "challenger2",
+          "phase": "first-cycle",
+          "uiReadyMs": 383.7000000476837,
+          "compositedEvidenceUpperBoundMs": 623.7999999523163,
+          "rafMaxGapMs": 129.5,
+          "longTasks": [
+            {
+              "at": 9815.100000023842,
+              "ms": 129
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger2",
+            "ms": 361,
+            "path": "procedural",
+            "prebakeMs": 89,
+            "buildMs": 185.60000002384186,
+            "compileMs": 0,
+            "buildYieldMs": 86.39999997615814,
+            "buildCheckpointCount": 193,
+            "maxBuildStepMs": 102.89999997615814,
+            "decorMs": 70
+          },
+          "screenshotSha256": "bb0ecfa7b44289a0a8de71cdf9f5e09531d668088e2454834f2630744c43c82f",
+          "renderer": {
+            "geometries": 447,
+            "textures": 79,
+            "programs": 68,
+            "calls": 1552,
+            "triangles": 340877
+          },
+          "heapBytes": 246948864
+        },
+        {
+          "id": "t90a_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 458.60000002384186,
+          "compositedEvidenceUpperBoundMs": 714.1000000238419,
+          "rafMaxGapMs": 107.80000000000109,
+          "longTasks": [
+            {
+              "at": 11528.399999976158,
+              "ms": 67
+            },
+            {
+              "at": 11720.399999976158,
+              "ms": 64
+            }
+          ],
+          "productionSwitch": {
+            "id": "t90a_x",
+            "ms": 369,
+            "path": "procedural",
+            "prebakeMs": 186,
+            "buildMs": 108.80000007152557,
+            "compileMs": 0,
+            "buildYieldMs": 73.69999980926514,
+            "buildCheckpointCount": 116,
+            "maxBuildStepMs": 63.39999997615814,
+            "decorMs": 37
+          },
+          "screenshotSha256": "40367ced8912bd56978092d98bdaf1d5b636bea5cc2a8e6e4cbf832d2e527ef8",
+          "renderer": {
+            "geometries": 456,
+            "textures": 79,
+            "programs": 70,
+            "calls": 1576,
+            "triangles": 322963
+          },
+          "heapBytes": 283712190
+        },
+        {
+          "id": "leo2a7v_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 523,
+          "compositedEvidenceUpperBoundMs": 750.6000000238419,
+          "rafMaxGapMs": 132.60000000000036,
+          "longTasks": [
+            {
+              "at": 13143.5,
+              "ms": 94
+            }
+          ],
+          "productionSwitch": {
+            "id": "leo2a7v_x",
+            "ms": 452,
+            "path": "procedural",
+            "prebakeMs": 242,
+            "buildMs": 144.60000014305115,
+            "compileMs": 0,
+            "buildYieldMs": 64.69999992847443,
+            "buildCheckpointCount": 165,
+            "maxBuildStepMs": 90.70000004768372,
+            "decorMs": 48
+          },
+          "screenshotSha256": "14dc5166056ca1c6f23d49fee7684a54aea4e54453e5d71a003cb6be38006b7a",
+          "renderer": {
+            "geometries": 460,
+            "textures": 79,
+            "programs": 66,
+            "calls": 1604,
+            "triangles": 315757
+          },
+          "heapBytes": 293658494
+        },
+        {
+          "id": "ariete_c2_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 47.5,
+          "compositedEvidenceUpperBoundMs": 281,
+          "rafMaxGapMs": 49.79999999999927,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "ariete_c2_x",
+            "ms": 510,
+            "path": "procedural",
+            "prebakeMs": 325,
+            "buildMs": 137.29999995231628,
+            "compileMs": 0,
+            "buildYieldMs": 47.200000047683716,
+            "buildCheckpointCount": 158,
+            "maxBuildStepMs": 84.80000007152557,
+            "decorMs": 49
+          },
+          "screenshotSha256": "02c2be8ef99dbbbc6a1ea0df72ac0dbb6f19fd85c9cec6afdd75d03ba563b451",
+          "renderer": {
+            "geometries": 453,
+            "textures": 79,
+            "programs": 65,
+            "calls": 1569,
+            "triangles": 315305
+          },
+          "heapBytes": 296121690
+        },
+        {
+          "id": "merkava4_barak",
+          "phase": "first-cycle",
+          "uiReadyMs": 331,
+          "compositedEvidenceUpperBoundMs": 574.3999999761581,
+          "rafMaxGapMs": 111.19999999999891,
+          "longTasks": [
+            {
+              "at": 16061.800000071526,
+              "ms": 107
+            }
+          ],
+          "productionSwitch": {
+            "id": "merkava4_barak",
+            "ms": 301,
+            "path": "procedural",
+            "prebakeMs": 81,
+            "buildMs": 140.79999995231628,
+            "compileMs": 0,
+            "buildYieldMs": 79.10000002384186,
+            "buildCheckpointCount": 167,
+            "maxBuildStepMs": 82.10000002384186,
+            "decorMs": 55
+          },
+          "screenshotSha256": "fed67b8996a06a0200f789152f49048ce4f4c083d15b8ff4e77119682a4760ba",
+          "renderer": {
+            "geometries": 451,
+            "textures": 79,
+            "programs": 65,
+            "calls": 1567,
+            "triangles": 319307
+          },
+          "heapBytes": 283878357
+        },
+        {
+          "id": "kurganets25_x",
+          "phase": "first-cycle",
+          "uiReadyMs": 498.1999999284744,
+          "compositedEvidenceUpperBoundMs": 709,
+          "rafMaxGapMs": 178.79999999999927,
+          "longTasks": [
+            {
+              "at": 17504.5,
+              "ms": 128
+            },
+            {
+              "at": 17752.700000047684,
+              "ms": 65
+            }
+          ],
+          "productionSwitch": {
+            "id": "kurganets25_x",
+            "ms": 445,
+            "path": "procedural",
+            "prebakeMs": 280,
+            "buildMs": 104.10000014305115,
+            "compileMs": 0,
+            "buildYieldMs": 59.99999988079071,
+            "buildCheckpointCount": 108,
+            "maxBuildStepMs": 62.39999997615814,
+            "decorMs": 36
+          },
+          "screenshotSha256": "57e6c1fdf47843e4374dcb1475350fd2fd5d2d9d64785ea1ac8d556539603f67",
+          "renderer": {
+            "geometries": 560,
+            "textures": 80,
+            "programs": 66,
+            "calls": 1683,
+            "triangles": 293839
+          },
+          "heapBytes": 232461451
+        },
+        {
+          "id": "m1a2_sepv3",
+          "phase": "repeat-1",
+          "uiReadyMs": 44.799999952316284,
+          "compositedEvidenceUpperBoundMs": 269.5,
+          "rafMaxGapMs": 41.89999999999782,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 470,
+            "path": "procedural",
+            "prebakeMs": 109,
+            "buildMs": 249.40000009536743,
+            "compileMs": 0,
+            "buildYieldMs": 110.60000002384186,
+            "buildCheckpointCount": 225,
+            "maxBuildStepMs": 164.80000007152557,
+            "decorMs": 79
+          },
+          "screenshotSha256": "a713102c2dabd989c3cac42c5b7656765ef4973ab47fd7d1ac331b7c053f5beb",
+          "renderer": {
+            "geometries": 572,
+            "textures": 82,
+            "programs": 76,
+            "calls": 1706,
+            "triangles": 367815
+          },
+          "heapBytes": 226656580
+        },
+        {
+          "id": "challenger_3x",
+          "phase": "repeat-1",
+          "uiReadyMs": 297.60000002384186,
+          "compositedEvidenceUpperBoundMs": 582.5,
+          "rafMaxGapMs": 97.90000000000146,
+          "longTasks": [
+            {
+              "at": 20568.800000071526,
+              "ms": 104
+            },
+            {
+              "at": 20789.600000023842,
+              "ms": 103
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger_3x",
+            "ms": 276,
+            "path": "procedural",
+            "prebakeMs": 83,
+            "buildMs": 132.99999976158142,
+            "compileMs": 0,
+            "buildYieldMs": 59.200000166893005,
+            "buildCheckpointCount": 173,
+            "maxBuildStepMs": 77.59999990463257,
+            "decorMs": 47
+          },
+          "screenshotSha256": "b80c2eccc58b904f73f9ff9a147d55bbb34eaeb8fdd314f6570db8267f9970e2",
+          "renderer": {
+            "geometries": 585,
+            "textures": 82,
+            "programs": 76,
+            "calls": 1697,
+            "triangles": 342781
+          },
+          "heapBytes": 247179705
+        },
+        {
+          "id": "challenger2",
+          "phase": "repeat-1",
+          "uiReadyMs": 414.60000002384186,
+          "compositedEvidenceUpperBoundMs": 640.7999999523163,
+          "rafMaxGapMs": 120.29999999999927,
+          "longTasks": [
+            {
+              "at": 21713.399999976158,
+              "ms": 113
+            },
+            {
+              "at": 21828.5,
+              "ms": 50
+            }
+          ],
+          "productionSwitch": {
+            "id": "challenger2",
+            "ms": 389,
+            "path": "procedural",
+            "prebakeMs": 122,
+            "buildMs": 170.700000166893,
+            "compileMs": 0,
+            "buildYieldMs": 95.299999833107,
+            "buildCheckpointCount": 193,
+            "maxBuildStepMs": 87.10000002384186,
+            "decorMs": 74
+          },
+          "screenshotSha256": "99e49b9be46c8ef2daca50b1cb859010a69f92804f65759e61898bb62c16be1e",
+          "renderer": {
+            "geometries": 581,
+            "textures": 80,
+            "programs": 69,
+            "calls": 1702,
+            "triangles": 356055
+          },
+          "heapBytes": 244368374
+        },
+        {
+          "id": "t90a_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 236.5,
+          "compositedEvidenceUpperBoundMs": 458.60000002384186,
+          "rafMaxGapMs": 66.70000000000073,
+          "longTasks": [
+            {
+              "at": 23208,
+              "ms": 69
+            }
+          ],
+          "productionSwitch": {
+            "id": "t90a_x",
+            "ms": 216,
+            "path": "procedural",
+            "prebakeMs": 82,
+            "buildMs": 93.79999995231628,
+            "compileMs": 0,
+            "buildYieldMs": 40.50000011920929,
+            "buildCheckpointCount": 116,
+            "maxBuildStepMs": 51.800000071525574,
+            "decorMs": 37
+          },
+          "screenshotSha256": "144a95ecaf5a892178d2dc725eee250d982013d4c7607350e1985b1a81b04948",
+          "renderer": {
+            "geometries": 321,
+            "textures": 80,
+            "programs": 71,
+            "calls": 374,
+            "triangles": 292729
+          },
+          "heapBytes": 269668236
+        },
+        {
+          "id": "leo2a7v_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 199.20000004768372,
+          "compositedEvidenceUpperBoundMs": 418.7000000476837,
+          "rafMaxGapMs": 120,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "leo2a7v_x",
+            "ms": 153,
+            "path": "procedural",
+            "prebakeMs": 1,
+            "buildMs": 102.59999978542328,
+            "compileMs": 0,
+            "buildYieldMs": 48.90000021457672,
+            "buildCheckpointCount": 165,
+            "maxBuildStepMs": 62.5,
+            "decorMs": 35
+          },
+          "screenshotSha256": "74a4e72007f547c79af4996dc3849b8dcff382a448b83f1e8db3de021ce54854",
+          "renderer": {
+            "geometries": 325,
+            "textures": 79,
+            "programs": 67,
+            "calls": 402,
+            "triangles": 285523
+          },
+          "heapBytes": 295948610
+        },
+        {
+          "id": "ariete_c2_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 190.60000002384186,
+          "compositedEvidenceUpperBoundMs": 396.5,
+          "rafMaxGapMs": 119.60000000000218,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "ariete_c2_x",
+            "ms": 174,
+            "path": "procedural",
+            "prebakeMs": 1,
+            "buildMs": 110.09999990463257,
+            "compileMs": 0,
+            "buildYieldMs": 62.10000014305115,
+            "buildCheckpointCount": 158,
+            "maxBuildStepMs": 62.89999997615814,
+            "decorMs": 44
+          },
+          "screenshotSha256": "3db85839c9862401de2bdeae07afc3f6cf3bdeb7b0c5748a9f52a72348b814ab",
+          "renderer": {
+            "geometries": 318,
+            "textures": 79,
+            "programs": 66,
+            "calls": 367,
+            "triangles": 285071
+          },
+          "heapBytes": 298767223
+        },
+        {
+          "id": "merkava4_barak",
+          "phase": "repeat-1",
+          "uiReadyMs": 247.69999992847443,
+          "compositedEvidenceUpperBoundMs": 461.09999990463257,
+          "rafMaxGapMs": 127.29999999999927,
+          "longTasks": [],
+          "productionSwitch": {
+            "id": "merkava4_barak",
+            "ms": 202,
+            "path": "procedural",
+            "prebakeMs": 2,
+            "buildMs": 123.5,
+            "compileMs": 0,
+            "buildYieldMs": 76.79999995231628,
+            "buildCheckpointCount": 167,
+            "maxBuildStepMs": 67.29999995231628,
+            "decorMs": 52
+          },
+          "screenshotSha256": "bda4a32b971cd2543d66e7ff2cb0c836ba22b615de38df1af8a9876c3130b649",
+          "renderer": {
+            "geometries": 313,
+            "textures": 79,
+            "programs": 65,
+            "calls": 365,
+            "triangles": 289073
+          },
+          "heapBytes": 322605871
+        },
+        {
+          "id": "kurganets25_x",
+          "phase": "repeat-1",
+          "uiReadyMs": 212.19999992847443,
+          "compositedEvidenceUpperBoundMs": 431.89999997615814,
+          "rafMaxGapMs": 65.90000000000146,
+          "longTasks": [
+            {
+              "at": 27864.300000071526,
+              "ms": 51
+            }
+          ],
+          "productionSwitch": {
+            "id": "kurganets25_x",
+            "ms": 190,
+            "path": "procedural",
+            "prebakeMs": 93,
+            "buildMs": 70.49999988079071,
+            "compileMs": 0,
+            "buildYieldMs": 26.40000009536743,
+            "buildCheckpointCount": 108,
+            "maxBuildStepMs": 34.299999952316284,
+            "decorMs": 32
+          },
+          "screenshotSha256": "4f4094555eae8ad08b8847ccbe24e02ab569e91246d991be422d2268c06067db",
+          "renderer": {
+            "geometries": 311,
+            "textures": 79,
+            "programs": 66,
+            "calls": 365,
+            "triangles": 251565
+          },
+          "heapBytes": 336954299
+        },
+        {
+          "id": "m1a2_sepv3",
+          "phase": "rapid-final",
+          "uiReadyMs": 341.3000000715256,
+          "compositedEvidenceUpperBoundMs": 573.6000000238419,
+          "rafMaxGapMs": 148.79999999999927,
+          "longTasks": [
+            {
+              "at": 31881.700000047684,
+              "ms": 110
+            }
+          ],
+          "productionSwitch": {
+            "id": "m1a2_sepv3",
+            "ms": 215,
+            "path": "procedural",
+            "prebakeMs": 2,
+            "buildMs": 154.29999995231628,
+            "compileMs": 0,
+            "buildYieldMs": 58.10000002384186,
+            "buildCheckpointCount": 225,
+            "maxBuildStepMs": 93.79999995231628,
+            "decorMs": 56
+          },
+          "screenshotSha256": "8f306fbf1f7c4e6d12c5c853f4ee67cb25625b6f247b22ab4bc8dae45ee0e014",
+          "renderer": {
+            "geometries": 366,
+            "textures": 82,
+            "programs": 77,
+            "calls": 388,
+            "triangles": 325541
+          },
+          "heapBytes": 346850133
+        }
+      ]
+    }
+  ]
+}

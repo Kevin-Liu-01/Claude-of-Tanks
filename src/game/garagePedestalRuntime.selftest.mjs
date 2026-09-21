@@ -8,7 +8,8 @@ function deferred() {
   return { promise, resolve };
 }
 
-function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayedFrames = [] } = {}) {
+function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayedFrames = [],
+  delayedBuilds = [], buildCheckpoints = 0, failBudget = false } = {}) {
   const scene = new THREE.Scene();
   const garagePosition = new THREE.Vector3(10, 5, -12);
   const debugTarget = {};
@@ -30,6 +31,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   let compileCalls = 0;
   let frameCalls = 0;
   let presentationInvalidations = 0;
+  let buildYields = 0;
+  let buildClosures = 0;
 
   const makeVisual = (specId, options) => {
     visualOptions.push(options);
@@ -82,6 +85,22 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     residentLimit,
     anisotropy: 4,
     createVisual: makeVisual,
+    *createVisualSteps(specId, options) {
+      const visual = makeVisual(specId, options);
+      let transferred = false;
+      try {
+        for (let i = 0; i < buildCheckpoints; i++) {
+          nowMs += 7;
+          yield;
+        }
+        nowMs += 3;
+        transferred = true;
+        return visual;
+      } finally {
+        buildClosures++;
+        if (!transferred) visual.dispose();
+      }
+    },
     getSpec: (specId) => ({ id: specId }),
     ensureTankBuilder: (specId) => {
       ensured.push(specId);
@@ -92,7 +111,12 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
       prebakes.push(quality);
     },
     discardSharedTextures: () => undefined,
-    createBudgetYield: () => async () => undefined,
+    createBudgetYield: () => async () => {
+      buildYields++;
+      if (failBudget) throw new Error('frame budget failure');
+      await delayedBuilds.shift()?.promise;
+      nowMs += 11;
+    },
     nextFrame: async () => { frameCalls += 1; await delayedFrames.shift()?.promise; },
     getDeviceTier: () => 'desktop',
     getPhase: () => phase,
@@ -133,6 +157,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     get compileCalls() { return compileCalls; },
     get frameCalls() { return frameCalls; },
     get presentationInvalidations() { return presentationInvalidations; },
+    get buildYields() { return buildYields; },
+    get buildClosures() { return buildClosures; },
     get watchdog() { return watchdog; },
     get cancelledWatchdog() { return cancelledWatchdog; },
     setPlayer(value) { player = value; },
@@ -151,6 +177,10 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   });
   assert.equal(h.runtime.current?.specId, 'alpha');
   assert.equal(h.runtime.isOnStage(), true);
+  const initial = h.runtime.current;
+  await h.runtime.set('alpha', true);
+  assert.equal(h.runtime.current, initial, 'forced current selection retains the same hero');
+  assert.equal(h.runtime.isOnStage(), true, 'forced current selection must not park itself');
   assert.equal(h.runtime.current?.root.position.y, 5.36);
   assert.ok(h.runtime.current?.trackSeatCalls >= 1,
     'garage heroes seat their running gear on the podium');
@@ -165,7 +195,9 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   assert.equal(h.visuals.length, 1);
   assert.equal(h.visualOptions[0].batchStatic, true,
     'garage heroes collapse exact articulation-local static draws before upload');
-  assert.equal(h.presentationInvalidations, 1,
+  assert.equal(h.visualOptions[0].eraVisualBindingReceipt, false,
+    'Garage builds keep live armor and skip the authoring-only fitted-face report');
+  assert.equal(h.presentationInvalidations, 2,
     'initial reveal invalidates the event-driven Garage frame');
 
   h.setBootComplete(true);
@@ -182,7 +214,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   assert.equal(attachedObjects, 3, 'scene + current root + mesh, down from 5 with an attached parked root');
   assert.equal(h.runtime.cacheIds.length, 2, 'detachment does not shrink the warm cache');
   assert.deepEqual(h.releasedResources, [], 'parking preserves every GPU resource');
-  assert.equal(h.presentationInvalidations, 2,
+  assert.equal(h.presentationInvalidations, 3,
     'cold hero reveal requests one immediate presentation frame');
 
   const built = h.visuals.length;
@@ -195,7 +227,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   assert.equal(h.visuals[1].root.parent, null);
   assert.equal(h.compileCalls, 1, 'cached reattachment requires no shader rewarm');
   assert.deepEqual(h.releasedResources, []);
-  assert.equal(h.presentationInvalidations, 3,
+  assert.equal(h.presentationInvalidations, 4,
     'cached hero reveal follows the same invalidation contract');
 
   h.setSelected('charlie');
@@ -220,7 +252,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     0,
     'YXZ',
   ], 'battle pitch, yaw, and roll must not leak into the garage pose');
-  assert.equal(h.presentationInvalidations, 5,
+  assert.equal(h.presentationInvalidations, 6,
     'LRU reveal and adopted battle hero each invalidate the presentation');
   h.entities.set('delta', {});
   assert.equal(h.runtime.lendToBattle('delta'), true);
@@ -520,4 +552,66 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   h.runtime.dispose();
 }
 
-console.log('garagePedestalRuntime.selftest: detached warm LRU, exact resource preservation, invalidation/disposal, matching and mismatched battle handoff and async convergence passed');
+// The old hero remains mounted through every private construction checkpoint.
+// Supersession must close the factory iterator, not cache its unfinished graph.
+for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispose']) {
+  const pause = deferred(), delayedBuilds = [pause];
+  const h = createHarness({ delayedBuilds, buildCheckpoints: 2 });
+  await h.runtime.set('alpha');
+  const outgoing = h.runtime.current;
+  h.setBootComplete(true);
+  const pending = h.runtime.set('bravo');
+  await flushMicrotasks();
+  const privateVisual = h.visuals[1];
+  assert.equal(privateVisual.root.parent, null, `${reason}: unfinished graph stays private`);
+  assert.deepEqual(h.runtime.cacheIds, ['alpha']);
+  assert.deepEqual(h.scene.children, [outgoing.root]);
+  if (reason === 'selection' || reason === 'same-id' || reason === 'return-current') {
+    await h.runtime.set(reason === 'selection' ? 'charlie' : reason === 'same-id' ? 'bravo' : 'alpha');
+  } else if (reason === 'battle') {
+    h.entities.set('alpha', {});
+    assert.equal(h.runtime.lendToBattle('alpha'), true);
+    h.setPlayer({ visual: outgoing });
+    h.setPhase('battle');
+  } else h.runtime.dispose();
+  const latest = h.runtime.current;
+  pause.resolve();
+  await pending;
+  assert.equal(h.runtime.current, latest, `${reason}: stale completion cannot replace the hero`);
+  assert.deepEqual(h.disposed, ['bravo'], `${reason}: canceled resources are disposed exactly once`);
+  assert.equal(privateVisual.root.parent, null);
+  assert.equal(h.runtime.cacheIds.includes('bravo'), reason === 'same-id');
+  assert.deepEqual(h.scene.children, [latest.root]);
+  h.runtime.dispose();
+}
+{
+  const h = createHarness({ buildCheckpoints: 2 });
+  await h.runtime.set('alpha');
+  assert.equal(h.buildClosures, 0, 'covered boot retains synchronous construction');
+  h.setBootComplete(true);
+  await h.runtime.set('bravo');
+  const timing = h.debugTarget.__SWITCH_TIMINGS.at(-1);
+  assert.equal(timing.buildMs, 17, 'work intervals exclude scheduling waits');
+  assert.equal(timing.buildYieldMs, 22);
+  assert.equal(timing.buildCheckpointCount, 2);
+  assert.equal(timing.maxBuildStepMs, 7);
+  assert.equal(h.buildClosures, 1);
+  assert.deepEqual(h.disposed, []);
+  assert.deepEqual(h.scene.children, [h.runtime.current.root]);
+  h.runtime.dispose();
+}
+{
+  const h = createHarness({ buildCheckpoints: 2, failBudget: true });
+  await h.runtime.set('alpha');
+  const outgoing = h.runtime.current;
+  h.setBootComplete(true);
+  await assert.rejects(h.runtime.set('bravo'), /frame budget failure/);
+  assert.equal(h.runtime.current, outgoing);
+  assert.deepEqual(h.scene.children, [outgoing.root]);
+  assert.deepEqual(h.runtime.cacheIds, ['alpha']);
+  assert.deepEqual(h.disposed, ['bravo']);
+  assert.equal(h.buildClosures, 1, 'failed frame wait closes the private factory iterator');
+  h.runtime.dispose();
+}
+
+console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, detached warm LRU, resource preservation and battle handoff passed');

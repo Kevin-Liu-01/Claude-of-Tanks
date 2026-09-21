@@ -236,10 +236,11 @@ try {
   for (const id of IDS) {
     await ensureTankBuilder(id);
     assert.equal(isTankBuilderReady(id), true, `${id}: typed demand facade loaded the exact family and receipts`);
-    for (const role of ['desktop-bot', 'desktop-hero']) {
+    for (const role of ['desktop-bot', 'desktop-hero', 'garage']) {
       const options = { camoSeed: 4242, camoPattern: 'factory', batchStatic: true,
-        quality: role === 'desktop-hero' || id === 't90m' ? 'preview' : 'ai',
-        geometryQuality: role === 'desktop-hero' ? 'high' : 'low',
+        quality: role !== 'garage' && (role === 'desktop-hero' || id === 't90m') ? 'preview' : 'ai',
+        geometryQuality: role === 'desktop-bot' ? 'low' : 'high',
+        staticPreview: role === 'garage',
         battleDetailLod: role === 'desktop-bot' };
       const label = `${id}/${role}`;
       const enabled = createTank(id, null, options);
@@ -257,7 +258,9 @@ try {
           assert.equal(visual.root.userData.geometryQuality, options.geometryQuality);
           assert.equal(visual.root.userData.textureQuality, options.quality);
           assert.ok(visual.root.userData.__decorSummary, `${label}: actual decoration construction completes`);
-          assert.ok(visual.contactGeom, `${label}: full battle contact data is constructed`);
+          if (role === 'garage') assert.equal(visual.contactGeom, null,
+            `${label}: static preview defers the battle contact scan`);
+          else assert.ok(visual.contactGeom, `${label}: full battle contact data is constructed`);
         }
         assert.ok(baseline.textureCount > 0 && baseline.meshes > 20 && baseline.geometryCount > 10,
           `${label}: native painted full-detail scene, not an empty or map-free fixture`);
@@ -283,6 +286,14 @@ try {
 
         const clusters = checkClusters(enabled, disabled, label);
         assert.deepEqual(snapshot(disabled), snapshot(enabled), `${label}: full parity after ERA reset`);
+        // A retained Garage hero is lent to battle through this exact seam.
+        if (role === 'garage') {
+          for (const visual of [enabled, disabled]) {
+            visual.prepareForSimulation();
+            assert.ok(visual.contactGeom, `${label}: battle handoff constructs contact data`);
+          }
+          assert.deepEqual(snapshot(disabled), snapshot(enabled), `${label}: battle preparation parity`);
+        }
         const states = [stateFor(id), stateFor(id)];
         for (const [index, visual] of [enabled, disabled].entries()) visual.syncFromState(states[index], 0, 18);
         const articulated = snapshot(enabled);
@@ -303,7 +314,7 @@ try {
       } finally { disabled?.dispose(); enabled.dispose(); }
     }
   }
-  assert.equal(results.length, 12);
+  assert.equal(results.length, 18);
   assert.ok(results.reduce((sum, row) => sum + row.clusters, 0) > 0);
   console.log(JSON.stringify({ pass: true, builds: results.length * 2,
     rasterizer: { name: rasterizer.name, version: rasterizer.version },

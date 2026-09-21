@@ -58,6 +58,15 @@ roller, paint or triangle receipt therefore cannot close their review.
 
 ### Current evidence boundaries and immediate work
 
+Continuation, 2026-09-21: the [current-main reconciliation and Garage
+checkpoint](../research/fleet-continuation-20260921.md) supersedes old
+publication queues below. The census now covers 201 IDs / 402 HIGH/LOW builds.
+Interactive Garage construction is sliced and safely canceled on reselection;
+matched desktop/mobile-tier runs reduce worst observed stalls but regress median
+reveal latency. FSP-01 remains open, and this checkpoint does not close the
+physical, material or source-comparison gates for the fleet. The owner now
+requires linear execution without subagents.
+
 Publication reconciliation, 2026-09-10 (verified against `origin/main`
 `85aa9224a`): the older **27 unpublished tanks** inventory is historical,
 not a current release queue. Do not repeat it without checking ancestry.

@@ -110,7 +110,7 @@ import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
-  createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
+  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
 } from './vehicles/fleetFactory.ts';
 import { isBuiltInCamoId } from './vehicles/camoPolicy.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
@@ -841,6 +841,7 @@ const pedestal = createGaragePedestalRuntime({
   residentLimit: residentLimits.pedestalVisuals,
   anisotropy: engineCtx.anisotropy ?? 4,
   createVisual: (specId, options) => createTank(specId, engineCtx, options),
+  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, options),
   getSpec,
   ensureTankBuilder,
   ensureTankBuilders,
