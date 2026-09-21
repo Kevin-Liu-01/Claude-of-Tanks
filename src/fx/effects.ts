@@ -216,6 +216,7 @@ interface SmokeColumn {
 }
 
 interface LiveShell {
+  rocket?: boolean;
   id: ShellId;
   pos: THREE.Vector3;
   prevPos?: THREE.Vector3;
@@ -234,6 +235,8 @@ interface TracerGeometry extends THREE.InstancedBufferGeometry {
 }
 
 interface FiringMoment {
+  rocket?: boolean;
+  velocityMps?: number;
   muzzlePos: THREE.Vector3;
   dir: THREE.Vector3;
   caliberMm: number;
@@ -247,6 +250,7 @@ interface ExplosionMoment {
 }
 
 interface PredictedWeaponEvent {
+  rocket?: boolean;
   muzzlePos: WireVec3;
   dir: WireVec3;
   caliberMm: number;
@@ -348,7 +352,7 @@ export interface FxRuntime {
     resolveSubject?: ((id: string) => FxEntity | null) | null,
   ): void;
   bindBus(bus: FxEventBus): void;
-  muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number): void;
+  muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket?: boolean): void;
   vehicleCollision(
     pos: THREE.Vector3,
     normal: THREE.Vector3,
@@ -2005,6 +2009,24 @@ function* createFxSteps(
     }
   }
 
+  /** Short pooled ignition/exhaust: no cannon brake jets, sabot, or ground shock ring. */
+  function spawnRocketIgnition(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, birthOffset = 0): void {
+    const scale = calScale(caliberMm) * (scopedOwnGun(pos) ? 0.4 : 1);
+    const puff = _puffO;
+    puff.pos[0] = pos.x; puff.pos[1] = pos.y; puff.pos[2] = pos.z;
+    puff.vel[0] = dir.x * 2; puff.vel[1] = dir.y * 2; puff.vel[2] = dir.z * 2;
+    puff.life = 0.12; puff.size0 = 0.22 * scale; puff.size1 = 0.6 * scale;
+    puff.rot = rng() * Math.PI * 2; puff.rotVel = 0;
+    col3(0xffefa0, puff.col0); col3(0xff8b30, puff.col1);
+    puff.alpha = 0.65; puff.grav = 0; puff.birthOffset = birthOffset;
+    particles.emit('flash', puff);
+    puff.life = 0.65; puff.size0 = 0.25 * scale; puff.size1 = 1.05 * scale;
+    col3(0xb0aca0, puff.col0); col3(0x7b7b73, puff.col1);
+    puff.alpha = 0.3;
+    particles.emit('smoke', puff);
+    flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3, -birthOffset);
+  }
+
   /**
    * @param {number} reach forward-extent multiplier for the BRIGHT elements
    *   (tongues/spears). 1 for live fire; the screenshot composer passes <1 so
@@ -3638,7 +3660,7 @@ function* createFxSteps(
     for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
       const shell = shells[index];
       if (shell.dead) continue;
-      const guided = !!shell.spec?.guided;
+      const guided = !!shell.spec?.guided || shell.rocket === true;
       const tracerId = guided ? 'ATGM' : shell.spec?.tracer;
       const preset = TRACER_PRESETS[tracerId ?? 'AP'];
       const speed = shell.vel.length();
@@ -4563,7 +4585,7 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
-        if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm);
+        if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
         // can size the destructible-prop blast (HE clears a radius), and
@@ -4579,7 +4601,7 @@ function* createFxSteps(
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
         // Presentation only; sabot petals and sweep/prop ownership await authority.
-        fx.muzzleFlash(_v3, _v4, e.caliberMm);
+        fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
@@ -4750,7 +4772,8 @@ function* createFxSteps(
      * @param {THREE.Vector3} dir unit fire direction
      * @param {number} caliberMm gun caliber (scales the effect)
      */
-    muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number): void {
+    muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket = false): void {
+      if (rocket) { spawnRocketIgnition(pos, dir, caliberMm); return; }
       const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0);
       // r2 ON THE BORE AXIS: the r1 light floated 0.45 m ABOVE the tube and
       // its local pool rendered as a glowing lozenge sitting ON TOP of the
@@ -5387,15 +5410,16 @@ function* createFxSteps(
      * @param {{ muzzlePos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number,
      *           tracerType: string, ageS: number }} o
      */
-    composeFiringMoment({ muzzlePos, dir, caliberMm, tracerType, ageS }: FiringMoment): void {
-      const preset = TRACER_PRESETS[tracerType] || TRACER_PRESETS.AP;
-      const vel = COMPOSE_VELOCITY[tracerType] || 800;
+    composeFiringMoment({ muzzlePos, dir, caliberMm, tracerType, ageS, rocket = false, velocityMps }: FiringMoment): void {
+      const preset = rocket ? TRACER_PRESETS.ATGM : TRACER_PRESETS[tracerType] || TRACER_PRESETS.AP;
+      const vel = rocket ? velocityMps || 300 : COMPOSE_VELOCITY[tracerType] || 800;
       // NOTE (r5): the recipe samples gunMuzzleWorld AFTER advancing the
       // recoil, and the rendered barrel is equally recoiled — the anchor
       // always matches the visible tip, so the flash spawns exactly on it.
       // reach 0.55: the combat_firing camera has ~3.5 m of clear down-range
       // before the frame edge; the jet cone is compressed to sit inside it
-      spawnMuzzleFlash(muzzlePos, dir, caliberMm, -ageS, 0.55);
+      if (rocket) spawnRocketIgnition(muzzlePos, dir, caliberMm, -ageS);
+      else spawnMuzzleFlash(muzzlePos, dir, caliberMm, -ageS, 0.55);
       if (tracerType === 'APFSDS') spawnSabotPetals(muzzlePos, dir, -ageS);
       // shell position at ageS, tracer streak trailing back toward the muzzle.
       // Head capped at 2.2 m: clearly departed the barrel (a visible shot,
@@ -5431,7 +5455,7 @@ function* createFxSteps(
       // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK, ageS);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1), ageS);
     },
 
     /**

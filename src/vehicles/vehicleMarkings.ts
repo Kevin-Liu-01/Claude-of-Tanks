@@ -105,6 +105,7 @@ const anchor = (
 });
 
 export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnchor>> = Object.freeze({
+  tos1a_tagil: anchor('hull', 'left', .52, .58, .20, 1),
   // Independent second-wave bodies: these are per-ID surface-search hints,
   // not borrowed donor coordinates or permission to paint removable ERA.
   // The focused high/low audit checks the actual complete paint footprints

@@ -52,6 +52,8 @@ export interface ShellEntity<TSpec extends BallisticShellSpec = BallisticShellSp
   bounces: number;
   carriedThrough: boolean;
   gravityMps2: number;
+  /** Derived launch presentation; never changes ballistic integration. */
+  rocket?: boolean;
 }
 
 type Rng = () => number;

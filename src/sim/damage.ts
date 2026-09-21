@@ -1,3 +1,4 @@
+import { isUnguidedRocket } from './launcherPolicy.ts';
 /**
  * damage.ts — complete hit resolution per docs/research/armor-penetration.md
  * §12 and shells-ballistics.md: ricochet, normalization with overmatch,
@@ -81,6 +82,7 @@ export type DamageArmorPlate = ArmorPlate;
 type DamageArmorModel = ArmorModel;
 
 export interface DamageGunSpec {
+  fixedLaunchCanisters?: boolean;
   reloadS: number;
   /** Guided ammunition is chambered and fired through this main gun/launcher. */
   primaryGuided?: boolean;
@@ -2156,7 +2158,7 @@ function beginMagazineReload(combatState: CombatState, spec: DamageTankSpec): bo
   magazine.rounds = 0;
   const channel = combatState.gunReload || combatState.reload;
   const totalS = Math.max(0.05, Number(autoloader.fullReloadS) || spec.gun.reloadS)
-    * reloadMultiplier(combatState, false);
+    * reloadMultiplier(combatState, isUnguidedRocket(spec.gun, spec.gun.shells?.[combatState.shellSlot]));
   channel.totalS = totalS;
   channel.t = totalS;
   channel.kind = 'magazine';

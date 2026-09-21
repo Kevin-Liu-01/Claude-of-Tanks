@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import { verifyGunCradleSeats } from './gunCradleSeats.test-support.mjs';
+import { hasExplicitFixedLauncher, verifyFixedLauncherSeats, verifyFixedLauncherNoRecoil, fixedLauncherNegatives } from './fixedLauncherArticulation.test-support.mjs';
 
 const DEG = Math.PI / 180;
 const MAX_SEAT_GAP_M = 0.125;
@@ -45,6 +46,7 @@ function matrixChanged(a, b, epsilon = 1e-6) {
 
 let articulated = 0;
 let hullAimed = 0;
+let fixedBatteries = 0;
 
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
@@ -84,11 +86,14 @@ for (const id of ALL_TANK_IDS) {
       `${id}: legal elevation/depression limits are positive`);
 
     const staticTurret = turret.getObjectByName('turret') || turret;
+    const fixedLauncher = hasExplicitFixedLauncher(spec);
+    if (fixedLauncher) fixedBatteries++;
     const poses = [-spec.gunDepressionDeg, 0, spec.gunElevationDeg];
     const samples = [];
     for (const pitchDeg of poses) {
       gun.rotation.x = -pitchDeg * DEG;
       root.updateMatrixWorld(true);
+      if (fixedLauncher) verifyFixedLauncherNoRecoil(tank, spec, pitchDeg);
       const mountBox = new THREE.Box3().setFromObject(mount, true);
       const barrelBox = new THREE.Box3().setFromObject(recoil, true);
       const turretBox = new THREE.Box3().setFromObject(staticTurret, true);
@@ -101,6 +106,7 @@ for (const id of ALL_TANK_IDS) {
         barrelGap: boxGap(mountBox, barrelBox),
         turretGap: boxGap(mountBox, turretBox),
         cradleSeats: verifyGunCradleSeats(root),
+        fixedLauncher: fixedLauncher ? verifyFixedLauncherSeats(tank, spec) : null,
       });
     }
 
@@ -113,12 +119,18 @@ for (const id of ALL_TANK_IDS) {
       && matrixChanged(samples[1].matrix, samples[2].matrix),
     `${id}: mantlet/cradle transform follows both depression and elevation`);
     for (const sample of samples) {
-      assert.ok(sample.barrelGap <= MAX_BARREL_SEAT_GAP_M,
-        `${id}: moving housing remains attached to barrel at ${sample.pitchDeg}° (gap ${sample.barrelGap})`);
+      if (fixedLauncher) assert.equal(sample.fixedLauncher.tips, spec.gun.launcherMuzzles.length,
+        `${id}: every physical fixed-launcher terminal remains seated at ${sample.pitchDeg}°`);
+      else assert.ok(sample.barrelGap <= MAX_BARREL_SEAT_GAP_M,
+          `${id}: moving housing remains attached to barrel at ${sample.pitchDeg}° (gap ${sample.barrelGap})`);
       assert.ok(sample.cradleSeats || sample.turretGap <= MAX_SEAT_GAP_M,
         `${id}: moving housing remains seated in turret at ${sample.pitchDeg}° (gap ${sample.turretGap})`);
       assert.deepEqual(sample.census, samples[1].census,
         `${id}: pitch changes only transforms—not meshes, triangles, or geometry resources`);
+    }
+    if (fixedLauncher) {
+      fixedLauncherNegatives(tank, spec);
+      assert.deepEqual(renderCensus(root), samples[1].census, `${id}: negative controls do not allocate or replace geometry resources`);
     }
   } finally {
     tank.dispose();
@@ -130,4 +142,6 @@ assert.equal(articulated + hullAimed, ALL_TANK_IDS.length,
 assert.ok(articulated >= 110 && hullAimed >= 8,
   `fleet gate is non-vacuous (${articulated} articulated, ${hullAimed} hull-aimed)`);
 
-console.log(`gunArticulation.selftest: ${articulated} turreted guns pitch with seated housings; ${hullAimed} hull-aimed guns retain fixed-mount contracts`);
+assert.equal(fixedBatteries, 1, 'the current fleet has exactly one explicit fixed-canister battery');
+assert.equal(getSpec('tos1a_tagil').gun.launcherMuzzles.length, 24, 'TOS has all 24 physical tubes');
+console.log(`gunArticulation.selftest: ${articulated} turreted weapons pitch with seated housings (${fixedBatteries} physical fixed battery); ${hullAimed} hull-aimed guns retain fixed-mount contracts`);

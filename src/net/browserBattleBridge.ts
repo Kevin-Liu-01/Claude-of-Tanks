@@ -1,3 +1,4 @@
+import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { Vector3, type Object3D } from 'three';
 import { createCombatState, mainWeaponModuleState, type CombatState } from '../sim/damage.ts';
@@ -189,6 +190,7 @@ interface EventBus {
 }
 
 interface BridgeShell {
+  rocket?: boolean;
   id: number;
   shooterId: string;
   pos: Vector3;
@@ -912,6 +914,8 @@ export function createBrowserBattleBridge<
       if (shell.prevPos.lengthSq() === 0) shell.prevPos.copy(shell.pos);
       else shell.distM += shell.prevPos.distanceTo(shell.pos);
       shell.vel.set(raw.vx / VEL_SCALE, raw.vy / VEL_SCALE, raw.vz / VEL_SCALE);
+      // Reconstructed from the authenticated roster, including late-join shells.
+      shell.rocket = !raw.guided && isUnguidedRocket(entities.get(raw.shooterId)?.spec.gun, raw);
       shell.spec.type = raw.type;
       shell.spec.guided = !!raw.guided;
       shell.spec.tracer = raw.guided ? 'ATGM' : raw.type;
@@ -930,7 +934,7 @@ export function createBrowserBattleBridge<
     const count = shooter.spec.gun.launcherMuzzles?.length ?? 0;
     const round = shooter.spec.gun.shells.find(shell => shell.name === event.shellName);
     const index = event.muzzleIndex;
-    return count > 0 && round?.guided === true && typeof index === 'number'
+    return count > 0 && usesLauncherMuzzles(shooter.spec.gun, round) && typeof index === 'number'
       && Number.isInteger(index) && index >= 0 && index < count ? index : null;
   }
 
@@ -960,9 +964,9 @@ export function createBrowserBattleBridge<
         || shells.find((shell) => shell.type === event.shellType) || null;
       const authoritativeIndex = authoritativeLauncherIndex(shooter, event);
       muzzleIndex = predicted ? authoritativeIndex ?? predicted.muzzleIndex
-        : shooter.visual.recoilKick(0, recoilScale(shooter.spec, shellSpec), authoritativeIndex ?? undefined, shellSpec?.guided === true);
+        : shooter.visual.recoilKick(0, recoilScale(shooter.spec, shellSpec), authoritativeIndex ?? undefined, usesLauncherMuzzles(shooter.spec.gun, shellSpec));
       if (muzzleIndex != null && shooter.visual.gunMuzzleWorld) {
-        shooter.visual.gunMuzzleWorld(_muzzleTip, muzzleIndex, shellSpec?.guided === true);
+        shooter.visual.gunMuzzleWorld(_muzzleTip, muzzleIndex, usesLauncherMuzzles(shooter.spec.gun, shellSpec));
         muzzlePos = [_muzzleTip.x, _muzzleTip.y, _muzzleTip.z];
       }
     }
@@ -982,6 +986,7 @@ export function createBrowserBattleBridge<
       dir: [event.dx, event.dy, event.dz],
       shooterSpecId: shooter?.specId,
       feedbackPredicted: !!predicted,
+      rocket: isUnguidedRocket(shooter?.spec.gun, shellSpec),
       fireIntentSeq: event.fireIntentSeq,
     });
   }
@@ -1016,9 +1021,9 @@ export function createBrowserBattleBridge<
     const prediction = shotPrediction.predict(context.fireIntentSeq, slot,
       context.nowMs, context.authorityReceivedAtMs);
     if (!prediction) return false;
-    const launcherIndex = shell.guided && own.spec.gun.launcherMuzzles?.length ? own.combat.launcherCursor ?? 0 : undefined;
-    prediction.muzzleIndex = own.visual.recoilKick?.(0, recoilScale(own.spec, shell), launcherIndex, shell.guided === true) ?? -1;
-    own.visual.gunMuzzleWorld(_muzzleTip, prediction.muzzleIndex, shell.guided === true);
+    const launcherIndex = usesLauncherMuzzles(own.spec.gun, shell) ? own.combat.launcherCursor ?? 0 : undefined;
+    prediction.muzzleIndex = own.visual.recoilKick?.(0, recoilScale(own.spec, shell), launcherIndex, usesLauncherMuzzles(own.spec.gun, shell)) ?? -1;
+    own.visual.gunMuzzleWorld(_muzzleTip, prediction.muzzleIndex, usesLauncherMuzzles(own.spec.gun, shell));
     own.visual.gunDirWorld(_predictedShotDirection);
     bus.emit('weapon:predicted', {
       fireIntentSeq: prediction.intentSeq, shooterId: id, isPlayer: true,
@@ -1026,6 +1031,7 @@ export function createBrowserBattleBridge<
       weaponSound: shell.soundProfile || own.spec.gun.soundProfile || null,
       caliberMm: shell.caliberMm, velocityMps: shell.velocityMps, timeS: game.timeS,
       muzzleIndex: prediction.muzzleIndex,
+      rocket: isUnguidedRocket(own.spec.gun, shell),
       muzzlePos: [_muzzleTip.x, _muzzleTip.y, _muzzleTip.z],
       dir: [_predictedShotDirection.x, _predictedShotDirection.y, _predictedShotDirection.z],
     });

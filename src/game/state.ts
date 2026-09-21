@@ -1,3 +1,4 @@
+import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
@@ -429,6 +430,7 @@ interface CollisionBundle {
 }
 
 interface ShellFiredEvent {
+  rocket?: boolean;
   shellId: number;
   shooterId: string;
   isPlayer: boolean;
@@ -1752,7 +1754,7 @@ function readyShellForFire(
 function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): number | null {
   const visual = entity.visual;
   if (!visual) return null;
-  const launchers = shell.guided && entity.spec.gun.launcherMuzzles?.length
+  const launchers = usesLauncherMuzzles(entity.spec.gun, shell)
     ? entity.spec.gun.launcherMuzzles : null;
   const muzzles = launchers ?? entity.spec.gun.muzzles;
   let muzzleIndex = -1;
@@ -1764,7 +1766,7 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
     entity.combat.muzzleCursor = muzzleIndex + 1;
   }
   const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;
-  visual.gunMuzzleWorld(_muzzle, selectedMuzzle, shell.guided === true);
+  visual.gunMuzzleWorld(_muzzle, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
   visual.gunDirWorld(_dir);
   return muzzleIndex;
 }
@@ -1781,7 +1783,7 @@ function applyShotFeedback(
     0,
     recoilScale,
     muzzleIndex >= 0 ? muzzleIndex : undefined,
-    shell.guided === true,
+    usesLauncherMuzzles(entity.spec.gun, shell),
   );
   if (!entity.isPlayer || !rig) return;
   const caliberScale = Math.max(0, Math.min(1, (shell.caliberMm - 30) / 122));
@@ -1806,6 +1808,7 @@ function emitShellFired(
   _firedEv.isPlayer = entity.isPlayer;
   _firedEv.shellType = shellSpec.type;
   _firedEv.shellName = shellSpec.name;
+  _firedEv.rocket = shell.rocket === true;
   _firedEv.weaponSound = shellSpec.soundProfile || entity.spec.gun.soundProfile || null;
   _firedEv.muzzleIndex = muzzleIndex;
   _firedEv.recoilScale = recoilScale;
@@ -1864,6 +1867,7 @@ function tryFire(
     game.nextShellId++,
   );
   // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
+  shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
   shell.gravityMps2 = shellGravityMps2(shellSpec) * (Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1);
   refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);

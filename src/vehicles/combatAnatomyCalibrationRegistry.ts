@@ -28,6 +28,7 @@ export interface AnatomyCalibrationStructure extends AnatomyCalibrationBounds {
 export interface AnatomyModuleShapeReceipt extends Record<string, RuntimeValue> {
   readonly module: string;
   readonly turretLocal?: boolean;
+  readonly gunFollow?: boolean;
   readonly parts: readonly AnatomyCalibrationBounds[];
 }
 

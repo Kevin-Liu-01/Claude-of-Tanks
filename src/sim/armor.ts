@@ -129,6 +129,8 @@ interface ArmorVolumeBase extends AabbPart {
 
 interface ArmorModuleVolume extends ArmorVolumeBase {
   module: ModuleId;
+  /** Turret-rest coordinates, using the same pitching frame as gunFollow plates. */
+  gunFollow?: boolean;
 }
 
 interface ArmorCrewVolume extends ArmorVolumeBase {
@@ -155,7 +157,7 @@ export interface ArmorModel {
   trackShapes?: TrackPrismShape[];
   modules?: ArmorModuleVolume[];
   crew?: ArmorCrewVolume[];
-  gunBarrel?: { lengthM: number; radiusM: number };
+  gunBarrel?: { lengthM: number; radiusM: number; collision?: boolean };
   boundingRadiusM?: number;
   turretless?: boolean;
   _seamMm?: number;
@@ -1174,7 +1176,7 @@ function traceModuleVolumes(
   if (!volumes) return;
   for (const volume of volumes) {
     if (hasTrackShape(trackShapes, volume.module)) continue;
-    const frame = volume.turretLocal ? FR_TURRET : FR_HULL;
+    const frame = volume.gunFollow ? FR_GUN : volume.turretLocal ? FR_TURRET : FR_HULL;
     const t = intersectModuleVolume(frame, volume);
     if (t < 0 || !Number.isFinite(t)) continue;
     out.push(finishFrameHit({
@@ -1216,7 +1218,7 @@ function traceGunBarrel(
   gunBarrel: ArmorModel['gunBarrel'],
   out: ArmorIntersection[],
 ): void {
-  if (!gunBarrel) return;
+  if (!gunBarrel || gunBarrel.collision === false) return;
   const t = intersectBarrel(gunBarrel.lengthM, gunBarrel.radiusM);
   if (t < 0) return;
   out.push(finishFrameHit({
@@ -1366,7 +1368,7 @@ function appendBlastModuleTargets(
 ): void {
   if (!modules) return;
   for (const box of modules) {
-    const matrix = box.turretLocal ? _turretM : _hullM;
+    const matrix = box.gunFollow ? _gunM : box.turretLocal ? _turretM : _hullM;
     const external = blastModuleExternal(box);
     for (const shape of blastModuleShapes(box)) {
       const center = volumeCenter(shape);

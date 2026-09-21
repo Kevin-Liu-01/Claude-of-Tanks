@@ -293,6 +293,10 @@ assert.ok(!uaCargo.some((row) => row.v?.v === 'folding-chair'),
 // Resolve the two real registered variants after the baseline cargo fixture
 // sweep, including their independently authored identity and dimensions.
 await import('./fleetFactory.ts');
+for (const randomValue of [.13, .5, .87]) {
+  assert.deepEqual(decorManifestFor(getSpec('tos1a_tagil'), () => randomValue), [],
+    'the authored battery never receives static turret-roof hatches or cargo');
+}
 const revolutionManifest = decorManifestFor(getSpec('leo2_revolution'), () => 0.5);
 assert.deepEqual(revolutionManifest, [{
   kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] },

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-20",
+    "request": "make this tank too ... a russian tank of a giant missile battery ... launches missiles super quickly ... based on the hull t90ms tagil",
+    "scope": "Retain the playable T-90MS Tagil chassis and build a new TOS-1A-photo-inspired 24-tube launcher with rapid unguided rocket gameplay."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "designs": {
+    "tos1a_tagil": {
+      "id": "tos1a_tagil",
+      "test": "src/vehicles/profiles/tos1aTagil.selftest.mjs",
+      "ring": [
+        -0.00095,
+        1.5455,
+        0.118
+      ],
+      "gunLocal": [
+        0,
+        1.3,
+        -1.3
+      ],
+      "barrelLengthM": 2.6,
+      "barrelRadiusM": 0.11,
+      "pitchDeg": [
+        -5,
+        45
+      ],
+      "cells": 24,
+      "mainCaliberMm": 220,
+      "weaponSystem": "unguided-rocket-battery",
+      "ammoTotal": 72,
+      "magazineSize": 24,
+      "intraClipS": 0.25,
+      "fullReloadS": 48,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.36530017853,
+      "hullWidthM": 3.7802,
+      "widthM": 3.7802,
+      "overallLengthM": 7.4785,
+      "tallestM": 3.4555,
+      "silhouette": "A broad three-by-eight circular-tube battery with a chamfered armored housing and heavy pitching cradle above the retained T-90MS Tagil chassis"
+    }
+  },
+  "dimensionToleranceFraction": 0.03,
+  "sourcePhotoSha256": "5f39553a93d58761af254de96e4f6e15d2670dfa777414f3729783b4ac389093",
+  "sourcePacket": "docs/references/tanks/tos1a_tagil.md",
+  "requiredProof": [
+    "Physical HIGH/LOW24 tubes with finite mouth rims, sleeve walls, rear stock and clear aim axes",
+    "Preserved original Tagil hull/gear, permanent armor after ERA depletion, canonical chassis motion",
+    "Seated yaw/pitch cradles and legal poses; missing/blocked/detached mutation negatives",
+    "Independent14-view native photo/concept review; no fabricated source-fidelity score",
+    "24-shot local and authoritative firing, finite ammunition, full rack reload, successive launch origins, no homing or cannon recoil",
+    "Complete unchanged physical gates, anatomy, asset/centering, full tests, typecheck and public/private builds"
+  ],
+  "status": "Frozen design contract, not a qualification receipt."
+}

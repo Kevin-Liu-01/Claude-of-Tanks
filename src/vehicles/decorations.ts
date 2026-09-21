@@ -2500,6 +2500,9 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 
 /** Resolve the manifest rows for one spec (curated table or era default). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
+  // The pitching battery and retained Tagil chassis already own their fittings.
+  // Turret-roof hatches/whips would be mounted on the moving launcher instead.
+  if (spec.id === 'tos1a_tagil') return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.

@@ -70,6 +70,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "t90BurlakX": () => import('./combatAnatomyGroups/t90BurlakX.generated.ts'),
   "t90X": () => import('./combatAnatomyGroups/t90X.generated.ts'),
   "t90msX": () => import('./combatAnatomyGroups/t90msX.generated.ts'),
+  "tos1aTagil": () => import('./combatAnatomyGroups/tos1aTagil.generated.ts'),
   "type10X": () => import('./combatAnatomyGroups/type10X.generated.ts'),
   "type90X": () => import('./combatAnatomyGroups/type90X.generated.ts'),
   "type96bX": () => import('./combatAnatomyGroups/type96bX.generated.ts'),

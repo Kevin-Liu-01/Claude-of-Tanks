@@ -9,6 +9,7 @@ import { traceTank } from '../sim/armor.ts';
 import { CORE_MODULE_IDS, MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
+import { assertTos1aTagilTurretCells } from './tos1aTagilAnatomy.test-support.mjs';
 import {
   INTERNAL_LAYOUT_BY_TANK,
   INTERNAL_LAYOUT_SOURCES,
@@ -163,7 +164,8 @@ for (const id of ALL_TANK_IDS) {
   assert(shell && Array.isArray(shell.hull) && shell.hull.length >= 5,
     `${id}: finalized hull collision shell`);
   assert(Array.isArray(shell.turret), `${id}: finalized turret collision shell`);
-  if (calibration.turret) assert(shell.turret.length >= 5, `${id}: finalized turret cells`);
+  if (id === 'tos1a_tagil') assertTos1aTagilTurretCells(calibration, shell);
+  else if (calibration.turret) assert(shell.turret.length >= 5, `${id}: finalized turret cells`);
   const contactPoints = spec.armor.bodyContactPoints;
   assert(contactPoints && Array.isArray(contactPoints.hull) && contactPoints.hull.length >= 12,
     `${id}: rollover contact derives from the finalized hull shell`);

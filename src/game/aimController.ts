@@ -1,3 +1,4 @@
+import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.ts';
 import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
@@ -39,7 +40,7 @@ interface AimSpec {
   hydropneumaticAim?: HydropneumaticAim;
   dims: { heightM: number };
   armor: ArmorModel & { boundingRadiusM: number };
-  gun: { baseAccuracy: number; shells: DamageShellSpec[]; launcherMuzzles?: readonly { x: number; y: number; z: number }[] };
+  gun: { fixedLaunchCanisters?: boolean; baseAccuracy: number; shells: DamageShellSpec[]; launcherMuzzles?: readonly { x: number; y: number; z: number }[] };
 }
 
 interface ArmorTraceHit {
@@ -270,8 +271,8 @@ export function createAimController(deps: AimControllerDependencies): AimControl
       throw new Error('gun-center ray requires an active tank visual');
     }
     const shell = player.spec.gun.shells[player.combat?.shellSlot ?? 0];
-    const guided = shell?.guided === true && !!player.spec.gun.launcherMuzzles?.length;
-    player.visual.gunMuzzleWorld(outOrigin, guided ? player.combat?.launcherCursor ?? 0 : undefined, guided);
+    const launcher = usesLauncherMuzzles(player.spec.gun, shell);
+    player.visual.gunMuzzleWorld(outOrigin, launcher ? player.combat?.launcherCursor ?? 0 : undefined, launcher);
     player.visual.gunDirWorld(outDir);
     const rangeM = Math.max(outOrigin.distanceTo(aimPoint), 6);
     outTarget.copy(outOrigin).addScaledVector(outDir, rangeM);

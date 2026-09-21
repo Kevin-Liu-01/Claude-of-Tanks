@@ -267,14 +267,25 @@ const catalogContract = {
   )),
   defaultCustom: normalizeCustomCamo(),
 };
-// Preserve the preceding full catalog receipt after reversing only this request's
+// The new signature appends one network ID; every preceding catalog byte stays fixed.
+assert.equal(CAMO_PATTERN_IDS.at(-1), 'sig_tos1a_tagil');
+assert.equal(defaultCamoPatternId('tos1a_tagil'), 'sig_tos1a_tagil');
+assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
+const precedingCatalog = structuredClone(catalogContract);
+precedingCatalog.patterns = precedingCatalog.patterns.filter(id => id !== 'sig_tos1a_tagil');
+precedingCatalog.catalog = precedingCatalog.catalog.filter(id => id !== 'sig_tos1a_tagil');
+delete precedingCatalog.patternLabels.sig_tos1a_tagil;
+precedingCatalog.presets = precedingCatalog.presets.filter(row => row.id !== 'sig_tos1a_tagil');
+precedingCatalog.signatures = precedingCatalog.signatures.filter(id => id !== 'tos1a_tagil');
+precedingCatalog.tagsByPatternAndNation = precedingCatalog.tagsByPatternAndNation.filter(([id]) => id !== 'sig_tos1a_tagil');
+// Preserve the preceding full catalog receipt after reversing only the earlier
 // four appended paints, Sabra default, and three corrected brand labels.
 const addedPaints = ['mono', 'carbon', 'prism', 'sig_sabra_mk2_x'];
-assert.deepEqual(CAMO_PATTERN_IDS.slice(-4), addedPaints);
+assert.deepEqual(precedingCatalog.patterns.slice(-4), addedPaints);
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'sig_sabra_mk2_x');
-const historicalCatalog = structuredClone(catalogContract);
+const historicalCatalog = structuredClone(precedingCatalog);
 historicalCatalog.patterns = historicalCatalog.patterns.filter(id => !addedPaints.includes(id));
 historicalCatalog.catalog = historicalCatalog.catalog.filter(id => !addedPaints.includes(id));
 for (const id of addedPaints) delete historicalCatalog.patternLabels[id];
@@ -286,7 +297,7 @@ assert.equal(createHash('sha256').update(JSON.stringify(historicalCatalog)).dige
   '819bf810321f4580f7ea7748f31c48a91c14613b0f07404478a2fa2c5d2c63f5',
   'all other catalog fields, order, recipes, tags and national routing remain exact');
 assert.equal(
-  createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
+  createHash('sha256').update(JSON.stringify(precedingCatalog)).digest('hex'),
   'c441a52325e22692646ed378c13cb49cd2df03e1e8807d1d44cc55f918431ce2', // September 20 official marks, independent prints, Sabra default.
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );

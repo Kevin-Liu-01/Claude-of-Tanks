@@ -1,10 +1,21 @@
 // Explicit owner-authored designs. This is not a fallback for failed sources.
 const CONCEPT_DOCUMENTS = Object.freeze({
+  tos1a_tagil:'docs/references/concepts/tos1a-tagil-20260920.json',
   ztz100_prototype:'docs/references/concepts/missile-turrets-20260919.json',
   object695_x:'docs/references/concepts/missile-turrets-20260919.json',
   type100:'docs/references/concepts/type100-ifv-20260919.json',
 });
 export const FIRST_PARTY_CONCEPTS = Object.freeze({
+  tos1a_tagil: Object.freeze({
+    id:'tos1a_tagil', test:'src/vehicles/profiles/tos1aTagil.selftest.mjs',
+    ring:[-.00095,1.5455,.118], gunLocal:[0,1.30,-1.30],
+    barrelLengthM:2.60, barrelRadiusM:.11, pitchDeg:[-5,45],
+    cells:24, mainCaliberMm:220, weaponSystem:'unguided-rocket-battery',
+    ammoTotal:72, magazineSize:24, intraClipS:.25, fullReloadS:48, roofMachineGuns:1,
+    hullLengthM:6.36530017853, hullWidthM:3.7802, widthM:3.7802,
+    overallLengthM:7.4785, tallestM:3.4555,
+    silhouette:'A broad three-by-eight circular-tube battery with a chamfered armored housing and heavy pitching cradle above the retained T-90MS Tagil chassis',
+  }),
   ztz100_prototype: Object.freeze({
     id:'ztz100_prototype', test:'src/vehicles/profiles/ztz100Prototype.selftest.mjs',
     ring:[0,1.41,-.55], gunLocal:[0,.64,.80], barrelLengthM:1.45, barrelRadiusM:.045,

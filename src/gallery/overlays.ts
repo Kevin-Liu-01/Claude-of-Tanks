@@ -353,6 +353,7 @@ function addModuleModels(
   turretContainer: THREE.Object3D,
   resources: OverlayResource[],
   pickables: THREE.Mesh[],
+  gunContainer?: THREE.Object3D,
 ): void {
   const modules = spec.armor?.modules || [];
   const caliberMm = specCaliberMm(spec);
@@ -365,7 +366,7 @@ function addModuleModels(
       resources.push(fill);
       const model = addInternalModuleModel(
         resolved, fill, hullContainer, turretContainer, resources,
-        spec.era, caliberMm, fill, spec.armor,
+        spec.era, caliberMm, fill, spec.armor, gunContainer,
       );
       if (!model) return;
       addDashedLines(model, color, resources);
@@ -410,11 +411,13 @@ function addDetailedArmorPlates(
   turret: boolean,
   resources: OverlayResource[],
   pickables: THREE.Mesh[],
+  gunContainer?: THREE.Object3D,
 ): void {
   let detailIndex = 0;
   for (const plate of plates) {
     if ((plate.kind || 'main') === 'main' && !/_(?:cupola|hatch)_/i.test(plate.name || '')) continue;
-    addPlate(container, plate, baseIndex + detailIndex, turret, resources, pickables);
+    addPlate(plate.gunFollow && gunContainer ? gunContainer : container,
+      plate, baseIndex + detailIndex, turret, resources, pickables);
     detailIndex += 1;
   }
 }
@@ -425,6 +428,7 @@ function addArmorModels(
   turretContainer: THREE.Object3D,
   resources: OverlayResource[],
   pickables: THREE.Mesh[],
+  gunContainer?: THREE.Object3D,
 ): void {
   const hullPlates = spec.armor?.hullPlates || [];
   const turretPlates = spec.armor?.turretPlates || [];
@@ -435,7 +439,7 @@ function addArmorModels(
   exactTurret.forEach(({ plate, geometry }, index) =>
     addPlate(turretContainer, plate, index, true, resources, pickables, geometry));
   addDetailedArmorPlates(hullContainer, hullPlates, exactHull.length, false, resources, pickables);
-  addDetailedArmorPlates(turretContainer, turretPlates, exactTurret.length, true, resources, pickables);
+  addDetailedArmorPlates(turretContainer, turretPlates, exactTurret.length, true, resources, pickables, gunContainer);
 }
 
 function addInspectionModels(
@@ -445,11 +449,12 @@ function addInspectionModels(
   turretContainer: THREE.Object3D,
   resources: OverlayResource[],
   pickables: THREE.Mesh[],
+  gunContainer?: THREE.Object3D,
 ): void {
   if (mode === 'armor') {
-    addArmorModels(spec, hullContainer, turretContainer, resources, pickables);
+    addArmorModels(spec, hullContainer, turretContainer, resources, pickables, gunContainer);
   } else if (mode === 'modules') {
-    addModuleModels(spec, hullContainer, turretContainer, resources, pickables);
+    addModuleModels(spec, hullContainer, turretContainer, resources, pickables, gunContainer);
   } else if (mode === 'crew') {
     addCrewModels(spec, hullContainer, turretContainer, resources, pickables);
   }
@@ -486,7 +491,19 @@ export function createInspectionOverlay(
   const hullContainer = attachContainer(root, `gallery_${mode}_hull`);
   const turretContainer = attachContainer(turret, `gallery_${mode}_turret`);
   containers.push(hullContainer, turretContainer);
-  addInspectionModels(mode, spec, hullContainer, turretContainer, resources, pickables);
+  const gun = root.getObjectByName('rig_gun');
+  let gunContainer: THREE.Object3D | undefined;
+  // Articulated anatomy is explicit. Legacy armor plates can carry gunFollow
+  // while their profile uses different rig datums; retain those established
+  // turret-owned overlays until their complete anatomy opts into this frame.
+  const articulatedAnatomy = spec.armor?.modules?.some(volume => volume.gunFollow === true);
+  if (articulatedAnatomy && gun && spec.armor?.gunPivot) {
+    gunContainer = attachContainer(gun, `gallery_${mode}_gun`);
+    const pivot = spec.armor.gunPivot;
+    gunContainer.position.set(-pivot[0], -pivot[1], -pivot[2]);
+    containers.push(gunContainer);
+  }
+  addInspectionModels(mode, spec, hullContainer, turretContainer, resources, pickables, gunContainer);
 
   let emphasized: THREE.Mesh | null = null;
   return {

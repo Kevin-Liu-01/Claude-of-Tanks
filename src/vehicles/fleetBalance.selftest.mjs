@@ -38,7 +38,7 @@ for (const id of SAVED_TANK_IDS) {
   assert.equal(spec.id, id, `${id}: registry key and spec ID agree`);
   assert.ok(Number.isInteger(tankTier(id)) && tankTier(id) >= 1 && tankTier(id) <= 10,
     `${id}: tier is canonical and bounded`);
-  assert.ok(['light', 'medium', 'heavy', 'td', 'mbt', 'ifv'].includes(spec.role),
+  assert.ok(['light', 'medium', 'heavy', 'td', 'mbt', 'ifv', 'spg'].includes(spec.role),
     `${id}: supported mechanical role`);
   for (const key of REQUIRED_NUMBERS) {
     assert.ok(finite(spec[key]) && spec[key] >= 0, `${id}.${key}: finite non-negative stat`);

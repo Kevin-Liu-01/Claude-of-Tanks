@@ -1,3 +1,4 @@
+import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 /**
  * killcam.ts — War Thunder-class kill camera (integration-owned module).
  *
@@ -122,6 +123,7 @@ type KillcamBox = {
   min: readonly [number, number, number];
   max: readonly [number, number, number];
   turretLocal: boolean;
+  gunFollow?: boolean;
 };
 
 interface NearMissRecord {
@@ -419,6 +421,7 @@ interface XrayCamera {
 interface XrayPoseGroups {
   pose: THREE.Group;
   turret: THREE.Group;
+  gun: THREE.Group;
 }
 
 interface XrayBuildContext extends XrayPoseGroups {
@@ -2631,8 +2634,10 @@ export function createKillCam(deps: KillcamDeps) {
     actualDirection: THREE.Vector3,
   ): void {
     if (visual.gunMuzzleWorld) {
-      const guided = pb.snap.attackerEnt?.spec.gun.shells?.some(shell => shell.name === pb.snap.ev.shellName && shell.guided) === true;
-      pb.replayMuzzle = visual.gunMuzzleWorld(new THREE.Vector3(), pb.snap.muzzleIndex >= 0 ? pb.snap.muzzleIndex : undefined, guided).clone();
+      const gun = pb.snap.attackerEnt?.spec.gun;
+      const round = gun?.shells?.find(shell => shell.name === pb.snap.ev.shellName);
+      const launcher = usesLauncherMuzzles(gun, round);
+      pb.replayMuzzle = visual.gunMuzzleWorld(new THREE.Vector3(), pb.snap.muzzleIndex >= 0 ? pb.snap.muzzleIndex : undefined, launcher).clone();
     }
     if (shotDirection && visual.gunDirWorld) {
       visual.gunDirWorld(actualDirection);
@@ -2933,16 +2938,17 @@ export function createKillCam(deps: KillcamDeps) {
     const muzzle = pb.replayMuzzle;
     if (!muzzle) return;
     const visual = attacker.visual;
+    const round = attacker.spec.gun.shells?.find(shell => shell.name === pb.snap.ev.shellName);
     if (visual.recoilKick) {
       visual.recoilKick(
         0,
         pb.snap.recoilScale || 1,
         pb.snap.muzzleIndex >= 0 ? pb.snap.muzzleIndex : undefined,
-        attacker.spec.gun.shells?.some(shell => shell.name === pb.snap.ev.shellName && shell.guided) === true,
+        usesLauncherMuzzles(attacker.spec.gun, round),
       );
     }
     const caliberMm = pb.snap.caliberMm || pb.snap.ev.caliberMm || 100;
-    replayFx()?.muzzleFlash?.(muzzle, shotDirection, caliberMm);
+    replayFx()?.muzzleFlash?.(muzzle, shotDirection, caliberMm, isUnguidedRocket(attacker.spec.gun, round));
     busRef?.emit('killcam:shot', {
       shooterId: attacker.id,
       isPlayer: !!attacker.isPlayer,
@@ -4129,6 +4135,21 @@ export function createKillCam(deps: KillcamDeps) {
     kcLights[0].distance = Math.max(10, snap.boundingRadiusM * 2.4);
   }
 
+  function createXrayGunFrame(
+    pose: ReplayPose,
+    armor: KillcamArmor,
+    turret: THREE.Group,
+  ): THREE.Group {
+    const pivot = new THREE.Group();
+    pivot.position.set(...armor.gunPivot);
+    pivot.rotation.x = -pose.gunPitch;
+    turret.add(pivot);
+    const restFrame = new THREE.Group();
+    restFrame.position.set(-armor.gunPivot[0], -armor.gunPivot[1], -armor.gunPivot[2]);
+    pivot.add(restFrame);
+    return restFrame;
+  }
+
   function createXrayPoseGroups(
     pose: ReplayPose,
     armor: KillcamArmor,
@@ -4148,7 +4169,8 @@ export function createKillCam(deps: KillcamDeps) {
     turretGroup.rotation.y = pose.turretYaw;
     poseGroup.add(turretGroup);
     pb.group.add(poseGroup);
-    return { pose: poseGroup, turret: turretGroup };
+    return { pose: poseGroup, turret: turretGroup,
+      gun: createXrayGunFrame(pose, armor, turretGroup) };
   }
 
   function createXrayBuildContext(radiusScale: number): XrayBuildContext {
@@ -4163,6 +4185,7 @@ export function createKillCam(deps: KillcamDeps) {
       vehiclePose: snap.pose,
       pose: groups.pose,
       turret: groups.turret,
+      gun: groups.gun,
       moduleHits,
       crewHits: new Set(snap.ev.crewHit),
       anchors: new Map<string, THREE.Object3D>(),
@@ -4230,7 +4253,7 @@ export function createKillCam(deps: KillcamDeps) {
       (box.min[1] + box.max[1]) / 2,
       (box.min[2] + box.max[2]) / 2,
     );
-    const parent = box.turretLocal ? context.turret : context.pose;
+    const parent = box.gunFollow ? context.gun : box.turretLocal ? context.turret : context.pose;
     parent.add(segment);
     if (material === S.edgeDim) segment.visible = false;
     if (fillMaterial && (key === 'm:trackL' || key === 'm:trackR')) {
@@ -4417,7 +4440,7 @@ export function createKillCam(deps: KillcamDeps) {
     box: T,
   ): T {
     const dimensions = context.snap.targetEnt?.spec?.dims;
-    if (!dimensions || box.turretLocal) return box;
+    if (!dimensions || box.turretLocal || box.gunFollow) return box;
     const halfWidth = dimensions.widthM / 2 + 0.03;
     const halfLength = (dimensions.hullLengthM || dimensions.overallLengthM * 0.8) / 2 + 0.08;
     const min: Vec3Tuple = [
@@ -4460,6 +4483,7 @@ export function createKillCam(deps: KillcamDeps) {
           caliberMm,
           S.proxSteel,
           context.armor,
+          context.gun,
         );
       }
     }
@@ -4504,10 +4528,18 @@ export function createKillCam(deps: KillcamDeps) {
     box: KillcamBox,
     output: THREE.Vector3,
   ): THREE.Vector3 {
-    const x = (box.min[0] + box.max[0]) / 2;
-    const y = (box.min[1] + box.max[1]) / 2;
-    const z = (box.min[2] + box.max[2]) / 2;
-    if (!box.turretLocal) return output.set(x, y, z);
+    output.set((box.min[0] + box.max[0]) / 2,
+      (box.min[1] + box.max[1]) / 2, (box.min[2] + box.max[2]) / 2);
+    if (box.gunFollow) {
+      const pivot = context.armor.gunPivot;
+      output.x -= pivot[0]; output.y -= pivot[1]; output.z -= pivot[2];
+      const pitch = context.vehiclePose.gunPitch;
+      const y = output.y * Math.cos(pitch) + output.z * Math.sin(pitch);
+      output.z = -output.y * Math.sin(pitch) + output.z * Math.cos(pitch) + pivot[2];
+      output.x += pivot[0]; output.y = y + pivot[1];
+    }
+    if (!box.turretLocal && !box.gunFollow) return output;
+    const { x, y, z } = output;
     const yaw = context.vehiclePose.turretYaw || 0;
     const cosine = Math.cos(yaw);
     const sine = Math.sin(yaw);

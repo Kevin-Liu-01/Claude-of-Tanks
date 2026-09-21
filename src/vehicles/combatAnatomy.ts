@@ -74,6 +74,7 @@ type AnatomyShape = AnatomyShapeEllipsoid | AnatomyShapeCapsule | AnatomyShapeCy
 
 interface AnatomyVolume extends Bounds {
   turretLocal?: boolean;
+  gunFollow?: boolean;
   external?: boolean;
   parts?: Bounds[];
   shapes?: AnatomyShape[];
@@ -127,7 +128,7 @@ interface CombatShell {
 interface CombatAnatomySpec {
   id: string;
   role: string;
-  gun?: { reloadS: number; shells?: CombatShell[] };
+  gun?: { reloadS: number; shells?: CombatShell[]; fixedLaunchCanisters?: boolean };
   armor?: ArmorAnatomy;
   [key: symbol]: RuntimeValue;
 }
@@ -969,7 +970,8 @@ function applyModuleShapes(
   if (!Array.isArray(receipts) || !receipts.length) return;
   for (const receipt of receipts) {
     const box = (armor.modules || []).find((entry) =>
-      entry.module === receipt.module && !!entry.turretLocal === !!receipt.turretLocal);
+      entry.module === receipt.module && !!entry.turretLocal === !!receipt.turretLocal
+      && !!entry.gunFollow === !!receipt.gunFollow);
     if (!box || !Array.isArray(receipt.parts) || !receipt.parts.length) continue;
     const parts: Bounds[] = receipt.parts.map((part: AnatomyCalibrationBounds) => ({
       min: part.min.slice(),
@@ -1032,6 +1034,7 @@ function reconcileTracks(
 }
 
 function hasMissile(spec: CombatAnatomySpec): boolean {
+  if (spec.gun?.fixedLaunchCanisters) return true;
   const defaultReloadS = spec.gun?.reloadS || 0;
   return (spec.gun?.shells || []).some((shell) => (
     Number(shell.reloadS || defaultReloadS) >= MISSILE_RELOAD_FLOOR_S
@@ -1376,8 +1379,10 @@ function resolveCombatCalibration(
 }
 
 function anatomyBoxesByFrame(armor: ArmorAnatomy, turretLocal: boolean): AnatomyVolume[] {
+  // Pitching attachments use authored turret-rest coordinates and their own
+  // native shape receipts, never the static hull/turret shell's normalization.
   return [...(armor.modules || []), ...(armor.crew || [])]
-    .filter((box) => !!box.turretLocal === turretLocal);
+    .filter((box) => !!box.turretLocal === turretLocal && !box.gunFollow);
 }
 
 function ensureFixedGunMount(armor: ArmorAnatomy): void {
@@ -1414,7 +1419,7 @@ function reconcileFixedMountAnatomy(
   reconcileFrame(armor.hullPlates, hullBoxes, hullTarget);
   const compartment = fixedCompartment(calibration);
   const fixedModules = (armor.modules || []).filter(
-    (box) => box.turretLocal && box.module !== 'trackL' && box.module !== 'trackR',
+    (box) => box.turretLocal && !box.gunFollow && box.module !== 'trackL' && box.module !== 'trackR',
   );
   fitFixedBoxes(fixedModules, armor.turretPivot, compartment);
   fitFixedBoxes(armor.crew || [], armor.turretPivot, compartment);

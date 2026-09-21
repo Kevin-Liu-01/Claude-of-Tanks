@@ -95,7 +95,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'sig_merkava2d', 'sig_merkava3d_x', 'sig_merkava4', 'sig_merkava4_x', 'sig_merkava4_trophy', 'sig_merkava4_barak', 'sig_namer_ifv',
   'sig_t84', 'sig_ua_challenger2', 'sig_ua_t64bv', 'sig_ua_t80bv',
   'sig_ua_t80u_kursk', 'sig_ua_t84_oplot_m', 'sig_ua_m1a1', 'sig_leo2a6_ua',
-  'mono', 'carbon', 'prism', 'sig_sabra_mk2_x',
+  'mono', 'carbon', 'prism', 'sig_sabra_mk2_x', 'sig_tos1a_tagil',
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -157,6 +157,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_t90: 'T-90 obr. 1992 Field',
   sig_t90sm: 'T-90SM Export Digital',
   sig_t90ms: 'T-90MS Tagil Demonstrator',
+  sig_tos1a_tagil: 'TOS-1A Steppe Bands',
   sig_t90a_burlak: 'T-90A Burlak Digital',
   sig_t90m: 'T-90AM Field Digital',
   sig_t90m_proryv: 'T-90M Proryv Digital',
@@ -341,6 +342,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
   preset('service_ua_m2a3_bradley', 'ua_m2a3_bradley', serviceTags('ua', 'woodland', 'digital'),
     { scheme: 'digital', base: '#4c5142', weather: '#666956', patches: ['#30352d', '#625b46', '#77705a'], camoScale: 0.5 }),
 
+  preset('sig_tos1a_tagil', 'tos1a_tagil', signatureTags('ru', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#596044', weather: '#797b5e', patches: ['#b5aa82', '#30382c'], camoScale: .72, patchK: 1.35 }),
   preset('sig_abramsx', 'abramsx', signatureTags('usa', 'woodland', 'organic'),
     { scheme: 'nato', base: '#373b30', weather: '#4b5144', patches: ['#232720', '#5b4d40'], camoScale: 0.45, patchK: 1.55 }),
   preset('sig_m551_sheridan', 'm551_sheridan', signatureTags('usa', 'woodland', 'organic'),
@@ -601,6 +604,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // Germany
   'leo2a4_otco', 'mbt70', 'kf51b',
   // Russia / USSR
+  'tos1a_tagil',
   'bmpt_t90', 't90', 't90sm', 't90ms', 't90a_burlak', 't90m', 't90m_proryv',
   't90a', 't90a_vladimir',
   // United Kingdom

@@ -157,6 +157,16 @@ function createLauncherTips(parent: THREE.Group, muzzles: FactoryGunSpec['launch
   });
 }
 
+/** Fixed explicit racks have no additional centered cannon mouth. */
+function cannonMuzzleDefinitions(
+  gun: FactoryGunSpec,
+  authored: NonNullable<FactoryGunSpec['muzzles']>,
+  launcherCount: number,
+): Array<NonNullable<FactoryGunSpec['muzzles']>[number] | null> {
+  if (gun.fixedLaunchCanisters && launcherCount > 0) return [];
+  return authored.length ? authored : [null];
+}
+
 interface FactoryVisualSpec extends FleetVisualSpec {
   bakeDirtDeckEq?: boolean;
 }
@@ -11527,7 +11537,7 @@ function* createTankOwnedSteps(
   // barrel tip, each measured and seated independently at its own axis.
   // ABSENT => one assembly is still created on the authored/center axis, but
   // it now inherits the physical terminal tube/brake radius and lip plane.
-  const muzzleDefs = authoredMuzzles.length ? authoredMuzzles : [null];
+  const muzzleDefs = cannonMuzzleDefinitions(spec.gun, authoredMuzzles, launcherTips.length);
   // §5.362 per-barrel fire anchors (twin-plant ids only): one Object3D per
   // authored bore at its own seated tip, parented under its tube group so a
   // mid-stroke sample rides the recoiled tube. gunMuzzleWorld(out, i) reads
@@ -12856,7 +12866,7 @@ function* createTankOwnedSteps(
      * @returns {THREE.Vector3} world-space muzzle tip
      */
     gunMuzzleWorld(out, muzzleIndex, guided = false) {
-      if (guided && launcherTips.length) {
+      if ((guided || spec.gun.fixedLaunchCanisters) && launcherTips.length) {
         const index = muzzleIndex ?? 0;
         return launcherTips[((index % launcherTips.length) + launcherTips.length) % launcherTips.length].getWorldPosition(out);
       }
@@ -12893,7 +12903,7 @@ function* createTankOwnedSteps(
      *   null.
      */
     recoilKick(ageS = 0, impulseScale = 1, muzzleIndex, guided = false) {
-      if (guided && launcherTips.length) {
+      if ((guided || spec.gun.fixedLaunchCanisters) && launcherTips.length) {
         // Do not cancel a backup cannon stroke that is already in flight.
         const index = muzzleIndex ?? launcherCursor++;
         return ((index % launcherTips.length) + launcherTips.length) % launcherTips.length;

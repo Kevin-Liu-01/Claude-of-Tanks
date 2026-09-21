@@ -180,6 +180,7 @@ assert.equal(addedXIds.size, 28, 'the two additive X batches have distinct ident
 const laterChannelCounts = {
   type100: 3, ztz100_x: 3, ztz100_prototype: 3, object695_x: 3,
   merkava4_trophy: 3, merkava4_barak: 3, namer_ifv: 2, ares_apc_x: 3,
+  tos1a_tagil: 1,
 };
 const laterIds = new Set([...Object.keys(laterChannelCounts), ...SUPPLIED_SOURCE_IDS]);
 for (const [id, count] of Object.entries(laterChannelCounts)) {
@@ -192,7 +193,7 @@ assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) &&
 assert.equal(SUPPLIED_SOURCE_IDS.length, 12, 'the supplied batch adds twelve distinct loadouts');
 assert.equal(SUPPLIED_SOURCE_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 32,
   'nine three-channel, two two-channel and one guided-primary loadout');
-assert.equal(authoredShellChannels, 674 /* preserved 628 + 32 supplied-source + 8 Israeli + 3 Ares + 3 prototype channels */,
+assert.equal(authoredShellChannels, 675 /* preserved 628 + 32 supplied-source + 8 Israeli + 3 Ares + 3 prototype + 1 rocket channel */,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

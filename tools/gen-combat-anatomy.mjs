@@ -24,6 +24,7 @@ enableCombatAnatomyMeasurementMode();
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
+const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -457,19 +458,22 @@ function moduleShapeReceipts(root, hullRig, turretRig, armorModules) {
   const modules = new Set(receiptParts.map((part) => part.module).filter(Boolean));
   const damageOwner = new Map((armorModules || []).map((entry) => [
     entry.module,
-    !!entry.turretLocal,
+    entry.gunFollow ? 'gunG' : entry.turretLocal ? 'turretG' : 'hullG',
   ]));
   for (const module of [...modules].sort()) {
     for (const [owner, turretLocal, parent] of [
       [hullRig, false, 'hullG'],
       [turretRig, true, 'turretG'],
+      // Gun-follow combat volumes use turret-rest coordinates, just like
+      // pitching armor plates; their runtime frame rotates about gunPivot.
+      [turretRig, true, 'gunG'],
     ]) {
       // One canonical damage state owns each module. Vehicles can expose
       // additional passive vision blocks in the other articulation frame,
       // but those must not create an impossible second damage volume or a
       // receipt that the runtime cannot apply. Measure the visible geometry
       // in the authored module's frame only.
-      if (damageOwner.has(module) && damageOwner.get(module) !== turretLocal) continue;
+      if (damageOwner.has(module) && damageOwner.get(module) !== parent) continue;
       const buckets = new Set(receiptParts
         .filter((part) => part.module === module && part.parent === parent)
         .map((part) => part.bucket));
@@ -483,6 +487,7 @@ function moduleShapeReceipts(root, hullRig, turretRig, armorModules) {
       rows.push({
         module,
         turretLocal,
+        ...(parent === 'gunG' ? { gunFollow: true } : {}),
         parts,
         sourceHash: hash.digest('hex').slice(0, 16),
       });
@@ -510,7 +515,8 @@ function eraPlateReceipts(root) {
 
 function receiptFor(id) {
   const create = () => createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
-  const stockCapture = id === 'chieftain_mk10_x' ? captureChieftain10Collision(create) : null;
+  const stockCapture = id === 'chieftain_mk10_x' ? captureChieftain10Collision(create)
+    : id === 'tos1a_tagil' ? captureTos1aTagilCollision(create) : null;
   const tank = stockCapture?.tank ?? create();
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');

@@ -50,7 +50,7 @@ function fenders(P:TankBuilderPort,side:number):void{
 function runningGear(P:TankBuilderPort):void{
   // Source left axles are ~76 mm aft of right axles. Actual road stations use
   // the measured side arrays; the unchanged belt course uses pair midpoints.
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.3884,wheelY:.4485,wheelW:.4206,
+  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',trackPattern:'soviet-single-pin',wheelR:.3884,wheelY:.4485,wheelW:.4206,
     wheelZs:[-1.7806,-.9404,-.08855,.76255,1.6144,2.46025],
     wheelZsLeftM:[-1.81590002775,-.97714999318,-.12659997866,.72445000755,1.57635003328,2.42254996300],
     wheelZsRightM:[-1.74285000563,-.90240001678,-.05049999041,.80055001006,1.65250003338,2.49795007706],
@@ -264,9 +264,14 @@ function mainGun(P:TankBuilderPort):void{
   P.add('gun',box(.065,.041,.030),0,.103,6.079-GUN[2]);
   P.muzzleZ=tip-GUN[2];
 }
+/** Explicit family derivation: the complete original fixed chassis, without a turret. */
+export function buildT90MSXChassis(P:TankBuilderPort):void{
+  P.hullG.position.set(0,0,0);
+  hull(P);runningGear(P);glacis(P);skirts(P);engineDeck(P);rearAndHullCages(P);
+}
 function buildT90MSX(P:TankBuilderPort):void{
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.topY=T90MS_X_DATUMS.highestFittingM-YAW[1];
-  hull(P);runningGear(P);glacis(P);skirts(P);engineDeck(P);rearAndHullCages(P);turret(P);cheeks(P);sideArmor(P);bustle(P);roofEquipment(P);aps(P);remoteWeapon(P);smoke(P);mainGun(P);
+  buildT90MSXChassis(P);turret(P);cheeks(P);sideArmor(P);bustle(P);roofEquipment(P);aps(P);remoteWeapon(P);smoke(P);mainGun(P);
 }
 export const T90MS_X_PROFILES={t90ms_x:{build:buildT90MSX}} as const;

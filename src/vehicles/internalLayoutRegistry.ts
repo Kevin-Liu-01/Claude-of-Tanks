@@ -37,6 +37,11 @@ type InternalCrewTuple = readonly [
 ];
 
 export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
+  ownerTosTagil: Object.freeze({
+    title: 'Owner-directed TOS-1A launcher on T-90MS Tagil chassis, 2026-09-20',
+    url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/tos1a_tagil.md',
+    kind: 'owner-authored-concept',
+  }),
   ownerChineseIfv: Object.freeze({
     title: 'Owner-authored Type 100 IFV redesign, 2026-09-19',
     url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/type100-ifv-20260919.json',
@@ -315,6 +320,10 @@ function suppliedTurretLauncherLayout(sources: readonly InternalLayoutSourceId[]
 }
 
 const LAYOUTS = Object.freeze({
+  conceptRocketBattery: { confidence: 'owner-directed', sources: ['ownerTosTagil'], crew: crew(
+    ['driver', 'hull', 'frontCenter'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
+  ), systems: systems({ ammoRack: { placement: 'hull', form: 'protectedReadyBins' },
+    missileRack: { placement: 'turret', form: 'twentyFourTubeLauncher' } }) },
   tigerI: { confidence: 'documented', sources: ['tigerManual'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['radioOperator', 'hull', 'frontRight'],
     ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'rearLeft'],
@@ -470,6 +479,7 @@ const LAYOUTS = Object.freeze({
 } satisfies Record<string, InternalLayoutDefinition>);
 
 const IDS_BY_LAYOUT = Object.freeze({
+  conceptRocketBattery: ['tos1a_tagil'],
   tigerI: ['tiger1'],
   panther: ['panther_g'],
   heavyWw2Six: ['kv2'],

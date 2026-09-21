@@ -1,3 +1,4 @@
+import { TOS1A_TAGIL_PROFILES } from './profiles/tos1aTagil.ts';
 import { buildFv510MilanX } from './profiles/fv510MilanX.ts';
 import { buildGriffin50X } from './profiles/griffin50X.ts';
 import { buildAjaxX } from './profiles/ajaxX.ts';
@@ -108,6 +109,7 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
 };
 
 export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
+  ...TOS1A_TAGIL_PROFILES,
   fv510_milan_x: { build: buildFv510MilanX },
   griffin50_x: { build: buildGriffin50X },
   ajax_x: { build: buildAjaxX },

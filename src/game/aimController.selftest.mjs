@@ -212,5 +212,14 @@ console.log('aimController.selftest: shared camera/bore aim owner passed');
   hybrid.combat.launcherCursor = 1;
   aim.update(frame);
   assert.equal(frame.blockedDistM, 5, 'accepted missile selection restores physical rack origin');
+  hybrid.spec.gun.fixedLaunchCanisters = true;
+  hybrid.spec.gun.shells[0] = { guided: false, type: 'HE' };
+  aim.update(frame);
+  assert.equal(frame.blockedDistM, 5, 'unguided fixed rocket uses the actual loaded cell too');
+  assert.deepEqual(calls.at(-1), { index: 1, guided: true }, 'physical launcher selector never enables ballistic guidance');
+  hybrid.spec.gun.fixedLaunchCanisters = false;
+  aim.update(frame);
+  assert.equal(frame.blockedDistM, null, 'ordinary HE is not routed to a launcher');
+
 }
 console.log('aimController: indexed missile obstruction, armor origin, cannon and pending-selection isolation PASS');

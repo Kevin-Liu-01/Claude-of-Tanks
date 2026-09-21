@@ -1,3 +1,4 @@
+import { usesLauncherMuzzles } from './launcherPolicy.ts';
 /**
  * movement.ts — pure-logic tank movement, attitude, turret/gun kinematics and
  * dispersion bloom. Implements docs/research/movement-physics.md §2–§8 and §10
@@ -31,6 +32,7 @@ type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
 
 export interface MovementGunSpec {
+  fixedLaunchCanisters?: boolean;
   launcherMuzzles?: readonly { x: number; y: number; z: number }[];
   aimTimeS: number;
   baseAccuracy: number;
@@ -2654,7 +2656,7 @@ export function shotRecoilScale(
 ): number {
   const cycleS = (shellSpec && shellSpec.reloadS) || spec.gun.reloadS;
   if (spec.gun.launcherMuzzles?.length) {
-    if (shellSpec?.guided) return 0;
+    if (usesLauncherMuzzles(spec.gun, shellSpec)) return 0;
     if (cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S) return IFV_AUTOCANNON_RECOIL_SCALE;
   }
   return spec.role === 'ifv' && cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S

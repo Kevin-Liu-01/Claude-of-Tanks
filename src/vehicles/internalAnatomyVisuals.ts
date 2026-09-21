@@ -11,6 +11,7 @@ export interface AnatomyResource {
 export interface ArmorPlatePort {
   name?: string;
   kind?: string;
+  gunFollow?: boolean;
   verts?: readonly Vec3Tuple[];
 }
 
@@ -47,6 +48,7 @@ export interface AnatomyVolumePort {
   module?: string;
   crew?: string;
   turretLocal?: boolean;
+  gunFollow?: boolean;
   external?: boolean;
   visualForm?: string;
   station?: string;
@@ -71,6 +73,7 @@ export interface InternalArmorModelPort {
   turretPlates?: readonly ArmorPlatePort[];
   collisionShells?: { hull?: readonly ArmorCollisionCellPort[] };
   turretPivot?: readonly number[];
+  gunPivot?: readonly number[];
   modules?: readonly InternalModuleVolumePort[];
   crew?: readonly InternalCrewVolumePort[];
 }
@@ -769,6 +772,7 @@ export function addInternalModuleModel(
   caliberMm: number,
   steelMaterial: MaterialPort = material,
   armor: InternalArmorModelPort | null = null,
+  gunContainer: THREE.Object3D | null = null,
 ): THREE.Group | null {
   const kind = volume.module;
   const form = volume.visualForm || '';
@@ -781,6 +785,7 @@ export function addInternalModuleModel(
   const sy = volume.max[1] - volume.min[1];
   const sz = volume.max[2] - volume.min[2];
   const group = proxyGroup(volume, hullGroup, turretGroup, `module_${kind}`);
+  if (volume.gunFollow && gunContainer) gunContainer.add(group);
   group.userData.internalAnatomy = {
     type: 'module', key: kind, ...(form ? { form } : {}),
     visualAnchorPolicy: volume === authoredVolume ? 'authoredVolume' : 'preciseCombatShapes',

@@ -70,6 +70,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "t90BurlakX": () => import('./vehicleMarkingSeatGroups/t90BurlakX.generated.ts'),
   "t90X": () => import('./vehicleMarkingSeatGroups/t90X.generated.ts'),
   "t90msX": () => import('./vehicleMarkingSeatGroups/t90msX.generated.ts'),
+  "tos1aTagil": () => import('./vehicleMarkingSeatGroups/tos1aTagil.generated.ts'),
   "type10X": () => import('./vehicleMarkingSeatGroups/type10X.generated.ts'),
   "type90X": () => import('./vehicleMarkingSeatGroups/type90X.generated.ts'),
   "type96bX": () => import('./vehicleMarkingSeatGroups/type96bX.generated.ts'),

@@ -1,3 +1,4 @@
+import { usesLauncherMuzzles, isUnguidedRocket } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Headless authoritative battle simulation.
@@ -550,7 +551,7 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
   _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
     .applyMatrix4(_turretMatrix)
     .addScaledVector(_gunDir, barrelM);
-  const launchers = shellSpec?.guided ? entity.spec.gun.launcherMuzzles : undefined;
+  const launchers = usesLauncherMuzzles(entity.spec.gun, shellSpec) ? entity.spec.gun.launcherMuzzles : undefined;
   if (launchers?.length) {
     const index = (entity.combat.launcherCursor ?? 0) % launchers.length;
     const tip = launchers[index]!;
@@ -1406,8 +1407,8 @@ export function createAuthoritativeMatch({
       shellSlot: firedSlot,
       shellType: shellSpec.type,
       shellName: shellSpec.name,
-      muzzleIndex: shellSpec.guided && entity.spec.gun.launcherMuzzles?.length
-        ? ((entity.combat.launcherCursor ?? 1) - 1) % entity.spec.gun.launcherMuzzles.length : -1,
+      muzzleIndex: usesLauncherMuzzles(entity.spec.gun, shellSpec)
+        ? ((entity.combat.launcherCursor ?? 1) - 1) % entity.spec.gun.launcherMuzzles!.length : -1,
       weaponSound: shellSpec.soundProfile || entity.spec.gun.soundProfile || null,
       caliberMm: shellSpec.caliberMm,
       velocityMps: shellSpec.velocityMps,
@@ -1431,7 +1432,8 @@ export function createAuthoritativeMatch({
     const firedSlot = combat.shellSlot;
     if (!consumeAmmunition(combat, firedSlot)) return;
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
-    if (shellSpec.guided && entity.spec.gun.launcherMuzzles?.length) {
+    shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
+    if (usesLauncherMuzzles(entity.spec.gun, shellSpec)) {
       combat.launcherCursor = (combat.launcherCursor ?? 0) + 1;
     }
     // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel

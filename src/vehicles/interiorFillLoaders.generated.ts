@@ -69,6 +69,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "t90BurlakX": () => import('./interiorFillGroups/t90BurlakX.generated.ts'),
   "t90X": () => import('./interiorFillGroups/t90X.generated.ts'),
   "t90msX": () => import('./interiorFillGroups/t90msX.generated.ts'),
+  "tos1aTagil": () => import('./interiorFillGroups/tos1aTagil.generated.ts'),
   "type10X": () => import('./interiorFillGroups/type10X.generated.ts'),
   "type90X": () => import('./interiorFillGroups/type90X.generated.ts'),
   "type96bX": () => import('./interiorFillGroups/type96bX.generated.ts'),

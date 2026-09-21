@@ -9,7 +9,7 @@ import {readConceptDesign} from './first-party-concept-record.mjs';
 import {assertConceptDatums,assertConceptWeapons} from './first-party-concept-datums.mjs';
 const oldPath='docs/references/concepts/missile-turrets-20260919.json';
 const typePath='docs/references/concepts/type100-ifv-20260919.json';
-assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['ztz100_prototype','object695_x','type100']);
+assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['tos1a_tagil','ztz100_prototype','object695_x','type100']);
 assert.equal(conceptDesignPath('ztz100_prototype'),oldPath);
 assert.equal(conceptDesignPath('object695_x'),oldPath);
 assert.equal(conceptDesignPath('type100'),typePath);
@@ -34,9 +34,9 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
     assert.equal(conceptDocumentPassed(id,{...record,...patch}),false,'exact document authority remains fail-closed');
   assert.throws(()=>assertNoConceptReferences({[id]:{source:'glb'}}),/retired comparison/);
   assertNoConceptReferences({[id]:{source:'procedural'}});
-  assert.equal(roofEquipmentVerdict(id,{mg:0,invalidWeaponMarkers:0},undefined).passed,true);
+  assert.equal(roofEquipmentVerdict(id,{mg:design.roofMachineGuns,invalidWeaponMarkers:0},undefined).passed,true);
   assert.equal(roofEquipmentVerdict(id,{mg:0,invalidWeaponMarkers:0},{id}).passed,false,'obsolete source grant cannot win');
-  for(const census of [null,{}, {mg:0,invalidWeaponMarkers:1},{mg:1,invalidWeaponMarkers:0},{mg:NaN,invalidWeaponMarkers:0}]) {
+  for(const census of [null,{}, {mg:0,invalidWeaponMarkers:1},{mg:design.roofMachineGuns+1,invalidWeaponMarkers:0},{mg:NaN,invalidWeaponMarkers:0}]) {
     assert.equal(conceptEquipmentVerdict(id,census).passed,false,'exact census stays physical');
   }
   assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:0}}).passed,true);
@@ -60,6 +60,17 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
     gunElevationDeg:design.pitchDeg[1],gunDepressionDeg:-design.pitchDeg[0],
     gun:{shells:[{caliberMm:design.mainCaliberMm??design.backupCaliberMm,count:180},
       {guided:true,launcherTubes:design.cells,count:design.guidedAmmoTotal??12}]}};
+  if (design.weaponSystem === 'unguided-rocket-battery') {
+    const shell={type:'HE',caliberMm:220,count:72,launcherTubes:24};
+    spec.gun={shells:[shell],fixedLaunchCanisters:true,launcherMuzzles:Array.from({length:24},(_,i)=>({x:i,y:0,z:2.6})),autoloader:{magazineSize:24,intraClipS:.25,fullReloadS:48}};
+    assertConceptDatums(spec,design);
+    for(const patch of [{guided:true},{count:73},{launcherTubes:23},{type:'AP'},{caliberMm:125}])
+      assert.throws(()=>assertConceptWeapons([{...shell,...patch}],design));
+    assert.throws(()=>assertConceptWeapons([],design));
+    assert.throws(()=>assertConceptDatums({...spec,gun:{...spec.gun,launcherMuzzles:Array(24).fill({x:0,y:0,z:2.6})}},design));
+    assert.throws(()=>assertConceptDatums({...spec,gun:{...spec.gun,autoloader:{magazineSize:24,intraClipS:.20,fullReloadS:48}}},design));
+    continue;
+  }
   assertConceptWeapons(spec.gun.shells,design);
   for(const shells of [[],[{caliberMm:125},spec.gun.shells[1]], [spec.gun.shells[0]],
     [spec.gun.shells[0],{...spec.gun.shells[1],launcherTubes:design.cells+1}]])

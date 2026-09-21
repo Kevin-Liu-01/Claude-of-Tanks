@@ -43,6 +43,9 @@ export interface ModuleBox {
   min: Vec3Tuple;
   max: Vec3Tuple;
   turretLocal: boolean;
+  /** Turret-rest coordinates pitched about armor.gunPivot with the gun cradle. */
+  gunFollow?: boolean;
+  external?: boolean;
 }
 
 export interface CrewBox {
@@ -76,7 +79,8 @@ export interface ArmorEnvelope {
   turretless?: boolean;
   turretPivot: MutableVec3Tuple;
   gunPivot: MutableVec3Tuple;
-  gunBarrel: { lengthM: number; radiusM: number };
+  /** collision:false retains pose/template datums without an invented center barrel. */
+  gunBarrel: { lengthM: number; radiusM: number; collision?: boolean };
   hullPlates: ArmorPlate[];
   turretPlates: ArmorPlate[];
   modules: ModuleBox[];

@@ -299,7 +299,8 @@ await withIsolatedCaptureBrowser({
           let gap = 0;
           for (const shape of calibration?.moduleShapes || []) {
             const actual = (armor.modules || []).find((entry) =>
-              entry.module === shape.module && !!entry.turretLocal === !!shape.turretLocal);
+              entry.module === shape.module && !!entry.turretLocal === !!shape.turretLocal
+              && !!entry.gunFollow === !!shape.gunFollow);
             if (!actual || !Array.isArray(actual.parts) || actual.parts.length !== shape.parts.length) {
               return Infinity;
             }
