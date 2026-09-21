@@ -1,12 +1,11 @@
-// First-party source-measured Epokha turret shared by the two authorized
-// Kurganets-family builds. Coordinates are relative to the measured ring;
-// each hull supplies its own ring position. No hull or running gear is built.
+// First-party source-measured Kurganets-25 Epokha turret. Coordinates are
+// relative to its measured ring. No hull or running gear is built here.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { openTube } from './europeSourcePrimitives.ts';
-const { box, cylY, cylZ } = KIT;
+const { box, cylX, cylY, cylZ } = KIT;
 function localTurret(P: TankBuilderPort, bucket: string, geometry: THREE.BufferGeometry, worldX: number, worldY: number, worldZ: number, rx = 0, ry = 0, rz = 0): void {
     const pivot = { x: 0, y: 2.21, z: -1.27 };
     P.addEquipment(bucket, geometry, worldX - pivot.x, worldY - pivot.y, worldZ - pivot.z, rx, ry, rz);
@@ -131,13 +130,42 @@ function addKurganetsTurret(P: TankBuilderPort): void {
             [-roofHalf, roof - pivot.y], [-half, low + .18 - pivot.y],
         ],
     });
-    P.add('turret', sectionSolid([
+    const rear = [
         local(-2.96, 1.06, .91, 2.58, 2.96),
         local(-2.50, 1.13, 1.02, 2.49, 3.07),
         local(-1.75, 1.13, .98, 2.45, 3.07),
+        local(-1.20, 1.06058, .83049, 2.45, 3.04864),
+    ];
+    // The approved source has an open-topped receiver recess with a solid
+    // floor at 2.71465 m. Lofting a roof straight across it buried the gun.
+    // Keep the side cheeks and close the channel walls/floor in the hit shell.
+    const nose = [
+        rear[rear.length - 1],
         local(-.72, 1.00, .70, 2.45, 3.03),
         local(-.20, .64, .39, 2.53, 2.89),
-    ]));
+    ].map(section => ({ z: section.z, ring: [
+        ...section.ring.slice(0, 4),
+        [.24, section.ring[3][1]], [.24, 2.71465 - pivot.y],
+        [-.24, 2.71465 - pivot.y], [-.24, section.ring[3][1]],
+        ...section.ring.slice(4),
+    ] as const }));
+    const joinZ = rear[rear.length - 1].z;
+    const openJoin = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
+        const p = geometry.getAttribute('position'), indices: number[] = [];
+        for (let i = 0; i < p.count; i += 3) {
+            if ([0, 1, 2].every(k => Math.abs(p.getZ(i + k) - joinZ) < 1e-6)) continue;
+            indices.push(i, i + 1, i + 2);
+        }
+        geometry.setIndex(indices);
+        return geometry;
+    };
+    // The lofts meet without doubled internal caps; only the exposed rear
+    // wall of the recess remains at the join.
+    P.add('turret', openJoin(sectionSolid(rear)));
+    P.add('turret', openJoin(sectionSolid(nose)));
+    const recessHeight = 3.04864 - 2.71465;
+    P.add('turret', new THREE.PlaneGeometry(.48, recessHeight), 0,
+        2.71465 - pivot.y + recessHeight / 2, joinZ);
     P.add('turret', cylY(1.01, 1.01, .25, P.q ? 36 : 20), 0, .17, 0);
     addKurganetsTurretSides(P);
     addKurganetsOpticalCase(P);
@@ -212,8 +240,22 @@ function addKurganetsRoofMasts(P: TankBuilderPort): void {
 }
 function addKurganetsGun(P: TankBuilderPort): void {
     const gunLength = 1.537;
-    P.addGunExtra(box(.14, .16, .30), 0, 0, .06);
-    openTube(P, .0395, .18, gunLength);
+    // Source Object_31: .2366 m receiver, raised .2694 m cover and a
+    // .1037 m collar around the compact 57 mm tube. Analytic closed stock,
+    // with the mantlet pitching independently of the recoiling barrel.
+    P.addGunExtra(sectionSolid([
+        { z: -.429, ring: [[-.1183,-.0782],[.1183,-.0782],[.1183,.052],[.09,.082],[-.09,.082],[-.1183,.052]] },
+        { z: .025, ring: [[-.1183,-.0782],[.1183,-.0782],[.1183,.052],[.09,.082],[-.09,.082],[-.1183,.052]] },
+        { z: .18, ring: [[-.066,-.065],[.066,-.065],[.066,.04],[.048,.067],[-.048,.067],[-.066,.04]] },
+    ]));
+    P.addGunExtra(box(.2694, .0771, .2466), .0083, .12085, -.0902);
+    // Trunnions engage the cheeks across the recess, with feet seated in its
+    // floor. No detached cover or floating bearing at legal elevations.
+    P.addGunExtra(cylX(.105, .52, P.q ? 24 : 14), 0, 0, 0);
+    for (const side of [-1, 1]) {
+        localTurret(P, 'turretDetail', box(.07, .30, .23), -.004 + side * .25, 2.85465, -.68);
+    }
+    openTube(P, .0395, .08, gunLength, .0285);
     P.add('gun', cylZ(.052, .25, P.q ? 24 : 12), 0, 0, .30);
     // The source has a small offset coaxial receiver/barrel on the right.
     // It follows gun pitch, independently of the main cannon's recoil.

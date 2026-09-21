@@ -9,7 +9,7 @@ import { createTankState } from '../../sim/movement.ts';
 // frame. These also cross real tube/cradle receiving sections; an empty
 // named mount or a parent-only assertion cannot satisfy the test.
 const cases = [
-  { id:'kurganets25_x', origin:[0,.3,.12], direction:[0,-1,0], planeAxis:1, plane:.08, seatZ:.19,
+  { id:'kurganets25_x', origin:[0,.3,-.12], direction:[0,-1,0], planeAxis:1, plane:.1594, seatZ:.12,
     dark:{origin:[1.1,.022,-.70],direction:[-1,0,0]} },
   { id:'fv510_milan_x', origin:[.18,.10,.6], direction:[0,0,-1], planeAxis:2,
     plane:.04+(.26+Math.sin(-.09)*.10)/Math.cos(-.09), seatZ:.20 },

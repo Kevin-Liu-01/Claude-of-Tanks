@@ -1,5 +1,13 @@
 # Kurganets-25 source study
 
+## Current gun correction — 2026-09-21
+
+This vehicle is already published. The owner-requested mantlet/autocannon
+correction restores the receiver recess that the former roof loft covered.
+The compact 57 mm source configuration, gun axis, muzzle, hull and running
+gear are retained. See the [gun correction and verification record](../../research/kurganets-gun-mantlet-20260921.md).
+Earlier draft/pending statements below describe their dated work rounds.
+
 ## Current integrated status — 2026-09-18
 
 Implemented draft; final qualification and publication are pending. The owner

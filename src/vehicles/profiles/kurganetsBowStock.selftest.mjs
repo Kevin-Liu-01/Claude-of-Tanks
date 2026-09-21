@@ -220,14 +220,16 @@ function clearance(b, intrude = false) {
 }
 // Authenticated pre-correction stock receipts; private before/after construction
 // compares the same expanded stock and actual gear in both quality levels.
+// Non-hull stock refreshed for the authorized 2026-09-21 gun/recess correction;
+// the original aft-hull and running-gear receipts remain exact.
 const originalStock = {
     "high": {
-        "unchanged": "7eb883d6a49cff9691f331afe3afaefbbf9cbac214831656cb0cf6108c6a29e9",
+        "unchanged": "d43ff27403d444b5d2c889fe2a350775ec6c31153f144c5f05125a4350aa8ba4",
         "aft": "5a76805eec7e78ee11be9e7561920cc0c14e462ab56ae093c63eec8500f63f97",
         "gear": "48badbb3b5ef75574968e9d6cff466d3c0ceee80709ed457f9348a5659d922af"
     },
     "low": {
-        "unchanged": "2cd090e978ca66afe8879b2cedce900f89dae8250ead197864b042cd2953d4b1",
+        "unchanged": "076787992f85fbe81fec310ced65fb420bf09a463a6321a96e1fcfa205bd718e",
         "aft": "5a76805eec7e78ee11be9e7561920cc0c14e462ab56ae093c63eec8500f63f97",
         "gear": "20e82eee2d923305378bc312db050a4da34d902f3d28ad4e6c1b949de7371a88"
     }
