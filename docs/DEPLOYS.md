@@ -81,3 +81,4 @@ quickest proof that the live site is the gate build.
 | 47 | 2026-09-21 00:47 | e3ad8b6a1 | Vehicle wakes replace the water rings, and tank shadows are grounded | main-CZc5ZQWx.js | claude-of-tanks-2qk7tqqhp |
 | 48 | 2026-09-21 03:21 | 4655e21cc | Structures are floors, rocket jump and desktop keybinds; tank paints become selectable camos with national schemes | main-D1Ifdjb3.js | claude-of-tanks-8s4cbgmnd |
 | 49 | 2026-09-21 04:15 | e3fc71582 | Every horizon ring keeps its texture past the rim, and Redrock loses its dark band | main-BbEtjO2P.js | claude-of-tanks-lj8oxh8iy |
+| 50 | 2026-09-21 16:45 | cd7164da8 | Turretless tanks aim as one sight, Turbo Ball shows unlimited rounds, camo Factory returns with a deduplicated catalog, night horizons stop glowing, Redrock's outland gets rocks | main-CxECc2CL.js | claude-of-tanks-lag2owsbf |
