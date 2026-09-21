@@ -7,7 +7,12 @@
  * mates can physically right the vehicle before assisted recovery begins.
  */
 
-export const ROLLOVER_AUTO_RIGHT_S = 15;
+/**
+ * Bots right themselves after this long on their side or roof (owner 2026-09-20: "bots should automatically right
+ * themselves after like 5 seconds being upside down"; 15 s until then). Only bots run the lifecycle — a player
+ * keeps the self-right key.
+ */
+export const ROLLOVER_AUTO_RIGHT_S = 5;
 export const SELF_RIGHT_LAUNCH_MPS = 2.8;
 export const SELF_RIGHT_ANGULAR_MPS = 2.05;
 

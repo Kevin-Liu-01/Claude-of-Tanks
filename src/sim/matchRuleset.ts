@@ -50,9 +50,10 @@ export interface HordeRules {
  * (game/teamArrangement.ts readMarsSettings) and carried by rooms through the lobby arrangement.
  */
 export const MARS_GRAVITY_OPTIONS = Object.freeze({
-  mars: Object.freeze({ gravityScale: 0.38, jumpMps: 6.5, recoilLaunchScale: 3 }),
-  moon: Object.freeze({ gravityScale: 0.17, jumpMps: 8.5, recoilLaunchScale: 4.5 }),
-  earth: Object.freeze({ gravityScale: 1, jumpMps: 4, recoilLaunchScale: 1.5 }),
+  // round 30 (owner 2026-09-20): the jump is a rocket boost — about 1.45x the 2026-09-18 launches
+  mars: Object.freeze({ gravityScale: 0.38, jumpMps: 9.5, recoilLaunchScale: 3 }),
+  moon: Object.freeze({ gravityScale: 0.17, jumpMps: 12.5, recoilLaunchScale: 4.5 }),
+  earth: Object.freeze({ gravityScale: 1, jumpMps: 6, recoilLaunchScale: 1.5 }),
 });
 export type MarsGravityId = keyof typeof MARS_GRAVITY_OPTIONS;
 export const MARS_GRAVITY_IDS: readonly MarsGravityId[] = Object.freeze(Object.keys(MARS_GRAVITY_OPTIONS) as MarsGravityId[]);
@@ -203,7 +204,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   turbo_ball: Object.freeze({
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
-    criticalDamage: false, jumpMps: 9, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
+    criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
   }),
   // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
   // fourteen hostile identities on the far side drawn afresh every wave (five on the first wave,
@@ -226,7 +227,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // twelve-minute clock; the boost caches are the mode controller's.
   mars: Object.freeze({
     ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
-    reloadScale: 0.9, jumpMps: 6.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
+    reloadScale: 0.9, jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
   }),
 });
 

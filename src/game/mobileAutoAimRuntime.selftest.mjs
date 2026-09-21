@@ -74,7 +74,10 @@ assert.equal(runtime.targetId, null, 'leaving battle clears the retained target'
 touch = false;
 phase = 'battle';
 bus.emit('ui:autoAimToggle', {});
-assert.equal(runtime.targetId, null, 'desktop input cannot acquire mobile auto-aim');
+assert.equal(runtime.targetId, enemy.id, 'round 30 (owner 2026-09-20): the desktop T key acquires the same lock — the layout no longer gates it');
+bus.emit('ui:autoAimToggle', {});
+assert.equal(runtime.targetId, null, 'a second press releases it');
+assert.equal(states.at(-1).reason, 'AUTO-AIM OFF');
 
 runtime.dispose();
 touch = true;

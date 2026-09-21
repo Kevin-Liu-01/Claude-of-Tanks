@@ -1546,6 +1546,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-jump{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:150px;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.28);border-radius:6px;background:rgba(10,12,14,.55);color:#e8e6df;font:600 12px/1 var(--hud-font,system-ui);letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
 .cot-jump.on{display:flex}
 .cot-jump .sk{padding:2px 6px;border:1px solid rgba(255,255,255,.5);border-radius:4px;font-weight:700}
+.cot-jump .si{display:inline-flex;color:#ffbe5c;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}.cot-jump .si svg{width:18px;height:18px}
 .cot-special{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:88px;transform:translateX(-50%);
   min-width:164px;min-height:42px;padding:5px 12px 5px 8px;display:none;
   grid-template-columns:24px 1fr auto;align-items:center;gap:7px;pointer-events:auto;
@@ -2265,7 +2266,8 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   // Owner (2026-09-16, Turbo Ball): the jump keycap shows only in rulesets with a jump launch.
   const jumpHint = el('div', 'cot-jump', root);
-  jumpHint.innerHTML = '<span class="sl"></span><span class="sk">F</span>';
+  // round 30 (owner 2026-09-20): a rocket marks the jump — it is a boost now, on the ground or in the air
+  jumpHint.innerHTML = `<span class="si">${uiIconSVG('rocket', 18)}</span><span class="sl"></span><span class="sk">F</span>`;
   const jumpLabel = requireElement<HTMLElement>(jumpHint, '.sl');
   const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
@@ -5843,6 +5845,10 @@ export function initHud(bus: EventBus): HudRuntime {
       conEls[i].setAttribute('aria-label', t('hud.consumable.ready', { name: CONSUMABLES[i].label }));
     }
   });
+  // round 30: the armour-overlay key confirms its state the way the auto-aim lock does
+  on('ui:armorOverlayState', ({ on }) => {
+    showAlert(t(on ? 'hud.alert.armorOverlayOn' : 'hud.alert.armorOverlayOff'), { icon: 'armorFlashlight', tone: on ? 'success' : 'info' });
+  });
   on('ui:autoAimState', ({ on, targetName, reason }) => {
     if (on) showAlert(t('hud.alert.autoAimOn', { name: String(targetName || t('hud.alert.autoAimTarget')).toUpperCase() }),
       { icon: 'autoAim', tone: 'success' });
@@ -6260,6 +6266,8 @@ export function initHud(bus: EventBus): HudRuntime {
       // separator and the three keycaps leave the shell selector instead of reading as "∞" spares.
       jumpLabel.textContent = t('hud.jump');
       jumpHint.classList.toggle('on', ruleset?.jumpMps != null);
+      // round 30: the touch layer shows its rocket button in the same rulesets
+      bus.emit('ui:jumpAvailable', { on: ruleset?.jumpMps != null });
       const noConsumables = ruleset?.consumables === false;
       // inline display: the wrapper's own display rule (contents / mobile column) would outrank [hidden]
       conSep.style.display = noConsumables ? 'none' : '';

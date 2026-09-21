@@ -13,7 +13,7 @@ import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../vehicles/materials.ts';
 import { createOpaqueLoadingYielder, type FrameSchedulerOptions } from '../engine/frameScheduler.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
-import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
+import { pushHullFromHull, hullPassesObstacleTop, pushHullFromObstacle } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';
 import { LocalAmmoSelectionIntent } from './localAmmoSelectionIntent.ts';
@@ -480,7 +480,7 @@ export function createBrowserBattleBridge<
     outPush: Vector3,
   ): void {
     for (const obstacle of predictionObstacles(frame)) {
-      if (obstacle.crushed || height > obstacle.max[1] + 0.5) continue;
+      if (obstacle.crushed || hullPassesObstacleTop(height, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       // Fast overruns are resolved by authority. Let prediction continue
       // through crushable dressing instead of visibly stopping at a fence
       // that the next snapshot is about to destroy.

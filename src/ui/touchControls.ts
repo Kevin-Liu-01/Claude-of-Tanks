@@ -87,6 +87,12 @@ const CSS = `
 .cot-touch .scope{right:134px;bottom:43px;width:62px;height:62px;color:#dce7ef;}
 .cot-touch .scope svg{width:32px;height:24px;filter:drop-shadow(0 2px 3px #000);}
 .cot-touch .autoaim{right:206px;bottom:43px;width:58px;height:58px;color:#dce7ef;}
+.cot-touch .jump{right:134px;bottom:124px;width:84px;height:84px;color:#ffbe5c;border-color:rgba(255,190,91,.5);
+  background:radial-gradient(circle at 50% 42%,rgba(255,170,60,.22),transparent 40%),
+    radial-gradient(circle at 38% 27%,rgba(96,78,48,.9),rgba(34,28,18,.97) 48%,rgba(10,10,9,.98) 76%);}
+.cot-touch .jump svg{width:40px;height:40px;filter:drop-shadow(0 2px 3px #000);}
+.cot-touch .jump .lb{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:8px;
+  font-weight:800;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
 .cot-touch .autoaim svg{width:28px;height:28px;filter:drop-shadow(0 2px 3px #000);}
 .cot-touch .autoaim.on{color:#ffd27a;border-color:#f0ad45;
   background:radial-gradient(circle at 35% 28%,rgba(120,83,28,.92),rgba(42,27,10,.96) 64%,rgba(8,7,5,.98));
@@ -230,6 +236,7 @@ body.cot-touch-layout .cot-car-arrow{width:44px;}
 const SHELL = uiIconSVG('shell', 34);
 const SCOPE = uiIconSVG('scope', 34);
 const AUTO_AIM = uiIconSVG('autoAim', 30);
+const ROCKET = uiIconSVG('rocket', 30);
 const SOUND = uiIconSVG('sound', 20);
 const SOUND_OFF = uiIconSVG('soundOff', 20);
 const GRAPHICS = uiIconSVG('graphics', 20);
@@ -400,6 +407,9 @@ export function createTouchControls({
     `<button class="round autoaim" type="button" aria-label="${t('touch.autoAimAria')}" aria-pressed="false">${AUTO_AIM}<span class="lb">${t('touch.autoAim')}</span></button>` +
     `<button class="round scope" type="button" aria-label="${t('touch.scopeAria')}">${SCOPE}<span class="lb">${t('touch.scope')}</span></button>` +
     `<button class="round fire" type="button" aria-label="${t('touch.fireAria')}">${SHELL}<span class="lb">${t('touch.fire')}</span></button>` +
+    // round 30 (owner 2026-09-20): a big rocket button for the jump in rulesets that have one — the same edge
+    // flips an overturned hull, which touch players had no way to do before
+    `<button class="round jump" type="button" aria-label="${t('touch.jumpAria')}" hidden>${ROCKET}<span class="lb">${t('touch.jump')}</span></button>` +
     `<div class="fire-cancel" aria-hidden="true"><b>&times;</b></div>`;
   document.body.appendChild(aimLayer);
   document.body.appendChild(root);
@@ -635,6 +645,17 @@ export function createTouchControls({
   });
   root.querySelector<HTMLButtonElement>('.scope')!.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation(); input.tapVirtual('sniperToggle'); bus.emit('ui:click', {});
+  });
+  // round 30: the rocket jump / flip button — pointerdown so it fires while the other thumb steers
+  const jumpButton = root.querySelector<HTMLButtonElement>('.jump')!;
+  jumpButton.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    bus.emit('ui:selfRight', {});
+    bus.emit('ui:click', {});
+  });
+  bus.on('ui:jumpAvailable', (payload) => {
+    const { on } = payload as { on?: boolean };
+    jumpButton.hidden = !on;
   });
   const autoAim = root.querySelector<HTMLButtonElement>('.autoaim')!;
   autoAim.addEventListener('pointerdown', (e) => {

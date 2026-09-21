@@ -64,6 +64,9 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
 
 interface ActionInput {
   onAction(actionId: ActionId, listener: () => void): () => void;
+  /** Round 30: the armour-overlay key flips the live setting; optional so fixtures without settings still work. */
+  getSettings?(): { armorAimOverlay: boolean };
+  setSetting?(key: 'armorAimOverlay', value: boolean): void;
 }
 
 interface NetworkActionPort {
@@ -163,6 +166,20 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   onAction('selfRight', () => {
     if (!battleInputAllowed()) return;
     bus.emit('ui:selfRight', {});
+  });
+
+  // Round 30 (owner 2026-09-20: "make auto aim a keybind in desktop mode and keybind turning on hitboxes too"):
+  // T asks the auto-aim runtime to lock (or release) the enemy nearest the reticle; H flips the armour overlay.
+  onAction('autoAim', () => {
+    if (!battleInputAllowed()) return;
+    bus.emit('ui:autoAimToggle', {});
+  });
+  onAction('hitboxOverlay', () => {
+    if (!battleInputAllowed() || !input.getSettings || !input.setSetting) return;
+    const on = !input.getSettings().armorAimOverlay;
+    input.setSetting('armorAimOverlay', on);
+    bus.emit('ui:armorOverlayState', { on });
+    bus.emit('ui:click', {});
   });
 
   for (let slot = 0; slot < 3; slot++) {

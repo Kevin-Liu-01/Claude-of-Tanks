@@ -14,6 +14,13 @@ export const DRIVE_ACCEL_PER_HPT = 0.165;
 export const GRAVITY_MPS2 = 9.81;
 const TRACKED_GRAVITY_SHARE = 0.3;
 export const TERRAIN_MARGIN_EPS = 0.01;
+/**
+ * Round 30 (owner 2026-09-20: hulls "going up walls, or sides of steep hills at high speeds"): ground rising
+ * steeper than this grade (tan 52°) is a wall for every hull whatever its power — the movement step stops against
+ * it (movement.ts cliffAhead) and the route planner never plans across it, so a bot is never sent into a face it
+ * cannot climb (the pacing receipt stranded bots when only the hull knew).
+ */
+export const CLIFF_GRADE = 1.28;
 
 const TRACK_GRIP_PER_RESISTANCE = 0.24;
 const TRACK_GRIP_MIN = 0.08;
@@ -131,6 +138,7 @@ export function terrainSlopeMargin(
   accelMult = 1,
 ): number {
   if (!Number.isFinite(signedGrade) || signedGrade === 0) return signedGrade === 0 ? 1 : 0;
+  if (signedGrade > CLIFF_GRADE) return 0; // a wall, whatever the power-to-weight says
   const pitch = Math.atan(Math.abs(signedGrade));
   return signedGrade > 0
     ? uphillDriveMargin(spec, groundType, pitch, powerMult, accelMult)
