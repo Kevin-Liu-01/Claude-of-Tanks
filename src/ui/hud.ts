@@ -12,6 +12,7 @@ import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
+import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hudConsumablePresentation.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getLocale, t } from './i18n.ts';
@@ -2397,6 +2398,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // — no box, no layout change; mobile tier re-parks it as a vertical column)
   const conBox = el('div', 'cot-cons', shellBox);
   const conEls: HTMLButtonElement[] = [];
+  const conSlots: RetainedConsumableSlot[] = [];
   const conReadyAt = [0, 0, 0];
   const conCooldownS = CONSUMABLE_RULES.map((r) => r.cooldownS);
   for (let i = 0; i < CONSUMABLES.length; i++) {
@@ -2407,6 +2409,17 @@ export function initHud(bus: EventBus): HudRuntime {
     s.setAttribute('aria-label', t('hud.consumable.ready', { name: c.label }));
     s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
       `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
+    conSlots.push(createRetainedConsumableSlot({
+      elements: {
+        button: s,
+        count: requireElement<HTMLElement>(s, '.cnt'),
+        cooldown: requireElement<HTMLElement>(s, '.cool'),
+      },
+      locale: getLocale,
+      readyMark: CONSUMABLE_READY_MARK,
+      readyLabel: () => t('hud.consumable.ready', { name: c.label }),
+      coolingLabel: (seconds) => t('hud.consumable.cooling', { name: c.label, seconds }),
+    }));
     const activateConsumable = (event: Event): void => {
       event.preventDefault();
       event.stopPropagation();
@@ -2427,24 +2440,8 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function updateConsumableCooldowns(timeS: number): void {
-    for (let i = 0; i < conEls.length; i++) {
-      const s = conEls[i];
-      const remaining = cooldownRemaining(timeS, conReadyAt[i]);
-      const cool = requireElement<HTMLElement>(s, '.cool');
-      const count = requireElement<HTMLElement>(s, '.cnt');
-      if (remaining > 0) {
-        const pct = Math.max(0, Math.min(100, remaining / conCooldownS[i] * 100));
-        cool.style.display = 'block';
-        cool.style.setProperty('--cool', `${pct.toFixed(1)}%`);
-        count.textContent = String(Math.ceil(remaining));
-        s.classList.add('cooling');
-        s.setAttribute('aria-label', t('hud.consumable.cooling', { name: CONSUMABLES[i].label, seconds: Math.ceil(remaining) }));
-      } else {
-        cool.style.display = 'none';
-        count.textContent = CONSUMABLE_READY_MARK;
-        s.classList.remove('cooling');
-        s.setAttribute('aria-label', t('hud.consumable.ready', { name: CONSUMABLES[i].label }));
-      }
+    for (let i = 0; i < conSlots.length; i++) {
+      conSlots[i].render(cooldownRemaining(timeS, conReadyAt[i]), conCooldownS[i]);
     }
   }
 
@@ -5839,10 +5836,10 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < conEls.length; i++) {
       conReadyAt[i] = 0;
       conCooldownS[i] = CONSUMABLE_RULES[i].cooldownS;
-      requireElement<HTMLElement>(conEls[i], '.cnt').textContent = CONSUMABLE_READY_MARK;
-      requireElement<HTMLElement>(conEls[i], '.cool').style.display = 'none';
-      conEls[i].classList.remove('used', 'deny', 'cooling');
-      conEls[i].setAttribute('aria-label', t('hud.consumable.ready', { name: CONSUMABLES[i].label }));
+      // Render through the retained slot so its memo cannot diverge from the
+      // tray; only the click-feedback classes are outside its ownership.
+      conSlots[i].render(0, conCooldownS[i]);
+      conEls[i].classList.remove('used', 'deny');
     }
   });
   // round 30: the armour-overlay key confirms its state the way the auto-aim lock does

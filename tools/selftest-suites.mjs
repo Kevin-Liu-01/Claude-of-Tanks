@@ -1066,6 +1066,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/settingsAccess.selftest.mjs',
     'src/ui/hudMagazine.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
+    'src/ui/hudConsumablePresentation.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/bootScreen.selftest.mjs',
