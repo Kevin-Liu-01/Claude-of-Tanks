@@ -79,3 +79,4 @@ quickest proof that the live site is the gate build.
 | 45 | 2026-09-19 20:50 | d464a813f | Trackpad pinch and scroll zoom by travel, and persistent Garage sidebars down to 900 px | main-DbMA90Uk.js | claude-of-tanks-bltb1l48q |
 | 46 | 2026-09-20 12:21 | 952a205e7 | Pinch-zoom guard installed at boot for every device, and a clean build stamp | main-ORM88aeN.js | claude-of-tanks-nnglffupl |
 | 47 | 2026-09-21 00:47 | e3ad8b6a1 | Vehicle wakes replace the water rings, and tank shadows are grounded | main-CZc5ZQWx.js | claude-of-tanks-2qk7tqqhp |
+| 48 | 2026-09-21 03:21 | 4655e21cc | Structures are floors, rocket jump and desktop keybinds; tank paints become selectable camos with national schemes | main-D1Ifdjb3.js | claude-of-tanks-8s4cbgmnd |
