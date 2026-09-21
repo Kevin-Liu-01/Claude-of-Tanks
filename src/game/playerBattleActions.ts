@@ -9,6 +9,8 @@ export interface ShellCard {
   dmg: number;
   penLabel: string;
   count: number;
+  /** round 32: the ruleset carries unlimited rounds (Turbo Ball) — the HUD prints ∞ */
+  unlimited?: boolean;
 }
 
 type ActionRules = Pick<BattleClientAccess,
@@ -59,7 +61,7 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
   timeS: number;
   player: TEntity | null;
   /** The ruleset in force (sim/matchRuleset.ts); Turbo Ball switches consumables off. */
-  ruleset?: { consumables: boolean } | null;
+  ruleset?: { consumables: boolean; ammo?: string } | null;
 }
 
 interface ActionInput {
@@ -140,8 +142,10 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   const syncShellCards = (): void => {
     const combat = game.player?.combat;
     if (!combat || !Array.isArray(combat.ammo)) return;
+    const unlimited = game.ruleset?.ammo === 'unlimited';
     for (let slot = 0; slot < shellCards.length; slot++) {
       shellCards[slot].count = Math.max(0, Math.floor(combat.ammo[slot] || 0));
+      if (unlimited) shellCards[slot].unlimited = true; // finite loadouts carry no mark (cards are rebuilt per tank)
     }
   };
 
@@ -378,6 +382,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
           dmg: shell.dmg,
           penLabel: `${Math.round(shell.pen100Mm)} mm`,
           count: rules.shellAmmunitionCapacity(shell),
+          // round 32 (owner 2026-09-21, Turbo Ball): unlimited rounds mark the card so the HUD prints ∞
+          ...(game.ruleset?.ammo === 'unlimited' ? { unlimited: true } : {}),
         });
       }
       return shellCards;

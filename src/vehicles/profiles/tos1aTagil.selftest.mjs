@@ -14,8 +14,9 @@ import {KIT} from './kit.ts';
 
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
-// Authenticated a6fa51e18 native donor before the neutral chassis extraction.
-const donorHashes={high:'79eaef6ca7c1ee36d27bc56443f06769971d0b312709d655ad759402d43a9777',low:'7653fc7a4f3662285398a4b2e102cf06e0be6d3ab20a98c8e266974a77ef1039'};
+// Authenticated a6fa51e18 native donor before the neutral chassis extraction; re-pinned 2026-09-21 for the side-station
+// end-wrap bake (the T-90MS X bands are laid about each side's own outer wheels — tankFactoryCore buildRunningGear).
+const donorHashes={high:'a14217f7f8e779f2503260cb03a5ba258118de7805953ec26e87f42cee40add2',low:'0afe55e2cf19385c0965e16db345be7387d82a6e3ceed1ac001e7d859ba7d763'};
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{

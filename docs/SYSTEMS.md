@@ -622,6 +622,15 @@ The turret solve proceeds in this order:
 The client cannot submit a hit point or barrel transform. This preserves
 authority while keeping close-range aim consistent with solo play.
 
+Fixed mounts (`armor.turretless`: casemates and the hydraulic Swedish line)
+add a hull traverse toward the sight in step 3: the same gun-origin request
+that lays the gun engages the traverse once the sight leaves the arc and
+releases it 3° inside (a hydraulic hull past its `gunArcDeg` reach window,
+released at half of it), so the fine-lay joint lands the last degrees and the
+yaw pin never flickers on the arc edge. The pin marks a limit the hull cannot
+fix — steering against the sight or immobilised tracks — and the HUD draws one
+gun-true sight for every fixed mount (round 32, owner 2026-09-21).
+
 ## Ballistics, armor, and damage
 
 src/sim/ballistics.ts advances shells and resolves candidate impacts.

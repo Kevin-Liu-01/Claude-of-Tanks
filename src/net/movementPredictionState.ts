@@ -6,7 +6,7 @@ import type { MovementContactGeometry, TankState } from '../sim/movement.ts';
 // pose alone cannot reconstruct before replaying unacknowledged movement.
 const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   '_prevSpeed', '_spool', '_fanYield', '_perch', '_gunLimitHoldS', '_swayEst',
-  'landingImpactMps'] as const;
+  'landingImpactMps', '_autoTraverse'] as const;
 const SPRING = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
 const ROCK = ['p', 'r', 'pv', 'rv'] as const;
 const TERRAIN = ['pitch', 'roll'] as const;

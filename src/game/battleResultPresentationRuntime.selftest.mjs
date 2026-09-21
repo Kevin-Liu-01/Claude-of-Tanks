@@ -140,9 +140,51 @@ revivingNull.game.player.combat.destroyed = true;
 revivingNull.runtime.update();
 assert.deepEqual(revivingNull.calls, [['unlock'], ['deathCam']], 'a null respawn timer keeps the death beat');
 
+// owner 2026-09-21 ("in respawn modes youre registered as dead even if you respawned at end ... if u die before
+// end it shows a kill cam of that end"): a revived player alive at the verdict gets the ordinary defeat
+// cinematic at once — no death replay of an earlier life
+const revivedAlive = createHarness();
+revivedAlive.game.ruleset = { respawnS: 6 };
+revivedAlive.game.player.combat.destroyed = true; // died mid-battle …
+revivedAlive.runtime.update();
+revivedAlive.game.player.combat.destroyed = false; // … and came back at spawn
+revivedAlive.game.result = 'defeat';
+revivedAlive.runtime.update();
+assert.equal(revivedAlive.plays.length, 0, 'no death replay for a player alive at the end of a reviving mode');
+assert.deepEqual(revivedAlive.calls, [
+  ['unlock'],
+  ['receipt', { played: false, result: 'defeat', timeS: 12, resultWallMs: 100, kcBeginWallMs: 80 }],
+  ['veil', false],
+  ['show', 'defeat'],
+  ['presented', 'defeat'],
+  ['release'],
+  ['deathCam'],
+], 'the ordinary defeat cinematic presents immediately');
+
+// reviving mode, dead at the verdict: the replay is asked for (the killcam holds only the last life's lethal
+// chain) and opens on the live wreck, since no mid-battle death cam ran
+const revivedDead = createHarness();
+revivedDead.game.ruleset = { respawnS: 6 };
+revivedDead.game.player.combat.destroyed = true;
+revivedDead.game.result = 'defeat';
+revivedDead.runtime.update();
+assert.equal(revivedDead.plays.length, 1, 'a player dead at the end of a reviving mode gets the death replay');
+assert.equal(revivedDead.plays[0].result, 'defeat');
+assert.deepEqual(revivedDead.plays[0].options, { freshKill: true });
+assert.deepEqual(revivedDead.calls.at(-1), ['veil', true]);
+
+// non-reviving modes are untouched: a defeat with a living player (a campaign clock running out) still asks
+// the killcam exactly as before
+const clockDefeat = createHarness();
+clockDefeat.game.ruleset = { respawnS: null };
+clockDefeat.game.result = 'defeat';
+clockDefeat.runtime.update();
+assert.equal(clockDefeat.plays.length, 1, 'a non-reviving defeat keeps its replay request');
+assert.deepEqual(clockDefeat.plays[0].options, { freshKill: false });
+
 assert.throws(
   () => createBattleResultPresentationRuntime({ deathBeatMs: -1 }),
   /requires every lifecycle port|deathBeatMs/,
 );
 
-console.log('battleResultPresentationRuntime.selftest: replay, death beat, reviving modes, verdict, and reset pass');
+console.log('battleResultPresentationRuntime.selftest: replay, death beat, reviving modes (alive at the verdict: no death replay; dead: last-life replay), verdict, and reset pass');

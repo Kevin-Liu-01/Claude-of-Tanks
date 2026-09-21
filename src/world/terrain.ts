@@ -2576,6 +2576,11 @@ void splatCompute() {
   float effDist = min(camDist, length(fwidth(wp.xz)) * 935.0);
   float df = smoothstep(45.0, 160.0, effDist);
   float farM = smoothstep(90.0, 330.0, effDist);
+  // Round 32 (owner 2026-09-21, "quality loss beyond the map borders"): the rim bands past the playable square are
+  // long flat faces seen at grazing angles, where the near detail tiles resolve into a regular moiré carpet that the
+  // relief-rich battlefield never shows. Treat the outland as far ground from 40 m past the edge: the far variant's
+  // macro variation and the mip bias take over, as they do at 330 m inside the map.
+  farM = max(farM, smoothstep(40.0, 200.0, edgeOut));
   // detail fade: positive mip bias at range kills the single-frequency
   // speckle shimmer that anisotropic filtering keeps resolving
   float mipB = farM * 2.0;

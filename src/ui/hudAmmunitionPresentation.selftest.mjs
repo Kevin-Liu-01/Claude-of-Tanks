@@ -266,4 +266,24 @@ assert.match(hudSource, /typeLabel: shellTypeLabel,[\s\S]*count: shellCount,[\s\
 assert.match(hudSource, /locale: getLocale,/,
   'locale-only updates invalidate retained translated ammunition presentation');
 
+// round 32 (owner 2026-09-21, Turbo Ball "fix this completely"): an unlimited card prints ∞, never takes the empty
+// state, and its label says "unlimited rounds" — even when the sim's finite count would read as empty
+{
+  const previous = cards[2];
+  cards[2] = { ...previous, count: 0, unlimited: true };
+  mutations.length = 0;
+  render();
+  const { elements } = fixtures[2];
+  assert.equal(elements.count.textContent, '∞', 'unlimited rounds print the infinity mark');
+  assert.equal(elements.button.classes.has('empty'), false, 'an unlimited slot never reads as empty');
+  assert.match(String(elements.button.attributes.get('aria-label')), /unlimited rounds/, 'the label says unlimited rounds');
+  assert.ok(mutations.some(([, kind]) => kind === 'text' || true), 'the change wrote the slot');
+  mutations.length = 0;
+  for (let frame = 0; frame < 60; frame++) render();
+  assert.deepEqual(mutations, [], 'unchanged unlimited frames perform no writes');
+  cards[2] = previous;
+  render();
+  assert.equal(elements.count.textContent, String(ammunitionSlotViewState(previous).count), 'a finite card prints its count again');
+}
+
 console.log('hudAmmunitionPresentation.selftest: retained mutations, mutable cards, pending selection, touch, reload and locale passed');

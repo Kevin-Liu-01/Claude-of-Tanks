@@ -12,7 +12,10 @@ import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 // end wheels drooped 11 cm). Settled on the 18 m convex round course, every end-region centreline point sits on the
 // live wheel seat circle, on the end-wheel wrap circle or on the common tangent between them; at rest the band is
 // restored byte-identical to its authored course by the garage reset.
-const IDS = ['m2a2_bradley', 't90m', 'spz_puma_s1', 'tiger1', 'leo2a6', 'kf51_x'];
+// tos1a_tagil (owner 2026-09-21, "improper wrapping … around the front road wheel and back road wheel"): a staggered
+// rig whose left wheels sit 38 mm aft of the course stations — the re-lay must find the wheel by STATION and pivot the
+// ramp about the side's own axle (relay.sideOffsetM), not the shared station where no wheel is.
+const IDS = ['m2a2_bradley', 't90m', 'spz_puma_s1', 'tiger1', 'leo2a6', 'kf51_x', 'tos1a_tagil'];
 const R = 18, SECONDS = 3;
 const heightAt = (x, z) => -(R - Math.sqrt(Math.max(0, R * R - z * z)));
 const heightField = { getHeightAt: heightAt, getGroundType: () => 'dirt',
@@ -56,9 +59,11 @@ for (const id of IDS) {
     let worst = 0, points = 0, moved = 0;
     const restCells = []; for (let i = 0; i * 24 < rest.length / 3; i++) restCells.push({ z: (rest[(i * 24 + 2) * 3 + 2] + rest[(i * 24 + 6) * 3 + 2]) / 2, y: (rest[(i * 24 + 2) * 3 + 1] + rest[(i * 24 + 6) * 3 + 1]) / 2 });
     for (const relay of relays) {
-      const w = wheels.find((x) => Math.abs(x.z - relay.wheelZ) < 1e-6);
-      assert.ok(w, `${id}: ${relay.side} outer road wheel found at z ${relay.wheelZ}`);
-      const ax = { z: relay.wheelZ, y: relay.wheelRestY + w.voff }; const end = { z: relay.endZ, y: relay.endY };
+      // this side's own station: the course station plus the side offset the builder baked (0 on unstaggered rigs)
+      const stationZ = relay.wheelZ + (relay.sideOffsetM?.left ?? 0);
+      const w = wheels.find((x) => Math.abs(x.z - stationZ) < 1e-6);
+      assert.ok(w, `${id}: ${relay.side} outer road wheel found at z ${stationZ}`);
+      const ax = { z: w.z, y: relay.wheelRestY + w.voff }; const end = { z: relay.endZ, y: relay.endY };
       const tan = lowerExternalTangent(ax.z, ax.y, relay.wheelRadius, end.z, end.y, relay.endRadius);
       const stations = relay.wheelArcIndices.length + relay.rampIndices.length + relay.endArcIndices.length;
       assert.ok(stations >= 8, `${id}: ${relay.side} end region has stations (${stations})`);
@@ -70,7 +75,7 @@ for (const id of IDS) {
       const justified = (c, exclude) => allWheels.some((o) => o !== exclude && Math.abs(Math.hypot(c.z - o.z, c.y - (o.y + o.voff)) - (o.r + th / 2)) <= 3e-3);
       for (const index of relay.wheelArcIndices) {
         const c = cells[index], r0 = restCells[index];
-        const signed = Math.hypot(c.z - ax.z, c.y - ax.y) - Math.hypot(r0.z - relay.wheelZ, r0.y - relay.wheelRestY);
+        const signed = Math.hypot(c.z - ax.z, c.y - ax.y) - Math.hypot(r0.z - stationZ, r0.y - relay.wheelRestY);
         const dev = Math.abs(signed); points++; moved = Math.max(moved, Math.hypot(c.z - r0.z, c.y - r0.y));
         // inward never; outward up to 3 mm is the contact fit clearing a live chord that dips into the tire (a rescaled
         // sweep lengthens the graded chords — 1.3 mm on the Tiger's 0.48 m seat), beyond that another tire must be there

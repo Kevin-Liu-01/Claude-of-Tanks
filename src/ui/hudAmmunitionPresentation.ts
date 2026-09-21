@@ -4,6 +4,8 @@ interface AmmunitionCard {
   dmg?: number;
   penLabel?: string | number;
   count?: number;
+  /** round 32: unlimited rounds (Turbo Ball) — the slot prints ∞ and never reads as empty */
+  unlimited?: boolean;
 }
 
 type TextNode = Pick<HTMLElement, 'textContent'>;
@@ -58,6 +60,7 @@ export function createRetainedAmmunitionSlot({
   let lastPenetration: string | number | undefined;
   let lastDamage: number | undefined;
   let lastCount: number | undefined;
+  let lastUnlimited: boolean | undefined;
   let lastSelected = false;
   let lastPending = false;
   let selectedClass: boolean | undefined;
@@ -66,7 +69,7 @@ export function createRetainedAmmunitionSlot({
   let displayedName: string | undefined;
   let displayedPenetration: string | undefined;
   let displayedDamage: string | undefined;
-  let displayedCount: number | undefined;
+  let displayedCount: string | undefined;
   let ariaPressed: string | undefined;
   let ariaBusy: string | undefined;
   let ariaLabel: string | undefined;
@@ -85,7 +88,7 @@ export function createRetainedAmmunitionSlot({
   const sameCard = (shell: AmmunitionCard, type: string): boolean => (
     type === lastType && shell.name === lastName
       && Object.is(shell.penLabel, lastPenetration) && Object.is(shell.dmg, lastDamage)
-      && Object.is(shell.count, lastCount)
+      && Object.is(shell.count, lastCount) && Object.is(shell.unlimited, lastUnlimited)
   );
 
   const sameView = (currentLocale: string, selected: boolean, pending: boolean): boolean => (
@@ -120,11 +123,13 @@ export function createRetainedAmmunitionSlot({
       displayedDamage = damage;
     }
     const rounds = count(shell);
-    if (displayedCount !== rounds) {
-      elements.count.textContent = `${rounds}`;
-      displayedCount = rounds;
+    const unlimited = shell.unlimited === true;
+    const shown = unlimited ? '∞' : `${rounds}`;
+    if (displayedCount !== shown) {
+      elements.count.textContent = shown;
+      displayedCount = shown;
     }
-    const empty = rounds <= 0;
+    const empty = !unlimited && rounds <= 0;
     if (emptyClass !== empty) {
       elements.button.classList.toggle('empty', empty);
       emptyClass = empty;
@@ -146,7 +151,7 @@ export function createRetainedAmmunitionSlot({
       ariaBusy = busy;
     }
     const label = selectionLabel(
-      shell.name || shell.type || `slot ${index + 1}`, rounds, selected, pending,
+      shell.name || shell.type || `slot ${index + 1}`, shell.unlimited === true ? Infinity : rounds, selected, pending,
     );
     if (ariaLabel !== label) {
       elements.button.setAttribute('aria-label', label);
@@ -180,6 +185,7 @@ export function createRetainedAmmunitionSlot({
       lastPenetration = shell.penLabel;
       lastDamage = shell.dmg;
       lastCount = shell.count;
+    lastUnlimited = shell.unlimited;
       lastSelected = selected;
       lastPending = pending;
     },

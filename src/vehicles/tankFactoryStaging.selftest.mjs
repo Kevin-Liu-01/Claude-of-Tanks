@@ -1,3 +1,4 @@
+// Round 32 (2026-09-21): fingerprints re-based — Factory is the nation's service pattern again (the material hash carries the camo), and the fixed-mount hulls' end wraps pivot about each side's own outer road wheels.
 // Exact geometry/material/order goldens captured from the pre-staging core.
 // This does not certify native pixels or wall-time improvements. Original
 // fingerprints stay immutable. The exact 2963f43c2 shadow-submission call is
@@ -54,7 +55,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "1eb0823a74df9f5e86a6819c03cb707f53a06dddfe6a341d3f924c6b1780cf79"
+    "sha256": "b9e7a116cd55062355dc675e8e5fcce7c4cfb3d5303bc55306e4dc205998e73f"
   },
   {
     "id": "m1a1",
@@ -95,7 +96,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "8c7fd93413a1cec6499512a59696061370f2b21d1520b18d57a32cf53855504d"
+    "sha256": "2fd9ed873269808dcf5b88ec0c31f8ab86287e985600727eabc3a1d43c2f0289"
   },
   {
     "id": "m1a1",

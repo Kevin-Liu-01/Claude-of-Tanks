@@ -30,7 +30,9 @@ fill intensity .12 and vehicle readability scale .12. No vehicle-lamp upgrade,
 geometry change or new lighting-shader optimization is part of this removal.
 Authored cloud opacities and fog density remain intact at night as well as day;
 night still applies its existing sky/light/fog/cloud colors and distant-horizon
-dimming. Winter terrain, authored map clouds and atmospheric fog are not the
+dimming. Round 32 (2026-09-21): the horizon dim reaches the vista material's absolute
+colours and its aerial-haze tint through the `uVDayDiffuse` ratio, so the far ring no longer glows pale
+under the night sky. Winter terrain, authored map clouds and atmospheric fog are not the
 removed precipitation feature.
 
 The atmosphere API is now `prepare(seed, mapId)`, `reset()` and runtime

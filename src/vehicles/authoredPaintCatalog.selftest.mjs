@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
@@ -48,12 +49,35 @@ for (const id of ALL_TANK_IDS) {
   const v = getSpec(id).visual; if (!v?.base) continue;
   const owner = AUTHORED_PAINT_ENTRIES.find((entry) => entry.sourceTankIds.includes(id));
   if (owner) { covered.add(id); continue; }
-  // otherwise a named preset carries the same recipe
-  const key = JSON.stringify([v.scheme || 'solid', v.base, v.weather, [...(v.patches || [])]]);
-  const match = [...CAMO_PATTERN_IDS].map(sharedCamoPreset).filter(Boolean)
-    .some((preset) => JSON.stringify([preset.visual.scheme, preset.visual.base, preset.visual.weather, [...preset.visual.patches]]) === key);
+  // otherwise a named preset carries the same recipe, or one within a shade of it (round 32: near-identical coats
+  // are one paint — the generator folds colours within 14/255 per channel)
+  const colours = (x) => [x.base, x.weather, ...((x.scheme || 'solid') === 'solid' ? [] : (x.patches || []))].map((c) => String(c).toLowerCase());
+  const rgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const near = (a, b) => (a.scheme || 'solid') === (b.scheme || 'solid') && colours(a).length === colours(b).length
+    && colours(a).every((c, i) => rgb(c).every((ch, k) => Math.abs(ch - rgb(colours(b)[i])[k]) <= 14));
+  const match = [...CAMO_PATTERN_IDS].map(sharedCamoPreset).filter(Boolean).some((preset) => near(preset.visual, v));
   assert.ok(match, `${id}: authored recipe is selectable somewhere in the catalog`);
   covered.add(id);
 }
 assert.ok(covered.size >= 190, `fleet coverage ${covered.size}`);
+// both i18n catalogs carry every paint label (the generator writes them) and no stale paint key survives
+{
+  const readCatalog = (name) => JSON.parse(readFileSync(fileURLToPath(new URL(`../ui/${name}`, import.meta.url)), 'utf8'));
+  for (const [name, lang] of [['i18nCatalog.en-US.json', 'en'], ['i18nCatalog.zh-CN.json', 'zh']]) {
+    const catalog = readCatalog(name);
+    const paintKeys = Object.keys(catalog).filter((key) => key.startsWith('camoPattern.paint_'));
+    assert.deepEqual(paintKeys.sort(), AUTHORED_PAINT_IDS.map((id) => `camoPattern.${id}`).sort(), `${name}: one key per authored paint`);
+    for (const entry of AUTHORED_PAINT_ENTRIES) {
+      const text = catalog[`camoPattern.${entry.id}`];
+      assert.ok(typeof text === 'string' && text.length > 1, `${name}: ${entry.id} label`);
+      if (lang === 'en') assert.equal(text, entry.label);
+      else assert.ok(/[\u4e00-\u9fff]/.test(text), `${name}: ${entry.id} is translated (${text})`);
+    }
+  }
+}
+// labels name a nation and a pattern, never a vehicle
+for (const entry of AUTHORED_PAINT_ENTRIES) {
+  assert.match(entry.label, /^(US Army|Bundeswehr|Russian|Soviet|British|French|PLA|Italian|JGSDF|Polish|ROK|Swedish|IDF|Ukrainian|Atlantean|Wehrmacht) /, entry.label);
+  assert.ok(!/ (\w+) \1$/.test(entry.label), `${entry.id}: no repeated word (${entry.label})`);
+}
 console.log(`authoredPaintCatalog.selftest: ${AUTHORED_PAINT_ENTRIES.length} generated authored paints current, labelled, tagged and wired`);

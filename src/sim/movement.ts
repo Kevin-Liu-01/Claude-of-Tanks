@@ -287,6 +287,7 @@ export interface TankState {
   _fanYield: number;
   _perch: number;
   _gunLimitHoldS: number;
+  _autoTraverse: number;
   _swayEst: number;
   _susp: RockState;
   _flinch: RockState;
@@ -750,6 +751,24 @@ const CASEMATE_ARC_DEG = 11;
 // (tau = ramp / traverse-rate ≈ 0.2 s) instead of parking a fixed error —
 // the settled gun lands ON the aim point, not a deadband short of it.
 const AUTO_TRAVERSE_RAMP_RAD = 8 * DEG2RAD;
+// round 32 (owner 2026-09-21: "playing turretless tanks is so janky and glitchy"): the hull traverse used to
+// let go the instant the sight re-entered the arc, parking the sight ON the arc edge where the yaw pin
+// (|request| > arc) re-armed on every hull/mouse wobble, and it measured the sight from the hull centre while
+// the gun lay measures from the gun origin — so the two disagreed by the parallax and the reticle sat red with
+// the gun on target. Now ONE gun-origin request drives both; an engaged traverse carries the sight this far
+// INSIDE the arc before it releases (the fine-lay joint owns the last degrees). Arcs narrower than the band
+// park at half their arc.
+const CASEMATE_TRAVERSE_SETTLE_RAD = 3 * DEG2RAD;
+// The engaged traverse eases toward a point this far PAST the release line, so the sight crosses it at a
+// finite rate and the latch actually lets go (a P-controller aimed exactly at the line only ever approaches it).
+const CASEMATE_TRAVERSE_CROSS_RAD = 0.5 * DEG2RAD;
+// Hydraulic fixed guns have no fine-lay joint: the hull IS the traverse and closes on the sight exponentially.
+// Their traverse counts as engaged past the authored gunArcDeg (the Swedish specs carry 3–4°) and released at
+// half of it — instead of the old 0.006° test that held the Strv 103 reticle red in 99% of frames.
+const HYDRAULIC_REACH_DEFAULT_DEG = 3;
+// A sight in the rear cone keeps the traverse direction it started with (the shortest way flips sign across
+// 180°, which dithered the hull left/right on a target dead astern).
+const REAR_LATCH_RAD = 165 * DEG2RAD;
 
 /** True when the rendered barrel is rigidly attached to a hydraulic hull. */
 function hasFixedHydraulicGun(spec: MovementSpec): boolean {
@@ -764,6 +783,11 @@ function gunArcRadFor(spec: MovementSpec): number {
   if (typeof spec.gunArcDeg === 'number') return spec.gunArcDeg * DEG2RAD;
   if (spec.armor && spec.armor.turretless) return CASEMATE_ARC_DEG * DEG2RAD;
   return Infinity;
+}
+
+/** Yaw window (rad) inside which a hydraulic fixed gun counts as on the sight line. */
+function hydraulicReachRad(spec: MovementSpec): number {
+  return (typeof spec.gunArcDeg === 'number' ? spec.gunArcDeg : HYDRAULIC_REACH_DEFAULT_DEG) * DEG2RAD;
 }
 
 // Module-scope scratch (no per-frame allocation, ARCHITECTURE §1.3).
@@ -1081,6 +1105,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _fanYield: 0,                  // slew-limited wheel-line yield (support solve)
     _perch: 0,                     // 0..1 single-end perch factor (spring boost)
     _gunLimitHoldS: 0,             // continuous-pin dwell for the GUN LIMIT label
+    _autoTraverse: 0,              // ±1 while a fixed-mount hull traverse is engaged toward the sight (round 32)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
@@ -1277,9 +1302,19 @@ function updateGunLimitDwell(state: TankState, labelWanted: boolean, dt: number)
   state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
 }
 
+/**
+ * round 32 (owner 2026-09-21): a fixed-mount yaw pin is a LIMIT, not a lag. The hull closes on an off-arc sight
+ * by itself and the single reticle shows the gun-true point sliding home, so the red tint is reserved for a
+ * sight the hull cannot bring in: the player steering against it, or immobilised tracks.
+ */
+function fixedMountYawPinned(state: TankState, steer: number, debuff: MovementDebuffs): boolean {
+  return state._autoTraverse !== 0 && (steer !== 0 || debuff.immobile);
+}
+
 function updateHydraulicGunLay(
   spec: MovementSpec,
   state: TankState,
+  debuff: MovementDebuffs,
   solution: GunLaySolution,
   steer: number,
   dt: number,
@@ -1289,8 +1324,14 @@ function updateHydraulicGunLay(
   const hydraulicAim = spec.hydropneumaticAim;
   const noseDown = (hydraulicAim?.noseDownDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_DOWN_DEG) * DEG2RAD;
   const noseUp = (hydraulicAim?.noseUpDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_UP_DEG) * DEG2RAD;
-  const requestedPitch = state.suspensionAimPitch + solution.gunPitch;
-  const yawPinned = Math.abs(wrapAngle(solution.turretYaw)) > 1e-4;
+  // round 32: the envelope test asks how much suspension pitch the sight NEEDS — its world elevation against
+  // the bore's world pitch (solveGunLay just left the hull pose in _hullQuat) — the same yaw-independent
+  // measure the suspension controller uses. The old hull-space gunPitch read a level sight astern of a
+  // nose-up hull as steeply UP and pinned the reticle through every turn-around.
+  _turretForwardWorld.set(0, 0, 1).applyQuaternion(_hullQuat);
+  const borePitch = Math.asin(clamp(_turretForwardWorld.y, -1, 1));
+  const requestedPitch = state.suspensionAimPitch + solution.worldPitch - borePitch;
+  const yawPinned = fixedMountYawPinned(state, steer, debuff);
   const pitchPinned = !state.suspensionAim ||
     requestedPitch < -noseDown - 1e-4 || requestedPitch > noseUp + 1e-4;
   state.atGunLimit = yawPinned || pitchPinned;
@@ -1299,10 +1340,15 @@ function updateHydraulicGunLay(
   updateGunLimitDwell(state, labelWanted, dt);
 }
 
-function clampCasemateYaw(state: TankState, requestedYaw: number, gunArc: number): boolean {
+function clampCasemateYaw(
+  state: TankState,
+  gunArc: number,
+  steer: number,
+  debuff: MovementDebuffs,
+): boolean {
   if (gunArc === Infinity) return false;
   state.turretYaw = clamp(state.turretYaw, -gunArc, gunArc);
-  return Math.abs(wrapAngle(requestedYaw)) > gunArc + 1e-4;
+  return fixedMountYawPinned(state, steer, debuff);
 }
 
 function minimumTerrainGunPitch(
@@ -1355,7 +1401,7 @@ function updateConventionalGunLay(
 ): void {
   const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
   state.turretYaw = chaseAngle(state.turretYaw, solution.turretYaw, turretRate * dt);
-  const yawPinned = clampCasemateYaw(state, solution.turretYaw, gunArc);
+  const yawPinned = clampCasemateYaw(state, gunArc, steer, debuff);
   const mechanicalLow = minimumMechanicalGunPitch(spec, state.turretYaw);
   const mechanicalHigh = spec.gunElevationDeg * DEG2RAD;
   const terrainLow = minimumTerrainGunPitch(
@@ -1405,7 +1451,7 @@ function updateGunLay(
   if (input.aimPoint && !input.aimLocked) {
     const solution = solveGunLay(spec, state, input.aimPoint, _gunLaySolution);
     if (hasFixedHydraulicGun(spec)) {
-      updateHydraulicGunLay(spec, state, solution, steer, dt);
+      updateHydraulicGunLay(spec, state, debuff, solution, steer, dt);
     } else {
       updateConventionalGunLay(spec, state, debuff, solution, hAt, gunArc, steer, dt);
     }
@@ -1557,13 +1603,16 @@ function fixedHydraulicPitchRequest(
       (gunPivot?.[1] ?? spec.dims.heightM * 0.15),
     (turretPivot?.[2] ?? 0) + (gunPivot?.[2] ?? 0),
   ).applyQuaternion(_hullQuat).add(state.pos);
-  _aimLocal.copy(aim).sub(_gunOriginWorld).applyQuaternion(_hullQuat.conjugate());
-  _hullQuat.conjugate();
-  const pitchError = Math.atan2(
-    _aimLocal.y,
-    Math.max(Math.hypot(_aimLocal.x, _aimLocal.z), 1e-6),
-  );
-  return suspensionPitch + pitchError * Math.min(1, dt * 4);
+  // round 32 (owner 2026-09-21): the error is the sight's WORLD elevation minus the bore's world pitch. The
+  // old hull-space elevation flipped sign for a sight behind the hull (a nose-up hull sees a level target
+  // above its rear axis), so every turn-around ran the suspension to its nose-up stop and pinned the reticle.
+  const dx = aim.x - _gunOriginWorld.x;
+  const dy = aim.y - _gunOriginWorld.y;
+  const dz = aim.z - _gunOriginWorld.z;
+  const sightPitch = Math.atan2(dy, Math.max(Math.hypot(dx, dz), 1e-6));
+  _turretForwardWorld.set(0, 0, 1).applyQuaternion(_hullQuat);
+  const borePitch = Math.asin(clamp(_turretForwardWorld.y, -1, 1));
+  return suspensionPitch + (sightPitch - borePitch) * Math.min(1, dt * 4);
 }
 
 function conventionalHydraulicPitchRequest(
@@ -2292,22 +2341,50 @@ function prepareDriveStep(
   return drive;
 }
 
+/**
+ * Synthesized hull steer for fixed-mount guns: when the sight lies outside the gun's yaw reach the hull turns
+ * onto it (WoT does exactly this for TDs). The request comes from the SAME gun-origin solve as the gun lay so
+ * the traverse and the reticle pin never disagree. `state._autoTraverse` carries the engaged direction with
+ * hysteresis — a casemate engages past its arc and releases once the sight is parked
+ * CASEMATE_TRAVERSE_SETTLE_RAD inside it; a hydraulic hull engages past its reach window, releases at half of
+ * it, and keeps closing to zero regardless because nothing else can lay its gun. The player's own steer always
+ * wins and an immobile hull cannot act, but both keep the flag so the pin stays truthful.
+ */
 function casemateSteerCommand(
   entity: MovementEntity,
   debuff: MovementDebuffs,
   drive: DriveStep,
   fallback: number,
 ): number {
-  const { input, state } = entity;
-  if (drive.steer !== 0 || drive.gunArc === Infinity || !input.aimPoint ||
-      input.aimLocked || debuff.immobile) return fallback;
-  const requestedYaw = wrapAngle(Math.atan2(
-    input.aimPoint.x - state.pos.x,
-    input.aimPoint.z - state.pos.z,
-  ) - state.yaw);
-  const excess = Math.abs(requestedYaw) - drive.gunArc;
-  if (excess <= 0) return fallback;
-  return clamp(excess / AUTO_TRAVERSE_RAMP_RAD, 0, 1) * Math.sign(requestedYaw);
+  const { input, spec, state } = entity;
+  if (drive.gunArc === Infinity) return fallback;
+  if (!input.aimPoint || input.aimLocked) {
+    state._autoTraverse = 0;
+    return fallback;
+  }
+  const request = solveGunLay(spec, state, input.aimPoint, _gunLaySolution).turretYaw;
+  const away = Math.abs(request);
+  const fixedGun = drive.gunArc === 0;
+  const engageAt = fixedGun ? hydraulicReachRad(spec) : drive.gunArc;
+  const releaseAt = fixedGun
+    ? engageAt * 0.5
+    : Math.max(drive.gunArc * 0.5, drive.gunArc - CASEMATE_TRAVERSE_SETTLE_RAD);
+  let engaged = state._autoTraverse;
+  if (engaged === 0) {
+    if (away > engageAt + 1e-6) engaged = request >= 0 ? 1 : -1;
+  } else if (away <= releaseAt) {
+    engaged = 0;
+  } else if (away < REAR_LATCH_RAD) {
+    engaged = request >= 0 ? 1 : -1;
+  }
+  state._autoTraverse = engaged;
+  if (drive.steer !== 0 || debuff.immobile) return fallback;
+  if (fixedGun) {
+    const towards = engaged !== 0 && away >= REAR_LATCH_RAD ? engaged : (request >= 0 ? 1 : -1);
+    return clamp(away / AUTO_TRAVERSE_RAMP_RAD, 0, 1) * towards;
+  }
+  if (engaged === 0) return fallback;
+  return clamp((away - releaseAt + CASEMATE_TRAVERSE_CROSS_RAD) / AUTO_TRAVERSE_RAMP_RAD, 0, 1) * engaged;
 }
 
 function updateHullTraverse(

@@ -120,6 +120,8 @@ interface HudShellCard {
   dmg?: number;
   penLabel?: string | number;
   count?: number;
+  /** Round 32 (owner 2026-09-21, Turbo Ball): the ruleset carries unlimited rounds — the slot shows ∞, never empties. */
+  unlimited?: boolean;
 }
 
 interface HudAimInput {
@@ -437,6 +439,7 @@ interface ReticlePaintState {
   magazineRounds: number;
   shellType: string;
   shellCount: number;
+  shellUnlimited: boolean;
   drawnR: number;
 }
 
@@ -743,16 +746,65 @@ export function reloadHudReadyPulse(wasReloading: boolean, reloading: boolean, p
 }
 
 export function ammunitionSelectionLabel(name: string, count: number, selected: boolean, pending = false): string {
-  const empty = count <= 0 ? t('hud.ammo.empty') : '';
-  if (pending && selected) return t('hud.ammo.switchingAria', { name, count, empty });
-  if (selected) return t('hud.ammo.selectedAria', { name, count, empty });
-  return t('hud.ammo.selectAria', { name, count, empty });
+  // round 32: a non-finite count is unlimited ammunition (Turbo Ball) — "unlimited rounds", never ", empty"
+  const unlimited = !Number.isFinite(count);
+  const rounds = unlimited ? t('hud.ammo.unlimited') : count;
+  const empty = !unlimited && count <= 0 ? t('hud.ammo.empty') : '';
+  if (pending && selected) return t('hud.ammo.switchingAria', { name, count: rounds, empty });
+  if (selected) return t('hud.ammo.selectedAria', { name, count: rounds, empty });
+  return t('hud.ammo.selectAria', { name, count: rounds, empty });
+}
+
+interface EdgeAnchor {
+  x: number;
+  y: number;
+}
+
+// Single-reticle gun mark that leaves the frame rides this far inside the edge.
+export const RETICLE_EDGE_MARGIN_PX = 40;
+
+/**
+ * round 32 (owner 2026-09-21: "the double reticles is really annoying"): a
+ * single-reticle vehicle has no camera cross to fall back on, so a gun mark
+ * that leaves the frame — the arcade orbit swung past the arc, or the bore
+ * behind the eye — rides the frame edge on the gun's side instead of snapping
+ * to screen centre and back (measured 833 px jumps on the Strv 103).
+ * `csX/csY` are the mark's camera-space coordinates (x right, y up); `sx/sy`
+ * its raw screen projection, valid only when `inFront`.
+ */
+export function edgeAnchorFor(
+  w: number,
+  h: number,
+  csX: number,
+  csY: number,
+  inFront: boolean,
+  sx: number,
+  sy: number,
+  margin: number,
+  out: EdgeAnchor | null = null,
+): EdgeAnchor {
+  const anchor = out || { x: 0, y: 0 };
+  const dx = inFront ? sx - w * 0.5 : csX;
+  const dy = inFront ? sy - h * 0.5 : -csY;
+  const halfW = Math.max(1, w * 0.5 - margin);
+  const halfH = Math.max(1, h * 0.5 - margin);
+  const scale = Math.max(Math.abs(dx) / halfW, Math.abs(dy) / halfH);
+  if (scale <= 1e-9) {
+    anchor.x = w * 0.5;
+    anchor.y = h * 0.5;
+    return anchor;
+  }
+  // a mark behind the eye has no pixel offset, only a side: always push it out to the margin
+  const k = !inFront || scale > 1 ? 1 / scale : 1;
+  anchor.x = w * 0.5 + dx * k;
+  anchor.y = h * 0.5 + dy * k;
+  return anchor;
 }
 
 /**
- * Resolve the sight anchor without allocating in the live HUD loop. Fixed-gun
- * hydraulic vehicles expose one gun-true sight; conventional tanks retain the
- * separate camera request and physical gun markers.
+ * Resolve the sight anchor without allocating in the live HUD loop. Fixed-mount
+ * vehicles (casemate or hydraulic) expose one gun-true sight; turreted tanks
+ * retain the separate camera request and physical gun markers.
  */
 export function resolveReticleAnchor(
   view: ReticleAnchorInput | null | undefined,
@@ -912,6 +964,7 @@ import {
 const _mInv = new THREE.Matrix4();
 const _cs = new THREE.Vector3();
 const _ndc = new THREE.Vector3();
+const _edgeAnchor: EdgeAnchor = { x: 0, y: 0 }; // single-sight frame-edge fallback (round 32)
 const _tmp = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _reticleAnchor: ReticleAnchorState = { x: 0, y: 0, single: false };
@@ -970,11 +1023,19 @@ const SHELL_DEFAULT_COUNT: Readonly<Record<string, number>> = {
 export function ammunitionSlotViewState(
   shell: HudShellCard | null | undefined,
   selected = false,
-): { count: number; empty: boolean; selected: boolean } {
+): { count: number; empty: boolean; selected: boolean; unlimited: boolean } {
   const fallback = SHELL_DEFAULT_COUNT[String(shell?.type || '')] ?? 20;
   const raw = shell?.count != null ? Number(shell.count) : fallback;
   const count = Math.max(0, Math.floor(Number.isFinite(raw) ? raw : 0));
-  return { count, empty: count <= 0, selected: !!selected };
+  // round 32: unlimited rounds (Turbo Ball) keep the loadout shape but never read as empty
+  const unlimited = shell?.unlimited === true;
+  return { count, empty: !unlimited && count <= 0, selected: !!selected, unlimited };
+}
+
+/** What the shell selector and the sniper readout print for a slot: the count, or ∞ under unlimited rounds. */
+export function ammunitionCountText(shell: HudShellCard | null | undefined): string {
+  const view = ammunitionSlotViewState(shell);
+  return view.unlimited ? '∞' : String(view.count);
 }
 
 function shellCount(shell: HudShellCard): number {
@@ -3613,7 +3674,7 @@ export function initHud(bus: EventBus): HudRuntime {
     singleReticle: false, atGunLimit: false, gunLimitSpec: false,
     selfRightLabel: null,
     zoom: 1, reloadKind: '', ammoSelectionPending: false, magazineCapacity: 0, magazineRounds: 0,
-    shellType: '', shellCount: 0, drawnR: 0,
+    shellType: '', shellCount: 0, shellUnlimited: false, drawnR: 0,
   };
   const nearPaint = (
     a: number | null,
@@ -3654,7 +3715,8 @@ export function initHud(bus: EventBus): HudRuntime {
       && reticlePaint.magazineCapacity === ((magazine?.capacity ?? 0) | 0)
       && reticlePaint.magazineRounds === ((magazine?.rounds ?? 0) | 0)
       && reticlePaint.shellType === (shell.type || '')
-      && reticlePaint.shellCount === shellCount(shell);
+      && reticlePaint.shellCount === shellCount(shell)
+      && reticlePaint.shellUnlimited === (shell.unlimited === true);
   }
   function reticleCanReuse(view: HudAimView): boolean {
     if (!reticlePaint.valid || hitDirs.length || hitMark || readyPulseT >= 0 || scopeFadeMs >= 0) return false;
@@ -3683,6 +3745,7 @@ export function initHud(bus: EventBus): HudRuntime {
     reticlePaint.magazineCapacity = (mag?.capacity ?? 0) | 0;
     reticlePaint.magazineRounds = (mag?.rounds ?? 0) | 0;
     reticlePaint.shellType = shell.type || ''; reticlePaint.shellCount = shellCount(shell);
+    reticlePaint.shellUnlimited = shell.unlimited === true;
     reticlePaint.drawnR = lastDrawnR;
   }
 
@@ -3888,7 +3951,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function paintSniperAmmoReadout(draw: ReticleDrawState): void {
     if (draw.blocked) return;
     const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
-    const count = shellCount(shell);
+    const count = ammunitionCountText(shell);
     const type = shell.type || '';
     const y = Math.min(
       draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96),
@@ -4046,9 +4109,15 @@ export function initHud(bus: EventBus): HudRuntime {
     // hud_ui r5: the marker SCALES with zoom in sniper mode — at x8 a fixed
     // 8px cross would be lost on the target's hull.
     const zs = draw.zoomScale;
-    const primaryMarkerCol = draw.single ? gunCol : cameraCol;
+    // round 32 (owner 2026-09-21): the single fixed-mount sight is the ONLY
+    // marker, so it also carries the camera cross's red "gun cannot get
+    // there" read when a limit pins it (a lag is never a limit — movement.ts
+    // fixedMountYawPinned); the grey ring still marks the unconverged lay.
+    const primaryMarkerCol = draw.single
+      ? (draw.limited ? PEN_RED : gunCol)
+      : cameraCol;
     lastCameraMarkerCol = draw.single ? null : cameraCol;
-    lastGunMarkerCol = draw.single ? gunCol : PEN_NONE;
+    lastGunMarkerCol = draw.single ? primaryMarkerCol : PEN_NONE;
     ctx.shadowBlur = 0;
     // The dotted sweep, countdown numeral and ready-pulse edge detector all
     // read the same canonical reload state.
@@ -6045,9 +6114,19 @@ export function initHud(bus: EventBus): HudRuntime {
   ): void {
     if (!camera || !aim.gunMarker?.isVector3) return;
     project(camera, aim.gunMarker.x, aim.gunMarker.y, aim.gunMarker.z);
-    if (!_sVisible) return;
-    aimView.gunX = _sx;
-    aimView.gunY = _sy;
+    if (!aim.singleReticle) {
+      // a turreted tank keeps its separate gun mark and simply drops it off-screen, as before
+      if (!_sVisible) return;
+      aimView.gunX = _sx;
+      aimView.gunY = _sy;
+      return;
+    }
+    // round 32: the single sight never leaves the frame (see edgeAnchorFor) —
+    // it slides onto the margin as soon as it crosses it and stays there,
+    // rather than travelling 200 px off-screen and snapping back.
+    edgeAnchorFor(w, h, _cs.x, _cs.y, _cs.z <= -0.3, _sx, _sy, RETICLE_EDGE_MARGIN_PX, _edgeAnchor);
+    aimView.gunX = _edgeAnchor.x;
+    aimView.gunY = _edgeAnchor.y;
   }
 
   function assembleAimView(

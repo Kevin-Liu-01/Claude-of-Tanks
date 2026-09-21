@@ -1222,4 +1222,209 @@ if (failures > 0) {
   assert(cliffAhead(terraceField, stepper.state, 3.5, 0, 1) === false, 'cliffAhead: a 2.6 m terrace lip is crossed');
 }
 
+// ------------------- 9e. fixed-mount hull traverse and yaw pin (round 32) --
+// owner 2026-09-21: "playing turretless tanks is so janky and glitchy". One
+// gun-origin request drives the hull traverse AND the gun lay; an engaged
+// traverse parks the sight inside the arc (hysteresis) so the fine-lay joint
+// lands the gun; the yaw pin is a limit the hull cannot fix — never the lag of
+// a hull that is already closing.
+{
+  const DEG = Math.PI / 180;
+  const wrapDeg = (a) => ((a + 540) % 360) - 180;
+  const field = makeField(() => 0);
+  const arcDeg = 10;
+  const casemateSpec = { ...SPEC, gunArcDeg: arcDeg, armor: { ...SPEC.armor, turretless: true } };
+  const aimAt = (ent, yawDeg, range = 150) => {
+    const a = yawDeg * DEG;
+    if (!ent.input.aimPoint) ent.input.aimPoint = new Vector3();
+    ent.input.aimPoint.set(Math.sin(a) * range, 1.8, Math.cos(a) * range);
+  };
+  const requestDeg = (ent) => wrapDeg(Math.atan2(
+    ent.input.aimPoint.x - ent.state.pos.x,
+    ent.input.aimPoint.z - ent.state.pos.z,
+  ) / DEG - ent.state.yaw / DEG);
+  const boreErrorDeg = (ent) => {
+    const pose = gunPoseWorld(ent.state);
+    return pose.direction.angleTo(ent.input.aimPoint.clone().sub(pose.origin).normalize()) / DEG;
+  };
+  // Step `ticks` times; `before(i)` may move the sight first. Reports pin
+  // toggles/ticks, worst per-tick hull and gun yaw steps, yawRate sign flips
+  // and the largest hull-relative request seen.
+  const watch = (ent, ticks, before = null) => {
+    const w = { toggles: 0, pinnedTicks: 0, maxHullStep: 0, maxTurretStep: 0, yawRateFlips: 0, maxRequest: 0, latchChanges: 0 };
+    let prevPin = ent.state.atGunLimit, prevYaw = ent.state.yaw, prevTurret = ent.state.turretYaw;
+    let prevRate = ent.state.yawRate, prevLatch = ent.state._autoTraverse;
+    for (let i = 0; i < ticks; i++) {
+      if (before) before(i);
+      updateTank(ent, field, SIM_DT);
+      const s = ent.state;
+      if (s.atGunLimit !== prevPin) { w.toggles++; prevPin = s.atGunLimit; }
+      if (s._autoTraverse !== prevLatch) { w.latchChanges++; prevLatch = s._autoTraverse; }
+      if (s.atGunLimit) w.pinnedTicks++;
+      w.maxHullStep = Math.max(w.maxHullStep, Math.abs(wrapDeg((s.yaw - prevYaw) / DEG)));
+      w.maxTurretStep = Math.max(w.maxTurretStep, Math.abs((s.turretYaw - prevTurret) / DEG));
+      if (Math.abs(s.yawRate) > 0.05 && Math.abs(prevRate) > 0.05 &&
+          Math.sign(s.yawRate) !== Math.sign(prevRate)) w.yawRateFlips++;
+      w.maxRequest = Math.max(w.maxRequest, Math.abs(requestDeg(ent)));
+      prevYaw = s.yaw; prevTurret = s.turretYaw; prevRate = s.yawRate;
+    }
+    return w;
+  };
+  const hullStepCap = SPEC.hullTraverseDegS * SIM_DT + 1e-9;
+  const turretStepCap = SPEC.turretTraverseDegS * SIM_DT + 1e-9;
+
+  // (1) a sight inside the arc: the fine-lay joint alone lands it, the hull never moves, no pin
+  const inside = makeEntity(field, 0, 0, 0, casemateSpec);
+  aimAt(inside, 6);
+  const insideWatch = watch(inside, 240);
+  near(inside.state.yaw, 0, 1e-9, 'casemate: a sight inside the arc never turns the hull');
+  assert(insideWatch.pinnedTicks === 0 && inside.state._autoTraverse === 0,
+    'casemate: a sight inside the arc is neither pinned nor engaged');
+  assert(boreErrorDeg(inside) < 0.01,
+    `casemate: the fine-lay joint lands on an in-arc sight (${boreErrorDeg(inside).toFixed(4)} deg)`);
+
+  // (2) a sight just past the arc: the hull carries it inside and lets go; a closing hull is never a limit
+  const edge = makeEntity(field, 0, 0, 0, casemateSpec);
+  aimAt(edge, arcDeg + 2);
+  const edgeWatch = watch(edge, 600);
+  assert(edgeWatch.pinnedTicks === 0,
+    `casemate: the yaw pin never fires while the hull is closing on the sight (${edgeWatch.pinnedTicks} pinned ticks)`);
+  assert(edgeWatch.latchChanges === 2,
+    `casemate: the traverse engages once and releases once (${edgeWatch.latchChanges} latch changes)`);
+  assert(edge.state._autoTraverse === 0, 'casemate: the settled traverse is released');
+  const parked = requestDeg(edge);
+  assert(parked > 0.5 && parked < arcDeg - 2,
+    `casemate: the traverse parks the sight inside the arc (${parked.toFixed(2)} deg of ${arcDeg})`);
+  assert(boreErrorDeg(edge) < 0.05,
+    `casemate: the gun lands on the sight after the traverse (${boreErrorDeg(edge).toFixed(4)} deg)`);
+  assert(edgeWatch.maxHullStep <= hullStepCap,
+    `casemate: the hull never yaws faster than its traverse rate (${edgeWatch.maxHullStep.toFixed(3)} deg/tick)`);
+  assert(edgeWatch.maxTurretStep <= turretStepCap,
+    `casemate: the gun never yaws faster than its traverse rate (${edgeWatch.maxTurretStep.toFixed(3)} deg/tick)`);
+
+  // (2b) the player steers AGAINST an off-arc sight: that is a limit — pinned every tick; releasing the steer
+  // lets the hull close and the pin clears exactly once
+  const fought = makeEntity(field, 0, 0, 0, casemateSpec);
+  aimAt(fought, arcDeg + 2);
+  fought.input.steer = -1;
+  const foughtWatch = watch(fought, 120);
+  assert(foughtWatch.pinnedTicks === 120,
+    `casemate: steering against an off-arc sight pins the gun (${foughtWatch.pinnedTicks}/120 ticks)`);
+  fought.input.steer = 0;
+  const releasedWatch = watch(fought, 900);
+  assert(releasedWatch.toggles === 1 && !fought.state.atGunLimit,
+    `casemate: releasing the steer clears the pin once and for all (${releasedWatch.toggles} toggles, pinned=${fought.state.atGunLimit})`);
+  assert(boreErrorDeg(fought) < 0.05, 'casemate: the gun lands on the sight once the hull may close');
+
+  // (2c) immobilised tracks: the hull cannot help, so the off-arc sight stays pinned and the hull stays put
+  const immobile = makeEntity(field, 0, 0, 0, casemateSpec);
+  immobile.combat = { modules: { trackL: { state: 'red' } } };
+  aimAt(immobile, arcDeg + 2);
+  const immobileWatch = watch(immobile, 120);
+  assert(immobileWatch.pinnedTicks === 120, 'casemate: an immobile hull pins an off-arc sight');
+  near(immobile.state.yaw, 0, 1e-9, 'casemate: an immobile hull does not auto-traverse');
+
+  // (3) a slow pan out across the arc edge (6 deg/s): the hull nudges along, no pin, the sight never runs away
+  const pan = makeEntity(field, 0, 0, 0, casemateSpec);
+  aimAt(pan, 4);
+  const panWatch = watch(pan, 180, (i) => aimAt(pan, 4 + i * 0.1));
+  assert(panWatch.pinnedTicks === 0, `casemate: a slow pan across the arc edge never pins (${panWatch.pinnedTicks} ticks)`);
+  assert(pan.state.yaw > 5 * DEG, 'casemate: the hull followed the pan');
+  assert(panWatch.maxRequest < arcDeg + 1,
+    `casemate: the hull keeps the panned sight within reach (${panWatch.maxRequest.toFixed(2)} deg max request)`);
+  assert(Math.abs(pan.state.turretYaw) <= arcDeg * DEG + 1e-9, 'casemate: the gun never exceeds its arc');
+
+  // (4) a sight dead astern that wobbles across 180 deg: the hull keeps the way it started (no dithering)
+  const astern = makeEntity(field, 0, 0, 0, casemateSpec);
+  aimAt(astern, 179);
+  const asternWatch = watch(astern, 160, (i) => (i < 40 ? aimAt(astern, 180 + (i % 2 ? 1.5 : -1.5)) : aimAt(astern, 179)));
+  assert(asternWatch.yawRateFlips === 0, `casemate: a wobbling stern sight never dithers the hull (${asternWatch.yawRateFlips} flips)`);
+  assert(Math.abs(astern.state.yaw) > 30 * DEG, 'casemate: the hull makes progress toward the stern sight');
+  watch(astern, 900);
+  assert(!astern.state.atGunLimit && boreErrorDeg(astern) < 0.05,
+    `casemate: the stern sight is reached and unpinned (${boreErrorDeg(astern).toFixed(4)} deg)`);
+
+  // (5) origin parity: a gun mounted 3 m ahead of the hull centre aimed 9 m away — the traverse and the gun lay
+  // read the same gun-origin request, so the hull parks where the gun can actually land (the old hull-centre
+  // traverse parked the target 4.9 deg outside the bore's reach and left the reticle red for good)
+  const longNoseSpec = { ...casemateSpec, armor: { ...casemateSpec.armor, gunPivot: [0, 0.25, 3.0] } };
+  const longNose = makeEntity(field, 0, 0, 0, longNoseSpec);
+  aimAt(longNose, 30, 9);
+  const longNoseWatch = watch(longNose, 600);
+  const longNosePose = (() => {
+    const hull = new Quaternion().setFromEuler(new Euler(-longNose.state.visualPitch, longNose.state.yaw, longNose.state.visualRoll, 'YXZ'));
+    const origin = new Vector3(...longNoseSpec.armor.gunPivot).applyAxisAngle(new Vector3(0, 1, 0), longNose.state.turretYaw)
+      .add(new Vector3(...SPEC.armor.turretPivot)).applyQuaternion(hull).add(longNose.state.pos);
+    const direction = new Vector3(Math.sin(longNose.state.turretYaw) * Math.cos(longNose.state.gunPitch), Math.sin(longNose.state.gunPitch),
+      Math.cos(longNose.state.turretYaw) * Math.cos(longNose.state.gunPitch)).applyQuaternion(hull).normalize();
+    return direction.angleTo(longNose.input.aimPoint.clone().sub(origin).normalize()) / DEG;
+  })();
+  assert(longNoseWatch.pinnedTicks === 0 && longNose.state._autoTraverse === 0,
+    'casemate: a close sight seen from a forward gun origin settles unpinned and released');
+  assert(longNosePose < 0.1,
+    `casemate: the forward-mounted gun lands on the close sight (${longNosePose.toFixed(3)} deg bore error)`);
+
+  // (6) hydraulic fixed gun: the hull IS the traverse — closing is never a limit; steering against it is
+  const hydraulicSpec = {
+    ...SPEC, gunArcDeg: 4,
+    hydropneumaticAim: { noseDownDeg: 6, noseUpDeg: 8, rateDegS: 5 },
+    armor: { ...SPEC.armor, turretless: true },
+  };
+  const swede = makeEntity(field, 0, 0, 0, hydraulicSpec);
+  swede.state.suspensionAim = true;
+  aimAt(swede, 30);
+  const swedeWatch = watch(swede, 600);
+  assert(swedeWatch.pinnedTicks === 0,
+    `hydraulic: a hull closing on the sight is never pinned (${swedeWatch.pinnedTicks} ticks)`);
+  assert(swedeWatch.latchChanges === 2 && swede.state._autoTraverse === 0,
+    `hydraulic: the traverse engages past the reach window and releases once inside (${swedeWatch.latchChanges} changes)`);
+  // (the pivot-style turn walks the hull ~0.6 m sideways, so judge the bore against the sight, not a fixed yaw)
+  assert(boreErrorDeg(swede) < 0.15,
+    `hydraulic: the hull lands on the sight line (${boreErrorDeg(swede).toFixed(3)} deg bore error)`);
+  assert(swedeWatch.maxHullStep <= hullStepCap, 'hydraulic: the hull never exceeds its traverse rate');
+  const swedeTrack = makeEntity(field, 0, 0, 0, hydraulicSpec);
+  swedeTrack.state.suspensionAim = true;
+  aimAt(swedeTrack, 0);
+  const trackWatch = watch(swedeTrack, 180, (i) => aimAt(swedeTrack, i * (2 / 60)));
+  assert(trackWatch.pinnedTicks === 0 && trackWatch.latchChanges === 0,
+    `hydraulic: tracking a 2 deg/s sight stays inside the reach window (${trackWatch.latchChanges} latch changes)`);
+  const swedeFought = makeEntity(field, 0, 0, 0, hydraulicSpec);
+  swedeFought.state.suspensionAim = true;
+  aimAt(swedeFought, 30);
+  swedeFought.input.steer = -1;
+  assert(watch(swedeFought, 60).pinnedTicks === 60, 'hydraulic: steering against the sight pins the fixed gun');
+  swedeFought.input.steer = 0;
+  const swedeReleased = watch(swedeFought, 900);
+  assert(swedeReleased.toggles === 1 && !swedeFought.state.atGunLimit,
+    `hydraulic: releasing the steer clears the pin once (${swedeReleased.toggles} toggles)`);
+
+  // (6b) a level sight dead astern: the suspension pitch must NOT run away while the hull turns around (the old
+  // hull-space elevation flipped sign behind the hull and drove the nose to its +stop, pinning the reticle)
+  const aboutFace = makeEntity(field, 0, 0, 0, hydraulicSpec);
+  aboutFace.state.suspensionAim = true;
+  // first lay on a raised sight ahead so the hull sits nose-up (the pose that exposed the bug)
+  aboutFace.input.aimPoint = new Vector3(0, 1.8 + 150 * Math.tan(5 * DEG), 150);
+  watch(aboutFace, 300);
+  near(aboutFace.state.suspensionAimPitch / DEG, 5, 0.3, 'hydraulic: the suspension lays the fixed gun on a raised sight');
+  aimAt(aboutFace, 179);
+  let worstSuspDeg = 0;
+  const aboutFaceWatch = watch(aboutFace, 900, () => {
+    worstSuspDeg = Math.max(worstSuspDeg, Math.abs(aboutFace.state.suspensionAimPitch) / DEG);
+  });
+  assert(worstSuspDeg < 5.5,
+    `hydraulic: a level stern sight never drives the suspension pitch away (${worstSuspDeg.toFixed(2)} deg worst)`);
+  assert(Math.abs(aboutFace.state.suspensionAimPitch) / DEG < 0.5,
+    `hydraulic: the suspension settles level on the level stern sight (${(aboutFace.state.suspensionAimPitch / DEG).toFixed(2)} deg)`);
+  assert(aboutFaceWatch.pinnedTicks === 0,
+    `hydraulic: turning around onto a level sight never pins (${aboutFaceWatch.pinnedTicks} ticks)`);
+  assert(boreErrorDeg(aboutFace) < 0.15, 'hydraulic: the about-face lands the bore on the sight');
+
+  // (7) a turret is untouched by any of this
+  const turreted = makeEntity(field, 0, 0, 0);
+  aimAt(turreted, 90);
+  watch(turreted, 300);
+  assert(turreted.state._autoTraverse === 0 && turreted.state.yaw === 0,
+    'turreted: no hull traverse latch, the hull never auto-turns');
+}
+
 console.log(`movement.selftest: all ${checks} checks passed`);

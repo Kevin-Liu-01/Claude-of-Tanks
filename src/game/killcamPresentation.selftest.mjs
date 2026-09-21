@@ -117,4 +117,16 @@ assert.match(state,
 assert.match(effects, /vehicleCollision\([\s\S]{0,180}closingMps(?:\s*:\s*number)?\s*=\s*0[\s\S]*sparkFan[\s\S]*debris/,
   'vehicle collision effects use metal contact sparks and debris rather than shell penetration FX');
 
-console.log('killcam presentation selftest passed');
+// owner 2026-09-21 ("your first death si always categorized as that death"): the local player's revive drops the
+// previous life's lethal chain, so an end-of-battle death replay can only be the last death
+{
+  const respawnAt = source.indexOf("bus.on('mode:respawn'");
+  assert.ok(respawnAt > 0, 'the killcam listens for the player revive');
+  const respawnHandler = source.slice(respawnAt, source.indexOf('});', respawnAt));
+  assert.ok(respawnHandler.includes('pendingDeath = lastHitOnPlayer = null;'),
+    'the revive clears pendingDeath and lastHitOnPlayer inside the mode:respawn handler');
+  assert.match(source, /if \(result === 'defeat'\) \{\n\s*snap = pendingDeath \|\| lastHitOnPlayer;/,
+    'the defeat replay still reads the (now last-life-only) death chain with the burn-out fallback');
+}
+
+console.log('killcam presentation selftest passed (revive clears the death chain)');

@@ -7,6 +7,7 @@ import { SECOND_WAVE_X_DONORS, synchronizeSecondWaveXCombatMetadata } from './so
 import { geometryFingerprint } from './tankAssets.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 
+// Round 32 (2026-09-21): goldens re-based — each side's end wraps now pivot about its own outer road wheels on staggered rigs (t90ms_x, tos1a_tagil, cv90105_tml_x, cv90_mkiv_x, ztz100_x) and the Jagdpanzer E100 X reuses the dished wheel primitive.
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
   .map(id => [id, TANK_SPECS[id]]);
@@ -36,7 +37,7 @@ const hullHash = '60571a41bc152a5aae624f029db842df453b49d8b826dc153db541aa0834f8
 const hullCellsHash = 'e546ccd22261d60cd24fd5eae85fc268d12a432437f0becce61bc67219cf3ce7';
 const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe60d7a55f';
 const geometryHashes = {
-  jpz_e100_x: { high: 'f7c5af51', low: '8f4fc310' },
+  jpz_e100_x: { high: 'da7ace42', low: 'ff39b2bd' },
   jpz_e100: { high: '85585980', low: 'a39385a7' },
 };
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({

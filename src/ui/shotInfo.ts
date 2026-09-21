@@ -49,6 +49,8 @@ import {
 import type { EventBus } from '../game/stateCore.ts';
 import { t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import type { GameModeId } from '../sim/matchModes.ts';
 
 type EntityId = string;
 type TeamSide = 'ally' | 'enemy' | null;
@@ -136,6 +138,9 @@ interface Combatant {
   specId: string | null;
   dmg: number;
   kills: number;
+  /** Deaths this battle — a stat, not a state: a revive keeps the count and clears `dead`. */
+  deaths: number;
+  /** Destroyed right now (at the end: dead when the battle ended). */
   dead: boolean;
 }
 
@@ -855,6 +860,63 @@ function diagramFacingCue(
     'stroke="rgba(232,242,252,0.8)" stroke-width="2.5" stroke-linecap="round"/>';
 }
 
+// --- roster ledger helpers (owner 2026-09-21: "in respawn modes youre registered as dead even if you
+// respawned at end, and your first death si always categorized as that death") ---------------------------
+// `dead` is a combatant's STATE (destroyed now; at the end: dead when the battle ended) and `deaths` the
+// COUNT every destruction adds to. A mode:respawn edge clears the state and keeps the count, so a revived
+// player alive at the verdict reads "survived · 1 death" instead of "destroyed". Exported for the receipt.
+
+/** One `tank:destroyed` edge: the combatant is dead until a revive, and the death counts. */
+export function recordCombatantDestroyed(c: { dead: boolean; deaths: number }): void {
+  c.dead = true;
+  c.deaths += 1;
+}
+
+/** One `mode:respawn` edge: the combatant is back on the field; the death stays a stat. */
+export function recordCombatantRevived(c: { dead: boolean }): void {
+  c.dead = false;
+}
+
+/** Whether a mode id's ruleset revives destroyed vehicles (an unknown id reads as Standard: never). */
+export function rulesetRevives(gameMode: string | null | undefined): boolean {
+  return !!gameMode && matchRulesetFor(gameMode as GameModeId).respawnS != null;
+}
+
+/**
+ * Fold one authoritative `battle:ended` roster row into the summary rows. `alive` is the sim's own statement
+ * of who stands when the battle ends: false always marks the row dead; true clears the event-derived flag
+ * only when the mode revives — a non-reviving battle keeps the event ledger exactly as before.
+ */
+export function mergeEndRosterRow(
+  rows: Map<EntityId, SummaryTeamRow>,
+  rosterRow: EndRosterRow,
+  revives: boolean,
+): void {
+  let row = rows.get(rosterRow.id);
+  if (!row) {
+    row = {
+      id: rosterRow.id,
+      name: null,
+      specId: null,
+      dmg: 0,
+      kills: 0,
+      deaths: 0,
+      dead: false,
+      side: null,
+      isPlayer: false,
+    };
+    rows.set(rosterRow.id, row);
+  }
+  if (!row.name && (rosterRow.vehicle || rosterRow.name)) {
+    row.name = rosterRow.vehicle || rosterRow.name || null;
+  }
+  if (!row.specId && rosterRow.specId) row.specId = rosterRow.specId;
+  if (rosterRow.team) row.side = rosterRow.team === 'enemy' ? 'enemy' : 'ally';
+  if (rosterRow.alive === false) row.dead = true;
+  else if (revives && rosterRow.alive === true) row.dead = false;
+  if (rosterRow.isPlayer) row.isPlayer = true;
+}
+
 /**
  * Create the combat-intelligence UI bundle. All data arrives via bus events;
  * hud.ts mounts `root` and forwards player identity / lifecycle.
@@ -925,6 +987,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   // docs/SYSTEMS.md) overrides with authoritative teams when present.
   const combatants = new Map<EntityId, Combatant>();
   let endRoster: readonly EndRosterRow[] | null = null;
+  // owner 2026-09-21: the battle revives destroyed vehicles — read from the ended payload's mode ruleset, or
+  // from a mode:respawn edge when a payload carries no mode. Rows then read `dead` as the state at the end
+  // and show their death counts.
+  let revives = false;
   const tg = new Map<EntityId, TeamGraphNode>();
 
   function combatant(
@@ -934,7 +1000,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   ): Combatant {
     let c = combatants.get(id);
     if (!c) {
-      c = { name: null, specId: null, dmg: 0, kills: 0, dead: false };
+      c = { name: null, specId: null, dmg: 0, kills: 0, deaths: 0, dead: false };
       combatants.set(id, c);
     }
     if (name && !c.name) c.name = name;
@@ -1237,42 +1303,16 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         specId: combatantRow.specId,
         dmg: Math.round(combatantRow.dmg),
         kills: combatantRow.kills,
+        deaths: combatantRow.deaths,
         dead: combatantRow.dead,
         side: sideOf(id),
         isPlayer: id === playerId,
       });
     }
     for (const rosterRow of endRoster || []) {
-      mergeEndRosterRow(rows, rosterRow);
+      mergeEndRosterRow(rows, rosterRow, revives);
     }
     return rows;
-  }
-
-  function mergeEndRosterRow(
-    rows: Map<EntityId, SummaryTeamRow>,
-    rosterRow: EndRosterRow,
-  ): void {
-    let row = rows.get(rosterRow.id);
-    if (!row) {
-      row = {
-        id: rosterRow.id,
-        name: null,
-        specId: null,
-        dmg: 0,
-        kills: 0,
-        dead: false,
-        side: null,
-        isPlayer: false,
-      };
-      rows.set(rosterRow.id, row);
-    }
-    if (!row.name && (rosterRow.vehicle || rosterRow.name)) {
-      row.name = rosterRow.vehicle || rosterRow.name || null;
-    }
-    if (!row.specId && rosterRow.specId) row.specId = rosterRow.specId;
-    if (rosterRow.team) row.side = rosterRow.team === 'enemy' ? 'enemy' : 'ally';
-    if (rosterRow.alive === false) row.dead = true;
-    if (rosterRow.isPlayer) row.isPlayer = true;
   }
 
   function summaryTeams(rows: Map<EntityId, SummaryTeamRow>): Readonly<{
@@ -1350,6 +1390,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       playerVehicle: me?.name || '',
       playerSpecId: me?.specId || null,
       playerDead: !!me?.dead,
+      playerDeaths: me?.deaths ?? 0,
+      revives,
       map: summaryMapName(),
       timeS: summaryTime(),
       stats: {
@@ -1511,7 +1553,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   bus.on('tank:destroyed', (payload) => {
     const p = eventPayload<TankDestroyedEvent>(payload);
     // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
-    combatant(p.id, null, p.specId).dead = true;
+    recordCombatantDestroyed(combatant(p.id, null, p.specId));
     if (p.killerId != null && p.killerId !== p.id) {
       combatant(p.killerId).kills += 1;
       linkOpposed(p.killerId, p.id);
@@ -1529,6 +1571,15 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     t.killed = true;
     t.hpLeft = 0;
+  });
+
+  // owner 2026-09-21 ("in respawn modes youre registered as dead even if you respawned at end"): the revive
+  // clears the state flag; the death stays counted in `deaths`
+  bus.on('mode:respawn', (payload) => {
+    const p = eventPayload<{ id?: EntityId | null } | null>(payload);
+    if (!p || p.id == null) return;
+    revives = true;
+    recordCombatantRevived(combatant(p.id));
   });
 
   // --- REPORT GATE: battle-report rendering deferred past the kill-cam ------
@@ -1608,6 +1659,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // sim clock (setupBattle zeroes it), map id is an additive state.ts
     // enrichment (docs/SYSTEMS.md) — the header simply omits what is absent
     endInfo = p ? { timeS: p.timeS, map: p.map || p.mapId || null, reason: p.reason || null, campaign: campaignDebrief(p) } : null;
+    if (rulesetRevives(p?.gameMode)) revives = true;
     pendingReport = p ? (p.result || '') : '';
     scheduleReportFlush();
   });
@@ -1666,6 +1718,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       tg.clear();
       endRoster = null;
       endInfo = null;
+      revives = false;
       spotWindow.clear();
       spottedSet.clear();
       spotAttributed = false;

@@ -293,7 +293,10 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   function writeBaseAimFrame(frame: AimFrame, player: AimTank, rig: AimRig): void {
     const state = player.state!;
     const combat = player.combat!;
-    frame.singleReticle = !!(player.spec.hydropneumaticAim && player.spec.armor.turretless);
+    // round 32 (owner 2026-09-21: "the double reticles is really annoying"): every fixed-mount gun — casemate
+    // or hydraulic — draws ONE sight at the point the gun can actually reach; only a turret earns the separate
+    // camera cross.
+    frame.singleReticle = !!player.spec.armor.turretless;
     frame.point.copy(rig.aimPoint);
     frame.distM = rig.aimDist;
     frame.dispersionRadM = deps.computeDispersion(player.spec, state, rig.aimDist);

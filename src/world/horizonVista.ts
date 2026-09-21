@@ -303,6 +303,7 @@ uniform vec3 uVMeadowTint; uniform vec3 uVRockTint; uniform vec3 uVScreeTint;
 uniform vec3 uVForestColor; uniform vec3 uVSnowColor;
 uniform float uVRockAmp; uniform float uVPeakRock; uniform float uVScreeAmp; uniform float uVForestAmp; uniform float uVBump;
 uniform float uVHaze; uniform vec3 uVFogTint; uniform float uVBanding; uniform float uVAmbient; uniform float uVSunGain;
+uniform float uVDayDiffuse;
 uniform vec2 uVRockSlope;
 `;
 
@@ -315,6 +316,7 @@ export const HORIZON_VISTA_FRAGMENT = /* glsl */`#include <map_fragment>
 float horizonMarine = clamp(-vMapUv.y, 0.0, 1.0);
 float horizonWaterVariation = 0.0;
 float vistaHaze = 0.0;
+float horizonDim = 1.0; // live material colour / authored day colour (night runtime dims to 0.20)
 {
   vec3 n0 = normalize(vHNrm);
   vec3 P = vHPos;
@@ -322,6 +324,10 @@ float vistaHaze = 0.0;
   float hT = clamp(P.y / max(uMaxH, 1.0), 0.0, 1.0);
   float detailW = 1.0 - smoothstep(500.0, 1500.0, vHDist);
   float fineW = 1.0 - smoothstep(120.0, 700.0, vHDist);
+  // Round 32 (owner 2026-09-21, "quality loss beyond the map borders"): a flat floor seen at grazing range (Redrock's
+  // outland, the sand pans) resolves the 12 m fields, the 12 m ground tile and the screen-derivative bump into a
+  // regular moiré carpet the battlefield never shows. A flat far floor keeps only the broad fields and its tone.
+  float floorW = smoothstep(0.90, 0.98, n0.y) * smoothstep(120.0, 420.0, vHDist);
   vec3 aw = abs(n0);
   aw /= (aw.x + aw.y + aw.z);
   #define VTRI(tex, s, o) (texture2D(tex, P.xz * (s) + (o)) * aw.y \
@@ -330,8 +336,8 @@ float vistaHaze = 0.0;
   // world-anchored noise fields: stands (600 m), patches (140 m), knobs (45 m), grain (12 m)
   float nB = VTRI(uDetail2, 0.0016, vec2(0.0)).r - 0.5;
   float nC = VTRI(uDetail2, 0.0071, vec2(0.29, 0.53)).r - 0.5;
-  float nD = VTRI(uDetail2, 0.0230, vec2(0.71, 0.19)).r - 0.5;
-  float nE = VTRI(uDetail2, 0.0850, vec2(0.11, 0.83)).r - 0.5;
+  float nD = (VTRI(uDetail2, 0.0230, vec2(0.71, 0.19)).r - 0.5) * (1.0 - floorW);
+  float nE = (VTRI(uDetail2, 0.0850, vec2(0.11, 0.83)).r - 0.5) * (1.0 - floorW);
   float slope = 1.0 - clamp(n0.y, 0.0, 1.0);
   // Round 29: a wall is a genuinely steep face; strata, iron staining and gullies belong to walls, never to the
   // gentle sand or grass slopes the rock layer also touches (the audit showed contour stripes across dune fields).
@@ -352,7 +358,7 @@ float vistaHaze = 0.0;
   float forestW = standF * treeF * (1.0 - smoothstep(0.50, 0.82, slope + nE * 0.06)) * uVForestAmp;
   forestW *= 1.0 - snowW;
   // --- material colours: tint (ratio to the map base) x tile modulation ---------
-  vec3 meadowMod = mix(vec3(1.0), VTRI(uVMeadow, 0.083, vec2(0.0)).rgb * 2.0, 0.35 + 0.65 * detailW);
+  vec3 meadowMod = mix(vec3(1.0), VTRI(uVMeadow, 0.083, vec2(0.0)).rgb * 2.0, (0.35 + 0.65 * detailW) * (1.0 - floorW * 0.85));
   vec3 col = uVMeadowTint * meadowMod;
   if (uVForestAmp > 0.001) {
     vec3 canopyMod = VTRI(uVCanopy, 0.042, vec2(0.13, 0.57)).rgb * 2.0;
@@ -402,7 +408,7 @@ float vistaHaze = 0.0;
   vec3 r1 = cross(dpy, n0), r2 = cross(n0, dpx);
   float det = dot(dpx, r1);
   vec3 surfGrad = sign(det) * (dhx * r1 + dhy * r2);
-  vec3 n = normalize(abs(det) * n0 - surfGrad * uVBump * 18.0);
+  vec3 n = normalize(abs(det) * n0 - surfGrad * uVBump * 18.0 * (1.0 - floorW));
   float ndl = dot(n, uSunDirW);
   float sunL = max(ndl, 0.0);
   float sky = 0.60 + 0.40 * clamp(n.y, 0.0, 1.0);
@@ -416,7 +422,11 @@ float vistaHaze = 0.0;
   // now the base hue entered three times (tone texture × vertex colour × base-relative tint), which turned the
   // sand plains past a red-brown mesa rim into a dark red sheet beside the yellow battlefield.
   float vistaAltShade = 0.82 + hT * 0.34;
-  diffuseColor.rgb = lit * vistaAltShade / max(vColor.rgb, vec3(0.02));
+  // Round 32 (owner 2026-09-21, "on nighttime mode the horizons glow"): the atmosphere runtime dims a night
+  // battle's horizon by scaling this material's colour (battleAtmosphereRuntime dimHorizon, ×0.20). The absolute
+  // colours above must carry that scale — read it as the ratio of the live diffuse to the authored day value.
+  horizonDim = diffuse.r / max(uVDayDiffuse, 0.01);
+  diffuseColor.rgb = lit * vistaAltShade * horizonDim / max(vColor.rgb, vec3(0.02));
   horizonWaterVariation = nC * 0.008 + nB * 0.015;
   // --- aerial perspective, per fragment (the vertex bake keeps the tone only) ----
   float hazeR = smoothstep(430.0, 1330.0, radius);
@@ -424,8 +434,12 @@ float vistaHaze = 0.0;
 }`;
 
 /** After `#include <color_fragment>`: haze toward the fog tint (the vertex bake no longer carries it). */
+// Round 32 (owner 2026-09-21, "on nighttime mode the horizons seem to glow in the back"): the haze tint is the map's
+// DAY fog colour captured at build time, and the far ring is up to 94 % haze — so a night battle's ×0.20 material dim
+// (the `horizonDim` ratio above) never reached the skyline and the hills glowed pale under the stars. The tint now
+// carries the same live dim as the surface colour.
 export const HORIZON_VISTA_HAZE_FRAGMENT = /* glsl */`
-diffuseColor.rgb = mix(diffuseColor.rgb, uVFogTint, vistaHaze);`;
+diffuseColor.rgb = mix(diffuseColor.rgb, uVFogTint * horizonDim, vistaHaze);`;
 
 // ---------------------------------------------------------------------------
 // ring forest

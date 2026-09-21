@@ -243,7 +243,8 @@ function assertVistaSurfaceShader(shader, normals, label) {
     assert.match(fragment, new RegExp(`uniform [a-zA-Z0-9]+ ${uniform};`), `${label}: ${uniform} is declared`);
   }
   assert.match(fragment, /dFdx\(hb\)/, `${label}: relief shading takes a screen-derivative bump from the fine fields`);
-  assert.match(fragment, /uVFogTint, vistaHaze\)/, `${label}: aerial perspective is applied per fragment toward the fog tint`);
+  assert.match(fragment, /uVFogTint \* horizonDim, vistaHaze\)/, `${label}: aerial perspective is applied per fragment toward the fog tint, carrying the night dim (round 32)`);
+  assert.match(fragment, /float horizonDim = 1\.0;/, `${label}: the live-dim ratio is shared with the haze pass`);
   // At every actual normal, a pair of tangent vectors must remain independent
   // under the weighted XY/XZ/YZ projections. Old angle/height UVs have zero
   // radial derivative at flat shores and crests; this metric cannot collapse.
@@ -422,7 +423,9 @@ try {
     const style = config.horizon.style;
     const mesh = buildHorizonRing(null, {
       ...config,
-      horizon: { ...config.horizon, treeline: 0 },
+      // treeline 0 keeps the ring forest out; outlandRocks 0 keeps the round-32 rockfield out — this loop audits the
+      // bare backdrop's own resources (horizonRockfield.selftest covers the boulders)
+      horizon: { ...config.horizon, treeline: 0, outlandRocks: 0 },
     }, 1337);
     const shader = {
       uniforms: {},

@@ -13,10 +13,17 @@
 //   clearance < -0.005 m  CUTS   the ramp cuts deeper into the wheel than the flat run does
 //   clearance >  0.050 m  GAP    the ramp leaves the wheel with a visible gap / corner
 // Authored courses (cfg.loopPoints) are reported too; they carry their own reference-fitted ramps.
-// --gate exits 1 when any unit CUTS.
+// END WRAP per side (owner 2026-09-21: TOS-1A "improper wrapping … around the front road wheel and back road wheel"):
+// the clearance above reads the course against the shared station list, which a rig with staggered axles
+// (wheelZsLeftM / wheelZsRightM) passes while its rendered band wraps a station 38–124 mm from either wheel. The
+// `wrap L/R` columns (tools/track-end-wrap.mjs) read each side's REST BAND against that side's actual outer wheel:
+// the worse of the two ends' deviation from the ideal tangent wrap in mm, `CUT-…` when the band centreline rides
+// > 3 mm inside its seat and `OFF-…` when it sits > 5 mm off the tangent wrap (`gl` = ground-level end, exempt).
+// --gate exits 1 when any unit CUTS or any side is CUT / OFF the tangent wrap.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim
+import { endWrapRows, endWrapFlags } from './track-end-wrap.mjs';
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
@@ -52,11 +59,24 @@ function rampClearance(receipt, end) {
   return Number.isFinite(minimum) ? +minimum.toFixed(3) : null;
 }
 
-const rows = []; let cuts = 0, gaps = 0;
+/** Per side: the worse end's deviation (mm) from the ideal tangent wrap about that side's own outer wheel, and flags. */
+function sideEndWrap(wrapRows, unit, side) {
+  const ends = wrapRows.filter((row) => row.unit === unit && row.side === side);
+  if (!ends.length) return { value: null, flags: [] };
+  const measured = ends.filter((row) => row.status === 'ok');
+  if (!measured.length) return { value: ends.every((row) => row.status === 'ground-level') ? 'gl' : ends[0].status, flags: [] };
+  const value = +Math.max(...measured.map((row) => row.deviationMm)).toFixed(1);
+  const flags = [];
+  for (const row of measured) for (const f of endWrapFlags(row)) flags.push(`${f}-${side < 0 ? 'L' : 'R'}-${row.end}`);
+  return { value, flags, offsetMm: Math.max(...measured.map((row) => Math.abs(row.offsetMm))) };
+}
+
+const rows = []; let cuts = 0, gaps = 0, wraps = 0;
 for (const id of ids) {
   let tank; try { tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, batchStatic: false }); } catch (error) { rows.push({ id, error: error.message }); continue; }
   // receipts live on the builder's hull group, which is not always the rig node
   const receipts = []; tank.root.traverse((o) => { const list = o.userData?.runningGearReceipts; if (Array.isArray(list)) receipts.push(...list); });
+  const wrapRows = endWrapRows(tank.root);
   for (const [unit, receipt] of receipts.entries()) {
     const rear = rampClearance(receipt, 'rear'), front = rampClearance(receipt, 'front');
     const flags = [];
@@ -64,16 +84,20 @@ for (const id of ids) {
       if (value === null || value === 'ground-level') continue;
       if (value < -0.005) flags.push(`CUTS-${label}`); else if (value > 0.05) flags.push(`GAP-${label}`);
     }
+    const wrapL = sideEndWrap(wrapRows, unit, -1), wrapR = sideEndWrap(wrapRows, unit, 1);
+    flags.push(...wrapL.flags, ...wrapR.flags);
     if (flags.some((f) => f.startsWith('CUTS'))) cuts++; if (flags.some((f) => f.startsWith('GAP'))) gaps++;
-    rows.push({ id, unit, rear, front, wheelR: receipt.wheelR, trackTh: receipt.trackTh, flags });
+    if (wrapL.flags.length || wrapR.flags.length) wraps++;
+    rows.push({ id, unit, rear, front, wrapL: wrapL.value, wrapR: wrapR.value, stationOffsetMm: Math.max(wrapL.offsetMm || 0, wrapR.offsetMm || 0), wheelR: receipt.wheelR, trackTh: receipt.trackTh, flags });
   }
   tank.dispose?.();
 }
-console.log('id'.padEnd(22), 'unit', 'rear'.padStart(7), 'front'.padStart(7), ' flags');
+console.log('id'.padEnd(22), 'unit', 'rear'.padStart(7), 'front'.padStart(7), 'wrap L'.padStart(7), 'wrap R'.padStart(7), ' flags');
 for (const r of rows) {
   if (r.error) { console.log(r.id.padEnd(22), 'BUILD FAILED', r.error.slice(0, 80)); continue; }
-  console.log(r.id.padEnd(22), String(r.unit).padEnd(4), String(r.rear ?? '-').padStart(7), String(r.front ?? '-').padStart(7), ' ' + (r.flags.join(',') || 'ok'));
+  console.log(r.id.padEnd(22), String(r.unit).padEnd(4), String(r.rear ?? '-').padStart(7), String(r.front ?? '-').padStart(7),
+    String(r.wrapL ?? '-').padStart(7), String(r.wrapR ?? '-').padStart(7), ' ' + (r.flags.join(',') || 'ok'));
 }
-console.log(`track wrap review: ${ids.length} tanks, ${rows.filter((r) => !r.error).length} units, ${cuts} cut a wheel, ${gaps} leave a gap`);
+console.log(`track wrap review: ${ids.length} tanks, ${rows.filter((r) => !r.error).length} units, ${cuts} cut a wheel, ${gaps} leave a gap, ${wraps} off the per-side tangent wrap`);
 const jsonPath = opt('json', ''); if (jsonPath) { mkdirSync(resolve(jsonPath, '..'), { recursive: true }); writeFileSync(jsonPath, JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 1)); }
-if (flag('gate') && cuts) process.exit(1);
+if (flag('gate') && (cuts || wraps)) process.exit(1);

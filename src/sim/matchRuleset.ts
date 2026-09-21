@@ -413,7 +413,8 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   return lines;
 }
 
-/** Ammunition capacity for one round under a ruleset (Infinity marks unlimited to the HUD). */
+/** Ammunition capacity for one round under a ruleset. Unlimited rounds keep the authored capacity and are refilled
+ * after every shot (refillUnlimitedAmmunition); the HUD prints ∞ from the ruleset, not from the count. */
 export function rulesetAmmoCapacity(ruleset: MatchRuleset, shellType: string, authored: number): number {
   if (ruleset.ammo === 'he_only') return shellType === 'HE' ? Math.max(authored, 1) : 0;
   return authored;

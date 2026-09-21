@@ -15,17 +15,48 @@ import {
   reloadHudReadyPulse,
   ammunitionSelectionLabel,
   resolveReticleAnchor,
+  edgeAnchorFor,
+  RETICLE_EDGE_MARGIN_PX,
 } from './hud.ts';
+
+// round 32 (owner 2026-09-21 "double reticles"): the single fixed-mount sight
+// never leaves the frame — an off-screen or behind-the-eye gun mark rides the
+// frame edge on the gun's side instead of snapping to screen centre.
+{
+  const m = RETICLE_EDGE_MARGIN_PX;
+  assert.deepEqual(edgeAnchorFor(1280, 720, 0, 0, true, 700, 400, m), { x: 700, y: 400 },
+    'an in-frame projection passes through untouched');
+  assert.deepEqual(edgeAnchorFor(1280, 720, 0, 0, true, 1600, 360, m), { x: 1280 - m, y: 360 },
+    'a projection past the right edge parks on the right margin');
+  assert.deepEqual(edgeAnchorFor(1280, 720, 0, 0, true, 1250, 360, m), { x: 1280 - m, y: 360 },
+    'a projection just inside the frame but past the margin already sits on the margin (no off-screen excursion)');
+  const upRight = edgeAnchorFor(1280, 720, 0, 0, true, 1600, -300, m);
+  assert.ok(Math.abs(upRight.y - m) < 1e-9 && upRight.x > 640 && upRight.x < 1280 - m,
+    'a projection past the top-right corner keeps its direction and parks on the top margin');
+  assert.deepEqual(edgeAnchorFor(1280, 720, -3, 0.5, false, 0, 0, m), { x: m, y: 260 },
+    'a mark behind the eye on the left rides the left margin at its camera-space height');
+  assert.deepEqual(edgeAnchorFor(1280, 720, 0, 0, false, 0, 0, m), { x: 640, y: 360 },
+    'a mark dead behind the eye has no side and holds the centre');
+  const reused = { x: 0, y: 0 };
+  assert.equal(edgeAnchorFor(1280, 720, 2, 0, false, 0, 0, m, reused), reused,
+    'the live HUD path reuses its scratch anchor (no per-frame allocation)');
+}
 
 assert.deepEqual(
   ammunitionSlotViewState({ name: 'ATGM', type: 'ATGM', count: 0 }, false),
-  { count: 0, empty: true, selected: false },
+  { count: 0, empty: true, selected: false, unlimited: false },
   'an exhausted missile/ammo slot enters the gray empty presentation state',
 );
 assert.deepEqual(
   ammunitionSlotViewState({ name: 'Sabot', type: 'APFSDS', count: 4 }, true),
-  { count: 4, empty: false, selected: true },
+  { count: 4, empty: false, selected: true, unlimited: false },
   'stocked selected ammunition keeps its active presentation state',
+);
+// round 32 (owner 2026-09-21, Turbo Ball): unlimited rounds never read as empty, whatever the count says
+assert.deepEqual(
+  ammunitionSlotViewState({ name: 'HE', type: 'HE', count: 0, unlimited: true }, false),
+  { count: 0, empty: false, selected: false, unlimited: true },
+  'an unlimited slot never enters the empty presentation state',
 );
 
 assert.equal(

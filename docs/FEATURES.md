@@ -297,21 +297,28 @@ memory checks enforce the release contract. See the
 ## Camouflage catalog
 
 Every hull's own authored paint is a selectable camouflage (2026-09-20, owner:
-"make our tank specific camos into their own camos ... make factory camos be
-their tank specific camos, but then add national color schemes that are just
-the monocolor ones"). `tools/gen-authored-paint-catalog.mjs` reads each fleet
-vehicle's paint recipe and writes `src/vehicles/authoredPaintCatalog.ts`: one
-`paint_<lead vehicle>` entry per distinct visible pattern — the scheme, its
-colours and its pattern scale; the finer knobs and a plain coat's inert patch
-list are the "different seed" of the same paint and never make a second entry
-— skipping recipes that already exist as a named Signature or Service preset
-(44 entries over 119 hulls). Thirteen national colour schemes
-(`national_usa` … `national_ua`) are plain single-colour service coats. The
-Factory choice is the vehicle's own authored paint; the nation's plain colour is
-its own catalog entry and what the Garage workshop exhibits wear. Any hull can
-wear any other hull's paint identically, and the Garage labels every entry from
-the catalog (`camoPattern.<id>`, en-US and zh-CN). Carousel and dossier
-portraits face left (`tools/portrait-camera.ts`, regenerated through the
+"make our tank specific camos into their own camos ... add national color
+schemes that are just the monocolor ones"; 2026-09-21: "i want the default camos
+of our tanks to be what they were before, but just organized a lot better
+especially preventing duplicate camos being stored and them sounding less
+generic"). `tools/gen-authored-paint-catalog.mjs` reads each fleet vehicle's
+paint recipe and writes `src/vehicles/authoredPaintCatalog.ts` plus the
+`camoPattern.paint_*` labels in both i18n catalogs: one `paint_<lead vehicle>`
+entry per distinct visible paint — the scheme and its colours, where coats
+within one shade (14/255 per channel) are one paint and the scale / patch /
+cell knobs never split a paint — skipping recipes that already exist as a named
+Signature, Service or national preset (18 entries over 70 hulls). Entries are
+named for their nation and pattern, never a vehicle ("US Army Three-Tone
+Woodland", "Wehrmacht Bands Desert", "Soviet Plain Olive"; a second paint with
+the same words takes a numeral), with a Simplified-Chinese label built from the
+same parts. The Factory choice is the nation's service pattern as it was before
+round 31 (era-aware: Soviet wartime and cold-war hulls wear their period
+schemes); thirteen national colour schemes (`national_usa` … `national_ua`) are
+plain single-colour coats selectable on any hull and what the Garage workshop
+exhibits wear. Any hull can wear any other hull's paint identically: the paint
+noise stream is keyed by the recipe and pattern id (`camoPatternStreamSeed`),
+not by the hull, so switching tanks never reseeds a shared pattern. Carousel and
+dossier portraits face left (`tools/portrait-camera.ts`, regenerated through the
 unchanged framing gate).
 
 ## Multiplayer and persistent rooms

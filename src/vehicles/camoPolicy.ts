@@ -334,7 +334,7 @@ function isCamoTagId(value: string): value is CamoTagId {
 }
 
 const nationalTags = (nation: CamoTagId, environment: 'woodland' | 'desert' | 'urban'): readonly CamoTagId[] =>
-  Object.freeze([nation, environment, 'geometric', 'factory']);
+  Object.freeze([nation, environment, 'geometric']);
 const solid = (base: string, weather: string): SharedCamoVisual => ({ scheme: 'solid', base, weather, patches: [] });
 /** Round 31 (owner 2026-09-20): one plain national service colour per nation (see NATIONAL_CAMO_PATTERN_IDS). */
 const NATIONAL_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
@@ -547,26 +547,33 @@ export function sharedCamoPreset(patternId: string | null | undefined): SharedCa
  * a nation's hulls share, used by the Garage workshop exhibits and offered in the catalog.
  */
 export const FACTORY_CAMO_PATTERN_BY_NATION: Readonly<Record<string, CamoPatternId>> = Object.freeze({
-  USA: 'national_usa',
-  Germany: 'national_de',
-  Russia: 'national_ru',
-  UK: 'national_uk',
-  France: 'national_fr',
-  China: 'national_cn',
-  Italy: 'national_it',
-  Japan: 'national_jp',
-  Poland: 'national_pl',
-  'South Korea': 'national_kr',
-  Sweden: 'national_se',
-  Israel: 'national_il',
-  Ukraine: 'national_ua',
+  // Round 32 (owner 2026-09-21): Factory is the nation's service pattern again — "i want the default camos of our
+  // tanks to be what they were before". The plain national colours stay selectable as their own entries.
+  USA: 'service_usa_desert',
+  Germany: 'service_leo2a6m',
+  Russia: 'service_t90m',
+  UK: 'service_challenger_3',
+  France: 'service_leclerc_xlr',
+  China: 'service_type99a',
+  Italy: 'service_ariete_c1',
+  Japan: 'service_type10',
+  Poland: 'service_pl01',
+  'South Korea': 'service_bmp3_rok',
+  Sweden: 'service_strv122',
+  Israel: 'service_merkava2d',
+  Ukraine: 'service_ua_m2a3_bradley',
 });
 
 /** The nation's plain colour scheme (Soviet-era hulls share the Russian khaki green). */
-export function factoryCamoPatternIdFor(nation: string | undefined, _era: string | null | undefined): CamoPatternId | null {
+/** Era-aware Factory owner. Soviet vehicles retain period-specific field paint. */
+export function factoryCamoPatternIdFor(nation: string | undefined, era: string | null | undefined): CamoPatternId | null {
   const nationKey = nation === 'USSR' || nation === 'USSR/Russia'
     ? 'Russia'
     : nation;
+  if (nationKey === 'Russia') {
+    if (era === 'ww2' || era === 'interwar') return 'service_soviet_ww2';
+    if (era === 'cold-war') return 'service_soviet_coldwar';
+  }
   return FACTORY_CAMO_PATTERN_BY_NATION[nationKey as string] || null;
 }
 

@@ -34,6 +34,7 @@ import { getDeviceTier, texSize } from '../../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
+import { buildHorizonRockfield } from '../horizonRockfield.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
   type VistaGround,
@@ -61,6 +62,9 @@ interface HorizonConfig {
   banding?: number;
   /** Round 29: the vista's ground tile — 'sand' for arid rings (default for treeless mesa styles), else 'meadow'. */
   ground?: 'meadow' | 'sand';
+  /** Round 32: outland boulder density 0..1 on the near ring faces (horizonRockfield.ts). Defaults to 1 for the
+   * mesa style and sand grounds, 0.55 for other bare treelines (< 0.14), 0 for wooded rings. */
+  outlandRocks?: number;
   rockHex?: number;
   snowHex?: number;
   forestHex?: number;
@@ -1894,6 +1898,9 @@ function* buildHorizonMaterialSteps({
       // absolute colours meet the battlefield's lit ground: a sky term plus a Lambert sun term (about SUN / pi)
       uVAmbient: { value: 0.46 },
       uVSunGain: { value: 1.30 },
+      // round 32: the authored day colour of this material (1.61, alpine 1.26) — the fragment divides the live
+      // colour by it so the night runtime's ×0.20 dim reaches the absolute vista colours
+      uVDayDiffuse: { value: mat.color.r },
     } : {};
     mat.userData.horizonDetailNoise = detailNoise;
     if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone() };
@@ -2548,6 +2555,7 @@ export function* buildHorizonRingSteps(
   // r1 (content_breadth): alpine 0.12 -> 0.06 — pairs with the segmented rib
   // cut in the snow pass; kills the last of the vertical smear on the wall
   const retainedTextures: THREE.Texture[] = [];
+  const retainedRockGeometries: THREE.BufferGeometry[] = []; // round 32: the outland boulder primitives
   // Round 29: treeless mesa rings (Redrock, Copper Mesa, the desert, Mars, Titan, Skybridge) stand on sand /
   // alluvium; a map can say so explicitly (Sunscar Oasis is a rolling dune field).
   const vistaGround: VistaGround = H.ground ?? (style === 'mesa' && treeline < 0.25 ? 'sand' : 'meadow');
@@ -2565,7 +2573,7 @@ export function* buildHorizonRingSteps(
   // GTAO's depth-edge pass draws dark halo slashes along distant ridge
   // silhouettes — exclude the backdrop like the other flat-lit world layers
   mesh.userData.aoExclude = true;
-  registerRetainedObject3DResources(mesh, { textures: retainedTextures });
+  registerRetainedObject3DResources(mesh, { textures: retainedTextures, geometries: retainedRockGeometries });
   // Vista pass: real trees on the near ring faces where the baked stands are dense (desktop tier)
   const ridgeRow = rows.findIndex((row) => !row.skirt && !row.interpolated);
   mesh.userData.horizonRing = { columns: HORIZON_SEGMENTS, ridgeRow };
@@ -2611,6 +2619,29 @@ export function* buildHorizonRingSteps(
       if (setup && material && !Array.isArray(material)) setup.call(_engineCtx, material, hook ? (shader: unknown) => hook(shader) : null);
     });
     mesh.add(forestGroup);
+  }
+  // Round 32 (owner 2026-09-21, "redrock still has the noticeable texture/shadow/quality loss beyond the map
+  // borders"): the rock and sand outlands carry instanced boulders on the near ring faces — the battlefield's own
+  // rock decor stops at the playable edge and the ring forest only serves the wooded maps, so Redrock's outland read
+  // as a bare, shadowless sheet. The near class casts real shadows like the battlefield's boulders.
+  const rockDensity = H.outlandRocks ?? (style === 'mesa' || H.ground === 'sand' ? 1 : treeline < 0.14 ? 0.55 : 0);
+  const rockGroup = vista && rockDensity > 0 ? buildHorizonRockfield({
+    columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, seed: ((seed ^ 0x2C0C) ^ idHash(mapId)) >>> 0,
+    rock: rockC, fog: fogC, haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
+    density: rockDensity, maxInstances: 3000, maxRadius: 900, nearDepth: 300, ridgeRow,
+    detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
+    retainedGeometries: retainedRockGeometries,
+  }) : null;
+  if (rockGroup) {
+    const setup = (_engineCtx as {
+      setupShadowMaterial?: (material: THREE.Material, extraHook?: ((shader: unknown, renderer: unknown) => void) | null) => THREE.Material;
+    } | null)?.setupShadowMaterial;
+    const hook = rockGroup.userData.horizonRockfieldHook as ((shader: unknown) => void) | undefined;
+    rockGroup.traverse((object) => {
+      const material = (object as THREE.Mesh).material;
+      if (setup && material && !Array.isArray(material)) setup.call(_engineCtx, material, hook ? (shader: unknown) => hook(shader) : null);
+    });
+    mesh.add(rockGroup);
   }
   // Vista pass: every map renders its near rim bands with the terrain material (terrain.ts bindHorizonGroundBands).
   prepareAutumnHorizonGround(mesh, retainedTextures);

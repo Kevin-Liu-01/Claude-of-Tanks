@@ -114,3 +114,16 @@ summaries above are reproducible with the commands in the probe header).
    pitch/roll error on combined sidehills. Unguided shells drop physically
    after muzzle exit; bots visibly elevate their own guns using an explicit
    pre-fire ballistic lay. Gate: `node tools/reticle-shot-parity-probe.mjs`.
+   **Fixed mounts (round 32, owner 2026-09-21: "the double reticles is really
+   annoying").** Every `armor.turretless` vehicle — conventional casemates and
+   the hydraulic Swedish line alike — draws ONE sight at the gun-true point
+   (`AimFrame.singleReticle`); when the gun mark leaves the frame it rides the
+   frame edge on the gun's side (`hud.ts edgeAnchorFor`) instead of snapping to
+   screen centre. The hull traverse and the gun lay read one gun-origin request
+   with hysteresis (engage past the arc, release 3° inside it —
+   `movement.ts casemateSteerCommand`), and the red pin means a limit the hull
+   cannot fix (pitch stops, terrain clearance, steering against the sight,
+   immobilised tracks) — never the lag of a hull that is already closing.
+   Receipts: `src/sim/movement.selftest.mjs` §9e,
+   `src/game/aimController.selftest.mjs`, `src/ui/hudMagazine.selftest.mjs`;
+   probe `.qa-dev/casemate-aim-probe.mjs`.

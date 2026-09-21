@@ -49,6 +49,8 @@ export interface EndScreenTeamRow {
   specId?: string | null;
   dmg: number;
   kills: number;
+  /** Deaths this battle (owner 2026-09-21): shown in reviving modes, where `dead` is the state at the end. */
+  deaths?: number;
   dead: boolean;
   isPlayer?: boolean;
 }
@@ -89,6 +91,10 @@ export interface EndScreenSummary {
   playerVehicle?: string;
   playerSpecId?: string | null;
   playerDead?: boolean;
+  /** The player's deaths this battle (owner 2026-09-21: a stat in reviving modes, not a terminal state). */
+  playerDeaths?: number;
+  /** The mode revives destroyed vehicles: rows and stats carry death counts, `dead` means dead at the end. */
+  revives?: boolean;
   map?: string | null;
   timeS: number;
   stats: EndScreenStats;
@@ -415,6 +421,27 @@ export function damageComparisonPercent(damage: RuntimeValue, maxDamage: Runtime
   return Math.round(Math.min(1, value / ceiling) * 1000) / 10;
 }
 
+/**
+ * Roster-row detail lines after the vehicle name: the kill count, and in a reviving mode the death count
+ * (owner 2026-09-21: "in respawn modes youre registered as dead even if you respawned at end" — deaths are
+ * a stat there, the skull is the state at the end). Non-reviving modes never show a death line.
+ */
+export function rosterRowDetails(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: boolean): string[] {
+  const details: string[] = [];
+  if (row.kills > 0) {
+    details.push(t(row.kills === 1
+      ? 'endScreen.killsCountOne'
+      : 'endScreen.killsCountMany', { count: row.kills }));
+  }
+  const deaths = Math.max(0, Math.floor(Number(row.deaths) || 0));
+  if (revives && deaths > 0) {
+    details.push(t(deaths === 1
+      ? 'endScreen.deathsCountOne'
+      : 'endScreen.deathsCountMany', { count: deaths }));
+  }
+  return details;
+}
+
 function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -691,16 +718,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     result: EndScreenTeamRow,
     hostile: boolean,
     maxDamage: number,
+    revives: boolean,
   ): void {
     const row = el('div', `es-tr ${hostile ? 'foe' : 'ally'}${result.isPlayer ? ' me' : ''}${result.dead ? ' dead' : ''}`, listRoot);
     row.setAttribute('role', 'listitem');
     const vehicle = vehicleName(result.specId);
-    const details: string[] = [vehicle];
-    if (result.kills > 0) {
-      details.push(t(result.kills === 1
-        ? 'endScreen.killsCountOne'
-        : 'endScreen.killsCountMany', { count: result.kills }));
-    }
+    const details: string[] = [vehicle, ...rosterRowDetails(result, revives)];
     row.innerHTML =
       '<span class="si"></span>' +
       `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${result.name || result.id}</span>` +
@@ -733,6 +756,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     list: EndScreenTeamRow[],
     hostile: boolean,
     maxDamage: number,
+    revives: boolean,
   ): void {
     const panel = el('div', `es-roster ${hostile ? 'foe' : 'ally'}`, rosters);
     panel.setAttribute('role', 'group');
@@ -747,7 +771,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       el('div', 'es-none', listRoot).textContent = t('endScreen.noCombatants');
       return;
     }
-    for (const result of list) renderTeamRosterRow(listRoot, result, hostile, maxDamage);
+    for (const result of list) renderTeamRosterRow(listRoot, result, hostile, maxDamage, revives);
   }
 
   function outcomeLine(result: EndScreenResult, sum: EndScreenSummary): string {
@@ -847,13 +871,15 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (key) host.dataset[key] = value;
   }
 
-  function renderSecondaryStats(parent: HTMLElement, stats: EndScreenStats): void {
+  function renderSecondaryStats(parent: HTMLElement, stats: EndScreenStats, deaths: number | null): void {
     const penetrationRate = stats.hits > 0
       ? Math.round((stats.pens / stats.hits) * 100) : 0;
     renderMiniStat(parent, 'penetration', null, t('endScreen.penetrations'),
       `${stats.pens} / ${stats.hits}`, t('endScreen.penetrationPercent', { percent: penetrationRate }));
     renderMiniStat(parent, 'shield', 'blocked', t('endScreen.damageBlocked'), fmtN(stats.blocked));
     renderMiniStat(parent, 'damage', 'received', t('endScreen.damageReceived'), fmtN(stats.received));
+    // owner 2026-09-21: in a reviving mode deaths are a stat of the battle, not the player's end state
+    if (deaths != null) renderMiniStat(parent, 'skull', 'deaths', t('endScreen.deaths'), String(deaths));
     host.dataset.hits = String(stats.hits);
     host.dataset.pens = String(stats.pens);
     host.dataset.received = String(Math.round(stats.received));
@@ -925,7 +951,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     tile(statGrid, 'kills', t('endScreen.tile.kills'), {
       value: sum.kills.length, datasetV: sum.kills.length, icon: 'skull',
     });
-    renderSecondaryStats(el('div', 'es-stat-secondary', personal), sum.stats);
+    renderSecondaryStats(el('div', 'es-stat-secondary', personal), sum.stats,
+      sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
     renderBestShot(personal, sum.bestShot);
     renderKillList(personal, result, sum.kills);
   }
@@ -952,8 +979,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const rosters = el('div', 'es-rosters', teams);
     const maxDamage = Math.max(0, ...sum.allies.map((row) => Number(row.dmg) || 0),
       ...sum.enemies.map((row) => Number(row.dmg) || 0));
-    renderTeamRoster(rosters, t('endScreen.team.ally'), sum.allies, false, maxDamage);
-    renderTeamRoster(rosters, t('endScreen.team.enemy'), sum.enemies, true, maxDamage);
+    const revives = !!sum.revives;
+    renderTeamRoster(rosters, t('endScreen.team.ally'), sum.allies, false, maxDamage, revives);
+    renderTeamRoster(rosters, t('endScreen.team.enemy'), sum.enemies, true, maxDamage, revives);
+    host.dataset.revives = revives ? '1' : '0';
     host.dataset.rosterAllies = String(sum.allies.length);
     host.dataset.rosterEnemies = String(sum.enemies.length);
     host.dataset.damageRows = String(sum.allies.length + sum.enemies.length);

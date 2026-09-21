@@ -392,9 +392,17 @@ function inspectUnit(unitId, receipt, objects) {
   }
 
   const parityCount = Math.min(sidePoses[0].length, sidePoses[1].length);
+  // Staggered rigs (owner 2026-09-21, TOS-1A end wrap): each side's rest band is laid about ITS outer road wheels
+  // (wheelZsLeftM / wheelZsRightM), so the end regions — the wheel arcs, ramps and end-wheel arcs beyond the outer
+  // stations — legitimately differ between the sides. Parity still holds over the shared interior of the course.
+  const sideStations = [receipt.wheelZsLeftM, receipt.wheelZsRightM].filter(Array.isArray);
+  const stagger = Math.max(0, ...sideStations.flatMap((zs) => zs.map((z, i) => Math.abs(z - receipt.wheelZs[i]))));
+  const outerZ = { min: Math.min(...receipt.wheelZs) + 0.5, max: Math.max(...receipt.wheelZs) - 0.5 };
+  const endRegion = (pose) => pose.position.z > outerZ.max || pose.position.z < outerZ.min;
   let parityError = 0;
   for (let i = 0; i < parityCount; i++) {
     const left = sidePoses[0][i], right = sidePoses[1][i];
+    if (stagger > 1e-6 && (endRegion(left) || endRegion(right))) continue;
     parityError = Math.max(parityError,
       Math.abs(left.position.y - right.position.y),
       Math.abs(left.position.z - right.position.z),

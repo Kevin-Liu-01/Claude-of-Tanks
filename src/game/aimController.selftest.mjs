@@ -222,4 +222,31 @@ console.log('aimController.selftest: shared camera/bore aim owner passed');
   assert.equal(frame.blockedDistM, null, 'ordinary HE is not routed to a launcher');
 
 }
+
+// round 32 (owner 2026-09-21: "the double reticles is really annoying"): every fixed-mount gun is
+// single-sight — a conventional casemate exactly like the hydraulic Swedish line; only a turret keeps
+// the separate camera cross.
+{
+  const singleFrame = { ...frame, point: frame.point.clone(), gunMarker: frame.gunMarker.clone(), singleReticle: false };
+  // (a fresh combat record: the shared fixture picked up an ammo array above, and string shell cards cannot carry counts)
+  const combat = { ...player.combat, ammo: undefined };
+  const withSpec = (spec) => createAimController({
+    getGame: () => ({ player: { ...player, spec, combat }, tanks: [] }),
+    getRig: () => rig,
+    worldRaycast: () => null,
+    targetVisible: () => true,
+    getShellCards: () => ['shell'],
+    computeDispersion: () => 0.2,
+    now: () => now,
+  });
+  const turreted = { ...player.spec };
+  const casemate = { ...player.spec, armor: { ...player.spec.armor, turretless: true } };
+  const hydraulic = { ...casemate, hydropneumaticAim: { noseDownDeg: 6, noseUpDeg: 8, rateDegS: 5 } };
+  withSpec(turreted).update(singleFrame);
+  assert.equal(singleFrame.singleReticle, false, 'a turret keeps the camera cross plus the gun mark');
+  withSpec(casemate).update(singleFrame);
+  assert.equal(singleFrame.singleReticle, true, 'a conventional casemate draws one gun-true sight');
+  withSpec(hydraulic).update(singleFrame);
+  assert.equal(singleFrame.singleReticle, true, 'a hydraulic fixed gun draws one gun-true sight');
+}
 console.log('aimController: indexed missile obstruction, armor origin, cannon and pending-selection isolation PASS');

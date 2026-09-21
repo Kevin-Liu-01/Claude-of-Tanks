@@ -284,10 +284,13 @@ function buildJagdpanzerE100X(P:TankBuilderPort):void {
   P.turretG.position.set(...PITCH);
   P.gunG.position.set(0,0,0);
   hullTub(P);casemate(P);hatches(P);rearEquipment(P);cannon(P);
+  // Round 32 (owner 2026-09-21, "make it reuse a wheel primitive"): the interleaved stations wear the family's
+  // dished pressed-steel wheel (the Tiger / E 100 primitive the base hull uses) instead of the generic flat
+  // steel star; stations, radius, interleave layers and the measured course are unchanged.
   P.gear=KIT.buildRunningGear(P,{
-    style:'steel',wheelR:.450,wheelW:.28,wheelY:.51965,
+    style:'dished',wheelR:.450,wheelW:.28,wheelY:.51965,
     wheelZs:[...JPZE100_X_DATUMS.wheelZs],xc:1.546796,trackW:1.000952,
-    layers:[[-.184,.060],[-.070]],wheelFaceDepthScale:.84,
+    layers:[[-.184,.060],[-.070]],
     // A pin-span-wide smooth ribbon wrongly fills the chamfered shoulder
     // between real link webs. The full metre-wide moving shoes remain intact;
     // their continuous inner web follows the narrower source cross section.

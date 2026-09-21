@@ -5531,6 +5531,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   interface EndRelayPoint { index: number; a: number; rho: number }
   interface EndRelay {
     side: 'front' | 'rear';
+    /** station index (into wheelZs) of the outer road wheel — the live wheel is found by station, not by z, because
+     * measured rigs seat each side's wheel on its own station (wheelZsLeftM / wheelZsRightM) */
+    wheelIndex: number;
     wheelZ: number; wheelRestY: number; wheelRadius: number;
     endZ: number; endY: number; endRadius: number; restDeg: number; farDeg: number;
     wheelArc: EndRelayPoint[]; endArc: EndRelayPoint[]; ramp: { index: number; t: number }[];
@@ -5661,10 +5664,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       if (endArc.length < 2) continue;
       const vertices = new Map<number, number[]>();
       for (const { index } of [...wheelArc, ...endArc, ...ramp]) vertices.set(index, verticesOf(index));
-      relays.push({ side, wheelZ: wheel.z, wheelRestY: wheel.y, wheelRadius, endZ: end.z, endY: end.y, endRadius, restDeg, farDeg, wheelArc, endArc, ramp, vertices });
+      const wheelIndex = wheelZs.indexOf(side === 'front' ? Math.max(...wheelZs) : Math.min(...wheelZs));
+      relays.push({ side, wheelIndex, wheelZ: wheel.z, wheelRestY: wheel.y, wheelRadius, endZ: end.z, endY: end.y, endRadius, restDeg, farDeg, wheelArc, endArc, ramp, vertices });
     }
     hullG.userData.runningGearEndRelays = relays.map((relay) => ({
       side: relay.side, restDeg: relay.restDeg, farDeg: relay.farDeg, wheelArc: relay.wheelArc.length, endArc: relay.endArc.length, ramp: relay.ramp.length,
+      wheelIndex: relay.wheelIndex,
       wheelZ: relay.wheelZ, wheelRestY: relay.wheelRestY, wheelRadius: relay.wheelRadius, endZ: relay.endZ, endY: relay.endY, endRadius: relay.endRadius,
       // course point indices (cell f0 = point) the re-lay moves — receipts and probes test exactly these stations
       wheelArcIndices: relay.wheelArc.map((point) => point.index), endArcIndices: relay.endArc.map((point) => point.index), rampIndices: relay.ramp.map((station) => station.index),
@@ -5678,53 +5683,105 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     for (const relay of endRelays) for (const index of relay.vertices.keys()) mask[index] = 1;
     return mask;
   })();
-  const relayEnds = (arr: ArrayLike<number> & { [index: number]: number }, restPos: Float32Array, ws: WheelEntry[]): boolean => {
+  type BandPositions = ArrayLike<number> & { [index: number]: number };
+  /** The outer road wheel of one side at a relay's STATION (interleaved layers share the travel; the canonical
+   * conformed entry wins over its face layers). Matching by station instead of by z is what lets a side whose wheels
+   * sit on their own measured stations (wheelZsLeftM / wheelZsRightM) take part — see the side-station bake below. */
+  const relayWheel = (relay: EndRelay, ws: WheelEntry[]): WheelEntry | null => {
+    let wheel: WheelEntry | null = null;
+    for (const w of ws) {
+      if (w.i !== relay.wheelIndex) continue;
+      if (!wheel || (!w.suspensionSource && !!wheel.suspensionSource)
+        || (!w.suspensionSource === !wheel.suspensionSource && Math.abs(w.y - relay.wheelRestY) < Math.abs(wheel.y - relay.wheelRestY))) wheel = w;
+    }
+    return wheel;
+  };
+  /** Re-lay one end region about a wheel seat centred at (liveZ, liveY): the road-wheel arc rescales its sweep from
+   * the foot to the new common tangent, the end-wheel arc rescales from its fixed top exit, the ramp stations sit on
+   * the tangent by their rest fractions. Returns false for a degenerate pose (no external tangent). */
+  const layRelay = (relay: EndRelay, arr: BandPositions, restPos: ArrayLike<number>, liveZ: number, liveY: number): boolean => {
+    const deg = externalTangentDeg(relay.side, relay.endZ, relay.endY, relay.endRadius, liveZ, liveY, relay.wheelRadius);
+    if (deg == null) return false;
+    // every duplicate of a course point translates by the centreline's move, so the cross-section keeps its stock
+    // (the loaded-run fit moves cells the same way; the shoes sample the translated centreline)
+    const write = (index: number, z: number, y: number): void => {
+      const outer = (index * 24 + 2) * 3, inner = (index * 24 + 6) * 3;
+      const dz = z - (restPos[outer + 2] + restPos[inner + 2]) / 2, dy = y - (restPos[outer + 1] + restPos[inner + 1]) / 2;
+      for (const vi of relay.vertices.get(index)!) { arr[vi * 3 + 1] = restPos[vi * 3 + 1] + dy; arr[vi * 3 + 2] = restPos[vi * 3 + 2] + dz; }
+    };
+    // road-wheel arc: rescale the sweep from the foot (180°) to the new tangent angle
+    const restSweep = relay.restDeg - 180, liveSweep = deg - 180;
+    for (const point of relay.wheelArc) {
+      const a = Math.abs(restSweep) > 1e-9 ? 180 + (point.a - 180) * (liveSweep / restSweep) : point.a;
+      write(point.index, liveZ + Math.sin(a * D2R) * point.rho, liveY + Math.cos(a * D2R) * point.rho);
+    }
+    // end-wheel arc: rescale from its fixed far end (the top exit) to the new tangent angle
+    const restEndSweep = relay.restDeg - relay.farDeg, liveEndSweep = deg - relay.farDeg;
+    for (const point of relay.endArc) {
+      const a = Math.abs(restEndSweep) > 1e-9 ? relay.farDeg + (point.a - relay.farDeg) * (liveEndSweep / restEndSweep) : point.a;
+      write(point.index, relay.endZ + Math.sin(a * D2R) * point.rho, relay.endY + Math.cos(a * D2R) * point.rho);
+    }
+    // ramp: the new common tangent between the two circles
+    const pW = [liveZ + Math.sin(deg * D2R) * relay.wheelRadius, liveY + Math.cos(deg * D2R) * relay.wheelRadius];
+    const pE = [relay.endZ + Math.sin(deg * D2R) * relay.endRadius, relay.endY + Math.cos(deg * D2R) * relay.endRadius];
+    for (const station of relay.ramp) write(station.index, pW[0] + (pE[0] - pW[0]) * station.t, pW[1] + (pE[1] - pW[1]) * station.t);
+    return true;
+  };
+  const relayEnds = (arr: BandPositions, restPos: Float32Array, ws: WheelEntry[]): boolean => {
     let moved = false;
     for (const relay of endRelays) {
       // the live outer road wheel of this side at the relay's station (interleaved layers share the travel)
-      let wheel: WheelEntry | null = null;
-      for (const w of ws) if (Math.abs(w.z - relay.wheelZ) < 1e-6 && (!wheel || Math.abs(w.y - relay.wheelRestY) < Math.abs(wheel.y - relay.wheelRestY))) wheel = w;
+      const wheel = relayWheel(relay, ws);
       // A shared authored course may use the opposite side's station list.
       // Without an actual wheel at this relay's station, preserve that side's
       // existing influence/contact result instead of falsely resetting it.
       if (!wheel) continue;
       const voff = wheel.voff || 0;
-      // every duplicate of a course point translates by the centreline's move, so the cross-section keeps its stock
-      // (the loaded-run fit moves cells the same way; the shoes sample the translated centreline)
-      const write = (index: number, z: number, y: number): void => {
-        const outer = (index * 24 + 2) * 3, inner = (index * 24 + 6) * 3;
-        const dz = z - (restPos[outer + 2] + restPos[inner + 2]) / 2, dy = y - (restPos[outer + 1] + restPos[inner + 1]) / 2;
-        for (const vi of relay.vertices.get(index)!) { arr[vi * 3 + 1] = restPos[vi * 3 + 1] + dy; arr[vi * 3 + 2] = restPos[vi * 3 + 2] + dz; }
-      };
       if (Math.abs(voff) <= 1e-6) {
+        // at rest the side's rest band (already laid about its own station by the bake below) is restored byte for byte
         for (const index of relay.vertices.keys()) {
           for (const vi of relay.vertices.get(index)!) { arr[vi * 3 + 1] = restPos[vi * 3 + 1]; arr[vi * 3 + 2] = restPos[vi * 3 + 2]; }
         }
         continue;
       }
-      const liveY = relay.wheelRestY + voff;
-      const deg = externalTangentDeg(relay.side, relay.endZ, relay.endY, relay.endRadius, relay.wheelZ, liveY, relay.wheelRadius);
-      if (deg == null) continue; // degenerate pose: keep the influence result
-      moved = true;
-      // road-wheel arc: rescale the sweep from the foot (180°) to the new tangent angle
-      const restSweep = relay.restDeg - 180, liveSweep = deg - 180;
-      for (const point of relay.wheelArc) {
-        const a = Math.abs(restSweep) > 1e-9 ? 180 + (point.a - 180) * (liveSweep / restSweep) : point.a;
-        write(point.index, relay.wheelZ + Math.sin(a * D2R) * point.rho, liveY + Math.cos(a * D2R) * point.rho);
-      }
-      // end-wheel arc: rescale from its fixed far end (the top exit) to the new tangent angle
-      const restEndSweep = relay.restDeg - relay.farDeg, liveEndSweep = deg - relay.farDeg;
-      for (const point of relay.endArc) {
-        const a = Math.abs(restEndSweep) > 1e-9 ? relay.farDeg + (point.a - relay.farDeg) * (liveEndSweep / restEndSweep) : point.a;
-        write(point.index, relay.endZ + Math.sin(a * D2R) * point.rho, relay.endY + Math.cos(a * D2R) * point.rho);
-      }
-      // ramp: the new common tangent between the two circles
-      const pW = [relay.wheelZ + Math.sin(deg * D2R) * relay.wheelRadius, liveY + Math.cos(deg * D2R) * relay.wheelRadius];
-      const pE = [relay.endZ + Math.sin(deg * D2R) * relay.endRadius, relay.endY + Math.cos(deg * D2R) * relay.endRadius];
-      for (const station of relay.ramp) write(station.index, pW[0] + (pE[0] - pW[0]) * station.t, pW[1] + (pE[1] - pW[1]) * station.t);
+      // the live seat: this side's own station (wheel.z) and its travelled height; a degenerate pose keeps the influence result
+      if (layRelay(relay, arr, restPos, wheel.z, relay.wheelRestY + voff)) moved = true;
     }
     return moved;
   };
+  // SIDE-STATION BAKE (owner 2026-09-21: the TOS-1A "tracks have the improper wrapping issue around the front road wheel
+  // and back road wheel"). The course is laid once at the pair-midpoint stations (wheelZs) while measured rigs seat each
+  // side's wheels on their own stations (wheelZsLeftM / wheelZsRightM — the T-90MS X left axles run 75 mm aft of the
+  // right ones, the CV90s and ZTZ-100 X 90–124 mm). The shared course therefore wrapped a wheel that is not there: the
+  // band's inner face cut 16–23 mm into one end tire of each side and floated ~20 mm off the other, and the live re-lay
+  // never found a wheel at its station (it matched by exact z), so on rough ground the ends fell back to the influence
+  // field and wore the band like a sock. Each side's rest band is re-laid here about ITS outer road wheels with the same
+  // tangent law the live re-lay uses; a side whose stations equal the course stations is untouched, so the rest of the
+  // fleet stays byte-identical. The baked copy is the "authored" rest the contact fit measures its tire gaps from.
+  const SIDE_STATION_BAKE_MIN_M = 0.005;
+  const bandBase: Record<Side, ArrayLike<number>> = { [-1]: bandBasePos, [1]: bandBasePos };
+  const relayReceipts = hullG.userData.runningGearEndRelays as Array<{ sideOffsetM?: Record<'left' | 'right', number> }> | undefined;
+  for (const side of [-1, 1] as const) {
+    const geo = side < 0 ? tgL : tgR;
+    const attr = geo.getAttribute('position');
+    if (!(attr instanceof THREE.BufferAttribute)) continue;
+    const arr = attr.array as unknown as BandPositions;
+    let baked = false;
+    endRelays.forEach((relay, k) => {
+      const wheel = relayWheel(relay, suspWheels[side]);
+      const offset = wheel ? wheel.z - relay.wheelZ : 0;
+      const receipt = relayReceipts?.[k];
+      if (receipt) (receipt.sideOffsetM ??= { left: 0, right: 0 })[side < 0 ? 'left' : 'right'] = offset;
+      // a station within 5 mm of the course station is the same station (authoring noise, e.g. the Leclerc Classic X
+      // right side at 0.3–2.3 mm): its rest band stays byte-identical and the end-wrap check reads it within tolerance
+      if (!wheel || Math.abs(offset) <= SIDE_STATION_BAKE_MIN_M) return;
+      if (layRelay(relay, arr, bandBasePos, wheel.z, relay.wheelRestY)) baked = true;
+    });
+    if (!baked) continue;
+    bandBase[side] = Float32Array.from(arr);
+    attr.needsUpdate = true;
+    recomputeTrackNormals(geo);
+  }
 
   // deform one band's bottom run toward the wheel offset field (weight fades
   // to zero by the axle line so the top run / arcs never move)
@@ -5754,8 +5811,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     }
     // the wrap arcs and ramps beyond the outer road wheels pivot about the fixed end wheels (2026-09-18); the contact
     // fit then still clears any tire the re-laid ramp meets (an interleaved neighbour that drooped less than the outer wheel)
-    const relaid = relayEnds(arr as unknown as ArrayLike<number> & { [index: number]: number }, restPos, ws);
-    if (loadedContact) fitLoadedTrackContact(arr,bandBasePos,ws,trackTh/2,loadedContact,cfg.trackCarrierFromOuterFace===true,relaid?relayPinned:null);
+    const relaid = relayEnds(arr as unknown as BandPositions, restPos, ws);
+    // the fit reads its authored tire gaps off this side's baked rest (a course wrapped about the wrong station read as a
+    // 16 mm cut it then "corrected" by lifting the parked band into the tire)
+    if (loadedContact) fitLoadedTrackContact(arr,bandBase[side],ws,trackTh/2,loadedContact,cfg.trackCarrierFromOuterFace===true,relaid?relayPinned:null);
     attr.needsUpdate = true;
     // Terrain flex changes the lower run's face direction. Keeping the rest-
     // pose normals made the bent belt shade like a flat plank even though its

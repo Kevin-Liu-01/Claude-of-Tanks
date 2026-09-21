@@ -46,7 +46,7 @@ test('fixed checkpoint is detached, JSON safe, and restores every admitted scala
   const source = entity();
   for (let tick = 0; tick < 90; tick++) updateTank(source, field, SIM_DT);
   const checkpoint = captureMovementPredictionState(source.state);
-  assert.equal(checkpoint.values.length, 43);
+  assert.equal(checkpoint.values.length, 44); // round 32: + _autoTraverse (fixed-mount hull traverse latch)
   assert.deepEqual(JSON.parse(JSON.stringify(checkpoint)), checkpoint);
   const target = entity().state;
   const ride = target._ride;

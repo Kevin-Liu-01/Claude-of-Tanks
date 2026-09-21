@@ -13,6 +13,7 @@ import {historicalT90FittingsBuilder} from './t90FittingsHistory.test-support.mj
 import {withHistoricalClosedWheelFaces,hasRepairedWheelFaces} from './sourceXWheelFaceHistory.test-support.mjs';
 import {FIXED_SOURCE_SKIRTS,withHistoricalFixedSkirtFinish} from './fixedSourceSkirtPaint.test-support.mjs';
 
+// Round 32 (2026-09-21): goldens re-based — each side's end wraps now pivot about its own outer road wheels on staggered rigs (t90ms_x, tos1a_tagil, cv90105_tml_x, cv90_mkiv_x, ztz100_x) and the Jagdpanzer E100 X reuses the dished wheel primitive.
 // Captured before auxiliary metadata authoring/wiring, with complete frozen
 // post-optics native models. No position/index/normal/UV/instance or scene-node
 // transform is excluded. These immutable pre-change hashes are not refreshed.
@@ -29,7 +30,7 @@ const BEFORE={
   t72bu_x:['2edf9ade0d8aa12bc4128476d7a55cd378ce52bc50b2364244daaeefae5a162c','c2a2c7f02d5c415fc39f8c3f07b1fffb94ebbb3fd92053e36b2d90870c6915dd'],
   t90_x:['ccd3a851700254888c6e7e3295dbc728650511af9be8425227cb6a49619518bf','9dae1877ed46b12a3cc9314bc5995512805f5ad28661fc1759b92e52df80e78a'],
   t90a_burlak_x:['5a0c28b0fd3b6ceac4dd94a666adf96764514dfc3662740c89d0a58777ec4a16','7620e6c10b9127ab06c37513b798526b32f7c783848ef29168985c3a7e6796de'],
-  t90ms_x:['40dc569a7f3e167a3e80a941b4a667c53b86c657c11d0505958992bf2d107f4c','8698bc4de20eb93d7da1b95dc567cee728399ddbedcaa937fe8a38705247c560'],
+  t90ms_x:['93073e1b8a4cbb4e461d6c88fc25f0cf74fae7b756090aab19456d4111f69159','852d41112a9894c4a97249a246f941115d807e37a4ffd84107b4a981bfdb3fbb'],
 };
 const EXPECTED_STATS={t62mv1_x:[8,9,9],t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
   t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],

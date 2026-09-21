@@ -23,6 +23,11 @@ const standard = matchRulesetFor('standard');
 assert.deepEqual(rulesetLines(standard), [], 'Standard is the baseline: no rule lines');
 assert.equal(standard.timeLimitS, 900); assert.equal(standard.respawnS, null); assert.equal(standard.equipmentSlots, 3);
 
+// owner 2026-09-21: the battle report reads this split — deaths are a stat and `dead` the state at the end
+// only where the ruleset revives
+assert.deepEqual(GAME_MODE_IDS.filter((mode) => matchRulesetFor(mode).respawnS != null).sort(),
+  ['capture_the_flag', 'mars', 'turbo_ball', 'zone_control'], 'exactly the respawning modes revive');
+
 const turbo = matchRulesetFor('turbo_ball');
 assert.equal(turbo.gravityScale, 0.6, 'Turbo Ball plays at 0.6 g');
 assert.equal(turbo.speedMultiplier, 1.85);

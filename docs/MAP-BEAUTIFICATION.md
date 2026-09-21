@@ -291,6 +291,29 @@ corner and mid views) against the 1049e4e and 0f45545b9 (Aug 30) references; the
 (`horizonResources`, `horizonMesaSurface`, `horizonAutumnGround`, `autumnHorizonSeam`, `copperQuarrySurface`,
 `titanGorgeHorizon`, `redrockCanyonHorizon`) were re-established at this commit.
 
+### Outland follow-up — 2026-09-21 (round 32)
+
+Owner: "redrock still has the noticeable texture/shadow/quality loss beyond the map borders" and "on nighttime
+mode, the horizons seem to glow in the back". Audited with `.qa-dev/map-edge-audit.mjs --maps=badlands`
+(Redrock Divide is the `badlands` catalog id) and `.qa-dev/horizon-shots.mjs --night=1`:
+
+- **Objects.** Nothing stood past the playable edge on the rock and sand maps — the ground litter is a ±40 m
+  camera ring, props stop at ±430 m, and the ring forest only serves wooded rims — so Redrock's outland read as a
+  bare, shadowless sheet. `world/horizonRockfield.ts` strews instanced boulders over the near ring faces (dense on
+  the terrain-material rim band, sparse on the first ranges, clustered into outcrops, at least 3 m past the seam,
+  slopes under 0.95, a square-metric reach of 900 m because the near rows follow the playable square); the near
+  class casts and receives shadows like the battlefield's own rocks. Density per map through
+  `horizon.outlandRocks` (defaults: mesa style and sand grounds 1, bare treelines 0.55, wooded rings 0).
+- **Moiré.** The flat rim bands seen at grazing angles resolved the near detail tiles into a regular carpet the
+  relief-rich battlefield never shows; `terrain.ts` treats the outland as far ground from 40 m past the edge.
+- **Night.** The vista haze mixed up to 94 % of the far ring toward a fog tint captured from the DAY fog at build
+  time, so the night runtime's ×0.20 material dim never reached the skyline. The fragment reads the live dim as the
+  ratio of the material colour to its authored day value (`uVDayDiffuse`) and applies it to the surface and the
+  haze tint alike.
+
+Receipts: `horizonRockfield.selftest.mjs` (primitive, synthetic ring, Redrock census, wooded maps bare, eviction
+ownership), `horizonResources` (bare-backdrop loop passes `outlandRocks: 0`; haze pin carries the dim).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

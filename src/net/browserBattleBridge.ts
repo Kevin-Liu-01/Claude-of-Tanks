@@ -1156,6 +1156,8 @@ export function createBrowserBattleBridge<
       mapId: game.mapId,
       durationS: game.timeS,
       network: true,
+      // owner 2026-09-21: the report reads the mode's revive rule (deaths as a stat, `dead` = dead at the end)
+      gameMode: game.gameMode,
       roster: resultRoster(),
     });
   }
@@ -1446,6 +1448,8 @@ export function createBrowserBattleBridge<
       mapId: game.mapId,
       durationS: game.timeS,
       network: true,
+      // owner 2026-09-21: the report reads the mode's revive rule (deaths as a stat, `dead` = dead at the end)
+      gameMode: game.gameMode,
       roster: resultRoster(),
     });
   }
@@ -1462,6 +1466,8 @@ export function createBrowserBattleBridge<
       mapId: game.mapId,
       durationS: game.timeS,
       network: true,
+      // owner 2026-09-21: the report reads the mode's revive rule (deaths as a stat, `dead` = dead at the end)
+      gameMode: game.gameMode,
       roster: resultRoster(),
     });
     return true;

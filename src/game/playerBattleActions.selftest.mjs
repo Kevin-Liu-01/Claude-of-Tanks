@@ -294,4 +294,11 @@ input.press('shell1');
 bus.emit('ui:specialAction', {});
 assert.equal(events.length, eventCount + 1, 'disposed owner contributes no new routed events');
 
+// round 32 (owner 2026-09-21, Turbo Ball "fix this completely"): unlimited rounds mark every shell card so the HUD
+// prints ∞; finite loadouts carry no mark at all (the deep-equal pins above stay exact)
+game.ruleset = { consumables: false, ammo: 'unlimited' };
+assert.ok(actions.setTank(spec).every((card) => card.unlimited === true), 'unlimited rounds mark every shell card');
+game.ruleset = null;
+assert.ok(actions.setTank(spec).every((card) => !('unlimited' in card)), 'finite loadouts carry no unlimited mark');
+
 console.log('playerBattleActions.selftest: ammo, cooldowns, local rules, and network routing passed');

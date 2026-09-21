@@ -135,6 +135,10 @@ export function createBattleResultPresentationRuntime({
 
   const update = (): void => {
     const result = game.result ?? null;
+    // Reviving modes (owner 2026-09-16: "it should 3 2 1 and you're back at spawn") revive a destroyed player
+    // at spawn; both branches below read the same two facts.
+    const revives = game.ruleset?.respawnS != null;
+    const destroyed = !!game.player?.combat?.destroyed;
     if (result && !endShown) {
       endShown = true;
       exitPointerLock();
@@ -143,8 +147,13 @@ export function createBattleResultPresentationRuntime({
         // deadline but redirect its completion into the final verdict flow.
         pending.fire = () => armResultReplay(result);
       } else {
-        const freshKill = !deathCamShown && !!game.player?.combat?.destroyed;
-        const played = result !== 'draw' && !deathCamShown && killcam.playForResult(
+        const freshKill = !deathCamShown && destroyed;
+        // owner 2026-09-21 ("if u die before end it shows a kill cam of that end"): a reviving mode never ran a
+        // mid-battle death replay, so the verdict is the only chance for one — and it belongs to a player who
+        // is dead when the battle ends. A revived player alive at the end gets the ordinary result cinematic.
+        // Non-reviving modes keep their flow unchanged.
+        const deathReplayBarred = result === 'defeat' && revives && !destroyed;
+        const played = result !== 'draw' && !deathCamShown && !deathReplayBarred && killcam.playForResult(
           result, game.timeS, () => presentResult(result), { freshKill },
         );
         record(played, result);
@@ -155,11 +164,10 @@ export function createBattleResultPresentationRuntime({
       endShown = false;
     }
 
-    // Reviving modes (owner 2026-09-16: "it should 3 2 1 and you're back at spawn"): a destroyed player
-    // keeps the live chase view and the pointer lock while the HUD counts down; no death cam, no kill-cam
-    // replay, no post-replay orbit. The mode revives the entity at spawn and the camera follows it.
-    const revives = game.ruleset?.respawnS != null;
-    if (!result && game.player?.combat?.destroyed && !deathCamShown && !revives) {
+    // Reviving modes: a destroyed player keeps the live chase view and the pointer lock while the HUD counts
+    // down; no death cam, no kill-cam replay, no post-replay orbit. The mode revives the entity at spawn and
+    // the camera follows it.
+    if (!result && destroyed && !deathCamShown && !revives) {
       deathCamShown = true;
       // Destruction hands pointer ownership to the post-death UI immediately.
       // Keeping the lock through the cinematic forced players to press Esc

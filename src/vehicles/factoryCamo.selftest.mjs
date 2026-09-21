@@ -10,6 +10,7 @@ import {
   SIGNATURE_CAMO_TANK_IDS,
   camoMatchesTag,
   camoNationTag,
+  CAMO_PATTERN_LABEL,
   camoPatternTags,
   defaultCamoPatternId,
   factoryCamoPatternIdFor,
@@ -18,93 +19,116 @@ import {
   signatureCamoPatternId,
 } from './camoPolicy.ts';
 import { getCamoSelection, resolveCamoVisual } from './materials.ts';
+import { tankDisplayName } from './tankLabels.ts';
 
-// Round 31 (owner 2026-09-20): "make our tank specific camos into their own camos ... then make factory camos be
-// their tank specific camos, but then add national color schemes that are just the monocolor ones". Factory is the
-// vehicle's own authored paint; the national colours are plain single-colour schemes, one per nation; the authored
-// paints (authoredPaintCatalog.ts) make every distinct fleet recipe selectable on any hull.
+// Round 31 (owner 2026-09-20): "make our tank specific camos into their own camos ... add national color schemes that
+// are just the monocolor ones". Round 32 (owner 2026-09-21): "i want the default camos of our tanks to be what they were
+// before, but just organized a lot better especially preventing duplicate camos being stored and them sounding less
+// generic". Factory is the nation's service pattern again (era-aware for Soviet hulls); the national colours are plain
+// single-colour schemes, one per nation, selectable on any hull; the authored paints (authoredPaintCatalog.ts) make
+// every distinct fleet recipe selectable exactly once, under a nation + pattern name rather than a vehicle name.
 
 // a plain coat carries no pattern knobs, so solids compare by colour alone (the generator normalises them the same way)
 const paletteKey = (visual) => JSON.stringify(visual.scheme === 'solid'
   ? ['solid', visual.base, visual.weather]
   : [visual.scheme, visual.base, visual.weather, visual.patches || [], visual.camoScale]);
-const nationKey = (nation) => (
-  nation === 'USSR' || nation === 'USSR/Russia' || nation === 'Russia' ? 'Russia' : nation
-);
+// the generator folds coats within one shade (14/255 per channel) into one paint
+const COLOUR_TOLERANCE = 14;
+const rgb = (hex) => { const n = parseInt(String(hex).slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const sameShade = (a, b) => rgb(a).every((c, i) => Math.abs(c - rgb(b)[i]) <= COLOUR_TOLERANCE);
+const coloursOf = (v) => [v.base, v.weather, ...((v.scheme || 'solid') === 'solid' ? [] : (v.patches || []))].map((c) => String(c).toLowerCase());
+const nearRecipe = (a, b) => (a.scheme || 'solid') === (b.scheme || 'solid') && coloursOf(a).length === coloursOf(b).length
+  && coloursOf(a).every((c, i) => sameShade(c, coloursOf(b)[i]));
 
-// --- Factory = the authored paint, for every tank in the fleet
+// --- Factory = the nation's service pattern (era-aware), identical on every hull of that nation
 let checked = 0;
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
-  const authored = spec.visual;
-  if (!authored?.base) continue;
+  if (!spec.visual?.base) continue;
+  const servicePatternId = factoryCamoPatternIdFor(spec.nation, spec.era);
   const resolved = resolveCamoVisual(spec, 'factory');
-  assert.equal(paletteKey(resolved), paletteKey(authored), `${id}: Factory is the vehicle's own authored paint`);
+  if (servicePatternId) {
+    const service = sharedCamoPreset(servicePatternId);
+    assert.ok(service && servicePatternId.startsWith('service_'), `${id}: Factory routes to a Service pattern (${servicePatternId})`);
+    assert.equal(paletteKey(resolved), paletteKey(service.visual), `${id}: Factory is the ${spec.nation} service pattern`);
+  } else {
+    assert.equal(paletteKey(resolved), paletteKey(spec.visual), `${id}: a hull without a national service pattern keeps its authored paint as Factory`);
+  }
   checked += 1;
 }
 assert.ok(checked >= 190, `the whole fleet resolves Factory (${checked})`);
-
-// --- national colour schemes: one plain colour per nation, selectable, tagged factory + nation
-assert.equal(NATIONAL_CAMO_PATTERN_IDS.length, 13);
-for (const [nation, patternId] of Object.entries(FACTORY_CAMO_PATTERN_BY_NATION)) {
-  assert.ok(NATIONAL_CAMO_PATTERN_IDS.includes(patternId), `${nation}: the national scheme is a national_* id`);
-  const preset = sharedCamoPreset(patternId);
-  assert.ok(preset, `${nation}: the national colour is a shared preset`);
-  assert.equal(preset.visual.scheme, 'solid', `${nation}: the national colour is monocolor`);
-  assert.equal(preset.visual.patches.length, 0);
-  assert.ok(preset.tags.includes('factory') && preset.tags.includes(camoNationTag(nation)), `${nation}: tagged factory + nation`);
-  assert.ok(CAMO_CATALOG_PATTERN_IDS.includes(patternId), `${nation}: the national colour is in the player catalog`);
-  assert.equal(factoryCamoPatternIdFor(nation, 'modern'), patternId);
-  const onAbrams = resolveCamoVisual(getSpec('m1a2'), patternId);
-  assert.equal(onAbrams.scheme, 'solid'); assert.equal(onAbrams.base, preset.visual.base, `${nation}: any hull wears the national colour`);
-}
-for (const [nation, era] of [['USSR', 'ww2'], ['USSR/Russia', 'cold-war'], ['Russia', 'modern']]) {
-  assert.equal(factoryCamoPatternIdFor(nation, era), 'national_ru', `${nation}/${era}: Soviet-era hulls share the Russian colour`);
-}
+for (const [nation, era, expected] of [
+  ['USSR', 'ww2', 'service_soviet_ww2'], ['USSR', 'interwar', 'service_soviet_ww2'], ['USSR/Russia', 'cold-war', 'service_soviet_coldwar'],
+  ['Russia', 'modern', 'service_t90m'], ['USA', 'modern', 'service_usa_desert'], ['USA', 'ww2', 'service_usa_desert'],
+  ['Germany', 'ww2', 'service_leo2a6m'], ['Israel', 'modern', 'service_merkava2d'],
+]) assert.equal(factoryCamoPatternIdFor(nation, era), expected, `${nation}/${era} Factory routing`);
 assert.equal(factoryCamoPatternIdFor(null, 'modern'), null);
 assert.equal(factoryCamoPatternIdFor('Atlantis', 'modern'), null);
-// the patterned national service coats stay selectable (they just no longer stand in for Factory)
+assert.deepEqual(Object.values(FACTORY_CAMO_PATTERN_BY_NATION).filter((id) => !id.startsWith('service_')), [],
+  'every national Factory routing is a Service pattern');
+
+// --- national colour schemes: one plain colour per nation, selectable on any hull, filed under the nation (not Factory)
+assert.equal(NATIONAL_CAMO_PATTERN_IDS.length, 13);
+const ENVIRONMENT_TAGS = ['woodland', 'desert', 'winter', 'urban', 'tropical'];
+for (const patternId of NATIONAL_CAMO_PATTERN_IDS) {
+  const preset = sharedCamoPreset(patternId);
+  assert.ok(preset, `${patternId}: the national colour is a shared preset`);
+  assert.equal(preset.visual.scheme, 'solid', `${patternId}: the national colour is monocolor`);
+  assert.equal(preset.visual.patches.length, 0);
+  assert.ok(preset.tags.some((tag) => tag !== 'geometric' && !ENVIRONMENT_TAGS.includes(tag)), `${patternId}: filed under its nation`);
+  assert.ok(!preset.tags.includes('factory'), `${patternId}: the plain colour is a selectable scheme, not the Factory coat`);
+  assert.ok(CAMO_CATALOG_PATTERN_IDS.includes(patternId), `${patternId}: the national colour is in the player catalog`);
+  const onAbrams = resolveCamoVisual(getSpec('m1a2'), patternId);
+  assert.equal(onAbrams.scheme, 'solid'); assert.equal(onAbrams.base, preset.visual.base, `${patternId}: any hull wears the national colour`);
+}
+{
+  const nationals = SHARED_CAMO_PRESETS.filter((preset) => preset.id.startsWith('national_'));
+  assert.equal(new Set(nationals.map((preset) => preset.visual.base)).size, nationals.length, 'every nation has its own colour');
+}
+// the patterned national service coats stay selectable in the catalog as well as standing in for Factory
 for (const id of ['service_usa_desert', 'service_t90m', 'service_soviet_ww2', 'service_soviet_coldwar', 'service_merkava2d']) {
   assert.ok(CAMO_CATALOG_PATTERN_IDS.includes(id), `${id} stays in the catalog`);
 }
 
-// --- every distinct authored recipe is selectable on every hull: as a Signature/Service preset or an authored paint
-const presetKeys = new Set(SHARED_CAMO_PRESETS.map((preset) => paletteKey(preset.visual)));
+// --- every authored recipe is selectable on every hull, exactly once, under a nation + pattern name
+const presetRecipes = SHARED_CAMO_PRESETS.map((preset) => preset.visual);
 let paints = 0;
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id); const authored = spec.visual;
   if (!authored?.base) continue;
-  const key = paletteKey(resolveCamoVisual(spec, 'factory'));
-  assert.ok(presetKeys.has(key), `${id}: the authored paint is a selectable preset for every hull`);
+  assert.ok(presetRecipes.some((visual) => nearRecipe(visual, authored)), `${id}: the authored paint is a selectable preset (within one shade)`);
 }
+const NATION_WORDS = /^(US Army|Bundeswehr|Russian|Soviet|British|French|PLA|Italian|JGSDF|Polish|ROK|Swedish|IDF|Ukrainian|Atlantean|Wehrmacht) /;
 for (const patternId of CAMO_PATTERN_IDS) {
   if (!patternId.startsWith('paint_')) continue;
   paints += 1;
   const preset = sharedCamoPreset(patternId);
-  assert.ok(preset && preset.sourceTankId && ALL_TANK_IDS.includes(preset.sourceTankId), `${patternId}: named after a fleet vehicle`);
+  assert.ok(preset && preset.sourceTankId && ALL_TANK_IDS.includes(preset.sourceTankId), `${patternId}: led by a fleet vehicle`);
   assert.ok(preset.tags.includes('signature'), `${patternId}: filed under Signature`);
   assert.ok(camoPatternTags(patternId).length >= 3, `${patternId}: nation, environment and construction tags`);
+  const label = CAMO_PATTERN_LABEL[patternId];
+  assert.match(label, NATION_WORDS, `${patternId}: named for its nation and pattern (${label})`);
+  assert.ok(!label.includes(tankDisplayName(getSpec(preset.sourceTankId))), `${patternId}: never named after a vehicle (${label})`);
   const sourceVisual = getSpec(preset.sourceTankId).visual;
   assert.equal(paletteKey(preset.visual), paletteKey(sourceVisual), `${patternId}: carries its lead vehicle's exact recipe`);
   assert.equal(paletteKey(resolveCamoVisual(getSpec('m1a2'), patternId)), paletteKey(resolveCamoVisual(getSpec('t90m'), patternId)),
     `${patternId}: renders identically on hulls from different nations`);
 }
-assert.ok(paints >= 40, `the authored paint catalog covers the fleet (${paints} entries)`);
-// identical authored paints were combined: no paint_* entry repeats any other preset's recipe (two legacy
-// service/signature pairs and the IDF grey predate this round and are left as they are)
+assert.ok(paints >= 15 && paints <= 30, `the authored paint catalog is compact (${paints} entries)`);
+// no duplicates: no paint_* repeats (or shades) any other preset's recipe, and paint labels are unique and never
+// reuse another catalog label
 {
-  const byRecipe = new Map();
-  for (const preset of SHARED_CAMO_PRESETS) {
-    const key = paletteKey(preset.visual);
-    if (!byRecipe.has(key)) byRecipe.set(key, []);
-    byRecipe.get(key).push(preset.id);
+  const paintPresets = SHARED_CAMO_PRESETS.filter((preset) => preset.id.startsWith('paint_'));
+  for (const paint of paintPresets) {
+    for (const other of SHARED_CAMO_PRESETS) {
+      if (other === paint) continue;
+      assert.ok(!nearRecipe(paint.visual, other.visual), `${paint.id} duplicates ${other.id}`);
+    }
   }
-  for (const [, ids] of byRecipe) {
-    if (ids.length < 2) continue;
-    assert.ok(!ids.some((id) => id.startsWith('paint_')), `authored paints never repeat a named recipe: ${ids.join(', ')}`);
-  }
-  const nationals = SHARED_CAMO_PRESETS.filter((preset) => preset.id.startsWith('national_'));
-  assert.equal(new Set(nationals.map((preset) => preset.visual.base)).size, nationals.length, 'every nation has its own colour');
+  const paintLabels = paintPresets.map((preset) => CAMO_PATTERN_LABEL[preset.id]);
+  assert.equal(new Set(paintLabels).size, paintLabels.length, 'every authored paint label is unique');
+  const otherLabels = new Set(Object.entries(CAMO_PATTERN_LABEL).filter(([id]) => !id.startsWith('paint_')).map(([, label]) => label));
+  for (const label of paintLabels) assert.ok(!otherLabels.has(label), `paint label "${label}" is not another catalog label`);
 }
 
 // --- Signature defaults are unchanged
@@ -175,7 +199,7 @@ try {
   assert.equal(getCamoSelection('abramsx'), 'factory', 'an explicit player Factory selection must override the Signature default');
   assert.equal(getCamoSelection('m551_sheridan'), 'sig_m551_sheridan', 'the legacy tank-relative Signature id migrates to its named reusable preset');
   for (const id of requestedIsraeliDefaults) assert.equal(getCamoSelection(id), 'factory');
-  for (const pattern of ['factory', 'winter', 'suits', 'openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'national_il', 'paint_leo2a5']) {
+  for (const pattern of ['factory', 'winter', 'suits', 'openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'national_il', 'paint_tiger1']) {
     globalThis.localStorage.getItem = key => key === 'cot.camo.sabra_mk2_x' ? pattern : null;
     assert.equal(getCamoSelection('sabra_mk2_x'), pattern, `Sabra's default does not replace an explicit saved ${pattern} choice`);
   }
@@ -186,4 +210,4 @@ try {
   else globalThis.localStorage = previousLocalStorage;
 }
 
-console.log(`factoryCamo.selftest: Factory is the authored paint on ${checked} hulls, ${NATIONAL_CAMO_PATTERN_IDS.length} national colours, ${paints} authored paints, ${SIGNATURE_CAMO_TANK_IDS.length} Signature defaults`);
+console.log(`factoryCamo.selftest: Factory is the national service pattern on ${checked} hulls, ${NATIONAL_CAMO_PATTERN_IDS.length} national colours, ${paints} authored paints, ${SIGNATURE_CAMO_TANK_IDS.length} Signature defaults`);

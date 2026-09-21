@@ -7,7 +7,7 @@
 // No top-level side effects — canvases are created inside createTankMaterials.
 
 import * as THREE from 'three';
-import {
+import { factoryCamoPatternIdFor,
   CAMO_PATTERN_IDS,
   CAMO_CATALOG_PATTERN_IDS,
   CAMO_PATTERN_LABEL,
@@ -1374,8 +1374,19 @@ function applySharedCamoVisual(
  * Round 31 (owner 2026-09-20: "make factory camos be their tank specific camos"): Factory is the vehicle's own
  * authored paint again. The nation's plain colour is its own catalog entry (national_*), see camoPolicy.ts.
  */
-function factoryVisual(_spec: MaterialTankSpec, authored: MaterialVisual): MaterialVisual {
-  return authored;
+/** Round 32: the noise stream a camo pattern paints with — keyed by the visible recipe and the pattern id, never the
+ * hull, so a shared preset lays out identically on every vehicle and re-bakes are byte-comparable. */
+export function camoPatternStreamSeed(visual: MaterialVisual, patternHash: number): number {
+  const recipe = `${visual.scheme || 'solid'}|${visual.base}|${visual.weather}|${(visual.patches || []).join(',')}|${visual.camoScale ?? ''}`;
+  let h = 0x2c1b3c6d ^ (patternHash | 0);
+  for (const ch of recipe) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return h >>> 0;
+}
+
+function factoryVisual(spec: MaterialTankSpec, authored: MaterialVisual): MaterialVisual {
+  // Round 32 (owner 2026-09-21): the pre-round-31 default — the nation's (era-aware) service pattern on the hull.
+  const patternId = factoryCamoPatternIdFor(spec.nation, spec.era);
+  return patternId ? applySharedCamoVisual(authored, patternId) || authored : authored;
 }
 
 function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): MaterialVisual {
@@ -1870,7 +1881,9 @@ function repaintEntry(entry: SharedTextureEntry, patternId: MaterialPatternId): 
   let ph = 0;
   for (const ch of patternId) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
   entryPaintState(entry).revision++;
-  paintCamo(entry.camoCanvas, vis, mulberry32(entry.seed ^ ph), feats, entry.seed);
+  // Round 32 (owner 2026-09-21: "when i switch tanks the camo seeding literally changes, which is wasteful"): the
+  // pattern stream is keyed by the pattern alone, so one camo lays out identically on every hull.
+  paintCamo(entry.camoCanvas, vis, mulberry32(camoPatternStreamSeed(vis, ph)), feats, entry.seed);
   exposureTrim(entry.camoCanvas);
   camoTex.needsUpdate = true;
   // camo_spotting r4: the roughness map follows the repaint so each pattern's
@@ -2082,7 +2095,7 @@ async function repaintCamoEntryChunked(
 
   const paintState = beginEntryRepaint(entry);
   try {
-    paintCamo(entry.camoCanvas, visual, mulberry32(entry.seed ^ patternHash), feats, entry.seed);
+    paintCamo(entry.camoCanvas, visual, mulberry32(camoPatternStreamSeed(visual, patternHash)), feats, entry.seed);
     if (!await yieldCamoSweep(16, generation)) return false;
     exposureTrim(entry.camoCanvas);
     camoTex.needsUpdate = true;

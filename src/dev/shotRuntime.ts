@@ -341,8 +341,7 @@ function createRecipeHelpers(context: ShotRuntimeContext) {
     aim.penRatio = forcedAim.penRatio;
     aim.gunDistM = forcedAim.gunDistM ?? forcedAim.distM;
     aim.gunTargetId = forcedAim.gunTargetId ?? null;
-    aim.singleReticle = !!(game.player.spec.hydropneumaticAim
-      && game.player.spec.armor?.turretless);
+    aim.singleReticle = !!game.player.spec.armor?.turretless; // round 32: every fixed mount is single-sight
     aim.blockedDistM = null;
     aim.blockedLabel = false;
     aim.atGunLimit = false;

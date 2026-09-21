@@ -67,15 +67,15 @@ for (const tankId of SIGNATURE_CAMO_TANK_IDS) {
   assert.equal(sharedCamoPreset(patternId)?.sourceTankId, tankId,
     `${tankId} selects its own reusable colorway`);
 }
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'national_usa', 'round 31: the national scheme is the plain colour');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'national_de');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'national_ru');
-assert.equal(factoryCamoPatternIdFor('USSR', 'ww2'), 'national_ru', 'Soviet hulls share the Russian khaki green');
-assert.equal(factoryCamoPatternIdFor('USSR/Russia', 'cold-war'), 'national_ru');
-assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'national_ru');
-assert.equal(factoryCamoPatternIdFor('Russia', 'ww2'), 'national_ru');
-assert.equal(factoryCamoPatternIdFor('Russia', 'cold-war'), 'national_ru');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.France, 'national_fr');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'service_usa_desert', "round 32: Factory is the nation's service pattern again");
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'service_leo2a6m');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'service_t90m');
+assert.equal(factoryCamoPatternIdFor('USSR', 'ww2'), 'service_soviet_ww2', 'Soviet wartime hulls wear the wartime service scheme');
+assert.equal(factoryCamoPatternIdFor('USSR/Russia', 'cold-war'), 'service_soviet_coldwar');
+assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'service_t90m');
+assert.equal(factoryCamoPatternIdFor('Russia', 'ww2'), 'service_soviet_ww2');
+assert.equal(factoryCamoPatternIdFor('Russia', 'cold-war'), 'service_soviet_coldwar');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.France, 'service_leclerc_xlr');
 assert.equal(factoryCamoPatternIdFor(null, 'modern'), null);
 assert.equal(factoryCamoPatternIdFor('Atlantis', 'modern'), null);
 
@@ -274,7 +274,9 @@ assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
 const precedingCatalog = structuredClone(catalogContract);
 // The new American concept adds exactly one authored paint. Validate its
 // complete recipe, then retain the earlier catalog hashes unchanged.
-assert.equal(CAMO_PATTERN_LABEL.paint_griffin_viper, 'Griffin Viper Tri-Tone');
+// round 32: authored paints are named for nation and pattern, never a vehicle (the Griffin's tri-tone is a second US
+// Army three-tone coat beside the Abrams family's)
+assert.equal(CAMO_PATTERN_LABEL.paint_griffin_viper, 'US Army Three-Tone Woodland II');
 assert.equal(networkCamoId('paint_griffin_viper'), 'paint_griffin_viper');
 assert.equal(defaultCamoPatternId('griffin_viper'), 'factory');
 assert.equal(hasSignatureCamo('griffin_viper'), false);
@@ -316,13 +318,13 @@ historicalCatalog.presets = historicalCatalog.presets.filter(row => row.id !== '
 historicalCatalog.signatures = historicalCatalog.signatures.filter(id => id !== 'sabra_mk2_x');
 historicalCatalog.tagsByPatternAndNation = historicalCatalog.tagsByPatternAndNation.filter(([id]) => !addedPaints.includes(id));
 assert.equal(createHash('sha256').update(JSON.stringify(historicalCatalog)).digest('hex'),
-// round 31 (2026-09-20): digest re-based — national colours, generated authored paints, Factory = authored paint
-  '54d0165b677e95098a990dfb373fe88546dc89398b29e57f45aaa639f99dd29d',
+// round 32 (2026-09-21): digest re-based — Factory = national service pattern again, deduplicated authored paints
+  '9a1c138eb1d754f4a2774c12d567a6934396b3634a088a49dd603bb002415f03',
   'all other catalog fields, order, recipes, tags and national routing remain exact');
 assert.equal(
   createHash('sha256').update(JSON.stringify(precedingCatalog)).digest('hex'),
-  // round 31 (2026-09-21): digest re-based — national colours, generated authored paints, Factory = authored paint
-  '984207956acabdb38da8c9a14a34962ac058d225d032f2520b3000aa7afa6eb8', // September 20 official marks, independent prints, Sabra default.
+  // round 32 (2026-09-21): digest re-based — Factory = national service pattern again, deduplicated authored paints
+  'f6bd90025908ae61eb7d72c1c4c5b1e804c8aa2c0f2202a51e081b9c93c5c948', // September 20 official marks, independent prints, Sabra default.
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

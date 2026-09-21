@@ -194,6 +194,20 @@ camera returns to the tank instead of holding the wreck view (batch 27). Since
 ruleset revives the player; the HUD counts the revive down ("BACK IN n", from the death
 event or the frame-observed destroyed state) until the revive lands.
 
+Turbo Ball's unlimited rounds (2026-09-21, owner: "fix this completely") keep the vehicle's
+loadout shape — the three keys still pick APFSDS, HEAT or HE — but every shot refills its channel
+and the shell selector, its accessibility labels and the sniper-view readout print ∞ instead of
+a count that never moves; no slot ever reads as empty.
+
+In a reviving mode the battle report treats a death as a stat, not a terminal state (owner
+2026-09-21): the survived / destroyed mark and the "n / m survived" team counts read whether a
+vehicle is alive when the battle ends (`mode:respawn` clears the ledger's `dead` flag and the
+ended payload's roster `alive` is authoritative), while every destruction counts into a
+"deaths" stat shown on the player's card and the roster rows. The end-of-battle death replay
+plays only when the player is dead at the verdict, and then it is the last death — the
+killcam drops the previous life's lethal chain on the player's revive; a revived player alive
+at the end gets the ordinary victory / defeat cinematic.
+
 Turbo Ball has no consumables, so its ruleset switches critical damage off
 (`criticalDamage: false` → `combat.modeCriticalDamage`): `rollModuleDamage` and
 `rollCrewHit` consume their chance draw and return, so no module breaks, no crew member is

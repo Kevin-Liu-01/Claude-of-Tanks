@@ -1735,6 +1735,11 @@ export function createKillCam(deps: KillcamDeps) {
         if (!p || !player || p.id !== player.id) return;
         api.cancel();
         spectate.stop(true);
+        // owner 2026-09-21 ("your first death si always categorized as that death"): the revived life starts
+        // with no lethal chain, so the end-of-battle death replay can only be the death that left the player
+        // dead at the verdict — never an earlier life's shell, and never an earlier life's last hit standing
+        // in for a burn-out.
+        pendingDeath = lastHitOnPlayer = null;
       });
       // Pointer/touch controls in the HUD use the same controller as A/D and
       // arrow keys, so the on-screen keycaps are real controls instead of
