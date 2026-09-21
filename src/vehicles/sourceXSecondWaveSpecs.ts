@@ -13,7 +13,7 @@ import {createT90AWXArmorZones,T90_AW_X_SOURCE_DATUMS} from './t90AwXArmor.ts';
 import {createT90BurlakXArmorZones,T90_BURLAK_X_SOURCE_DATUMS} from './t90BurlakXArmor.ts';
 import {createT90MSXArmorZones,T90MS_X_SOURCE_DATUMS} from './t90msXArmor.ts';
 import { LECLERC_CLASSIC_X_DATUMS } from './profiles/leclercClassicXFrame.ts';
-import { ARIETE_SUPPLIED_X_DATUMS } from './profiles/arieteXSuppliedFrame.ts';
+import { ARIETE_C1_X_DATUMS, ARIETE_X_FAMILY_SCALE, ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG } from './profiles/arieteXFamilyFrame.ts';
 import { CHALLENGER1_SUPPLIED_DATUMS } from './profiles/challenger1XSuppliedFrame.ts';
 import { STRV122_SUPPLIED_DATUMS } from './profiles/strv122XSuppliedFrame.ts';
 import { applySourceXAuxArmor } from './sourceXAuxArmor.ts';
@@ -74,7 +74,7 @@ const dimensions: Readonly<Record<string, FleetDimensions>> = {
     silhouetteHeightM:3.5972020259823676,silhouetteHullLengthM:7.9386527469955706},
   amx40_x: {hullLengthM:6.6816,overallLengthM:10.0588002,widthM:3.3585,heightM:2.50869,
     silhouetteHeightM:3.0890287367999556,silhouetteHullLengthM:6.910507586449385},
-  ariete_c1_x: {...ARIETE_SUPPLIED_X_DATUMS.dims},
+  ariete_c1_x: {...ARIETE_C1_X_DATUMS.dims},
   strv122_x: {...STRV122_SUPPLIED_DATUMS.dims},
   t72b3m_x:{...T72B3M_X_SOURCE_DATUMS.dims,
     silhouetteHeightM:3.5952429614961154,silhouetteHullLengthM:7.509942752402276},
@@ -107,8 +107,8 @@ const frames: Readonly<Record<string, SourceFrame>> = {
   type10_x: {turret:[-.00275904,1.50831687,.20655021],gun:[0,1.851,2.0529],muzzleZ:5.628774},
   type90_x: {turret:[0,1.681682,.156993],gun:[0,1.997083,1.650032],muzzleZ:5.754624},
   amx40_x: {turret:[-.03904,1.56289,.16819],gun:[-.00005,1.94827,1.3413],muzzleZ:6.6028},
-  ariete_c1_x: {turret:[...ARIETE_SUPPLIED_X_DATUMS.turretPivot],
-    gun:[...ARIETE_SUPPLIED_X_DATUMS.trunnion],muzzleZ:ARIETE_SUPPLIED_X_DATUMS.muzzleZ},
+  ariete_c1_x: {turret:[...ARIETE_C1_X_DATUMS.turretPivot],
+    gun:[...ARIETE_C1_X_DATUMS.trunnion],muzzleZ:ARIETE_C1_X_DATUMS.muzzleZ},
   strv122_x: {turret:[...STRV122_SUPPLIED_DATUMS.turretPivot],
     gun:[...STRV122_SUPPLIED_DATUMS.trunnion],muzzleZ:STRV122_SUPPLIED_DATUMS.muzzleZ},
   t72b3m_x:{turret:[...T72B3M_X_SOURCE_DATUMS.turretPivot],gun:[...T72B3M_X_SOURCE_DATUMS.trunnion],muzzleZ:T72B3M_X_SOURCE_DATUMS.muzzleZ},
@@ -148,11 +148,19 @@ function applyJagdpanzerFixedArmor(spec: FleetTankSpec): void {
 }
 
 function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
+  if (id === 'ariete_c1_x') {
+    spec.gunPitchByYawDeg = ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG;
+  }
   const frame = frames[id];
   spec.armor.turretPivot = [...frame.turret];
   spec.armor.gunPivot = [frame.gun[0] - frame.turret[0],
     frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]];
   spec.armor.gunBarrel.lengthM = frame.muzzleZ - frame.gun[2];
+  if (id === 'ariete_c1_x') {
+    spec.visual.trackWidthM = ARIETE_C1_X_DATUMS.trackWidthM;
+    // Widest real recoiling sleeve; the independent open bore stays 120 mm.
+    spec.armor.gunBarrel.radiusM = .12248 * ARIETE_X_FAMILY_SCALE;
+  }
   if (id === 'jpz_e100_x') applyJagdpanzerFixedArmor(spec);
   applySourceXAuxArmor(spec, id);
   const createZones = authoredEraZones[id as keyof typeof authoredEraZones];

@@ -117,6 +117,7 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'merkava4_x',
   ]),
   Italy: Object.freeze([
+    'ariete_c2_x',
     'ariete_c1_x',
   ]),
   'South Korea': Object.freeze([
@@ -140,11 +141,19 @@ const GARAGE_LEADING_VEHICLE_RANK_BY_NATION = new Map(
   ]),
 );
 
+// The owner explicitly features the definitive C2/C1 before retained
+// Italian prototypes; every other nation's tier-first order stays intact.
+function compareItalianLeadingPair(a: GarageOrderSpec, b: GarageOrderSpec): number {
+  if (a.nation !== 'Italy') return 0;
+  const featured = GARAGE_LEADING_VEHICLE_RANK_BY_NATION.get('Italy')!;
+  return (featured.get(a.id) ?? featured.size) - (featured.get(b.id) ?? featured.size);
+}
+
 /**
  * Order cards inside one catalog group by country, descending gameplay tier,
  * then descending display name. Owner-directed leading runs refine the order
- * within a tier, never allowing a lower-tier vehicle to precede a higher-tier
- * one. The id tie-break keeps duplicate public names deterministic.
+ * within a tier, apart from the explicit definitive Italian C2/C1 leading
+ * pair ahead of its retained prototypes. The id tie-break keeps duplicate public names deterministic.
  */
 export function compareCountryThenTierThenName<Spec extends GarageOrderSpec>(
   a: Spec,
@@ -154,6 +163,8 @@ export function compareCountryThenTierThenName<Spec extends GarageOrderSpec>(
 ): number {
   const nationDelta = (nationRank.get(a.nation) ?? 99) - (nationRank.get(b.nation) ?? 99);
   if (nationDelta) return nationDelta;
+  const italianLead = compareItalianLeadingPair(a, b);
+  if (italianLead) return italianLead;
   const tierDelta = tierOf(b.id) - tierOf(a.id);
   if (tierDelta) return tierDelta;
   const leadingRanks = GARAGE_LEADING_VEHICLE_RANK_BY_NATION.get(a.nation);

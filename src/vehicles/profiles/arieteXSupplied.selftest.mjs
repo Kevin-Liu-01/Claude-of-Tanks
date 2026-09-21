@@ -2,14 +2,21 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { arietePlaneStock } from './arieteXSuppliedArmor.ts';
+import { ARIETE_X_FAMILY_SCALE as S } from './arieteXFamilyFrame.ts';
 
 // Independently frozen SOURCE ray/frame witnesses, not candidate calibrations.
 const yawDatum = [0, 1.306227824, .328028885], gunDatum = [0, 1.651499209, 1.3415539];
 const muzzleZ = 5.028094113;
 const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
   && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs ${expected} ±${tolerance}`);
-const cast = (meshes, from, direction, far = 20) => new THREE.Raycaster(
-  new THREE.Vector3(...from), new THREE.Vector3(...direction), 0, far).intersectObjects(meshes, false)[0];
+// Keep the independent historical source samples; apply only the owner's
+// frozen uniform enlargement and return intersections in that source frame.
+const cast = (meshes, from, direction, far = 20) => {
+  const hit = new THREE.Raycaster(new THREE.Vector3(...from).multiplyScalar(S),
+    new THREE.Vector3(...direction), 0, far * S).intersectObjects(meshes, false)[0];
+  if (hit) { hit.point.divideScalar(S); hit.distance /= S; }
+  return hit;
+};
 
 function closedPlanePrimitive() {
   const g = arietePlaneStock([[1,0,0,-1],[-1,0,0,-1],[0,1,0,-1],[0,-1,0,0],
@@ -70,7 +77,7 @@ function gear(root) {
   const m = new THREE.Matrix4(), p = new THREE.Vector3();
   for (const [mesh,stations,x,y] of [[roads,zs,1.18048348,.3467588722705841],
     [rollers,[-1.675,-.348636,.976],1.267537,.852034]]) for(let i=0;i<mesh.count;i++) {
-    mesh.getMatrixAt(i,m);p.setFromMatrixPosition(m).applyMatrix4(mesh.matrixWorld);
+    mesh.getMatrixAt(i,m);p.setFromMatrixPosition(m).applyMatrix4(mesh.matrixWorld).divideScalar(S);
     near(Math.min(...stations.map(z=>Math.abs(z-p.z))),0,2e-6,'actual source axle Z');
     near(Math.abs(p.x),x,2e-6,'source axle X');near(p.y,y,2e-6,'source axle Y');
   }
@@ -79,7 +86,7 @@ function gear(root) {
 function poseAndEnvelope(t,all) {
   const root=t.root,yaw=root.getObjectByName('rig_turret'),gun=root.getObjectByName('rig_gun'),recoil=root.getObjectByName('rig_recoil');
   for(const [rig,datum] of [[yaw,yawDatum],[gun,gunDatum]]) near(rig.getWorldPosition(new THREE.Vector3())
-    .distanceTo(new THREE.Vector3(...datum)),0,2e-6,'source functional joint');
+    .distanceTo(new THREE.Vector3(...datum).multiplyScalar(S)),0,2e-6,'uniformly enlarged source functional joint');
   assert.equal(root.getObjectByName('gunMount').parent,gun);
   assert.equal(root.getObjectByName('gun').parent,recoil);
   const bounds=new THREE.Box3(),v=new THREE.Vector3(),m=new THREE.Matrix4();
@@ -90,15 +97,15 @@ function poseAndEnvelope(t,all) {
       assert.ok(v.toArray().every(Number.isFinite));bounds.expandByPoint(v);
     }
   }
-  near(bounds.max.x-bounds.min.x,3.61,.00001,'source full-width ruler');
-  near(bounds.max.y,3.564580707,.00001,'source highest actual fitting');
+  near(bounds.max.x-bounds.min.x,3.61*S,.00001,'uniformly enlarged source full-width ruler');
+  near(bounds.max.y,3.564580707*S,.00001,'uniformly enlarged source highest actual fitting');
   assert.ok(bounds.min.y>=-1e-6,'moving-shoe stock remains above ground');
-  near(t.gunMuzzleWorld(new THREE.Vector3()).z,muzzleZ,.000002,'source muzzle anchor');
+  near(t.gunMuzzleWorld(new THREE.Vector3()).z,muzzleZ*S,.000002,'uniformly enlarged source muzzle anchor');
   for(const y of [-.7,.9]) for(const pitch of [-.10,.16]) {
     yaw.rotation.y=y;gun.rotation.x=pitch;root.updateMatrixWorld(true);
     const expected=new THREE.Vector3(0,0,muzzleZ-gunDatum[2]).applyAxisAngle(new THREE.Vector3(1,0,0),pitch)
       .add(new THREE.Vector3(...gunDatum).sub(new THREE.Vector3(...yawDatum)))
-      .applyAxisAngle(new THREE.Vector3(0,1,0),y).add(new THREE.Vector3(...yawDatum));
+      .applyAxisAngle(new THREE.Vector3(0,1,0),y).add(new THREE.Vector3(...yawDatum)).multiplyScalar(S);
     near(t.gunMuzzleWorld(new THREE.Vector3()).distanceTo(expected),0,2e-6,'source muzzle follows real yaw and pitch');
     const before=t.gunMuzzleWorld(new THREE.Vector3());recoil.position.z=-.10;root.updateMatrixWorld(true);
     near(t.gunMuzzleWorld(new THREE.Vector3()).distanceTo(before),.10,2e-6,'native recoil moves the entire cannon');

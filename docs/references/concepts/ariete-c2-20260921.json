@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-21",
+    "request": "the tier IX c1 ariete is the definitive one going forward and make it larger ... make a proper c2 ariete with massive improvements based off the c1 ariete proper",
+    "scope": "A new C2 derivative of the definitive C1 enlarged by the prescribed 1.12 uniform factor. Retain the older C1 Serie 1 and C2 under prototype names."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "designs": {
+    "ariete_c2_x": {
+      "id": "ariete_c2_x",
+      "test": "src/vehicles/profiles/arieteC2X.selftest.mjs",
+      "ring": [
+        0,
+        1.4629751628800003,
+        0.3673923512
+      ],
+      "gunLocal": [
+        0,
+        0.3867039511999999,
+        1.1351480168
+      ],
+      "barrelLengthM": 4.12892503856,
+      "barrelRadiusM": 0.1371776,
+      "pitchDeg": [
+        -9,
+        20
+      ],
+      "mainCaliberMm": 120,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 2,
+      "hullLengthM": 7.852776222592,
+      "hullWidthM": 4.043200000000001,
+      "widthM": 4.043200000000001,
+      "overallLengthM": 9.557853517520002,
+      "tallestM": 3.9923303918400004,
+      "silhouette": "Enlarged definitive C1 hull and angular turret with wider tracks, four return rollers per side, finite side and cheek protection packs, modern commander and gunner sights, and two seated roof weapons"
+    }
+  },
+  "dimensionToleranceFraction": 0.03,
+  "sourcePacket": "docs/references/tanks/ariete_c2_x.md",
+  "requiredProof": [
+    "Retain the enlarged C1 primary shell, ring, trunnion and 120 mm cannon; physical HIGH/LOW bores and articulation",
+    "Wider integrated tracks, seven road stations and four return rollers per side, strict moving-shoe and band clearance",
+    "Modern recessed optics, positively seated roof weapons and finite protective stocks with real gameplay face/edge/gap checks",
+    "Independent14-view native photo/design review at HIGH and LOW; no fabricated 3D-source score",
+    "Unchanged legacy prototype geometry and saved identities; exact lazy registration, default paint, real Garage selection and switch costs",
+    "Complete anatomy, asset/marking/centering, release, typecheck and public/private builds"
+  ],
+  "status": "Frozen design contract, not a qualification receipt."
+}

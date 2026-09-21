@@ -2,6 +2,21 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
 
+// An owner-directed enlargement changes the entire frozen source frame,
+// including its ground translation. Moving just the mesh scale would drift
+// the source; moving just the candidate would silently invalidate the oracle.
+const originalAriete=JSON.parse(readFileSync(new URL('../docs/research/second-wave-registrations/ariete_c1_x.json',import.meta.url),'utf8'));
+const enlargedAriete=JSON.parse(readFileSync(new URL('../docs/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json',import.meta.url),'utf8'));
+assert.equal(enlargedAriete.sourceSha256,originalAriete.sourceSha256,'same complete raw source');
+assert.deepEqual(enlargedAriete.axes,originalAriete.axes,'no new orientation fit');
+assert.equal(enlargedAriete.scale,originalAriete.scale*1.12,'prescribed uniform enlargement');
+assert.deepEqual(enlargedAriete.translation,originalAriete.translation.map(v=>v*1.12),'ground frame scales with source');
+for(const key of ['includeRoots','exactDuplicateMeshes','omitIslandsBelowY','omitIslandsInside'])
+  assert.equal(enlargedAriete[key],undefined,'enlargement never drops source parts');
+assert.deepEqual(SOURCE_WORLD_FRAMES.ariete_c1_x.turret,[0,1.306227824,.328028885].map(v=>v*1.12));
+assert.deepEqual(SOURCE_WORLD_FRAMES.ariete_c1_x.gun,[0,1.651499209,1.3415539].map(v=>v*1.12));
+assert.equal(SOURCE_WORLD_FRAMES.ariete_c1_x.sha256,'1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68');
+
 const certificate=SOURCE_WORLD_FRAMES.leo2a5_x;
 const frame=()=>({rootMatrix:[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
   hull:[0,0,0],turret:[...certificate.turret],gun:[...certificate.gun]});
@@ -95,6 +110,8 @@ for(const owner of ['reference','procedural'])for(const index of [0,5,10,12,13,1
   assert.equal(mk3Verify(f).passed,false,'No additional scale, centering or ground correction');
 }
 const evaluator=readFileSync(new URL('./visual-evaluator-page.html',import.meta.url),'utf8');
+assert.equal([...evaluator.matchAll(/^  ariete_c1_x: SECOND_WAVE_X_REFERENCE_OVERRIDES\.ariete_c1_x,$/gm)].length,1,
+  'the Ariete critic uses the same complete fused source as fidelity');
 const mk3Rows=[...evaluator.matchAll(/^  merkava3d_x: (.+),$/gm)];assert.equal(mk3Rows.length,1,'one explicit Mk3 evaluator route');
 const mk3Route=Function(`return (${mk3Rows[0][1]});`)();
 assert.deepEqual(mk3Route,{source:'glb',qualityBar:'exemplar',glb:{path:'/models/community-candidates/merkava3d_x_source.glb',fixedMount:true,componentMasks:false,paintUntextured:true}});

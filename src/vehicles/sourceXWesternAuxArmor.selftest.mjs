@@ -6,6 +6,7 @@ import { TANK_SPECS } from './specs.ts';
 import { geometryFingerprint } from './tankAssets.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import { assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
+import { ARIETE_X_FAMILY_SCALE as ARIETE_SCALE } from './profiles/arieteXFamilyFrame.ts';
 import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { withHistoricalFixedGuardPaint } from './historicalFixedGuardPaint.test-support.mjs';
@@ -22,12 +23,18 @@ const cases = {
 // the western native digests; values below are repinned from the current build.
   leo2a6_x: { main: 'e584febc104149d49e22b2c282253b337dbfa710d5d4591669c0fe3e02d6bf00', geometry: ['654715b7', '21bdb645'], counts: [20, 0] },
   strv122_x: { main: '3a1b5c2e572d3d800c6a4ec71fcaa19e4913294182c0af33f6b1a1f375db954b', geometry: ['f01b4212', '221b6425'], counts: [676, 66] },
-  ariete_c1_x: { main: '5ec104dd88541f1526221ab452fabe2ba9b63bb9a1825e73dc7165b918465b59', geometry: ['33372a11', '27af5e0c'], counts: [210, 0] },
+  // 2026-09-21 owner-selected definitive C1: complete1.12-scale frame,
+  // corrected120mm physical bore and fresh anatomy. Previous main hash:
+  // 5ec104dd88541f1526221ab452fabe2ba9b63bb9a1825e73dc7165b918465b59
+  // Previous HIGH33372a11/LOW27af5e0c; finite-face/ray controls remain below.
+  ariete_c1_x: { main: 'c3b76013b85fa342ed8d2cf3f803015f1cdc785c620025b4b3549ae207040673', geometry: ['8119618a', '92d52813'], counts: [210, 0] },
   challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['c09cfc2c', 'f4989def'], counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });
 const auxiliary = armor => [...armor.hullPlates, ...armor.turretPlates].filter(p => p.surfaceGroup);
+const arietePoint = point => point.map(value => value * ARIETE_SCALE);
+assert.equal(ARIETE_SCALE, 1.12, 'owner-approved Ariete enlargement is fixed');
 const shot = (id, from, to) => traceTank(new THREE.Vector3(...from), new THREE.Vector3(...to), pose(0), TANK_SPECS[id].armor)
   .filter(hit => hit.plate?.surfaceGroup?.startsWith(`${id}:`));
 const close = (a, b, label) => assert.ok(Math.abs(a - b) < 4e-6, `${label}: ${a} versus ${b}`);
@@ -85,7 +92,7 @@ for (const [id, expected] of Object.entries(cases)) {
   const armor = TANK_SPECS[id].armor;
   assert.equal(hash([armor.hullPlates.filter(p => p.kind !== 'spaced'), armor.turretPlates.filter(p => p.kind !== 'spaced'),
     armor.modules, armor.crew, armor.collisionShells]), expected.main,
-  `${id}: pre-edit permanent armor, ERA, collision cells, modules and crew stay byte-identical`);
+  `${id}: ${id === 'ariete_c1_x' ? 'approved enlarged C1' : 'pre-edit'} permanent armor, ERA, collision cells, modules and crew stay byte-identical`);
   assert.deepEqual([armor.hullPlates.filter(p => p.surfaceGroup).length, armor.turretPlates.filter(p => p.surfaceGroup).length], expected.counts);
   const donor = TANK_SPECS[{ leo2a6_x: 'leo2a6', strv122_x: 'strv122', ariete_c1_x: 'ariete_c1', challenger1_x: 'challenger1' }[id]].armor;
   for (const plate of auxiliary(armor)) {
@@ -146,7 +153,9 @@ for (const [id, expected] of Object.entries(cases)) {
 // Historical donor slabs floating outside real stock must not be accepted.
 for (const [id, x, y, z] of [['leo2a6_x', 1.91003491, .5, 0], ['strv122_x', 1.89504, .5, 2],
   ['ariete_c1_x', 1.82505556, .75, -2], ['challenger1_x', 1.83477273, .6, 0]]) {
-  for (const side of [-1, 1]) assert.equal(shot(id, [side * (x + .005), y, z], [side * (x - .005), y, z]).length, 0,
+  const scale = id === 'ariete_c1_x' ? ARIETE_SCALE : 1;
+  for (const side of [-1, 1]) assert.equal(shot(id, [side * (x * scale + .005), y * scale, z * scale],
+    [side * (x * scale - .005), y * scale, z * scale]).length, 0,
     `${id}: old unsupported side slab remains gameplay air`);
 }
 for (const side of [-1, 1]) {
@@ -154,12 +163,12 @@ for (const side of [-1, 1]) {
   assert.equal(a6.length, 1); close(Math.abs(a6[0].point.x), 1.7409, 'source-fitted A6 thin leaf');
   assert.equal(shot('leo2a6_x', [side * 1.8, 1.08, .687], [side * 1.70, 1.08, .687]).length, 0, 'A6 true 51.25mm leaf gap');
   assert.equal(shot('leo2a6_x', [side * 1.90, 1.10, 2.169025], [side * 1.80, 1.10, 2.169025]).length, 0, 'A6 actual 1.08mm heavy-panel seam');
-  const ariete = shot('ariete_c1_x', [side * 2, .9, .5], [side * 1.48, .9, .5]);
+  const ariete = shot('ariete_c1_x', arietePoint([side * 2, .9, .5]), arietePoint([side * 1.48, .9, .5]));
   assert.equal(ariete.length, 1, 'Ariete outer cover does not double-charge its hidden inner sheet');
-  close(Math.abs(ariete[0].point.x), 1.805, 'Ariete actual heavy face');
-  const gap = shot('ariete_c1_x', [side * 2, .9, .405], [side * 1.48, .9, .405]);
+  close(Math.abs(ariete[0].point.x), 1.805 * ARIETE_SCALE, 'Ariete actual heavy face');
+  const gap = shot('ariete_c1_x', arietePoint([side * 2, .9, .405]), arietePoint([side * 1.48, .9, .405]));
   assert.equal(gap.length, 1, 'real Ariete outer gap exposes only the actual inner leaf');
-  close(gap[0].point.x, side < 0 ? -1.529119 : 1.5299605, 'Ariete inner leaf through outer seam');
+  close(gap[0].point.x, (side < 0 ? -1.529119 : 1.5299605) * ARIETE_SCALE, 'Ariete inner leaf through outer seam');
   for (const [rawZ, rawY, rawX] of [[-90, 40, 76.181099 - .43307], [-90, 58, 76.181099], [-73.365, 40, 70]]) {
     const p = c1Point(side * rawX, rawY, rawZ);
     const hits = shot('challenger1_x', [side * 2, p[1], p[2]], [side * 1.5, p[1], p[2]]);

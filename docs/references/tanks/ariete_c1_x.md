@@ -1,5 +1,25 @@
 # C1 Ariete X — independent supplied-file reconstruction
 
+## Current family revision — 2026-09-21
+
+The owner selected this Tier IX C1 as the definitive Ariete and requested a
+larger model. The installed geometry now uses a prescribed uniform 1.12 scale;
+the [family work packet](../../research/ariete-family-revamp-20260921.md)
+owns current status. This revision retains the existing functional loader
+machine gun and corrects the enlarged cannon's bore to exactly 120 mm.
+
+The original source was located under `Downloads/Claude of Tanks Models/`,
+with its original SHA-256 unchanged. The replayable new recipe is
+[`ariete_c1_x-enlarged-20260921.json`](../../research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json).
+It multiplies the original uniform scale and translation by 1.12, preserves
+every complete source mesh and yields canonical SHA-256
+`1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68`.
+No source geometry is repaired or fitted to the candidate. The original recipe
+and the measurements and receipts below remain historical evidence. Fresh
+geometry, physical, visual and release checks are required for the new size.
+
+## Historical supplied-file reconstruction
+
 **Changed target:** the owner subsequently instructed this X model to match
 the supplied GLB, including its proportion differences. Source-only registration
 and a new independent procedural rebuild are in progress. The photo-led draft

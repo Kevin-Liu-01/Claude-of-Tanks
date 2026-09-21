@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "recipe": "docs/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json",
+  "sourceSha256": "02043219575d2ac02c9846666efca20c8087727808e4c51245a28588242e26b4",
+  "canonicalSha256": "1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68",
+  "meshCount": 11,
+  "triangleCount": 56495,
+  "omittedMeshes": [],
+  "omittedDetachedIslands": null,
+  "canonicalBounds": {
+    "min": [
+      -2.0216000080108643,
+      1.177877240188252e-15,
+      -3.9263880252838135
+    ],
+    "max": [
+      2.0216000080108643,
+      3.992330312728882,
+      5.631465435028076
+    ],
+    "size": [
+      4.0432000160217285,
+      3.9923303127288805,
+      9.55785346031189
+    ]
+  },
+  "comparisonPurpose": "owner-directed supplied C1 at prescribed1.12 scale; not real-vehicle metrology",
+  "tool": "tools/source-x-oracle.mjs",
+  "status": "source registration only; candidate qualification separate"
+}

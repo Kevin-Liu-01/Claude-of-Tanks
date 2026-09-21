@@ -44,8 +44,11 @@ export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
     fused:true,turret:[.0031,1.476,.36928],gun:[-.008067,1.859441,1.570],
   },
   ariete_c1_x: {
-    sha256:'fec5f915eb6862ef4b6e3c442355b0ec9dd5df6f1357ec560490e43c84fda08c',
-    fused:true,turret:[0,1.306227824,.328028885],gun:[0,1.651499209,1.3415539],
+    // Owner-directed 12% uniform enlargement; original raw file and original
+    // registration remain archived. No per-candidate normalization.
+    sha256:'1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68',
+    fused:true,turret:[0,1.4629751628800003,.3673923512],
+    gun:[0,1.8496791140800002,1.5025403680000002],
   },
   challenger1_x: {
     sha256:'90a18f59e64509211fa15e4298fba40443766b8dbd9e6cfb1e7858ecad8f4e64',

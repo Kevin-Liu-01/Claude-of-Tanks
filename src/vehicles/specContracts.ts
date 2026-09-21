@@ -90,6 +90,8 @@ export interface FleetTankSpec extends Record<string, RuntimeValue> {
   gunPitchDegS: number;
   gunElevationDeg: number;
   gunDepressionDeg: number;
+  /** Minimum pitch by absolute hull-relative yaw, as ordered degree pairs. */
+  gunPitchByYawDeg?: readonly (readonly [number, number])[];
   hydropneumaticAim?: HydropneumaticAim;
   gun: FleetGunSpec;
   dims: FleetDimensions;

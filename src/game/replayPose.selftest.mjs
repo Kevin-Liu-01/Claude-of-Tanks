@@ -25,6 +25,25 @@ if (Math.abs(casemate.yaw - Math.PI / 2) > 1e-9 || casemate.turretYaw !== 0) {
   throw new Error('casemate hull was not turned into an out-of-arc shot');
 }
 
+// Shot reconstruction must obey the same rear-deck limit as live aiming,
+// including a wrapped hull heading. Forward depression remains available.
+{
+  const spec = { gunDepressionDeg: 9, gunElevationDeg: 20,
+    gunPitchByYawDeg: [[0, -9], [120, -9], [140, 1], [180, 1]] };
+  for (const heading of [0, 2 * Math.PI]) {
+    const rear = captureReplayPose({ pos: new Vector3(), yaw: heading });
+    alignReplayPoseToShot(rear, [0, -.2, -1], spec);
+    if (Math.abs(rear.gunPitch - Math.PI / 180) > 1e-10) {
+      throw new Error('replay correction drove the rear-facing barrel into the engine deck');
+    }
+    const front = captureReplayPose({ pos: new Vector3(), yaw: heading });
+    alignReplayPoseToShot(front, [0, -.2, 1], spec);
+    if (Math.abs(front.gunPitch + 9 * Math.PI / 180) > 1e-10) {
+      throw new Error('rear clearance incorrectly removed forward gun depression');
+    }
+  }
+}
+
 // Collision replays rewind both tanks to the prior fixed-step pose and ease
 // into contact. Rotation must take the short path across the +/-pi seam.
 {

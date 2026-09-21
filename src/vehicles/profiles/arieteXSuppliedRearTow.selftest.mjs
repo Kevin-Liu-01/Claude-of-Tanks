@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { ARIETE_X_FAMILY_SCALE as S } from './arieteXFamilyFrame.ts';
 
 const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
   && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs source${expected} ±${tolerance}`);
-const cast = (meshes, from, direction, far = 10) => new THREE.Raycaster(
-  new THREE.Vector3(...from), new THREE.Vector3(...direction), 0, far).intersectObjects(meshes, false)[0];
+const cast = (meshes, from, direction, far = 10) => {
+  const hit = new THREE.Raycaster(new THREE.Vector3(...from).multiplyScalar(S),
+    new THREE.Vector3(...direction), 0, far*S).intersectObjects(meshes, false)[0];
+  if(hit) { hit.point.divideScalar(S); hit.distance /= S; }
+  return hit;
+};
 
 function sourceStock(all) {
   // Complete Object3 first surfaces, independently frozen before authoring.
@@ -73,7 +78,7 @@ function physicalContacts(root, all) {
     if (o.isMesh && o.userData.continuityRole === 'open-lattice') {
       o.geometry.computeBoundingBox();
       const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
-      if (b.min.z < -3.3 && b.max.x > -.2 && b.min.x < .2) hiddenRole++;
+      if (b.min.z < -3.3*S && b.max.x > -.2*S && b.min.x < .2*S) hiddenRole++;
     }
   });
   assert.equal(hiddenRole, 0, 'the real rear fitting is not relabeled out of continuity scanning');

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { arieteC2TubSections } from './arieteC2Tub.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 const { box, cylX } = KIT;
 type Station = readonly [z: number, bottom: number, roof: number];
@@ -13,10 +14,10 @@ function stock(rows: readonly Station[], left: number, right: number) {
   })));
 }
 
-function lowerTub(P: TankBuilderPort): void {
+function lowerTub(P: TankBuilderPort, modern: boolean): void {
   // Rear and lower-glacis fold locations are separate from the shoulder
   // shell: there is no broad filled slab over either end wheel.
-  P.add('hull', stock([
+  P.add('hull', modern ? sectionSolid(arieteC2TubSections()) : stock([
     [-3.157488, .990815, 1.200249], [-2.763854, .402046, 1.200249],
     [2.657875, .402046, 1.200249], [3.035, .69896, 1.1873],
     [3.329914, .931097, 1.02028], [3.400566, .990, .9918],
@@ -111,8 +112,8 @@ function heavySkirts(P: TankBuilderPort, side: -1 | 1): void {
   P.addExternalArmor('hull', box(.300, .2942, .30532), side * 1.654, 1.186043, -.23004);
 }
 
-export function addArieteXSuppliedHull(P: TankBuilderPort): void {
-  lowerTub(P); bearingDeck(P);
+export function addArieteXSuppliedHull(P: TankBuilderPort, modern = false): void {
+  lowerTub(P, modern); bearingDeck(P);
   for (const side of [-1, 1] as const) {
     shoulders(P, side); thinSkirts(P, side); heavySkirts(P, side);
   }

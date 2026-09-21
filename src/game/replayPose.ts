@@ -1,3 +1,4 @@
+import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { Vector3 } from 'three';
 
 interface VectorLike {
@@ -28,6 +29,7 @@ interface ReplayGunLimits {
   gunArcDeg?: number;
   gunDepressionDeg?: number;
   gunElevationDeg?: number;
+  gunPitchByYawDeg?: readonly (readonly [number, number])[];
 }
 
 export interface ReplayFlightTimeline {
@@ -85,7 +87,9 @@ export function alignReplayPoseToShot(
   pose.turretYaw = relYaw;
   const worldPitch = Math.atan2(dy, horiz);
   const hullAtGun = pose.pitch * Math.cos(relYaw) + pose.roll * Math.sin(relYaw);
-  const lo = -Math.abs((spec && spec.gunDepressionDeg) || 90) * Math.PI / 180;
+  const lo = spec?.gunPitchByYawDeg
+    ? minimumMechanicalGunPitch(spec, relYaw)
+    : -Math.abs((spec && spec.gunDepressionDeg) || 90) * Math.PI / 180;
   const hi = Math.abs((spec && spec.gunElevationDeg) || 90) * Math.PI / 180;
   pose.gunPitch = Math.max(lo, Math.min(hi, worldPitch - hullAtGun));
   return pose;

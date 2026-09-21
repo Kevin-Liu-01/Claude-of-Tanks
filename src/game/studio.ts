@@ -1,3 +1,4 @@
+import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
@@ -716,8 +717,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   // --- actors -----------------------------------------------------------------
-  function clampGunDeg(spec: TankSpec, deg: number): number {
-    return Math.max(-(spec.gunDepressionDeg ?? 10),
+  function clampGunDeg(spec: TankSpec, deg: number, turretDeg: number): number {
+    const low = spec.gunPitchByYawDeg
+      ? minimumMechanicalGunPitch(spec, turretDeg * DEG) / DEG
+      : -(spec.gunDepressionDeg ?? 10);
+    return Math.max(low,
       Math.min(spec.gunElevationDeg ?? 20, deg || 0));
   }
 
@@ -757,7 +761,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // aim the chase target where the pose wants the gun so settle never
     // fights the authored turret/gun values it is about to be pinned to
     const az = st.yaw + p.turretDeg * DEG;
-    const el = clampGunDeg(a.spec, p.gunDeg) * DEG;
+    const el = clampGunDeg(a.spec, p.gunDeg, p.turretDeg) * DEG;
     a.input.aimPoint.set(
       st.pos.x + Math.sin(az) * Math.cos(el) * 400,
       st.pos.y + 2 + Math.sin(el) * 400,
@@ -779,7 +783,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     st.speed = 0;
     st.yawRate = 0;
     st.turretYaw = p.turretDeg * DEG;
-    st.gunPitch = clampGunDeg(a.spec, p.gunDeg) * DEG;
+    st.gunPitch = clampGunDeg(a.spec, p.gunDeg, p.turretDeg) * DEG;
     a.timelineX = p.x;
     a.timelineZ = p.z;
     a.timelineYaw = st.yaw;
@@ -1139,7 +1143,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (patch.z != null) pose.z = patch.z;
     if (patch.facingDeg != null) pose.facingDeg = patch.facingDeg;
     if (patch.turretDeg != null) pose.turretDeg = patch.turretDeg;
-    if (patch.gunDeg != null) pose.gunDeg = clampGunDeg(a.spec, patch.gunDeg);
+    if (patch.gunDeg != null || patch.turretDeg != null) {
+      pose.gunDeg = clampGunDeg(a.spec, patch.gunDeg ?? pose.gunDeg, pose.turretDeg);
+    }
     if (patch.name !== undefined) {
       a.name = patch.name || null;
       bindStoryboardTracks();
@@ -2110,7 +2116,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       st.pos.z = _v3.z;
       st.yaw = yaw;
       st.turretYaw = _actorSample.turretDeg * DEG;
-      st.gunPitch = clampGunDeg(a.spec, _actorSample.gunDeg) * DEG;
+      st.gunPitch = clampGunDeg(a.spec, _actorSample.gunDeg, _actorSample.turretDeg) * DEG;
 
     if (support) conformStudioActor(a, hfProxy, dt, a.visual.isDestroyed());
   }

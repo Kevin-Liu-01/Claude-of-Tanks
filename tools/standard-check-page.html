@@ -229,14 +229,16 @@ function topDownScan(root) {
 // mode: per-tank standard scan
 // --------------------------------------------------------------------------
 async function runTank(id) {
+  const quality = params.get('quality') ?? 'high';
+  if (!['high', 'low'].includes(quality)) throw new Error('Expected high or low scan quality');
   await ensureInteriorFills([id]);
   const t0 = performance.now();
-  const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  const tank = createTank(id, engineCtx, { camoSeed: 4242, quality, proceduralOnly: true });
   tank.root.updateMatrixWorld(true);
   pinLODs(tank.root);
   const census = censusEquipment(tank.root);
   const holes = topDownScan(tank.root);
-  window.__STANDARD = { id, census, holes, interiorFillRecordLoaded: hasInteriorFills(id), ms: Math.round(performance.now() - t0) };
+  window.__STANDARD = { id, census, holes, interiorFillRecordLoaded: hasInteriorFills(id), ms: Math.round(performance.now() - t0), quality };
   window.__STANDARD_READY = true;
 }
 

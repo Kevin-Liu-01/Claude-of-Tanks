@@ -2,6 +2,7 @@
 // faces aligned with the named independent profile constructors below.
 import type { ArmorPlate } from '../sim/armor.ts';
 import type { FleetTankSpec } from './specContracts.ts';
+import { ARIETE_X_FAMILY_SCALE } from './profiles/arieteXFamilyFrame.ts';
 import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
 
 type Point = [number, number, number];
@@ -242,6 +243,7 @@ export function applySourceXWesternAuxArmor(spec: FleetTankSpec, id: string): vo
   };
   if (id === 'leo2a6_x') leopardSkirts(add); // actual main cells already own both structural cheeks
   else if (id === 'strv122_x') { strvSkirts(add); strvCheeks(add); }
-  else if (id === 'ariete_c1_x') arieteSkirts(add);
+  else if (id === 'ariete_c1_x') arieteSkirts((name, face, group, owner) =>
+    add(name, face.map(p => p.map(v => v * ARIETE_X_FAMILY_SCALE) as Point), group, owner));
   else challengerSkirts(add);
 }

@@ -1,3 +1,4 @@
+import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -557,7 +558,14 @@ function updateArticulation(): void {
   if (!visual) return;
   const hullYaw = Number($('#hullYaw').value);
   const turretYaw = Number($('#turretYaw').value);
-  const gunPitch = Number($('#gunPitch').value);
+  const gunInput = $('#gunPitch');
+  const spec = selectedId ? getSpec(selectedId) : null;
+  if (spec?.gunPitchByYawDeg) {
+    gunInput.min = String(THREE.MathUtils.radToDeg(
+      minimumMechanicalGunPitch(spec, THREE.MathUtils.degToRad(turretYaw))));
+    gunInput.value = String(Math.max(Number(gunInput.min), Number(gunInput.value)));
+  }
+  const gunPitch = Number(gunInput.value);
   visual.root.rotation.y = THREE.MathUtils.degToRad(hullYaw);
   const turret = visual.root.getObjectByName('rig_turret');
   const gun = visual.root.getObjectByName('rig_gun');
@@ -566,7 +574,7 @@ function updateArticulation(): void {
   visual.root.updateMatrixWorld(true);
   $('#hullYawValue').textContent = `${hullYaw}°`;
   $('#turretYawValue').textContent = `${turretYaw}°`;
-  $('#gunPitchValue').textContent = `${gunPitch}°`;
+  $('#gunPitchValue').textContent = `${Number(gunPitch.toFixed(2))}°`;
   surfaceMarkup.updatePose();
 }
 

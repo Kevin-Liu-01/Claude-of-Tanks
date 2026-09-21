@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {conceptDesignReady} from './first-party-concept-policy.mjs';
+import {shellAmmunitionCapacity} from '../src/sim/ammunition.ts';
 
 /** Spec agreement accompanies, and never substitutes for, the native profile fixture. */
 export function assertConceptDatums(spec,design) {
@@ -23,6 +24,18 @@ export function assertConceptDatums(spec,design) {
 }
 
 export function assertConceptWeapons(shells,design) {
+  if (design.weaponSystem === 'conventional-cannon') {
+    assert.ok(shells.length>0,'working cannon inventory');
+    assert.ok(shells.every(shell=>!shell.guided && !shell.launcherTubes
+      && shell.caliberMm===design.mainCaliberMm),'only declared conventional cannon rounds');
+    // Conventional rounds normally inherit the shared per-type capacity.
+    // Reject malformed explicit counts before the runtime fallback normalizes them.
+    assert.ok(shells.every(shell=>shell.count == null
+      || (Number.isInteger(shell.count)&&shell.count>0)), 'valid authored cannon capacities');
+    assert.ok(shells.every(shell=>Number.isInteger(shellAmmunitionCapacity(shell))
+      && shellAmmunitionCapacity(shell)>0),'finite nonempty cannon inventory');
+    return;
+  }
   if (design.weaponSystem === 'unguided-rocket-battery') {
     assert.equal(shells.length,1,'one shared rocket inventory');
     const rocket=shells[0];

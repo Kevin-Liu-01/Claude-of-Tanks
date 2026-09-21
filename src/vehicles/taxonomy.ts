@@ -65,7 +65,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     'tos1a_tagil', 'ares_apc_x',
-    'leo2a6_x', 'ariete_c1_x', 'strv122_x', 't72b3m_x',
+    'leo2a6_x', 'ariete_c1_x', 'ariete_c2_x', 'strv122_x', 't72b3m_x',
     't90_x', 't90a_burlak_x', 't90ms_x',
     'k1a1_x',
     'leclerc_x', 'leclerc_classic_x', 't72b_1987_x', 't80u_x', 'chieftain_mk10_x', 't72b3_x', 'type10_x', 'type90_x',

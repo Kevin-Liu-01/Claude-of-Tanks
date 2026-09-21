@@ -1,3 +1,5 @@
+import { minimumMechanicalGunPitch } from './gunPitchLimits.ts';
+import type { GunPitchByYawCurve } from './gunPitchLimits.ts';
 import { usesLauncherMuzzles } from './launcherPolicy.ts';
 /**
  * movement.ts — pure-logic tank movement, attitude, turret/gun kinematics and
@@ -78,6 +80,7 @@ export interface MovementSpec extends TerrainMobilitySpec {
   turretTraverseDegS: number;
   gunPitchDegS: number;
   gunDepressionDeg: number;
+  gunPitchByYawDeg?: GunPitchByYawCurve;
   gunElevationDeg: number;
   gunArcDeg?: number;
   pivotStyle?: 'neutral' | 'pivot' | string;
@@ -1335,7 +1338,7 @@ function updateConventionalGunLay(
   const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
   state.turretYaw = chaseAngle(state.turretYaw, solution.turretYaw, turretRate * dt);
   const yawPinned = clampCasemateYaw(state, solution.turretYaw, gunArc);
-  const mechanicalLow = -spec.gunDepressionDeg * DEG2RAD;
+  const mechanicalLow = minimumMechanicalGunPitch(spec, state.turretYaw);
   const mechanicalHigh = spec.gunElevationDeg * DEG2RAD;
   const terrainLow = minimumTerrainGunPitch(
     spec,
@@ -1393,6 +1396,12 @@ function updateGunLay(
     state.atGunLimit = false;
     state.gunLimitSpec = false;
     state._gunLimitHoldS = 0;
+  }
+  // Imported/held poses must obey the same finite deck boundary even when
+  // no fresh aim point arrives. Other vehicles keep their original path.
+  if (spec.gunPitchByYawDeg) {
+    const low = minimumMechanicalGunPitch(spec, state.turretYaw);
+    if (state.gunPitch < low) { state.gunPitch = low; state.atGunLimit = true; }
   }
   state.turretYawRate = wrapAngle(state.turretYaw - previousTurretYaw) / dt;
 }

@@ -125,6 +125,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   type90_x: anchor('hull', 'left', .24, .82, .24, 1),
   amx40_x: anchor('turret', 'right', .34, .40, .24, -1),
   ariete_c1_x: anchor('turret', 'left', .31, .43, .24, 1),
+  ariete_c2_x: anchor('turret', 'left', .31, .43, .24, 1),
   strv122_x: anchor('hull', 'right', .26, .82, .24, 1),
   // The genuine middle missing-skirt interval exposes the fixed tub above
   // the road wheels. Its right-insignia / left-designation pair is deliberate

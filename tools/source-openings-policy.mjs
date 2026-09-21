@@ -1,3 +1,4 @@
+import {isArieteOpeningTarget,validArieteOpeningSource,validArieteOpeningRaster,arieteOpeningCell} from './ariete-source-openings.mjs';
 import {barakOpeningCell,validBarakOpeningRaster,validBarakSourceConfiguration} from './barak-source-openings.mjs';
 import {AFT_SOURCE_SLOTS,requiredOpeningGuardKeys,sourceOpeningWitnesses} from './source-opening-witnesses.mjs';
 export {AFT_SOURCE_SLOTS,requiredOpeningGuardKeys} from './source-opening-witnesses.mjs';
@@ -5,31 +6,38 @@ export {AFT_SOURCE_SLOTS,requiredOpeningGuardKeys} from './source-opening-witnes
 /** An explicit owner decision can identify exterior air, never waive a leak.
  * Classify every actual raster center against its bounded source region;
  * retain raw counts and reject missing/malformed evidence. */
-export function sourceOpeningsVerdict({id,scan,sourceReceipt,configuration,samples,guards}) {
+export function sourceOpeningsVerdict({id,scan,sourceReceipt,configuration,samples,guards,quality='high'}) {
   const raw = scan?.holeCells;
-  const registered = ['fv510_milan_x','aft10_x','merkava4_barak'].includes(id);
+  const registered = ['fv510_milan_x','aft10_x','merkava4_barak'].includes(id) || isArieteOpeningTarget(id);
   const fail = reason => ({passed:false,rawHoleCells:raw,intentionalCells:0,unexpectedCells:raw,reason});
   if (!Number.isInteger(raw) || raw<0 || scan.error) return fail('Missing continuity scan');
   if (!registered) return {passed:raw===0,rawHoleCells:raw,intentionalCells:0,unexpectedCells:raw};
-  if (sourceReceipt?.verified!==true || configuration?.id!==id || sourceReceipt.id!==id
-      || sourceReceipt.path!==configuration.source?.path || sourceReceipt.sha256!==configuration.source?.sha256)
+  if (!matchesConfiguration(id,sourceReceipt,configuration))
     return fail('Approved opening source is missing or changed');
   if (!Array.isArray(samples) || samples.length!==raw || !Array.isArray(scan.samples)
       || scan.samples.length!==raw || !guards?.length || guards.some(guard=>guard.passed!==true))
     return fail('Incomplete raster or finite stock/air witnesses');
+  if(isArieteOpeningTarget(id) && (!validArieteOpeningSource(id,configuration,sourceReceipt)
+      || !validArieteOpeningRaster(id,scan,quality)))
+    return fail('Approved Ariete rear source recipe or exact measured raster changed');
   if(!validOpeningTarget(id,configuration,scan))
     return fail('Barak source recipe or exact measured bow raster changed');
   const rasterError = validateRaster(scan, raw);
   if (rasterError) return fail(rasterError);
-  const manifestError = validateGuardManifest(id, guards);
+  const manifestError = validateGuardManifest(id, guards, quality);
   if (manifestError) return fail(manifestError);
-  const measurementError=validateMeasuredGuards(id,guards);
+  const measurementError=validateMeasuredGuards(id,guards,quality);
   if(measurementError)return fail(measurementError);
-  return classifyRaster(id, scan, samples, guards, raw);
+  return classifyRaster(id, scan, samples, guards, raw, quality);
 }
 
-function validateMeasuredGuards(id,guards){
-  const witnesses=new Map(sourceOpeningWitnesses(id).map(witness=>[witness.key,witness]));
+function matchesConfiguration(id,receipt,configuration) {
+  return receipt?.verified===true && configuration?.id===id && receipt.id===id
+    && receipt.path===configuration.source?.path && receipt.sha256===configuration.source?.sha256;
+}
+
+function validateMeasuredGuards(id,guards,quality){
+  const witnesses=new Map(sourceOpeningWitnesses(id,quality).map(witness=>[witness.key,witness]));
   for(const guard of guards){
     const witness=witnesses.get(guard.key);
     for(const measurement of guard.measurements){
@@ -44,7 +52,8 @@ function validOpeningTarget(id,configuration,scan){
   return id!=='merkava4_barak' || (validBarakSourceConfiguration(configuration) && validBarakOpeningRaster(scan));
 }
 
-export function approvedOpeningRegion(id,x,z){
+export function approvedOpeningRegion(id,x,z,quality='high'){
+  if(isArieteOpeningTarget(id))return arieteOpeningCell(id,x,z,quality);
   if(id==='merkava4_barak')return barakOpeningCell(x,z);
   if(id==='aft10_x')return AFT_SOURCE_SLOTS.some(slot=>Math.abs(x-slot.x)<slot.width/2 && Math.abs(z-slot.z)<slot.length/2);
   // This bounds only where source/native air may be classified. It does not
@@ -72,8 +81,8 @@ function validateRaster(scan, raw) {
   return null;
 }
 
-function validateGuardManifest(id, guards) {
-  const requiredKeys=requiredOpeningGuardKeys(id), actualKeys=guards.map(guard=>guard.key);
+function validateGuardManifest(id, guards, quality) {
+  const requiredKeys=requiredOpeningGuardKeys(id,quality), actualKeys=guards.map(guard=>guard.key);
   if(!requiredKeys.length || actualKeys.length!==requiredKeys.length
       || new Set(actualKeys).size!==actualKeys.length
       || requiredKeys.some(key=>!actualKeys.includes(key))
@@ -102,7 +111,7 @@ function validateMeasurement(witness, measurement) {
   return null;
 }
 
-function classifyRaster(id, scan, samples, guards, raw) {
+function classifyRaster(id, scan, samples, guards, raw, quality) {
   let intentionalCells=0;
   const failures=[];
   for(let i=0;i<samples.length;i++){
@@ -110,7 +119,7 @@ function classifyRaster(id, scan, samples, guards, raw) {
     const valid=Number.isFinite(sample.x)&&Number.isFinite(sample.z)
       && sample.x===expected.x && sample.z===expected.z
       && sample.gx===expected.gx && sample.gy===expected.gy;
-    if(valid && approvedOpeningRegion(id,sample.x,sample.z)
+    if(valid && approvedOpeningRegion(id,sample.x,sample.z,quality)
         && sample.sourceAir===true && sample.nativeAir===true)intentionalCells++;
     else failures.push({index:i,...sample});
   }

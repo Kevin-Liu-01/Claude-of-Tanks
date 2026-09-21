@@ -52,6 +52,7 @@ import { synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSp
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { ABRAMS_SOURCE_X_IDS, synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
 import './merkavaModernSpecs.ts';
+import './arieteModernSpecs.ts';
 import './tos1aTagilSpecs.ts';
 
 import {

@@ -7,6 +7,7 @@ import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
 import { roofEquipmentVerdict } from './source-equipment-policy.mjs';
 import { verifyConfigurationSource } from './source-configuration-record.mjs';
 import { measureSourceOpenings } from './source-opening-check.mjs';
+import { isArieteOpeningTarget } from './ariete-source-openings.mjs';
 import { runCapturedCommand } from './capture-command.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 // TANK STANDARD CHECK v2 (docs/BUILD-STANDARD.md §F.3) — one command that
@@ -102,6 +103,15 @@ if (ids.length) {
 }
 
 // --- phase 2: census + contiguity via the committed page --------------------
+async function readLowQualityScan(page,base,id) {
+  try {
+    await page.goto(`${base}?id=${id}&quality=low`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction('window.__STANDARD_READY === true', { polling: 50 });
+    return await page.evaluate('window.__STANDARD');
+  } catch(error) {
+    return {id,quality:'low',error:String(error.message || error)};
+  }
+}
 const standard = new Map(); // id -> { census, holes } | { error }
 let fixture = null;
 if ((ids.length && !noRender) || wantFixture) {
@@ -128,6 +138,9 @@ if ((ids.length && !noRender) || wantFixture) {
           await page.goto(`${base}?id=${id}`, { waitUntil: 'domcontentloaded' });
           await page.waitForFunction('window.__STANDARD_READY === true', { polling: 50 });
           const r = await page.evaluate('window.__STANDARD');
+          if (!r.error && isArieteOpeningTarget(id)) {
+            r.qualityScans = {low:await readLowQualityScan(page,base,id)};
+          }
           standard.set(id, r.error ? { error: r.error } : r);
         } catch (e) {
           standard.set(id, { error: (pageError || e.message).slice(0, 160) });
@@ -147,7 +160,7 @@ if ((ids.length && !noRender) || wantFixture) {
       const result = standard.get(id);
       if (!result || result.error || !result.holes) continue;
       try {
-        openingReports.set(id, await measureSourceOpenings(id, result.holes, configuration, sourceReceipt));
+        openingReports.set(id, await measureSourceOpenings(id, result.holes, configuration, sourceReceipt, result.qualityScans));
       } catch (error) {
         openingReports.set(id, { passed:false, reason:String(error.message || error) });
       }

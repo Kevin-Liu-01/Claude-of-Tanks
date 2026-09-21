@@ -652,6 +652,8 @@ export function signatureCamoPatternId(specId: string): CamoPatternId | null {
 // the catalog, but initially present in their more appropriate temperate field
 // finish. Explicit player selections still take precedence in materials.ts.
 const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> = Object.freeze({
+  ariete_c1_x: 'service_ariete_c1',
+  ariete_c2_x: 'service_ariete_c1',
   m46_patton: 'summer',
   m47_patton: 'summer',
   m48: 'summer',

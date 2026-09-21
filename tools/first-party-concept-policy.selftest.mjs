@@ -9,7 +9,7 @@ import {readConceptDesign} from './first-party-concept-record.mjs';
 import {assertConceptDatums,assertConceptWeapons} from './first-party-concept-datums.mjs';
 const oldPath='docs/references/concepts/missile-turrets-20260919.json';
 const typePath='docs/references/concepts/type100-ifv-20260919.json';
-assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['tos1a_tagil','ztz100_prototype','object695_x','type100']);
+assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['ariete_c2_x','tos1a_tagil','ztz100_prototype','object695_x','type100']);
 assert.equal(conceptDesignPath('ztz100_prototype'),oldPath);
 assert.equal(conceptDesignPath('object695_x'),oldPath);
 assert.equal(conceptDesignPath('type100'),typePath);
@@ -39,7 +39,9 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
   for(const census of [null,{}, {mg:0,invalidWeaponMarkers:1},{mg:design.roofMachineGuns+1,invalidWeaponMarkers:0},{mg:NaN,invalidWeaponMarkers:0}]) {
     assert.equal(conceptEquipmentVerdict(id,census).passed,false,'exact census stays physical');
   }
-  assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:0}}).passed,true);
+  // C2 retains the C1 tow-coupler air. A zero-cell scan without its complete
+  // measured rear-stock receipt must not authorize filling that opening.
+  assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:0}}).passed,id !== 'ariete_c2_x');
   assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'no blanket concept-hole exception');
   const dimension=quality=>({quality,passed:true,fillLoaded:true,bounds:{min:[-design.widthM/2,0,-design.overallLengthM/2],max:[design.widthM/2,design.tallestM,design.overallLengthM/2]}});
   const receipt={id,comparisonPurpose:'owner-authored-concept',comparisonApplicable:false,score:null,passed:true,
@@ -60,6 +62,22 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
     gunElevationDeg:design.pitchDeg[1],gunDepressionDeg:-design.pitchDeg[0],
     gun:{shells:[{caliberMm:design.mainCaliberMm??design.backupCaliberMm,count:180},
       {guided:true,launcherTubes:design.cells,count:design.guidedAmmoTotal??12}]}};
+  if (design.weaponSystem === 'conventional-cannon') {
+    const shell={type:'APFSDS',caliberMm:120,count:24};
+    spec.gun={shells:[shell]};
+    assertConceptDatums(spec,design);
+    const inheritedShells=['APFSDS','HEAT','HE'].map(type=>({type,caliberMm:120}));
+    assertConceptDatums({...spec,gun:{shells:inheritedShells}},design);
+    assertConceptWeapons([{...shell,count:null}],design);
+    for(const patch of [{guided:true},{launcherTubes:1},{caliberMm:125},
+      {count:0},{count:-1},{count:Infinity},{count:NaN},{count:1.5},{count:'24'}])
+      assert.throws(()=>assertConceptWeapons([{...shell,...patch}],design));
+    assert.throws(()=>assertConceptWeapons([...inheritedShells,{...shell,count:-1}],design));
+    assert.throws(()=>assertConceptWeapons([],design));
+    assert.throws(()=>assertConceptWeapons([shell,{...shell,caliberMm:125}],design));
+    assert.throws(()=>assertConceptDatums({...spec,gunElevationDeg:21},design));
+    continue;
+  }
   if (design.weaponSystem === 'unguided-rocket-battery') {
     const shell={type:'HE',caliberMm:220,count:72,launcherTubes:24};
     spec.gun={shells:[shell],fixedLaunchCanisters:true,launcherMuzzles:Array.from({length:24},(_,i)=>({x:i,y:0,z:2.6})),autoloader:{magazineSize:24,intraClipS:.25,fullReloadS:48}};

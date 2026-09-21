@@ -733,7 +733,7 @@ const MODERN3_SPECS = {
   },
 
   ariete_c1: {
-    id: 'ariete_c1', name: 'C1 Ariete (Serie 1)', nation: 'Italy', era: 'modern', role: 'mbt',
+    id: 'ariete_c1', name: 'C1 Ariete Prototype (Serie 1)', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2300,
     enginePowerHp: 1270, weightTons: 56, topSpeedKmh: 63, reverseSpeedKmh: 25,
     hullTraverseDegS: 39,
@@ -774,7 +774,7 @@ const MODERN3_SPECS = {
   },
 
   ariete_c2: {
-    id: 'ariete_c2', name: 'C2 Ariete', nation: 'Italy', era: 'modern', role: 'mbt',
+    id: 'ariete_c2', name: 'C2 Ariete Prototype', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2600,
     enginePowerHp: 1500, weightTons: 59, topSpeedKmh: 65, reverseSpeedKmh: 30,
     hullTraverseDegS: 42,

@@ -1,4 +1,5 @@
 import {BARAK_OPENING_WITNESSES} from './barak-source-openings.mjs';
+import {isArieteOpeningTarget,arieteOpeningWitnesses} from './ariete-source-openings.mjs';
 // Local qualification only. Independently measured source stock/air probes;
 // no source geometry is used by the playable model. Warrior witnesses refer
 // to docs/research/warrior-side-ledge-source-study-20260918.md; AFT slot edges
@@ -833,10 +834,11 @@ const WARRIOR_SOURCE_WITNESSES=[
     "tolerance": 0.002
   }
 ];
-export function sourceOpeningWitnesses(id){
+export function sourceOpeningWitnesses(id,quality='high'){
+ if(isArieteOpeningTarget(id))return arieteOpeningWitnesses(id,quality);
  if(id==='merkava4_barak')return BARAK_OPENING_WITNESSES;
  if(id==='aft10_x')return aftWitnesses();
  if(id==='fv510_milan_x')return WARRIOR_SOURCE_WITNESSES;
  return [];
 }
-export function requiredOpeningGuardKeys(id){return sourceOpeningWitnesses(id).map(witness=>witness.key);}
+export function requiredOpeningGuardKeys(id,quality='high'){return sourceOpeningWitnesses(id,quality).map(witness=>witness.key);}

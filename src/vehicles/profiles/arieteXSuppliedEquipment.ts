@@ -117,10 +117,11 @@ function launcher(P: TankBuilderPort, side: -1 | 1, z: number, angle: number): v
   add(P, 'turretDetail', box(.083, .035, .066), side * 1.141, 1.754, z - .048);
 }
 
-export function addArieteXSuppliedEquipment(P: TankBuilderPort): void {
+export function addArieteXSuppliedEquipment(P: TankBuilderPort, modern = false): void {
   hatch(P, -.547, -.133, 2.19611);
   hatch(P, .558, .00757, 2.17256);
-  recessedSight(P); panoramicHead(P); loaderMachineGun(P); roofFurniture(P);
+  if (!modern) { recessedSight(P); panoramicHead(P); }
+  loaderMachineGun(P); roofFurniture(P);
   for (const side of [-1, 1] as const) {
     for (const [z, angle] of [[-.6569, 1.04], [-.4752, .88], [-.29354, .65], [-.045, .25]])
       launcher(P, side, z, angle);

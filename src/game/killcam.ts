@@ -1,3 +1,4 @@
+import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 /**
  * killcam.ts — War Thunder-class kill camera (integration-owned module).
@@ -2589,10 +2590,12 @@ export function createKillCam(deps: KillcamDeps) {
     desiredPitch: number,
     actualPitch: number,
   ): void {
-    const depression = Math.abs(entity.spec.gunDepressionDeg || 90) * Math.PI / 180;
+    const minimumPitch = entity.spec.gunPitchByYawDeg
+      ? minimumMechanicalGunPitch(entity.spec, state.turretYaw)
+      : -Math.abs(entity.spec.gunDepressionDeg || 90) * Math.PI / 180;
     const elevation = Math.abs(entity.spec.gunElevationDeg || 90) * Math.PI / 180;
     state.gunPitch = Math.max(
-      -depression,
+      minimumPitch,
       Math.min(elevation, state.gunPitch + desiredPitch - actualPitch),
     );
   }

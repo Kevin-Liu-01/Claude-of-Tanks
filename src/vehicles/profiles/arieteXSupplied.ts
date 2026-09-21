@@ -9,18 +9,18 @@ import { addArieteXSuppliedEquipment } from './arieteXSuppliedEquipment.ts';
 import { addArieteXSuppliedHullEquipment } from './arieteXSuppliedHullEquipment.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-export function buildArieteXSupplied(P: TankBuilderPort): void {
+export function buildArieteXSupplied(P: TankBuilderPort, boreRadiusM = .0542, modern = false): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(...D.turretPivot);
   P.gunG.position.set(D.trunnion[0] - D.turretPivot[0],
     D.trunnion[1] - D.turretPivot[1], D.trunnion[2] - D.turretPivot[2]);
   P.topY = 2.101908 - D.turretPivot[1];
-  addArieteXSuppliedHull(P);
-  addArieteXSuppliedGear(P);
+  addArieteXSuppliedHull(P, modern);
+  addArieteXSuppliedGear(P, modern);
   addArieteXSuppliedTurret(P);
-  addArieteXSuppliedEquipment(P);
+  addArieteXSuppliedEquipment(P, modern);
   addArieteXSuppliedHullEquipment(P);
-  addArieteXSuppliedGun(P);
+  addArieteXSuppliedGun(P, boreRadiusM);
   P.hullG.userData.xRebuild = { candidate: 'ariete_c1_x', independent: true,
     sourceLocalOnly: true, datumVersion: 2, target: 'owner-selected-supplied-file' };
 }

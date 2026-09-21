@@ -1,0 +1,1997 @@
+{
+  "schemaVersion": 1,
+  "id": "ariete_c1_x",
+  "status": "PROPOSED_REFERENCE_FRAME_REBASE_PENDING_INDEPENDENT_REVIEW",
+  "baselineCommit": "b50b20878e2ec9218e522a874adff50e45e60e2e",
+  "method": "Expand every vertex of the authenticated previous native triangle set about the canonical origin by exactly1.12; retain triangle connectivity, material-side flags, visibility inventory, rasterizer and all thresholds. No candidate dimensions or pixel counts choose the factor.",
+  "scale": 1.12,
+  "priorLedger": {
+    "path": ".qa-dev/ariete-integration/sealed/baseline/docs/geometry-gate/sealed.json",
+    "sha256": "6dcee5951171beb041967863b52a2749492705b93b8f29a0c482df5f34c02e9a",
+    "trackedPath": "docs/geometry-gate/sealed.json",
+    "row": {
+      "sealed": true,
+      "openPx": 154,
+      "openViews": 0,
+      "insideOutPx": 6129,
+      "seeThroughPx": 0,
+      "tris": 96142
+    },
+    "rowSha256": "636f43d5d914ad4cc06f6e92d0d4da6bcfd9e71febbad319bcdd11577c2e7615",
+    "rowHashEncoding": "SHA256(UTF8(JSON.stringify(row)))"
+  },
+  "source": {
+    "canonical": {
+      "path": "public/models/community-candidates/ariete_c1_x_source.glb",
+      "sha256": "1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68"
+    },
+    "registration": {
+      "path": "docs/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json",
+      "sha256": "2fac6ad3b23939e4013002a8b53a1f3128eef16d028498ff5fd486a49694371c"
+    },
+    "registrationReceipt": {
+      "path": "docs/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.receipt.json",
+      "sha256": "2e75738ea98405db0e64ab6af2d4ef7632e0e391c4280c99af7852e4594162b3"
+    },
+    "rawSha256": "02043219575d2ac02c9846666efca20c8087727808e4c51245a28588242e26b4",
+    "role": "Owner resize provenance only; sealed census compares old first-party geometry, not the GLB."
+  },
+  "thresholds": {
+    "resolution": 256,
+    "viewCount": 33,
+    "minClusterArea": 6,
+    "seamM": 0.004,
+    "invertedDepthM": 0.08,
+    "ledgerSlack": "max(12, prior.openPx * 0.10)"
+  },
+  "results": [
+    {
+      "label": "baseline-cold",
+      "sealed": true,
+      "openPx": 154,
+      "openViews": 0,
+      "insideOutPx": 6129,
+      "seeThroughPx": 0,
+      "tris": 96142
+    },
+    {
+      "label": "baseline-filled",
+      "sealed": true,
+      "openPx": 154,
+      "openViews": 0,
+      "insideOutPx": 6129,
+      "seeThroughPx": 0,
+      "tris": 97714
+    },
+    {
+      "label": "current-cold",
+      "sealed": true,
+      "openPx": 192,
+      "openViews": 0,
+      "insideOutPx": 6128,
+      "seeThroughPx": 0,
+      "tris": 96202
+    },
+    {
+      "label": "current-filled",
+      "sealed": true,
+      "openPx": 192,
+      "openViews": 0,
+      "insideOutPx": 6128,
+      "seeThroughPx": 0,
+      "tris": 96418
+    },
+    {
+      "label": "scaled-baseline-cold",
+      "sealed": true,
+      "openPx": 196,
+      "openViews": 0,
+      "insideOutPx": 6125,
+      "seeThroughPx": 0,
+      "tris": 96142
+    },
+    {
+      "label": "scaled-baseline-filled",
+      "sealed": true,
+      "openPx": 196,
+      "openViews": 0,
+      "insideOutPx": 6125,
+      "seeThroughPx": 0,
+      "tris": 97714
+    }
+  ],
+  "proposal": {
+    "scope": "Replace only ariete_c1_x row with independently enlarged prior cold baseline; do not substitute candidate192 or change gate constants.",
+    "row": {
+      "sealed": true,
+      "openPx": 196,
+      "openViews": 0,
+      "insideOutPx": 6125,
+      "seeThroughPx": 0,
+      "tris": 96142
+    },
+    "rowSha256": "89ce66a78c325afc5c184834d88b13730b8f3c52fd63a37e34ffbeb2eaab9886",
+    "applied": false
+  },
+  "pixelProof": {
+    "pureScaleAdded": 42,
+    "pureScaleRemoved": 0,
+    "allAddedWereInheritedInvertedPixels": true,
+    "owners": {
+      "arieteSuppliedRecessedWheelFace1": 20,
+      "arieteSuppliedRecessedWheelFace-1": 20,
+      "gearEndWheelHardware": 2
+    },
+    "priorGapRangeM": [
+      0.07145807147026062,
+      0.07984936609864235
+    ],
+    "enlargedGapRangeM": [
+      0.08003303408622742,
+      0.0894312858581543
+    ],
+    "currentFilledAddedAgainstEnlargedPrior": [],
+    "currentFilledRemovedAgainstEnlargedPrior": [
+      "cube_-1_-1_0:69:69",
+      "cube_-1_0_-1:88:90",
+      "cube_1_-1_0:186:69",
+      "cube_1_0_-1:167:90"
+    ],
+    "shifts": [
+      {
+        "view": "cube_-1_-1_-1",
+        "x": 34,
+        "y": 128,
+        "from": 3,
+        "to": 1,
+        "owner": "gearEndWheelHardware",
+        "priorGapM": 0.07769274711608887,
+        "enlargedGapM": 0.08701586723327637,
+        "firstHit": {
+          "dist": 13.151303238860473,
+          "mesh": "gearEndWheelHardware",
+          "n": [
+            -0.96,
+            0,
+            0.28
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.69,
+            0.841,
+            -3.201
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 13.238319155427687,
+          "mesh": "gearEndWheelHardware",
+          "n": [
+            0,
+            0.95,
+            0.3
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.64,
+            0.791,
+            -3.251
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_-1_0",
+        "x": 72,
+        "y": 76,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07356712222099304,
+        "enlargedGapM": 0.08239517360925674,
+        "firstHit": {
+          "dist": 11.162910517210992,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.95,
+            0.07,
+            0.3
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.551,
+            0.384,
+            -1.558
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.245305689156513,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.35,
+            0.91,
+            0.22
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.493,
+            0.326,
+            -1.558
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_-1_0",
+        "x": 71,
+        "y": 77,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07984936609864235,
+        "enlargedGapM": 0.0894312858581543,
+        "firstHit": {
+          "dist": 11.186307415821213,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.35,
+            -0.22,
+            0.91
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.504,
+            0.398,
+            -1.601
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.275738702875914,
+          "mesh": "gearRoadWheelDiscs",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.441,
+            0.335,
+            -1.601
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_-1_0",
+        "x": 96,
+        "y": 77,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07168372720479965,
+        "enlargedGapM": 0.08028577081859112,
+        "firstHit": {
+          "dist": 11.14454743707166,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.428,
+            -0.515
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.224833211260727,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            0.07,
+            -0.87
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.477,
+            0.371,
+            -0.515
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_-1_1",
+        "x": 134,
+        "y": 70,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07299646735191345,
+        "enlargedGapM": 0.08175599575042725,
+        "firstHit": {
+          "dist": 10.575419450621416,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.271,
+            -0.281
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.657175476829664,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            0.57,
+            0.66
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.486,
+            0.224,
+            -0.234
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_0_-1",
+        "x": 129,
+        "y": 86,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07691192626953125,
+        "enlargedGapM": 0.08614134788513184,
+        "firstHit": {
+          "dist": 8.885826144584021,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.194,
+            2.479
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 8.971967457073017,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.26,
+            -0.73,
+            0.63
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.473,
+            0.194,
+            2.418
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_0_-1",
+        "x": 88,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07145807147026062,
+        "enlargedGapM": 0.08003303408622742,
+        "firstHit": {
+          "dist": 10.643683094454062,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.95,
+            0.3,
+            0.07
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.55,
+            0.367,
+            -0.024
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.723716134709102,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.35,
+            0.36,
+            0.86
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.493,
+            0.367,
+            -0.08
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_0_-1",
+        "x": 67,
+        "y": 95,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07296797633171082,
+        "enlargedGapM": 0.08172407746315002,
+        "firstHit": {
+          "dist": 11.57891691639621,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.584,
+            -1.33
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.660641027517737,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.26,
+            0.73,
+            0.63
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.476,
+            0.584,
+            -1.388
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_0_1",
+        "x": 110,
+        "y": 86,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07715511322021484,
+        "enlargedGapM": 0.08641362190246582,
+        "firstHit": {
+          "dist": 8.190834977664744,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.194,
+            -1.756
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 8.277248621547525,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.26,
+            -0.73,
+            -0.63
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.473,
+            0.194,
+            -1.695
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_0_1",
+        "x": 151,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07275784015655518,
+        "enlargedGapM": 0.0814887285232544,
+        "firstHit": {
+          "dist": 9.948623625879472,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.95,
+            0.3,
+            -0.07
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.55,
+            0.367,
+            0.746
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.030112372997298,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.35,
+            0.36,
+            -0.86
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.492,
+            0.367,
+            0.804
+          ]
+        }
+      },
+      {
+        "view": "cube_-1_0_1",
+        "x": 172,
+        "y": 95,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07321113348007202,
+        "enlargedGapM": 0.08199647068977356,
+        "firstHit": {
+          "dist": 10.883925749476935,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.584,
+            2.053
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.965922219496303,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.26,
+            0.73,
+            -0.63
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.476,
+            0.584,
+            2.111
+          ]
+        }
+      },
+      {
+        "view": "cube_1_-1_-1",
+        "x": 221,
+        "y": 128,
+        "from": 3,
+        "to": 1,
+        "owner": "gearEndWheelHardware",
+        "priorGapM": 0.07769274711608887,
+        "enlargedGapM": 0.08701586723327637,
+        "firstHit": {
+          "dist": 13.151303238860473,
+          "mesh": "gearEndWheelHardware",
+          "n": [
+            0.96,
+            0,
+            0.28
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.69,
+            0.841,
+            -3.201
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 13.238319155427687,
+          "mesh": "gearEndWheelHardware",
+          "n": [
+            0,
+            0.95,
+            0.3
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.64,
+            0.791,
+            -3.251
+          ]
+        }
+      },
+      {
+        "view": "cube_1_-1_0",
+        "x": 183,
+        "y": 76,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07356712222099304,
+        "enlargedGapM": 0.08239517360925674,
+        "firstHit": {
+          "dist": 11.162910517210992,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.95,
+            0.07,
+            0.3
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.551,
+            0.384,
+            -1.558
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.245305688624056,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.35,
+            0.91,
+            0.22
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.493,
+            0.326,
+            -1.558
+          ]
+        }
+      },
+      {
+        "view": "cube_1_-1_0",
+        "x": 159,
+        "y": 77,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07168372720479965,
+        "enlargedGapM": 0.08028577826917171,
+        "firstHit": {
+          "dist": 11.144547437071662,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.428,
+            -0.515
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.224833213661196,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            0.07,
+            -0.87
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.477,
+            0.371,
+            -0.515
+          ]
+        }
+      },
+      {
+        "view": "cube_1_-1_0",
+        "x": 184,
+        "y": 77,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07277828827500343,
+        "enlargedGapM": 0.08151169121265411,
+        "firstHit": {
+          "dist": 11.186307415858426,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.35,
+            -0.22,
+            0.91
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.504,
+            0.398,
+            -1.601
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.267819102678223,
+          "mesh": "gearRoadWheelDiscs",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.446,
+            0.34,
+            -1.601
+          ]
+        }
+      },
+      {
+        "view": "cube_1_-1_1",
+        "x": 121,
+        "y": 70,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07299646735191345,
+        "enlargedGapM": 0.08175599575042725,
+        "firstHit": {
+          "dist": 10.575419450621418,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.271,
+            -0.281
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.657175474865905,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            0.57,
+            0.66
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.486,
+            0.224,
+            -0.234
+          ]
+        }
+      },
+      {
+        "view": "cube_1_0_-1",
+        "x": 126,
+        "y": 86,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07691192626953125,
+        "enlargedGapM": 0.08614134788513184,
+        "firstHit": {
+          "dist": 8.885826144584021,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.194,
+            2.479
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 8.97196744263795,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.26,
+            -0.73,
+            0.63
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.473,
+            0.194,
+            2.418
+          ]
+        }
+      },
+      {
+        "view": "cube_1_0_-1",
+        "x": 167,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07145807147026062,
+        "enlargedGapM": 0.08003303408622742,
+        "firstHit": {
+          "dist": 10.643683094454062,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.95,
+            0.3,
+            0.07
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.55,
+            0.367,
+            -0.024
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.723716134526804,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.35,
+            0.36,
+            0.86
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.493,
+            0.367,
+            -0.08
+          ]
+        }
+      },
+      {
+        "view": "cube_1_0_-1",
+        "x": 188,
+        "y": 95,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07296797633171082,
+        "enlargedGapM": 0.0817241370677948,
+        "firstHit": {
+          "dist": 11.57891691639621,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.584,
+            -1.33
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.660641040684617,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.26,
+            0.73,
+            0.63
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.476,
+            0.584,
+            -1.388
+          ]
+        }
+      },
+      {
+        "view": "cube_1_0_1",
+        "x": 145,
+        "y": 86,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07715511322021484,
+        "enlargedGapM": 0.08641362190246582,
+        "firstHit": {
+          "dist": 8.190834977664746,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.194,
+            -1.756
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 8.277248635884707,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.26,
+            -0.73,
+            -0.63
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.473,
+            0.194,
+            -1.695
+          ]
+        }
+      },
+      {
+        "view": "cube_1_0_1",
+        "x": 104,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07275784015655518,
+        "enlargedGapM": 0.0814887285232544,
+        "firstHit": {
+          "dist": 9.948623625879474,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.95,
+            0.3,
+            -0.07
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.55,
+            0.367,
+            0.746
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.030112373159014,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.35,
+            0.36,
+            -0.86
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.492,
+            0.367,
+            0.804
+          ]
+        }
+      },
+      {
+        "view": "cube_1_0_1",
+        "x": 83,
+        "y": 95,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07321111857891083,
+        "enlargedGapM": 0.08199645578861237,
+        "firstHit": {
+          "dist": 10.883925749476935,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.584,
+            2.053
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.965922206427308,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.26,
+            0.73,
+            -0.63
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.476,
+            0.584,
+            2.111
+          ]
+        }
+      },
+      {
+        "view": "ring12_1",
+        "x": 113,
+        "y": 85,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.0727614164352417,
+        "enlargedGapM": 0.08149290084838867,
+        "firstHit": {
+          "dist": 9.938488205563635,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.77,
+            -0.64,
+            0.05
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.436,
+            1.496
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.01998105791371,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.35,
+            -0.36,
+            0.86
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.477,
+            0.419,
+            1.44
+          ]
+        }
+      },
+      {
+        "view": "ring12_1",
+        "x": 53,
+        "y": 91,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07718467712402344,
+        "enlargedGapM": 0.08644688129425049,
+        "firstHit": {
+          "dist": 12.549178397206411,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.26,
+            -0.89,
+            0.37
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.533,
+            0.148,
+            -2.191
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 12.63562530887603,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            0.85,
+            -0.2
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.473,
+            0.13,
+            -2.251
+          ]
+        }
+      },
+      {
+        "view": "ring12_2",
+        "x": 55,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07555139064788818,
+        "enlargedGapM": 0.0846174955368042,
+        "firstHit": {
+          "dist": 9.898199118776473,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.657,
+            -2.296
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 9.9828166447692,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            -0.87,
+            -0.07
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.451,
+            0.639,
+            -2.296
+          ]
+        }
+      },
+      {
+        "view": "ring12_2",
+        "x": 72,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07327091693878174,
+        "enlargedGapM": 0.08206343650817871,
+        "firstHit": {
+          "dist": 9.898199118776471,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.657,
+            -1.558
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 9.980262519926422,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            -0.87,
+            0.07
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.453,
+            0.64,
+            -1.558
+          ]
+        }
+      },
+      {
+        "view": "ring12_2",
+        "x": 90,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07587027549743652,
+        "enlargedGapM": 0.08497464656829834,
+        "firstHit": {
+          "dist": 9.89819911877647,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.657,
+            -0.776
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 9.983173718837548,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            -0.87,
+            -0.07
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.451,
+            0.639,
+            -0.776
+          ]
+        }
+      },
+      {
+        "view": "ring12_6",
+        "x": 165,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07587027549743652,
+        "enlargedGapM": 0.08497464656829834,
+        "firstHit": {
+          "dist": 9.898199118776471,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.657,
+            -0.776
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 9.98317371956219,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            -0.87,
+            -0.07
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.451,
+            0.639,
+            -0.776
+          ]
+        }
+      },
+      {
+        "view": "ring12_6",
+        "x": 183,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07327091693878174,
+        "enlargedGapM": 0.08206343650817871,
+        "firstHit": {
+          "dist": 9.89819911877647,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.657,
+            -1.558
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 9.980262517876643,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            -0.87,
+            0.07
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.453,
+            0.64,
+            -1.558
+          ]
+        }
+      },
+      {
+        "view": "ring12_6",
+        "x": 200,
+        "y": 90,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07555139064788818,
+        "enlargedGapM": 0.0846174955368042,
+        "firstHit": {
+          "dist": 9.898199118776471,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.657,
+            -2.296
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 9.982816645776218,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            -0.87,
+            -0.07
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.451,
+            0.639,
+            -2.296
+          ]
+        }
+      },
+      {
+        "view": "ring12_7",
+        "x": 142,
+        "y": 85,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.0727614164352417,
+        "enlargedGapM": 0.08149290084838867,
+        "firstHit": {
+          "dist": 9.938488205551302,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.77,
+            -0.64,
+            0.05
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.436,
+            1.496
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.019981058054626,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.35,
+            -0.36,
+            0.86
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.477,
+            0.419,
+            1.44
+          ]
+        }
+      },
+      {
+        "view": "ring12_7",
+        "x": 202,
+        "y": 91,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07718467712402344,
+        "enlargedGapM": 0.08644688129425049,
+        "firstHit": {
+          "dist": 12.549178397707777,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.26,
+            -0.89,
+            0.37
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.533,
+            0.148,
+            -2.191
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 12.63562530569116,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            0.85,
+            -0.2
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.473,
+            0.13,
+            -2.251
+          ]
+        }
+      },
+      {
+        "view": "ring30_1",
+        "x": 79,
+        "y": 91,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07396948337554932,
+        "enlargedGapM": 0.08284586668014526,
+        "firstHit": {
+          "dist": 11.968933545326724,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.26,
+            -0.73,
+            0.63
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.53,
+            0.199,
+            -0.596
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 12.051779419394432,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            0.74,
+            -0.46
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.48,
+            0.157,
+            -0.647
+          ]
+        }
+      },
+      {
+        "view": "ring30_3",
+        "x": 98,
+        "y": 52,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07491159439086914,
+        "enlargedGapM": 0.08390092849731445,
+        "firstHit": {
+          "dist": 9.029247614876603,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.534,
+            0.201,
+            -2.493
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 9.113148681361983,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            0.74,
+            0.46
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.482,
+            0.159,
+            -2.442
+          ]
+        }
+      },
+      {
+        "view": "ring30_3",
+        "x": 126,
+        "y": 71,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07351964712142944,
+        "enlargedGapM": 0.08234202861785889,
+        "firstHit": {
+          "dist": 9.98329443361958,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.35,
+            -0.86,
+            -0.36
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.518,
+            0.439,
+            -0.757
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.065636465625209,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.27,
+            -0.08,
+            -0.96
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.467,
+            0.398,
+            -0.706
+          ]
+        }
+      },
+      {
+        "view": "ring30_3",
+        "x": 137,
+        "y": 75,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07729387283325195,
+        "enlargedGapM": 0.08656913042068481,
+        "firstHit": {
+          "dist": 10.455658874421113,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.35,
+            0.49,
+            0.8
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.505,
+            0.353,
+            -0.068
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.542228042584897,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.27,
+            0.96,
+            -0.08
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.452,
+            0.31,
+            -0.015
+          ]
+        }
+      },
+      {
+        "view": "ring30_3",
+        "x": 160,
+        "y": 83,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace1",
+        "priorGapM": 0.07560493052005768,
+        "enlargedGapM": 0.08467753231525421,
+        "firstHit": {
+          "dist": 11.364547500234222,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            -0.26,
+            -0.73,
+            -0.63
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            1.532,
+            0.2,
+            1.318
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.44922503507063,
+          "mesh": "arieteSuppliedRecessedWheelFace1",
+          "n": [
+            0.49,
+            0.74,
+            0.46
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            1.48,
+            0.158,
+            1.369
+          ]
+        }
+      },
+      {
+        "view": "ring30_5",
+        "x": 157,
+        "y": 52,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07491159439086914,
+        "enlargedGapM": 0.08390092849731445,
+        "firstHit": {
+          "dist": 9.0292476148766,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            1,
+            0,
+            0
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.534,
+            0.201,
+            -2.493
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 9.113148684517352,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            0.74,
+            0.46
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.482,
+            0.159,
+            -2.442
+          ]
+        }
+      },
+      {
+        "view": "ring30_5",
+        "x": 129,
+        "y": 71,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07351964712142944,
+        "enlargedGapM": 0.08234202861785889,
+        "firstHit": {
+          "dist": 9.983294433278354,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.35,
+            -0.86,
+            -0.36
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.518,
+            0.439,
+            -0.757
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.065636467511053,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.27,
+            -0.08,
+            -0.96
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.467,
+            0.398,
+            -0.706
+          ]
+        }
+      },
+      {
+        "view": "ring30_5",
+        "x": 118,
+        "y": 75,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07729387283325195,
+        "enlargedGapM": 0.08656913042068481,
+        "firstHit": {
+          "dist": 10.455658874282586,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.35,
+            0.49,
+            0.8
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.505,
+            0.353,
+            -0.068
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 10.54222804595015,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.27,
+            0.96,
+            -0.08
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.452,
+            0.31,
+            -0.015
+          ]
+        }
+      },
+      {
+        "view": "ring30_5",
+        "x": 95,
+        "y": 83,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07560496032238007,
+        "enlargedGapM": 0.08467753231525421,
+        "firstHit": {
+          "dist": 11.364547498294113,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.26,
+            -0.73,
+            -0.63
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.532,
+            0.2,
+            1.318
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 11.44922503785491,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            0.74,
+            0.46
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.48,
+            0.158,
+            1.369
+          ]
+        }
+      },
+      {
+        "view": "ring30_7",
+        "x": 176,
+        "y": 91,
+        "from": 3,
+        "to": 1,
+        "owner": "arieteSuppliedRecessedWheelFace-1",
+        "priorGapM": 0.07396948337554932,
+        "enlargedGapM": 0.08284586668014526,
+        "firstHit": {
+          "dist": 11.968933548879493,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            0.26,
+            -0.73,
+            0.63
+          ],
+          "front": false,
+          "transparent": false,
+          "at": [
+            -1.53,
+            0.199,
+            -0.596
+          ]
+        },
+        "firstFrontHit": {
+          "dist": 12.051779416807564,
+          "mesh": "arieteSuppliedRecessedWheelFace-1",
+          "n": [
+            -0.49,
+            0.74,
+            -0.46
+          ],
+          "front": true,
+          "transparent": false,
+          "at": [
+            -1.48,
+            0.157,
+            -0.647
+          ]
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Not a zero-backface or globally corrected winding claim: prior recessed wheel surfaces already have inverted normals and remain classified accordingly.",
+    "Candidate has four fewer raster hole pixels than the independent enlarged reference, not exact all-pixel equality.",
+    "The rear-coupler source-opening receipt is separate and does not waive sealed pixels.",
+    "Current native dump predates subsequent hierarchy-only structural-LOD fix; final release must test the final actual build."
+  ],
+  "evidence": [
+    {
+      "path": ".qa-dev/ariete-integration/sealed/dump.mjs",
+      "sha256": "68728563dcc1928a781b03664ae1295ee1dde0d0f0e6bc475359ad78132fcf92"
+    },
+    {
+      "path": ".qa-dev/ariete-integration/sealed/replay.mjs",
+      "sha256": "63b955f0951d0bebf2d7d8a7b09e6a82cb125e4b27c44cedd534e432047d25c4"
+    },
+    {
+      "path": ".qa-dev/ariete-integration/sealed/kernel.mjs",
+      "sha256": "26dd2f09c6df8d2ad54867090e7f5620f0bb8e34afe405d3ec18c89136fc87ea"
+    },
+    {
+      "path": ".qa-dev/ariete-integration/sealed/kernel-pin.json",
+      "sha256": "7ce6d83ac5fe96ec8c16c679bb0a50c9034c0fb803faeffab481a4cdd67d8bc0"
+    },
+    {
+      "path": ".qa-dev/ariete-integration/sealed/baseline-tris.json",
+      "sha256": "c09b12bbf4f984d6504e4c94f4a0e850e3c28f7f0422f31c9434522a193b348e"
+    },
+    {
+      "path": ".qa-dev/ariete-integration/sealed/current-tris.json",
+      "sha256": "f50f6788a72b36cad008119118a9cad22f148defdae4ebc7ad2735120c034400"
+    },
+    {
+      "path": ".qa-dev/ariete-integration/sealed/replay-r1/summary.json",
+      "sha256": "0674023aee6ff52dbf34955c0520982257bc6bd95cfdb82b1617123d03647012"
+    },
+    {
+      "path": ".qa-dev/ariete-family/release-r1.log",
+      "sha256": "39e0c1f103492139288a556b1dbdb1522d030f32159d775eb4b699709d3605d3"
+    }
+  ],
+  "nativeInputs": {
+    "baseline": {
+      "src/vehicles/profiles/arieteX.ts": "780ac90f4c4a482a55e6e525296c266cd79261dbbdbeba65ec4d2e36eef14eba",
+      "src/vehicles/profiles/arieteXEquipment.ts": "54bbfb6f18f70e60c7ac1dad1c900a0fd85268b68f71c406039df8017fc17dfe",
+      "src/vehicles/profiles/arieteXPhotoDetails.ts": "e087bf2545aaa8ea8445476e54b2bcadae69338dde0a92cecfb2b522e9030ef9",
+      "src/vehicles/profiles/arieteXPhotoDraft.ts": "c3af568e35895a99f19678fbc96b28a1435bb8e76f73547b4d042de7cf1c4a92",
+      "src/vehicles/profiles/arieteXSupplied.ts": "59d6dc891281e0a07aecf79988115d39bccf3bcad000c8ac9019b4b56d90e2d2",
+      "src/vehicles/profiles/arieteXSuppliedArmor.ts": "e479f868705eff83d184f5c17c4558c9f8b4f668c15e0da56036833e567659de",
+      "src/vehicles/profiles/arieteXSuppliedEquipment.ts": "a3f41691bf14013a0b6b334e98012e38621c8cfc58b3e2873ca4152b9a35596d",
+      "src/vehicles/profiles/arieteXSuppliedFrame.ts": "797360466bcd41c53e4b9d7b1e92381108f035dae3ffdb35b603d71e5558da36",
+      "src/vehicles/profiles/arieteXSuppliedGear.ts": "60bafc0d72c568503ff39ff265e53c821f0ee6f2fad77729fe33e6a792d4261e",
+      "src/vehicles/profiles/arieteXSuppliedGun.ts": "cc5c2cd887a8232b54caa0544b1af9d0c8649ad41bacd51b9a237d522736d6d6",
+      "src/vehicles/profiles/arieteXSuppliedHull.ts": "83023656cec967bcf32e71002844f934ffd7acac07e89aeca4f5305c9e2b7c85",
+      "src/vehicles/profiles/arieteXSuppliedHullEquipment.ts": "268a989c20dc0700b9245669ae76a7062b2c34c9796b05651d07c63611d72533",
+      "src/vehicles/profiles/arieteXSuppliedTurret.ts": "2b48fb9212655dc58b22067d20d5e71464df2c57e520b83d4fbb21ac3297859f",
+      "src/vehicles/sourceXSecondWaveSpecs.ts": "95d0746f32a8922626feaa9d6901c1dd6d0ea48b5ccd7088f11995eaa7871830",
+      "src/vehicles/tankFactoryCore.ts": "688bf1593cd876ab8b686a6e282505f4f24eee4e9843c9a5bd7690fee482f979",
+      "src/vehicles/interiorFillGroups/arieteX.generated.ts": "ff94662cc39befda057e1b63be0d60b04f8ef184aa1757add7ba79c3599a73be",
+      "tools/tank-surface-collect.mjs": "b18123a5230dc617aad2fb2d846289d9303745364857e16b91c90a02ed78bde9",
+      "tools/tank-sealed-check.mjs": "558bd1a806939dab549ed412853bac0fb9949a4ee29a500bde008752aae0d887"
+    },
+    "current": {
+      "src/vehicles/profiles/arieteC2X.ts": "4d1bff1a11fb43cacede4676d6db0f9659359b6095bc8f9ce6510c60fa7e90df",
+      "src/vehicles/profiles/arieteC2XArmor.ts": "05c15230231e5184261019f83352c8614c004bbd233d10ca84e442a23b6de1cb",
+      "src/vehicles/profiles/arieteC2XShoe.ts": "ee92073564b1278c0ef3d91accb562462451a983ae06768322726c09f32f6808",
+      "src/vehicles/profiles/arieteX.ts": "7666e8a73b0210206329d3d35ddf8ca404a67c11bccb5fc4ebbd2fa4950753a8",
+      "src/vehicles/profiles/arieteXEquipment.ts": "54bbfb6f18f70e60c7ac1dad1c900a0fd85268b68f71c406039df8017fc17dfe",
+      "src/vehicles/profiles/arieteXFamilyFrame.ts": "66e4300aad23ad8d127c1afa2bce7fa1b811a98b311a096c7d26236f7b8e5635",
+      "src/vehicles/profiles/arieteXFamilyScale.ts": "d2ede2490cb305821cba9aa421c94fae680a5203d8d7e63fdb01f080af007eb3",
+      "src/vehicles/profiles/arieteXPhotoDetails.ts": "e087bf2545aaa8ea8445476e54b2bcadae69338dde0a92cecfb2b522e9030ef9",
+      "src/vehicles/profiles/arieteXPhotoDraft.ts": "c3af568e35895a99f19678fbc96b28a1435bb8e76f73547b4d042de7cf1c4a92",
+      "src/vehicles/profiles/arieteXStructuralLod.ts": "46b45dd3518744a5b09a6704541968ebf17140dd6869e1ff2dbf650d21fd514b",
+      "src/vehicles/profiles/arieteXSupplied.ts": "fdc8a9433addcbb7c12435347cd5029d625d4ae77bf5f1f511e6c901105dcb75",
+      "src/vehicles/profiles/arieteXSuppliedArmor.ts": "e479f868705eff83d184f5c17c4558c9f8b4f668c15e0da56036833e567659de",
+      "src/vehicles/profiles/arieteXSuppliedEquipment.ts": "7c083ee8a7671a7491a07afdc0cb63e517f3d5c230149c11a3a31b3f68ca5518",
+      "src/vehicles/profiles/arieteXSuppliedFrame.ts": "797360466bcd41c53e4b9d7b1e92381108f035dae3ffdb35b603d71e5558da36",
+      "src/vehicles/profiles/arieteXSuppliedGear.ts": "f6d041d2f239b366072c924ce8952130243471e5aac0c60ff824290e50e9c6ba",
+      "src/vehicles/profiles/arieteXSuppliedGun.ts": "2aea71361ce4c39433b7687617b3696ccd8724728356abf24c3c20b2d8290342",
+      "src/vehicles/profiles/arieteXSuppliedHull.ts": "83023656cec967bcf32e71002844f934ffd7acac07e89aeca4f5305c9e2b7c85",
+      "src/vehicles/profiles/arieteXSuppliedHullEquipment.ts": "268a989c20dc0700b9245669ae76a7062b2c34c9796b05651d07c63611d72533",
+      "src/vehicles/profiles/arieteXSuppliedTurret.ts": "2b48fb9212655dc58b22067d20d5e71464df2c57e520b83d4fbb21ac3297859f",
+      "src/vehicles/sourceXSecondWaveSpecs.ts": "0eb2908aba179d3b0f0dad5f9cf65971c1aafbc23e869932c74ce87e3afda537",
+      "src/vehicles/tankFactoryCore.ts": "688bf1593cd876ab8b686a6e282505f4f24eee4e9843c9a5bd7690fee482f979",
+      "src/vehicles/interiorFillGroups/arieteX.generated.ts": "366abededea111ef58517c4fb7203df17ed3def47a3d39e87d6930bc60cdba47",
+      "tools/tank-surface-collect.mjs": "b18123a5230dc617aad2fb2d846289d9303745364857e16b91c90a02ed78bde9",
+      "tools/tank-sealed-check.mjs": "558bd1a806939dab549ed412853bac0fb9949a4ee29a500bde008752aae0d887"
+    },
+    "baselineDrift": [],
+    "currentDrift": []
+  }
+}

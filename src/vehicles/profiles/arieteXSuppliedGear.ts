@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { ARIETE_SUPPLIED_X_DATUMS as D } from './arieteXSuppliedFrame.ts';
+import { arieteC2Shoe } from './arieteC2XShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Radial = readonly [axial: number, radius: number];
@@ -26,9 +27,9 @@ function face(side: -1 | 1, segments: number): THREE.BufferGeometry {
   return geometry;
 }
 
-export function addArieteXSuppliedGear(P: TankBuilderPort): void {
+export function addArieteXSuppliedGear(P: TankBuilderPort, modern = false): void {
   const wheelZs = [-2.055227, -1.376039, -.696431, -.016822, .662787, 1.342395, 2.021583];
-  const segments = P.q ? 40 : 24;
+  const segments = modern ? (P.q ? 32 : 12) : (P.q ? 40 : 24);
   const idler = { z: 2.773106, y: .6741414, r: .28975886, trackR: .2744 };
   const sprocket = { z: -2.621708, y: .7246074, r: .285, trackR: .2752,
     toothTipRadiusM: .340225 };
@@ -38,7 +39,9 @@ export function addArieteXSuppliedGear(P: TankBuilderPort): void {
       webHeight: .019, hornHeight: .066, pinRadius: .018, pinCentreY: -.002 };
   // 2026-09-17 ground datum (KIT.groundSeatBotY): soles on hull y = 0 for the fleet-standard band
   const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims }), topY = 1.020;
-  const rollers = [-1.675, -.348636, .976].map(z => ({ z, y: .852034, r: .111866 }));
+  const rollers = (modern ? [-1.86, -.69, .48, 1.65] : [-1.675, -.348636, .976])
+    .map(z => ({ z, y: .852034, r: .111866 }));
+  const trackWidth = modern ? .6497973 : .6097973;
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: D.wheelRadiusM, wheelY: D.wheelY,
     wheelW: .377654, wheelZs, xc: D.trackX,
@@ -52,9 +55,10 @@ export function addArieteXSuppliedGear(P: TankBuilderPort): void {
       geometry: face(side, segments), material: P.mats.wheels, side,
       name: `arieteSuppliedRecessedWheelFace${side}`,
     })),
-    trackW: .6097973, trackCarrierWidthM: .521, trackTh: .024,
+    trackW: trackWidth, trackCarrierWidthM: modern ? .561 : .521, trackTh: .024,
+    ...(modern ? { trackShoeBuilder: arieteC2Shoe } : {}),
     trackShoeDimensions: shoeDims,
-    pinCapOuter: .30489865, rigidLinkChords: true,
+    pinCapOuter: trackWidth / 2, rigidLinkChords: true,
     sprocket, idler, rollers, rollerR: .111866, returnRollerWidthM: .109343,
     returnRollerInsetM: 0, returnRollerOutsetM: .090418,
     botY, topY, loopPoints: roundedTrackContact(KIT.trackLoopPoints({

@@ -1,11 +1,23 @@
 // Explicit owner-authored designs. This is not a fallback for failed sources.
 const CONCEPT_DOCUMENTS = Object.freeze({
+  ariete_c2_x:'docs/references/concepts/ariete-c2-20260921.json',
   tos1a_tagil:'docs/references/concepts/tos1a-tagil-20260920.json',
   ztz100_prototype:'docs/references/concepts/missile-turrets-20260919.json',
   object695_x:'docs/references/concepts/missile-turrets-20260919.json',
   type100:'docs/references/concepts/type100-ifv-20260919.json',
 });
 export const FIRST_PARTY_CONCEPTS = Object.freeze({
+  ariete_c2_x: Object.freeze({
+    id:'ariete_c2_x', test:'src/vehicles/profiles/arieteC2X.selftest.mjs',
+    ring:[0,1.4629751628800003,.3673923512],
+    gunLocal:[0,.3867039511999999,1.1351480168],
+    barrelLengthM:4.12892503856, barrelRadiusM:.1371776, pitchDeg:[-9,20],
+    mainCaliberMm:120, weaponSystem:'conventional-cannon', roofMachineGuns:2,
+    hullLengthM:7.852776222592, hullWidthM:4.043200000000001,
+    widthM:4.043200000000001, overallLengthM:9.557853517520002,
+    tallestM:3.9923303918400004,
+    silhouette:'Enlarged definitive C1 hull and angular turret with wider tracks, four return rollers per side, finite side and cheek protection packs, modern commander and gunner sights, and two seated roof weapons',
+  }),
   tos1a_tagil: Object.freeze({
     id:'tos1a_tagil', test:'src/vehicles/profiles/tos1aTagil.selftest.mjs',
     ring:[-.00095,1.5455,.118], gunLocal:[0,1.30,-1.30],

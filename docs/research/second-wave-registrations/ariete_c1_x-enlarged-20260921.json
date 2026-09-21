@@ -1,0 +1,18 @@
+{
+  "id": "ariete_c1_x",
+  "sourceSha256": "02043219575d2ac02c9846666efca20c8087727808e4c51245a28588242e26b4",
+  "axes": [
+    "x",
+    "y",
+    "z"
+  ],
+  "scale": 0.02392760464206546,
+  "translation": [
+    0.0,
+    0.0028260951150748514,
+    0.8525386621463034
+  ],
+  "registrationReason": "Owner-directed definitive C1 enlargement, 2026-09-21: multiply the complete original source registration by the prescribed uniform factor 1.12 about its canonical ground origin. Original source, all meshes and original axes retained; not a candidate-fit or historical-metrology claim.",
+  "parentRegistration": "docs/research/second-wave-registrations/ariete_c1_x.json",
+  "ownerRequestedEnlargement": 1.12
+}
