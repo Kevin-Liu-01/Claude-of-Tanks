@@ -16,7 +16,7 @@ import {
 // compiles one layered world-anchored vista program on the desktop tier and the near faces carry an instanced forest.
 // The receipts below are re-established at this commit; the 1049e4e byte identity they guarded is superseded.
 const columns = HORIZON_SEGMENTS + 1;
-const VISTA_TILES = 5;
+const VISTA_TILES = 6; // round 29: meadow, sand, canopy, rock, scree, snow
 
 function radiusAt(position, index) {
   return Math.hypot(position.getX(index), position.getZ(index));
@@ -233,8 +233,11 @@ function assertVistaSurfaceShader(shader, normals, label) {
     `${label}: one biome lookup remains`);
   assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 3,
     `${label}: the world projection macro is the only fetch site (three plane fetches)`);
-  assert.equal((fragment.match(/VTRI\(/g) ?? []).length, 10,
-    `${label}: four noise scales and five material tiles share the one macro (twenty-seven fetches per fragment)`);
+  assert.equal((fragment.match(/VTRI\(/g) ?? []).length, 13,
+    `${label}: four noise scales and five material tiles share the one macro (twenty-seven fetches per fragment), plus the round-29 near fields and near ground fetch inside the 380 m branch`);
+  assert.match(fragment, /float wall = smoothstep\(0\.30, 0\.62, slope \+ nD \* 0\.06\);/, `${label}: strata, staining and gullies are gated to genuinely steep faces (round 29)`);
+  assert.match(fragment, /float bedW = uVBanding \* wall;/, `${label}: bed stripes never cross gentle sand or grass`);
+  assert.match(fragment, /if \(nearW > 0\.002\) \{/, `${label}: the near fields are skipped past 380 m`);
   for (const uniform of ['uVMeadow', 'uVCanopy', 'uVRock', 'uVScree', 'uVSnow', 'uVMeadowTint', 'uVRockTint', 'uVScreeTint',
     'uVRockSlope', 'uVBanding', 'uVHaze', 'uVFogTint', 'uVAmbient', 'uVSunGain']) {
     assert.match(fragment, new RegExp(`uniform [a-zA-Z0-9]+ ${uniform};`), `${label}: ${uniform} is declared`);
@@ -497,7 +500,7 @@ try {
 
     const suspended = releaseObject3DGpuResources(mesh, { releaseMaterials: false });
     assert.equal(suspended.textures, 2 + VISTA_TILES,
-      `${style}: suspension finds the map, the hidden detail texture and the five vista tiles`);
+      `${style}: suspension finds the map, the hidden detail texture and the six vista tiles (round 29 adds the sand tile)`);
     assert.equal(suspended.materials, 0,
       `${style}: GPU suspension preserves compiled materials for a covered return`);
     assert.equal(releases, 1, `${style}: the shader-only detail texture releases its GPU backing`);
@@ -624,6 +627,33 @@ try {
     const disposed = disposeObject3DResources(mesh);
     assert.equal(disposed.textures, 3 + VISTA_TILES, `${mapId}: the mountain textures, the vista tiles and the one treeline atlas dispose`);
     assert.equal(disposed.materials, 3, `${mapId}: mountain, treeline and ring-forest materials dispose together`);
+  }
+
+  // Round 29 (owner 2026-09-20, Redrock Divide: "see where the texture just stops"): the first exposed row is seated
+  // on the playable edge and row 0 is the buried closing anchor (up to 110 m under Redrock's plateau). Its radial
+  // gradient used to be the two-sided difference across that anchor, which tilted the seam normals (~36° on flat
+  // ground) and made the terrain material paint a band of streaked rock on the first strip past every edge. The seam
+  // row now takes a one-sided gradient, so it is never steeper than the strip behind it.
+  for (const [mapId, ceiling] of [['badlands', 0.7], ['copper_mesa', 0.9], ['alpine', 0.9], ['verdant', 0.4], ['urban', 0.35]]) {
+    const config = getMapConfig(mapId);
+    const mesh = buildHorizonRing(null, { ...config, horizon: { ...config.horizon, treeline: 0 } }, 1337);
+    const normal = mesh.geometry.attributes.normal;
+    const maxRadial = (row) => {
+      let worst = 0;
+      for (let column = 0; column < HORIZON_SEGMENTS; column++) {
+        const i = row * columns + column;
+        const theta = (column / HORIZON_SEGMENTS) * Math.PI * 2;
+        const radial = -(normal.getX(i) * Math.cos(theta) + normal.getZ(i) * Math.sin(theta)) / normal.getY(i);
+        worst = Math.max(worst, Math.abs(radial));
+      }
+      return worst;
+    };
+    const seam = maxRadial(1), behind = maxRadial(2);
+    assert.ok(seam <= behind * 1.25 + 0.05,
+      `${mapId}: the seam row's steepest radial gradient (${seam.toFixed(3)}) stays within the strip behind it (${behind.toFixed(3)})`);
+    assert.ok(seam < ceiling, `${mapId}: seam radial gradient ${seam.toFixed(3)} under ${ceiling} (two-sided across the anchor it was ${
+      mapId === 'badlands' ? '1.40' : mapId === 'copper_mesa' ? '1.30' : mapId === 'alpine' ? '1.34' : mapId === 'verdant' ? '0.82' : '0.59'})`);
+    mesh.geometry.dispose?.();
   }
 } finally {
   if (previousDocument === undefined) delete globalThis.document;

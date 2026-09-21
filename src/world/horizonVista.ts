@@ -22,11 +22,16 @@ export const VISTA_TILE_SIZE = 512;
 
 export interface VistaTiles {
   meadow: THREE.CanvasTexture;
+  /** Round 29 (2026-09-20): dune sand / alluvium for the arid maps — bound as the ground tile instead of the meadow. */
+  sand: THREE.CanvasTexture;
   canopy: THREE.CanvasTexture;
   rock: THREE.CanvasTexture;
   scree: THREE.CanvasTexture;
   snow: THREE.CanvasTexture;
 }
+
+/** Which tile the vista's ground layer samples; every other layer is chosen per fragment. */
+export type VistaGround = 'meadow' | 'sand';
 
 type TileRng = () => number;
 
@@ -147,6 +152,41 @@ function makeMeadowTile(size: number): TilePixels {
   return tile;
 }
 
+/**
+ * Round 29 (2026-09-20, owner: "see where the texture just stops on maps like Redrock Divide"): sand / alluvium for
+ * the arid rings. Broad dune undulation, wind ripples running one way, sparse pebbles and a warm-cool drift, so a
+ * desert plain past the rim reads as sand instead of the meadow tile's dried-grass patches. Mean about 0.5.
+ */
+function makeSandTile(size: number): TilePixels {
+  const rng = tileRng(0x5a4d);
+  const tile = newTile(size, 0.5);
+  const dunes = makeLatticeNoise(rng, [[2, 0.9], [5, 0.6], [13, 0.35]]);
+  const warp = makeLatticeNoise(rng, [[4, 1.0], [9, 0.5]]);
+  const grain = makeLatticeNoise(rng, [[61, 0.6], [140, 0.5]]);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size, v = y / size;
+      const dune = dunes(u, v);
+      const w = warp(u, v) * 0.18;
+      // wind ripples: one direction, warped so no two crests stay parallel for long
+      const ripple = Math.sin((v + w + u * 0.35) * Math.PI * 2 * 22) * 0.5;
+      const rippleShade = smooth(clamp01(ripple + 0.5));
+      const l = 0.5 + dune * 0.11 + (rippleShade - 0.5) * 0.05 + grain(u, v) * 0.05;
+      const warm = smooth(clamp01(dune * 1.8 + 0.5));           // dune backs read warmer than the troughs
+      const i = (y * size + x) * 3;
+      tile.data[i] = l * (1 + warm * 0.09);
+      tile.data[i + 1] = l * (1 + warm * 0.02);
+      tile.data[i + 2] = l * (1 - warm * 0.13);
+    }
+  }
+  for (let k = 0; k < 420; k++) {
+    // pebbles and dark desert-varnished stones, sparse
+    const dark = rng() < 0.6; const l = dark ? 0.30 + rng() * 0.12 : 0.58 + rng() * 0.16;
+    stampDisc(tile, rng(), rng(), 0.003 + rng() * 0.007, [l * 1.02, l, l * 0.94], 0.5, 0.5, 0.5);
+  }
+  return tile;
+}
+
 /** Canopy from above: layered crown discs lit from the upper left over dark bluish gaps. Mean about 0.5. */
 function makeCanopyTile(size: number): TilePixels {
   const rng = tileRng(0xca0e);
@@ -238,18 +278,18 @@ function makeSnowTile(size: number): TilePixels {
   return tile;
 }
 
-let sharedTiles: { meadow: TilePixels; canopy: TilePixels; rock: TilePixels; scree: TilePixels; snow: TilePixels } | null = null;
+let sharedTiles: { meadow: TilePixels; sand: TilePixels; canopy: TilePixels; rock: TilePixels; scree: TilePixels; snow: TilePixels } | null = null;
 
 /** Tile pixels are authored once per page (about 60 ms); each ring owns its own GPU textures over them. */
 export function createVistaTiles(size = VISTA_TILE_SIZE): VistaTiles {
   if (!sharedTiles || sharedTiles.meadow.size !== size) {
     sharedTiles = {
-      meadow: makeMeadowTile(size), canopy: makeCanopyTile(size), rock: makeRockTile(size),
+      meadow: makeMeadowTile(size), sand: makeSandTile(size), canopy: makeCanopyTile(size), rock: makeRockTile(size),
       scree: makeScreeTile(size), snow: makeSnowTile(size),
     };
   }
   return {
-    meadow: tileToTexture(sharedTiles.meadow), canopy: tileToTexture(sharedTiles.canopy),
+    meadow: tileToTexture(sharedTiles.meadow), sand: tileToTexture(sharedTiles.sand), canopy: tileToTexture(sharedTiles.canopy),
     rock: tileToTexture(sharedTiles.rock), scree: tileToTexture(sharedTiles.scree), snow: tileToTexture(sharedTiles.snow),
   };
 }
@@ -260,6 +300,7 @@ export function createVistaTiles(size = VISTA_TILE_SIZE): VistaTiles {
 export const HORIZON_VISTA_UNIFORM_DECLARATIONS = /* glsl */`
 uniform sampler2D uVMeadow; uniform sampler2D uVCanopy; uniform sampler2D uVRock; uniform sampler2D uVScree; uniform sampler2D uVSnow;
 uniform vec3 uVMeadowTint; uniform vec3 uVRockTint; uniform vec3 uVScreeTint;
+uniform vec3 uVForestColor; uniform vec3 uVSnowColor;
 uniform float uVRockAmp; uniform float uVPeakRock; uniform float uVScreeAmp; uniform float uVForestAmp; uniform float uVBump;
 uniform float uVHaze; uniform vec3 uVFogTint; uniform float uVBanding; uniform float uVAmbient; uniform float uVSunGain;
 uniform vec2 uVRockSlope;
@@ -292,6 +333,9 @@ float vistaHaze = 0.0;
   float nD = VTRI(uDetail2, 0.0230, vec2(0.71, 0.19)).r - 0.5;
   float nE = VTRI(uDetail2, 0.0850, vec2(0.11, 0.83)).r - 0.5;
   float slope = 1.0 - clamp(n0.y, 0.0, 1.0);
+  // Round 29: a wall is a genuinely steep face; strata, iron staining and gullies belong to walls, never to the
+  // gentle sand or grass slopes the rock layer also touches (the audit showed contour stripes across dune fields).
+  float wall = smoothstep(0.30, 0.62, slope + nD * 0.06);
   // --- material weights ------------------------------------------------------
   float rockW = smoothstep(uVRockSlope.x, uVRockSlope.y, slope + nC * 0.26 + nD * 0.18 + nE * 0.08) * uVRockAmp;
   rockW = max(rockW, smoothstep(0.60, 0.92, hT + nC * 0.12 + nD * 0.06) * uVPeakRock);
@@ -313,7 +357,7 @@ float vistaHaze = 0.0;
   if (uVForestAmp > 0.001) {
     vec3 canopyMod = VTRI(uVCanopy, 0.042, vec2(0.13, 0.57)).rgb * 2.0;
     canopyMod = mix(vec3(1.0), canopyMod, 0.45 + 0.55 * detailW);
-    vec3 forestCol = uForestTint * canopyMod * (0.92 + nD * 0.24);
+    vec3 forestCol = uVForestColor * canopyMod * (0.92 + nD * 0.24);
     col = mix(col, forestCol, forestW);
   }
   if (uVScreeAmp > 0.001) {
@@ -324,14 +368,31 @@ float vistaHaze = 0.0;
     // beds read along world height on the walls; the horizontal plane of the same fetch keeps caps granular
     vec3 rockMod = mix(vec3(1.0), VTRI(uVRock, 0.055, vec2(0.23, 0.77)).rgb * 2.0, 0.45 + 0.55 * detailW);
     float bed = sin(P.y * 0.42 + nB * 9.0) * 0.6 + sin(P.y * 0.13 + nC * 5.0) * 0.4;
-    // beds: light shelves over dark recessed seams, both scaled by the map's banding
-    float seam = smoothstep(0.45, 0.85, -bed) * uVBanding * 1.6;
-    vec3 rockCol = uVRockTint * rockMod * (1.0 + bed * uVBanding) * (1.0 - seam * 0.55);
+    // beds: light shelves over dark recessed seams, both scaled by the map's banding — on walls only (round 29)
+    float bedW = uVBanding * wall;
+    float seam = smoothstep(0.45, 0.85, -bed) * bedW * 1.6;
+    vec3 rockCol = uVRockTint * rockMod * (1.0 + bed * bedW) * (1.0 - seam * 0.55);
+    // round 29: iron-stained beds alternate with the pale ones, and gullies cut dark down the walls, so a mesa
+    // face carries the colour and relief a real cliff has instead of one flat tint with thin lines
+    rockCol = mix(rockCol, rockCol * vec3(1.10, 0.95, 0.84), smoothstep(0.15, 0.85, bed * 0.5 + 0.5) * wall * 0.55);
+    float gully = smoothstep(0.55, 0.90, 0.5 - nC * 1.2 - nD * 0.6) * wall;
+    rockCol *= 1.0 - gully * 0.30;
     col = mix(col, rockCol, rockW);
   }
   if (snowW > 0.001) {
     vec3 snowMod = mix(vec3(1.0), VTRI(uVSnow, 0.031, vec2(0.61, 0.29)).rgb * 2.0, 0.5 + 0.5 * detailW);
-    col = mix(col, uSnowTint * snowMod, snowW * (1.0 - rockW * 0.45));
+    col = mix(col, uVSnowColor * snowMod, snowW * (1.0 - rockW * 0.45));
+  }
+  // Round 29: the near skirt used to blur into a 12 m-per-feature wall beside a battlefield textured at
+  // centimetres (the vista replaced the round-22 near overlay). Two finer world fields and the ground tile at a
+  // 2.4 m repeat fade in inside 380 m and are gone by the first ridge, so the texture no longer "just stops".
+  float nearW = (1.0 - smoothstep(60.0, 380.0, vHDist)) * (1.0 - horizonMarine);
+  if (nearW > 0.002) {
+    float nF = VTRI(uDetail2, 0.27, vec2(0.57, 0.23)).r - 0.5;
+    float nG = VTRI(uDetail2, 0.85, vec2(0.19, 0.67)).r - 0.5;
+    vec3 nearMod = VTRI(uVMeadow, 0.42, vec2(0.33, 0.81)).rgb * 2.0;
+    col *= 1.0 + (nF * 0.16 + nG * 0.10) * nearW * (0.6 + 0.4 * rockW);
+    col = mix(col, col * nearMod, nearW * 0.45 * (1.0 - rockW * 0.7) * (1.0 - snowW));
   }
   #undef VTRI
   // --- relief shading: screen-derivative bump from the fine fields, sun and sky ----
@@ -349,7 +410,13 @@ float vistaHaze = 0.0;
   lit = mix(lit, lit * vec3(0.90, 0.94, 1.08), max(-ndl, 0.0) * 0.35);
   // canopy self-shadow: stands darken on their shaded side a little more than open ground
   lit *= 1.0 - forestW * 0.10 * (1.0 - sunL);
-  diffuseColor.rgb = sampledDiffuseColor.rgb * lit / 0.62;
+  // Round 29 (2026-09-20): the tints above are ABSOLUTE linear colours (the map's own ground albedo mean, rock,
+  // forest and snow colours), so the baked biome tone and the vertex colour — both base-hued — are divided back
+  // out here (color_fragment multiplies vColor again) and only the vertex bake's altitude shade is kept. Until
+  // now the base hue entered three times (tone texture × vertex colour × base-relative tint), which turned the
+  // sand plains past a red-brown mesa rim into a dark red sheet beside the yellow battlefield.
+  float vistaAltShade = 0.82 + hT * 0.34;
+  diffuseColor.rgb = lit * vistaAltShade / max(vColor.rgb, vec3(0.02));
   horizonWaterVariation = nC * 0.008 + nB * 0.015;
   // --- aerial perspective, per fragment (the vertex bake keeps the tone only) ----
   float hazeR = smoothstep(430.0, 1330.0, radius);

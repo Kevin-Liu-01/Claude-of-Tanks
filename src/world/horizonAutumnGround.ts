@@ -73,7 +73,8 @@ export function refreshHorizonGroundTone(mesh: Mesh, groundAlbedo: Texture | und
   if (!mean) return;
   const tint = vista.uniforms.uVMeadowTint?.value as Vector3 | undefined;
   if (!tint) return;
-  const ratio = (a: number, b: number): number => Math.min(2.2, Math.max(0.4, a / Math.max(b, 1e-3)));
-  // the ring reads under more air than the field: hold the hill a little below the sampled ground
-  tint.set(ratio(mean.r * 0.94, vista.base.r), ratio(mean.g * 0.94, vista.base.g), ratio(mean.b * 0.96, vista.base.b));
+  // Round 29: the vista's ground colour is the battlefield's own albedo mean (an absolute linear colour — the
+  // fragment no longer multiplies the base-hued bake back in), held a little below the sampled ground because
+  // the ring reads under more air than the field.
+  tint.set(mean.r * 0.94, mean.g * 0.94, mean.b * 0.96);
 }

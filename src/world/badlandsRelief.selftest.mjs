@@ -61,10 +61,17 @@ function historicalLightingSource(source, file) {
   assert.equal(source.match(pattern)?.length, 2, `${file}: one exact 2026-09-13 lighting line`);
   return source.replace(pattern, '$1' + historical);
 }
+// Round 29 (2026-09-20): Sunscar Oasis names its vista ground kind on its horizon line; the original line had none.
+function historicalVistaGroundSource(source, file) {
+  if (file !== 'oasis.ts') return source;
+  const current = "style: 'rolling', ground: 'sand', treeline: 0.12,";
+  assert.equal(source.split(current).length, 2, 'oasis.ts: one exact round-29 vista ground line');
+  return source.replace(current, "style: 'rolling', treeline: 0.12,");
+}
 for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalMapPassDressingSource(historicalLightingSource(read('src/world/maps/' + file), file), file, assert), file), old('src/world/maps/' + file), id),
+    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(read('src/world/maps/' + file), file), file), file, assert), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 

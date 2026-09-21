@@ -46,10 +46,23 @@ const currentBadlandsAuthoring = structuredClone(badlandsAuthoring(badlands));
 // These inputs preserve the callers' immutable full-config/pixel/geometry
 // goldens. Unlisted terrain, route, prop, palette and vegetation fields remain
 // live; no Git/runtime hook or replacement full-map fixture is needed.
+/**
+ * Round 29 (2026-09-20, "see where the texture just stops"): `horizon.ground` (the vista ring's ground kind) and
+ * Redrock's treeline 0 postdate every frozen horizon golden. Project them back so the immutable config digests
+ * keep guarding everything else; the live values are guarded by horizonResources / horizonMesaSurface.
+ */
+export function historicalVistaGroundInput(cfg) {
+  if (!cfg.horizon || !('ground' in cfg.horizon)) return cfg;
+  const { ground: _laterVistaGround, ...horizon } = cfg.horizon;
+  if (cfg.id === 'badlands') horizon.treeline = 0.06;
+  return { ...cfg, horizon };
+}
+
 export function historicalBadlandsInput(cfg) {
   if (cfg.id !== 'badlands') return cfg;
   assert.deepEqual(badlandsAuthoring(cfg), currentBadlandsAuthoring,
     'current Badlands authoring must match its canonical config before historical projection');
+  cfg = historicalVistaGroundInput(cfg);
   const { redrockCanyon: _laterCanyon, ...terrain } = cfg.terrain;
   const { banding: _laterQuietBedding, ...horizon } = cfg.horizon;
   const roads = [
@@ -154,6 +167,7 @@ export function historicalReservoirConfig(cfg) {
 }
 
 export function historicalPaletteConfig(cfg) {
+  cfg = historicalVistaGroundInput(cfg); // round 29: the vista ground kind postdates every palette golden
   if (cfg.id === 'badlands') return historicalBadlandsInput(cfg);
   if (currentRelief.has(cfg.id)) return historicalPlayableReliefInput(cfg);
   // Coastal surface-only settings postdate the original palette receipt.

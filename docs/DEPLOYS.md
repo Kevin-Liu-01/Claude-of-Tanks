@@ -80,3 +80,4 @@ quickest proof that the live site is the gate build.
 | 46 | 2026-09-20 12:21 | 952a205e7 | Pinch-zoom guard installed at boot for every device, and a clean build stamp | main-ORM88aeN.js | claude-of-tanks-nnglffupl |
 | 47 | 2026-09-21 00:47 | e3ad8b6a1 | Vehicle wakes replace the water rings, and tank shadows are grounded | main-CZc5ZQWx.js | claude-of-tanks-2qk7tqqhp |
 | 48 | 2026-09-21 03:21 | 4655e21cc | Structures are floors, rocket jump and desktop keybinds; tank paints become selectable camos with national schemes | main-D1Ifdjb3.js | claude-of-tanks-8s4cbgmnd |
+| 49 | 2026-09-21 04:15 | e3fc71582 | Every horizon ring keeps its texture past the rim, and Redrock loses its dark band | main-BbEtjO2P.js | claude-of-tanks-lj8oxh8iy |

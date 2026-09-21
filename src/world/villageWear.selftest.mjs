@@ -8,7 +8,7 @@ import { historicalMaskTexture as makeMaskTexture } from './roadRutHistoryTestOr
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { historicalPaletteConfig, historicalFoundryServiceInput, historicalBadlandsInput,
+import { historicalPaletteConfig, historicalFoundryServiceInput, historicalBadlandsInput, historicalVistaGroundInput,
   historicalPlayableReliefInput } from './shorelineHistoryTestOracle.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -92,6 +92,8 @@ function historicalAlpineHorizonInput(cfg) {
 function originalConfig(cfg) {
   // 2026-09-12 map pass: dressing/haze leaves never feed terrain wear.
   cfg = historicalMapPassDressingInput(cfg, assert);
+  // round 29 (2026-09-20): the vista ground kind never feeds terrain wear either
+  cfg = historicalVistaGroundInput(cfg);
   if (cfg.id === 'badlands') return historicalBadlandsInput(cfg);
   if (cfg.id === 'alpine') return historicalAlpineHorizonInput(historicalPlayableReliefInput(cfg));
   if (cfg.id === 'frontier') return historicalPlayableReliefInput(cfg);
