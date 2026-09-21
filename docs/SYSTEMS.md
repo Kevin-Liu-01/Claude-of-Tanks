@@ -141,6 +141,10 @@ strict TypeScript owners:
   geometry. Its typed `geometry-only` material mode bypasses temporary tank
   pixel work and presentation-only scans without enabling geometry receipts,
   changing builder decisions, or replacing the factory shadow proxy;
+  the near-hull detail casters (`engine/nearVehicleShadowDetail.ts`, 2026-09-20) read each hull's
+  `userData.nearShadowDetail` — the armour, gun and running-gear meshes that cast instead of the proxy
+  while the hull is one of the four nearest within 70 m — so a new named shell joins the near shadow by
+  being in `NEAR_SHADOW_DETAIL_NAMES`;
 - `src/world/worldActivationRuntime.ts` owns the one active browser world,
   atmosphere/collider/minimap readiness, covered program and shadow warming,
   dormancy, and activation telemetry;

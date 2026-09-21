@@ -37,6 +37,65 @@ const routedShadowMaps = new WeakMap<ShadowMapRouter, RoutedShadowMap>();
 const shadowWarmScopes = new WeakMap<Camera, ShadowWarmScope>();
 
 /**
+ * Round 28 (2026-09-20, owner: "shadows look weird on tanks"): a per-cascade
+ * caster policy. Three renders every shadow-casting light in one
+ * `shadowMap.render(lights, …)` call, so nothing could change which objects
+ * cast between one cascade and the next. When a policy is installed the router
+ * renders the lights one at a time and lets the policy flip caster flags around
+ * each cascade (near hulls cast their real armour into the cascade that covers
+ * them, the convex proxies everywhere else). Without a policy — and for a
+ * single light, which is what the deployment shadow warm renders — the call
+ * stays exactly the one three makes.
+ */
+export interface ShadowCascadePolicy {
+  beforeLight(light: Object3D, cascadeIndex: number): void;
+  afterLight(light: Object3D, cascadeIndex: number): void;
+}
+
+const cascadeIndexByShadowCamera = new WeakMap<Camera, number>();
+let shadowCascadePolicy: ShadowCascadePolicy | null = null;
+
+/** Tell the router which cascade a light's shadow camera renders (lighting.ts registers the CSM lights). */
+export function registerShadowCascadeCamera(shadowCamera: Camera, cascadeIndex: number): void {
+  cascadeIndexByShadowCamera.set(shadowCamera, cascadeIndex);
+}
+
+/** The registered cascade index of a shadow-casting light, or -1 for an unregistered light. */
+export function shadowCascadeIndexOf(light: Object3D): number {
+  const shadowCamera = (light as { shadow?: { camera?: Camera } }).shadow?.camera;
+  return shadowCamera ? cascadeIndexByShadowCamera.get(shadowCamera) ?? -1 : -1;
+}
+
+export function setShadowCascadePolicy(policy: ShadowCascadePolicy | null): void {
+  shadowCascadePolicy = policy;
+}
+
+export function getShadowCascadePolicy(): ShadowCascadePolicy | null {
+  return shadowCascadePolicy;
+}
+
+function renderShadowLights(
+  render: ShadowMapRouter['render'], lights: Object3D[], scene: Scene, camera: Camera,
+): void {
+  const policy = shadowCascadePolicy;
+  if (!policy || lights.length < 2) {
+    render(lights, scene, camera);
+    return;
+  }
+  const single: Object3D[] = [lights[0]];
+  for (const light of lights) {
+    const cascadeIndex = shadowCascadeIndexOf(light);
+    single[0] = light;
+    policy.beforeLight(light, cascadeIndex);
+    try {
+      render(single, scene, camera);
+    } finally {
+      policy.afterLight(light, cascadeIndex);
+    }
+  }
+}
+
+/**
  * Suppress forward submissions for one synchronous, explicitly owned warm
  * render. Keep the presentation mask through light/LOD collection; the router
  * mutes it only after native shadow traversal. Unknown/replaced routers retain
@@ -82,7 +141,7 @@ export function routeShadowOnlyLayer(renderer: WebGLRenderer): void {
     let completed = false;
     camera.layers.enable(SHADOW_ONLY_LAYER);
     try {
-      render(lights, scene, camera);
+      renderShadowLights(render, lights, scene, camera);
       completed = true;
     } finally {
       const ownsScope = completed && scope && shadowWarmScopes.get(camera) === scope

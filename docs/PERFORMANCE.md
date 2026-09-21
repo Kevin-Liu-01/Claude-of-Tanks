@@ -773,6 +773,27 @@ while the exact native-shadow receipt remained unchanged at 267 calls and
 1.31 million triangles. The optimization changes neither visible geometry nor
 shadow geometry.
 
+Near-hull detail casters (2026-09-20, owner: "shadows look weird on tanks").
+A convex proxy has no concavities, so a hull's turret never shadowed its own
+deck, the gun never shadowed the glacis, and the ground shadow was a box that
+floated at belly height because the running gear was not among the proxy's
+support points. `engine/nearVehicleShadowDetail.ts` lets at most the four
+nearest hulls within 70 m of the camera cast their authored armour shells,
+gun, track bands and instanced running gear (28 meshes at most, never the
+30k-triangle detailed track pads, greeble, decals or fills) into the cascade
+whose depth range covers them, while their proxies are hidden for that
+cascade only. The shadow router (`engine/renderLayers.ts`) renders the CSM
+lights one at a time when a cascade policy is installed and flips the flags
+around each light, restoring them exactly; with no policy, or for the single
+light the deployment shadow warm renders, the call is the one three makes.
+The convex proxies themselves are unchanged (their byte-exact armour-derived
+hulls are pinned by the source-study coverage receipts), so a hull beyond the
+near set still casts the floating belly-height box — at 70 m and more that
+offset is a pixel or two. Desktop tiers with a 2K+ near cascade only; `__SHADOW_DEBUG.noVehicleDetail` keeps every hull on proxies
+for A/B probes. Measured on Verdant with two hulls in the near cascade: frame
+medians 16.7 ms on vs 16.6 ms off (vsync-bound, 506 calls / 5.0 M triangles
+either way).
+
 Destroyed-only char and ember atlases are also demand-owned. Constructing a
 live or showroom tank no longer bakes those canvases merely because its
 material vocabulary contains a wreck fallback. The covered battle warm patches

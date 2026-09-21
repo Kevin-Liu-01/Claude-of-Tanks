@@ -63,6 +63,9 @@ import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttac
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail } from '../fx/clock.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
+import {
+  markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES,
+} from '../engine/nearVehicleShadowDetail.ts';
 import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
 import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
 import type { ArmorEnvelope, ArmorPlate } from './specHelpers.ts';
@@ -1800,6 +1803,27 @@ function authoredShadowHull(
   return finalizeAuthoredShadowHull(supportPoints, sourceTriangles, insetM);
 }
 
+/**
+ * Round 28: the real meshes a near hull casts into the cascade that covers it — the authored armour shells, the
+ * gun, the track bands and the instanced running gear (one draw each), never the greeble, decals, fills or the
+ * 30k-triangle detailed track pads. Ordered by triangle count so the cap keeps the largest silhouettes.
+ */
+function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Object3D[] {
+  const picked: { mesh: THREE.Object3D; triangles: number }[] = [];
+  for (const group of groups) {
+    group.traverse((object) => {
+      if (!(isVehicleMesh(object) || isVehicleInstancedMesh(object))) return;
+      if (!NEAR_SHADOW_DETAIL_NAMES.has(object.name)) return;
+      if (object.userData.authoredShadowProxy) return;
+      const geometry = object.geometry;
+      const count = geometry.index ? geometry.index.count : geometry.getAttribute('position')?.count ?? 0;
+      picked.push({ mesh: object, triangles: count / 3 });
+    });
+  }
+  picked.sort((a, b) => b.triangles - a.triangles);
+  return picked.slice(0, NEAR_SHADOW_DETAIL_MAX_MESHES).map((entry) => entry.mesh);
+}
+
 function installProceduralShadowProxies(
   spec: FleetTankSpec,
   hullG: THREE.Group,
@@ -1818,6 +1842,9 @@ function installProceduralShadowProxies(
 
   const find = (owner: THREE.Object3D, names: readonly string[]) =>
     names.map((name) => owner.getObjectByName(name)).filter((item): item is THREE.Object3D => !!item);
+  // Round 28 (2026-09-20): the proxies stay the byte-exact armour-derived hulls (suppliedShadowCoverage pins them
+  // inside the measured side armour); the tracks, wheels and the hull's own concavities shadow through the
+  // near-hull detail casters instead (nearVehicleShadowDetail.ts), which a far hull never pays for.
   const hullGeo = authoredShadowHull(hullG, find(hullG,
     ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber',
       'hullFixedPaintedBodywork', ...(additionalSources?.hull ?? [])]), PROC_SHADOW_BODY_INSET_M);
@@ -11387,6 +11414,11 @@ function* createTankOwnedSteps(
     }
     proceduralShadowSources = installProceduralShadowProxies(
       spec, hullG, turretG, gunG, recoilG, disposables, P.additionalShadowSources);
+    // Round 28: the armour and running gear a NEAR hull casts instead of its proxies (nearVehicleShadowDetail.ts)
+    markVehicleShadowDetail(root, {
+      detail: collectNearShadowDetail([hullG, turretG, gunG, recoilG]),
+      proxies: proceduralShadowSources,
+    });
   };
   const createTankMarkingsStage5 = (): void => {
     createTankMarkingsStage2();

@@ -28,6 +28,22 @@ new print/wake. The proxy follows world replacement and falls back to zero
 when there is no field. That null-field test is not a Garage-transition test:
 Garage can retain a dormant world, while the existing FX phase owner suspends
 battle effects. The native live-drive transition below verifies that owner.
+
+Wake pattern (water pass 7, 2026-09-20). The surface shader itself draws the
+wake of every hull in the water from up to eight published disturbances
+(`world.setWaterDisturbances`, fed by the battle loop each frame with the hull
+position, footprint half extents from `tankContactRect`, direction of travel
+and speed). Each slot is built in the hull frame: a standing hull only laps the
+water at its skirt with a thin contact line; a moving hull pushes a bow mound
+ahead of the bow, two crests diverging from the bow corners at about 23
+degrees, transverse waves between them behind the stern whose wavelength grows
+with speed, and a churned wash lane that spreads and fades over a speed-scaled
+trail (hull + 4 m + 22 m at 8 m/s) while stirring the bank colour into the body.
+A reversing hull trails its wake ahead of the bow. Fragments beyond a slot's
+reach skip that slot, so the cost is confined to the water around each hull;
+the wash reuses the fine wave fetch instead of adding one. This replaced the
+pass-6 concentric rings (`sin(d·4.2 − t·6.5)` under an exponential envelope),
+which read as radiating circles following the vehicle rather than a wake.
 Map-owned shared texture retention covers the new material's hidden samplers.
 
 ## Evidence status

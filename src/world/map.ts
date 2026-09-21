@@ -1,3 +1,4 @@
+import type { WaterDisturbance } from './shallowWater.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createSourcedTextureState, type SourcedTextureResult, type SourcedTextureState } from './sourcedTextureReceipt.ts';
 // src/world/map.ts — composes terrain meshes + vegetation + props into the World.
@@ -81,7 +82,7 @@ interface TerrainUserData {
   updateLOD(cameraPosition: THREE.Vector3): void;
   updateWater?(deltaSeconds: number): void;
   setWaterTime?(timeSeconds: number): void;
-  setWaterDisturbances?(sources: readonly { readonly x: number; readonly z: number; readonly strength: number }[]): void;
+  setWaterDisturbances?(sources: readonly WaterDisturbance[]): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
   [key: string]: RuntimeValue;
 }
@@ -179,8 +180,8 @@ export interface WorldRuntime {
   ): void;
   warmTerrainLookahead(cameraPosition: THREE.Vector3, maxJobs?: number): number;
   setWindTime(timeSeconds: number): void;
-  /** Water pass 6: the vehicles in the water this frame (wake rings + churn). No-op on maps without water. */
-  setWaterDisturbances(sources: readonly { readonly x: number; readonly z: number; readonly strength: number }[]): void;
+  /** Water pass 6/7: the vehicles in the water this frame (footprint, heading, speed -> wake). No-op on maps without water. */
+  setWaterDisturbances(sources: readonly WaterDisturbance[]): void;
   setSniperFade(
     fraction: number,
     immediate?: boolean,

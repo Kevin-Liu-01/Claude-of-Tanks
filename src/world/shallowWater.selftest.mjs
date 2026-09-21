@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { Group, ShaderLib, Texture } from 'three';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
-import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
+import { createShallowWaterSurface, shallowWaterGeometrySteps, WAKE_FULL_SPEED_MPS } from './shallowWater.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
 import { disposeObject3DResources, registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
@@ -191,21 +191,50 @@ assert.equal((shader.fragmentShader.match(/texture2D\(uWaterWave/g) ?? []).lengt
 assert.match(shader.fragmentShader, /float turbidity = waterTurbidityField\(vWaterWorld\.xz \+ drift \* 6\.0\);/,
   'the turbidity field is world-position value noise (a normal-map fetch hugs 0.5 and read as one flat sheet)');
 assert.match(shader.fragmentShader, /float waterTurbidityField\(vec2 world\)/, 'two-octave value-noise helper');
-// Water pass 6 (2026-09-14, owner: "more interactive"): vehicles in the water push wake rings
-// and churn; eight slots (x, z, strength, phase) ride on the normal and whiten the surface.
-assert.match(shader.fragmentShader, /uniform vec4 uWaterRipples\[8\];\n\s*uniform int uWaterRippleCount;/, 'eight wake slots');
-assert.match(shader.fragmentShader, /if \(i >= uWaterRippleCount\) break;/, 'only the published slots are evaluated');
-assert.match(shader.fragmentShader, /wave \+= \(dv \/ d\) \* ring \* 3\.0;/, 'wake rings perturb the normal radially');
-assert.match(shader.fragmentShader, /clamp\(wakeFoam, 0\.0, 0\.85\) \* 0\.85/, 'churn whitens the surface around a hull');
-assert.equal(shader.uniforms.uWaterRippleCount.value, 0, 'no vehicles published: no slots evaluated');
-water.setDisturbances([{ x: 12, z: -3, strength: 2 }, { x: 1, z: 1, strength: 0.4 }]);
-assert.equal(shader.uniforms.uWaterRippleCount.value, 2);
-assert.deepEqual(shader.uniforms.uWaterRipples.value[0].toArray().slice(0, 3), [12, -3, 1], 'strength clamps to 1');
-assert.equal(shader.uniforms.uWaterRipples.value[1].z, 0.4);
+// Water pass 6 (2026-09-14, owner: "more interactive") gave every vehicle in the water a slot of
+// concentric rings. Water pass 7 (2026-09-20, owner: "right now it's just a bunch of radiating
+// circles that follow you"): each slot is a hull footprint with a heading and a speed, and the
+// shader builds a bow wave, two diverging arms, transverse waves and a wash lane in the hull frame.
+assert.match(shader.fragmentShader, /uniform vec4 uWaterWakeA\[8\];\n\s*uniform vec4 uWaterWakeB\[8\];\n\s*uniform int uWaterWakeCount;/,
+  'eight wake slots of two vec4 each (position + heading, speed + strength + footprint)');
+assert.match(shader.fragmentShader, /if \(i >= uWaterWakeCount\) break;/, 'only the published slots are evaluated');
+assert.match(shader.fragmentShader, /if \(dot\(rel, rel\) > reach \* reach\) continue;/, 'a fragment beyond a slot\'s reach skips that slot');
+assert.doesNotMatch(shader.fragmentShader, /uWaterRipples|sin\(d \* 4\.2 - uWaterTime \* 6\.5/, 'the pass-6 concentric rings are gone');
+assert.match(shader.fragmentShader, /float along = dot\(rel, fwd\);\n\s*float across = dot\(rel, side\);/, 'the wake is built in the hull frame');
+assert.match(shader.fragmentShader, /wave \+= radial \* lap \* 0\.9 \* calm \* str;/, 'a standing hull only laps the water at its skirt');
+assert.match(shader.fragmentShader, /float bowCentre = hl \+ 0\.6 \+ 1\.3 \* spd;/, 'the bow mound runs ahead of the bow with speed');
+assert.match(shader.fragmentShader, /float armLine = hw \+ behindBow \* 0\.42;/, 'two arms diverge from the bow corners at about 23 degrees');
+assert.match(shader.fragmentShader, /sin\(behindStern \* \(1\.25 \/ \(0\.4 \+ spd\)\) \+ uWaterTime \* 0\.8\)/, 'transverse waves lengthen with speed');
+assert.match(shader.fragmentShader, /float trailLen = hl \+ 4\.0 \+ spd \* 22\.0;/, 'the wash lane fades over a speed-scaled trail');
+assert.match(shader.fragmentShader, /wave \+= \(waveFine\.xy \* 2\.0 - 1\.0\) \* wash \* 1\.2;/, 'the wash lane churns the existing fine layer instead of a new fetch');
+assert.match(shader.fragmentShader, /exp\(-hullDist \* 3\.0\) \* smoothstep\(0\.0, 0\.3, hullDist\)/, 'the skirt line is a fringe outside the footprint, never a slab under it');
+assert.match(shader.fragmentShader, /clamp\(wakeWash, 0\.0, 1\.0\) \* 0\.35 \* waterDeep/, 'the wash lane stirs bed sediment into the body colour');
+assert.match(shader.fragmentShader, /clamp\(wakeFoam, 0\.0, 0\.85\) \* 0\.85/, 'churn whitens the surface');
+assert.equal(shader.uniforms.uWaterWakeCount.value, 0, 'no vehicles published: no slots evaluated');
+water.setDisturbances([
+  { x: 12, z: -3, strength: 2, dirX: 0, dirZ: -3, speed: 20, halfLength: 3.9, halfWidth: 1.7 },
+  { x: 1, z: 1, strength: 0.4 },
+]);
+assert.equal(shader.uniforms.uWaterWakeCount.value, 2);
+assert.deepEqual(shader.uniforms.uWaterWakeA.value[0].toArray(), [12, -3, 0, -1], 'the heading is normalised');
+assert.deepEqual(shader.uniforms.uWaterWakeB.value[0].toArray(), [1, 1, 3.9, 1.7],
+  'speed (m/s over WAKE_FULL_SPEED_MPS) and strength clamp to 1; the footprint passes through');
+assert.deepEqual(shader.uniforms.uWaterWakeA.value[1].toArray().slice(2), [0, 1], 'a slot without a heading faces +Z');
+assert.deepEqual(shader.uniforms.uWaterWakeB.value[1].toArray(), [0, 0.4, 3.4, 1.8],
+  'a slot without speed or footprint stands still on the default hull');
+water.setDisturbances([{ x: 0, z: 0, strength: 1, speed: -WAKE_FULL_SPEED_MPS / 2, dirX: 0, dirZ: 0 }]);
+assert.equal(shader.uniforms.uWaterWakeB.value[0].x, 0.5, 'half the full speed, sign ignored (the caller flips the heading when reversing)');
+assert.deepEqual(shader.uniforms.uWaterWakeA.value[0].toArray().slice(2), [0, 1], 'a zero heading falls back to +Z');
 water.setDisturbances(Array.from({ length: 12 }, (_, i) => ({ x: i, z: 0, strength: 1 })));
-assert.equal(shader.uniforms.uWaterRippleCount.value, 8, 'the cap holds at eight slots');
+assert.equal(shader.uniforms.uWaterWakeCount.value, 8, 'the cap holds at eight slots');
 water.setDisturbances([]);
-assert.equal(shader.uniforms.uWaterRippleCount.value, 0);
+assert.equal(shader.uniforms.uWaterWakeCount.value, 0);
+// The battle loop publishes footprint, heading (flipped when reversing) and speed with every hull in the water.
+const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(mainSource, /const rect = ent\.spec \? tankContactRect\(ent\.spec\) : null;\n\s*const travel = speed < -0\.05 \? -1 : 1;/,
+  'the wake feed reads the hull footprint and the direction of travel');
+assert.match(mainSource, /dirX: fx \* travel, dirZ: fz \* travel, speed: Math\.abs\(speed\),\n\s*halfLength: rect\?\.halfLength, halfWidth: rect\?\.halfWidth,/,
+  'heading, speed and footprint ride with every published disturbance');
 assert.match(shader.fragmentShader, /radiance \*= 1\.15 - 0\.55 \* smoothstep\(0\.35, 0\.85, waterTurbidity\);/, 'turbid patches mirror less sky');
 assert.match(shader.fragmentShader, /waveFine\.xy \* 2\.0 - 1\.0\) \* 0\.35/, 'the fine layer is a weak normal perturbation');
 assert.match(shader.fragmentShader, /broadWave.*fineWave/s,

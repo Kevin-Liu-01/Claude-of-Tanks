@@ -94,9 +94,33 @@ export function* shallowWaterGeometrySteps(
   return { geometry, heightAt: waterHeightSampler(wet, admitted, field, segments) };
 }
 
-/** Water pass 6 (2026-09-14): a vehicle in the water — rings and churn spread from it. */
-interface WaterDisturbance { readonly x: number; readonly z: number; readonly strength: number; }
+/**
+ * Water pass 6 (2026-09-14): a vehicle in the water disturbs the surface.
+ * Water pass 7 (2026-09-20, owner: "right now it's just a bunch of radiating
+ * circles that follow you"): the disturbance carries the hull's footprint,
+ * heading and speed, so the shader draws a bow wave, two diverging arms,
+ * transverse waves and a churned wash lane behind the stern — a wake that
+ * trails the vehicle — instead of concentric rings pulsing around a point.
+ */
+export interface WaterDisturbance {
+  readonly x: number;
+  readonly z: number;
+  /** 0..1 — how much of the hull is in the water and how hard it works the surface. */
+  readonly strength: number;
+  /** Direction of travel in world XZ (the hull's facing when standing); any length, defaults to +Z. */
+  readonly dirX?: number;
+  readonly dirZ?: number;
+  /** Ground speed in m/s (magnitude); WAKE_FULL_SPEED_MPS and above throws the full wake. */
+  readonly speed?: number;
+  /** Hull footprint half extents in metres (defaults: 3.4 x 1.8). */
+  readonly halfLength?: number;
+  readonly halfWidth?: number;
+}
 const WATER_DISTURBANCE_CAP = 8;
+/** Ground speed at which a wake reaches its full length and amplitude. */
+export const WAKE_FULL_SPEED_MPS = 8;
+const WAKE_DEFAULT_HALF_LENGTH_M = 3.4;
+const WAKE_DEFAULT_HALF_WIDTH_M = 1.8;
 
 interface ShallowWaterSurface {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
@@ -128,9 +152,12 @@ export function createShallowWaterSurface(
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
-  // Water pass 6: vehicle wakes. Each slot is (x, z, strength, phase) in the tank frame of the map.
-  const ripples = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 0));
-  const rippleCount = { value: 0 };
+  // Water pass 7: vehicle wakes. Slot A is (x, z, dirX, dirZ) in the map's tank frame,
+  // slot B is (speed 0..1, strength 0..1, half length m, half width m).
+  const wakeA = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 1));
+  const wakeB = Array.from({ length: WATER_DISTURBANCE_CAP },
+    () => new THREE.Vector4(0, 0, WAKE_DEFAULT_HALF_LENGTH_M, WAKE_DEFAULT_HALF_WIDTH_M));
+  const wakeCount = { value: 0 };
   const material = new THREE.MeshStandardMaterial({
     color: profile.color, roughness: profile.roughness, metalness: 0,
     // Water 2026-09-12: 0.28 -> 0.55 — the surface mirrors more sky at grazing
@@ -156,8 +183,9 @@ export function createShallowWaterSurface(
       uWaterWaveStrength: { value: profile.waveStrength },
       // QA only: 1 paints the turbidity field as greyscale so a headless shot can prove the plumbing
       uWaterDebug: { value: 0 },
-      uWaterRipples: { value: ripples },
-      uWaterRippleCount: rippleCount,
+      uWaterWakeA: { value: wakeA },
+      uWaterWakeB: { value: wakeB },
+      uWaterWakeCount: wakeCount,
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>',
@@ -178,8 +206,9 @@ export function createShallowWaterSurface(
       uniform float uWaterWaveScale;
       uniform float uWaterWaveStrength;
       uniform float uWaterDebug;
-      uniform vec4 uWaterRipples[8];
-      uniform int uWaterRippleCount;
+      uniform vec4 uWaterWakeA[8];
+      uniform vec4 uWaterWakeB[8];
+      uniform int uWaterWakeCount;
       float waterHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float waterValueNoise(vec2 p) {
         vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -230,19 +259,72 @@ export function createShallowWaterSurface(
       // into sun sparkle instead of a printed texture.
       vec4 waveFine = texture2D(uWaterWave, waveUV * 2.7 + drift * 1.9 + vec2(0.37, 0.11));
       wave += (waveFine.xy * 2.0 - 1.0) * 0.35;
-      // Water pass 6 (2026-09-14, owner: "more interactive"): every vehicle in the
-      // water pushes concentric rings outward and churns the surface white around
-      // its hull; the rings ride on the normal so the sun and sky read them.
+      // Water pass 6 (2026-09-14, owner: "more interactive") pushed concentric rings out
+      // of every vehicle. Water pass 7 (2026-09-20, owner: "right now it's just a bunch of
+      // radiating circles that follow you"): each vehicle is a hull footprint with a
+      // heading and a speed. A standing hull only laps the water at its skirt; a moving
+      // one throws a bow wave, two diverging arms, transverse waves between them and a
+      // churned wash lane that fades out behind the stern. Everything is built in the
+      // hull frame, so the pattern trails the vehicle instead of pulsing around it, and
+      // a fragment beyond a slot's reach skips that slot entirely.
       float wakeFoam = 0.0;
+      float wakeWash = 0.0;
       for (int i = 0; i < 8; i++) {
-        if (i >= uWaterRippleCount) break;
-        vec4 rp = uWaterRipples[i];
-        vec2 dv = vWaterWorld.xz - rp.xy;
-        float d = length(dv) + 1e-3;
-        float env = exp(-d * 0.22) * rp.z;
-        float ring = sin(d * 4.2 - uWaterTime * 6.5 + rp.w) * env;
-        wave += (dv / d) * ring * 3.0;
-        wakeFoam += smoothstep(0.2, 1.0, rp.z) * exp(-d * 0.42) * (0.55 + 0.45 * sin(d * 7.0 - uWaterTime * 10.0 + rp.w));
+        if (i >= uWaterWakeCount) break;
+        vec4 wa = uWaterWakeA[i];
+        vec4 wb = uWaterWakeB[i];
+        vec2 rel = vWaterWorld.xz - wa.xy;
+        float spd = wb.x;
+        float hl = wb.z, hw = wb.w;
+        float reach = hl + 7.0 + spd * 26.0;
+        if (dot(rel, rel) > reach * reach) continue;
+        vec2 fwd = wa.zw;
+        vec2 side = vec2(-fwd.y, fwd.x);
+        float along = dot(rel, fwd);
+        float across = dot(rel, side);
+        float str = wb.y;
+        float phase = float(i) * 1.7;
+        float mov = smoothstep(0.04, 0.35, spd);
+        float calm = 1.0 - mov;
+        // rounded hull footprint: 0 under the hull, metres outside it
+        vec2 q = vec2(abs(along) - hl, abs(across) - hw);
+        float hullDist = length(max(q, 0.0));
+        vec2 radial = rel / max(length(rel), 1e-3);
+        // standing: short damped ripples lapping out from the skirt, and a thin contact line
+        float lap = sin(hullDist * 5.5 - uWaterTime * 3.4 + phase) * exp(-hullDist * 0.9);
+        wave += radial * lap * 0.9 * calm * str;
+        // a thin bright line where the water meets the skirt, never a whitened slab under the footprint
+        wakeFoam += exp(-hullDist * 3.0) * smoothstep(0.0, 0.3, hullDist) * 0.42 * str;
+        // bow wave: a mound pushed ahead of the bow, its slope facing forward on the front face
+        float bowCentre = hl + 0.6 + 1.3 * spd;
+        float bowAcross = exp(-pow(across / (hw + 1.0), 2.0));
+        float bow = exp(-pow((along - bowCentre) * 1.5, 2.0)) * bowAcross;
+        wave += fwd * (-(along - bowCentre) * 3.2 * bow) * mov * str;
+        wave += side * (-across / (hw + 1.0) * 1.2 * bow) * mov * str;
+        wakeFoam += bow * smoothstep(0.35, 1.0, spd) * 0.8 * str;
+        // diverging arms: two crests running back and outward from the bow corners (~23 degrees)
+        float behindBow = max(hl - along, 0.0);
+        float armLine = hw + behindBow * 0.42;
+        float da = (abs(across) - armLine) * 0.92;
+        float armEnv = exp(-abs(da) * 0.75) * exp(-behindBow * 0.09) * (1.0 - smoothstep(hl - 1.0, hl + 0.5, along));
+        float arm = sin(da * 3.2 - uWaterTime * 1.5 + phase) * armEnv * (0.7 + 0.6 * waveFine.x);
+        vec2 armN = normalize(side * sign(across) + fwd * 0.42);
+        wave += armN * arm * 0.85 * mov * str;
+        wakeFoam += smoothstep(0.5, 1.0, armEnv) * exp(-behindBow * 0.16) * (0.28 + 0.5 * waveNear.y) * mov * str;
+        // transverse waves between the arms behind the stern; the wavelength grows with speed
+        float behindStern = max(-hl - along, 0.0);
+        float inside = 1.0 - smoothstep(armLine - 1.5, armLine, abs(across));
+        float trans = sin(behindStern * (1.25 / (0.4 + spd)) + uWaterTime * 0.8) * exp(-behindStern * 0.11) * inside * step(0.001, behindStern);
+        wave += fwd * trans * 0.9 * mov * str;
+        // wash lane: churned, foamy water the tracks leave behind, spreading and fading out
+        float trailLen = hl + 4.0 + spd * 22.0;
+        float back = clamp(behindStern / trailLen, 0.0, 1.0);
+        float laneHalf = hw * (1.0 + 0.7 * back);
+        float lane = (1.0 - smoothstep(laneHalf, laneHalf + 1.2, abs(across))) * step(0.001, behindStern);
+        float wash = lane * (1.0 - back) * (1.0 - back) * mov * str;
+        wakeWash += wash;
+        wave += (waveFine.xy * 2.0 - 1.0) * wash * 1.2;
+        wakeFoam += wash * (0.16 + 0.6 * smoothstep(0.35, 0.8, waveFine.x * 0.6 + waveNear.y * 0.4));
       }
       normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength, 1.0, wave.y * uWaterWaveStrength)), 0.0)).xyz);
       normal *= faceDirection;
@@ -271,7 +353,9 @@ export function createShallowWaterSurface(
       float foamBank = smoothstep(0.52, 0.86, broadWave * 0.7 + fineWave * 0.5) * waterBank;
       float foamCrest = smoothstep(0.80, 0.96, broadWave) * smoothstep(0.55, 0.9, fineWave) * waterDeep * 0.6;
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.80, 0.85, 0.84), (foamBank * 0.55 + foamCrest * 0.45) * uWaterFoam);
-      // Water pass 6: churned water around a vehicle whitens regardless of the map's foam profile.
+      // Water pass 6/7: the wash lane stirs bed sediment into the body colour, and churned
+      // water around and behind a vehicle whitens regardless of the map's foam profile.
+      diffuseColor.rgb = mix(diffuseColor.rgb, uWaterShallow * 0.95, clamp(wakeWash, 0.0, 1.0) * 0.35 * waterDeep);
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.90, 0.90), clamp(wakeFoam, 0.0, 0.85) * 0.85);
     `);
     // The game's strong sun/bloom exposure turns a broad default dielectric
@@ -295,7 +379,7 @@ export function createShallowWaterSurface(
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'shallow-water-v9';
+  material.customProgramCacheKey = () => 'shallow-water-v10';
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.matrixAutoUpdate = false;
@@ -310,9 +394,18 @@ export function createShallowWaterSurface(
       const n = Math.min(WATER_DISTURBANCE_CAP, sources.length);
       for (let i = 0; i < n; i++) {
         const s = sources[i];
-        ripples[i].set(s.x, s.z, Math.min(1, Math.max(0, s.strength)), i * 1.7);
+        let dx = s.dirX ?? 0, dz = s.dirZ ?? 1;
+        const len = Math.hypot(dx, dz);
+        if (Number.isFinite(len) && len > 1e-6) { dx /= len; dz /= len; } else { dx = 0; dz = 1; }
+        const rawSpeed = Math.abs(s.speed ?? 0);
+        const speed = Number.isFinite(rawSpeed) ? Math.min(1, rawSpeed / WAKE_FULL_SPEED_MPS) : 0;
+        const strength = Number.isFinite(s.strength) ? Math.min(1, Math.max(0, s.strength)) : 0;
+        wakeA[i].set(s.x, s.z, dx, dz);
+        wakeB[i].set(speed, strength,
+          Math.max(0.5, s.halfLength ?? WAKE_DEFAULT_HALF_LENGTH_M),
+          Math.max(0.3, s.halfWidth ?? WAKE_DEFAULT_HALF_WIDTH_M));
       }
-      rippleCount.value = n;
+      wakeCount.value = n;
     },
   };
 }

@@ -104,6 +104,8 @@ import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
+import type { WaterDisturbance } from './world/shallowWater.ts';
+import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
@@ -2825,7 +2827,7 @@ const baseWorldFramePresentation = createWorldFramePresentationRuntime({
 });
 // The frontline ticks with the world presentation: live battle frames only,
 // never the Garage, a paused battle, or a dormant world.
-const wakeSources: { x: number; z: number; strength: number }[] = [];
+const wakeSources: WaterDisturbance[] = [];
 const worldFramePresentation = {
   update(dtSeconds: number, inBattle: boolean, killcamActive: boolean): void {
     baseWorldFramePresentation.update(dtSeconds, inBattle, killcamActive);
@@ -2843,9 +2845,18 @@ const worldFramePresentation = {
             if (!p || wakeSources.length >= 8) continue;
             const mask = field.getWaterMaskAt(p.x, p.z);
             if (!(mask > 0.05)) continue;
-            const speed = Math.abs(st.speed ?? 0);
-            // a standing hull still laps the water around it (0.6); a moving one throws a full wake
-            wakeSources.push({ x: p.x, z: p.z, strength: Math.min(1, mask * (0.6 + speed / 6)) });
+            const speed = st.speed ?? 0;
+            // Water pass 7 (2026-09-20): the hull's footprint, heading and direction of travel
+            // shape the wake. A standing hull still laps the water around it (0.6); a moving
+            // one throws a full wake; a reversing one trails it ahead of the bow.
+            const rect = ent.spec ? tankContactRect(ent.spec) : null;
+            const travel = speed < -0.05 ? -1 : 1;
+            const fx = Math.sin(st.yaw ?? 0), fz = Math.cos(st.yaw ?? 0);
+            wakeSources.push({
+              x: p.x, z: p.z, strength: Math.min(1, mask * (0.6 + Math.abs(speed) / 6)),
+              dirX: fx * travel, dirZ: fz * travel, speed: Math.abs(speed),
+              halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
+            });
           }
         }
         wakeWorld.setWaterDisturbances(wakeSources);

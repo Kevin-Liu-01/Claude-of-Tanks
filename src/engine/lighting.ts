@@ -22,13 +22,18 @@ import {
   snapShadowCoordinate,
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
-import { markShadowOnly } from './renderLayers.ts';
+import { markShadowOnly, registerShadowCascadeCamera, setShadowCascadePolicy } from './renderLayers.ts';
+import {
+  cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
+} from './nearVehicleShadowDetail.ts';
 import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
 
 interface ShadowDebugOptions {
   noCull?: boolean;
   forceAll?: boolean;
   freezeMask?: number;
+  /** Round 28: keep every hull on its convex proxies (A/B probes for the near-hull detail casters). */
+  noVehicleDetail?: boolean;
 }
 
 declare global {
@@ -927,6 +932,11 @@ export function releaseCsmShaderMaterial(
  * @param {THREE.Vector3} sunDir - unit vector FROM the origin TOWARD the sun
  * @returns {Lighting}
  */
+/** Near-hull detail casters need a desktop tier and a 2K+ near cascade to be worth their draws. */
+function nearVehicleDetailAllowedFor(preset: { readonly shadowMapSizes: readonly number[] }): boolean {
+  return getDeviceTier() !== 'mobile' && preset.shadowMapSizes[0] >= 2048;
+}
+
 export function createLighting(
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
@@ -953,6 +963,24 @@ export function createLighting(
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
   registerCasterCascades(csm.lights);
+  for (let i = 0; i < csm.lights.length; i++) registerShadowCascadeCamera(csm.lights[i].shadow.camera, i);
+  // Round 28 (2026-09-20, owner: "shadows look weird on tanks"): the nearest hulls cast their real armour
+  // into the cascade that covers them instead of their convex proxies (nearVehicleShadowDetail.ts). Desktop
+  // tiers only — the phone presets keep the nine-draw proxy budget — and off under __SHADOW_DEBUG.noVehicleDetail.
+  let nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(preset);
+  const cascadeRangeScratch: CascadeRange[] = [];
+  const nearVehiclePolicy: NearVehicleShadowPolicy = createNearVehicleShadowPolicy({
+    camera, scene,
+    cascadeRanges: () => {
+      const far = Math.min(camera.far, csm.maxFar);
+      const ranges = cascadeRangesFromBreaks(csm.breaks, camera.near, far);
+      cascadeRangeScratch.length = 0;
+      for (const r of ranges) cascadeRangeScratch.push(r);
+      return cascadeRangeScratch;
+    },
+    enabled: () => nearVehicleDetailAllowed && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
+  });
+  setShadowCascadePolicy(nearVehiclePolicy);
   const shadowFitCache = createShadowFitCache();
   const fitLightDirection = [0, 0, 0];
   /** Per-cascade shadow box size held across small fov lerps (see updateFov). */
@@ -1040,6 +1068,7 @@ export function createLighting(
   let pendingShadowCursor = 0;
   // Live quality switching (settings UI → quality.setPresetName)
   onPresetChange((p) => {
+    nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(p);
     // Desktop presets deliberately share one shadow layout, so ordinary
     // quality switching does not disturb live depth maps. Mobile layout
     // changes remain incremental to avoid a one-frame allocation spike.
@@ -1239,6 +1268,7 @@ export function createLighting(
     scheduleCascadeFrame(force, step, transitionCascade);
     applyFarCascadeDormancy();
     updateCasterProxies(csm.lights, scene, false);
+    nearVehiclePolicy.update();
   }
 
   return {
@@ -1495,6 +1525,8 @@ export function createLighting(
     },
 
     /** Read-only diagnostics; sampled at 4 Hz by the opt-in telemetry HUD. */
+    /** Round 28: the hulls casting real armour this frame (probes). */
+    get nearVehicleDetail() { return nearVehiclePolicy.selected.map((e) => ({ id: String(e.root.name), depth: +e.depth.toFixed(1), cascadeMask: e.cascadeMask })); },
     getShadowTelemetry() {
       return {
         maxFar: csm.maxFar,
