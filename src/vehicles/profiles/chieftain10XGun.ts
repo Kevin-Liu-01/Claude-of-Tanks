@@ -62,12 +62,12 @@ function barrel(P: TankBuilderPort, pivot: Point, muzzleZ: number): void {
     [muzzleZ, .08232, 1.912199, .08232],
   ];
   P.add('gun', outerTube(rows, pivot));
-  const bore = new THREE.CylinderGeometry(.060, .060, .32, 48, 1, true);
-  bore.rotateX(Math.PI / 2);
-  gunPart(P, pivot, 'gunDark', bore, pivot[0], pivot[1], muzzleZ - .16);
-  gunPart(P, pivot, 'gun', new THREE.RingGeometry(.060, .08232, 48),
-    pivot[0], pivot[1], muzzleZ);
-  gunPart(P, pivot, 'gunDark', cylZ(.060, .006, 48), pivot[0], pivot[1], muzzleZ - .323);
+  // Owner 2026-09-22: "the point of adding holes instead of carving them into the barrel is
+  // that we save on triangles". The factory's fallback assembly is this mouth's dark bore; the
+  // former 32 cm carved recess (48-segment inner wall, ring and capped floor cylinder, 384
+  // triangles at both qualities) sat entirely behind that dark disc and had no physical-bore
+  // contract, so nothing rendered it. One flat cap closes the open loft at the source mouth.
+  gunPart(P, pivot, 'gun', new THREE.CircleGeometry(.08232, 48), pivot[0], pivot[1], muzzleZ);
   gunPart(P, pivot, 'gun', box(.13, .030, .25), 0, 2.004199, 6.925);
   gunPart(P, pivot, 'gun', cylZ(.022, .29, 16), 0, 2.037199, 6.925);
 }
