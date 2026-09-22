@@ -1,15 +1,15 @@
 // Source-measured KF41 wheel stock. All geometry is independently authored.
 import * as THREE from 'three';
-import { KIT } from './kit.ts';
+import { cylX, mergeAll } from '../factoryGeometry.ts';
 import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
-import { mirrorX } from './europeSourcePrimitives.ts';
+import { mirrorX } from '../runningGearPrimitives.ts';
 
 /** A fastener with a visible front and sides, seated into the preceding stock.
  * Its omitted back face is wholly buried; the washer and hex head stay distinct.
  */
 function seatedFastener(radius: number, length: number, segments: number, x: number,
   y: number, z: number): THREE.BufferGeometry {
-  return KIT.mergeAll([
+  return mergeAll([
     new THREE.CylinderGeometry(radius, radius, length, segments, 1, true)
       .rotateZ(-Math.PI / 2).translate(x, y, z),
     new THREE.CircleGeometry(radius, segments).rotateY(Math.PI / 2)
@@ -62,13 +62,13 @@ export function kf41LynxWheelStock(high: boolean) {
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + i * Math.PI / 2, y = Math.sin(a) * .1003, z = Math.cos(a) * .1003;
     // The hub washer partly overhangs the sloped shoulder: retain its back.
-    paint.push(KIT.cylX(.0102,.0094,high?8:6).translate(.1557,y,z));
+    paint.push(cylX(.0102,.0094,high?8:6).translate(.1557,y,z));
     dark.push(seatedFastener(.0085,.0042,6,.1625,y,z));
   }
-  const steel = KIT.mergeAll(paint), heads = KIT.mergeAll(dark);
+  const steel = mergeAll(paint), heads = mergeAll(dark);
   return {
     // Small physical axle core sits wholly inside both side-specific assemblies.
-    core: KIT.cylX(.055,.0694,high?12:8),
+    core: cylX(.055,.0694,high?12:8),
     faces: [
       { side: 1 as const, steel, dark: heads },
       { side: -1 as const, steel: mirrorX(steel.clone()), dark: mirrorX(heads.clone()) },

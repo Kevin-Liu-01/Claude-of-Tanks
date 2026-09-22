@@ -1,52 +1,56 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
-
-// Source axle/radius witnesses are independent of the runtime receipt. The
-// opening is an intentional fitted-style repair, not a new source measurement.
+// Source axle/radius witnesses are independent of the runtime receipt.
+// 2026-09-22 (owner: "russia uses the t-90, t-90m, t14 armata, and bmp 3m dragun wheels"): every Soviet-pattern
+// MBT hull below draws the T-90 nation construction (the T-90M X source-pressed face over the fleet pressed disc,
+// nationWheelSets.ts) fitted into its own wheel envelope; only the donor t90sm_x keeps its own fitted annular
+// opening. The axles, radii and painted-face read stay this receipt's contract for both kinds.
 const CASES = {
   t90sm_x: {radius:.3981, opening:.342366, width:.40954, zScale:1.05575,
     // 2026-09-17 ground datum re-seats the T-90 X road wheels (pre-datum ys in git history)
     ys:[.48649001121520996,.46959999203681946,.46959999203681946,.46959999203681946,.46959999203681946,.5290799736976624],
     xLeft:1.423315, xRight:1.4199, faceName:'gearRoadWheelSourcePressedFaces',
     zs:[-1.93988,-.98038,-.02818,.87757,1.77558,2.70061]},
-  t72b_1987_x: {radius:.360825, opening:.3103, width:.369, y:.43082499504089355,
+  t72b_1987_x: {radius:.360825, standard:'t90m', y:.43082499504089355,
     xLeft:1.375065, xRight:1.359965,
     zs:[-1.835365,-1.024875,-.17634,.599355,1.400955,2.228465]},
-  t72b3_x: {radius:.3568, opening:.30685, width:.453, y:.423799991607666,
+  t72b3_x: {radius:.3568, standard:'t90m', y:.423799991607666,
     xLeft:1.4518, xRight:1.4464,
     zs:[-1.70205,-.91970,-.12865,.67990,1.47690,2.28460]},
-  t72bu_x: {radius:.380115, opening:.32690, width:.38270, y:.4471150040626526,
+  t72bu_x: {radius:.380115, standard:'t90', y:.4471150040626526,
     xLeft:1.424, xRight:1.424,
     zs:[-1.58720,-.72760,.14085,1.00566,1.85831,2.72517]},
   // 2026-09-17 ground datum: the shared T-90 / Burlak source axle re-seats (.44845 → .46205)
-  t90a_burlak_x: {radius:.39405, opening:.33888, width:.4106, y:0.4620499908924103,
+  t90a_burlak_x: {radius:.39405, standard:'t90m', y:0.4620499908924103,
     xLeft:1.4426, xRight:1.4426,
     zs:[-1.742,-.9013,-.0495,.8015,1.6534,2.4996]},
-  t90_x: {radius:.39405, opening:.33888, width:.4106, y:0.4620499908924103,
+  t90_x: {radius:.39405, standard:'t90m', y:0.4620499908924103,
     xLeft:1.4426, xRight:1.4426,
     zs:[-1.742,-.9013,-.0495,.8015,1.6534,2.4996]},
-  t90ms_x: {radius:.3884, opening:.33402, width:.4206, y:.4564000070095062,
+  t90ms_x: {radius:.3884, standard:'t90m', y:.4564000070095062,
     xLeft:1.437, xRight:1.437,
     zsLeft:[-1.81590002775,-.97714999318,-.12659997866,.72445000755,1.57635003328,2.42254996300],
     zsRight:[-1.74285000563,-.90240001678,-.05049999041,.80055001006,1.65250003338,2.49795007706]},
-  t62mv1_x: {radius:.391615, opening:.33679, width:.440, y:.4616149961948395,
+  t62mv1_x: {radius:.391615, standard:'t90', y:.4616149961948395,
     xLeft:1.199465, xRight:1.199465,
     zs:[-1.858795,-.805165,.24309,1.14781,2.00987]},
 };
 const near = (a,b,label) => assert.ok(Number.isFinite(a) && Math.abs(a-b)<1e-6,
   `${label}: ${a}, expected ${b}`);
 
-function closedRing(geometry, fixture, quality) {
+function closedTire(geometry, fixture, quality) {
   const p=geometry.attributes.position, index=geometry.index;
   const count=index?.count ?? p.count;
-  assert.equal(count/3,8*(quality==='high'?26:12),
-    'four closed ring walls cost no more triangles than the two former capped cylinders');
   const radii=Array.from({length:p.count},(_,i)=>Math.hypot(p.getY(i),p.getZ(i)/(fixture.zScale??1)));
-  near(Math.min(...radii),fixture.opening,'actual inner rubber radius');
+  if(fixture.opening!==undefined) {
+    assert.equal(count/3,8*(quality==='high'?26:12),
+      'four closed ring walls cost no more triangles than the two former capped cylinders');
+    near(Math.min(...radii),fixture.opening,'actual inner rubber radius');
+    geometry.computeBoundingBox();
+    near(geometry.boundingBox.max.x-geometry.boundingBox.min.x,fixture.width,'source tire span');
+  }
   near(Math.max(...radii),fixture.radius,'source rolling radius');
-  geometry.computeBoundingBox();
-  near(geometry.boundingBox.max.x-geometry.boundingBox.min.x,fixture.width,'source tire span');
   const key=i=>[p.getX(i),p.getY(i),p.getZ(i)].map(v=>Math.round(v*1e6)).join(',');
   const edges=new Map();
   for(let i=0;i<count;i+=3) {
@@ -63,16 +67,25 @@ function check(id,fixture,quality) {
   const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
+    const hull=tank.root.getObjectByName('rig_hull');
+    const patternReceipt=hull.userData.wheelPatternReceipts[0];
+    if(fixture.standard) {
+      assert.equal(patternReceipt.construction,'nation:t90-pressed-source-face',`${id}: draws the Russia nation wheel construction`);
+      assert.equal(patternReceipt.nationStandard?.donor,fixture.standard,`${id}: nation donor`);
+    } else {
+      assert.equal(patternReceipt.nationDonor,'t90m',`${id}: the T-90M X family defines the Russia wheel`);
+      assert.equal(patternReceipt.openAnnulus,true,`${id}: the donor keeps its fitted annular opening`);
+    }
     const tires=tank.root.getObjectByName('gearRoadWheelTires');
     const discs=tank.root.getObjectByName('gearRoadWheelDiscs');
-    const detailFace=fixture.faceName?tank.root.getObjectByName(fixture.faceName):null;
-    if(fixture.faceName)assert.ok(detailFace,'the source pressed face remains present');
-    const visibleFaces=detailFace?[discs,detailFace]:[discs];
+    const detailFace=tank.root.getObjectByName('gearRoadWheelSourcePressedFaces');
+    assert.ok(detailFace,'the source pressed face is present');
+    const visibleFaces=[discs,detailFace];
     assert.equal(tires.count,(fixture.zs??fixture.zsLeft).length*2,'source axle count');
     assert.equal(discs.count,tires.count,'painted cores belong to the complete wheel assembly');
     assert.equal(tires.userData.appearanceRole,'wheelTire');
     assert.equal(discs.userData.appearanceRole,'wheelDish');
-    closedRing(tires.geometry,fixture,quality);
+    closedTire(tires.geometry,fixture,quality);
     const visible=[];
     tank.root.traverseVisible(object=>{
       if(object.isMesh && !object.userData.shadowOnly && !object.userData.authoredShadowProxy)
@@ -101,7 +114,7 @@ function check(id,fixture,quality) {
         witnesses++;
       }
     }
-    console.log(`${id}/${quality}: ${witnesses} first-visible painted-face rays, closed neutral tires and fixed source axles`);
+    console.log(`${id}/${quality}: ${witnesses} first-visible painted-face rays, closed tires and fixed source axles`);
   } finally {tank.dispose();}
 }
 for(const [id,fixture] of Object.entries(CASES)) for(const quality of ['high','low']) check(id,fixture,quality);

@@ -5,9 +5,9 @@ import { BoxGeometry, Mesh, Shape, Path, ExtrudeGeometry } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { WARRIOR_TIRE_BANDS, warriorRoadWheelCore } from '../nationWheelConstructions.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
 
@@ -200,31 +200,14 @@ function hull(P: TankBuilderPort): void {
 }
 
 function gear(P: TankBuilderPort): void {
-  // Object_33 has a deep plain steel web, not the generic capped six-hub
-  // face. Sparse axial/radius stations are independent scalar measurements.
-  const high:AxialWheelStation[]=[
-    [.006,0],[.08605,0],[.08605,.020],[.0784,.030],[.02315,.045],
-    [.02315,.165],[.0324,.18],[.071,.21],[.08115,.242],[.08115,.252],
-    [.027,.252],[.006,.20],
-  ];
-  const low:AxialWheelStation[]=[
-    [.006,0],[.08605,0],[.08605,.020],[.02315,.045],[.02315,.165],
-    [.071,.21],[.08115,.252],[.027,.252],[.006,.20],
-  ];
-  const section=P.q?high:low;
-  const core=KIT.mergeAll([
-    lathedWheelSection(section,P.q?24:12),
-    lathedWheelSection(section.map(([x,r])=>[-x,r]),P.q?24:12),
-    cylX(.06,.045,P.q?16:10),
-  ]);
+  // Object_33 has a deep plain steel web, not the generic capped six-hub face; the sparse axial/radius
+  // stations are the UK IFV wheel construction (nationWheelConstructions.ts, owner 2026-09-22).
+  const core=warriorRoadWheelCore(Boolean(P.q));
 
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelPattern: 'armored-hub-six', trackPattern: 'compact-ifv',
     wheelR:.2991,wheelW:.3435,wheelY:.3657,
-    wheelTireBands:[
-      {centerM:-.1000,widthM:.1435,innerRadiusM:.251},
-      {centerM:.1000,widthM:.1435,innerRadiusM:.251},
-    ],
+    wheelTireBands:WARRIOR_TIRE_BANDS,
     wheelCoreGeometry:{disc:core},
     wheelZs: [-1.8483, -1.0779, -.41275, .41325, 1.0787, 1.84695],
     xc: 1.296, trackW: .453, trackTh: .032,

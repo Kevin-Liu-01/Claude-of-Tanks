@@ -4,8 +4,15 @@
 // makes it possible to prove full-roster coverage under Node without a DOM or
 // renderer. Patterns describe mechanical face construction, not paint. Wheel
 // paint continues to come from the active camouflage material.
+//
+// Selection (owner 2026-09-22, "standardize our wheels across NATIONS"): every
+// standardized or donor hull takes the pattern of its nation wheel donor from
+// nationWheelSets.ts; only the period hulls that keep their own constructions
+// still resolve through the family rules below. The former per-family regex
+// table and the hashed nation fallbacks left with that change.
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { resolveNationWheel } from './nationWheelSets.ts';
 
 export const WHEEL_PATTERN_DEFINITIONS = Object.freeze({
   'christie-six': Object.freeze({
@@ -69,103 +76,51 @@ export type WheelPattern = Readonly<{ id: WheelPatternId } & WheelPatternDefinit
 interface WheelPatternSpec {
   id?: RuntimeValue;
   nation?: RuntimeValue;
+  era?: RuntimeValue;
+  role?: RuntimeValue;
 }
 
 export const WHEEL_PATTERN_IDS = Object.freeze(
   Object.keys(WHEEL_PATTERN_DEFINITIONS) as WheelPatternId[],
 );
 
-const FAMILY_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.freeze([
-  // Supplied IFV families retain their measured wheel vocabulary. Resolve
-  // these before shorter MBT names: k21 is not k2, and type100 is not type10.
-  [/^(?:aft10|ares_apc|griffin50|griffin_viper|k21)(?:_|$)/, 'armored-hub-six'],
-  [/^ajax(?:_|$)/, 'plain-dish-twelve'],
-  [/^sabra(?:_|$)/, 'deep-dish-eight'],
-  // Type 100's authored Chinese IFV and the T-90MS-based rocket carrier
-  // retain the same pressed stock already selected by their builders.
-  [/^(?:type96b|type100|tos1a_tagil)(?:_|$)/, 'pressed-six'],
-  // Character-defining running gear wins over broad national defaults.
-  [/(?:^|_)(?:m4a3e8|t95)(?:$|_)/, 'solid-bogie-six'],
-  [/(?:t34_85|type59|kv2|bmp2|isu152|isu122s)/, 'christie-six'],
+// Period constructions (owner exception list 2026-09-22): the pre-1950 hulls keep
+// their era's wheel family instead of their nation's modern donor.
+const PERIOD_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.freeze([
+  [/(?:kv2|isu152|isu122s)/, 'christie-six'],
   [/(?:tiger1|panther_g|jpz_e100|sturmtiger)/, 'interleaved-dish'],
-  [/(?:m26_pershing|m45_patton|m46_patton|m47_patton|m48|m60a1|m60a2|m60a3)/, 'cast-five-spoke'],
-  [/(?:mbt70|m1a1|m1a2|m1a3|abramsx|ua_m1a1)/, 'split-rim-ten'],
-  [/(?:leo1a5|leopard2|leo2|kf51|strv122|pl01)/, 'plain-dish-twelve'],
-  [/(?:merkava)/, 'deep-dish-eight'],
-  [/(?:leclerc|amx30|amx40|amx56|carro45t)/, 'scalloped-six'],
-  [/(?:ariete)/, 'split-rim-ten'],
-  [/(?:stb1|type74|type89|type90|type10)/, 'flanged-twelve'],
-  [/(?:k1a1|k2|bmp3_rok)/, 'flanged-twelve'],
-  // fv4034 is the Challenger 2 hull family; without this rule its 'dished' builder style resolved to
-  // deep-dish-eight instead of the UK pressed-eight (2026-09-14 owner: nation patterns, no overrides).
-  [/(?:chieftain|challenger|fv4034|centurion|vickers|strv81)/, 'pressed-eight'],
-  [/(?:strv103|udes03)/, 'scalloped-six'],
-  [/(?:m2a2_bradley|m3a3_bradley|ua_m2a3_bradley|spz_puma|marder1a3|fv510|bwp1|upior|bmp3|cv90|kurganets25)/, 'armored-hub-six'],
-  // 2026-09-17: the ZTZ-100 next-generation hull runs armoured-hub wheels (its profile builds them; the review must agree)
-  [/(?:t14|ztz100|object695)/, 'armored-hub-six'],
-  [/(?:t62|t64|t72|t80|t84|t90|pt91|ztz85|type99|ztz99|vt4|bmpt|ua_t)/, 'pressed-six'],
+  [/(?:^|_)t95(?:$|_)/, 'solid-bogie-six'],
+  [/(?:m26_pershing|m45_patton)/, 'cast-five-spoke'],
 ]);
 
-const NATION_FALLBACKS: Readonly<Record<string, readonly WheelPatternId[]>> = Object.freeze({
-  china: ['pressed-six', 'christie-six'],
-  france: ['scalloped-six', 'deep-dish-eight'],
-  germany: ['plain-dish-twelve', 'interleaved-dish'],
-  israel: ['deep-dish-eight'],
-  italy: ['split-rim-ten', 'scalloped-six'],
-  japan: ['flanged-twelve'],
-  poland: ['pressed-six', 'armored-hub-six'],
-  russia: ['pressed-six', 'pressed-eight'],
-  'south korea': ['flanged-twelve', 'armored-hub-six'],
-  sweden: ['scalloped-six'],
-  uk: ['pressed-eight'],
-  usa: ['split-rim-ten', 'cast-five-spoke'],
-  ussr: ['christie-six', 'pressed-six'],
-  'ussr/russia': ['pressed-six'],
-  ukraine: ['pressed-six', 'deep-dish-eight'],
-});
-
-function stableIndex(value: RuntimeValue, length: number): number {
-  let hash = 2166136261;
-  for (const ch of String(value || 'wheel')) {
-    hash ^= ch.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0) % length;
+function pattern(id: WheelPatternId): WheelPattern {
+  return Object.freeze({ id, ...WHEEL_PATTERN_DEFINITIONS[id] });
 }
 
 /** Resolve one stable mechanical motif for a vehicle's complete wheel train. */
 export function wheelPatternFor(
   spec: WheelPatternSpec | null | undefined,
-  style = 'rubber',
+  _style = 'rubber',
   override: WheelPatternId | null = null,
 ): WheelPattern {
-  if (override != null) {
-    if (!WHEEL_PATTERN_DEFINITIONS[override]) {
-      throw new Error(`Unknown wheel pattern: ${override}`);
-    }
-    return Object.freeze({ id: override, ...WHEEL_PATTERN_DEFINITIONS[override] });
+  if (override != null && !WHEEL_PATTERN_DEFINITIONS[override]) {
+    throw new Error(`Unknown wheel pattern: ${override}`);
   }
-
+  const nation = resolveNationWheel(spec);
+  if (nation.kind !== 'keep' && nation.pattern) {
+    // owner 2026-09-14 ("nation patterns, no per-tank overrides") and 2026-09-22 (nation wheel
+    // sets): the table is the only selector for donor and standardized hulls; a profile may only
+    // restate it.
+    if (override != null && override !== nation.pattern) {
+      throw new Error(`${String(spec?.id)}: wheel pattern override ${override} contradicts the nation standard ${nation.pattern}`);
+    }
+    return pattern(nation.pattern);
+  }
+  if (override != null) return pattern(override);
   const id = String(spec?.id || '').toLowerCase();
-  for (const [matcher, patternId] of FAMILY_RULES) {
-    if (matcher.test(id)) {
-      return Object.freeze({ id: patternId, ...WHEEL_PATTERN_DEFINITIONS[patternId] });
-    }
+  for (const [matcher, patternId] of PERIOD_RULES) {
+    if (matcher.test(id)) return pattern(patternId);
   }
-
-  // Builder style remains a meaningful last-resort mechanical signal.
-  if (style === 'holes') {
-    return Object.freeze({ id: 'christie-six', ...WHEEL_PATTERN_DEFINITIONS['christie-six'] });
-  }
-  if (style === 'dished') {
-    return Object.freeze({ id: 'deep-dish-eight', ...WHEEL_PATTERN_DEFINITIONS['deep-dish-eight'] });
-  }
-  if (style === 'steel') {
-    return Object.freeze({ id: 'solid-bogie-six', ...WHEEL_PATTERN_DEFINITIONS['solid-bogie-six'] });
-  }
-
-  const nation = String(spec?.nation || '').toLowerCase();
-  const palette = NATION_FALLBACKS[nation] || ['pressed-eight', 'split-rim-ten'];
-  const patternId = palette[stableIndex(id || nation, palette.length)];
-  return Object.freeze({ id: patternId, ...WHEEL_PATTERN_DEFINITIONS[patternId] });
+  // Community placeholder hulls and synthetic specs.
+  return pattern('split-rim-ten');
 }

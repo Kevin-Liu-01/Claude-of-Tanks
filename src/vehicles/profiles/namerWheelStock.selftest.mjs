@@ -9,7 +9,8 @@ import { sourceOpeningRayProbe } from '../../../tools/source-opening-rays.mjs';
 // Current axle/course is deliberately preserved. These physical face stations
 // reject a cap-filled tire or dish even when its overall radius is correct.
 const stations = [
-  [0, 1.522377], [.04, 1.522377], [.10, 1.454791],
+  // 2026-09-22 wheel audit: hub cap seated at X1.513730 (was the source 1.522377, 3.1 cm proud of the tire; fleet seat 2.5 cm)
+  [0, 1.513730], [.04, 1.513730], [.10, 1.454791],
   [.12, 1.376765], [.18, 1.376765], [.24, 1.376765],
   [.28, 1.376765], [.30, 1.490957], [.32, 1.490957],
 ];

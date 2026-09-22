@@ -25,8 +25,9 @@ assert.equal(hull.userData.t72FamilyFoundation, 'measured-current-t72-family',
   'Jaguar keeps its measured Polish envelope while using current T-72 family grammar');
 assert.equal(hull.userData.nativeRoadWheelStations, 6,
   'Jaguar keeps the native six-station T-72 suspension');
-assert.deepEqual(hull.userData.nativeWheelPatterns, ['pressed-six'],
-  'Jaguar keeps one current pressed-wheel pattern');
+// 2026-09-22 owner ("poland uses the pl-01 or bwp-1 wheels"): the Polish T-72 hull draws the PL-01 nation wheel.
+assert.deepEqual(hull.userData.nativeWheelPatterns, ['plain-dish-twelve'],
+  'Jaguar records the one Poland nation wheel pattern (PL-01 donor)');
 assert.equal(turret.userData.polishModernization, 't72m1-jaguar-erawa-refit',
   'Jaguar owns its Polish modernization overlay');
 assert.equal(spec.visual.scheme, 'nato',

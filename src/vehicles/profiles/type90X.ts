@@ -8,6 +8,7 @@ import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {roundedTrackContact} from './roundedTrackContact.ts';
+import {type90RoadWheelCore} from '../nationWheelConstructions.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const {box,cylX,cylZ}=KIT;
@@ -312,16 +313,6 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=TYPE90_X_DATUMS.muzzleZ-GUN[2];
 }
 
-function roadWheelCore(quality:boolean):THREE.BufferGeometry {
-  // Independent lathed forging: the source dish is ~120mm behind its rubber
-  // front face, while the small clipped hub projects back toward that face.
-  const profile=[[0,-.246988],[.316,-.246988],[.316,.246988],
-    [.309,.13170],[.111,.12499],[.111,.194432],[.096,.194432],
-    [.079,.22650],[0,.252278],[0,-.246988]];
-  return new THREE.LatheGeometry(profile.map(([r,x])=>new THREE.Vector2(r,x)),quality?32:20)
-    .rotateZ(-Math.PI/2);
-}
-
 function buildType90X(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
@@ -331,7 +322,7 @@ function buildType90X(P:TankBuilderPort):void {
   const shoeDims = {padHeight:.064,grouserHeight:.022,webHeight:.032,hornHeight:.103};
   const botY = KIT.groundSeatBotY(P.spec, { trackTh: .032, trackShoeDimensions: shoeDims });
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.357347,wheelW:.493976,wheelY:.44142,
-    wheelTireInnerRadiusM:.3158,wheelCoreGeometry:{disc:roadWheelCore(Boolean(P.q))},roadWheelOutsetM:.015776,
+    wheelTireInnerRadiusM:.3158,wheelCoreGeometry:{disc:type90RoadWheelCore(Boolean(P.q))},roadWheelOutsetM:.015776,
     wheelZs:[...TYPE90_X_DATUMS.wheelStations],xc:1.366395,trackW:.630667,trackTh:.032,
     trackShoeDimensions: shoeDims,
     idler:{z:3.510616,y:.81982,r:.357347,trackR:.3161},

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { mirrorX } from '../runningGearPrimitives.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 export type ArmorStation = readonly [z: number, bellyHalf: number, shoulderHalf: number,
@@ -82,19 +83,9 @@ export function deckGrille(P: TankBuilderPort, x: number, y: number, z: number,
   }
 }
 
-/** Mirror authored first-party stock and preserve its outward triangle winding. */
-export function mirrorX(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
-  geometry.scale(-1, 1, 1);
-  const index = geometry.index, position = geometry.getAttribute('position');
-  for (let i = 0; i < (index?.count ?? position.count); i += 3) {
-    if (index) { const a = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, a); }
-    else { const x = position.getX(i + 1), y = position.getY(i + 1), z = position.getZ(i + 1);
-      position.setXYZ(i + 1, position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2));
-      position.setXYZ(i + 2, x, y, z); }
-  }
-  geometry.computeVertexNormals();
-  return geometry;
-}
+// mirrorX lives with the leaf running-gear primitives (2026-09-22 wheel audit) so wheel stock modules
+// stay importable by the running-gear builder; the source-study profiles keep importing it from here.
+export { mirrorX };
 
 /** A real closed side sheet follows the hull's fore/aft roof and lower return. */
 export function sideWall(P: TankBuilderPort, side: number, innerX: number, outerX: number,

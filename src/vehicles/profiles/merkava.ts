@@ -15,6 +15,7 @@
 // aft-set turret, rear hull clamshell door, turret bustle basket +
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
+import { merkavaPressedFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { FITTINGS, KIT, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
@@ -1618,33 +1619,14 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   // gearOut pins the OUTER track face (measured front-view track columns sit
   // well inside the fender line on every print in this family).
   const xc = (c.gearOut ?? hw - 0.036) - c.trackW / 2;
-  // Mk.1B's source-specific dished wheel anatomy used to be authored as
-  // shallow cylinders in the static hull buckets after the smart suspension
-  // had already been built.  That left the decorative faces parked while the
-  // real tires travelled.  Feed those same layers into buildRunningGear so
-  // there is one suspension-driven wheel assembly on both sides.
+  // Road-wheel face layers ride the one suspension-driven wheel train. The Mk.1B's dished-face layers left
+  // with the nation wheel standard (owner 2026-09-22: every Israeli MBT hull draws the Mk 4B construction).
   const wheelFaceW = Math.min(0.23, c.trackW * 0.37);
-  const wheelFaceLayers = c.wheelFace ? [
-    { geometry: KIT.cylX(c.wheelR * 0.85, 0.012, 16), material: P.mats.detail,
-      outset: wheelFaceW / 2 + 0.006, name: 'gearRoadWheelOuterDishes', appearanceRole: 'wheelDish' },
-    { geometry: KIT.cylX(c.wheelR * 0.60, 0.008, 14), material: P.mats.dark,
-      outset: wheelFaceW / 2 + 0.010, name: 'gearRoadWheelDishBreaks', appearanceRole: 'wheelInset' },
-    { geometry: KIT.cylX(c.wheelR * 0.50, 0.010, 12), material: P.mats.detail,
-      outset: wheelFaceW / 2 + 0.013, name: 'gearRoadWheelMidDishes', appearanceRole: 'wheelDish' },
-    { geometry: KIT.cylX(c.wheelR * 0.34, 0.012, 10), material: P.mats.dark,
-      outset: wheelFaceW / 2 + 0.017, name: 'gearRoadWheelInnerDishes', appearanceRole: 'wheelInset' },
-    { geometry: KIT.cylX(c.wheelR * 0.15, 0.014, 8), material: P.mats.detail,
-      outset: wheelFaceW / 2 + 0.021, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelDish' },
-  ] : c.modernWheelFace ? [
-    { geometry: KIT.cylX(c.wheelR * 0.84, 0.012, 18), material: P.mats.dark,
-      outset: wheelFaceW / 2 + 0.006, name: 'gearRoadWheelPressedFaces', appearanceRole: 'wheelDish' },
-    { geometry: KIT.cylX(c.wheelR * 0.61, 0.010, 16), material: P.mats.detail,
-      outset: wheelFaceW / 2 + 0.010, name: 'gearRoadWheelDishRings', appearanceRole: 'wheelDish' },
-    { geometry: KIT.cylX(c.wheelR * 0.45, 0.011, 14), material: P.mats.dark,
-      outset: wheelFaceW / 2 + 0.014, name: 'gearRoadWheelDishRecesses', appearanceRole: 'wheelInset' },
-    { geometry: KIT.cylX(c.wheelR * 0.20, 0.013, 10), material: P.mats.detail,
-      outset: wheelFaceW / 2 + 0.019, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelDish' },
-  ] : undefined;
+  const wheelFaceLayers = c.modernWheelFace ? merkavaPressedFaceLayers(c.wheelR, wheelFaceW / 2).map((layer) => ({
+    // the Mk 4 ring stack is the Israel MBT wheel construction (nationWheelConstructions.ts, owner 2026-09-22)
+    geometry: layer.geometry, material: layer.paint === 'dark' ? P.mats.dark : P.mats.detail,
+    outset: layer.outset, name: layer.name, appearanceRole: layer.role,
+  })) : undefined;
   const merkavaChassisRunningGearStage1 = (): void => {
     KIT.buildRunningGear(P, {
       style: 'rubber', wheelR: c.wheelR, wheelW: wheelFaceW,

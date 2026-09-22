@@ -21,6 +21,7 @@
 // 3.03 with a twin-tube cannon, missile bank on the right cheek (x 0.44–0.58, z 0.18–1.34), panoramic sight left.
 import * as THREE from 'three';
 import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
+import { ZTZ100_TIRE_BANDS, ztz100RoadWheelCore, ztz100RoadWheelHardware } from '../nationWheelConstructions.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -298,22 +299,14 @@ function stern(P: TankBuilderPort): void {
 
 function runningGear(P: TankBuilderPort): void {
   const D = ZTZ100_X_DATUMS;
-  // Source-only radial rays through Objects 7/17: raised hub, recessed web
-  // and curved rim shoulder. The two tire bands retain their central air gap.
-  const section: AxialWheelStation[] = [
-    [.029, 0], [.16291, 0], [.16291, .059],
-    [.124, .067], [.124, .097], [.04038, .100], [.04038, .140],
-    [.05191, .160], [.06631, .180], [.08208, .200], [.09885, .220],
-    [.12276, .240], [.17346, .260], [.16934, .280],
-    [.18449, .287], [.029, .287],
-  ];
-  const core = mergeAll([lathedWheelSection(section,P.q?28:14),
-    lathedWheelSection(section.map(([x,r])=>[-x,r]),P.q?28:14)]);
+  // Source-only radial rays through Objects 7/17: raised hub, recessed web and curved rim shoulder; the
+  // two tire bands retain their central air gap. The section is the China MBT wheel construction
+  // (nationWheelConstructions.ts, owner 2026-09-22), so every Chinese MBT hull draws this wheel.
+  const core = ztz100RoadWheelCore(Boolean(P.q));
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', dishR: 0.70, wheelR: D.wheelR, wheelW: 0.366, wheelY: D.wheelY, xc: D.trackX,
     wheelZs: [...D.wheelStations], wheelZsRightM: [...D.wheelStationsRight],
-    wheelTireBands: [{centerM:-.106,widthM:.1535,innerRadiusM:.2865},
-      {centerM:.106,widthM:.1535,innerRadiusM:.2865}],
+    wheelTireBands: ZTZ100_TIRE_BANDS,
     wheelCoreGeometry: {disc:core},
     sprocket: { ...D.sprocket }, idler: { ...D.idler },
     rollerR: D.rollers[0].r, rollers: D.rollers.map((r) => ({ z: r.z, y: r.y })),
@@ -327,19 +320,7 @@ function runningGear(P: TankBuilderPort): void {
   // Side-filtered native layers follow the same suspension and wheel rotation
   // as the casting; no duplicated hardware is placed on its inboard face.
   for (const side of [-1, 1] as const) {
-    const hardware: THREE.BufferGeometry[] = [];
-    for (const [count, ring, axial, radius, depth] of [
-      [12, .08173, .12764, .00784, .01007],
-      [8, .11145, .04427, .01394, .00850],
-      [8, .11145, .05234, .00884, .00850],
-    ]) {
-      for (let i = 0; i < count; i++) {
-        const angle = i * Math.PI * 2 / count;
-        hardware.push(cylX(radius, depth, 6).rotateX(angle)
-          .translate(side * axial, Math.cos(angle) * ring, Math.sin(angle) * ring));
-      }
-    }
-    P.gear.addRoadWheelLayer(mergeAll(hardware), P.mats.wheels, {
+    P.gear.addRoadWheelLayer(ztz100RoadWheelHardware(side), P.mats.wheels, {
       side, appearanceRole: 'wheelDish', name: `ztz100WheelFasteners${side < 0 ? 'Left' : 'Right'}`,
     });
   }

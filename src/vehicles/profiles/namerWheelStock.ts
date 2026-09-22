@@ -15,8 +15,10 @@ function wheelMetal(segments: number): THREE.BufferGeometry {
   // The old inboard axle tip remains at -.2516, so the existing suspension
   // receiver and its finite clearance stay fixed. It is wholly behind the
   // visible face. No front cap spans the source's deep annular recess.
+  // 2026-09-22 wheel audit: the source hub cap (X1.522377) stood 3.1 cm proud of the tire front; the
+  // fleet seat is 2.5 cm, so the cap sits at X1.513730 (2.4 cm) and the cone to R.08799 keeps its station.
   const section: AxialWheelStation[] = [
-    [-.2516, 0], [axial(1.522377), 0], [axial(1.522377), .06222],
+    [-.2516, 0], [axial(1.513730), 0], [axial(1.513730), .06222],
     [axial(1.481370), .08799], [axial(1.454791), .08799],
     [axial(1.454791), .11511], [WEB_FRONT, .11511],
     [WEB_FRONT, .29610], [TIRE_FRONT, .29610], [TIRE_FRONT, .305],

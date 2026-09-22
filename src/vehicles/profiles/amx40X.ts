@@ -2,6 +2,7 @@
 // never playable vertex/index buffers, materials or a donor visual builder.
 import * as THREE from 'three';
 import {roundedTrackContact} from './roundedTrackContact.ts';
+import {amx40PressedWheelFaces} from '../nationWheelConstructions.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {beamBetween,blindTube} from './measuredPrimitives.ts';
@@ -223,20 +224,6 @@ function cannon(P:TankBuilderPort):void {
   P.muzzleZ=6.6028-GUN[2];
 }
 
-function wheelFaces():THREE.BufferGeometry {
-  const pieces:THREE.BufferGeometry[]=[];
-  for(const s of[-1,1]) {
-    pieces.push(torus(.307,.010,32,8).rotateZ(Math.PI/2).translate(s*.164,0,0));
-    for(let i=0;i<6;i++) {
-      const a=i*Math.PI/3;
-      pieces.push(box(.033,.055,.176).rotateX(-a).translate(s*.155,
-        Math.sin(a)*.190,Math.cos(a)*.190));
-      pieces.push(cylX(.019,.042,6).translate(s*.154,Math.sin(a)*.234,Math.cos(a)*.234));
-    }
-  }
-  return KIT.mergeAll(pieces);
-}
-
 function buildAmx40X(P:TankBuilderPort):void {
   P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
@@ -249,7 +236,7 @@ function buildAmx40X(P:TankBuilderPort):void {
     style:'rubber',wheelR:.3401,wheelW:.3211,wheelY:.41530,
     wheelZs:[...AMX40_X_DATUMS.wheelZs],xc:1.2738,trackW:.587,trackTh:.024, // fleet track standard 2026-09-12 (owner: apply everywhere)
     roadWheelOutsetM:.02335,wheelFaceDepthScale:.70,wheelTireInnerRadiusM:.282,
-    wheelFaceLayers:[{geometry:wheelFaces(),material:P.mats.wheels,name:'amx40WheelPressedFaces'}],
+    wheelFaceLayers:[{geometry:amx40PressedWheelFaces(),material:P.mats.wheels,name:'amx40WheelPressedFaces'}], // the France cold-war wheel construction (nationWheelConstructions.ts, owner 2026-09-22)
     trackShoeDimensions: shoeDims,
     sprocket:{z:-2.8357,y:.78885,r:.3506,trackR:.322,toothTipRadiusM:.3506,
       axleOutsetM:.0166,axialScaleLeft:.85,axialScaleRight:.85},

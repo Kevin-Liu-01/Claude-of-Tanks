@@ -7,7 +7,7 @@
 // scaled to the requested radius, so any tank can draw the construction at
 // its own wheel size.
 import * as THREE from 'three';
-import { KIT } from './profiles/kit.ts';
+import { cylX, mergeAll, xform } from './factoryGeometry.ts';
 import { gearFastener, runningGearRadialSegments, turnedGearStock } from './runningGearPrimitives.ts';
 
 type RadialStation = readonly [radiusM: number, axleXM: number];
@@ -59,14 +59,14 @@ export function buildHollowPairedRoadWheel({ radiusM, high, fasteners = 10, axia
     steel.push(turnedGearStock(web, segments, side));
     for (let i = 0; i < (high ? fasteners : 0); i++) {
       const angle = i * Math.PI * 2 / fasteners;
-      (fastenersAsInsets ? insets : steel).push(KIT.xform(gearFastener(.008 * k, .013 * k, high), side * .040 * k,
+      (fastenersAsInsets ? insets : steel).push(xform(gearFastener(.008 * k, .013 * k, high), side * .040 * k,
         Math.sin(angle) * .140 * k, Math.cos(angle) * .140 * k));
     }
   }
   // A narrow functional axle joins the paired webs; it never fills the guide gap.
-  steel.push(KIT.cylX(.070 * k, (GAP_HALF * 2 + .012) * k, high ? 12 : 4));
-  const tireStock = KIT.mergeAll(tires), steelStock = KIT.mergeAll(steel);
-  const insetStock = insets.length ? KIT.mergeAll(insets) : null;
+  steel.push(cylX(.070 * k, (GAP_HALF * 2 + .012) * k, high ? 12 : 4));
+  const tireStock = mergeAll(tires), steelStock = mergeAll(steel);
+  const insetStock = insets.length ? mergeAll(insets) : null;
   if (axialWidthM !== undefined) {
     if (!(axialWidthM > 0)) throw new RangeError('Paired road wheel axial width must be positive');
     const sx = axialWidthM / hollowPairedRoadWheelWidth(radiusM);

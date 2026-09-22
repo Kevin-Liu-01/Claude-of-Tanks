@@ -49,10 +49,19 @@ assert.equal(wheelPatternFor(getSpec('t90m')).id, 'pressed-six', 'T-90 pressed-w
 assert.equal(wheelPatternFor(getSpec('merkava4b')).id, 'deep-dish-eight', 'Merkava deep-dish identity');
 assert.equal(wheelPatternFor(getSpec('kf51b')).id, 'plain-dish-twelve', 'Leopard-hull family uses the plain dished disc');
 assert.equal(wheelPatternFor(getSpec('m60a1')).id, 'cast-five-spoke', 'Patton cast-wheel identity');
-assert.equal(wheelPatternFor(getSpec('k21_x')).id, 'armored-hub-six', 'K21 cannot inherit K2 MBT wheels');
+// Nation wheel sets (owner 2026-09-22, "standardize our wheels across NATIONS"; nationWheelSets.ts):
+assert.equal(wheelPatternFor(getSpec('k21_x')).id, 'flanged-twelve', 'K21 draws the K1A1 wheel (the owner listed only Korean MBT donors)');
 assert.equal(wheelPatternFor(getSpec('k2_x')).id, 'flanged-twelve', 'K2 retains its own wheel family');
-assert.equal(wheelPatternFor(getSpec('type100')).id, 'pressed-six', 'Chinese Type 100 cannot inherit Japanese Type 10 wheels');
+assert.equal(wheelPatternFor(getSpec('type100')).id, 'pressed-six', 'Chinese Type 100 IFV is a donor and keeps its pressed wheel');
 assert.equal(wheelPatternFor(getSpec('type10_x')).id, 'flanged-twelve', 'Japanese Type 10 retains its own wheel family');
+assert.equal(wheelPatternFor(getSpec('sabra_mk2_x')).id, 'cast-five-spoke', 'owner 2026-09-22: "sabra uses the m60a3 wheels"');
+assert.equal(wheelPatternFor(getSpec('mbt70')).id, 'plain-dish-twelve', 'German-registered MBT-70 draws the Leopard 2A6 wheel');
+assert.equal(wheelPatternFor(getSpec('type59')).id, 'armored-hub-six', 'Chinese MBT hulls draw the ZTZ-100 wheel');
+assert.equal(wheelPatternFor(getSpec('ajax_x')).id, 'armored-hub-six', 'UK IFV hulls draw the Warrior Milan X wheel');
+assert.equal(wheelPatternFor(getSpec('bmp2')).id, 'armored-hub-six', 'USSR-registered BMP-2 draws the Russia light wheel (Dragun)');
+assert.equal(wheelPatternFor(getSpec('strv81')).id, 'plain-dish-twelve', 'Swedish Centurion draws the Strv 122 wheel');
+assert.equal(wheelPatternFor(getSpec('tiger1')).id, 'interleaved-dish', 'pre-1950 hulls keep their period wheel construction');
+assert.equal(wheelPatternFor(getSpec('m26_pershing')).id, 'cast-five-spoke', 'pre-1950 hulls keep their period wheel construction');
 
 const uniqueGeometry = new Set();
 for (const signatures of geometrySignatures.values()) {

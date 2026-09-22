@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { KIT, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { t90SourcePressedFaceLayers } from '../nationWheelConstructions.ts';
 import { markEraHitFaces, markEraFurniture as eraFurniture } from './eraHitFaces.ts';
 import { addT90MFenders, addT90MInnerSidePlates, addT90MRearDrums } from './t90MXHullEnds.ts';
 import { addT90MEngineDeck } from './t90MXEngineDeck.ts';
@@ -58,24 +59,9 @@ function frame(P: TankBuilderPort, d: Datum): void {
 }
 
 function sourceWheelFaces(P: TankBuilderPort,r:number,halfWidth:number,zScale:number): void {
-  const shape=new THREE.Shape();shape.absarc(0,0,r*.865,0,Math.PI*2,false);
-  for(let i=0;i<6;i++) {
-    const angle=i*Math.PI/3,hole=new THREE.Path();
-    hole.absarc(Math.sin(angle)*r*.55,Math.cos(angle)*r*.55,r*.12,0,Math.PI*2,true);
-    shape.holes.push(hole);
-  }
-  const disc=new THREE.ExtrudeGeometry(shape,{depth:.018,bevelEnabled:false,curveSegments:16})
-    .translate(0,0,-.009).rotateY(Math.PI/2).scale(1,1,zScale);
-  const rim=torus(r*.853,.010,32,8).rotateZ(Math.PI/2).scale(1,1,zScale);
-  const bolts=Array.from({length:6},(_,i)=>{
-    const angle=i*Math.PI/3;
-    return cylX(.012,.025,6).translate(0,Math.sin(angle)*r*.30,Math.cos(angle)*r*.30*zScale);
-  });
-  P.gear?.addRoadWheelLayer(disc,P.mats.wheels,{outset:halfWidth+.004,name:'gearRoadWheelSourcePressedFaces',appearanceRole:'wheelDish'});
-  P.gear?.addRoadWheelLayer(rim,P.mats.wheels,{outset:halfWidth+.010,name:'gearRoadWheelSourceRims',appearanceRole:'wheelDish'});
-  // 2026-09-14 owner: hub and bolt heads stood 3 cm proud of the tire; seated within 2 cm.
-  P.gear?.addRoadWheelLayer(cylX(r*.24,.030,20),P.mats.wheels,{outset:halfWidth+.004,name:'gearRoadWheelSourceHubs',appearanceRole:'wheelDish'});
-  P.gear?.addRoadWheelLayer(KIT.mergeAll(bolts),P.mats.dark,{outset:halfWidth+.006,name:'gearRoadWheelSourceBolts',appearanceRole:'wheelInset'});
+  // The T-90 X pressed face is the Russia MBT wheel construction (nationWheelConstructions.ts, owner 2026-09-22).
+  for(const layer of t90SourcePressedFaceLayers(r,halfWidth,zScale))
+    P.gear?.addRoadWheelLayer(layer.geometry,layer.paint==='dark'?P.mats.dark:P.mats.wheels,{outset:layer.outset,name:layer.name,appearanceRole:layer.role});
 }
 
 function hullStation([z,half,roof,keel]: Station): SolidSection {

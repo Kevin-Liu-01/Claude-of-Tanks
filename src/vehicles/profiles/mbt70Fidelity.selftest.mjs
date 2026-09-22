@@ -74,8 +74,10 @@ assert.equal(spec.armor.turretPivot[1], 1.49,
   'turret ring is lowered onto the donor hull deck');
 assert.equal(spec.dims.overallLengthM, 9.37,
   'published envelope follows the additional complete-rig forward seat');
-assert.equal(wheelPatternFor(spec).id, 'split-rim-ten',
-  'M1A1 donor keeps the Abrams split-rim wheel identity');
+// 2026-09-22 owner ("germany uses the kf51 panther, leopard 2a6, lynx wheels"): the German-registered MBT-70
+// draws the Leopard 2A6 nation wheel; the Abrams hull loft and suspension it borrows are unchanged.
+assert.equal(wheelPatternFor(spec).id, 'plain-dish-twelve',
+  'MBT-70 takes the Germany nation wheel pattern (Leopard 2A6 donor)');
 assert.ok(vehicleMarkingAnchor('mbt70').longitudinal <= 0.25,
   'generated MBT-70 insignia is ray-seated on the rear quarter of the turret');
 assert(spec.armor.modules.some((module) => module.module === 'missileRack'),
@@ -262,7 +264,7 @@ for (const rollerZ of [1.46, 0, -1.46]) {
   `MBT-70 upper track is supported by the return roller at z=${rollerZ}`);
 }
 assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.nativeWheelPatterns,
-  ['split-rim-ten'], 'native running gear records one Abrams wheel pattern');
+  ['plain-dish-twelve'], 'native running gear records the one Germany nation wheel pattern (2026-09-22)');
 assert(tank.root.getObjectByName('muzzleBoreShadowDisc'), '152 mm launcher has an open bore');
 
 // The hydropneumatic pose must articulate the complete inherited Abrams gear,

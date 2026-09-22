@@ -3,11 +3,11 @@ import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { mergeAll, xform } from '../factoryGeometry.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
-import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { barrel, equipment, hatch, panel, hullSolid, hullStation, optic, smokeBank, towEye, turretStation } from './easternSourceKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { DRAGUN_TIRE_BANDS, dragunRoadWheelCore } from '../nationWheelConstructions.ts';
 const { box, cylX, cylY, cylZ, torus } = KIT;
 /** Source access door and its relief sit on the hull's raked rear wall. */
 function addDragunRearDoor(P: TankBuilderPort): void {
@@ -329,23 +329,13 @@ function buildDragunHull(P: TankBuilderPort): void {
         equipment(P, 'hull', 'Detail', box(.027, .10, .21), i * .29, 1.46, 3.79, -.26);
 }
 function buildDragunGear(P: TankBuilderPort): void {
-    // Source wheel rays, relative to its measured axle: hub +.113 m,
-    // web +.072 m, rolled outer lip +.135 m, separated paired tire bands.
-    const section: AxialWheelStation[] = [
-        [.045, 0], [.113, 0], [.113, .075], [.072, .092], [.072, .195],
-        [.114, .221], [.1355, .239], [.1355, .250], [.102, .250],
-        [.044, .212], [.044, .09], [.045, 0],
-    ];
-    const wheelCore = KIT.mergeAll([
-        lathedWheelSection(section, P.q ? 28 : 16),
-        lathedWheelSection(section.map(([x, r]) => [-x, r]), P.q ? 28 : 16),
-        cylX(.059, .224, P.q ? 20 : 12),
-    ]);
+    // Source wheel rays, relative to its measured axle: hub +.113 m, web +.072 m, rolled outer lip
+    // +.135 m, separated paired tire bands — the Russia IFV wheel construction (nationWheelConstructions.ts, owner 2026-09-22).
+    const wheelCore = dragunRoadWheelCore(Boolean(P.q));
     P.gear = KIT.buildRunningGear(P, {
         style: 'rubber', wheelPattern: 'armored-hub-six', trackPattern: 'eastern-ifv',
         wheelR: .2925, wheelW: .271, wheelY: .3525,
-        wheelTireBands: [{ centerM: -.090, widthM: .091, innerRadiusM: .247 },
-            { centerM: .090, widthM: .091, innerRadiusM: .247 }],
+        wheelTireBands: DRAGUN_TIRE_BANDS,
         wheelCoreGeometry: { disc: wheelCore },
         wheelZs: [-2.0378, -1.1838, -.4836, .3303, 1.2851, 2.0898],
         xc: 1.380, trackW: .386, trackTh: .030, topY: 1.195, botY: .032,

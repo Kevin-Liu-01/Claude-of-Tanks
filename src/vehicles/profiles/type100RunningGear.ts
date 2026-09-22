@@ -24,7 +24,8 @@ function pressedRib(high: boolean, side: number): THREE.BufferGeometry {
   return new THREE.ExtrudeGeometry(section, { depth: .165, steps: 1, bevelEnabled: false }).translate(0, 0, .1225);
 }
 
-function roadWheelStock(high: boolean) {
+/** Two pressed six-rib dishes and two tires around a real guide channel — the China IFV wheel construction (2026-09-22). */
+export function type100RoadWheelStock(high: boolean) {
   const segments = high ? 16 : 8, tire: THREE.BufferGeometry[] = [], metal: THREE.BufferGeometry[] = [];
   // Two tires and two pressed dishes leave the real central guide channel.
   // The shared axle owner still supplies all wheel motion and suspension.
@@ -115,7 +116,7 @@ export function buildType100RunningGear(P: TankBuilderPort, kit: GearKit) {
     rollerR: .085, rollers: [{ z: 1.44, y: 1.05 }, { z: .02, y: 1.06 }, { z: -1.40, y: 1.05 }],
     trackW: .58, trackTh: .09, topY: 1.20, botY: .06,
     wheelPattern: 'pressed-six', trackPattern: 'compact-ifv',
-    linkPitchM: .150, shoeWidthScale: .99, roadWheelGeometry: roadWheelStock(P.q),
+    linkPitchM: .150, shoeWidthScale: .99, roadWheelGeometry: type100RoadWheelStock(P.q),
     trackShoeBuilder: type100TrackShoe,
     returnRollerStockGeometry: returnRollerStock(.085, .58 * .63, P.q),
     paintedEnds: true, arms: true, coveredTop: true, contactZF: 2.50, contactZR: -2.48,

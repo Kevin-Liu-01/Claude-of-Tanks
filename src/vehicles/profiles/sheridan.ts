@@ -2,6 +2,7 @@
 // from a local comparison print, while all topology here is built from the
 // shared primitive kit and remains independent of that source asset.
 
+import { sheridanWheelFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
@@ -967,21 +968,13 @@ function addSheridanRunningGear(P: SheridanBuilderPort): void {
     tautRearSpan: true,
     deadSag: 0.018,
     dedupeLoopPoints: true,
-    wheelFaceLayers: [
-      // KIT.torus is already rotated into the XZ plane; a Z quarter-turn
-      // puts its axis on X, exactly matching cylX and the road-wheel axle.
-      { geometry: xform(torus(0.284, 0.026, P.q ? 28 : 18, P.q ? 8 : 6),
-          0, 0, 0, 0, 0, Math.PI / 2), material: P.mats.wheels,
-        outset: 0.114, name: 'gearRoadWheelPressedRims', appearanceRole: 'wheelDish' }, // 2026-09-14: rim 2 cm proud of the 0.120 tire face (was 3.1)
-      // 2026-09-14 owner: the hub package stood 3.6 cm proud of the 0.120 tire face. Dish well
-      // and hub drum inside the face, cap 2 mm inside the rim.
-      { geometry: cylX(0.236, 0.014, P.q ? 24 : 16), material: P.mats.dark,
-        outset: 0.084, name: 'gearRoadWheelDishWells', appearanceRole: 'wheelInset' },
-      { geometry: cylX(0.126, 0.022, P.q ? 20 : 14), material: P.mats.wheels,
-        outset: 0.092, name: 'gearRoadWheelHubDrums', appearanceRole: 'wheelDish' },
-      { geometry: cylX(0.050, 0.026, P.q ? 14 : 10), material: P.mats.dark,
-        outset: 0.096, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelInset' },
-    ],
+    // The TTS rim, dish well, hub drum and cap stack is the USA light-hull wheel construction
+    // (nationWheelConstructions.ts, owner 2026-09-22); 2026-09-14 seats: rim 2 cm proud of the 0.120 tire face,
+    // dish well and hub drum inside the face, cap 2 mm inside the rim.
+    wheelFaceLayers: sheridanWheelFaceLayers(Boolean(P.q)).map((layer) => ({
+      geometry: layer.geometry, material: layer.paint === 'dark' ? P.mats.dark : P.mats.wheels,
+      outset: layer.outset, name: layer.name, appearanceRole: layer.role,
+    })),
   });
 }
 

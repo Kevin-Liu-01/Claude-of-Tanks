@@ -35,6 +35,20 @@ export function turnedGearStock(
 
 export function runningGearRadialSegments(high: boolean): number { return high ? 20 : 12; }
 
+/** Mirror authored first-party stock across the axle and preserve its outward triangle winding. */
+export function mirrorX(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  geometry.scale(-1, 1, 1);
+  const index = geometry.index, position = geometry.getAttribute('position');
+  for (let i = 0; i < (index?.count ?? position.count); i += 3) {
+    if (index) { const a = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, a); }
+    else { const x = position.getX(i + 1), y = position.getY(i + 1), z = position.getZ(i + 1);
+      position.setXYZ(i + 1, position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2));
+      position.setXYZ(i + 2, x, y, z); }
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 /** Low-order metal fastener, separate from any structural dish or aperture. */
 export function gearFastener(radius: number, depth: number, high: boolean): THREE.BufferGeometry {
   const count=high?4:3,shape=new THREE.Shape(Array.from({length:count},(_,i)=>{
