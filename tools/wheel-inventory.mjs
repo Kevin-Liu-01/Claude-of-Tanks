@@ -74,22 +74,23 @@ for (const id of ids) {
   } finally { high.dispose?.(); low.dispose?.(); }
 }
 const pad = (v, n) => String(v ?? '-').padEnd(n);
-console.log(pad('id', 22), pad('nation', 12), pad('era', 16), pad('role', 6), pad('n', 3), pad('r', 7), pad('pattern (spec -> built)', 36), pad('construction', 30), pad('tire', 14), pad('faces', 5), pad('tris hi/lo', 12), 'standard');
+const fitOf = (r) => r.nationStandard ? `fit ${r.nationStandard.axialScale} [${r.nationStandard.tireWidthM}..${r.nationStandard.maxWidthM}]` : '';
+console.log(pad('id', 22), pad('nation', 12), pad('era', 16), pad('role', 6), pad('n', 3), pad('r', 7), pad('pattern (spec -> built)', 36), pad('construction', 30), pad('tire', 14), pad('faces', 5), pad('tris hi/lo', 12), pad('standard', 26), 'fit [tire..cap]');
 for (const r of rows) {
   if (r.error) { console.log(pad(r.id, 22), 'BUILD FAILED', r.error.slice(0, 90)); continue; }
   const std = r.resolution ? `${r.resolution.kind}${r.resolution.donor ? ':' + r.resolution.donor : ''}` : '';
   console.log(pad(r.id, 22), pad(r.nation, 12), pad(r.era, 16), pad(r.role, 6), pad(r.stations, 3), pad(r.wheelR?.toFixed?.(4), 7),
-    pad(`${r.specPattern} -> ${r.builtPattern}`, 36), pad(r.construction, 30), pad(r.tire, 14), pad(r.faceLayers, 5), pad(`${r.trisHigh}/${r.trisLow}`, 12), std);
+    pad(`${r.specPattern} -> ${r.builtPattern}`, 36), pad(r.construction, 30), pad(r.tire, 14), pad(r.faceLayers, 5), pad(`${r.trisHigh}/${r.trisLow}`, 12), pad(std, 26), fitOf(r));
 }
 console.log(`wheel inventory: ${rows.length} tanks, ${failed} failed`);
 const jsonPath = opt('json', ''); if (jsonPath) { mkdirSync(resolve(jsonPath, '..'), { recursive: true }); writeFileSync(jsonPath, JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 1)); }
 const mdPath = opt('markdown', '');
 if (mdPath) {
-  const lines = ['| id | nation | era | role | wheels | radius m | pattern spec → built | construction | tire | face layers | tris high/low | standard |', '|---|---|---|---|---|---|---|---|---|---|---|---|'];
+  const lines = ['| id | nation | era | role | wheels | radius m | pattern spec → built | construction | tire | face layers | tris high/low | standard | fit [tire..cap] |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|'];
   for (const r of rows) {
-    if (r.error) { lines.push(`| ${r.id} | BUILD FAILED | ${r.error} | | | | | | | | | |`); continue; }
+    if (r.error) { lines.push(`| ${r.id} | BUILD FAILED | ${r.error} | | | | | | | | | | |`); continue; }
     const std = r.resolution ? `${r.resolution.kind}${r.resolution.donor ? ' · ' + r.resolution.donor : ''}` : '';
-    lines.push(`| ${r.id} | ${r.nation} | ${r.era} | ${r.role} | ${r.stations} | ${r.wheelR?.toFixed?.(4)} | ${r.specPattern} → ${r.builtPattern} | ${r.construction} | ${r.tire} | ${r.faceLayers} | ${r.trisHigh}/${r.trisLow} | ${std} |`);
+    lines.push(`| ${r.id} | ${r.nation} | ${r.era} | ${r.role} | ${r.stations} | ${r.wheelR?.toFixed?.(4)} | ${r.specPattern} → ${r.builtPattern} | ${r.construction} | ${r.tire} | ${r.faceLayers} | ${r.trisHigh}/${r.trisLow} | ${std} | ${fitOf(r)} |`);
   }
   mkdirSync(resolve(mdPath, '..'), { recursive: true }); writeFileSync(mdPath, lines.join('\n') + '\n');
 }
