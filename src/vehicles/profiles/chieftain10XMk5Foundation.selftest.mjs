@@ -26,9 +26,11 @@ const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b)
 // that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3),
 // so the Mk5 scene lost its separate fallback Annulus mesh (one row, one geometry row) and its Rim
 // geometry changed. Superseded: high aec0172a… 77/44, low 9ec11861… 75/42.
+// 2026-09-22 combined round-38 tree (nation wheels + flat-ring mouth together): both rows re-pinned once more;
+// superseded high ee2aceaa… 76/43, low ab1380a9… 75/42 (each branch re-pinned alone).
 const MK5_BEFORE = {
-  high: ['ee2aceaa5619729ae16dd62d5b1646ace262e87cd4bb8847cd50d85cfc0536d8', 76, 43],
-  low: ['e3651c9946d951691a88ab5aa4ddba7042f5323c7fbeabb563cf8b6716076c3b', 75, 42],
+  high: ['aeaf4c7d95f862aa952d02bf990ed3882c06a0cf22563bba4bdfc1aaedbff37f', 75, 42],
+  low: ['ab1380a95b91a6ec83ba40bef0886e13c74e12a9e1c8a7fdb09326792c78585e', 73, 40],
 };
 // 2026-09-15 owner roster pass: the study is named 'Chieftain Mk 5' (no ' X' suffix); name-only repin.
 const MK5_SPEC = '56e6727221553aa2eda63da2ab9e13c3be0fe971487830059bf10d9d436e311e';
@@ -47,8 +49,8 @@ const MK10_OTHER = {
   // 2026-09-22 (owner: holes are added, not carved, to save triangles): one fewer complete mesh per
   // quality — the separate fallback Annulus is gone and the Rim geometry changed (superseded high
   // 5969a67c…/37, low 1f3f4350…/35).
-  high: ['737641d9a685bb8103ec39a8bc37963f158bc96c432c93951834c664570a4324', 35],
-  low: ['7d8a47e92266cd76d9ba4b74aba0ea43895c21fa6b5b61b683a01e8a6d732d42', 34],
+  high: ['05291a8c4fc2ee2b680691ea6314b1badf3a2e0ecd81700c9e0549849f10af7a', 35],
+  low: ['48fd5b661bea15ecb43810d6ae8e50e047e5b07c1a0b48e997c6a231a51ac41f', 33],
 };
 // Immutable pre-edit paint matrices from the same capture as MK10_OTHER.
 // A live marking solve follows the new casting. Reconstruct only authenticated

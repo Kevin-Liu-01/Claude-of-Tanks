@@ -21,8 +21,8 @@ const cases = {
 // AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated), the scheme-painted
 // pressed dish, the Chieftain 5 X commander GPMG and the Ariete loader GPMG move
 // the western native digests; values below are repinned from the current build.
-  leo2a6_x: { main: 'e584febc104149d49e22b2c282253b337dbfa710d5d4591669c0fe3e02d6bf00', geometry: ['654715b7', '21bdb645'], counts: [20, 0] },
-  strv122_x: { main: '3a1b5c2e572d3d800c6a4ec71fcaa19e4913294182c0af33f6b1a1f375db954b', geometry: ['f01b4212', '221b6425'], counts: [676, 66] },
+  leo2a6_x: { main: 'e584febc104149d49e22b2c282253b337dbfa710d5d4591669c0fe3e02d6bf00', geometry: ['53612cde', 'd82539a7'], counts: [20, 0] },
+  strv122_x: { main: '3a1b5c2e572d3d800c6a4ec71fcaa19e4913294182c0af33f6b1a1f375db954b', geometry: ['61be007d', '4f0cd9c3'], counts: [676, 66] },
   // 2026-09-21 owner-selected definitive C1: complete1.232-scale frame,
   // corrected120mm physical bore and fresh anatomy. Previous main hash:
   // 5ec104dd88541f1526221ab452fabe2ba9b63bb9a1825e73dc7165b918465b59
@@ -30,8 +30,8 @@ const cases = {
   // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): the Ariete C1 X is the Italy donor and its
   // outboard hub cap was trimmed .2083 → .1993 so the ×1.232 family rig keeps the cap inside the tire face (wheel-review
   // PROUD gate); the Challenger 1 X draws the UK Challenger 2E hollow paired wheel and the fleet arm. Geometry repinned.
-  ariete_c1_x: { main: 'a0b922dbe5da579937f27f8420ec41167ebe2c6d9634698b25ce0cfacfdd23fc', geometry: ['cf9b504d', 'b359499e'], counts: [210, 0] },
-  challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['866eae5d', '64bf0443'], counts: [156, 0] },
+  ariete_c1_x: { main: 'a0b922dbe5da579937f27f8420ec41167ebe2c6d9634698b25ce0cfacfdd23fc', geometry: ['59edfb3f', '9a763d9e'], counts: [210, 0] },
+  challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['61900d11', '0b340412'], counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });

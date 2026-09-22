@@ -32,9 +32,9 @@ const coverWitnesses = [
 // sponson shelf (1.308 -> 1.480) and the 1.50..1.672 slot closes; repinned.
 // 2026-09-22 nation wheel standard: leo2a5_x draws the Leopard 2A6 X paired dish (nationWheelSets.ts); repinned from the current build.
 const retained = {
-  high: [251954,'23f5da2734fa808a7f5a09d8cec94fe22426ff2e258bf29a2ff039dfe23d5b2a'],
+  high: [227118,'d77e3db9e871e09538c94749583b3d5ced75468c5820b4a54e27b34570d4e8ad'],
   // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 44e6b2eb…, 236890.
-  low: [236738,'920637f5483de87f1d391b5f624895f9f8e021cff21ca04e90e59a3db39e44fa'],
+  low: [216998,'6c7edaec7366ce65745d3cf4d3268b8b3e7da2329e447774b185c2fbebf9c540'],
 };
 function retainedFingerprint(root) {
   const rows=[];

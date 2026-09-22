@@ -96,7 +96,11 @@ function mouths(root,gun,recoil) {
   }
   const bore=cast(root,recoil,[0,0,2.365],[0,0,-1],.3);assert.ok(bore);
   near(recoil.worldToLocal(bore.point.clone()).z,2.15,.001,'open 30 mm muzzle depth');
-  assert.ok(cast(root,recoil,[.034,0,2.365],[0,0,-1],.03),'real barrel mouth annulus');
+  // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback no longer lays a barrel-paint
+  // duplicate annulus 0.5 mm ahead of a verified physical mouth, so this probe reads the authored openTube ring itself.
+  // It is sampled off the ring's radial seam (angle .173, as physicalMuzzleBore.ts samples): a ray exactly on the
+  // shared edge of two coplanar triangles misses both at the ±90° yaw poses through floating-point error.
+  assert.ok(cast(root,recoil,[.034*Math.cos(.173),.034*Math.sin(.173),2.365],[0,0,-1],.03),'real barrel mouth annulus');
 }
 function clearShroud(root,gun) {
   // These pass entirely through two opposing side slots, above the tube.

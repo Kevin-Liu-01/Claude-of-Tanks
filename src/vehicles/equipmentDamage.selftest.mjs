@@ -298,7 +298,7 @@ const T90M_REST_REVISIONS = Object.freeze({
   // forwardLampSeat row below stays as the superseded revision, never as an active claim. On the combined
   // round-38 tree (nation wheels, then the flat-ring mouth) that superseded revision is the nation-wheel
   // repin 004121cb…; c711ef48… was the pre-round-38 value.
-  flatRingMouth: '96751f50167f4d7c67868aa710f8582d86b1b785d4ed7c0beca2d0591edf09c1',
+  flatRingMouth: 'be4551b603505b29eefe3cda44268c2c46c61ef68d5346aaefda20e5a027055b',
   forwardLampSeat: '004121cb269d4d160c8715176b1473a9a40ceadcbd7c1a69b3fce797013888e0',
 });
 
@@ -311,7 +311,7 @@ const T90M_REST_REVISIONS = Object.freeze({
 // T90M_REST_REVISIONS.flatRingMouth). Armor digests are unchanged.
 for (const [id, rest, armor] of [
   // 2026-09-22 nation wheel standard: leo2a6 draws the Germany construction (Leopard 2A6 X paired dish); rest repinned.
-  ['leo2a6', '743b524908c0ed3d98edfca74045a8efeeb0981743665da7f92b6ee61c90366b',
+  ['leo2a6', '4143fb63c623701a0f5f1e3e48c595360cc98df26602ee9d5eec0e2f00cc6441',
     'b72c54aa5f4aa4cc99546188a6dfef248896f67c520ae6925dcf7166b874e7a5'],
   ['t90m', T90M_REST_REVISIONS.flatRingMouth,
     'c371fb173216b778135fc1b0a7201201b6f3df27dfee82705c4408ea2e9aa26a'],

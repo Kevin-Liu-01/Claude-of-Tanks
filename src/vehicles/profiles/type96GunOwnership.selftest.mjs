@@ -89,10 +89,10 @@ const BEFORE=[
 // the uv attributes and material descriptors inside these payloads moved again (gun and other alike); positions and
 // gun ownership are unchanged — re-based on the round-35 staged tree.
 const NATIVE_OTHER_BEFORE = [
- 'b8fd3fdb466c74275ed522c022366e9e2b4a2cb8e9914df7c4db1b0b9089640b' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m (camoWorldScale.ts) — uv attributes move on every mesh outside the gun too */,
- '5f2a88ac9cdcaa49c59eb2e905af3633c968a725faadff903ec2a300c24eea48',
- '71b2727358efbe17656e63fbfd2cea3f24ddd572609f4e4bcd92586598b0a40f',
- '43d7ddeeb9f9d4763623b8659064e6c7ef82c04f8b4a9a97aa00a674063a6867',
+ '4807ea719e065098c3dbf7715449f7b04c504cde5e783b9a7dc5802e7b4e9142' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m (camoWorldScale.ts) — uv attributes move on every mesh outside the gun too */,
+ 'c3ab8dd47c769b82a0c3ba0da01c6b1a8d95bf983b0c8582ec68bf209469e618',
+ 'eb579ba8c0d308f314b858ce41c20f6579353e291d181dc7e2def9111256c155',
+ '401b0758ab57c2f1d1468a6fd4291cb65c7960f2e38516691180b00fa56ec75c',
 ];
 
 const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,`${label}: ${a} vs ${b}`);

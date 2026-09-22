@@ -27,15 +27,15 @@ const BEFORE={
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
   // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: f1a5e7a1…, 710538b0…, 404cc34e…, 4d8e9366…, a86c1642…, 6be94995…, d2f3b206…, e1a6550a…, 9deecdf6…, 059e1473…, 11ae96b8…, c5ae7fae…, 1cac0fb2…, dfc34995…, 9d8f7729…, 51475080…, 33ccf93c…, 678a7053….
-  t62mv1_x:['caac1603c832728ce56a73791ed068ca1ee5ccea040962bb0329fc57663a15de','c147c551e07ab774077df711970865fc41229fc6172cdf1e9f4c6082676fa77a'],
-  t72b_1987_x:['2be209e75f3e2954bb7b5d1edcbe18b7916b5b95be35ab0f86f0b82fd372ebab' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'f3d4855bf3be2f95827cd1ff7580ffff58ee251cd872a72c74049747293319cb'],
-  t80u_x:['569b855c7e26a84ca9a518fd1f7300df759167fb3ea4c6aca1f853a090009319','166ad7f5bb7782abd516bdef4a6a25b0a27bb04f14d2f33b024f07ae0b09971f'],
-  t72b3_x:['0fa701c7d5487ce51ee828341368dec588a1eeea5126daa7a34a4048637cec21','dcd93a4f7792fef302117df9b91ceadb328dc961c847deaa24e845b87895081c'],
-  t72b3m_x:['9dcdf84f56698601915fe19bcf03141a1429dc5da947e8527ecdd545e6e987f1','4f395160a3afecbcd3b580bd5298b5eec053fe0da99cfb629b818a25df80a23c'],
-  t72bu_x:['22681affca70baa4c08f54b929859f52d9599fce61d8299876aacec4c0da0d5a','7bdd07c5e8297c2da20f7cb8670e4b4fe469b3996dd0dc7451aa3dcd6c7aee8d'],
-  t90_x:['cbe9ffeeb10f3ca6048657da91b6d9be373de16b16c38a68703664a60d8a2f61','280fb09a4a76f11ff829997b7a5e5dba8eb1e9d1311c6c6ba5ef9133d9781c2d'],
-  t90a_burlak_x:['a19ddae463c36c042b2763477f34f05d041a53e3f8dd3dee9c21255600298589','5b2d4b4b229b9b40c1148a5447000d4dc7b70c7f9aa85f94f972da5a9b991455'],
-  t90ms_x:['660b8021182151b235cfadf6242ba526551617b4a59c2455d175926f52ab9542','42fa2d9fe5900fe577617b7dae5ffc6355b5b16ad7088f053425a4508071b354'],
+  t62mv1_x:['c328da8941a1402193cd431c77721b9f6cb16ff29690750bfa7be30366ab4a24','5eec83a316dff10fbcc259b97e60fa04ba9ede3ee43b5bc54e563ec696942820'],
+  t72b_1987_x:['fadce555c31a5218ed25e2f0952a1bbcd28e309f87356cae51fe7b7cae399bc4' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'6d7e6af0a2be02b6a976550aabbe83ab0be137174006a0e70d7bf7058228479e'],
+  t80u_x:['c8202bf0dfe6b63929aa907746877c082acb83fe422cd2ff05aaef635357a38e','d037f3373be28b0903c10913cda721b9f203c8edba5b7ac73f61324577cbdb2a'],
+  t72b3_x:['6af78eb329de6ca76c6b0dd58adf7d33e731ff4ef87029c6c5dab4cb033fe17f','07763eb559dae37b3e4736a58dd4c4aeacd55101e942bb0f93a531913928a243'],
+  t72b3m_x:['cb020d70d0283691512c79bc4815b5d127fa303be0baf241906db3b5d430651c','f697c3ad396dda9753542dd8742494bb90192aafd3370e3be9cc3fce61140080'],
+  t72bu_x:['223f7b4104ef4636ccb7d1613c86ff206f9ef9aef2f3683dacd69f233d23a869','eb5a4dc7bd9ec24a6deeca0f64078a748c61181613817551e92b2861cc6317ea'],
+  t90_x:['1e22c37621f6782995d09307a2daa3d3189567fcc58e0f4ffbd294e990f9d8ee','c5aa85562a0aeaef546352983bda7f1f9ad85c7f74174f9c148962124263a4b7'],
+  t90a_burlak_x:['87132d72d08737fdd9ee16d91e6786452132376992248745c488e44c4304a775','7d2bbf5cd71072cabd06f85262db3203e15056fbf84d5e58875a8b97c06e930b'],
+  t90ms_x:['951fda6d97c8e2b0cd7849159ea5bc722f014f6c5e15364a64f011734095fb79','617682bd346e3553812751e868c80c5781955746ea79d1cdc12a230900ab29e3'],
 };
 const EXPECTED_STATS={t62mv1_x:[8,9,9],t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
   t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],

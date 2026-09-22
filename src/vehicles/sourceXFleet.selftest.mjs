@@ -31,9 +31,9 @@ const original = {
 // dont use anymore"): every non-donor hull below draws its nation construction — the Leopards the 2A6 X paired
 // dish, the Merkavas the Mk 4B dished face, the T-90s the T-90M X pressed face — so their digests are repinned from the
 // current build; k2, kf51 and t14 are donors and did not move.
-  leo2a7v:'c8c9b926', leo2a6m:'5857f335', leo2a4m:'9b13239e', leo2a5:'6fceb143',
-  merkava4:'ef4be2c7', merkava3d:'2f7d09ca', k2:'36af3795', kf51:'185d662e',
-  t90a:'4fc77a4a', t90a_vladimir:'fb2d45eb', t90m:'d3a663ca', t90sm:'5c3c84a9', t14:'f851ad16',
+  leo2a7v:'15763cef', leo2a6m:'df810ba9', leo2a4m:'ddb30ac2', leo2a5:'027706d9',
+  merkava4:'3e147cc7', merkava3d:'90ea21fd', k2:'36af3795', kf51:'f5de9458',
+  t90a:'5230416c', t90a_vladimir:'aa8a18d8', t90m:'7c1a8780', t90sm:'7b200f8f', t14:'3aa21a37',
 };
 // Owner 2026-09-21 explicitly replaces XK2's turret with the current K1A1.
 // xk2.selftest verifies complete donor geometry and hull/suspension seating;
@@ -41,7 +41,7 @@ const original = {
 // Owner 2026-09-22 also selects production K2 road wheels. The wheel-seat
 // regression compares their actual geometry in HIGH/LOW/AI; the before/after
 // mesh audit preserves all hull armor, turret, gun and end-wheel geometry.
-const ownerRebuilds = { k2: '8cfbfdf6' }; // K1A1-turret assembly was 15a3e8d2.
+const ownerRebuilds = { k2: '98d535e0' }; // K1A1-turret assembly was 15a3e8d2.
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {
   const tank = createTank(id, null, options);

@@ -20,7 +20,7 @@ export const FIXED_SOURCE_SKIRTS=Object.freeze({
     // in sovietSecondWaveGeometry.selftest), so the authenticated pre-finish geometry moved; the t90_x
     // and t72bu_x rows are untouched. Superseded sha 6ab66f75… (pre-round-38) and fe5b999c… (nation wheels alone);
     // the digest is the combined round-38 source (nation wheel + closed gun).
-    sha:'f425c1154d7618e3f2012f157354e947f38cf3a6120f05816dd04e96ac79a9fd'},
+    sha:'b27d13215b6dd201caf6003adde1da03927858835ea20a9819f105a5a66f2a61'},
 });
 
 // Authenticate the exact pre-finish sources independently of rendered meshes.

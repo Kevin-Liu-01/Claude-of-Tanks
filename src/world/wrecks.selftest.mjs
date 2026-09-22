@@ -113,13 +113,13 @@ const originalBakeFixtures = [
     // paired construction (nationWheelConstructions.ts), so the bake gains triangles (40568 -> 42088); bounds, byte sizes
     // and the three visible-attribute hashes are repinned from the current build. The shadow geometry hash is unchanged.
     specId: 'type10', seed: 2133,
-    bounds: [42088, 4.445803761482239, 3.807588815689087, 3.2081706523895264],
-    bytes: [1515168, 1515168, 1515168, 7704],
+    bounds: [41794, 4.444735169410706, 3.807588815689087, 3.2081706523895264],
+    bytes: [1504584, 1504584, 1504584, 7416],
     hashes: [
-      'ec346d9d6a22f18cef6720e1876816891f8ef8f26bc7826dbbcb10893f9b32f8',
-      'e00411213dbca6956c52514591abaf834a7b1d37a7451ab52fbcb10ee49cf8c9',
-      '583ffec51b442bf19f9c561f53ccf08373e87576ff9037ea99dc472d9071f31d',
-      'ca8a28e323d0ac81a158deb7c69ad329581bbf69c80a53a79bcb53dcbb771b44',
+      'a2614516af1b1204872cf3c6cff35215df1e9a21720755982c6d81587da9bf2d',
+      'a2d7ccdc3a4d84724982782846e3314f4218792296a2915d182c0bf2e93edeaa',
+      'bb8f10c913d7beee0aa4762f452ca2cbb84bd92cdd1bef7d875abae709e3e797',
+      '429903c0e1bfa7c88701bb04964f7a3bff3b1732bb2f762d1dfa8e1925e43546',
     ],
   },
 ];

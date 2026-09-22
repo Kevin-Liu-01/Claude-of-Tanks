@@ -27,13 +27,13 @@ const original = {
 // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
 // dont use anymore"): every second-wave hull below except the period jpz_e100 draws its nation construction
 // (nationWheelSets.ts / nationWheelConstructions.ts) at its own radius, so the digests are repinned from the current build.
-  ariete_c1:'bc59c273', challenger1:'add388cf', leclerc:'7c812418',
-  chieftain5:'fa7aa075', chieftain_mk10:'e51e5684', leo2a6:'8b1211c8',
-  k1a1:'be8ac35f', strv122:'fb390522', t62mv1:'b2360b36',
-  t72b_1987:'409c17ac', t72b3:'acf1acef', t72b3m:'90d658b8',
-  t72bu:'396a80b8', t80u:'5ca176b2', type10:'de6a67e1', type90:'999b0703',
-  jpz_e100:'85585980', amx30:'cf152691', amx40:'ab2b934d',
-  t90:'ff6d55d6', t90a_burlak:'7e9c4ba9', t90ms:'751b8539',
+  ariete_c1:'aa946585', challenger1:'02b4985c', leclerc:'5a420128',
+  chieftain5:'e4aea32b', chieftain_mk10:'58be3761', leo2a6:'675379c7',
+  k1a1:'46c476b7', strv122:'5b72e6f4', t62mv1:'35f1a225',
+  t72b_1987:'5fce11b6', t72b3:'a6d86dc3', t72b3m:'d7726b81',
+  t72bu:'ebfcb424', t80u:'2b1a556f', type10:'51be775e', type90:'0c314151',
+  jpz_e100:'9c2fc966', amx30:'fa2c63f2', amx40:'caa47766',
+  t90:'1fc4799e', t90a_burlak:'ab83df6b', t90ms:'ea11cc86',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
 for (const [id, expected] of Object.entries(original)) {

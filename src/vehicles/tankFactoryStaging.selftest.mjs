@@ -58,7 +58,7 @@ const goldenReceipts = [
     },
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): strv103 draws the Sweden Strv 122 pressed-recess construction and the fleet arm seated against it; digest repinned from the current build",
-    "sha256": "08ea1ea9edd79b5ba11dab575807142115b454bc49bb7a1f029635402302914a"
+    "sha256": "4a28c5f653a8df18ab7c755f6df3e343d052390a292344e69411112e806b9891"
   },
   {
     "id": "m1a1",
@@ -101,7 +101,7 @@ const goldenReceipts = [
     },
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): merkava1b draws the Israel Merkava Mk 4B dished-face construction; digest repinned from the current build",
-    "sha256": "592e72686d47c04f6621b2da2ba0bf51244a07c6973a0a74ccb1926ca3b82c70"
+    "sha256": "b8660dc0247af1f0c513d83b9fc9dfa9179f29412840b72325430167537d9845"
   },
   {
     "id": "m1a1",
