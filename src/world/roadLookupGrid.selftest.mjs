@@ -73,6 +73,23 @@ const support = ['clamp', 'smoothstep', 'segDist'].map(name => declaration(sourc
 function historicalHeightFieldSource(text) {
   text = beforeRoadCompletionConstructor(text);
   for (const [current, historical] of [
+    // Round 36 (2026-09-22): the outland height sampler (the same composition past the square, for the horizon ring's
+    // near rows) is a declared addition — projected out of the HISTORICAL hash only; playable heights are untouched.
+    [`  // Round 36 (owner 2026-09-21, "it looked like a completely new geography"): the same composition as heightAt for a
+  // point OUTSIDE the square — the hill noise at full weight (no corridor pull), the map's macro landforms and the rim
+  // lift, which is 1 beyond the edge — without roads, corridors, villages, lakes, pads or the tactical micro-terrain.
+  // The horizon ring's near rows seat on this so the border is a rule, not a change of geology. Pure function of
+  // (x, z): no grid, no clamp, no allocation.
+  function outlandHeightAt(x: number, z: number): number {
+    let h = baseTerrainHeight(x, z, 0, 0);
+    h = applyMacroTerrain(x, z, h, 0, 0, 0);
+    const borderRadius = Math.max(Math.abs(x), Math.abs(z));
+    const rim = smoothstep(430, HALF, borderRadius);
+    return h + rim * rim * T.rimH;
+  }
+
+`, ''],
+    ['    getOutlandHeightAt: outlandHeightAt,\n', ''],
     ["  const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;\n", ''],
     ["  let landformPhase: 'legacy-support' | 'authored-relief' = 'legacy-support';\n", ''],
     [`    // Unlike the held decorative relief pilot, these are the actual support
