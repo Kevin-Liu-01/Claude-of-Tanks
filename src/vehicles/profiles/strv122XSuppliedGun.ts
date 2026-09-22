@@ -7,7 +7,7 @@ import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { STRV122_SUPPLIED_DATUMS as D } from './strv122XSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-const {box,cylZ} = KIT;
+const {box} = KIT;
 
 function tube(rows: readonly (readonly [number,number])[],segments:number):THREE.BufferGeometry {
   return new THREE.LatheGeometry(rows.map(([r,z])=>new THREE.Vector2(r,z-D.trunnion[2])),segments)
