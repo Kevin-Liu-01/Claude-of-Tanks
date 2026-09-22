@@ -109,16 +109,20 @@ function mount(P: TankBuilderPort): void {
 
 function tube(P: TankBuilderPort): void {
   // Unlike the later Char file's asymmetric jacket, this source has a round
-  // tube. A closed radial profile retains the genuinely deep open bore at
-  // the real 120 mm calibre: the source's 169 mm inner wall left a lit
-  // annulus around the fleet mouth lining (owner: mouths read on the surface).
+  // tube. Owner 2026-09-22 ("the point of adding holes instead of carving them
+  // into the barrel is that we save on triangles"): the radial profile is now
+  // closed at the source tip. Until then it retained the genuinely deep open
+  // bore at the real 120 mm calibre (radius .060 back to the source backing at
+  // z 4.60643577576, with a 1.2 mm dark liner disc at 4.60443577576) — recorded
+  // here and in leclercClassicX.selftest.mjs as the measurement; the factory's
+  // dark mouth disc at the tube edge hid that recess entirely (owner 2026-09-11:
+  // mouths read on the surface).
   const outer: readonly [number, number][] = [[2.45012127254, .1681642],
     [2.579, .1681642], [2.58, .1400485], [5.71, .1400485],
     [6.15, .139421], [6.20, .1231615], [D.muzzleZ, .1231615]];
-  const cross = [...outer.map(([z, r]) => new THREE.Vector2(r, z)),
-    new THREE.Vector2(.060, D.muzzleZ), new THREE.Vector2(.060, 4.60643577576),
-    new THREE.Vector2(0, 4.60643577576), new THREE.Vector2(0, 2.45012127254),
-    new THREE.Vector2(.1681642, 2.45012127254)];
+  const cross = [new THREE.Vector2(0, 2.45012127254),
+    ...outer.map(([z, r]) => new THREE.Vector2(r, z)),
+    new THREE.Vector2(0, D.muzzleZ)];
   const g = new THREE.LatheGeometry(cross, P.q ? 48 : 32).rotateX(Math.PI / 2);
   classicGun(P, 'gun', g, D.trunnion[0], D.trunnion[1], 0);
   // Independent reflective collar at the source forward station.
@@ -126,8 +130,6 @@ function tube(P: TankBuilderPort): void {
     [.1342315, 6.246341], [.124, 6.246341], [.124, 5.31787]]
     .map(([r, z]) => new THREE.Vector2(r, z)), P.q ? 48 : 32).rotateX(Math.PI / 2);
   classicGun(P, 'gun', ring, .0056525, 1.9602115, 0);
-  classicGun(P, 'gunDark', cylZ(.060, .004, 32),
-    D.trunnion[0], D.trunnion[1], 4.60443577576);
   P.muzzleZ = D.muzzleZ - D.trunnion[2];
 }
 

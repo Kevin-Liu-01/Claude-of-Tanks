@@ -191,23 +191,25 @@ function boreAndOwnership(tank, all) {
     near(ray(gunParts, [1, D.trunnion[1], z], [-1, 0, 0])?.point.x,
       D.trunnion[0] + .1400485, .00002, 'independent equal source horizontal radius');
   }
-  // Fleet mouth standard (2026-09-12, terminal-surface-fit-r2): the outer
+  // Fleet mouth standard (2026-09-12, terminal-surface-fit-r2/r3): the outer
   // course of the lathe reaches the muzzle marker, so the mouth-face scan seats
-  // the flush lining 0.3 mm proud of that face; the source's deep 120 mm
-  // backing stays behind it as metal. Low quality folds the lining into the
-  // static batch; the metal witness excludes that batch too (the lathe and its
-  // dark floor are never batched).
+  // the flush lining 0.3 mm proud of that face. Until 2026-09-22 the source's
+  // deep 120 mm backing (radius .060 to z 4.60643577576, plus a 1.2 mm dark
+  // liner at 4.60443577576) stayed behind it as metal; owner 2026-09-22 ("the
+  // point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the tube is now closed at the source tip, because the
+  // lining hid that recess entirely. The measurement stays recorded here. Low
+  // quality folds the lining into the static batch; the metal witness excludes
+  // that batch too (the lathe is never batched).
   const metal = all.filter(m => !/muzzleBoreShadowFallback|mobileStaticBatch/.test(m.name));
   const lining = ray(all, [D.trunnion[0], D.trunnion[1], 6.6], [0, 0, -1]);
   assert.equal(lining?.object.name, 'muzzleBoreShadowFallbackDisc', 'visible mouth is the fleet lining, not a lit throat');
   near(lining?.point.z, D.muzzleZ + .0003, .0005, 'mouth lining sits flush on the terminal face at the muzzle marker');
-  near(ray(metal, [D.trunnion[0], D.trunnion[1], 6.6], [0, 0, -1])?.point.z,
-    4.60643577576, .0013, 'source deep backing plus existing 1.2mm inner liner');
-  assert.equal(ray(metal, [D.trunnion[0], D.trunnion[1], 6.31], [0, 0, -1], 1.5), undefined,
-    'front bore stays physically open for its actual deep source interval');
+  near(ray(metal, [D.trunnion[0] + .0015, D.trunnion[1], 6.6], [0, 0, -1])?.point.z,
+    D.muzzleZ, .0005, 'metal tube closed at the source tip (recorded source backing z 4.60643577576)');
   for (const [dx, dy] of [[.045, 0], [-.045, 0], [0, .045], [0, -.045]]) {
     const wall = ray(metal, [D.trunnion[0] + dx, D.trunnion[1] + dy, 6.6], [0, 0, -1]);
-    near(wall?.point.z, 4.60643577576, .0013, 'real 120 mm calibre: off-axis rays reach the same backing');
+    near(wall?.point.z, D.muzzleZ, .0005, 'real 120 mm calibre: off-axis rays meet the same closed tip');
   }
   const gun = tank.root.getObjectByName('gun');
   assert.ok(gun.parent.name === 'rig_recoil' || gun.parent.parent?.name === 'rig_recoil',
