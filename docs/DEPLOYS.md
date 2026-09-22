@@ -106,3 +106,4 @@ manual deployment policy above; enabling automatic deploys is not the remedy.
 | 52 | 2026-09-21 18:17 | c4a8d7b4a | Parallel-session fleet work since deploy 51: revise Korean lineup and XK2 turret | main-D8BaZJiA.js | claude-of-tanks-7eyvto6lp |
 | 53 | 2026-09-21 19:13 | d0cbb9fcd | Fixed hydraulic guns spawn aiming, the CV90s are gated against their real references, and the E100 and AMX 56 tracks run clear of the hull | main-B7mSrpyu.js | claude-of-tanks-d4nbu1zre |
 | 54 | 2026-09-21 23:22 | 0460f8d33 | Griffin Viper tow cable seated against the hull; real Garage and cached return verified before and after deployment | main-DXwrJhdC.js | claude-of-tanks-jmrm5qgjy |
+| 55 | 2026-09-22 02:37 | 5e2258a83 | Ring walls keep their rock and layers past the map edge, camo patterns share one tile on every hull, interior fills regenerated fleet-wide, and the AAA map program | main-G3iXXeVy.js | claude-of-tanks-8al886cua |
