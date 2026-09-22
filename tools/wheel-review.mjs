@@ -40,6 +40,10 @@ for (const id of ids) {
   const gear = receipts[0] || {};
   const specPattern = (() => { try { return wheelPatternFor(spec, gear.style)?.id ?? null; } catch { return null; } })();
   const builtPattern = typeof patterns[0] === 'string' ? patterns[0] : (patterns[0]?.id ?? null);
+  const patternReceipt = hull?.userData?.wheelPatternReceipts?.[0] ?? {};
+  const construction = patternReceipt.construction ?? null;
+  const standard = patternReceipt.nationStandard ? `${patternReceipt.nationStandard.donor} fit ${patternReceipt.nationStandard.axialScale}`
+    : patternReceipt.nationDonor ? `donor:${patternReceipt.nationDonor}` : 'own';
   let tires = null, discs = null, hollow = [];
   root.traverse((o) => {
     if (!o.isInstancedMesh) return;
@@ -71,13 +75,13 @@ for (const id of ids) {
   if (proud > MAX_PROUD) flags.push('PROUD'); if (specPattern && builtPattern && specPattern !== builtPattern) flags.push('MISMATCH');
   if (paintL !== null && tireL !== null && paintL < tireL * MIN_DISH_TIRE_RATIO) flags.push('FLAT');
   if (flags.length) flagged++;
-  rows.push({ id, nation: spec?.nation ?? '?', specPattern, builtPattern, style: gear.style ?? null, wheelR: gear.wheelR ?? null, hollow: hollow.join('+') || 'solid', paintL, tireL, tireFaceX: +tireFaceX.toFixed(3), dressingMaxX: +dressingMaxX.toFixed(3), dressingName, proud: +proud.toFixed(3), axialSides, flags });
+  rows.push({ id, nation: spec?.nation ?? '?', specPattern, builtPattern, style: gear.style ?? null, wheelR: gear.wheelR ?? null, hollow: hollow.join('+') || 'solid', construction, standard, nationStandard: patternReceipt.nationStandard ?? null, paintL, tireL, tireFaceX: +tireFaceX.toFixed(3), dressingMaxX: +dressingMaxX.toFixed(3), dressingName, proud: +proud.toFixed(3), axialSides, flags });
   tank.dispose?.();
 }
-console.log('id'.padEnd(22), 'nation'.padEnd(8), 'pattern (spec -> built)'.padEnd(34), 'hollow'.padEnd(26), 'paintL'.padStart(6), 'tireL'.padStart(6), 'proud'.padStart(7), ' flags');
+console.log('id'.padEnd(22), 'nation'.padEnd(8), 'pattern (spec -> built)'.padEnd(34), 'construction'.padEnd(30), 'standard'.padEnd(26), 'hollow'.padEnd(26), 'paintL'.padStart(6), 'tireL'.padStart(6), 'proud'.padStart(7), ' flags');
 for (const r of rows) {
   if (r.error) { console.log(r.id.padEnd(22), 'BUILD FAILED', r.error.slice(0, 80)); continue; }
-  console.log(r.id.padEnd(22), String(r.nation).padEnd(8), `${r.specPattern} -> ${r.builtPattern}`.padEnd(34), r.hollow.padEnd(26), String(r.paintL ?? 'map').padStart(6), String(r.tireL ?? '-').padStart(6), String(r.proud).padStart(7), ' ' + (r.flags.join(' ') || 'ok'));
+  console.log(r.id.padEnd(22), String(r.nation).padEnd(8), `${r.specPattern} -> ${r.builtPattern}`.padEnd(34), String(r.construction ?? '-').padEnd(30), String(r.standard ?? '-').padEnd(26), r.hollow.padEnd(26), String(r.paintL ?? 'map').padStart(6), String(r.tireL ?? '-').padStart(6), String(r.proud).padStart(7), ' ' + (r.flags.join(' ') || 'ok'));
 }
 console.log(`wheel review: ${rows.length} tanks, ${flagged} flagged`);
 const jsonPath = opt('json', ''); if (jsonPath) { mkdirSync(resolve(jsonPath, '..'), { recursive: true }); writeFileSync(jsonPath, JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 1)); }
