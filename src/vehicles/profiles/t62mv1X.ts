@@ -5,7 +5,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
-import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
+import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {T62MV1_X_ERA_ZONE_NAMES} from '../t62mv1XArmor.ts';
@@ -192,7 +192,10 @@ function gunAssembly(P:TankBuilderPort):void {
   // The solid core ends at the actual collar joint, behind its recessed floor.
   KIT.buildGun(P,{len:5.6434312227-GUN[2]+.02,r:.08475,baseR:.12090,sleeve:false,collar:false});
   P.add('gun',cylZ(.106,.871,28),0,0,4.0635-GUN[2]);
-  P.add('gun',blindTube(.09785,.0575,5.920914939-5.643431223,5.920914939-5.65940,28),0,0,(5.920914939+5.643431223)/2-GUN[2]);
+  // Owner 2026-09-22 (holes are added, not carved, to save triangles): the tube is closed at the source
+  // tip; its measured bore (radius .0575, floor 5.65940 recorded in sovietSecondWaveGeometry.selftest.mjs)
+  // sat entirely behind the factory's dark mouth disc.
+  P.add('gun',cappedTube(.09785,5.920914939-5.643431223,28),0,0,(5.920914939+5.643431223)/2-GUN[2]);
   P.add('gunMount',cylX(.227,.454,28),0,0,-.02);
   const ring=(z:number,w:number,top:number,low:number)=>({z:z-GUN[2],ring:[[-w,low-GUN[1]],[w,low-GUN[1]],[w,top-GUN[1]],[-w,top-GUN[1]]] as const});
   P.add('gunMount',sectionSolid([ring(1.276,.227,1.9707,1.4903),ring(1.525,.227,1.8834,1.52),ring(1.69,.17,1.7898,1.5437)]));

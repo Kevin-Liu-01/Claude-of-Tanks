@@ -5,7 +5,7 @@ import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
-import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
+import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -215,7 +215,10 @@ function mainGun(P:TankBuilderPort):void {
   const jacket=(a:number,b:number,rx:number,ry:number)=>P.add('gun',cylZ(Math.sqrt(rx*ry),b-a,32),0,0,(a+b)/2-GUN[2]);
   jacket(1.47523,2.1578,.140465,.123664);jacket(2.1578,3.631,.116514,.102591);
   jacket(3.64995,4.48854,.138267,.121668);
-  P.add('gun',blindTube(Math.sqrt(.116514*.102591),.0625,muzzle-4.5077,muzzle-floor,32),0,0,(muzzle+4.5077)/2-GUN[2]);
+  // Owner 2026-09-22 (holes are added, not carved, to save triangles): the tube is closed at the source
+  // tip; its measured bore (radius .0625, floor recorded in sovietSecondWaveGeometry.selftest.mjs) sat
+  // entirely behind the factory's dark mouth disc.
+  P.add('gun',cappedTube(Math.sqrt(.116514*.102591),muzzle-4.5077,32),0,0,(muzzle+4.5077)/2-GUN[2]);
   P.add('gun',box(.03263,.03482,.83858),0,1.890702-GUN[1],4.069245-GUN[2]);
   P.add('gunMount',cylX(.203,.446,28),0,0,-.004);
   P.add('gunMount',boxSections([[1.18-GUN[2],.21,.238,-.17],[1.37-GUN[2],.224,.223,-.185],[1.58-GUN[2],.142,.126,-.127]]));

@@ -42,7 +42,11 @@ function checkFrames(tank,id,source){
   for(const [dx,dy]of [[0,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
     const from=new THREE.Vector3(source.gun[0]+dx,source.gun[1]+dy,source.muzzle+.2);
     const hit=new THREE.Raycaster(from,new THREE.Vector3(0,0,-1),0,.6).intersectObject(cannon,false)[0];
-    near(hit?.point.z,source.boreFloor,.00002,`${id}: true unfilled source-depth bore ${dx}/${dy}`);
+    // 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that
+    // we save on triangles"): the metal tube is closed at its source tip (cappedTube); the measured
+    // source bore depth stays recorded as boreFloor/boreRadius above as the fidelity evidence, and the
+    // fallback disc below is the visible dark mouth. The former recess sat entirely behind that disc.
+    near(hit?.point.z,source.muzzle,.00002,`${id}: metal tube closed at the source tip (recorded bore floor ${source.boreFloor}) ${dx}/${dy}`);
     const opaque=[];
     tank.root.traverseVisible(object=>{if(!object.isMesh||object.userData.shadowOnly)return;
       const materials=Array.isArray(object.material)?object.material:[object.material];

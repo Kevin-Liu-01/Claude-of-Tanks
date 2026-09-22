@@ -40,6 +40,17 @@ export function beamBetween(a:Point3,b:Point3,radius:number,segments=10):THREE.B
   return geometry.translate(...from.add(to).multiplyScalar(.5).toArray());
 }
 
+/** Closed solid stock along +Z with flat end caps and no bore: 6N triangles against blindTube's 10N.
+ * Owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
+ * save on triangles"): main-gun tubes whose recess sat entirely behind the factory's dark mouth disc
+ * use this; the measured source bore depths stay recorded in their receipts and source notes. */
+export function cappedTube(radius:number,length:number,segments=28):THREE.BufferGeometry {
+  if(!(radius>0&&length>0))throw new Error('cappedTube dimensions are invalid');
+  const profile=[new THREE.Vector2(0,-length/2),new THREE.Vector2(radius,-length/2),
+    new THREE.Vector2(radius,length/2),new THREE.Vector2(0,length/2)];
+  return new THREE.LatheGeometry(profile,segments).rotateX(Math.PI/2);
+}
+
 /** Closed annular stock along +Z, including a recessed blind bore floor. */
 export function blindTube(radius:number,bore:number,length:number,depth:number,segments=28):THREE.BufferGeometry {
   if(!(radius>bore&&bore>0&&length>depth&&depth>0))throw new Error('blindTube dimensions are invalid');

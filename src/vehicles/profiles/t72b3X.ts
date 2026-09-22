@@ -5,7 +5,7 @@ import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
-import {boxSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
+import {boxSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {T72B3_X_SOURCE_DATUMS} from '../t72b3XArmor.ts';
@@ -301,9 +301,13 @@ function mainGun(P:TankBuilderPort):void {
   KIT.buildGun(P,{len:floor-GUN[2],r:.08535,baseR:.122,sleeve:false,collar:false});
   P.add('gun',boxSections([[.02755-GUN[2],.187, .062,-.255],[.98-GUN[2],.211,.062,-.255],[1.13415-GUN[2],.20,-.03,-.255]]));
   for(const [a,b,r]of [[1.51715,2.087,.1231],[2.087,3.62795,.0959],[3.62795,4.45015,.114]])P.add('gun',cylZ(r,b-a,32),0,0,(a+b)/2-GUN[2]);
-  // Source has a large conical hole. The approved physical125mm cylinder
-  // retains its measured deep end, with the full source exterior unchanged.
-  P.add('gun',blindTube(.08535,.0625,muzzle-4.45015,muzzle-floor,32),0,0,(muzzle+4.45015)/2-GUN[2]);
+  // Source has a large conical hole; the approved physical 125 mm cylinder kept
+  // its measured deep end until 2026-09-22, when the tube was closed at the tip
+  // (below) with the full source exterior unchanged.
+  // Owner 2026-09-22 (holes are added, not carved, to save triangles): the tube is closed at the source
+  // tip; its measured 1.293 m bore (floor 4.505949855, radius .0625) sat entirely behind the factory's
+  // dark mouth disc and stays recorded in t72b3XGeometry.selftest.mjs and the source-measurements note.
+  P.add('gun',cappedTube(.08535,muzzle-4.45015,32),0,0,(muzzle+4.45015)/2-GUN[2]);
   for(const [a,b]of [[2.14685,2.76535],[2.88565,3.54455],[4.52255,4.98975],[5.11675,5.58865]])P.add('gun',box(.0053,.0296,b-a),.001,1.8572-GUN[1],(a+b)/2-GUN[2]);
   P.add('gunMount',cylX(.205,.586,28),0,0,.012);
   P.add('gunMount',boxSections([[.94005-GUN[2],.240,.060,-.260],[1.09655-GUN[2],.293,.15,-.15],[1.56425-GUN[2],.130,.123,-.123]]));

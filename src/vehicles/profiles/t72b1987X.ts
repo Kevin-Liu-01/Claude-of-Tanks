@@ -5,7 +5,7 @@ import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
-import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
+import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -211,9 +211,13 @@ function mainGun(P:TankBuilderPort):void {
   const jacket=(a:number,b:number,rx:number,ry:number)=>P.add('gun',cylZ(Math.sqrt(rx*ry),b-a,32),0,0,(a+b)/2-GUN[2]);
   jacket(1.418,2.1159,.12523,.12654);jacket(2.1159,3.59862,.11515,.105);
   jacket(3.61817,4.49972,.13476,.12456);
-  // One continuous terminal stock leaves its real bore empty all the way to
-  // the source-depth floor; no hidden full-cylinder cap is left in the mouth.
-  P.add('gun',blindTube(Math.sqrt(.11515*.105),.0625,muzzle-4.51927,muzzle-floor,32),0,0,(muzzle+4.51927)/2-GUN[2]);
+  // One continuous terminal stock; until 2026-09-22 it left its real bore
+  // empty all the way to the source-depth floor. It is now closed at the tip
+  // (below) because the factory's dark mouth disc hid that recess entirely.
+  // Owner 2026-09-22 (holes are added, not carved, to save triangles): the tube is closed at the source
+  // tip; its measured bore (radius .0625, floor recorded in sovietSecondWaveGeometry.selftest.mjs) sat
+  // entirely behind the factory's dark mouth disc.
+  P.add('gun',cappedTube(Math.sqrt(.11515*.105),muzzle-4.51927,32),0,0,(muzzle+4.51927)/2-GUN[2]);
   P.add('gunMount',cylX(.213,.423,28),0,0,-.029);
   P.add('gunMount',boxSections([[1.03-GUN[2],.204,.245,-.18],[1.20-GUN[2],.218,.239,-.185],[1.49-GUN[2],.138,.129,-.13]]));
   P.muzzleZ=muzzle-GUN[2];
