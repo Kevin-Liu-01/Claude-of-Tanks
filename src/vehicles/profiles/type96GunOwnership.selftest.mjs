@@ -32,34 +32,39 @@ import {createTankState} from '../../sim/movement.ts';
 // fb249c071781c985a452272c8a1374f4a3f2ea2f44199a399d711a0d710305f1.
 // Oriented neutral triangles include every attribute and material descriptor;
 // non-gun geometry, instance transforms and material descriptors remain exact.
+// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
+// that we save on triangles"): type96b_x is a declared physical bore, so the factory now adds only
+// the shadow disc at its floor — the barrel-paint fallback Rim and Annulus that duplicated the hull's
+// own mouth annulus are gone (12N = 216 gun triangles at both qualities: 1526 -> 1310, 994 -> 778).
+// The "other" digests are untouched. Superseded gun digests: d802c038…, a60bdd8c….
 const BEFORE=[
   {
     "quality": "high",
     "camoPattern": "factory",
-    "gun": "d802c038dfafaca543273b33c0c47ae54f2adbd571024c928701e099fcc5acb0",
+    "gun": "87d1b99cd9b8dfdbd0dfcc6eb659d7e671aa34ce27574219d5a9abb520315f96",
     "other": "5cdf2fe1fb522c5574a610e12e83ed19d1fc9aa287ff04da82e37f8556460e9d",
-    "gunTriangles": 1526
+    "gunTriangles": 1310
   },
   {
     "quality": "high",
     "camoPattern": "winter",
-    "gun": "d802c038dfafaca543273b33c0c47ae54f2adbd571024c928701e099fcc5acb0",
+    "gun": "87d1b99cd9b8dfdbd0dfcc6eb659d7e671aa34ce27574219d5a9abb520315f96",
     "other": "28073e67d7dcd789b07fed6ba0dedff68bc771a8d5cd7d76a16b6b4bc7bbf598",
-    "gunTriangles": 1526
+    "gunTriangles": 1310
   },
   {
     "quality": "low",
     "camoPattern": "factory",
-    "gun": "a60bdd8ca20cbeef6acf5d8e3b856facd9a02c93fd84590a20ee47e52667b1ad",
+    "gun": "0cc00b7e016a750051a7a7da6eea6ed6768551b60dbafbfd9a58cd9fc4f5930f",
     "other": "c243d210b3dc85b6a807d625445b1102903d6231dc02bc6b0593ae397a6a079b",
-    "gunTriangles": 994
+    "gunTriangles": 778
   },
   {
     "quality": "low",
     "camoPattern": "winter",
-    "gun": "a60bdd8ca20cbeef6acf5d8e3b856facd9a02c93fd84590a20ee47e52667b1ad",
+    "gun": "0cc00b7e016a750051a7a7da6eea6ed6768551b60dbafbfd9a58cd9fc4f5930f",
     "other": "c5403fb244689cd6b468c47b2e641f57dc4c5086271129259829101b98c2452d",
-    "gunTriangles": 994
+    "gunTriangles": 778
   }
 ];
 

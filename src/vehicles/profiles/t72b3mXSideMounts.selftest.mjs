@@ -135,7 +135,10 @@ function preserveNonTarget(tank,quality){
     if(process.env.COT_UPDATE_LEDGER==='1'){PRESERVED[quality][name]=geometryHash(m);continue;}
     assert.equal(geometryHash(m),expected,`unchanged pre-mount ${quality} ${name} geometry, ownership frame and native instance course`);
   }
-  if(quality==='low')preservationNegativeControls(meshes.get('mobileStaticBatch_0#0'));
+  // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback mouth is a
+  // flat ring + disc, so at low quality the lone Rim mesh no longer forms mobileStaticBatch_0 with a
+  // separate Annulus; the standalone Rim is the held-out physical non-paint mesh the control uses.
+  if(quality==='low')preservationNegativeControls(meshes.get('muzzleBoreShadowFallbackRim#0'));
 }
 
 function preservationNegativeControls(batch){
@@ -144,7 +147,7 @@ function preservationNegativeControls(batch){
   const changed=batch.clone();changed.geometry=batch.geometry.clone();
   try{
     const p=changed.geometry.attributes.position;p.setX(0,p.getX(0)+.001);
-    assert.notEqual(geometryHash(changed),PRESERVED.low['mobileStaticBatch_0#0'],
+    assert.notEqual(geometryHash(changed),PRESERVED.low['muzzleBoreShadowFallbackRim#0'],
       'a 1 mm physical-batch edit still fails the unchanged immutable hash');
   }finally{changed.geometry.dispose();}
 }

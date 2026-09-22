@@ -22,9 +22,13 @@ const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b)
 // no marking, batch, gear, material-bucket or spatial-envelope exclusion.
 // 2026-09-21 round 35 (camoWorldScale.ts): every hull projects camo at the fleet density, so the Mk5's rendered UV
 // channel no longer carries its authored 0.55 repeats/m; UV-only repin of both qualities, geometry unchanged.
+// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
+// that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3),
+// so the Mk5 scene lost its separate fallback Annulus mesh (one row, one geometry row) and its Rim
+// geometry changed. Superseded: high aec0172a… 77/44, low 9ec11861… 75/42.
 const MK5_BEFORE = {
-  high: ['aec0172a74799236a4a5ee6f46ce6084da46670009eb8bda91ffb71a2ea05be4', 77, 44],
-  low: ['9ec11861166f15c010b3812d3c7850635e03fd883899100412f03bcfffbb21a2', 75, 42],
+  high: ['ee2aceaa5619729ae16dd62d5b1646ace262e87cd4bb8847cd50d85cfc0536d8', 76, 43],
+  low: ['e3651c9946d951691a88ab5aa4ddba7042f5323c7fbeabb563cf8b6716076c3b', 75, 42],
 };
 // 2026-09-15 owner roster pass: the study is named 'Chieftain Mk 5' (no ' X' suffix); name-only repin.
 const MK5_SPEC = '56e6727221553aa2eda63da2ab9e13c3be0fe971487830059bf10d9d436e311e';
@@ -32,14 +36,19 @@ const MK5_DATUMS = '0faf866441b38be84cc3b9fa9065a11cce13ac3999c71445b840d5179d47
 // Separate pre-edit actual Mk10 evidence pins EVERY emission except the exact
 // hull/cast/horn/Stillbrew foundation scope. Thus copying the Mk5 projector,
 // 16 launcher mouths, other equipment, gun or gear cannot silently pass.
-const MK10_EMISSIONS = '9718ffa9e0b4fab65b7f9cd9ccfa3e95a153e86f481965a175662d4f3f6c52c8';
+// 2026-09-22 (owner: holes are added, not carved, to save triangles): the Mk10 emission list lost the
+// carved bore wall, ring and floor disc and gained the flat cap (superseded 9718ffa9…).
+const MK10_EMISSIONS = 'fe0dde177d0efd53e22aff75b4b8ffa58fb1954d529ef5d4f1376a6b2c55f95c';
 // 2026-09-11: the detail buckets now carry camouflage, so one more merged
 // mesh per quality is a paint-transformed bucket (36/34 -> 37/35).
 // 2026-09-21 round 35 (camoWorldScale.ts): the Mk10's painted meshes project camo at the fleet density instead of
 // the authored 0.55 repeats/m; UV-channel-only repin of both qualities, mesh count and geometry unchanged.
 const MK10_OTHER = {
-  high: ['5969a67caef671ce53761b01a0741458d2a98621bcb26931742474212a8c9c45', 37],
-  low: ['1f3f43505b7ee8308366a79e833bc6bd20430ad2aacb5ad24097036160984238', 35],
+  // 2026-09-22 (owner: holes are added, not carved, to save triangles): one fewer complete mesh per
+  // quality — the separate fallback Annulus is gone and the Rim geometry changed (superseded high
+  // 5969a67c…/37, low 1f3f4350…/35).
+  high: ['737641d9a685bb8103ec39a8bc37963f158bc96c432c93951834c664570a4324', 35],
+  low: ['7d8a47e92266cd76d9ba4b74aba0ea43895c21fa6b5b61b683a01e8a6d732d42', 34],
 };
 // Immutable pre-edit paint matrices from the same capture as MK10_OTHER.
 // A live marking solve follows the new casting. Reconstruct only authenticated
@@ -313,7 +322,10 @@ function unaffectedMeshes(root, paint) {
 
 function preservationNegativeControls(root, paint) {
   const physical = [];
-  root.traverse(m => { if (m.isMesh && m.name === 'mobileStaticBatch_0' && !paint.has(m)) physical.push(m); });
+  // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback mouth is a
+  // flat ring + disc, so the lone Rim no longer forms mobileStaticBatch_0 with a separate Annulus at low
+  // quality; the standalone fallback Rim is the held-out physical non-paint mesh when no batch exists.
+  root.traverse(m => { if (m.isMesh && (m.name === 'mobileStaticBatch_0' || m.name === 'muzzleBoreShadowFallbackRim') && !paint.has(m)) physical.push(m); });
   assert.ok(physical.length, 'the actual physical batch is still compared, despite its identical name');
   for (const m of physical) {
     assert.throws(() => paintGeometryShape(m, 8), assert.AssertionError,
@@ -470,7 +482,9 @@ for (const quality of ['high', 'low']) {
   warmedMk5Hash = afterOwnBuild;
   const { tank, emissions, stillbrew, casting } = measuredMk10(quality);
   try {
-    assert.equal(emissions.length, 668);
+    // 2026-09-22 (owner: holes are added, not carved, to save triangles): chieftain10XGun.ts replaced its
+    // carved bore wall, ring and floor disc (three emits) with one flat cap at the source mouth: 668 -> 666.
+    assert.equal(emissions.length, 666);
     assert.equal(hash(JSON.stringify(emissions)), MK10_EMISSIONS, 'every non-foundation emission preserved exactly');
     const paint = verifiedPaint(tank.root, quality, currentPaintMatrices);
     assert.deepEqual(unaffectedMeshes(tank.root, paint), MK10_OTHER[quality],
@@ -480,6 +494,6 @@ for (const quality of ['high', 'low']) {
     checkDatums(tank.root); sourceCasting(tank.root, casting); posedEquipment(tank.root);
     assert.equal(semantic(getSpec('chieftain5_x')), warmedMk5Hash,
       'Mk10 construction and articulation cannot mutate any complete warmed Mk5 metadata');
-    console.log(`chieftain10XMk5Foundation ${quality}: immutable Mk5, 668 unchanged Mk10 emissions, source datums/variant air/ownership PASS`);
+    console.log(`chieftain10XMk5Foundation ${quality}: immutable Mk5, 666 unchanged Mk10 emissions, source datums/variant air/ownership PASS`);
   } finally { tank.dispose(); stillbrew.forEach(s => s.geometry.dispose()); casting.forEach(g => g.dispose()); }
 }
