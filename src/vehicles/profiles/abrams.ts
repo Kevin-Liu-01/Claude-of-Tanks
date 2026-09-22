@@ -2167,7 +2167,7 @@ export function buildM1A1BareHull(builder: RuntimeValue, {
   const P = requireAbramsBuilder(builder);
   abramsHull(P, {
     ...TEJAS_HULL,
-    hollowRoadWheels: false, // wheel review 2026-09-13: the hollow paired wheel is the Tejas family's; this donor keeps its own solid stock
+    hollowRoadWheels: false, // the MBT-70 draws its nation wheel (Germany: the Leopard 2A6 X paired dish, owner 2026-09-22) into the envelope of this solid stock
     // This donor omits the exposed Tejas pod stage. The MBT-70 assembled
     // hull requires 150 mm travel; its lens then clears the bow by 7.7 mm.
     authoredBowLights: false,
@@ -10563,7 +10563,7 @@ function createM1A3BuildLayout() {
   });
   const g: AbramsHullConfig = {
     ...TEJAS_HULL,
-    hollowRoadWheels: false, // wheel review 2026-09-13: this variant keeps its own solid stock (the hollow paired wheel is the Tejas family's)
+    hollowRoadWheels: false, // the M1A3 hulls draw the Abrams hollow paired wheel through the nation standard (owner 2026-09-22); this solid stock only sizes the envelope
     // Exterior-to-aperture rays require 110 mm total forward travel: the
     // previous 55 mm seat still buried both lenses in the single-sided bow.
     // Move the whole pod/drum/guard; hull stock remains 12 mm behind the lens.

@@ -71,16 +71,19 @@ const ORIGINALS = {
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  t90sm: ['6b64deac194837dad7c669607da2b76d9173d9832aef289c9ed5c32581136cc9',
-    '29a493f15d88af986c8e34c96dcf77765a61c547fb52bb7152a3a50e263355ed'],
-  t90m: ['ea88f2446970cc2d69e03a2819536afb69bffcedd7c8ad0dd7fea5fb8529aef7',
-    '14578c924c2c7c05f6fc79839a4ce7c27b395ace8b4a3f0d3d3486766da3be2a'],
+// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): t90sm and t90m draw the T-90M X
+// source-pressed face and leo2a5 the Leopard 2A6 X paired dish through nationWheelConstructions.ts; their gear digests
+// are repinned from the current build. m1a2 is a donor (hollow paired wheel) and did not move.
+  t90sm: ['5fb3d7389255da3c1323e6244b93cb87889854f49d7b97847a0c862bb5748654',
+    'a7fdb47f83d8e5911a3548109b7eaa3a42ad695e754a8db6d59a612c6d556bc9'],
+  t90m: ['6462ad2d135bf45441747d9a6bf8b1121187f814d1bec02019e16e1946fd4dc7',
+    'fe08c18df120e0eb8ad8c54ad952923bcc88fe932c7f494443e411835fe2e485'],
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts) and lost
   // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
   m1a2: ['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253',
     '7e4c7a0ccc17f06eefc179b69122bde147a0c04f315a35c37b41551e34a4a0ca'],
-  leo2a5: ['30e0ab616b355cc8515bd454093d2f9ac5eb4f631c5d79048c281fb26c910f8b',
-    '7475bc40b7cc7082ced96e7bf09044629c219b9a0ea3d0de33b97b0f1ef3f30c'],
+  leo2a5: ['3688696444192a10414d195c85403643b9c3808c2f9755b2e6269542da609074',
+    '85c2d055c34ae88f721cde6fd198862aa575339839ddf16ae6cd1167059c5da2'],
 };
 for (const [id, hashes] of Object.entries(ORIGINALS)) {
   for (const [index, quality] of ['high', 'low'].entries()) {

@@ -22,7 +22,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { WheelPatternId } from './wheelPatterns.ts';
 
-export type WheelDonorId =
+type WheelDonorId =
   | 'ztz100_x' | 'type100'
   | 'merkava4b' | 'namer_ifv'
   | 'strv122' | 'cv90_mkiv_x'
@@ -51,7 +51,7 @@ export type WheelConstructionId =
   | 'kf51-forged-face' | 'leo2a6-paired-dish' | 'lynx-stamped-web'
   | 'abrams-hollow-paired' | 'sheridan-pressed-rim' | 'm60a3-cast-spoke';
 
-export interface NationWheelDonor {
+interface NationWheelDonor {
   readonly donor: WheelDonorId;
   /** Playable ids that draw this construction natively and keep their own wheel code. */
   readonly self: readonly string[];

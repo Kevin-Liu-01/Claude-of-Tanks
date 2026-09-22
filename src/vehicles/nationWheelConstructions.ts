@@ -34,8 +34,8 @@ import { WHEEL_PATTERN_DEFINITIONS, type WheelPattern, type WheelPatternId } fro
 import type { WheelConstructionId } from './nationWheelSets.ts';
 
 /** Which running-gear material an instanced face layer takes; the builder binds it to the hull's own paint. */
-export type NationWheelPaint = 'dish' | 'dark' | 'detail' | 'rubber';
-export type NationWheelRole = 'wheelDish' | 'wheelInset' | 'wheelTire';
+type NationWheelPaint = 'dish' | 'dark' | 'detail' | 'rubber';
+type NationWheelRole = 'wheelDish' | 'wheelInset' | 'wheelTire';
 
 export interface NationWheelLayer {
   geometry: THREE.BufferGeometry;
@@ -48,7 +48,7 @@ export interface NationWheelLayer {
   name: string;
 }
 
-export interface NationWheelBuildRequest {
+interface NationWheelBuildRequest {
   /** The consuming hull's own road-wheel radius. */
   radiusM: number;
   /** Full axial envelope the hull's legacy wheel occupied (tire faces, dish stack and dressing), metres. */
@@ -58,7 +58,7 @@ export interface NationWheelBuildRequest {
   segments: number;
 }
 
-export interface NationWheelBuild extends WheelGeometrySet {
+interface NationWheelBuild extends WheelGeometrySet {
   layers: NationWheelLayer[];
   /** Uniform scale applied to a native construction (1 for parametric ones). */
   radialScale: number;
@@ -154,7 +154,7 @@ function standardConstruction(patternId: WheelPatternId, dishR: number, style: s
 
 // ----------------------------------------------------------------------------------------------- China
 /** ZTZ-100 X source-only radial rays through Objects 7/17: raised hub, recessed web, curved rim shoulder. */
-export const ZTZ100_ROAD_WHEEL_SECTION: readonly AxialWheelStation[] = Object.freeze([
+const ZTZ100_ROAD_WHEEL_SECTION: readonly AxialWheelStation[] = Object.freeze([
   [.029, 0], [.16291, 0], [.16291, .059],
   [.124, .067], [.124, .097], [.04038, .100], [.04038, .140],
   [.05191, .160], [.06631, .180], [.08208, .200], [.09885, .220],
