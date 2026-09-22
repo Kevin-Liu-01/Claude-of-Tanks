@@ -26,15 +26,16 @@ const BEFORE={
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  t62mv1_x:['47d845aa2a0c77fec4ec5330170e6893bea4a2c12527085922cca80b9db2e528','238b729108e4eae4614778226048e15af72600e5a252c3ff5cf7b2d6898c606a'],
-  t72b_1987_x:['ed4a8cf86a78a3f0ce28a45670a2bcd1512a2d7f18995a2074f52aff7bcf04ee','38f936fbaca987bc3918769f50e2469b10f431702c204b1ba7cdfc1982f5ae9f'],
-  t80u_x:['87ae1d4c7acc3d44e0ff2ebd86b225ed6cfe1a16c4a89efc33a10e7076a4b42d','38a4263f9a079e0aeec3f8cba434c1cac5035d4d8c387bf3fdd83a3b16b7a8bf'],
-  t72b3_x:['8a54a51bb674b77ccfb6d5fd871e81fcaa8b1d23001dc6be936b13b6815b8592','731b086faafc78be4d9f22b4ed27bce810ec858dcbd03db8f0cffa7b56dc8bdc'],
-  t72b3m_x:['5ac0d58ebe41e13801ddf2164a05a066ba768eaf68ea60d054afa460472daa4b','534f0211f3222515ec77fbfb35342f636739189728976451c2ac4a3829b66d95'],
-  t72bu_x:['305b0a502518e2faae64e7333adc656fca841b9d3ae1d47d843bf143e10281eb','88d89942ca7f3d54cb1d7b1d10f51ea209090008069c0c4d18f89dadab8d81d0'],
-  t90_x:['ed620d3bdee13d8b32cca9ef604a6af10ad35d0d4191046811c97d155c03b437','f3d7bc237dac070ade76721dadfc112b1e55f8979a47b6b122494f6ed79cdb54'],
-  t90a_burlak_x:['dfdabaa3ed0cc155045885056979f4d1ed8d5a95ea638e349862de8c9c409342','d5a1b36b0bea4cffd50b3b33a05526d67f7fec2558c5b0254d6a0cc452300abb'],
-  t90ms_x:['78c13fb6705b07e4d121d647fbef9aceb0009640ab915b91120f334817270a9b','853c5ac6e5045222751832a6006a86fbc62d72af8cb2e4ee62e1020124a72fb0'],
+  // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: f1a5e7a1…, 710538b0…, 404cc34e…, 4d8e9366…, a86c1642…, 6be94995…, d2f3b206…, e1a6550a…, 9deecdf6…, 059e1473…, 11ae96b8…, c5ae7fae…, 1cac0fb2…, dfc34995…, 9d8f7729…, 51475080…, 33ccf93c…, 678a7053….
+  t62mv1_x:['caac1603c832728ce56a73791ed068ca1ee5ccea040962bb0329fc57663a15de','c147c551e07ab774077df711970865fc41229fc6172cdf1e9f4c6082676fa77a'],
+  t72b_1987_x:['2be209e75f3e2954bb7b5d1edcbe18b7916b5b95be35ab0f86f0b82fd372ebab' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'f3d4855bf3be2f95827cd1ff7580ffff58ee251cd872a72c74049747293319cb'],
+  t80u_x:['569b855c7e26a84ca9a518fd1f7300df759167fb3ea4c6aca1f853a090009319','166ad7f5bb7782abd516bdef4a6a25b0a27bb04f14d2f33b024f07ae0b09971f'],
+  t72b3_x:['0fa701c7d5487ce51ee828341368dec588a1eeea5126daa7a34a4048637cec21','dcd93a4f7792fef302117df9b91ceadb328dc961c847deaa24e845b87895081c'],
+  t72b3m_x:['9dcdf84f56698601915fe19bcf03141a1429dc5da947e8527ecdd545e6e987f1','4f395160a3afecbcd3b580bd5298b5eec053fe0da99cfb629b818a25df80a23c'],
+  t72bu_x:['22681affca70baa4c08f54b929859f52d9599fce61d8299876aacec4c0da0d5a','7bdd07c5e8297c2da20f7cb8670e4b4fe469b3996dd0dc7451aa3dcd6c7aee8d'],
+  t90_x:['cbe9ffeeb10f3ca6048657da91b6d9be373de16b16c38a68703664a60d8a2f61','280fb09a4a76f11ff829997b7a5e5dba8eb1e9d1311c6c6ba5ef9133d9781c2d'],
+  t90a_burlak_x:['a19ddae463c36c042b2763477f34f05d041a53e3f8dd3dee9c21255600298589','5b2d4b4b229b9b40c1148a5447000d4dc7b70c7f9aa85f94f972da5a9b991455'],
+  t90ms_x:['660b8021182151b235cfadf6242ba526551617b4a59c2455d175926f52ab9542','42fa2d9fe5900fe577617b7dae5ffc6355b5b16ad7088f053425a4508071b354'],
 };
 const EXPECTED_STATS={t62mv1_x:[8,9,9],t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
   t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],

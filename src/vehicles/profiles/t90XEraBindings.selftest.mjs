@@ -28,12 +28,13 @@ const BASELINES = {
     [203536,'9ee892f180732ebd7c32db69e0d3e720adec5dd780a3f81194df81461f39c955'],
   ],
   t90m_x: [
-    [288700,'267205c2c058a43f6e3b0dbf9dc2e5b50684819ac6173adbdb09c33d3745995f'],
-    [272572,'baa4ad4782a7bc4b21d91a7b5d3f5cb5dfcd17a247c3106abac1d1ec915e69e9'],
+    // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: af34269f…, 233176, df148cfa…, 217048, 267205c2…, 288700, baa4ad47…, 272572, ea948078…, 303370, d1d5ac2a…, 287242.
+    [288624,'e10add83d325ad09efe98b2eb058c32755ff063a1aac4419fe6d53c1b69cf378'],
+    [272496,'59a12dc567a8c22a02eae39bd528a91d1c2dddafcbe6e9cd7c793f4191784636'],
   ],
   t90sm_x: [
-    [303370,'ea94807824b81a7e6ac7a0d40341279907bc0e3c0e3477f459f0bd5980849beb'],
-    [287242,'d1d5ac2a188c279821defc2145406c32b98ec070ee5634cf20563fbb66b1061f'],
+    [303294,'585834dc6daae7f884baa7926655163802e9fa392d21e589aa95c9eacd4c5d3f'],
+    [287166,'7d6ace8d80b70fee6cda51b37766b1ae1b3821849e9044ba416f2ada990d1bb0'],
   ],
 };
 
@@ -47,8 +48,8 @@ const A_NON_GUN_BASELINES=[
 // Independently captured before the V repair, subtracting only the exact
 // two old guard solids (72 vertices), with multiplicity; no spatial mask.
 const V_NON_GUARD_BASELINES=[
-  [233176,'af34269fff612c23dd3740aa559a53b624683fb26cba3b67f00c6c1fc3d317ee'],
-  [217048,'df148cfaa939a5c8436f8ae49bc6e5e49643d6b3e95a8b5bf87081f8b6d6f323'],
+  [233100,'6c5c9122ce98d63c1532f02987626eb564aa8141db9d61c805e3b33ce20aaa41'],
+  [216972,'4ccb25335badaa9554f1ce86f730b676a9188dc30b766a5760d9e6f2b7b8ccc5'],
 ];
 
 function visible(object) {

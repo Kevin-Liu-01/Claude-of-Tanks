@@ -42,7 +42,8 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "cfde27adb54d6f27ecca5631591f11c3f4a14a6692ad352636001fa28df5502d",
+    // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: cfde27ad…, 7c92dda3…, bc10f342…, c011c167…, 422f024c…, 546b2eb7….
+    "sha256": "8b1de544c0a4b43ddcfe29789d13cf0c108b99916ac7791ad35e2bb7b7379550",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel (hollowRoadWheelStock.ts), lost the gear_wheelBayVoidDress blocks and carries generated interior fills; material-inclusive digest repinned from the current build"
   },
   {
@@ -57,7 +58,7 @@ const goldenReceipts = [
     },
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): strv103 draws the Sweden Strv 122 pressed-recess construction and the fleet arm seated against it; digest repinned from the current build",
-    "sha256": "bcfb9f40763235c1e60557256015ab410f861949b632ea72642a34091ea016c3"
+    "sha256": "08ea1ea9edd79b5ba11dab575807142115b454bc49bb7a1f029635402302914a"
   },
   {
     "id": "m1a1",
@@ -69,7 +70,7 @@ const goldenReceipts = [
       "decor": true,
       "geometryQuality": "low"
     },
-    "sha256": "bc10f342a2adbef2bc0eef14de61b5331868b63c449f316b0c9e828adb4ebdd0",
+    "sha256": "44bcca7c74d04a9d489708929347fcc4c3f59e92f93177a776f86399aa741e29",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
@@ -83,7 +84,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "c011c167308104556c0a2201c1239470d4741972a54106be9470c54fc2a1672f",
+    "sha256": "a96fd6b130dbb5ab05e423aad0e72884b6bae0c2f006c40588f1c6d0f6b4aaf3",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
@@ -100,7 +101,7 @@ const goldenReceipts = [
     },
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): merkava1b draws the Israel Merkava Mk 4B dished-face construction; digest repinned from the current build",
-    "sha256": "9a335e6eea318a651bb20c8d5fa7a1b025c3485858d4da437d493fcc70c875fd"
+    "sha256": "592e72686d47c04f6621b2da2ba0bf51244a07c6973a0a74ccb1926ca3b82c70"
   },
   {
     "id": "m1a1",
@@ -111,7 +112,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": false
     },
-    "sha256": "546b2eb70a9cceaa8b20d90c252ba54fbb95bc99d206ecb34897cc95ac851556",
+    "sha256": "ef7309e3d42b0282b17e615df8e044d6d12c9c0c0e831ec6c9d5a4b267cb8bc5",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   }
 ];

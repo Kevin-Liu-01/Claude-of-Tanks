@@ -19,8 +19,9 @@ const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
 // 2026-09-22 nation wheel standard: t62mv1_x draws the T-90 nation wheel, so the annular-opening inverse is gone; repinned.
-const BEFORE={high:'ad580b80f435a8dd79af020e5d791ca938df8958c4a01659310f4ea09ce5f54a',
-  low:'474f7afebfcd1542a0349a5fbf4f6ce3c94db067c8f72fcf31108a7c4438cee4'};
+// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 6662e0ea…, 3b6e3742….
+const BEFORE={high:'af33afecc24780a7836969fad69ff6bcf071030d9ad5e9961dc366f69b189f11',
+  low:'e88f6a2b8ce58f309bd5d9fcb8da562d45803490902fed3e5c30b0f421d7fd5f'};
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];

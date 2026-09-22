@@ -22,24 +22,25 @@ const BEFORE={
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
- 'k1a1_x/high':'30aa82a9fd33d17fc76d78848e073444dc5a929dae8c3ea52fa47a6ef0a682a2',
- 'k1a1_x/low':'eca098341dc4d54f721a2c7008fb97ca6fe3ef55a0a701b440dabedd01873cdf',
 // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): amx30_x draws the France AMX-40
 // pressed face and leclerc_classic_x the Leclerc XLR stepped plate (nationWheelConstructions.ts); repinned from the
 // current build (amx30_x now compares the plain model under the tint inverse, leclerc_classic_x after its gear inverse).
- 'amx30_x/high':'ac3bd76cb8525eda07bb375fee2d572139911268983088563c1fef5aa382d25c',
- 'amx30_x/low':'724598491f8aa53a65d01b56f3849eaf7bd0b008e4c9f44c7759f2711a6f33a4',
- 'leclerc_x/high':'e7726256b9af2d839f9f2be844f82cd78a2297ea56536771b04fe4f00561b9b9' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,
- 'leclerc_x/low':'a0fb42013e13c952782ef6b23894a76d1bdb3e279b1ab732661a71a5649e54f9',
- 'leclerc_classic_x/high':'f686ccd8cfbf25e81b6c907b833b9cfcafd4045a25f5dd846adad80e442d73ac',
- 'leclerc_classic_x/low':'a4f6b0e7bddd14967d93f136b914b277b3d1814ac60cc0ce9003d43eb361491f',
- 'type10_x/high':'69197b366a912f131133f639a22fc01e84db731f9fcb1aa9fc8414e1cce31f65',
- 'type10_x/low':'495de4a8430a99ff19442cc416575f768f9a45d729124bad3dfe4420a4c77f6a',
- 'type90_x/high':'3a9f7bcad8f737e4abd1f84faccfe37bc6bb327b73a48f4ce22dfab19d840844',
- 'type90_x/low':'9388e4c4adee95cd55edfe4e861f05261645af5d46f6349b0d31e2356f9e02d0',
+ // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 30aa82a9…, eca09834…, ce25b11c…, 5cf7c632…, e7726256…, a0fb4201…, 27509e55…, 97ce7d68…, 69197b36…, 495de4a8…, 3a9f7bca…, 9388e4c4…, 015d5a86…, 45a022cf….
+ 'k1a1_x/high':'d47d1178c38ef3f0c6de85610f6a0bc263ea22e3ef2ba6370244a52de1c391c2',
+ 'k1a1_x/low':'cd82b27062d81232cf381419058ea4e8599c54dd93395d96cdfc5554519dbb1f',
+ 'amx30_x/high':'273053ce3012f366b350e47bd52ef42a137ee4eae9f79221a5826e27b337f732',
+ 'amx30_x/low':'a28a50305d9d7be7dd5d5b150750e84a75d297735eb89959696bffbeb62dc27a',
+ 'leclerc_x/high':'c106a60485a54871b935564f0bdbc6f44b93a0774c5ad21d8c9ffee066b560e9' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,
+ 'leclerc_x/low':'31e260ab2fbd2826507803f76872a8fb50b5bc98af17487ba8c33a983bfc6d52',
+ 'leclerc_classic_x/high':'a580b663695b72e787872324d1ae935517d7de420c5cf9d063a39c7882e896d7',
+ 'leclerc_classic_x/low':'ae669948d8725dc26823b2e5f95bc82b92f83cab5f1b58e5a8bb1d0a27571a7f',
+ 'type10_x/high':'4bce8096d5f075a1c3c2b730e37fed588eb12d8d46a6f337b30c977967910bdb',
+ 'type10_x/low':'0faf4a67ec17735765d6b9234e757e01c69d1ce9530915b4dfe332f7f19d5e14',
+ 'type90_x/high':'49d70dd6a258dc01f799136010b64fc356ed0e2679077b06ca94ebe9ff1f0bd4',
+ 'type90_x/low':'14cb55951f5f5d3bf6917dc1e946412c8afe7ada12d513dcfa101cb04f30411d',
  // 2026-09-12 (evening): AMX-40 X .024 band + botY .050 contact fix; native fingerprints repinned.
- 'amx40_x/high':'015d5a8655da6f8ae88582d2ea780fb32c59349d805ead62147c6c07aa9847a0',
- 'amx40_x/low':'45a022cf8cd06c6c772acd97a94f4fba838354c875c3ebdb53f991ab7af07864',
+ 'amx40_x/high':'8d94146c9c71d76c2a131530ba4f4f83b9df3ff6cf9551d2c179e954d2e2d157',
+ 'amx40_x/low':'a39e178fe31a9be5b57b09ede3d618aa390be38cf64477147365cd5be0e0f787',
 };
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);
