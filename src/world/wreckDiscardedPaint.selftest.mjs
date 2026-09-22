@@ -15,7 +15,8 @@ const loader = registerHooks({ load(url, context, nextLoad) {
   if (url !== target) return loaded;
   const source = loaded.source.toString();
   const gate = 'if (!geometryOnly && CAMO_BUCKETS.has(bucket)) {';
-  const paint = '      boxUV(merged, spec.visual.camoScale ?? 0.34);';
+  // round 35 (2026-09-21): the bucket painter projects at the fleet constant (camoWorldScale.ts)
+  const paint = '      boxUV(merged, CAMO_UV_REPEATS_PER_M);';
   assert.equal(source.split(gate).length, 2, 'one production non-rendering paint gate');
   assert.equal(source.split(paint).length, 2, 'observe the actual bucket painter');
   hooks++;

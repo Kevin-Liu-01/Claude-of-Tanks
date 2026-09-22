@@ -2,6 +2,7 @@
 // No source mesh connectivity, buffers, textures or loaders are used here.
 import * as THREE from 'three';
 import { boxUV } from '../factoryGeometry.ts';
+import { CAMO_UV_REPEATS_PER_M } from '../camoWorldScale.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 
@@ -13,7 +14,7 @@ function addPart(P: TankBuilderPort, owner: 'hull' | 'turret', name: string,
   // Fixed steel service covers share the body finish; separate optics and
   // hoist fittings retain their own equipment paint.
   const paintedCover = owner === 'hull' && (name === 'ServiceCoverRight' || name === 'ServiceCoverLeft');
-  if (paintedCover) boxUV(geometry, P.spec.visual.camoScale ?? .34);
+  if (paintedCover) boxUV(geometry, CAMO_UV_REPEATS_PER_M); // round 35: fleet camo density
   const mesh = new THREE.Mesh(geometry, paintedCover ? P.mats.hull : P.mats.detail);
   mesh.name = `leo2a5_xSourceFixture_${name}`;
   mesh.position.copy(parent.position).multiplyScalar(-1);

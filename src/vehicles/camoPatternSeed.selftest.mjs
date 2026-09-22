@@ -33,4 +33,10 @@ const paintCalls = source.match(/paintCamo\([^;]*\);/g) || [];
 assert.ok(paintCalls.length >= 2, `paintCamo call sites (${paintCalls.length})`);
 for (const call of paintCalls) assert.match(call, /mulberry32\(camoPatternStreamSeed\(/, `pattern-keyed stream: ${call}`);
 assert.ok(!/paintCamo\([^;]*entry\.seed \^/.test(source), 'no paint call mixes the hull texture seed into the pattern stream');
+// Round 35: the FIRST bake (materialPainter.bakeBaseSteps) paints from the same stream — the request carries it
+assert.match(source, /camoStreamSeed: camoPatternStreamSeed\(vis, camoPatternIdHash\(entry\.patternId\)\)/,
+  'the shared paint request carries the pattern stream seed');
+const painterSource = readFileSync(fileURLToPath(new URL('./materialPainter.ts', import.meta.url)), 'utf8');
+assert.match(painterSource, /request\.camoStreamSeed != null \? mulberry32\(request\.camoStreamSeed\) : rng/,
+  'bakeBaseSteps paints the camo from the pattern stream when the request carries one');
 console.log('camoPatternSeed.selftest: shared patterns paint from one hull-independent stream');

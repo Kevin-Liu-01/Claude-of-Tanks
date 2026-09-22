@@ -21,6 +21,7 @@ import {
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
+import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
@@ -9451,7 +9452,7 @@ function measurePresentationFloor(root: THREE.Object3D): number | null {
  * Geometry receipts and static world-wreck bakes share this adapter; only the
  * former enables P.geometryReceipt and its additional metrology bookkeeping.
  */
-function createNonRenderingTankMaterials(camoUvScale = 0.34): TankMaterials {
+function createNonRenderingTankMaterials(camoUvScale = CAMO_UV_REPEATS_PER_M): TankMaterials {
   const owned: Array<THREE.Material | THREE.Texture> = [];
   const make = (
     color: THREE.ColorRepresentation,
@@ -10413,7 +10414,7 @@ function* createTankOwnedSteps(
   const coreMaterialsStartedAt = performance.now();
   const mats: TankMaterials = usesSharedMaterialTextures
     ? createTankMaterials(spec, engineCtx, camoSeed, quality, camoPattern)
-    : createNonRenderingTankMaterials(spec.visual.camoScale ?? 0.34);
+    : createNonRenderingTankMaterials();
   const coreMaterialsFinishedAt = performance.now();
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
@@ -11243,7 +11244,10 @@ function* createTankOwnedSteps(
     // Static wrecks replace both UVs and vertex colors in their final bake;
     // keep the rendered/inspection path unchanged.
     if (!geometryOnly && CAMO_BUCKETS.has(bucket)) {
-      boxUV(merged, spec.visual.camoScale ?? 0.34);
+      // Round 35 (owner 2026-09-21: "the look of identical camos looks completely different if you switch between
+      // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
+      // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
+      boxUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }

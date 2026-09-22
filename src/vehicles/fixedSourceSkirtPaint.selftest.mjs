@@ -5,6 +5,7 @@ import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
 import {FIXED_SOURCE_SKIRTS,verifyHistoricalFixedSkirtSource,withHistoricalFixedSkirtFinish} from './fixedSourceSkirtPaint.test-support.mjs';
+import {CAMO_UV_REPEATS_PER_M} from './camoWorldScale.ts';
 
 const changed=new Set(['hullRubber','hullFixedPaintedBodywork']);
 function geometryHash(g){const h=createHash('sha256');
@@ -23,7 +24,8 @@ function paint(tank,id){const skin=tank.root.getObjectByName('hullFixedPaintedBo
   assert.equal(skin.parent.name,'rig_hull','retains the previous rubber skin full-distance coverage');
   assert.equal(skin.userData.combatHitboxRole,'nonArmor');assert.equal(skin.userData.appearanceRole,'armorPaint');
   assert.equal(skin.userData.materialOnlyPaintSourceBucket,'hullRubber');assert.equal(skin.userData.materialOnlyPaintMigration,true);
-  const p=skin.geometry.attributes.position,n=skin.geometry.attributes.normal,uv=skin.geometry.attributes.uv,scale=getSpec(id).visual.camoScale??.34;
+  // round 35 (2026-09-21): every hull projects camo at the fleet constant; the authored camoScale is a recipe knob now
+  const p=skin.geometry.attributes.position,n=skin.geometry.attributes.normal,uv=skin.geometry.attributes.uv,scale=CAMO_UV_REPEATS_PER_M;
   for(let i=0;i<p.count;i++){const nx=Math.abs(n.getX(i)),ny=Math.abs(n.getY(i)),nz=Math.abs(n.getZ(i));
     const u=ny>=nx&&ny>=nz?p.getX(i):nx>=nz?p.getZ(i):p.getX(i),v=ny>=nx&&ny>=nz?p.getZ(i):p.getY(i);
     assert.equal(uv.getX(i),Math.fround(u*scale));assert.equal(uv.getY(i),Math.fround(v*scale));}

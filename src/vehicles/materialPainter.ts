@@ -2,6 +2,7 @@
 // off-thread prebakes. No Three.js, fleet, DOM creation, or quality policy at import.
 import { paintBrandCamo } from './brandCamoPainter.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
+import { camoPatchWorldScale } from './camoWorldScale.ts';
 import type { CustomCamoStroke } from './camoPolicy.ts';
 
 export type MaterialCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -14,6 +15,9 @@ export interface MaterialVisual {
   base: string;
   weather?: string;
   patches?: string[];
+  /** Pattern density the recipe was authored at (repeats per metre). Round 35: a PATTERN knob — above the fleet
+   * reference (CAMO_UV_REPEATS_PER_M) it paints proportionally smaller patches on the fixed 2 m tile; it never
+   * changes how a hull projects the tile. */
   camoScale?: number;
   plateLines?: boolean;
   zimmerit?: boolean;
@@ -74,6 +78,9 @@ export interface MaterialBasePaintRequest {
   seed: number;
   dimensions: { albedo: number; map: number };
   plateLines: boolean;
+  /** Round 35: the hull-independent stream the camo pattern paints from (materials.camoPatternStreamSeed), so the
+   * first bake of a pattern is byte-identical to every later repaint of it on any hull. Absent: legacy hull stream. */
+  camoStreamSeed?: number;
 }
 
 interface MaterialBasePaintEntry<C extends MaterialCanvas> {
@@ -519,15 +526,14 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     const weather = hexToRgb(visual.weather || visual.base);
     const patches = (visual.patches || []).map(hexToRgb);
 
-    // World-size normalization (r7): camoScale is UV repeats per meter (boxUV
-    // in tankFactory), so a tank at the 0.34 default spreads one tile over ~3 m
-    // and reference-size patches balloon past the hull flank height — desert /
-    // summer mushed into a near-uniform tint wash on the T-34. `wk` rescales
-    // patch geometry so patches cover the SAME world meters everywhere
-    // (authored against the 0.5 repeats/m reference; capped at 1 so the
-    // hand-tuned 0.55/0.6 tanks keep their look), and `nK` adds patches back as
-    // they shrink so coverage density stays constant.
-    const wk = Math.min(1, (visual.camoScale != null ? visual.camoScale : 0.34) / 0.5);
+    // World-size normalization. Round 35 (owner 2026-09-21: "the look of identical camos looks completely
+    // different if you switch between tanks"): every hull projects this tile at the fleet density
+    // (CAMO_UV_REPEATS_PER_M), so one tile always spans CAMO_TILE_SPAN_M (2 m) of armour and every `S * k` shape
+    // below is a fixed world size on every vehicle. camoScale is now the RECIPE's density: `wk` shrinks patch
+    // geometry for recipes authored denser than the reference (0.55-0.72 fleet paints keep the look they had when
+    // their hulls projected them denser; at or below the reference wk = 1), and `nK` adds patches back as they
+    // shrink so coverage density stays constant.
+    const wk = camoPatchWorldScale(visual.camoScale);
     const nK = Math.min(2.2, 1 / (wk * wk));
 
     ctx.fillStyle = rgb(base);
@@ -869,7 +875,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       const darkHC = dark;
       const paleHC = pale;
       // patch geometry rides wk/nK so the 3-tone shapes stay hull-scale on
-      // every tank (r7: on the T-34 the tile spans ~3 m and single patches
+      // every tank (r7, before the fixed 2 m tile: on the T-34 the tile spanned ~3 m and single patches
       // swallowed the whole flank -> flat tan wash)
       // camo r2 edge treatment: the large/mid desert patches are SPRAYED, not
       // masked — polyPath2D edgeNoise wanders their facets ~2-4 px like the
@@ -1140,8 +1146,9 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       //      keeps the field from reading as clean vector blobs.
       // Pixel pitch is ~2x the old cell (48/64 vs 96/128 cells per tile) so
       // the steps survive mipping at pedestal distance. Cell math: one repeat
-      // tile spans 1/camoScale meters; cells scale with wk to hold world size
-      // across tanks, and digitalCellK (palette knob) still scales the pitch.
+      // tile spans CAMO_TILE_SPAN_M metres on every hull (round 35); cells scale
+      // with wk so a denser recipe keeps its finer pitch, and digitalCellK
+      // (palette knob) still scales the pitch.
       const cellK = Math.max(1, visual.digitalCellK || 1);
       const cells = Math.max(Math.round(48 / cellK),
         Math.round(64 / (Math.max(wk, 0.5) * cellK)));
@@ -3565,7 +3572,10 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       entry.feats.vLines = [];
     }
     entry.camoCanvas.width = entry.camoCanvas.height = sz.albedo;
-    paintCamo(entry.camoCanvas, vis, rng, entry.feats, seed);
+    // Round 35: the pattern paints from its own hull-independent stream (the one every repaint uses); the hull
+    // stream keeps owning the feature plan, height and roughness maps.
+    const camoRng = request.camoStreamSeed != null ? mulberry32(request.camoStreamSeed) : rng;
+    paintCamo(entry.camoCanvas, vis, camoRng, entry.feats, seed);
     yield;
     exposureTrim(entry.camoCanvas);
     yield;

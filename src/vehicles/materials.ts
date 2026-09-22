@@ -24,6 +24,7 @@ import { factoryCamoPatternIdFor,
 } from './camoPolicy.ts';
 import type { CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
+import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
 import {
   canPaintMaterialBaseInWorker, tryPaintMaterialBase,
@@ -529,6 +530,9 @@ function sharedMaterialPaintRequest(
   return {
     visual: vis, seed, dimensions: sz,
     plateLines: vis.plateLines !== false && spec.visual.plateLines !== false,
+    // Round 35: the first bake paints the pattern from the same hull-independent stream every later repaint uses,
+    // so a shared preset lays out identically on every hull from the very first frame it is shown.
+    camoStreamSeed: camoPatternStreamSeed(vis, camoPatternIdHash(entry.patternId)),
   };
 }
 
@@ -1376,6 +1380,12 @@ function applySharedCamoVisual(
  */
 /** Round 32: the noise stream a camo pattern paints with — keyed by the visible recipe and the pattern id, never the
  * hull, so a shared preset lays out identically on every vehicle and re-bakes are byte-comparable. */
+export function camoPatternIdHash(patternId: string): number {
+  let h = 0;
+  for (const ch of patternId) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return h;
+}
+
 export function camoPatternStreamSeed(visual: MaterialVisual, patternHash: number): number {
   const recipe = `${visual.scheme || 'solid'}|${visual.base}|${visual.weather}|${(visual.patches || []).join(',')}|${visual.camoScale ?? ''}`;
   let h = 0x2c1b3c6d ^ (patternHash | 0);
@@ -1388,6 +1398,12 @@ function factoryVisual(spec: MaterialTankSpec, authored: MaterialVisual): Materi
   const patternId = factoryCamoPatternIdFor(spec.nation, spec.era);
   return patternId ? applySharedCamoVisual(authored, patternId) || authored : authored;
 }
+
+const NEUTRAL_PATTERN_MORPHOLOGY: Readonly<Pick<MaterialVisual,
+  'camoScale' | 'patchK' | 'digitalCellK' | 'solidWeatheringIntensity' | 'bandAngle' | 'blackK' | 'rainK'>> = Object.freeze({
+  camoScale: undefined, patchK: undefined, digitalCellK: undefined, solidWeatheringIntensity: undefined,
+  bandAngle: undefined, blackK: undefined, rainK: undefined,
+});
 
 function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): MaterialVisual {
   const v = spec.visual || { base: '#5a6b46', weather: '#6f7d55', scheme: 'solid', patches: [] };
@@ -1806,7 +1822,10 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
   };
   if (!o) selectHistoricalPattern();
   const selected = o as Partial<MaterialVisual> | null;
-  return selected ? { ...v, ...selected } : v;
+  // Round 35 (owner 2026-09-21): a built-in pattern's morphology belongs to the pattern, never to the hull it is
+  // worn on — the same reset the shared presets get in applySharedCamoVisual. Hull-relative COLOUR (winter
+  // whitewash over the authored coat) still follows the hull; patch density, cell pitch and band knobs do not.
+  return selected ? { ...v, ...NEUTRAL_PATTERN_MORPHOLOGY, ...selected } : v;
 }
 
 /** Resolved visual (spec.visual with the active pattern applied). */
@@ -1878,8 +1897,7 @@ function repaintEntry(entry: SharedTextureEntry, patternId: MaterialPatternId): 
   const vis = { ...patternVisual(entry.spec, patternId), modernWelds: isPostwarVehicleEra(entry.spec.era) };
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
   // welds and bolts aligned with the (unchanged) normal map.
-  let ph = 0;
-  for (const ch of patternId) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
+  const ph = camoPatternIdHash(patternId);
   entryPaintState(entry).revision++;
   // Round 32 (owner 2026-09-21: "when i switch tanks the camo seeding literally changes, which is wasteful"): the
   // pattern stream is keyed by the pattern alone, so one camo lays out identically on every hull.
@@ -2084,10 +2102,7 @@ async function repaintCamoEntryChunked(
     ...patternVisual(entry.spec, patternId),
     modernWelds: isPostwarVehicleEra(entry.spec.era),
   };
-  let patternHash = 0;
-  for (const character of patternId) {
-    patternHash = (patternHash * 31 + character.charCodeAt(0)) | 0;
-  }
+  const patternHash = camoPatternIdHash(patternId);
   const { feats, camoTex, roughTex } = entry;
   if (!feats || !camoTex || !roughTex) {
     throw new Error(`vehicle material cache entry ${entry.cacheKey} is incomplete`);
@@ -2776,13 +2791,15 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(trackR, 'trackBand', 'track-band-right');
 
   // Fittings are assembled after the material set is created, outside the
-  // main hull/turret merge that normally owns boxUV(). Publish the authored
+  // main hull/turret merge that normally owns boxUV(). Publish the fleet
   // repeats-per-metre density on every mapped paint material so a fitting can
   // project one continuous, physically scaled camouflage field over its
   // complete merged shell. Without this contract each primitive retained its
   // stock 0..1 UV island, squeezing the entire camouflage atlas onto every
-  // roof-tower plate, fork arm and bearing drum.
-  const camoUvScale = spec.visual.camoScale ?? 0.34;
+  // roof-tower plate, fork arm and bearing drum. Round 35: the density is the
+  // same constant every hull projects with (camoWorldScale.ts), so a pattern
+  // reads at one world size on hull, turret and fittings alike.
+  const camoUvScale = CAMO_UV_REPEATS_PER_M;
   for (const material of [hull, barrel]) {
     material.userData = {
       ...(material.userData || {}),

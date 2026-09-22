@@ -450,8 +450,9 @@ function queueExactCamoSwatch(
   paintCamoSwatchPlaceholder(canvas, spec, auto ? 'auto' : pid);
   scheduleCamoSwatchLoad(false).then((loaded) => {
     if (!loaded || camoSwatchPaintVersion.get(canvas) !== version) return;
-    if (auto) loaded.paintAutoCamoSwatch(canvas, spec);
-    else loaded.paintCamoSwatch(canvas, spec, pid);
+    // Round 35: the exact swatch is a crop of the REAL pattern tile (4.5 ms a cold tile); resident recipes paint
+    // at once, cold ones drain under the painter's per-frame budget so opening the picker never stalls.
+    loaded.queueCamoSwatch(canvas, spec, pid, auto);
   }).catch(() => { /* placeholder remains; the next intent retries */ });
 }
 

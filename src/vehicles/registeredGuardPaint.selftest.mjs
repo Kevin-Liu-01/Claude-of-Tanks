@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {createTank} from './tankFactory.ts';
 import {TANK_SPECS} from './specs.ts';
+import {CAMO_UV_REPEATS_PER_M} from './camoWorldScale.ts';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildLeopard2A6X} from './profiles/leopardA6X.ts';
 import {buildLeclercX} from './profiles/leclercX.ts';
@@ -66,7 +67,7 @@ function paint(tank,prior){const o=tank.root.getObjectByName('hullPaintedDetail'
  assert.equal(o.parent.parent.name,'rig_hull');assert.deepEqual(o.parent.levels.map(l=>l.distance),prior.parent.levels.map(l=>l.distance));
  const uv=o.geometry.attributes.uv,p=o.geometry.attributes.position,n=o.geometry.attributes.normal;
  assert.ok(uv&&Array.from(uv.array).every(Number.isFinite));
- const scale=TANK_SPECS[tank.root.name.slice(5)].visual.camoScale??.34,us=new Set(),vs=new Set();
+ const scale=CAMO_UV_REPEATS_PER_M,us=new Set(),vs=new Set(); // round 35 (2026-09-21): fleet camo density, not the hull's authored scale
  for(let i=0;i<p.count;i++){const nx=Math.abs(n.getX(i)),ny=Math.abs(n.getY(i)),nz=Math.abs(n.getZ(i));
   const u=ny>=nx&&ny>=nz?p.getX(i):nx>=nz?p.getZ(i):p.getX(i),v=ny>=nx&&ny>=nz?p.getZ(i):p.getY(i);
   assert.equal(uv.getX(i),Math.fround(u*scale),'exact spatial camouflage U');assert.equal(uv.getY(i),Math.fround(v*scale),'exact spatial camouflage V');

@@ -327,6 +327,24 @@ jittered 2×2 with alternating weight and a sprinkle of small marks at any angle
 every mark the complete official glyph wrapped across the tile seam
 (`src/vehicles/brandCamoPainter.ts`), laid out from the pattern-keyed camo
 stream so one seed reads the same on every hull.
+One pattern is one tile at one world size (round 35, 2026-09-21, owner: "fix
+our camos completely: the look of identical camos looks completely different if
+you switch between tanks"). Every hull, turret, gun and painted fitting projects
+the camouflage tile at the same box-UV density, `CAMO_UV_REPEATS_PER_M` = 0.5
+(`src/vehicles/camoWorldScale.ts`), so one repeat always spans 2 m of armour;
+before, each hull used its own authored `visual.camoScale` as the UV density and
+the same pattern's blotches differed up to 2.6x between vehicles (2.94 m tiles on
+the default hulls, 1.14 m on the densest). `camoScale` is now a property of the
+pattern recipe: above the reference it paints proportionally smaller patches, so
+the hand-tuned dense fleet paints keep their look, and built-in patterns reset
+every morphology knob the way shared presets already did (only Factory,
+Signature and nation-relative recipes such as summer/digital differ per
+vehicle). The first bake of a pattern paints from the same hull-independent
+stream as every repaint (`camoStreamSeed` on the paint request), and the Garage
+picker swatch is a crop of the REAL tile — the production painter at 256 px,
+the tile's middle 2 m x 0.69 m band at 2:1 — cached per recipe for the session
+and drained under a per-frame budget when cold (`src/ui/camoSwatchPainter.ts`;
+receipt `src/vehicles/camoWorldScale.selftest.mjs`).
 
 ## Multiplayer and persistent rooms
 

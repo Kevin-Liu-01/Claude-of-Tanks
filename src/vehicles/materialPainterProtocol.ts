@@ -8,6 +8,8 @@ export interface MaterialPainterRequest {
   seed: number;
   dimensions: MaterialPainterDimensions;
   plateLines: boolean;
+  /** Round 35: hull-independent camo pattern stream (see materialPainter.MaterialBasePaintRequest). */
+  camoStreamSeed?: number;
 }
 export interface MaterialPainterResult {
   identity: string;
@@ -51,6 +53,7 @@ export function isMaterialPainterRequest(value: RuntimeValue): value is Material
   if (!record(value) || !record(value.visual)) return false;
   return typeof value.identity === 'string' && value.identity.length > 0 && value.identity.length <= 8192
     && typeof value.visual.base === 'string' && finite(value.seed)
+    && (value.camoStreamSeed === undefined || finite(value.camoStreamSeed))
     && typeof value.plateLines === 'boolean' && dimensions(value.dimensions)
     && finiteTree(value.visual, 0, { left: 100_000 });
 }

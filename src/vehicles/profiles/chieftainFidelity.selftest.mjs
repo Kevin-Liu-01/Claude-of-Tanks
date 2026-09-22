@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { CAMO_UV_REPEATS_PER_M } from '../camoWorldScale.ts';
 
 const receipts = new Map();
 const turretHeights = new Map();
@@ -256,7 +257,8 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     `${id}: camouflaged storage boxes retain equipment hitbox semantics`);
   assert.equal(turretEquipment.material.userData.camoProjection, 'vehicle-scale-box-uv',
     `${id}: storage-box camouflage is projected continuously at vehicle scale`);
-  assert.equal(turretEquipment.material.userData.camoUvScale, 0.55,
+  // round 35 (2026-09-21): one fleet density for every hull (camoWorldScale.ts), no longer the authored 0.55
+  assert.equal(turretEquipment.material.userData.camoUvScale, CAMO_UV_REPEATS_PER_M,
     `${id}: storage-box camouflage uses the fleet-standard UV scale`);
   assert.equal(equipmentReceipt.sideBustleBaskets, 2,
     `${id}: open side bustle baskets retained`);

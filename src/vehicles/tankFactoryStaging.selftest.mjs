@@ -55,7 +55,8 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "b9e7a116cd55062355dc675e8e5fcce7c4cfb3d5303bc55306e4dc205998e73f"
+    "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
+    "sha256": "7c92dda33919fa997bc9b7108366af0ccdecfda6e3e76064f235d5a23e84afec"
   },
   {
     "id": "m1a1",
@@ -96,7 +97,8 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "2fd9ed873269808dcf5b88ec0c31f8ab86287e985600727eabc3a1d43c2f0289"
+    "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
+    "sha256": "422f024c78d584f9d2f01a7bd73e0273a1ae30cb64c15523862347ad81affa4a"
   },
   {
     "id": "m1a1",

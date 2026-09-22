@@ -20,9 +20,11 @@ const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b)
 // Actual factory snapshots captured BEFORE the shared foundation edit. Full
 // scene attributes, indices, instances, hierarchy and local/world transforms;
 // no marking, batch, gear, material-bucket or spatial-envelope exclusion.
+// 2026-09-21 round 35 (camoWorldScale.ts): every hull projects camo at the fleet density, so the Mk5's rendered UV
+// channel no longer carries its authored 0.55 repeats/m; UV-only repin of both qualities, geometry unchanged.
 const MK5_BEFORE = {
-  high: ['5e91827a169fc9436b658417fffd6dca4261af185e8aea26667653f4e80b3990', 77, 44],
-  low: ['7f8efbed6de4c309d06ea5f729c64ecdd7c9ed6508c54d460b57834b8dbecf8e', 75, 42],
+  high: ['aec0172a74799236a4a5ee6f46ce6084da46670009eb8bda91ffb71a2ea05be4', 77, 44],
+  low: ['9ec11861166f15c010b3812d3c7850635e03fd883899100412f03bcfffbb21a2', 75, 42],
 };
 // 2026-09-15 owner roster pass: the study is named 'Chieftain Mk 5' (no ' X' suffix); name-only repin.
 const MK5_SPEC = '56e6727221553aa2eda63da2ab9e13c3be0fe971487830059bf10d9d436e311e';
@@ -33,9 +35,11 @@ const MK5_DATUMS = '0faf866441b38be84cc3b9fa9065a11cce13ac3999c71445b840d5179d47
 const MK10_EMISSIONS = '9718ffa9e0b4fab65b7f9cd9ccfa3e95a153e86f481965a175662d4f3f6c52c8';
 // 2026-09-11: the detail buckets now carry camouflage, so one more merged
 // mesh per quality is a paint-transformed bucket (36/34 -> 37/35).
+// 2026-09-21 round 35 (camoWorldScale.ts): the Mk10's painted meshes project camo at the fleet density instead of
+// the authored 0.55 repeats/m; UV-channel-only repin of both qualities, mesh count and geometry unchanged.
 const MK10_OTHER = {
-  high: ['aa76d6c1ba6fa5f86829834faab49796bbb7dbf2cb0f4392ede42be519b4d3f6', 37],
-  low: ['bc054c76609943579546a21447040a542eeec1148c1f7f2ed44b0292d7f6b78d', 35],
+  high: ['5969a67caef671ce53761b01a0741458d2a98621bcb26931742474212a8c9c45', 37],
+  low: ['1f3f43505b7ee8308366a79e833bc6bd20430ad2aacb5ad24097036160984238', 35],
 };
 // Immutable pre-edit paint matrices from the same capture as MK10_OTHER.
 // A live marking solve follows the new casting. Reconstruct only authenticated
