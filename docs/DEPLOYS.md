@@ -84,3 +84,4 @@ quickest proof that the live site is the gate build.
 | 50 | 2026-09-21 16:45 | cd7164da8 | Turretless tanks aim as one sight, Turbo Ball shows unlimited rounds, camo Factory returns with a deduplicated catalog, night horizons stop glowing, Redrock's outland gets rocks | main-CxECc2CL.js | claude-of-tanks-lag2owsbf |
 | 51 | 2026-09-21 17:22 | 990966c05 | OpenAI, X and Gemini camos scatter like Claude; the HUD consumable tray keeps its cooldown writes retained (PR #8) | main-CpZILhQ1.js | claude-of-tanks-cn6pzwx68 |
 | 52 | 2026-09-21 18:17 | c4a8d7b4a | Parallel-session fleet work since deploy 51: revise Korean lineup and XK2 turret | main-D8BaZJiA.js | claude-of-tanks-7eyvto6lp |
+| 53 | 2026-09-21 19:13 | d0cbb9fcd | Fixed hydraulic guns spawn aiming, the CV90s are gated against their real references, and the E100 and AMX 56 tracks run clear of the hull | main-B7mSrpyu.js | claude-of-tanks-d4nbu1zre |
