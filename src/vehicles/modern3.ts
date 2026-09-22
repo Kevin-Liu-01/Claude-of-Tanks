@@ -4596,27 +4596,31 @@ function orientedSlab(
 
 // ---------------------------------------------------------------------------
 // §B3.1 MUZZLE BORE (owner directive 2026-08-06: "make tips of guns have
-// holes"): open-ended outer wall carries the last ~4cm of the tube/brake to
-// the face, an inward-facing recess funnel (mirrored winding) lines it, and
-// a near-black bore disc plugs the throat ~3cm inside — end-on reads as a
-// drilled bore, side/plan masks unchanged (all interior to the silhouette),
-// no see-through (§B2: the disc + the caller's own capped body close it).
-// Callers end their capped tube/brake body ~4.2cm short of faceZ. rearR
-// lets tapered tips (flash hiders) continue their cone through the wall.
+// holes"): the open-ended outer wall carries the last ~4cm of the tube/brake
+// to the face and one flat dark cap closes it just behind the marker. The
+// visible dark mouth is the factory's universal fallback assembly (rim,
+// annulus, disc), which seats on that cap; it used to sit on top of a
+// carved recess (inward funnel, finish torus and a disc 3cm inside — 24·seg
+// triangles) that it occluded almost entirely. Owner 2026-09-22: "the point
+// of adding holes instead of carving them into the barrel is that we save
+// on triangles" — the helper now costs 3·seg. Side/plan masks unchanged
+// (all interior to the silhouette), no see-through (the cap and the
+// caller's own capped body close the collar). Callers end their capped
+// tube/brake body ~4.2cm short of faceZ. rearR lets tapered tips (flash
+// hiders) continue their cone through the wall; boreR documents the true
+// caliber at the call site (the fallback disc is sized from the spec).
 // ---------------------------------------------------------------------------
 function muzzleBore(
   P: Modern3BuilderPort,
   faceZ: number,
   R: number,
-  boreR: number,
+  _boreR: number,
   seg = 14,
   rearR?: number,
 ) {
-  const { cylY, cylZ, torus, xform } = KIT;
+  const { cylY, xform } = KIT;
   P.add('gun', xform(cylY(R, rearR ?? R, 0.042, seg, true), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, faceZ - 0.021);
-  P.add('gunDark', scaledGeometryTransform(cylY(R - 0.003, boreR, 0.040, seg, true), 0, 0, 0, Math.PI / 2, 0, 0, [-1, 1, 1]), 0, 0, faceZ - 0.0215);
-  P.add('gun', torus(R - 0.002, 0.0045, seg), 0, 0, faceZ - 0.001, -Math.PI / 2, 0, 0);
-  P.add('gunDark', cylZ(boreR, 0.008, seg), 0, 0, faceZ - 0.034);
+  P.add('gunDark', new THREE.CircleGeometry(R - 0.001, seg), 0, 0, faceZ - 0.002);
 }
 
 // ================================== SPz Puma ================================

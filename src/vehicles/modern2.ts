@@ -1515,22 +1515,24 @@ function pocketPatch99(
 }
 
 // §B3.1 MUZZLE BORE (owner directive 2026-08-06) — same device as
-// modern3.ts muzzleBore: open outer wall to the face + inward-facing
-// recess funnel + near-black bore disc ~3cm inside; mask-neutral, no
-// see-through. Caller ends its capped tube ~4.2cm short of faceZ.
+// modern3.ts muzzleBore: the open outer wall carries the tube to the face
+// and one flat dark cap closes it; the factory's fallback assembly is the
+// visible dark mouth. Owner 2026-09-22: "the point of adding holes instead
+// of carving them into the barrel is that we save on triangles" — the former
+// inward funnel + finish torus + recessed disc (24·seg) is gone; 3·seg now.
+// Mask-neutral, no see-through. Caller ends its capped tube ~4.2cm short of
+// faceZ; boreR documents the true caliber at the call site.
 function muzzleBore99(
   P: Modern2BuilderPort,
   faceZ: number,
   R: number,
-  boreR: number,
+  _boreR: number,
   seg = 14,
   rearR?: number,
 ) {
-  const { cylY, cylZ, torus, xform } = KIT;
+  const { cylY, xform } = KIT;
   P.add('gun', xform(cylY(R, rearR ?? R, 0.042, seg, true), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, faceZ - 0.021);
-  P.add('gunDark', scaledGeometryTransform(cylY(R - 0.003, boreR, 0.040, seg, true), 0, 0, 0, Math.PI / 2, 0, 0, [-1, 1, 1]), 0, 0, faceZ - 0.0215);
-  P.add('gun', torus(R - 0.002, 0.0045, seg), 0, 0, faceZ - 0.001, -Math.PI / 2, 0, 0);
-  P.add('gunDark', cylZ(boreR, 0.008, seg), 0, 0, faceZ - 0.034);
+  P.add('gunDark', new THREE.CircleGeometry(R - 0.001, seg), 0, 0, faceZ - 0.002);
 }
 
 // ---------------------------------------------------------------------------
