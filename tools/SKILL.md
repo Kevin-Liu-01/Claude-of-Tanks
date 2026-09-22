@@ -92,6 +92,13 @@ build can leave lights and shadow maps enabled while omitting cascaded-shadow
 shader registration. Record actual material registration as well as camera,
 quality, fill and light state; distinguish this substitution from normal
 settings selection.
+For a Griffin Viper cable/garage change, run
+`griffin-viper-garage-probe.mjs --url=<built-game-url> --revision=<gated-sha> --out=<fresh-directory>`.
+It exercises normal carousel selection, live engine materials, static batching
+and cache return. Repeat against production after a manual deployment and inspect
+its screenshots. A pushed commit, gallery render or null-context factory build
+does not prove that the player's Garage is running the correction; retain the
+served version with the result. See `docs/DEPLOYS.md` for deployment ownership.
 Reference-backed new tanks and ground-up rebuilds must register the exemplar
 quality bar in `procedural-fidelity.html`: every whole silhouette view and the
 aggregate score must reach 92, not merely the legacy 90 fleet floor. Keep that

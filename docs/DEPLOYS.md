@@ -30,6 +30,26 @@ kl01s-projects` must list only the intentional deployments in this table.
 Bundle = the hashed entry chunk served by production after the deploy (`main-<hash>.js`), the
 quickest proof that the live site is the gate build.
 
+Garage visual fixes require a real Garage check against the production build,
+then against the production URL after deployment. Record the served
+`application-version`, selected vehicle, screenshot and receipt together. Do not
+report a fix as live based on `origin/main`, a gallery capture or an unbatched
+factory test. Refresh an already-open browser before checking a new deployment;
+its existing in-memory model belongs to the previously loaded release.
+
+For Griffin Viper, run the following before and after the manual deployment,
+using the exact gated commit and a fresh output directory each time:
+
+```sh
+node tools/griffin-viper-garage-probe.mjs --url=https://cot.kevinliu.studio \
+  --revision=<gated-commit> --out=/absolute/fresh-output
+```
+
+For the pre-deployment check, substitute the locally served production build URL.
+The probe rejects a stale/dirty release, selects the real carousel card, inspects
+the final batched hull cable and repeats after a cached tank switch. Keep the
+manual deployment policy above; enabling automatic deploys is not the remedy.
+
 | # | date (PDT) | head | title | bundle | deployment |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 2026-09-12 17:27 | fc74695d3 | frontline atmosphere owner beside the weather owner | — | — |
@@ -85,3 +105,4 @@ quickest proof that the live site is the gate build.
 | 51 | 2026-09-21 17:22 | 990966c05 | OpenAI, X and Gemini camos scatter like Claude; the HUD consumable tray keeps its cooldown writes retained (PR #8) | main-CpZILhQ1.js | claude-of-tanks-cn6pzwx68 |
 | 52 | 2026-09-21 18:17 | c4a8d7b4a | Parallel-session fleet work since deploy 51: revise Korean lineup and XK2 turret | main-D8BaZJiA.js | claude-of-tanks-7eyvto6lp |
 | 53 | 2026-09-21 19:13 | d0cbb9fcd | Fixed hydraulic guns spawn aiming, the CV90s are gated against their real references, and the E100 and AMX 56 tracks run clear of the hull | main-B7mSrpyu.js | claude-of-tanks-d4nbu1zre |
+| 54 | 2026-09-21 23:22 | 0460f8d33 | Griffin Viper tow cable seated against the hull; real Garage and cached return verified before and after deployment | main-DXwrJhdC.js | claude-of-tanks-jmrm5qgjy |

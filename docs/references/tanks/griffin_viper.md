@@ -42,3 +42,17 @@ Repair validation passed: targeted release gate (including full `npm test`:
 typecheck. Anatomy/marking receipts and module probes are current; the final
 fleet technical-image freshness check passes all 606 files. Only Viper's
 asset row and changed images are published with this repair.
+
+The repeated Garage report later that evening was reproduced on production
+`v1.0.0+gd0cbb9fcd`. That deployment predates repair `0460f8d33`; the fix was
+pushed but had not been manually deployed. `tools/griffin-viper-garage-probe.mjs`
+now binds the actual Garage check to the expected served revision and tests
+both initial selection and cached return with the final batched geometry.
+The former live revision is retained as a failing stale-release witness.
+
+Deployment 54 publishes the gated repair as `v1.0.0+g0460f8d33`, entry
+`main-DXwrJhdC.js`. Both the local production build and live Garage pass initial
+selection and cached return: the rendered steel cable spans 2.928 m fore-aft
+and retains the measured 4 mm clamp seating. The real Garage keeps its normal
+engine context, HIGH graphics setting, AI vehicle build and static-batch stage.
+No additional runtime geometry or frame work was introduced by this follow-up.

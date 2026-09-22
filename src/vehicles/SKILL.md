@@ -47,6 +47,12 @@ registration idempotent.
 surface seating. Keep decoration geometry merged by material and owner frame,
 retain the existing 4,200-triangle budget and 150 m LOD, and preserve the typed
 projected-ray index plus gun, turret-sweep, width, and overlap guards.
+For player-reported Garage defects, also verify the actual carousel/pedestal
+path with its live engine context, AI geometry quality, static batching and
+cache return. Bare procedural or Gallery captures are insufficient. Record
+the served `application-version`; `origin/main` is not automatically deployed.
+The Griffin Viper regression and manual publication check are documented in
+`tools/SKILL.md` and `docs/DEPLOYS.md`.
 Covered battle loading consumes `createTankSteps` through `fleetFactory.ts`;
 the original `createTank` remains synchronous for authoring and Gallery callers.
 Construction checkpoints expose no partial visual. Decoration work keeps its
