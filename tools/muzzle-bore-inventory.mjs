@@ -31,7 +31,10 @@ import * as THREE from 'three';
 import './tank-surface-collect.mjs'; // node canvas shim
 import { muzzleSeatAxialFit } from './muzzle-seat-policy.mjs';
 
-const args = process.argv.slice(2);
+import { pathToFileURL } from 'node:url';
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const args = isMain ? process.argv.slice(2) : [];
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
 
@@ -44,6 +47,8 @@ try { fills = await import('../src/vehicles/interiorFills.ts'); } catch { fills 
 const ids = flag('all') ? [...DEVELOPMENT_TANK_IDS] : opt('ids', 'm1a2,k2,kf41_lynx_x').split(',').map((s) => s.trim()).filter(Boolean);
 const qualities = opt('quality', 'high,low').split(',').map((s) => s.trim()).filter(Boolean);
 const debug = flag('debug');
+/** Methods that satisfy the owner's rule: the fallback assembly alone, or a declared, ray-verified physical bore. */
+export const ALLOWED_BORE_METHODS = Object.freeze(['fallback-only', 'physical-declared', 'none']);
 
 const FALLBACK_GROUP = /^muzzleBoreShadowFallback(?:_\d+)?$/;
 const FALLBACK_PART = /^muzzleBoreShadowFallback(Rim|Throat|Annulus|Disc)(?:_\d+)?$/;
@@ -90,7 +95,7 @@ function forEachTriangle(mesh, toFrame, callback) {
 }
 
 /** Mouth measurements for one built tank. */
-function inventoryOne(id, quality) {
+export function inventoryOne(id, quality) {
   const spec = getSpec(id);
   const expectedBores = expectedMuzzleBoreCount(spec);
   const visual = createTank(id, null, {
@@ -184,11 +189,12 @@ function inventoryOne(id, quality) {
     const zMax = 0.02;
     const zMin = -((Number.isFinite(deepestM) ? deepestM : 0.045) + 0.03);
     const rWin = mouthR * 1.3, rSkinMin = mouthR * 0.8, rCenter = mouthR * 0.15, lipBand = 0.012;
-    const recess = { carvedTris: 0, capTris: 0, floorTris: 0, wallTris: 0, ringTris: 0, lipTris: 0, skinTris: 0, darkTris: 0, depthM, deepestM, depths, byMesh: {} };
+    const recess = { recessed: false, carvedTris: 0, nonSkinTris: 0, inwardWallTris: 0, capTris: 0, floorTris: 0, wallTris: 0, ringTris: 0, lipTris: 0, skinTris: 0, darkTris: 0, depthM, deepestM, depths, byMesh: {} };
     const skinRing = []; // [z, angle, radius] of outward skin vertices near the mouth, for the segment estimate
+    let inwardZLo = Infinity, inwardZHi = -Infinity; // axial extent of inward-facing wall stock
     for (const mesh of barrelMeshes) {
       const dark = /Dark$/.test(mesh.name);
-      const tally = recess.byMesh[mesh.name] || (recess.byMesh[mesh.name] = { cap: 0, floor: 0, wall: 0, ring: 0, lip: 0, skin: 0 });
+      const tally = recess.byMesh[mesh.name] || (recess.byMesh[mesh.name] = { cap: 0, floor: 0, wall: 0, inward: 0, ring: 0, lip: 0, skin: 0 });
       forEachTriangle(mesh, toMuzzle, (a, b, c) => {
         const ra = Math.hypot(a.x - bx, a.y - by), rb = Math.hypot(b.x - bx, b.y - by), rc = Math.hypot(c.x - bx, c.y - by);
         const zLo = Math.min(a.z, b.z, c.z), zHi = Math.max(a.z, b.z, c.z);
@@ -211,13 +217,33 @@ function inventoryOne(id, quality) {
         }
         if (dark) recess.darkTris++;
         if (axial && rMin < rCenter && -zMid <= CAP_MAX_DEPTH_M + 0.004) { recess.capTris++; tally.cap++; return; } // ordinary tube cap
-        recess.carvedTris++;
+        recess.nonSkinTris++;
         if (lip) { recess.lipTris++; tally.lip++; }
         else if (axial && rMin < rCenter) { recess.floorTris++; tally.floor++; }
         else if (axial) { recess.ringTris++; tally.ring++; }
-        else { recess.wallTris++; tally.wall++; }
+        else {
+          recess.wallTris++; tally.wall++;
+          // Bore walls and recess funnels face the axis; brake and collar cylinders face away from it.
+          if (radialOut < -0.5) {
+            recess.inwardWallTris++; tally.inward++;
+            inwardZLo = Math.min(inwardZLo, zLo); inwardZHi = Math.max(inwardZHi, zHi);
+            if (debug) {
+              const stations = tally.inwardStations || (tally.inwardStations = {});
+              const key = `${zLo.toFixed(3)}..${zHi.toFixed(3)}@${rMin.toFixed(3)}-${rMax.toFixed(3)}`;
+              stations[key] = (stations[key] || 0) + 1;
+            }
+          }
+        }
       });
     }
+    // A recess is inward-facing wall stock with real axial extent (the §B3.1 funnel spans 40 mm, the
+    // shallowest declared bore 65 mm; brake sleeves and mouth chamfer bands are under 1 cm) or a
+    // floor deeper than the 3 cm counterbore law; the smallest one in the fleet is a 12-segment wall.
+    // Everything else in the window is mouth furniture — brake bodies, baffle rings, collars,
+    // chamfers, MRS brackets — and is reported, not carved.
+    recess.inwardSpanM = recess.inwardWallTris ? +(inwardZHi - inwardZLo).toFixed(4) : 0;
+    recess.recessed = (recess.inwardWallTris >= 12 && recess.inwardSpanM >= 0.02) || recess.floorTris >= 12;
+    recess.carvedTris = recess.recessed ? recess.nonSkinTris : 0;
     row.recess = recess;
     // Segment estimate: distinct angles on the most forward outward skin course at its own radius.
     if (skinRing.length) {
@@ -240,15 +266,12 @@ function inventoryOne(id, quality) {
       savingsVsCarved5N_atTube: 5 * nT * mouths - fallback.total,
       savingsMinimalVsCarved5N_atTube: 5 * nT * mouths - 3 * nB * mouths,
     };
-    // Fewer than two dozen non-skin triangles in the window are near-mouth fittings (MRS collars, sight
-    // posts), not a recess: the smallest recess in the fleet is a 12-segment wall plus floor.
-    const RECESS_MIN_TRIS = 24;
-    const recessed = recess.carvedTris >= RECESS_MIN_TRIS;
+    const recessed = recess.recessed;
     if (physical) row.method = 'physical-declared';
     else if (recessed && Number.isFinite(deepestM) && deepestM > CAP_MAX_DEPTH_M + 0.004) row.method = 'carved-undeclared';
     else if (recessed) row.method = 'authored-recess';
     else row.method = 'fallback-only';
-    if (!recessed && recess.carvedTris > 0) row.flags.push(`STRAY-${recess.carvedTris}`);
+    if (!recessed && recess.nonSkinTris > 0) row.flags.push(`FURNITURE-${recess.nonSkinTris}`);
     row.double = row.method !== 'fallback-only' && fallback.total > 0;
     if (row.double) row.flags.push(row.method === 'physical-declared' ? 'PHYSICAL+FALLBACK' : 'DOUBLE');
     if (!seatPass) row.flags.push('SEAT-FAIL');
@@ -261,6 +284,9 @@ function inventoryOne(id, quality) {
   }
 }
 
+if (isMain) await main();
+
+async function main() {
 if (fills?.ensureInteriorFills) {
   try { await fills.ensureInteriorFills(ids); } catch (error) { console.warn(`[bore-inventory] interior fills not loaded: ${error.message}`); }
 }
@@ -307,3 +333,4 @@ if (jsonPath) { mkdirSync(dirname(resolve(jsonPath)), { recursive: true }); writ
 const mdPath = opt('md', '');
 if (mdPath) { mkdirSync(dirname(resolve(mdPath)), { recursive: true }); writeFileSync(resolve(mdPath), `${mdLines.join('\n')}\n`); }
 if (flag('gate') && (doublePayers.length || failures)) process.exit(1);
+}
