@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Watertight check for tank bodies: "pour water into the turret or hull and it must not spill out".
 //
-//   node tools/tank-watertight-check.mjs --ids=abramsx,leclerc [--voxel=0.025] [--exclude=<regex>] [--json=path] [--gate] [--verbose] [--no-fills]
+//   node tools/tank-watertight-check.mjs --ids=abramsx,leclerc [--voxel=0.025] [--exclude=<regex>] [--json=path] [--gate] [--verbose] [--no-fills] [--no-lanes]
+//   node tools/tank-watertight-check.mjs --self-test
 //
 // The built tank's body triangles (running gear, decals, shadow proxies, wires and soft goods excluded) are
 // voxelised conservatively; the exterior is flood-filled from the grid border; a voxel counts as DEEP INTERIOR
@@ -10,10 +11,19 @@
 // flood reaches is a LEAK: the body has a gap there that water would pour through. Leaks are clustered and
 // reported with their position (tank frame), volume, the shell groups around them, and the mouth (where the
 // water exits). --gate exits 1 when any listed tank leaks more than --max-leak-l litres (default 0.05).
+// Track lanes (2026-09-21, follow-up to d0cbb9fcd): the volume a track band and its shoe belt sweep is never body
+// interior — the fill generator leaves it as air (tools/track-lane-boxes.mjs, the one lane definition both tools
+// read) — yet where a hull's nose or sponsons enclose that lane the deep-interior test still saw water there and
+// the Jagdpanzer E100 X read 4.53 L, the Leclerc classic X 0.80 L of lane air as "leaks". Deep-interior water inside
+// a lane box is therefore excluded from the leak and REPORTED SEPARATELY as track-lane volume, so nothing is hidden;
+// --no-lanes restores the plain measurement and --self-test proves on synthetic bodies that a real hole beside a
+// lane is still reported and that leak + lane equals the plain leak.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
+import { trackLaneBoxesForVoxel, trackLaneVoxelMask } from './track-lane-boxes.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -29,16 +39,22 @@ const MAX_LEAK_L = Number(opt('max-leak-l', '0.05'));
 // an explicit --exclude stays case-insensitive as documented.
 const EXCLUDE = opt('exclude') ? new RegExp(opt('exclude'), 'i') : DEFAULT_EXCLUDE;
 const verbose = flag('verbose');
+const lanesOn = !flag('no-lanes');
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 // Interior fills 2026-09-13: the shipped tank carries its generated fills; --no-fills measures the authored shells alone.
 if (!flag('no-fills')) { const { ensureAllInteriorFills } = await import('../src/vehicles/interiorFills.ts'); await ensureAllInteriorFills(); }
 const ids = opt('ids', 'abramsx').split(',').filter(Boolean);
 
-/** 26-connected clusters of leak voxels with centroid, extent, mouth and surrounding shell groups. */
-function clusterLeaks(grid, ext, deep) {
+/** 26-connected clusters of leak voxels with centroid, extent, mouth and surrounding shell groups. Deep-interior
+ * water inside a track lane box (lane mask, may be null) is tallied as lane volume and never becomes a leak voxel. */
+function clusterLeaks(grid, ext, deep, lane) {
   const { shell, nx, ny, nz, origin, groups } = grid; const N = shell.length;
-  const leak = new Uint8Array(N); let leakCount = 0;
-  for (let i = 0; i < N; i++) if (ext[i] && deep[i]) { leak[i] = 1; leakCount++; }
+  const leak = new Uint8Array(N); let leakCount = 0, laneCount = 0;
+  for (let i = 0; i < N; i++) {
+    if (!(ext[i] && deep[i])) continue;
+    if (lane && lane[i]) { laneCount++; continue; }
+    leak[i] = 1; leakCount++;
+  }
   const seen = new Uint8Array(N); const queue = new Int32Array(Math.max(1, leakCount)); const clusters = [];
   const world = (i) => { const x = i % nx, y = ((i / nx) | 0) % ny, z = (i / (nx * ny)) | 0; return [origin[0] + (x + 0.5) * VOXEL, origin[1] + (y + 0.5) * VOXEL, origin[2] + (z + 0.5) * VOXEL]; };
   for (let s = 0; s < N; s++) {
@@ -107,7 +123,48 @@ function clusterLeaks(grid, ext, deep) {
   }
   clusters.sort((u, v) => v.voxels - u.voxels);
   let enclosed = 0, deepTotal = 0; for (let i = 0; i < N; i++) { if (!shell[i] && !ext[i]) enclosed++; if (deep[i]) deepTotal++; }
-  return { leakCount, clusters, enclosedL: +(enclosed * VOXEL ** 3 * 1000).toFixed(1), deepL: +(deepTotal * VOXEL ** 3 * 1000).toFixed(1) };
+  return { leakCount, laneCount, clusters, enclosedL: +(enclosed * VOXEL ** 3 * 1000).toFixed(1), deepL: +(deepTotal * VOXEL ** 3 * 1000).toFixed(1) };
+}
+
+/** Voxelise body triangles, flood the exterior and split the deep-interior water into leak and track-lane volume. */
+function measure(tris, meshes, laneBoxes) {
+  const grid = voxelise(tris, meshes, { voxel: VOXEL, exclude: EXCLUDE });
+  const ext = floodExterior(grid);
+  const deep = deepInterior(grid);
+  const lane = laneBoxes.length ? trackLaneVoxelMask(laneBoxes, grid) : null;
+  const { leakCount, laneCount, clusters, enclosedL, deepL } = clusterLeaks(grid, ext, deep, lane);
+  const litres = (n) => +(n * VOXEL ** 3 * 1000).toFixed(2);
+  return { grid, clusters, enclosedL, deepL, leakL: litres(leakCount), trackLaneL: litres(laneCount), laneBoxes: laneBoxes.length, watertight: litres(leakCount) <= MAX_LEAK_L };
+}
+// The leading "N L reaches the deep interior" token is the line's contract for log readers; lane evidence follows it.
+function describe(label, r, seconds) {
+  const lanes = lanesOn ? `track lane ${r.trackLaneL} L excluded (${r.laneBoxes} lane${r.laneBoxes === 1 ? '' : 's'})` : 'track lanes not excluded (--no-lanes)';
+  return `${label}: ${r.watertight ? 'WATERTIGHT' : 'LEAKING'} — ${r.leakL} L reaches the deep interior (${r.clusters.length} gap${r.clusters.length === 1 ? '' : 's'}); ${lanes}; enclosed ${r.enclosedL} L of ${r.deepL} L deep interior; ${r.grid.bodyTris} body tris, grid ${r.grid.nx}x${r.grid.ny}x${r.grid.nz} @ ${VOXEL} m${seconds === undefined ? '' : ` (${seconds} s)`}`;
+}
+
+if (flag('self-test')) {
+  // Synthetic bodies through the same measurement: a closed box holds water; a roof hole leaks; beside a body-excluded
+  // track band (gear*) the hole's leak is still reported while the deep water inside the band's lane box is excluded
+  // and reported as lane volume — and leak + lane equals the plain leak, so the exclusion hides nothing.
+  const box = (name, w, h, d, x = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d, 8, 5, 12), new THREE.MeshBasicMaterial()); m.name = name; m.position.x = x; return m; };
+  const group = (...meshes) => { const g = new THREE.Group(); for (const m of meshes) g.add(m); return g; };
+  // roof hole: the +y face triangles whose centroid lies within 0.1 m of (x -0.2, z 0) — the left half of the roof
+  const punchRoof = (tris) => tris.filter((t) => !(Math.min(t.ay, t.by, t.cy) > 0.249 && Math.hypot((t.ax + t.bx + t.cx) / 3 + 0.2, (t.az + t.bz + t.cz) / 3) < 0.1));
+  const run = (root, punch) => { const { tris, meshes } = collectTriangles(root); return measure(punch ? punchRoof(tris) : tris, meshes, trackLaneBoxesForVoxel(root, VOXEL)); };
+  const closed = run(group(box('hull', 0.8, 0.5, 1.2)), false);
+  const plain = run(group(box('hull', 0.8, 0.5, 1.2)), true);
+  // the band sits in the box's right half (x 0.30..0.36): its padded lane box covers deep water there, not the hole
+  const beside = run(group(box('hull', 0.8, 0.5, 1.2), box('gearTrackBandR', 0.06, 0.4, 1.0, 0.33)), true);
+  console.log(describe('[self-test] closed box', closed));
+  console.log(describe('[self-test] holed box', plain));
+  console.log(describe('[self-test] holed box beside a track lane', beside));
+  const sum = +(beside.leakL + beside.trackLaneL).toFixed(2);
+  console.log(`[self-test] conservation: leak ${beside.leakL} L + lane ${beside.trackLaneL} L = ${sum} L vs plain leak ${plain.leakL} L`);
+  const ok = closed.leakL === 0 && closed.trackLaneL === 0 && closed.laneBoxes === 0
+    && plain.leakL > 0 && plain.trackLaneL === 0 && plain.laneBoxes === 0
+    && beside.laneBoxes === 1 && beside.leakL > 0 && beside.trackLaneL > 0 && Math.abs(sum - plain.leakL) <= 0.02;
+  console.log(`[self-test] ${ok ? 'PASS' : 'FAIL'}: closed box holds, a roof hole leaks, the hole beside a lane is still reported, leak + lane = plain leak`);
+  process.exit(ok ? 0 : 1);
 }
 
 const report = []; let failures = 0;
@@ -116,15 +173,11 @@ for (const id of ids) {
   let tank;
   try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }
   const { tris, meshes } = collectTriangles(tank.root);
-  const grid = voxelise(tris, meshes, { voxel: VOXEL, exclude: EXCLUDE });
-  const ext = floodExterior(grid);
-  const deep = deepInterior(grid);
-  const { leakCount, clusters, enclosedL, deepL } = clusterLeaks(grid, ext, deep);
-  const leakL = +(leakCount * VOXEL ** 3 * 1000).toFixed(2);
-  const watertight = leakL <= MAX_LEAK_L;
+  const r = measure(tris, meshes, lanesOn ? trackLaneBoxesForVoxel(tank.root, VOXEL) : []);
+  const { grid, clusters, enclosedL, deepL, leakL, trackLaneL, watertight } = r;
   if (!watertight) failures++;
-  report.push({ id, watertight, leakL, enclosedL, deepL, bodyTris: grid.bodyTris, grid: [grid.nx, grid.ny, grid.nz], clusters: clusters.slice(0, 12) });
-  console.log(`${id}: ${watertight ? 'WATERTIGHT' : 'LEAKING'} — ${leakL} L reaches the deep interior (${clusters.length} gap${clusters.length === 1 ? '' : 's'}); enclosed ${enclosedL} L of ${deepL} L deep interior; ${grid.bodyTris} body tris, grid ${grid.nx}x${grid.ny}x${grid.nz} @ ${VOXEL} m (${((performance.now() - started) / 1000).toFixed(1)} s)`);
+  report.push({ id, watertight, leakL, trackLaneL, laneBoxes: r.laneBoxes, lanesExcluded: lanesOn, enclosedL, deepL, bodyTris: grid.bodyTris, grid: [grid.nx, grid.ny, grid.nz], clusters: clusters.slice(0, 12) });
+  console.log(describe(id, r, ((performance.now() - started) / 1000).toFixed(1)));
   for (const c of clusters.slice(0, verbose ? 40 : 8)) {
     console.log(`   gap ${c.litres} L at (${c.centre.join(', ')}) extent (${c.extent.join('x')}) near ${c.groups.join(' ')}`);
     for (const m of c.mouths) console.log(`      enters at (${m.centre.join(', ')}) extent (${m.extent.join('x')}) ${m.voxels} vox, open toward ${m.exits}`);

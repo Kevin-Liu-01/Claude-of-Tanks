@@ -13,7 +13,6 @@
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import * as THREE from 'three';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { collectTriangles } from './tank-surface-collect.mjs';
@@ -23,7 +22,7 @@ import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { interiorFillSelection, mergeInteriorFillGroup } from './interior-fill-selection.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { createBarakBayFillPolicy } from './barak-rear-bay-fill-policy.mjs';
-import { isTrackShoeMesh } from './track-clip-classification.mjs';
+import { insideTrackLane, trackLaneBoxesForVoxel } from './track-lane-boxes.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -105,60 +104,6 @@ function greedyBoxes(cell, cnx, cny, cnz, comp) {
   return boxes;
 }
 
-// Tracks are moving parts too (2026-09-19, T-90M X): the lane a track band sweeps — between its upper and lower
-// runs, idler to sprocket, one voxel of clearance around it — is never interior air, even where the hull's nose or
-// sponson plates enclose it. The strict track-clip audit has tested the installed fills against the bands since
-// 1cb462309; the T-90M's nose filled 89 voxels of its idler wrap before this rule.
-// The visible track is the instanced shoe belt, not the band (2026-09-21, r34-clip): shoes ride outside the band
-// (tankFactoryCore rOut + pad depth) and, where trackCarrierWidthM narrows the web, overhang it on both sides
-// (Leclerc classic X 55 mm, Jagdpanzer E100 X 110 mm a side). The audit's shoe pass tests fills against that
-// envelope, so each lane also excludes every live shoe instance on its side, with one voxel of clearance outboard
-// and along y/z — a one-voxel fill column stood inside the classic Leclerc's forward-guard shoe overhang while its
-// band box read clean. The band box keeps the INBOARD face: a shoe's inner edge can sit on the hull wall itself
-// (Leclerc classic X right side, 5 mm), and padding it there would leave a column of real hull interior unfilled.
-const _bandPoint = new THREE.Vector3(), _shoeInstance = new THREE.Matrix4(), _shoeWorld = new THREE.Matrix4();
-function trackLaneBoxes(root, bandPad, shoePad) {
-  root.updateMatrixWorld(true);
-  const lanes = new Map(), shoes = new Map(); // side sign -> lane box / envelope of every live shoe instance
-  const boxFor = (map, side) => { let box = map.get(side); if (!box) { box = new THREE.Box3(); map.set(side, box); } return box; };
-  root.traverse((node) => {
-    if (node.isMesh && !node.isInstancedMesh && /^gearTrackBand/.test(node.name || '')) {
-      const box = new THREE.Box3().setFromObject(node);
-      boxFor(lanes, Math.sign(box.min.x + box.max.x) || 1).union(box.expandByScalar(bandPad));
-      return;
-    }
-    if (!isTrackShoeMesh(node)) return;
-    if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
-    const local = node.geometry.boundingBox;
-    for (let k = 0; k < node.count; k++) {
-      node.getMatrixAt(k, _shoeInstance);
-      if (Math.abs(_shoeInstance.determinant()) < 1e-12) continue; // scale-0 pads (covered top run) are no surface
-      _shoeWorld.multiplyMatrices(node.matrixWorld, _shoeInstance);
-      const envelope = boxFor(shoes, Math.sign(_shoeWorld.elements[12]) || 1);
-      for (let c = 0; c < 8; c++) {
-        _bandPoint.set(c & 1 ? local.max.x : local.min.x, c & 2 ? local.max.y : local.min.y, c & 4 ? local.max.z : local.min.z);
-        envelope.expandByPoint(_bandPoint.applyMatrix4(_shoeWorld));
-      }
-    }
-  });
-  for (const [side, envelope] of shoes) {
-    envelope.expandByScalar(shoePad);
-    const lane = boxFor(lanes, side);
-    if (lane.isEmpty()) { lane.copy(envelope); if (side > 0) lane.min.x += shoePad; else lane.max.x -= shoePad; continue; }
-    lane.min.y = Math.min(lane.min.y, envelope.min.y); lane.max.y = Math.max(lane.max.y, envelope.max.y);
-    lane.min.z = Math.min(lane.min.z, envelope.min.z); lane.max.z = Math.max(lane.max.z, envelope.max.z);
-    if (side > 0) lane.max.x = Math.max(lane.max.x, envelope.max.x); else lane.min.x = Math.min(lane.min.x, envelope.min.x);
-  }
-  return [...lanes.values()];
-}
-function insideTrackLane(boxes, grid, x, y, z) {
-  if (!boxes.length) return false;
-  const [ox, oy, oz] = grid.origin;
-  const v = grid.voxel;
-  _bandPoint.set(ox + (x + 0.5) * v, oy + (y + 0.5) * v, oz + (z + 0.5) * v);
-  for (const box of boxes) if (box.containsPoint(_bandPoint)) return true;
-  return false;
-}
 
 function nodeWorldPosition(root, names) {
   root.updateMatrixWorld(true);
@@ -176,8 +121,9 @@ for (const id of ids) {
   try { tank = createTank(id, null, { proceduralOnly: true }); }
   catch (error) { throw new Error(`${id}: build failed; no fill records written`, { cause: error }); }
   const sourceAir=createBarakBayFillPolicy(id,tank.root);
-  // band: two voxels of clearance (the audit samples 2 cm cells); shoe envelope: one voxel
-  const laneBoxes = trackLaneBoxes(tank.root, VOXEL * 2, VOXEL);
+  // track lanes (band: two voxels of clearance, the audit samples 2 cm cells; shoe envelope: one voxel) are never
+  // interior air — tools/track-lane-boxes.mjs, shared with the watertight check so both tools read the same lanes
+  const laneBoxes = trackLaneBoxesForVoxel(tank.root, VOXEL);
   const { tris, meshes } = collectTriangles(tank.root);
   const boundary = interiorFillBoundaryTriangles(id, tris, meshes);
   const grid = voxelise(boundary, meshes, { voxel: VOXEL, exclude: DEFAULT_EXCLUDE });

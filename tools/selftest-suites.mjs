@@ -58,6 +58,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunHullFittings.selftest.mjs',
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
+    'tools/track-lane-boxes.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
