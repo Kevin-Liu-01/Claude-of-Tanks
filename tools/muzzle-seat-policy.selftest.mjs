@@ -31,3 +31,13 @@ for(const change of [{radiusM:.04},{radiusM:.13},{zM:.06},{zM:-.02},{gunOwned:fa
 }
 assert.ok(!physicalMuzzleRimSample({...lip,measuredProjectionM:0},hit));
 assert.ok(!physicalMuzzleRimSample({...lip,revision:'terminal-surface-fit-r2'},hit));
+// 2026-09-22 (owner: holes are added, not carved, to save triangles): a verified physical mouth's own
+// flush annulus is its rim now that no barrel-paint fallback rim shadows it (KF41 44 mm brake, ZTZ-100).
+const flush = {revision:'physical-recess-r1',physicalInnerRadiusM:.0175,
+  measuredOuterRadiusM:.044,physicalRimProjectionM:0,measuredProjectionM:5.7e-8};
+assert.ok(physicalMuzzleRimSample(flush,{radiusM:.0365,zM:5.7e-8,gunOwned:true}), 'flush physical annulus is the rim');
+for (const change of [{radiusM:.0175},{radiusM:.0445},{zM:.002},{zM:-.002},{gunOwned:false}]) {
+  assert.ok(!physicalMuzzleRimSample(flush,{radiusM:.0365,zM:0,gunOwned:true,...change}), JSON.stringify(change));
+}
+assert.ok(!physicalMuzzleRimSample({...flush,measuredProjectionM:.003},{radiusM:.0365,zM:0,gunOwned:true}),
+  'a flush declaration cannot hide measured projecting stock');

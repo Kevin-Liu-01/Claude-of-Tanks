@@ -21,15 +21,17 @@ export function muzzleSeatAxialFit(receipt) {
     && Math.abs(receipt.physicalDiscDepthM + receipt.discForwardM) < 1e-5;
 }
 
-/** A source-authored projecting lip can hide the finish ring, but never the
- * aperture. Its extent must agree with the measured assembled stock. */
+/** A verified physical mouth's own annulus is its rim (owner 2026-09-22, "make sure were saving the
+ * triangles": the barrel-paint fallback rim/annulus that used to shadow it is no longer built), so a
+ * flush annulus (projection 0) is accepted as well as a source-authored projecting lip, which can hide
+ * the finish ring but never the aperture. Either extent must agree with the measured assembled stock. */
 export function physicalMuzzleRimSample(receipt, sample) {
   if (receipt?.revision !== 'physical-recess-r1' || !sample?.gunOwned) return false;
   const {radiusM, zM} = sample;
   const inner = receipt.physicalInnerRadiusM, outer = receipt.measuredOuterRadiusM;
   const projection = receipt.physicalRimProjectionM;
   return [radiusM,zM,inner,outer,projection,receipt.measuredProjectionM].every(Number.isFinite)
-    && projection > 0 && projection <= .1 && outer > inner && inner > 0
+    && projection >= 0 && projection <= .1 && outer > inner && inner > 0
     && Math.abs(projection-receipt.measuredProjectionM) <= .0015
     && radiusM > inner && radiusM <= outer*1.001
     && zM >= -.001 && zM <= projection+.001;
