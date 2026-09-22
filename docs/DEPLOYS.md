@@ -109,3 +109,4 @@ manual deployment policy above; enabling automatic deploys is not the remedy.
 | 55 | 2026-09-22 02:37 | 5e2258a83 | Ring walls keep their rock and layers past the map edge, camo patterns share one tile on every hull, interior fills regenerated fleet-wide, and the AAA map program | main-G3iXXeVy.js | claude-of-tanks-8al886cua |
 | 56 | 2026-09-22 12:33 | 5e90760c9 | The horizon ring's foothills seat on the map's own geology past the square | main-ChDAxloK.js | claude-of-tanks-kdry061vv |
 | 57 | 2026-09-22 12:39 | 4edad1a65 | XK2 and K2B share production K2 wheels and seated tracks; latest terrain preserved; owner-approved qualification exceptions; live Garage verified | main-S6D8U7q9.js | claude-of-tanks-mjkfy0tma |
+| 57 | 2026-09-22 13:51 | 382e863e3 | The far ranges converge toward the sky behind them, not toward the horizon haze | main-BHxDD7VA.js | claude-of-tanks-funqlx02d |
