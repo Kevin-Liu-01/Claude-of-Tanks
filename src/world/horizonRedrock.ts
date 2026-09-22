@@ -12,6 +12,8 @@ interface CanyonRing {
 
 export interface CanyonGround {
   getHeightAt(x: number, z: number): number;
+  /** Round 36: the map's macro relief evaluated past the square (terrain.ts outlandHeightAt); optional for receipts. */
+  getOutlandHeightAt?(x: number, z: number): number;
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }

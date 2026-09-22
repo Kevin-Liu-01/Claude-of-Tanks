@@ -331,6 +331,19 @@ remain smooth analytic ramps (`redrockCanyon.ts` is shared by the playable groun
 receipt pins every outland row to it exactly), so their remaining flatness is geometry, not material — a round-36 item
 alongside the border geography.
 
+### Border geography — 2026-09-22 (round 36)
+
+The battlefield's height function clamps to ±512 m, so the ring used to seat its skirt on the edge height plus its
+gradient and begin the authored ring relief one row later — the geology changed at the seam. `terrain.ts` now
+exposes `getOutlandHeightAt(x, z)`, the same composition as the playable height for a point outside the square
+(hill noise at full weight, dunes, mesas, landforms, the rim lift; no roads, corridors, villages, lakes, pads or
+micro-terrain), and `horizon.ts` seats every foothill row on it: the terrain's edge height continued by its gradient
+hands over to the map's geology within 90 m and the authored ring relief takes over between 60 and 380 m past the
+edge. Redrock keeps its shared analytic canyon and Autumn its own seam. Verified with wall-probe before/after
+captures on verdant, steppe, frontier, copper_mesa, alpine and desert (dunes run on as dunes, plains stay plains, the
+ring forest re-stands on the continued ground). Still open from the audit's check 13: only Coastal declares a sea
+aperture, so the fjord's water meets a ring shore and the other wet maps' water is inland by design.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -403,8 +416,8 @@ skylines):
 | Round | Scope | Verified by |
 |---|---|---|
 | 35 (this) | Landform gate follows ring slope outside the square; far-ground rule gated to flat floors; vista walls v1 (faulted beds and laminae, shelves and seams, gullies, talus aprons, varnish and bleached shelves, moss on rolling ledges, cavity shading, slower macro fade); ring rock/scree tints from the terrain rock layer | wall-probe A/B on badlands, copper_mesa, verdant, alpine, desert, titan_gorge, caldera, skybridge, mars; 31-map skyline/border audit sheets |
-| 36 | Border geography: evaluate the map's own base height past ±512 m for the first ring rows and blend into the authored relief by distance; splat continuity by the same slope/height rules instead of a fade to open ground; decor continuity (trees, boulders, tufts thinning past the edge; prop bound toward the red line); water plane and shader into the ring | edge-audit and wall-probe sheets, 31 maps |
-| 37 | Aerial perspective shared by ground and sky: sun-relative in-scatter, height-dependent extinction, shaded faces cool while lit faces keep colour, the same function on the sky dome so the horizon matches by construction | skyline sheets, night and dusk presets |
+| 36 (landed: geology) | Border geography: the map's own base height past ±512 m seats the foothill rows and blends into the authored relief by distance (done); splat continuity by the same slope/height rules (the landform gate, round 35; the rest open); decor continuity (trees, boulders, tufts thinning past the edge; prop bound toward the red line) and the water plane into the ring remain open | wall-probe sheets on six maps; 31-map edge audit |
+| 37 | Aerial perspective unified: the screen-space aerial pass in `engine/post.ts` already scatters toward sun-relative warm/cool targets under a luminance cap (`AERIAL_HAZE_LUM_CAP`, aligned with the sky's `HAZE_MAX_LUM` / `HORIZON_LUM_CAP`) with sniper de-haze and a far-field detail noise — but the vista material adds its own per-fragment haze toward the day fog tint and the terrain rim bands take scene fog, so three haze models stack and far mesas come out paler than the sky. Round 37 makes them one model: height-dependent extinction, the vista and terrain rim bands hand their haze to the aerial pass, shaded faces cool while lit faces keep colour, the sky dome sampled by the same function so the horizon matches by construction | skyline sheets, night and dusk presets |
 | 38 | Anti-tiling: hex-tiled detail albedo/normal layers, detail normals fade to flat with distance, anisotropic filtering with a measured mip-bias policy | 30–200 m tiling sheets, moiré-in-motion clips |
 | 39 | Ring cascades and occlusion: a second far cascade with a macro colour map, per-vertex horizon occlusion baked at build, sky-projected ambient driving haze colour and water reflection | skyline sheets, frame-cost pairs |
 | 40 | Decal clipmap rings around the camera for WoT-density ground decals; water continuity where round 36 left gaps | same-camera pairs |

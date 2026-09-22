@@ -1280,6 +1280,25 @@ function seatHorizonSkirtOnGround(ring: HorizonRingGeometry, ground: CanyonGroun
       ring.heights[i] = h;
       ring.positions[i * 3 + 1] = h;
     }
+    // Round 36 (owner 2026-09-21, "the textures didnt continue on once you get to the boundary of the map - it looked
+    // like a completely new geography"): when the battlefield can evaluate its own macro relief past the square, the
+    // foothill rows follow it — the terrain's edge height continued by its gradient hands over to the map's geology
+    // within 90 m, and the authored ring relief takes over between 60 and 380 m past the edge — so a hill, dune or
+    // mesa that reaches the red line carries on as the same landform instead of stopping at a seated skirt.
+    const outland = ground.getOutlandHeightAt;
+    if (outland) {
+      for (let ri = 1; ri < ridgeRow; ri++) {
+        const i = ri * n + k;
+        const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
+        const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 511.5;
+        if (edgeOut < -40) continue; // buried under the battlefield's own chunks
+        const continued = edgeH + gradient * clamp(edgeOut, 0, 60);
+        const geology = continued + (outland.call(ground, x, z) - continued) * smoothstep(0, 90, edgeOut);
+        const h = geology + (ring.heights[i] - geology) * smoothstep(60, 380, edgeOut);
+        ring.heights[i] = h;
+        ring.positions[i * 3 + 1] = h;
+      }
+    }
   }
 }
 

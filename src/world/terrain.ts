@@ -251,6 +251,10 @@ export interface TerrainWarmPoint {
 export interface HeightField {
   readonly navigationWaterPolicy?: NavigationWaterPolicy;
   getHeightAt(x: number, z: number): number;
+  /** Round 36: the map's own macro relief evaluated PAST the playable square (hill noise, dunes, mesas, landforms,
+   * the rim lift) with no roads, corridors, villages, lakes, pads or micro-relief — the horizon ring seats its near
+   * rows on it so the geology continues across the border instead of switching to the authored ring relief. */
+  getOutlandHeightAt?(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
@@ -1058,6 +1062,19 @@ function* heightFieldBuildSteps(
     return h;
   }
 
+  // Round 36 (owner 2026-09-21, "it looked like a completely new geography"): the same composition as heightAt for a
+  // point OUTSIDE the square — the hill noise at full weight (no corridor pull), the map's macro landforms and the rim
+  // lift, which is 1 beyond the edge — without roads, corridors, villages, lakes, pads or the tactical micro-terrain.
+  // The horizon ring's near rows seat on this so the border is a rule, not a change of geology. Pure function of
+  // (x, z): no grid, no clamp, no allocation.
+  function outlandHeightAt(x: number, z: number): number {
+    let h = baseTerrainHeight(x, z, 0, 0);
+    h = applyMacroTerrain(x, z, h, 0, 0, 0);
+    const borderRadius = Math.max(Math.abs(x), Math.abs(z));
+    const rim = smoothstep(430, HALF, borderRadius);
+    return h + rim * rim * T.rimH;
+  }
+
   function heightAt(
     x: number,
     z: number,
@@ -1600,6 +1617,7 @@ function* heightFieldBuildSteps(
 
   return {
     getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
+    getOutlandHeightAt: outlandHeightAt,
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
