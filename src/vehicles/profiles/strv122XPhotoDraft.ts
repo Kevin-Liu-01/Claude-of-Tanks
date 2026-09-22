@@ -7,7 +7,6 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addStrv122XGalix } from './strv122XGalix.ts';
-import { strv122PhotoWheelSolids } from './primaryPhotoWheelSolids.ts';
 import { addStrv122XBustle } from './strv122XBustle.ts';
 import { addStrv122XGlacisShoulders,addStrv122XSurfaceAssembly,addStrv122XBowInterfaces,
   STRV122_CHEEK_SECTIONS } from './strv122XSurfaceAssembly.ts';
@@ -62,17 +61,12 @@ function hull(P: TankBuilderPort): void {
 }
 
 function runningGear(P: TankBuilderPort): void {
-  const wheel = strv122PhotoWheelSolids();
   // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
   // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
   const shoeDims = { padHeight: .032, grouserHeight: .014, webHeight: .030, hornHeight: .10 };
   const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims });
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .345, wheelW: .40, wheelY: .421,
-    wheelTireInnerRadiusM: .311,
-    wheelCoreGeometry: { disc: wheel.core },
-    wheelFaceLayers: [{ geometry: wheel.shoulder, material: P.mats.rubber,
-      name: 'strv122PhotoWheelRubberShoulders', appearanceRole: 'wheelTire' }],
     wheelZs: [-2.46, -1.63, -.80, .03, .86, 1.69, 2.52],
     xc: 1.42, trackW: .635, trackTh: .024, botY, topY: 1.198,
     trackShoeDimensions: shoeDims,

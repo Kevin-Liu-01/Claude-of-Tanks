@@ -247,8 +247,10 @@ bin envelope, depth and mirrored hidden-side construction are estimates;
 rear-face fittings obscured in the photos are not claimed as exact. The
 permanent bustle and its lower undercut are unchanged.
 
-Both dedicated `primaryPhotoWheelSolids.selftest.mjs` and
-`primaryPhotoEquipment.selftest.mjs` pass at high/low quality. They verify actual
+`primaryPhotoEquipment.selftest.mjs` passes at high/low quality (the photo wheel
+receipt `primaryPhotoWheelSolids.selftest.mjs` was deleted on 2026-09-22 with its
+module; the supplied-file bowl in `strv122XWheels.ts` is the Sweden wheel
+construction of `nationWheelSets.ts`). It verifies actual
 bowl air/depth, moving tire/face ownership, non-wheel buffer preservation,
 disposal, real bin-root overlap at both ends, open handles and retained undercut
 through yaw. All 173 wheel-quality cases, pattern checks, original Strv tests,

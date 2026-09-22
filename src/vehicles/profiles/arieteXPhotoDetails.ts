@@ -85,24 +85,4 @@ export function addArieteXRoofFurniture(P: TankBuilderPort, pivot: Point): void 
   for (const side of [-1, 1]) roofRails(P, pivot, side);
 }
 
-function boltStock(parts: THREE.BufferGeometry[], side: number, radius: number,
-  angle: number, root: number, outer: number): void {
-  const y = radius * Math.cos(angle), z = radius * Math.sin(angle);
-  parts.push(cylX(.012, outer - root, 12).translate(side * (outer + root) / 2, y, z));
-  parts.push(cylX(.0085, .013, 6).translate(side * (outer + .0045), y, z));
-}
-
-export function addArieteXWheelFasteners(core: THREE.BufferGeometry): THREE.BufferGeometry {
-  // Localized hub nuts, not a new star-spoke or an enlarged wheel rim. Eight
-  // positions and 17 mm hex heads are explicit interpretations of the photo.
-  // Both faces share the original native spinning/suspension instance.
-  const parts = [core];
-  for (const side of [-1, 1]) for (let i = 0; i < 8; i++) {
-    boltStock(parts, side, .075, i * Math.PI / 4, .150, .205);
-  }
-  const flat = parts.map(geometry => geometry.index ? geometry.toNonIndexed() : geometry);
-  const merged = mergeGeometries(flat, false);
-  for (const geometry of new Set([...parts, ...flat])) geometry.dispose();
-  if (!merged) throw new Error('Unable to join Ariete wheel fasteners to the original core');
-  return merged;
-}
+// (the photo-draft wheel fasteners left with the nation wheel standard, 2026-09-22)

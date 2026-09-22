@@ -10,7 +10,6 @@ import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addChallenger1XRearEquipment } from './challenger1XRearEquipment.ts';
 import { addChallenger1XDeckFittings, addChallenger1XLouvreBanks } from './challenger1XDeckFittings.ts';
 import { addChallenger1XFrontCaps, addChallenger1XBowHooks } from './challenger1XFrontFittings.ts';
-import { challenger1PhotoWheelSolids } from './challenger1XWheels.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -68,7 +67,6 @@ function hull(P: TankBuilderPort): void {
 }
 
 function runningGear(P: TankBuilderPort): void {
-  const wheel=challenger1PhotoWheelSolids();
   const zs = [-2.18, -1.385, -.59, .59, 1.385, 2.18];
   const rollers = [-2.13, -.76, .76, 2.13].map(z => ({ z, y: 1.055, r: .092 }));
   // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
@@ -77,10 +75,6 @@ function runningGear(P: TankBuilderPort): void {
   const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims });
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .395, wheelW: .39, wheelY: .470,
-    wheelTireInnerRadiusM:.369,
-    wheelCoreGeometry:{disc:wheel.core},
-    wheelFaceLayers:[{geometry:wheel.shoulder,material:P.mats.rubber,
-      name:'challenger1PhotoWheelRubberShoulders',appearanceRole:'wheelTire'}],
     wheelZs: zs, xc: 1.385, trackW: .650, trackTh: .024, botY, topY: 1.203,
     // 92 shoes per side, as listed in the original handbook; 2026-09-17 ground datum shortened the seated loop to 15.597 m
     linkPitchM: .1695,

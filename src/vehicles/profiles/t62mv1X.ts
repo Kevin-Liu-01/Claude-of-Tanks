@@ -59,10 +59,10 @@ function hull(P:TankBuilderPort):void {
 }
 
 function runningGear(P:TankBuilderPort):void {
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',
-    wheelR:.391615,wheelY:.459085,wheelW:.440,wheelFaceDepthScale:.83,
-    // The five painted road-wheel faces remain visible through closed rubber rings.
-    wheelTireInnerRadiusM:.33679,
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation construction
+  // (T-90 donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+  P.gear=KIT.buildRunningGear(P,{style:'rubber',
+    wheelR:.391615,wheelY:.459085,wheelW:.440,
     wheelZs:[-1.858795,-.805165,.24309,1.14781,2.00987],xc:1.199465,trackW:.60725,
     sprocket:{z:-2.626375,y:.632135,r:.25066,trackR:.252},
     idler:{z:2.78935,y:.698255,r:.272295,trackR:.270},

@@ -89,17 +89,8 @@ function hullBody(P: TankBuilderPort): void {
 
 function runningGear(P: TankBuilderPort): void {
   const D = ARES_APC_X_DATUMS;
-  const wheelFace = KIT.mergeAll(P.q ? [
-    torus(0.232, 0.018, 22, 8).rotateZ(Math.PI / 2).translate(0.173, 0, 0),
-    torus(0.118, 0.013, 20, 8).rotateZ(Math.PI / 2).translate(0.176, 0, 0),
-    cylX(0.068, 0.04, 20).translate(0.177, 0, 0),
-  ] : [
-    // LOW retains the pressed outer rim and central hub in the same wheel
-    // material, while dropping the nested cosmetic ring that is sub-pixel at
-    // its intended distance.
-    torus(0.232, 0.018, 8, 4).rotateZ(Math.PI / 2).translate(0.173, 0, 0),
-    cylX(0.068, 0.04, 8).translate(0.177, 0, 0),
-  ]);
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the UK IFV nation
+    // construction (fv510_milan_x, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: D.wheelR, wheelW: 0.354, wheelY: D.wheelY,
     wheelZs: [...D.wheelStations], xc: D.trackX, roadWheelOutsetM: 0.031,
@@ -110,9 +101,8 @@ function runningGear(P: TankBuilderPort): void {
     ],
     trackW: D.trackW, trackTh: 0.055, topY: 1.07, botY: 0.028,
     contactZR: -1.63, contactZF: 2.72, deadSag: 0.025, coveredTop: true,
-    trackPattern: 'british-rubber-pad', wheelPattern: 'armored-hub-six',
+    trackPattern: 'british-rubber-pad',
     suspensionPattern: 'torsion-swing-arm', wheelSeat: 'authored', bandSeat: 'ground',
-    wheelFaceLayers: [{ geometry: wheelFace, material: P.mats.wheels, name: 'aresPressedWheelFace' }],
     arms: P.q,
   });
 }

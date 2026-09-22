@@ -6,7 +6,6 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { addChieftain10XCupola } from './chieftain10XCupola.ts';
 import { chieftain10CastFloor } from './chieftain10XCastFloor.ts';
 import { addChieftain10XAftCasting } from './chieftain10XAftCasting.ts';
-import { chieftain10WheelSolids } from './chieftain10XWheels.ts';
 import { addChieftain10XEngineDeck } from './chieftain10XEngineDeck.ts';
 import { addChieftain10XGun } from './chieftain10XGun.ts';
 import { addChieftain10XStowage } from './chieftain10XStowage.ts';
@@ -96,7 +95,6 @@ function hull(P: TankBuilderPort): void {
 function runningGear(P: TankBuilderPort): void {
   const zs = [-2.174642, -1.254642, -.289679, .630321, 1.700374, 2.620374];
   const rollers = [-1.714196, .170798, 2.160767].map(z => ({ z, y: 1.032859, r: .149615 }));
-  const wheels = chieftain10WheelSolids(P.q ? 32 : 24);
   // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
   // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
   const shoeDims = { padHeight: .01118, grouserHeight: .01126,
@@ -108,12 +106,9 @@ function runningGear(P: TankBuilderPort): void {
     // Actual paired wheel span 1.15636..1.54938, independently of the belt
     // lane. Nominal axle Y/Z, both end stations and the complete course stay fixed.
     roadWheelOutsetM: -.00734,
-    wheelCoreGeometry: { disc: wheels.core },
-    wheelFaceLayers: [
-      { geometry: wheels.left, material: P.mats.wheels, side: -1, name: 'gearMk10WheelDishL' },
-      { geometry: wheels.right, material: P.mats.wheels, side: 1, name: 'gearMk10WheelDishR' },
-    ],
-    // Horstmann fulcrums are nominally level with their wheel axles, with
+    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the UK nation construction
+  // (Challenger 2E donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+      // Horstmann fulcrums are nominally level with their wheel axles, with
     // independent fore/aft pivots rather than one invented shared pair midpoint.
     // The connecting native web is an explicit closed construction between
     // the measured cap faces, not a claim to every hidden forged-lever fillet.

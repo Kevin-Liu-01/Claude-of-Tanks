@@ -35,13 +35,6 @@ type GeometryScale = number | readonly number[];
 type VehicleAssemblyOwner = 'hull' | 'turret';
 type ProfileSlot = string;
 
-interface RoadWheelLayerOptions {
-  readonly outset?: number;
-  readonly yOffset?: number;
-  readonly name?: string;
-  readonly appearanceRole?: string;
-}
-
 interface EraPlacement {
   (
     x: number,
@@ -68,18 +61,6 @@ interface MiscBuilderPort {
   readonly disposables: THREE.BufferGeometry[];
   readonly rng: () => number;
   readonly q?: boolean;
-  readonly gear: {
-    readonly roadWheelLayout?: {
-      readonly wheelZs: readonly number[];
-      readonly xc: number;
-      readonly wheelY: number;
-    };
-    addRoadWheelLayer(
-      geometry: THREE.BufferGeometry,
-      material: THREE.Material,
-      options?: RoadWheelLayerOptions,
-    ): void;
-  };
   readonly spec: {
     readonly armor: { readonly turretPivot: Vec3Tuple };
     readonly visual: { readonly number?: string };
@@ -164,35 +145,6 @@ const geometryXform = KIT.xform as (
 // ---------------------------------------------------------------------------
 // Family machinery
 // ---------------------------------------------------------------------------
-
-// (positioned variant — recess at wheel height y)
-function wheelRecessAt(
-  P: MiscBuilderPort,
-  wheelZs: readonly number[],
-  xc: number,
-  y: number,
-  r: number,
-  w: number,
-  bucket = 'hullDark',
-): void {
-  const { cylX } = KIT;
-  const layout = P.gear?.roadWheelLayout;
-  if (layout && P.gear?.addRoadWheelLayer
-      && wheelZs.length === layout.wheelZs.length
-      && wheelZs.every((z, index) => Math.abs(z - layout.wheelZs[index]) < 1e-4)) {
-    const material = bucket === 'hullRunningGearDetail' ? P.mats.detail : P.mats.dark;
-    P.gear.addRoadWheelLayer(cylX(r * 0.72, w * 1.06, 12), material, {
-      outset: xc - layout.xc,
-      yOffset: y - layout.wheelY,
-      name: 'gearRoadWheelRecesses',
-      appearanceRole: 'wheelInset',
-    });
-    return;
-  }
-  for (const z of wheelZs) for (const s of [-1, 1]) {
-    P.add(bucket, cylX(r * 0.72, w * 1.06, 12), s * xc, y, z);
-  }
-}
 
 // Fender/hull stowage bin with tarp lid + dark latch straps.
 function bin(P: MiscBuilderPort, x: number, y: number, z: number, w: number, h: number, d: number): void {
@@ -594,17 +546,8 @@ export function buildAriete(P: MiscBuilderPort): void {
       paintedEnds: true, coveredTop: true, arms: true,
       armBucket: 'hullRunningGearDetail',
     });
-    // Keep the olive dish/dark hub cadence, but register it with the one
-    // suspension-driven wheel train instead of leaving a fixed hull-owned row.
-    // 2026-09-14 owner: the dish/hub/rim package floated 0.24 m outboard of the tire face (the old
-    // hull-parked x positions). Seated on the wheel: tire face at 0.1085 from the axle; the dish
-    // sits 3 mm inside it, the rim ring flush, the hub cap 7 mm proud like the real cap.
-    P.gear.addRoadWheelLayer(cylX(0.275, 0.035, 18), P.mats.wheels,
-      { outset: 0.088, name: 'gearRoadWheelOuterDishes' });
-    P.gear.addRoadWheelLayer(cylX(0.095, 0.039, 14), P.mats.dark,
-      { outset: 0.096, name: 'gearRoadWheelHubCaps' });
-    P.gear.addRoadWheelLayer(torus(0.205, 0.014, 18).rotateZ(Math.PI / 2), P.mats.dark,
-      { outset: 0.090, name: 'gearRoadWheelRimRings' });
+    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Italy nation
+    // construction (C1 Ariete X recessed dish, nationWheelSets.ts); the former olive dish/hub/rim layers left with it.
     // (push-2: contactZF 2.36 -> 2.22 — the ref approach ramp lifts off at
     // ~2.33 and climbs SHALLOW [0.22@2.68, 0.28@2.92 authored] where the 2.36
     // patch held the belly grounded to 2.45 then climbed steep: 6 ramp cols
@@ -616,7 +559,6 @@ export function buildAriete(P: MiscBuilderPort): void {
     // the track widened INBOARD (xc 1.385, inner face 1.075 — the ref front
     // rows reach near-ground at +-1.07-1.13; outer face stays 1.695; tub +-1.03
     // keeps 4.5 cm to the inner band plane, audit dilates 2)
-    wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21, 'hullRunningGearDark');
     // ---- turret: canted-wall welded slab + raised front roof + TURMS +
     // pano tower + hatch notch + low rear basket (r4 architecture RESTORED
     // after the turret-fix round's re-lay experiments: the r4 roof was
@@ -1272,7 +1214,6 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // ~11 mm AND pulls the inner face out of the ±0.951 windows (ref wants
     // bot 0.279 there, its track inner plane is ~0.97; the old 0.96 inner
     // face printed ground at ±0.951, err 0.167).
-    wheelRecessAt(P, wheelZs, 1.295, 0.45, 0.36, 0.22, 'hullRunningGearDark');  // explicit suspension ownership; strict track lint must not infer by position
 
     // ---- turret: tall narrow autoloader block. R2 FULL RE-LAY (post-warp
     // workorder): roof plateau 2.352 world flat back to z -1.42 THEN falls to
@@ -2498,9 +2439,6 @@ function buildT80UNative2026(P: MiscBuilderPort): void {
       rollers: [1.80, 0.90, 0, -0.90, -1.80].map((z) => ({ z, y: returnRunY, r: 0.08 })),
       trackW: 0.48, topY: 0.94, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
     });
-    // Preserve the wheel-bay recess geometry exactly while declaring its true
-    // running-gear ownership; these cylinders are not hull armor.
-    wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21, 'hullRunningGearDark');
 
     // Owner stance correction: translate only hull-owned armor, skirts,
     // fittings, spare links and markings. buildRunningGear's live wheels,
@@ -3209,11 +3147,6 @@ function buildType90SkirtsAndRunningGear(P: MiscBuilderPort): void {
   // the certified 3.69 tube-only col at 3.63. SS-B6 trapezoid strengthens
   // (both ends raised hard). End r <= 0.19 stays under the r>=0.23
   // band-solver malformation landmine (r4 law 2).
-  // These concentric shadow dishes are suspension/wheel-bay structure, not
-  // hull armor.  Keep their explicit running-gear ownership so the strict
-  // lint can distinguish the intended recess behind each road wheel from a
-  // hull plate penetrating the shoe course.
-  wheelRecessAt(P, wheelZs, 1.2615, 0.47, 0.37, 0.21, 'hullRunningGearDark');
 }
 
 function buildType90Turret(P: MiscBuilderPort): void {

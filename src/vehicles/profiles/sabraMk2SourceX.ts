@@ -1,7 +1,6 @@
 // Independent Sabra Mk.2 source study, with permanent shaped armor and open rack.
 import * as THREE from 'three';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
-import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
@@ -125,25 +124,12 @@ function buildSabraHull(P: TankBuilderPort): void {
 }
 
 function buildSabraRunningGear(P: TankBuilderPort): void {
-  // Paired cast webs meet the measured hub and raised annular rim. No generic
-  // decorative wheel cap survives over this native suspension stock.
-  const wheelSection:AxialWheelStation[]=[
-    [0,0],[.168,0],[.168,.020],[.1415,.050],[.1088,.080],[.0943,.100],
-    [.060,.120],[.0324,.140],[.0324,.180],[.0454,.200],[.0725,.220],[.0802,.260],
-    [.089,.271],[-.089,.271],[-.0802,.260],[-.0725,.220],[-.0454,.200],
-    [-.0324,.180],[-.0324,.140],[-.060,.120],[-.0943,.100],[-.1088,.080],
-    [-.1415,.050],[-.168,.020],[-.168,0],
-  ];
-  const fasteners=[];
-  for(const side of [-1,1])for(let i=0;i<8;i++) {
-    const a=i*Math.PI/4;
-    fasteners.push(cylX(.012,.013,6).translate(side*.082,Math.sin(a)*.112,Math.cos(a)*.112));
-  }
+  // owner 2026-09-22: "sabra uses the m60a3 wheels" — the Magach hull draws the USA M60A3 cast five-spoke
+  // construction (nationWheelSets.ts exception), fitted into this hull's own wheel envelope; the former paired
+  // cast webs left with the standard.
   P.gear=KIT.buildRunningGear(P,{
     trackShoeBuilder:buildFleetTrackShoe,
-    style:'rubber',wheelPattern:'deep-dish-eight',trackPattern:'nato-double-pin',wheelR:.3274,wheelW:.3445,wheelY:.3597,
-    wheelCoreGeometry:{disc:lathedWheelSection(wheelSection,P.q?32:16),dark:KIT.mergeAll(fasteners)},
-    wheelTireBands:[{centerM:0,widthM:.3445,innerRadiusM:.269}],
+    style:'rubber',trackPattern:'nato-double-pin',wheelR:.3274,wheelW:.3445,wheelY:.3597,
     wheelZs:[-2.1577,-1.3486,-.5171,.3255,1.1309,1.9496],xc:1.4384,trackW:.586,trackTh:.022,
     trackShoeDimensions:{padHeight:.017,grouserHeight:.006,webHeight:.012,hornHeight:.067,pinRadius:.012,pinCentreY:0},
     sprocket:{z:-2.851,y:.9816,r:.2007,trackR:.195,toothTipRadiusM:.2657},idler:{z:2.9729,y:.9143,r:.2455,trackR:.238},

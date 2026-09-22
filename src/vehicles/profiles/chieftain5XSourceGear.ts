@@ -2,7 +2,6 @@
 // No former photo-draft axle, radius or course table is retained.
 import { KIT } from './kit.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
-import { chieftain5SourceWheelSolids } from './chieftain5XSourceWheels.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const CHIEFTAIN5_SOURCE_ROAD_ZS = Object.freeze([
@@ -12,7 +11,6 @@ const CHIEFTAIN5_SOURCE_ROAD_ZS = Object.freeze([
 export function addChieftain5XSourceGear(P: TankBuilderPort): void {
   const wheelZs = [...CHIEFTAIN5_SOURCE_ROAD_ZS];
   const rollers = [-1.784579, .025545, 1.936953].map(z => ({ z, y: .978785, r: .14610 }));
-  const wheels = chieftain5SourceWheelSolids(P.q ? 40 : 24);
   const sprocket = { z: -3.140714, y: .837166, r: .251866, trackR: .2574, toothTipRadiusM: .333432 };
   const idler = { z: 3.100381, y: .8788445, r: .25590, trackR: .2260 };
   // Fleet track standard 2026-09-12: the .030 pad (was .016) hangs .014 lower,
@@ -21,14 +19,11 @@ export function addChieftain5XSourceGear(P: TankBuilderPort): void {
       webHeight: .03178, hornHeight: .060 };
   // 2026-09-17 ground datum (KIT.groundSeatBotY): soles on hull y = 0 for the fleet-standard band
   const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims }), topY = 1.1553;
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the UK nation construction
+  // (Challenger 2E donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .3952785, wheelW: .41679, wheelY: .4481615,
-    wheelZs, wheelTireInnerRadiusM: .3195,
-    wheelCoreGeometry: { disc: wheels.core },
-    wheelFaceLayers: [
-      { geometry: wheels.left, material: P.mats.wheels, side: -1, name: 'gearMk5SourceDishL' },
-      { geometry: wheels.right, material: P.mats.wheels, side: 1, name: 'gearMk5SourceDishR' },
-    ],
+    wheelZs,
     xc: 1.2947382, roadWheelOutsetLeftM: -.0004482, roadWheelOutsetRightM: .0004482,
     // Object_10 has a 432.924 mm continuous running web between
     // X1.07872450 and1.51164842; only the shoe/connector extremities span

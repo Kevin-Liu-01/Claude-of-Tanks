@@ -254,8 +254,10 @@ changes need fresh independent shaded review and the complete release gates.
 ## Recessed road-wheel correction — 2026-09-06 authoring checkpoint
 
 The 2016 Army side photograph shows a broad recessed steel bowl, a localized
-central hub and a rolled outer rim. `primaryPhotoWheelSolids.ts` now supplies
-an original closed turned core instead of the generic proud disc/spoke stack.
+central hub and a rolled outer rim. The photo-draft wheel core that once drew it
+(`primaryPhotoWheelSolids.ts`) was deleted on 2026-09-22 with the nation wheel
+standard; the supplied-file study's recessed dish (`arieteXSuppliedGear.ts`) is
+now the Italy wheel construction (`nationWheelSets.ts`) that every Italian hull draws.
 The 108–125 mm axial bowl planes, 204 mm rim and 229 mm hub offset from each
 axle are explicit construction estimates, not photographic metrology. Small
 hub/rim fasteners and stamped relief remain simplified.
@@ -267,7 +269,7 @@ center was a filled cylinder; it is now annular, retaining the existing
 suspension still follows its actual inboard wheel surface rather than the old
 oversized generic hub. No separate stationary wheel row is added.
 
-The dedicated `primaryPhotoWheelSolids.selftest.mjs` passes in high/low quality:
+The former dedicated `primaryPhotoWheelSolids.selftest.mjs` (deleted 2026-09-22 with its module) passed in high/low quality:
 eight radial sectors at four independent bowl depths per wheel, true approach
 air, supported central hub, steel/rubber overlap, identical tire/face spin
 matrices, disposal and exact preservation of non-wheel surfaces and moving

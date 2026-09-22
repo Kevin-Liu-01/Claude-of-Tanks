@@ -71,7 +71,7 @@ function buildTmlHull(P: TankBuilderPort): void {
 function buildTmlRunningGear(P: TankBuilderPort): void {
   P.gear=KIT.buildRunningGear(P,{
     trackShoeBuilder:buildFleetTrackShoe,
-    style:'rubber',wheelPattern:'armored-hub-six',trackPattern:'nato-double-pin',
+    style:'rubber',trackPattern:'nato-double-pin',
     wheelR:.306,wheelW:.289,wheelY:.364,xc:1.2435,trackW:.523,trackTh:.032,
     // The source lower course is 58mm from shoe ground to wheel tire, with a
     // compact 22mm pad; generic MBT grousers exceed that measured envelope.

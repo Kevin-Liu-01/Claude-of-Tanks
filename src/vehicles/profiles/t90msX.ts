@@ -50,7 +50,9 @@ function fenders(P:TankBuilderPort,side:number):void{
 function runningGear(P:TankBuilderPort):void{
   // Source left axles are ~76 mm aft of right axles. Actual road stations use
   // the measured side arrays; the unchanged belt course uses pair midpoints.
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',trackPattern:'soviet-single-pin',wheelR:.3884,wheelY:.4485,wheelW:.4206,
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation construction
+  // (T-90 donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+  P.gear=KIT.buildRunningGear(P,{style:'rubber',trackPattern:'soviet-single-pin',wheelR:.3884,wheelY:.4485,wheelW:.4206,
     wheelZs:[-1.7806,-.9404,-.08855,.76255,1.6144,2.46025],
     wheelZsLeftM:[-1.81590002775,-.97714999318,-.12659997866,.72445000755,1.57635003328,2.42254996300],
     wheelZsRightM:[-1.74285000563,-.90240001678,-.05049999041,.80055001006,1.65250003338,2.49795007706],
@@ -58,9 +60,7 @@ function runningGear(P:TankBuilderPort):void{
     idler:{z:3.14985,y:.87725,r:.26365,trackR:.250},sprocket:{z:-2.49745,y:.8275,r:.3627,trackR:.343},
     rollers:[{z:-1.5043,y:1.07865,r:.12335},{z:.1704,y:1.07865,r:.12335},{z:1.8357,y:1.07865,r:.12335}],rollerR:.12335,
     returnRollerWidthM:.0982,returnRollerInsetM:.103,topY:1.214,botY:.039,arms:true,coveredTop:true,paintedEnds:true,
-    wheelFaceDepthScale:.87,sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.138,
-    // Keep the recessed painted dish visible inside closed neutral tire stock.
-    wheelTireInnerRadiusM:.33402,
+    sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.138,
     trackShoeDimensions:{padHeight:.036,grouserHeight:.010,webHeight:.018,hornHeight:.040,pinRadius:.009,pinCentreY:0},
   });
 }

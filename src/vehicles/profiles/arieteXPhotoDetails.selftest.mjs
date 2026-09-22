@@ -3,10 +3,10 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { KIT, registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildArieteX } from './arieteXPhotoDraft.ts';
-import { arietePhotoWheelSolids } from './primaryPhotoWheelSolids.ts';
-import { addArieteXWheelFasteners } from './arieteXPhotoDetails.ts';
 
 // Isolated historical photo construction, not current supplied-file acceptance.
+// 2026-09-22: the photo-draft wheel primitives (bowl + hub nuts) left with the nation wheel standard; this
+// receipt now protects the optic, handle and rail construction only.
 registerProfiledBuilders({ ariete_c1_x: buildArieteX });
 
 // These are independent physical construction/air contracts, not a numerical
@@ -71,45 +71,6 @@ function roofChecks(root) {
   }
 }
 
-function originalBowlPreserved() {
-  const base = arietePhotoWheelSolids(), original = base.core.toNonIndexed();
-  const originalPositions = Array.from(original.attributes.position.array);
-  const detailed = addArieteXWheelFasteners(base.core);
-  assert.deepEqual(Array.from(detailed.attributes.position.array.slice(0, originalPositions.length)),
-    originalPositions, 'every original turned bowl triangle survives without a changed coordinate');
-  detailed.computeBoundingBox();
-  near(detailed.boundingBox.max.x, .229, 'hub nuts do not enlarge the original core axial envelope');
-  near(detailed.boundingBox.max.y, .316, 'rim radius is unchanged');
-  original.dispose(); detailed.dispose(); base.shoulder.dispose();
-}
-
-function wheelChecks(tank, gear) {
-  const disc = tank.root.getObjectByName('gearRoadWheelDiscs');
-  const tire = tank.root.getObjectByName('gearRoadWheelTires');
-  const shoulder = tank.root.getObjectByName('arietePhotoWheelRubberShoulders');
-  for (const travel of [[0, 0], [.312, -.427]]) {
-    gear.update(...travel, 0); tank.root.updateMatrixWorld(true);
-    for (let i = 0; i < disc.count; i++) {
-      const frame = new THREE.Matrix4(); disc.getMatrixAt(i, frame);
-      for (const same of [tire, shoulder]) {
-        const other = new THREE.Matrix4(); same.getMatrixAt(i, other);
-        assert.deepEqual(other.elements, frame.elements, 'hardware remains in actual tire/suspension spinning frame');
-      }
-      frame.premultiply(disc.matrixWorld);
-      const local = new THREE.Matrix4(); disc.getMatrixAt(i, local);
-      const side = Math.sign(new THREE.Vector3().setFromMatrixPosition(local).x);
-      for (let k = 0; k < 8; k++) {
-        const angle = k * Math.PI / 4;
-        const hit = ray([disc], frame, [side * .28, .075 * Math.cos(angle), .075 * Math.sin(angle)], [-side, 0, 0]);
-        near(hit?.distance, .064, 'eight small supported hex heads on every real wheel face');
-      }
-      near(ray([disc], frame, [side * .28, .15, 0], [-side, 0, 0])?.distance,
-        .169078125, 'broad dish stays empty of added spokes');
-    }
-  }
-}
-
-originalBowlPreserved();
 for (const quality of ['high', 'low']) {
   const original = KIT.buildRunningGear; let gear;
   KIT.buildRunningGear = (port, cfg) => { gear = original(port, cfg); return gear; };
@@ -117,11 +78,11 @@ for (const quality of ['high', 'low']) {
   try { tank = createTank('ariete_c1_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false }); }
   finally { KIT.buildRunningGear = original; }
   try {
-    tank.root.updateMatrixWorld(true); roofChecks(tank.root); wheelChecks(tank, gear);
+    tank.root.updateMatrixWorld(true); roofChecks(tank.root); assert.ok(gear, 'running gear built');
     const geometries = new Set(); tank.root.traverse(o => { if (o.isMesh) geometries.add(o.geometry); });
     const disposed = new Set(); for (const g of geometries) g.addEventListener('dispose', () => disposed.add(g));
     tank.dispose(); tank = null;
     assert.equal(disposed.size, geometries.size, 'all owned render geometry has a disposal path');
   } finally { tank?.dispose(); }
 }
-console.log('arieteXPhotoDetails.selftest: high/low real optic/handle/rail air and attachment, unchanged bowl, native fastener motion and disposal pass');
+console.log('arieteXPhotoDetails.selftest: high/low real optic/handle/rail air and attachment and disposal pass');

@@ -342,7 +342,9 @@ Presentation uses support and travel for wheels, tracks, and suspension. It
 does not feed cosmetic placement back into authority. The closed mechanical
 vocabularies in `src/vehicles/wheelPatterns.ts`,
 `src/vehicles/trackPatterns.ts`, and `src/vehicles/suspensionPatterns.ts`
-resolve one deterministic complete running-gear family per vehicle.
+resolve one deterministic complete running-gear family per vehicle; road-wheel
+faces come from the nation donor table in `src/vehicles/nationWheelSets.ts`
+(owner 2026-09-22), drawn by `src/vehicles/nationWheelConstructions.ts`.
 
 ### 7.2 Aiming and firing
 

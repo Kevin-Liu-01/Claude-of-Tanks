@@ -2082,25 +2082,12 @@ function buildT72B3M(P: T72BuilderPort): void {
       syntheticGapPanels: 0,
       terminalScraperShoes: 0,
     });
-    // visual r1 item 6: T-72 DISHED WHEEL face packages (isu122s recipe —
-    // suspension-driven layers): rim seam ring + dark dish
-    // annulus + hub drum/cap per wheel, idler + sprocket hub sets. All inside
-    // the wheel circles (bottoms 0.14+ vs wheel 0.075) and the band x-zone.
+    // visual r1 item 6: idler + sprocket hub sets (isu122s recipe). The road-wheel rim/hub package that
+    // rode the suspension left with the nation wheel standard (owner 2026-09-22: the T-90 construction).
     {
       const { torus } = KIT;
-      // 2026-09-14 owner: hub drum and cap stood up to 4 cm proud of the 0.108 tire face. Rims
-      // flush with the face, hub drum 8 mm proud, centre cap 1.6 cm proud (a real T-72 cap).
-      P.gear.addRoadWheelLayer(torus(0.354, 0.007, 22).rotateZ(Math.PI / 2), P.mats.detail,
-        { outset: 0.099, name: 'gearRoadWheelOuterRims' });
-      P.gear.addRoadWheelLayer(torus(0.19, 0.005, 16).rotateZ(Math.PI / 2), P.mats.detail,
-        { outset: 0.101, name: 'gearRoadWheelInnerRims' });
-      P.gear.addRoadWheelLayer(cylX(0.085, 0.048, 12), P.mats.detail,
-        { outset: 0.092, name: 'gearRoadWheelHubCaps' });
-      P.gear.addRoadWheelLayer(cylX(0.048, 0.044, 10), P.mats.dark,
-        { outset: 0.102, name: 'gearRoadWheelHubInsets' });
       for (const s of [-1, 1]) {
-        // The road-wheel rings above share the native suspension matrices.
-        // Keep the independently seated idler/sprocket hub sets below.
+        // Independently seated idler/sprocket hub sets.
         // These annuli are running-gear face trim, not hull armor.  Keep them
         // in the explicit suspension bucket so clearance judges hull solids
         // against the shoes rather than their own wheel-mounted face package.

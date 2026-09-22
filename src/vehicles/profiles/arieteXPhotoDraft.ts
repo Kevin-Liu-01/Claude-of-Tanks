@@ -8,8 +8,7 @@ import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { addArieteXLaunchers, addArieteXRearStowage } from './arieteXEquipment.ts';
-import { arietePhotoWheelSolids } from './primaryPhotoWheelSolids.ts';
-import { addArieteXOpticalHead, addArieteXRoofFurniture, addArieteXWheelFasteners } from './arieteXPhotoDetails.ts';
+import { addArieteXOpticalHead, addArieteXRoofFurniture } from './arieteXPhotoDetails.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -59,13 +58,8 @@ function hull(P: TankBuilderPort): void {
 }
 
 function runningGear(P: TankBuilderPort): void {
-  const wheel = arietePhotoWheelSolids();
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .347, wheelW: .39, wheelY: .423,
-    wheelTireInnerRadiusM: .314,
-    wheelCoreGeometry: { disc: addArieteXWheelFasteners(wheel.core) },
-    wheelFaceLayers: [{ geometry: wheel.shoulder, material: P.mats.rubber,
-      name: 'arietePhotoWheelRubberShoulders', appearanceRole: 'wheelTire' }],
     wheelZs: [-2.57, -1.73, -.89, -.05, .79, 1.63, 2.47],
     xc: 1.425, trackW: .57, trackTh: .025, topY: 1.22, botY: .058,
     trackShoeDimensions: { padHeight: .030, grouserHeight: .014, webHeight: .029, hornHeight: .095 },

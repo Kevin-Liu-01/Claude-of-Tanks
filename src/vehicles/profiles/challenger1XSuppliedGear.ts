@@ -1,18 +1,9 @@
 // Native suspension-driven gear, independently dimensioned from the complete
 // supplied courses. No parked wheel faces or copied source vertices.
-import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { c1Length as m, c1Point as p } from './challenger1XSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-function wheelCore():THREE.BufferGeometry{
-  // Turned hollow tire seat, recessed outer disc and local small hub.
-  const contour:readonly(readonly[number,number])[]=[[0,-8.268],[4.645,-8.268],
-    [4.645,-4.213],[11.890,-5.157],[12.14,-5.157],[12.14,5.157],
-    [12.086,5.157],[3.70,5.394],[3.70,6.733],[.90,9.016],[0,9.016]];
-  return new THREE.LatheGeometry(contour.map(([r,x])=>new THREE.Vector2(m(r),m(x))),48)
-    .rotateZ(-Math.PI/2);
-}
 export function addChallenger1SuppliedGear(P:TankBuilderPort):void{
   const rollers=[-108.622044,-35.039370,37.637797].map(z=>({z:p(0,0,z)[2],y:p(0,36.889765,0)[1],r:m(5.590552)}));
   const wheelZs=[-128.602360,-88.897641,-55.334647,-15.393701,17.972440,53.405514].map(z=>p(0,0,z)[2]);
@@ -23,9 +14,10 @@ export function addChallenger1SuppliedGear(P:TankBuilderPort):void{
   const shoeDims = {padHeight:.030,grouserHeight:.008,webHeight:.014,hornHeight:.045,pinRadius:.007,pinCentreY:0};
   const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims, floorY: -.0145 /* authored sole datum */ });
   P.gear=KIT.buildRunningGear(P,{
-    style:'rubber',wheelR:m(15.9448815), // 2026-09-14 owner: nation pattern (UK pressed-eight), no per-tank override
-wheelY:p(0,18.9370075,0)[1],
-    wheelW:m(20.629921),wheelTireInnerRadiusM:m(12.05),wheelCoreGeometry:{disc:wheelCore()},
+    // 2026-09-14 owner: nation pattern, no per-tank override; 2026-09-22: the UK nation construction (Challenger 2E
+    // hollow paired wheel, nationWheelSets.ts) is drawn by the running-gear builder into this hull's own wheel envelope.
+    style:'rubber',wheelR:m(15.9448815),wheelY:p(0,18.9370075,0)[1],
+    wheelW:m(20.629921),
     wheelZs,xc:m(51.535433),roadWheelOutsetM:m(.1574805),trackW:m(24.803150),trackTh:.024, // fleet track standard 2026-09-12: band >= 24 mm
     sprocket:rear,idler:front,rollers,returnRollerWidthM:m(8.543308),returnRollerOutsetM:m(3.759842),
     topY:p(0,42.25,0)[1],botY,linkPitchM:m(4.0),

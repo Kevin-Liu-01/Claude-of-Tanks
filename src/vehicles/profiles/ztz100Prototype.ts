@@ -241,12 +241,12 @@ function stern(P: TankBuilderPort): void {
 function runningGear(P: TankBuilderPort): void {
   const D = ZTZ100_PROTOTYPE_DATUMS;
   P.gear = KIT.buildRunningGear(P, {
-    style: 'rubber', dishR: 0.70, wheelR: D.wheelR, wheelW: 0.366, wheelY: D.wheelY, xc: D.trackX,
+    style: 'rubber', wheelR: D.wheelR, wheelW: 0.366, wheelY: D.wheelY, xc: D.trackX,
     wheelZs: [...D.wheelStations],
     sprocket: { ...D.sprocket }, idler: { ...D.idler },
     rollerR: D.rollers[0].r, rollers: D.rollers.map((r) => ({ z: r.z, y: r.y })),
     trackW: D.trackW, trackTh: 0.028, topY: 0.96, botY: 0.05,
-    wheelPattern: 'armored-hub-six', trackPattern: 'nato-double-pin', linkPitchM: 0.177, shoeWidthScale: 0.99,
+    trackPattern: 'nato-double-pin', linkPitchM: 0.177, shoeWidthScale: 0.99,
     paintedEnds: true, arms: true, coveredTop: true,
     contactZF: 2.45, contactZR: -2.62,
   });

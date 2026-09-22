@@ -326,20 +326,11 @@ const CR1_HULL = {
 
 function challenger1Build(P: ChallengerBuilderPort): void {
   const g = CR1_HULL;
-  const { sph, cylX } = KIT;
+  const { sph } = KIT;
   const challenger1BuildAssemblyStage1 = (): void => {
     ukHull(P, g);
-    // Hydrogas wheel-face restoration.  `ukHull` already owns the physical
-    // tires, hubs and linked course; these shallow concentric faces sit inside
-    // the existing wheel width and restore the older Challenger's readable
-    // six-station dish/hub cadence.  They are fixed hull detail, never donor
-    // wheels and never an additional running-gear course.
-    P.gear.addRoadWheelLayer(cylX(0.29, 0.032, 16), P.mats.detail,
-      // wheel review 2026-09-13: 1.505/1.510 floated 7 cm outboard of the tire face (1.378); the
-      // face disc now sits in the tire plane and only the small hub protrudes (2 cm).
-      { outset: 1.360 - g.trackXc, name: 'gearRoadWheelFaceDressing' }); // 2026-09-14: seated on the 1.382 tire face
-    P.gear.addRoadWheelLayer(cylX(0.105, 0.038, 14), P.mats.dark,
-      { outset: 1.376 - g.trackXc, name: 'gearRoadWheelHubDressing' }); // hub 1.3 cm proud
+    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the UK nation
+    // construction (Challenger 2E hollow paired wheel, nationWheelSets.ts); the Hydrogas dish/hub dressing left with it.
   };
   challenger1BuildAssemblyStage1();
   // BOW GUARD COURSE — NO-STAIRCASES r1 (§B1 law 5f4cfae, owner screenshot).

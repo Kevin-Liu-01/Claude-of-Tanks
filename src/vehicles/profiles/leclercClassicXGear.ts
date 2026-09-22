@@ -1,5 +1,4 @@
 // Independent June-file wheels and physically supported native track course.
-import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
@@ -7,37 +6,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TrackShoeBuildParameters } from '../tankFactoryCore.ts';
 
-type Radial = readonly [axial: number, radius: number];
-function turned(rows: readonly Radial[], segments: number): THREE.BufferGeometry {
-  return new THREE.LatheGeometry(rows.map(([x, r]) => new THREE.Vector2(r, x)),
-    segments).rotateZ(-Math.PI / 2);
-}
-
-function wheelFace(side: -1 | 1, segments: number): THREE.BufferGeometry {
-  // Independent source195 outward rays, lower half of the exposed face.
-  // The unseen return closure is3mm inward; no broad capped rubber disk.
-  const front: readonly Radial[] = [[.184, 0], [.184, .041], [.2205013, .041],
-    [.2205013, .068], [.184, .11559], [.13677655, .11559],
-    [.13677655, .186871], [.1110594, .186871], [.1110594, .2729045],
-    [.14610038, .2729045], [.14610038, .2873172]];
-  const rear: Radial[] = [...front].reverse().map(([x, r]) => [x - .003, r]);
-  const g = turned([...front, ...rear, front[0]].reverse(), segments);
-  if (side < 0) g.rotateY(Math.PI);
-  return g;
-}
-
-function wheelCore(segments: number): THREE.BufferGeometry {
-  return turned([[-.023, .283], [-.023, .2873172], [.023, .2873172],
-    [.023, .283], [-.023, .283]], segments);
-}
-
-function groove(segments: number): THREE.BufferGeometry {
-  return turned([[-.043, .2873172], [-.043, .3451203], [-.021, .29177824],
-    [.028, .29177824], [.048, .3451203], [.048, .2873172], [-.043, .2873172]], segments);
-}
-
 export function addLeclercClassicXGear(P: TankBuilderPort): void {
-  const segments = P.q ? 40 : 24;
   const rollers = [-1.6, -.12, 1.40].map(z => ({ z, y: 1.009 + .0022 * z, r: .095 }));
   const idler = { z: 2.9929035, y: .824805, r: .353969, trackR: .3295,
     axleOutsetLeftM: .01889604, axleOutsetRightM: -.02123453,
@@ -54,15 +23,8 @@ export function addLeclercClassicXGear(P: TankBuilderPort): void {
     wheelZs: [...D.wheelZsLeft], wheelZsLeftM: D.wheelZsLeft, wheelZsRightM: D.wheelZsRight,
     xc: 1.283948956, xcLeft: -D.trackCenters[0], xcRight: D.trackCenters[1],
     roadWheelOutsetLeftM: .01889603993, roadWheelOutsetRightM: -.02123452759,
-    wheelTireBands: [-.151616, .151616].map(centerM => ({ centerM,
-      widthM: .21923, innerRadiusM: .2873172 })),
-    wheelCoreGeometry: { disc: wheelCore(segments) },
-    wheelFaceLayers: ([-1, 1] as const).flatMap(side => [
-      { geometry: wheelFace(side, segments), material: P.mats.wheels, side,
-        name: `leclercClassicSourceWheelFace${side}` },
-      { geometry: groove(segments), material: P.mats.rubber, side,
-        name: `leclercClassicSourceWheelGroove${side}` },
-    ]),
+    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the France modern construction
+    // (Leclerc XLR donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
     trackW: .6309749205, trackCarrierWidthM: .521112, trackTh: .028,
     trackShoeDimensions: shoeDims,
     pinCapOuter: .31548746025,

@@ -340,7 +340,7 @@ function buildKurganetsGear(P: TankBuilderPort): void {
     // Independently measured wheel-island centers, retaining nonuniform spacing.
     const wheelZs = [-2.3517, -1.6305, -.9202, -.1978, .5168, 1.2329, 1.9595];
     const config: RunningGearConfig = {
-        style: 'rubber', wheelPattern: 'armored-hub-six', trackPattern: 'eastern-ifv',
+        style: 'rubber', trackPattern: 'eastern-ifv',
         wheelR: .285, wheelW: .274, wheelY: .3612, wheelZs,
         xc: 1.405, trackW: .44, trackTh: .032,
         trackShoeDimensions: { padHeight: .034, grouserHeight: .008, webHeight: .026, hornHeight: .08, pinRadius: .014 },

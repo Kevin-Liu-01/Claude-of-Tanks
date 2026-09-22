@@ -8,7 +8,6 @@ import { sourceMachineGun } from './sourceMachineGun.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { chieftain5CastTurret, chieftain5CastMantlet } from './chieftain5XCast.ts';
 import { addChieftain5XAuxiliaryMounts } from './chieftain5XAuxiliaryMounts.ts';
-import { chieftain5PhotoWheelSolids } from './chieftain5XWheels.ts';
 import { addChieftain5XOptics } from './chieftain5XOptics.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -71,17 +70,12 @@ function hull(P: TankBuilderPort): void {
 function runningGear(P: TankBuilderPort): void {
   const zs = [-2.18, -1.39, -.395, .395, 1.39, 2.18];
   const rollers = [-2.21, -1.11, 0, 1.11, 2.21].map(z => ({ z, y: 1.074, r: .085 }));
-  const wheels = chieftain5PhotoWheelSolids();
   // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
   // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
   const shoeDims = { padHeight: .032, grouserHeight: .014, webHeight: .030, hornHeight: .10 };
   const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims });
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .395, wheelW: .40, wheelY: .471, wheelZs: zs,
-    wheelTireInnerRadiusM: .3535,
-    wheelCoreGeometry: { disc: wheels.core },
-    wheelFaceLayers: [{ geometry: wheels.shoulder, material: P.mats.rubber,
-      name: 'chieftain5PhotoWheelRubberShoulders', appearanceRole: 'wheelTire' }],
     xc: 1.365, trackW: .635, trackTh: .024, botY, topY: 1.225,
     trackShoeDimensions: shoeDims,
     sprocket: { z: -3.06, y: .879, r: .354, trackR: .328 },

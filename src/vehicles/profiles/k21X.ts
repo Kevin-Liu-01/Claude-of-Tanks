@@ -2,7 +2,6 @@ import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts'
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
-import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { barrel, equipment, hatch, panel, openGunTube, hullStation, optic, smokeBank, towEye, turretStation } from './easternSourceKit.ts';
@@ -339,16 +338,11 @@ function buildK21Hull(P: TankBuilderPort): void {
         }
 }
 function buildK21Gear(P: TankBuilderPort): void {
-    // Source axle-ray dimensions: prominent +92 mm hub, +22 mm recessed
-    // web and +121 mm tire lip. This sparse profile is independently authored.
-    const face: AxialWheelStation[] = [[.092, 0], [.092, .045], [.030, .07],
-        [.022, .10], [.040, .16], [.034, .22], [.043, .245], [.099, .265], [.121, .278]];
-    const section: AxialWheelStation[] = [...face, ...face.slice().reverse().map(([x, r]) => [-x, r] as const)];
+    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the South Korea IFV nation
+    // construction (k1a1, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
     P.gear = KIT.buildRunningGear(P, {
-        style: 'rubber', wheelPattern: 'armored-hub-six', trackPattern: 'eastern-ifv',
+        style: 'rubber', trackPattern: 'eastern-ifv',
         wheelR: .2990, wheelW: .242, wheelY: .3665,
-        wheelTireInnerRadiusM: .272,
-        wheelCoreGeometry: { disc: lathedWheelSection(section, P.q ? 24 : 16) },
         wheelZs: [-2.5965, -1.6687, -.7410, .1867, 1.1144, 2.0422],
         xc: 1.228, trackW: .476, trackTh: .030, topY: 1.212, botY: .035,
         sprocket: { z: 2.888, y: .8837, r: .293 },

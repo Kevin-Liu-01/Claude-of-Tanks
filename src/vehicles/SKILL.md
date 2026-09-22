@@ -104,13 +104,20 @@ Camouflaged roof fittings, sights, launchers, stowage, and machine guns must use
 `P.addCupola()` (or an explicitly structural hull/turret add) and remain hittable.
 
 Canonical running gear resolves deterministic mechanical families through
-`wheelPatterns.ts`, `trackPatterns.ts`, and `suspensionPatterns.ts`. Keep road
-wheels, return rollers, idlers, and sprockets on that one suspension-driven
-assembly; use explicit pattern overrides only for documented vehicle geometry
-and `wheelFaceLayers` for source-measured detail that must move with suspension.
-Painted faces use the camouflage-aware `wheelPaint` role, while tires/insets
-remain neutral. Run the three focused pattern checks plus
-`wheelQuality.selftest.mjs` after any wheel or running-gear change.
+`wheelPatterns.ts`, `trackPatterns.ts`, and `suspensionPatterns.ts`. Road-wheel
+faces are standardized by nation (owner 2026-09-22): `nationWheelSets.ts` is the
+one table of donor tanks, per-nation rules and per-hull exceptions, and
+`nationWheelConstructions.ts` draws a donor's face at any hull's radius inside
+the axial envelope the hull's authored wheel occupied. A donor hull keeps its
+own wheel code; every other hull's authored wheel solids, `wheelFaceLayers` and
+post-build `addRoadWheelLayer` dressing only size the envelope. Period (ww2)
+hulls keep their constructions. A profile may restate, never contradict, its
+nation wheel pattern. Keep road wheels, return rollers, idlers, and sprockets on
+that one suspension-driven assembly. Painted faces use the camouflage-aware
+`wheelPaint` role, while tires/insets remain neutral. Run the three focused
+pattern checks, `nationWheelSets.selftest.mjs`, `wheelQuality.selftest.mjs` and
+`node tools/wheel-review.mjs --all --gate` after any wheel or running-gear
+change; `node tools/wheel-inventory.mjs --all` lists every hull's wheel.
 Read actual assembled wheel centers: the ground-seating law can override an
 authored `wheelY`. Source-backed track courses must fit finite wheel stock,
 including the central drum, tread rings and tooth crowns at their actual axial

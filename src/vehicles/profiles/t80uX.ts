@@ -8,7 +8,6 @@ import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
-import {t80uXWheelSolids} from './t80uXWheels.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const YAW:Point3=[0,1.55158,.0718698169];
@@ -73,15 +72,10 @@ function skirt(P:TankBuilderPort,side:number):void {
 }
 
 function runningGear(P:TankBuilderPort):void {
-  const wheels=t80uXWheelSolids(P.q?26:12);
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.35247,wheelY:.42629,
-    wheelW:.347,wheelFaceDepthScale:.81,wheelZs:[-1.96246,-1.107005,-.274385,.47443,1.317665,2.088745],
-    wheelTireInnerRadiusM:.2671,wheelCoreGeometry:{disc:wheels.core},
-    wheelFaceLayers:[
-      {geometry:wheels.left,material:P.mats.wheels,side:-1,name:'t80uXWheelShellL',appearanceRole:'wheelDish'},
-      {geometry:wheels.right,material:P.mats.wheels,side:1,name:'t80uXWheelShellR',appearanceRole:'wheelDish'},
-      {geometry:wheels.shoulder,material:P.mats.rubber,name:'t80uXWheelRubberShoulders',appearanceRole:'wheelTire'},
-    ],
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation construction
+  // (T-90 donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.35247,wheelY:.42629,
+    wheelW:.347,wheelZs:[-1.96246,-1.107005,-.274385,.47443,1.317665,2.088745],
     xc:1.35185,trackW:.55684,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     sprocket:{z:-2.676505,y:.917215,r:.292985,trackR:.286},
     idler:{z:2.83887,y:.917215,r:.292985,trackR:.286},

@@ -7615,7 +7615,7 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // dense 660 mm cadence.  Keep the established 85 mm loaded foot while
   // opening a visible 40 mm bay between every pair.
   const wheelY = 0.395;
-  const gear = buildRunningGear(P, {
+  buildRunningGear(P, {
     style: 'rubber', wheelR: 0.31, wheelW: 0.22, wheelY, xc: 1.435,
     dishR: 0.86, wheelZs,
     sprocket: { z: -2.46, y: 0.84, r: 0.33 },
@@ -7628,24 +7628,8 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     trackW: 0.50, topY: 0.98, botY: 0.05, paintedEnds: false,
     coveredTop: true, arms: false, contactZF: 2.22, contactZR: -2.14,
   });
-  // These annuli, hubs and bolts are wheel-face anatomy, so every layer is
-  // instanced by the canonical gear unit and follows suspension travel/spin.
-  // 2026-09-14 owner: the hub package stood 3.5 cm proud of the 0.11 tire face. Rims flush,
-  // hub drum 6 mm proud, centre cap and bolt heads 1.3 cm proud.
-  gear.addRoadWheelLayer(torus(0.266, 0.009, 24).rotateZ(Math.PI / 2), P.mats.detail,
-    { outset: 0.098, name: 'gearRoadWheelOuterRims' });
-  gear.addRoadWheelLayer(torus(0.150, 0.007, 18).rotateZ(Math.PI / 2), P.mats.detail,
-    { outset: 0.100, name: 'gearRoadWheelInnerRims' });
-  gear.addRoadWheelLayer(cylX(0.090, 0.052, 14), P.mats.detail,
-    { outset: 0.090, name: 'gearRoadWheelHubCaps' });
-  gear.addRoadWheelLayer(cylX(0.050, 0.046, 12), P.mats.dark,
-    { outset: 0.100, name: 'gearRoadWheelHubInsets' });
-  const boltRing = KIT.mergeAll(Array.from({ length: 8 }, (_, k) => {
-    const a = k * Math.PI / 4;
-    return KIT.xform(cylX(0.011, 0.040, 8), 0, Math.cos(a) * 0.106, Math.sin(a) * 0.106);
-  }));
-  gear.addRoadWheelLayer(boltRing, P.mats.dark,
-    { outset: 0.098, name: 'gearRoadWheelBoltRings' });
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation
+  // construction (T-90M X source-pressed face, nationWheelSets.ts); the former rim/hub/bolt layers left with it.
 
   // Shallow six-panel skirts expose the lower wheel arcs and turn down only
   // at the terminal mudguards.  Their upper lips are separate structural

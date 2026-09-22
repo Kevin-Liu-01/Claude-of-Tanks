@@ -211,12 +211,12 @@ function deck(P: TankBuilderPort): void {
 function runningGear(P: TankBuilderPort): void {
   const D = OBJECT695_X_DATUMS;
   P.gear = KIT.buildRunningGear(P, {
-    style: 'rubber', dishR: 0.60, wheelR: D.wheelR, wheelW: 0.27, wheelY: D.wheelY, xc: D.trackX,
+    style: 'rubber', wheelR: D.wheelR, wheelW: 0.27, wheelY: D.wheelY, xc: D.trackX,
     wheelZs: [...D.wheelStations],
     sprocket: { ...D.sprocket }, idler: { ...D.idler },
     // no return rollers: the return run is a straight course between the raised end wraps behind the side modules
     trackW: D.trackW, trackTh: 0.028, topY: 1.15, botY: 0.05,
-    wheelPattern: 'armored-hub-six', trackPattern: 'compact-ifv', linkPitchM: 0.13, shoeWidthScale: 0.99,
+    trackPattern: 'compact-ifv', linkPitchM: 0.13, shoeWidthScale: 0.99,
     paintedEnds: true, arms: true, coveredTop: true,
     contactZF: 2.55, contactZR: -2.90,
   });

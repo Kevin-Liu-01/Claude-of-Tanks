@@ -5,7 +5,6 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { mirrorX } from './europeSourcePrimitives.ts';
-import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -166,33 +165,11 @@ function hull(P:TankBuilderPort):void {
 function gear(P:TankBuilderPort):void {
   // Source Object_25: the steel dish is 122 mm behind the tire face.
   // These scalar stations preserve that recess through native suspension.
-  const section:AxialWheelStation[]=[
-    [.0205,0],[.1687,0],[.1687,.038],[.164,.057],[.154,.073],
-    [.136,.084],[.103,.095],[.0475,.110],[.0475,.178],
-    [.0586,.211],[.0451,.228],[.0584,.253],[.0884,.2665],
-    [.032,.2665],[.0205,.221],
-  ];
-  const lowSection:AxialWheelStation[]=[
-    [.0205,0],[.1687,0],[.1687,.038],[.150,.080],
-    [.0475,.110],[.0475,.235],[.0884,.2665],[.032,.2665],[.0205,.221],
-  ];
-  // Twenty angular sectors retain every HIGH axial station with at most
-  // 3.3 mm chord error at the outer steel lip; LOW uses twelve sectors.
-  const activeSection=P.q?section:lowSection;
-  const core=KIT.mergeAll([
-    lathedWheelSection(activeSection,P.q?20:12),
-    lathedWheelSection(activeSection.map(([x,r])=>[-x,r]),P.q?20:12),
-    // This axle bridge is wholly buried behind both measured dish faces.
-    cylX(.090,.080,8),
-  ]);
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the UK IFV nation
+    // construction (fv510_milan_x, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
   P.gear=KIT.buildRunningGear(P,{
-    style:'rubber',wheelPattern:'plain-dish-twelve',trackPattern:'compact-ifv',
+    style:'rubber',trackPattern:'compact-ifv',
     wheelR:.324,wheelW:.340,wheelY:.391,
-    wheelTireBands:[
-      {centerM:-.1036,widthM:.1328,innerRadiusM:.266},
-      {centerM:.1036,widthM:.1328,innerRadiusM:.266},
-    ],
-    wheelCoreGeometry:{disc:core},
     wheelZs:[-2.233,-1.489,-.745,-.001,.7435,1.4875,2.2315],
     xc:1.322,trackW:.597,trackTh:.032,
     trackShoeBuilder:buildFleetTrackShoe,
@@ -202,23 +179,6 @@ function gear(P:TankBuilderPort):void {
     rollerR:.095,topY:1.195,botY:.054,coveredTop:true,paintedEnds:true,
     arms:true,fitLoadedRun:true,dedupeLoopPoints:true,
   });
-  // Object_25 has twelve web fasteners and six hub fasteners on the outward
-  // face only. Side-filtered native layers follow the same physical axle;
-  // mirroring both faces of every wheel would invent hidden inward hardware.
-  for(const side of [-1,1] as const) {
-    const fasteners=[];
-    for(let i=0;i<12;i++) {
-      const a=i*Math.PI/6;
-      fasteners.push(cylX(.009,.012,P.q?6:4).translate(side*.0664,Math.cos(a)*.133,Math.sin(a)*.133));
-    }
-    for(let i=0;i<6;i++) {
-      const a=i*Math.PI/3;
-      fasteners.push(cylX(.009,.015,P.q?6:4).translate(side*.1434,Math.cos(a)*.074,Math.sin(a)*.074));
-    }
-    P.gear.addRoadWheelLayer(KIT.mergeAll(fasteners),P.mats.rubber,{
-      side,appearanceRole:'wheelInset',name:'ajaxRoadWheelFasteners'+side,
-    });
-  }
 }
 
 function turret(P:TankBuilderPort):void {

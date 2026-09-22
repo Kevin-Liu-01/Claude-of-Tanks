@@ -332,17 +332,8 @@ function buildAMX40(P: FranceBuilderPort): void {
     botY: 0.10,
     paintedEnds: true, coveredTop: true,
   });
-  // Preserve the authored olive dish/hub/rim anatomy as layers of the one
-  // suspension-driven road-wheel train. These used to be parked hull meshes
-  // and separated from the real wheels over terrain.
-  // 2026-09-14 owner: the package floated 0.20 m outboard of the tire face (old hull-parked x).
-  // Seated on the wheel: tire face 0.122 from the axle; dish 3 mm inside, rim flush, cap 8 mm proud.
-  P.gear.addRoadWheelLayer(cylX(0.285, 0.032, 18), P.mats.wheels,
-    { outset: 0.103, name: 'gearRoadWheelOuterDishes' });
-  P.gear.addRoadWheelLayer(cylX(0.095, 0.036, 14), P.mats.dark,
-    { outset: 0.112, name: 'gearRoadWheelHubCaps' });
-  P.gear.addRoadWheelLayer(torus(0.215, 0.013, 18).rotateZ(Math.PI / 2), P.mats.dark,
-    { outset: 0.106, name: 'gearRoadWheelRimRings' });
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the France cold-war
+  // construction (AMX-40 X pressed face, nationWheelSets.ts); the former olive dish/hub/rim layers left with it.
   };
   buildSuspension();
   // ---- hull furniture ----

@@ -96,30 +96,12 @@ function hull(P: TankBuilderPort): void {
 }
 
 function gear(P:TankBuilderPort):void {
-  // Object_23 scalar rays: centre cap 0.2206, recessed web 0.0796 and
-  // tire face 0.2735 metres from the axle mid-plane. No capped overlay.
-  const section:AxialWheelStation[]=P.q?[
-    [.030,0],[.2206,0],[.2206,.038],[.195,.055],[.164,.077],
-    [.0796,.090],[.0796,.241],[.2735,.249],[.2735,.251],
-    [.014,.251],[.030,.239],
-  ]:[
-    [.030,0],[.2206,0],[.2206,.038],[.164,.077],
-    [.0796,.090],[.0796,.241],[.2735,.249],[.2735,.251],[.014,.251],[.030,.239],
-  ];
-  const core=KIT.mergeAll([
-    lathedWheelSection(section,P.q?24:12),
-    lathedWheelSection(section.map(([x,r])=>[-x,r]),P.q?24:12),
-    cylX(.07,.08,P.q?18:10),
-  ]);
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the USA light-hull nation
+    // construction (m551a1_tts, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
   P.gear=KIT.buildRunningGear(P,{
-    style:'rubber',wheelPattern:'armored-hub-six',trackPattern:'compact-ifv',
+    style:'rubber',trackPattern:'compact-ifv',
     trackShoeBuilder:buildFleetTrackShoe,
     wheelR:.3225,wheelW:.547,wheelY:.4235,
-    wheelTireBands:[
-      {centerM:-.1424,widthM:.2622,innerRadiusM:.250},
-      {centerM:.1424,widthM:.2622,innerRadiusM:.250},
-    ],
-    wheelCoreGeometry:{disc:core},
     wheelZs:[-1.4585,-.7285,.0015,.7315,1.4885,2.2185].map(z=>z*H),
     xc:1.4345,trackW:.575,trackTh:.032,
     trackShoeDimensions:{padHeight:.034,grouserHeight:.008,webHeight:.026,hornHeight:.08,pinRadius:.014},

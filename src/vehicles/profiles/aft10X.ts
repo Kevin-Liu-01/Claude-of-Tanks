@@ -3,7 +3,6 @@ import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts'
 import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { antenna, brace, equipment, panel, hullSolid, hullStation, optic } from './easternSourceKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -149,48 +148,12 @@ function buildAftHull(P: TankBuilderPort): void {
     optic(P, 'hull', .895, 1.866, 2.082, .159, .080, .047);
     addBowMast(P);
 }
-/** Sparse Object_15 scalar section, independently authored about its X axle.
- * The source has an asymmetric plain inner web and no separate bolt islands.
- * The 55.4 mm inter-wheel opening starts at R198.5 mm; it is not a dark disc.
- */
-export function aftRoadWheelStock(high: boolean): THREE.BufferGeometry {
-    const section: AxialWheelStation[] = [
-        [-.10315, 0], [.12315, 0], [.11775, .04165],
-        [.09175, .0506], [.09015, .0754], [.04905, .0754],
-        [.06915, .2392], [.13235, .251], [.13235, .2694],
-        [.02025, .2694], [.02025, .1985], [-.03515, .1985],
-        [-.03515, .2694], [-.12960, .2694],
-    ];
-    // Exact multiples of the native 26/12 tire segments preserve the shared
-    // rim seam without adding a wide hidden disc across the paired-wheel air.
-    return lathedWheelSection(section, high ? 52 : 24);
-}
 function buildAftGear(P: TankBuilderPort): void {
-    const outerWheel = aftRoadWheelStock(Boolean(P.q));
-    // Native common tires have the same orientation on both sides. Keep their
-    // 97.2 mm shared stock symmetric, then seat the source's extra 14.9 mm on
-    // the outboard half only; mirroring both asymmetric bands would be wrong.
-    const tireShoulder = lathedWheelSection([
-        [.02025, .2694], [.03515, .2694], [.03515, .2976], [.02025, .2976],
-    ], P.q ? 26 : 12);
+    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the China IFV nation
+    // construction (type100, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
     P.gear = KIT.buildRunningGear(P, {
-        style: 'rubber', wheelPattern: 'armored-hub-six', trackPattern: 'eastern-ifv',
+        style: 'rubber', trackPattern: 'eastern-ifv',
         wheelR: .2976, wheelW: .2647, wheelY: .3613,
-        wheelTireBands: [
-            { centerM: -.08375, widthM: .0972, innerRadiusM: .2694 },
-            { centerM: .08375, widthM: .0972, innerRadiusM: .2694 },
-        ],
-        wheelCoreGeometry: { disc: cylX(.080, .020, P.q ? 16 : 8) },
-        wheelFaceLayers: [
-            { geometry: outerWheel, material: P.mats.wheels, side: 1,
-                name: 'aftSourceWheelPositive', appearanceRole: 'wheelDish' },
-            { geometry: outerWheel.clone().rotateY(Math.PI), material: P.mats.wheels, side: -1,
-                name: 'aftSourceWheelNegative', appearanceRole: 'wheelDish' },
-            { geometry: tireShoulder, material: P.mats.rubber, side: 1,
-                name: 'aftSourceWheelTireShoulderPositive', appearanceRole: 'wheelTire' },
-            { geometry: tireShoulder.clone().rotateY(Math.PI), material: P.mats.rubber, side: -1,
-                name: 'aftSourceWheelTireShoulderNegative', appearanceRole: 'wheelTire' },
-        ],
         wheelZs: [-2.2951, -1.4028, -.4539, .4847, 1.2860, 2.1781],
         xc: 1.4035, trackW: .389, trackTh: .030, topY: 1.065, botY: .036,
         sprocket: { z: 2.982, y: .7472, r: .324 },

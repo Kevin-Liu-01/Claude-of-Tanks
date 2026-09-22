@@ -180,7 +180,10 @@ casting curvature remain simplified; this is not overall visual qualification.
 
 The retained Kubinka photograph supports a recessed pressed steel wheel face,
 not the prior broad proud radial ribs. `chieftain5XWheels.ts` independently
-authors a continuous closed two-sided bowl with a localized bearing hub. Its
+authored a continuous closed two-sided bowl with a localized bearing hub; that
+module and its receipt were deleted on 2026-09-22 when the UK nation wheel
+standard (`nationWheelSets.ts`: every UK MBT hull draws the Challenger 2E hollow
+paired wheel) replaced the per-study wheel. Its
 depths remain construction estimates: the available angled photograph cannot
 establish a millimetric radial section. No Mk10 wheel profile or AI surface is
 reused. The established 0.395 m tire radius, 0.40 m tire width, rubber shoulder,
@@ -202,7 +205,7 @@ Only the head above the roof is represented; the manual's internal operating
 mechanism was not implemented. Frame dimensions and hidden depths are
 explicit estimates, not measured from the illustration.
 
-Dedicated `chieftain5XWheels.selftest.mjs` and
+The former `chieftain5XWheels.selftest.mjs` (deleted 2026-09-22) and
 `chieftain5XOptics.selftest.mjs` pass actual-ID high/low geometry, whole-scene
 air, positive steel/rubber seating, wheel spin, disposal and turret ownership.
 The wheel test compares every non-wheel physical geometry buffer and moving

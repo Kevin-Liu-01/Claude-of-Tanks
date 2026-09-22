@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
-import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
@@ -133,25 +132,11 @@ function buildType96Hull(P: TankBuilderPort): void {
     addType96RearDeck(P);
 }
 function buildType96Gear(P: TankBuilderPort): void {
-    // Scalar rays through Object_17/18: outer hub +.181 m, recessed web
-    // +.055 m at r.150, rolled lip +.199 m at r.290; two distinct tire bands.
-    // This is an authored sparse revolved casting, never sampled mesh topology.
-    const section: AxialWheelStation[] = [
-        [.035, 0], [.181, 0], [.181, .050], [.131, .100], [.055, .150],
-        [.100, .200], [.165, .260], [.199, .290], [.160, .293],
-        [.095, .260], [.050, .200], [.018, .150], [.035, .080],
-    ];
-    const core = KIT.mergeAll([
-        lathedWheelSection(section, P.q ? 28 : 16),
-        lathedWheelSection(section.map(([x, r]) => [-x, r]), P.q ? 28 : 16),
-        cylX(.070, .31, P.q ? 20 : 12),
-    ]);
+    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the China MBT nation
+    // construction (ztz100_x, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
     P.gear = KIT.buildRunningGear(P, {
-        style: 'rubber', wheelPattern: 'pressed-six', trackPattern: 'soviet-single-pin',
+        style: 'rubber', trackPattern: 'soviet-single-pin',
         wheelR: .3383, wheelW: .3994, wheelY: .4119,
-        wheelTireBands: [{ centerM: -.1232, widthM: .1530, innerRadiusM: .287 },
-            { centerM: .1232, widthM: .1530, innerRadiusM: .287 }],
-        wheelCoreGeometry: { disc: core },
         wheelZs: [-2.1506, -1.3273, -.5014, .4641, 1.4368, 2.3793],
         xc: 1.3772, trackW: .569, trackTh: .030, topY: 1.225, botY: .040,
         sprocket: { z: -2.900, y: .8557, r: .343 },

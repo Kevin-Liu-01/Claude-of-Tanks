@@ -4394,30 +4394,6 @@ export function buildLeo2A5(builder: object) {
   const P = requireTankBuilderPort(builder);
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const hookWheelFace = <T extends VehicleMaterial>(material: T): T => {
-    material.onBeforeCompile = vehicleAmbientFloorHook;
-    material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    return material;
-  };
-  const tireRing = hookWheelFace(P.mats.wheels.clone());
-  const buildLeo2A5AssemblyStage1 = (): void => {
-    tireRing.color.setHex(0x393a30);
-    tireRing.envMapIntensity = 0.05;
-    tireRing.roughnessMap = null;
-    tireRing.roughness = 0.97;
-    tireRing.side = THREE.DoubleSide;
-  };
-  buildLeo2A5AssemblyStage1();
-  const rimRing = hookWheelFace(P.mats.wheels.clone());
-  const buildLeo2A5AssemblyStage2 = (): void => {
-    rimRing.color.setHex(0x454435);
-    rimRing.envMapIntensity = 0.06;
-    rimRing.roughnessMap = null;
-    rimRing.roughness = 0.95;
-    rimRing.side = THREE.DoubleSide;
-    P.disposables.push(tireRing, rimRing);
-  };
-  buildLeo2A5AssemblyStage2();
   // r9 1a CROWN-TONE COLLECTOR: every r6/r8 pale lit-kit crown (strap
   // crowns, rail crowns, roll glints, folded tarps) moves off the fleet
   // hullDetail bucket onto the a5 litKit clone in the r9 tone block —
@@ -4500,20 +4476,9 @@ export function buildLeo2A5(builder: object) {
       // line (px-level bisect). Rear bottoms stay the certified baseline.
       idler: { z: 3.48, y: 1.11, r: 0.25 }, sprocket: { z: -3.19, y: 1.09, r: 0.295 },
       topY: 0.97, fans: { z: -2.70, x: 0.78, r: 0.38 },
-      // VISUAL r1: wider dark tire ring on the wheel faces (a6 r3 #1 wheel law)
+      // VISUAL r1: wider dark tire ring on the wheel faces (a6 r3 #1 wheel law); the tire/rim ring layers
+      // left with the nation wheel standard (owner 2026-09-22: the Leopard 2A6 X paired dish draws this hull's wheel)
       dishR: 0.78,
-      wheelFaceLayers: [
-        {
-          geometry: new THREE.RingGeometry(0.292, 0.363, P.q ? 30 : 22).rotateY(Math.PI / 2),
-          material: tireRing, outset: 1.5035 - 1.37,
-          name: 'gearRoadWheelTireRings', appearanceRole: 'wheelTire',
-        },
-        {
-          geometry: new THREE.RingGeometry(0.212, 0.286, P.q ? 28 : 20).rotateY(Math.PI / 2),
-          material: rimRing, outset: 1.5042 - 1.37,
-          name: 'gearRoadWheelRimRings', appearanceRole: 'wheelDish',
-        },
-      ],
       // VISUAL r6 4a: real fan wells (a6 r3 #6 recipe via the fanWell opt-in —
       // curb top fy+0.0285 stays under the old torus row) — the flush rings
       // read as drawn circles in the r5 verdict (top/toptilt/hero-rr).
@@ -7312,23 +7277,8 @@ export function buildLeo2A4(builder: object) {
         P.add('hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.615, -3.45 + 0.858 * k + 0.42);
       }
     }
-    // Keep the seven readable pale hub caps as a layer of the canonical
-    // suspension-driven wheel train rather than a parked hull-owned row.
-    {
-      const hubPale = P.mats.shadow.clone();
-      hubPale.color.setHex(0x767963);
-      hubPale.roughness = 0.9;
-      hubPale.envMapIntensity = 0.18;
-      hubPale.onBeforeCompile = vehicleAmbientFloorHook;
-      hubPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      P.disposables.push(hubPale);
-      const gear = P.gear;
-      if (!gear) throw new Error('Leopard 2A4 running gear must exist before adding hub caps');
-      gear.addRoadWheelLayer(KIT.cylX(0.135, 0.004, P.q ? 16 : 12), hubPale, {
-        outset: 1.486 - 1.37,
-        name: 'gearRoadWheelPaleHubCaps',
-      });
-    }
+    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Germany nation
+    // construction (Leopard 2A6 X paired dish, nationWheelSets.ts); the pale hub-cap layer left with it.
   };
   buildLeo2A4RunningGearStage1();
   // Supported upper bow bridges span the small inboard shoulder pocket left
@@ -8239,19 +8189,8 @@ function addLeo2PrototypeRunningGearFinish(P: TankBuilderPort): void {
     P.add('hullShadow', box(0.02, 0.78, 6.90), side * 1.01, 0.93, -0.25);
   }
 
-  const hubPale = P.mats.shadow.clone();
-  hubPale.color.setHex(0x767963);
-  hubPale.roughness = 0.9;
-  hubPale.envMapIntensity = 0.18;
-  hubPale.onBeforeCompile = vehicleAmbientFloorHook;
-  hubPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-  P.disposables.push(hubPale);
-  const gear = P.gear;
-  if (!gear) throw new Error('Leopard prototype running gear must exist before adding hub caps');
-  gear.addRoadWheelLayer(cylX(0.10, 0.004, P.q ? 16 : 12), hubPale, {
-    outset: 1.486 - 1.37,
-    name: 'gearRoadWheelPaleHubCaps',
-  });
+  // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Germany nation
+  // construction (Leopard 2A6 X paired dish, nationWheelSets.ts); the pale hub-cap layer left with it.
 }
 
 function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
@@ -10161,14 +10100,7 @@ function buildLeo2Revolution(P: TankBuilderPort) {
       });
       forwardMag.position.set(0.98, 0.305, 2.70);
       P.turretG.add(forwardMag);
-      // Preserve the pale hub read, now driven by the wheel matrices instead
-      // of a fixed row that separated during suspension travel.
-      const gear = P.gear;
-      if (!gear) throw new Error('Leopard Revolution running gear must exist before adding hub caps');
-      gear.addRoadWheelLayer(KIT.cylX(0.10, 0.004, 14), mgPale, {
-        outset: 1.386 - 1.2875,
-        name: 'gearRoadWheelPaleHubCaps',
-      });
+      // (the pale hub-cap wheel layer left with the nation wheel standard, owner 2026-09-22)
     }
     // The structural turret AABB is z -1.92..+3.82 at the legacy authoring
     // datum, so its actual longitudinal center is +0.95 m.  Move the yaw
