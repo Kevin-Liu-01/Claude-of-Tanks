@@ -36,28 +36,28 @@ const BEFORE=[
   {
     "quality": "high",
     "camoPattern": "factory",
-    "gun": "6cf28db82e67aaa50cf5bdbcbe0b2d36ba82857c8d1f772814f9a7a9bf70620a",
+    "gun": "d802c038dfafaca543273b33c0c47ae54f2adbd571024c928701e099fcc5acb0",
     "other": "5cdf2fe1fb522c5574a610e12e83ed19d1fc9aa287ff04da82e37f8556460e9d",
     "gunTriangles": 1526
   },
   {
     "quality": "high",
     "camoPattern": "winter",
-    "gun": "6cf28db82e67aaa50cf5bdbcbe0b2d36ba82857c8d1f772814f9a7a9bf70620a",
+    "gun": "d802c038dfafaca543273b33c0c47ae54f2adbd571024c928701e099fcc5acb0",
     "other": "28073e67d7dcd789b07fed6ba0dedff68bc771a8d5cd7d76a16b6b4bc7bbf598",
     "gunTriangles": 1526
   },
   {
     "quality": "low",
     "camoPattern": "factory",
-    "gun": "0d8cc113651489d2dbe80798d85c1123e0110e57fab0f3db51d0f83f936fa037",
+    "gun": "a60bdd8ca20cbeef6acf5d8e3b856facd9a02c93fd84590a20ee47e52667b1ad",
     "other": "c243d210b3dc85b6a807d625445b1102903d6231dc02bc6b0593ae397a6a079b",
     "gunTriangles": 994
   },
   {
     "quality": "low",
     "camoPattern": "winter",
-    "gun": "0d8cc113651489d2dbe80798d85c1123e0110e57fab0f3db51d0f83f936fa037",
+    "gun": "a60bdd8ca20cbeef6acf5d8e3b856facd9a02c93fd84590a20ee47e52667b1ad",
     "other": "c5403fb244689cd6b468c47b2e641f57dc4c5086271129259829101b98c2452d",
     "gunTriangles": 994
   }
@@ -79,11 +79,15 @@ const BEFORE=[
 // bf43f4236155…, high/winter cb9cd9cd3ab0…, low/factory 5dab33048edf…, low/winter
 // 7d3b783a0378…), so no authored native stock changed; re-based from the record
 // generated 2026-09-18 in 547457932 (ce5ef1ff09cc…, db5e8bb9493a…, 8561e26e68c7…, 354d8ebcbba0…).
+// 2026-09-22 (r35, camo world scale — src/vehicles/camoWorldScale.ts): every merged hull/turret surface and every
+// fitting now projects its camo at the fleet constant 0.5 repeats/m and the first bake reads the pattern stream, so
+// the uv attributes and material descriptors inside these payloads moved again (gun and other alike); positions and
+// gun ownership are unchanged — re-based on the round-35 staged tree.
 const NATIVE_OTHER_BEFORE = [
- '42e282b4d9a21f47d9571c3a274957a0b55b696de74688761e3d344eb2a8cc83',
- '1f3940cd0d70841803ee1e07ba2c9f3dd556bcd7e98f9af3cd6124db6d56ba38',
- 'c25e66b21462806817494dac8d483196b9c79bdd93009379c0e006173ab58597',
- '2f7de8e7373972d00a40f089a0fc127d69aca782da43e39f614b4fc758bbb03a',
+ 'b8fd3fdb466c74275ed522c022366e9e2b4a2cb8e9914df7c4db1b0b9089640b' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m (camoWorldScale.ts) — uv attributes move on every mesh outside the gun too */,
+ '5f2a88ac9cdcaa49c59eb2e905af3633c968a725faadff903ec2a300c24eea48',
+ '71b2727358efbe17656e63fbfd2cea3f24ddd572609f4e4bcd92586598b0a40f',
+ '43d7ddeeb9f9d4763623b8659064e6c7ef82c04f8b4a9a97aa00a674063a6867',
 ];
 
 const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,`${label}: ${a} vs ${b}`);

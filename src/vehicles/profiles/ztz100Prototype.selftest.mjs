@@ -1,3 +1,5 @@
+// 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
+// inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -201,8 +203,8 @@ function negatives(tank, gun) {
   assert.throws(() => checkLaunchMouths(tank.root, gun), assert.AssertionError, 'painted missile mouth cap fails true air');
   gun.remove(cap); cap.geometry.dispose();
 }
-const expectedHull = { high: '7ef7ef615776e57833a4781b421e448a2d6fffda37826396e6dab7d56b05457a',
-  low: 'fc3222771b933364690b6746853f390954319512442877751e1d51287ad6d028' };
+const expectedHull = { high: 'c9b1277a4e2135ff72e519aef95cd588abca1e98f731dd5d3e0534d20f499316',
+  low: '4523d34d66cd2c80f074a81bd355184816adfce531490f73223aec333de52179' };
 await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id), 'actual generated prototype fill record is loaded');
 const fillRecord = interiorFillRecord(id);

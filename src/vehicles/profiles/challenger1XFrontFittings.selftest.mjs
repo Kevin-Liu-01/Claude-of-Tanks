@@ -1,3 +1,5 @@
+// 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
+// inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import * as THREE from 'three';
@@ -23,11 +25,11 @@ function createTank(...args) {
 const UNCHANGED = {
  gearTrackPads:'a3c255814c82fe731d4e324df713202c052d1ec0f9042488200444ea5aadb5d8',
  gearTrackPadsSimplified:'4a3cb577950ef7b5908387712819b2e31563121c635a02a3391197443bc984f9',
- hull:'f79e51cdbc58bd075522a18b3a184652b257668618294180f7a17a2fb1878eb5',
- gun:'f31773814e430d60eae149c0b6e7e227e3b714d495d37ff14b12efaa94e0abac',
+ hull:'d8ac30a08a648d9189cec9632ca2a00b0f1a08836396a6677789c99eee2654ba',
+ gun:'52a3d1742d34dc071eea7b1e934cac5956ae7138dcc27fa1374a366dade5b813',
  gunDark:'83839050dccabbfffa939a1e91202abcce452bba69ebc309e08272f33764990b',
- gunMount:'2f33243dec650d58ed5dfc1a1c4602f335be1e50778106b42a1261a299ad5a4a',
- turret:'c0f4a5a0118491ae100cc5c92c2a26bd4d0d12863aafcd96624762cd4e67c8d4',
+ gunMount:'896afdff62d963006a8295fc71b00f4350c3b137db1f2f29ad66e3954623b238',
+ turret:'23eda0efc94c8afb01d6597337272ded2393a82473469710b06689e781d9c26d',
 };
 function fingerprint(m) {
  const h=crypto.createHash('sha256');

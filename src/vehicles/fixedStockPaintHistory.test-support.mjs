@@ -24,14 +24,16 @@ const edits = {
     ["import {KIT} from './kit.ts';", "import {KIT} from './kit.ts';\nimport {markFixedPaintedPanel} from './fixedPaintedPanel.ts';"],
     ["P.addEquipment('hullDetail',sectionSolid(sections));", "P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(sectionSolid(sections),\n    'type10-painted-folded-skirt','hullDetail'));"],
   ],
+  // round 35 (2026-09-22): the painted covers project their camo at the fleet constant (camoWorldScale.ts) — the
+  // import and the boxUV call are part of the declared paint edit; the pre-paint source hash is unchanged
   "leopardA5XDetails.ts": [
     [
       "import * as THREE from 'three';",
-      "import * as THREE from 'three';\nimport { boxUV } from '../factoryGeometry.ts';"
+      "import * as THREE from 'three';\nimport { boxUV } from '../factoryGeometry.ts';\nimport { CAMO_UV_REPEATS_PER_M } from '../camoWorldScale.ts';"
     ],
     [
       "  const mesh = new THREE.Mesh(geometry, P.mats.detail);",
-      "  // Fixed steel service covers share the body finish; separate optics and\n  // hoist fittings retain their own equipment paint.\n  const paintedCover = owner === 'hull' && (name === 'ServiceCoverRight' || name === 'ServiceCoverLeft');\n  if (paintedCover) boxUV(geometry, P.spec.visual.camoScale ?? .34);\n  const mesh = new THREE.Mesh(geometry, paintedCover ? P.mats.hull : P.mats.detail);"
+      "  // Fixed steel service covers share the body finish; separate optics and\n  // hoist fittings retain their own equipment paint.\n  const paintedCover = owner === 'hull' && (name === 'ServiceCoverRight' || name === 'ServiceCoverLeft');\n  if (paintedCover) boxUV(geometry, CAMO_UV_REPEATS_PER_M); // round 35: fleet camo density\n  const mesh = new THREE.Mesh(geometry, paintedCover ? P.mats.hull : P.mats.detail);"
     ],
     [
       "mesh.userData = { appearanceRole: 'fittingPaint',",

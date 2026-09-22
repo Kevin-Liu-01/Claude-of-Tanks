@@ -1,3 +1,5 @@
+// 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
+// inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import * as T from 'three';
@@ -169,8 +171,8 @@ function nonTarget(t,quality){
     rows.push([name,preservedMeshHash(m)]);
   });
   rows.sort(([a],[b])=>a.localeCompare(b));
-  const expected=quality==='high'?'492c4d19f3c94e7ea36f0fc9f7d1c347eb2c2c17cc97456ae139c9577d00ab01'
-    :'ebe611a37250588f658c3d4eeea2cb67b7a73154326a6e747af3fed0e23d0819';
+  const expected=quality==='high'?'fb6fcb5b8205f8dcfd56a706c7184abbd31a4dfa3ee468f997f2d3ff5f3a26ac'
+    :'f8da41a7ba6e3ad23399de87653511bb1b0717625b48a761389f69777de6ddd2';
   assert.equal(rows.length,quality==='high'?37:36);
   assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'),expected,
     'immutable non-target runtime geometry, world matrices, MG, antenna-independent armor and all wheels/course');

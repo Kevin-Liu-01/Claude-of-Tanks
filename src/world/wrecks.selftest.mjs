@@ -86,6 +86,10 @@ function assertBakeFingerprint(baked, expected) {
 // new arithmetic or a source-fragment mock.
 // 2026-09-17 track law (28 mm X-standard band, ground datum): both fixtures' triangle counts, heights, byte
 // capacities and stream digests are repinned from the current bake.
+// 2026-09-22 round 35: every interior fill record was regenerated under the track-lane rule (tools/gen-interior-fills.mjs,
+// r35-fills) and the camo UVs moved to the fleet constant (camoWorldScale.ts), so the bake triangle counts, byte sizes and
+// visible-attribute hashes below are repinned from the current build; the shadow geometry hashes are unchanged where
+// the fill meshes did not change.
 const originalBakeFixtures = [
   {
     // 2026-09-13 wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost
@@ -93,12 +97,12 @@ const originalBakeFixtures = [
     // gains triangles (38560 -> 44884); bounds, byte sizes and the three visible-attribute hashes
     // are repinned from the current build. The shadow geometry hash is unchanged.
     specId: 'm1a1', seed: 2002,
-    bounds: [47236, 4.026729702949524, 3.9549999237060547, 2.6346793174743652], // 2026-09-14: fleet fills to zero
-    bytes: [1700496, 1700496, 1700496, 6984],
+    bounds: [46972, 4.026729702949524, 3.9549999237060547, 2.6346793174743652], // 2026-09-14: fleet fills to zero
+    bytes: [1690992, 1690992, 1690992, 6984],
     hashes: [
-      '83bfa668c78953d8a44d01940ab973e7dc6edaa0e6c1dde6ffc93de35939f89d',
-      '8f37057cd5455227686c74ea179f9c4984a961bdd098e47e8482596ea3880e78',
-      '2dea343edab0a50d863197a1f7806bd466429485f77ecee667ff6e8a054d40af',
+      'f4eb4e2b098c2ea1bd74d5d5b511ab68930c1f912976a9e9c125b7242e97456e',
+      '8be29ddb9ba925929b6cecd14d23577b7d10c1b214fdfd48ddec5af88eac6c56',
+      '6cb0afd787808b113f65d2a79e100ed3b32a883872feb51bfd7fb958d4884a1c',
       'c6fceff4985f5bc2f0f996528717780d69bac42d9a1c54b7621b75c2f66bcaf4',
     ],
   },
@@ -106,12 +110,12 @@ const originalBakeFixtures = [
     // 2026-09-13 interior fills: type10 carries generated interior fills (every hull and turret
     // does now), so its wreck bake gains triangles (31508 -> 35660); repinned from the current build.
     specId: 'type10', seed: 2133,
-    bounds: [41504, 4.445803761482239, 3.807588815689087, 3.2081706523895264], // 2026-09-14: fleet fills to zero
-    bytes: [1494144, 1494144, 1494144, 7704],
+    bounds: [40568, 4.445803761482239, 3.807588815689087, 3.2081706523895264], // 2026-09-14: fleet fills to zero
+    bytes: [1460448, 1460448, 1460448, 7704],
     hashes: [
-      '3a1b02742610b87d2437abcc43e6f44bbe574cb65fdcbc8bac53fc1ffda7d014',
-      '03cc08cc33b41a375b4b2cba33ec91cab109b204c9ad8c993854fbaa9b80169a',
-      '81a4baea396d98cc0df3a76639595051b9e0b5719b44b5b1d8ae5821b92efd0f',
+      '42a7461cce19e9541f4e23f0353d681a61ed2cedb0ea73063027bc3a6b3a16d7',
+      'a9459c8cb96a787d96c09404e116f89058a551971d04b2564ff98db32493827f',
+      '994757202aee6343c1da2d0ff2976ed21b1efa0fb6d8e4f96ab5c1bad0566e9d',
       'ca8a28e323d0ac81a158deb7c69ad329581bbf69c80a53a79bcb53dcbb771b44',
     ],
   },

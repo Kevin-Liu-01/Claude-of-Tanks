@@ -16,7 +16,7 @@ const sha=x=>createHash('sha256').update(x).digest('hex');
 const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
 // Authenticated a6fa51e18 native donor before the neutral chassis extraction; re-pinned 2026-09-21 for the side-station
 // end-wrap bake (the T-90MS X bands are laid about each side's own outer wheels — tankFactoryCore buildRunningGear).
-const donorHashes={high:'a14217f7f8e779f2503260cb03a5ba258118de7805953ec26e87f42cee40add2',low:'0afe55e2cf19385c0965e16db345be7387d82a6e3ceed1ac001e7d859ba7d763'};
+const donorHashes={high:'9976ffbeeb4cbc3f60352729bee79b3c7370e1a4308b56829d6cb473d3a64b06' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'79ca43996b70c7389b3d618ffcf8abe2c8d739f0f3d48264c20886103a85184f'};
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{

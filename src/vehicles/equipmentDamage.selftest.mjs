@@ -287,8 +287,10 @@ const T90M_REST_REVISIONS = Object.freeze({
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
 // 2026-09-17 track law (28 mm X-standard band, ground datum, seated wheels): every rest/armor digest below moves again.
+// 2026-09-22 round 35 (camoWorldScale.ts): camo UVs at the fleet constant 0.5 rep/m and the first bake on the pattern stream move
+// the intact/damaged draw-content digests below again; draw order and geometry positions are unchanged.
   beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
-  forwardLampSeat: '8031cc534908ce99e798424f93b35ac627f30598791817170e60b4f44b7d134b',
+  forwardLampSeat: 'c711ef48c76618ed6fb0a2037f0725f7ea303ec001ad1d0bddf926aaa965042d',
 });
 
 // Recorded before the equipment-damage opt-in/hook; only the independently

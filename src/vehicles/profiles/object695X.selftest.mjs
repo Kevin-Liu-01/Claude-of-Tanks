@@ -1,3 +1,5 @@
+// 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
+// inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -14,8 +16,8 @@ import { verifyGunCradleSeats } from '../gunCradleSeats.test-support.mjs';
 // Original concept, not a supplied-source or historical turret claim. The
 // 2026-09-19 pre-redesign HIGH/LOW chassis payloads authenticate unchanged stock.
 const hullHashes = {
-  high: '22c8260e6436281252e9e405390fa86d8ec270a92c0994b2096449fbdc6fdc0c',
-  low: '4a034f388c3b38c7d5f8beb2ede7115006285d317da48b5eab0fc07e65c450ea',
+  high: '1c8cb3f7faeec6dedef8dbb8159c5965ee17cd845d650e61c1698615e5f74722',
+  low: '48bf39e0136f8bc1301b7cf33fe3c848be2950dbeab79315c5a0c2fc14fc25f8',
 };
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
 assert.ok(!profileSource.includes('epokhaTurret'), 'the counterpart turret is not assembled');
