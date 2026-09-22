@@ -2563,6 +2563,12 @@ void splatCompute() {
   float mkB = mk.b;
   float rockGate = 1.0;
   if (uRockGate > 0.5) {
+    // Round 35 (owner 2026-09-21, "the sides of mountains in stuff like redrock divide … look so so bare"): past the
+    // playable square the landform channel is its clamped edge texel, so a steep RING face on a landform-gated map
+    // (Redrock, Titan, Skybridge, Caldera, the desert, Mars) rendered as a sand slip face — a dark, ripple-striated,
+    // bare wall — instead of the bedded rock the same slope carries inside the square. Outside, the ring's own slope
+    // supplies the landform weight: steep faces are mesa rock with their strata, floors stay sand.
+    mkB = max(mkB, smoothstep(0.22, 0.48, 1.0 - clamp(wn.y, 0.0, 1.0)) * outsideW);
     rockGate = smoothstep(0.10, 0.45, mkB);
     mkB = 0.0;
   }
@@ -2575,12 +2581,22 @@ void splatCompute() {
   // distance.
   float effDist = min(camDist, length(fwidth(wp.xz)) * 935.0);
   float df = smoothstep(45.0, 160.0, effDist);
-  float farM = smoothstep(90.0, 330.0, effDist);
+  // Round 35 (owner 2026-09-21, "stuff in background should never be flat"): a wall is seen face-on, so its texels
+  // stay dense on screen far longer than a grazing floor's — the near variant holds twice as far on steep faces
+  // (the fur-under-a-low-sun fix lives in gSplatSteepAtt, not here, and stays as it was).
+  float steepFace = smoothstep(0.30, 0.55, 1.0 - clamp(wn.y, 0.0, 1.0));
+  float farM = mix(smoothstep(90.0, 330.0, effDist), smoothstep(180.0, 660.0, effDist), steepFace);
   // Round 32 (owner 2026-09-21, "quality loss beyond the map borders"): the rim bands past the playable square are
   // long flat faces seen at grazing angles, where the near detail tiles resolve into a regular moiré carpet that the
   // relief-rich battlefield never shows. Treat the outland as far ground from 40 m past the edge: the far variant's
   // macro variation and the mip bias take over, as they do at 330 m inside the map.
-  farM = max(farM, smoothstep(40.0, 200.0, edgeOut));
+  // Round 35 (owner 2026-09-21, "the sides of mountains … look so so bare … the layers and texturing was good"):
+  // that rule flattened the ring WALLS too — a wall is seen face-on, never at the grazing angle that made the moiré,
+  // yet it lost its detail albedo, normals and strata grain from 40 m past the edge. The far-ground treatment now
+  // reaches only the near-flat outland floors (faces under ~23°); a face steeper than ~39° keeps the battlefield's
+  // own near variant until the ordinary 90–330 m distance fade.
+  float outlandFloor = smoothstep(0.78, 0.92, wn.y);
+  farM = max(farM, smoothstep(40.0, 200.0, edgeOut) * outlandFloor);
   // detail fade: positive mip bias at range kills the single-frequency
   // speckle shimmer that anisotropic filtering keeps resolving
   float mipB = farM * 2.0;
@@ -2918,13 +2934,27 @@ void splatCompute() {
       // maroon; value-only variation keeps the crag without the color drift
       float rrL = dot(rr.rgb, vec3(0.36, 0.42, 0.22));
       a.rgb = mix(a.rgb, a.rgb * (0.80 + rrL * 0.40), farRock * 0.45);
+      // Round 35 (owner 2026-09-21, "stuff in background should never be flat"): a wall at 300–700 m kept one
+      // luminance octave and a fifth of a coarse normal, so Redrock's outland walls read as one brown sheet. Three
+      // more structures, all in the wall plane and all gated to STEEP rock at range so the near cliffs keep their
+      // look: (a) rock masses — buttresses and recesses ~90 m across from the same layer sampled coarser;
+      // (b) bed ledges — a ~14 m world-height ladder, its shelf lit and its seam shaded, warped along the wall by
+      // the per-cliff field so no two faces share a band, carried in albedo where the normals have mipped away
+      // (full strength on bedded maps, half on the rest); (c) the coarse normal at wall strength.
+      float wallFar = farRock * steepW;
+      float rrM = dot(wallTex(uAlbR, 0.011), vec3(0.36, 0.42, 0.22));
+      a.rgb *= 1.0 + (rrM - 0.5) * 0.36 * wallFar;
+      float ledgePhase = wp.y * 0.45 + gCliffJ * 7.0 + wallNoiseG(0.02, vec2(0.31, 0.77)) * 2.6;
+      float ledge = sin(ledgePhase);
+      float ledgeAmp = mix(0.5, 1.0, smoothstep(0.02, 0.12, uStrata)) * wallFar;
+      a.rgb *= 1.0 + (smoothstep(0.35, 0.9, ledge) * 0.10 - smoothstep(0.35, 0.9, -ledge) * 0.16) * ledgeAmp;
       vec3 rnGround = vec3(texture2D(uNrmR, uv * 0.019).xy * 2.0 - 1.0, 0.0);
       vec3 rnWall = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.019).xy,
                                     texture2D(uNrmR, gWallUVz * 0.019).xy);
       vec3 rn = mix(rnGround, rnWall, steepW);
       // 0.55 (r5, was 0.9): under a low sun the full-strength coarse normals
-      // rendered far flanks as glittery fur instead of crag
-      n.xyz += rn * farRock * 0.22;
+      // rendered far flanks as glittery fur instead of crag; round 35 adds back a quarter on genuine walls only
+      n.xyz += rn * farRock * (0.22 + 0.24 * steepW);
     }
   }
   // wind-aligned sand ripples: anisotropic normal waves instead of dot noise.
@@ -3997,7 +4027,8 @@ function* terrainBuildSteps(
       bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
         columns: ringInfo.columns ?? HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
       });
-      void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0]));
+      // ground albedo mean → meadow tint (round 29); rock albedo mean → rock and scree tints (round 35)
+      void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
     }
   }
   const chunks: TerrainChunk[] = [];

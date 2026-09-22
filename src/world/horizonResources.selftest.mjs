@@ -235,8 +235,13 @@ function assertVistaSurfaceShader(shader, normals, label) {
     `${label}: the world projection macro is the only fetch site (three plane fetches)`);
   assert.equal((fragment.match(/VTRI\(/g) ?? []).length, 13,
     `${label}: four noise scales and five material tiles share the one macro (twenty-seven fetches per fragment), plus the round-29 near fields and near ground fetch inside the 380 m branch`);
-  assert.match(fragment, /float wall = smoothstep\(0\.30, 0\.62, slope \+ nD \* 0\.06\);/, `${label}: strata, staining and gullies are gated to genuinely steep faces (round 29)`);
-  assert.match(fragment, /float bedW = uVBanding \* wall;/, `${label}: bed stripes never cross gentle sand or grass`);
+  assert.match(fragment, /float wall = smoothstep\(0\.30, 0\.62, slope \+ nD \* 0\.06\);/, `${label}: staining, varnish and gullies are gated to genuinely steep faces (round 29)`);
+  // round 35 (owner 2026-09-21, "the sides of mountains … look so so bare"): beds and their relief also run across moderate
+  // ROCK slopes at half weight; a gentle sand or grass slope (rockW 0) still carries no stripe
+  assert.match(fragment, /float bedW = uVBanding \* max\(wall, 0\.5 \* ledgeSlope \* rockW\);/, `${label}: bed stripes reach ledge slopes on rock only`);
+  for (const term of ['float talusW', 'float lamina', 'float varnish', 'float cavity', 'float hLedge', 'float macroFade']) {
+    assert.ok(fragment.includes(term), `${label}: round 35 wall structure carries ${term}`);
+  }
   assert.match(fragment, /if \(nearW > 0\.002\) \{/, `${label}: the near fields are skipped past 380 m`);
   for (const uniform of ['uVMeadow', 'uVCanopy', 'uVRock', 'uVScree', 'uVSnow', 'uVMeadowTint', 'uVRockTint', 'uVScreeTint',
     'uVRockSlope', 'uVBanding', 'uVHaze', 'uVFogTint', 'uVAmbient', 'uVSunGain']) {

@@ -314,6 +314,144 @@ mode, the horizons seem to glow in the back". Audited with `.qa-dev/map-edge-aud
 Receipts: `horizonRockfield.selftest.mjs` (primitive, synthetic ring, Redrock census, wooded maps bare, eviction
 ownership), `horizonResources` (bare-backdrop loop passes `outlandRocks: 0`; haze pin carries the dim).
 
+
+### Walls pass — 2026-09-22 (round 35)
+
+What landed for the walls (details in the round-35 commit): on the six landform-gated maps the terrain material's
+landform weight past the playable square follows the ring's own slope instead of the clamped edge texel (steep ring
+faces are mesa rock with their strata; Titan's orange and Skybridge's beige slip faces become the same rock as their
+in-map cliffs); round 32's far-ground rule reaches only near-flat outland floors; the near variant holds to twice the
+distance on steep faces (180–660 m); the far-cliff path gains ~90 m rock masses, a ~14 m bed-ledge ladder with lit
+shelves and shaded seams (full on bedded maps, half elsewhere) and the coarse normal at wall strength; the vista
+fragment's ranges get faulted beds with laminae, shelves and seams, gullies, varnish, bleached shelf tops, talus
+aprons, moss on rolling ledges and cavity shading, with the broad relief shading to the far cascades; the ring's rock
+and scree tints come from the battlefield's rock layer. Verified with `.qa-dev/wall-probe.mjs` before/after captures
+(badlands, copper_mesa, verdant, alpine, desert, titan_gorge, caldera, skybridge, mars). Redrock's own outland walls
+remain smooth analytic ramps (`redrockCanyon.ts` is shared by the playable ground and the ring, and the Redrock horizon
+receipt pins every outland row to it exactly), so their remaining flatness is geometry, not material — a round-36 item
+alongside the border geography.
+
+### AAA map program — 2026-09-21 (round 35 onward)
+
+Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
+horizon look so so bare. stuff in background should never be flat and the layers and texturing was good. i meant that
+the textures didnt continue on once you get to the boundary of the map - it looked like a completely new geography …
+make them seamless and seem like just a map square boundary area carved into a broader map that actually exists and
+works. put a lot of max effort into making the most beautiful maps ever IN GENERAL and plan out what this implies and
+means and where our current maps fall short of that, and /goal that until you reach Triple AAA, world of tanks level
+maps doing deep research".
+
+Two corrections to earlier rounds follow from that: the round-29 "texture just stops" finding was about GEOGRAPHIC
+continuity across the border, not about wall texturing, and no seam fix may trade away texture richness on the
+ranges. The research behind this section is the 46-source brief (World of Tanks Core / Big World Outland, Dagor,
+Frostbite and Unreal terrain talks, Hillaire / Bruneton aerial perspective, hex tiling, impostor forests); its
+conclusions are folded in below rather than repeated.
+
+#### What "AAA / World of Tanks level" means here
+
+World of Tanks surrounds every 1 km playable square with a 32 × 32 km "Outland": the same heightfield, the same eight
+shared terrain tiles and the same decal/road/river generators run past the red line, so the border is a rule, not a
+place where the world changes. Its ranges are lit per pixel with slope- and altitude-layered materials, cliffs
+triplanar-projected, ambient occlusion baked from the heightfield, aerial perspective shared between ground and sky
+(shaded faces go blue, lit faces keep their colour, a mountain is never paler than the sky behind it), forests as
+impostors in the same species palette with a tree line, and 2–3 cascades to the horizon. Our acceptance criteria are
+the fifteen ground-level checks below, judged from the player's height at the same camera/seed/tier before and after
+every change (the `.qa-dev/wall-probe.mjs` view set: corner, along-rim, outside-looking-in, first-ridge wall, centre
+skylines):
+
+| # | Check | Pass | Fail |
+|---|---|---|---|
+| 1 | Cross the red line by eye at five places | Same tiles, relief style and decals at least one chunk past the line | Texture family changes, relief flattens |
+| 2 | Roads, rivers, fences, tree lines at the border | Continue and vanish by perspective or haze | Cut at a straight line |
+| 3 | Near-ring slope shading | Lit and shaded faces differ; cliff, talus and grass bands follow slope and altitude | One colour per hill |
+| 4 | Mid-range contrast | Shaded faces bluer, lit faces keep local colour | Uniform wash |
+| 5 | Horizon band | Terrain slightly darker than the sky behind it; no line | Bright line, hue mismatch |
+| 6 | Sun-relative haze | Brighter toward the sun, cooler away | Same haze everywhere |
+| 7 | Flat far ground in motion | No moiré or shimmer | Moiré carpet |
+| 8 | Tiling at 30–200 m | No visible repeat | Grid of repeats |
+| 9 | Tree / impostor swap | No pop; species and lighting match | Popping, mis-lit cards |
+| 10 | Tree line vs border | Density gradient continues | Wall or abrupt end |
+| 11 | Shadows | Shadow colour = sky ambient; soft edges | Black or grey mismatch |
+| 12 | Props | Seated, decal underneath | Floating |
+| 13 | Water at the edge | Same level and shader beyond | Plane ends |
+| 14 | Haze gradient | Smooth in 8-bit | Banding |
+| 15 | Ring vs playable palette | Same tiles and season | Ring reads as another biome |
+
+#### Where the maps fell short at the start of round 35 (captures on d0cbb9fcd)
+
+- **Bare ring walls on the landform maps (checks 1, 3, 15).** Past the playable square the terrain material's
+  landform channel is its clamped edge texel, so on Redrock, Titan, Skybridge, Caldera, the desert and Mars a steep
+  ring face carried the SAND slip-face path — a dark, ripple-striated, bare wall — instead of the bedded rock the same
+  slope carries inside the square. Round 32's moiré rule then treated every face past 40 m as far ground, which
+  blurred the detail albedo and normals of the walls that were rock.
+- **Far ranges as one tone (checks 3, 4).** The vista fragment's beds were one noise tile with parallel lines, no
+  ledges, seams, gullies, talus or cavity shading, so a shaded range read as a flat brown sheet at 700 m.
+- **Rock colour switches at the seam (check 15).** The ring's rock and scree tints came from the authored hill rock,
+  not from the battlefield's own rock layer.
+- **Geography changes at the seam (check 1).** The heightfield clamps at ±512 m and the ring's own ridged relief
+  starts one row past the seated skirt; the splat mask fades to open ground 36 m out; props stop at ±430 m; the litter
+  is a ±40 m camera ring; the rockfield serves only rock and sand maps and the ring forest only wooded rims.
+- **Aerial perspective is a fog mix (checks 4–6).** One haze strength per map, the same in every direction; far
+  mesas read paler than the sky behind them; shaded and lit faces fade at the same rate.
+- **No ring self-shadow or sky-driven ambient (checks 3, 11).** Ranges are lit analytically by sun and a constant
+  sky term; nothing occludes.
+- **Detail tiling (check 8).** Ground layers use a rotation-blend mask, not hex tiling; anisotropic filtering and mip
+  bias are per-layer knobs without a measured policy.
+
+#### Rounds
+
+| Round | Scope | Verified by |
+|---|---|---|
+| 35 (this) | Landform gate follows ring slope outside the square; far-ground rule gated to flat floors; vista walls v1 (faulted beds and laminae, shelves and seams, gullies, talus aprons, varnish and bleached shelves, moss on rolling ledges, cavity shading, slower macro fade); ring rock/scree tints from the terrain rock layer | wall-probe A/B on badlands, copper_mesa, verdant, alpine, desert, titan_gorge, caldera, skybridge, mars; 31-map skyline/border audit sheets |
+| 36 | Border geography: evaluate the map's own base height past ±512 m for the first ring rows and blend into the authored relief by distance; splat continuity by the same slope/height rules instead of a fade to open ground; decor continuity (trees, boulders, tufts thinning past the edge; prop bound toward the red line); water plane and shader into the ring | edge-audit and wall-probe sheets, 31 maps |
+| 37 | Aerial perspective shared by ground and sky: sun-relative in-scatter, height-dependent extinction, shaded faces cool while lit faces keep colour, the same function on the sky dome so the horizon matches by construction | skyline sheets, night and dusk presets |
+| 38 | Anti-tiling: hex-tiled detail albedo/normal layers, detail normals fade to flat with distance, anisotropic filtering with a measured mip-bias policy | 30–200 m tiling sheets, moiré-in-motion clips |
+| 39 | Ring cascades and occlusion: a second far cascade with a macro colour map, per-vertex horizon occlusion baked at build, sky-projected ambient driving haze colour and water reflection | skyline sheets, frame-cost pairs |
+| 40 | Decal clipmap rings around the camera for WoT-density ground decals; water continuity where round 36 left gaps | same-camera pairs |
+
+Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
+re-established with dated notes, and captures on the same camera/seed/tier before and after.
+
+#### 31-map skyline and border audit — 2026-09-22 (captures on d0cbb9fcd, `.qa-dev/wall-probe.mjs`, six views per map: SW corner, along the north rim, centre skyline NE, outside-in at the SW wall, centre skylines W and S)
+
+Faults are listed against the checklist numbers. "Ring" = the terrain-material rim bands and the vista ranges; "corner cliff" = the in-map cut rock that the seated skirt meets at the corners.
+
+| Map | State | Faults seen |
+|---|---|---|
+| verdant | good | far ranges hazed blue, ring forest continuous; centre S view blocked by a building (probe) |
+| desert | fair | dune faces carry dark parallel ripple bands at every range — a corduroy repeat (8); far mesas paler than the sky (5) |
+| winter | fair | ring is a white sheet with a few dark specks (3); skyline nearly invisible in the haze (5) |
+| urban | fair | pale cracked corner cliff beside green turf reads as another material (15); centre sky views blocked by buildings (probe) |
+| coastal | fair | outside-in view is a flat pale plain to a faint ridge — the sea aperture side shows no water shader beyond (13) |
+| autumn | good | pale grey corner rock next to golden ground (15, mild); far ranges blue — good |
+| steppe | good | rim outcrops stop at the seam, plain grass beyond (1, mild) |
+| railyard | fair | mossy dark corner slope; skyline flat under an overcast sky (3, 5) |
+| frontier | good | chalky corner cliff (15, mild); hills, pines and the road continue |
+| fjord | fair | smooth green cone hill on the rim with a darker cap — one colour per hill (3); plaster-white corner rock (15) |
+| delta | good | flat green ring with tree clusters and water — consistent |
+| badlands | poor | first-ridge walls at 300–700 m read as one dark brown sheet (3); the outland floor is bare sand (1, fixed density but no relief); walls past the edge lost their detail (round 32, fixed in 35) |
+| monsoon | poor | smooth bare brown mound at the SW corner with no texture (3, 15); dark hill along the rim |
+| alpine | good | blue-grey rock cliffs and snow ranges; strong blue shade on shaded rock (4, acceptable) |
+| caldera | fair | shaded slopes go black (4, 11); far pinnacles read as pyramids (3); the crater rim rises steeply right at the edge (probe camera ends inside the ring) |
+| foundry | fair | skyline flat under overcast (5) |
+| ruinspires | good | rolling ring with grass and far ranges; centre views blocked by towers (probe) |
+| blackglass | good | rolling ring; centre views blocked by towers (probe) |
+| titan_gorge | fair | orange sand slip faces on steep ring faces (15, fixed in 35: landform gate); smooth beige ridge faces without strata (3) |
+| skybridge | fair | beige sand ridge faces where rock belongs (15, fixed in 35); shaded SE slope goes black (4) |
+| polders | good | flat ring, consistent |
+| copper_mesa | good | strata on every cliff; far mesas paler than the sky (5) |
+| airfield | good | flat ring with trees — consistent |
+| oasis | fair | dune bands repeat (8, as desert) |
+| whiteout | fair | as winter (3, 5) |
+| orchard | good | grey corner rock beside green (15, mild); far ranges blue |
+| longleaf | good | dark corner rock; ranges good |
+| mangrove | good | flat green ring; water and trees continue |
+| saltwind | fair | outside-in view pale and flat toward a faint ridge (13, 5) |
+| reservoir | good | corner rock dark grey; ranges, forest and water good |
+| mars | fair | ring beds print as high-contrast zebra stripes on every ridge (8); dark side of ridges black (4) |
+
+Cross-cutting: (a) every temperate map's in-map corner cliff is a pale grey or white rock beside saturated turf — the rock albedo tint is a per-map knob and reads chalky on eight maps (15); (b) shaded slopes go black on the dark-soil maps (caldera, skybridge, mars) because the ambient term is a constant hemisphere with no sky colour — round 37/39; (c) desert-family dune ripples are a single-frequency band (8) — round 38; (d) far ranges paler than the sky on the mesa maps (5) — round 37.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

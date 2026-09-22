@@ -324,6 +324,9 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   float hT = clamp(P.y / max(uMaxH, 1.0), 0.0, 1.0);
   float detailW = 1.0 - smoothstep(500.0, 1500.0, vHDist);
   float fineW = 1.0 - smoothstep(120.0, 700.0, vHDist);
+  // Round 35: the broad relief (ledges, gullies) keeps shading the ranges to the far cascades; only the metre-scale
+  // grain fades with fineW
+  float macroFade = 1.0 - smoothstep(300.0, 1600.0, vHDist);
   // Round 32 (owner 2026-09-21, "quality loss beyond the map borders"): a flat floor seen at grazing range (Redrock's
   // outland, the sand pans) resolves the 12 m fields, the 12 m ground tile and the screen-derivative bump into a
   // regular moiré carpet the battlefield never shows. A flat far floor keeps only the broad fields and its tone.
@@ -339,9 +342,11 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   float nD = (VTRI(uDetail2, 0.0230, vec2(0.71, 0.19)).r - 0.5) * (1.0 - floorW);
   float nE = (VTRI(uDetail2, 0.0850, vec2(0.11, 0.83)).r - 0.5) * (1.0 - floorW);
   float slope = 1.0 - clamp(n0.y, 0.0, 1.0);
-  // Round 29: a wall is a genuinely steep face; strata, iron staining and gullies belong to walls, never to the
-  // gentle sand or grass slopes the rock layer also touches (the audit showed contour stripes across dune fields).
+  // Round 29: a wall is a genuinely steep face — iron staining, desert varnish and gullies belong to walls.
   float wall = smoothstep(0.30, 0.62, slope + nD * 0.06);
+  // Round 35 (owner 2026-09-21, "the sides of mountains … look so so bare"): a moderate rock slope is a ledge slope —
+  // beds and their relief run across it too (at half weight), never across gentle sand or grass (round 29's lesson).
+  float ledgeSlope = smoothstep(0.16, 0.40, slope + nD * 0.05);
   // --- material weights ------------------------------------------------------
   float rockW = smoothstep(uVRockSlope.x, uVRockSlope.y, slope + nC * 0.26 + nD * 0.18 + nE * 0.08) * uVRockAmp;
   rockW = max(rockW, smoothstep(0.60, 0.92, hT + nC * 0.12 + nD * 0.06) * uVPeakRock);
@@ -353,10 +358,24 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   }
   float screeW = smoothstep(0.16, 0.40, slope + nD * 0.22 + nE * 0.10) * (1.0 - rockW) * uVScreeAmp
     * (0.55 + 0.45 * smoothstep(0.15, 0.55, hT));
+  // Round 35: talus — the debris apron at the foot of a wall: moderate slope, low on the face, thinning upward
+  float talusW = smoothstep(0.10, 0.30, slope + nD * 0.08) * (1.0 - wall) * smoothstep(0.50, 0.12, hT + nC * 0.15)
+    * uVScreeAmp * (1.0 - floorW);
   float treeF = 1.0 - smoothstep(uTreeline * 0.82, uTreeline * 1.04, hT + nD * 0.05);
   float standF = smoothstep(0.08 + hT * 0.40, 0.30 + hT * 0.40, 0.5 + nB * 1.1 + nC * 0.7 + nD * 0.25);
   float forestW = standF * treeF * (1.0 - smoothstep(0.50, 0.82, slope + nE * 0.06)) * uVForestAmp;
   forestW *= 1.0 - snowW;
+  // --- rock structure: faulted beds, shelves and seams, gullies ------------------
+  // beds follow world height with a broad fault offset (600 m field) and a lateral warp (140 m field) so no two
+  // stretches of wall carry the same parallel bands; a second thin-bed term breaks each bed into laminae
+  float bedPhase = P.y * 0.42 + nB * 9.0 + nC * 2.4;
+  float bed = sin(bedPhase) * 0.6 + sin(P.y * 0.13 + nC * 5.0) * 0.4;
+  float lamina = sin(P.y * 1.9 + nD * 3.0 + nE * 1.2);
+  float bedW = uVBanding * max(wall, 0.5 * ledgeSlope * rockW);
+  float shelf = smoothstep(0.30, 0.80, bed);                       // the lit top of a bed
+  float seam = smoothstep(0.45, 0.85, -bed) * bedW * 1.6;          // the recessed seam under it
+  float gully = smoothstep(0.55, 0.90, 0.5 - nC * 1.2 - nD * 0.6) * wall;
+  float varnish = smoothstep(0.55, 0.85, nC + 0.5) * wall;         // dark desert varnish streaks
   // --- material colours: tint (ratio to the map base) x tile modulation ---------
   vec3 meadowMod = mix(vec3(1.0), VTRI(uVMeadow, 0.083, vec2(0.0)).rgb * 2.0, (0.35 + 0.65 * detailW) * (1.0 - floorW * 0.85));
   vec3 col = uVMeadowTint * meadowMod;
@@ -369,20 +388,27 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   if (uVScreeAmp > 0.001) {
     vec3 screeMod = mix(vec3(1.0), VTRI(uVScree, 0.10, vec2(0.41, 0.09)).rgb * 2.0, 0.4 + 0.6 * detailW);
     col = mix(col, uVScreeTint * screeMod, screeW * (1.0 - forestW * 0.7));
+    // talus apron: scree colour with boulder speckle — dark varnished blocks and pale fresh faces
+    float speckDark = smoothstep(0.60, 0.72, nE + 0.5) * fineW;
+    float speckPale = smoothstep(0.62, 0.74, 0.5 - nE) * fineW;
+    vec3 talusCol = uVScreeTint * screeMod * (1.0 - speckDark * 0.30 + speckPale * 0.14) * (0.94 + nD * 0.18);
+    col = mix(col, talusCol, talusW * (1.0 - forestW * 0.8) * (1.0 - rockW * 0.6));
   }
   if (uVRockAmp > 0.001 || uVPeakRock > 0.001) {
     // beds read along world height on the walls; the horizontal plane of the same fetch keeps caps granular
     vec3 rockMod = mix(vec3(1.0), VTRI(uVRock, 0.055, vec2(0.23, 0.77)).rgb * 2.0, 0.45 + 0.55 * detailW);
-    float bed = sin(P.y * 0.42 + nB * 9.0) * 0.6 + sin(P.y * 0.13 + nC * 5.0) * 0.4;
-    // beds: light shelves over dark recessed seams, both scaled by the map's banding — on walls only (round 29)
-    float bedW = uVBanding * wall;
-    float seam = smoothstep(0.45, 0.85, -bed) * bedW * 1.6;
     vec3 rockCol = uVRockTint * rockMod * (1.0 + bed * bedW) * (1.0 - seam * 0.55);
-    // round 29: iron-stained beds alternate with the pale ones, and gullies cut dark down the walls, so a mesa
-    // face carries the colour and relief a real cliff has instead of one flat tint with thin lines
+    // laminae: fine light/dark banding within each bed on the walls
+    rockCol *= 1.0 + lamina * 0.06 * bedW * fineW;
+    // round 29: iron-stained beds alternate with the pale ones; round 35: the shelf tops bleach pale and the varnish
+    // streaks darken and cool, so a face carries three tones instead of one
     rockCol = mix(rockCol, rockCol * vec3(1.10, 0.95, 0.84), smoothstep(0.15, 0.85, bed * 0.5 + 0.5) * wall * 0.55);
-    float gully = smoothstep(0.55, 0.90, 0.5 - nC * 1.2 - nD * 0.6) * wall;
+    rockCol = mix(rockCol, rockCol * vec3(1.14, 1.10, 1.02), shelf * bedW * 0.35);
+    rockCol = mix(rockCol, rockCol * vec3(0.66, 0.68, 0.72), varnish * 0.45);
     rockCol *= 1.0 - gully * 0.30;
+    // rolling and alpine rims: moss and turf creep onto the gentler ledges below the treeline
+    float moss = smoothstep(0.10, 0.50, nD + 0.5) * (1.0 - wall) * smoothstep(0.62, 0.22, slope) * treeF * uVForestAmp;
+    rockCol = mix(rockCol, uVMeadowTint * 0.85 * meadowMod, moss * 0.40);
     col = mix(col, rockCol, rockW);
   }
   if (snowW > 0.001) {
@@ -393,26 +419,35 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   // centimetres (the vista replaced the round-22 near overlay). Two finer world fields and the ground tile at a
   // 2.4 m repeat fade in inside 380 m and are gone by the first ridge, so the texture no longer "just stops".
   float nearW = (1.0 - smoothstep(60.0, 380.0, vHDist)) * (1.0 - horizonMarine);
+  float nF = 0.0, nG = 0.0;
   if (nearW > 0.002) {
-    float nF = VTRI(uDetail2, 0.27, vec2(0.57, 0.23)).r - 0.5;
-    float nG = VTRI(uDetail2, 0.85, vec2(0.19, 0.67)).r - 0.5;
+    nF = VTRI(uDetail2, 0.27, vec2(0.57, 0.23)).r - 0.5;
+    nG = VTRI(uDetail2, 0.85, vec2(0.19, 0.67)).r - 0.5;
     vec3 nearMod = VTRI(uVMeadow, 0.42, vec2(0.33, 0.81)).rgb * 2.0;
-    col *= 1.0 + (nF * 0.16 + nG * 0.10) * nearW * (0.6 + 0.4 * rockW);
+    col *= 1.0 + (nF * 0.22 + nG * 0.14) * nearW * (0.5 + 0.5 * rockW);
     col = mix(col, col * nearMod, nearW * 0.45 * (1.0 - rockW * 0.7) * (1.0 - snowW));
   }
   #undef VTRI
-  // --- relief shading: screen-derivative bump from the fine fields, sun and sky ----
-  float hb = (nD * 0.55 + nE * 0.45) * (0.35 + 0.65 * rockW + 0.4 * forestW) * fineW;
+  // --- relief shading: screen-derivative bump from a layered height field, sun and sky ----
+  // Round 35: the height field is the wall's own structure — bed shelves step out, seams and gullies cut in, knobs
+  // and grain sit on top — and the broad terms keep shading the ranges past the fine-grain fade
+  float hLedge = smoothstep(-0.25, 0.55, bed) * bedW;
+  float hb = (hLedge * 0.9 - gully * 0.9 - seam * 0.5) * rockW * macroFade
+    + ((nD * 0.55 + nE * 0.45) * (0.35 + 0.65 * rockW + 0.4 * forestW)
+       + (nE * 0.6 + nD * 0.3) * talusW
+       + (nF * 0.35 + nG * 0.25) * nearW * (0.4 + 0.6 * rockW)) * fineW;
   vec3 dpx = dFdx(P), dpy = dFdy(P);
   float dhx = dFdx(hb), dhy = dFdy(hb);
   vec3 r1 = cross(dpy, n0), r2 = cross(n0, dpx);
   float det = dot(dpx, r1);
   vec3 surfGrad = sign(det) * (dhx * r1 + dhy * r2);
-  vec3 n = normalize(abs(det) * n0 - surfGrad * uVBump * 18.0 * (1.0 - floorW));
+  vec3 n = normalize(abs(det) * n0 - surfGrad * uVBump * 22.0 * (1.0 - floorW));
   float ndl = dot(n, uSunDirW);
   float sunL = max(ndl, 0.0);
-  float sky = 0.60 + 0.40 * clamp(n.y, 0.0, 1.0);
-  vec3 lit = col * (uVAmbient * sky + uVSunGain * sunL);
+  float sky = 0.55 + 0.45 * clamp(n.y, 0.0, 1.0);
+  // cavity: seams, gullies and the shaded side of talus blocks read darker than the open face
+  float cavity = 1.0 - (gully * 0.35 + seam * 0.22) * rockW * macroFade - talusW * 0.10 * clamp(0.5 - nD, 0.0, 1.0) * fineW;
+  vec3 lit = col * (uVAmbient * sky + uVSunGain * sunL) * cavity;
   lit = mix(lit, lit * vec3(0.90, 0.94, 1.08), max(-ndl, 0.0) * 0.35);
   // canopy self-shadow: stands darken on their shaded side a little more than open ground
   lit *= 1.0 - forestW * 0.10 * (1.0 - sunL);

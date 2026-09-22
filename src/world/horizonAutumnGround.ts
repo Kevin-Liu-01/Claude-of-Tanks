@@ -35,7 +35,7 @@ export function bindAutumnHorizonGround(
   mesh.receiveShadow = true;
   for (const texture of textures) if (!retained.includes(texture)) retained.push(texture);
   RETAINED.delete(mesh);
-  refreshHorizonGroundTone(mesh, textures[0]);
+  refreshHorizonGroundTone(mesh, textures[0], textures[4]);
 }
 
 interface VistaMaterialData { uniforms: Record<string, { value: unknown }>; base: Color }
@@ -65,16 +65,26 @@ function meanAlbedo(texture: Texture | undefined): Color | null {
  * tint, so the hills continue the field colour instead of the authored hill tone; called at bind and again when
  * the sourced textures replace the procedural ones in place.
  */
-export function refreshHorizonGroundTone(mesh: Mesh, groundAlbedo: Texture | undefined): void {
+export function refreshHorizonGroundTone(mesh: Mesh, groundAlbedo: Texture | undefined, rockAlbedo?: Texture): void {
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   const vista = materials.map((material: Material) => material.userData.horizonVista as VistaMaterialData | undefined).find(Boolean);
   if (!vista) return;
   const mean = meanAlbedo(groundAlbedo);
-  if (!mean) return;
-  const tint = vista.uniforms.uVMeadowTint?.value as Vector3 | undefined;
-  if (!tint) return;
-  // Round 29: the vista's ground colour is the battlefield's own albedo mean (an absolute linear colour — the
-  // fragment no longer multiplies the base-hued bake back in), held a little below the sampled ground because
-  // the ring reads under more air than the field.
-  tint.set(mean.r * 0.94, mean.g * 0.94, mean.b * 0.96);
+  if (mean) {
+    const tint = vista.uniforms.uVMeadowTint?.value as Vector3 | undefined;
+    // Round 29: the vista's ground colour is the battlefield's own albedo mean (an absolute linear colour — the
+    // fragment no longer multiplies the base-hued bake back in), held a little below the sampled ground because
+    // the ring reads under more air than the field.
+    if (tint) tint.set(mean.r * 0.94, mean.g * 0.94, mean.b * 0.96);
+  }
+  // Round 35 (owner 2026-09-21, "it looked like a completely new geography"): the ring's rock and scree take the
+  // battlefield's own ROCK layer mean the same way, so a cliff that leaves the playable square keeps its colour
+  // instead of switching to the authored hill rock; the scree stays the lighter, dustier relative of that rock.
+  const rockMean = meanAlbedo(rockAlbedo);
+  if (rockMean) {
+    const rock = vista.uniforms.uVRockTint?.value as Vector3 | undefined;
+    const scree = vista.uniforms.uVScreeTint?.value as Vector3 | undefined;
+    if (rock) rock.set(rockMean.r * 0.96, rockMean.g * 0.96, rockMean.b * 0.97);
+    if (scree) scree.set(rockMean.r * 1.13, rockMean.g * 1.12, rockMean.b * 1.10);
+  }
 }
