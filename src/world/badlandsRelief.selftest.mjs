@@ -48,6 +48,20 @@ const HISTORICAL_LIGHTING_LINES = {
   'blackglass.ts': ['sunIntensity: 3.9, sunColorHex: 0xffc697, hemiIntensity: 0.32, postExposure: 0.91,', 'sunIntensity: 3.5, sunColorHex: 0xffb77e, hemiIntensity: 0.38, postExposure: 0.91,'],
   'foundry.ts': ['sunIntensity: 4.2, sunColorHex: 0xfde3c4, hemiIntensity: 0.36, postExposure: 0.96,', 'sunIntensity: 3.8, sunColorHex: 0xffd6ad, hemiIntensity: 0.48, postExposure: 0.96,'],
 };
+// Round 37 (2026-09-22, AAA program check 5): the desert sky's Rayleigh rose 0.55 → 0.85 (Oasis inherits it) so the
+// anti-solar sky is no longer inky down to the ridges; sky presets never feed relief — authenticate the exact current
+// five-line block, then project it back to the historical line for the byte receipt.
+const DESERT_RAYLEIGH_CURRENT = `    // round 37 (AAA program check 5, 2026-09-22): rayleigh 0.55 → 0.85 — at 0.55 the anti-solar sky was an inky
+    // saturated blue right down to the ridges (40 display luma at +4° against a horizon band near 140), so the pale
+    // ranges read 2.3× brighter than the sky behind them; more Rayleigh lifts the low sky toward the dusty pale blue a
+    // real desert horizon carries (Oasis inherits this sky), the zenith stays deep
+    turbidity: 7, rayleigh: 0.85, mieCoefficient: 0.009, mieDirectionalG: 0.8,`;
+const DESERT_RAYLEIGH_HISTORICAL = '    turbidity: 7, rayleigh: 0.55, mieCoefficient: 0.009, mieDirectionalG: 0.8,';
+function historicalSkyRayleighSource(source, file) {
+  if (file !== 'desert.ts') return source;
+  assert.equal(source.split(DESERT_RAYLEIGH_CURRENT).length, 2, 'desert.ts: one exact round-37 Rayleigh block');
+  return source.replace(DESERT_RAYLEIGH_CURRENT, DESERT_RAYLEIGH_HISTORICAL);
+}
 function historicalLightingSource(source, file) {
   if (file === 'mangrove.ts') {
     const current = 'sunIntensity: 4.0, /* lighting 2026-09-13: was 3.7 */ ';
@@ -71,7 +85,7 @@ function historicalVistaGroundSource(source, file) {
 for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(read('src/world/maps/' + file), file), file), file, assert), file), old('src/world/maps/' + file), id),
+    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(read('src/world/maps/' + file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 

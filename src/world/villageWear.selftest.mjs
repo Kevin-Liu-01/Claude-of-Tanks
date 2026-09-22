@@ -37,7 +37,9 @@ const FROZEN = {
   },
   // 2026-09-13 lighting: alpine/fjord/caldera/monsoon/delta/blackglass/foundry/mangrove sky presets
   // moved toward the 1049e4e key/fill ratio (graphics commit 471c7b709); repinned from the current build.
-  configs: '00099b33c6dc4663e1754e80de7212463cd5147190b11ee588619b71673892d4',
+  // round 37 (2026-09-22): the desert sky's Rayleigh rose 0.55 → 0.85 (Oasis inherits it) — the desert / oasis config
+  // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
+  configs: 'a55d5dfa8a3a1e0c0e74cacad7d07b7b88d2b40eab1f836de057929637e4d329',
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 
