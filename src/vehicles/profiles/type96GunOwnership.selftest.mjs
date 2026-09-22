@@ -71,11 +71,19 @@ const BEFORE=[
 // invisible proxies. suppliedShadowCoverage.selftest owns their actual coverage
 // and budgets; gun shadow stock stays inside the original gun hash unchanged.
 // Evidence: .qa-dev/tank-run/type96-gun-ownership/shadow-fixture-replay.json.
+// 2026-09-21 (r35, fleet interior-fill regeneration under the track-lane rule,
+// tools/gen-interior-fills.mjs --rounds=8 --min-fine=1): payload() hashes every
+// mesh outside rig_gun, which includes the two generated *InteriorFill meshes, so
+// the regenerated type96b_x record moved these four digests. With the fill meshes
+// skipped the digests are identical before and after the regeneration (high/factory
+// bf43f4236155…, high/winter cb9cd9cd3ab0…, low/factory 5dab33048edf…, low/winter
+// 7d3b783a0378…), so no authored native stock changed; re-based from the record
+// generated 2026-09-18 in 547457932 (ce5ef1ff09cc…, db5e8bb9493a…, 8561e26e68c7…, 354d8ebcbba0…).
 const NATIVE_OTHER_BEFORE = [
- 'ce5ef1ff09cc617a1c078fe365e893e58dff10fccb3c9ca4b37466680ed44820',
- 'db5e8bb9493a13bbbbb53d29fd3a3c97d396d8ada543e74f2fbe39f0f01e0d78',
- '8561e26e68c7d0e517cb73ffb4f3fbe8e2e6ecea1e22b03982958fa71472cd44',
- '354d8ebcbba02c6a0918ccefea8e551b0da58505236395824333bd0a15e650b5',
+ '42e282b4d9a21f47d9571c3a274957a0b55b696de74688761e3d344eb2a8cc83',
+ '1f3940cd0d70841803ee1e07ba2c9f3dd556bcd7e98f9af3cd6124db6d56ba38',
+ 'c25e66b21462806817494dac8d483196b9c79bdd93009379c0e006173ab58597',
+ '2f7de8e7373972d00a40f089a0fc127d69aca782da43e39f614b4fc758bbb03a',
 ];
 
 const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,`${label}: ${a} vs ${b}`);
