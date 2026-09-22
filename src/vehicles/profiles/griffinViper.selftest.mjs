@@ -62,3 +62,79 @@ for(const quality of ['high','low']){
 }
 }
 console.log('Griffin Viper: exact modern donor hull/gear, 16 deep cells through 9 articulated poses, complete dimensions and cap negative PASS');
+
+// Garage equipment is excluded from the bare-geometry checks above. Exercise
+// the dressed path too: the cable used to stand upright through the launcher.
+const { createCanvas, Path2D } = await import('@napi-rs/canvas');
+const { DECOR_KITS } = await import('../decorations.ts');
+const savedDocument = globalThis.document, savedPath = globalThis.Path2D;
+globalThis.document = { createElement: () => createCanvas(1, 1) };
+globalThis.Path2D = Path2D;
+const originalCable = DECOR_KITS.cable;
+const originalTransform = T.BufferGeometry.prototype.applyMatrix4;
+let cableStock = [];
+DECOR_KITS.cable = args => {
+  const parts = originalCable(args);
+  parts.forEach((part, index) => { part.geo.userData.cablePart = index; });
+  return parts;
+};
+T.BufferGeometry.prototype.applyMatrix4 = function(matrix) {
+  if (Number.isInteger(this.userData.cablePart)) {
+    cableStock.push({ index: this.userData.cablePart, matrix: matrix.clone() });
+  }
+  return originalTransform.call(this, matrix);
+};
+try {
+  for (const quality of ['high', 'low']) {
+    cableStock = [];
+    const tank = createTank(spec.id, null, {
+      quality, geometryReceipt: true, proceduralOnly: true, decor: true,
+      batchStatic: false, camoSeed: 4242,
+    });
+    try {
+      tank.prepareForSimulation();
+      tank.root.updateMatrixWorld(true);
+      const cable = tank.root.userData.__decorSummary.pieces.find(p => p.kit === 'cable');
+      assert(cable, `${quality}: retain the useful towing cable`);
+      assert.equal(cable.frame, 'hull');
+      assert.equal(cable.attachment.slot, 'hull-side-cable');
+      assert(cable.attachment.alignmentDot > .99999, 'clamps face the receiving armor');
+      assert(Math.abs(cable.attachment.supportGapM + .004) < 1e-6, 'clamps embed 4 mm');
+      const stock = cableStock.find(p => p.index === 0);
+      assert(stock, 'inspect the actual committed cable geometry');
+      const axis = new T.Vector3(1, 0, 0).transformDirection(stock.matrix);
+      assert(Math.abs(axis.z) > .999 && Math.abs(axis.y) < .001,
+        `${quality}: cable runs fore-aft, not vertically (${axis.toArray()})`);
+      const hull = tank.root.getObjectByName('rig_hull');
+      const decor = tank.root.getObjectByName('rig_decor_hull');
+      assert(hull && decor);
+      const targets = [];
+      hull.traverse(o => { if (o.isMesh && ['hull', 'hullExternalArmor'].includes(o.name)) targets.push(o); });
+      // Three real clamp bases must all reach hull armor, not just the midpoint.
+      for (const part of cableStock.filter(p => p.index >= 5)) {
+        const clampX = [-.3, 0, .31][part.index - 5];
+        const local = new T.Vector3(clampX * Math.min(2.6, spec.dims.hullLengthM * .36), 0, 0)
+          .applyMatrix4(part.matrix);
+        const normal = new T.Vector3(0, 1, 0).transformDirection(part.matrix);
+        const origin = hull.localToWorld(local.clone().addScaledVector(normal, .04));
+        const direction = normal.clone().negate().transformDirection(hull.matrixWorld);
+        const hit = new T.Raycaster(origin, direction, 0, .05).intersectObjects(targets, false)[0];
+        assert(hit && Math.abs(hit.distance - .036) < .002,
+          `${quality}: clamp ${part.index - 5} contacts armor (${hit?.distance})`);
+      }
+      const before = decor.matrixWorld.clone();
+      const state = createTankState(spec, new T.Vector3(), 0);
+      for (const yaw of [0, .8, Math.PI]) for (const pitch of [-6, 25]) {
+        state.turretYaw = yaw; state.gunPitch = pitch * Math.PI / 180;
+        tank.syncFromState(state, 0); tank.root.updateMatrixWorld(true);
+        assert(decor.matrixWorld.equals(before), 'hull cable stays fixed through launcher motion');
+      }
+    } finally { tank.dispose(); }
+  }
+} finally {
+  DECOR_KITS.cable = originalCable;
+  T.BufferGeometry.prototype.applyMatrix4 = originalTransform;
+  if (savedDocument === undefined) delete globalThis.document; else globalThis.document = savedDocument;
+  if (savedPath === undefined) delete globalThis.Path2D; else globalThis.Path2D = savedPath;
+}
+console.log('Griffin Viper: dressed HIGH/LOW cable orientation, three armor contacts and launcher independence PASS');

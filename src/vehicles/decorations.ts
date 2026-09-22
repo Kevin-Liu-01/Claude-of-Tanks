@@ -2621,6 +2621,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   }
 
   const base = curated ? curated(spec, rng) : defaultManifest(spec, rng);
+  // Viper's tall launcher makes the old upright fallback conspicuous. Its
+  // towing cable has a dedicated, armor-seated run along the hull side.
+  if (spec.id === 'griffin_viper') {
+    for (const row of base) if (row.kit === 'cable') row.slot = ['hullSideCable', { side: 1 }];
+  }
   const serviceItem = choose(serviceGear, 'fender-service');
   const cargo: DecorManifestRow[] = [
     {
@@ -3771,6 +3776,30 @@ export function* attachTankDecorationsSteps(
           if (!h) continue;
           const pitch = Math.atan2(h.n.z, Math.max(h.n.y, 0.2));
           if (commit(name, clonePartList(parts), 'hull', V(0, h.p.y + 0.01, z), E(pitch * 0.85, 0, 0), placedHull)) {
+            disposePartList(parts);
+            return true;
+          }
+        }
+        disposePartList(parts);
+        return false;
+      },
+      hullSideCable(args, parts, name) {
+        const side = args.side ?? 1;
+        for (const yf of [0.6, 0.52]) {
+          const h = hullP.side(H * yf, 0, side, W / 2 + 1);
+          if (!h || Math.abs(h.n.x) < 0.55) continue;
+          // Cable stock runs along local X with its clamps on local Y=0.
+          // Seat that clamp plane on the armor, then turn X fore-aft. The old
+          // XYZ yaw/roll combination stood the cable upright beside Viper.
+          const candidate = clonePartList(parts);
+          const embedM = 0.004;
+          if (commit(name, candidate, 'hull', roofMountPosition(candidate, h, embedM),
+            roofMountEuler(h.n, Math.PI / 2), placedHull, {
+              attachment: {
+                slot: 'hull-side-cable', supportPoint: h.p, supportNormal: h.n,
+                embedM, mountAxis: 'y',
+              },
+            })) {
             disposePartList(parts);
             return true;
           }

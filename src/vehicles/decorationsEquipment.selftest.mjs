@@ -165,6 +165,21 @@ for (const normal of [
 }
 for (const part of spareTracks) part.geo.dispose();
 
+// Tow cables are authored along X on a Y=0 clamp plane. Side mounts must
+// keep that long axis fore-aft on either side of the hull.
+for (const side of [-1, 1]) {
+  const normal = new THREE.Vector3(side, 0, 0);
+  const rotation = roofMountEuler(normal, Math.PI / 2);
+  const run = new THREE.Vector3(1, 0, 0).applyEuler(rotation);
+  assert.ok(Math.abs(run.z) > .999999 && Math.abs(run.y) < 1e-6,
+    `side ${side}: tow cable runs along the hull`);
+  assert.ok(new THREE.Vector3(0, 1, 0).applyEuler(rotation).dot(normal) > .999999,
+    `side ${side}: clamp bases face the armor`);
+  const oldRun = new THREE.Vector3(1, 0, 0)
+    .applyEuler(new THREE.Euler(0, Math.PI / 2, side * 1.35));
+  assert.ok(Math.abs(oldRun.y) > .97, 'negative control reproduces the upright cable');
+}
+
 const distributed = new Set();
 for (const id of ALL_TANK_IDS) {
   const manifest = decorManifestFor(getSpec(id), () => 0.5);
@@ -297,6 +312,12 @@ for (const randomValue of [.13, .5, .87]) {
   assert.deepEqual(decorManifestFor(getSpec('tos1a_tagil'), () => randomValue), [],
     'the authored battery never receives static turret-roof hatches or cargo');
 }
+assert.equal(decorManifestFor(getSpec('griffin_viper'), () => .5)
+  .find(row => row.kit === 'cable').slot[0], 'hullSideCable',
+'Viper uses its measured horizontal cable seat');
+assert.equal(decorManifestFor(getSpec('griffin50_x'), () => .5)
+  .find(row => row.kit === 'cable').slot[0], 'hullSideTop',
+'Viper repair preserves the source Griffin equipment layout');
 const revolutionManifest = decorManifestFor(getSpec('leo2_revolution'), () => 0.5);
 assert.deepEqual(revolutionManifest, [{
   kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] },
