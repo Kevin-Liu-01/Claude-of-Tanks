@@ -97,6 +97,7 @@ import { decodeAimIntent } from '../net/aimIntent.ts';
 import type { AimIntentInput } from '../net/aimIntent.ts';
 import {
   activateSpecialAction,
+  bindSpecialActionState,
   createSpecialActionState,
   specialActionGuidesShell,
 } from './specialActions.ts';
@@ -781,6 +782,7 @@ export function createAuthoritativeMatch({
       consumableReadyAt: [0, 0, 0],
       specialAction: createSpecialActionState(spec),
     };
+    bindSpecialActionState(entity); // round 34: fixed hydraulic guns spawn with suspension aim engaged
     entities.push(entity);
     entityById.set(id, entity);
     for (let n = 0; n < 30; n++) updateTank(entity, heightField, SIM_DT);
@@ -894,6 +896,7 @@ export function createAuthoritativeMatch({
     applyRulesetToCombat(tank.combat, tank.spec.gun.shells, ruleset, healthScale);
     tank.consumableReadyAt = [0, 0, 0];
     tank.specialAction = createSpecialActionState(tank.spec);
+    bindSpecialActionState(tank);
     for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
   }
 

@@ -137,6 +137,15 @@ function activateGuidedMissile(
  * Missile requests are ordinary ammunition selection. The normal fire input
  * launches the selected round after its own authored reload.
  */
+/** The canonical hull state mirrors the action's engaged flag; every entity creator calls this once at spawn so a
+ * fixed hydraulic gun that starts engaged (createSpecialActionState) also lays its hull from the first tick. */
+export function bindSpecialActionState(entity: SpecialActionEntity): void {
+  if (!entity.specialAction || !entity.state) return;
+  if (entity.specialAction.kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) {
+    entity.state.suspensionAim = entity.specialAction.active === true;
+  }
+}
+
 export function activateSpecialAction(
   entity: SpecialActionEntity | null | undefined,
 ): Readonly<SpecialActionResult> {

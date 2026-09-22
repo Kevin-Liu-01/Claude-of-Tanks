@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-21T21:56:54.247Z",
+ "generatedAt": "2026-09-22T01:51:16.625Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 81,
  "total": 182,
@@ -1735,22 +1735,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "jpz_e100_x",
-   "geoMin": 92.4,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 92.4,
-    "stations": 99.3,
-    "turretCurves": 99,
-    "wholeCurves": 93.5,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "leo2a5_x",
    "geoMin": 92.4,
    "requiredMinimum": 92,
@@ -1852,6 +1836,22 @@
    "gatePassed": true,
    "components": {
     "wholeCurves": 92.7,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "jpz_e100_x",
+   "geoMin": 92.9,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 92.9,
+    "stations": 99.3,
+    "turretCurves": 99,
+    "wholeCurves": 93.5,
     "dims": 100,
     "floaters": 100
    },
@@ -2036,10 +2036,10 @@
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "hullCurves": 95.2,
+    "hullCurves": 95.4,
     "stations": 98.3,
     "turretCurves": 93.8,
-    "wholeCurves": 95.5,
+    "wholeCurves": 95.7,
     "dims": 100,
     "floaters": 100
    },
@@ -2157,7 +2157,7 @@
    "gatePassed": true,
    "components": {
     "wholeCurves": 94.7,
-    "dims": 98.3,
+    "dims": 96.2,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

@@ -72,6 +72,7 @@ import {
 } from '../sim/damage.ts';
 import {
   activateSpecialAction,
+  bindSpecialActionState,
   createSpecialActionState,
   specialActionGuidesShell,
 } from '../sim/specialActions.ts';
@@ -824,6 +825,7 @@ function initializeBattleEntity(
   entity.state = createTankState(entity.spec, _spawnPos, spawn.yaw);
   entity.combat = createCombatState(entity.spec);
   entity.specialAction = createSpecialActionState(entity.spec);
+  bindSpecialActionState(entity); // round 34: fixed hydraulic guns spawn with suspension aim engaged
   // RULESETS: the mode decides which equipment slots count (Turbo Ball: none), then stamps hull,
   // damage-taken, reload and ammunition on the fresh combat state
   entity.equip = rulesetLoadout(context.game.ruleset, isPlayer
@@ -1272,6 +1274,7 @@ export function setupBattle(
       // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
       applyRulesetToCombat(ent.combat, ent.spec.gun.shells, game.ruleset, healthScale);
       ent.specialAction = createSpecialActionState(ent.spec);
+      bindSpecialActionState(ent);
       ent.input.throttle = 0;
       ent.input.steer = 0;
       ent.input.brake = false;

@@ -42,6 +42,9 @@ const DESCRIPTOR_RELOAD = Object.freeze({
 
 export interface SpecialActionSpec {
   hydropneumaticAim?: RuntimeValue;
+  /** Only `turretless` is read (narrowed inside hydropneumaticAimStartsEngaged); typed loosely so every spec
+   * shape — fleet ArmorModel, dossier armor, authority spec — passes through unchanged. */
+  armor?: unknown;
   gun?: {
     primaryGuided?: boolean;
     autoloader?: RuntimeValue;
@@ -90,6 +93,17 @@ export function specialActionDescriptor(
   return DESCRIPTOR_NONE;
 }
 
+/**
+ * Round 34 (owner 2026-09-21, after "playing turretless tanks is so janky"): a FIXED hydraulic gun (the Swedish
+ * casemates — `hydropneumaticAim` on a `turretless` hull) has no other way to lay its gun, so its suspension aim
+ * starts ENGAGED at every spawn and E disengages it; a turreted hydropneumatic hull (the Japanese line) keeps the
+ * mode as an opt-in extra and still starts disengaged.
+ */
+export function hydropneumaticAimStartsEngaged(spec: SpecialActionSpec | null | undefined): boolean {
+  const armor = spec?.armor as { turretless?: boolean } | null | undefined;
+  return !!spec?.hydropneumaticAim && armor?.turretless === true;
+}
+
 /** Small deterministic state record shared by local and network entities. */
 export function createSpecialActionState(
   spec: SpecialActionSpec | null | undefined,
@@ -98,11 +112,12 @@ export function createSpecialActionState(
   const previousShellSlot = Array.isArray(shells)
     ? Math.max(0, shells.findIndex((shell) => shell?.guided !== true))
     : 0;
+  const kind = specialActionKind(spec);
   return {
-    kind: specialActionKind(spec),
+    kind,
     missileSlot: guidedMissileSlot(spec),
     previousShellSlot,
-    active: false,
+    active: kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM && hydropneumaticAimStartsEngaged(spec),
   };
 }
 

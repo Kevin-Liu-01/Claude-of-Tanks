@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { hydropneumaticAimStartsEngaged } from './specialActionPolicy.ts';
 import { Vector3 } from 'three';
 import '../vehicles/tankFactory.ts'; // register the full authored fleet
-import { getSpec } from '../vehicles/specs.ts';
+import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import { createCombatState, selectShell, startPostShotReload, tickReload } from './damage.ts';
 import { createTankState, SIM_DT, updateTank } from './movement.ts';
 import {
@@ -19,6 +20,7 @@ import {
   specialActionGuidesShell,
   specialActionIsActive,
   specialActionKind,
+  bindSpecialActionState,
 } from './specialActions.ts';
 
 function entityFor(id) {
@@ -149,8 +151,12 @@ assert.ok(Math.atan2(guidedShell.vel.x, guidedShell.vel.z) <=
 
 const strv = entityFor('strv103a');
 assert.equal(specialActionKind(strv.spec), SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM);
-assert.equal(activateSpecialAction(strv).active, true);
-assert.equal(strv.state.suspensionAim, true);
+// Round 34 (owner 2026-09-21, after "playing turretless tanks is so janky"): a fixed hydraulic gun has no other way
+// to lay its gun, so its suspension aim starts ENGAGED at every spawn (E disengages it); the creators bind the
+// canonical hull state from the action
+assert.equal(strv.specialAction.active, true, 'a fixed hydraulic gun spawns with suspension aim engaged');
+bindSpecialActionState(strv);
+assert.equal(strv.state.suspensionAim, true, 'the hull state is bound from the engaged action at spawn');
 assert.ok(captureEntitySnapshot(strv).flags & SNAPSHOT_FLAGS.SPECIAL_ACTIVE,
   'network snapshots replicate the engaged suspension mode');
 strv.input.aimPoint.set(0, 40, 200);
@@ -158,8 +164,29 @@ const flat = { getHeightAt: () => 0, getGroundType: () => 'hard' };
 for (let i = 0; i < 180; i++) updateTank(strv, flat, SIM_DT);
 assert.ok(strv.state.suspensionAimPitch > 0.04,
   'engaged hydropneumatic mode drives the canonical hull attitude toward the sight line');
-assert.equal(activateSpecialAction(strv).active, false);
+assert.equal(activateSpecialAction(strv).active, false, 'the first E press disengages the spawn-engaged mode');
 assert.equal(strv.state.suspensionAim, false);
+assert.equal(activateSpecialAction(strv).active, true, 'the next press re-engages it');
+assert.equal(strv.state.suspensionAim, true);
+// every hydropneumatic hull: engaged at spawn iff the gun is fixed (turretless); the turreted Japanese line keeps
+// the mode as an opt-in extra; hulls without the system have no such action
+{
+  let fixed = 0, turreted = 0;
+  for (const id of ALL_TANK_IDS) {
+    const spec = getSpec(id);
+    if (!spec.hydropneumaticAim) continue;
+    const action = createSpecialActionState(spec);
+    assert.equal(action.kind, SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM, `${id}: hydropneumatic action`);
+    assert.equal(action.active, spec.armor?.turretless === true, `${id}: engaged at spawn only for a fixed gun`);
+    assert.equal(hydropneumaticAimStartsEngaged(spec), spec.armor?.turretless === true);
+    if (spec.armor?.turretless) fixed += 1; else turreted += 1;
+  }
+  assert.ok(fixed >= 2 && turreted >= 1, `fixed ${fixed} / turreted ${turreted} hydropneumatic hulls covered`);
+  const plain = createSpecialActionState(getSpec('m1a2'));
+  assert.equal(plain.active, false); assert.notEqual(plain.kind, SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM);
+  const bound = { spec: getSpec('m1a2'), state: { suspensionAim: false }, specialAction: plain };
+  bindSpecialActionState(bound); assert.equal(bound.state.suspensionAim, false, 'binding leaves other kinds alone');
+}
 
 const autoloader = entityFor('leclerc');
 assert.equal(specialActionKind(autoloader.spec), SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD);

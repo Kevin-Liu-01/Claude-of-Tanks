@@ -127,3 +127,6 @@ summaries above are reproducible with the commands in the probe header).
    Receipts: `src/sim/movement.selftest.mjs` §9e,
    `src/game/aimController.selftest.mjs`, `src/ui/hudMagazine.selftest.mjs`;
    probe `.qa-dev/casemate-aim-probe.mjs`.
+Round 34 (2026-09-21): a fixed hydraulic gun spawns with its suspension aim ENGAGED — it has no other way to
+lay the gun — and E disengages it; the turreted Japanese hydropneumatic hulls keep the mode as an opt-in extra
+(`hydropneumaticAimStartsEngaged`, bound into the hull state by every entity creator).
