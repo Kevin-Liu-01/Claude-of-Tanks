@@ -24,12 +24,12 @@
   ],
   "successor": {
     "high": {
-      "count": 320724,
-      "sha256": "595d361a80c1ca11ace02e54097d3e9802a2a69dac91d71216be963a2197ba1e"
+      "count": 294084,
+      "sha256": "fd381069a1751047320c151ae63ecf3e637c97773a17b9385469268999f945fe"
     },
     "low": {
-      "count": 294324,
-      "sha256": "29a9f05af8fbac81a9c1716adcbdfad5a3d4c44c411f2fe70f3b9b02737e2073"
+      "count": 250404,
+      "sha256": "f0f3cf88dd64293a362a4972a9e6a5135d454c167e11db7c2386957eb86a0a60"
     }
   },
   "successorHistory": [
@@ -55,6 +55,17 @@
         "sha256": "7bc8bc1603ea8a60909c028dc9ea44a7e67eaf9e0de805c40234cd7f9a8a30fb"
       },
       "status": "muzzle-seat successor before the 2026-09-14 tangent track wrap; retained as history, not an active claim"
+    },
+    {
+      "high": {
+        "count": 320724,
+        "sha256": "595d361a80c1ca11ace02e54097d3e9802a2a69dac91d71216be963a2197ba1e"
+      },
+      "low": {
+        "count": 294324,
+        "sha256": "29a9f05af8fbac81a9c1716adcbdfad5a3d4c44c411f2fe70f3b9b02737e2073"
+      },
+      "status": "ground-datum successor before the 2026-09-22 nation wheel standard; retained as history, not an active claim"
     }
   ],
   "laterMuzzleSeat": {
@@ -69,7 +80,7 @@
     "expectedHigh": 317904
   },
   "authoredSources": {
-    "src/vehicles/profiles/chieftain10X.ts": "5b94a2ebeab72c1b33d671d930f1f96dc701edca4912cac2daabcbcab947f062",
+    "src/vehicles/profiles/chieftain10X.ts": "804e83b674eff40a53820fac3c27d01ceb57bf7467e1543a2f07d42c8f2fb200",
     "src/vehicles/profiles/chieftain10XAftCasting.ts": "f2aa34a46d45c1528497a88c4be3e6a387196ead87a0803234896cccd296e933",
     "src/vehicles/profiles/chieftain10XBasket.ts": "04d56fbb2aa469f1de35f46e65d038fb0951ed65a0bb1dc993803af128253f01",
     "src/vehicles/profiles/chieftain10XBowLights.ts": "00618365219b24e8773522733ae6c20f7e32f94e9bb740eec3d30281f6437b9e",
@@ -88,7 +99,6 @@
     "src/vehicles/profiles/chieftain10XSkirts.ts": "e3b3c1e4c5955a8463bab7cff71f78eab36a72c71c7ad824a5e8da32a36ddb54",
     "src/vehicles/profiles/chieftain10XStowage.ts": "8465e2bdd7c409867e15f351cf1cde18d4969518c766245c7d520c36d7936e67",
     "src/vehicles/profiles/chieftain10XUpperFittings.ts": "3d786a1d289beccc40f7b424e43118a582128a5c56b2425d5393be9b24f88ffb",
-    "src/vehicles/profiles/chieftain10XWheels.ts": "07df0bf280bd991cd51f144206dceef43475a2a001bd1cfbf8f7a363fbe72034",
     "src/vehicles/profiles/chieftainXFoundation.ts": "e90c75351459ab6cbb42da27df4e4c3a82c3ab4ded691aeacf4bc451eb015885",
     "src/vehicles/profiles/sectionSolid.ts": "b266fe61c777c856c90329ba513e7d92f70236ea48d4d38957b423abc5a8a9db",
     "src/vehicles/profiles/roundedTrackContact.ts": "f4b2328f07dd53442194c0f672b492574b56a0fa252da4e29ad9410d3504c036",
@@ -126,7 +136,7 @@
   },
   "publishedRuntimeSources": {
     "package-lock.json": "601b6cf1fe3b749446b87bd09df842d67866d562357b0cf89373e00052cbaef0",
-    "src/vehicles/profiles/chieftain10X.ts": "5b94a2ebeab72c1b33d671d930f1f96dc701edca4912cac2daabcbcab947f062",
+    "src/vehicles/profiles/chieftain10X.ts": "804e83b674eff40a53820fac3c27d01ceb57bf7467e1543a2f07d42c8f2fb200",
     "src/vehicles/profiles/chieftain10XServiceFrame.ts": "ef67fed10ff481026c7875d55c8333dc637e9009f2fe109cfdb2b7f6ef1efa47",
     "src/vehicles/profiles/chieftainXFoundation.ts": "e90c75351459ab6cbb42da27df4e4c3a82c3ab4ded691aeacf4bc451eb015885",
     "src/vehicles/profiles/sectionSolid.ts": "b266fe61c777c856c90329ba513e7d92f70236ea48d4d38957b423abc5a8a9db",
@@ -194,5 +204,25 @@
       }
     },
     "nonTrackUnchangedFromWrap": false
+  },
+  "laterNationWheels": {
+    "branch": "r38-wheels",
+    "capturedAt": "2026-09-22",
+    "scope": "Owner direction 2026-09-22 (\"standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore\"): the Mk 10 X draws the UK nation road wheel — the Challenger 2E hollow paired construction (nationWheelSets.ts / nationWheelConstructions.ts) at its own radius and authored tire width — and the fleet suspension arm seated against that wheel; the Mk 10 source dishes (chieftain10XWheels.ts) and the Horstmann web measured between their caps left with them. The twelve road wheels lost 26640 draw vertices at HIGH and 43920 at LOW (the source dishes tessellated alike at both tiers; the nation wheel follows the quality tier); the track band and shoe meshes are unchanged. The non-track draw-vertex multiset recorded here is re-derived by the receipt and must match exactly.",
+    "trackDrawVertexDelta": 0,
+    "nonTrackDrawVertexDelta": {
+      "high": -26640,
+      "low": -43920
+    },
+    "nonTrack": {
+      "high": {
+        "count": 172932,
+        "sha256": "30ad7529e202cd17425bcc2418f37aebe38a9db289055df2ea51e6dcdf41b2ee"
+      },
+      "low": {
+        "count": 129252,
+        "sha256": "e647c75a0fa1c9aef0ce9e4af51a13a92be73ed360ed4f6533981cda8818087a"
+      }
+    }
   }
 }

@@ -16,7 +16,8 @@ const sha=x=>createHash('sha256').update(x).digest('hex');
 const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
 // Authenticated a6fa51e18 native donor before the neutral chassis extraction; re-pinned 2026-09-21 for the side-station
 // end-wrap bake (the T-90MS X bands are laid about each side's own outer wheels — tankFactoryCore buildRunningGear).
-const donorHashes={high:'9976ffbeeb4cbc3f60352729bee79b3c7370e1a4308b56829d6cb473d3a64b06' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'79ca43996b70c7389b3d618ffcf8abe2c8d739f0f3d48264c20886103a85184f'};
+// 2026-09-22 nation wheel standard: the T-90MS donor chassis draws the T-90M X pressed face through nationWheelSets.ts; repinned.
+const donorHashes={high:'5fb300af64e9d8baa98969ed0780e5ef5cddc7ad7c8af09b5b185936ba9b97ac' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'a442a85d61622db2de94aa21fdc3a9c8c916a22963ebb69f83b4a465569f8471'};
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{
@@ -260,7 +261,9 @@ for(const quality of ['high','low']){
     try{assert.throws(()=>lodPresentation(tank),assert.AssertionError,'hidden structural support fails actual visible scene proof');}finally{support.visible=true;}
     lodPresentation(tank);
     let triangles=0,turretTriangles=0,batches=0;for(const m of meshes(tank.root)){const count=Math.min(m.geometry.index?.count??m.geometry.attributes.position.count,m.geometry.drawRange.count)/3*(m.isInstancedMesh?m.count:1);triangles+=count;batches++;for(let p=m;p;p=p.parent)if(p.name==='rig_turret')turretTriangles+=count;}
-    assert(triangles<=(quality==='high'?69900+10000:64652+5000),`retained chassis plus launcher owner budget ${quality}=${triangles}, launcher=${turretTriangles}`);
+    // 2026-09-22 nation wheel standard: the T-90MS chassis draws the T-90M X pressed road-wheel face (twelve stations,
+    // +19.8k triangles at HIGH, +10.2k at LOW), so the retained-chassis budget carries that owner-ruled wheel.
+    assert(triangles<=(quality==='high'?69900+30000:64652+16000),`retained chassis plus launcher owner budget ${quality}=${triangles}, launcher=${turretTriangles}`);
     const b=new T.Box3().setFromObject(tank.root);assert(Math.abs(b.max.y-D.stowedHeight)<.001);assert(b.max.x-b.min.x<=3.781&&b.max.z-b.min.z<=7.479);
     results.push({quality,triangles,turretTriangles,batches,paintUVChanges:payload(tank.root,true).filter((row,i)=>row.attrs.uv?.hash!==hull[i].attrs.uv?.hash).map(row=>row.name),bounds:{min:b.min.toArray(),max:b.max.toArray()},...articulation});
     const decorated=createTank('tos1a_tagil',null,{...options(quality),proceduralOnly:false,decor:true});

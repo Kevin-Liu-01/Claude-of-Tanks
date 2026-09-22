@@ -103,15 +103,24 @@ function gear(t){
  suspensionJoints(t);
 }
 function suspensionJoints(t){
+ // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): the Mk 1 X draws the UK
+ // Challenger 2E hollow paired wheel, so its source-dimensioned arm — whose receiving spindle ran into the old
+ // dish — gave way to the fleet forged arm, parked wholly inboard of the wheel back (tankFactoryCore
+ // suspensionPlacement 'inboard-behind-road-wheel'). The joints are still authenticated from the actual
+ // instanced geometry: every arm runs from its hull boss to its axle boss, both bosses close over the arm's
+ // web laterally, and the axle boss seats against the tire back without penetrating it.
  const arms=t.root.getObjectByName('gearSuspensionLinks');
  const bosses=t.root.getObjectByName('gearSuspensionJointBosses');
- const discs=t.root.getObjectByName('gearRoadWheelDiscs');
+ const discs=t.root.getObjectByName('gearRoadWheelDiscs'),tires=t.root.getObjectByName('gearRoadWheelTires');
  const matrix=new THREE.Matrix4(),v=new THREE.Vector3();
- const materials=[...new Set([arms,bosses,discs].flatMap(mesh=>Array.isArray(mesh.material)?mesh.material:[mesh.material]))];
+ const materials=[...new Set([arms,bosses].flatMap(mesh=>Array.isArray(mesh.material)?mesh.material:[mesh.material]))];
  const original=materials.map(mat=>mat.side);materials.forEach(mat=>{mat.side=THREE.DoubleSide;});
  const center=(mesh,i)=>{mesh.getMatrixAt(i,matrix);return v.setFromMatrixPosition(matrix).clone();};
- const span=(mesh,index,c)=>{
-  const side=Math.sign(c.x),o=new THREE.Vector3(side*3,c.y+.005,c.z);
+ const armEnds=i=>{arms.getMatrixAt(i,matrix);const pos=new THREE.Vector3(),q=new THREE.Quaternion(),s=new THREE.Vector3();
+  matrix.decompose(pos,q,s);const half=new THREE.Vector3(0,0,.5*s.z).applyQuaternion(q);
+  return {pivot:pos.clone().sub(half),axle:pos.clone().add(half)};};
+ const span=(mesh,index,at)=>{
+  const side=Math.sign(at.x),o=new THREE.Vector3(side*3,at.y,at.z);
   const hits=new THREE.Raycaster(o,new THREE.Vector3(-side,0,0)).intersectObject(mesh,false)
    .filter(h=>h.instanceId===index).map(h=>Math.abs(h.point.x));
   assert.ok(hits.length>=2,'joint ray intersects closed near/far stock');
@@ -119,14 +128,23 @@ function suspensionJoints(t){
  };
  const overlap=(a,b)=>assert.ok(Math.min(a[1],b[1])-Math.max(a[0],b[0])>.002,
   'inferred receiving joint retains more than2mm actual positive overlap');
+ tires.geometry.computeBoundingBox();
+ const tireHalf=Math.max(-tires.geometry.boundingBox.min.x,tires.geometry.boundingBox.max.x);
  try{
   const wheels=Array.from({length:discs.count},(_,i)=>center(discs,i));
   for(let i=0;i<arms.count;i++){
-   const c=center(bosses,i*2+1),axle=span(bosses,i*2+1,c);
-   overlap(axle,span(arms,i,c));
-   const wi=wheels.findIndex(w=>Math.sign(w.x)===Math.sign(c.x)&&Math.abs(w.z-c.z)<1e-6);
-   assert.ok(wi>=0);overlap(axle,span(discs,wi,c));
-   const a=center(bosses,i*2);overlap(span(bosses,i*2,a),span(arms,i,a));
+   const pivot=center(bosses,i*2),axle=center(bosses,i*2+1),ends=armEnds(i);
+   near(ends.pivot.distanceTo(pivot),0,1e-3,'the arm pivot end seats in the hull boss');
+   near(ends.axle.distanceTo(axle),0,1e-3,'the arm wheel end seats in the axle boss');
+   // The boss centres lie exactly on the arm's end planes, which a lateral ray only grazes; read the web a
+   // fifth of the arm in from each end (its lateral placement is constant along the arm).
+   overlap(span(bosses,i*2,pivot),span(arms,i,ends.pivot.clone().lerp(ends.axle,.2)));
+   const axleSpan=span(bosses,i*2+1,axle);
+   overlap(axleSpan,span(arms,i,ends.axle.clone().lerp(ends.pivot,.2)));
+   const wi=wheels.findIndex(w=>Math.sign(w.x)===Math.sign(axle.x)&&Math.abs(w.z-axle.z)<1e-6);
+   assert.ok(wi>=0);
+   const clearance=Math.abs(wheels[wi].x)-tireHalf-axleSpan[1];
+   assert.ok(clearance>.001&&clearance<.03,`the axle boss seats inboard of the tire back without penetrating it: ${clearance}`);
   }
  }finally{materials.forEach((mat,i)=>{mat.side=original[i];});}
 }
@@ -144,8 +162,14 @@ function sideCourses(t,ms){
  { // the applique-edge ray rides 1.063 source units above the axle; the axle follows the ground-datum seat (2026-09-17)
   const seatedAxleY=t.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY??point(0,18.9370075,0)[1];
   const o=point(90,20,17.97244);o[1]=seatedAxleY+(point(0,20,0)[1]-point(0,18.9370075,0)[1]);
-  near(hit(ms,o,[-1,0,0])?.point.x,1.377846130943416,.003,
-   'lower source applique edge exposes actual road wheel, not a substitute disc'); }
+  // 2026-09-22 nation wheel standard: the UK Challenger 2E hollow paired wheel replaced the source dish, so the
+  // edge ray authenticates the real instanced road-wheel train and lands on its outboard dish (at most 3 cm
+  // inside the rim face) instead of pinning the source face X 1.377846.
+  const wheelHit=hit(ms,o,[-1,0,0]);
+  assert.equal(wheelHit?.object.name,'gearRoadWheelDiscs','lower source applique edge exposes actual road wheel, not a substitute disc');
+  const discs=t.root.getObjectByName('gearRoadWheelDiscs');discs.geometry.computeBoundingBox();
+  const rim=point(51.6929135,0,0)[0]+discs.geometry.boundingBox.max.x;
+  assert.ok(wheelHit.point.x<=rim+1e-6&&wheelHit.point.x>rim-.03,`edge ray lands on the outboard dish of the real road wheel: ${wheelHit.point.x} vs rim ${rim}`); }
  const idler=hit(ms,point(90,30,90),[-1,0,0]);
  assert.equal(idler?.object.name,'gearEndWheelBody','front skirt exposes the real native idler, not extra armor');
  // Preserve the existing native end face during this sheet-only correction.

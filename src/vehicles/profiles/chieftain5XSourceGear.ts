@@ -33,14 +33,8 @@ export function addChieftain5XSourceGear(P: TankBuilderPort): void {
     sprocket, idler, rollers, returnRollerWidthM: .22856,
     returnRollerOutsetM: .00448, returnRollerInsetM: .010,
     suspensionPattern: 'paired-bogie',
-    // The supplied levers are not rigged. The functional native pivots use
-    // the measured paired axle groups; hidden spring travel remains inferred.
-    suspensionDimensions: { armWidthM: .124, armHeightM: .174,
-      armAxleHeightM: .151, armCenterAbsXM: .964,
-      anchorBossWidthM: .170, anchorBossRadiusM: .100,
-      anchorBossCenterAbsXM: .956,
-      axleBossWidthM: .206, axleBossRadiusM: .086,
-      axleBossCenterAbsXM: 1.022, anchorLiftM: .010 },
+    // The supplied levers are not rigged; the fleet paired-bogie arm seats itself against the nation wheel it
+    // carries (owner 2026-09-22) — the measured pivot dimensions fitted to the former source wheel left with it.
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler, sprocket, contact: { zR: -2.21302, zF: 2.34030 }, botY, topY,
       endWheels: KIT.endRoadWheels(wheelZs, KIT.seatedWheelY(botY, .024, .3952785), .3952785),

@@ -30,9 +30,10 @@ const coverWitnesses = [
 // twelve-fastener discs, so the retained gear rows carry that stock.
 // 2026-09-13 fender-to-skirt closure: the rear skirt skin continues up to the
 // sponson shelf (1.308 -> 1.480) and the 1.50..1.672 slot closes; repinned.
+// 2026-09-22 nation wheel standard: leo2a5_x draws the Leopard 2A6 X paired dish (nationWheelSets.ts); repinned from the current build.
 const retained = {
-  high: [251954,'23f5da2734fa808a7f5a09d8cec94fe22426ff2e258bf29a2ff039dfe23d5b2a'],
-  low: [236890,'44e6b2ebc6319f840ceb680e0cb6e4f3c8adfdedd97b0352e3f97347dfdfe554'],
+  high: [227118,'d77e3db9e871e09538c94749583b3d5ced75468c5820b4a54e27b34570d4e8ad'],
+  low: [217150,'31cee55d060a0ece5efb6cc17c2e52349f4bddaf3dda63bd78be0020a14941c6'],
 };
 function retainedFingerprint(root) {
   const rows=[];

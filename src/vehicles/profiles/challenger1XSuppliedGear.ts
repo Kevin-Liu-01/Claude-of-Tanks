@@ -27,12 +27,7 @@ export function addChallenger1SuppliedGear(P:TankBuilderPort):void{
       endWheels:KIT.endRoadWheels(wheelZs,KIT.seatedWheelY(botY,.024,m(15.9448815)),m(15.9448815)),
       supports:rollers.map(r=>({z:r.z,y:r.y+r.r+.018}))}),
     arms:true,coveredTop:true,paintedEnds:true,rigidLinkChords:true,
-    // Concealed joints are a mechanical inference: move the web12mm inward
-    // to clear the source-seated wheel bowl, then extend its receiving spindle
-    // inboard. All visible wheels, measured axles and track courses stay fixed.
-    suspensionDimensions:{armWidthM:m(4.0),armHeightM:m(6.0),armAxleHeightM:m(3.8),
-      armCenterAbsXM:m(37.0)-.012,armAxialShearM:m(6.0),anchorBossWidthM:m(4.3),anchorBossRadiusM:m(3.82),
-      anchorBossCenterAbsXM:m(33.28)-.012,axleBossWidthM:m(1.575)+.024,axleBossRadiusM:m(1.535),
-      axleBossCenterAbsXM:m(42.64)-.006,anchorLiftM:m(2.12),anchorTrailM:m(5.5)},
+    // The fleet suspension arm seats itself against the nation wheel it carries (owner 2026-09-22); the source-placed
+    // Hydrogas web and receiving spindle that were fitted to the former source wheel bowl left with that wheel.
   });
 }

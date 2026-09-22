@@ -222,16 +222,17 @@ function clearance(b, intrude = false) {
 // compares the same expanded stock and actual gear in both quality levels.
 // Non-hull stock refreshed for the authorized 2026-09-21 gun/recess correction;
 // the original aft-hull and running-gear receipts remain exact.
+// 2026-09-22 nation wheel standard: kurganets25_x draws the BMP-3M Dragun wheel (nationWheelSets.ts); gear digests repinned.
 const originalStock = {
     "high": {
         "unchanged": "d43ff27403d444b5d2c889fe2a350775ec6c31153f144c5f05125a4350aa8ba4",
         "aft": "5a76805eec7e78ee11be9e7561920cc0c14e462ab56ae093c63eec8500f63f97",
-        "gear": "48badbb3b5ef75574968e9d6cff466d3c0ceee80709ed457f9348a5659d922af"
+        "gear": "943727827cd55967386ec50891343d0d3ae7ee83f90d227f2a82c2880ea48dcd"
     },
     "low": {
         "unchanged": "076787992f85fbe81fec310ced65fb420bf09a463a6321a96e1fcfa205bd718e",
         "aft": "5a76805eec7e78ee11be9e7561920cc0c14e462ab56ae093c63eec8500f63f97",
-        "gear": "20e82eee2d923305378bc312db050a4da34d902f3d28ad4e6c1b949de7371a88"
+        "gear": "2ca9d581bb2fc0b6d96b99f1dd7d1d9af52aff3cd8fcb8d2f37076d6092ba806"
     }
 };
 await ensureInteriorFills([id]);

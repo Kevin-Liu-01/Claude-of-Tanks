@@ -49,6 +49,7 @@ function checkRunningGear(tank,quality) {
 function checkVisibleWheelFaces(tank, quality) {
   const tires = tank.root.getObjectByName('gearRoadWheelTires');
   const discs = tank.root.getObjectByName('gearRoadWheelDiscs');
+  const pressedFaces = tank.root.getObjectByName('amx40WheelPressedFaces');
   const matrix = new THREE.Matrix4();
   const point = new THREE.Vector3();
   const direction = new THREE.Vector3();
@@ -61,18 +62,21 @@ function checkVisibleWheelFaces(tank, quality) {
     matrix.premultiply(tires.matrixWorld);
     const side = Math.sign(new THREE.Vector3().setFromMatrixPosition(matrix).x);
     direction.set(-side, 0, 0).transformDirection(tires.matrixWorld);
-    for (const radial of [.275, .285, .295]) for (const angle of [.35, 1.10, 2.10, 2.90]) {
+    // 2026-09-22: the witness radii follow the AMX-40 X annulus opening (.282 scaled to this radius), so LOW's 12-gon tire edge stays outside them as it did for the former .314 opening.
+    for (const radial of [.275, .285, .295].map((r) => r * (.282 * (.36545 / .3401)) / .314)) for (const angle of [.35, 1.10, 2.10, 2.90]) {
       point.set(side * .80, Math.sin(angle) * radial, Math.cos(angle) * radial).applyMatrix4(matrix);
       const hit = new THREE.Raycaster(point, direction, 0, 1).intersectObject(tank.root, true)
         .find(h => !h.object.userData.shadowOnly && !h.object.userData.authoredShadowProxy);
-      assert.ok(hit?.object === discs, `${quality} wheel ${i}: painted face must be the first visible stock at r=${radial}; hit ${hit?.object.name ?? 'nothing'}`);
+      // 2026-09-22 nation wheel standard: the AMX-40 X pressed face (France cold-war construction) is painted steel in front of the disc.
+      assert.ok(hit?.object === discs || hit?.object === pressedFaces, `${quality} wheel ${i}: painted face must be the first visible stock at r=${radial}; hit ${hit?.object.name ?? 'nothing'}`);
     }
   }
   // The tire remains a finite closed ring and is not recolored armor or an
   // invisible/open-ended cylinder. Its outer rolling radius stays unchanged.
   const p = tires.geometry.attributes.position;
   const radii = Array.from({length:p.count}, (_, i) => Math.hypot(p.getY(i), p.getZ(i)));
-  close(Math.min(...radii), .314, 1e-6, 'physical tire opening');
+  // 2026-09-22 nation wheel standard: the tire is the AMX-40 X annulus (inner .282 at its .3401 radius) scaled to this hull's radius.
+  close(Math.min(...radii), .282 * (.36545 / .3401), 1e-6, 'physical tire opening');
   close(Math.max(...radii), .36545, 1e-6, 'unchanged rolling radius');
   const triangleCount = (tires.geometry.index?.count ?? p.count) / 3;
   assert.equal(triangleCount, 8 * (quality === 'high' ? 26 : 12),

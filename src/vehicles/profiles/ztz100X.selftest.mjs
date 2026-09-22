@@ -20,7 +20,7 @@ import { tankLabelRecord } from '../tankLabels.ts';
 const profileSource = readFileSync(new URL('./ztz100X.ts', import.meta.url), 'utf8');
 assert.ok(!/type100|Type 100|T-90|T-14|leopard/i.test(profileSource.replace(/^\/\/.*$/gm, '')), 'the ZTZ-100 imports and imitates no other profile');
 assert.deepEqual([...profileSource.matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]).sort(),
-  ['../factoryGeometry.ts', '../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleNightLighting.ts', './abramsSourceXTrackShoe.ts', './kit.ts', './lathedWheelStock.ts', './sectionSolid.ts', 'three'], 'only shared procedural primitives and lighting modules');
+  ['../factoryGeometry.ts', '../nationWheelConstructions.ts', '../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleNightLighting.ts', './abramsSourceXTrackShoe.ts', './kit.ts', './lathedWheelStock.ts', './sectionSolid.ts', 'three'], 'only shared procedural primitives and lighting modules (the nation wheel module holds the ZTZ-100 wheel section itself, 2026-09-22)');
 const record = JSON.parse(readFileSync(new URL('../../../docs/references/tanks/ztz100_x.source-measurements.json', import.meta.url), 'utf8'));
 const spec = TANK_SPECS.ztz100_x;
 assert.equal(spec.name, 'ZTZ-100'); assert.equal(spec.nation, 'China'); assert.equal(spec.era, 'next-generation');

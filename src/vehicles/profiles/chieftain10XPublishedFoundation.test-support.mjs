@@ -22,8 +22,10 @@ export function assertPublishedChieftainFoundationSources(
   assert.equal(receipt.commit, '099edfa49603bc473548f6986c8598267a24a4db');
   assert.equal(receipt.historicalStatus, 'pre-foundation receipt retained; not a current whole-model preservation claim');
   assert.deepEqual(receipt.preFoundationHistory, PRE_FOUNDATION_HISTORY);
-  assert.equal(Object.keys(receipt.authoredSources).length, 24,
-    'Complete Mk10 profile/helper family, shared foundation and its three direct geometry leaves');
+  // 2026-09-22 nation wheel standard: chieftain10XWheels.ts left the family (the Mk 10 X draws the UK Challenger 2E
+  // hollow paired wheel through nationWheelSets.ts), so the authored family is 23 sources.
+  assert.equal(Object.keys(receipt.authoredSources).length, 23,
+    'Complete Mk10 profile/helper family, shared foundation and its two direct geometry leaves');
   for (const [file, expected] of Object.entries(receipt.authoredSources)) {
     let source = read(file);
     if (file === receipt.laterMetadataAnnotation.file) {
@@ -82,7 +84,8 @@ export function assertPublishedChieftainFoundationSources(
   // mouth seat (draw vertices moved, none added or removed), then the 2026-09-14 tangent track
   // wrap (the two band meshes lost 240 draw vertices each and the linked shoes moved; every other
   // physical vertex is authenticated unchanged by the non-track multiset the receipt re-derives).
-  assert.equal(receipt.successorHistory.length, 2);
+  // 2026-09-22: the ground-datum successor joins the history; the nation wheel standard is the active successor.
+  assert.equal(receipt.successorHistory.length, 3);
   assert.deepEqual(receipt.successorHistory[0].high,
     {count: 318516, sha256: 'e927370c12f00c11a34427869aead2258efaf86dd0ddbcac31ce47b665cbf4bf'});
   assert.deepEqual(receipt.successorHistory[0].low,
@@ -91,13 +94,22 @@ export function assertPublishedChieftainFoundationSources(
     {count: 318516, sha256: 'c83fa1d589a234388d3ffb88e9fb4b4a6662f864f81432bd4f137fb79da72437'});
   assert.deepEqual(receipt.successorHistory[1].low,
     {count: 292116, sha256: '7bc8bc1603ea8a60909c028dc9ea44a7e67eaf9e0de805c40234cd7f9a8a30fb'});
+  assert.deepEqual(receipt.successorHistory[2].high,
+    {count: 320724, sha256: '595d361a80c1ca11ace02e54097d3e9802a2a69dac91d71216be963a2197ba1e'});
+  assert.deepEqual(receipt.successorHistory[2].low,
+    {count: 294324, sha256: '29a9f05af8fbac81a9c1716adcbdfad5a3d4c44c411f2fe70f3b9b02737e2073'});
   for (const quality of ['high', 'low']) {
     assert.equal(receipt.successorHistory[1][quality].count, receipt.successorHistory[0][quality].count,
       'the muzzle mouth seat moves draw vertices without adding or removing any');
-    assert.equal(receipt.successor[quality].count,
+    assert.equal(receipt.successorHistory[2][quality].count,
       receipt.successorHistory[1][quality].count + receipt.laterTrackWrap.trackDrawVertexDelta
         + receipt.laterGroundDatumSeat.trackDrawVertexDelta,
       'the tangent track wrap and the ground-datum reseat change exactly the declared number of band draw vertices');
+    // 2026-09-22 nation wheel standard: only the twelve road wheels changed, by the declared per-tier draw-vertex delta.
+    assert.equal(receipt.successor[quality].count,
+      receipt.successorHistory[2][quality].count + receipt.laterNationWheels.trackDrawVertexDelta
+        + receipt.laterNationWheels.nonTrackDrawVertexDelta[quality],
+      'the nation wheel standard changes exactly the declared number of road-wheel draw vertices');
   }
   assert.match(receipt.laterMuzzleSeat.scope, /muzzleBoreShadowFallback/);
   assert.match(receipt.laterTrackWrap.scope, /roadWheelWrap/);
@@ -106,10 +118,14 @@ export function assertPublishedChieftainFoundationSources(
   assert.match(receipt.laterGroundDatumSeat.scope, /groundSeatBotY/);
   // ground datum + end-wrap law (2026-09-17): the rim-capped end arcs trimmed 1 344 draw vertices at both qualities
   assert.equal(receipt.laterGroundDatumSeat.trackDrawVertexDelta, 2688);
+  // nation wheel standard (owner 2026-09-22): UK Challenger 2E hollow paired construction, fleet suspension arm; tracks untouched
+  assert.match(receipt.laterNationWheels.scope, /standardize our wheels across NATIONS/);
+  assert.equal(receipt.laterNationWheels.trackDrawVertexDelta, 0);
   return receipt.successor;
 }
 
 /** Non-track draw-vertex multiset the latest successor claims unchanged (receipt re-derives and compares). */
 export function publishedChieftainNonTrackMultiset(quality) {
-  return receipt.laterGroundDatumSeat.nonTrack[quality];
+  // 2026-09-22 nation wheel standard: the Mk 10 X draws the UK Challenger 2E hollow paired wheel and the fleet arm.
+  return receipt.laterNationWheels.nonTrack[quality];
 }

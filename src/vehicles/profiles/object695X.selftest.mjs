@@ -15,9 +15,12 @@ import { verifyGunCradleSeats } from '../gunCradleSeats.test-support.mjs';
 
 // Original concept, not a supplied-source or historical turret claim. The
 // 2026-09-19 pre-redesign HIGH/LOW chassis payloads authenticate unchanged stock.
+// 2026-09-22 nation wheel standard: object695_x draws the BMP-3M Dragun wheel (no dark inset layer, so 24 payload
+// rows) and the fleet arm re-seats against that wheel's back; the payload diff against origin/main 14a3262ec is
+// exactly the two road-wheel geometries, the dropped inset layer and the arm/boss instance matrices. Repinned.
 const hullHashes = {
-  high: '1c8cb3f7faeec6dedef8dbb8159c5965ee17cd845d650e61c1698615e5f74722',
-  low: '48bf39e0136f8bc1301b7cf33fe3c848be2950dbeab79315c5a0c2fc14fc25f8',
+  high: 'cdbef2f371fae52ae04a199a665bbf322f0e0c47d9006004a9d08249bb777052',
+  low: 'ce805503fae522c723fe82de21609a23bb8aebe46f0478bd81da0f4e90f54e32',
 };
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
 assert.ok(!profileSource.includes('epokhaTurret'), 'the counterpart turret is not assembled');
@@ -292,7 +295,7 @@ for(const quality of ['high','low']){
     assert.equal(count('driver-hatch'), 1); assert.equal(count('lamp-box'), 2); assert.equal(count('tow-eye'), 4); assert.equal(count('intake-drum'), 1);
     assert.equal(count('smoke-tube'), 10); assert.equal(count('deck-louvre'), 1); assert.equal(count('nose-lip'), 1);
     const payload=hullPayload(tank);
-    assert.equal(payload.length,25);
+    assert.equal(payload.length,24);
     assert.equal(sha(JSON.stringify(payload)),hullHashes[quality],'every retained native hull/gear attribute, material, instance and transform is exact');
     console.log('Checking source-independent stock',quality);
     checkLaunchStock(tank);console.log('Launcher stock PASS');checkFixedStock(tank);console.log('Fixed stock PASS');checkCannon(tank);console.log('Cannon PASS');checkNegativeControls(tank);console.log('Negatives PASS');checkArticulation(tank);
@@ -303,7 +306,10 @@ for(const quality of ['high','low']){
     assert.deepEqual(gear.wheelZs,[...D.wheelStations]);assert.equal(gear.wheelR,D.wheelR);assert.equal(gear.trackTh,.028);
     let triangles=0,turretTriangles=0,meshes=0;
     tank.root.traverseVisible(m=>{if(!m.isMesh||m.userData.shadowOnly)return;const mats=Array.isArray(m.material)?m.material:[m.material];if(mats.every(a=>a.visible===false||a.colorWrite===false))return;const n=Math.min(m.geometry.index?.count??m.geometry.attributes.position.count,m.geometry.drawRange.count)/3*(m.isInstancedMesh?m.count:1);triangles+=n;meshes++;for(let p=m;p;p=p.parent)if(p.name==='rig_turret')turretTriangles+=n;});
-    assert(triangles<=(quality==='high'?(process.argv.includes('--cold')?82002:82162):(process.argv.includes('--cold')?75700:75860)),`new complete model ${triangles}tri (turret ${turretTriangles}) does not exceed its prior filled cost`);
+    // 2026-09-22 nation wheel standard: the fourteen road wheels draw the BMP-3M Dragun construction (1728/944 tri per
+    // wheel instead of the generic 704/480, +14336 HIGH / +6496 LOW); the filled-cost ceiling re-pins to the measured
+    // 96482 / 81232 model (nothing else grew; the old ceilings kept their 160 cold-run margin).
+    assert(triangles<=(quality==='high'?(process.argv.includes('--cold')?96322:96482):(process.argv.includes('--cold')?81072:81232)),`new complete model ${triangles}tri (turret ${turretTriangles}) does not exceed its prior filled cost`);
     const bounds=new T.Box3().setFromObject(tank.root);
     assert(bounds.min.x>=-2.01&&bounds.max.x<=2.01);assert(bounds.max.z<=3.67);assert(Math.abs(bounds.max.y-3.90)<.002);
     costs.push({quality,triangles,turretTriangles,meshes,bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},filled:tank.root.userData.interiorFillRecordLoaded??!process.argv.includes('--cold')});

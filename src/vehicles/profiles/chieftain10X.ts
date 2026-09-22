@@ -108,19 +108,8 @@ function runningGear(P: TankBuilderPort): void {
     roadWheelOutsetM: -.00734,
     // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the UK nation construction
   // (Challenger 2E donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
-      // Horstmann fulcrums are nominally level with their wheel axles, with
-    // independent fore/aft pivots rather than one invented shared pair midpoint.
-    // The connecting native web is an explicit closed construction between
-    // the measured cap faces, not a claim to every hidden forged-lever fillet.
-    suspensionDimensions: {
-      armWidthM: .128, armHeightM: .17451, armAxleHeightM: .15425,
-      armCenterAbsXM: .999961,
-      anchorBossWidthM: .225212, anchorBossRadiusM: .088215,
-      anchorBossCenterAbsXM: .990477,
-      axleBossWidthM: .23479, axleBossRadiusM: .07725,
-      axleBossCenterAbsXM: 1.046706,
-      anchorLiftM: 0, anchorTrailM: .367175,
-    },
+      // The fleet suspension arm seats itself against the nation wheel it carries (owner 2026-09-22); the Horstmann
+    // web measured between the former source wheel caps left with that wheel.
     xc: 1.36021, trackW: .61317, trackTh: .030, botY, topY: 1.2019,
     // Fixed source lower cuts: outer pad .011260.. .022440 m, inner web
     // to .066970 m and guide crown .152291 m. Web/guide inputs account for

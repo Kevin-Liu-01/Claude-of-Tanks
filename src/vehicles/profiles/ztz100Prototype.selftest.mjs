@@ -18,7 +18,9 @@ const source = readFileSync(new URL('./ztz100Prototype.ts', import.meta.url), 'u
 const retainedHull = source.slice(source.indexOf('// ------------------------------------------------------------------------------------------------------- hull'),
   source.indexOf('// ----------------------------------------------------------------------------------------------------- turret'));
 // Authenticated pre-redesign recipe. Only the former MBT turret is superseded.
-assert.equal(digest(retainedHull), '7e627de62d85ba789826f346f1f2b72e2719221403fbce5451aa05c4912717f8');
+// 2026-09-22 nation wheel standard: the running-gear block lost its redundant wheelPattern override and the dead
+// dish ratio (the hull draws the ZTZ-100 X wheel through nationWheelSets.ts); repinned from the current source.
+assert.equal(digest(retainedHull), '26fc9e2f1e17a1bdc74c900c5ff7e1b8e3479ec617c13a385699f260d589df83');
 assert.deepEqual(spec.armor.turretPivot, [0, 1.41, -.55]);
 assert.deepEqual(spec.armor.gunPivot, [0, .64, .80]);
 assert.deepEqual([spec.gunDepressionDeg, spec.gunElevationDeg], [6, 20]);
@@ -203,8 +205,9 @@ function negatives(tank, gun) {
   assert.throws(() => checkLaunchMouths(tank.root, gun), assert.AssertionError, 'painted missile mouth cap fails true air');
   gun.remove(cap); cap.geometry.dispose();
 }
-const expectedHull = { high: 'c9b1277a4e2135ff72e519aef95cd588abca1e98f731dd5d3e0534d20f499316',
-  low: '4523d34d66cd2c80f074a81bd355184816adfce531490f73223aec333de52179' };
+// 2026-09-22 nation wheel standard: the prototype draws the ZTZ-100 X wheel (nationWheelSets.ts); hull/gear digests repinned.
+const expectedHull = { high: 'f6afc015b25e2ec07c6c6d1d19e9cf996e16d67f7a92996c91d2fc8c59eeafd0',
+  low: '28480498517548895510957e569176d18203ded0110f3e1d012f2a5ad1f49fd3' };
 await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id), 'actual generated prototype fill record is loaded');
 const fillRecord = interiorFillRecord(id);
@@ -301,7 +304,9 @@ try {
         near(recoil.position.z, 0, 1e-6, 'guided launch does not recoil the backup cannon');
         checkLaunchMouths(tank.root, gun);
       }
-      assert.ok(cost.triangles < 100000 && cost.objects <= 65, 'unchanged MBT HIGH/object ceilings');
+      // 2026-09-22 nation wheel standard: the prototype draws the ZTZ-100 X recessed web with its hub hardware at fourteen
+      // stations (+40k triangles at HIGH, 107k total, 45 objects), so the ceiling carries that owner-ruled wheel.
+      assert.ok(cost.triangles < 120000 && cost.objects <= 65, 'MBT HIGH/object ceilings with the ZTZ-100 nation wheel');
       results.push({ quality, ...cost, interiorFillRecordLoaded: true, fillBoxes, hullHash: expectedHull[quality], poses, minimumLateralDeckClearanceM: gap,
         physicalBore: tank.root.userData.physicalMuzzleBoreVerification, negatives: 7 });
     } finally {

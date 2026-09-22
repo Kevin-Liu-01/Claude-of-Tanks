@@ -172,6 +172,7 @@ for(const [id,build]of selected)for(const quality of['high','low']){
   for(const key of['wheelZs','wheelR','wheelY','sprocket','idler','botY','trackW','trackTh'])assert.deepEqual(current.receipt[key],old.receipt[key]);
   for(const name of['gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets','gearSuspensionLinks','gearSuspensionJointBosses']){
    const a=current.port.hullG.getObjectByName(name),b=old.port.hullG.getObjectByName(name);
+   if(!a&&!b)continue; // 2026-09-22: the Leopard 2A6 X nation wheel has no dark inset layer on either build
    assert.equal(hash(a.geometry),hash(b.geometry));assert.deepEqual(a.instanceMatrix.array,b.instanceMatrix.array);
   }
   const lower=c=>c.receipt.loopPoints.slice(c.receipt.loopPoints.findIndex(([z])=>z>c.cfg.idler.z+1e-7));

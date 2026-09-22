@@ -30,12 +30,15 @@ function sourceScalars(tank, all) {
   const barrel = all.filter(m => m.name === 'gunDark');
   near(cast(barrel, [-.008067, 1.859441, 7.1], [0, 0, -1])?.point.z,
     6.24935, .000003, 'measured recessed source bore floor');
-  for (const [r, x] of [[.19, 1.334176], [.22, 1.334176], [.29, 1.392437], [.31, 1.392437]]) {
+  // 2026-09-22 nation wheel standard (owner: UK hulls draw the Challenger 2E hollow paired wheel): the held-out Mk5
+  // source dish surfaces left with that wheel; the first stock an outboard ray meets at the wheel radii is now a
+  // road-wheel part of the nation construction, seated inside the authored tire width with approach air before it.
+  for (const r of [.19, .22, .29, .31]) {
     const positive = cast(all, [1.58, .4562785 + r, -2.230051], [-1, 0, 0]);
-    assert.equal(positive?.object.name, 'gearMk5SourceDishR');
-    near(positive?.point.x, x, .00002, 'held-out source radial dish surface with outward winding');
-    assert.equal(cast(all, [1.58, .4562785 + r, -2.230051], [-1, 0, 0], 1.58 - x - .001),
-      undefined, 'genuine approach air before the recessed dish');
+    assert.ok(positive?.object.name.startsWith('gearRoadWheel'), `nation wheel part first at r ${r}: ${positive?.object.name}`);
+    assert.ok(Math.abs(positive.point.x - (1.2947382 + .0004482)) <= .41679 / 2 + .03, 'wheel stock sits within the authored tire width of the axle');
+    assert.equal(cast(all, [1.58, .4562785 + r, -2.230051], [-1, 0, 0], 1.58 - positive.point.x - .001),
+      undefined, 'genuine approach air before the wheel');
   }
   assert.equal(cast(all, [0, 2.25, 1.8], [0, 0, -1], .38), undefined,
     'complete source has genuine upper gun-root approach air');

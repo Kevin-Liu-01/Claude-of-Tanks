@@ -54,10 +54,13 @@ for(const filled of [false,true]){
     const tank=createTank('griffin50_x',null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
     try{
       const root=tank.root;root.updateMatrixWorld(true);
-      const wheels=root.getObjectByName('gearRoadWheelDiscs');
+      // 2026-09-22 nation wheel standard: the Sheridan construction's tire is a 26-sided lathe whose vertices miss one
+      // axis by r·(1−cos(π/26)) ≈ 2.4 mm a side (4.7 mm on the diameter), so roundness is judged against that polygon
+      // error; the 5 % chassis lengthening this receipt guards against would stretch the wheel by 32 mm.
+      const wheels=root.getObjectByName('gearRoadWheelTires');
       wheels.geometry.computeBoundingBox();
       const wheelSize=wheels.geometry.boundingBox.getSize(new THREE.Vector3());
-      assert(Math.abs(wheelSize.y-wheelSize.z)<.00001,'lengthening the chassis must not stretch wheel circles');
+      assert(Math.abs(wheelSize.y-wheelSize.z)<.006,'lengthening the chassis must not stretch wheel circles');
       const stations=new Set(),instance=new THREE.Matrix4();
       for(let i=0;i<wheels.count;i++) {
         wheels.getMatrixAt(i,instance);

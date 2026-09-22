@@ -3856,9 +3856,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       cfg.wheelCoreGeometry?.disc, cfg.wheelCoreGeometry?.dark]) geometry?.dispose();
     for (const layer of faceLayers) layer.geometry.dispose();
     faceLayers = [];
-    // A source-placed suspension (authored arm centres) was measured against the authored wheel back, so the
-    // construction may not grow inboard of it: such hulls bound the wheel to their authored width.
-    const maxWidthM = cfg.suspensionDimensions?.armCenterAbsXM !== undefined ? wheelW : wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE;
+    const maxWidthM = wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE;
     const built = buildNationWheel(nationWheel.construction, {
       radiusM: wheelR, tireWidthM: wheelW, maxWidthM, high: Boolean(q), segments: seg,
     });
@@ -4050,9 +4048,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // wheel's measured back face. Two instanced draws cover the complete unit;
   // there are still no per-wheel meshes or frame-loop allocations.
   const suspensionEntries: SuspensionEntry[] = [];
+  // A standardized hull's authored suspension dimensions were measured against the wheel the nation
+  // construction replaced (source-placed arm centres, receiving spindles into the old wheel back), so it
+  // takes the fleet arm, which seats itself against the wheel it actually carries (owner 2026-09-22).
   const { dimensions: suspensionDimensions, lift: suspensionLift, armWidth,
     assemblyHalfDepth: suspensionAssemblyHalfDepth, bossRadius, bossWidth,
-  } = resolveSuspensionShape(cfg.suspensionDimensions, wheelR, wheelW, suspensionPattern);
+  } = resolveSuspensionShape(standardizedWheels ? undefined : cfg.suspensionDimensions, wheelR, wheelW, suspensionPattern);
   const suspensionTrail = suspensionDimensions?.anchorTrailM ?? wheelR * suspensionPattern.trailRatio;
   const armHeight = Math.max(0.045, wheelR * suspensionPattern.armHeightRatio);
   let visibleWheelHalfDepth = wheelW * 0.5;

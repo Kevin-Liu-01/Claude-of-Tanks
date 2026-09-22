@@ -5,7 +5,6 @@ import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildT62MV1X} from './t62mv1X.ts';
 import {addT62MV1Sight} from './t62mv1XSight.ts';
-import {withHistoricalClosedWheelFaces} from '../sourceXWheelFaceHistory.test-support.mjs';
 import {withHistoricalFixedSkirtFinish} from '../fixedSourceSkirtPaint.test-support.mjs';
 
 const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
@@ -19,8 +18,9 @@ const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-const BEFORE={high:'6662e0ea6d8fad68105928d731e8a8ad592e30356b261ee189f185d1a2287306',
-  low:'3b6e37429891e7503f22a2e6b094e5d22bc9e92f1bd354522710bcba07a018d6'};
+// 2026-09-22 nation wheel standard: t62mv1_x draws the T-90 nation wheel, so the annular-opening inverse is gone; repinned.
+const BEFORE={high:'ad580b80f435a8dd79af020e5d791ca938df8958c4a01659310f4ea09ce5f54a',
+  low:'474f7afebfcd1542a0349a5fbf4f6ce3c94db067c8f72fcf31108a7c4438cee4'};
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
@@ -101,8 +101,7 @@ function build(quality,omit,historical=false){
   try{
     const native=()=>createTank('t62mv1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     let tank;
-    if(historical) tank=withHistoricalClosedWheelFaces('t62mv1_x',()=>
-      withHistoricalFixedSkirtFinish('t62mv1_x',native,observe));
+    if(historical) tank=withHistoricalFixedSkirtFinish('t62mv1_x',native,observe);
     else{registerProfiledBuilders({t62mv1_x:observe(buildT62MV1X)});tank=native();}
     tank.root.updateMatrixWorld(true);return{tank,count,emissionHash:hash.digest('hex')};
   }finally{registerProfiledBuilders({t62mv1_x:buildT62MV1X});}
@@ -172,7 +171,7 @@ try{
       try{
         assert.equal(historical.count,2);
         assert.equal(sceneHash(historical.tank.root),BEFORE[quality],
-          'entire original scene after only declared wheel-opening/fixed-finish inverses matches immutable pre-addition capture');
+          'entire original scene after only the declared fixed-finish inverse matches the pre-addition capture');
       }finally{historical.tank.dispose();}
       assert.equal(after.emissionHash,before.emissionHash,'every old primitive and exact emit call remains unchanged');
       sourceSurfaces(physical(after.tank.root));attachment(after.tank,own);semantics(after.tank);ownership(after.tank);
