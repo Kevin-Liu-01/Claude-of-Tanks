@@ -5,6 +5,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { efficientReturnRoller } from '../efficientReturnRoller.ts';
+import { K2_ROAD_WHEELS } from './k2RoadWheels.ts';
 import type { RunningGearConfig, TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
@@ -471,7 +472,7 @@ export function buildK2X(P: TankBuilderPort): void {
     radiusM:.095175,axialWidthM:.0826,spindleRadiusM:.025,spindleLengthM:.1282});
   returnStock.spindle.dispose();
   const gearConfig: RunningGearConfig = {
-    style: 'rubber', wheelR: .3225, wheelW: .387, wheelY: .405 + GROUND,
+    style: 'rubber', ...K2_ROAD_WHEELS, wheelY: .405 + GROUND,
     wheelZs: K2_X_DATUMS.wheelStations.map(z => z - CENTER_Z),
     xc: 1.407, trackW: .619, trackTh: .066,
     rollers: [-1.77835,.013,1.8319].map(z=>({z,y:1.005725,r:.095175})),

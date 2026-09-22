@@ -1,3 +1,62 @@
+# Shared production K2 wheels — 2026-09-22
+
+Owner target: XK2 and K2B use the production K2 (`k2_x`) road wheels.
+`profiles/k2RoadWheels.ts` now owns the shared 0.3225 m tire radius,
+0.387 m stock width and 0.90 painted-face ratio. The native animated tire,
+painted disc and inset geometry matches K2 exactly in HIGH, LOW and AI.
+Each receiving chassis retains its six axle X/Z stations, return rollers,
+idler and sprocket. The native solver reseats wheel height, suspension and
+lower-track tangencies; fixed inboard knuckles follow that solved axle.
+Generated interior fills were refreshed to clear the changed track course.
+
+The focused geometry regression compares actual buffers against `k2_x`;
+the rough-field regression now covers both variants in HIGH and LOW. The
+six-second turning/rough-ground simulation reports zero tire cuts and zero
+loaded gaps for all four cases. The production K2 geometry is unchanged in
+all three qualities; the wheel change adds no triangles. The only exterior
+mesh changes are road wheels, their suspension and track courses, and the
+inboard knuckles. Existing turrets, hull armor and end wheels are retained.
+
+Garage verification used the real country filter and vehicle cards, live
+engine context, static batching and a cached return to XK2. The rendered
+geometry buffers for all three moving wheel layers match production K2;
+six wheels remain on each side. Served development version:
+`v1.0.0+ge3e560ae0.dirty`. Production deployment is a separate action.
+
+Validation passes: exact HIGH/LOW track and shoe clearance, HIGH/LOW/AI wheel
+geometry regression, HIGH/LOW rough-ground turning, complete anatomy update
+and check, marking receipts, all nine asset views, module alignment/hits,
+centering, duplicate-track detection, muzzle/barrel checks, type checking
+and private production build. Registered self-tests: the initial `npm test` pre-phase passed 405/406
+files and correctly rejected the old XK2 assembly fingerprint. After the
+independent geometry/unchanged-mesh review, only that requested rebuild's
+fingerprint was updated; `sourceXFleet.selftest.mjs` then passed in isolation.
+The remaining registered core and post phases passed 684/684 and 42/42.
+Thus all 1,132 registered files have passing results for the final runtime;
+the original failed invocation is retained rather than labeled a clean
+single-command `npm test` pass.
+
+
+The complete release command remains **failed**: K2B has eight enclosed
+top-down cells at approximately x=-1.77, z=2.45 and no registered local GLB
+for the mandatory fidelity stage. A fresh standard check on unchanged
+`e3e560ae0` reproduces the same eight-cell opening. It also reports 2,452
+band and 271 shoe intersections with the old interior fill; the refreshed
+fill clears those completely in HIGH and LOW. The exterior sealed-ledger
+check passes at 131 open pixels against its unchanged 133-pixel allowance.
+No threshold, source target or qualification status was relaxed.
+
+Publication authorization — 2026-09-22: owner explicitly approved deployment
+of this wheel-only fix after confirming that integration preserves current
+main. This scoped exception covers the inherited qualification issues above;
+it does not change any geometry threshold or certify those issues as fixed.
+The release integration starts from `14a3262ec` and keeps the newer terrain,
+camouflage mapping and track-lane fill policy. Only the authored wheel patch
+is carried forward; generated fills, anatomy and assets are rebuilt against
+the current code. The final deployed revision is recorded in `docs/DEPLOYS.md`.
+
+---
+
 # K2B (`k2b`) — §5.299 resurrection packet
 
 **Owner order (§5.299, verbatim):** "make our old pl-01 from before our

@@ -25,12 +25,15 @@ function uniqueInstanceZs(mesh) {
   return [...zs].sort((a, b) => b - a);
 }
 
-for (const id of ['k2', 'k2b']) {
+for (const quality of ['high', 'low', 'ai']) for (const id of ['k2', 'k2b']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
-    quality: 'high',
+    quality,
     camoSeed: 4242,
     geometryReceipt: true,
+  });
+  const production = createTank('k2_x', null, {
+    proceduralOnly: true, quality, camoSeed: 4242, geometryReceipt: true,
   });
   await Promise.resolve();
 
@@ -44,6 +47,22 @@ for (const id of ['k2', 'k2b']) {
     assert.ok(receipt && roadWheels?.isInstancedMesh
       && returnRollers?.isInstancedMesh && trackPads?.isInstancedMesh,
     `${id}: exposes the canonical running-gear receipt and animated layers`);
+    near(receipt.wheelR, .3225, `${id}/${quality}: production K2 road-wheel radius`);
+    for (const name of ['gearRoadWheelTires', 'gearRoadWheelDiscs', 'gearRoadWheelInsets']) {
+      const actual = hull.getObjectByName(name);
+      const target = production.root.getObjectByName(name);
+      assert.ok(actual?.isInstancedMesh && target?.isInstancedMesh, `${name}: real moving wheel stock`);
+      assert.deepEqual(actual.geometry.index?.array, target.geometry.index?.array, `${name}: K2 topology`);
+      for (const key of Object.keys(target.geometry.attributes)) {
+        assert.deepEqual(actual.geometry.attributes[key]?.array, target.geometry.attributes[key].array,
+          `${id}/${quality}/${name}/${key}: complete K2 wheel geometry, not a pattern label`);
+      }
+    }
+    const matrix = new THREE.Matrix4();
+    roadWheels.getMatrixAt(0, matrix);
+    const axleY = matrix.elements[13];
+    near(axleY - receipt.wheelR, receipt.botY + receipt.trackTh / 2,
+      `${id}/${quality}: replacement tire rests on the loaded track`);
     assert.deepEqual(receipt.wheelZs, EXPECTED_ROAD_WHEEL_ZS,
       `${id}: six road wheels share the forward-compressed K2 station plan`);
     assert.deepEqual(uniqueInstanceZs(roadWheels), EXPECTED_ROAD_WHEEL_ZS,
@@ -75,7 +94,8 @@ for (const id of ['k2', 'k2b']) {
       `${id}: the loaded run leaves the ground under the rear axle and wraps the wheel`);
   } finally {
     tank.dispose();
+    production.dispose();
   }
 }
 
-console.log('k2RunningGearSeat.selftest: K2 family wheel train and track course are forward-seated');
+console.log('k2RunningGearSeat: HIGH/LOW/AI XK2 and K2B use actual K2 wheels and retain seated track courses');

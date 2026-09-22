@@ -34,7 +34,10 @@ const original = {
 // Owner 2026-09-21 explicitly replaces XK2's turret with the current K1A1.
 // xk2.selftest verifies complete donor geometry and hull/suspension seating;
 // this pins the resulting assembly while retaining the old history above.
-const ownerRebuilds = { k2: '15a3e8d2' };
+// Owner 2026-09-22 also selects production K2 road wheels. The wheel-seat
+// regression compares their actual geometry in HIGH/LOW/AI; the before/after
+// mesh audit preserves all hull armor, turret, gun and end-wheel geometry.
+const ownerRebuilds = { k2: '8cfbfdf6' }; // K1A1-turret assembly was 15a3e8d2.
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {
   const tank = createTank(id, null, options);

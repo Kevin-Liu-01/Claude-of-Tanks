@@ -8,9 +8,10 @@
 // modern3Specs.ts so unrelated garages never transfer this geometry pack.
 
 import * as THREE from 'three';
-import { KIT } from './tankFactoryCore.ts';
+import { KIT, type RunningGearConfig } from './tankFactoryCore.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
+import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
 import './modern3Specs.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -313,17 +314,20 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // idler and sprocket retain their certified locations and contact arcs.
   const k2RoadWheelZs = [2.48, 1.55, 0.62, -0.31, -1.24, -2.17];
   const k2ReturnRollerZs = [1.61, 0.20, -1.21];
-  buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.45, wheelW: 0.23, wheelY: 0.55, xc: 1.375,
-    dishR: 0.80,
+  const gearConfig: RunningGearConfig = {
+    style: 'rubber', ...K2_ROAD_WHEELS, xc: 1.375,
     wheelZs: k2RoadWheelZs,
     sprocket: { z: -3.08, y: 1.10, r: 0.25 }, idler: { z: 3.10, y: 0.72, r: 0.24 },
     rollers: k2ReturnRollerZs.map((z) => ({ z, y: 0.93, r: 0.08 })),
     trackW: 0.60, topY: 0.96, contactZF: 2.40, contactZR: -2.395,
     containRearRoadWheel: true,
-    paintedEnds: true, coveredTop: 1.0,
-    padHex: 0x25251f, chainHex: 0x34332c,
-  });
+    paintedEnds: true, coveredTop: true,
+  };
+  const gear = buildRunningGear(P, gearConfig);
+  // Use the same solved ground seat as the animated wheels, including the
+  // smaller tire radius. Fixed inboard ISU knuckles must follow that axle.
+  const roadWheelY = gear.roadWheelLayout?.wheelY;
+  if (roadWheelY === undefined) throw new Error('K2 running gear requires solved road-wheel axles');
   // The track solver's small end hubs preserve the measured contact arc;
   // nested visual discs restore the full idler/sprocket mass visible through
   // the band without moving that certified outer track envelope.
@@ -337,8 +341,8 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     // are nested inside the certified shoe lane, adding the source model's
     // suspension depth without widening the running-gear silhouette.
     for (const z of k2RoadWheelZs) {
-      P.add('hullRunningGearDetail', cylX(0.105, 0.245, P.q ? 16 : 10), s * 1.39, 0.55, z);
-      P.add('hullRunningGearDark', cylX(0.045, 0.258, P.q ? 14 : 8), s * 1.39, 0.55, z);
+      P.add('hullRunningGearDetail', cylX(0.105, 0.245, P.q ? 16 : 10), s * 1.39, roadWheelY, z);
+      P.add('hullRunningGearDark', cylX(0.045, 0.258, P.q ? 14 : 8), s * 1.39, roadWheelY, z);
       P.add('hullRunningGearDetail', box(0.070, 0.075, 0.42), s * 1.46, 0.83, z + 0.16, s * 0.62, 0, 0);
     }
   }
