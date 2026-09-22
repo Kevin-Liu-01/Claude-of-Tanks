@@ -17,3 +17,6 @@ assert.equal(old.first.hull, 'old', 'merge must not mutate the source module');
 assert.throws(() => mergeInteriorFillGroup(old, {single:{}}, registry, 'shared'), /does not belong/);
 assert.throws(() => mergeInteriorFillGroup(old, {toString:{}}, registry, 'shared'), /does not belong/);
 console.log('interior fill selection: exact scoped updates, preserved siblings/absence and unknown rejection PASS');
+
+assert.deepEqual(mergeInteriorFillGroup(old, {}, {...registry, first:'newFamily'}, 'shared'),
+  {sibling:old.sibling}, 'moved tank cannot retain a competing old-family fill');

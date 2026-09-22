@@ -10,7 +10,7 @@ import {runFleetSweep} from './fleetSweep.test-support.mjs';
 const canonicalOnlyIds = new Set([
   'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
   'challenger_3', 'challenger_3x', 'mbt70', 't14',
-  'k2', 'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89',
+  'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89',
 ]);
 const owners = new Map();
 for (const [group, ids] of Object.entries(FLEET_GROUP_IDS)) {

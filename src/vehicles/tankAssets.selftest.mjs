@@ -199,7 +199,7 @@ assert.equal(ALL_TANK_IDS.includes('upior_ifv'), false,
 assert.equal(getSpec('upior').name, 'Upiór IFV',
   'separate ground-up Upior identity remains unchanged');
 assert.equal(getSpec('strv122_x').name, 'Stridsvagn 122', 'the Strv 122 study carries the canonical name (owner 2026-09-15)');
-assert.equal(getSpec('strv122').name, 'Stridsvagn 122A',
+assert.equal(getSpec('strv122').name, 'Stridsvagn 121',
   'Swedish vehicle uses its operator-standard public name');
 assert.equal(getSpec('k2_x').label.shortName, 'K2',
   'the K2 study keeps the canonical designation as its concise public label (owner 2026-09-15)');

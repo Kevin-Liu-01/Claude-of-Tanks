@@ -78,4 +78,5 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "uk": () => import('./combatAnatomyGroups/uk.generated.ts'),
   "ukraine": () => import('./combatAnatomyGroups/ukraine.generated.ts'),
   "ww2": () => import('./combatAnatomyGroups/ww2.generated.ts'),
+  "xk2": () => import('./combatAnatomyGroups/xk2.generated.ts'),
 });

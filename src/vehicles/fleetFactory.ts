@@ -1,3 +1,4 @@
+import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
 // Browser-facing procedural fleet facade. The roster registry remains eager;
 // authored visual families and canonical packs that do not participate in the
 // opening vehicle are registered only when a concrete tank id requests them.
@@ -90,10 +91,12 @@ export interface CreateTankOptions {
 }
 
 applyFleetBalancePass(TANK_SPECS);
+prepareXk2DonorMetadata();
 synchronizeSourceXCombatMetadata();
 synchronizeSuppliedSourceCombatMetadata();
 synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
+synchronizeXk2CombatMetadata();
 finalizeFirstPartyRoster();
 applyNativeFamilyOrderToCatalogs();
 
@@ -128,6 +131,7 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 const GROUP_LOADERS = Object.freeze({
   aresApcX: () => import('./profiles/aresApcX.ts').then((mod) => registerProfiles(mod.ARES_APC_X_PROFILES)),
   leopardA6X: () => import('./profiles/leopardA6X.ts').then((mod) => registerProfiles(mod.LEOPARD_A6_X_PROFILES)),
+  xk2: () => import('./profiles/xk2.ts').then((mod) => registerProfiles(mod.XK2_PROFILES)),
   k1a1X: () => import('./profiles/k1a1X.ts').then((mod) => registerProfiles(mod.K1A1_X_PROFILES)),
   amx30X: () => import('./profiles/amx30X.ts').then((mod) => registerProfiles(mod.AMX30_X_PROFILES)),
   t62mv1X: () => import('./profiles/t62mv1X.ts').then((mod) => registerProfiles(mod.T62MV1_X_PROFILES)),

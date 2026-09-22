@@ -78,4 +78,5 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "uk": () => import('./vehicleMarkingSeatGroups/uk.generated.ts'),
   "ukraine": () => import('./vehicleMarkingSeatGroups/ukraine.generated.ts'),
   "ww2": () => import('./vehicleMarkingSeatGroups/ww2.generated.ts'),
+  "xk2": () => import('./vehicleMarkingSeatGroups/xk2.generated.ts'),
 });

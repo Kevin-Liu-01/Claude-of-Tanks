@@ -1,3 +1,4 @@
+import { XK2_PROFILES } from './profiles/xk2.ts';
 import { GRIFFIN_VIPER_PROFILES } from './profiles/griffinViper.ts';
 import { TOS1A_TAGIL_PROFILES } from './profiles/tos1aTagil.ts';
 import { buildFv510MilanX } from './profiles/fv510MilanX.ts';
@@ -133,6 +134,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...T72BU_X_PROFILES,
   ...LEOPARD_A6_X_PROFILES,
   ...K1A1_X_PROFILES,
+  ...XK2_PROFILES,
   ...AMX30_X_PROFILES,
   ...T62MV1_X_PROFILES,
   ...T72B1987_X_PROFILES,

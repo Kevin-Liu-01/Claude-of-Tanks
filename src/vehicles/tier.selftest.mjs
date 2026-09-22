@@ -20,7 +20,8 @@ assert.equal(tankTier('challenger1'), 9,
 assert.equal(tankTier('t80bv'), 9, 'T-80BV UI and matchmaking agree at tier IX');
 assert.equal(tankTier('chieftain_mk10'), 8,
   'Chieftain Mk 10 UI and matchmaking agree at tier VIII');
-assert.equal(tierNumeral('k2b'), 'X', 'K2B is presented and matched as a Tier X vehicle');
+assert.deepEqual(['k2_x', 'k1a1_x', 'k2b', 'k2', 'k1a1'].map(tankTier),
+  [10, 10, 9, 9, 8], 'K2/K1A1 are X, K2B/XK2 are IX, and legacy K1E1 remains VIII');
 assert.deepEqual(
   ['type90', 'type90a', 'type10', 'type10b'].map(tankTier),
   [9, 9, 10, 10],

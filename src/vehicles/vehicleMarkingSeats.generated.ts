@@ -74,6 +74,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_TYPE96BX } from './vehicleMarkingSeatGro
 import { VEHICLE_MARKING_SEATS as SEATS_UK } from './vehicleMarkingSeatGroups/uk.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_UKRAINE } from './vehicleMarkingSeatGroups/ukraine.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_WW2 } from './vehicleMarkingSeatGroups/ww2.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_XK2 } from './vehicleMarkingSeatGroups/xk2.generated.ts';
 
 export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 
@@ -150,4 +151,5 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_UK,
   SEATS_UKRAINE,
   SEATS_WW2,
+  SEATS_XK2,
 ));

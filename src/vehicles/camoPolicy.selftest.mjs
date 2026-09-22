@@ -272,6 +272,9 @@ assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'si
 assert.equal(defaultCamoPatternId('tos1a_tagil'), 'sig_tos1a_tagil');
 assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
 const precedingCatalog = structuredClone(catalogContract);
+// The owner renamed this vehicle without changing its saved paint ID or recipe.
+assert.equal(CAMO_PATTERN_LABEL.service_strv122, 'Strv 121 Splinter');
+precedingCatalog.patternLabels.service_strv122 = 'Strv 122 Splinter';
 // The new American concept adds exactly one authored paint. Validate its
 // complete recipe, then retain the earlier catalog hashes unchanged.
 // round 32: authored paints are named for nation and pattern, never a vehicle (the Griffin's tri-tone is a second US

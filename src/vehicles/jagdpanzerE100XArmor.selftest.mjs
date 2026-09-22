@@ -19,7 +19,7 @@ const donorHash = '09842f4d09b48cef27744d80a99ac8e512084354a116f608492c0d85c8dac
 function historicalDonors(rows = donorRows()) {
   const restored = structuredClone(rows);
   const ariete = restored.find(([id]) => id === 'ariete_c1')[1];
-  // The 2026-09-21 owner rename is the only permitted donor delta. Authenticate
+  // The 2026-09-21 owner renames are the only permitted donor deltas. Authenticate
   // the complete current label before reversing it for the original digest.
   assert.equal(ariete.name, 'C1 Ariete Prototype (Serie 1)');
   assert.deepEqual(ariete.label, {
@@ -30,6 +30,17 @@ function historicalDonors(rows = donorRows()) {
   ariete.label = {
     id: 'ariete_c1', displayName: 'C1 Ariete (Serie 1)', shortName: 'Ariete C1 S1',
     searchAliases: ['C1 Ariete (Serie 1)', 'Ariete C1 S1', 'ariete_c1', 'ariete c1'],
+  };
+  const swedish = restored.find(([id]) => id === 'strv122')[1];
+  assert.equal(swedish.name, 'Stridsvagn 121');
+  assert.deepEqual(swedish.label, {
+    id: 'strv122', displayName: 'Stridsvagn 121', shortName: 'Strv 121',
+    searchAliases: ['Stridsvagn 121', 'Strv 121', 'strv122', 'Swedish Leopard 2', 'Strv 122A', 'Stridsvagn 122A'],
+  });
+  swedish.name = 'Stridsvagn 122A';
+  swedish.label = {
+    id: 'strv122', displayName: 'Stridsvagn 122A', shortName: 'Strv 122A',
+    searchAliases: ['Stridsvagn 122A', 'Strv 122A', 'Strv 122', 'strv122', 'Swedish Leopard 2'],
   };
   return restored;
 }
@@ -88,7 +99,7 @@ function checkArmor(armor) {
 }
 
 assert.equal(hash(historicalDonors()), donorHash,
-  'all 22 original donor specs unchanged apart from the authenticated C1 display rename');
+  'all 22 original donor specs unchanged apart from the authenticated C1/Strv display renames');
 const wrongLabel = structuredClone(donorRows());
 wrongLabel.find(([id]) => id === 'ariete_c1')[1].label.shortName = 'unapproved';
 assert.throws(() => historicalDonors(wrongLabel), assert.AssertionError);

@@ -259,6 +259,16 @@ if (!flag('stats')) {
   const encode = (spans) => { const u16 = new Uint16Array(spans); return Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString('base64'); };
   const byGroup = new Map();
   for (const [id, record] of Object.entries(out)) { const group = FLEET_GROUP_BY_ID[id] || 'core'; if (!byGroup.has(group)) byGroup.set(group, []); byGroup.get(group).push([id, record]); }
+  // A scoped family move must retire the old copy, or load order can restore
+  // the previous vehicle's fills over the newly generated assembly.
+  if (!flag('all')) for (const name of readdirSync(groupDir)) {
+    if (!name.endsWith('.generated.ts')) continue;
+    const group = name.replace(/\.generated\.ts$/, '');
+    if (byGroup.has(group)) continue;
+    const prior = (await import(pathToFileURL(resolve(groupDir, name)).href)).INTERIOR_FILLS;
+    if (ids.some(id => Object.hasOwn(prior, id) && FLEET_GROUP_BY_ID[id] !== group))
+      byGroup.set(group, []);
+  }
   const groupNames = [...byGroup.keys()].sort();
   let bytes = 0;
   for (const group of groupNames) {

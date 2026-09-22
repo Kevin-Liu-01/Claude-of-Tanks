@@ -539,6 +539,14 @@ function mainGun(P: TankBuilderPort): void {
   P.muzzleZ=K1A1_X_DATUMS.muzzleZ-GUN_Z;
 }
 
+/** Complete rotating assembly, reusable without copying the donor hull. */
+export function buildK1A1XTurret(P: TankBuilderPort): void {
+  P.turretG.position.set(0,RING_Y,RING_Z);
+  P.gunG.position.set(GUN_X,GUN_Y-RING_Y,GUN_Z-RING_Z);
+  turretBody(P);basket(P);rearStowage(P);smokeBanks(P);roofFurniture(P);mainGun(P);
+  P.topY=2.62456-RING_Y;
+}
+
 function buildK1A1X(P: TankBuilderPort): void {
   P.hullG.position.set(0,0,0);
   P.turretG.position.set(0,RING_Y,RING_Z);
@@ -575,8 +583,7 @@ function buildK1A1X(P: TankBuilderPort): void {
     topY:1.209,botY:.0554,paintedEnds:true,arms:true,coveredTop:true,
   });
   skirtsAndGuards(P);engineDeck(P);bowFurniture(P);
-  turretBody(P);basket(P);rearStowage(P);smokeBanks(P);roofFurniture(P);mainGun(P);
-  P.topY=2.62456-RING_Y;
+  buildK1A1XTurret(P);
   P.hullG.userData.xRebuild={candidate:'k1a1_x',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
 

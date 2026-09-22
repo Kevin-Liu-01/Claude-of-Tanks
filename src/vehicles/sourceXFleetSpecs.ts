@@ -1,3 +1,4 @@
+import { k2SourceMetadata } from './xk2Specs.ts';
 // September 2026 owner-requested, separately selectable source-study rebuilds.
 // These clone combat metadata only. Geometry is independently authored in
 // dedicated demand-loaded X profiles, never taken from the donor builders.
@@ -111,7 +112,8 @@ export function synchronizeSourceXCombatMetadata(): void {
     'hullTraverseDegS', 'terrainResistance', 'pivotStyle', 'turretTraverseDegS',
     'gunPitchDegS', 'gunElevationDeg', 'gunDepressionDeg', 'gun'] as const;
   for (const [id, donorId] of entries) {
-    const target = registries.tankSpecs[id], donor = registries.tankSpecs[donorId];
+    const target = registries.tankSpecs[id], registered = registries.tankSpecs[donorId];
+    const donor = donorId === 'k2' ? { ...registered, ...k2SourceMetadata() } : registered;
     for (const key of fields) Object.assign(target, { [key]: structuredClone(donor[key]) });
     target.armor = structuredClone(donor.armor);
     fitArmorToDims(target.armor, donor.dims, target.dims);

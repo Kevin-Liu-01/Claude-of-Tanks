@@ -48,7 +48,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 38 | PROD | `strv103` | Stridsvagn 103B | Sweden | X | Cold War | Production |
 | 39 | PROD | `cv90` | CV90 | Sweden | IX | Modern | Production |
 | 40 | PROD | `cv90105_tml_x` | CV90105 TML X | Sweden | IX | Modern | Production |
-| 41 | PROD | `strv122` | Stridsvagn 122A | Sweden | X | Modern | Production |
+| 41 | PROD | `strv122` | Stridsvagn 121 | Sweden | X | Modern | Production |
 | 42 | PROD | `cv90_mkiv` | CV90 Mk 4 | Sweden | X | Next Generation | Production |
 | 43 | PROD | `cv90_mkiv_x` | CV90 Mk 4 X | Sweden | X | Next Generation | Production |
 | 44 | DEV | `is3` | IS-3 | USSR | VIII | World War II | Historical archive |
@@ -182,7 +182,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 172 | PROD | `pt91_twardy` | PT-91A Twardy | Poland | IX | Modern | Production |
 | 173 | PROD | `pl01` | PL-01 | Poland | X | Next Generation | Production |
 | 174 | PROD | `pl01_105` | PL-01 (105) | Poland | X | Next Generation | Production |
-| 175 | PROD | `k2b` | K2B | South Korea | X | Modern | Production |
+| 175 | PROD | `k2b` | K2B | South Korea | IX | Modern | Production |
 | 176 | PROD | `bmp3_rok` | BMP-3 (ROK) | South Korea | VIII | Modern | Production |
 | 177 | PROD | `ua_m2a3_bradley` | M2A3 Bradley (Ukraine) | Ukraine | IX | Modern | Production |
 | 178 | PROD | `bmpt_terminator2` | BMPT Terminator 2 | Russia | IX | Modern | Production |
@@ -201,7 +201,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 191 | PROD | `leo2a6m_x` | Leopard 2A6M | Germany | X | Modern | Production |
 | 192 | PROD | `leo2a4m_x` | Leopard 2A5M | Germany | X | Modern | Production |
 | 193 | PROD | `leo2a5_x` | Leopard 2A5 | Germany | X | Modern | Production |
-| 194 | PROD | `k2_x` | K2 Black Panther | South Korea | IX | Modern | Production |
+| 194 | PROD | `k2_x` | K2 Black Panther | South Korea | X | Modern | Production |
 | 195 | PROD | `kf51_x` | KF51 Panther | Germany | X | Next Generation | Production |
 | 196 | PROD | `t90a_x` | T-90A | Russia | X | Modern | Production |
 | 197 | PROD | `t90a_vladimir_x` | T-90A Vladimir | Russia | X | Modern | Production |
@@ -209,10 +209,10 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 199 | PROD | `t90sm_x` | T-90SM | Russia | X | Modern | Production |
 | 200 | PROD | `t14_x` | T-14 Armata | Russia | X | Next Generation | Production |
 | 201 | PROD | `griffin50_x` | Griffin 50 mm X | USA | X | Next Generation | Production |
-| 202 | PROD | `kf41_lynx_x` | KF41 Lynx Prototype X | Germany | X | Next Generation | Production |
+| 202 | PROD | `kf41_lynx_x` | KF41 Lynx X | Germany | X | Next Generation | Production |
 | 203 | PROD | `k21_x` | K21 X | South Korea | IX | Modern | Production |
 | 204 | PROD | `leo2a6_x` | Leopard 2A6 | Germany | X | Modern | Production |
-| 205 | PROD | `k1a1_x` | K1A1 | South Korea | VIII | Modern | Production |
+| 205 | PROD | `k1a1_x` | K1A1 | South Korea | X | Modern | Production |
 | 206 | PROD | `amx30_x` | AMX-30B | France | VII | Cold War | Production |
 | 207 | PROD | `t62mv1_x` | T-62MV-1 | USSR/Russia | VII | Cold War | Production |
 | 208 | PROD | `t72b_1987_x` | T-72B obr. 1987 | USSR/Russia | VIII | Modern | Production |

@@ -5,7 +5,7 @@ export const TANK_TIER = Object.freeze({
   tos1a_tagil: 10, griffin_viper: 10,
   ares_apc_x: 7,
   leo2a6_x: 10, // owner 2026-09-15 (evening): the Leopard 2A6 study is tier X
-  k1a1_x: 8, amx30_x: 7, t62mv1_x: 7,
+  k1a1_x: 10, amx30_x: 7, t62mv1_x: 7,
   t72b_1987_x: 8, t80u_x: 8, leclerc_x: 10, leclerc_classic_x: 10, // owner 2026-09-16: the Leclerc XLR / AMX 56 studies are tier X
   chieftain_mk10_x: 8,
   t72b3_x: 8,
@@ -25,7 +25,7 @@ export const TANK_TIER = Object.freeze({
   leo2a7v_x: 10, leo2a6m_x: 10, leo2a4m_x: 10, leo2a5_x: 10, // owner 2026-09-15 (evening): 2A5M and 2A5 studies tier X
   merkava4_x: 9, merkava3d_x: 9,
   merkava4_trophy: 10, merkava4_barak: 10, namer_ifv: 9,
-  k2_x: 9, kf51_x: 10,
+  k2_x: 10, kf51_x: 10,
   m1a2_x: 10, m1a2_tusk_x: 10,
   m1a2_sepv2_x: 10, m1a2_sepv3_x: 10, ua_m1a1_x: 9,
   // 2026-09-15 owner: the four T-90 X studies are tier X and lead the Russian garage
@@ -47,7 +47,7 @@ export const TANK_TIER = Object.freeze({
   challenger_3: 10, challenger_3x: 10, leo2a6: 9,
   leo2a4: 8, t80u: 8, leclerc: 9, leclerc_xlr: 9, amx56: 9, // owner 2026-09-16: the legacy Leclerc SXXI / S1 hulls drop to IX
   type99a: 9, leo1a5: 7, t14: 10, object695_x: 10,
-  chieftain_mk10: 8, k2: 9, k2b: 10, type10: 10, m2a2_bradley: 8, bmp2: 7,
+  chieftain_mk10: 8, k2: 9, k2b: 9, type10: 10, m2a2_bradley: 8, bmp2: 7,
   carro45t: 8, ariete: 8, ariete_c1: 9, ariete_c2: 10,
   k1a1: 8, type89: 7, type89_light_tiger: 10, spz_puma: 9, spz_puma_s1: 10, amx40: 9,
   type74: 8, bmp1: 6, m1128: 8, m1296: 7, kf51: 10, kf51b: 10,

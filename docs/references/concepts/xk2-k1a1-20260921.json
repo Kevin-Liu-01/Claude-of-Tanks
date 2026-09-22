@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-21",
+    "request": "give the xk2 a k1a1 turret",
+    "donors": {
+      "hull": "k2 (XK2)",
+      "turret": "k1a1_x (K1A1)"
+    },
+    "retiredComparison": "The former whole-vehicle K2 source cannot qualify this explicitly requested hybrid."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "k2": {
+      "id": "k2",
+      "test": "src/vehicles/profiles/xk2.selftest.mjs",
+      "ring": [
+        0,
+        1.7,
+        -0.3
+      ],
+      "gunLocal": [
+        0.0352,
+        0.3223100000000001,
+        1.1515199999999999
+      ],
+      "barrelLengthM": 4.3280799,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -10,
+        20
+      ],
+      "mainCaliberMm": 120,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 7.5,
+      "hullWidthM": 3.629,
+      "widthM": 3.629,
+      "overallLengthM": 8.9524999,
+      "tallestM": 4.27459,
+      "silhouette": "Existing XK2 six-wheel hull with the complete current K1A1 turret, gun and roof equipment seated on a shallow collar"
+    }
+  }
+}

@@ -4,7 +4,7 @@
 // excluding thin antenna columns; full antenna heights remain in source bounds.
 export const EUROPE_SOURCE_STUDIES = [
   {
-    id:'kf41_lynx_x',name:'KF41 Lynx Prototype X',donor:'spz_puma',nation:'Germany',role:'ifv',tier:10,
+    id:'kf41_lynx_x',name:'KF41 Lynx X',donor:'spz_puma',nation:'Germany',role:'ifv',tier:10,
     dimensions:{hullLengthM:7.7873,overallLengthM:8.65339,widthM:3.60334,heightM:3.4808,
       silhouetteHullLengthM:7.7873,silhouetteOverallLengthM:8.65339,silhouetteWidthM:3.60334,silhouetteHeightM:3.4681165287},
     turret:[0,2.29,-.15],gun:[-.01164,2.60336,.70],muzzleZ:4.73149,trackWidthM:.590,

@@ -28,9 +28,13 @@ for(const id of laterAbramsIds)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: lat
 const oldAnchors=Object.fromEntries(Object.entries(VEHICLE_MARKING_ANCHORS)
   .filter(([id])=>!newIds.has(id)&&!laterIds.has(id)).sort(([a],[b])=>a.localeCompare(b)));
 assert.equal(Object.keys(oldAnchors).length,151,'all pre-second-wave anchors remain');
+// Owner 2026-09-21: XK2 now wears the current K1A1 turret and its marking seat.
+assert.deepEqual(oldAnchors.k2, VEHICLE_MARKING_ANCHORS.k1a1_x);
+oldAnchors.k2={schemaVersion:1,owner:'turret',side:'right',longitudinal:.39,
+  vertical:.44,sizeM:.24,designationDirection:-1};
 assert.equal(createHash('sha256').update(JSON.stringify(oldAnchors)).digest('hex'),
   '229edfafa18e3982c097bbc48d1b3778ac2db97601bdee218b2816674cc2209f',
-  'the complete original 151 anchor records are unchanged');
+  'the original 151 anchors are preserved apart from the authenticated XK2 turret transplant');
 
 function markingNodes(mesh) {
   const p=mesh.geometry.attributes.position,index=mesh.geometry.index,nodes=new Map();

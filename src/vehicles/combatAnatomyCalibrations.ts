@@ -73,6 +73,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_TYPE96BX } from './combatAn
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_UK } from './combatAnatomyGroups/uk.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_UKRAINE } from './combatAnatomyGroups/ukraine.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_WW2 } from './combatAnatomyGroups/ww2.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_XK2 } from './combatAnatomyGroups/xk2.generated.ts';
 
 export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyCalibration>> = Object.freeze(Object.assign({},
   CALIBRATIONS_ABRAMS,
@@ -147,4 +148,5 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_UK,
   CALIBRATIONS_UKRAINE,
   CALIBRATIONS_WW2,
+  CALIBRATIONS_XK2,
 ));

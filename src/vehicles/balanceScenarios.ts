@@ -22,7 +22,7 @@ export const BALANCE_SCENARIOS: readonly BalanceScenario[] = Object.freeze([
   { id: 'chieftain-tier8', aId: 'chieftain_mk10', bId: 'fv4034', purpose: 'late Cold War UK Tier VIII peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'k2-tier9-peer', aId: 'k2', bId: 'leo2a6', purpose: 'Tier IX modern MBT peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'k2-tier9-mobile-peer', aId: 'k2', bId: 'leo2a6', distanceM: 220, advanceToM: 105, purpose: 'Tier IX mobility and firing-on-the-move peers', minAScore: 0.2, maxAScore: 0.8 },
-  { id: 'k2-tier10-step', aId: 'k2b', bId: 'type10', purpose: 'Tier X modern MBT peers', minAScore: 0.2, maxAScore: 0.8 },
+  { id: 'k2b-cross-tier', aId: 'k2b', bId: 'type10', purpose: 'Tier IX K2B against a Tier X modern MBT', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'proryv-tier10-peer', aId: 't90m_proryv', bId: 'm1a2', purpose: 'Tier X modern MBT peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'merkava-tier7-peer', aId: 'merkava1b', bId: 't62mv1', purpose: 'Tier VII Cold War MBT ceiling', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'puma-tier8-peer', aId: 'spz_puma', bId: 'bmp3_rok', purpose: 'Tier VIII modern IFV peers', minAScore: 0.2, maxAScore: 0.8 },

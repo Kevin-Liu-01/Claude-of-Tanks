@@ -306,7 +306,7 @@ const SWEDEN_SPECS = {
     },
   }),
   strv122: variant('strv122', 'leo2a5', {
-    name: 'Strv 122', number: '122', scheme: 'splinter',
+    name: 'Stridsvagn 121', number: '122', scheme: 'splinter',
     base: '#34493c', weather: '#4b5b4c', patches: ['#202b26', '#5c644c', '#81745a'],
     camoScale: 0.42,
     dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 3.02 },

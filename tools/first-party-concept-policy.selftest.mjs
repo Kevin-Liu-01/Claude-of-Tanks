@@ -9,7 +9,7 @@ import {readConceptDesign} from './first-party-concept-record.mjs';
 import {assertConceptDatums,assertConceptWeapons} from './first-party-concept-datums.mjs';
 const oldPath='docs/references/concepts/missile-turrets-20260919.json';
 const typePath='docs/references/concepts/type100-ifv-20260919.json';
-assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['griffin_viper','ariete_c2_x','tos1a_tagil','ztz100_prototype','object695_x','type100']);
+assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['k2','griffin_viper','ariete_c2_x','tos1a_tagil','ztz100_prototype','object695_x','type100']);
 assert.equal(conceptDesignPath('ztz100_prototype'),oldPath);
 assert.equal(conceptDesignPath('object695_x'),oldPath);
 assert.equal(conceptDesignPath('type100'),typePath);

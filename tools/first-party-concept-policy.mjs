@@ -1,5 +1,6 @@
 // Explicit owner-authored designs. This is not a fallback for failed sources.
 const CONCEPT_DOCUMENTS = Object.freeze({
+  k2:'docs/references/concepts/xk2-k1a1-20260921.json',
   griffin_viper:'docs/references/concepts/griffin-viper-20260921.json',
   ariete_c2_x:'docs/references/concepts/ariete-c2-20260921.json',
   tos1a_tagil:'docs/references/concepts/tos1a-tagil-20260920.json',
@@ -8,6 +9,15 @@ const CONCEPT_DOCUMENTS = Object.freeze({
   type100:'docs/references/concepts/type100-ifv-20260919.json',
 });
 export const FIRST_PARTY_CONCEPTS = Object.freeze({
+  k2: Object.freeze({
+    id:'k2', test:'src/vehicles/profiles/xk2.selftest.mjs',
+    ring:[0,1.70,-.30], gunLocal:[.0352,1.81797-1.49566,1.57716-.42564],
+    barrelLengthM:5.9052399-1.57716, barrelRadiusM:.105, pitchDeg:[-10,20],
+    mainCaliberMm:120, weaponSystem:'conventional-cannon', roofMachineGuns:1,
+    hullLengthM:7.5, hullWidthM:3.629, widthM:3.629,
+    overallLengthM:5.9091399-.42564-.30+3.769, tallestM:4.07025-1.49566+1.70,
+    silhouette:'Existing XK2 six-wheel hull with the complete current K1A1 turret, gun and roof equipment seated on a shallow collar',
+  }),
   griffin_viper: Object.freeze({
     id:'griffin_viper', test:'src/vehicles/profiles/griffinViper.selftest.mjs',
     ring:[0,2.07,-.396], gunLocal:[0,1.08,0], barrelLengthM:1.188, barrelRadiusM:.07,

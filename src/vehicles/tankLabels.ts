@@ -52,8 +52,8 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['S-Tank A'],
   },
   strv122: {
-    displayName: 'Stridsvagn 122A', shortName: 'Strv 122A',
-    searchAliases: ['Swedish Leopard 2'],
+    displayName: 'Stridsvagn 121', shortName: 'Strv 121',
+    searchAliases: ['Swedish Leopard 2', 'Strv 122A', 'Stridsvagn 122A'],
   },
   cv90: {
     displayName: 'CV90', shortName: 'CV90',

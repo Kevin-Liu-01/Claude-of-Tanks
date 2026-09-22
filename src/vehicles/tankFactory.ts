@@ -1,3 +1,4 @@
+import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
 // Typed eager fleet factory facade for release tools and headless audits. It
 // evaluates spec packs in donor order, seals the selectable roster, and
 // configures the cycle-free implementation once. Player boot uses the
@@ -55,10 +56,12 @@ import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 
 registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 applyFleetBalancePass(TANK_SPECS);
+prepareXk2DonorMetadata();
 synchronizeSourceXCombatMetadata();
 synchronizeSuppliedSourceCombatMetadata();
 synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
+synchronizeXk2CombatMetadata();
 finalizeFirstPartyRoster();
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);

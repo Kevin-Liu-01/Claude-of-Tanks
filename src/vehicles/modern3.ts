@@ -279,7 +279,7 @@ function buildChieftain(P: Modern3BuilderPort) {
 // the print's furniture band (pano complex/rail masts/antenna pair) reads
 // 2.66..4.58 — a build honoring the 2.40 datum cannot corroborate it; the
 // divergence is certified, §E furniture-band warp queued as recovery.
-export function buildK2(P: Modern3BuilderPort) {
+export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } = {}) {
   const { box, cylX, cylY, cylZ, frustum, xform, buildGun, buildRunningGear,
     headlight, liftEye, periscope, smokeCluster, stowage, ammoCan,
     openRackGrid, torus } = KIT;
@@ -649,6 +649,16 @@ export function buildK2(P: Modern3BuilderPort) {
   }
   };
   buildK2HullFurniture();
+
+  const addHullDecals = (): void => {
+    P.decal('hull', 'number', '325', 0.24, [1.725, 1.00, 2.50], Math.PI / 2);
+    P.decal('hull', 'number', '325', 0.24, [-1.725, 1.00, 2.50], -Math.PI / 2);
+    P.decal('hull', 'soot', null, 0.8, [0.92, 1.30, -3.74], Math.PI);
+  };
+  if (options.hullOnly) {
+    addHullDecals();
+    return;
+  }
 
   // ---- turret: the K2 arrowhead to the PRINT's lines (§B1/§B1.1). Pivot
   // world [0, 1.66, -0.30] = the shell's plan center (spin law); local
@@ -1337,9 +1347,7 @@ export function buildK2(P: Modern3BuilderPort) {
   P.muzzleZ = 5.57;
   P.decal('turret', 'number', '325', 0.30, [1.505, 0.30, -0.85], Math.PI / 2, 0, 0.05);
   P.decal('turret', 'number', '325', 0.30, [-1.505, 0.30, -0.85], -Math.PI / 2, 0, -0.05);
-  P.decal('hull', 'number', '325', 0.24, [1.725, 1.00, 2.50], Math.PI / 2);
-  P.decal('hull', 'number', '325', 0.24, [-1.725, 1.00, 2.50], -Math.PI / 2);
-  P.decal('hull', 'soot', null, 0.8, [0.92, 1.30, -3.74], Math.PI);
+  addHullDecals();
   };
   buildK2Weapon();
   P.topY = 1.20;

@@ -9,7 +9,8 @@ export function interiorFillSelection(groupById, requestedIds) {
 }
 
 export function mergeInteriorFillGroup(existing, updates, groupById, group) {
-  const merged = { ...existing };
+  const merged = Object.fromEntries(Object.entries(existing)
+    .filter(([id]) => Object.hasOwn(groupById, id) && groupById[id] === group));
   for (const [id, record] of Object.entries(updates)) {
     if (!Object.hasOwn(groupById, id) || groupById[id] !== group) {
       throw new Error(`Interior-fill record ${id} does not belong to ${group}`);

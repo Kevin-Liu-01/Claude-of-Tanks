@@ -77,4 +77,5 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "uk": () => import('./interiorFillGroups/uk.generated.ts'),
   "ukraine": () => import('./interiorFillGroups/ukraine.generated.ts'),
   "ww2": () => import('./interiorFillGroups/ww2.generated.ts'),
+  "xk2": () => import('./interiorFillGroups/xk2.generated.ts'),
 });

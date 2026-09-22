@@ -50,7 +50,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   sabraMk2SourceX: Object.freeze(['sabra_mk2_x']),
   modern2: Object.freeze(['mbt70', 't14', 'ztz85_iii', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type59', 'type100', 'ztz100_x', 'ztz100_prototype', 'object695_x']),
   franceCore: Object.freeze(['amx40']),
-  modern3Core: Object.freeze(['k2', 'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89']),
+  xk2: Object.freeze(['k2']),
+  modern3Core: Object.freeze(['k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89']),
   // These visual profiles used to be imported by every garage boot even when
   // no matching vehicle was visible. Keep their ownership in the same
   // import-free manifest as the larger authored families.

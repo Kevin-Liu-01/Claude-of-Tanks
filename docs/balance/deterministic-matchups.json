@@ -464,30 +464,30 @@
       ],
       "traverseDegS": [
         44,
-        40
+        36
       ],
       "primary": {
-        "damage": 530,
+        "damage": 520,
         "penetrationMm": [
-          890,
-          815,
-          740
+          733,
+          667,
+          600
         ],
-        "reloadS": 5.7,
-        "sustainedDpm": 5578.95,
-        "accuracy": 0.29,
-        "aimTimeS": 1.8
+        "reloadS": 6.5,
+        "sustainedDpm": 4800,
+        "accuracy": 0.3,
+        "aimTimeS": 1.9
       },
       "armorCeilingsMm": {
         "hullKe": 650,
-        "turretKe": 845
+        "turretKe": 560
       },
       "guidedWeapons": []
     },
     {
       "id": "k2b",
       "revision": "establish a real Tier X protection and ammunition step over K2",
-      "tier": 10,
+      "tier": 9,
       "era": "modern",
       "role": "mbt",
       "hp": 2600,
@@ -2152,11 +2152,11 @@
       "bWins": 9,
       "draws": 0,
       "aScore": 0.25,
-      "averageDurationS": 23.08,
-      "averageAEndHp": 165.75,
-      "averageBEndHp": 376.08,
-      "averageADamage": 2009.08,
-      "averageBDamage": 2697.08
+      "averageDurationS": 29.81,
+      "averageAEndHp": 249.5,
+      "averageBEndHp": 472.67,
+      "averageADamage": 1873.42,
+      "averageBDamage": 2605.67
     },
     {
       "id": "k2-tier9-mobile-peer",
@@ -2176,19 +2176,19 @@
         601
       ],
       "duels": 12,
-      "aWins": 8,
-      "bWins": 4,
+      "aWins": 6,
+      "bWins": 6,
       "draws": 0,
-      "aScore": 0.667,
-      "averageDurationS": 28.11,
-      "averageAEndHp": 381.08,
-      "averageBEndHp": 168.67,
-      "averageADamage": 2346.17,
-      "averageBDamage": 2407.17
+      "aScore": 0.5,
+      "averageDurationS": 37.95,
+      "averageAEndHp": 368.83,
+      "averageBEndHp": 268.67,
+      "averageADamage": 2181.33,
+      "averageBDamage": 2492.58
     },
     {
-      "id": "k2-tier10-step",
-      "purpose": "Tier X modern MBT peers",
+      "id": "k2b-cross-tier",
+      "purpose": "Tier IX K2B against a Tier X modern MBT",
       "band": [
         0.2,
         0.8

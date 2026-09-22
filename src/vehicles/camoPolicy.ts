@@ -162,7 +162,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   service_type10: 'Type 10 Service',
   service_pl01: 'PL-01 Service Digital',
   service_bmp3_rok: 'BMP-3 ROK Service',
-  service_strv122: 'Strv 122 Splinter',
+  service_strv122: 'Strv 121 Splinter',
   service_merkava2d: 'Merkava 2D Sinai Gray',
   service_ua_m2a3_bradley: 'UA Bradley Digital',
   sig_abramsx: 'AbramsX Prototype',
