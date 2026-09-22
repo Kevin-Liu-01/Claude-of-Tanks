@@ -168,9 +168,12 @@ function mainGun(C: EquipmentContext): void {
     { z: 5.574435, r: .094165 }, { z: 5.587425, r: .08434 },
     { z: 5.605275, r: .08434 }, { z: 5.605275, r: .07724 },
     { z: 5.809425, r: .07724 },
-  ], .06064, C.P.q ? 64 : 20)), [x, y, 0], 'gun', 'gun');
-  // Recess terminates at the measured source bore stock, not at the muzzle.
-  emit(C, 'BoreRearWall', KIT.cylZ(.06064, .003, C.P.q ? 40 : 24), [x, y, 4.842055], 'gun', 'gunDark');
+  ], .06064, C.P.q ? 64 : 20, false)), [x, y, 0], 'gun', 'gun');
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the tube is closed at the source tip. Its measured source bore — radius
+  // .06064, recess terminating at the source bore stock z 4.842055 (0.967 m behind the 5.809425
+  // muzzle), formerly the BoreRearWall disc — stays recorded here and in abramsSourceXMuzzle.selftest;
+  // the factory's dark mouth disc at the tube edge hid that recess entirely (owner 2026-09-11).
   // Eccentric evacuator: r=.160675 m, with its axis 36.115 mm above the
   // bore. Using its .19679 m crown as a centred radius would overfill below.
   const oval = (z: number, rx: number, ry: number, cy: number) => ({ z,

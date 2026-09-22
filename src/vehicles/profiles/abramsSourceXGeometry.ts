@@ -106,19 +106,28 @@ export function roundMember(a: XYZ, b: XYZ, radius: number, segments = 10): THRE
   return geometry;
 }
 
-/** Radius-profiled hollow tube with true muzzle opening; no capped barrel end.
- * Station order runs from the breech toward the muzzle. The inner wall is
- * recessed to a source-independent visual depth, not a second silhouette. */
+/** Radius-profiled tube. Station order runs from the breech toward the muzzle.
+ * openBore (the default) keeps the true muzzle opening with an inner wall
+ * recessed to a source-independent visual depth, not a second silhouette.
+ * openBore=false closes both ends with flat caps instead (owner 2026-09-22:
+ * "the point of adding holes instead of carving them into the barrel is that
+ * we save on triangles" — a main gun whose recess sits entirely behind the
+ * factory's dark mouth disc keeps no inner wall; the measured bore stays
+ * recorded at the call site). The 1 mm axis radius matches KIT.lathe. */
 export function profiledTube(
-  stations: readonly { z: number; r: number }[], boreRadius: number, segments = 48,
+  stations: readonly { z: number; r: number }[], boreRadius: number, segments = 48, openBore = true,
 ): THREE.BufferGeometry {
   if (stations.length < 2 || boreRadius <= 0 || stations.some(s => s.r <= boreRadius)) {
     throw new Error('Invalid tube wall');
   }
-  const profile = stations.map(s => new THREE.Vector2(s.r, s.z));
+  const outer = stations.map(s => new THREE.Vector2(s.r, s.z));
   const front = stations[stations.length - 1], rear = stations[0];
-  profile.push(new THREE.Vector2(boreRadius, front.z), new THREE.Vector2(boreRadius, rear.z),
-    new THREE.Vector2(rear.r, rear.z));
+  // Closed: the profile starts and ends on the axis (rear cap, outer wall, front cap), so no inner
+  // wall is lathed at all; open: the outer wall turns into the bore wall and back out at the breech.
+  const profile = openBore
+    ? [...outer, new THREE.Vector2(boreRadius, front.z), new THREE.Vector2(boreRadius, rear.z),
+      new THREE.Vector2(rear.r, rear.z)]
+    : [new THREE.Vector2(0.001, rear.z), ...outer, new THREE.Vector2(0.001, front.z)];
   const geometry = new THREE.LatheGeometry(profile, segments);
   geometry.rotateX(Math.PI / 2);
   return geometry;

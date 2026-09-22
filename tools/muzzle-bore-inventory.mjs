@@ -177,7 +177,9 @@ export function inventoryOne(id, quality) {
     const direction = new THREE.Vector3(0, 0, -1).transformDirection(muzzle.matrixWorld);
     const ray = new THREE.Raycaster();
     const depths = [];
-    const samples = [[bx, by], ...[.173, 1.744, 3.315, 4.886].map((angle) => [bx + Math.cos(angle) * mouthR * .3, by + Math.sin(angle) * mouthR * .3])];
+    // The centre sample steps 1.5 mm off the axis: lathe caps keep KIT.lathe's 1 mm axis radius (a
+    // pinhole under the fallback disc) and exact fan centres can miss both adjacent triangles.
+    const samples = [[bx + .0015 * Math.cos(.173), by + .0015 * Math.sin(.173)], ...[.173, 1.744, 3.315, 4.886].map((angle) => [bx + Math.cos(angle) * mouthR * .3, by + Math.sin(angle) * mouthR * .3])];
     for (const [x, y] of samples) {
       ray.set(muzzle.localToWorld(new THREE.Vector3(x, y, mouthR * 3 + .06)), direction);
       const hit = ray.intersectObjects(barrelMeshes, false).find((candidate) => writesColor(candidate.object));

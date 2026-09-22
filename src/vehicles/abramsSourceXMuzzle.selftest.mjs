@@ -118,18 +118,26 @@ for(const id of ABRAMS_SOURCE_X_IDS)for(const quality of['high','low']){
     const expected=new Map([[5.56,1.754925667],[5.58,1.759132796],[5.60,1.764745668],[5.61,1.771855644]]).get(z);
     near(h.point.clone().applyMatrix4(inverse).y,expected,.00025,`${label} measured collar radius`);
    }
-   // The source tube is genuinely open, but the visible mouth now carries the
-   // fleet bore disc/rim at the tube edge instead of a dark hole 20 cm or
-   // more inside the barrel (owner direction 2026-09-11). Center rays meet the
-   // disc within a few millimetres of the metal edge; the source annulus face
-   // behind it stays untouched geometry.
+   // The source tube is genuinely open (bore radius .06064 to the source bore
+   // stock at z 4.842055, 0.967 m behind the 5.809425 muzzle — recorded here as
+   // the measurement). The visible mouth carries the fleet bore disc at the
+   // tube edge instead of a dark hole 20 cm or more inside the barrel (owner
+   // direction 2026-09-11), and since 2026-09-22 the rendered tube is closed at
+   // that edge (owner: "the point of adding holes instead of carving them into
+   // the barrel is that we save on triangles"): the disc hid the recess
+   // entirely, so no inner wall or rear wall is built. Center rays meet the
+   // disc within a few millimetres of the metal edge; the closed tip behind it
+   // lies on the source annulus plane.
    // `actual` deliberately excludes the shadow-named bore furniture; the
    // mouth check needs it, so cast the axis ray against every visible mesh.
    const everything=[];tank.root.traverse(o=>{if(!o.isMesh)return;for(let p=o;p;p=p.parent)if(!p.visible)return;everything.push(o);});
    const hitAll=(p,d,far)=>cast(everything,new T.Vector3(...p).applyMatrix4(transform).toArray(),new T.Vector3(...d).transformDirection(transform).toArray(),far);
    const mouth=hitAll([-.020003,1.849085,5.85],[0,0,-1],.85)[0];assert.ok(mouth,`${label} mouth disc present`);
    near(mouth.point.clone().applyMatrix4(inverse).z,5.8106,.002,`${label} mouth disc seats at the tube edge, not a deep floor`);
-   for(const x of[-.073,.033])assert.equal(hit([x,1.849085,5.82],[0,0,-1],.85).length,0,`${label} actual open bore`);
+   // 2026-09-22: the closed tip lies on the source annulus plane; the source's open .06064 bore to
+   // z 4.842055 is recorded above, not rendered (the fleet disc hid it entirely).
+   for(const x of[-.073,.033]){const tip=hit([x,1.849085,5.82],[0,0,-1],.85)[0];assert.ok(tip,`${label} closed tip`);
+    near(tip.point.clone().applyMatrix4(inverse).z,5.809425,.0005,`${label} tube closed at the source tip (recorded bore stock z 4.842055)`);}
    for(const r of[.061,.064,.070,.076]){
     const h=hit([-.020003+r,1.849085,5.85],[0,0,-1],.10)[0];assert.ok(h,label);
     const z=h.point.clone().applyMatrix4(inverse).z;
