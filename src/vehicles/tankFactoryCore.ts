@@ -38,9 +38,9 @@ import { suspensionPatternFor } from './suspensionPatterns.ts';
 import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, endpointAxleOutset, sourceToothTip, type SuspensionDimensions } from './suspensionDimensions.ts';
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
-import { radialRibs, wheelGeo, type WheelGeometrySet } from './roadWheelGeometry.ts';
+import { radialRibs, wheelGeo, STANDARD_WHEEL_AXIAL_ENVELOPE, type WheelGeometrySet } from './roadWheelGeometry.ts';
 import { resolveNationWheel, type NationWheelResolution } from './nationWheelSets.ts';
-import { buildNationWheel, wheelAxialEnvelope, type NationWheelLayer } from './nationWheelConstructions.ts';
+import { buildNationWheel, type NationWheelLayer } from './nationWheelConstructions.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
 import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 import { createInvocationEraWholeReuse } from './eraWholeFitReuse.ts';
@@ -3542,8 +3542,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const disposables = P.disposables;
   const { mats, hullG, q } = P;
   // Nation road-wheel standard (owner 2026-09-22, "standardize our wheels across NATIONS"): a non-donor
-  // hull's authored road-wheel face is replaced by its nation donor's construction, fitted into the axial
-  // envelope the authored wheel occupied; donor, period and community hulls keep their own wheel code.
+  // hull's authored road-wheel face is replaced by its nation donor's construction at the hull's own radius,
+  // never narrower than its authored tire width nor wider than its standard cap envelope; donor, period and
+  // community hulls keep their own wheel code.
   const nationWheel: NationWheelResolution = resolveNationWheel(builderSpec);
   const standardizedWheels = nationWheel.kind === 'standard';
   validateReturnRollerDimensions(cfg);
@@ -3845,29 +3846,33 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   buildRunningGearRunningGearStage8();
 
-  let { tire, disc, dark } = cfg.roadWheelGeometry ?? sourceWheelSolids(cfg,seg,wheelPattern);
   // Face layers this gear unit instances: the profile's own, or the nation construction's.
   let faceLayers: WheelFaceLayer[] = [...(cfg.wheelFaceLayers ?? [])];
   let nationLayers: NationWheelLayer[] = [];
+  let tire: THREE.BufferGeometry | null, disc: THREE.BufferGeometry, dark: THREE.BufferGeometry | null;
   if (standardizedWheels && nationWheel.construction && nationWheel.donor) {
-    // The authored solids and dressing only define the envelope the nation construction is fitted into.
-    const envelopeM = wheelAxialEnvelope({ tire, disc, dark }, faceLayers);
-    for (const geometry of [tire, disc, dark]) geometry?.dispose();
+    // Authored solids and dressing are not drawn: the hull keeps its radius, tire width and axle stations only.
+    for (const geometry of [cfg.roadWheelGeometry?.tire, cfg.roadWheelGeometry?.disc, cfg.roadWheelGeometry?.dark,
+      cfg.wheelCoreGeometry?.disc, cfg.wheelCoreGeometry?.dark]) geometry?.dispose();
     for (const layer of faceLayers) layer.geometry.dispose();
+    faceLayers = [];
+    const maxWidthM = wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE;
     const built = buildNationWheel(nationWheel.construction, {
-      radiusM: wheelR, axialWidthM: envelopeM, high: Boolean(q), segments: seg,
+      radiusM: wheelR, tireWidthM: wheelW, maxWidthM, high: Boolean(q), segments: seg,
     });
     ({ tire, disc, dark } = built);
     nationLayers = built.layers;
-    faceLayers = [];
     Object.assign(wheelPatternReceipt, {
       construction: `nation:${nationWheel.construction}`, tireBands: 0, openAnnulus: false,
       nationStandard: {
         donor: nationWheel.donor, construction: nationWheel.construction, reason: nationWheel.reason,
-        envelopeM: +envelopeM.toFixed(4), radialScale: +built.radialScale.toFixed(4), axialScale: +built.axialScale.toFixed(4),
+        tireWidthM: +wheelW.toFixed(4), maxWidthM: +maxWidthM.toFixed(4),
+        radialScale: +built.radialScale.toFixed(4), axialScale: +built.axialScale.toFixed(4),
         layers: nationLayers.length,
       },
     });
+  } else {
+    ({ tire, disc, dark } = cfg.roadWheelGeometry ?? sourceWheelSolids(cfg, seg, wheelPattern));
   }
   // Some modern pressed-steel wheel assemblies are measurably oval in the
   // normalized side reference (vertical tire diameter exceeds the fore/aft

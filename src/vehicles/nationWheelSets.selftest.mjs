@@ -112,13 +112,15 @@ assert.equal(wheelPatternFor({ id: 'recon_tank', nation: 'Community', era: 'mode
 assert.throws(() => wheelPatternFor(TANK_SPECS.leo2a4, 'rubber', 'no-such-pattern'), /Unknown wheel pattern/);
 
 // Every buildable construction draws at a foreign size at both tiers: closed solids, a radius that matches the
-// request, layers with paints and roles, and an axial fit inside the window.
+// request, layers with paints and roles, an axial fit inside the window and a width between the hull's tire
+// and cap bounds (unless the fit window clamped it).
 const radialExtent = (g) => { const p = g.getAttribute('position'); let r = 0; for (let i = 0; i < p.count; i++) r = Math.max(r, Math.hypot(p.getY(i), p.getZ(i))); return r; };
 const axialHalf = (g, outset = 0) => { g.computeBoundingBox(); const b = g.boundingBox; return Math.max(Math.abs(b.min.x), Math.abs(b.max.x)) + Math.abs(outset); };
 for (const construction of BUILDABLE_WHEEL_CONSTRUCTIONS) {
   for (const high of [true, false]) {
-    for (const [radiusM, axialWidthM] of [[.35, .34], [.42, .55], [.29, .27]]) {
-      const built = buildNationWheel(construction, { radiusM, axialWidthM, high, segments: high ? 26 : 12 });
+    for (const [radiusM, tireWidthM] of [[.35, .23], [.42, .37], [.29, .18]]) {
+      const maxWidthM = tireWidthM * 1.48;
+      const built = buildNationWheel(construction, { radiusM, tireWidthM, maxWidthM, high, segments: high ? 26 : 12 });
       assert.ok(built.disc.getAttribute('position').count >= 12, `${construction}: disc has geometry`);
       const r = radialExtent(built.tire ?? built.disc);
       assert.ok(Math.abs(r - radiusM) < 1e-3 * radiusM + 1e-9, `${construction}/${high ? 'high' : 'low'}: radius ${r} fits ${radiusM}`);
@@ -127,12 +129,13 @@ for (const construction of BUILDABLE_WHEEL_CONSTRUCTIONS) {
         assert.ok(['dish', 'dark', 'detail', 'rubber'].includes(layer.paint) && ['wheelDish', 'wheelInset', 'wheelTire'].includes(layer.role), `${construction}: layer ${layer.name} typed`);
         assert.ok(layer.geometry.getAttribute('position').count >= 3, `${construction}: layer ${layer.name} has geometry`);
       }
-      // The built wheel fills the requested envelope unless the fit window clamped it.
+      // The built wheel sits between the hull's tire width and its cap envelope unless the fit window clamped it.
       let half = 0;
       for (const g of [built.tire, built.disc, built.dark]) if (g) half = Math.max(half, axialHalf(g));
       for (const layer of built.layers) half = Math.max(half, axialHalf(layer.geometry, layer.outset));
       if (built.axialScale > NATION_WHEEL_AXIAL_FIT.min && built.axialScale < NATION_WHEEL_AXIAL_FIT.max) {
-        assert.ok(Math.abs(2 * half - axialWidthM) < .012, `${construction}: envelope ${(2 * half).toFixed(4)} ≈ ${axialWidthM}`);
+        assert.ok(2 * half >= tireWidthM - .012 && 2 * half <= maxWidthM + .06,
+          `${construction}: width ${(2 * half).toFixed(4)} within [${tireWidthM}, ${maxWidthM.toFixed(3)}]`);
       }
       for (const g of [built.tire, built.disc, built.dark, ...built.layers.map((l) => l.geometry)]) g?.dispose();
     }
@@ -140,13 +143,14 @@ for (const construction of BUILDABLE_WHEEL_CONSTRUCTIONS) {
 }
 // Offset-seated dressing keeps its protrusion proportional to the radius under an axial stretch (griffin50_x, 2026-09-22).
 {
-  const built = buildNationWheel('sheridan-pressed-rim', { radiusM: .3225, axialWidthM: .547, high: true, segments: 26 });
+  const built = buildNationWheel('sheridan-pressed-rim', { radiusM: .3225, tireWidthM: .547, maxWidthM: .547 * 1.48, high: true, segments: 26 });
   assert.equal(built.axialScale, NATION_WHEEL_AXIAL_FIT.max, 'the Griffin envelope hits the fit ceiling');
   const rim = built.layers.find((l) => l.name === 'gearRoadWheelPressedRims');
   const proud = axialHalf(rim.geometry, rim.outset) - axialHalf(built.tire);
   assert.ok(proud < .025 && proud > .010, `rim protrusion ${proud.toFixed(4)} stays seated`);
 }
-assert.throws(() => buildNationWheel('namer-stepped-hub', { radiusM: .3, axialWidthM: .3, high: true, segments: 20 }), /donor-only/);
-assert.throws(() => buildNationWheel('k2-flanged', { radiusM: 0, axialWidthM: .3, high: true, segments: 20 }), /Invalid nation wheel request/);
+assert.throws(() => buildNationWheel('namer-stepped-hub', { radiusM: .3, tireWidthM: .3, maxWidthM: .44, high: true, segments: 20 }), /donor-only/);
+assert.throws(() => buildNationWheel('k2-flanged', { radiusM: 0, tireWidthM: .3, maxWidthM: .44, high: true, segments: 20 }), /Invalid nation wheel request/);
+assert.throws(() => buildNationWheel('k2-flanged', { radiusM: .3, tireWidthM: .3, maxWidthM: .2, high: true, segments: 20 }), /Invalid nation wheel request/);
 
 console.log(`nationWheelSets.selftest: ${ALL_TANK_IDS.length} hulls — ${kinds.donor.length} donor, ${kinds.standard.length} standardized, ${kinds.keep.length} period; ${BUILDABLE_WHEEL_CONSTRUCTIONS.length} constructions build at foreign sizes`);

@@ -1,17 +1,19 @@
 // Nation road-wheel constructions (owner 2026-09-22: "standardize our wheels across NATIONS"): the
 // donor face constructions of nationWheelSets.ts as builders the running-gear factory can draw at any
 // hull's wheel size. A construction is the donor's FACE — dish, spokes, fasteners, hub, tire profile —
-// never its dimensions: `buildNationWheel` fits it into the consuming hull's own radius and axial
-// envelope, so station count, axle positions and the wheel's footprint between hull and track stay
-// the hull's own.
+// never its dimensions: `buildNationWheel` draws it at the consuming hull's own radius and keeps the
+// hull's authored width — the wheel is never narrower than the authored tire band nor wider than the
+// standard disc stack's cap envelope (STANDARD_WHEEL_AXIAL_ENVELOPE × tire width) — so station count,
+// axle positions and the footprint between hull and track stay the hull's own.
 //
 // Two kinds of construction live here:
 // - native: the donor's own fixed-metre stock (lathed dishes, paired tire bands, face hardware) is
-//   built at the donor's size and then scaled uniformly to the requested radius and axially into the
-//   requested envelope (the Challenger paired wheel already fits its axial width this way, 2026-09-14);
+//   built at the donor's size, scaled uniformly to the requested radius and, only when its own
+//   proportion falls outside the hull's [tire, cap] width bounds, scaled axially to the nearer bound
+//   (the Challenger paired wheel already fits an axial width this way, 2026-09-14);
 // - parametric: constructions that are functions of radius and width already (the fleet's standard
 //   disc motifs, the hollow paired wheel, the paired turned stock, the T-90 X pressed face) build
-//   straight at the requested size.
+//   straight at the requested radius and tire width.
 // The donor profiles import their sections and layer recipes from here so a donor and its consumers
 // share one definition; every donor still draws its wheel through its own running-gear config.
 //
@@ -21,7 +23,7 @@ import * as THREE from 'three';
 import { box, cylX, mergeAll, torus, xform } from './factoryGeometry.ts';
 import { lathedWheelSection, type AxialWheelStation } from './profiles/lathedWheelStock.ts';
 import { measuredTireBands, type MeasuredTireBand } from './measuredWheelGeometry.ts';
-import { buildHollowPairedRoadWheel } from './hollowRoadWheelStock.ts';
+import { buildHollowPairedRoadWheel, hollowPairedRoadWheelWidth } from './hollowRoadWheelStock.ts';
 import { pairedRunningGearStock } from './pairedRunningGearStock.ts';
 import { type100RoadWheelStock } from './profiles/type100RunningGear.ts';
 import { leopardA6WheelSolids } from './profiles/leopardA6XWheels.ts';
@@ -29,7 +31,7 @@ import { kf41LynxWheelStock } from './profiles/kf41LynxWheelStock.ts';
 import { leclercWheelSolids } from './profiles/leclercXWheels.ts';
 import { k1a1XWheelSolids } from './profiles/k1a1XWheels.ts';
 import { strv122SuppliedWheelSolids } from './profiles/strv122XWheels.ts';
-import { CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE, STANDARD_WHEEL_AXIAL_ENVELOPE, wheelGeo, type WheelGeometrySet } from './roadWheelGeometry.ts';
+import { CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE, wheelGeo, type WheelGeometrySet } from './roadWheelGeometry.ts';
 import { WHEEL_PATTERN_DEFINITIONS, type WheelPattern, type WheelPatternId } from './wheelPatterns.ts';
 import type { WheelConstructionId } from './nationWheelSets.ts';
 
@@ -48,11 +50,13 @@ export interface NationWheelLayer {
   name: string;
 }
 
-interface NationWheelBuildRequest {
+export interface NationWheelBuildRequest {
   /** The consuming hull's own road-wheel radius. */
   radiusM: number;
-  /** Full axial envelope the hull's legacy wheel occupied (tire faces, dish stack and dressing), metres. */
-  axialWidthM: number;
+  /** The hull's authored tire width (RunningGearConfig.wheelW): the narrowest the wheel may be. */
+  tireWidthM: number;
+  /** The hull's standard cap envelope (STANDARD_WHEEL_AXIAL_ENVELOPE × tire width): the widest the wheel may be. */
+  maxWidthM: number;
   high: boolean;
   /** The running-gear builder's radial segment budget for tire bands. */
   segments: number;
@@ -104,21 +108,26 @@ function axialExtent(geometry: THREE.BufferGeometry, outset = 0): number {
 }
 
 /** Full axial envelope of a wheel: tire faces, dish stack and every face layer at its outset. */
-export function wheelAxialEnvelope(solids: WheelGeometrySet, layers: readonly { geometry: THREE.BufferGeometry; outset?: number }[]): number {
+function wheelAxialEnvelope(solids: WheelGeometrySet, layers: readonly { geometry: THREE.BufferGeometry; outset?: number }[]): number {
   let half = 0;
   for (const geometry of [solids.tire, solids.disc, solids.dark]) if (geometry) half = Math.max(half, axialExtent(geometry));
   for (const layer of layers) half = Math.max(half, axialExtent(layer.geometry, layer.outset));
   return half * 2;
 }
 
-/** Scale a donor's native stock uniformly to the requested radius, then axially into the requested envelope. */
+/** The width a construction of natural width `naturalM` takes on a hull: its own, bounded by the hull's tire and cap widths. */
+function boundedWidth(naturalM: number, request: NationWheelBuildRequest): number {
+  return Math.min(request.maxWidthM, Math.max(request.tireWidthM, naturalM));
+}
+
+/** Scale a donor's native stock uniformly to the requested radius, then axially to the nearer width bound when needed. */
 function fitNative(stock: NativeWheelStock, request: NationWheelBuildRequest): NationWheelBuild {
   const nativeRadius = radialExtent(stock.tire ?? stock.disc);
   if (!(nativeRadius > 0)) throw new RangeError('Nation wheel construction has no radial extent');
   const radialScale = request.radiusM / nativeRadius;
-  const nativeWidth = wheelAxialEnvelope(stock, stock.layers);
+  const nativeWidth = wheelAxialEnvelope(stock, stock.layers) * radialScale;
   const axialScale = Math.min(NATION_WHEEL_AXIAL_FIT.max, Math.max(NATION_WHEEL_AXIAL_FIT.min,
-    request.axialWidthM / (nativeWidth * radialScale)));
+    boundedWidth(nativeWidth, request) / nativeWidth));
   if (radialScale !== 1 || axialScale !== 1) {
     const sx = radialScale * axialScale;
     const tireHalf = axialExtent(stock.tire ?? stock.disc);
@@ -142,14 +151,15 @@ function parametric(solids: WheelGeometrySet, layers: NationWheelLayer[] = []): 
   return { ...solids, layers, radialScale: 1, axialScale: 1 };
 }
 
-/** Tire width whose standard disc stack (hub cap at STANDARD_WHEEL_AXIAL_ENVELOPE × width) fills the envelope. */
-function standardTireWidth(request: NationWheelBuildRequest): number {
-  return request.axialWidthM / STANDARD_WHEEL_AXIAL_ENVELOPE;
+/** The fleet's standard disc in the donor's motif and dish ratio, built straight at the hull's radius and tire width. */
+function standardConstruction(patternId: WheelPatternId, dishR: number, style: string, request: NationWheelBuildRequest): NationWheelBuild {
+  return parametric(wheelGeo(style, request.radiusM, request.tireWidthM, request.segments, dishR, pattern(patternId)));
 }
 
-/** The fleet's standard disc in the donor's motif and dish ratio, built straight at the hull's size. */
-function standardConstruction(patternId: WheelPatternId, dishR: number, style: string, request: NationWheelBuildRequest): NationWheelBuild {
-  return parametric(wheelGeo(style, request.radiusM, standardTireWidth(request), request.segments, dishR, pattern(patternId)));
+/** A hollow paired wheel at the hull's radius, its natural width bounded by the hull's tire and cap widths. */
+function hollowPairedConstruction(request: NationWheelBuildRequest, fasteners?: { fasteners: number; fastenersAsInsets: boolean }): NationWheelBuild {
+  return parametric(buildHollowPairedRoadWheel({ radiusM: request.radiusM, high: request.high, ...fasteners,
+    axialWidthM: boundedWidth(hollowPairedRoadWheelWidth(request.radiusM), request) }));
 }
 
 // ----------------------------------------------------------------------------------------------- China
@@ -371,8 +381,9 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
   }, q),
   'type100-paired-pressed': (q) => fitNative({ ...type100RoadWheelStock(q.high), layers: [] }, q),
   'merkava-deep-dish': (q) => {
-    // The Mk 4 draws the custom-face base stack (its hub cap reaches 1.54 × the tire width) under the ring stack.
-    const width = q.axialWidthM / CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE;
+    // The Mk 4 draws the custom-face base stack under the ring stack; its hub cap reaches
+    // CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE × the tire width, so the tire is held to the hull's cap bound.
+    const width = Math.min(q.tireWidthM, q.maxWidthM / CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE);
     return parametric(wheelGeo('rubber', q.radiusM, width, q.segments, .78, pattern('deep-dish-eight'), true),
       merkavaPressedFaceLayers(q.radiusM, width / 2));
   },
@@ -392,7 +403,7 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
   },
   'pl01-plain-dish': (q) => standardConstruction('plain-dish-twelve', .60, 'rubber', q),
   'bwp1-armoured-hub': (q) => standardConstruction('armored-hub-six', .80, 'rubber', q),
-  'type10-paired': (q) => parametric(pairedRunningGearStock({ radiusM: q.radiusM, axialWidthM: standardTireWidth(q),
+  'type10-paired': (q) => parametric(pairedRunningGearStock({ radiusM: q.radiusM, axialWidthM: q.tireWidthM,
     guideGapM: TYPE10_GUIDE_GAP_RATIO * q.radiusM, high: q.high })),
   'type90-recessed-forging': (q) => {
     const d = TYPE90_ROAD_WHEEL;
@@ -421,14 +432,14 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
     return fitNative({ tire: openAnnulusTire(d.tireInnerRadiusM, d.radiusM, d.widthM, q.segments), disc: solids.disc, dark: solids.dark,
       layers: [{ geometry: amx40PressedWheelFaces(), paint: 'dish', role: 'wheelDish', name: 'amx40WheelPressedFaces' }] }, q);
   },
-  'challenger-hollow-paired': (q) => parametric(buildHollowPairedRoadWheel({ radiusM: q.radiusM, high: q.high, fasteners: 8, fastenersAsInsets: true, axialWidthM: q.axialWidthM })),
+  'challenger-hollow-paired': (q) => hollowPairedConstruction(q, { fasteners: 8, fastenersAsInsets: true }),
   'warrior-plain-web': (q) => {
     const d = WARRIOR_ROAD_WHEEL;
     return fitNative({ tire: measuredTireBands(WARRIOR_TIRE_BANDS, d.radiusM, d.widthM, q.segments), disc: warriorRoadWheelCore(q.high), dark: null, layers: [] }, q);
   },
   't90-pressed-source-face': (q) => {
-    // Envelope: the pressed face plate and rim ring stand 20 mm outside the tire face and out-reach the compressed hub cap.
-    const width = q.axialWidthM - 2 * .020;
+    // The hull's own tire width; the pressed face plate and rim ring seat 20 mm outside its face as on the donor.
+    const width = q.tireWidthM;
     const solids = wheelGeo('rubber', q.radiusM, width, q.segments, .90, pattern('pressed-six'));
     solids.disc.scale(T90_FACE_DEPTH_SCALE, 1, 1); solids.dark?.scale(T90_FACE_DEPTH_SCALE, 1, 1);
     return parametric(solids, t90SourcePressedFaceLayers(q.radiusM, width / 2, 1));
@@ -451,7 +462,7 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
         { geometry: dark, paint: 'rubber' as const, role: 'wheelInset' as const, side, name: `kf41SourceWheelFasteners${side}` },
       ]) }, q);
   },
-  'abrams-hollow-paired': (q) => parametric(buildHollowPairedRoadWheel({ radiusM: q.radiusM, high: q.high, axialWidthM: q.axialWidthM })),
+  'abrams-hollow-paired': (q) => hollowPairedConstruction(q),
   'sheridan-pressed-rim': (q) => {
     const d = SHERIDAN_ROAD_WHEEL;
     return fitNative({ ...wheelGeo('rubber', d.radiusM, d.widthM, q.segments, .90, pattern('cast-five-spoke'), true),
@@ -463,11 +474,12 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
 /** Constructions a non-donor hull can draw; the others are donor-only (every hull of that shape is a donor). */
 export const BUILDABLE_WHEEL_CONSTRUCTIONS = Object.freeze(Object.keys(BUILDERS) as WheelConstructionId[]);
 
-/** Draw a nation wheel construction at a hull's own radius, fitted into its legacy axial envelope. */
+/** Draw a nation wheel construction at a hull's own radius, between its authored tire width and cap envelope. */
 export function buildNationWheel(construction: WheelConstructionId, request: NationWheelBuildRequest): NationWheelBuild {
   const builder = BUILDERS[construction];
   if (!builder) throw new Error(`Nation wheel construction ${construction} has no builder (donor-only construction)`);
-  if (!(request.radiusM > 0) || !(request.axialWidthM > 0) || !Number.isInteger(request.segments) || request.segments < 4) {
+  if (!(request.radiusM > 0) || !(request.tireWidthM > 0) || !(request.maxWidthM >= request.tireWidthM)
+    || !Number.isInteger(request.segments) || request.segments < 4) {
     throw new RangeError(`Invalid nation wheel request for ${construction}`);
   }
   return builder(request);

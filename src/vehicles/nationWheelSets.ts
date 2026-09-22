@@ -11,8 +11,9 @@
 // modern MBTs, m551a1_tts for light hulls, m60a3 for the Sabra and the Patton-era hulls).
 //
 // A donor's construction is its FACE construction (dish, spokes, fasteners, hub, tire profile), never its
-// dimensions: every hull keeps its own wheel radius, width, station count and axle positions and the
-// construction is fitted into that envelope by nationWheelConstructions.ts. Hulls listed as a donor's `self`
+// dimensions: every hull keeps its own wheel radius, station count and axle positions, and its authored tire
+// width bounds the construction (nationWheelConstructions.ts: never narrower than the tire, never wider than
+// the standard cap envelope). Hulls listed as a donor's `self`
 // draw the construction natively and keep their own wheel code — a donor IS its nation's standard. Pre-1950
 // hulls keep their period constructions (a Sherman-era hull on Abrams wheels is a visible error) and are
 // listed for the owner in PERIOD_WHEEL_HULLS; the 'Community' placeholder hulls keep theirs too.

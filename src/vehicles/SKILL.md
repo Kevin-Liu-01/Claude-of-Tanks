@@ -107,10 +107,11 @@ Canonical running gear resolves deterministic mechanical families through
 `wheelPatterns.ts`, `trackPatterns.ts`, and `suspensionPatterns.ts`. Road-wheel
 faces are standardized by nation (owner 2026-09-22): `nationWheelSets.ts` is the
 one table of donor tanks, per-nation rules and per-hull exceptions, and
-`nationWheelConstructions.ts` draws a donor's face at any hull's radius inside
-the axial envelope the hull's authored wheel occupied. A donor hull keeps its
-own wheel code; every other hull's authored wheel solids, `wheelFaceLayers` and
-post-build `addRoadWheelLayer` dressing only size the envelope. Period (ww2)
+`nationWheelConstructions.ts` draws a donor's face at any hull's radius, never
+narrower than the hull's authored tire width (`wheelW`) nor wider than its
+standard cap envelope (1.48 × that width). A donor hull keeps its own wheel
+code; every other hull's authored wheel solids, `wheelFaceLayers` and post-build
+`addRoadWheelLayer` dressing are not drawn. Period (ww2)
 hulls keep their constructions. A profile may restate, never contradict, its
 nation wheel pattern. Keep road wheels, return rollers, idlers, and sprockets on
 that one suspension-driven assembly. Painted faces use the camouflage-aware
