@@ -6,7 +6,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { HORIZON_SEGMENTS, sampleHorizonGeometry } from './maps/horizon.ts';
 import { createHeightField } from './terrain.ts';
-import { redrockCanyonCenter, sampleRedrockCanyon } from './redrockCanyon.ts';
+import { redrockCanyonFloorHalfWidth, redrockCanyonCenter, sampleRedrockCanyon } from './redrockCanyon.ts';
 import { shapeRedrockOutland, tintRedrockOutlandFloor } from './horizonRedrock.ts';
 
 // Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
@@ -51,13 +51,25 @@ function surface(ring, x, z) {
   }
   throw Error(`Probe outside actual ring: ${x},${z}`);
 }
-function assertOpenCanyon(ring) {
-  // The restored 1049e4e mesa ring ends at the authored 1240 m row (outer
-  // radius 1287..1544 m by bearing), so the mouth probes stop at 1200 m.
-  for (const z of [-1200, -1000, -700, 700, 1000, 1200]) {
+// Round 39 (owner 2026-09-22, "make the divide an enclosed area instead of being in a 'gap'"): the canyon is a
+// closed basin — the floor stays open to the map edge and just past it (to the ring's 585 m row), climbs between 612
+// and ~800 m, and a headwall stands across both former mouths from 900 m out (the restored 1049e4e mesa ring ends at the authored 1240 m row, so
+// the probes stop at 1200 m). The previous open-mouth design is the negative control below.
+function assertEnclosedCanyon(ring) {
+  for (const z of [-580, -540, 540, 580]) {
     for (const lane of [-140, 0, 140]) {
       const x = redrockCanyonCenter(z) + lane;
-      assert.ok(surface(ring, x, z) < 14, `N/S mouth remains low through every row: ${x},${z}`);
+      assert.ok(surface(ring, x, z) < 14, `floor still open just past the edge: ${x},${z} -> ${surface(ring, x, z)}`);
+    }
+  }
+  for (const z of [-700, 700]) {
+    const h = surface(ring, redrockCanyonCenter(z), z);
+    assert.ok(h > 14 && h < 70, `headwall climbing halfway out: ${z} -> ${h}`);
+  }
+  for (const z of [-1200, -1000, -900, 900, 1000, 1200]) {
+    for (const lane of [-140, 0, 140]) {
+      const x = redrockCanyonCenter(z) + lane;
+      assert.ok(surface(ring, x, z) > 45, `headwall closes the mouth: ${x},${z} -> ${surface(ring, x, z)}`);
     }
   }
   for (const z of [-430, 0, 430]) {
@@ -154,8 +166,16 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
     const before = o - columns * 3;
     assert.ok(Math.hypot(x, z) - Math.hypot(ring.positions[before], ring.positions[before + 2]) > 1, 'No folded radial faces');
   }
-  assertOpenCanyon(ring);
-  assert.throws(() => assertOpenCanyon(previous), { code: 'ERR_ASSERTION' }, 'Reject the original round mountain ring');
+  assertEnclosedCanyon(ring);
+  // negative control: the pre-round-39 open design (the same ring with its mouth lanes forced back to the floor)
+  const openMouths = structuredClone(ring);
+  for (let index = columns; index < openMouths.heights.length; index++) {
+    const x = openMouths.positions[index * 3], z = openMouths.positions[index * 3 + 2];
+    if (Math.abs(z) > 612 && Math.abs(x - redrockCanyonCenter(z)) < redrockCanyonFloorHalfWidth(z)) {
+      openMouths.heights[index] = 6; openMouths.positions[index * 3 + 1] = 6;
+    }
+  }
+  assert.throws(() => assertEnclosedCanyon(openMouths), { code: 'ERR_ASSERTION' }, 'Reject the open-mouth canyon');
   let maximumSeamError = 0, seamPoint = null;
   function checkSeam(x, z) {
     const actual = surface(ring, x, z), ground = field.getHeightAt(x, z), error = Math.abs(actual - ground);

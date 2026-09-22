@@ -321,6 +321,12 @@ const AERIAL_COOL = [0.90, 0.97, 1.08]; // cool shift multiplier at full distanc
 // keeps the far field atmospheric instead of gray.
 // r6: 0.00078 → 0.00092 (see AERIAL_DENSITY note — same critique round).
 const AERIAL_HAZE_DENSITY = 0.00092; // 1/m, slower second curve for scatter-in
+// round 39 (owner 2026-09-22, "too disappear-y"): ceilings on the two distance curves — extinction reached 0.88 at
+// 1 km and the far ranges dissolved into one veil; capped, a range keeps >= 40 % of its own colour (extinction) and
+// >= 45 % of its own light (scatter-in) at any distance. Both ceilings sit past ~650 m, so the midfield law
+// (r6 de-milk, r2 black-point guard) is untouched.
+const AERIAL_EXT_CEILING = 0.60;
+const AERIAL_SCATTER_CEILING = 0.55;
 // Directional in-scatter tints, applied to the live fog color (which is
 // sampled from the sky dome): pixels whose view ray points near the sun
 // azimuth scatter WARM, rays away from the sun scatter COOL BLUE — the
@@ -986,6 +992,11 @@ const AerialShader = {
         float x = -viewZ * uDensity;
         float f = 1.0 - exp( -x * x );
         f *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_EXT_K.toFixed(2)} );
+        // round 39 (owner 2026-09-22, "it still seems too disappear-y"): extinction used to reach 0.88 at 1 km and
+        // 1.0 by 1.5 km — the far ranges lost every trace of their own colour and read as one veil. Ceilings on the
+        // extinction (${AERIAL_EXT_CEILING.toFixed(2)}) and the scatter-in (${AERIAL_SCATTER_CEILING.toFixed(2)}) leave
+        // every range at least a third of its own colour and shading; both bite only past ~650 m, the midfield law is unchanged
+        f = min( f, ${AERIAL_EXT_CEILING.toFixed(2)} );
         float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
         vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
         texel.rgb = mix( texel.rgb, hazy, f );
@@ -1016,6 +1027,7 @@ const AerialShader = {
         float f2 = 1.0 - exp( -x2 * x2 );
         f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
         f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
+        f2 = min( f2, ${AERIAL_SCATTER_CEILING.toFixed(2)} );
         texel.rgb = mix( texel.rgb, hazeCol, f2 );
         // large-scale cloud shadows / light patchiness (see CLOUD_SHADE
         // const block): world-anchored soft patches multiply the ground —

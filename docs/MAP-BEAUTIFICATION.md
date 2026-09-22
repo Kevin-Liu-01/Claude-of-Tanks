@@ -385,6 +385,27 @@ the aerial pass (thinner air above the camera) leaves them their own sunlit colo
 the arid presets is a judgement for the next skyline pass, together with a per-map sky elevation profile sampled at
 more than one row.
 
+### Enclosed Redrock and the far-haze ceilings — 2026-09-22 (round 39)
+
+Owner: "it still seems too disappear-y. also in the redrock divide you can literally still see the cutoff - make the
+divide an enclosed area instead of being in a 'gap'".
+
+- **Redrock Divide is a basin.** The canyon used to run out of the square as an open corridor to the horizon, so from
+  the rim the eye followed the floor to the seam and the outland read as a gap with a visible cutoff. The shared
+  drainage shape (`world/redrockCanyon.ts`, used by the playable ground and the ring alike) now raises a headwall
+  across both mouths with the flanks' own two-tier profile — a low bench, then the steep upper face, the west and east
+  plateau heights blended across the canyon's width, the wall line meandering ±27 m — starting 612 m from the map
+  centre (beyond the ring's first row past the seam, so the floor stays flat across the seam) and reaching the plateau
+  by ~800 m. Inside ±512 m the shape is exactly unchanged. Receipts: `redrockCanyonHorizon` protects the enclosed
+  design with the open-mouth ring as its negative control; `badlandsRelief` pins the flat floor to the edge, the
+  climbing mouths and the exact playable datum. Verified with wall-probe bird, rim, corner and skyline captures.
+- **The far ranges keep a third of their own colour.** Three layers hazed them: the vista material mixed up to 94 %
+  toward the fog tint, the scene fog added its share, and the post aerial pass's extinction reached 0.88 at 1 km and
+  1.0 by 1.5 km with scatter-in up to 0.7. The vista's haze is now the smallest layer (0.52 at the far cascade, capped
+  at 0.62) and the aerial pass caps extinction at 0.60 and scatter-in at 0.55; both ceilings bite only past ~650 m, so
+  the midfield law is unchanged. A/B on copper_mesa, verdant, alpine, steppe and badlands: the far ranges keep more of
+  their local colour and shading; whether this is enough against the owner's "disappear-y" read is the next eye test.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -460,7 +481,7 @@ skylines):
 | 36 (landed: geology) | Border geography: the map's own base height past ±512 m seats the foothill rows and blends into the authored relief by distance (done); splat continuity by the same slope/height rules (the landform gate, round 35; the rest open); decor continuity (trees, boulders, tufts thinning past the edge; prop bound toward the red line) and the water plane into the ring remain open | wall-probe sheets on six maps; 31-map edge audit |
 | 37 (landed: elevation-aware target) | The post aerial pass's scatter-in target now follows the sky's sampled elevation falloff so far land converges toward the sky it is seen against (the horizon-haze target was the check-5 cause); the desert sky gains Rayleigh. Open: the arid ridge tops in thin air, a multi-row sky elevation profile, and folding the vista's own haze into the aerial pass | skyline metric before/after on eight maps (table above) |
 | 38 | Anti-tiling: hex-tiled detail albedo/normal layers, detail normals fade to flat with distance, anisotropic filtering with a measured mip-bias policy | 30–200 m tiling sheets, moiré-in-motion clips |
-| 39 | Ring cascades and occlusion: a second far cascade with a macro colour map, per-vertex horizon occlusion baked at build, sky-projected ambient driving haze colour and water reflection | skyline sheets, frame-cost pairs |
+| 39 (landed: Redrock basin, haze ceilings) | Redrock's mouths closed by a headwall with the flanks' profile; the far-haze stack capped so ranges keep a third of their own colour. Deferred to a later round: a second far cascade with a macro colour map, per-vertex horizon occlusion baked at build, sky-projected ambient driving haze colour and water reflection | wall-probe sheets on badlands; far-range A/B on five maps |
 | 40 | Decal clipmap rings around the camera for WoT-density ground decals; water continuity where round 36 left gaps | same-camera pairs |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts

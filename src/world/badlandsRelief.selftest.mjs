@@ -160,9 +160,27 @@ assert.throws(() => canyonContract((x, z) => sampleRedrockCanyon(x, z) * .1), { 
   'tiny shelf-height substitution cannot satisfy a canyon');
 for (const z of [-6000, -600, -430, 430, 600, 6000]) {
   assert.equal(redrockCanyonFloorHalfWidth(z), 330, 'mouth stops widening before the boundary');
+}
+// the floor is flat and symmetric across the axis to the map edge and just past it
+for (const z of [-540, -430, 430, 540]) {
   const center = redrockCanyonCenter(z);
   assert.equal(sampleRedrockCanyon(center + 300, z), sampleRedrockCanyon(center - 300, z));
 }
+// Round 39 (owner 2026-09-22, "make the divide an enclosed area instead of being in a 'gap'"): past 612 m the floor
+// climbs the flanks' own two-tier wall profile and both mouths are closed by a headwall from ~800 m out; nothing moves
+// inside ±512 m
+for (const z of [-680, 680]) {
+  const center = redrockCanyonCenter(z), openFloor = 4 + 0.004 * z;
+  const rising = sampleRedrockCanyon(center, z);
+  assert.ok(rising > openFloor + 1 && rising < 70, `mouth floor climbing at z=${z}: ${rising}`);
+}
+for (const z of [-6000, -900, 900, 6000]) {
+  const center = redrockCanyonCenter(z);
+  for (const across of [-300, 0, 300]) {
+    assert.ok(sampleRedrockCanyon(center + across, z) > 45, `headwall closes the mouth at z=${z}, across=${across}`);
+  }
+}
+assert.equal(sampleRedrockCanyon(redrockCanyonCenter(500), 500), 4 + 0.004 * 500, 'the playable floor keeps its exact datum to the edge');
 for (const across of [-400, 400]) {
   for (const z of [-207 + across * .035, 110 + Math.abs(across) * .24]) {
     const x = redrockCanyonCenter(z) + across;

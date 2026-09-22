@@ -465,7 +465,12 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   horizonWaterVariation = nC * 0.008 + nB * 0.015;
   // --- aerial perspective, per fragment (the vertex bake keeps the tone only) ----
   float hazeR = smoothstep(430.0, 1330.0, radius);
-  vistaHaze = clamp((0.06 + hazeR * hazeR * 0.72) * uVHaze + (1.0 - hT) * 0.06 * hazeR, 0.0, 0.94) * (1.0 - horizonMarine);
+  // Round 39 (owner 2026-09-22, "it still seems too disappear-y"): the ranges took up to 94 % of the fog tint on top of
+  // the scene fog and the post aerial pass, so the far skyline dissolved into one flat veil. The material-level haze
+  // is now the smallest of the three layers — 0.52 at the far cascade and never more than 0.62 — and the post pass
+  // (extinction ceiling 0.60, scatter ceiling 0.55) owns the rest, so a range keeps at least a third of its own
+  // colour and shading at any distance.
+  vistaHaze = clamp((0.05 + hazeR * hazeR * 0.52) * uVHaze + (1.0 - hT) * 0.05 * hazeR, 0.0, 0.62) * (1.0 - horizonMarine);
 }`;
 
 /** After `#include <color_fragment>`: haze toward the fog tint (the vertex bake no longer carries it). */
