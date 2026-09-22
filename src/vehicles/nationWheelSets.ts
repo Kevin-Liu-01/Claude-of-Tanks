@@ -67,7 +67,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
   type100: Object.freeze({ donor: 'type100', self: ['type100'], pattern: 'pressed-six', construction: 'type100-paired-pressed',
     note: 'Two pressed six-rib dishes and two tires around a real guide channel (type100RunningGear.ts).' }),
   merkava4b: Object.freeze({ donor: 'merkava4b', self: ['merkava4b'], pattern: 'deep-dish-eight', construction: 'merkava-deep-dish',
-    note: 'Fleet deep-dish eight-fastener disc at dish 0.78 r with the Mk 4 pressed-face ring stack (merkava.ts modernWheelFace).' }),
+    note: 'Fleet deep-dish eight-fastener disc at dish 0.78 r under the Mk 4B five-layer dished face stack — pale dish ring, dark break, mid dish, dark inner dish, hub cap (merkava.ts wheelFace).' }),
   namer_ifv: Object.freeze({ donor: 'namer_ifv', self: ['namer_ifv'], pattern: 'deep-dish-eight', construction: 'namer-stepped-hub',
     note: 'Source wheel18 stepped hub, recessed web and outward rim (namerWheelStock.ts); the only Israeli IFV, so no other hull draws it.' }),
   strv122: Object.freeze({ donor: 'strv122', self: ['strv122_x'], pattern: 'plain-dish-twelve', construction: 'strv122-pressed-recess',

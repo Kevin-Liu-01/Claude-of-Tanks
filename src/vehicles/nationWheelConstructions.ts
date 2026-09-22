@@ -185,8 +185,9 @@ export function ztz100RoadWheelCore(high: boolean): THREE.BufferGeometry {
     lathedWheelSection(ZTZ100_ROAD_WHEEL_SECTION.map(([x, r]) => [-x, r]), segments)]);
 }
 
-/** Object 17 has twelve hub hexes and eight two-piece web fasteners, all on the outboard face. */
-export function ztz100RoadWheelHardware(side: -1 | 1): THREE.BufferGeometry {
+/** Object 17 has twelve hub hexes and eight two-piece web fasteners, all on the outboard face. The donor draws
+ * six-sided heads at both tiers; a consumer's LOW tier draws four-sided heads (FSP-02: the low tier must cost less). */
+export function ztz100RoadWheelHardware(side: -1 | 1, high = true): THREE.BufferGeometry {
   const hardware: THREE.BufferGeometry[] = [];
   for (const [count, ring, axial, radius, depth] of [
     [12, .08173, .12764, .00784, .01007],
@@ -195,7 +196,7 @@ export function ztz100RoadWheelHardware(side: -1 | 1): THREE.BufferGeometry {
   ]) {
     for (let i = 0; i < count; i++) {
       const angle = i * Math.PI * 2 / count;
-      hardware.push(cylX(radius, depth, 6).rotateX(angle)
+      hardware.push(cylX(radius, depth, high ? 6 : 4).rotateX(angle)
         .translate(side * axial, Math.cos(angle) * ring, Math.sin(angle) * ring));
     }
   }
@@ -203,27 +204,31 @@ export function ztz100RoadWheelHardware(side: -1 | 1): THREE.BufferGeometry {
 }
 
 // ----------------------------------------------------------------------------------------------- Israel
-/** Merkava Mk 4 pressed-face ring stack (merkava.ts modernWheelFace), relative to the wheel radius and tire half width. */
-export function merkavaPressedFaceLayers(wheelR: number, halfWidth: number): NationWheelLayer[] {
+/** Merkava Mk 4B dished face stack (merkava.ts wheelFace): pale outer dish ring, dark dish break, pale mid dish,
+ * dark inner dish and pale hub cap, relative to the wheel radius and tire half width. The donor draws its
+ * 16/14/12/10/8-sided rings at both tiers; a consumer's LOW tier draws 12/10/8/8/6 (FSP-02: the low tier must cost less). */
+export function merkavaDishedFaceLayers(wheelR: number, halfWidth: number, high = true): NationWheelLayer[] {
   return [
-    { geometry: cylX(wheelR * 0.84, 0.012, 18), paint: 'dark', role: 'wheelDish',
-      outset: halfWidth + 0.006, name: 'gearRoadWheelPressedFaces' },
-    { geometry: cylX(wheelR * 0.61, 0.010, 16), paint: 'detail', role: 'wheelDish',
-      outset: halfWidth + 0.010, name: 'gearRoadWheelDishRings' },
-    { geometry: cylX(wheelR * 0.45, 0.011, 14), paint: 'dark', role: 'wheelInset',
-      outset: halfWidth + 0.014, name: 'gearRoadWheelDishRecesses' },
-    { geometry: cylX(wheelR * 0.20, 0.013, 10), paint: 'detail', role: 'wheelDish',
-      outset: halfWidth + 0.019, name: 'gearRoadWheelHubCaps' },
+    { geometry: cylX(wheelR * 0.85, 0.012, high ? 16 : 12), paint: 'detail', role: 'wheelDish',
+      outset: halfWidth + 0.006, name: 'gearRoadWheelOuterDishes' },
+    { geometry: cylX(wheelR * 0.60, 0.008, high ? 14 : 10), paint: 'dark', role: 'wheelInset',
+      outset: halfWidth + 0.010, name: 'gearRoadWheelDishBreaks' },
+    { geometry: cylX(wheelR * 0.50, 0.010, high ? 12 : 8), paint: 'detail', role: 'wheelDish',
+      outset: halfWidth + 0.013, name: 'gearRoadWheelMidDishes' },
+    { geometry: cylX(wheelR * 0.34, 0.012, high ? 10 : 8), paint: 'dark', role: 'wheelInset',
+      outset: halfWidth + 0.017, name: 'gearRoadWheelInnerDishes' },
+    { geometry: cylX(wheelR * 0.15, 0.014, high ? 8 : 6), paint: 'detail', role: 'wheelDish',
+      outset: halfWidth + 0.021, name: 'gearRoadWheelHubCaps' },
   ];
 }
 
 // ----------------------------------------------------------------------------------------------- Japan
 /** Type 90 X independent lathed forging: the dish ~120 mm behind its rubber face, the clipped hub projecting back. */
-export function type90RoadWheelCore(high: boolean): THREE.BufferGeometry {
+export function type90RoadWheelCore(high: boolean, segments = high ? 32 : 20): THREE.BufferGeometry {
   const profile = [[0, -.246988], [.316, -.246988], [.316, .246988],
     [.309, .13170], [.111, .12499], [.111, .194432], [.096, .194432],
     [.079, .22650], [0, .252278], [0, -.246988]];
-  return new THREE.LatheGeometry(profile.map(([r, x]) => new THREE.Vector2(r, x)), high ? 32 : 20)
+  return new THREE.LatheGeometry(profile.map(([r, x]) => new THREE.Vector2(r, x)), segments)
     .rotateZ(-Math.PI / 2);
 }
 const TYPE90_ROAD_WHEEL = Object.freeze({ radiusM: .357347, widthM: .493976, tireInnerRadiusM: .3158 });
@@ -253,11 +258,12 @@ export const ARIETE_TIRE_BANDS: readonly MeasuredTireBand[] = Object.freeze([-.1
 const ARIETE_ROAD_WHEEL = Object.freeze({ radiusM: .28975886, widthM: .377654 });
 
 // ----------------------------------------------------------------------------------------------- France
-/** AMX-40 X pressed face: rim ring, six ribs and bolts on both sides of the axle (fixed source metres). */
-export function amx40PressedWheelFaces(): THREE.BufferGeometry {
+/** AMX-40 X pressed face: rim ring, six ribs and bolts on both sides of the axle (fixed source metres).
+ * The donor draws the 32×8 rim ring at both tiers; a consumer's LOW tier draws 16×6. */
+export function amx40PressedWheelFaces(high = true): THREE.BufferGeometry {
   const pieces: THREE.BufferGeometry[] = [];
   for (const s of [-1, 1]) {
-    pieces.push(torus(.307, .010, 32, 8).rotateZ(Math.PI / 2).translate(s * .164, 0, 0));
+    pieces.push(torus(.307, .010, high ? 32 : 16, high ? 8 : 6).rotateZ(Math.PI / 2).translate(s * .164, 0, 0));
     for (let i = 0; i < 6; i++) {
       const a = i * Math.PI / 3;
       pieces.push(box(.033, .055, .176).rotateX(-a).translate(s * .155,
@@ -299,17 +305,19 @@ export const WARRIOR_TIRE_BANDS: readonly MeasuredTireBand[] = Object.freeze([
 const WARRIOR_ROAD_WHEEL = Object.freeze({ radiusM: .2991, widthM: .3435 });
 
 // ----------------------------------------------------------------------------------------------- Russia
-/** T-90 X source-pressed road-wheel face: six-hole plate, rim ring, hub and bolt heads (t90X.ts), relative to the radius and tire half width. */
-export function t90SourcePressedFaceLayers(r: number, halfWidth: number, zScale: number): NationWheelLayer[] {
+/** T-90 X source-pressed road-wheel face: six-hole plate, rim ring, hub and bolt heads (t90X.ts), relative to the radius
+ * and tire half width. The donor draws 16 curve segments, a 32×8 rim ring and a 20-sided hub at both tiers; a consumer's
+ * LOW tier draws 8 / 16×6 / 12 (FSP-02: the low tier must cost less). */
+export function t90SourcePressedFaceLayers(r: number, halfWidth: number, zScale: number, high = true): NationWheelLayer[] {
   const shape = new THREE.Shape(); shape.absarc(0, 0, r * .865, 0, Math.PI * 2, false);
   for (let i = 0; i < 6; i++) {
     const angle = i * Math.PI / 3, hole = new THREE.Path();
     hole.absarc(Math.sin(angle) * r * .55, Math.cos(angle) * r * .55, r * .12, 0, Math.PI * 2, true);
     shape.holes.push(hole);
   }
-  const disc = new THREE.ExtrudeGeometry(shape, { depth: .018, bevelEnabled: false, curveSegments: 16 })
+  const disc = new THREE.ExtrudeGeometry(shape, { depth: .018, bevelEnabled: false, curveSegments: high ? 16 : 8 })
     .translate(0, 0, -.009).rotateY(Math.PI / 2).scale(1, 1, zScale);
-  const rim = torus(r * .853, .010, 32, 8).rotateZ(Math.PI / 2).scale(1, 1, zScale);
+  const rim = torus(r * .853, .010, high ? 32 : 16, high ? 8 : 6).rotateZ(Math.PI / 2).scale(1, 1, zScale);
   const bolts = Array.from({ length: 6 }, (_, i) => {
     const angle = i * Math.PI / 3;
     return cylX(.012, .025, 6).translate(0, Math.sin(angle) * r * .30, Math.cos(angle) * r * .30 * zScale);
@@ -318,7 +326,7 @@ export function t90SourcePressedFaceLayers(r: number, halfWidth: number, zScale:
     { geometry: disc, paint: 'dish', role: 'wheelDish', outset: halfWidth + .004, name: 'gearRoadWheelSourcePressedFaces' },
     { geometry: rim, paint: 'dish', role: 'wheelDish', outset: halfWidth + .010, name: 'gearRoadWheelSourceRims' },
     // 2026-09-14 owner: hub and bolt heads stood 3 cm proud of the tire; seated within 2 cm.
-    { geometry: cylX(r * .24, .030, 20), paint: 'dish', role: 'wheelDish', outset: halfWidth + .004, name: 'gearRoadWheelSourceHubs' },
+    { geometry: cylX(r * .24, .030, high ? 20 : 12), paint: 'dish', role: 'wheelDish', outset: halfWidth + .004, name: 'gearRoadWheelSourceHubs' },
     { geometry: mergeAll(bolts), paint: 'dark', role: 'wheelInset', outset: halfWidth + .006, name: 'gearRoadWheelSourceBolts' },
   ];
 }
@@ -378,7 +386,7 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
   'ztz100-recessed-web': (q) => fitNative({
     tire: measuredTireBands(ZTZ100_TIRE_BANDS, ZTZ100_ROAD_WHEEL_RADIUS_M, ZTZ100_ROAD_WHEEL_WIDTH_M, q.segments),
     disc: ztz100RoadWheelCore(q.high), dark: null,
-    layers: ([-1, 1] as const).map(side => ({ geometry: ztz100RoadWheelHardware(side), paint: 'dish' as const, role: 'wheelDish' as const,
+    layers: ([-1, 1] as const).map(side => ({ geometry: ztz100RoadWheelHardware(side, q.high), paint: 'dish' as const, role: 'wheelDish' as const,
       side, name: `ztz100WheelFasteners${side < 0 ? 'Left' : 'Right'}` })),
   }, q),
   'type100-paired-pressed': (q) => fitNative({ ...type100RoadWheelStock(q.high), layers: [] }, q),
@@ -387,10 +395,10 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
     // CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE × the tire width, so the tire is held to the hull's cap bound.
     const width = Math.min(q.tireWidthM, q.maxWidthM / CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE);
     return parametric(wheelGeo('rubber', q.radiusM, width, q.segments, .78, pattern('deep-dish-eight'), true),
-      merkavaPressedFaceLayers(q.radiusM, width / 2));
+      merkavaDishedFaceLayers(q.radiusM, width / 2, q.high));
   },
   'strv122-pressed-recess': (q) => {
-    const solids = strv122SuppliedWheelSolids(q.high ? 40 : 24), d = STRV122_ROAD_WHEEL;
+    const solids = strv122SuppliedWheelSolids(q.high ? 32 : 16), d = STRV122_ROAD_WHEEL;
     return fitNative({ tire: openAnnulusTire(d.tireInnerRadiusM, d.radiusM, d.widthM, q.segments), disc: solids.core, dark: null,
       layers: [{ geometry: solids.left, paint: 'dish', role: 'wheelDish', side: -1, name: 'strv122SuppliedWheelFacesLeft' },
         { geometry: solids.right, paint: 'dish', role: 'wheelDish', side: 1, name: 'strv122SuppliedWheelFacesRight' }] }, q);
@@ -398,7 +406,7 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
   'cv90-armoured-hub': (q) => standardConstruction('armored-hub-six', .90, 'rubber', q),
   'k2-flanged': (q) => standardConstruction('flanged-twelve', .90, 'rubber', q),
   'k1a1-deep-bowl': (q) => {
-    const solids = k1a1XWheelSolids(q.high ? 32 : 20), d = K1A1_ROAD_WHEEL;
+    const solids = k1a1XWheelSolids(q.high ? 28 : 16), d = K1A1_ROAD_WHEEL;
     return fitNative({ tire: openAnnulusTire(d.tireInnerRadiusM, d.radiusM, d.widthM, q.segments), disc: solids.core, dark: null,
       layers: [{ geometry: solids.left, paint: 'dish', role: 'wheelDish', side: -1, name: 'k1a1SourceWheelFacesLeft' },
         { geometry: solids.right, paint: 'dish', role: 'wheelDish', side: 1, name: 'k1a1SourceWheelFacesRight' }] }, q);
@@ -409,10 +417,10 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
     guideGapM: TYPE10_GUIDE_GAP_RATIO * q.radiusM, high: q.high })),
   'type90-recessed-forging': (q) => {
     const d = TYPE90_ROAD_WHEEL;
-    return fitNative({ tire: openAnnulusTire(d.tireInnerRadiusM, d.radiusM, d.widthM, q.segments), disc: type90RoadWheelCore(q.high), dark: null, layers: [] }, q);
+    return fitNative({ tire: openAnnulusTire(d.tireInnerRadiusM, d.radiusM, d.widthM, q.segments), disc: type90RoadWheelCore(q.high, q.high ? 28 : 14), dark: null, layers: [] }, q);
   },
   'ariete-recessed-dish': (q) => {
-    const segments = q.high ? 32 : 20, d = ARIETE_ROAD_WHEEL;
+    const segments = q.high ? 28 : 16, d = ARIETE_ROAD_WHEEL;
     return fitNative({ tire: measuredTireBands(ARIETE_TIRE_BANDS, d.radiusM, d.widthM, q.segments), disc: arieteRoadWheelCore(segments), dark: null,
       layers: ([-1, 1] as const).map(side => ({ geometry: arieteRoadWheelFace(side, segments), paint: 'dish' as const, role: 'wheelDish' as const,
         side, name: `arieteSuppliedRecessedWheelFace${side}` })) }, q);
@@ -432,7 +440,7 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
     solids.tire?.dispose();
     solids.disc.scale(d.faceDepthScale, 1, 1); solids.dark?.scale(d.faceDepthScale, 1, 1);
     return fitNative({ tire: openAnnulusTire(d.tireInnerRadiusM, d.radiusM, d.widthM, q.segments), disc: solids.disc, dark: solids.dark,
-      layers: [{ geometry: amx40PressedWheelFaces(), paint: 'dish', role: 'wheelDish', name: 'amx40WheelPressedFaces' }] }, q);
+      layers: [{ geometry: amx40PressedWheelFaces(q.high), paint: 'dish', role: 'wheelDish', name: 'amx40WheelPressedFaces' }] }, q);
   },
   'challenger-hollow-paired': (q) => hollowPairedConstruction(q, { fasteners: 8, fastenersAsInsets: true }),
   'warrior-plain-web': (q) => {
@@ -444,20 +452,20 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
     const width = q.tireWidthM;
     const solids = wheelGeo('rubber', q.radiusM, width, q.segments, .90, pattern('pressed-six'));
     solids.disc.scale(T90_FACE_DEPTH_SCALE, 1, 1); solids.dark?.scale(T90_FACE_DEPTH_SCALE, 1, 1);
-    return parametric(solids, t90SourcePressedFaceLayers(q.radiusM, width / 2, 1));
+    return parametric(solids, t90SourcePressedFaceLayers(q.radiusM, width / 2, 1, q.high));
   },
   'dragun-rolled-lip': (q) => {
     const d = DRAGUN_ROAD_WHEEL;
     return fitNative({ tire: measuredTireBands(DRAGUN_TIRE_BANDS, d.radiusM, d.widthM, q.segments), disc: dragunRoadWheelCore(q.high), dark: null, layers: [] }, q);
   },
   'leo2a6-paired-dish': (q) => {
-    const solids = leopardA6WheelSolids(q.high ? 32 : 20), d = LEO2A6_ROAD_WHEEL;
+    const solids = leopardA6WheelSolids(q.high ? 28 : 16), d = LEO2A6_ROAD_WHEEL;
     return fitNative({ tire: measuredTireBands(LEO2A6_TIRE_BANDS, d.radiusM, d.widthM, q.segments), disc: solids.core, dark: null,
       layers: [{ geometry: solids.left, paint: 'dish', role: 'wheelDish', side: -1, name: 'a6SourcePairedWheelFacesL' },
         { geometry: solids.right, paint: 'dish', role: 'wheelDish', side: 1, name: 'a6SourcePairedWheelFacesR' }] }, q);
   },
   'lynx-stamped-web': (q) => {
-    const solids = kf41LynxWheelStock(q.high), d = LYNX_ROAD_WHEEL;
+    const solids = kf41LynxWheelStock(q.high, q.high ? 28 : 16), d = LYNX_ROAD_WHEEL;
     return fitNative({ tire: measuredTireBands(LYNX_TIRE_BANDS, d.radiusM, d.widthM, q.segments), disc: solids.core, dark: null,
       layers: solids.faces.flatMap(({ side, steel, dark }) => [
         { geometry: steel, paint: 'dish' as const, role: 'wheelDish' as const, side, name: `kf41SourceWheelSteel${side}` },

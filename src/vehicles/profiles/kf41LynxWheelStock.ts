@@ -31,8 +31,7 @@ function wheelSection(section: readonly AxialWheelStation[], segments: number): 
   return geometry;
 }
 
-export function kf41LynxWheelStock(high: boolean) {
-  const segments = high ? 32 : 24;
+export function kf41LynxWheelStock(high: boolean, segments = high ? 32 : 24) {
   // The source's inboard axle back is flat at -.1643 through R.120, not a
   // duplicate raised outer hub. Both stamped webs and their central air remain.
   const outboard: AxialWheelStation[] = [

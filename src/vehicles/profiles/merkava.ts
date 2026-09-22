@@ -15,7 +15,7 @@
 // aft-set turret, rear hull clamshell door, turret bustle basket +
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
-import { merkavaPressedFaceLayers } from '../nationWheelConstructions.ts';
+import { merkavaDishedFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { FITTINGS, KIT, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
@@ -1619,11 +1619,13 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   // gearOut pins the OUTER track face (measured front-view track columns sit
   // well inside the fender line on every print in this family).
   const xc = (c.gearOut ?? hw - 0.036) - c.trackW / 2;
-  // Road-wheel face layers ride the one suspension-driven wheel train. The Mk.1B's dished-face layers left
-  // with the nation wheel standard (owner 2026-09-22: every Israeli MBT hull draws the Mk 4B construction).
+  // The dished wheel anatomy used to be authored as shallow cylinders in the static hull buckets after the
+  // smart suspension had already been built, so the faces stayed parked while the real tires travelled; it
+  // rides the one suspension-driven wheel train as face layers. The Mk 4B stack is the Israel MBT wheel
+  // construction (nationWheelConstructions.ts, owner 2026-09-22); the Mk 3D's pressed ring stack left with the
+  // standard, since every other Israeli MBT hull now draws the Mk 4B face.
   const wheelFaceW = Math.min(0.23, c.trackW * 0.37);
-  const wheelFaceLayers = c.modernWheelFace ? merkavaPressedFaceLayers(c.wheelR, wheelFaceW / 2).map((layer) => ({
-    // the Mk 4 ring stack is the Israel MBT wheel construction (nationWheelConstructions.ts, owner 2026-09-22)
+  const wheelFaceLayers = c.wheelFace ? merkavaDishedFaceLayers(c.wheelR, wheelFaceW / 2).map((layer) => ({
     geometry: layer.geometry, material: layer.paint === 'dark' ? P.mats.dark : P.mats.detail,
     outset: layer.outset, name: layer.name, appearanceRole: layer.role,
   })) : undefined;
@@ -13390,7 +13392,6 @@ const MERKAVA_PROFILE_DATA = {
     // crest chamfer + glacis break + decal delete + pale sleeve rings +
     // readable arch wheels (ref arch rect p95 76 vs our 62).
     softGoods: true, rackX: true, noDecal: true, sleevePale: true, tailFitLit: true,
-    modernWheelFace: true,
     crestChamfer: 0.035, glacisBreak: true, wheelHex: 0x3d3d31,
     // r12 order 2: guide-horn/chain + shoe-pad layers lift toward the ref's
     // own >=45L arch-window gear floor (the fixed iron read sub-30 — the
