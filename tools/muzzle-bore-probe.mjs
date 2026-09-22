@@ -99,7 +99,10 @@ try {
     if (shot.muzzleBore.tagged !== expectedBores) {
       failures.push(`${id}: expected ${expectedBores} visible tagged bore(s), found ${shot.muzzleBore.tagged}`);
     }
-    if (shot.muzzleBore.rims !== expectedBores || shot.muzzleBore.discs !== expectedBores) {
+    // A verified physical recess is its own rim (2026-09-22, owner: holes are added, not carved,
+    // to save triangles): the census reports it as physicalRims instead of a fallback Rim mesh.
+    const visibleRims = shot.muzzleBore.rims + (shot.muzzleBore.physicalRims || 0);
+    if (visibleRims !== expectedBores || shot.muzzleBore.discs !== expectedBores) {
       failures.push(`${id}: expected ${expectedBores} visible rim/disc pair(s), found ${JSON.stringify(shot.muzzleBore)}`);
     }
     if (expectedBores === 0) {
@@ -141,7 +144,7 @@ try {
     const counterboreOk = counterboreDepthM <= 0.05;
     const seatAxialFit = seatReceipts.every(muzzleSeatAxialFit);
     const pass = shot.muzzleBore.tagged === expectedBores
-      && shot.muzzleBore.rims === expectedBores
+      && visibleRims === expectedBores
       && shot.muzzleBore.discs === expectedBores
       && firstHitIsBore
       && innerSamplesPass

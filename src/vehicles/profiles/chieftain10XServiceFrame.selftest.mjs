@@ -202,16 +202,18 @@ for (const [quality] of PRE_FOUNDATION_HISTORY) {
 }
 if (ledgerUpdate) {
   const ledger = JSON.parse(readFileSync(ledgerUrl, 'utf8'));
-  const previous = ledger.successor;
-  const delta = ledgerUpdate.successor.high.count - previous.high.count;
-  // 2026-09-22 (owner: holes are added, not carved): the flat muzzle cap supersedes the ground-datum
-  // successor. successorHistory and the earlier dated records are history and stay untouched; the
-  // superseded successor is retained inside the new record so the chain remains authenticated.
+  // 2026-09-22 (owner: holes are added, not carved, to save triangles): the muzzle-cap record
+  // supersedes the ground-datum successor and is cumulative — a later re-run on the same day (the
+  // fleet fallback lip became a flat 2N ring) keeps the ground-datum successor as its base, so the
+  // chain history[1] + trackWrap + groundDatum + drawVertexDelta === successor stays authenticated.
+  // successorHistory and the earlier dated records are history and stay untouched.
+  const base = ledger.laterMuzzleBoreCap?.supersededSuccessor ?? ledger.successor;
+  const delta = ledgerUpdate.successor.high.count - base.high.count;
   ledger.successor = ledgerUpdate.successor;
   ledger.laterMuzzleBoreCap = {
     branch: 'r38-bores', capturedAt: '2026-09-22',
-    scope: 'Owner 2026-09-22: "the point of adding holes instead of carving them into the barrel is that we save on triangles". chieftain10XGun.ts closes the open loft with one 48-segment CircleGeometry cap at the source mouth instead of the carved 32 cm recess (inner wall, ring, capped floor cylinder) that sat behind the factory fallback disc with no physical-bore contract. Only the gun bucket changed: the recess draw vertices left, the cap vertices arrived (drawVertexDelta); the fallback assembly seat and every other draw vertex are re-derived by the receipt and must match exactly.',
-    drawVertexDelta: delta, nonTrack: ledgerUpdate.nonTrack, supersededSuccessor: previous,
+    scope: 'Owner 2026-09-22: "the point of adding holes instead of carving them into the barrel is that we save on triangles". (1) chieftain10XGun.ts closes the open loft with one 48-segment CircleGeometry cap at the source mouth instead of the carved 32 cm recess (inner wall, ring, capped floor cylinder) that sat behind the factory fallback disc with no physical-bore contract. (2) The fleet fallback hole became the minimal construction: a flat dark ring (lip and annular face in one 2N mesh) plus the shadow disc, with a throat sleeve only when the tube stops short, instead of the 10N torus lip plus a separate annulus (tankFactoryCore, terminal-surface-fit-r3). Only the gun bucket and the muzzleBoreShadowFallback meshes changed (drawVertexDelta is cumulative from the ground-datum successor); every other draw vertex is re-derived by the receipt and must match exactly.',
+    drawVertexDelta: delta, nonTrack: ledgerUpdate.nonTrack, supersededSuccessor: base,
   };
   const { writeFileSync } = await import('node:fs');
   writeFileSync(ledgerUrl, JSON.stringify(ledger, null, 2) + '\n');

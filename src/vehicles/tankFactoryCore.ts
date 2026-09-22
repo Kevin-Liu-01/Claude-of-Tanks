@@ -11565,15 +11565,26 @@ function* createTankOwnedSteps(
         const muzzleRimR = physicalBore
           ? Math.min(muzzleOuterR * .12, (muzzleOuterR-muzzleInnerR) * .4)
           : Math.max(0.001, muzzleOuterR * 0.12);
-        const boreAnnulusGeo = new THREE.RingGeometry(
-          physicalBore ? muzzleInnerR + (muzzleOuterR-muzzleInnerR)*.05 : muzzleInnerR * 1.04,
-          physicalBore ? muzzleOuterR - (muzzleOuterR-muzzleInnerR)*.05 : muzzleOuterR * .985,
-          boreSegments);
-        // Slightly overlap the annulus: a hairline gap between separate meshes can
-        // expose legacy solid-cap triangles on small-caliber, low-segment barrels.
+        // Owner 2026-09-22 ("the point of adding holes instead of carving them into
+        // the barrel is that we save on triangles ... make sure were saving the
+        // triangles here"): the added hole is the minimal construction. One flat
+        // dark ring is both the lip and the annular face (2N) at the lip front, the
+        // near-black disc (N) sits just behind it, and an open throat sleeve (2N)
+        // is added only when the authored tube stops short of the marker: 3N–5N
+        // per mouth instead of the former 13N–15N (a 10N torus lip plus a separate
+        // 2N annulus). The ring starts at the disc radius so the two overlap by
+        // 2 %: a hairline gap between separate meshes can expose legacy solid-cap
+        // triangles on small-caliber, low-segment barrels. A verified physical
+        // recess keeps only the shadow disc at its floor: its own annulus and
+        // inward wall are the visible mouth, so the barrel-paint duplicates that
+        // used to sit 0.5 mm ahead of them are gone.
         const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
+        const boreRimGeo = physicalBore
+          ? null
+          : new THREE.RingGeometry(muzzleInnerR, muzzleOuterR, boreSegments);
         const createTankAssemblyStage47 = (): void => {
-          disposables.push(boreAnnulusGeo, boreDiscGeo);
+          disposables.push(boreDiscGeo);
+          if (boreRimGeo) disposables.push(boreRimGeo);
         };
         createTankAssemblyStage47();
 
@@ -11617,15 +11628,17 @@ function* createTankOwnedSteps(
         // sits 0.5 mm ahead of its real backstop, avoiding coplanar flicker.
         if (physicalBore) discForwardM = -physicalBore.depthM + .0005;
         const lipFrontM = lipAdvanceM + lipRimR;
-        const boreRimGeo = new THREE.TorusGeometry(
-          muzzleOuterR - lipRimR, lipRimR, 5, boreSegments);
-        disposables.push(boreRimGeo);
-        // Open-ended: the annulus closes its front, the tube end its rear, so
-        // it never caps the dark disc behind it.
-        const throatLengthM = lipAdvanceM - lipRimR;
-        const boreThroatGeo = throatLengthM > 0.004
-          ? new THREE.CylinderGeometry(muzzleOuterR * 0.985, muzzleOuterR * 0.985,
-            lipAdvanceM, boreSegments, 1, true).rotateX(Math.PI / 2)
+        // The flat ring replaced the former torus (owner 2026-09-22); lipRimR now
+        // only names the lip-front offset the r2 seats were published with, so
+        // every seat keeps its receipt values. The dark ring is the annular face
+        // too, so the annulus plane is the lip front (terminal-surface-fit-r3).
+        if (!physicalBore) annulusForwardM = lipFrontM;
+        // Open-ended sleeve from the authored tube end to the ring whenever the
+        // tube stops short of the marker; a flush tube's 0.9 mm proud ring needs
+        // none. It never caps the dark disc behind it.
+        const boreThroatGeo = !physicalBore && lipFrontM > 0.003
+          ? new THREE.CylinderGeometry(muzzleOuterR, muzzleOuterR,
+            lipFrontM, boreSegments, 1, true).rotateX(Math.PI / 2)
           : null;
         if (boreThroatGeo) disposables.push(boreThroatGeo);
         const fallbackBore = new THREE.Group();
@@ -11635,6 +11648,9 @@ function* createTankOwnedSteps(
         createTankAssemblyStage48();
         const createTankReceiptStage14 = (): void => {
           fallbackBore.userData.cannonBore = true;
+          // A verified physical recess is its own rim: the census counts this
+          // mouth as a physical bore instead of demanding a fallback Rim mesh.
+          fallbackBore.userData.physicalMouth = !!physicalBore;
         };
         createTankReceiptStage14();
         const createTankReceiptStage15 = (): void => {
@@ -11651,7 +11667,7 @@ function* createTankOwnedSteps(
         createTankReceiptStage16();
         const createTankReceiptStage17 = (): void => {
           fallbackBore.userData.muzzleSeatReceipt = Object.freeze({
-            revision: physicalBore ? 'physical-recess-r1' : 'terminal-surface-fit-r2',
+            revision: physicalBore ? 'physical-recess-r1' : 'terminal-surface-fit-r3',
             ...(physicalBore && physicalBoreEvidence ? {
               physicalBoreDepthM: physicalBore.depthM,
               measuredMinimumDepthM: physicalBoreEvidence.minimumDepthM,
@@ -11683,55 +11699,26 @@ function* createTankOwnedSteps(
         };
         createTankAssemblyStage50();
 
-        const boreRim = new THREE.Mesh(boreRimGeo, physicalBore ? mats.barrel : mats.dark);
-        const createTankAssemblyStage51 = (): void => {
+        const boreRim = boreRimGeo ? new THREE.Mesh(boreRimGeo, mats.dark) : null;
+        if (boreRim) {
           boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
-        };
-        createTankAssemblyStage51();
-        const createTankReceiptStage18 = (): void => {
           boreRim.userData.cannonBoreFallbackPart = true;
-        };
-        createTankReceiptStage18();
-        const createTankReceiptStage19 = (): void => {
           boreRim.userData.cannonBorePrimaryPart = true;
-        };
-        createTankReceiptStage19();
-        const createTankAssemblyStage52 = (): void => {
+          // The flat ring is the lip front and the annular face in one plane.
+          boreRim.position.z = annulusForwardM - lipAdvanceM;
           boreRim.visible = true;
-        };
-        createTankAssemblyStage52();
+        }
         if (boreThroatGeo) {
-          // Dark sleeve from the authored tube end to the lip: the completed
+          // Dark sleeve from the authored tube end to the ring: the completed
           // muzzle reads as one tube instead of a floating ring.
           const boreThroat = new THREE.Mesh(boreThroatGeo, mats.dark);
           boreThroat.name = `muzzleBoreShadowFallbackThroat${suffix}`;
           boreThroat.userData.cannonBoreFallbackPart = true;
-          boreThroat.position.z = lipAdvanceM / 2 - lipAdvanceM;
+          boreThroat.position.z = (lipRimR - lipAdvanceM) / 2;
           boreThroat.castShadow = false;
           boreThroat.receiveShadow = true;
           fallbackBore.add(boreThroat);
         }
-        const boreAnnulus = new THREE.Mesh(boreAnnulusGeo, physicalBore ? mats.barrel : mats.dark);
-        const createTankAssemblyStage53 = (): void => {
-          boreAnnulus.name = `muzzleBoreShadowFallbackAnnulus${suffix}`;
-        };
-        createTankAssemblyStage53();
-        const createTankReceiptStage20 = (): void => {
-          boreAnnulus.userData.cannonBoreFallbackPart = true;
-        };
-        createTankReceiptStage20();
-        const createTankReceiptStage21 = (): void => {
-          boreAnnulus.userData.cannonBorePrimaryPart = true;
-        };
-        createTankReceiptStage21();
-        const createTankAssemblyStage54 = (): void => {
-          boreAnnulus.position.z = annulusForwardM - lipAdvanceM;
-        };
-        createTankAssemblyStage54();
-        const createTankAssemblyStage55 = (): void => {
-          boreAnnulus.visible = true;
-        };
-        createTankAssemblyStage55();
         const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
         const createTankAssemblyStage56 = (): void => {
           boreDisc.name = `muzzleBoreShadowFallbackDisc${suffix}`;
@@ -11757,7 +11744,8 @@ function* createTankOwnedSteps(
         };
         createTankAssemblyStage58();
         const createTankAssemblyStage59 = (): void => {
-          for (const part of [boreRim, boreAnnulus, boreDisc]) {
+          for (const part of [boreRim, boreDisc]) {
+            if (!part) continue;
             part.castShadow = false;
             part.receiveShadow = true;
             fallbackBore.add(part);

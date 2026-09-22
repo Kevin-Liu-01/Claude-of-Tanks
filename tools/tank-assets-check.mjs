@@ -216,8 +216,11 @@ try {
     }
     const bore = live.muzzleBore || {};
     const expectedBores = expectedMuzzleBoreCount(getSpec(id));
+    // A verified physical recess is its own rim (2026-09-22, owner: holes are added, not carved,
+    // to save triangles): the census reports it as physicalRims instead of a fallback Rim mesh.
+    const visibleRims = (bore.rims || 0) + (bore.physicalRims || 0);
     if (!skipBore && (bore.tagged !== expectedBores
-        || bore.rims !== expectedBores || bore.discs !== expectedBores)) {
+        || visibleRims !== expectedBores || bore.discs !== expectedBores)) {
       failures.push(`${id}: cannon bore must have ${expectedBores} visible tagged rim/disc pair(s) (${JSON.stringify(bore)})`);
     }
 

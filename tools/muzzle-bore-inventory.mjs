@@ -19,10 +19,11 @@
 //                 none (sealed launch canisters);
 //  * seat policy  tools/muzzle-seat-policy.mjs muzzleSeatAxialFit on every muzzleSeatReceipt, with the same
 //                 assembled disc-depth witness the browser probe adds;
-//  * formulas     for a mouth of N segments: hole as built = rim 10N + annulus 2N + disc N (+ throat 2N when
-//                 the authored tube stops short); minimal hole = annulus 2N + disc N = 3N; carved recess =
-//                 wall 2N + floor N = 3N, plus the annulus ring 2N that an open tube end needs = 5N, which is a
-//                 net 4N over the capped tube it replaces (the cap it removes is N).
+//  * formulas     for a mouth of N segments: hole as built (since 2026-09-22) = flat ring 2N + disc N (+ throat
+//                 sleeve 2N when the authored tube stops short) = 3N–5N; a verified physical recess keeps only
+//                 the disc (N). Before 2026-09-22 the hole was rim torus 10N + annulus 2N + disc N = 13N–15N.
+//                 carved recess = wall 2N + floor N = 3N, plus the annulus ring 2N that an open tube end needs
+//                 = 5N, which is a net 4N over the capped tube it replaces (the cap it removes is N).
 // --gate exits 1 when any selected hull pays twice (a carved or authored recess AND the fallback assembly)
 // without a physical contract. Node-only: no vite, no puppeteer.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -256,7 +257,7 @@ export function inventoryOne(id, quality) {
     row.nBore = fallback.annulus ? fallback.annulus / 2 / Math.max(1, expectedBores) : (fallback.disc / Math.max(1, expectedBores)) || null;
     const nB = row.nBore || 0, nT = row.nTube || nB, mouths = Math.max(1, expectedBores);
     row.formulas = {
-      note: 'per mouth: hole as built = rim 10N + annulus 2N + disc N (+ throat 2N); minimal hole = 3N; carved = wall 2N + floor N = 3N, +2N annulus for an open end = 5N (net 4N over the removed cap N)',
+      note: 'per mouth: hole as built (2026-09-22) = flat ring 2N + disc N (+ throat 2N when the tube stops short); physical recess keeps the disc only (N); before 2026-09-22 it was rim 10N + annulus 2N + disc N; carved = wall 2N + floor N = 3N, +2N annulus for an open end = 5N (net 4N over the removed cap N)',
       holeAsBuilt: fallback.total,
       holeMinimal: 3 * nB * mouths,
       carved3N_atBore: 3 * nB * mouths,

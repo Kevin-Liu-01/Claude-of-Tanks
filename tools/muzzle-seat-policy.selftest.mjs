@@ -4,6 +4,13 @@ const legacy = {revision:'terminal-surface-fit-r2',lipAdvanceM:-.009,lipFrontM:.
   markerGapM:0,annulusForwardM:.0006,discForwardM:.0003};
 assert.ok(muzzleSeatAxialFit(legacy));
 assert.ok(!muzzleSeatAxialFit({...legacy,discForwardM:-.2}), 'legacy declarations cannot claim an unverified recess');
+// 2026-09-22 (owner: holes are added, not carved, to save triangles): the flat ring is lip and annular
+// face in one plane, so the r3 annulus plane equals the lip front; the seat law is unchanged.
+const flatRing = {...legacy,revision:'terminal-surface-fit-r3',annulusForwardM:.0009};
+assert.ok(muzzleSeatAxialFit(flatRing), 'r3 flat-ring seats pass with the annulus at the lip front');
+assert.ok(!muzzleSeatAxialFit({...flatRing,annulusForwardM:.002}), 'r3 annulus cannot stand ahead of the lip front');
+assert.ok(!muzzleSeatAxialFit({...flatRing,discForwardM:.0001}), 'r3 keeps the disc-depth floor');
+assert.ok(!muzzleSeatAxialFit({...flatRing,revision:'terminal-surface-fit-r4'}), 'unknown revisions never pass');
 const physical = {...legacy,revision:'physical-recess-r1',supportSource:'authored-physical-bore',
   physicalBoreDepthM:.2,measuredMinimumDepthM:.2,measuredMaximumRimOffsetM:0,
   discForwardM:-.1995,physicalDiscDepthM:.1995};

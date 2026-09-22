@@ -5,7 +5,11 @@ export function muzzleSeatAxialFit(receipt) {
     || receipt.lipFrontM <= 0 || receipt.lipFrontM > receipt.markerGapM + .001
     || receipt.annulusForwardM <= receipt.discForwardM
     || receipt.annulusForwardM > receipt.lipFrontM) return false;
-  if (receipt.revision === 'terminal-surface-fit-r2') return receipt.discForwardM >= .0002;
+  // r3 (owner 2026-09-22, "make sure were saving the triangles"): the flat dark ring is the lip and the
+  // annular face in one plane, so annulusForwardM equals lipFrontM; the seat law is otherwise the r2 law.
+  if (receipt.revision === 'terminal-surface-fit-r2' || receipt.revision === 'terminal-surface-fit-r3') {
+    return receipt.discForwardM >= .0002;
+  }
   if (receipt.revision !== 'physical-recess-r1' || receipt.supportSource !== 'authored-physical-bore') return false;
   const depth = receipt.physicalBoreDepthM;
   return [depth, receipt.measuredMinimumDepthM, receipt.measuredMaximumRimOffsetM,

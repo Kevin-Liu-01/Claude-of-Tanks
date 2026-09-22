@@ -24,12 +24,12 @@
   ],
   "successor": {
     "high": {
-      "count": 293076,
-      "sha256": "1187e089862c23fd8729cc34e2cee7b5e19615a0e31a603dbdd6b7fb053890ab"
+      "count": 292536,
+      "sha256": "accada377a183566aa3326bec7f93dffb82a151c2dfb940aaf2472dc8fc3382c"
     },
     "low": {
-      "count": 249396,
-      "sha256": "34e9ed3790664351daae754211783c372989ec8ba19b0e2fa5d713b5c0695c55"
+      "count": 248856,
+      "sha256": "c52878f6b63829df70eeb15e43c8b411f854ce9e91858064dbd625d665d3e9ae"
     }
   },
   "successorHistory": [
@@ -235,16 +235,16 @@
   "laterMuzzleBoreCap": {
     "branch": "r38-bores",
     "capturedAt": "2026-09-22",
-    "scope": "Owner 2026-09-22: \"the point of adding holes instead of carving them into the barrel is that we save on triangles\". chieftain10XGun.ts closes the open loft with one 48-segment CircleGeometry cap at the source mouth instead of the carved 32 cm recess (inner wall, ring, capped floor cylinder) that sat behind the factory fallback disc with no physical-bore contract. Only the gun bucket changed: the recess draw vertices left, the cap vertices arrived (drawVertexDelta); the fallback assembly seat and every other draw vertex are re-derived by the receipt and must match exactly.",
-    "drawVertexDelta": -1008,
+    "scope": "Owner 2026-09-22: \"the point of adding holes instead of carving them into the barrel is that we save on triangles\". (1) chieftain10XGun.ts closes the open loft with one 48-segment CircleGeometry cap at the source mouth instead of the carved 32 cm recess (inner wall, ring, capped floor cylinder) that sat behind the factory fallback disc with no physical-bore contract. (2) The fleet fallback hole became the minimal construction: a flat dark ring (lip and annular face in one 2N mesh) plus the shadow disc, with a throat sleeve only when the tube stops short, instead of the 10N torus lip plus a separate annulus (tankFactoryCore, terminal-surface-fit-r3). Only the gun bucket and the muzzleBoreShadowFallback meshes changed (drawVertexDelta is cumulative from the ground-datum successor); every other draw vertex is re-derived by the receipt and must match exactly.",
+    "drawVertexDelta": -1548,
     "nonTrack": {
       "high": {
-        "count": 171924,
-        "sha256": "19cbd213b31c59f541652f268e308a7239f2adcfc7272865742d1948c405f2b4"
+        "count": 171384,
+        "sha256": "e5b589c48da92d5ff20ec066d952ef40019d1edc6c40f4016841ec8ad8a23cef"
       },
       "low": {
-        "count": 128244,
-        "sha256": "4630d0ea43500646194e8972786d446a4df5c69d3f1c4c57d1b8f6ef97c3e39e"
+        "count": 127704,
+        "sha256": "bba71c4b7245f260fb66c36c9414c297e5ece2c72084596f6aa0a8e8b8231e44"
       }
     },
     "supersededSuccessor": {

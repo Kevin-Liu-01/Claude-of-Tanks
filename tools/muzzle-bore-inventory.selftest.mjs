@@ -17,8 +17,13 @@ for (const id of CONVERTED) {
     assert.equal(row.recess.carvedTris, 0, `${id} ${quality}: no recess remains in the barrel buckets (${row.recess.nonSkinTris} furniture triangles)`);
     assert.ok(row.recess.deepestM <= 0.034, `${id} ${quality}: the barrel face sits at the mouth, not down a carved throat (${row.recess.deepestM})`);
     assert.ok(row.seatPass, `${id} ${quality}: muzzle-seat policy holds on the flat cap`);
-    assert.equal(row.fallback.total, 13 * row.nBore * row.expectedBores,
-      `${id} ${quality}: the hole as built is rim 10N + annulus 2N + disc N (${JSON.stringify(row.fallback)})`);
+    // 2026-09-22 (owner: "make sure were saving the triangles"): the added hole is a flat ring 2N + the
+    // disc N, plus a 2N throat sleeve only when the authored tube stops short of the marker — never the
+    // former 13N torus assembly.
+    const sleeveN = row.fallback.throat ? 2 : 0;
+    assert.equal(row.fallback.total, (3 + sleeveN) * row.nBore * row.expectedBores,
+      `${id} ${quality}: the hole as built is ring 2N + disc N (+ throat 2N) (${JSON.stringify(row.fallback)})`);
+    assert.ok(row.fallback.total <= 5 * row.nBore * row.expectedBores, `${id} ${quality}: at most 5N per mouth`);
   }
 }
 
@@ -28,6 +33,10 @@ const physical = inventoryOne('kf41_lynx_x', 'high');
 assert.equal(physical.method, 'physical-declared');
 assert.ok(physical.recess.carvedTris > 0 && physical.recess.deepestM > 0.1, 'kf41 keeps its source-measured 11 cm recess');
 assert.ok(physical.seatPass, 'physical-recess-r1 receipts pass the seat policy under node');
+// 2026-09-22: a verified physical recess is its own rim and annulus; the factory adds only the shadow disc.
+assert.equal(physical.fallback.rim + physical.fallback.throat, 0, 'no barrel-paint fallback rim or throat duplicates the physical mouth');
+assert.equal(physical.fallback.total, physical.fallback.disc, 'the physical mouth carries the shadow disc alone');
+assert.ok(physical.fallback.disc > 0, 'the shadow disc keeps the near-black floor read');
 
 // Plain capped tubes read fallback-only; sealed launch canisters have no cannon bore at all.
 assert.equal(inventoryOne('m1a2', 'high').method, 'fallback-only');
