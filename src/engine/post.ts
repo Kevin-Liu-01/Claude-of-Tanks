@@ -855,6 +855,10 @@ const AerialShader = {
     // (sky-sampled) x the warm/cool tints above.
     uHazeWarm: { value: new THREE.Color(0.62, 0.64, 0.62) },
     uHazeCool: { value: new THREE.Color(0.47, 0.59, 0.81) },
+    // round 37 (AAA program check 5): the sky's luminance ~16° above the anti-solar horizon over the horizon
+    // band's (sky.ts sampleHorizonElevationFalloff, published on scene.userData.skyElevationFalloff) — the
+    // scatter-in target follows the view ray's elevation so a far ridge converges toward the sky BEHIND it
+    uHazeElevFloor: { value: 1 },
     uSunDir: { value: new THREE.Vector3(0, 1, 0) }, // world, toward the sun
     // camera world basis + frustum half-tangents for per-pixel view rays
     uCamRight: { value: new THREE.Vector3(1, 0, 0) },
@@ -888,6 +892,7 @@ const AerialShader = {
     uniform float uHazeFull;
     uniform vec3 uHazeWarm;
     uniform vec3 uHazeCool;
+    uniform float uHazeElevFloor;
     uniform vec3 uSunDir;
     uniform vec3 uCamRight;
     uniform vec3 uCamUp;
@@ -963,6 +968,13 @@ const AerialShader = {
           + uCamUp * ( vUv.y * 2.0 - 1.0 ) * uTan.y );
         float sunAmt = pow( max( dot( ray, uSunDir ), 0.0 ), ${AERIAL_SUN_POW.toFixed(1)} );
         vec3 hazeCol = mix( uHazeCool, uHazeWarm, sunAmt );
+        // round 37 (AAA program check 5, "a mountain is never paler than the sky behind it"): the targets above
+        // are the HORIZON haze; a ridge 8–20° up sits against a sky that is darker by the map's sampled elevation
+        // falloff (desert: 40 vs 140 display luma at +4°), so the target dims along the ray's elevation — full
+        // falloff by 0.28 (~16°, the sampled row) — and a far range can no longer converge paler than the sky
+        // above it. Toward the sun the Mie glow keeps the sky bright, so the warm lobe takes half the falloff.
+        float elevAtt = mix( 1.0, uHazeElevFloor, smoothstep( 0.0, 0.28, ray.y ) );
+        hazeCol *= mix( elevAtt, 1.0, sunAmt * 0.5 );
         float rayT = -viewZ / max( dot( ray, uCamFwd ), 0.05 );
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in
@@ -2457,6 +2469,8 @@ export function createPost(
     );
     capLuminance(aerial.uniforms.uHazeWarm.value, AERIAL_HAZE_LUM_CAP);
     capLuminance(aerial.uniforms.uHazeCool.value, AERIAL_HAZE_LUM_CAP);
+    const falloff = scene.userData.skyElevationFalloff;
+    aerial.uniforms.uHazeElevFloor.value = typeof falloff === 'number' && falloff > 0 && falloff <= 1 ? falloff : 1;
   }
 
   function updateAerialCameraBasis(): void {

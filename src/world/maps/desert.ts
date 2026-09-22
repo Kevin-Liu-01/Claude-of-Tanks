@@ -311,7 +311,11 @@ export default {
 
   sky: {
     sunElevationDeg: 44, sunAzimuthDeg: 115,
-    turbidity: 7, rayleigh: 0.55, mieCoefficient: 0.009, mieDirectionalG: 0.8,
+    // round 37 (AAA program check 5, 2026-09-22): rayleigh 0.55 → 0.85 — at 0.55 the anti-solar sky was an inky
+    // saturated blue right down to the ridges (40 display luma at +4° against a horizon band near 140), so the pale
+    // ranges read 2.3× brighter than the sky behind them; more Rayleigh lifts the low sky toward the dusty pale blue a
+    // real desert horizon carries (Oasis inherits this sky), the zenith stays deep
+    turbidity: 7, rayleigh: 0.85, mieCoefficient: 0.009, mieDirectionalG: 0.8,
     // 0.00105 washed the mesa tablelands to unshaded clay by 900 m — 0.00086
     // keeps the heat haze but lets the strata banding read on the skyline
     // r1 (content_breadth): 0.00086 -> 0.00066 — even at 0.00086 everything

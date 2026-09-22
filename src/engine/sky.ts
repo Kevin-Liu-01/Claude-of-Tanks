@@ -689,6 +689,8 @@ interface HorizonColorCache {
   context: WebGLRenderingContext | WebGL2RenderingContext;
   rendererInfo: THREE.WebGLRenderer['info'];
   colors: Map<string, THREE.Color>;
+  /** Round 37: luminance of the sky ~16° above the anti-solar horizon over the horizon row's, from the same probe. */
+  elevationFalloff: Map<string, number>;
 }
 
 // Keep only CPU colors, never off-tree GPU probes requiring another lifetime
@@ -707,7 +709,7 @@ function horizonColorCache(renderer: THREE.WebGLRenderer): HorizonColorCache | n
   // Three replaces renderer.info while reinitializing a restored context,
   // including when the browser retains the same native context object.
   if (!cache || cache.context !== context || cache.rendererInfo !== renderer.info) {
-    cache = { context, rendererInfo: renderer.info, colors: new Map() };
+    cache = { context, rendererInfo: renderer.info, colors: new Map(), elevationFalloff: new Map() };
     horizonColorCaches.set(renderer, cache);
   }
   return cache;
@@ -768,15 +770,34 @@ function disposeEnvironmentSky(sky: Sky): void {
 
 function retainHorizonColor(
   renderer: THREE.WebGLRenderer, cache: HorizonColorCache | null,
-  key: string | null, color: THREE.Color,
+  key: string | null, color: THREE.Color, elevationFalloff: number,
 ): void {
   if (!cache || key === null || cache.context.isContextLost()
     || renderer.getContext() !== cache.context || renderer.info !== cache.rendererInfo) return;
   cache.colors.set(key, color.clone());
+  cache.elevationFalloff.set(key, elevationFalloff);
   if (cache.colors.size > HORIZON_COLOR_CACHE_LIMIT) {
     const oldest = cache.colors.keys().next();
-    if (!oldest.done) cache.colors.delete(oldest.value);
+    if (!oldest.done) { cache.colors.delete(oldest.value); cache.elevationFalloff.delete(oldest.value); }
   }
+}
+
+// Round 37 (AAA program check 5, "a mountain is never paler than the sky behind it"): the aerial pass used to pull
+// every far pixel toward the HORIZON sample, but a ridge standing 8–20° above the horizon sits against a sky that is
+// already much darker than the haze band (desert: 40 vs 140 display luma at +4°). The probe's 16 rows span ±20° at
+// 2.5° a row, so row 14 (about +16°) over row 8 (the horizon) is the sky's own elevation falloff for the map — the
+// post pass scales its scatter-in target by it along the ray's elevation. Uniform or failed reads yield 1 (no change).
+const HORIZON_ELEVATION_ROW = 14;
+const HORIZON_ELEVATION_FALLOFF_FLOOR = 0.05;
+/** Round 37: the retained sky-luminance ratio (~+16° over the horizon) for a sampled atmosphere, 1 when unknown. */
+export function sampleHorizonElevationFalloff(
+  renderer: THREE.WebGLRenderer,
+  sunDir: THREE.Vector3,
+  preset: Readonly<SkyPreset> = DEFAULT_PRESET,
+): number {
+  sampleHorizonColor(renderer, sunDir, preset);
+  const key = horizonColorKey(renderer, sunDir, preset);
+  return (key === null ? undefined : horizonColorCaches.get(renderer)?.elevationFalloff.get(key)) ?? 1;
 }
 
 /**
@@ -821,27 +842,34 @@ export function sampleHorizonColor(
   const prevTarget = renderer.getRenderTarget();
   const prevFace = renderer.getActiveCubeFace();
   const prevMip = renderer.getActiveMipmapLevel();
-  const row = new Uint8Array(HORIZON_RT_SIZE * 4);
+  // round 37: rows 8..15 in one readback — row 8 is the horizon (the original average), row 14 the +16° sky
+  const block = new Uint8Array(HORIZON_RT_SIZE * 4 * (HORIZON_RT_SIZE >> 1));
   let targetRestored = false;
   let r = 0;
   let g = 0;
   let b = 0;
+  let elevationLum = 0;
   try {
     renderer.setRenderTarget(rt);
     renderer.render(sampleScene, cam);
     renderer.setRenderTarget(prevTarget, prevFace, prevMip);
     targetRestored = true;
-    renderer.readRenderTargetPixels(rt, 0, HORIZON_RT_SIZE >> 1, HORIZON_RT_SIZE, 1, row);
+    renderer.readRenderTargetPixels(rt, 0, HORIZON_RT_SIZE >> 1, HORIZON_RT_SIZE, HORIZON_RT_SIZE >> 1, block);
 
     for (let i = 0; i < HORIZON_RT_SIZE; i++) {
-      r += row[i * 4];
-      g += row[i * 4 + 1];
-      b += row[i * 4 + 2];
+      r += block[i * 4];
+      g += block[i * 4 + 1];
+      b += block[i * 4 + 2];
     }
     const inv = 1 / (HORIZON_RT_SIZE * 255);
     r *= inv;
     g *= inv;
     b *= inv;
+    const elevationRow = (HORIZON_ELEVATION_ROW - (HORIZON_RT_SIZE >> 1)) * HORIZON_RT_SIZE * 4;
+    for (let i = 0; i < HORIZON_RT_SIZE; i++) {
+      const o = elevationRow + i * 4;
+      elevationLum += (0.2126 * block[o] + 0.7152 * block[o + 1] + 0.0722 * block[o + 2]) * inv;
+    }
   } finally {
     try {
       if (!targetRestored) renderer.setRenderTarget(prevTarget, prevFace, prevMip);
@@ -862,7 +890,12 @@ export function sampleHorizonColor(
   // white-out (the desert/winter far-field wash). Hue is preserved.
   const color = capColorLuminance(
     new THREE.Color().setRGB(r, g, b, THREE.LinearSRGBColorSpace), HORIZON_LUM_CAP);
-  retainHorizonColor(renderer, cache, key, color);
+  // the falloff compares the two rows' sRGB-encoded luminance sums (the same 8-bit readback as the colour); its ratio
+  // is what the post pass needs, and it is clamped so a black upper row can never zero the scatter-in
+  const horizonLum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const elevationFalloff = horizonLum > 0.002
+    ? Math.min(1, Math.max(HORIZON_ELEVATION_FALLOFF_FLOOR, elevationLum / horizonLum)) : 1;
+  retainHorizonColor(renderer, cache, key, color, elevationFalloff);
   return color;
 }
 
@@ -1351,6 +1384,9 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // extinction share — post.ts's aerial pass carries the scatter-in hue
       // (see FOG_EXTINCTION_SHARE).
       targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * FOG_EXTINCTION_SHARE);
+      // round 37: the post aerial pass scales its scatter-in target by the sky's elevation falloff (see
+      // sampleHorizonElevationFalloff); a cached atmosphere costs no render here
+      targetScene.userData.skyElevationFalloff = sampleHorizonElevationFalloff(renderer, sunDir, preset);
     },
 
     /** Re-target visible atmosphere state without synchronously rebuilding PMREM. */

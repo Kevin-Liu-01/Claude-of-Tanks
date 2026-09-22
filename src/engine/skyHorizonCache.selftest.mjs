@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { sampleHorizonColor } from './sky.ts';
+import { sampleHorizonColor, sampleHorizonElevationFalloff } from './sky.ts';
 
 const sun = new THREE.Vector3(0.6, 0.5, 0.4).normalize();
 const preset = {
@@ -16,7 +16,7 @@ function fixture() {
   const counts = { render: 0, read: 0, targetDisposals: 0, geometryDisposals: 0, materialDisposals: 0 };
   const targets = new WeakSet();
   const resources = new WeakSet();
-  let failure = '', black = false, bright = false;
+  let failure = '', black = false, bright = false, graded = false;
   const renderer = {
     info: {}, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1,
     outputColorSpace: THREE.SRGBColorSpace, xr: { isPresenting: false },
@@ -52,11 +52,18 @@ function fixture() {
     },
     readRenderTargetPixels(target, x, y, width, height, row) {
       counts.read++;
-      assert.deepEqual([x, y, width, height, row.length], [0, 8, 16, 1, 64]);
+      // round 37 (2026-09-22): one readback of the upper half (rows 8..15) — row 8 is the original horizon average,
+      // row 14 the +16° sky whose luminance over the horizon's is the elevation falloff the aerial pass consumes
+      assert.deepEqual([x, y, width, height, row.length], [0, 8, 16, 8, 512]);
       assert.deepEqual(bound, original, 'readback restores the exact previous target/face/mip first');
       if (failure === 'read') throw new Error('read failed');
       const rgb = black || lost ? [0, 0, 0] : bright ? [255, 255, 255] : [60, 80, 100];
-      for (let index = 0; index < row.length; index += 4) row.set([...rgb, 255], index);
+      for (let index = 0; index < row.length; index += 4) {
+        const rowIndex = Math.floor(index / 4 / 16);
+        // the upper rows darken to a quarter when the fixture asks for a graded sky (row 14 → 0.25 of the horizon)
+        const scale = graded && rowIndex >= 6 ? 0.25 : 1;
+        row.set([rgb[0] * scale, rgb[1] * scale, rgb[2] * scale, 255], index);
+      }
     },
   };
   return {
@@ -64,6 +71,8 @@ function fixture() {
     setLost(value) { lost = value; },
     replaceContext() { context = { isContextLost: () => lost }; },
     setFailure(value) { failure = value; }, setBlack(value) { black = value; }, setBright(value) { bright = value; },
+    setGraded(value) { graded = value; },
+    falloff(nextPreset = preset, nextSun = sun) { return sampleHorizonElevationFalloff(renderer, nextSun, nextPreset); },
     sample(nextPreset = preset, nextSun = sun) { return sampleHorizonColor(renderer, nextSun, nextPreset); },
     assertRestored() { assert.deepEqual(bound, original); },
   };
@@ -163,6 +172,18 @@ for (const failure of ['render', 'read', 'restore']) {
   f.sample(); assert.equal(f.counts.render, 2, 'failed probes remain retryable');
   f.sample(); assert.equal(f.counts.render, 2);
 }
+
+// round 37: the elevation falloff rides the same probe and cache — a uniform sky reads 1, a graded sky the row ratio,
+// and asking for it after the colour costs no second render
+const flat = fixture(); flat.sample();
+assert.equal(flat.falloff(), 1, 'a uniform probe has no elevation falloff');
+assert.equal(flat.counts.render, 1, 'the falloff comes from the retained sample');
+const gradedSky = fixture(); gradedSky.setGraded(true);
+assert.ok(Math.abs(gradedSky.falloff() - 0.25) < 1e-9, 'row 14 over row 8 luminance is the falloff');
+assert.deepEqual(gradedSky.sample().toArray(), [60 / 255, 80 / 255, 100 / 255], 'the horizon average still reads only row 8');
+assert.equal(gradedSky.counts.render, 1);
+const blackFalloff = fixture(); blackFalloff.setBlack(true);
+assert.equal(blackFalloff.falloff(), 1, 'a black (failed) probe reports no falloff');
 
 const xr = fixture(); xr.renderer.xr.isPresenting = true; xr.sample(); xr.sample();
 assert.equal(xr.counts.render, 2, 'XR camera overrides cannot enter the fixed-camera sample cache');

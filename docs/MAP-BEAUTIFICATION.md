@@ -344,6 +344,47 @@ captures on verdant, steppe, frontier, copper_mesa, alpine and desert (dunes run
 ring forest re-stands on the continued ground). Still open from the audit's check 13: only Coastal declares a sea
 aperture, so the fjord's water meets a ring shore and the other wet maps' water is inland by design.
 
+### Skyline and aerial perspective — 2026-09-22 (round 37)
+
+Check 5 of the program ("terrain slightly darker than the sky behind it") failed on the arid maps in the 31-map audit:
+median ground/sky luminance across the detected skyline (a `.qa-dev` skyline metric over the wall-probe captures) read
+oasis 2.43, desert 2.28, Redrock 1.59, Copper Mesa 1.31, Alpine 1.40 against 0.7–0.9 on the temperate maps. Three
+things were measured before anything landed:
+
+- **The vista's own haze was not the cause.** Cutting `vistaHaze` to a 40 % share changed the metric by under 0.02.
+- **A sky-relative luminance ceiling in the ring materials is the wrong layer.** Capping the vista and the terrain
+  rim bands to 0.9 × the horizon-sky luminance (a `fogColor` read under `USE_FOG`; a live probe confirmed the code
+  compiled and the fog was on) moved Copper Mesa's far band by 7 display luma and the desert's by 3, because the far
+  pixel's brightness is decided afterwards by the post aerial pass. The experiment is kept on a branch, not landed.
+- **The aerial pass converged every far pixel toward the HORIZON haze.** Its scatter-in target was one colour per
+  direction — the sky-sampled 0° horizon, warm toward the sun and cool away — and sky pixels are skipped, so a ridge
+  standing 8–20° up settled at the horizon band's brightness against a sky the model already darkens steeply
+  (desert: 40 display luma at +4° against a horizon band near 140; the sampled +16° / 0° luminance ratio is 0.22).
+
+What landed: `engine/sky.ts` reads the sky probe's upper half in one readback (row 8 stays the horizon average the
+fog colour comes from, row 14 is the sky about 16° up) and retains the two rows' luminance ratio beside the horizon
+colour in the same bounded cache (`sampleHorizonElevationFalloff`, no second render); `applyFog` publishes it and
+`engine/post.ts` scales the scatter-in target along the view ray's elevation (full falloff by 0.28 ≈ 16°; the warm
+lobe toward the sun takes half of it). The desert sky preset's Rayleigh rises 0.55 → 0.85 (Oasis inherits): at 0.55
+the anti-solar sky was inky right down to the ridges, which no far-land treatment can honestly satisfy — a sunlit
+pale range is brighter than a deep-blue sky in reality too — while the real reference carries a pale dusty horizon.
+
+Measured (same cameras, seed and tier; skyline metric, lower is better; sky luma at +4° above the skyline):
+
+| Map | Before | After | Note |
+|---|---|---|---|
+| desert (anti-solar) | 2.28, sky 37 | 1.39, sky 72 | Rayleigh + elevation target |
+| oasis (anti-solar) | 2.43, sky 26 | 1.43, sky 41 | inherits the desert sky |
+| copper_mesa (far mesas) | 1.31 | 1.36 | far band 168 → 154 luma; the walls' strata read again instead of a pink sheet |
+| badlands | 1.59 | 1.58 | ridge tops sit in thin air (height falloff) and keep their own colour |
+| alpine (centre) | 1.40 | 1.61 | far forested flanks darken under the snow crests; the crests stay bright, as snow does |
+| verdant / steppe / winter | 0.77 / 0.88 / 0.99 | 0.76 / 0.87 / 0.95 | unchanged within noise |
+
+Still open for check 5: the ridge TOPS on the arid maps remain paler than the deep sky because the height falloff of
+the aerial pass (thinner air above the camera) leaves them their own sunlit colour; whether to lower that falloff on
+the arid presets is a judgement for the next skyline pass, together with a per-map sky elevation profile sampled at
+more than one row.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -417,7 +458,7 @@ skylines):
 |---|---|---|
 | 35 (this) | Landform gate follows ring slope outside the square; far-ground rule gated to flat floors; vista walls v1 (faulted beds and laminae, shelves and seams, gullies, talus aprons, varnish and bleached shelves, moss on rolling ledges, cavity shading, slower macro fade); ring rock/scree tints from the terrain rock layer | wall-probe A/B on badlands, copper_mesa, verdant, alpine, desert, titan_gorge, caldera, skybridge, mars; 31-map skyline/border audit sheets |
 | 36 (landed: geology) | Border geography: the map's own base height past ±512 m seats the foothill rows and blends into the authored relief by distance (done); splat continuity by the same slope/height rules (the landform gate, round 35; the rest open); decor continuity (trees, boulders, tufts thinning past the edge; prop bound toward the red line) and the water plane into the ring remain open | wall-probe sheets on six maps; 31-map edge audit |
-| 37 | Aerial perspective unified: the screen-space aerial pass in `engine/post.ts` already scatters toward sun-relative warm/cool targets under a luminance cap (`AERIAL_HAZE_LUM_CAP`, aligned with the sky's `HAZE_MAX_LUM` / `HORIZON_LUM_CAP`) with sniper de-haze and a far-field detail noise — but the vista material adds its own per-fragment haze toward the day fog tint and the terrain rim bands take scene fog, so three haze models stack and far mesas come out paler than the sky. Round 37 makes them one model: height-dependent extinction, the vista and terrain rim bands hand their haze to the aerial pass, shaded faces cool while lit faces keep colour, the sky dome sampled by the same function so the horizon matches by construction | skyline sheets, night and dusk presets |
+| 37 (landed: elevation-aware target) | The post aerial pass's scatter-in target now follows the sky's sampled elevation falloff so far land converges toward the sky it is seen against (the horizon-haze target was the check-5 cause); the desert sky gains Rayleigh. Open: the arid ridge tops in thin air, a multi-row sky elevation profile, and folding the vista's own haze into the aerial pass | skyline metric before/after on eight maps (table above) |
 | 38 | Anti-tiling: hex-tiled detail albedo/normal layers, detail normals fade to flat with distance, anisotropic filtering with a measured mip-bias policy | 30–200 m tiling sheets, moiré-in-motion clips |
 | 39 | Ring cascades and occlusion: a second far cascade with a macro colour map, per-vertex horizon occlusion baked at build, sky-projected ambient driving haze colour and water reflection | skyline sheets, frame-cost pairs |
 | 40 | Decal clipmap rings around the camera for WoT-density ground decals; water continuity where round 36 left gaps | same-camera pairs |
