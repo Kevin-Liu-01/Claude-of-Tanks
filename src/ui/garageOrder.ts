@@ -46,6 +46,7 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'm1a2_sepv3_x',
     'm1a2_sepv2_x',
     'm1a2_tusk_x',
+    'abramsx',
     'm551a1_tts',
     'm3a3_bradley',
     'griffin50_x', 'griffin_viper',

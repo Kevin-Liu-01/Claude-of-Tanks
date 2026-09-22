@@ -13,6 +13,7 @@ import {
 import { vehicleEraForId } from './taxonomy.ts';
 import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
 import { ABRAMS_SOURCE_X_FRAME, ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSourceXDatums.ts';
+import { SEPV3_SIDE_ARMOR_WIDTH_M } from './abramsUpgradeDatums.ts';
 import { applyAbramsSourceXSkirtArmor } from './abramsSourceXSkirtArmor.ts';
 import { applyAbramsSourceXRackArmor } from './abramsSourceXRackArmor.ts';
 import { applyAbramsSourceXUkraineEraArmor } from './abramsSourceXUkraineEraArmor.ts';
@@ -87,9 +88,10 @@ export function createAbramsSourceXSpecs(donors: TankSpecRegistry): TankSpecRegi
     Object.assign(spec.dims, {
       hullLengthM: ABRAMS_SOURCE_X_MEASUREMENTS.structuralHullLengthM,
       overallLengthM: ABRAMS_SOURCE_X_MEASUREMENTS.overallLengthM,
-      widthM: id === 'm1a2_sepv2_x'
+      widthM: id === 'm1a2_sepv3_x' ? SEPV3_SIDE_ARMOR_WIDTH_M
+        : id === 'm1a2_sepv2_x'
         ? ABRAMS_SOURCE_X_MEASUREMENTS.curvedUrbanArmorWidthM
-        : id === 'm1a2_tusk_x' || id === 'm1a2_sepv3_x' // owner 2026-09-16: the SEPv3 wears the rectangular ARAT set
+        : id === 'm1a2_tusk_x'
           ? ABRAMS_SOURCE_X_MEASUREMENTS.rectangularUrbanArmorWidthM
         : ABRAMS_SOURCE_X_MEASUREMENTS.standardWidthM,
     });

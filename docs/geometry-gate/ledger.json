@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-09-22T08:52:17.737Z",
+ "generatedAt": "2026-09-22T20:13:21.577Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 81,
+ "passed": 80,
  "total": 182,
  "rows": [
   {
@@ -415,6 +415,16 @@
     "wholeCurves": 6.9,
     "dims": 87,
     "floaters": 100
+   }
+  },
+  {
+   "id": "abramsx",
+   "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
    }
   },
   {
@@ -1332,19 +1342,6 @@
    "components": {
     "wholeCurves": 90.2,
     "dims": 97.9,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "abramsx",
-   "geoMin": 90.4,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 90.4,
-    "stations": 93.4,
-    "turretCurves": 91,
-    "wholeCurves": 90.6,
-    "dims": 99.8,
     "floaters": 100
    }
   },

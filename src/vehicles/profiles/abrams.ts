@@ -15,6 +15,7 @@
 // tires/flaps/skirt lips, *Glass = optics, *Cloth = stowage canvas,
 // *Detail = unpainted fittings. Camo lives on hull/turret/gun/gunMount only.
 import * as THREE from 'three';
+import { M1A3_TURRET_VERTICAL_OFFSET_M } from '../abramsUpgradeDatums.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -8620,13 +8621,9 @@ function buildAbramsX(P: AbramsBuilderPort): void {
         [0.925, yA, zA], [1.205, yA, zA],
         [1.205, yB, zB], [0.925, yB, zB]);
     }
-    // The source track's loaded inner guide rail reaches |x|=1.04 while the
-    // shared casting band begins at 1.09.  Add the real inboard grouser strip
-    // over the certified ground-contact run; wheel and outer-track datums stay
-    // untouched, and the strip is fully connected to the existing band.
-    for (const side of [-1, 1]) {
-      P.add('hullRunningGearTrack', box(0.055, 0.055, 4.69), side * 1.0625, 0.0275, -0.025);
-    }
+    // The former ground-level guide strips were static duplicate track
+    // stock. The canonical animated shoes already own the complete course.
+
   };
   buildAbramsXHullStage1();
   // End-wheel face dressing only. The native running-gear builder already
@@ -8948,13 +8945,13 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       geo.dispose();
       return undefined;
     };
-    // Broad low roof carrier, measured as one 72-triangle kit component.
-    // Its 1.413 m lower edge is why the reference turret mask sits well below
-    // the shell across the center span; omitting it made every side bottom
-    // read 0.17-0.28 m too high.  Rebuilt as a clean authored frustum.
-    P.add('turret', frustum(1.189, 1.432, -0.945, 1.10, 1.34, -0.86,
-      1.413 - 1.95, 1.690 - 1.95), 0, 0, 0.39);
-    P.add('turretDark', box(1.95, 0.025, 1.85), 0, 1.677 - 1.95, 0.22 + 0.39);
+    // The owner-marked rectangular carrier is replaced by a round bearing
+    // with the same lower/upper datums and a center on the live yaw axis.
+    // A true bearing circle about the final yaw axis, not the old rectangular
+    // frustum. The authoring offset is cancelled by the assembly rebase below.
+    const bearingZ = -AX_TURRET_CONTENT_SHIFT_Z;
+    P.add('turret', cylY(1.22, 1.26, .277, 48), 0, -.3985, bearingZ);
+    P.add('turretDark', cylY(1.235, 1.235, .025, 48), 0, -.265, bearingZ);
     // Faceted corner sensor pods — pylons carry them to the shell/deck so
     // articulation poses stay connected.
     // to the deck so articulation poses stay connected. Tops clamped to 2.44.
@@ -10513,6 +10510,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXHullStage10();
+  addAbramsXUpgradeEquipment(P);
   const feedReceipt = P.turretG.userData.abramsxRwsFeedReceipt;
   const buildAbramsXReceiptStage1 = (): void => {
     if (feedReceipt) {
@@ -10654,7 +10652,7 @@ function createM1A3BuildLayout() {
     // Move the complete turret group forward as one articulated assembly.
     // The gun, autoloader bustle, cages, optics and RWS retain their authored
     // local relationships because they all remain owned by rig_turret.
-    ring: [0, 1.67, -0.15 + turretForwardShiftM],
+    ring: [0, 1.67 + M1A3_TURRET_VERTICAL_OFFSET_M, -0.15 + turretForwardShiftM],
     gun: [0, 0.28, 0.78],
     gunLen: 5.65,
     gunR: 0.115,
@@ -10696,7 +10694,7 @@ function addM1A3Hull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
       const z = -3.36 + k * 0.64;
       const frontBias = k > 8 ? (k - 8) * 0.055 : 0;
       const h = 0.80 - frontBias;
-      P.addExternalArmor('hull', box(0.17, h, 0.58), side * 1.985,
+      P.addExternalArmor('hull', box(0.23, h, 0.58), side * 2.005,
         1.10 + frontBias * 0.35, z, 0, 0, side * (k % 2 ? 0.008 : -0.008));
       P.add('hullDetail', box(0.025, h * 0.72, 0.045), side * 2.075,
         1.10 + frontBias * 0.35, z);
@@ -10751,6 +10749,9 @@ function addM1A3TurretStructure(P: AbramsBuilderPort, t: M1A3BuildLayout['t']): 
   seatAbramsTurret(P.turretG, t.ring[0], t.ring[1], t.ring[2]);
   P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
   abramsShell(P, t);
+  // Thin bearing flange: 18 mm tall, with 3 mm embedded in both the deck
+  // and the turret base. The complete assembly retains a 12 mm visible seam.
+  P.add('turret', cylY(1.24, 1.28, .018, 48), 0, -.106, 0);
 
   // Isolated, armored bustle autoloader with six blow-off roof panels.
   P.add('turret', box(2.92, 0.53, 1.46), 0, 0.37, -2.42);
@@ -10921,6 +10922,8 @@ function publishM1A3DesignReceipt(P: AbramsBuilderPort, layout: M1A3BuildLayout)
     rwsTowerStyle: 'abramsx-inspired-open-yoke',
     turretForwardShiftM,
     turretRingZ: t.ring[2],
+    turretVerticalOffsetM: M1A3_TURRET_VERTICAL_OFFSET_M,
+    enhancedCheekModules: 2,
     mantletRoofRamp,
     cheekRoofSurface: 'joined-mirrored-facet',
   });
@@ -10930,12 +10933,96 @@ function publishM1A3DesignReceipt(P: AbramsBuilderPort, layout: M1A3BuildLayout)
 
 }
 
+// Named service cases have a seated body, lid seam, hinges and latches. All
+// cosmetic pieces stay equipment-owned and merge into existing material LODs.
+function abramsServiceCase(P: AbramsBuilderPort, owner: ArmorOwner,
+  x: number, y: number, z: number, w: number, h: number, d: number): void {
+  P.addEquipment(owner, box(w, h, d), x, y, z);
+  P.addEquipment(`${owner}Detail`, box(w + .016, .018, d + .016), x, y + h / 2, z);
+  for (const side of [-1, 1]) {
+    P.addEquipment(`${owner}Dark`, box(.035, .075, .025), x + side * w * .30, y + h * .25, z + d / 2);
+    P.addEquipment(`${owner}Detail`, cylX(.020, w * .20, 8), x + side * w * .29, y + h / 2, z - d / 2);
+  }
+}
+
+function addM1A3UpgradeEquipment(P: AbramsBuilderPort): void {
+  for (const side of [-1, 1]) {
+    // Broad sloped cheek modules follow the full Abrams wedge. The inner
+    // ends stay clear of the mantlet; their rear stock overlaps the shell.
+    sideSlab(P, 'turretExternalArmor', side,
+      [.44, -.015, 2.13], [1.57, -.015, 1.23], [1.50, .08, 1.00], [.44, .08, 1.83],
+      [.44, .525, 1.80], [1.43, .72, 1.105], [1.39, .70, .91], [.44, .52, 1.57]);
+    // Lifting eyes are seated on the modules, not on an unrelated roof peak.
+    for (const [z, seatY] of [[1.05, .690], [.65, .709]]) {
+      P.addEquipment('turret', box(.10, .025, .09), side * 1.22, seatY, z);
+      P.addEquipment('turretDetail', torus(.032, .010, 10), side * 1.22, seatY + .020, z, Math.PI / 2);
+    }
+    // Side modules and load rails gain real fastening/inspection features.
+    for (let k = 0; k < M1A3_SKIRT_PANEL_COUNT; k++) {
+      const z = -3.36 + k * .64;
+      for (const dz of [-.20, .20]) {
+        P.addEquipment('hullDetail', cylX(.020, .025, 6), side * 2.13, 1.37, z + dz);
+      }
+      P.addEquipment('hull', box(.06, .055, .23), side * 2.11, 1.45, z);
+    }
+    // Low bustle service cases and strapped canvas packs sit inside the
+    // cage, below the antennas, and clear all six blow-out panels.
+    // Bridge the sloping shoulder to the side armor with a supported tray.
+    P.addEquipment('turret', box(.44, .08, .58), side * 1.54, .625, -1.52);
+    abramsServiceCase(P, 'turret', side * 1.54, .76, -1.52, .40, .20, .54);
+    P.addEquipment('turretCloth', box(.34, .20, .62), side * 1.54, .77, -2.70);
+    for (const dz of [-.20, .20]) {
+      P.addEquipment('turretDark', box(.37, .018, .035), side * 1.54, .875, -2.70 + dz);
+      P.addEquipment('turretDark', box(.018, .21, .035), side * 1.718, .775, -2.70 + dz);
+    }
+    // Armored cooling grilles on the rear quarter advertise the hybrid
+    // powerpack without obscuring the top cooling outlets.
+    abramsServiceCase(P, 'hull', side * 1.57, 1.72, -3.23, .36, .24, .62);
+    for (let k = 0; k < 5; k++) P.addEquipment('hullDark', box(.015, .022, .45),
+      side * 1.757, 1.635 + k * .039, -3.23);
+  }
+}
+
+function addAbramsXUpgradeEquipment(P: AbramsBuilderPort): void {
+  // Compact modular flank protection keeps the demonstrator's low turret
+  // and open roof station legible, with no TUSK-style block wall.
+  for (const side of [-1, 1]) {
+    // Leave the original forward designation panel exposed on both sides.
+    for (let k = 0; k < 6; k++) {
+      const z = -2.65 + k * .83;
+      P.addExternalArmor('hull', box(.055, .48, .72), side * 1.803, 1.15, z);
+      P.addEquipment('hullDetail', box(.015, .018, .61), side * 1.838, 1.16, z);
+      for (const dz of [-.28, .28]) {
+        P.addEquipment('hullDetail', cylX(.016, .016, 6), side * 1.839, 1.34, z + dz);
+      }
+    }
+    // Short side rails physically overlap the shell at its lower flank.
+    P.addEquipment('turret', box(.085, .13, 1.32), side * 1.69, -.14, -.05);
+    for (const z of [-.47, .36]) {
+      P.addEquipment('turretDetail', box(.095, .04, .055), side * 1.708, -.12, z);
+    }
+    // Service panels are on the raised rear shoulder, clear of the central
+    // feed and roof sight hoods. Their lids and latches remain readable.
+    abramsServiceCase(P, 'turret', side * 1.57, .373, -.93, .24, .14, .47);
+    P.addEquipment('turretDark', box(.026, .16, .49), side * 1.693, .373, -.93);
+    // Tie-down lugs anchor the added skirt protection to the fender crown.
+    for (const z of [-2.25, -.55, 1.1]) {
+      P.addEquipment('hull', box(.10, .045, .12), side * 1.735, deckAt(AX_HULL, z), z);
+      P.addEquipment('hullDetail', torus(.027, .009, 10), side * 1.735,
+        deckAt(AX_HULL, z) + .038, z, Math.PI / 2);
+    }
+  }
+  P.turretG.userData.abramsxBearingReceipt = { radiusTopM:1.22, radiusBottomM:1.26,
+    center:[0,0,0], segments:48, bottomY:-.537, topY:-.260 };
+}
+
 function buildM1A3(P: AbramsBuilderPort): void {
   const layout = createM1A3BuildLayout();
   addM1A3Hull(P, layout.g);
   addM1A3TurretStructure(P, layout.t);
   addM1A3RemoteWeaponTower(P);
   addM1A3AntennasAndGun(P, layout.t);
+  addM1A3UpgradeEquipment(P);
   publishM1A3DesignReceipt(P, layout);
 }
 

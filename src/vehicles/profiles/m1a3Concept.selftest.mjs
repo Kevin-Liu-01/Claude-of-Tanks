@@ -194,6 +194,8 @@ assert.deepEqual(receipt, {
   rwsTowerStyle: 'abramsx-inspired-open-yoke',
   turretForwardShiftM: 0.30,
   turretRingZ: 0.15,
+  turretVerticalOffsetM: 0.09,
+  enhancedCheekModules: 2,
   mantletRoofRamp: expectedMantletRoofRamp,
   cheekRoofSurface: 'joined-mirrored-facet',
 }, 'the visible M1A3 feature receipt remains complete');

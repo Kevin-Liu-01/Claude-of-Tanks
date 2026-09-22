@@ -1,5 +1,6 @@
 // Abrams-family concept rows. The former M1A2 remains available as
 // m1a2_legacy while AbramsX uses the first-party procedural family builder.
+import { M1A3_TURRET_VERTICAL_OFFSET_M } from './abramsUpgradeDatums.ts';
 import { TANK_SPECS, ALL_TANK_IDS } from './specs.ts';
 import {
   plate as par,
@@ -84,7 +85,7 @@ function armorM1A3(): ArmorEnvelope {
 
   return {
     boundingRadiusM: 7.65,
-    turretPivot: [0, 1.67, -0.15],
+    turretPivot: [0, 1.67 + M1A3_TURRET_VERTICAL_OFFSET_M, -0.15],
     gunPivot: [0, 0.28, 0.78],
     gunBarrel: { lengthM: 5.65, radiusM: 0.115 },
     hullPlates,
@@ -146,7 +147,7 @@ const m1a3: AbramsConceptSpec = {
       shell('XM1302 AMP', 'HE', 130, 82, 82, 760, 1050, { count: 18 }),
     ],
   },
-  dims: { hullLengthM: 8.08, overallLengthM: 10.85, widthM: 4.32, heightM: 3.46 },
+  dims: { hullLengthM: 8.08, overallLengthM: 10.85, widthM: 4.32, heightM: 3.46 + M1A3_TURRET_VERTICAL_OFFSET_M },
   armor: armorM1A3(),
   visual: {
     scheme: 'solid', base: '#464b3c', weather: '#555b49', patches: [],

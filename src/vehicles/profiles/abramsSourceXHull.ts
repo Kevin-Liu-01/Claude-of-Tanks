@@ -4,6 +4,7 @@ import { drainTankBuild, type TankProfileBuild } from '../tankBuildCooperation.t
 // This first construction checkpoint is not a source-qualified receipt.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
+import { buildSepv3HeavySkirts } from './abramsSepv3HeavySkirts.ts';
 import { closedSectionLoft, planeBoundedArmor, roundMember, type CrossSection, type XY } from './abramsSourceXGeometry.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
 import { buildAbramsSourceXRoadWheelGeometry, buildAbramsSourceXIdlerGeometry } from './abramsSourceXWheels.ts';
@@ -409,7 +410,8 @@ export function* buildAbramsSourceXHullCooperativeSteps(P: TankBuilderPort, opti
   if (cooperative) yield "buildAbramsSourceXHull:for (const side of [-1, 1]) skirtStock(P, side);";
   addAbramsSourceXShoulderClosure(P);
   if (cooperative) yield "buildAbramsSourceXHull:addAbramsSourceXShoulderClosure(P);";
-  if (options.urbanArmor) reactiveSkirts(P, options.curvedArat);
+  if (options.sepv3) buildSepv3HeavySkirts(P);
+  else if (options.urbanArmor) reactiveSkirts(P, options.curvedArat);
   if (cooperative) yield "buildAbramsSourceXHull:if (options.urbanArmor) reactiveSkirts(P, options.curvedArat);";
   if (options.curvedArat) addAbramsSourceXSkirtReturns(P);
   if (cooperative) yield "buildAbramsSourceXHull:if (options.curvedArat) addAbramsSourceXSkirtReturns(P);";
