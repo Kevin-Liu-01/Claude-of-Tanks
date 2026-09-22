@@ -145,10 +145,12 @@ for (const id of MERKAVA_IDS) {
     `${id}: no static wheel cylinders remain inside the suspension-driven road wheels`);
 }
 
+// 2026-09-22 nation wheel standard (owner: "israel uses merkava mk 4b or namer wheels"): the Mk 3D draws the Mk 4B
+// five-layer dished face through nationWheelConstructions.ts; its former four-ring pressed face is gone.
 const mk3d = visuals.get('merkava3d');
 const mk3dFaceNames = [
-  'gearRoadWheelPressedFaces', 'gearRoadWheelDishRings',
-  'gearRoadWheelDishRecesses', 'gearRoadWheelHubCaps',
+  'gearRoadWheelOuterDishes', 'gearRoadWheelDishBreaks', 'gearRoadWheelMidDishes',
+  'gearRoadWheelInnerDishes', 'gearRoadWheelHubCaps',
 ];
 for (const name of mk3dFaceNames) {
   const layer = mk3d.root.getObjectByName(name);

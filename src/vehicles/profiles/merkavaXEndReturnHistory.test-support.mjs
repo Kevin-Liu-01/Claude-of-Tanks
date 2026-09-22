@@ -138,7 +138,8 @@ function beforeModernIsraeliFleet(source,readHelper){
     'Complete reviewed Namer helper namerSourceTurret.ts');
   assert.equal(hash(readHelper('namerSourceSupport.ts')),'6e2a3f535bda6ad35496089e1fe69d2287bb1ea97c7082c5f59ed0bb4d2d39af',
     'Complete reviewed Namer helper namerSourceSupport.ts');
-  assert.equal(hash(readHelper('namerWheelStock.ts')),'9032925a30e66cfba76f0a268765f761a1651d518fc97eb27c671d8299397561',
+  // 2026-09-22 wheel audit: the Namer hub cap seated at X1.513730 (was 1.522377, 3.1 cm proud of the tire; fleet seat 2.5 cm).
+  assert.equal(hash(readHelper('namerWheelStock.ts')),'346725ec1379683d8ea1ea565fe0b59d33597e850af0b4430804809b57074023',
     'Complete reviewed Namer wheel stock');
   removeExact("import { namerWheelStock } from './namerWheelStock.ts';\n",'Namer wheel stock import');
   removeExact('    ...namerWheelStock(P),\n','Namer wheel stock call');
