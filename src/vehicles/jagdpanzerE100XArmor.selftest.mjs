@@ -47,9 +47,13 @@ function historicalDonors(rows = donorRows()) {
 const hullHash = '60571a41bc152a5aae624f029db842df453b49d8b826dc153db541aa0834f833';
 const hullCellsHash = 'e546ccd22261d60cd24fd5eae85fc268d12a432437f0becce61bc67219cf3ce7';
 const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe60d7a55f';
+// 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that we
+// save on triangles"): the fleet fallback mouth became a flat ring + disc (terminal-surface-fit-r3),
+// which moves both fingerprints; the armor and module geometry they guard is otherwise unchanged.
+// Superseded: jpz_e100_x da7ace42/ff39b2bd, jpz_e100 85585980/a39385a7.
 const geometryHashes = {
-  jpz_e100_x: { high: 'da7ace42', low: 'ff39b2bd' },
-  jpz_e100: { high: '85585980', low: 'a39385a7' },
+  jpz_e100_x: { high: 'a7efaea0', low: '91c58501' },
+  jpz_e100: { high: '9c2fc966', low: 'cdde4c10' },
 };
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({
   pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw, gunPitch,

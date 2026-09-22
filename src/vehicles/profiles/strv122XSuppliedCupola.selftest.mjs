@@ -171,9 +171,15 @@ function nonTarget(t,quality){
     rows.push([name,preservedMeshHash(m)]);
   });
   rows.sort(([a],[b])=>a.localeCompare(b));
-  const expected=quality==='high'?'fb6fcb5b8205f8dcfd56a706c7184abbd31a4dfa3ee468f997f2d3ff5f3a26ac'
-    :'f8da41a7ba6e3ad23399de87653511bb1b0717625b48a761389f69777de6ddd2';
-  assert.equal(rows.length,quality==='high'?37:36);
+  // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
+  // that we save on triangles"): the fleet fallback mouth became a flat ring + disc (the separate
+  // Annulus mesh is gone, terminal-surface-fit-r3) and the supplied gun is closed at its source tip
+  // (its gunDark bucket held only the 5.141 blind seat disc, so that merged mesh is gone too).
+  // HIGH 37 -> 35 meshes, LOW 36 -> 35 (the low fallback is one batched mesh); every other row is the
+  // same immutable non-target geometry. Superseded: high fb6fcb5b…, low f8da41a7….
+  const expected=quality==='high'?'c8086d64dfab6965e8a7d66f50c424e33d3ad62018a39805a2a35e62b8de79ab'
+    :'1e60c537407b16e4ec9317bb23da306c8d28d3b3fa3c56b2b5c2f66ede6fc80b';
+  assert.equal(rows.length,35);
   assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'),expected,
     'immutable non-target runtime geometry, world matrices, MG, antenna-independent armor and all wheels/course');
 }

@@ -293,20 +293,31 @@ const T90M_REST_REVISIONS = Object.freeze({
 // nationWheelSets.ts / nationWheelConstructions.ts) instead of its rim/hub/bolt dressing; the forward-lamp-seat rest
 // digest is repinned from the current build (beforeForwardLampSeat stays the historical value it must never equal).
   beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
+  // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback mouth is a
+  // flat ring + disc (terminal-surface-fit-r3), which moves the intact draw content once more; the
+  // forwardLampSeat row below stays as the superseded revision, never as an active claim. On the combined
+  // round-38 tree (nation wheels, then the flat-ring mouth) that superseded revision is the nation-wheel
+  // repin 004121cb…; c711ef48… was the pre-round-38 value.
+  flatRingMouth: '96751f50167f4d7c67868aa710f8582d86b1b785d4ed7c0beca2d0591edf09c1',
   forwardLampSeat: '004121cb269d4d160c8715176b1473a9a40ceadcbd7c1a69b3fce797013888e0',
 });
 
 // Recorded before the equipment-damage opt-in/hook; only the independently
 // verified intentional lamp-seat revision above versions a physical rest row.
+// 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that we
+// save on triangles"): the fleet fallback mouth became a flat ring + disc (terminal-surface-fit-r3;
+// the separate Annulus mesh is gone and the Rim geometry changed), so every intact rest digest moved.
+// Superseded: leo2a6 b90250a4…, m1a2 82ade7b7…, t90m c711ef48… (the t90m row is versioned in
+// T90M_REST_REVISIONS.flatRingMouth). Armor digests are unchanged.
 for (const [id, rest, armor] of [
   // 2026-09-22 nation wheel standard: leo2a6 draws the Germany construction (Leopard 2A6 X paired dish); rest repinned.
-  ['leo2a6', '2ccaccc8281cd9ead8cf7454565676198fcc1e0f1f500bcdf91ad0f2cab610fa',
+  ['leo2a6', '743b524908c0ed3d98edfca74045a8efeeb0981743665da7f92b6ee61c90366b',
     'b72c54aa5f4aa4cc99546188a6dfef248896f67c520ae6925dcf7166b874e7a5'],
-  ['t90m', T90M_REST_REVISIONS.forwardLampSeat,
+  ['t90m', T90M_REST_REVISIONS.flatRingMouth,
     'c371fb173216b778135fc1b0a7201201b6f3df27dfee82705c4408ea2e9aa26a'],
   // 2026-09-13 wheel review + interior fills: m1a2 draws the hollow paired road wheel, lost the
   // inter-wheel void blocks and carries generated interior fills; intact digest repinned.
-  ['m1a2', '82ade7b7c67695ab51ceffd83a17d49f83b8025714f1d4ccb3ac6c32310e7c23',
+  ['m1a2', '14d34a90e026d68445503467985c97b6f3f296a9db9b64b532890be09fc11be3',
     '01732c70cb6f3be5c8428342f6971c1825d225d6d1caf6bab6be6e6564dacf1a'],
 ]) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });

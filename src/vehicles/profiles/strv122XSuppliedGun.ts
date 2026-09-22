@@ -1,5 +1,7 @@
 // Native pitch/recoil split with the measured oversized source sleeves. The
-// final stepped muzzle has real open walls and a separately recessed stock.
+// final stepped muzzle had real open walls and a separately recessed stock
+// until 2026-09-22 (owner: holes are added, not carved, to save triangles);
+// it is now closed at the source tip and the fleet mouth disc is the bore.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
@@ -36,13 +38,16 @@ function eccentricEvacuator(P: TankBuilderPort): void {
 
 export function addStrv122XSuppliedGun(P: TankBuilderPort):void {
   mount(P);
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the lathe now ends on the axis at the source tip (a flat cap). Until then it
+  // turned into the open 120 mm bore ([.069,5.48842252],[.052,5.451],[.049,5.145]) with a hidden
+  // blind seat disc at 5.141 — the fused source is solid by Z5.0 but hollow at 5.2, and that seat was
+  // inferred inside the bracket, never an exposed end face. Both stay recorded here and in
+  // strv122XSupplied.selftest.mjs; the factory's dark mouth disc at the tube edge hid the recess.
   P.add('gun',tube([[.145,2.285],[.147,2.73],[.141,2.84],[.132,3.29],
     [.1125,3.49],[.1155,5.12],[.088,5.19],[.088,5.455],
-    [.082,5.48842252],[.069,5.48842252],[.052,5.451],[.049,5.145]],48));
+    [.082,5.48842252],[0,5.48842252]],48));
   eccentricEvacuator(P);
-  // Fused source is solid by Z5.0 but hollow at5.2. The hidden blind seat at
-  //5.145 is inferred inside that bracket, not a claim of an exposed end face.
-  P.add('gunDark',cylZ(.052,.008,40),0,0,5.141-D.trunnion[2]);
   for(const z of [3.54,4.405,5.133])
     P.add('gun',tube([[.117,z-.014],[.121,z-.011],[.121,z+.011],
       [.117,z+.014],[.112,z+.014],[.112,z-.014],[.117,z-.014]],32));
