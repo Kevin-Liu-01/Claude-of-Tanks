@@ -50,7 +50,7 @@ export interface NationWheelLayer {
   name: string;
 }
 
-export interface NationWheelBuildRequest {
+interface NationWheelBuildRequest {
   /** The consuming hull's own road-wheel radius. */
   radiusM: number;
   /** The hull's authored tire width (RunningGearConfig.wheelW): the narrowest the wheel may be. */
