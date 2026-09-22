@@ -15,12 +15,12 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": true,
- "rawGeoMin": 93.15407167445264,
+ "rawGeoMin": 93.17194616094233,
  "rawComponents": {
   "hullCurves": 94.49901395362328,
   "stations": 98.48421009099836,
   "turretCurves": 95.07525995574572,
-  "wholeCurves": 93.15407167445264,
+  "wholeCurves": 93.17194616094233,
   "dims": 100,
   "floaters": 100
  },
@@ -468,7 +468,7 @@
    ]
   },
   "front_hull": {
-   "score": 95.46881767486619,
+   "score": 95.48669216135586,
    "meanPct": 0.34,
    "p95Pct": 0.8,
    "coverPct": 0,
@@ -576,7 +576,7 @@
    ]
   },
   "front_whole": {
-   "score": 93.15407167445264,
+   "score": 93.17194616094233,
    "meanPct": 0.5,
    "p95Pct": 1.47,
    "coverPct": 0,
@@ -1092,7 +1092,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 133100,
+     "area": 133101,
      "minX": 211,
      "minY": 357,
      "maxX": 1023,
@@ -1106,7 +1106,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 131565,
+     "area": 131672,
      "minX": 211,
      "minY": 357,
      "maxX": 1023,

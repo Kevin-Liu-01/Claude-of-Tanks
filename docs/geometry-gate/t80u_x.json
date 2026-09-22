@@ -112,9 +112,9 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 94.10436148806018,
+ "rawGeoMin": 94.11105504422137,
  "rawComponents": {
-  "wholeCurves": 94.10436148806018,
+  "wholeCurves": 94.11105504422137,
   "dims": 95.30158730158728,
   "floaters": 100
  },
@@ -1000,7 +1000,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 137631,
+     "area": 137649,
      "minX": 232,
      "minY": 373,
      "maxX": 1023,

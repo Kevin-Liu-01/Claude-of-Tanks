@@ -112,9 +112,9 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 96.09921370348022,
+ "rawGeoMin": 96.10119223002958,
  "rawComponents": {
-  "wholeCurves": 96.09921370348022,
+  "wholeCurves": 96.10119223002958,
   "dims": 96.54166666666671,
   "floaters": 100
  },

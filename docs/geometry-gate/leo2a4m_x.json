@@ -9,9 +9,9 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 92.53332628878135,
+ "rawGeoMin": 92.54667904331387,
  "rawComponents": {
-  "wholeCurves": 92.53332628878135,
+  "wholeCurves": 92.54667904331387,
   "dims": 97.03055116869028,
   "floaters": 100
  },
@@ -886,7 +886,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 167480,
+     "area": 167493,
      "minX": 214,
      "minY": 286,
      "maxX": 965,
