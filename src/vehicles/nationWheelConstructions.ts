@@ -158,8 +158,10 @@ function standardConstruction(patternId: WheelPatternId, dishR: number, style: s
 
 /** A hollow paired wheel at the hull's radius, its natural width bounded by the hull's tire and cap widths. */
 function hollowPairedConstruction(request: NationWheelBuildRequest, fasteners?: { fasteners: number; fastenersAsInsets: boolean }): NationWheelBuild {
-  return parametric(buildHollowPairedRoadWheel({ radiusM: request.radiusM, high: request.high, ...fasteners,
-    axialWidthM: boundedWidth(hollowPairedRoadWheelWidth(request.radiusM), request) }));
+  const naturalWidthM = hollowPairedRoadWheelWidth(request.radiusM);
+  const axialWidthM = boundedWidth(naturalWidthM, request);
+  const solids = buildHollowPairedRoadWheel({ radiusM: request.radiusM, high: request.high, ...fasteners, axialWidthM });
+  return { ...solids, layers: [], radialScale: 1, axialScale: axialWidthM / naturalWidthM };
 }
 
 // ----------------------------------------------------------------------------------------------- China

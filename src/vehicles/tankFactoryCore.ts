@@ -3856,7 +3856,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       cfg.wheelCoreGeometry?.disc, cfg.wheelCoreGeometry?.dark]) geometry?.dispose();
     for (const layer of faceLayers) layer.geometry.dispose();
     faceLayers = [];
-    const maxWidthM = wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE;
+    // A source-placed suspension (authored arm centres) was measured against the authored wheel back, so the
+    // construction may not grow inboard of it: such hulls bound the wheel to their authored width.
+    const maxWidthM = cfg.suspensionDimensions?.armCenterAbsXM !== undefined ? wheelW : wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE;
     const built = buildNationWheel(nationWheel.construction, {
       radiusM: wheelR, tireWidthM: wheelW, maxWidthM, high: Boolean(q), segments: seg,
     });
