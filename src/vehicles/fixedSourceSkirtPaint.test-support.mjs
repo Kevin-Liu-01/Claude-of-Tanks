@@ -9,10 +9,13 @@ import {buildT62MV1X} from './profiles/t62mv1X.ts';
 export const FIXED_SOURCE_SKIRTS=Object.freeze({
   t90_x:{build:buildT90AWX,label:'t90-aw-x-fixed-skirt',count:8,file:'t90AwXFenders.ts',
     sha:'a264e62aefd26632100d6bd06f3d747548e9c9dcce06ac7c63603cabf9c1cf54'},
+  // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): the T-72BU X and T-62MV1 X
+  // profiles lost their authored wheel-face dressing and annular-tire declarations (both draw the Russia T-90 nation
+  // wheel, nationWheelSets.ts); the pre-finish source digests are repinned from the current profiles.
   t72bu_x:{build:buildT72BUX,label:'t72bu-x-side-leaf',count:12,file:'t72buX.ts',
-    sha:'f792d5eeffd4fa3e36148737eb21b8445283244f3b14da49136beff72e16dfa7'},
+    sha:'710daa290384935208c765df3b54ab06bb23feb985d223bacf5081a43459890c'},
   t62mv1_x:{build:buildT62MV1X,label:'t62mv1-x-skirt',count:20,file:'t62mv1X.ts',
-    sha:'6ab66f75a3390f8132f84598b4720d081b750f6012b019f59c52c4f8500ba952'},
+    sha:'fe5b999c5d4ceaee0e56b7cbbe4140cb1a8b5d85aa60709adcd659832df67102'},
 });
 
 // Authenticate the exact pre-finish sources independently of rendered meshes.

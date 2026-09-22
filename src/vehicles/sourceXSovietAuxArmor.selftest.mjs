@@ -17,20 +17,24 @@ import {FIXED_SOURCE_SKIRTS,withHistoricalFixedSkirtFinish} from './fixedSourceS
 // Captured before auxiliary metadata authoring/wiring, with complete frozen
 // post-optics native models. No position/index/normal/UV/instance or scene-node
 // transform is excluded. These immutable pre-change hashes are not refreshed.
+// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
+// dont use anymore"): every hull below draws the Russia T-90 / T-90M nation construction (T-90M X source-pressed face over
+// the fleet pressed disc, nationWheelSets.ts) and the fleet arm seated against it; the annular-tire inverse no longer
+// applies to them, so the goldens are repinned from the current build after only the declared finish inverses.
 const BEFORE={
 // 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  t62mv1_x:['f1a5e7a1ff699f760e8faef0c21839ea769fdf1228bb29b7a36f1948c63ee983','710538b0b56bde608b4446e8dc040f92f217f2c9a1ca21c4e1fc0fe78d9d6bfb'],
-  t72b_1987_x:['404cc34ea699b806beef559bd84a9d3214292dcb29651a311b6ddcc0611b34f7' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'4d8e9366e7f77167e23db6416d9a7d2bdee3c2a14f8d9d2faf745a6b02e37c77'],
-  t80u_x:['a86c164278abdda4a1a837f09a2ec0f3a2f4c4607420174a86e3c380fc10d06f','6be94995d5e2c9806f095bd91e3d6f272e81cbc3ded02d7f3c727d2553698a73'],
-  t72b3_x:['d2f3b206ae97cd7b834de441398ac295c6c499f29f57efcf16fedac5bff8e5f3','e1a6550a60458febf7c23e7a0ea5839b88c88702aedcf9d0b2748780c3fb89e5'],
-  t72b3m_x:['9deecdf6bc9167b7031f78995341ccbb7b741cd1d2f20bcaa23d2f7149ecefc6','059e14733d8e2b29bfe7888093d3c9548d0b537236a8a9e287c0534bd0d29905'],
-  t72bu_x:['11ae96b84ef3723269ba605a77060076924ff0eb52904221b0cac4442e968529','c5ae7fae14d0f52b8c6bdfee0ed78660506d6a828fc497d0ad47487b2c10832e'],
-  t90_x:['1cac0fb261bf900d70adef35b4146441d7f44a7352bcbfaca9e99fa1f47a4c04','dfc3499588b17d50179a6d300d52d7eec3fe41474e1c9874180f9cf9842e3a1d'],
-  t90a_burlak_x:['9d8f7729e3f5e1768da16584c63b0a2e3243f30083a78d11e626103570dd67af','514750806d7c4edd3a893ae135359e33b836c1b4ae6c408f9e870253cc9dcbad'],
-  t90ms_x:['33ccf93c9d73a34327b5053676bd8a66ed844b1ea7e6b9bf3971b1b8ad4c7a75','678a70538ed7a74104b58e30fd6094c78e01c6c450618682c0072e4bf9abcfd2'],
+  t62mv1_x:['47d845aa2a0c77fec4ec5330170e6893bea4a2c12527085922cca80b9db2e528','238b729108e4eae4614778226048e15af72600e5a252c3ff5cf7b2d6898c606a'],
+  t72b_1987_x:['ed4a8cf86a78a3f0ce28a45670a2bcd1512a2d7f18995a2074f52aff7bcf04ee','38f936fbaca987bc3918769f50e2469b10f431702c204b1ba7cdfc1982f5ae9f'],
+  t80u_x:['87ae1d4c7acc3d44e0ff2ebd86b225ed6cfe1a16c4a89efc33a10e7076a4b42d','38a4263f9a079e0aeec3f8cba434c1cac5035d4d8c387bf3fdd83a3b16b7a8bf'],
+  t72b3_x:['8a54a51bb674b77ccfb6d5fd871e81fcaa8b1d23001dc6be936b13b6815b8592','731b086faafc78be4d9f22b4ed27bce810ec858dcbd03db8f0cffa7b56dc8bdc'],
+  t72b3m_x:['5ac0d58ebe41e13801ddf2164a05a066ba768eaf68ea60d054afa460472daa4b','534f0211f3222515ec77fbfb35342f636739189728976451c2ac4a3829b66d95'],
+  t72bu_x:['305b0a502518e2faae64e7333adc656fca841b9d3ae1d47d843bf143e10281eb','88d89942ca7f3d54cb1d7b1d10f51ea209090008069c0c4d18f89dadab8d81d0'],
+  t90_x:['ed620d3bdee13d8b32cca9ef604a6af10ad35d0d4191046811c97d155c03b437','f3d7bc237dac070ade76721dadfc112b1e55f8979a47b6b122494f6ed79cdb54'],
+  t90a_burlak_x:['dfdabaa3ed0cc155045885056979f4d1ed8d5a95ea638e349862de8c9c409342','d5a1b36b0bea4cffd50b3b33a05526d67f7fec2558c5b0254d6a0cc452300abb'],
+  t90ms_x:['78c13fb6705b07e4d121d647fbef9aceb0009640ab915b91120f334817270a9b','853c5ac6e5045222751832a6006a86fbc62d72af8cb2e4ee62e1020124a72fb0'],
 };
 const EXPECTED_STATS={t62mv1_x:[8,9,9],t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
   t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],
@@ -214,11 +218,14 @@ for(const id of ids){
     assert.deepEqual(fields(getSpec(id)),fields(spec),'actual registered API matches exact auxiliary recipes');
     const t=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     try{
-      if(hasRepairedWheelFaces(id)){
+      // 2026-09-22: the finish inverses stay declared per hull; the annular-tire inverse only where an opening is still declared.
+      const finished=Object.hasOwn(FIXED_SOURCE_SKIRTS,id)||id==='t90a_burlak_x';
+      if(hasRepairedWheelFaces(id)||finished){
         const build=()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
         const finish=()=>Object.hasOwn(FIXED_SOURCE_SKIRTS,id)?withHistoricalFixedSkirtFinish(id,build,
           id==='t90_x'?historicalT90FittingsBuilder:undefined):build();
-        const original=withHistoricalClosedWheelFaces(id,()=>id==='t90a_burlak_x'?withHistoricalBurlakSideFinish(build):finish());
+        const inner=()=>id==='t90a_burlak_x'?withHistoricalBurlakSideFinish(build):finish();
+        const original=hasRepairedWheelFaces(id)?withHistoricalClosedWheelFaces(id,inner):inner();
         try{assert.equal(geometryHash(original.root),BEFORE[id][quality==='high'?0:1],`${id}/${quality}: complete original hash after only declared tire-opening/finish inverses`);}
         finally{original.dispose();}
       }else assert.equal(geometryHash(t.root),BEFORE[id][quality==='high'?0:1],`${id}/${quality}: every frozen native buffer/transform unchanged`);

@@ -104,7 +104,9 @@ const boundary=fixture({returnRollerOutsetM:.5});try{axes(boundary,0,.5);}finall
 const ORIGINALS={
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel and lost the void-dress blocks; repinned.
   m1a2:['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253','7e4c7a0ccc17f06eefc179b69122bde147a0c04f315a35c37b41551e34a4a0ca'],
-  leo2a5:['30e0ab616b355cc8515bd454093d2f9ac5eb4f631c5d79048c281fb26c910f8b','7475bc40b7cc7082ced96e7bf09044629c219b9a0ea3d0de33b97b0f1ef3f30c'],
+  // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): leo2a5 draws the Leopard 2A6 X paired dish
+  // (nationWheelConstructions.ts) and the fleet arm seated against it; gear digests repinned from the current build.
+  leo2a5:['1e1f77aac4eed537c42c53026ef32bf078a90d3abdbb6c8217d19be57f00dcf6','7400f1e85404c7a213d040422c31075dbdc19d94ee26857849420e97ce386e88'],
 };
 for(const[id,hashes]of Object.entries(ORIGINALS))for(const[index,quality]of['high','low'].entries()){
   const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});

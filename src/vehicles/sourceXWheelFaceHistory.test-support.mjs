@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import {KIT} from './tankFactoryCore.ts';
 
-// Exact inverse of the nine owner-requested annular-tire opt-ins. This is
-// only for retaining pre-repair whole-model goldens; the actual candidate
-// still runs physical armor, air, projectile and visible-wheel tests.
-const OPENINGS=Object.freeze({amx30_x:.314,t72b_1987_x:.3103,t72b3_x:.30685,
-  t72bu_x:.32690,t90a_burlak_x:.33888,t90_x:.33888,
-  t90ms_x:.33402,t62mv1_x:.33679,t90sm_x:.342366});
+// Exact inverse of the owner-requested annular-tire opt-ins. This is only for
+// retaining pre-repair whole-model goldens; the actual candidate still runs
+// physical armor, air, projectile and visible-wheel tests.
+// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
+// dont use anymore"): eight of the nine opt-ins (amx30_x .314, t72b_1987_x .3103, t72b3_x .30685, t72bu_x .32690,
+// t90a_burlak_x .33888, t90_x .33888, t90ms_x .33402, t62mv1_x .33679) draw their nation construction now and no
+// longer declare an opening, so their goldens were repinned to the standardized model; only the donor T-90SM X keeps
+// its fitted annular opening and its inverse.
+const OPENINGS=Object.freeze({t90sm_x:.342366});
 
 export function withHistoricalClosedWheelFaces(id,build) {
   assert.ok(Object.hasOwn(OPENINGS,id),'only the explicitly repaired wheel IDs have an inverse');

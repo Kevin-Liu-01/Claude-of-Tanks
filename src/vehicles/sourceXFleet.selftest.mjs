@@ -27,9 +27,13 @@ const original = {
 // its fans from geometry), both chin slabs are wound clockwise and the raked
 // lower bow frustum's front/rear z are in order — the same corners, outward
 // faces; only the t14 digest moves (61ce3db7 → 30f61a47).
-  leo2a7v:'1eb2385a', leo2a6m:'3bb4a94b', leo2a4m:'18acdfdc', leo2a5:'26483a38',
-  merkava4:'8e29bd6a', merkava3d:'e73c383e', k2:'36af3795', kf51:'185d662e',
-  t90a:'df0d1d27', t90a_vladimir:'2500a5f0', t90m:'ab9e05d0', t90sm:'a8522423', t14:'f851ad16',
+// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
+// dont use anymore"): every non-donor hull below draws its nation construction — the Leopards the 2A6 X paired
+// dish, the Merkavas the Mk 4B dished face, the T-90s the T-90M X pressed face — so their digests are repinned from the
+// current build; k2, kf51 and t14 are donors and did not move.
+  leo2a7v:'c8c9b926', leo2a6m:'5857f335', leo2a4m:'9b13239e', leo2a5:'6fceb143',
+  merkava4:'ef4be2c7', merkava3d:'2f7d09ca', k2:'36af3795', kf51:'185d662e',
+  t90a:'4fc77a4a', t90a_vladimir:'fb2d45eb', t90m:'d3a663ca', t90sm:'5c3c84a9', t14:'f851ad16',
 };
 // Owner 2026-09-21 explicitly replaces XK2's turret with the current K1A1.
 // xk2.selftest verifies complete donor geometry and hull/suspension seating;

@@ -289,14 +289,18 @@ const T90M_REST_REVISIONS = Object.freeze({
 // 2026-09-17 track law (28 mm X-standard band, ground datum, seated wheels): every rest/armor digest below moves again.
 // 2026-09-22 round 35 (camoWorldScale.ts): camo UVs at the fleet constant 0.5 rep/m and the first bake on the pattern stream move
 // the intact/damaged draw-content digests below again; draw order and geometry positions are unchanged.
+// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): the T-90M draws the Russia construction (T-90M X pressed face,
+// nationWheelSets.ts / nationWheelConstructions.ts) instead of its rim/hub/bolt dressing; the forward-lamp-seat rest
+// digest is repinned from the current build (beforeForwardLampSeat stays the historical value it must never equal).
   beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
-  forwardLampSeat: 'c711ef48c76618ed6fb0a2037f0725f7ea303ec001ad1d0bddf926aaa965042d',
+  forwardLampSeat: '004121cb269d4d160c8715176b1473a9a40ceadcbd7c1a69b3fce797013888e0',
 });
 
 // Recorded before the equipment-damage opt-in/hook; only the independently
 // verified intentional lamp-seat revision above versions a physical rest row.
 for (const [id, rest, armor] of [
-  ['leo2a6', 'b90250a4e3c90869f1b828a477a2c662210f3ef2b8e428ca7a553ffc11b9e3e5',
+  // 2026-09-22 nation wheel standard: leo2a6 draws the Germany construction (Leopard 2A6 X paired dish); rest repinned.
+  ['leo2a6', '2ccaccc8281cd9ead8cf7454565676198fcc1e0f1f500bcdf91ad0f2cab610fa',
     'b72c54aa5f4aa4cc99546188a6dfef248896f67c520ae6925dcf7166b874e7a5'],
   ['t90m', T90M_REST_REVISIONS.forwardLampSeat,
     'c371fb173216b778135fc1b0a7201201b6f3df27dfee82705c4408ea2e9aa26a'],

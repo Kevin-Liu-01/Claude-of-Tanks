@@ -109,13 +109,16 @@ const originalBakeFixtures = [
   {
     // 2026-09-13 interior fills: type10 carries generated interior fills (every hull and turret
     // does now), so its wreck bake gains triangles (31508 -> 35660); repinned from the current build.
+    // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): type10 draws the Japan Type 10 X
+    // paired construction (nationWheelConstructions.ts), so the bake gains triangles (40568 -> 42088); bounds, byte sizes
+    // and the three visible-attribute hashes are repinned from the current build. The shadow geometry hash is unchanged.
     specId: 'type10', seed: 2133,
-    bounds: [40568, 4.445803761482239, 3.807588815689087, 3.2081706523895264], // 2026-09-14: fleet fills to zero
-    bytes: [1460448, 1460448, 1460448, 7704],
+    bounds: [42088, 4.445803761482239, 3.807588815689087, 3.2081706523895264],
+    bytes: [1515168, 1515168, 1515168, 7704],
     hashes: [
-      '42a7461cce19e9541f4e23f0353d681a61ed2cedb0ea73063027bc3a6b3a16d7',
-      'a9459c8cb96a787d96c09404e116f89058a551971d04b2564ff98db32493827f',
-      '994757202aee6343c1da2d0ff2976ed21b1efa0fb6d8e4f96ab5c1bad0566e9d',
+      'ec346d9d6a22f18cef6720e1876816891f8ef8f26bc7826dbbcb10893f9b32f8',
+      'e00411213dbca6956c52514591abaf834a7b1d37a7451ab52fbcb10ee49cf8c9',
+      '583ffec51b442bf19f9c561f53ccf08373e87576ff9037ea99dc472d9071f31d',
       'ca8a28e323d0ac81a158deb7c69ad329581bbf69c80a53a79bcb53dcbb771b44',
     ],
   },

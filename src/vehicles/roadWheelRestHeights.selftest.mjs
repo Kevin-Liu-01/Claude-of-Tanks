@@ -73,17 +73,19 @@ const ORIGINALS = {
 // values below are repinned from the current build.
 // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): t90sm and t90m draw the T-90M X
 // source-pressed face and leo2a5 the Leopard 2A6 X paired dish through nationWheelConstructions.ts; their gear digests
-// are repinned from the current build. m1a2 is a donor (hollow paired wheel) and did not move.
+// are repinned from the current build. m1a2 is a donor (hollow paired wheel) and did not move. Later the same day the
+// consumer constructions took quality-aware tessellation (LOW draws fewer segments than the donor) and standardized
+// hulls took the fleet suspension arm seated against the nation wheel, so the LOW digests moved again; repinned.
   t90sm: ['cd16dd7e078981adacc4db5392c080306de5e7339a8a381e6b660f65447b2054',
-    'fb7c2939edb9978d8f9e5b82b4228ce2919c1c0a658cc0558eff78f1d4b206f2'],
+    '8f034df260f331f69bc19481b34da052059bef8c4d16ccc27176b154f3dc371f'],
   t90m: ['2fb0cb662a0c99bc816fef25f8fe1d3219ad4f72eddbc6d5f88c1cbdcdf25442',
-    '2454fb874c7150012fc90c8bbcc027c0face82c04e13f3fad9bd596546fd9e22'],
+    '20bbccb068d4dca7b87188a5993f6dab0ab60ab13f89cf3f1197c90f0eae1626'],
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts) and lost
   // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
   m1a2: ['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253',
     '7e4c7a0ccc17f06eefc179b69122bde147a0c04f315a35c37b41551e34a4a0ca'],
-  leo2a5: ['ce20035b76d32ac71043bb1ac0af0abe8e21038629b9d03e43b9f37736091c2a',
-    'df6efe9187793f6c994e8cc0eb71e41b9328e77899c7a5716c59139527abec23'],
+  leo2a5: ['1e1f77aac4eed537c42c53026ef32bf078a90d3abdbb6c8217d19be57f00dcf6',
+    '7400f1e85404c7a213d040422c31075dbdc19d94ee26857849420e97ce386e88'],
 };
 for (const [id, hashes] of Object.entries(ORIGINALS)) {
   for (const [index, quality] of ['high', 'low'].entries()) {

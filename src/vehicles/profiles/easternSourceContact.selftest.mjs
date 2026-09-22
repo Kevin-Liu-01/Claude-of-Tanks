@@ -77,64 +77,59 @@ function checkAftBridgeAndMast(tank) {
 }
 
 function checkAftInstalledWheels(tank) {
+  // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): the AFT-10 draws the China IFV
+  // wheel — the Type 100 paired pressed construction (nationWheelSets.ts exception aft10_x → type100) fitted into its
+  // own envelope — so the measured aftSourceWheel* face/shoulder layers left with the old wheel. The axle datum, the
+  // paired tires facing a real guide channel, painted steel first on the face and the native suspension motion
+  // stay this receipt's contract.
   const ray=hullFrameRays(tank), hull=tank.root.getObjectByName('rig_hull');
-  const receipt=hull.userData.runningGearReceipts[0];
+  const receipt=hull.userData.runningGearReceipts[0], pattern=hull.userData.wheelPatternReceipts[0];
+  assert.equal(pattern.construction,'nation:type100-paired-pressed','the AFT-10 draws the Type 100 IFV wheel');
+  assert.equal(pattern.nationStandard?.donor,'type100');
   assert.equal(receipt.wheelY,.3676,'loaded axle height remains the pre-correction receipt datum');
   assert.equal(receipt.xcLeft,1.4035);assert.equal(receipt.xcRight,1.4035);
   const stations=[-2.2951,-1.4028,-.4539,.4847,1.2860,2.1781];
   assert.deepEqual(receipt.wheelZs,stations,'source wheel stations must not move to improve the face');
-  const angle=.55;
+  const tire=tank.root.getObjectByName('gearRoadWheelTires'), disc=tank.root.getObjectByName('gearRoadWheelDiscs');
+  assert.equal(tire.count,12,'one paired tire belongs to each native road wheel');
+  assert.equal(disc.count,12,'one pressed disc belongs to each native road wheel');
+  assert.equal(tank.root.getObjectByName('gearRoadWheelInsets'),undefined,'the Type 100 construction emits no dark inset ring');
+  // Type 100 stock: tires from .310 to .360 of the donor radius, scaled radially into the AFT-10 envelope.
+  const tireInner=.310*pattern.nationStandard.radialScale, angle=.55;
   for(const side of[-1,1])for(const z of stations) {
-    const name=side<0?'aftSourceWheelNegative':'aftSourceWheelPositive';
-    for(const[r,expected]of[[.02,.1204],[.06,.0910],[.09,.0509],[.12,.0545],[.18,.0619],[.22,.0668],[.26,.13235]]) {
+    for(const r of[.02,.06,.09,.12,.18,.22,.26]) {
+      if(Math.abs(r-tireInner)<.008)continue;
       const first=ray([side*1.90,receipt.wheelY+Math.sin(angle)*r,z+Math.cos(angle)*r],[-side,0,0],.65)[0];
-      assert.ok(first&&first.mesh.name===name,'full-scene ray must hit the measured visible face before any fallback disc/inset');
-      assert.ok(Math.abs(side*first.point.x-1.4035-expected)<.0015,'installed FrontSide wheel face must retain source axial stock');
+      assert.ok(first&&first.mesh.name===(r>tireInner?'gearRoadWheelTires':'gearRoadWheelDiscs'),
+        'full-scene ray must hit the nation wheel face (painted disc inside the tire, rubber outside) before any fallback');
     }
   }
-  const tire=tank.root.getObjectByName('gearRoadWheelTires');
+  // Both tire bands present real inner walls to the guide channel, mirrored with vehicle side.
+  const walls={};
   for(const side of[-1,1]) {
-    const layer=tank.root.getObjectByName(side<0?'aftSourceWheelNegative':'aftSourceWheelPositive');
-    const shoulder=tank.root.getObjectByName(side<0?'aftSourceWheelTireShoulderNegative':'aftSourceWheelTireShoulderPositive');
-    assert.equal(layer.count,6,'one measured face belongs to each native road wheel');
-    assert.equal(shoulder.count,6,'extra tire width belongs only to the source outboard half');
-    const solids=[tire,layer,shoulder], angle=.55, radius=.281;
+    const radius=(tireInner+receipt.wheelR)/2;
     const fromGap=outward=>new THREE.Raycaster(
       hull.localToWorld(new THREE.Vector3(side*1.4035,.3676+Math.sin(angle)*radius,-.4539+Math.cos(angle)*radius)),
       new THREE.Vector3(side*(outward?1:-1),0,0).transformDirection(hull.matrixWorld),0,.3,
-    ).intersectObjects(solids)[0];
-    for(const[outward,expected]of[[true,.02025],[false,-.03515]]) {
-      const hit=fromGap(outward);assert.ok(hit,'both source tire inner walls must face the real gap');
-      const point=hull.worldToLocal(hit.point.clone());
-      assert.ok(Math.abs(side*point.x-1.4035-expected)<.0005,'asymmetric tire bands must mirror with vehicle side');
-    }
-    for(let i=0;i<layer.count;i++) {
-      const matrix=new THREE.Matrix4();layer.getMatrixAt(i,matrix);
-      const shoulderMatrix=new THREE.Matrix4();shoulder.getMatrixAt(i,shoulderMatrix);
-      assert.ok(matrix.equals(shoulderMatrix),'measured tire shoulder shares its steel face suspension matrix');
-      const found=Array.from({length:tire.count},(_,j)=>{
-        const other=new THREE.Matrix4();tire.getMatrixAt(j,other);return matrix.equals(other);
-      }).some(Boolean);
-      assert.ok(found,'measured face and tire must share their native suspension instance matrix');
-    }
+    ).intersectObject(tire,false)[0];
+    const hits=[true,false].map(outward=>{const hit=fromGap(outward);assert.ok(hit,'both paired tire inner walls must face the real guide channel');
+      return side*hull.worldToLocal(hit.point.clone()).x-1.4035;});
+    assert.ok(hits[0]>.01&&hits[1]<-.01,'the guide channel has real width between the tire bands');
+    assert.ok(Math.abs(hits[0]+hits[1])<.0005,'the paired tires are symmetric about the axle plane');
+    walls[side]=hits;
   }
-  const layers=[];
-  tank.root.traverse(object=>{if(object.name.startsWith('aftSourceWheel'))layers.push(object)});
-  const before=layers.map(layer=>Array.from(layer.instanceMatrix.array));
+  assert.deepEqual(walls[-1].map(v=>+v.toFixed(5)),walls[1].map(v=>+v.toFixed(5)),'tire bands mirror with vehicle side');
+  const before=[tire,disc].map(layer=>Array.from(layer.instanceMatrix.array));
   const state=createTankState(getSpec('aft10_x'),new THREE.Vector3(),0);
   tank.setGroundSampler((_x,z)=>Math.abs(z)<.6?-.12:0);
   state.trackScroll.l=.27;state.trackScroll.r=.16;
   for(let step=0;step<12;step++)tank.syncFromState(state,1/30,20);
-  for(const[index,layer]of layers.entries()) {
+  for(const[index,layer]of[tire,disc].entries()) {
     assert.notDeepEqual(Array.from(layer.instanceMatrix.array),before[index],
-      'source steel and asymmetric tire stock must follow native wheel rotation and suspension');
-    for(let i=0;i<layer.count;i++) {
-      const matrix=new THREE.Matrix4();layer.getMatrixAt(i,matrix);
-      assert.ok(Array.from({length:tire.count},(_,j)=>{
-        const other=new THREE.Matrix4();tire.getMatrixAt(j,other);return matrix.equals(other);
-      }).some(Boolean),'moving measured wheel layers cannot acquire independent stations or rotations');
-    }
+      'nation tires and discs must follow native wheel rotation and suspension');
   }
+  assert.deepEqual(Array.from(disc.instanceMatrix.array),Array.from(tire.instanceMatrix.array),
+    'the pressed discs share their tires\' suspension instance matrices');
 }
 
 for(const quality of['high','low'])for(const id of['bmp3m_dragun125_x','k21_x','type96b_x']) {

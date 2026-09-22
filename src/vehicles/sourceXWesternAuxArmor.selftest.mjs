@@ -27,8 +27,11 @@ const cases = {
   // corrected120mm physical bore and fresh anatomy. Previous main hash:
   // 5ec104dd88541f1526221ab452fabe2ba9b63bb9a1825e73dc7165b918465b59
   // Previous HIGH33372a11/LOW27af5e0c; finite-face/ray controls remain below.
-  ariete_c1_x: { main: 'a0b922dbe5da579937f27f8420ec41167ebe2c6d9634698b25ce0cfacfdd23fc', geometry: ['84ed9dc7', 'ec044ee3'], counts: [210, 0] },
-  challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['c09cfc2c', 'f4989def'], counts: [156, 0] },
+  // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): the Ariete C1 X is the Italy donor and its
+  // outboard hub cap was trimmed .2083 → .1993 so the ×1.232 family rig keeps the cap inside the tire face (wheel-review
+  // PROUD gate); the Challenger 1 X draws the UK Challenger 2E hollow paired wheel and the fleet arm. Geometry repinned.
+  ariete_c1_x: { main: 'a0b922dbe5da579937f27f8420ec41167ebe2c6d9634698b25ce0cfacfdd23fc', geometry: ['cf9b504d', 'b359499e'], counts: [210, 0] },
+  challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['866eae5d', '64bf0443'], counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });

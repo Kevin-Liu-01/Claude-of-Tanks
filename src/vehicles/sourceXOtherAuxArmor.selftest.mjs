@@ -24,12 +24,15 @@ const BEFORE={
 // values below are repinned from the current build.
  'k1a1_x/high':'30aa82a9fd33d17fc76d78848e073444dc5a929dae8c3ea52fa47a6ef0a682a2',
  'k1a1_x/low':'eca098341dc4d54f721a2c7008fb97ca6fe3ef55a0a701b440dabedd01873cdf',
- 'amx30_x/high':'ce25b11cee638e31f6bf0f3c4211a703be1b57e5268b8145bea86a3a72bc6d84',
- 'amx30_x/low':'5cf7c632d56f4c798dc6d828f5ebf0d9b4def34e0e8994eb8fbef0d79e6c4f47',
+// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): amx30_x draws the France AMX-40
+// pressed face and leclerc_classic_x the Leclerc XLR stepped plate (nationWheelConstructions.ts); repinned from the
+// current build (amx30_x now compares the plain model under the tint inverse, leclerc_classic_x after its gear inverse).
+ 'amx30_x/high':'ac3bd76cb8525eda07bb375fee2d572139911268983088563c1fef5aa382d25c',
+ 'amx30_x/low':'724598491f8aa53a65d01b56f3849eaf7bd0b008e4c9f44c7759f2711a6f33a4',
  'leclerc_x/high':'e7726256b9af2d839f9f2be844f82cd78a2297ea56536771b04fe4f00561b9b9' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,
  'leclerc_x/low':'a0fb42013e13c952782ef6b23894a76d1bdb3e279b1ab732661a71a5649e54f9',
- 'leclerc_classic_x/high':'27509e552540b72d9f71efd600e8f3ca368b97478fd4156dccb08e0d02220d05',
- 'leclerc_classic_x/low':'97ce7d683ed2b5bc8a6118609ced1d3c5528223aedae08e61d39c86e21b146d7',
+ 'leclerc_classic_x/high':'f686ccd8cfbf25e81b6c907b833b9cfcafd4045a25f5dd846adad80e442d73ac',
+ 'leclerc_classic_x/low':'a4f6b0e7bddd14967d93f136b914b277b3d1814ac60cc0ce9003d43eb361491f',
  'type10_x/high':'69197b366a912f131133f639a22fc01e84db731f9fcb1aa9fc8414e1cce31f65',
  'type10_x/low':'495de4a8430a99ff19442cc416575f768f9a45d729124bad3dfe4420a4c77f6a',
  'type90_x/high':'3a9f7bcad8f737e4abd1f84faccfe37bc6bb327b73a48f4ce22dfab19d840844',
@@ -299,8 +302,9 @@ const selected=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',')
   const original=KIT.buildRunningGear;
   assert.throws(()=>withHistoricalClosedWheelFaces('not-a-repaired-tank',()=>{}));
   assert.throws(()=>withHistoricalLeclercGear('amx30_x',()=>{}));
-  assert.throws(()=>withHistoricalClosedWheelFaces('amx30_x',()=>KIT.buildRunningGear(
-    {spec:{id:'amx30_x'}},{wheelTireInnerRadiusM:.315})),/exact declared annular repair/);
+  // 2026-09-22: the T-90SM X is the only hull still declaring an annular opening (nation wheel standard).
+  assert.throws(()=>withHistoricalClosedWheelFaces('t90sm_x',()=>KIT.buildRunningGear(
+    {spec:{id:'t90sm_x'}},{wheelTireInnerRadiusM:.343})),/exact declared annular repair/);
   assert.throws(()=>withHistoricalLeclercGear('leclerc_x',()=>KIT.buildRunningGear(
     {spec:{id:'amx30_x'}},{})),/cannot affect another tank/);
   assert.throws(()=>withHistoricalLeclercGear('leclerc_x',()=>KIT.buildRunningGear(
@@ -335,12 +339,12 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
         assert.equal(shapeHash(tank.root),actual,'negative and throwing comparisons leave the actual tank unchanged');
       }
       const paintedId=['leclerc_x','amx40_x','type10_x'].includes(id);
-      const repairedGear=['amx30_x','leclerc_x','leclerc_classic_x'].includes(id);
+      // 2026-09-22 nation wheel standard: amx30_x draws the France AMX-40 pressed face (no annular inverse any more).
+      const repairedGear=['leclerc_x','leclerc_classic_x'].includes(id);
       if(paintedId||repairedGear){
         const native=()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
         const finish=()=>paintedId?withHistoricalFixedGuardPaint(id,native):native();
-        const original=id==='amx30_x'?withHistoricalClosedWheelFaces(id,finish)
-          :id.startsWith('leclerc')?withHistoricalLeclercGear(id,finish)
+        const original=id.startsWith('leclerc')?withHistoricalLeclercGear(id,finish)
           :id==='type10_x'?withHistoricalType10Supports(finish):finish();
         try{
           original.root.updateMatrixWorld(true);

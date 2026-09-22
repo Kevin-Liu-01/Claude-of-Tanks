@@ -60,13 +60,16 @@ const DEFAULT_SHOE_HASHES={
   leo2a5:'2eaee5604c73145eff5acd5b874b990151cbc3a4970b62ea39d810066e5eae87',
 };
 const DEFAULT_WHEEL_HASHES={
-  t90m:['ee1267357b9821551acdc43bb28b13bb0552b074fd41564b086002ac19713c05','e3b982d7a499de8fded2a44f15abf4b96762345253426f1d686c28f128317972','8f57825275092ceafca41ca5a1cdb5567ed4046e1a3ae446010103066c0e76f3'],
-  t90a:['a54a43055f2861026b4ceab5d270317974edceb01e6dda725ca0d03b44339e73','76972345146480d49776fcfbca7f66ea6aeb9b4ac58855cc3b7bd7d3cc32892f','e6dc3ca5d731290a64e2f3467f6596c5d12dc1c016491b79ad3a359f49327fa6'],
+// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): t90m and t90a draw the Russia T-90M X pressed face over the
+// fleet pressed disc (tires unchanged, discs/insets repinned) and leo2a5 the Germany Leopard 2A6 X paired dish
+// (tires/discs repinned; the construction emits no gearRoadWheelInsets). m1a2 is a donor and did not move.
+  t90m:['ee1267357b9821551acdc43bb28b13bb0552b074fd41564b086002ac19713c05','1c097b71ade6ffbe0e876c438766b19f46cc59cde2f2498c8e4ab7b76280a5ec','c7f4628483d7f6c3db60cd57f383ce9bf6011d24249c9cc7329acab8e5d74d50'],
+  t90a:['a54a43055f2861026b4ceab5d270317974edceb01e6dda725ca0d03b44339e73','9ebd90bd97d288dd234795c4a01e21746f91800ebf097f8d6e284c6eaa90d23c','39a0c5e46c0056e9d13cb9ed9007a51871358e16d64b61c142e2d53c8c090938'],
 // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts — two
 // turned halves on a narrow axle, no separate inset ring), so tires/discs are repinned from the
 // current build and the inset entry is null (the construction emits no gearRoadWheelInsets).
   m1a2:['c37665c53d90b9b8cdaa198bb2c710de51fae568191c9dfc57a74b044d81009f','8eca4e85ac692ef6d4544a395d15191ed33e2a31e72f79c0448cce5d713ce934',null],
-  leo2a5:['2a635e4bdc9b37093cf67f7f9aa5fac83aded77cb19094ea2a01143e5f8e30b8','c0836b759e64859f643819cc270d52dd0d3e3bc20f2016360f5f2206fa893635','5447ad96a8234a3e656dc9ca7d003dca1216b2bdd22a958e8210c955f3e61a8b'],
+  leo2a5:['f878b466b20b1b61f35e20aa0ebc5479b3b694e65348ef7c7d6deb1a78dacd6a','51cbe7a278984b59780a6d380c07f1befdfd82eb967cf224d14114816f96a666',null],
 };
 for(const [id,expected] of Object.entries(DEFAULT_SHOE_HASHES)) {
   const tank=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});

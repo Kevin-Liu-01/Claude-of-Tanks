@@ -24,13 +24,16 @@ const original = {
 // existing surfaces; the leclerc digest is repinned from the current build.
 // 2026-09-13 wheel review: challenger1's fixed wheel dressing (face disc / hub) re-seated from
 // 7 cm outboard of the tire to the tire plane; repinned from the current build.
-  ariete_c1:'100c413f', challenger1:'e2c61c09', leclerc:'4cf934c8',
-  chieftain5:'4d129a7a', chieftain_mk10:'10c1cdf7', leo2a6:'c5a30dd0',
-  k1a1:'13e4505e', strv122:'e1c6124e', t62mv1:'cbc6b3bb',
-  t72b_1987:'2f4e41a3', t72b3:'65ab20f1', t72b3m:'dbd41308',
-  t72bu:'b20657db', t80u:'9f4d5707', type10:'3c63b8fa', type90:'70bf2b48',
-  jpz_e100:'85585980', amx30:'c04e512c', amx40:'ee1410d0',
-  t90:'2b9aad5b', t90a_burlak:'99288c32', t90ms:'a22a8e76',
+// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
+// dont use anymore"): every second-wave hull below except the period jpz_e100 draws its nation construction
+// (nationWheelSets.ts / nationWheelConstructions.ts) at its own radius, so the digests are repinned from the current build.
+  ariete_c1:'bc59c273', challenger1:'add388cf', leclerc:'7c812418',
+  chieftain5:'fa7aa075', chieftain_mk10:'e51e5684', leo2a6:'8b1211c8',
+  k1a1:'be8ac35f', strv122:'fb390522', t62mv1:'b2360b36',
+  t72b_1987:'409c17ac', t72b3:'acf1acef', t72b3m:'90d658b8',
+  t72bu:'396a80b8', t80u:'5ca176b2', type10:'de6a67e1', type90:'999b0703',
+  jpz_e100:'85585980', amx30:'cf152691', amx40:'ab2b934d',
+  t90:'ff6d55d6', t90a_burlak:'7e9c4ba9', t90ms:'751b8539',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
 for (const [id, expected] of Object.entries(original)) {
