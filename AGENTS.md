@@ -14,6 +14,8 @@ worktree and never stage generated tank work wholesale.
 
 ## Architecture Pointers
 <!-- agent-docs:fill:architecture -->
+- `docs/DEVELOPMENT.md#publishing-to-shared-main` — shared Codex/Claude integration,
+  overlap review and preflight; read before integrating or publishing changes.
 - `docs/ARCHITECTURE.md` — original module contracts and simulation invariants.
 - `docs/MULTIPLAYER-ARCHITECTURE.md` — authoritative multiplayer migration.
 - `docs/tank-generation/README.md` — source/markup intake, measured construction,

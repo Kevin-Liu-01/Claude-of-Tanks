@@ -3,6 +3,55 @@
 This guide explains how to run, test, inspect, and release Claude of Tanks. It
 is the operational companion to SYSTEMS.md.
 
+## Publishing to shared main
+
+Codex and Claude share `origin/main`. Start an isolated worktree from freshly
+fetched main and record its commit as the **starting base** before editing.
+Keep that base in the task's local evidence. Never reset, clean or stage another
+agent's checkout. Scope commits to owned files; generated fleet receipts need
+the same ownership review as source.
+
+Before publishing:
+
+1. Fetch origin and integrate its current main into the owned worktree. Compare
+   `git diff <starting-base> origin/main` with the proposed changes. For every
+   overlapping file, preserve the incoming behavior explicitly; do not resolve
+   a conflict by taking an entire old file. A conflict-free merge can still
+   undo a feature through a later whole-file replacement.
+2. Inspect `git diff origin/main HEAD` as the final proposed change, including
+   removals, registry entries, feature flags, generated inputs and performance
+   policies. Check older branch work by patch/tree equivalence before copying
+   it: a squash or rebase changes IDs without losing the work.
+3. Commit the integrated result and run the checks appropriate to that exact
+   commit. Record the validated commit. An earlier branch's green result does
+   not certify conflict resolution or later source edits. For geometry, use
+   the complete anatomy and targeted release procedure in `AGENTS.md`.
+4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
+   This reads the actual remote main, rejects a dirty or stale candidate and
+   reports overlapping paths. After reviewing those paths and running their
+   checks, acknowledge that exact remote revision with
+   `--reviewed-main=<reviewed-remote-commit>`. This is the publisher's explicit
+   acknowledgment, not an automated claim of semantic correctness.
+5. Push normally with `git push origin HEAD:main`. Never force-push shared main.
+   If another publisher wins the race, fetch, integrate, review and revalidate;
+   never bypass the rejection. Retain the preflight JSON with local evidence.
+
+The check does not install hooks, change branch protection, merge, stage, push
+or deploy. Both agents must invoke it; it cannot establish that a test was run
+or that an overlap was reviewed honestly. Its regression test uses two local
+clones to exercise stale remote data, stale validation and an accidental
+whole-file rollback that Git would otherwise allow.
+
+Publication and deployment are separate. Agree on one deployment owner for a
+round, follow [DEPLOYS.md](DEPLOYS.md), and record the actual served build version.
+Do not deploy an older candidate over a newer live release. Verify a visual
+fix in the real Garage/battle path after deployment, including cached vehicle
+return where applicable. A pushed commit alone is not delivery evidence.
+
+The [2026-09-22 sync audit](history/sync-audit-2026-09-22.md) records the last-week
+reconciliation and the distinction between published work, superseded drafts,
+active work and the served release.
+
 ## Requirements
 
 - A current Node.js runtime
