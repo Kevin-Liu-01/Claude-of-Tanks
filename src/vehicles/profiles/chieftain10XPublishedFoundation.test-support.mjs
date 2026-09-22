@@ -15,6 +15,25 @@ export const PRE_FOUNDATION_HISTORY = [
   ['low', 291504, '2f8909bdea9e969f2dc65834150533937167523b47073aee5c858de0e07120d3'],
 ];
 
+// 2026-09-22 owner ask ("the point of adding holes instead of carving them into the barrel is
+// that we save on triangles"): chieftain10XGun.ts closes the loft with one flat cap where it used
+// to carve a 32 cm recess that the fallback disc hid. The published text is recovered by putting
+// the carved recess back; both texts are pinned here so the swap cannot drift.
+const BORE_CAP_SOURCE = "  P.add('gun', outerTube(rows, pivot));\n"
+  + '  // Owner 2026-09-22: "the point of adding holes instead of carving them into the barrel is\n'
+  + "  // that we save on triangles\". The factory's fallback assembly is this mouth's dark bore; the\n"
+  + '  // former 32 cm carved recess (48-segment inner wall, ring and capped floor cylinder, 384\n'
+  + '  // triangles at both qualities) sat entirely behind that dark disc and had no physical-bore\n'
+  + '  // contract, so nothing rendered it. One flat cap closes the open loft at the source mouth.\n'
+  + "  gunPart(P, pivot, 'gun', new THREE.CircleGeometry(.08232, 48), pivot[0], pivot[1], muzzleZ);\n";
+const CARVED_RECESS_SOURCE = "  P.add('gun', outerTube(rows, pivot));\n"
+  + '  const bore = new THREE.CylinderGeometry(.060, .060, .32, 48, 1, true);\n'
+  + '  bore.rotateX(Math.PI / 2);\n'
+  + "  gunPart(P, pivot, 'gunDark', bore, pivot[0], pivot[1], muzzleZ - .16);\n"
+  + "  gunPart(P, pivot, 'gun', new THREE.RingGeometry(.060, .08232, 48),\n"
+  + '    pivot[0], pivot[1], muzzleZ);\n'
+  + "  gunPart(P, pivot, 'gunDark', cylZ(.060, .006, 48), pivot[0], pivot[1], muzzleZ - .323);\n";
+
 export function assertPublishedChieftainFoundationSources(
   read = file => readFileSync(new URL(file, root), 'utf8'),
 ) {
@@ -66,6 +85,16 @@ export function assertPublishedChieftainFoundationSources(
         source = source.replace(declaration, `export ${declaration}`);
       }
     }
+    if (file === receipt.laterBoreCapAnnotation.file) {
+      // 2026-09-22 owner ask (holes are added, not carved): the flat muzzle cap replaced the carved
+      // 32 cm recess and nothing else. Authenticate the complete current source, then put the
+      // carved recess text back to recover the published text.
+      assert.equal(sha(source), receipt.laterBoreCapAnnotation.currentSourceSha256,
+        'Authenticate the complete subsequently published muzzle-cap source');
+      assert.equal(source.split(BORE_CAP_SOURCE).length, 2, 'the flat muzzle cap appears exactly once');
+      assert.equal(source.split(CARVED_RECESS_SOURCE).length, 1, 'the carved recess is no longer in the source');
+      source = source.replace(BORE_CAP_SOURCE, CARVED_RECESS_SOURCE);
+    }
     assert.equal(sha(source), expected, `Published Mk10 foundation source contract: ${file}`);
   }
   const three = JSON.parse(read('node_modules/three/package.json'));
@@ -105,12 +134,28 @@ export function assertPublishedChieftainFoundationSources(
       receipt.successorHistory[1][quality].count + receipt.laterTrackWrap.trackDrawVertexDelta
         + receipt.laterGroundDatumSeat.trackDrawVertexDelta,
       'the tangent track wrap and the ground-datum reseat change exactly the declared number of band draw vertices');
-    // 2026-09-22 nation wheel standard: only the twelve road wheels changed, by the declared per-tier draw-vertex delta.
-    assert.equal(receipt.successor[quality].count,
+    // 2026-09-22 nation wheel standard (r38-wheels): only the twelve road wheels changed, by the declared per-tier
+    // draw-vertex delta; the muzzle-cap record (r38-bores) was then captured on the combined tree and supersedes
+    // the nation-wheel successor, so the active successor is history[2] + both dated deltas.
+    assert.equal(receipt.laterMuzzleBoreCap.supersededSuccessor[quality].count,
       receipt.successorHistory[2][quality].count + receipt.laterNationWheels.trackDrawVertexDelta
         + receipt.laterNationWheels.nonTrackDrawVertexDelta[quality],
       'the nation wheel standard changes exactly the declared number of road-wheel draw vertices');
+    assert.equal(receipt.successor[quality].count,
+      receipt.laterMuzzleBoreCap.supersededSuccessor[quality].count + receipt.laterMuzzleBoreCap.drawVertexDelta,
+      'the muzzle cap changes exactly the declared number of draw vertices on top of the nation wheels');
+    assert.equal(receipt.laterMuzzleBoreCap.nonTrack[quality].count,
+      receipt.laterNationWheels.nonTrack[quality].count + receipt.laterMuzzleBoreCap.drawVertexDelta,
+      'the muzzle cap touches non-track draw vertices only (the nation-wheel non-track multiset plus its delta)');
   }
+  // 2026-09-22 owner ask (holes are added, not carved): the flat muzzle cap replaced the carved recess.
+  // The successor it superseded (the 2026-09-22 nation-wheel multiset, itself history[2] + the wheel deltas)
+  // stays authenticated as history.
+  assert.match(receipt.laterMuzzleBoreCap.scope, /CircleGeometry/);
+  assert.deepEqual(receipt.laterMuzzleBoreCap.supersededSuccessor, {
+    high: {count: 294084, sha256: 'fd381069a1751047320c151ae63ecf3e637c97773a17b9385469268999f945fe'},
+    low: {count: 250404, sha256: 'f0f3cf88dd64293a362a4972a9e6a5135d454c167e11db7c2386957eb86a0a60'},
+  }, 'the nation-wheel successor (r38-wheels, captured alone) the muzzle cap superseded is retained as history');
   assert.match(receipt.laterMuzzleSeat.scope, /muzzleBoreShadowFallback/);
   assert.match(receipt.laterTrackWrap.scope, /roadWheelWrap/);
   assert.equal(receipt.laterTrackWrap.trackDrawVertexDelta, -480);
@@ -124,8 +169,11 @@ export function assertPublishedChieftainFoundationSources(
   return receipt.successor;
 }
 
-/** Non-track draw-vertex multiset the latest successor claims unchanged (receipt re-derives and compares). */
+/** Non-track draw-vertex multiset the latest successor claims unchanged (receipt re-derives and compares).
+ * Since 2026-09-22 the latest successor is the muzzle-cap record (owner ask: holes are added, not carved). */
 export function publishedChieftainNonTrackMultiset(quality) {
-  // 2026-09-22 nation wheel standard: the Mk 10 X draws the UK Challenger 2E hollow paired wheel and the fleet arm.
-  return receipt.laterNationWheels.nonTrack[quality];
+  // 2026-09-22: the muzzle-cap record was captured on the combined round-38 tree (UK Challenger 2E hollow paired
+  // wheel + fleet arm from r38-wheels, flat muzzle cap from r38-bores); laterNationWheels.nonTrack is the
+  // wheels-only intermediate and stays as history.
+  return receipt.laterMuzzleBoreCap.nonTrack[quality];
 }

@@ -204,17 +204,18 @@ if (ledgerUpdate) {
   const ledger = JSON.parse(readFileSync(ledgerUrl, 'utf8'));
   const previous = ledger.successor;
   const delta = ledgerUpdate.successor.high.count - previous.high.count;
-  ledger.successorHistory = [ledger.successorHistory[0], { ...previous,
-    status: 'muzzle-seat successor before the 2026-09-14 tangent track wrap; retained as history, not an active claim' }];
+  // 2026-09-22 (owner: holes are added, not carved): the flat muzzle cap supersedes the ground-datum
+  // successor. successorHistory and the earlier dated records are history and stay untouched; the
+  // superseded successor is retained inside the new record so the chain remains authenticated.
   ledger.successor = ledgerUpdate.successor;
-  ledger.laterTrackWrap = {
-    branch: 'codex/restore-1049-visuals-20260911', capturedAt: '2026-09-14',
-    scope: 'Owner direction: the loaded track run wraps the outer road wheels on their own circle and rises on the external tangent to the end wheel (tankFactoryCore roadWheelWrap, graded 1–6° chords) instead of kinking at the authored contact pins. Only the two track band meshes (draw-vertex count change) and the linked shoes (positions) changed; the non-track draw-vertex multiset recorded here is re-derived by the receipt and must match exactly.',
-    trackDrawVertexDelta: delta, nonTrack: ledgerUpdate.nonTrack,
+  ledger.laterMuzzleBoreCap = {
+    branch: 'r38-bores', capturedAt: '2026-09-22',
+    scope: 'Owner 2026-09-22: "the point of adding holes instead of carving them into the barrel is that we save on triangles". chieftain10XGun.ts closes the open loft with one 48-segment CircleGeometry cap at the source mouth instead of the carved 32 cm recess (inner wall, ring, capped floor cylinder) that sat behind the factory fallback disc with no physical-bore contract. Only the gun bucket changed: the recess draw vertices left, the cap vertices arrived (drawVertexDelta); the fallback assembly seat and every other draw vertex are re-derived by the receipt and must match exactly.',
+    drawVertexDelta: delta, nonTrack: ledgerUpdate.nonTrack, supersededSuccessor: previous,
   };
   const { writeFileSync } = await import('node:fs');
   writeFileSync(ledgerUrl, JSON.stringify(ledger, null, 2) + '\n');
-  console.log(`chieftain10XServiceFrame: ledger rewritten — successor high ${ledgerUpdate.successor.high.count} low ${ledgerUpdate.successor.low.count}, track draw-vertex delta ${delta}`);
+  console.log(`chieftain10XServiceFrame: ledger rewritten — successor high ${ledgerUpdate.successor.high.count} low ${ledgerUpdate.successor.low.count}, muzzle-cap draw-vertex delta ${delta}`);
   process.exit(0);
 }
 console.log('chieftain10XServiceFrame: high/low source crowns/web underside, five real rail gaps, supported folded feet, published099 successor preservation, rejection controls and hull ownership pass; pre-foundation receipt retained as history');
