@@ -5,7 +5,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // the 45-second FIFO drain. Every check stays in its original lifecycle.
     'src/vehicles/fleetLazy.selftest.mjs',
     'src/vehicles/wheelQuality.selftest.mjs',
-    'src/vehicles/nationWheelSets.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
     'src/vehicles/profiles/machineGunAttachment.selftest.mjs',
     'src/vehicles/eraGameplayRegistration.selftest.mjs',
@@ -32,6 +31,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/physicalMuzzleBore.selftest.mjs',
     'src/vehicles/profiles/lathedWheelStock.selftest.mjs',
     'src/vehicles/profiles/kf41LynxWheelStock.selftest.mjs',
+    'src/vehicles/nationWheelSets.selftest.mjs',
     'src/vehicles/profiles/europeSourceRunningGear.selftest.mjs',
     'src/vehicles/profiles/aft10X.selftest.mjs',
     'src/vehicles/profiles/easternSourceContact.selftest.mjs',

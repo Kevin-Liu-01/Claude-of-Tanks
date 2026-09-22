@@ -155,7 +155,7 @@ release result with a collection of unrelated narrow passes.
 | ID | Issue / required outcome | Status |
 | --- | --- | --- |
 | FSP-01 | Measure and reduce excessive geometry/construction cost; eliminate the reported tank-switch stalls. | OPEN — user report; causal profiling pending |
-| FSP-02 | Use shared or newly authored, tank-appropriate primitives for road wheels and repeated fittings. Preserve distinct vehicle shapes. | OPEN |
+| FSP-02 | Use shared or newly authored, tank-appropriate primitives for road wheels and repeated fittings. Preserve distinct vehicle shapes. | ROAD WHEELS LANDED 2026-09-22 — nation wheel sets (`src/vehicles/nationWheelSets.ts`, `nationWheelConstructions.ts`): 28 owner-named donors, 140 hulls standardized, 11 period hulls kept, six per-study wheel modules deleted; repeated fittings still OPEN |
 | FSP-03 | Add and verify return rollers across the full fleet wherever the actual vehicle has them; preserve genuinely rollerless suspensions. | OPEN — the initial 11 zero-station cases require vehicle-specific eligibility and physical verification, not blanket additions |
 | FSP-04 | Thicken the new tracks to the established original-fleet visual standard, with correct moving-shoe and end-wheel clearances. | OPEN |
 | FSP-05 | Complete lower hull/chassis side plates and connect hull sides, shoulders, fenders and skirts without accidental holes or floating panels. | OPEN |
@@ -207,6 +207,16 @@ owner's definition of smooth switching. Do not invent favorable thresholds
 after seeing a candidate or count an unrun browser benchmark as a pass.
 
 ### FSP-02 — reusable primitives, not a generic donor vehicle
+
+Road wheels landed on 2026-09-22 (owner: "standardize our wheels across
+NATIONS! then we can delete any wheels we dont use anymore"): every playable
+hull draws one of 28 owner-named donor constructions through the nation table
+in `src/vehicles/nationWheelSets.ts`; `nationWheelConstructions.ts` draws a
+donor face at any hull's radius between its authored tire width and standard cap
+envelope; period (ww2) hulls keep their own constructions; the Sabra takes the
+M60A3 wheel by owner correction. Review with `tools/wheel-inventory.mjs --all`
+and `tools/wheel-review.mjs --all --gate`. The paragraphs below remain the
+standard for the repeated fittings that are still open.
 
 Reuse or add parameterized wheel disks/dishes, hubs, rims, tires and face
 patterns to the shared wheel vocabulary. Share repeated geometry where the
