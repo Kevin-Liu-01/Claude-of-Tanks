@@ -129,7 +129,9 @@ function preserveNonTarget(tank,quality){
   for(const [name,expected]of Object.entries(PRESERVED[quality])){
     const m=meshes.get(name);assert.ok(m?.isMesh);
     // COT_UPDATE_LEDGER=1 rewrites the held-out ledger after a deliberate fleet-wide gear change
-    // (2026-09-14: wheel paint isolation and the end-wheel track wrap moved every gear batch).
+    // (2026-09-14: wheel paint isolation and the end-wheel track wrap moved every gear batch;
+    // 2026-09-22: the Russia nation wheel — T-90M X pressed face — and the fleet arm seated against it moved
+    // exactly the road-wheel disc/inset rows and the suspension link/boss rows at both tiers).
     if(process.env.COT_UPDATE_LEDGER==='1'){PRESERVED[quality][name]=geometryHash(m);continue;}
     assert.equal(geometryHash(m),expected,`unchanged pre-mount ${quality} ${name} geometry, ownership frame and native instance course`);
   }

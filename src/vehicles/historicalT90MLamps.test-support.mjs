@@ -10,8 +10,11 @@ import {markVehicleNightLens,vehicleNightLightEmittersFor} from './vehicleNightL
 import {NIGHT_EMISSION_ATTRIBUTE} from '../engine/nightEmissionMaterial.ts';
 
 const hash=b=>createHash('sha256').update(b).digest('hex');
-const BEFORE='5f6e59f9a6d66c2951d046c5e027469f1e253e38ef455e15735e31265a99da54'; // 2026-09-14: t90.ts hub package seated (wheel review)
-const AFTER='e749c1a249f3a7f07bff3e9aba07f38bb0310ee6c77c506b465727a413382e7a';
+// 2026-09-14: t90.ts hub package seated (wheel review). 2026-09-22: the T-90M Proryv rim/hub/bolt
+// addRoadWheelLayer dressing left t90.ts with the nation wheel standard (owner: "standardize our wheels
+// across NATIONS"); both pins re-derived from the published profile.
+const BEFORE='c20538f1c39b9235e26b2f1eed6f3c59c84506a4f6c55293feff1f50c71c04b9';
+const AFTER='95c797849226109d768988787e11b1b8f70fc574ce8a1ac3d265f0b9e9f585c8';
 const added=`    // These existing discs faced upward. Seat their apertures in the actual
     // canted cassette front, with 5.5 mm of rear stock entering its housing.
     for (const dx of [-0.075, 0.075]) {

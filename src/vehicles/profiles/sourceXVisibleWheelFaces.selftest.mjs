@@ -80,7 +80,12 @@ function check(id,fixture,quality) {
     const discs=tank.root.getObjectByName('gearRoadWheelDiscs');
     const detailFace=tank.root.getObjectByName('gearRoadWheelSourcePressedFaces');
     assert.ok(detailFace,'the source pressed face is present');
-    const visibleFaces=[discs,detailFace];
+    // 2026-09-22: the rim ring is the same painted steel (wheelDish role, dish paint). On consumer radii below the
+    // donor's .3981 m its .010 m tube sits at .82 R, and LOW's 16-segment ring chords reach inside it, so a ray
+    // landing on the rim is painted steel first — not rubber, dark hardware or air.
+    const rims=tank.root.getObjectByName('gearRoadWheelSourceRims');
+    assert.equal(rims?.userData.appearanceRole,'wheelDish','the rim ring is painted steel');
+    const visibleFaces=[discs,detailFace,rims];
     assert.equal(tires.count,(fixture.zs??fixture.zsLeft).length*2,'source axle count');
     assert.equal(discs.count,tires.count,'painted cores belong to the complete wheel assembly');
     assert.equal(tires.userData.appearanceRole,'wheelTire');

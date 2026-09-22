@@ -111,7 +111,9 @@ one table of donor tanks, per-nation rules and per-hull exceptions, and
 narrower than the hull's authored tire width (`wheelW`) nor wider than its
 standard cap envelope (1.48 × that width). A donor hull keeps its own wheel
 code; every other hull's authored wheel solids, `wheelFaceLayers` and post-build
-`addRoadWheelLayer` dressing are not drawn. Period (ww2)
+`addRoadWheelLayer` dressing are not drawn, and its authored `suspensionDimensions`
+(measured against the wheel it no longer carries) give way to the fleet arm,
+which seats itself against the wheel it actually carries. Period (ww2)
 hulls keep their constructions. A profile may restate, never contradict, its
 nation wheel pattern. Keep road wheels, return rollers, idlers, and sprockets on
 that one suspension-driven assembly. Painted faces use the camouflage-aware
