@@ -47,7 +47,7 @@ const goldenReceipts = [
       "decor": true
     },
     // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: cfde27ad…, 7c92dda3…, bc10f342…, c011c167…, 422f024c…, 546b2eb7….
-    "sha256": "31743963bd7694b4bd02ed9f4bb751c68a4514d9e9b90bfb2133354201be2d80",
+    "sha256": "373a36f1a3cdbd9892cdd2e5bf03462bde7e2cf492e317534d09a28b8ea2fbdc",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel (hollowRoadWheelStock.ts), lost the gear_wheelBayVoidDress blocks and carries generated interior fills; material-inclusive digest repinned from the current build"
   },
   {
@@ -63,7 +63,7 @@ const goldenReceipts = [
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): strv103 draws the Sweden Strv 122 pressed-recess construction and the fleet arm seated against it; digest repinned from the current build",
     "_repin_2026_09_22_regen": "combined round-38 tree after the fleet presentation regen (2026-09-22): the strv103 rendered anchor moved with the nation wheel (zM -0.3006 -> -0.3013), so the anchor-seated staging digest moved; repinned from staged main",
-    "sha256": "5c5d3ed69c11bf39165460b32550f0a80aed2d40c95f8272f67f94cebbb92586"
+    "sha256": "79d7817935af6c69fd4d1b855f5c9626096bd3afd471d6228dc9939afdfb9ae0"
   },
   {
     "id": "m1a1",
@@ -75,7 +75,7 @@ const goldenReceipts = [
       "decor": true,
       "geometryQuality": "low"
     },
-    "sha256": "05666db52d0a7221926da8c087f46a0eafdcdb975542364cc8e24c1eb6b8609a",
+    "sha256": "1e792765fe37580b7f6ad0ddd908871d78da1013cf9add1f6a003ca0eb08c3df",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
@@ -89,7 +89,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "c146d10c85762fb912391e2958e57a2c6e2ac825ad71887015081bf7fc2a3a57",
+    "sha256": "dc3024885db80f3f08a59833f58fd1f5934f07827737fec00a95e32759bfc83a",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
@@ -107,7 +107,7 @@ const goldenReceipts = [
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): merkava1b draws the Israel Merkava Mk 4B dished-face construction; digest repinned from the current build",
     "_repin_2026_09_22_regen": "combined round-38 tree after the fleet presentation regen (2026-09-22): the merkava1b rendered anchor moved (zM -0.7139 -> -0.714, envelope 5.4299 -> 5.43); repinned from staged main",
-    "sha256": "33bcc1d319a27f17f7d4dc6399a129c21024e0fa39081ce9b45509088010f112"
+    "sha256": "ed408b49ce144a78057e2282796b88b0981f6bcf1d4c5fa9d498f306fd368425"
   },
   {
     "id": "m1a1",
@@ -118,7 +118,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": false
     },
-    "sha256": "6d0d84e046a3191041eba230607b566a5c41927f5a4a6e098ee152540b5c6c6e",
+    "sha256": "0b5521f00dd675a362e80ba9dffde36f67e1b4439ee005e81893bd3ab54f1939",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   }
 ];
