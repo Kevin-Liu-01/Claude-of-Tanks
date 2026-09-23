@@ -30,6 +30,7 @@ const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablesp
 const LAYERED_TREELINES = new Map([
   ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
+  ['caldera', 2], ['polders', 2], // round 47 (2026-09-23): the two bland rings with a skyline impostor gain a second rank
 ]);
 const polePolicyByMap = new Map();
 const battlefieldWrecks = new Set();

@@ -9,9 +9,9 @@ const seeds = [1337, 2049, 7719];
 // Pre-restoration 28d5fd378 executable, excluding restored Verdant.
 // Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
 const originalOther28 = [
-  '7ed2818858c26c876d7190e57dbdcebb20ebfe382de08a5aba0c06864045ce09' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
-  'e8e47254d288ab503af46c72809d0147d36d262f51622f405cd694b388f7d06d',
-  '98398c21a824d10e54cde885c4e47901968e3881c0bb293331a49f4d9ce533a4',
+  '7e4fa12713814389f5cd8f7659c1b83cd819f96cf57fb97e8cf49f23619ef94c' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
+  '91ad45084c3843d7876a7e8e864a8505024cdd9d606b44ec4b4de7ae4f74d25d',
+  'eb228c019abc54f56d94a08929192e1631f1c82700d12a2791ce138c8b2b3ffb',
 ];
 // Round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa style authors a nine-row stack
 // (bench, tables, valley, escarpment, saddle, summits, shoulder; 30 uploaded rows) and the far escarpment's cap

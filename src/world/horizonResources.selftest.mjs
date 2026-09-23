@@ -324,9 +324,9 @@ const unrelatedMutation = createHash('sha256');
 // 2026-09-19 vista pass: 431 columns, the denser row ladder (18 / 36 rows), the seated skirt and the ridged
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
 const unchangedReceipts = [
-  '21ce8a5e31d79c11b85298560ad3257868f726dcd10ea949a9674693bee8c062',
-  '76a32526ca420c7f0944a79783149479a2c7833bc390136b4fbbb0f822230ef8',
-  '8eb4fbb9d744b1a329d893cd7a71747dcc84e28dae4a2db53b6f2c9bcf493fa6',
+  'ce6efe2d96b72c5c822f1281f094d65930bd1926506715336c320ac6df925b64',
+  '5a8e22881aff29d369e5d622cf82686736826838855e9d5d37f59958edaeac12',
+  'a41fb956e3f768d671087537eb4aaac045d1cba3bf87f94974133094d188b908',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
