@@ -41,7 +41,7 @@ SEPv3 and Ajax remain comparison controls, not editing targets.
 
 Local evidence: `.qa-dev/abrams-upgrades/m1a3-closure/`.
 
-- `before/`, `final-refined/`, `garage-final/`: native Gallery front/rear/both sides/top
+- `before/`, `final-corrected/`, `garage-corrected/`: native Gallery front/rear/both sides/top
   and articulated poses; real garage cold selection, cached return and gun
   movement. Final snapshots must follow the last mantlet refinement.
 - `upgrade-test.log`: HIGH/LOW stock/air rays for all four fenders, sloped
@@ -100,11 +100,44 @@ measured separately at `f152000f6`.
   BMPT T-90 primary penetration (122 mm versus the 210 mm cohort median,
   ratio 0.581 below the unchanged 0.65 floor). Starting main passes because
   its group has only three members and is below that audit's sample minimum.
-  This is an exposed balance concern, not a pre-existing failing test. No
-  other tank's weapon stats, cohort labels or audit thresholds were changed
-  to make this tier-only request appear green.
+  This was a newly activated comparison mismatch, not a pre-existing failing
+  test. Ajax has no guided channel, unlike its three nominal Tier X peers.
+  Its explicit `cannon-only` audit cohort now preserves that weapon distinction;
+  no other tank's cohort or any vehicle's combat stats were changed. The existing
+  Puma/BMPT guided-weapon matchup and all 18 deterministic matchup bands still
+  pass, as do the exact 31-IFV weapon/stat fixtures. A new four-independent-peer
+  negative control verifies that the cannon-only cohort still reports real
+  outliers using the unchanged audit thresholds. Source loadout tests check
+  Ajax's no-missile configuration and its cohort before/after synchronization.
 
 The articulated mantlet/hull sweep samples 62,686 vertex/surface relationships
 in each quality across eight turret yaws and six gun pitches, with at least
 40 mm clearance. The final roof bridge sits below that verified deck envelope.
 Control geometry hashes for Ajax, M1A1, AbramsX and SEPv3 are unchanged.
+
+## Completed evidence and main integration
+
+- Initial complete suite: pre 408/408, core 686/688, post 42/42. The two core
+  failures were the covered headlight and the comparison mismatch above; both
+  have passing targeted reruns after their corrections. An additional new
+  seam-clearance assertion initially probed the front shoulder at 1.50 m;
+  its corrected ray starts at 1.475 m, immediately above the measured 1.473 m
+  animated shoe envelope, and keeps the same 25 mm clearance requirement.
+- The corrected model passes the full anatomy update/check, centered-image
+  and asset checks, module alignment, muzzle bore, circular barrel, strict
+  track and zero-cell continuity checks, night lighting, mantlet/recoil tests,
+  strict typecheck and private production build. The source-comparison portion
+  of the M1A3 release gate remains inapplicable and non-green; no reference or
+  source-fidelity score is invented.
+- Final manual captures used `v1.0.0+gf607d64a0`: 29/29 Gallery commands and
+  34/34 real Garage commands, zero browser errors, actual Ajax Tier X card,
+  cold/cached M1A3 selection, and all requested gun/turning poses. Cold/warm
+  and rapid carousel switching also completed. These are functional checks,
+  not a claimed frame-rate improvement.
+- Before publication, incoming `0a368f0ab` was rebased underneath this work.
+  Its water-system changes and the new exact-commit verification rule are
+  preserved; there are no overlapping implementation paths. The final
+  integrated typecheck and complete core-suite results are recorded separately
+  in `integrated-typecheck.log` and `integrated-core.log` against the committed
+  candidate. The full first-pass pre/post receipts above are not represented
+  as new runs of that later commit.

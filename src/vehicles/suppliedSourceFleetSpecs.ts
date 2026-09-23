@@ -105,6 +105,12 @@ function applySourceArmament(spec: FleetTankSpec): void {
   if (spec.id === 'k21_x') applyK21Launcher(spec);
   if (spec.id === 'kurganets25_x') applyKurganetsLaunchers(spec);
   applyAutocannonCaliber(spec);
+  if (spec.id === 'ajax_x') {
+    // Ajax has no guided anti-armor channel. Its Tier X peers with missiles
+    // must not be judged against its 40 mm cannon alone (or vice versa).
+    // This is audit metadata; retain every authored combat statistic.
+    spec.balanceCohort = 'cannon-only';
+  }
   if (['griffin50_x', 'kf41_lynx_x'].includes(spec.id)) {
     spec.gun.shells = spec.gun.shells.filter(round => !round.guided);
   }

@@ -36,4 +36,10 @@ small.alias.balancePeerOf = 'c';
 small.c.balancePeerOf = 'alias';
 assert.ok(auditFleetBalance(Object.keys(small), small, tier).some(issue => issue.id === 'a'),
   'cycles cannot remove votes');
+
+const cohortSpecs = Object.fromEntries([.2, 2, 2, 2].map((value, i) =>
+  [`c${i}`, { ...row(`c${i}`, value), role: 'ifv', balanceCohort: 'cannon-only' }]));
+assert.ok(auditFleetBalance(Object.keys(cohortSpecs), cohortSpecs, tier)
+  .some(issue => issue.id === 'c0' && issue.metric === 'fireControl'),
+  'a cannon-only cohort still enforces the unchanged outlier thresholds with four independent peers');
 console.log('balancePeerWeighting: verified visual equivalence preserves medians without hiding individual outliers');
