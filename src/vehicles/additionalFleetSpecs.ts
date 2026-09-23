@@ -647,4 +647,3 @@ for (const spec of SPECS) {
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
 
-export const ADDITIONAL_FLEET_TANK_IDS = SPECS.map((spec) => spec.id);

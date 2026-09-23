@@ -17,9 +17,6 @@ const entries = [
 ] as const;
 
 export const SUPPLIED_SOURCE_IDS = Object.freeze(entries.map(([id]) => id));
-export const SUPPLIED_SOURCE_DONORS = Object.freeze(
-  Object.fromEntries(entries.map(([id, donor]) => [id, donor])),
-);
 
 const dimensions: Readonly<Record<string, FleetDimensions>> = Object.freeze({
   ...Object.fromEntries(ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(study => [study.id, study.dimensions])),

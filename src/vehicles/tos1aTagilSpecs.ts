@@ -7,7 +7,7 @@ import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs } from './fl
 import { crewBox, moduleBox, plate, type ArmorPlate } from './specHelpers.ts';
 import { TOS1A_TAGIL_LAYOUT as D, TOS1A_TAGIL_LAUNCHER_MUZZLES, TOS1A_TAGIL_PACK_CONTOUR } from './tos1aTagilLayout.ts';
 
-export const TOS1A_TAGIL_ID = 'tos1a_tagil';
+const TOS1A_TAGIL_ID = 'tos1a_tagil';
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 const spec = cloneFleetVariant(registries.tankSpecs, TOS1A_TAGIL_ID, 't90ms_x', {
   name: 'TOS-1A Tagil', nation: 'Russia', era: 'modern', role: 'spg',

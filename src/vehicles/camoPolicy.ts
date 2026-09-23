@@ -115,7 +115,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
-export type NationalCamoPatternId = typeof NATIONAL_CAMO_PATTERN_IDS[number];
+type NationalCamoPatternId = typeof NATIONAL_CAMO_PATTERN_IDS[number];
 
 /** Player-facing catalog; the generic Signature id remains decode-only. */
 export const CAMO_CATALOG_PATTERN_IDS: readonly CamoPatternId[] = Object.freeze(
@@ -228,7 +228,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_leo2a6_ua: 'Leopard 2A6 UA',
 });
 
-export const NATIONAL_CAMO_PATTERN_LABEL: Readonly<Record<NationalCamoPatternId, string>> = Object.freeze({
+const NATIONAL_CAMO_PATTERN_LABEL: Readonly<Record<NationalCamoPatternId, string>> = Object.freeze({
   national_usa: 'US Army Green', national_de: 'Bundeswehr Bronze Green', national_ru: 'Russian Khaki Green',
   national_uk: 'British Bronze Green', national_fr: 'French NATO Green', national_cn: 'PLA Green',
   national_it: 'Italian NATO Green', national_jp: 'JGSDF Dark Green', national_pl: 'Polish Khaki',

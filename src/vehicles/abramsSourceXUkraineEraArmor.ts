@@ -26,11 +26,11 @@ const GLACIS: Plane = [0, .99217, .12483, 1.63216];
 
 /** Kontakt-1 against kinetic rounds is a thin steel sandwich; against chemical energy it
  * strips the jet (the T-72B3 / T-80BV values). ARAT-1 is licensed Kontakt-1 technology. */
-export const UA_KONTAKT1_ERA = Object.freeze({ keReduction: 0.05, ceFlatMm: 280 });
-export const UA_ARAT_ERA = Object.freeze({ keReduction: 0.05, ceFlatMm: 300 });
+const UA_KONTAKT1_ERA = Object.freeze({ keReduction: 0.05, ceFlatMm: 280 });
+const UA_ARAT_ERA = Object.freeze({ keReduction: 0.05, ceFlatMm: 300 });
 
 /** ARAT skirt cassette bank: eight 0.657 m cassettes per side at z 2.655755 - i * .666455. */
-export const UA_SKIRT_BANK = Object.freeze({
+const UA_SKIRT_BANK = Object.freeze({
   outerX: 1.93636 + .19032 / 2,
   y: .990852, halfHeight: .750506 / 2,
   z: (2.655755 + .65729 / 2 + (2.655755 - 7 * .666455 - .65729 / 2)) / 2,
@@ -66,7 +66,7 @@ const onPlaneZ = (plane: Plane, x: number, y: number): Vec => [x, y, (plane[3] -
 const onPlaneY = (plane: Plane, x: number, z: number): Vec => [x, (plane[3] - plane[0] * x - plane[2] * z) / plane[1], z];
 
 /** The kit's cassette courses (hull frame), one gameplay zone per bank. */
-export const UA_KONTAKT1_COURSES: readonly Course[] = Object.freeze([
+const UA_KONTAKT1_COURSES: readonly Course[] = Object.freeze([
   { name: 'ua_m1a1_x_turret_era_R', owner: 'turret', plane: RIGHT_SIDE, origin: onPlaneX(RIGHT_SIDE, 1.96, -.75), cols: 7, rows: 3, pitchU: .272, pitchV: .152 },
   { name: 'ua_m1a1_x_turret_era_L', owner: 'turret', plane: LEFT_SIDE, origin: onPlaneX(LEFT_SIDE, 1.96, -.75), cols: 7, rows: 3, pitchU: .272, pitchV: .152 },
   { name: 'ua_m1a1_x_turret_cheek_era_R', owner: 'turret', plane: RIGHT_CHEEK, origin: onPlaneZ(RIGHT_CHEEK, .79, 1.95), cols: 4, rows: 3, pitchU: .265, pitchV: .152 },
@@ -93,7 +93,7 @@ function eraPlate(name: string, verts: Vec3Tuple[], physicalMm: number, era: Arm
 }
 
 /** The bank's collision face lies on the cassettes' outer faces. */
-export function kontakt1BankPlate(course: Course): ArmorPlate {
+function kontakt1BankPlate(course: Course): ArmorPlate {
   const { n } = planeFrame(course.plane);
   const center = add(course.origin, scale(n, BRICK.lift + BRICK.t));
   const halfU = ((course.cols - 1) * course.pitchU + BRICK.w) / 2;
@@ -101,7 +101,7 @@ export function kontakt1BankPlate(course: Course): ArmorPlate {
   return eraPlate(course.name, bankQuad(course.plane, center, halfU, halfV, course.owner), 12, UA_KONTAKT1_ERA);
 }
 
-export function aratSkirtPlate(side: -1 | 1): ArmorPlate {
+function aratSkirtPlate(side: -1 | 1): ArmorPlate {
   const plane: Plane = [side, 0, 0, UA_SKIRT_BANK.outerX];
   const center: Vec = [side * UA_SKIRT_BANK.outerX, UA_SKIRT_BANK.y, UA_SKIRT_BANK.z];
   return eraPlate(`ua_m1a1_x_skirt_era_${side > 0 ? 'R' : 'L'}`,

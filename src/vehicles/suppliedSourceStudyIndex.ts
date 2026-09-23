@@ -5,7 +5,7 @@ import { EUROPE_SOURCE_STUDIES } from './europeSourceStudyData.ts';
 import { EASTERN_SOURCE_STUDIES } from './easternSourceStudyData.ts';
 import type { FleetDimensions } from './specContracts.ts';
 
-export interface SuppliedSourceStudy {
+interface SuppliedSourceStudy {
   readonly id: string;
   readonly name: string;
   readonly donor: string;

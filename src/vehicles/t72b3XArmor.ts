@@ -9,15 +9,6 @@ export const T72B3_X_SOURCE_DATUMS={
   highestFittingM:5.456999902,structuralRoofM:2.274000205,
 } as const;
 
-export const T72B3_X_ERA_ZONES=[
-  {name:'glacis_era_L',owner:'hull',bounds:{min:[-.872,.839,2.188],max:[-.016,1.362,3.180]},backing:'separate closed main glacis'},
-  {name:'glacis_era_R',owner:'hull',bounds:{min:[-.018,.839,2.202],max:[.850,1.362,3.192]},backing:'separate closed main glacis'},
-  {name:'skirt_era_L',owner:'hull',bounds:{min:[-1.863,.788,.631],max:[-1.787,1.417,2.631]},backing:'permanent folded frame, not the removable outer plates'},
-  {name:'skirt_era_R',owner:'hull',bounds:{min:[1.806,.788,.691],max:[1.903,1.417,2.690]},backing:'permanent folded frame, not the removable outer plates'},
-  {name:'turret_era_L',owner:'turret',bounds:{min:[-1.856,1.506,-.526],max:[.041,2.370,1.668]},backing:'closed casting and separate fixed cassette carriers'},
-  {name:'turret_era_R',owner:'turret',bounds:{min:[-.027,1.506,-.185],max:[1.744,2.306,1.683]},backing:'closed casting and separate fixed cassette carriers'},
-] as const;
-
 export function createT72B3XArmorZones():{hullPlates:ArmorPlate[];turretPlates:ArmorPlate[]} {
   const main={kind:'era',era:{keReduction:.20,ceFlatMm:450}},skirt={kind:'era',era:{keReduction:.05,ceFlatMm:280}};
   const hullPlates=[

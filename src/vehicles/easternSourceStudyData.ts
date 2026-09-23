@@ -64,4 +64,3 @@ export const EASTERN_SOURCE_STUDIES = {
   },
 } as const;
 
-export type EasternSourceStudyId = keyof typeof EASTERN_SOURCE_STUDIES;

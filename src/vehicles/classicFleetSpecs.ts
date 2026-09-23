@@ -209,7 +209,5 @@ for (const spec of SPECS) {
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
 
-export const CLASSIC_FLEET_TANK_IDS = SPECS.map((spec) => spec.id);
-
 // Chain-load the following supplemental rows for every fleet facade.
 import './supplementalFleetSpecs.ts';

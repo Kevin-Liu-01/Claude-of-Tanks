@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export interface ShadowCasterWork {
+interface ShadowCasterWork {
   /** Near-detail submissions, before light-frustum culling. Not frame timing. */
   readonly lod: 'near';
   readonly cameraLayerMask: number;

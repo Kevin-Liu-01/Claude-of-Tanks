@@ -20,7 +20,7 @@ import {
   type ArmorPlate,
 } from './specHelpers.ts';
 
-export const ARES_APC_X_ID = 'ares_apc_x' as const;
+const ARES_APC_X_ID = 'ares_apc_x' as const;
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 const donor = registries.tankSpecs.fv510;
 if (!donor) throw new Error('ARES APC balance donor missing: fv510');

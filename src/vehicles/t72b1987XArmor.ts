@@ -5,15 +5,6 @@
 // about the supplied T-72B obr.1987 mesh or the chemistry of its visible bricks.
 import {plate,type ArmorPlate} from './specHelpers.ts';
 
-export const T72B1987_X_ERA_ZONES=[
-  {name:'glacis_era_L',owner:'hull',bounds:{min:[-.995,.91,1.79],max:[0,1.381,2.79]},backing:'closed glacis and individual permanent mounting rails'},
-  {name:'glacis_era_R',owner:'hull',bounds:{min:[0,.91,1.79],max:[.86,1.381,2.79]},backing:'closed glacis and individual permanent mounting rails'},
-  {name:'skirt_era_L',owner:'hull',bounds:{min:[-1.7855,.8035,-.658],max:[-1.7205,1.2605,2.461]},backing:'separate continuous fixed side apron'},
-  {name:'skirt_era_R',owner:'hull',bounds:{min:[1.7145,.8035,-.658],max:[1.7795,1.2605,2.461]},backing:'separate continuous fixed side apron'},
-  {name:'turret_era_L',owner:'turret',bounds:{min:[-1.42,1.55,-.02],max:[0,2.174,1.41]},backing:'cast turret and individual fixed cheek carriers'},
-  {name:'turret_era_R',owner:'turret',bounds:{min:[0,1.55,-.02],max:[1.42,2.174,1.41]},backing:'cast turret and individual fixed cheek carriers'},
-] as const;
-
 export function createT72B1987XArmorZones():{hullPlates:ArmorPlate[];turretPlates:ArmorPlate[]} {
   const main={kind:'era',era:{keReduction:.20,ceFlatMm:450}};
   const skirt={kind:'era',era:{keReduction:.05,ceFlatMm:280}};
