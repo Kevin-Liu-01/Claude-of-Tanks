@@ -73,7 +73,7 @@ function dataValue(owner: Object3D | Material, key: string): RuntimeValue {
   return (owner.userData as Readonly<Record<string, RuntimeValue>> | undefined)?.[key];
 }
 
-function materialsOf(object: Object3D): Material[] {
+export function materialsOf(object: Object3D): Material[] {
   const material = (object as RenderObject).material;
   if (!material) return [];
   return Array.isArray(material) ? material : [material];

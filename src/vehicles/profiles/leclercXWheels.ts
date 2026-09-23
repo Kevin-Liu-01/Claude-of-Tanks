@@ -2,13 +2,9 @@
 // Object_23. No source topology, accessor buffers or vertex arrays are used.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { turned } from '../nationWheelConstructions.ts';
 
 type Section = readonly [axial: number, radius: number];
-
-function turned(rows: readonly Section[], segments: number): THREE.BufferGeometry {
-  return new THREE.LatheGeometry(rows.map(([x, r]) => new THREE.Vector2(r, x)),
-    segments).rotateZ(-Math.PI / 2);
-}
 
 function annulus(a: number, b: number, inner: number, outer: number,
   segments: number): THREE.BufferGeometry {

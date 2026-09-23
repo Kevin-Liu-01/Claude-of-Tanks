@@ -12,6 +12,7 @@ import {
   type AdvancedIfvScalePort,
 } from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { mountRotated as mount } from './fittingMount.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
@@ -32,20 +33,6 @@ interface LightTigerBuilderPort extends AdvancedIfvScalePort {
     ...transform: number[]): void;
   decal(owner: Owner, kind: string, label: string | null, scale: number,
     position: Vec3, ...orientation: number[]): void;
-}
-
-function mount(
-  P: LightTigerBuilderPort,
-  owner: Owner,
-  object: THREE.Object3D,
-  x: number,
-  y: number,
-  z: number,
-  rotation: Vec3 = [0, 0, 0],
-): void {
-  object.position.set(x, y, z);
-  object.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(object);
 }
 
 function addHull(P: LightTigerBuilderPort): void {

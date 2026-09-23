@@ -24,7 +24,8 @@ import {
 } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import type { BufferGeometry, Object3D } from 'three';
+import type { BufferGeometry } from 'three';
+import { mount } from './fittingMount.ts';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
@@ -42,20 +43,6 @@ const nonUniformXform = KIT.xform as (
   rotationZ: number,
   scale: number | readonly number[],
 ) => BufferGeometry;
-
-function mount(
-  P: ChinaBuilderPort,
-  owner: VehicleAssemblyOwner,
-  fitting: Object3D,
-  x: number,
-  y: number,
-  z: number,
-  rotation: Vec3Tuple | null = null,
-): void {
-  fitting.position.set(x, y, z);
-  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
-}
 
 function armorCassette(
   P: ChinaBuilderPort,

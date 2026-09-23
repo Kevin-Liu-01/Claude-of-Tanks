@@ -18,6 +18,7 @@ import {
 import { T72_PROFILES } from './t72.ts';
 import { T90_PROFILES } from './t90.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { mount } from './fittingMount.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -96,20 +97,6 @@ const nonUniformXform = KIT.xform as (
   rotationZ: number,
   scale: number | readonly number[],
 ) => THREE.BufferGeometry;
-
-function mount(
-  P: AfvBuilderPort,
-  owner: VehicleAssemblyOwner,
-  fitting: THREE.Object3D,
-  x: number,
-  y: number,
-  z: number,
-  rotation: Vec3Tuple | null = null,
-): void {
-  fitting.position.set(x, y, z);
-  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
-}
 
 function armorTile(
   P: AfvBuilderPort,

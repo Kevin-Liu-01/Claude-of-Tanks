@@ -11,6 +11,7 @@ import {
 } from './suspensionPatterns.ts';
 import { runningGearFinishRuleFor, withinRunningGearFinish } from './runningGearFinish.ts';
 import { NATION_WHEEL_AXIAL_FIT } from './nationWheelConstructions.ts';
+import { materialsOf } from './appearanceAudit.ts';
 
 type RunningGearUnitId = string | number | undefined;
 type Side = 'left' | 'right';
@@ -81,12 +82,6 @@ const ROAD_WHEEL_NAMES = new Set([
   'gearRoadWheelDiscsRecessed',
   'gearRoadWheelInsets',
 ]);
-
-function materialsOf(object: Object3D): Material[] {
-  const material = (object as RenderObject).material;
-  if (!material) return [];
-  return Array.isArray(material) ? material : [material];
-}
 
 function isWheelPatternId(value: RuntimeValue): value is WheelPatternId {
   return typeof value === 'string' && value in WHEEL_PATTERN_DEFINITIONS;

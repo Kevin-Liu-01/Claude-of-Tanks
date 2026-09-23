@@ -10,6 +10,8 @@ import { buildType10BBase } from '../modern3.ts';
 import { buildType90 } from './misc.ts';
 import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { mount as mountFitting } from './fittingMount.ts';
+import { sampleArmorFace as sampleFace } from './armorFaceSampling.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -119,9 +121,7 @@ function mount(
   rotation: Vec3Tuple | null = null,
   owner: VehicleAssemblyOwner = 'turret',
 ): void {
-  fitting.position.set(x, y, z);
-  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
+  mountFitting(P, owner, fitting, x, y, z, rotation);
 }
 
 function cassette(
@@ -182,32 +182,6 @@ function seatedArmorCassette(
     P.add(detail, KIT.xform(KIT.box(lidDims.x, lidDims.y, lidDims.z),
       lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
   });
-}
-
-function sampleFace(
-  p00: Vec3Tuple,
-  p10: Vec3Tuple,
-  p11: Vec3Tuple,
-  p01: Vec3Tuple,
-  u: number,
-  v: number,
-  outwardHint: Vec3Tuple,
-): FaceSample {
-  const a = new THREE.Vector3(...p00);
-  const b = new THREE.Vector3(...p10);
-  const c = new THREE.Vector3(...p11);
-  const d = new THREE.Vector3(...p01);
-  const point = a.clone().multiplyScalar((1 - u) * (1 - v))
-    .addScaledVector(b, u * (1 - v))
-    .addScaledVector(c, u * v)
-    .addScaledVector(d, (1 - u) * v);
-  const du = b.clone().sub(a).multiplyScalar(1 - v)
-    .add(c.clone().sub(d).multiplyScalar(v));
-  const dv = d.clone().sub(a).multiplyScalar(1 - u)
-    .add(c.clone().sub(b).multiplyScalar(u));
-  const normal = new THREE.Vector3().crossVectors(du, dv).normalize();
-  if (normal.dot(new THREE.Vector3(...outwardHint)) < 0) normal.negate();
-  return { point, normal, du, dv };
 }
 
 function faceSeatedArmorCassette(

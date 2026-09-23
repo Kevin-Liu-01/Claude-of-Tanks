@@ -43,6 +43,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import { mount as wrapMount } from './fittingMount.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -14369,13 +14370,6 @@ function buildLeopard2A6UA(P: TankBuilderPort) {
 // donor-wrapper builders §5.280) and renamed wrap* against module collisions.
 // They dress the donor A4 turret spliced back into buildLeo2A4M below.
 // ============================================================================
-function wrapMount(P: TankBuilderPort, owner: VehicleOwner, fitting: THREE.Object3D,
-  x: number, y: number, z: number, rotation: Vec3Tuple | null = null): void {
-  fitting.position.set(x, y, z);
-  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
-}
-
 function wrapPlate(P: TankBuilderPort, owner: VehicleOwner, x: number, y: number, z: number,
   w: number, h: number, d: number, rotation: Vec3Tuple | null = null, cap = true): void {
   const r: Vec3Tuple = rotation || [0, 0, 0];

@@ -12,6 +12,7 @@ import { centurionBuild } from './uk.ts';
 import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { mount } from './fittingMount.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -75,20 +76,6 @@ interface SwedishBuilderPort {
     position: Vec3Tuple,
     ...orientation: number[]
   ): void;
-}
-
-function mount(
-  P: SwedishBuilderPort,
-  owner: VehicleAssemblyOwner,
-  fitting: THREE.Object3D,
-  x: number,
-  y: number,
-  z: number,
-  rotation: Vec3Tuple | null = null,
-): void {
-  fitting.position.set(x, y, z);
-  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
 function plate(

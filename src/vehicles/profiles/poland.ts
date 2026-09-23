@@ -21,6 +21,7 @@ import {
   ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone, domeBoxPlanSeat,
 } from './russia.ts';
 import { buildT72B87Native, t72TrackFinishFor } from './t72.ts';
+import { mount } from './fittingMount.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -233,20 +234,6 @@ function facetedGunHousing(
 // Shared Polish fittings (fresh authorship — the old clone-package helpers
 // are retired with the clones)
 // ---------------------------------------------------------------------------
-
-function mount(
-  P: PolishBuilderPort,
-  owner: VehicleAssemblyOwner,
-  fitting: THREE.Object3D,
-  x: number,
-  y: number,
-  z: number,
-  rotation: Vec3Tuple | null = null,
-): void {
-  fitting.position.set(x, y, z);
-  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
-}
 
 // ERAWA cassette course — the Polish ERA grammar (square shallow cassettes
 // with visible rim + bolt, on a real carrier plate; never floating bricks).

@@ -95,7 +95,7 @@ function pattern(id: WheelPatternId): WheelPattern {
   return Object.freeze({ id, ...WHEEL_PATTERN_DEFINITIONS[id] });
 }
 
-function turned(rows: readonly Radial[], segments: number): THREE.BufferGeometry {
+export function turned(rows: readonly Radial[], segments: number): THREE.BufferGeometry {
   return new THREE.LatheGeometry(rows.map(([x, r]) => new THREE.Vector2(r, x)), segments).rotateZ(-Math.PI / 2);
 }
 

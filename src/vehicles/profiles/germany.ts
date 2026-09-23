@@ -14,26 +14,12 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { BufferGeometry } from 'three';
 import type {
   ProceduralBuilderPort,
-  TransformObjectPort,
   Vec3Tuple,
   VehicleAssemblyOwner,
 } from '../proceduralBuilderContracts.ts';
+import { mount } from './fittingMount.ts';
 
 type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
-
-function mount(
-  P: ProceduralBuilderPort,
-  owner: VehicleAssemblyOwner,
-  fitting: TransformObjectPort,
-  x: number,
-  y: number,
-  z: number,
-  rotation: Vec3Tuple | null = null,
-): void {
-  fitting.position.set(x, y, z);
-  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
-}
 
 function plate(
   P: ProceduralBuilderPort,

@@ -44,6 +44,8 @@ import {
 } from './russia.ts';
 import { ABRAMS_PROFILES } from './abrams.ts';
 import type { ProfileBuilderPort, VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { mount as seat } from './fittingMount.ts';
+import { sampleArmorFace as sampleFace } from './armorFaceSampling.ts';
 
 type Vec3Tuple = [number, number, number];
 type ReadonlyVec3Tuple = readonly [number, number, number];
@@ -148,20 +150,6 @@ interface CageStation {
   readonly base: number;
   readonly roof: number;
   readonly rail?: number;
-}
-
-function seat(
-  P: UkraineBuilderPort,
-  owner: VehicleAssemblyOwner,
-  fitting: THREE.Object3D,
-  x: number,
-  y: number,
-  z: number,
-  rotation: ReadonlyVec3Tuple | null = null,
-): void {
-  fitting.position.set(x, y, z);
-  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
-  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
 }
 
 // K-1 cassette: full body + dark lid seam INSIDE the face (§B3 tile grammar).
@@ -308,32 +296,6 @@ function sampleDomeFace(
 // Bilinear face probe for the welded wing and shoulder quads. Besides the
 // point it returns both surface tangents, allowing every ERA course to inherit
 // the compound pitch/yaw of the armor underneath it.
-function sampleFace(
-  p00: ReadonlyVec3Tuple,
-  p10: ReadonlyVec3Tuple,
-  p11: ReadonlyVec3Tuple,
-  p01: ReadonlyVec3Tuple,
-  u: number,
-  v: number,
-  outwardHint: ReadonlyVec3Tuple,
-) {
-  const a = new THREE.Vector3(...p00);
-  const b = new THREE.Vector3(...p10);
-  const c = new THREE.Vector3(...p11);
-  const d = new THREE.Vector3(...p01);
-  const point = a.clone().multiplyScalar((1 - u) * (1 - v))
-    .addScaledVector(b, u * (1 - v))
-    .addScaledVector(c, u * v)
-    .addScaledVector(d, (1 - u) * v);
-  const du = b.clone().sub(a).multiplyScalar(1 - v)
-    .add(c.clone().sub(d).multiplyScalar(v));
-  const dv = d.clone().sub(a).multiplyScalar(1 - u)
-    .add(c.clone().sub(b).multiplyScalar(u));
-  const normal = new THREE.Vector3().crossVectors(du, dv).normalize();
-  if (normal.dot(new THREE.Vector3(...outwardHint)) < 0) normal.negate();
-  return { point, normal, du, dv };
-}
-
 // Ukrainian service whip pair (staggered heights, rear-quarter seats).
 function uaWhips(P: UkraineBuilderPort, o: WhipOptions): void {
   for (const s of [-1, 1]) {
