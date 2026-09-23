@@ -179,7 +179,9 @@ for (const quality of ['high', 'low']) {
       closureRay.set(new THREE.Vector3(side*1.8087375,1.8,z),new THREE.Vector3(0,-1,0));
       closureRay.far=.28;
       assert.ok(closureRay.intersectObject(hullProbe)[0], 'center sponson joins the skirt crown');
-      closureRay.set(new THREE.Vector3(side*1.8087375,1.50,z),new THREE.Vector3(0,1,0));
+      // The strict animated-shoe audit reaches 1.473 m. At the front join
+      // the shoulder underside is 1.505 m, below the center bridge itself.
+      closureRay.set(new THREE.Vector3(side*1.8087375,1.475,z),new THREE.Vector3(0,1,0));
       closureRay.far=.025;
       assert.equal(closureRay.intersectObject(hullProbe).length,0, 'roof bridge stays clear of return shoes');
     }
