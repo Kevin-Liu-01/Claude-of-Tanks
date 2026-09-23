@@ -69,7 +69,7 @@ const DEFAULT_WHEEL_HASHES={
 // turned halves on a narrow axle, no separate inset ring), so tires/discs are repinned from the
 // current build and the inset entry is null (the construction emits no gearRoadWheelInsets).
   m1a2:['c37665c53d90b9b8cdaa198bb2c710de51fae568191c9dfc57a74b044d81009f','8eca4e85ac692ef6d4544a395d15191ed33e2a31e72f79c0448cce5d713ce934',null],
-  leo2a5:['f878b466b20b1b61f35e20aa0ebc5479b3b694e65348ef7c7d6deb1a78dacd6a','51cbe7a278984b59780a6d380c07f1befdfd82eb967cf224d14114816f96a666',null],
+  leo2a5:['c39380f0bd89539ac34aa3a771fceb189a37fe9d2f7e1cb871a2f44a61a40a89','791d4ae6cbc71a41244123637871b778b63d930d1bc8cfc32a8b32fb70cbd453',null],
 };
 for(const [id,expected] of Object.entries(DEFAULT_SHOE_HASHES)) {
   const tank=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});

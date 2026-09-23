@@ -83,7 +83,12 @@ function checkActualBeach(field, id) {
   let admitted = 0;
   for (const lake of field._layout.lakes) for (let i = 0; i < 32; i++) {
     const angle = i * Math.PI / 16, radius = shorelineRadiusAt(lake, angle);
-    for (const fraction of [.88, .90, .92, .94, .96]) {
+    // The dry strand lies between the waterline and the shoreline radius. The waterline is 0.80 R by default, or
+    // `shelfM` metres inside the local radius when the lake authors a shelf (round 40: Saltwind's bay, 12 m) — the same
+    // rule shoreline.ts applies — so sample 20–60 % of the way into the beach from the dry rim in either case.
+    const waterline = lake.shelfM !== undefined ? Math.min(0.94, 1 - lake.shelfM / Math.max(1, radius)) : 0.80;
+    for (const k of [.6, .5, .4, .3, .2]) {
+      const fraction = 1 - (1 - waterline) * k;
       const x = lake.x + Math.cos(angle) * radius * fraction;
       const z = lake.z + Math.sin(angle) * radius * fraction;
       const surface = field.getTrackSurfaceAt(x, z);

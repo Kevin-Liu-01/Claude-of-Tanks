@@ -17,7 +17,7 @@ import {KIT} from './tankFactoryCore.ts';
 // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
 // dont use anymore"): the default fixture hull draws its nation road wheel (nationWheelSets.ts /
 // nationWheelConstructions.ts) and the fleet arm seated against it, so the default digest is repinned from the current build.
-const DEFAULT_FINGERPRINT='185bf552987bbcc79a8b8c9819ba94f69629bbad8cddd5865956aeffd8b81a1f';
+const DEFAULT_FINGERPRINT='d968afd4f142d8415c4f8615fb0a645d372decc310a123adee739fdf51ba093b';
 const bytes=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function geom(g){const h=createHash('sha256');for(const name of Object.keys(g.attributes).sort()){
