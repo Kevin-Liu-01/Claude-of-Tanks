@@ -22,6 +22,14 @@ fleet release gate.
 `internalAnatomyVisuals.ts` is the strict shared geometry owner for Gallery and
 killcam module, crew, and drivetrain presentation; keep both consumers on its
 volume and resource-lifetime contracts.
+The factory core's read-only analyses live beside it (round 46,
+`docs/CLEANUP-2026-09-23-structure.md`): `eraSurfaceFrame.ts` (ERA plate frames
+and PCA fit), `muzzleCapProfiles.ts` (barrel cap/mouth-edge walkers),
+`restPoseContact.ts` (dense-shell floor, rest contact, presentation floor),
+`vehicleMarkingSeating.ts` (marking-seat solver and verified-seat replay) and
+`vehicleMesh.ts` (mesh guards); shared pack helpers are `profiles/fittingMount.ts`
+and `profiles/armorFaceSampling.ts`. Fold a duplicated helper into one of these
+owners instead of copying it into a family pack.
 The Japanese, Swedish, Italian, Chinese, T-80-family, Sheridan, Soviet
 heavy-family, shared AFV, and Polish visual deltas live in strict
 `profiles/japan.ts`, `profiles/sweden.ts`, `profiles/italy.ts`, and
