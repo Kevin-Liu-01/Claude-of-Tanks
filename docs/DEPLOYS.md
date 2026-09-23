@@ -116,3 +116,4 @@ manual deployment policy above; enabling automatic deploys is not the remedy.
 | 62 | 2026-09-23 03:42 | f6d81dcc0 | Guided salvo racks show the autoloader indicator (ZTZ-100 prototype, Object 695); every hull's multi-round weapons verified | main-BP0MwtKY.js | claude-of-tanks-kvnjpjf5z |
 | 63 | 2026-09-23 04:42 | 2733d212e | Sky light on shaded steep faces: slopes turned from the sun carry the rendered sky's colour (Caldera, Skybridge walls no longer black) | main-DmhddWd1.js | claude-of-tanks-ig09tmggj |
 | 64 | 2026-09-23 05:03 | 33b1ca54d | Dune ripples follow a local wind field: the sand bands swing, stretch and fade with distance instead of one corduroy (Desert, Oasis) | main-ojTOUN9X.js | claude-of-tanks-jkvrra30j |
+| 65 | 2026-09-23 05:55 | 756d92ec7 | Monsoon's corner mound holds its turf and Fjord's corner cliffs are blue-grey gneiss, not plaster (steep-slope layer authoring) | main-CSnQFkR_.js | claude-of-tanks-984usg43u |
