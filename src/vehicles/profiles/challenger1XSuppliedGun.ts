@@ -1,5 +1,7 @@
-// Measured source outer tube and blind octagonal mouth. Nominal120 mm
-// gameplay is not used to stretch this owner-selected visual reference.
+// Measured source outer tube and sixteen-facet mouth. Nominal120 mm
+// gameplay is not used to stretch this owner-selected visual reference. The
+// blind octagonal bore inside the mouth was closed on 2026-09-22 (owner: holes
+// are added, not carved, to save triangles); its law stays recorded below.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { c1Length as m, c1Point as p, CHALLENGER1_SUPPLIED_DATUMS as D } from './challenger1XSuppliedFrame.ts';
@@ -16,26 +18,30 @@ function polygon(path:THREE.Path,radius:number):void{
   }
   path.closePath();
 }
-function throatRadius(x:number,y:number,rawZ:number):number{
-  if(Math.hypot(x,y)>m(3))return m(rawZ===211.141739?3.574:rawZ===215.590546?3.464567:2.9133855);
-  if(rawZ!==211.141739)return Math.hypot(x,y);
-  const angle=Math.atan2(y,x),faceAngle=Math.atan2(Math.sin(angle*8),Math.cos(angle*8))/8;
-  return m(2.383416*Math.cos(Math.PI/8)/Math.cos(faceAngle));
+function throatRadius(rawZ:number):number{
+  return m(rawZ===211.141739?3.574:rawZ===215.590546?3.464567:2.9133855);
 }
 function octagonalThroat():THREE.BufferGeometry{
   const floor=211.141739,shoulder=215.590546,mouth=216.220474,outer=3.574,
-    radius=2.383416,shape=new THREE.Shape();
-  // The source entrance has sixteen facets, reducing to eight at the blind
-  // floor. Polygon ray radii reproduce that section change without copying
-  // source contour vertices. Sub-millimetre exporter quantization is not baked.
+    shape=new THREE.Shape();
+  // The source mouth is a sixteen-facet solid stepping 3.574 -> 3.464567 ->
+  // 2.9133855 from the blind floor to the mouth; polygon ray radii reproduce
+  // that section change without copying source contour vertices, and
+  // sub-millimetre exporter quantization is not baked. Owner 2026-09-22 ("the
+  // point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the extrusion is solid, closed at the mouth. Until then
+  // it carried the source bore as a hole: a sixteen-facet 2.383416 entrance
+  // reducing to eight facets at the floor (2.383416*cos(pi/8)/cos(faceAngle)),
+  // 5.078735 source units (115.6 mm) deep to the blind floor at 211.141739 with
+  // a dark stock disc at floor+.025. The factory's dark mouth disc at the tube
+  // edge hid that recess entirely; the law stays recorded here and in
+  // challenger1XSupplied.selftest.mjs.
   polygon(shape,outer);
-  const hole=new THREE.Path();
-  polygon(hole,radius);shape.holes.push(hole);
   const g=new THREE.ExtrudeGeometry(shape,{depth:m(mouth-floor),steps:2,bevelEnabled:false,curveSegments:12});
   const position=g.attributes.position;
   for(let i=0;i<position.count;i++){
     const fraction=position.getZ(i)/m(mouth-floor),rawZ=fraction<.25?floor:fraction<.75?shoulder:mouth;
-    const x=position.getX(i),y=position.getY(i),r=Math.hypot(x,y),target=throatRadius(x,y,rawZ);
+    const x=position.getX(i),y=position.getY(i),r=Math.hypot(x,y),target=throatRadius(rawZ);
     position.setX(i,x*target/r);position.setY(i,y*target/r);
     position.setZ(i,p(0,0,rawZ)[2]-D.trunnion[2]);
   }
@@ -56,7 +62,6 @@ export function addChallenger1SuppliedGun(P:TankBuilderPort):void{
     [25.35433,7.46063],[32.007874,6.00394],[38.661419,5.41339],
     [58.228348,5.37402],[58.228348,0]];
   P.add('gunMount',turned(mantle));
-  P.add('gunDark',KIT.cylZ(m(2.19),m(.02),32),0,0,p(0,0,floor+.025)[2]-D.trunnion[2]);
   // Actual small longitudinal muzzle-reference hood, not a broad MRS box.
   P.add('gun',KIT.box(m(5.905512),m(3.0),m(14.606292)),0,m(5.15),p(0,0,207.224411)[2]-D.trunnion[2]);
   P.muzzleZ=D.muzzleZ-D.trunnion[2];

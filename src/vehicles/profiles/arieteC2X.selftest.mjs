@@ -118,18 +118,22 @@ function opticsAndSeats(t,all=stock(t.root)){
   const cooling=ray(t,[.02,1.49,-2.430],[0,1,0],'hull',all.filter(o=>o.name==='hullDetail'));near(cooling?.point.y,1.496,2e-5,'new fan plate meets source deck');
 }
 function bore(t,complete=false){
+  // Until 2026-09-22 this witness walked the physical 120 mm bore: radial rays .01/.10/.70 m behind
+  // the muzzle met the inner wall at .060*cos(pi/48)/cos(.025-pi/48) and the axial ray met the
+  // gunDark stock at the original long blind floor, .01+D.muzzleZ-D.boreFloorZ from its start. Owner
+  // 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we save
+  // on triangles"): the tube is closed at the source tip because the fleet lining hid that recess
+  // entirely, so the witness now proves the closed painted tip on every pose, across the former
+  // aperture; the bore measurement stays recorded here. The hidden-MRS-intrusion negative that
+  // relied on the inner-wall rays retired with them: an intrusion inside closed metal is invisible.
   const gun=t.root.getObjectByName('rig_gun'),targets=complete?stock(t.root):stock(gun);
-  for(const depth of [.01,.10,.70]){
-  const origin=new T.Vector3(0,0,D.muzzleZ-D.trunnion[2]-depth);
-  for(const angle of [.025,Math.PI/2+.025,Math.PI+.025,3*Math.PI/2+.025]){
-    const direction=[Math.cos(angle),Math.sin(angle),0];
-    const hit=new T.Raycaster(gun.localToWorld(origin.clone()),new T.Vector3(...direction).transformDirection(gun.matrixWorld),0,.10).intersectObjects(targets,false)[0];
-    assert(hit,`physical bore inner wall ${direction} yaw${t.root.getObjectByName('rig_turret').rotation.y} pitch${gun.rotation.x} targets${targets.map(m=>m.name)} recoil${t.root.getObjectByName('rig_recoil').position.z}`);near(hit.distance,.060*Math.cos(Math.PI/48)/Math.cos(.025-Math.PI/48),2e-5,`120 mm actual bore ${hit.object.name}/${direction} @${gun.worldToLocal(hit.point.clone()).toArray()}`);
+  const pose=`yaw${t.root.getObjectByName('rig_turret').rotation.y} pitch${gun.rotation.x} recoil${t.root.getObjectByName('rig_recoil').position.z}`;
+  for(const [x,y] of [[.0015,0],[.05,0],[-.05,0],[0,.05],[0,-.05]]){
+    const start=gun.localToWorld(new T.Vector3(x,y,D.muzzleZ-D.trunnion[2]+.01));
+    const hit=new T.Raycaster(start,new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld),0,3).intersectObjects(targets,false)[0];
+    assert.equal(hit?.object.name,'gun',`closed painted tip at ${x}/${y}, ${pose}, hit${hit?.point.toArray()}`);
+    near(hit.distance,.01,2e-5,`metal tube closed at the source tip across the former 120 mm aperture (recorded blind floor D.boreFloorZ ${D.boreFloorZ})`);
   }
-  }
-  const start=gun.localToWorld(new T.Vector3(0,0,D.muzzleZ-D.trunnion[2]+.01));
-  const hit=new T.Raycaster(start,new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld),0,3).intersectObjects(targets,false)[0];
-  assert.equal(hit?.object.name,'gunDark',`bore floor obstruction at yaw${t.root.getObjectByName('rig_turret').rotation.y}, pitch${gun.rotation.x}, hit${hit?.point.toArray()}`);near(hit.distance,.01+D.muzzleZ-D.boreFloorZ,2e-5,'real original long blind bore');
 }
 function census(t){let triangles=0,draws=0;const resources=new Set();t.root.traverse(o=>{if(!o.isMesh)return;resources.add(o.geometry.uuid);let visible=true;for(let p=o;p;p=p.parent)visible&&=p.visible;
   if(visible&&!o.userData.shadowOnly&&!o.userData.authoredShadowProxy&&!o.name.startsWith('procShadow_')){const mats=Array.isArray(o.material)?o.material:[o.material];if(mats.some(m=>m.colorWrite)){triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);draws++;}}});return{triangles,draws,resources:[...resources].sort()};}
@@ -284,16 +288,6 @@ function mechanicalClearance(t,id){
   yaw.rotation.y=0;gun.rotation.x=0;t.root.updateMatrixWorld(true);return poses;
 }
 
-function obstructedBoreNegative(t){
-  // Place the prior class of hidden MRS intrusion at the enlarged muzzle.
-  // A centerline-only test misses it; the upper wall witness must reject it.
-  const g=new T.BoxGeometry(.089*S,.014*S,.126165*S),m=new T.Mesh(g,t.root.getObjectByName('gun').material);
-  m.position.set(0,.054,D.barrelLengthM-.10);
-  const recoil=t.root.getObjectByName('rig_recoil');recoil.add(m);t.root.updateMatrixWorld(true);
-  try{assert.throws(()=>bore(t),undefined,'inherited hidden bore intrusion must fail');}
-  finally{recoil.remove(m);g.dispose();}
-}
-
 footprintAdapter();
 if(process.argv.includes('--filled'))await ensureInteriorFills(['ariete_c1_x','ariete_c2_x']);
 const costs=[],lodCosts=[];let clearancePoses=0;
@@ -301,10 +295,10 @@ for(const quality of ['high','low']){
   const opts={quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242};
   const first=capturePrimaryHull(createTank,'ariete_c1_x',opts),second=capturePrimaryHull(createTank,'ariete_c2_x',opts),c1=first.tank,c2=second.tank;
   commanderDonor(c2,opts);
-  try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);outwardWheels(c1);outwardWheels(c2);reactiveCassettes(c2);assertC2PrimaryHullDelta(first.stocks,second.stocks);assertC2ReceivingClearance(c2,first.stocks,second.stocks);clearancePoses+=mechanicalClearance(c1,'ariete_c1_x');clearancePoses+=mechanicalClearance(c2,'ariete_c2_x');gear(c2);bore(c2,true);poses(c2);negatives(c2);obstructedBoreNegative(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'ariete_c1_x',quality),...lodPresentation(c2,'ariete_c2_x',quality));
+  try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);outwardWheels(c1);outwardWheels(c2);reactiveCassettes(c2);assertC2PrimaryHullDelta(first.stocks,second.stocks);assertC2ReceivingClearance(c2,first.stocks,second.stocks);clearancePoses+=mechanicalClearance(c1,'ariete_c1_x');clearancePoses+=mechanicalClearance(c2,'ariete_c2_x');gear(c2);bore(c2,true);poses(c2);negatives(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'ariete_c1_x',quality),...lodPresentation(c2,'ariete_c2_x',quality));
     const c=census(c2);assert(c.triangles<=100000,'C2 frozen whole-model HIGH ceiling');assert(c.draws<=65,'merged MBT batches');costs.push({quality,triangles:c.triangles,draws:c.draws});
   }finally{c1.dispose();c2.dispose();first.stocks.forEach(g=>g.dispose());second.stocks.forEach(g=>g.dispose());}
 }
 assert(costs[1].triangles<=costs[0].triangles*.75,'C2 LOW <=75% HIGH');
 console.log(JSON.stringify({filled:process.argv.includes('--filled'),costs,poses:18,clearancePoses,lodCosts,negativeControls:26}));
-console.log('arieteC2X: 9of12 retained C1 hull pieces plus closed receiving relief, physical120mm long bore, modern equipment seats/air, widened gear, all legal poses, negatives and budgets pass');
+console.log('arieteC2X: 9of12 retained C1 hull pieces plus closed receiving relief, closed 120 mm tip over the recorded long bore, modern equipment seats/air, widened gear, all legal poses, negatives and budgets pass');

@@ -27,9 +27,14 @@ function sourceScalars(tank, all) {
     'complete-source centerline dished belly witness');
   near(tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3()).z,
     6.8120532036, .000002, 'source physical muzzle, not an inner stock');
-  const barrel = all.filter(m => m.name === 'gunDark');
-  near(cast(barrel, [-.008067, 1.859441, 7.1], [0, 0, -1])?.point.z,
-    6.24935, .000003, 'measured recessed source bore floor');
+  // Until 2026-09-22 the gunDark bore wall and stock met this ray at the measured recessed source
+  // bore floor 6.24935 (gunBoreFloorZ; gunBoreRadiusM .0804 in chieftain5_x.supplied-build-scalars.json);
+  // owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the tube is closed at the source mouth because the fleet lining hid that
+  // recess entirely. The measurement stays recorded here.
+  const barrel = all.filter(m => m.name === 'gun');
+  near(cast(barrel, [-.008067 + .0015, 1.859441, 7.1], [0, 0, -1])?.point.z,
+    6.8120532, .000003, 'metal tube closed at the source mouth (recorded bore floor 6.24935)');
   // 2026-09-22 nation wheel standard (owner: UK hulls draw the Challenger 2E hollow paired wheel): the held-out Mk5
   // source dish surfaces left with that wheel; the first stock an outboard ray meets at the wheel radii is now a
   // road-wheel part of the nation construction, seated inside the authored tire width with approach air before it.

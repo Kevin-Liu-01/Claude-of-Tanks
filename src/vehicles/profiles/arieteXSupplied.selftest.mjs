@@ -54,13 +54,20 @@ function surfaces(root, all) {
   const throat = cast([turret],[0,1.90,1.80],[0,0,-1]);
   near(throat?.point.z,1.51315,.005,'measured steep face immediately above the curved throat');
   const tube = cast(all,[0,1.651499209,5.10],[0,0,-1]);
-  near(cast([root.getObjectByName('gunDark')],[0,1.651499209,5.10],[0,0,-1])?.point.z,
-    3.683820288,.00001,'actual authored metal lies at source deep blind floor');
+  // Until 2026-09-22 the authored metal lay at the source deep blind floor: a
+  // gunDark stock disc at 3.683820288, 1.344 m behind the 5.028094113 muzzle,
+  // down an open bore of radius .0542. Owner 2026-09-22 ("the point of adding
+  // holes instead of carving them into the barrel is that we save on
+  // triangles"): the lathe is now closed at the source tip because the fleet
+  // lining hid that recess entirely. The measurement stays recorded here.
+  const metal=all.filter(m=>!/muzzleBoreShadowFallback/.test(m.name));
+  const tip=cast(metal,[.0015,1.651499209,5.10],[0,0,-1]);
+  near(tip?.point.z,5.028094113,.0005,'metal tube closed at the source tip (recorded blind floor z 3.683820288)');
+  assert.equal(tip?.object.name,'gun','the closed tip is the painted tube, not a dark stock disc');
   // Fleet mouth standard (2026-09-11): the shading lining seats 0.3 mm ahead
-  // of the tube edge instead of down at the source's deep blind floor.
+  // of the tube edge.
   assert.equal(tube?.object.name,'muzzleBoreShadowFallbackDisc','visible mouth is the fleet lining');
   near(tube?.point.z,5.028094113+.0003,.0005,'native shading lining seats on the tube edge');
-  assert.equal(cast(all,[0,1.651499209,5.02],[0,0,-1],1.30),undefined,'no filled barrel or MRS caps the bore');
   assert.equal(cast([turret],[.9,1.54,-1.45],[0,0,1],.42),undefined,'rising rear underside retains actual air');
   // 2026-09-12 (owner decision): the port-hatch fork now carries one real
   // fleet GPMG fitting; optic shields still earn no machine-gun credit.
@@ -121,4 +128,4 @@ for(const quality of ['high','low']) {
     surfaces(t.root,all);gear(t.root);poseAndEnvelope(t,all);
   } finally {t.dispose();}
 }
-console.log('arieteXSupplied: actual high/low source datums, closed plane stock, held-out faces, real throat/bore/undercut, axle placement and recoil pass');
+console.log('arieteXSupplied: actual high/low source datums, closed plane stock, held-out faces, real throat/closed tip/undercut, axle placement and recoil pass');

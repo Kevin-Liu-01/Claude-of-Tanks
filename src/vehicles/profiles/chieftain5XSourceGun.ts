@@ -49,14 +49,15 @@ export function addChieftain5XSourceGun(P: TankBuilderPort, trunnion: Point): vo
     [4.81, .137], [5.58, .117], [6.00, .119]]) {
     P.add('gun', KIT.torus(r, .003, 24, 5), 0, 0, z - trunnion[2], Math.PI / 2);
   }
-  const muzzle = 6.8120532, boreR = .0804, floor = 6.24935;
-  P.add('gun', new THREE.RingGeometry(boreR, .1017, 40), 0, 0, muzzle - trunnion[2]);
-  // Descending longitudinal profile gives the actual inward-facing wall.
-  const inner = new THREE.LatheGeometry([
-    new THREE.Vector2(boreR, muzzle - trunnion[2]),
-    new THREE.Vector2(boreR, floor - trunnion[2]),
-  ], 40).rotateX(Math.PI / 2);
-  P.add('gunDark', inner);
-  P.add('gunDark', KIT.cylZ(boreR, .003, 40), 0, 0, floor - .0015 - trunnion[2]);
+  const muzzle = 6.8120532;
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into
+  // the barrel is that we save on triangles"): one flat cap closes the open
+  // lathe at the source mouth. Until then a 40-segment annulus ringed the
+  // measured .0804 bore, whose inward wall ran 0.5627 m down to the source
+  // floor at 6.24935 behind a dark stock disc. The factory's dark mouth disc at
+  // the tube edge hid that recess entirely; the measurement stays recorded in
+  // chieftain5XSource.selftest.mjs and docs/references/tanks/
+  // chieftain5_x.supplied-build-scalars.json (gunBoreRadiusM, gunBoreFloorZ).
+  P.add('gun', new THREE.CircleGeometry(.1017, 40), 0, 0, muzzle - trunnion[2]);
   P.muzzleZ = muzzle - trunnion[2];
 }

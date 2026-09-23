@@ -45,9 +45,14 @@ function framesAndBore(t,ms){
  const muzzle=t.gunMuzzleWorld(new THREE.Vector3());
  near(muzzle.distanceTo(new THREE.Vector3(source.gun[0],source.gun[1],source.muzzle)),0,2e-6,'true source firing anchor');
  const cannon=t.root.getObjectByName('gun');
- for(const [x,y]of[[0,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
+ for(const [x,y]of[[.0015,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
   const o=[source.gun[0]+x,source.gun[1]+y,source.muzzle+.10];
-  near(hit([cannon],o,[0,0,-1],.4)?.point.z,source.floor,2e-5,'actual metal blind floor');
+  // Until 2026-09-22 this ray met the actual metal blind floor (source.floor,
+  // raw 211.141739, 115.6 mm behind the mouth) through the open polygon bore;
+  // owner 2026-09-22 ("the point of adding holes instead of carving them into
+  // the barrel is that we save on triangles"): the mouth is solid now, closed
+  // at the source tip because the lining hid that bore entirely. Recorded here.
+  near(hit([cannon],o,[0,0,-1],.4)?.point.z,source.muzzle,2e-5,`metal mouth closed at the source tip (recorded blind floor ${source.floor})`);
   const all=hit(ms,o,[0,0,-1],.4);
   // Fleet mouth standard (2026-09-12, terminal-surface-fit-r2): visible
   // furniture is the lining seated on the tube's true mouth face; the recessed
@@ -58,14 +63,20 @@ function framesAndBore(t,ms){
   assert.equal(all?.object.name,'muzzleBoreShadowFallbackDisc','visible furniture is the fleet lining');
   near(all?.point.z,source.muzzle+.0003,.0005,'all visible muzzle furniture is the flush lining on the terminal face');
  }
- // Pin the physical sixteen-sided entrance and eight-sided deep section.
- // Cardinal and diagonal rays are distinct; no nominal120mm circular filler.
- for(const [rawZ,angle,radius,tolerance]of[[216.20,0,2.383416,.0006],
-  [216.20,Math.PI/4,2.383416,.0006],[211.15,0,2.383416*Math.cos(Math.PI/8),.0006],
-  [211.15,Math.PI/8,2.383416,.0006]]){
-  const z=point(0,0,rawZ)[2],d=[Math.cos(angle),Math.sin(angle),0];
-  const h=hit([cannon],[source.gun[0],source.gun[1],z],d,.15);
-  near(h?.distance,radius*scale,tolerance,'source polygon bore section');
+ // Pin the physical sixteen-facet outer mouth from outside: vertex rays (0 and
+ // pi/2) meet the polygon radius, the face-centre ray (pi/16) meets its
+ // R*cos(pi/16) chord, so a round lathe substitute fails. Levels sit midway
+ // between the extrusion's floor/shoulder/mouth stations, where the ruled wall
+ // is the mean of the two station radii. Until 2026-09-22 these rays pinned the
+ // sixteen-sided 2.383416 entrance and eight-sided 2.383416*cos(pi/8) deep
+ // section from the axis; that bore is closed now (owner 2026-09-22: holes are
+ // added, not carved, to save triangles) and stays recorded here.
+ for(const [rawZ,angle,radius,tolerance]of[[213.3661425,0,(3.574+3.464567)/2,.0006],
+  [215.90551,0,(3.464567+2.9133855)/2,.0006],[215.90551,Math.PI/2,(3.464567+2.9133855)/2,.0006],
+  [215.90551,Math.PI/16,(3.464567+2.9133855)/2*Math.cos(Math.PI/16),.0006]]){
+  const z=point(0,0,rawZ)[2],d=[-Math.cos(angle),-Math.sin(angle),0];
+  const h=hit([cannon],[source.gun[0]+Math.cos(angle)*.15,source.gun[1]+Math.sin(angle)*.15,z],d,.15);
+  near(.15-h?.distance,radius*scale,tolerance,'source polygon mouth section');
  }
  const yaw=t.root.getObjectByName('rig_turret'),gun=t.root.getObjectByName('rig_gun');
  yaw.rotation.y=.63;gun.rotation.x=-.11;t.root.updateMatrixWorld(true);

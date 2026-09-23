@@ -1,10 +1,12 @@
-// Independently turned source-frame main gun, with a real deep open bore.
+// Independently turned source-frame main gun. Its real deep open bore was
+// closed at the source tip on 2026-09-22 (owner: holes are added, not carved,
+// to save triangles); the measured depth stays recorded at the lathe below.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { ARIETE_SUPPLIED_X_DATUMS as D } from './arieteXSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-const { box, cylZ } = KIT;
+const { box } = KIT;
 
 function mrsLowerBridge(boreRadius: number): THREE.BufferGeometry {
   // Keep the visible top/edges and side seats. The original hidden underside
@@ -47,12 +49,17 @@ export function addArieteXSuppliedGun(P: TankBuilderPort, boreRadius = .0542): v
     [.11650, 3.73028], [.09590, 3.73028], [.08520, 3.84046],
     [.08466, 4.16597], [.09590, 4.17774], [.09590, 4.23998],
     [.07910, 4.28288], [.06980, 4.87754], [.06980, D.muzzleZ]];
-  const shellRows = [...outer, [boreRadius, D.muzzleZ], [boreRadius, D.boreFloorZ]];
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into
+  // the barrel is that we save on triangles"): the lathe ends on the axis at
+  // the source tip. Until then it turned into the bore (boreRadius, .0542 on
+  // the C1 and the C2's 120 mm) down to the source deep blind floor at
+  // D.boreFloorZ (3.683820288 in the supplied frame, 1.344 m behind the
+  // 5.028094113 muzzle) with a dark stock disc 2 mm behind that floor. The
+  // factory's dark mouth disc at the tube edge hid the recess entirely; the
+  // depth stays recorded here and in arieteXSupplied/arieteX/arieteC2X.selftest.
+  const shellRows = [...outer, [0, D.muzzleZ]];
   P.add('gun', new THREE.LatheGeometry(shellRows.map(([r, z]) =>
     new THREE.Vector2(r, z - D.trunnion[2])), 48).rotateX(Math.PI / 2));
-  // A blind stock closes the actual source depth, not the visible muzzle.
-  P.add('gunDark', cylZ(boreRadius + .001, .004, 40), 0, 0,
-    D.boreFloorZ - .002 - D.trunnion[2]);
   const x = 0, y = 1.750;
   // Muzzle reference housing faces back toward the turret. Its open mouth
   // and glass are separate from the bore so neither caps the main cannon.

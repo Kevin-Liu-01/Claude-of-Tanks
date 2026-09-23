@@ -108,7 +108,11 @@ for (const quality of ['high', 'low']) {
   } });
   try {
     assert.equal(newCount, 9); assert.equal(parts.length, 9);
-    assert.equal(h.digest('hex'), 'e456a8f4009c749032ffbf23adb3f2d5b0a299e2308e0475c4479f7ece7747c8', 'every pre-existing authored primitive buffer, placement and ownership is immutable');
+    // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
+    // that we save on triangles"): the supplied gun's sixteen-facet mouth is solid, closed at the source
+    // tip, and its dark stock disc at floor+.025 is gone (challenger1XSuppliedGun); every other
+    // pre-existing primitive is the same. Superseded: e456a8f4009c749032ffbf23adb3f2d5b0a299e2308e0475c4479f7ece7747c8.
+    assert.equal(h.digest('hex'), '777742006e4ac88c1fe348409aeb7353142a5e9a4b2610dc8719c31bb2b89b5e', 'every pre-existing authored primitive buffer, placement and ownership is immutable');
     actual.root.updateMatrixWorld(true); before.root.updateMatrixWorld(true);
     const all = meshes(actual.root), base = meshes(before.root);
     checkSurfaces(all); checkReturns(all); checkAir(all); checkAir(base);
