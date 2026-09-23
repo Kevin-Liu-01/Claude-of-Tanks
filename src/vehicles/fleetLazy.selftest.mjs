@@ -8,6 +8,8 @@ import { MISC_PROFILES } from './profiles/misc.ts';
 import { FLEET_GROUP_IDS } from './fleetManifest.ts';
 import {runFleetSweep} from './fleetSweep.test-support.mjs';
 const canonicalOnlyIds = new Set([
+  // core group: built by the tankFactoryCore.ts BUILDERS table, no profile
+  'panther_g',
   'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
   'challenger_3', 'challenger_3x', 'mbt70', 't14',
   'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89',

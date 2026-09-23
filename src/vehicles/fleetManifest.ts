@@ -2,6 +2,10 @@
 // It is deliberately plain data so asking which chunk owns a tank never
 // downloads or evaluates that chunk.
 export const FLEET_GROUP_IDS = Object.freeze({
+  // Built by the always-present core builder table (tankFactoryCore.ts BUILDERS), so
+  // there is no chunk to load; the group exists so every release hull has one owner
+  // and the standard/fidelity checks can score it (cleanup 2026-09-22).
+  core: Object.freeze(['panther_g']),
   griffinViper: Object.freeze(['griffin_viper']),
   tos1aTagil: Object.freeze(['tos1a_tagil']),
   aresApcX: Object.freeze(['ares_apc_x']),

@@ -129,6 +129,8 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
+  // The core hull table is compiled into tankFactoryCore.ts; nothing to fetch.
+  core: () => Promise.resolve(),
   aresApcX: () => import('./profiles/aresApcX.ts').then((mod) => registerProfiles(mod.ARES_APC_X_PROFILES)),
   leopardA6X: () => import('./profiles/leopardA6X.ts').then((mod) => registerProfiles(mod.LEOPARD_A6_X_PROFILES)),
   xk2: () => import('./profiles/xk2.ts').then((mod) => registerProfiles(mod.XK2_PROFILES)),
