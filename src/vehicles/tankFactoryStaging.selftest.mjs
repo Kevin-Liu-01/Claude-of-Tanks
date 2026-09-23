@@ -58,7 +58,8 @@ const goldenReceipts = [
     },
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): strv103 draws the Sweden Strv 122 pressed-recess construction and the fleet arm seated against it; digest repinned from the current build",
-    "sha256": "4a28c5f653a8df18ab7c755f6df3e343d052390a292344e69411112e806b9891"
+    "_repin_2026_09_22_regen": "combined round-38 tree after the fleet presentation regen (2026-09-22): the strv103 rendered anchor moved with the nation wheel (zM -0.3006 -> -0.3013), so the anchor-seated staging digest moved; repinned from staged main",
+    "sha256": "5c5d3ed69c11bf39165460b32550f0a80aed2d40c95f8272f67f94cebbb92586"
   },
   {
     "id": "m1a1",
@@ -101,7 +102,8 @@ const goldenReceipts = [
     },
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): merkava1b draws the Israel Merkava Mk 4B dished-face construction; digest repinned from the current build",
-    "sha256": "b8660dc0247af1f0c513d83b9fc9dfa9179f29412840b72325430167537d9845"
+    "_repin_2026_09_22_regen": "combined round-38 tree after the fleet presentation regen (2026-09-22): the merkava1b rendered anchor moved (zM -0.7139 -> -0.714, envelope 5.4299 -> 5.43); repinned from staged main",
+    "sha256": "33bcc1d319a27f17f7d4dc6399a129c21024e0fa39081ce9b45509088010f112"
   },
   {
     "id": "m1a1",
