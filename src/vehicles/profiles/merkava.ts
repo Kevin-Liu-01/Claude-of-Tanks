@@ -13077,8 +13077,14 @@ const MERKAVA_PROFILE_DATA = {
     // packet intel). 3C deltas: taller whips (3.90/3.93), Kasag hump 2.65
     // at -2.56..-2.61, wider/lower left plinth band, near-center pano head.
     trackW: 0.56, // ref inner track face >= 1.16 (the 1.14 edge aliased into the x 1.11 front column)
+    // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): the MK3_GEAR
+    // 0.40 m wheels on the 0.75 front pitch put 2R/pitch at 1.07 (tires overlapping 5 cm) and the
+    // -3.38 idler 7 cm inside the rear wheel. The Mk 3 rides ~700-740 mm wheels (merkava3d_x source
+    // r 0.371): r 0.35 (2R/pitch 0.93, a 5 cm gap) and the idler 6 cm further aft (-3.44) clears the
+    // rear wheel by 5 cm; stations, sprocket, skirt scallops and the five return rollers are unchanged.
+    wheelR: 0.35,
     wheelZs: [1.20, 0.45, -0.37, -1.18, -2.00, -2.81],
-    sprocket: { z: 2.00, y: 0.72, r: 0.29 }, idler: { z: -3.38, y: 0.66, r: 0.27 },
+    sprocket: { z: 2.00, y: 0.72, r: 0.29 }, idler: { z: -3.44, y: 0.66, r: 0.27 },
     idlerForwardM: 0.15,
     rollers: [0.95, 0.10, -0.75, -1.60, -2.45],
     deckY: 1.63, rearDeckZ: -2.65,
@@ -13277,6 +13283,10 @@ const MERKAVA_PROFILE_DATA = {
     // front 2.89 (band > 0.21 there), tail-frame wing end -4.52; pods at
     // 3.055 are sub-threshold hullLength carriers (metrology-selective law).
     trackW: 0.60, // 3D ref front track inner face reads ~1.10-1.13 (x ±1.11 cols carry 0.24 bots)
+    // owner 2026-09-23 (round 46 wheel follow-up): r 0.40 on the 0.75 front pitch overlapped by 5 cm;
+    // the Mk 3D's own source measures r 0.371, so the wheels shrink to r 0.35 (2R/pitch 0.93, a 5 cm
+    // gap; the -3.41 idler already clears the rear wheel by 5 cm). Everything else is unchanged.
+    wheelR: 0.35,
     wheelZs: [1.20, 0.45, -0.37, -1.18, -2.00, -2.81],
     sprocket: { z: 2.00, y: 0.72, r: 0.29 }, idler: { z: -3.41, y: 0.72, r: 0.27 },
     idlerForwardM: 0.15,

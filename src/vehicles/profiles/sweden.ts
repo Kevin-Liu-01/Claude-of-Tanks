@@ -661,10 +661,15 @@ function addStrv103ARunningGear(P: SwedishBuilderPort): void {
     P.add('hullRunningGearDark', box(0.02, 0.72, 4.5),
       side * 1.00, 0.56, 0.05);
   }
+  // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): r 0.40 on the
+  // print's 0.77 middle pitch put 2R/pitch at 1.04 — the two centre tires overlapped by 3 cm while
+  // the outer pitches (0.93/0.98) read as gaps. The strv103a_x source measures r 0.405 with a 0.825
+  // minimum pitch, so the centre pair opens 3 cm each way (0.83) and the wheels take r 0.38 (760 mm,
+  // 2R/pitch 0.92, a 7 cm gap); end wheels and the two real return rollers are unchanged.
   KIT.buildRunningGear(P, {
-    style: 'rubber', dishR: 0.74, wheelR: 0.40, wheelW: 0.24,
+    style: 'rubber', dishR: 0.74, wheelR: 0.38, wheelW: 0.24,
     wheelY: 0.45, xc: 1.29,
-    wheelZs: [1.40, 0.47, -0.30, -1.28],
+    wheelZs: [1.40, 0.50, -0.33, -1.28],
     sprocket: { z: 2.16, y: 0.89, r: 0.32 },
     idler: { z: -2.01, y: 0.83, r: 0.26 },
     rollers: [{ z: 0.77, y: 1.06, r: 0.10 }, { z: -0.63, y: 1.06, r: 0.10 }],

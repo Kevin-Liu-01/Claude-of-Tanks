@@ -287,11 +287,11 @@ const CR1_HULL = {
   fenderPlaneZ1: 2.95, flapDrop: 0.17,
   fenderSegLen: 0.45,
   rakeHalfW: 0.92, // containment law: rake lofts clear of the 0.96..1.57 pad envelope
-  // Restore the visual authority of the six Hydrogas stations. The former
-  // 0.41 m discs were mechanically valid but disappeared behind the native
-  // skirt at gameplay scale; 0.44 m fills the same clean track corridor and
-  // preserves separate, readable wheels without changing station count.
-  trackXc: 1.265, trackW: 0.54, wheelR: 0.44, wheelY: 0.46, wheelStyle: 'dished',
+  // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): the 0.44 m
+  // discs on the 0.88 station pitch put 2R/pitch at 1.00 — the six tires touched in one row and the
+  // rear sprocket sat 2 cm off the last wheel. The Challenger 1 rides six ~790 mm Hydrogas wheels
+  // (2R/pitch 0.90, a 9 cm gap); the stations, end wheels, skirt and corridor are unchanged.
+  trackXc: 1.265, trackW: 0.54, wheelR: 0.395, wheelY: 0.415, wheelStyle: 'dished',
   // Tire width 0.36 (round 40 axial fit): the Challenger paired wheel this hull draws is 1.36 × its radius wide;
   // the derived 0.227 band and the 0.54 track bounded it to 0.56 of its proportion.
   wheelW: 0.36,

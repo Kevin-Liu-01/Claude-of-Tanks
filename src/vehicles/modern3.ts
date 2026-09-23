@@ -4927,7 +4927,9 @@ export function buildPuma(P: Modern3BuilderPort) {
   // y 0.965; idler z -2.814 y 0.84. coveredTop: the return run rides under
   // the sponson floor behind the armor modules (§B4 audit semantics). -----
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.36, wheelW: 0.22, xc: 1.25, dishR: 0.85,
+    // owner 2026-09-23 (round 46 wheel follow-up, census 2R/pitch 0.97): r 0.36 on the 0.743 minimum
+    // pitch left a 2 cm gap; r 0.34 (680 mm) keeps the six Puma wheels separate (2R/pitch 0.92, a 6 cm gap).
+    style: 'rubber', wheelR: 0.34, wheelW: 0.22, xc: 1.25, dishR: 0.85,
     wheelZs: [1.791, 1.009, 0.247, -0.680, -1.430, -2.173],
     sprocket: { z: 2.658, y: 0.965, r: 0.34 }, idler: { z: -2.814, y: 0.84, r: 0.29 },
     rollers: [[1.40, 1.02], [0.0, 1.02], [-1.55, 1.02]].map(([z, y]) => ({ z, y, r: 0.07 })),

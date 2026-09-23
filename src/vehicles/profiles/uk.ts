@@ -4306,8 +4306,11 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   // raised sprocket (rear extent −3.40, climb from −2.09 at ~0.34). ----
   // Tire width 0.33 (round 40 axial fit): the Challenger paired wheel this hull draws is 1.36 × its radius wide;
   // the 0.24 band and the 0.49 track bounded it to 0.65 of its proportion.
+  // owner 2026-09-23 (round 46 wheel follow-up, census 2R/pitch 1.02): r 0.40 on the 0.782 pitch
+  // overlapped by 2 cm. The Vickers Mk 1 rides six ~720 mm wheels (r 0.36 here, 0.34 after the 0.95
+  // vehicle scale; 2R/pitch 0.92, a 6 cm gap); stations, end wheels and its three return rollers stay.
   buildRunningGear(P, {
-    style: 'dished', wheelR: 0.40, wheelW: 0.33, wheelY: 0.45, xc: 1.185,
+    style: 'dished', wheelR: 0.36, wheelW: 0.33, wheelY: 0.41, xc: 1.185,
     wheelZs: [2.02, 1.238, 0.456, -0.326, -1.108, -1.89],
     sprocket: { z: -2.98, y: 0.92, r: 0.26 }, idler: { z: 3.145, y: 0.80, r: 0.255 },
     rollers: [{ z: 1.15, y: 0.79, r: 0.09 }, { z: -0.15, y: 0.79, r: 0.09 }, { z: -1.45, y: 0.79, r: 0.09 }],

@@ -6399,7 +6399,10 @@ const M47_HULL: PattonHullConfig = {
     // ref's wrap ramps outward (±3.1 cm body stretch): measured wrap-bottom
     // lines re-fit at the +0.105 registration (ref 0.725 @1.872 -> proc
     // 0.725 @1.977; ref 0.652 @-4.074 -> proc 0.652 @-3.969).
-    wheelR: 0.33, span: [0.985, -2.395], rollerN: 3, rollerY: 1.00,
+    // owner 2026-09-23 (round 46 wheel follow-up, census 2R/pitch 0.98): the 660 mm wheels on the print's
+    // 0.676 cadence left a 2 cm gap — one touching row; r 0.31 (620 mm) opens a 6 cm gap (2R/pitch 0.92)
+    // without moving the print-fitted stations, idler or sprocket.
+    wheelR: 0.31, span: [0.985, -2.395], rollerN: 3, rollerY: 1.00,
     idler: { z: 1.515, y: 0.94, r: 0.27 }, sprocket: { z: -3.555, y: 0.96, r: 0.325 },
     sprocketTeeth: false,
   },

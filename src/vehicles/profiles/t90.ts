@@ -1124,13 +1124,19 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
     // reaches trackW/2+0.035 past xc and was flooring the +-1.76 front cols
     // at y~0.1 (ref keeps 0.67 there); the ref's own track inner face is
     // ~1.06 (front cols 1.09-1.25 ground out)
-    style: 'rubber', wheelR: 0.385, wheelW: 0.21, wheelY: 0.455, xc: 1.395, dishR: 0.84,
+    // owner 2026-09-23 (round 46 wheel follow-up, census 2R/pitch 0.98): the 770 mm wheels on the 0.788
+    // cadence left a 2 cm gap. The T-90A runs six 750 mm wheels on a ~0.80 m pitch: r 0.375 and the
+    // stations respread to 0.80 about the same centre (2R/pitch 0.94, a 5 cm gap); the raised sprocket
+    // and idler keep clearing the outer wheels (20 / 5 cm) and the -1.50 rear contact pin still applies.
+    style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.455, xc: 1.395, dishR: 0.84,
     // r10 gear-fade soften: ref rear fade starts ~-1.95 (0.215@-2.08) and
     // the front ramp reads 0.161@2.76 — rear wheel pulled to -1.78,
     // sprocket in/up, idler up (certified print-fade class, partial)
-    wheelZs: [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16],
+    wheelZs: [-1.81, -1.01, -0.21, 0.59, 1.39, 2.19],
     sprocket: { z: -2.42, y: 0.95, r: 0.22 }, idler: { z: 2.83, y: 0.66, r: 0.25 },
-    rollers: [-1.38, 0.14, 1.65].map((z) => ({ z, y: 0.82, r: 0.086 })),
+    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family — the upper run rides
+    // the road-wheel tops behind the skirts (T-90A, Burlak, BMPT-T90 share this gear).
+    rollers: [],
     // Source rear contact leaves the ground at the last road wheel and
     // climbs continuously to the raised sprocket.  Pinning the tangent
     // removes the false metre-long flat tail without moving any wheel.
@@ -1879,20 +1885,27 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
     P.add('hullDark', box(0.22, 0.10, 0.12), s * 1.05, 1.04, 2.03, upperGlacisPitch, 0, 0);
   }
   ruFlaps(P, { x: 1.45, w: 0.60, front: [1.02, 0.11], frontZ: 2.06 });
+  // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): the 3.75 m cadence
+  // put the six 750 mm wheels at 2R/pitch 1.00 (tires touching) and the -3.30 sprocket 3 cm inside the
+  // rear wheel. The real T-90A runs its six 750 mm wheels on a ~0.80 m pitch: the stations respread to
+  // 0.80 m (2R/pitch 0.94, a 5 cm gap) centred 5 cm further aft, the sprocket moves to -3.55 and the
+  // idler to 1.70 so both end wheels clear the outer road wheels by 3-5 cm; the idler's forward shoe
+  // arc still stops behind the 2.06 mudflap and the sprocket wrap stays under the 1.22 sponson.
+  const vladimirRoadWheelZs = evenStations(6, 4.00, -0.90);
   buildRunningGear(P, {
     style: 'rubber', wheelR: vladimirGear.roadWheelRadius, wheelW: 0.21, wheelY: vladimirGear.roadWheelCenterY, xc: 1.46, dishR: 0.84,
-    // Keep six full-size road wheels while opening a real terminal bay for
-    // the raised idler.  The former 4.09 m cadence pushed station six into
-    // the idler circle, so the two wheels read as one overlapping hub.
-    wheelZs: evenStations(6, 3.75, -0.845),
+    wheelZs: vladimirRoadWheelZs,
     // The 280 mm idler is visibly larger and higher than the road-wheel
     // centers, but its forward shoe arc stops behind the untouched rubber
-    // mudguard.  The original rear final-drive seat remains authoritative.
-    sprocket: { z: -3.30, y: 0.70, r: 0.29 }, idler: { z: 1.65, y: 0.82, r: 0.28 },
+    // mudguard.
+    sprocket: { z: -3.55, y: 0.70, r: 0.29 }, idler: { z: 1.70, y: 0.82, r: 0.28 },
     // Pin both ground departures so the linked course forms one continuous
-    // trapezoid rather than extending the loaded run through either wheel.
-    contactZF: 1.31, contactZR: -2.91,
-    rollers: [-2.35, -1.02, 0.32, 1.28].map((z) => ({ z, y: 0.86, r: 0.086 })),
+    // trapezoid rather than extending the loaded run through either wheel
+    // (the same offsets from the outer wheels as before the respread).
+    contactZF: 1.38, contactZR: -3.09,
+    // owner 2026-09-23: no return rollers — the T-72/T-90 family carries its upper run on the
+    // road-wheel tops; the four fictional rollers leave.
+    rollers: [],
     // rTAIL r13b: xc 1.46 / trackW 0.60 — the ref grounds its track band
     // out to x 1.76-1.79 (front ±1.728/1.77 cols read bot 0.011) while the
     // inner edge must stay at 1.16 (r12's ±1.13 floor law): 1.46±0.30.
@@ -1939,7 +1952,7 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   // sponson, inside wheel z-band).
   // (r13e clip audit: hubs end x 1.15 — at 1.37 they voxel-clipped the
   // band wrapping the end wheels; the ±1.03..1.13 front cols stay covered)
-  for (const s of [-1, 1]) for (const wz of evenStations(6, 3.75, -0.845)) {
+  for (const s of [-1, 1]) for (const wz of vladimirRoadWheelZs) {
     P.add('hullDark', cylX(0.13, 0.14, 10), s * 1.08, 0.50, wz);
   }
   // (r12 GEAR-FADE STRIPS deleted rTAIL r13b: the raised idler + pinned
@@ -4464,7 +4477,8 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
     style: 'rubber', wheelR: 0.385, wheelW: 0.21, wheelY: 0.46, xc: 1.405, dishR: 0.84,
     wheelZs: evenStations(6, 4.05, 0.135),
     sprocket: { z: -2.42, y: 0.90, r: 0.258 }, idler: { z: 2.90, y: 0.78, r: 0.21 },
-    rollers: [-1.40, 0, 1.44].map((z) => ({ z, y: 0.80, r: 0.086 })),
+    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family.
+    rollers: [],
     // T5H contact pins (§B6 ramps to today's ref lines): front ramp reads
     // 0.137@2.618 -> 0.601@3.164 (my default patch ran flat past 2.6, ramp
     // 0.08 low over six cols); rear ramp 0.218@-2.189 -> 0.655@-2.735 (my
@@ -5177,8 +5191,12 @@ function buildT90(P: T90BuilderPort): void {
     // its own 780 mm axle cadence, but raise the centers so the larger tires
     // retain the same loaded 95 mm foot on the lower track course instead of
     // being buried through it.
-    style: 'rubber', wheelR: 0.385, wheelW: 0.22, wheelY: 0.480, xc: 1.395, dishR: 0.84,
-    wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
+    // owner 2026-09-23 (round 46 wheel follow-up, census 2R/pitch 0.99): the 770 mm wheels on the 0.78
+    // cadence left a 1 cm gap — one touching row. The T-90 runs six 750 mm wheels on a ~0.80 m pitch:
+    // r 0.375 (the Burlak/T-90A radius, which this receipt must match) and the stations respread to 0.80
+    // about the same centre (2R/pitch 0.94, a 5 cm gap); sprocket, idler and both contact pins stay.
+    style: 'rubber', wheelR: 0.375, wheelW: 0.22, wheelY: 0.480, xc: 1.395, dishR: 0.84,
+    wheelZs: [-1.95, -1.15, -0.35, 0.45, 1.25, 2.05],
     // Seat the final drive under the rear transom instead of crowding the
     // last road wheel. Its 299 mm radius is exactly thirty percent larger
     // than the former 230 mm wheel, while the axle drops 80 mm so the enlarged
@@ -5188,7 +5206,9 @@ function buildT90(P: T90BuilderPort): void {
     // Lift the front idler 30 mm so its axle and the rising bow run share a
     // cleaner tangent while retaining the authored diameter and fore/aft seat.
     sprocket: { z: -2.52, y: 0.90, r: 0.299 }, idler: { z: 2.70, y: 0.71, r: 0.27 },
-    rollers: [-1.38, 0.14, 1.65].map((z) => ({ z, y: 0.82, r: 0.086 })),
+    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family — the upper run rides
+    // the road-wheel tops; the rear arc now runs to the rear wheel's crown tangent.
+    rollers: [],
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     rearArcSteps: 18, smoothRearTopTangent: true, tautRearSpan: true,
     contactZF: 2.26, contactZR: -2.16,
@@ -6602,7 +6622,8 @@ function buildT90MS(P: T90BuilderPort): void {
     // Tagil uses the same aft/up final-drive correction while preserving
     // its own smaller sprocket, road-wheel cadence and front-idler station.
     sprocket: { z: -2.58, y: 0.95, r: 0.20 }, idler: { z: 2.76, y: 0.69, r: 0.25 },
-    rollers: [-1.38, 0.14, 1.65].map((z) => ({ z, y: 0.82, r: 0.086 })),
+    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family.
+    rollers: [],
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     contactZF: 2.4125, contactZR: -2.0325,
   });
@@ -7564,6 +7585,12 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // The replacement below is a complete repository-authored chassis, not a
   // decorative skin over the old rectangular body.
   P.hullG.clear();
+  // The calibration-era gear left its receipts behind: the fleet wheel tools read receipt [0] and
+  // reported the replaced 0.41 m wheels as the T-90M's (round 46 census). The installed course below
+  // is the only running gear this hull renders, so it is the only one it records.
+  delete P.hullG.userData.runningGearReceipts;
+  delete P.hullG.userData.wheelPatternReceipts;
+  delete P.hullG.userData.trackPatternReceipts;
   P.clear(
     'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
@@ -7627,7 +7654,9 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     // both the lower glacis and its shoulder skin; +2.54 m leaves the real
     // wheel-to-wheel clearance while keeping a visibly longer T-90 course.
     idler: { z: 2.54, y: 0.69, r: 0.29 },
-    rollers: [-1.48, -0.39, 0.70, 1.79].map((z) => ({ z, y: 0.97, r: 0.096 })),
+    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family — the T-90M's upper run
+    // rides the road-wheel tops under the 0.92 skirt hem; the four fictional rollers leave.
+    rollers: [],
     trackW: 0.50, topY: 0.98, botY: 0.05, paintedEnds: false,
     coveredTop: true, arms: false, contactZF: 2.22, contactZR: -2.14,
   });

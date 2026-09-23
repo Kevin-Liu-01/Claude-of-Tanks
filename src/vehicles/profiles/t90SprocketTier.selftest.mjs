@@ -6,10 +6,11 @@ import { tankTier, tierNumeral } from '../tier.ts';
 const EPSILON = 1e-6;
 const CONFIGS = Object.freeze({
   t90: Object.freeze({
-    wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
+    // owner 2026-09-23 (round 46): six 750 mm wheels on the 0.80 m T-72/T-90 pitch about the same centre (2R/pitch 0.94).
+    wheelZs: [-1.95, -1.15, -0.35, 0.45, 1.25, 2.05],
     sprocket: { z: -2.52, y: 0.90, r: 0.299 },
     idler: { z: 2.70, y: 0.71, r: 0.27 },
-    rearContactZ: -1.90, // 2026-09-14: the flat run ends under the rear axle (tangent wrap)
+    rearContactZ: -1.95, // 2026-09-14: the flat run ends under the rear axle (tangent wrap)
   }),
   t90ms: Object.freeze({
     wheelZs: [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16],

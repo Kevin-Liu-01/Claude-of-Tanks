@@ -133,7 +133,13 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
     `${id}: exactly seven suspension-driven road-wheel stations`);
   const gear = hullRig.userData.runningGearReceipts.at(-1);
   const arieteGear = hullRig.userData.arieteRunningGearReceipt;
-  assert.equal(gear.wheelR, 0.38, `${id}: slightly larger road wheels are installed`);
+  // owner 2026-09-23 (round 46): 650 mm wheels that read as seven separate road wheels on the 0.71 pitch.
+  assert.equal(gear.wheelR, 0.325, `${id}: road wheels are the 650 mm Ariete size`);
+  {
+    const zs = [...gear.wheelZs].sort((a, b) => a - b);
+    const pitch = Math.min(...zs.slice(1).map((z, i) => z - zs[i]));
+    assert.ok(2 * gear.wheelR <= pitch - 0.05, `${id}: road wheels keep a visible gap (2R ${2 * gear.wheelR} vs pitch ${pitch})`);
+  }
   assert.ok(Math.abs(gear.wheelY - (gear.botY + gear.trackTh / 2 + gear.wheelR)) < 1e-9, `${id}: enlarged road wheels rest on the band face (ground-datum seat, 2026-09-17)`);
   assert.equal(gear.sprocket.r, 0.25, `${id}: rear wheel uses the requested two-thirds profile`);
   assert.equal(gear.sprocket.y, 0.84, `${id}: rear wheel is raised into the return run`);

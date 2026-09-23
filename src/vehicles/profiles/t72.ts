@@ -292,15 +292,19 @@ function buildT72B87NativeTyped(P: T72BuilderPort, variant: T72Variant = 'b87'):
   const buildT72B87NativeTypedRunningGearStage1 = (): void => {
     buildRunningGear(P, {
       ...t72TrackFinishFor(P),
-      style: 'rubber', wheelR: b3 ? 0.455 : 0.455, wheelW: 0.23, wheelY: b3 ? 0.48 : 0.47, xc: 1.37,
+      // owner 2026-09-23 (round 46 wheel follow-up; the same fix the round-40 Polish T-72s took): r 0.455
+      // on the 0.82 pitch overlapped by 9 cm and both end wheels sat ~30 cm inside the outer road wheels.
+      // Six 750 mm T-72 wheels (2R/pitch 0.91, a 7 cm gap), the end wheels moved out to clear them by
+      // 5-8 cm, and no return rollers: the T-72 family carries its upper run on the road-wheel tops.
+      style: 'rubber', wheelR: 0.375, wheelW: 0.23, wheelY: b3 ? 0.48 : 0.47, xc: 1.37,
       dishR: b3 ? 0.77 : 0.79, wheelZs,
-      sprocket: { z: -2.36, y: b3 ? 0.63 : 0.68, r: b3 ? 0.33 : 0.32 },
+      sprocket: { z: -2.72, y: b3 ? 0.63 : 0.68, r: b3 ? 0.33 : 0.32 },
       // The obr.1987 keeps the family trapezoid: the front idler is visibly
       // above the road-wheel line, producing a supported / return instead of
       // a low wheel hidden inside a flat rectangular course.
-      idler: { z: b3 ? 2.48 : 2.46, y: b3 ? 0.59 : 0.69, r: b3 ? 0.31 : 0.30 },
+      idler: { z: 2.80, y: b3 ? 0.59 : 0.69, r: b3 ? 0.31 : 0.30 },
       contactZF: b3 ? 2.22 : 2.20, contactZR: b3 ? -2.05 : -2.08,
-      rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: b3 ? 0.88 : 0.91, r: 0.082 })),
+      rollers: [],
       trackW: 0.56, topY: b3 ? 0.98 : 1.00, botY: 0.025, paintedEnds: true,
       coveredTop: true, arms: true,
     });
@@ -1987,12 +1991,21 @@ function buildT72B3M(P: T72BuilderPort): void {
       // ~-3.20 (0.054@-3.252); at -3.02 the flat run + tipping link pads
       // painted 0-bottoms across the -3.25..-3.47 cols. The authored fade
       // strips below own the ramp line the loop geometry cannot follow.
-      wheelZs: [-2.90, -2.238, -1.456, -0.674, 0.108, 0.89],
+      // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): the 0.662 rear
+      // pitch put 2R/pitch at 1.13 — the two rear tires overlapped by 9 cm and the -3.46 sprocket sat
+      // inside the rear wheel. The real T-72B3M runs six 750 mm wheels on a ~0.80 m pitch, so the six
+      // stations respread to 0.80 from the (unchanged) front wheel back (2R/pitch 0.94, a 5 cm gap) and
+      // the sprocket moves aft to -3.72 to clear the rear wheel by 4 cm (0.72 m from the -4.436 plate,
+      // as on the real hull; the wrap crown stays under the 1.22 sponson floor). The front idler, its
+      // print-tuned ramp and the mudflap are untouched.
+      wheelZs: [-3.11, -2.31, -1.51, -0.71, 0.09, 0.89],
       // r9 gear-fade tracking: ref front bottom ramp 0.11@1.26 -> 0.89@1.90
       // (idler higher/smaller still); rear ramp 0.16@-3.47 -> 0.35@-3.79
       // (sprocket nudged up/forward). Certified print-fade class, softened.
-      sprocket: { z: -3.46, y: 0.74, r: 0.26 }, idler: { z: 1.38, y: 0.80, r: 0.18 },
-      rollers: [-2.5, -1.1, 0.4].map((z) => ({ z, y: 0.80, r: 0.086 })),
+      sprocket: { z: -3.72, y: 0.74, r: 0.26 }, idler: { z: 1.38, y: 0.80, r: 0.18 },
+      // owner 2026-09-23: no return rollers — the real T-72/T-90 family carries its upper run on the
+      // road-wheel tops (the three fictional rollers leave, as on the round-40 Polish T-72 hulls).
+      rollers: [],
       // trackW STAYS 0.58 (r10c tried 0.62 for the +-1.63 ground cols: the
       // sprocket/idler assembly spans trackW+0.07 per side — its faces lit the
       // +-0.99 cols at 0.39 and +-1.68 at 0.42, front rows -8. REVERTED.)
@@ -2093,8 +2106,9 @@ function buildT72B3M(P: T72BuilderPort): void {
         // against the shoes rather than their own wheel-mounted face package.
         P.add('hullRunningGearDark', torus(0.115, 0.012, 14), s * 1.4425, 0.80, 1.48, 0, 0, Math.PI / 2);
         P.add('hullRunningGearDetail', cylX(0.062, 0.05, 10), s * 1.4435, 0.80, 1.48);
-        P.add('hullRunningGearDark', torus(0.165, 0.013, 16), s * 1.4425, 0.74, -3.46, 0, 0, Math.PI / 2);
-        P.add('hullRunningGearDetail', cylX(0.085, 0.05, 10), s * 1.4435, 0.74, -3.46);
+        // (sprocket hub set follows the -3.72 final drive, owner 2026-09-23 wheel follow-up)
+        P.add('hullRunningGearDark', torus(0.165, 0.013, 16), s * 1.4425, 0.74, -3.72, 0, 0, Math.PI / 2);
+        P.add('hullRunningGearDetail', cylX(0.085, 0.05, 10), s * 1.4435, 0.74, -3.72);
       }
     }
     // Relikt soft-bag skirt courses + hard front plates (stations 3.58 uniform)
@@ -4531,7 +4545,9 @@ function buildT72BU(P: T72BuilderPort): void {
     // both approach/departure runs into one crowded wheel row.
     wheelZs: evenStations(6, 4.43, 0.125),
     sprocket: { z: -2.78, y: 0.84, r: 0.24 }, idler: { z: 3.06, y: 0.70, r: 0.24 },
-    rollers: [-1.5, 0.5, 1.9].map((z) => ({ z, y: 0.82, r: 0.086 })),
+    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family — the upper run rides
+    // the road-wheel tops behind the skirt; the three fictional rollers leave.
+    rollers: [],
     trackW: 0.54, topY: 0.86, botY: 0.04, paintedEnds: true, coveredTop: true, arms: true,
   });
   // lipX 1.807 RIGHT-only: the ref's RIGHT skirt crosses the gate's outer

@@ -3044,7 +3044,9 @@ function buildLeo2A6(P: TankBuilderPort) {
       // puts the pad far edge -3.70 and the departure ramp on the ref bottoms
       // (0.23@-2.81, 0.48@-3.18, 0.62@-3.36); idler (3.285, 1.04) far edge 3.76.
       // The old (-3.26, 1.05) wrap reached -3.755 into the ref's bare tail strip.
-      wheelR: 0.385, wheelY: 0.405, span: [2.66, -2.14],
+      // owner 2026-09-23 (round 46 wheel follow-up, census 2R/pitch 0.96): r 0.385 on the 0.80 pitch left
+      // a 3 cm gap; the Leopard 2 wheel is the 700-740 mm class (the A6M's r 0.36): 2R/pitch 0.90, an 8 cm gap.
+      wheelR: 0.36, wheelY: 0.38, span: [2.66, -2.14],
       // r3 #1: wider dark tire ring on the wheel faces (dishR 0.84 -> 0.78,
       // opt-in — siblings hold 0.84); the grey-brown/olive retone below
       // carries the rest of the running-gear hue law.
@@ -7081,7 +7083,10 @@ export function buildLeo2A4(builder: object) {
       // still read as small discs inside a tall side envelope; r0.415 keeps
       // the exact station span and linked course while restoring the dense
       // Leopard suspension cadence from our earlier build.
-      wheelR: 0.415, wheelY: 0.425, span: [2.70, -2.34],
+      // owner 2026-09-23 (round 46 wheel follow-up, census 2R/pitch 0.99): r 0.415 on the 0.84 station
+      // pitch left a 1 cm gap — the seven duals read as one touching row. The Leopard 2 wheel is the
+      // 700-740 mm class (the 2A5 sibling's r 0.37): 2R/pitch 0.88, a 10 cm gap; stations and end wheels stay.
+      wheelR: 0.37, wheelY: 0.395, span: [2.70, -2.34],
       idler: { z: 3.48, y: 1.11, r: 0.25 }, sprocket: { z: -3.19, y: 1.09, r: 0.295 },
       topY: 0.97, fans: { z: -2.55, x: 0.78, r: 0.38 },
       dishR: 0.78, fanWell: true, splashArms: false,
@@ -9096,7 +9101,9 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
       // the ref's ±0.97/±1.02 belly columns (0.341) AND its ±1.57..±1.65 skirt
       // columns (0.352). Narrowed to 1.05..1.525; the new inner skirt courses
       // own the outboard reads. Jacket clearance grows to 0.113.
-      xc: 1.2875, trackW: 0.47, wheelR: 0.355, wheelY: 0.39, span: [2.42, -2.0],
+      // owner 2026-09-23 (round 46 wheel follow-up, census 2R/pitch 0.96): r 0.355 on the 0.737 pitch left a
+      // 3 cm gap; r 0.34 (680 mm) keeps the seven Leopard 2 wheels separate (2R/pitch 0.92, a 6 cm gap).
+      xc: 1.2875, trackW: 0.47, wheelR: 0.34, wheelY: 0.375, span: [2.42, -2.0],
       // r2: idler tucked (y 0.97 r 0.20) — the old 0.25 wrap poked its crown
       // over the ref's beak top line at 3.4..3.6 and pushed the plan front to
       // 3.91 (ref 3.80); sprocket dropped low-forward (the ref wrap bottoms

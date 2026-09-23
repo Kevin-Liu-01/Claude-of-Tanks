@@ -424,8 +424,13 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   // +2.52]; ramp 0.30@-2.92 / 0.66@-3.29 / 0.87@-3.67; front wrap crest
   // 0.81-0.89 @ +3.49..+3.63) -------------------------------------------------
   const buildArieteMkRunningGearStage1 = (): void => {
+    // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): r 0.38 on the
+    // 0.71 gate-ref pitch put 2R/pitch at 1.07 — the seven tires overlapped by 5 cm. The Ariete's
+    // wheels are the ~650-710 mm Leopard-1 class (ariete_c1_x source r 0.29 x 1.232 rig), so the
+    // seven wheels shrink to r 0.325 (2R/pitch 0.92, a 6 cm gap); stations, end wheels and the three
+    // return rollers the real Ariete carries are unchanged.
     buildRunningGear(P, {
-      style: 'rubber', wheelR: 0.38, wheelW: 0.31, wheelY: 0.53, xc: 1.30,
+      style: 'rubber', wheelR: 0.325, wheelW: 0.31, wheelY: 0.475, xc: 1.30,
       wheelZs: [2.17, 1.46, 0.75, 0.04, -0.67, -1.38, -2.09],
       idler: { z: 3.10, y: 0.76, r: 0.32 },
       sprocket: { z: -3.00, y: 0.84, r: 0.25 },
@@ -441,7 +446,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       dishR: 0.82,
     });
     P.hullG.userData.arieteRunningGearReceipt = Object.freeze({
-      roadWheelRadiusM: 0.38,
+      roadWheelRadiusM: 0.325,
       roadWheelStations: 7,
       rearSprocketRadiusM: 0.25,
       rearSprocketOriginalRadiusM: 0.37,
