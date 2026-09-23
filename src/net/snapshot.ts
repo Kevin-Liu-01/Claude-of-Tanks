@@ -1,4 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { magazineIndicator } from '../sim/magazineIndicator.ts';
+import type { MagazineIndicator, MagazineIndicatorSpec } from '../sim/magazineIndicator.ts';
 const POSITION_SCALE = 100;      // centimeters
 const VELOCITY_SCALE = 100;      // centimeters / second
 const ANGLE_SCALE = 32767 / Math.PI;
@@ -81,6 +83,8 @@ interface SnapshotCombatSource {
   gunReload?: { t?: RuntimeValue; totalS?: RuntimeValue; kind?: RuntimeValue } | null;
   magazine?: { rounds?: RuntimeValue; capacity?: RuntimeValue } | null;
   shellSlot?: RuntimeValue;
+  launcherSalvoShots?: RuntimeValue;
+  magazineIndicator?: MagazineIndicator | null;
   ammo?: RuntimeValue[] | null;
   eraSpent?: Set<string> | null;
 }
@@ -88,7 +92,7 @@ interface SnapshotCombatSource {
 export interface SnapshotEntitySource {
   id?: RuntimeValue;
   specId?: RuntimeValue;
-  spec?: { id?: RuntimeValue } | null;
+  spec?: ({ id?: RuntimeValue } & MagazineIndicatorSpec) | null;
   team?: RuntimeValue;
   spotted?: boolean;
   state?: SnapshotStateSource | null;
@@ -299,6 +303,31 @@ function entityFlags(entity: SnapshotEntitySource): number {
   return flags;
 }
 
+const snapshotIndicatorScratch: MagazineIndicator = { rounds: 0, capacity: 0, launcher: false };
+const indicatorCombatScratch = {
+  shellSlot: 0,
+  reload: { t: 0, kind: 'ready' as string },
+  magazine: null as { rounds: number; capacity: number } | null,
+  magazineScratch: { rounds: 0, capacity: 0 },
+  launcherSalvoShots: 0,
+  magazineIndicator: undefined as MagazineIndicator | null | undefined,
+};
+/** Coerce the runtime-typed combat source into the indicator's numeric view without allocating. */
+function indicatorCombatView(combat: SnapshotCombatSource) {
+  const view = indicatorCombatScratch;
+  view.shellSlot = Math.max(0, Number(combat.shellSlot) | 0);
+  view.reload.t = finite(combat.reload?.t);
+  view.reload.kind = typeof combat.reload?.kind === 'string' ? combat.reload.kind : 'ready';
+  if (combat.magazine) {
+    view.magazineScratch.rounds = Math.max(0, Number(combat.magazine.rounds) | 0);
+    view.magazineScratch.capacity = Math.max(0, Number(combat.magazine.capacity) | 0);
+    view.magazine = view.magazineScratch;
+  } else view.magazine = null;
+  view.launcherSalvoShots = Math.max(0, Number(combat.launcherSalvoShots) | 0);
+  view.magazineIndicator = combat.magazineIndicator;
+  return view;
+}
+
 /** Capture one active tank without retaining mutable simulation objects. */
 export function captureEntitySnapshot(
   entity: SnapshotEntitySource | null | undefined,
@@ -312,6 +341,9 @@ export function captureEntitySnapshot(
     : 'ready';
   const gunReload = entity.combat.gunReload || entity.combat.reload;
   const gunReloadKind = typeof gunReload?.kind === 'string' ? gunReload.kind : 'ready';
+  // The magazine fields carry the reticle's multi-round indicator: the cannon magazine, or the guided rack salvo
+  // group while a missile is loaded (round 41, sim/magazineIndicator) — one derivation with the solo aim frame.
+  const indicator = magazineIndicator(indicatorCombatView(entity.combat), entity.spec, snapshotIndicatorScratch);
   const snapshot: QuantizedEntitySnapshot = {
     id: String(entity.id),
     specId: String(entity.specId || (entity.spec && entity.spec.id) || ''),
@@ -338,8 +370,8 @@ export function captureEntitySnapshot(
     gunReloadTotalMs: Math.max(0, Math.round(finite(gunReload?.totalS) * 1000)),
     gunReloadKind:
       SNAPSHOT_RELOAD_KINDS[gunReloadKind as keyof typeof SNAPSHOT_RELOAD_KINDS] ?? 0,
-    magazineRounds: Math.max(0, Number(entity.combat.magazine?.rounds) | 0),
-    magazineCapacity: Math.max(0, Number(entity.combat.magazine?.capacity) | 0),
+    magazineRounds: Math.max(0, Number(indicator?.rounds) | 0),
+    magazineCapacity: Math.max(0, Number(indicator?.capacity) | 0),
     shellSlot: Math.max(0, Math.min(2, Number(entity.combat.shellSlot) | 0)),
     ammo0: Math.max(0, Number(entity.combat.ammo?.[0]) | 0),
     ammo1: Math.max(0, Number(entity.combat.ammo?.[1]) | 0),

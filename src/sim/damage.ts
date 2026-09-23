@@ -1,4 +1,5 @@
 import { isUnguidedRocket } from './launcherPolicy.ts';
+import type { MagazineIndicator } from './magazineIndicator.ts';
 /**
  * damage.ts — complete hit resolution per docs/research/armor-penetration.md
  * §12 and shells-ballistics.md: ricochet, normalization with overmatch,
@@ -122,6 +123,11 @@ export interface CombatState {
   launcherCursor?: number;
   /** Successful guided shots in the current rack salvo; ammunition switches do not reset it. */
   launcherSalvoShots?: number;
+  /**
+   * Network mirror only: the authority's multi-round indicator decoded from the snapshot (sim/magazineIndicator).
+   * The simulation never sets it; the derivation reads `magazine` and `launcherSalvoShots` directly.
+   */
+  magazineIndicator?: MagazineIndicator | null;
   hp: number;
   maxHp: number;
   destroyed: boolean;

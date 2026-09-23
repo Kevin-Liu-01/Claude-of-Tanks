@@ -17,6 +17,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',
     'src/sim/missileRoles.selftest.mjs',
+    'src/sim/magazineIndicator.selftest.mjs',
     'src/vehicles/profiles/griffinViper.selftest.mjs',
     'src/sim/gunPitchLimits.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',

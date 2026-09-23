@@ -186,7 +186,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
       atGunLimit: false,
       gunLimitSpec: false,
       reload: { t: 0, totalS: 1, kind: 'ready' },
-      magazine: { rounds: 0, capacity: 0 },
+      magazine: { rounds: 0, capacity: 0, launcher: false },
       shellSlot: 0,
       shells: [],
       zoom: 1,

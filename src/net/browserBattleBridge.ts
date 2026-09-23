@@ -725,11 +725,24 @@ export function createBrowserBattleBridge<
     const { combat } = entity;
     combat.hp = snapshot.hp;
     combat.maxHp = snapshot.maxHp;
+    // The snapshot's magazine fields are the authority's multi-round indicator (sim/magazineIndicator): the cannon
+    // magazine, or the guided rack salvo group while a missile is loaded (round 41). Mirror it for the HUD, and keep
+    // `combat.magazine` — which the manual magazine-reload rules read — for the cannon magazine only.
+    const loadedShell = entity.spec.gun.shells[snapshot.shellSlot];
+    const salvoGroup = loadedShell?.guided === true && (entity.spec.gun.launcherSalvo?.rounds ?? 0) > 1;
     if (snapshot.magazineCapacity > 0) {
+      if (!combat.magazineIndicator) combat.magazineIndicator = { rounds: 0, capacity: 0, launcher: false };
+      combat.magazineIndicator.rounds = snapshot.magazineRounds;
+      combat.magazineIndicator.capacity = snapshot.magazineCapacity;
+      combat.magazineIndicator.launcher = salvoGroup;
+    } else {
+      combat.magazineIndicator = null;
+    }
+    if (snapshot.magazineCapacity > 0 && !salvoGroup) {
       if (!combat.magazine) combat.magazine = { rounds: 0, capacity: 0 };
       combat.magazine.rounds = snapshot.magazineRounds;
       combat.magazine.capacity = snapshot.magazineCapacity;
-    } else {
+    } else if (!salvoGroup) {
       combat.magazine = null;
     }
     const gunReload = combat.gunReload || combat.reload;

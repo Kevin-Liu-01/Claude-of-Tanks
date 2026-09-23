@@ -60,6 +60,8 @@ interface ReloadView {
 interface MagazineView {
   rounds?: number;
   capacity?: number;
+  /** A guided rack salvo group (sim/magazineIndicator): its group reload is the launcher's own 'shell' cycle. */
+  launcher?: boolean;
 }
 
 interface AimWarningView {
@@ -438,6 +440,7 @@ interface ReticlePaintState {
   ammoSelectionPending: boolean;
   magazineCapacity: number;
   magazineRounds: number;
+  magazineLauncher: boolean;
   shellType: string;
   shellCount: number;
   shellUnlimited: boolean;
@@ -834,7 +837,10 @@ export function autoloaderHudState(
   const rounds = Math.max(0, Math.min(capacity, (magazine?.rounds ?? 0) | 0));
   const reloadTotalS = reload?.totalS ?? 0;
   const reloadRemainingS = reload?.t ?? 0;
-  const fullReload = reload?.kind === 'magazine' && reloadTotalS > 0 && reloadRemainingS > 0.001;
+  // A cannon magazine reloads as a 'magazine' cycle; a guided rack salvo group (round 41) reloads through the
+  // launcher's own 'shell' cycle — both fill the indicator's shells with the same progress read.
+  const groupReload = reload?.kind === 'magazine' || (magazine?.launcher === true && reload?.kind === 'shell');
+  const fullReload = groupReload && reloadTotalS > 0 && reloadRemainingS > 0.001;
   const loadProgress = fullReload
     ? Math.max(0, Math.min(1, 1 - reloadRemainingS / reloadTotalS))
     : 0;
@@ -3671,6 +3677,7 @@ export function initHud(bus: EventBus): HudRuntime {
     singleReticle: false, atGunLimit: false, gunLimitSpec: false,
     selfRightLabel: null,
     zoom: 1, reloadKind: '', ammoSelectionPending: false, magazineCapacity: 0, magazineRounds: 0,
+    magazineLauncher: false,
     shellType: '', shellCount: 0, shellUnlimited: false, drawnR: 0,
   };
   const nearPaint = (
@@ -3711,6 +3718,7 @@ export function initHud(bus: EventBus): HudRuntime {
       && reticlePaint.ammoSelectionPending === view.ammoSelectionPending
       && reticlePaint.magazineCapacity === ((magazine?.capacity ?? 0) | 0)
       && reticlePaint.magazineRounds === ((magazine?.rounds ?? 0) | 0)
+      && reticlePaint.magazineLauncher === (magazine?.launcher === true)
       && reticlePaint.shellType === (shell.type || '')
       && reticlePaint.shellCount === shellCount(shell)
       && reticlePaint.shellUnlimited === (shell.unlimited === true);
@@ -3741,6 +3749,7 @@ export function initHud(bus: EventBus): HudRuntime {
     reticlePaint.ammoSelectionPending = view.ammoSelectionPending;
     reticlePaint.magazineCapacity = (mag?.capacity ?? 0) | 0;
     reticlePaint.magazineRounds = (mag?.rounds ?? 0) | 0;
+    reticlePaint.magazineLauncher = mag?.launcher === true;
     reticlePaint.shellType = shell.type || ''; reticlePaint.shellCount = shellCount(shell);
     reticlePaint.shellUnlimited = shell.unlimited === true;
     reticlePaint.drawnR = lastDrawnR;

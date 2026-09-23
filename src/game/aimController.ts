@@ -1,4 +1,6 @@
 import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
+import { magazineIndicator } from '../sim/magazineIndicator.ts';
+import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.ts';
 import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
@@ -33,6 +35,8 @@ interface AimCombat {
   magazine?: { rounds?: number; capacity?: number } | null;
   shellSlot: number;
   launcherCursor?: number;
+  launcherSalvoShots?: number;
+  magazineIndicator?: MagazineIndicator | null;
   ammo?: number[];
 }
 
@@ -94,7 +98,8 @@ export interface AimFrame {
   atGunLimit?: boolean;
   gunLimitSpec: boolean;
   reload: { t: number; totalS: number; kind?: string };
-  magazine: { rounds: number; capacity: number };
+  /** The reticle's multi-round indicator (sim/magazineIndicator): cannon magazine or guided rack salvo group. */
+  magazine: { rounds: number; capacity: number; launcher: boolean };
   shellSlot: number;
   ammoSelectionPending?: boolean;
   shells: ShellCard[];
@@ -290,6 +295,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     }
   }
 
+  const magazineIndicatorScratch: MagazineIndicator = { rounds: 0, capacity: 0, launcher: false };
   function writeBaseAimFrame(frame: AimFrame, player: AimTank, rig: AimRig): void {
     const state = player.state!;
     const combat = player.combat!;
@@ -305,8 +311,12 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     frame.reload.t = combat.reload.t;
     frame.reload.totalS = combat.reload.totalS;
     frame.reload.kind = combat.reload.kind;
-    frame.magazine.rounds = combat.magazine?.rounds || 0;
-    frame.magazine.capacity = combat.magazine?.capacity || 0;
+    // round 41: one derivation for cannon magazines AND guided rack salvos (owner 2026-09-22: "missile tanks that
+    // fire twice ... need to show the autoloader ammo indicator even if they fire on their own").
+    const indicator = magazineIndicator(combat, player.spec, magazineIndicatorScratch);
+    frame.magazine.rounds = indicator?.rounds || 0;
+    frame.magazine.capacity = indicator?.capacity || 0;
+    frame.magazine.launcher = indicator?.launcher === true;
     writeAmmoFrame(frame, player);
     frame.zoom = rig.mode === 'SNIPER' ? rig.zoom : 1;
   }

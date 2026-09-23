@@ -240,6 +240,29 @@ const fiveRound = autoloaderHudState(
 assert.equal(fiveRound.visibleShells, 4, 'the compact rack remains capped at four silhouettes');
 assert.equal(fiveRound.overflow, 1, 'magazines above four retain an exact overflow read');
 
+// round 41 (owner 2026-09-22: missile tanks that "fire twice" must show the autoloader indicator): a guided rack
+// salvo group (ZTZ-100 prototype twin rack, Object 695 quad rack) reloads through the launcher's own 'shell' cycle.
+// With the launcher flag that cycle fills the shells progressively like a magazine reload; without it a 'shell'
+// cycle is a conventional gun's reload and the indicator stays a plain gray rack.
+const salvoLoading = autoloaderHudState(
+  { rounds: 0, capacity: 2, launcher: true },
+  { kind: 'shell', t: 9, totalS: 12 },
+);
+assert.equal(salvoLoading.fullReload, true, 'a salvo group reload uses the progressive shell fill');
+assert.equal(salvoLoading.loadProgress, 0.25, 'salvo group reload progress is normalized');
+assert.equal(salvoLoading.readyShells, 0, 'nothing is ready while the rack reloads');
+const salvoBetween = autoloaderHudState(
+  { rounds: 1, capacity: 2, launcher: true },
+  { kind: 'intraClip', t: 0.2, totalS: 0.35 },
+);
+assert.equal(salvoBetween.readyShells, 1, 'one missile remains lit between the two launches');
+assert.equal(salvoBetween.intraClip, true, 'the intra-salvo interval shows the intra-clip keyline');
+const cannonShellCycle = autoloaderHudState(
+  { rounds: 0, capacity: 3 },
+  { kind: 'shell', t: 9, totalS: 12 },
+);
+assert.equal(cannonShellCycle.fullReload, false, 'without the launcher flag a shell cycle is no group reload');
+
 const hitEntry = hitConfirmVisualState(0);
 const hitSettled = hitConfirmVisualState(0.14);
 const hitFading = hitConfirmVisualState(1.1);

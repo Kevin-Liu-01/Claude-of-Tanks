@@ -21,6 +21,9 @@ lay, and dispersion; `damage.ts` owns penetration/modules/crew/fire;
 those rules with match-local world collision for every network authority;
 `specialActionPolicy.ts` and `specialActions.ts` own the strict shared state
 machine for guided missiles, suspension aim, and manual magazine reloads;
+`magazineIndicator.ts` is the one derivation of the reticle's multi-round indicator
+(cannon magazine or guided rack salvo group) that the solo aim frame, the snapshot
+and the reload event read;
 `terrainMobility.ts` owns the allocation-free drivetrain/grip capability math
 shared by movement and bot navigation;
 `botRoutePlanner.ts` builds one typed seeded traversability grid per match and feeds

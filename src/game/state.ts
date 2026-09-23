@@ -70,6 +70,8 @@ import {
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
   repairAllModules, startMagazineReload, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
+import { magazineIndicator } from '../sim/magazineIndicator.ts';
+import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
 import {
   activateSpecialAction,
   bindSpecialActionState,
@@ -2480,6 +2482,7 @@ function stepRolloverRecovery(game: SoloGameState, bus: EventBus): void {
   }
 }
 
+const reloadEventIndicatorScratch: MagazineIndicator = { rounds: 0, capacity: 0, launcher: false };
 function emitReloadProgress(
   entity: SoloEntity,
   bus: EventBus,
@@ -2501,8 +2504,9 @@ function emitReloadProgress(
     ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS)) : 1;
   event.kind = reloadKind;
   event.caliberMm = shell?.caliberMm || entity.spec.gun.caliberMm || 100;
-  event.magazineRounds = combat.magazine?.rounds || 0;
-  event.magazineCapacity = combat.magazine?.capacity || 0;
+  const indicator = magazineIndicator(combat, entity.spec, reloadEventIndicatorScratch);
+  event.magazineRounds = indicator?.rounds || 0;
+  event.magazineCapacity = indicator?.capacity || 0;
   event.done = done;
   bus.emit('player:reload', event);
 }

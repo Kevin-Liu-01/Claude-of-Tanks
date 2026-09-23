@@ -313,9 +313,17 @@ CombatState = {            // damage.createCombatState(spec) builds this
     kind: 'ready'|'shell'|'intraClip'|'magazine',
   },                                              // t counts down to 0 = ready
   magazine: null|{ rounds: number, capacity: number },
+  launcherSalvoShots?: number,                    // guided shots fired in the current rack salvo group
+  magazineIndicator?: null|{ rounds, capacity, launcher: boolean }, // NETWORK MIRROR ONLY — see below
   shellSlot: 0|1|2,
 }
 ```
+The reticle's multi-round indicator is never read from `magazine` directly: `sim/magazineIndicator.ts`
+derives it once (the cannon magazine, or — with a guided round loaded on a `gun.launcherSalvo` rack —
+the rounds left in the current salvo group, 0 while the rack runs its own 'shell' reload) for the solo
+aim frame, the authoritative snapshot's `magazineRounds/Capacity` and the `player:reload` event. The
+client bridge decodes those snapshot fields into `magazineIndicator` and fills `magazine` only for a
+cannon magazine, so the manual magazine-reload rules keep reading the cannon alone.
 Effects of module/crew state on gameplay (movement & integration read these — locked):
 `engine` yellow ⇒ `enginePowerHp × 0.5`, red ⇒ immobile; `trackL|trackR` red ⇒ immobile;
 `gun` yellow ⇒ σ×2 & no aim shrink below f=2, red ⇒ cannot fire; `turretRing` yellow ⇒
@@ -1092,7 +1100,9 @@ maps conventional ammunition onto one gun cycle and each guided round onto an
 independent launcher cycle. The selected channel remains projected through the
 legacy `reload` field for HUD consumers; `gunReload` keeps an autoloader's feed
 cycle explicit while an auxiliary launcher is selected. Network snapshots carry
-both the selected cycle and background cannon cycle.
+both the selected cycle and background cannon cycle, and their magazine fields
+carry the multi-round indicator of `sim/magazineIndicator.ts` (cannon magazine or
+guided rack salvo group) rather than the raw cannon magazine.
 
 `src/game/playerBattleActions.ts` owns live ammunition cards, shell selection,
 consumable cooldowns/effects, special actions, and multiplayer command routing.

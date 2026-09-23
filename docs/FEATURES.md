@@ -118,6 +118,11 @@ gun reload. External missile launchers retain independent 2–3 second channels,
 so their cooldown neither empties nor blocks an autoloader magazine. Partial
 autoloader clips can refill while an auxiliary launcher is selected, and
 changing the desired cannon round does not restart a refill already underway.
+A guided rack that fires a salvo (the ZTZ-100 prototype's twin HJ-P9 rack, the
+Object 695's quad rack) shows the same reticle indicator as an autoloader: the
+missiles left in the group, the short intra-salvo cycle, then the rack's reload
+filling the shells — a held trigger releases the next missile as soon as the
+short cycle ends, and the indicator always says how many remain.
 Endless Horde uses these same counts and restores them through battlefield ammo
 caches. Bots consume and switch the same authoritative inventories as players.
 
