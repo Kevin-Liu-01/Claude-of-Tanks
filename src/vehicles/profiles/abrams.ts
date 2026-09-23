@@ -15,7 +15,7 @@
 // tires/flaps/skirt lips, *Glass = optics, *Cloth = stowage canvas,
 // *Detail = unpainted fittings. Camo lives on hull/turret/gun/gunMount only.
 import * as THREE from 'three';
-import { M1A3_TURRET_VERTICAL_OFFSET_M } from '../abramsUpgradeDatums.ts';
+import { M1A3_TURRET_VERTICAL_OFFSET_M, M1A3_VISIBLE_TURRET_RING_HEIGHT_M } from '../abramsUpgradeDatums.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -10749,9 +10749,10 @@ function addM1A3TurretStructure(P: AbramsBuilderPort, t: M1A3BuildLayout['t']): 
   seatAbramsTurret(P.turretG, t.ring[0], t.ring[1], t.ring[2]);
   P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
   abramsShell(P, t);
-  // Thin bearing flange: 38 mm tall, with 3 mm embedded in both the deck
-  // and the turret base. The complete assembly retains a 32 mm visible seam.
-  P.add('turret', cylY(1.24, 1.28, .038, 48), 0, -.116, 0);
+  // Extend the bearing down from the turret base, with 3 mm embedded in
+  // both the deck and turret. The visible-height datum also raises the rig.
+  const bearingHeight = M1A3_VISIBLE_TURRET_RING_HEIGHT_M + .006;
+  P.add('turret', cylY(1.24, 1.28, bearingHeight, 48), 0, -.097 - bearingHeight / 2, 0);
 
   // Isolated, armored bustle autoloader with six blow-off roof panels.
   P.add('turret', box(2.92, 0.53, 1.46), 0, 0.37, -2.42);

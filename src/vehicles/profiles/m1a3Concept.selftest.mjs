@@ -194,7 +194,7 @@ assert.deepEqual(receipt, {
   rwsTowerStyle: 'abramsx-inspired-open-yoke',
   turretForwardShiftM: 0.30,
   turretRingZ: 0.15,
-  turretVerticalOffsetM: 0.11,
+  turretVerticalOffsetM: 0.128,
   enhancedCheekModules: 2,
   mantletRoofRamp: expectedMantletRoofRamp,
   cheekRoofSurface: 'joined-mirrored-facet',

@@ -47,20 +47,20 @@ for (const quality of ['high', 'low']) {
 
   const m1 = createTank('m1a3', null, {proceduralOnly:true, quality, geometryReceipt:true});
   const turret = m1.root.getObjectByName('rig_turret');
-  assert.ok(Math.abs(turret.position.y-(1.67 + .11 + .012))<1e-8, 'complete M1A3 turret reseated to leave a 32 mm ring seam');
+  assert.ok(Math.abs(turret.position.y-(1.67 + .128 + .012))<1e-8, 'complete M1A3 turret reseated to leave a 50 mm ring seam');
   assert.equal(turret.position.z,.15, 'earlier forward seat preserved');
   assert.equal(m1.root.getObjectByName('rig_gun').parent,turret);
   assert.ok(m1.root.getObjectByName('turretExternalArmor').geometry.attributes.position.count>0);
   const bearing = m1.root.getObjectByName('turret').geometry.attributes.position;
   let bearingBottom=Infinity, bearingTop=-Infinity;
   for(let i=0;i<bearing.count;i++) {
-    if(Math.abs(bearing.getY(i)+.135)<1e-5) bearingBottom=Math.min(bearingBottom,bearing.getY(i)+turret.position.y);
+    if(Math.abs(bearing.getY(i)+.153)<1e-5) bearingBottom=Math.min(bearingBottom,bearing.getY(i)+turret.position.y);
     if(Math.abs(bearing.getY(i)+.097)<1e-5) bearingTop=Math.max(bearingTop,bearing.getY(i)+turret.position.y);
   }
-  assert.ok(Math.abs(bearingTop-bearingBottom-.038)<1e-6, 'actual bearing adds 20 mm to the shortened 18 mm flange');
+  assert.ok(Math.abs(bearingTop-bearingBottom-.056)<1e-6, 'bearing spans the 50 mm seam with 3 mm overlap at each end');
   assert.ok(bearingBottom<1.66 && bearingBottom>1.65, 'thin bearing still overlaps the hull deck');
   const visibleSeam=turret.position.y-.10-1.66;
-  assert.ok(visibleSeam>.031 && visibleSeam<.033, 'roughly 32 mm of exposed ring remains');
+  assert.ok(visibleSeam>.049 && visibleSeam<.051, 'roughly 50 mm of exposed ring remains');
   assert.ok(bearingTop>turret.position.y-.10, 'bearing remains connected to the turret base');
   // The thin circular seam must still be visible from both sides. Front
   // hatches can naturally hide a seam this low from a level front camera.
@@ -72,7 +72,7 @@ for (const quality of ['high', 'low']) {
     for (let parent=object; parent; parent=parent.parent) if (!parent.visible) return;
     visibleMeshes.push(object);
   });
-  for (const side of [-1,1]) for (const y of [-.128,-.116,-.104]) {
+  for (const side of [-1,1]) for (const y of [-.145,-.125,-.105]) {
     const origin=turret.localToWorld(new THREE.Vector3(side*8,y,0));
     frontRay.set(origin,new THREE.Vector3(-side,0,0));
     const hit=frontRay.intersectObjects(visibleMeshes,false)[0];
