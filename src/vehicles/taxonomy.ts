@@ -56,7 +56,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't62mv1', 't64bv1', 't72b_1987', 't72bu', 't80', 't80b', 't80bv',
     't80u', 'strv81', 'udes03', 'strv103a', 'strv103', 'is7', 'object279',
     'chieftain5', 'chieftain_mk10', 'challenger1', 'fv4034', 'stb1', 'type74', 'type90',
-    'type90a', 'm2a2_bradley', 'bmp1', 'bmp2', 'bmp3', 'type89', 'carro45t',
+    'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'type89', 'carro45t',
     'amx40', 'leo1a5', 'leopard2_proto', 'leo2a4', 'mbt70', 'm1a1', 'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
     't54', 'amx30', 'amx30b2', 'm48', 'm60a2', 'm60a3', 'vickers_mk1',
@@ -82,7 +82,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a2_sepv3', 'merkava3c', 'merkava3d', 'merkava4b', 't72m1_jaguar',
     'pt91_twardy', 'k2b', 'bmp3_rok', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk',
     'ua_t84_oplot_m', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
-    'm3a3_bradley', 'bmpt_t90', 'm1128', 'm1296', 'cv90',
+    'm3a3_bradley', 'bmpt_t90', 'cv90',
     'ajax_x', 'aft10_x', 'k21_x', 'type96b_x', 'cv90105_tml_x', 'sabra_mk2_x',
   ]),
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([

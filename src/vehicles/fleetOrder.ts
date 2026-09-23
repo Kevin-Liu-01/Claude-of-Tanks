@@ -25,7 +25,7 @@ export const NATIVE_VARIANT_FAMILIES = Object.freeze({
 export const NATIVE_FAMILY_ORDER = Object.freeze({
   abramsSourceX: Object.freeze(['m1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x']),
   abrams: Object.freeze([
-    'm1a1', 'm1a1ha', 'm1a1_aim', 'm1a2', 'm1a2_tusk',
+    'm1a1', 'm1a1ha', 'm1a2', 'm1a2_tusk',
     'm1a2_sepv2', 'm1a2_sepv3', 'm1a3', 'abramsx',
   ]),
   sheridan: Object.freeze([
