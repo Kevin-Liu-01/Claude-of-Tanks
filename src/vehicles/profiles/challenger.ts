@@ -292,6 +292,9 @@ const CR1_HULL = {
   // skirt at gameplay scale; 0.44 m fills the same clean track corridor and
   // preserves separate, readable wheels without changing station count.
   trackXc: 1.265, trackW: 0.54, wheelR: 0.44, wheelY: 0.46, wheelStyle: 'dished',
+  // Tire width 0.36 (round 40 axial fit): the Challenger paired wheel this hull draws is 1.36 × its radius wide;
+  // the derived 0.227 band and the 0.54 track bounded it to 0.56 of its proportion.
+  wheelW: 0.36,
   wheelZs: [2.5, 1.62, 0.74, -0.14, -1.02, -1.9],
   // push-2 r1 RUNNING-GEAR LANE (the round's named binder): the ref's
   // idler-wrap climb is a 0.51/m ramp from z 2.89 into a HIGH FORWARD

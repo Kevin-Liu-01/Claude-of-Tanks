@@ -79,11 +79,12 @@ expect('sabra_mk2_x', 'm60a3');                 // owner 2026-09-22 correction
 expect('m60a1', 'm60a3'); expect('m48', 'm60a3'); expect('m46_patton', 'm60a3');
 expect('m1a3', 'm1a2'); expect('abramsx', 'm1a2'); expect('m1a2_legacy', 'm1a2');
 expect('m1a2', 'm1a2', 'donor'); expect('ua_m1a1', 'm1a2', 'donor');
-expect('m551_sheridan', 'm551a1_tts'); expect('griffin_viper', 'm551a1_tts'); expect('ua_m2a3_bradley', 'm551a1_tts');
+expect('m551_sheridan', 'm551a1_tts'); expect('ua_m2a3_bradley', 'm551a1_tts');
+expect('griffin_viper', 'm1a2'); expect('griffin50_x', 'm1a2'); // round 40 axial fit: paired ASCOD wheels, not the single Sheridan rim
 expect('type59', 'ztz100_x'); expect('ztz100_prototype', 'ztz100_x'); expect('aft10_x', 'type100');
 expect('merkava1b', 'merkava4b'); expect('merkava4_barak', 'merkava4b'); expect('namer_ifv', 'namer_ifv', 'donor');
 expect('strv81', 'strv122'); expect('strv103', 'strv122'); expect('strv122', 'strv122'); expect('cv90', 'cv90_mkiv_x');
-expect('k1a1', 'k1a1'); expect('k2b', 'k2'); expect('k21_x', 'k1a1'); expect('bmp3_rok', 'k1a1');
+expect('k1a1', 'k1a1'); expect('k2b', 'k2'); expect('k21_x', 'k1a1'); expect('bmp3_rok', 'bmp3m_dragun125_x'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
 expect('pt91m', 'pl01'); expect('t72m1_jaguar', 'pl01'); expect('upior', 'bwp1');
 expect('type10', 'type10'); expect('type89_light_tiger', 'type10'); expect('type74', 'type90'); expect('type89', 'type90');
 expect('carro45t', 'ariete_c1'); expect('ariete', 'ariete_c1'); expect('ariete_c2_x', 'ariete_c1', 'donor');
@@ -141,10 +142,21 @@ for (const construction of BUILDABLE_WHEEL_CONSTRUCTIONS) {
     }
   }
 }
-// Offset-seated dressing keeps its protrusion proportional to the radius under an axial stretch (griffin50_x, 2026-09-22).
+// The fit window is 0.85-1.15 of the donor proportion (round 40); bounds that ask for more are clamped and recorded.
+assert.deepEqual(NATION_WHEEL_AXIAL_FIT, { min: 0.85, max: 1.15 }, 'no construction is drawn outside 0.85-1.15 of its donor proportion');
+{
+  const squashed = buildNationWheel('leclerc-stepped-plate', { radiusM: .36, tireWidthM: .22, maxWidthM: .22 * 1.48, high: true, segments: 26 });
+  assert.equal(squashed.axialScale, NATION_WHEEL_AXIAL_FIT.min, 'a narrow legacy cap clamps at the floor of the window');
+  assert.ok(squashed.axialFitRequested < 0.6, `the request the bounds asked for is recorded (${squashed.axialFitRequested})`);
+  const fitted = buildNationWheel('leclerc-stepped-plate', { radiusM: .36, tireWidthM: .22, maxWidthM: .63 * 0.90, high: true, segments: 26 });
+  assert.ok(Math.abs(fitted.axialScale - 1) < 0.02 && Math.abs(fitted.axialFitRequested - fitted.axialScale) < 1e-9, `the track-width cap lets the Leclerc face keep its proportion (${fitted.axialScale})`);
+  for (const b of [squashed, fitted]) for (const g of [b.tire, b.disc, b.dark, ...b.layers.map((l) => l.geometry)]) g?.dispose();
+}
+// Offset-seated dressing keeps its protrusion proportional to the radius under an axial stretch (the former griffin50_x envelope, 2026-09-22).
 {
   const built = buildNationWheel('sheridan-pressed-rim', { radiusM: .3225, tireWidthM: .547, maxWidthM: .547 * 1.48, high: true, segments: 26 });
-  assert.equal(built.axialScale, NATION_WHEEL_AXIAL_FIT.max, 'the Griffin envelope hits the fit ceiling');
+  assert.equal(built.axialScale, NATION_WHEEL_AXIAL_FIT.max, 'a 0.55 m lower bound on the single Sheridan rim hits the fit ceiling');
+  assert.ok(built.axialFitRequested > 1.5, `and records the 2x stretch the bounds asked for (${built.axialFitRequested})`);
   const rim = built.layers.find((l) => l.name === 'gearRoadWheelPressedRims');
   const proud = axialHalf(rim.geometry, rim.outset) - axialHalf(built.tire);
   assert.ok(proud < .025 && proud > .010, `rim protrusion ${proud.toFixed(4)} stays seated`);

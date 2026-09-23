@@ -56,7 +56,8 @@ interface NationWheelBuildRequest {
   radiusM: number;
   /** The hull's authored tire width (RunningGearConfig.wheelW): the narrowest the wheel may be. */
   tireWidthM: number;
-  /** The hull's standard cap envelope (STANDARD_WHEEL_AXIAL_ENVELOPE × tire width): the widest the wheel may be. */
+  /** The widest the wheel may be: the larger of the hull's standard cap envelope (STANDARD_WHEEL_AXIAL_ENVELOPE ×
+   * tire width) and TRACK_WIDTH_WHEEL_CAP × its track width (roadWheelGeometry.ts). */
   maxWidthM: number;
   high: boolean;
   /** The running-gear builder's radial segment budget for tire bands. */
@@ -67,8 +68,10 @@ interface NationWheelBuild extends WheelGeometrySet {
   layers: NationWheelLayer[];
   /** Uniform scale applied to a native construction (1 for parametric ones). */
   radialScale: number;
-  /** Axial fit applied on top of the radial scale (1 when the native proportion already matched). */
+  /** Axial fit applied on top of the radial scale (1 when the native proportion already matched), inside NATION_WHEEL_AXIAL_FIT. */
   axialScale: number;
+  /** The axial fit the hull's width bounds asked for before the window clamped it (equal to axialScale when unclamped). */
+  axialFitRequested: number;
 }
 
 interface NativeWheelStock extends WheelGeometrySet {
@@ -77,8 +80,16 @@ interface NativeWheelStock extends WheelGeometrySet {
 
 type Radial = readonly [axial: number, radius: number];
 
-/** Axial fits outside this window would distort a dish beyond its donor's read; the receipt lists the hulls that hit it. */
-export const NATION_WHEEL_AXIAL_FIT = Object.freeze({ min: 0.5, max: 1.5 });
+/** A construction is never drawn outside this share of its donor's axial proportion (round 40, owner 2026-09-22: the
+ * Leclerc, Type 90 and Ariete faces were squashed to 0.57-0.63 and the Griffin's stretched to 1.5). The width bounds
+ * (tire, cap) ask for a fit; the window clamps it, and the release audit (wheelQuality.ts) flags any hull whose bounds
+ * asked for more, so the fix lands on the hull's bounds or donor, never on a distorted dish. */
+export const NATION_WHEEL_AXIAL_FIT = Object.freeze({ min: 0.85, max: 1.15 });
+
+/** Clamp a requested axial fit into the window. */
+function clampAxialFit(requested: number): number {
+  return Math.min(NATION_WHEEL_AXIAL_FIT.max, Math.max(NATION_WHEEL_AXIAL_FIT.min, requested));
+}
 
 function pattern(id: WheelPatternId): WheelPattern {
   return Object.freeze({ id, ...WHEEL_PATTERN_DEFINITIONS[id] });
@@ -127,8 +138,8 @@ function fitNative(stock: NativeWheelStock, request: NationWheelBuildRequest): N
   if (!(nativeRadius > 0)) throw new RangeError('Nation wheel construction has no radial extent');
   const radialScale = request.radiusM / nativeRadius;
   const nativeWidth = wheelAxialEnvelope(stock, stock.layers) * radialScale;
-  const axialScale = Math.min(NATION_WHEEL_AXIAL_FIT.max, Math.max(NATION_WHEEL_AXIAL_FIT.min,
-    boundedWidth(nativeWidth, request) / nativeWidth));
+  const axialFitRequested = boundedWidth(nativeWidth, request) / nativeWidth;
+  const axialScale = clampAxialFit(axialFitRequested);
   if (radialScale !== 1 || axialScale !== 1) {
     const sx = radialScale * axialScale;
     const tireHalf = axialExtent(stock.tire ?? stock.disc);
@@ -145,11 +156,11 @@ function fitNative(stock: NativeWheelStock, request: NationWheelBuildRequest): N
       layer.outset = radialScale * layer.outset + radialScale * tireHalf * (axialScale - 1);
     }
   }
-  return { tire: stock.tire, disc: stock.disc, dark: stock.dark, layers: stock.layers, radialScale, axialScale };
+  return { tire: stock.tire, disc: stock.disc, dark: stock.dark, layers: stock.layers, radialScale, axialScale, axialFitRequested };
 }
 
 function parametric(solids: WheelGeometrySet, layers: NationWheelLayer[] = []): NationWheelBuild {
-  return { ...solids, layers, radialScale: 1, axialScale: 1 };
+  return { ...solids, layers, radialScale: 1, axialScale: 1, axialFitRequested: 1 };
 }
 
 /** The fleet's standard disc in the donor's motif and dish ratio, built straight at the hull's radius and tire width. */
@@ -166,12 +177,13 @@ function latheSegments(request: NationWheelBuildRequest, high: number): number {
   return request.high ? high : LOW_TIER_WHEEL_SEGMENTS;
 }
 
-/** A hollow paired wheel at the hull's radius, its natural width bounded by the hull's tire and cap widths. */
+/** A hollow paired wheel at the hull's radius, its natural width bounded by the hull's tire and cap widths (inside the fit window). */
 function hollowPairedConstruction(request: NationWheelBuildRequest, fasteners?: { fasteners: number; fastenersAsInsets: boolean }): NationWheelBuild {
   const naturalWidthM = hollowPairedRoadWheelWidth(request.radiusM);
-  const axialWidthM = boundedWidth(naturalWidthM, request);
-  const solids = buildHollowPairedRoadWheel({ radiusM: request.radiusM, high: request.high, ...fasteners, axialWidthM });
-  return { ...solids, layers: [], radialScale: 1, axialScale: axialWidthM / naturalWidthM };
+  const axialFitRequested = boundedWidth(naturalWidthM, request) / naturalWidthM;
+  const axialScale = clampAxialFit(axialFitRequested);
+  const solids = buildHollowPairedRoadWheel({ radiusM: request.radiusM, high: request.high, ...fasteners, axialWidthM: naturalWidthM * axialScale });
+  return { ...solids, layers: [], radialScale: 1, axialScale, axialFitRequested };
 }
 
 // ----------------------------------------------------------------------------------------------- China
@@ -253,13 +265,14 @@ const TYPE10_GUIDE_GAP_RATIO = .10 / .33617; // the Type 10 X fitted course: 100
 
 // ----------------------------------------------------------------------------------------------- Italy
 /** Ariete supplied-frame recessed dish with a proud axle cap; the measured outer face is X1.369310, the dish X1.286041. */
-export function arieteRoadWheelFace(side: -1 | 1, segments: number): THREE.BufferGeometry {
+export function arieteRoadWheelFace(side: -1 | 1, segments: number, capTipM = ARIETE_CAP_TIP_M): THREE.BufferGeometry {
   // 2026-09-22 wheel audit: the axle cap tip sits at .2083 (source .209717) — the Ariete family rig scale
   // (×1.232) put the 2.1 cm model-space cap 2.6 cm outside the tire face in world metres; the fleet seat is 2.5 cm.
-  const rows: readonly Radial[] = [[.2083, 0], [.19991, .030], [.18746, .045],
+  // A consumer drawn at a larger radius passes a tip pulled in by its radial scale so the seat holds (round 40).
+  const rows: readonly Radial[] = [[capTipM, 0], [.19991, .030], [.18746, .045],
     [.13432, .065], [.105558, .073], [.105558, .21406], [.188827, .237],
     [.188827, .261], [.179827, .261], [.096558, .21406],
-    [.096558, .073], [.1993, 0], [.2083, 0]];
+    [.096558, .073], [Math.min(.1993, capTipM - .009), 0], [capTipM, 0]];
   // The dish contour runs from its outer axle tip toward its back. Reverse
   // that contour so the closed stock faces outward, like the wheel core.
   const geometry = turned([...rows].reverse(), segments);
@@ -273,6 +286,13 @@ export const ARIETE_TIRE_BANDS: readonly MeasuredTireBand[] = Object.freeze([-.1
   centerM, widthM: .14467, innerRadiusM: .260,
 })));
 const ARIETE_ROAD_WHEEL = Object.freeze({ radiusM: .28975886, widthM: .377654 });
+/** The donor's axle-cap tip (source .209717 seated to the fleet 2.5 cm PROUD rule) and its tire's outer face. */
+const ARIETE_CAP_TIP_M = .2083, ARIETE_TIRE_FACE_M = .116491 + .14467 / 2;
+/** A consumer drawn at radialScale keeps the cap about 2.0 cm outside its tire face in world metres (the fleet
+ * seat is 2.5 cm; tools/wheel-review.mjs PROUD). */
+function arieteCapTipFor(radialScale: number): number {
+  return Math.min(ARIETE_CAP_TIP_M, ARIETE_TIRE_FACE_M + .020 / Math.max(1, radialScale));
+}
 
 // ----------------------------------------------------------------------------------------------- France
 /** AMX-40 X pressed face: rim ring, six ribs and bolts on both sides of the axle (fixed source metres).
@@ -448,8 +468,9 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
   },
   'ariete-recessed-dish': (q) => {
     const segments = latheSegments(q, 28), d = ARIETE_ROAD_WHEEL;
+    const capTipM = arieteCapTipFor(q.radiusM / d.radiusM);
     return fitNative({ tire: measuredTireBands(ARIETE_TIRE_BANDS, d.radiusM, d.widthM, q.segments), disc: arieteRoadWheelCore(segments), dark: null,
-      layers: ([-1, 1] as const).map(side => ({ geometry: arieteRoadWheelFace(side, segments), paint: 'dish' as const, role: 'wheelDish' as const,
+      layers: ([-1, 1] as const).map(side => ({ geometry: arieteRoadWheelFace(side, segments, capTipM), paint: 'dish' as const, role: 'wheelDish' as const,
         side, name: `arieteSuppliedRecessedWheelFace${side}` })) }, q);
   },
   'leclerc-stepped-plate': (q) => {

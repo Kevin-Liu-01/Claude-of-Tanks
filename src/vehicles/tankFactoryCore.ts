@@ -38,7 +38,7 @@ import { suspensionPatternFor } from './suspensionPatterns.ts';
 import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, endpointAxleOutset, sourceToothTip, type SuspensionDimensions } from './suspensionDimensions.ts';
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
-import { radialRibs, wheelGeo, STANDARD_WHEEL_AXIAL_ENVELOPE, type WheelDetail, type WheelGeometrySet } from './roadWheelGeometry.ts';
+import { radialRibs, wheelGeo, STANDARD_WHEEL_AXIAL_ENVELOPE, TRACK_WIDTH_WHEEL_CAP, type WheelDetail, type WheelGeometrySet } from './roadWheelGeometry.ts';
 import { resolveNationWheel, type NationWheelResolution } from './nationWheelSets.ts';
 import { buildNationWheel, type NationWheelLayer } from './nationWheelConstructions.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
@@ -3853,7 +3853,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       cfg.wheelCoreGeometry?.disc, cfg.wheelCoreGeometry?.dark]) geometry?.dispose();
     for (const layer of faceLayers) layer.geometry.dispose();
     faceLayers = [];
-    const maxWidthM = wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE;
+    // The wheel may be as wide as the larger of its legacy disc-stack envelope and 0.90 × its track (round 40,
+    // owner 2026-09-22 axial-fit finding: the narrow authored tire bands squashed the Leclerc, Type 90 and
+    // Ariete donor faces to 0.57-0.63 of their proportion).
+    const stackCapM = wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE, trackCapM = trackW * TRACK_WIDTH_WHEEL_CAP;
+    const maxWidthM = Math.max(stackCapM, trackCapM);
     const built = buildNationWheel(nationWheel.construction, {
       radiusM: wheelR, tireWidthM: wheelW, maxWidthM, high: Boolean(q), segments: seg,
     });
@@ -3863,8 +3867,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       construction: `nation:${nationWheel.construction}`, tireBands: 0, openAnnulus: false,
       nationStandard: {
         donor: nationWheel.donor, construction: nationWheel.construction, reason: nationWheel.reason,
-        tireWidthM: +wheelW.toFixed(4), maxWidthM: +maxWidthM.toFixed(4),
+        tireWidthM: +wheelW.toFixed(4), maxWidthM: +maxWidthM.toFixed(4), capSource: trackCapM > stackCapM ? 'track' : 'stack',
         radialScale: +built.radialScale.toFixed(4), axialScale: +built.axialScale.toFixed(4),
+        axialFitRequested: +built.axialFitRequested.toFixed(4),
         layers: nationLayers.length,
       },
     });

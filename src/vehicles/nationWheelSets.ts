@@ -13,7 +13,8 @@
 // A donor's construction is its FACE construction (dish, spokes, fasteners, hub, tire profile), never its
 // dimensions: every hull keeps its own wheel radius, station count and axle positions, and its authored tire
 // width bounds the construction (nationWheelConstructions.ts: never narrower than the tire, never wider than
-// the standard cap envelope). Hulls listed as a donor's `self`
+// the larger of the standard cap envelope and 0.90 × the track width, and never outside 0.85-1.15 of the
+// donor's proportion — round 40). Hulls listed as a donor's `self`
 // draw the construction natively and keep their own wheel code — a donor IS its nation's standard. Pre-1950
 // hulls keep their period constructions (a Sherman-era hull on Abrams wheels is a visible error) and are
 // listed for the owner in PERIOD_WHEEL_HULLS; the 'Community' placeholder hulls keep theirs too.
@@ -217,6 +218,9 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   t84: { donor: 't90', reason: 'Ukraine: T-84 (T-80UD family) base hull → Russia older T-series donor' },
   ua_t84_oplot_m: { donor: 't90', reason: 'Ukraine: T-84 Oplot-M base hull → Russia older T-series donor' },
   ua_m2a3_bradley: { donor: 'm551a1_tts', reason: 'Ukraine: Bradley base hull → USA light donor' },
+  bmp3_rok: { donor: 'bmp3m_dragun125_x', reason: 'round 40 axial fit: a Korean-marked Russian BMP-3 hull draws the BMP-3 family wheel like bmp2/bmp3 (the K1A1 bowl fit 0.69 in its 0.30 track)' },
+  griffin_viper: { donor: 'm1a2', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
+  griffin50_x: { donor: 'm1a2', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   leo2a6_ua: { donor: 'leo2a6', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },
 });
 

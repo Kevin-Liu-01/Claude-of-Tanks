@@ -109,7 +109,9 @@ faces are standardized by nation (owner 2026-09-22): `nationWheelSets.ts` is the
 one table of donor tanks, per-nation rules and per-hull exceptions, and
 `nationWheelConstructions.ts` draws a donor's face at any hull's radius, never
 narrower than the hull's authored tire width (`wheelW`) nor wider than its
-standard cap envelope (1.48 × that width). A donor hull keeps its own wheel
+standard cap envelope (1.48 × that width) or 0.90 × the track width, whichever
+is larger, and never outside 0.85–1.15 of the donor's proportion (round 40;
+the fleet audit flags a hull whose bounds ask for more). A donor hull keeps its own wheel
 code; every other hull's authored wheel solids, `wheelFaceLayers` and post-build
 `addRoadWheelLayer` dressing are not drawn, and its authored `suspensionDimensions`
 (measured against the wheel it no longer carries) give way to the fleet arm,

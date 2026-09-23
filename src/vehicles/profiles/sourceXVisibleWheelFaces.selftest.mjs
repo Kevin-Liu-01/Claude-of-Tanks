@@ -83,9 +83,14 @@ function check(id,fixture,quality) {
     // 2026-09-22: the rim ring is the same painted steel (wheelDish role, dish paint). On consumer radii below the
     // donor's .3981 m its .010 m tube sits at .82 R, and LOW's 16-segment ring chords reach inside it, so a ray
     // landing on the rim is painted steel first — not rubber, dark hardware or air.
+    // 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): a CONSUMER's LOW face is a plain plate over its
+    // hub — no holes, no rim ring, no bolt heads — while a donor draws its own face at both tiers, so the rim exists on
+    // every HIGH build and on donor LOW builds only. (Boolean checks: an assertion diff of a mesh serialises the scene.)
     const rims=tank.root.getObjectByName('gearRoadWheelSourceRims');
-    assert.equal(rims?.userData.appearanceRole,'wheelDish','the rim ring is painted steel');
-    const visibleFaces=[discs,detailFace,rims];
+    const standardized=!!tank.root.getObjectByName('rig_hull')?.userData.wheelPatternReceipts?.[0]?.nationStandard;
+    if(quality==='high'||!standardized)assert.equal(rims?.userData.appearanceRole,'wheelDish','the rim ring is painted steel');
+    else assert.ok(!rims,'a consumer LOW face draws no rim ring');
+    const visibleFaces=[discs,detailFace,...(rims?[rims]:[])];
     assert.equal(tires.count,(fixture.zs??fixture.zsLeft).length*2,'source axle count');
     assert.equal(discs.count,tires.count,'painted cores belong to the complete wheel assembly');
     assert.equal(tires.userData.appearanceRole,'wheelTire');

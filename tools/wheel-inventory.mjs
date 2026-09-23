@@ -74,7 +74,7 @@ for (const id of ids) {
   } finally { high.dispose?.(); low.dispose?.(); }
 }
 const pad = (v, n) => String(v ?? '-').padEnd(n);
-const fitOf = (r) => r.nationStandard ? `fit ${r.nationStandard.axialScale} [${r.nationStandard.tireWidthM}..${r.nationStandard.maxWidthM}]` : '';
+const fitOf = (r) => r.nationStandard ? `fit ${r.nationStandard.axialScale}${r.nationStandard.axialFitRequested !== undefined && Math.abs(r.nationStandard.axialFitRequested - r.nationStandard.axialScale) > 1e-3 ? ` CLAMPED(${r.nationStandard.axialFitRequested})` : ''} [${r.nationStandard.tireWidthM}..${r.nationStandard.maxWidthM}${r.nationStandard.capSource ? ' ' + r.nationStandard.capSource : ''}]` : '';
 console.log(pad('id', 22), pad('nation', 12), pad('era', 16), pad('role', 6), pad('n', 3), pad('r', 7), pad('pattern (spec -> built)', 36), pad('construction', 30), pad('tire', 14), pad('faces', 5), pad('tris hi/lo', 12), pad('standard', 26), 'fit [tire..cap]');
 for (const r of rows) {
   if (r.error) { console.log(pad(r.id, 22), 'BUILD FAILED', r.error.slice(0, 90)); continue; }

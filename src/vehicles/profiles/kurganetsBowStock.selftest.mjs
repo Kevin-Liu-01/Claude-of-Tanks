@@ -232,7 +232,7 @@ const originalStock = {
     "low": {
         "unchanged": "076787992f85fbe81fec310ced65fb420bf09a463a6321a96e1fcfa205bd718e",
         "aft": "5a76805eec7e78ee11be9e7561920cc0c14e462ab56ae093c63eec8500f63f97",
-        "gear": "2ca9d581bb2fc0b6d96b99f1dd7d1d9af52aff3cd8fcb8d2f37076d6092ba806"
+        "gear": "3208d1a6e0630a4c72a8cf099dd9946d0591c85a22f38b817c2b45137c03816d" // 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): the Dragun web turns at 12 segments at LOW; HIGH unchanged
     }
 };
 await ensureInteriorFills([id]);

@@ -101,7 +101,10 @@ function gear(P:TankBuilderPort):void {
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',trackPattern:'compact-ifv',
     trackShoeBuilder:buildFleetTrackShoe,
-    wheelR:.3225,wheelW:.547,wheelY:.4235,
+    // Tire width .50 (round 40 axial fit): the hull draws the Abrams hollow paired wheel (nationWheelSets.ts exception;
+    // the ASCOD 2 chassis rides paired wheels, and the single Sheridan rim needed a 2x stretch to reach this width);
+    // the paired construction is 1.36 x its radius wide, so a .547 lower bound stretched it past the 1.15 window.
+    wheelR:.3225,wheelW:.50,wheelY:.4235,
     wheelZs:[-1.4585,-.7285,.0015,.7315,1.4885,2.2185].map(z=>z*H),
     xc:1.4345,trackW:.575,trackTh:.032,
     trackShoeDimensions:{padHeight:.034,grouserHeight:.008,webHeight:.026,hornHeight:.08,pinRadius:.014},

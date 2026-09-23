@@ -10,6 +10,7 @@ import {
   type SuspensionPatternId,
 } from './suspensionPatterns.ts';
 import { runningGearFinishRuleFor, withinRunningGearFinish } from './runningGearFinish.ts';
+import { NATION_WHEEL_AXIAL_FIT } from './nationWheelConstructions.ts';
 
 type RunningGearUnitId = string | number | undefined;
 type Side = 'left' | 'right';
@@ -119,6 +120,22 @@ function collectWheelPatternIds(receipts: readonly WheelPatternReceipt[]): Set<W
   return patternIds;
 }
 
+/** NATION WHEEL AXIAL FIT (round 40, owner 2026-09-22): a nation construction is drawn between 0.85 and 1.15 of its
+ * donor's axial proportion, and the hull's own width bounds must ask for a fit inside that window — a clamped fit
+ * means the hull's tire width, track width or donor choice is wrong, never the dish. */
+function auditNationWheelAxialFit(receipt: WheelPatternReceipt, issues: WheelQualityIssue[]): void {
+  const standard = receipt.nationStandard as { axialScale?: unknown; axialFitRequested?: unknown; donor?: unknown } | undefined;
+  if (!standard || typeof standard !== 'object') return;
+  const { axialScale, axialFitRequested } = standard;
+  if (typeof axialScale !== 'number' || axialScale < NATION_WHEEL_AXIAL_FIT.min - 1e-6 || axialScale > NATION_WHEEL_AXIAL_FIT.max + 1e-6) {
+    issues.push({ code: 'nation-wheel-axial-fit-outside-window', donor: (standard.donor as RuntimeValue) ?? null, axialScale: (axialScale as RuntimeValue) ?? null });
+  }
+  if (typeof axialFitRequested !== 'number' || Math.abs(axialFitRequested - (axialScale as number)) > 1e-3) {
+    issues.push({ code: 'nation-wheel-axial-fit-clamped', donor: (standard.donor as RuntimeValue) ?? null,
+      axialScale: (axialScale as RuntimeValue) ?? null, axialFitRequested: (axialFitRequested as RuntimeValue) ?? null });
+  }
+}
+
 function auditWheelPatternReceipts(
   receipts: readonly WheelPatternReceipt[],
   issues: WheelQualityIssue[],
@@ -131,6 +148,7 @@ function auditWheelPatternReceipts(
     if (!Number.isInteger(receipt.stations) || (receipt.stations ?? 0) < 2) {
       issues.push({ code: 'invalid-road-wheel-stations', pattern: receipt.id || null });
     }
+    auditNationWheelAxialFit(receipt, issues);
   }
 }
 

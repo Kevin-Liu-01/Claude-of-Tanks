@@ -4304,8 +4304,10 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   // |x| 0.89..1.45 (w 0.56, xc 1.17); a SMALL HIGH front idler (rim top
   // 1.19, front extent 3.56, steep 0.38-slope climb — fitted r2) and a
   // raised sprocket (rear extent −3.40, climb from −2.09 at ~0.34). ----
+  // Tire width 0.33 (round 40 axial fit): the Challenger paired wheel this hull draws is 1.36 × its radius wide;
+  // the 0.24 band and the 0.49 track bounded it to 0.65 of its proportion.
   buildRunningGear(P, {
-    style: 'dished', wheelR: 0.40, wheelW: 0.24, wheelY: 0.45, xc: 1.185,
+    style: 'dished', wheelR: 0.40, wheelW: 0.33, wheelY: 0.45, xc: 1.185,
     wheelZs: [2.02, 1.238, 0.456, -0.326, -1.108, -1.89],
     sprocket: { z: -2.98, y: 0.92, r: 0.26 }, idler: { z: 3.145, y: 0.80, r: 0.255 },
     rollers: [{ z: 1.15, y: 0.79, r: 0.09 }, { z: -0.15, y: 0.79, r: 0.09 }, { z: -1.45, y: 0.79, r: 0.09 }],

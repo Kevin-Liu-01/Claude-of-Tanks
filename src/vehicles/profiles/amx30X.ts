@@ -326,7 +326,9 @@ export function buildAmx30X(P: TankBuilderPort): void {
   P.gear = KIT.buildRunningGear(P, {
     // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the France cold-war
     // construction (AMX-40 donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
-    style: 'rubber', wheelR: .36545, wheelW: .4005, wheelY: .41638,
+    // Tire width .395 (round 40 axial fit): the AMX-40 face is 0.94 x its radius wide; the .4005 lower bound
+    // stretched it to 1.16 of its proportion, just past the 1.15 window.
+    style: 'rubber', wheelR: .36545, wheelW: .395, wheelY: .41638,
     wheelZs: [...AMX30_X_DATUMS.wheelStations], xc: 1.2548, trackW: .5715, trackTh: .024, // fleet track standard 2026-09-12 (owner: apply everywhere)
     // Object_6/8 has a 75 mm lower shell, intersecting the measured wheel
     // bottoms by 25 mm. The seated 43 mm outer shoe plus 4 mm projecting

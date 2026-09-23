@@ -5249,7 +5249,9 @@ function buildType89Hull(P: Modern3BuilderPort) {
   // return run — the thin fender strip rides above them). §B6 by
   // construction. -----------------------------------------------------------
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.32, wheelW: 0.20, xc: 1.18, dishR: 0.84,
+    // Tire width 0.27 (round 40 axial fit): the Type 90 forging this hull draws is 1.38 x its radius wide; the 0.20
+    // band and the 0.40 track bounded it to 0.66 of its proportion.
+    style: 'rubber', wheelR: 0.32, wheelW: 0.27, xc: 1.18, dishR: 0.84,
     wheelZs: [2.05, 1.23, 0.41, -0.41, -1.23, -2.05],
     sprocket: { z: 2.62, y: 0.60, r: 0.26 }, idler: { z: -2.62, y: 0.70, r: 0.27 },
     rollers: [[1.30, 0.88], [0.0, 0.88], [-1.30, 0.88]].map(([z, y]) => ({ z, y, r: 0.07 })),

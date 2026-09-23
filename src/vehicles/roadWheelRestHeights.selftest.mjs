@@ -87,8 +87,10 @@ const ORIGINALS = {
   // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
   m1a2: ['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253',
     '08e417b03e8090cd6a4ba591bbe44d64f1480d24cf304b868c54b2c97a746c09'],
-  leo2a5: ['1e1f77aac4eed537c42c53026ef32bf078a90d3abdbb6c8217d19be57f00dcf6',
-    '6a08e2879d6a086eeb5720b61f360e94dc854a4a3489e8f14b099a9298a5a318'],
+  // 2026-09-22 round 40 axial fit: the Leopard 2A6 face on leo2a5 keeps its donor proportion under the track-width cap
+  // (fit 0.83 -> 1.0), so both leo2a5 digests moved; t90sm/t90m/m1a2 did not. Repinned from the current build.
+  leo2a5: ['ab00046e4763c592a8b36687503909190a8120ce826c5947fc391f8133e46c4e',
+    '76972d775591dd7fbea18b534e58341109ab4c7df09a8558e1e7ebc07dc3829c'],
 };
 for (const [id, hashes] of Object.entries(ORIGINALS)) {
   for (const [index, quality] of ['high', 'low'].entries()) {

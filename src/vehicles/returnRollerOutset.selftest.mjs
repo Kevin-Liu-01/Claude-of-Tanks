@@ -103,10 +103,13 @@ const boundary=fixture({returnRollerOutsetM:.5});try{axes(boundary,0,.5);}finall
 // are original vehicles, not new builders or self-derived expected hashes.
 const ORIGINALS={
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel and lost the void-dress blocks; repinned.
-  m1a2:['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253','7e4c7a0ccc17f06eefc179b69122bde147a0c04f315a35c37b41551e34a4a0ca'],
+  // 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): the hollow paired tire loses its inner-wall bevel at LOW; m1a2's
+  // LOW digest moved, HIGH is byte-identical. Round 40 axial fit: leo2a5's Leopard 2A6 face keeps its proportion under the track-width
+  // cap, so both leo2a5 digests moved. Repinned from the current build.
+  m1a2:['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253','08e417b03e8090cd6a4ba591bbe44d64f1480d24cf304b868c54b2c97a746c09'],
   // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): leo2a5 draws the Leopard 2A6 X paired dish
   // (nationWheelConstructions.ts) and the fleet arm seated against it; gear digests repinned from the current build.
-  leo2a5:['1e1f77aac4eed537c42c53026ef32bf078a90d3abdbb6c8217d19be57f00dcf6','7400f1e85404c7a213d040422c31075dbdc19d94ee26857849420e97ce386e88'],
+  leo2a5:['ab00046e4763c592a8b36687503909190a8120ce826c5947fc391f8133e46c4e','76972d775591dd7fbea18b534e58341109ab4c7df09a8558e1e7ebc07dc3829c'],
 };
 for(const[id,hashes]of Object.entries(ORIGINALS))for(const[index,quality]of['high','low'].entries()){
   const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});

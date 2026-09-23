@@ -8,6 +8,11 @@ import type { WheelPattern } from './wheelPatterns.ts';
 
 /** Standard disc stack: the hub cap reaches this multiple of the tire width along the axle. */
 export const STANDARD_WHEEL_AXIAL_ENVELOPE = 1.48;
+/** A road wheel may be as wide as this share of its track (real MBT wheels run 0.68-0.87 of the track width;
+ * the axle-centred wheel then stays inside the band's own footprint). The nation-wheel cap is the larger of the
+ * legacy disc-stack envelope and this, so a donor construction keeps its proportion instead of being squashed to a
+ * narrow authored tire band (round 40, owner 2026-09-22 axial-fit finding). */
+export const TRACK_WIDTH_WHEEL_CAP = 0.90;
 /** Custom-face base stack (profiles that add their own face layers): hub cap reach along the axle. */
 export const CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE = 1.54;
 

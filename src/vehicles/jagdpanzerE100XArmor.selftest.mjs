@@ -54,9 +54,12 @@ const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe
 // 2026-09-22 (evening, same owner rule): the X tube is closed at its source tip — the 170 mm bore
 // (radius .085 down to the blind floor at 5.705, 1.3419 m) that sat entirely behind the fallback
 // disc is gone, moving the jpz_e100_x fingerprint again. Superseded: jpz_e100_x a7efaea0/91c58501.
+// 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): the dished period wheel draws no bolt ring at LOW,
+// so both LOW geometry digests moved; the HIGH digests are byte-identical to the closed-tube values. Repinned from the
+// combined round-40 build (closed tube + LOW wheel tier together).
 const geometryHashes = {
-  jpz_e100_x: { high: '7d7517c4', low: 'b6a2e575' },
-  jpz_e100: { high: '9c2fc966', low: 'cdde4c10' },
+  jpz_e100_x: { high: '7d7517c4', low: '5e6959cc' },
+  jpz_e100: { high: '9c2fc966', low: '95c91a09' },
 };
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({
   pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw, gunPitch,

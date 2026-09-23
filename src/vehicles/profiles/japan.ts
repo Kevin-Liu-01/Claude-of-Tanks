@@ -440,8 +440,10 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
   // owner 2026-09-22 ("stb-1 … wheels too big … overlap each other"): r 0.455 on the 0.81 pitch
   // overlapped by 10 cm. The prototype's five wheels are the Type 74 class (~700 mm here, 2R/pitch
   // 0.86, an 11 cm gap); the dead track keeps riding on the wheel tops.
+  // Tire width 0.30 (round 40 axial fit): the Type 90 forging this hull draws is 1.38 × its radius wide; the 0.26
+  // band and the 0.42 track bounded it to 0.60 of its proportion.
   buildRunningGear(P, {
-    style: 'rubber', dishR: 0.86, wheelR: 0.35, wheelW: 0.26,
+    style: 'rubber', dishR: 0.86, wheelR: 0.35, wheelW: 0.30,
     wheelY: 0.42, xc: 1.38,
     wheelZs,
     sprocket: { z: -2.55, y: 0.74, r: 0.42 },
