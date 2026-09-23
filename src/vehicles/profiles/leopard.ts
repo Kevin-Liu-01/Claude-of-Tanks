@@ -12808,9 +12808,11 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     // Panther-B bow.  Seat a complete moving armor course in that throat: a
     // closed tapered mantlet, separate crown and flexible chin, then a faceted
     // clamp flowing into the stepped thermal shroud.  This borrows the strong
-    // longitudinal language of the KF51 gun without cloning its dimensions or
-    // disturbing the KF51B's certified pivot and muzzle station.
-    P.gunG.position.set(0, 0.22, 1.58);
+    // longitudinal language of the KF51 gun without cloning its dimensions.
+    // Seat the whole assembly 400 mm deeper in the throat (owner markup,
+    // 2026-09-23). Moving the pivot carries the mantlet, clamp, recoil tube,
+    // sights and muzzle together; kf51Specs owns the installed 1.05x frame.
+    P.gunG.position.set(0, 0.22, 1.18);
   };
   buildKF51OwnerExactMarkingsStage1();
   const kf51bGunSegments = P.q ? 24 : 16;
@@ -12874,7 +12876,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.add('gunDark', cylZ(0.086, 0.040, kf51bGunSegments), 0, 0, 5.275);       // crisp muzzle rim
     muzzleBore(P, { len: 5.30, r: 0.064 });
     P.gunG.userData.kf51bAngularGunHousingReceipt = Object.freeze({
-      profile: 'kf51b-panther-angular-mantlet-r2',
+      profile: 'kf51b-panther-angular-mantlet-r3',
       movingWithGun: true,
       mainHousing: 'closed-tapered-six-plane-wedge',
       rearWidthM: 0.74,
@@ -12887,9 +12889,10 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       thermalShroudCourses: 2,
       cinchRingCount: 3,
       compactRoundShroudRetired: true,
-      visualGunPivotLocal: Object.freeze([0, 0.22, 1.58]),
+      visualGunPivotLocal: Object.freeze([0, 0.22, 1.18]),
+      rearwardSeatLocalM: 0.40,
       barrelLengthLocalM: 5.30,
-      authoritativePivotAndMuzzlePreserved: true,
+      authoritativePivotAndMuzzleAligned: true,
     });
 
     // Sparse source roof: two flush hatches, one tall SEOSS optic and the

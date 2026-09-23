@@ -1,6 +1,66 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
+import { createTankState } from '../../sim/movement.ts';
+
+function verifyGunSeat(quality) {
+  const visual = createTank('kf51b', null, {
+    proceduralOnly: true, geometryReceipt: true, quality,
+  });
+  try {
+    const spec = TANK_SPECS.kf51b;
+    const state = createTankState(spec, new THREE.Vector3(), 0);
+    const turret = visual.root.getObjectByName('rig_turret');
+    const gun = visual.root.getObjectByName('rig_gun');
+    const mount = visual.root.getObjectByName('gunMount');
+    const recoil = visual.root.getObjectByName('rig_recoil');
+    const muzzle = visual.root.getObjectByName('rig_muzzle');
+    assert.equal(mount.parent, gun, 'the selected housing stays on the elevating cradle');
+    assert.equal(recoil.parent, gun, 'barrel and housing share the reseated gun joint');
+    mount.geometry.computeBoundingBox();
+    const bounds = mount.geometry.boundingBox;
+    closeTo(gun.position.z + bounds.min.z, 1.20, 1e-6);
+    closeTo(gun.position.z + bounds.max.z, 2.45, 1e-6);
+    // The fixed front shell ends at z=1.95: the housing now overlaps its
+    // throat by 750 mm and projects 500 mm, instead of 350/900 mm.
+    assert.ok(1.95 - (gun.position.z + bounds.min.z) > .70,
+      'the actual housing rear is buried in the turret throat');
+    assert.ok(gun.position.z + bounds.max.z - 1.95 < .55,
+      'the actual housing no longer projects nearly a metre beyond the turret');
+    for (const yaw of [0, 90, 180, -90]) {
+      for (const pitch of [-spec.gunDepressionDeg, 0, 10, spec.gunElevationDeg]) {
+        state.turretYaw = THREE.MathUtils.degToRad(yaw);
+        state.gunPitch = THREE.MathUtils.degToRad(pitch);
+        visual.syncFromState(state, 0);
+        visual.root.updateMatrixWorld(true);
+        const expectedPivot = new THREE.Vector3(...spec.armor.gunPivot)
+          .divide(turret.scale).applyMatrix4(turret.matrixWorld);
+        assert.ok(gun.getWorldPosition(new THREE.Vector3()).distanceTo(expectedPivot) < 1e-8,
+          `${quality}: rendered and authoritative trunnions align at ${yaw}/${pitch}`);
+        const expectedMuzzle = new THREE.Vector3(0, 0, spec.armor.gunBarrel.lengthM)
+          .applyAxisAngle(new THREE.Vector3(1, 0, 0), -state.gunPitch)
+          .add(new THREE.Vector3(...spec.armor.gunPivot))
+          .divide(turret.scale).applyMatrix4(turret.matrixWorld);
+        assert.ok(muzzle.getWorldPosition(new THREE.Vector3()).distanceTo(expectedMuzzle) < 1e-6,
+          `${quality}: visible muzzle stays aligned with the firing frame at ${yaw}/${pitch}`);
+        const selectedCorner = new THREE.Vector3(.245, -.135, 1.27);
+        assert.ok(mount.localToWorld(selectedCorner.clone())
+          .distanceTo(gun.localToWorld(selectedCorner.clone())) < 1e-8,
+        'the marked side moves with the gun throughout the sweep');
+      }
+    }
+    const mountPosition = mount.position.clone();
+    visual.recoilKick(0, 1);
+    visual.syncFromState(state, .12);
+    assert.ok(recoil.position.z < -.05, 'the barrel recoils inside the reseated housing');
+    assert.deepEqual(mount.position, mountPosition, 'recoil does not detach or slide the mantlet');
+    visual.syncFromState(state, 1);
+    closeTo(recoil.position.z, 0);
+  } finally {
+    visual.dispose();
+  }
+}
 
 const closeTo = (actual, expected, epsilon = 1e-9) => {
   assert.ok(Math.abs(actual - expected) <= epsilon,
@@ -36,13 +96,13 @@ try {
   TANK_SPECS.kf51b.armor.turretPivot.forEach((value, axis) => {
     closeTo(value, turret.position.getComponent(axis));
   });
-  assert.deepEqual(TANK_SPECS.kf51b.armor.gunPivot, [0, 0.231, 1.659]);
+  assert.deepEqual(TANK_SPECS.kf51b.armor.gunPivot, [0, 0.231, 1.239]);
   closeTo(TANK_SPECS.kf51b.armor.gunBarrel.lengthM, 5.565);
   closeTo(
     TANK_SPECS.kf51b.armor.turretPivot[2]
       + TANK_SPECS.kf51b.armor.gunPivot[2]
       + TANK_SPECS.kf51b.armor.gunBarrel.lengthM,
-    7.9065,
+    7.4865,
   );
   assert.equal(proportions?.turretPivotLocalZ, 0.65,
     'KF51B turret ring moves forward before the uniform vehicle scale');
@@ -52,7 +112,7 @@ try {
     'KF51B track hit geometry follows the enlarged visual hierarchy');
   assert.equal(gun?.parent, turret,
     'KF51B gun remains owned by the translated turret rig');
-  assert.equal(gunHousing?.profile, 'kf51b-panther-angular-mantlet-r2');
+  assert.equal(gunHousing?.profile, 'kf51b-panther-angular-mantlet-r3');
   assert.equal(gunHousing?.movingWithGun, true,
     'KF51B mantlet, clamp and thermal shroud elevate with the gun rig');
   assert.equal(gunHousing?.mainHousing, 'closed-tapered-six-plane-wedge');
@@ -71,10 +131,11 @@ try {
   assert.equal(gunHousing?.cinchRingCount, 3,
     'KF51B thermal jacket has three readable structural cinches');
   assert.equal(gunHousing?.compactRoundShroudRetired, true);
-  assert.deepEqual(gunHousing?.visualGunPivotLocal, [0, 0.22, 1.58]);
+  assert.deepEqual(gunHousing?.visualGunPivotLocal, [0, 0.22, 1.18]);
+  closeTo(gunHousing?.rearwardSeatLocalM, 0.40);
   closeTo(gunHousing?.barrelLengthLocalM, 5.30);
-  assert.equal(gunHousing?.authoritativePivotAndMuzzlePreserved, true,
-    'KF51B visual gun upgrade preserves the certified firing frame');
+  assert.equal(gunHousing?.authoritativePivotAndMuzzleAligned, true,
+    'KF51B visual gun seat matches the updated authoritative firing frame');
   assert.equal(roofReceipt?.profile, 'convex-crowned-wedge');
   assert.equal(roofReceipt?.concaveFanRemoved, true,
     'KF51B roof no longer uses the selected concave center fan');
@@ -157,4 +218,6 @@ try {
   tank.dispose();
 }
 
-console.log('kf51bTurretCenter.selftest: scale, turret, tracks, skirt armor, RWS and seating pass');
+for (const quality of ['high', 'low']) verifyGunSeat(quality);
+
+console.log('kf51bTurretCenter.selftest: scale, turret, tracks, skirt armor, RWS, gun seat and articulation pass');

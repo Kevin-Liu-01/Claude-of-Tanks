@@ -86,7 +86,9 @@ const KF51B_SPEC = {
   // Track decal width follows the built 0.587 course.
   armor: communityArmor({
     lenM: 7.70, widM: 3.60, hgtM: 2.90, turretPivot: [0, 1.806, 0.6825],
-    gunPivot: [0, 0.231, 1.659], barrelLenM: 5.565, barrelRadM: 0.0672,
+    // The complete gun assembly is seated 0.40 m farther into the turret,
+    // or 0.42 m in the installed frame; barrel length/caliber stay unchanged.
+    gunPivot: [0, 0.231, 1.239], barrelLenM: 5.565, barrelRadM: 0.0672,
     frontMm: 650, sideMm: 90, rearMm: 45, roofMm: 45,
     tFrontMm: 750, tSideMm: 320, tRearMm: 70, mantletMm: 500,
   }),

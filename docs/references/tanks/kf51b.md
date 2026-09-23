@@ -1,5 +1,33 @@
 # kf51b — KF51B Panther (owner-source rebuild, fleet-integrated) — photo-class packet
 
+## Gun assembly seating revision (2026-09-23)
+
+Owner target: the KF51-U `rig_gun > gunMount` side selected in the
+2026-09-23 17:14:14 UTC Gallery markup should sit farther inside the turret.
+The request is a translation; the export's generic `remove` field does not
+authorize deleting the housing.
+
+- Move the complete gun joint rearward by 0.40 m locally / 0.42 m installed.
+  Its local pivot is now `[0, 0.22, 1.18]`, with the authoritative installed
+  pivot `[0, 0.231, 1.239]`. The installed level muzzle is at z 7.4865 m.
+- Preserve the 5.30 m local barrel, mantlet shape, clamp, thermal jacket,
+  sights and recoil hierarchy. The housing occupies turret-local z 1.20–2.45;
+  its forward projection beyond the z 1.95 nose reduces from 0.90 to 0.50 m.
+- HIGH/LOW retain 34,780/31,172 authored stored triangles. Authored mesh
+  position buffers remain identical; only the gun joint moves. The generated
+  interior backing is refreshed for that joint. KF51 EVO and KF51 X retain their
+  original transforms and geometry in both qualities.
+- `kf51bTurretCenter.selftest.mjs` checks the actual housing bounds, four yaw
+  positions, four pitch positions including both stops, firing-frame/muzzle
+  agreement in HIGH/LOW, and recoil with a stationary mantlet.
+- Native Gallery front/quarter/both sides/rear/top and pitch-stop captures,
+  plus real Garage selection, switch-away/cache-return and articulation,
+  are retained under `.qa-dev/kf51u-gun-seat/`. Both browser sessions completed
+  without browser errors. Starting main: `f5a7bf3ae`.
+
+This bounded owner-markup repair does not supply the missing comparison
+oracle described below. Full source qualification remains unavailable.
+
 ## Class: FALSE-0 / photo-class — NEVER GATE
 No usable oracle: the owner FBX drop that seeded buildKF51OwnerExact is an
 external comparison source only (baked-shading demonstrator read); the id
