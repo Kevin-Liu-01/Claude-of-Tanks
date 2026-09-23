@@ -1,9 +1,8 @@
-import type { BufferGeometry, Group, Object3D } from 'three';
+import type { BufferGeometry, Group } from 'three';
 
 export type Vec3Tuple = [number, number, number];
 export type VehicleAssemblyOwner = 'hull' | 'turret';
 
-export type TransformObjectPort = Object3D;
 type AssemblyGroupPort = Group;
 
 /** Shared structural port for authored procedural profile adapters. It
