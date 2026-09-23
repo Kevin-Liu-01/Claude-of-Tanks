@@ -5619,15 +5619,20 @@ function addM60A2TurretAndGun(P: PattonBuilderPort, cfg: M60A2BuildConfig): void
   P.add('gun', cylZ(0.148, glen - 0.08, seg), 0, 0, (glen - 0.08) / 2 + 0.02);
   P.add('gun', cylZ(0.156, 0.22, seg), 0, 0, glen - 0.55);
   P.add('gun', cylZ(0.158, 0.06, seg), 0, 0, glen - 0.03);
-  // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): the launcher's
-  // 152 mm bore ring+disc on the centered collar face. Owner 2026-09-22 ("the
-  // point of adding holes instead of carving them into the barrel is that we
-  // save on triangles"): the legacy 0.076 gunDark face puck (cylZ 0.076 x
-  // 0.014 at glen-0.006, 4*seg triangles) that used to stand here is gone; it
-  // sat entirely behind the factory's dark mouth disc since the fleet mouth
-  // standard, so no rendered pixel changes. The hidden authored rim stays: it
-  // is the seat the factory reads for this stub launcher.
-  muzzleBore(P, { z: glen, r: 0.148 });
+  // Owner 2026-09-22 ("holes are added, not carved; the muzzle marker is the
+  // tube end"): the firing anchor is the stub launcher's real tube end, the
+  // .158 collar face at glen. Until then P.muzzleZ kept the generic M60A1 tube
+  // length that usKit's buildGun set (gun-local 5.0973, world z 5.98), 2.64 m
+  // ahead of the 3.34 tube end: shells and the flash spawned in the air, the
+  // spec's gunBarrel.lengthM read the same 5.0973, and the factory — finding
+  // no cap within 2 m of the marker — seated the mouth on a hidden §B3.1
+  // muzzleBore rim (z glen, r .148) with a clamped 6 cm proud dark throat. With
+  // the marker on the collar face the terminal-cap scan seats the added hole
+  // flush, so that never-rendered rim/disc pair and the legacy 0.076 gunDark
+  // face puck (4*seg, occluded behind the disc) are gone; the hole radius now
+  // follows the fleet law (.0589 from the spec's gunBarrel radius) instead of
+  // the hidden rim's full .148 face.
+  P.muzzleZ = glen;
   finishM60A2Variant(P, glen, cfg.hull.deck);
   applyM60CompactScale(P, 0.90, 3.14 - py + 0.12);
 }

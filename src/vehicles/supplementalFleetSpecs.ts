@@ -362,6 +362,21 @@ const SPECS: FleetTankSpec[] = [
       visual: { number: '059' } }),
 ];
 
+// Owner 2026-09-22 ("holes are added, not carved; the muzzle marker is the
+// tube end"): the M60A2's 152 mm M162 is a stub launcher whose collar face
+// ends at world z 3.3408 (patton.ts addM60A2TurretAndGun: glen 2.162 gun-local
+// under the 0.9 compact scale, rig_gun at z 1.395), and rig_muzzle now sits on
+// that face. The donor M60A1's 105 mm barrel (5.0944, refit to 5.0973 by
+// fitArmorToDims) had carried the authority's shell origin and the barrel hit
+// cylinder 2.2 m ahead of the tube. The authority fires from turretPivot +
+// gunPivot (z 0.44111) along the gun axis, so the barrel is 3.3408 - 0.44111 =
+// 2.8997 m; written after make() so the dims refit cannot rescale it.
+{
+  const starship = SPECS.find((s) => s.id === 'm60a2');
+  if (!starship) throw new Error('Supplemental fleet spec missing: m60a2');
+  starship.armor.gunBarrel.lengthM = 2.8997;
+}
+
 for (const spec of SPECS) {
   tankSpecs[spec.id] ||= spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);

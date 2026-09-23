@@ -11,10 +11,12 @@ import { ALLOWED_BORE_METHODS, inventoryOne } from './muzzle-bore-inventory.mjs'
 // bore behind the fallback disc (ariete C1/C2 1.344 m, JPz E100 1.342 m, T-90MS 1.303 m, AMX-40
 // 1.236 m, T-72B3M 0.697 m, Chieftain 5 0.563 m, T-90/Burlak 0.406 m, AMX-30 0.314 m, Leopard 2A6
 // 0.260 m open jacket, Challenger 1 0.116 m octagonal throat, T-72BU 0.106 m, Ares L111A1 35 mm)
-// and now ends on one flat cap at the mouth; the depths stay recorded in their own receipts.
+// and now ends on one flat cap at the mouth; the depths stay recorded in their own receipts. The
+// M60A2's muzzle marker moved onto its stub launcher's tube end the same evening (it had kept the
+// generic M60A1 tube length 2.64 m ahead of the tube), so its mouth seats flush on the cap too.
 const CONVERTED = ['k2b', 'k1a1', 'type10', 'spz_puma', 'chieftain_mk10_x',
   'ariete_c1_x', 'ariete_c2_x', 'ares_apc_x', 'leo2a6_x', 'amx30_x', 'jpz_e100_x', 'amx40_x',
-  't72b3m_x', 'challenger1_x', 't72bu_x', 'chieftain5_x', 't90_x', 't90a_burlak_x', 't90ms_x'];
+  't72b3m_x', 'challenger1_x', 't72bu_x', 'chieftain5_x', 't90_x', 't90a_burlak_x', 't90ms_x', 'm60a2'];
 for (const id of CONVERTED) {
   for (const quality of ['high', 'low']) {
     const row = inventoryOne(id, quality);

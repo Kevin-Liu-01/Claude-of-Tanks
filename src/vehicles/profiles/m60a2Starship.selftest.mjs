@@ -70,6 +70,26 @@ try {
   assert.equal(hullRig.scale.x, vehicleScale, 'Starship hull, running gear and side armor scale together');
   assert.equal(turretRig.scale.x, vehicleScale, 'Starship turret, launcher and equipment scale together');
 
+  // Owner 2026-09-22 ("holes are added, not carved; the muzzle marker is the tube end"): the firing
+  // anchor sits on the 152 mm stub launcher's real tube end. Until then the generic M60A1 tube length
+  // (gun-local 5.0973, world z 5.98) left rig_muzzle 2.64 m ahead of the 3.34 tube end, the spec's
+  // gunBarrel.lengthM carried the authority's shell origin to the same air, and the factory seated the
+  // added hole on a hidden §B3.1 rim with a clamped 6 cm proud dark throat. The marker, the authority
+  // barrel and the flush terminal-cap seat now all meet on the collar face.
+  tank.root.updateMatrixWorld(true);
+  const muzzleWorld = tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3());
+  const tubeEndZ = new THREE.Box3().setFromObject(tank.root.getObjectByName('gun')).max.z;
+  assert.ok(Math.abs(muzzleWorld.z - tubeEndZ) < 1e-3, `muzzle marker is the tube end: ${muzzleWorld.z} vs ${tubeEndZ}`);
+  const authorityMuzzleZ = spec.armor.turretPivot[2] + spec.armor.gunPivot[2] + spec.armor.gunBarrel.lengthM;
+  assert.ok(Math.abs(authorityMuzzleZ - tubeEndZ) < 2e-3,
+    `authority barrel (turretPivot + gunPivot + gunBarrel.lengthM) reaches the same tube end: ${authorityMuzzleZ} vs ${tubeEndZ}`);
+  const mouth = tank.root.getObjectByName('muzzleBoreShadowFallback');
+  assert.equal(mouth?.userData.muzzleSeatReceipt?.supportSource, 'terminal-cap', 'the added hole seats on the launcher cap');
+  assert.ok(mouth.userData.muzzleSeatReceipt.markerGapM < 0.003, 'the marker is on the cap, so no clamped throat is needed');
+  assert.ok(!tank.root.getObjectByName('muzzleBoreShadowFallbackThroat'), 'no dark throat sleeve stands proud of the launcher');
+  assert.ok(!tank.root.getObjectByName('muzzleBoreShadowRim') && !tank.root.getObjectByName('muzzleBoreShadowDisc'),
+    'no hidden authored rim/disc pair is built behind the mouth');
+
   const sideCassettes = hullRig.userData.m60SideCassetteReceipt;
   assert.ok(sideCassettes, 'Starship publishes its lowered side-armor seating receipt');
   assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,
