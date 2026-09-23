@@ -312,7 +312,7 @@ export function appendTrackShoeBox(
   assembly.parts.push(xform(shoeBox(w, h, d, omittedFaces), x, y, z, 0, ry, 0));
 }
 
-export function appendTrackShoeBar(
+function appendTrackShoeBar(
   assembly: TrackShoeAssembly,
   w: number,
   d: number,
@@ -325,7 +325,7 @@ export function appendTrackShoeBar(
     assembly.padH / 2 + height / 2, z, ry, [SHOE_BOX_BOTTOM]);
 }
 
-export function appendTrackShoeChevron(
+function appendTrackShoeChevron(
   assembly: TrackShoeAssembly,
   z: number,
   direction = 1,

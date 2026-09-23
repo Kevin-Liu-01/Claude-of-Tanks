@@ -5,12 +5,12 @@
 import type { Object3D } from 'three';
 
 /** The two articulation rigs a fitting can be seated on. */
-export interface MountOwnerRigs {
+interface MountOwnerRigs {
   readonly hullG: { add(object: Object3D): unknown };
   readonly turretG: { add(object: Object3D): unknown };
 }
 
-export type MountRotation = readonly [number, number, number];
+type MountRotation = readonly [number, number, number];
 
 /** Seat a fitting on the hull or turret rig; the rotation is applied only when given. */
 export function mount(

@@ -82,11 +82,13 @@ assert.throws(
 );
 assert.throws(
   () => configureTankFactory({
-    canonicalBuilderPacks: [['duplicate', { m4a3e8() {} }]],
+    // panther_g is one of the three builders still owned by the core (round 46
+    // removed the five that profile packs shadowed, docs/CLEANUP-2026-09-22.md §4.2).
+    canonicalBuilderPacks: [['duplicate', { panther_g() {} }]],
     profiledBuilders: {},
     fittings: {},
   }),
-  /Duplicate canonical builder m4a3e8/,
+  /Duplicate canonical builder panther_g/,
 );
 assert.throws(
   () => configureTankFactory({

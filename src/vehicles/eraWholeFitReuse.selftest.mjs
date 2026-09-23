@@ -21,7 +21,11 @@ const unwrap = s => s.replace('    return wholeEraFitReuse.fit(parts, sideSuffix
     '    return [...exactSurfaces, ...deduplicateEraSurfaces(surfaces)];');
 assert.equal(unwrap(fitting(current)), fitting(upstream), 'complete original fitting calculation stays byte-exact');
 const collection = s => s.slice(s.indexOf('function createEraSurfaceFrame('), s.indexOf('interface TankPresentationSetup'));
-assert.equal(collection(current), collection(upstream), 'unchanged complete frame, collection, PCA and fallback algorithms');
+// Round 46 (docs/CLEANUP-2026-09-22.md §4.4) moved the frame/collection/PCA algorithms verbatim into
+// eraSurfaceFrame.ts; only the three entry points gained `export`. Compare the module against the upstream core slice.
+const frameModule = fs.readFileSync(new URL('./eraSurfaceFrame.ts', import.meta.url), 'utf8');
+assert.equal(frameModule.slice(frameModule.indexOf('function createEraSurfaceFrame(')).replace(/^export /gm, '').trimEnd(),
+  collection(upstream).trimEnd(), 'unchanged complete frame, collection, PCA and fallback algorithms');
 assert.equal(current.split('const wholeEraFitReuse = createInvocationEraWholeReuse();').length, 2);
 // Round 46 (docs/CLEANUP-2026-09-22.md §4.1) inlined the generated stage wrapper the try block used to call;
 // the fitting body now sits directly inside the try whose finally closes the per-invocation memo.

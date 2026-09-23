@@ -3,7 +3,7 @@
 // carried this identical body under three names.
 import * as THREE from 'three';
 
-export type ArmorFaceCorner = readonly [number, number, number];
+type ArmorFaceCorner = readonly [number, number, number];
 
 export interface ArmorFaceSample {
   point: THREE.Vector3;
