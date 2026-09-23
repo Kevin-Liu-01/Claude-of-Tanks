@@ -44,7 +44,9 @@ export default {
     // round 47 (2026-09-23, owner: "ground patterns are too black"): without this the sourced-texture resolver fell
     // through to Verdant — photo grass/dirt and raw near-black Rock058 in place of the sandstone strata above
     sourcedPalette: 'titan_gorge',
-    tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
+    // round 47 (2026-09-23): tintB 0.71/0.54/0.45 (luma ×0.58 in the dark patches) → same ochre hue (18°), every
+    // channel ≥ 0.78 (luma ×0.83) — the patches stay darker than the shelves without going black
+    tintA: [1.10, 0.88, 0.69], tintB: [0.90, 0.82, 0.78], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.22, sandMacro: 0.82,
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,
   },

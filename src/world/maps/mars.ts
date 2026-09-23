@@ -46,10 +46,13 @@ export default {
     grassTone: (h: number, s: number, l: number) => [0.048, 0.50, clamp01(0.20 + l * 0.66)],
     dirtTone: (h: number, s: number, l: number) => [0.040, 0.42, clamp01(0.24 + l * 0.36)],
     sandstone: true,
-    rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.55), clamp01(0.40 + (l - 0.5) * 0.62)],
+    // round 47 (2026-09-23, owner: "ground patterns are too black"): strata midpoint 0.40 → 0.48 (desert 0.53) — this
+    // IS the rendered rock here (sourcedPalette 'badlands' keeps R procedural), so the mesa walls lift a step
+    rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.55), clamp01(0.48 + (l - 0.5) * 0.62)],
     mudTone: (h: number, s: number, l: number) => [0.05, 0.36, clamp01(l * 1.2 + 0.06)],
     mudRough: 1.1,
-    tintA: [1.06, 0.90, 0.76], tintB: [0.82, 0.66, 0.56], tintC: [1.08, 0.94, 0.82],
+    // round 47: tintB 0.82/0.66/0.56 → 0.86/0.74/0.66 (same 23° hue, luma ×0.70 → ×0.77) under the dim cold key
+    tintA: [1.06, 0.90, 0.76], tintB: [0.86, 0.74, 0.66], tintC: [1.08, 0.94, 0.82],
     roadTint: [0.86, 0.74, 0.64],
     strata: 0.12,
     microAmp: 0.42,

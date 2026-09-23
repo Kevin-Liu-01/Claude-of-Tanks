@@ -43,8 +43,12 @@ export default {
     ],
   },
   splat: {
-    grassTone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.40), clamp01(l * 0.52)],
-    dirtTone: (h: number, s: number, l: number) => [0.06, clamp01(s * 0.42), clamp01(l * 0.48 + 0.04)],
+    // round 47 (2026-09-23, owner: "ground patterns are too black"): lightness FLOORS like every sibling canyon map
+    // (Titan 0.19/0.24, Redrock 0.19/0.24, Mars 0.20/0.24) — `l * 0.52` with no floor let the procedural fallback
+    // bottom out at black; hue and saturation unchanged. These tone hooks shape the procedural layers only; the
+    // rendered albedo is the sourced 'skybridge' row in sourcedTextures.ts.
+    grassTone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.40), clamp01(0.21 + l * 0.62)],
+    dirtTone: (h: number, s: number, l: number) => [0.06, clamp01(s * 0.42), clamp01(0.24 + l * 0.48)],
     sandstone: true,
     rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.56), clamp01(0.40 + (l - 0.5) * 0.72)],
     // round 47 (2026-09-23, owner: "ground patterns are too black"): without this the sourced-texture resolver fell
@@ -56,7 +60,9 @@ export default {
     // water mesh or draw pass while tracks receive the common wake/spray path.
     seaLake: true, seaFoam: 0.10, seaRamp: [0.18, 0.54], iceDrift: 0.02,
     marshGloss: 0.90, iceSky: [0.18, 0.30, 0.38],
-    tintA: [1.02, 0.67, 0.49], tintB: [0.61, 0.40, 0.34], tintC: [1.00, 0.69, 0.49],
+    // round 47: tintB was the darkest macro darkener in the game (0.61/0.40/0.34, luma ×0.46 inside the dark-clover
+    // patches) — same red-orange hue (12°), every channel ≥ 0.75 (luma ×0.81), the desert register (0.84/0.78/0.67)
+    tintA: [1.02, 0.67, 0.49], tintB: [0.88, 0.78, 0.75], tintC: [1.00, 0.69, 0.49],
     roadTint: [0.61, 0.53, 0.47], strata: 0.18, sandMacro: 0.62,
     rippleAmp: 0.14, midRelief: 1.0, midReliefFar: 840,
   },

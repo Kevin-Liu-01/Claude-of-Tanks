@@ -270,11 +270,13 @@ const TERRAIN_PLAN = {
   },
   ruinspires: {
     // grey ruined capital between the Ironworks and Steinburg registers: ash-muted city turf (≈ 0.32/0.34/0.23),
-    // grey-brown rubble dust (≈ 0.35/0.31/0.28) and neutral mid-grey broken stone on the cut slopes and the
-    // escarpment ring (Rock058 ships cool and dark — warmed to a neutral ≈ 0.40 grey, cavities floored)
+    // grey-brown rubble dust (≈ 0.35/0.31/0.28) and mid-grey broken stone on the cut slopes and the escarpment
+    // ring (Rock058 ships cool and dark — lifted to ≈ 0.37/0.39/0.40, cavities floored). A first cut at
+    // 1.40/1.30/1.18 rendered the sunlit ring face as cream limestone (display luma 184) under the warm key:
+    // keep the stone a touch cool so the sun colour, not the tint, carries the warmth.
     G: { set: 'grass', tint: [1.05, 1.00, 1.15], desat: 0.40, roughMul: 1.32 },
     D: { set: 'dirt', tint: [0.86, 0.90, 0.98], desat: 0.45, roughMul: 1.38 },
-    R: { set: 'rock', tint: [1.40, 1.30, 1.18], lift: 0.02, roughMul: 1.2 }, M: null,
+    R: { set: 'rock', tint: [1.32, 1.28, 1.22], lift: 0.02, roughMul: 1.2 }, M: null,
   },
   blackglass: {
     // dark volcanic-glass district under a storm front — the Caldera recipe (dark sets WITH a lift floor so shaded
