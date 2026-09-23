@@ -41,8 +41,12 @@ for (const id of ALL_TANK_IDS) {
   tank.dispose();
 }
 
-assert.equal(patternUse.size, WHEEL_PATTERN_IDS.length,
-  'every authored wheel pattern is represented by the selectable fleet');
+// solid-bogie-six lost its last playable hull (t95) when the hidden fleet retired
+// (2026-09-23); the definition stays because the builders switch on its motif.
+const VOCABULARY_ONLY = new Set(['solid-bogie-six']);
+for (const id of VOCABULARY_ONLY) assert.ok(!patternUse.has(id), `${id}: vocabulary-only pattern has no playable hull`);
+assert.equal(patternUse.size, WHEEL_PATTERN_IDS.length - VOCABULARY_ONLY.size,
+  'every other authored wheel pattern is represented by the selectable fleet');
 assert(patternUse.size >= 10, 'fleet exposes at least ten distinct mechanical wheel patterns');
 assert.equal(wheelPatternFor(getSpec('m1a2')).id, 'split-rim-ten', 'Abrams split-rim identity');
 assert.equal(wheelPatternFor(getSpec('t90m')).id, 'pressed-six', 'T-90 pressed-wheel identity');

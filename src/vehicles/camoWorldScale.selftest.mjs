@@ -30,8 +30,9 @@ near(camoPatchWorldScale(0.88), 0.5 / 0.88, 1e-9, 'the densest fleet recipe');
 assert.equal(camoPatchWorldScale(NaN), 1, 'a broken density falls back to the reference');
 
 // --- every hull's merged camo surfaces project at the constant, whatever it authored -------------------------------
-// Four very different hulls: no authored scale (the 0.34 legacy default), the 0.5 reference, a 0.6 and a 0.72 hull.
-const HULLS = ['t90m', 'm1a2', 'tiger1', 'spz_puma_s1'];
+// Four very different hulls: no authored scale (the 0.34 legacy default), the 0.5 reference, a 0.6 and a 0.72 hull
+// (type74 took the 0.6 seat when tiger1 retired with the hidden fleet, 2026-09-23).
+const HULLS = ['t90m', 'm1a2', 'type74', 'spz_puma_s1'];
 const AXIS = { x: (p, i) => [p.getZ(i), p.getY(i)], y: (p, i) => [p.getX(i), p.getZ(i)], z: (p, i) => [p.getX(i), p.getY(i)] };
 function measureUvDensity(mesh) {
   const p = mesh.geometry.attributes.position, n = mesh.geometry.attributes.normal, uv = mesh.geometry.attributes.uv;
@@ -91,7 +92,7 @@ const EMPTY = { hLines: [], vLines: [], rings: [], chips: [], streaks: [] };
 const abrams = getSpec('m1a2'), t90m = getSpec('t90m'), puma = getSpec('spz_puma_s1');
 
 // the same shared pattern resolves to one recipe and paints one byte-identical pattern layer on any hull
-for (const patternId of ['service_usa_desert', 'sig_abramsx', 'paint_tiger1', 'national_de', 'flecktarn', 'urbanblock', 'openai']) {
+for (const patternId of ['service_usa_desert', 'sig_abramsx', 'paint_chieftain5', 'national_de', 'flecktarn', 'urbanblock', 'openai']) {
   const recipes = [abrams, t90m, puma].map((spec) => resolveCamoVisual(spec, patternId));
   const morphology = (v) => JSON.stringify([v.scheme, v.base, v.weather, v.patches, v.camoScale, v.patchK, v.digitalCellK,
     v.solidWeatheringIntensity, v.bandAngle, v.blackK, v.rainK]);
@@ -186,7 +187,7 @@ const { paintCamoSwatch, camoSwatchRecipe, resetCamoSwatchCache, CAMO_SWATCH_CRO
 assert.equal(CAMO_SWATCH_SPAN_M.width, CAMO_TILE_SPAN_M, 'the swatch shows one full 2 m tile across');
 near(CAMO_SWATCH_SPAN_M.height, CAMO_TILE_SPAN_M * CAMO_SWATCH_HEIGHT / CAMO_SWATCH_WIDTH, 1e-9, 'and the same scale down');
 resetCamoSwatchCache();
-for (const patternId of ['service_usa_desert', 'paint_tiger1', 'national_de', 'openai', 'urbanblock']) {
+for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de', 'openai', 'urbanblock']) {
   const swatches = [abrams, t90m, puma].map((spec) => { const c = createCanvas(4, 4); paintCamoSwatch(c, spec, patternId); return c; });
   assert.equal(swatches[0].width, CAMO_SWATCH_WIDTH); assert.equal(swatches[0].height, CAMO_SWATCH_HEIGHT);
   const hex = swatches.map((c) => Buffer.from(pixels(c)).toString('hex'));

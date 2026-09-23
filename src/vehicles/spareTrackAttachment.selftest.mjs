@@ -132,7 +132,8 @@ for (const id of HIGH_RISK_OWNERS) {
   }
 }
 
-assert.equal(checkedSeats, 14,
-  'all fourteen formerly high-risk semantic spare-track seats are audited');
+// 2026-09-23: the Tiger I owned two of the fourteen seats and retired with the hidden fleet.
+assert.equal(checkedSeats, 12,
+  'all twelve formerly high-risk semantic spare-track seats are audited');
 
 console.log(`spareTrackAttachment.selftest: ${checkedSeats} high-risk seats plus both carrier systems passed`);

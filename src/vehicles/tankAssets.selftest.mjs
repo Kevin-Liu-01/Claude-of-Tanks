@@ -309,6 +309,5 @@ for (const id of ALL_TANK_IDS) {
   tank.dispose();
 }
 canonicalM1A2.dispose();
-legacyM1A2.dispose();
 
 console.log(`tankAssets.selftest: ${ALL_TANK_IDS.length} tanks have tier, flag, gun, hit-area and module metadata`);

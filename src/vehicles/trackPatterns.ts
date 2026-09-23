@@ -124,6 +124,8 @@ export const TRACK_PATTERN_IDS = Object.freeze(
 );
 
 const FAMILY_RULES: ReadonlyArray<readonly [RegExp, TrackPatternId]> = Object.freeze([
+  // jpz_e100_x keeps the wide interleaved cleat its retired donor authored (2026-09-23).
+  [/jpz_e100/, 'interleaved-cleat'],
   [/(?:^|_)kv2(?:$|_)/, 'early-cast-steel'],
   [/(?:udes03|strv103a|strv103)(?:$|_)/, 'hydropneumatic-dead-track'],
   [/(?:bmp2|bmp3|bwp1|upior|bmpt|kurganets25)/, 'eastern-ifv'],

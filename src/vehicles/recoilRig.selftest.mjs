@@ -231,31 +231,9 @@ for (const id of FIXED_LAUNCHERS) {
   }
 }
 
-// ---- casemate law: fixedMount chain + tubeless stroke suppression ---------
-{
-  const { visual, state, recoilG, muzzle } = rig('t95');
-  assert.equal(muzzle.parent.name, 'rig_hull', 't95: rig_muzzle under rig_hull (§5.313)');
-  assert.equal(recoilG.parent.name, 'rig_hull', 't95: rig_recoil joins the hull chain (§5.362)');
-  visual.recoilKick(0, 1);
-  visual.syncFromState(state, 0.12);
-  assert.equal(recoilG.position.z, 0, 't95: hull-printed cannon never slides');
-  const t95Rock = Math.abs(state._flinch.pv);
-  assert.ok(t95Rock > 0, 't95: chassis carries the recoil impulse');
-
-  const lec = rig('leclerc');
-  lec.visual.recoilKick(0, 1);
-  lec.visual.syncFromState(lec.state, 0.12);
-  assert.ok(t95Rock > Math.abs(lec.state._flinch.pv) * 1.3,
-    `t95: tubeless hull rock is boosted past the tube-recoil fleet (${t95Rock} vs ${Math.abs(lec.state._flinch.pv)})`);
-}
-
-// ---- stub guard: hidden ball-mount collars never walk the static tube -----
-{
-  const { visual, state, recoilG } = rig('isu152');
-  visual.recoilKick(0, 1);
-  visual.syncFromState(state, 0.12);
-  assert.equal(recoilG.position.z, 0, 'isu152: 0.26 m stub collar stays seated');
-}
+// ---- casemate law (fixedMount chain + tubeless stroke suppression): its last
+// playable subjects (t95, isu152) retired on 2026-09-23; jpz_e100_x carries a
+// recoiling tube, so the tubeless hull-rock path has no fleet fixture today.
 
 // ---- shortest real tube in the fleet (m2a2 0.755 m Bushmaster) recoils ----
 {

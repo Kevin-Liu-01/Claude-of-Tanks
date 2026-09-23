@@ -37,10 +37,10 @@ for (const id of ALL_TANK_IDS) {
     `${id}: distinct working-steel shades`);
   counts.set(pattern.id, counts.get(pattern.id) + 1);
 }
-// interleaved-cleat and siege-wide lost their last playable hulls when the
-// hidden fleet retired (2026-09-23); the shoe vocabulary stays because the
-// builders switch on its surfaces (tankFactoryCore.ts, abramsSourceXTrackShoe.ts).
-const VOCABULARY_ONLY = new Set(['interleaved-cleat', 'siege-wide']);
+// siege-wide lost its last playable hull (t95) when the hidden fleet retired
+// (2026-09-23); the shoe definition stays because the builders switch on its
+// surface vocabulary (tankFactoryCore.ts, abramsSourceXTrackShoe.ts).
+const VOCABULARY_ONLY = new Set(['siege-wide']);
 for (const [id, count] of counts) {
   if (VOCABULARY_ONLY.has(id)) continue;
   assert.ok(count > 0, `${id}: family is exercised by the playable fleet`);

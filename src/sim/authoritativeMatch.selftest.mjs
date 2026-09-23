@@ -745,8 +745,8 @@ const heMatch = createAuthoritativeMatch({
   seed: 19,
   players: [
     { id: 'he-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -25, yaw: 0 } },
-    { id: 'he-direct', specId: 'leichttraktor', team: 'bravo', spawn: { x: 0, z: 0, yaw: Math.PI } },
-    { id: 'he-splash', specId: 'leichttraktor', team: 'bravo', spawn: { x: 3.2, z: 0, yaw: Math.PI } },
+    { id: 'he-direct', specId: 'm551_sheridan', team: 'bravo', spawn: { x: 0, z: 0, yaw: Math.PI } },
+    { id: 'he-splash', specId: 'm551_sheridan', team: 'bravo', spawn: { x: 3.2, z: 0, yaw: Math.PI } },
   ],
 });
 heMatch.onMatchReady();

@@ -18,8 +18,8 @@ function mkEntity(id, specId, x, z, yaw, hf) {
 }
 
 function runScenario(name, hf, obsPos, tgtPos, maxS = 30) {
-  const shooter = mkEntity('shooter', 'tiger1', obsPos[0], obsPos[1], Math.atan2(tgtPos[0] - obsPos[0], tgtPos[1] - obsPos[1]), hf);
-  const target = mkEntity('target', 'm4a3e8', tgtPos[0], tgtPos[1], 0, hf);
+  const shooter = mkEntity('shooter', 't90m', obsPos[0], obsPos[1], Math.atan2(tgtPos[0] - obsPos[0], tgtPos[1] - obsPos[1]), hf);
+  const target = mkEntity('target', 'm1a2', tgtPos[0], tgtPos[1], 0, hf);
   const ai = createAI(shooter, {
     difficulty: 'normal',
     rng: mulberry32(42),
@@ -99,9 +99,9 @@ const c = runScenario('flat-control', flat, [0, 0], [0, 150]);
 //   F) control: a sim-SPOTTED player is acquired through the normal scan.
 // ---------------------------------------------------------------------------
 function acquisitionScenario(name, { spotted, shots, blockRay, moveAfter, startTimeS = 0 }) {
-  const bot = mkEntity('bot', 'tiger1', 0, 0, 0, flat);
+  const bot = mkEntity('bot', 't90m', 0, 0, 0, flat);
   bot.team = 'enemy';
-  const player = mkEntity('player', 'm4a3e8', 0, 250, 0, flat);
+  const player = mkEntity('player', 'm1a2', 0, 250, 0, flat);
   player.team = 'player';
   player.isPlayer = true;
   const muzzle = { x: player.state.pos.x, z: player.state.pos.z };

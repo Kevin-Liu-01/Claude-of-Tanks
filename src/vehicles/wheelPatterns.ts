@@ -88,6 +88,8 @@ export const WHEEL_PATTERN_IDS = Object.freeze(
 // their era's wheel family instead of their nation's modern donor.
 const PERIOD_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.freeze([
   [/(?:^|_)kv2(?:$|_)/, 'christie-six'],
+  // jpz_e100_x keeps the interleaved dish its retired donor authored (2026-09-23).
+  [/jpz_e100/, 'interleaved-dish'],
 ]);
 
 function pattern(id: WheelPatternId): WheelPattern {

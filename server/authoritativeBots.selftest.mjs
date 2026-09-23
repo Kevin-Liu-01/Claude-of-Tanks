@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
+// The soak used to find its six mobile hulls among the core specs.ts rows; those
+// archived WWII hulls retired on 2026-09-23, so register the complete fleet first.
+import '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
