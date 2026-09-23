@@ -275,10 +275,14 @@ function mainGun(P:TankBuilderPort):void {
     [4.962,5.0073,.12258,.09258],[5.0067,5.84385,.102544,.102544]]){
     P.add('gun',KIT.cylY(rb,ra,b-a,32).rotateX(Math.PI/2),0,0,(a+b)/2-GUN[2]);
   }
-  // Scalar axial profile, with no filled core across the measured recess.
+  // Scalar axial profile. Owner 2026-09-22 ("the point of adding holes instead of carving them
+  // into the barrel is that we save on triangles"): the tube is closed at the source tip. Until
+  // then the profile turned into the measured 125 mm bore (radius .0625) down to the source floor
+  // 5.890883855316, a 0.697 m recess that sat entirely behind the factory's dark mouth disc; the
+  // depth stays recorded here and in t72b3mXGeometry.selftest.mjs (SOURCE.floor).
   const tubeProfile:readonly(readonly[number,number])[]=[[0,5.84385],[.098435,5.84385],
     [.098435,6.294786],[.09313,6.300016],[.09313,6.448276],[.103942,6.452386],
-    [.103942,6.581836],[.09945,muzzle],[.0625,muzzle],[.0625,floor],[0,floor]];
+    [.103942,6.581836],[.09945,muzzle],[0,muzzle]];
   P.add('gun',new THREE.LatheGeometry(tubeProfile.map(([r,z])=>new THREE.Vector2(r,z)),32).rotateX(Math.PI/2),0,0,-GUN[2]);
   for(const z of [2.325,3.142,3.963])P.add('gun',torus(.126,.009,32,6).rotateX(Math.PI/2),0,0,z-GUN[2]);
   P.muzzleZ=muzzle-GUN[2];

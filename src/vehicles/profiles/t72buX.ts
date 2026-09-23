@@ -221,7 +221,12 @@ function mainGun(P:TankBuilderPort):void{
     [1.59493,.179,.179,1.803,1.4436,1.63],[1.88831,.143,.143,1.773,1.486,1.63]],GUN));
   for(const [a,b,ra,rb]of [[1.870624,4.214154,.12742,.11131],[4.214154,4.22647,.11131,.129446],
     [4.22647,5.003331,.129446,.1241],[5.003331,5.015647,.1241,.105813]])P.add('gun',KIT.cylY(rb,ra,b-a,32).rotateX(Math.PI/2),0,0,(a+b)/2-GUN[2]);
-  const profile=[[0,5.015647],[.105813,5.015647],[.09522,muzzle],[.0625,muzzle],[.0625,floor],[0,floor]];
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the tube is closed at the source tip. Until then it turned into the measured
+  // 125 mm bore (radius .0625) down to the source floor 6.453155544449773, a 0.1058 m recess that sat
+  // entirely behind the factory's dark mouth disc; the depth stays recorded here, in
+  // t72buXGeometry.selftest.mjs (SOURCE.floor) and docs/references/tanks/t72bu_x.source-measurements.json.
+  const profile=[[0,5.015647],[.105813,5.015647],[.09522,muzzle],[0,muzzle]];
   P.add('gun',new THREE.LatheGeometry(profile.map(([r,z])=>new THREE.Vector2(r,z)),32).rotateX(Math.PI/2),0,0,-GUN[2]);
   for(const [z,d,y]of [[2.82465,.76233,1.74025],[3.70856,.76233,1.73766],[5.40345,.55896,1.72989],[6.08525,.55896,1.72624]])
     P.add('gun',box(.01074,.03919,d),0,y-GUN[1],z-GUN[2]);

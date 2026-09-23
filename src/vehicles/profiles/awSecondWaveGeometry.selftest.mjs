@@ -65,7 +65,12 @@ function bore(t,s){
   const m=t.root.getObjectByName('gun'),all=visible(t.root);near(new THREE.Box3().setFromObject(m).max.z,s.tip,.000003,'physical source muzzle terminal');
   for(const[x,y]of [[0,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
     const ray=new THREE.Raycaster(new THREE.Vector3(s.gun[0]+x,s.gun[1]+y,s.tip+.2),new THREE.Vector3(0,0,-1),0,2);
-    near(ray.intersectObject(m,false)[0]?.point.z,s.floor,.00002,'source true opaque-metal bore recess');
+    // 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that
+    // we save on triangles"): each metal tube is closed at its source tip. The measured opaque bore
+    // floors (s.floor: t90_x 5.964219808578489, t90a_burlak_x 5.853999853134153, t90ms_x 4.99215984344482;
+    // the *.source-measurements.json opaqueBoreFloorZ) stay recorded here as the fidelity evidence;
+    // every former recess sat entirely behind the fallback disc below.
+    near(ray.intersectObject(m,false)[0]?.point.z,s.tip,.00002,`metal tube closed at the source tip (recorded opaque bore floor ${s.floor})`);
     const h=ray.intersectObjects(all,false)[0];assert.equal(h?.object.name,'muzzleBoreShadowFallbackDisc');
     // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
     // the physical source bore depth is asserted separately above.
@@ -209,4 +214,4 @@ for(const[id,s]of Object.entries(SOURCES))for(const quality of ['high','low']){
   const t=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{t.root.updateMatrixWorld(true);frame(t,id,s);bore(t,s);gear(t,s);reactive(t,s);equipment(t,id);antennas(t,id);staggerMotion(t,id,s);}finally{t.dispose();}
 }
-console.log('awSecondWaveGeometry: actual high/low source joints, metal bore depth, native axles, reactive backing and fitting ownership pass; added T90 NSVT and retained unarmed carrier/MG0 negative controls pass; visual/release gates separate');
+console.log('awSecondWaveGeometry: actual high/low source joints, closed metal tips over the recorded bore depths, native axles, reactive backing and fitting ownership pass; added T90 NSVT and retained unarmed carrier/MG0 negative controls pass; visual/release gates separate');

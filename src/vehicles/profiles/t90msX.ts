@@ -254,8 +254,13 @@ function mainGun(P:TankBuilderPort):void{
   P.add('gunMount',castSections([[1.21923,.24,.24,1.987,1.579,1.81431],[1.370072,.278,.278,2.00441,1.55981,1.81431],
     [1.50,.20,.20,1.979,1.615,1.81431],[1.64223,.128,.128,1.94231,1.68631,1.81431]],GUN));
   addT90MSGunBase(P);
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the tube is closed at the source tip. Until then it turned into the measured
+  // 125 mm bore (radius .0625) down to the source opaque floor 4.99215984344482, a 1.3028 m recess
+  // that sat entirely behind the factory's dark mouth disc; the depth stays recorded here, in
+  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90ms_x.floor) and docs/references/tanks/t90ms_x.source-measurements.json.
   const p=[[0,1.64246],[.1267,1.64246],[.10921,2.20456],[.10034,3.91206],[.11787,3.91206],[.120615,4.84766],
-    [.09160,4.84766],[.093205,6.05276],[.086625,6.05276],[.086745,6.18166],[.093375,6.19726],[.093505,tip],[.0625,tip],[.0625,floor],[0,floor]];
+    [.09160,4.84766],[.093205,6.05276],[.086625,6.05276],[.086745,6.18166],[.093375,6.19726],[.093505,tip],[0,tip]];
   P.add('gun',new THREE.LatheGeometry(p.map(([r,z])=>new THREE.Vector2(r,z)),32).rotateX(Math.PI/2),0,0,-GUN[2]);
   // Actual muzzle-reference fixture, correctly recoil-owned, with the measured
   // small open optical stock. It is not an enlarged full muzzle collar.

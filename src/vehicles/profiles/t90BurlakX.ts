@@ -218,8 +218,13 @@ function mainGun(P:TankBuilderPort):void{
   P.add('gunMount',cylX(.217,.52,32));
   P.add('gunMount',castSections([[1.15925,.23,.23,1.980,1.5792,1.78445],[1.283482,.27,.27,2.0106,1.5792,1.78445],
     [1.42015,.1514,.1514,1.93585,1.63305,1.78445],[1.60778,.128,.128,1.91245,1.65645,1.78445]],GUN));
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the tube is closed at the source tip. Until then it turned into the measured
+  // 125 mm bore (radius .0625) down to the source opaque floor 5.853999853134153, a 0.4063 m recess
+  // that sat entirely behind the factory's dark mouth disc; the depth stays recorded here, in
+  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90a_burlak_x.floor) and docs/references/tanks/t90a_burlak_x.source-measurements.json.
   const rows=[[0,1.6078],[.1267,1.6078],[.10921,2.1699],[.10034,3.8774],[.11787,3.8774],[.120615,4.813],
-    [.09160,4.813],[.093205,6.0181],[.086625,6.0181],[.086745,6.1470],[.093375,6.1626],[.093505,tip],[.0625,tip],[.0625,floor],[0,floor]];
+    [.09160,4.813],[.093205,6.0181],[.086625,6.0181],[.086745,6.1470],[.093375,6.1626],[.093505,tip],[0,tip]];
   P.add('gun',new THREE.LatheGeometry(rows.map(([r,z])=>new THREE.Vector2(r,z)),32).rotateX(Math.PI/2),0,0,-GUN[2]);
   for(const z of [2.39,3.44,5.29])P.add('gun',box(.006,.014,.46),0,.111,z-GUN[2]);
   P.muzzleZ=tip-GUN[2];

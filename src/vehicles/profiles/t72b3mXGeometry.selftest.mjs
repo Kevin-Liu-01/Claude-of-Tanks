@@ -43,7 +43,11 @@ function bore(tank){
   }
   for(const [dx,dy]of [[0,0],[.03,0],[-.03,0],[0,.03],[0,-.03]]){
     const ray=new THREE.Raycaster(new THREE.Vector3(SOURCE.gun[0]+dx,SOURCE.gun[1]+dy,SOURCE.muzzle+.2),new THREE.Vector3(0,0,-1),0,1.1);
-    near(ray.intersectObject(metal,false)[0]?.point.z,SOURCE.floor,.00002,'source axial bore depth after neutral-pose correction');
+    // 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that
+    // we save on triangles"): the metal tube is closed at its source tip. The measured 0.697 m source
+    // bore (SOURCE.floor 5.890883855316, radius .0625) stays recorded here as the fidelity evidence;
+    // the fallback disc below is the visible dark mouth and the former recess sat entirely behind it.
+    near(ray.intersectObject(metal,false)[0]?.point.z,SOURCE.muzzle,.00002,`metal tube closed at the source tip (recorded bore floor ${SOURCE.floor})`);
     const first=ray.intersectObjects(all,false)[0];
     assert.equal(first?.object.name,'muzzleBoreShadowFallbackDisc');
     // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
@@ -99,4 +103,4 @@ for(const quality of ['high','low']){
   try{tank.root.updateMatrixWorld(true);frames(tank);bore(tank);covers(tank);gearAndFitting(tank);}
   finally{tank.dispose();}
 }
-console.log('t72b3mXGeometry: actual high/low physical joints, deep bore, native axles, ERA backing and elevated AA ownership pass; full visual gates separate');
+console.log('t72b3mXGeometry: actual high/low physical joints, closed tip over the recorded deep bore, native axles, ERA backing and elevated AA ownership pass; full visual gates separate');
