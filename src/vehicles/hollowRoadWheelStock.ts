@@ -39,11 +39,14 @@ export function buildHollowPairedRoadWheel({ radiusM, high, fasteners = 10, axia
   const scale = (stations: readonly RadialStation[]): RadialStation[] => stations.map(([r, x]) => [r * k, x * k] as const);
   // Rubber: face from .25805 with the inner wall sloping to the web; the
   // crown rounds inward. Lathe contours run CCW in (radius, axle), so the
-  // outside run is reversed before the closed annulus is turned.
+  // outside run is reversed before the closed annulus is turned. LOW keeps the
+  // face, crown and channel wall but not the two inner-wall bevel stations
+  // (roadWheelGeometry.ts WheelDetail: no inner bevels at LOW).
   const tire = scale([
     [.25805, OUTER_HALF], [.29336, OUTER_HALF], [REF_RADIUS, OUTER_HALF - .014],
     [REF_RADIUS, GAP_HALF + .014], [.283, GAP_HALF], [.280, GAP_HALF],
-    [.270, .08728], [.260, .15094], [.25805, OUTER_HALF],
+    ...(high ? [[.270, .08728], [.260, .15094]] as const : []),
+    [.25805, OUTER_HALF],
   ]).reverse();
   // Steel: a ~160 mm recessed bowl, not a proud full-width disc.
   const web = scale([

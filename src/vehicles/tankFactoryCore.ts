@@ -38,7 +38,7 @@ import { suspensionPatternFor } from './suspensionPatterns.ts';
 import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, endpointAxleOutset, sourceToothTip, type SuspensionDimensions } from './suspensionDimensions.ts';
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
-import { radialRibs, wheelGeo, STANDARD_WHEEL_AXIAL_ENVELOPE, type WheelGeometrySet } from './roadWheelGeometry.ts';
+import { radialRibs, wheelGeo, STANDARD_WHEEL_AXIAL_ENVELOPE, type WheelDetail, type WheelGeometrySet } from './roadWheelGeometry.ts';
 import { resolveNationWheel, type NationWheelResolution } from './nationWheelSets.ts';
 import { buildNationWheel, type NationWheelLayer } from './nationWheelConstructions.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
@@ -3406,9 +3406,9 @@ function sourceTrackCarrierWidth(cfg:RunningGearConfig):number {
   return width;
 }
 
-function sourceWheelSolids(cfg:RunningGearConfig,segments:number,pattern:WheelPattern) {
+function sourceWheelSolids(cfg:RunningGearConfig,segments:number,pattern:WheelPattern,detail:WheelDetail) {
   const originals=wheelGeo(cfg.style??'rubber',cfg.wheelR,cfg.wheelW,segments,
-    cfg.dishR??.90,pattern,(cfg.wheelFaceLayers||[]).length>0);
+    cfg.dishR??.90,pattern,(cfg.wheelFaceLayers||[]).length>0,detail);
   return replaceMeasuredWheelSolids(originals,cfg,cfg.wheelR,cfg.wheelW,segments);
 }
 
@@ -3869,7 +3869,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       },
     });
   } else {
-    ({ tire, disc, dark } = cfg.roadWheelGeometry ?? sourceWheelSolids(cfg, seg, wheelPattern));
+    ({ tire, disc, dark } = cfg.roadWheelGeometry ?? sourceWheelSolids(cfg, seg, wheelPattern, q ? 'high' : 'low'));
   }
   // Some modern pressed-steel wheel assemblies are measurably oval in the
   // normalized side reference (vertical tire diameter exceeds the fore/aft

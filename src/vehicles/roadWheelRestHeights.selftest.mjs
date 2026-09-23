@@ -76,16 +76,19 @@ const ORIGINALS = {
 // are repinned from the current build. m1a2 is a donor (hollow paired wheel) and did not move. Later the same day the
 // consumer constructions took quality-aware tessellation (LOW draws fewer segments than the donor) and standardized
 // hulls took the fleet suspension arm seated against the nation wheel, so the LOW digests moved again; repinned.
+// 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail, owner: the LOW tier must cost less): no bolt rings,
+// ribs, lightening holes or face hardware at LOW, source lathes at 12 segments, the hollow paired tire without its inner
+// bevel — the four LOW gear digests moved; HIGH digests are byte-identical. Repinned from the current build.
   t90sm: ['cd16dd7e078981adacc4db5392c080306de5e7339a8a381e6b660f65447b2054',
-    '8f034df260f331f69bc19481b34da052059bef8c4d16ccc27176b154f3dc371f'],
+    'f45bfe0c849de3f3857fa8b9b77b437d59398151467653435d5b2951828b0ed0'],
   t90m: ['2fb0cb662a0c99bc816fef25f8fe1d3219ad4f72eddbc6d5f88c1cbdcdf25442',
-    '20bbccb068d4dca7b87188a5993f6dab0ab60ab13f89cf3f1197c90f0eae1626'],
+    '502f9ebedbc27b8873cdc570c2ad139750af5a2dcf4da5eeec1d3edaabae2e5d'],
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts) and lost
   // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
   m1a2: ['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253',
-    '7e4c7a0ccc17f06eefc179b69122bde147a0c04f315a35c37b41551e34a4a0ca'],
+    '08e417b03e8090cd6a4ba591bbe44d64f1480d24cf304b868c54b2c97a746c09'],
   leo2a5: ['1e1f77aac4eed537c42c53026ef32bf078a90d3abdbb6c8217d19be57f00dcf6',
-    '7400f1e85404c7a213d040422c31075dbdc19d94ee26857849420e97ce386e88'],
+    '6a08e2879d6a086eeb5720b61f360e94dc854a4a3489e8f14b099a9298a5a318'],
 };
 for (const [id, hashes] of Object.entries(ORIGINALS)) {
   for (const [index, quality] of ['high', 'low'].entries()) {
