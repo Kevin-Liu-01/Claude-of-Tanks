@@ -14,7 +14,7 @@ function load(source, ports) {
   }).outputText;
   return new Function('createTank', 'createTankSteps', 'getDeviceTier', 'HERO_TEX_SPECS',
     `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
-    ports.sync, ports.steps, ports.tier, new Set(['m1a2', 'tiger1', 't34_85', 't90m', 'leo2a7']));
+    ports.sync, ports.steps, ports.tier, new Set(['m1a2', 't90m']));
 }
 function fixture({ mobile = false, player = false, pooled = false, fail = null } = {}) {
   const scene = new THREE.Scene(), trace = [], created = [], ground = () => 0;

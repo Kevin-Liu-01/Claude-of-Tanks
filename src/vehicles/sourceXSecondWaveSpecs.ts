@@ -2,7 +2,8 @@
 // drafts enter this registry; pending source studies never become placeholders.
 // This module is boot-light: combat donors supply rules, never visual geometry.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
-import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { bindFleetRegistries, cloneFleetVariantFrom, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { donorSpec } from './donorSpecs.ts';
 import { createT62MV1XArmorZones } from './t62mv1XArmor.ts';
 import { createT72B1987XArmorZones } from './t72b1987XArmor.ts';
 import { createT80UXArmorZones } from './t80uXArmor.ts';
@@ -181,9 +182,10 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
 
 const specs: Record<string, FleetTankSpec> = {};
 for (const [id, donorId, name] of entries) {
-  const donor = registries.tankSpecs[donorId];
-  if (!donor) throw new Error(`Second-wave X combat donor missing: ${donorId}`);
-  const spec = cloneFleetVariant(registries.tankSpecs, id, donorId, {
+  // Registered donors first, then the unregistered templates (t72b_1987, t72b3,
+  // jpz_e100 retired 2026-09-23).
+  const donor = donorSpec(registries.tankSpecs, donorId);
+  const spec = cloneFleetVariantFrom(donor, id, donorId, {
     name, nation: donor.nation, era: donor.era, role: donor.role,
   });
   delete spec.publicVisualFallback;
@@ -206,7 +208,7 @@ export function synchronizeSecondWaveXCombatMetadata(): void {
     'hullTraverseDegS', 'terrainResistance', 'pivotStyle', 'turretTraverseDegS',
     'gunPitchDegS', 'gunElevationDeg', 'gunDepressionDeg', 'gun'] as const;
   for (const [id, donorId] of entries) {
-    const target = registries.tankSpecs[id], donor = registries.tankSpecs[donorId];
+    const target = registries.tankSpecs[id], donor = donorSpec(registries.tankSpecs, donorId);
     for (const key of fields) Object.assign(target, { [key]: structuredClone(donor[key]) });
     target.armor = structuredClone(donor.armor);
     fitArmorToDims(target.armor, donor.dims, target.dims);

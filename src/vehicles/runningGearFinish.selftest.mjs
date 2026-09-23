@@ -91,8 +91,8 @@ const SAMPLE = [
   'challenger2', 'chieftain5', 'centurion3',   // UK/Challenger wheelTone/drumTone/ringMat kits
   'merkava4b', 'merkava3d', 'merkava4_x',      // Merkava darkDish/darkDrum and the fitting-paint dish rings
   'leo2a6', 'leo2a5', 'm1a2_x', 'abramsx',     // Leopard wornDish/wornDrum + cover discs, Abrams wornDrum
-  'strv103', 'jpz_e100', 'bmpt_terminator2', 't72b3m', 't90m_proryv', // casemate / in-place retints
-  'kv2', 'tiger1', 'type74', 'fv510', 'leclerc_x', 'namer_ifv', 'k21_x', 'm47_patton', // period, donors, mapped paint
+  'strv103', 'jpz_e100_x', 'bmpt_terminator2', 't72b3m', 't90m_proryv', // casemate / in-place retints
+  'kv2', 'type74', 'fv510', 'leclerc_x', 'namer_ifv', 'k21_x', 'm47_patton', // period, donors, mapped paint
 ];
 let audited = 0;
 for (const id of SAMPLE) {

@@ -22,11 +22,13 @@ for (const id of SAVED_TANK_IDS) {
 }
 
 for (const era of VEHICLE_ERA_ORDER) {
+  // The interwar era has no first-party hull since the Leichttraktor study
+  // retired with the hidden fleet (2026-09-23); it stays in the taxonomy.
+  if (era === VEHICLE_ERAS.INTERWAR) continue;
   assert.ok(counts.get(era) > 0, `${vehicleEraLabel(era)} has at least one saved vehicle`);
 }
 
-assert.equal(TANK_SPECS.leichttraktor.era, VEHICLE_ERAS.INTERWAR);
-assert.equal(TANK_SPECS.tiger1.era, VEHICLE_ERAS.WORLD_WAR_II);
+assert.equal(TANK_SPECS.kv2.era, VEHICLE_ERAS.WORLD_WAR_II);
 assert.equal(TANK_SPECS.m60a1.era, VEHICLE_ERAS.COLD_WAR);
 assert.equal(TANK_SPECS.challenger2.era, VEHICLE_ERAS.MODERN);
 assert.equal(TANK_SPECS.abramsx.era, VEHICLE_ERAS.NEXT_GENERATION);

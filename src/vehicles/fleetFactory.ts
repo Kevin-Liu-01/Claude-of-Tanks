@@ -129,8 +129,6 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
-  // The core hull table is compiled into tankFactoryCore.ts; nothing to fetch.
-  core: () => Promise.resolve(),
   aresApcX: () => import('./profiles/aresApcX.ts').then((mod) => registerProfiles(mod.ARES_APC_X_PROFILES)),
   leopardA6X: () => import('./profiles/leopardA6X.ts').then((mod) => registerProfiles(mod.LEOPARD_A6_X_PROFILES)),
   xk2: () => import('./profiles/xk2.ts').then((mod) => registerProfiles(mod.XK2_PROFILES)),
@@ -218,11 +216,6 @@ const GROUP_LOADERS = Object.freeze({
     Object.fromEntries(ABRAMS_SOURCE_X_IDS.map((id) => [id, { build: mod.buildAbramsX }])),
   )),
   patton: () => import('./profiles/patton.ts').then((mod) => registerProfiles(mod.PATTON_PROFILES)),
-  ww2: () => import('./profiles/ww2.ts').then((mod) => registerProfiles(mod.WW2_PROFILES)),
-  casemate: () => import('./profiles/casemate.ts').then((mod) => {
-    const { strv103: _swedenOwnsStrv103, ...profiles } = mod.CASEMATE_PROFILES;
-    registerProfiles(profiles);
-  }),
   merkava: () => import('./profiles/merkava.ts').then((mod) => registerProfiles(mod.MERKAVA_PROFILES)),
   afv: () => Promise.all([
     import('./profiles/afvFamily.ts'),

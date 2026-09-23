@@ -13,7 +13,6 @@ const CASES = [
   ['m1a2_sepv2', 1.57],
   ['m1a2_sepv3', 1.57],
   ['ua_m1a1', 1.57],
-  ['m1a2_legacy', 1.72],
   ['abramsx', 1.95],
 ];
 

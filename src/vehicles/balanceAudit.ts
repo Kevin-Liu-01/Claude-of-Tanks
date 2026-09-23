@@ -3,10 +3,6 @@ import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
 export const FLEET_BALANCE_REVISION = Object.freeze({
   challenger1: 'promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile',
   kv2: 'reduce the 152 mm derp profile friction while preserving its slow handling identity',
-  m26_pershing: 'replace inherited 76 mm ammunition and restore Tier VIII medium output',
-  m45_patton: 'replace inherited 76 mm ammunition and restore 105 mm assault output',
-  is7: 'restore Tier X breakthrough survivability, penetration and gun cycle',
-  object279: 'restore Tier X breakthrough survivability, penetration and gun cycle',
   t62mv1: 'raise the early Cold War baseline without erasing its handling limits',
   type59: 'bring the light Cold War MBT above the stale damage-output floor',
   pt91m: 'bring the modern Tier VIII fire-control package up to its peers',

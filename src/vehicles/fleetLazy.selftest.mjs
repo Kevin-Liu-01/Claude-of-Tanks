@@ -8,8 +8,6 @@ import { MISC_PROFILES } from './profiles/misc.ts';
 import { FLEET_GROUP_IDS } from './fleetManifest.ts';
 import {runFleetSweep} from './fleetSweep.test-support.mjs';
 const canonicalOnlyIds = new Set([
-  // core group: built by the tankFactoryCore.ts BUILDERS table, no profile
-  'panther_g',
   'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
   'challenger_3', 'challenger_3x', 'mbt70', 't14',
   'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89',
@@ -56,7 +54,7 @@ await runFleetSweep(`
   assert.equal(fleet.isTankBuilderReady('m1a2'), false);
   assert.equal(fleet.isTankBuilderReady('t90m'), false);
   assert.equal(fleet.isTankBuilderReady('leo2a4'), false);
-  assert.equal(fleet.isTankBuilderReady('merkava4'), false);
+  assert.equal(fleet.isTankBuilderReady('merkava4b'), false);
   assert.equal(markingRegistry.vehicleMarkingSeats('m1a2'), null);
   assert.equal(anatomyRegistry.combatAnatomyCalibration('m1a2'), null);
   await fleet.ensureTankBuilder('m1a2');

@@ -10,8 +10,8 @@ const game = createGameState();
 spawnTanks(game, {});
 assert.deepEqual(game.allTanks.map((tank) => tank.specId), PRODUCTION_TANK_IDS,
   'solo battles lazily instantiate every production-visible vehicle');
-assert.equal(game.tankById.has('m1a2_legacy'), false,
-  'a player-hidden development vehicle cannot enter a production bot roster');
+assert.equal(game.tankById.size, PRODUCTION_TANK_IDS.length,
+  'only production vehicles are instantiated (no hidden records remain, 2026-09-23)');
 const beforeCount = game.battleCount;
 const first = planBattleParticipantIds(game, 'm1a2', true);
 const again = planBattleParticipantIds(game, 'm1a2', true);

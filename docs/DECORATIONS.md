@@ -210,8 +210,10 @@ plus the studio selftest scenes.
 
 ## Manifests
 
-`TANK_MANIFESTS` carries curated loadouts (tiger1, t34_85, m4a3e8, kv2,
-isu152, m60a1, is7, type74, leo2a6, k2, m1a2, t90m); everything else takes
+`TANK_MANIFESTS` carries curated loadouts (kv2, m60a1, type74, leo2a6, k2,
+m1a2, t90m and the Abrams / Challenger / Leclerc / KF51 / Type 10 family
+entries; the tiger1, t34_85, m4a3e8, isu152, is7 and merkava4 loadouts
+retired with those hulls on 2026-09-23); everything else takes
 the era/nation default (`defaultManifest`) — interwar/ww2/cold-war/modern/next-generation tagged, with
 a Soviet school (drums, unditching log, DShK) and US school (M2, sandbags,
 helmet-on-antenna) flavor split. `COLDWAR_IDS` overrides the binary

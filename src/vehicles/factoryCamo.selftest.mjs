@@ -114,7 +114,8 @@ for (const patternId of CAMO_PATTERN_IDS) {
   assert.equal(paletteKey(resolveCamoVisual(getSpec('m1a2'), patternId)), paletteKey(resolveCamoVisual(getSpec('t90m'), patternId)),
     `${patternId}: renders identically on hulls from different nations`);
 }
-assert.ok(paints >= 15 && paints <= 30, `the authored paint catalog is compact (${paints} entries)`);
+// 2026-09-23: 19 -> 13 entries when the six retired hidden hulls that led paints left the fleet.
+assert.ok(paints >= 10 && paints <= 30, `the authored paint catalog is compact (${paints} entries)`);
 // no duplicates: no paint_* repeats (or shades) any other preset's recipe, and paint labels are unique and never
 // reuse another catalog label
 {
@@ -132,12 +133,10 @@ assert.ok(paints >= 15 && paints <= 30, `the authored paint catalog is compact (
 }
 
 // --- Signature defaults are unchanged
-assert.deepEqual(SIGNATURE_CAMO_TANK_IDS.filter(id => !ALL_TANK_IDS.includes(id)), ['merkava4'],
-  'The saved Mk4 is the only explicitly approved non-release Signature owner');
-assert.ok(SAVED_TANK_IDS.includes('merkava4') && DEVELOPMENT_TANK_IDS.includes('merkava4'));
-assert.equal(PRODUCTION_TANK_IDS.includes('merkava4'), false);
+assert.deepEqual(SIGNATURE_CAMO_TANK_IDS.filter(id => !ALL_TANK_IDS.includes(id)), [],
+  'every Signature owner is a release tank (the saved Mk4 donor retired 2026-09-23)');
 for (const id of SIGNATURE_CAMO_TANK_IDS) {
-  if (id !== 'merkava4') assert.ok(ALL_TANK_IDS.includes(id), `${id} Signature entry must name a release tank`);
+  assert.ok(ALL_TANK_IDS.includes(id), `${id} Signature entry must name a release tank`);
   assert.equal(hasSignatureCamo(id), true);
   const signaturePatternId = signatureCamoPatternId(id);
   assert.ok(signaturePatternId, `${id} must own a named reusable Signature finish`);
@@ -147,7 +146,7 @@ for (const id of SIGNATURE_CAMO_TANK_IDS) {
   assert.ok((signature.patches || []).length >= 2, `${id} Signature must retain a multi-tone pattern palette`);
 }
 const requestedIsraeliDefaults = [
-  'merkava2d', 'merkava3d_x', 'merkava4', 'merkava4_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'sabra_mk2_x',
+  'merkava2d', 'merkava3d_x', 'merkava4_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'sabra_mk2_x',
 ];
 for (const id of requestedIsraeliDefaults) {
   assert.ok(SIGNATURE_CAMO_TANK_IDS.includes(id), `${id} must retain its requested Signature entry`);
@@ -199,7 +198,7 @@ try {
   assert.equal(getCamoSelection('abramsx'), 'factory', 'an explicit player Factory selection must override the Signature default');
   assert.equal(getCamoSelection('m551_sheridan'), 'sig_m551_sheridan', 'the legacy tank-relative Signature id migrates to its named reusable preset');
   for (const id of requestedIsraeliDefaults) assert.equal(getCamoSelection(id), 'factory');
-  for (const pattern of ['factory', 'winter', 'suits', 'openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'national_il', 'paint_tiger1']) {
+  for (const pattern of ['factory', 'winter', 'suits', 'openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'national_il', 'paint_kv2']) {
     globalThis.localStorage.getItem = key => key === 'cot.camo.sabra_mk2_x' ? pattern : null;
     assert.equal(getCamoSelection('sabra_mk2_x'), pattern, `Sabra's default does not replace an explicit saved ${pattern} choice`);
   }

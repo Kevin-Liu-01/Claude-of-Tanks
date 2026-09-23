@@ -59,7 +59,6 @@ const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe
 // combined round-40 build (closed tube + LOW wheel tier together).
 const geometryHashes = {
   jpz_e100_x: { high: '7d7517c4', low: '70519134' },
-  jpz_e100: { high: '9c2fc966', low: '95c91a09' },
 };
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({
   pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw, gunPitch,
@@ -133,10 +132,8 @@ assert.ok(trace(mutant, [0, 7, 0], [0, 3.8, 0]).some(hit => hit.kind === 'plate'
 for (const quality of ['high', 'low']) {
   const options = { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 };
   const tank = createTank('jpz_e100_x', null, options);
-  const donor = createTank('jpz_e100', null, options);
   try {
     assert.equal(geometryFingerprint(tank.root), geometryHashes.jpz_e100_x[quality], 'actual X model geometry unchanged');
-    assert.equal(geometryFingerprint(donor.root), geometryHashes.jpz_e100[quality], 'old JPz model geometry unchanged');
     const mount = tank.root.getObjectByName('gunMount');
     const yaw = tank.root.getObjectByName('rig_turret');
     const gun = tank.root.getObjectByName('rig_gun');
@@ -187,7 +184,7 @@ for (const quality of ['high', 'low']) {
         pose(turretYaw, gunPitch), armor).filter(hit => hit.plate?.name === 'mantlet').length, 0,
       'outside the measured circular cap remains air');
     }
-  } finally { tank.dispose(); donor.dispose(); }
+  } finally { tank.dispose(); }
 }
 // Startup synchronization calls the same scoped normalization before the
 // fleet's final anatomy pass. Exercise its authored plate/frame output here;

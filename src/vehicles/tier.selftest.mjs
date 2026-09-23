@@ -29,9 +29,9 @@ assert.deepEqual(
   'Japanese Type 90 and Type 10 families occupy tiers IX and X respectively',
 );
 assert.deepEqual(
-  ['merkava2b', 'merkava3c', 'merkava3d', 'merkava3d_x', 'merkava4', 'merkava4_x', 'merkava4b',
+  ['merkava2b', 'merkava3c', 'merkava3d', 'merkava3d_x', 'merkava4_x', 'merkava4b',
     'merkava4_trophy', 'merkava4_barak', 'namer_ifv'].map(tankTier),
-  [8, 9, 9, 9, 9, 9, 9, 10, 10, 9],
+  [8, 9, 9, 9, 9, 9, 10, 10, 9],
   'Merkava 3D/baseline Mk 4/Namer are IX while Trophy and Barak are X',
 );
 assert.deepEqual(

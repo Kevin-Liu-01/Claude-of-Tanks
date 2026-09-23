@@ -10,7 +10,6 @@ const {
 } = await import('./trackPatterns.ts');
 
 const expected = new Map([
-  ['tiger1', 'interleaved-cleat'],
   ['kv2', 'early-cast-steel'],
   ['t90m', 'soviet-single-pin'],
   ['m1a2', 'nato-double-pin'],
@@ -22,7 +21,6 @@ const expected = new Map([
   ['leclerc', 'franco-italian-modular'],
   ['type10', 'japanese-modular'],
   ['strv103', 'hydropneumatic-dead-track'],
-  ['t95', 'siege-wide'],
 ]);
 for (const [id, patternId] of expected) {
   assert.equal(trackPatternFor(TANK_SPECS[id]).id, patternId, `${id} track family`);
@@ -39,7 +37,12 @@ for (const id of ALL_TANK_IDS) {
     `${id}: distinct working-steel shades`);
   counts.set(pattern.id, counts.get(pattern.id) + 1);
 }
+// interleaved-cleat and siege-wide lost their last playable hulls when the
+// hidden fleet retired (2026-09-23); the shoe vocabulary stays because the
+// builders switch on its surfaces (tankFactoryCore.ts, abramsSourceXTrackShoe.ts).
+const VOCABULARY_ONLY = new Set(['interleaved-cleat', 'siege-wide']);
 for (const [id, count] of counts) {
+  if (VOCABULARY_ONLY.has(id)) continue;
   assert.ok(count > 0, `${id}: family is exercised by the playable fleet`);
 }
 

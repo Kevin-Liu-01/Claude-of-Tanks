@@ -5,7 +5,6 @@ import {TANK_SPECS,ALL_TANK_IDS} from '../specs.ts';
 const close=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<e,`${label}: ${a} vs ${b}`);
 assert.ok(ALL_TANK_IDS.includes('jpz_e100_x'));
 assert.equal(TANK_SPECS.jpz_e100_x.gunArcDeg,12);
-assert.equal(TANK_SPECS.jpz_e100.roster.productionVisible,false,'archived original remains hidden');
 for(const quality of['high','low']) {
   const tank=createTank('jpz_e100_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {

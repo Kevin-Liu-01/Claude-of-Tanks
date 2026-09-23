@@ -34,7 +34,6 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'M551A1 TTS', shortName: 'M551A1 TTS',
     searchAliases: ['Sheridan TTS', 'M551A1', 'TTS Sheridan', 'advanced Sheridan'],
   },
-  t95: { displayName: 'T95', searchAliases: ['T95 Doomturtle'] },
   strv81: {
     displayName: 'Stridsvagn 81', shortName: 'Strv 81',
     searchAliases: ['Centurion Strv 81', 'Swedish Centurion'],
@@ -237,7 +236,6 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'M1A3 Abrams', shortName: 'M1A3 Abrams',
     searchAliases: ['M1A3 Abrams concept', 'Next-generation Abrams'],
   },
-  m1a2_legacy: { displayName: 'M1A2 Abrams (Legacy)', shortName: 'M1A2 Legacy' },
   kf51b: { displayName: 'KF51-U', shortName: 'KF51-U', searchAliases: ['KF51B Panther'] },
   merkava1b: { displayName: 'Merkava Mk 1B' },
   merkava2b: { displayName: 'Merkava Mk 2B' },

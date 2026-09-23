@@ -741,8 +741,8 @@ const RAD2DEG = 180 / Math.PI;
 // limited to ±arc instead of a full turret — when the aim point exceeds the
 // arc, hull traverse toward the target auto-engages (WoT does exactly this in
 // sniper mode). `spec.gunArcDeg` overrides per vehicle; any spec whose armor
-// carries `turretless: true` (every fixed-mount vehicle in the roster: strv103,
-// jagdtiger, jpz_e100, sturmtiger, t95 and the ISU variants) defaults to ±CASEMATE_ARC_DEG
+// carries `turretless: true` (every fixed-mount vehicle in the roster: the
+// Strv 103 family and jpz_e100_x) defaults to ±CASEMATE_ARC_DEG
 // per the doc's ±10–15° band. Turreted tanks (arc = Infinity) are untouched.
 const CASEMATE_ARC_DEG = 11;
 // Excess-over-arc that commands a FULL-RATE hull traverse; below it the

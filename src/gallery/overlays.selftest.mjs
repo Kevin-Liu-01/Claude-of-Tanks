@@ -287,39 +287,6 @@ for (const id of ALL_TANK_IDS) {
   crewOverlay.clear();
 }
 
-// Legacy casemates may correct their rendered gun datum independently of the
-// spec. Their existing gunFollow plates must remain in the established overlay
-// frame unless the module anatomy explicitly opts into the pitching contract.
-{
-  const spec = getSpec('jagdtiger');
-  assert(!spec.armor.modules.some(module => module.gunFollow));
-  assert.deepEqual(spec.armor.gunPivot, [0, .35, .4]);
-  const visual = visualRoot(), turret = visual.root.getObjectByName('rig_turret');
-  // Actual buildJagdtiger rig datums, deliberately different from armor.gunPivot.
-  turret.position.set(0, 2.11, 1.86);
-  const gun = new THREE.Group(); gun.name = 'rig_gun'; turret.add(gun);
-  const overlay = createInspectionOverlay(spec, visual, 'armor');
-  const mantlet = overlay.pickables.find(picker => picker.userData.inspection.title === 'mantlet');
-  assert(mantlet, 'legacy spaced mantlet remains inspectable');
-  assert.equal(visual.root.getObjectByName('gallery_armor_gun'), undefined,
-    'legacy gunFollow armor alone does not opt into a new anatomy frame');
-  const position = mantlet.geometry.attributes.position;
-  for (const pitch of [0, .35]) {
-    gun.rotation.x = -pitch; visual.root.updateMatrixWorld(true);
-    for (let i = 0; i < position.count; i++) {
-      const local = new THREE.Vector3().fromBufferAttribute(position, i);
-      const expected = local.clone().applyMatrix4(turret.matrixWorld);
-      assert(local.clone().applyMatrix4(mantlet.matrixWorld).distanceTo(expected) < 1e-9,
-        'all original mantlet overlay vertices retain their prior turret-owned position');
-      if (pitch === 0) {
-        const broken = local.clone().sub(new THREE.Vector3(...spec.armor.gunPivot)).applyMatrix4(gun.matrixWorld);
-        assert(broken.distanceTo(expected) > .5, 'negative control exposes the old unconditional reparenting drift');
-      }
-    }
-  }
-  overlay.clear(); assert.equal(gun.children.length, 0);
-}
-
 // Pitching battery diagnostics use the same physical frame as its damage volumes.
 {
   const spec = getSpec('tos1a_tagil');

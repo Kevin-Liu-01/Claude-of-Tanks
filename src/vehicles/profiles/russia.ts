@@ -3182,8 +3182,6 @@ export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void
 export const RUSSIA_PROFILES = {
   t62mv1: { build: buildT62MV1 },
   t64bv1: { build: buildT64BV1 },
-  t54: { build: buildT54 },
-  t44: { build: buildT44 },
   // type59 §5.304: builder moved to profiles/china.ts (buildType59 on the
   // widened obr-1975 chassis) — profiledProcedurals.ts keys it from
   // CHINA_PROFILES at the same carousel position.

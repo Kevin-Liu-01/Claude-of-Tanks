@@ -435,17 +435,28 @@ quoted license line for each asset is preserved in
 | In-game vehicle (spec id) | Asset | Author | Source | License | File |
 |---|---|---|---|---|---|
 | Stridsvagn 103 (`strv103`) | Stridsvagn 103 | Lukasz Wesiora (canisferus) | https://opengameart.org/content/stridsvagn-103 | CC-BY 3.0 (bundled License.txt: "CC-By 3.0 license... Copyrights Lukasz Wesiora.") | `public/models/tanks/community/strv103_wesiora.glb` (materials rebuilt as Principled BSDF from the 2012 pre-nodes .blend; textures 4096→2048 JPEG; integrated as fixed-gun casemate TD) |
-| IS-3 (`is3`) | IS-3 (Object 703, moving parts) | Nick Tallon (PanzerFactory) | https://www.thingiverse.com/thing:4137773 (via archive.org mirror thingiverse-4137773) | CC-BY 4.0 | `public/models/tanks/community/is3_panzerfactory.glb` (print STLs reassembled: turret peg seated in hull ring, gun in mantlet socket; hull/turret/gun articulation nodes) |
-| Leichttraktor (`leichttraktor`) | Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 | `public/models/tanks/community/leichttraktor_newc42.glb` |
-| Panzerkampfwagen III (`pziii_konserwa`) | Panzerkampfwagen III | konserwa | https://opengameart.org/content/panzerkampfwagen-iii | CC0 (stated on asset page) | `public/models/tanks/community/pziii_konserwa.glb` (untextured; painted at load onto the shared camo canvas — modelLoader `paintUntextured`) |
-| Recon Tank (`recon_tank`) | Recon Tank (Update) | Mophs — derivative of "Recon Tank" by MNDV.ecb / Eric Buisson (both credited) | https://opengameart.org/content/recon-tank-update | CC-BY 4.0 | `public/models/tanks/community/recon_tank_mophs.glb` (full PBR set embedded; bone-rigged Turret/Barrel articulation) |
-| Heavy Tank (Quaternius) (`q_heavy`) | Tank (heavy, tan) | Quaternius | https://poly.pizza/m/FA5daiyZQq | CC0 1.0 | `public/models/tanks/community/tank_quaternius_fa5.glb` |
 
 Retired 2026-09-22 (repository cleanup): the Wei He T-34-85 CAD study
 (`t34_85_cad`) and the Newc42 Tiger I / Panzer III Ausf. J studies
 (`newc_tiger`, `newc_pziii`) left the saved fleet with their icons, anchors,
 fill records, geometry packets and reference certificates. Their licence
 records stay in `docs/licenses/community/` as provenance history.
+
+Retired 2026-09-23 (hidden-fleet cleanup; owner 2026-09-22 "we shouldn't have
+any hidden tanks"): the 36 remaining development-only records — the archived
+WWII core hulls (`m4a3e8`, `tiger1`, `t34_85`, `is2`, `panther_g`), the
+`m1a2_legacy` and `leo2a7` donors, the community study hulls (`is3`,
+`pziii_konserwa`, `leichttraktor`, `tiger2`, `sherman_jumbo`, `jagdtiger`,
+`jpz_e100`, `sturmtiger`, `t95`, `t30`, `is7`, `object279`, `is6b`, `is1`,
+`is3_bergman`, `isu152`, `isu122s`, `comet`, `challenger_cruiser`,
+`charioteer`, `m26_pershing`, `m45_patton`, `t44`, `t54`, `t72b_1987`,
+`t72b3`, `merkava4`) and the two reference placeholders (`recon_tank`,
+`q_heavy`) — left the saved fleet with their icons, anchors, anatomy and
+marking-seat receipts, fill records, geometry packets and reference
+certificates. Their licence records stay in `docs/licenses/community/` as
+provenance history; the `leo2a7`, `t72b3`, `merkava4`, `jpz_e100` and
+`t72b_1987` combat rows survive as unregistered donor templates in
+`src/vehicles/donorSpecs.ts` for the live vehicles cloned from them.
 
 Integration path: `MODEL_SOURCE` community entries in `src/vehicles/specs.ts`
 (parametric class-template armor/stats), generalized GLB ingestion in
@@ -471,13 +482,6 @@ single-mesh print models ship as fixed-gun TD-class vehicles.
 | In-game vehicle (spec id) | Asset | Author | Source | License | File |
 |---|---|---|---|---|---|
 | KV-2 (`kv2`) | KV-2 heavy tank 1940 | Comrade1280 (https://sketchfab.com/comrade1280) | https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296 (via GitHub mirror Tsukimi125/Kaiser-Ray-Tracer, full bundle with original license.txt) | CC-BY 4.0 | `public/models/tanks/community/kv2-full-comrade1280.glb` (583k→150k tris, textures capped 2K/1K; named hull/turret/tracks/wheels nodes — turret yaw articulates) |
-| Tiger II (`tiger2`) | Tank Tiger 2 | maximus0075550 (https://sketchfab.com/maximus0075550) | Sketchfab via Objaverse (AllenAI) mirror | CC-BY 4.0 | `public/models/tanks/community/tiger2-maximus.glb` (461k→150k tris; turret+gun mesh isolated for yaw articulation, explicit ring pivot) |
-| M4A3E2 Sherman Jumbo (`sherman_jumbo`) | Sherman Jumbo Tank | Original: manifold_destiny (thingiverse thing:1065360, CC-BY 4.0 verified); print split by ZEUS_0815 | https://www.printables.com/model/3992-sherman-jumbo-tank (original: https://www.thingiverse.com/thing:1065360) | CC-BY 4.0 (chain verified) | `public/models/tanks/community/sherman-jumbo.glb` (print plates re-assembled: turret seated on ring, tracks split L/R; hull/turret/tracks_l/tracks_r nodes) |
-| Jagdtiger (`jagdtiger`) | Jagdtiger 8.8 cm | Adi Priatna (https://sketchfab.com/adipriatna) | Sketchfab via Objaverse (AllenAI) mirror | CC-BY 4.0 | `public/models/tanks/community/jagdtiger-adipriatna.glb` (533k→150k tris; fixed-gun casemate TD) |
-| Jagdpanzer E100 (`jpz_e100`) | Jagdpanzer E100 | Haphazard0587 | https://www.thingiverse.com/thing:2624802 | CC-BY 4.0 | `public/models/tanks/community/jagdpanzer_e100_haphazard.glb` (print STL fused; fixed-gun casemate TD, camo-painted at load) |
-| Sturmtiger (`sturmtiger`) | Sturmtiger | Tomrs (https://sketchfab.com/Tomrs) | Sketchfab via Objaverse (AllenAI) mirror | CC-BY 4.0 | `public/models/tanks/community/sturmtiger-tomrs.glb` (9k tris, baked dunkelgelb 3-tone + zimmerit; fixed-gun assault TD) |
-| T95 Doomturtle (`t95`) | T95/T28 super-heavy TD | Haphazard0587 | https://www.thingiverse.com/thing:2326342 | CC-BY 4.0 | `public/models/tanks/community/t95_doomturtle_haphazard.glb` (print STL fused, quad-track casemate; camo-painted at load) |
-| T30 (`t30`) | T30 US heavy (155mm) | Haphazard0587 | https://www.thingiverse.com/thing:2363711 | CC-BY 4.0 | `public/models/tanks/community/t30_haphazard.glb` (print STL fused — turret welded, ships as fixed-gun assault TD; camo-painted at load) |
 
 Wave-2 losing candidates (all other wave-2
 `public/models/community-candidates/` downloads) were deleted after judging.
@@ -496,10 +500,6 @@ license verification per model in
 
 | In-game vehicle (spec id) | Asset | Author | Source | License | File |
 |---|---|---|---|---|---|
-| IS-7 (`is7`) | 1-100 IS-7 tank | Jt Steele (SnowLeopard101) (https://www.thingiverse.com/snowleopard101) | https://www.thingiverse.com/thing:4597176 | CC-BY 4.0 | `public/models/tanks/community/is7-snowleopard.glb` (hull + turret STLs assembled; turret yaw articulates, explicit ring pivot) |
-| Object 279 (`object279`) | 1-100 Object 279 (early) tank | Jt Steele (SnowLeopard101) | https://www.thingiverse.com/thing:4598065 | CC-BY 4.0 | `public/models/tanks/community/object279-snowleopard.glb` (quad-track pods slotted under hull; turret yaw articulates) |
-| IS-6B (`is6b`) | IS-6 B tank | Jt Steele (SnowLeopard101) | https://www.thingiverse.com/thing:4849489 | CC-BY 4.0 | `public/models/tanks/community/is6b-snowleopard.glb` (hull + turret STLs assembled; turret yaw articulates) |
-| IS-1 (`is1`) | IS-1 Russian heavy tank | AaronTMG (https://www.printables.com/@AaronTMG) | https://www.printables.com/model/925804-is-1-russian-heavy-tank | CC-BY 4.0 | `public/models/tanks/community/is1-aarontmg.glb` (single fused print mesh — ships as fixed-gun assault TD; camo-painted at load) |
 
 Wave-3 losing candidates (`is2-aarontmg`, `is6-wotturret-lawrenceft`) were
 deleted after judging along with the rest of
@@ -665,7 +665,6 @@ runtime path:
 
 | Vehicle / spec id | Author | Source | License | Files |
 |---|---|---|---|---|
-| T-44 (`t44`) | Foxygamer142 | https://www.thingiverse.com/thing:6799441 | CC BY-SA 4.0 | `public/models/tanks/community/t44_foxygamer.glb`, `public/icons/t44_*.png` |
 | Type 59 (`type59` — stats are the Type 59's; the mesh is the author's Type 69, same WZ-120 family silhouette) | LastTriarius | https://www.thingiverse.com/thing:6192142 | CC BY 4.0 | `public/models/tanks/community/type69_lasttriarius.glb`, `public/icons/type59_*.png` |
 | AMX-30B (`amx30`) and AMX-30B2 (`amx30b2` — same source model, B2 fittings) | Captain_Ahab_62 (Richard Honeycutt) | https://www.thingiverse.com/thing:3602722 | CC BY 4.0 | `public/models/tanks/community/{amx30b_ahab,amx30b2_ahab}.glb`, `public/icons/{amx30,amx30b2}_*.png` |
 | M48 Patton (M48A5) (`m48`) | ATModeler | https://www.thingiverse.com/thing:5964554 | CC BY 4.0 | `public/models/tanks/community/m48a5_atmodeler.glb`, `public/icons/m48_*.png` |
@@ -695,10 +694,8 @@ bergman-derived siblings above.
   `npm run tank:assets` (tools/icons-page.html studio scene). The nine
   `m1a2_*` assets are
   DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs, and the
-  community-vehicle icons (`strv103_*`, `is3_*`, `pziii_konserwa_*`, `leichttraktor_*`,
-  `recon_tank_*`, `q_heavy_*`, plus wave 2: `kv2_*`, `tiger2_*`,
-  `sherman_jumbo_*`, `jagdtiger_*`, `jpz_e100_*`, `sturmtiger_*`, `t95_*`,
-  `t30_*`, plus wave 3: `is7_*`, `object279_*`, `is6b_*`, `is1_*`, plus user
+  community-vehicle icons (`strv103_*`, plus wave 2: `kv2_*` — the other wave
+  1-3 community-study icons retired with their hulls on 2026-09-23 — plus user
   drops 2026-07-28: `leo2a6_*` (CC-BY buh), `type74_*` and `ariete_*`
   (QUARANTINE — see the section below), plus user drops wave 2 (recovered):
   `t90m_*` (CC-BY minehffd), `leclerc_*` (CC-BY andertan), and `leo2a4_*`,

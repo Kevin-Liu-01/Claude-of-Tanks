@@ -27,7 +27,7 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 function tank(id, team, x, z, opts = {}) {
   return {
     id, team,
-    spec: opts.spec || { id: opts.specId || 'm4a3e8', role: opts.role || 'medium', dims: { heightM: 2.7 } },
+    spec: opts.spec || { id: opts.specId || 'kv2', role: opts.role || 'medium', dims: { heightM: 2.7 } },
     state: { pos: { x, y: 0, z }, speed: opts.speed || 0 },
     combat: { destroyed: !!opts.destroyed },
   };
@@ -47,9 +47,9 @@ for (const id of Object.keys(BASE_CAMO)) {
   ok(c.moving <= c.still, `${id}: moving camo <= stationary`);
   ok(c.still > 0 && c.still < 0.5, `${id}: stationary camo in (0, 0.5)`);
 }
-ok(BASE_CAMO.tiger1.still < BASE_CAMO.m4a3e8.still, 'heavy rates below medium');
-ok(BASE_CAMO.is2.still < BASE_CAMO.t34_85.still, 'IS-2 below T-34-85');
-ok(VIEW_RANGE_M.m1a2 > VIEW_RANGE_M.tiger1, 'modern optics out-spot WW2');
+ok(BASE_CAMO.m1a2.still < BASE_CAMO.t90m.still, 'Abrams rates below T-90M');
+ok(VIEW_RANGE_M.m1a2 > VIEW_RANGE_M.t90m, 'authored Abrams optics out-spot the T-90M row');
+ok(VIEW_RANGE_M.m1a2 > viewRangeOf({ id: 'kv2', role: 'heavy' }), 'modern optics out-spot the WW2 role fallback');
 ok(viewRangeOf({ id: 'nope', role: 'heavy' }) === 360, 'role view fallback');
 near(baseCamoOf({ id: 'nope', role: 'td' }, false), 0.30, 1e-9, 'role camo fallback');
 
@@ -109,16 +109,17 @@ function mkSys(concealers, tanks, extra = {}) {
 
 console.log('[7] paint bonus shifts the margin');
 {
-  // panther_g still camo 0.20; spotter vr 370 -> spotRange = 306.
-  // at 304 m: spotted bare, hidden with +3.5% paint (spotRange 294.8).
-  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
-  const target = tank('p1', 'player', 0, 304, { specId: 'panther_g' });
+  // m1a2 still camo 0.17; spotter t90m vr 430 -> spotRange = 356.9.
+  // at 355 m: spotted bare, hidden with +3.5% paint (spotRange 341.85).
+  // (The archived tiger1 / panther_g rows retired on 2026-09-23.)
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 't90m', cls: 'mbt' });
+  const target = tank('p1', 'player', 0, 355, { specId: 'm1a2', role: 'mbt' });
   const bare = mkSys([], [spotter, target]);
   bare.forceCheck(1);
-  ok(bare.isSpotted('p1', 'enemy'), 'no paint @304 m: spotted');
+  ok(bare.isSpotted('p1', 'enemy'), 'no paint @355 m: spotted');
   const painted = mkSys([], [spotter, target], { getCamoBonus: () => CAMO_PAINT_BONUS });
   painted.forceCheck(1);
-  ok(!painted.isSpotted('p1', 'enemy'), `+${CAMO_PAINT_BONUS} paint @304 m: hidden`);
+  ok(!painted.isSpotted('p1', 'enemy'), `+${CAMO_PAINT_BONUS} paint @355 m: hidden`);
 }
 
 console.log('[8] moving penalty');
@@ -216,7 +217,7 @@ console.log('[14] getConcealment snapshot');
   const sys = mkSys([{ x: 0, z: 250, r: 3, add: 0.35 }], [spotter, target]);
   const c1 = { ...sys.getConcealment(target, 1) }; // snapshot object is reused — copy
   ok(c1.inBush && c1.bush > 0 && !c1.moving && !c1.fired, 'in-bush stationary snapshot');
-  near(c1.camo, combineCamo({ base: 0.24, bush: 0.35 }), 1e-9, 'snapshot camo matches formula');
+  near(c1.camo, combineCamo({ base: baseCamoOf(target.spec, false), bush: 0.35 }), 1e-9, 'snapshot camo matches formula');
   sys.notifyFired('p1', 2);
   const c2 = sys.getConcealment(target, 2.1);
   ok(c2.fired && c2.bush === 0 && c2.camo < c1.camo, 'after firing: bush lit, camo collapsed');

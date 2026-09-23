@@ -29,8 +29,10 @@ for (const id of HISTORICAL_COLD_WAR_CANDIDATE_IDS) {
   );
 }
 
-assert.equal(isRetiredHistoricalTank({ id: 'm4a3e8', era: 'ww2' }), true);
-assert.equal(isRetiredHistoricalTank({ id: 'tiger2', era: 'ww2' }), true);
+// Any WWII spec outside RETAINED_WW2_IDS is archived (the archived hulls
+// themselves retired from the saved fleet on 2026-09-23).
+assert.equal(isRetiredHistoricalTank({ id: 'unretained_ww2_study', era: 'ww2' }), true);
+assert.equal(isRetiredHistoricalTank({ id: 'kv2', era: 'ww2' }), false);
 assert.equal(isRetiredHistoricalTank({ id: 'm1a2', era: 'modern' }), false);
 assert.equal(isRetiredHistoricalTank({ id: 't80u', era: 'modern' }), false);
 assert.equal(developmentFleetEnabled({ DEV: true, VITE_COT_DEV_FLEET_KEY: DEV_FLEET_KEY }), true);
@@ -38,13 +40,9 @@ assert.equal(developmentFleetEnabled({ DEV: false, VITE_COT_DEV_FLEET_KEY: DEV_F
   'production ignores the local development key');
 assert.equal(developmentFleetEnabled({ DEV: true, VITE_COT_DEV_FLEET_KEY: 'wrong' }), false);
 
-const ownerHidden = [
-  'panther_g', 'tiger1', 'sturmtiger', 'jpz_e100',
-  'm26_pershing', 'm45_patton', 't95', 'isu122s', 'isu152',
-];
-for (const id of ownerHidden) {
-  assert(PRODUCTION_HIDDEN_TANK_IDS.has(id), `${id}: owner production exclusion is centralized`);
-}
+// Owner 2026-09-22 ("we shouldn't have any hidden tanks"): every curated
+// exclusion retired from the saved fleet on 2026-09-23.
+assert.equal(PRODUCTION_HIDDEN_TANK_IDS.size, 0, 'no production-hidden record remains');
 
 await import('./tankFactory.ts');
 const {
@@ -83,18 +81,12 @@ assert.strictEqual(VISIBLE_TANK_IDS, PRODUCTION_TANK_IDS,
   'bare Node and production directly share the curated projection');
 assert.strictEqual(RUNTIME_TANK_IDS, ALL_TANK_IDS,
   'bare Node and production directly share the release projection');
-assert.equal(BOT_TANK_IDS.includes('m1a2_legacy'), false,
-  'production-hidden development tanks cannot occupy bot seats');
-assert.equal(BOT_TANK_IDS.includes('recon_tank'), false,
-  'reference placeholders cannot occupy bot seats');
+assert.deepEqual([...BOT_TANK_IDS], [...ALL_TANK_IDS],
+  'with no hidden records the bot catalog is the complete release roster');
 assert.deepEqual(new Set(SAVED_TANK_IDS), new Set(Object.keys(TANK_SPECS)),
   'every registered spec belongs to the saved-fleet projection');
 assert.equal(PRODUCTION_TANK_IDS.length, PRODUCT_STATS.productionVehicles,
   'production fleet count is deliberate');
-for (const id of ownerHidden) {
-  assert(ALL_TANK_IDS.includes(id), `${id}: record stays available to local development`);
-  assert(!PRODUCTION_TANK_IDS.includes(id), `${id}: record stays out of production`);
-}
 for (const id of SAVED_TANK_IDS) {
   const roster = TANK_SPECS[id].roster;
   assert.equal(Boolean(roster), true, `${id}: missing canonical roster metadata`);

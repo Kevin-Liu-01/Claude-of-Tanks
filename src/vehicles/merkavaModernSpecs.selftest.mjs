@@ -96,8 +96,8 @@ assert.equal(namerLayout.systems.ammoRack.placement, 'turret');
 assert.equal(namerLayout.systems.missileRack, null);
 
 assert.deepEqual(
-  ['merkava3d', 'merkava3d_x', 'merkava4', 'merkava4_x', 'merkava4b'].map(tankTier),
-  [9, 9, 9, 9, 9],
+  ['merkava3d', 'merkava3d_x', 'merkava4_x', 'merkava4b'].map(tankTier),
+  [9, 9, 9, 9],
   'Mk 3D and baseline Mk 4 identities stay at tier IX',
 );
 for (const id of ['merkava3d', 'merkava3d_x']) {
@@ -108,7 +108,7 @@ for (const id of ['merkava3d', 'merkava3d_x']) {
     [round.pen100Mm, round.pen1000Mm, round.pen2000Mm, round.dmg]),
   [[830, 755, 680, 560]], `${id}: Tier-IX M322 gameplay row`);
 }
-for (const id of ['merkava4', 'merkava4_x', 'merkava4b']) {
+for (const id of ['merkava4_x', 'merkava4b']) {
   const spec = TANK_SPECS[id];
   assert.deepEqual([spec.hp, spec.gun.reloadS, spec.gun.baseAccuracy, spec.gun.aimTimeS],
     [2550, 6.5, 0.31, 1.9], `${id}: common baseline Mk 4 balance envelope`);

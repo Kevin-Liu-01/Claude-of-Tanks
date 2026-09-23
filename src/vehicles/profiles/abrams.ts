@@ -11121,7 +11121,6 @@ function buildM1A3(P: AbramsBuilderPort): void {
 // Profile table
 // ---------------------------------------------------------------------------
 export const ABRAMS_PROFILES = {
-  m1a2_legacy: configuredAbramsProfile(buildM1a2, {}),
   m1a2: configuredAbramsProfile(buildTejasFamily, { station: 'ttsStandard' }),
   m1a1: configuredAbramsProfile(buildTejasFamily, { station: 'cws' }),
   m1a1ha: configuredAbramsProfile(buildTejasFamily, { station: 'cws' }),
@@ -11154,7 +11153,6 @@ export const ABRAMS_PROFILES = {
   m1a2_sepv3: configuredAbramsProfile(buildTejasFamily, {
     station: 'ttsLowProfile', abramsKit: 'sepv3',
   }),
-  m1a1_aim: abramsProfile(buildAim),
   m1a3: abramsProfile(buildM1A3),
   abramsx: abramsProfile(buildAbramsX),
 } satisfies VehicleProfileRecord;

@@ -3,7 +3,8 @@ import { k2SourceMetadata } from './xk2Specs.ts';
 // These clone combat metadata only. Geometry is independently authored in
 // dedicated demand-loaded X profiles, never taken from the donor builders.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
-import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { bindFleetRegistries, cloneFleetVariantFrom, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { donorSpec } from './donorSpecs.ts';
 import type { FleetTankSpec, FleetDimensions } from './specContracts.ts';
 
 const entries = [
@@ -86,9 +87,9 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
 }
 const specs: Record<string, FleetTankSpec> = {};
 for (const [id, donorId, name] of entries) {
-  const donor = registries.tankSpecs[donorId];
-  if (!donor) throw new Error(`X fleet combat donor is not registered: ${donorId}`);
-  const spec = cloneFleetVariant(registries.tankSpecs, id, donorId, {
+  // Registered donors first, then the unregistered templates (merkava4 retired 2026-09-23).
+  const donor = donorSpec(registries.tankSpecs, donorId);
+  const spec = cloneFleetVariantFrom(donor, id, donorId, {
     name, nation: donor.nation, era: donor.era, role: donor.role,
   });
   delete spec.publicVisualFallback;
@@ -112,7 +113,7 @@ export function synchronizeSourceXCombatMetadata(): void {
     'hullTraverseDegS', 'terrainResistance', 'pivotStyle', 'turretTraverseDegS',
     'gunPitchDegS', 'gunElevationDeg', 'gunDepressionDeg', 'gun'] as const;
   for (const [id, donorId] of entries) {
-    const target = registries.tankSpecs[id], registered = registries.tankSpecs[donorId];
+    const target = registries.tankSpecs[id], registered = donorSpec(registries.tankSpecs, donorId);
     const donor = donorId === 'k2' ? { ...registered, ...k2SourceMetadata() } : registered;
     for (const key of fields) Object.assign(target, { [key]: structuredClone(donor[key]) });
     target.armor = structuredClone(donor.armor);

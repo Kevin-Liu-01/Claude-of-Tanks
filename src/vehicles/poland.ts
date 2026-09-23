@@ -7,10 +7,11 @@ import type { ArmorEnvelope, ShellSpec, Vec3Tuple } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {
   bindFleetRegistries,
-  cloneFleetVariant,
+  cloneFleetVariantFrom,
   registerFleetSpecs,
   scaleNonExternalArmor,
 } from './fleetSpecRegistry.ts';
+import { donorSpec } from './donorSpecs.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 const POLAND_IDS = Object.freeze(['t72m1_jaguar', 'pt91_twardy', 'pl01', 'pl01_105'] as const);
@@ -55,7 +56,8 @@ function variant(
   donorId: string,
   options: PolishVariantOptions,
 ): FleetTankSpec {
-  const spec = cloneFleetVariant(registries.tankSpecs, id, donorId, {
+  // t72b_1987 is an unregistered donor template since 2026-09-23.
+  const spec = cloneFleetVariantFrom(donorSpec(registries.tankSpecs, donorId), id, donorId, {
     name: options.name,
     nation: 'Poland',
   });

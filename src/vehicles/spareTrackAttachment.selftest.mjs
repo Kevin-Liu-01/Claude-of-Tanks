@@ -53,7 +53,6 @@ assert.equal(legacyParts.filter(({ bucket }) => bucket === 'hullTrack').length, 
 for (const part of legacyParts) part.geometry.dispose();
 
 const HIGH_RISK_OWNERS = [
-  'tiger1',
   'chieftain_mk10',
   'leo2a4',
   'leo2a4_otco',

@@ -1133,7 +1133,7 @@ assert.ok(recovering.flags & SNAPSHOT_FLAGS.AUTO_RIGHTING,
     entities: [
       entity('moving', 'm1a2', 'alpha', 0),
       entity('stable', 't90m', 'alpha', 10),
-      entity('hidden-next', 'leo2a7', 'bravo', 30),
+      entity('hidden-next', 'leo2a7v', 'bravo', 30),
     ],
     viewerId: 'moving',
   });

@@ -12,12 +12,10 @@ import { VEHICLE_MARKING_SEATS as SEATS_AMX40X } from './vehicleMarkingSeatGroup
 import { VEHICLE_MARKING_SEATS as SEATS_ARESAPCX } from './vehicleMarkingSeatGroups/aresApcX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_ARIETEX } from './vehicleMarkingSeatGroups/arieteX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_BMP3MDRAGUN125X } from './vehicleMarkingSeatGroups/bmp3mDragun125X.generated.ts';
-import { VEHICLE_MARKING_SEATS as SEATS_CASEMATE } from './vehicleMarkingSeatGroups/casemate.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CHALLENGER } from './vehicleMarkingSeatGroups/challenger.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CHALLENGER1X } from './vehicleMarkingSeatGroups/challenger1X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CHIEFTAIN10X } from './vehicleMarkingSeatGroups/chieftain10X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CHIEFTAIN5X } from './vehicleMarkingSeatGroups/chieftain5X.generated.ts';
-import { VEHICLE_MARKING_SEATS as SEATS_CORE } from './vehicleMarkingSeatGroups/core.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CV90105TMLSOURCEX } from './vehicleMarkingSeatGroups/cv90105TmlSourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_CV90MKIVSOURCEX } from './vehicleMarkingSeatGroups/cv90MkivSourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_FRANCECORE } from './vehicleMarkingSeatGroups/franceCore.generated.ts';
@@ -73,7 +71,6 @@ import { VEHICLE_MARKING_SEATS as SEATS_TYPE90X } from './vehicleMarkingSeatGrou
 import { VEHICLE_MARKING_SEATS as SEATS_TYPE96BX } from './vehicleMarkingSeatGroups/type96bX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_UK } from './vehicleMarkingSeatGroups/uk.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_UKRAINE } from './vehicleMarkingSeatGroups/ukraine.generated.ts';
-import { VEHICLE_MARKING_SEATS as SEATS_WW2 } from './vehicleMarkingSeatGroups/ww2.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_XK2 } from './vehicleMarkingSeatGroups/xk2.generated.ts';
 
 export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
@@ -89,12 +86,10 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_ARESAPCX,
   SEATS_ARIETEX,
   SEATS_BMP3MDRAGUN125X,
-  SEATS_CASEMATE,
   SEATS_CHALLENGER,
   SEATS_CHALLENGER1X,
   SEATS_CHIEFTAIN10X,
   SEATS_CHIEFTAIN5X,
-  SEATS_CORE,
   SEATS_CV90105TMLSOURCEX,
   SEATS_CV90MKIVSOURCEX,
   SEATS_FRANCECORE,
@@ -150,6 +145,5 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_TYPE96BX,
   SEATS_UK,
   SEATS_UKRAINE,
-  SEATS_WW2,
   SEATS_XK2,
 ));

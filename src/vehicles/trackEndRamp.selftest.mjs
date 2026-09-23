@@ -15,7 +15,7 @@ import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 // tos1a_tagil (owner 2026-09-21, "improper wrapping … around the front road wheel and back road wheel"): a staggered
 // rig whose left wheels sit 38 mm aft of the course stations — the re-lay must find the wheel by STATION and pivot the
 // ramp about the side's own axle (relay.sideOffsetM), not the shared station where no wheel is.
-const IDS = ['m2a2_bradley', 't90m', 'spz_puma_s1', 'tiger1', 'leo2a6', 'kf51_x', 'tos1a_tagil'];
+const IDS = ['m2a2_bradley', 't90m', 'spz_puma_s1', 'kv2', 'leo2a6', 'kf51_x', 'tos1a_tagil'];
 const R = 18, SECONDS = 3;
 const heightAt = (x, z) => -(R - Math.sqrt(Math.max(0, R * R - z * z)));
 const heightField = { getHeightAt: heightAt, getGroundType: () => 'dirt',

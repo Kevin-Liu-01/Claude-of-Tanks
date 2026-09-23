@@ -37,7 +37,7 @@ const compileSpawn = source => new Function('TEAM_ALPHA', 'finite', 'reuseSpawnP
   `${stripTypeScriptTypes(source)}; return spawnFor;`)('alpha', (value, fallback) => Number.isFinite(value) ? value : fallback, reuseSpawnPad);
 const historicalSpawn = compileSpawn(historicalSource), currentSpawn = compileSpawn(currentSource);
 
-const roster = ['t84', 'jpz_e100', 'm1a2', 'k2', 't95', 'jpz_e100', 'leclerc'];
+const roster = ['t84', 'jpz_e100_x', 'm1a2', 'k2', 'strv103', 'jpz_e100_x', 'leclerc'];
 const players = ['alpha', 'bravo'].flatMap(team => roster.map((specId, index) => ({ id: `${team}-${index}`, team, specId })));
 function make(field, records = players, obstacles = []) {
   return createAuthoritativeMatch({ players: records, mapId: 'reservoir', countdownS: 0,

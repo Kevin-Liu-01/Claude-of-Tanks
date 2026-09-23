@@ -386,11 +386,9 @@ const allTankIds: string[] = ALL_TANK_IDS;
 for (const id of CHALLENGER_SPEC_IDS) {
   tankSpecs[id] ||= CHALLENGER_SPECS[id];
   modelSources[id] ||= { source: 'procedural' };
-  if (!allTankIds.includes(id)) {
-    const at = allTankIds.indexOf('merkava4');
-    if (at >= 0) allTankIds.splice(at, 0, id);
-    else allTankIds.push(id);
-  }
+  // merkava4 never entered ALL_TANK_IDS (delisted donor, retired 2026-09-23),
+  // so the historical re-insertion slot always resolved to an append.
+  if (!allTankIds.includes(id)) allTankIds.push(id);
 }
 
 export { CHALLENGER_SPEC_IDS };

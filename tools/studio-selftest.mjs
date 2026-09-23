@@ -81,8 +81,8 @@ const DESERT_SCENE = {
   seed: 5000,
   actors: [
     { id: 't90m', name: 'shooter', pos: [-26, -14], facingDeg: 60, turretDeg: 0, gunDeg: 1.5, camo: 'desert', state: 'intact', smoking: true },
-    { id: 'tiger1', name: 'victim', pos: [26, 16], facingDeg: 285, turretDeg: -20, gunDeg: 0, state: 'intact' },
-    { id: 'm4a3e8', name: 'wreck', pos: [10, -26], facingDeg: 152, turretDeg: 35, gunDeg: -4, state: 'wrecked-burnt', stateAgeS: 240 },
+    { id: 'kv2', name: 'victim', pos: [26, 16], facingDeg: 285, turretDeg: -20, gunDeg: 0, state: 'intact' },
+    { id: 'centurion5', name: 'wreck', pos: [10, -26], facingDeg: 152, turretDeg: 35, gunDeg: -4, state: 'wrecked-burnt', stateAgeS: 240 },
   ],
   effects: [
     { type: 'tank_kill', actor: 'victim', tMs: 60, params: { cause: 'ammorack', pop: true } },
@@ -98,8 +98,8 @@ const WINTER_SCENE = {
   map: 'winter',
   seed: 7100,
   actors: [
-    { id: 'leo2a7', name: 'overwatch', pos: [-12, -6], facingDeg: 52, turretDeg: 0, gunDeg: 2, camo: 'winter', state: 'intact' },
-    { id: 'is2', name: 'burnout', pos: [24, 20], facingDeg: 200, turretDeg: 90, gunDeg: -3, state: 'turret-popped', stateAgeS: 90, burning: true },
+    { id: 'leo2a7v', name: 'overwatch', pos: [-12, -6], facingDeg: 52, turretDeg: 0, gunDeg: 2, camo: 'winter', state: 'intact' },
+    { id: 'kv2', name: 'burnout', pos: [24, 20], facingDeg: 200, turretDeg: 90, gunDeg: -3, state: 'turret-popped', stateAgeS: 90, burning: true },
   ],
   effects: [
     { type: 'sparks', at: [24, 21.5], tMs: 700, params: { caliberMm: 100 } },

@@ -322,12 +322,16 @@ historicalCatalog.signatures = historicalCatalog.signatures.filter(id => id !== 
 historicalCatalog.tagsByPatternAndNation = historicalCatalog.tagsByPatternAndNation.filter(([id]) => !addedPaints.includes(id));
 assert.equal(createHash('sha256').update(JSON.stringify(historicalCatalog)).digest('hex'),
 // round 32 (2026-09-21): digest re-based — Factory = national service pattern again, deduplicated authored paints
-  '9a1c138eb1d754f4a2774c12d567a6934396b3634a088a49dd603bb002415f03',
+// round 46 (2026-09-23): digest re-based — the hidden fleet retired: sig_merkava4 (unregistered Mk 4 donor) and the
+// six generated paints whose lead hulls left (paint_tiger1, paint_panther_g, paint_sturmtiger, paint_t95,
+// paint_isu122s, paint_m26_pershing) are no longer catalog entries
+  'b0c1da0b18bdbfc65a9a240b9f023d4559884ed73792dafc0a9d2b1740044ab0',
   'all other catalog fields, order, recipes, tags and national routing remain exact');
 assert.equal(
   createHash('sha256').update(JSON.stringify(precedingCatalog)).digest('hex'),
   // round 32 (2026-09-21): digest re-based — Factory = national service pattern again, deduplicated authored paints
-  'f6bd90025908ae61eb7d72c1c4c5b1e804c8aa2c0f2202a51e081b9c93c5c948', // September 20 official marks, independent prints, Sabra default.
+  // round 46 (2026-09-23): digest re-based — hidden fleet retired (see the historical digest note above)
+  'ff60bcb3ca8e0e53c767ad0de9b0061a74b3e33462157f7d3b308c56b007af3c', // September 20 official marks, independent prints, Sabra default.
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

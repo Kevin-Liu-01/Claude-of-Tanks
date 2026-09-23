@@ -72,7 +72,7 @@ assert.notEqual(
 );
 
 assert.throws(
-  () => createTank('m4a3e8', null, { proceduralOnly: true, geometryReceipt: true }),
+  () => createTank('kv2', null, { proceduralOnly: true, geometryReceipt: true }),
   /Import tankFactory\.ts/,
   'the internal core rejects use before the public fleet facade configures it',
 );
@@ -137,14 +137,14 @@ try {
     const options = { proceduralOnly: true, geometryReceipt: true };
     let tank, firstCheckpointAt;
     if (staged) {
-      const steps = createTankSteps('m4a3e8', null, options);
+      const steps = createTankSteps('kv2', null, options);
       let result = steps.next();
       firstCheckpointAt = diagnosticClock;
       while (!result.done) { diagnosticClock += 1000; result = steps.next(); }
       tank = result.value;
-    } else tank = createTank('m4a3e8', null, options);
+    } else tank = createTank('kv2', null, options);
     try {
-      assert.equal(tank.root.name, 'tank_m4a3e8');
+      assert.equal(tank.root.name, 'tank_kv2');
       const timing = tank.root.userData.coreBuildTiming;
       assert.equal(timing.startedAt, 0.125, 'actual core execution starts the exact raw clock receipt');
       const endpoints = ['startedAt', 'materialsStartedAt', 'materialsFinishedAt',

@@ -4,8 +4,6 @@ import { createTank } from '../tankFactory.ts';
 import { M46_M47_TRACK_FINISH } from './patton.ts';
 
 const CASES = {
-  m26_pershing: { profile: 'm26-broad-cast', castScale: 0.65, gunY: 0.27846, mantletW: 1.50 },
-  m45_patton: { profile: 'm45-heavy-howitzer-cast', castScale: 0.65, gunY: 0.26, mantletW: 1.53 },
   m46_patton: {
     profile: 'm46-low-patton-cast', castScale: 0.78, gunY: 0.37089, mantletW: 1.40,
     idlerR: 0.38, sprocketR: 0.28, sprocketTeeth: false,

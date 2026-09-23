@@ -688,13 +688,10 @@ function chooseBattleAllies(
 ): SoloEntity[] {
   const candidates = game.tanks.filter((entity) => entity.specId !== playerSpecId);
   if (!randomBattle) {
-    const preferred = ['m4a3e8', 't34_85', 'panther_g'];
-    const allies = candidates.filter((entity) => preferred.includes(entity.specId));
-    for (const entity of candidates) {
-      if (allies.length >= 3) break;
-      if (entity.specId !== 'tiger1' && !allies.includes(entity)) allies.push(entity);
-    }
-    return allies.slice(0, 3);
+    // The staged screenshot battle takes the first three roster entities as
+    // allies; the archived WWII preference list retired with those hulls
+    // (2026-09-23) and never matched a production roster.
+    return candidates.slice(0, 3);
   }
   // RULESETS (2026-09-14): the mode sets the split — Horde fields two allies, Frontline Assault
   // three, Standard keeps the 6 / 7 balance. The cap never exceeds the pool minus one enemy.

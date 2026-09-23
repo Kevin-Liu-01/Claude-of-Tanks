@@ -38,29 +38,26 @@ export const VEHICLE_ERA_META: Readonly<Record<VehicleEra, VehicleEraMetadata>> 
 });
 
 const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.freeze({
-  [VEHICLE_ERAS.INTERWAR]: Object.freeze([
-    'leichttraktor',
-  ]),
+  // No first-party hull occupies the interwar era since the Leichttraktor study
+  // retired with the hidden fleet (2026-09-23); the era stays in the public
+  // taxonomy for future vehicles.
+  [VEHICLE_ERAS.INTERWAR]: Object.freeze([]),
   [VEHICLE_ERAS.WORLD_WAR_II]: Object.freeze([
-    'm4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'is3', 'is3_bergman',
-    'pziii_konserwa', 'q_heavy', 'kv2', 'tiger2',
-    'sherman_jumbo', 'jagdtiger', 'jpz_e100', 'jpz_e100_x', 'sturmtiger', 't95', 't30',
-    'is6b', 'is1', 't44', 'comet', 'challenger_cruiser', 'isu152', 'isu122s',
-    'm26_pershing', 'm45_patton',
+    'kv2', 'jpz_e100_x',
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
     'amx30_x', 'amx40_x', 't62mv1_x', 'fv510_milan_x',
     'challenger1_x',
     't72bu_x',
     'chieftain5_x',
-    't62mv1', 't64bv1', 't72b_1987', 't72bu', 't80', 't80b', 't80bv',
-    't80u', 'strv81', 'udes03', 'strv103a', 'strv103', 'is7', 'object279',
+    't62mv1', 't64bv1', 't72bu', 't80', 't80b', 't80bv',
+    't80u', 'strv81', 'udes03', 'strv103a', 'strv103',
     'chieftain5', 'chieftain_mk10', 'challenger1', 'fv4034', 'stb1', 'type74', 'type90',
     'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'type89', 'carro45t',
     'amx40', 'leo1a5', 'leopard2_proto', 'leo2a4', 'mbt70', 'm1a1', 'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
-    't54', 'amx30', 'amx30b2', 'm48', 'm60a2', 'm60a3', 'vickers_mk1',
-    'centurion3', 'centurion5', 'charioteer', 'm46_patton', 'm47_patton',
+    'amx30', 'amx30b2', 'm48', 'm60a2', 'm60a3', 'vickers_mk1',
+    'centurion3', 'centurion5', 'm46_patton', 'm47_patton',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
@@ -73,12 +70,12 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'merkava4_trophy', 'merkava4_barak', 'namer_ifv',
     'k2_x', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x',
     'm1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x',
-    'm1a2_legacy', 'm1a2', 't72b3m', 'pt91m', 't84', 't90', 't90a',
-    't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 't72b3',
-    'leo2a7', 'strv122', 'challenger2', 'challenger2e', 'ua_challenger2', 'k2', 'k1a1', 'type10', 'recon_tank',
+    'm1a2', 't72b3m', 'pt91m', 't84', 't90', 't90a',
+    't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv',
+    'strv122', 'challenger2', 'challenger2e', 'ua_challenger2', 'k2', 'k1a1', 'type10',
     'spz_puma', 'spz_puma_s1', 'ariete', 'ariete_c1', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a5_a5nl',
     'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2_revolution_proto', 'leo2_revolution', 'leo2a7v', 'leclerc', 'leclerc_xlr',
-    'amx56', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'merkava4', 'm1a2_tusk', 'm1a2_sepv2',
+    'amx56', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'm1a2_tusk', 'm1a2_sepv2',
     'm1a2_sepv3', 'merkava3c', 'merkava3d', 'merkava4b', 't72m1_jaguar',
     'pt91_twardy', 'k2b', 'bmp3_rok', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk',
     'ua_t84_oplot_m', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',

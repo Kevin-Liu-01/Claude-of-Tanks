@@ -87,10 +87,7 @@ export const WHEEL_PATTERN_IDS = Object.freeze(
 // Period constructions (owner exception list 2026-09-22): the pre-1950 hulls keep
 // their era's wheel family instead of their nation's modern donor.
 const PERIOD_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.freeze([
-  [/(?:kv2|isu152|isu122s)/, 'christie-six'],
-  [/(?:tiger1|panther_g|jpz_e100|sturmtiger)/, 'interleaved-dish'],
-  [/(?:^|_)t95(?:$|_)/, 'solid-bogie-six'],
-  [/(?:m26_pershing|m45_patton)/, 'cast-five-spoke'],
+  [/(?:^|_)kv2(?:$|_)/, 'christie-six'],
 ]);
 
 function pattern(id: WheelPatternId): WheelPattern {

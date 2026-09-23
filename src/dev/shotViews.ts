@@ -524,8 +524,8 @@ export function createShotViews({
     // Sun-lit 3/4 front (tank_models r1): the old azimuth 35 put the running
     // gear and lower hull in their own shadow — the interleaved wheels, track
     // sag and camo bands were unreadable in the judged frame.
-    closeupStage(game.tankById.get('tiger1'));
-    orbitPose(game.tankById.get('tiger1'), 9, -35, 15, 45); // tank_models r5: elev/fov match the other closeups (shared sun read)
+    closeupStage(game.tankById.get('kv2'));
+    orbitPose(game.tankById.get('kv2'), 9, -35, 15, 45); // tank_models r5: elev/fov match the other closeups (shared sun read)
   },
   tank_closeup_t90m() {
     hud.setMode('hidden');

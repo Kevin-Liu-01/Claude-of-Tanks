@@ -16,7 +16,6 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "aresApcX": () => import('./interiorFillGroups/aresApcX.generated.ts'),
   "arieteX": () => import('./interiorFillGroups/arieteX.generated.ts'),
   "bmp3mDragun125X": () => import('./interiorFillGroups/bmp3mDragun125X.generated.ts'),
-  "casemate": () => import('./interiorFillGroups/casemate.generated.ts'),
   "challenger": () => import('./interiorFillGroups/challenger.generated.ts'),
   "challenger1X": () => import('./interiorFillGroups/challenger1X.generated.ts'),
   "chieftain10X": () => import('./interiorFillGroups/chieftain10X.generated.ts'),
@@ -76,6 +75,5 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "type96bX": () => import('./interiorFillGroups/type96bX.generated.ts'),
   "uk": () => import('./interiorFillGroups/uk.generated.ts'),
   "ukraine": () => import('./interiorFillGroups/ukraine.generated.ts'),
-  "ww2": () => import('./interiorFillGroups/ww2.generated.ts'),
   "xk2": () => import('./interiorFillGroups/xk2.generated.ts'),
 });

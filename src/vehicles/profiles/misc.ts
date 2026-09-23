@@ -4599,11 +4599,6 @@ function buildAMX30B2(P: MiscBuilderPort): void { buildAMX30(P, true); }
 // unchanged. Superseded unregistered rebuild experiments are not retained.
 // ---------------------------------------------------------------------------
 export const MISC_PROFILES = {
-  recon_tank: {
-    // spec dims are sovereign: hull 6.2, overall 7.2, height 2.5, width 3.0
-    hull: 'ifv', width: 3.0, hullLength: 6.2, roofY: 1.62, trackTop: 0.66, trackW: 0.40, wheels: 5, skirts: true,
-    turret: 'ifv', turretWidth: 1.60, turretDepth: 1.70, turretHeight: 0.93, turretFront: 0.68, turretRear: -0.85, gunLength: 4.44, gunRadius: 0.035, sleeve: false, evac: null, pano: false, mg: false, smoke: false, antennas: false,
-  },
   type90: { build: buildType90 },
   // Runtime Ariete is the stronger earlier repository-authored construction.
   // The unregistered Native2026 experiment was removed; neither a source mesh

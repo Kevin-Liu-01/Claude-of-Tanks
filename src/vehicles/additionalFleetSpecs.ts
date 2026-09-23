@@ -3,6 +3,7 @@
 // visual geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { REVOLUTION_PROTO_FRAME } from './profiles/leopardRevolutionPrototypeFrame.ts';
+import { DONOR_SPECS, donorSpec } from './donorSpecs.ts';
 import {
   apfsdsPenetration as apfsdsPens,
   reactivePlate,
@@ -48,10 +49,10 @@ interface MerkavaArmorOptions {
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const tankSpecs: Record<string, FleetTankSpec> = TANK_SPECS;
 
+// Registered specs first, then the unregistered donor templates (leo2a7,
+// t72b3, merkava4, t72b_1987) that were hidden saved records until 2026-09-23.
 function requireFleetSpec(id: string): FleetTankSpec {
-  const spec = tankSpecs[id];
-  if (!spec) throw new Error(`Fleet donor missing or incomplete: ${id}`);
-  return spec;
+  return donorSpec(tankSpecs, id);
 }
 
 function armorWithoutEra(
@@ -167,6 +168,12 @@ function merkavaArmor({ glacis, lower, wedge, notch, side }: MerkavaArmorOptions
   }
   return armor;
 }
+
+// T-72B obr. 1985 left the saved fleet on 2026-09-23 (hidden-fleet cleanup);
+// its make() row stays the combat donor of t72m1_jaguar (poland.ts) and
+// t72b_1987_x (sourceXSecondWaveSpecs.ts) as an unregistered template.
+DONOR_SPECS.t72b_1987 = make('t72b3', 't72b_1987', 'T-72B obr. 1985', 'USSR/Russia',
+  { hp: 1950, weightTons: 44.5, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.2 } });
 
 const SPECS: FleetTankSpec[] = [
   make('challenger2', 'challenger1', 'Challenger 1 Mk.3', 'UK',
@@ -418,8 +425,6 @@ const SPECS: FleetTankSpec[] = [
         silhouetteOverallLengthM: 8.61,
         silhouetteHeightM: 2.28,
       } }),
-  make('t72b3', 't72b_1987', 'T-72B obr. 1985', 'USSR/Russia',
-    { hp: 1950, weightTons: 44.5, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.2 } }),
   make('t72b3', 't72b3m', 'T-72B3M obr. 2016', 'Russia',
     { hp: 2250, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 20, gun: { reloadS: 6.5 },
       visual: {

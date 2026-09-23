@@ -12,8 +12,8 @@ const check = process.argv.includes('--check');
 const waves = [
   {
     name: 'modern1',
-    ids: ['t72b3', 'merkava4', 'leo2a6'],
-    delisted: ['t72b3', 'merkava4'],
+    ids: ['leo2a6'],
+    delisted: [],
   },
   {
     name: 'modern2',

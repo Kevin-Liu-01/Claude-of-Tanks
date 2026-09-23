@@ -15,8 +15,6 @@ import { buildSabraMk2X } from './profiles/sabraMk2SourceX.ts';
 // Eager assembly point for release tools and headless fleet audits. Browser
 // boot demand-loads the same family maps through fleetFactory.ts.
 import { buildProfile, buildDonorVariant } from './profiles/kit.ts';
-import { WW2_PROFILES } from './profiles/ww2.ts';
-import { CASEMATE_PROFILES } from './profiles/casemate.ts';
 import { SOVIET_HEAVY_PROFILES } from './profiles/soviet-heavy.ts';
 import { ABRAMS_PROFILES } from './profiles/abrams.ts';
 import { buildAbramsX } from './profiles/abramsSourceX.ts';
@@ -92,7 +90,6 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
   t62mv1: RUSSIA_RESIDUE_PROFILES.t62mv1,
   t64bv1: RUSSIA_RESIDUE_PROFILES.t64bv1,
   pt91m: T90_PROFILES.pt91m,
-  t72b_1987: T72_PROFILES.t72b_1987,
   t72b3m: T72_PROFILES.t72b3m,
   t72bu: T72_PROFILES.t72bu,
   t90sm: T90_PROFILES.t90sm,
@@ -102,8 +99,6 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
   t80bv: T80_PROFILES.t80bv,
   t90m: T90_PROFILES.t90m,
   t90m_proryv: T90_PROFILES.t90m_proryv,
-  t54: RUSSIA_RESIDUE_PROFILES.t54,
-  t44: RUSSIA_RESIDUE_PROFILES.t44,
   // China owns the redesigned Type 59 object, but its historical key position
   // remains in this Russia-order bridge.
   type59: CHINA_PROFILES.type59,
@@ -150,8 +145,6 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...LECLERC_X_PROFILES,
   ...LECLERC_CLASSIC_X_PROFILES,
   ...CHIEFTAIN10_X_PROFILES,
-  ...WW2_PROFILES,
-  ...CASEMATE_PROFILES,
   ...SOVIET_HEAVY_PROFILES,
   ...ABRAMS_PROFILES,
   ...Object.fromEntries(FLEET_GROUP_IDS.abramsSourceX.map((id) => [id, {build: buildAbramsX}])),

@@ -60,8 +60,7 @@ assert.equal(wheelPatternFor(getSpec('type59')).id, 'armored-hub-six', 'Chinese 
 assert.equal(wheelPatternFor(getSpec('ajax_x')).id, 'armored-hub-six', 'UK IFV hulls draw the Warrior Milan X wheel');
 assert.equal(wheelPatternFor(getSpec('bmp2')).id, 'armored-hub-six', 'USSR-registered BMP-2 draws the Russia light wheel (Dragun)');
 assert.equal(wheelPatternFor(getSpec('strv81')).id, 'plain-dish-twelve', 'Swedish Centurion draws the Strv 122 wheel');
-assert.equal(wheelPatternFor(getSpec('tiger1')).id, 'interleaved-dish', 'pre-1950 hulls keep their period wheel construction');
-assert.equal(wheelPatternFor(getSpec('m26_pershing')).id, 'cast-five-spoke', 'pre-1950 hulls keep their period wheel construction');
+assert.equal(wheelPatternFor(getSpec('kv2')).id, 'christie-six', 'pre-1950 hulls keep their period wheel construction');
 
 const uniqueGeometry = new Set();
 for (const signatures of geometrySignatures.values()) {

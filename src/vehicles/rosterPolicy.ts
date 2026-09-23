@@ -11,17 +11,16 @@ const DEV_FLEET_ENV_KEY = 'VITE_COT_DEV_FLEET_KEY';
 export const DEV_FLEET_KEY = 'claude-of-tanks-local-dev';
 export const DEV_FLEET_LABEL = 'DEV';
 
-// These records stay registered and usable by local vehicle/gallery tooling,
-// but do not appear in production carousels or matchmaking. Keep every
-// production exclusion here so UI surfaces cannot quietly diverge.
-export const PRODUCTION_HIDDEN_TANK_IDS = new Set<string>([
-  'panther_g', 'tiger1', 'sturmtiger', 'jpz_e100',
-  'm26_pershing', 'm45_patton', 't95', 'isu122s', 'isu152',
-  'm1a2_legacy',
-  'recon_tank', 'q_heavy',
-]);
+// Records listed here stay registered for local vehicle/gallery tooling but
+// never appear in production carousels or matchmaking. Owner 2026-09-22 ("we
+// shouldn't have any hidden tanks"): the twelve curated exclusions retired
+// from the saved fleet on 2026-09-23, so the set is deliberately empty; keep
+// any future production exclusion here so UI surfaces cannot quietly diverge.
+export const PRODUCTION_HIDDEN_TANK_IDS = new Set<string>([]);
 
-export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set<string>(['recon_tank', 'q_heavy']);
+// Generic externally-authored placeholders (the Mophs recon tank and the
+// Quaternius heavy) retired with the hidden fleet on 2026-09-23.
+export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set<string>([]);
 
 interface DevelopmentFleetEnvironment {
   DEV?: RuntimeValue;
@@ -55,19 +54,9 @@ export function isProductionHiddenTankId(id: RuntimeValue): boolean {
 }
 
 export const RETAINED_WW2_IDS = Object.freeze([
-  // Explicitly requested independent reconstruction, not an unhide of its
-  // archived original. Preserve the original's production curation above.
+  // Explicitly requested independent reconstruction of the archived original.
   'jpz_e100_x',
-  'tiger1',
-  'panther_g',
   'kv2',
-  'jpz_e100',
-  'sturmtiger',
-  'isu122s',
-  'isu152',
-  'm26_pershing',
-  'm45_patton',
-  't95',
 ]);
 
 // The former garage Cold War catalog boundary. Variants intentionally treated
@@ -76,11 +65,10 @@ export const RETAINED_WW2_IDS = Object.freeze([
 export const HISTORICAL_COLD_WAR_CANDIDATE_IDS = Object.freeze([
   'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3', 'mbt70', 'm551_sheridan',
   'leo1a5',
-  't54', 'type59', 't62mv1', 't64bv1', 't72b_1987',
+  'type59', 't62mv1', 't64bv1',
   'centurion3', 'centurion5', 'chieftain5', 'chieftain_mk10', 'vickers_mk1',
   'amx30', 'amx30b2',
   'udes03', 'strv103', 'strv103a', 'type74',
-  't95',
 ]);
 
 export const RETAINED_COLD_WAR_IDS = Object.freeze([
@@ -91,7 +79,6 @@ export const RETAINED_COLD_WAR_IDS = Object.freeze([
   't62mv1', 't64bv1', 'leo1a5',
   'm46_patton', 'm47_patton', 'm48',
   'm60a1', 'm60a2', 'm60a3', 'mbt70', 'm551_sheridan',
-  't95',
 ]);
 
 const RETAINED_WW2 = new Set<string>(RETAINED_WW2_IDS);

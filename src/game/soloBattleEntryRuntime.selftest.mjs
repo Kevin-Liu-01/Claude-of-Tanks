@@ -30,14 +30,14 @@ const runtime = createSoloBattleEntryRuntime({
   enterGarage: () => order.push('garage'),
   nextFrame: async () => { order.push('frame'); },
   isVisibleSpecId: (id) => id === 'm1a2',
-  getSelectedSpecId: () => 'leo2a7',
+  getSelectedSpecId: () => 'leo2a7v',
   getSelectedMapId: () => 'desert',
   reportError: () => order.push('error'),
 });
 
 await runtime.beginSelected({ specId: 'invalid', randomRoster: false, gameMode: 'horde' });
 assert.deepEqual(loadingArgs, [
-  'leo2a7', 'desert', { randomRoster: false, gameMode: 'horde' },
+  'leo2a7v', 'desert', { randomRoster: false, gameMode: 'horde' },
 ]);
 assert.deepEqual(order, ['cover', 'load', 'error', 'loading:false', 'garage', 'frame', 'hide'],
   'failure restores and paints the Garage before the opaque loader fades');

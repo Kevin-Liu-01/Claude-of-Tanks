@@ -46,6 +46,16 @@ export function cloneFleetVariant(
 ): FleetTankSpec {
   const donor = tankSpecs[donorId];
   if (!donor) throw new Error(`Fleet donor missing: ${donorId}`);
+  return cloneFleetVariantFrom(donor, id, donorId, identity);
+}
+
+/** Clone from a resolved donor row (a registered spec or an unregistered donorSpecs.ts template). */
+export function cloneFleetVariantFrom(
+  donor: FleetTankSpec,
+  id: string,
+  donorId: string,
+  identity: VariantIdentity,
+): FleetTankSpec {
   const spec = structuredClone(donor);
   spec.id = id;
   spec.name = identity.name;

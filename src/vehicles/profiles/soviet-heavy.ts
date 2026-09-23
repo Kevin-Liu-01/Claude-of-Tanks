@@ -1923,10 +1923,5 @@ function buildKV2(P: SovietHeavyBuilderPort): void {
 }
 
 export const SOVIET_HEAVY_PROFILES = {
-  is3: { build: buildIS3 },
-  is7: { build: buildIS7 },
-  object279: { build: buildObject279 },
-  is6b: { build: buildIS6B },
-  is3_bergman: { build: buildIS3Bergman },
   kv2: { build: buildKV2 },
 } satisfies VehicleProfileRecord;

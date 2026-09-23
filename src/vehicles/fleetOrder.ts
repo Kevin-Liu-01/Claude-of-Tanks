@@ -10,9 +10,9 @@ import { ALL_TANK_IDS, TANK_CATALOGS } from './specs.ts';
 
 export const NATIVE_VARIANT_FAMILIES = Object.freeze({
   t72: Object.freeze([
-    // The base T-72B3 was explicitly delisted and has no active comparison
-    // oracle. Keep only battle-playable members in this progression.
-    't72b_1987', 't72b3m', 't72bu', 'pt91m',
+    // The T-72B3 donor and the T-72B obr. 1985 are unregistered combat
+    // templates (donorSpecs.ts); only battle-playable members order here.
+    't72b3m', 't72bu', 'pt91m',
   ]),
   t80: Object.freeze([
     't80', 't80b', 't80bv', 't80u', 't84',
@@ -48,7 +48,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   israel: Object.freeze([
     'merkava1b', 'merkava2b', 'merkava2d', 'sabra_mk2_x', 'merkava3c', 'merkava3d', 'merkava3d_x',
-    'merkava4', 'merkava4_x', 'merkava4b', 'namer_ifv', 'merkava4_trophy', 'merkava4_barak',
+    'merkava4_x', 'merkava4b', 'namer_ifv', 'merkava4_trophy', 'merkava4_barak',
   ]),
   japan_mbt: Object.freeze([
     'stb1', 'type74', 'type90', 'type90a', 'type10', 'type10b',

@@ -1,5 +1,5 @@
-// Abrams-family concept rows. The former M1A2 remains available as
-// m1a2_legacy while AbramsX uses the first-party procedural family builder.
+// Abrams-family concept rows. AbramsX uses the first-party procedural family
+// builder; the m1a2_legacy anchor retired with the hidden fleet (2026-09-23).
 import { M1A3_TURRET_VERTICAL_OFFSET_M } from './abramsUpgradeDatums.ts';
 import { TANK_SPECS, ALL_TANK_IDS } from './specs.ts';
 import {
@@ -212,7 +212,7 @@ abramsx.visual = {
 };
 
 // Keep the procedural gameplay rows available in every build.
-for (const spec of [tankSpecs.m1a2_legacy, m1a3, abramsx] satisfies AbramsConceptSpec[]) {
+for (const spec of [m1a3, abramsx] satisfies AbramsConceptSpec[]) {
   tankSpecs[spec.id] = tankSpecs[spec.id] || spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }

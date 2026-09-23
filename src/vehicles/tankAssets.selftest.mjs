@@ -138,7 +138,7 @@ assert.equal(expectedMuzzleBoreCount(getSpec('aft10_x')), 0,
   'sealed missile canisters retain firing tips without decorative cannon bores');
 
 const displayNames = new Set();
-const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103', 'strv103a', 'jpz_e100', 'sturmtiger', 't95']);
+const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103', 'strv103a']);
 // This independently authored fixed casemate has a separate moving cannon.
 // Unlike the old donor's hull-only assembly, it needs hull + gun, no turret.
 const FIXED_CASEMATE_GUN_SHADOW_IDS = new Set(['jpz_e100_x']);
@@ -189,7 +189,6 @@ for (const id of RETIRED_EXTERNAL_PLACEHOLDER_IDS) {
 }
 
 assert.equal(getSpec('m1a2').name, 'M1A1 Abrams HC', '2026-09-15: the Tejas hull is the M1A1 HC mark; the X study is the canonical M1A2');
-assert.equal(getSpec('m1a2_legacy').name, 'M1A2 Abrams (Legacy)', 'former M1A2 retains the legacy identity');
 assert.equal(getSpec('m1a1ha').name, 'M1A1 Abrams HA', 'Abrams family naming is consistent');
 assert.equal(getSpec('m1a2_sepv3').name, 'M1A1 Abrams FEP', 'the older SEPv3 hull carries the M1A1 FEP mark');
 assert.equal(getSpec('bwp1').name, 'BWP-1 (Bojowy Wóz Piechoty 1)',
@@ -210,13 +209,7 @@ assert.equal(getSpec('marder1a3').name, 'Schützenpanzer Marder 1A3',
   'Marder uses the standardized German vehicle-class designation');
 assert.equal(ALL_TANK_IDS.includes('m1a2_tejas'), false, 'retired Tejas alias is not selectable');
 const canonicalM1A2 = createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true });
-const legacyM1A2 = createTank('m1a2_legacy', null, { proceduralOnly: true, geometryReceipt: true });
 await Promise.resolve();
-assert.notEqual(
-  geometryFingerprint(canonicalM1A2.root),
-  geometryFingerprint(legacyM1A2.root),
-  'canonical and legacy M1A2 ids resolve to distinct procedural profiles',
-);
 function verifyAuthoredShadowCasters(id, tank) {
   const casters = [];
   const submittedCasters = [];
@@ -306,9 +299,8 @@ function verifyAuthoredShadowCasters(id, tank) {
 }
 
 verifyAuthoredShadowCasters('m1a2', canonicalM1A2);
-verifyAuthoredShadowCasters('m1a2_legacy', legacyM1A2);
 for (const id of ALL_TANK_IDS) {
-  if (id === 'm1a2' || id === 'm1a2_legacy') continue;
+  if (id === 'm1a2') continue;
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   // Profile microtasks used to overwrite factory shadow geometry. Give any
   // future callback the opportunity to run before certifying the final tree.

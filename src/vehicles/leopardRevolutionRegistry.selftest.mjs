@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import './fleetFactory.ts';
 import { TANK_CATALOGS, getSpec } from './specs.ts';
+import { DONOR_SPECS } from './donorSpecs.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { NATIVE_FAMILY_ORDER } from './fleetOrder.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
@@ -41,14 +42,15 @@ assert.deepEqual(
   'the prototype retains its original chassis specification',
 );
 assert.equal(proto.variantOf, 'leo2a7', 'prototype retains the original independent donor');
-for (const other of [revolution, getSpec('leo2a7')]) {
+// The Leopard 2A7 donor is an unregistered template since 2026-09-23.
+for (const other of [revolution, DONOR_SPECS.leo2a7]) {
   for (const key of ['dims', 'armor', 'gun', 'visual', 'terrainResistance']) {
     assert.notEqual(proto[key], other[key], `${key} is not shared with ${other.id}`);
   }
   assert.notEqual(proto.gun.shells[0], other.gun.shells[0], 'shell changes cannot leak into Proto');
   assert.notEqual(proto.armor.hullPlates[0], other.armor.hullPlates[0], 'armor changes cannot leak into Proto');
 }
-assert.deepEqual(proto.visual, getSpec('leo2a7').visual, 'prototype retains its original paint and number');
+assert.deepEqual(proto.visual, DONOR_SPECS.leo2a7.visual, 'prototype retains its original paint and number');
 const protoMarking = vehicleMarkingAnchor(protoId);
 assert.deepEqual(
   ['owner', 'side', 'longitudinal', 'vertical', 'sizeM', 'designationDirection']

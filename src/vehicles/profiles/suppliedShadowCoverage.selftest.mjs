@@ -41,12 +41,6 @@ const legacy = {
     high: '7ef7f133f3ce8fe5121731661f7a6c5715d00a61df67bab5f4e527c82327fa64',
     low: '1b63cbc62e017cdd5a77b5467572754a099f78b57b46dc24ce07e4f5a9bc2db1',
   },
-  isu152: {
-    hull: '977d05eb03321d2d1d9016624bf3f287a82845802176b94cce0779af819fa5b5',
-    turret: '828091fcb26c95f288a1c9e0f9dd6588d15bcf4a284d7a1bbe83e9f12c6d5028',
-    high: 'baa721d16cc3ab35a4741bd65bae660217cc854fa0adb0550f7a7390eaad4030',
-    low: 'baa721d16cc3ab35a4741bd65bae660217cc854fa0adb0550f7a7390eaad4030',
-  },
 };
 const ids = [...Object.keys(cases), ...Object.keys(legacy)];
 await ensureInteriorFills(ids);

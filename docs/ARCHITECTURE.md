@@ -595,22 +595,19 @@ Locked stat values (transcribe the rest from tank-roster.md; these resolve ambig
 
 | id | hp | hullTraverseDegS | turretTraverseDegS | baseAccuracy | aimTimeS | terrainResistance | pivotStyle | reloadS |
 |---|---|---|---|---|---|---|---|---|
-| m4a3e8   | 720  | 36 | 24 | 0.36 | 2.0 | 1.0/1.2/2.2 | pivot   | 4.6 |
-| tiger1   | 1000 | 22 | 14 | 0.34 | 2.4 | 1.1/1.3/2.3 | neutral | 6.5 |
-| t34_85   | 750  | 40 | 26 | 0.42 | 2.3 | 0.9/1.1/2.0 | pivot   | 7.0 |
-| is2      | 1200 | 20 | 16 | 0.46 | 3.2 | 1.2/1.4/2.5 | pivot   | 13.5 |
-| panther_g| 900  | 30 | 18 | 0.32 | 2.1 | 1.0/1.2/2.2 | pivot   | 5.5 |
 | m1a2     | 2600 | 44 | 40 | 0.30 | 1.8 | 0.7/0.8/1.5 | neutral | 6.0 |
 | t90m     | 2000 | 42 | 38 | 0.35 | 2.2 | 0.7/0.8/1.5 | neutral | 7.5 |
-| leo2a7   | 2500 | 44 | 40 | 0.28 | 1.6 | 0.7/0.8/1.5 | neutral | 6.0 |
+
+(The m4a3e8, tiger1, t34_85, is2, panther_g and leo2a7 rows retired with the
+hidden fleet on 2026-09-23; the Leopard 2A7 row lives on as the unregistered
+donor template in `src/vehicles/donorSpecs.ts`.)
 
 `gunPitchDegS = 0.8 × turretTraverseDegS` (round to int). Bloom: WWII
 `{move:0.20, hullRot:0.20, turret:0.12, afterShot:4}`, modern (stabilized)
 `{move:0.06, hullRot:0.08, turret:0.06, afterShot:3}`. Elevation/depression, weights,
 engine hp, speeds, shell pens/dmg: from the roster tables verbatim. Shell velocities
-(m/s, locked): m4a3e8 792/1036/800; tiger1 773/930/770; t34_85 792/1030/790;
-is2 795/800/770 (slot1 = BR-471B AP); panther_g 935/1120/700; m1a2 1670/1400/1000;
-t90m 1750/905/850; leo2a7 1750/1400/1000. (slots: standard/special/HE.)
+(m/s, locked): m1a2 1670/1400/1000; t90m 1750/905/850. (slots:
+standard/special/HE.)
 
 #### 3.3.2 `fleetFactory.ts` / `factoryGeometry.ts` / `tankFactoryCore.ts`
 ```ts
@@ -1276,7 +1273,7 @@ zero tank inputs, then camera placement, `camera.updateProjectionMatrix()`,
 | `player_view` | `rig.snapArcade(step=2, yaw=player.yaw, pitch=-12°)` | hud `setMode('battle')` + `forceAimDisplay({distM:240, penRatio:1.3, reload:{t:0,totalS:6}, shellSlot:0})` | engine, hud, world, vehicles |
 | `sniper_view` | `rig.snapSniper(zoom=8, aim at nearest enemy bearing)` | hud `setMode('sniper')` + forceAimDisplay penRatio 0.95 (orange) | engine, hud |
 | `tank_closeup_modern` | `rig.setExternalPose` orbit: dist 9 m, azimuth 35°, elev 12° around the m1a2 entity | hud hidden | vehicles, engine |
-| `tank_closeup_ww2` | same recipe around the tiger1 entity | hud hidden | vehicles, engine |
+| `tank_closeup_ww2` | same recipe around the kv2 entity | hud hidden | vehicles, engine |
 | `combat_firing` | `setExternalPose` 3/4 front-side of player, 12 m | `fx.composeFiringMoment({muzzlePos: player.visual.gunMuzzleWorld(), dir, caliberMm:120, tracerType:'APFSDS', ageS:0.05})`; hud hidden | fx, vehicles, engine |
 | `explosion` | `setExternalPose` 25 m from enemy[2] | `fx.composeExplosionMoment({pos, ageS:0.4})` + `enemy[2].visual.setDestroyed()` | fx, vehicles, engine |
 | `garage` | `garagePresentationPose.ts` applies one immutable Verdant-style front three-quarter pose (glacis toward the viewer, bow/gun screen-left) at the isolated **(-1500, 0, -1500)** Garage stage; the tank rear points toward the shared field-record display and all ten bounded scene packs change only environment identity | `garage.show('m1a2')` | hud (garage), vehicles, engine |

@@ -86,15 +86,15 @@ assert.ok(AUDIO_MIX_PROFILE.combatPresenceGainDb < 0,
 assert.ok(AUDIO_MIX_PROFILE.combatBodyGainDb > 0,
   'combat mix preserves low-mid physical body');
 
-assert.equal(resolveEngineSoundProfile('m1a2_legacy', { era: 'modern', class: 'mbt' }).kind, 'turbine',
+assert.equal(resolveEngineSoundProfile('m1a2', { era: 'modern', class: 'mbt' }).kind, 'turbine',
   'Abrams uses its turbine profile');
 assert.equal(resolveEngineSoundProfile('t80u', { era: 'modern', class: 'mbt' }).kind, 'turbine',
   'T-80 turbine is not misclassified as a generic diesel');
 assert.equal(resolveEngineSoundProfile('t90m', { era: 'modern', class: 'mbt' }).kind, 'modernDiesel',
   'modern diesel MBTs retain a distinct powertrain bed');
-assert.equal(resolveEngineSoundProfile('tiger1', { era: 'ww2', class: 'heavy' }).kind, 'legacyDiesel',
+assert.equal(resolveEngineSoundProfile('kv2', { era: 'ww2', class: 'heavy' }).kind, 'legacyDiesel',
   'WWII heavy tanks use the uneven legacy diesel profile');
-assert.equal(resolveEngineSoundProfile('recon_tank', { era: 'modern', class: 'light', weightTons: 18 }).kind, 'lightDiesel',
+assert.equal(resolveEngineSoundProfile('m551_sheridan', { era: 'modern', class: 'light', weightTons: 18 }).kind, 'lightDiesel',
   'light tracked vehicles do not sound like 60-tonne MBTs');
 for (const profile of Object.values(ENGINE_SOUND_PROFILES)) {
   assert.ok(profile.trackQ < 1, `${profile.kind} tread noise is broad rather than a resonant squeak`);

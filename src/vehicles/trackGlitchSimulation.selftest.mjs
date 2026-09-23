@@ -14,7 +14,7 @@ import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 const HIGH_LOW_IDS = ['k2', 'k2b', 'kurganets25_x', 'ztz100_x', 'fv510_milan_x', 'aft10_x',
   'bmp3m_dragun125_x', 'griffin50_x', 'kf41_lynx_x', 'k21_x', 'cv90_mkiv_x',
   'ajax_x', 'sabra_mk2_x', 'cv90105_tml_x', 'type96b_x', 'merkava4_barak'];
-const IDS = ['t90m', 'm1a2', 'leo2a6', 'tiger1', 'mbt70', 'cv90_mkiv', 'kf51_x', 't72b3m_x', 'type100', ...HIGH_LOW_IDS];
+const IDS = ['t90m', 'm1a2', 'leo2a6', 'kv2', 'mbt70', 'cv90_mkiv', 'kf51_x', 't72b3m_x', 'type100', ...HIGH_LOW_IDS];
 await ensureInteriorFills(IDS);
 const MAX_CUT_M = 0.003, MAX_DAYLIGHT_M = 0.030, MIN_TRAVEL_M = 0.03, SECONDS = 6;
 const heightAt = (x, z) => 0.14 * Math.sin(0.55 * z + 0.3) * Math.cos(0.4 * x)

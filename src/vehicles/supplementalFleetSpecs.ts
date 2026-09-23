@@ -60,10 +60,6 @@ const T84_REMIX = {
   // terms govern the combined work (see ATTRIBUTION license-chain note)
   license: 'effective CC BY-NC-SA 4.0 — LOCAL-ONLY QUARANTINE', quarantine: true,
 };
-const FOXY = {
-  author: 'Foxygamer142', source: 'https://www.thingiverse.com/thing:6799441',
-  license: 'CC BY-SA 4.0',
-};
 const ATMODELER = {
   author: 'ATModeler', source: 'https://www.thingiverse.com/thing:5964554',
   license: 'CC BY 4.0',
@@ -121,19 +117,9 @@ function make(
 
 // Published dims from the scout packets (docs/references/tanks/scout-gen2-*).
 // heightM uses the over-mounted-MG convention ONLY where the mesh actually
-// mounts one (t54/t44 carry a printed DShK — m26/m45 precedent, userdrops6);
-// every other row keeps the published roof datum.
+// mounts one; every other row keeps the published roof datum. (The T-44 and
+// T-54 rows retired with the hidden fleet on 2026-09-23.)
 const SPECS: FleetTankSpec[] = [
-  // -- Soviet mediums: T-34-85 -> T-44 -> T-54 lineage ----------------------
-  make('t34_85', 't44', 'T-44', 'USSR',
-    { hp: 900, weightTons: 31.8, topSpeedKmh: 60, gun: { reloadS: 6.8 },
-      dims: { hullLengthM: 6.07, overallLengthM: 7.65, widthM: 3.18, heightM: 2.72 },
-      visual: { number: '32' } }, FOXY),
-  make('t62mv1', 't54', 'T-54', 'USSR/Russia',
-    { hp: 1600, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
-      gun: { caliberMm: 100, reloadS: 8.6 },
-      dims: { hullLengthM: 6.45, overallLengthM: 9.00, widthM: 3.27, heightM: 2.65 },
-      visual: { marking: 'number', number: '324' } }, BERGMAN),
   make('t62mv1', 'type59', 'Type 59', 'China',
     // §5.304 REDESIGN (owner order verbatim 2026-08-17: "update our t62 obr
     // 1975 10% wider and then redeisgn our type 59 to be based off of

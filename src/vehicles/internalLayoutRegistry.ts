@@ -327,16 +327,6 @@ const LAYOUTS = Object.freeze({
     ['driver', 'hull', 'frontCenter'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'protectedReadyBins' },
     missileRack: { placement: 'turret', form: 'twentyFourTubeLauncher' } }) },
-  tigerI: { confidence: 'documented', sources: ['tigerManual'], crew: crew(
-    ['driver', 'hull', 'frontLeft'], ['radioOperator', 'hull', 'frontRight'],
-    ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'rearLeft'],
-    ['loader', 'turret', 'frontRight'],
-  ), systems: systems({ transmission: { placement: 'front', form: 'frontFinalDrive' }, ammoRack: { placement: 'hull', form: 'sponsonBins' } }) },
-  panther: { confidence: 'documented', sources: ['pantherManual'], crew: crew(
-    ['driver', 'hull', 'frontLeft'], ['radioOperator', 'hull', 'frontRight'],
-    ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'rearLeft'],
-    ['loader', 'turret', 'frontRight'],
-  ), systems: systems({ transmission: { placement: 'front', form: 'frontFinalDrive' }, ammoRack: { placement: 'hull', form: 'sponsonBins' } }) },
   heavyWw2Six: { confidence: 'platform-inferred', sources: ['tigerManual'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['radioOperator', 'hull', 'frontRight'],
     ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'rearLeft'],
@@ -345,11 +335,6 @@ const LAYOUTS = Object.freeze({
   casemateFour: { confidence: 'platform-inferred', sources: ['tigerManual'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'frontRight'],
     ['commander', 'hull', 'midLeft'], ['loader', 'hull', 'midRight'],
-  ), systems: systems({ ammoRack: { placement: 'hull', form: 'twoPartStowage' } }) },
-  casemateFive: { confidence: 'platform-inferred', sources: ['pantherManual'], crew: crew(
-    ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'frontRight'],
-    ['commander', 'hull', 'midLeft'], ['loader', 'hull', 'midRight'],
-    ['assistantLoader', 'hull', 'rearRight'],
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'twoPartStowage' } }) },
   pershingFive: { confidence: 'platform-inferred', sources: ['usArmySystems'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['assistantDriver', 'hull', 'frontRight'],
@@ -490,18 +475,15 @@ const LAYOUTS = Object.freeze({
 const IDS_BY_LAYOUT = Object.freeze({
   conceptRocketBattery: ['tos1a_tagil'],
   conceptViper: ['griffin_viper'],
-  tigerI: ['tiger1'],
-  panther: ['panther_g'],
   heavyWw2Six: ['kv2'],
-  casemateFour: ['jpz_e100_x', 'jpz_e100', 't95'],
-  casemateFive: ['sturmtiger', 'isu152', 'isu122s'],
-  pershingFive: ['m26_pershing', 'm45_patton', 'm46_patton', 'm47_patton'],
+  casemateFour: ['jpz_e100_x'],
+  pershingFive: ['m46_patton', 'm47_patton'],
   westernManualHullAmmo: ['sabra_mk2_x', 'chieftain5_x', 'amx40_x', 'chieftain_mk10_x', 'k1a1_x', 'amx30_x', 'strv81', 'chieftain5', 'chieftain_mk10', 'k1a1', 'stb1', 'type74', 'amx40', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48', 'vickers_mk1', 'centurion3', 'centurion5', 'm60a3'],
   starship: ['m60a2'],
   arieteManual: ['ariete_c2_x', 'ariete_c1_x', 'ariete', 'ariete_c1', 'ariete_c2'],
   westernTwoPart: ['challenger1_x', 'challenger1', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger_3', 'challenger_3x'],
   leopard: ['strv122_x', 'leo2a6_x', 'leo1a5', 'leopard2_proto', 'leo2a4', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a5_a5nl', 'leo2a6', 'leo2a6m', 'leo2_revolution_proto', 'leo2_revolution', 'leo2a7v', 'strv122', 'leo2a6_ua', 'leo2a7v_x', 'leo2a6m_x', 'leo2a4m_x', 'leo2a5_x'],
-  abrams: ['m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_legacy', 'm1a1ha', 'm1a2_sepv2', 'm1a2_sepv3', 'ua_m1a1',
+  abrams: ['m1a1', 'm1a2', 'm1a2_tusk', 'm1a1ha', 'm1a2_sepv2', 'm1a2_sepv3', 'ua_m1a1',
     'm1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x'],
   merkava: [
     'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b',

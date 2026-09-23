@@ -587,9 +587,9 @@ const SCENE_LOAD_FIXTURE = {
   actors: [
     { id: 't90m', name: 'shooter', pos: [-26, -14], facingDeg: 60,
       turretDeg: 0, gunDeg: 1.5, camo: 'desert', state: 'intact', smoking: true },
-    { id: 'tiger1', name: 'victim', pos: [26, 16], facingDeg: 285,
+    { id: 'kv2', name: 'victim', pos: [26, 16], facingDeg: 285,
       turretDeg: -20, gunDeg: 0, state: 'intact' },
-    { id: 'm4a3e8', name: 'wreck', pos: [10, -26], facingDeg: 152,
+    { id: 'centurion5', name: 'wreck', pos: [10, -26], facingDeg: 152,
       turretDeg: 35, gunDeg: -4, state: 'wrecked-burnt', stateAgeS: 240 },
   ],
   effects: [

@@ -224,22 +224,17 @@ const CHECK_MID_S = 1.0;
 const CHECK_FAR_S = 2.0;
 const LOS_TOLERANCE_M = 2.0;           // raycast slack when the hit is the target
 
-/** Per-tank view range in meters (modern optics/thermals out-spot WW2 glass). */
+/** Per-tank view range in meters for the authored core rows; every other spec
+ *  takes the mechanical-role fallback below. (The archived WWII rows and the
+ *  Leopard 2A7 donor retired with the hidden fleet, 2026-09-23.) */
 export const VIEW_RANGE_M: Readonly<Record<string, number>> = {
-  m4a3e8: 370, tiger1: 370, t34_85: 360, is2: 350, panther_g: 380,
-  m1a2: 445, t90m: 430, leo2a7: 445,
+  m1a2: 445, t90m: 430,
 };
 
-/** Per-tank base camo { still, moving } in [0,1]. */
+/** Per-tank base camo { still, moving } in [0,1] for the authored core rows. */
 export const BASE_CAMO: Readonly<Record<string, CamoRow>> = {
-  m4a3e8:    { still: 0.24, moving: 0.18 },
-  tiger1:    { still: 0.11, moving: 0.07 },
-  t34_85:    { still: 0.26, moving: 0.20 },
-  is2:       { still: 0.12, moving: 0.08 },
-  panther_g: { still: 0.20, moving: 0.15 },
   m1a2:      { still: 0.17, moving: 0.12 },
   t90m:      { still: 0.21, moving: 0.16 },
-  leo2a7:    { still: 0.18, moving: 0.13 },
 };
 
 /** Mechanical-role fallbacks for specs not in the tables. */

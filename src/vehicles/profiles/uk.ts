@@ -5056,30 +5056,6 @@ export const UK_PROFILES = {
   },
   centurion3: { build: (P: UKBuilderPort) => centurionBuild(P, 3) },
   centurion5: { build: (P: UKBuilderPort) => centurionBuild(P, 5) },
-  comet: {
-    build: cometBuild, width: 3.05, hullLength: 6.55, roofY: 1.70, bandY: 0.96, trackW: 0.36,
-    bowZ: 2.05, bowY: 1.50, noseTipY: 1.16, tailTrim: 0.02, wheels: 5, wheelR: 0.44, wheelSpan: 3.8,
-    gunLength: 3.49, noBins: true, bandHalfW: 1.26, apronY: 1.54, sprocketInset: 0.50,
-    lowerBandY: 0.99, lowerSeamY: 1.13,
-    trackXc: 1.30, // ref ground band |x| ~1.10..1.50 (v2 front row; the v1 narrow read was dy-shifted)
-    // Comet cue: FOUR return rollers between the big Christie wheels.
-    // Keep profile data inert at module evaluation time.  Calling the kit's
-    // station helper here re-entered tankFactory through the profile import
-    // cycle before KIT had initialized.  These are the exact four evenly
-    // spaced stations produced by evenStations(4, 3.3).
-    rollers: [1.65, 0.55, -0.55, -1.65].map((z) => ({ z, y: 0.76, r: 0.085 })),
-  },
-  challenger_cruiser: {
-    build: a30Build, width: 2.91, hullLength: 8.03, roofY: 1.50, bandY: 0.88, trackW: 0.44,
-    bowZ: 2.85, bowY: 1.40, noseTipY: 1.16, tailTrim: 0.03, wheels: 6, wheelR: 0.41, wheelSpan: 5.9,
-    gunLength: 3.67, mgBall: false, corridorY: 1.13, lowerBandY: 1.13, lowerSeamY: 1.15,
-  },
-  charioteer: {
-    build: charioteerBuild, width: 3.05, hullLength: 6.55, roofY: 1.62, bandY: 0.94, trackW: 0.40,
-    bowZ: 2.2, bowY: 1.40, noseTipY: 1.16, tailTrim: 0.02, wheels: 5, wheelR: 0.44, wheelSpan: 4.3,
-    gunLength: 5.38, noBins: true, bandHalfW: 1.30, apronY: 1.50,
-    corridorY: 1.14, lowerBandY: 1.14, lowerSeamY: 1.16, guardY: 1.15,
-  },
   // FV510 Warrior — photo-class full build (owner order 2026-08-06 "made
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in
   // fv510Build; the recovered oracle is certified -10.9% short (curve rows

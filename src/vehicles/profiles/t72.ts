@@ -5049,12 +5049,6 @@ function buildT72BUHybridNative2026(P: T72BuilderPort): void {
 }
 
 export const T72_PROFILES = {
-  // The live obr.1987 uses the stronger repository-authored native T-72
-  // family base. External GLBs remain QA oracles only; no source vertex enters
-  // runtime. The unregistered print-tuned prototype was removed as dead code.
-  t72b_1987: {
-    build: (P: ProfileBuilderPort) => buildT72B87NativeTyped(P as T72BuilderPort, 'b87'),
-  },
   t72b3m: {
     build: (P: ProfileBuilderPort) => buildT72B3M(P as T72BuilderPort),
   },

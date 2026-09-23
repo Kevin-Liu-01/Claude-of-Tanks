@@ -76,7 +76,7 @@ let calibrationHits = 0;
 for (let sample = 0; sample < 8; sample++) {
   const players = [
     { id: 'a0', specId: 'm1a2', team: 'alpha', bot: true, difficulty: 'normal', spawn: { x: -28, z: -125, yaw: 0 } },
-    { id: 'a1', specId: 'leo2a7', team: 'alpha', bot: true, difficulty: 'normal', spawn: { x: 28, z: -125, yaw: 0 } },
+    { id: 'a1', specId: 'leo2a7v', team: 'alpha', bot: true, difficulty: 'normal', spawn: { x: 28, z: -125, yaw: 0 } },
     { id: 'b0', specId: 't90m', team: 'bravo', bot: true, difficulty: 'normal', spawn: { x: -28, z: 125, yaw: Math.PI } },
     { id: 'b1', specId: 'm1a2', team: 'bravo', bot: true, difficulty: 'normal', spawn: { x: 28, z: 125, yaw: Math.PI } },
   ];

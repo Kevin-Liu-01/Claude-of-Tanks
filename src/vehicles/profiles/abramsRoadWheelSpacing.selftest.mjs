@@ -25,7 +25,6 @@ const ABRAMS_RETURN_ROLLER_CASES = [
   ['m1a2_sepv2', 2],
   ['m1a2_sepv3', 2],
   ['ua_m1a1', 2],
-  ['m1a2_legacy', 2],
   ['abramsx', 2],
   ['mbt70', 3],
 ];
@@ -143,7 +142,7 @@ for (const [id, stationsPerSide] of ABRAMS_RETURN_ROLLER_CASES) {
     // train under a closed skirt. All other Abrams presentations must keep
     // the roller axle visibly above the road-wheel crown instead of merging
     // the two rows as the rejected first placement did.
-    if (id !== 'm1a2_legacy') {
+    { // every Abrams presentation (the oversized legacy AIM train retired 2026-09-23)
       const [rollerY] = uniqueInstanceYs(tires);
       const roadWheelCrownY = receipt.wheelY + receipt.wheelR;
       assert.ok(rollerY - roadWheelCrownY >= 0.05 - EPSILON,

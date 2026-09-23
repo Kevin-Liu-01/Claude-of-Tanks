@@ -49,7 +49,7 @@ function make(
   if (patch.visual) s.visual = { ...visual, ...patch.visual };
   // A patched armor arrives as a top-level spread over a DONOR's armor — its
   // plate/box arrays are shared references. Deep-copy before the dims fit
-  // below may mutate them (charioteer would otherwise rescale the Jagdtiger).
+  // below may mutate them (a patched variant would otherwise rescale its donor).
   if (patch.armor) s.armor = copy(patch.armor);
   // MODULE HITBOXES (module_hitbox r1): visuals render at spec.dims (geometry
   // gate) while copied armor stayed donor-sized — refit the copy so hit
@@ -81,38 +81,12 @@ function m60a3Armor(): ArmorEnvelope {
 }
 
 const SPECS: FleetTankSpec[] = [
-  make('is3', 'is3_bergman', 'IS-3 (Bergman)', 'USSR', { visual: { number: '703' } }),
-  // 2026-09-12 (owner decision): both ISU casemates carry a 12.7 mm DShK on the
-  // roof as fleet fittings. The published 2.48 m is to the roof, so the
-  // silhouette height records the standing gun as authored, like the other
-  // classes that publish a roof-weapon silhouette.
-  make('sturmtiger', 'isu152', 'ISU-152', 'USSR',
-    { hp: 1450, weightTons: 47.3, topSpeedKmh: 37, reverseSpeedKmh: 14, gun: { caliberMm: 152, reloadS: 15.5 },
-      dims: { hullLengthM: 6.77, overallLengthM: 9.05, widthM: 3.07, heightM: 2.48, silhouetteHeightM: 2.77 } }),
-  make('jagdtiger', 'isu122s', 'ISU-122S', 'USSR',
-    { hp: 1400, weightTons: 46, topSpeedKmh: 37, reverseSpeedKmh: 14, gun: { caliberMm: 122, reloadS: 9.5 },
-      dims: { hullLengthM: 6.77, overallLengthM: 9.85, widthM: 3.07, heightM: 2.48, silhouetteHeightM: 2.54 } }),
   make('chieftain_mk10', 'centurion3', 'Centurion Mk.3', 'UK',
     { hp: 1500, weightTons: 51, topSpeedKmh: 35, gun: { caliberMm: 84, reloadS: 7.0 },
       dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),
   make('chieftain_mk10', 'centurion5', 'Centurion Mk.5/2', 'UK',
     { hp: 1650, weightTons: 52, topSpeedKmh: 35, gun: { caliberMm: 105, reloadS: 7.4 },
       dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),
-  make('panther_g', 'comet', 'A34 Comet', 'UK',
-    { hp: 1150, weightTons: 33.5, topSpeedKmh: 51, gun: { caliberMm: 77, reloadS: 5.2 },
-      dims: { hullLengthM: 6.55, overallLengthM: 7.66, widthM: 3.05, heightM: 2.68 } }),
-  make('panther_g', 'challenger_cruiser', 'A30 Challenger', 'UK',
-    { hp: 1050, weightTons: 33, topSpeedKmh: 52, gun: { caliberMm: 76.2, reloadS: 5.8 },
-      dims: { hullLengthM: 8.03, overallLengthM: 8.15, widthM: 2.91, heightM: 2.77 } }),
-  make('jagdtiger', 'charioteer', 'FV4101 Charioteer', 'UK',
-    {
-      hp: 1250, weightTons: 30, topSpeedKmh: 56,
-      gun: { caliberMm: 84, reloadS: 7.0 },
-      // Gameplay ancestry supplies balance defaults only; the Charioteer has
-      // a rotating turret and must not inherit the Jagdtiger's casemate flag.
-      armor: { ...requireFleetSpec('jagdtiger').armor, turretless: false },
-      dims: { hullLengthM: 6.55, overallLengthM: 9.20, widthM: 3.05, heightM: 2.58 },
-    }),
   make('leo2a4', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
     {
       hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 },
@@ -138,54 +112,6 @@ const SPECS: FleetTankSpec[] = [
     { hp: 1550, weightTons: 46, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 6.8 },
       dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
       visual: { bakeDirtDeckEq: true } }),
-  make('m4a3e8', 'm26_pershing', 'M26 Pershing', 'USA',
-    { hp: 1600, weightTons: 41.9, topSpeedKmh: 40,
-      gun: {
-        caliberMm: 90, reloadS: 6.8, baseAccuracy: 0.34, aimTimeS: 2.2,
-        shells: requireFleetSpec('m4a3e8').gun.shells.map((round, index) => ({
-          ...round,
-          ...(index === 0 ? {
-            name: 'M82 APCBC', caliberMm: 90, pen100Mm: 190, pen1000Mm: 160,
-            dmg: 240, moduleDmg: 90, velocityMps: 853,
-          } : index === 1 ? {
-            name: 'M304 HVAP', caliberMm: 90, pen100Mm: 245, pen1000Mm: 205,
-            dmg: 220, moduleDmg: 90, velocityMps: 1021,
-          } : {
-            name: 'M71 HE', caliberMm: 90, pen100Mm: 45, pen1000Mm: 45,
-            dmg: 320, moduleDmg: 105, velocityMps: 823,
-          }),
-        })),
-      },
-      // heightM uses the over-mounted-M2 convention (matching the m46/m47
-      // rows): published 2.78 is the no-MG datum, but the gate measures the
-      // build's roof INCLUDING the pintle M2 (~14 body columns) — batch-8
-      // packet proves no build satisfies both 2.78 and turretCurves >= 90.
-      // 3.08 = extract bodyTopM 3.078 (m26 r2 re-derivation, 166 columns
-      // above 3.0 are real mounted-M2 print geometry; lands with batch-42).
-      dims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 3.08 } }),
-  make('m4a3e8', 'm45_patton', 'M45 Patton', 'USA',
-    { hp: 1650, weightTons: 42, topSpeedKmh: 40,
-      gun: {
-        caliberMm: 105, reloadS: 8.4, baseAccuracy: 0.39, aimTimeS: 2.6,
-        shells: requireFleetSpec('m4a3e8').gun.shells.map((round, index) => ({
-          ...round,
-          ...(index === 0 ? {
-            name: 'T32 AP', caliberMm: 105, pen100Mm: 175, pen1000Mm: 145,
-            dmg: 370, moduleDmg: 125, velocityMps: 731,
-          } : index === 1 ? {
-            name: 'T29E3 HEAT', type: 'HEAT', caliberMm: 105,
-            pen100Mm: 230, pen1000Mm: 230, dmg: 350, moduleDmg: 125,
-            velocityMps: 853,
-          } : {
-            name: 'M1 HE', caliberMm: 105, pen100Mm: 53, pen1000Mm: 53,
-            dmg: 460, moduleDmg: 150, velocityMps: 472,
-          }),
-        })),
-      },
-      // stub 105mm howitzer barely clears the bow; the seated oracle's muzzle
-      // reads ~6.6 overall (batch-8 packet), not the earlier 6.4 estimate.
-      // heightM: over-mounted-M2 convention, same ruling as m26 above.
-      dims: { hullLengthM: 6.33, overallLengthM: 6.6, widthM: 3.51, heightM: 3.0 } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',
     { hp: 2200, weightTons: 52.6, topSpeedKmh: 50,
       hullTraverseDegS: 42, turretTraverseDegS: 40,
