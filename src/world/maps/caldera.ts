@@ -104,7 +104,11 @@ export default {
     sunElevationDeg: 22, sunAzimuthDeg: 116, turbidity: 8.5, rayleigh: 1.15,
     mieCoefficient: 0.014, mieDirectionalG: 0.89, fogDensity: 0.00082,
     fogTintHex: 0x81766d, fogMix: 0.67, envIntensity: 0.18,
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the overcast deck authored explicitly (it took
+    // the auto branch's 340 m / 0.00015 / 2400 m) — a 360 m ash-laden deck of 2300 m masses with a slightly thinner
+    // slant haze so the broken bases keep texture over the crater rim; diffuse light patchiness (cloudShadowAmp 0.12)
     cloudOpacity: 1.28, cloudOpacity2: 1.04, cloudTintHex: 0xc4b7aa,
+    cloudAltM: 360, cloudHazeK: 0.00014, cloudUvM: 2300, cloudShadowAmp: 0.12,
     // Preserve the smoky low-key grade while keeping direct/ambient
     // separation strong enough for reliable terrain and structure shadows.
     sunIntensity: 4.0, sunColorHex: 0xffc9a0, hemiIntensity: 0.42, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb985 / 0.64); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses

@@ -97,7 +97,10 @@ export default {
   // the very low ring, sparse stone heaps on the outland (treeline 0.30 fell in the rockfield's dead zone) and more
   // tone grain (0.5 -> 0.60); the authored 0.18 amplitude is unchanged
   horizon: { baseHex: 0x697a59, amp: 0.18, style: 'rolling', treeline: 0.30, treelineLayers: 2, outlandRocks: 0.40, forestHex: 0x3c5840, rockHex: 0x818577, haze: 0.94, grain: 0.60 },
-  sky: { sunElevationDeg: 23, sunAzimuthDeg: 148, turbidity: 4.8, rayleigh: 1.5, mieCoefficient: 0.006, mieDirectionalG: 0.82, fogDensity: 0.00062, fogTintHex: 0x96a8ad, fogMix: 0.54, envIntensity: 0.24, cloudOpacity: 1.1, cloudOpacity2: 0.72, cloudTintHex: 0xe7eded, sunIntensity: 3.7, sunColorHex: 0xffe9ca, hemiIntensity: 0.43 },
+  // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the broken deck (1.1 / 0.72) missed the low-stratus
+  // auto branch (0.95 / 0.90 and turbidity 7), so over the flattest ring in the game the 620 m deck was fully hazed
+  // at 2-12° — an explicit 420 m North Sea stratocumulus of 2600 m masses; light patchiness (cloudShadowAmp 0.18)
+  sky: { sunElevationDeg: 23, sunAzimuthDeg: 148, turbidity: 4.8, rayleigh: 1.5, mieCoefficient: 0.006, mieDirectionalG: 0.82, fogDensity: 0.00062, fogTintHex: 0x96a8ad, fogMix: 0.54, envIntensity: 0.24, cloudOpacity: 1.1, cloudOpacity2: 0.72, cloudTintHex: 0xe7eded, cloudAltM: 420, cloudHazeK: 0.00016, cloudUvM: 2600, cloudShadowAmp: 0.18, sunIntensity: 3.7, sunColorHex: 0xffe9ca, hemiIntensity: 0.43 },
   minimap: { base: [88, 112, 69], hard: [122, 117, 90], soft: [54, 80, 67], forest: 'rgba(44,78,43,.84)', forestStroke: 'rgba(26,51,27,.92)', water: 'rgba(66,103,114,.84)', waterStroke: 'rgba(35,67,78,.94)', roadCasing: 'rgba(54,47,36,.92)', roadFill: 'rgba(188,176,144,.96)', buildingFill: '#d3ccb9' },
   shot: { pos: [-268, 46, -256], look: [28, 1, 112] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

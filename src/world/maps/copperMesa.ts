@@ -65,7 +65,10 @@ export default {
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): banding 0.26 — the ore benches inside the square
   // are the most strongly bedded cliffs in the game; the ring behind them ran on the style default 0.16
   horizon: { baseHex: 0x8d6a50, amp: 1.5, style: 'mesa', treeline: 0.1, banding: 0.26, forestHex: 0x5c6141, rockHex: 0xa37a58, haze: 0.86, grain: 0.55 },
-  sky: { sunElevationDeg: 31, sunAzimuthDeg: 98, turbidity: 5.6, rayleigh: 1.1, mieCoefficient: 0.007, mieDirectionalG: 0.84, fogDensity: 0.00050, fogTintHex: 0xaa9b89, fogMix: 0.48, envIntensity: 0.2, cloudOpacity: 0.68, cloudOpacity2: 0.35, cloudTintHex: 0xf2e6d6, sunIntensity: 4.1, sunColorHex: 0xffe0b6, hemiIntensity: 0.36 },
+  // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun
+  // (0xaa9b89 -> 0xa8a49c), broken altocumulus (0.68 / 0.35 -> 0.80 / 0.50) on an explicit 880 m deck that keeps its
+  // texture at 2-12°, and patchy light across the benches (cloudShadowAmp 0.30)
+  sky: { sunElevationDeg: 31, sunAzimuthDeg: 98, turbidity: 5.6, rayleigh: 1.1, mieCoefficient: 0.007, mieDirectionalG: 0.84, fogDensity: 0.00050, fogTintHex: 0xa8a49c, fogMix: 0.48, envIntensity: 0.2, cloudOpacity: 0.80, cloudOpacity2: 0.50, cloudTintHex: 0xf2e6d6, cloudAltM: 880, cloudHazeK: 0.00012, cloudUvM: 2700, cloudShadowAmp: 0.30, sunIntensity: 4.1, sunColorHex: 0xffe0b6, hemiIntensity: 0.36 },
   minimap: { base: [124, 98, 73], hard: [133, 110, 86], soft: [83, 71, 59], forest: 'rgba(75,83,49,.8)', forestStroke: 'rgba(46,52,31,.92)', water: 'rgba(75,92,90,.8)', waterStroke: 'rgba(45,58,59,.92)', roadCasing: 'rgba(51,40,32,.94)', roadFill: 'rgba(179,156,126,.96)', buildingFill: '#c4b6a3' },
   shot: { pos: [-284, 68, -282], look: [-30, -4, 90] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

@@ -70,7 +70,10 @@ export default {
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62
   horizon: { baseHex: 0xaa936b, amp: 0.90, style: 'rolling', ground: 'sand', treeline: 0.12, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.62 },
-  sky: { ...desert.sky, sunElevationDeg: 22, sunAzimuthDeg: 104, turbidity: 5.2, fogDensity: 0.00052, fogTintHex: 0xb0a18a, fogMix: 0.46, cloudOpacity: 0.5, cloudOpacity2: 0.22, sunIntensity: 4.0, hemiIntensity: 0.40 },
+  // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): a textured high sky (0.5 / 0.22 -> 0.78 / 0.48 on
+  // an 820 m deck of 2900 m cells that the low 22° sun rakes), the dust haze a step cooler than the sun (0xb0a18a ->
+  // 0xb3ada3, saturation 0.21 -> 0.09 at the same lightness) and patchier light on the dunes (cloudShadowAmp 0.24)
+  sky: { ...desert.sky, sunElevationDeg: 22, sunAzimuthDeg: 104, turbidity: 5.2, fogDensity: 0.00052, fogTintHex: 0xb3ada3, fogMix: 0.46, cloudOpacity: 0.78, cloudOpacity2: 0.48, cloudAltM: 820, cloudHazeK: 0.00012, cloudUvM: 2900, cloudShadowAmp: 0.24, sunIntensity: 4.0, hemiIntensity: 0.40 },
   minimap: { ...desert.minimap, water: 'rgba(45,111,108,.86)', waterStroke: 'rgba(23,70,70,.94)' },
   shot: { pos: [-252, 52, -246], look: [86, 1, 80] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

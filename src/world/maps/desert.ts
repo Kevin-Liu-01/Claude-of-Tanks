@@ -333,7 +333,13 @@ export default {
     // ENV_INTENSITY_FLOOR (0.21), so any preset value below that (0.16, or the 0.19 the audit proposed) renders the
     // same; a real environment lift here must exceed 0.21 and was not tested this round. Oasis inherits this value.
     fogDensity: 0.00047, fogTintHex: 0xc7ac85, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
-    cloudOpacity: 0.35, cloudOpacity2: 0.18, cloudTintHex: 0xfff2df,
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): a textured high sky instead of a thin veil —
+    // broken altocumulus (0.35 -> 0.78) under a cirrus sheet (0.18 -> 0.48) on an explicit 900 m virtual deck with a
+    // slower slant haze (0.00012) and smaller 2600 m cells, so the deck keeps its cauliflower structure down to the
+    // 2-12° band the battle cameras see; patchier light on the sand (cloudShadowAmp 0.26 over the 0.22 auto). The
+    // Garage copy in game/garageSkyPresets.ts follows this block.
+    cloudOpacity: 0.78, cloudOpacity2: 0.48, cloudTintHex: 0xfff2df,
+    cloudAltM: 900, cloudHazeK: 0.00012, cloudUvM: 2600, cloudShadowAmp: 0.26,
     // lighting_post r4: sun 4.9 → 4.15 — the hottest sun in the game over the
     // brightest albedo pushed open sand to ~1.5 linear, high on the ACES
     // shoulder where its texture variation compressed to nothing ("large

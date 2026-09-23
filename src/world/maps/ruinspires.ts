@@ -110,7 +110,11 @@ export default {
     sunElevationDeg: 24, sunAzimuthDeg: 118, turbidity: 7.0, rayleigh: 1.15,
     mieCoefficient: 0.010, mieDirectionalG: 0.86, fogDensity: 0.00068,
     fogTintHex: 0x8e979c, fogMix: 0.60, envIntensity: 0.19,
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the near-overcast deck (1.08 / 0.82) missed the
+    // low-stratus auto branch (0.95 / 0.90), so its texture sat 6-7 km out in the 2-12° band — an explicit 360 m
+    // broken deck of 2400 m masses; diffuse light patchiness (cloudShadowAmp 0.12)
     cloudOpacity: 1.08, cloudOpacity2: 0.82, cloudTintHex: 0xd0d1ce,
+    cloudAltM: 360, cloudHazeK: 0.00014, cloudUvM: 2400, cloudShadowAmp: 0.12,
     sunIntensity: 3.8, sunColorHex: 0xffd0aa, hemiIntensity: 0.34, postExposure: 0.94,
   },
   minimap: {

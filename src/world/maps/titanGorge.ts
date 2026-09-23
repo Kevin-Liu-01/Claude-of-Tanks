@@ -102,8 +102,13 @@ export default {
   sky: {
     sunElevationDeg: 34, sunAzimuthDeg: 126, turbidity: 6.2, rayleigh: 1.15,
     mieCoefficient: 0.008, mieDirectionalG: 0.84, fogDensity: 0.00046,
-    fogTintHex: 0xb88970, fogMix: 0.49, envIntensity: 0.18,
-    cloudOpacity: 0.68, cloudOpacity2: 0.30, cloudTintHex: 0xffe0c7,
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffc89b sun
+    // (0xb88970 -> 0xb3a698: sun and haze sat in one ochre family and read as a single wash), broken altocumulus
+    // (0.68 / 0.30 -> 0.82 / 0.52) on an explicit 860 m deck that keeps its texture at 2-12°, and patchy light over
+    // the canyon (cloudShadowAmp 0.30)
+    fogTintHex: 0xb3a698, fogMix: 0.49, envIntensity: 0.18,
+    cloudOpacity: 0.82, cloudOpacity2: 0.52, cloudTintHex: 0xffe0c7,
+    cloudAltM: 860, cloudHazeK: 0.00013, cloudUvM: 2800, cloudShadowAmp: 0.30,
     sunIntensity: 4.15, sunColorHex: 0xffc89b, hemiIntensity: 0.28, postExposure: 0.93,
   },
   minimap: {

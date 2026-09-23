@@ -113,7 +113,11 @@ export default {
     sunElevationDeg: 18, sunAzimuthDeg: 242, turbidity: 8.4, rayleigh: 1.3,
     mieCoefficient: 0.013, mieDirectionalG: 0.88, fogDensity: 0.00082,
     fogTintHex: 0x788794, fogMix: 0.65, envIntensity: 0.18,
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the overcast deck authored explicitly (it took
+    // the auto branch's 340 m / 0.00015 / 2400 m) — a 330 m deck of 2300 m masses with a thinner slant haze
+    // (0.00013) so the low sky between the arcologies keeps modeled cloud; diffuse light patchiness (cloudShadowAmp 0.12)
     cloudOpacity: 1.34, cloudOpacity2: 1.12, cloudTintHex: 0xaeb8c1,
+    cloudAltM: 330, cloudHazeK: 0.00013, cloudUvM: 2300, cloudShadowAmp: 0.12,
     sunIntensity: 3.9, sunColorHex: 0xffc697, hemiIntensity: 0.32, postExposure: 0.91, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb77e / 0.38); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
   },
   minimap: {

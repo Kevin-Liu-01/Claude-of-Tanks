@@ -63,7 +63,10 @@ export default {
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
   horizon: { baseHex: 0xa3b1be, amp: 0.72, style: 'rolling', treeline: 0.08, snowline: 0.08, forestHex: 0x536371, rockHex: 0x9da9b4, haze: 0.92, grain: 0.60 },
-  sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, sunIntensity: 2.75, hemiIntensity: 0.58 },
+  // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the polar deck authored explicitly instead of
+  // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps
+  // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)
+  sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58 },
   minimap: { ...winter.minimap, base: [161, 174, 186], hard: [137, 149, 159], soft: [107, 130, 149] },
   shot: { pos: [-256, 49, -262], look: [68, 0, 82] },
 } satisfies import('./contracts.ts').MapCompositionConfig;
