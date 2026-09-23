@@ -213,22 +213,7 @@ export function formatDate(
 
 type Dictionary = Readonly<Record<string, string>>;
 type Catalog = Readonly<Record<SupportedLocale, Dictionary>>;
-let catalogOverride: { readonly CATALOG: Catalog } | null = null;
-
 function loadDictionary(): Catalog {
-  return catalogOverride?.CATALOG ?? CATALOG;
+  return CATALOG;
 }
 
-export function __setCatalogForTests(
-  ref: { readonly CATALOG: Catalog } | null,
-): void {
-  catalogOverride = ref;
-  if (ref && !ref.CATALOG[currentLocale]) currentLocale = FALLBACK_LOCALE;
-}
-
-/** Reset module state for test isolation. */
-export function __resetForTests(): void {
-  currentLocale = FALLBACK_LOCALE;
-  initialised = false;
-  catalogOverride = null;
-}

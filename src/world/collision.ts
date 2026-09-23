@@ -22,9 +22,9 @@ export type SimpleCollisionShape =
   | { kind: 'convex'; cx: number; cz: number; points: number[]; y0?: number; y1?: number };
 
 /** A hull whose track bottom clears a part's top by this much passes over it (the record-level rule uses 0.5 too). */
-export const OVERPASS_CLEARANCE_M = 0.5;
+const OVERPASS_CLEARANCE_M = 0.5;
 /** A hull whose body top stays this far under a part's bottom passes beneath it (an overhang, a bridge deck). */
-export const UNDERPASS_CLEARANCE_M = 0.15;
+const UNDERPASS_CLEARANCE_M = 0.15;
 /**
  * Round 30 (owner 2026-09-20, hulls "on or in" buildings): a hull whose belly line is at most this far below a
  * standable top is on that top, not beside it — the top is its floor (sim/structureSupport.ts lifts the ride onto

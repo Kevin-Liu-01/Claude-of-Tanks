@@ -1,44 +1,7 @@
 // Offline conservative added-stock audit. No renderer/material-side authority.
 import * as T from 'three';
 const EPS=1e-9;
-const edges=[[0,1],[1,2],[2,0],[3,4],[4,5],[5,3],[0,3],[1,4],[2,5]];
 const faces=[[0,1,2],[3,4,5],[0,1,4,3],[1,2,5,4],[2,0,3,5]];
-function plane(a,b,c,centre){
- const normal=b.clone().sub(a).cross(c.clone().sub(a));
- if(normal.lengthSq()===0)return null;
- if(normal.lengthSq()<1e-24)throw new Error('Indeterminate positive-area extrusion face; no stock may be omitted');
- normal.normalize();let constant=normal.dot(a);
- if(normal.dot(centre)>constant){normal.negate();constant=-constant;}
- return{normal,constant};
-}
-/** Convex swept triangle: corresponding vertices move only along one axis.
- * A triangle parallel to that direction sweeps no volume and is omitted. */
-export function extrusionPrism(before,after){
- if(before.length!==3||after.length!==3||[...before,...after].some(p=>!p?.isVector3||!p.toArray().every(Number.isFinite)))
-  throw new Error('Extrusion requires three finite corresponding vertices');
- const delta=after.map((p,i)=>p.clone().sub(before[i])),axis=delta.find(d=>d.lengthSq()>0)?.clone().normalize();
- if(axis&&delta.some(d=>d.dot(axis)<-EPS||d.clone().cross(axis).length()>EPS))
-  throw new Error('Extrusion requires one common nonnegative displacement axis');
- const vertices=[...before,...after],centre=new T.Vector3();
- for(const v of vertices)centre.add(v);centre.multiplyScalar(1/6);
- const normal=before[1].clone().sub(before[0]).cross(before[2].clone().sub(before[0]));
- const volume=Math.abs(normal.dot(after[0].clone().sub(before[0])))
-   +Math.abs(normal.dot(after[1].clone().sub(before[1])))
-   +Math.abs(normal.dot(after[2].clone().sub(before[2])));
- if(volume===0)return null;
- if(volume<1e-20)throw new Error('Indeterminate positive-volume extrusion; no stock may be omitted');
- const planes=faces.map(f=>{
-  for(let i=1;i<f.length-1;i++){
-   const result=plane(vertices[f[0]],vertices[f[i]],vertices[f[i+1]],centre);
-   if(result)return result;
-  }return null;
- });
- if(!planes[0]||!planes[1])throw new Error('Invalid extrusion end plane');
- for(const p of planes.filter(Boolean))if(vertices.some(v=>p.normal.dot(v)-p.constant>EPS))
-  throw new Error('Extrusion is not a convex corresponding triangle sweep');
- return{vertices,centre,planes:planes.filter(Boolean),base:planes[0],
-  box:new T.Box3().setFromPoints(vertices),edges};
-}
 /** Full triangle clipping, not sparse barycentric witnesses. Open sheets count.
  * The old end face alone is excluded; all genuinely added volume stays closed. */
 function triangleInExtrusion(prism,triangle){
@@ -55,15 +18,6 @@ function triangleInExtrusion(prism,triangle){
  const added=polygon.filter(p=>prism.base.normal.dot(p)-prism.base.constant < -EPS);
  if(!added.length)return null;
  return added.reduce((sum,p)=>sum.add(p),new T.Vector3()).multiplyScalar(1/added.length);
-}
-export function transformExtrusionPrism(prism,matrix){
- const vertices=prism.vertices.map(p=>p.clone().applyMatrix4(matrix));
- const planes=prism.planes.map(p=>{
-  const world=new T.Plane(p.normal.clone(),-p.constant).applyMatrix4(matrix);
-  return{normal:world.normal,constant:-world.constant};
- });
- return{...prism,vertices,centre:prism.centre.clone().applyMatrix4(matrix),planes,
-  base:planes[0],box:new T.Box3().setFromPoints(vertices)};
 }
 const topologyCache=new WeakMap();
 function triangleEdges(g){
@@ -157,12 +111,4 @@ export function stockWinding(stock,p){
  }
  const winding=Math.abs(angle)/(4*Math.PI);
  return Math.abs(winding-Math.round(winding))<1e-5?Math.round(winding):null;
-}
-export function stockExtrusionContact(stock,prism){
- if(!stock.box.intersectsBox(prism.box))return null;
- const point=surfaceContact(stock.tree,prism);
- if(point)return{kind:'SURFACE',point};
- const winding=stockWinding(stock,prism.centre);
- if(winding===null)return{kind:'INDETERMINATE_TOPOLOGY',point:prism.centre.clone()};
- return winding?{kind:'CONTAINED_VOLUME',point:prism.centre.clone()}:null;
 }

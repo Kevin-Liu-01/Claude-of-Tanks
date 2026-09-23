@@ -14,4 +14,3 @@ const current = 'px[j + 1] = Math.max(0, 1 - d / 12) * 255;';
 assert.equal(source.split(current).length, 2, 'unique actual production distance-field consumer');
 assert.doesNotMatch(source, /roadRutMask|roadRutInverseWidth/, 'the Gaussian rut raster is retired');
 export const historicalMaskTexture = makeMaskTexture;
-export const unoptimizedFilteredMaskTexture = makeMaskTexture;

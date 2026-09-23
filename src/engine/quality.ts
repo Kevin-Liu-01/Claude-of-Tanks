@@ -77,7 +77,6 @@ export interface QualityPreset {
  * flashes and keeps quality switching visually continuous.
  */
 export const DESKTOP_SHADOW_MAP_SIZES = [2048, 2048, 1024, 1024] as const;
-export const DESKTOP_SHADOW_MAX_FAR = 520;
 
 type AutoTier = 'low' | 'medium' | 'high';
 type PresetListener = (preset: QualityPreset) => void;

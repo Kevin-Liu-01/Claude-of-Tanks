@@ -17,7 +17,7 @@ export const VIEWPORT_WIDTH_BANDS = Object.freeze({
 });
 
 /** Fine-pointer windows at least this wide keep the persistent Garage sidebars. */
-export const PERSISTENT_PANELS_MIN_WIDTH = 900;
+const PERSISTENT_PANELS_MIN_WIDTH = 900;
 
 export const VIEWPORT_HEIGHT_BANDS = Object.freeze({
   short: Object.freeze({ min: 0, max: 519 }),

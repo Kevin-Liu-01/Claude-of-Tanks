@@ -7,7 +7,7 @@
 // whole battlefield ahead exist on every map (scratch map-spawn probe, 2026-09-18). Pure tables + math so the
 // browser sim (game/state.ts) and the authority (sim/authoritativeMatch.ts) seat a side the same way.
 
-export interface SpawnPadPoint { readonly x: number; readonly z: number; readonly yaw: number }
+interface SpawnPadPoint { readonly x: number; readonly z: number; readonly yaw: number }
 
 /**
  * (right, back) metres from a re-used enemy pad by re-use ordinal — ring 0 is the pad itself. Lateral reach

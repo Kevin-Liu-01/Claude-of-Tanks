@@ -44,7 +44,7 @@ export function sideFill(side: ObjectiveSide): string {
 type Ctx = CanvasRenderingContext2D;
 
 /** Pointy-top hexagon path (the capture-zone / sector badge shape). */
-export function hexPath(ctx: Ctx, x: number, y: number, r: number): void {
+function hexPath(ctx: Ctx, x: number, y: number, r: number): void {
   ctx.beginPath();
   for (let i = 0; i < 6; i++) {
     const angle = -Math.PI / 2 + i * Math.PI / 3;
@@ -55,7 +55,7 @@ export function hexPath(ctx: Ctx, x: number, y: number, r: number): void {
   ctx.closePath();
 }
 
-export interface BadgeStyle {
+interface BadgeStyle {
   fill: string;
   stroke: string;
   label?: string;

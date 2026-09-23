@@ -7,7 +7,7 @@ import {BARAK_SOURCE_CONFIGURATION} from './barak-source-openings.mjs';
 import {sourceOpeningRayProbe} from './source-opening-rays.mjs';
 
 const CONFIG=JSON.stringify(BARAK_SOURCE_CONFIGURATION);
-export const BARAK_BAY_STOCK_WITNESSES=Object.freeze([
+const BARAK_BAY_STOCK_WITNESSES=Object.freeze([
   ...[-.15,0,.15].flatMap(x=>[
     {key:`closed-door_${x}`,origin:[x,.9,-4.3],direction:[0,0,1],axis:2,value:-2.633583,far:4},
     {key:`back_${x}`,origin:[x,.9,-2.4],direction:[0,0,1],axis:2,value:-.6815763,far:4},

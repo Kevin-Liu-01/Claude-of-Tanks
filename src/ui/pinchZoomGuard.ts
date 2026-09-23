@@ -18,7 +18,7 @@ interface GuardDocument {
   removeEventListener: (type: string, listener: (event: Event) => void, options?: EventListenerOptions) => void;
 }
 
-export interface PinchZoomGuardHandle {
+interface PinchZoomGuardHandle {
   /** false when the guard was already installed on this window. */
   readonly installed: boolean;
   destroy(): void;

@@ -1034,7 +1034,7 @@ export function ammunitionSlotViewState(
 }
 
 /** What the shell selector and the sniper readout print for a slot: the count, or ∞ under unlimited rounds. */
-export function ammunitionCountText(shell: HudShellCard | null | undefined): string {
+function ammunitionCountText(shell: HudShellCard | null | undefined): string {
   const view = ammunitionSlotViewState(shell);
   return view.unlimited ? '∞' : String(view.count);
 }

@@ -651,13 +651,13 @@ function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSy
 }
 
 /** Spec nations the enemy side fills from first: the operation's formation, else the arranged nation. */
-export function battleEnemyNations(ruleset: MatchRuleset, campaignOperationId: string | null | undefined): readonly string[] {
+function battleEnemyNations(ruleset: MatchRuleset, campaignOperationId: string | null | undefined): readonly string[] {
   const campaign = campaignEnemyNations(campaignOperationId);
   return campaign.length ? campaign : enemyNationSpecNations(ruleset.enemyNation);
 }
 
 /** How many non-player vehicles a battle fields and how many seats the formation leads with. */
-export function battleRosterPlan(
+function battleRosterPlan(
   ruleset: MatchRuleset,
   campaignOperationId: string | null | undefined,
   randomBattle: boolean,

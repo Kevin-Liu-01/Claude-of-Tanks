@@ -265,10 +265,6 @@ export function normalizeGameMode<Value>(value: Value): GameModeId {
   return MODE_SET.has(id) ? id as GameModeId : 'standard';
 }
 
-export function gameModeDefinition<Value>(value: Value): GameModeDefinition {
-  return GAME_MODE_DEFINITIONS[normalizeGameMode(value)];
-}
-
 function teamOf(entity: MatchModeEntity): ObjectiveTeam {
   return entity.team === 'bravo' || entity.team === 'enemy' ? 'bravo' : 'alpha';
 }

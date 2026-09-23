@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Unused-export scan (owner ruling 2026-09-14: clean up the codebase). Lists every `export`ed
-// declaration in src/, tools/, server/ and scripts/ whose name no other file mentions — imports,
+// declaration in src/, tools/, server/, scripts/, api/ and cloudflare/ whose name no other file mentions — imports,
 // JSDoc, HTML module scripts and receipts all count as a mention, so a listed symbol is safe to
 // un-export (or delete when its own file does not use it either: `self 1`). Files that receipts
 // hash by source (vehicle profiles, terrain, sky, impact decals, the authority, match placement)
@@ -25,6 +25,10 @@ walk(join(root, 'src'), /\.(ts|mjs|js|html)$/, /node_modules|\.git|\/dist\b|\.qa
 walk(join(root, 'tools'), /\.(ts|mjs|js|html)$/);
 walk(join(root, 'server'), /\.(ts|mjs|js)$/);
 walk(join(root, 'scripts'), /\.(ts|mjs|js)$/);
+// Vercel functions and the Cloudflare worker import from src/ and server/ too (2026-09-22: a
+// false positive on server/signalingCutover.ts came from not walking api/).
+walk(join(root, 'api'), /\.(ts|mjs|js)$/);
+walk(join(root, 'cloudflare'), /\.(ts|mjs|js)$/);
 walk(join(root, 'public'), /\.html$/);
 for (const single of ['index.html', 'vite.config.ts', 'middleware.ts']) {
   try { statSync(join(root, single)); files.push(join(root, single)); } catch { /* absent in this checkout */ }

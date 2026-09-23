@@ -8,7 +8,7 @@
 // reads the same normalised delta: discrete ladders (the gun sight, the spectator orbit) accumulate it into
 // whole notches, continuous dollies (the Garage showroom) apply it proportionally.
 
-export interface WheelDeltaSource {
+interface WheelDeltaSource {
   deltaY: number;
   deltaMode?: number;
   ctrlKey?: boolean;
@@ -36,7 +36,7 @@ export function wheelNotchUnits(event: WheelDeltaSource): number {
   return (wheelDeltaPx(event) / WHEEL_NOTCH_PX) * (event.ctrlKey ? PINCH_GAIN : 1);
 }
 
-export interface WheelNotcher {
+interface WheelNotcher {
   /** Whole notches released by this event (sign of deltaY); the remainder carries to the next event. */
   push(event: WheelDeltaSource, nowMs?: number): number;
   reset(): void;

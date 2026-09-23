@@ -24,7 +24,7 @@ interface AssaultTrenchLine {
 }
 
 /** Cross-section of a carved line (metres); a plan without one carves the fortified ASSAULT_TRENCH section. */
-export interface TrenchProfile {
+interface TrenchProfile {
   floorHalfWidthM: number;
   wallRunM: number;
   depthM: number;

@@ -1,9 +1,9 @@
 /** Physical launch stock is independent of guidance or warhead type. */
-export interface LauncherGun {
+interface LauncherGun {
   fixedLaunchCanisters?: boolean;
   launcherMuzzles?: readonly { x: number; y: number; z: number }[];
 }
-export interface LauncherRound { guided?: boolean }
+interface LauncherRound { guided?: boolean }
 
 /** Separate pitching mouths serve guided rails and explicitly fixed rocket racks. */
 export function usesLauncherMuzzles(

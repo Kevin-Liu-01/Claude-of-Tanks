@@ -143,7 +143,7 @@ export function deriveObject695Reference(sourceBytes, donorBytes) {
   return { bytes, manifest };
 }
 
-export function writeObject695Reference(root) {
+function writeObject695Reference(root) {
   const { bytes, manifest } = deriveObject695Reference(
     fs.readFileSync(path.join(root, RECIPE.source.path)), fs.readFileSync(path.join(root, RECIPE.donor.path)));
   fs.mkdirSync(path.dirname(path.join(root, RECIPE.recipePath)), { recursive: true });

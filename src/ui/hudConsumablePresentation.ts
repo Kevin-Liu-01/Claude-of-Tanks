@@ -1,13 +1,13 @@
 type TextNode = Pick<HTMLElement, 'textContent'>;
 type StyledNode = Pick<HTMLElement, 'style'>;
 
-export interface ConsumableSlotElements {
+interface ConsumableSlotElements {
   button: Pick<HTMLButtonElement, 'classList' | 'setAttribute'>;
   count: TextNode;
   cooldown: StyledNode;
 }
 
-export interface ConsumableSlotOptions {
+interface ConsumableSlotOptions {
   elements: ConsumableSlotElements;
   locale(): string;
   readyMark: string;

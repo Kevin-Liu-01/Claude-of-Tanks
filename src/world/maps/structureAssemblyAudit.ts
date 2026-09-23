@@ -71,7 +71,3 @@ export function auditStructureAssembly(buckets: GeometryBuckets): StructureAssem
   });
 }
 
-export const structureAssemblyLimits = Object.freeze({
-  contactEpsilonM: CONTACT_EPSILON_M,
-  groundEpsilonM: GROUND_EPSILON_M,
-});

@@ -2,9 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type * as THREE from 'three';
 import type { EventBus, GameState } from '../game/stateCore.ts';
 import type { RosterEntity, RosterGameState } from '../game/rosterState.ts';
-import type { InputLayer } from '../game/input.ts';
 import type { MobileAutoAimRuntime } from '../game/mobileAutoAimRuntime.ts';
-import type { BattleHudRuntime, DamagePanelRuntime } from '../ui/battleHudAccess.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type { TankState } from '../sim/movement.ts';
 import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
@@ -68,11 +66,6 @@ export type MainGameState = Omit<
 };
 
 export type MainWorld = WorldRuntime;
-
-export type MainHudRuntime = BattleHudRuntime;
-export type MainDamagePanelRuntime = DamagePanelRuntime;
-
-export type MainInputRuntime = InputLayer;
 
 export type MainMobileAutoAimRuntime = MobileAutoAimRuntime;
 

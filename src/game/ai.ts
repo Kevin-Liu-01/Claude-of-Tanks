@@ -144,14 +144,14 @@ type ControllerOwnedEntity = AiEntity & {
 };
 
 /** The mode's live objective for this bot's team (zone centre, flag, ball, sector). */
-export interface AiObjective {
+interface AiObjective {
   x: number;
   z: number;
   radiusM: number;
 }
 
 /** What the integration knows about a hit that reached this bot's team. */
-export interface HitReactionInfo {
+interface HitReactionInfo {
   /** The struck hull is this bot's own (a teammate's hit only carries intel). */
   selfHit?: boolean;
   /** The shell did damage (a bounce still counts as being shot at). */

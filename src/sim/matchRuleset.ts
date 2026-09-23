@@ -26,7 +26,7 @@ interface AssaultRules {
 }
 
 /** Endless Horde wave law (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time"). */
-export interface HordeRules {
+interface HordeRules {
   /** Hostiles fielded on the first wave. */
   readonly waveSize: number;
   /** Hostiles added every wave. */
@@ -49,7 +49,7 @@ export interface HordeRules {
  * plays under and how often a boost cache drops. Stored per player on the mars arrangement
  * (game/teamArrangement.ts readMarsSettings) and carried by rooms through the lobby arrangement.
  */
-export const MARS_GRAVITY_OPTIONS = Object.freeze({
+const MARS_GRAVITY_OPTIONS = Object.freeze({
   // round 30 (owner 2026-09-20): the jump is a rocket boost — about 1.45x the 2026-09-18 launches
   mars: Object.freeze({ gravityScale: 0.38, jumpMps: 9.5, recoilLaunchScale: 3 }),
   moon: Object.freeze({ gravityScale: 0.17, jumpMps: 12.5, recoilLaunchScale: 4.5 }),
@@ -57,7 +57,7 @@ export const MARS_GRAVITY_OPTIONS = Object.freeze({
 });
 export type MarsGravityId = keyof typeof MARS_GRAVITY_OPTIONS;
 export const MARS_GRAVITY_IDS: readonly MarsGravityId[] = Object.freeze(Object.keys(MARS_GRAVITY_OPTIONS) as MarsGravityId[]);
-export const MARS_CACHE_OPTIONS = Object.freeze({
+const MARS_CACHE_OPTIONS = Object.freeze({
   off: Object.freeze({ cacheFirstS: 0, cacheIntervalS: 0 }),
   standard: Object.freeze({ cacheFirstS: 12, cacheIntervalS: 22 }),
   frequent: Object.freeze({ cacheFirstS: 8, cacheIntervalS: 11 }),
@@ -70,14 +70,14 @@ export function isMarsGravityId(value: unknown): value is MarsGravityId {
 export function isMarsCachesId(value: unknown): value is MarsCachesId {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(MARS_CACHE_OPTIONS, value);
 }
-export interface MarsRules {
+interface MarsRules {
   readonly gravity: MarsGravityId;
   readonly caches: MarsCachesId;
   /** Seconds into the match the first boost cache drops, then the cadence; 0 means no caches. */
   readonly cacheFirstS: number;
   readonly cacheIntervalS: number;
 }
-export function marsRulesFor(gravity: MarsGravityId, caches: MarsCachesId): MarsRules {
+function marsRulesFor(gravity: MarsGravityId, caches: MarsCachesId): MarsRules {
   return Object.freeze({ gravity, caches, ...MARS_CACHE_OPTIONS[caches] });
 }
 export const MARS_DEFAULT_RULES: MarsRules = marsRulesFor('mars', 'standard');
@@ -106,7 +106,7 @@ export const SIDES_PRESETS = Object.freeze({
   '7v7': STANDARD_SIDES,
   '14v14': Object.freeze({ allies: 13, enemies: 14 }),
 });
-export type SidesPreset = keyof typeof SIDES_PRESETS | 'custom';
+type SidesPreset = keyof typeof SIDES_PRESETS | 'custom';
 type IntRange = readonly [number, number];
 const range = (low: number, high: number): IntRange => Object.freeze([low, high] as const);
 const SYMMETRIC_ALLIES = range(0, BATTLE_FIELD_LIMIT - 2), SYMMETRIC_ENEMIES = range(1, BATTLE_FIELD_LIMIT - 1);

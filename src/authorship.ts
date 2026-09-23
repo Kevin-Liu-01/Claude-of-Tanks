@@ -1,5 +1,4 @@
 export const PROJECT_CREATOR = 'Kevin B. Liu';
-export const PROJECT_CREATOR_DISPLAY = 'Kevin Liu';
 const PROJECT_CREATOR_URL = 'https://github.com/Kevin-Liu-01';
 export const PROJECT_COPYRIGHT = 'Copyright © 2026 Kevin B. Liu';
 export const PROJECT_PACKAGE_LICENSE = 'SEE LICENSE IN LICENSE-POLICY.md';

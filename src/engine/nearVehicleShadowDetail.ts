@@ -18,7 +18,7 @@ export const NEAR_VEHICLE_SHADOW_MAX = 4;
 export const NEAR_VEHICLE_SHADOW_EXTENT_M = 6;
 export const VEHICLE_SHADOW_DETAIL_KEY = 'nearShadowDetail';
 
-export interface VehicleShadowDetail {
+interface VehicleShadowDetail {
   /** Real armour / running-gear meshes that cast when the hull is near (castShadow is toggled around each cascade). */
   readonly detail: readonly Object3D[];
   /** The convex proxies (or their batch sources) hidden while the detail casts. */
@@ -27,7 +27,7 @@ export interface VehicleShadowDetail {
 
 export interface CascadeRange { readonly near: number; readonly far: number; }
 
-export interface NearVehicleShadowPolicyOptions {
+interface NearVehicleShadowPolicyOptions {
   camera: Camera;
   scene: Scene;
   /** Per-cascade view-depth ranges in metres (CSM breaks × far). */
@@ -39,7 +39,7 @@ export interface NearVehicleShadowPolicyOptions {
   extentM?: number;
 }
 
-export interface NearVehicleSelection {
+interface NearVehicleSelection {
   readonly root: Object3D;
   readonly depth: number;
   readonly cascadeMask: number;

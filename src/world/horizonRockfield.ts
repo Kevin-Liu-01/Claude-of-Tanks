@@ -9,7 +9,7 @@ import * as THREE from 'three';
  * clustered into outcrops, the near class casting (and receiving) real shadows like the battlefield's own rocks.
  * Deterministic per map seed; three shared geometries, at most nine instanced meshes, no per-frame work.
  */
-export interface HorizonRockfieldOptions {
+interface HorizonRockfieldOptions {
   columns: number;
   rows: readonly { r: number; aer: number; skirt?: boolean; interpolated?: boolean }[];
   positions: Float32Array;
@@ -43,7 +43,7 @@ type RockCompileHook = (shader: { uniforms: Record<string, THREE.IUniform>; vert
 
 export const HORIZON_ROCK_VARIANTS = 3;
 export const HORIZON_ROCK_MAX_SLOPE = 0.95; // rise/run — boulders rest below ~43°, the walls above keep their strata
-export const HORIZON_ROCK_NEAR_DEPTH_M = 300;
+const HORIZON_ROCK_NEAR_DEPTH_M = 300;
 
 function tileRng(seed: number): () => number {
   let a = seed | 0;

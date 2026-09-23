@@ -12,7 +12,7 @@ import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 
 export const TEAM_ARRANGEMENT_STORAGE_KEY = 'cot.game.teams.v1';
 
-export interface EnemyNationOption {
+interface EnemyNationOption {
   /** Setting id (also the `campaign.enemy.<id>` copy key). */
   readonly id: string;
   /** Spec `nation` strings the fleet uses for this nation. */
@@ -111,7 +111,7 @@ export function writeTeamArrangement(
 }
 
 /** Mars mode settings (owner 2026-09-18 "boosts and settings"): the gravity world and the boost-cache cadence. */
-export interface MarsSettings {
+interface MarsSettings {
   readonly gravity: MarsGravityId;
   readonly caches: MarsCachesId;
 }

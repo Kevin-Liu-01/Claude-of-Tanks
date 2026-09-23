@@ -29,10 +29,6 @@ export const EFFECT_ATTACHMENT_POLICY = Object.freeze({
   loosePropHit: 'world-space-burst',
 } as const);
 
-type EffectAttachmentPolicy = typeof EFFECT_ATTACHMENT_POLICY;
-type EffectFamily = keyof EffectAttachmentPolicy;
-export type EffectAttachmentMode = EffectAttachmentPolicy[EffectFamily];
-
 interface MutablePosition {
   x: number;
   y: number;

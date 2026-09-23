@@ -674,7 +674,7 @@ function* makeHorizonTextureSteps(
 // combing into down-slope fiber at grazing angles (the r3/r6 curtain bug).
 // ---------------------------------------------------------------------------
 /** The tileable detail noise as a function of texture coordinates (wrapping), 0..1 like its texel. */
-export type DetailNoiseSampler = (u: number, v: number) => number;
+type DetailNoiseSampler = (u: number, v: number) => number;
 
 /** One wrapped-lattice value noise (three octaves) shared by the detail texture and the JS twin the ring forest
  * uses to stand its trees exactly where the fragment program paints the forest. */

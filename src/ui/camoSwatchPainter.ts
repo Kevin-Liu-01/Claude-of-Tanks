@@ -39,7 +39,7 @@ export const CAMO_SWATCH_CROP = Object.freeze({
   height: Math.round(CAMO_SWATCH_TILE_PX * CAMO_SWATCH_HEIGHT / CAMO_SWATCH_WIDTH),
 });
 /** A swatch has no hull: no panel plan, rivets, chips or rust weeps — the pattern alone. */
-export const CAMO_SWATCH_EMPTY_FEATURES: Readonly<PlateFeatures> = Object.freeze({
+const CAMO_SWATCH_EMPTY_FEATURES: Readonly<PlateFeatures> = Object.freeze({
   hLines: [], vLines: [], rings: [], chips: [], streaks: [],
 });
 /** Cached 128 x 44 results (about 22 KB each); the catalog is ~165 patterns and custom paints come and go. */
@@ -49,7 +49,7 @@ const SWATCH_FRAME_BUDGET_MS = 6;
 
 type CanvasFactory = (width: number, height: number) => HTMLCanvasElement;
 
-export interface CamoSwatchRecipe {
+interface CamoSwatchRecipe {
   /** The pattern's own recipe: every knob the painter's pattern section reads, nothing the hull owns. */
   visual: MaterialVisual;
   /** The hull-independent stream the hull bakes this pattern from; also the swatch's grain seed. */

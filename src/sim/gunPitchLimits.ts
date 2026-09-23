@@ -1,7 +1,7 @@
 /** Mechanical deck clearance is optional and owned by each vehicle's frame.
  * Positive pitch elevates the gun; yaw is relative to the hull's forward +Z. */
 export type GunPitchByYawCurve = readonly (readonly [absoluteYawDeg: number, minimumPitchDeg: number])[];
-export interface GunPitchLimitSpec {
+interface GunPitchLimitSpec {
   gunDepressionDeg?: number;
   gunPitchByYawDeg?: GunPitchByYawCurve;
 }

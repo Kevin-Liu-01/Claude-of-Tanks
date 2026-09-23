@@ -11,7 +11,7 @@ import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { SHARED_CAMO_PRESETS, camoNationTag } from '../src/vehicles/camoPolicy.ts';
 import { tankDisplayName } from '../src/vehicles/tankLabels.ts';
 
-export const PAINT_ID_PREFIX = 'paint_';
+const PAINT_ID_PREFIX = 'paint_';
 const SCHEME_WORD = {
   solid: 'Plain', nato: 'Tri-Tone', stripes: 'Stripes', digital: 'Digital', 'russian-digital': 'Digital',
   splinter: 'Splinter', desert: 'Desert', ambush: 'Ambush', fleck: 'Fleck', woodland: 'Woodland', blotch: 'Blotch',

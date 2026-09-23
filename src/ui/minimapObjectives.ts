@@ -11,7 +11,7 @@
 
 import type { ObjectiveSide } from './objectiveGlyphs.ts';
 
-export type ObjectiveTeamId = 'alpha' | 'bravo';
+type ObjectiveTeamId = 'alpha' | 'bravo';
 
 /** Structural view of the presentation state; the sim's record satisfies it. */
 export interface ObjectiveStateView {
@@ -32,7 +32,7 @@ export interface ObjectiveStateView {
   line?: { index?: number; total?: number; holdS?: number } | null;
 }
 
-export type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup';
+type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup';
 
 export interface ObjectiveMarker {
   kind: ObjectiveKind;
@@ -56,7 +56,7 @@ export interface ObjectiveMarker {
   priority: number;
 }
 
-export const ZONE_LETTERS: readonly string[] = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
+const ZONE_LETTERS: readonly string[] = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
 
 export function zoneLetter(index: number): string {
   return ZONE_LETTERS[index] ?? String(index + 1);

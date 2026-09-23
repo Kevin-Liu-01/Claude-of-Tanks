@@ -340,7 +340,7 @@ export interface MovementShellSpec {
 /** Fixed simulation step in seconds (ARCHITECTURE §1.1). */
 export const SIM_DT = 1 / 60;
 /** Locked-track skid of a destroyed hull (dirt, ~0.45 g): a 12 m/s wreck slides about 16 m in 2.7 s. */
-export const WRECK_SKID_DECEL_MPS2 = 4.5;
+const WRECK_SKID_DECEL_MPS2 = 4.5;
 
 // ---------------------------------------------------------------------------
 // Tuning constants (movement-physics doc §3–§6, values locked by ARCHITECTURE §3.4)
@@ -595,7 +595,7 @@ const AIR_ANGULAR_DRAG_S = 0.055;
 const AIR_ANGULAR_SPEED_MAX = 1.15; // rad/s; ordinary launch-rate bound
 const TUMBLE_ANGULAR_SPEED_MAX = 2.8; // collisions/rollovers may rotate faster
 /** Round 30: the longest obstacle push one fixed step applies (60 steps/s → a 7 m intrusion resolves in ~120 ms). */
-export const OBSTACLE_PUSH_MAX_M_PER_STEP = 1.0;
+const OBSTACLE_PUSH_MAX_M_PER_STEP = 1.0;
 /**
  * Round 30 (owner 2026-09-20: hulls "going up walls, or sides of steep hills at high speeds"): ground rising
  * steeper than this grade (tan 52°) right ahead of the tracks is a wall, not a climb. The hull stops against it
@@ -603,11 +603,11 @@ export const OBSTACLE_PUSH_MAX_M_PER_STEP = 1.0;
  */
 export { CLIFF_GRADE } from './terrainMobility.ts';
 /** How far beyond the leading track edge the cliff probe looks (one hull step at speed, a track length at rest). */
-export const CLIFF_PROBE_M = 1.5;
+const CLIFF_PROBE_M = 1.5;
 /** A wall keeps rising: the face must still be this much higher a few metres on, or it is a step a tank crosses
  * (trench and crater walls, kerbs of terraces) — the pacing receipt showed bots stranded at 2 m trench walls. */
-export const CLIFF_WALL_PROBE_M = 4.5;
-export const CLIFF_WALL_RISE_M = 3.0;
+const CLIFF_WALL_PROBE_M = 4.5;
+const CLIFF_WALL_RISE_M = 3.0;
 const LANDING_CONTACT_BLEND_S = 0.34;
 const LANDING_SPRING_MIN_SCALE = 0.28;
 const LANDING_TORQUE_GAIN = 0.22;
@@ -2821,7 +2821,7 @@ export function shotRecoilScale(
 export interface RecoilLaunch { scale: number; dirX: number; dirY: number; dirZ: number }
 
 /** The slice of a movement state a jump or lift touches; TankState and the client's action state both satisfy it. */
-export interface LiftableState {
+interface LiftableState {
   overturned?: boolean;
   grounded?: boolean;
   verticalSpeed?: number;

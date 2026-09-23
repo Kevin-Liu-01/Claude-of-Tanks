@@ -21,13 +21,13 @@ export const SUPPORT_MIN_HEIGHT_M = HULL_STANDABLE_HEIGHT_M;
 /** Query margin around the hull for candidate primitives. */
 const SUPPORT_QUERY_MARGIN_M = 6;
 
-export interface SupportHeightField {
+interface SupportHeightField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getGroundType(x: number, z: number): string;
 }
 
-export interface SupportObstacleSource {
+interface SupportObstacleSource {
   queryObstacles?(minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[]): CollisionRecord[];
   getObstacles?(): CollisionRecord[];
 }

@@ -4,11 +4,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 const REPOSITORY_API = 'https://api.github.com/repos/Kevin-Liu-01/claude-of-tanks';
 const SUCCESS_CACHE_CONTROL = 'public, max-age=60, s-maxage=900, stale-while-revalidate=86400';
 
-export interface GitHubStarsHandlerOptions {
+interface GitHubStarsHandlerOptions {
   fetchImpl?: typeof fetch;
 }
 
-export type GitHubStarsHandler = (
+type GitHubStarsHandler = (
   request: IncomingMessage,
   response: ServerResponse,
 ) => Promise<void>;

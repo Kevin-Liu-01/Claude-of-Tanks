@@ -19,46 +19,6 @@
 export const iconUrl = (id: string, view: string): string => `/icons/${id}_${view}.${
   /(?:silhouette|armor_side|modules_side|crew_side)$/.test(view) ? 'png' : 'webp'}`;
 
-interface TintCacheEntry {
-  canvas: HTMLCanvasElement | null;
-}
-
-const tintCache = new Map<string, TintCacheEntry>();
-
-/**
- * Tinted silhouette as a canvas for per-frame 2D drawing (minimap blips).
- * Kicks off the image load on first request and returns null until ready —
- * callers draw their vector fallback in the meantime. Cached per id/view/color.
- * @param {string} id tank id
- * @param {string} view 'top_silhouette' | 'side_silhouette'
- * @param {string} color css color the white silhouette is tinted to
- * @returns {HTMLCanvasElement|null}
- */
-export function tintedIcon(id: string, view: string, color: string): HTMLCanvasElement | null {
-  const key = `${id}|${view}|${color}`;
-  let e = tintCache.get(key);
-  if (!e) {
-    const entry: TintCacheEntry = { canvas: null };
-    e = entry;
-    tintCache.set(key, entry);
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      const x = c.getContext('2d');
-      if (!x) return;
-      x.drawImage(img, 0, 0);
-      x.globalCompositeOperation = 'source-in';
-      x.fillStyle = color;
-      x.fillRect(0, 0, c.width, c.height);
-      entry.canvas = c;
-    };
-    img.src = iconUrl(id, view);
-  }
-  return e.canvas;
-}
-
 /**
  * Turn a DOM element into a tinted silhouette via CSS mask: the element's
  * background color shows through the icon's alpha. Give the element explicit

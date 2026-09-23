@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-export const GRIFFIN_PROPORTION_INPUT_SHA='1aef6401c01b5d9a6adfc65838c94d350f4aa39afa039709241c426371ca2003';
+const GRIFFIN_PROPORTION_INPUT_SHA='1aef6401c01b5d9a6adfc65838c94d350f4aa39afa039709241c426371ca2003';
 const turretMeshes=new Set([3,6,9,11,13,14,15,16,18,19]);
 const wheelStations=[-1.9865,-1.4585,-.7285,.0015,.7315,1.4885,2.2185,2.8175];
 
@@ -53,7 +53,7 @@ function encode(json,bin) {
 }
 
 /** Exact owner-prescribed +10% hull Z / -10% turret, without candidate input. */
-export function resizeGriffinReference(bytes) {
+function resizeGriffinReference(bytes) {
   assert.equal(hash(bytes),GRIFFIN_PROPORTION_INPUT_SHA,'complete approved assembled source');
   const {json,bin}=read(bytes),report=[],used=new Set();
   for(const node of json.nodes.filter(n=>n.mesh!==undefined)) {

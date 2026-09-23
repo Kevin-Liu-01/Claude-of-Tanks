@@ -7,11 +7,11 @@ interface RevealReceipt {
 }
 
 /** Vehicles the default reveal budget was tuned for (the 7 v 7 field). */
-export const REVEAL_BUDGET_FIELD = 14;
+const REVEAL_BUDGET_FIELD = 14;
 /** Reveal budget the default field gets. */
-export const REVEAL_BUDGET_BASE_MS = 1500;
+const REVEAL_BUDGET_BASE_MS = 1500;
 /** Extra reveal budget per vehicle past the default field (sides 2026-09-18: a 14 v 14 first frame outran 1.5 s). */
-export const REVEAL_BUDGET_PER_VEHICLE_MS = 120;
+const REVEAL_BUDGET_PER_VEHICLE_MS = 120;
 
 /**
  * The first battle frame compiles every new vehicle's programs and primes its shadows, so the time the

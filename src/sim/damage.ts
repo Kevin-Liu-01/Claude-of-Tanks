@@ -395,7 +395,7 @@ const RAM_SPEED_ANCHOR_MPS = 8;  // the quadratic law is exact here; above it th
 const RAM_SPEED_POWER = 1.5;     // extra progression exponent on (c / anchor)
 
 /** Progressive speed gain on top of the kinetic law: 1 at the anchor, (c/8)^1.5 elsewhere. Pure. */
-export function ramSpeedGain(closingMps: number): number {
+function ramSpeedGain(closingMps: number): number {
   const c = Math.abs(Number(closingMps));
   if (!(c > 0)) return 0;
   return Math.pow(c / RAM_SPEED_ANCHOR_MPS, RAM_SPEED_POWER);

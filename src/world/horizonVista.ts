@@ -18,9 +18,9 @@ import * as THREE from 'three';
 // ---------------------------------------------------------------------------
 // tiles
 // ---------------------------------------------------------------------------
-export const VISTA_TILE_SIZE = 512;
+const VISTA_TILE_SIZE = 512;
 
-export interface VistaTiles {
+interface VistaTiles {
   meadow: THREE.CanvasTexture;
   /** Round 29 (2026-09-20): dune sand / alluvium for the arid maps — bound as the ground tile instead of the meadow. */
   sand: THREE.CanvasTexture;
@@ -488,7 +488,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, uVFogTint * horizonDim, vistaHaze);`;
  * the battlefield's own trees at the rim instead of reading as a paler second forest. */
 export interface HorizonForestSpeciesPalette { hue: number; sat: number; l0: number; l1: number }
 
-export interface HorizonForestOptions {
+interface HorizonForestOptions {
   columns: number;
   rows: readonly { r: number; aer: number; skirt?: boolean; interpolated?: boolean }[];
   positions: Float32Array;
@@ -526,8 +526,8 @@ export interface HorizonForestOptions {
 }
 
 /** vegetation.ts buildPineFarGeometry / buildOakFarGeometry defaults (vista pass values). */
-export const HORIZON_FOREST_CONIFER_PALETTE: HorizonForestSpeciesPalette = { hue: 0.315, sat: 0.36, l0: 0.165, l1: 0.27 };
-export const HORIZON_FOREST_BROADLEAF_PALETTE: HorizonForestSpeciesPalette = { hue: 0.24, sat: 0.37, l0: 0.205, l1: 0.31 };
+const HORIZON_FOREST_CONIFER_PALETTE: HorizonForestSpeciesPalette = { hue: 0.315, sat: 0.36, l0: 0.165, l1: 0.27 };
+const HORIZON_FOREST_BROADLEAF_PALETTE: HorizonForestSpeciesPalette = { hue: 0.24, sat: 0.37, l0: 0.205, l1: 0.31 };
 
 interface TreeGeometry { geometry: THREE.BufferGeometry; height: number }
 
