@@ -48,8 +48,8 @@ function fender(P:TankBuilderPort,side:number):void{
   }
 }
 function runningGear(P:TankBuilderPort):void{
-  // Hidden return rollers are a documented mechanical inference, constrained
-  // by the source's visible return-course envelope, not claimed source parts.
+  // The hidden return rollers were a mechanical inference, not source parts; the real T-72BU/T-90 carries its
+  // upper run on the road-wheel tops, so they left (owner 2026-09-23, round 46).
   // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation construction
   // (T-90 donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.380115,wheelY:.451075,wheelW:.38270,
@@ -57,7 +57,9 @@ function runningGear(P:TankBuilderPort):void{
     // lane is placed12mm farther outboard for positive mechanical clearance.
     wheelZs:[-1.58720,-.72760,.14085,1.00566,1.85831,2.72517],xc:1.371,roadWheelOutsetM:.053,trackW:.56169,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     idler:{z:3.32755,y:.72631,r:.23219,trackR:.228},sprocket:{z:-2.45990,y:.642,r:.28250,trackR:.268},
-    rollers:[{z:-1.63,y:.902,r:.092},{z:.21,y:.902,r:.092},{z:1.91,y:.902,r:.092}],rollerR:.092,
+    // owner 2026-09-23 (round 46): no return rollers — the real T-72/T-90 family carries its upper run on the
+    // road-wheel tops; the inferred hidden rollers leave and the run drops onto the wheels behind the skirts.
+    rollers:[],
     returnRollerWidthM:.25,returnRollerInsetM:.10,topY:1.011,botY:.055,arms:true,coveredTop:true,paintedEnds:true,
     sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.137,
     trackShoeDimensions:{padHeight:.036,grouserHeight:.009,webHeight:.018,hornHeight:.042,pinRadius:.009,pinCentreY:0},
