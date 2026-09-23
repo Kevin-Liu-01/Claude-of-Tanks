@@ -443,9 +443,13 @@ function weapons(P: TankBuilderPort): void {
   P.add('gun', muzzle, 0, 0, (6.88 + D.muzzleZ) / 2 - gz);
   // Fleet mouth standard (2026-09-11): the shared edge-seated lining draws
   // the dark bore and its lip; the source's 250 mm open throat and floor are
-  // gone. The tube's own end face closes the open jacket outside that lip.
-  const rim = new THREE.RingGeometry(.080, .10160, 32);
-  P.add('gun', rim, 0, 0, P.muzzleZ);
+  // gone. Owner 2026-09-22 ("the point of adding holes instead of carving them
+  // into the barrel is that we save on triangles"): the tube's own end face is
+  // one flat cap across the whole jacket. Until then an .080 annulus left the
+  // open jacket as a 0.2596 m recess back to the 6.88 course behind the
+  // lining, which hid it entirely; the depth stays recorded here.
+  const cap = new THREE.CircleGeometry(.10160, 32);
+  P.add('gun', cap, 0, 0, P.muzzleZ);
   muzzleReference(P);
   movingMantlet(P);
   const mg = sourceMachineGun(P, D.turretPivot);

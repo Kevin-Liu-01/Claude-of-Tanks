@@ -8,7 +8,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
-import { blindTube } from './measuredPrimitives.ts';
+import { blindTube, cappedTube } from './measuredPrimitives.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { ARES_APC_X_DATUMS } from '../aresApcXFrame.ts';
 
@@ -212,7 +212,11 @@ function exactL111A1(P: TankBuilderPort): void {
   P.add('gunMount', part(box(0.22, 0.20, 0.70), 'l111a1-receiver'), 0, -0.01, -0.11);
   P.add('gunMount', part(cylX(0.055, 0.54, P.q ? 18 : 8), 'l111a1-trunnion'),
     0, -0.07, 0.04);
-  P.add('gun', part(blindTube(0.030, 0.016, 0.94, 0.035, P.q ? 64 : 8), 'l111a1-barrel'),
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into
+  // the barrel is that we save on triangles"): the L111A1 barrel is closed
+  // solid stock. Until then it was a blindTube with a .016 bore 35 mm deep
+  // that sat entirely behind the factory's dark mouth disc (recorded here).
+  P.add('gun', part(cappedTube(0.030, 0.94, P.q ? 64 : 8), 'l111a1-barrel'),
     0, 0.01, 0.77);
   P.add('gunDark', part(cylZ(0.052, 0.20, P.q ? 18 : 8), 'l111a1-jacket'),
     0, 0.01, 0.38);

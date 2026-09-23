@@ -63,6 +63,14 @@ const edits = {
     [
       "  const bore = new THREE.CylinderGeometry(.060, .060, .25, 32, 1, true);\n  bore.rotateX(Math.PI / 2);\n  P.add('gunDark', bore, 0, 0, P.muzzleZ - .125);\n  const rim = new THREE.RingGeometry(.060, .10160, 32);\n  P.add('gun', rim, 0, 0, P.muzzleZ);\n  P.add('gunDark', cylZ(.060, .007, 32), 0, 0, P.muzzleZ - .251);",
       "  // Fleet mouth standard (2026-09-11): the shared edge-seated lining draws\n  // the dark bore and its lip; the source's 250 mm open throat and floor are\n  // gone. The tube's own end face closes the open jacket outside that lip.\n  const rim = new THREE.RingGeometry(.080, .10160, 32);\n  P.add('gun', rim, 0, 0, P.muzzleZ);"
+    ],
+    // 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that we
+    // save on triangles"): the end-face ring became one flat cap over the whole jacket, closing the
+    // 0.2596 m open recess the lining hid. Declared here so the paint history still replays back to
+    // the 09-11 text and then to the pre-paint source. Exact, reversible.
+    [
+      "  // gone. The tube's own end face closes the open jacket outside that lip.\n  const rim = new THREE.RingGeometry(.080, .10160, 32);\n  P.add('gun', rim, 0, 0, P.muzzleZ);",
+      "  // gone. Owner 2026-09-22 (\"the point of adding holes instead of carving them\n  // into the barrel is that we save on triangles\"): the tube's own end face is\n  // one flat cap across the whole jacket. Until then an .080 annulus left the\n  // open jacket as a 0.2596 m recess back to the 6.88 course behind the\n  // lining, which hid it entirely; the depth stays recorded here.\n  const cap = new THREE.CircleGeometry(.10160, 32);\n  P.add('gun', cap, 0, 0, P.muzzleZ);"
     ]
   ],
   "leclercXSourceFittings.ts": [

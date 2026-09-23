@@ -5619,11 +5619,14 @@ function addM60A2TurretAndGun(P: PattonBuilderPort, cfg: M60A2BuildConfig): void
   P.add('gun', cylZ(0.148, glen - 0.08, seg), 0, 0, (glen - 0.08) / 2 + 0.02);
   P.add('gun', cylZ(0.156, 0.22, seg), 0, 0, glen - 0.55);
   P.add('gun', cylZ(0.158, 0.06, seg), 0, 0, glen - 0.03);
-  P.add('gunDark', cylZ(0.076, 0.014, seg), 0, 0, glen - 0.006);
   // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): the launcher's
-  // 152 mm bore ring+disc on the centered collar face. The
-  // legacy 0.076 gunDark face disc above stays — certified gate state,
-  // fully occluded behind the new furniture.
+  // 152 mm bore ring+disc on the centered collar face. Owner 2026-09-22 ("the
+  // point of adding holes instead of carving them into the barrel is that we
+  // save on triangles"): the legacy 0.076 gunDark face puck (cylZ 0.076 x
+  // 0.014 at glen-0.006, 4*seg triangles) that used to stand here is gone; it
+  // sat entirely behind the factory's dark mouth disc since the fleet mouth
+  // standard, so no rendered pixel changes. The hidden authored rim stays: it
+  // is the seat the factory reads for this stub launcher.
   muzzleBore(P, { z: glen, r: 0.148 });
   finishM60A2Variant(P, glen, cfg.hull.deck);
   applyM60CompactScale(P, 0.90, 3.14 - py + 0.12);
