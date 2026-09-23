@@ -10749,9 +10749,9 @@ function addM1A3TurretStructure(P: AbramsBuilderPort, t: M1A3BuildLayout['t']): 
   seatAbramsTurret(P.turretG, t.ring[0], t.ring[1], t.ring[2]);
   P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
   abramsShell(P, t);
-  // Thin bearing flange: 18 mm tall, with 3 mm embedded in both the deck
-  // and the turret base. The complete assembly retains a 12 mm visible seam.
-  P.add('turret', cylY(1.24, 1.28, .018, 48), 0, -.106, 0);
+  // Thin bearing flange: 38 mm tall, with 3 mm embedded in both the deck
+  // and the turret base. The complete assembly retains a 32 mm visible seam.
+  P.add('turret', cylY(1.24, 1.28, .038, 48), 0, -.116, 0);
 
   // Isolated, armored bustle autoloader with six blow-off roof panels.
   P.add('turret', box(2.92, 0.53, 1.46), 0, 0.37, -2.42);

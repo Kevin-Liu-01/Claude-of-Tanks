@@ -20,16 +20,17 @@ far-range atmosphere and deployment-record changes without overlapping edits.
 | Vehicle | Requested result | Implementation |
 | --- | --- | --- |
 | `m1a2_sepv3_x` | Heavy side protection visibly distinct from TUSK | Eight deep, chamfered reactive cassettes per side, permanent backing, hinge shoulders, pivots, load rails, handles and lower lips. Existing reactive-bank behavior retained. Overall kit width is 4.48 m. |
-| `m1a3` | Enhanced armor, attachments and decorations; thin visible turret ring | Thicker skirts, sloped cheek modules, fasteners, supported service trays/cases, strapped packs and rear cooling furniture. The complete articulated turret is translated upward by 0.09 m without stretching its shell. Its base clears the hull roof by 12 mm, joined by an 18 mm circular bearing flange. |
+| `m1a3` | Enhanced armor, attachments and decorations; thin visible turret ring | Thicker skirts, sloped cheek modules, fasteners, supported service trays/cases, strapped packs and rear cooling furniture. The complete articulated turret is translated upward by 0.11 m without stretching its shell. Its base clears the hull roof by 32 mm, joined by a 38 mm circular bearing flange. |
 | `abramsx` | Improved detail, circular ring, removal of marked underside strips | A 48-sided circular bearing replaces the marked rectangular carrier at the true yaw axis. Both static 55 × 55 mm, 4.69 m underside strips are removed. Compact flank armor, service cases, side rails and tie-downs preserve the low profile and original designation panels. |
 
-The owner's latest follow-up shortens the exposed M1A3 ring by about 90%.
-The prior 0.20 m translation and 122 mm exposed seam are superseded by a
-0.09 m translation and 12 mm seam. The bearing itself is 18 mm tall, with
-3 mm embedded in the deck and 3 mm embedded in the turret base. Gun, mantlet,
-roof weapons, sensors and stowage remain children of the same turret rig;
-the earlier 0.30 m forward shift is retained. The existing shared 12 mm seating
-correction also remains, so the final rig Y is 1.772 m.
+The owner first shortened the 122 mm exposed M1A3 ring to 12 mm, then asked
+for a slightly taller ring that raises the turret with it. The latest adjustment
+adds 20 mm to that shortened version: a 0.11 m translation and 32 mm visible
+seam. The bearing itself is 38 mm tall, with 3 mm embedded in the deck and
+3 mm embedded in the turret base. Gun, mantlet, roof weapons, sensors and
+stowage remain children of the same turret rig; the earlier 0.30 m forward
+shift is retained. The existing shared 12 mm seating correction also remains,
+so the final rig Y is 1.792 m.
 
 American carousel order now places `abramsx` immediately after `m1a2_tusk_x`
 and before `m551a1_tts`.
@@ -127,7 +128,7 @@ scores are not substituted for the unavailable current comparisons.
 
 ## Shortened-ring revision
 
-The final owner target is the 18 mm bearing / 12 mm visible seam described above.
+The earlier shortened-ring target was an 18 mm bearing / 12 mm visible seam.
 Evidence for this revision lives under `.qa-dev/abrams-upgrades/ring-short/`:
 
 - `geometry.log`: HIGH/LOW native geometry and M1A3 concept regressions pass,
@@ -155,3 +156,29 @@ This correction adds no geometry or runtime work beyond the earlier package:
 it changes the turret's vertical datum and the existing bearing's height and
 center. Publication is authorized by the owner's follow-up; the comparison gate
 is not represented as passing, and no global qualification threshold is relaxed.
+
+## Small upward adjustment after the fleet wheel and muzzle update
+
+The owner subsequently asked for a slightly taller ring with the turret raised
+along with it. This revision adds 20 mm to the previously published ring and
+turret position, giving the current 38 mm bearing and 32 mm exposed seam.
+The lower bearing edge stays at world Y 1.657 m; the turret rig moves from
+Y 1.772 m to 1.792 m. Both physical overlaps remain 3 mm. No turret surface is
+stretched, and all articulated fittings retain their turret-local coordinates.
+
+The isolated branch first fast-forwarded to `39f897a5d` from main, preserving
+the intervening national wheel standard, muzzle changes and fleet measurements.
+Only the M1A3 row changes in the regenerated asset manifest. Evidence is in
+`.qa-dev/abrams-upgrades/ring-refine/`: HIGH/LOW geometry and M1A3 concept
+regressions pass; all six selected asset, framing, module, sealed-body and
+barrel probes pass; type checking and the private production build pass.
+Actual Garage and 90-degree Gallery turret views were visually inspected,
+with no browser errors. The existing no-reference publication authorization
+applies; missing comparison data is not represented as a passing source score.
+Full anatomy regeneration and verification pass: 202 anatomy/marking receipts,
+606 technical images, zero module failures/outside-envelope modules, and the
+same 93 existing dimension warnings. The fresh M1A3 release attempt reports
+zero track/sweep overlaps, zero unexpected holes and a passing equipment/sealed
+check; its only unmet requirement remains the unavailable comparison reference.
+The ring change retains the existing mesh tessellation, and regenerated hidden
+interior fill uses one fewer box (62 instead of 63).
