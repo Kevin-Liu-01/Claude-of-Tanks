@@ -647,6 +647,59 @@ path in the sand branch (`world/terrain.ts`) — are a shader item, not a palett
 Mars' far wall foot (the vista side) stays the darkest thing in frame. Titan's floor now reads a bright ochre
 (canyon-in ground mean 143, w-wall-mid lit 175), inside the arid references (Redrock's lit walls 211) but worth an
 owner look.
+### Mesa ring stack and textured arid skies — 2026-09-23 (round 47)
+
+Owner: on Sirocco Wadi, Titan Gorge, Skybridge Chasm, Sunscar Oasis, Olympus Basin, Obsidian Caldera, Blackglass
+District, Ruinspires, Copper Mesa Mine, Tidegate Polders and Whiteout Station "the skybox and mountains are too
+bland, not good like the good maps" (good: Verdant, Steinburg, Cinder Junction, Frontier, Delta, Monsoon, Glacier
+Pass, Ironworks, Airfield, Orchard, Longleaf, Reservoir).
+
+**Cause (rings).** `HORIZON_ROWS_BY_STYLE.mesa` was byte-identical to `default`: four authored rows climbing
+monotonically (50 / 62 / 84 / 88 m bases at 700 / 860 / 1000 / 1240 m), so the 1000 m row held 55-70 % of every
+mesa map's skyline (desert 302 of 431 columns, Titan 239, Copper 263) and stood higher than the "tables" in front of
+it — one stepped wall. Only `alpine` had the nine-row foothill / saddle / summit stack that makes Glacier Pass and
+Nordhavn read as layered ranges. The mesa maps also ran on the style's 0.16 strata default and the escarpment maps
+on none; Blackglass / Ruinspires / Polders fell in the rockfield's dead zone (treeline 0.14-0.30: neither forest
+impostors nor boulders).
+
+**Fix (rings, `world/maps/horizon.ts` + the map horizon blocks).** A nine-row mesa stack: a bench with buttes
+(700 m), the near tablelands (860, finite cap range 0), a REAL valley floor (960; 36 + 28 m, lower than both
+neighbours), the far escarpment (1200, cap range 1), a saddle (1260), distant summits (1320) and the outer shoulder
+(1380). Rows sharing a table field (same `f0`) are one landform at two depths — the bench is the tables' pediment,
+the saddle and shoulder the plateau tops behind the escarpment and the summits — while valley, escarpment and
+summits are independent fields, so three ranges share the skyline (Titan seed 1337: tables 94, escarpment 99,
+summits 185, shoulder 42 columns). Construction rules learned on the way: the far rows keep half their authored span
+and no authored row steps more than 2.5:1 from the row before it (the ±3 % radial meander collapsed 60 m spans onto
+the 12 m floor and the independent fields met as 10-25:1 sheets; the ledger contract is "terraces up to ~4:1"), the
+escarpment's cap gets its own 1.8:1 approach (at the near tables' 1.25:1 a 270 m rise over a real valley needed a
+220 m approach the span could not also fit a 90 m cap into — no cap formed at all), and its back rows are re-based
+onto the moved cap. Redrock keeps the classic six-row ladder (`mesaCanyon`): its outland is the analytic canyon and
+`redrockCanyonHorizon` pins every row. Authored strata: Titan 0.24, Skybridge 0.20, Copper 0.26, Caldera 0.18
+(lava-flow beds), Blackglass 0.10, Ruinspires 0.12; outland rocks Blackglass 0.45, Ruinspires 0.50, Polders 0.40; a
+second skyline rank on Caldera and Polders; tone grain 0.60 on the flattest rings (Oasis 0.62). Face belts stay off.
+
+**Cause (skies).** Every good map runs `cloudOpacity` >= 0.85 and `cloudOpacity2` >= 0.45; the arid maps ran thin
+veils (desert 0.35 / 0.18, Oasis 0.5 / 0.22, Titan 0.68 / 0.30, Copper 0.68 / 0.35) and Mars none. The near-overcast
+maps (Skybridge 1.04 / 0.78, Ruinspires 1.08 / 0.82, Polders 1.1 / 0.72) missed `sky.ts`'s low-stratus auto branch
+(0.95 / 0.90 and turbidity >= 7), so their 620 m fair-weather deck stood 6-7 km of slant range out and fully hazed in
+the 2-12° band the battle cameras see; `cloudShadowAmp` was never authored; and the arid sun and haze sat in one
+ochre family (Titan 0xffc89b / 0xb88970).
+
+**Fix (skies, sky blocks only).** Broken altocumulus under a cirrus sheet on the arid maps (desert 0.78 / 0.48,
+Oasis 0.78 / 0.48, Titan 0.82 / 0.52, Copper 0.80 / 0.50) on explicit 820-900 m virtual decks with a slower slant
+haze (0.00012-0.00013) and 2600-2900 m cells, patchy light 0.24-0.30; Mars thin dust decks 0.3 / 0.15 with a dark
+rust tint (the decks are not dimmed with the dome — a white deck would glow over the galaxy) and a shade more rust in
+the haze band; explicit low decks on Skybridge 380 m, Ruinspires 360 m, Polders 420 m, Whiteout 300 m, Caldera 360 m,
+Blackglass 330 m with diffuse patchiness 0.08-0.18; arid haze a step cooler than the sun (Oasis 0xb3ada3, Titan
+0xb3a698, Copper 0xa8a49c, Skybridge 0x9d9188). The desert Garage copy follows (`garageSkyPresets`).
+
+**Measured (wall-probe, same cameras / seed / tier; skyline ground/sky luma, lower is better).** Rings alone (B1)
+barely move the ratio — desert sky-w 1.39 → 1.53 because the taller pale summits now hold the skyline; with the
+skies (B): desert w-wall-mid 1.49 → 1.22, sky-w 1.39 → 1.47; Oasis sky-w 1.42 → 1.15; Mars sky-w 0.97 → 0.83; Titan
+sky-w 0.99 → 0.96 (sky luma above the skyline 118 → 132); Copper sky-w 1.35 → 1.32; Skybridge centre-far 0.76 → 0.87;
+Caldera sky-w 0.73 → 0.88; Polders sky-s 0.83 → 0.98; Verdant / Alpine controls unchanged within noise. Check 5 is
+still failed by the pale sand rings (desert, Oasis, Copper, Ruinspires 1.1-1.5): the ridge tops keep their sunlit
+sand colour against a deep sky, which is a ring-albedo question, not a cloud or haze one.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -730,6 +783,7 @@ skylines):
 | 45 | Steep-slope layer authoring: a per-map slope grass hold in the terrain shader (Monsoon 0.10) and Monsoon's steep layer re-authored as dark wet grass; Fjord's sourced rock tint 1.12–1.22 → 0.60–0.74 | Monsoon SW mound display luma 95 → 67, hue 33° → 64° (forest floor 66°); Fjord corner cliff 100 → 57 at sat 0.26; identified with a layer-flag probe that recompiles the splat material with one flat colour per layer (checks 3, 15) |
 | 46 | Reactive water (water pass 8): a world-anchored GPU shallow-water field (192 m / 512 texels, fixed 1/60 s) carries every hull's wake, track churn and shell splashes; the sheet reads its slope and foam and drops the hull-frame pattern inside the window | Reservoir/Coastal drive captures before/after (a1 vs b8): hull-frame slab → V wake with crests, a churn trail that stays on the path, rings from a stopped hull; receipts waterRipples + shallowWater + 101-receipt source sweep |
 | 47 | Ground palettes on the arid and ruined maps: deliberate sourced rows for the four Verdant fall-through maps (Titan/Skybridge keep their sandstone strata, Ruinspires grey, Blackglass the Caldera lift recipe), Skybridge/Titan/Mars macro-tint and strata lifts, desert hemi 0.20 → 0.28 | Titan canyon-in shaded knoll 47 → 93 and wall hue 337° → 7°; Skybridge 35 → 56; Ruinspires corner 40 → 67; Mars strata 97 → 116; desert true shade +8..11 % with lit sand +0.1..0.6 %; the tintB lever measured dead (+0.02..0.11) and the desert/Oasis contour bands identified by the layer-flag probe as the D mask on steep sand faces, unmoved by fill (+2..4 %) — a shader item (checks 3, 8, 15) |
+| 47 | Mesa ring stack and arid skies: a nine-row mesa ladder (bench with buttes, near tables, a real valley floor, far escarpment, saddle, summits, shoulder; correlated pediment / plateau rows, 2.5:1 radial limiter, per-range cap approach 1.25 / 1.80, Redrock on the classic ladder), authored strata and outland rocks on the bland rings, textured altocumulus / cirrus decks on the arid maps, dust decks over the Mars galaxy, explicit low decks on the near-overcast maps, cooler arid haze | geometry probe (skyline shared by three ranges instead of one 55-70 % row; valley 41-74 m under 67-174 m tables on the desert), wall-probe A/B1/B on the eleven maps plus Verdant / Alpine controls (skyline metric: desert w-wall-mid 1.49 → 1.22, Oasis sky-w 1.42 → 1.15, Mars 0.97 → 0.83; controls unchanged) |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
