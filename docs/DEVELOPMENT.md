@@ -23,7 +23,10 @@ Before publishing:
    policies. Check older branch work by patch/tree equivalence before copying
    it: a squash or rebase changes IDs without losing the work.
 3. Commit the integrated result and run the checks appropriate to that exact
-   commit. Record the validated commit. An earlier branch's green result does
+   commit — at minimum `npm run typecheck` and the core receipt suite
+   (`npm test`), on every push, however small the change (owner 2026-09-23,
+   after a push that turned `balanceMatchups` red on shared main for a night).
+   Record the validated commit. An earlier branch's green result does
    not certify conflict resolution or later source edits. For geometry, use
    the complete anatomy and targeted release procedure in `AGENTS.md`.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
