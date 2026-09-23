@@ -2,6 +2,68 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { createTankState } from '../../sim/movement.ts';
+
+function verifyM1A3Mantlet(tank) {
+  const spec = getSpec('m1a3');
+  const state = createTankState(spec, new THREE.Vector3(), 0);
+  const gun = tank.root.getObjectByName('rig_gun');
+  const mount = tank.root.getObjectByName('gunMount');
+  const recoil = tank.root.getObjectByName('rig_recoil');
+  assert.ok(mount.parent === gun, 'whole shield pitches without sliding with recoil');
+  const position = mount.geometry.attributes.position;
+  const brow = new THREE.Vector3(.348, .19, .88);
+  assert.ok(Array.from({length:position.count}, (_,i) => new THREE.Vector3().fromBufferAttribute(position,i))
+    .some(point => point.distanceTo(brow)<1e-5), 'broad front shield belongs to gunMount, not just a hidden collar');
+  const geometry = mount.geometry;
+  const ray = new THREE.Raycaster();
+  ray.far = .5;
+  const poses = [];
+  for (const yaw of [0, 90, 180, -90]) {
+    // Sweep intermediate angles as well as both mechanical stops.
+    for (const pitch of [-spec.gunDepressionDeg, -5, 0, 8, 16, spec.gunElevationDeg]) {
+      state.turretYaw = THREE.MathUtils.degToRad(yaw);
+      state.gunPitch = THREE.MathUtils.degToRad(pitch);
+      tank.syncFromState(state, 0);
+      tank.root.updateMatrixWorld(true);
+      const worldBrow = mount.localToWorld(brow.clone());
+      assert.ok(worldBrow.distanceTo(gun.localToWorld(brow.clone()))<1e-6,
+        'the visible shield follows the actual gun joint');
+      if (yaw===0) poses.push(worldBrow.y);
+      // Actual first-hit triangles must be moving armor; a fixed duplicate
+      // shield or stale interior fill in front would fail this sightline.
+      for (const x of [-.22, .22]) {
+        ray.set(gun.localToWorld(new THREE.Vector3(x,-.06,1.45)),
+          new THREE.Vector3(0,0,-1).transformDirection(gun.matrixWorld));
+        const hit = ray.intersectObjects(tank.root.children,true).find(hit => {
+          if (hit.object.userData.shadowOnly || hit.object.userData.authoredShadowProxy) return false;
+          for(let p=hit.object;p;p=p.parent) if(!p.visible) return false;
+          return true;
+        });
+        assert.ok(hit?.object === mount,
+          `visible shield stays attached at yaw ${yaw}, pitch ${pitch}; hit ${hit?.object?.name}`);
+      }
+      // In the forward arc, the lowest actual mantlet vertex clears the
+      // 1.66 m deck. This catches the old long chin cutting through it.
+      if (yaw===0) {
+        const point = new THREE.Vector3();
+        for(let i=0;i<position.count;i++) {
+          point.fromBufferAttribute(position,i).applyMatrix4(mount.matrixWorld);
+          assert.ok(point.y>1.66, `mantlet clears the hull at pitch ${pitch}`);
+        }
+      }
+      assert.ok(mount.geometry === geometry, 'aiming reuses the geometry');
+    }
+  }
+  assert.ok(poses.at(-1)-poses[0]>.45, 'broad shield visibly rocks through the full elevation sweep');
+  const mountPosition = mount.position.clone();
+  tank.recoilKick(0,1);
+  tank.syncFromState(state,.12);
+  assert.ok(recoil.position.z<-.05, '130 mm barrel actually recoils');
+  assert.deepEqual(mount.position, mountPosition, 'mantlet stays on its bearing during recoil');
+  tank.syncFromState(state,1);
+  assert.ok(Math.abs(recoil.position.z)<1e-8, 'barrel returns inside the mantlet');
+}
 
 // Probe rendered triangles in the owning rig's local frame, including
 // equipment independently of the structural surface that must support it.
@@ -91,6 +153,7 @@ for (const quality of ['high', 'low']) {
       assert.ok(plateTop>stock && plateTop-stock<.026, 'lifting-eye base is seated on the sloped cheek');
     }
   }
+  verifyM1A3Mantlet(m1);
   m1.dispose();
 
   const sep = createTank('m1a2_sepv3_x',null,{proceduralOnly:true,quality,geometryReceipt:true});
@@ -110,4 +173,4 @@ for (const quality of ['high', 'low']) {
   assert.equal(atRadius(2.215),liveFaceCount,'reset restores actual reactive geometry');
   sep.dispose();
 }
-console.log('abramsUpgradePackage: circular bearing, underside removal, turret seating and backed heavy ERA pass');
+console.log('abramsUpgradePackage: circular bearing, turret seating, articulated M1A3 mantlet/recoil and backed heavy ERA pass');

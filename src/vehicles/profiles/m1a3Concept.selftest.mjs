@@ -87,12 +87,12 @@ assert.ok(tank.root.getObjectByName('m1a3RemoteWeaponTower'),
 const turretShell = tank.root.getObjectByName('turret');
 assert.ok(turretShell?.isMesh, 'M1A3 structural turret shell is independently inspectable');
 const turretPositions = turretShell.geometry.attributes.position;
-const turretVertexY = (x, z) => {
+const turretVertexY = (x, z, positions = turretPositions, offset = {x:0,y:0,z:0}) => {
   const ys = [];
-  for (let i = 0; i < turretPositions.count; i++) {
-    if (Math.abs(turretPositions.getX(i) - x) < 1e-4
-      && Math.abs(turretPositions.getZ(i) - z) < 1e-4) {
-      ys.push(turretPositions.getY(i));
+  for (let i = 0; i < positions.count; i++) {
+    if (Math.abs(positions.getX(i) + offset.x - x) < 1e-4
+      && Math.abs(positions.getZ(i) + offset.z - z) < 1e-4) {
+      ys.push(positions.getY(i) + offset.y);
     }
   }
   assert.ok(ys.length > 0, `M1A3 turret vertex exists at x=${x}, z=${z}`);
@@ -109,7 +109,8 @@ near(turretVertexY(-0.36, 1.74), 0.50,
   'left cheek preserves the low mantlet brow');
 near(turretVertexY(0.36, 1.74), 0.50,
   'right cheek preserves the low mantlet brow');
-near(turretVertexY(-0.3672, 1.66), 0.47,
+const mountPositions = tank.root.getObjectByName('gunMount').geometry.attributes.position;
+near(turretVertexY(-0.348, 1.66, mountPositions, gunRig.position), 0.47,
   'center throat preserves the low mantlet brow');
 near(turretVertexY(-0.36, 1.03), roofRampY(1.03),
   'left cheek rear edge rises into the existing roof plane');
@@ -117,7 +118,7 @@ near(turretVertexY(0.36, 1.03), roofRampY(1.03),
   'right cheek rear edge rises into the existing roof plane');
 near(turretVertexY(1.42, 0.38), roofRampY(0.38),
   'outer cheek rear edge rises into the existing roof plane');
-near(turretVertexY(0.3672, 0.72), roofRampY(0.72),
+near(turretVertexY(0.348, 0.72, mountPositions, gunRig.position), roofRampY(0.72),
   'center throat rear edge rises into the existing roof plane');
 
 const cheekRoofCorners = (side) => [

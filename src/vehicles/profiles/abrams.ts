@@ -207,6 +207,7 @@ interface AbramsTurretConfig {
   readonly roofCheekOuterRearY?: number;
   readonly roofThroatRearY?: number;
   readonly joinedCheekRoof?: boolean;
+  readonly articulatedThroat?: boolean;
   readonly faceRake?: number;
   readonly yBotKnees?: readonly Vec2Tuple[];
   readonly inset: number;
@@ -1674,10 +1675,19 @@ function addAbramsShellThroat(
   // print carries a genuine VALLEY behind its collar — a shorter throat
   // block clears those side columns (aim family round, 2026-08-06).
   const thD = t.throatDepth ?? 1.3;
-  P.add('turret', slab(
-    [-thr * 1.02, yBF, zFace], [thr * 1.02, yBF, zFace - skew], [thr * 1.02, t.yBot, t.zTip - thD], [-thr * 1.02, t.yBot, t.zTip - thD],
-    [-thr * 1.02, t.roofTip - 0.03, zFace - faceRake], [thr * 1.02, t.roofTip - 0.03, zFace - skew - faceRake],
-    [thr * 1.02, roofThroatRearY, t.zTip - thD], [-thr * 1.02, roofThroatRearY, t.zTip - thD]));
+  // The M1A3's broad shield is the mantlet itself. Leave 12 mm at each
+  // cheek and author it in the pitching frame, never the recoil frame.
+  const halfWidth = t.articulatedThroat ? thr - .012 : thr * 1.02;
+  const throat = slab(
+    [-halfWidth, yBF, zFace], [halfWidth, yBF, zFace - skew], [halfWidth, t.yBot, t.zTip - thD], [-halfWidth, t.yBot, t.zTip - thD],
+    [-halfWidth, t.roofTip - 0.03, zFace - faceRake], [halfWidth, t.roofTip - 0.03, zFace - skew - faceRake],
+    [halfWidth, roofThroatRearY, t.zTip - thD], [-halfWidth, roofThroatRearY, t.zTip - thD]);
+  if (t.articulatedThroat) {
+    throat.translate(-P.gunG.position.x, -P.gunG.position.y, -P.gunG.position.z);
+    P.addGunExtra(throat);
+    return;
+  }
+  P.add('turret', throat);
   // t.slotW (visual r3 item 1, opt-in): the default thr*1.9 dark embrasure
   // plate reads as a wide plain recessed BAY beside the mantlet — the M1's
   // iconic front is raked cheek planes converging on a NARROW slot. slotW
@@ -1705,10 +1715,29 @@ function addAbramsShellBody(
   // keeps its bottom face inside the next plan trace column when the flank
   // wall is authored separately (plan-column sliver law).
   const wp = t.wedgePull ?? 0.02;
-  P.add('turret', slab(
-    [-(tw - wp), t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, zMain], [-(tw - wp), t.yBot, zMain],
-    [-(tw - inset), t.roofWide, t.zWide], [tw - inset, t.roofWide, t.zWide],
-    [tw - inset, t.roofMain, zMain], [-(tw - inset), t.roofMain, zMain]));
+  if (t.articulatedThroat) {
+    // Recess only the center behind the trunnion. Fixed cheek stock stays
+    // on both sides instead of spanning the moving cover's sweep.
+    const frontZ = P.gunG.position.z - .04;
+    const frontY = t.roofWide + (t.roofMain - t.roofWide)
+      * ((frontZ - t.zWide) / (zMain - t.zWide));
+    for (const [left, right] of [[-(tw - wp), -t.throat], [t.throat, tw - wp]]) {
+      const topLeft = Math.max(left, -(tw - inset));
+      const topRight = Math.min(right, tw - inset);
+      P.add('turret', slab(
+        [left, t.yBot, t.zWide + .1], [right, t.yBot, t.zWide + .1], [right, t.yBot, zMain], [left, t.yBot, zMain],
+        [topLeft, t.roofWide, t.zWide], [topRight, t.roofWide, t.zWide],
+        [topRight, t.roofMain, zMain], [topLeft, t.roofMain, zMain]));
+    }
+    P.add('turret', slab(
+      [-t.throat, t.yBot, frontZ], [t.throat, t.yBot, frontZ], [t.throat, t.yBot, zMain], [-t.throat, t.yBot, zMain],
+      [-t.throat, frontY, frontZ], [t.throat, frontY, frontZ], [t.throat, t.roofMain, zMain], [-t.throat, t.roofMain, zMain]));
+  } else {
+    P.add('turret', slab(
+      [-(tw - wp), t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, zMain], [-(tw - wp), t.yBot, zMain],
+      [-(tw - inset), t.roofWide, t.zWide], [tw - inset, t.roofWide, t.zWide],
+      [tw - inset, t.roofMain, zMain], [-(tw - inset), t.roofMain, zMain]));
+  }
   // Main body + bustle: near-vertical sides, roof tumblehome, rear lean-in,
   // undercut bustle bottom when the curves show one. t.yBotKnees ([[z,y]...],
   // local) splits the loft so the bottom edge can dip/step (tejas post-warp:
@@ -10643,6 +10672,8 @@ function createM1A3BuildLayout() {
     roofCheekOuterRearY: mantletRoofRamp.cheekOuterRearY,
     roofThroatRearY: mantletRoofRamp.throatRearY,
     joinedCheekRoof: true,
+    articulatedThroat: true,
+    yBotFace: .16, // swept chin clears even the rear deck at 10° depression
     faceRake: 0.44,
     inset: 0.18,
     wedgePull: 0.05,
@@ -10882,7 +10913,10 @@ function addM1A3AntennasAndGun(P: AbramsBuilderPort, t: M1A3BuildLayout['t']): v
 
   // New 130 mm cannon: deep armored cradle, segmented thermal shroud,
   // compact bore evacuator and a visibly larger muzzle/bore than M256.
-  abramsMantlet(P, 1.05, 0.76, 0.54, 0.05, 0.82);
+  // Rocking rotor seals the throat while the shield and collar elevate.
+  // These stay on gunMount so firing slides only the inner barrel.
+  P.addGunExtra(cylX(.39, .73, 32));
+  abramsMantlet(P, 1.05, 0.64, 0.44, 0.42, 0.82);
   buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.18 });
   for (const [z0, z1, radius] of [[0.60, 1.46, 0.145], [1.52, 2.38, 0.140], [2.44, 3.18, 0.136]]) {
     P.add('gun', cylZ(radius, z1 - z0, 22), 0, 0, (z0 + z1) / 2);

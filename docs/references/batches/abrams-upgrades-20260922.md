@@ -201,3 +201,45 @@ Full anatomy regeneration and checking pass again: 202 anatomy/marking records,
 The same 93 pre-existing dimension warnings remain. The owner's existing
 no-comparison-reference publication decision continues to apply to this
 confirmed-height adjustment; no reference score or global threshold is changed.
+
+
+## M1A3 mantlet articulation — 2026-09-23
+
+The owner requested that the visible mantlet follow the gun and be exercised
+through motion. The old small collar was gun-owned, but the broad throat shield
+and dark embrasure plate were fixed turret geometry, obscuring the articulation.
+The M1A3 now opts into a gun-owned shield with 12 mm cheek clearance, a transverse
+rocking bearing, and a recessed center roof section. The collar was reseated in
+the shield; its shorter chin clears the deck through depression. These parts
+pitch with `rig_gun` and remain outside `rig_recoil`. The 50 mm exposed turret
+ring, turret seat, bore datum, gun length, and combat statistics are preserved.
+
+The existing Abrams package regression now exercises HIGH and LOW through six
+pitch angles from -10° to +24°, at four turret headings. It checks actual visible
+shield triangles, the swept lower edge, reuse of the geometry, and barrel recoil
+and return. The concept roof checks now inspect the moving shield in its owner
+frame. The complete fleet articulation and recoil regressions pass as well.
+Evidence for this follow-up is under `.qa-dev/abrams-upgrades/mantlet-final/`.
+The owner's earlier authorization to publish this concept without a comparison
+reference still applies; the source-fidelity gate has not been relaxed.
+
+
+The local Garage served `v1.0.0+gcc3c10d30.dirty`. Its live pedestal was
+selected, switched to TUSK, then selected again to exercise cache return.
+The cached model was inspected at neutral, full depression/elevation, 90°
+traverse, and rearward depression using the existing post-processing renderer;
+the dormant Garage presentation required an explicit redraw for these debug
+poses. Seven additional Gallery poses were captured, including front close-ups.
+Both browser sessions reported zero errors. The sealed-body probe reports
+105,570 triangles and zero open or see-through pixels over 33 views. Only the
+`m1a3` rows changed in the shared anatomy, interior-fill, and asset registries.
+
+
+Final verification: anatomy update/check pass (202 current receipts, 606 checked
+technical assets, 1,745 modules and 404 track sides; zero failures or outside
+volumes, the same 93 existing dimension warnings). Targeted centering, module
+alignment, all nine asset views, muzzle bores, and barrel circularity pass.
+Type checking and the private production build pass. The required release
+attempt reports zero strict track overlaps and zero contiguity holes, then
+fails only the already documented absence of an M1A3 comparison registration
+and local GLB. No gate or threshold was changed for publication.
