@@ -128,9 +128,6 @@ wrap them (§F.1).
 | Instrument | What it measures |
 |---|---|
 | tools/geometry-gate.mjs (:1-12) + tools/procedural-fidelity.html?geo=1 | THE gate. Both models through the identical 1024-px ortho-mask → column-polyline pipeline; components hullCurves/wholeCurves/turretCurves/stations/dims/floaters, min is the headline; curve score = 100 − 12·mean% − 0.6·p95% − 1.5·cover% (fidelity page ~:1007); hull-anchored translation-only registration; writes docs/geometry-gate/<id>.json + tool-written ledger.json (merge, never shrink — gate.mjs:68) |
-| tools/vertex-extract.mjs (:1-25) | Reads the oracle GLB directly (no browser), replicates loader registration + normalization; emits docs/references/vertex/<id>.json — polylines at ~4.5 mm/px, the 14 station sections, landmark corners, dims replica, stylization factors, glb↔gate affine map. Every tank starts here |
-| tools/vertex-workorder.mjs (:1-11) | One headless gate run dumping BOTH models' 96-column curves per scored row in ABSOLUTE world coords + worst-first error lists — the builder's authoring numbers (gate-JSON `at` is camera-frame; never author from it) |
-| tools/vertex-normalize.mjs (:1-20) | Per-axis piecewise-linear oracle warp PLANS (gate meters → GLB control points) for repair_oracles.py batches; width never warped; --verify re-extracts |
 | tools/visual-evaluator.mjs (:1-15) + visual-evaluator-page.html | §D numbers for angle/roundness claims: edge Δangles with noise bands, arc fits + facet reads, per-column deltas; RIG MISMATCH (yaw-proxy >10°) exits 2 and ABORTS scoring; --selftest calibrates; graduates need the committed CRITIC_REFERENCE_OVERRIDES mirror |
 | tools/tmp-tank-critic.mjs + tmp-tank-critic.html | The official 14 shaded ref/proc pairs (front..close-roof) at camoSeed 4242 → shots/critic-<id>/; `--final` additionally writes 14 yaw0 + 14 yaw90 procedural frames with a shared union camera frame; the critic's raw evidence; graduates measure via its CRITIC_REFERENCE_OVERRIDES map |
 | tools/track-clip-audit.mjs (:1-18) | §B4 voxel interpenetration at bow/stern wrap zones — bandVox AND shoeVox per zone (--exact = true interpenetration; shoe = player-visible bar); dressingSkipped conformance exclusions; shots/track-clip*.json, blind spots ranked |
@@ -141,8 +138,8 @@ wrap them (§F.1).
 | tools/tmp-lod-envelope-probe.mjs | Measures geometry outside the visible hull envelope at rest (invisible-LOD law's instrument) |
 | tools/genIcons.mjs + tools/tank-assets-check.mjs | 9 outputs per tank from the shipped model: hero/top/side, two silhouettes, KE-armor/module/crew diagrams, and markings; manifest binds file hashes + dimensions to live geometry, tiers and combat volumes |
 | tools/muzzle-bore-probe.mjs | Visual fleet gate: straight-on render + center ray proves the machine-tagged cannon mouth is dark and exposed; emits per-tank PNGs and `report.json` |
-| tools/repair_oracles.py (:1-33) | Append-only oracle repair recipes: node-level surgery, pristine .bak, byte-idempotent, census-guarded; sanctioned mesh-byte exceptions documented in its header (§E) |
 | tools/quietcert.mjs | Perf certification that REFUSES contended machines by design (docs/cert-r6-*) |
+| (retired 2026-09-23) | The GLB-era oracle instruments — vertex-extract, vertex-workorder, vertex-normalize and repair_oracles.py — left the repository with the hidden fleet; their measurement records remain under docs/references/vertex/ and the process history in Git |
 | tools/screenshot.mjs | The 20-view deterministic screenshot contract (docs/SCREENSHOT_CONTRACT.md) — game-wide, not tank-specific |
 
 Photo-class instruments (no-oracle lane): tools/tmp-leo-photoclass.{html,mjs} and

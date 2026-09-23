@@ -54,8 +54,10 @@ const maintainedStandaloneTools = new Set([
   'tools/world-vehicle-visual-audit.mjs',
   'tools/world-wreck-visual-audit.mjs',
 ]);
+// 2026-09-23: the marketing generators are governed too (owner cleanup ruling:
+// a generator stays only while a document or manifest cites it).
 const standaloneTools = tracked.filter((file) => (
-  /^tools\/[^/]+\.mjs$/.test(file) && !file.endsWith('.selftest.mjs')
+  /^tools\/(?:marketing-shots\/)?[^/]+\.mjs$/.test(file) && !file.endsWith('.selftest.mjs')
 ));
 const toolReferenceFiles = tracked.filter((file) => (
   file !== 'tools/public-repo-hygiene.selftest.mjs' && (

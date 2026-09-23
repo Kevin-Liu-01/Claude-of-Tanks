@@ -174,7 +174,8 @@ perspective view (not just the orthographic top mask):
 ### Certified oracle-defect caps
 
 Some references are physically defective (fused rigs, yawed bodies,
-short-modelled barrels — see `tools/repair_oracles*.py`). If a component is
+short-modelled barrels — see the retired GLB-era `repair_oracles*.py` recipes
+in Git history). If a component is
 provably capped by an oracle defect: document the cap in
 `docs/references/tanks/<id>.md`, repair the oracle if a rigid transform can
 (batch queue), and the build must then match **published dims + the
@@ -257,7 +258,7 @@ against a hash-pinned export of the original authored `leo2_revolution` at
 commit `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`. Its report must say
 `comparisonPurpose: preservation`, never imply real-world accuracy, and carry
 the original commit and verified baseline hash. See the exact export and
-provenance procedure in [the Revolution source packet](research/leopard-revolution-source.md).
+provenance procedure in [the Revolution source packet](history/research/leopard-revolution-source.md).
 
 This preservation mode is stricter about change: **every view and component
 must reach 99**. It does not independently normalize either model's scale or

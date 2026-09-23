@@ -50,8 +50,9 @@ never excuses missing it.
   (hullCurves, wholeCurves, turretCurves, stations, dims, floaters). Min is
   the headline. Dims sovereign to PUBLISHED dims (1% grace then −8/pct).
   Certified oracle-defect caps are the only exemption, never covering dims.
-- Author from `tools/vertex-workorder.mjs` ABSOLUTE world columns (gate-JSON
-  `at` values are camera-frame — never author from them).
+- Author from the gate's ABSOLUTE world columns (historically dumped by the
+  retired `vertex-workorder.mjs`; gate-JSON `at` values are camera-frame —
+  never author from them).
 - Registration counterweight: dims anchors symmetric about the ref's own
   12%-band mid, at the ref's own band heights.
 - heightM p95 budget: ≤4 side columns above published height, aligned with

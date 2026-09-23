@@ -93,3 +93,22 @@ npm run showcase:check
 Use `--campaign-root` and `--studio-root` with `showcase:publish` when the
 approved masters live in another checkout. Publishing fails closed unless the
 campaign quality report contains exactly 60 passing frames and no failures.
+
+### Landing and feature media generators
+
+The hero rails, feature evidence, presentation frames, featured splash art and
+the second battle scene set come from dedicated generators that the five
+commands above do not run. Owner cleanup ruling (2026-09-23): every generator
+whose output ships stays and is documented here; the one-off proof pass
+(`verify-integrations.mjs`) was deleted.
+
+| Generator | Output in the product |
+|---|---|
+| `tools/marketing-shots/capture-presentation-ui.mjs` | raw UI captures under `shots/presentation-r1/ui-raw` (gitignored input of the publisher below) |
+| `tools/marketing-shots/gen-presentation-r1.mjs` | `tools/marketing-shots/scenes-presentation-r1/*.json` — the scene records cited by `public/media/showcase-r1/manifest.json` and `public/media/presentation-r1/manifest.json` |
+| `tools/marketing-shots/publish-presentation-r1.mjs` | `public/media/presentation-r1/**` (home, docs and featured panels) |
+| `tools/marketing-shots/publish-hero-rails.mjs` | `public/media/hero-rails-r2/**` (`hero-rails.selftest`) |
+| `tools/marketing-shots/publish-feature-evidence.mjs` | `public/media/feature-evidence-r2/**` (`feature-evidence.selftest`) |
+| `tools/marketing-shots/encode-featured.mjs` | `public/media/featured/*.webp` and `public/brand/og-image.png` (`landing-media.selftest`) |
+| `tools/marketing-shots/gen-scenes.mjs` | `tools/marketing-shots/scenes/*.json`, the first scene set cited by `public/media/capture-recipes-r1.json` |
+| `tools/marketing-shots/gen-scenes2.mjs` | `tools/marketing-shots/scenes2/*.json`, read by `npm run shots:battle:generate` and `public/media/capture-recipes-r1.json` |

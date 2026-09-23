@@ -70,15 +70,15 @@ in retained geometry; it is not a generic clutter-removal switch. Preparation
 writes only ignored `public/models/community-candidates/<id>_source.glb` and
 verifies the raw hash. Never stage that export as a playable asset.
 
-Specialist recipes exist, but carry historical assumptions:
+Specialist recipes exist, but carry historical assumptions (the Blender source
+studies, the Revolution / T-14 / T-90 source oracles and the GLB-era
+vertex-extract / vertex-normalize / vertex-workorder / repair_oracles pipeline
+retired on 2026-09-23; their measurement records stay under
+`docs/references/vertex/` and `docs/references/profiles/`):
 
 | Tool | Actual scope / caution |
 |---|---|
-| [leopard-source-study.py](../../tools/leopard-source-study.py) | Blender `--background --python … -- --model=<file> --id=<id> --axes=<signed,axes> --output-json=<path>`; optional `--select`, `--target-width`, `--normalization-scale`, `--render-dir`. Study dimensions and selection first; never independently rescale each component. |
-| [revolution-source-oracle.py](../../tools/revolution-source-oracle.py) | Blender script with `--model`, `--output-json`, optional `--output-glb`; source-specific, not a universal import recipe. |
-| [t14-x-source-study.py](../../tools/t14-x-source-study.py) | Blender script with `--source`, `--out`, optional `--render`, `--oracle`; uses the Armata source's interpretation. |
 | [west-x-source-oracle.mjs](../../tools/west-x-source-oracle.mjs) | Positional `<mk4\|mk3d\|k2\|kf51> <unpacked-input>`; fixed historical source and pose recipes. |
-| [vertex-extract.mjs](../../tools/vertex-extract.mjs) | `--ids=<csv>`, optional `--out=<dir> --res=2560`; legacy internal registration table. Register and verify a new source before relying on its output. |
 | [source-slab-study.mjs](../../tools/source-slab-study.mjs) | Hardcoded KF51 diagnostic, **not** a general `--id` command. Reusable primitive: [section-slab-bounds.mjs](../../tools/section-slab-bounds.mjs). |
 
 Blender is an external prerequisite; discover its executable rather than
@@ -173,7 +173,7 @@ capture_tank_step() {
 
 | Invocation ownership | Examples |
 |---|---|
-| Wrap once with `capture_tank_step` | `source-x-oracle`, Blender studies, `vertex-workorder`, `geometry-gate`, `procedural-fidelity`, `genIcons`, anatomy generators/check command, asset/centering/module probes, heavy standalone tests, public/private builds |
+| Wrap once with `capture_tank_step` | `source-x-oracle`, Blender studies, `geometry-gate`, `procedural-fidelity`, `genIcons`, anatomy generators/check command, asset/centering/module probes, heavy standalone tests, public/private builds |
 | Invoke directly; owns its queue or child phases | `track-clip-audit`, `turret-parent-audit`, `winding-audit`, `visual-evaluator`, `tank-standard-check`, `tank-release-check` |
 | Do not put the whole suite under a lock | `npm test`: pre/core/post children include their own captures. The runner itself is sequential, not a global queue owner. |
 
@@ -188,7 +188,6 @@ Replace `example_x` with the explicit changed-ID list. These are real current
 flags; each command requires its source/registry prerequisites above.
 
 ```sh
-capture_tank_step node tools/vertex-workorder.mjs --id=example_x --top=14
 capture_tank_step node tools/procedural-fidelity.mjs --ids=example_x --check --board --neutral-board
 capture_tank_step node tools/geometry-gate.mjs --ids=example_x --check
 node tools/track-clip-audit.mjs --ids=example_x --exact --strict
