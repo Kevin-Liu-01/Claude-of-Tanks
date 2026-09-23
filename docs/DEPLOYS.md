@@ -112,3 +112,4 @@ manual deployment policy above; enabling automatic deploys is not the remedy.
 | 58 | 2026-09-22 13:51 | 382e863e3 | The far ranges converge toward the sky behind them, not toward the horizon haze | main-BHxDD7VA.js | claude-of-tanks-funqlx02d |
 | 59 | 2026-09-22 14:25 | 168022a5f | Redrock Divide is an enclosed basin, and the far ranges keep a third of their own colour | main-DcZ_nJl0.js | claude-of-tanks-nyb3hllzc |
 | 60 | 2026-09-22 17:42 | ed379caac | Road wheels standardized per nation, muzzle holes rebuilt to cost less than carving, unused wheel constructions deleted | main-_q9Ws-pH.js | claude-of-tanks-4ibahpo50 |
+| 61 | 2026-09-23 03:10 | cfdbb5771 | Water continues past the square; oversized wheels fixed and one wheel finish for the fleet; hidden barrel recesses closed; Panther G scored, dev hulls and dead code removed | main-0bBg2IQx.js | claude-of-tanks-5dsf0nony |
