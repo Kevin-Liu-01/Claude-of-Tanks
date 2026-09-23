@@ -41,6 +41,9 @@ export default {
     dirtTone: (h: number, s: number, l: number) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
     sandstone: true,
     rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.68), clamp01(0.45 + (l - 0.5) * 0.76)],
+    // round 47 (2026-09-23, owner: "ground patterns are too black"): without this the sourced-texture resolver fell
+    // through to Verdant — photo grass/dirt and raw near-black Rock058 in place of the sandstone strata above
+    sourcedPalette: 'titan_gorge',
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.22, sandMacro: 0.82,
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,

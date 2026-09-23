@@ -47,6 +47,9 @@ export default {
     grassTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.32), clamp01(l * 0.62)],
     dirtTone: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.25), clamp01(l * 0.60 + 0.04)],
     rockTone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.20), clamp01(l * 0.68)],
+    // round 47 (2026-09-23): the grey city's own sourced sets (sourcedTextures.ts TERRAIN_PLAN) — it used to fall
+    // through to Verdant's green grass, orange dirt and raw near-black rock
+    sourcedPalette: 'ruinspires',
     tintA: [0.82, 0.82, 0.78], tintB: [0.48, 0.51, 0.53], tintC: [0.90, 0.84, 0.73],
     roadTint: [0.39, 0.40, 0.41], roadTexMix: 0.92, townWear: 2.2, midRelief: 0.72,
   },

@@ -196,6 +196,9 @@ const TERRAIN_PLAN = {
   // Map-quality expansion. Unknown ids intentionally fall back to Verdant,
   // so every new biome must route its sourced layers explicitly; otherwise
   // the async photo-set swap erases the authored procedural palette.
+  // Round 47 (2026-09-23): ruinspires, blackglass, titan_gorge and skybridge
+  // shipped WITHOUT a row or a splat.sourcedPalette and did exactly that for
+  // a year — see their rows at the end of this table.
   frontier: {
     G: { set: 'grass', tint: [0.96, 0.94, 0.76], roughMul: 1.28 },
     D: { set: 'dirt', tint: [0.80, 0.75, 0.64], roughMul: 1.3 },
@@ -243,6 +246,43 @@ const TERRAIN_PLAN = {
     G: { set: 'grass', tint: [0.66, 0.65, 0.56], roughMul: 1.32 },
     D: { set: 'dirt', tint: [0.52, 0.51, 0.48], roughMul: 1.38 },
     R: { set: 'cobble', tint: [0.76, 0.77, 0.76], roughMul: 1.52 }, M: null,
+  },
+  // Round 47 (2026-09-23, owner: "the ground patterns are too black" on Titan Gorge and Skybridge Chasm). These four
+  // maps had neither a row here nor a splat.sourcedPalette, so they fell through to Verdant: photo GRASS and DIRT
+  // under a canyon sun and, worse, RAW Rock058 (0.30 sRGB × AO — near-black on screen) as the R layer, which REPLACED
+  // the authored procedural sandstone strata (`splat.sandstone`, the case the desert row's comment warns about).
+  // R stays null on the two canyon maps so their strata come back; the two ruined cities get sets of their own.
+  // Registers are measured against the photo sets' mean sRGB × AO (sand 0.79/0.71/0.57, grass 0.31/0.35/0.15,
+  // dirt 0.43/0.34/0.25, Rock058 0.28/0.31/0.33).
+  titan_gorge: {
+    // beige-ochre shelves — the map's tintA/tintC register and its authored grassTone floor (HSL 27°/0.39/0.58):
+    // sand × tint ≈ 0.74/0.57/0.38 (luma 0.60), the worn variant ≈ 0.61/0.43/0.30
+    G: { set: 'sand', tint: [0.94, 0.80, 0.66], roughMul: 1.24 },
+    D: { set: 'sand', tint: [0.78, 0.60, 0.46], roughMul: 1.28 },
+    R: null, M: null,
+  },
+  skybridge: {
+    // red-orange canyon earth (tintA 1.02/0.67/0.49): sand × tint ≈ 0.68/0.47/0.29 (hue 28°, luma 0.51), the worn
+    // variant ≈ 0.52/0.34/0.21
+    G: { set: 'sand', tint: [0.86, 0.66, 0.50], roughMul: 1.24 },
+    D: { set: 'sand', tint: [0.66, 0.48, 0.37], roughMul: 1.28 },
+    R: null, M: null,
+  },
+  ruinspires: {
+    // grey ruined capital between the Ironworks and Steinburg registers: ash-muted city turf (≈ 0.32/0.34/0.23),
+    // grey-brown rubble dust (≈ 0.35/0.31/0.28) and neutral mid-grey broken stone on the cut slopes and the
+    // escarpment ring (Rock058 ships cool and dark — warmed to a neutral ≈ 0.40 grey, cavities floored)
+    G: { set: 'grass', tint: [1.05, 1.00, 1.15], desat: 0.40, roughMul: 1.32 },
+    D: { set: 'dirt', tint: [0.86, 0.90, 0.98], desat: 0.45, roughMul: 1.38 },
+    R: { set: 'rock', tint: [1.40, 1.30, 1.18], lift: 0.02, roughMul: 1.2 }, M: null,
+  },
+  blackglass: {
+    // dark volcanic-glass district under a storm front — the Caldera recipe (dark sets WITH a lift floor so shaded
+    // cavities never erase) in this map's cool register: grey-green turf ≈ 0.25/0.28/0.21, cold ash dust
+    // ≈ 0.29/0.27/0.24, blue-grey glassy stone ≈ 0.31/0.35/0.41 (its horizon rockHex 0x53606a)
+    G: { set: 'grass', tint: [0.62, 0.70, 0.78], desat: 0.45, lift: 0.05, roughMul: 1.32 },
+    D: { set: 'dirt', tint: [0.58, 0.62, 0.70], desat: 0.45, lift: 0.05, roughMul: 1.38 },
+    R: { set: 'rock', tint: [0.92, 0.98, 1.08], lift: 0.05, roughMul: 1.2 }, M: null,
   },
 } satisfies Record<string, TerrainPlan>;
 

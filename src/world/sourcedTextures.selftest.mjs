@@ -172,7 +172,15 @@ for (const mapId of ['urban', 'ruinspires', 'blackglass', 'skybridge', 'foundry'
   }
 }
 
+// Round 47 (2026-09-23): ruinspires, blackglass, titan_gorge and skybridge had neither a TERRAIN_PLAN row nor a
+// splat.sourcedPalette and fell through to Verdant's photo sets (raw Rock058 replaced their authored sandstone
+// strata). Every battlefield after the sixteen legacy ids now routes deliberately; `null` marks a map that keeps
+// the legacy own-id building route instead of an authored props.sourcedPalette.
 const newMapPalettes = {
+  ruinspires: ['ruinspires', null],
+  blackglass: ['blackglass', null],
+  titan_gorge: ['titan_gorge', null],
+  skybridge: ['skybridge', null],
   polders: ['verdant', 'coastal'],
   copper_mesa: ['badlands', 'foundry'],
   airfield: ['railyard', 'railyard'],
@@ -185,23 +193,29 @@ const newMapPalettes = {
   reservoir: ['frontier', 'frontier'],
   mars: ['badlands', 'badlands'], // 2026-09-19: Olympus Basin — rust regolith and dust-toned station huts
 };
-assert.deepEqual(Object.keys(newMapPalettes), MAP_IDS.slice(20),
-  'every new battlefield explicitly inherits its intended sourced palettes');
+assert.deepEqual(Object.keys(newMapPalettes), MAP_IDS.slice(16),
+  'every battlefield after the legacy sixteen explicitly routes its sourced palettes');
 for (const [mapId, [terrainPalette, buildingPalette]] of Object.entries(newMapPalettes)) {
   const config = getMapConfig(mapId);
   assert.equal(config.splat.sourcedPalette, terrainPalette,
     `${mapId}: terrain palette is deliberate, not an unknown-id Verdant fallback`);
-  assert.equal(config.props.sourcedPalette, buildingPalette,
-    `${mapId}: building palette is deliberate, not untinted photo defaults`);
   assert.equal(resolveSourcedTerrainPalette(mapId, config.splat), terrainPalette);
-  assert.equal(resolveSourcedBuildingPalette(mapId, config.props), buildingPalette);
+  if (buildingPalette) {
+    assert.equal(config.props.sourcedPalette, buildingPalette,
+      `${mapId}: building palette is deliberate, not untinted photo defaults`);
+    assert.equal(resolveSourcedBuildingPalette(mapId, config.props), buildingPalette);
+  } else {
+    assert.equal(config.props.sourcedPalette, undefined, `${mapId}: building palette keeps the legacy own-id route`);
+    assert.equal(resolveSourcedBuildingPalette(mapId, config.props), mapId);
+  }
 }
 for (const mapId of MAP_IDS.slice(0, 20)) {
-  assert.equal(resolveSourcedTerrainPalette(mapId), MAP_IDS.indexOf(mapId) < 16 ? mapId : 'verdant',
-    `${mapId}: legacy terrain routing remains unchanged`);
+  assert.equal(resolveSourcedTerrainPalette(mapId), mapId,
+    `${mapId}: owns a TERRAIN_PLAN row — no Verdant fall-through even without splat settings (round 47)`);
   assert.equal(resolveSourcedBuildingPalette(mapId), mapId,
     `${mapId}: legacy building palette remains unchanged`);
 }
+assert.equal(resolveSourcedTerrainPalette('no_such_map'), 'verdant', 'only an unknown id falls through to Verdant');
 
 const freshLayer = () => ({ albedo: texture(), normal: texture() });
 const volcanicLayers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
@@ -229,7 +243,7 @@ const winterLayer = freshLayer();
 await applySourcedTerrain('winter', { G: winterLayer });
 assert.equal(snowLayer.albedo.image, winterLayer.albedo.image,
   'Whiteout reuses the existing snow composite with identical texture dimensions');
-for (const mapId of ['oasis', 'copper_mesa']) {
+for (const mapId of ['oasis', 'copper_mesa', 'titan_gorge', 'skybridge']) {
   const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
   await applySourcedTerrain(mapId, layers, getMapConfig(mapId).splat);
   assert.equal(layers.G.albedo.disposeCount, 1, `${mapId}: sand replaces the base fallback`);
@@ -238,7 +252,28 @@ for (const mapId of ['oasis', 'copper_mesa']) {
     `${mapId}: the authored sandstone layer is not overwritten by grey sourced rock`);
 }
 assert.ok(loadedImageUrls.some((url) => url.includes('Ground093C_1K-JPG_Color.jpg')),
-  'the two arid maps physically use the existing sand source');
+  'the four arid maps physically use the existing sand source');
+// Round 47 (2026-09-23): the two ruined cities route every layer to a set of their own, and Blackglass carries the
+// Caldera-style lift on all three, so no albedo byte of any layer can sit under the 0.05 floor (the fixture's
+// darkest cavity — colour 20/30/40 under AO 20/255 — composes to 14/14/15 there); the unlifted Ruinspires turf is
+// the negative control that shows the same cavity below the floor.
+const liftFloor = new Uint8ClampedArray([0.05 * 255])[0];
+const rgbBytes = (layer) => [...layer.albedo.image.pixels].filter((_, index) => index % 4 !== 3);
+for (const mapId of ['ruinspires', 'blackglass']) {
+  const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
+  await applySourcedTerrain(mapId, layers, getMapConfig(mapId).splat);
+  for (const key of ['G', 'D', 'R']) {
+    assert.equal(layers[key].albedo.disposeCount, 1, `${mapId}/${key}: the ruined city routes its own sourced set`);
+    if (mapId === 'blackglass') {
+      assert.ok(Math.min(...rgbBytes(layers[key])) >= liftFloor,
+        `blackglass/${key}: every albedo byte keeps the lift floor (${liftFloor})`);
+    }
+  }
+  if (mapId === 'ruinspires') {
+    assert.ok(Math.min(...rgbBytes(layers.G)) < liftFloor,
+      'ruinspires/G: the unlifted turf composes the same cavity below the floor (negative control)');
+  }
+}
 
 const whiteoutRoof = freshLayer();
 const whiteoutStone = freshLayer();

@@ -47,6 +47,9 @@ export default {
     dirtTone: (h: number, s: number, l: number) => [0.06, clamp01(s * 0.42), clamp01(l * 0.48 + 0.04)],
     sandstone: true,
     rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.56), clamp01(0.40 + (l - 0.5) * 0.72)],
+    // round 47 (2026-09-23, owner: "ground patterns are too black"): without this the sourced-texture resolver fell
+    // through to Verdant — photo grass/dirt and raw near-black Rock058 in place of the sandstone strata above
+    sourcedPalette: 'skybridge',
     mudTone: (h: number, s: number, l: number) => [0.54, clamp01(s * 0.72), clamp01(l * 0.58)],
     // The drowned gorge is navigable liquid, not a blue-grey terrain stain.
     // It shares the terrain material and interaction mask, so this adds no

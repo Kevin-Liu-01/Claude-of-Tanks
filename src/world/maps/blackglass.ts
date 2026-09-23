@@ -44,6 +44,9 @@ export default {
     grassTone: (h: number, s: number, l: number) => [0.37, clamp01(s * 0.18), clamp01(l * 0.44 + 0.03)],
     dirtTone: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.22), clamp01(l * 0.52 + 0.025)],
     rockTone: (h: number, s: number, l: number) => [0.62, clamp01(s * 0.18), clamp01(l * 0.52)],
+    // round 47 (2026-09-23): the volcanic-glass district's own lifted sourced sets (sourcedTextures.ts TERRAIN_PLAN,
+    // the Caldera recipe in this map's cool register) — it used to fall through to Verdant's sets
+    sourcedPalette: 'blackglass',
     tintA: [0.65, 0.72, 0.76], tintB: [0.38, 0.43, 0.46], tintC: [0.82, 0.72, 0.61],
     roadTint: [0.32, 0.35, 0.37], roadTexMix: 0.88, townWear: 2.0, midRelief: 0.95,
   },
