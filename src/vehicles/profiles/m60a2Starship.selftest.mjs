@@ -90,6 +90,30 @@ try {
   assert.ok(!tank.root.getObjectByName('muzzleBoreShadowRim') && !tank.root.getObjectByName('muzzleBoreShadowDisc'),
     'no hidden authored rim/disc pair is built behind the mouth');
 
+  // Owner 2026-09-23 (round-46 follow-up): the added hole draws the launcher's TRUE 152 mm bore. Measured
+  // before the change, the fleet law clamped the mouth to the donor M60A1's nominal 105 mm tube (.064 x .92
+  // = .0589 gun-local, radialRatio .373 of the .158 collar face, an .0424 near-black core): a 118 mm hole on
+  // a 316 mm face, narrower than the bore; the 0.94 face fit would have painted .1485 of the collar dark.
+  // Declared .076 / .079 gun-local (.0684 / .0711 world under the 0.9 compact scale): the disc IS the bore,
+  // the gunmetal ring a 3 mm bevel, still the added ring 2N + disc N and never a carve.
+  const seat = mouth.userData.muzzleSeatReceipt;
+  assert.equal(seat.mouthSource, 'declared-bore', 'the Starship mouth is a declared true bore, not a fitted radius');
+  assert.ok(Math.abs(seat.supportOuterRadiusM - 0.158) < 1e-6, `the mouth still seats on the .158 collar face: ${seat.supportOuterRadiusM}`);
+  assert.ok(Math.abs(seat.outerRadiusM - 0.079) < 1e-9, `the ring ends 3 mm outside the bore: ${seat.outerRadiusM}`);
+  assert.ok(Math.abs(seat.innerRadiusM - 0.076) < 1e-9, `the near-black disc is the 152 mm bore: ${seat.innerRadiusM}`);
+  assert.ok(seat.radialRatio > 0.45 && seat.radialRatio < 0.55, `a 152 mm bore in a 316 mm collar face: ${seat.radialRatio}`);
+  const ring = tank.root.getObjectByName('muzzleBoreShadowFallbackRim');
+  const disc = tank.root.getObjectByName('muzzleBoreShadowFallbackDisc');
+  assert.ok(Math.abs(ring.geometry.parameters.innerRadius - 0.076) < 1e-9
+    && Math.abs(ring.geometry.parameters.outerRadius - 0.079) < 1e-9, 'the gunmetal ring runs from the bore to the bevel');
+  assert.ok(Math.abs(disc.geometry.parameters.radius - 0.076 * 1.02) < 1e-9, 'the disc keeps the fleet 2 % overlap under the ring');
+  const discWorldScale = disc.getWorldScale(new THREE.Vector3()).x;
+  assert.ok(Math.abs(discWorldScale * 0.076 - 0.0684) < 1e-6, `the bore is .0684 in the world under the compact scale: ${discWorldScale * 0.076}`);
+  const triangles = (geometry) => (geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3;
+  const segments = 18; // caliber > 40 mm and no authored muzzleBoreSegments
+  assert.equal(triangles(ring.geometry) + triangles(disc.geometry), 3 * segments,
+    'the hole is still the added ring 2N + disc N (54 triangles, against 90 for a carved open mouth)');
+
   const sideCassettes = hullRig.userData.m60SideCassetteReceipt;
   assert.ok(sideCassettes, 'Starship publishes its lowered side-armor seating receipt');
   assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,

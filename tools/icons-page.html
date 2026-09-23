@@ -1032,7 +1032,17 @@ function boreShotOne(id) {
       ...sampleBoreRing(innerSampleRadius, 8, discPattern, false, -.0001),
       ...sampleBoreRing(innerSampleRadius, 8, discPattern, false, .0001),
     ];
-    const rimSamples = sampleBoreRing(0.83, 16,
+    // Owner 2026-09-23 (M60A2 bore follow-up): a profile-declared mouth draws its true bore, so its
+    // gunmetal ring is a thin bevel outside the declared inner radius instead of the fleet's <= 0.72 R
+    // inner law that the fixed 0.83 R sample assumes. Sample such a ring at its own mid-radius; every
+    // fitted mouth keeps the 0.83 R sample.
+    const declaredSeat = fallback?.userData.muzzleSeatReceipt;
+    const rimSampleRadius = declaredSeat?.mouthSource === 'declared-bore'
+      && Number.isFinite(declaredSeat.innerRadiusM) && Number.isFinite(declaredSeat.outerRadiusM)
+      && declaredSeat.outerRadiusM > 0
+      ? (declaredSeat.innerRadiusM + declaredSeat.outerRadiusM) / (2 * declaredSeat.outerRadiusM)
+      : 0.83;
+    const rimSamples = sampleBoreRing(rimSampleRadius, 16,
       /muzzleBoreShadow(?:Fallback)?(?:Rim|Annulus)$/i, true);
     // A verified physical recess carries no fallback Rim mesh (2026-09-22): its own annular face
     // is the rim, and the bore group sits on the same axis, so concentricity is read against it.

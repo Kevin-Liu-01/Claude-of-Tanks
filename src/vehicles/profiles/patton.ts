@@ -140,6 +140,8 @@ interface PattonBuilderPort {
   };
   readonly geometryReceipt?: boolean;
   muzzleZ: number;
+  /** Profile-declared true-bore radii of the added mouth (tankFactoryCore.muzzleMouth). */
+  muzzleMouth?: { readonly outerRadiusM: number; readonly innerRadiusM: number };
   topY: number;
   add(
     slot: string,
@@ -5633,6 +5635,20 @@ function addM60A2TurretAndGun(P: PattonBuilderPort, cfg: M60A2BuildConfig): void
   // follows the fleet law (.0589 from the spec's gunBarrel radius) instead of
   // the hidden rim's full .148 face.
   P.muzzleZ = glen;
+  // Owner 2026-09-23 (round-46 follow-up to the tube-end fix): the added hole
+  // draws the launcher's TRUE 152 mm bore. Measured before this change: the
+  // terminal cap is the .158 collar (world .1422 under the 0.9 compact scale)
+  // and the fleet law clamped the mouth to the donor M60A1's nominal 105 mm
+  // tube, .064 x .92 = .0589 (world .0530, radialRatio .373) with a .0424
+  // near-black core — a 118 mm hole on a 316 mm face, NARROWER than the bore;
+  // the alternative 0.94 face fit (.1485) would have painted half the collar
+  // dark, wider than the photographs. Reference (scout-gen2-m60a2.md): the
+  // M162 tube reads r .148 side / .165-.20 plan with the 152 mm bore inside
+  // it, so the bore is .076 gun-local (world .0684), 48 % of the collar face.
+  // The near-black disc IS the bore; the gunmetal ring is a 3 mm bevel whose
+  // 2 % overlap keeps hiding any hairline seam. Still the added ring + disc
+  // (3N = 54 triangles at N 18, against 90 for a carved open mouth).
+  P.muzzleMouth = { outerRadiusM: 0.079, innerRadiusM: 0.076 };
   finishM60A2Variant(P, glen, cfg.hull.deck);
   applyM60CompactScale(P, 0.90, 3.14 - py + 0.12);
 }

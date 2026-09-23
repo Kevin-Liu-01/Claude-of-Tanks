@@ -196,3 +196,20 @@ single suspension-driven course is preserved. Exact strict track auditing is
 byte-identical to the baseline (`front 6`, `rear 0`, sweep `736/580`): the new
 fender geometry adds no track or shoe overlap, while the pre-existing low hull
 sweep debt remains unchanged.
+
+## 2026-09-23 TRUE-BORE MOUTH (round-46 follow-up to the 2026-09-22 tube-end fix)
+- Measured before: terminal cap = the .158 collar (world .1422 under the 0.9 compact scale);
+  the fleet law clamped the added hole to the donor M60A1's nominal 105 mm tube, .064 x .92 =
+  .0589 gun-local (world .0530, radialRatio .373) with an .0424 near-black core — a 118 mm
+  hole on a 316 mm face, NARROWER than the 152 mm bore at both qualities; the alternative
+  0.94 face fit (.1485) would have painted half the collar dark. Neither law describes a stub
+  gun-launcher whose bore sits inside a thick tube end.
+- Fix: `P.muzzleMouth = { outerRadiusM: .079, innerRadiusM: .076 }` in addM60A2TurretAndGun —
+  a profile-declared true bore (tankFactoryCore `muzzleMouth`, clamped inside the measured
+  face; the fleet law is unchanged for every undeclared hull). The near-black disc IS the
+  152 mm bore (.076 gun-local, world .0684; ref tube r .148 side / .165-.20 plan), the
+  gunmetal ring a 3 mm bevel; radialRatio .50 of the collar face.
+- Still the added hole, never a carve: ring 2N + disc N = 54 triangles at N 18 (a carved open
+  mouth would cost 90); method fallback-only, no throat, no hidden rim; marker = tube end =
+  authority barrel end at world z 3.3408 (unchanged). Receipts: m60a2Starship (declared-bore
+  witness), muzzle-bore-inventory (CONVERTED row), muzzle-seat-policy.

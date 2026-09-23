@@ -859,6 +859,13 @@ function tankFittings(): TankFittings {
   return KIT_FITTINGS;
 }
 
+/** Profile-declared radii of the added mouth (owner 2026-09-23, M60A2 bore follow-up): the
+ * near-black disc is `innerRadiusM` (the true bore), the gunmetal ring runs to `outerRadiusM`. */
+interface DeclaredMuzzleMouth {
+  readonly outerRadiusM: number;
+  readonly innerRadiusM: number;
+}
+
 export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, CupolaBuilderPort,
   ModuleVisualBuilderPort, EquipmentBuilderPort {
   readonly spec: FactoryTankSpec;
@@ -875,6 +882,13 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   gear: RunningGearUnit | null;
   /** Opt in only when the profile builds a real annulus, inner wall and recessed backstop. */
   physicalMuzzleBore?: PhysicalMuzzleBore;
+  /** Owner 2026-09-23 (M60A2 bore follow-up): the added hole's true radii for a mouth whose
+   * terminal face is a thick collar far wider than the bore. The fleet law sizes a mouth from
+   * the tip face (0.94 R) or the spec's nominal barrel radius; a 152 mm stub launcher inside a
+   * .158 collar read either half its face dark or the donor 105 mm tube's 118 mm hole. The
+   * declaration still draws only the added ring + disc (never a carve), is clamped inside the
+   * measured face, and cannot be combined with a physical bore. */
+  muzzleMouth?: DeclaredMuzzleMouth;
   /** Measured permanent armor that extends the profile's primary shell. */
   additionalShadowSources?: {
     hull?: readonly ('hullExternalArmor' | 'hullHatch' | 'hullCupola')[];
@@ -8745,6 +8759,17 @@ function* createTankOwnedSteps(
   if (physicalBore && authoredMuzzles.length) {
     throw new Error('Physical muzzle-bore declarations currently require one centered barrel');
   }
+  // Owner 2026-09-23 (M60A2 bore follow-up): a declared mouth is a drawn true bore, never a
+  // measured recess, so it cannot share a mouth with a physical bore contract.
+  const declaredMouth = P.muzzleMouth ?? null;
+  if (declaredMouth) {
+    if (physicalBore) throw new Error('A declared muzzle mouth cannot be combined with a physical muzzle bore');
+    const { outerRadiusM, innerRadiusM } = declaredMouth;
+    if (![outerRadiusM, innerRadiusM].every(Number.isFinite)
+        || innerRadiusM < 0.003 || outerRadiusM <= innerRadiusM || outerRadiusM > 0.65) {
+      throw new RangeError('Declared muzzle mouth needs finite ordered radii (3-650 mm)');
+    }
+  }
   const physicalBoreEvidence = physicalBore
     ? verifyPhysicalMuzzleBore(recoilG, P.muzzleZ, physicalBore) : null;
   const nominalMuzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
@@ -8935,12 +8960,19 @@ function* createTankOwnedSteps(
       : validAuthoredOuterR ? 'authored-rim'
         : 'nominal-spec';
     const capFitOuterR = capOuterR ? capOuterR * 0.94 : Infinity;
+
+    // Owner 2026-09-23 (M60A2 bore follow-up): a profile-declared mouth draws its true bore
+    // instead of the fitted radius. The M60A2's 152 mm launcher inside a .158 collar read the
+    // donor 105 mm tube's 118 mm hole (radialRatio .37) under the nominal clamp, and the 0.94
+    // face fit would have painted .1485 of the collar dark. The declaration is still clamped
+    // inside the measured face and the ring keeps its 2 % overlap over the disc.
     const muzzleOuterR = physicalBore?.outerRadiusM ?? Math.max(0.006, Math.min(
       capFitOuterR,
-      validAuthoredOuterR || nominalMuzzleOuterR,
+      declaredMouth?.outerRadiusM ?? (validAuthoredOuterR || nominalMuzzleOuterR),
     ));
-    const muzzleInnerR = physicalBore?.innerRadiusM ?? Math.max(muzzleOuterR * 0.46,
-      Math.min(muzzleOuterR * 0.72, caliberRadius));
+    const muzzleInnerR = physicalBore?.innerRadiusM ?? (declaredMouth
+      ? Math.min(declaredMouth.innerRadiusM, muzzleOuterR * 0.98)
+      : Math.max(muzzleOuterR * 0.46, Math.min(muzzleOuterR * 0.72, caliberRadius)));
     const muzzleRimR = physicalBore
       ? Math.min(muzzleOuterR * .12, (muzzleOuterR-muzzleInnerR) * .4)
       : Math.max(0.001, muzzleOuterR * 0.12);
@@ -9041,6 +9073,12 @@ function* createTankOwnedSteps(
         measuredProjectionM: physicalBoreEvidence.measuredProjectionM,
       } : {}),
       supportSource,
+      ...(declaredMouth ? {
+        mouthSource: 'declared-bore',
+        declaredOuterRadiusM: declaredMouth.outerRadiusM,
+        declaredInnerRadiusM: declaredMouth.innerRadiusM,
+        innerRadiusM: muzzleInnerR,
+      } : {}),
       supportOuterRadiusM: supportOuterR,
       outerRadiusM: muzzleOuterR,
       radialRatio: muzzleOuterR / supportOuterR,
