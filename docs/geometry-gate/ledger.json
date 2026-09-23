@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-22T20:13:21.577Z",
+ "generatedAt": "2026-09-23T00:11:38.894Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 80,
  "total": 182,
@@ -1840,12 +1840,12 @@
   },
   {
    "id": "jpz_e100_x",
-   "geoMin": 92.9,
+   "geoMin": 93,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "hullCurves": 92.9,
+    "hullCurves": 93,
     "stations": 99.3,
     "turretCurves": 99,
     "wholeCurves": 93.5,
@@ -2199,19 +2199,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "t90a_burlak_x",
-   "geoMin": 95,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 95,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "ajax_x",
    "geoMin": 95.1,
    "requiredMinimum": 92,
@@ -2219,6 +2206,19 @@
    "gatePassed": true,
    "components": {
     "wholeCurves": 95.1,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t90a_burlak_x",
+   "geoMin": 95.2,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 95.2,
     "dims": 100,
     "floaters": 100
    },
