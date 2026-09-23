@@ -3766,8 +3766,14 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
   // idler — §B6 trapezoid by construction; band inboard so the committed
   // skirt/strake plane clears the dilated shoe surface (§B4) ----
   const fv510PhotoBuildRunningGearStage1 = (): void => {
+    // owner 2026-09-22 ("fv510 warrior, warrior milan … wheels too big that go top from bottom but
+    // overlap each other when road wheels should be used"): r 0.42 on the 0.76 pitch overlapped by
+    // 8 cm and the 0.37/0.35 end drums sat 21 cm inside the outer road wheels. The Warrior rides
+    // six ~620 mm wheels (the fv510_milan_x source measures r 0.2991; 2R/pitch 0.82, a 14 cm gap)
+    // under a return run carried by three return rollers, as the measured X course records — the
+    // wheels no longer span the belt from the loaded run to the upper run.
     buildRunningGear(P, {
-      style: 'rubber', wheelR: 0.42, wheelW: 0.26, wheelY: 0.44, xc: 1.16,
+      style: 'rubber', wheelR: 0.31, wheelW: 0.30, wheelY: 0.37, xc: 1.16,
       // One six-station smart course, spread evenly between full-size end
       // drums.  The previous 0.25/0.28 m terminals were tucked beside the
       // first/last road wheels, so the links read as a flat under-hull belt
@@ -3775,8 +3781,9 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
       // every road wheel and every protected skirt above them while restoring
       // the Warrior's long, visibly trapezoidal course.
       wheelZs: [1.92, 1.16, 0.40, -0.40, -1.16, -1.92],
-      sprocket: { z: 2.48, y: 0.64, r: 0.37 },
-      idler: { z: -2.45, y: 0.62, r: 0.35 },
+      sprocket: { z: 2.50, y: 0.64, r: 0.30 },
+      idler: { z: -2.50, y: 0.62, r: 0.28 },
+      rollers: [{ z: -1.45, y: 0.90, r: 0.10 }, { z: 0, y: 0.85, r: 0.15 }, { z: 1.45, y: 0.90, r: 0.10 }],
       trackW: 0.46, trackTh: 0.055, shoeRadialScale: 0.72,
       topY: 1.06, botY: 0.055, deadSag: 0.055,
       contactZF: 2.12, contactZR: -2.12,

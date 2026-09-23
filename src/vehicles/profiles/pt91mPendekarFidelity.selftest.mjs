@@ -19,9 +19,18 @@ assert.ok(hull && turret, 'PT-91M keeps articulated hull and turret rigs');
 const gear = hull.userData.runningGearReceipts?.[0];
 assert.equal(hull.userData.nativeRoadWheelStations, 6,
   'Pendekar uses the native six-station T-72 suspension');
-assert.deepEqual(gear?.wheelZs, [-1.68, -1, -0.32, 0.36, 1.04, 1.72],
-  'six road wheels span the complete PT-91M track course');
-assert.ok(gear.wheelR >= 0.39, 'road wheels retain a full-size T-72 family diameter');
+// owner 2026-09-22 ("pt 91 m … wheels too big … overlap each other"): 750 mm wheels on a 0.80 m pitch.
+assert.deepEqual(gear?.wheelZs, [-1.98, -1.18, -0.38, 0.42, 1.22, 2.02],
+  'six road wheels span the complete PT-91M track course on the T-72 pitch');
+assert.equal(gear.wheelR, 0.375, 'road wheels are the T-72 family 750 mm diameter');
+assert.ok(2 * gear.wheelR <= 0.80 - 0.04, 'road wheels keep a visible gap on the 0.80 m pitch');
+{
+  const clear = (end, z) => Math.hypot(end.z - z, end.y - gear.wheelY) - (end.r + gear.wheelR);
+  assert.ok(clear(gear.sprocket, -1.98) > 0.02, 'raised sprocket clears the first road wheel');
+  assert.ok(clear(gear.idler, 2.02) > 0.02, 'raised idler clears the last road wheel');
+}
+assert.ok(!hull.getObjectByName('gearReturnRollerTires'),
+  'no return rollers: the T-72 family carries its upper run on the road-wheel tops');
 assert.ok(gear.sprocket.r >= 0.29 && gear.idler.r >= 0.29,
   'visible sprocket and idler are no longer miniature endpoint placeholders');
 assert.equal(gear.sprocket.y, 0.72,
@@ -32,8 +41,8 @@ assert.ok(gear.sprocket.y - gear.wheelY >= 0.20
   && gear.idler.y - gear.wheelY >= 0.20,
   'both terminal wheels create visibly climbing track shoulders');
 assert.equal(hull.userData.pt91mRunningGearReceipt?.revision,
-  'pendekar-linked-course-r2',
-  'PT-91M records the raised-terminal linked-course revision');
+  'pendekar-linked-course-r3-road-wheel-size',
+  'PT-91M records the raised-terminal linked-course revision with the 750 mm road wheels');
 assert.ok(Math.abs(hull.userData.pt91mRunningGearReceipt?.terminalLiftM - 0.17) < 1e-9,
   'PT-91M records the 17 cm terminal-wheel lift');
 assert.equal(hull.userData.pt91mRunningGearReceipt?.detachedTrackTrimRemoved, true,

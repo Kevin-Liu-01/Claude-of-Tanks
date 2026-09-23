@@ -2720,19 +2720,24 @@ function buildPT91MHull(P: T90BuilderPort): void {
   // climbing shoulders seen on the Pendekar instead of reading as a flat
   // conveyor belt.
   const terminalWheelY = 0.72;
+  // owner 2026-09-22 ("pt 91 m … wheels too big … overlap each other when road wheels should be
+  // used"): r 0.395 on a 0.68 pitch overlapped by 11 cm — the six stations were compressed onto
+  // 3.4 m of a 6.86 m hull. The T-72M1 hull carries six 750 mm wheels on a ~0.80 m pitch (2R/pitch
+  // 0.94, a 5 cm gap over the 4.0 m contact), the raised end wheels move out to clear them, and the
+  // three fictional return rollers leave: the T-72 family carries its upper run on the wheel tops.
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.395, wheelW: 0.22, wheelY: 0.48, xc: 1.37, dishR: 0.84,
-    wheelZs: [-1.68, -1.00, -0.32, 0.36, 1.04, 1.72],
-    sprocket: { z: -2.48, y: terminalWheelY, r: 0.30, trackR: 0.285 },
-    idler: { z: 2.58, y: terminalWheelY, r: 0.30, trackR: 0.275 },
-    rollers: [-1.20, 0, 1.20].map((z) => ({ z, y: 0.79, r: 0.07 })),
+    style: 'rubber', wheelR: 0.375, wheelW: 0.22, wheelY: 0.48, xc: 1.37, dishR: 0.84,
+    wheelZs: [-1.98, -1.18, -0.38, 0.42, 1.22, 2.02],
+    sprocket: { z: -2.66, y: terminalWheelY, r: 0.30, trackR: 0.285 },
+    idler: { z: 2.70, y: terminalWheelY, r: 0.30, trackR: 0.275 },
+    rollers: [],
     trackW: 0.50, trackTh: 0.085, topY: 0.88, botY: 0.055,
     paintedEnds: true, coveredTop: true, arms: true,
     linkPitchM: 0.155, shoeRadialScale: 0.88,
     padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
   });
   P.hullG.userData.pt91mRunningGearReceipt = {
-    revision: 'pendekar-linked-course-r2', roadWheelsPerSide: 6,
+    revision: 'pendekar-linked-course-r3-road-wheel-size', roadWheelsPerSide: 6,
     terminalDiameterM: 0.60, detachedTrackTrimRemoved: true,
     legacySkidPanelsRemoved: true, sprocketY: terminalWheelY,
     idlerY: terminalWheelY, terminalLiftM: terminalWheelY - 0.55,

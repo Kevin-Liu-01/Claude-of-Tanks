@@ -450,18 +450,23 @@ function buildT72M1JaguarHull(P: PolishBuilderPort): void {
     z: 2.83, y: 0.69 + JAGUAR_END_WHEEL_LIFT_M, r: 0.30,
   });
   const frontContactZ = 2.53;
+  // owner 2026-09-22 ("t72 m1 … wheels too big … overlap each other when road wheels should be
+  // used"): r 0.455 on the 0.82 pitch overlapped by 9 cm and buried the -2.42 sprocket 32 cm inside
+  // the first road wheel. The T-72M1 carries six 750 mm wheels (2R/pitch 0.91, a 7 cm gap) and no
+  // return rollers — its upper run rides on the wheel tops — so the sprocket moves aft to clear
+  // the first wheel by a real margin and the three fictional rollers leave.
   const rearSprocket = Object.freeze({
-    z: -2.42, y: 0.68 + JAGUAR_END_WHEEL_LIFT_M, r: 0.32,
+    z: -2.68, y: 0.68 + JAGUAR_END_WHEEL_LIFT_M, r: 0.32,
   });
   const rearContactZ = -2.14;
   buildRunningGear(P, {
     ...t72TrackFinishFor(P),
-    style: 'rubber', wheelR: 0.455, wheelW: 0.23, wheelY: 0.47, xc: 1.37,
+    style: 'rubber', wheelR: 0.375, wheelW: 0.23, wheelY: 0.47, xc: 1.37,
     dishR: 0.79, wheelZs,
     sprocket: rearSprocket,
     idler: frontIdler,
     contactZF: frontContactZ, contactZR: rearContactZ,
-    rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: 0.91, r: 0.082 })),
+    rollers: [],
     // Preserve the existing road-wheel centers and loaded contact line. The
     // taller upper course follows the raised idler/sprocket pair so the belt
     // gains height without moving the six road wheels or lowering the tank.
@@ -473,7 +478,7 @@ function buildT72M1JaguarHull(P: PolishBuilderPort): void {
     tireHex: 0x2e302a, wheelHex: 0x49503f, gearFloor: true,
   });
   P.hullG.userData.jaguarRunningGearReceipt = Object.freeze({
-    revision: 'fixed-road-wheels-raised-hull-and-track-course-r5',
+    revision: 'road-wheel-size-and-rollerless-return-run-r6',
     frontIdlerZ: frontIdler.z,
     frontContactZ,
     rearSprocketZ: rearSprocket.z,
@@ -1248,13 +1253,17 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
 
   // ---- running gear: T-72 stance centered on the 0.065 body mid ----------
   const wheelZs = [-1.95, -1.13, -0.31, 0.51, 1.33, 2.15];
+  // owner 2026-09-22 ("pt 91 m … wheels too big … overlap each other"): r 0.455 on the 0.82 pitch
+  // overlapped by 9 cm and both end wheels sat 35-39 cm inside the outer road wheels. Six 750 mm
+  // T-72 wheels (2R/pitch 0.91, a 7 cm gap), the end wheels moved out to clear them, and no return
+  // rollers: the T-72 family carries its upper run on the road-wheel tops.
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.455, wheelW: 0.23, wheelY: 0.47, xc: 1.37,
+    style: 'rubber', wheelR: 0.375, wheelW: 0.23, wheelY: 0.47, xc: 1.37,
     dishR: 0.79, wheelZs,
-    sprocket: { z: -2.30, y: 0.68, r: 0.32 },
-    idler: { z: 2.52, y: 0.69, r: 0.30 },
+    sprocket: { z: -2.64, y: 0.68, r: 0.32 },
+    idler: { z: 2.82, y: 0.69, r: 0.30 },
     contactZF: 2.26, contactZR: -2.02,
-    rollers: [-1.29, -0.09, 1.16].map((z) => ({ z, y: 0.91, r: 0.082 })),
+    rollers: [],
     trackW: 0.56, topY: 1.00, botY: 0.025, paintedEnds: true,
     coveredTop: true, arms: true,
   });

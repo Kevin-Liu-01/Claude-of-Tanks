@@ -437,9 +437,12 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
   }), 0, 0, 0, null, 'hull');
 
   const wheelZs = [1.60, 0.79, -0.02, -0.83, -1.64];
+  // owner 2026-09-22 ("stb-1 … wheels too big … overlap each other"): r 0.455 on the 0.81 pitch
+  // overlapped by 10 cm. The prototype's five wheels are the Type 74 class (~700 mm here, 2R/pitch
+  // 0.86, an 11 cm gap); the dead track keeps riding on the wheel tops.
   buildRunningGear(P, {
-    style: 'rubber', dishR: 0.86, wheelR: 0.455, wheelW: 0.26,
-    wheelY: 0.51, xc: 1.38,
+    style: 'rubber', dishR: 0.86, wheelR: 0.35, wheelW: 0.26,
+    wheelY: 0.42, xc: 1.38,
     wheelZs,
     sprocket: { z: -2.55, y: 0.74, r: 0.42 },
     idler: { z: 2.48, y: 0.74, r: 0.42 },

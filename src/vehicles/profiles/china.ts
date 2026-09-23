@@ -667,8 +667,11 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   const seg = P.q ? 20 : 14;
 
   // ---- six large-wheel stations, rear drive, covered return run.
+  // owner 2026-09-22 ("vt 4a1, ztz 99a2 and ztz 99a2 proto … wheels too big … overlap each other"):
+  // r 0.47 on the 0.84 pitch overlapped by 10 cm. The Type 99A family rides six ~720 mm wheels
+  // (2R/pitch 0.86, a 12 cm gap); the upper run stays covered under the skirts.
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.47, wheelW: 0.26, wheelY: 0.54, xc: 1.47,
+    style: 'rubber', wheelR: 0.36, wheelW: 0.26, wheelY: 0.43, xc: 1.47,
     dishR: 0.78, wheelHex: '#4b523c',
     wheelZs: [2.14, 1.30, 0.46, -0.38, -1.22, -2.06],
     sprocket: { z: -3.05, y: 0.78, r: 0.39 },

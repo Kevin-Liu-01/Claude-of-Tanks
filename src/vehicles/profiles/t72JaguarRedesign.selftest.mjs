@@ -56,8 +56,20 @@ assert.ok(runningGear.sprocket.z <= -2.41,
 assert.ok(Math.min(...runningGear.loopPoints.map(([z]) => z)) < -2.72,
   'linked track course wraps naturally around the relocated rear sprocket');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.revision,
-  'fixed-road-wheels-raised-hull-and-track-course-r5',
-  'Jaguar records the fixed-road-wheel, taller-track running-gear revision');
+  'road-wheel-size-and-rollerless-return-run-r6',
+  'Jaguar records the 750 mm road-wheel, rollerless-return-run running-gear revision (owner 2026-09-22)');
+// owner 2026-09-22: six 750 mm T-72 wheels that read as separate road wheels, and end wheels clear of them.
+assert.equal(runningGear.wheelR, 0.375, 'Jaguar road wheels are the T-72 750 mm size');
+{
+  const zs = [...runningGear.wheelZs].sort((a, b) => a - b);
+  const pitch = Math.min(...zs.slice(1).map((z, i) => z - zs[i]));
+  assert.ok(2 * runningGear.wheelR <= pitch - 0.05, `road wheels keep a visible gap (2R ${2 * runningGear.wheelR} vs pitch ${pitch})`);
+  const clear = (end, z) => Math.hypot(end.z - z, end.y - runningGear.wheelY) - (end.r + runningGear.wheelR);
+  assert.ok(clear(runningGear.sprocket, zs[0]) > 0.02, 'rear sprocket clears the first road wheel');
+  assert.ok(clear(runningGear.idler, zs.at(-1)) > 0.02, 'front idler clears the last road wheel');
+}
+assert.ok(!hull.getObjectByName('gearReturnRollerTires'),
+  'no return rollers: the T-72 family carries its upper run on the road-wheel tops');
 assert.ok(Math.abs(runningGear.botY + runningGear.trackTh / 2 - (runningGear.wheelY - runningGear.wheelR)) < 1e-9,
   'Jaguar loaded track run carries the tire feet (ground-datum seat, 2026-09-17) while the upper course rises');
 assert.equal(runningGear.wheelY, twardyHull.userData.runningGearReceipts[0].wheelY,

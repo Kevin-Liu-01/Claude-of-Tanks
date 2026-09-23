@@ -3635,9 +3635,13 @@ function buildType74(P: MiscBuilderPort): void {
   P.add('hull', frustum(1.50, -2.00, -2.74, 1.46, -2.04, -2.74, 1.30, 1.372)); // rear louvre deck, slight fall 1.395 -> 1.372
   for (const s of [-1, 1]) {
     // sponson mid-course: the visible hull side band between fender line and
-    // the exposed top run (bottom 1.16 = shoe-envelope top 1.13 + §B4 margin;
-    // z window -2.40..+2.35 stays clear of both raised end-wheel wraps)
-    P.add('hull', box(0.50, 0.215, 4.75), s * 1.255, 1.2675, -0.025);
+    // the exposed top run. With the 740 mm road wheels (2026-09-22 wheel-size
+    // fix) the dead track's shoe crest rides at 0.84 mid-run and 0.94 where
+    // the band ramps to the raised idler at the window's front end (measured
+    // on the built shoes), so the band bottom follows it down to 0.97 (§B4
+    // margin 0.03 at the ramp); z window -2.40..+2.35 stays clear of both
+    // raised end-wheel wraps)
+    P.add('hull', box(0.50, 0.405, 4.75), s * 1.255, 1.1725, -0.025);
     // tub-to-deck inboard wall (channel-pan class: INBOARD of the band inner
     // face 1.04 by 3+ cm — §B2 metal where the real hull has metal)
     P.add('hull', box(0.06, 0.53, 6.48), s * 0.945, 1.10, -0.06);
@@ -3732,8 +3736,12 @@ function buildType74(P: MiscBuilderPort): void {
   // authored = world, scale 1.0.
   const XC = 1.2835;
   const wheelZs = [1.83, 0.96, 0.10, -0.77, -1.64];
+  // owner 2026-09-22 ("type 74 … wheels too big that go top from bottom but overlap each other when
+  // road wheels should be used"): r 0.42 on the 0.865 pitch left a 2 cm gap and the tires read as one
+  // touching row. The Type 74 carries five ~740 mm wheels (2R/pitch 0.86, a 12 cm gap); the dead
+  // track still rides on their tops, as on the real vehicle.
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.42, wheelW: 0.26, wheelY: 0.475, xc: XC,
+    style: 'rubber', wheelR: 0.37, wheelW: 0.26, wheelY: 0.425, xc: XC,
     wheelZs,
     sprocket: { z: -3.00, y: 0.90, r: 0.26 }, idler: { z: 2.93, y: 0.64, r: 0.28 },
     // The road-wheel tire datum is +0.055 m.  The former -0.08 m course
