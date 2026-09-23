@@ -133,7 +133,7 @@
  "stationMethod": "exact-triangle-slab-intersections",
  "curveRows": {
   "side_hull": {
-   "score": 94.16856508251865,
+   "score": 94.16856508251867,
    "meanPct": 0.42,
    "p95Pct": 1.35,
    "coverPct": 0,
@@ -349,7 +349,7 @@
    ]
   },
   "plan_hull": {
-   "score": 96.12664187377126,
+   "score": 96.12664187377128,
    "meanPct": 0.29,
    "p95Pct": 0.69,
    "coverPct": 0,
@@ -1172,9 +1172,9 @@
   },
   {
    "name": "physicalOverallLengthM",
-   "actual": 10.065699774932861,
+   "actual": 10.06569977493286,
    "published": 10.058800220489502,
-   "pct": 0.0685922206637053,
+   "pct": 0.06859222066368764,
    "method": "full visible physical envelope, no raster filtering"
   }
  ],
