@@ -406,6 +406,40 @@ divide an enclosed area instead of being in a 'gap'".
   the midfield law is unchanged. A/B on copper_mesa, verdant, alpine, steppe and badlands: the far ranges keep more of
   their local colour and shading; whether this is enough against the owner's "disappear-y" read is the next eye test.
 
+### Water past the square — 2026-09-22 (round 40)
+
+Check 13 ("water at the edge: same level and shader beyond") failed on every wet map. Coastal's bay stopped at the red
+line in a straight cut and the ring beyond it was a neutral grey plane; Saltwind's bay was clipped by the boundary
+with a beach and hills where the open sea should be, and its three overlapping circle basins rasterised into
+straight-edged rectangles with sand strips between them.
+
+What changed. `world/edgeWater.ts` derives a sea opening wherever a run of flattened water 40 m or longer reaches
+within 20 m of the square edge (the bay's shore ramps dry the last metres, so the scan sits inside the fringe) —
+azimuth, width with tapering shoulders, and the floor height — and keeps a map's authored aperture where the two
+overlap. Coastal keeps its authored east bay; Saltwind derives a 63° west opening; dry maps derive nothing and their
+rings are byte-identical. The horizon ring lowers each opening to the water floor, marks its faces marine, and hands
+every marine face — near band or far range — to the TERRAIN material, which renders them through the square's own
+open-water path: the mask channel past the edge starts at the wetness the square carries at its edge (a turquoise
+shoal stays a shoal) and deepens to open sea over 320 m; marine vertices face up (the analytic hill normals had kept
+the flat apron 40 % darker); the round-32 far-floor rule no longer flattens water. The shallow-water sheet gains an
+apron fan over each opening from 12 m inside the edge to 1400 m out, sharing the sheet material so fresnel, glitter
+and the deep colour continue, with its wetness continuing the edge texel the same way. Saltwind's bay is one
+authored 16-station contour with a 12 m wet shelf (a metric shelf width for large bays: the default 0.80-of-radius
+waterline put a 30–50 m shelf of water-level sand in front of every jetty), open to the west edge, its two harbour
+landings on stations whose beached boats rest on a shallow bank at every battle seed.
+
+Measured straight down onto the seam (camera 260 m above the edge, `sea-e-down` / `sea-w-down`): Coastal's apron
+was 0.63× the square's water luma with a 35-luma column step at the seam; it is now 1.25× with an 11-luma step and
+the shoal pattern crosses the boundary. Saltwind: 0.35× → 0.63× (the open sea deepens beyond the shallow bay by
+design), step 21 → 5. Oblique (`sea-e-mid`, camera 12 m up looking out): Coastal apron band 153 → 171 luma against
+a square band of 163; Saltwind's apron band went from a 161-luma sand ring to 123 of sea against a 105 bay.
+
+Debugging notes worth keeping: a baked ring colour can never match the square's sea (two renderers, and the in-square
+colour is map-dependent); the vista program divides the vertex colour out for absolute tints, so marine faces must
+bypass it; the terrain material's far-floor rule and its analytic normals both act on a lowered apron; and the last
+hard step was the apron fan's winding — a double-sided water material lit it from below. The straight-down view with
+layers toggled (`.qa-dev/apron-layers-probe.mjs`) found each of these where oblique views only showed "still a step".
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -448,7 +482,7 @@ skylines):
 | 10 | Tree line vs border | Density gradient continues | Wall or abrupt end |
 | 11 | Shadows | Shadow colour = sky ambient; soft edges | Black or grey mismatch |
 | 12 | Props | Seated, decal underneath | Floating |
-| 13 | Water at the edge | Same level and shader beyond | Plane ends |
+| 13 | Water at the edge | Same level and shader beyond | Plane ends (round 40: derived openings, terrain-material marine faces, sheet apron — coastal/saltwind continuous) |
 | 14 | Haze gradient | Smooth in 8-bit | Banding |
 | 15 | Ring vs playable palette | Same tiles and season | Ring reads as another biome |
 
@@ -482,7 +516,7 @@ skylines):
 | 37 (landed: elevation-aware target) | The post aerial pass's scatter-in target now follows the sky's sampled elevation falloff so far land converges toward the sky it is seen against (the horizon-haze target was the check-5 cause); the desert sky gains Rayleigh. Open: the arid ridge tops in thin air, a multi-row sky elevation profile, and folding the vista's own haze into the aerial pass | skyline metric before/after on eight maps (table above) |
 | 38 | Anti-tiling: hex-tiled detail albedo/normal layers, detail normals fade to flat with distance, anisotropic filtering with a measured mip-bias policy | 30–200 m tiling sheets, moiré-in-motion clips |
 | 39 (landed: Redrock basin, haze ceilings) | Redrock's mouths closed by a headwall with the flanks' profile; the far-haze stack capped so ranges keep a third of their own colour. Deferred to a later round: a second far cascade with a macro colour map, per-vertex horizon occlusion baked at build, sky-projected ambient driving haze colour and water reflection | wall-probe sheets on badlands; far-range A/B on five maps |
-| 40 | Decal clipmap rings around the camera for WoT-density ground decals; water continuity where round 36 left gaps | same-camera pairs |
+| 40 (landed: water past the square) | Derived sea openings from the edge water scan, the ring's marine faces rendered by the terrain material's own sea path, the sheet's apron fan, Saltwind's bay as one contour open to the sea. Decal clipmap rings move to a later round. | straight-down seam metric (`sea-*-down`), oblique before/after |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
@@ -497,7 +531,7 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | desert | fair | dune faces carry dark parallel ripple bands at every range — a corduroy repeat (8); far mesas paler than the sky (5) |
 | winter | fair | ring is a white sheet with a few dark specks (3); skyline nearly invisible in the haze (5) |
 | urban | fair | pale cracked corner cliff beside green turf reads as another material (15); centre sky views blocked by buildings (probe) |
-| coastal | fair | outside-in view is a flat pale plain to a faint ridge — the sea aperture side shows no water shader beyond (13) |
+| coastal | good | round 40: the bay runs on as the same water past the edge (terrain sea path + sheet apron); shoal pattern crosses the seam |
 | autumn | good | pale grey corner rock next to golden ground (15, mild); far ranges blue — good |
 | steppe | good | rim outcrops stop at the seam, plain grass beyond (1, mild) |
 | railyard | fair | mossy dark corner slope; skyline flat under an overcast sky (3, 5) |
@@ -521,7 +555,7 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | orchard | good | grey corner rock beside green (15, mild); far ranges blue |
 | longleaf | good | dark corner rock; ranges good |
 | mangrove | good | flat green ring; water and trees continue |
-| saltwind | fair | outside-in view pale and flat toward a faint ridge (13, 5) |
+| saltwind | good | round 40: one hooked bay open to a derived 63° west sea; the sand-strip rectangles are gone (5 still open) |
 | reservoir | good | corner rock dark grey; ranges, forest and water good |
 | mars | fair | ring beds print as high-contrast zebra stripes on every ridge (8); dark side of ridges black (4) |
 

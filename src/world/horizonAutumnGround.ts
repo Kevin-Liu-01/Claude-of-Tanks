@@ -24,13 +24,27 @@ export function bindAutumnHorizonGround(
   const nearCount = bands * columns * 6;
   if (!Number.isInteger(rows) || rows < bands + 1 || index.count !== (rows - 1) * columns * 6)
     throw new Error('Expected the ring topology of ' + columns + ' columns');
-  for (let i = 0; i < nearCount; i += 3) {
-    const b = index.getX(i + 1);
-    index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, b);
+  // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): every ring face
+  // inside a sea aperture — near band or far range — renders with the terrain material, which paints it as the
+  // square's own open water (terrain.ts outlandSeaWeight), so the sea keeps one shader from the battlefield to the
+  // horizon. Near-band land faces keep their winding reversal; marine faces keep the winding they were built with
+  // (both materials are double-sided). The marine mask is the ring's UV V channel (V < 0).
+  const uv = geometry.attributes.uv, faces = index;
+  const marineFace = (i: number): boolean => !!uv
+    && Math.min(uv.getY(faces.getX(i)), uv.getY(faces.getX(i + 1)), uv.getY(faces.getX(i + 2))) < -0.5;
+  const terrainFaces: number[] = [], vistaFaces: number[] = [];
+  for (let i = 0; i < faces.count; i += 3) {
+    const a = faces.getX(i), b = faces.getX(i + 1), c = faces.getX(i + 2);
+    if (i < nearCount) terrainFaces.push(a, c, b); // reverse the old downward-facing skirt winding
+    else if (marineFace(i)) terrainFaces.push(a, b, c);
+    else vistaFaces.push(a, b, c);
   }
-  index.needsUpdate = true;
-  geometry.addGroup(0, nearCount, 1);
-  geometry.addGroup(nearCount, index.count - nearCount, 0);
+  const reordered = new (faces.array.constructor as new (n: number) => typeof faces.array)(faces.count);
+  reordered.set(terrainFaces, 0); reordered.set(vistaFaces, terrainFaces.length);
+  faces.array.set(reordered); faces.needsUpdate = true;
+  const terrainCount = terrainFaces.length;
+  geometry.addGroup(0, terrainCount, 1);
+  geometry.addGroup(terrainCount, faces.count - terrainCount, 0);
   mesh.material = [mesh.material, material];
   mesh.receiveShadow = true;
   for (const texture of textures) if (!retained.includes(texture)) retained.push(texture);

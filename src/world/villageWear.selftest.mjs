@@ -33,13 +33,15 @@ const FROZEN = {
   other28: { desktop: '7cfb2658c945d2d1772cbbaa58df805247805d50986abc4bc599ab04fcd3b9e1', mobile: '3a4e0bf7cb55dc90d241adffdf75000e48bc58f1c60189c9bb3398d0b8687f71' },
   pilotMasks: {
     coastal: { 512: '1cd1ec0f2649e5f67e7c5a820c52953594cca026a6abae22bb30ca0bdf86bd6c', 256: '734eecb8ca9cbe6fc0bc62c94642b91825c11d640769b8a352842b2fb672c278' },
-    saltwind: { 512: '4630bb971fabf8fa1f355247994de5dc388e0ebf61c6e4668f7b1062032eee43', 256: 'fb8684923e0993f50e3cb4862b3a8ebabdc23566e3af7bcc7adaae9cd6e4898f' },
+    saltwind: { 512: 'c080e5b0e13655ef3e4346fc8a9b7d5f56432802ae93b970599b796c8de1256e', 256: '975ac5fd80cea3f0019228114bc8ba7fcc9f2ca78ef636ffadb52e1bacd6d6c1' },
   },
   // 2026-09-13 lighting: alpine/fjord/caldera/monsoon/delta/blackglass/foundry/mangrove sky presets
   // moved toward the 1049e4e key/fill ratio (graphics commit 471c7b709); repinned from the current build.
   // round 37 (2026-09-22): the desert sky's Rayleigh rose 0.55 → 0.85 (Oasis inherits it) — the desert / oasis config
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
-  configs: 'a55d5dfa8a3a1e0c0e74cacad7d07b7b88d2b40eab1f836de057929637e4d329',
+  // round 40 (2026-09-22): coastal.ts's sea aperture dropped its authored grey (edgeWater.ts gives it the map's water colour) and
+  // saltwind.ts authored its bay as one contour; the frozen config digest moved for those two maps only
+  configs: '812345b755e852e845b8e0e446c293d7095f981935becab5c7744960f4882e97',
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 

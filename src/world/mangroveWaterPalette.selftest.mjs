@@ -181,7 +181,9 @@ function verifyHistoricalConfigs(resolve) {
   // round 37 (2026-09-22): the desert sky's Rayleigh rose 0.55 → 0.85 (Oasis inherits it) — the desert / oasis config
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
   assert.equal(hash(JSON.stringify(unchangedMaps)),
-    '7a2f7462ae27088b7cfd93f090735869b2369ea750eeea155da88477b332bb31',
+    // round 40 (2026-09-22): coastal.ts's aperture lost its authored grey (edgeWater.ts colours it from the water profile) and
+    // saltwind.ts authored its bay as one contour open to the west — the other-29 config digest moved for those two maps
+    '7b10daead9f437129bc61255d4dda400cf2d2cc2c47b2592121ab6beb59eaeda',
     'other29 config digest retains original donor policy and authenticated historical Foundry/Autumn inputs');
   const historical = paletteReceiptInput(historicalShorelineConfig(resolve('mangrove')));
   assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),

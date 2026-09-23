@@ -204,8 +204,10 @@ function checkSaltwindSite(field, site, wood, supportReceipts, index) {
 }
 
 assert.equal(saltwind.props.riverLandings.length, 2);
-assert.equal(new Set(saltwind.props.riverLandings.map((site) => site.lakeIndex)).size, 2,
-  'occupational sites are distributed along two distinct village-facing shores');
+// round 40 (2026-09-22): Saltwind's bay is one authored contour, so both landings share lakeIndex 0 and stand on two
+// distinct stations of its village-facing east shore (70° apart, the stations between them sit on the basin landform's wet flat) instead of two basins
+assert.equal(new Set(saltwind.props.riverLandings.map((site) => `${site.lakeIndex}:${site.shoreAngleDeg}`)).size, 2,
+  'occupational sites are distributed along two distinct village-facing shore stations');
 for (const site of saltwind.props.riverLandings) {
   assert.equal(site.shoreReeds, false);
   assert.equal(site.jettyLength, 19);

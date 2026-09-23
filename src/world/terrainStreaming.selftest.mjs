@@ -189,7 +189,8 @@ const GEOMETRY_GOLDENS = {
   orchard: 'e084ffa305d7847a26bc81dab51d5fc6fcb57bd32052888c7885dd54bb388136',
   longleaf: '597146dfdb29062a529e77c8d47beaae5feed9436ec68d78b0230783d5676203',
   mangrove: '4ec02e0d658d3200ab167cb16ca25f4d8f2c4f7dd24d0f4adef1fab2586be9d2',
-  saltwind: 'ddf8d6cdf0ec6196bfad3e2b6fa60915ed872d5ea54540851b24e72be440b5f6',
+  // round 40 (2026-09-22): Saltwind's bay is one authored hooked contour open to the west edge; geometry/bounds digest re-pinned
+  saltwind: '0a1d0cad56487a03c62ce3d2849a56787a3ea575978149e2d90437834e35481a',
   reservoir: '40c628b2578a24456afd9fe3fa9c5f676905ad8cb2c06bc77f71f8f3f8f7ef1f',
   // 2026-09-19: Mars (Olympus Basin) — first reviewed authored geometry golden.
   mars: 'd40c02657abe7adca44775e9a80051efec7c75af2a49391e1ea056a9a6b21b12',

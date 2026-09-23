@@ -40,6 +40,7 @@ import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type 
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
+import { buildSeaApronGeometry, resolveSeaOpenings, seaOpeningUniforms, type SeaOpening } from './edgeWater.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -116,6 +117,8 @@ interface LakeConfig {
   depth?: number;
   level?: number;
   radii?: import('./shoreline.ts').ShorelineRadii;
+  /** Round 40: the wet shelf's width in metres from the authored shoreline to the waterline (shoreline.ts). */
+  shelfM?: number;
 }
 
 interface LandformConfig {
@@ -2465,6 +2468,8 @@ uniform float uRockGate;  // r6: 1 = slope-rock takeover keyed to the mask-B lan
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
+uniform vec4 uSeaOpenings[4]; // round 40: sea openings past the square (direction angle, half-width, shoulder, 0)
+uniform float uSeaOpeningCount;
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
 float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // r7 axis-triplanar wall basis (set in splatCompute): two FIXED world-axis
@@ -2560,6 +2565,20 @@ vec3 wallTex(sampler2D t, float sc) {
 float wallNoiseG(float sc, vec2 off) {
   return mix(texture2D(uNoise, gWallUVx * sc + off).g, texture2D(uNoise, gWallUVz * sc + off).g, gWallW);
 }
+// Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): the horizon ring's
+// faces inside a sea opening (edgeWater.ts) render with this material as the square's own open water — the same
+// mask-driven path, deep tint, fresnel and whitecaps — so the sea does not change shader one metre past the edge.
+float outlandSeaWeight(vec2 xz) {
+  float angle = atan(xz.y, xz.x);
+  float weight = 0.0;
+  for (int i = 0; i < 4; i++) {
+    if (float(i) >= uSeaOpeningCount) break;
+    vec4 o = uSeaOpenings[i];
+    float d = abs(atan(sin(angle - o.x), cos(angle - o.x)));
+    weight = max(weight, 1.0 - smoothstep(o.y * o.z, o.y, d));
+  }
+  return weight;
+}
 void splatCompute() {
   vec3 wp = vWPos;
   vec3 wn = normalize(vWNormal);
@@ -2575,6 +2594,11 @@ void splatCompute() {
   // fades out between 24 and 96 m instead of ending dead on the seam; wear still fades with the 36 m ramp.
   float outsideRoadW = smoothstep(24.0, 96.0, edgeOut);
   mk = vec4(mk.r * (1.0 - outsideRoadW), mk.g * (1.0 - outsideRoadW), mk.b, mk.a * (1.0 - outsideW));
+  // round 40: past the square, inside a sea opening, the ring face is this map's water. It starts with the wetness
+  // the square carries at its edge (the clamped texel — the bay may still be a turquoise shoal there) and deepens to
+  // open sea over the next 320 m, so the seam has no step and the sea reads as a sea offshore.
+  float outlandSea = (uSea > 0.5 && uSeaOpeningCount > 0.5) ? outlandSeaWeight(wp.xz) * step(0.0, edgeOut) : 0.0;
+  mk.b = max(mk.b, outlandSea * mix(mk.b, 1.0, smoothstep(0.0, 320.0, edgeOut)));
   // r6 terrain_environment: on landform-gated maps (desert) the mask B
   // channel carries the MESA/RIM weight instead of marsh/ice — decode it and
   // zero the marsh weight so none of the wet/ice paths fire on sand.
@@ -2614,7 +2638,8 @@ void splatCompute() {
   // reaches only the near-flat outland floors (faces under ~23°); a face steeper than ~39° keeps the battlefield's
   // own near variant until the ordinary 90–330 m distance fade.
   float outlandFloor = smoothstep(0.78, 0.92, wn.y);
-  farM = max(farM, smoothstep(40.0, 200.0, edgeOut) * outlandFloor);
+  // round 40: the sea apron is water at its true distance, not a far floor — the flattened far variant paled it
+  farM = max(farM, smoothstep(40.0, 200.0, edgeOut) * outlandFloor * (1.0 - outlandSea));
   // detail fade: positive mip bias at range kills the single-frequency
   // speckle shimmer that anisotropic filtering keeps resolving
   float mipB = farM * 2.0;
@@ -3566,6 +3591,7 @@ function* createSplatMaterialSteps(
   landformW: HeightField['_mesaW'] = null,
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
+  seaOpenings: readonly SeaOpening[] = [],
 ): Generator<void | TerrainSourceCheckpoint, {
   material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
   waterMask: THREE.Texture; waterNormal: THREE.Texture;
@@ -3664,6 +3690,9 @@ function* createSplatMaterialSteps(
     // bare sand/mud apron + surf line + open-water weight; the "drift" field
     // becomes sand shoals (D layer) instead of snow (G layer).
     shader.uniforms.uSea = { value: S.seaLake ? 1 : 0 };
+    // round 40: the sea openings past the square (edgeWater.ts) — the ring's faces inside them render as open water
+    shader.uniforms.uSeaOpenings = { value: seaOpeningUniforms(seaOpenings) };
+    shader.uniforms.uSeaOpeningCount = { value: Math.min(4, seaOpenings.length) };
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
@@ -4012,6 +4041,10 @@ function* terrainBuildSteps(
   }
   group.add(horizonStep.value);
   yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
+  // round 40: where the square's water reaches the edge the ring opens to a sea apron (edgeWater.ts); the terrain
+  // material renders those ring faces as open water and the shallow-water sheet continues over them
+  const seaOpenings = cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes
+    ? resolveSeaOpenings(cfg.horizon?.seaOpening, heightField, cfg.id || '') : [];
   const materialSteps = createSplatMaterialSteps(
     engineCtx,
     heightField._layout,
@@ -4020,6 +4053,7 @@ function* terrainBuildSteps(
     heightField._mesaW || null,
     heightField._waterWetnessAt || null,
     sourcePreparation,
+    seaOpenings,
   );
   let materialStep = materialSteps.next();
   try {
@@ -4123,6 +4157,21 @@ function* terrainBuildSteps(
         // water pass 3 (2026-09-12): the sheet joins the cascaded-shadow setup like every lit world material
         (material, hook) => engineCtx.setupShadowMaterial(material, hook));
       group.add(water.mesh);
+      // Round 40 (2026-09-22, "water at the edge: same level and shader beyond"): where the flattened water meets
+      // the square edge the horizon ring opens to a sea apron (edgeWater.ts); the sheet continues over it with the
+      // same material so fresnel, glitter and the deep colour do not end in a straight line at the red line.
+      const seaApron = buildSeaApronGeometry(seaOpenings, heightField.size / 2, undefined,
+        { depthM: waterContactProfile(cfg.id || '').depthM });
+      if (seaApron) {
+        const apron = new THREE.Mesh(seaApron, water.mesh.material);
+        apron.name = 'shallowWaterSeaApron';
+        apron.renderOrder = water.mesh.renderOrder;
+        apron.receiveShadow = water.mesh.receiveShadow;
+        apron.matrixAutoUpdate = false;
+        apron.updateMatrix();
+        group.add(apron);
+        water.mesh.userData.seaApron = apron;
+      }
       group.userData.updateWater = water.update;
       group.userData.setWaterTime = water.setTime;
       group.userData.setWaterDisturbances = water.setDisturbances; // water pass 6: vehicle wakes

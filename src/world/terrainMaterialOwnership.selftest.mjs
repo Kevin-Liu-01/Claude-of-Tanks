@@ -96,11 +96,14 @@ function checkSourceContract(text) {
   assert.deepEqual(text.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
   const declarations = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
   const uniforms = [...declarations.matchAll(/\buniform\s+\w+\s+([^;]+);/g)]
+    // round 40: an array uniform (`uSeaOpenings[4]`) is owned by its name, like its `shader.uniforms.uSeaOpenings =` assignment
+    .map((m) => [m[0], m[1].replace(/\[\d+\]$/, '')])
     .flatMap(match => match[1].split(',').map(name => name.trim())).sort();
   const expected = ['uAlbG','uAlbD','uAlbR','uAlbM','uNrmG','uNrmD','uNrmR','uNrmM','uMask','uNoise',
     'uTintA','uTintB','uTintC','uRoadTint','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
     'uWornDirtStrength','uIceDrift','uMidRelief','uFieldPatch','uRipple','uSandMacro','uIceSky',
-    'uMidFar','uRockGate','uSea','uSeaFoam','uSeaRamp',
+    // round 40 (2026-09-22): the sea openings past the square (edgeWater.ts) that the ring's marine faces render as open water
+    'uMidFar','uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaRamp',
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
     'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
   ].sort();

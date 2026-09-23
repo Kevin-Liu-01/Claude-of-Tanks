@@ -35,6 +35,7 @@ import { registerRetainedObject3DResources } from '../../engine/resourceLifetime
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
+import { type SeaOpening, dominantSeaOpening, resolveSeaOpenings, seaOpeningWeight } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
   type VistaGround,
@@ -43,12 +44,8 @@ import {
 
 type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
 
-interface HorizonSeaOpening {
-  azimuthDeg: number;
-  widthDeg: number;
-  level: number;
-  colorHex?: number;
-}
+/** Round 40: the authored aperture is one of several openings; edgeWater.ts derives the rest from the square's water. */
+type HorizonSeaOpening = SeaOpening;
 
 interface HorizonConfig {
   baseHex?: number;
@@ -904,7 +901,7 @@ interface HorizonColorContext {
   noise: SimplexNoise;
   gradients: HorizonGradients;
   sun: readonly [number, number, number];
-  seaOpening?: HorizonSeaOpening;
+  seaOpenings: readonly HorizonSeaOpening[];
   redrockCanyon?: boolean;
   /** Per-vertex forest stand cover (0..1) shared with the canopy belts. */
   forestCover?: Float32Array;
@@ -912,30 +909,25 @@ interface HorizonColorContext {
   vista?: boolean;
 }
 
-function seaOpeningWeight(angle: number, opening: HorizonSeaOpening | undefined): number {
-  if (!opening) return 0;
-  const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
-  const distance = Math.abs(Math.atan2(Math.sin(angle - direction), Math.cos(angle - direction)));
-  const halfWidth = clamp(opening.widthDeg, 10, 175) * Math.PI / 360;
-  return 1 - smoothstep(halfWidth * 0.58, halfWidth, distance);
-}
-
-function openHorizonToSea(ring: HorizonRingGeometry, opening: HorizonSeaOpening | undefined): void {
-  if (!opening) return;
-  // The existing annulus becomes the distant sea floor inside this aperture,
+function openHorizonToSea(ring: HorizonRingGeometry, openings: readonly HorizonSeaOpening[]): void {
+  // The existing annulus becomes the distant sea floor inside each aperture,
   // keeping the square terrain edge covered without another water mesh/pass.
   // Smooth shoulders retain headlands at either side instead of an enclosing
-  // green wall across the bay. The floor sits just below the authored sea.
-  for (let index = 0; index < ring.heights.length; index++) {
-    const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
-    const weight = seaOpeningWeight(angle, opening);
-    const height = ring.heights[index] + (opening.level - 0.04 - ring.heights[index]) * weight;
-    ring.heights[index] = height;
-    ring.positions[index * 3 + 1] = height;
-    const radialFraction = Math.floor(index / HORIZON_SEGMENTS) / (ring.rows.length - 1);
-    const seaReach = 1 + weight * radialFraction * radialFraction * 1.6;
-    ring.positions[index * 3] *= seaReach;
-    ring.positions[index * 3 + 2] *= seaReach;
+  // green wall across the bay. The floor sits just below the water surface.
+  // Round 40 (2026-09-22): every opening the square's water derives (edgeWater.ts) is applied beside the authored one.
+  for (const opening of openings) {
+    for (let index = 0; index < ring.heights.length; index++) {
+      const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
+      const weight = seaOpeningWeight(angle, opening);
+      if (weight <= 0) continue;
+      const height = ring.heights[index] + (opening.level - 0.04 - ring.heights[index]) * weight;
+      ring.heights[index] = height;
+      ring.positions[index * 3 + 1] = height;
+      const radialFraction = Math.floor(index / HORIZON_SEGMENTS) / (ring.rows.length - 1);
+      const seaReach = 1 + weight * radialFraction * radialFraction * 1.6;
+      ring.positions[index * 3] *= seaReach;
+      ring.positions[index * 3 + 2] *= seaReach;
+    }
   }
 }
 
@@ -1330,21 +1322,22 @@ export function sampleHorizonGeometry(
     // 160 m inside the crest (700 -> 860): an unbounded cap put the final edge at 1.30:1 on Skybridge.
     reshapeFiniteTableCaps(ring, horizon.amp ?? 1, mapId === 'titan_gorge' ? 0.60 : 0.64, 1.25);
   }
-  openHorizonToSea(ring, horizon.seaOpening);
+  openHorizonToSea(ring, resolveSeaOpenings(horizon.seaOpening, ground, mapId));
   return ring;
 }
 
 function buildHorizonUvs(
   heights: Float32Array,
   maxHeight: number,
-  seaOpening: HorizonSeaOpening | undefined,
+  seaOpenings: readonly HorizonSeaOpening[],
 ): Float32Array {
   const uv = new Float32Array(heights.length * 2);
   for (let index = 0; index < heights.length; index++) {
     uv[index * 2] = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * 10;
     const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
-    const marine = seaOpening ? seaOpeningWeight(angle, seaOpening)
-      * (1 - smoothstep(seaOpening.level + 0.04, seaOpening.level + 1.0, heights[index])) : 0;
+    const opening = dominantSeaOpening(angle, seaOpenings);
+    const marine = opening ? seaOpeningWeight(angle, opening)
+      * (1 - smoothstep(opening.level + 0.04, opening.level + 1.0, heights[index])) : 0;
     // The original UV attribute also carries the marine mask. Land altitude
     // stays nonnegative; negative V denotes only the near-flat sea apron.
     // No extra vertex attribute, geometry bytes, or draw call is needed.
@@ -1572,21 +1565,26 @@ function buildHorizonColors(context: HorizonColorContext): Float32Array {
       if (context.redrockCanyon) tintRedrockOutlandFloor(color, context.heights[index], slope);
       if (!context.vista) applyHorizonDirectionalLight(color, scratch, context, row, angle, index);
       applyHorizonToneAndHaze(color, context, row, angle, altitude, rowIndex);
-      if (context.seaOpening) {
-        const seaWeight = seaOpeningWeight(angle, context.seaOpening);
+      const seaOpening = context.seaOpenings.length ? dominantSeaOpening(angle, context.seaOpenings) : null;
+      if (seaOpening) {
+        const seaWeight = seaOpeningWeight(angle, seaOpening);
         if (seaWeight > 0) {
           // Distant water reflects a mostly neutral low sky, warm toward the
           // sun and cool away. Do not compensate it for the forest texture:
           // the shader now bypasses that texture for the sea. The previous
           // channel compensation produced a saturated cyan annular stripe.
+          // Round 40 (2026-09-22): the apron starts as this map's own deep water at the seam (the shallow-water
+          // sheet continues over it with the same colour) and only takes on the sky with distance; the former
+          // constant 0.55 reflection turned the whole aperture the fog's grey one metre past the square edge.
           const [sunX, , sunZ] = context.sun;
           const sunFacing = Math.max(0, (Math.cos(angle) * sunX + Math.sin(angle) * sunZ)
             / Math.max(0.001, Math.hypot(sunX, sunZ)));
           const warm = Math.pow(sunFacing, 5);
           const skyLuminance = context.fog.r * 0.2126 + context.fog.g * 0.7152
             + context.fog.b * 0.0722;
-          const reflection = 0.55 + row.aer * 0.20;
-          scratch.setHex(context.seaOpening.colorHex ?? 0x8b9795);
+          const radialFraction = rowIndex / Math.max(1, context.rows.length - 1);
+          const reflection = 0.16 + (0.44 + row.aer * 0.20) * radialFraction * radialFraction;
+          scratch.setHex(seaOpening.colorHex ?? 0x1d5266);
           scratch.r += (skyLuminance * (0.92 + warm * 0.16) - scratch.r) * reflection;
           scratch.g += (skyLuminance * (0.98 + warm * 0.04) - scratch.g) * reflection;
           scratch.b += (skyLuminance * (1.04 - warm * 0.14) - scratch.b) * reflection;
@@ -1679,6 +1677,18 @@ function buildHorizonGeometry(
   geometry.setAttribute('uv', new THREE.BufferAttribute(closedUv, 2));
   geometry.setIndex(buildHorizonIndices(rowCount));
   applyAnalyticHorizonNormals(geometry, rowCount, gradients);
+  // Round 40 (2026-09-22, AAA program check 13): the analytic normals describe the authored relief, but a sea aperture
+  // has lowered those vertices onto a flat sea floor — the apron kept the hills' sloped normals and shaded 40 % darker
+  // than the square's water right at the seam (measured straight down on Coastal). Marine vertices (UV V < 0 carries
+  // the aperture weight) tilt their normal up by that weight; fully open water is exactly horizontal.
+  const normal = geometry.getAttribute('normal') as THREE.BufferAttribute;
+  for (let i = 0; i < normal.count; i++) {
+    const marine = -closedUv[i * 2 + 1];
+    if (marine <= 0) continue;
+    const nx = normal.getX(i) * (1 - marine), ny = normal.getY(i) * (1 - marine) + marine, nz = normal.getZ(i) * (1 - marine);
+    const inverseLength = 1 / Math.max(1e-6, Math.hypot(nx, ny, nz));
+    normal.setXYZ(i, nx * inverseLength, ny * inverseLength, nz * inverseLength);
+  }
   return geometry;
 }
 
@@ -2079,7 +2089,7 @@ interface HorizonTreelineContext {
   style: HorizonStyle;
   sun: readonly [number, number, number];
   forestCover: Float32Array;
-  seaOpening?: HorizonSeaOpening;
+  seaOpenings: readonly HorizonSeaOpening[];
   base: THREE.Color;
   forest: THREE.Color;
   /** Authored opt-in for terrain-following face belts (default off). */
@@ -2123,7 +2133,7 @@ export function selectHorizonFaceBeltRows(rows: readonly HorizonRingRow[]): numb
 
 function addHorizonTreeline({
   mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
-  maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, style, sun, forestCover, seaOpening,
+  maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, style, sun, forestCover, seaOpenings,
   base, forest, faceBelts,
 }: HorizonTreelineContext): void {
   const N = HORIZON_SEGMENTS;
@@ -2191,7 +2201,7 @@ function addHorizonTreeline({
         const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1 - layer * 5.3,
           Math.sin(a) * 19.7 + ri * 11.9 + layer * 8.9) * 0.5 + 0.5;
         const span = (9 + hn * 7) * (0.94 + Math.min(row.r, 1400) / 7000) * fade *
-          (0.88 + hn2 * 0.24) * (1 - layer * 0.045) * (1 - seaOpeningWeight(a, seaOpening));
+          (0.88 + hn2 * 0.24) * (1 - layer * 0.045) * (1 - seaOpeningWeight(a, seaOpenings));
         // All ranks sit just behind the resolved crest. Putting the ribbon on
         // its inner slope lets the ridge's own triangles depth-occlude the
         // canopy completely; the small outward offset keeps the base hidden
@@ -2298,7 +2308,7 @@ function addHorizonTreeline({
         // rather than scaling it, so clumps keep full-height crowns and
         // clearings open cleanly instead of shrinking toward a stubble line.
         const coverage = facing * cliff * forestCover[i]
-          * (1 - seaOpeningWeight(a, seaOpening));
+          * (1 - seaOpeningWeight(a, seaOpenings));
         const density = smoothstep(0.12, 0.50, coverage);
         // Stands, not contour lines: a clump field breaks every belt into
         // separate 100-250 m groves with open ground between them, and each
@@ -2505,9 +2515,11 @@ export function* buildHorizonRingSteps(
   if (usesFiniteTableCaps(H, mapId, style)) {
     reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64, 1.25);
   }
-  openHorizonToSea(ring, H.seaOpening);
+  // Round 40: the authored aperture plus every opening the square's flattened water derives at its edge
+  const seaOpenings = resolveSeaOpenings(H.seaOpening, ground, mapId);
+  openHorizonToSea(ring, seaOpenings);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
-  const uvA = buildHorizonUvs(hs, maxH, H.seaOpening);
+  const uvA = buildHorizonUvs(hs, maxH, seaOpenings);
   yield;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height
@@ -2541,7 +2553,7 @@ export function* buildHorizonRingSteps(
     style, rows, heights: hs, maxHeight: maxH, forestCover, vista,
     base, fog: fogC, rock: rockC, snow: snowC, forest: forestC,
     snowline, treeline, banding, rockAmp, haze, grainAmp, noise: gnoi,
-    gradients, sun: [lx, ly, lz], seaOpening: H.seaOpening,
+    gradients, sun: [lx, ly, lz], seaOpenings,
     redrockCanyon: mapId === 'badlands' && H.redrockCanyon !== false,
   });
   yield;
@@ -2675,7 +2687,7 @@ export function* buildHorizonRingSteps(
   addHorizonTreeline({
     mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
     maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
-    style, sun: [lx, ly, lz], forestCover, seaOpening: H.seaOpening,
+    style, sun: [lx, ly, lz], forestCover, seaOpenings,
     base, forest: forestC,
     faceBelts: H.faceBelts === true,
   });

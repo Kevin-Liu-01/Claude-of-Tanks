@@ -29,9 +29,14 @@ export default {
       [[-210, -100], [-124, -100], [-108, -36], [-190, -36], [-108, 44], [-20, -92], [228, 14]],
       [[-224, 206], [-6, 242], [126, 218], [266, 330]],
     ] },
-    // A connected bay shares one level; independent automatic lake levels
-    // would create several-metre steps at the overlaps.
-    lakes: [{ x: -434, z: -160, r: 126, depth: 1.1, level: -7.8 }, { x: -410, z: 12, r: 138, depth: 1.1, level: -7.8 }, { x: -424, z: 184, r: 122, depth: 1.1, level: -7.8 }],
+    // Round 40 (2026-09-22, AAA map program): the hooked bay is one authored shoreline. The former three overlapping
+    // circles rasterised into three straight-edged basins with sand strips between them and dried in the last
+    // metres before the red line; this contour keeps the bay's east shore and the harbour landings where they were,
+    // hooks a headland cove at its north-east, and runs open to the west edge, where the horizon ring now carries
+    // the same sea (edgeWater.ts). One level, as before: a connected bay cannot step at basin overlaps.
+    lakes: [{ x: -452, z: 8, r: 250, depth: 1.1, level: -7.8, shelfM: 12,
+      radii: [0.70, 0.66, 0.44, 0.48, 0.86, 1.00, 1.00, 1.00,
+        1.00, 1.00, 1.00, 0.97, 0.86, 0.66, 0.58, 0.62] }],
     marshes: [{ x: -286, z: 4, r: 27, dip: 0.6 }],
     landforms: [
       { kind: 'ridge', x: -166, z: 22, length: 348, width: 60, height: 5.8, yawDeg: 2 },
@@ -61,8 +66,10 @@ export default {
     // Two low timber landings face the village and its northern coastal exit.
     // Dry limestone beaches use the existing wood batch, not wet-bank reeds.
     riverLandings: [
-      { lakeIndex: 1, shoreAngleDeg: -15, shoreReeds: false, jettyLength: 19 },
-      { lakeIndex: 2, shoreAngleDeg: -15, shoreReeds: false, jettyLength: 19 },
+      // round 40: two stations of the one bay's east shore whose beached boats rest on a shallow bank at every
+      // battle seed (the stations between them sit on the basin landform's wet flat)
+      { lakeIndex: 0, shoreAngleDeg: -25, shoreReeds: false, jettyLength: 19 },
+      { lakeIndex: 0, shoreAngleDeg: 45, shoreReeds: false, jettyLength: 19 },
     ],
     plan: ['fishery', 'boatshed', 'marketRow', 'farmhouse', 'bathhouse', 'cottage', 'depot', 'tavern', 'boatshed', 'ruin', 'cornershop', 'market', 'farmhouse', 'woodshed', 'fishery', 'cottage', 'granary', 'ruin'],
     destructibleBuildings: ['fishershack', 'fieldhut', 'guardpost', 'checkpointhut'],

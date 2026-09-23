@@ -28,11 +28,17 @@ let legacyChecks = 0;
 const originalOasisLakes = [
   { x: -138, z: -16, r: 52 }, { x: -182, z: 32, r: 57 }, { x: -134, z: 84, r: 48 },
 ];
+// Round 40 (2026-09-22, AAA map program): Saltwind's hooked bay became one authored contour open to the west edge
+// (three overlapping circles rasterised into straight-edged basins with sand strips between them). Like Oasis, the
+// historical formula comparisons run against the original three discs so no coverage is lost.
+const originalSaltwindLakes = [
+  { x: -434, z: -160, r: 126 }, { x: -410, z: 12, r: 138 }, { x: -424, z: 184, r: 122 },
+];
 for (const id of MAP_IDS.filter(id => id !== 'polders')) {
   const terrain = getMapConfig(id).terrain;
   // Oasis explicitly migrated to one authored basin; preserve all of its
   // historical formula comparisons, not an exemption that deletes coverage.
-  const lakes = id === 'oasis' ? originalOasisLakes : terrain.lakes ?? [];
+  const lakes = id === 'oasis' ? originalOasisLakes : id === 'saltwind' ? originalSaltwindLakes : terrain.lakes ?? [];
   for (const disc of [...lakes, ...(terrain.marshes ?? [])]) {
     assert.equal(disc.radii, undefined, `${id}: no implicit profile migration`);
     assert.equal(minimumShorelineRadius(disc), disc.r * 0.8);

@@ -24,6 +24,20 @@ try {
  const counts=new Map([[grass,0],[normal,0],[terrainMaterial,0]]);for(const object of counts.keys())object.addEventListener('dispose',()=>counts.set(object,counts.get(object)+1));
  releaseObject3DGpuResources(horizon,{preserveRoots:[terrain],releaseMaterials:true});for(const count of counts.values())assert.equal(count,0,'live terrain preserves shared material and shader textures');
  disposeObject3DResources(world);for(const count of counts.values())assert.equal(count,1,'whole-world shared owner disposal exactly once');
+ // Round 40 (2026-09-22, AAA program check 13): every face inside Coastal's sea aperture (ring UV V < 0) renders with the
+ // terrain material, near band or far range, so the sea keeps one shader past the edge; land faces beyond the bands stay vista.
+ {const coastal=buildHorizonRing(null,getMapConfig('coastal'),1337),cg=coastal.geometry,cold=cg.index.array.slice();
+  const cBands=coastal.userData.horizonRing.ridgeRow,cNear=cBands*HORIZON_SEGMENTS*6,cuv=cg.attributes.uv;
+  const marine=(i)=>Math.min(cuv.getY(cold[i]),cuv.getY(cold[i+1]),cuv.getY(cold[i+2]))<-0.5;
+  let farMarine=0;for(let i=cNear;i<cold.length;i+=3)if(marine(i))farMarine++;
+  assert.ok(farMarine>0,'the aperture reaches past the near bands');
+  bindAutumnHorizonGround(coastal,new MeshStandardMaterial(),[new Texture(),new Texture()],{columns:HORIZON_SEGMENTS,bands:cBands});
+  assert.deepEqual(cg.groups.map(gr=>gr.materialIndex),[1,0]);
+  assert.equal(cg.groups[0].count,cNear+farMarine*3,'terrain group = the near bands plus every far marine face');
+  assert.equal(cg.groups[0].count+cg.groups[1].count,cold.length);
+  const vistaStart=cg.groups[1].start;
+  for(let i=vistaStart;i<cold.length;i+=3)assert.ok(Math.min(cuv.getY(cg.index.getX(i)),cuv.getY(cg.index.getX(i+1)),cuv.getY(cg.index.getX(i+2)))>=-0.5,'no marine face is left to the vista material');
+  disposeObject3DResources(coastal);}
  const steppe=buildHorizonRing(null,getMapConfig('steppe'),1337);assert.equal(steppe.geometry.groups.length,0);assert.ok(!Array.isArray(steppe.material));disposeObject3DResources(steppe);
 }finally{globalThis.document=previousDocument;}
 console.log('Autumn actual terrain material: exact geometric triangles/outer indices, upward winding, source identity, lifetime and other-map isolation PASS');

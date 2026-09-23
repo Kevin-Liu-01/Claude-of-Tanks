@@ -226,7 +226,13 @@ export function createShallowWaterSurface(
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
       vec2 waterUV = (vWaterWorld.xz + uWaterSize * 0.5) / uWaterSize;
-      float wet = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uWaterMask, waterUV).b);
+      // Round 40 (2026-09-22): the sea apron past the square (edgeWater.ts) shares this material. Past the edge the
+      // mask has no meaning, so the apron continues the edge texel's wetness (the bay may be a shoal there) and deepens
+      // to open water over the next 320 m — no colour step at the seam, no shore ramp or foam line offshore.
+      vec2 waterUvC = clamp(waterUV, 0.0, 1.0);
+      float pastEdgeM = max(max(-waterUV.x, waterUV.x - 1.0), max(-waterUV.y, waterUV.y - 1.0)) * uWaterSize;
+      float wet = mix(smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uWaterMask, waterUvC).b), 1.0,
+        smoothstep(0.0, 320.0, pastEdgeM));
       if (wet < 0.015) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
       float grazing = pow(1.0 - abs(eye.y), 3.0);

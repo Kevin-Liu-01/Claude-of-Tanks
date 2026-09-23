@@ -463,6 +463,12 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   horizonDim = diffuse.r / max(uVDayDiffuse, 0.01);
   diffuseColor.rgb = lit * vistaAltShade * horizonDim / max(vColor.rgb, vec3(0.02));
   horizonWaterVariation = nC * 0.008 + nB * 0.015;
+  // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): a sea aperture is
+  // water, not ground. The absolute ground/rock/forest tints above replaced the vertex bake for every face, so the
+  // apron showed the meadow tile's fields and stands under a grey tone one metre past the square's blue sea. Marine
+  // faces keep their baked water colour (edgeWater.ts: the map's own deep water at the seam, the low sky with
+  // distance) with only the broad water variation; color_fragment multiplies vColor back in.
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3((1.0 + horizonWaterVariation) * horizonDim), horizonMarine);
   // --- aerial perspective, per fragment (the vertex bake keeps the tone only) ----
   float hazeR = smoothstep(430.0, 1330.0, radius);
   // Round 39 (owner 2026-09-22, "it still seems too disappear-y"): the ranges took up to 94 % of the fog tint on top of

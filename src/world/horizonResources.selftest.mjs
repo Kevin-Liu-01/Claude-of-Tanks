@@ -537,6 +537,10 @@ try {
   assertMonotoneRadii(positions, 'coastal sea aperture');
   let seaSamples = 0;
   let landSamples = 0;
+  // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): the apron is this
+  // map's own deep water at the seam (the shallow-water sheet continues over it with the same colour) and only takes
+  // on the low sky with distance; the former constant reflection made it the fog's grey one metre past the edge.
+  let nearest = null, farthest = null;
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
     if (x > 0 && Math.abs(z / x) < 0.1) {
@@ -544,13 +548,20 @@ try {
         'eastward sea aperture replaces the enclosing wall with an opaque sea-level apron');
       assert.equal(coastalUv.getY(i), -1,
         'the planar sea explicitly bypasses the one-dimensional forest texture row');
-      const channels = [coastalColors.getX(i), coastalColors.getY(i), coastalColors.getZ(i)];
-      assert.ok(Math.max(...channels) / Math.min(...channels) < 1.35,
-        'low-sky reflection remains restrained rather than saturated cyan');
+      const sample = { radius: Math.hypot(x, z), channels: [coastalColors.getX(i), coastalColors.getY(i), coastalColors.getZ(i)] };
+      if (!nearest || sample.radius < nearest.radius) nearest = sample;
+      if (!farthest || sample.radius > farthest.radius) farthest = sample;
       seaSamples++;
     }
     if (x < -800 && y > 20) landSamples++;
   }
+  const ratio = (sample) => Math.max(...sample.channels) / Math.min(...sample.channels);
+  // this synthetic map id has no water profile of its own, so the seam takes the default (teal) profile colour
+  assert.ok(nearest.channels[2] > nearest.channels[0] * 1.3 && nearest.channels[1] > nearest.channels[0] * 1.3,
+    `at the seam the apron is water-coloured (blue and green over red): ${nearest.channels.map((c) => c.toFixed(3))}`);
+  assert.ok(ratio(farthest) < 1.35,
+    `at the horizon the low-sky reflection remains restrained rather than saturated cyan: ${farthest.channels.map((c) => c.toFixed(3))}`);
+  assert.ok(ratio(farthest) < ratio(nearest), 'the apron takes on the sky with distance, never the reverse');
   assert.ok(seaSamples > 30 && landSamples > 30,
     'opening the bay preserves the inland uplands and existing surface coverage');
   const coastalShader = {

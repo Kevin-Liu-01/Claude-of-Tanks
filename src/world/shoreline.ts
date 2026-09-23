@@ -14,6 +14,10 @@ export interface ShorelineDisc {
   z: number;
   r: number;
   radii?: ShorelineRadii;
+  /** Round 40 (2026-09-22): the wet shelf's width in METRES from the authored shoreline to the waterline. By default
+   * the waterline sits at 0.80 of the local radius, so a 250 m bay carries a 30–50 m shelf of water-level sand that
+   * no 19 m jetty can cross; a large authored bay states its shelf like a real beach instead. */
+  shelfM?: number;
 }
 
 function authoredRadiusAt(radii: ShorelineRadii, angle: number): number {
@@ -84,12 +88,18 @@ export function shorelineWetness(
   lake: boolean,
 ): number {
   const distance = shorelineDistance(disc, x, z, 1);
+  if (lake && disc.shelfM !== undefined && Number.isFinite(distance)) {
+    // an authored shelf width: the waterline is `shelfM` inside the local shoreline radius, the dry beach still ends
+    // at 0.96 of it (the plain-disc law is the 0.80 → 0.96 ramp below)
+    const radius = shorelineRadiusAt(disc, Math.atan2(z - disc.z, x - disc.x));
+    return shorelineWetnessFromDistance(distance, lake, Math.min(0.94, 1 - disc.shelfM / Math.max(1, radius)));
+  }
   return shorelineWetnessFromDistance(distance, lake);
 }
 
 /** Reuse an already evaluated contour while applying terrain constraints. */
-export function shorelineWetnessFromDistance(distance: number, lake: boolean): number {
-  const start = lake ? 0.80 : 0.45;
+export function shorelineWetnessFromDistance(distance: number, lake: boolean, lakeStart = 0.80): number {
+  const start = lake ? lakeStart : 0.45;
   const end = lake ? 0.96 : 1;
   const t = Math.max(0, Math.min(1, (distance - start) / (end - start)));
   return 1 - t * t * (3 - 2 * t);

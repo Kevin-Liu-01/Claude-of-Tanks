@@ -104,7 +104,8 @@ const ORIGINAL = {
   orchard: '50ac061fe6ebabaa6c45139d8a90624b0f53c70636f1d857eac9f298dc4b5a9b',
   longleaf: '35eb308242df93c194fe2fa2764054e5880f581893de7eecf451b5b92670e699',
   mangrove: '9bcef3866a3c254b53208d69e8ba9a0db0665f07053dce6ba832fc35e7d8153c',
-  saltwind: '4630bb971fabf8fa1f355247994de5dc388e0ebf61c6e4668f7b1062032eee43',
+  // round 40 (2026-09-22): Saltwind's bay is one authored hooked contour open to the west edge (saltwind.ts lakes); mask re-pinned
+  saltwind: 'c080e5b0e13655ef3e4346fc8a9b7d5f56432802ae93b970599b796c8de1256e',
   reservoir: 'ce8e361f5beb374d60e58d96bdec2611f2249b18f55877142f34e2919ece69ca',
   mars: '0a3814c2ad165409f488cb8d8883e7005b874b21a6b4cd03a18db42b130a1fdb', // 2026-09-19 Olympus Basin (no water: dry-mask digest)
 };

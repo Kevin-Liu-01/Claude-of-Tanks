@@ -351,7 +351,8 @@ await withFixture(async f => {
   assert.doesNotMatch(String(terrain.buildTerrainMeshes), /sourcePreparation|prepareSourcedTerrain/);
   assert.match(String(terrain.buildTerrainMeshesAsync), /sourcePreparation = prepareSourcedTerrain/);
   assert.match(String(terrain.buildTerrainMeshesAsync), /terrainBuildSteps\(heightField, engineCtx, cfg, streamOpts, sourcePreparation\)/);
-  assert.match(String(terrain._terrainBuildSteps), /createSplatMaterialSteps\([\s\S]*?sourcePreparation,?\s*\)/);
+  // round 40 (2026-09-22): the material call also hands over the sea openings (edgeWater.ts) after the source preparation
+  assert.match(String(terrain._terrainBuildSteps), /createSplatMaterialSteps\([\s\S]*?sourcePreparation,\s*seaOpenings,?\s*\)/);
 
   const requested = [];
   const asyncPreparation = f.prepareSourcedTerrain('winter', {}, { worker: true });

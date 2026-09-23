@@ -62,6 +62,42 @@ function historicalSkyRayleighSource(source, file) {
   assert.equal(source.split(DESERT_RAYLEIGH_CURRENT).length, 2, 'desert.ts: one exact round-37 Rayleigh block');
   return source.replace(DESERT_RAYLEIGH_CURRENT, DESERT_RAYLEIGH_HISTORICAL);
 }
+// Round 40 (2026-09-22, AAA program check 13): Coastal's sea aperture no longer authors a neutral grey; it takes the
+// map's deep-water colour (edgeWater.ts) and the shallow-water sheet continues over it. Relief is untouched —
+// authenticate the exact current block, then project it back to the historical line for the byte receipt.
+const COASTAL_APERTURE_CURRENT = `    // round 40 (2026-09-22, "water at the edge: same level and shader beyond"): no authored grey — the aperture takes
+    // this map's deep-water colour (waterContact.ts) and the shallow-water sheet continues over it (edgeWater.ts)
+    seaOpening: { azimuthDeg: 90, widthDeg: 118, level: -4.0 },`;
+const COASTAL_APERTURE_HISTORICAL = '    seaOpening: { azimuthDeg: 90, widthDeg: 118, level: -4.0, colorHex: 0x8b9795 },';
+const SALTWIND_BAY_CURRENT = `    // Round 40 (2026-09-22, AAA map program): the hooked bay is one authored shoreline. The former three overlapping
+    // circles rasterised into three straight-edged basins with sand strips between them and dried in the last
+    // metres before the red line; this contour keeps the bay's east shore and the harbour landings where they were,
+    // hooks a headland cove at its north-east, and runs open to the west edge, where the horizon ring now carries
+    // the same sea (edgeWater.ts). One level, as before: a connected bay cannot step at basin overlaps.
+    lakes: [{ x: -452, z: 8, r: 250, depth: 1.1, level: -7.8, shelfM: 12,
+      radii: [0.70, 0.66, 0.44, 0.48, 0.86, 1.00, 1.00, 1.00,
+        1.00, 1.00, 1.00, 0.97, 0.86, 0.66, 0.58, 0.62] }],`;
+const SALTWIND_BAY_HISTORICAL = `    // A connected bay shares one level; independent automatic lake levels
+    // would create several-metre steps at the overlaps.
+    lakes: [{ x: -434, z: -160, r: 126, depth: 1.1, level: -7.8 }, { x: -410, z: 12, r: 138, depth: 1.1, level: -7.8 }, { x: -424, z: 184, r: 122, depth: 1.1, level: -7.8 }],`;
+const SALTWIND_LANDINGS_CURRENT = `      // round 40: two stations of the one bay's east shore whose beached boats rest on a shallow bank at every
+      // battle seed (the stations between them sit on the basin landform's wet flat)
+      { lakeIndex: 0, shoreAngleDeg: -25, shoreReeds: false, jettyLength: 19 },
+      { lakeIndex: 0, shoreAngleDeg: 45, shoreReeds: false, jettyLength: 19 },`;
+const SALTWIND_LANDINGS_HISTORICAL = `      { lakeIndex: 1, shoreAngleDeg: -15, shoreReeds: false, jettyLength: 19 },
+      { lakeIndex: 2, shoreAngleDeg: -15, shoreReeds: false, jettyLength: 19 },`;
+function historicalSeaApertureSource(source, file) {
+  if (file === 'saltwind.ts') {
+    // Round 40: Saltwind's bay is one authored contour open to the west edge and its two landings stand on two stations
+    // of that one shore; relief authoring elsewhere is untouched — authenticate both current blocks, project them back.
+    assert.equal(source.split(SALTWIND_BAY_CURRENT).length, 2, 'saltwind.ts: one exact round-40 bay block');
+    assert.equal(source.split(SALTWIND_LANDINGS_CURRENT).length, 2, 'saltwind.ts: one exact round-40 landings block');
+    return source.replace(SALTWIND_BAY_CURRENT, SALTWIND_BAY_HISTORICAL).replace(SALTWIND_LANDINGS_CURRENT, SALTWIND_LANDINGS_HISTORICAL);
+  }
+  if (file !== 'coastal.ts') return source;
+  assert.equal(source.split(COASTAL_APERTURE_CURRENT).length, 2, 'coastal.ts: one exact round-40 aperture block');
+  return source.replace(COASTAL_APERTURE_CURRENT, COASTAL_APERTURE_HISTORICAL);
+}
 function historicalLightingSource(source, file) {
   if (file === 'mangrove.ts') {
     const current = 'sunIntensity: 4.0, /* lighting 2026-09-13: was 3.7 */ ';
@@ -85,7 +121,7 @@ function historicalVistaGroundSource(source, file) {
 for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(read('src/world/maps/' + file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
+    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(read('src/world/maps/' + file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 
