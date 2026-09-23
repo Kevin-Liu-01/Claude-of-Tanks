@@ -1005,77 +1005,6 @@ REPAIRS['sherman_jumbo'] = {
     'ops': [('translate', 'turret', [0.2176, 0.0, 0.0])],
 }
 
-# ------------------------------------------------- t34_85_cad (batch 7) -----
-# Cert (docs/references/tanks/t34_85_cad.md v9): "Gun offset +0.15 x per the
-# print's resting turret yaw (~2-3 deg)" — CONFIRMED, the one true rest yaw
-# of the batch. Vertex proof (raw ~= metres, scale 0.979):
-#   * fused ZiS-S-53 is a single frustum: root ring c=(0.0483, 1.8949) at
-#     z 1.003 (53 verts, found via muzzle-ring triangle partners), muzzle
-#     ring c=(0.1410, 1.8961) at z 3.992 (167 verts) -> bore azimuth
-#     +1.776 deg, elevation +0.02 deg (level).
-#   * facet-azimuth circular mean: hull +0.05 deg, turret +3.2 deg (the
-#     curved egg dome skews the mod-90 fold; the bore line is the precise
-#     instrument). Shell plan-centres tilt front-positive/rear-negative,
-#     consistent with the same yaw.
-#   * the bore plan-line extended backward passes 0.011 from the turret
-#     node's authored origin (0.016, 1.612, -0.393) — the print yawed the
-#     turret about its own ring pivot, and the gun is boresighted through
-#     it. autoPivot already articulates about that origin (origin branch).
-# Repair: rigid yaw of the turret node about the vertical axis through its
-# OWN origin (pivot == node translation -> pure local rotation; origin,
-# and therefore the loader's articulation frame, do not move). After:
-# muzzle centroid x +0.005, root ring x +0.005 (gun x ~= 0).
-REPAIRS['t34_85_cad'] = {
-    'path': 'public/models/tanks/community/t34_85_weihe.glb',
-    'ops': [('fold', 'turret', 'y', -1.7763, [0.016, 1.612, -0.393])],
-}
-
-# -------------------------------------------------- newc_tiger (batch 7) ----
-# Cert (docs/references/tanks/newc_tiger.md v9): "gun x +0.10 per the
-# print's rest yaw". MIS-DIAGNOSIS (m1a2 pattern): the tube is exactly
-# parallel to the hull axis — per-z-bin tube centroid is CONSTANT
-# (cx +0.0463, cy 2.1347 raw over z 2.2..5.2; runtime dump: cx +0.045,
-# cy 2.070 over the whole free tube). Facet azimuth: hull 0.006 deg,
-# turret shell 0.027 deg, barrel 0.58 deg -> nothing is rotated.
-# The WHOLE assembly is authored +0.043 right of the hull mirror
-# (x +0.0023): Turret node origin x +0.043, shell plan-centres +0.043
-# (constant rear-to-front), mantlet centre +0.043, bore +0.046.
-# Repair: one rigid -x translation of the Turret node (Barrel rides
-# along; the node origin lands on the hull axis, so the autoPivot origin
-# branch and the yaw circle recentre with it). After: origin x 0.000,
-# shell centres 0.000, bore x +0.003 (gun x ~= 0).
-REPAIRS['newc_tiger'] = {
-    'path': 'public/models/tanks/community/tiger_newc42.glb',
-    'ops': [('translate', 'Turret', [-0.0430, 0.0, 0.0])],
-}
-
-# -------------------------------------------------- newc_pziii (batch 7) ----
-# NO RECIPE — assessed NOT REPAIRABLE BY RIGID MEANS, and the certified
-# defect is a mis-diagnosis (docs/references/tanks/newc_pziii.md v9: "Gun
-# x +0.12 print turret rest yaw; gun rests visibly ELEVATED ~0.5 m at the
-# muzzle columns — rotate the Gun node's rest pitch to zero").
-# Measured truth (vertex + runtime dumps):
-#   * rest pitch is ZERO: the authored tube centroid line is CONSTANT
-#     (cx +0.0600, cy 1.9582 raw over z 1.77..3.48; runtime cx +0.100,
-#     cy 1.984 over z 1.75..3.50 — level to the millimetre). rig_turret /
-#     rig_gun / rig_recoil eulers are all 0 in the harness.
-#   * rest yaw is ZERO: turret shell facet azimuth -0.045 deg (hull
-#     +0.003), shell plan-centres constant -0.007.
-#   * the "elevated gun-line" gate columns are the cupola/turret-rear
-#     region (ref cupola crown vs proc turret-end, at ~ -1.4..-1.6) and
-#     bow-length coverage columns — not the gun.
-#   * the gun-x offset is REAL but is an authoring error INSIDE the fused
-#     Gun mesh: the tube is drawn +0.060 raw off the mantlet's own centre
-#     (-0.011); modelLoader's newc_pziii fix then scales gun x/y by 1.5
-#     about the node origin (x -0.010, 0.07 left of the bore), amplifying
-#     the visible offset to +0.10. Any rigid node move trades tube error
-#     for mantlet error 1:1 (translating the node centres the tube but
-#     off-centres the mantlet by the same amount; re-seating the origin on
-#     the bore axis halves the tube offset but shifts the runtime-fattened
-#     mantlet left by the gain) — net zero for the masks, so the file is
-#     left byte-identical and the 6 cm authored tube offset stays a
-#     documented print cap.
-
 # ------------------------------------------------------ tiger2 (batch 7) ----
 # NO RECIPE HERE (the batch-3 retag in tools/repair_oracles_blender.py owns
 # this file) — both v9 repair candidates resolve to NO-OP:
@@ -1378,8 +1307,8 @@ REPAIRS['m47_patton'] = seat_turret([6.312, 8.600, 14.175], [18.000, 16.600, 39.
 # packet's "Plate + barrel in TurretMesh (t62mv1 pattern)" resolves to the
 # SUNKEN DOME SKIRT (dome shell y 15.94..22.26 dips below the deck line) —
 # not a separable part, not bisectable on a plate plane (there is none), and
-# already hull-covered in every mask view. Documented no-op (newc_pziii
-# precedent).
+# already hull-covered in every mask view. Documented no-op (batch-7 Pz III
+# print precedent).
 
 
 def _bin_chunk_index(chunks):

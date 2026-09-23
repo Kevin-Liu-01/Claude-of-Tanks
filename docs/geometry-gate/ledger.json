@@ -2,7 +2,7 @@
  "generatedAt": "2026-09-23T00:11:38.894Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 80,
- "total": 182,
+ "total": 179,
  "rows": [
   {
    "id": "challenger1",
@@ -532,19 +532,6 @@
    }
   },
   {
-   "id": "newc_tiger",
-   "geoMin": 19.8,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 44.4,
-    "wholeCurves": 19.8,
-    "turretCurves": 58.4,
-    "stations": 23.3,
-    "dims": 97.2,
-    "floaters": 100
-   }
-  },
-  {
    "id": "type90",
    "geoMin": 21.9,
    "gatePassed": false,
@@ -810,19 +797,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "t34_85_cad",
-   "geoMin": 59.5,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 59.5,
-    "wholeCurves": 59.5,
-    "turretCurves": 66.9,
-    "stations": 83.4,
-    "dims": 97.5,
-    "floaters": 100
-   }
-  },
-  {
    "id": "m48",
    "geoMin": 59.6,
    "gatePassed": false,
@@ -887,19 +861,6 @@
     "turretCurves": 69.1,
     "wholeCurves": 67.8,
     "dims": 93.2,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "newc_pziii",
-   "geoMin": 68,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 73.6,
-    "wholeCurves": 68,
-    "turretCurves": 74.3,
-    "stations": 75.7,
-    "dims": 100,
     "floaters": 100
    }
   },

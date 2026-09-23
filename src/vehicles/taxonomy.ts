@@ -42,8 +42,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'leichttraktor',
   ]),
   [VEHICLE_ERAS.WORLD_WAR_II]: Object.freeze([
-    'm4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'is3', 'is3_bergman', 't34_85_cad',
-    'newc_tiger', 'newc_pziii', 'pziii_konserwa', 'q_heavy', 'kv2', 'tiger2',
+    'm4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'is3', 'is3_bergman',
+    'pziii_konserwa', 'q_heavy', 'kv2', 'tiger2',
     'sherman_jumbo', 'jagdtiger', 'jpz_e100', 'jpz_e100_x', 'sturmtiger', 't95', 't30',
     'is6b', 'is1', 't44', 'comet', 'challenger_cruiser', 'isu152', 'isu122s',
     'm26_pershing', 'm45_patton',

@@ -436,13 +436,16 @@ quoted license line for each asset is preserved in
 |---|---|---|---|---|---|
 | Stridsvagn 103 (`strv103`) | Stridsvagn 103 | Lukasz Wesiora (canisferus) | https://opengameart.org/content/stridsvagn-103 | CC-BY 3.0 (bundled License.txt: "CC-By 3.0 license... Copyrights Lukasz Wesiora.") | `public/models/tanks/community/strv103_wesiora.glb` (materials rebuilt as Principled BSDF from the 2012 pre-nodes .blend; textures 4096→2048 JPEG; integrated as fixed-gun casemate TD) |
 | IS-3 (`is3`) | IS-3 (Object 703, moving parts) | Nick Tallon (PanzerFactory) | https://www.thingiverse.com/thing:4137773 (via archive.org mirror thingiverse-4137773) | CC-BY 4.0 | `public/models/tanks/community/is3_panzerfactory.glb` (print STLs reassembled: turret peg seated in hull ring, gun in mantlet socket; hull/turret/gun articulation nodes) |
-| T-34-85 (Wei He) (`t34_85_cad`) | T-34-85 detailed CAD | Wei He (Xdhsqj) | https://www.thingiverse.com/thing:4326802 (via archive.org mirror thingiverse-4326802) | CC-BY 4.0 | `public/models/tanks/community/t34_85_weihe.glb` (SolidWorks 1:1 export decimated 3.49M→~220k tris; turret+gun separated at the ring plane, yaw pivot at ring center) |
-| Tiger I (Newc42) (`newc_tiger`) | Panzer VI Tiger I, Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 (itch.io "Asset license: Creative Commons Zero v1.0 Universal") | `public/models/tanks/community/tiger_newc42.glb` |
-| Panzer III Ausf. J (`newc_pziii`) | Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 | `public/models/tanks/community/pziii_newc42.glb` |
 | Leichttraktor (`leichttraktor`) | Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 | `public/models/tanks/community/leichttraktor_newc42.glb` |
 | Panzerkampfwagen III (`pziii_konserwa`) | Panzerkampfwagen III | konserwa | https://opengameart.org/content/panzerkampfwagen-iii | CC0 (stated on asset page) | `public/models/tanks/community/pziii_konserwa.glb` (untextured; painted at load onto the shared camo canvas — modelLoader `paintUntextured`) |
 | Recon Tank (`recon_tank`) | Recon Tank (Update) | Mophs — derivative of "Recon Tank" by MNDV.ecb / Eric Buisson (both credited) | https://opengameart.org/content/recon-tank-update | CC-BY 4.0 | `public/models/tanks/community/recon_tank_mophs.glb` (full PBR set embedded; bone-rigged Turret/Barrel articulation) |
 | Heavy Tank (Quaternius) (`q_heavy`) | Tank (heavy, tan) | Quaternius | https://poly.pizza/m/FA5daiyZQq | CC0 1.0 | `public/models/tanks/community/tank_quaternius_fa5.glb` |
+
+Retired 2026-09-22 (repository cleanup): the Wei He T-34-85 CAD study
+(`t34_85_cad`) and the Newc42 Tiger I / Panzer III Ausf. J studies
+(`newc_tiger`, `newc_pziii`) left the saved fleet with their icons, anchors,
+fill records, geometry packets and reference certificates. Their licence
+records stay in `docs/licenses/community/` as provenance history.
 
 Integration path: `MODEL_SOURCE` community entries in `src/vehicles/specs.ts`
 (parametric class-template armor/stats), generalized GLB ingestion in
@@ -692,8 +695,7 @@ bergman-derived siblings above.
   `npm run tank:assets` (tools/icons-page.html studio scene). The nine
   `m1a2_*` assets are
   DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs, and the
-  community-vehicle icons (`strv103_*`, `is3_*`, `t34_85_cad_*`,
-  `newc_tiger_*`, `newc_pziii_*`, `pziii_konserwa_*`, `leichttraktor_*`,
+  community-vehicle icons (`strv103_*`, `is3_*`, `pziii_konserwa_*`, `leichttraktor_*`,
   `recon_tank_*`, `q_heavy_*`, plus wave 2: `kv2_*`, `tiger2_*`,
   `sherman_jumbo_*`, `jagdtiger_*`, `jpz_e100_*`, `sturmtiger_*`, `t95_*`,
   `t30_*`, plus wave 3: `is7_*`, `object279_*`, `is6b_*`, `is1_*`, plus user

@@ -866,7 +866,7 @@ TANK_SPECS.t90m_proryv.visual.number = '623';
 
 /** First-party expansion ids (garage carousel order, appended after core). */
 const FIRST_PARTY_EXPANSION_TANK_IDS: string[] = [
-  'strv103', 'is3', 't34_85_cad', 'newc_tiger', 'newc_pziii',
+  'strv103', 'is3',
   'pziii_konserwa', 'leichttraktor',
   // wave 2 (print-model crawl, 2026-07-28)
   'kv2', 'tiger2', 'sherman_jumbo', 'jagdtiger',
@@ -948,118 +948,6 @@ const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
     visual: {
       scheme: 'solid', base: '#445032', weather: '#4f5b3e', patches: [],
       marking: 'number', number: '703', trackWidthM: 0.65,
-    },
-  },
-
-  t34_85_cad: {
-    id: 't34_85_cad', name: 'T-34-85 (Wei He)', nation: 'USSR', era: 'ww2', role: 'medium',
-    community: {
-      author: 'Wei He (Xdhsqj)',
-      source: 'https://www.thingiverse.com/thing:4326802',
-      license: 'CC-BY 4.0',
-    },
-    hp: 750,
-    enginePowerHp: 500, weightTons: 32, topSpeedKmh: 55, reverseSpeedKmh: 7,
-    hullTraverseDegS: 40,
-    terrainResistance: { hard: 0.9, medium: 1.1, soft: 2.0 },
-    pivotStyle: 'pivot',
-    turretTraverseDegS: 26, gunPitchDegS: 21, gunElevationDeg: 22, gunDepressionDeg: 5,
-    gun: {
-      caliberMm: 85, reloadS: 7.2, baseAccuracy: 0.42, aimTimeS: 2.3,
-      bloom: BLOOM_WW2,
-      shells: [
-        shell('BR-365K APHE', 'AP', 85, 119, 97, 180, 792),
-        shell('BR-365P APCR', 'APCR', 85, 167, 110, 160, 1030),
-        shell('O-365K HE', 'HE', 85, 43, 43, 240, 790),
-      ],
-    },
-    dims: { hullLengthM: 6.10, overallLengthM: 8.10, widthM: 3.0, heightM: 2.72 },
-    armor: communityArmor({
-      lenM: 6.10, widM: 3.0, hgtM: 2.72, turretPivot: [0, 1.68, 0.5],
-      gunPivot: [0, 0.32, 0.5], barrelLenM: 4.6, barrelRadM: 0.075,
-      frontMm: 75, sideMm: 45, rearMm: 45, roofMm: 20,
-      tFrontMm: 90, tSideMm: 75, tRearMm: 60, mantletMm: 90,
-    }),
-    visual: {
-      // r5 content_breadth: the solid 4BO canvas rendered the CAD shell as a
-      // flat untextured export in battle next to the weathered first-party
-      // fleet — two-tone Soviet disruptive (same language as the IS-3
-      // community Soviet) so it sits in one material world.
-      scheme: 'stripes', base: '#3e4f22', weather: '#4a5a2e',
-      patches: ['#2c3a20', '#57503a'],
-      marking: 'number', number: '85', trackWidthM: 0.5, camoScale: 0.5,
-    },
-  },
-
-  newc_tiger: {
-    id: 'newc_tiger', name: 'Tiger I (Newc42)', nation: 'Germany', era: 'ww2', role: 'heavy',
-    community: {
-      author: 'Newc42',
-      source: 'https://newc-42.itch.io/german-low-poly-wwii-tanks',
-      license: 'CC0-1.0',
-    },
-    hp: 1000,
-    enginePowerHp: 700, weightTons: 57, topSpeedKmh: 45, reverseSpeedKmh: 8,
-    hullTraverseDegS: 22,
-    terrainResistance: { hard: 1.1, medium: 1.3, soft: 2.3 },
-    pivotStyle: 'neutral',
-    turretTraverseDegS: 14, gunPitchDegS: 11, gunElevationDeg: 17, gunDepressionDeg: 6.5,
-    gun: {
-      caliberMm: 88, reloadS: 6.5, baseAccuracy: 0.34, aimTimeS: 2.4,
-      bloom: BLOOM_WW2,
-      shells: [
-        shell('PzGr. 39 APCBC', 'AP', 88, 120, 100, 220, 773),
-        shell('PzGr. 40 APCR', 'APCR', 88, 171, 138, 190, 930),
-        shell('Sprgr. 18 HE', 'HE', 88, 44, 44, 270, 770),
-      ],
-    },
-    dims: { hullLengthM: 6.32, overallLengthM: 8.45, widthM: 3.71, heightM: 3.0 },
-    armor: communityArmor({
-      lenM: 6.32, widM: 3.71, hgtM: 3.0, turretPivot: [0, 1.95, -0.1],
-      gunPivot: [0, 0.4, 0.55], barrelLenM: 4.5, barrelRadM: 0.085,
-      frontMm: 100, sideMm: 80, rearMm: 80, roofMm: 30,
-      tFrontMm: 100, tSideMm: 80, tRearMm: 80, mantletMm: 120,
-    }),
-    visual: {
-      scheme: 'stripes', base: '#8d7a4a', weather: '#7e6e44',
-      patches: ['#5f6539', '#6b4c38'], marking: 'cross', number: '131',
-      trackWidthM: 0.725, camoScale: 0.6,
-    },
-  },
-
-  newc_pziii: {
-    id: 'newc_pziii', name: 'Panzer III Ausf. J', nation: 'Germany', era: 'ww2', role: 'medium',
-    community: {
-      author: 'Newc42',
-      source: 'https://newc-42.itch.io/german-low-poly-wwii-tanks',
-      license: 'CC0-1.0',
-    },
-    hp: 620,
-    enginePowerHp: 300, weightTons: 21.5, topSpeedKmh: 40, reverseSpeedKmh: 7,
-    hullTraverseDegS: 38,
-    terrainResistance: { hard: 0.95, medium: 1.15, soft: 2.1 },
-    pivotStyle: 'pivot',
-    turretTraverseDegS: 26, gunPitchDegS: 20, gunElevationDeg: 20, gunDepressionDeg: 10,
-    gun: {
-      caliberMm: 50, reloadS: 3.6, baseAccuracy: 0.38, aimTimeS: 1.9,
-      bloom: BLOOM_WW2,
-      shells: [
-        shell('PzGr. 39 APC', 'AP', 50, 90, 62, 75, 835),
-        shell('PzGr. 40 APCR', 'APCR', 50, 130, 72, 65, 1180),
-        shell('Sprgr. 38 HE', 'HE', 50, 25, 25, 95, 550),
-      ],
-    },
-    dims: { hullLengthM: 5.56, overallLengthM: 6.41, widthM: 2.9, heightM: 2.5 },
-    armor: communityArmor({
-      lenM: 5.56, widM: 2.9, hgtM: 2.5, turretPivot: [0, 1.66, 0.3],
-      gunPivot: [0, 0.28, 0.4], barrelLenM: 3.0, barrelRadM: 0.05,
-      frontMm: 50, sideMm: 30, rearMm: 30, roofMm: 17,
-      tFrontMm: 57, tSideMm: 30, tRearMm: 30, mantletMm: 57,
-    }),
-    visual: {
-      // r9: down to Panzergrau — the light grey thumb read near-white.
-      scheme: 'solid', base: '#40474f', weather: '#4c535a', patches: [],
-      marking: 'cross', number: '221', trackWidthM: 0.4,
     },
   },
 
@@ -1721,9 +1609,6 @@ export const RUNTIME_TANK_IDS = TANK_CATALOGS.runtime;
 export { RETIRED_EXTERNAL_PLACEHOLDER_IDS };
 
 const FIRST_PARTY_DISPLAY_NAMES: Readonly<Record<string, string>> = {
-  t34_85_cad: 'T-34-85 obr. 1944',
-  newc_tiger: 'Tiger I Early',
-  newc_pziii: 'Panzer III Ausf. J',
   pziii_konserwa: 'Panzer III Ausf. E',
   is3_bergman: 'IS-3 Late',
 };

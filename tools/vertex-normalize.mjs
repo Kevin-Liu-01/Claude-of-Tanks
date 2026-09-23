@@ -542,27 +542,11 @@ const PLANS = {
     z: [[-3.144, -3.267], [2.880, 3.000], [3.179, 3.078]],
     yTopMax: 2.95,
   },
-  t34_85_cad: { // SQUAT print: p95 2.376 vs pub 2.72 (-12.6%) — hull zone
-    // near-true (deck 1.62 -> 1.66), turret zone stretched to publish;
-    // antenna tip 2.74 rides the clamp. Body -8% -> x1.0866 about -1.046;
-    // muzzle 3.952 -> 4.004 = rear' + 8.1 overall.
-    file: 't34_85_weihe',
-    y: [[0, 0], [1.62, 1.66], [2.38, 2.715], [2.74, 2.74]],
-    z: [[-3.853, -4.096], [1.761, 2.004], [3.952, 4.004]],
-    yTopMax: 2.75,
-  },
   pziii_konserwa: { // height true (-0.8%); body -3.5% -> x1.0366 about
     // -0.3135; overlong-modelled 3.7cm still short of published overall:
     // muzzle 3.009 -> 3.206 = rear' + 6.28.
     y: [[0, 0], [2.482, 2.50]],
     z: [[-2.976, -3.074], [2.349, 2.446], [3.009, 3.206]],
-    yTopMax: 2.51,
-  },
-  newc_pziii: { // +2.2% stature squeeze to pub 2.5; body -4% -> x1.0404
-    // about +0.01; muzzle 3.415 -> 3.64 = rear' + 6.41 overall.
-    file: 'pziii_newc42',
-    y: [[0, 0], [1.0, 1.0], [2.554, 2.50]],
-    z: [[-2.662, -2.77], [2.682, 2.79], [3.415, 3.64]],
     yTopMax: 2.51,
   },
   tiger2: { // body -5% -> x1.0526 about -1.1855; stature -2.1% stretched
@@ -571,14 +555,6 @@ const PLANS = {
     y: [[0, 0], [1.86, 1.86], [3.026, 3.09]],
     z: [[-4.691, -4.876], [2.32, 2.505], [4.953, 5.414]],
     yTopMax: 3.10,
-  },
-  newc_tiger: { // SQUAT stylized Tiger I: -10.2% stature (2.694 vs 3.0)
-    // stretched above the 1.05 track line; body -4.1% -> x1.0432 about
-    // +0.029; muzzle 5.15 -> 5.319 = rear' + 8.45 overall.
-    file: 'tiger_newc42',
-    y: [[0, 0], [1.05, 1.05], [2.694, 3.0]],
-    z: [[-3.0, -3.131], [3.058, 3.189], [5.15, 5.319]],
-    yTopMax: 3.01,
   },
   // leichttraktor: NO PLAN — its -7.4% overall is a fused tube that never
   // clears the bow; a z-warp of the tube zone would drag the hull bow with

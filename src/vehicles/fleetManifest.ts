@@ -103,7 +103,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   ww2: Object.freeze([
     't30',
-    'm4a3e8', 'tiger1', 't34_85', 't34_85_cad', 'newc_tiger', 'newc_pziii',
+    'm4a3e8', 'tiger1', 't34_85',
     'pziii_konserwa', 'leichttraktor', 'q_heavy', 'tiger2', 'sherman_jumbo',
   ]),
   casemate: Object.freeze(['jagdtiger', 'jpz_e100', 'sturmtiger', 't95', 'isu152', 'isu122s']),

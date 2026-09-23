@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "rosterCount": 226,
+  "rosterCount": 223,
   "provenance": "first-party-procedural-only",
   "camoSeed": 4242,
   "assetCamoSeed": 4100,
@@ -935,20 +935,6 @@
       "meshes": 44,
       "vertices": 72235
     },
-    "newc_pziii": {
-      "freezeHash": "3c143598",
-      "instanceFreezeHash": "ae16b1b7",
-      "assetGeometryHash": "982292ea",
-      "meshes": 42,
-      "vertices": 42232
-    },
-    "newc_tiger": {
-      "freezeHash": "c1156840",
-      "instanceFreezeHash": "918637d8",
-      "assetGeometryHash": "731a91f7",
-      "meshes": 41,
-      "vertices": 44450
-    },
     "object279": {
       "freezeHash": "66ba8eaf",
       "instanceFreezeHash": "7e12d668",
@@ -1109,13 +1095,6 @@
       "assetGeometryHash": "68a74198",
       "meshes": 45,
       "vertices": 59692
-    },
-    "t34_85_cad": {
-      "freezeHash": "d0e915ec",
-      "instanceFreezeHash": "92d34468",
-      "assetGeometryHash": "1e52fec7",
-      "meshes": 38,
-      "vertices": 42130
     },
     "t44": {
       "freezeHash": "0fb7593c",

@@ -348,7 +348,7 @@ const REG = {
   },
   // ---- WW2 family (append-only, 2026-08-03) --------------------------------
   // Lab registrations mirrored verbatim from specs.ts MODEL_SOURCE (tiger2 /
-  // sherman_jumbo / t34_85_cad / pziii_konserwa carry explicit loader pivots —
+  // sherman_jumbo / pziii_konserwa carry explicit loader pivots —
   // articulation-only, no effect on the yaw-0 silhouettes this tool measures;
   // fused-gun prints (no gunNode) normalize on the FULL box to
   // overallLengthM, loader parity). pubDims from the specs.ts dims rows.
@@ -362,26 +362,11 @@ const REG = {
     turretNode: '^Object_2$', autoPivot: true,
     pubDims: { hullLengthM: 7.38, overallLengthM: 10.29, widthM: 3.76, heightM: 3.09 },
   },
-  t34_85_cad: {
-    path: 'public/models/tanks/community/t34_85_weihe.glb',
-    turretNode: '^turret$', autoPivot: true,
-    pubDims: { hullLengthM: 6.10, overallLengthM: 8.10, widthM: 3.0, heightM: 2.72 },
-  },
   pziii_konserwa: {
     path: 'public/models/tanks/community/pziii_konserwa.glb',
     // loader sees GLTFLoader-sanitized 'Plane000'; raw GLB keeps 'Plane.000'
     turretNode: '^Plane\\.?000$', autoPivot: true, yawOffset: Math.PI,
     pubDims: { hullLengthM: 5.52, overallLengthM: 6.28, widthM: 2.9, heightM: 2.5 },
-  },
-  newc_pziii: {
-    path: 'public/models/tanks/community/pziii_newc42.glb',
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-    pubDims: { hullLengthM: 5.56, overallLengthM: 6.41, widthM: 2.9, heightM: 2.5 },
-  },
-  newc_tiger: {
-    path: 'public/models/tanks/community/tiger_newc42.glb',
-    turretNode: '^Turret$', gunNode: '^Barrel$', autoPivot: true,
-    pubDims: { hullLengthM: 6.32, overallLengthM: 8.45, widthM: 3.71, heightM: 3.0 },
   },
   leichttraktor: {
     path: 'public/models/tanks/community/leichttraktor_newc42.glb',
