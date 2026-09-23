@@ -215,10 +215,16 @@ function cannon(P:TankBuilderPort):void {
   put(P,'gunMountDark',blindTube(.0544,.027,.498,.034,24),.39113,1.93393,2.5472);
   // Measured stepped sleeve diameters; the muzzle is the narrow end of the
   // tube, not a larger decorative collar. The source has no forward MRS box.
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into
+  // the barrel is that we save on triangles"): the tube is closed at the source
+  // tip. Until then it turned into the source bore (.0632 at the mouth tapering
+  // to .0614 at the floor 5.3665), a 1.2363 m recess that sat entirely behind
+  // the factory's dark mouth disc; the depth stays recorded here and in
+  // amx40X.selftest.mjs.
   const barrel=[[2.1373,.1623],[2.9214,.1377],[2.9214,.1244],
     [3.7337,.1244],[3.7337,.11432],[4.6458,.11432],[4.6458,.10702],
     [5.5579,.10702],[5.5579,.10182],[6.4192,.10503],[6.4427,.07552],
-    [6.6028,.07485],[6.6028,.0632],[5.3665,.0614],[5.3665,0],[2.1373,0]];
+    [6.6028,.07485],[6.6028,0],[2.1373,0]];
   P.add('gun',new THREE.LatheGeometry(barrel.map(([z,r])=>new THREE.Vector2(r,z-GUN[2])),32)
     .rotateX(Math.PI/2).rotateZ(Math.PI/32));
   P.muzzleZ=6.6028-GUN[2];

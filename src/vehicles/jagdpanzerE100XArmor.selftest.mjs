@@ -51,8 +51,11 @@ const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe
 // save on triangles"): the fleet fallback mouth became a flat ring + disc (terminal-surface-fit-r3),
 // which moves both fingerprints; the armor and module geometry they guard is otherwise unchanged.
 // Superseded: jpz_e100_x da7ace42/ff39b2bd, jpz_e100 85585980/a39385a7.
+// 2026-09-22 (evening, same owner rule): the X tube is closed at its source tip — the 170 mm bore
+// (radius .085 down to the blind floor at 5.705, 1.3419 m) that sat entirely behind the fallback
+// disc is gone, moving the jpz_e100_x fingerprint again. Superseded: jpz_e100_x a7efaea0/91c58501.
 const geometryHashes = {
-  jpz_e100_x: { high: 'a7efaea0', low: '91c58501' },
+  jpz_e100_x: { high: '7d7517c4', low: 'b6a2e575' },
   jpz_e100: { high: '9c2fc966', low: 'cdde4c10' },
 };
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({

@@ -263,10 +263,15 @@ function bowTowingEyes(P:TankBuilderPort):void {
 
 function cannon(P:TankBuilderPort):void {
   P.add('gunMount',jagdpanzerBell());
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into
+  // the barrel is that we save on triangles"): the tube is closed at the source
+  // tip. Until then it turned into the 170 mm bore (radius .085) down to the
+  // blind floor at 5.705, a 1.3419 m recess that sat entirely behind the
+  // factory's dark mouth disc; the depth stays recorded here and in
+  // jagdpanzerE100X.selftest.mjs.
   const tubeRows=[[1.545,.203],[2.396,.191],[2.43,.165],[3,.1595],[4,.1497],
     [6.15,.1283],[6.32,.153],[6.41,.1948],[7.028,.1948],
-    [7.028,.1354],[7.046872,.1354],[7.046872,.085],
-    [5.705,.085],[5.705,0],[1.545,0]];
+    [7.028,.1354],[7.046872,.1354],[7.046872,0],[1.545,0]];
   P.add('gun',new THREE.LatheGeometry(tubeRows.map(([z,r])=>new THREE.Vector2(r,z-PITCH[2])),40).rotateX(Math.PI/2));
   for(let i=0;i<6;i++) {
     const a=i*Math.PI/3;

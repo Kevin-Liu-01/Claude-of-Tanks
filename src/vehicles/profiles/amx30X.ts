@@ -300,9 +300,15 @@ function gun(P: TankBuilderPort): void {
   // Source has a long tapered rear jacket, a step at4.22m, and a separate
   // terminal collar. Circular construction uses the area-equivalent radius
   // of the slightly elliptical source sections, without warping the oracle.
+  // Owner 2026-09-22 ("the point of adding holes instead of carving them into
+  // the barrel is that we save on triangles"): the jacket is closed at the
+  // source tip. Until then it turned into the blind 105 mm bore (radius .0525)
+  // down to the floor at 5.680, a 0.3144 m recess that sat entirely behind the
+  // factory's dark mouth disc; the depth stays recorded here and in
+  // amx30X.selftest.mjs.
   const rows = [[2.12637,.15665],[4.216,.13070],[4.23,.11710],
     [5.775,.10160],[5.795,.11330],[5.827,.11300],[5.868,.08160],
-    [5.99439,.08160],[5.99439,.0525],[5.680,.0525],[5.680,0],[2.12637,0]];
+    [5.99439,.08160],[5.99439,0],[2.12637,0]];
   const jacket = new THREE.LatheGeometry(rows.map(([z,r]) => new THREE.Vector2(r,z - GUN_Z)),32).rotateX(Math.PI / 2);
   P.add('gun', jacket);
   P.muzzleZ = AMX30_X_DATUMS.muzzleZ - GUN_Z;

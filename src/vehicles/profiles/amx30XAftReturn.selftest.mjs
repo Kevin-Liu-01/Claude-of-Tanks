@@ -57,9 +57,13 @@ function hashGeometry(h, g) {
   }
   if (g.index) { const a = g.index.array; h.update(Buffer.from(a.buffer, a.byteOffset, a.byteLength)); }
 }
+// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
+// that we save on triangles"): the jacket lathe is closed at the source tip (amx30X.ts, the .0525 bore
+// down to 5.680 is gone); every other primitive is the same. Superseded: high 92884447477fe05db22c8f592303976ed6e47e29ead4315fc62a6d67e90c3850,
+// low 5a0c52e7405efca965f4f377091b9a89da25a015a7ebb8cdb5bca180e97905cc.
 const BEFORE = {
-  high: '92884447477fe05db22c8f592303976ed6e47e29ead4315fc62a6d67e90c3850',
-  low: '5a0c52e7405efca965f4f377091b9a89da25a015a7ebb8cdb5bca180e97905cc',
+  high: '5a68d820d835a64ebed4ef167b5885fdaa2d35c0922d90f3ae90f6962f4581b7',
+  low: '9aa53729bc19c00cee0d830c5da01ebb4e355a410baced758061a26907b93b68',
 };
 for (const quality of ['high', 'low']) {
   const helper = [], guards = [], h = createHash('sha256'); let targets = 0;

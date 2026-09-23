@@ -29,16 +29,19 @@ for(const quality of['high','low']) {
         (1.212762-.506720064*y)/.862110652,.002,'source oblique fixed collar plane');
     }
     // Fleet mouth standard (2026-09-11): the visible lining seats 0.3 mm ahead
-    // of the tube edge; the deep 170 mm bore stays real air down to its floor.
+    // of the tube edge. Until 2026-09-22 the deep 170 mm bore stayed real air
+    // 1.3419 m down to its blind floor at z 5.7050 (radius .085); owner
+    // 2026-09-22 ("the point of adding holes instead of carving them into the
+    // barrel is that we save on triangles"): the tube is now closed at the
+    // source tip because the lining hid that recess entirely. Recorded here.
     const metal=[];tank.root.traverse(o=>{if(o.isMesh&&!/muzzleBoreShadowFallback/.test(o.name))metal.push(o);});
     const hitMetal=(p,d,far=20)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(metal,false)[0];
-    for(const[dx,dy]of[[0,0],[.05,0],[-.05,0],[0,.05],[0,-.05]]) {
+    for(const[dx,dy]of[[.0015,0],[.05,0],[-.05,0],[0,.05],[0,-.05]]) {
       const p=[-.0007+dx,2.33805+dy,7.25];
       const mouth=hit(p,[0,0,-1]);
       assert.equal(mouth?.object.name,'muzzleBoreShadowFallbackDisc','visible mouth is the fleet lining');
       close(mouth?.point.z,7.04687214+.0003,.0005,'lining seats on the tube edge');
-      assert.ok(!hitMetal(p,[0,0,-1],1.5),'deep continuous170mm bore is actual air');
-      close(hitMetal(p,[0,0,-1])?.point.z,5.7050,.0003,'physical blind floor behind the lining');
+      close(hitMetal(p,[0,0,-1])?.point.z,7.04687214,.0005,'metal tube closed at the source tip (recorded blind floor z 5.7050)');
     }
     for(const x of[-.8012,.8007]) {
       const p=[x,3.216,-4.03];
@@ -100,4 +103,4 @@ for(const quality of['high','low']) {
     }
   } finally {tank.dispose();}
 }
-console.log('jagdpanzerE100X: actual high/low fixed casemate, limited-traverse cannon,170mm bore, recessed visors, raised cupola and supported rear door pass');
+console.log('jagdpanzerE100X: actual high/low fixed casemate, limited-traverse cannon, closed 170mm tip over the recorded bore, recessed visors, raised cupola and supported rear door pass');
