@@ -156,7 +156,7 @@ export const NATION_WHEEL_SETS: Readonly<Record<string, readonly NationWheelRule
   'south korea': [
     { donor: 'k1a1', ids: ['k1a1'], reason: 'the K1A1 draws its own wheel' },
     { donor: 'k2', roles: MBT_HULL_ROLES, reason: 'South Korea MBT hull → K2 wheel' },
-    { donor: 'k1a1', reason: 'South Korea IFV hull → the smaller K1A1 wheel (the owner listed no Korean IFV donor; recorded as a choice)' },
+    { donor: 'k1a1', reason: 'South Korea IFV hull → the smaller K1A1 wheel (the owner listed no Korean IFV donor; recorded as a choice — the K21 is redirected to the BMP-3 ROK wheel in WHEEL_STANDARD_EXCEPTIONS, owner 2026-09-23)' },
   ],
   poland: [
     { donor: 'pl01', roles: MBT_HULL_ROLES, reason: 'Poland MBT hull → PL-01 wheel' },
@@ -219,6 +219,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   ua_t84_oplot_m: { donor: 't90', reason: 'Ukraine: T-84 Oplot-M base hull → Russia older T-series donor' },
   ua_m2a3_bradley: { donor: 'm551a1_tts', reason: 'Ukraine: Bradley base hull → USA light donor' },
   bmp3_rok: { donor: 'bmp3m_dragun125_x', reason: 'round 40 axial fit: a Korean-marked Russian BMP-3 hull draws the BMP-3 family wheel like bmp2/bmp3 (the K1A1 bowl fit 0.69 in its 0.30 track)' },
+  k21_x: { donor: 'bmp3m_dragun125_x', reason: 'owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel — the same Dragun rolled-lip construction bmp3_rok draws, instead of the Korean IFV rule\'s K1A1 bowl' },
   griffin_viper: { donor: 'm1a2', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   griffin50_x: { donor: 'm1a2', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   leo2a6_ua: { donor: 'leo2a6', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },

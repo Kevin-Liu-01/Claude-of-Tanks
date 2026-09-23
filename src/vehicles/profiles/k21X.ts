@@ -338,8 +338,10 @@ function buildK21Hull(P: TankBuilderPort): void {
         }
 }
 function buildK21Gear(P: TankBuilderPort): void {
-    // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the South Korea IFV nation
-    // construction (k1a1, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+    // owner 2026-09-22 ("standardize our wheels across NATIONS") and 2026-09-23 (round 46: "the K21 uses the BMP-3
+    // ROK wheel"): the road-wheel face is the BMP-3 family Dragun rolled-lip construction bmp3_rok draws
+    // (WHEEL_STANDARD_EXCEPTIONS, nationWheelSets.ts), fitted by the running-gear builder into this hull's own
+    // wheel envelope (tire .242 .. cap .428 around the construction's natural .277 width: axial fit 1.0).
     P.gear = KIT.buildRunningGear(P, {
         style: 'rubber', trackPattern: 'eastern-ifv',
         wheelR: .2990, wheelW: .242, wheelY: .3665,

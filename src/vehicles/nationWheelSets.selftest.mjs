@@ -84,7 +84,8 @@ expect('griffin_viper', 'm1a2'); expect('griffin50_x', 'm1a2'); // round 40 axia
 expect('type59', 'ztz100_x'); expect('ztz100_prototype', 'ztz100_x'); expect('aft10_x', 'type100');
 expect('merkava1b', 'merkava4b'); expect('merkava4_barak', 'merkava4b'); expect('namer_ifv', 'namer_ifv', 'donor');
 expect('strv81', 'strv122'); expect('strv103', 'strv122'); expect('strv122', 'strv122'); expect('cv90', 'cv90_mkiv_x');
-expect('k1a1', 'k1a1'); expect('k2b', 'k2'); expect('k21_x', 'k1a1'); expect('bmp3_rok', 'bmp3m_dragun125_x'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
+expect('k1a1', 'k1a1'); expect('k2b', 'k2'); expect('bmp3_rok', 'bmp3m_dragun125_x'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
+expect('k21_x', 'bmp3m_dragun125_x'); // owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel construction
 expect('pt91m', 'pl01'); expect('t72m1_jaguar', 'pl01'); expect('upior', 'bwp1');
 expect('type10', 'type10'); expect('type89_light_tiger', 'type10'); expect('type74', 'type90'); expect('type89', 'type90');
 expect('carro45t', 'ariete_c1'); expect('ariete', 'ariete_c1'); expect('ariete_c2_x', 'ariete_c1', 'donor');

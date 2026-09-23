@@ -50,7 +50,7 @@ assert.equal(wheelPatternFor(getSpec('merkava4b')).id, 'deep-dish-eight', 'Merka
 assert.equal(wheelPatternFor(getSpec('kf51b')).id, 'plain-dish-twelve', 'Leopard-hull family uses the plain dished disc');
 assert.equal(wheelPatternFor(getSpec('m60a1')).id, 'cast-five-spoke', 'Patton cast-wheel identity');
 // Nation wheel sets (owner 2026-09-22, "standardize our wheels across NATIONS"; nationWheelSets.ts):
-assert.equal(wheelPatternFor(getSpec('k21_x')).id, 'flanged-twelve', 'K21 draws the K1A1 wheel (the owner listed only Korean MBT donors)');
+assert.equal(wheelPatternFor(getSpec('k21_x')).id, 'armored-hub-six', 'owner 2026-09-23: the K21 draws the BMP-3 ROK (Dragun) wheel');
 assert.equal(wheelPatternFor(getSpec('k2_x')).id, 'flanged-twelve', 'K2 retains its own wheel family');
 assert.equal(wheelPatternFor(getSpec('type100')).id, 'pressed-six', 'Chinese Type 100 IFV is a donor and keeps its pressed wheel');
 assert.equal(wheelPatternFor(getSpec('type10_x')).id, 'flanged-twelve', 'Japanese Type 10 retains its own wheel family');

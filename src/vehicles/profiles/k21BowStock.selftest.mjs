@@ -42,15 +42,16 @@ function clearance(built,intrude=false){const stock=built.parts.filter(r=>r.buck
 // Authenticated pre-correction stock from production profile SHA 9e800d5f744999d73bf2c86c6ebc33999b6a9599fc47421b4262f2c140cc6791.
 const preservedBefore={
   "high": { // 2026-09-22: k21_x draws the K1A1 nation wheel (nationWheelSets.ts); gear and non-hull digests repinned
+    // 2026-09-23 (round 46, owner): k21_x draws the BMP-3 ROK / Dragun rolled-lip wheel; gear digests repinned, hull stock unchanged
 
     "nonHull": "822455a926bbc41c6ebdc899e5f5570e204d33d904552ebee248e5cae8a12c98",
     "aft": "1a211a2a0153b4302955a83226875a1aef0b4d5aaf06e28e869089fea25ce50e",
-    "gear": "10c974969abdab0b30cd02cb9a231feef28c66c115760f962bda40de506bf30d"
+    "gear": "de7a5484b24ff90787676359c581ce0bbb3dcf9aeac14a3002676bc882d9028a"
   },
   "low": {
     "nonHull": "b99bffcd35d575a88dcceba43a40a96c16c394a42d55e86b52cff9c7d4b7e169",
     "aft": "a6cdeb487184cd072c324ed005a0023f542d355ae7504097f37a056528b1577e",
-    "gear": "ed382ead07c998f64b27d73f29e00552d57f572a7998b967837b8ff8da0a00f5" // 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): the K1A1 bowl turns at 12 segments at LOW; HIGH unchanged
+    "gear": "a112dc27b09f14ecdfd3091cfb14fc2155569a49ab1c9402ed93b909dc5d3da6" // 2026-09-23 (round 46): LOW Dragun rolled-lip web at LOW_TIER_WHEEL_SEGMENTS (was the K1A1 bowl at 12 segments, 2026-09-22)
   }
 };
 const report=[];try{for(const quality of['high','low']){const b=build(candidate,quality);try{const preserved=fixedFingerprint(b),original=preservedBefore[quality];assert.deepEqual(preserved,original,'gun/turret/gear and all hull stock behind .81m remain exact');const maxResidual=stockProof(b);seatsProof(b.parts);const armorSeats=allArmorSeats(b.parts);airProof(b);const receivers=b.parts.filter(r=>r.b.min.y<.71&&r.b.max.y>.8&&r.b.max.z<3.1&&r.b.min.z>2.9&&r.b.max.x<0);assert.equal(receivers.length,2);try{for(const r of receivers){r.mesh.position.y+=.3;r.mesh.updateMatrixWorld(true);}assert.throws(()=>seatsProof(b.parts),assert.AssertionError,'moving the real receiver off the bow is rejected');}finally{for(const r of receivers){r.mesh.position.y-=.3;r.mesh.updateMatrixWorld(true);}}const oneBlock=b.parts.find(r=>Math.abs(r.b.max.x-r.b.min.x-.3524)<1e-5&&r.b.min.z>2.6);assert.ok(oneBlock);try{oneBlock.mesh.position.y+=.2;oneBlock.mesh.updateMatrixWorld(true);assert.throws(()=>allArmorSeats(b.parts),assert.AssertionError,'a floating armor block cannot retain clamp contact');}finally{oneBlock.mesh.position.y-=.2;oneBlock.mesh.updateMatrixWorld(true);}let tri=0;b.tank.root.traverseVisible(o=>{if(o.isMesh)tri+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1)});assert.ok(tri<=80000);const checks=clearance(b);assert.throws(()=>clearance(b,true),assert.AssertionError,'actual shoe-stock intrusion is rejected');report.push({quality,maxResidual,witnesses:sourceWitnesses.length,seats:seats.length,armorSeats,shoeBounds:checks,triangles:tri,preserved});}finally{b.dispose()}}assert.ok(report[1].triangles<=.75*report[0].triangles);console.log('K21 source bow fixture PASS',JSON.stringify(report));}finally{material.dispose();front.dispose();registerProfiledBuilders({k21_x:baseline})}
