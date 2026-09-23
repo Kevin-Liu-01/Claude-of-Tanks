@@ -38,6 +38,12 @@ export function diffLines(output) {
   return { plus, minus };
 }
 
+/** Every quoted 64-hex digest the failure output shows — changed, unchanged or as diff context: the rows a count
+ * belongs to. Quoted only, so a digest inside a file path never counts. */
+export function diffAnchors(output) {
+  return [...new Set((output.match(/['"][0-9a-f]{64}['"]/g) ?? []).map((token) => token.slice(1, -1)))];
+}
+
 /** Literal edits named by the diff: [{expected, actual, kind: 'hex' | 'num'}]. */
 export function planEdits(output) {
   const { plus, minus } = diffLines(output);
@@ -70,11 +76,14 @@ export function planArraySwap(output) {
 }
 
 /** Apply the planned edits to `source`; returns { source, changes } or { error }. */
-export function applyEdits(source, edits) {
+export function applyEdits(source, edits, anchors = []) {
   const changes = [];
   const hexEdits = edits.filter((edit) => edit.kind === 'hex'), numEdits = edits.filter((edit) => edit.kind === 'num');
-  if (!hexEdits.length && numEdits.length) return { error: 'numbers without a digest anchor' };
   const anchorLines = new Set();
+  // a count may move while its row's digest does not (a mesh count beside an unchanged multiset): the digests the diff
+  // shows, changed or not, name the rows a number may be replaced on
+  for (const hex of anchors) source.split('\n').forEach((line, index) => { if (line.includes(hex)) anchorLines.add(index); });
+  if (!hexEdits.length && numEdits.length && !anchorLines.size) return { error: 'numbers without a digest anchor' };
   for (const { expected, actual } of hexEdits) {
     let count = 0;
     for (const quote of ['"', "'"]) {
@@ -131,9 +140,10 @@ export function repinReceipt(file, { dry = false, maxRounds = 40, run = runRecei
     const { status, output } = run(file);
     if (status === 0) return { file, rounds: round, changes, ok: true };
     let edits = planEdits(output);
-    if (edits.length && edits.every((edit) => edit.kind === 'num')) edits = [];
+    const anchors = diffAnchors(output);
+    if (edits.length && edits.every((edit) => edit.kind === 'num') && !anchors.length) edits = [];
     const source = readFileSync(file, 'utf8');
-    const applied = edits.length ? applyEdits(source, edits) : (() => { const swap = planArraySwap(output); return swap ? applyArraySwap(source, swap) : { error: 'non-literal failure' }; })();
+    const applied = edits.length ? applyEdits(source, edits, anchors) : (() => { const swap = planArraySwap(output); return swap ? applyArraySwap(source, swap) : { error: 'non-literal failure' }; })();
     if (applied.error) {
       const reason = output.split('\n').filter((line) => /Assertion|Error:|actual|expected/.test(line)).slice(0, 8).join('\n');
       return { file, rounds: round, changes, ok: false, reason: `${applied.error}\n${reason}` };

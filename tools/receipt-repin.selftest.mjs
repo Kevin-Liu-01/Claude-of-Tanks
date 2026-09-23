@@ -89,6 +89,7 @@ console.log('array fixture PASS');
   assert.deepEqual(planArraySwap('  actual: [ 1, 2.5 ],\n  expected: [ 1, 3 ],'), { actual: ['1', '2.5'], expected: ['1', '3'] });
   assert.equal(planArraySwap("  actual: [ 'x', 2 ],\n  expected: [ 'x', 3 ],"), null, 'arrays with strings are tuples, not numeric arrays');
   assert.deepEqual(applyEdits("a: 5,\n", [{ expected: '5', actual: '6', kind: 'num' }]), { error: 'numbers without a digest anchor' });
+  assert.deepEqual(applyEdits(`row: ['${stale}', 5],\n`, [{ expected: '5', actual: '6', kind: 'num' }], [stale]).source, `row: ['${stale}', 6],\n`, 'an unchanged digest in the diff anchors its row');
   assert.equal(applyArraySwap('[1, 2]\n[1, 2]\n', { expected: ['1', '2'], actual: ['3', '4'] }).error, 'array literal [1, 2]… occurs 2 times');
   assert.deepEqual(failedReceiptsFromLog('[selftests] pre 7/406 FAIL src/a.selftest.mjs: 4190ms child, 0ms FIFO\n[selftests] FAIL src/b.selftest.mjs\n[selftests] pre 8/406 PASS src/c.selftest.mjs: 1ms\n'), ['src/a.selftest.mjs', 'src/b.selftest.mjs']);
 } finally {
