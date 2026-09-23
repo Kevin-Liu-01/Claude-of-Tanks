@@ -187,8 +187,14 @@ for (const [path, kind] of [['../src/vehicles/tankFactoryCore.ts', 'factory'], [
   const observed = transformConstructor(source, kind);
   assert.ok(Object.values(observed.stages).every(stage => Number.isInteger(stage.line) && stage.line > 0));
   if (kind === 'factory') {
-    assert.ok(Object.values(observed.stages).filter(stage => /^createTank\w*Stage\d+$/.test(stage.expression)).length >= 20,
-      'owned construction body keeps its stage-level timing coverage');
+    // Round 46 inlined the generated createTank*StageN wrappers: the owned
+    // body's direct calls are the stages now (docs/CLEANUP-2026-09-22.md §4.1).
+    const expressions = new Set(Object.values(observed.stages).map(stage => stage.expression));
+    for (const stage of ['createTankMaterials', 'resolveBuilder', 'mergeBucket', 'applyInteriorFills', 'normalizeTankAppearance',
+      'installCoplanarDepthLayers', 'finalizeVehicleNightLighting', 'resolveTankPresentationSetup', 'prepareTankDecorationSteps']) {
+      assert.ok(expressions.has(stage), `${stage}: owned construction body keeps its stage-level timing coverage`);
+    }
+    assert.ok(Object.keys(observed.stages).length >= 40, 'owned construction body keeps its stage-level timing coverage');
     assert.throws(() => transformConstructor(source.replace('function* createTankOwnedSteps(', 'function* unrecognizedOwner('), kind),
       /Expected constructor attribution coverage/, 'missing the actual generator owner must not silently profile only wrappers');
   }

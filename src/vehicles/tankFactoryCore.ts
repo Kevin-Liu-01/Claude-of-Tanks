@@ -10094,15 +10094,9 @@ function* createTankOwnedSteps(
   legacyDecoration: boolean,
 ): Generator<void, TankVisual, void> {
   const coreStartedAt = performance.now();
-  const createTankAssemblyStage1 = (): void => {
-    if (!factoryConfigured) {
-      throw new Error('Import tankFactory.ts instead of the unconfigured tankFactoryCore.ts');
-    }
-  };
-  const createTankAssemblyStage17 = (): void => {
-    createTankAssemblyStage1();
-  };
-  createTankAssemblyStage17();
+  if (!factoryConfigured) {
+    throw new Error('Import tankFactory.ts instead of the unconfigured tankFactoryCore.ts');
+  }
   const {
     camoSeed = 4000,
     camoPattern = null,
@@ -10116,15 +10110,9 @@ function* createTankOwnedSteps(
     deferStaticBatch = false,
     battleDetailLod = false,
   } = opts;
-  const createTankAssemblyStage2 = (): void => {
-    if (materialMode !== 'rendered' && materialMode !== 'geometry-only') {
-      throw new TypeError(`Unsupported tank material mode '${String(materialMode)}'`);
-    }
-  };
-  const createTankAssemblyStage18 = (): void => {
-    createTankAssemblyStage2();
-  };
-  createTankAssemblyStage18();
+  if (materialMode !== 'rendered' && materialMode !== 'geometry-only') {
+    throw new TypeError(`Unsupported tank material mode '${String(materialMode)}'`);
+  }
   const geometryOnly = materialMode === 'geometry-only';
   const engineCtx = normalizeTankEngineContext(engineContext);
   const spec = getSpec(specId) as FactoryTankSpec;
@@ -10139,52 +10127,22 @@ function* createTankOwnedSteps(
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
   const root = new THREE.Group();
-  const createTankReceiptStage1 = (): void => {
-    root.rotation.order = 'YXZ';
-    root.name = `tank_${specId}`;
-    root.userData.textureQuality = quality;
-    root.userData.geometryQuality = geometryQuality;
-    root.userData.materialMode = usesSharedMaterialTextures ? 'rendered' : 'geometry-only';
-    root.userData.usesSharedMaterialTextures = usesSharedMaterialTextures;
-  };
-  const createTankReceiptStage7 = (): void => {
-    createTankReceiptStage1();
-  };
-  createTankReceiptStage7();
+  root.rotation.order = 'YXZ';
+  root.name = `tank_${specId}`;
+  root.userData.textureQuality = quality;
+  root.userData.geometryQuality = geometryQuality;
+  root.userData.materialMode = usesSharedMaterialTextures ? 'rendered' : 'geometry-only';
+  root.userData.usesSharedMaterialTextures = usesSharedMaterialTextures;
   const hullG = new THREE.Group();
-  const createTankAssemblyStage3 = (): void => {
-    hullG.name = 'rig_hull';
-  };
-  const createTankAssemblyStage19 = (): void => {
-    createTankAssemblyStage3();
-  };
-  createTankAssemblyStage19();
+  hullG.name = 'rig_hull';
   const turretG = new THREE.Group();
-  const createTankAssemblyStage4 = (): void => {
-    turretG.name = 'rig_turret';
-    turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
-  };
-  const createTankAssemblyStage20 = (): void => {
-    createTankAssemblyStage4();
-  };
-  createTankAssemblyStage20();
+  turretG.name = 'rig_turret';
+  turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
   const gunG = new THREE.Group();
-  const createTankAssemblyStage5 = (): void => {
-    gunG.name = 'rig_gun';
-    gunG.position.set(armor.gunPivot[0], armor.gunPivot[1], armor.gunPivot[2]);
-  };
-  const createTankAssemblyStage21 = (): void => {
-    createTankAssemblyStage5();
-  };
-  createTankAssemblyStage21();
+  gunG.name = 'rig_gun';
+  gunG.position.set(armor.gunPivot[0], armor.gunPivot[1], armor.gunPivot[2]);
   const recoilG = new THREE.Group();
-  const createTankAssemblyStage6 = (): void => {
-    recoilG.name = 'rig_recoil';
-  };
-  const createTankAssemblyStage22 = (): void => {
-    createTankAssemblyStage6();
-  };
-  createTankAssemblyStage22();
+  recoilG.name = 'rig_recoil';
   const authoredMuzzles = Array.isArray(spec.gun?.muzzles) ? spec.gun.muzzles : [];
   const launcherTips = createLauncherTips(gunG, spec.gun.launcherMuzzles);
   let launcherCursor = 0;
@@ -10196,15 +10154,9 @@ function* createTankOwnedSteps(
       return group;
     })
     : [];
-  const createTankAssemblyStage7 = (): void => {
-    root.add(hullG, turretG);
-    turretG.add(gunG);
-    gunG.add(recoilG);
-  };
-  const createTankAssemblyStage23 = (): void => {
-    createTankAssemblyStage7();
-  };
-  createTankAssemblyStage23();
+  root.add(hullG, turretG);
+  turretG.add(gunG);
+  gunG.add(recoilG);
 
   const buckets: Record<string, THREE.BufferGeometry[]> = {};
   const mudguardParts: MudguardPart[] = [];
@@ -10520,15 +10472,9 @@ function* createTankOwnedSteps(
   };
 
   const builder = resolveBuilder(specId, spec);
-  const createTankAssemblyStage8 = (): void => {
-    if (builder) Reflect.apply(builder, undefined, [P]);
-    else buildCommunityPlaceholder(P);
-  };
-  const createTankAssemblyStage24 = (): void => {
-    createTankAssemblyStage8();
-  };
   const coreAuthoredStartedAt = performance.now();
-  createTankAssemblyStage24();
+  if (builder) Reflect.apply(builder, undefined, [P]);
+  else buildCommunityPlaceholder(P);
   const coreAuthoredFinishedAt = performance.now();
 
   // Native profiles often author visible ERA as irregular wedges, lids and
@@ -10563,34 +10509,28 @@ function* createTankOwnedSteps(
     }
     return best;
   };
-  const createTankAssemblyStage9 = (): void => {
-    for (const { name, owner, part } of destructibleEraParts) {
-      if (!liveExternalParts[owner].has(part)) continue;
-      const plate = gameplayEraByOwner[owner].find((candidate) => candidate.name === name);
-      if (!plate) continue;
-      if (!part.boundingBox) part.computeBoundingBox();
-      if (!part.boundingBox || part.boundingBox.isEmpty()) continue;
-      const center = part.boundingBox.getCenter(new THREE.Vector3());
-      const seatDistanceM = pointToPlateDistance(center, plate);
-      const binding = eraVisualBindings.get(name) || {
-        owner,
-        visualSectors: new Set<string>(),
-        partCount: 0,
-        maximumSeatDistanceM: 0,
-        automaticPartCount: 0,
-      };
-      binding.partCount++;
-      binding.maximumSeatDistanceM = Math.max(binding.maximumSeatDistanceM, seatDistanceM);
-      eraVisualBindings.set(name, binding);
-      const boundParts = eraBoundPartsByPlate.get(name) || [];
-      boundParts.push(part);
-      eraBoundPartsByPlate.set(name, boundParts);
-    }
-  };
-  const createTankAssemblyStage25 = (): void => {
-    createTankAssemblyStage9();
-  };
-  createTankAssemblyStage25();
+  for (const { name, owner, part } of destructibleEraParts) {
+    if (!liveExternalParts[owner].has(part)) continue;
+    const plate = gameplayEraByOwner[owner].find((candidate) => candidate.name === name);
+    if (!plate) continue;
+    if (!part.boundingBox) part.computeBoundingBox();
+    if (!part.boundingBox || part.boundingBox.isEmpty()) continue;
+    const center = part.boundingBox.getCenter(new THREE.Vector3());
+    const seatDistanceM = pointToPlateDistance(center, plate);
+    const binding = eraVisualBindings.get(name) || {
+      owner,
+      visualSectors: new Set<string>(),
+      partCount: 0,
+      maximumSeatDistanceM: 0,
+      automaticPartCount: 0,
+    };
+    binding.partCount++;
+    binding.maximumSeatDistanceM = Math.max(binding.maximumSeatDistanceM, seatDistanceM);
+    eraVisualBindings.set(name, binding);
+    const boundParts = eraBoundPartsByPlate.get(name) || [];
+    boundParts.push(part);
+    eraBoundPartsByPlate.set(name, boundParts);
+  }
   type GameplayEraPlate = (typeof armor.hullPlates)[number];
   interface PreparedVisualEraPart extends VisualEraPart {
     candidates: GameplayEraPlate[];
@@ -10695,16 +10635,7 @@ function* createTankOwnedSteps(
     const { plate, distanceM } = nearestEraPlate(prepared.center, candidates);
     registerVisualEraBinding(prepared, plate, distanceM);
   };
-  const createTankHullStage1 = (): void => {
-    const createTankHullStage6 = (): void => {
-      for (const visualEraPart of visualEraParts) bindVisualEraPart(visualEraPart);
-    };
-    createTankHullStage6();
-  };
-  const createTankAssemblyStage26 = (): void => {
-    createTankHullStage1();
-  };
-  createTankAssemblyStage26();
+  for (const visualEraPart of visualEraParts) bindVisualEraPart(visualEraPart);
 
   const wholeEraFitReuse = createInvocationEraWholeReuse();
   const fittedEraSurfaces = (plate: (typeof armor.hullPlates)[number]): number[][][] => {
@@ -10737,31 +10668,25 @@ function* createTankOwnedSteps(
   // receipts. Runtime meshes stay merged exactly as before. Each AABB is in
   // the eventual bucket mesh's local coordinates; the generator reapplies the
   // final mesh transform, so profile post-assembly regrouping remains valid.
-  const createTankModulesStage1 = (): void => {
-    if (geometryReceipt) {
-      root.userData.combatGeometryParts = [];
-      for (const [bucket, list] of Object.entries(buckets)) {
-        const def = BUCKET_DEF[bucket];
-        if (!def) continue;
-        for (const part of list) {
-          if (!part.boundingBox) part.computeBoundingBox();
-          const box = part.boundingBox;
-          if (!box || box.isEmpty()) continue;
-          root.userData.combatGeometryParts.push({
-            bucket,
-            parent: def[0],
-            min: box.min.toArray(),
-            max: box.max.toArray(),
-            module: moduleVisualParts.get(part) || null,
-          });
-        }
+  if (geometryReceipt) {
+    root.userData.combatGeometryParts = [];
+    for (const [bucket, list] of Object.entries(buckets)) {
+      const def = BUCKET_DEF[bucket];
+      if (!def) continue;
+      for (const part of list) {
+        if (!part.boundingBox) part.computeBoundingBox();
+        const box = part.boundingBox;
+        if (!box || box.isEmpty()) continue;
+        root.userData.combatGeometryParts.push({
+          bucket,
+          parent: def[0],
+          min: box.min.toArray(),
+          max: box.max.toArray(),
+          module: moduleVisualParts.get(part) || null,
+        });
       }
     }
-  };
-  const createTankAssemblyStage27 = (): void => {
-    createTankModulesStage1();
-  };
-  createTankAssemblyStage27();
+  }
 
   // ---- mudguard/fender physical seating receipts -----------------------
   // Work on the still-unmerged primitive AABBs. A guard may comprise a
@@ -10775,104 +10700,77 @@ function* createTankOwnedSteps(
   // bucket; only geometry still present in the final bucket arrays is live.
   const liveMudguardParts = mudguardParts.filter(({ bucket, part }) =>
     buckets[bucket]?.includes(part));
-  const createTankReceiptStage2 = (): void => {
-    root.userData.mudguardFenderSeats = [];
-  };
-  const createTankReceiptStage8 = (): void => {
-    createTankReceiptStage2();
-  };
-  createTankReceiptStage8();
-  const createTankHullStage2 = (): void => {
-    if (geometryReceipt && liveMudguardParts.length) {
-      const createTankHullCourse1 = (): void => {
-        const mudguardSet = new Set(liveMudguardParts.map(({ part }) => part));
-        const hullSupportParts: HullSupportPart[] = [];
-        const createTankHullStage7 = (): void => {
-          for (const [bucket, list] of Object.entries(buckets)) {
-            const bucketDef = BUCKET_DEF[bucket];
-            if (!bucketDef || bucketDef[0] !== 'hullG') continue;
-            if (/track|runninggear|shadow/i.test(bucket)) continue;
-            for (const part of list) {
-              if (mudguardSet.has(part)) continue;
-              if (!part.boundingBox) part.computeBoundingBox();
-              if (part.boundingBox) hullSupportParts.push({ bucket, part, box: part.boundingBox });
-            }
-          }
-        };
-        createTankHullStage7();
-        const axisGap = (a0: number, a1: number, b0: number, b1: number): number =>
-          Math.max(0, a0 - b1, b0 - a1);
-        const boxAxisGaps = (a: THREE.Box3, b: THREE.Box3): [number, number, number] => [
-          axisGap(a.min.x, a.max.x, b.min.x, b.max.x),
-          axisGap(a.min.y, a.max.y, b.min.y, b.max.y),
-          axisGap(a.min.z, a.max.z, b.min.z, b.max.z),
-        ];
-        const boxGap = (a: THREE.Box3, b: THREE.Box3): number => Math.hypot(...boxAxisGaps(a, b));
-        const guardNodes = liveMudguardParts.map((entry) => {
-          if (!entry.part.boundingBox) entry.part.computeBoundingBox();
-          const box = entry.part.boundingBox;
-          if (!box) throw new Error(`${specId}: mudguard ${entry.label} has no bounds`);
-          let directGapM = Infinity;
-          let directAxisGapM: [number, number, number] | null = null;
-          let supportBucket: string | null = null;
-          for (const support of hullSupportParts) {
-            const axisGaps = boxAxisGaps(box, support.box);
-            const gap = Math.hypot(...axisGaps);
-            if (gap < directGapM) {
-              directGapM = gap;
-              directAxisGapM = axisGaps;
-              supportBucket = support.bucket;
-            }
-          }
-          return { ...entry, box, directGapM, directAxisGapM, supportBucket };
-        });
-        const supported = new Set<number>();
-        const createTankAssemblyStage39 = (): void => {
-          for (let index = 0; index < guardNodes.length; index++) {
-            if (guardNodes[index].directGapM <= MUDGUARD_SEAT_TOLERANCE_M) {
-              supported.add(index);
-            }
-          }
-        };
-        createTankAssemblyStage39();
-        let changed = true;
-        const createTankAssemblyStage40 = (): void => {
-          while (changed) {
-            changed = false;
-            for (let index = 0; index < guardNodes.length; index++) {
-              if (supported.has(index)) continue;
-              for (const supportIndex of supported) {
-                if (boxGap(guardNodes[index].box, guardNodes[supportIndex].box)
-                    <= MUDGUARD_SEAT_TOLERANCE_M) {
-                  supported.add(index);
-                  changed = true;
-                  break;
-                }
-              }
-            }
-          }
-        };
-        createTankAssemblyStage40();
-        const createTankReceiptStage13 = (): void => {
-          root.userData.mudguardFenderSeats = guardNodes.map((node, index) => ({
-            label: node.label,
-            bucket: node.bucket,
-            supported: supported.has(index),
-            directGapM: Number.isFinite(node.directGapM) ? node.directGapM : null,
-            directAxisGapM: node.directAxisGapM,
-            supportBucket: node.supportBucket,
-            toleranceM: MUDGUARD_SEAT_TOLERANCE_M,
-          }));
-        };
-        createTankReceiptStage13();
-      };
-      createTankHullCourse1();
+  root.userData.mudguardFenderSeats = [];
+  if (geometryReceipt && liveMudguardParts.length) {
+    const mudguardSet = new Set(liveMudguardParts.map(({ part }) => part));
+    const hullSupportParts: HullSupportPart[] = [];
+    for (const [bucket, list] of Object.entries(buckets)) {
+      const bucketDef = BUCKET_DEF[bucket];
+      if (!bucketDef || bucketDef[0] !== 'hullG') continue;
+      if (/track|runninggear|shadow/i.test(bucket)) continue;
+      for (const part of list) {
+        if (mudguardSet.has(part)) continue;
+        if (!part.boundingBox) part.computeBoundingBox();
+        if (part.boundingBox) hullSupportParts.push({ bucket, part, box: part.boundingBox });
+      }
     }
-  };
-  const createTankAssemblyStage28 = (): void => {
-    createTankHullStage2();
-  };
-  createTankAssemblyStage28();
+    const axisGap = (a0: number, a1: number, b0: number, b1: number): number =>
+      Math.max(0, a0 - b1, b0 - a1);
+    const boxAxisGaps = (a: THREE.Box3, b: THREE.Box3): [number, number, number] => [
+      axisGap(a.min.x, a.max.x, b.min.x, b.max.x),
+      axisGap(a.min.y, a.max.y, b.min.y, b.max.y),
+      axisGap(a.min.z, a.max.z, b.min.z, b.max.z),
+    ];
+    const boxGap = (a: THREE.Box3, b: THREE.Box3): number => Math.hypot(...boxAxisGaps(a, b));
+    const guardNodes = liveMudguardParts.map((entry) => {
+      if (!entry.part.boundingBox) entry.part.computeBoundingBox();
+      const box = entry.part.boundingBox;
+      if (!box) throw new Error(`${specId}: mudguard ${entry.label} has no bounds`);
+      let directGapM = Infinity;
+      let directAxisGapM: [number, number, number] | null = null;
+      let supportBucket: string | null = null;
+      for (const support of hullSupportParts) {
+        const axisGaps = boxAxisGaps(box, support.box);
+        const gap = Math.hypot(...axisGaps);
+        if (gap < directGapM) {
+          directGapM = gap;
+          directAxisGapM = axisGaps;
+          supportBucket = support.bucket;
+        }
+      }
+      return { ...entry, box, directGapM, directAxisGapM, supportBucket };
+    });
+    const supported = new Set<number>();
+    for (let index = 0; index < guardNodes.length; index++) {
+      if (guardNodes[index].directGapM <= MUDGUARD_SEAT_TOLERANCE_M) {
+        supported.add(index);
+      }
+    }
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let index = 0; index < guardNodes.length; index++) {
+        if (supported.has(index)) continue;
+        for (const supportIndex of supported) {
+          if (boxGap(guardNodes[index].box, guardNodes[supportIndex].box)
+              <= MUDGUARD_SEAT_TOLERANCE_M) {
+            supported.add(index);
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+    root.userData.mudguardFenderSeats = guardNodes.map((node, index) => ({
+      label: node.label,
+      bucket: node.bucket,
+      supported: supported.has(index),
+      directGapM: Number.isFinite(node.directGapM) ? node.directGapM : null,
+      directAxisGapM: node.directAxisGapM,
+      supportBucket: node.supportBucket,
+      toleranceM: MUDGUARD_SEAT_TOLERANCE_M,
+    }));
+  }
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
@@ -10988,24 +10886,15 @@ function* createTankOwnedSteps(
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
   };
-  const createTankHullStage3 = (): void => {
-    const createTankHullStage8 = (): void => {
-      for (const [bucket, list] of Object.entries(buckets)) {
-        mergeBucket(bucket, list);
-      }
-    };
-    createTankHullStage8();
-  };
-  const createTankAssemblyStage29 = (): void => {
-    createTankHullStage3();
-  };
-  createTankAssemblyStage29();
+  for (const [bucket, list] of Object.entries(buckets)) {
+    mergeBucket(bucket, list);
+  }
   const coreBindMergeFinishedAt = performance.now();
 
   // ---- ERA bricks (t90m) ----
   let eraMesh: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null = null;
   const eraLocal: Array<THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>> = [];
-  const createTankHullStage4 = (): void => {
+  try {
     if (eraPlacements.length) {
       // crisp flat Relikt tile — the rounded 0.1-deep brick read as rows of
       // pills on the glacis (r7); real tiles are shallow sharp-edged slabs
@@ -11078,66 +10967,56 @@ function* createTankOwnedSteps(
         })),
       });
     }
-  };
-  const createTankAssemblyStage30 = (): void => {
-    createTankHullStage4();
-  };
-  try { createTankAssemblyStage30(); } finally { wholeEraFitReuse.close(); }
-  const createTankHullStage5 = (): void => {
-    if (destructibleClusters.size || visualEraPartsByCluster.size) {
-      const owners = new Set<VehicleOwner>();
-      if ((buckets.hullExternalArmor || []).length) {
-        owners.add('hull');
-      }
-      if ((buckets.turretExternalArmor || []).length) {
-        owners.add('turret');
-      }
-      const visualSectors = [...visualEraPartsByCluster.keys()].sort();
-      const finishSectors = [...new Set([...root.userData.eraClusterNames, ...visualSectors])].sort();
-      const partsBySector: Array<[string, number]> = [
-        ...layeredEraPartsByCluster.entries(),
-        ...[...visualEraPartsByCluster.entries()].map(
-          ([name, { count }]): [string, number] => [name, count]),
-      ];
-      // Automatically bound native cassettes remain members of their authored
-      // visual sector while also joining a canonical gameplay plate. Count the
-      // underlying geometry once in the finish receipt; summing both semantic
-      // maps would falsely report every bound body/cover twice.
-      const authoredEraParts = new Set<THREE.BufferGeometry>([
-        ...destructibleEraParts
-          .filter(({ owner, part }) => liveExternalParts[owner].has(part))
-          .map(({ part }) => part),
-        ...visualEraParts
-          .filter(({ owner, part }) => liveExternalParts[owner].has(part))
-          .map(({ part }) => part),
-      ]);
-      root.userData.eraFinishReceipt = Object.freeze({
-        revision: 'fleet-layered-vehicle-scale-camo-r1',
-        sectors: Object.freeze(finishSectors),
-        gameplaySectors: root.userData.eraClusterNames,
-        visualSectors: Object.freeze(visualSectors),
-        owners: Object.freeze([...owners].sort()),
-        camoProjection: 'vehicle-scale-box-uv',
-        bodyAndCoverUseVehiclePaint: true,
-        semanticBucket: 'externalArmor',
-        staticMergedProtection: true,
-        maximumDrawBuckets: owners.size,
-        perFrameWork: false,
-        authoredParts: authoredEraParts.size,
-        layeredCassettes: [...layeredEraCassetteCounts.values()].reduce((sum, count) => sum + count, 0),
-        partsBySector: Object.freeze(Object.fromEntries(
-          partsBySector.sort(([a], [b]) => a.localeCompare(b)))),
-      });
+  } finally { wholeEraFitReuse.close(); }
+  if (destructibleClusters.size || visualEraPartsByCluster.size) {
+    const owners = new Set<VehicleOwner>();
+    if ((buckets.hullExternalArmor || []).length) {
+      owners.add('hull');
     }
+    if ((buckets.turretExternalArmor || []).length) {
+      owners.add('turret');
+    }
+    const visualSectors = [...visualEraPartsByCluster.keys()].sort();
+    const finishSectors = [...new Set([...root.userData.eraClusterNames, ...visualSectors])].sort();
+    const partsBySector: Array<[string, number]> = [
+      ...layeredEraPartsByCluster.entries(),
+      ...[...visualEraPartsByCluster.entries()].map(
+        ([name, { count }]): [string, number] => [name, count]),
+    ];
+    // Automatically bound native cassettes remain members of their authored
+    // visual sector while also joining a canonical gameplay plate. Count the
+    // underlying geometry once in the finish receipt; summing both semantic
+    // maps would falsely report every bound body/cover twice.
+    const authoredEraParts = new Set<THREE.BufferGeometry>([
+      ...destructibleEraParts
+        .filter(({ owner, part }) => liveExternalParts[owner].has(part))
+        .map(({ part }) => part),
+      ...visualEraParts
+        .filter(({ owner, part }) => liveExternalParts[owner].has(part))
+        .map(({ part }) => part),
+    ]);
+    root.userData.eraFinishReceipt = Object.freeze({
+      revision: 'fleet-layered-vehicle-scale-camo-r1',
+      sectors: Object.freeze(finishSectors),
+      gameplaySectors: root.userData.eraClusterNames,
+      visualSectors: Object.freeze(visualSectors),
+      owners: Object.freeze([...owners].sort()),
+      camoProjection: 'vehicle-scale-box-uv',
+      bodyAndCoverUseVehiclePaint: true,
+      semanticBucket: 'externalArmor',
+      staticMergedProtection: true,
+      maximumDrawBuckets: owners.size,
+      perFrameWork: false,
+      authoredParts: authoredEraParts.size,
+      layeredCassettes: [...layeredEraCassetteCounts.values()].reduce((sum, count) => sum + count, 0),
+      partsBySector: Object.freeze(Object.fromEntries(
+        partsBySector.sort(([a], [b]) => a.localeCompare(b)))),
+    });
+  }
 
-    if (typeof P.postAssemble === 'function') {
-      P.postAssemble({ root, hullG, turretG, gunG, recoilG });
-    }
-  };
-  const createTankAssemblyStage31 = (): void => {
-    createTankHullStage5();
-  };
-  createTankAssemblyStage31();
+  if (typeof P.postAssemble === 'function') {
+    P.postAssemble({ root, hullG, turretG, gunG, recoilG });
+  }
 
   // ---- physically seated vehicle markings ----
   // Resolve these after all profile-owned regrouping so the support ray sees
@@ -11145,78 +11024,60 @@ function* createTankOwnedSteps(
   // national insignia/designation; historical builder decals are retained
   // only when they can be re-seated on their selected articulation owner.
   const verifiedMarkingSeats = geometryReceipt ? null : vehicleMarkingSeats(spec.id);
-  const createTankMarkingsStage1 = (): void => {
-    if (verifiedMarkingSeats) {
-      const checkedSeats: VerifiedMarkingSeat[] = [];
-      for (const seat of verifiedMarkingSeats) {
-        if (!isVerifiedMarkingSeat(seat)) {
-          throw new Error(`Invalid vehicle marking seat contract for ${spec.id}`);
-        }
-        checkedSeats.push(seat);
+  if (verifiedMarkingSeats) {
+    const checkedSeats: VerifiedMarkingSeat[] = [];
+    for (const seat of verifiedMarkingSeats) {
+      if (!isVerifiedMarkingSeat(seat)) {
+        throw new Error(`Invalid vehicle marking seat contract for ${spec.id}`);
       }
-      applyVerifiedVehicleMarkingSeats(marking, decals, checkedSeats);
-      root.userData.markingSeatPath = 'generated';
-    } else {
-      root.updateMatrixWorld(true);
-      finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG);
-      root.userData.markingSeatPath = 'surface-solver';
+      checkedSeats.push(seat);
     }
-  };
-  const createTankMarkingsStage4 = (): void => {
-    createTankMarkingsStage1();
-  };
-  createTankMarkingsStage4();
+    applyVerifiedVehicleMarkingSeats(marking, decals, checkedSeats);
+    root.userData.markingSeatPath = 'generated';
+  } else {
+    root.updateMatrixWorld(true);
+    finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG);
+    root.userData.markingSeatPath = 'surface-solver';
+  }
   const decalGeo = new THREE.PlaneGeometry(1, 1);
-  const createTankAssemblyStage10 = (): void => {
-    disposables.push(decalGeo);
-  };
-  const createTankAssemblyStage32 = (): void => {
-    createTankAssemblyStage10();
-  };
-  createTankAssemblyStage32();
+  disposables.push(decalGeo);
   const decalMeshes: VehicleMesh[] = [];
   let proceduralShadowSources: THREE.Mesh[] = [];
-  const createTankMarkingsStage2 = (): void => {
-    for (const d of decals) {
-      const mesh = new THREE.Mesh(decalGeo, mats.decal(d.kind, d.text));
-      mesh.name = `vehicleMarking_${d.kind}`;
-      mesh.userData.vehicleMarking = true;
-      mesh.userData.markingCode = marking.markingCode;
-      mesh.userData.markingKind = d.kind;
-      mesh.userData.surfaceSupported = d.surfaceSupported === true;
-      mesh.userData.supportGapM = d.supportGapM ?? null;
-      mesh.userData.surfaceMesh = d.surfaceMesh || null;
-      mesh.userData.markingAnchorProfile = d.anchorProfile || null;
-      mesh.userData.surfaceOwner = d.parent === 'turret' ? 'turret' : 'hull';
-      mesh.userData.visibilitySamples = d.visibilitySamples ?? null;
-      mesh.userData.visibilityClearSamples = d.visibilityClearSamples ?? null;
-      mesh.userData.visibilityRatio = d.visibilityRatio ?? null;
-      mesh.userData.maximumSurfaceErrorM = d.maximumSurfaceErrorM ?? null;
-      mesh.userData.visibilityVerified = d.visibilityVerified === true;
-      mesh.scale.setScalar(d.size);
-      mesh.position.set(d.pos[0], d.pos[1], d.pos[2]);
-      if (d.quaternion) mesh.quaternion.copy(d.quaternion);
-      else mesh.rotation.set(d.rotX, d.rotY, d.rotZ, 'ZYX');
-      mesh.castShadow = false;
-      (d.parent === 'turret' ? turretG : hullG).add(mesh);
-      decalMeshes.push(mesh);
-    }
+  for (const d of decals) {
+    const mesh = new THREE.Mesh(decalGeo, mats.decal(d.kind, d.text));
+    mesh.name = `vehicleMarking_${d.kind}`;
+    mesh.userData.vehicleMarking = true;
+    mesh.userData.markingCode = marking.markingCode;
+    mesh.userData.markingKind = d.kind;
+    mesh.userData.surfaceSupported = d.surfaceSupported === true;
+    mesh.userData.supportGapM = d.supportGapM ?? null;
+    mesh.userData.surfaceMesh = d.surfaceMesh || null;
+    mesh.userData.markingAnchorProfile = d.anchorProfile || null;
+    mesh.userData.surfaceOwner = d.parent === 'turret' ? 'turret' : 'hull';
+    mesh.userData.visibilitySamples = d.visibilitySamples ?? null;
+    mesh.userData.visibilityClearSamples = d.visibilityClearSamples ?? null;
+    mesh.userData.visibilityRatio = d.visibilityRatio ?? null;
+    mesh.userData.maximumSurfaceErrorM = d.maximumSurfaceErrorM ?? null;
+    mesh.userData.visibilityVerified = d.visibilityVerified === true;
+    mesh.scale.setScalar(d.size);
+    mesh.position.set(d.pos[0], d.pos[1], d.pos[2]);
+    if (d.quaternion) mesh.quaternion.copy(d.quaternion);
+    else mesh.rotation.set(d.rotX, d.rotY, d.rotZ, 'ZYX');
+    mesh.castShadow = false;
+    (d.parent === 'turret' ? turretG : hullG).add(mesh);
+    decalMeshes.push(mesh);
+  }
 
-    if (geometryReceipt) {
-      root.userData.shadowReplacementReceipt = measureNearShadowCasterWork([hullG, turretG]);
-    }
-    proceduralShadowSources = installProceduralShadowProxies(
-      spec, hullG, turretG, gunG, recoilG, disposables, P.additionalShadowSources);
-    // Round 28: the armour and running gear a NEAR hull casts instead of its proxies (nearVehicleShadowDetail.ts)
-    markVehicleShadowDetail(root, {
-      detail: collectNearShadowDetail([hullG, turretG, gunG, recoilG]),
-      proxies: proceduralShadowSources,
-    });
-  };
-  const createTankMarkingsStage5 = (): void => {
-    createTankMarkingsStage2();
-  };
-  createTankMarkingsStage5();
+  if (geometryReceipt) {
+    root.userData.shadowReplacementReceipt = measureNearShadowCasterWork([hullG, turretG]);
+  }
+  proceduralShadowSources = installProceduralShadowProxies(
+    spec, hullG, turretG, gunG, recoilG, disposables, P.additionalShadowSources);
+  // Round 28: the armour and running gear a NEAR hull casts instead of its proxies (nearVehicleShadowDetail.ts)
+  markVehicleShadowDetail(root, {
+    detail: collectNearShadowDetail([hullG, turretG, gunG, recoilG]),
+    proxies: proceduralShadowSources,
+  });
 
   /** (Re)compose every ERA brick at its as-built placement (undoes stripEra). */
   function seatEraBricks() {
@@ -11237,42 +11098,30 @@ function* createTankOwnedSteps(
 
   // ---- anchors ----
   const muzzle = new THREE.Object3D();
-  const createTankAssemblyStage11 = (): void => {
-    muzzle.name = 'rig_muzzle';
-    muzzle.position.set(0, 0, P.muzzleZ);
-    recoilG.add(muzzle);
-    // Fleet muzzle-bore fallback. Profile-authored lips stay authoritative;
-    // older solid-cap builds receive a mask-neutral dark throat attached to
-    // the recoil/FX anchor, and sourced GLB swaps re-seat the same fallback
-    // from their real tube-tip vertices.
-    // Normalize profile-authored bore furniture before installing the fleet
-    // mouth. A few composite family builders inherit the same muzzle helper
-    // twice, while many older helpers bury their disc partly behind a retained
-    // solid cap. Rendering those pieces directly causes z-fighting, clipped
-    // crescents, or a black plate apparently floating in front of the tube.
-    // Their nearest pair still supplies an exact per-profile seating anchor,
-    // but the one universal annulus/disc assembly owns the visible mouth.
-    root.updateMatrixWorld(true);
-  };
-  const createTankAssemblyStage33 = (): void => {
-    createTankAssemblyStage11();
-  };
-  createTankAssemblyStage33();
+  muzzle.name = 'rig_muzzle';
+  muzzle.position.set(0, 0, P.muzzleZ);
+  recoilG.add(muzzle);
+  // Fleet muzzle-bore fallback. Profile-authored lips stay authoritative;
+  // older solid-cap builds receive a mask-neutral dark throat attached to
+  // the recoil/FX anchor, and sourced GLB swaps re-seat the same fallback
+  // from their real tube-tip vertices.
+  // Normalize profile-authored bore furniture before installing the fleet
+  // mouth. A few composite family builders inherit the same muzzle helper
+  // twice, while many older helpers bury their disc partly behind a retained
+  // solid cap. Rendering those pieces directly causes z-fighting, clipped
+  // crescents, or a black plate apparently floating in front of the tube.
+  // Their nearest pair still supplies an exact per-profile seating anchor,
+  // but the one universal annulus/disc assembly owns the visible mouth.
+  root.updateMatrixWorld(true);
   const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
   const authoredRims: THREE.Object3D[] = [];
   const authoredDiscs: THREE.Object3D[] = [];
   const legacyTipDots: THREE.Object3D[] = [];
-  const createTankAssemblyStage12 = (): void => {
-    root.traverse((object) => {
-      if (object.name === 'muzzleBoreShadowRim') authoredRims.push(object);
-      else if (object.name === 'muzzleBoreShadowDisc') authoredDiscs.push(object);
-      else if (object.name === 'muzzleTipShadowDot') legacyTipDots.push(object);
-    });
-  };
-  const createTankAssemblyStage34 = (): void => {
-    createTankAssemblyStage12();
-  };
-  createTankAssemblyStage34();
+  root.traverse((object) => {
+    if (object.name === 'muzzleBoreShadowRim') authoredRims.push(object);
+    else if (object.name === 'muzzleBoreShadowDisc') authoredDiscs.push(object);
+    else if (object.name === 'muzzleTipShadowDot') legacyTipDots.push(object);
+  });
   const nearestMuzzlePart = (parts: THREE.Object3D[]): THREE.Object3D | null => parts
     .map((part) => ({
       part,
@@ -11281,27 +11130,21 @@ function* createTankOwnedSteps(
     .sort((a, b) => a.distance - b.distance)[0]?.part || null;
   const authoredRim = nearestMuzzlePart(authoredRims);
   const authoredBore = nearestMuzzlePart(authoredDiscs);
-  const createTankReceiptStage3 = (): void => {
-    for (const part of [...authoredRims, ...authoredDiscs]) {
-      part.visible = false;
-      part.userData.cannonBorePrimaryPart = false;
-      part.userData.cannonBoreSuppressed = true;
-    }
-    // Some transitional profiles put the MG-scale shadow-dot helper directly
-    // on the main-gun centerline (notably Type 99A/VT-4A1). Keep true coax/MG
-    // dots, but suppress a dot close enough to the main muzzle axis/plane that
-    // it would cap and occlude the measured fleet throat.
-    for (const dot of legacyTipDots) {
-      const local = muzzle.worldToLocal(dot.getWorldPosition(new THREE.Vector3()));
-      if (Math.hypot(local.x, local.y) > 0.045 || Math.abs(local.z) > 0.25) continue;
-      dot.visible = false;
-      dot.userData.cannonBoreSuppressed = true;
-    }
-  };
-  const createTankReceiptStage9 = (): void => {
-    createTankReceiptStage3();
-  };
-  createTankReceiptStage9();
+  for (const part of [...authoredRims, ...authoredDiscs]) {
+    part.visible = false;
+    part.userData.cannonBorePrimaryPart = false;
+    part.userData.cannonBoreSuppressed = true;
+  }
+  // Some transitional profiles put the MG-scale shadow-dot helper directly
+  // on the main-gun centerline (notably Type 99A/VT-4A1). Keep true coax/MG
+  // dots, but suppress a dot close enough to the main muzzle axis/plane that
+  // it would cap and occlude the measured fleet throat.
+  for (const dot of legacyTipDots) {
+    const local = muzzle.worldToLocal(dot.getWorldPosition(new THREE.Vector3()));
+    if (Math.hypot(local.x, local.y) > 0.045 || Math.abs(local.z) > 0.25) continue;
+    dot.visible = false;
+    dot.userData.cannonBoreSuppressed = true;
+  }
   const physicalBore = P.physicalMuzzleBore;
   if (physicalBore && authoredMuzzles.length) {
     throw new Error('Physical muzzle-bore declarations currently require one centered barrel');
@@ -11326,457 +11169,369 @@ function* createTankOwnedSteps(
   // mid-stroke sample rides the recoiled tube. gunMuzzleWorld(out, i) reads
   // them; the absent-knob fleet keeps the exact legacy center anchor.
   const muzzleTips: THREE.Object3D[] = [];
-  const createTankAssemblyStage13 = (): void => {
-    root.updateMatrixWorld(true);
-  };
-  const createTankAssemblyStage35 = (): void => {
-    createTankAssemblyStage13();
-  };
-  createTankAssemblyStage35();
-  const createTankReceiptStage4 = (): void => {
-    const muzzleCourseContext = (index: number) => {
-      const def = muzzleDefs[index];
-      const suffix = index > 0 ? `_${index}` : '';
-      const independentBarrel = def && barrelGs[index] ? barrelGs[index] : null;
-      return {
-        def,
-        suffix,
-        independentBarrel,
-        boreParent: independentBarrel || muzzle,
-        boreBaseZ: independentBarrel ? P.muzzleZ : 0,
-      };
+  root.updateMatrixWorld(true);
+  const muzzleCourseContext = (index: number) => {
+    const def = muzzleDefs[index];
+    const suffix = index > 0 ? `_${index}` : '';
+    const independentBarrel = def && barrelGs[index] ? barrelGs[index] : null;
+    return {
+      def,
+      suffix,
+      independentBarrel,
+      boreParent: independentBarrel || muzzle,
+      boreBaseZ: independentBarrel ? P.muzzleZ : 0,
     };
-    for (let mi = 0; mi < muzzleDefs.length; mi++) {
-      const createTankAssemblyCourse1 = (): void => {
-        const { def, suffix, independentBarrel, boreParent, boreBaseZ } = muzzleCourseContext(mi);
-        // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
-        // visual gate measured legacy brake caps from behind the nominal anchor to
-        // 5.5 cm beyond it. Seat against the real centerline face instead of using
-        // a fleet-wide offset (which would float in front of already-correct tubes).
-        let boreX = 0, boreY = 0;
-        let authoredFaceParentZ: number | null = null;
-        const createTankAssemblyStage41 = (): void => {
-          if (def) {
-            // Spec-driven barrel axis: the assembly seats at its own lateral
-            // offset; authored bore furniture stays suppressed exactly as in the
-            // single-mouth path (nearest-part refinement is a centerline-only law).
-            boreX = def.x || 0;
-            boreY = def.y || 0;
-          } else {
-            const authoredSeat = authoredBore || authoredRim;
-            if (authoredSeat) {
-              const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
-              boreX = authoredLocal.x;
-              boreY = authoredLocal.y;
-              // The hidden disc is intentionally recessed; use the authored RIM
-              // plane as the supported face. Seating from the disc plane put the
-              // replacement throat behind retained solid caps on Sheridan-family
-              // launchers and several bespoke muzzle brakes.
-              const authoredFace = authoredRim || authoredSeat;
-              authoredFaceParentZ = muzzle.worldToLocal(
-                authoredFace.getWorldPosition(new THREE.Vector3())).z;
-            }
-          }
-        };
-        createTankAssemblyStage41();
-        // Inspect the complete elevating gun subtree, not only the merged `gun`
-        // buckets. Modern profiles also carry discrete muzzle-brake baffles and
-        // front plates as direct meshes (AbramsX/KF51); ignoring those left the
-        // throat behind a still-visible solid face. Casemate families that bake
-        // the long tube into hull-owned buckets get a narrow fallback scan around
-        // the authored muzzle plane.
-        const capSelection: {
-          profile: AxisGeometryCapProfile | null;
-          faceParentZ: number | null;
-          recoilZ: number | null;
-          supportSource: 'terminal-cap' | 'terminal-edge' | null;
-        } = {
-          profile: null,
-          faceParentZ: null,
-          recoilZ: null,
-          supportSource: null,
-        };
-        const axisWorld = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ));
-        const isMouthSurface = (surface: THREE.Object3D): surface is VehicleMesh =>
-          isVehicleMesh(surface)
-          && surface.visible
-          && !surface.userData.shadowOnly
-          && !surface.userData.cannonBore
-          && !surface.userData.cannonBoreSuppressed
-          && materialWritesColor(surface.material);
-        const acceptProfile = (
-          surface: VehicleMesh,
-          axisLocal: THREE.Vector3,
-          profile: AxisGeometryCapProfile,
-          supportSource: 'terminal-cap' | 'terminal-edge',
-        ) => {
-          const capWorld = surface.localToWorld(
-            new THREE.Vector3(axisLocal.x, axisLocal.y, profile.z));
-          const candidateRecoilZ = recoilG.worldToLocal(capWorld.clone()).z;
-          if (supportSource === 'terminal-cap'
-              && capSelection.recoilZ != null
-              && candidateRecoilZ <= capSelection.recoilZ) return;
-          capSelection.profile = profile;
-          capSelection.recoilZ = candidateRecoilZ;
-          capSelection.faceParentZ = boreParent.worldToLocal(capWorld.clone()).z;
-          capSelection.supportSource = supportSource;
-        };
-        const scanCapRoot = (surfaceRoot: THREE.Object3D, behindM: number, aheadM: number) => {
-          surfaceRoot.traverse((surface) => {
-            if (!isMouthSurface(surface)) return;
-            const axisLocal = surface.worldToLocal(axisWorld.clone());
-            const profile = axisGeometryCapProfile(surface.geometry, axisLocal.x, axisLocal.y,
-              axisLocal.z - behindM, axisLocal.z + aheadM);
-            if (profile) acceptProfile(surface, axisLocal, profile, 'terminal-cap');
-          });
-        };
-        const primarySurfaceRoot = independentBarrel || gunG;
-        const createTankAssemblyStage42 = (): void => {
-          if (!physicalBore) scanCapRoot(primarySurfaceRoot, 2, 1);
-        };
-        createTankAssemblyStage42();
-        const createTankAssemblyStage43 = (): void => {
-          if (!physicalBore && !capSelection.profile) scanCapRoot(hullG, 0.12, 0.12);
-        };
-        createTankAssemblyStage43();
-        const createTankAssemblyStage44 = (): void => {
-          if (physicalBore) return;
-          let edgeRadius = Infinity;
-          let edge: { surface: VehicleMesh; axisLocal: THREE.Vector3; profile: AxisGeometryCapProfile } | null = null;
-          const scanEdgeRoot = (surfaceRoot: THREE.Object3D) => {
-            surfaceRoot.traverse((surface) => {
-              if (!isMouthSurface(surface)) return;
-              const axisLocal = surface.worldToLocal(axisWorld.clone());
-              const profile = axisGeometryMouthEdgeProfile(
-                surface.geometry, axisLocal.x, axisLocal.y, axisLocal.z, caliberRadius);
-              if (!profile || profile.outerRadiusM >= edgeRadius) return;
-              edgeRadius = profile.outerRadiusM;
-              edge = { surface, axisLocal, profile };
-            });
-          };
-          scanEdgeRoot(primarySurfaceRoot);
-          if (!capSelection.profile) scanEdgeRoot(hullG);
-          if (!edge) return;
-          const { surface, axisLocal, profile } = edge as { surface: VehicleMesh; axisLocal: THREE.Vector3; profile: AxisGeometryCapProfile };
-          // Several source-study barrels model an open sleeve around an inner
-          // bore tube whose floor disc sits 25-32 cm behind the mouth. That
-          // floor is a center-spanning cap, but the visible mouth is the tube
-          // edge: seating the bore at the floor left a deep hollow throat.
-          // Prefer the edge whenever the cap lies deeper than a real
-          // counterbore behind it.
-          const edgeWorld = surface.localToWorld(new THREE.Vector3(axisLocal.x, axisLocal.y, profile.z));
-          const edgeRecoilZ = recoilG.worldToLocal(edgeWorld).z;
-          if (!capSelection.profile || capSelection.recoilZ == null
-              || edgeRecoilZ - capSelection.recoilZ > MUZZLE_COUNTERBORE_MAX_M) {
-            acceptProfile(surface, axisLocal, profile, 'terminal-edge');
-          }
-        };
-        createTankAssemblyStage44();
-        let capOffset = 0;
-        const createTankAssemblyStage45 = (): void => {
-          if (capSelection.recoilZ != null) {
-            capOffset = Math.max(-0.2, Math.min(0.5, capSelection.recoilZ - P.muzzleZ));
-          }
-        };
-        createTankAssemblyStage45();
-
-        // Fixed missile canisters still need independent seated firing
-        // anchors. Their authored launch covers are not cannon mouths: a
-        // generated annulus would put eight invented round bores over them.
-        if (spec.gun.fixedLaunchCanisters) {
-          if (!def) throw new Error('Fixed launch canisters require explicit launch axes');
-          const tip = new THREE.Object3D();
-          tip.name = `rig_muzzle_tip_${mi}`;
-          tip.position.set(boreX, boreY, boreBaseZ + capOffset);
-          boreParent.add(tip);
-          muzzleTips.push(tip);
-          return;
-        }
-
-        // Size every visible mouth from the actual terminal surface. The former
-        // fleet-wide radius inherited the donor's main-gun armor value; that made
-        // BMPT's 30 mm mouths 4.3x wider than their 22 mm terminal tubes. A hidden
-        // profile-authored rim is the deterministic fallback when an open or
-        // unusually tessellated barrel has no center-spanning cap triangle.
-        const createTankAssemblyStage46 = (): void => {
-          root.updateMatrixWorld(true);
-        };
-        createTankAssemblyStage46();
-        const authoredOuterR = !def && authoredRim
-          ? objectRadialRadiusInFrame(authoredRim, muzzle, boreX, boreY)
-          : null;
-        const capOuterR = capSelection.profile
-          && capSelection.profile.outerRadiusM >= 0.005
-          && capSelection.profile.outerRadiusM <= 0.65
-          ? capSelection.profile.outerRadiusM
-          : null;
-        const validAuthoredOuterR = authoredOuterR
-          && authoredOuterR >= 0.005
-          && authoredOuterR <= 0.65
-          ? authoredOuterR
-          : null;
-        const supportOuterR = physicalBore?.outerRadiusM || capOuterR || validAuthoredOuterR || nominalMuzzleOuterR;
-        const supportSource = physicalBore ? 'authored-physical-bore' : capOuterR ? capSelection.supportSource || 'terminal-cap'
-          : validAuthoredOuterR ? 'authored-rim'
-            : 'nominal-spec';
-        const capFitOuterR = capOuterR ? capOuterR * 0.94 : Infinity;
-        const muzzleOuterR = physicalBore?.outerRadiusM ?? Math.max(0.006, Math.min(
-          capFitOuterR,
-          validAuthoredOuterR || nominalMuzzleOuterR,
-        ));
-        const muzzleInnerR = physicalBore?.innerRadiusM ?? Math.max(muzzleOuterR * 0.46,
-          Math.min(muzzleOuterR * 0.72, caliberRadius));
-        const muzzleRimR = physicalBore
-          ? Math.min(muzzleOuterR * .12, (muzzleOuterR-muzzleInnerR) * .4)
-          : Math.max(0.001, muzzleOuterR * 0.12);
-        // Owner 2026-09-22 ("the point of adding holes instead of carving them into
-        // the barrel is that we save on triangles ... make sure were saving the
-        // triangles here"): the added hole is the minimal construction. One flat
-        // dark ring is both the lip and the annular face (2N) at the lip front, the
-        // near-black disc (N) sits just behind it, and an open throat sleeve (2N)
-        // is added only when the authored tube stops short of the marker: 3N–5N
-        // per mouth instead of the former 13N–15N (a 10N torus lip plus a separate
-        // 2N annulus). The ring starts at the disc radius so the two overlap by
-        // 2 %: a hairline gap between separate meshes can expose legacy solid-cap
-        // triangles on small-caliber, low-segment barrels. A verified physical
-        // recess keeps only the shadow disc at its floor: its own annulus and
-        // inward wall are the visible mouth, so the barrel-paint duplicates that
-        // used to sit 0.5 mm ahead of them are gone.
-        const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
-        const boreRimGeo = physicalBore
-          ? null
-          : new THREE.RingGeometry(muzzleInnerR, muzzleOuterR, boreSegments);
-        const createTankAssemblyStage47 = (): void => {
-          disposables.push(boreDiscGeo);
-          if (boreRimGeo) disposables.push(boreRimGeo);
-        };
-        createTankAssemblyStage47();
-
-        // terminal-surface-fit-r2: the visible mouth ends at the ballistic
-        // muzzle marker. Authored tubes that stop short of it (the fleet lip
-        // has completed a 20 mm shortfall on many X tubes) are finished by the
-        // dark lip and, beyond one lip radius, a dark throat sleeve; tubes that
-        // already reach the marker keep the lip 0.9 mm proud, so no vehicle
-        // grows past its authored/official envelope. The annulus and disc sit
-        // a fraction of a millimetre behind the lip front, depth-safe.
-        const seatedFaceParentZ = physicalBore ? boreBaseZ : (capSelection.faceParentZ
-          ?? authoredFaceParentZ
-          ?? boreBaseZ);
-        const markerGapM = Math.min(0.06, Math.max(0, -seatedFaceParentZ));
-        // Three seats. A tube already at the marker keeps its lip mostly
-        // inside itself, 0.9 mm proud, with the mouth on that face. A tube
-        // that stops short (the fleet's 0.28 R lip convention, typically
-        // 20 mm) keeps the published r1 lip: rear 0.04 R ahead of the tube
-        // end, front no further than the marker, mouth 1.2 mm inside. A tube
-        // that stops further short than that lip can reach is completed by a
-        // dark throat sleeve so the lip and mouth still finish at the marker.
-        const lipRimR = muzzleRimR;
-        const classicLipAdvanceM = THREE.MathUtils.clamp(muzzleOuterR * 0.16, 0.0035, 0.016);
-        let lipAdvanceM: number, annulusForwardM: number, discForwardM: number;
-        if (markerGapM < 0.003) {
-          lipAdvanceM = 0.0009 - lipRimR;
-          annulusForwardM = 0.0006;
-          discForwardM = 0.0003;
-        } else if (classicLipAdvanceM + lipRimR >= markerGapM - 0.003) {
-          // Capped at 0.9 mm past the marker so a lip that meets the marker
-          // still stands proud of a tube whose true face is that plane.
-          lipAdvanceM = Math.min(classicLipAdvanceM, markerGapM + 0.0009 - lipRimR);
-          annulusForwardM = 0.0022;
-          discForwardM = 0.0012;
-        } else {
-          lipAdvanceM = markerGapM - lipRimR;
-          annulusForwardM = markerGapM - 0.0004;
-          discForwardM = markerGapM - 0.0008;
-        }
-        // A verified physical tube retains its actual depth. The black finish
-        // sits 0.5 mm ahead of its real backstop, avoiding coplanar flicker.
-        if (physicalBore) discForwardM = -physicalBore.depthM + .0005;
-        const lipFrontM = lipAdvanceM + lipRimR;
-        // The flat ring replaced the former torus (owner 2026-09-22); lipRimR now
-        // only names the lip-front offset the r2 seats were published with, so
-        // every seat keeps its receipt values. The dark ring is the annular face
-        // too, so the annulus plane is the lip front (terminal-surface-fit-r3).
-        if (!physicalBore) annulusForwardM = lipFrontM;
-        // Open-ended sleeve from the authored tube end to the ring whenever the
-        // tube stops short of the marker; a flush tube's 0.9 mm proud ring needs
-        // none. It never caps the dark disc behind it.
-        const boreThroatGeo = !physicalBore && lipFrontM > 0.003
-          ? new THREE.CylinderGeometry(muzzleOuterR, muzzleOuterR,
-            lipFrontM, boreSegments, 1, true).rotateX(Math.PI / 2)
-          : null;
-        if (boreThroatGeo) disposables.push(boreThroatGeo);
-        const fallbackBore = new THREE.Group();
-        const createTankAssemblyStage48 = (): void => {
-          fallbackBore.name = `muzzleBoreShadowFallback${suffix}`;
-        };
-        createTankAssemblyStage48();
-        const createTankReceiptStage14 = (): void => {
-          fallbackBore.userData.cannonBore = true;
-          // A verified physical recess is its own rim: the census counts this
-          // mouth as a physical bore instead of demanding a fallback Rim mesh.
-          fallbackBore.userData.physicalMouth = !!physicalBore;
-        };
-        createTankReceiptStage14();
-        const createTankReceiptStage15 = (): void => {
-          fallbackBore.userData.caliberMm = spec.gun.caliberMm;
-        };
-        createTankReceiptStage15();
-        const createTankReceiptStage16 = (): void => {
-          fallbackBore.userData.capOffsetM = capOffset;
-          fallbackBore.userData.muzzleSeatDebug = {
-            supportSource: capSelection.supportSource, recoilZ: capSelection.recoilZ,
-            faceParentZ: capSelection.faceParentZ, authoredFaceParentZ, muzzleZ: P.muzzleZ,
-          };
-        };
-        createTankReceiptStage16();
-        const createTankReceiptStage17 = (): void => {
-          fallbackBore.userData.muzzleSeatReceipt = Object.freeze({
-            revision: physicalBore ? 'physical-recess-r1' : 'terminal-surface-fit-r3',
-            ...(physicalBore && physicalBoreEvidence ? {
-              physicalBoreDepthM: physicalBore.depthM,
-              measuredMinimumDepthM: physicalBoreEvidence.minimumDepthM,
-              measuredMaximumRimOffsetM: physicalBoreEvidence.maximumRimOffsetM,
-              measuredOuterRadiusM: physicalBoreEvidence.measuredOuterRadiusM,
-              physicalInnerRadiusM: physicalBore.innerRadiusM,
-              physicalRimProjectionM: physicalBore.rimProjectionM ?? 0,
-              measuredProjectionM: physicalBoreEvidence.measuredProjectionM,
-            } : {}),
-            supportSource,
-            supportOuterRadiusM: supportOuterR,
-            outerRadiusM: muzzleOuterR,
-            radialRatio: muzzleOuterR / supportOuterR,
-            lipAdvanceM,
-            rimRadiusM: lipRimR,
-            lipFrontM,
-            markerGapM,
-            annulusForwardM,
-            discForwardM,
-          });
-        };
-        createTankReceiptStage17();
-        const createTankAssemblyStage49 = (): void => {
-          fallbackBore.position.set(boreX, boreY, seatedFaceParentZ + lipAdvanceM);
-        };
-        createTankAssemblyStage49();
-        const createTankAssemblyStage50 = (): void => {
-          fallbackBore.visible = true;
-        };
-        createTankAssemblyStage50();
-
-        const boreRim = boreRimGeo ? new THREE.Mesh(boreRimGeo, mats.dark) : null;
-        if (boreRim) {
-          boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
-          boreRim.userData.cannonBoreFallbackPart = true;
-          boreRim.userData.cannonBorePrimaryPart = true;
-          // The flat ring is the lip front and the annular face in one plane.
-          boreRim.position.z = annulusForwardM - lipAdvanceM;
-          boreRim.visible = true;
-        }
-        if (boreThroatGeo) {
-          // Dark sleeve from the authored tube end to the ring: the completed
-          // muzzle reads as one tube instead of a floating ring.
-          const boreThroat = new THREE.Mesh(boreThroatGeo, mats.dark);
-          boreThroat.name = `muzzleBoreShadowFallbackThroat${suffix}`;
-          boreThroat.userData.cannonBoreFallbackPart = true;
-          boreThroat.position.z = (lipRimR - lipAdvanceM) / 2;
-          boreThroat.castShadow = false;
-          boreThroat.receiveShadow = true;
-          fallbackBore.add(boreThroat);
-        }
-        const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
-        const createTankAssemblyStage56 = (): void => {
-          boreDisc.name = `muzzleBoreShadowFallbackDisc${suffix}`;
-        };
-        createTankAssemblyStage56();
-        const createTankReceiptStage22 = (): void => {
-          boreDisc.userData.cannonBoreFallbackPart = true;
-        };
-        createTankReceiptStage22();
-        const createTankReceiptStage23 = (): void => {
-          boreDisc.userData.cannonBorePrimaryPart = true;
-        };
-        createTankReceiptStage23();
-        // Keep the dark disc barely proud of retained legacy cap triangles while
-        // recessing it behind the lip. This removes the former 32 mm floating
-        // plate without introducing z-fighting or depth-test leakage.
-        const createTankAssemblyStage57 = (): void => {
-          boreDisc.position.z = discForwardM - lipAdvanceM;
-        };
-        createTankAssemblyStage57();
-        const createTankAssemblyStage58 = (): void => {
-          boreDisc.visible = true;
-        };
-        createTankAssemblyStage58();
-        const createTankAssemblyStage59 = (): void => {
-          for (const part of [boreRim, boreDisc]) {
-            if (!part) continue;
-            part.castShadow = false;
-            part.receiveShadow = true;
-            fallbackBore.add(part);
-          }
-        };
-        createTankAssemblyStage59();
-        const createTankAssemblyStage60 = (): void => {
-          boreParent.add(fallbackBore);
-        };
-        createTankAssemblyStage60();
-        const createTankAssemblyStage61 = (): void => {
-          fallbackBore.visible = true;
-        };
-        createTankAssemblyStage61();
-        const createTankAssemblyStage62 = (): void => {
-          if (def) {
-            const tip = new THREE.Object3D();
-            tip.name = `rig_muzzle_tip_${mi}`;
-            tip.position.set(boreX, boreY, boreBaseZ + capOffset);
-            boreParent.add(tip);
-            muzzleTips.push(tip);
-          }
-        };
-        createTankAssemblyStage62();
+  };
+  for (let mi = 0; mi < muzzleDefs.length; mi++) {
+    const { def, suffix, independentBarrel, boreParent, boreBaseZ } = muzzleCourseContext(mi);
+    // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
+    // visual gate measured legacy brake caps from behind the nominal anchor to
+    // 5.5 cm beyond it. Seat against the real centerline face instead of using
+    // a fleet-wide offset (which would float in front of already-correct tubes).
+    let boreX = 0, boreY = 0;
+    let authoredFaceParentZ: number | null = null;
+    if (def) {
+      // Spec-driven barrel axis: the assembly seats at its own lateral
+      // offset; authored bore furniture stays suppressed exactly as in the
+      // single-mouth path (nearest-part refinement is a centerline-only law).
+      boreX = def.x || 0;
+      boreY = def.y || 0;
+    } else {
+      const authoredSeat = authoredBore || authoredRim;
+      if (authoredSeat) {
+        const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
+        boreX = authoredLocal.x;
+        boreY = authoredLocal.y;
+        // The hidden disc is intentionally recessed; use the authored RIM
+        // plane as the supported face. Seating from the disc plane put the
+        // replacement throat behind retained solid caps on Sheridan-family
+        // launchers and several bespoke muzzle brakes.
+        const authoredFace = authoredRim || authoredSeat;
+        authoredFaceParentZ = muzzle.worldToLocal(
+          authoredFace.getWorldPosition(new THREE.Vector3())).z;
+      }
+    }
+    // Inspect the complete elevating gun subtree, not only the merged `gun`
+    // buckets. Modern profiles also carry discrete muzzle-brake baffles and
+    // front plates as direct meshes (AbramsX/KF51); ignoring those left the
+    // throat behind a still-visible solid face. Casemate families that bake
+    // the long tube into hull-owned buckets get a narrow fallback scan around
+    // the authored muzzle plane.
+    const capSelection: {
+      profile: AxisGeometryCapProfile | null;
+      faceParentZ: number | null;
+      recoilZ: number | null;
+      supportSource: 'terminal-cap' | 'terminal-edge' | null;
+    } = {
+      profile: null,
+      faceParentZ: null,
+      recoilZ: null,
+      supportSource: null,
+    };
+    const axisWorld = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ));
+    const isMouthSurface = (surface: THREE.Object3D): surface is VehicleMesh =>
+      isVehicleMesh(surface)
+      && surface.visible
+      && !surface.userData.shadowOnly
+      && !surface.userData.cannonBore
+      && !surface.userData.cannonBoreSuppressed
+      && materialWritesColor(surface.material);
+    const acceptProfile = (
+      surface: VehicleMesh,
+      axisLocal: THREE.Vector3,
+      profile: AxisGeometryCapProfile,
+      supportSource: 'terminal-cap' | 'terminal-edge',
+    ) => {
+      const capWorld = surface.localToWorld(
+        new THREE.Vector3(axisLocal.x, axisLocal.y, profile.z));
+      const candidateRecoilZ = recoilG.worldToLocal(capWorld.clone()).z;
+      if (supportSource === 'terminal-cap'
+          && capSelection.recoilZ != null
+          && candidateRecoilZ <= capSelection.recoilZ) return;
+      capSelection.profile = profile;
+      capSelection.recoilZ = candidateRecoilZ;
+      capSelection.faceParentZ = boreParent.worldToLocal(capWorld.clone()).z;
+      capSelection.supportSource = supportSource;
+    };
+    const scanCapRoot = (surfaceRoot: THREE.Object3D, behindM: number, aheadM: number) => {
+      surfaceRoot.traverse((surface) => {
+        if (!isMouthSurface(surface)) return;
+        const axisLocal = surface.worldToLocal(axisWorld.clone());
+        const profile = axisGeometryCapProfile(surface.geometry, axisLocal.x, axisLocal.y,
+          axisLocal.z - behindM, axisLocal.z + aheadM);
+        if (profile) acceptProfile(surface, axisLocal, profile, 'terminal-cap');
+      });
+    };
+    const primarySurfaceRoot = independentBarrel || gunG;
+    if (!physicalBore) scanCapRoot(primarySurfaceRoot, 2, 1);
+    if (!physicalBore && !capSelection.profile) scanCapRoot(hullG, 0.12, 0.12);
+    if (!physicalBore) {
+      let edgeRadius = Infinity;
+      let edge: { surface: VehicleMesh; axisLocal: THREE.Vector3; profile: AxisGeometryCapProfile } | null = null;
+      const scanEdgeRoot = (surfaceRoot: THREE.Object3D) => {
+        surfaceRoot.traverse((surface) => {
+          if (!isMouthSurface(surface)) return;
+          const axisLocal = surface.worldToLocal(axisWorld.clone());
+          const profile = axisGeometryMouthEdgeProfile(
+            surface.geometry, axisLocal.x, axisLocal.y, axisLocal.z, caliberRadius);
+          if (!profile || profile.outerRadiusM >= edgeRadius) return;
+          edgeRadius = profile.outerRadiusM;
+          edge = { surface, axisLocal, profile };
+        });
       };
-      createTankAssemblyCourse1();
+      scanEdgeRoot(primarySurfaceRoot);
+      if (!capSelection.profile) scanEdgeRoot(hullG);
+      if (edge) {
+        const { surface, axisLocal, profile } = edge as { surface: VehicleMesh; axisLocal: THREE.Vector3; profile: AxisGeometryCapProfile };
+        // Several source-study barrels model an open sleeve around an inner
+        // bore tube whose floor disc sits 25-32 cm behind the mouth. That
+        // floor is a center-spanning cap, but the visible mouth is the tube
+        // edge: seating the bore at the floor left a deep hollow throat.
+        // Prefer the edge whenever the cap lies deeper than a real
+        // counterbore behind it.
+        const edgeWorld = surface.localToWorld(new THREE.Vector3(axisLocal.x, axisLocal.y, profile.z));
+        const edgeRecoilZ = recoilG.worldToLocal(edgeWorld).z;
+        if (!capSelection.profile || capSelection.recoilZ == null
+            || edgeRecoilZ - capSelection.recoilZ > MUZZLE_COUNTERBORE_MAX_M) {
+          acceptProfile(surface, axisLocal, profile, 'terminal-edge');
+        }
+      }
     }
-  };
-  const createTankReceiptStage10 = (): void => {
-    createTankReceiptStage4();
-  };
-  createTankReceiptStage10();
-  const turretTop = new THREE.Object3D();
-  const createTankAssemblyStage14 = (): void => {
-    turretTop.position.set(0, P.topY, 0);
-    turretG.add(turretTop);
-    if (P.fixedMount) {
-      // Preserve the anchors' world seats while moving them out of the virtual
-      // yaw rig.  `attach` is intentional: muzzleZ and P.topY were authored in
-      // the profile's already-positioned rig coordinates.
-      hullG.attach(muzzle);
-      hullG.attach(turretTop);
-      // §5.362: the recuperator group joins the hull chain too (world seat
-      // preserved — hullG is identity, so this is byte-exact on the rest
-      // hash). A casemate tube authored into the gun buckets then recoils
-      // along the hull bore axis instead of orbiting the empty virtual
-      // turret; today's fixedMount ids print their tube into the certified
-      // hull buckets, so this group is empty and the stroke is suppressed
-      // (see recoilHasTube).
-      hullG.attach(recoilG);
+    let capOffset = 0;
+    if (capSelection.recoilZ != null) {
+      capOffset = Math.max(-0.2, Math.min(0.5, capSelection.recoilZ - P.muzzleZ));
     }
 
-    // ---- movement-solve contact metadata (data only — no geometry writes) ----
-    // Seat the running-gear instance matrices at their rest pose first (scroll
-    // 0/0 — exactly what the first syncFromState composes; instanced wheels and
-    // link pads otherwise still carry identity matrices at this point), then
-    // scan the whole visual for the lowest rendered surface and the contact
-    // footprint. state.ts stamps this onto the entity for movement.ts; the
-    // gear's analytic flat-run span wins over the scan's low band (the band
-    // includes approach/departure ramps), while the scan owns the bottom (a
-    // rebuilt hull keel can undercut the gear floor).
-    if (P.gear) P.gear.update(0, 0);
-  };
-  const createTankAssemblyStage36 = (): void => {
-    createTankAssemblyStage14();
-  };
-  createTankAssemblyStage36();
+    // Fixed missile canisters still need independent seated firing
+    // anchors. Their authored launch covers are not cannon mouths: a
+    // generated annulus would put eight invented round bores over them.
+    if (spec.gun.fixedLaunchCanisters) {
+      if (!def) throw new Error('Fixed launch canisters require explicit launch axes');
+      const tip = new THREE.Object3D();
+      tip.name = `rig_muzzle_tip_${mi}`;
+      tip.position.set(boreX, boreY, boreBaseZ + capOffset);
+      boreParent.add(tip);
+      muzzleTips.push(tip);
+      continue;
+    }
+
+    // Size every visible mouth from the actual terminal surface. The former
+    // fleet-wide radius inherited the donor's main-gun armor value; that made
+    // BMPT's 30 mm mouths 4.3x wider than their 22 mm terminal tubes. A hidden
+    // profile-authored rim is the deterministic fallback when an open or
+    // unusually tessellated barrel has no center-spanning cap triangle.
+    root.updateMatrixWorld(true);
+    const authoredOuterR = !def && authoredRim
+      ? objectRadialRadiusInFrame(authoredRim, muzzle, boreX, boreY)
+      : null;
+    const capOuterR = capSelection.profile
+      && capSelection.profile.outerRadiusM >= 0.005
+      && capSelection.profile.outerRadiusM <= 0.65
+      ? capSelection.profile.outerRadiusM
+      : null;
+    const validAuthoredOuterR = authoredOuterR
+      && authoredOuterR >= 0.005
+      && authoredOuterR <= 0.65
+      ? authoredOuterR
+      : null;
+    const supportOuterR = physicalBore?.outerRadiusM || capOuterR || validAuthoredOuterR || nominalMuzzleOuterR;
+    const supportSource = physicalBore ? 'authored-physical-bore' : capOuterR ? capSelection.supportSource || 'terminal-cap'
+      : validAuthoredOuterR ? 'authored-rim'
+        : 'nominal-spec';
+    const capFitOuterR = capOuterR ? capOuterR * 0.94 : Infinity;
+    const muzzleOuterR = physicalBore?.outerRadiusM ?? Math.max(0.006, Math.min(
+      capFitOuterR,
+      validAuthoredOuterR || nominalMuzzleOuterR,
+    ));
+    const muzzleInnerR = physicalBore?.innerRadiusM ?? Math.max(muzzleOuterR * 0.46,
+      Math.min(muzzleOuterR * 0.72, caliberRadius));
+    const muzzleRimR = physicalBore
+      ? Math.min(muzzleOuterR * .12, (muzzleOuterR-muzzleInnerR) * .4)
+      : Math.max(0.001, muzzleOuterR * 0.12);
+    // Owner 2026-09-22 ("the point of adding holes instead of carving them into
+    // the barrel is that we save on triangles ... make sure were saving the
+    // triangles here"): the added hole is the minimal construction. One flat
+    // dark ring is both the lip and the annular face (2N) at the lip front, the
+    // near-black disc (N) sits just behind it, and an open throat sleeve (2N)
+    // is added only when the authored tube stops short of the marker: 3N–5N
+    // per mouth instead of the former 13N–15N (a 10N torus lip plus a separate
+    // 2N annulus). The ring starts at the disc radius so the two overlap by
+    // 2 %: a hairline gap between separate meshes can expose legacy solid-cap
+    // triangles on small-caliber, low-segment barrels. A verified physical
+    // recess keeps only the shadow disc at its floor: its own annulus and
+    // inward wall are the visible mouth, so the barrel-paint duplicates that
+    // used to sit 0.5 mm ahead of them are gone.
+    const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
+    const boreRimGeo = physicalBore
+      ? null
+      : new THREE.RingGeometry(muzzleInnerR, muzzleOuterR, boreSegments);
+    disposables.push(boreDiscGeo);
+    if (boreRimGeo) disposables.push(boreRimGeo);
+
+    // terminal-surface-fit-r2: the visible mouth ends at the ballistic
+    // muzzle marker. Authored tubes that stop short of it (the fleet lip
+    // has completed a 20 mm shortfall on many X tubes) are finished by the
+    // dark lip and, beyond one lip radius, a dark throat sleeve; tubes that
+    // already reach the marker keep the lip 0.9 mm proud, so no vehicle
+    // grows past its authored/official envelope. The annulus and disc sit
+    // a fraction of a millimetre behind the lip front, depth-safe.
+    const seatedFaceParentZ = physicalBore ? boreBaseZ : (capSelection.faceParentZ
+      ?? authoredFaceParentZ
+      ?? boreBaseZ);
+    const markerGapM = Math.min(0.06, Math.max(0, -seatedFaceParentZ));
+    // Three seats. A tube already at the marker keeps its lip mostly
+    // inside itself, 0.9 mm proud, with the mouth on that face. A tube
+    // that stops short (the fleet's 0.28 R lip convention, typically
+    // 20 mm) keeps the published r1 lip: rear 0.04 R ahead of the tube
+    // end, front no further than the marker, mouth 1.2 mm inside. A tube
+    // that stops further short than that lip can reach is completed by a
+    // dark throat sleeve so the lip and mouth still finish at the marker.
+    const lipRimR = muzzleRimR;
+    const classicLipAdvanceM = THREE.MathUtils.clamp(muzzleOuterR * 0.16, 0.0035, 0.016);
+    let lipAdvanceM: number, annulusForwardM: number, discForwardM: number;
+    if (markerGapM < 0.003) {
+      lipAdvanceM = 0.0009 - lipRimR;
+      annulusForwardM = 0.0006;
+      discForwardM = 0.0003;
+    } else if (classicLipAdvanceM + lipRimR >= markerGapM - 0.003) {
+      // Capped at 0.9 mm past the marker so a lip that meets the marker
+      // still stands proud of a tube whose true face is that plane.
+      lipAdvanceM = Math.min(classicLipAdvanceM, markerGapM + 0.0009 - lipRimR);
+      annulusForwardM = 0.0022;
+      discForwardM = 0.0012;
+    } else {
+      lipAdvanceM = markerGapM - lipRimR;
+      annulusForwardM = markerGapM - 0.0004;
+      discForwardM = markerGapM - 0.0008;
+    }
+    // A verified physical tube retains its actual depth. The black finish
+    // sits 0.5 mm ahead of its real backstop, avoiding coplanar flicker.
+    if (physicalBore) discForwardM = -physicalBore.depthM + .0005;
+    const lipFrontM = lipAdvanceM + lipRimR;
+    // The flat ring replaced the former torus (owner 2026-09-22); lipRimR now
+    // only names the lip-front offset the r2 seats were published with, so
+    // every seat keeps its receipt values. The dark ring is the annular face
+    // too, so the annulus plane is the lip front (terminal-surface-fit-r3).
+    if (!physicalBore) annulusForwardM = lipFrontM;
+    // Open-ended sleeve from the authored tube end to the ring whenever the
+    // tube stops short of the marker; a flush tube's 0.9 mm proud ring needs
+    // none. It never caps the dark disc behind it.
+    const boreThroatGeo = !physicalBore && lipFrontM > 0.003
+      ? new THREE.CylinderGeometry(muzzleOuterR, muzzleOuterR,
+        lipFrontM, boreSegments, 1, true).rotateX(Math.PI / 2)
+      : null;
+    if (boreThroatGeo) disposables.push(boreThroatGeo);
+    const fallbackBore = new THREE.Group();
+    fallbackBore.name = `muzzleBoreShadowFallback${suffix}`;
+    fallbackBore.userData.cannonBore = true;
+    // A verified physical recess is its own rim: the census counts this
+    // mouth as a physical bore instead of demanding a fallback Rim mesh.
+    fallbackBore.userData.physicalMouth = !!physicalBore;
+    fallbackBore.userData.caliberMm = spec.gun.caliberMm;
+    fallbackBore.userData.capOffsetM = capOffset;
+    fallbackBore.userData.muzzleSeatDebug = {
+      supportSource: capSelection.supportSource, recoilZ: capSelection.recoilZ,
+      faceParentZ: capSelection.faceParentZ, authoredFaceParentZ, muzzleZ: P.muzzleZ,
+    };
+    fallbackBore.userData.muzzleSeatReceipt = Object.freeze({
+      revision: physicalBore ? 'physical-recess-r1' : 'terminal-surface-fit-r3',
+      ...(physicalBore && physicalBoreEvidence ? {
+        physicalBoreDepthM: physicalBore.depthM,
+        measuredMinimumDepthM: physicalBoreEvidence.minimumDepthM,
+        measuredMaximumRimOffsetM: physicalBoreEvidence.maximumRimOffsetM,
+        measuredOuterRadiusM: physicalBoreEvidence.measuredOuterRadiusM,
+        physicalInnerRadiusM: physicalBore.innerRadiusM,
+        physicalRimProjectionM: physicalBore.rimProjectionM ?? 0,
+        measuredProjectionM: physicalBoreEvidence.measuredProjectionM,
+      } : {}),
+      supportSource,
+      supportOuterRadiusM: supportOuterR,
+      outerRadiusM: muzzleOuterR,
+      radialRatio: muzzleOuterR / supportOuterR,
+      lipAdvanceM,
+      rimRadiusM: lipRimR,
+      lipFrontM,
+      markerGapM,
+      annulusForwardM,
+      discForwardM,
+    });
+    fallbackBore.position.set(boreX, boreY, seatedFaceParentZ + lipAdvanceM);
+    fallbackBore.visible = true;
+
+    const boreRim = boreRimGeo ? new THREE.Mesh(boreRimGeo, mats.dark) : null;
+    if (boreRim) {
+      boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
+      boreRim.userData.cannonBoreFallbackPart = true;
+      boreRim.userData.cannonBorePrimaryPart = true;
+      // The flat ring is the lip front and the annular face in one plane.
+      boreRim.position.z = annulusForwardM - lipAdvanceM;
+      boreRim.visible = true;
+    }
+    if (boreThroatGeo) {
+      // Dark sleeve from the authored tube end to the ring: the completed
+      // muzzle reads as one tube instead of a floating ring.
+      const boreThroat = new THREE.Mesh(boreThroatGeo, mats.dark);
+      boreThroat.name = `muzzleBoreShadowFallbackThroat${suffix}`;
+      boreThroat.userData.cannonBoreFallbackPart = true;
+      boreThroat.position.z = (lipRimR - lipAdvanceM) / 2;
+      boreThroat.castShadow = false;
+      boreThroat.receiveShadow = true;
+      fallbackBore.add(boreThroat);
+    }
+    const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
+    boreDisc.name = `muzzleBoreShadowFallbackDisc${suffix}`;
+    boreDisc.userData.cannonBoreFallbackPart = true;
+    boreDisc.userData.cannonBorePrimaryPart = true;
+    // Keep the dark disc barely proud of retained legacy cap triangles while
+    // recessing it behind the lip. This removes the former 32 mm floating
+    // plate without introducing z-fighting or depth-test leakage.
+    boreDisc.position.z = discForwardM - lipAdvanceM;
+    boreDisc.visible = true;
+    for (const part of [boreRim, boreDisc]) {
+      if (!part) continue;
+      part.castShadow = false;
+      part.receiveShadow = true;
+      fallbackBore.add(part);
+    }
+    boreParent.add(fallbackBore);
+    fallbackBore.visible = true;
+    if (def) {
+      const tip = new THREE.Object3D();
+      tip.name = `rig_muzzle_tip_${mi}`;
+      tip.position.set(boreX, boreY, boreBaseZ + capOffset);
+      boreParent.add(tip);
+      muzzleTips.push(tip);
+    }
+  }
+  const turretTop = new THREE.Object3D();
+  turretTop.position.set(0, P.topY, 0);
+  turretG.add(turretTop);
+  if (P.fixedMount) {
+    // Preserve the anchors' world seats while moving them out of the virtual
+    // yaw rig.  `attach` is intentional: muzzleZ and P.topY were authored in
+    // the profile's already-positioned rig coordinates.
+    hullG.attach(muzzle);
+    hullG.attach(turretTop);
+    // §5.362: the recuperator group joins the hull chain too (world seat
+    // preserved — hullG is identity, so this is byte-exact on the rest
+    // hash). A casemate tube authored into the gun buckets then recoils
+    // along the hull bore axis instead of orbiting the empty virtual
+    // turret; today's fixedMount ids print their tube into the certified
+    // hull buckets, so this group is empty and the stroke is suppressed
+    // (see recoilHasTube).
+    hullG.attach(recoilG);
+  }
+
+  // ---- movement-solve contact metadata (data only — no geometry writes) ----
+  // Seat the running-gear instance matrices at their rest pose first (scroll
+  // 0/0 — exactly what the first syncFromState composes; instanced wheels and
+  // link pads otherwise still carry identity matrices at this point), then
+  // scan the whole visual for the lowest rendered surface and the contact
+  // footprint. state.ts stamps this onto the entity for movement.ts; the
+  // gear's analytic flat-run span wins over the scan's low band (the band
+  // includes approach/departure ramps), while the scan owns the bottom (a
+  // rebuilt hull keel can undercut the gear floor).
+  if (P.gear) P.gear.update(0, 0);
   // Static showroom previews never enter game state, so their
   // movement contact metadata normally has no consumer. The full-tree vertex
   // scan was measurable cold-switch work, so defer it until a caller elects
@@ -11844,15 +11599,9 @@ function* createTankOwnedSteps(
     };
   };
   let contactGeom = staticPreview ? null : composeContactGeom(restScan);
-  const createTankReceiptStage5 = (): void => {
-    if (contactGeom) {
-      root.userData.contactGeom = contactGeom;
-    }
-  };
-  const createTankReceiptStage11 = (): void => {
-    createTankReceiptStage5();
-  };
-  createTankReceiptStage11();
+  if (contactGeom) {
+    root.userData.contactGeom = contactGeom;
+  }
   const presentationFloorFrom = (
     scan: RestContactReceipt | null,
     contact: TankContactGeometry | null,
@@ -11876,13 +11625,7 @@ function* createTankOwnedSteps(
   // camoSeed/quality never move wheels), so re-attachment on every build is
   // an idempotent overwrite. Gearless builds (community GLB placeholders)
   // publish nothing and keep the legacy plate+AABB path untouched.
-  const createTankAssemblyStage15 = (): void => {
-    if (P.gear && P.gear.trackHitbox) attachTrackShapes(armor, P.gear.trackHitbox);
-  };
-  const createTankAssemblyStage37 = (): void => {
-    createTankAssemblyStage15();
-  };
-  createTankAssemblyStage37();
+  if (P.gear && P.gear.trackHitbox) attachTrackShapes(armor, P.gear.trackHitbox);
 
   // ---- state ----
   let destroyed = false;
@@ -11945,20 +11688,14 @@ function* createTankOwnedSteps(
   // its recess, diameter and complete presentation stroke. Unverified legacy
   // collars still use the original half-metre threshold.
   let recoilTubeSpan = 0;
-  const createTankReceiptStage6 = (): void => {
-    recoilG.traverse((o) => {
-      if (!isVehicleMesh(o) || !o.geometry || o.userData.cannonBoreFallbackPart) return;
-      const mm = Array.isArray(o.material) ? o.material[0] : o.material;
-      if (mm && mm.colorWrite === false) return; // shadow proxies mirror the tube
-      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-      const bb = o.geometry.boundingBox;
-      if (bb) recoilTubeSpan = Math.max(recoilTubeSpan, bb.max.z - bb.min.z);
-    });
-  };
-  const createTankReceiptStage12 = (): void => {
-    createTankReceiptStage6();
-  };
-  createTankReceiptStage12();
+  recoilG.traverse((o) => {
+    if (!isVehicleMesh(o) || !o.geometry || o.userData.cannonBoreFallbackPart) return;
+    const mm = Array.isArray(o.material) ? o.material[0] : o.material;
+    if (mm && mm.colorWrite === false) return; // shadow proxies mirror the tube
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const bb = o.geometry.boundingBox;
+    if (bb) recoilTubeSpan = Math.max(recoilTubeSpan, bb.max.z - bb.min.z);
+  });
   const verifiedShortTube = !!(physicalBore && physicalBoreEvidence
     && recoilTubeSpan >= Math.max(physicalBore.depthM, physicalBore.outerRadiusM * 2,
       REC_AMP, RAPID_AMP));
@@ -13027,15 +12764,9 @@ function* createTankOwnedSteps(
   };
 
   // Prime articulation groups at neutral pose.
-  const createTankAssemblyStage16 = (): void => {
-    turretG.rotation.y = 0;
-    gunG.rotation.x = 0;
-    if (P.gear) P.gear.update(0, 0);
-  };
-  const createTankAssemblyStage38 = (): void => {
-    createTankAssemblyStage16();
-  };
-  createTankAssemblyStage38();
+  turretG.rotation.y = 0;
+  gunG.rotation.x = 0;
+  if (P.gear) P.gear.update(0, 0);
 
   // ---- DECORATION SYSTEM seam (src/vehicles/decorations.ts) ---------------
   // Cosmetic stowage/fittings under rig_decor_hull / rig_decor_turret.
@@ -13072,7 +12803,6 @@ function* createTankOwnedSteps(
       isDestroyed: () => destroyed,
     }, legacyDecoration);
 
-  const createTankMarkingsStage3 = (): void => {
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
     applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });
@@ -13140,11 +12870,6 @@ function* createTankOwnedSteps(
     if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
     if (batchStatic) detachEmptyLodSentinels(root);
     if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
-  };
-  const createTankMarkingsStage6 = (): void => {
-    createTankMarkingsStage3();
-  };
-  createTankMarkingsStage6();
 
     visualCompleted = true;
     return visual;

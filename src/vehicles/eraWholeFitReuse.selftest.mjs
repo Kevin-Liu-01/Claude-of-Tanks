@@ -23,7 +23,10 @@ assert.equal(unwrap(fitting(current)), fitting(upstream), 'complete original fit
 const collection = s => s.slice(s.indexOf('function createEraSurfaceFrame('), s.indexOf('interface TankPresentationSetup'));
 assert.equal(collection(current), collection(upstream), 'unchanged complete frame, collection, PCA and fallback algorithms');
 assert.equal(current.split('const wholeEraFitReuse = createInvocationEraWholeReuse();').length, 2);
-assert.equal(current.split('try { createTankAssemblyStage30(); } finally { wholeEraFitReuse.close(); }').length, 2);
+// Round 46 (docs/CLEANUP-2026-09-22.md §4.1) inlined the generated stage wrapper the try block used to call;
+// the fitting body now sits directly inside the try whose finally closes the per-invocation memo.
+assert.equal(current.split('} finally { wholeEraFitReuse.close(); }').length, 2);
+assert.equal(current.split('  try {\n    if (eraPlacements.length) {').length, 2, 'the ERA fitting runs inside the memo-owning try');
 
 async function child(reference) {
   const restoreCanvas=installCanvasFixture();

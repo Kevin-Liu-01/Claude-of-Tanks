@@ -138,13 +138,15 @@ export function transformConstructor(source, kind) {
       const name = node.expression.getText(file);
       let enclosing = node.parent;
       while (enclosing && !ts.isFunctionLike(enclosing)) enclosing = enclosing.parent;
-      // Both public entrypoints now drain the same owned generator. Attribute
-      // the stage calls when its body executes, not when an iterator is made.
-      const topStage = /^createTank\w*Stage\d+$/.test(name) && ts.isFunctionDeclaration(enclosing)
+      // Both public entrypoints drain the same owned generator. Round 46
+      // (docs/CLEANUP-2026-09-22.md §4.1) inlined the machine-generated stage
+      // wrappers, so every plain call the owned body makes directly is one
+      // stage: attribute it when the body executes, not when an iterator is made.
+      const ownedStage = ts.isIdentifier(node.expression) && enclosing && ts.isFunctionDeclaration(enclosing)
         && ['createTank', 'createTankOwnedSteps'].includes(enclosing.name?.text);
       const explicit = ['finalizeVehicleMarkingSeats', 'applyVerifiedVehicleMarkingSeats', 'installProceduralShadowProxies',
         'normalizeTankAppearance', 'finalizeVehicleNightLighting', 'attachTankDecorations'].includes(name);
-      if (topStage || explicit) instrument(node, name);
+      if (ownedStage || explicit) instrument(node, name);
     }
     ts.forEachChild(node, visit);
   };
