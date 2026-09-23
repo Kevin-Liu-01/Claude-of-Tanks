@@ -173,6 +173,16 @@ for (const quality of ['high', 'low']) {
     new THREE.MeshBasicMaterial());
   const closureRay = new THREE.Raycaster();
   for (const side of [-1,1]) {
+    // The end covers must not leave the old middle seam enclosed between
+    // the central hull and skirt crown. Check its stock and underside air.
+    for (const z of [-2.20,-1.1,0.11,1.2,2.70]) {
+      closureRay.set(new THREE.Vector3(side*1.8087375,1.8,z),new THREE.Vector3(0,-1,0));
+      closureRay.far=.28;
+      assert.ok(closureRay.intersectObject(hullProbe)[0], 'center sponson joins the skirt crown');
+      closureRay.set(new THREE.Vector3(side*1.8087375,1.50,z),new THREE.Vector3(0,1,0));
+      closureRay.far=.025;
+      assert.equal(closureRay.intersectObject(hullProbe).length,0, 'roof bridge stays clear of return shoes');
+    }
     for (const x of [1.16,1.45,1.80,1.98]) {
       for (const z of [2.80,3.25,3.70,-2.50,-3.10,-3.70,-4.02]) {
         closureRay.set(new THREE.Vector3(side*x,1.9,z), new THREE.Vector3(0,-1,0));

@@ -10629,11 +10629,10 @@ function createM1A3BuildLayout() {
   const g: AbramsHullConfig = {
     ...TEJAS_HULL,
     hollowRoadWheels: false, // the M1A3 hulls draw the Abrams hollow paired wheel through the nation standard (owner 2026-09-22); this solid stock only sizes the envelope
-    // Exterior-to-aperture rays require 110 mm total forward travel: the
-    // previous 55 mm seat still buried both lenses in the single-sided bow.
-    // Move the whole pod/drum/guard; hull stock remains 12 mm behind the lens.
+    // Seat the complete light pod on the closed front apron. The extra
+    // 70 mm follows its new face; the existing roadward aim stays unchanged.
     authoredBowLights: false,
-    bowLightForwardM: 0.110,
+    bowLightForwardM: 0.180,
     bodyHalfW: 1.78,
     nose: 4.00,
     deck: [[4.00, 1.24], [3.72, 1.31], [3.30, 1.42], [2.30, 1.62],
@@ -10759,6 +10758,9 @@ function addM1A3Hull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     sideSlab(P, 'hull', side,
       [0.99, 1.22, -4.01], [2.08, 1.22, -4.01], [2.08, 1.22, -4.035], [0.99, 1.22, -4.035],
       [0.99, 1.635, -4.01], [2.08, 1.59, -4.01], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035]);
+    // Join the existing center sponson to the skirt crown between the two
+    // new end covers. The underside remains above the complete shoe sweep.
+    P.add('hull', box(0.14, 0.06, 5.00), side * 1.82, 1.565, 0.24);
     P.addExternalArmor('hull', box(0.16, 0.14, 0.92), side * 1.71, 1.58, 3.17,
       0, side * -0.10, 0);
   }

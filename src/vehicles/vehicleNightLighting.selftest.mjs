@@ -166,7 +166,7 @@ function assertM1A3RoadBeams(root, label) {
       const beam = new THREE.Vector3().fromArray(lamp.direction).transformDirection(owner.matrixWorld);
       const local = point.clone().applyMatrix4(ownerPose.clone().invert());
       assert.ok(Math.abs(Math.abs(local.x) - .82) < 2e-6 && Math.abs(local.y - 1.1250758171081543) < 2e-6
-        && Math.abs(local.z - 3.9420950412750244) < 2e-6, `${label}: original native aperture coordinates retained`);
+        && Math.abs(local.z - 4.0120950412750244) < 2e-6, `${label}: aperture seats on the closed front apron with its original height and lateral position`);
       const hit = new THREE.Ray(point, beam).intersectPlane(road, new THREE.Vector3());
       assert.ok(hit && point.distanceTo(hit) > 14 && point.distanceTo(hit) < 14.2 && point.distanceTo(hit) < lamp.range,
         `${label}/pose${poseIndex}: center ray reaches the owner's road plane ahead, within the existing 42m range`);
