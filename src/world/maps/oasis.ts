@@ -68,7 +68,8 @@ export default {
       ids: ['merkava4b', 'm60a3', 'merkava3d', 'm1a2', 't90a'] },
     inhabit: { stalls: 5, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
-  horizon: { baseHex: 0xaa936b, amp: 0.90, style: 'rolling', ground: 'sand', treeline: 0.12, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.46 },
+  // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62
+  horizon: { baseHex: 0xaa936b, amp: 0.90, style: 'rolling', ground: 'sand', treeline: 0.12, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.62 },
   sky: { ...desert.sky, sunElevationDeg: 22, sunAzimuthDeg: 104, turbidity: 5.2, fogDensity: 0.00052, fogTintHex: 0xb0a18a, fogMix: 0.46, cloudOpacity: 0.5, cloudOpacity2: 0.22, sunIntensity: 4.0, hemiIntensity: 0.40 },
   minimap: { ...desert.minimap, water: 'rgba(45,111,108,.86)', waterStroke: 'rgba(23,70,70,.94)' },
   shot: { pos: [-252, 52, -246], look: [86, 1, 80] },

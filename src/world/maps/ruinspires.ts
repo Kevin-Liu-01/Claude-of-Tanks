@@ -100,7 +100,11 @@ export default {
   },
   horizon: {
     baseHex: 0x434a4d, amp: 0.92, style: 'escarpment', treeline: 0.18,
-    forestHex: 0x2f3937, rockHex: 0x5c5e5c, haze: 0.95, grain: 0.42,
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): thin grey beds on the escarpment faces
+    // (the escarpment style authored none), boulder outcrops on the outland (treeline 0.18 fell in the rockfield's
+    // dead zone) and more tone grain on the flattest escarpment ring (0.42 -> 0.60)
+    banding: 0.12, outlandRocks: 0.50,
+    forestHex: 0x2f3937, rockHex: 0x5c5e5c, haze: 0.95, grain: 0.60,
   },
   sky: {
     sunElevationDeg: 24, sunAzimuthDeg: 118, turbidity: 7.0, rayleigh: 1.15,

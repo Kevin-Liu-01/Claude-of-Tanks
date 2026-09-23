@@ -799,19 +799,26 @@ function makeTreeLineTexture(profileSeed: number): THREE.CanvasTexture {
 return t;
 }
 
+// The classic 1049e4e tableland ladder: two skirt rows, then four ranges (foothill, near table, basin, outer table).
+// Round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): only Redrock keeps it — its outland is the
+// shared analytic canyon (horizonRedrock.ts samples every row from redrockCanyon.ts and its receipt pins the ladder).
+const CLASSIC_MESA_ROWS: HorizonRingRow[] = [
+  { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+  { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+  { r: 700, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.12 },
+  { r: 860, base: 62, amp: 96, f0: 2.1, f1: 4.6, aer: 0.24 },
+  { r: 1000, base: 84, amp: 128, f0: 1.5, f1: 3.3, aer: 0.42 },
+  { r: 1240, base: 88, amp: 96, f0: 1.1, f1: 2.4, aer: 0.60 },
+];
+
 const HORIZON_ROWS_BY_STYLE: Partial<Record<HorizonStyle, HorizonRingRow[]>> & {
   default: HorizonRingRow[];
+  mesaCanyon: HorizonRingRow[];
 } = {
   // Vista pass (2026-09-19): every first ridge stands about 110 m farther from the rim (585/600 -> 700/720, with
   // the corner margins moved to match) so the seated foothill climbs at a hillside grade instead of a wall.
-  default: [
-    { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-    { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-    { r: 700, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.12 },
-    { r: 860, base: 62, amp: 96, f0: 2.1, f1: 4.6, aer: 0.24 },
-    { r: 1000, base: 84, amp: 128, f0: 1.5, f1: 3.3, aer: 0.42 },
-    { r: 1240, base: 88, amp: 96, f0: 1.1, f1: 2.4, aer: 0.60 },
-  ],
+  default: CLASSIC_MESA_ROWS,
+  mesaCanyon: CLASSIC_MESA_ROWS,
   rolling: [
     { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
     { r: 470, base: 22, amp: 12, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
@@ -828,13 +835,29 @@ const HORIZON_ROWS_BY_STYLE: Partial<Record<HorizonStyle, HorizonRingRow[]>> & {
     { r: 1080, base: 66, amp: 116, f0: 1.4, f1: 3.1, aer: 0.54 },
     { r: 1330, base: 76, amp: 106, f0: 1.0, f1: 2.2, aer: 0.70 },
   ],
+  // Round 47 (owner 2026-09-23, "the skybox and mountains are too bland, not good like the good maps"): the mesa
+  // table used to be byte-identical to `default` — four rows climbing monotonically (50 / 62 / 84 / 88 m bases), so
+  // Titan, Skybridge, Copper Mesa, Caldera, the desert and Mars read as ONE stepped wall while the alpine maps'
+  // nine-row foothill / saddle / summit stack read as layered ranges. Mesa country is buttes and tables standing on
+  // a valley floor in front of a far escarpment: a low foothill bench with buttes, the near tablelands (finite cap
+  // range 0 on Skybridge / Copper Mesa / Titan), a REAL valley floor lower than both (36 m base, 28 m amplitude —
+  // the old basin row sat at 84 + 128 m, higher than the tables in front of it), the far escarpment (cap range 1),
+  // a saddle behind it, the distant summit plateau and the outer shoulder. Rows that share a table field (the same
+  // f0) are one landform at two depths: the bench is the tables' own pediment (so the cap pass always finds a
+  // supported approach) with its own butte field (f1), and the saddle / outer shoulder are the plateau tops behind
+  // the escarpment and the summits; the valley, the escarpment and the summits are independent fields, so three
+  // separate ranges share the skyline. The tables drop 100 m to the valley floor (a 3:1 back cliff carries the
+  // tallest raw table at Titan's 2.15 amplitude) and the outer row moves 1240 -> 1380 m to give the stack room.
   mesa: [
     { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
     { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
-    { r: 700, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.12 },
-    { r: 860, base: 62, amp: 96, f0: 2.1, f1: 4.6, aer: 0.24 },
-    { r: 1000, base: 84, amp: 128, f0: 1.5, f1: 3.3, aer: 0.42 },
-    { r: 1240, base: 88, amp: 96, f0: 1.1, f1: 2.4, aer: 0.60 },
+    { r: 700, base: 50, amp: 44, f0: 2.4, f1: 6.2, aer: 0.12 },
+    { r: 860, base: 58, amp: 92, f0: 2.4, f1: 5.0, aer: 0.20 },
+    { r: 960, base: 36, amp: 28, f0: 2.8, f1: 5.6, aer: 0.26 },
+    { r: 1200, base: 94, amp: 138, f0: 1.6, f1: 3.4, aer: 0.40 },
+    { r: 1260, base: 84, amp: 100, f0: 1.6, f1: 3.4, aer: 0.48 },
+    { r: 1320, base: 100, amp: 150, f0: 1.2, f1: 2.6, aer: 0.56 },
+    { r: 1380, base: 88, amp: 100, f0: 1.2, f1: 2.6, aer: 0.64 },
   ],
   // The same seven non-skirt rows form foothills, a near crest, a saddle,
   // middle crest, another saddle, distant summits and their outer shoulder.
@@ -853,7 +876,10 @@ const HORIZON_ROWS_BY_STYLE: Partial<Record<HorizonStyle, HorizonRingRow[]>> & {
   ],
 };
 
-function horizonRows(style: HorizonStyle, _mapId: string): HorizonRingRow[] {
+function horizonRows(style: HorizonStyle, mapId: string): HorizonRingRow[] {
+  // Round 47: Redrock's outland is the shared analytic canyon, sampled row by row (horizonRedrock.ts) and pinned by
+  // redrockCanyonHorizon.selftest; it keeps the classic six-row ladder while the other mesa rings take the stack.
+  if (style === 'mesa' && mapId === 'badlands') return HORIZON_ROWS_BY_STYLE.mesaCanyon;
   return HORIZON_ROWS_BY_STYLE[style] || HORIZON_ROWS_BY_STYLE.default;
 }
 
@@ -931,7 +957,11 @@ function openHorizonToSea(ring: HorizonRingGeometry, openings: readonly HorizonS
   }
 }
 
-function horizonRowMargins(rowCount: number, _style: HorizonStyle): readonly number[] {
+function horizonRowMargins(rowCount: number, style: HorizonStyle): readonly number[] {
+  // Round 47: at the square corners (rim 724 m) the mesa stack keeps its two cap ranges 140 / 260 m deep (each cap
+  // front needs 80 / 90 m plus its supported approach) and its valley floor 80 m wide; every row still steps outward
+  // (the far rows by at least half their authored span, see buildInitialHorizonGeometry).
+  if (rowCount === 9 && style === 'mesa') return [-34, 22, 200, 340, 420, 680, 730, 770, 800];
   if (rowCount === 9) return [-34, 22, 200, 250, 300, 380, 450, 560, 800];
   if (rowCount === 7) return [-34, 22, 200, 260, 380, 560, 800];
   return [-34, 22, 200, 340, 560, 800];
@@ -974,11 +1004,23 @@ function buildInitialHorizonGeometry(
         cos * 4 + rowIndex * 13,
         sin * 4 - rowIndex * 7,
       );
-      const height = sampleRingRowHeight(row, angle, noise, profile) * amp;
+      let height = sampleRingRowHeight(row, angle, noise, profile) * amp;
       // Retain the old 3% range meander while bounding it against folds at
       // square corners. This preserves the 1049 composition without letting
       // a newer map seed invert an annular strip.
-      const jitteredRadius = Math.max(previousRadius + 12, radius * (1 + 0.03 * radialNoise));
+      // Round 47: the mesa stack's far rows stand 60 m apart at 1.2-1.4 km, where the 3 % meander is ±40 m — two rows
+      // could collapse onto the 12 m floor and the independent fields behind them then met as 10-25:1 sheets. Those
+      // rows keep half their authored span and no authored row climbs or drops more than 2.5:1 from the row before it
+      // — the subdivision's radius bend and crag relief add up to another 1.7:1 on a short span, and the ledger
+      // contract is "terraces up to about 4:1" (< 4.5); the profile's tables and buttes are otherwise untouched.
+      const mesaStack = style === 'mesa' && rows.length === 9;
+      const minimumGap = mesaStack && rowIndex >= 2 ? Math.max(12, (row.r - rows[rowIndex - 1].r) * 0.5) : 12;
+      const jitteredRadius = Math.max(previousRadius + minimumGap, radius * (1 + 0.03 * radialNoise));
+      if (mesaStack && rowIndex >= 3) {
+        const previousHeight = heights[previous];
+        const limit = (jitteredRadius - previousRadius) * 2.5;
+        height = clamp(height, previousHeight - limit, previousHeight + limit);
+      }
       const index = rowIndex * HORIZON_SEGMENTS + segment;
       heights[index] = height;
       if (!row.skirt && height > maxHeight) maxHeight = height;
@@ -1117,7 +1159,8 @@ function subdivideHorizonGeometry(
     if (!next || next.skirt) continue;
     // Vista pass (2026-09-19): every span between the seated rim row and the outer shoulder is subdivided —
     // the foothill span behind the rim included (it used to be one quad strip on the vegetated styles) — so the
-    // relief below has rows to shape. Rolling / mesa / escarpment upload 18 rows, alpine 40 (was 10 / 33).
+    // relief below has rows to shape. Rolling / escarpment upload 18 rows, alpine 40 (was 10 / 33); round 47's nine-row
+    // mesa stack uploads 30 (Redrock keeps the classic 18).
     const divisions = style === 'alpine' ? (source.rows[rowIndex].skirt ? 4 : 5) : 4;
     for (let subdivision = 1; subdivision < divisions; subdivision++) {
       rows.push(interpolatedHorizonRow(source.rows[rowIndex], next, subdivision / divisions));
@@ -1134,7 +1177,8 @@ function subdivideHorizonGeometry(
 }
 
 function reshapeFiniteTableCaps(
-  ring: HorizonRingGeometry, amp: number, summitFraction = 0.64, capSlopeLimit = Infinity,
+  ring: HorizonRingGeometry, amp: number, summitFraction = 0.64,
+  capSlopeLimits: readonly [number, number] = [Infinity, Infinity],
 ): void {
   // Authored tablelands need a surface at the summit, not just one crest
   // row. Reuse the final approach row as the front cap edge in each range.
@@ -1153,6 +1197,11 @@ function reshapeFiniteTableCaps(
     const capLevel = (crest.base + crest.amp * summitFraction) * amp;
     const transition = crest.amp * amp * 0.14;
     const minimumDepth = range === 0 ? 80 : 90;
+    // Round 47: the near tables keep the vista pass's 1.25:1 supported approach; the far escarpment stands over a
+    // real valley floor now, so its front is a cliff-and-talus face at up to 1.8:1 (about 61°) — at 1.25:1 a 270 m
+    // rise needed a 220 m approach the 260 m span could not also fit a 90 m cap into, and no cap formed at all.
+    const capSlopeLimit = capSlopeLimits[range];
+    const approachSlope = capSlopeLimit * 0.96;
     for (let column = 0; column < n; column++) {
       const low = lowRow * n + column, front = frontRow * n + column;
       const top = crestRow * n + column;
@@ -1168,13 +1217,13 @@ function reshapeFiniteTableCaps(
       const topHeight = Math.min(oldTopHeight, capLevel,
         h[low] + (topRadius - lowRadius) * capSlopeLimit);
       const frontRadius = Math.min(lastFrontRadius,
-        Math.max(oldFrontRadius, lowRadius + (topHeight - h[low]) / 1.20));
+        Math.max(oldFrontRadius, lowRadius + (topHeight - h[low]) / approachSlope));
       const fraction = (frontRadius - lowRadius) / (topRadius - lowRadius);
       const linearFront = h[low] + (topHeight - h[low]) * fraction;
       // Titan's tightest meander needs a shared rise through the approach
       // and final cap edge, not a compressed steeper ramp at that last edge.
       const frontHeight = Math.max(Math.min(linearFront + (topHeight - linearFront) * weight,
-        h[low] + (frontRadius - lowRadius) * 1.20),
+        h[low] + (frontRadius - lowRadius) * approachSlope),
         topHeight - (topRadius - frontRadius) * capSlopeLimit);
 
       // Vista pass (2026-09-19): the denser ladder puts several interpolated rows on the approach and the back
@@ -1191,17 +1240,17 @@ function reshapeFiniteTableCaps(
         p[im * 3] *= scale;
         p[im * 3 + 2] *= scale;
         const hm = h[low] + (frontHeight - h[low]) * f + clamp(h[im] - oldLinear, -3, 3);
-        h[im] = clamp(hm, frontHeight - (frontRadius - newR) * 1.25, h[low] + (newR - lowRadius) * 1.25);
+        h[im] = clamp(hm, frontHeight - (frontRadius - newR) * capSlopeLimit, h[low] + (newR - lowRadius) * capSlopeLimit);
         p[im * 3 + 1] = h[im];
       }
-      // the approach climbs at most 1.25:1 between consecutive rows as well (forward from the low row, backward
-      // from the fixed cap front), so the buttress reads as a supported terrace rather than a stepped cliff. The
-      // bound equals the cap slope limit: the front may sit a full 1.25:1 above the low row, and a tighter
-      // per-row clamp would push the whole shortfall onto the first pair (measured 1.35:1 on Titan).
+      // the approach climbs at most the range's cap slope between consecutive rows as well (forward from the low
+      // row, backward from the fixed cap front), so the buttress reads as a supported terrace rather than a stepped
+      // cliff. The bound equals the cap slope limit: the front may sit a full limit above the low row, and a tighter
+      // per-row clamp would push the whole shortfall onto the first pair (measured 1.35:1 on Titan at 1.25).
       for (let m = lowRow + 1; m < frontRow; m++) {
         const im = m * n + column, ib = (m - 1) * n + column;
         const gap = Math.hypot(p[im * 3], p[im * 3 + 2]) - Math.hypot(p[ib * 3], p[ib * 3 + 2]);
-        h[im] = Math.min(h[im], h[ib] + gap * 1.25);
+        h[im] = Math.min(h[im], h[ib] + gap * capSlopeLimit);
         p[im * 3 + 1] = h[im];
       }
       for (let m = frontRow - 1; m > lowRow; m--) {
@@ -1209,11 +1258,13 @@ function reshapeFiniteTableCaps(
         const heightAfter = m + 1 === frontRow ? frontHeight : h[ia];
         const radiusAfter = m + 1 === frontRow ? frontRadius : Math.hypot(p[ia * 3], p[ia * 3 + 2]);
         const gap = radiusAfter - Math.hypot(p[im * 3], p[im * 3 + 2]);
-        h[im] = Math.max(h[im], heightAfter - gap * 1.25);
+        h[im] = Math.max(h[im], heightAfter - gap * capSlopeLimit);
         p[im * 3 + 1] = h[im];
       }
-      if (range === 0) {
-        const valleyRow = authored[2];
+      // Round 47: the far escarpment (range 1) now has the saddle and summit rows behind it, so its back rows are
+      // re-based onto the moved cap exactly like the near table's — a lowered cap must not leave a lip behind it.
+      const valleyRow = authored[range === 0 ? 2 : 4];
+      if (valleyRow !== undefined) {
         const valley = valleyRow * n + column;
         const valleyRadius = Math.hypot(p[valley * 3], p[valley * 3 + 2]);
         for (let m = crestRow + 1; m < valleyRow; m++) {
@@ -1320,7 +1371,7 @@ export function sampleHorizonGeometry(
     // broad summit surfaces without steepening their supported approaches.
     // Vista pass (2026-09-19): every tableland map bounds its cap rise at 1.25:1 now that the first ridge sits
     // 160 m inside the crest (700 -> 860): an unbounded cap put the final edge at 1.30:1 on Skybridge.
-    reshapeFiniteTableCaps(ring, horizon.amp ?? 1, mapId === 'titan_gorge' ? 0.60 : 0.64, 1.25);
+    reshapeFiniteTableCaps(ring, horizon.amp ?? 1, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
   openHorizonToSea(ring, resolveSeaOpenings(horizon.seaOpening, ground, mapId));
   return ring;
@@ -2513,7 +2564,7 @@ export function* buildHorizonRingSteps(
   else if (mapId === 'autumn' && ground) seatHorizonTerrainSeam(ring, ground);
   else if (ground) seatHorizonSkirtOnGround(ring, ground);
   if (usesFiniteTableCaps(H, mapId, style)) {
-    reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64, 1.25);
+    reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
   // Round 40: the authored aperture plus every opening the square's flattened water derives at its edge
   const seaOpenings = resolveSeaOpenings(H.seaOpening, ground, mapId);

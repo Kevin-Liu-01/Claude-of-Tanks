@@ -163,11 +163,12 @@ for (const [index, seed] of seeds.entries()) {
     // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is
     // re-established at this commit (the 1049e4e byte identity it guarded is superseded by that owner direction).
     const n = HORIZON_SEGMENTS;
-    assert.equal(ring.rows.length, 18); assert.equal(ring.positions.length, n * 18 * 3);
-    assert.equal(ring.heights.length, n * 18);
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa stack uploads 30 rows (was 18)
+    assert.equal(ring.rows.length, 30); assert.equal(ring.positions.length, n * 30 * 3);
+    assert.equal(ring.heights.length, n * 30);
     const p = ring.positions, h = ring.heights;
     const radius = (row, c) => Math.hypot(p[(row * n + c) * 3], p[(row * n + c) * 3 + 2]);
-    for (let c = 0; c < n; c++) for (let row = 1; row < 18; row++) {
+    for (let c = 0; c < n; c++) for (let row = 1; row < 30; row++) {
       assert.ok(radius(row, c) > radius(row - 1, c) + 1, 'No folded horizon faces');
       // The restored 1049e4e mesa profile keeps its terraced cliff steps (up to
       // about 4:1 between adjacent rows); a genuinely vertical sheet is steeper.

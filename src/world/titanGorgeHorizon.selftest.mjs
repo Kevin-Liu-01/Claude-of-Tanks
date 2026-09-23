@@ -13,15 +13,18 @@ const originalOther28 = [
   'e8e47254d288ab503af46c72809d0147d36d262f51622f405cd694b388f7d06d',
   '98398c21a824d10e54cde885c4e47901968e3881c0bb293331a49f4d9ce533a4',
 ];
+// Round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa style authors a nine-row stack
+// (bench, tables, valley, escarpment, saddle, summits, shoulder; 30 uploaded rows) and the far escarpment's cap
+// stands over a real valley with a 1.8:1 front, so Titan's uncapped fixture and its capped geometry are re-pinned here.
 const originalTitan = [
-  '635016c553e64bcd1a1ace7fa905169d68c87af08d89e709ea8755f439917b39',
-  'e40f5365cef99b8ca2cebf3c22410cbcd0d9939edfe6430cc593eeaa4d94a40e',
-  '692c46b486f83d97813c956dd080596335ab9182c8502d7bcd37b3de35948872',
+  '8b22bd26d18e209714f7a34521aa16002a724f70d0f8286a4f48d734545fe88f',
+  '324e358a7efde04e4e88c2a0de9a0ef455b4371d65c210e2e7c6745b9f02bc41',
+  '8af6b2326aaab2bb60640b80d0d2467c40cf20db693776356241ff4ea1b5a5a6',
 ];
 const currentTitan = [
-  '0cde122cda2d72075ffeac957d371529b6bb90a72ea6756a35719c945d2d5303',
-  '65e39754404e0228c8170bac0c5a84b59fb1e5cb22549d2019336083a9e08eb7',
-  '7d52a7c0fffad6ee980cad4e7efeece70c5de6d29e51ecea1b4c90875afb8452',
+  '07d02cba7a788fdfdea1eb79cec75a5954a9b94d334cfdc2ba0dec042d2a7196',
+  'c2c820c5dd1895a9d92303a1a98eca9f6e2112d71bd0be2a3ddc69ff65494fe1',
+  '0d01f25caed8fa88bbe24abb078e2f32b6f6a269e51e09d345e4bbcaec9836e9',
 ];
 // Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
 // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is
@@ -85,9 +88,11 @@ function capSurfaces(ring) {
       if (row >= 2) assert.ok((y(row, c) - y(row - 1, c)) / span < 4.5,
         'No return to steep unbounded canyon sheets');
     }
-    for (const [a, b] of [[5, 6], [6, 7], [7, 8], [8, 9], [13, 14], [14, 15], [15, 16], [16, 17]]) {
-      assert.ok((y(b, c) - y(a, c)) / (radius(b, c) - radius(a, c)) <= 1.251,
-        'Reused approach/buttress rows bound the rise into the broad cap');
+    // round 47: the near table keeps its 1.25:1 approach; the far escarpment's cliff-and-talus front is bounded at 1.8:1
+    for (const [a, b, limit] of [[5, 6, 1.251], [6, 7, 1.251], [7, 8, 1.251], [8, 9, 1.251],
+      [13, 14, 1.801], [14, 15, 1.801], [15, 16, 1.801], [16, 17, 1.801]]) {
+      assert.ok((y(b, c) - y(a, c)) / (radius(b, c) - radius(a, c)) <= limit,
+        `Reused approach/buttress rows bound the rise into the broad cap (rows ${a}-${b} within ${limit})`);
     }
   }
   return receipts;
@@ -117,11 +122,11 @@ for (const [index, seed] of seeds.entries()) {
     'Historical opt-out preserves the exact pre-cap Titan fixture, not a reconstructed approximation');
   assert.equal(ring.positions.constructor, Float32Array);
   assert.equal(ring.heights.constructor, Float32Array);
-  assert.equal(ring.positions.length, n * 18 * 3); assert.equal(ring.heights.length, n * 18);
-  assert.deepEqual(ring.rows, historical.rows, 'Same 18 source rows and metadata');
+  assert.equal(ring.positions.length, n * 30 * 3); assert.equal(ring.heights.length, n * 30); // round 47: nine-row stack
+  assert.deepEqual(ring.rows, historical.rows, 'Same 30 source rows and metadata');
   assert.equal(ring.maxHeight, historical.maxHeight, 'Same color/texture height normalization');
-  // approach rows, crest, back rows of the near table; approach rows and crest of the outer table
-  const alteredHeightRows = new Set([6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17]);
+  // approach rows, crest, back rows of the near table; approach rows, crest and (round 47) back rows of the escarpment
+  const alteredHeightRows = new Set([6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20]);
   const movedRows = new Set([6, 7, 8, 14, 15, 16]);
   for (let vertex = 0; vertex < ring.heights.length; vertex++) {
     const row = Math.floor(vertex / n);

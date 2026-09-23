@@ -15,7 +15,12 @@ import {
 // 18 / 36 rows with ridged relief, the first ridge stands 700-720 m out, the skirt seats on the terrain, every style
 // compiles one layered world-anchored vista program on the desktop tier and the near faces carry an instanced forest.
 // The receipts below are re-established at this commit; the 1049e4e byte identity they guarded is superseded.
+// Round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa style authors a nine-row stack
+// (bench, tables, valley, escarpment, saddle, summits, shoulder — 30 uploaded rows, outer row 1380 m); Redrock keeps
+// the classic six-row ladder for its analytic canyon (redrockCanyonHorizon.selftest).
 const columns = HORIZON_SEGMENTS + 1;
+const uploadedRows = (config, mapId) => config.horizon.style === 'alpine' ? 36
+  : config.horizon.style === 'mesa' && mapId !== 'badlands' ? 30 : 18;
 const VISTA_TILES = 6; // round 29: meadow, sand, canopy, rock, scree, snow
 
 function radiusAt(position, index) {
@@ -35,8 +40,10 @@ function assertMonotoneRadii(position, label) {
 function assertBoundedSubdivisionRelief(position, style, label) {
   // Alpine spends two existing outer-shoulder subdivisions on the near
   // foothill transition. Authored ridges still anchor all inserted relief.
+  // round 47: the mesa stack's seven authored rows (5, 9, 13, 17, 21, 25, 29) and, on the cap maps, its two cap fronts
   const anchors = style === 'alpine' ? [1, 5, 10, 15, 20, 25, 30, 35]
-    : ['skybridge', 'copper_mesa', 'titan_gorge'].includes(label) ? [1, 5, 8, 9, 13, 16, 17] : [1, 5, 9, 13, 17];
+    : ['skybridge', 'copper_mesa', 'titan_gorge'].includes(label) ? [1, 5, 8, 9, 13, 16, 17, 21, 25, 29]
+      : style === 'mesa' ? [1, 5, 9, 13, 17, 21, 25, 29] : [1, 5, 9, 13, 17];
   let reliefSamples = 0;
   for (let span = 1; span < anchors.length; span++) {
     for (let column = 0; column < columns - 1; column++) {
@@ -129,16 +136,18 @@ function assertClassicLayeredRanges(ring, config, label) {
   const amp = config.horizon.amp ?? 1;
   const stats = classicRangeStats(ring);
   assert.equal(stats.folds, 0, `${label}: no angle folds a radial face`);
-  assert.equal(stats.authored.length, style === 'alpine' ? 7 : 4,
-    `${label}: the restored ${style} table authors ${style === 'alpine' ? 'seven' : 'four'} ranges beyond the two skirt rows`);
+  // round 47: the mesa stack authors seven ranges too (bench, tables, valley, escarpment, saddle, summits, shoulder)
+  assert.equal(stats.authored.length, style === 'alpine' || style === 'mesa' ? 7 : 4,
+    `${label}: the ${style} table authors ${style === 'alpine' || style === 'mesa' ? 'seven' : 'four'} ranges beyond the two skirt rows`);
   // 1049e4e skirt: base 22-26 m, amplitude 12-14 m, before the map amplitude.
   assert.ok(stats.skirtMax <= 40 * amp + 0.1,
     `${label}: the positive skirt stays a low bank (${stats.skirtMax.toFixed(1)} m for amp ${amp})`);
   assert.ok(stats.skirtSetback > 508,
     `${label}: the above-ground skirt sits outside the 470 m ring beyond every square-map side`);
-  const expectedOuter = style === 'rolling' || style === 'escarpment' ? 1330 : 1240;
+  // round 47: the mesa stack's outer shoulder stands at 1380 m (was the classic 1240)
+  const expectedOuter = style === 'rolling' || style === 'escarpment' ? 1330 : style === 'mesa' ? 1380 : 1240;
   assert.equal(stats.crests[stats.crests.length - 1].meanRadius, expectedOuter,
-    `${label}: the outermost authored range keeps its classic ${expectedOuter} m radius`);
+    `${label}: the outermost authored range keeps its authored ${expectedOuter} m radius`);
   assert.equal(stats.crests[0].meanRadius, style === 'alpine' || style === 'mesa' ? 700 : 720,
     `${label}: the first range begins about 190 m past the rim (vista pass), not at the old 585 / 600 m wall`);
   for (const crest of stats.crests) {
@@ -194,10 +203,13 @@ function assertSkybridgeTableCaps(ring, label) {
     assert.ok(Math.max(...edgeRadii) - Math.min(...edgeRadii) > 100,
       `${label}: cap fronts keep irregular meandering setbacks, not rectangular blocks`);
   }
+  // round 47: the near tables keep the 1.25:1 supported approach; the far escarpment now stands over a real valley
+  // floor and its cliff-and-talus front is bounded at 1.8:1 (about 61°)
   for (let c = 0; c < n; c++) {
-    for (const [before, after] of [[5, 6], [6, 7], [7, 8], [8, 9], [13, 14], [14, 15], [15, 16], [16, 17]]) {
-      assert.ok((y(after, c) - y(before, c)) / (radius(after, c) - radius(before, c)) <= 1.251,
-        `${label}: supporting slopes remain bounded at every angle`);
+    for (const [before, after, limit] of [[5, 6, 1.251], [6, 7, 1.251], [7, 8, 1.251], [8, 9, 1.251],
+      [13, 14, 1.801], [14, 15, 1.801], [15, 16, 1.801], [16, 17, 1.801]]) {
+      assert.ok((y(after, c) - y(before, c)) / (radius(after, c) - radius(before, c)) <= limit,
+        `${label}: supporting slopes remain bounded at every angle (rows ${before}-${after} within ${limit})`);
     }
   }
 }
@@ -319,7 +331,7 @@ const unchangedReceipts = [
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
   const p = ring.positions, n = HORIZON_SEGMENTS, label = `${mapId}/${seed}`;
-  assert.equal(ring.rows.length, config.horizon.style === 'alpine' ? 36 : 18);
+  assert.equal(ring.rows.length, uploadedRows(config, mapId));
   for (let column = 0; column < n; column++) {
     assert.ok(Math.max(Math.abs(p[column * 3]), Math.abs(p[column * 3 + 2])) < 512,
       `${label}: the buried anchor keeps every rim edge closed`);
@@ -393,8 +405,9 @@ try {
 } finally {
   SimplexNoise.prototype.noise = originalNoise;
 }
-assert.equal(geometryNoiseCalls, 34480,
-  'mesa setbacks and attached buttes reuse the same 287 * (6 radial + 2 skirt + 4*6 profile + 4*3 subdivision) queries');
+// round 47: 431 * (2 skirt * 2 + 7 authored * (1 radial + 6 profile)) + 21 interpolated rows * 431 * 4 = 59047 (was 34480)
+assert.equal(geometryNoiseCalls, 59047,
+  'the mesa stack spends exactly its nine authored rows and 21 subdivision rows of noise queries');
 
 // Rasterization is deliberately outside this headless lifetime test. The
 // backdrop's real pixel bake still executes against a minimal canvas surface.
@@ -443,7 +456,7 @@ try {
     assert.equal(detail.image.width, 256, `${style}: detail texture keeps its existing size`);
     assert.equal(mesh.material.map.image.width, 512, `${style}: base texture keeps its existing width`);
     assert.equal(mesh.material.map.image.height, 192, `${style}: base texture keeps its existing height`);
-    const rows = style === 'alpine' ? 36 : 18;
+    const rows = uploadedRows(config, mapId);
     assert.equal(mesh.geometry.attributes.position.count, columns * rows,
       `${mapId}: the vista ladder uploads ${rows} rows of ${columns} columns`);
     assert.equal(mesh.geometry.index.count, (rows - 1) * HORIZON_SEGMENTS * 6,

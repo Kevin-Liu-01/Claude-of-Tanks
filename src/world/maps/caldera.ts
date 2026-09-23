@@ -94,7 +94,11 @@ export default {
   },
   horizon: {
     baseHex: 0x393a37, amp: 1.52, style: 'mesa', treeline: 0.28,
-    forestHex: 0x292d27, rockHex: 0x4a4743, haze: 0.94, grain: 0.48,
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): stacked lava-flow beds on the crater
+    // walls (banding 0.18 over the 0.16 default), a second skyline rank of the dark conifers and more tone grain on
+    // the flattest-reading ring of the mesa family (0.48 -> 0.60)
+    banding: 0.18, treelineLayers: 2,
+    forestHex: 0x292d27, rockHex: 0x4a4743, haze: 0.94, grain: 0.60,
   },
   sky: {
     sunElevationDeg: 22, sunAzimuthDeg: 116, turbidity: 8.5, rayleigh: 1.15,

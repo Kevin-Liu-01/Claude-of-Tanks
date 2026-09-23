@@ -61,7 +61,8 @@ export default {
       ids: ['strv122', 'cv90', 'leo2a7v', 't80u', 'type90'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 2, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
-  horizon: { baseHex: 0xa3b1be, amp: 0.72, style: 'rolling', treeline: 0.08, snowline: 0.08, forestHex: 0x536371, rockHex: 0x9da9b4, haze: 0.92, grain: 0.35 },
+  // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
+  horizon: { baseHex: 0xa3b1be, amp: 0.72, style: 'rolling', treeline: 0.08, snowline: 0.08, forestHex: 0x536371, rockHex: 0x9da9b4, haze: 0.92, grain: 0.60 },
   sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, sunIntensity: 2.75, hemiIntensity: 0.58 },
   minimap: { ...winter.minimap, base: [161, 174, 186], hard: [137, 149, 159], soft: [107, 130, 149] },
   shot: { pos: [-256, 49, -262], look: [68, 0, 82] },

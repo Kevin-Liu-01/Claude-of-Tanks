@@ -116,6 +116,9 @@ export default {
   },
   horizon: {
     baseHex: 0x59433a, amp: 2.0, style: 'mesa', treeline: 0.10,
+    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the beige-brown
+    // chasm walls (the style default 0.16 left the abutment cliffs nearly unbedded)
+    banding: 0.20,
     forestHex: 0x3c4237, rockHex: 0x80604d, haze: 0.88, grain: 0.62,
   },
   sky: {
