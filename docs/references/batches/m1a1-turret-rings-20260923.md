@@ -117,3 +117,13 @@ zero failures/outside-envelope modules and the same 93 dimension warnings.
 Selected centering, alignment, 70 assets, duplicate-track, muzzle and barrel
 checks pass in `remaining-checks.log`. The production build there passes too;
 final commit verification is recorded separately in `final-head.log`.
+
+All phases completed: 406 pre, 685 core and 42 post test files. Their first
+passes reported 2, 3 and 2 failures respectively; the change-dependent
+geometry/clearance fixtures above were then corrected and strictly rerun.
+The other post failure was acquisition invalidation: the articulated-shadow
+browser check overlapped the follow-up commit and correctly rejected the
+changed Git revision, despite its rendering checks passing. It is rerun
+against the stable final commit, without changing its assertions, in
+`final-shadow.log`. This does not describe the aggregate `npm test` command
+as green; the baseline balance failure remains open.
