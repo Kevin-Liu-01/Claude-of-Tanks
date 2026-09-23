@@ -3,6 +3,7 @@ import {
   scanEdgeWater, resolveSeaOpenings, seaOpeningWeight, dominantSeaOpening, buildSeaApronGeometry,
   ringAngleToAzimuthDeg, SEA_APRON_OUTER_RADIUS_M, SEA_APRON_OVERLAP_M,
 } from './edgeWater.ts';
+import { buildOutlandWaterGeometry, seaSectorBlend, coastReachAlong } from './edgeWater.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { waterContactProfile } from './waterContact.ts';
@@ -103,4 +104,38 @@ assert.ok(west.widthDeg > 40 && west.widthDeg < 150, `the bay spans a good part 
 // Verdant has no water at its edge: no opening, no apron, ring unchanged.
 const verdant = createHeightField(1337, getMapConfig('verdant'));
 assert.deepEqual(resolveSeaOpenings(getMapConfig('verdant').horizon?.seaOpening, verdant, 'verdant'), []);
+// Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): the apron is a grid over the
+// outland whose cells follow the map's own bay contour near the square and the derived sector only 120–360 m out.
+{
+  // a bay disc centred past the east edge: wet inside r 190 of (560, 40), a straight shore elsewhere
+  const bay = (x, z) => { const d = Math.hypot(x - 560, z - 40) / 190; return d < 1 ? { wetness: 1 - Math.max(0, (d - 0.8) / 0.16), level: -4 } : null; };
+  const reach = coastReachAlong({ azimuthDeg: 90, widthDeg: 60, level: -4 }, bay, 512);
+  assert.ok(reach > 180 && reach < 240, `the bay contour reaches ${reach} m past the east edge (disc to x 750, waterline at 0.88 r)`);
+  assert.deepEqual(seaSectorBlend(0), [0, 40], 'no contour: the sector opens within 40 m');
+  assert.deepEqual(seaSectorBlend(200), [140, 260], 'a 200 m bay reach: the sector fades in from 140 m and is open at 260 m');
+  const east = [{ azimuthDeg: 90, widthDeg: 60, level: -4, shoulder: 0.58, source: 'authored', coastReachM: reach }];
+  const grid = buildOutlandWaterGeometry(east, bay, 512, 1400, { cellM: 16, depthM: 0.72 });
+  assert.ok(grid, 'an outland grid');
+  const position = grid.getAttribute('position');
+  const cellsAt = (x, z) => { let hit = 0; for (let i = 0; i < position.count; i++) if (Math.abs(position.getX(i) - x) <= 8 && Math.abs(position.getZ(i) - z) <= 8) hit++; return hit; };
+  assert.ok(cellsAt(560, 40) > 0, 'the bay centre past the edge is water');
+  assert.ok(cellsAt(600, -420) === 0, 'the shore beside the bay stays land within the coast band (the sector is not open yet)');
+  assert.ok(cellsAt(900, 0) > 0, 'the open sea beyond the bay reach is carried by the sector');
+  assert.ok(cellsAt(900, -560) === 0, 'outside the sector shoulders: land');
+  for (let i = 0; i < position.count; i++) assert.ok(Math.abs(position.getY(i) - (-4 + 0.72)) < 1e-6, 'every apron vertex floats the water depth above the bay level');
+  for (let i = 0; i < position.count; i++) assert.ok(Math.max(Math.abs(position.getX(i)), Math.abs(position.getZ(i))) >= 512 - 1e-6, 'the grid starts on the red line: no strip renders the water twice');
+  const index = grid.getIndex();
+  for (let tri = 0; tri < index.count; tri += 3) {
+    const [a, b, c] = [index.getX(tri), index.getX(tri + 1), index.getX(tri + 2)];
+    const ux = position.getX(b) - position.getX(a), uz = position.getZ(b) - position.getZ(a);
+    const vx = position.getX(c) - position.getX(a), vz = position.getZ(c) - position.getZ(a);
+    assert.ok(uz * vx - ux * vz > 0, `triangle ${tri / 3} winds counter-clockwise seen from above`);
+  }
+  // without a contour query the fan is the fallback
+  const fan = buildOutlandWaterGeometry(east, null, 512, 1400, { depthM: 0.72 });
+  assert.ok(fan && fan.getAttribute('position').count < position.count, 'no contour: the sector fan');
+  assert.equal(buildOutlandWaterGeometry([], bay), null, 'no openings: no apron');
+  grid.dispose(); fan.dispose();
+}
+
 console.log(`edgeWater.selftest: synthetic scans, authored precedence, apron fan, Coastal ${coastalResolved.length} opening (authored), Saltwind west ${west.azimuthDeg}°/${west.widthDeg}° at ${west.level} m, Verdant none PASS`);

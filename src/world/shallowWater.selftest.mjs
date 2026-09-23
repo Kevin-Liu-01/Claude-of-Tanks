@@ -143,7 +143,7 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
   assert.equal(probe.uniforms.uWaterMask.value, mask, 'the handed hook is the water shader patch');
   routed.mesh.material.dispose();
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples\);/,
+  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples,\s*\/\/[^\n]*\n\s*seaOpenings\.length \? \{ \.\.\.materialStep\.value\.outlandWater, sectorBlend: seaOpeningsSectorBlend \} : null\);/,
     'the terrain builder routes the sheet through the engine hook and hands it the reactive field');
   assert.match(terrain, /const ripples = createWaterRippleField\(engineCtx\.renderer, \{/,
     'water pass 8: the field is built from the engine renderer inside the sea/lake block (null in receipts)');
@@ -159,7 +159,11 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
     'the procedural bow foam bar is off inside the window too (it was the last thing that followed the hull)');
   assert.match(probe.fragmentShader, /wave\.x \* uWaterWaveStrength - rippleGrad\.x \* 1\.6/, 'the field slope tilts the normal');
   assert.match(probe.fragmentShader, /rippleGrad \*= \(min\(gl, 0\.45\) \/ max\(gl, 1e-4\)\) \* rippleW;/, 'the slope is capped at a breaking face');
-  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v11', 'the program key moved with the fragment');
+  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v12', 'the program key moved with the fragment');
+  // round 47: without a baked bay contour the apron keeps the round-40 ramp; with one, the coast fades past the edge
+  assert.equal(probe.uniforms.uOutlandWaterSize.value, 0, 'no contour: size 0 keeps the round-40 ramp');
+  assert.match(probe.fragmentShader, /if \(uOutlandWaterSize > 0\.5 && pastEdgeM > 0\.0\) \{\s*float coast = texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r;\s*wet = max\(coast, smoothstep\(uOutlandSeaBlend\.x, uOutlandSeaBlend\.y, pastEdgeM\)\);/,
+    'past the edge the wetness is the bay contour, blended to open sea over the bay reach');
 }
 assert.equal(water.mesh.material.transparent, true);
 assert.equal(water.mesh.material.depthWrite, false);

@@ -14,6 +14,9 @@ export interface CanyonGround {
   getHeightAt(x: number, z: number): number;
   /** Round 36: the map's macro relief evaluated past the square (terrain.ts outlandHeightAt); optional for receipts. */
   getOutlandHeightAt?(x: number, z: number): number;
+  /** Round 47 (2026-09-23): the map's own bay contours evaluated past the square — wetness 0..1 and the bay's water
+   * level — so the ring's marine faces and the sheet apron continue the coast instead of a radial sector. */
+  getOutlandWaterAt?(x: number, z: number): { wetness: number; level: number } | null;
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }

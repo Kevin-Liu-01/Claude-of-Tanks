@@ -35,7 +35,7 @@ import { registerRetainedObject3DResources } from '../../engine/resourceLifetime
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
-import { type SeaOpening, dominantSeaOpening, resolveSeaOpenings, seaOpeningWeight } from '../edgeWater.ts';
+import { type SeaOpening, dominantSeaOpening, resolveSeaOpenings, seaOpeningWeight, seaSectorBlend } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
   type VistaGround,
@@ -928,6 +928,8 @@ interface HorizonColorContext {
   gradients: HorizonGradients;
   sun: readonly [number, number, number];
   seaOpenings: readonly HorizonSeaOpening[];
+  /** Round 47: per-vertex marine weight/level (bay contours near the square, sector beyond). */
+  sea?: HorizonSea;
   redrockCanyon?: boolean;
   /** Per-vertex forest stand cover (0..1) shared with the canopy belts. */
   forestCover?: Float32Array;
@@ -935,26 +937,60 @@ interface HorizonColorContext {
   vista?: boolean;
 }
 
-function openHorizonToSea(ring: HorizonRingGeometry, openings: readonly HorizonSeaOpening[]): void {
+/** Round 47: per-vertex marine weight and water level of the ring (the bay contours near the square, the derived
+ * sector under the haze), shared by the lowering, the UV mask, the colours and the canopy. */
+interface HorizonSea {
+  weight: Float32Array;
+  level: Float32Array;
+}
+
+/** The sea past the square: the map's own bay contour nearest the edge, the derived azimuth sector farther out. */
+function ringSeaWeight(
+  x: number, z: number, angle: number, openings: readonly HorizonSeaOpening[], ground: CanyonGround | undefined,
+): { weight: number; level: number } {
+  const opening = dominantSeaOpening(angle, openings);
+  const sector = opening ? seaOpeningWeight(angle, opening) : 0;
+  if (!ground?.getOutlandWaterAt) return { weight: sector, level: opening?.level ?? 0 };
+  // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): a radial sector cut
+  // every bay off on two straight lines at the red line. The map's own shoreline contour now rules as far as it
+  // reaches past the square, the sector carries the open sea beyond that reach, and the two blend by distance.
+  const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+  const [from, to] = seaSectorBlend(opening?.coastReachM);
+  const far = smoothstep(from, to, edgeOut);
+  const coast = edgeOut > -64 ? ground.getOutlandWaterAt(x, z) : null;
+  const coastWeight = coast?.wetness ?? 0;
+  const sectorWeight = sector * far;
+  if (coastWeight >= sectorWeight) return { weight: coastWeight, level: coast?.level ?? opening?.level ?? 0 };
+  return { weight: sectorWeight, level: opening?.level ?? coast?.level ?? 0 };
+}
+
+function openHorizonToSea(
+  ring: HorizonRingGeometry, openings: readonly HorizonSeaOpening[], ground?: CanyonGround,
+): HorizonSea {
   // The existing annulus becomes the distant sea floor inside each aperture,
   // keeping the square terrain edge covered without another water mesh/pass.
   // Smooth shoulders retain headlands at either side instead of an enclosing
   // green wall across the bay. The floor sits just below the water surface.
   // Round 40 (2026-09-22): every opening the square's water derives (edgeWater.ts) is applied beside the authored one.
-  for (const opening of openings) {
-    for (let index = 0; index < ring.heights.length; index++) {
-      const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
-      const weight = seaOpeningWeight(angle, opening);
-      if (weight <= 0) continue;
-      const height = ring.heights[index] + (opening.level - 0.04 - ring.heights[index]) * weight;
-      ring.heights[index] = height;
-      ring.positions[index * 3 + 1] = height;
-      const radialFraction = Math.floor(index / HORIZON_SEGMENTS) / (ring.rows.length - 1);
-      const seaReach = 1 + weight * radialFraction * radialFraction * 1.6;
-      ring.positions[index * 3] *= seaReach;
-      ring.positions[index * 3 + 2] *= seaReach;
-    }
+  // Round 47 (2026-09-23): the weight is per vertex — the bay contour near the square, the sector beyond (ringSeaWeight).
+  const sea: HorizonSea = { weight: new Float32Array(ring.heights.length), level: new Float32Array(ring.heights.length) };
+  if (!openings.length) return sea;
+  for (let index = 0; index < ring.heights.length; index++) {
+    const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
+    const x = ring.positions[index * 3], z = ring.positions[index * 3 + 2];
+    const { weight, level } = ringSeaWeight(x, z, angle, openings, ground);
+    sea.weight[index] = weight;
+    sea.level[index] = level;
+    if (weight <= 0) continue;
+    const height = ring.heights[index] + (level - 0.04 - ring.heights[index]) * weight;
+    ring.heights[index] = height;
+    ring.positions[index * 3 + 1] = height;
+    const radialFraction = Math.floor(index / HORIZON_SEGMENTS) / (ring.rows.length - 1);
+    const seaReach = 1 + weight * radialFraction * radialFraction * 1.6;
+    ring.positions[index * 3] *= seaReach;
+    ring.positions[index * 3 + 2] *= seaReach;
   }
+  return sea;
 }
 
 function horizonRowMargins(rowCount: number, style: HorizonStyle): readonly number[] {
@@ -1373,22 +1409,22 @@ export function sampleHorizonGeometry(
     // 160 m inside the crest (700 -> 860): an unbounded cap put the final edge at 1.30:1 on Skybridge.
     reshapeFiniteTableCaps(ring, horizon.amp ?? 1, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
-  openHorizonToSea(ring, resolveSeaOpenings(horizon.seaOpening, ground, mapId));
+  openHorizonToSea(ring, resolveSeaOpenings(horizon.seaOpening, ground, mapId), ground);
   return ring;
 }
 
 function buildHorizonUvs(
   heights: Float32Array,
   maxHeight: number,
-  seaOpenings: readonly HorizonSeaOpening[],
+  sea: HorizonSea,
 ): Float32Array {
   const uv = new Float32Array(heights.length * 2);
   for (let index = 0; index < heights.length; index++) {
     uv[index * 2] = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * 10;
-    const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
-    const opening = dominantSeaOpening(angle, seaOpenings);
-    const marine = opening ? seaOpeningWeight(angle, opening)
-      * (1 - smoothstep(opening.level + 0.04, opening.level + 1.0, heights[index])) : 0;
+    // round 47: the per-vertex weight (bay contour near the square, sector beyond) replaces the azimuth lookup
+    const level = sea.level[index];
+    const marine = sea.weight[index] > 0 ? sea.weight[index]
+      * (1 - smoothstep(level + 0.04, level + 1.0, heights[index])) : 0;
     // The original UV attribute also carries the marine mask. Land altitude
     // stays nonnegative; negative V denotes only the near-flat sea apron.
     // No extra vertex attribute, geometry bytes, or draw call is needed.
@@ -1617,8 +1653,9 @@ function buildHorizonColors(context: HorizonColorContext): Float32Array {
       if (!context.vista) applyHorizonDirectionalLight(color, scratch, context, row, angle, index);
       applyHorizonToneAndHaze(color, context, row, angle, altitude, rowIndex);
       const seaOpening = context.seaOpenings.length ? dominantSeaOpening(angle, context.seaOpenings) : null;
-      if (seaOpening) {
-        const seaWeight = seaOpeningWeight(angle, seaOpening);
+      // round 47: the vertex's own marine weight (the bay contour near the square, the sector beyond)
+      const seaWeight = context.sea ? context.sea.weight[index] : (seaOpening ? seaOpeningWeight(angle, seaOpening) : 0);
+      if (seaOpening || seaWeight > 0) {
         if (seaWeight > 0) {
           // Distant water reflects a mostly neutral low sky, warm toward the
           // sun and cool away. Do not compensate it for the forest texture:
@@ -1635,7 +1672,7 @@ function buildHorizonColors(context: HorizonColorContext): Float32Array {
             + context.fog.b * 0.0722;
           const radialFraction = rowIndex / Math.max(1, context.rows.length - 1);
           const reflection = 0.16 + (0.44 + row.aer * 0.20) * radialFraction * radialFraction;
-          scratch.setHex(seaOpening.colorHex ?? 0x1d5266);
+          scratch.setHex(seaOpening?.colorHex ?? context.seaOpenings[0]?.colorHex ?? 0x1d5266);
           scratch.r += (skyLuminance * (0.92 + warm * 0.16) - scratch.r) * reflection;
           scratch.g += (skyLuminance * (0.98 + warm * 0.04) - scratch.g) * reflection;
           scratch.b += (skyLuminance * (1.04 - warm * 0.14) - scratch.b) * reflection;
@@ -2141,6 +2178,7 @@ interface HorizonTreelineContext {
   sun: readonly [number, number, number];
   forestCover: Float32Array;
   seaOpenings: readonly HorizonSeaOpening[];
+  sea?: HorizonSea;
   base: THREE.Color;
   forest: THREE.Color;
   /** Authored opt-in for terrain-following face belts (default off). */
@@ -2184,10 +2222,12 @@ export function selectHorizonFaceBeltRows(rows: readonly HorizonRingRow[]): numb
 
 function addHorizonTreeline({
   mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
-  maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, style, sun, forestCover, seaOpenings,
+  maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, style, sun, forestCover, seaOpenings, sea,
   base, forest, faceBelts,
 }: HorizonTreelineContext): void {
   const N = HORIZON_SEGMENTS;
+  // round 47: no canopy on a marine vertex whichever rule made it marine (bay contour or sector)
+  const seaAt = (index: number, angle: number): number => Math.max(seaOpeningWeight(angle, seaOpenings), sea?.weight[index] ?? 0);
   if (treeline < 0.14) return;
     const profileSeed = ((seed ^ 0xA771) ^ idHash(mapId)) >>> 0;
     const combTex = makeTreeLineTexture(profileSeed);
@@ -2252,7 +2292,7 @@ function addHorizonTreeline({
         const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1 - layer * 5.3,
           Math.sin(a) * 19.7 + ri * 11.9 + layer * 8.9) * 0.5 + 0.5;
         const span = (9 + hn * 7) * (0.94 + Math.min(row.r, 1400) / 7000) * fade *
-          (0.88 + hn2 * 0.24) * (1 - layer * 0.045) * (1 - seaOpeningWeight(a, seaOpenings));
+          (0.88 + hn2 * 0.24) * (1 - layer * 0.045) * (1 - seaAt(ri * N + kk, a));
         // All ranks sit just behind the resolved crest. Putting the ribbon on
         // its inner slope lets the ridge's own triangles depth-occlude the
         // canopy completely; the small outward offset keeps the base hidden
@@ -2359,7 +2399,7 @@ function addHorizonTreeline({
         // rather than scaling it, so clumps keep full-height crowns and
         // clearings open cleanly instead of shrinking toward a stubble line.
         const coverage = facing * cliff * forestCover[i]
-          * (1 - seaOpeningWeight(a, seaOpenings));
+          * (1 - seaAt(i, a));
         const density = smoothstep(0.12, 0.50, coverage);
         // Stands, not contour lines: a clump field breaks every belt into
         // separate 100-250 m groves with open ground between them, and each
@@ -2568,9 +2608,9 @@ export function* buildHorizonRingSteps(
   }
   // Round 40: the authored aperture plus every opening the square's flattened water derives at its edge
   const seaOpenings = resolveSeaOpenings(H.seaOpening, ground, mapId);
-  openHorizonToSea(ring, seaOpenings);
+  const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
-  const uvA = buildHorizonUvs(hs, maxH, seaOpenings);
+  const uvA = buildHorizonUvs(hs, maxH, sea);
   yield;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height
@@ -2604,7 +2644,7 @@ export function* buildHorizonRingSteps(
     style, rows, heights: hs, maxHeight: maxH, forestCover, vista,
     base, fog: fogC, rock: rockC, snow: snowC, forest: forestC,
     snowline, treeline, banding, rockAmp, haze, grainAmp, noise: gnoi,
-    gradients, sun: [lx, ly, lz], seaOpenings,
+    gradients, sun: [lx, ly, lz], seaOpenings, sea,
     redrockCanyon: mapId === 'badlands' && H.redrockCanyon !== false,
   });
   yield;
@@ -2738,7 +2778,7 @@ export function* buildHorizonRingSteps(
   addHorizonTreeline({
     mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
     maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
-    style, sun: [lx, ly, lz], forestCover, seaOpenings,
+    style, sun: [lx, ly, lz], forestCover, seaOpenings, sea,
     base, forest: forestC,
     faceBelts: H.faceBelts === true,
   });

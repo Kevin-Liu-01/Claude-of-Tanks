@@ -701,6 +701,44 @@ Caldera sky-w 0.73 → 0.88; Polders sky-s 0.83 → 0.98; Verdant / Alpine contr
 still failed by the pale sand rings (desert, Oasis, Copper, Ruinspires 1.1-1.5): the ridge tops keep their sunlit
 sand colour against a deep sky, which is a ring-albedo question, not a cloud or haze one.
 
+### The coast continues past the border — 2026-09-23 (round 47, shorelines)
+
+**Symptom (owner: "Saltmere Bay, Nordhavn Fjord, Saltwind Narrows: good, but evident right angle with shore and water at
+the border that looks awkward and not natural").** Five things lined up at 90°: the border rim lift is a Chebyshev square
+(`max(|x|,|z|)`), so inside a bay's bank band it forced the waterline parallel to the red line and raised a wall where
+the shore should run on; the height field is clamped past the square, so any shoreline was extruded straight out; the
+bays are circles the square truncates; the sea opening past the edge was an azimuth SECTOR (round 40), so beyond the
+line the water filled a radial wedge and a beach running obliquely toward the border simply stopped on a straight edge
+with open water past it; and the sheet apron started on a straight chord.
+
+**Fix.** The map's own bay contours now rule the outland. `terrain.ts` publishes `getOutlandWaterAt(x, z)` (the lake
+discs' wetness and level, analytic, no clamp) and gates the rim lift by the water weight (`rimH × (1 − waterWeight)`,
+also in `outlandHeightAt`); the terrain material bakes the contour over ±1536 m (`uOutlandWater`, 256 texels) and the
+ring faces inside a bay are its water as far as the contour reaches. `horizon.ts` lowers, masks, colours and clears the
+canopy per VERTEX from `ringSeaWeight` — the bay contour near the square, the derived sector beyond each opening's
+`coastReachM` (edgeWater.ts marches the contour outward along the opening's azimuth; the sector fades in from 0.7×
+reach and is open at 1.1× reach + 40 m, so a bay mouth opens straight into the sea; 0 reach keeps the round-40 sector).
+`edgeWater.ts buildOutlandWaterGeometry` replaces the fan with a grid of carrier cells starting on the red line (a shared
+strip rendered the transparent sheet twice as a dark band), and `shallowWater.ts` (program key v12) fades the apron
+along the baked contour (`uOutlandWater`, `uOutlandSeaBlend`) instead of a chord or a cell edge — the first cut without
+that fade drew the coast as a 16 m staircase.
+
+**Verified (`.qa-dev/wall-probe.mjs` views bird-e-edge, bird-w-edge, bird-e-edge-n, shore-e-oblique, shore-w-oblique,
+edge-e-low, edge-w-low; A = main-check, B3 = this lane; `$SP/r47/shore/`).** Saltwind: the bay lobe continues past the
+west edge as one rounded contour with beach on both sides (A: a wedge of water between two straight-cut beaches);
+Fjord: the eastern shore continues past the edge and the open water beyond follows it (A: a straight land edge on the
+border); Coastal: the three-lobe coast runs on past the edge from the north bay to the south (A: chords). No seam band.
+
+**Receipts.** `edgeWater.selftest` (coast reach, sector blend, the grid's admission/level/winding/red-line start, the fan
+fallback), `shallowWater.selftest` (key v12, the contour fade, the terrain call), `terrainMaterialOwnership` (uniform
+list, key v35 and its control, eleven texture owners), `terrainWornDirt`/`wallSkyLight` (key), the fetch census (+1),
+`sourcedTerrainPreparation` (call site), the streaming fixture's current slices (rim gate, height-field exports),
+`badlandsRelief`, every horizon receipt, `worldBuildCoordinator`, `terrainProjection`, `mapQuality`, `mapIntegration`.
+
+**Still open.** Coastal's and Fjord's bays are still plain circles (an authored `radii` contour like Saltwind's would
+shape the coast inside the square too); the ring's far rows beyond the bay reach keep the sector's straight shoulders
+under the haze.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -784,6 +822,7 @@ skylines):
 | 46 | Reactive water (water pass 8): a world-anchored GPU shallow-water field (192 m / 512 texels, fixed 1/60 s) carries every hull's wake, track churn and shell splashes; the sheet reads its slope and foam and drops the hull-frame pattern inside the window | Reservoir/Coastal drive captures before/after (a1 vs b8): hull-frame slab → V wake with crests, a churn trail that stays on the path, rings from a stopped hull; receipts waterRipples + shallowWater + 101-receipt source sweep |
 | 47 | Ground palettes on the arid and ruined maps: deliberate sourced rows for the four Verdant fall-through maps (Titan/Skybridge keep their sandstone strata, Ruinspires grey, Blackglass the Caldera lift recipe), Skybridge/Titan/Mars macro-tint and strata lifts, desert hemi 0.20 → 0.28 | Titan canyon-in shaded knoll 47 → 93 and wall hue 337° → 7°; Skybridge 35 → 56; Ruinspires corner 40 → 67; Mars strata 97 → 116; desert true shade +8..11 % with lit sand +0.1..0.6 %; the tintB lever measured dead (+0.02..0.11) and the desert/Oasis contour bands identified by the layer-flag probe as the D mask on steep sand faces, unmoved by fill (+2..4 %) — a shader item (checks 3, 8, 15) |
 | 47 | Mesa ring stack and arid skies: a nine-row mesa ladder (bench with buttes, near tables, a real valley floor, far escarpment, saddle, summits, shoulder; correlated pediment / plateau rows, 2.5:1 radial limiter, per-range cap approach 1.25 / 1.80, Redrock on the classic ladder), authored strata and outland rocks on the bland rings, textured altocumulus / cirrus decks on the arid maps, dust decks over the Mars galaxy, explicit low decks on the near-overcast maps, cooler arid haze | geometry probe (skyline shared by three ranges instead of one 55-70 % row; valley 41-74 m under 67-174 m tables on the desert), wall-probe A/B1/B on the eleven maps plus Verdant / Alpine controls (skyline metric: desert w-wall-mid 1.49 → 1.22, Oasis sky-w 1.42 → 1.15, Mars 0.97 → 0.83; controls unchanged) |
+| 47 | Shorelines past the border: the bay contours rule the outland (rim lift yields to water, baked contour for the terrain material and the sheet apron, per-vertex ring weight, sector opens where each bay's reach ends) | Reservoir-style A/B bird and oblique captures on Coastal, Fjord, Saltwind: the beaches and bay lobes continue past the red line as their own curves; edgeWater/shallowWater/terrain receipts |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.

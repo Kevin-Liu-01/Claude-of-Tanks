@@ -154,6 +154,7 @@ export function createShallowWaterSurface(
   ramp: readonly [number, number],
   setup: ShallowWaterMaterialSetup | null = null,
   ripples: WaterRippleField | null = null,
+  outlandWater: { texture: THREE.Texture; sizeM: number; sectorBlend?: readonly [number, number] } | null = null,
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
@@ -196,6 +197,10 @@ export function createShallowWaterSurface(
       uWaterRipple: ripples?.stateUniform ?? { value: null },
       uWaterRippleParams: { value: ripples?.params ?? new THREE.Vector4(1, 0, 0, 0) },
       uWaterRippleTexel: { value: ripples?.texel ?? new THREE.Vector2(1, 1) },
+      // Round 47: the terrain's baked bay-contour mask (the same texture the ring faces read), 0 size = absent
+      uOutlandWater: { value: outlandWater?.texture ?? null },
+      uOutlandWaterSize: { value: outlandWater?.sizeM ?? 0 },
+      uOutlandSeaBlend: { value: new THREE.Vector2(...(outlandWater?.sectorBlend ?? [120, 360])) },
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>',
@@ -222,6 +227,9 @@ export function createShallowWaterSurface(
       uniform sampler2D uWaterRipple;
       uniform vec4 uWaterRippleParams;
       uniform vec2 uWaterRippleTexel;
+      uniform sampler2D uOutlandWater;   // round 47: the map's bay contours baked past the square (R = wetness)
+      uniform float uOutlandWaterSize;   // 0 = no contour (frozen fields, receipts): the round-40 ramp alone
+      uniform vec2 uOutlandSeaBlend;     // round 47: metres past the edge where the open-sea sector fades in / is open
       /** Water pass 8: 1 inside the reactive field's window around the camera focus, 0 past its fade band. */
       float waterRippleWindow(vec2 world) {
         if (uWaterRippleParams.w < 0.5) return 0.0;
@@ -248,10 +256,17 @@ export function createShallowWaterSurface(
       // Round 40 (2026-09-22): the sea apron past the square (edgeWater.ts) shares this material. Past the edge the
       // mask has no meaning, so the apron continues the edge texel's wetness (the bay may be a shoal there) and deepens
       // to open water over the next 320 m — no colour step at the seam, no shore ramp or foam line offshore.
+      // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): past the edge the
+      // wetness is the map's own bay contour (uOutlandWater, baked over ±1536 m) blended toward open sea between 120
+      // and 360 m out, so the apron's shoreline is the bay's curve continued, not a chord or a cell edge.
       vec2 waterUvC = clamp(waterUV, 0.0, 1.0);
       float pastEdgeM = max(max(-waterUV.x, waterUV.x - 1.0), max(-waterUV.y, waterUV.y - 1.0)) * uWaterSize;
-      float wet = mix(smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uWaterMask, waterUvC).b), 1.0,
-        smoothstep(0.0, 320.0, pastEdgeM));
+      float edgeWet = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uWaterMask, waterUvC).b);
+      float wet = mix(edgeWet, 1.0, smoothstep(0.0, 320.0, pastEdgeM));
+      if (uOutlandWaterSize > 0.5 && pastEdgeM > 0.0) {
+        float coast = texture2D(uOutlandWater, vWaterWorld.xz / uOutlandWaterSize + 0.5).r;
+        wet = max(coast, smoothstep(uOutlandSeaBlend.x, uOutlandSeaBlend.y, pastEdgeM));
+      }
       if (wet < 0.015) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
       float grazing = pow(1.0 - abs(eye.y), 3.0);
@@ -434,7 +449,7 @@ export function createShallowWaterSurface(
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'shallow-water-v11';
+  material.customProgramCacheKey = () => 'shallow-water-v12';
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.matrixAutoUpdate = false;

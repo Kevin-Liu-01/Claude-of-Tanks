@@ -41,7 +41,7 @@ import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
-import { buildSeaApronGeometry, resolveSeaOpenings, seaOpeningUniforms, type SeaOpening } from './edgeWater.ts';
+import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaSectorBlend, type SeaOpening } from './edgeWater.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -272,6 +272,9 @@ export interface HeightField {
   getWaterDepthAt?(x: number, z: number): number;
   /** Exact rendered triangle height, installed when the liquid mesh is built. */
   getWaterSurfaceHeightAt?(x: number, z: number): number;
+  /** Round 47 (2026-09-23): the map's bay contours evaluated anywhere, the square included — wetness 0..1 and the bay's
+   * water level — so the horizon ring, the terrain material and the sheet apron continue the coast past the red line. */
+  getOutlandWaterAt?(x: number, z: number): { wetness: number; level: number } | null;
   /** Water pass 8: one splash into the reactive field (shell impacts); absent without the field. */
   addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
   /** Water pass 8: true when the reactive field carries the wakes (the FX layer then skips its ring prints). */
@@ -1081,12 +1084,22 @@ function* heightFieldBuildSteps(
   // lift, which is 1 beyond the edge — without roads, corridors, villages, lakes, pads or the tactical micro-terrain.
   // The horizon ring's near rows seat on this so the border is a rule, not a change of geology. Pure function of
   // (x, z): no grid, no clamp, no allocation.
+  /** Round 47: a bay's own contour, evaluated with no clamp — the union of the lake discs' wetness (0..1). */
+  function outlandLakeWetness(x: number, z: number): number {
+    let wetness = 0;
+    for (let li = 0; li < _LAKES.length; li++) {
+      wetness = Math.max(wetness, shorelineWetness(_LAKES[li], x, z, true));
+      if (wetness >= 1) break;
+    }
+    return wetness;
+  }
   function outlandHeightAt(x: number, z: number): number {
     let h = baseTerrainHeight(x, z, 0, 0);
     h = applyMacroTerrain(x, z, h, 0, 0, 0);
     const borderRadius = Math.max(Math.abs(x), Math.abs(z));
     const rim = smoothstep(430, HALF, borderRadius);
-    return h + rim * rim * T.rimH;
+    // round 47 (2026-09-23): the border rim yields to a bay so its shore continues past the square instead of a wall
+    return h + rim * rim * T.rimH * (1 - outlandLakeWetness(x, z));
   }
 
   function heightAt(
@@ -1197,7 +1210,10 @@ function* heightFieldBuildSteps(
     // Keep the pilot's exact pre-road opening when authoring node heights.
     // Final inward-pilot queries retain the rim here: the road-plane blend
     // below already grades it once. Other maps retain the R3 composition.
-    h += rim * rim * T.rimH * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
+    // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): the square rim lift is a
+    // Chebyshev square, so inside a bay's bank band it forced the waterline parallel to the red line and raised a wall
+    // where the shore should run on; the lift yields to the water weight, so the shore keeps the bay's own contour.
+    h += rim * rim * T.rimH * (1 - waterWeight) * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
     if (waterWeight > 0) {
       const target = waterLevelSum / waterWeightSum;
       h += (target - h) * waterWeight;
@@ -1544,6 +1560,16 @@ function* heightFieldBuildSteps(
     return liquidDepthM ? shallowWaterDepth(getWaterMaskAt(x, z), liquidDepthM) : 0;
   }
 
+  /** Round 47: the bay contour and its water level at any point (the ring, the material bake and the apron read it). */
+  function outlandWaterAt(x: number, z: number): { wetness: number; level: number } | null {
+    let best = 0, level = 0;
+    for (let li = 0; li < _LAKES.length; li++) {
+      const wetness = shorelineWetness(_LAKES[li], x, z, true);
+      if (wetness > best) { best = wetness; level = lakeLevels[li]; }
+    }
+    return best > 0 ? { wetness: best, level } : null;
+  }
+
   function waterWetnessAt(x: number, z: number): number {
     let wetness = liquidIndex
       ? sampleIndexedMarshWetness(_MARSHES, liquidIndex,
@@ -1649,7 +1675,7 @@ function* heightFieldBuildSteps(
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
     }} : {}),
     _mesaW: mesaWeight,
-    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt } : {}),
+    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),
   };
 }
 
@@ -2493,6 +2519,8 @@ uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
 uniform vec4 uSeaOpenings[4]; // round 40: sea openings past the square (direction angle, half-width, shoulder, 0)
 uniform float uSeaOpeningCount;
+uniform sampler2D uOutlandWater; // round 47: the map's bay contours baked over ±1536 m (R = wetness)
+uniform float uOutlandWaterSize;
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
 float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // r7 axis-triplanar wall basis (set in splatCompute): two FIXED world-axis
@@ -2591,14 +2619,16 @@ float wallNoiseG(float sc, vec2 off) {
 // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): the horizon ring's
 // faces inside a sea opening (edgeWater.ts) render with this material as the square's own open water — the same
 // mask-driven path, deep tint, fresnel and whitecaps — so the sea does not change shader one metre past the edge.
-float outlandSeaWeight(vec2 xz) {
+// round 47: each opening's .w is the bay contour's reach past the edge (m); the sector opens beyond that reach
+float outlandSeaWeight(vec2 xz, float edgeOut) {
   float angle = atan(xz.y, xz.x);
   float weight = 0.0;
   for (int i = 0; i < 4; i++) {
     if (float(i) >= uSeaOpeningCount) break;
     vec4 o = uSeaOpenings[i];
     float d = abs(atan(sin(angle - o.x), cos(angle - o.x)));
-    weight = max(weight, 1.0 - smoothstep(o.y * o.z, o.y, d));
+    float far = smoothstep(o.w * 0.7, o.w * 1.1 + 40.0, edgeOut);
+    weight = max(weight, (1.0 - smoothstep(o.y * o.z, o.y, d)) * far);
   }
   return weight;
 }
@@ -2620,7 +2650,13 @@ void splatCompute() {
   // round 40: past the square, inside a sea opening, the ring face is this map's water. It starts with the wetness
   // the square carries at its edge (the clamped texel — the bay may still be a turquoise shoal there) and deepens to
   // open sea over the next 320 m, so the seam has no step and the sea reads as a sea offshore.
-  float outlandSea = (uSea > 0.5 && uSeaOpeningCount > 0.5) ? outlandSeaWeight(wp.xz) * step(0.0, edgeOut) : 0.0;
+  // round 47 (2026-09-23, owner: the shore met the border at a right angle): the bay's own contour (baked) rules the
+  // first 120–360 m past the edge, the derived sector carries the open sea beyond it — the coast runs on as itself
+  float outlandSea = 0.0;
+  if (uSea > 0.5 && uSeaOpeningCount > 0.5 && edgeOut > 0.0) {
+    float coast = texture2D(uOutlandWater, wp.xz / uOutlandWaterSize + 0.5).r;
+    outlandSea = max(outlandSeaWeight(wp.xz, edgeOut), coast);
+  }
   mk.b = max(mk.b, outlandSea * mix(mk.b, 1.0, smoothstep(0.0, 320.0, edgeOut)));
   // r6 terrain_environment: on landform-gated maps (desert) the mask B
   // channel carries the MESA/RIM weight instead of marsh/ice — decode it and
@@ -3638,9 +3674,12 @@ function* createSplatMaterialSteps(
   sourcePreparation: TerrainSourcePreparation | null = null,
   seaOpenings: readonly SeaOpening[] = [],
   sky: { sunAzimuthDeg?: number; sunElevationDeg?: number } | null = null,
+  outlandWaterAt: HeightField['getOutlandWaterAt'] | null = null,
 ): Generator<void | TerrainSourceCheckpoint, {
   material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
   waterMask: THREE.Texture; waterNormal: THREE.Texture;
+  /** Round 47: the baked bay-contour mask past the square and the world size it spans (m). */
+  outlandWater: { texture: THREE.Texture; sizeM: number };
   /** Settles when the sourced textures have replaced the procedural layers in place (or failed to). */
   sourcedReady?: Promise<void>;
 }, void> {
@@ -3730,6 +3769,27 @@ function* createSplatMaterialSteps(
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12
     shader.uniforms.uIceDrift = { value: (S.iceLake || S.seaLake) ? (S.iceDrift ?? 0.85) : 0 };
   }
+  // Round 47: the map's bay contours baked once over ±1536 m (256 texels, 12 m) — R = wetness. A 1×1 zero texture on
+  // maps without open sea keeps the sampler bound and the fetch a constant.
+  const OUTLAND_WATER_MASK_SIZE_M = 3072;
+  const outlandWaterMask = ((): THREE.DataTexture => {
+    const active = !!(splatCfg?.seaLake && seaOpenings.length && outlandWaterAt);
+    const n = active ? 256 : 1;
+    const data = new Uint8Array(n * n * 4);
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        const k = (j * n + i) * 4;
+        const wetness = active ? outlandWaterAt!(((i + 0.5) / n - 0.5) * OUTLAND_WATER_MASK_SIZE_M,
+          ((j + 0.5) / n - 0.5) * OUTLAND_WATER_MASK_SIZE_M)?.wetness ?? 0 : 0;
+        data[k] = Math.round(Math.min(1, Math.max(0, wetness)) * 255); data[k + 3] = 255;
+      }
+    }
+    const texture = new THREE.DataTexture(data, n, n, THREE.RGBAFormat);
+    texture.minFilter = THREE.LinearFilter; texture.magFilter = THREE.LinearFilter;
+    texture.wrapS = THREE.ClampToEdgeWrapping; texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.generateMipmaps = false; texture.needsUpdate = true; texture.name = 'terrain:outlandWater';
+    return texture;
+  })();
   function assignSplatBiomeUniforms(shader: MaterialShader): void {
     // maps r1 (ADDITIVE, uSea-gated in the shader — 0 on every pre-existing
     // map): open-water mode. Remaps the wide marsh-mask shore ramp into a
@@ -3739,6 +3799,9 @@ function* createSplatMaterialSteps(
     // round 40: the sea openings past the square (edgeWater.ts) — the ring's faces inside them render as open water
     shader.uniforms.uSeaOpenings = { value: seaOpeningUniforms(seaOpenings) };
     shader.uniforms.uSeaOpeningCount = { value: Math.min(4, seaOpenings.length) };
+    // round 47: the map's bay contours past the square (baked once); the ring faces inside a bay are its water
+    shader.uniforms.uOutlandWater = { value: outlandWaterMask };
+    shader.uniforms.uOutlandWaterSize = { value: OUTLAND_WATER_MASK_SIZE_M };
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
@@ -3785,12 +3848,14 @@ function* createSplatMaterialSteps(
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v34'; // round 45: slope grass hold (v33: dune wind field, v32: sky light)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v35'; // round 45: slope grass hold (v33: dune wind field, v32: sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,
   // so the same ten identities remain valid through async loading/reupload.
-  return { material: mat, waterMask: mask, waterNormal: wet.normal, textures: [
+  return { material: mat, waterMask: mask, waterNormal: wet.normal,
+    outlandWater: { texture: outlandWaterMask, sizeM: OUTLAND_WATER_MASK_SIZE_M }, textures: [
+    outlandWaterMask,
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
   ], sourcedReady: sourcedTexturesReady.then(() => undefined, () => undefined) };
@@ -4111,6 +4176,7 @@ function* terrainBuildSteps(
     sourcePreparation,
     seaOpenings,
     cfg?.sky ?? null,
+    heightField.getOutlandWaterAt ?? null,
   );
   let materialStep = materialSteps.next();
   try {
@@ -4208,6 +4274,9 @@ function* terrainBuildSteps(
     }
     if (step.value) {
       heightField.getWaterSurfaceHeightAt = step.value.heightAt;
+      // round 47: the sheet fades its apron to open sea over the widest bay reach among the openings (computed inside
+      // the sea block: the streaming receipts re-evaluate these build steps in a sandbox that knows no water helpers)
+      const seaOpeningsSectorBlend = seaSectorBlend(Math.max(0, ...seaOpenings.map((o) => o.coastReachM ?? 0)));
       // Water pass 8 (2026-09-23): the world-anchored reactive field the sheet reads; null without a renderer
       // (receipts) or on the mobile tier, where the sheet keeps its procedural wake.
       const ripples = createWaterRippleField(engineCtx.renderer, {
@@ -4217,7 +4286,9 @@ function* terrainBuildSteps(
         materialStep.value.waterMask, materialStep.value.waterNormal,
         heightField.size, cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78],
         // water pass 3 (2026-09-12): the sheet joins the cascaded-shadow setup like every lit world material
-        (material, hook) => engineCtx.setupShadowMaterial(material, hook), ripples);
+        (material, hook) => engineCtx.setupShadowMaterial(material, hook), ripples,
+        // round 47: the apron fades along the same baked bay contour the ring faces read
+        seaOpenings.length ? { ...materialStep.value.outlandWater, sectorBlend: seaOpeningsSectorBlend } : null);
       group.add(water.mesh);
       if (ripples) {
         heightField.addWaterImpulse = ripples.addImpulse;
@@ -4227,8 +4298,10 @@ function* terrainBuildSteps(
       // Round 40 (2026-09-22, "water at the edge: same level and shader beyond"): where the flattened water meets
       // the square edge the horizon ring opens to a sea apron (edgeWater.ts); the sheet continues over it with the
       // same material so fresnel, glitter and the deep colour do not end in a straight line at the red line.
-      const seaApron = buildSeaApronGeometry(seaOpenings, heightField.size / 2, undefined,
-        { depthM: waterContactProfile(cfg.id || '').depthM });
+      // Round 47 (2026-09-23): the apron follows the bay's own contour past the edge (a grid of wet cells), the derived
+      // sector only carries the open sea from 120–360 m out — see edgeWater.ts buildOutlandWaterGeometry.
+      const seaApron = buildOutlandWaterGeometry(seaOpenings, heightField.getOutlandWaterAt ?? null, heightField.size / 2,
+        undefined, { depthM: waterContactProfile(cfg.id || '').depthM });
       if (seaApron) {
         const apron = new THREE.Mesh(seaApron, water.mesh.material);
         apron.name = 'shallowWaterSeaApron';
