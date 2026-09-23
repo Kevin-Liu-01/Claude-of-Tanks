@@ -29,8 +29,10 @@ const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b)
 // 2026-09-22 combined round-38 tree (nation wheels + flat-ring mouth together): both rows re-pinned once more;
 // superseded high ee2aceaa… 76/43, low ab1380a9… 75/42 (each branch re-pinned alone).
 const MK5_BEFORE = {
-  high: ['aeaf4c7d95f862aa952d02bf990ed3882c06a0cf22563bba4bdfc1aaedbff37f', 75, 42],
-  low: ['ab1380a95b91a6ec83ba40bef0886e13c74e12a9e1c8a7fdb09326792c78585e', 73, 40],
+  // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
+  // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
+  high: ['725d3a317b0795bc528a75cb6d747f769c28be0ce9331e2324e5ca44d0299326', 74, 41],
+  low: ['477889f002b88a0c6e3eaa5981af756de9ed44f117593e5366773bca64ddf178', 72, 39],
 };
 // 2026-09-15 owner roster pass: the study is named 'Chieftain Mk 5' (no ' X' suffix); name-only repin.
 const MK5_SPEC = '56e6727221553aa2eda63da2ab9e13c3be0fe971487830059bf10d9d436e311e';

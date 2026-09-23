@@ -31,11 +31,13 @@ const BEFORE={
   t72b_1987_x:['fadce555c31a5218ed25e2f0952a1bbcd28e309f87356cae51fe7b7cae399bc4' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'6d7e6af0a2be02b6a976550aabbe83ab0be137174006a0e70d7bf7058228479e'],
   t80u_x:['c8202bf0dfe6b63929aa907746877c082acb83fe422cd2ff05aaef635357a38e','d037f3373be28b0903c10913cda721b9f203c8edba5b7ac73f61324577cbdb2a'],
   t72b3_x:['6af78eb329de6ca76c6b0dd58adf7d33e731ff4ef87029c6c5dab4cb033fe17f','07763eb559dae37b3e4736a58dd4c4aeacd55101e942bb0f93a531913928a243'],
-  t72b3m_x:['cb020d70d0283691512c79bc4815b5d127fa303be0baf241906db3b5d430651c','f697c3ad396dda9753542dd8742494bb90192aafd3370e3be9cc3fce61140080'],
-  t72bu_x:['223f7b4104ef4636ccb7d1613c86ff206f9ef9aef2f3683dacd69f233d23a869','eb5a4dc7bd9ec24a6deeca0f64078a748c61181613817551e92b2861cc6317ea'],
-  t90_x:['1e22c37621f6782995d09307a2daa3d3189567fcc58e0f4ffbd294e990f9d8ee','c5aa85562a0aeaef546352983bda7f1f9ad85c7f74174f9c148962124263a4b7'],
-  t90a_burlak_x:['87132d72d08737fdd9ee16d91e6786452132376992248745c488e44c4304a775','7d2bbf5cd71072cabd06f85262db3203e15056fbf84d5e58875a8b97c06e930b'],
-  t90ms_x:['951fda6d97c8e2b0cd7849159ea5bc722f014f6c5e15364a64f011734095fb79','617682bd346e3553812751e868c80c5781955746ea79d1cdc12a230900ab29e3'],
+  // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
+  // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
+  t72b3m_x:['da7b5c15e22dfb8673a5aceb4c12283c47db6a0d72989e1cae04f9e1acef81c7','6e132e55d3f38fd1f556fb36f2d19c69a9b06ecbbfb45c014e4e07df5521d3a8'],
+  t72bu_x:['1cd4aee98457816dbfe740504281b9e15396fb7166077d6a071094ddc82389a0','ecb63e638a205e47331577a78aa4225b051f544097b9d85ff539aae41e9c271e'],
+  t90_x:['05ec325a346c5a5d4bc024d2fa3b8906774e0c1ba188f0ca9da8b1a96404bc31','0421edea44e9fbc634338dbf22dd676ca573c99aafa3ee75b757c6bba7dc4d19'],
+  t90a_burlak_x:['9fa37765f430ee57e8bdbbc0317b0ed47a2bc3fd25fc2a2026eb328d6a409432','e18c9e778f9aab6535ce72de325eea3b65172369acdd76e246c7db168fd93dcd'],
+  t90ms_x:['3c03e0dc8ab55918b072adc5713e128b87ef315f10e282577c18d23238a3e638','f888dd9b40791feca4d3284c6f6d8b1be5005a037ce7449c8fc3f28312474716'],
 };
 const EXPECTED_STATS={t62mv1_x:[8,9,9],t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
   t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],

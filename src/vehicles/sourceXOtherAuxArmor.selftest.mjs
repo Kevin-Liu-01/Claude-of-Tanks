@@ -28,8 +28,10 @@ const BEFORE={
  // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 30aa82a9…, eca09834…, ce25b11c…, 5cf7c632…, e7726256…, a0fb4201…, 27509e55…, 97ce7d68…, 69197b36…, 495de4a8…, 3a9f7bca…, 9388e4c4…, 015d5a86…, 45a022cf….
  'k1a1_x/high':'d47d1178c38ef3f0c6de85610f6a0bc263ea22e3ef2ba6370244a52de1c391c2',
  'k1a1_x/low':'cd82b27062d81232cf381419058ea4e8599c54dd93395d96cdfc5554519dbb1f',
- 'amx30_x/high':'dfb120439c3b361370bac654cba3df81cfd99654c1e28957a983969ad9e8fa92',
- 'amx30_x/low':'e581d2dcaf545c7f6773fa1250fc45e134c48f23f69b56d1486638bd26090cb2',
+ // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
+ // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
+ 'amx30_x/high':'38ec1c7ea4b08ce3a5b698aa2f862ae710a1778957bd8e7b504864c7c62772ce',
+ 'amx30_x/low':'00b1709a07627e448d695352045d6e45d27816887fc16afde7b1e0433bf0d64e',
  'leclerc_x/high':'c106a60485a54871b935564f0bdbc6f44b93a0774c5ad21d8c9ffee066b560e9' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,
  'leclerc_x/low':'31e260ab2fbd2826507803f76872a8fb50b5bc98af17487ba8c33a983bfc6d52',
  'leclerc_classic_x/high':'2fcfa0d688f1ef903e0bc0b19ce5753999058d013a3feb456799fc84b28917e4',
@@ -39,8 +41,8 @@ const BEFORE={
  'type90_x/high':'49d70dd6a258dc01f799136010b64fc356ed0e2679077b06ca94ebe9ff1f0bd4',
  'type90_x/low':'14cb55951f5f5d3bf6917dc1e946412c8afe7ada12d513dcfa101cb04f30411d',
  // 2026-09-12 (evening): AMX-40 X .024 band + botY .050 contact fix; native fingerprints repinned.
- 'amx40_x/high':'8d94146c9c71d76c2a131530ba4f4f83b9df3ff6cf9551d2c179e954d2e2d157',
- 'amx40_x/low':'a39e178fe31a9be5b57b09ede3d618aa390be38cf64477147365cd5be0e0f787',
+ 'amx40_x/high':'aeacabece1cf8cc9ab96c90e923e37b23950de9fc7d9ff5dd52810fff9265b11',
+ 'amx40_x/low':'c90f820c8b0495ab11c76e4f660cb2d6c5ef4542cab9430338347f6898f54d4f',
 };
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);

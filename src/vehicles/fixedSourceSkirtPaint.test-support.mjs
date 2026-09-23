@@ -13,7 +13,9 @@ export const FIXED_SOURCE_SKIRTS=Object.freeze({
   // profiles lost their authored wheel-face dressing and annular-tire declarations (both draw the Russia T-90 nation
   // wheel, nationWheelSets.ts); the pre-finish source digests are repinned from the current profiles.
   t72bu_x:{build:buildT72BUX,label:'t72bu-x-side-leaf',count:12,file:'t72buX.ts',
-    sha:'710daa290384935208c765df3b54ab06bb23feb985d223bacf5081a43459890c'},
+    // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
+    // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
+    sha:'845f0f3dba0fdc96fd82a0c54a7c9ecc53114498e3aeb115330b5e4a00db9600'},
   t62mv1_x:{build:buildT62MV1X,label:'t62mv1-x-skirt',count:20,file:'t62mv1X.ts',
     // 2026-09-22 (owner: holes are added, not carved, to save triangles): t62mv1X closed its main gun
     // at the source tip (measuredPrimitives cappedTube; the measured bore floor 5.65940 stays recorded

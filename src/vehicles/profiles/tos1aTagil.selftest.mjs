@@ -18,7 +18,9 @@ const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byt
 // end-wrap bake (the T-90MS X bands are laid about each side's own outer wheels — tankFactoryCore buildRunningGear).
 // 2026-09-22 nation wheel standard: the T-90MS donor chassis draws the T-90M X pressed face through nationWheelSets.ts; repinned.
 // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 9976ffbe…, 79ca4399….
-const donorHashes={high:'d63d819182e545529736219e920fd43595d56375a7148f26b4f19427a00f01c2' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'0ef92428ecc4f9e1f0688e4b1065e6171a8f1b55bc364c9ef66fef82699f6283'};
+// round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
+// retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
+const donorHashes={high:'73ec47e866b7c09444df2bfccf7bf157daeb3016fb08c87fb6aac792a86d79f1' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'b6479121effb1f2481e2184c2c85a17e26b2d0cb21adec0f6ce224df7b4c045d'};
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{
