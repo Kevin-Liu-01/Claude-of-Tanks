@@ -80,7 +80,8 @@ interface TerrainUserData {
   cancelSourcedTextures?(): void;
   streamingStats?: RuntimeValue;
   updateLOD(cameraPosition: THREE.Vector3): void;
-  updateWater?(deltaSeconds: number): void;
+  updateWater?(deltaSeconds: number, anchorX?: number, anchorZ?: number): void;
+  disposeWater?(): void;
   setWaterTime?(timeSeconds: number): void;
   setWaterDisturbances?(sources: readonly WaterDisturbance[]): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
@@ -498,6 +499,7 @@ function assembleWorld(
       unregisterDestructibles();
       vegetation.dispose();
       litter.dispose();
+      terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
     },
     config,
     heightField,
@@ -605,7 +607,9 @@ function assembleWorld(
       focusPos: THREE.Vector3 | null = null,
     ) {
       terrain.userData.updateLOD(cameraPos);
-      terrain.userData.updateWater?.(dt);
+      // water pass 8: the reactive field's window follows the chase focus (the camera when there is none)
+      const waterAnchor = focusPos ?? cameraPos;
+      terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
       litter.update(cameraPos);
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims

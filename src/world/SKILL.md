@@ -22,7 +22,8 @@ allocation-free chase-camera occlusion focus passed to an active world,
 `terrainLodPolicy.ts` owns typed allocation-free visible/prefetch scheduling,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.ts` owns strict allocation-free broad phase and narrow-phase shape
-contracts, `maps/` owns layouts, and vegetation,
+contracts, `maps/` owns layouts, `shallowWater.ts` owns the lake/sea sheet and `waterRipples.ts` the world-anchored GPU
+shallow-water field it reads for wakes, churn and splashes (null on the mobile tier and in receipts), and vegetation,
 props and toppling own their visual/runtime layers; `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
 `destructibles.ts` is the typed, allocation-free active-world seam between

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { HeightField } from './terrain.ts';
 import { waterContactProfile } from './waterContact.ts';
+import type { WaterRippleField } from './waterRipples.ts';
 
 const GRID_STEP_M = 8;
 const MIN_COVERAGE = 0.002;
@@ -124,7 +125,10 @@ const WAKE_DEFAULT_HALF_WIDTH_M = 1.8;
 
 interface ShallowWaterSurface {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
-  update(deltaSeconds: number): void;
+  /** Water pass 8: the reactive field this sheet reads, or null (mobile tier, headless). */
+  readonly ripples: WaterRippleField | null;
+  /** Advance the sheet's clock and, with an anchor, integrate the reactive field around it. */
+  update(deltaSeconds: number, anchorX?: number, anchorZ?: number): void;
   setTime(timeSeconds: number): void;
   /** Publish the vehicles in the water this frame (at most WATER_DISTURBANCE_CAP; strength 0..1). */
   setDisturbances(sources: readonly WaterDisturbance[]): void;
@@ -149,6 +153,7 @@ export function createShallowWaterSurface(
   mapId: string,
   ramp: readonly [number, number],
   setup: ShallowWaterMaterialSetup | null = null,
+  ripples: WaterRippleField | null = null,
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
@@ -186,6 +191,11 @@ export function createShallowWaterSurface(
       uWaterWakeA: { value: wakeA },
       uWaterWakeB: { value: wakeB },
       uWaterWakeCount: wakeCount,
+      // Water pass 8 (2026-09-23): the world-anchored reactive field (waterRipples.ts). The sampler shares the
+      // field's own value object so its ping-pong swap reaches the sheet without a per-frame uniform write.
+      uWaterRipple: ripples?.stateUniform ?? { value: null },
+      uWaterRippleParams: { value: ripples?.params ?? new THREE.Vector4(1, 0, 0, 0) },
+      uWaterRippleTexel: { value: ripples?.texel ?? new THREE.Vector2(1, 1) },
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>',
@@ -209,6 +219,15 @@ export function createShallowWaterSurface(
       uniform vec4 uWaterWakeA[8];
       uniform vec4 uWaterWakeB[8];
       uniform int uWaterWakeCount;
+      uniform sampler2D uWaterRipple;
+      uniform vec4 uWaterRippleParams;
+      uniform vec2 uWaterRippleTexel;
+      /** Water pass 8: 1 inside the reactive field's window around the camera focus, 0 past its fade band. */
+      float waterRippleWindow(vec2 world) {
+        if (uWaterRippleParams.w < 0.5) return 0.0;
+        vec2 off = abs(world - uWaterRippleParams.yz) / uWaterRippleParams.x;
+        return 1.0 - smoothstep(0.36, 0.44, max(off.x, off.y));
+      }
       float waterHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float waterValueNoise(vec2 p) {
         vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -275,6 +294,27 @@ export function createShallowWaterSurface(
       // a fragment beyond a slot's reach skips that slot entirely.
       float wakeFoam = 0.0;
       float wakeWash = 0.0;
+      // Water pass 8 (2026-09-23, owner: "not reactive, a static PNG following you"): inside the reactive field's
+      // window the surface is the simulated one — its height gradient tilts the normal, its foam whitens, its crests
+      // catch light — and the hull-frame pattern below is switched off for every slot the field covers, keeping only
+      // the contact line at the skirt. Slots beyond the window (far vehicles, mobile tier) keep the procedural wake.
+      float rippleW = waterRippleWindow(vWaterWorld.xz);
+      vec2 rippleGrad = vec2(0.0);
+      float rippleH = 0.0;
+      float rippleFoam = 0.0;
+      if (rippleW > 0.001) {
+        vec2 ruv = fract(vWaterWorld.xz / uWaterRippleParams.x);
+        vec4 rc = texture2D(uWaterRipple, ruv);
+        float rr = texture2D(uWaterRipple, ruv + vec2(uWaterRippleTexel.x, 0.0)).r;
+        float ru = texture2D(uWaterRipple, ruv + vec2(0.0, uWaterRippleTexel.x)).r;
+        rippleGrad = vec2(rr - rc.r, ru - rc.r) / uWaterRippleTexel.y;
+        // a real slope, capped: a 30 cm crest over a texel is a breaking face, not a mirror flip
+        float gl = length(rippleGrad);
+        rippleGrad *= (min(gl, 0.45) / max(gl, 1e-4)) * rippleW;
+        rippleH = rc.r * rippleW;
+        // the fine wave texture breaks the foam field into streaks and clots instead of a flat white lane
+        rippleFoam = rc.a * rippleW * (0.35 + 1.3 * waveFine.x);
+      }
       for (int i = 0; i < 8; i++) {
         if (i >= uWaterWakeCount) break;
         vec4 wa = uWaterWakeA[i];
@@ -290,8 +330,11 @@ export function createShallowWaterSurface(
         float across = dot(rel, side);
         float str = wb.y;
         float phase = float(i) * 1.7;
-        float mov = smoothstep(0.04, 0.35, spd);
-        float calm = 1.0 - mov;
+        // the procedural wake only where the reactive field does not reach this slot's hull
+        float proc = 1.0 - waterRippleWindow(wa.xy);
+        float mov0 = smoothstep(0.04, 0.35, spd);
+        float calm = (1.0 - mov0) * (0.3 + 0.7 * proc);
+        float mov = mov0 * proc;
         // rounded hull footprint: 0 under the hull, metres outside it
         vec2 q = vec2(abs(along) - hl, abs(across) - hw);
         float hullDist = length(max(q, 0.0));
@@ -307,7 +350,7 @@ export function createShallowWaterSurface(
         float bow = exp(-pow((along - bowCentre) * 1.5, 2.0)) * bowAcross;
         wave += fwd * (-(along - bowCentre) * 3.2 * bow) * mov * str;
         wave += side * (-across / (hw + 1.0) * 1.2 * bow) * mov * str;
-        wakeFoam += bow * smoothstep(0.35, 1.0, spd) * 0.8 * str;
+        wakeFoam += bow * smoothstep(0.35, 1.0, spd) * 0.8 * str * proc; // the field's own bow mound whitens inside the window
         // diverging arms: two crests running back and outward from the bow corners (~23 degrees)
         float behindBow = max(hl - along, 0.0);
         float armLine = hw + behindBow * 0.42;
@@ -332,7 +375,9 @@ export function createShallowWaterSurface(
         wave += (waveFine.xy * 2.0 - 1.0) * wash * 1.2;
         wakeFoam += wash * (0.16 + 0.6 * smoothstep(0.35, 0.8, waveFine.x * 0.6 + waveNear.y * 0.4));
       }
-      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength, 1.0, wave.y * uWaterWaveStrength)), 0.0)).xyz);
+      // the simulated surface tilts the normal by its real slope (×1.6: a 5 cm ripple still reads at 20 m)
+      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength - rippleGrad.x * 1.6, 1.0,
+        wave.y * uWaterWaveStrength - rippleGrad.y * 1.6)), 0.0)).xyz);
       normal *= faceDirection;
       // Surface colour breakup reuses the same two wave fetches: moving
       // two-scale value variation, a shore tint band and sparse crests.
@@ -359,6 +404,10 @@ export function createShallowWaterSurface(
       float foamBank = smoothstep(0.52, 0.86, broadWave * 0.7 + fineWave * 0.5) * waterBank;
       float foamCrest = smoothstep(0.80, 0.96, broadWave) * smoothstep(0.55, 0.9, fineWave) * waterDeep * 0.6;
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.80, 0.85, 0.84), (foamBank * 0.55 + foamCrest * 0.45) * uWaterFoam);
+      // Water pass 8: crests catch the light and troughs darken; the field's foam is churn and breaking water
+      diffuseColor.rgb *= 1.0 + clamp(rippleH, -0.2, 0.2) * 0.6;
+      wakeFoam += rippleFoam * 0.45 + smoothstep(0.25, 0.60, length(rippleGrad)) * 0.25 * (0.5 + waveFine.y);
+      wakeWash += rippleFoam * 0.3;
       // Water pass 6/7: the wash lane stirs bed sediment into the body colour, and churned
       // water around and behind a vehicle whitens regardless of the map's foam profile.
       diffuseColor.rgb = mix(diffuseColor.rgb, uWaterShallow * 0.95, clamp(wakeWash, 0.0, 1.0) * 0.35 * waterDeep);
@@ -385,7 +434,7 @@ export function createShallowWaterSurface(
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'shallow-water-v10';
+  material.customProgramCacheKey = () => 'shallow-water-v11';
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.matrixAutoUpdate = false;
@@ -394,9 +443,15 @@ export function createShallowWaterSurface(
   mesh.renderOrder = 2;
   return {
     mesh,
-    update(dt) { if (Number.isFinite(dt) && dt > 0) clock.value += Math.min(dt, 0.1); },
+    ripples,
+    update(dt, anchorX, anchorZ) {
+      if (!(Number.isFinite(dt) && dt > 0)) return;
+      clock.value += Math.min(dt, 0.1);
+      if (ripples && anchorX !== undefined && anchorZ !== undefined) ripples.step(dt, anchorX, anchorZ);
+    },
     setTime(t) { if (Number.isFinite(t)) clock.value = Math.max(0, t); },
     setDisturbances(sources) {
+      ripples?.setDisturbances(sources);
       const n = Math.min(WATER_DISTURBANCE_CAP, sources.length);
       for (let i = 0; i < n; i++) {
         const s = sources[i];

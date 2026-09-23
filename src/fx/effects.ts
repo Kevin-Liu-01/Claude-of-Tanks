@@ -44,6 +44,9 @@ interface FxHeightField {
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
+  /** Water pass 8: the reactive water field takes splashes and carries the wakes (no ring prints then). */
+  addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
+  waterRipplesActive?(): boolean;
   getGroundType?(x: number, z: number): string;
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
 }
@@ -2392,6 +2395,8 @@ function* createFxSteps(
     const s = calScale(caliberMm) * (big ? 1.6 : 1.1);
     const surfaceY = heightField?.getWaterSurfaceHeightAt?.(pos.x, pos.z)
       ?? groundY(pos.x, pos.z) + (heightField?.getWaterDepthAt?.(pos.x, pos.z) ?? 0);
+    // water pass 8: the splash also lands in the reactive field — a crater that rings out across the surface
+    heightField?.addWaterImpulse?.(pos.x, pos.z, 0.9 + 1.1 * s, 0.22 * s, 0.85);
     const baseY = surfaceY + 0.25;
     // wet heart: the dark water thrown up with the column
     for (let i = 0; i < (big ? 5 : 3); i++) {
@@ -3774,7 +3779,9 @@ function* createFxSteps(
     intensity: number,
     waterMask: number,
   ): void {
-    if (intensity > 0.06 && !frozen) stampTrackPrint(pos, dir, true);
+    // water pass 8 (2026-09-23): the reactive field carries the churn where it has one; the ring prints were
+    // the "static PNG" the owner saw following the hull
+    if (intensity > 0.06 && !frozen && !heightField?.waterRipplesActive?.()) stampTrackPrint(pos, dir, true);
     if (frozen || rng() > intensity * (0.72 + waterMask * 0.36)) return;
     const gy = heightField?.getWaterSurfaceHeightAt?.(pos.x, pos.z)
       ?? groundY(pos.x, pos.z) + (heightField?.getWaterDepthAt?.(pos.x, pos.z) ?? 0);

@@ -555,6 +555,43 @@ blocks), `mangroveWaterPalette` and `villageWear` re-captured (map-config digest
 **Still open.** Fjord's smooth green cone (check 3, vista) and Titan's marbled near walls (the round-35 wall texture
 reads as flowing water at 300 m).
 
+### Reactive water — 2026-09-23 (round 46, water pass 8)
+
+**Symptom (owner: "when the tank is in and rolling it looks so jank and not reactive — literally a static PNG following
+you").** Water pass 7 built the wake in the hull frame: bow wave, arms, transverse waves and a wash lane were all
+functions of (along, across) from the hull, so the whole pattern translated rigidly with the vehicle, and the FX layer
+stamped ring decals along the tracks on top. Nothing stayed where the water had been disturbed.
+
+**Fix.** `world/waterRipples.ts`: a world-anchored shallow-water field on the GPU — one RGBA16F texture (height, flow,
+foam) over a 192 m window (512 texels, 0.375 m) around the chase focus, integrated at a fixed 1/60 s (≤ 3 substeps a
+frame) with the linear shallow-water equations: momentum −g ∇(h + hull pressure), continuity −H ∇·u (H = 2 m, c =
+4.4 m/s, so a tank at 6–10 m/s runs supercritical and throws a V wake), damping 0.70/s, a 4 % odd-even diffusion. A
+hull is a moving pressure patch (its draft, 0.36 m at full strength, over the rounded footprint): standing it presses a
+dimple the surface holds; moving it radiates the bow mound, diverging arms and stern train on its own. The tracks inject
+a decaying, spreading foam field (0.36/s, hash clots) that stays where it was churned; shell splashes are impulses. The
+texture is a torus over world space (texel = fract(world / 192)), so the mapping never depends on the anchor and the
+seam sits at the window's far edge where every step fades the state to rest. Depth follows the sheet's own wetness
+(crests slow and bend toward the bank, the bank absorbs). `world/shallowWater.ts` (program key v11) reads the height
+gradient for its normals (slope ×1.6, capped at a breaking face), the foam for its whitecaps, and switches the
+hull-frame pattern off for every slot inside the window (contact line kept); slots beyond it and the mobile tier keep
+the procedural wake. `fx/effects.ts` drops its water ring prints where the field is active and lands each splash in
+the field. Frame order: the field steps inside `world.update` (before lighting and post) on the previous frame's
+published disturbances.
+
+**Verified (`.qa-dev/water-probe.mjs`, Reservoir and Coastal, T-90M capped at 7 m/s).** Before: a white slab lane and
+two dark arms fixed to the hull (a1 captures). After: a V wake with diverging crests, a streaky churn trail that the
+tank leaves behind, rings spreading from the hull when it stops (stop-4.5 s), the trail still lying along the path
+from a fixed shore camera. Tuning rounds b3→b8: foam gain 2.2 → 0.8, damping 0.55 → 0.70, draft 0.42 → 0.36,
+normal gain 2.4 → 1.6 with a 0.45 slope cap (the first pass read as black-and-white zebra bands from above).
+
+**Receipts.** `waterRipples.selftest` (gates, targets, step shader form, packing, fixed-step accumulator, renderer
+restore, sheet handshake, world wiring), `shallowWater.selftest` (new uniforms, window logic, key v11), the
+101-receipt sweep of everything that reads terrain/map/effects/shallowWater sources green.
+
+**Still open.** Impulses from tank destruction in water; a heavier wake for the amphibious IFVs (their draft is the
+same 0.36 m today); the window is one square per battle (a second field for spectator/killcam cameras far from the
+player would need its own anchor).
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -635,6 +672,7 @@ skylines):
 | 42 | Sky light on shaded steep faces: the terrain material adds the horizon sky colour (the sky probe's fog colour) to faces steeper than ~28° that turn away from the sun, through the indirect-diffuse path, weighted by slope and by how far the face turns; lit faces and flat ground untouched | Caldera's inner east wall 6.6 → 16.7 display luma against a 216 sky (3.1 % → 7.7 %), Skybridge's shaded slope 21 → 35, Verdant's shaded snow hill 53 → 64 and bluer, Mars ±1, Badlands' lit walls and Steppe's far ground unchanged (checks 4, 11) |
 | 43 | Local wind field for the dune ripples: the authored wind swings ±25° per ~400 m cell and ±10° per ~90 m cell, the wavelength stretches ±25 % per ~250 m cell, and the far bedform albedo band eases to half past 320 m — every ripple and bedform wave in the sand branch follows it | Desert w-wall-mid mid-field: strongest periodic band 0.54 → 0.22 of the spectrum's top 1 %, anisotropy 2.81 → 1.06, texture energy 18.0 → 18.0; bird view anisotropy 2.5 → 1.2; Oasis w-wall-mid 0.76 → 0.61; near-field grain unchanged (0.67 → 0.62) (check 8) |
 | 45 | Steep-slope layer authoring: a per-map slope grass hold in the terrain shader (Monsoon 0.10) and Monsoon's steep layer re-authored as dark wet grass; Fjord's sourced rock tint 1.12–1.22 → 0.60–0.74 | Monsoon SW mound display luma 95 → 67, hue 33° → 64° (forest floor 66°); Fjord corner cliff 100 → 57 at sat 0.26; identified with a layer-flag probe that recompiles the splat material with one flat colour per layer (checks 3, 15) |
+| 46 | Reactive water (water pass 8): a world-anchored GPU shallow-water field (192 m / 512 texels, fixed 1/60 s) carries every hull's wake, track churn and shell splashes; the sheet reads its slope and foam and drops the hull-frame pattern inside the window | Reservoir/Coastal drive captures before/after (a1 vs b8): hull-frame slab → V wake with crests, a churn trail that stays on the path, rings from a stopped hull; receipts waterRipples + shallowWater + 101-receipt source sweep |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.

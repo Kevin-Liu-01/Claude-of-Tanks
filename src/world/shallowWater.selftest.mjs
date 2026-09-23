@@ -143,8 +143,23 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
   assert.equal(probe.uniforms.uWaterMask.value, mask, 'the handed hook is the water shader patch');
   routed.mesh.material.dispose();
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\)\);/,
-    'the terrain builder routes the sheet through the engine hook');
+  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples\);/,
+    'the terrain builder routes the sheet through the engine hook and hands it the reactive field');
+  assert.match(terrain, /const ripples = createWaterRippleField\(engineCtx\.renderer, \{/,
+    'water pass 8: the field is built from the engine renderer inside the sea/lake block (null in receipts)');
+  // water pass 8: without a field the sheet declares the sampler and an inactive window, and keeps its wake
+  assert.equal(probe.uniforms.uWaterRipple.value, null, 'no field: an empty sampler');
+  assert.equal(probe.uniforms.uWaterRippleParams.value.w, 0, 'no field: the window is inactive');
+  assert.match(probe.fragmentShader, /if \(uWaterRippleParams\.w < 0\.5\) return 0\.0;/, 'an inactive window costs one compare');
+  assert.match(probe.fragmentShader, /vec2 ruv = fract\(vWaterWorld\.xz \/ uWaterRippleParams\.x\);/,
+    'the field is a torus over world space — the mapping never depends on the anchor');
+  assert.match(probe.fragmentShader, /float proc = 1\.0 - waterRippleWindow\(wa\.xy\);/,
+    'the hull-frame pattern is switched off for every slot the field covers');
+  assert.match(probe.fragmentShader, /wakeFoam \+= bow \* smoothstep\(0\.35, 1\.0, spd\) \* 0\.8 \* str \* proc;/,
+    'the procedural bow foam bar is off inside the window too (it was the last thing that followed the hull)');
+  assert.match(probe.fragmentShader, /wave\.x \* uWaterWaveStrength - rippleGrad\.x \* 1\.6/, 'the field slope tilts the normal');
+  assert.match(probe.fragmentShader, /rippleGrad \*= \(min\(gl, 0\.45\) \/ max\(gl, 1e-4\)\) \* rippleW;/, 'the slope is capped at a breaking face');
+  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v11', 'the program key moved with the fragment');
 }
 assert.equal(water.mesh.material.transparent, true);
 assert.equal(water.mesh.material.depthWrite, false);

@@ -40,6 +40,7 @@ import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type 
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
+import { createWaterRippleField } from './waterRipples.ts';
 import { buildSeaApronGeometry, resolveSeaOpenings, seaOpeningUniforms, type SeaOpening } from './edgeWater.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -271,6 +272,10 @@ export interface HeightField {
   getWaterDepthAt?(x: number, z: number): number;
   /** Exact rendered triangle height, installed when the liquid mesh is built. */
   getWaterSurfaceHeightAt?(x: number, z: number): number;
+  /** Water pass 8: one splash into the reactive field (shell impacts); absent without the field. */
+  addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
+  /** Water pass 8: true when the reactive field carries the wakes (the FX layer then skips its ring prints). */
+  waterRipplesActive?(): boolean;
   /** Presentation-only; simulation/headless fields may omit this query. */
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
   size: number;
@@ -295,6 +300,8 @@ export type TerrainPlacementSampler = Pick<HeightField,
 
 interface TerrainEngineContext {
   anisotropy?: number;
+  /** Water pass 8: the reactive water field renders its own pass; receipts and the mobile tier build without it. */
+  renderer?: THREE.WebGLRenderer;
   setupShadowMaterial(material: THREE.MeshStandardMaterial, hook: MaterialShaderHook): void;
 }
 
@@ -4201,12 +4208,22 @@ function* terrainBuildSteps(
     }
     if (step.value) {
       heightField.getWaterSurfaceHeightAt = step.value.heightAt;
+      // Water pass 8 (2026-09-23): the world-anchored reactive field the sheet reads; null without a renderer
+      // (receipts) or on the mobile tier, where the sheet keeps its procedural wake.
+      const ripples = createWaterRippleField(engineCtx.renderer, {
+        mask: materialStep.value.waterMask, mapSizeM: heightField.size, ramp: cfg.splat.seaRamp || [0.40, 0.78],
+      });
       const water = createShallowWaterSurface(step.value.geometry,
         materialStep.value.waterMask, materialStep.value.waterNormal,
         heightField.size, cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78],
         // water pass 3 (2026-09-12): the sheet joins the cascaded-shadow setup like every lit world material
-        (material, hook) => engineCtx.setupShadowMaterial(material, hook));
+        (material, hook) => engineCtx.setupShadowMaterial(material, hook), ripples);
       group.add(water.mesh);
+      if (ripples) {
+        heightField.addWaterImpulse = ripples.addImpulse;
+        heightField.waterRipplesActive = () => true;
+        group.userData.disposeWater = ripples.dispose;
+      }
       // Round 40 (2026-09-22, "water at the edge: same level and shader beyond"): where the flattened water meets
       // the square edge the horizon ring opens to a sea apron (edgeWater.ts); the sheet continues over it with the
       // same material so fresnel, glitter and the deep colour do not end in a straight line at the red line.
