@@ -67,8 +67,13 @@ function armorM1A3(): ArmorEnvelope {
       { keMm: 1010, ceMm: 1380 }),
     chL('integrated_cheek_L', 720, 0.27, 2.18, 1.59, 1.05, -0.10, 0.78, 0.16, 0.11,
       { keMm: 1010, ceMm: 1380 }),
+    // 2026-09-23: the mantlet articulation (64303600d) moved the fixed throat stock into the pitching shield, so this
+    // gun-follow plate is now what the AbramsX's rounds meet at the turret front (the integrated cheeks no longer stand
+    // behind it there). Its protection follows the shield: measured on the balance range, 520/690 left the M1A3 at
+    // 0 of 12 against the AbramsX, 700/900 at 0, 800/1050 at 1 of 12, 880/1150 at 5 of 12 (reviewed band 0.2–0.8;
+    // 6 of 12 before the articulation). See docs/history/sync-audit-2026-09-23.md.
     fr('gun_cradle', 410, 0.31, 0.06, 2.22, 0.65, 2.17,
-      { keMm: 520, ceMm: 690, gunFollow: true }),
+      { keMm: 880, ceMm: 1150, gunFollow: true }),
     sR('turret_side_R', 330, 1.60, -0.08, 1.48, 0.73, -3.12, 1.10,
       { keMm: 470, ceMm: 720 }),
     sL('turret_side_L', 330, 1.60, -0.08, 1.48, 0.73, -3.12, 1.10,

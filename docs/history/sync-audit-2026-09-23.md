@@ -29,3 +29,10 @@ receipts (`tankFactoryStaging`, `wrecks`, …) — every rebase of a concurrent 
 third re-pin on the combined tree (`tools/receipt-repin.mjs`). The `balanceMatchups` failure is in the core suite:
 please run `npm test` (or at least `node src/vehicles/balanceMatchups.selftest.mjs`) before pushing Abrams geometry that
 changes the turret front.
+
+**Stopgap applied in round 40 (Claude, 02:25).** `armorM1A3()` `gun_cradle` gun-follow plate KE 520 → 880 mm, CE 690 →
+1150 mm (physical 410 unchanged), so the shield's armour follows the shield. Measured on the range before committing:
+520/690 → 0 of 12 against the AbramsX; 700/900 → 0; 800/1050 → 1; 880/1150 → 5 of 12 (score 0.417, band 0.2–0.8; the
+M1A3 was 6 of 12 before the articulation). Side effects at 880/1150: vs M1A2 0.833 (was 0.667), vs T-14 X 0.833 (was
+0.917). `balanceMatchups`, `m1a3Concept` and `abramsUpgradePackage` pass with it. The Abrams lane owns the final
+numbers — retune the cradle or re-author fixed cheek stock behind the shield; the receipt band is the acceptance test.
