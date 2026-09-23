@@ -60,6 +60,26 @@ complete current environment set.
 | ../LICENSE-POLICY.md | Path-level map separating MIT material, proprietary Reserved Content, third-party works, and prior revisions |
 | ../LICENSES/ | Proprietary content terms and preserved historical MIT text |
 
+## World, presentation and performance passes
+
+Bounded checkpoint documents for shipped environment and presentation work.
+Each records the baseline, the change and its evidence; none is a status
+ledger. (Indexed 2026-09-22; they were previously unlinked.)
+
+| Document | Scope |
+| --- | --- |
+| REGIONAL-MAP-IDENTITIES.md | Regional environment direction: horizon families, per-map identity targets (2026-09-10) |
+| REGIONAL-LANDFORM-PASS.md | Regional landforms for playable ground and outland |
+| GROUND-MATERIAL-OWNERSHIP.md | Worked-soil versus turf material separation |
+| AUTUMN-LEAF-SPRAYS.md | Autumn birch/aspen leaf-spray atlases |
+| BIRCH-CROWN-FORM.md | Connected birch and aspen crown structure |
+| FOUNDRY-SERVICE-COURT.md | Ironworks service-court layout and contact |
+| HORIZON-FOCUSED-CAPTURE.md | Focused horizon evidence flags of the map environment audit |
+| BATTLE-WEATHER-AND-DAMAGE.md | Battle day/night presentation and cosmetic damage |
+| performance/retained-battle-hud.md | Retained battle HUD presentation (bounded DOM work) |
+| performance/shared-texture-worker.md | Shared vehicle texture worker for the asynchronous preload |
+| CLEANUP-2026-09-22.md | Round 40 repository cleanup: hidden-tank inventory, phase-1 removals, phase-2 plan and owner decisions |
+
 ## Vehicle-authoring law
 
 These documents are current for changes to playable tank geometry and generated
