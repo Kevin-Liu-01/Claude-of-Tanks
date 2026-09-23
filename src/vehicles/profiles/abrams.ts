@@ -1123,6 +1123,10 @@ function shadowBarrel(
 // Lift the complete Abrams turret rig just clear of the hull deck while
 // retaining enough bearing overlap to avoid a visible ring gap.
 const ABRAMS_TURRET_LIFT_M = 0.012;
+const M1A1_ADDITIONAL_TURRET_LIFT_M = 0.050;
+// The old lower skirt extended into the 1.48 m deck. Relieve that buried
+// edge so the requested 50 mm translation exposes the circular bearing.
+const M1A1_TURRET_FLOOR_Y = -0.102;
 function seatAbramsTurret(turretG: THREE.Group, x: number, y: number, z: number): void {
   turretG.position.set(x, y + ABRAMS_TURRET_LIFT_M, z);
   turretG.userData.abramsTurretLiftM = ABRAMS_TURRET_LIFT_M;
@@ -4126,7 +4130,13 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     : vid === 'm1a2_sepv2' ? [0.7, 0, 1]      // center freed for the rigid ammo crate (§H.4)
     : vid === 'm1a2_sepv3' ? [0.7, 1, 0]      // right freed for the stowed-loadout slot
     : null;
-  const t = dufMul ? { ...TEJAS_TURRET, rackDufMul: dufMul } : TEJAS_TURRET;
+  const t = {
+    ...TEJAS_TURRET,
+    ...(dufMul ? { rackDufMul: dufMul } : {}),
+    yBot: M1A1_TURRET_FLOOR_Y,
+    yBotKnees: TEJAS_TURRET.yBotKnees.map(([z, y]): Vec2Tuple =>
+      [z, Math.max(y, M1A1_TURRET_FLOOR_Y)]),
+  };
   const familySideSlab = (
     bucket: string,
     side: number,
@@ -4342,9 +4352,17 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       P.add('hullDetail', box(0.020, 0.115, 0.030), side * 1.455, 1.575, -3.7855);
       P.add('hullDetail', box(0.210, 0.020, 0.030), side * 1.36, 1.633, -3.7855);
     }
-    seatAbramsTurret(P.turretG, t.ring[0], t.ring[1], t.ring[2]);
+    seatAbramsTurret(P.turretG, t.ring[0], t.ring[1] + M1A1_ADDITIONAL_TURRET_LIFT_M, t.ring[2]);
+    P.turretG.userData.m1a1AdditionalTurretLiftM = M1A1_ADDITIONAL_TURRET_LIFT_M;
     P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
     abramsShell(P, t);
+    // One camouflaged bearing, merged into the structural turret in both
+    // detail levels. Its lower lip overlaps the gently sloping front deck;
+    // its upper lip overlaps the relieved shell by 3 mm. No extra draw call.
+    const bearingTop = M1A1_TURRET_FLOOR_Y + .003;
+    const bearingBottom = 1.450 - P.turretG.position.y;
+    P.add('turret', cylY(1.25, 1.25, bearingTop - bearingBottom, 48),
+      0, (bearingTop + bearingBottom) / 2, 0);
     abramsBustleRack(P, t, 1);
     tejasRoofKit(P, t, p.station ?? 'crows', p.abramsKit);
     // Mantlet hand-rolled post-warp (the shared abramsMantlet block2/seam tops
