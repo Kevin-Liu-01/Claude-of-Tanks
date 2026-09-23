@@ -591,6 +591,62 @@ restore, sheet handshake, world wiring), `shallowWater.selftest` (new uniforms, 
 **Still open.** Impulses from tank destruction in water; a heavier wake for the amphibious IFVs (their draft is the
 same 0.36 m today); the window is one square per battle (a second field for spectator/killcam cameras far from the
 player would need its own anchor).
+### Ground palettes on the arid and ruined maps — 2026-09-23 (round 47)
+
+**Symptom (checks 3, 8, 15; owner: "the ground patterns are too black" on Sirocco Wadi, Titan Gorge, Skybridge Chasm,
+Sunscar Oasis and Olympus Basin).** Titan's canyon floor rendered as green photo turf under a red-rock sky, its mesa
+walls as grey-lavender marble (display rgb 116/104/109, hue 337°, saturation 0.10) and the knoll below the compound as a
+blue-black blotch (shaded box 47 display luma); Skybridge the same at 35, walls at hue 280° / saturation 0.07. Mars'
+near strata sat at 97 with the shaded wall foot at 44. The desert's SUNLIT dune faces carried near-black contour
+swirls (in-box p2 84 against a median of 186); Oasis' shaded corner face the same at p2 54 / median 123.
+
+**Cause.** `world/sourcedTextures.ts resolveSourcedTerrainPalette` falls through to 'verdant' for any map without a
+TERRAIN_PLAN row or `splat.sourcedPalette`. titan_gorge, skybridge, ruinspires and blackglass were the only four with
+neither, so the asynchronous photo-set swap replaced their authored ground with Verdant's sets — tinted
+Grass004/Ground071 and RAW Rock058 (0.30 sRGB × AO, the darkest set in the library) as the R layer, which on the two
+canyon maps overwrote the procedural sandstone strata (`splat.sandstone`) and made their `rockTone` dead code. The
+receipt pinned MAP_IDS 16–19 → 'verdant', encoding the bug. Mars' black is its own procedural strata (midpoint 0.40)
+under the dimmest key in the game. The desert's and Oasis' bands are neither: the round-45 layer-flag probe shows them
+as the D "worn sand" mask's contour-following blend zones on the steep ring faces, and with flat flag colours the D
+areas still render 9–15 % darker than the colours alone explain (D/G 0.73 on the desert, 0.68 on Oasis, against 0.80)
+— a darkening rides the D path in the sand branch, and it does not answer to fill.
+
+**Fix.** Four TERRAIN_PLAN rows registered against the measured photo-set means (sand 0.79/0.71/0.57, grass
+0.31/0.35/0.15, dirt 0.43/0.34/0.25, Rock058 0.28/0.31/0.33): titan_gorge (beige-ochre sand G/D, `R: null` so the strata
+return), skybridge (red-orange sand, `R: null`), ruinspires (ash-muted turf, grey-brown dust, mid-grey lifted rock),
+blackglass (the Caldera lift recipe in the map's cool register, lift 0.05 on every layer) — and an explicit
+`splat.sourcedPalette` on all four map files. Skybridge's tone floors (0.21/0.24) and tintB (0.88/0.78/0.75), Titan's
+tintB (0.90/0.82/0.78) and Mars' tintB were raised as the survey asked; Mars' strata midpoint 0.40 → 0.48. Desert
+`hemiIntensity` 0.20 → 0.28 (effective 0.283 → 0.397); `envIntensity` stays 0.16 — `engine/sky.ts` clamps
+`environmentIntensity` to 0.21, so the proposed 0.19 renders identically (Oasis, which inherits it, moved 0.000).
+
+**Measured (wall-probe, same cameras, display luma; boxes in the round-47a report).** Titan canyon-in shaded knoll
+47 → 93, wall 108 → 131 at hue 337° → 7° (saturation 0.10 → 0.22), ground p5 25.5 → 61.4; sw-corner-close shaded
+84 → 151. Skybridge canyon-in shaded 35 → 56, wall hue 280° → 0°; sw-corner-close shaded 52 → 99; w-wall-mid 61 → 88.
+Ruinspires shaded corner face 40 → 67, other views +4..21 %. Blackglass ±5 % (its authored register is dark and cool;
+matched, not lifted). Mars near strata 97 → 116 at the same 13° hue, shaded 44 → 47 (canyon-in), 48 → 60 (sw-corner),
+98 → 108 (w-wall-mid), floor unchanged 100.4 → 100.4. Titan's and Skybridge's LIT boxes rose 27–114 %: the layer family
+changed from green turf to sand, which is the fix, not a lighting drift — the ±8 % lit band applies to the two later
+steps. Those steps measured: the tintB/tone changes moved Titan and Skybridge by +0.02..0.11 mean luma, i.e. nothing —
+the meadow macro tints are gated off the dirt, steep and sand paths these maps render through (a dead lever, as
+`rockTone` was under a sourced R). Desert hemi: true shade rose (canyon-in darkest 1 % / 5 % of the ground
++10.7 % / +8.1 %), lit sand +0.1..0.6 % — inside the +5 % band — while the contour bands moved only +2..4 % (dark-band
+share 4.8 → 4.5 %).
+
+**Receipts.** `sourcedTextures` (routing table: a deliberate route for every map after the legacy sixteen, an own row
+for all twenty legacy ids, only an unknown id → verdant, Titan/Skybridge in the sandstone-not-overwritten loop, both
+cities route every layer, Blackglass keeps the lift floor on every albedo byte with Ruinspires as the negative
+control); `sourcedTerrainPreparation`, `terrainSandCoverage`, `mapQuality`, `mapIntegration`, `randomBattleMaps`,
+`terrainProjection`, `terrainMaterialOwnership`, `wallSkyLight`, `terrainWornDirt`, `worldNightLighting`,
+`titanGorgeHorizon`, `horizonMesaSurface`, `horizonMesaTexture`, `horizonResources`, `horizonRockfield`,
+`copperQuarrySurface` green. `badlandsRelief` (map-source byte projection: ruinspires, blackglass, titanGorge, skybridge,
+desert), `villageWear` (FROZEN configs) and `mangroveWaterPalette` (other29) move — integrator re-pin.
+
+**Still open.** The desert/Oasis contour bands — the D "worn" mask on steep sand faces and the darkening that rides its
+path in the sand branch (`world/terrain.ts`) — are a shader item, not a palette; Oasis at a 22° sun is the worst case.
+Mars' far wall foot (the vista side) stays the darkest thing in frame. Titan's floor now reads a bright ochre
+(canyon-in ground mean 143, w-wall-mid lit 175), inside the arid references (Redrock's lit walls 211) but worth an
+owner look.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -673,6 +729,7 @@ skylines):
 | 43 | Local wind field for the dune ripples: the authored wind swings ±25° per ~400 m cell and ±10° per ~90 m cell, the wavelength stretches ±25 % per ~250 m cell, and the far bedform albedo band eases to half past 320 m — every ripple and bedform wave in the sand branch follows it | Desert w-wall-mid mid-field: strongest periodic band 0.54 → 0.22 of the spectrum's top 1 %, anisotropy 2.81 → 1.06, texture energy 18.0 → 18.0; bird view anisotropy 2.5 → 1.2; Oasis w-wall-mid 0.76 → 0.61; near-field grain unchanged (0.67 → 0.62) (check 8) |
 | 45 | Steep-slope layer authoring: a per-map slope grass hold in the terrain shader (Monsoon 0.10) and Monsoon's steep layer re-authored as dark wet grass; Fjord's sourced rock tint 1.12–1.22 → 0.60–0.74 | Monsoon SW mound display luma 95 → 67, hue 33° → 64° (forest floor 66°); Fjord corner cliff 100 → 57 at sat 0.26; identified with a layer-flag probe that recompiles the splat material with one flat colour per layer (checks 3, 15) |
 | 46 | Reactive water (water pass 8): a world-anchored GPU shallow-water field (192 m / 512 texels, fixed 1/60 s) carries every hull's wake, track churn and shell splashes; the sheet reads its slope and foam and drops the hull-frame pattern inside the window | Reservoir/Coastal drive captures before/after (a1 vs b8): hull-frame slab → V wake with crests, a churn trail that stays on the path, rings from a stopped hull; receipts waterRipples + shallowWater + 101-receipt source sweep |
+| 47 | Ground palettes on the arid and ruined maps: deliberate sourced rows for the four Verdant fall-through maps (Titan/Skybridge keep their sandstone strata, Ruinspires grey, Blackglass the Caldera lift recipe), Skybridge/Titan/Mars macro-tint and strata lifts, desert hemi 0.20 → 0.28 | Titan canyon-in shaded knoll 47 → 93 and wall hue 337° → 7°; Skybridge 35 → 56; Ruinspires corner 40 → 67; Mars strata 97 → 116; desert true shade +8..11 % with lit sand +0.1..0.6 %; the tintB lever measured dead (+0.02..0.11) and the desert/Oasis contour bands identified by the layer-flag probe as the D mask on steep sand faces, unmoved by fill (+2..4 %) — a shader item (checks 3, 8, 15) |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
