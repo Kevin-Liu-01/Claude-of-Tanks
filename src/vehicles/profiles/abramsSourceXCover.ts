@@ -3,35 +3,13 @@
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { createCoverCuts, triangulateCoverPolygon } from './abramsSourceXCoverTopology.ts';
+import { distance, geometry, signedArea, validateFootprint } from './sourceEraCover.ts';
 
 type Point = readonly [number, number, number];
 type PlanPoint = readonly [number, number];
 type Edge = readonly [Point, Point];
 interface Partition { backing: THREE.BufferGeometry; cover: THREE.BufferGeometry | null; }
 const EPS = 1e-8;
-
-function signedArea(polygon: readonly PlanPoint[]): number {
-  return polygon.reduce((sum, a, i) => {
-    const b = polygon[(i + 1) % polygon.length];
-    return sum + a[0] * b[1] - b[0] * a[1];
-  }, 0);
-}
-
-function validateFootprint(mask: readonly PlanPoint[], depth: number): void {
-  if (mask.length < 3 || !mask.every(p => p.length === 2 && p.every(Number.isFinite))
-      || !(depth > 0 && depth < .1)) throw new Error('ERA cover requires a finite shallow convex footprint');
-  const sign = Math.sign(signedArea(mask));
-  if (!sign) throw new Error('ERA cover footprint has zero area');
-  for (let i = 0; i < mask.length; i++) {
-    const a = mask[i], b = mask[(i + 1) % mask.length], c = mask[(i + 2) % mask.length];
-    const turn = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
-    if (turn * sign <= EPS) throw new Error('ERA cover footprint must be strictly convex');
-  }
-}
-
-function distance(p: Point, a: PlanPoint, b: PlanPoint, sign: number): number {
-  return sign * ((b[0] - a[0]) * (p[2] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]));
-}
 
 function comparePoint(a: Point, b: Point): number {
   return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
@@ -93,18 +71,6 @@ function addEdges(edges: Map<string, Edge>, polygon: readonly Point[]): void {
     if (edges.has(reverse)) edges.delete(reverse);
     else edges.set(`${ka}/${kb}`, [a, b]);
   }
-}
-
-function geometry(positions: number[]): THREE.BufferGeometry {
-  const result = new THREE.BufferGeometry();
-  result.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  const uv: number[] = [];
-  for (let i = 0; i < positions.length; i += 3) uv.push(positions[i], positions[i + 2]);
-  result.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  result.computeVertexNormals();
-  result.computeBoundingBox();
-  result.computeBoundingSphere();
-  return result;
 }
 
 /** Input is native authored geometry in its owner frame, never source topology.

@@ -76,7 +76,11 @@ import type { ArmorEnvelope, ArmorPlate } from './specHelpers.ts';
 import type { VehicleMarkingAnchor, VehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { WheelPattern, WheelPatternId } from './wheelPatterns.ts';
 import type { TrackPattern, TrackPatternId } from './trackPatterns.ts';
-import type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abramsSourceXTrackShoe.ts';
+import {
+  appendTrackShoeBox, appendTrackShoePad, appendTrackShoeSurface,
+  oneCappedCylinderX, shoeBox, trackPadRecipeWidth, SHOE_BOX_BOTTOM, SHOE_BOX_TOP,
+  type DimensionedTrackPattern, type TrackGuideProfile, type TrackOutsoleDimensions, type TrackShoeAssembly,
+} from './profiles/abramsSourceXTrackShoe.ts';
 export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abramsSourceXTrackShoe.ts';
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -333,28 +337,6 @@ export interface TrackLinkCrossSection {
   readonly connectorDepthM: number;
   readonly connectorCentreYDeltaM: number;
 }
-
-function trackPadRecipeWidth(trackW: number, section?: TrackLinkCrossSection): number {
-  if (!section) return trackW;
-  const keys = ['padWidthM', 'pinCapLengthM', 'pinHalfSpacingM', 'connectorInnerM',
-    'connectorOuterM', 'connectorHeightM', 'connectorDepthM', 'connectorCentreYDeltaM'] as const;
-  for (const name of keys) {
-    const value = section[name];
-    if (!Number.isFinite(value) || (name !== 'connectorCentreYDeltaM' && value <= 0))
-      throw new RangeError(`Invalid native track-link cross-section: ${name}`);
-  }
-  if (section.padWidthM > trackW || section.connectorInnerM >= section.padWidthM / 2
-    || section.connectorOuterM <= section.connectorInnerM || section.connectorOuterM > trackW / 2
-    || section.pinCapLengthM > trackW / 2 || section.connectorDepthM <= section.pinHalfSpacingM * 2
-    || section.connectorHeightM > .5 || section.connectorDepthM > .5
-    || Math.abs(section.connectorCentreYDeltaM) > .1)
-    throw new RangeError('Invalid native track-link cross-section proportions');
-  return section.padWidthM / .97;
-}
-
-type DimensionedTrackPattern = Omit<TrackPattern, keyof TrackShoeDimensions>
-  & Required<Omit<TrackShoeDimensions, 'pinCentreY'>>
-  & Pick<TrackShoeDimensions, 'pinCentreY'>;
 
 /** One fresh authored shoe for each native near/far stream; no family-wide activation. */
 export interface TrackShoeBuildParameters {
@@ -2762,53 +2744,6 @@ function sprocketGeo(
 // Running gear: instanced road wheels + rollers, per-side sprocket/idler meshes,
 // and the two scrolling track bands.
 // ---------------------------------------------------------------------------
-// BoxGeometry face-group order is ±X, ±Y, ±Z. Track shoes are assemblies of
-// intersecting castings, so the mating face between two parts is never
-// visible. Omitting only those sealed faces preserves the exact exterior and
-// shadow silhouette while avoiding millions of rasterized internal triangles
-// across the fleet's instanced shoe courses.
-const SHOE_BOX_TOP = 2;
-const SHOE_BOX_BOTTOM = 3;
-function shoeBox(
-  w: number,
-  h: number,
-  d: number,
-  omittedFaceGroups: readonly number[] | null = null,
-): THREE.BoxGeometry {
-  const geometry = new THREE.BoxGeometry(w, h, d);
-  if (!omittedFaceGroups?.length) return geometry;
-  const omitted = new Set<number>(omittedFaceGroups);
-  const sourceIndex = geometry.index?.array;
-  if (!sourceIndex) return geometry;
-  const retained: number[] = [];
-  for (const group of geometry.groups) {
-    if (group.materialIndex != null && omitted.has(group.materialIndex)) continue;
-    for (let i = group.start; i < group.start + group.count; i++) {
-      retained.push(sourceIndex[i]);
-    }
-  }
-  geometry.setIndex(retained);
-  geometry.clearGroups();
-  return geometry;
-}
-
-function oneCappedCylinderX(
-  radius: number,
-  length: number,
-  segments: number,
-  outerSide: Side,
-): THREE.BufferGeometry {
-  const wall = xform(
-    new THREE.CylinderGeometry(radius, radius, length, segments, 1, true),
-    0, 0, 0, 0, 0, Math.PI / 2,
-  );
-  const cap = xform(
-    new THREE.CircleGeometry(radius, segments),
-    outerSide * length / 2, 0, 0, 0, outerSide * Math.PI / 2, 0,
-  );
-  return mergeAll([wall, cap]);
-}
-
 const TRACK_SHOE_SIMPLIFIED_DIST_M = 55;
 
 function simplifiedTrackShoeGeometry(
@@ -2843,143 +2778,6 @@ function simplifiedTrackShoeGeometry(
   if (radialScale !== 1) geometry.scale(1, radialScale, 1);
   if (widthScale !== 1) geometry.scale(widthScale, 1, 1);
   return geometry;
-}
-
-interface TrackShoeAssembly {
-  parts: THREE.BufferGeometry[];
-  trackW: number;
-  pitch: number;
-  padH: number;
-  grouserH: number;
-}
-
-function appendTrackShoeBox(
-  assembly: TrackShoeAssembly,
-  w: number,
-  h: number,
-  d: number,
-  x = 0,
-  y = 0,
-  z = 0,
-  ry = 0,
-  omittedFaces: readonly number[] | null = null,
-): void {
-  assembly.parts.push(xform(shoeBox(w, h, d, omittedFaces), x, y, z, 0, ry, 0));
-}
-
-function appendTrackShoeBar(
-  assembly: TrackShoeAssembly,
-  w: number,
-  d: number,
-  x = 0,
-  z = 0,
-  ry = 0,
-  height = assembly.grouserH,
-): void {
-  appendTrackShoeBox(assembly, w, height, d, x,
-    assembly.padH / 2 + height / 2, z, ry, [SHOE_BOX_BOTTOM]);
-}
-
-function appendTrackShoeChevron(
-  assembly: TrackShoeAssembly,
-  z: number,
-  direction = 1,
-  height = assembly.grouserH,
-): void {
-  const { trackW, pitch } = assembly;
-  appendTrackShoeBar(assembly, trackW * 0.47, pitch * 0.12,
-    -trackW * 0.225, z, direction * 0.28, height);
-  appendTrackShoeBar(assembly, trackW * 0.47, pitch * 0.12,
-    trackW * 0.225, z, -direction * 0.28, height);
-}
-
-function appendTrackShoePad(assembly: TrackShoeAssembly, pattern: DimensionedTrackPattern): void {
-  const { trackW, pitch, padH } = assembly;
-  if (pattern.surface !== 'paired-pad' && pattern.surface !== 'rubber-block'
-      && pattern.surface !== 'split-chevron') {
-    appendTrackShoeBox(assembly, trackW * 0.97, padH, pitch * pattern.padCoverage);
-    return;
-  }
-  const gap = trackW * 0.055;
-  const halfW = (trackW * 0.97 - gap) / 2;
-  appendTrackShoeBox(assembly, halfW, padH, pitch * pattern.padCoverage,
-    -(halfW + gap) / 2);
-  appendTrackShoeBox(assembly, halfW, padH, pitch * pattern.padCoverage,
-    (halfW + gap) / 2);
-}
-
-function appendTrackShoeSurface(assembly: TrackShoeAssembly, pattern: DimensionedTrackPattern): void {
-  const { trackW, pitch, grouserH } = assembly;
-  switch (pattern.surface) {
-    case 'triple-bar':
-      for (const z of [-0.28, 0, 0.28]) {
-        appendTrackShoeBar(assembly, trackW * 0.88, pitch * 0.10, 0, pitch * z);
-      }
-      return;
-    case 'cast-block':
-      appendTrackShoeBar(assembly, trackW * 0.86, pitch * 0.13, 0, pitch * 0.25);
-      appendTrackShoeBar(assembly, trackW * 0.86, pitch * 0.13, 0, -pitch * 0.25);
-      appendTrackShoeBar(assembly, trackW * 0.24, pitch * 0.34, 0, 0, 0, grouserH * 0.72);
-      return;
-    case 'chevron':
-      appendTrackShoeChevron(assembly, pitch * 0.17, 1);
-      appendTrackShoeChevron(assembly, -pitch * 0.17, -1);
-      return;
-    case 'paired-pad':
-      for (const x of [-trackW * 0.245, trackW * 0.245]) {
-        appendTrackShoeBar(assembly, trackW * 0.40, pitch * 0.12, x, pitch * 0.25);
-        appendTrackShoeBar(assembly, trackW * 0.40, pitch * 0.12, x, -pitch * 0.25);
-      }
-      return;
-    case 'heavy-chevron':
-      appendTrackShoeChevron(assembly, pitch * 0.18, 1, grouserH * 1.08);
-      appendTrackShoeChevron(assembly, -pitch * 0.18, -1, grouserH * 1.08);
-      appendTrackShoeBar(assembly, trackW * 0.22, pitch * 0.18,
-        0, 0, 0, grouserH * 0.72);
-      return;
-    case 'fine-rib':
-      for (const z of [-0.25, 0, 0.25]) {
-        appendTrackShoeBar(assembly, trackW * 0.86, pitch * 0.08, 0, pitch * z);
-      }
-      return;
-    case 'open-chevron':
-      appendTrackShoeChevron(assembly, pitch * 0.18, 1, grouserH * 1.04);
-      appendTrackShoeChevron(assembly, -pitch * 0.18, -1, grouserH * 1.04);
-      for (const side of [-1, 1]) {
-        appendTrackShoeBar(assembly, trackW * 0.18, pitch * 0.13,
-          side * trackW * 0.37, 0, 0, grouserH * 0.72);
-      }
-      return;
-    case 'rubber-block':
-      for (const x of [-trackW * 0.245, trackW * 0.245]) {
-        for (const z of [-pitch * 0.23, pitch * 0.23]) {
-          appendTrackShoeBar(assembly, trackW * 0.37, pitch * 0.25, x, z);
-        }
-      }
-      return;
-    case 'split-chevron':
-      appendTrackShoeChevron(assembly, pitch * 0.19, 1);
-      appendTrackShoeChevron(assembly, -pitch * 0.19, -1);
-      appendTrackShoeBar(assembly, trackW * 0.16, pitch * 0.16,
-        0, 0, 0, grouserH * 0.65);
-      return;
-    case 'staggered-rib':
-      for (let rib = 0; rib < 4; rib++) {
-        const side = rib % 2 ? 1 : -1;
-        appendTrackShoeBar(assembly, trackW * 0.53, pitch * 0.075,
-          side * trackW * 0.205, pitch * (-0.30 + rib * 0.20), side * 0.08);
-      }
-      return;
-    case 'dead-track':
-      appendTrackShoeBar(assembly, trackW * 0.90, pitch * 0.18);
-      appendTrackShoeBar(assembly, trackW * 0.76, pitch * 0.08,
-        0, pitch * 0.31, 0, grouserH * 0.65);
-      appendTrackShoeBar(assembly, trackW * 0.76, pitch * 0.08,
-        0, -pitch * 0.31, 0, grouserH * 0.65);
-      return;
-    default:
-      throw new Error('Unsupported track shoe surface');
-  }
 }
 
 function appendTrackShoeStructure(assembly: TrackShoeAssembly, pattern: DimensionedTrackPattern): void {

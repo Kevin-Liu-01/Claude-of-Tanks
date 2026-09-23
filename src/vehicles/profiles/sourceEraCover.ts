@@ -9,14 +9,14 @@ type Edge = readonly [Point, Point];
 interface Partition { backing: THREE.BufferGeometry; cover: THREE.BufferGeometry | null; }
 const EPS = 1e-8;
 
-function signedArea(polygon: readonly PlanPoint[]): number {
+export function signedArea(polygon: readonly PlanPoint[]): number {
   return polygon.reduce((sum, a, i) => {
     const b = polygon[(i + 1) % polygon.length];
     return sum + a[0] * b[1] - b[0] * a[1];
   }, 0);
 }
 
-function validateFootprint(mask: readonly PlanPoint[], depth: number): void {
+export function validateFootprint(mask: readonly PlanPoint[], depth: number): void {
   if (mask.length < 3 || !mask.every(p => p.length === 2 && p.every(Number.isFinite))
       || !(depth > 0 && depth < .1)) throw new Error('ERA cover requires a finite shallow convex footprint');
   const sign = Math.sign(signedArea(mask));
@@ -28,7 +28,7 @@ function validateFootprint(mask: readonly PlanPoint[], depth: number): void {
   }
 }
 
-function distance(p: Point, a: PlanPoint, b: PlanPoint, sign: number): number {
+export function distance(p: Point, a: PlanPoint, b: PlanPoint, sign: number): number {
   return sign * ((b[0] - a[0]) * (p[2] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]));
 }
 
@@ -86,7 +86,7 @@ function addEdges(edges: Map<string, Edge>, polygon: readonly Point[]): void {
   }
 }
 
-function geometry(positions: number[]): THREE.BufferGeometry {
+export function geometry(positions: number[]): THREE.BufferGeometry {
   const result = new THREE.BufferGeometry();
   result.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   const uv: number[] = [];
