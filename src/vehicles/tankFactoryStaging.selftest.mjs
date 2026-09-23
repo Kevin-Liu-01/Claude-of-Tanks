@@ -32,6 +32,10 @@ assert.equal(candidateCore.split(shadowBatchCall).length, 2,
 // wheel motif, terminal-surface-fit-r2 muzzle seat); the staged-vs-sync exact
 // equality below is the staging claim and is unchanged.
 const goldenSourceSha256 = 'b7a453af76ae13a972526c38a46c6beee44bdfc90f042ab1eddf80eb781740a3';
+// 2026-09-23: the owner-requested M1A1 50 mm turret lift, circular bearing,
+// lower-edge relief and refreshed fills version the four M1A1 receipts.
+// Strv 103 and Merkava controls and all sync/staged, material and disposal checks
+// remain unchanged. This is an authored model revision, not a staging waiver.
 const goldenReceipts = [
   {
     "id": "m1a1",
@@ -43,7 +47,7 @@ const goldenReceipts = [
       "decor": true
     },
     // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: cfde27ad…, 7c92dda3…, bc10f342…, c011c167…, 422f024c…, 546b2eb7….
-    "sha256": "8b1de544c0a4b43ddcfe29789d13cf0c108b99916ac7791ad35e2bb7b7379550",
+    "sha256": "31743963bd7694b4bd02ed9f4bb751c68a4514d9e9b90bfb2133354201be2d80",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel (hollowRoadWheelStock.ts), lost the gear_wheelBayVoidDress blocks and carries generated interior fills; material-inclusive digest repinned from the current build"
   },
   {
@@ -71,7 +75,7 @@ const goldenReceipts = [
       "decor": true,
       "geometryQuality": "low"
     },
-    "sha256": "44bcca7c74d04a9d489708929347fcc4c3f59e92f93177a776f86399aa741e29",
+    "sha256": "05666db52d0a7221926da8c087f46a0eafdcdb975542364cc8e24c1eb6b8609a",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
@@ -85,7 +89,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "a96fd6b130dbb5ab05e423aad0e72884b6bae0c2f006c40588f1c6d0f6b4aaf3",
+    "sha256": "c146d10c85762fb912391e2958e57a2c6e2ac825ad71887015081bf7fc2a3a57",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
@@ -114,7 +118,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": false
     },
-    "sha256": "ef7309e3d42b0282b17e615df8e044d6d12c9c0c0e831ec6c9d5a4b267cb8bc5",
+    "sha256": "6d0d84e046a3191041eba230607b566a5c41927f5a4a6e098ee152540b5c6c6e",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   }
 ];

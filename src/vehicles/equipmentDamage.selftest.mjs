@@ -317,8 +317,11 @@ for (const [id, rest, armor] of [
     'c371fb173216b778135fc1b0a7201201b6f3df27dfee82705c4408ea2e9aa26a'],
   // 2026-09-13 wheel review + interior fills: m1a2 draws the hollow paired road wheel, lost the
   // inter-wheel void blocks and carries generated interior fills; intact digest repinned.
-  ['m1a2', '14d34a90e026d68445503467985c97b6f3f296a9db9b64b532890be09fc11be3',
-    '01732c70cb6f3be5c8428342f6971c1825d225d6d1caf6bab6be6e6564dacf1a'],
+  // 2026-09-23 owner-directed 50 mm M1A1 HC turret lift and circular bearing:
+  // keep the complete new rest geometry and regenerated combat anatomy
+  // guarded through damage and reuse.
+  ['m1a2', '20b911a2c1f54fae009db15ba4059ac395f6f8a85179325f142e3e89cdc5ad9f',
+    'b272b30073c4e1bd2e849e94cfdd20453d96e03e216719f5b5d15ea660c3ddc6'],
 ]) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   assert.equal(restHash(visual), rest, `${id}: exact approved intact draw content`);
@@ -326,7 +329,7 @@ for (const [id, rest, armor] of [
     'the intentionally corrected forward lamp geometry must not revert to upward discs');
   const armorHash = createHash('sha256');
   armorHash.update(JSON.stringify(getSpec(id).armor));
-  assert.equal(armorHash.digest('hex'), armor, `${id}: unchanged authoritative armor`);
+  assert.equal(armorHash.digest('hex'), armor, `${id}: approved authoritative armor`);
   const contact = hit([0.26, 0.405, -2.485]);
   assert.equal(visual.applyEquipmentDamage(contact), id === 'leo2a6');
   if (id === 'leo2a6') {

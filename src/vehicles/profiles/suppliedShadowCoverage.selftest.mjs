@@ -34,7 +34,10 @@ const legacy = {
   },
   m1a2: {
     hull: 'dd19e03480575b31968fd4ef28fb2aef251e726fe0dc57d4360be833f3e9e383',
-    turret: '34031ff1ced040c8d2112f8603c1feb26d7899963f4588a4907168d7aa4cba90',
+    // September 23 owner-directed M1A1 HC bearing/lower-edge change.
+    // The caster still derives from that real stock with the same inset;
+    // hull and gun checksums remain unchanged.
+    turret: '9eaa7ba9c8949e22429f5943bb039b3614f1d16c4ce5b09d81033c732333fa09',
     high: '7ef7f133f3ce8fe5121731661f7a6c5715d00a61df67bab5f4e527c82327fa64',
     low: '1b63cbc62e017cdd5a77b5467572754a099f78b57b46dc24ce07e4f5a9bc2db1',
   },

@@ -3160,6 +3160,10 @@ function tejasRoofKit(
         smokeX += dx;
         smokeY += dy;
         smokeZ += dz;
+        // The relieved M1A1 underside steepens the right cheek normal.
+        // Keep the complete bank 12 mm farther out on its broad bracket
+        // so its bore rims remain clear of the applique face.
+        if (side > 0) smokeX += .012;
       }
       tejasSmokeCluster(P, smokeX, smokeY, smokeZ, side);
     }

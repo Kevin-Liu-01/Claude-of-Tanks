@@ -97,13 +97,15 @@ const originalBakeFixtures = [
     // gains triangles (38560 -> 44884); bounds, byte sizes and the three visible-attribute hashes
     // are repinned from the current build. The shadow geometry hash is unchanged.
     specId: 'm1a1', seed: 2002,
-    bounds: [46972, 4.026729702949524, 3.9549999237060547, 2.6346793174743652], // 2026-09-14: fleet fills to zero
-    bytes: [1690992, 1690992, 1690992, 6984],
+    // 2026-09-23: the requested 50 mm turret lift, circular bearing and
+    // refreshed buried fills also belong to the static wreck silhouette.
+    bounds: [46300, 4.026729702949524, 3.9549999237060547, 2.6846792697906494],
+    bytes: [1666800, 1666800, 1666800, 6984],
     hashes: [
-      'f4eb4e2b098c2ea1bd74d5d5b511ab68930c1f912976a9e9c125b7242e97456e',
-      '8be29ddb9ba925929b6cecd14d23577b7d10c1b214fdfd48ddec5af88eac6c56',
-      '6cb0afd787808b113f65d2a79e100ed3b32a883872feb51bfd7fb958d4884a1c',
-      'c6fceff4985f5bc2f0f996528717780d69bac42d9a1c54b7621b75c2f66bcaf4',
+      'e269d7c75eb1ae318130a0470f44f31f16fd5596da48bad871e1fa31f451f108',
+      'a51170a7e39818d2a21c33a257fedba4b62215e062b68794e9e26a3579c25a06',
+      '4b3dfde28780cbf05df676aa922d2b3f6051f76d7f29bc296e380294cd9df829',
+      'e13770aabe4b3c917e14f36a1c587e854e4bbe4f31b2d5d5981791ed33fdd99a',
     ],
   },
   {
