@@ -274,6 +274,33 @@ Build the private artifact:
 The private build retains local authoring and comparison resources required by
 internal workflows.
 
+### Re-basing frozen digests after an intended fleet-wide change (2026-09-22)
+
+Many receipts freeze whole-model or material-inclusive digests of hulls (`tankFactoryStaging`, `sourceXFleet`,
+`sourceX*AuxArmor`, `equipmentDamage`, `wrecks`, the preservation ledgers…). They are change detectors: after an
+intended fleet-wide geometry change (a wheel standard, a muzzle rebuild, a camo density) dozens move at once, and
+the new values can only come from the receipt's own measurement of the current build.
+
+- `node tools/receipt-repin.mjs <receipt>` runs one receipt, reads node's assert diff, rewrites exactly the literal
+  the diff names (quoted digests, the numbers of a `[digest, count]` tuple on the digest's own line, or a flat
+  numeric array compared with `deepStrictEqual`), and re-runs until the receipt passes or fails for a non-literal
+  reason, which it reports and leaves alone. `--dry` shows the plan; `--from-log=<run-selftests log>` processes
+  every receipt the log reports as FAIL. Review the diff — the tool never invents a value, but the author decides
+  that the move was intended — and commit the re-pins with a dated note naming the change.
+- Digests that live in a `*.test-support.mjs` or a `docs/references/**/*.json` ledger are re-pinned there, not in
+  the failing receipt (the ledgers have their own `COT_UPDATE_LEDGER=1` update mode).
+- Rehearse a combined round in a detached worktree at the target `origin/main` with every branch cherry-picked,
+  run the receipt groups there (`node tools/run-selftests.mjs pre|core|post`), and re-pin on that tree. Goldens
+  that seat on regenerated artifacts (`tankFactoryStaging` reads the rendered presentation anchors) only move
+  after the regeneration chain, so run `node tools/presentation-centering.mjs --update` in the rehearsal tree
+  before the suite whenever running gear or hull silhouettes changed, and drop that churn before committing.
+- Parallel agents must not each re-pin the same shared digest receipts: two branches that re-pin the same file
+  conflict on every landing and the combined tree needs a third re-pin anyway. One owner re-pins them once on the
+  combined tree; feature branches re-pin only receipts specific to their change.
+- A probe ray that lies exactly on a mesh's radial seam (angle 0 of a ring or fan) can miss both coplanar
+  triangles after a world transform through floating-point error, and a since-removed duplicate surface may have
+  been catching it. Sample receipt rays off the seam (as `physicalMuzzleBore.ts` does with angle .173).
+
 ## Verification matrix
 
 | Change area | Minimum checks |
