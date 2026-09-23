@@ -332,7 +332,7 @@ export default {
     // round 47 (2026-09-23): envIntensity stays 0.16 — sky.ts clamps scene.environmentIntensity to
     // ENV_INTENSITY_FLOOR (0.21), so any preset value below that (0.16, or the 0.19 the audit proposed) renders the
     // same; a real environment lift here must exceed 0.21 and was not tested this round. Oasis inherits this value.
-    fogDensity: 0.00047, fogTintHex: 0xc7ac85, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
+    fogDensity: 0.00047, fogTintHex: 0xbdb5a8 /* round 47 (2026-09-23): a step cooler than the sun so haze and sand stop sharing one ochre (lane r47c) */, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): a textured high sky instead of a thin veil —
     // broken altocumulus (0.35 -> 0.78) under a cirrus sheet (0.18 -> 0.48) on an explicit 900 m virtual deck with a
     // slower slant haze (0.00012) and smaller 2600 m cells, so the deck keeps its cauliflower structure down to the
