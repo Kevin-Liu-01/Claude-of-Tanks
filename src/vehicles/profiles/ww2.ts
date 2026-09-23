@@ -24,7 +24,8 @@
 // oracle exists for these ids (no ledger row, MODEL_SOURCE procedural) —
 // FALSE-0 LAW: never gate them; the bar is the PHOTO-CLASS FLOW
 // (tools/tmp-ww2-photoclass rig + §B battery + published dims). The old
-// tankFactory builders remain as frozen CANONICAL donors. Width guards:
+// tankFactory builders they shadowed were removed in round 46
+// (docs/CLEANUP-2026-09-22.md §4.2). Width guards:
 // m4a3e8 1.50 (track outer face EXACT), tiger1 1.855 (superstructure),
 // t34_85 1.50 (track outer face EXACT).
 import * as THREE from 'three';
