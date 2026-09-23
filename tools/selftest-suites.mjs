@@ -1027,6 +1027,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/redrockMaterial.selftest.mjs',
     'src/world/redrockCanyonHorizon.selftest.mjs',
     'src/world/terrainWallNormals.selftest.mjs',
+    'src/world/wallSkyLight.selftest.mjs',
     'src/world/mapRoadCoverage.selftest.mjs',
     'src/world/maps/environmentExpansion.selftest.mjs',
     'src/world/maps/authoredChannels.selftest.mjs',

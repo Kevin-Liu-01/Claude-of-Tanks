@@ -440,6 +440,41 @@ bypass it; the terrain material's far-floor rule and its analytic normals both a
 hard step was the apron fan's winding — a double-sided water material lit it from below. The straight-down view with
 layers toggled (`.qa-dev/apron-layers-probe.mjs`) found each of these where oblique views only showed "still a step".
 
+### Sky light on shaded steep faces — 2026-09-23 (round 42)
+
+**Symptom (checks 4, 11).** Caldera's inner east wall — 300 m away, turned from a sun 22° up in the east-south-east —
+rendered at 6.6 display luma (rgb 3, 7, 12) under a 216-luma hazy sky: 3 % of the sky, a hole in the picture. The
+Skybridge slope behind the south-west rim read 21. Real shaded rock under a bright sky reads 8–25 % of the sky's
+brightness, with the sky's hue.
+
+**Cause.** The terrain material is lit by Three's lights: the CSM sun (nothing on a face turned from it) plus the
+HemisphereLight, whose sky and ground colours are engine constants scaled by the map's `hemiIntensity` (Caldera 0.42,
+Skybridge 0.31). A vertical face takes half sky, half ground of that fixed colour — it never follows the rendered sky,
+which on Caldera is a bright turbid white. With basalt albedo (≈ 0.07 linear) the product lands below the display's
+black. The far ranges never had the problem: the vista fragment carries its own `uVAmbient · (0.55 + 0.45 · n.y)`
+floor, so the near band (terrain material, out to the first ridge) and the ranges disagreed at the 700 m hand-over too.
+
+**Fix (`world/terrain.ts`).** `gWallSky = smoothstep(0.12, 0.50, 1 − n.y) · (1 − smoothstep(−0.08, 0.30, n · sun))`
+in splatCompute (slope from ~28° to 60°, times how far the face turns from the sun; the sun vector is the one the
+vista ring shades with, `skySunDirection(cfg.sky)`), and after `lights_fragment_end`:
+`indirectDiffuse += fogColor · uWallSkyLift · gWallSky · BRDF_Lambert(albedo)`. The fog colour is the horizon sky
+average the sky probe publishes every frame (round 37), so the light follows the rendered sky — bright hazy sky,
+brighter shaded walls; a dim night sky, next to nothing — and the material's albedo keeps basalt dark and limestone
+pale. Gain 7.0 (`splat.wallSkyLift` per map); program cache key v32.
+
+**Measured (wall-probe, same cameras, display luma).** Caldera e-wall-300 shaded wall 6.6 → 16.7 (sky 216; 3.1 % →
+7.7 %), lit slope w-wall-mid 51.4 → 51.5; Skybridge e-wall-300 shaded slope 21.2 → 34.8 (sky 214), lit n-wall-200
+61.8 → 61.8; Verdant shaded snow hill 53.0 → 64.4 (bluer: b 58 → 77); Mars ridges ± 1; Badlands lit walls 211 → 211;
+Steppe far ground 168 → 168. Gains tried: 2.0 with a 45°-onset slope weight moved Caldera by one luma (the audit's
+"shaded slopes" are 30–45° hillsides, not cliffs); 6.0 → 15.6; 7.0 → 16.7.
+
+**Receipts.** `wallSkyLight` (new: weight formula, indirect hook under USE_FOG, gain band and per-map override, cache
+key, the shared sun vector), `terrainMaterialOwnership` (two uniforms declared, cache key v32), `sourcedTerrainPreparation`
+(the material call hands over the map sun), every terrain-source receipt green.
+
+**Still open under 4/11.** Flat ground in cast shadow still takes the hemisphere preset colour rather than the rendered
+sky (check 11's second half); Mars' black is the far vista ring's night side, a vista item.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -473,14 +508,14 @@ skylines):
 | 1 | Cross the red line by eye at five places | Same tiles, relief style and decals at least one chunk past the line | Texture family changes, relief flattens |
 | 2 | Roads, rivers, fences, tree lines at the border | Continue and vanish by perspective or haze | Cut at a straight line |
 | 3 | Near-ring slope shading | Lit and shaded faces differ; cliff, talus and grass bands follow slope and altitude | One colour per hill |
-| 4 | Mid-range contrast | Shaded faces bluer, lit faces keep local colour | Uniform wash |
+| 4 | Mid-range contrast | Shaded faces bluer, lit faces keep local colour | Uniform wash (round 42: sky light on shaded steep faces — Caldera 3 % → 8 % of sky, Skybridge, Verdant bluer) |
 | 5 | Horizon band | Terrain slightly darker than the sky behind it; no line | Bright line, hue mismatch |
 | 6 | Sun-relative haze | Brighter toward the sun, cooler away | Same haze everywhere |
 | 7 | Flat far ground in motion | No moiré or shimmer | Moiré carpet |
 | 8 | Tiling at 30–200 m | No visible repeat | Grid of repeats |
 | 9 | Tree / impostor swap | No pop; species and lighting match | Popping, mis-lit cards |
 | 10 | Tree line vs border | Density gradient continues | Wall or abrupt end |
-| 11 | Shadows | Shadow colour = sky ambient; soft edges | Black or grey mismatch |
+| 11 | Shadows | Shadow colour = sky ambient; soft edges | Black or grey mismatch (round 42: steep faces turned from the sun carry the sky's colour; flat shadowed ground still the hemisphere preset) |
 | 12 | Props | Seated, decal underneath | Floating |
 | 13 | Water at the edge | Same level and shader beyond | Plane ends (round 40: derived openings, terrain-material marine faces, sheet apron — coastal/saltwind continuous) |
 | 14 | Haze gradient | Smooth in 8-bit | Banding |
@@ -517,6 +552,7 @@ skylines):
 | 38 | Anti-tiling: hex-tiled detail albedo/normal layers, detail normals fade to flat with distance, anisotropic filtering with a measured mip-bias policy | 30–200 m tiling sheets, moiré-in-motion clips |
 | 39 (landed: Redrock basin, haze ceilings) | Redrock's mouths closed by a headwall with the flanks' profile; the far-haze stack capped so ranges keep a third of their own colour. Deferred to a later round: a second far cascade with a macro colour map, per-vertex horizon occlusion baked at build, sky-projected ambient driving haze colour and water reflection | wall-probe sheets on badlands; far-range A/B on five maps |
 | 40 (landed: water past the square) | Derived sea openings from the edge water scan, the ring's marine faces rendered by the terrain material's own sea path, the sheet's apron fan, Saltwind's bay as one contour open to the sea. Decal clipmap rings move to a later round. | straight-down seam metric (`sea-*-down`), oblique before/after |
+| 42 | Sky light on shaded steep faces: the terrain material adds the horizon sky colour (the sky probe's fog colour) to faces steeper than ~28° that turn away from the sun, through the indirect-diffuse path, weighted by slope and by how far the face turns; lit faces and flat ground untouched | Caldera's inner east wall 6.6 → 16.7 display luma against a 216 sky (3.1 % → 7.7 %), Skybridge's shaded slope 21 → 35, Verdant's shaded snow hill 53 → 64 and bluer, Mars ±1, Badlands' lit walls and Steppe's far ground unchanged (checks 4, 11) |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
@@ -541,12 +577,12 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | badlands | poor | first-ridge walls at 300–700 m read as one dark brown sheet (3); the outland floor is bare sand (1, fixed density but no relief); walls past the edge lost their detail (round 32, fixed in 35) |
 | monsoon | poor | smooth bare brown mound at the SW corner with no texture (3, 15); dark hill along the rim |
 | alpine | good | blue-grey rock cliffs and snow ranges; strong blue shade on shaded rock (4, acceptable) |
-| caldera | fair | shaded slopes go black (4, 11); far pinnacles read as pyramids (3); the crater rim rises steeply right at the edge (probe camera ends inside the ring) |
+| caldera | fair | shaded slopes go black (4, 11 — round 42: inner east wall 6.6 → 16.7 luma, blue-grey basalt with texture); far pinnacles read as pyramids (3); the crater rim rises steeply right at the edge (probe camera ends inside the ring) |
 | foundry | fair | skyline flat under overcast (5) |
 | ruinspires | good | rolling ring with grass and far ranges; centre views blocked by towers (probe) |
 | blackglass | good | rolling ring; centre views blocked by towers (probe) |
 | titan_gorge | fair | orange sand slip faces on steep ring faces (15, fixed in 35: landform gate); smooth beige ridge faces without strata (3) |
-| skybridge | fair | beige sand ridge faces where rock belongs (15, fixed in 35); shaded SE slope goes black (4) |
+| skybridge | fair | beige sand ridge faces where rock belongs (15, fixed in 35); shaded SE slope goes black (4 — round 42: 21 → 35 luma, blue-grey) |
 | polders | good | flat ring, consistent |
 | copper_mesa | good | strata on every cliff; far mesas paler than the sky (5) |
 | airfield | good | flat ring with trees — consistent |
@@ -557,7 +593,7 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | mangrove | good | flat green ring; water and trees continue |
 | saltwind | good | round 40: one hooked bay open to a derived 63° west sea; the sand-strip rectangles are gone (5 still open) |
 | reservoir | good | corner rock dark grey; ranges, forest and water good |
-| mars | fair | ring beds print as high-contrast zebra stripes on every ridge (8); dark side of ridges black (4) |
+| mars | fair | ring beds print as high-contrast zebra stripes on every ridge (8); dark side of ridges black (4 — round 42 measured ±1 luma: the near ridges' dark sides read 46 luma under a 2-luma night sky; the black is the far vista ring's night side, a vista item) |
 
 Cross-cutting: (a) every temperate map's in-map corner cliff is a pale grey or white rock beside saturated turf — the rock albedo tint is a per-map knob and reads chalky on eight maps (15); (b) shaded slopes go black on the dark-soil maps (caldera, skybridge, mars) because the ambient term is a constant hemisphere with no sky colour — round 37/39; (c) desert-family dune ripples are a single-frequency band (8) — round 38; (d) far ranges paler than the sky on the mesa maps (5) — round 37.
 

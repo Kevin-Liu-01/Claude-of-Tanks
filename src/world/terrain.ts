@@ -193,6 +193,8 @@ interface SplatConfig {
   sandstone?: boolean;
   iceLake?: boolean;
   seaLake?: boolean;
+  /** Round 42: sky light on steep faces turned from the sun, as a fraction of the horizon sky colour (default 2.0). */
+  wallSkyLift?: number;
   tintA?: ColorTriple;
   tintB?: ColorTriple;
   tintC?: ColorTriple;
@@ -2451,6 +2453,14 @@ function _mustReplace(src: string, anchor: string, replacement: string): string 
   return out;
 }
 
+/** Round 42: sky light on steep faces turned from the sun, as a fraction of the horizon sky colour (fogColor). */
+const WALL_SKY_LIFT = 7.0;
+/** World direction toward the sun for a map's sky preset — the same formula the vista ring uses (horizon.ts). */
+function skySunDirection(sky: { sunAzimuthDeg?: number; sunElevationDeg?: number } | null | undefined): THREE.Vector3 {
+  const sunAz = (sky?.sunAzimuthDeg ?? 115) * Math.PI / 180;
+  const sunEl = (sky?.sunElevationDeg ?? 32) * Math.PI / 180;
+  return new THREE.Vector3(Math.sin(sunAz) * Math.cos(sunEl), Math.sin(sunEl), Math.cos(sunAz) * Math.cos(sunEl));
+}
 const SPLAT_COMMON_FRAG = /* glsl */`
 varying vec3 vWPos;
 varying vec3 vWNormal;
@@ -2464,6 +2474,9 @@ uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
 uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
+uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
+uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
+float gWallSky = 0.0;     // round 42: steep × turned-from-the-sun weight, read by the indirect-light hook
 uniform float uRockGate;  // r6: 1 = slope-rock takeover keyed to the mask-B landform weight (desert mesas)
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
@@ -2628,6 +2641,11 @@ void splatCompute() {
   // (the fur-under-a-low-sun fix lives in gSplatSteepAtt, not here, and stays as it was).
   float steepFace = smoothstep(0.30, 0.55, 1.0 - clamp(wn.y, 0.0, 1.0));
   float farM = mix(smoothstep(90.0, 330.0, effDist), smoothstep(180.0, 660.0, effDist), steepFace);
+  // Round 42 (AAA program checks 4 and 11, owner audit "shaded slopes go black" on Caldera / Skybridge / Mars): a
+  // steep face turned away from the sun sees half the sky dome, yet the hemisphere light hands it a fixed preset
+  // colour that never follows the rendered sky (Caldera's inner east wall measured 3 % of the sky's brightness).
+  // Weight the faces that qualify here; the indirect-light hook below adds the sky's own colour to them.
+  gWallSky = smoothstep(0.12, 0.50, 1.0 - clamp(wn.y, 0.0, 1.0)) * (1.0 - smoothstep(-0.08, 0.30, dot(wn, uSunDirW)));
   // Round 32 (owner 2026-09-21, "quality loss beyond the map borders"): the rim bands past the playable square are
   // long flat faces seen at grazing angles, where the near detail tiles resolve into a regular moiré carpet that the
   // relief-rich battlefield never shows. Treat the outland as far ground from 40 m past the edge: the far variant's
@@ -3592,6 +3610,7 @@ function* createSplatMaterialSteps(
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
   seaOpenings: readonly SeaOpening[] = [],
+  sky: { sunAzimuthDeg?: number; sunElevationDeg?: number } | null = null,
 ): Generator<void | TerrainSourceCheckpoint, {
   material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
   waterMask: THREE.Texture; waterNormal: THREE.Texture;
@@ -3710,6 +3729,9 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRipple = {
       value: new THREE.Vector4(rd[0] / rl, rd[1] / rl, S.rippleAmp ?? 0, S.rippleShoreOnly ? 1 : 0),
     };
+    // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
+    shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
+    shader.uniforms.uWallSkyLift = { value: S.wallSkyLift ?? WALL_SKY_LIFT };
   }
   const splatHook: MaterialShaderHook = (shader) => {
     assignSplatTextureUniforms(shader);
@@ -3727,9 +3749,15 @@ function* createSplatMaterialSteps(
       'float roughnessFactor = roughness * gSplatRough;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <normal_fragment_maps>',
       SPLAT_NORMAL_FRAG);
+    // Round 42: the sky's light on steep faces turned from the sun. The fog colour is the horizon sky average the
+    // sky probe publishes every frame (round 37), so the term follows the rendered sky — bright hazy sky, brighter
+    // shaded walls; a dim night sky, next to nothing — and the material's own albedo keeps a basalt wall dark and a
+    // limestone wall pale. Faces the sun lights are untouched (gWallSky is 0 there).
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <lights_fragment_end>',
+      '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v31'; // relief pass 2 (2026-09-12)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v32'; // round 42: sky light on shaded steep faces
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,
@@ -4054,6 +4082,7 @@ function* terrainBuildSteps(
     heightField._waterWetnessAt || null,
     sourcePreparation,
     seaOpenings,
+    cfg?.sky ?? null,
   );
   let materialStep = materialSteps.next();
   try {
