@@ -3026,7 +3026,18 @@ void splatCompute() {
   // Dry dune maps retain full coverage and their exact existing response.
   float sandCoverage = uRipple.w > 0.5 ? seaSand : 1.0;
   if (uRipple.z * sandCoverage > 0.001) {
-    float rphase = dot(uv, uRipple.xy);
+    // Round 43 (AAA program check 8, owner audit "dune faces carry dark parallel ripple bands at every range — a
+    // corduroy repeat" on the desert and Oasis): every ripple and bedform wave below was phase-locked to ONE authored
+    // wind vector, so the whole basin printed parallel bands of one heading and one spacing at any distance. A dune
+    // field's local wind swings with the dunes themselves: rotate the authored wind per ~400 m cell (±25°) and again
+    // per ~90 m cell (±10°), and stretch the wavelength ±25 % per ~250 m cell, so no two trains share a heading or a
+    // spacing. The authored direction stays the mean; near-field grain and the shore gate are unchanged.
+    float windSwing = (texture2D(uNoise, uv * 0.0025 + vec2(0.37, 0.91)).r - 0.5) * 0.87
+                    + (texture2D(uNoise, uv * 0.011 + vec2(0.71, 0.13)).g - 0.5) * 0.35;
+    float windCs = cos(windSwing), windSn = sin(windSwing);
+    vec2 wind = vec2(uRipple.x * windCs - uRipple.y * windSn, uRipple.x * windSn + uRipple.y * windCs);
+    float waveScale = 0.75 + 0.5 * texture2D(uNoise, uv * 0.004 + vec2(0.23, 0.61)).b;
+    float rphase = dot(uv, wind) * waveScale;
     // r8: the ~11 m dune-face wave now fades by 300 m (was 420) and its
     // amplitude is modulated by a ~150 m noise field — past ~300 m the sin
     // rows compressed to a few px apart and aliased into uniform horizontal
@@ -3039,7 +3050,7 @@ void splatCompute() {
               + sin(rphase * 0.55 + texture2D(uNoise, uv * 0.006).g * 4.0) * 1.1
                   * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod)
               * uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
-    n.xy += uRipple.xy * rw;
+    n.xy += wind * rw;
     // r3 terrain_environment: DUNE BEDFORMS that survive the establishing
     // shot. Both ripple octaves above die by 300 m, so the whole central
     // bowl rendered as one blown cream sheet from the wide camera. A ~26 m
@@ -3054,8 +3065,11 @@ void splatCompute() {
                * (1.0 - triW) * smoothstep(60.0, 170.0, effDist) * (1.0 - fMs) * sandCoverage;
     // r4: 0.105 -> 0.15 — the dune trains must survive the establishing shot
     // (the mid-map otherwise reads as one blown "whipped cream" sheet)
-    a.rgb *= 1.0 + bed * 0.15 * bedW;
-    n.xy += uRipple.xy * bed * 0.55 * bedW;
+    // Round 43: the albedo band is what survives to the horizon; past ~320 m it eases to half so the far basin reads as
+    // dune trains fading with distance rather than a printed sheet (the normal wave already mips away out there).
+    float bedFar = 1.0 - 0.5 * smoothstep(320.0, 640.0, effDist);
+    a.rgb *= 1.0 + bed * 0.15 * bedW * bedFar;
+    n.xy += wind * bed * 0.55 * bedW;
     // r6 terrain_environment STEEP-SAND DETAIL: both planar ripple octaves
     // above are gated OFF steep faces (their planar UVs stretch), and with
     // the landform rock gate the dunes no longer borrow the sandstone layer
@@ -3757,7 +3771,7 @@ function* createSplatMaterialSteps(
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v32'; // round 42: sky light on shaded steep faces
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v33'; // round 43: local wind field for the dune ripples (v32: round-42 sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

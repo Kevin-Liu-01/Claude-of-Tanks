@@ -70,6 +70,8 @@ export function assertTerrainFetchExpressionCensus(source) {
   }
   // road pass 2026-09-12: +3 — the clamped zero-mean gravel grain (two rock
   // luminance taps) and the along-lane tyre streak (one noise tap).
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3,
-    'historical78 plus four inlined wall samples plus three road-pass taps; lexical census only');
+  // round 43 (2026-09-23): +3 — the dune ripples' local wind field (two swing taps, one wavelength tap), all three
+  // inside the sand-ripple branch, so only sand maps pay them.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3,
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps; lexical census only');
 }

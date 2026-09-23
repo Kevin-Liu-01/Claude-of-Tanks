@@ -475,6 +475,33 @@ key, the shared sun vector), `terrainMaterialOwnership` (two uniforms declared, 
 **Still open under 4/11.** Flat ground in cast shadow still takes the hemisphere preset colour rather than the rendered
 sky (check 11's second half); Mars' black is the far vista ring's night side, a vista item.
 
+### Local wind field for the dune ripples — 2026-09-23 (round 43)
+
+**Symptom (check 8).** On the desert and Oasis the dune flats printed dark parallel bands of one heading and one
+spacing at every distance — corduroy on the mid-field, tyre-track diagonals on the Oasis slopes. Every ripple and
+bedform wave in the terrain shader's sand branch (the ~2 m ripples, the ~11 m dune-face wave, the ~26 m albedo
+bedform) was phase-locked to ONE authored wind vector (`splat.rippleDir`), with only a phase wobble from noise.
+
+**Fix (`world/terrain.ts`, sand-ripple branch).** A local wind field: the authored direction rotates ±25° per ~400 m
+cell and ±10° per ~90 m cell (two noise taps), the wavelength stretches ±25 % per ~250 m cell (one tap), and all three
+waves take the rotated wind and the scaled phase; the albedo bedform band eases to half past 320 m so the far basin
+reads as dune trains fading with distance. The authored direction stays the mean wind; the near-field grain, the shore
+gate (`rippleShoreOnly`) and the steep-face detail are unchanged. Three texture fetches added, all inside the sand
+branch (fetch census 85 → 88); program cache key v33.
+
+**Measured (`stripe-metric.py`: windowed FFT of the detrended luminance in a fixed region; share of power in the
+strongest 1 % of bins and the anisotropy of the strongest orientation — a printed stripe field concentrates power).**
+Desert w-wall-mid mid-field (900,480,1500,700): top-1 % share 0.54 → 0.22, anisotropy 2.81 → 1.06, luminance std
+18.0 → 18.0; desert bird-w mid (200,560,1300,700): anisotropy 2.50 → 1.16; Oasis w-wall-mid dune face
+(200,520,1300,800): 0.76 → 0.61; Oasis centre-far 0.65 → 0.60; desert near field (200,560,700,720) 0.67 → 0.62 (the
+2 m grain and the road stay). By eye: the long dark streaks are gone from both maps, the sand keeps its grain.
+
+**Receipts.** `terrainMaterialOwnership` / `terrainSurfaceDetail` / `terrainWornDirt` (fetch census +3 with its dated
+note; cache key v33 and its negative control), `wallSkyLight` (key), every terrain-source receipt green.
+
+**Still open under 8.** Mars' ring beds (the vista fragment's bed stripes, a different shader); the desert's far
+mesas' remaining strata repeat is a vista item too.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -512,7 +539,7 @@ skylines):
 | 5 | Horizon band | Terrain slightly darker than the sky behind it; no line | Bright line, hue mismatch |
 | 6 | Sun-relative haze | Brighter toward the sun, cooler away | Same haze everywhere |
 | 7 | Flat far ground in motion | No moiré or shimmer | Moiré carpet |
-| 8 | Tiling at 30–200 m | No visible repeat | Grid of repeats |
+| 8 | Tiling at 30–200 m | No visible repeat | Grid of repeats (round 43: the dune ripples' local wind field — desert mid-field strongest-band share 0.54 → 0.22, anisotropy 2.8 → 1.1) |
 | 9 | Tree / impostor swap | No pop; species and lighting match | Popping, mis-lit cards |
 | 10 | Tree line vs border | Density gradient continues | Wall or abrupt end |
 | 11 | Shadows | Shadow colour = sky ambient; soft edges | Black or grey mismatch (round 42: steep faces turned from the sun carry the sky's colour; flat shadowed ground still the hemisphere preset) |
@@ -553,6 +580,7 @@ skylines):
 | 39 (landed: Redrock basin, haze ceilings) | Redrock's mouths closed by a headwall with the flanks' profile; the far-haze stack capped so ranges keep a third of their own colour. Deferred to a later round: a second far cascade with a macro colour map, per-vertex horizon occlusion baked at build, sky-projected ambient driving haze colour and water reflection | wall-probe sheets on badlands; far-range A/B on five maps |
 | 40 (landed: water past the square) | Derived sea openings from the edge water scan, the ring's marine faces rendered by the terrain material's own sea path, the sheet's apron fan, Saltwind's bay as one contour open to the sea. Decal clipmap rings move to a later round. | straight-down seam metric (`sea-*-down`), oblique before/after |
 | 42 | Sky light on shaded steep faces: the terrain material adds the horizon sky colour (the sky probe's fog colour) to faces steeper than ~28° that turn away from the sun, through the indirect-diffuse path, weighted by slope and by how far the face turns; lit faces and flat ground untouched | Caldera's inner east wall 6.6 → 16.7 display luma against a 216 sky (3.1 % → 7.7 %), Skybridge's shaded slope 21 → 35, Verdant's shaded snow hill 53 → 64 and bluer, Mars ±1, Badlands' lit walls and Steppe's far ground unchanged (checks 4, 11) |
+| 43 | Local wind field for the dune ripples: the authored wind swings ±25° per ~400 m cell and ±10° per ~90 m cell, the wavelength stretches ±25 % per ~250 m cell, and the far bedform albedo band eases to half past 320 m — every ripple and bedform wave in the sand branch follows it | Desert w-wall-mid mid-field: strongest periodic band 0.54 → 0.22 of the spectrum's top 1 %, anisotropy 2.81 → 1.06, texture energy 18.0 → 18.0; bird view anisotropy 2.5 → 1.2; Oasis w-wall-mid 0.76 → 0.61; near-field grain unchanged (0.67 → 0.62) (check 8) |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
@@ -564,7 +592,7 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | Map | State | Faults seen |
 |---|---|---|
 | verdant | good | far ranges hazed blue, ring forest continuous; centre S view blocked by a building (probe) |
-| desert | fair | dune faces carry dark parallel ripple bands at every range — a corduroy repeat (8); far mesas paler than the sky (5) |
+| desert | fair | dune faces carry dark parallel ripple bands at every range — a corduroy repeat (8 — round 43: the bands swing and stretch per cell and ease past 320 m; mid-field band share 0.54 → 0.22); far mesas paler than the sky (5, round 37) |
 | winter | fair | ring is a white sheet with a few dark specks (3); skyline nearly invisible in the haze (5) |
 | urban | fair | pale cracked corner cliff beside green turf reads as another material (15); centre sky views blocked by buildings (probe) |
 | coastal | good | round 40: the bay runs on as the same water past the edge (terrain sea path + sheet apron); shoal pattern crosses the seam |
@@ -586,7 +614,7 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | polders | good | flat ring, consistent |
 | copper_mesa | good | strata on every cliff; far mesas paler than the sky (5) |
 | airfield | good | flat ring with trees — consistent |
-| oasis | fair | dune bands repeat (8, as desert) |
+| oasis | fair | dune bands repeat (8, as desert — round 43: the diagonal streaks are gone, mid-field band share 0.76 → 0.61) |
 | whiteout | fair | as winter (3, 5) |
 | orchard | good | grey corner rock beside green (15, mild); far ranges blue |
 | longleaf | good | dark corner rock; ranges good |
