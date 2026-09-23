@@ -79,6 +79,7 @@ ledger. (Indexed 2026-09-22; they were previously unlinked.)
 | performance/retained-battle-hud.md | Retained battle HUD presentation (bounded DOM work) |
 | performance/shared-texture-worker.md | Shared vehicle texture worker for the asynchronous preload |
 | CLEANUP-2026-09-22.md | Round 40 repository cleanup: hidden-tank inventory, phase-1 removals, phase-2 plan and owner decisions |
+| CLEANUP-2026-09-23-structure.md | Round 46 cleanup phase 2 (structure): stage wrappers inlined, shadowed builders removed, duplicated helpers folded, core splits; byte-identical fleet proof |
 
 ## Vehicle-authoring law
 
