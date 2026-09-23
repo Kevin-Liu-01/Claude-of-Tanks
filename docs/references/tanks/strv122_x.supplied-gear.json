@@ -4,7 +4,7 @@
   "source": {
     "file": "stridsvagn_122.glb",
     "sha256": "c9419be9f25791df72eb2cb55efc65f6241ccf196e20dce0b1d6168bfedf8f4e",
-    "registration": "docs/research/second-wave-registrations/strv122_x.json",
+    "registration": "docs/history/research/second-wave-registrations/strv122_x.json",
     "ownership": "All 18 original chunks retained. Fused file has no independently trustworthy wheel rig nodes.",
     "measurement": "Complete original transformed triangles used for offline line intersections. No source topology or buffers enter the runtime. Visible surface scalars define original turned solids and native articulated gear."
   },

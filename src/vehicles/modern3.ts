@@ -1,5 +1,5 @@
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
-// Vehicles (docs/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
+// Vehicles (docs/history/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
 // K1A1 (§5.38 KOREA round — new build vs the k1a1_kojf print).
 //

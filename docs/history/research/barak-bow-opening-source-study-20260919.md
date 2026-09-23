@@ -9,7 +9,7 @@ The canonical source is
 `0549b50430cd8df0ebf9d095b617e64e8c6274747bea1dd99e4dec0e987b8f4d`.
 Its raw supplied source SHA-256 is
 `81cc2cf027af4475c5890089067dd9b1f77d9fbd306939e24f973ad68e099aa5`, as recorded
-in [the source packet](../references/tanks/merkava4_barak.md). This diagnosis
+in [the source packet](../../references/tanks/merkava4_barak.md). This diagnosis
 measured the canonical file; it did not rerun the original-to-canonical bake.
 
 The filled standard report records two ten-cell continuity clusters at

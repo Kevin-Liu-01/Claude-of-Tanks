@@ -5,7 +5,7 @@
     "file": "owner-local t-72b3m_obr._2022.glb",
     "sha256": "6ee260f31911b1c60feab24999dfa30467cc1b5c8c5ff6ecf787ddd590e9f350",
     "canonicalSha256": "1df241160448443c6cde0e13be959720acdf7b5ce3e21185ed82b0b308c744e2",
-    "registration": "../../research/second-wave-registrations/t72b3m_x.json",
+    "registration": "../../history/research/second-wave-registrations/t72b3m_x.json",
     "ownership": "15 material-mixed original meshes retained. Object_14 includes stock cladding as well as turret parts; no invented whole-turret/gun component mask.",
     "use": "Source geometry, materials and imagery are local comparison/authoring inputs only; runtime is original analytic first-party solids and native mechanisms. Embedded42manako/CCBY4 attribution is recorded in the inventory, not silently conflated with a different historical file hash."
   },

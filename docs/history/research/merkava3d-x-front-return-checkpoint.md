@@ -15,7 +15,7 @@ whole roof is deliberately outside this small additive checkpoint.
 
 ## What the source actually shows
 
-The existing [Merkava source packet](../references/tanks/merkava3d_x.md)
+The existing [Merkava source packet](../../references/tanks/merkava3d_x.md)
 documents the owner's local-reference authorization and redistribution limits.
 No source geometry, texture, topology or rig is imported into runtime.
 The canonical local comparison GLB is authenticated by SHA-256

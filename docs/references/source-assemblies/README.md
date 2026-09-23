@@ -1,6 +1,6 @@
 # Replaying approved assembled comparison sources
 
-These five recipes prepare local comparison references only. They do not build or import any playable vehicle geometry. The owner approved correctly assembled supplied targets on 2026-09-18; independent reviewers accepted these static assemblies in [the British/Kurg review](../../research/british-source-assembly-independent-review-20260918.md) and [the BMP/K21 review](../../research/bmp-k21-source-assembly-independent-review-20260918.md).
+These five recipes prepare local comparison references only. They do not build or import any playable vehicle geometry. The owner approved correctly assembled supplied targets on 2026-09-18; independent reviewers accepted these static assemblies in [the British/Kurg review](../../history/research/british-source-assembly-independent-review-20260918.md) and [the BMP/K21 review](../../history/research/bmp-k21-source-assembly-independent-review-20260918.md).
 
 Each dated recipe pins the raw input hash, original canonical hash, exact component or node selectors, source-only receiver measurements, operation, output hash, retained source registration, and review identity. The original files and historical failed comparisons remain valid historical evidence. The derived files have distinct `_assembled_20260918.glb` names under the already ignored `public/models/community-candidates/` directory; public builds strip that entire comparison-source directory.
 

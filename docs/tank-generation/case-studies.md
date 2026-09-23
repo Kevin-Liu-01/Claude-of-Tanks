@@ -104,7 +104,7 @@ Recurring problems were consistent despite those changing configurations:
 clearances and a supported expendable layer. Validate intact, first hit, all
 spent and reset states, with markings still supported. Later measured X work
 demonstrated this through actual fitted-face and damage tests, not just a
-static “ERA hidden” screenshot; see [initial X integration](../research/source-x-fleet-rebuild.md).
+static “ERA hidden” screenshot; see [initial X integration](../history/research/source-x-fleet-rebuild.md).
 
 The [older A2 packet](../references/tanks/ztz99a2.md) documents an August build
 and historical scores below the later raw-92 bar. It cannot certify these
@@ -136,7 +136,7 @@ tier IX; author a new proper Revolution from the supplied archive and require
 harsh visual/geometric comparisons. The follow-up specifically required the
 large sight-window cutout and correct negative space.
 
-**Recorded result:** the [Revolution source study](../research/leopard-revolution-source.md)
+**Recorded result:** the [Revolution source study](../history/research/leopard-revolution-source.md)
 reports 94.0 overall fidelity, every registered canonical view above 92,
 geometry minimum 92.2, strict track intersections zero, and successful complete
 release checks for the new model and preserved Proto. These are overlap and
@@ -177,7 +177,7 @@ preserve originals, temporarily suffix names with `X`, and accurately model
 negative spaces—especially Leopard 2A7V and T-14. `X` was **not** an instruction
 to assign every vehicle tier ten.
 
-**Recorded result:** the [first X batch](../research/source-x-fleet-rebuild.md)
+**Recorded result:** the [first X batch](../history/research/source-x-fleet-rebuild.md)
 reports registered release qualification on September 6: all thirteen pass
 their unchanged registered raw-92 source/geometry gates, track and continuity
 checks, all 510 test files, anatomy/assets and both builds. It explicitly
@@ -215,7 +215,7 @@ that every supplied shape is an accurate real vehicle. The later Mk10 request
 expressly reused the completed Mk5 foundation with Mk10-specific measurements;
 it did not authorize overlaying two whole tanks or changing Mk5.
 
-The [second-wave contract](../research/source-x-second-wave.md) records 21/23
+The [second-wave contract](../history/research/source-x-second-wave.md) records 21/23
 passing raw shape checks and 16/23 passing the machine-standard checkpoint.
 Its seven failures remained visible:
 

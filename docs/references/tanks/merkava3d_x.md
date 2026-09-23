@@ -6,7 +6,7 @@ The forward lifting eyes and panoramic sight now meet their local turret
 surfaces, the left MAG foot is seated, and both MAG barrels have continuous
 receiver stock. The existing asymmetric shoulder repair is retained. Current
 HIGH/LOW pose tests, official source registration and visual/release status:
-[repair record](../../research/merkava-camo-repairs-20260920.md).
+[repair record](../../history/research/merkava-camo-repairs-20260920.md).
 
 ## 2026-09-19 owner-marked vehicle-left shoulder correction
 
@@ -66,7 +66,7 @@ supplied War Thunder-derived display source represented the fielded module in
 its correct assembled position.  Historical source-parity figures below are
 retained as prior evidence and do not certify the changed geometry.
 
-Current rollers: [fitted efficient checkpoint; count evidence and release limits](../../research/merkava-x-return-rollers-checkpoint.md).
+Current rollers: [fitted efficient checkpoint; count evidence and release limits](../../history/research/merkava-x-return-rollers-checkpoint.md).
 The release figures below are historical and do not qualify that new fit.
 
 Status: **release-qualified — 2026-09-06T10:49:59.926Z**.

@@ -23,7 +23,7 @@ A roofMG0 verdict alone does not detect deletion of Kurganets coax or AFT’s re
 
 Unregistered vehicles retain the historical≥1 rule, with stricter physical-stock validation. Exact counts reject extra marked roof weapons, but this remains a marker-based census: source-specific full-scene weapon proofs and independent images are needed to establish that actual source equipment, rather than mislabeled decoration, is present.
 
-No runtime, policy, registry, source or gate files were edited. [Hash-pinned machine-readable critique](../../.qa-dev/tank-run/approved-policy/independent-equipment-review.json).
+No runtime, policy, registry, source or gate files were edited. [Hash-pinned machine-readable critique](../../../.qa-dev/tank-run/approved-policy/independent-equipment-review.json).
 
 ## Revised private proposal review
 
@@ -31,7 +31,7 @@ The revised checker addresses the original opacity0, empty draw range, degenerat
 
 **Remaining P2 malformed-stock case:** a triangle with positions `[0,0,0, Infinity,1,0, 0,1,1]` still counts MG1; an ordinary mesh with `matrixAutoUpdate=false` and `matrix.elements[0]=NaN` also counts MG1. The area can becomeInfinity and satisfy the positive-area check; the determinant rejection comparison is false forNaN. Reject nonfinite matrix elements (including translation), vertices and area before accepting stock. Both witnesses were independently reproduced with tiny Three fixtures. These are negative validation cases, not a claim that current authored profiles have malformed coordinates.
 
-Upgraded actual13-profile census is still NOT RUN/not supplied to this review. The older private `standard-native.json` covers the Warrior/AFT diagnostic and cannot substitute for it. The newly reported Warrior missing source-stock ledges/lips remain defects, not authorized openings; an AFT source-air policy still needs exact complete witness binding. [Revised input hashes and witnesses](../../.qa-dev/tank-run/approved-policy/independent-equipment-review-r2.json).
+Upgraded actual13-profile census is still NOT RUN/not supplied to this review. The older private `standard-native.json` covers the Warrior/AFT diagnostic and cannot substitute for it. The newly reported Warrior missing source-stock ledges/lips remain defects, not authorized openings; an AFT source-air policy still needs exact complete witness binding. [Revised input hashes and witnesses](../../../.qa-dev/tank-run/approved-policy/independent-equipment-review-r2.json).
 
 ## Updated finite policy and all26 native receipts
 

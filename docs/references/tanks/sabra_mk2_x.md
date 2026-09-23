@@ -5,7 +5,7 @@
 Sabra now defaults to the authored sand/olive **Sinai Contours** pattern.
 Saved selections and custom paint still override that default. Geometry and
 gameplay statistics are unchanged. See the actual Garage checks and current
-release status in the [repair record](../../research/merkava-camo-repairs-20260920.md).
+release status in the [repair record](../../history/research/merkava-camo-repairs-20260920.md).
 
 ## Current integrated status — 2026-09-18
 
@@ -144,7 +144,7 @@ Mask-derived rows use paired identical measurements in the source-only fixed fra
 
 ## Independent review checkpoint
 
-The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/research/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
+The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/history/research/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
 
 ## Post-main round13 — physical wheels, cupola windows and split rear face
 
@@ -246,7 +246,7 @@ The standard census previously reported MG0 because the actual receiver and barr
 This resolves Sabra's missing equipment registration only. It does not waive any composed release requirement or another tank's absent-source weapon question. Publication remains NOT QUALIFIED until the integrator completes the final independent and composed checks.
 
 
-Round22 independent follow-up: root inspected and hash-verified every fresh official image; all fourteen meet the scoped ≥9/10 visual bar. See `docs/research/sabra-fitting-independent-review-20260918.md`. This confirms visual preservation of the real cupola weapon and existing stock; simplified fine hardware remains noted. Reconsider affected receipts if the subsequent shared generation changes fill, marking or presentation data. It is not a full composed release certificate.
+Round22 independent follow-up: root inspected and hash-verified every fresh official image; all fourteen meet the scoped ≥9/10 visual bar. See `docs/history/research/sabra-fitting-independent-review-20260918.md`. This confirms visual preservation of the real cupola weapon and existing stock; simplified fine hardware remains noted. Reconsider affected receipts if the subsequent shared generation changes fill, marking or presentation data. It is not a full composed release certificate.
 
 
 Postgeneration preservation check: the Sabra fill and per-ID marking files are byte-identical to round22. The global presentation file changed for other repaired IDs; Sabra's own anchor remains X−0.0006/Z−0.1095m and projection remains centerY2.5355/topHalf5.9995/sideHalf2.9997m. These rows exactly match the preserved `presentationAnchors.generated-DwbZxkep.js` from the successful pre-generation private build, bracketed by matching source hashes before that build and at the round22 capture. Provenance and the actual compiled artifact are retained in `sabra-fitting-r22/postgeneration-sabra-presentation-equivalence.json`. No whole-file equality is claimed; the independently reviewed Sabra visuals remain applicable.
@@ -256,7 +256,7 @@ Postgeneration preservation check: the Sabra fill and per-ID marking files are b
 
 Existing receiving stock now follows gun pitch without following barrel recoil. The actual tube and muzzle retain their recoil owner; no source dimensions, neutral primitives or pivots changed. Neutral HIGH/LOW visible world triangles, transformed normals, UVs, colors and materials match the prior model exactly. Filled native legal-pitch/recoil/return checks pass; TML optical faces additionally retain full-scene recess depth, unlimited former visibility through near/far LOD changes and exactly-once disposal.
 
-Current profile SHA-256: `9c8ad551962a09530f1d813f9102f9982165f41b6356f38455fb14835221dd86`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.
+Current profile SHA-256: `9c8ad551962a09530f1d813f9102f9982165f41b6356f38455fb14835221dd86`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../history/research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.
 
 
 ## Combined Israeli balance integration — 2026-09-19

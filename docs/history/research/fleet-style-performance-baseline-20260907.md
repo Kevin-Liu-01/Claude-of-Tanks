@@ -1,6 +1,6 @@
 # Fleet style and performance baseline — 2026-09-07
 
-> Read-only baseline for the P0 [fleet style/performance priority](../tank-generation/fleet-style-performance-priority.md). Implementation fixes, browser latency, GPU timings, silhouette quality, and visual finish certification are not part of this census.
+> Read-only baseline for the P0 [fleet style/performance priority](../../tank-generation/fleet-style-performance-priority.md). Implementation fixes, browser latency, GPU timings, silhouette quality, and visual finish certification are not part of this census.
 
 Completed **108 real builds**: 51 requested models plus three original controls, each at high and low geometry quality. All builds passed. Seven slowest unique IDs received five additional timed builds each. The bounded measurement completed 2026-09-07T19:34:13.388Z.
 

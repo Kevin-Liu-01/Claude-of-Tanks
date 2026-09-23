@@ -148,7 +148,7 @@ World-space triangles, winding and combat roles match before/after at both quali
 
 ## Independent review checkpoint
 
-The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/research/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
+The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/history/research/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
 
 ## Post-main round10 — source equipment relief
 
@@ -226,7 +226,7 @@ All capture commands exit0 and rig parity isOK. The builder spot-viewed the fres
 
 ## Round18 independent shaded review checkpoint — 2026-09-18
 
-An independent reviewer actually inspected the fourteen final-shader originals and recorded source fit/detail/static seating of at least9 in every image. See `docs/research/regional-source-independent-critic-20260918.md` and `.qa-dev/tank-run/independent-regional-review/final-shader-r18-review.json`. The matched source and native silhouette, primary source equipment, corrected wheels and open mechanisms meet that scoped HIGH gallery review. It does not certify LOW or moving contact, performance, anatomy, source roof-weapon policy, actual newly generated interior-fill coverage or composed release. The originals and identities remain archived under `.qa-dev/tank-run/europe-source/final-shader-r18/official14/cv90_mkiv_x/`; later final loaded captures must preserve this history. Publication remains NOT PUBLISHED.
+An independent reviewer actually inspected the fourteen final-shader originals and recorded source fit/detail/static seating of at least9 in every image. See `docs/history/research/regional-source-independent-critic-20260918.md` and `.qa-dev/tank-run/independent-regional-review/final-shader-r18-review.json`. The matched source and native silhouette, primary source equipment, corrected wheels and open mechanisms meet that scoped HIGH gallery review. It does not certify LOW or moving contact, performance, anatomy, source roof-weapon policy, actual newly generated interior-fill coverage or composed release. The originals and identities remain archived under `.qa-dev/tank-run/europe-source/final-shader-r18/official14/cv90_mkiv_x/`; later final loaded captures must preserve this history. Publication remains NOT PUBLISHED.
 
 
 ## Round21 actual-filled evidence refresh — 2026-09-18
@@ -256,7 +256,7 @@ Final relevant hashes:
 
 Existing receiving stock now follows gun pitch without following barrel recoil. The actual tube and muzzle retain their recoil owner; no source dimensions, neutral primitives or pivots changed. Neutral HIGH/LOW visible world triangles, transformed normals, UVs, colors and materials match the prior model exactly. Filled native legal-pitch/recoil/return checks pass; TML optical faces additionally retain full-scene recess depth, unlimited former visibility through near/far LOD changes and exactly-once disposal.
 
-Current profile SHA-256: `ce54ca1288829446e34b0d133a898c7b7ff0117d8e641ae9c98de8608a39d065`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.
+Current profile SHA-256: `ce54ca1288829446e34b0d133a898c7b7ff0117d8e641ae9c98de8608a39d065`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../history/research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.
 
 
 ## Supplied-configuration caliber correction — 2026-09-18

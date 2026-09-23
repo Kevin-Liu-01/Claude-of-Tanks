@@ -34,7 +34,7 @@ Fresh automated geometry measures 94.7/92 and all fourteen new-turret views
 pass scoped visual review. Whole-vehicle visual qualification remains open for
 the retained hull's rear louvers, ramp door and simplified bow/deck detail.
 The retained chassis also has documented LOW geometry-budget debt. See the
-[historical construction, balance and review record](../../research/object695-epokha-dragun-balance-20260919.md).
+[historical construction, balance and review record](../../history/research/object695-epokha-dragun-balance-20260919.md).
 
 ## Original build history (2026-09-17–18)
 

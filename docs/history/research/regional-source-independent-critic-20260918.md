@@ -19,20 +19,20 @@ No obvious detached major roof fitting is established by these static images. Da
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/front.png) | 8.5 | 7 | 8.5 | 7 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/frontleft.png) | 9 | 7.5 | 9 | 7.5 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/left.png) | 9 | 7.5 | 9 | 7.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/rearleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/rear.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/rearright.png) | 8.5 | 7 | 8.5 | 7 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/right.png) | 9 | 7.5 | 9 | 7.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/frontright.png) | 9 | 7.5 | 9 | 7.5 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/hero-frontleft.png) | 8.5 | 6.5 | 8.5 | 6.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/hero-rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/close-front.png) | 8.5 | 6.5 | 8.5 | 6.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/close-roof.png) | 7.5 | 6 | 8.5 | 6 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/front.png) | 8.5 | 7 | 8.5 | 7 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/frontleft.png) | 9 | 7.5 | 9 | 7.5 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/left.png) | 9 | 7.5 | 9 | 7.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/rearleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/rear.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/rearright.png) | 8.5 | 7 | 8.5 | 7 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/right.png) | 9 | 7.5 | 9 | 7.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/frontright.png) | 9 | 7.5 | 9 | 7.5 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/hero-frontleft.png) | 8.5 | 6.5 | 8.5 | 6.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/hero-rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/close-front.png) | 8.5 | 6.5 | 8.5 | 6.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/ajax_x/close-roof.png) | 7.5 | 6 | 8.5 | 6 |
 
 ## Coverage
 
@@ -46,20 +46,20 @@ Concrete differences: source rear slat/ramp face is replaced by a largely smooth
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/front.png) | 8 | 6.5 | 8 | 6.5 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/left.png) | 8.5 | 7 | 8.5 | 7 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/rearleft.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/rear.png) | 7.5 | 6 | 8 | 6 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/right.png) | 8.5 | 7 | 8.5 | 7 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/hero-frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/hero-rearright.png) | 7.5 | 6 | 8 | 6 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/hero-toptilt.png) | 7.5 | 6 | 8 | 6 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/close-front.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/close-roof.png) | 7.5 | 6 | 8 | 6 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/front.png) | 8 | 6.5 | 8 | 6.5 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/left.png) | 8.5 | 7 | 8.5 | 7 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/rearleft.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/rear.png) | 7.5 | 6 | 8 | 6 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/right.png) | 8.5 | 7 | 8.5 | 7 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/hero-frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/hero-rearright.png) | 7.5 | 6 | 8 | 6 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/hero-toptilt.png) | 7.5 | 6 | 8 | 6 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/close-front.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/fv510_milan_x/close-roof.png) | 7.5 | 6 | 8 | 6 |
 
 ## Griffin50 X — FAIL, 14/14 images viewed
 
@@ -69,20 +69,20 @@ Concrete differences: source has an open U-shaped rear hull/ramp recess visible 
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/front.png) | 8 | 7 | 8.5 | 7 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/left.png) | 8.5 | 7 | 8.5 | 7 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/rearleft.png) | 7.5 | 6.5 | 8 | 6.5 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/rear.png) | 7 | 6.5 | 8 | 6.5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/rearright.png) | 7.5 | 6.5 | 8 | 6.5 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/right.png) | 8.5 | 7 | 8.5 | 7 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/top.png) | 7 | 6.5 | 8 | 6.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/hero-frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/hero-rearright.png) | 7 | 6 | 8 | 6 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/hero-toptilt.png) | 7 | 6.5 | 8 | 6.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/close-front.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/close-roof.png) | 7.5 | 6 | 8 | 6 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/front.png) | 8 | 7 | 8.5 | 7 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/left.png) | 8.5 | 7 | 8.5 | 7 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/rearleft.png) | 7.5 | 6.5 | 8 | 6.5 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/rear.png) | 7 | 6.5 | 8 | 6.5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/rearright.png) | 7.5 | 6.5 | 8 | 6.5 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/right.png) | 8.5 | 7 | 8.5 | 7 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/top.png) | 7 | 6.5 | 8 | 6.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/hero-frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/hero-rearright.png) | 7 | 6 | 8 | 6 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/hero-toptilt.png) | 7 | 6.5 | 8 | 6.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/close-front.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/griffin50_x/close-roof.png) | 7.5 | 6 | 8 | 6 |
 
 ## KF41 Lynx X — FAIL, 14/14 images viewed
 
@@ -92,20 +92,20 @@ Overall shape is a close match. Concrete remaining detail: rear source has two l
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/front.png) | 9 | 8.5 | 9 | 8.5 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/frontleft.png) | 9 | 8.5 | 9 | 8.5 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/left.png) | 9 | 8.5 | 9 | 8.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/rearleft.png) | 8.5 | 8 | 9 | 8 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/rear.png) | 8.5 | 7.5 | 9 | 7.5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/rearright.png) | 8.5 | 8 | 9 | 8 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/right.png) | 9 | 8.5 | 9 | 8.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/frontright.png) | 9 | 8.5 | 9 | 8.5 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/top.png) | 8.5 | 8 | 9 | 8 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/hero-frontleft.png) | 8.5 | 8 | 9 | 8 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/hero-rearright.png) | 8.5 | 7.5 | 9 | 7.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/hero-toptilt.png) | 8.5 | 8 | 9 | 8 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/close-front.png) | 8.5 | 8 | 9 | 8 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/close-roof.png) | 8.5 | 7.5 | 9 | 7.5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/front.png) | 9 | 8.5 | 9 | 8.5 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/frontleft.png) | 9 | 8.5 | 9 | 8.5 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/left.png) | 9 | 8.5 | 9 | 8.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/rearleft.png) | 8.5 | 8 | 9 | 8 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/rear.png) | 8.5 | 7.5 | 9 | 7.5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/rearright.png) | 8.5 | 8 | 9 | 8 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/right.png) | 9 | 8.5 | 9 | 8.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/frontright.png) | 9 | 8.5 | 9 | 8.5 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/top.png) | 8.5 | 8 | 9 | 8 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/hero-frontleft.png) | 8.5 | 8 | 9 | 8 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/hero-rearright.png) | 8.5 | 7.5 | 9 | 7.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/hero-toptilt.png) | 8.5 | 8 | 9 | 8 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/close-front.png) | 8.5 | 8 | 9 | 8 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/kf41_lynx_x/close-roof.png) | 8.5 | 7.5 | 9 | 7.5 |
 
 ## CV90 MkIV X — FAIL, 14/14 images viewed
 
@@ -115,20 +115,20 @@ Specific measured implementation mismatch: reference front cheeks visibly carry 
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/front.png) | 8.5 | 6.5 | 8 | 6.5 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/frontleft.png) | 9 | 7 | 8.5 | 7 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/left.png) | 9 | 7.5 | 8.5 | 7.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/rearleft.png) | 8.5 | 7 | 8 | 7 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/rear.png) | 8.5 | 7 | 8 | 7 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/rearright.png) | 8.5 | 7 | 8 | 7 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/right.png) | 9 | 7.5 | 8.5 | 7.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/frontright.png) | 9 | 7 | 8.5 | 7 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/top.png) | 8.5 | 7 | 8.5 | 7 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/hero-frontleft.png) | 8.5 | 6.5 | 8 | 6.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/hero-rearright.png) | 8.5 | 6.5 | 8 | 6.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/hero-toptilt.png) | 8.5 | 7 | 8 | 7 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/close-front.png) | 8.5 | 6.5 | 8 | 6.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/close-roof.png) | 8 | 6.5 | 8 | 6.5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/front.png) | 8.5 | 6.5 | 8 | 6.5 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/frontleft.png) | 9 | 7 | 8.5 | 7 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/left.png) | 9 | 7.5 | 8.5 | 7.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/rearleft.png) | 8.5 | 7 | 8 | 7 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/rear.png) | 8.5 | 7 | 8 | 7 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/rearright.png) | 8.5 | 7 | 8 | 7 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/right.png) | 9 | 7.5 | 8.5 | 7.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/frontright.png) | 9 | 7 | 8.5 | 7 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/top.png) | 8.5 | 7 | 8.5 | 7 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/hero-frontleft.png) | 8.5 | 6.5 | 8 | 6.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/hero-rearright.png) | 8.5 | 6.5 | 8 | 6.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/hero-toptilt.png) | 8.5 | 7 | 8 | 7 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/close-front.png) | 8.5 | 6.5 | 8 | 6.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90_mkiv_x/close-roof.png) | 8 | 6.5 | 8 | 6.5 |
 
 ## CV90105 TML X — FAIL, 14/14 images viewed
 
@@ -138,20 +138,20 @@ Strongest concrete identity gap is the source muzzle terminal: it has a pronounc
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/front.png) | 8.5 | 7 | 8.5 | 7 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/left.png) | 8.5 | 7.5 | 9 | 7.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/rearleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/rear.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/rearright.png) | 8.5 | 7 | 8.5 | 7 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/right.png) | 8.5 | 7.5 | 9 | 7.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/hero-frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/hero-rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/close-front.png) | 8 | 6.5 | 8 | 6.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/close-roof.png) | 7.5 | 6 | 8 | 6 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/front.png) | 8.5 | 7 | 8.5 | 7 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/left.png) | 8.5 | 7.5 | 9 | 7.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/rearleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/rear.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/rearright.png) | 8.5 | 7 | 8.5 | 7 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/right.png) | 8.5 | 7.5 | 9 | 7.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/hero-frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/hero-rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/close-front.png) | 8 | 6.5 | 8 | 6.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/pre-main-track-update/cv90105_tml_x/close-roof.png) | 7.5 | 6 | 8 | 6 |
 
 ## Sabra Mk2 X — FAIL, 14/14 images viewed
 
@@ -161,20 +161,20 @@ The supplied armed cupola has a full ring of distinct recessed periscope mouths 
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/front.png) | 8.5 | 7 | 8.5 | 7 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/left.png) | 8.5 | 7 | 9 | 7 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/rearleft.png) | 8 | 7 | 8.5 | 7 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/rear.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/rearright.png) | 8 | 7 | 8.5 | 7 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/right.png) | 8.5 | 7 | 9 | 7 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/hero-frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/hero-rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/close-front.png) | 8 | 6.5 | 8 | 6.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/close-roof.png) | 7.5 | 6 | 8 | 6 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/front.png) | 8.5 | 7 | 8.5 | 7 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/left.png) | 8.5 | 7 | 9 | 7 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/rearleft.png) | 8 | 7 | 8.5 | 7 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/rear.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/rearright.png) | 8 | 7 | 8.5 | 7 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/right.png) | 8.5 | 7 | 9 | 7 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/hero-frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/hero-rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/close-front.png) | 8 | 6.5 | 8 | 6.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/sabra_mk2_x/close-roof.png) | 7.5 | 6 | 8 | 6 |
 
 ## AFT-10 X — FAIL, 14/14 images viewed
 
@@ -184,20 +184,20 @@ The corrected eight-canister layout is present and no floating launcher is estab
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/front.png) | 8.5 | 7 | 8.5 | 7 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/frontleft.png) | 9 | 7.5 | 8.5 | 7.5 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/left.png) | 9 | 7.5 | 8.5 | 7.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/rearleft.png) | 8.5 | 7 | 8 | 7 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/rear.png) | 8.5 | 7 | 8 | 7 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/rearright.png) | 8.5 | 7 | 8 | 7 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/right.png) | 9 | 7.5 | 8.5 | 7.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/frontright.png) | 9 | 7.5 | 8.5 | 7.5 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/hero-frontleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/hero-rearright.png) | 8.5 | 6.5 | 8 | 6.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/close-front.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/close-roof.png) | 8 | 6.5 | 8 | 6.5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/front.png) | 8.5 | 7 | 8.5 | 7 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/frontleft.png) | 9 | 7.5 | 8.5 | 7.5 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/left.png) | 9 | 7.5 | 8.5 | 7.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/rearleft.png) | 8.5 | 7 | 8 | 7 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/rear.png) | 8.5 | 7 | 8 | 7 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/rearright.png) | 8.5 | 7 | 8 | 7 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/right.png) | 9 | 7.5 | 8.5 | 7.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/frontright.png) | 9 | 7.5 | 8.5 | 7.5 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/hero-frontleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/hero-rearright.png) | 8.5 | 6.5 | 8 | 6.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/close-front.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/aft10_x/close-roof.png) | 8 | 6.5 | 8 | 6.5 |
 
 ## BMP-3M Dragun125 X — FAIL, 14/14 images viewed
 
@@ -207,20 +207,20 @@ The source bow carries substantial hinged front-plate/panel divisions and two ra
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/front.png) | 8.5 | 7 | 8.5 | 7 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/left.png) | 9 | 7.5 | 9 | 7.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/rearleft.png) | 8.5 | 7 | 8.5 | 7 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/rear.png) | 8 | 7 | 8.5 | 7 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/rearright.png) | 8.5 | 7 | 8.5 | 7 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/right.png) | 9 | 7.5 | 9 | 7.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/hero-frontleft.png) | 8.5 | 6.5 | 8.5 | 6.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/hero-rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/close-front.png) | 8.5 | 6.5 | 8.5 | 6.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/close-roof.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/front.png) | 8.5 | 7 | 8.5 | 7 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/frontleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/left.png) | 9 | 7.5 | 9 | 7.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/rearleft.png) | 8.5 | 7 | 8.5 | 7 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/rear.png) | 8 | 7 | 8.5 | 7 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/rearright.png) | 8.5 | 7 | 8.5 | 7 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/right.png) | 9 | 7.5 | 9 | 7.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/frontright.png) | 8.5 | 7 | 8.5 | 7 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/top.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/hero-frontleft.png) | 8.5 | 6.5 | 8.5 | 6.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/hero-rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/hero-toptilt.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/close-front.png) | 8.5 | 6.5 | 8.5 | 6.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/bmp3m_dragun125_x/close-roof.png) | 8 | 6.5 | 8.5 | 6.5 |
 
 ## K21 X — FAIL, 14/14 images viewed
 
@@ -230,20 +230,20 @@ Source twin forward deck covers have conspicuous rectangular subdivisions and hi
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/front.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/left.png) | 8 | 7 | 8.5 | 7 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/rearleft.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/rear.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/right.png) | 8 | 7 | 8.5 | 7 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/frontright.png) | 8 | 6.5 | 8.5 | 6.5 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/top.png) | 8 | 6 | 8.5 | 6 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/hero-frontleft.png) | 8 | 6 | 8.5 | 6 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/hero-rearright.png) | 8 | 6 | 8.5 | 6 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/hero-toptilt.png) | 8 | 6 | 8.5 | 6 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/close-front.png) | 8 | 6 | 8.5 | 6 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/close-roof.png) | 7.5 | 6 | 8.5 | 6 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/front.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/frontleft.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/left.png) | 8 | 7 | 8.5 | 7 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/rearleft.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/rear.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/rearright.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/right.png) | 8 | 7 | 8.5 | 7 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/frontright.png) | 8 | 6.5 | 8.5 | 6.5 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/top.png) | 8 | 6 | 8.5 | 6 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/hero-frontleft.png) | 8 | 6 | 8.5 | 6 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/hero-rearright.png) | 8 | 6 | 8.5 | 6 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/hero-toptilt.png) | 8 | 6 | 8.5 | 6 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/close-front.png) | 8 | 6 | 8.5 | 6 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/k21_x/close-roof.png) | 7.5 | 6 | 8.5 | 6 |
 
 ## Type 96B X post-main — FAIL, 14/14 images viewed
 
@@ -253,20 +253,20 @@ Source broad stepped gun shroud/barrel becomes a much thinner near-uniform tube 
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/front.png) | 7 | 6 | 8 | 6 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/frontleft.png) | 7 | 6 | 8 | 6 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/left.png) | 8 | 6 | 8 | 6 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/rearleft.png) | 7 | 6 | 8 | 6 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/rear.png) | 7 | 5 | 8 | 5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/rearright.png) | 7 | 6 | 8 | 6 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/right.png) | 8 | 6 | 8 | 6 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/frontright.png) | 7 | 6 | 8 | 6 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/top.png) | 7 | 5 | 8 | 5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/hero-frontleft.png) | 7 | 6 | 8 | 6 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/hero-rearright.png) | 7 | 5 | 8 | 5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/hero-toptilt.png) | 7 | 5 | 8 | 5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/close-front.png) | 6 | 5 | 8 | 5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/close-roof.png) | 6 | 5 | 8 | 5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/front.png) | 7 | 6 | 8 | 6 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/frontleft.png) | 7 | 6 | 8 | 6 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/left.png) | 8 | 6 | 8 | 6 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/rearleft.png) | 7 | 6 | 8 | 6 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/rear.png) | 7 | 5 | 8 | 5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/rearright.png) | 7 | 6 | 8 | 6 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/right.png) | 8 | 6 | 8 | 6 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/frontright.png) | 7 | 6 | 8 | 6 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/top.png) | 7 | 5 | 8 | 5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/hero-frontleft.png) | 7 | 6 | 8 | 6 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/hero-rearright.png) | 7 | 5 | 8 | 5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/hero-toptilt.png) | 7 | 5 | 8 | 5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/close-front.png) | 6 | 5 | 8 | 5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/type96b_x/close-roof.png) | 6 | 5 | 8 | 5 |
 
 ## KF41 Lynx X r9 correction — FAIL, 14/14 images viewed
 
@@ -276,20 +276,20 @@ Earlier four findings visibly improve: real recessed rear ramp and flanking louv
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/front.png) | 9 | 8 | 8.5 | 8 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/frontleft.png) | 9 | 8 | 8.5 | 8 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/left.png) | 9 | 8 | 8.5 | 8 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/rearleft.png) | 9 | 8.5 | 8.5 | 8.5 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/rear.png) | 9 | 9 | 9 | 9 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/rearright.png) | 9 | 8.5 | 8.5 | 8.5 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/right.png) | 9 | 8 | 8.5 | 8 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/frontright.png) | 9 | 8 | 8.5 | 8 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/top.png) | 9 | 9 | 9 | 9 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/hero-frontleft.png) | 9 | 8.5 | 9 | 8.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/hero-rearright.png) | 9 | 8.5 | 9 | 8.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/hero-toptilt.png) | 9 | 9 | 9 | 9 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/close-front.png) | 8.5 | 8 | 8.5 | 8 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/close-roof.png) | 9 | 8.5 | 9 | 8.5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/front.png) | 9 | 8 | 8.5 | 8 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/frontleft.png) | 9 | 8 | 8.5 | 8 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/left.png) | 9 | 8 | 8.5 | 8 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/rearleft.png) | 9 | 8.5 | 8.5 | 8.5 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/rear.png) | 9 | 9 | 9 | 9 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/rearright.png) | 9 | 8.5 | 8.5 | 8.5 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/right.png) | 9 | 8 | 8.5 | 8 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/frontright.png) | 9 | 8 | 8.5 | 8 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/top.png) | 9 | 9 | 9 | 9 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/hero-frontleft.png) | 9 | 8.5 | 9 | 8.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/hero-rearright.png) | 9 | 8.5 | 9 | 8.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/hero-toptilt.png) | 9 | 9 | 9 | 9 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/close-front.png) | 8.5 | 8 | 8.5 | 8 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-kf41-r9/close-roof.png) | 9 | 8.5 | 9 | 8.5 |
 
 ## ZTZ100 X integrated baseline — FAIL, 14/14 images viewed
 
@@ -299,20 +299,20 @@ Stern cage is visibly a solid dark volume (rear, top, hero-rearright), losing th
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/front.png) | 7 | 6 | 8 | 6 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/frontleft.png) | 7 | 6 | 8 | 6 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/left.png) | 7 | 6 | 8 | 6 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/rearleft.png) | 7 | 5 | 8 | 5 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/rear.png) | 7 | 5 | 8 | 5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/rearright.png) | 7 | 5 | 8 | 5 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/right.png) | 7 | 6 | 8 | 6 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/frontright.png) | 7 | 6 | 8 | 6 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/top.png) | 7 | 5 | 8 | 5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/hero-frontleft.png) | 7 | 6 | 8 | 6 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/hero-rearright.png) | 7 | 5 | 8 | 5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/hero-toptilt.png) | 7 | 5 | 8 | 5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/close-front.png) | 6 | 5 | 8 | 5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/close-roof.png) | 7 | 5 | 8 | 5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/front.png) | 7 | 6 | 8 | 6 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/frontleft.png) | 7 | 6 | 8 | 6 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/left.png) | 7 | 6 | 8 | 6 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/rearleft.png) | 7 | 5 | 8 | 5 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/rear.png) | 7 | 5 | 8 | 5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/rearright.png) | 7 | 5 | 8 | 5 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/right.png) | 7 | 6 | 8 | 6 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/frontright.png) | 7 | 6 | 8 | 6 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/top.png) | 7 | 5 | 8 | 5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/hero-frontleft.png) | 7 | 6 | 8 | 6 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/hero-rearright.png) | 7 | 5 | 8 | 5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/hero-toptilt.png) | 7 | 5 | 8 | 5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/close-front.png) | 6 | 5 | 8 | 5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-r1/ztz100_x/close-roof.png) | 7 | 5 | 8 | 5 |
 
 ## Coverage update
 
@@ -326,20 +326,20 @@ Six cheek apertures with asymmetric layout and rear U fixtures visibly improve. 
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/front.png) | 8 | 7.5 | 8 | 7.5 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/frontleft.png) | 8 | 8 | 8 | 8 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/left.png) | 8 | 7.5 | 8 | 7.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/rearleft.png) | 8.5 | 8 | 8.5 | 8 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/rear.png) | 9 | 8.5 | 9 | 8.5 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/rearright.png) | 8.5 | 8 | 8.5 | 8 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/right.png) | 8 | 7.5 | 8 | 7.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/frontright.png) | 8 | 8 | 8 | 8 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/top.png) | 9 | 8.5 | 9 | 8.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/hero-frontleft.png) | 8.5 | 8 | 8.5 | 8 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/hero-rearright.png) | 9 | 8.5 | 9 | 8.5 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/hero-toptilt.png) | 9 | 8.5 | 9 | 8.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/close-front.png) | 8 | 7.5 | 8 | 7.5 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/close-roof.png) | 8.5 | 8 | 9 | 8 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/front.png) | 8 | 7.5 | 8 | 7.5 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/frontleft.png) | 8 | 8 | 8 | 8 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/left.png) | 8 | 7.5 | 8 | 7.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/rearleft.png) | 8.5 | 8 | 8.5 | 8 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/rear.png) | 9 | 8.5 | 9 | 8.5 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/rearright.png) | 8.5 | 8 | 8.5 | 8 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/right.png) | 8 | 7.5 | 8 | 7.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/frontright.png) | 8 | 8 | 8 | 8 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/top.png) | 9 | 8.5 | 9 | 8.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/hero-frontleft.png) | 8.5 | 8 | 8.5 | 8 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/hero-rearright.png) | 9 | 8.5 | 9 | 8.5 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/hero-toptilt.png) | 9 | 8.5 | 9 | 8.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/close-front.png) | 8 | 7.5 | 8 | 7.5 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-cv90-r10/close-roof.png) | 8.5 | 8 | 9 | 8 |
 
 ## AFT-10 X 08:15 correction — FAIL, 14/14 images viewed
 
@@ -349,20 +349,20 @@ Deck hatch/panel and forward equipment-box additions improve. Concrete support-l
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/front.png) | 8 | 7 | 8 | 7 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/frontleft.png) | 8 | 8 | 8 | 8 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/left.png) | 8 | 7.5 | 8 | 7.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/rearleft.png) | 8 | 7 | 8 | 7 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/rear.png) | 8 | 7 | 8 | 7 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/rearright.png) | 8 | 7 | 8 | 7 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/right.png) | 8 | 7.5 | 8 | 7.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/frontright.png) | 8 | 8 | 8 | 8 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/top.png) | 8 | 7 | 8 | 7 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/hero-frontleft.png) | 8.5 | 8 | 8.5 | 8 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/hero-rearright.png) | 8 | 7 | 8 | 7 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/hero-toptilt.png) | 8.5 | 7.5 | 8.5 | 7.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/close-front.png) | 8.5 | 8 | 8.5 | 8 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/close-roof.png) | 9 | 8.5 | 9 | 8.5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/front.png) | 8 | 7 | 8 | 7 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/frontleft.png) | 8 | 8 | 8 | 8 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/left.png) | 8 | 7.5 | 8 | 7.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/rearleft.png) | 8 | 7 | 8 | 7 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/rear.png) | 8 | 7 | 8 | 7 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/rearright.png) | 8 | 7 | 8 | 7 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/right.png) | 8 | 7.5 | 8 | 7.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/frontright.png) | 8 | 8 | 8 | 8 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/top.png) | 8 | 7 | 8 | 7 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/hero-frontleft.png) | 8.5 | 8 | 8.5 | 8 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/hero-rearright.png) | 8 | 7 | 8 | 7 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/hero-toptilt.png) | 8.5 | 7.5 | 8.5 | 7.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/close-front.png) | 8.5 | 8 | 8.5 | 8 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/aft10_x/close-roof.png) | 9 | 8.5 | 9 | 8.5 |
 
 ## BMP-3M Dragun125 X 08:15 correction — FAIL, 14/14 images viewed
 
@@ -372,20 +372,20 @@ Bow hinged panel and handles improve, and the prior unmatched large deck grilles
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/front.png) | 8 | 7.5 | 8 | 7.5 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/frontleft.png) | 8.5 | 8 | 8.5 | 8 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/left.png) | 8.5 | 8 | 8.5 | 8 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/rearleft.png) | 8 | 8 | 8.5 | 8 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/rear.png) | 7 | 7.5 | 8 | 7 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/rearright.png) | 8 | 8 | 8.5 | 8 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/right.png) | 8.5 | 8 | 8.5 | 8 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/frontright.png) | 8.5 | 8 | 8.5 | 8 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/top.png) | 8 | 8 | 9 | 8 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/hero-frontleft.png) | 8.5 | 8 | 8.5 | 8 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/hero-rearright.png) | 8 | 8 | 8.5 | 8 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/hero-toptilt.png) | 8.5 | 8 | 9 | 8 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/close-front.png) | 8.5 | 8 | 8.5 | 8 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/close-roof.png) | 8 | 7.5 | 9 | 7.5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/front.png) | 8 | 7.5 | 8 | 7.5 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/frontleft.png) | 8.5 | 8 | 8.5 | 8 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/left.png) | 8.5 | 8 | 8.5 | 8 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/rearleft.png) | 8 | 8 | 8.5 | 8 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/rear.png) | 7 | 7.5 | 8 | 7 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/rearright.png) | 8 | 8 | 8.5 | 8 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/right.png) | 8.5 | 8 | 8.5 | 8 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/frontright.png) | 8.5 | 8 | 8.5 | 8 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/top.png) | 8 | 8 | 9 | 8 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/hero-frontleft.png) | 8.5 | 8 | 8.5 | 8 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/hero-rearright.png) | 8 | 8 | 8.5 | 8 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/hero-toptilt.png) | 8.5 | 8 | 9 | 8 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/close-front.png) | 8.5 | 8 | 8.5 | 8 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-0815/bmp3m_dragun125_x/close-roof.png) | 8 | 7.5 | 9 | 7.5 |
 
 ## Type 96B X 08:19 correction — FAIL, 14/14 images viewed
 
@@ -395,20 +395,20 @@ Barrel outer shroud, low cupola and shaped wheel dishes visibly improve. Paired 
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/front.png) | 8.5 | 8 | 8.5 | 8 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/frontleft.png) | 8.5 | 8.5 | 9 | 8.5 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/left.png) | 9 | 8.5 | 9 | 8.5 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/rearleft.png) | 8.5 | 7 | 8 | 7 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/rear.png) | 8 | 6 | 8 | 6 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/rearright.png) | 8.5 | 7 | 8 | 7 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/right.png) | 9 | 8.5 | 9 | 8.5 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/frontright.png) | 8.5 | 8.5 | 9 | 8.5 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/top.png) | 9 | 8 | 9 | 8 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/hero-frontleft.png) | 8.5 | 8.5 | 9 | 8.5 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/hero-rearright.png) | 8.5 | 7 | 8 | 7 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/hero-toptilt.png) | 9 | 8 | 9 | 8 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/close-front.png) | 8.5 | 8 | 9 | 8 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/close-roof.png) | 8.5 | 8 | 9 | 8 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/front.png) | 8.5 | 8 | 8.5 | 8 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/frontleft.png) | 8.5 | 8.5 | 9 | 8.5 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/left.png) | 9 | 8.5 | 9 | 8.5 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/rearleft.png) | 8.5 | 7 | 8 | 7 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/rear.png) | 8 | 6 | 8 | 6 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/rearright.png) | 8.5 | 7 | 8 | 7 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/right.png) | 9 | 8.5 | 9 | 8.5 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/frontright.png) | 8.5 | 8.5 | 9 | 8.5 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/top.png) | 9 | 8 | 9 | 8 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/hero-frontleft.png) | 8.5 | 8.5 | 9 | 8.5 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/hero-rearright.png) | 8.5 | 7 | 8 | 7 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/hero-toptilt.png) | 9 | 8 | 9 | 8 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/close-front.png) | 8.5 | 8 | 9 | 8 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/type96b_x/close-roof.png) | 8.5 | 8 | 9 | 8 |
 
 ## K21 X 08:16 correction — FAIL, 14/14 images viewed
 
@@ -418,20 +418,20 @@ Twin bow panel subdivisions/hinges, polygon hatch and rounded rear bundle improv
 
 | Actually viewed image | Source fit | Detail | Static seating | Minimum |
 |---|---:|---:|---:|---:|
-| [front](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/front.png) | 8.5 | 8 | 8.5 | 8 |
-| [frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/frontleft.png) | 8.5 | 8 | 8.5 | 8 |
-| [left](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/left.png) | 9 | 8 | 9 | 8 |
-| [rearleft](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/rearleft.png) | 8.5 | 8 | 8.5 | 8 |
-| [rear](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/rear.png) | 8 | 8 | 8 | 8 |
-| [rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/rearright.png) | 8.5 | 8 | 8.5 | 8 |
-| [right](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/right.png) | 9 | 8 | 9 | 8 |
-| [frontright](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/frontright.png) | 8.5 | 8 | 8.5 | 8 |
-| [top](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/top.png) | 9 | 8.5 | 9 | 8.5 |
-| [hero-frontleft](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/hero-frontleft.png) | 8.5 | 8 | 9 | 8 |
-| [hero-rearright](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/hero-rearright.png) | 8.5 | 8 | 9 | 8 |
-| [hero-toptilt](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/hero-toptilt.png) | 9 | 8.5 | 9 | 8.5 |
-| [close-front](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/close-front.png) | 8.5 | 8 | 9 | 8 |
-| [close-roof](../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/close-roof.png) | 8.5 | 7.5 | 9 | 7.5 |
+| [front](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/front.png) | 8.5 | 8 | 8.5 | 8 |
+| [frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/frontleft.png) | 8.5 | 8 | 8.5 | 8 |
+| [left](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/left.png) | 9 | 8 | 9 | 8 |
+| [rearleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/rearleft.png) | 8.5 | 8 | 8.5 | 8 |
+| [rear](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/rear.png) | 8 | 8 | 8 | 8 |
+| [rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/rearright.png) | 8.5 | 8 | 8.5 | 8 |
+| [right](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/right.png) | 9 | 8 | 9 | 8 |
+| [frontright](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/frontright.png) | 8.5 | 8 | 8.5 | 8 |
+| [top](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/top.png) | 9 | 8.5 | 9 | 8.5 |
+| [hero-frontleft](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/hero-frontleft.png) | 8.5 | 8 | 9 | 8 |
+| [hero-rearright](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/hero-rearright.png) | 8.5 | 8 | 9 | 8 |
+| [hero-toptilt](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/hero-toptilt.png) | 9 | 8.5 | 9 | 8.5 |
+| [close-front](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/close-front.png) | 8.5 | 8 | 9 | 8 |
+| [close-roof](../../../.qa-dev/tank-run/independent-regional-review/post-main-detail-r1/k21_x/close-roof.png) | 8.5 | 7.5 | 9 | 7.5 |
 
 ## Current coverage checkpoint
 

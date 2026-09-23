@@ -25,7 +25,7 @@ src/vehicles/**
 src/world/**
 docs/geometry-gate/**
 docs/references/**
-docs/research/**
+docs/history/research/**
 docs/images/**
 docs/BUILD-STANDARD.md
 docs/TANK-ASSET-PIPELINE.md

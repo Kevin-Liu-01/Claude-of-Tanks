@@ -10,7 +10,7 @@ no source geometry, textures, buffers or rig are shipped.
   `487ad57122e2f8e3425df7b706e752dac7d3cd1983b44b876deefc755d97bf9c`.
 - The complete first vehicle is Object_4 through Object_70; the second complete
   cosmetic vehicle is not part of this measurement. Selection and rigid metre
-  transform are in `docs/research/second-wave-registrations/amx30_x.json`.
+  transform are in `docs/history/research/second-wave-registrations/amx30_x.json`.
 - Canonical local oracle SHA-256:
   `55f4ec8837caa90c4ad976fdfd974bd9761497b27d963e3af84f040b9126bae5`.
 - Physical turret pivot `[0,1.584,.285]`, inferred internal trunnion

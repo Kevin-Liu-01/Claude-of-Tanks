@@ -1,7 +1,7 @@
 import { isUnguidedRocket } from './launcherPolicy.ts';
 import type { MagazineIndicator } from './magazineIndicator.ts';
 /**
- * damage.ts — complete hit resolution per docs/research/armor-penetration.md
+ * damage.ts — complete hit resolution per docs/history/research/armor-penetration.md
  * §12 and shells-ballistics.md: ricochet, normalization with overmatch,
  * KE/CE effective thickness with slope exponents, ERA (incl. tandem bypass),
  * spaced-armor absorption with HEAT air-gap decay, the gun barrel as a

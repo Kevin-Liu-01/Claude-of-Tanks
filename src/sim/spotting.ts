@@ -4,7 +4,7 @@
  *
  * Model (locked by the camo/spotting charter):
  *  - Per-tank base camo (stationary / moving), plausible per platform role per
- *    docs/research/tank-roster.md (heavies are billboards, mediums sneak,
+ *    docs/history/research/tank-roster.md (heavies are billboards, mediums sneak,
  *    modern MBTs sit between; smaller silhouettes rate higher).
  *  - Firing bloom: a shot costs most of the tank's OWN camo, decaying
  *    exponentially back over a few seconds. The loss fraction scales with

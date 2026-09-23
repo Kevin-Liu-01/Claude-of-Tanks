@@ -20,7 +20,7 @@ hashes and costs must not be substituted for the final integrated results.
 - Publication: **NOT PUBLISHED**; user requested publication only through the current procedure.
 - Worktree: `cot-kurganets-odztz-20260917`; branch `codex/kurganets-odztz-generation-20260917`; baseline `bb6c66d38efcddb245c6bcbcee6067085212fbcd`.
 - Candidate: frozen `src/vehicles/profiles/aft10X.ts`, SHA256 `721285673b1fee62f996f98273ef68b4a7b70a41314ff9e42cb335cd36693a5a`; final geometry receipts in `europe-source/aft-slot-final-r23/`.
-- Next action: retain the two source-policy failures explicitly and complete the integrator-owned composed release decision. Final independent review is `docs/research/aft-slot-independent-review-20260918.md`.
+- Next action: retain the two source-policy failures explicitly and complete the integrator-owned composed release decision. Final independent review is `docs/history/research/aft-slot-independent-review-20260918.md`.
 - Current launcher state: eight **sealed source-style square covers**. The shared `fixedLaunchCanisters` integration correction removes the unwanted cannon-bore overlays while retaining gameplay launch anchors. The fresh r4 independent review visibly confirms this correction; cover state is not an unresolved owner decision.
 - Known limitation: no source roof machine gun. Source-absent roof-MG policy remains pending; the canister cover state is not an outstanding owner conflict.
 
@@ -134,7 +134,7 @@ Frozen complete-source comparison now passes: aggregate **94.69**, minimum offic
 
 ### Post-main source-detail revision — 2026-09-18
 
-Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/research/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
+Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/history/research/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
 
 Source-only scalar bounds in `aft-detail-scalar-study.json` identify the Object_11 rear cradle loops (each 0.146 × 0.460 × 0.597 m), Object_17 inclined supports, and Object_18 roof access panels/driver cover. The revision authors closed elliptical rings and separate diagonal braces with real air; restores asymmetric polygonal roof covers and the box ahead of the launcher; and adds open canister handles. The eight launch axes, true cradle pivot and functioning launch contract are unchanged. Source covered-canister state and absent roof MG remain unresolved comparison targets.
 
@@ -162,7 +162,7 @@ Frozen official fourteen-view capture: `.qa-dev/tank-run/eastern-source/detail-r
 
 ### Source detail correction r3 / r3b — 2026-09-18
 
-The independent r2 review failed all-view admission (minimum **6.5/10**): `docs/research/eastern-r2-independent-critic-20260918.md`. Canister closure versus combat-opening policy is still an owner decision; this round deliberately leaves that configuration untouched. It does not imply visual admission or publication.
+The independent r2 review failed all-view admission (minimum **6.5/10**): `docs/history/research/eastern-r2-independent-critic-20260918.md`. Canister closure versus combat-opening policy is still an owner decision; this round deliberately leaves that configuration untouched. It does not imply visual admission or publication.
 
 Independent canonical Object_18 rays expose the receiving-shell errors underlying several details: center deck Y1.9477 (old draft2.055), central rear stock Z≈−3.17…−3.20 (old draft−3.55), with only the two side stern boxes extending to≈−3.59. Low corner lamps at X≈±1.4/Y1.25/Z3.695 occupy air outside the narrow lower nose, below the broad upper lip. The first-party shell now uses those datums, with separately authored projecting side boxes. No road-wheel axle, track path or fixed reference was moved.
 
@@ -187,7 +187,7 @@ Final r3b native construction census (`detail-r3b-native.json`) also passes at H
 
 ### Source detail correction r4 — 2026-09-18
 
-The fresh r3b independent critic inspected all fourteen images and failed at minimum **8/10**, identifying missing thin stern bridging stock and the generic bow mast receiver. That review remains preserved in `docs/research/regional-source-independent-critic-20260918.md`. The following is a bounded correction to those two source features; the already-sealed square canister covers, eight launch-anchor contract, road-wheel stations, tracks and palette are preserved.
+The fresh r3b independent critic inspected all fourteen images and failed at minimum **8/10**, identifying missing thin stern bridging stock and the generic bow mast receiver. That review remains preserved in `docs/history/research/regional-source-independent-critic-20260918.md`. The following is a bounded correction to those two source features; the already-sealed square canister covers, eight launch-anchor contract, road-wheel stations, tracks and palette are preserved.
 
 Canonical Object_18 rays in `.qa-dev/tank-run/eastern-source/detail-r4-study.json` identify an **8.7 mm** bridge between Y1.9663 and Y1.975, spanning Z−3.623…−3.1484 across the stern side boxes. Four columns × four rows of approximately 190 × 52 mm slots penetrate only this plate. The center bridge is now a closed thin extrusion with sixteen genuine holes joined to the existing side cap stock. It does not fill the space beneath or move the recessed rear door aft. Source rays through the forward slots see the central deck at Y1.9477; the two former rear roof stations at Y1.970 are corrected to that independent datum so the front slot row is not falsely plugged by the hull.
 
@@ -206,7 +206,7 @@ Fresh originals: `detail-r4/official14/aft10_x` under the same private evidence 
 
 ### Source wheel correction r5 and final shader capture — 2026-09-18
 
-The independent corrected-r4 review actually inspected all fourteen originals and retained a minimum **8.5/10** for wheel-face correspondence (`docs/research/aft-r4-independent-review-20260918.md`). Its canister, stern bridge and bow mast findings were resolved. That reviewer then took ownership of this bounded wheel correction; their earlier independent verdict cannot certify their new authored revision. A different critic must assess the fresh set.
+The independent corrected-r4 review actually inspected all fourteen originals and retained a minimum **8.5/10** for wheel-face correspondence (`docs/history/research/aft-r4-independent-review-20260918.md`). Its canister, stern bridge and bow mast findings were resolved. That reviewer then took ownership of this bounded wheel correction; their earlier independent verdict cannot certify their new authored revision. A different critic must assess the fresh set.
 
 Canonical Object_15 scalar sections prove an asymmetric wheel: outer hub axial +123.15 mm, recessed web +49–69 mm across R75–239 mm, rising lip +132.35 mm at R251 mm, and plain inner cone −103.15 mm at its center to approximately −129.6 mm at R269.4 mm. Source radial samples and the single connected wheel island show no geometric six-bolt ring. The prior generic native first-visible web was +148.23 mm and its hub +195.88 mm; this was a measured stock difference, not a compensation for lighting. No source topology, UVs or textures were copied.
 
@@ -250,18 +250,18 @@ The final standard raster's thirty cells prompted exact Object_18 source rays. S
 
 Frozen profile SHA: `721285673b1fee62f996f98273ef68b4a7b70a41314ff9e42cb335cd36693a5a`. The source-backed sixty-four edge witnesses now pass at HIGH/LOW with complete native FrontSide stock and existing fills loaded. All thirty original cell centers agree with source after correction: ten air and twenty plate. This does not replace the continuity raster or waive its failure. Final fill generation and postwrite cost/physical/official14 verification remain pending with root.
 
-Detailed source dimensions, preserved before/after rays and hashes: `docs/research/sabra-fitting-aft-continuity-20260918.md`; private evidence `.qa-dev/tank-run/europe-source/sabra-fitting-r22/`. Historical 30-cell failure remains recorded; any source-real cells in the refreshed scan remain an explicit release conflict.
+Detailed source dimensions, preserved before/after rays and hashes: `docs/history/research/sabra-fitting-aft-continuity-20260918.md`; private evidence `.qa-dev/tank-run/europe-source/sabra-fitting-r22/`. Historical 30-cell failure remains recorded; any source-real cells in the refreshed scan remain an explicit release conflict.
 
 
 ### Final postgeneration slot evidence
 
 The actual regenerated fill record matches the prior30-box file exactly (`759b310a92aea2b99b5796763f73769c515a649b09ce5459f0215ce0b1c9ca2b`). Fresh loaded HIGH/LOW source-edge, wheel and bore checks pass. Strict band/shoe/sweep intersections are all zero. Fixed-source silhouettes are96.44 aggregate /94.72 minimum. Selected cost71,068 /41,282 triangles (58.09%) and40/40 objects passes the fixed budgets. Stable evidence: `.qa-dev/tank-run/europe-source/aft-slot-final-r23/`.
 
-All fourteen final originals were independently inspected and hash-verified by root, with scoped9/10 each; see `docs/research/aft-slot-independent-review-20260918.md`. The standard scan remains **continuity30 /MG0: FAIL**. Exact camera-grid mapping proves every one of its thirty actual cell centers is air in both the complete canonical source and filled native model. The preceding ten-air/twenty-plate comparison used the scan's approximate nominal60mm coordinate labels, not its actual ceiled viewport pitch. `continuity-source-truth.json` records the corrected diagnostic mapping without changing the scan or its failing status. Source-real ventilation and absent-source MG policy remain explicit release conflicts; no full qualification or publication claim.
+All fourteen final originals were independently inspected and hash-verified by root, with scoped9/10 each; see `docs/history/research/aft-slot-independent-review-20260918.md`. The standard scan remains **continuity30 /MG0: FAIL**. Exact camera-grid mapping proves every one of its thirty actual cell centers is air in both the complete canonical source and filled native model. The preceding ten-air/twenty-plate comparison used the scan's approximate nominal60mm coordinate labels, not its actual ceiled viewport pitch. `continuity-source-truth.json` records the corrected diagnostic mapping without changing the scan or its failing status. Source-real ventilation and absent-source MG policy remain explicit release conflicts; no full qualification or publication claim.
 
 
 ## Pitching receiver ownership checkpoint — 2026-09-18
 
 Existing receiving stock now follows gun pitch without following barrel recoil. The two real launcher support crossbeams use the non-recoil pitching owner; all eight sealed canisters and their launch anchors retain the fixed-launch contract. Neutral HIGH/LOW visible world triangles, transformed normals, UVs, colors and materials match the prior model exactly. Filled native legal-pitch/recoil/return checks pass; TML optical faces additionally retain full-scene recess depth, unlimited former visibility through near/far LOD changes and exactly-once disposal.
 
-Current profile SHA-256: `c8e6a4f77d35bb2979493b44e2fc1b90096c11b94e1b78f4fcb2cc4cb4f68d51`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.
+Current profile SHA-256: `c8e6a4f77d35bb2979493b44e2fc1b90096c11b94e1b78f4fcb2cc4cb4f68d51`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../history/research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.

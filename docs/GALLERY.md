@@ -117,7 +117,7 @@ only the material to the Gallery's dashed diagnostic treatment. Combat-shape
 segmentation never multiplies a logical module or crew station. Fleet topology,
 placement bands, evidence confidence, and source-aware visual forms come from
 `src/vehicles/internalLayoutRegistry.ts`; the research policy and primary
-references are recorded in `docs/research/internal-anatomy-evidence.md`.
+references are recorded in `docs/history/research/internal-anatomy-evidence.md`.
 
 ### Surface markup
 

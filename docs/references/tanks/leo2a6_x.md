@@ -13,7 +13,7 @@ commercial-game extraction; this is not a broader guarantee about ownership.
 The file remains a local comparison input. No source topology, buffers, UVs,
 textures or source-loading path enter the playable model.
 
-The canonical [registration recipe](../../research/second-wave-registrations/leo2a6_x.json)
+The canonical [registration recipe](../../history/research/second-wave-registrations/leo2a6_x.json)
 retains scale 1, applies the proper half-turn `[-x,y,-z]`, then translates by
 `[0.000005,1.08062,0.251745]`. Source body midpoint defines hull-center Z;
 source track bottom defines ground 0. No per-part deformation is applied.

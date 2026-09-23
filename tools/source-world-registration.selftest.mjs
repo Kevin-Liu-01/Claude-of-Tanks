@@ -5,8 +5,8 @@ import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-re
 // An owner-directed enlargement changes the entire frozen source frame,
 // including its ground translation. Moving just the mesh scale would drift
 // the source; moving just the candidate would silently invalidate the oracle.
-const originalAriete=JSON.parse(readFileSync(new URL('../docs/research/second-wave-registrations/ariete_c1_x.json',import.meta.url),'utf8'));
-const enlargedAriete=JSON.parse(readFileSync(new URL('../docs/research/second-wave-registrations/ariete_c1_x-tier10-20260921.json',import.meta.url),'utf8'));
+const originalAriete=JSON.parse(readFileSync(new URL('../docs/history/research/second-wave-registrations/ariete_c1_x.json',import.meta.url),'utf8'));
+const enlargedAriete=JSON.parse(readFileSync(new URL('../docs/history/research/second-wave-registrations/ariete_c1_x-tier10-20260921.json',import.meta.url),'utf8'));
 assert.equal(enlargedAriete.sourceSha256,originalAriete.sourceSha256,'same complete raw source');
 assert.deepEqual(enlargedAriete.axes,originalAriete.axes,'no new orientation fit');
 assert.equal(enlargedAriete.scale,originalAriete.scale*(1.12*1.10),'prescribed uniform enlargement');
@@ -119,7 +119,7 @@ assert.ok(!evaluator.includes('WEST_X_REFERENCE_OVERRIDES'),'This registration d
 console.log('Mk3D: pinned independent source datums, fused owner checks, explicit evaluator row and displaced/scaled/hash negatives PASS');
 
 // Owner-prescribed Griffin proportions have their own source-only receipt.
-const griffin=JSON.parse(readFileSync(new URL('../docs/research/griffin-proportions-20260921.receipt.json',import.meta.url),'utf8'));
+const griffin=JSON.parse(readFileSync(new URL('../docs/history/research/griffin-proportions-20260921.receipt.json',import.meta.url),'utf8'));
 assert.equal(griffin.inputSha256,'1aef6401c01b5d9a6adfc65838c94d350f4aa39afa039709241c426371ca2003');
 assert.equal(griffin.hullLengthScale,1.1);assert.equal(griffin.turretScale,.9);
 assert.equal(griffin.removedTriangles,0);assert.equal(griffin.candidateGeometryUsed,false);

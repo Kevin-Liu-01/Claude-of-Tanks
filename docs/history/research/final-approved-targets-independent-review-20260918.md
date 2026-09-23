@@ -33,6 +33,6 @@ Private root: `.qa-dev/tank-run/final-approved-targets-review/`.
 - `garage/report.json` contains native renderer/light/map/GPU receipts; `garage-independent-review.json` records every inspected image and bounded findings.
 - `independent-review-index.json` collects current coverage and delegated review status.
 
-BMP/Griffin completed review: `docs/research/final-bmp-griffin-independent-review-20260918.md` and private `bmp-griffin-independent-review.json`. The Griffin port is actual visible first-hit stock despite camouflage; no missing-port finding. BMP roof receiving surface and fitting omission are under separate source-only diagnosis.
+BMP/Griffin completed review: `docs/history/research/final-bmp-griffin-independent-review-20260918.md` and private `bmp-griffin-independent-review.json`. The Griffin port is actual visible first-hit stock despite camouflage; no missing-port finding. BMP roof receiving surface and fitting omission are under separate source-only diagnosis.
 
-K21 completed review: `docs/research/k21-final-approved-independent-review-20260918.md` and private `k21-final-independent-review/review.json`. Rear and launcher scope passed; three source-supported forward-assembly failures remain. These canonical failures are not overridden by the limited Garage shadow review.
+K21 completed review: `docs/history/research/k21-final-approved-independent-review-20260918.md` and private `k21-final-independent-review/review.json`. Rear and launcher scope passed; three source-supported forward-assembly failures remain. These canonical failures are not overridden by the limited Garage shadow review.

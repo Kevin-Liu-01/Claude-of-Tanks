@@ -11,7 +11,7 @@ selectable main-cannon ammunition types. Twenty independent ERA blocks
 cover the upper glacis and turret cheeks and disappear when spent. The loader
 GPMG remains. These are explicitly owner-authored game additions, not claims
 about the production C2's weapons. The measured gun-depression curve accounts
-for the larger barrel and ERA. The [upgrade packet](../../research/missile-roles-ariete-upgrade-20260921.md)
+for the larger barrel and ERA. The [upgrade packet](../../history/research/missile-roles-ariete-upgrade-20260921.md)
 records current checks and publication status; the earlier record below is
 historical. The frozen concept JSON describes the current geometry.
 
@@ -30,7 +30,7 @@ turret and gun rather than the old prototype builder.
 
 The frozen design is
 [`ariete-c2-20260921.json`](../concepts/ariete-c2-20260921.json).
-The [family work packet](../../research/ariete-family-revamp-20260921.md)
+The [family work packet](../../history/research/ariete-family-revamp-20260921.md)
 records source hashes, the prescribed 1.12 scale, budgets and final receipts.
 
 ## Reference scope

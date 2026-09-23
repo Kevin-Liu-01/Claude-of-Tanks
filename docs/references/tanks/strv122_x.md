@@ -30,7 +30,7 @@ The canonical source was prepared from all18 fused chunks using only the
 source's full-width3.78m ruler, real outer-tread ground, and the off-axis body
 envelope's longitudinal midpoint. The latter is a dimensional ruler, not a
 comparison mask: no source triangles or chunks are omitted. Recipe:
-`docs/research/second-wave-registrations/strv122_x.json`.
+`docs/history/research/second-wave-registrations/strv122_x.json`.
 
 Axes are `[-z,y,x]`, uniform scale9.585067904817178, translation
 `[-.0028520023215322108,2.6852698781195588,.7801323273360417]`.
@@ -83,7 +83,7 @@ metal beside them atX.928 and a separate lower transverse pin. High/low actual
 ID tests pass. These local tests do not substitute for whole-source gates.
 
 The bounded supplied-equipment reconstruction is documented separately in
-[`strv122-x-supplied-equipment.md`](../../research/strv122-x-supplied-equipment.md).
+[`strv122-x-supplied-equipment.md`](../../history/research/strv122-x-supplied-equipment.md).
 It replaces the narrow six-course aft cage with the measured seven-course
 rounded return, corrects the low front lid/post and wide visor, restores the
 short roof tube's separate narrow foretip and stepped center connection, and
@@ -118,7 +118,7 @@ rather than fabricated; that older result is not the final corrected shape's
 qualification receipt.
 
 The subsequent bounded cupola correction and exact preservation evidence are
-in [`strv122-x-supplied-cupola.md`](../../research/strv122-x-supplied-cupola.md).
+in [`strv122-x-supplied-cupola.md`](../../history/research/strv122-x-supplied-cupola.md).
 Its actual high/low source-surface, negative-air and positive-contact tests pass,
 and fresh identical-camera close-ups resolve the missing non-weapon assembly.
 The opposite weapon-cupola rim and receiver still have documented medium-form

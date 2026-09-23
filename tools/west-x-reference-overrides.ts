@@ -1,4 +1,4 @@
-// QA-only, owner-supplied local oracles. See docs/research/west-x-source-inventory.md.
+// QA-only, owner-supplied local oracles. See docs/history/research/west-x-source-inventory.md.
 // These files already use metres, +Y up, +Z forward, a centered structural
 // hull and ground zero. Spec widths must be their measured full widths so
 // reference-glb-loader's published-width registration is unit scale. Do not

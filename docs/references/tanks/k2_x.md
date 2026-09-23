@@ -70,7 +70,7 @@ round-6 geometry receipt); these are resolution-specific measurements,
 not structural-roof heights or a reason to shorten the physical whips.
 
 The adjacent source receipt and
-`docs/research/west-x-source-inventory.md` record normalization, source
+`docs/history/research/west-x-source-inventory.md` record normalization, source
 ownership and the common reproduction command.
 
 ## Historical scoped evidence — 2026-09-05, round 6

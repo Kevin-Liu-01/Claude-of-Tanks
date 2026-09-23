@@ -269,7 +269,7 @@ policy issues, with unchanged full-source failures. Loaded capture is not
 independent 9/10 approval or a release receipt. **NOT PUBLISHED.**
 
 Independent final-shaded follow-up is complete in
-[`british-us-final-shaded-independent-review-20260918.md`](../../research/british-us-final-shaded-independent-review-20260918.md).
+[`british-us-final-shaded-independent-review-20260918.md`](../../history/research/british-us-final-shaded-independent-review-20260918.md).
 All fourteen Warrior originals were actually inspected and hash-verified;
 every scoped assembled-body criterion was rated at least 9. The corrugated
 panels, curved rear roll, launcher receiver and measured wheel relief survive

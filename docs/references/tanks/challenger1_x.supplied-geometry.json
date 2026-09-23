@@ -3,7 +3,7 @@
   "status": "independent supplied-file draft; fixed-source proof rejected",
   "sourceSha256": "27b81eab3162ec03a0b96311462586dab02332d6ed45121aa59b9ed1223b9ab7",
   "canonicalSha256": "90a18f59e64509211fa15e4298fba40443766b8dbd9e6cfb1e7858ecad8f4e64",
-  "frameRecipe": "../../research/second-wave-registrations/challenger1_x.json",
+  "frameRecipe": "../../history/research/second-wave-registrations/challenger1_x.json",
   "construction": "Original closed solids and regular polygon/turned sections from scalar measurements. No source topology, vertex/index arrays, textures or runtime source loader. All twelve original owners remain in the offline canonical reference, including four misplaced below-ground panels.",
   "componentAvailability": "whole-only; material chunks are not complete articulation owners",
   "sideCoursesRawSourceUnits": {

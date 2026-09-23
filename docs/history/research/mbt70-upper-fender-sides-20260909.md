@@ -6,7 +6,7 @@ Implementation: complete; focused fit, motion and asset checks PASS.
 Publication: pushed to `origin/main` at
 `1f412d2d28f3b55ac5cb0c64469a6907795a0d21` on 2026-09-09, with the
 owner-authorized source-fidelity exception below. This is a scoped addition to FSP-05 in the
-[fleet bodywork backlog](../tank-generation/fleet-style-performance-priority.md),
+[fleet bodywork backlog](../../tank-generation/fleet-style-performance-priority.md),
 not completion of the wider fleet pass. The full release gate still fails
 three source-comparison views that also failed on the untouched baseline.
 Kevin subsequently explicitly requested publication of this task's work,

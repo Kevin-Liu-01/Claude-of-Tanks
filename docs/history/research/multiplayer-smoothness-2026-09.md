@@ -5,7 +5,7 @@ Date: 2026-09-05. Baseline commit: `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`.
 Current deployment status: release `adbcf2aaf` is live on the canonical website
 with Cloudflare room signaling and the existing TURN service. The old canonical
 Redis signaling route returns HTTP 410 and requests a refresh. See the final
-Cloudflare section and [hosting receipt](../MULTIPLAYER-HOSTING.md) for exact
+Cloudflare section and [hosting receipt](../../MULTIPLAYER-HOSTING.md) for exact
 versions, production checks and limitations. Earlier **not deployed** statements
 below describe their historical verification phase, not the current cutover.
 The abandoned-room follow-up at the end records its initial local checkpoint;
@@ -59,7 +59,7 @@ The current player-facing contract is Solo, Private and LAN only. The selected
 Internet deployment uses Cloudflare per-room Durable Objects and the existing
 TURN service; LAN can use the local in-memory helper. Neither requires
 ranked/dedicated simulation, Redis, Supabase or rating storage. See
-[the deployment/runbook](../MULTIPLAYER-HOSTING.md). The earlier self-hosted
+[the deployment/runbook](../../MULTIPLAYER-HOSTING.md). The earlier self-hosted
 single-process implementation remains an alternative, not the live backend.
 
 The authoritative match runs at 60 Hz and publishes snapshots at 20 Hz.
@@ -1029,7 +1029,7 @@ The subsequent deployment direction keeps the Vercel frontend and its existing
 to one always-on backend host. `Dockerfile.multiplayer`,
 `compose.multiplayer.yaml`, and `deploy/Caddyfile.multiplayer` implement that
 explicit alternative; the distributed Vercel adapter retains its Redis guard.
-The [Redis-free hosting runbook](../MULTIPLAYER-HOSTING.md) documents the endpoint
+The [Redis-free hosting runbook](../../MULTIPLAYER-HOSTING.md) documents the endpoint
 split, exact origin allowlist, single-owner restriction, persistent rating
 volume, restart limits, and cutover/rollback checks. No public host, DNS change,
 production deployment, or Redis deletion is established by this local work.
@@ -1534,7 +1534,7 @@ unless that full gate is subsequently rerun successfully.
 
 The deployment procedure, storage lifetime, hibernation boundaries, rate limits,
 rollback constraints and supported LAN setup are in
-[`MULTIPLAYER-HOSTING.md`](../MULTIPLAYER-HOSTING.md). Browser-hosted play still
+[`MULTIPLAYER-HOSTING.md`](../../MULTIPLAYER-HOSTING.md). Browser-hosted play still
 ends when the host leaves; a backgrounded or suspended host cannot guarantee
 single-player frame pacing. Fourteen rendered players and throttled-device
 performance remain uncertified.
@@ -1625,4 +1625,4 @@ alarm until its first wake; this change does not bulk enumerate/delete existing
 rooms. Cloudflare alarm delivery is at least once and may be delayed or exhaust
 provider retries after repeated failures, so the lease is an admission deadline,
 not an exact wall-clock deletion guarantee. See the
-[cleanup runbook](../MULTIPLAYER-HOSTING.md#abandoned-rooms-and-reconnect-leases).
+[cleanup runbook](../../MULTIPLAYER-HOSTING.md#abandoned-rooms-and-reconnect-leases).

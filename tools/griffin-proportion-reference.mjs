@@ -103,6 +103,6 @@ function resizeGriffinReference(bytes) {
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href) {
   const result=resizeGriffinReference(fs.readFileSync('public/models/community-candidates/griffin50_x_assembled_20260918.glb'));
   fs.writeFileSync('public/models/community-candidates/griffin50_x_proportions_20260921.glb',result.bytes);
-  fs.writeFileSync('docs/research/griffin-proportions-20260921.receipt.json',JSON.stringify(result.receipt,null,2)+'\n');
+  fs.writeFileSync('docs/history/research/griffin-proportions-20260921.receipt.json',JSON.stringify(result.receipt,null,2)+'\n');
   console.log(JSON.stringify(result.receipt,null,2));
 }

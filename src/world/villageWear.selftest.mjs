@@ -28,7 +28,7 @@ const foundryPatches = [
 // field (terrain.ts paintRoadMask), so every full-RGBA golden below was
 // re-pinned to the new bytes. R/B/A are produced by unchanged code; the
 // channel-masked comparison against the previous painter is recorded in
-// docs/research/map-pass-20260912.md (road pass section).
+// docs/history/research/map-pass-20260912.md (road pass section).
 const FROZEN = {
   other28: { desktop: '9106c96acb4f7a7c6d58a1b49fbbda410e681037875835882fd5dc910687a856', mobile: '777cc95ccb6179f499dec658e00d7093e982f8ac0f31d4bfd33eab28913cf5c3' },
   pilotMasks: {

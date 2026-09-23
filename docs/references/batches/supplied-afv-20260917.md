@@ -12,7 +12,7 @@ All thirteen vehicles now have an accepted independent visual review: 182
 canonical comparison views and 26 actual Garage views, with all 208 image
 hashes verified. The final Kurganets folded bow face and lower return resolve
 its previous 8.7 hold. The earlier failed review remains preserved. See the
-[final visual review](../../research/supplied-fleet-final-visual-review-20260918.md)
+[final visual review](../../history/research/supplied-fleet-final-visual-review-20260918.md)
 for the exact model identities, neutral-render equivalence bridges and limits.
 
 The isolated branch includes `origin/main` at `12b5dc936`, including the
@@ -119,7 +119,7 @@ Official 14-view visual-evaluator registration uses the same source overrides.
 
 The following were the three initial target conflicts (all resolved by the owner on2026-09-18; retained here as history):
 
-The [concrete decision table](../../research/supplied-source-target-decisions-20260918.md)
+The [concrete decision table](../../history/research/supplied-source-target-decisions-20260918.md)
 pins exact affected parts, source hashes, recommendations and unavailable
 placement evidence. The latest owner prompt consolidates these three choices;
 it does not ask again for publication authority.
@@ -209,9 +209,9 @@ These are diagnostic receipts, not publication approvals:
   native near/far material contract and unchanged parked/moving upload cadence
   are covered by `runningGearCadence.selftest.mjs`.
 - Independent findings remain in
-  `docs/research/regional-source-independent-critic-20260918.md`,
-  `docs/research/physical-bore-independent-critic-20260918.md`, and
-  `docs/research/ajax-track-wrap-independent-diagnosis-20260918.md`.
+  `docs/history/research/regional-source-independent-critic-20260918.md`,
+  `docs/history/research/physical-bore-independent-critic-20260918.md`, and
+  `docs/history/research/ajax-track-wrap-independent-diagnosis-20260918.md`.
   Failed and superseded images are retained privately with hashes.
 
 The pending assembled-source and roof-weapon choices above still prevent final
@@ -332,13 +332,13 @@ that overlapped centering generation is explicitly invalidated and retained sepa
   three-bay inclined open standoff screen. Native first-hit and open-cell rays,
   strict HIGH/LOW contact and all nine silhouette views pass (93.52 aggregate,
   92.39 weakest). Independent fourteen-view review passes; see
-  `docs/research/ztz-r10-independent-review-20260918.md`.
+  `docs/history/research/ztz-r10-independent-review-20260918.md`.
 - Griffin detail5 fixes optical receivers and their receiving pockets; Ajax
   detail12 retains its wheel stock while reducing hidden axle segmentation;
   K21 restores measured closed curved launcher caps. Independent fourteen-view
   reviews pass, without waiving Griffin/K21 source-policy conflicts.
 - Actual CSM shadows and night readability checks pass in the controlled GPU
-  fixture. See `docs/research/wheel-csm-night-independent-check-20260918.md`.
+  fixture. See `docs/history/research/wheel-csm-night-independent-check-20260918.md`.
   This is not a full-battle frame-rate certification.
 - Thirty-five rough-terrain motion cases (all thirteen HIGH/LOW plus nine
   legacy controls) pass the unchanged cut/daylight/travel limits; retained
@@ -396,7 +396,7 @@ is reported as a complete `npm test` pass; another full run follows this round.
 Griffin's crew layout has two hull stations backed by the cited manufacturer
 interview, with source-specific uncertainty retained. The four new internal
 layout families have primary source trails and explicitly inferred station
-locations; see `docs/research/supplied-layout-source-audit-20260918.md`.
+locations; see `docs/history/research/supplied-layout-source-audit-20260918.md`.
 
 All thirteen completed 27 real-pointer selections per surface in Gallery,
 desktop Garage and mobile graphics tier Garage, with no convergence, resource
@@ -405,13 +405,13 @@ not physical mobile measurements or a production-bundle certification. Original
 model-ready medians/p95 were Gallery 581.9/671.9ms, desktop Garage 347/578.8ms,
 and mobile-tier Garage 329.4/620.8ms at 4× CPU throttling. Independent subsequent
 thumbnail checks prove eventual image readiness; they do not fold thumbnail
-waits into model-ready timing. See `docs/research/garage-thumbnail-readiness-20260918.md`.
+waits into model-ready timing. See `docs/history/research/garage-thumbnail-readiness-20260918.md`.
 
 The production phase-resource probe fails the same 19/62 checks on the candidate
 and untouched main at `29c9ecefd`; no newly failing check was found. All scene-owner
 geometry totals match. A single extra wheel-paint shader program is expected;
 single-run timing/heap differences are inconclusive. The fixed budgets remain
-unmet. See `docs/research/supplied-afv-performance-comparison-20260918.md`.
+unmet. See `docs/history/research/supplied-afv-performance-comparison-20260918.md`.
 
 Earlier full technical assets, anatomy/module checks, typecheck, public/private
 builds, source exclusion and attribution passed. Final regeneration and repeat
@@ -485,7 +485,7 @@ all twelve additions: eleven cannon housings rode barrel recoil (60–135.417mm)
 while AFT's non-recoiling launcher supports lacked the correct pitching bucket.
 ZTZ already has the correct owner. Corrections are in progress with one writer
 per profile, real existing cradle stock and neutral geometry/material preservation;
-see `docs/research/supplied-gun-ownership-diagnosis-20260918.md`.
+see `docs/history/research/supplied-gun-ownership-diagnosis-20260918.md`.
 The completed pipeline is now a pre-correction receipt, not final qualification.
 
 All twelve ownership repairs are now frozen. Actual HIGH/LOW world triangles,
@@ -538,8 +538,8 @@ receives explicit profile opt-ins; arbitrary detail and legacy defaults stay
 excluded. The performance assertion is being corrected to count the actual
 near-detail caster submissions replaced, while preserving the eightfold
 savings requirement and existing absolute budgets. The original source-ratio
-failures remain recorded; see `docs/research/shadow-work-accounting-20260918.md`
-and `docs/research/supplied-shadow-support-audit-20260918.md`.
+failures remain recorded; see `docs/history/research/shadow-work-accounting-20260918.md`
+and `docs/history/research/supplied-shadow-support-audit-20260918.md`.
 
 Final generation/validation now belongs in `.qa-dev/tank-run/final-shadow/`,
 with a new independent fourteen-view capture after the runtime freeze. Earlier
@@ -583,8 +583,8 @@ explicit prior independent evidence. Type96 and K21 have a separate reviewer.
 The canonical evaluator has no cast shadows, so the separate real Garage review
 covers 26 enabled-shadow originals. A fixed-camera Kurganets diagnostic verifies
 real shadow contribution and byte-exact restoration in the bounded model ROI.
-See [assembled review](../../research/final-regenerated-assembled-visual-review-20260918.md)
-and [Garage shadow review](../../research/final-garage-shadow-independent-review-20260918.md).
+See [assembled review](../../history/research/final-regenerated-assembled-visual-review-20260918.md)
+and [Garage shadow review](../../history/research/final-garage-shadow-independent-review-20260918.md).
 These are scoped visual results, not battle/night/FPS certification.
 
 The completed validation pipeline passes anatomy, centering, selected assets,
@@ -675,7 +675,7 @@ All earlier raw receipts remain intact. The completed clean-process census
 covers 78 builds and 444 registered-part receipts, with Ajax as the only
 remaining failed ID; cold/filled receipts are identical. ZTZ and KF41 register
 no parts in this particular audit, so it supplies no attachment coverage for
-them. See [the corrected census](../../research/supplied-fender-cold-filled-census-20260918.md).
+them. See [the corrected census](../../history/research/supplied-fender-cold-filled-census-20260918.md).
 
 Ajax is now repaired and frozen as well: the low detached box is replaced by
 the source's warped/sloped thin sheet and folded mounting root. The receiving
@@ -685,7 +685,7 @@ actual source stations, finite contact, a displaced-sheet control and sampled
 moving-track air. All 18 gear meshes per quality remain exact. The preceding
 fill's selected HIGH/LOW costs are 79,812/47,928 triangles, within the unchanged
 80,000/75% limits; final generated costs remain to be checked. Detailed evidence
-is in [the Ajax repair report](../../research/ajax-rear-flap-20260918.md).
+is in [the Ajax repair report](../../history/research/ajax-rear-flap-20260918.md).
 All three focused fixtures are registered; the final manifest has 1,060 checks.
 
 The second diagnostic post run passes all 42 files with zero source/tool drift.
@@ -709,16 +709,16 @@ owner decisions supersede that state. No feature commit or push had occurred.
 
 ## Owner target decisions accepted — 2026-09-18
 
-The owner explicitly approved correctly assembled supplied comparison models, preservation of their actual weapon configurations, and real source slat/vent openings. A separate answer specifically approved the Warrior stand-off air and AFT-10 vents. See the [exact bounded scope and source selectors](../../research/supplied-source-target-decisions-20260918.md). These choices supersede earlier “awaiting owner target” notes in this historical packet.
+The owner explicitly approved correctly assembled supplied comparison models, preservation of their actual weapon configurations, and real source slat/vent openings. A separate answer specifically approved the Warrior stand-off air and AFT-10 vents. See the [exact bounded scope and source selectors](../../history/research/supplied-source-target-decisions-20260918.md). These choices supersede earlier “awaiting owner target” notes in this historical packet.
 
 Source-only assembly preparation and a measured exterior-opening/equipment policy are now authorized. Existing raw-source failures remain historical failures; no oracle is silently overwritten, no failed score is called passing, and publication still requires fresh qualification. The current frozen fender validation is continuing independently while the target work is prepared privately.
 
 
 ### Approved-target preparation and new Warrior finding
 
-The original frozen fender result now includes independent review of all42 refreshed canonical originals and6 Garage originals: [review](../../research/final-fenders-independent-review-20260918.md). All13 current HIGH/LOW builds also pass the unchanged selected geometry/object/detail-reduction budgets. These results apply to that frozen state, before the further Warrior side-stock correction below.
+The original frozen fender result now includes independent review of all42 refreshed canonical originals and6 Garage originals: [review](../../history/research/final-fenders-independent-review-20260918.md). All13 current HIGH/LOW builds also pass the unchanged selected geometry/object/detail-reduction budgets. These results apply to that frozen state, before the further Warrior side-stock correction below.
 
-After the owner approved source-real openings, exact current raster centers were checked against full source geometry. AFT agrees on all30 actual hole centers, and a private measured policy passes146 source/native air, edge-web and plate-thickness witnesses. Warrior has307 genuine-air cells but356 missing-source-stock cells:282 Object_5 side-ledge hits,62 Object_27 upper-lip hits and12 Object_21 forward-ledge hits. Its663-cell count is therefore not wholly intentional; the earlier broad source-air description was incomplete. The [source-only study](../../research/warrior-side-ledge-source-study-20260918.md) defines the required correction, preserving the real corridor. No blanket continuity exception has been adopted.
+After the owner approved source-real openings, exact current raster centers were checked against full source geometry. AFT agrees on all30 actual hole centers, and a private measured policy passes146 source/native air, edge-web and plate-thickness witnesses. Warrior has307 genuine-air cells but356 missing-source-stock cells:282 Object_5 side-ledge hits,62 Object_27 upper-lip hits and12 Object_21 forward-ledge hits. Its663-cell count is therefore not wholly intentional; the earlier broad source-air description was incomplete. The [source-only study](../../history/research/warrior-side-ledge-source-study-20260918.md) defines the required correction, preserving the real corridor. No blanket continuity exception has been adopted.
 
 All13 private proposed equipment configurations match their original source hashes, and the improved physical census passes all26 HIGH/LOW builds. It rejects empty, hidden, degenerate and undrawn weapon markers. The source-target/policy changes are still privately prepared and require integration plus fresh qualification; this is not a publication receipt.
 
@@ -746,7 +746,7 @@ raster reports294 cells, all classified against complete source/native geometry;
 all47 physical guards pass. AFT reports30 intentional cells with146 passing
 guards. The raw counts remain in each report, with zero unexpected openings.
 The checker rejects invisible material stock and malformed witness records;
-[independent review](../../research/source-openings-independent-review-20260918.md)
+[independent review](../../history/research/source-openings-independent-review-20260918.md)
 accepts those fixes. Final regenerated qualification must repeat these checks.
 
 The assembled targets exposed additional native errors: Kurganets' mast
@@ -877,7 +877,7 @@ while retaining its40mm cannon. It also made Warrior/K21/CV90 Mk.IV launcher
 anatomy explicit and corrected CV90105 TML to an inferred front powerpack and
 manual four-person layout. Real lazy finalization, guided inventory/reload,
 full balance and authoritative ammunition-flow checks pass. See the
-[weapon/layout review](../../research/supplied-fleet-weapon-layout-review-20260918.md).
+[weapon/layout review](../../history/research/supplied-fleet-weapon-layout-review-20260918.md).
 
 The post-repair generation/capture/qualification pipeline is now running in
 `.qa-dev/tank-run/final-corrections/`. Publication remains pending its completion
@@ -891,7 +891,7 @@ The metadata is corrected. Kurganets also now has separate Kornet and Bulat
 selection, inventory and reload channels. The three-slot loadout is main-gun
 AP, Kornet and Bulat; Bulat's nominal70mm/effect tuning is explicitly gameplay
 inference rather than a measured caliber or a thermobaric simulation. The
-[source-bound independent audit](../../research/supplied-13-caliber-independent-audit-20260918.md)
+[source-bound independent audit](../../history/research/supplied-13-caliber-independent-audit-20260918.md)
 records all13 configurations, including the remaining stated uncertainties.
 
 Fresh all13 weapon/selector checks,27-IFV balance, full-fleet balance and29
@@ -919,8 +919,8 @@ BMP-3M, K21 and CV90 Mk.IV pass their independent fourteen-view reviews at
 9.0/10 per required view. Their ordinary Garage images retain visible wheel,
 track and hull relief with actual shadow maps active. These are scoped visual
 passes, not a claim that the full release or production performance passed.
-See the [independent review](../../research/final-corrections-independent-review-20260918.md)
-and [K21 review](../../research/k21-final-corrections-review-20260918.md).
+See the [independent review](../../history/research/final-corrections-independent-review-20260918.md)
+and [K21 review](../../history/research/k21-final-corrections-review-20260918.md).
 
 Kurganets' rear repair passes, but its frontal detail remains 8.7/10. Fresh
 source/native rays confirmed that the original broad bow cap buries a real
@@ -937,7 +937,7 @@ visual hold remains unresolved. No complete anatomy check, final composed
 release or new full-suite PASS is claimed by that pipeline. The validator
 requires a final visual-ready record before starting those jobs.
 
-The [bounded publication audit](../../research/supplied-fleet-publication-review-20260918.md)
+The [bounded publication audit](../../history/research/supplied-fleet-publication-review-20260918.md)
 found no additional runtime/source-boundary blocker. It verified that source
 binaries and private captures remain excluded, new profiles remain demand
 loaded, and numerical gates are unchanged. Exact staging hashes must be
@@ -957,5 +957,5 @@ supports remain equipment. Geometry costs are 59,334 HIGH / 38,752 LOW including
 23 generated fill boxes. The old rear scalar fixture was corrected to the
 approved source datum while retaining its 1 mm tolerance; the same discrepancy
 was demonstrated in the preserved pre-bow model. See the
-[bow correction record](../../research/kurganets-bow-stock-correction-20260918.md).
+[bow correction record](../../history/research/kurganets-bow-stock-correction-20260918.md).
 Fresh bow images and the composed release remain pending.

@@ -136,7 +136,7 @@ Mask-derived rows use paired identical measurements in the source-only fixed fra
 
 ## Independent review checkpoint
 
-The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/research/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
+The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/history/research/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
 
 ## Post-main round11 — source gun, roof and rear assemblies
 
@@ -225,7 +225,7 @@ Final fill/shared identity:
 
 Existing receiving stock now follows gun pitch without following barrel recoil. The actual tube and muzzle retain their recoil owner; no source dimensions, neutral primitives or pivots changed. Neutral HIGH/LOW visible world triangles, transformed normals, UVs, colors and materials match the prior model exactly. Filled native legal-pitch/recoil/return checks pass; TML optical faces additionally retain full-scene recess depth, unlimited former visibility through near/far LOD changes and exactly-once disposal.
 
-Current profile SHA-256: `7d2d825c84733e1b88144a895c6666353e66c59956f5c47c6da835bfd8dfdc07`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.
+Current profile SHA-256: `7d2d825c84733e1b88144a895c6666353e66c59956f5c47c6da835bfd8dfdc07`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../history/research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.
 
 
 ## Final internal-layout correction — 2026-09-18
@@ -235,4 +235,4 @@ front powerpack/transmission, hull driver and three-person manually loaded
 105mm turret. No autoloader mechanism is inferred from the source publisher's
 separate gameplay clip. Lazy finalization is tested for physically forward
 engine/transmission volumes. Details and source:
-[final weapon/layout review](../../research/supplied-fleet-weapon-layout-review-20260918.md).
+[final weapon/layout review](../../history/research/supplied-fleet-weapon-layout-review-20260918.md).

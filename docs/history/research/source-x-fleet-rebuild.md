@@ -21,19 +21,19 @@ The table rounds only for readability; acceptance uses the stored raw values.
 
 | Variant | Fidelity | Minimum whole view | Geometry minimum |
 |---|---:|---:|---:|
-| [Leopard 2A7V X](../references/tanks/leo2a7v_x.md) | 94.17 | 92.05 | 92.05 |
-| [Leopard 2A6M X](../references/tanks/leo2a6m_x.md) | 94.85 | 93.44 | 93.44 |
-| [Leopard 2A4M X](../references/tanks/leo2a4m_x.md) | 95.33 | 93.02 | 93.02 |
-| [Leopard 2A5 X](../references/tanks/leo2a5_x.md) | 96.73 | 96.44 | 93.01 |
-| [Merkava Mk4 X](../references/tanks/merkava4_x.md) | 94.05 | 92.68 | 92.68 |
-| [Merkava Mk3D X](../references/tanks/merkava3d_x.md) | 95.11 | 93.35 | 93.35 |
-| [K2 Black Panther X](../references/tanks/k2_x.md) | 95.25 | 92.97 | 92.97 |
-| [KF51 Panther X](../references/tanks/kf51_x.md) | 97.54 | 97.00 | 93.64 |
-| [T-90A X](../references/tanks/t90a_x.md) | 97.37 | 96.13 | 92.33 |
-| [T-90A Vladimir X](../references/tanks/t90a_vladimir_x.md) | 96.74 | 94.41 | 94.41 |
-| [T-90M X](../references/tanks/t90m_x.md) | 97.56 | 97.52 | 93.15 |
-| [T-90SM X](../references/tanks/t90sm_x.md) | 97.27 | 96.51 | 92.44 |
-| [T-14 Armata X](../references/tanks/t14_x.md) | 96.97 | 94.55 | 94.55 |
+| [Leopard 2A7V X](../../references/tanks/leo2a7v_x.md) | 94.17 | 92.05 | 92.05 |
+| [Leopard 2A6M X](../../references/tanks/leo2a6m_x.md) | 94.85 | 93.44 | 93.44 |
+| [Leopard 2A4M X](../../references/tanks/leo2a4m_x.md) | 95.33 | 93.02 | 93.02 |
+| [Leopard 2A5 X](../../references/tanks/leo2a5_x.md) | 96.73 | 96.44 | 93.01 |
+| [Merkava Mk4 X](../../references/tanks/merkava4_x.md) | 94.05 | 92.68 | 92.68 |
+| [Merkava Mk3D X](../../references/tanks/merkava3d_x.md) | 95.11 | 93.35 | 93.35 |
+| [K2 Black Panther X](../../references/tanks/k2_x.md) | 95.25 | 92.97 | 92.97 |
+| [KF51 Panther X](../../references/tanks/kf51_x.md) | 97.54 | 97.00 | 93.64 |
+| [T-90A X](../../references/tanks/t90a_x.md) | 97.37 | 96.13 | 92.33 |
+| [T-90A Vladimir X](../../references/tanks/t90a_vladimir_x.md) | 96.74 | 94.41 | 94.41 |
+| [T-90M X](../../references/tanks/t90m_x.md) | 97.56 | 97.52 | 93.15 |
+| [T-90SM X](../../references/tanks/t90sm_x.md) | 97.27 | 96.51 | 92.44 |
+| [T-14 Armata X](../../references/tanks/t14_x.md) | 96.97 | 94.55 | 94.55 |
 
 Coverage limitation: the five segmented source registrations support separate
 component gates; the eight fused/unsegmented registrations do not support

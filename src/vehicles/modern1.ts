@@ -1,7 +1,7 @@
 // src/vehicles/modern1.ts — HD procedural builder #1: modern MBT roster wave.
 // Vehicles: leo2a6 (Leopard 2A6). The T-72B3 and Merkava IVm rows this pack
 // used to register as delisted family donors moved to donorSpecs.ts on
-// 2026-09-23 (hidden-fleet cleanup). Specs per docs/research/modern-roster.md §8;
+// 2026-09-23 (hidden-fleet cleanup). Specs per docs/history/research/modern-roster.md §8;
 // visual bar per Appendix B (trapezoidal track runs, silhouette identity,
 // raised ERA, articulated turret+gun, weathering). challenger2/challenger_3
 // moved to profiles/challenger.ts (§5.75 family-module split) — that module

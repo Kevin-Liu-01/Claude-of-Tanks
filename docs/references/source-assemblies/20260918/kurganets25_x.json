@@ -3,10 +3,10 @@
   "id": "kurganets25_x",
   "scope": "Local comparison reference only; no source geometry is used by gameplay.",
   "authorization": {
-    "ownerDecision": "docs/research/supplied-source-target-decisions-20260918.md",
+    "ownerDecision": "docs/history/research/supplied-source-target-decisions-20260918.md",
     "independentReviewStatus": "accepted-static-assembly",
     "independentReview": {
-      "path": "docs/research/british-source-assembly-independent-review-20260918.md",
+      "path": "docs/history/research/british-source-assembly-independent-review-20260918.md",
       "sha256": "1bf2c4160c3ee82123b4511269d921d581a28ec7d2a2e34bf32f81b969b18aad",
       "scope": "Static source assembly only; not procedural qualification or hinge-motion clearance."
     },

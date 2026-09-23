@@ -5,7 +5,7 @@
 This vehicle is already published. The owner-requested mantlet/autocannon
 correction restores the receiver recess that the former roof loft covered.
 The compact 57 mm source configuration, gun axis, muzzle, hull and running
-gear are retained. See the [gun correction and verification record](../../research/kurganets-gun-mantlet-20260921.md).
+gear are retained. See the [gun correction and verification record](../../history/research/kurganets-gun-mantlet-20260921.md).
 Earlier draft/pending statements below describe their dated work rounds.
 
 ## Current integrated status — 2026-09-18
@@ -125,7 +125,7 @@ source front cover remains closed; internal receiver circles are not exposed
 as invented holes. The fitted drum underside overlaps the native deck and is
 explicitly authored closure, not a claimed source sheet thickness.
 
-Calipers: `docs/research/kurganets-source-fitting-calipers-20260918.md`.
+Calipers: `docs/history/research/kurganets-source-fitting-calipers-20260918.md`.
 Actual native HIGH/LOW full-scene first-hit, groove, curvature, crown and closed
 face regressions pass. Selected costs are 54,020/34,318 triangles, 40/39 objects.
 Fresh14 originals and stable identities are under
@@ -167,20 +167,20 @@ Rendered replay also passes for all 12 HIGH/LOW cases using preserved pre-edit p
 
 The supplied Armored Warfare source depicts the short-gun Epokha configuration: 57 mm main weapon, four large Kornet flank canisters and an eight-tube raised rear Bulat rack. This matches the [publisher's configuration](https://armoredwarfare.com/en/news/general/development-kurganets-25), distinct from its earlier 30 mm turret. The authored opening remains 58.46 mm across; no source geometry, gear or frame was edited to correct the metadata.
 
-The three playable channels are now 57 mm APFSDS, Kornet and Bulat. Ready counts are four and eight visible tubes, with no invented hidden reload stock. Bulat's nominal 70 mm, HE effect and borrowed guided motion are explicit game tuning, not measured hardware data or a thermobaric simulation. Its independent numbered selector, reload and inventory are covered alongside the complete fleet's actual authoritative guided launches. Full configuration sources, balance values and limits are recorded in the [runtime integration review](../../research/supplied-fleet-runtime-integration-review-20260918.md#supplied-weapon-configuration-cross-check). Final generated anatomy and release receipts must postdate this metadata correction.
+The three playable channels are now 57 mm APFSDS, Kornet and Bulat. Ready counts are four and eight visible tubes, with no invented hidden reload stock. Bulat's nominal 70 mm, HE effect and borrowed guided motion are explicit game tuning, not measured hardware data or a thermobaric simulation. Its independent numbered selector, reload and inventory are covered alongside the complete fleet's actual authoritative guided launches. Full configuration sources, balance values and limits are recorded in the [runtime integration review](../../history/research/supplied-fleet-runtime-integration-review-20260918.md#supplied-weapon-configuration-cross-check). Final generated anatomy and release receipts must postdate this metadata correction.
 
 
 ## Folded bow and receiving hull — 2026-09-18
 
 The independent final frontal review held the former smooth wedge at 8.7/10. Measured source stock now replaces that wedge: the broad folded skin, narrower lower tongue, hollow rolled return, separate beveled receiving armor and thin side arms/pivots. The front roof terminates at its own source datum and continues as a thin lip over real air. The two generic front flaps were forward of their actual source receiver and obscured the restored plate ends; their compound sheets are now seated to the measured hull. The rear flaps and external armor bays remain untouched.
 
-The thick backing plates and roof continuation are structural hull geometry; trim and attachment hardware remain equipment. Source-only measurements, precise scope, original failed evidence, physical test method and remaining rendered acceptance are recorded in [the bow correction study](../../research/kurganets-bow-stock-correction-20260918.md). No source/camera/92-point qualification floor changed.
+The thick backing plates and roof continuation are structural hull geometry; trim and attachment hardware remain equipment. Source-only measurements, precise scope, original failed evidence, physical test method and remaining rendered acceptance are recorded in [the bow correction study](../../history/research/kurganets-bow-stock-correction-20260918.md). No source/camera/92-point qualification floor changed.
 
 Cold HIGH/LOW before/after receipts prove unchanged primitive stock outside this repair, all aft hull triangles and actual wheel/track buffers/matrices. Loaded HIGH/LOW verification now passes after the scoped fill refresh (23 boxes / 276 triangles), including complete-scene source rays, 10 finite joints, retained real air, actual hull ownership and moving-shoe bounds. Visible counts are 59,334 / 38,752 triangles; all other fill groups and the loader remain byte-identical. Fresh independent fourteen-view/Garage acceptance remains required; the old frontal review remains superseded.
 
 Final author-side freeze is recorded in `.qa-dev/tank-run/kurganets-final-bow/freeze.json`: profile `79710d6e…`, fill `b70b1cc2…`. New bow, existing rear-door, roof-fittings, source-detail and attachment-seat fixtures pass; type checking and strict profile metrics pass. The older rear-detail scalar was corrected against an independent assembled-source ray, retaining its 1 mm tolerance; exact pre-bow/current HIGH/LOW rays prove that adjustment is unrelated to the bow repair. Root-owned final source/track/bore gates, regenerated presentation and independent rendered acceptance remain required.
 
-The subsequent [final bow review](../../research/kurganets-final-bow-independent-review-20260918.md)
+The subsequent [final bow review](../../history/research/kurganets-final-bow-independent-review-20260918.md)
 accepted all fourteen fresh canonical views and both actual Garage views at
 9/10, with the final profile and loaded fill identities authenticated.
 The previous 8.7 hold and the pending-review statements above remain historical.

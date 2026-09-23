@@ -9,7 +9,7 @@ Owner-supplied `amx-40_armored_warfare.glb` SHA-256
 `2a510ae66a2355bc9766f043c7f42ae51164181ac9a6ed40d45c63993789d50e`.
 Private normalized comparison SHA-256
 `2b67a377fbd39d6a80e4d9511a2b890ec4abd19db37c41b1e7a6142d5c990079`.
-Registration receipt: `docs/research/second-wave-registrations/amx40_x.json`.
+Registration receipt: `docs/history/research/second-wave-registrations/amx40_x.json`.
 Complete original turret owners are Object 6/7/8/11/12/24; gun owners are
 Object 2/5/14/15/20. No source buffers or source loading enter the runtime.
 These identities are not claims that the supplied game asset can be redistributed.

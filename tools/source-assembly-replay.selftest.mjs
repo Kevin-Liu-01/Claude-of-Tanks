@@ -28,8 +28,8 @@ function restoreArieteRegistration(frames) {
   return { ...frames, ariete_c1_x: structuredClone(originalArieteFrame) };
 }
 function checkArieteRegistrationRecipe() {
-  const originalBytes = fs.readFileSync(path.join(root, 'docs/research/second-wave-registrations/ariete_c1_x.json'));
-  const enlargedBytes = fs.readFileSync(path.join(root, 'docs/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json'));
+  const originalBytes = fs.readFileSync(path.join(root, 'docs/history/research/second-wave-registrations/ariete_c1_x.json'));
+  const enlargedBytes = fs.readFileSync(path.join(root, 'docs/history/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json'));
   assert.equal(sha(originalBytes), '9cf61ecc80ee45152d7a743de8e029d1e0c2688aefba7996be782c32f245fb5d');
   assert.equal(sha(enlargedBytes), '2fac6ad3b23939e4013002a8b53a1f3128eef16d028498ff5fd486a49694371c');
   const original = JSON.parse(originalBytes), enlarged = JSON.parse(enlargedBytes);
@@ -38,6 +38,8 @@ function checkArieteRegistrationRecipe() {
   assert.deepEqual(enlarged.axes, original.axes);
   assert.equal(enlarged.scale, original.scale * 1.12);
   assert.deepEqual(enlarged.translation, original.translation.map(v => v * 1.12));
+  // The registration records are hash-pinned evidence and keep their historical path strings
+  // (the notes moved to docs/history/research/ on 2026-09-23).
   assert.equal(enlarged.parentRegistration, 'docs/research/second-wave-registrations/ariete_c1_x.json');
 }
 function glb(json, bin) {

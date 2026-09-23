@@ -2,7 +2,7 @@
 
 Implementation status: implemented and locally exercised. Production dependency
 availability and release certification are tracked separately in the
-[September 2026 verification record](research/multiplayer-smoothness-2026-09.md).
+[September 2026 verification record](history/research/multiplayer-smoothness-2026-09.md).
 Supported multiplayer consists of LAN and private room codes. Both
 enter the renderer-free authoritative simulation. Solo bots deliberately keep
 the original presentation-integrated local simulation: this avoids snapshot,
@@ -217,12 +217,12 @@ order therefore cannot strand either peer at the readiness barrier.
 
 ## Client smoothness
 
-The [September 2026 smoothness and reliability record](research/multiplayer-smoothness-2026-09.md)
+The [September 2026 smoothness and reliability record](history/research/multiplayer-smoothness-2026-09.md)
 documents reproduced failure cases, authority/presentation fixes, research,
 measured limits, and the local/browser/production verification matrix. Its
 pending release gates must not be read as production certification.
 
-The [moving-jitter follow-up](research/multiplayer-moving-jitter-2026-09.md)
+The [moving-jitter follow-up](history/research/multiplayer-moving-jitter-2026-09.md)
 documents the reproduced suspension replay and remote turn-freeze defects.
 The own-authority sidecar now includes a validated, versioned integrator
 checkpoint, including retained terrain support and pending landing impulse.

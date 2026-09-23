@@ -12,7 +12,7 @@ const cases = {
   ztz100_x: [['hull', 'min', 'z', -3.838]],
   // Restored Object_27 LEFT flange: source X=-2.1026399136 at Y1.76282.
   // Right authored armor stays +2.10; the 50 mm inset is asymmetric here.
-  // Independent source/native proof: docs/research/stale-qa-witness-repair-20260918.md.
+  // Independent source/native proof: docs/history/research/stale-qa-witness-repair-20260918.md.
   fv510_milan_x: [['hull', 'min', 'x', -2.05264], ['hull', 'max', 'x', 2.05]],
   griffin50_x: [['hull', 'max', 'x', 1.75]],
   ajax_x: [], // Its lower side armor extends a diagonal, not an AABB extreme.
@@ -116,7 +116,7 @@ for (const quality of ['high', 'low']) for (const id of ids) {
       // Ajax retains its original 422 mm witness. Griffin's source-derived
       // belly correction changes the baseline (unchanged armor buffer), so its
       // authenticated extension is now 194.167 mm, not the old 365.635 mm.
-      // See docs/research/stale-qa-witness-repair-20260918.md. The inset
+      // See docs/history/research/stale-qa-witness-repair-20260918.md. The inset
       // must retain that real lower-side silhouette without extending past it.
       const measuredExtension = id === 'ajax_x' ? .421735 : .194166655;
       assert.ok(Math.abs(armor - original - measuredExtension) < .001, `${id}: original source-stock witness stays fixed`);

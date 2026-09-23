@@ -2,8 +2,8 @@ import {BARAK_OPENING_WITNESSES} from './barak-source-openings.mjs';
 import {isArieteOpeningTarget,arieteOpeningWitnesses} from './ariete-source-openings.mjs';
 // Local qualification only. Independently measured source stock/air probes;
 // no source geometry is used by the playable model. Warrior witnesses refer
-// to docs/research/warrior-side-ledge-source-study-20260918.md; AFT slot edges
-// to docs/research/sabra-fitting-aft-continuity-20260918.md.
+// to docs/history/research/warrior-side-ledge-source-study-20260918.md; AFT slot edges
+// to docs/history/research/sabra-fitting-aft-continuity-20260918.md.
 const columns=[[-.46435,.18450],[-.14815,.18490],[.15475,.18490],[.47110,.18480]];
 const rows=[[-3.55565,.04490],[-3.43750,.04300],[-3.31935,.04490],[-3.20215,.04490]];
 export const AFT_SOURCE_SLOTS=Object.freeze(columns.flatMap(([x,width])=>rows.map(([z,length])=>Object.freeze({x,z,width,length}))));

@@ -6,7 +6,7 @@ The current target closes only the recessed central entrance with a finite,
 hinged door. The original source remains open and unchanged; the surrounding
 basket, stowage and passenger bay stay intact. This supersedes the old open-door
 presentation, not the source-stock preservation rules. Current verification
-and release status: [repair record](../../research/merkava-camo-repairs-20260920.md).
+and release status: [repair record](../../history/research/merkava-camo-repairs-20260920.md).
 Earlier whole-model assessments below remain historical evidence.
 
 ## Current integrated status — 2026-09-19
@@ -20,13 +20,13 @@ openings remain. The source itself overlaps its lower rear rails with its
 track by 31–34 mm. A documented hidden receiving relief clears the real moving
 stock while retaining the upper returns and visible rear form. The 264-phase
 fixture includes a failing control with the original overlapping tip restored.
-See [the source study](../../research/barak-bow-opening-source-study-20260919.md).
+See [the source study](../../history/research/barak-bow-opening-source-study-20260919.md).
 
 Full fleet generation passed at `87e8e9526`, including the regenerated assets.
 The subsequent independent fourteen-view review is **HOLD**: a closed rear
 mission volume obscures the source basket, chains and stowage; rear hull and
 roof equipment relationships also need correction. Its lowest score is 8.0,
-below the existing 9/10 bar. See [the actual visual review](../../research/israeli-final-r2-independent-visual-review-20260919.md).
+below the existing 9/10 bar. See [the actual visual review](../../history/research/israeli-final-r2-independent-visual-review-20260919.md).
 The measured running-gear repairs above remain valid at that checkpoint.
 Fresh component geometry, paired Garage views and complete release
 verification remain required before publication.

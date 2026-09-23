@@ -1,7 +1,7 @@
 {
   "id": "t72b3_x",
   "status": "Latest post-drum proof remains REJECTED: right-direct turret91.80337820376397. Shape geometry now passes: hull95.66171864295352,whole95.67929676838726,turret97.59171369059005,stations99.26021783824228. The dimension row compares native3.977872019253147 against an older source P95value4.107454637245056, although this run measures reference3.967672347408908; parent is investigating the shared-frame instrumentation separately. A subsequent source AA stock/receiver correction is CPU verified and awaits fresh raw proof. No overall qualification claim.",
-  "sourceInventory": "../../research/second-wave-soviet-inventory.md",
+  "sourceInventory": "../../history/research/second-wave-soviet-inventory.md",
   "source": {
     "archive": "t-72b3.zip!source/t72b3.zip!t72b3.fbx",
     "archiveSha256": "19b196bdc9825dc721dd20191e5e98146ab5c32202c50c213b079a6c523d2d8e",

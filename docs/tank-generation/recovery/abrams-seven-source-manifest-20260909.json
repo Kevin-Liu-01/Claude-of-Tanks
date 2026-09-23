@@ -877,210 +877,210 @@
   ],
   "historyDocuments": [
     {
-      "sourcePath": "docs/research/abrams-idler-crown-budget-20260907.md",
+      "sourcePath": "docs/history/research/abrams-idler-crown-budget-20260907.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-idler-crown-budget-20260907.md",
       "originalSha256": null,
       "integratedSha256": "64b7dae2bff703d63d4616a52cd4a439c3cef504ece64e92bd1b5edf63e52664",
       "archiveSha256": "48b763bed8280264dd0961f6ae4b068b931241dc1bba644ebcf693da7ec40b57"
     },
     {
-      "sourcePath": "docs/research/abrams-low-drive-stock-20260907.md",
+      "sourcePath": "docs/history/research/abrams-low-drive-stock-20260907.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-low-drive-stock-20260907.md",
       "originalSha256": null,
       "integratedSha256": "6fb0aa6d439fc9932f9721278dbd2e66688c44228fff48aca0a87f4569c38b5a",
       "archiveSha256": "4b4215c2b712007ebd8dc06e413ec51150625903f00bf64c27547ef474826b24"
     },
     {
-      "sourcePath": "docs/research/abrams-low-equipment-quality-20260907.md",
+      "sourcePath": "docs/history/research/abrams-low-equipment-quality-20260907.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-low-equipment-quality-20260907.md",
       "originalSha256": null,
       "integratedSha256": "be45a0262de45792f8b9cc36345d16539080f7e0ab2c2429809a24ae1024c2a2",
       "archiveSha256": "0d528448b4de5c1b47a674c3f98cc43d5d4b0735011b5059718efb9230c39c37"
     },
     {
-      "sourcePath": "docs/research/abrams-r4-history-recovery-20260908.md",
+      "sourcePath": "docs/history/research/abrams-r4-history-recovery-20260908.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-r4-history-recovery-20260908.md",
       "originalSha256": null,
       "integratedSha256": "cd13c859a93523248ae333073bfebb75421fd0493cd175c6881ceb6af74924c2",
       "archiveSha256": "9ed2f826d04a38ab682e8034b2e6a36014998b48363f9429accf328f8c1a43a1"
     },
     {
-      "sourcePath": "docs/research/abrams-skirt-joint-recovery-20260908.md",
+      "sourcePath": "docs/history/research/abrams-skirt-joint-recovery-20260908.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-skirt-joint-recovery-20260908.md",
       "originalSha256": null,
       "integratedSha256": "27c12a3c2ca10377ea09e8b4f5b9aaffe0ae30895a058bf6198f9d62ea2a7d91",
       "archiveSha256": "2e95a214999dfae1e7a3f17c73818c8fdd927aaed76a58e3b45a2c1fd044177a"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-aft-case.md",
+      "sourcePath": "docs/history/research/abrams-source-x-aft-case.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-aft-case.md",
       "originalSha256": "a40c3f8ad3ce7f571652a318a1863c87cd7b44ede8dc69ed13cf513888b2b7d0",
       "integratedSha256": "a40c3f8ad3ce7f571652a318a1863c87cd7b44ede8dc69ed13cf513888b2b7d0",
       "archiveSha256": "1e017a02e5b4b2189c8e8548288e2386d9c726cd8b183d0db1832d6e7cb074ca"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-citv-audit.md",
+      "sourcePath": "docs/history/research/abrams-source-x-citv-audit.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-citv-audit.md",
       "originalSha256": "1e0b1bea338b70636107a46711bf254e41020001461ca6edb7dbc5cc1a43b6e9",
       "integratedSha256": "1e0b1bea338b70636107a46711bf254e41020001461ca6edb7dbc5cc1a43b6e9",
       "archiveSha256": "94b7050c2121ac9bcaff173c6e25502e32f9080c6e2d4f5721ad86ce85faff74"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-counter-assault-r4.md",
+      "sourcePath": "docs/history/research/abrams-source-x-counter-assault-r4.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-counter-assault-r4.md",
       "originalSha256": "dcfeabc42833fa3fbd4babb618a6e637606a7efb3f063bc9034c133e2c492729",
       "integratedSha256": "dcfeabc42833fa3fbd4babb618a6e637606a7efb3f063bc9034c133e2c492729",
       "archiveSha256": "af8c951f01e29d46f52f26c6b113cde0efac40eeba30fc8e16030e4248b2ce3e"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-drive-r4.md",
+      "sourcePath": "docs/history/research/abrams-source-x-drive-r4.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-drive-r4.md",
       "originalSha256": "a0b272007dd3d6419486f3c44d17debc5a766ae978eb610cfd4dcac77eb6c9ce",
       "integratedSha256": "a0b272007dd3d6419486f3c44d17debc5a766ae978eb610cfd4dcac77eb6c9ce",
       "archiveSha256": "60ab19be2b6cccee5f8ba695d79fb1535859fa52c180505e18921d84a40c1ae8"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-hatch-r5.md",
+      "sourcePath": "docs/history/research/abrams-source-x-hatch-r5.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-hatch-r5.md",
       "originalSha256": "f545ec975750a9a1613af1d05653ae0423be7be4321c3934023516f5992154f2",
       "integratedSha256": "f545ec975750a9a1613af1d05653ae0423be7be4321c3934023516f5992154f2",
       "archiveSha256": "3f844129b54573c92965f0006407029263234512dbc868632d5b748df18dcb44"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-hull-deck-r3.md",
+      "sourcePath": "docs/history/research/abrams-source-x-hull-deck-r3.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-hull-deck-r3.md",
       "originalSha256": "a942191d17cb84eac6a576380a8abe68ecd802ee20fed30ac07fd54573d3d21c",
       "integratedSha256": "a942191d17cb84eac6a576380a8abe68ecd802ee20fed30ac07fd54573d3d21c",
       "archiveSha256": "f03e0ce60065e08df4272cf28a305377abb227c05d543a6ed96094653ab9ea3d"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-integration-visual-review.md",
+      "sourcePath": "docs/history/research/abrams-source-x-integration-visual-review.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-integration-visual-review.md",
       "originalSha256": "8ca3feeb6b0c6af20baf367564b24c7fa2e76976e4ba9643b14f8fb5eb4cf94f",
       "integratedSha256": "8ca3feeb6b0c6af20baf367564b24c7fa2e76976e4ba9643b14f8fb5eb4cf94f",
       "archiveSha256": "125865969ab2dc7a6eb1131ad96b2b303d1ec00504cf8858bde2f9ebec539528"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-loader-feed.md",
+      "sourcePath": "docs/history/research/abrams-source-x-loader-feed.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-loader-feed.md",
       "originalSha256": "38bd8ad3568cc61a3cf80dd0fcaad2f693fdf1745e0f2bf1a540266c4eade1ba",
       "integratedSha256": "38bd8ad3568cc61a3cf80dd0fcaad2f693fdf1745e0f2bf1a540266c4eade1ba",
       "archiveSha256": "770a48d2d9cb5fb2e8ec4000fabaf05b7a88b1d02e399ce9debc38d0e051c2f7"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-loader-r4.md",
+      "sourcePath": "docs/history/research/abrams-source-x-loader-r4.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-loader-r4.md",
       "originalSha256": "734bbef49fffbf6d8822c115b01cf7319cd6bef8e4373ec90a3d9e22f5b358e2",
       "integratedSha256": "734bbef49fffbf6d8822c115b01cf7319cd6bef8e4373ec90a3d9e22f5b358e2",
       "archiveSha256": "008459222a07000868a93e828a2cf9d4777f462b5d525c12cc923f5ae948f5f7"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-loader-shields.md",
+      "sourcePath": "docs/history/research/abrams-source-x-loader-shields.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-loader-shields.md",
       "originalSha256": "07e48caa489e3b7e1bf3be64bf4c43f8beae52d350bee94c4d7ddf2b342ccf10",
       "integratedSha256": "07e48caa489e3b7e1bf3be64bf4c43f8beae52d350bee94c4d7ddf2b342ccf10",
       "archiveSha256": "95ff728092f7e2af55068fdcbd0b451549d464e27342f2f6d579a8349ddaf774"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-muzzle-r4.md",
+      "sourcePath": "docs/history/research/abrams-source-x-muzzle-r4.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-muzzle-r4.md",
       "originalSha256": "d7c70e37326be219b2b31754e6ba7747e0ffbd6b3dc44b0dabe52f300db24d65",
       "integratedSha256": "d7c70e37326be219b2b31754e6ba7747e0ffbd6b3dc44b0dabe52f300db24d65",
       "archiveSha256": "039f2e2243b5a0af63b8cb23c3c82102a2b94e44251075ce644703a7c4b35225"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-rack-collision.md",
+      "sourcePath": "docs/history/research/abrams-source-x-rack-collision.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-rack-collision.md",
       "originalSha256": "2d6db94a81cc5be456e426c98c02fc40050cb67f7d2c6911ee171b44989d4dd5",
       "integratedSha256": "2d6db94a81cc5be456e426c98c02fc40050cb67f7d2c6911ee171b44989d4dd5",
       "archiveSha256": "66717cf70308d23f01f3b0adcd35f969b80e1165a7204bde13b238d2483ee4b5"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-rack-r3.md",
+      "sourcePath": "docs/history/research/abrams-source-x-rack-r3.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-rack-r3.md",
       "originalSha256": "82cef40d96e28330eb2dd8e7be0bb090cc9ae28f23d8f514bbcf518c4fba3934",
       "integratedSha256": "82cef40d96e28330eb2dd8e7be0bb090cc9ae28f23d8f514bbcf518c4fba3934",
       "archiveSha256": "175982871ac29ceed9564086150140c4e0ef777d35277d54b0ed6a7acc1de28b"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-regression-completion.md",
+      "sourcePath": "docs/history/research/abrams-source-x-regression-completion.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-regression-completion.md",
       "originalSha256": "c02995ba469bb874dfa61108aefc2a0730747ca56105585643592e2dd62d8bf3",
       "integratedSha256": "c02995ba469bb874dfa61108aefc2a0730747ca56105585643592e2dd62d8bf3",
       "archiveSha256": "2573e92726efd0ff3fe4ee34160e75e2d5be60b82e9674502393af1fdbae16e8"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-skirt-armor-r4.md",
+      "sourcePath": "docs/history/research/abrams-source-x-skirt-armor-r4.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-skirt-armor-r4.md",
       "originalSha256": "7bd171c70c01f30e74fcecd43f4a081fde76f1fbf7c0d15bab8f4f0b9b31ffb7",
       "integratedSha256": "7bd171c70c01f30e74fcecd43f4a081fde76f1fbf7c0d15bab8f4f0b9b31ffb7",
       "archiveSha256": "c15ac717606bb554496d521e13f5d78ba4bb48822c5e432297e04a37ae0e7061"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-stern-r3.md",
+      "sourcePath": "docs/history/research/abrams-source-x-stern-r3.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-stern-r3.md",
       "originalSha256": "2d34e754b8516784e025704aa633d4303d7bdd29fa3167a4cb9d8bc0e7a1ddf5",
       "integratedSha256": "2d34e754b8516784e025704aa633d4303d7bdd29fa3167a4cb9d8bc0e7a1ddf5",
       "archiveSha256": "a3137eebde2dd27df128ff5099696e71019f8a6fc0764f7f3dab707f555462d8"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-track-height-diagnosis.md",
+      "sourcePath": "docs/history/research/abrams-source-x-track-height-diagnosis.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-track-height-diagnosis.md",
       "originalSha256": "ecd32c7d701c4a3a60199c2bd13309a16bf7a7953f10b016161bed9c64f1473e",
       "integratedSha256": "ecd32c7d701c4a3a60199c2bd13309a16bf7a7953f10b016161bed9c64f1473e",
       "archiveSha256": "d269d08b381363a73d7a5fe71b20e11c5eaf6b3c06fe3c9c38528dea5b098396"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-user-surfaces-r5.md",
+      "sourcePath": "docs/history/research/abrams-source-x-user-surfaces-r5.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-user-surfaces-r5.md",
       "originalSha256": "48178a2e0633160c0e2d9970285fe82f89fbaa052dce40684485ca504ad7a18f",
       "integratedSha256": "9181a34adbeeb209d41a8b10febe8b95ceeb5b2cce41e6a9e450b3b489da6bfc",
       "archiveSha256": "4ef7689a452d9acc5135016aeacd89111dfcb7452c97f65772056ee1f61dd716"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-variants.md",
+      "sourcePath": "docs/history/research/abrams-source-x-variants.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-variants.md",
       "originalSha256": "8a0a62e19ed29d6878bf38add40eefc7a3987aa555b158ad3c9d97ff276a1c2c",
       "integratedSha256": "8a0a62e19ed29d6878bf38add40eefc7a3987aa555b158ad3c9d97ff276a1c2c",
       "archiveSha256": "3c36d89b973906b2210d2c13e0ac7402f7ef7829d570bd185cd144f8338998d2"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-visual-review-r2.md",
+      "sourcePath": "docs/history/research/abrams-source-x-visual-review-r2.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-visual-review-r2.md",
       "originalSha256": "6c44664bd1866b49262dfd5ae5f0307aa24758d6037f1dad6d1460c111b57211",
       "integratedSha256": "6c44664bd1866b49262dfd5ae5f0307aa24758d6037f1dad6d1460c111b57211",
       "archiveSha256": "457200d1abaf99713c03f1899df1b30e2d67b0a4997efdecc2bb35b019651dd5"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-visual-review-r3.md",
+      "sourcePath": "docs/history/research/abrams-source-x-visual-review-r3.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-visual-review-r3.md",
       "originalSha256": "783f29e4cdef2161a63c2ad03110ba35c1ce8e0fea65003ad46686e6ff76fc25",
       "integratedSha256": "783f29e4cdef2161a63c2ad03110ba35c1ce8e0fea65003ad46686e6ff76fc25",
       "archiveSha256": "277889c5b8df22f39c50092458de2e09f84c11b6e62306378751601aaac2a0fb"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-visual-review-r4.md",
+      "sourcePath": "docs/history/research/abrams-source-x-visual-review-r4.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-visual-review-r4.md",
       "originalSha256": "7bfc971d1599686fa7ec7b220f993b57fa7960d27f2bb7ad401f2e6e7aef33a6",
       "integratedSha256": "7bfc971d1599686fa7ec7b220f993b57fa7960d27f2bb7ad401f2e6e7aef33a6",
       "archiveSha256": "8e4a6fae1cefda97586f2726884e5efd4cdea057b054e5927c2d767643b75d8d"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x-visual-review.md",
+      "sourcePath": "docs/history/research/abrams-source-x-visual-review.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-visual-review.md",
       "originalSha256": "a87b31723219ffa3fc5494a8c9b8105c5c321f14c43f60137ac5b7d817757042",
       "integratedSha256": "a87b31723219ffa3fc5494a8c9b8105c5c321f14c43f60137ac5b7d817757042",
       "archiveSha256": "b72a063b19c613c5f6596ddf6ecd79aa69b7c18f6c9f3c757fef33a93465bf71"
     },
     {
-      "sourcePath": "docs/research/abrams-source-x.md",
+      "sourcePath": "docs/history/research/abrams-source-x.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x.md",
       "originalSha256": "aa06c6818bbc17291c7b4702e6a1616d88305d622a06ac561993841c6fc8c8a5",
       "integratedSha256": "aa06c6818bbc17291c7b4702e6a1616d88305d622a06ac561993841c6fc8c8a5",
       "archiveSha256": "3ec5e5b138f7a1c86aefaadc404cdc97b559adfb3a005ee0c270bc716b919531"
     },
     {
-      "sourcePath": "docs/research/abrams-track-receiving-relief-20260907.md",
+      "sourcePath": "docs/history/research/abrams-track-receiving-relief-20260907.md",
       "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-track-receiving-relief-20260907.md",
       "originalSha256": null,
       "integratedSha256": "fa045884ebb003a0cdd9c885f7f7d60882283c1d7524f0a8be9c1b63eeaf6122",

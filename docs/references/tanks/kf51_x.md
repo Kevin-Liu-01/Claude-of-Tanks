@@ -78,7 +78,7 @@ still failed turret left 91.94855 and right 91.73178 despite whole minimum
 96.86. The forward sight/hatch correction above is subsequent work, not
 retroactive approval of those failing component views.
 
-The adjacent receipt and `docs/research/west-x-source-inventory.md` retain
+The adjacent receipt and `docs/history/research/west-x-source-inventory.md` retain
 the source-only measurements and reproducible local-oracle procedure.
 
 ## Scoped acceptance evidence — 2026-09-05 local date, round 7

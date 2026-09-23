@@ -1,6 +1,6 @@
 # Merkava Mk4 X — independent owner-source reconstruction
 
-Current rollers: [fitted efficient checkpoint; count evidence and release limits](../../research/merkava-x-return-rollers-checkpoint.md).
+Current rollers: [fitted efficient checkpoint; count evidence and release limits](../../history/research/merkava-x-return-rollers-checkpoint.md).
 The release figures below are historical and do not qualify that new fit.
 
 Status: **release-qualified — 2026-09-06T10:49:59.926Z**.

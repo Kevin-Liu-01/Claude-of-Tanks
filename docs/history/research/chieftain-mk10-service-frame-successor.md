@@ -7,7 +7,7 @@ not a complete-suite or vehicle release certificate.
 
 ## The two real historical stages
 
-The [service-frame source receipt](../references/tanks/chieftain_mk10_x.service-frame-source.json)
+The [service-frame source receipt](../../references/tanks/chieftain_mk10_x.service-frame-source.json)
 was captured at 2026-09-07T00:40:45Z. It certifies subtracting that new helper
 from the then-current complete model, preserving 317,904 HIGH / 291,504 LOW
 draw vertices at 10 micrometre position quantization. Those original counts
@@ -15,7 +15,7 @@ and SHA-256 values remain unchanged, both in that receipt and explicitly in
 the test's `PRE_FOUNDATION_HISTORY` table.
 
 The owner subsequently requested the Mk5-derived Mk10 foundation. Its
-[independent validation](../references/tanks/chieftain_mk10_x.mk5-foundation-validation.json)
+[independent validation](../../references/tanks/chieftain_mk10_x.mk5-foundation-validation.json)
 records a pre-edit capture at 05:17:43.500Z: all 668 non-foundation emissions
 and complete unaffected native meshes remain pinned, while the hull/casting,
 horns, permanent Stillbrew classification and two marking seats may change.
@@ -55,7 +55,7 @@ physical assertions passed. A separately installed current-main `c5ca781e2`
 control produced exactly these same two counts and hashes. The successor
 values come **only** from immutable published099, never from the candidate.
 
-The [successor receipt](../references/tanks/chieftain_mk10_x.published-foundation-preservation.json)
+The [successor receipt](../../references/tanks/chieftain_mk10_x.published-foundation-preservation.json)
 records exact capture times, original test failure, complete hashes for all
 24 authored Mk10/foundation/direct-leaf sources, relevant published factory
 source hashes, lockfile, installed Three.js 0.185.1 / TypeScript 7.0.2, and

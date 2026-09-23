@@ -54,9 +54,9 @@ release verification and publication remain pending.
 
 | ID | Private source path | Bytes | SHA-256 | Supplied inventory summary | Packet |
 | --- | --- | ---: | --- | --- | --- |
-| `merkava4_barak` | `/Users/kevinliu/Downloads/Claude of Tanks Models/merkava_mk.4m_barak_armored_warfare.glb` | 19,413,236 | `81cc2cf027af4475c5890089067dd9b1f77d9fbd306939e24f973ad68e099aa5` | 36 nodes, 34 meshes, 108,945 triangles; flattened, without semantic component ownership; reported bounds size 3.7578 × 6.9035 × 8.9200 | [Barak packet](../references/tanks/merkava4_barak.md) |
-| `merkava4_trophy` | `/Users/kevinliu/Downloads/Claude of Tanks Models/merkava_mark_iv.glb` | 6,459,324 | `645a9df8bb4dc6a31b94be61b4d2f04a72c0cc9f5c2852e607a878e5f3adc25a` | 323 nodes, 160 meshes, 27,883 triangles; semantic Trophy-equipped hierarchy; reported bounds size 8.7414 × 4.5913 × 4.2867 | [Trophy packet](../references/tanks/merkava4_trophy.md) |
-| `namer_ifv` | `/Users/kevinliu/Downloads/Claude of Tanks Models/namer_ifv.glb` | 7,048,964 | `5b0680e74233959eb939b9ba9866c019b41a31466ab0490fd42627d9f4e118b1` | 139 nodes, 68 meshes, 17,681 triangles; semantic turret/Trophy/weapon hierarchy; reported bounds size 7.8827 × 3.3838 × 3.7716 | [Namer packet](../references/tanks/namer_ifv.md) |
+| `merkava4_barak` | `/Users/kevinliu/Downloads/Claude of Tanks Models/merkava_mk.4m_barak_armored_warfare.glb` | 19,413,236 | `81cc2cf027af4475c5890089067dd9b1f77d9fbd306939e24f973ad68e099aa5` | 36 nodes, 34 meshes, 108,945 triangles; flattened, without semantic component ownership; reported bounds size 3.7578 × 6.9035 × 8.9200 | [Barak packet](../../references/tanks/merkava4_barak.md) |
+| `merkava4_trophy` | `/Users/kevinliu/Downloads/Claude of Tanks Models/merkava_mark_iv.glb` | 6,459,324 | `645a9df8bb4dc6a31b94be61b4d2f04a72c0cc9f5c2852e607a878e5f3adc25a` | 323 nodes, 160 meshes, 27,883 triangles; semantic Trophy-equipped hierarchy; reported bounds size 8.7414 × 4.5913 × 4.2867 | [Trophy packet](../../references/tanks/merkava4_trophy.md) |
+| `namer_ifv` | `/Users/kevinliu/Downloads/Claude of Tanks Models/namer_ifv.glb` | 7,048,964 | `5b0680e74233959eb939b9ba9866c019b41a31466ab0490fd42627d9f4e118b1` | 139 nodes, 68 meshes, 17,681 triangles; semantic turret/Trophy/weapon hierarchy; reported bounds size 7.8827 × 3.3838 × 3.7716 | [Namer packet](../../references/tanks/namer_ifv.md) |
 
 These intake inventory facts came from the owner request. The implementation
 round subsequently prepared ignored geometry-only oracles, registered proper

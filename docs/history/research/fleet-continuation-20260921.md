@@ -43,7 +43,7 @@ passes. Per-tank packets and newer owner decisions govern their targets.
 
 ## Remaining acceptance work
 
-The open [fleet priority](../tank-generation/fleet-style-performance-priority.md)
+The open [fleet priority](../../tank-generation/fleet-style-performance-priority.md)
 still requires current per-vehicle evidence for switching cost, repeated
 geometry, return support, track stock/fit, bodywork closure and material roles.
 Its September 10 measurements are historical baselines, not current defects.

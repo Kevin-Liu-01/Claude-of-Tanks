@@ -6,7 +6,7 @@
  * aim lead with gravity compensation, dispersion-gated firing, weak-spot probing,
  * flanking on repeated non-penetrations, and three difficulty tiers.
  *
- * Bot philosophy r1 (owner 2026-09-17, docs/research/bot-philosophy-20260917.md):
+ * Bot philosophy r1 (owner 2026-09-17, docs/history/research/bot-philosophy-20260917.md):
  * bots are soldiers with a mission, not turrets. Targets rank mission objective
  * → closest → weakest; a bot fires only at a SPOTTED enemy and answers a hit
  * from an unseen gun with cover or a jink and a hull turn, never a blind shot;

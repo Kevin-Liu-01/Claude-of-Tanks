@@ -202,12 +202,12 @@ is deployed from `10ac577de6618a594c3a38b2bb64e0cbd103d109`, Worker version
 expired after 90,032 and 179,768 ms while guests continued heartbeats; both
 returned `room_not_found` and all owned sockets closed. Native production
 room/RTC/launch/exit checks and real TURN allocation also pass. See the
-[current release evidence](research/multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements).
+[current release evidence](history/research/multiplayer-response-latency-2026-09.md#production-release-and-repeat-measurements).
 
 Browser-only firing warmup subsequently landed as `6604fbdad` and `adbcf2aaf`;
 canonical production was verified READY for both exact revisions. The Worker,
 room leases, TURN configuration and retired Redis resource did not change.
-The [native firing receipts](research/multiplayer-response-latency-2026-09.md#production-warmup-follow-up-shells-and-guided-missiles)
+The [native firing receipts](history/research/multiplayer-response-latency-2026-09.md#production-warmup-follow-up-shells-and-guided-missiles)
 separate measured first-shot improvements from unresolved frame outliers and
 do not promise zero physical network latency.
 

@@ -27,7 +27,7 @@ const coalCensus = { railyard: 6, caldera: 7, foundry: 7, skybridge: 5 };
 // 2026-09-11: fresh all-map road-completion capture. The original planting
 // sampler preserves seeded vegetation; only newly unsafe road/slope sites
 // are excluded. Props use the completed physical roads. Exact census deltas
-// are retained in docs/research/launch-collision-refresh-20260911.md.
+// are retained in docs/history/research/launch-collision-refresh-20260911.md.
 // 2026-09-12 map pass (native recapture of nine redressed maps, dev server +
 // agent-browser session, saltwind re-captured after a page reload with an
 // identical shard): bush/rock/outcrop/lone-tree/haystack counts rose on

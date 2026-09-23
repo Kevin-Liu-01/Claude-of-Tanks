@@ -5,24 +5,24 @@
 The latest owner request adds another 10% to the definitive C1 and promotes it
 to Tier X. The complete source frame is now 1.232 times its original registered
 size; the physical bore remains 120 mm. The replayable registration is
-[`ariete_c1_x-tier10-20260921.json`](../../research/second-wave-registrations/ariete_c1_x-tier10-20260921.json),
+[`ariete_c1_x-tier10-20260921.json`](../../history/research/second-wave-registrations/ariete_c1_x-tier10-20260921.json),
 with canonical SHA-256 `1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177`.
 All original source meshes remain present. This changes the design size, not
 the historical manufacturer's dimensions. Current validation and publication
-status belongs to the [upgrade packet](../../research/missile-roles-ariete-upgrade-20260921.md).
+status belongs to the [upgrade packet](../../history/research/missile-roles-ariete-upgrade-20260921.md).
 The following 1.12-scale qualification is historical.
 
 ## Earlier family revision — 2026-09-21
 
 The owner selected this Tier IX C1 as the definitive Ariete and requested a
 larger model. The installed geometry now uses a prescribed uniform 1.12 scale;
-the [family work packet](../../research/ariete-family-revamp-20260921.md)
+the [family work packet](../../history/research/ariete-family-revamp-20260921.md)
 owns current status. This revision retains the existing functional loader
 machine gun and corrects the enlarged cannon's bore to exactly 120 mm.
 
 The original source was located under `Downloads/Claude of Tanks Models/`,
 with its original SHA-256 unchanged. The replayable new recipe is
-[`ariete_c1_x-enlarged-20260921.json`](../../research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json).
+[`ariete_c1_x-enlarged-20260921.json`](../../history/research/second-wave-registrations/ariete_c1_x-enlarged-20260921.json).
 It multiplies the original uniform scale and translation by 1.12, preserves
 every complete source mesh and yields canonical SHA-256
 `1112ea55fab10920e78063a4aec4a6b5e5695751f176bfabc3b72a605bbf0c68`.
@@ -44,7 +44,7 @@ not real-vehicle dimensional accuracy. Production Ariete models are unchanged.
 ## Current supplied-file measurement contract — 2026-09-06
 
 The source-only canonical recipe is
-`docs/research/second-wave-registrations/ariete_c1_x.json`. It retains every
+`docs/history/research/second-wave-registrations/ariete_c1_x.json`. It retains every
 original object, applies the same positive uniform scale
 `0.021363932716129873` to all axes, and places the actual track ground at Y0
 and the actual hull longitudinal midpoint at Z0. The source already faces +Z.

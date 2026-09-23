@@ -38,7 +38,7 @@ This table checks the actual supplied game-model variant, rather than substituti
 | Supplied ID | Main caliber | Guided equipment represented | Source basis |
 |---|---:|---|---|
 | kurganets25_x | 57 mm | Kornet + Bulat, separate channels | [AW Epokha configuration](https://armoredwarfare.com/en/news/general/development-kurganets-25); supplied short gun, four flank tubes and eight rear tubes |
-| ztz100_x | 105 mm | No separately authenticated guided channel | [Retained owner-supplied concept packet](../references/tanks/ztz100_x.md#combat-record); this is a gameplay contract, not a publisher specification |
+| ztz100_x | 105 mm | No separately authenticated guided channel | [Retained owner-supplied concept packet](../../references/tanks/ztz100_x.md#combat-record); this is a gameplay contract, not a publisher specification |
 | fv510_milan_x | 30 mm | MILAN | [Publisher's model data](https://wiki.warthunder.com/unit/uk_fv510_isv), RARDEN and roof MILAN hardware |
 | griffin50_x | 50 mm | None | [AW Griffin 50mm](https://armoredwarfare.com/en/news/general/development-griffin-50mm), expressly gun-only |
 | ajax_x | 40 mm | None | [AW Ajax](https://armoredwarfare.com/en/news/general/development-ajax), single CTAS system |

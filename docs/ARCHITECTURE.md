@@ -27,10 +27,10 @@ Module ownership (file paths are FIXED):
 | audio    | `src/audio/audio.ts` |
 | integration | `src/main.ts`, `src/game/state.ts` |
 
-Research docs each builder MUST read: `docs/research/graphics-aaa.md` (engine, world,
-fx), `docs/research/movement-physics.md` (engine cameraRig, movement, vehicles specs),
-`docs/research/armor-penetration.md` + `docs/research/shells-ballistics.md` (combat,
-vehicles specs, ai), `docs/research/tank-roster.md` (vehicles, hud garage),
+Research docs each builder MUST read: `docs/history/research/graphics-aaa.md` (engine, world,
+fx), `docs/history/research/movement-physics.md` (engine cameraRig, movement, vehicles specs),
+`docs/history/research/armor-penetration.md` + `docs/history/research/shells-ballistics.md` (combat,
+vehicles specs, ai), `docs/history/research/tank-roster.md` (vehicles, hud garage),
 `docs/SCREENSHOT_CONTRACT.md` (everyone).
 
 ---

@@ -99,15 +99,17 @@ assets:
 
 ## World, simulation, and game research
 
-The files under research/ preserve the source study used to build individual
-systems:
+The source studies behind individual systems are archived under
+history/research/ (299 dated notes, source packets and second-wave
+registrations; moved from docs/research/ on 2026-09-23). Six remain the
+canonical design inputs that ARCHITECTURE.md names:
 
-- armor-penetration.md
-- shells-ballistics.md
-- movement-physics.md
-- modern-roster.md
-- tank-roster.md
-- graphics-aaa.md
+- [armor-penetration.md](history/research/armor-penetration.md)
+- [shells-ballistics.md](history/research/shells-ballistics.md)
+- [movement-physics.md](history/research/movement-physics.md)
+- [modern-roster.md](history/research/modern-roster.md)
+- [tank-roster.md](history/research/tank-roster.md)
+- [graphics-aaa.md](history/research/graphics-aaa.md)
 
 Research explains inputs and trade-offs. Shipped behavior is defined by code
 and the current subsystem documents above.
@@ -128,6 +130,7 @@ retain decisions, status and reproducible evidence summaries.
 | LESSONS.md | Incidents that informed vehicle build law |
 | POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md | Running-gear incident record |
 | DECISIONS.md | Maintained implementation choices and migration constraints |
+| history/research/ | Dated research notes, source studies, independent reviews and the second-wave source registrations (299 files; `docs/research/` until 2026-09-23) |
 | history/environment-2026-09/ | Environment-pass checkpoints, candidates, reviews and golden captures from the 2026-09-08/09 world recovery (32 records; evidence paths point at the authoring machine) |
 
 Historical counts and architecture claims may differ from the current runtime.

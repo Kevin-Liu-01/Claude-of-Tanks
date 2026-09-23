@@ -13,7 +13,7 @@ The unchanged 6,531,532-byte GLB has SHA-256
 `a7cb7c9ab877635d204f96f359e84f2da8b59298bf09f2eeaeeecd4205725169`.
 It declares glTF 2.0, generator `Sketchfab-16.59.0`, author Muhamad Mirza
 Arrafi and CC-BY-4.0. Those embedded claims do not establish upstream rights.
-The earlier [inventory](../../research/second-wave-west-inventory.md) records
+The earlier [inventory](../../history/research/second-wave-west-inventory.md) records
 the live source page's `createdwithai` tag. Owner-directed likeness to this
 file is not a claim that its proportions, anatomy or apertures are historically
 accurate. Existing local-only source-media restrictions remain unchanged.
@@ -216,7 +216,7 @@ complete-node component split. Whole-only comparison is proposed, with every
 one of the eleven source meshes included. No source arrays or runtime geometry
 were written during this measurement checkpoint.
 
-The approved recipe is now [chieftain5_x.json](../../research/second-wave-registrations/chieftain5_x.json).
+The approved recipe is now [chieftain5_x.json](../../history/research/second-wave-registrations/chieftain5_x.json).
 `tools/source-x-oracle.mjs` prepared the ignored, reference-only canonical GLB
 with SHA-256 `2a781a798e4ffe8f99ab9f6750b8db8e132b236de51a021cac28cbb82f268e79`.
 Its report confirms eleven retained meshes and zero omitted meshes. Complete

@@ -27,7 +27,7 @@ See [covered deployment evidence](covered-deployment-pacing-20260910.md).
 
 ## Experiment contract
 
-The standalone committed [probe](../../tools/audio-default-sink-probe.mjs) uses
+The standalone committed [probe](../../../tools/audio-default-sink-probe.mjs) uses
 real trusted button clicks, native foreground/unmuted Chrome and its own shared
 capture FIFO. A constructs `{ latencyHint: 'interactive' }`; B adds
 `sinkId: { type: 'none' }`, then awaits `setSinkId('')` for the default output.
@@ -100,7 +100,7 @@ retained outside Git; it was not edited or overwritten.
   `736152363efb72b8127f02556773d1381107614bccf5fd634b9848d25f9377b7`,
   report SHA256 `1d1360338acf31532e682b338742d54b28b51f4d9e2fa730b0f986c6127df5dc`.
 
-The focused [CPU regression](../../tools/audio-default-sink.selftest.mjs) passed
+The focused [CPU regression](../../../tools/audio-default-sink.selftest.mjs) passed
 through the ordinary selftest FIFO: trusted gesture/order, ignored/unsupported
 sink options, suspended-after-switch recovery, resume rejection/timeouts,
 cleanup failures, exact version gates and serial browser admission. Syntax,
@@ -109,7 +109,7 @@ claim follows from these tooling tests.
 
 ## Preserved behavior and inference limits
 
-[Lazy audio](../../src/audio/lazyAudio.ts) still owns one shared context with
+[Lazy audio](../../../src/audio/lazyAudio.ts) still owns one shared context with
 interactive latency and browser-preferred sample rate/default output. Explicit
 eligible Ready intent may prepare that context without mixer transfer or a
 tone. Battle preserves loading audio and exact-context mixer adoption; verified
@@ -118,7 +118,7 @@ activation retains in-gesture unlocking. Cancellation does not revive loading
 audio, and ordinary Garage orbit is not sound intent. Existing retry, mute,
 phase and fallback contracts remain unchanged; see
 [Ready preparation](multiplayer-ready-audio-preparation-2026-09.md) and
-[lazy-audio tests](../../src/audio/lazyAudio.selftest.mjs).
+[lazy-audio tests](../../../src/audio/lazyAudio.selftest.mjs).
 
 Native construction is synchronous on this tested browser path and remains an
 observed startup limitation under the preserved options. An asynchronous

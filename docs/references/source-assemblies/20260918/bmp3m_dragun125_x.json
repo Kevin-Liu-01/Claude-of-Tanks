@@ -3,10 +3,10 @@
   "id": "bmp3m_dragun125_x",
   "scope": "Local comparison reference only; no source geometry is used by gameplay.",
   "authorization": {
-    "ownerDecision": "docs/research/supplied-source-target-decisions-20260918.md",
+    "ownerDecision": "docs/history/research/supplied-source-target-decisions-20260918.md",
     "independentReviewStatus": "accepted-static-assembly",
     "independentReview": {
-      "path": "docs/research/bmp-k21-source-assembly-independent-review-20260918.md",
+      "path": "docs/history/research/bmp-k21-source-assembly-independent-review-20260918.md",
       "sha256": "2294425647b00dcb4fdd68e773b7e7012ca2de16d8f1b72237e0a8d31fe5cdb9",
       "scope": "Static source assembly only; not procedural qualification or hinge-motion clearance."
     }

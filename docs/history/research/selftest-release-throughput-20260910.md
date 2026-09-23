@@ -113,7 +113,7 @@ its own normal resource lease and all assertions:
 node --input-type=module <<'JS'
 import {readFileSync} from 'node:fs';
 import {runSelftestSuite} from './tools/run-selftests.mjs';
-const {files}=JSON.parse(readFileSync('docs/research/selftest-eight-worker-benchmark-20260910.json'));
+const {files}=JSON.parse(readFileSync('docs/history/research/selftest-eight-worker-benchmark-20260910.json'));
 for(const concurrency of [4,8]) {
   const start=performance.now(); let queueMs=0;
   const status=await runSelftestSuite('fixed-cpu-sample',files.map(row=>row.path),{

@@ -508,7 +508,7 @@ deleted after judging along with the rest of
 ## Variant vehicles (public/models/tanks/community/variants/) — CC-BY 4.0 derivatives
 
 Historical modified versions of on-disk CC-BY 4.0 base models ("variant"
-sourcing route, docs/research/modern-roster.md Part 0). Each file is an offline
+sourcing route, docs/history/research/modern-roster.md Part 0). Each file is an offline
 Blender re-export of the base with the modifications listed below — recorded
 here per CC-BY 4.0 §3(a)(1)(B). The files are comparison candidates only;
 playable combat data is registered by `src/vehicles/combatVariantSpecs.ts` and
@@ -1023,7 +1023,7 @@ GLB `public/models/community-candidates/leopard_revolution_owner_2026.glb`
 is ignored by Git and must never enter a playable or public asset path.
 The new Revolution is original first-party procedural geometry attributed
 to Kevin B. Liu; external vertices, indices, textures, and materials do not
-ship. See [the source study](research/leopard-revolution-source.md) for
+ship. See [the source study](history/research/leopard-revolution-source.md) for
 normalization, measurements, original-versus-altered-oracle evidence, and
 the 92-point per-view exemplar gate.
 

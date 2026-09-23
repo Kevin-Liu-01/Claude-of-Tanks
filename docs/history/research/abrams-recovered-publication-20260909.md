@@ -5,7 +5,7 @@ This is the user's authorized as-is preservation checkpoint; the final check
 driver finished with the complete anatomy procedure passing and the targeted
 release failing at reference availability. This is not a completed fidelity or
 performance release; no new source-comparison score was measured.
-See the [source recovery record](../tank-generation/recovery/abrams-seven-preservation-20260909.md)
+See the [source recovery record](../../tank-generation/recovery/abrams-seven-preservation-20260909.md)
 and [whole-task inventory](tank-work-recovery-inventory-20260909.md).
 
 ## Exact integration

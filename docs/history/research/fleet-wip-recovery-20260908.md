@@ -23,8 +23,8 @@ publishing failed candidates as-is, lowering fixed quality/performance gates,
 unrelated experiments, private comparison/source models or temporary QA files.
 Earlier batch-specific as-is exceptions are not a waiver for this work.
 
-Keep the existing [fleet acceptance contract](../tank-generation/fleet-style-performance-priority.md)
-and [quality gates](../tank-generation/quality-gates.md). The owner's subsequent
+Keep the existing [fleet acceptance contract](../../tank-generation/fleet-style-performance-priority.md)
+and [quality gates](../../tank-generation/quality-gates.md). The owner's subsequent
 choices are part of that contract:
 
 - Close upper shoulder/skirt wheel gaps; keep lower road-wheel faces visible.

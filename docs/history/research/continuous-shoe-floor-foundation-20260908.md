@@ -113,5 +113,5 @@ latency result.
 Full `npm test`, per-vehicle geometry/anatomy release, actual browser switching,
 and admission of new running gear are **not** certified by this checkpoint.
 No runtime profile opts in here and no model, icon or technical diagram changes.
-The [59-vehicle priority](../tank-generation/fleet-style-performance-priority.md)
+The [59-vehicle priority](../../tank-generation/fleet-style-performance-priority.md)
 and both terrain/cadence pilots remain open.

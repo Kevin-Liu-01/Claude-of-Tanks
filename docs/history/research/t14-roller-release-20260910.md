@@ -63,7 +63,7 @@ The full fleet module probe has zero failures and 83 retained dimension warnings
 Private comparison oracle SHA-256:
 `48745114206a2123e687f75477526caac0ad3896bd677639f44995d44b97e769`.
 It is a converted local oracle, distinct from the raw owner-file SHA in the
-[source record](../references/tanks/t14_x.md). Neither file enters the game or commit.
+[source record](../../references/tanks/t14_x.md). Neither file enters the game or commit.
 
 ## Test throughput
 

@@ -5,7 +5,7 @@ recipes, not another gate definition or a claim that the linked tanks all passed
 Read [workflow](workflow.md), [BUILD-STANDARD](../BUILD-STANDARD.md) and
 [GEOMETRY-GATE](../GEOMETRY-GATE.md); use [tool map](tool-map.md) for commands.
 
-The [September source-freeze contract](../research/source-x-second-wave.md)
+The [September source-freeze contract](../history/research/source-x-second-wave.md)
 takes precedence over archived fitting shortcuts in older documents/comments.
 Freeze source bytes, a source-only rigid frame and any declared uniform unit/size
 scale before optimizing the candidate. Do not nonuniformly warp the oracle,

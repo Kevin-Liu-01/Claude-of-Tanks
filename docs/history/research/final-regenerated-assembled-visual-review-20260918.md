@@ -1,6 +1,6 @@
 # Final regenerated assembled visual review — 2026-09-18
 
-All13 canonical fourteen-view sets were freshly captured with actual fills and stable runtime/source/generated-file identities. This critic covers11 profiles: **40 changed originals actually opened this round and 114 exact PNG matches to previously independently inspected accepted images**. The per-image old/new paths and hashes are in the [differential](../../.qa-dev/tank-run/final-shadow-review/image-differential.json).
+All13 canonical fourteen-view sets were freshly captured with actual fills and stable runtime/source/generated-file identities. This critic covers11 profiles: **40 changed originals actually opened this round and 114 exact PNG matches to previously independently inspected accepted images**. The per-image old/new paths and hashes are in the [differential](../../../.qa-dev/tank-run/final-shadow-review/image-differential.json).
 
 Type96 and K21 were independently reviewed by Europe because this critic authored their earlier source geometry. [Their28-image review](type96-k21-final-assembled-review-20260918.md) remains separate.
 
@@ -10,7 +10,7 @@ Scores are source fit / substantive detail / static seating. Exact-image carry-f
 
 ## ajax_x
 
-Freshly inspected 7/14; exact-image prior evidence 7/14. [Prior independent review](/Users/kevinliu/.codex/worktrees/cot-kurganets-odztz-20260917/docs/research/ajax-r12-independent-review-20260918.md).
+Freshly inspected 7/14; exact-image prior evidence 7/14. [Prior independent review](/Users/kevinliu/.codex/worktrees/cot-kurganets-odztz-20260917/docs/history/research/ajax-r12-independent-review-20260918.md).
 
 | Original | Fit/detail/seat | Evidence | Observation |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ Freshly inspected 7/14; exact-image prior evidence 7/14. [Prior independent revi
 
 ## griffin50_x
 
-Freshly inspected 5/14; exact-image prior evidence 9/14. [Prior independent review](/Users/kevinliu/.codex/worktrees/cot-kurganets-odztz-20260917/docs/research/griffin-detail5-independent-review-20260918.md).
+Freshly inspected 5/14; exact-image prior evidence 9/14. [Prior independent review](/Users/kevinliu/.codex/worktrees/cot-kurganets-odztz-20260917/docs/history/research/griffin-detail5-independent-review-20260918.md).
 
 | Original | Fit/detail/seat | Evidence | Observation |
 | --- | --- | --- | --- |
@@ -244,9 +244,9 @@ Freshly inspected 3/14; exact-image prior evidence 11/14. [Prior independent rev
 
 **Warrior and Sabra acceptance is withdrawn pending their measured fender repairs and fresh review.** The historical per-view 9 scores above are preserved as the original review record, not valid final acceptance for these two vehicles. That review missed substantive support stock; it was too permissive to treat apparent static seating at the capture scale as sufficient evidence. The full-suite failures and subsequent source calipers established deficits the earlier visual pass did not establish. This is a critic miss, not a newly approved simplification or a source-target conflict.
 
-On reopening the original Sabra `close-front` and `frontleft`, the source curved painted fenders continue down over the front track wraps; the native model instead exposes the wrap below short flat upper stock and places rectangular dark flaps farther forward. Canonical Object_4 rays support the defect: at X=1.60,Z=3.00 the source fender is Y=1.372236, while the native first hit is the track band at Y=1.178797; at X=1.60,Z=3.30 the source has Y=1.277910 but the native ray has no hit. At Z=3.40 the native flap Y=1.289796 differs from source Y=1.111045. These are actual source-supported coverage and shape errors, not missing source texture. [Original scalar/ray receipt](../../.qa-dev/tank-run/sabra-front-fender/rays.json).
+On reopening the original Sabra `close-front` and `frontleft`, the source curved painted fenders continue down over the front track wraps; the native model instead exposes the wrap below short flat upper stock and places rectangular dark flaps farther forward. Canonical Object_4 rays support the defect: at X=1.60,Z=3.00 the source fender is Y=1.372236, while the native first hit is the track band at Y=1.178797; at X=1.60,Z=3.30 the source has Y=1.277910 but the native ray has no hit. At Z=3.40 the native flap Y=1.289796 differs from source Y=1.111045. These are actual source-supported coverage and shape errors, not missing source texture. [Original scalar/ray receipt](../../../.qa-dev/tank-run/sabra-front-fender/rays.json).
 
-On reopening Warrior `rear` and `hero-rearright`, the flat native rear flaps do not establish the shaped receiving fender visible around the source rear track corners; the cage and rear perspective obscure the join enough that my earlier continuity assertion was unsupported. Object_21 contains paired shaped fenders (components8286/13428, Y0.8126–1.1486,Z−3.0879–−2.5605) and separate flap stock (8317/13454, Y0.2999–0.8629,Z−3.0879–−3.0566). [Source sections](../../.qa-dev/tank-run/warrior-mudguard-seat/source-fender-sections.json) provide the bounded authoring evidence. The below-floor export door question is unrelated and cannot excuse this omission.
+On reopening Warrior `rear` and `hero-rearright`, the flat native rear flaps do not establish the shaped receiving fender visible around the source rear track corners; the cage and rear perspective obscure the join enough that my earlier continuity assertion was unsupported. Object_21 contains paired shaped fenders (components8286/13428, Y0.8126–1.1486,Z−3.0879–−2.5605) and separate flap stock (8317/13454, Y0.2999–0.8629,Z−3.0879–−3.0566). [Source sections](../../../.qa-dev/tank-run/warrior-mudguard-seat/source-fender-sections.json) provide the bounded authoring evidence. The below-floor export door question is unrelated and cannot excuse this omission.
 
 Final acceptance for both is NOT RUN. After the root regeneration freeze, acquire fresh fourteen-view originals for each with exact runtime/source/fill/marking identities and unchanged source/camera policy; inspect all28 originals. Specifically compare both sides of each fender, continuity into the hull and flap receiving stock, actual free space over the moving track, material roles and silhouettes. Pair this with the owners’ finite HIGH/LOW full-scene receiving rays and strict track evidence; silhouettes alone cannot prove attachment. Repeat actual production Garage normal/oblique shadow views for both and inspect fender self/contact shade separately. Canonical fourteen-view images do not render shadows. No new captures or runtime edits have been made for this addendum.
 

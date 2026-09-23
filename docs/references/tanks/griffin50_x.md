@@ -6,7 +6,7 @@ The current Griffin has a 10% longer hull and a uniformly 10% smaller turret.
 Wheel radii and the 50 mm weapon remain unchanged. The original source and
 its certificates below remain historical. The explicit source-only derivation,
 updated rig datums and current qualification are recorded in the
-[Griffin proportion correction](../../research/griffin-proportions-20260921.md).
+[Griffin proportion correction](../../history/research/griffin-proportions-20260921.md).
 
 ## Historical integrated status — 2026-09-18
 
@@ -421,7 +421,7 @@ The preceding critic's detail4 images and hashes remain preserved in
 full raw-source qualification or an approved rear-door pose.
 
 Independent follow-up is complete:
-[`griffin-detail5-independent-review-20260918.md`](../../research/griffin-detail5-independent-review-20260918.md).
+[`griffin-detail5-independent-review-20260918.md`](../../history/research/griffin-detail5-independent-review-20260918.md).
 The independent reviewer actually opened all fourteen detail5 originals,
 reverified all hashes and rated every scoped assembled-body view at least 9
 for source fit, substantive detail and static seating. The optics finding is

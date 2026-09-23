@@ -7,7 +7,7 @@ The complete source has an open access recess between two rear wings and four
 substantial wedge modules across the bow.
 
 Source identity is recorded in the reviewed
-[source assembly recipe](../references/source-assemblies/20260918/bmp3m_dragun125_x.json).
+[source assembly recipe](../../references/source-assemblies/20260918/bmp3m_dragun125_x.json).
 Original canonical SHA-256:
 `4fd69d170bf494b8a795bf5d6618e94db10c7cdb562b9f37210bc613f402af16`.
 No source vertices, topology, materials or texture payload enters the runtime.

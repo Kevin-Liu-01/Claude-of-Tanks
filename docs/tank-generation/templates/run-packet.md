@@ -1,7 +1,7 @@
 # <Tank / batch> — run packet
 
 Template: copy into the existing `docs/references/tanks/<id>.md` or batch
-`docs/research/<name>.md` workflow, not into executable source registries.
+`docs/history/research/<name>.md` workflow, not into executable source registries.
 Replace placeholders; unknown is an explicit value, not an invented result.
 
 ## Current status

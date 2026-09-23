@@ -7,7 +7,7 @@ rubber flap, rear cover, turret or gun geometry changes are intended.
 
 ## Source-backed diagnosis
 
-The existing [source packet](../references/tanks/merkava4_x.md) documents the
+The existing [source packet](../../references/tanks/merkava4_x.md) documents the
 owner's comparison-only model and its canonical unposed frame. The exact local
 GLB used for this study has SHA-256
 `df149523e3cb85d6383d2a9bc78845faa653334fb4e2d88f57754b7da9eaa41b`.

@@ -2,7 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * cameraRig.ts — the WoT camera: third-person arcade orbit + sniper zoom.
  *
- * Implements docs/research/movement-physics.md §9/§11 verbatim and
+ * Implements docs/history/research/movement-physics.md §9/§11 verbatim and
  * ARCHITECTURE.md §3.1.5:
  *  - one camera, two states (ARCADE orbit / SNIPER first-person), sharing one
  *    aim yaw/pitch pair so mode switches never snap the view;

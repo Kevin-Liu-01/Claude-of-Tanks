@@ -20,7 +20,7 @@
 // A model "passes" for our pipeline when a turret-like island and gun-like
 // island exist (or the whole top is one island that a single ring-plane cut
 // can free). One fused island = expect real segmentation work (see
-// docs/research/genai-asset-pipelines.md for the options).
+// docs/history/research/genai-asset-pipelines.md for the options).
 //
 // Not handled (detected + reported, never silently wrong): Draco-compressed
 // primitives (the roster GLBs are uncompressed — modelLoader registers no

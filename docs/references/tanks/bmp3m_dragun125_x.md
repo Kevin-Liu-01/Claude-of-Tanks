@@ -125,7 +125,7 @@ Final round7 report `.qa-dev/tank-run/eastern-source/fidelity-round7.json`: aggr
 
 ### Post-main source-detail revision — 2026-09-18
 
-Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/research/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
+Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/history/research/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
 
 Source-only component scalar bounds in `bmp-detail-scalar-study.json` locate the two guarded towing eyes, bow hinges and Object_5 panoramic optical tier. The revision removes unsupported broad aft grilles, adds shoulder access covers and hinged bow panels, and authors the sight as separate lower/upper closed stock plus posts around real recessed windows. The existing source-present RWS remains. Detached source rear geometry and associated opening remain fully retained in the comparison input; this update does not resolve source pose/ownership.
 

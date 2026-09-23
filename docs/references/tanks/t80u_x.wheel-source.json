@@ -5,7 +5,7 @@
   "source": {
     "originalSha256": "64c5fec7d47a591f4a1fccc4f7273a8b2ddb9b8aa8748f8a8a45ba3c108aa888",
     "canonicalSha256": "dcb16e5bc83c37e380a252c08462948a6ff9098738464ea4bee9e45ccb02df81",
-    "registration": "../../research/second-wave-registrations/t80u_x.json",
+    "registration": "../../history/research/second-wave-registrations/t80u_x.json",
     "ownership": "Complete fused source scene; wheel surfaces belong to mesh_324. No separated component-score claim.",
     "method": "CPU inward axial rays against all original source meshes in the independently registered meter frame. Scalar ring sections and fixed held-out first surfaces were inspected separately from native geometry. No source vertex, index, topology, UV, texture or loader is used by the runtime helper."
   },

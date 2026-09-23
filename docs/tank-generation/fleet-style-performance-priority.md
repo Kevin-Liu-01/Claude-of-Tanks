@@ -59,7 +59,7 @@ roller, paint or triangle receipt therefore cannot close their review.
 ### Current evidence boundaries and immediate work
 
 Continuation, 2026-09-21: the [current-main reconciliation and Garage
-checkpoint](../research/fleet-continuation-20260921.md) supersedes old
+checkpoint](../history/research/fleet-continuation-20260921.md) supersedes old
 publication queues below. The census now covers 201 IDs / 402 HIGH/LOW builds.
 Interactive Garage construction is sliced and safely canceled on reselection;
 matched desktop/mobile-tier runs reduce worst observed stalls but regress median
@@ -74,13 +74,13 @@ not a current release queue. Do not repeat it without checking ancestry.
 - `4aa008627` publishes Type 10 X's fourteen camouflaged fixed skirt/fascia
   panels and the canonical Shtora pass. `e4ca00b6c` publishes the recovered
   fourteen-tank wheel/roller/paint batch, including T-90 X Shtora. See
-  [the complete release scope](../research/fourteen-tank-recovery-release-20260910.md).
+  [the complete release scope](../history/research/fourteen-tank-recovery-release-20260910.md).
   These are qualified bounded changes, not full track-gauge completion.
 - Merkava Mk3D X/Mk4 X fitted rollers are published in `8ff6d7cf6`, and
   T-14 X rollers are published through `ff0f639d9` (geometry `a681223d4`).
   Their release records are
-  [Merkava](../research/merkava-roller-release-20260910.md) and
-  [T-14](../research/t14-roller-release-20260910.md). Do not recover the old
+  [Merkava](../history/research/merkava-roller-release-20260910.md) and
+  [T-14](../history/research/t14-roller-release-20260910.md). Do not recover the old
   mixed K2/T-14 branch wholesale: K2 X was excluded for its 90.8137 source
   score, below 92. These publications do not complete their track-gauge work.
 - T-90A X's upper fender closure, selected assets and final verification are
@@ -91,9 +91,9 @@ not a current release queue. Do not repeat it without checking ancestry.
   reduces redundant folded-sheet tessellation
   and attaches its existing six rollers using shared spindle primitives.
   It is tracked separately in
-  [the Type 10 cost/contact checkpoint](../research/type10-x-cost-contact-20260910.md).
+  [the Type 10 cost/contact checkpoint](../history/research/type10-x-cost-contact-20260910.md).
   That checkpoint retained a 35 mm carrier. The subsequent
-  [owner-approved 90 mm follow-up](../research/type10-x-90mm-candidate-20260910.md)
+  [owner-approved 90 mm follow-up](../history/research/type10-x-90mm-candidate-20260910.md)
   now matches the original Type 10's stock thickness, keeps the axles fixed,
   uses closed paired-wheel primitives and six fitted return rotors, and passes
   HIGH/LOW moving-contact and skirt/support checks. It reduces selected,
@@ -163,7 +163,7 @@ release result with a collection of unrelated narrow passes.
 
 ## Initial measured evidence — not an implementation pass
 
-The [54-model baseline](../research/fleet-style-performance-baseline-20260907.md)
+The [54-model baseline](../history/research/fleet-style-performance-baseline-20260907.md)
 contains 108 high/low builds plus 35 repeated construction samples. It freezes
 the exact input hash and ID manifest and separates stored geometry from
 LOD-selected instance-expanded scene triangles:
@@ -368,7 +368,7 @@ existing quality gates.
 - Group compatible verified IDs into one checkpoint and one complete release,
   not one full npm lifecycle per ID. Use the bounded default (up to eight CPU
   workers; respects smaller hosts), with `COT_SELFTEST_WORKERS=1` for debugging.
-  The [fixed-sample timing and safety checks](../research/selftest-release-throughput-20260910.md)
+  The [fixed-sample timing and safety checks](../history/research/selftest-release-throughput-20260910.md)
   document the extension; do not project its sample speedup onto a full release.
   Preserve fresh child processes, complete suite coverage and exclusive native
   browser stages. Never wrap the full release or npm lifecycle in an outer
@@ -383,7 +383,7 @@ lower road wheels visible. When thick tracks conflict with old link shapes,
 prioritize fitted, efficient new running-gear primitives while preserving the
 hull/turret silhouette and road-wheel stations.
 
-The [2026-09-08 recovery record](../research/fleet-wip-recovery-20260908.md)
+The [2026-09-08 recovery record](../history/research/fleet-wip-recovery-20260908.md)
 separates interrupted lifecycle results, bounded frozen passes, remaining
 failures and the next verification/publication steps. This backlog remains
 open; neither that record nor an independent documentation checkpoint certifies

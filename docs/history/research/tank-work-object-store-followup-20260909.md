@@ -231,7 +231,7 @@ existing driver; it did not start another test or alter those source files.
   found a clean working copy. The commit contains `t72b3X.ts`, the new
   `t72b3XSkirtReturns.ts` and its selftest, the exact-history helper, the
   Soviet auxiliary-armor regression update, suite registration, and
-  `docs/research/t72b3-x-upper-skirt-closure-20260909.md`.
+  `docs/history/research/t72b3-x-upper-skirt-closure-20260909.md`.
   Two outer returns and four inner shoulder-root returns add 536 triangles.
   The corrected all-gear test finished successfully (4987): HIGH/LOW ×
   factory/winter, measured +0.30 / −0.22 m axle travel, 1,512 finite-stock
@@ -647,7 +647,7 @@ It had not returned a final release result. No duplicate driver was started.
 `/Users/kevinliu/.codex/worktrees/cot-interactive-performance-20260909` retains
 **76 uncommitted paths** on base
 `47e86743d098b868513aa841a9e9c00675ad49fd`, including source, regression tests,
-probes and `docs/research/interactive-performance-20260909.md`. Its changes
+probes and `docs/history/research/interactive-performance-20260909.md`. Its changes
 include HUD observer/ammunition work, cooperative grass construction, covered
 loading/return ownership, shader readiness and scene-watchdog work. They were
 inspected without staging or modifying that worktree. Its own latest R4 receipt

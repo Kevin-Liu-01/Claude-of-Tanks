@@ -266,7 +266,7 @@ shadow-free battlefield markers. The HUD presents one compact objective line
 beneath the score plate; reliable mode events drive capture, goal, wave (with the
 repair), sector, respawn, flag and cache feedback.
 
-Tactical map (2026-09-15, `docs/research/tactical-map-20260915.md`): the minimap and
+Tactical map (2026-09-15, `docs/history/research/tactical-map-20260915.md`): the minimap and
 the world share one objective language — `src/ui/minimapObjectives.ts` derives the
 markers (sides from the viewer's team, zone letters, sector statuses, flag statuses,
 spawns from the new `spawns` field of the presentation state) and

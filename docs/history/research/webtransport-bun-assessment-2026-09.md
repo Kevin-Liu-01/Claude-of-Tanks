@@ -18,8 +18,8 @@ Neither is a demonstrated fix for the historical browser frame stalls.
 | WebTransport | Add a compatible server endpoint and a new transport adapter | Future server-hosted experiment, not a direct peer replacement |
 | Bun WebSockets | Replace a Node/server implementation; browser still uses WebSockets | No migration justified by current evidence |
 
-The current paths are explicit in [hosting](../MULTIPLAYER-HOSTING.md) and
-[`webrtcPeer.ts`](../../src/net/webrtcPeer.ts): Cloudflare handles room membership
+The current paths are explicit in [hosting](../../MULTIPLAYER-HOSTING.md) and
+[`webrtcPeer.ts`](../../../src/net/webrtcPeer.ts): Cloudflare handles room membership
 and negotiation, TURN relays when necessary, and a player's browser runs the
 authority. The `cot-state-v1` channel is unordered with zero retransmissions;
 `cot-match-v1` carries reliable commands/events. Changing signaling software does

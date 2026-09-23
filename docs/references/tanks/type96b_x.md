@@ -129,7 +129,7 @@ Final round7 report `.qa-dev/tank-run/eastern-source/fidelity-round7.json`: aggr
 
 ### Post-main source-detail revision — 2026-09-18
 
-Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/research/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
+Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/history/research/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
 
 Source-only mechanical rays in `type96-mechanical-rays.json` show that Object_14's approximately 68 mm radius is the gun's inner bore. The source outer shroud tapers from 137 mm at Z 2.28 m to 110 mm at Z 5 m and approximately 99 mm at Z 6.45 m. The revision restores this stepped/tapered physical barrel while preserving its 68 mm bore and muzzle position. Separate measured rear louver banks replace the vertical comb and unsupported upper grilles. The cupola is lowered to its source envelope, with distinct periscope fittings. The wheel casting now uses an independently authored 13-station revolved section: approximately +181 mm axial hub, +55 mm recessed web at radius 150 mm and +199 mm lip at radius 290 mm. Two measured tire bands retain the canonical moving gear. No source vertices/topology enter runtime. Wheel stock resource costs and moving contacts require fresh verification; source has no roof MG.
 
@@ -157,7 +157,7 @@ Frozen official fourteen-view capture: `.qa-dev/tank-run/eastern-source/detail-r
 
 ### Source detail correction r3 — 2026-09-18
 
-The independent r2 review failed all-view admission (minimum **7/10**): `docs/research/eastern-r2-independent-critic-20260918.md`. This round corrects measured source structure and retains that failure as historical evidence. No publication or independent shaded pass is claimed.
+The independent r2 review failed all-view admission (minimum **7/10**): `docs/history/research/eastern-r2-independent-critic-20260918.md`. This round corrects measured source structure and retains that failure as historical evidence. No publication or independent shaded pass is claimed.
 
 - Object_6's rounded mantlet boot replaces the rectangular root block. Sparse authored elliptical stations use independent source-ray width/height readings; the preserved barrel, actual bore and recoil ownership remain unchanged. Canonical upper points at Z1.20/1.30/1.60/1.75/1.85/1.93 are Y2.1708/2.20109/2.17275/2.08166/2.04377/2.01825.
 - Object_12's forward cupola clevis occupies canonical X−0.671…−0.513, Y2.417…2.577, Z0.112…0.239 m. Its upright feet, transverse pin and adjacent latch stock are physical furniture on the cupola. The smoke banks now have the source's two columns × three inclined rows per cheek, instead of three generic tubes.
@@ -176,7 +176,7 @@ The repository `npm run typecheck` (native TypeScript plus core-unused check) pa
 
 ### Source detail correction r4 — 2026-09-18
 
-The fresh r3 independent critic inspected all fourteen images and failed at minimum **8/10**, identifying the secondary rectangular roof panel as a concrete remaining shape error. That review is preserved in `docs/research/regional-source-independent-critic-20260918.md`; this round addresses the measured hatch only, without changing wheel stock, axles, tracks, camouflage or source frames.
+The fresh r3 independent critic inspected all fourteen images and failed at minimum **8/10**, identifying the secondary rectangular roof panel as a concrete remaining shape error. That review is preserved in `docs/history/research/regional-source-independent-critic-20260918.md`; this round addresses the measured hatch only, without changing wheel stock, axles, tracks, camouflage or source frames.
 
 Independent Object_12 component isolation is diagnostic only: no source vertices or topology enter runtime. Scalar readings in `.qa-dev/tank-run/eastern-source/detail-r4-study.json` and `detail-r4-hatch.json` show an oval lid centered approximately X0.58755/Z−0.21318, 0.7361 × 0.5129 m in plan. Source center top Y2.32196 and outer-lip witness Y2.31134 reveal a shallow dished plate with a raised circular center, rather than the previous 0.735 × 0.513 rectangular panel at Y2.328. Held-out diagonal points X0.30/Z−0.40 and X0.92/Z−0.35 have no source hatch stock. Sparse first-party revolved stock now reproduces that oval plan/rim and center relief. Separate measured hinge blocks/pins, latch and a grab handle with two feet and a raised rail complete the bounded correction.
 
@@ -216,7 +216,7 @@ Root's composed regenerated geometry gate now independently reports **PASS** for
 
 Final post-generation acquisition is now complete: **all six jobs exit 0** (focused fitting proof, source fidelity, selected cost, strict HIGH, strict LOW, official14). Both strict qualities have zero front/rear/full-sweep carrier and shoe hits. Fresh original comparison images are `.qa-dev/tank-run/type96-geometry-repair/final/official14/`; its `identity.json` verifies every one of the fourteen SHA-256 values and no before/after capture drift. The full validation identity also has `drift: []`. Actual fill loading is true and evaluator rig parity is `OK`. These exact originals were handed to the independent Europe reviewer; this repair's author has not self-scored them. Final independent shaded assessment remains the only outstanding item within this bounded author handoff; unrelated source-policy and composed release decisions remain root-owned.
 
-Independent final14 review: [type96-geometry-final-independent-review-20260918.md](../../research/type96-geometry-final-independent-review-20260918.md) inspected all fourteen actual originals and scored their assembled visual fidelity 9/10 each. The repaired mast, bow receiver/blocks, separate fenders and rear latches are accepted within that static visual scope. The per-capture manifest omitted the generated fill file itself; its preacquisition SHA-256 is independently pinned in root's `final-seating/before-validation.json` as `7fa2bad6646133f22945f03b5309815430596269be5ee36eb5a20eb80c5bb247`, matching the current fill. Loaded=true alone was not treated as a file identity proof.
+Independent final14 review: [type96-geometry-final-independent-review-20260918.md](../../history/research/type96-geometry-final-independent-review-20260918.md) inspected all fourteen actual originals and scored their assembled visual fidelity 9/10 each. The repaired mast, bow receiver/blocks, separate fenders and rear latches are accepted within that static visual scope. The per-capture manifest omitted the generated fill file itself; its preacquisition SHA-256 is independently pinned in root's `final-seating/before-validation.json` as `7fa2bad6646133f22945f03b5309815430596269be5ee36eb5a20eb80c5bb247`, matching the current fill. Loaded=true alone was not treated as a file identity proof.
 
 A subsequent dynamic ownership audit exposed a separate defect: the existing mantlet boot shares `gun` and translates 135.417 mm with barrel recoil. This does not invalidate the neutral fitting measurements but prevents claiming correct firing articulation. A bounded ownership-only correction is under review; no source geometry or new material change is authorized by the static visual pass. The pre-correction profile is archived under `type96-gun-ownership/type96bX.before.ts`.
 
@@ -228,6 +228,6 @@ pitch/recoil checks and deliberately wrong-parent controls are preserved in
 `src/vehicles/profiles/type96GunOwnership.selftest.mjs`. The
 [batch ownership closure](../batches/supplied-afv-20260917.md#final-repaired-geometry-and-qualification--2026-09-18)
 records the frozen repair. Its
-[independent assembled review](../../research/type96-k21-final-assembled-review-20260918.md)
+[independent assembled review](../../history/research/type96-k21-final-assembled-review-20260918.md)
 covers the final static visual result; complete release and publication status
 remain in the current batch section linked above.

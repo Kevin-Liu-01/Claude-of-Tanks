@@ -10,9 +10,9 @@ geometry is independently authored from scalar measurements; no supplied
 vertices, indices, textures or loaders enter the playable model.
 
 The fixed source frame and provenance are recorded in
-[`challenger1_x.json`](../../research/second-wave-registrations/challenger1_x.json)
+[`challenger1_x.json`](../../history/research/second-wave-registrations/challenger1_x.json)
 and the detailed
-[`registration proposal`](../../research/second-wave-registrations/challenger1_x.proposal.json).
+[`registration proposal`](../../history/research/second-wave-registrations/challenger1_x.proposal.json).
 All twelve original owners remain in the canonical oracle. Their material
 batches mix unrelated fittings, so this reference is honestly whole-only;
 partial named material groups are not presented as complete component scores.

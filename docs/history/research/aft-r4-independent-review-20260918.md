@@ -2,7 +2,7 @@
 
 **Result: FAIL every-view ≥9; minimum 8.5/10. All fourteen originals were actually viewed.** Main source fit and visible static seating reach 9 in this set. The remaining visual blocker is the road-wheel face correspondence, not the previously resolved canister-cover defect. No runtime file, source, camera or gate was changed, and no new capture was run for this review.
 
-The reviewer did not author AFT's profile. This review applies to `.qa-dev/tank-run/root-r5/official14/aft10_x`, captured at `2026-09-18T10:01:49.355Z`, HIGH, seed 4242, with the complete supplied source on the left and native procedural candidate on the right. Registration is `certified-source-world` with a shared camera; the report's rig-parity verdict is `OK`. The official fourteen-image requirement and ≥9-per-view threshold are those in [quality-gates.md](../tank-generation/quality-gates.md). Numerical silhouettes are separate evidence and did not determine these scores.
+The reviewer did not author AFT's profile. This review applies to `.qa-dev/tank-run/root-r5/official14/aft10_x`, captured at `2026-09-18T10:01:49.355Z`, HIGH, seed 4242, with the complete supplied source on the left and native procedural candidate on the right. Registration is `certified-source-world` with a shared camera; the report's rig-parity verdict is `OK`. The official fourteen-image requirement and ≥9-per-view threshold are those in [quality-gates.md](../../tank-generation/quality-gates.md). Numerical silhouettes are separate evidence and did not determine these scores.
 
 ## Corrections visibly established
 

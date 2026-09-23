@@ -74,7 +74,7 @@ function originalRoadField(cfg) {
 // field (terrain.ts paintRoadMask), so every full-RGBA golden below was
 // re-pinned to the new bytes. R/B/A are produced by unchanged code; the
 // channel-masked comparison against the previous painter is recorded in
-// docs/research/map-pass-20260912.md (road pass section).
+// docs/history/research/map-pass-20260912.md (road pass section).
 const ORIGINAL = {
   verdant: '3235ff56f2be109633eb3ad158e180c0e4f3a2cf4bb13c77cdc5ece4265a7293',
   desert: '9e6191d3ca532db0f5c58ffc86aa2e0da2460c6779ac86db0214f659b94208c1',

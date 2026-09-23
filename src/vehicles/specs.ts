@@ -1,6 +1,6 @@
 // src/vehicles/specs.ts — pure gameplay stat and armor data for the registered fleet.
 // PURE data module: no three import, no side effects. Runs under plain node.
-// Sources: docs/research/tank-roster.md (+ locked overrides in docs/ARCHITECTURE.md §3.3.1).
+// Sources: docs/history/research/tank-roster.md (+ locked overrides in docs/ARCHITECTURE.md §3.3.1).
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
 
 import { tankLabelRecord } from './tankLabels.ts';

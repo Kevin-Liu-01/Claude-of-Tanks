@@ -19,7 +19,7 @@ These are open issues, not completed fleet-wide fixes.
    this directory's [procedure](SKILL.md), and the applicable build/gate laws.
 2. Create a scoped worktree and copy [the run packet](templates/run-packet.md)
    to `docs/references/tanks/<id>.md`, or extend an existing packet. For a batch,
-   put the batch contract in `docs/research/<batch>.md` and link its per-ID rows.
+   put the batch contract in `docs/history/research/<batch>.md` and link its per-ID rows.
 3. Resolve the intended target and preserve the supplied input before building:
    [workflow](workflow.md), stages 0–2. Do not substitute an attractive donor
    or a different file without documenting the owner's decision.
@@ -55,7 +55,7 @@ owner corrections, successes, rejected methods, and scope changes.
   Both retain historical August methods and thresholds. For **new reference-backed
   builds**, apply the newer **92-point** exemplar requirement from
   [vehicle instructions](../../src/vehicles/SKILL.md) and the
-  [second-wave contract](../research/source-x-second-wave.md), not the legacy 90 floor.
+  [second-wave contract](../history/research/source-x-second-wave.md), not the legacy 90 floor.
 - The newer supplied-file workflow freezes a **source-only rigid transform plus
   at most one declared uniform unit/size scale**. Old per-axis oracle warps,
   percentile-driven source reshaping, mask-only furniture, or score-counterweight
@@ -77,7 +77,7 @@ owner corrections, successes, rejected methods, and scope changes.
 | Reusable procedure, prompts, troubleshooting, handoff templates | This directory |
 | Build-wide craft laws / measurement definition | `docs/BUILD-STANDARD.md` / `docs/GEOMETRY-GATE.md` |
 | Per-tank source identity, datums, decisions, run results | `docs/references/tanks/<id>.md` |
-| Batch scope, variant mapping, integration and explicit exceptions | `docs/research/<batch>.md` |
+| Batch scope, variant mapping, integration and explicit exceptions | `docs/history/research/<batch>.md` |
 | First-party authored runtime geometry / tests | `src/vehicles/` and the exact family/profile owner |
 | Generated receipts, asset registry and technical cards | Their existing generators; never hand-edited to claim success |
 | Source binaries, intermediate conversions, bulk screenshots/logs | Ignored comparison/QA paths; durable packets retain hashes and regeneration instructions |

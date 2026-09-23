@@ -4,7 +4,7 @@ The bar is recognizable, measured, coherent geometry at the AbramsX,
 Challenger 2 and Leclerc exemplar level—not decoration count or a flattering
 average. The [build standard](../BUILD-STANDARD.md),
 [geometry gate](../GEOMETRY-GATE.md), and newer
-[source-X contract](../research/source-x-second-wave.md) remain the detailed
+[source-X contract](../history/research/source-x-second-wave.md) remain the detailed
 owners. Use the [tool map](tool-map.md) to check actual current coverage.
 
 ## Acceptance matrix

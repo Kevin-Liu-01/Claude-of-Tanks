@@ -44,7 +44,7 @@ oblique azimuth and extreme pitch. The final backup length is 1.35 m.
 
 ## Qualification scope
 
-The [authored design contract](../references/concepts/missile-turrets-20260919.json)
+The [authored design contract](../../references/concepts/missile-turrets-20260919.json)
 replaces the obsolete turret comparison targets for exactly these two IDs.
 Historical preservation exports, source recipes, hashes and receipts remain
 archived. They do not certify the new concepts. Source-comparison score is

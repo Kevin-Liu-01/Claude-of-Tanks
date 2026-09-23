@@ -35,7 +35,7 @@ incomplete or invalid samples refuse certification, and any failed budget exits
 nonzero. Idle, event-driven Garage output is not a 60 FPS benchmark: use the
 Garage action/transition probes for responsiveness instead.
 
-The [matrix reuse and cadence follow-up](research/frame-matrix-reuse-20260910.md)
+The [matrix reuse and cadence follow-up](history/research/frame-matrix-reuse-20260910.md)
 records native pixel parity, measured battle intervals, unsuccessful acquisitions,
 and limitations without attributing untraced historical stalls to a guessed cause.
 

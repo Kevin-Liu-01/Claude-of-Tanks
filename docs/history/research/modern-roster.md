@@ -2,7 +2,7 @@
 
 Definitive reference for the modern (post-1970, in-service-era) roster expansion: 27
 vehicles — 23 MBTs, 2 IFVs, 1 TD, 1 casemate TD (existing Strv 103). Companion to
-`docs/research/tank-roster.md` (the original 8-tank roster doc); the four vehicles already
+`docs/history/research/tank-roster.md` (the original 8-tank roster doc); the four vehicles already
 shipped (M1A2 SEPv3, T-90M, Leopard 2A7, Strv 103) are cross-referenced, not re-specified.
 
 Sources: Wikipedia, tanks-encyclopedia.com, army-guide.com, army-technology.com,

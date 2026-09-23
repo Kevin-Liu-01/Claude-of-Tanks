@@ -59,7 +59,7 @@ Actual geometry-member hashes:
 ## Provenance and existing authorization
 
 - The supplied T-90/Burlak/Tagil inputs belong to the **KojfDiscord Armored
-  Warfare series** already addressed in [ATTRIBUTION](../ATTRIBUTION.md),
+  Warfare series** already addressed in [ATTRIBUTION](../../ATTRIBUTION.md),
   section “KojfDiscord (Armored Warfare) series,” 2026-08-08. That standing owner
   ruling permits **local-only measurement/influence**, never shipment. The game
   title and game-style material names are extraction warnings, not sufficient
@@ -75,7 +75,7 @@ Actual geometry-member hashes:
   `CC-BY-4.0`, and source
   `https://sketchfab.com/3d-models/t-72b3m-obr-2022-b821cd7b4cf9482598e1d603790f9293`.
   Generator is `Sketchfab-16.65.0`; seven images, no skins or animation.
-  Existing [T-72B3 packet](../references/tanks/t72b3.md) identifies this same source
+  Existing [T-72B3 packet](../../references/tanks/t72b3.md) identifies this same source
   URL/model and its later promotion to the old `t72b3m` oracle. That is historical
   source identity, not a fresh live-page or exact-file hash verification.
 - Four USSR FBXs contain `Blender (stable FBX IO) - 5.1.0 - 5.15.0` and

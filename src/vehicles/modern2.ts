@@ -1,5 +1,5 @@
 // src/vehicles/modern2.ts — HD procedural builders + specs for the modern
-// roster expansion, wave 2 (docs/research/modern-roster.md):
+// roster expansion, wave 2 (docs/history/research/modern-roster.md):
 //   leo2a4  Leopard 2A4        (§9,  priority 3)
 //   t80u    T-80U              (§15, priority 3)
 //   leclerc Leclerc S2         (§20, priority 3)

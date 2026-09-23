@@ -1,5 +1,5 @@
 // Independent source scalar calipers, not source topology or runtime geometry.
-// See docs/research/ariete-rear-openings-20260921.md for evidence and limits.
+// See docs/history/research/ariete-rear-openings-20260921.md for evidence and limits.
 export const ARIETE_OPENING_RASTERS = {"ariete_c1_x":{"high":{"gridW":79,"gridH":180,"bounds":{"x0":-2.3437598896026612,"x1":2.3437598896026612,"z0":-4.439010257720947,"z1":6.3146120699000985},"cells":[[38,174],[38,175],[38,176],[39,176],[39,175]]},"low":{"gridW":79,"gridH":180,"bounds":{"x0":-2.3437598896026612,"x1":2.3437598896026612,"z0":-4.439010257720947,"z1":6.315212069601902},"cells":[[38,174],[38,175],[38,176],[39,176],[39,175]]}},"ariete_c2_x":{"high":{"gridW":79,"gridH":196,"bounds":{"x0":-2.3437598896026612,"x1":2.3437598896026612,"z0":-4.439010257720947,"z1":7.313811937148634},"cells":[[38,190],[38,191],[38,192],[39,192],[39,191]]},"low":{"gridW":79,"gridH":196,"bounds":{"x0":-2.3437598896026612,"x1":2.3437598896026612,"z0":-4.439010257720947,"z1":7.314411937121467},"cells":[[38,190],[38,191],[38,192],[39,192],[39,191]]}}};
 const ARIETE_REAR_WITNESSES = [
   {
@@ -427,8 +427,8 @@ const ARIETE_REAR_WITNESSES = [
 // roof equipment or give the derived C2 a source-comparison score.
 export const ARIETE_OPENING_INPUTS = Object.freeze({
   "public/models/community-candidates/ariete_c1_x_source.glb": "1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177",
-  "docs/research/second-wave-registrations/ariete_c1_x-tier10-20260921.json": "a94040de976c7ee8d3f17bb65fd5791892a332c9d5f79996aa4e343662cd7c79",
-  "docs/research/second-wave-registrations/ariete_c1_x-tier10-20260921.receipt.json": "8f3d5f29561dd121b309f27aee0ac9105421408e9cb38106eb8fdfde2cb5dec5"
+  "docs/history/research/second-wave-registrations/ariete_c1_x-tier10-20260921.json": "a94040de976c7ee8d3f17bb65fd5791892a332c9d5f79996aa4e343662cd7c79",
+  "docs/history/research/second-wave-registrations/ariete_c1_x-tier10-20260921.receipt.json": "8f3d5f29561dd121b309f27aee0ac9105421408e9cb38106eb8fdfde2cb5dec5"
 });
 const SOURCE = Object.freeze({path:Object.keys(ARIETE_OPENING_INPUTS)[0],sha256:Object.values(ARIETE_OPENING_INPUTS)[0]});
 const REGISTRATION = Object.freeze({

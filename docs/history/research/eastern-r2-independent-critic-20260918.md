@@ -18,20 +18,20 @@ Capture report time: `2026-09-18T08:39:17.832Z`; certified source-world/shared-c
 
 | Actually viewed original | Score /10 | Concrete observation |
 | --- | ---: | --- |
-| [front](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/front.png) | 8 | Rectangular gun-root receiver and simplified bow/optical fittings; primary width and turret placement remain close. |
-| [frontleft](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/frontleft.png) | 7.5 | Road-wheel dishes and hubs lose source depth; gun boot and front-fender fittings remain simplified. |
-| [left](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/left.png) | 7.5 | Source raised hubs/recessed annuli read as nearly flat candidate discs; source smoke-bank support relief is reduced. |
-| [rearleft](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/rearleft.png) | 7.5 | Wheel-face relief and rear receiver/louver detail differ; retain the represented twin vent banks. |
-| [rear](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/rear.png) | 8 | Two vent banks are present, but source tightly spaced slats and rear towing fittings are not reproduced at comparable relief. |
-| [rearright](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/rearright.png) | 7.5 | Shallow wheel faces and simplified rear hardware remain visible independently of track darkness. |
-| [right](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/right.png) | 7.5 | Wheel annulus/hub stock and the small inclined smoke-bank support shape differ from the source. |
-| [frontright](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/frontright.png) | 7.5 | Rounded source gun boot becomes a box-like candidate root; bow fittings and wheel stock remain simplified. |
-| [top](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/top.png) | 8 | Major arrangement matches; source hatch/roof fixture relief is reduced or not resolved in this native view. |
-| [hero-frontleft](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/hero-frontleft.png) | 7.5 | Raised source wheel hubs, cupola top hardware and rounded gun boot remain materially different. |
-| [hero-rearright](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/hero-rearright.png) | 7.5 | Plain circular candidate cupola top contrasts with source hinge/bracket structure; wheel dishes remain shallow. |
-| [hero-toptilt](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/hero-toptilt.png) | 8 | Source hatch furniture and panel receiving details are not reproduced at the same visible relief; color alone is not scored. |
-| [close-front](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/close-front.png) | 7 | Rounded layered source gun-root boot becomes a box-like receiver; bow towing/light fittings and wheel dishes differ. |
-| [close-roof](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/close-roof.png) | 7 | Source cupola lid hinge/bracket stock and narrow sight-receiver recesses are simplified to circular lid/box optics. |
+| [front](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/front.png) | 8 | Rectangular gun-root receiver and simplified bow/optical fittings; primary width and turret placement remain close. |
+| [frontleft](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/frontleft.png) | 7.5 | Road-wheel dishes and hubs lose source depth; gun boot and front-fender fittings remain simplified. |
+| [left](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/left.png) | 7.5 | Source raised hubs/recessed annuli read as nearly flat candidate discs; source smoke-bank support relief is reduced. |
+| [rearleft](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/rearleft.png) | 7.5 | Wheel-face relief and rear receiver/louver detail differ; retain the represented twin vent banks. |
+| [rear](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/rear.png) | 8 | Two vent banks are present, but source tightly spaced slats and rear towing fittings are not reproduced at comparable relief. |
+| [rearright](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/rearright.png) | 7.5 | Shallow wheel faces and simplified rear hardware remain visible independently of track darkness. |
+| [right](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/right.png) | 7.5 | Wheel annulus/hub stock and the small inclined smoke-bank support shape differ from the source. |
+| [frontright](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/frontright.png) | 7.5 | Rounded source gun boot becomes a box-like candidate root; bow fittings and wheel stock remain simplified. |
+| [top](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/top.png) | 8 | Major arrangement matches; source hatch/roof fixture relief is reduced or not resolved in this native view. |
+| [hero-frontleft](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/hero-frontleft.png) | 7.5 | Raised source wheel hubs, cupola top hardware and rounded gun boot remain materially different. |
+| [hero-rearright](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/hero-rearright.png) | 7.5 | Plain circular candidate cupola top contrasts with source hinge/bracket structure; wheel dishes remain shallow. |
+| [hero-toptilt](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/hero-toptilt.png) | 8 | Source hatch furniture and panel receiving details are not reproduced at the same visible relief; color alone is not scored. |
+| [close-front](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/close-front.png) | 7 | Rounded layered source gun-root boot becomes a box-like receiver; bow towing/light fittings and wheel dishes differ. |
+| [close-roof](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/type96b_x/close-roof.png) | 7 | Source cupola lid hinge/bracket stock and narrow sight-receiver recesses are simplified to circular lid/box optics. |
 
 Image hashes were recomputed from the originals after viewing and match the archived identity manifest.
 
@@ -64,20 +64,20 @@ Capture report time: `2026-09-18T08:31:00.648Z`; certified source-world/shared-c
 
 | Actually viewed original | Score /10 | Concrete observation |
 | --- | ---: | --- |
-| [front](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/front.png) | 7 | Large circular canister terminal inserts do not match the source rectangular closures; central sensor and smoke bank differ. |
-| [frontleft](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/frontleft.png) | 7 | The canister-end pattern and lower smoke-array arrangement remain visibly wrong; wheel stock is also simplified. |
-| [left](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/left.png) | 8 | Source support/hinge and canister side-latch relief is simplified; wheel profile is shallower and more generic. |
-| [rearleft](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/rearleft.png) | 7.5 | Launcher support shape and rear hull fitting relief remain reduced; gross launcher/body placement is recognizable. |
-| [rear](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/rear.png) | 7.5 | Central source rounded sensor and source rear access/port/tow furniture differ from the box-like candidate arrangement. |
-| [rearright](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/rearright.png) | 7.5 | Source canister closure hardware, launcher supports and rear-hull port/tow relief remain reduced. |
-| [right](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/right.png) | 8 | Canister side hardware and support junction shapes differ; wheel faces do not reproduce the source depth. |
-| [frontright](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/frontright.png) | 7 | Canister terminal treatment, smoke-array presentation and bow lighting/towing fittings remain different. |
-| [top](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/top.png) | 8 | Primary layout is close, but the source central rounded sensor and roof hatch/fixture relief are not matched visibly. |
-| [hero-frontleft](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/hero-frontleft.png) | 7 | Circular terminal inserts are conspicuous against rectangular source closures; staggered smoke cluster and bow fittings differ. |
-| [hero-rearright](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/hero-rearright.png) | 7.5 | Source closure latches, rear deck furniture and launcher support receiving details remain reduced. |
-| [hero-toptilt](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/hero-toptilt.png) | 8 | Correct broad launcher layout; source roof hatch hinges and receiving hardware remain weakly represented in the native image. |
-| [close-front](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/close-front.png) | 6.5 | Source rectangular canister closures become round inserts; smoke tubes, bow light recesses and towing fixtures differ. |
-| [close-roof](../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/close-roof.png) | 7.5 | Source inclined multirow smoke cluster becomes a much simpler low row; canister latch/support stock and roof hinge relief differ. |
+| [front](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/front.png) | 7 | Large circular canister terminal inserts do not match the source rectangular closures; central sensor and smoke bank differ. |
+| [frontleft](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/frontleft.png) | 7 | The canister-end pattern and lower smoke-array arrangement remain visibly wrong; wheel stock is also simplified. |
+| [left](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/left.png) | 8 | Source support/hinge and canister side-latch relief is simplified; wheel profile is shallower and more generic. |
+| [rearleft](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/rearleft.png) | 7.5 | Launcher support shape and rear hull fitting relief remain reduced; gross launcher/body placement is recognizable. |
+| [rear](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/rear.png) | 7.5 | Central source rounded sensor and source rear access/port/tow furniture differ from the box-like candidate arrangement. |
+| [rearright](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/rearright.png) | 7.5 | Source canister closure hardware, launcher supports and rear-hull port/tow relief remain reduced. |
+| [right](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/right.png) | 8 | Canister side hardware and support junction shapes differ; wheel faces do not reproduce the source depth. |
+| [frontright](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/frontright.png) | 7 | Canister terminal treatment, smoke-array presentation and bow lighting/towing fittings remain different. |
+| [top](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/top.png) | 8 | Primary layout is close, but the source central rounded sensor and roof hatch/fixture relief are not matched visibly. |
+| [hero-frontleft](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/hero-frontleft.png) | 7 | Circular terminal inserts are conspicuous against rectangular source closures; staggered smoke cluster and bow fittings differ. |
+| [hero-rearright](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/hero-rearright.png) | 7.5 | Source closure latches, rear deck furniture and launcher support receiving details remain reduced. |
+| [hero-toptilt](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/hero-toptilt.png) | 8 | Correct broad launcher layout; source roof hatch hinges and receiving hardware remain weakly represented in the native image. |
+| [close-front](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/close-front.png) | 6.5 | Source rectangular canister closures become round inserts; smoke tubes, bow light recesses and towing fixtures differ. |
+| [close-roof](../../../.qa-dev/tank-run/eastern-source/detail-r2-final/official14/aft10_x/close-roof.png) | 7.5 | Source inclined multirow smoke cluster becomes a much simpler low row; canister latch/support stock and roof hinge relief differ. |
 
 Image hashes were recomputed from the originals after viewing and match the archived identity manifest.
 

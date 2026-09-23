@@ -5,7 +5,7 @@
 The two aft radar pedestals now connect to the turret through narrow transverse
 mounting arms. The roof MAG foot is seated and its barrel is connected to the
 receiver. Current physical, visual and release verification:
-[repair record](../../research/merkava-camo-repairs-20260920.md).
+[repair record](../../history/research/merkava-camo-repairs-20260920.md).
 This is scoped attachment work, not a new whole-model fidelity certification.
 
 ## Current integrated status — 2026-09-19
@@ -23,7 +23,7 @@ Full fleet generation passed at `87e8e9526`, including the regenerated assets.
 The subsequent independent fourteen-view review is **HOLD**: the rear door,
 side housings and lamps read as a broad slab, and a solid support buries the
 authored smoke tubes. Its lowest score is 8.3, below the existing 9/10 bar.
-See [the actual visual review](../../research/israeli-final-r2-independent-visual-review-20260919.md).
+See [the actual visual review](../../history/research/israeli-final-r2-independent-visual-review-20260919.md).
 These component repairs, fresh paired Garage views and complete release
 verification remain required before publication. Numerical passes above do
 not certify the missing visual relationships.

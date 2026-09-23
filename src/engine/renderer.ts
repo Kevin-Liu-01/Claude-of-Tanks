@@ -1,5 +1,5 @@
 /**
- * renderer.ts — WebGLRenderer construction per docs/research/graphics-aaa.md §1.
+ * renderer.ts — WebGLRenderer construction per docs/history/research/graphics-aaa.md §1.
  *
  * Context AA is intentionally OFF because the EffectComposer never presents
  * the default framebuffer directly. post.ts instead gives the actual 3D scene

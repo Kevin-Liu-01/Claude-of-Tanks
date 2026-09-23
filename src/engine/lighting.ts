@@ -1,7 +1,7 @@
 /**
  * lighting.ts — sun (cascaded shadow maps) + hemisphere bounce light.
  *
- * Implements docs/research/graphics-aaa.md §2–§3 and ARCHITECTURE.md §3.1.2.
+ * Implements docs/history/research/graphics-aaa.md §2–§3 and ARCHITECTURE.md §3.1.2.
  * The CSM module owns the sun DirectionalLights — nothing else in the game may
  * add a second directional sun. CSM is constructed synchronously inside
  * `createLighting` (never deferred) so it patches the lighting shader chunks

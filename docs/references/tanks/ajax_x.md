@@ -205,7 +205,7 @@ Post-lattice strict standard **PASS**: gate minimum93.1/92; dimensions98.5; floa
 
 Main integration at `3f6fc4ad8` brings updated shared X running gear; earlier running-gear receipts cannot qualify the integrated build. The profile retains its source axle stations and canonical assembly rather than countertuning the new shared behavior to old screenshots.
 
-The independent report `docs/research/regional-source-independent-critic-20260918.md` rejected the prior Ajax's substantive detail at 6–7.5/10 across all 14 views. A passing silhouette did not resolve those findings. That official image set is retained at `.qa-dev/tank-run/british-us-source/ajax-pre-detail-official14/`, including its PNG hashes.
+The independent report `docs/history/research/regional-source-independent-critic-20260918.md` rejected the prior Ajax's substantive detail at 6–7.5/10 across all 14 views. A passing silhouette did not resolve those findings. That official image set is retained at `.qa-dev/tank-run/british-us-source/ajax-pre-detail-official14/`, including its PNG hashes.
 
 The bounded correction uses connected-component scalar bounds from `.qa-dev/tank-run/british-us-source/ajax_x-detail-study-components.json`, not source vertices or topology in runtime geometry:
 
@@ -361,7 +361,7 @@ for independent 9/10 approval. Remaining timing/memory/switching, gameplay,
 anatomy and composed release gates stay open. **NOT PUBLISHED.**
 
 Independent r12 follow-up is complete:
-[`ajax-r12-independent-review-20260918.md`](../../research/ajax-r12-independent-review-20260918.md).
+[`ajax-r12-independent-review-20260918.md`](../../history/research/ajax-r12-independent-review-20260918.md).
 The independent reviewer actually opened all fourteen current originals,
 verified their hashes and rated each source-fit, substantive-detail and static
 seating criterion at 9. The earlier wheel/shoulder/smoke findings are resolved.

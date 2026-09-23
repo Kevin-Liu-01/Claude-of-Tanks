@@ -13,7 +13,7 @@ Full fleet generation passed at `87e8e9526`, including the regenerated assets.
 The subsequent independent fourteen-view review is **HOLD**: the covered
 cylindrical launcher stock, deep rear recess, glacis and roof equipment
 relationships differ materially from the source. Its scores are 7.8–8.4,
-below the existing 9/10 bar. See [the actual visual review](../../research/namer-final-canonical-independent-review-20260919.md).
+below the existing 9/10 bar. See [the actual visual review](../../history/research/namer-final-canonical-independent-review-20260919.md).
 These component repairs, fresh paired Garage views and complete release
 verification remain required before publication. The source geometry is
 being studied without inventing another gameplay weapon configuration.

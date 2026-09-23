@@ -68,7 +68,7 @@ The destination integration worktree is
 `/Users/kevinliu/.codex/worktrees/cot-abrams-source-x-integrated-20260907`, based
 on `12a5b9aec317107782b5f6505065ada7c721f290`. Its durable priority contract is
 `docs/tank-generation/fleet-style-performance-priority.md`; its measured report
-is `docs/research/fleet-style-performance-baseline-20260907.md`. The baseline
+is `docs/history/research/fleet-style-performance-baseline-20260907.md`. The baseline
 uses an earlier integration snapshot, not the final authoring geometry here.
 Do not copy its input hash to claim acceptance of this newer work.
 
