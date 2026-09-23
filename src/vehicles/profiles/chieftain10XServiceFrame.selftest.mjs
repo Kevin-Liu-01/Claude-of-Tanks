@@ -207,6 +207,25 @@ if (ledgerUpdate) {
   // fleet fallback lip became a flat 2N ring) keeps the ground-datum successor as its base, so the
   // chain history[1] + trackWrap + groundDatum + drawVertexDelta === successor stays authenticated.
   // successorHistory and the earlier dated records are history and stay untouched.
+  if (process.env.COT_UPDATE_LEDGER_RECORD === 'lowTierNationWheels') {
+    // Round 40 (2026-09-22, coordinator decision after the owner's "whats this?" on the +58 % / +38 % road-wheel
+    // triangles): the LOW quality tier of every nation wheel construction draws tire, plate and dish contours only
+    // (roadWheelGeometry.ts WheelDetail) — the Mk 10 X's twelve UK Challenger 2E wheels lose their bolt rings and
+    // ribs at LOW while HIGH is byte-identical. The record supersedes the muzzle-cap successor; the chain stays
+    // authenticated per quality through drawVertexDelta.
+    const previous = ledger.successor;
+    ledger.successor = ledgerUpdate.successor;
+    ledger.laterLowTierNationWheels = {
+      branch: 'r40-wheels', capturedAt: '2026-09-22',
+      scope: 'Round 40: LOW-tier tessellation of the nation wheel constructions (roadWheelGeometry.ts WheelDetail: no bolt rings, bolt heads, ribs or lightening holes at LOW; 8/6-sided hubs). The Mk 10 X draws the UK Challenger 2E hollow paired wheel, so its LOW multiset moved and its HIGH multiset is byte-identical; the draw-vertex delta is recorded per quality and the non-track multiset is re-derived by the receipt.',
+      drawVertexDelta: { high: ledgerUpdate.successor.high.count - previous.high.count, low: ledgerUpdate.successor.low.count - previous.low.count },
+      nonTrack: ledgerUpdate.nonTrack, supersededSuccessor: previous,
+    };
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(ledgerUrl, JSON.stringify(ledger, null, 2) + '\n');
+    console.log(`chieftain10XServiceFrame: ledger rewritten — successor high ${ledgerUpdate.successor.high.count} low ${ledgerUpdate.successor.low.count}, LOW-tier wheel delta ${ledger.laterLowTierNationWheels.drawVertexDelta.high}/${ledger.laterLowTierNationWheels.drawVertexDelta.low}`);
+    process.exit(0);
+  }
   const base = ledger.laterMuzzleBoreCap?.supersededSuccessor ?? ledger.successor;
   const delta = ledgerUpdate.successor.high.count - base.high.count;
   ledger.successor = ledgerUpdate.successor;

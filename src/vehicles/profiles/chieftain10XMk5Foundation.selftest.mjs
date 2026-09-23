@@ -32,7 +32,7 @@ const MK5_BEFORE = {
   // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
   // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
   high: ['725d3a317b0795bc528a75cb6d747f769c28be0ce9331e2324e5ca44d0299326', 74, 41],
-  low: ['477889f002b88a0c6e3eaa5981af756de9ed44f117593e5366773bca64ddf178', 72, 39],
+  low: ['2990075845fae8a913a0c181405a76094753687e3fced08ebc835f368ded4538', 72, 39],
 };
 // 2026-09-15 owner roster pass: the study is named 'Chieftain Mk 5' (no ' X' suffix); name-only repin.
 const MK5_SPEC = '56e6727221553aa2eda63da2ab9e13c3be0fe971487830059bf10d9d436e311e';
@@ -52,7 +52,7 @@ const MK10_OTHER = {
   // quality — the separate fallback Annulus is gone and the Rim geometry changed (superseded high
   // 5969a67c…/37, low 1f3f4350…/35).
   high: ['05291a8c4fc2ee2b680691ea6314b1badf3a2e0ecd81700c9e0549849f10af7a', 35],
-  low: ['48fd5b661bea15ecb43810d6ae8e50e047e5b07c1a0b48e997c6a231a51ac41f', 33],
+  low: ['be486854557701a24080a004267ba61cf7ca3a64788628d8632e1a9b528915c6', 33],
 };
 // Immutable pre-edit paint matrices from the same capture as MK10_OTHER.
 // A live marking solve follows the new casting. Reconstruct only authenticated

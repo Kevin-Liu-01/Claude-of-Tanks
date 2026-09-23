@@ -207,7 +207,7 @@ function negatives(tank, gun) {
 }
 // 2026-09-22 nation wheel standard: the prototype draws the ZTZ-100 X wheel (nationWheelSets.ts); hull/gear digests repinned.
 const expectedHull = { high: 'f6afc015b25e2ec07c6c6d1d19e9cf996e16d67f7a92996c91d2fc8c59eeafd0',
-  low: '28480498517548895510957e569176d18203ded0110f3e1d012f2a5ad1f49fd3' };
+  low: '0aeaa655cd6ae78c4726312c649f54ca0dccd6c5426626b924d566a5587db071' };
 await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id), 'actual generated prototype fill record is loaded');
 const fillRecord = interiorFillRecord(id);

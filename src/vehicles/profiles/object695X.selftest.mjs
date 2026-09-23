@@ -19,8 +19,8 @@ import { verifyGunCradleSeats } from '../gunCradleSeats.test-support.mjs';
 // rows) and the fleet arm re-seats against that wheel's back; the payload diff against origin/main 14a3262ec is
 // exactly the two road-wheel geometries, the dropped inset layer and the arm/boss instance matrices. Repinned.
 const hullHashes = {
-  high: 'cdbef2f371fae52ae04a199a665bbf322f0e0c47d9006004a9d08249bb777052',
-  low: 'ce805503fae522c723fe82de21609a23bb8aebe46f0478bd81da0f4e90f54e32',
+  high: 'c1177e74603aee1c26ca6d4c00a13674da7f8e5354d96a9f7f8a2edd93e8c91d',
+  low: '7327aa9deffcb7430e300684851ca520c7e3458beb4cf5a2d6394376f8e31bd4',
 };
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
 assert.ok(!profileSource.includes('epokhaTurret'), 'the counterpart turret is not assembled');

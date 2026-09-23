@@ -28,8 +28,8 @@
       "sha256": "accada377a183566aa3326bec7f93dffb82a151c2dfb940aaf2472dc8fc3382c"
     },
     "low": {
-      "count": 248856,
-      "sha256": "c52878f6b63829df70eeb15e43c8b411f854ce9e91858064dbd625d665d3e9ae"
+      "count": 245400,
+      "sha256": "1563bb733f4d7ac0dc03e62dad656901d0a638df559ca6542088216ddc4abc58"
     }
   },
   "successorHistory": [
@@ -255,6 +255,35 @@
       "low": {
         "count": 250404,
         "sha256": "f0f3cf88dd64293a362a4972a9e6a5135d454c167e11db7c2386957eb86a0a60"
+      }
+    }
+  },
+  "laterLowTierNationWheels": {
+    "branch": "r40-wheels",
+    "capturedAt": "2026-09-22",
+    "scope": "Round 40: LOW-tier tessellation of the nation wheel constructions (roadWheelGeometry.ts WheelDetail: no bolt rings, bolt heads, ribs or lightening holes at LOW; 8/6-sided hubs). The Mk 10 X draws the UK Challenger 2E hollow paired wheel, so its LOW multiset moved and its HIGH multiset is byte-identical; the draw-vertex delta is recorded per quality and the non-track multiset is re-derived by the receipt.",
+    "drawVertexDelta": {
+      "high": 0,
+      "low": -3456
+    },
+    "nonTrack": {
+      "high": {
+        "count": 171384,
+        "sha256": "e5b589c48da92d5ff20ec066d952ef40019d1edc6c40f4016841ec8ad8a23cef"
+      },
+      "low": {
+        "count": 124248,
+        "sha256": "204fbdca5ecc6b5dd5aedf242c6695e1d80bf69779860bf494ac011d93684d19"
+      }
+    },
+    "supersededSuccessor": {
+      "high": {
+        "count": 292536,
+        "sha256": "accada377a183566aa3326bec7f93dffb82a151c2dfb940aaf2472dc8fc3382c"
+      },
+      "low": {
+        "count": 248856,
+        "sha256": "c52878f6b63829df70eeb15e43c8b411f854ce9e91858064dbd625d665d3e9ae"
       }
     }
   }

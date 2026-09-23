@@ -33,7 +33,7 @@ const cases = {
   // outboard hub cap was trimmed .2083 → .1993 so the ×1.232 family rig keeps the cap inside the tire face (wheel-review
   // PROUD gate); the Challenger 1 X draws the UK Challenger 2E hollow paired wheel and the fleet arm. Geometry repinned.
   ariete_c1_x: { main: 'a0b922dbe5da579937f27f8420ec41167ebe2c6d9634698b25ce0cfacfdd23fc', geometry: ['37c49f98', '33a43691'], counts: [210, 0] },
-  challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['6d7816ef', '8522167c'], counts: [156, 0] },
+  challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['6d7816ef', 'b026a7a6'], counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });

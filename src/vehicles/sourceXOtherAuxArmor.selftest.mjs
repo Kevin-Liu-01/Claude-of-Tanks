@@ -30,19 +30,19 @@ const BEFORE={
  'k1a1_x/low':'cd82b27062d81232cf381419058ea4e8599c54dd93395d96cdfc5554519dbb1f',
  // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
  // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
- 'amx30_x/high':'38ec1c7ea4b08ce3a5b698aa2f862ae710a1778957bd8e7b504864c7c62772ce',
- 'amx30_x/low':'00b1709a07627e448d695352045d6e45d27816887fc16afde7b1e0433bf0d64e',
+ 'amx30_x/high':'f8e4252eebac1df91cbbbbfd057cddf4ff8530c886b5d071818a1eecda9c7d1e',
+ 'amx30_x/low':'501cba67637c0bb7af907146a8f91112ed6d49fa789ef38e2819087303ff8673',
  'leclerc_x/high':'c106a60485a54871b935564f0bdbc6f44b93a0774c5ad21d8c9ffee066b560e9' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,
  'leclerc_x/low':'31e260ab2fbd2826507803f76872a8fb50b5bc98af17487ba8c33a983bfc6d52',
  'leclerc_classic_x/high':'2fcfa0d688f1ef903e0bc0b19ce5753999058d013a3feb456799fc84b28917e4',
- 'leclerc_classic_x/low':'a7c333f45fb97adcc93f2fd246668441115955ef6ced1ddc9f88aef9f547fdf4',
+ 'leclerc_classic_x/low':'4334c748e0a3cb8363ed6d6e8eeb5c0736c467cbb37440e92139e67ca44766fa',
  'type10_x/high':'4bce8096d5f075a1c3c2b730e37fed588eb12d8d46a6f337b30c977967910bdb',
- 'type10_x/low':'0faf4a67ec17735765d6b9234e757e01c69d1ce9530915b4dfe332f7f19d5e14',
+ 'type10_x/low':'27bce6ac7d0a8488ee5a7151a68c1f175e757f81dda5b9b67010ee85bf732bf9',
  'type90_x/high':'49d70dd6a258dc01f799136010b64fc356ed0e2679077b06ca94ebe9ff1f0bd4',
  'type90_x/low':'14cb55951f5f5d3bf6917dc1e946412c8afe7ada12d513dcfa101cb04f30411d',
  // 2026-09-12 (evening): AMX-40 X .024 band + botY .050 contact fix; native fingerprints repinned.
  'amx40_x/high':'aeacabece1cf8cc9ab96c90e923e37b23950de9fc7d9ff5dd52810fff9265b11',
- 'amx40_x/low':'c90f820c8b0495ab11c76e4f660cb2d6c5ef4542cab9430338347f6898f54d4f',
+ 'amx40_x/low':'863ca7c722b7f9f52bbbdf4d890633cdb1f5de712709c90f3a79e043f8229110',
 };
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);

@@ -21,7 +21,7 @@ const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
 // 2026-09-22 nation wheel standard: t62mv1_x draws the T-90 nation wheel, so the annular-opening inverse is gone; repinned.
 // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 6662e0ea…, 3b6e3742….
 const BEFORE={high:'04db6c6777a1832bb470c4c255ecedfc4df0e59d5dde6903de16c568f59ca568',
-  low:'0d75253367b35fdcfa08c8b32795b96eda83502a79ba4f203da64b69dc82d2b6'};
+  low:'c13577b9db49d7e58916aaaf5dfb7dc1a5fae096ef94f996173626c64d508272'};
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];

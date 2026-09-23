@@ -13,8 +13,10 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
 // 2026-09-14: t90.ts hub package seated (wheel review). 2026-09-22: the T-90M Proryv rim/hub/bolt
 // addRoadWheelLayer dressing left t90.ts with the nation wheel standard (owner: "standardize our wheels
 // across NATIONS"); both pins re-derived from the published profile.
-const BEFORE='c20538f1c39b9235e26b2f1eed6f3c59c84506a4f6c55293feff1f50c71c04b9';
-const AFTER='95c797849226109d768988787e11b1b8f70fc574ce8a1ac3d265f0b9e9f585c8';
+const BEFORE='e3546b2649c4aeebfc2ae321d2fc497beb4eccf0ff0f6d5573c27d372693409c';
+// round 40 (2026-09-22): the T-90 family profile source moved with the road-wheel fixes and the one running-gear finish
+// (r40-wheels: t90.ts PT-91M stations, wheel paint through runningGearFinish.ts); post-lamp profile digest repinned from the current source
+const AFTER='b97d837e9abd61672f914dfc0bcc539e9c56ac7c8899af5957e2af391c74a9b5';
 const added=`    // These existing discs faced upward. Seat their apertures in the actual
     // canted cassette front, with 5.5 mm of rear stock entering its housing.
     for (const dx of [-0.075, 0.075]) {

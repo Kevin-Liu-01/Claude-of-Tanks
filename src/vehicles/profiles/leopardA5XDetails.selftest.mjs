@@ -34,7 +34,7 @@ const coverWitnesses = [
 const retained = {
   high: [227118,'d77e3db9e871e09538c94749583b3d5ced75468c5820b4a54e27b34570d4e8ad'],
   // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 44e6b2eb…, 236890.
-  low: [216998,'6c7edaec7366ce65745d3cf4d3268b8b3e7da2329e447774b185c2fbebf9c540'],
+  low: [215430,'1a46b5b48f8ee6cfe11fd6422b57f4857efffc8a739d0f7c1f0ad17bafc4b00e'],
 };
 function retainedFingerprint(root) {
   const rows=[];

@@ -141,9 +141,17 @@ export function assertPublishedChieftainFoundationSources(
       receipt.successorHistory[2][quality].count + receipt.laterNationWheels.trackDrawVertexDelta
         + receipt.laterNationWheels.nonTrackDrawVertexDelta[quality],
       'the nation wheel standard changes exactly the declared number of road-wheel draw vertices');
-    assert.equal(receipt.successor[quality].count,
+    assert.equal(receipt.laterLowTierNationWheels.supersededSuccessor[quality].count,
       receipt.laterMuzzleBoreCap.supersededSuccessor[quality].count + receipt.laterMuzzleBoreCap.drawVertexDelta,
       'the muzzle cap changes exactly the declared number of draw vertices on top of the nation wheels');
+    // round 40 (2026-09-22): the LOW wheel tier (roadWheelGeometry.ts WheelDetail) supersedes the muzzle-cap successor;
+    // HIGH is byte-identical (delta 0), LOW lost the twelve wheels' bolt rings and ribs by the declared delta.
+    assert.equal(receipt.successor[quality].count,
+      receipt.laterLowTierNationWheels.supersededSuccessor[quality].count + receipt.laterLowTierNationWheels.drawVertexDelta[quality],
+      'the LOW wheel tier changes exactly the declared number of draw vertices on top of the muzzle cap');
+    assert.equal(receipt.laterLowTierNationWheels.nonTrack[quality].count,
+      receipt.laterMuzzleBoreCap.nonTrack[quality].count + receipt.laterLowTierNationWheels.drawVertexDelta[quality],
+      'the LOW wheel tier touches non-track draw vertices only');
     assert.equal(receipt.laterMuzzleBoreCap.nonTrack[quality].count,
       receipt.laterNationWheels.nonTrack[quality].count + receipt.laterMuzzleBoreCap.drawVertexDelta,
       'the muzzle cap touches non-track draw vertices only (the nation-wheel non-track multiset plus its delta)');
@@ -165,6 +173,8 @@ export function assertPublishedChieftainFoundationSources(
   assert.equal(receipt.laterGroundDatumSeat.trackDrawVertexDelta, 2688);
   // nation wheel standard (owner 2026-09-22): UK Challenger 2E hollow paired construction, fleet suspension arm; tracks untouched
   assert.match(receipt.laterNationWheels.scope, /standardize our wheels across NATIONS/);
+  assert.match(receipt.laterLowTierNationWheels.scope, /WheelDetail/);
+  assert.equal(receipt.laterLowTierNationWheels.drawVertexDelta.high, 0, 'HIGH is byte-identical through the LOW wheel tier');
   assert.equal(receipt.laterNationWheels.trackDrawVertexDelta, 0);
   return receipt.successor;
 }
@@ -175,5 +185,6 @@ export function publishedChieftainNonTrackMultiset(quality) {
   // 2026-09-22: the muzzle-cap record was captured on the combined round-38 tree (UK Challenger 2E hollow paired
   // wheel + fleet arm from r38-wheels, flat muzzle cap from r38-bores); laterNationWheels.nonTrack is the
   // wheels-only intermediate and stays as history.
-  return receipt.laterMuzzleBoreCap.nonTrack[quality];
+  // round 40: the LOW wheel tier record is the latest capture (HIGH multiset unchanged from the muzzle-cap record)
+  return receipt.laterLowTierNationWheels.nonTrack[quality];
 }

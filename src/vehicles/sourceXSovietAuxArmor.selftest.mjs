@@ -27,17 +27,17 @@ const BEFORE={
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
   // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: f1a5e7a1…, 710538b0…, 404cc34e…, 4d8e9366…, a86c1642…, 6be94995…, d2f3b206…, e1a6550a…, 9deecdf6…, 059e1473…, 11ae96b8…, c5ae7fae…, 1cac0fb2…, dfc34995…, 9d8f7729…, 51475080…, 33ccf93c…, 678a7053….
-  t62mv1_x:['c328da8941a1402193cd431c77721b9f6cb16ff29690750bfa7be30366ab4a24','5eec83a316dff10fbcc259b97e60fa04ba9ede3ee43b5bc54e563ec696942820'],
-  t72b_1987_x:['fadce555c31a5218ed25e2f0952a1bbcd28e309f87356cae51fe7b7cae399bc4' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'6d7e6af0a2be02b6a976550aabbe83ab0be137174006a0e70d7bf7058228479e'],
-  t80u_x:['c8202bf0dfe6b63929aa907746877c082acb83fe422cd2ff05aaef635357a38e','d037f3373be28b0903c10913cda721b9f203c8edba5b7ac73f61324577cbdb2a'],
-  t72b3_x:['6af78eb329de6ca76c6b0dd58adf7d33e731ff4ef87029c6c5dab4cb033fe17f','07763eb559dae37b3e4736a58dd4c4aeacd55101e942bb0f93a531913928a243'],
+  t62mv1_x:['c328da8941a1402193cd431c77721b9f6cb16ff29690750bfa7be30366ab4a24','dcfe0c1c51467e83b67d2ce88516bc7ef97614e1d6a1fae63b9f28e6b8bc0dc8'],
+  t72b_1987_x:['fadce555c31a5218ed25e2f0952a1bbcd28e309f87356cae51fe7b7cae399bc4' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'1400586196b1b54225f4999ccdff7b1b14fa38e9e0b9ab3394572702cc9cee8c'],
+  t80u_x:['c8202bf0dfe6b63929aa907746877c082acb83fe422cd2ff05aaef635357a38e','7f11754af18c72420d51da0625a783c913b6918f605e2a1be905194eb78db43f'],
+  t72b3_x:['6af78eb329de6ca76c6b0dd58adf7d33e731ff4ef87029c6c5dab4cb033fe17f','9da0ed34d4103c111663ea34621cfd6a8821c8fddb4271e2836f1d749913e637'],
   // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
   // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
-  t72b3m_x:['da7b5c15e22dfb8673a5aceb4c12283c47db6a0d72989e1cae04f9e1acef81c7','6e132e55d3f38fd1f556fb36f2d19c69a9b06ecbbfb45c014e4e07df5521d3a8'],
-  t72bu_x:['1cd4aee98457816dbfe740504281b9e15396fb7166077d6a071094ddc82389a0','ecb63e638a205e47331577a78aa4225b051f544097b9d85ff539aae41e9c271e'],
-  t90_x:['05ec325a346c5a5d4bc024d2fa3b8906774e0c1ba188f0ca9da8b1a96404bc31','0421edea44e9fbc634338dbf22dd676ca573c99aafa3ee75b757c6bba7dc4d19'],
-  t90a_burlak_x:['9fa37765f430ee57e8bdbbc0317b0ed47a2bc3fd25fc2a2026eb328d6a409432','e18c9e778f9aab6535ce72de325eea3b65172369acdd76e246c7db168fd93dcd'],
-  t90ms_x:['3c03e0dc8ab55918b072adc5713e128b87ef315f10e282577c18d23238a3e638','f888dd9b40791feca4d3284c6f6d8b1be5005a037ce7449c8fc3f28312474716'],
+  t72b3m_x:['da7b5c15e22dfb8673a5aceb4c12283c47db6a0d72989e1cae04f9e1acef81c7','a78ee701bab74ea0f2fc0c3fc773fde8eb9c3f9e75e5a0bc7efd38d2fe2228ee'],
+  t72bu_x:['1cd4aee98457816dbfe740504281b9e15396fb7166077d6a071094ddc82389a0','4f01591657de5bf7bdf27c3a6695348283469699e918dc206e9d385de7da506a'],
+  t90_x:['05ec325a346c5a5d4bc024d2fa3b8906774e0c1ba188f0ca9da8b1a96404bc31','4e3059f0be3a4ffa70f09684c9be467069f5bbe4290d51b2fd7b6cf24a205638'],
+  t90a_burlak_x:['9fa37765f430ee57e8bdbbc0317b0ed47a2bc3fd25fc2a2026eb328d6a409432','c9e26857b74c7b1baa7d549222a67e558540d13c29c8b6649bd94449346a0ba2'],
+  t90ms_x:['3c03e0dc8ab55918b072adc5713e128b87ef315f10e282577c18d23238a3e638','85b360d400f085ac217f5e3768a17688829fbb83685faaeb7af88fd66a42f5f9'],
 };
 const EXPECTED_STATS={t62mv1_x:[8,9,9],t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
   t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],

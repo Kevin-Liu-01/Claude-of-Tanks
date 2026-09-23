@@ -31,8 +31,8 @@ const original = {
 // dont use anymore"): every non-donor hull below draws its nation construction — the Leopards the 2A6 X paired
 // dish, the Merkavas the Mk 4B dished face, the T-90s the T-90M X pressed face — so their digests are repinned from the
 // current build; k2, kf51 and t14 are donors and did not move.
-  leo2a7v:'15763cef', leo2a6m:'df810ba9', leo2a4m:'ddb30ac2', leo2a5:'027706d9',
-  merkava4:'3e147cc7', merkava3d:'90ea21fd', k2:'36af3795', kf51:'f5de9458',
+  leo2a7v:'2263d6b0', leo2a6m:'fe9c5f17', leo2a4m:'126b898c', leo2a5:'845f4dc9',
+  merkava4:'faa9ea92', merkava3d:'0f28a719', k2:'36af3795', kf51:'f5de9458',
   t90a:'5230416c', t90a_vladimir:'aa8a18d8', t90m:'7c1a8780', t90sm:'7b200f8f', t14:'3aa21a37',
 };
 // Owner 2026-09-21 explicitly replaces XK2's turret with the current K1A1.

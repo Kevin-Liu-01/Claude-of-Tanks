@@ -91,8 +91,8 @@ const BEFORE=[
 const NATIVE_OTHER_BEFORE = [
  '4807ea719e065098c3dbf7715449f7b04c504cde5e783b9a7dc5802e7b4e9142' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m (camoWorldScale.ts) — uv attributes move on every mesh outside the gun too */,
  'c3ab8dd47c769b82a0c3ba0da01c6b1a8d95bf983b0c8582ec68bf209469e618',
- 'eb579ba8c0d308f314b858ce41c20f6579353e291d181dc7e2def9111256c155',
- '401b0758ab57c2f1d1468a6fd4291cb65c7960f2e38516691180b00fa56ec75c',
+ 'eab76c184cc1a641dcc1e3fc86d315eca40b704822e433cd936d5825af3be966',
+ '8e1c883ea3b9c6192df0e6f9f024895eae9697e3eda6ed615cf3669ae969f595',
 ];
 
 const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,`${label}: ${a} vs ${b}`);

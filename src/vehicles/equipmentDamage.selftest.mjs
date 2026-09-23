@@ -311,7 +311,7 @@ const T90M_REST_REVISIONS = Object.freeze({
 // T90M_REST_REVISIONS.flatRingMouth). Armor digests are unchanged.
 for (const [id, rest, armor] of [
   // 2026-09-22 nation wheel standard: leo2a6 draws the Germany construction (Leopard 2A6 X paired dish); rest repinned.
-  ['leo2a6', '4143fb63c623701a0f5f1e3e48c595360cc98df26602ee9d5eec0e2f00cc6441',
+  ['leo2a6', 'b356164dc1159c296afdfbc401976a49b9bb2f38bd97b9e8c43f1d948f96e4bd',
     'b72c54aa5f4aa4cc99546188a6dfef248896f67c520ae6925dcf7166b874e7a5'],
   ['t90m', T90M_REST_REVISIONS.flatRingMouth,
     'c371fb173216b778135fc1b0a7201201b6f3df27dfee82705c4408ea2e9aa26a'],
