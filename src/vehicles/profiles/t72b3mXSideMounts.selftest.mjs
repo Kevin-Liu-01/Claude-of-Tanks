@@ -126,8 +126,14 @@ function preserveNonTarget(tank,quality){
   const paint=verifiedPaintMeshes(tank),meshes=new Map(),seen={};
   tank.root.traverse(m=>{if(!m.isMesh||paint.has(m))return;
     const n=seen[m.name]??0;seen[m.name]=n+1;meshes.set(`${m.name}#${n}`,m);});
+  // round 46b (2026-09-23, owner: the T-72 family has no return rollers): a deliberate gear change may REMOVE meshes,
+  // so the ledger update rebuilds the held-out set from the current non-paint meshes instead of asserting every old
+  // name still exists; the check run still requires every ledger entry to be present and byte-identical.
+  if(process.env.COT_UPDATE_LEDGER==='1'){
+    PRESERVED[quality]=Object.fromEntries([...meshes].map(([name,m])=>[name,geometryHash(m)]));
+  }
   for(const [name,expected]of Object.entries(PRESERVED[quality])){
-    const m=meshes.get(name);assert.ok(m?.isMesh);
+    const m=meshes.get(name);assert.ok(m?.isMesh,`ledger mesh ${quality} ${name} exists`);
     // COT_UPDATE_LEDGER=1 rewrites the held-out ledger after a deliberate fleet-wide gear change
     // (2026-09-14: wheel paint isolation and the end-wheel track wrap moved every gear batch;
     // 2026-09-22: the Russia nation wheel — T-90M X pressed face — and the fleet arm seated against it moved

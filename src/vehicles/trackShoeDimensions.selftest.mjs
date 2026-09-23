@@ -54,8 +54,8 @@ const DEFAULT_SHOE_HASHES={
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  t90m:'f602982bb44e140222edd55eafd56a25e90e97132346d1c65d5030fe059ddcd1',
-  t90a:'94add74f399eeda55428df16065454b6f31380a387955d2963b4cd126281bb80',
+  t90m:'0ac291de015c80ab5e2f95cd951e0cdf36f2076645f74cf52906fe6598d4ff8a',
+  t90a:'007ce7218cd70367be7f6ff07f5023df418a6f4b4753ada2d00c1c851210ef8f',
   m1a2:'f3560a314db1253320a3bcba4f30583941afb8173bc631fbcb397ed6ecf56d04',
   leo2a5:'2eaee5604c73145eff5acd5b874b990151cbc3a4970b62ea39d810066e5eae87',
 };
@@ -64,7 +64,7 @@ const DEFAULT_WHEEL_HASHES={
 // fleet pressed disc (tires unchanged, discs/insets repinned) and leo2a5 the Germany Leopard 2A6 X paired dish
 // (tires/discs repinned; the construction emits no gearRoadWheelInsets). m1a2 is a donor and did not move.
   t90m:['ee1267357b9821551acdc43bb28b13bb0552b074fd41564b086002ac19713c05','1c097b71ade6ffbe0e876c438766b19f46cc59cde2f2498c8e4ab7b76280a5ec','c7f4628483d7f6c3db60cd57f383ce9bf6011d24249c9cc7329acab8e5d74d50'],
-  t90a:['a54a43055f2861026b4ceab5d270317974edceb01e6dda725ca0d03b44339e73','9ebd90bd97d288dd234795c4a01e21746f91800ebf097f8d6e284c6eaa90d23c','39a0c5e46c0056e9d13cb9ed9007a51871358e16d64b61c142e2d53c8c090938'],
+  t90a:['8f3493bf9c592f0f519f567e09fdeeac88cc37f2e34af0f5afdcfa3a7d9b1e43','8b1be60aa0da4d158d34bcc0fe7e4ea1a7811931c38fb133f05ab1122f8f254e','89a0db99a3fdaa7fd63e239ea3b479bb21560d91c33431f747f99e09409bf08c'],
 // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts — two
 // turned halves on a narrow axle, no separate inset ring), so tires/discs are repinned from the
 // current build and the inset entry is null (the construction emits no gearRoadWheelInsets).
@@ -204,28 +204,14 @@ for(const [id,outerSpan,fullSpan] of [
   } finally {visual.dispose();}
 }
 
-for(const [id,width,y,r,zs,outboard] of [
-  ['t90a_x',.1878,1.00456,.110695,[-1.6497,.3703,2.0961],1.42825],
-  ['t90a_vladimir_x',.1172,.98969,.11452,[-1.55863,.39502,2.39302],1.40931],
-]) {
+// round 46b (2026-09-23, owner: the T-72/T-90 family carries no return rollers — the source-study rollers were the
+// oracle model's, not the vehicle's): the T-90A X and T-90A Vladimir X support-roller census (count 6, measured axial
+// face width, radial size, source support centres, inward axle) is retired with the rollers themselves; the two hulls
+// now run their upper track on the wheel tops like the base T-90 profiles.
+for(const id of ['t90a_x','t90a_vladimir_x']) {
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
-    const rollers=visual.root.getObjectByName('gearReturnRollerDiscs');
-    assert.equal(rollers.count,6,`${id}: native three-per-side source support count`);
-    rollers.geometry.computeBoundingBox();
-    const b=rollers.geometry.boundingBox;
-    assert.ok(Math.abs(b.max.x-b.min.x-width)<.001,`${id}: measured full roller axial face width`);
-    const tires=visual.root.getObjectByName('gearReturnRollerTires');
-    tires.geometry.computeBoundingBox();
-    assert.ok(Math.abs(tires.geometry.boundingBox.max.y-r)<.001,`${id}: measured roller radial size unchanged by axial override`);
-    const matrix=new THREE.Matrix4(),p=new THREE.Vector3();
-    for(let i=0;i<rollers.count;i++) {
-      rollers.getMatrixAt(i,matrix);p.setFromMatrixPosition(matrix);
-      assert.ok(zs.some(z=>Math.abs(p.z-z)<1e-5)&&Math.abs(p.y-y)<1e-5,`${id}: source support centers`);
-      const world=b.clone().applyMatrix4(matrix);
-      assert.ok(Math.max(Math.abs(world.min.x),Math.abs(world.max.x))<=outboard+.018,
-        `${id}: roller stays on the measured inward support axle`);
-    }
+    assert.equal(visual.root.getObjectByName('gearReturnRollerDiscs'),undefined,`${id}: no return rollers on a T-90 hull`);
   } finally {visual.dispose();}
 }
 console.log('trackShoeDimensions.selftest: pinned original geometry, four measured shoes/faces and native moving-wheel ownership pass');

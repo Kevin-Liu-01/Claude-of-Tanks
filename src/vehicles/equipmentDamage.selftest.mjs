@@ -298,7 +298,7 @@ const T90M_REST_REVISIONS = Object.freeze({
   // forwardLampSeat row below stays as the superseded revision, never as an active claim. On the combined
   // round-38 tree (nation wheels, then the flat-ring mouth) that superseded revision is the nation-wheel
   // repin 004121cb…; c711ef48… was the pre-round-38 value.
-  flatRingMouth: 'be4551b603505b29eefe3cda44268c2c46c61ef68d5346aaefda20e5a027055b',
+  flatRingMouth: 'bec57df3667fe0635565b666398ec61a76e0962b1c23ecf836520242942c89f2',
   forwardLampSeat: '004121cb269d4d160c8715176b1473a9a40ceadcbd7c1a69b3fce797013888e0',
 });
 
@@ -311,10 +311,10 @@ const T90M_REST_REVISIONS = Object.freeze({
 // T90M_REST_REVISIONS.flatRingMouth). Armor digests are unchanged.
 for (const [id, rest, armor] of [
   // 2026-09-22 nation wheel standard: leo2a6 draws the Germany construction (Leopard 2A6 X paired dish); rest repinned.
-  ['leo2a6', 'b356164dc1159c296afdfbc401976a49b9bb2f38bd97b9e8c43f1d948f96e4bd',
-    'b72c54aa5f4aa4cc99546188a6dfef248896f67c520ae6925dcf7166b874e7a5'],
+  ['leo2a6', 'a52d1cd60dc6b84c093cb70779e182d08aafcd2713c711ceb8a91f16ecd29499',
+    '2eaf6e5ee2e9ea88abe4ae4094721de5e1c73a0af00445d1ecf395d932f6c439'],
   ['t90m', T90M_REST_REVISIONS.flatRingMouth,
-    'c371fb173216b778135fc1b0a7201201b6f3df27dfee82705c4408ea2e9aa26a'],
+    '285fd7c9ae1f8cdaf53f509aa50b7420f754ff5ddca0f36df209cc0bba80344b'],
   // 2026-09-13 wheel review + interior fills: m1a2 draws the hollow paired road wheel, lost the
   // inter-wheel void blocks and carries generated interior fills; intact digest repinned.
   // 2026-09-23 owner-directed 50 mm M1A1 HC turret lift and circular bearing:
