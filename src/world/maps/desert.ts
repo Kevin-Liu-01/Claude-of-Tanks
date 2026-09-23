@@ -329,10 +329,10 @@ export default {
     // showed visibly richer sand than the live establishing shot). The mie
     // sky + warm fog tint keep the heat identity; the veil no longer eats
     // the midfield value range.
-    // round 47 (2026-09-23, owner: "the ground patterns are too black"): envIntensity 0.16 -> 0.19 — with hemi below
-    // the lowest pair in the game sat here; the ripple and relief normals turned from the 44° sun had nothing behind
-    // them and printed near-black contour swirls on the sunlit slopes. Oasis inherits this value.
-    fogDensity: 0.00047, fogTintHex: 0xc7ac85, fogMix: 0.60, envIntensity: 0.19, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
+    // round 47 (2026-09-23): envIntensity stays 0.16 — sky.ts clamps scene.environmentIntensity to
+    // ENV_INTENSITY_FLOOR (0.21), so any preset value below that (0.16, or the 0.19 the audit proposed) renders the
+    // same; a real environment lift here must exceed 0.21 and was not tested this round. Oasis inherits this value.
+    fogDensity: 0.00047, fogTintHex: 0xc7ac85, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
     cloudOpacity: 0.35, cloudOpacity2: 0.18, cloudTintHex: 0xfff2df,
     // lighting_post r4: sun 4.9 → 4.15 — the hottest sun in the game over the
     // brightest albedo pushed open sand to ~1.5 linear, high on the ACES
@@ -348,9 +348,11 @@ export default {
     // of the wash-out fix: pairs with the 0.82 albedo cap + fog cut so open
     // sand sits ~0.9-1.1 linear (texture survives ACES) while dune shadow
     // sides keep a full stop of separation.
-    // round 47: hemi 0.20 -> 0.28 (effective 0.283 -> 0.397 with the scaled bounce floor, lighting.ts hemiFloorFor).
-    // The SHADED side rises; the sun stays at 4.15 and postExposure at 0.90 so the lit sand does not re-blow
-    // (measured: lit boxes within the +5 % band, see docs/MAP-BEAUTIFICATION.md round 47).
+    // round 47 (2026-09-23, owner: "the ground patterns are too black"): hemi 0.20 -> 0.28 (effective 0.283 -> 0.397
+    // with the scaled bounce floor, lighting.ts hemiFloorFor). Measured on the wall-probe views: true shade rises
+    // (canyon-in darkest 1 % / 5 % of the ground +10.7 % / +8.1 %), lit sand +0.1..0.6 % (the sun stays 4.15 and
+    // postExposure 0.90, so nothing re-blows). It does NOT touch the dark contour bands on the sunlit dune faces
+    // (+2..4 %): those are the sand branch's own bands, not fill starvation — see docs/MAP-BEAUTIFICATION.md round 47.
     sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.28, // lighting_post r4: sun 3.30 -> 4.15, hemi 0.30 -> 0.20 (lee faces ~30% darker)
     // lighting_post r3 (round 3): per-map display exposure trim (post.ts
     // uExposure). 0.93 (not the 0.88 the LP probe used) because the r3
