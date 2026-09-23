@@ -35,8 +35,9 @@ import { CUSTOM_FACE_WHEEL_AXIAL_ENVELOPE, wheelGeo, type WheelGeometrySet } fro
 import { WHEEL_PATTERN_DEFINITIONS, type WheelPattern, type WheelPatternId } from './wheelPatterns.ts';
 import type { WheelConstructionId } from './nationWheelSets.ts';
 
-/** Which running-gear material an instanced face layer takes; the builder binds it to the hull's own paint. */
-type NationWheelPaint = 'dish' | 'dark' | 'detail' | 'rubber';
+/** Which running-gear material an instanced face layer takes (runningGearFinish.ts): 'dish' is the hull's scheme
+ * wheel paint, 'dark' the gunmetal hardware, 'rubber' the tire rubber; the builder binds them to the hull's own paints. */
+type NationWheelPaint = 'dish' | 'dark' | 'rubber';
 type NationWheelRole = 'wheelDish' | 'wheelInset' | 'wheelTire';
 
 export interface NationWheelLayer {
@@ -204,20 +205,21 @@ export function ztz100RoadWheelHardware(side: -1 | 1, high = true): THREE.Buffer
 }
 
 // ----------------------------------------------------------------------------------------------- Israel
-/** Merkava Mk 4B dished face stack (merkava.ts wheelFace): pale outer dish ring, dark dish break, pale mid dish,
- * dark inner dish and pale hub cap, relative to the wheel radius and tire half width. The donor draws its
- * 16/14/12/10/8-sided rings at both tiers; a consumer's LOW tier draws 12/10/8/8/6 (FSP-02: the low tier must cost less). */
+/** Merkava Mk 4B dished face stack (merkava.ts wheelFace): painted outer dish ring, dark dish break, painted mid
+ * dish, dark inner dish and painted hub cap, relative to the wheel radius and tire half width. The painted rings
+ * ride the hull's scheme wheel paint (owner 2026-09-22 wheel finish; they used to take the fitting paint). The
+ * donor draws its 16/14/12/10/8-sided rings at both tiers; a consumer's LOW tier draws 12/10/8/8/6 (FSP-02). */
 export function merkavaDishedFaceLayers(wheelR: number, halfWidth: number, high = true): NationWheelLayer[] {
   return [
-    { geometry: cylX(wheelR * 0.85, 0.012, high ? 16 : 12), paint: 'detail', role: 'wheelDish',
+    { geometry: cylX(wheelR * 0.85, 0.012, high ? 16 : 12), paint: 'dish', role: 'wheelDish',
       outset: halfWidth + 0.006, name: 'gearRoadWheelOuterDishes' },
     { geometry: cylX(wheelR * 0.60, 0.008, high ? 14 : 10), paint: 'dark', role: 'wheelInset',
       outset: halfWidth + 0.010, name: 'gearRoadWheelDishBreaks' },
-    { geometry: cylX(wheelR * 0.50, 0.010, high ? 12 : 8), paint: 'detail', role: 'wheelDish',
+    { geometry: cylX(wheelR * 0.50, 0.010, high ? 12 : 8), paint: 'dish', role: 'wheelDish',
       outset: halfWidth + 0.013, name: 'gearRoadWheelMidDishes' },
     { geometry: cylX(wheelR * 0.34, 0.012, high ? 10 : 8), paint: 'dark', role: 'wheelInset',
       outset: halfWidth + 0.017, name: 'gearRoadWheelInnerDishes' },
-    { geometry: cylX(wheelR * 0.15, 0.014, high ? 8 : 6), paint: 'detail', role: 'wheelDish',
+    { geometry: cylX(wheelR * 0.15, 0.014, high ? 8 : 6), paint: 'dish', role: 'wheelDish',
       outset: halfWidth + 0.021, name: 'gearRoadWheelHubCaps' },
   ];
 }

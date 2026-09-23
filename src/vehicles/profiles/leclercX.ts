@@ -96,7 +96,7 @@ function runningGear(P: TankBuilderPort): void {
     wheelCoreGeometry: { disc: wheels.core },
     wheelFaceLayers: wheels.faces.flatMap(({ side, steel, rubber }) => [
       { geometry: steel, material: P.mats.wheels, side, name: `leclercSourceWheelSteel${side}` },
-      { geometry: rubber, material: P.mats.rubber, side, name: `leclercSourceWheelGroove${side}` },
+      { geometry: rubber, material: P.mats.rubber, side, name: `leclercSourceWheelGroove${side}`, appearanceRole: 'wheelTire' },
     ]),
     wheelZs: zs, roadWheelOutsetLeftM: .019049, roadWheelOutsetRightM: -.021407,
     xc: 1.2943, xcLeft: 1.3158745, xcRight: 1.2727975, trackW: .636079,

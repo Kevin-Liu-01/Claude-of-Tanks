@@ -476,7 +476,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       // shade (both cfg clones re-attach the family ambient-floor hook in the
       // factory; the shoe-pad hook is unconditional at tankFactory ~1456).
       // dishR 0.82 opens a real rubber rim — radius/stations byte-held.
-      dishR: 0.82, tireHex: 0x242522, wheelHex: 0x3d4433,
+      dishR: 0.82,
     });
     P.hullG.userData.arieteRunningGearReceipt = Object.freeze({
       roadWheelRadiusM: 0.38,

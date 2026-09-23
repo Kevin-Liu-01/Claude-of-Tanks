@@ -89,16 +89,10 @@ interface ChallengerToneOptions {
   readonly cloth?: number;
   readonly clothEnv?: number;
   readonly dark?: number;
-  readonly wheelHex?: number;
-  readonly wheelEnv?: number;
-  readonly drumHex?: number;
-  readonly drumEnv?: number;
   readonly padHex?: number;
   readonly padEnv?: number;
   readonly chainHex?: number;
   readonly chainEnv?: number;
-  readonly ringHex?: number;
-  readonly ringEnv?: number;
   readonly bandMul?: readonly [number, number, number];
   readonly bandEnv?: number;
   readonly spareHex?: number;
@@ -1333,8 +1327,6 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     ukToneKit(P, {
       cloth: 0x262b1d, clothEnv: 0.05,
       dark: 0x282c22,
-      wheelHex: 0x323826, wheelEnv: 0.13, drumHex: 0x373d2c, drumEnv: 0.14,
-      ringHex: 0x2b2f1f, ringEnv: 0.10,
       padHex: 0x272b20, padEnv: 0.18, chainHex: 0x2f3427, chainEnv: 0.22,
       bandMul: [0.92, 0.98, 0.82], bandEnv: 0.08,
     });
@@ -1550,10 +1542,7 @@ function installVehicleAmbientFloorHook(
 
 function applyChallengerGearTone(
   object: THREE.Object3D,
-  P: ChallengerBuilderPort,
   options: ChallengerToneOptions,
-  wheelTone: THREE.MeshStandardMaterial,
-  drumTone: THREE.MeshStandardMaterial,
 ): void {
   if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.InstancedMesh)) return;
   const isInstanced = object instanceof THREE.InstancedMesh;
@@ -1570,13 +1559,8 @@ function applyChallengerGearTone(
     material.envMapIntensity = options.chainEnv ?? 0.22;
     return;
   }
-  if (isInstanced && hex === 0x565c50) {
-    installVehicleAmbientFloorHook(material).color.setHex(options.ringHex ?? 0x2b2f1f);
-    material.envMapIntensity = options.ringEnv ?? 0.10;
-    if (material.emissive) material.emissive.setHex(0x000000);
-    return;
-  }
-  if (material === P.mats.wheels) object.material = isInstanced ? wheelTone : drumTone;
+  // (owner 2026-09-22 running-gear finish: the tire rings, road-wheel discs and end-wheel bodies keep the fleet
+  // rubber and the hull's one scheme wheel paint; the former ring/wheelTone/drumTone retones left.)
 }
 
 function ch1BaseToneKit(P: ChallengerBuilderPort, o: ChallengerToneOptions = {}): void {
@@ -1590,15 +1574,8 @@ function ch1BaseToneKit(P: ChallengerBuilderPort, o: ChallengerToneOptions = {})
     P.mats.canvasCloth.envMapIntensity = o.clothEnv ?? 0.10;
   }
   if (o.dark) P.mats.dark.color.setHex(o.dark);
-  const wheelTone = installVehicleAmbientFloorHook(P.mats.wheels.clone());
-  wheelTone.color.setHex(o.wheelHex ?? 0x3e4531);
-  wheelTone.envMapIntensity = o.wheelEnv ?? 0.13;
-  const drumTone = installVehicleAmbientFloorHook(P.mats.wheels.clone());
-  drumTone.color.setHex(o.drumHex ?? 0x373d2c);
-  drumTone.envMapIntensity = o.drumEnv ?? 0.14;
-  P.disposables.push(wheelTone, drumTone);
   P.hullG.traverse((object: THREE.Object3D) => {
-    applyChallengerGearTone(object, P, o, wheelTone, drumTone);
+    applyChallengerGearTone(object, o);
   });
   const bm = o.bandMul ?? [0.92, 0.98, 0.82];
   for (const tm of [P.mats.trackL, P.mats.trackR]) {
@@ -4439,7 +4416,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       // §B8.1 NATIVE-TONE wheel countability (acceptance-flagged "wheels
       // render DARK vs the print's pale Hydrogas rims") — merkava r12
       // tireHex mechanism, per-tank param, default byte-identical elsewhere.
-      paintedEnds: true, coveredTop: 1.18, tireHex: '#343830', wheelHex: '#3f4438', // wheel review 2026-09-13: was '#5c6156', the brightest wheel paint in the fleet,
+      paintedEnds: true, coveredTop: 1.18,
     });
     // ---- hull: belly + sponson strips at the print's front rows (0.42 /
     // 0.33), wrap-safe 3-piece band (sprocket orbit top 1.445 vs sponson

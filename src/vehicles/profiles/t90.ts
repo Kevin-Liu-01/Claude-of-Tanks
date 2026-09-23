@@ -5192,7 +5192,6 @@ function buildT90(P: T90BuilderPort): void {
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     rearArcSteps: 18, smoothRearTopTangent: true, tautRearSpan: true,
     contactZF: 2.26, contactZR: -2.16,
-    tireHex: 0x292d28, wheelHex: 0x565b45,
   };
   const frontRoad = Math.max(...t90Gear.wheelZs);
   const rearRoad = Math.min(...t90Gear.wheelZs);
@@ -6599,7 +6598,6 @@ function buildT90MS(P: T90BuilderPort): void {
     // The 788 mm station cadence needs individually readable road wheels.
     // Preserve the existing 10 mm loaded foot while opening a 108 mm bay.
     style: 'rubber', wheelR: 0.34, wheelW: 0.22, wheelY: 0.35, xc: 1.395, dishR: 0.72,
-    tireHex: 0x34372f, wheelHex: 0x68684d,
     wheelZs: [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16],
     // Tagil uses the same aft/up final-drive correction while preserving
     // its own smaller sprocket, road-wheel cadence and front-idler station.
@@ -8395,12 +8393,7 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   // replacement reused the fleet's pale generic wheel steel, producing six
   // bright target discs and pale terminal faces.  Keep the geometric tire /
   // dish / hub separation while returning the complete course to dirty OD.
-  P.mats.wheels.color.setHex(0x33382c);
-  P.mats.wheels.emissive.setHex(0x080a07);
-  if (P.mats.wheelsRecessed) {
-    P.mats.wheelsRecessed.color.setHex(0x20251e);
-    P.mats.wheelsRecessed.emissive.setHex(0x050705);
-  }
+  // (owner 2026-09-22 running-gear finish: the wheel paint stays the hull scheme tone; the in-place dirty-OD retint left.)
 }
 
 // Burlak uses the proven T-90A chassis and native six-wheel course.  The

@@ -4269,11 +4269,7 @@ function buildT72B3M(P: T72BuilderPort): void {
                                                 // r18 item 10: one step up — the shadow class LIT faces were the
                                                 // medL-44 close-roof clusters (same rects in the r6 baseline; the
                                                 // dark/cloth/detail lifts never moved them); 0x323a25 renders ~50
-    P.mats.wheels.color.offsetHSL(0, 0.09, 0);  // wheel faces sampled S9 vs ref S18.6 — same lum, saturation only
-                                                // (r17: +0.10/+0.04 lum cuts both ran the faces' pale camo patches
-                                                // to p90 95 — the band p10 is carried by the ring/chain/dish lifts)
-    P.mats.wheelsRecessed.color.offsetHSL(0, 0.04, 0.10);
-    P.mats.wheelsRecessed.emissive.setHex(0x0a0c07);
+    // (owner 2026-09-22 running-gear finish: the wheel paint stays the hull scheme tone; the saturation/emissive retint left.)
     // MATERIAL HIERARCHY (2026-08-20 owner exact-surface audit): these buckets
     // intentionally DO NOT sample the hull camouflage atlas. Detail, cloth and
     // wood geometries keep primitive-local 0..1 UVs, unlike the world-scaled

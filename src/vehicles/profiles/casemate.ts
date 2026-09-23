@@ -2372,18 +2372,13 @@ function isuCommon(P: CasemateBuilderPort, o: IsuCommonOptions): void {
       P.mats.spareTrack.roughness = 0.96;                    // r3: the thin cable/shackle runs read as
       P.mats.spareTrack.metalness = 0.10;                    // bright beige lines under the key light
       P.mats.spareTrack.envMapIntensity = 0.12;              // (the r2 "brightest object" bug class)
-      const wornDrum = P.mats.wheels.clone();                // sprocket/idler body drums:
-      wornDrum.color.setHex(0x3c3b2f);                       // dark worn steel, olive family
-      wornDrum.envMapIntensity = 0.2;
-      const pocketVoid = P.mats.rubber.clone();
-      pocketVoid.color.setHex(0x191715);                     // AO-dark pocket floors ('holes')
-      P.disposables.push(wornDrum, pocketVoid);
+      // (owner 2026-09-22 running-gear finish: end drums keep the scheme wheel paint and pocket inserts the fleet
+      // rubber; the wornDrum/pocketVoid clones left.)
       const rehook = (m: MeshStandardMaterial): MeshStandardMaterial => {
         m.onBeforeCompile = vehicleAmbientFloorHook;
         m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
         return m;
       };
-      rehook(wornDrum);
       P.hullG.traverse((ob) => {
         if (!(ob instanceof Mesh)) return;
         const m = ob.material;
@@ -2392,12 +2387,6 @@ function isuCommon(P: CasemateBuilderPort, o: IsuCommonOptions): void {
           rehook(m).color.setHex(0x41453a);                  // link pads: worn grey-olive steel
         } else if (ob instanceof InstancedMesh && m.color.getHex() === 0x27251f) {
           rehook(m).color.setHex(0x34332a);                  // inner chain/pin layer: darker two-tone
-        } else if (m === P.mats.wheels && Math.abs(ob.position.x) > 0.9) {
-          ob.material = wornDrum;                            // end-wheel body drums
-        } else if (ob instanceof InstancedMesh && m === P.mats.rubber) {
-          if (!ob.geometry.boundingBox) ob.geometry.computeBoundingBox();
-          const bw = ob.geometry.boundingBox!.max.x - ob.geometry.boundingBox!.min.x;
-          if (bw > 0.26) ob.material = pocketVoid;           // pocket inserts (w*1.16) vs tire (w)
         }
       });
     }
@@ -4114,10 +4103,6 @@ function buildISU152(P: CasemateBuilderPort): void {
         tm.color.setRGB(2.21, 2.10, 1.37);
       }
       P.mats.spareTrack.color.setHex(0x6e603c);
-      // end-wheel bodies (idler face 82.2 vs ref 85.7 on the r3 baseline —
-      // +4% with the family B cut)
-      P.mats.wheels.color.setRGB(
-        P.mats.wheels.color.r * 1.20, P.mats.wheels.color.g * 1.10, P.mats.wheels.color.b * 0.87);
       // global camo family: bow 82.5 vs ref 100.5, wall zone -9 — one mild
       // warm lift at the root (hue already ref-true: camo B/G measured
       // 0.59-0.64 vs ref 0.63 — the blue-lift never lived here)
@@ -5953,7 +5938,6 @@ function buildISU122S(P: CasemateBuilderPort): void {
       P.mats.spareTrack.color.setHex(0x4e5047);
       P.mats.shadow.color.setHex(0x3f4530);        // r9 round 3: channel AO to the ref's own dark-band value
                                                    // (strip p05 50.5 vs ref channel p05 58-61)
-      P.mats.wheels.color.setHex(0x5f6156);        // wheel dishes + end-wheel bodies (Gex 6.5)
       // r6 hull-family lift; r9: 1.10 -> 1.19 (rear plate -7, tilt-pane roof
       // -5..-9, systemic p05 floor mean -8.4 across 14/14 panes — the r8
       // "green fix as global darkening" undone at the camo root; chroma
@@ -5977,16 +5961,7 @@ function buildISU122S(P: CasemateBuilderPort): void {
       // the dedicated soft cast-shade tone for the hullRubber wash arc (the
       // only other hullRubber user in this build). Pocket inserts already
       // ride their own pocketVoid clone (r5).
-      const tireDark = P.mats.rubber.clone();
-      tireDark.color.setHex(0x3b3a34);             // r9 round 5: tire rings out of the p05 tail
-      P.disposables.push(tireDark);
-      P.hullG.traverse((ob) => {
-        if (ob instanceof InstancedMesh && ob.material === P.mats.rubber) {
-          if (!ob.geometry.boundingBox) ob.geometry.computeBoundingBox();
-          const bw = ob.geometry.boundingBox!.max.x - ob.geometry.boundingBox!.min.x;
-          if (bw <= 0.26) ob.material = tireDark;            // tire bands stay rubber-dark
-        }
-      });
+      // (owner 2026-09-22 running-gear finish: the tire bands keep the fleet rubber; the tireDark clone left.)
       // r7: the crescent shells are gone, so hullRubber is re-claimed for the
       // FRONT PLATE SKIN (the three face slabs). Ref front plate 74.6/72.0
       // (601, view-front rects beside the disc) vs the r6 camo face 90.2 —

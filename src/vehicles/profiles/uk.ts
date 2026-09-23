@@ -273,7 +273,6 @@ interface UKHullOptions {
   readonly arms?: boolean;
   readonly padHex?: number;
   readonly chainHex?: number;
-  readonly tireHex?: number;
   readonly gearFloor?: boolean;
   readonly contactZF?: number;
   readonly contactZR?: number;
@@ -297,12 +296,6 @@ interface UKToneOptions {
   readonly cloth?: number;
   readonly clothEnv?: number;
   readonly dark?: number;
-  readonly wheelHex?: number;
-  readonly wheelEnv?: number;
-  readonly drumHex?: number;
-  readonly drumEnv?: number;
-  readonly ringHex?: number;
-  readonly ringEnv?: number;
   readonly padHex?: number;
   readonly padEnv?: number;
   readonly chainHex?: number;
@@ -624,7 +617,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
       // hook and the default near-black pads render ambient-dead in wheel-bay
       // shade — the chieftain5 'teeth zipper' read). All undefined for every
       // other caller — buildRunningGear defaults are byte-identical.
-      padHex: g.padHex, chainHex: g.chainHex, tireHex: g.tireHex,
+      padHex: g.padHex, chainHex: g.chainHex,
       gearFloor: g.gearFloor,
       // uk r6 opt-ins (centurion 90-push): ramp-pad corner floor + pinned
       // contact patch (both undefined for every other caller — byte-identical).
@@ -1493,32 +1486,8 @@ function ukToneKit(P: UKMaterialPort, o: UKToneOptions = {}): void {
   // Retone by hex on this build's own subtree + rehook (abrams/leopard/m47
   // proven idiom); road-wheel discs + end-drum bodies swap onto olive clones
   // (ch1 O1a pale dished disc read; c5 O2b / c3 1c pale-disc-in-wrap kill).
-  const wheelTone = rehook(P.mats.wheels.clone());
-  wheelTone.color.setHex(o.wheelHex ?? 0x4b523f);
-  wheelTone.envMapIntensity = o.wheelEnv ?? 0.22;
-  const drumTone = rehook(P.mats.wheels.clone());
-  drumTone.color.setHex(o.drumHex ?? 0x3f4534);
-  drumTone.envMapIntensity = o.drumEnv ?? 0.18;
-  P.disposables.push(wheelTone, drumTone);
-  // r8 WHEEL-RING GRAMMAR (combined uk round 3: c3 W1 / c5 O7 / ch1 O1a —
-  // the shared family finding): the dished wheelGeo already authors the ring
-  // set (tire band + shoulder in the `tire` IM; dish-bottom annulus + 16 rim
-  // bolts in the `dark` IM), but BOTH ride mats.rubber, and the r7
-  // tireEmissive floor (0x191d12 ~ +25L additive) lifted their lit read into
-  // the disc-face luma — the drawn rings vanished and all six wheels rendered
-  // as featureless pale pillows, the POLARITY INVERSE of the refs' dark-drawn
-  // rim/bolt/hub rings on olive discs. Split the merged tones: both wheel
-  // rubber IMs drop onto a dark olive-iron ring clone ~8-12L below the disc
-  // face, NO emissive lift (the ambient-floor hook alone owns shade safety —
-  // the pad/chain precedent holds sub-30 at zero). The r6 pale-bullseye
-  // overshoot stays dead: rings are DARK-drawn, never pale. mkInst creation
-  // order is tire-first, dark-second (tankFactory buildRunningGear) — both
-  // take the same ring tone so the order only matters for documentation.
-  const ringMat = rehook(P.mats.rubber.clone());
-  ringMat.color.setHex(o.ringHex ?? 0x2b2f1f);
-  ringMat.envMapIntensity = o.ringEnv ?? 0.10;
-  ringMat.emissive.setHex(0x000000);
-  P.disposables.push(ringMat);
+  // (owner 2026-09-22 running-gear finish, runningGearFinish.ts: road-wheel discs, end-wheel bodies and tire rings
+  // keep the hull's one scheme wheel paint and the fleet rubber; the former wheelTone/drumTone/ringMat clones left.)
   P.hullG.traverse((ob: THREE.Object3D) => {
     if (!(ob instanceof THREE.Mesh) && !(ob instanceof THREE.InstancedMesh)) return;
     const isInstanced = ob instanceof THREE.InstancedMesh;
@@ -1530,11 +1499,6 @@ function ukToneKit(P: UKMaterialPort, o: UKToneOptions = {}): void {
     } else if (isInstanced && m.color.getHex() === 0x27251f) {
       rehook(m).color.setHex(o.chainHex ?? 0x3b402f);    // inner chain/horns
       m.envMapIntensity = o.chainEnv ?? 0.32;
-    } else if (isInstanced && m === P.mats.rubber) {
-      ob.material = ringMat;                             // tire ring + bolt/annulus IMs
-    } else if (m === P.mats.wheels) {
-      // road-wheel disc InstancedMesh + sprocket/idler body spinners
-      ob.material = isInstanced ? wheelTone : drumTone;
     }
   });
   // Band material: linear multiplier over the shared band map (m60/m47
@@ -3021,8 +2985,6 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
       cloth: mk === 5 ? 0x353c2b : undefined,
       glassHex: mk === 5 ? 0x353c35 : undefined,
       dark: mk === 5 ? 0x32352c : undefined,
-      wheelHex: 0x323826, wheelEnv: 0.13, drumHex: 0x373d2c, drumEnv: 0.14,
-      ringHex: 0x2b2f1f, ringEnv: 0.10,
       padHex: 0x272b20, padEnv: 0.18, chainHex: 0x2f3427, chainEnv: 0.22,
       bandMul: [0.92, 0.98, 0.82], bandEnv: 0.08,
     });

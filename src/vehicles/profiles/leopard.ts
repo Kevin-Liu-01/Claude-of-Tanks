@@ -138,7 +138,6 @@ interface ChevronSurfacePanelOptions {
 
 interface LeopardGearConfig {
   readonly dishR?: number;
-  readonly wheelHex?: number;
   readonly wheelR: number;
   readonly trackW: number;
   readonly wheelY?: number;
@@ -162,7 +161,6 @@ interface LeopardGearConfig {
   readonly dedupeLoopPoints?: boolean;
   readonly padHex?: number;
   readonly chainHex?: number;
-  readonly tireHex?: number;
   readonly gearFloor?: boolean;
   readonly wheelFaceLayers?: readonly object[];
   readonly contactZF?: number;
@@ -476,7 +474,6 @@ interface LeopardHullV3Config {
   readonly rollers?: readonly GearEndpoint[];
   readonly dishR?: number;
   readonly gearFloor?: boolean;
-  readonly tireHex?: number;
   readonly padHex?: number;
   readonly chainHex?: number;
   readonly shoeRadialScale?: number;
@@ -1144,7 +1141,7 @@ function leoGear(P: TankBuilderPort, g: LeopardGearConfig): void {
     // dishR opt-in (r3 leo2a6 #1): a smaller painted dish widens the dark
     // rubber tire ring on the wheel faces; default 0.84 keeps every sibling
     // byte-identical.
-    style: 'rubber', dishR: g.dishR ?? 0.84, wheelHex: g.wheelHex,
+    style: 'rubber', dishR: g.dishR ?? 0.84,
     wheelR: g.wheelR, wheelW: Math.min(0.23, g.trackW * 0.36),
     wheelY: g.wheelY ?? g.wheelR + 0.03, xc: g.xc,
     wheelZs: evenStations(7, g.span[0] - g.span[1], (g.span[0] + g.span[1]) / 2),
@@ -1169,7 +1166,7 @@ function leoGear(P: TankBuilderPort, g: LeopardGearConfig): void {
     // uk.ts chieftain5 precedent): per-tank pad/chain tones + the ambient
     // floor rehook. All undefined for every other caller — buildRunningGear
     // defaults stay byte-identical (a6/kf51/a5 hashes hold).
-    padHex: g.padHex, chainHex: g.chainHex, tireHex: g.tireHex,
+    padHex: g.padHex, chainHex: g.chainHex,
     gearFloor: g.gearFloor,
     wheelFaceLayers: g.wheelFaceLayers,
     // r15 leo2_revolution §B6 opt-in (m1a2 contact-pin precedent, factory
@@ -2124,7 +2121,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       // §B8 leo2a4 wheel-read opt-ins (revolution B1 lineage — all undefined
       // for every other caller: leoGear/buildRunningGear defaults stay
       // byte-identical, sibling hashes hold).
-      gearFloor: H.gearFloor, tireHex: H.tireHex, padHex: H.padHex, chainHex: H.chainHex,
+      gearFloor: H.gearFloor, padHex: H.padHex, chainHex: H.chainHex,
       shoeRadialScale: H.shoeRadialScale,
       shoeWidthScale: H.shoeWidthScale,
       shoeOutboardOffset: H.shoeOutboardOffset,
@@ -4262,20 +4259,12 @@ function buildLeo2A6(P: TankBuilderPort) {
       // rectangle" sampled hue 67.8 vs the ref bustle's 84.8) — darker
       // green-biased canvas, luminance ratio ref/proc moves 1.11 -> ~1.0.
       P.mats.canvasCloth.color.setHex(0x3e4532);
-      const wornDish = P.mats.wheels.clone();              // road-wheel dishes: weathered grey-olive
-      wornDish.color.setHex(0x525c46);
-      wornDish.envMapIntensity = 0.25;
-      const wornDrum = P.mats.wheels.clone();              // sprocket/idler body drums: worn grey-olive steel
-      wornDrum.color.setHex(0x3e4437);
-      wornDrum.envMapIntensity = 0.25;
-      P.disposables.push(wornDish, wornDrum);
+      // (owner 2026-09-22 running-gear finish: dishes and end-wheel bodies keep the scheme wheel paint; wornDish/wornDrum left.)
       const rehook = <T extends VehicleMaterial>(m: T): T => {
         m.onBeforeCompile = vehicleAmbientFloorHook;
         m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
         return m;
       };
-      rehook(wornDish);
-      rehook(wornDrum);
       // r8 #2 platePale: the lower-plate skin + taillight-oval material (the
       // hullCloth bucket — a6-unused before this round, so the swap scopes to
       // exactly those pieces). The ref plate samples med L 89-108 where every
@@ -4339,8 +4328,6 @@ function buildLeo2A6(P: TankBuilderPort) {
           // strip law owns the floor here). Still warm R>G>B.
           regrime(m).color.setHex(0x252320);
           m.envMapIntensity = 0.08;                        // r6: sky-wash cut with the pad/band family
-        } else if (m === P.mats.wheels) {
-          ob.material = ob instanceof THREE.InstancedMesh ? wornDish : wornDrum;
         }
       });
       // r8 #2 POST-MERGE SWAP LAW: bucket meshes do not exist while the
@@ -5392,29 +5379,12 @@ export function buildLeo2A5(builder: object) {
         // warm-olive hue 60-64 at lum ~57 (the a6's own print sat at hue 78-86 /
         // brighter) — the a6 dish tone rendered 0.78 ratio (over-bright) here.
         // Transfer: rendered/material ~0.83 per channel on the dish faces.
-        const wornDish = P.mats.wheels.clone();              // road-wheel dishes: weathered warm olive-drab
-        const buildLeo2A5AssemblyStage7 = (): void => {
-          wornDish.color.setHex(0x3c3c2e);
-          wornDish.envMapIntensity = 0.22;
-        };
-        buildLeo2A5AssemblyStage7();
-        const wornDrum = P.mats.wheels.clone();              // idler/sprocket drums: worn dark steel-olive
-        const buildLeo2A5AssemblyStage8 = (): void => {
-          wornDrum.color.setHex(0x333527);
-          wornDrum.envMapIntensity = 0.22;
-          P.disposables.push(wornDish, wornDrum);
-        };
-        buildLeo2A5AssemblyStage8();
+        // (owner 2026-09-22 running-gear finish: dishes and end-wheel bodies keep the scheme wheel paint; wornDish/wornDrum left.)
         const rehook = <T extends VehicleMaterial>(m: T): T => {
           m.onBeforeCompile = vehicleAmbientFloorHook;
           m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
           return m;
         };
-        const buildLeo2A5AssemblyStage9 = (): void => {
-          rehook(wornDish);
-          rehook(wornDrum);
-        };
-        buildLeo2A5AssemblyStage9();
         // top-grime hook (a6 r6 #1): up-facing shoe crowns shade toward the wrap
         // accent; vertical faces render byte-identical. Clones lose the fleet
         // ambient floor (gearFloor law) — re-chained here.
@@ -5502,8 +5472,6 @@ export function buildLeo2A5(builder: object) {
               // at this pairing.
               chainGrime(m).color.setHex(0x393524);
               m.envMapIntensity = 0.08;
-            } else if (m === P.mats.wheels) {
-              ob.material = ob instanceof THREE.InstancedMesh ? wornDish : wornDrum;
             }
           });
         };
@@ -5549,26 +5517,10 @@ export function buildLeo2A5(builder: object) {
         // 1.713; discs span 1.724..1.7385, touching the rear-skirt plate /
         // inner-course filler so nothing floats). Station width moves 1.725 ->
         // 1.7385 — TOWARD the ref's own +-1.737 station read (r6 fender law).
-        const discFace = rehook(P.mats.wheels.clone());
-        const buildLeo2A5AssemblyStage12 = (): void => {
-          discFace.color.setHex(0x3d422e);                 // r8-j: sunlit-arc law — the un-shadowed disc/washer ring reads albedo x~1.42; L55 keeps the lit arc under the p95 80 gate
-          // r8 1d RIM CRESCENT: the disc-window p95 89.8 (gate <=80) is the face
-          // disc's own 12 mm rim band — a thin cylinder wall seen all-grazing, so
-          // the wheels-clone roughnessMap dips (~0.23 effective GGX) + env 0.20
-          // fresnel it into a bright ring at every bearing. Matte it out: no
-          // roughnessMap, env pinned low. Same body tone (med/hue/p5 gates held).
-          discFace.envMapIntensity = 0.05;
-          discFace.roughnessMap = null;
-          discFace.roughness = 0.97;
-        };
-        buildLeo2A5AssemblyStage12();
-        const discDark = rehook(P.mats.wheels.clone());
+        // (owner 2026-09-22 running-gear finish: the end-wheel cover discs ride the scheme wheel paint and their rim
+        // seams and hub caps the worn track steel; the discFace/discDark clones left.)
+        const discFace = P.mats.wheels, discDark = P.mats.spareTrack;
         const buildLeo2A5ReceiptStage4 = (): void => {
-          discDark.color.setHex(0x2b2f20);
-          discDark.envMapIntensity = 0.05;
-          discDark.roughnessMap = null;
-          discDark.roughness = 0.97;
-          P.disposables.push(discFace, discDark);
           for (const s of [-1, 1] as const) {
             const runningGearFaces: Array<readonly [THREE.BufferGeometry, VehicleMaterial]> = [
               // r 0.32/0.315 — a 0.355 first cut bottomed 0.735 and cost 4 front
@@ -7138,7 +7090,7 @@ export function buildLeo2A4(builder: object) {
       // hooked so it shades instead of dropping to pitch black. The seven
       // lower wheel halves render as readable tire-ringed discs below the
       // hub-line skirts.
-      gearFloor: true, tireHex: 0x2b2d24,
+      gearFloor: true,
     });
   };
   buildLeo2A4AssemblyStage1();
@@ -8292,7 +8244,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
     topY: 0.97, fans: { z: -2.55, x: 0.78, r: 0.38 },
     dishR: 0.78, fanWell: true, splashArms: false,
     // §B8 wheel-read (a4 lineage): hooked gear floor + dark hooked tire
-    gearFloor: true, tireHex: 0x24261f,
+    gearFloor: true,
   });
   addLeo2PrototypeRunningGearFinish(P);
   addLeo2PrototypeMudguards(P);
@@ -12598,7 +12550,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       tautFrontSpan: true, tautRearSpan: true, smoothRearTopTangent: true,
       dedupeLoopPoints: true,
       padHex: 0x2c2d25, chainHex: 0x24251f,
-      tireHex: 0x2b2d24, gearFloor: true,
+      gearFloor: true,
       fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true,
       splashArms: false, jackDark: true,
     });
@@ -13433,7 +13385,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       frontArcSteps: 12, rearArcSteps: 12,
       linkPitchM: 0.125, shoeRadialScale: 0.58, shoeWidthScale: 0.97,
       endRingSpan: 0.50, coveredTop: 1.06, arms: true, paintedEnds: true,
-      padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
+      padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true,
     });
 
     // Keep the complete armored body on the source datum. Running-gear objects

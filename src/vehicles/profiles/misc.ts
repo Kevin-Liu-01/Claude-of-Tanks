@@ -4220,7 +4220,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   const wheelZs = [1.62, 0.81, 0, -0.81, -1.62];
   const buildAMX30RunningGearStage1 = (): void => {
     buildRunningGear(P, {
-      style: 'rubber', dishR: 0.77, tireHex: 0x30322d, wheelHex: 0x46503e,
+      style: 'rubber', dishR: 0.77,
       wheelR: 0.375, wheelW: 0.21, wheelY: 0.402, xc: 1.264,
       wheelZs,
       sprocket: { z: -2.72, y: 0.72, r: 0.355 },

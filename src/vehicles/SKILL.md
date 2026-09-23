@@ -116,8 +116,13 @@ code; every other hull's authored wheel solids, `wheelFaceLayers` and post-build
 which seats itself against the wheel it actually carries. Period (ww2)
 hulls keep their constructions. A profile may restate, never contradict, its
 nation wheel pattern. Keep road wheels, return rollers, idlers, and sprockets on
-that one suspension-driven assembly. Painted faces use the camouflage-aware
-`wheelPaint` role, while tires/insets remain neutral. Run the three focused
+that one suspension-driven assembly. Running-gear finish (owner 2026-09-22, `runningGearFinish.ts`): one table says
+what every gear role may be — tires and insets the fleet rubber, every painted
+face (dishes, hub caps, rims, roller discs, end-wheel bodies) the hull's one
+scheme `wheelPaint` material, hardware dark steel. `normalizeTankAppearance`
+re-seats any clone or fitting paint onto the hull paint and undoes in-place
+retints; `wheelQuality.ts` audits the table on every hull. Never author a
+per-hull wheel hex, clone the wheel paint, or retint it in a profile. Run the three focused
 pattern checks, `nationWheelSets.selftest.mjs`, `wheelQuality.selftest.mjs` and
 `node tools/wheel-review.mjs --all --gate` after any wheel or running-gear
 change; `node tools/wheel-inventory.mjs --all` lists every hull's wheel.

@@ -143,8 +143,6 @@ interface AbramsHullConfig {
   readonly wheelR: number;
   readonly wheelY: number;
   readonly wheelZs: readonly number[];
-  readonly wheelHex?: number;
-  readonly tireHex?: number;
   readonly contactZF?: number;
   readonly contactZR?: number;
   readonly trackBotY?: number;
@@ -1515,7 +1513,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
       trackW: g.trackW, trackTh, topY: returnTrackTopY,
       paintedEnds: true, coveredTop: true,
       arms: g.arms,
-      dishR: g.dishR, tireHex: g.tireHex, wheelHex: g.wheelHex, deadSag: g.deadSag,
+      dishR: g.dishR, deadSag: g.deadSag,
       contactZF: g.contactZF, contactZR: g.contactZR,
       endRingSpan: g.endRingSpan, pinCapOuter: g.pinCapOuter,
       armBucket: g.armBucket,
@@ -4054,10 +4052,7 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   // pads is also ref-true. r5: top-grime chained (rear corner bake).
   P.mats.spareTrack.color.setHex(0x29261f);
   grime(P.mats.spareTrack, 'abrams-padgrime-v1');
-  const wornDrum = rehook(P.mats.wheels.clone());   // sprocket/idler bodies
-  wornDrum.color.setHex(0x4c503f);                  // ref idler zone (53,57,47) olive
-  wornDrum.envMapIntensity = 0.22;
-  P.disposables.push(wornDrum);
+  // (owner 2026-09-22 running-gear finish: the end-wheel bodies keep the scheme wheel paint; the wornDrum clone left.)
   P.hullG.traverse((ob) => {
     if (!isRenderableMesh(ob)) return;
     const m = ob.material;
@@ -4074,8 +4069,6 @@ function tejasToneKit(P: AbramsBuilderPort): void {
     } else if (ob instanceof THREE.InstancedMesh && m.color.getHex() === 0x27251f) {
       grime(m, 'abrams-chaingrime-v1', '0.45').color.setHex(0x2f2b23); // inner chain / pin caps (r4 dial)
       m.envMapIntensity = 0.11;
-    } else if (m === P.mats.wheels && !(ob instanceof THREE.InstancedMesh)) {
-      ob.material = wornDrum;                       // end-wheel body drums only
     }
   });
   // Keep a second, lower-value tier only for actual recess and bay-shadow
@@ -8537,7 +8530,7 @@ const AX_HULL: AbramsHullConfig = {
   // r ~0.28-0.31 nearly touching, span 0.10..0.66.)
   trackXc: 1.375, trackW: 0.57, endRingSpan: 0.42, pinCapOuter: 0.275,
   wheelR: 0.2992, wheelY: 0.4184,
-  dishR: 0.74, tireHex: 0x232220, wheelHex: 0x343830, arms: true,
+  dishR: 0.74, arms: true,
   armBucket: 'hullRunningGearDetail',
   contactZF: 2.32, contactZR: -2.37,
   deadSag: 0.03, beltCoreTop: 0.47,
@@ -10671,8 +10664,6 @@ function createM1A3BuildLayout() {
     returnRollerZs: [1.82, 0.60, -0.62, -1.84],
     arms: true,
     armBucket: 'hullRunningGearDetail',
-    tireHex: 0x20211e,
-    wheelHex: 0x43483c,
   };
   const t = {
     tw: 1.60,

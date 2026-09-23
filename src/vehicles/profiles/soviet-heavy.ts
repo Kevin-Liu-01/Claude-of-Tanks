@@ -121,7 +121,7 @@ interface RunningGearPort {
   addRoadWheelLayer(
     geometry: THREE.BufferGeometry,
     material: THREE.Material,
-    options?: { name?: string; outset?: number },
+    options?: { name?: string; outset?: number; appearanceRole?: string },
   ): void;
 }
 
@@ -205,7 +205,7 @@ function sovGear(P: SovietHeavyBuilderPort, g: SovietGearOptions): RunningGearPo
   // the wheel-bay shadow under any camo. These are native running-gear
   // members, so the dedicated buckets keep the hull-corridor census truthful.
   gear.addRoadWheelLayer(cylX(g.wheelR * 0.72, wheelW * 1.06, 12), P.mats.dark, {
-    name: 'gearRoadWheelRecesses',
+    name: 'gearRoadWheelRecesses', appearanceRole: 'wheelInset', // a dark recess field, not a painted face (runningGearFinish.ts)
   });
   return gear;
 }
@@ -1453,7 +1453,7 @@ function addKV2RunningGear(P: SovietHeavyBuilderPort): void {
     });
     gear.addRoadWheelLayer(KIT.torus(0.162, 0.014, 14).rotateZ(Math.PI / 2), P.mats.dark, {
       outset: 0.1105,
-      name: 'gearRoadWheelDarkAnnuli',
+      name: 'gearRoadWheelDarkAnnuli', appearanceRole: 'wheelInset', // dark annulus, not a painted face (runningGearFinish.ts)
     });
     for (const sx of [-1, 1]) {
       // idler face (ref: open spoked wheel you can see through): big dark

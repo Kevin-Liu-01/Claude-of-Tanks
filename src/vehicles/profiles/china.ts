@@ -672,7 +672,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // (2R/pitch 0.86, a 12 cm gap); the upper run stays covered under the skirts.
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.36, wheelW: 0.26, wheelY: 0.43, xc: 1.47,
-    dishR: 0.78, wheelHex: '#4b523c',
+    dishR: 0.78,
     wheelZs: [2.14, 1.30, 0.46, -0.38, -1.22, -2.06],
     sprocket: { z: -3.05, y: 0.78, r: 0.39 },
     idler: { z: 2.95, y: 0.74, r: 0.36 },

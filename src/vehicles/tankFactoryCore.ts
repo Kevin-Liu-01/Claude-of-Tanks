@@ -22,7 +22,7 @@ import {
   torus, xform,
 } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.ts';
+import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -508,9 +508,6 @@ export interface RunningGearConfig {
   bayShadowTop?: number;
   bayShadowBucket?: string;
   dishR?: number;
-  tireHex?: number;
-  wheelHex?: number;
-  endWheelHex?: number;
   endRingSpan?: number;
   sprocketTeeth?: boolean;
   sprocketDepthScale?: number;
@@ -3980,19 +3977,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     }
     return addRoadWheelLayerUnchecked(geometry, material, layer);
   };
-  // cfg.tireHex opt-in (merkava r12 order 5): per-tank tire tone — the stock
-  // rubber's steep-view read sat sub-45 where the 3D ref keeps its gear
-  // shade >=50. Clone re-attaches the family ambient hook (clone() drops
-  // onBeforeCompile). Default byte-identical.
-  let tireMat = mats.rubber;
+  // RUNNING-GEAR FINISH (owner 2026-09-22, runningGearFinish.ts): tires are the fleet rubber and every painted
+  // face is the hull's one scheme wheel paint. The former per-hull `tireHex`/`wheelHex` clones (an arbitrary hex
+  // per profile, floored but otherwise free) left; the appearance normaliser re-seats any surviving clone.
+  const tireMat = mats.rubber;
   const buildRunningGearAssemblyStage3 = (): void => {
-    if (cfg.tireHex) {
-      tireMat = mats.rubber.clone();
-      tireMat.color = new THREE.Color(cfg.tireHex);
-      tireMat.onBeforeCompile = vehicleAmbientFloorHook;
-      tireMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      disposables.push(tireMat);
-    }
     if (tire) mkInst(tire, tireMat, entries, 'wheelTire', 'gearRoadWheelTires');
   };
   const buildRunningGearRunningGearStage10 = (): void => {
@@ -4003,25 +3992,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // camouflage-aware dusty wheel paint. Routing steel wheels through the
   // generic fitting material was the source of the older fleet's odd green,
   // tan, and glossy wheel rows.
-  let dishMat = mats.wheels;
-  // Per-profile painted wheel tone.  Modern demonstrators often carry
-  // deeply shadowed, scheme-painted dishes; using the fleet wheel material
-  // can turn them into a row of pale toy discs.  Undefined is exactly the
-  // historical path for every existing profile.
-  const buildRunningGearAssemblyStage4 = (): void => {
-    if (cfg.wheelHex) {
-      dishMat = dishMat.clone();
-      // (the appearance normaliser floors this clone with the rest of the wheel paint, 2026-09-14)
-      dishMat.color = new THREE.Color(cfg.wheelHex);
-      dishMat.onBeforeCompile = vehicleAmbientFloorHook;
-      dishMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      disposables.push(dishMat);
-    }
-  };
-  const buildRunningGearRunningGearStage11 = (): void => {
-    buildRunningGearAssemblyStage4();
-  };
-  buildRunningGearRunningGearStage11();
+  const dishMat = mats.wheels;
   const proudList = entries.filter((e) => !e.rec);
   const recList = entries.filter((e) => e.rec);
   const buildRunningGearAssemblyStage5 = (): void => {
@@ -4258,10 +4229,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         name: layer.name || `gearRoadWheelDetail${layerIndex + 1}`,
       });
     }
-    // Nation construction face layers take this hull's own running-gear paints by role.
+    // Nation construction face layers take this hull's own running-gear paints by role (runningGearFinish.ts).
     for (const layer of nationLayers) {
-      const material = layer.paint === 'dish' ? dishMat : layer.paint === 'rubber' ? tireMat
-        : layer.paint === 'dark' ? mats.dark : mats.detail;
+      const material = layer.paint === 'dish' ? dishMat : layer.paint === 'rubber' ? tireMat : mats.dark;
       addRoadWheelLayerUnchecked(layer.geometry, material,
         { side: layer.side, outset: layer.outset, appearanceRole: layer.role, name: layer.name });
     }
@@ -4397,23 +4367,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler
   // with the vehicle; the bare near-black drums were the r5 "hollow wrap" /
   // "track circles a void" read) — teeth, recess rings and bolts stay dark.
-  let steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
-  // Source-specific pressed-steel end wheels may be substantially darker
-  // than the scheme-painted hull. Keep this opt-in material on the canonical
-  // spinning sprocket/idler meshes rather than layering static cover discs.
-  const buildRunningGearAssemblyStage11 = (): void => {
-    if (cfg.endWheelHex) {
-      steelMat = steelMat.clone();
-      steelMat.color = new THREE.Color(cfg.endWheelHex);
-      steelMat.onBeforeCompile = vehicleAmbientFloorHook;
-      steelMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      disposables.push(steelMat);
-    }
-  };
-  const buildRunningGearRunningGearStage20 = (): void => {
-    buildRunningGearAssemblyStage11();
-  };
-  buildRunningGearRunningGearStage20();
+  // (owner 2026-09-22 running-gear finish: the end-wheel bodies are the same scheme wheel paint as the road-wheel
+  // dishes beside them; the former `endWheelHex` clone left with the other per-hull wheel hexes.)
+  const steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
   const darkMat = mats.spareTrack || mats.dark;
   const stockMirrors = sg.leftBody && sg.leftDark
     ? new Map([[sg.body, sg.leftBody], [sg.dark, sg.leftDark]]) : null;
@@ -9258,6 +9214,9 @@ function createNonRenderingTankMaterials(camoUvScale = CAMO_UV_REPEATS_PER_M): T
   };
   tagVehicleMaterial(mats.wheels, 'wheelPaint', 'wheel-paint-non-rendering');
   tagVehicleMaterial(mats.wheelsRecessed, 'wheelPaint', 'wheel-paint-recessed-non-rendering');
+  // The running-gear finish audit reads the scheme stamp on both wheel paints (runningGearFinish.ts).
+  stampSchemeFinish(mats.wheels);
+  stampSchemeFinish(mats.wheelsRecessed);
   tagVehicleMaterial(mats.rubber, 'tireRubber', 'tire-rubber-non-rendering');
   tagVehicleMaterial(mats.trackLink, 'trackSteel', 'track-steel-non-rendering');
   tagVehicleMaterial(mats.spareTrack, 'trackSteel', 'spare-track-steel-non-rendering');
@@ -13119,10 +13078,12 @@ function* createTankOwnedSteps(
     }
 
     // Family builders historically retinted shared/clone track materials after
-    // construction. Reassert only explicit working-gear roles after every
-    // authored addition; camouflage armor, skirts, guards and wheel dishes are
-    // deliberately outside this normalization.
-    normalizeTankAppearance(root);
+    // construction. Reassert the working-gear finish after every authored
+    // addition (runningGearFinish.ts): neutral rubber/steel roles snap to the
+    // palette and every painted running-gear face re-seats onto this hull's one
+    // scheme wheel paint; camouflage armor, skirts and guards are deliberately
+    // outside this normalization.
+    normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
 
     if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
       const mobileBatchParents = [hullG, turretG, gunG, recoilG];

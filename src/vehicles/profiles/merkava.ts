@@ -1625,8 +1625,9 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   // construction (nationWheelConstructions.ts, owner 2026-09-22); the Mk 3D's pressed ring stack left with the
   // standard, since every other Israeli MBT hull now draws the Mk 4B face.
   const wheelFaceW = Math.min(0.23, c.trackW * 0.37);
+  // (owner 2026-09-22 running-gear finish: the painted rings ride the scheme wheel paint, not the fitting paint.)
   const wheelFaceLayers = c.wheelFace ? merkavaDishedFaceLayers(c.wheelR, wheelFaceW / 2).map((layer) => ({
-    geometry: layer.geometry, material: layer.paint === 'dark' ? P.mats.dark : P.mats.detail,
+    geometry: layer.geometry, material: layer.paint === 'dark' ? P.mats.dark : P.mats.wheels,
     outset: layer.outset, name: layer.name, appearanceRole: layer.role,
   })) : undefined;
   const merkavaChassisRunningGearStage1 = (): void => {
@@ -1649,7 +1650,6 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
       shoeWidthScale: c.shoeWidthScale ?? 1.00,
       dishR: c.dishR ?? 0.78,
       chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor,
-      wheelHex: c.wheelHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class
       armBucket: c.runningGearBuckets ? 'hullRunningGearDetail' : undefined,
       wheelFaceLayers,
     });
@@ -8109,23 +8109,8 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
           m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
           return m;
         };
-        const darkDish = rehook(P.mats.wheels.clone());   // road-wheel faces
-        // board hemi renders shaded vertical faces at ~1.1x albedo (verified by
-        // pixel iteration): ref face (57,57,47) needs ~0x34342b, near the tire
-        // rubber 0x2e2d2a — the ref's wheels ARE that low-contrast.
-        // p.wheelHex (3D structure r3 minor): the 3D arch windows read
-        // dark-void (p95 62 vs ref 76 — the ref keeps readable dish rings in
-        // the openings). Slight albedo + env lift; 1B keeps the verified 55.
-        darkDish.color.setHex(p.wheelHex ?? 0x34342b);
-        darkDish.envMapIntensity = p.wheelHex ? 0.65 : 0.2;
-        const darkDrum = rehook(P.mats.wheels.clone());   // sprocket/idler bodies
-        darkDrum.color.setHex(0x2f2f27);
-        darkDrum.envMapIntensity = 0.2;
-        P.disposables.push(darkDish, darkDrum);
-        P.hullG.traverse((ob) => {
-          if (!(ob instanceof THREE.Mesh || ob instanceof THREE.InstancedMesh)) return;
-          if (ob.material === P.mats.wheels) ob.material = ob instanceof THREE.InstancedMesh ? darkDish : darkDrum;
-        });
+        // (owner 2026-09-22 running-gear finish: road-wheel faces and end-wheel bodies keep the hull's one scheme wheel
+        // paint; the darkDish/darkDrum clones left.)
         // r4 "mute the track teeth tone": the near-black band/teeth pixels read
         // LOUDER than the ref's dusty gear wherever the hem exposes them — a
         // small emissive floor lifts them toward the ref's warm dark without
@@ -13392,7 +13377,7 @@ const MERKAVA_PROFILE_DATA = {
     // crest chamfer + glacis break + decal delete + pale sleeve rings +
     // readable arch wheels (ref arch rect p95 76 vs our 62).
     softGoods: true, rackX: true, noDecal: true, sleevePale: true, tailFitLit: true,
-    crestChamfer: 0.035, glacisBreak: true, wheelHex: 0x3d3d31,
+    crestChamfer: 0.035, glacisBreak: true,
     // r12 order 2: guide-horn/chain + shoe-pad layers lift toward the ref's
     // own >=45L arch-window gear floor (the fixed iron read sub-30 — the
     // view-left p5 pocket); close-front teeth land the ref's own brown class.

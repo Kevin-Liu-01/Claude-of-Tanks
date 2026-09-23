@@ -1947,7 +1947,7 @@ function buildType10Native2026(
       linkPitchM: 0.138, shoeRadialScale: 0.85,
       pinCapOuter: 0.252,                                                         // caps outer 1.586 (2 mm proud of the 1.5837 pad face; 3.6 cm inside the 1.622 skirt inner — §B4 voxel-margin law)
       padHex: 0x31322a, chainHex: 0x292a24,
-      gearFloor: true, tireHex: 0x24261f, wheelHex: 0x3f4837,
+      gearFloor: true,
     });
   };
   buildType10Native2026RunningGearStage1();

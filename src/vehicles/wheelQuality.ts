@@ -9,6 +9,7 @@ import {
   SUSPENSION_PATTERN_DEFINITIONS,
   type SuspensionPatternId,
 } from './suspensionPatterns.ts';
+import { runningGearFinishRuleFor, withinRunningGearFinish } from './runningGearFinish.ts';
 
 type RunningGearUnitId = string | number | undefined;
 type Side = 'left' | 'right';
@@ -310,6 +311,59 @@ function auditSuspensionJoints(
   }
 }
 
+/** Per-channel sRGB distance between two hexes (0..255). */
+function hexChannelDistance(a: number, b: number): number {
+  return Math.max(Math.abs(((a >> 16) & 255) - ((b >> 16) & 255)), Math.abs(((a >> 8) & 255) - ((b >> 8) & 255)),
+    Math.abs((a & 255) - (b & 255)));
+}
+
+/** RUNNING-GEAR FINISH (owner 2026-09-22, runningGearFinish.ts): every material on a running-gear mesh — road
+ * wheels and their face layers, return rollers, sprocket and idler bodies and hardware, suspension arms — must
+ * be the finish its role prescribes: fleet rubber on tires and insets, the hull's one scheme wheel paint (the
+ * colour it was tinted to, within 8-bit rounding) or worn steel on painted faces, dark steel on hardware, and
+ * nothing brighter or more saturated than the table's window. Camouflage-mapped paint carries only a
+ * multiplier, so its window is not read. */
+function auditRunningGearFinish(object: Object3D, issues: WheelQualityIssue[]): void {
+  const renderObject = object as RenderObject;
+  const objectData = object.userData as RunningGearObjectData & { runningGear?: boolean; dynamicWheelFace?: boolean };
+  if (objectData.runningGear !== true && objectData.dynamicWheelFace !== true) return;
+  const name = object.name || object.type;
+  for (const material of materialsOf(object)) {
+    const materialRole = materialAppearanceRole(material);
+    const role = objectData.appearanceRole ?? (typeof materialRole === 'string' ? materialRole : undefined);
+    const rule = runningGearFinishRuleFor(role);
+    if (!rule) continue;
+    if (typeof materialRole !== 'string' || !rule.materialRoles.includes(materialRole)) {
+      issues.push({ code: 'running-gear-finish-role', object: name, role: role ?? null, materialRole: materialRole ?? null, finish: rule.finish });
+      continue;
+    }
+    const color = (material as Material & { color?: { r: number; g: number; b: number; getHex(): number } }).color;
+    if (!color) continue;
+    const hex = color.getHex();
+    if (rule.hex !== undefined) {
+      if (hex !== rule.hex) issues.push({ code: 'running-gear-finish-off-palette', object: name, role: role ?? null, hex, expected: rule.hex });
+      continue;
+    }
+    const mapped = Boolean((material as Material & { map?: unknown }).map);
+    if (mapped) continue; // camouflage-mapped paint: the colour is only a multiplier over the scheme map
+    if (materialRole === 'wheelPaint') {
+      const stamp = (material.userData as { schemeFinishHex?: unknown } | undefined)?.schemeFinishHex;
+      if (typeof stamp !== 'number' || hexChannelDistance(stamp, hex) > 2) {
+        issues.push({ code: 'running-gear-paint-off-scheme', object: name, role: role ?? null, hex, scheme: typeof stamp === 'number' ? stamp : null });
+      }
+      if (!withinRunningGearFinish([color.r, color.g, color.b], rule)) {
+        issues.push({ code: 'running-gear-paint-outside-window', object: name, role: role ?? null, hex, finish: rule.finish });
+      }
+    } else {
+      // worn steel or gunmetal on a painted-face role: dark steel, never a pale or tinted disc
+      const steel = runningGearFinishRuleFor('trackHardware');
+      if (steel && !withinRunningGearFinish([color.r, color.g, color.b], steel)) {
+        issues.push({ code: 'running-gear-steel-outside-window', object: name, role: role ?? null, hex, materialRole });
+      }
+    }
+  }
+}
+
 function auditWheelObject(
   object: Object3D,
   patternIds: ReadonlySet<WheelPatternId>,
@@ -318,6 +372,7 @@ function auditWheelObject(
 ): void {
   const renderObject = object as RenderObject;
   if (!renderObject.isMesh && !renderObject.isInstancedMesh) return;
+  auditRunningGearFinish(object, issues);
   const objectData = object.userData as RunningGearObjectData;
   const name = object.name || '';
   if (!isWheelPartName(name)) return;

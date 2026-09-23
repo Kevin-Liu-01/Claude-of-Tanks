@@ -8,6 +8,7 @@
 import { Color, type InstancedBufferAttribute, type Material, type Object3D } from 'three';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { liftLinearRgbToWheelFloor } from './wheelPaintFloor.ts';
+import { RUNNING_GEAR_PALETTE, runningGearFinishRuleFor } from './runningGearFinish.ts';
 
 interface ColorPort {
   r: number;
@@ -38,11 +39,12 @@ interface VehicleAppearanceAudit {
   roles: Record<string, number>;
 }
 
+/** The neutral working-gear hexes come from the one running-gear finish table (runningGearFinish.ts). */
 export const VEHICLE_APPEARANCE_PALETTE = Object.freeze({
-  trackPad: 0x30312f,
-  trackSteel: 0x353634,
-  tireRubber: 0x292a28,
-  gearShadow: 0x0b0c0a,
+  trackPad: RUNNING_GEAR_PALETTE.trackPad,
+  trackSteel: RUNNING_GEAR_PALETTE.trackSteel,
+  tireRubber: RUNNING_GEAR_PALETTE.tireRubber,
+  gearShadow: RUNNING_GEAR_PALETTE.gearShadow,
 });
 
 const FIXED_ROLE_COLOR: Readonly<Record<string, number>> = Object.freeze({
@@ -113,15 +115,58 @@ export function tagVehicleMaterial<T extends Material | null | undefined>(
   return material;
 }
 
-/** Reassert the neutral working-gear palette after family builders run.
- * Profiles may still author geometry and painted dishes independently; only
- * explicit rubber/track roles are changed here. */
-export function normalizeTankAppearance(root: Object3D | null | undefined): number {
+/** The hull's own running-gear paints (materials.ts): the one scheme wheel paint and its shade. */
+export interface RunningGearPaints {
+  /** mats.wheels — every painted running-gear face rides it. */
+  wheelPaint: Material;
+  /** mats.wheelsRecessed — recessed interleave rows and suspension arms ride the paint in shade. */
+  wheelPaintShade?: Material | null;
+}
+
+/** RUNNING-GEAR FINISH (owner 2026-09-22, runningGearFinish.ts): a painted running-gear face rides the
+ * hull's one scheme wheel paint. Any other wheelPaint-tagged material — a per-hull hex clone, a family
+ * "worn dish"/"worn drum" retone — and fitting paint under a dish role are swapped for it here, so the
+ * discs, hub caps, rims, roller discs and end-wheel bodies of one hull share one material and follow
+ * every camouflage repaint together. Returns the number of material slots re-seated. */
+function reseatRunningGearPaint(object: Object3D, paints: RunningGearPaints): number {
+  const render = object as RenderObject;
+  if ((!render.isMesh && !render.isInstancedMesh) || !render.material) return 0;
+  const objectRole = dataValue(object, 'appearanceRole');
+  const rule = runningGearFinishRuleFor(typeof objectRole === 'string' ? objectRole : null);
+  const slots = Array.isArray(render.material) ? render.material : [render.material];
+  let reseated = 0;
+  for (let index = 0; index < slots.length; index++) {
+    const material = slots[index];
+    const materialRole = dataValue(material, 'appearanceRole');
+    // Camouflage-mapped wheel paint (the Patton family) carries the hull scheme as its map: it stays.
+    if ((material as Material & { map?: unknown }).map) continue;
+    let replacement: Material | null = null;
+    if (materialRole === 'wheelPaint' && material !== paints.wheelPaint && material !== paints.wheelPaintShade) {
+      replacement = rule?.finish === 'scheme-paint-shade' && paints.wheelPaintShade
+        ? paints.wheelPaintShade : paints.wheelPaint;
+    } else if (rule?.finish === 'scheme-paint' && materialRole === 'fittingPaint') {
+      replacement = paints.wheelPaint;
+    }
+    if (!replacement) continue;
+    if (Array.isArray(render.material)) render.material[index] = replacement;
+    else render.material = replacement;
+    reseated++;
+  }
+  return reseated;
+}
+
+/** Reassert the running-gear finish after family builders run (runningGearFinish.ts): the neutral
+ * rubber/steel/shadow roles snap to the palette, painted faces re-seat onto the hull's one scheme wheel
+ * paint when `paints` is given, and the wheel paint keeps its floor. Camouflage armor, skirts and guards
+ * are outside this normalization. */
+export function normalizeTankAppearance(root: Object3D | null | undefined, paints?: RunningGearPaints | null): number {
   const normalized = new Set<Material>();
   const normalizedPalettes = new Set<InstancedBufferAttribute>();
   const instanceTint = new Color();
   const instanceHsl = { h: 0, s: 0, l: 0 };
+  let reseated = 0;
   root?.traverse((object) => {
+    if (paints) reseated += reseatRunningGearPaint(object, paints);
     for (const material of materialsOf(object)) {
       const role = roleOf(object, material);
       const color = FIXED_ROLE_COLOR[role];
@@ -155,21 +200,40 @@ export function normalizeTankAppearance(root: Object3D | null | undefined): numb
         normalized.add(material);
         continue;
       }
-      // WHEEL-PAINT FLOOR (owner 2026-09-14): every painted dish — the fleet wheel paint and any
-      // profile retone cloned from it (tagged wheelPaint) — stays clearly above the tire rubber,
-      // whatever reference shade a profile tuned it toward. Camouflage-mapped paint is left alone:
-      // its colour is only a multiplier over the map.
-      if (dataValue(material, 'appearanceRole') === 'wheelPaint'
-          && !(material as Material & { map?: unknown }).map) {
-        const [r, g, b] = liftLinearRgbToWheelFloor([materialColor.r, materialColor.g, materialColor.b]);
-        if (r !== materialColor.r || g !== materialColor.g || b !== materialColor.b) {
-          materialColor.setRGB(r, g, b);
-          normalized.add(material);
+      if (dataValue(material, 'appearanceRole') === 'wheelPaint') {
+        // RUNNING-GEAR FINISH (owner 2026-09-22): the scheme wheel paint records the hex materials.ts tinted it
+        // to (schemeFinishHex). A family that retinted the shared paint in place after the bake (dirty-OD,
+        // saturation or brightness "corrections") is undone here: the paint returns to its scheme tone, so one
+        // hull's wheels never differ from what the next repaint would give them. Rounding from the floor below
+        // stays within two 8-bit steps and is kept.
+        const stamp = dataValue(material, 'schemeFinishHex');
+        if (typeof stamp === 'number') {
+          const hex = parseInt(materialColor.getHexString(), 16);
+          const distance = Math.max(Math.abs(((hex >> 16) & 255) - ((stamp >> 16) & 255)),
+            Math.abs(((hex >> 8) & 255) - ((stamp >> 8) & 255)), Math.abs((hex & 255) - (stamp & 255)));
+          if (distance > 2) {
+            materialColor.setHex(stamp);
+            normalized.add(material);
+          }
+        }
+        // WHEEL-PAINT FLOOR (owner 2026-09-14): every painted dish stays clearly above the tire rubber, whatever
+        // scheme it is tinted toward. Camouflage-mapped paint is left alone: its colour is only a multiplier
+        // over the map. The stamp follows the lift (the paint's shade always starts under the floor), so the
+        // release audit reads the floored tone as the scheme tone.
+        if (!(material as Material & { map?: unknown }).map) {
+          const [r, g, b] = liftLinearRgbToWheelFloor([materialColor.r, materialColor.g, materialColor.b]);
+          if (r !== materialColor.r || g !== materialColor.g || b !== materialColor.b) {
+            materialColor.setRGB(r, g, b);
+            normalized.add(material);
+          }
+          if (typeof stamp === 'number') {
+            material.userData = { ...(material.userData || {}), schemeFinishHex: parseInt(materialColor.getHexString(), 16) };
+          }
         }
       }
     }
   });
-  return normalized.size;
+  return normalized.size + reseated;
 }
 
 function materialColorRecord(material: Material): AppearanceColorRecord | null {

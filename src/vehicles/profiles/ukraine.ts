@@ -911,7 +911,6 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
     paintedEnds: false,
     coveredTop: false,
     arms: true,
-    wheelHex: 0x30352d,
   });
 
   // Skirts: plain sheet + the DONBAS two-tier K-1 side band (print
@@ -1220,7 +1219,6 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   // the stock tones read as a black smear behind the old deep skirt).
   buildRunningGear(P, {
     style: 'dished', wheelR: 0.335, wheelW: 0.21, wheelY: 0.44, xc: 1.345, dishR: 0.80,
-    tireHex: 0x2e2f29, wheelHex: 0x3b3f31 /* wheel review 2026-09-13: was 0x4b503d (read super bright) */,
     wheelZs: [-1.60, -0.88, -0.16, 0.56, 1.28, 2.00],
     sprocket: { z: -2.55, y: 0.95, r: 0.235 }, idler: { z: 2.72, y: 0.86, r: 0.19 },
     rollers: [-1.24, -0.52, 0.20, 0.92, 1.64].map((z) => ({ z, y: 0.86, r: 0.08 })),
@@ -1516,7 +1514,6 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
   // the resident t80u guard proves the pipeline bar).
   buildRunningGear(P, {
     style: 'dished', wheelR: 0.335, wheelW: 0.21, wheelY: 0.44, xc: 1.345, dishR: 0.80,
-    tireHex: 0x2e2f29, wheelHex: 0x3b3f31 /* wheel review 2026-09-13: was 0x4b503d (read super bright) */,
     wheelZs: [-1.66, -0.93, -0.20, 0.53, 1.26, 1.99],
     sprocket: { z: -2.62, y: 0.95, r: 0.235 }, idler: { z: 2.80, y: 0.86, r: 0.19 },
     rollers: [-1.30, -0.57, 0.16, 0.89, 1.62].map((z) => ({ z, y: 0.86, r: 0.08 })),

@@ -1919,6 +1919,14 @@ function repaintEntry(entry: SharedTextureEntry, patternId: MaterialPatternId): 
   snapshotBake(entry, patternId);
 }
 
+/** RUNNING-GEAR FINISH (owner 2026-09-22, runningGearFinish.ts): the scheme wheel paint records the hex it was
+ * tinted to, so the release audit (wheelQuality.ts) can tell a paint that still carries its scheme tone from one a
+ * profile retinted or cloned toward an arbitrary hex — the clone copies the stamp with the userData, the retint
+ * leaves the colour and the stamp disagreeing. The non-rendering material set (tankFactoryCore.ts) stamps too. */
+export function stampSchemeFinish(material: THREE.MeshStandardMaterial): void {
+  material.userData = { ...(material.userData || {}), schemeFinishHex: material.color.getHex() };
+}
+
 // Wheels, sprockets, fittings and the solid kit canvas follow every repaint
 // and memoized restore through this one tint gate.
 function retintEntryFittings(entry: SharedTextureEntry, vis: MaterialVisual): void {
@@ -1927,6 +1935,7 @@ function retintEntryFittings(entry: SharedTextureEntry, vis: MaterialVisual): vo
       : rec.kind === 'wheelsDark' ? wheelDarkRgbOf(vis)
         : rec.kind === 'canvas' ? canvasRgbOf(vis) : detailRgbOf(vis);
     rec.m.color.set(cssRGB(c));
+    if (rec.kind === 'wheels' || rec.kind === 'wheelsDark') stampSchemeFinish(rec.m);
   }
   if (entry.kitCanvas && entry.kitTex) {
     paintKitCanvas(entry.kitCanvas, vis);
@@ -2503,6 +2512,7 @@ export function createTankMaterials(
     envMapIntensity: 0.25,
   })));
   wheels.defines = { ...wheels.defines, COT_WHEEL_PAINT_READABILITY: 1 };
+  stampSchemeFinish(wheels);
   // Recessed rows of an interleaved (Schachtellaufwerk) wheel stack: same
   // scheme paint pushed into shadow so the layers separate visually (r5).
   const wheelsRecessed = track(setup(new THREE.MeshStandardMaterial({
@@ -2512,6 +2522,7 @@ export function createTankMaterials(
     envMapIntensity: 0.2,
   })));
   wheelsRecessed.defines = { ...wheelsRecessed.defines, COT_WHEEL_PAINT_READABILITY: 1 };
+  stampSchemeFinish(wheelsRecessed);
   // camo_spotting r3: lifted off near-black so lighting models tire rings
   // instead of silhouetting them (Tiger bullseye critique).
   const rubber = track(setup(new THREE.MeshStandardMaterial({

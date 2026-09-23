@@ -514,8 +514,7 @@ function buildBMPT2(P: AfvBuilderPort): void {
   // rubber and track bands deliberately remain neutral semantic gear.
   P.mats.dark.color.setHex(0x273127);
   P.mats.dark.emissive.setHex(0x10150c);
-  P.mats.wheels.color.setHex(0x33432e);
-  P.mats.wheelsRecessed.color.setHex(0x273526);
+  // (owner 2026-09-22 running-gear finish: the wheel paint stays the hull scheme tone.)
   P.visualEraCluster('bmpt2-relikt-hull-era', 'hull', () => {
   sideArmorCourse(P, { x: 1.73, y: 1.04, h: 0.44, d: 0.62, count: 7,
     front: 2.15, step: 0.76 });

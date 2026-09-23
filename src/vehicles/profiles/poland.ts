@@ -472,10 +472,7 @@ function buildT72M1JaguarHull(P: PolishBuilderPort): void {
     // gains height without moving the six road wheels or lowering the tank.
     trackW: 0.56, topY: 1.04, botY: 0.10, paintedEnds: true,
     coveredTop: true, arms: true,
-    // §5.267 fix 2 (§5.262 gearFloor/tireHex law): exposed gear gets the
-    // re-hooked tire/dish clones so the six dished pairs read crisply
-    // instead of ambient-dead discs
-    tireHex: 0x2e302a, wheelHex: 0x49503f, gearFloor: true,
+    gearFloor: true,
   });
   P.hullG.userData.jaguarRunningGearReceipt = Object.freeze({
     revision: 'road-wheel-size-and-rollerless-return-run-r6',

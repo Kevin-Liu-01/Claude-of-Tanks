@@ -3394,7 +3394,7 @@ function finishT14Assembly(
     trackW: 0.50, topY: 1.28, contactZF: 2.92, contactZR: -2.50, pinCapOuter: 0.24,
     // §B8.1 NATIVE-TONE wheel countability (the print's 7 wheels read
     // pale-green under the skirt; the stock rubber read near-black).
-    paintedEnds: true, coveredTop: true, tireHex: '#4e5544',
+    paintedEnds: true, coveredTop: true,
   });
   // Malachit ERA: tile field flat on the 8.8-deg upper glacis (dark
   // mounting bed under the rows so the seams read recessed)

@@ -1291,7 +1291,7 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
     wheelZs: [2.235, 1.297, 0.293, -0.791, -1.933],
     sprocket: { z: -2.795, y: 0.79, r: 0.32 }, idler: { z: 3.01, y: 0.83, r: 0.30 },
     rollers: [], trackW: 0.572, topY: 1.185, botY: 0.02, contactZF: 2.66, contactZR: -2.36,
-    paintedEnds: true, coveredTop: false, arms: true, wheelHex: 0x697250,
+    paintedEnds: true, coveredTop: false, arms: true,
     ...(o.gear || {}),
   });
   // full-length fender runs + segmented outer fender-bin row (r7c prism law)
@@ -2071,7 +2071,6 @@ function buildT64BV1(P: RussiaBuilderPort): void {
     paintedEnds: false,
     coveredTop: false,
     arms: true,
-    wheelHex: 0x30352d,
   });
 
   // Shallow full-run skirts at the measured 1.705 face (0.60..1.02 band)
