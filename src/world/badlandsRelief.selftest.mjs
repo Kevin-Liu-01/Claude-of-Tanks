@@ -111,6 +111,18 @@ function historicalLightingSource(source, file) {
   assert.equal(source.match(pattern)?.length, 2, `${file}: one exact 2026-09-13 lighting line`);
   return source.replace(pattern, '$1' + historical);
 }
+// Round 45 (2026-09-23, AAA checks 3/15): Monsoon's splat block authors a slope grass hold (the SW corner mound held its
+// turf to ~38° instead of rendering as bare mud); splat authoring never feeds relief — authenticate the exact block,
+// project it away for the byte receipt.
+const MONSOON_SLOPE_HOLD_CURRENT = `    // round 45 (2026-09-23, AAA checks 3/15): the SW corner mound rendered as bare mud from ~30°; a monsoon hill holds
+    // its turf to ~38° — the slope→rock thresholds shift by 0.10 (rock from ~38°, full at ~50°).
+    slopeGrassHold: 0.10,
+`;
+function historicalSlopeHoldSource(source, file) {
+  if (file !== 'monsoon.ts') return source;
+  assert.equal(source.split(MONSOON_SLOPE_HOLD_CURRENT).length, 2, 'monsoon.ts: one exact round-45 slope-hold block');
+  return source.replace(MONSOON_SLOPE_HOLD_CURRENT, '');
+}
 // Round 29 (2026-09-20): Sunscar Oasis names its vista ground kind on its horizon line; the original line had none.
 function historicalVistaGroundSource(source, file) {
   if (file !== 'oasis.ts') return source;
@@ -121,7 +133,7 @@ function historicalVistaGroundSource(source, file) {
 for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(read('src/world/maps/' + file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
+    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(read('src/world/maps/' + file), file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 

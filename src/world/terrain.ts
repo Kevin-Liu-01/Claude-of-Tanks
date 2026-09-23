@@ -211,6 +211,8 @@ interface SplatConfig {
   /** Construction-only 3–10m earthy bank in existing mask A; water is unchanged. */
   shoreDirt?: boolean;
   midRelief?: number;
+  /** Round 45: slope (1 − n.y) subtracted before the grass→rock thresholds — wet tropical hills keep turf on steeper ground (default 0). */
+  slopeGrassHold?: number;
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -2474,6 +2476,7 @@ uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
 uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
+uniform float uSlopeGrassHold; // round 45: shifts the slope→rock thresholds (tropical hills hold turf longer)
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
 float gWallSky = 0.0;     // round 42: steep × turned-from-the-sun weight, read by the indirect-light hook
@@ -2753,12 +2756,15 @@ void splatCompute() {
   // 30-60% rock alpha EVERYWHERE, dusting whole hill flanks with uniform
   // speckle fur; with stronger noise the same band resolves into distinct
   // rock outcrop patches separated by clean ground
-  float fR = smoothstep(0.095, 0.235, slope + (n1 - 0.5) * 0.16) * rockGate;
+  // Round 45 (AAA checks 3/15, owner audit "monsoon: smooth bare brown mound at the SW corner"): a wet tropical hill
+  // keeps its turf to far steeper slopes than a temperate one; the map's hold shifts every slope threshold below.
+  float slopeR = slope - uSlopeGrassHold;
+  float fR = smoothstep(0.095, 0.235, slopeR + (n1 - 0.5) * 0.16) * rockGate;
   // rock takeover on steep faces: cliff walls and cut banks always read as
   // rock. r3: WIDE, noise-dithered band — the old razor 0.32-0.50 threshold
   // cut giant hard-edged maroon swaths diagonally across the dunes; the low-
   // freq n1 term wanders the boundary while n1hs keeps near-field raggedness
-  fR = max(fR, smoothstep(0.28, 0.58, slope + (n1 - 0.5) * 0.10 + (n1hs - 0.5) * 0.08) * rockGate);
+  fR = max(fR, smoothstep(0.28, 0.58, slopeR + (n1 - 0.5) * 0.10 + (n1hs - 0.5) * 0.08) * rockGate);
   // ...except inside marsh/ice sheet margins: lake banks are snow/soil
   // slumps, and the pale winter rock on them read as a glassy blue cliff
   // wall ringing the frozen lake
@@ -2773,7 +2779,7 @@ void splatCompute() {
   // DUNE flank flipped to the banded sandstone layer and carried its beds as
   // "pink contour marbling on sand" (desert critique). Rock now takes over
   // from ~37 deg; the 30-37 deg band stays sand (ripples own it).
-  fR = max(fR, smoothstep(0.20, 0.42, slope) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
+  fR = max(fR, smoothstep(0.20, 0.42, slopeR) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
   // triplanar side projection on steep faces: planar XZ UVs smear vertically
   // down cliff walls (the classic heightmap-stretch tell on the mesa cliffs)
   // — resample the rock layer in the wall's own plane and take it over as
@@ -3729,6 +3735,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
+    shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     shader.uniforms.uFieldPatch = { value: S.fieldPatch ?? 0 };
     // r3: desert macro sheet variation + ice fresnel sky tint
@@ -3771,7 +3778,7 @@ function* createSplatMaterialSteps(
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v33'; // round 43: local wind field for the dune ripples (v32: round-42 sky light)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v34'; // round 45: slope grass hold (v33: dune wind field, v32: sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

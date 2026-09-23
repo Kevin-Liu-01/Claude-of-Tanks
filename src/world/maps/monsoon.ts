@@ -54,6 +54,9 @@ export default {
     marshGloss: 0.84, iceSky: [0.20, 0.34, 0.32],
     tintA: [0.67, 0.93, 0.65], tintB: [0.41, 0.61, 0.43], tintC: [0.85, 1.02, 0.72],
     roadTint: [0.55, 0.49, 0.40], midRelief: 1.0,
+    // round 45 (2026-09-23, AAA checks 3/15): the SW corner mound rendered as bare mud from ~30°; a monsoon hill holds
+    // its turf to ~38° — the slope→rock thresholds shift by 0.10 (rock from ~38°, full at ~50°).
+    slopeGrassHold: 0.10,
   },
   vegetation: {
     species: ['eucalyptus', 'palm', 'willow', 'oak'], clusterMix: [['eucalyptus', 0.36], ['willow', 0.28], ['palm', 0.22], ['oak', 0.14]],

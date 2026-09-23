@@ -204,7 +204,9 @@ const TERRAIN_PLAN = {
   fjord: {
     G: { set: 'grass', tint: [0.76, 0.86, 0.80], roughMul: 1.28 },
     D: { set: 'dirt', tint: [0.68, 0.70, 0.68], roughMul: 1.35 },
-    R: { set: 'rock', tint: [1.12, 1.17, 1.22], roughMul: 1.15 }, M: null,
+    // round 45 (2026-09-23, AAA check 15): the 1.12–1.22 brightening tint made the corner cliffs read as plaster beside
+    // turf (display luma 100 at sat 0.21 next to sky 98); fjord gneiss is a dark blue-grey — tint below 1, blue-leaning.
+    R: { set: 'rock', tint: [0.60, 0.66, 0.74], roughMul: 1.15 }, M: null,
   },
   delta: {
     G: { set: 'grass', tint: [0.68, 0.94, 0.60], roughMul: 1.22 },
@@ -221,7 +223,9 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', tint: [0.59, 0.55, 0.44], roughMul: 1.3 },
     // Exposed washed-out banks need granular earth rather than Rock058's
     // directional veins, which comb into long streaks on these cut slopes.
-    R: { set: 'dirt', tint: [0.62, 0.63, 0.54], desat: 0.65, roughMul: 1.3 }, M: null,
+    // round 45 (2026-09-23, AAA checks 3/15): the steep-slope layer read as smooth bare mud (display rgb 120/92/58, sat
+    // 0.52); a monsoon cut bank is wet laterite under moss and root mats — darker, greener, less desaturated.
+    R: { set: 'grass', tint: [0.40, 0.50, 0.30], desat: 0.15, roughMul: 1.3 }, M: null,
   },
   alpine: {
     G: { set: 'snow', roughMul: 1.15 },
