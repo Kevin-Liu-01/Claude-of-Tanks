@@ -187,8 +187,10 @@ for (const [id, count] of Object.entries(laterChannelCounts)) {
   assert.equal(TANK_SPECS[id].gun.shells.length, count,
     `${id}: its explicit added loadout does not alter the established census`);
 }
+// 2026-09-22 cleanup: 535 -> 526 when the hidden ww2 study variants t34_85_cad, newc_tiger and
+// newc_pziii (three channels each) left the saved fleet.
 assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) && !laterIds.has(spec.id))
-  .reduce((n, spec) => n + spec.gun.shells.length, 0), 535,
+  .reduce((n, spec) => n + spec.gun.shells.length, 0), 526,
   'the pre-existing ammunition-channel census remains intact');
 assert.equal(SUPPLIED_SOURCE_IDS.length, 12, 'the supplied batch adds twelve distinct loadouts');
 assert.equal(SUPPLIED_SOURCE_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 32,
@@ -202,8 +204,9 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
   ['DM12A1 HEAT-MP', 'HEAT', 120, false, 16],
   ['DM11 HE-FRAG', 'HE', 120, false, 12],
 ]);
-assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper, 675,
-  'all 675 pre-C2 authored channels remain covered separately from its three new channels');
+// 2026-09-22 cleanup: 675 -> 666 for the same three retired ww2 study variants.
+assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper, 666,
+  'all 666 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
 assert.ok(depletedChannelTransitions > 200,
