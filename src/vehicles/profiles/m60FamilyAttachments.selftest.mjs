@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { getSpec } from '../specs.ts';
 import { M60_TRACK_FINISH } from './patton.ts';
+
+// Owner 2026-09-22 ("the muzzle marker is the tube end"), round-46 follow-up 2026-09-23: the hulls
+// whose authority barrel (turretPivot + gunPivot + gunBarrel.lengthM along the gun axis) has been
+// pinned to the visible mouth. The donor Leopard 1A5 barrel (5.0944) fired 14.9 cm ahead of it.
+const TUBE_END_AUTHORITY = new Set(['m60a1']);
 
 const worldGeometryCenter = (mesh) => {
   mesh.geometry.computeBoundingBox();
@@ -151,6 +157,21 @@ for (const id of ['m60a1', 'm60a3']) {
     `${id}: camouflage-adjacent detail remains subdued`);
   assert.equal(armorFinish?.mechanicalGunmetalPreserved, true,
     `${id}: lowering armor contrast does not repaint the weapon mechanisms`);
+
+  if (TUBE_END_AUTHORITY.has(id)) {
+    // The authority fires along the gun axis from the hull frame at the entity's own pitch; the
+    // searchlight clearance check above elevated rig_gun 0.18 rad, so measure at rest pitch.
+    gun.rotation.x = 0;
+    tank.root.updateMatrixWorld(true);
+    const spec = getSpec(id);
+    const marker = tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3());
+    const mouthRing = tank.root.getObjectByName('muzzleBoreShadowFallbackRim').getWorldPosition(new THREE.Vector3());
+    const authorityMuzzleZ = spec.armor.turretPivot[2] + spec.armor.gunPivot[2] + spec.armor.gunBarrel.lengthM;
+    assert.ok(Math.abs(authorityMuzzleZ - marker.z) < 1e-6,
+      `${id}: the authority barrel ends on the muzzle marker (${authorityMuzzleZ} vs ${marker.z})`);
+    assert.ok(Math.abs(authorityMuzzleZ - mouthRing.z) < 0.02,
+      `${id}: the shell origin is within 2 cm of the visible mouth (${authorityMuzzleZ} vs ${mouthRing.z})`);
+  }
 
   tank.dispose();
 }

@@ -209,5 +209,24 @@ for (const spec of SPECS) {
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
 
+// Owner 2026-09-22 ("the muzzle marker is the tube end"), round-46 follow-up
+// 2026-09-23: the M60A1's authority barrel fired 14.9 cm ahead of its visible
+// mouth. make('leo1a5', 'm60a1') copies the Leopard 1A5 gunBarrel.lengthM
+// (5.0944 after the dims refit) while usKit's M68 tube seats rig_muzzle at
+// world z 5.3865 — the fleet lip finishes the mouth ON that marker (ring
+// 5.3873, flat cap 20 mm behind it) — and the authority fires from
+// turretPivot.z + gunPivot.z = 0.44086 along the gun axis: 0.44086 + 5.0944 =
+// 5.5352. The barrel is the marker minus the pivots (4.94564 m). Written HERE,
+// after the M46/M47/M60A3 donor copies above (and after the hoisted
+// supplemental chain-load that makes the M60A2 from the same donor), so the
+// fix does not rescale the other Pattons' barrels: m46/m47 carry their own
+// guns and their own 69-80 cm donor gaps and need their own measured ends.
+const M60_TUBE_END_MARKER_Z = 5.3865;
+for (const id of ['m60a1']) {
+  const patton = requireFleetSpec(id);
+  patton.armor.gunBarrel.lengthM = M60_TUBE_END_MARKER_Z
+    - (patton.armor.turretPivot[2] + patton.armor.gunPivot[2]);
+}
+
 // Chain-load the following supplemental rows for every fleet facade.
 import './supplementalFleetSpecs.ts';
