@@ -15,10 +15,10 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
   desert: Object.freeze({
     sunElevationDeg: 44, sunAzimuthDeg: 115,
     turbidity: 7, /* round 37 (2026-09-22): desert rayleigh 0.55 → 0.85, follows src/world/maps/desert.ts */ rayleigh: 0.85, mieCoefficient: 0.009, mieDirectionalG: 0.8,
-    fogDensity: 0.00047, fogTintHex: 0xc7ac85, fogMix: 0.60, envIntensity: 0.16,
+    fogDensity: 0.00047, fogTintHex: 0xbdb5a8 /* round 47: mirrors desert.ts */, fogMix: 0.60, envIntensity: 0.16,
     cloudOpacity: 0.78, cloudOpacity2: 0.48, cloudTintHex: 0xfff2df, /* round 47 (2026-09-23): follows src/world/maps/desert.ts */
     cloudAltM: 900, cloudHazeK: 0.00012, cloudUvM: 2600, cloudShadowAmp: 0.26,
-    sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.20,
+    sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.28, /* round 47 (2026-09-23): the shaded side lifted, follows desert.ts */
     postExposure: 0.90,
   }),
   winter: Object.freeze({
