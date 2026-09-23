@@ -47,6 +47,17 @@ console.log('tuple fixture PASS');
   assert.ok(tupleText.includes(`high: ['${current}', 75, 42],`), tupleText);
   assert.ok(tupleText.includes(`low: ['${sha('low build')}', 76, 43],`), 'the neighbouring row keeps its counts');
 
+  // 2b. A count that also occurs inside the digest on the same line: the digest is never touched by the number pass.
+  const trap = sha('trap build').slice(0, 20) + '75' + sha('trap build').slice(22);
+  const trapFile = fixture('trap.selftest.mjs', `import assert from 'node:assert/strict';
+const ROW = ['${trap}', 75];
+assert.deepEqual(['${trap}', 74], ROW, 'count beside a digest containing the same digits');
+console.log('trap fixture PASS');
+`);
+  const trapResult = repinReceipt(trapFile);
+  assert.equal(trapResult.ok, true, JSON.stringify(trapResult));
+  assert.ok(readFileSync(trapFile, 'utf8').includes(`['${trap}', 74]`), 'the count moved, the digest did not');
+
   // 3. A flat numeric array compared with deepStrictEqual: the whole literal is swapped once.
   const arrayFile = fixture('array.selftest.mjs', `import assert from 'node:assert/strict';
 const bounds = [42088, 4.445803761482239, 3.807588815689087, 3.2081706523895264];

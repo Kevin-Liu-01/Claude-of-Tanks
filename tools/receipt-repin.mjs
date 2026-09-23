@@ -95,8 +95,12 @@ export function applyEdits(source, edits) {
     for (const { expected, actual } of numEdits) {
       let done = false;
       for (const index of [...anchorLines].sort((x, y) => x - y)) {
+        // never inside a quoted literal: a count "75" also occurs inside hex digests ("…528a75cb…") — the first cut
+        // rewrote the digest instead of the count and looped (round 40, Chieftain Mk5 rows)
+        const parts = lines[index].split(/('[^']*'|"[^"]*")/);
         const pattern = new RegExp(`(?<![\\d.])${expected.replace('.', '\\.')}(?![\\d.])`);
-        if (pattern.test(lines[index])) { lines[index] = lines[index].replace(pattern, actual); changes.push(`${expected}→${actual} @${index + 1}`); done = true; break; }
+        const hit = parts.findIndex((part, i) => i % 2 === 0 && pattern.test(part));
+        if (hit >= 0) { parts[hit] = parts[hit].replace(pattern, actual); lines[index] = parts.join(''); changes.push(`${expected}→${actual} @${index + 1}`); done = true; break; }
       }
       if (!done) return { error: `number ${expected} is not on the re-pinned digest's line` };
     }
