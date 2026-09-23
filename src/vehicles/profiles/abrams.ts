@@ -204,6 +204,8 @@ interface AbramsTurretConfig {
   readonly roofCheekInnerRearY?: number;
   readonly roofCheekOuterRearY?: number;
   readonly roofThroatRearY?: number;
+  readonly roofThroatFrontY?: number;
+  readonly throatChinBevel?: Vec2Tuple;
   readonly joinedCheekRoof?: boolean;
   readonly articulatedThroat?: boolean;
   readonly faceRake?: number;
@@ -1680,9 +1682,29 @@ function addAbramsShellThroat(
   // The M1A3's broad shield is the mantlet itself. Leave 12 mm at each
   // cheek and author it in the pitching frame, never the recoil frame.
   const halfWidth = t.articulatedThroat ? thr - .012 : thr * 1.02;
+  const roofFrontY = t.roofThroatFrontY ?? t.roofTip - 0.03;
+  if (t.articulatedThroat && t.throatChinBevel) {
+    // Three joined closed strips give the moving cover matching chamfered
+    // lower corners. The center chin remains at its proven sweep datum.
+    const [bevelWidth, bevelRise] = t.throatChinBevel;
+    const xs = [-halfWidth, -halfWidth + bevelWidth, halfWidth - bevelWidth, halfWidth];
+    for (let i = 0; i < xs.length - 1; i++) {
+      const left = xs[i], right = xs[i + 1];
+      const frontZ = (x: number): number => zFace - skew * (x + halfWidth) / (halfWidth * 2);
+      const cover = slab(
+        [left, yBF + (i === 0 ? bevelRise : 0), frontZ(left)],
+        [right, yBF + (i === 2 ? bevelRise : 0), frontZ(right)],
+        [right, t.yBot, t.zTip - thD], [left, t.yBot, t.zTip - thD],
+        [left, roofFrontY, frontZ(left) - faceRake], [right, roofFrontY, frontZ(right) - faceRake],
+        [right, roofThroatRearY, t.zTip - thD], [left, roofThroatRearY, t.zTip - thD]);
+      cover.translate(-P.gunG.position.x, -P.gunG.position.y, -P.gunG.position.z);
+      P.addGunExtra(cover);
+    }
+    return;
+  }
   const throat = slab(
     [-halfWidth, yBF, zFace], [halfWidth, yBF, zFace - skew], [halfWidth, t.yBot, t.zTip - thD], [-halfWidth, t.yBot, t.zTip - thD],
-    [-halfWidth, t.roofTip - 0.03, zFace - faceRake], [halfWidth, t.roofTip - 0.03, zFace - skew - faceRake],
+    [-halfWidth, roofFrontY, zFace - faceRake], [halfWidth, roofFrontY, zFace - skew - faceRake],
     [halfWidth, roofThroatRearY, t.zTip - thD], [-halfWidth, roofThroatRearY, t.zTip - thD]);
   if (t.articulatedThroat) {
     throat.translate(-P.gunG.position.x, -P.gunG.position.y, -P.gunG.position.z);
@@ -10594,13 +10616,12 @@ function createM1A3BuildLayout() {
   const throatDepth = 1.46;
   const turretRoofAt = (z: number): number => lineAt(
     [[turretZWide, turretRoofWideY], [turretZMain, turretRoofMainY]], z);
-  // Preserve the distinctive low mantlet brow, but make its three roof
-  // facets rise until each rear corner lands on the existing shoulder/main
-  // roof plane. The old shared defaults stopped those corners below that
-  // plane, which produced the visible inward cave around the gun opening.
+  // Keep the low cheek brows joined to the shoulder/main roof. The moving
+  // center cover has its own taller front edge, so changing the mantlet
+  // does not distort the fixed cheek planes or the trunnion seat.
   const mantletRoofRamp = Object.freeze({
     cheekFrontY: 0.50,
-    throatFrontY: 0.47,
+    throatFrontY: 0.67, // taller moving face; retain the depression-safe chin
     cheekInnerRearY: turretRoofAt(turretZTip - 1.15),
     cheekOuterRearY: turretRoofAt(turretZWide - 0.70),
     throatRearY: turretRoofAt(turretZTip - throatDepth),
@@ -10675,6 +10696,9 @@ function createM1A3BuildLayout() {
     zFaceOff: 0.08,
     throatDepth,
     yBot: -0.10,
+    // Rise toward each front-inner cheek tip like the conventional Abrams
+    // wedge; the bearing and aft lower edge retain their current height.
+    yBotTip: 0.06,
     yBotRear: 0.04,
     yBotKnees: [[-1.54, -0.06], [-2.48, 0.02]],
     roofTip: mantletRoofRamp.cheekFrontY,
@@ -10684,6 +10708,8 @@ function createM1A3BuildLayout() {
     roofCheekInnerRearY: mantletRoofRamp.cheekInnerRearY,
     roofCheekOuterRearY: mantletRoofRamp.cheekOuterRearY,
     roofThroatRearY: mantletRoofRamp.throatRearY,
+    roofThroatFrontY: mantletRoofRamp.throatFrontY,
+    throatChinBevel: [0.10, 0.08],
     joinedCheekRoof: true,
     articulatedThroat: true,
     yBotFace: .16, // swept chin clears even the rear deck at 10° depression
@@ -10715,9 +10741,24 @@ function addM1A3Hull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
 
   // Sharp, integrated glacis shoulders and a central sensor/service spine.
   for (const side of [-1, 1]) {
+    // Closed shoulder roof spans from the glacis into the skirt crown.
+    // Its underside stays above the return shoes; the forward folded apron
+    // closes the view into the idler bay without hiding the lower track.
     sideSlab(P, 'hull', side,
-      [0.78, 1.42, 3.88], [1.69, 1.50, 3.66], [1.76, 1.52, 2.74], [0.78, 1.52, 2.76],
-      [0.76, 1.49, 3.82], [1.62, 1.57, 3.61], [1.67, 1.59, 2.79], [0.76, 1.61, 2.80]);
+      [0.77, 1.46, 3.90], [2.07, 1.505, 3.82], [2.07, 1.505, 2.68], [0.77, 1.50, 2.72],
+      [0.76, 1.51, 3.88], [2.04, 1.575, 3.80], [2.04, 1.615, 2.72], [0.76, 1.61, 2.80]);
+    sideSlab(P, 'hull', side,
+      [0.78, 1.12, 4.00], [2.04, 1.16, 3.94], [2.04, 1.16, 3.86], [0.78, 1.12, 3.92],
+      [0.76, 1.515, 3.91], [2.04, 1.58, 3.83], [2.04, 1.58, 3.75], [0.76, 1.515, 3.83]);
+    // Rear sponson roof and short end return sit inside the existing cage.
+    // The center overlap joins the powerpack deck; the lower stock leaves
+    // the sprocket/shoe sweep open and keeps the exhaust deck uncovered.
+    sideSlab(P, 'hull', side,
+      [0.99, 1.51, -2.14], [2.08, 1.51, -2.14], [2.08, 1.51, -4.035], [0.99, 1.51, -4.035],
+      [0.99, 1.73, -2.14], [2.08, 1.61, -2.14], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035]);
+    sideSlab(P, 'hull', side,
+      [0.99, 1.22, -4.01], [2.08, 1.22, -4.01], [2.08, 1.22, -4.035], [0.99, 1.22, -4.035],
+      [0.99, 1.635, -4.01], [2.08, 1.59, -4.01], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035]);
     P.addExternalArmor('hull', box(0.16, 0.14, 0.92), side * 1.71, 1.58, 3.17,
       0, side * -0.10, 0);
   }

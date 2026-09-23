@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { ensureInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
+
+await ensureInteriorFills(['m1a3']);
 
 function verifyM1A3Mantlet(tank) {
   const spec = getSpec('m1a3');
@@ -12,10 +15,21 @@ function verifyM1A3Mantlet(tank) {
   const recoil = tank.root.getObjectByName('rig_recoil');
   assert.ok(mount.parent === gun, 'whole shield pitches without sliding with recoil');
   const position = mount.geometry.attributes.position;
-  const brow = new THREE.Vector3(.348, .19, .88);
+  const brow = new THREE.Vector3(.348, .39, .88);
   assert.ok(Array.from({length:position.count}, (_,i) => new THREE.Vector3().fromBufferAttribute(position,i))
     .some(point => point.distanceTo(brow)<1e-5), 'broad front shield belongs to gunMount, not just a hidden collar');
   const geometry = mount.geometry;
+  const chinProbe = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+  const chinRay = new THREE.Raycaster();
+  chinRay.far = .12;
+  for (const side of [-1,1]) {
+    chinRay.set(new THREE.Vector3(side*.335,-.08,1.37),new THREE.Vector3(0,0,-1));
+    assert.equal(chinRay.intersectObject(chinProbe).length,0,
+      'mantlet lower corner has a real bevel matching the cheek underside');
+    chinRay.set(new THREE.Vector3(side*.20,-.08,1.37),new THREE.Vector3(0,0,-1));
+    assert.ok(chinRay.intersectObject(chinProbe)[0], 'center chin remains closed armor');
+  }
+  chinProbe.material.dispose();
   const ray = new THREE.Raycaster();
   ray.far = .5;
   const poses = [];
@@ -153,6 +167,50 @@ for (const quality of ['high', 'low']) {
       assert.ok(plateTop>stock && plateTop-stock<.026, 'lifting-eye base is seated on the sloped cheek');
     }
   }
+  // Finite first-hit probes of the actual closed hull stock. These samples
+  // sat inside the old front/rear holes; thin detached dressing cannot win.
+  const hullProbe = new THREE.Mesh(m1.root.getObjectByName('hull').geometry,
+    new THREE.MeshBasicMaterial());
+  const closureRay = new THREE.Raycaster();
+  for (const side of [-1,1]) {
+    for (const x of [1.16,1.45,1.80,1.98]) {
+      for (const z of [2.80,3.25,3.70,-2.50,-3.10,-3.70,-4.02]) {
+        closureRay.set(new THREE.Vector3(side*x,1.9,z), new THREE.Vector3(0,-1,0));
+        closureRay.far = .45;
+        assert.ok(closureRay.intersectObject(hullProbe)[0],
+          `joined fender roof over track at ${side*x},${z}`);
+      }
+      for (const [originZ, direction] of [[4.3,-1],[-4.4,1]]) {
+        closureRay.far = .6;
+        for (const y of [1.28,1.44]) {
+          closureRay.set(new THREE.Vector3(side*x,y,originZ), new THREE.Vector3(0,0,direction));
+          assert.ok(closureRay.intersectObject(hullProbe)[0],
+            `finite end cover at ${side*x},${y},${originZ}`);
+        }
+      }
+    }
+    // Air below each apron remains available for the animated end wrap.
+    for (const [z,direction] of [[4.2,-1],[-4.3,1]]) {
+      closureRay.far = .3;
+      closureRay.set(new THREE.Vector3(side*1.46,1.05,z), new THREE.Vector3(0,0,direction));
+      assert.equal(closureRay.intersectObject(hullProbe).length,0,'lower track opening remains clear');
+    }
+  }
+  hullProbe.material.dispose();
+  const cheekProbe = new THREE.Mesh(m1.root.getObjectByName('turret').geometry,
+    new THREE.MeshBasicMaterial());
+  closureRay.far = 1;
+  for (const side of [-1,1]) {
+    closureRay.set(new THREE.Vector3(side*.50,-.5,1.90),new THREE.Vector3(0,1,0));
+    const chin = closureRay.intersectObject(cheekProbe)[0];
+    assert.ok(chin && chin.point.y>-.005 && chin.point.y<.06,
+      'front underside rises into the cheek instead of remaining flat at -.10 m');
+    closureRay.set(new THREE.Vector3(side*1.10,-.5,.96),new THREE.Vector3(0,1,0));
+    const aft = closureRay.intersectObject(cheekProbe)[0];
+    assert.ok(aft && Math.abs(aft.point.y+.10)<1e-5,
+      'rear cheek foot remains seated at the unchanged lower shell datum');
+  }
+  cheekProbe.material.dispose();
   verifyM1A3Mantlet(m1);
   m1.dispose();
 

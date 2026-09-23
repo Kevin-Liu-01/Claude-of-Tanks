@@ -14,6 +14,7 @@ for (const id of SAVED_TANK_IDS) {
 }
 
 assert.equal(tierNumeral('m1a2_sepv3'), 'X', 'SEPv3 no longer renders a blank tier');
+assert.equal(tankTier('ajax_x'), 10, 'Ajax UI and matchmaking agree at tier X');
 assert.equal(tankTier('kv2'), 7, 'KV-2 is balanced and presented as a Tier VII vehicle');
 assert.equal(tankTier('challenger1'), 9,
   'Challenger 1 UI and matchmaking agree at tier IX');

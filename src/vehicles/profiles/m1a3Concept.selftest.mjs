@@ -110,8 +110,8 @@ near(turretVertexY(-0.36, 1.74), 0.50,
 near(turretVertexY(0.36, 1.74), 0.50,
   'right cheek preserves the low mantlet brow');
 const mountPositions = tank.root.getObjectByName('gunMount').geometry.attributes.position;
-near(turretVertexY(-0.348, 1.66, mountPositions, gunRig.position), 0.47,
-  'center throat preserves the low mantlet brow');
+near(turretVertexY(-0.348, 1.66, mountPositions, gunRig.position), 0.67,
+  'moving mantlet has the taller owner-requested front face');
 near(turretVertexY(-0.36, 1.03), roofRampY(1.03),
   'left cheek rear edge rises into the existing roof plane');
 near(turretVertexY(0.36, 1.03), roofRampY(1.03),
@@ -169,7 +169,7 @@ near(rightCheekFacetAngle, leftCheekFacetAngle,
 
 const expectedMantletRoofRamp = {
   cheekFrontY: 0.50,
-  throatFrontY: 0.47,
+  throatFrontY: 0.67,
   cheekInnerRearY: roofRampY(1.03),
   cheekOuterRearY: roofRampY(0.38),
   throatRearY: roofRampY(0.72),
