@@ -3,6 +3,9 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { ensureInteriorFills } from '../interiorFills.ts';
+
+await ensureInteriorFills(['kf51b']);
 
 function verifyGunSeat(quality) {
   const visual = createTank('kf51b', null, {
@@ -16,8 +19,8 @@ function verifyGunSeat(quality) {
     const mount = visual.root.getObjectByName('gunMount');
     const recoil = visual.root.getObjectByName('rig_recoil');
     const muzzle = visual.root.getObjectByName('rig_muzzle');
-    assert.equal(mount.parent, gun, 'the selected housing stays on the elevating cradle');
-    assert.equal(recoil.parent, gun, 'barrel and housing share the reseated gun joint');
+    assert.ok(mount.parent === gun, 'the selected housing stays on the elevating cradle');
+    assert.ok(recoil.parent === gun, 'barrel and housing share the reseated gun joint');
     mount.geometry.computeBoundingBox();
     const bounds = mount.geometry.boundingBox;
     closeTo(gun.position.z + bounds.min.z, 1.20, 1e-6);
@@ -28,6 +31,37 @@ function verifyGunSeat(quality) {
       'the actual housing rear is buried in the turret throat');
     assert.ok(gun.position.z + bounds.max.z - 1.95 < .55,
       'the actual housing no longer projects nearly a metre beyond the turret');
+    visual.root.updateMatrixWorld(true);
+    const fixed = [];
+    turret.traverseVisible(object => {
+      if (!object.isMesh || object.userData.shadowOnly || object.userData.authoredShadowProxy) return;
+      for (let owner = object; owner; owner = owner.parent) if (owner === gun) return;
+      fixed.push(object);
+    });
+    const ray = new THREE.Raycaster();
+    const hitInTurret = (origin, direction, distance) => {
+      ray.set(turret.localToWorld(origin.clone()), direction.transformDirection(turret.matrixWorld));
+      ray.far = distance * turret.scale.x;
+      return ray.intersectObjects(fixed, false)[0];
+    };
+    // Real air through the fore-roof: a dark patch over the old loft, an
+    // uncut lower cheek or stale generated interior backing all fail this.
+    for (const x of [-.40, -.20, 0, .20, .40]) {
+      for (const z of [1.02, 1.18, 1.40, 1.65, 1.85]) {
+        // Stop at the turret floor; the rear bearing ring below it remains
+        // real stock and sits behind the moving housing's z >= 1.09 limit.
+        const hit = hitInTurret(new THREE.Vector3(x, .80, z), new THREE.Vector3(0, -1, 0), .80);
+        assert.ok(!hit,
+          `${quality}: fixed armor must leave real elevation clearance at ${x}/${z}; hit ${hit?.object.name}`);
+      }
+    }
+    for (const side of [-1, 1]) {
+      const hit = hitInTurret(new THREE.Vector3(side * .38, .22, 1.18), new THREE.Vector3(side, 0, 0), .10);
+      assert.ok(hit, `${quality}: recess has a closed inner cheek supporting the trunnion`);
+      closeTo(Math.abs(turret.worldToLocal(hit.point.clone()).x), .43, 1e-5);
+    }
+    assert.ok(hitInTurret(new THREE.Vector3(0, .22, 1.04), new THREE.Vector3(0, 0, -1), .15),
+      'the recess ends at a real rear bulkhead');
     for (const yaw of [0, 90, 180, -90]) {
       for (const pitch of [-spec.gunDepressionDeg, 0, 10, spec.gunElevationDeg]) {
         state.turretYaw = THREE.MathUtils.degToRad(yaw);
@@ -48,6 +82,12 @@ function verifyGunSeat(quality) {
         assert.ok(mount.localToWorld(selectedCorner.clone())
           .distanceTo(gun.localToWorld(selectedCorner.clone())) < 1e-8,
         'the marked side moves with the gun throughout the sweep');
+        const position = mount.geometry.getAttribute('position');
+        for (let i = 0; i < position.count; i++) {
+          const point = turret.worldToLocal(mount.localToWorld(new THREE.Vector3().fromBufferAttribute(position, i)));
+          assert.ok(Math.abs(point.x) < .38 && point.z > 1.09,
+            `${quality}: moving housing clears the cheek walls and rear bulkhead at ${yaw}/${pitch}`);
+        }
       }
     }
     const mountPosition = mount.position.clone();

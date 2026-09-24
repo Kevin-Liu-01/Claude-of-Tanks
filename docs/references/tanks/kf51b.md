@@ -13,13 +13,21 @@ authorize deleting the housing.
 - Preserve the 5.30 m local barrel, mantlet shape, clamp, thermal jacket,
   sights and recoil hierarchy. The housing occupies turret-local z 1.20–2.45;
   its forward projection beyond the z 1.95 nose reduces from 0.90 to 0.50 m.
-- HIGH/LOW retain 34,780/31,172 authored stored triangles. Authored mesh
-  position buffers remain identical; only the gun joint moves. The generated
-  interior backing is refreshed for that joint. KF51 EVO and KF51 X retain their
-  original transforms and geometry in both qualities.
+- Follow-up owner direction requires an actual front cutout around the moving
+  installation. The original convex loft is now partitioned into closed cheeks
+  at x ±0.43 m and a closed rear bulkhead at z 0.94 m. This preserves the outer
+  armor facets while clearing the nose and roof through the elevation corridor.
+  The old dark cheek undercuts no longer cross that corridor. A transverse
+  gun-owned trunnion supports the assembly on the inner cheek walls.
+- HIGH/LOW now use 35,008/31,400 authored stored triangles (+228 each). The
+  generated interior backing is refreshed for the recess. KF51 EVO and KF51 X
+  retain their original transforms and geometry in both qualities.
 - `kf51bTurretCenter.selftest.mjs` checks the actual housing bounds, four yaw
   positions, four pitch positions including both stops, firing-frame/muzzle
-  agreement in HIGH/LOW, and recoil with a stationary mantlet.
+  agreement in HIGH/LOW, and recoil with a stationary mantlet. It also probes
+  25 actual air columns through the recess with interior fills loaded, both
+  closed support walls and the rear bulkhead, and all moving housing vertices
+  against the fixed channel throughout the pose sweep.
 - Native Gallery front/quarter/both sides/rear/top and pitch-stop captures,
   plus real Garage selection, switch-away/cache-return and articulation,
   are retained under `.qa-dev/kf51u-gun-seat/`. Both browser sessions completed

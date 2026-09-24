@@ -37,6 +37,7 @@ import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { buildLeopardRevolution } from './leopardRevolution.ts';
+import { recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
@@ -12753,7 +12754,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // the aft panels do not remain stranded at the widest cheek datum.
   const turretPanelWallXAt = (z: number): number => turretWallHalfWidthAt(z) * (0.945 + Math.max(0, -z) * 0.006);
   const buildKF51OwnerExactMarkingsStage1 = (): void => {
-    P.add('turret', polyMultiLoft(turretPlan, [
+    P.add('turret', recessKF51BTurret(polyMultiLoft(turretPlan, [
       { height: -0.01, inset: 0.93 },
       { height: 0.24, inset: 1.00 },
       {
@@ -12766,7 +12767,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
         inset: [0.78, 0.78, 0.82, 0.84, 0.88, 0.92, 0.92, 0.88, 0.84, 0.82],
         centerHeight: turretRoofCenterHeightM,
       },
-    ]));
+    ])));
+    P.turretG.userData.kf51bGunRecess = { ...KF51B_GUN_RECESS, closedCheeks: true };
     P.turretG.userData.kf51bTurretRoofReceipt = Object.freeze({
       profile: 'convex-crowned-wedge',
       edgeHeightsM: Object.freeze([...turretRoofEdgeHeightsM]),
@@ -12778,8 +12780,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     // Buried front cheek undercuts and the narrow central mantlet channel.
     for (const s of [-1, 1] as const) {
       P.add('turretDark', slab(
-        [s * 0.18, 0.09, 1.55], [s * 0.48, 0.10, 1.48], [s * 1.31, 0.23, 0.92], [s * 1.07, 0.22, 0.84],
-        [s * 0.18, 0.23, 1.55], [s * 0.48, 0.25, 1.48], [s * 1.31, 0.34, 0.92], [s * 1.07, 0.34, 0.84]));
+        [s * 0.45, 0.09, 1.55], [s * 0.48, 0.10, 1.48], [s * 1.31, 0.23, 0.92], [s * 1.07, 0.22, 0.84],
+        [s * 0.45, 0.23, 1.55], [s * 0.48, 0.25, 1.48], [s * 1.31, 0.34, 0.92], [s * 1.07, 0.34, 0.84]));
       P.add('turretDetail', box(0.18, 0.07, 0.62), s * 1.22, 0.50, 0.23, 0, s * 0.16, 0);
       P.add('turretDark', box(0.025, 0.16, 0.48), s * 1.34, 0.35, 0.36);
       // Four compact source smoke tubes on broad, physically seated pads.
@@ -12817,6 +12819,10 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   buildKF51OwnerExactMarkingsStage1();
   const kf51bGunSegments = P.q ? 24 : 16;
   const buildKF51OwnerExactGunStage1 = (): void => {
+    // Transverse trunnion overlaps the closed cheek walls at x +/-0.43.
+    // It shares the elevation axis, supporting the cradle without sweeping
+    // through the surrounding fixed armor as the gun pitches.
+    P.addGunExtraDark(cylX(0.14, 0.90, 16), 0, 0, 0);
     P.addGunExtra(outwardClosedSlab(
       [-0.37, -0.20, 0.02], [0.37, -0.20, 0.02], [0.245, -0.135, 1.27], [-0.245, -0.135, 1.27],
       [-0.34, 0.23, 0.02], [0.34, 0.23, 0.02], [0.218, 0.16, 1.27], [-0.218, 0.16, 1.27],
