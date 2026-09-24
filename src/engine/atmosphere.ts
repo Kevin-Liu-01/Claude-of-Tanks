@@ -104,19 +104,21 @@ export interface AtmosphereSkyPresetInput {
 // constants were fitted (mean absolute log-radiance difference per channel over 35 sky directions per map,
 // the 2–20° band weighted twice, the sun's 8° neighbourhood skipped; grid over the two scales with the
 // illuminance solved per candidate) against the legacy dome on the owner's twelve good maps (verdant, urban,
-// railyard, frontier, delta, monsoon, alpine, foundry, airfield, orchard, longleaf, reservoir): the surface is
-// flat between 0.6–0.7 / 250–320 (loss 0.324–0.327) and the residual is structural — three's Preetham
-// evaluates its Rayleigh phase at (cosθ·0.5 + 0.5), which halves the anti-solar sky, and raises the
-// in-scatter to the power 1.5, which over-saturates the upper sky; the physical model corrects both, so a
-// good map's anti-sun sky above ~10° reads brighter and less saturated while the 2–10° band the battle
-// cameras see matches within ±30 %. Verdant maps onto rayleigh 0.84, Mie 8.4 (aerosol optical depth 0.045);
-// Monsoon onto 1.44 / 33 (0.18); Desert onto 0.6 / 22 (0.12). The per-map table is in
-// docs/MAP-BEAUTIFICATION.md round 65. `mieG` passes through (both models use a forward lobe of that
-// asymmetry), ozone is the Earth's, the ground bounce a temperate 0.25 grey.
+// railyard, frontier, delta, monsoon, alpine, foundry, airfield, orchard, longleaf, reservoir): the loss surface
+// is flat between 0.6–0.7 / 250–320 (0.324–0.327) and the residual is structural — three's Preetham evaluates
+// its Rayleigh phase at (cosθ·0.5 + 0.5), which halves the anti-solar sky, and raises the in-scatter to the
+// power 1.5, which over-saturates the upper sky; the physical model corrects both. The loss minimum's aerosol
+// (verdant optical depth 0.045) whitened the anti-solar sky the sky views look at, so the eye test on the
+// captures (verdant / desert sky-w, six candidates) chose a cleaner air: K_M 40 with the illuminance 8.0 puts
+// verdant's sky-w bands within 2 % of the legacy luminance (105 / 136 / 174 display against 107 / 135 / 174)
+// at saturation 0.63 against 0.78 — the physical ceiling for a Rayleigh sky. Verdant maps onto rayleigh 0.84,
+// Mie 1.2 (aerosol optical depth 0.0064); Monsoon onto 1.44 / 4.7 (0.025); Desert onto 0.6 / 3.15 (0.017). The
+// per-map table is in docs/MAP-BEAUTIFICATION.md round 65. `mieG` passes through (both models use a forward
+// lobe of that asymmetry), ozone is the Earth's, the ground bounce a temperate 0.25 grey.
 export const ATMO_CALIBRATION = Object.freeze({
   rayleighPerPreset: 0.7,
-  miePerTurbidityCoefficient: 280,
-  sunIlluminance: 10.5,
+  miePerTurbidityCoefficient: 40,
+  sunIlluminance: 8.0,
   mieGMin: 0.45,
   mieGMax: 0.92,
   groundAlbedo: [0.25, 0.25, 0.25] as const,
@@ -137,9 +139,19 @@ export function sunDirectionOf(sunElevationDeg: number, sunAzimuthDeg: number): 
   return [v.x, v.y, v.z];
 }
 
+/** QA hook: a page may set window.__ATMO_CALIBRATION before boot to try other constants (the calibration probes). */
+function liveCalibration(): typeof ATMO_CALIBRATION {
+  try {
+    const override = (globalThis as { __ATMO_CALIBRATION?: Partial<typeof ATMO_CALIBRATION> }).__ATMO_CALIBRATION;
+    return override && typeof override === 'object' ? { ...ATMO_CALIBRATION, ...override } : ATMO_CALIBRATION;
+  } catch {
+    return ATMO_CALIBRATION;
+  }
+}
+
 /** Map a sky preset onto atmosphere parameters (see ATMO_CALIBRATION); authored overrides win. */
 export function skyPresetToAtmosphere(preset: AtmosphereSkyPresetInput): AtmosphereParams {
-  const C = ATMO_CALIBRATION;
+  const C = liveCalibration();
   const o = preset.atmosphere ?? {};
   const clamp = THREE.MathUtils.clamp;
   const mieProduct = Math.max(0, preset.turbidity) * Math.max(0, preset.mieCoefficient) * C.legacyMieGain;
@@ -161,8 +173,8 @@ const f = (x: number): string => {
   return s.includes('.') || s.includes('e') ? s : `${s}.0`;
 };
 
-/** Medium, LUT parameterizations and ray/sphere helpers (no textures): the builders and the summary share it. */
-const ATMOSPHERE_CORE_GLSL = /* glsl */`
+/** Medium, LUT parameterizations and ray/sphere helpers: the builders and the summary share it (exported for the receipt). */
+export const ATMOSPHERE_CORE_GLSL = /* glsl */`
 const float ATMO_RG = ${f(ATMO_GROUND_KM)};
 const float ATMO_RT = ${f(ATMO_TOP_KM)};
 const float ATMO_PI = 3.14159265358979;
