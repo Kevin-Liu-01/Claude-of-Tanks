@@ -3,6 +3,19 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // Usage:
 //   npm run studio:examples -- --out shots/studio-modern-examples
 //   node tools/studio-example-videos.mjs --count 2 --fps 30 --out /tmp/duels
+//   node tools/studio-example-videos.mjs --collection battle-reels --only 3,7,18 \
+//     --width 1280 --height 720 --fps 30 --bitrate 8000000 --out shots/battle-reels-v3/masters
+//   node tools/studio-example-videos.mjs --collection hero-rails --only 2 \
+//     --stills 0,900,1850,2900,3900,5000,6000 --out shots/hero-rails-r2/preview
+//
+// Collections: `duels` (every registered map, the Studio duel showcase),
+// `features` (the six feature loops cut from approved action frames),
+// `hero-rails` (the five landing rails) and `battle-reels` (the Docs'
+// pinned twenty-reel library, tools/studio-example-scenarios.mjs).
+// `--stills <ms,ms,…>` (round 54, 2026-09-24) stages each job the same way
+// and captures one PNG per listed storyboard time at the canvas size instead
+// of recording the video — the framing review a recipe needs before the
+// recording, without a video encode.
 //
 // The renderer uses the production __STUDIO.load/directDuel/recordVideo path.
 // Generated WebM files and their manifest belong under shots/ (gitignored).
@@ -14,7 +27,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSyn
 import {spawnSync} from 'node:child_process';
 import { resolve, join } from 'node:path';
 
-import {DUEL_SCENARIOS as SCENARIOS} from './studio-example-scenarios.mjs';
+import {BATTLE_REEL_SCENARIOS, DUEL_SCENARIOS as SCENARIOS} from './studio-example-scenarios.mjs';
 
 const FEATURE_SCENE_FILES = [
   '61_action_desert_duel_leclerc_kill.json',
@@ -70,7 +83,11 @@ const HERO_RAIL_FILES = [
   {
     file: '84_action_steppe_horizon_charge.json',
     slug: 'steppe-charge-thread',
-    rail: [[-4.5, 0.1, -5], [1, 0.3, 0], [5, 0.8, 3], [-2, 2.9, 8]],
+    // Round 54 (2026-09-24): the opening key used to sit 5 m behind the lens of
+    // the re-staged 84 (round 51), inside the berm of the wire line that runs
+    // across the plain there (the first frame was a wall of sand); it now opens
+    // 1 m ahead of the scene's lens on the clear grass.
+    rail: [[-4.5, 0.4, 1], [1, 0.3, 0], [5, 0.8, 3], [-2, 2.9, 8]],
     rolls: [-3, 2, -2, 0], fovs: [45, 39, 36, 40], travel: [5.8, 4.0, 4.4, 4.8],
   },
   {
@@ -141,14 +158,23 @@ function opt(name, fallback) {
 
 const outDir = resolve(opt('out', 'shots/studio-modern-examples'));
 const collection = opt('collection', 'duels');
-const scenarioPool = collection === 'hero-rails'
-  ? HERO_RAIL_SCENARIOS
-  : (collection === 'features' ? FEATURE_SCENARIOS : SCENARIOS);
+const POOLS = {
+  duels: SCENARIOS,
+  features: FEATURE_SCENARIOS,
+  'hero-rails': HERO_RAIL_SCENARIOS,
+  'battle-reels': BATTLE_REEL_SCENARIOS,
+};
+const scenarioPool = POOLS[collection];
+if (!scenarioPool) throw new Error(`unknown collection ${collection}; expected ${Object.keys(POOLS).join(', ')}`);
 const count = Math.max(1, Math.min(scenarioPool.length, Number.parseInt(opt('count', String(scenarioPool.length)), 10) || scenarioPool.length));
 const only = new Set(String(opt('only', ''))
   .split(',')
   .map((value) => Number.parseInt(value.trim(), 10))
   .filter((value) => Number.isInteger(value) && value >= 1 && value <= scenarioPool.length));
+const stills = String(opt('stills', ''))
+  .split(',')
+  .map((value) => Number.parseInt(value.trim(), 10))
+  .filter((value) => Number.isInteger(value) && value >= 0 && value <= 20_000);
 const fps = Math.max(24, Math.min(60, Number.parseInt(opt('fps', '30'), 10) || 30));
 const width = Math.max(1280, Math.min(3840, Number.parseInt(opt('width', '1920'), 10) || 1920));
 const height = Math.max(720, Math.min(2160, Number.parseInt(opt('height', '1080'), 10) || 1080));
@@ -171,7 +197,7 @@ let browser = null;
 const consoleErrors = [];
 const manifestPath=join(outDir,'manifest.json');
 let existingVideos=[];
-if(only.size && existsSync(manifestPath)) {
+if(only.size && !stills.length && existsSync(manifestPath)) {
   const existing=JSON.parse(readFileSync(manifestPath,'utf8'));
   if(existing.version!==2 || existing.collection!==collection
     || JSON.stringify(existing.renderer)!==JSON.stringify({width,height,fps,videoBitsPerSecond}))
@@ -185,6 +211,7 @@ const manifest = {
   renderer: { width, height, fps, videoBitsPerSecond },
   videos: existingVideos,
 };
+const stillsManifest = { version: 1, collection, renderer: { width, height }, stills: [] };
 
 function writeManifest() {
   manifest.videos.sort((a,b)=>a.index-b.index);
@@ -244,7 +271,7 @@ try {
       `${String(jobs.length).padStart(2, '0')} [scenario ${number}] ` +
       `${scenario.alpha} vs ${scenario.bravo} on ${scenario.map}`,
     );
-    const result = await page.evaluate(async (job) => {
+    const staged = await page.evaluate(async (job) => {
       const S = window.__STUDIO;
       const validateVehicles = (infos) => {
         for (const info of infos) {
@@ -318,12 +345,6 @@ try {
             rollDeg: 0, transition: 'smooth' },
         ];
       };
-      const dataUrlFromBlob = (blob) => new Promise((resolveData, rejectData) => {
-        const reader = new FileReader();
-        reader.addEventListener('load', () => resolveData(reader.result), { once: true });
-        reader.addEventListener('error', () => rejectData(reader.error), { once: true });
-        reader.readAsDataURL(blob);
-      });
       const alphaInfo = S.getSpecInfo(job.alpha);
       const bravoInfo = S.getSpecInfo(job.bravo);
       validateVehicles([alphaInfo, bravoInfo]);
@@ -372,6 +393,51 @@ try {
       if (board.durationMs > 20_000 || board.actorTracks.length < 2) {
         throw new Error('Studio did not build a bounded multi-tank storyboard');
       }
+      return {
+        alpha: alphaInfo,
+        bravo: bravoInfo,
+        shots: board.shots.length,
+        shotTimes: board.shots.map((shot) => shot.tMs),
+        durationMs: board.durationMs,
+        effects: S.listEffects().length,
+        cameraCues: board.cameraCues?.length ?? 0,
+        minimumLeadSeparationM,
+      };
+    }, scenario);
+
+    const baseName = scenario.slug
+      ? `${number}_${scenario.slug}`
+      : `${number}_${scenario.alpha}_vs_${scenario.bravo}_${scenario.map}`;
+
+    if (stills.length) {
+      // Framing review: one deterministic frame per requested storyboard time.
+      for (const tMs of stills) {
+        const captured = await page.evaluate(async (input) => {
+          const S = window.__STUDIO;
+          S.seek(Math.min(input.tMs, S.durationMs ?? input.tMs));
+          await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+          return S.capture({ width: input.width, height: input.height, type: 'image/png', download: false });
+        }, { tMs, width, height });
+        const bytes = Buffer.from(String(captured.dataURL).split(',')[1], 'base64');
+        const file = `${baseName}_${String(tMs).padStart(5, '0')}ms.png`;
+        writeFileSync(join(outDir, file), bytes);
+        stillsManifest.stills.push({ index: scenario.index, file, tMs, map: scenario.map, stage: scenario.stage ?? null });
+      }
+      writeFileSync(join(outDir, 'stills.json'), `${JSON.stringify({
+        ...stillsManifest, shotTimes: staged.shotTimes,
+      }, null, 2)}\n`);
+      console.log(`[studio-examples] ${baseName}: ${stills.length} stills (shots at ${staged.shotTimes.join(', ')} ms)`);
+      continue;
+    }
+
+    const result = await page.evaluate(async (job) => {
+      const S = window.__STUDIO;
+      const dataUrlFromBlob = (blob) => new Promise((resolveData, rejectData) => {
+        const reader = new FileReader();
+        reader.addEventListener('load', () => resolveData(reader.result), { once: true });
+        reader.addEventListener('error', () => rejectData(reader.error), { once: true });
+        reader.readAsDataURL(blob);
+      });
       const recordingStartedAt = performance.now();
       const recording = await S.recordVideo({
         fps: job.fps,
@@ -380,28 +446,20 @@ try {
       });
       const dataUrl = await dataUrlFromBlob(recording.blob);
       return {
-        alpha: alphaInfo,
-        bravo: bravoInfo,
         durationMs: recording.durationMs,
         recordingWallMs: performance.now()-recordingStartedAt,
         leadInMs: recording.leadInMs || 0,
         mimeType: recording.mimeType,
         size: recording.size,
         base64: String(dataUrl).split(',')[1],
-        shots: board.shots.length,
-        effects: S.listEffects().length,
-        cameraCues:board.cameraCues?.length??0,
-        minimumLeadSeparationM,
       };
-    }, { ...scenario, fps, videoBitsPerSecond });
+    }, { fps, videoBitsPerSecond });
 
     if (result.durationMs > 20_000 || result.durationMs < 1_000 || result.size < 20_000) {
       throw new Error(`${number}: invalid recording ${result.durationMs} ms / ${result.size} bytes`);
     }
     const extension = result.mimeType.includes('mp4') ? 'mp4' : 'webm';
-    const file = scenario.slug
-      ? `${number}_${scenario.slug}.${extension}`
-      : `${number}_${scenario.alpha}_vs_${scenario.bravo}_${scenario.map}.${extension}`;
+    const file = `${baseName}.${extension}`;
     const bytes = Buffer.from(result.base64, 'base64');
     if (bytes.length !== result.size) {
       throw new Error(`${file}: browser reported ${result.size} bytes, transferred ${bytes.length}`);
@@ -427,8 +485,8 @@ try {
       file,
       map: scenario.map,
       seed: scenario.seed,
-      alpha: { id: scenario.alpha, name: result.alpha.name },
-      bravo: { id: scenario.bravo, name: result.bravo.name },
+      alpha: { id: scenario.alpha, name: staged.alpha.name },
+      bravo: { id: scenario.bravo, name: staged.bravo.name },
       durationMs: result.durationMs,
       mimeType: result.mimeType,
       bytes:statSync(videoPath).size,
@@ -436,13 +494,14 @@ try {
       containerDurationMs,
       recordingWallMs: result.recordingWallMs,
       leadInMs: result.leadInMs,
-      cameraShots: result.shots,
-      effects: result.effects,
-      cameraCues:result.cameraCues,
+      cameraShots: staged.shots,
+      effects: staged.effects,
+      cameraCues:staged.cameraCues,
       variant:scenario.variant??null,
       stage:scenario.stage??null,
+      authoredStage:scenario.authoredStage??false,
       rail: !!scenario.rail,
-      minimumLeadSeparationM: result.minimumLeadSeparationM,
+      minimumLeadSeparationM: staged.minimumLeadSeparationM,
     });
     writeManifest();
     console.log(`[studio-examples] wrote ${file} (${result.size} bytes)`);
@@ -451,7 +510,9 @@ try {
   if (consoleErrors.length) {
     throw new Error(`page emitted ${consoleErrors.length} console error(s): ${consoleErrors.slice(0, 5).join(' | ')}`);
   }
-  console.log(`[studio-examples] complete: ${manifest.videos.length} videos in ${outDir}`);
+  console.log(stills.length
+    ? `[studio-examples] complete: ${stillsManifest.stills.length} stills in ${outDir}`
+    : `[studio-examples] complete: ${manifest.videos.length} videos in ${outDir}`);
 } finally {
   if (browser) await browser.close();
   if (server) await server.close();

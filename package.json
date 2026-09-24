@@ -90,6 +90,8 @@
     "studio:features:publish": "node tools/marketing-shots/publish-feature-loops.mjs",
     "studio:action:render": "node tools/marketing-shots/record-studio-action-loop.mjs",
     "landing:media:publish": "node tools/marketing-shots/publish-landing-media.mjs",
+    "reels:render": "node tools/studio-example-videos.mjs --collection battle-reels --width 1280 --height 720 --fps 30 --bitrate 8000000 --out shots/battle-reels-v3/masters",
+    "reels:publish": "node tools/marketing-shots/publish-battle-reels.mjs",
     "showcase:publish": "node tools/marketing-shots/publish-showcase-library.mjs && node tools/marketing-shots/build-capture-recipes.mjs",
     "showcase:recipes": "node tools/marketing-shots/build-capture-recipes.mjs",
     "showcase:check": "node tools/marketing-shots/showcase-library.selftest.mjs",

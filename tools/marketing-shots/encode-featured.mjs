@@ -15,6 +15,12 @@
 //   node tools/marketing-shots/encode-featured.mjs \
 //     --featured 06_desert_hero_kf51,09_winter_lake_duel,... \
 //     --og 09_winter_lake_duel [--budget 380] [--width 1920]
+//   node tools/marketing-shots/encode-featured.mjs --only 09_winter_lake_duel
+//
+// `--only` (round 54, 2026-09-24) re-encodes the named sources into the
+// `f<N>_` slots they already occupy under public/media/featured, leaves every
+// other featured file in place and skips the OG composite (the shipped social
+// cards come from generate-og-images.mjs).
 //
 // Reads source PNGs from shots/marketing/final/ (fallback raw/).
 
@@ -35,14 +41,25 @@ const OG_OUT = join(ROOT, 'public/brand/og-image.png');
 const LOGO = join(ROOT, 'public/brand/og-logo-transparent.png');
 
 const featured = (opt('featured', '') || '').split(',').map((s) => s.trim()).filter(Boolean);
+const only = (opt('only', '') || '').split(',').map((s) => s.trim()).filter(Boolean);
 const ogName = opt('og', featured[0]);
 const BUDGET_KB = parseInt(opt('budget', '380'), 10);
 const OUT_W = parseInt(opt('width', '1920'), 10);
-if (!featured.length) {
-  console.error('need --featured name1,name2,...');
+if (!featured.length && !only.length) {
+  console.error('need --featured name1,name2,... or --only name1,name2,...');
   process.exit(1);
 }
 mkdirSync(OUT_DIR, { recursive: true });
+
+// --only keeps each named source in the f<N>_ slot it already occupies.
+const existingSlot = (name) => {
+  const match = readdirSync(OUT_DIR).map((f) => new RegExp(`^f(\\d+)_${name}\\.webp$`).exec(f)).find(Boolean);
+  if (!match) throw new Error(`--only ${name}: no existing f<N>_${name}.webp under public/media/featured`);
+  return parseInt(match[1], 10);
+};
+const jobs = only.length
+  ? only.map((name) => ({ name, slot: existingSlot(name) }))
+  : featured.map((name, i) => ({ name, slot: i + 1 }));
 
 const srcPath = (name) => {
   for (const dir of [FINAL_DIR, RAW_DIR]) {
@@ -103,15 +120,16 @@ const writeFromDataURL = (file, dataURL) => {
   return buf.length;
 };
 
-// wipe stale featured files so renames don't accumulate
-for (const f of readdirSync(OUT_DIR)) {
-  if (/^f\d+_.*\.webp$/.test(f)) unlinkSync(join(OUT_DIR, f));
+// wipe stale featured files so renames don't accumulate (a full set only)
+if (!only.length) {
+  for (const f of readdirSync(OUT_DIR)) {
+    if (/^f\d+_.*\.webp$/.test(f)) unlinkSync(join(OUT_DIR, f));
+  }
 }
 
 const manifest = [];
 let total = 0;
-for (let i = 0; i < featured.length; i++) {
-  const name = featured[i];
+for (const { name, slot } of jobs) {
   const uri = dataURI(srcPath(name));
   const h = Math.round((OUT_W * 9) / 16);
   let q = 0.80;
@@ -123,18 +141,20 @@ for (let i = 0; i < featured.length; i++) {
     bytes = Buffer.from(dataURL.split(',')[1], 'base64').length;
     if (bytes <= BUDGET_KB * 1024) break;
   }
-  const file = join(OUT_DIR, `f${i + 1}_${name}.webp`);
+  const file = join(OUT_DIR, `f${slot}_${name}.webp`);
   writeFromDataURL(file, dataURL);
   total += bytes;
-  manifest.push(`media/featured/f${i + 1}_${name}.webp`);
+  manifest.push(`media/featured/f${slot}_${name}.webp`);
   console.log(`[encode] ${file.replace(ROOT + '/', '')}  ${(bytes / 1024).toFixed(0)} KB (q=${q.toFixed(2)})`);
 }
 
-// OG composite
-const ogURL = await render(dataURI(srcPath(ogName)), 1200, 630, 'image/png', undefined, { logo: dataURI(LOGO) });
-const ogBytes = writeFromDataURL(OG_OUT, ogURL);
-console.log(`[encode] public/brand/og-image.png  ${(ogBytes / 1024).toFixed(0)} KB (source: ${ogName})`);
-console.log(`[encode] featured total ${(total / 1024).toFixed(0)} KB across ${featured.length} images`);
+if (!only.length) {
+  // OG composite
+  const ogURL = await render(dataURI(srcPath(ogName)), 1200, 630, 'image/png', undefined, { logo: dataURI(LOGO) });
+  const ogBytes = writeFromDataURL(OG_OUT, ogURL);
+  console.log(`[encode] public/brand/og-image.png  ${(ogBytes / 1024).toFixed(0)} KB (source: ${ogName})`);
+}
+console.log(`[encode] featured total ${(total / 1024).toFixed(0)} KB across ${jobs.length} images`);
 console.log('[encode] manifest:', JSON.stringify(manifest));
 
 await browser.close();

@@ -29,7 +29,10 @@ for (const loop of manifest.loops) {
   assert.equal((await stat(video)).size, loop.videoBytes, `${loop.id} video byte receipt`);
 
   const poster = `${root}/${loop.poster.split('/').at(-1)}`;
-  assert.ok((await stat(poster)).size > 100_000, `${loop.id} poster size`);
+  // Presence / plausibility floor for the 1280-wide q3 poster. 2026-09-24
+  // (round 54): the Frosthollow loop re-rendered on the redesigned map's frozen
+  // pond encodes to 97.5 KB — bright ice and snow — so the floor is 80 KB.
+  assert.ok((await stat(poster)).size > 80_000, `${loop.id} poster size`);
 }
 
 assert.deepEqual([...representedMaps].sort(), [...approvedMaps].sort());

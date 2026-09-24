@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BATTLE_REELS } from './battleReels.ts';
+import { BATTLE_REEL_SCENARIOS, battleReelId } from '../../tools/studio-example-scenarios.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const docs = readFileSync(join(ROOT, 'docs.html'), 'utf8');
@@ -11,6 +12,10 @@ const manifest = JSON.parse(readFileSync(join(ROOT, 'public/media/battle-reels-v
 
 assert.equal(BATTLE_REELS.length, 20, 'the Docs reel library must contain all 20 approved scenes');
 assert.equal(new Set(BATTLE_REELS.map(({ id }) => id)).size, 20, 'reel identifiers must be unique');
+// Round 54 (2026-09-24): a reel is regenerated through the recorder's
+// battle-reels collection, so the library's ids are the recorder's table.
+assert.deepEqual(BATTLE_REELS.map(({ id }) => id), BATTLE_REEL_SCENARIOS.map(battleReelId),
+  'the reel ids must be the recorder\'s battle-reels collection (tools/studio-example-scenarios.mjs)');
 assert.equal(manifest.count, 20);
 assert.equal(manifest.delivery.width, 1280);
 assert.equal(manifest.delivery.height, 720);
