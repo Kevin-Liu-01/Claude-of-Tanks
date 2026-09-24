@@ -108,9 +108,9 @@ const fragmentBefore = {
 // Driftwood is unchanged from published1db.
 // Frozen rowboats and the nine Winter-family controls above are unchanged.
 const otherHashes = {
-  1337: '89f490bfb6f0914b0dfe5558c8f8c676d483d94f1985142b46429ce243b79e03', // 2026-09-24 (round 58): the fjord's jetties at the water's edge (planted piles, gangways, moored hulls); was 2026-09-19 Mars joins the non-Winter kits
-  2049: '1d9485325f5dd6ee4213ed420446794d2c340caffe330c28558020c99f00d722', // 2026-09-24 (round 58): the fjord's jetties at the water's edge; before that the round-48 pacing landing
-  7719: 'df6eb6adcba4246dd9be7bf84bc34d8cdf5b1c41364d84fd43a56fd6697da460', // 2026-09-24 (round 58): the fjord's jetties at the water's edge; before that the round-48 pacing landing
+  1337: '471a37e4226eb0936a1e0c689b743c5b676bd2582069382a989d1390e0111eb3', // 2026-09-24 (round 61): Amberford's arched bridge on its deck plane (the river kit's body, slab, parapets, cutwaters and wings replace the causeway bridge and the kit's RNG tail moves); before that 2026-09-24 (round 58): the fjord's jetties at the water's edge (planted piles, gangways, moored hulls); was 2026-09-19 Mars joins the non-Winter kits
+  2049: '03049fb147964d14d25acce0fea1b16af284c35dca07a4fc93da8e668c407dd2', // 2026-09-24 (round 61): Amberford's arched bridge on its deck plane (the river kit's body, slab, parapets, cutwaters and wings replace the causeway bridge and the kit's RNG tail moves); before that 2026-09-24 (round 58): the fjord's jetties at the water's edge; before that the round-48 pacing landing
+  7719: '29b31aaf4e4a26ef50c6fc30f7f9877fb96c9b6c61decc07396c2fc139d07b94', // 2026-09-24 (round 61): Amberford's arched bridge on its deck plane (the river kit's body, slab, parapets, cutwaters and wings replace the causeway bridge and the kit's RNG tail moves); before that 2026-09-24 (round 58): the fjord's jetties at the water's edge; before that the round-48 pacing landing
 };
 
 function build(mapId, seed, historical = true) {
