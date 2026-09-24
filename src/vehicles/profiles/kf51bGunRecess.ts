@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-export const KF51B_GUN_RECESS = Object.freeze({ halfWidthM: 0.43, backZM: 0.94 });
+export const KF51B_GUN_RECESS = Object.freeze({ halfWidthM: 0.43, backZM: 0.88 });
 
 function clipFace(
   face: readonly THREE.Vector3[], axis: 'x' | 'z', limit: number, sign: number,

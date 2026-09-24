@@ -47,7 +47,7 @@ function verifyGunSeat(quality) {
     // Real air through the fore-roof: a dark patch over the old loft, an
     // uncut lower cheek or stale generated interior backing all fail this.
     for (const x of [-.40, -.20, 0, .20, .40]) {
-      for (const z of [1.02, 1.18, 1.40, 1.65, 1.85]) {
+      for (const z of [.92, 1.02, 1.18, 1.40, 1.65, 1.85]) {
         // Stop at the turret floor; the rear bearing ring below it remains
         // real stock and sits behind the moving housing's z >= 1.09 limit.
         const hit = hitInTurret(new THREE.Vector3(x, .80, z), new THREE.Vector3(0, -1, 0), .80);
@@ -60,8 +60,9 @@ function verifyGunSeat(quality) {
       assert.ok(hit, `${quality}: recess has a closed inner cheek supporting the trunnion`);
       closeTo(Math.abs(turret.worldToLocal(hit.point.clone()).x), .43, 1e-5);
     }
-    assert.ok(hitInTurret(new THREE.Vector3(0, .22, 1.04), new THREE.Vector3(0, 0, -1), .15),
-      'the recess ends at a real rear bulkhead');
+    const back = hitInTurret(new THREE.Vector3(0, .22, .98), new THREE.Vector3(0, 0, -1), .15);
+    assert.ok(back, 'the recess ends at a real rear bulkhead');
+    closeTo(turret.worldToLocal(back.point.clone()).z, .88, 1e-5);
     for (const yaw of [0, 90, 180, -90]) {
       for (const pitch of [-spec.gunDepressionDeg, 0, 10, spec.gunElevationDeg]) {
         state.turretYaw = THREE.MathUtils.degToRad(yaw);
@@ -95,6 +96,17 @@ function verifyGunSeat(quality) {
     visual.syncFromState(state, .12);
     assert.ok(recoil.position.z < -.05, 'the barrel recoils inside the reseated housing');
     assert.deepEqual(mount.position, mountPosition, 'recoil does not detach or slide the mantlet');
+    visual.root.updateMatrixWorld(true);
+    recoil.traverseVisible(object => {
+      if (object.userData.shadowOnly || object.userData.authoredShadowProxy) return;
+      const positions = object.geometry?.getAttribute('position');
+      if (!positions) return;
+      for (let i = 0; i < positions.count; i++) {
+        const point = turret.worldToLocal(object.localToWorld(new THREE.Vector3().fromBufferAttribute(positions, i)));
+        assert.ok(point.z > .92,
+          `${quality}: recoiling ${object.name} clears the rear bulkhead by at least 40 mm at full elevation`);
+      }
+    });
     visual.syncFromState(state, 1);
     closeTo(recoil.position.z, 0);
   } finally {
