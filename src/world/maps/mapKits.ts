@@ -15,11 +15,12 @@
 // All geometry is procedural THREE.BufferGeometry pushed into the existing
 // material buckets (wood/straw/stone), so it merges into the per-material
 // prop meshes and inherits map-toned textures + the grime overlay for free.
-// Most extras are soft dressing. The small rail coal stockpiles alone publish
-// their actual convex rock footprints through the supplied collision sinks.
+// Most extras are soft dressing. The small rail coal stockpiles and Amberford's
+// water mill (round 48) alone publish their actual convex footprints through the
+// supplied collision sinks.
 
 import * as THREE from 'three';
-import { box, jitterUV, pitchSkillionRoof, scaleUV, slabBox } from '../propGeometry.ts';
+import { box, gablePrism, jitterUV, pitchSkillionRoof, scaleUV, slabBox } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
@@ -1046,6 +1047,7 @@ export function dressMapExtras({
   if (kits.includes('coastal')) dressCoastalShore(focused);
   if (kits.includes('river')) {
     if (riverLandings?.length) dressLakeRiverLandings(focused, riverLandings);
+    else if (mapId === 'autumn') dressAmberfordRiver(focused);
     else dressAutumnRiver(focused);
   }
   if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
@@ -1400,6 +1402,182 @@ function dressAutumnRiver({ L, heightField, rng, buckets }: FocusedDressingConte
   addRiverBankReeds(links, heightField, rng, buckets);
   addRuinedRiverBridge(links, heightField, rng, buckets);
   addRiverFordMarkers(L.roads, links, heightField, rng, buckets);
+}
+
+// =============================================================================
+// Round 48 — AMBERFORD river dressing (owner 2026-09-23: the Verdant-clone maps
+// "need redesign"). The coach road crosses the narrows on an INTACT stone bridge
+// (spandrel walls with three arch openings and cutwaters below the map's
+// destructible parapet walls), the other lanes get the round-1 ford posts, and
+// a weir sill holds the reach above the town with a water mill on its bank.
+// Everything is derived from the layout (route 0 = the coach road, the river
+// links, the water plane read at a link centre), so no map coordinate lives here.
+// =============================================================================
+
+interface RiverCrossing { x: number; z: number; ux: number; uz: number; link: LayoutDisc }
+
+/** Align a box's width axis (local +x) with the world direction (dx, dz). */
+function alignWidth<T extends THREE.BufferGeometry>(geometry: T, dx: number, dz: number): T {
+  geometry.rotateY(Math.atan2(-dz, dx));
+  return geometry;
+}
+
+/** The road node that sits inside a river link (the causeway centre) and the road bearing there. */
+function riverCrossing(road: readonly (readonly [number, number])[] | undefined, links: readonly LayoutDisc[]): RiverCrossing | null {
+  if (!road || road.length < 3) return null;
+  let best: RiverCrossing | null = null, bestDistance = Infinity;
+  for (let i = 1; i < road.length - 1; i++) {
+    const [x, z] = road[i];
+    for (const link of links) {
+      const distance = Math.hypot(x - link.x, z - link.z);
+      if (distance > link.r * 0.55 || distance >= bestDistance) continue;
+      const [ax, az] = road[i - 1], [bx, bz] = road[i + 1];
+      const length = Math.hypot(bx - ax, bz - az) || 1;
+      best = { x, z, ux: (bx - ax) / length, uz: (bz - az) / length, link };
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+/** Water plane height beside a causeway: read 24 m along the river, past the road's dry band (terrain.ts zeroes the
+ * mask within 14 m of a lane and the plane rules the core beyond it). */
+function waterLevelBeside(heightField: DressingHeightField, x: number, z: number, vx: number, vz: number): number {
+  return Math.min(heightField.getHeightAt(x + vx * 24, z + vz * 24), heightField.getHeightAt(x - vx * 24, z - vz * 24));
+}
+
+function addStoneBridge(crossing: RiverCrossing, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets): void {
+  const { x: cx, z: cz, ux, uz } = crossing;
+  const vx = -uz, vz = ux; // across the road = along the river
+  const deck = heightField.getHeightAt(cx, cz);
+  const water = waterLevelBeside(heightField, cx, cz, vx, vz);
+  const span = 26; // half-length along the road: bank to bank over the narrows
+  for (const side of [-1, 1]) {
+    // the spandrel wall stands on the graded slope 5.4 m off the centreline, from below the waterline to the deck
+    const wallX = cx + vx * 5.4 * side, wallZ = cz + vz * 5.4 * side;
+    const foot = Math.min(water - 0.6, heightField.getHeightAt(wallX, wallZ) - 0.4);
+    const tall = deck + 0.12 - foot;
+    const wall = alignWidth(box(span * 2, tall, 0.6, 0.7), ux, uz);
+    jitterUV(wall, rng);
+    buckets.stone.push(wall.translate(wallX, foot + tall / 2, wallZ));
+    // three arch openings read as dark recesses proud of the wall face
+    for (const along of [-9, 0, 9]) {
+      const archX = cx + ux * along + vx * 5.76 * side, archZ = cz + uz * along + vz * 5.76 * side;
+      const arch = alignWidth(box(4.2, 1.7, 0.12, 1.0), ux, uz);
+      buckets.dark.push(arch.translate(archX, water + 0.55, archZ));
+      const crown = alignWidth(box(2.4, 0.5, 0.12, 1.0), ux, uz);
+      buckets.dark.push(crown.translate(archX, water + 1.55, archZ));
+    }
+    // cutwaters between the arches
+    for (const along of [-4.5, 4.5]) {
+      const pierX = cx + ux * along + vx * 6.5 * side, pierZ = cz + uz * along + vz * 6.5 * side;
+      const pier = alignWidth(box(1.5, deck - 0.3 - (water - 0.8), 1.7, 0.7), ux, uz);
+      pier.rotateY(side * 0.78); // a nose turned into the stream
+      jitterUV(pier, rng);
+      buckets.stone.push(pier.translate(pierX, (water - 0.8 + deck - 0.3) / 2, pierZ));
+    }
+    // wing walls splay out at both ends of the spandrel
+    for (const end of [-1, 1]) {
+      const wingX = cx + ux * end * (span + 1.6) + vx * 7.4 * side, wingZ = cz + uz * end * (span + 1.6) + vz * 7.4 * side;
+      const wingY = heightField.getHeightAt(wingX, wingZ);
+      const wing = alignWidth(box(5.2, 1.5, 0.9, 0.7), ux, uz);
+      wing.rotateY(-end * side * 0.6);
+      jitterUV(wing, rng);
+      buckets.stone.push(wing.translate(wingX, wingY + 0.55, wingZ));
+    }
+  }
+}
+
+function addWeirAndMill(links: readonly LayoutDisc[], crossing: RiverCrossing | null, heightField: DressingHeightField,
+  rng: Rng, buckets: DressingBuckets, ctx: FocusedDressingContext): void {
+  // the reach six links upstream of the bridge (the SW end of the chain is upstream)
+  let bridgeIndex = 0, bestDistance = Infinity;
+  if (crossing) for (let i = 0; i < links.length; i++) {
+    const d = Math.hypot(links[i].x - crossing.x, links[i].z - crossing.z);
+    if (d < bestDistance) { bestDistance = d; bridgeIndex = i; }
+  }
+  const index = Math.max(1, Math.min(links.length - 2, (crossing ? bridgeIndex : Math.floor(links.length * 0.4)) - 6));
+  const link = links[index], before = links[index - 1], after = links[index + 1];
+  const tl = Math.hypot(after.x - before.x, after.z - before.z) || 1;
+  const tx = (after.x - before.x) / tl, tz = (after.z - before.z) / tl; // downstream tangent
+  let nx = -tz, nz = tx; // the bank normal toward the town side (+z)
+  if (nz < 0) { nx = -nx; nz = -nz; }
+  const water = heightField.getHeightAt(link.x, link.z);
+  // the weir: a stone sill across the channel with a pier at each end, its crest 0.5 m above the water
+  const sillLength = link.r * 1.3;
+  const sill = alignWidth(box(sillLength, 0.9, 1.5, 0.8), nx, nz);
+  jitterUV(sill, rng);
+  buckets.stone.push(sill.translate(link.x, water + 0.05, link.z));
+  for (const end of [-1, 1]) {
+    const pierX = link.x + nx * end * (sillLength / 2 + 0.7), pierZ = link.z + nz * end * (sillLength / 2 + 0.7);
+    const pier = alignWidth(box(1.3, 1.9, 1.7, 0.8), nx, nz);
+    jitterUV(pier, rng);
+    buckets.stone.push(pier.translate(pierX, water + 0.55, pierZ));
+  }
+  // the mill house on the bank: stone body, tiled gable roof, wheel on the river side in a stone leat
+  const setback = link.r * 1.05 + 9;
+  const mx = link.x + nx * setback, mz = link.z + nz * setback;
+  if (Math.max(Math.abs(mx), Math.abs(mz)) > 470 || heightField._roadDist(mx, mz) < 9) return;
+  const ground = heightField.getHeightAt(mx, mz);
+  const width = 7.6, depth = 9.2, wallHeight = 4.4;
+  const body = alignWidth(box(width, wallHeight, depth, 0.6), tx, tz);
+  jitterUV(body, rng);
+  buckets.stone.push(body.translate(mx, ground + wallHeight / 2 - 0.2, mz));
+  const roof = gablePrism(depth + 0.8, 2.9, width + 0.7, 0.4); // ridge along the river (extruded along local z)
+  roof.rotateY(Math.PI / 2);
+  alignWidth(roof, tx, tz);
+  buckets.roof.push(roof.translate(mx, ground + wallHeight - 0.25, mz));
+  // door on the lane side, two windows on the river side
+  const door = alignWidth(box(1.3, 2.3, 0.14, 1.0), tx, tz);
+  buckets.dark.push(door.translate(mx + nx * (depth / 2 + 0.02), ground + 0.95, mz + nz * (depth / 2 + 0.02)));
+  for (const along of [-2.2, 2.2]) {
+    const window = alignWidth(box(0.9, 1.1, 0.14, 1.0), tx, tz);
+    buckets.dark.push(window.translate(mx + tx * along - nx * (depth / 2 + 0.02), ground + 2.6, mz + tz * along - nz * (depth / 2 + 0.02)));
+  }
+  // the wheel: a wooden drum on an axle along the river, half sunk in a stone leat between the house and the water
+  const wheelX = mx - nx * (depth / 2 + 1.9), wheelZ = mz - nz * (depth / 2 + 1.9);
+  const wheelGround = heightField.getHeightAt(wheelX, wheelZ);
+  const wheelY = wheelGround + 1.9;
+  const drum = new THREE.CylinderGeometry(2.5, 2.5, 0.8, 14, 1);
+  drum.rotateZ(Math.PI / 2); // axis along local x
+  alignWidth(drum, tx, tz);
+  scaleUV(drum, 2, 1);
+  buckets.wood.push(drum.translate(wheelX, wheelY, wheelZ));
+  for (let spoke = 0; spoke < 6; spoke++) {
+    const bar = box(0.16, 5.4, 0.16, 1.6);
+    bar.rotateX(spoke * Math.PI / 6);
+    bar.rotateY(Math.PI / 2);
+    alignWidth(bar, tx, tz);
+    buckets.dark.push(bar.translate(wheelX, wheelY, wheelZ));
+  }
+  const axle = alignWidth(box(3.0, 0.3, 0.3, 1.0), tx, tz);
+  buckets.dark.push(axle.translate(wheelX, wheelY, wheelZ));
+  for (const side of [-1, 1]) {
+    const leat = alignWidth(box(0.5, 1.1, 8.0, 0.7), tx, tz);
+    jitterUV(leat, rng);
+    buckets.stone.push(leat.translate(wheelX + tx * side * 1.1, wheelGround + 0.35, wheelZ + tz * side * 1.1));
+  }
+  // the house blocks like a building: its footprint is a convex prism in both collision sinks
+  const hx = tx * width / 2, hz = tz * width / 2, dx = nx * depth / 2, dz = nz * depth / 2;
+  const footprint = convexHull2([
+    [mx + hx + dx, mz + hz + dz], [mx - hx + dx, mz - hz + dz], [mx - hx - dx, mz - hz - dz], [mx + hx - dx, mz + hz - dz],
+  ]);
+  const record = setConvexShape({ min: [0, ground - 0.2, 0], max: [0, ground + wallHeight + 2.6, 0], kind: 'mill-house' }, footprint);
+  ctx.obstacles?.push(record);
+  ctx.colliders?.push(cloneCollisionRecord(record));
+}
+
+function dressAmberfordRiver(ctx: FocusedDressingContext): void {
+  const { L, heightField, rng, buckets } = ctx;
+  const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
+  if (links.length < 3) return;
+  addRiverBankReeds(links, heightField, rng, buckets);
+  const bridge = riverCrossing(L.roads[0], links);
+  if (bridge) addStoneBridge(bridge, heightField, rng, buckets);
+  else addRuinedRiverBridge(links, heightField, rng, buckets);
+  // ford posts on every lane that wades the river; the coach road crosses on the bridge
+  addRiverFordMarkers(bridge ? L.roads.filter((_road, index) => index !== 0) : L.roads, links, heightField, rng, buckets);
+  addWeirAndMill(links, bridge, heightField, rng, buckets, ctx);
 }
 
 function dressLakeRiverLandings(

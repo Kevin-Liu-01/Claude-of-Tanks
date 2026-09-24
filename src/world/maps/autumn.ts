@@ -307,8 +307,8 @@ export default {
       [20, 112, 28, 32, 2], [110, 160, 112, 67, 3],
       // the manor park wall around the lake's south-west
       [40, 220, 40, 310, 2], [40, 310, 110, 330, 3],
-      // the mill yard above the weir reach
-      [-176, -128, -120, -104, 1],
+      // the mill yard: behind the mill house on the reach above the bridge (mapKits derives the mill six links upstream)
+      [-149, -104, -111, -80, 1],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 30, rocks: 180, outcrops: 18, craters: 44, rubblePiles: 0,

@@ -100,10 +100,16 @@ for(const mapId of MAP_IDS) {
       baseline.buckets[name].filter(g=>!isCoal(g)).map(hashGeometry),`${mapId}/${name}: unrelated geometry remains byte-exact`);
     const coal=candidate.buckets.baked.filter(isCoal);
     assert.equal(candidate.buckets.dark.filter(isCoal).length,0);
-    assert.equal(candidate.obstacles.length,coal.length);assert.equal(candidate.colliders.length,coal.length);
+    // Amberford redesign (owner 2026-09-23, round 48): the river kit's water mill is the one other kit structure that
+    // publishes a footprint (a convex prism in both sinks, like the coal heaps); every other kit stays soft dressing.
+    const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
+    assert.equal(mills.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit seats a mill house`);
+    assert.equal(candidate.colliders.filter(record=>record.kind==='mill-house').length,mills.length);
+    assert.equal(candidate.obstacles.length,coal.length+mills.length);assert.equal(candidate.colliders.length,coal.length+mills.length);
     if(railMaps.includes(mapId)) assert.ok(coal.length>0,`${mapId}: retain recognizable coal stockpiles`);
     else assert.equal(coal.length,0,`${mapId}: all26 other map outputs unchanged`);
-    coal.forEach((geometry,index)=>validatePile(geometry,candidate.obstacles[index],candidate.colliders[index],field));
+    const heaps=candidate.obstacles.filter(record=>record.kind!=='mill-house'), heapColliders=candidate.colliders.filter(record=>record.kind!=='mill-house');
+    coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field));
     totals[mapId]=coal.length;
   } finally {dispose(baseline);dispose(candidate);}
 }
