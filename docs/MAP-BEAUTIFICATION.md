@@ -1035,10 +1035,12 @@ grain steppe of the Virgin Lands campaign.
   villageWear (FROZEN configs / other28) and mangroveWaterPalette (other29 digest) move and wait for the integrator's
   single re-pin. Pre-existing on the round-47 base: roadLookupGrid, roadPlacementAdmission (coastal), playableRelief
   (Titan byte baseline).
-- **Open.** The rail spur has no track geometry — `mapKits.ts` lays its lines at fixed centre coordinates for Cinder
-  Junction only; a parameterised spur kit is a follow-up. The picker thumbnail and 4K hero (`public/maps/steppe.webp`,
-  `thumbs/`) and the tactical-map plate (`public/minimaps/steppe.webp`) were re-rendered in round 50 (2026-09-24) —
-  the lane had left the Verdant-clone frames in place.
+- **Open.** The rail spur's track was laid in round 57 (2026-09-24): the rail spur kit — `terrain.railSpurs`, one
+  siding along the elevator row's loading face from a buffer stop west of the long store to a second at the rim foot,
+  a level crossing over the east track (see the round-57 section; a cutting through the rim band so the line can
+  leave the square stays open). The picker thumbnail and 4K hero (`public/maps/steppe.webp`, `thumbs/`) and the
+  tactical-map plate (`public/minimaps/steppe.webp`) were re-rendered in round 50 (2026-09-24) — the lane had left
+  the Verdant-clone frames in place; they predate the siding.
 ### Titan walls, Fjord's cone and Whiteout's skyline — 2026-09-23 (round 49)
 
 Four ring items (lane r49a, from origin/main 117a14b90 + the round-47 follow-up taper d223fa491). Every capture:
@@ -1523,6 +1525,85 @@ water on the flat strand and on Nordhavn's heads ~10 m up the bank, its fixed-he
 the 0.72 m shallows — the larger pieces gather beside it as authored, but a pier that reaches the water is a follow-up
 (a planted deck like the river landings'). The boats stay where round 47 put them (1.09–1.19 R, 30–40 m up the flat
 strand on Saltmere). The fjord's flanks carry no wrack by the slope gate; only its arm heads do.
+### Round 57 — 2026-09-24: the rail spur kit
+
+Round 48's open item on Tarkhan Steppe (lane r57-rail-spur, from origin/main 63bf9b4a6): the grain station was
+designed as a rail-spur station and had no track, because `maps/mapKits.ts` laid rails at fixed centre coordinates for
+Cinder Junction's siding fan only.
+
+**The kit.** A map authors a spur as a path in its terrain config — `terrain.railSpurs: [{ path: [[x, z], …], gauge?,
+ballast?, bufferStop?: 'end' | 'both' }]` (`src/world/railSpurs.ts`: the config type, the span resampler, the
+centreline distance and the berth exclusion, renderer-free). `createLayout` carries the list on the layout
+(`L.railSpurs`, beside the lake discs) and `dressMapExtras` lays it after every other kit through ONE span layer shared
+with the yards: a span is a ballast slab, twin rails at ±gauge/2 and a sleeper every 1.4 m pushed into the existing
+baked / dark / wood buckets (no extra draw call; the map tones and the grime overlay come for free), with a buffer stop
+0.8 m past each closed end turned to the track. Two lays: 'along' is the yards' historical arithmetic (pitch between
+the span ends, level sleepers, world-vertical offsets); 'full', for authored spurs, lays 4 m spans, each slab the
+least-squares plane through seven ground samples of its footprint (corners, end centres, midpoint — a symmetric
+design, so the fit is a mean and two slopes), rolled with the cross-slope, every part placed in the span's own frame
+(sleepers on the slab, rails on the sleepers), and a 0.36 m deep slab seated 0.05 m low whose top stays at the yards'
++0.15 m — its sides run 0.26 m below the fitted plane, deeper than the ground falls under any corner. The berth: the
+height field's `_noVeg` exclusion (the hardstand aprons' plumbing, which grass, trees, bushes, the scatter and segment
+props and the litter all read) is true within 3.6 m of a centreline, so nothing grows or is seeded on the line. The
+dry-span check is the yards' predicate generalised to a heading (`railSpanIsDry`; the axis-aligned wrapper
+`railSegmentIsDry` reproduces the historical sample points number for number). Soft dressing by contract: no collision
+record, a hull rolls over the 0.2 m bed like a curb, the bot planner never sees it (no navigation trap: the standing
+rule and cliff-grade laws see the untouched ground).
+
+**Cinder Junction, Foundry, Caldera, Skybridge — migrated, byte-identical.** `railLine` is now a two-point path through
+the same resampler (10 m spans, the remainder in the last one: the 415 m line keeps its 5 m stub) under the 'along'
+lay; the yards' stops keep their historical yaw. The rail-part digests, the whole dressing digests, the seeded draw
+counts and the next draw of all four maps at seeds 1337 / 2049 / 7719 match the pristine base (harness
+`$SP/r57/rail-digests.mjs`, A = origin/main worktree, B = this lane), and `railSpurs.selftest` pins the four yards'
+rail-part digests at seed 1337 as the migration certificate (railWashout and railCoalStockpiles do not detect a rail
+change on their own). The yard's A/B captures differ by frame noise only (yard-fan-low: mean |Δ| 0.12/255, 0.1 % of
+the world band moved; spur-bird 0.01/255).
+
+**Tarkhan Steppe.** `railSpurs: [{ path: [[144, -181], [440, -181]], bufferStop: 'both' }]` — one siding along the
+elevator row's loading face, routed from the shard's structures and the height field, never a frame: 7 m north of the
+long store's back wall (its north face at z −188.4), past the head tower (−192) and the granaries, between the
+(287..298, −176..−163) store and the row, a level crossing over the east track at x ≈ 279, ending at the foot of the
+eastern rim band. The station road climbs that rim at 24 % (x 444 → 508: 4 → 19 m, and the height field is a constant
+18.5 m past the square), so no rail grade reaches the edge: the line stops at x 440, where the ground begins to twist
+up (x ≈ 446), the outer network implied — a cutting through the rim band is terrain work, not dressing. 74 spans,
+148 rails, 222 sleepers, two stops, 2006 seeded draws after everything else the map dresses. Measured (headless, seed
+1337): every slab's bottom corners ≥ 0.195 m under the ground (no gap anywhere), every top corner ≥ 0.058 m above
+it; rail centres 0.12–0.27 m and sleeper centres 0.06–0.18 m over the ground; span grades ≤ 7 %; no span over
+liquid; the berth re-rolls the seeded wattle fence beside the line and the hedgehog cluster that stood on the crossing
+(284.5, −184.5 → 283.3, −195.9). How the lay was chosen (worst slab corner against the ground): 0.23 m with 10 m spans
+and the two-sample lay, 0.16 m with 5 m under the least-squares lay, 0.13 m with 4 m and no better with 3 m — what
+remains is cross-track curvature no plane follows, and the deep slab hides it. Captures (`tools/map-view-probe.mjs`;
+four views added to the table, 31 → 35, digest a784a8b8…, `map-probe-runtime` re-pinned): spur-station-west — the
+siding from the west stub past the store to the gantry and the head tower, rails on the ballast, sleepers under them,
+the stop closing the stub, bare ground on A; spur-crossing — the line either side of the store at the east-track
+crossing; spur-bird — a straight siding behind the elevator row from the stub to the rim foot; A/B world band moved
+1.7 / 2.1 / 2.6 %. Judged on 1280 px reductions.
+
+**Collision and pacing.** The steppe shard was recaptured headless on this tree (the `.qa-dev/collision-capture.mjs`
+pattern, the capture tool's pack script). The committed shard had gone stale against main's own world — a recapture
+on the untouched base gives 2427 / 920 / 1302 records against the committed 2346 / 916 / 1278 — and the berth adds +2
+obstacles (fences and hedgehogs re-rolled, structures unchanged). `dedicatedWorldCollision` census re-pinned (steppe
+2441 / 2152 / 1314, the 12 kept removals), `collisionManifestCodec` storage budget re-based (1239200 B + 10 %);
+`server/battlePacing.selftest` in full: 14 / 124 timeouts (bound 15), median 449 s, sub-120 0 — steppe's one timeout
+is the shard refresh, not the berth (the base with its own fresh shard shows the same first-sample timeout on the
+steppe-only invocation; the seeds of a single-map run start at index 0, so those lines are not the full run's).
+
+**Receipts (exit 0).** railSpurs (new, in the core inventory), railWashout, railCoalStockpiles, riverLandings,
+hardstandSurface, roadLookupGrid (two declared deltas for the berth lines of `heightFieldBuildSteps` — the historical
+hash is unchanged), roadPlacementAdmission, roadBankComposition, roadDistanceField, roadContinuity, roadInheritedGrades,
+roadStations, roadPortalIndex, roadAuthoredExits, roadCutRecovery, roadBorderCorridor, roadMaskProfile, badlandsRelief,
+playableRelief, terrainStreaming, shoreDirtMask, terrainWetLayer, terrainFastGrid, terrainProjection,
+terrainMaterialOwnership, sourcedTerrainPreparation, workedGroundMask, trackSurface, shallowWater, waterRipples,
+spawnClearance, spawnPads, formationPlacement, matchPlacement, structureCollision, vegetationClearance,
+groundCoverClearance, authoredTreePlacement, treePoolCapacity, propsTextureRows, fieldTrenchTerrain,
+assaultTrenchTerrain, mapQuality, mapIntegration, propsScheduling, environmentExpansion, worldBuildCoordinator,
+collisionManifestCodec, collisionManifestLoader, dedicatedWorldCollision, dedicatedWorldCollisionMemory, battlePacing,
+map-probe-runtime, public-repo-hygiene, attribution:check, garage:terrain:check, typecheck; villageWear and
+mangroveWaterPalette map-config digests re-pinned (steppe.ts authors railSpurs).
+
+**Open.** A second loading track or a run-round loop at the station; a planked deck where a spur crosses a road; a
+cutting through the rim band so a spur can leave the square; the ballast's grey against the golden ground is the
+yards' vertex paint — a per-map ballast tone if it reads too dark on a pale map.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -1622,6 +1703,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 54 | The last showcase media of the redesigned maps: `feature-loops-r1/03_winter_lake_duel`, the `hero-rails-r2` winter / steppe rails with their `web-video-r1` proxies, the `battle-reels-v3` reels 03 / 07 / 18 and `featured/f1_09_winter_lake_duel` regenerated through the repo's pipeline — the recorder's `battle-reels` collection (the library's pinned twenty-reel table, authored stages on the pond necks and the plain south of the wadi) and `--stills` framing mode, `publish-battle-reels.mjs`, subset modes for the rail / loop / featured publishers, rail proxies derived from the published WebM, the steppe rail's opening key moved off the wire-line berm | eye check of 1280 px reductions (four frames + poster per reel and rail, three per proxy, four + poster for the loop, the featured frame) after eight preview rounds against the lens rule; receipts feature-loops, hero-rails, showcase-r2, battle-campaign, landing-media, feature-evidence, loadingScreens, socialProof, showcase-library, battleReels, og-images, public-repo-hygiene, attribution; only the intended manifest rows moved |
 | 55 | Titan's fine wavy partings closed: the uniform-isolation probe flattens one layer normal map at a time (and no longer keeps flat normals after its first variant), uNrmR and then the coarse wall-plane R tap named — the bedded sandstone tile's seam notches printed a parting every 0.9–2.8 m of world height in the wall plane; an analytic buttress-and-rib crag replaces that tap on the bedded maps (`uBeddedR`, key v39). Fjord's cone hills: a per-map `outcrops` knob (gneiss knobs and scree through the turf below the treeline, stands opened, `uVOutcrop`, vista key r4). Coast ring tone: the ring forest runs the battlefield's matte canopy response and a mean-centred crown mottle (key `horizon-forest-canopy-v3`); the shore fade tried was pixel-identical and not landed | one-normal-at-a-time and gate-uniform isolation runs on Titan (sw-corner 59.0 % vs 60.4 % all-flat; the coarse tap 49.7 % of the wall box), stripe metric A/B (sw-corner top-1 % 0.535 → 0.734, std 28.5 → 28.3; e-wall 0.734 → 0.770), ground boxes unchanged; fjord boxes (w-wall-mid cone 47 % / mean 4.5, sky-w 37 % / 2.8) and 2× crops; per-side crown boxes on Saltmere's west edge (ring 114° / L 0.305 → 123° / 0.278 against the square's 120° / 0.199); receipts in the section |
 | 56 | The strands' wrack line and debris (owner decision 21): a high-water band of weed / kelp mats, bent sticks, pebble patches and shells along every authored shelf (Saltmere, Nordhavn's arm heads, Saltwind), with timber, a broken crate and a rope coil beside each landing — derived from the lake contour by a marched band law (water's edge → sand's end, ≤ 8.5 m, ≥ 2.2 m), lake-phased density, gated off water / banks / roads / pads / boats / jetties / footprints; soft dressing in the vertex-coloured `baked` and `wood` buckets, no new material, instance pool or collision record; the coastal driftwood re-derived onto the same band (it lay on the disc's plain 1.03–1.12 R circle — Nordhavn's 72 logs median 7.7 m up the ridges, nine in the water) | map-view-probe A/B on the round-47 shore views plus three new gameplay-height strand views (`strand-e-low`, `strand-fjord-low`, `strand-w-low`; table 31 → 34), 2× crops, `ab-diff` strand boxes 1.9–3.1 % moved, obliques 0.4–1.4 %, birds ≤ 0.2 %; headless three-seed audit; `strandWrack.selftest` (new), beachedBoat / winterLakeGeometry / riverLandings / map-probe-runtime re-pinned, the shore and world receipts green |
+| 57 | The rail spur kit: a map authors a siding as a path (`terrain.railSpurs`, `src/world/railSpurs.ts`), the layout carries it, one span layer lays ballast / rails / sleepers / buffer stops that follow the ground (4 m spans, least-squares plane per slab, cross-slope roll, a deep slab bedded into the folds) and the height field's `_noVeg` berth keeps vegetation and scattered props 3.6 m off the line; the four rail yards migrated onto the same layer byte-identically; Tarkhan's grain station gets its loading-face siding (x 144 → 440 at z −181, buffers at both ends, a level crossing over the east track, ending at the rim foot — the road climbs the rim at 24 %); the stale steppe shard recaptured | rail-part / dressing / draw digests of the four yards A = B at three seeds (railSpurs.selftest pins them); headless slab-corner probe (no gap under any corner, tops ≥ 0.06 m clear); map-view-probe A/B on four new views (yard frame noise ≤ 0.3 %; steppe 1.7–2.6 % moved) judged on 1280 px reductions; census and storage re-pins; battlePacing 14 / 124; the receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
