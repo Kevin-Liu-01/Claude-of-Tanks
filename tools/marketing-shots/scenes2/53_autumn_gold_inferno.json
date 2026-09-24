@@ -6,8 +6,8 @@
       "id": "abramsx",
       "name": "victim",
       "pos": [
-        52,
-        58
+        -98,
+        -181
       ],
       "facingDeg": 210,
       "turretDeg": 15,
@@ -17,8 +17,8 @@
       "id": "leclerc",
       "name": "passer",
       "pos": [
-        30,
-        40
+        -116,
+        -201
       ],
       "facingDeg": 66,
       "turretDeg": 40,
@@ -40,8 +40,8 @@
     {
       "type": "dust",
       "at": [
-        33,
-        42
+        -113,
+        -200
       ],
       "tMs": 300,
       "params": {
@@ -62,14 +62,14 @@
   ],
   "camera": {
     "pos": [
-      18,
+      -128,
       1.5,
-      30
+      -204
     ],
     "lookAt": [
-      44,
+      -98,
       2.6,
-      52
+      -184
     ],
     "groundRel": true,
     "fov": 44,

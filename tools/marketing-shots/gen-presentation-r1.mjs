@@ -101,11 +101,14 @@ for (let index = 0; index < sources.length; index += 1) {
 const mapHeroes = [
   ['verdant', [-16, -72], [-28, 4.2, -98], 'm1a2_sepv3', 'summer'],
   ['desert', [56, 76], [37, 4.0, 58], 'leclerc_xlr', 'desert'],
-  ['winter', [12, 42], [-11, 4.5, 21], 'strv122', 'winter'],
+  // round 51 (2026-09-24): the three round-48 redesigns — the terrace village
+  // street, the stone bridge under the coach road, the escarpment crest by the
+  // (60,224) kurgan; an optional sixth entry pins facing / wing placement
+  ['winter', [-84, -70], [-104, 4.5, -96], 'strv122', 'winter', { facingDeg: 200 }],
   ['urban', [36, 60], [17, 4.0, 43], 'challenger_3', 'urbanblock'],
   ['coastal', [168, 42], [143, 4.2, 22], 'merkava4b', 'naval'],
-  ['autumn', [4, 52], [-18, 4.2, 33], 'leo2a7v', 'autumn'],
-  ['steppe', [2, 44], [-24, 4.0, 24], 't90a_vladimir', 'amoeba'],
+  ['autumn', [-16, -72.4], [20, 3.4, -98], 'leo2a7v', 'autumn', { facingDeg: 137, wing: [2.6, -92], wingFacingDeg: 317 }],
+  ['steppe', [20, 214], [32, 4.0, 176], 't90a_vladimir', 'amoeba', { facingDeg: 165 }],
   ['railyard', [18, 34], [-12, 4.1, 14], 'kf51b', 'digital'],
   ['frontier', [28, 80], [2, 4.3, 55], 'm2a2_bradley', 'desert'],
   ['fjord', [78, 40], [51, 4.4, 20], 'strv103', 'winter'],
@@ -118,14 +121,15 @@ const mapHeroes = [
 ];
 
 for (let mapIndex = 0; mapIndex < mapHeroes.length; mapIndex += 1) {
-  const [map, pos, cameraPos, tank, camo] = mapHeroes[mapIndex];
+  const [map, pos, cameraPos, tank, camo, extra = {}] = mapHeroes[mapIndex];
+  const wingPos = extra.wing || [pos[0] + 14, pos[1] + 18];
   const number = 35 + mapIndex;
   const scene = {
     map,
     seed: 9300 + mapIndex,
     actors: [
-      { id: tank, name: 'hero', pos, facingDeg: 28 + mapIndex * 17, turretDeg: -18 + (mapIndex % 5) * 9, gunDeg: 1, camo, camoSeed: 93000 + mapIndex },
-      { id: vehiclePool[(mapIndex + 7) % vehiclePool.length], name: 'wing', pos: [pos[0] + 14, pos[1] + 18], facingDeg: 196 + mapIndex * 11, turretDeg: 22, gunDeg: 0.5, camo: camos[(mapIndex + 3) % camos.length], camoSeed: 93100 + mapIndex },
+      { id: tank, name: 'hero', pos, facingDeg: extra.facingDeg ?? 28 + mapIndex * 17, turretDeg: -18 + (mapIndex % 5) * 9, gunDeg: 1, camo, camoSeed: 93000 + mapIndex },
+      { id: vehiclePool[(mapIndex + 7) % vehiclePool.length], name: 'wing', pos: wingPos, facingDeg: extra.wingFacingDeg ?? 196 + mapIndex * 11, turretDeg: 22, gunDeg: 0.5, camo: camos[(mapIndex + 3) % camos.length], camoSeed: 93100 + mapIndex },
     ],
     effects: [
       { type: 'dust', at: [pos[0] + 3, pos[1] - 2], tMs: 260, params: { count: 14, intensity: 1.05, dirDeg: 210 } },

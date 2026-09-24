@@ -6,23 +6,23 @@
       "id": "leclerc",
       "name": "sniper",
       "pos": [
-        -114,
-        -52
+        -118,
+        -204
       ],
-      "facingDeg": 92,
+      "facingDeg": 34,
       "gunDeg": 0.5,
       "camo": "dpm",
       "camoSeed": 571,
-      "turretDeg": 5.6
+      "turretDeg": 2.9
     },
     {
       "id": "t90m",
       "name": "victim",
       "pos": [
-        -84,
-        -56
+        -97,
+        -176
       ],
-      "facingDeg": 275,
+      "facingDeg": 217,
       "turretDeg": 20,
       "camo": "factory"
     }
@@ -49,17 +49,17 @@
   ],
   "camera": {
     "pos": [
-      -99,
+      -104,
       2.4,
-      -75
+      -262
     ],
     "lookAt": [
-      -99,
+      -107,
       2.6,
-      -54
+      -192
     ],
     "groundRel": true,
-    "fov": 46
+    "fov": 30
   },
   "fxTime": 612,
   "timeScale": 0

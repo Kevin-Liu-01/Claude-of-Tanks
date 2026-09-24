@@ -1,5 +1,14 @@
 // Compress the deterministic presentation-r1 PNG captures and publish the
 // metadata consumed by the public media-archive component.
+//
+// Usage:
+//   node tools/marketing-shots/publish-presentation-r1.mjs            # every frame + the schema-1 manifest
+//   node tools/marketing-shots/publish-presentation-r1.mjs --match 05_,08_,23_
+//       Re-encode only the frames whose id contains one of the tokens (their raws must be
+//       present under shots/presentation-r1/raw). The manifests are left untouched: since
+//       2026-08-19 `npm run showcase:publish` (publish-showcase-library.mjs) owns
+//       public/media/presentation-r1/manifest.json, so a subset re-render (round 51, the
+//       redesigned maps' frames) must not rewrite it with the superseded schema.
 
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -8,6 +17,9 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
+const args = process.argv.slice(2);
+const matchArg = (() => { const index = args.indexOf('--match'); return index >= 0 ? args[index + 1] : ''; })();
+const matches = matchArg ? matchArg.split(',').map((token) => token.trim()).filter(Boolean) : null;
 const SCENES = join(HERE, 'scenes-presentation-r1');
 const RAW = resolve(ROOT, 'shots/presentation-r1/raw');
 const UI_RAW = resolve(ROOT, 'shots/presentation-r1/ui-raw');
@@ -27,6 +39,7 @@ function encode(input, output, quality = 80) {
 const shots = sceneFiles.map((file, index) => {
   const scene = JSON.parse(readFileSync(join(SCENES, file), 'utf8'));
   const id = basename(file, '.json');
+  if (matches && !matches.some((token) => id.includes(token))) return null;
   const raw = join(RAW, `${id}.png`);
   const output = join(OUT, `${id}.webp`);
   encode(raw, output);
@@ -46,7 +59,12 @@ const shots = sceneFiles.map((file, index) => {
     effects,
     seed: scene.seed,
   };
-});
+}).filter(Boolean);
+
+if (matches) {
+  console.log(`Re-encoded ${shots.length} presentation frame(s) matching ${matches.join(', ')}; manifests untouched`);
+  process.exit(0);
+}
 
 const uiLabels = Object.freeze({
   garage: ['Garage command deck', 'Interface'],

@@ -6,8 +6,8 @@
       "id": "m1a2_sepv3",
       "name": "pyre",
       "pos": [
-        9.25,
-        38.2
+        -78.75,
+        -59.8
       ],
       "facingDeg": 130,
       "state": "turret-popped",
@@ -20,48 +20,48 @@
       "id": "merkava4b",
       "name": "a1",
       "pos": [
-        -10.75,
-        62.2
+        -78.75,
+        -93.8
       ],
-      "facingDeg": 132,
+      "facingDeg": 4,
       "gunDeg": 0.5,
       "camo": "desert",
       "camoSeed": 92081,
-      "turretDeg": -8.3
+      "turretDeg": -2.6
     },
     {
       "id": "spz_puma",
       "name": "a2",
       "pos": [
-        3.25,
-        16.2
+        -110.75,
+        -37.8
       ],
-      "facingDeg": 52,
+      "facingDeg": 90,
       "gunDeg": 0.5,
       "camo": "digital",
       "camoSeed": 92082,
-      "turretDeg": 5.3
+      "turretDeg": -39.5
     },
     {
       "id": "leclerc_xlr",
       "name": "foe",
       "pos": [
-        31.25,
-        34.2
+        -76.75,
+        -9.8
       ],
-      "facingDeg": 262,
+      "facingDeg": 184,
       "gunDeg": 1,
       "camo": "splinter",
       "camoSeed": 92083,
-      "turretDeg": 41.7
+      "turretDeg": -2.6
     }
   ],
   "effects": [
     {
       "type": "explosion",
       "at": [
-        14,
-        46
+        -66,
+        -46
       ],
       "tMs": 2480,
       "params": {
@@ -108,14 +108,14 @@
   ],
   "camera": {
     "pos": [
-      -5.15,
+      -102.15,
       22,
-      -5
+      -93
     ],
     "lookAt": [
-      13.25,
+      -83.75,
       0,
-      40.2
+      -47.8
     ],
     "groundRel": true,
     "fov": 45,

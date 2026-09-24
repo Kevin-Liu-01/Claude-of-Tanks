@@ -6,8 +6,8 @@
       "id": "leo2a5",
       "name": "pyre",
       "pos": [
-        8,
-        36
+        -80,
+        -62
       ],
       "facingDeg": 130,
       "state": "turret-popped",
@@ -18,48 +18,48 @@
       "id": "leo2a6",
       "name": "a1",
       "pos": [
-        -12,
-        60
+        -80,
+        -96
       ],
-      "facingDeg": 132,
+      "facingDeg": 4,
       "gunDeg": 0.5,
       "camo": "winter",
       "camoSeed": 381,
-      "turretDeg": -8.3
+      "turretDeg": -2.6
     },
     {
       "id": "leclerc",
       "name": "a2",
       "pos": [
-        2,
-        14
+        -112,
+        -40
       ],
-      "facingDeg": 52,
+      "facingDeg": 90,
       "gunDeg": 0.5,
       "camo": "digital",
       "camoSeed": 382,
-      "turretDeg": 5.3
+      "turretDeg": -39.5
     },
     {
       "id": "t90m",
       "name": "foe",
       "pos": [
-        30,
-        32
+        -78,
+        -12
       ],
-      "facingDeg": 262,
+      "facingDeg": 184,
       "gunDeg": 1,
       "camo": "washworn",
       "camoSeed": 383,
-      "turretDeg": 41.7
+      "turretDeg": -2.6
     }
   ],
   "effects": [
     {
       "type": "explosion",
       "at": [
-        14,
-        46
+        -66,
+        -46
       ],
       "tMs": 2480,
       "params": {
@@ -97,14 +97,14 @@
   ],
   "camera": {
     "pos": [
-      -8,
+      -105,
       22,
-      -6
+      -94
     ],
     "lookAt": [
-      12,
+      -85,
       0,
-      38
+      -50
     ],
     "groundRel": true,
     "fov": 44,

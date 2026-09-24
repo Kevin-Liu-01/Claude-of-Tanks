@@ -6,10 +6,10 @@
       "id": "leo2a7v",
       "name": "hero",
       "pos": [
-        4,
-        52
+        -16,
+        -72.4
       ],
-      "facingDeg": 113,
+      "facingDeg": 137,
       "turretDeg": -18,
       "gunDeg": 1,
       "camo": "autumn",
@@ -19,10 +19,10 @@
       "id": "m2a2_bradley",
       "name": "wing",
       "pos": [
-        18,
-        70
+        2.6,
+        -92
       ],
-      "facingDeg": 251,
+      "facingDeg": 317,
       "turretDeg": 22,
       "gunDeg": 0.5,
       "camo": "factory",
@@ -33,8 +33,8 @@
     {
       "type": "dust",
       "at": [
-        7,
-        50
+        -13,
+        -74.4
       ],
       "tMs": 260,
       "params": {
@@ -56,8 +56,8 @@
     {
       "type": "explosion",
       "at": [
-        22,
-        62
+        2,
+        -62.400000000000006
       ],
       "tMs": 230,
       "params": {
@@ -67,14 +67,14 @@
   ],
   "camera": {
     "pos": [
-      -18,
-      4.2,
-      33
+      20,
+      3.4,
+      -98
     ],
     "lookAt": [
-      9,
+      -11,
       2.1,
-      57
+      -67.4
     ],
     "groundRel": true,
     "fov": 42,

@@ -6,23 +6,23 @@
       "id": "strv103",
       "name": "sniper",
       "pos": [
-        -114,
-        -53.1
+        -118,
+        -205.1
       ],
-      "facingDeg": 92,
+      "facingDeg": 34,
       "gunDeg": 0.5,
       "camo": "winter",
       "camoSeed": 92270,
-      "turretDeg": 5.6
+      "turretDeg": 2.9
     },
     {
       "id": "fv510_milan",
       "name": "victim",
       "pos": [
-        -84,
-        -57.1
+        -97,
+        -177.1
       ],
-      "facingDeg": 275,
+      "facingDeg": 217,
       "turretDeg": 20,
       "camo": "urbanblock",
       "camoSeed": 92271
@@ -50,17 +50,17 @@
   ],
   "camera": {
     "pos": [
-      -100.6,
+      -105.6,
       2.4,
-      -76.1
+      -263.1
     ],
     "lookAt": [
-      -99,
+      -107,
       2.6,
-      -55.1
+      -193.1
     ],
     "groundRel": true,
-    "fov": 46,
+    "fov": 30,
     "rollDeg": -1.5
   },
   "fxTime": 612,

@@ -25,6 +25,29 @@
 //              is stage-safe (micro-folds only); windbreak tree LINES.
 //   railyard — depot flat x -200..200, z -170..190 (flatten .93 — safest
 //              floor in the game); roads xs[-120,0,130] zs[-110,30,150].
+//
+// ROUND 48 REDESIGNS (2026-09-23) rebuilt three of these battlefields; the
+// shots on them were re-staged on 2026-09-24 (round 51) — the old anchors
+// (winter lake c(195,-120), autumn village c(10,40), steppe hamlet c(0,45))
+// no longer exist:
+//   winter  — a N-S chain of ten frozen ponds (c(-14,-60) r30, c(-16,-150)
+//             r38, c(38,70) r40 …, stage inside r-15); the terrace village on
+//             the WEST bank along the valley road (street x≈-80, z -130..40,
+//             crossroads with the pass road at (-80,-40), buildings 12 m
+//             either side of the road nodes); the Bystra crossing road runs
+//             east from the crossroads over the (z -30..32) neck.
+//   autumn  — the river runs SW→NE; the stone bridge is at (-20,-68) on the
+//             coach road (heading ≈137°/317°), the ford at (186,24) on the
+//             manor lane (≈338°); the walled town fills x -200..-20, z 20..190
+//             on the north-bank rise; oak orchard rows on the south-bank
+//             terrace: mid rows (-125,-212)→(-54,-174) / (-131,-197)→(-61,-159),
+//             east rows (40,-134)→(106,-90) / (35,-119)→(101,-75) — stage on
+//             the mid-line between a row pair.
+//   steppe  — the braided wadi crosses the middle (bed z≈-30..30, banks ≈±40 m
+//             beyond); the 12 m escarpment with the kurgan line at z≈220..236;
+//             the straight highway (x≈-100 at z -200) runs between poplar belts
+//             (west row x≈-119, east row x≈-87 at z -200) and carries the
+//             utility line; the plain z -160..-60 for x 0..200 is open grass.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -153,21 +176,22 @@ SCENES['34_desert_last_stand'] = {
 
 // 35 — ice breaker: DOUBLE kill on the frozen lake — two fireballs at
 // staggered ages, the whitewash 2A7V still mid-recoil between them. Lens
-// flat on the ice.
+// flat on the ice. Round 51: re-staged on the c(38,70) r40 pond (the old
+// lake at (195,-120) is a snowfield since the round-48 redesign).
 SCENES['35_winter_ice_breaker'] = {
   map: 'winter',
   seed: 6135,
   actors: [
-    { id: 'leo2a7v', name: 'shooter', pos: [176, -108], facingDeg: 122, aimAt: [206, -126], gunDeg: 0.5, camo: 'washworn', camoSeed: 351 },
-    { id: 't90a', name: 'kill1', pos: [206, -126], facingDeg: 300, turretDeg: 20, camo: 'factory' },
-    { id: 't90m', name: 'kill2', pos: [188, -142], facingDeg: 350, turretDeg: -35, camo: 'amoeba', camoSeed: 352 },
+    { id: 'leo2a7v', name: 'shooter', pos: [27, 87], facingDeg: 122, aimAt: [57, 69], gunDeg: 0.5, camo: 'washworn', camoSeed: 351 },
+    { id: 't90a', name: 'kill1', pos: [57, 69], facingDeg: 300, turretDeg: 20, camo: 'factory' },
+    { id: 't90m', name: 'kill2', pos: [39, 53], facingDeg: 350, turretDeg: -35, camo: 'amoeba', camoSeed: 352 },
   ],
   effects: [
     { type: 'tank_kill', actor: 'kill1', tMs: 60, params: { cause: 'ammorack', pop: true } },
     { type: 'tank_kill', actor: 'kill2', tMs: 230, params: { cause: 'fuel', pop: false } },
     { type: 'fire', actor: 'shooter', tMs: 610, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([163, 1.1, -132], [193, 2.4, -124], 30, 0),
+  camera: cam([14, 1.1, 63], [44, 2.4, 71], 30, 0),
   fxTime: 635,
   timeScale: 0,
 };
@@ -194,44 +218,48 @@ SCENES['36_winter_birch_ambush'] = {
 
 // 37 — road charge head-on: M1A2 coming straight at the lens down the west
 // road, snow wake, firing on the move, an incoming round bursting off the
-// verge beside it.
+// verge beside it. Round 51: the west road is now the terrace village street
+// (valley road x≈-82 at z -150); the lens sits at the street's south end.
 SCENES['37_winter_road_charge'] = {
   map: 'winter',
   seed: 6137,
   actors: [
-    { id: 'm1a2', name: 'charger', pos: [-20, -82], facingDeg: 187, turretDeg: 6, gunDeg: 0.5, camo: 'winter', camoSeed: 371 },
-    { id: 'leo2a5', name: 'wing', pos: [-26, -66], facingDeg: 194, turretDeg: -8, gunDeg: 1, camo: 'splinter', camoSeed: 372 },
+    { id: 'm1a2', name: 'charger', pos: [-82, -150], facingDeg: 187, turretDeg: 6, gunDeg: 0.5, camo: 'winter', camoSeed: 371 },
+    { id: 'leo2a5', name: 'wing', pos: [-85, -134], facingDeg: 194, turretDeg: -8, gunDeg: 1, camo: 'splinter', camoSeed: 372 },
   ],
   effects: [
-    { type: 'explosion', at: [-14, -88], tMs: 170, params: { size: 'small' } },
-    { type: 'dust', at: [-21, -74], tMs: 240, params: { count: 20, intensity: 1.6, dirDeg: 7 } },
-    { type: 'dust', at: [-27, -58], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 14 } },
+    { type: 'explosion', at: [-76, -156], tMs: 170, params: { size: 'small' } },
+    { type: 'dust', at: [-83, -142], tMs: 240, params: { count: 20, intensity: 1.6, dirDeg: 7 } },
+    { type: 'dust', at: [-88, -126], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 14 } },
     { type: 'fire', actor: 'charger', tMs: 475, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([-18.5, 1.3, -94], [-21.5, 2.3, -82], 40, 4),
+  camera: cam([-80.5, 1.3, -164], [-83, 2.3, -150], 40, 4),
   fxTime: 500,
   timeScale: 0,
 };
 
 // 38 — village hell: the farm crossing on fire — turret-popped 2A5 burning
 // in the snow, Leopard 2A6 and Leclerc converging on the whitewash T-90M
-// through the smoke, HE burst between them. Oblique drone.
+// through the smoke, HE burst between them. Oblique drone. Round 51: staged
+// on the terrace village crossroads (-80,-40) — the wreck blocks the street,
+// the 2A6 comes up the street from the south, the Leclerc in along the pass
+// road, the T-90M holds the street north of the crossing.
 SCENES['38_winter_village_hell'] = {
   map: 'winter',
   seed: 6138,
   actors: [
-    { id: 'leo2a5', name: 'pyre', pos: [8, 36], facingDeg: 130, state: 'turret-popped', stateAgeS: 200, burning: true },
-    { id: 'leo2a6', name: 'a1', pos: [-12, 60], facingDeg: 132, aimAt: [30, 32], gunDeg: 0.5, camo: 'winter', camoSeed: 381 },
-    { id: 'leclerc', name: 'a2', pos: [2, 14], facingDeg: 52, aimAt: [30, 32], gunDeg: 0.5, camo: 'digital', camoSeed: 382 },
-    { id: 't90m', name: 'foe', pos: [30, 32], facingDeg: 262, aimAt: [-12, 60], gunDeg: 1, camo: 'washworn', camoSeed: 383 },
+    { id: 'leo2a5', name: 'pyre', pos: [-80, -62], facingDeg: 130, state: 'turret-popped', stateAgeS: 200, burning: true },
+    { id: 'leo2a6', name: 'a1', pos: [-80, -96], facingDeg: 4, aimAt: [-78, -12], gunDeg: 0.5, camo: 'winter', camoSeed: 381 },
+    { id: 'leclerc', name: 'a2', pos: [-112, -40], facingDeg: 90, aimAt: [-78, -12], gunDeg: 0.5, camo: 'digital', camoSeed: 382 },
+    { id: 't90m', name: 'foe', pos: [-78, -12], facingDeg: 184, aimAt: [-80, -96], gunDeg: 1, camo: 'washworn', camoSeed: 383 },
   ],
   effects: [
-    { type: 'explosion', at: [14, 46], tMs: 2480, params: { size: 'medium' } },
+    { type: 'explosion', at: [-66, -46], tMs: 2480, params: { size: 'medium' } },
     { type: 'impact', actor: 'foe', tMs: 2790, params: { kind: 'pen', caliberMm: 120, hFrac: 0.6 } },
     { type: 'fire', actor: 'a2', tMs: 2872, params: { slot: 0, tracer: true } },
     { type: 'fire', actor: 'foe', tMs: 2882, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([-8, 22, -6], [12, 0, 38], 44, -6),
+  camera: cam([-105, 22, -94], [-85, 0, -50], 44, -6),
   fxTime: 2905,
   timeScale: 0,
 };
@@ -513,58 +541,62 @@ SCENES['51_coastal_seafront_duel'] = {
 
 // 52 — ford ambush: T-90M on the causeway taking a ricochet across the
 // turret while the 2A5 fires from the gold treeline; burst off the water
-// line behind.
+// line behind. Round 51: staged on the manor-lane ford (186,24) of the
+// redesigned Amberford, the lens on the lane's south approach.
 SCENES['52_autumn_ford_ambush'] = {
   map: 'autumn',
   seed: 6152,
   actors: [
-    { id: 't90m', name: 'forder', pos: [10, 8], facingDeg: 8, turretDeg: -58, gunDeg: 1, camo: 'autumn', camoSeed: 521 },
-    { id: 'leo2a5', name: 'ambusher', pos: [-30, 30], facingDeg: 128, aimAt: [10, 8], gunDeg: 0.5, camo: 'flecktarn', camoSeed: 522 },
+    { id: 't90m', name: 'forder', pos: [186, 24], facingDeg: 338, aimAt: [150, 60], gunDeg: 1, camo: 'autumn', camoSeed: 521 },
+    { id: 'leo2a5', name: 'ambusher', pos: [150, 60], facingDeg: 128, aimAt: [186, 24], gunDeg: 0.5, camo: 'flecktarn', camoSeed: 522 },
   ],
   effects: [
     { type: 'sparks', actor: 'forder', tMs: 530, params: { caliberMm: 120, hFrac: 0.75 } },
-    { type: 'explosion', at: [20, 2], tMs: 180, params: { size: 'small' } },
-    { type: 'dust', at: [9, 14], tMs: 320, params: { count: 10, intensity: 0.8, dirDeg: 190 } },
+    { type: 'explosion', at: [196, 44], tMs: 180, params: { size: 'small' } },
+    { type: 'dust', at: [184, 30], tMs: 320, params: { count: 10, intensity: 0.8, dirDeg: 340 } },
     { type: 'fire', actor: 'ambusher', tMs: 615, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([24, 1.6, -8], [0, 2.3, 18], 40, 3),
+  camera: cam([193, 1.6, 2], [183, 2.3, 28], 40, 3),
   fxTime: 640,
   timeScale: 0,
 };
 
 // 53 — gold inferno: AbramsX mid-ammo-rack among the orange broadleafs,
 // fire against fall color, the Leclerc rolling past close across the lens.
+// Round 51: staged down the mid-line of the south-bank mid-orchard rows.
 SCENES['53_autumn_gold_inferno'] = {
   map: 'autumn',
   seed: 6153,
   actors: [
-    { id: 'abramsx', name: 'victim', pos: [52, 58], facingDeg: 210, turretDeg: 15, camo: 'factory' },
-    { id: 'leclerc', name: 'passer', pos: [30, 40], facingDeg: 66, turretDeg: 40, gunDeg: 0.5, camo: 'autumn', camoSeed: 531 },
+    { id: 'abramsx', name: 'victim', pos: [-98, -181], facingDeg: 210, turretDeg: 15, camo: 'factory' },
+    { id: 'leclerc', name: 'passer', pos: [-116, -201], facingDeg: 66, turretDeg: 40, gunDeg: 0.5, camo: 'autumn', camoSeed: 531 },
   ],
   effects: [
     { type: 'tank_kill', actor: 'victim', tMs: 70, params: { cause: 'ammorack', pop: true } },
-    { type: 'dust', at: [33, 42], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 66 } },
+    { type: 'dust', at: [-113, -200], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 66 } },
     { type: 'fire', actor: 'passer', tMs: 590, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([18, 1.5, 30], [44, 2.6, 52], 44, -4),
+  camera: cam([-128, 1.5, -204], [-98, 2.6, -184], 44, -4),
   fxTime: 615,
   timeScale: 0,
 };
 
 // 54 — orchard stand: Challenger 1 firing between the farm fence lines,
 // HE burst walking in behind it, leaves and dust kicked over the yard.
+// Round 51: between the east orchard rows on the south-bank terrace (the
+// composition rotated +101° so the lens looks up the rows).
 SCENES['54_autumn_orchard_stand'] = {
   map: 'autumn',
   seed: 6154,
   actors: [
-    { id: 'challenger1', name: 'hero', pos: [-40, 30], facingDeg: 108, turretDeg: 0, gunDeg: 0.5, camo: 'dpm', camoSeed: 541 },
+    { id: 'challenger1', name: 'hero', pos: [70, -105], facingDeg: 209, turretDeg: 0, gunDeg: 0.5, camo: 'dpm', camoSeed: 541 },
   ],
   effects: [
-    { type: 'explosion', at: [-48, 38], tMs: 160, params: { size: 'medium' } },
-    { type: 'dust', at: [-44, 26], tMs: 300, params: { count: 12, intensity: 1.0, dirDeg: 108 } },
+    { type: 'explosion', at: [79, -99], tMs: 160, params: { size: 'medium' } },
+    { type: 'dust', at: [67, -100], tMs: 300, params: { count: 12, intensity: 1.0, dirDeg: 209 } },
     { type: 'firing_moment', actor: 'hero', tMs: 400, params: { ageS: 0.05 } },
   ],
-  camera: cam([-34.5, 1.25, 24.5], [-42.5, 2.4, 32], 52, 3),
+  camera: cam([63.6, 1.25, -109.3], [72.4, 2.4, -102.9], 52, 3),
   fxTime: 400,
   timeScale: 0,
 };
@@ -573,22 +605,24 @@ SCENES['54_autumn_orchard_stand'] = {
 
 // 55 — horizon charge: echelon of three tearing through the feather grass
 // head-on, dust wakes glowing, the lead gun firing over the lens. Camera
-// buried in the grass.
+// buried in the grass. Round 51: on the open plain south of the wadi (the
+// old stage is inside the highway's poplar belts now); the escarpment and
+// its kurgans are the horizon.
 SCENES['55_steppe_horizon_charge'] = {
   map: 'steppe',
   seed: 6155,
   actors: [
-    { id: 't90a', name: 'lead', pos: [-100, -60], facingDeg: 184, turretDeg: 5, gunDeg: -1, camo: 'amoeba', camoSeed: 551 },
-    { id: 't90m', name: 'w1', pos: [-86, -48], facingDeg: 190, turretDeg: -10, gunDeg: 1, camo: 'summer', camoSeed: 552 },
-    { id: 'leo2a6', name: 'w2', pos: [-116, -46], facingDeg: 178, turretDeg: 12, gunDeg: 1, camo: 'dpm', camoSeed: 553 },
+    { id: 't90a', name: 'lead', pos: [60, -88], facingDeg: 184, turretDeg: 5, gunDeg: -1, camo: 'amoeba', camoSeed: 551 },
+    { id: 't90m', name: 'w1', pos: [74, -76], facingDeg: 190, turretDeg: -10, gunDeg: 1, camo: 'summer', camoSeed: 552 },
+    { id: 'leo2a6', name: 'w2', pos: [44, -74], facingDeg: 178, turretDeg: 12, gunDeg: 1, camo: 'dpm', camoSeed: 553 },
   ],
   effects: [
-    { type: 'dust', at: [-100, -52], tMs: 260, params: { count: 20, intensity: 1.6, dirDeg: 4 } },
-    { type: 'dust', at: [-86, -40], tMs: 320, params: { count: 14, intensity: 1.2, dirDeg: 10 } },
-    { type: 'dust', at: [-116, -38], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 358 } },
+    { type: 'dust', at: [60, -80], tMs: 260, params: { count: 20, intensity: 1.6, dirDeg: 4 } },
+    { type: 'dust', at: [74, -68], tMs: 320, params: { count: 14, intensity: 1.2, dirDeg: 10 } },
+    { type: 'dust', at: [44, -66], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 358 } },
     { type: 'fire', actor: 'lead', tMs: 500, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([-101, 2.0, -84], [-100.5, 2.7, -58], 42, 3),
+  camera: cam([59, 2.0, -112], [59.5, 2.7, -86], 42, 3),
   fxTime: 525,
   timeScale: 0,
 };
@@ -617,19 +651,22 @@ SCENES['56_steppe_khutor_brawl'] = {
 
 // 57 — windbreak snipe: Leclerc's muzzle poking out of a planted tree
 // line, tracer streaking the full width of the frame to a fireball on the
-// open plain. Side-on telephoto.
+// open plain. Round 51: the sniper sits in the highway's west poplar belt
+// (x≈-118 at z -204), the victim on the highway's east verge 35 m up the
+// road; the lens is a long telephoto on the highway 70 m south, so the
+// poplar rows and the pole line compress behind the tracer.
 SCENES['57_steppe_windbreak_snipe'] = {
   map: 'steppe',
   seed: 6157,
   actors: [
-    { id: 'leclerc', name: 'sniper', pos: [-114, -52], facingDeg: 92, aimAt: [-84, -56], gunDeg: 0.5, camo: 'dpm', camoSeed: 571 },
-    { id: 't90m', name: 'victim', pos: [-84, -56], facingDeg: 275, turretDeg: 20, camo: 'factory' },
+    { id: 'leclerc', name: 'sniper', pos: [-118, -204], facingDeg: 34, aimAt: [-97, -176], gunDeg: 0.5, camo: 'dpm', camoSeed: 571 },
+    { id: 't90m', name: 'victim', pos: [-97, -176], facingDeg: 217, turretDeg: 20, camo: 'factory' },
   ],
   effects: [
     { type: 'tank_kill', actor: 'victim', tMs: 112, params: { cause: 'ammorack', pop: true } },
     { type: 'fire', actor: 'sniper', tMs: 588, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([-99, 2.4, -75], [-99, 2.6, -54], 46, 0),
+  camera: cam([-104, 2.4, -262], [-107, 2.6, -192], 30, 0),
   fxTime: 612,
   timeScale: 0,
 };

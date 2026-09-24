@@ -6,10 +6,10 @@
       "id": "t90a_vladimir",
       "name": "hero",
       "pos": [
-        2,
-        44
+        20,
+        214
       ],
-      "facingDeg": 130,
+      "facingDeg": 165,
       "turretDeg": -9,
       "gunDeg": 1,
       "camo": "amoeba",
@@ -19,8 +19,8 @@
       "id": "pl01_105",
       "name": "wing",
       "pos": [
-        16,
-        62
+        34,
+        232
       ],
       "facingDeg": 262,
       "turretDeg": 22,
@@ -33,8 +33,8 @@
     {
       "type": "dust",
       "at": [
-        5,
-        42
+        23,
+        212
       ],
       "tMs": 260,
       "params": {
@@ -56,14 +56,14 @@
   ],
   "camera": {
     "pos": [
-      -24,
+      32,
       4,
-      24
+      176
     ],
     "lookAt": [
-      7,
+      25,
       2.1,
-      49
+      219
     ],
     "groundRel": true,
     "fov": 44,

@@ -26,6 +26,11 @@
 //   winter  — frozen lake c(195,-120) r~85 (stage well inside r-15); village
 //             crossroads ≈ (17,48); N-S road at x≈-20, z -190..0; scrub band
 //             west of x≈-100; power poles line the roads.
+//             ROUND 48 (2026-09-23) redesigned Frosthollow: the lake and that
+//             village are gone — see gen-scenes2.mjs for the new anchors
+//             (pond chain, west-bank terrace village, crossroads (-80,-40)).
+//             Only 10_winter_ram_leo2a6 was re-staged (round 51); the other
+//             winter scenes here are the retired first production.
 //   urban   — street grid xs[-112,-40,36,112] zs[-96,-16,60,136]; keep tanks
 //             AND cameras within ~±4 m of a carriageway centerline or at
 //             intersections; blocks are walled courtyards (cameras inside
@@ -270,16 +275,19 @@ SCENES['10_winter_ram_leo2a6'] = {
   map: 'winter',
   seed: 5110,
   actors: [
-    { id: 'leo2a6', name: 'rammer', pos: [76, -44], facingDeg: 65, turretDeg: 0, gunDeg: -2, camo: 'winter', camoSeed: 15 },
-    { id: 'challenger1', name: 'victim', pos: [81.4, -41.6], facingDeg: 15, turretDeg: 100, gunDeg: 3, camo: 'factory' },
+    // round 51: re-staged on the valley floor south of the Bystra crossing
+    // road (the old stage is a birch slope on the redesigned map), the lens
+    // north of the pair looking back over the road toward the north village
+    { id: 'leo2a6', name: 'rammer', pos: [62, -18], facingDeg: 245, turretDeg: 0, gunDeg: -2, camo: 'winter', camoSeed: 15 },
+    { id: 'challenger1', name: 'victim', pos: [56.6, -20.4], facingDeg: 195, turretDeg: 100, gunDeg: 3, camo: 'factory' },
   ],
   effects: [
     { type: 'detrack', actor: 'victim', tMs: 120, params: { side: 'L' } },
-    { type: 'dust', at: [79, -43], tMs: 180, params: { count: 26, intensity: 1.8, dirDeg: 65 } },
-    { type: 'dust', at: [72, -48], tMs: 200, params: { count: 12, intensity: 1.1, dirDeg: 245 } },
+    { type: 'dust', at: [59, -19], tMs: 180, params: { count: 26, intensity: 1.8, dirDeg: 245 } },
+    { type: 'dust', at: [66, -14], tMs: 200, params: { count: 12, intensity: 1.1, dirDeg: 65 } },
     { type: 'impact', actor: 'victim', tMs: 330, params: { kind: 'nonpen', caliberMm: 30, hFrac: 0.35 } },
   ],
-  camera: cam([75, 1.1, -33.5], [79.5, 1.5, -42.8], 48),
+  camera: cam([63, 1.1, -28.5], [58.5, 1.5, -19.2], 48),
   fxTime: 460,
   timeScale: 0,
 };

@@ -6,10 +6,10 @@
       "id": "leo2a6",
       "name": "rammer",
       "pos": [
-        76,
-        -44
+        62,
+        -18
       ],
-      "facingDeg": 65,
+      "facingDeg": 245,
       "turretDeg": 0,
       "gunDeg": -2,
       "camo": "winter",
@@ -19,10 +19,10 @@
       "id": "challenger1",
       "name": "victim",
       "pos": [
-        81.4,
-        -41.6
+        56.6,
+        -20.4
       ],
-      "facingDeg": 15,
+      "facingDeg": 195,
       "turretDeg": 100,
       "gunDeg": 3,
       "camo": "factory"
@@ -40,27 +40,27 @@
     {
       "type": "dust",
       "at": [
-        79,
-        -43
+        59,
+        -19
       ],
       "tMs": 180,
       "params": {
         "count": 26,
         "intensity": 1.8,
-        "dirDeg": 65
+        "dirDeg": 245
       }
     },
     {
       "type": "dust",
       "at": [
-        72,
-        -48
+        66,
+        -14
       ],
       "tMs": 200,
       "params": {
         "count": 12,
         "intensity": 1.1,
-        "dirDeg": 245
+        "dirDeg": 65
       }
     },
     {
@@ -76,14 +76,14 @@
   ],
   "camera": {
     "pos": [
-      75,
+      63,
       1.1,
-      -33.5
+      -28.5
     ],
     "lookAt": [
-      79.5,
+      58.5,
       1.5,
-      -42.8
+      -19.2
     ],
     "groundRel": true,
     "fov": 48

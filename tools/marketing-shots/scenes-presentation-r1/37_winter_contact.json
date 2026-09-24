@@ -6,10 +6,10 @@
       "id": "strv122",
       "name": "hero",
       "pos": [
-        12,
-        42
+        -84,
+        -70
       ],
-      "facingDeg": 62,
+      "facingDeg": 200,
       "turretDeg": 0,
       "gunDeg": 1,
       "camo": "winter",
@@ -19,8 +19,8 @@
       "id": "mbt70",
       "name": "wing",
       "pos": [
-        26,
-        60
+        -70,
+        -52
       ],
       "facingDeg": 218,
       "turretDeg": 22,
@@ -33,8 +33,8 @@
     {
       "type": "dust",
       "at": [
-        15,
-        40
+        -81,
+        -72
       ],
       "tMs": 260,
       "params": {
@@ -56,8 +56,8 @@
     {
       "type": "explosion",
       "at": [
-        30,
-        52
+        -66,
+        -60
       ],
       "tMs": 230,
       "params": {
@@ -67,14 +67,14 @@
   ],
   "camera": {
     "pos": [
-      -11,
+      -104,
       4.5,
-      21
+      -96
     ],
     "lookAt": [
-      17,
+      -79,
       2.1,
-      47
+      -65
     ],
     "groundRel": true,
     "fov": 44,

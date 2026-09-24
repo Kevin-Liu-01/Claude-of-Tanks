@@ -6,27 +6,27 @@
       "id": "m2a2_bradley",
       "name": "forder",
       "pos": [
-        10,
-        6.9
+        186,
+        22.9
       ],
-      "facingDeg": 8,
-      "turretDeg": -58,
+      "facingDeg": 338,
       "gunDeg": 1,
       "camo": "splinter",
-      "camoSeed": 92220
+      "camoSeed": 92220,
+      "turretDeg": -23
     },
     {
       "id": "kf51b",
       "name": "ambusher",
       "pos": [
-        -30,
-        28.9
+        150,
+        58.9
       ],
       "facingDeg": 128,
       "gunDeg": 0.5,
       "camo": "factory",
       "camoSeed": 92221,
-      "turretDeg": -9.2
+      "turretDeg": 7
     }
   ],
   "effects": [
@@ -42,8 +42,8 @@
     {
       "type": "explosion",
       "at": [
-        20,
-        2
+        196,
+        44
       ],
       "tMs": 180,
       "params": {
@@ -53,14 +53,14 @@
     {
       "type": "dust",
       "at": [
-        9,
-        14
+        184,
+        30
       ],
       "tMs": 320,
       "params": {
         "count": 10,
         "intensity": 0.8,
-        "dirDeg": 190
+        "dirDeg": 340
       }
     },
     {
@@ -75,14 +75,14 @@
   ],
   "camera": {
     "pos": [
-      24,
+      193,
       1.6,
-      -7.9
+      2.0999999999999996
     ],
     "lookAt": [
-      0,
+      183,
       2.3,
-      16.9
+      26.9
     ],
     "groundRel": true,
     "fov": 40,

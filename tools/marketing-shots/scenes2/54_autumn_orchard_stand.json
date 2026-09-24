@@ -6,10 +6,10 @@
       "id": "challenger1",
       "name": "hero",
       "pos": [
-        -40,
-        30
+        70,
+        -105
       ],
-      "facingDeg": 108,
+      "facingDeg": 209,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "dpm",
@@ -20,8 +20,8 @@
     {
       "type": "explosion",
       "at": [
-        -48,
-        38
+        79,
+        -99
       ],
       "tMs": 160,
       "params": {
@@ -31,14 +31,14 @@
     {
       "type": "dust",
       "at": [
-        -44,
-        26
+        67,
+        -100
       ],
       "tMs": 300,
       "params": {
         "count": 12,
         "intensity": 1,
-        "dirDeg": 108
+        "dirDeg": 209
       }
     },
     {
@@ -52,14 +52,14 @@
   ],
   "camera": {
     "pos": [
-      -34.5,
+      63.6,
       1.25,
-      24.5
+      -109.3
     ],
     "lookAt": [
-      -42.5,
+      72.4,
       2.4,
-      32
+      -102.9
     ],
     "groundRel": true,
     "fov": 52,

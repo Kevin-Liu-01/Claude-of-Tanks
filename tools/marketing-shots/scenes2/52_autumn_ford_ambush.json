@@ -6,27 +6,27 @@
       "id": "t90m",
       "name": "forder",
       "pos": [
-        10,
-        8
+        186,
+        24
       ],
-      "facingDeg": 8,
-      "turretDeg": -58,
+      "facingDeg": 338,
       "gunDeg": 1,
       "camo": "autumn",
-      "camoSeed": 521
+      "camoSeed": 521,
+      "turretDeg": -23
     },
     {
       "id": "leo2a5",
       "name": "ambusher",
       "pos": [
-        -30,
-        30
+        150,
+        60
       ],
       "facingDeg": 128,
       "gunDeg": 0.5,
       "camo": "flecktarn",
       "camoSeed": 522,
-      "turretDeg": -9.2
+      "turretDeg": 7
     }
   ],
   "effects": [
@@ -42,8 +42,8 @@
     {
       "type": "explosion",
       "at": [
-        20,
-        2
+        196,
+        44
       ],
       "tMs": 180,
       "params": {
@@ -53,14 +53,14 @@
     {
       "type": "dust",
       "at": [
-        9,
-        14
+        184,
+        30
       ],
       "tMs": 320,
       "params": {
         "count": 10,
         "intensity": 0.8,
-        "dirDeg": 190
+        "dirDeg": 340
       }
     },
     {
@@ -75,14 +75,14 @@
   ],
   "camera": {
     "pos": [
-      24,
+      193,
       1.6,
-      -8
+      2
     ],
     "lookAt": [
-      0,
+      183,
       2.3,
-      18
+      28
     ],
     "groundRel": true,
     "fov": 40,
