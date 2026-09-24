@@ -102,34 +102,24 @@ for (const e of Object.values(WATER_DRIVE_ENTRIES)) assert.ok([0, Math.PI / 2].i
 // ------------------------------------------------------------------ the view table (pinned)
 // owner 2026-09-23: the table is the acceptance record of rounds 35–47; re-pin count and digest with a dated note.
 // round 56 (2026-09-24): three low strand views (4 m over the wrack band, along the beach) — 31 → 34, digest re-pinned
-assert.equal(MAP_VIEW_PROBE_VIEWS.length, 34);
+// round 57 (2026-09-24, the rail spur kit): four more — Tarkhan's station siding at gameplay height from the west stub
+// and at the east-track crossing, a bird view over the station, Cinder Junction's siding fan low; 34 → 38.
+assert.equal(MAP_VIEW_PROBE_VIEWS.length, 38);
 assert.equal(createHash('sha256').update(JSON.stringify(MAP_VIEW_PROBE_VIEWS)).digest('hex'),
-  '68ef482b11df31052934dccbbaf2e4c86a8119637df858dd7e5fc8bfaa0fcb49', 'view table digest (2026-09-24, round 56 strand views)');
+  '0dae2ea9e82dbf14da695177dde809a07f20b734624f9480f70158696d25e60d', 'view table digest (2026-09-24, round 56 strand views + round 57 spur views)');
 assert.ok(Object.isFrozen(MAP_VIEW_PROBE_VIEWS));
-assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 34, 'unique names');
+assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 38, 'unique names');
 for (const v of MAP_VIEW_PROBE_VIEWS) {
   assert.ok(Object.isFrozen(v) && Object.isFrozen(v.cam) && Object.isFrozen(v.at), v.name);
   assert.match(v.name, /^[a-z0-9]+(?:-[a-z0-9.]+)*$/, `${v.name}: kebab file-name token`);
-  assert.ok([35, 36, 40, 47, 56].includes(v.round), `${v.name}: round`);
-// 2026-09-24 (round 57, the rail spur kit): four views added — Tarkhan's station siding at gameplay height from the
-// west stub and at the east-track crossing, a bird view over the station, Cinder Junction's siding fan low; 31 → 35.
-assert.equal(MAP_VIEW_PROBE_VIEWS.length, 35);
-assert.equal(createHash('sha256').update(JSON.stringify(MAP_VIEW_PROBE_VIEWS)).digest('hex'),
-  'a784a8b8641facff392edf4c5ffa6f8ce7041d79e731e3db212923e22f01f08a', 'view table digest (2026-09-24)');
-assert.ok(Object.isFrozen(MAP_VIEW_PROBE_VIEWS));
-assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 35, 'unique names');
-for (const v of MAP_VIEW_PROBE_VIEWS) {
-  assert.ok(Object.isFrozen(v) && Object.isFrozen(v.cam) && Object.isFrozen(v.at), v.name);
-  assert.match(v.name, /^[a-z0-9]+(?:-[a-z0-9.]+)*$/, `${v.name}: kebab file-name token`);
-  assert.ok([35, 36, 40, 47, 57].includes(v.round), `${v.name}: round`);
+  assert.ok([35, 36, 40, 47, 56, 57].includes(v.round), `${v.name}: round`);
   for (const p of [v.cam, v.at]) { assert.equal(p.length, 3); for (const n of p) assert.ok(Number.isFinite(n), `${v.name}: finite`); }
   assert.ok(Math.abs(v.cam[0]) <= 560 && Math.abs(v.cam[2]) <= 560, `${v.name}: camera near or inside the square`);
 }
 assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 47).map((v) => v.name), ['bird-e-edge', 'bird-w-edge', 'bird-e-edge-n', 'shore-e-oblique', 'shore-w-oblique'], 'round-47 edge views');
 assert.deepEqual(selectMapViews(['canyon-in', 'sw-corner-close']).map((v) => v.name), ['sw-corner-close', 'canyon-in']);
 assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 56).map((v) => v.name), ['strand-e-low', 'strand-fjord-low', 'strand-w-low'], 'round-56 strand views');
-assert.equal(selectMapViews(null).length, 34); assert.equal(selectMapViews([]).length, 34);
-assert.equal(selectMapViews(null).length, 35); assert.equal(selectMapViews([]).length, 35);
+assert.equal(selectMapViews(null).length, 38); assert.equal(selectMapViews([]).length, 38);
 assert.throws(() => selectMapViews(['sw-corner-close', 'x', 'y']), /Unknown view\(s\): x, y/);
 assert.deepEqual(MAP_VIEW_PROBE_VIEWPORT, { width: 1600, height: 900 }); assert.equal(MAP_VIEW_PROBE_FOV, 55); assert.equal(MAP_VIEW_PROBE_HALF, MAP_PROBE_HEIGHT_CLAMP);
 
@@ -219,4 +209,3 @@ const metricsHelp = execFileSync(process.execPath, ['tools/map-metrics.mjs', '--
 assert.match(metricsHelp, /skyline .*stripe .*boxes/s);
 
 console.log(`map-probe-runtime.selftest: ${TOOLS.length} tools parse and --help without a network; ${MAP_VIEW_PROBE_VIEWS.length}-view table pinned (68ef482b…); ground and hull-relative pose math exact; screen-right = (−fz, fx) against three.js lookAt (looking north, west is right); receipt fields recorded`);
-console.log(`map-probe-runtime.selftest: ${TOOLS.length} tools parse and --help without a network; ${MAP_VIEW_PROBE_VIEWS.length}-view table pinned (a784a8b8…); ground and hull-relative pose math exact; screen-right = (−fz, fx) against three.js lookAt (looking north, west is right); receipt fields recorded`);

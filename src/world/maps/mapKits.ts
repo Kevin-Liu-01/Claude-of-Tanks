@@ -31,6 +31,7 @@ import {
   dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
+import {
   RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railRunLength, resampleRailPath, type RailSpurConfig,
 } from '../railSpurs.ts';
 
@@ -70,6 +71,8 @@ interface DressingLayout {
   roads: Array<Array<readonly [number, number]>>;
   village: { x0: number; z0: number; z1: number };
   spawns?: { player: { x: number; z: number }; enemies: Array<{ x: number; z: number }> };
+  /** Round 57: authored rail spurs (terrain.railSpurs, carried by createLayout); the kit lays their track. */
+  railSpurs?: readonly RailSpurConfig[];
 }
 
 /** Round 56: what the kits laid on a shore, so the wrack line keeps off it (boats, jetties) and gathers its larger
@@ -78,8 +81,6 @@ interface ShoreLedger {
   keepOut: StrandKeepOut[];
   jetties: StrandJetty[];
   landings: StrandLanding[];
-  /** Round 57: authored rail spurs (terrain.railSpurs, carried by createLayout); the kit lays their track. */
-  railSpurs?: readonly RailSpurConfig[];
 }
 
 interface GroundingReceipt {
