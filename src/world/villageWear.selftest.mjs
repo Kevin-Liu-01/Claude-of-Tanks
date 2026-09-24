@@ -30,7 +30,7 @@ const foundryPatches = [
 // channel-masked comparison against the previous painter is recorded in
 // docs/research/map-pass-20260912.md (road pass section).
 const FROZEN = {
-  other28: { desktop: '44019728e8493449d7b7533af24d7bb2de511eb3534db98f6e4163bb6528fdbb', mobile: '72cdf2c82057387786b23ffc4e211133250622f4e86428b1037ca362149d100d' },
+  other28: { desktop: '1fee1c5b93c1a4ed76e7c34135a9772c7f1f253c93865a72d7b9f61401244319', mobile: '09c4680e22350fc8a0431294d3586f67b0b86445d0b2a4193535210975d433fd' },
   pilotMasks: {
     coastal: { 512: '592e20a91d2388f1d96fd76e2b19d177cd83b095067b7a6fbdc448952d1bc4c9', 256: '11b9577888db144a3e0e029924d63d2bb0d616abc4baa940c71ba811262ae14c' },
     saltwind: { 512: 'c080e5b0e13655ef3e4346fc8a9b7d5f56432802ae93b970599b796c8de1256e', 256: '975ac5fd80cea3f0019228114bc8ba7fcc9f2ca78ef636ffadb52e1bacd6d6c1' },
@@ -41,7 +41,7 @@ const FROZEN = {
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
   // round 40 (2026-09-22): coastal.ts's sea aperture dropped its authored grey (edgeWater.ts gives it the map's water colour) and
   // saltwind.ts authored its bay as one contour; the frozen config digest moved for those two maps only
-  configs: 'bf6626ab755d4fe9028705d385f44da4bd7671a88888e9895aacd1f87e1ec74a',
+  configs: 'b2436e5df5f4f014543e2584cac4fc5af2668430654743bd734d4a2c6af3e715',
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 

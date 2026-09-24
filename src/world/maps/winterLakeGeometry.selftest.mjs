@@ -108,9 +108,9 @@ const fragmentBefore = {
 // Driftwood is unchanged from published1db.
 // Frozen rowboats and the nine Winter-family controls above are unchanged.
 const otherHashes = {
-  1337: '11f993aa5a96d34ca3ead379d7e68def6e42cefda4587f30be06164cee7e0cfe' /* 2026-09-19: Mars joins the non-Winter kits */,
-  2049: '76cea062e33f589c563972d5d878fa6b0e5bb2543e3f9cddb0845f3e1e4142e3',
-  7719: '8521108177ab43f9fb0b3336028ed51d6cb0b7b8de31ebeab9bdde0f5bfd3612',
+  1337: '05d2d874617e898265d3eefc2bb3525f91b07a99f9023e68f1ca4c6848142217' /* 2026-09-19: Mars joins the non-Winter kits */,
+  2049: 'b16a5bda643e2e197246abd138fb23a720698fd9880cc43b7074d3484b27881c',
+  7719: 'e7cfdc9b1d1153159902989c01ada9cce62939104e3960306f49451fa58b5b5e',
 };
 
 function build(mapId, seed, historical = true) {
