@@ -26,7 +26,7 @@ the fictional map reproduces a particular real-world location.
 | winter | Carpathian / Tatra winter valley (round 48, 2026-09-23): a beaded frozen river down a flat kotlina floor, a linear timber street village on the west river terrace with a sawmill yard, a steep two-armed ridge with a saddle pass on the west flank, rolling moraine knolls on the east; the alpine ring stays a distant highland, not a wall everywhere. |
 | urban | A town below one dominant distant escarpment; restrained ground slopes around streets. |
 | coastal | Open sea and unequal dune/bluff headlands; preserve its working eastern aperture. |
-| autumn | Cultivated river valley with tributary hollows and unequal wooded interfluves. |
+| autumn | Norman / English river-ford market town (round 48): a SW→NE river in a sculpted valley crossed by a stone bridge and a ford, the walled town on the north-bank rise, weir and mill, orchards and hedged fields, the wooded escarpment, the manor park and lake. |
 | steppe | Open skyline, isolated distant rises and long shallow folds through grassland. |
 | railyard | Graded brownfield with low distant uplands and broad drainage grades. |
 | frontier | Farming basin with branching ridges; carry the playable watershed language into the outland. |

@@ -99,7 +99,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Map | Primary composition and next visual emphasis |
 |---|---|
 | Verdant Fields | Retain the newer low pastoral horizon per the user's latest reversal; keep road, spawn and loading repairs independent of another outland redesign |
-| Amberford | Autumn ford, riparian growth and hillside farms; warm leaf litter against cool water |
+| Amberford | Norman / English river-ford market town (round 48): the river SW→NE through a sculpted valley, the stone bridge and the ford, the walled town on the north-bank rise, weir and mill, orchards and hedged fields, the wooded escarpment, the manor park and lake; warm leaf litter against cool water |
 | Tarkhan Steppe | Open golden folds, sparse windbreaks and distant farms; avoid enclosing mountains |
 | Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands |
 | Tidegate Polders | Drainage channels, straight human-made levees, field headlands and pump yards; very low horizon |
@@ -893,6 +893,85 @@ shard budget (+10 %), the garage terrain excerpt (`garage:terrain:update`) and `
 (FROZEN configs) and mangroveWaterPalette (other29). playableRelief's Titan byte pin fails on `r47-combined` before this
 branch (round 47 rewrote `titanGorge.ts`).
 
+### Amberford redesign — 2026-09-23 (round 48)
+
+**Owner:** "Frosthollow, Amberford and Tarkhan Steppe look good and have unique colour schemes but are straight rips of
+Verdant Field, exact same maps — need redesign." The survey confirmed it for Amberford: `maps/autumn.ts` re-stated
+`DEFAULT_TERRAIN`'s village rect byte for byte, ran the procedural `roads: 'country'` cross, copied Verdant's three
+`tacticalBeats` anchors and eleven of its fourteen `wallRuns`, and nudged Verdant's five landforms by 2–8 m; only the
+river chain (`createMarshChannel`) and the dressing were its own.
+
+**What changed (the identity stays).** The autumn palette, sky, species, prop tones, minimap colours, river material,
+id, name, blurb and pad count are byte-identical; the battlefield underneath is new, with a Norman / English river-ford
+market town as the real-world reference:
+
+- **The river** runs south-west → north-east through a sculpted valley. The single graded water plane
+  `liquidMarshSurface` fits (median level, ≤ 1 % fall) cannot follow a hilly field, so the valley floor is authored to
+  it: `hillScale` 1.05 → 0.8 and eleven cut / fill landforms with `wetScale: 1` (hills the river cuts become shallow
+  gorges, hollows are filled to a terrace) — measured on the marsh-less field (`$SP/r48a/design.mjs valley`). Result:
+  the plane falls +1.6 m (SW) → −3.1 m (NE), the highest bank within 1.3 r is 1.44 m (was 2.25 m on the first cut,
+  with 6 m levees where the plane stood above the fields), the centreline is ≥ 0.95 wet at all 265 samples outside the
+  crossings, and `liquidMarshSurface`'s worst Amberford bank grade is 0.42 (limit 0.75).
+- **Two authored crossings**, dry by construction (terrain.ts zeroes the water mask within 14 m of a lane and grades the
+  causeway): the **bridge narrows** (r 18) under the coach road — deck 0.9 m above the water — and the **ford**
+  (r 17, dip 1.5) under the manor lane — the lane dips to 0.7 m above the water over a gravel reach lowered by a lane-
+  aligned basin. `navigationWaterPolicy: 'avoid-liquid'` makes bots cross at the bridge and the ford (Reservoir's
+  policy); `matchPlacement` proves a dry bot route between every deployment and objective in all five modes.
+- **Five authored lanes** (`roads.paths` + a `ROAD_ENDPOINT_INTENTS` row): the coach road edge to edge over the bridge
+  and through the market square, the manor lane over the ford to the north-east edge, the mill lane west, the sunken
+  lane along the south bank between the orchards, the north lane between the hedged fields to the manor gates. One
+  connected network; the coach road carries 45 stations for the utility line.
+- **The walled market town** on the north-bank rise (own 180 × 170 m rect, `settlementScale: 1` so the settlement keeps
+  its knoll, `relief 0.18`): church, inn, Norman tower keep, market hall and rows, shops, granaries and cottages
+  (`blockFill`), the market cross on the crossroads square, a town wall whose gates open where the three streets pass.
+  The town stands 1.3–7.6 m (mean 5.0) above the 1.1 m bridge bank.
+- **The fields**: 28 tree belts (four ranks of oak / birch / aspen on the east escarpment ridge, hedgerows 14 m either
+  side of the sunken lane and the north lane, a poplar avenue up the manor drive), six orchard rows of rehoused lone oaks
+  on the south-bank terrace, dry-stone cross walls from the lanes to 42 m off the bank, the manor park wall and the mill
+  yard; `clusterCount` 68 → 50, `loneCount` 150 → 130 against the authored trees.
+- **The manor park and lake** (`lakes` + `softLakes`, surface −6.1 m, banks 0.04–2.65 m at 1.25 r) north of the north
+  lane; the headquarters camp on the rise above it.
+- **The river kit** (`mapKits.ts dressAmberfordRiver`, Delta keeps the round-1 kit byte for byte): an intact stone bridge
+  at the coach road's crossing — spandrel walls with three arch recesses, cutwaters and wing walls at the water's edge
+  (11.5 m off the centreline, where the causeway's shoulder has dropped below the deck) under the map's destructible
+  parapet `wallRuns` — ford posts on the wading lanes, and on the reach six links above the bridge a weir sill with end
+  piers and a water mill (stone body, tiled gable, wheel and axle in a stone leat) that publishes a convex footprint like
+  the coal heaps. Everything is derived from the layout; no map coordinate lives in the kit.
+- **Pads**: player on the south-east upland in Reservoir's column formation (the upland is uneven beyond the pad), an
+  enemy arc north of the town; every pad flat-scanned on the full field — minNy 0.85–0.97, relief 3.2–6.3 m over 22 m,
+  inside the shipped range (Verdant 0.82–0.94 / 3.3–6.2, Frontier's player pad 0.62 / 13.6).
+- **The tactical-map plate** is re-baked (`tools/bake-minimap-assets.mjs --maps autumn`); the shared
+  `MINIMAP_RASTER_REVISION` is left for one bump per round.
+
+**Verified (`.qa-dev/wall-probe.mjs`, A = main-check, B = this lane, same cameras / seed / tier; `$SP/r48a/cap/`).**
+bird-n / bird-w / centre-far / sky-w / canyon-in plus five gameplay-height views authored for the redesign — the bridge
+from the south bank (`amber-bridge`), the ford from the manor lane (`amber-ford`), the coach road from the south gate to
+the square (`amber-square`), the mill reach from the sunken lane (`amber-mill`), the valley from the escarpment
+(`amber-valley`) — and two close bridge views (`amber-bridge-side`, `amber-bridge-deck`, tags b / b2). Skyline metric
+(ground / sky luma, unchanged horizon treatment): sky-w 0.84 → 0.90, centre-far 0.88 → 0.81, bird-n 0.98 → 0.98.
+Constraint check (`$SP/r48a/analyze.mjs check`): 5 roads / 1 component; 59 river stations, spacing within
+`createMarshChannel`'s 1.15 r, 0 wet gaps, 16 dry crossing samples, wet edge ≥ 43 m from the border (no derived sea
+opening); both crossings dry within 14 m of the lane, soft water beyond 18 m.
+
+**Receipts.** `environmentExpansion` pins the two crossings with a tangent-based widening check (the round-1 check
+assumed a W→E river), `botNavigationWater` lists Amberford beside Reservoir, `badlandsRelief` excludes `autumn.ts` from
+the historical byte projection (a redesign by owner decision, like Mars), `railCoalStockpiles` names the mill house as
+the one other kit footprint. Green: `mapQuality`, `mapIntegration`, `randomBattleMaps`, `roadDistanceField`,
+`roadMaskProfile`, `fieldTrenchTerrain`, `authoredChannels`, `autumnHorizonSeam` (Amberford's own ring seam seats on
+the new edge heights: max 2.05 m at three seeds), `horizonAutumnGround`, `liquidMarshSurface`, `matchPlacement`,
+`minimapObjectives`, `formationPlacement`, `riverReedContact`, `riverLandings`, `beachedBoat`, `railWashout`,
+`autumnHeadlands`, `cropBiomeIdentity`, the autumn palette / leaf / crown / branchlet / shrub receipts,
+`sourcedTextures`, `shallowWater`, `loadingScreens`, typecheck. Moved on shared autumn digests — integrator re-pin:
+`villageWear` (FROZEN configs), `mangroveWaterPalette` (other29), `terrainStreaming` (autumn geometry golden),
+`shoreDirtMask` (autumn RGBA control), `winterLakeGeometry` (28-map non-Winter kit digest).
+
+**Still open.** A true arched span with water under the deck needs the road plane to exempt the crossing from the
+14–18 m dry band (`terrain.ts`, a round-47 file — not this lane's scope); the arch openings are box recesses, not arcs.
+The garage card and featured shots (`public/maps/autumn.webp`, thumbs, `presentation-r1` autumn shots) still show the
+round-1 valley and need the 4K shot pipeline. The manor has no house builder (the park is wall, avenue, lake and the
+camp); a stone town wall is field-wall height. `tools/bake-minimap-assets.mjs` serves on 7600 + pid % 200 — it was run
+under the probe mutex with its own capture lock.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -981,6 +1060,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 47 | Shorelines past the border: the bay contours rule the outland (rim lift yields to water, baked contour for the terrain material and the sheet apron, per-vertex ring weight, sector opens where each bay's reach ends) | Reservoir-style A/B bird and oblique captures on Coastal, Fjord, Saltwind: the beaches and bay lobes continue past the red line as their own curves; edgeWater/shallowWater/terrain receipts |
 | 48 | Probes and metrics as tools: the QA probes that verified rounds 41–47 committed from `.qa-dev/` as `tools/map-view-probe.mjs` (the wall probe; its view table in `tools/map-view-probe-views.mjs`), `tools/terrain-layer-flag-probe.mjs`, `tools/terrain-uniform-iso-probe.mjs`, `tools/world-layer-isolation-probe.mjs`, `tools/salvo-indicator-probe.mjs` and `tools/water-drive-probe.mjs` over one runtime (`tools/map-probe-runtime.mjs`), and the three Python/PIL metrics ported to `tools/map-metrics.mjs` (skyline, stripe, boxes) — see "Probes and metrics as tools" below | `tools/map-probe-runtime.selftest.mjs` (arguments, the pinned 31-view table, pose math, the mirrored-frame note, `--help` without a network) and `tools/map-metrics.selftest.mjs` (synthetic frames of known luma / wavelength / heading); the Node metrics reproduce the PIL scripts on the round-43 and round-47a frames (skyline and boxes to every printed digit, stripe wavelength within 0.07 %); one map/view per tool re-captured on this tree |
 | 48 | Frosthollow redesign (owner: the Verdant clone maps): a Carpathian valley — ten-pond frozen river, terrace street village with a sawmill yard, two-armed ridge and saddle pass with a switchback, moraine flank, seven authored roads, new strongpoints, walls, belts, clearings, pads; the round-44 snow albedo / exposure re-grade | wall-probe A/B (six brief views + village-street, river-crossing, pass-switchback): skyline sky-w 0.94 → 0.88, sky-s 0.92 → 0.84, snow median 208 → 198; layout scan (pads, beats, candidates, pole stations, pond lips); mapQuality + road + winterLakeGeometry receipts, recaptured collision shard |
+| 48 | Amberford redesign: a Norman / English river-ford market town replaces the Verdant clone — SW→NE river in a sculpted valley (hillScale 0.8, eleven cut/fill landforms under one graded water plane), a stone bridge and a ford as the only crossings (avoid-liquid bots), five authored lanes, the walled town on the north-bank rise, orchards and hedgerows, the escarpment woods, the manor park and lake, weir and water mill in the river kit, re-baked tactical plate | wall-probe A/B on bird/centre/sky views plus five authored gameplay-height views (bridge, ford, square, mill, valley) and two close bridge views; constraint check (0 wet gaps, banks ≤ 1.44 m, both crossings dry, pads minNy 0.85–0.97); skyline metric unchanged (sky-w 0.84 → 0.90, bird-n 0.98 → 0.98); liquidMarshSurface worst bank 0.42; matchPlacement dry routes in all modes |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
