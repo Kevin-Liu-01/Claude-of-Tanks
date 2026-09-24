@@ -81,7 +81,7 @@ const ORIGINAL = {
   winter: '6574bffd1741c2adb8d607aa0cc198ae224f5293c81a7bfd6a670c6b0c71f4b7', // 2026-09-23: Frosthollow redesign (owner ruling) — new pond chain / roads
   urban: '7431bfb3ca249b8dff2b2022d654885873c69e732e4cd2b4e103e0700722efa8',
   coastal: '592e20a91d2388f1d96fd76e2b19d177cd83b095067b7a6fbdc448952d1bc4c9',
-  autumn: '7cd21056fa06807f3cb7f19f662389b1db48b416907fbe3c93a517de513b7373',
+  autumn: 'e3faed9cfb003c0ada3325d679f26097f91b12e72683fcd0610422933d4faa96',
   // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling; the full-RGBA control re-pinned on the new map
   steppe: '38b1e791960f401134e7fc5aae6dcf8ea6b32bb7c6045621ed8ae62a3ff55c69',
   railyard: '60cb1c0dbc01a732dff4b897e94572dbb24b9928720d7a68e58893940916896d',

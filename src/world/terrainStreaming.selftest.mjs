@@ -163,7 +163,7 @@ const GEOMETRY_GOLDENS = {
   winter: '49a8f6b4b05bbacef6b5bcf7e5181e24fd382f2499bd8da6b10f24e105a3d468', // 2026-09-23: Frosthollow redesign (owner ruling) — new valley heightfield
   urban: 'dc86077914e20440ae7cdcfb044343da6c1386495e2023981261725b8dbd0bd9',
   coastal: '972f0fe7bb785e12ad8ec4ea53b85690b230e3154a0667296b2771d7eff257ba',
-  autumn: '922de189c86f1fc1c28a5dfc4aae946eb1a8b1f58f2ecd88e822bc7e24a897c7',
+  autumn: 'a823893a702abfcd171b1d2ed773555a0808b1e9918609b5eb8ca274152690cd',
   // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling (wadi, escarpment, kurgans, grain station);
   // geometry/bounds digest re-pinned on the new authored relief
   steppe: 'a57424762e00f76b859018607c16f7289711e256508df0295b6489a626e0504f',

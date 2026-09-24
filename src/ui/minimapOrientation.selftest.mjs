@@ -62,7 +62,7 @@ assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
   'callers cannot retain a stale hardcoded raster revision');
 // tactical map 2026-09-15: every raster was re-baked (tone curve, hillshade, union
 // shorelines), so one shared revision invalidates every cache entry at once.
-assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v8-tactical');
+assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v9-tactical'); // round 48: one bump for the three redesigned plates
 for (const mapId of MAP_IDS) {
   const revision = MINIMAP_RASTER_REVISION;
   assert.equal(minimapAssetUrl(mapId), `/minimaps/${mapId}.webp?v=${revision}`,
@@ -71,7 +71,7 @@ for (const mapId of MAP_IDS) {
   assert.equal(minimapAssetUrl(mapId, '/game/', 'capture-fixture'),
     `/game/minimaps/${mapId}.webp?v=capture-fixture`, 'explicit capture/test overrides remain honored');
 }
-assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v8-tactical');
+assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v9-tactical');
 
 // Exercise the actual nested canvas painters without creating the full HUD,
 // WebGL, DOM, or a second copy of their presentation policy.
