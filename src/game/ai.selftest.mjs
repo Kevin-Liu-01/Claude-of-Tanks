@@ -398,13 +398,17 @@ console.log('[14] round 60: a passive target is pressed to a point-blank side as
     const bot = entity('press-bot', 'm1a2', 'player', 0, 0);
     const still = entity('still', 't90m', 'enemy', 0, 220, Math.PI); // nose on the bot: a front aspect
     const ctl = controller(bot, [still], [], 77);
-    let firstPressThrottle = null; // the drive on the first pressing tick (the pinned fixture hull later trips
-    let firstPressScooting = null; // the stuck watchdog, whose unstick bursts and pocket scoots are not the press)
+    let firstPressThrottle = null; // the strongest drive in the first 3 s of pressing (the pinned fixture hull
+    let firstPressScooting = null; // trips the stuck watchdog — round 62's conservation chase closes on the 220 m
+    let pressStartS = null;        // contact before the press, so an unstick burst can sit on the press's first tick)
     let nextShotS = 6;
     tick(ctl, bot, 200, (_, t) => {
-      if (firstPressThrottle === null) {
+      if (pressStartS === null || t - pressStartS <= 3) {
         const d = ctl.debugInfo();
-        if (d.passivePress) { firstPressThrottle = bot.input.throttle; firstPressScooting = d.scooting; }
+        if (d.passivePress) {
+          if (pressStartS === null) { pressStartS = t; firstPressScooting = d.scooting; firstPressThrottle = -Infinity; }
+          firstPressThrottle = Math.max(firstPressThrottle, bot.input.throttle);
+        }
       }
       if (!targetFires) return;
       still.combat.reload.t = Math.max(0, still.combat.reload.t - SIM_DT);

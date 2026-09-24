@@ -832,6 +832,10 @@ export function createAuthoritativeMatch({
     const opponents = entities.filter((entry) => entry.team !== entity.team);
     const allies = entities.filter((entry) => entry !== entity && entry.team === entity.team);
     const botRng = mulberry32(seed + 41000 + index * 997);
+    // round 62 pacing: the no-contact search plans its legs over the shared navigation grid; its own seeded
+    // stream keeps the controller's draws where they were
+    const searchRng = mulberry32(seed + 43000 + index * 991);
+    const navigation = botNavigation;
     entity.aiCtl = createAI(entity, {
       difficulty: playerRecordById.get(entity.id)?.difficulty || 'normal',
       rng: botRng,
@@ -848,6 +852,12 @@ export function createAuthoritativeMatch({
         },
         // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
         getObjective: () => modeController.botObjective(entity),
+        ...(navigation ? {
+          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+            start, goal, navigation, rng: searchRng, role: roleOf(entity.spec), spec: entity.spec,
+            useRoleDetour: false,
+          }),
+        } : {}),
       },
     });
     const teamSlot = entities.filter((entry) => entry.team === entity.team).indexOf(entity);

@@ -33,6 +33,7 @@ import {
   estimatePenRatio,
   isHeClass,
   mainWeaponModuleState,
+  ramDamage,
 } from '../sim/damage.ts';
 import { terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
@@ -275,6 +276,13 @@ interface AiDependencies {
   spotting?: { isSpotted(id: string, receiver: AiEntity): boolean };
   /** Mission objective for this bot (bot philosophy r1: objective → closest → weakest). */
   getObjective?(): AiObjective | null;
+  /**
+   * Round 62 pacing: a route over the match's navigation grid (botRoutePlanner.planBotRoute with the shared
+   * grid, no role detour). Empty when the goal lies in another connected component. Absent in headless
+   * fixtures, where the search falls back to the local corner-hop router.
+   */
+  planRoute?(start: { x: number; z: number }, goal: { x: number; z: number }):
+    ReadonlyArray<readonly [number, number]>;
 }
 
 interface CreateAiOptions {
@@ -525,6 +533,38 @@ const GUN_ARC_MARGIN_RAD = 0.026;          // 1.5° inside the mechanical elevat
 const FLANK_REAR_ASPECT_RAD = 2.35;        // 135° off the nose
 // Probe candidate the tier set falls back to when terrain hides every zone in it (the visible turret).
 const PROBE_TURRET_FALLBACK: readonly [number, number] = [0.72, 0];
+// Round 62 pacing (2026-09-24): the search for a lost enemy (see beginSearchLeg) and the ammunition economy
+// (see expectedHitChance, applyProbeResult, aimAndFire).
+const SEARCH_SWEEP_RING_M = 110;           // ring around the enemy's sector the sweep legs stand on
+const SEARCH_WIDE_RING_M = 220;            // the wider ring a failed sweep escalates to
+const SEARCH_LEG_MIN_S = 15;               // a leg's time budget: this plus the route length at 3 m/s
+const SEARCH_LEG_MAX_S = 90;
+const SEARCH_LEG_STRIKES = 3;              // stuck strikes on one leg before it is given up for the next goal
+const SEARCH_GOAL_ARRIVE_M = 30;           // a goal this close is not worth a leg
+const SEARCH_PROJECTION_M = 60;            // a dry-policy route may end this far from its goal and still count
+const SEARCH_CHECK_S = 2;                  // cadence of the leg lifecycle checks
+const PEN_GATE_RATIO_NEAR = 0.9;           // the historical gate ratio, kept at point-blank range
+const PEN_GATE_RATIO_FAR = 1.15;           // the ratio a zone needs at range, where the tier's error lands the
+const PEN_GATE_NEAR_M = 80;                // shell on the plate beside the one probed (Saltwind seed 0: 0.86-0.90
+const PEN_GATE_FAR_M = 320;                // on the M1A2's lower front from 50 m, every round a non-pen)
+const HE_SPLASH_WORTH_HP = 80;             // an HE fallback round must be worth this much surface burst
+const HE_ARMOR_ABSORB_PER_MM = 1.1;        // damage.ts HE_ARMOR_ABSORB (the surface-burst law)
+const CONSERVE_HIT_CHANCE_FULL = 0.35;     // hold fire under this expected hit chance with a full rack…
+const CONSERVE_HIT_CHANCE_EMPTY = 0.6;     // …and under this one with the last rounds
+const CONSERVE_CLOSE_MARGIN = 0.1;         // close until the chance clears the threshold by this much
+const RAM_APPROACH_EFFICIENCY = 0.85;      // closing speed reached over a straight run, as a share of top speed
+const RAM_MAX_CLOSING_MPS = 14;
+const RAM_SELF_BUDGET_FRAC = 0.8;          // the rams a kill needs may cost at most this share of own hull
+const RAM_RUN_UP_M = 45;                   // a stalled ram backs off to this range before the next run
+const EMPTY_RETIRE_M = 240;                // an empty bot that cannot ram keeps at least this far from its enemies
+// Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
+// sighting and the ring round the sector, then the ring from other sides.
+const SEARCH_ORDER: ReadonlyArray<readonly string[]> = Object.freeze([
+  Object.freeze(['sector', 'seen', 'objective', 'sweep', 'wide']),
+  Object.freeze(['seen', 'sweep', 'sector', 'wide']),
+  Object.freeze(['sweep', 'wide', 'sector', 'seen']),
+]);
+const searchScratch = { x: 0, z: 0 };      // beginSearchLeg's candidate goal (controllers run sequentially)
 // RETURN-FIRE LOCK (controls_gunnery r4): three rounds of aggro plumbing
 // (r4 sticky slot, r5 muzzle intel + hard-commit) still measured 76 enemy
 // shells / 2 aimed at the player / 0 hits across 5 battles. Two remaining
@@ -591,6 +631,15 @@ function gauss(rng: RandomSource): number {
   let u = rng();
   while (u <= 1e-9) u = rng();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * rng());
+}
+
+/** Error function (Abramowitz–Stegun 7.1.26, |error| < 1.5e-7): P(|X| < a) = erf(a / (σ√2)) for X ~ N(0, σ). */
+function erf(x: number): number {
+  const sign = x < 0 ? -1 : 1;
+  const ax = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * ax);
+  const poly = ((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592;
+  return sign * (1 - poly * t * Math.exp(-ax * ax));
 }
 
 function tankSafetyRadius(ent: AiEntity | null | undefined): number {
@@ -996,6 +1045,30 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let passivePressCandidate = -1;            // probe-visible: ring * 3 + bearing index of the chosen press point
   let passivePressArcT = 0;                  // gun pinned at a pitch stop while standing on the press point
   const pressVeto = { x: 0, z: 0, untilS: -1 }; // a press point whose probe found the hull masked
+  // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
+  let searching = false;                     // a search leg's route is in the waypoints
+  let searchKind = '';                       // probe-visible: sector | seen | objective | sweep | wide | direct
+  const searchGoal = { x: 0, z: 0 };
+  let searchLegs = 0;                        // probe-visible count of legs begun
+  let searchFailures = 0;                    // legs ended without contact since contact was last held
+  let searchLegStartS = -1;
+  let searchLegBudgetS = 0;
+  let searchStrikesAtStart = 0;
+  let searchSweepIndex = 0;                  // rotates the sweep bearings across legs
+  let searchNextCheckS = -1;
+  let strikeEvents = 0;                      // monotonic count of stuck strikes (stuckStrikes itself is reset)
+  // round 62 pacing: the ammunition economy — expected hit chance, the HE fallback's worth, the empty rack
+  let heWorth = false;                       // the HE fallback round would burst for HE_SPLASH_WORTH_HP or more
+  let heBurstBest = 0;                       // best surface-burst estimate of the HE slot in the last probe pass
+  let hitChance = 1;                         // expected hit chance of the current lay (tier error + dispersion)
+  let conserving = false;                    // holding fire at a bot / passive target the lay is unlikely to hit
+  let conserveHolds = 0;                     // probe-visible count of ticks a loaded gun held fire to conserve
+  let emptyRack = false;
+  let ramming = false;
+  let ramRuns = 0;                           // probe-visible count of ram runs begun
+  let ramCommitUntilS = -1;
+  let ramBackoffUntilS = -1;                 // a stalled run backs off for the next run-up
+  const ramPoint = { x: 0, z: 0 };
   // geometry-hard blocked commit → follow the authored lane a while
   let laneFallbackUntilS = -1;
   // starved trigger + clear ray → forced clean halt (settled-shot window)
@@ -1596,6 +1669,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const info = queryAimArmor(_vA, _vB, distance + 10, pose, armor);
     if (!info) return true;
     const ratio = estimatePenRatio(shell, distance, info);
+    if (isHeClass(shell.type)) {
+      // Round 62 pacing: what the HE fallback round is worth as a SURFACE BURST on this zone (damage.ts
+      // applyHeSurfaceBurst: half the roll minus the armour stack's absorption). Urban seed 2's bots put ten HE
+      // rounds into turret cheeks and mantlets for nothing; a round that bursts for less than
+      // HE_SPLASH_WORTH_HP is kept for a side, a roof or a track.
+      let stackMm = 0;
+      const layers = info.layers;
+      if (layers.length) {
+        for (let i = 0; i < layers.length; i++) stackMm += layers[i].plate.physicalMm || 0;
+      } else {
+        stackMm = info.plate.physicalMm || 0;
+      }
+      const burst = 0.5 * (shell.dmg || 0) - HE_ARMOR_ABSORB_PER_MM * stackMm;
+      if (burst > heBurstBest) heBurstBest = burst;
+    }
     const score = Math.min(ratio, 1.6) - slot * 0.08 -
       Math.abs(lateralFraction) * 0.02;
     if (score <= probeResult.score) return true;
@@ -1628,18 +1716,36 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
   }
 
-  function applyProbeResult(): void {
-    if (probeResult.ratio >= 0.9) {
+  /**
+   * Round 62 pacing: the ratio a zone needs for the gate to open grows with range. At point-blank the shell
+   * lands where the probe looked; at 300 m the tier's persistent error (σ ≈ 6 mrad on the normal tier: 1.8 m)
+   * lands it on the plate beside the probed one, and a 0.9-1.0 zone there is a coin toss the rack cannot afford
+   * (Saltwind seed 0: ratio 0.86-0.90 on the M1A2's lower front, every round a non-pen).
+   */
+  function penGateRatio(distance: number): number {
+    const t = clamp((distance - PEN_GATE_NEAR_M) / (PEN_GATE_FAR_M - PEN_GATE_NEAR_M), 0, 1);
+    return PEN_GATE_RATIO_NEAR + (PEN_GATE_RATIO_FAR - PEN_GATE_RATIO_NEAR) * t;
+  }
+
+  function applyProbeResult(distance: number): void {
+    if (probeResult.ratio >= penGateRatio(distance)) {
       aimHFrac = probeResult.heightFraction;
       aimLatFrac = probeResult.lateralFraction;
       chosenSlot = probeResult.slot;
       cachedPenRatio = probeResult.ratio;
       penGateOk = true;
       probeMiss = false;
+      heWorth = false;
       return;
     }
     aimLatFrac = 0;
-    chosenSlot = slotHasAmmo(heSlot) ? heSlot : firstAvailableSlot();
+    // The HE fallback is a REAL HE round that would burst for something on the zone the probe saw; a magazine
+    // without one (findHeShellSlot answers the last slot) or a burst the armour would absorb keeps the gate shut
+    // and lets the closed-gate flank and the press change the geometry instead.
+    heWorth = heSlot >= 0 && isHeClass(spec.gun.shells[heSlot]?.type ?? '') && slotHasAmmo(heSlot)
+      && heBurstBest >= HE_SPLASH_WORTH_HP;
+    chosenSlot = heWorth ? heSlot : (probeResult.score > -Infinity ? probeResult.slot : firstAvailableSlot());
+    if (!slotHasAmmo(chosenSlot)) chosenSlot = firstAvailableSlot();
     penGateOk = false;
     if (probeResult.score > -Infinity) {
       aimHFrac = 0.5;
@@ -1658,6 +1764,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     chosenSlot = firstAvailableSlot();
     cachedPenRatio = 1;
     penGateOk = chosenSlot >= 0;
+    heWorth = false;
   }
 
   function runProbes(): void {
@@ -1677,13 +1784,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const pose = tankPoseFromState(target.state);
     resetProbeResult();
     probeVisible.fill(0);
+    heBurstBest = 0;
+    const distance = currentTargetDistance();
     for (let slot = 0; slot < spec.gun.shells.length; slot++) {
       const shell = spec.gun.shells[slot];
       if (!shell || !slotHasAmmo(slot)) continue;
       evaluateProbeSlot(slot, shell, pose, armor, lateralX, lateralZ);
-      if (probeResult.ratio >= 1.05 && probeResult.slot === 0) break;
+      if (probeResult.ratio >= Math.max(1.05, penGateRatio(distance)) && probeResult.slot === 0) break;
     }
-    applyProbeResult();
+    applyProbeResult(distance);
   }
 
   /**
@@ -2629,6 +2738,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function updateEngagementSettle(timeS: number): void {
     const reload = entity.combat && entity.combat.reload;
+    if (conserving || emptyRack) return; // round 62: the silence is a held round or an empty rack, not a bad lay
     if (timeS - lastFiredAtS <= 8 || timeS < settleUntilS ||
         timeS < settleCdUntilS || !reload || reload.t > 0.5) return;
     settleStreak = timeS - settleUntilS < 1.5 ? settleStreak + 1 : 0;
@@ -2734,6 +2844,48 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     faceYaw(input, bearing + (ringOut ? 0 : angleRad * angleSide));
   }
 
+  /** Round 62 pacing: the empty rack drives — a ram run when the ram law allows it, otherwise the retirement. */
+  function driveEmptyRack(input: AiInput, timeS: number, navX: number, navZ: number): void {
+    const st = entity.state;
+    if (ramming && target) {
+      const dx = navX - st.pos.x;
+      const dz = navZ - st.pos.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      const bearing = Math.atan2(dx, dz);
+      // a run that has stalled against the hull (no closing speed left) backs off for the next run-up
+      if (timeS >= ramBackoffUntilS && dist < 12 && Math.abs(st.speed) < 2.5) ramBackoffUntilS = timeS + 3.5;
+      if (timeS < ramBackoffUntilS && dist < RAM_RUN_UP_M) {
+        reverseFacing(input, bearing, -0.8);
+        return;
+      }
+      // straight through the target: the arrive test must not stop the hull short of contact
+      ramPoint.x = navX + (dx / dist) * 20;
+      ramPoint.z = navZ + (dz / dist) * 20;
+      driveToXZ(input, ramPoint.x, ramPoint.z, 1.0);
+      input.brake = false;
+      return;
+    }
+    const enemy = nearestLivingEnemy();
+    if (!enemy) {
+      input.throttle = 0;
+      input.steer = 0;
+      return;
+    }
+    const ex = enemy.state.pos.x - st.pos.x;
+    const ez = enemy.state.pos.z - st.pos.z;
+    const dist = Math.hypot(ex, ez) || 1;
+    if (dist >= EMPTY_RETIRE_M) {
+      faceYaw(input, Math.atan2(ex, ez)); // keep the enemy lit for the team from here
+      return;
+    }
+    const support = nearestSupport();
+    if (support) {
+      driveToXZ(input, support.state.pos.x, support.state.pos.z, 1.0);
+      return;
+    }
+    driveToXZ(input, clamp(st.pos.x - (ex / dist) * 90, -470, 470), clamp(st.pos.z - (ez / dist) * 90, -470, 470), 1.0);
+  }
+
   function driveEngage(input: AiInput, timeS: number, distToTarget: number): void {
     if (!target) {
       driveRememberedContact(input, timeS);
@@ -2743,6 +2895,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const targetVisible = isVisibleToTeam(target);
     const navX = targetVisible ? targetPos.x : lastSeen.x;
     const navZ = targetVisible ? targetPos.z : lastSeen.z;
+    if (emptyRack) {
+      driveEmptyRack(input, timeS, navX, navZ);
+      return;
+    }
     if (timeS < nudgeUntilS) {
       driveGunNudge(input);
       return;
@@ -2758,6 +2914,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     hasVantage = false;
     updateEngagementSettle(timeS);
     if (driveToEngagementEnvelope(input, timeS, distToTarget, navX, navZ)) return;
+    // round 62 pacing: a lay the rack cannot afford at this range is closed on, not taken (see shouldConserve)
+    if (conserving && timeS >= deploymentUntilS && !outnumberedSolo()) {
+      chaseToXZ(input, navX, navZ, 0.9);
+      return;
+    }
     if (hasMoveTarget) {
       if (driveToXZ(input, moveTarget.x, moveTarget.z, 0.6)) hasMoveTarget = false;
       return;
@@ -3310,6 +3471,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     _dbg.gunLaneClear = gunLaneClear;
     _dbg.gunLaneChecks = gunLaneChecks;
     _dbg.gunLaneMoves = gunLaneMoves;
+    // round 62 pacing: the ammunition economy
+    _dbg.hitChance = +hitChance.toFixed(2);
+    _dbg.conserving = conserving;
+    _dbg.heWorth = heWorth;
+    _dbg.heBurst = Math.round(heBurstBest);
   }
 
   function nominalGunLanePass(shell: DamageShellSpec, dt: number, timeS: number,
@@ -3330,14 +3496,61 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return gunLaneClear;
   }
 
+  /**
+   * Round 62 pacing (2026-09-24): the expected chance that the current lay lands on the target's silhouette —
+   * the tier's persistent fire-control error (resampleAimError's σ, held for seconds) and the gun's own
+   * dispersion, both in metres at this range, against the hull's width and most of its height. Steppe seed 1's
+   * T-90M put eleven HEAT rounds at a bot 270-340 m away and hit none; a rack is finite and a bot that can close
+   * should close before it fires.
+   */
+  function expectedHitChance(distance: number): number {
+    if (!target || distance < 1) return 1;
+    const m = tier.aimErrMult;
+    const sigmaTierRad = ((spec.gun.baseAccuracy / 2) / 100) * Math.sqrt(Math.max(0, m * m - 1));
+    const sigmaM = Math.hypot(sigmaTierRad * distance,
+      computeDispersionRadM(spec, entity.state, distance) * 0.5); // the reticle radius is 2σ
+    if (sigmaM < 1e-3) return 1;
+    const dims = target.spec.dims;
+    const k = 1 / (sigmaM * Math.SQRT2);
+    return erf((dims.widthM || 3) * 0.5 * k) * erf((dims.heightM || 2.4) * 0.4 * k);
+  }
+
+  /** The hit chance a shot needs: CONSERVE_HIT_CHANCE_FULL with a full rack, rising as the rounds go. */
+  function conserveThreshold(): number {
+    const combat = entity.combat;
+    let fraction = 1;
+    if (combat && Array.isArray(combat.ammo) && Array.isArray(combat.ammoCapacity)) {
+      let have = 0;
+      let capacity = 0;
+      for (let slot = 0; slot < combat.ammo.length; slot++) {
+        have += combat.ammo[slot] || 0;
+        capacity += combat.ammoCapacity[slot] || 0;
+      }
+      if (capacity > 0) fraction = clamp(have / capacity, 0, 1);
+    }
+    return CONSERVE_HIT_CHANCE_FULL + (CONSERVE_HIT_CHANCE_EMPTY - CONSERVE_HIT_CHANCE_FULL) * (1 - fraction);
+  }
+
+  /**
+   * Hold the round and close instead? Only at a bot or a passive target: the player-facing doctrine (a live
+   * player is threatened from range, "threatened rather than hit") is untouched. Blind fire keeps its own rules.
+   */
+  function shouldConserve(timeS: number): boolean {
+    if (!target || fireGate.blindFire || fireGate.blindLock || emptyRack) return false;
+    if (target.isPlayer && !targetPassive(timeS)) return false;
+    return hitChance < conserveThreshold() + (conserving ? CONSERVE_CLOSE_MARGIN : 0);
+  }
+
   function aimAndFire(input: AiInput, dt: number, timeS: number): void {
     if (!target || !enemyAlive(target)) {
       setIdleScan(input, timeS);
+      conserving = false;
       return;
     }
     const shell = selectedShell(entity.combat);
     if (!shell) {
       input.fire = false;
+      conserving = false;
       return;
     }
 
@@ -3354,11 +3567,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const accurateEnough = dispersionPass(dt);
     const gunReady = losClear && fireGate.reactionReady
       && fireGate.reloadReady && fireGate.rangeReady;
-    const ordinaryShot = gunReady && accurateEnough && fireGate.aligned
-      && (penGateOk || chosenSlot === heSlot);
+    hitChance = expectedHitChance(distance);
+    conserving = shouldConserve(timeS);
+    // the HE bypass of the penetration gate fires a real HE round only where its surface burst is worth a shell
+    const gateOpen = penGateOk || (chosenSlot === heSlot && heWorth);
+    const layReady = gunReady && accurateEnough && fireGate.aligned;
+    const ordinaryShot = layReady && gateOpen && !conserving;
+    if (layReady && gateOpen && conserving) conserveHolds++;
     const blindShot = fireGate.blindFire && fireGate.reactionReady
       && fireGate.reloadReady && fireGate.rangeReady && fireGate.aligned;
-    const clearGunLane = nominalGunLanePass(shell, dt, timeS, ordinaryShot);
+    // the physical gun lane is judged on the lay, not on the gate: a muzzle held behind a berm still schedules
+    // the lane relocation while the probe (which casts from the same gun) finds no zone to open the gate for
+    const clearGunLane = nominalGunLanePass(shell, dt, timeS, layReady);
     const friendlyRisk = updateFriendlyFireGate(
       input,
       shell,
@@ -3481,6 +3701,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // orbiting proves a bad route immediately and skips that first-strike hold.
   function escalateStuckRecovery(timeS: number, requireRepeatedStrike: boolean): void {
     stuckStrikes++;
+    strikeEvents++;
     if (requireRepeatedStrike && stuckStrikes < 2) return;
 
     detourSide = -detourSide;
@@ -3582,6 +3803,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return nearest;
   }
 
+  /** The pre-round-62 leg: the midpoint, then the enemy's 50 m sector, for the local corner-hop router. */
   function routeTowardEnemySector(enemy: AiEntity): void {
     const position = entity.state.pos;
     const sectorX = Math.round(enemy.state.pos.x / 50) * 50;
@@ -3595,26 +3817,153 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (mode === 'seekCover') mode = 'engage';
   }
 
+  // Round 62 pacing (2026-09-24, server/battlePacing: Urban seeds 0 and 2, Ruinspires seed 3). The survivor had
+  // no target for 200-400 s and the 8 s no-contact search re-routed it every window to the same midpoint it
+  // could not reach among the blocks and ruins — the corner-hop router sees one box 85 m ahead, and the
+  // midpoint of Urban seed 0's search stood inside a building. A search leg is now planned over the match's
+  // navigation grid (deps.planRoute: the same planner that lays the opening routes), so its waypoints are cells
+  // the hull can actually reach; a goal in another connected component is skipped, not driven at. The goals
+  // rotate — the enemy's sector, the last sighting, the mission objective, then a sweep ring round the sector
+  // whose bearing turns with every leg, then a wider ring — and a leg is given up only on its own evidence:
+  // its route consumed without contact, SEARCH_LEG_STRIKES stuck strikes, or its time budget spent. Contact
+  // resets the escalation; a bot without contact therefore keeps moving toward where the enemy can be.
+  function searchCandidateGoal(kind: string, enemy: AiEntity, out: Position2): boolean {
+    const position = entity.state.pos;
+    if (kind === 'sector') {
+      out.x = Math.round(enemy.state.pos.x / 50) * 50;
+      out.z = Math.round(enemy.state.pos.z / 50) * 50;
+      return true;
+    }
+    if (kind === 'seen') {
+      if (lastSeenAtS === -Infinity) return false;
+      out.x = lastSeen.x;
+      out.z = lastSeen.z;
+      return true;
+    }
+    if (kind === 'objective') {
+      const objective = getObjective ? getObjective() : null;
+      if (!objective) return false;
+      out.x = objective.x;
+      out.z = objective.z;
+      return true;
+    }
+    // 'sweep' / 'wide': a ring round the enemy's sector; the first bearing faces the hull, the next ones
+    // alternate sides further round (0, +45°, -45°, +90°, …) so consecutive legs look from different sides
+    const radius = kind === 'wide' ? SEARCH_WIDE_RING_M : SEARCH_SWEEP_RING_M;
+    const base = Math.atan2(position.x - enemy.state.pos.x, position.z - enemy.state.pos.z);
+    const k = searchSweepIndex++;
+    const angle = base + Math.ceil(k / 2) * (TAU / 8) * (k % 2 ? 1 : -1);
+    out.x = clamp(enemy.state.pos.x + Math.sin(angle) * radius, -470, 470);
+    out.z = clamp(enemy.state.pos.z + Math.cos(angle) * radius, -470, 470);
+    return !hf.getNormalAt || hf.getNormalAt(out.x, out.z).y >= SPOT_NORMAL_Y_MIN;
+  }
+
+  function setSearchWaypoints(route: ReadonlyArray<readonly [number, number]>): void {
+    waypoints.length = 0;
+    for (let i = 0; i < route.length; i++) waypoints.push({ x: route[i][0], z: route[i][1] });
+    wpIndex = 0;
+    autoPatrolBuilt = true;
+    loopWaypoints = false;
+  }
+
+  function startSearchLeg(kind: string, goalX: number, goalZ: number, routeLengthM: number, timeS: number): void {
+    searching = true;
+    searchKind = kind;
+    searchGoal.x = goalX;
+    searchGoal.z = goalZ;
+    searchLegs++;
+    searchLegStartS = timeS;
+    searchLegBudgetS = clamp(SEARCH_LEG_MIN_S + routeLengthM / 3, SEARCH_LEG_MIN_S, SEARCH_LEG_MAX_S);
+    searchStrikesAtStart = strikeEvents;
+    searchNextCheckS = timeS + SEARCH_CHECK_S;
+    pressUntilS = timeS + STALEMATE_PUSH_S;
+    hasMoveTarget = false;
+    hasCoverPoint = false;
+    hasVantage = false;
+    if (mode === 'seekCover' || mode === 'engage') mode = 'patrol';
+  }
+
+  function beginSearchLeg(enemy: AiEntity, timeS: number): void {
+    const position = entity.state.pos;
+    const order = SEARCH_ORDER[Math.min(searchFailures, SEARCH_ORDER.length - 1)];
+    const goal = searchScratch;
+    for (let i = 0; i < order.length; i++) {
+      const kind = order[i];
+      if (!searchCandidateGoal(kind, enemy, goal)) continue;
+      let routeLength = Math.hypot(goal.x - position.x, goal.z - position.z);
+      if (routeLength < SEARCH_GOAL_ARRIVE_M) continue;
+      if (deps.planRoute) {
+        const route = deps.planRoute(position, goal);
+        if (!route.length) continue; // another connected component: not a goal
+        const end = route[route.length - 1];
+        if (kind !== 'wide' && Math.hypot(end[0] - goal.x, end[1] - goal.z) > SEARCH_PROJECTION_M) continue;
+        setSearchWaypoints(route);
+        routeLength = 0;
+        let previousX = position.x;
+        let previousZ = position.z;
+        for (let p = 0; p < route.length; p++) {
+          routeLength += Math.hypot(route[p][0] - previousX, route[p][1] - previousZ);
+          previousX = route[p][0];
+          previousZ = route[p][1];
+        }
+      } else {
+        waypoints.length = 0;
+        waypoints.push({ x: (position.x + goal.x) / 2, z: (position.z + goal.z) / 2 });
+        waypoints.push({ x: goal.x, z: goal.z });
+        wpIndex = 0;
+        autoPatrolBuilt = true;
+        loopWaypoints = false;
+      }
+      startSearchLeg(kind, goal.x, goal.z, routeLength, timeS);
+      return;
+    }
+    // nothing plans from here (a courtyard the 25 m grid reads as solid): the local router gets the old leg
+    routeTowardEnemySector(enemy);
+    const sector = waypoints[waypoints.length - 1];
+    startSearchLeg('direct', sector.x, sector.z, Math.hypot(sector.x - position.x, sector.z - position.z), timeS);
+  }
+
+  function updateSearchLeg(enemy: AiEntity, timeS: number): void {
+    if (timeS < searchNextCheckS) return;
+    searchNextCheckS = timeS + SEARCH_CHECK_S;
+    pressUntilS = timeS + STALEMATE_PUSH_S; // the search keeps the pressure semantics of the old push windows
+    const position = entity.state.pos;
+    const last = waypoints.length ? waypoints[waypoints.length - 1] : null;
+    const consumed = !last || (wpIndex >= waypoints.length - 1
+      && Math.hypot(last.x - position.x, last.z - position.z) < ARRIVE_DIST_M * 2);
+    const stuck = strikeEvents - searchStrikesAtStart >= SEARCH_LEG_STRIKES;
+    const overBudget = timeS - searchLegStartS > searchLegBudgetS;
+    const enemyMoved = searchKind === 'sector'
+      && Math.hypot(enemy.state.pos.x - searchGoal.x, enemy.state.pos.z - searchGoal.z) > 120;
+    if (!consumed && !stuck && !overBudget && !enemyMoved) return;
+    if (consumed || stuck || overBudget) searchFailures++; // the leg ended without contact
+    beginSearchLeg(enemy, timeS);
+  }
+
   function updateStalematePolicy(timeS: number): void {
     const hasContact = !!(target && enemyAlive(target))
       || timeS - lastSeenAtS < TARGET_MEMORY_S + 6;
-    if (hasContact && timeS - lastFiredAtS > STALEMATE_SILENT_S
-        && timeS >= pressUntilS) {
-      pressUntilS = timeS + STALEMATE_PUSH_S;
-      hasMoveTarget = false;
-      hasCoverPoint = false;
-      if (mode === 'seekCover' || mode === 'patrol') mode = 'engage';
-      if (target && !losClear && findVantage()) hasVantage = true;
-      if (target && losClear) settleUntilS = timeS + 3.5;
+    if (hasContact) {
+      if (searching) {
+        searching = false;
+        searchFailures = 0;
+      }
+      if (timeS - lastFiredAtS > STALEMATE_SILENT_S && timeS >= pressUntilS) {
+        pressUntilS = timeS + STALEMATE_PUSH_S;
+        hasMoveTarget = false;
+        hasCoverPoint = false;
+        if (mode === 'seekCover' || mode === 'patrol') mode = 'engage';
+        if (target && !losClear && findVantage()) hasVantage = true;
+        if (target && losClear && !conserving && !emptyRack) settleUntilS = timeS + 3.5;
+      }
       return;
     }
-    const maySearch = timeS >= deploymentUntilS && !hasContact
-      && timeS - lastFiredAtS > 25 && timeS >= pressUntilS;
+    const maySearch = timeS >= deploymentUntilS && timeS - lastFiredAtS > 25;
     if (!maySearch) return;
     const enemy = nearestLivingEnemy();
     if (!enemy) return;
-    pressUntilS = timeS + STALEMATE_PUSH_S;
-    routeTowardEnemySector(enemy);
+    if (!searching) beginSearchLeg(enemy, timeS);
+    else updateSearchLeg(enemy, timeS);
   }
 
   function currentTargetDistance(): number {
@@ -3744,12 +4093,55 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     hasCoverPoint = false;
   }
 
+  /**
+   * Round 62 pacing (2026-09-24): the empty rack. The standard ruleset resupplies nothing (matchRuleset.ts:
+   * ammo 'spec', no respawn), so a bot whose slots are all at zero has two options the rules already model —
+   * the kinetic ram law both authorities apply to enemy contacts (damage.ts ramDamage), or retiring. It rams
+   * only when the law says the exchange is survivable: the rams a kill needs, at the closing speed a straight
+   * run reaches, cost at most RAM_SELF_BUDGET_FRAC of its own hull. Otherwise it keeps EMPTY_RETIRE_M from
+   * every enemy and leaves the finish to its team.
+   */
+  function ramWorthAgainst(opponent: AiEntity): boolean {
+    const mine = entity.combat;
+    const theirs = opponent.combat;
+    if (!mine || !theirs || theirs.destroyed) return false;
+    const closing = Math.min(RAM_MAX_CLOSING_MPS,
+      ((spec.topSpeedKmh || 0) / 3.6) * RAM_APPROACH_EFFICIENCY);
+    const split = ramDamage(spec.weightTons, opponent.spec.weightTons, closing);
+    if (!(split.toB > 0)) return false;
+    const ramsNeeded = Math.ceil(Math.max(1, theirs.hp) / split.toB);
+    return ramsNeeded * split.toA < mine.hp * RAM_SELF_BUDGET_FRAC;
+  }
+
+  function updateEmptyRack(timeS: number): void {
+    emptyRack = firstAvailableSlot() < 0;
+    if (!emptyRack) {
+      ramming = false;
+      return;
+    }
+    if (ramming && timeS < ramCommitUntilS && target && enemyAlive(target)) return; // a run is committed
+    const wasRamming = ramming;
+    ramming = !!target && enemyAlive(target) && losClear && ramWorthAgainst(target);
+    if (ramming) {
+      if (!wasRamming) ramRuns++;
+      ramCommitUntilS = timeS + 4; // re-judge the exchange every few seconds, not every tick
+      hasMoveTarget = false;
+      hasCoverPoint = false;
+      hasVantage = false;
+      scootUntilS = -1;
+      settleUntilS = -1;
+      passivePressing = false;
+      if (mode === 'seekCover' || mode === 'flank') mode = 'engage';
+    }
+  }
+
   function updateDoctrine(
     combat: CombatState | undefined,
     dt: number,
     timeS: number,
     targetDistance: number,
   ): void {
+    updateEmptyRack(timeS);
     updatePassivePress(dt, timeS, targetDistance);
     updateShotRelocation(combat, timeS);
     updateProbeRelocation(dt, timeS);
@@ -3768,7 +4160,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // under 0.5 m/s) arms the dwell: a moving hull shows new plates on its own, and flanking it on every closed
   // probe turned the casemates into perpetual pivots (the 124-battle receipt: no fewer timeouts, more churn).
   function updatePenDeniedManeuver(dt: number, timeS: number): void {
-    const canShootHe = chosenSlot === heSlot && slotHasAmmo(heSlot);
+    const canShootHe = chosenSlot === heSlot && slotHasAmmo(heSlot) && heWorth;
     const targetHolds = !!target && Math.abs(target.state.speed ?? 0) < 0.5;
     const denied = targetHolds && losClear && !penGateOk && !canShootHe && mode !== 'flank';
     penDeniedT = denied ? penDeniedT + dt : 0;
@@ -3848,7 +4240,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function updatePassivePress(dt: number, timeS: number, distance: number): void {
     updateTargetActivity(dt, timeS);
-    const eligible = targetPassive(timeS) && !!target && losClear && timeS >= deploymentUntilS;
+    const eligible = targetPassive(timeS) && !!target && losClear && timeS >= deploymentUntilS && !emptyRack;
     if (!eligible) {
       passivePressing = false;
       return;
@@ -4049,7 +4441,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       drivePassivePress(input);
       return;
     }
-    if (timeS < settleUntilS && target && losClear) {
+    if (timeS < settleUntilS && target && losClear && !conserving && !emptyRack) {
       faceYaw(input, Math.atan2(
         target.state.pos.x - entity.state.pos.x,
         target.state.pos.z - entity.state.pos.z,
@@ -4474,6 +4866,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       passivePressRepicks,
       passivePressCandidate,
       passivePressArcT: +passivePressArcT.toFixed(1),
+      // round 62 pacing: the search for a lost enemy and the empty rack
+      searching, searchKind, searchLegs, searchFailures,
+      searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
+      wpIndex, wpCount: waypoints.length,
+      conserveHolds, emptyRack, ramming, ramRuns,
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)

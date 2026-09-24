@@ -1023,11 +1023,17 @@ function createBattleBot(
 ): void {
   const enemyScratch: SoloEntity[] = [];
   const allyScratch: SoloEntity[] = [];
+  // round 62 pacing: the no-contact search plans its legs over the shared navigation grid (own seeded stream)
+  const searchRng = mulberry32(18000 + entityIndex);
   const controller = createAI(entity, {
     difficulty: getStoredDifficulty(),
     rng: mulberry32(7000 + entityIndex),
     deps: {
       ...context.aiDependencies,
+      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+        start, goal, navigation: context.botNavigation, rng: searchRng, role: roleOf(entity.spec),
+        spec: entity.spec, useRoleDetour: false,
+      }),
       getEnemies: () => {
         enemyScratch.length = 0;
         for (const candidate of context.game.tanks) {
