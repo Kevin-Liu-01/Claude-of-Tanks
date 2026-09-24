@@ -48,6 +48,7 @@ const FLAGS = Object.freeze({
   speed: { kind: 'number', doc: 'target fording speed in m/s (default: 7)' },
   'iso-uniforms': { kind: 'list', doc: 'terrain splat uniforms zeroed one at a time (uRipple,uMacro,...)' },
   'flat-normals': { kind: 'boolean', doc: 'also capture every view with flat normal maps on the four splat layers' },
+  'flat-normal-maps': { kind: 'list', doc: 'layer normal maps flattened ONE at a time (uNrmG,uNrmD,uNrmR,uNrmM), <view>-flat-<uniform>.png' },
   hide: { kind: 'hide', doc: 'suffix=regex;suffix=regex — world mesh names hidden one pattern at a time' },
   ids: { kind: 'list', doc: 'specId:label cases, the label names the capture files' },
   'cache-dir': { kind: 'string', doc: 'reuse a warm vite optimizer cache of your own (default: a fresh temporary directory)' },

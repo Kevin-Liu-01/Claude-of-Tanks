@@ -14,8 +14,8 @@ import {
   type TerrainLodLevel,
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, type TerrainPaletteId,
-  type TerrainSourcePreparation } from './sourcedTextures.ts';
+import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, sourcedTerrainLayerPlanned,
+  type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
 import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
@@ -2560,6 +2560,7 @@ uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
 uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
 uniform float uSlopeGrassHold; // round 45: shifts the slope→rock thresholds (tropical hills hold turf longer)
 uniform vec2 uRingRock;        // round 49: slope band over which a ring face past the square becomes landform rock
+uniform float uBeddedR;        // round 55: 1 when the R layer is the procedural bedded sandstone tile (no sourced R)
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
 float gWallSky = 0.0;     // round 42: steep × turned-from-the-sun weight, read by the indirect-light hook
@@ -2670,6 +2671,21 @@ vec3 wallTex(sampler2D t, float sc) {
 }
 float wallNoiseG(float sc, vec2 off) {
   return mix(texture2D(uNoise, gWallUVx * sc + off).g, texture2D(uNoise, gWallUVz * sc + off).g, gWallW);
+}
+// Round 55: the bedded sandstone maps' coarse wall relief (see the uBeddedR branch) — a height field over the wall
+// plane (q.x along the wall, q.y world height, both metres) of ~17 m buttresses leaning with height, ~6 m ribs and
+// ~33 m ledges of mass, from incommensurate sines with a slow per-cliff phase; no texture, so no mip speckle and no
+// bed boundary. wallCragTilt is its tangent-space tilt (-A * gradient) by a half-metre central difference.
+float wallCragField(vec2 q, float ph) {
+  float lean = sin(q.y * 0.11 + ph * 2.0) * 0.9;
+  float a = sin(q.x * 0.37 + ph * 6.0 + lean);
+  float b = sin(q.x * 1.05 + ph * 11.0 + sin(q.y * 0.31 + ph) * 0.8);
+  float c = sin(q.y * 0.19 + ph * 3.0 + sin(q.x * 0.23) * 0.7);
+  return a * (0.62 + 0.38 * c) * 0.65 + b * 0.35;
+}
+vec2 wallCragTilt(vec2 q, float ph) {
+  float h0 = wallCragField(q, ph);
+  return -vec2(wallCragField(q + vec2(0.5, 0.0), ph) - h0, wallCragField(q + vec2(0.0, 0.5), ph) - h0) * 1.1;
 }
 // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): the horizon ring's
 // faces inside a sea opening (edgeWater.ts) render with this material as the square's own open water — the same
@@ -3093,8 +3109,27 @@ void splatCompute() {
     // the coordinates: coordinate blending smeared diagonal fur across every
     // partially-steep slope.
     vec3 dnRa = vec3(texture2D(uNrmR, uv * 0.041).xy * 2.0 - 1.0, 0.0);
-    vec3 dnRb = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.041).xy,
-                              texture2D(uNrmR, gWallUVz * 0.041).xy);
+    vec3 dnRb;
+    if (uBeddedR > 0.5) {
+      // Round 55 (2026-09-24, round 49's open item: Titan's "fine wavy partings" on every ring wall inside 300 m).
+      // The one-normal-map-at-a-time probe named uNrmR and the tap experiment named THIS sample: the procedural
+      // sandstone tile is bedded (a 3 px seam notch at every bed boundary, normal strength 2.6), so projected in the
+      // wall plane at a 24 m period it printed a parting every 0.9–2.8 m of world height, contour-tracing the relief
+      // on every face, and no mip bias could remove it (a step's derivative stays a line at every level). On the
+      // bedded maps the wall crag is analytic instead — buttress masses and ribs along the wall, leaning and ledged
+      // with height (wallCragTilt), phased per cliff by one slow noise fetch per wall plane — so the walls keep
+      // buttresses and recesses with no line locked to world height and no texture in the gradient (a
+      // screen-derivative bump of the mip-sampled noise field was tried first and speckled the whole wall). The
+      // planar ground tap (dnRa) and the photo-rock maps keep the tile.
+      float phx = texture2D(uNoise, gWallUVx * 0.0031 + vec2(0.63, 0.21)).r;
+      float phz = texture2D(uNoise, gWallUVz * 0.0031 + vec2(0.63, 0.21)).r;
+      vec2 nxv = wallCragTilt(gWallUVx, phx);
+      vec2 nzv = wallCragTilt(gWallUVz, phz);
+      dnRb = vec3(-gWallSigns.y * nzv.x * gWallW, gWallSigns.x * nxv.x * (1.0 - gWallW), -mix(nxv.y, nzv.y, gWallW));
+    } else {
+      dnRb = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.041).xy,
+                             texture2D(uNrmR, gWallUVz * 0.041).xy);
+    }
     vec3 dnR = mix(dnRa, dnRb, steepW);
     n.xyz += dnR * fR * 0.6 * dMid * (1.0 - fMs); // relief pass 2: 0.24 -> 0.6 (1049e4e ran 0.9), craggy rock at range
   }
@@ -3976,6 +4011,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
+    // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
+    shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     shader.uniforms.uFieldPatch = { value: S.fieldPatch ?? 0 };
     // r3: desert macro sheet variation + ice fresnel sky tint
@@ -4018,7 +4055,7 @@ function* createSplatMaterialSteps(
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v38'; // round 49: jointed marker-bed strata and the per-map ring rock band (v37: sea sector, v36: coast contour, v33: dune wind field, v32: sky light)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v39'; // round 55: noise wall crag on the bedded sandstone R (v38: jointed marker-bed strata and the per-map ring rock band, v37: sea sector, v36: coast contour, v33: dune wind field, v32: sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

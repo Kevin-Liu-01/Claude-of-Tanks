@@ -77,7 +77,10 @@ assert.equal(parseLayerFlagArgs(['--maps=monsoon']).options.tag, 'flag');
 assert.deepEqual(Object.keys(LAYER_FLAG_PALETTE), ['uAlbG', 'uAlbD', 'uAlbR', 'uAlbM']);
 assert.deepEqual(parseUniformIsoArgs(['--maps=desert', '--iso-uniforms=uRipple']).options.isoUniforms, ['uRipple']);
 assert.equal(parseUniformIsoArgs(['--maps=desert', '--flat-normals']).options.flatNormals, true);
-assert.throws(() => parseUniformIsoArgs(['--maps=desert']), /--iso-uniforms=<name,...> and\/or --flat-normals/);
+// round 55 (2026-09-24): one layer normal map flat at a time (--flat-normal-maps) joins the two older variants
+assert.throws(() => parseUniformIsoArgs(['--maps=desert']), /--iso-uniforms=<name,...>, --flat-normals and\/or --flat-normal-maps/);
+assert.deepEqual(parseUniformIsoArgs(['--maps=titan_gorge', '--flat-normal-maps=uNrmG,uNrmR']).options.flatNormalMaps, ['uNrmG', 'uNrmR']);
+assert.throws(() => parseUniformIsoArgs(['--maps=titan_gorge', '--flat-normal-maps=uAlbG']), /layer normal maps \(uNrmG, uNrmD, uNrmR, uNrmM\)/);
 assert.throws(() => parseUniformIsoArgs(['--maps=desert', '--iso-uniforms=ripple']), /shader uniforms/);
 assert.equal(parseLayerIsolationArgs(['--maps=coastal']).options.hide, DEFAULT_HIDDEN_LAYERS);
 assert.deepEqual(DEFAULT_HIDDEN_LAYERS.map((h) => h.suffix), ['no-apron', 'no-forest', 'no-ringmesh', 'no-sheet'], 'round 40 layers');

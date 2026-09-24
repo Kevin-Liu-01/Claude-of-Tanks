@@ -306,6 +306,19 @@ export function resolveSourcedTerrainPalette(
   return Object.hasOwn(TERRAIN_PLAN, mapId) ? mapId as TerrainPaletteId : 'verdant';
 }
 
+/**
+ * Round 55 (2026-09-24): whether a map's plan replaces the procedural layer `key` with a sourced set (a `null` row
+ * keeps the procedural painter — Titan, the desert, Redrock and Skybridge keep the bedded sandstone R). The terrain
+ * material reads it to decide which coarse wall relief its rock walls carry.
+ */
+export function sourcedTerrainLayerPlanned(
+  mapId: string,
+  settings: Pick<SourcedTerrainSettings, 'sourcedPalette'> = {},
+  key: LayerKey = 'R',
+): boolean {
+  return TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)][key] != null;
+}
+
 const _imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   if (!_imgCache.has(url)) {

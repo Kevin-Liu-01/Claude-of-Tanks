@@ -74,6 +74,9 @@ export function assertTerrainFetchExpressionCensus(source) {
   // inside the sand-ripple branch, so only sand maps pay them.
   // round 49 (2026-09-23): +4 — the strata block's joint-block tone (two wall projections) and varnish streak (two),
   // all inside the uStrata branch, so only the bedded maps pay them.
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
-    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps; lexical census only');
+  // round 55 (2026-09-24): +2 — the bedded sandstone maps' analytic wall crag takes one slow phase fetch per wall
+  // plane inside the uBeddedR branch (the tile's two coarse wall taps stay in the other branch), so a fragment
+  // never pays more than before; the photo-rock maps are unchanged.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps; lexical census only');
 }
