@@ -30,7 +30,8 @@ const synthetic = (wet, { size = 1024, floor = -5.2, depth = 0.7 } = {}) => ({
   assert.equal(east.level, -5.2, 'level = the flattened floor (the ring continues the bed)');
   assert.equal(east.source, 'edge');
   const spanHalfDeg = Math.atan2(200, 492) * 180 / Math.PI;
-  assert.ok(east.widthDeg / 2 > spanHalfDeg && east.widthDeg / 2 < spanHalfDeg * 1.5 + 2, `shoulders extend past the run: ${east.widthDeg}`);
+  // the derived shoulder is 0.6 of the half-width (round 47 follow-up): the run stays fully open, the taper is 2/3 of it
+  assert.ok(east.widthDeg / 2 > spanHalfDeg && east.widthDeg / 2 < spanHalfDeg / 0.6 + 2, `shoulders extend past the run: ${east.widthDeg}`);
   // the run itself is fully open; the shore 30° away is land
   assert.equal(seaOpeningWeight(0, openings), 1);
   assert.equal(seaOpeningWeight(Math.atan2(190, 492), openings), 1, 'the end of the run is still fully open');

@@ -807,11 +807,19 @@ A/B4): the bay contour unchanged inside the square, the sea open sooner past the
 outland composition): the dark block that stood on the red line north of Saltmere's bay is gone — the cape and meadow
 run past the line (seam probe Δ ≤ 0.05 m).
 
-**Still open.** Saltwind's two mouth headlands still read as dark slabs in the bird view (B7, unchanged from A): the
-seam probe shows the square and the outland agree along the red line there too, and `sampleHorizonGeometry` puts the
-flank columns' rows at −18…+12 m against the sea columns' −7.8 m, so the slab is the ring's own face between a sea
-column and its dry neighbour (rows 0–3 across ~6° of arc), not a height-field step — a layer-isolation capture is the
-next step. The ring's forested tone near the coast (round 47) also stays open.
+**Still open — Saltwind's mouth slabs, diagnosed.** The layer-isolation capture (`.qa-dev/layers-probe.mjs`: hide the
+apron, the ring forest, the ring mesh, the sheet) leaves the two dark slabs standing until the RING MESH is hidden, and
+the seam probe shows the square and the outland agree along the red line there, so they are ring geometry. The ring
+dump (`sampleHorizonGeometry`, rows 0–8 across 138–222°) locates them: the sector's angular taper was 28 % of the
+measured run (derived openings, `EDGE_SHOULDER` 0.78), so beside the mouth the far rows fell from +50 m to the −8 m
+sea floor across two or three columns while `seaReach` stretched the sea columns outward — a sheared 30° face; the
+taper is now 2/3 of the run (0.6; Saltwind's opening 63° → 81°, the receipt bound follows), which spreads that
+descent over ~12° of arc (45 → 3 → −8 m at rows 5–8). What remains after that (B8, unchanged to the eye) is the
+ring's FIRST RIDGE ROW: at the flank columns the authored range profile rises from the outland floor at row 5
+(~210 m past the edge: 14 → 41 m at 147°, 17 → 32 m at 144° after the taper), one 50 m strip beside water that runs
+to the horizon — a cliff coast drawn as a single flat quad. That is a ring-profile item (soften the range's rise
+across a sea opening's taper, or carry the headland out over rows 5–7) handed to the round-49 ring lane; the ring's
+forested tone near the coast (round 47) also stays open.
 
 **Receipt handling.** `badlandsRelief` authenticates the exact current bay/arms/ridge/rim-fade blocks and projects them
 to the historical text next to Saltwind's round-40 contour (relief authoring by owner ruling); the streaming fixture's

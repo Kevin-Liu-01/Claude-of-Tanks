@@ -33,8 +33,12 @@ export interface EdgeWaterField {
 
 const TAU = Math.PI * 2;
 const DEFAULT_SHOULDER = 0.58;
-/** Derived openings taper over a shorter shoulder than the authored bay: they follow a measured shoreline. */
-const EDGE_SHOULDER = 0.78;
+/** Derived openings keep their measured run fully open and taper beyond it. Round 47 follow-up (2026-09-23): the taper
+ * was 28 % of the run's half-width (0.78) — at Saltwind's mouth the ring's far rows fell from +50 m to the sea floor
+ * across two or three columns, a sheared 30° face that read as two dark slabs from above; near the square the bay's
+ * own contour rules (ringSeaWeight), so a wider taper only opens the far ring beside the mouth — a headland sloping
+ * into the sea over ~17° of arc instead of a wall. */
+const EDGE_SHOULDER = 0.6;
 /** The apron's outer radius: well past the first authored ridge row, under the far haze, where the ring's own
  * sea colour has taken on the low sky (m). */
 export const SEA_APRON_OUTER_RADIUS_M = 1400;
