@@ -5106,7 +5106,9 @@ function* createFxSteps(
     dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void {
       if (intensity <= 0.02) return;
       const waterMask = heightField?.getWaterMaskAt?.(pos.x, pos.z) ?? 0;
-      if (waterMask > 0.02) {
+      // round 61: a track that rides a bridge deck (or any floor) more than 0.6 m over the water surface under it
+      // is not in that water — the mask reports the river the deck spans, the contact point's height says which
+      if (waterMask > 0.02 && pos.y < groundY(pos.x, pos.z) + (heightField?.getWaterDepthAt?.(pos.x, pos.z) ?? 0) + 0.6) {
         emitWetTrackDust(pos, dir, intensity, waterMask);
         return;
       }

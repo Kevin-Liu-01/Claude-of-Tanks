@@ -108,7 +108,49 @@ interface MarshSourceConfig {
   dip?: number;
   depth?: number;
   level?: number;
+  /** Round 61 (2026-09-24, Amberford's bridge): the road that crosses this station does so on a BRIDGE — a level deck
+   * over the water (resolveBridgeDecks below) instead of the 14–18 m dry band every other crossing is graded through. */
+  crossing?: 'bridge';
+  /** Round 61: the deck's clearance over the water surface (m, default 2.4), its width between the parapets (m,
+   * default 12.4) and the approach length beyond each abutment over which the road plane grades to the deck (m,
+   * default 36). */
+  deckClearM?: number;
+  deckWidthM?: number;
+  approachM?: number;
 }
+
+/**
+ * Round 61 (2026-09-24): a bridge deck resolved from a marsh station authored `crossing: 'bridge'` — the level plane
+ * the road crosses the water on. The kit (maps/mapKits.ts) builds the span, the abutments and the parapets from it and
+ * publishes the collision record the ride stands on; the navigation grid (sim/botRoutePlanner.ts) reads the deck as dry
+ * ground and the water beside it as liquid; the height field under the deck is the river bed.
+ */
+export interface BridgeDeckPlane {
+  /** The deck centre (the road's nearest point to the station) and the road's unit bearing there. */
+  x: number;
+  z: number;
+  ux: number;
+  uz: number;
+  /** Half the span along the road (the abutment faces) and half the deck width across it (the parapet line). */
+  halfLength: number;
+  halfWidth: number;
+  /** The level deck plane, the river bed under it (the liquid plane at the centre) and the water surface over the bed. */
+  deckY: number;
+  bedY: number;
+  waterY: number;
+  /** The approach length beyond each abutment over which the road plane grades to the deck. */
+  approachM: number;
+  /** The road route the deck carries (the kit's ford posts skip it). */
+  route: number;
+}
+/** Round 61: the abutment depth inside the span — the terrain climbs from the bed to the deck through it. */
+const BRIDGE_ABUTMENT_M = 3;
+const BRIDGE_DECK_CLEAR_M = 2.4;
+const BRIDGE_DECK_WIDTH_M = 12.4;
+const BRIDGE_APPROACH_M = 36;
+/** The road's own dry band is 18 m; nothing wider than that is graded or dried, so nothing wider is exempted. */
+const BRIDGE_CORRIDOR_HALF_WIDTH_M = 18;
+const EMPTY_BRIDGE_DECKS: readonly BridgeDeckPlane[] = [];
 
 interface MarshConfig extends MarshSourceConfig {
   dip: number;
@@ -298,6 +340,9 @@ export interface HeightField {
   waterRipplesActive?(): boolean;
   /** Presentation-only; simulation/headless fields may omit this query. */
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
+  /** Round 61 (2026-09-24): the bridge decks resolved from the stations authored `crossing: 'bridge'` (empty on every
+   * other map) — the kit, the navigation grid and the FX read the same planes the height field is exempted under. */
+  bridgeDecks?: readonly BridgeDeckPlane[];
   size: number;
   minY: number;
   maxY: number;
@@ -965,6 +1010,43 @@ function* heightFieldBuildSteps(
   let quarryFloorY: number | null = null;
   let landformPhase: 'legacy-support' | 'authored-relief' = 'legacy-support';
   const liquidIndexWords = Math.ceil(_MARSHES.length / 32);
+  // Round 61 (2026-09-24): the bridge decks, resolved after the road plane and the liquid surfaces are frozen (below);
+  // every construction query before that sees none, so the road grid, the pads and the liquid fit are untouched.
+  let bridgeDecks: readonly BridgeDeckPlane[] = EMPTY_BRIDGE_DECKS;
+  const _bridgeTerms = { span: 0, approach: 0, deckY: 0 };
+  /**
+   * The bridge terms at a point, allocation-free: `span` is 1 under the deck and falls to 0 through the abutment (the
+   * road plane and the dry band are exempted by it), `approach` is 1 at the abutment face and falls to 0 at the end of
+   * the approach (the road plane grades toward `deckY` by it); both are 0 off every deck's corridor.
+   */
+  function bridgeTermsAt(x: number, z: number): typeof _bridgeTerms {
+    const out = _bridgeTerms;
+    out.span = 0; out.approach = 0; out.deckY = 0;
+    for (let i = 0; i < bridgeDecks.length; i++) {
+      const deck = bridgeDecks[i];
+      const dx = x - deck.x, dz = z - deck.z;
+      const along = Math.abs(dx * deck.ux + dz * deck.uz);
+      if (along >= deck.halfLength + deck.approachM) continue;
+      if (Math.abs(dx * deck.uz - dz * deck.ux) > BRIDGE_CORRIDOR_HALF_WIDTH_M) continue;
+      out.deckY = deck.deckY;
+      if (along < deck.halfLength) {
+        out.span = 1 - smoothstep(deck.halfLength - BRIDGE_ABUTMENT_M, deck.halfLength, along);
+        out.approach = 1;
+      } else out.approach = 1 - smoothstep(deck.halfLength, deck.halfLength + deck.approachM, along);
+      return out;
+    }
+    return out;
+  }
+  /** The deck standing over (x, z) — inside the span and between the parapets — or null. */
+  function bridgeDeckOver(x: number, z: number): BridgeDeckPlane | null {
+    for (let i = 0; i < bridgeDecks.length; i++) {
+      const deck = bridgeDecks[i];
+      const dx = x - deck.x, dz = z - deck.z;
+      if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength
+        && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth) return deck;
+    }
+    return null;
+  }
 
   function applyMacroTerrain(
     x: number,
@@ -1082,7 +1164,12 @@ function* heightFieldBuildSteps(
     if (!roadsOn) return h;
     if (rd < 14) {
       if (!elevationSampled) roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz);
-      h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
+      if (bridgeDecks.length) {
+        // round 61: under a bridge deck the road plane yields to the river bed; over each approach it grades to the deck
+        const bridge = bridgeTermsAt(x, z);
+        roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
+        h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
+      } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
     }
     return applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
   }
@@ -1457,6 +1544,55 @@ function* heightFieldBuildSteps(
       (x, z) => heightAt(x, z, false, false, false));
   }
 
+  // Round 61 (2026-09-24, Amberford's bridge over the river): a marsh station authored `crossing: 'bridge'` carries
+  // its road over the water on a deck instead of through the 14–18 m dry band. Resolved once the road plane and the
+  // liquid surfaces are frozen: the deck centre is the road's nearest point to the station and its axis the road
+  // bearing there; the span is the river's own wet reach along that axis (the liquid union before the dry band, marched
+  // at 0.25 m) plus an abutment at each end; the plane is the road plane lifted clear of the water surface by the
+  // authored clearance. Under the span heightAt keeps the river bed and waterWetnessAt keeps the river (bridgeTermsAt);
+  // over each approach the road plane grades to the deck. A station without a road inside its radius is an authoring
+  // error and fails here rather than silently drying a crossing.
+  function resolveBridgeDecks(): readonly BridgeDeckPlane[] {
+    const decks: BridgeDeckPlane[] = [];
+    for (const station of _MARSHES) {
+      if (station.crossing !== 'bridge') continue;
+      let best = Infinity, cx = station.x, cz = station.z, ux = 1, uz = 0, route = -1;
+      for (let r = 0; r < roads.length; r++) {
+        const nodes = roads[r];
+        for (let s = 0; s < nodes.length - 1; s++) {
+          const { d, t } = segDist(station.x, station.z, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);
+          if (d >= best) continue;
+          const dx = nodes[s + 1][0] - nodes[s][0], dz = nodes[s + 1][1] - nodes[s][1];
+          const length = Math.hypot(dx, dz);
+          if (length <= 0) continue;
+          best = d; route = r; ux = dx / length; uz = dz / length;
+          cx = nodes[s][0] + dx * t; cz = nodes[s][1] + dz * t;
+        }
+      }
+      if (best > station.r) throw new Error(`bridge station at ${station.x},${station.z} has no road inside its radius`);
+      let reach = 0;
+      for (const sign of [-1, 1]) {
+        for (let along = 0; along <= station.r * 2; along += 0.25) {
+          if (sampleShorelineMask(_MARSHES, _LAKES, cx + ux * along * sign, cz + uz * along * sign) > waterRampStart) {
+            reach = Math.max(reach, along);
+          }
+        }
+      }
+      const bedY = heightAt(cx, cz, false, false);
+      const waterY = bedY + liquidDepthM;
+      decks.push({
+        x: cx, z: cz, ux, uz, route,
+        halfLength: reach + BRIDGE_ABUTMENT_M,
+        halfWidth: (station.deckWidthM ?? BRIDGE_DECK_WIDTH_M) / 2,
+        deckY: Math.max(gridSample(gRoadElev, cx, cz), waterY + (station.deckClearM ?? BRIDGE_DECK_CLEAR_M)),
+        bedY, waterY,
+        approachM: station.approachM ?? BRIDGE_APPROACH_M,
+      });
+    }
+    return decks.length ? Object.freeze(decks) : EMPTY_BRIDGE_DECKS;
+  }
+  if (liquidWater && liquidSurfaces) bridgeDecks = resolveBridgeDecks();
+
   // Freeze original road, junction, pad and water support before activating
   // this single-map excavation. No new height grid or alternate collision
   // surface: mesh, exact physics and the existing fast cache read heightAt.
@@ -1589,6 +1725,7 @@ function* heightFieldBuildSteps(
 
   function getGroundType(x: number, z: number): GroundType {
     if (gridSample(gRoadDist, x, z) < 4.3) return 'hard';
+    if (bridgeDecks.length && bridgeDeckOver(x, z) !== null) return 'hard'; // round 61: stone across the whole deck
     for (const lk of _LAKES) {
       // maps r1 (ADDITIVE): terrain.softLakes = liquid-water sheets (coastal
       // shallows) drive as bogged 'soft' ground; default stays 'hard' (ice).
@@ -1646,7 +1783,9 @@ function* heightFieldBuildSteps(
     // Surface heights deliberately yield to these dry height constraints.
     // The identical callback feeds the existing mask bake and wake queries;
     // neither may paint water over the resulting ford/pad ramps.
-    wetness *= smoothstep(14, 18, gridSample(gRoadDist, x, z));
+    // round 61: under a bridge deck the river keeps its wetness — the deck, not a causeway, carries the road
+    const roadDry = smoothstep(14, 18, gridSample(gRoadDist, x, z));
+    wetness *= bridgeDecks.length ? roadDry + (1 - roadDry) * bridgeTermsAt(x, z).span : roadDry;
     if (wetness <= 0) return 0;
     for (const pad of padPts) {
       const dx = x - pad.x, dz = z - pad.z;
@@ -1725,6 +1864,7 @@ function* heightFieldBuildSteps(
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
+    bridgeDecks, // round 61
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x: number, z: number) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,

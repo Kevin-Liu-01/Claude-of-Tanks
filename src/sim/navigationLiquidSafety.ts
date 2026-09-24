@@ -1,8 +1,11 @@
+import { bridgeDeckOver, type NavigationBridgeDeck } from './bridgeDeckNavigation.ts';
 import { tankContactRect } from './tankContactShape.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
 
 interface NavigationLiquidField {
   readonly navigationWaterPolicy?: 'avoid-liquid';
+  /** Round 61: a hull over a bridge deck is on the deck, not in the water the mask reports under it. */
+  readonly bridgeDecks?: readonly NavigationBridgeDeck[];
   getWaterMaskAt?(x: number, z: number): number;
 }
 
@@ -27,6 +30,7 @@ export function createNavigationLiquidSafety(
   const hl = (rect?.halfLength ?? 0) + (rect ? 0.4 : 0);
   const acrossSteps = Math.max(1, Math.ceil(hw * 2 / 2));
   const getWaterMaskAt = field.getWaterMaskAt;
+  const decks = field.bridgeDecks?.length ? field.bridgeDecks : null;
   return function liquidCorridorClear(x: number, z: number, yaw: number, travel = 0): boolean {
     const fx = Math.sin(yaw), fz = Math.cos(yaw);
     const lo = cz - hl + Math.min(0, travel);
@@ -36,7 +40,9 @@ export function createNavigationLiquidSafety(
       const a = lo + (hi - lo) * along / alongSteps;
       for (let across = 0; across <= acrossSteps; across++) {
         const r = cx - hw + 2 * hw * across / acrossSteps;
-        const mask = getWaterMaskAt.call(field, x + fz * r + fx * a, z - fx * r + fz * a);
+        const px = x + fz * r + fx * a, pz = z - fx * r + fz * a;
+        if (decks !== null && bridgeDeckOver(decks, px, pz)) continue;
+        const mask = getWaterMaskAt.call(field, px, pz);
         if (!Number.isFinite(mask) || mask > 0 || mask < 0) return false;
       }
     }

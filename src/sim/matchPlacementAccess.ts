@@ -34,6 +34,7 @@ export function createObjectiveAccess(world: AccessWorld, anchors: PlacementAnch
   const dryNavigation = createDryNavigationView(navigation, {
     getHeightAt: (x, z) => field.getHeightAt(x, z),
     getWaterMaskAt: (x, z) => field.getWaterMaskAt?.(x, z) ?? 0,
+    ...(field.bridgeDecks ? { bridgeDecks: field.bridgeDecks } : {}),
   }, (x, z) => connectorClear({ x, z }, { x, z }));
   const alpha = createNavigationReachability(dryNavigation, ACCESS_DRIVETRAIN,
     anchors.deployments?.alpha ?? [anchors.alpha], connectorClear);

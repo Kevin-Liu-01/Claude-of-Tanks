@@ -1,3 +1,7 @@
+import {
+  BRIDGE_SNAP_DECK, BRIDGE_SNAP_NONE, bridgeDeckOver, snapToBridgeDeck,
+  type BridgeDeckSnap, type NavigationBridgeDeck,
+} from './bridgeDeckNavigation.ts';
 import { createNavigationLiquidSafety } from './navigationLiquidSafety.ts';
 import {
   TERRAIN_MARGIN_EPS,
@@ -37,6 +41,8 @@ interface Position2 {
 
 interface NavigationHeightField {
   readonly navigationWaterPolicy?: NavigationWaterPolicy;
+  /** Round 61: the bridge decks the field is exempted under (terrain.ts); dry ground at the deck's height for routing. */
+  readonly bridgeDecks?: readonly NavigationBridgeDeck[];
   getWaterMaskAt?(x: number, z: number): number;
   getHeightAt(x: number, z: number): number;
   getGroundType?(x: number, z: number): string;
@@ -63,6 +69,9 @@ export interface BotNavigationGrid {
   readonly heights: Float32Array;
   readonly blocked: Uint8Array;
   readonly groundTypes: Uint8Array;
+  /** Round 61: the point each cell routes through (x, z interleaved) — the cell centre, or the deck axis for a cell
+   * that belongs to a bridge crossing. Allocated only when the field publishes bridge decks. */
+  readonly cellPositions?: Float32Array;
 }
 
 interface BotNavigationGridOptions<T extends NavigationObstacle = NavigationObstacle> {
@@ -129,6 +138,15 @@ function worldCell(value: number) {
 function worldCoord(index: number) {
   return WORLD_MIN + index * CELL_M;
 }
+
+/** The point a cell routes through: its centre, or the bridge-deck axis point the grid snapped it to (round 61). */
+function cellX(positions: Float32Array | undefined, index: number) {
+  return positions ? positions[index * 2] : worldCoord(index % GRID_N);
+}
+function cellZ(positions: Float32Array | undefined, index: number) {
+  return positions ? positions[index * 2 + 1] : worldCoord(Math.floor(index / GRID_N));
+}
+const _deckSnap: BridgeDeckSnap = { x: 0, z: 0, y: 0 };
 
 function hashNoise(seed: number, ix: number, iz: number) {
   let value = seed ^ Math.imul(ix + 17, 0x9e3779b1) ^ Math.imul(iz + 31, 0x85ebca6b);
@@ -209,11 +227,27 @@ function sampleNavigationRow<T extends NavigationObstacle>(
   heights: Float32Array,
   groundTypes: Uint8Array,
   blocked: Uint8Array,
+  positions: Float32Array | undefined,
 ): void {
   for (let ix = 0; ix < GRID_N; ix++) {
     const index = cellIndex(ix, iz);
-    const x = worldCoord(ix);
-    const z = worldCoord(iz);
+    let x = worldCoord(ix);
+    let z = worldCoord(iz);
+    if (positions) {
+      // round 61: a cell within half a cell of a bridge crossing's road axis routes through that axis — over an
+      // approach it is sampled there like any road cell; over the span it IS the deck: the deck's height, stone, and
+      // the deck's own record is its floor, not an obstacle
+      const snap = snapToBridgeDeck(heightField.bridgeDecks!, x, z, CELL_M / 2, _deckSnap);
+      if (snap !== BRIDGE_SNAP_NONE) { x = _deckSnap.x; z = _deckSnap.z; }
+      positions[index * 2] = x;
+      positions[index * 2 + 1] = z;
+      if (snap === BRIDGE_SNAP_DECK) {
+        heights[index] = _deckSnap.y;
+        groundTypes[index] = GROUND_HARD;
+        blocked[index] = 0;
+        continue;
+      }
+    }
     heights[index] = heightField.getHeightAt(x, z);
     const ground = heightField.getGroundType?.(x, z) ?? 'medium';
     groundTypes[index] = encodeGroundType(ground);
@@ -232,6 +266,8 @@ function sampleNavigationRow<T extends NavigationObstacle>(
  * Both directions share one edge test; segment intervals are at most 2.5 m.
  */
 function navigationSampleIsLiquid(field: NavigationHeightField, x: number, z: number): boolean {
+  // round 61: the water under a bridge deck is liquid; the deck over it is the dry ground a hull rides
+  if (field.bridgeDecks && bridgeDeckOver(field.bridgeDecks, x, z)) return false;
   // Called only after addDryNavigationPolicy validates the field capability.
   const mask = field.getWaterMaskAt!(x, z);
   if (!Number.isFinite(mask) || mask < 0 || mask > 1) {
@@ -242,15 +278,17 @@ function navigationSampleIsLiquid(field: NavigationHeightField, x: number, z: nu
 
 function navigationEdgeCrossesLiquid(
   field: NavigationHeightField, ix: number, iz: number,
-  step: readonly [number, number, number],
+  step: readonly [number, number, number], positions: Float32Array | undefined,
 ): boolean {
   const [dx, dz, distanceScale] = step;
   const intervals = Math.ceil(CELL_M * distanceScale / 2.5);
+  // the edge runs between the points the two cells route through (their centres, or a bridge deck's axis)
+  const from = cellIndex(ix, iz), to = cellIndex(ix + dx, iz + dz);
+  const x0 = cellX(positions, from), z0 = cellZ(positions, from);
+  const x1 = cellX(positions, to), z1 = cellZ(positions, to);
   for (let sample = 1; sample < intervals; sample++) {
     const fraction = sample / intervals;
-    if (navigationSampleIsLiquid(field,
-      worldCoord(ix) + dx * CELL_M * fraction,
-      worldCoord(iz) + dz * CELL_M * fraction)) return true;
+    if (navigationSampleIsLiquid(field, x0 + (x1 - x0) * fraction, z0 + (z1 - z0) * fraction)) return true;
   }
   return false;
 }
@@ -261,14 +299,14 @@ function addDryNavigationPolicy(
   blocked: Uint8Array,
   groundTypes: Uint8Array,
   exactConnectorClear: (x: number, z: number) => boolean,
+  cellPositions?: Float32Array,
 ): Readonly<BotNavigationGrid> {
   if (typeof heightField.getWaterMaskAt !== 'function') {
     throw new TypeError('avoid-liquid navigation requires getWaterMaskAt');
   }
   const waterBlockedEdges = new Uint8Array(GRID_N * GRID_N);
   for (let index = 0; index < blocked.length; index++) {
-    const ix = index % GRID_N, iz = Math.floor(index / GRID_N);
-    if (navigationSampleIsLiquid(heightField, worldCoord(ix), worldCoord(iz))) {
+    if (navigationSampleIsLiquid(heightField, cellX(cellPositions, index), cellZ(cellPositions, index))) {
       blocked[index] = 1;
     }
   }
@@ -281,7 +319,7 @@ function addDryNavigationPolicy(
       const [dx, dz] = NEIGHBOR_STEPS[direction];
       const nx = ix + dx, nz = iz + dz;
       if (isOutsideGrid(nx, nz) || blocked[cellIndex(nx, nz)]) continue;
-      if (!navigationEdgeCrossesLiquid(heightField, ix, iz, NEIGHBOR_STEPS[direction])) continue;
+      if (!navigationEdgeCrossesLiquid(heightField, ix, iz, NEIGHBOR_STEPS[direction], cellPositions)) continue;
       waterBlockedEdges[index] |= 1 << direction;
       waterBlockedEdges[cellIndex(nx, nz)] |= 1 << opposite[direction];
     }
@@ -289,6 +327,7 @@ function addDryNavigationPolicy(
   return Object.freeze({
     heights, blocked, groundTypes, navigationWaterPolicy: 'avoid-liquid', waterBlockedEdges,
     liquidField: heightField, exactConnectorClear,
+    ...(cellPositions ? { cellPositions } : {}),
   });
 }
 
@@ -304,22 +343,24 @@ export function createBotNavigationGrid<T extends NavigationObstacle>({
   const heights = new Float32Array(GRID_N * GRID_N);
   const blocked = new Uint8Array(GRID_N * GRID_N);
   const groundTypes = new Uint8Array(GRID_N * GRID_N);
+  // round 61: only a field with bridge decks routes any cell off its centre
+  const cellPositions = heightField.bridgeDecks?.length ? new Float32Array(GRID_N * GRID_N * 2) : undefined;
   const candidates: T[] = [];
   const obstacles = getObstacles() || [];
   for (let iz = 0; iz < GRID_N; iz++) {
     sampleNavigationRow(iz, heightField, queryObstacles, obstacles, candidates,
-      heights, groundTypes, blocked);
+      heights, groundTypes, blocked, cellPositions);
   }
   if (heightField.navigationWaterPolicy === 'avoid-liquid') {
     return addDryNavigationPolicy(heightField, heights, blocked, groundTypes, (x,z) => {
       const nearby = queryObstacles ? queryObstacles(x-4.5,z-4.5,x+4.5,z+4.5,candidates) : obstacles;
       return !isSolidObstacleAt(nearby,x,z);
-    });
+    }, cellPositions);
   }
   if (heightField.navigationWaterPolicy !== undefined) {
     throw new TypeError('unknown navigation water policy');
   }
-  return Object.freeze({ heights, blocked, groundTypes });
+  return Object.freeze({ heights, blocked, groundTypes, ...(cellPositions ? { cellPositions } : {}) });
 }
 
 function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
@@ -330,6 +371,8 @@ function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
     && navigation.heights.length === count
     && navigation.blocked.length === count
     && navigation.groundTypes.length === count
+    && (navigation.cellPositions === undefined
+      || (navigation.cellPositions instanceof Float32Array && navigation.cellPositions.length === count * 2))
     && (navigation.navigationWaterPolicy === undefined
       ? navigation.waterBlockedEdges === undefined
       : navigation.navigationWaterPolicy === 'avoid-liquid'
@@ -344,7 +387,7 @@ export function createDryNavigationView(navigation: BotNavigationGrid, field: Na
   if (!isValidNavigationGrid(navigation)) throw new TypeError('valid navigation grid required');
   if (navigation.navigationWaterPolicy === 'avoid-liquid') return navigation;
   return addDryNavigationPolicy(field, navigation.heights, navigation.blocked.slice(),
-    navigation.groundTypes, connectorClear);
+    navigation.groundTypes, connectorClear, navigation.cellPositions);
 }
 
 function connectedNavigationCells(navigation: BotNavigationGrid, point: Position2,
@@ -356,7 +399,7 @@ function connectedNavigationCells(navigation: BotNavigationGrid, point: Position
     if (isOutsideGrid(ix, iz)) continue;
     const index = cellIndex(ix, iz);
     if (navigation.blocked[index]) continue;
-    target.x = worldCoord(ix); target.z = worldCoord(iz);
+    target.x = cellX(navigation.cellPositions, index); target.z = cellZ(navigation.cellPositions, index);
     if (clear(point, target) && visit(index)) return true;
   }
   return false;
@@ -408,7 +451,7 @@ export function navigationReachabilityContains(navigation: BotNavigationGrid, ma
   if (!Number.isFinite(point.x + point.z) || Math.max(Math.abs(point.x), Math.abs(point.z)) > WORLD_MAX) return false;
   const ix = worldCell(point.x), iz = worldCell(point.z), index = cellIndex(ix, iz);
   return !navigation.blocked[index] && mask[index] === 1
-    && connectorClear(point, { x: worldCoord(ix), z: worldCoord(iz) });
+    && connectorClear(point, { x: cellX(navigation.cellPositions, index), z: cellZ(navigation.cellPositions, index) });
 }
 
 function nearestOpen(blocked: Uint8Array, ix: number, iz: number): [number, number] {
@@ -487,6 +530,7 @@ function reconstructRoute(
   costs: Float64Array,
   startIndex: number,
   goalIndex: number,
+  positions: Float32Array | undefined,
 ): RouteSolution {
   if (parents[goalIndex] < 0 && goalIndex !== startIndex) {
     return { points: [], cost: Infinity };
@@ -494,7 +538,7 @@ function reconstructRoute(
   const points: BotRoutePoint[] = [];
   let current = goalIndex;
   while (current >= 0) {
-    points.push([worldCoord(current % GRID_N), worldCoord(Math.floor(current / GRID_N))]);
+    points.push([cellX(positions, current), cellZ(positions, current)]);
     if (current === startIndex) break;
     current = parents[current];
   }
@@ -532,7 +576,7 @@ function solveRoute(
     if (node.index === goalIndex) break;
     for (const step of NEIGHBOR_STEPS) relaxNeighbor(node, step, search);
   }
-  return reconstructRoute(parents, costs, startIndex, goalIndex);
+  return reconstructRoute(parents, costs, startIndex, goalIndex, navigation.cellPositions);
 }
 
 /**
@@ -573,7 +617,7 @@ function solveDryRoute(
     if (!node) break;
     if (closed[node.index]) continue;
     closed[node.index] = 1;
-    const dx = worldCoord(node.ix) - to.x, dz = worldCoord(node.iz) - to.z;
+    const dx = cellX(navigation.cellPositions, node.index) - to.x, dz = cellZ(navigation.cellPositions, node.index) - to.z;
     const distanceSq = dx * dx + dz * dz;
     if (distanceSq < bestDistanceSq || (distanceSq === bestDistanceSq
       && (costs[node.index] < costs[bestIndex]
@@ -585,7 +629,7 @@ function solveDryRoute(
       relaxNeighbor(node, NEIGHBOR_STEPS[direction], search, 1 << direction);
     }
   }
-  return reconstructRoute(parents, costs, startIndex, bestIndex);
+  return reconstructRoute(parents, costs, startIndex, bestIndex, navigation.cellPositions);
 }
 
 function roleDetourPoint(

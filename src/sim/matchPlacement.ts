@@ -13,6 +13,8 @@ export interface PlacementTerrain {
   getGroundType?(x: number, z: number): string;
   size?: number;
   navigationWaterPolicy?: 'avoid-liquid';
+  /** Round 61: the bridge decks the dry-route proof crosses on (sim/bridgeDeckNavigation.ts). */
+  readonly bridgeDecks?: readonly import('./bridgeDeckNavigation.ts').NavigationBridgeDeck[];
 }
 export interface PlacementAnchors {
   alpha: PlacementSpawn; bravo: PlacementSpawn;

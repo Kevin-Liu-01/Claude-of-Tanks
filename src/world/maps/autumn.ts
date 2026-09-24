@@ -20,15 +20,21 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // (corridor DP over the marsh-less heightfield, $SP/r48a/analyze.mjs route);
 // r 25 / dip 1.5 is the open river, the two authored CROSSINGS pinch it:
 // the BRIDGE narrows under the coach road and the FORD under the manor lane.
-// Every road crossing is dry by construction (terrain.ts zeroes the water
-// mask within 14 m of a road centreline and grades the causeway), so the
-// river is fordable exactly where a lane crosses it and soft water elsewhere.
+// A road crossing is dry by construction (terrain.ts zeroes the water mask
+// within 14 m of a road centreline and grades the causeway), so the river is
+// fordable exactly where a lane crosses it and soft water elsewhere — except
+// where a station authors `crossing: 'bridge'` (round 61, 2026-09-24): there
+// the road crosses on a level stone deck resolved by terrain.ts (the span is
+// the river's own wet reach along the road, the deck 2.4 m over the water
+// surface, the approaches graded to it), the water keeps its level and its
+// wetness under the deck, the bed stays the river bed, and mapKits.ts builds
+// the arched span, the abutments and the parapets from that plane.
 const RIVER_STATIONS = [
   { x: -450, z: -330, dip: 1.4 }, { x: -410, z: -306 }, { x: -370, z: -284 }, { x: -330, z: -266 },
   { x: -290, z: -246 }, { x: -250, z: -222 }, { x: -212, z: -196 },
   { x: -176, z: -172 }, // the WEIR reach: the mill stands on the north bank here
   { x: -140, z: -152 }, { x: -104, z: -134 }, { x: -70, z: -114 }, { x: -40, z: -92 },
-  { x: -20, z: -68, r: 18, dip: 1.0 }, // the BRIDGE narrows (coach road)
+  { x: -20, z: -68, r: 18, dip: 1.0, crossing: 'bridge' as const }, // the BRIDGE narrows (coach road): a true span
   { x: 14, z: -42 }, { x: 52, z: -20 }, { x: 96, z: -4 }, { x: 140, z: 10 },
   { x: 186, z: 24, r: 17, dip: 1.5 }, // the FORD (manor lane): the wade over gravel (dip drops the lane to the water)
   { x: 230, z: 46 }, { x: 272, z: 78 }, { x: 312, z: 118 }, { x: 348, z: 166 },
@@ -307,8 +313,8 @@ export default {
       // the town wall (gates open where the three streets pass)
       [TOWN.x0 + 4, TOWN.z0 + 4, TOWN.x0 + 4, TOWN.z1 - 4], [TOWN.x0 + 4, TOWN.z1 - 4, TOWN.x1 - 4, TOWN.z1 - 4],
       [TOWN.x1 - 4, TOWN.z1 - 4, TOWN.x1 - 4, TOWN.z0 + 4], [TOWN.x1 - 4, TOWN.z0 + 4, TOWN.x0 + 4, TOWN.z0 + 4],
-      // the bridge parapets: 6.2 m either side of the coach road over the narrows
-      [2, -83, -33, -45], [-7, -91, -42, -53],
+      // (the bridge parapets stood here as two field-wall runs until round 61; they are the bridge kit's own solid
+      // records on the deck now — a wall run seats on the terrain, which is the river bed under the span)
       // south-bank field walls: from the sunken lane's hedge toward the river bank
       [-173, -251, -185, -228, 1], [-82, -209, -97, -176, 1], [12, -185, -2, -112, 2], [89, -161, 56, -63, 3],
       // north-bank field walls: from the north lane down to the river bank
