@@ -504,6 +504,14 @@ const STALEMATE_PUSH_S = 8;      // duration of one forced push window
 // Round 48 pacing (2026-09-24): seconds of a closed penetration gate (no zone at or above the 0.9 ratio, no HE
 // left to fall back on) against a live, visible target before the bot changes the geometry with a flank.
 const PEN_DENIED_FLANK_S = 8;
+// Round 60 pacing (2026-09-24): the last bot against a PASSIVE target — see updatePassivePress. A target whose
+// hull has held still and whose gun has stayed silent this long is pressed to a point-blank side aspect.
+const PASSIVE_TARGET_STILL_S = 20;
+const PASSIVE_TARGET_SILENT_S = 20;
+const PASSIVE_PRESS_NO_PEN_S = 20;     // this bot's own shells have not penetrated it for this long
+const PASSIVE_PRESS_STANDOFF_M = 70;   // the press point's distance from the target
+const PASSIVE_PRESS_ASPECT_RAD = 1.3;  // ~75° off the target's nose: a side plate, not a glacis
+const PASSIVE_PRESS_REPICK_S = 3;
 // RETURN-FIRE LOCK (controls_gunnery r4): three rounds of aggro plumbing
 // (r4 sticky slot, r5 muzzle intel + hard-commit) still measured 76 enemy
 // shells / 2 aimed at the player / 0 hits across 5 battles. Two remaining
@@ -958,6 +966,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let probeMiss = false;
   let probeMissT = 0;
   let penDeniedT = 0;                        // round 48 pacing: closed pen gate dwell (see updatePenDeniedManeuver)
+  // round 60 pacing: what the current target has been DOING (still hull, silent gun) and whether this bot's
+  // own shells still penetrate it; the press point once the target has proven passive
+  let targetActivityId: string | null = null;
+  let targetStillS = 0;
+  let targetLastShotS = -Infinity;
+  let prevTargetReloadT = 0;
+  let lastPenAtS = -Infinity;
+  const pressPoint = { x: 0, z: 0 };
+  let passivePressing = false;
+  let passivePressRepickS = -1;
+  let passivePresses = 0;                    // probe-visible count of press starts
   // geometry-hard blocked commit → follow the authored lane a while
   let laneFallbackUntilS = -1;
   // starved trigger + clear ray → forced clean halt (settled-shot window)
@@ -3536,7 +3555,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       shotsFromSpot++;
       const shouldScoot = tune.scootAfter > 0
         && shotsFromSpot >= tune.scootAfter
-        && timeS >= scootUntilS;
+        && timeS >= scootUntilS
+        && !targetPassive(timeS); // round 60 pacing: a solution on a passive target is kept, not scooted away from
       if (shouldScoot && pickScoot()) beginScoot(14);
     }
     prevReloadT = reloadTime;
@@ -3563,6 +3583,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (timeS < fallbackUntilS || timeS < fallbackCdS || mode !== 'engage' || !getAllies) {
       return false;
     }
+    // round 60 pacing: nothing is shooting — a passive target is finished, not retreated from
+    if (targetPassive(timeS) && timeS >= underFireUntilS) return false;
     const targetHealth = opponent.combat;
     if (targetHealth?.maxHp && targetHealth.hp / targetHealth.maxHp < 0.18) return false;
     if (distance >= roleHoldR() * 1.35) return false;
@@ -3638,6 +3660,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     timeS: number,
     targetDistance: number,
   ): void {
+    updatePassivePress(dt, timeS, targetDistance);
     updateShotRelocation(combat, timeS);
     updateProbeRelocation(dt, timeS);
     updatePenDeniedManeuver(dt, timeS);
@@ -3659,9 +3682,104 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const targetHolds = !!target && Math.abs(target.state.speed ?? 0) < 0.5;
     const denied = targetHolds && losClear && !penGateOk && !canShootHe && mode !== 'flank';
     penDeniedT = denied ? penDeniedT + dt : 0;
-    if (penDeniedT < PEN_DENIED_FLANK_S || timeS < scootUntilS) return;
+    if (penDeniedT < PEN_DENIED_FLANK_S || timeS < scootUntilS || passivePressing) return;
     penDeniedT = 0;
     startFlank(timeS);
+  }
+
+  // Round 60 pacing (2026-09-24, server/battlePacing: Tidegate Polders 3/4, Whiteout 2/4, one seed on eight other
+  // maps). The receipt's idle host never moves and never fires, and the last bot fought it from its hold band at
+  // 165-300 m: with the tier's fire-control error the shells flew over the turret or dug in short (winter seed 2:
+  // 25 rounds, 8 on the hull; ruinspires seed 2: 33 rounds, 3 on the hull), the rest plinked the glacis, and nine
+  // of the fourteen capped battles ended with the survivor's racks empty — two bots with no ammunition circling a
+  // hull they could never finish. Shoot-and-scoot legs, the low-health fallback and the stalemate settle holds all
+  // exist to survive RETURN FIRE; against a target that has held its hull still and its gun silent for
+  // PASSIVE_TARGET_*_S there is nothing to survive, so a bot whose own shells have stopped penetrating drives to a
+  // point-blank side aspect (PASSIVE_PRESS_STANDOFF_M, PASSIVE_PRESS_ASPECT_RAD) and finishes it from there. The
+  // moment the target moves or fires the press ends and every ordinary rule resumes — an active player is never
+  // charged, and the deployment window keeps the opening intact.
+  function updateTargetActivity(dt: number, timeS: number): void {
+    if (!target || !enemyAlive(target)) {
+      targetActivityId = null;
+      targetStillS = 0;
+      return;
+    }
+    if (target.id !== targetActivityId) {
+      targetActivityId = target.id;
+      targetStillS = 0;
+      targetLastShotS = timeS;
+      lastPenAtS = timeS;
+      prevTargetReloadT = target.combat?.reload?.t ?? 0;
+    }
+    const still = Math.abs(target.state.speed ?? 0) < 0.5 && Math.abs(target.state.yawRate ?? 0) < 0.05;
+    targetStillS = still ? targetStillS + dt : 0;
+    const reloadT = target.combat?.reload?.t ?? 0;
+    if (reloadT > prevTargetReloadT + 1) targetLastShotS = timeS; // a shell left its gun
+    prevTargetReloadT = reloadT;
+  }
+
+  function targetPassive(timeS: number): boolean {
+    return !!target && targetStillS >= PASSIVE_TARGET_STILL_S
+      && timeS - targetLastShotS >= PASSIVE_TARGET_SILENT_S;
+  }
+
+  /** The side-aspect point nearer to where this hull already stands; the far side, then the straight approach. */
+  function pickPressPoint(): boolean {
+    if (!target) return false;
+    const st = entity.state;
+    const tp = target.state.pos;
+    const bearing = Math.atan2(st.pos.x - tp.x, st.pos.z - tp.z);   // target → self
+    const nose = target.state.yaw;
+    const nearSide = Math.abs(wrapAngle(nose + PASSIVE_PRESS_ASPECT_RAD - bearing))
+      <= Math.abs(wrapAngle(nose - PASSIVE_PRESS_ASPECT_RAD - bearing)) ? 1 : -1;
+    for (let k = 0; k < 3; k++) {
+      const a = k === 2 ? bearing : nose + nearSide * (k === 0 ? 1 : -1) * PASSIVE_PRESS_ASPECT_RAD;
+      const x = clamp(tp.x + Math.sin(a) * PASSIVE_PRESS_STANDOFF_M, -470, 470);
+      const z = clamp(tp.z + Math.cos(a) * PASSIVE_PRESS_STANDOFF_M, -470, 470);
+      if (!reachableSpot(x, z)) continue;
+      pressPoint.x = x;
+      pressPoint.z = z;
+      return true;
+    }
+    return false;
+  }
+
+  function updatePassivePress(dt: number, timeS: number, distance: number): void {
+    updateTargetActivity(dt, timeS);
+    const eligible = targetPassive(timeS) && !!target && losClear && timeS >= deploymentUntilS;
+    if (!eligible) {
+      passivePressing = false;
+      return;
+    }
+    if (!passivePressing) {
+      if (timeS - lastPenAtS < PASSIVE_PRESS_NO_PEN_S) return;
+      if (distance <= PASSIVE_PRESS_STANDOFF_M + ARRIVE_DIST_M
+          && aspectAngle() >= PASSIVE_PRESS_ASPECT_RAD * 0.7) return; // already on its flank at point-blank
+      if (outnumberedSolo() || !pickPressPoint()) return;
+      passivePressing = true;
+      passivePressRepickS = timeS + PASSIVE_PRESS_REPICK_S;
+      passivePresses++;
+      if (mode === 'flank' || mode === 'seekCover') mode = 'engage';
+      hasMoveTarget = false;
+      hasCoverPoint = false;
+      hasVantage = false;
+      scootUntilS = -1;
+      settleUntilS = -1;
+      return;
+    }
+    if (timeS >= passivePressRepickS) {
+      passivePressRepickS = timeS + PASSIVE_PRESS_REPICK_S;
+      if (!pickPressPoint()) passivePressing = false;
+    }
+  }
+
+  function drivePassivePress(input: AiInput): void {
+    if (!target) return;
+    const st = entity.state;
+    const tp = target.state.pos;
+    if (driveToXZ(input, pressPoint.x, pressPoint.z, 1.0)) {
+      faceYaw(input, Math.atan2(tp.x - st.pos.x, tp.z - st.pos.z));
+    }
   }
 
   function updateFriendlyLaneRelocation(timeS: number): void {
@@ -3805,6 +3923,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.brake = false;
     driveIntent = false;
     if (driveReaction(input, timeS)) return;
+    if (passivePressing && target && losClear) {
+      drivePassivePress(input);
+      return;
+    }
     if (timeS < settleUntilS && target && losClear) {
       faceYaw(input, Math.atan2(
         target.state.pos.x - entity.state.pos.x,
@@ -4020,9 +4142,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (k === 'nonpen' || k === 'ricochet' || k === 'spaced_absorb' || k === 'era') {
         nonPenCount++;
         probeTimer = 0; // re-evaluate aim zone / shell slot immediately
-        if (nonPenCount >= 2 && mode !== 'flank') startFlank(nowS);
+        if (nonPenCount >= 2 && mode !== 'flank' && !passivePressing) startFlank(nowS);
       } else if (k === 'pen' || k === 'he_pen') {
         nonPenCount = 0;
+        lastPenAtS = nowS; // round 60 pacing: the press arms only while this bot's shells stop penetrating
       }
     }
     resampleAimError();
@@ -4216,6 +4339,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
       navT: +navNoProgressT.toFixed(1), strikes: stuckStrikes, // r6 watchdog
       penDeniedT: +penDeniedT.toFixed(1), // round 48 pacing: closed pen gate dwell
+      // round 60 pacing: how long the target has been passive (still hull, silent gun) and the press state
+      targetPassiveS: target ? +Math.min(targetStillS, nowS - targetLastShotS).toFixed(1) : 0,
+      passivePress: passivePressing,
+      passivePresses,
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)
