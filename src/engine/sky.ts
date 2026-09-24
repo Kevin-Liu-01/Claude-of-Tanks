@@ -19,8 +19,19 @@ import { createDeferredDeadline } from './deferredDeadline.ts';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged);
 // read inside the bake functions (post-renderer), never at module eval.
-import { texSize } from './quality.ts';
+import { getDeviceTier, texSize } from './quality.ts';
 import { enforceEnvValidity } from './deviceDiag.ts';
+import {
+  ATMOSPHERE_SKY_GLSL,
+  ATMO_GROUND_KM,
+  ATMO_SUN_DISC_COS,
+  AtmosphereLuts,
+  atmosphereKey,
+  atmosphereSupported,
+  skyPresetToAtmosphere,
+  type AtmosphereOverrides,
+  type AtmosphereSummary,
+} from './atmosphere.ts';
 import { SkyEnvironmentCache } from './skyEnvironmentCache.ts';
 import {
   bakeCirrusPixels,
@@ -62,6 +73,11 @@ export interface SkyPreset {
   planetDeg: number;
   /** Tint of that disc. */
   planetHex: number;
+  /**
+   * Round 65 (2026-09-24): overrides on the physically based atmosphere the desktop tier derives from this
+   * preset (atmosphere.ts `skyPresetToAtmosphere`); null = the calibrated mapping. Mars authors its thin CO2 sky.
+   */
+  atmosphere: AtmosphereOverrides | null;
 }
 
 interface CloudBakePixels {
@@ -452,6 +468,7 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   nebulaHex: null,
   planetDeg: 0.8,
   planetHex: 0xedf2ff,
+  atmosphere: null,
 });
 
 /** How much of the night sky a dome intensity earns: full at the night preset's .08, none from .30 up. */
@@ -536,6 +553,86 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 	return ( stars * 0.90 + band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * horizonFade
 		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade;
 }`;
+
+// Round 65 (2026-09-24): the physically based dome. On the desktop tier the visible sky is the Hillaire
+// atmosphere of atmosphere.ts sampled from its sky-view LUT — the Preetham `Sky` above stays the mobile tier's
+// dome and the probe the receipts pin — with the sun disc seen through the atmosphere's transmittance, the
+// legacy knee (the disc exempt, so it still blooms into a compact disc + halo), the legacy compact sun glow, the
+// dither and the round-22 night sky composited exactly as before: the night preset dims the atmosphere with
+// skyIntensity (.08 — a moonlit sky, the moon being the key light) and the starfield, band and moon ride on top.
+// Below the horizon the dome repeats its horizon (the ring occludes the rest), as the Preetham dome did.
+const ATMOSPHERE_SUN_DISC_RADIANCE = 40.0; // HDR: past the emissive shoulder and the bloom threshold, as the legacy disc
+const ATMOSPHERE_DOME_VERTEX = /* glsl */`
+varying vec3 vWorldPosition;
+void main() {
+	vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+	vWorldPosition = worldPosition.xyz;
+	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+	gl_Position.z = gl_Position.w;
+}`;
+const ATMOSPHERE_DOME_FRAGMENT = /* glsl */`
+uniform vec3 uSunDirection;
+uniform vec3 uSunTransmittance;
+uniform float uSkyIntensity;
+uniform float uNight;
+uniform float uGalaxy;
+uniform vec3 uNebula;
+uniform float uPlanetR;
+uniform vec3 uPlanetTint;
+${ATMOSPHERE_SKY_GLSL}
+${NIGHT_SKY_GLSL}
+varying vec3 vWorldPosition;
+void main() {
+	vec3 direction = normalize( vWorldPosition - cameraPosition );
+	vec3 skyDir = normalize( vec3( direction.x, max( direction.y, 0.0 ), direction.z ) );
+	vec3 skyCol = atmoSky( skyDir );
+	float cosSun = dot( direction, uSunDirection );
+	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR
+	float sunSpot = smoothstep( 0.99988, 0.99996, cosSun );
+	skyCol = mix( atmoKnee( skyCol ), skyCol, sunSpot );
+	// the sun disc: 0.533°, limb-darkened, through the transmittance toward the sun
+	float disc = smoothstep( ${ATMO_SUN_DISC_COS.toFixed(8)} - 0.00004, ${ATMO_SUN_DISC_COS.toFixed(8)} + 0.00002, cosSun );
+	if ( disc > 0.0 ) {
+		float r = acos( clamp( cosSun, -1.0, 1.0 ) ) / ${(Math.acos(ATMO_SUN_DISC_COS)).toFixed(8)};
+		float limb = 1.0 - 0.6 * ( 1.0 - sqrt( max( 1.0 - r * r, 0.0 ) ) );
+		skyCol += uSunTransmittance * ( disc * limb * ${ATMOSPHERE_SUN_DISC_RADIANCE.toFixed(1)} * smoothstep( -0.03, 0.0, direction.y ) );
+	}
+	// the legacy compact warm forward-scatter glow (~5°) so the disc keeps its tight golden halo
+	float sunGlow = pow( max( cosSun, 0.0 ), 240.0 );
+	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * 0.50;
+	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
+	vec3 nightCol = vec3( 0.0 );
+	if ( uNight > 0.001 ) nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint ) * uNight;
+	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity + nightCol, 1.0 );
+}`;
+
+/** Whether this renderer runs the physically based sky: the desktop tier with float render targets, unless `?atmosphere=off`. */
+function atmosphereEnabledFor(renderer: THREE.WebGLRenderer): boolean {
+  if (getDeviceTier() === 'mobile' || !atmosphereSupported(renderer)) return false;
+  try {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('atmosphere') === 'off') return false;
+  } catch { /* no location: keep the model */ }
+  return true;
+}
+
+/** What the rig publishes on scene.userData.atmosphere for the post aerial pass (read every frame, mutated in place). */
+export interface AtmospherePublishedState {
+  active: boolean;
+  skyView: THREE.Texture | null;
+  viewHeightKm: number;
+  sunDir: THREE.Vector3;
+  knee: THREE.Vector3;
+  skyIntensity: number;
+  /** Luminance of the anti-solar horizon band as the dome shows it (the elevation ratio's denominator). */
+  horizonLum: number;
+  /** The fog colour's luminance ceiling (HORIZON_LUM_CAP), applied per pixel to the LUT target. */
+  horizonCap: number;
+  fogTint: THREE.Color;
+  fogMix: number;
+  irradiance: THREE.Color;
+  /** The live summary readback (diagnostics; the aerial pass reads only the scalars above). */
+  summary: AtmosphereSummary | null;
+}
 
 /** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
 function configureSkyUniforms(
@@ -726,15 +823,16 @@ function horizonColorKey(
 }
 
 function environmentKey(
-  renderer: THREE.WebGLRenderer, sunDir: THREE.Vector3, preset: Readonly<SkyPreset>,
+  renderer: THREE.WebGLRenderer, sunDir: THREE.Vector3, preset: Readonly<SkyPreset>, atmosphereSuffix = '',
 ): string | null {
   const skyKey = horizonColorKey(renderer, sunDir, preset);
   const clearColor = renderer.getClearColor(new THREE.Color());
   const background = [clearColor.r, clearColor.g, clearColor.b, renderer.getClearAlpha()];
   // PMREM forces NoToneMapping and disables XR; conservative output keys also
   // cover the retained horizon contract. Never round radiance or sun inputs.
+  // Round 65: the physically based dome appends its exact parameter key (atmosphere.ts atmosphereKey).
   if (skyKey === null || !background.every(Number.isFinite)) return null;
-  return `${skyKey}|${background.join(',')}`;
+  return `${skyKey}|${background.join(',')}${atmosphereSuffix ? `|atmo:${atmosphereSuffix}` : ''}`;
 }
 
 /** Three's fromScene has no exception cleanup; restore all state it mutates. */
@@ -945,6 +1043,84 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   scene.userData.sunDirWorld = sunDir;
   // r3: publish the per-map display exposure trim for post.ts's grade.
   scene.userData.postExposure = preset.postExposure;
+
+  // Round 65: the physically based dome and its LUTs (desktop tier). The Preetham mesh stays in the scene for
+  // the mobile tier and as the fallback when a summary readback fails; exactly one of the two is visible.
+  const atmosphereLuts = atmosphereEnabledFor(renderer)
+    ? new AtmosphereLuts(renderer, [SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF]) : null;
+  const skyUniforms = sky.material.uniforms;
+  const atmosphereMaterial = new THREE.ShaderMaterial({
+    name: 'AtmosphereSkyMaterial',
+    vertexShader: ATMOSPHERE_DOME_VERTEX,
+    fragmentShader: ATMOSPHERE_DOME_FRAGMENT,
+    uniforms: {
+      tAtmoSky: { value: atmosphereLuts?.skyView.texture ?? null },
+      uAtmoSun: { value: new THREE.Vector3(0, 1, 0) },
+      uAtmoViewH: { value: ATMO_GROUND_KM + 0.05 },
+      uAtmoKnee: { value: new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF) },
+      uAtmoIntensity: { value: 1 },
+      uSunDirection: { value: new THREE.Vector3(0, 1, 0) },
+      uSunTransmittance: { value: new THREE.Color(1, 1, 1) },
+      // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
+      uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
+      uNebula: skyUniforms.uNebula, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
+    },
+    side: THREE.BackSide,
+    depthWrite: false,
+  });
+  const atmosphereDome = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), atmosphereMaterial);
+  atmosphereDome.name = 'atmosphere-dome';
+  atmosphereDome.scale.setScalar(SKY_DOME_SCALE);
+  atmosphereDome.frustumCulled = false;
+  atmosphereDome.visible = false;
+  sky.visible = true;
+  scene.add(atmosphereDome);
+  const atmosphereState: AtmospherePublishedState = {
+    active: false, skyView: atmosphereLuts?.skyView.texture ?? null, viewHeightKm: 0.05, sunDir,
+    knee: new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF), skyIntensity: 1, horizonLum: 0.45,
+    horizonCap: HORIZON_LUM_CAP, fogTint: new THREE.Color(preset.fogTintHex), fogMix: preset.fogMix, irradiance: new THREE.Color(0.3, 0.4, 0.6),
+    summary: atmosphereLuts?.summary ?? null,
+  };
+  scene.userData.atmosphere = atmosphereState;
+  /** Round 37's elevation falloff for the current sky (the atmosphere summary's, or the legacy probe's). */
+  let atmosphereFalloff = 1;
+  let atmosphereKeySuffixLive = '';
+  /**
+   * Rebuild whatever LUT the preset invalidated, read the summary, and point the dome, the fog and the post
+   * pass at the result. A failed readback (a lost context, a driver without float readback) demotes this
+   * preset to the Preetham dome so the frame is never black; returns whether the atmosphere is showing.
+   */
+  const refreshAtmosphere = (): boolean => {
+    if (!atmosphereLuts) return false;
+    const params = skyPresetToAtmosphere(preset);
+    atmosphereLuts.update(params, preset.skyIntensity);
+    const active = atmosphereLuts.summaryValid;
+    atmosphereState.active = active;
+    atmosphereDome.visible = active;
+    sky.visible = !active;
+    if (!active) {
+      atmosphereKeySuffixLive = '';
+      delete scene.userData.skyIrradiance;
+      return false;
+    }
+    const summary = atmosphereLuts.summary;
+    const u = atmosphereMaterial.uniforms;
+    (u.uAtmoSun.value as THREE.Vector3).copy(sunDir);
+    u.uAtmoViewH.value = ATMO_GROUND_KM + params.viewHeightKm;
+    u.uAtmoIntensity.value = preset.skyIntensity;
+    (u.uSunDirection.value as THREE.Vector3).copy(sunDir);
+    (u.uSunTransmittance.value as THREE.Color).copy(summary.sunTransmittance);
+    atmosphereState.viewHeightKm = params.viewHeightKm;
+    atmosphereState.skyIntensity = preset.skyIntensity;
+    atmosphereState.horizonLum = 0.2126 * summary.horizon.r + 0.7152 * summary.horizon.g + 0.0722 * summary.horizon.b;
+    atmosphereState.fogTint.setHex(preset.fogTintHex);
+    atmosphereState.fogMix = preset.fogMix;
+    atmosphereState.irradiance.copy(summary.irradiance);
+    scene.userData.skyIrradiance = atmosphereState.irradiance; // lighting.ts: the hemisphere light's hue
+    atmosphereFalloff = summary.elevationFalloff;
+    atmosphereKeySuffixLive = atmosphereKey(params, preset.skyIntensity);
+    return true;
+  };
 
   // Cloud decks: two horizon-flattened dome shells (low cumulus + high cirrus
   // veil) whose shader projects an INFINITE virtual deck plane (see the
@@ -1201,7 +1377,11 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   );
   clouds.renderOrder = -2;
 
-  const horizonColor = sampleHorizonColor(renderer, sunDir, preset);
+  // the fog colour: the atmosphere summary's anti-solar horizon band under the same luminance ceiling as the
+  // legacy probe (HORIZON_LUM_CAP), or the legacy probe itself
+  const horizonColor = new THREE.Color(FALLBACK_HORIZON_HEX);
+  if (refreshAtmosphere()) horizonColor.copy(capColorLuminance(atmosphereLuts!.summary.horizon.clone(), HORIZON_LUM_CAP));
+  else horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
 
   /** Sync deck uniforms to the current preset + horizon sample. */
   const updateCloudDecks = (): void => {
@@ -1256,6 +1436,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   let pmrem: THREE.PMREMGenerator | null = null;
   let pmremContext: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   let pmremInfo: THREE.WebGLRenderer['info'] | null = null;
+  // Round 65: when the physically based dome is showing, the environment bakes from it (installed below,
+  // outside this owner block) and its key carries the atmosphere parameters; null keeps the Preetham bake.
+  let atmosphereBake: (() => THREE.WebGLRenderTarget) | null = null;
+  let atmosphereKeySuffix = '';
   const environments = new SkyEnvironmentCache(renderer, scene);
   const environmentGenerator = (): THREE.PMREMGenerator => {
     const context = renderer.getContext();
@@ -1271,6 +1455,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     return pmrem;
   };
   const bakeProceduralEnvironment = (): THREE.WebGLRenderTarget => {
+    if (atmosphereBake) return atmosphereBake();
     const envScene = new THREE.Scene();
     const envSky = new Sky();
     let result: THREE.WebGLRenderTarget | null = null;
@@ -1316,6 +1501,34 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     ));
   };
 
+  // Round 65: the environment of the physically based dome — a second box sharing the dome's material (the
+  // LUT and every uniform by reference) inside PMREMGenerator's far plane; the Preetham bake stays the fallback.
+  if (atmosphereLuts) {
+    atmosphereBake = () => {
+      if (!atmosphereState.active) return bakeLegacyEnvironmentFromPreetham();
+      const envScene = new THREE.Scene();
+      const envDome = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), atmosphereMaterial);
+      envDome.scale.setScalar(ENV_SKY_SCALE);
+      envScene.add(envDome);
+      try {
+        return environmentGenerator().fromScene(envScene);
+      } catch (error) {
+        try { pmrem?.dispose(); } catch { /* Preserve the bake failure. */ }
+        pmrem = null;
+        throw error;
+      } finally {
+        envDome.geometry.dispose();
+      }
+    };
+    atmosphereKeySuffix = atmosphereKeySuffixLive; // the boot bake keys the atmosphere the first refresh built
+  }
+  /** The Preetham bake for a preset the atmosphere demoted (a failed readback). */
+  const bakeLegacyEnvironmentFromPreetham = (): THREE.WebGLRenderTarget => {
+    const saved = atmosphereBake;
+    atmosphereBake = null;
+    try { return bakeProceduralEnvironment(); } finally { atmosphereBake = saved; }
+  };
+
   const rig: SkyRig = {
     sunDir,
 
@@ -1352,7 +1565,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // sky re-bakes per map and would reinstall the bad texture — and swap
       // to compensated ambient when invalid (deviceDiag.ts).
       withEnvironmentRenderState(renderer, () => environments.install(
-        environmentKey(renderer, sunDir, preset), bakeProceduralEnvironment,
+        environmentKey(renderer, sunDir, preset, atmosphereKeySuffix), bakeProceduralEnvironment,
         Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR),
         () => enforceEnvValidity(renderer, scene, preset.skyIntensity),
       ));
@@ -1385,8 +1598,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // (see FOG_EXTINCTION_SHARE).
       targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * FOG_EXTINCTION_SHARE);
       // round 37: the post aerial pass scales its scatter-in target by the sky's elevation falloff (see
-      // sampleHorizonElevationFalloff); a cached atmosphere costs no render here
-      targetScene.userData.skyElevationFalloff = sampleHorizonElevationFalloff(renderer, sunDir, preset);
+      // sampleHorizonElevationFalloff); a cached atmosphere costs no render here. Round 65: the physically
+      // based sky reports its own falloff from the summary (the post pass samples the LUT per pixel anyway).
+      targetScene.userData.skyElevationFalloff = atmosphereState.active
+        ? atmosphereFalloff : sampleHorizonElevationFalloff(renderer, sunDir, preset);
     },
 
     /** Re-target visible atmosphere state without synchronously rebuilding PMREM. */
@@ -1402,7 +1617,9 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         THREE.MathUtils.degToRad(preset.sunAzimuthDeg),
       );
       configureSkyUniforms(sky, sunDir, preset);
-      horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
+      if (refreshAtmosphere()) horizonColor.copy(capColorLuminance(atmosphereLuts!.summary.horizon.clone(), HORIZON_LUM_CAP));
+      else horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
+      atmosphereKeySuffix = atmosphereKeySuffixLive;
       updateCloudDecks(); // tint/opacity/sun-rotation/haze follow the preset
       scene.userData.postExposure = preset.postExposure; // post.ts grade trim
       // Garage variants keep the one boot PMREM resident. Rebuilding a cube

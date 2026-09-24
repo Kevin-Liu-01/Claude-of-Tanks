@@ -1154,6 +1154,23 @@ export function createLighting(
   const hemi = new THREE.HemisphereLight(
     HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY + hemiFloorFor(HEMI_INTENSITY));
   scene.add(hemi);
+  // Round 65 (2026-09-24): the hemisphere light's sky colour follows the rendered sky. sky.ts publishes the
+  // cosine-weighted irradiance of its physically based dome (scene.userData.skyIrradiance, the sky-view LUT's
+  // integral); its hue becomes the hemisphere's sky pole at the constant's own luminance, so the authored
+  // hemiIntensity and every key:fill ratio above stay exactly as tuned while shaded ground takes the colour
+  // of the sky it sits under (the round-42 wall term already reads the fog colour). Without a published
+  // irradiance (the mobile tier's Preetham dome) the engine constant stays.
+  const hemiSkyConstant = new THREE.Color(HEMI_SKY_COLOR);
+  const hemiSkyLuminance = 0.2126 * hemiSkyConstant.r + 0.7152 * hemiSkyConstant.g + 0.0722 * hemiSkyConstant.b;
+  function applyHemisphereSkyHue(): void {
+    const irradiance = scene.userData.skyIrradiance as THREE.Color | undefined;
+    const lum = irradiance ? 0.2126 * irradiance.r + 0.7152 * irradiance.g + 0.0722 * irradiance.b : 0;
+    if (!irradiance || !Number.isFinite(lum) || lum <= 1e-6) {
+      hemi.color.copy(hemiSkyConstant);
+      return;
+    }
+    hemi.color.copy(irradiance).multiplyScalar(hemiSkyLuminance / lum);
+  }
 
   // Anti-sun sky fill (see FILL_* above): castShadow stays false — it must
   // sort AFTER the CSM cascade lights so the CSM shader treats it as a plain
@@ -1515,6 +1532,7 @@ export function createLighting(
         const presetHemi = opts.hemiIntensity ?? HEMI_INTENSITY;
         hemi.intensity = presetHemi + hemiFloorFor(presetHemi);
       }
+      applyHemisphereSkyHue();
       const fx = -dir.x, fz = -dir.z;
       const fl = Math.hypot(fx, fz) || 1;
       fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);

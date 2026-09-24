@@ -15,4 +15,10 @@ export const MARS_SKY_PRESET = Object.freeze({
   cloudAltM: 700, cloudHazeK: 0.0002, cloudUvM: 4200, cloudShadowAmp: 0.05,
   sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36,
   postExposure: 1.04,
+  // round 65 (2026-09-24): Olympus Basin keeps its thin CO2 atmosphere under the physically based sky —
+  // Rayleigh at 3 % of Earth's (0.6 % of the pressure, CO2's 2.5× cross-section, the taller scale height),
+  // a dust-laden Mie term (optical depth ~0.3) whose single-scattering albedo absorbs blue (the butterscotch
+  // sky), no ozone, a rust ground bounce. The dome stays dimmed to the galaxy; the dust glows near the key light.
+  // The shared preset carries it so every map played under the Mars ruleset gets the same sky.
+  atmosphere: { rayleighScale: 0.03, mieScale: 60, mieG: 0.76, ozoneScale: 0, mieTintHex: 0xe8895a, groundAlbedoHex: 0x9b6a48 },
 } satisfies MapSkyConfig);

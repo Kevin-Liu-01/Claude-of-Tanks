@@ -80,6 +80,8 @@ import {
 } from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
+import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
+import type { AtmospherePublishedState } from './sky.ts';
 import { TemporalAAPass, applyProjectionJitter, taaJitterOffset } from './temporalAA.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
@@ -865,6 +867,21 @@ const AerialShader = {
     // band's (sky.ts sampleHorizonElevationFalloff, published on scene.userData.skyElevationFalloff) — the
     // scatter-in target follows the view ray's elevation so a far ridge converges toward the sky BEHIND it
     uHazeElevFloor: { value: 1 },
+    // round 65 (2026-09-24): the physically based sky. When the desktop dome runs the Hillaire atmosphere
+    // (sky.ts publishes scene.userData.atmosphere), the scatter-in target is its sky-view LUT sampled along
+    // each pixel's view ray — the sky the far range actually stands against, round 37's rule per pixel —
+    // under the same horizon ceiling, authored fog tint / mix, directional tints and far-field cap as the
+    // legacy targets above; uAtmo 0 keeps the legacy path byte-for-byte (the mobile tier, a failed readback).
+    uAtmo: { value: 0 },
+    tAtmoSky: { value: null },
+    uAtmoSun: { value: new THREE.Vector3(0, 1, 0) },
+    uAtmoViewH: { value: ATMO_GROUND_KM + 0.05 },
+    uAtmoKnee: { value: new THREE.Vector3(1, 0.45, 0.11) },
+    uAtmoIntensity: { value: 1 },
+    uAtmoHorizonLum: { value: 0.45 },
+    uAtmoHorizonCap: { value: 0.45 },
+    uAtmoFogTint: { value: new THREE.Color(0x7e97b8) },
+    uAtmoFogMix: { value: 0.55 },
     uSunDir: { value: new THREE.Vector3(0, 1, 0) }, // world, toward the sun
     // camera world basis + frustum half-tangents for per-pixel view rays
     uCamRight: { value: new THREE.Vector3(1, 0, 0) },
@@ -887,6 +904,12 @@ const AerialShader = {
       gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
     }`,
   fragmentShader: /* glsl */ `
+    ${ATMOSPHERE_SKY_GLSL}
+    uniform float uAtmo;
+    uniform float uAtmoHorizonLum;
+    uniform float uAtmoHorizonCap;
+    uniform vec3 uAtmoFogTint;
+    uniform float uAtmoFogMix;
     uniform sampler2D tDiffuse;
     uniform sampler2D tDepth;
     uniform float uNear;
@@ -973,14 +996,37 @@ const AerialShader = {
           + uCamRight * ( vUv.x * 2.0 - 1.0 ) * uTan.x
           + uCamUp * ( vUv.y * 2.0 - 1.0 ) * uTan.y );
         float sunAmt = pow( max( dot( ray, uSunDir ), 0.0 ), ${AERIAL_SUN_POW.toFixed(1)} );
-        vec3 hazeCol = mix( uHazeCool, uHazeWarm, sunAmt );
-        // round 37 (AAA program check 5, "a mountain is never paler than the sky behind it"): the targets above
-        // are the HORIZON haze; a ridge 8–20° up sits against a sky that is darker by the map's sampled elevation
-        // falloff (desert: 40 vs 140 display luma at +4°), so the target dims along the ray's elevation — full
-        // falloff by 0.28 (~16°, the sampled row) — and a far range can no longer converge paler than the sky
-        // above it. Toward the sun the Mie glow keeps the sky bright, so the warm lobe takes half the falloff.
-        float elevAtt = mix( 1.0, uHazeElevFloor, smoothstep( 0.0, 0.28, ray.y ) );
-        hazeCol *= mix( elevAtt, 1.0, sunAmt * 0.5 );
+        vec3 hazeCol;
+        if ( uAtmo > 0.5 ) {
+          // round 65: the sky-view LUT along this pixel's ray (just above the horizon for rays below it),
+          // under the legacy horizon luminance ceiling, mixed with the authored fog tint — the tint following
+          // the sky's own elevation ratio, as the round-37 falloff scaled the whole legacy target — then the
+          // directional warm / cool tints, the legacy blue-grey hue guard and the far-field luminance cap
+          vec3 skyDir = normalize( vec3( ray.x, max( ray.y, 0.02 ), ray.z ) );
+          vec3 skyT = atmoSkyVisible( skyDir );
+          float skyL = dot( skyT, vec3( 0.2126, 0.7152, 0.0722 ) );
+          skyT *= min( 1.0, uAtmoHorizonCap / max( skyL, 1e-4 ) );
+          float elev = min( skyL / max( uAtmoHorizonLum, 1e-4 ), 1.0 );
+          vec3 target = mix( skyT, uAtmoFogTint * elev, uAtmoFogMix );
+          if ( target.g > target.b ) {
+            float tl = dot( target, vec3( 0.2126, 0.7152, 0.0722 ) );
+            target = mix( target, vec3( tl * 0.92, tl * 0.99, tl * 1.12 ), 0.6 );
+          }
+          hazeCol = target * mix(
+            vec3( ${AERIAL_COOL_TINT[0].toFixed(3)}, ${AERIAL_COOL_TINT[1].toFixed(3)}, ${AERIAL_COOL_TINT[2].toFixed(3)} ),
+            vec3( ${AERIAL_WARM_TINT[0].toFixed(3)}, ${AERIAL_WARM_TINT[1].toFixed(3)}, ${AERIAL_WARM_TINT[2].toFixed(3)} ), sunAmt );
+          float hazeLum = dot( hazeCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+          hazeCol *= min( 1.0, ${AERIAL_HAZE_LUM_CAP.toFixed(3)} / max( hazeLum, 1e-4 ) );
+        } else {
+          hazeCol = mix( uHazeCool, uHazeWarm, sunAmt );
+          // round 37 (AAA program check 5, "a mountain is never paler than the sky behind it"): the targets above
+          // are the HORIZON haze; a ridge 8–20° up sits against a sky that is darker by the map's sampled elevation
+          // falloff (desert: 40 vs 140 display luma at +4°), so the target dims along the ray's elevation — full
+          // falloff by 0.28 (~16°, the sampled row) — and a far range can no longer converge paler than the sky
+          // above it. Toward the sun the Mie glow keeps the sky bright, so the warm lobe takes half the falloff.
+          float elevAtt = mix( 1.0, uHazeElevFloor, smoothstep( 0.0, 0.28, ray.y ) );
+          hazeCol *= mix( elevAtt, 1.0, sunAmt * 0.5 );
+        }
         float rayT = -viewZ / max( dot( ray, uCamFwd ), 0.05 );
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in
@@ -2483,6 +2529,22 @@ export function createPost(
     capLuminance(aerial.uniforms.uHazeCool.value, AERIAL_HAZE_LUM_CAP);
     const falloff = scene.userData.skyElevationFalloff;
     aerial.uniforms.uHazeElevFloor.value = typeof falloff === 'number' && falloff > 0 && falloff <= 1 ? falloff : 1;
+    // round 65: the physically based sky's LUT and its published scalars (sky.ts refreshes them per preset)
+    const atmosphere = scene.userData.atmosphere as AtmospherePublishedState | undefined;
+    const atmosphereActive = !!atmosphere?.active && !!atmosphere.skyView;
+    const u = aerial.uniforms;
+    u.uAtmo.value = atmosphereActive ? 1 : 0;
+    if (atmosphereActive && atmosphere) {
+      u.tAtmoSky.value = atmosphere.skyView;
+      u.uAtmoSun.value.copy(atmosphere.sunDir).normalize();
+      u.uAtmoViewH.value = ATMO_GROUND_KM + atmosphere.viewHeightKm;
+      u.uAtmoKnee.value.copy(atmosphere.knee);
+      u.uAtmoIntensity.value = atmosphere.skyIntensity;
+      u.uAtmoHorizonLum.value = atmosphere.horizonLum;
+      u.uAtmoHorizonCap.value = atmosphere.horizonCap;
+      u.uAtmoFogTint.value.copy(atmosphere.fogTint);
+      u.uAtmoFogMix.value = atmosphere.fogMix;
+    }
   }
 
   function updateAerialCameraBasis(): void {
