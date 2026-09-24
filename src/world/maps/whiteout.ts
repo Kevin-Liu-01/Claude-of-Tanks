@@ -62,7 +62,12 @@ export default {
     inhabit: { stalls: 0, benches: 2, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 2, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
-  horizon: { baseHex: 0xa3b1be, amp: 0.72, style: 'rolling', treeline: 0.08, snowline: 0.08, forestHex: 0x536371, rockHex: 0x9da9b4, haze: 0.92, grain: 0.60 },
+  // round 49 (owner 2026-09-23, skyline acceptance 0.80–0.90 while the battlefield stays white): in the sky-w / sky-s
+  // views the skyline IS this ring, and its snow met the capped sky at 1.01 (round 44/48: no sky, haze or aerial change
+  // moved it). Ring side only — wind-scoured crests: bare gneiss ribs (bareRock, rockHex 0x9da9b4 -> 0x5b6772: the pale
+  // rock read as more snow), a distant range's snow under overcast a step below the sky (snowHex 0xcfd8e2), and less
+  // material haze (0.92 -> 0.74) so the ring keeps its own tone against the horizon. Winter is untouched.
+  horizon: { baseHex: 0xa3b1be, amp: 0.72, style: 'rolling', treeline: 0.08, snowline: 0.08, forestHex: 0x536371, rockHex: 0x5b6772, snowHex: 0xcfd8e2, bareRock: 1, haze: 0.74, grain: 0.60 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the polar deck authored explicitly instead of
   // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps
   // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)

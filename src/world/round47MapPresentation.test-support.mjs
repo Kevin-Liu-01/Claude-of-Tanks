@@ -6,6 +6,13 @@
 import assert from 'node:assert/strict';
 
 export const ROUND47_PRESENTATION_EDITS = {
+ // round 49 (2026-09-23, lane r49a): Fjord's bare upper slopes are a vista knob, not relief
+ "fjord.ts": [
+  [
+   "  horizon: {\n    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.74, snowline: 0.78,\n    forestHex: 0x213b38, rockHex: 0x657077, haze: 0.9, grain: 0.58,\n    // round 49 (owner audit 2026-09-23, \"smooth green cone hill on the rim with a darker cap\"): the softened alpine domes\n    // never reached the vista's slope-keyed rock, so a hill was one green tint with the altitude-banded summit rock as\n    // its cap; above the treeline the turf now greys to heath with gneiss ribs, scree fans and a broken summit\n    // (horizon.ts bareRock) — the palette above is unchanged\n    bareRock: 1,\n  },\n",
+   "  horizon: {\n    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.74, snowline: 0.78,\n    forestHex: 0x213b38, rockHex: 0x657077, haze: 0.9, grain: 0.58,\n  },\n"
+  ]
+ ],
  "titanGorge.ts": [
    [
      "    // round 47 (2026-09-23, owner: \"ground patterns are too black\"): without this the sourced-texture resolver fell\n    // through to Verdant — photo grass/dirt and raw near-black Rock058 in place of the sandstone strata above\n    sourcedPalette: 'titan_gorge',\n    // round 47 (2026-09-23): tintB 0.71/0.54/0.45 (luma ×0.58 in the dark patches) → same ochre hue (18°), every\n    // channel ≥ 0.78 (luma ×0.83) — the patches stay darker than the shelves without going black\n    tintA: [1.10, 0.88, 0.69], tintB: [0.90, 0.82, 0.78], tintC: [1.06, 0.84, 0.67],\n",
@@ -160,7 +167,7 @@ export const ROUND47_PRESENTATION_EDITS = {
  ],
  "whiteout.ts": [
   [
-   "  // round 47 (owner 2026-09-23, \"the skybox and mountains are too bland\"): the flattest ring's tone grain 0.35 -> 0.60\n  horizon: { baseHex: 0xa3b1be, amp: 0.72, style: 'rolling', treeline: 0.08, snowline: 0.08, forestHex: 0x536371, rockHex: 0x9da9b4, haze: 0.92, grain: 0.60 },\n  // round 47 (owner 2026-09-23, \"the skybox and mountains are too bland\"): the polar deck authored explicitly instead of\n  // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps\n  // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)\n  sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58 },\n",
+   "  // round 47 (owner 2026-09-23, \"the skybox and mountains are too bland\"): the flattest ring's tone grain 0.35 -> 0.60\n  // round 49 (owner 2026-09-23, skyline acceptance 0.80–0.90 while the battlefield stays white): in the sky-w / sky-s\n  // views the skyline IS this ring, and its snow met the capped sky at 1.01 (round 44/48: no sky, haze or aerial change\n  // moved it). Ring side only — wind-scoured crests: bare gneiss ribs (bareRock, rockHex 0x9da9b4 -> 0x5b6772: the pale\n  // rock read as more snow), a distant range's snow under overcast a step below the sky (snowHex 0xcfd8e2), and less\n  // material haze (0.92 -> 0.74) so the ring keeps its own tone against the horizon. Winter is untouched.\n  horizon: { baseHex: 0xa3b1be, amp: 0.72, style: 'rolling', treeline: 0.08, snowline: 0.08, forestHex: 0x536371, rockHex: 0x5b6772, snowHex: 0xcfd8e2, bareRock: 1, haze: 0.74, grain: 0.60 },\n  // round 47 (owner 2026-09-23, \"the skybox and mountains are too bland\"): the polar deck authored explicitly instead of\n  // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps\n  // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)\n  sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58 },\n",
    "  horizon: { baseHex: 0xa3b1be, amp: 0.72, style: 'rolling', treeline: 0.08, snowline: 0.08, forestHex: 0x536371, rockHex: 0x9da9b4, haze: 0.92, grain: 0.35 },\n  sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, sunIntensity: 2.75, hemiIntensity: 0.58 },\n"
   ]
  ]

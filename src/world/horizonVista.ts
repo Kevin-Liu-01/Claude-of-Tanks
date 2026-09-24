@@ -305,6 +305,7 @@ uniform float uVRockAmp; uniform float uVPeakRock; uniform float uVScreeAmp; uni
 uniform float uVHaze; uniform vec3 uVFogTint; uniform float uVBanding; uniform float uVAmbient; uniform float uVSunGain;
 uniform float uVDayDiffuse;
 uniform vec2 uVRockSlope;
+uniform float uVBareRock; // round 49: bare upper slopes above the treeline (heath, outcrop ribs, scree)
 `;
 
 /**
@@ -349,7 +350,17 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   float ledgeSlope = smoothstep(0.16, 0.40, slope + nD * 0.05);
   // --- material weights ------------------------------------------------------
   float rockW = smoothstep(uVRockSlope.x, uVRockSlope.y, slope + nC * 0.26 + nD * 0.18 + nE * 0.08) * uVRockAmp;
-  rockW = max(rockW, smoothstep(0.60, 0.92, hT + nC * 0.12 + nD * 0.06) * uVPeakRock);
+  // Round 49 (owner audit 2026-09-23, Fjord "smooth green cone hill on the rim with a darker cap", Whiteout's white
+  // ring): the alpine massifs are softened domes under 15 degrees, so nothing slope-keyed above ever fires on them -
+  // meadow tint below the treeline and one darker altitude-banded cap above 60 % height. A ring that authors bareRock
+  // exposes its upper slopes the way a fjord or polar range does: above the treeline the turf greys to heath, outcrop
+  // ribs stand on the steeper local faces with scree fans below them, and the summit rock breaks into ribs instead of
+  // one cap. The palette is untouched - only where its own rock, scree and snow appear changes.
+  float bareUp = uVBareRock * smoothstep(uTreeline * 0.80, uTreeline * 1.12 + 0.04, hT + nD * 0.06 + nC * 0.04);
+  float rib = smoothstep(0.34, 0.66, 0.5 + nC * 0.55 + nD * 1.0 + nE * 0.45);
+  float ribSlope = smoothstep(0.05, 0.24, slope + nD * 0.08);
+  rockW = max(rockW, bareUp * rib * (0.30 + 0.70 * ribSlope));
+  rockW = max(rockW, smoothstep(0.60, 0.92, hT + nC * 0.12 + nD * 0.06) * uVPeakRock * mix(1.0, 0.25 + 0.75 * rib, uVBareRock));
   float snowW = 0.0;
   if (uSnowline < 1.5) {
     snowW = smoothstep(uSnowline - 0.03, uSnowline + 0.15, hT + nD * 0.07 + nC * 0.05)
@@ -358,6 +369,7 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   }
   float screeW = smoothstep(0.16, 0.40, slope + nD * 0.22 + nE * 0.10) * (1.0 - rockW) * uVScreeAmp
     * (0.55 + 0.45 * smoothstep(0.15, 0.55, hT));
+  screeW = max(screeW, bareUp * (1.0 - rockW) * smoothstep(0.03, 0.16, slope + nD * 0.06) * 0.7); // round 49: fans below the ribs
   // Round 35: talus — the debris apron at the foot of a wall: moderate slope, low on the face, thinning upward
   float talusW = smoothstep(0.10, 0.30, slope + nD * 0.08) * (1.0 - wall) * smoothstep(0.50, 0.12, hT + nC * 0.15)
     * uVScreeAmp * (1.0 - floorW);
@@ -379,6 +391,7 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   // --- material colours: tint (ratio to the map base) x tile modulation ---------
   vec3 meadowMod = mix(vec3(1.0), VTRI(uVMeadow, 0.083, vec2(0.0)).rgb * 2.0, (0.35 + 0.65 * detailW) * (1.0 - floorW * 0.85));
   vec3 col = uVMeadowTint * meadowMod;
+  col = mix(col, mix(col, uVScreeTint * 0.72, 0.5), bareUp * 0.6); // round 49: heath above the treeline
   if (uVForestAmp > 0.001) {
     vec3 canopyMod = VTRI(uVCanopy, 0.042, vec2(0.13, 0.57)).rgb * 2.0;
     canopyMod = mix(vec3(1.0), canopyMod, 0.45 + 0.55 * detailW);
@@ -413,7 +426,7 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   }
   if (snowW > 0.001) {
     vec3 snowMod = mix(vec3(1.0), VTRI(uVSnow, 0.031, vec2(0.61, 0.29)).rgb * 2.0, 0.5 + 0.5 * detailW);
-    col = mix(col, uVSnowColor * snowMod, snowW * (1.0 - rockW * 0.45));
+    col = mix(col, uVSnowColor * snowMod, snowW * (1.0 - rockW * mix(0.45, 0.85, uVBareRock))); // round 49: scoured ribs stay bare
   }
   // Round 29: the near skirt used to blur into a 12 m-per-feature wall beside a battlefield textured at
   // centimetres (the vista replaced the round-22 near overlay). Two finer world fields and the ground tile at a
@@ -516,6 +529,8 @@ interface HorizonForestOptions {
   detailNoise?: (u: number, v: number) => number;
   /** 1 when the fragment program paints forest stands (treeline inside 0..1.5), else 0. */
   forestAmp?: number;
+  /** Round 49: the ring's bare-upper-slope amplitude (horizon.bareRock); the stands keep off the outcrop ribs. */
+  bareRock?: number;
   /** The vista canopy tile: world-anchored clump mottle for the ring's own trees. */
   canopyDetail?: THREE.Texture;
   /** First authored ridge row. The rows below it are the terrain-material bands where the battlefield's rim forest
@@ -733,6 +748,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   };
   const noise = options.detailNoise;
   const forestAmp = options.forestAmp ?? 1;
+  const bareRock = options.bareRock ?? 0; // round 49
   // The fragment program's forest stands, evaluated on the horizontal plane at a candidate tree. On the rim band the
   // terrain material paints grass to steeper slopes than the vista rock weight, so trees stand there up to ~40°,
   // and the map-scale field only thins the band (clearings come from the 140 m field) so no sector goes bare.
@@ -746,9 +762,17 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     const standF = band
       ? smoothstep(hT * 0.40, 0.26 + hT * 0.40, 0.58 + nB * 0.5 + nC * 0.7 + nD * 0.25)
       : smoothstep(0.08 + hT * 0.40, 0.30 + hT * 0.40, 0.5 + nB * 1.1 + nC * 0.7 + nD * 0.25);
-    const rockW = band
+    let rockW = band
       ? smoothstep(0.62, 0.95, slope + nC * 0.20 + nD * 0.12)
       : smoothstep(0.30, 0.58, slope + nC * 0.26 + nD * 0.18);
+    if (!band && bareRock > 0) {
+      // round 49: the fragment's outcrop ribs above the treeline (same fields, same law)
+      const nE = noise(x * 0.0850 + 0.11, z * 0.0850 + 0.83) - 0.5;
+      const bareUp = bareRock * smoothstep(treeline * 0.80, treeline * 1.12 + 0.04, hT + nD * 0.06 + nC * 0.04);
+      const rib = smoothstep(0.34, 0.66, 0.5 + nC * 0.55 + nD * 1.0 + nE * 0.45);
+      const ribSlope = smoothstep(0.05, 0.24, slope + nD * 0.08);
+      rockW = Math.max(rockW, bareUp * rib * (0.30 + 0.70 * ribSlope));
+    }
     const steep = band ? smoothstep(0.85, 1.15, slope) : smoothstep(0.50, 0.82, slope);
     return standF * treeF * (1 - steep) * (1 - rockW) * forestAmp;
   };
