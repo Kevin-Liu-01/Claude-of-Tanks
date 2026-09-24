@@ -100,4 +100,7 @@ export default {
   sky: { ...frontier.sky, sunElevationDeg: 26, sunAzimuthDeg: 142, turbidity: 4.2, fogDensity: 0.00058, fogTintHex: 0x91a8b5, fogMix: 0.5, cloudOpacity: 1.0, cloudOpacity2: 0.66, sunIntensity: 3.8, hemiIntensity: 0.43 },
   minimap: { ...frontier.minimap, base: [78, 105, 77], hard: [111, 114, 98], soft: [47, 75, 71], water: 'rgba(43,89,111,.86)', waterStroke: 'rgba(23,55,73,.94)' },
   shot: { pos: [-248, 57, -248], look: [108, -1, 74] },
+  // round 66 (2026-09-24, the FFT ocean): a highland lake under a light breeze — a fine chop, no whitecaps; the
+  // owner's approved look is kept (amplitude 0.6)
+  ocean: { windSpeed: 3.0, windDirDeg: 150, fetchKm: 3, amplitude: 0.6, foam: 0, breakers: 0.15, caustics: 0.5 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

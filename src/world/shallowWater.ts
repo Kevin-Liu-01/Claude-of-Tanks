@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { HeightField } from './terrain.ts';
+import type { OceanField } from './oceanFft.ts';
 import { waterContactProfile } from './waterContact.ts';
 import type { WaterRippleField } from './waterRipples.ts';
 
@@ -127,12 +128,33 @@ interface ShallowWaterSurface {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   /** Water pass 8: the reactive field this sheet reads, or null (mobile tier, headless). */
   readonly ripples: WaterRippleField | null;
+  /** Round 66: the FFT ocean this sheet displaces and shades with, or null (mobile tier, headless, no float targets). */
+  readonly ocean: OceanField | null;
   /** Advance the sheet's clock and, with an anchor, integrate the reactive field around it. */
   update(deltaSeconds: number, anchorX?: number, anchorZ?: number): void;
   setTime(timeSeconds: number): void;
   /** Publish the vehicles in the water this frame (at most WATER_DISTURBANCE_CAP; strength 0..1). */
   setDisturbances(sources: readonly WaterDisturbance[]): void;
 }
+
+/**
+ * Round 66 (2026-09-24): the FFT ocean's samplers, shared by both stages. The maps stack one tile per cascade
+ * (n × rows texels each, the last row repeating the first); a world point maps to fract(xz / L) inside its tile,
+ * half a texel in so bilinear filtering lands on texel centres and wraps in z through the pad (x wraps in the sampler).
+ */
+const OCEAN_SAMPLING_GLSL = /* glsl */`
+      uniform sampler2D uOceanDisp;   // (λDx, Dy, λDz, foam) per cascade tile
+      uniform sampler2D uOceanDeriv;  // (dDy/dx, dDy/dz, λ dDx/dx, λ dDz/dz)
+      uniform vec3 uOceanPatch;       // cascade patch sizes (m), large to small
+      uniform vec4 uOceanGrid;        // (grid n, rows per tile, cascades, active 0/1)
+      uniform vec4 uOceanLook;        // (whitecap foam, shore break, caustics, significant wave height m)
+      varying vec2 vOceanLag;         // the vertex's world xz before the displacement: the Lagrangian sample point
+      varying float vOceanWet;
+      float oceanPatch(float c) { return c < 0.5 ? uOceanPatch.x : (c < 1.5 ? uOceanPatch.y : uOceanPatch.z); }
+      vec2 oceanUv(vec2 xz, float c) {
+        vec2 f = fract(xz / oceanPatch(c));
+        return vec2(f.x + 0.5 / uOceanGrid.x, (f.y * uOceanGrid.x + 0.5 + c * uOceanGrid.y) / (uOceanGrid.y * uOceanGrid.z));
+      }`;
 
 type ShallowWaterShader = Parameters<NonNullable<THREE.MeshStandardMaterial['onBeforeCompile']>>[0];
 /**
@@ -155,6 +177,7 @@ export function createShallowWaterSurface(
   setup: ShallowWaterMaterialSetup | null = null,
   ripples: WaterRippleField | null = null,
   outlandWater: { texture: THREE.Texture; sizeM: number; sectorBlend?: readonly [number, number] } | null = null,
+  ocean: OceanField | null = null,
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
@@ -201,10 +224,53 @@ export function createShallowWaterSurface(
       uOutlandWater: { value: outlandWater?.texture ?? null },
       uOutlandWaterSize: { value: outlandWater?.sizeM ?? 0 },
       uOutlandSeaBlend: { value: new THREE.Vector2(...(outlandWater?.sectorBlend ?? [120, 360])) },
+      // Round 66 (2026-09-24): the FFT ocean (oceanFft.ts). The two map samplers share the field's own value objects
+      // (its map sets alternate for the foam feedback); grid.w is 0 without a field and every ocean term is skipped.
+      uOceanDisp: ocean?.displacement ?? { value: null },
+      uOceanDeriv: ocean?.derivative ?? { value: null },
+      uOceanPatch: { value: ocean?.patches ?? new THREE.Vector3(400, 96, 12) },
+      uOceanGrid: { value: ocean?.grid ?? new THREE.Vector4(128, 129, 3, 0) },
+      uOceanLook: { value: new THREE.Vector4(ocean?.state.foam ?? 0, ocean?.state.breakers ?? 0, ocean?.state.caustics ?? 0, ocean?.hs ?? 0) },
+      uOceanDepth: { value: profile.depthM },
     });
     material.userData.waterShader = shader;
-    shader.vertexShader = shader.vertexShader.replace('#include <common>',
-      '#include <common>\nvarying vec3 vWaterWorld;');
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
+      varying vec3 vWaterWorld;
+      ${OCEAN_SAMPLING_GLSL}
+      uniform sampler2D uWaterMask;
+      uniform float uWaterSize;
+      uniform vec2 uWaterRamp;
+      uniform sampler2D uOutlandWater;
+      uniform float uOutlandWaterSize;
+      uniform vec2 uOutlandSeaBlend;
+      /** The sheet's wetness at a vertex — the fragment rule (the square's mask ramp, the apron's contour past the edge). */
+      float oceanVertexWet(vec2 xz) {
+        vec2 uv = (xz + uWaterSize * 0.5) / uWaterSize;
+        float pastEdgeM = max(max(-uv.x, uv.x - 1.0), max(-uv.y, uv.y - 1.0)) * uWaterSize;
+        float edgeWet = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uWaterMask, clamp(uv, 0.0, 1.0)).b);
+        float wet = mix(edgeWet, 1.0, smoothstep(0.0, 320.0, pastEdgeM));
+        if (uOutlandWaterSize > 0.5 && pastEdgeM > 0.0) {
+          float coast = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uOutlandWater, xz / uOutlandWaterSize + 0.5).r);
+          wet = max(coast, smoothstep(uOutlandSeaBlend.x, uOutlandSeaBlend.y, pastEdgeM));
+        }
+        return wet;
+      }`);
+    // Round 66: the long cascade displaces the sheet's own vertices (8 m cells hold its ≥ 16 m waves; the shorter
+    // cascades live in the normal). The swell flattens over the bank band and stops at the water's edge, where the
+    // crest instead lifts a thin film a few centimetres up the strand — the run-up.
+    shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      {
+        vec3 oceanWorld = (modelMatrix * vec4(position, 1.0)).xyz;
+        vOceanLag = oceanWorld.xz;
+        float oceanWet = oceanVertexWet(oceanWorld.xz);
+        vOceanWet = oceanWet;
+        if (uOceanGrid.w > 0.5) {
+          vec3 oceanD = texture2D(uOceanDisp, oceanUv(oceanWorld.xz, 0.0)).xyz;
+          float oceanLift = smoothstep(0.06, 0.55, oceanWet);
+          transformed += oceanD * oceanLift;
+          transformed.y += clamp(oceanD.y / max(uOceanLook.w, 0.02), 0.0, 1.0) * 0.05 * uOceanLook.y * (1.0 - oceanLift) * step(0.001, oceanWet);
+        }
+      }`);
     shader.vertexShader = shader.vertexShader.replace('#include <worldpos_vertex>',
       '#include <worldpos_vertex>\nvWaterWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
@@ -250,6 +316,10 @@ export function createShallowWaterSurface(
       float waterBank;
       float waterGrazing;
       float waterTurbidity;
+      ${OCEAN_SAMPLING_GLSL}
+      uniform float uOceanDepth;      // the map's wading depth (m): getWaterDepthAt's bed law, evaluated here from the mask
+      float oceanBed;                 // the bed under this fragment (m below the surface) by that law
+      float oceanDebug;
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
       vec2 waterUV = (vWaterWorld.xz + uWaterSize * 0.5) / uWaterSize;
@@ -267,6 +337,14 @@ export function createShallowWaterSurface(
         // the same authored ramp the square applies to its mask: the apron ends where the sheet inside would, not up the bank
         float coast = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uOutlandWater, vWaterWorld.xz / uOutlandWaterSize + 0.5).r);
         wet = max(coast, smoothstep(uOutlandSeaBlend.x, uOutlandSeaBlend.y, pastEdgeM));
+      }
+      // Round 66: the run-up. Where the bank band meets the strand the long cascade's crest pushes the water's edge a
+      // little way up the sand and the trough draws it back (the swash of a breaking wave), so the edge breathes with
+      // the swell instead of standing on one mask contour. The sheet is a thin film there; its alpha stays low.
+      oceanBed = uOceanDepth * wet * wet * (3.0 - 2.0 * wet);
+      if (uOceanGrid.w > 0.5 && wet < 0.22) {
+        float swashCrest = clamp(texture2D(uOceanDisp, oceanUv(vOceanLag, 0.0)).y / max(uOceanLook.w, 0.02) * 1.4, 0.0, 1.0);
+        wet = max(wet, mix(wet, 0.09, swashCrest * uOceanLook.y * (1.0 - smoothstep(0.0, 0.22, wet))));
       }
       if (wet < 0.015) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
@@ -331,6 +409,46 @@ export function createShallowWaterSurface(
         // the fine wave texture breaks the foam field into streaks and clots instead of a flat white lane
         rippleFoam = rc.a * rippleW * (0.35 + 1.3 * waveFine.x);
       }
+      // Round 66 (2026-09-24): the FFT ocean. Each cascade tile contributes its slope (dDy/dx, dDy/dz), the diagonal
+      // of its choppy Jacobian (the normal of a displaced surface divides by 1 + λ dDx/dx) and its whitecap foam,
+      // weighted by how well this pixel can resolve the tile — a cascade finer than the pixel's footprint fades out
+      // instead of aliasing into sparkle (the maps carry no mip chain: the tiles share one texture).
+      vec2 oceanSlope = vec2(0.0);
+      vec2 oceanJ = vec2(0.0);
+      float oceanFoam = 0.0;
+      float oceanLift = 0.0;
+      float oceanFineW = 0.0;
+      float oceanWhite = 0.0;
+      oceanDebug = 0.0;
+      float oceanFootprint = length(fwidth(vOceanLag));
+      if (uOceanGrid.w > 0.5) {
+        for (int c = 0; c < 3; c++) {
+          float texel = oceanPatch(float(c)) / uOceanGrid.x;
+          float w = 1.0 - smoothstep(texel * 1.5, texel * 5.0, oceanFootprint);
+          if (w < 0.002) continue;
+          vec2 ouv = oceanUv(vOceanLag, float(c));
+          vec4 dv = texture2D(uOceanDeriv, ouv);
+          vec4 dp = texture2D(uOceanDisp, ouv);
+          oceanSlope += dv.xy * w;
+          oceanJ += dv.zw * w;
+          oceanFoam += dp.a * w;
+          if (c == 0) oceanLift = dp.y;
+          if (c == 2) oceanFineW = w;
+        }
+        // the shelf: where the bed rises into the wave band the waves steepen (shoaling) and their crests break white
+        // over the bank band; past the break the whitewater runs up the strand with the crest (the run-up)
+        float bankBand = smoothstep(0.03, 0.16, wet) * (1.0 - smoothstep(0.30, 0.62, wet));
+        float crest = smoothstep(0.15, 0.85, oceanLift / max(uOceanLook.w, 0.02) * 1.6 + 0.5);
+        oceanSlope *= 1.0 + 1.2 * uOceanLook.y * (1.0 - smoothstep(0.08, 0.55, wet));
+        float breaker = uOceanLook.y * bankBand * crest;
+        float swash = uOceanLook.y * (1.0 - smoothstep(0.0, 0.10, wet)) * smoothstep(0.35, 0.9, crest) * smoothstep(0.015, 0.05, wet);
+        // whitecaps only where the Jacobian folded the surface; every foam is torn by the fine wave texture (round 46)
+        oceanWhite = oceanFoam * uOceanLook.x * (0.35 + 1.3 * waveFine.x)
+          + breaker * (0.5 + 0.9 * waveFine.y) + swash * (0.6 + 0.6 * waveFine.x);
+        oceanDebug = uWaterDebug > 3.5 ? oceanFineW : uWaterDebug > 2.5 ? clamp(oceanWhite, 0.0, 1.0)
+          : clamp(oceanLift / max(uOceanLook.w, 0.02) + 0.5, 0.0, 1.0);
+      }
+      vec2 oceanN = vec2(oceanSlope.x / max(1.0 + oceanJ.x, 0.3), oceanSlope.y / max(1.0 + oceanJ.y, 0.3));
       for (int i = 0; i < 8; i++) {
         if (i >= uWaterWakeCount) break;
         vec4 wa = uWaterWakeA[i];
@@ -392,8 +510,8 @@ export function createShallowWaterSurface(
         wakeFoam += wash * (0.16 + 0.6 * smoothstep(0.35, 0.8, waveFine.x * 0.6 + waveNear.y * 0.4));
       }
       // the simulated surface tilts the normal by its real slope (×1.6: a 5 cm ripple still reads at 20 m)
-      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength - rippleGrad.x * 1.6, 1.0,
-        wave.y * uWaterWaveStrength - rippleGrad.y * 1.6)), 0.0)).xyz);
+      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength - rippleGrad.x * 1.6 - oceanN.x, 1.0,
+        wave.y * uWaterWaveStrength - rippleGrad.y * 1.6 - oceanN.y)), 0.0)).xyz);
       normal *= faceDirection;
       // Surface colour breakup reuses the same two wave fetches: moving
       // two-scale value variation, a shore tint band and sparse crests.
@@ -424,6 +542,8 @@ export function createShallowWaterSurface(
       diffuseColor.rgb *= 1.0 + clamp(rippleH, -0.2, 0.2) * 0.6;
       wakeFoam += rippleFoam * 0.45 + smoothstep(0.25, 0.60, length(rippleGrad)) * 0.25 * (0.5 + waveFine.y);
       wakeWash += rippleFoam * 0.3;
+      // Round 66: whitecaps, the shore break and the run-up whiten through the same foam path as the churn
+      wakeFoam += oceanWhite;
       // Water pass 6/7: the wash lane stirs bed sediment into the body colour, and churned
       // water around and behind a vehicle whitens regardless of the map's foam profile.
       diffuseColor.rgb = mix(diffuseColor.rgb, uWaterShallow * 0.95, clamp(wakeWash, 0.0, 1.0) * 0.35 * waterDeep);
@@ -445,14 +565,41 @@ export function createShallowWaterSurface(
       // Water pass 5: wind-ruffled, sediment-laden patches mirror less sky, so the
       // sheet reads as water of varying depth and colour instead of one reflection.
       '#include <lights_fragment_maps>\nradiance *= mix(0.45, 1.75, waterGrazing);\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
-    shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>',
-      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(1.15));\nif (uWaterDebug > 0.5) { outgoingLight = vec3(waterTurbidity); diffuseColor.a = 1.0; }\n#include <opaque_fragment>');
+    // Round 66: caustics on the shelf bed. The sun ray refracts at the flat surface and lands `bed` metres down; the
+    // finest cascade's curvature at that entry point focuses or spreads the light there (a thin lens of index
+    // 1.333: concentration 1 / (1 + 0.25·d·∇²h), the one-bounce form of Wallace's photon splatting) and the sheet
+    // adds that gain to what the bed shows through it — no terrain-material change, no extra terrain sampler.
+    // Strongest in the first half metre, gone where the body colour hides the bed and where the pixel can no longer
+    // resolve the fine tile.
+    shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
+      outgoingLight -= max(vec3(0.0), totalSpecular - vec3(1.15));
+      #if NUM_DIR_LIGHTS > 0
+      if (uOceanGrid.w > 0.5 && uOceanLook.z > 0.0 && waterDeep < 0.85) {
+        vec3 causticSun = normalize(transpose(mat3(viewMatrix)) * directionalLights[0].direction);
+        vec3 causticRay = refract(-causticSun, vec3(0.0, 1.0, 0.0), 0.75);
+        vec2 causticEntry = vOceanLag - causticRay.xz * (oceanBed / max(-causticRay.y, 0.2));
+        float causticTexel = uOceanPatch.z / uOceanGrid.x;
+        float causticFineW = 1.0 - smoothstep(causticTexel * 1.5, causticTexel * 5.0, oceanFootprint);
+        vec2 cuv = oceanUv(causticEntry, 2.0);
+        vec2 du = vec2(1.0 / uOceanGrid.x, 0.0), dv2 = vec2(0.0, 1.0 / (uOceanGrid.y * uOceanGrid.z));
+        float causticLap = (texture2D(uOceanDeriv, cuv + du).x - texture2D(uOceanDeriv, cuv - du).x
+          + texture2D(uOceanDeriv, cuv + dv2).y - texture2D(uOceanDeriv, cuv - dv2).y) / (2.0 * causticTexel);
+        float causticFocus = clamp(1.0 / max(0.3, 1.0 + 0.25 * oceanBed * causticLap) - 1.0, -0.6, 1.6);
+        float causticGain = uOceanLook.z * causticFineW * smoothstep(0.03, 0.14, oceanBed) * (1.0 - smoothstep(0.35, 0.85, waterDeep));
+        vec3 causticSunColor = directionalLights[0].color / max(max(directionalLights[0].color.r, max(directionalLights[0].color.g, directionalLights[0].color.b)), 1e-3);
+        outgoingLight += causticFocus * causticGain * 0.34 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.25);
+        if (uWaterDebug > 4.5) oceanDebug = clamp(0.5 + causticFocus * 0.4, 0.0, 1.0) * causticGain;
+      }
+      #endif
+      if (uWaterDebug > 0.5) { outgoingLight = uWaterDebug > 1.5 ? vec3(oceanDebug) : vec3(waterTurbidity); diffuseColor.a = 1.0; }
+      #include <opaque_fragment>`);
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'shallow-water-v12';
+  material.customProgramCacheKey = () => 'shallow-water-v13'; // round 66: the FFT ocean (v12: the round-47 coast contour, v11: the reactive field)
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
+  mesh.userData.ocean = ocean; // round 66: probes read the field's maps and spectrum through the sheet
   mesh.matrixAutoUpdate = false;
   mesh.updateMatrix();
   // Surface first, then its foam/track rings and transparent combat particles.
@@ -460,12 +607,14 @@ export function createShallowWaterSurface(
   return {
     mesh,
     ripples,
+    ocean,
     update(dt, anchorX, anchorZ) {
       if (!(Number.isFinite(dt) && dt > 0)) return;
       clock.value += Math.min(dt, 0.1);
+      ocean?.update(dt); // round 66: the transform runs inside the world update, before lighting and post
       if (ripples && anchorX !== undefined && anchorZ !== undefined) ripples.step(dt, anchorX, anchorZ);
     },
-    setTime(t) { if (Number.isFinite(t)) clock.value = Math.max(0, t); },
+    setTime(t) { if (Number.isFinite(t)) { clock.value = Math.max(0, t); ocean?.setTime(t); } },
     setDisturbances(sources) {
       ripples?.setDisturbances(sources);
       const n = Math.min(WATER_DISTURBANCE_CAP, sources.length);

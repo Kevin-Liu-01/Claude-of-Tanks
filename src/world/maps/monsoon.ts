@@ -113,4 +113,7 @@ export default {
     roadCasing: 'rgba(38,35,29,.94)', roadFill: 'rgba(133,124,100,.94)', buildingFill: '#bfc3b9',
   },
   shot: { pos: [-176, 44, -232], look: [44, 3, 92] },
+  // round 66 (2026-09-24, the FFT ocean): the flooded river under the monsoon air — a low ripple, silt hides the bed
+  // so the caustics stay faint; the owner's approved look is kept (amplitude 0.6)
+  ocean: { windSpeed: 2.8, windDirDeg: 200, fetchKm: 2.5, amplitude: 0.6, foam: 0, breakers: 0.05, caustics: 0.25 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

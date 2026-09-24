@@ -30,7 +30,7 @@ const foundryPatches = [
 // channel-masked comparison against the previous painter is recorded in
 // docs/history/research/map-pass-20260912.md (road pass section).
 const FROZEN = {
-  other28: { desktop: '42c9ec441aa9f609785ab579feb9220881153599bbac516b9e688150c68b95ad', mobile: 'd3f4010522c393c39f16870e60f6c1ee2956cc866ba9424c6a706d4e86d4b840' },
+  other28: { desktop: '42c9ec441aa9f609785ab579feb9220881153599bbac516b9e688150c68b95ad', mobile: 'd3f4010522c393c39f16870e60f6c1ee2956cc866ba9424c6a706d4e86d4b840' }, // 2026-09-24: Amberford authors the bridge crossing (round 61)
   pilotMasks: {
     coastal: { 512: '592e20a91d2388f1d96fd76e2b19d177cd83b095067b7a6fbdc448952d1bc4c9', 256: '11b9577888db144a3e0e029924d63d2bb0d616abc4baa940c71ba811262ae14c' },
     saltwind: { 512: 'f871a2739399ec256542bb9d5fbcc3ecfab144878b54883eb9e68a23a16091b2', 256: 'a031dfca24aece0ffd738fb6933b05124bb629d4fdccd9a98ea64b01c3f1a9d1' }, // 2026-09-24: Saltwind strand 20 m (round 52, owner decision 20)
@@ -41,7 +41,7 @@ const FROZEN = {
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
   // round 40 (2026-09-22): coastal.ts's sea aperture dropped its authored grey (edgeWater.ts gives it the map's water colour) and
   // saltwind.ts authored its bay as one contour; the frozen config digest moved for those two maps only
-  configs: 'b4e83f5a79ce0e6db95c5eac2d75ca66579d6bf2d2d4c764dbadcdeae8befa11', // 2026-09-24 (round 63): steppe.ts terrain block runs the spur to the map edge through the rim cutting (was 7ad3ec3c…: round 57, steppe.ts authors railSpurs; 7d872ab3…: round 55, fjord.ts horizon block authors outcrops: 1; 07c47806…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
+  configs: 'b4d88e0a50ebecc8d00f6ee55d632ef913e180bfa62b10f20ee17f137763746a', // 2026-09-24 (round 66): the eleven sea-sheet maps author an `ocean` block (was 46963b38…: round 57, steppe.ts terrain block authors railSpurs; 7d872ab3…: round 55, fjord.ts horizon block authors outcrops: 1; 07c47806…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 

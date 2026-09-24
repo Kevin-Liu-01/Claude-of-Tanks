@@ -143,8 +143,9 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
   assert.equal(probe.uniforms.uWaterMask.value, mask, 'the handed hook is the water shader patch');
   routed.mesh.material.dispose();
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples,\s*\/\/[^\n]*\n\s*seaOpenings\.length \? \{ \.\.\.materialStep\.value\.outlandWater, sectorBlend: seaOpeningsSectorBlend \} : null\);/,
-    'the terrain builder routes the sheet through the engine hook and hands it the reactive field');
+  // round 66 (2026-09-24): the call gained the FFT ocean as its last argument (was `: null);`)
+  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples,\s*\/\/[^\n]*\n\s*seaOpenings\.length \? \{ \.\.\.materialStep\.value\.outlandWater, sectorBlend: seaOpeningsSectorBlend \} : null,\s*ocean\);/,
+    'the terrain builder routes the sheet through the engine hook and hands it the reactive field and the ocean');
   assert.match(terrain, /const ripples = createWaterRippleField\(engineCtx\.renderer, \{/,
     'water pass 8: the field is built from the engine renderer inside the sea/lake block (null in receipts)');
   // water pass 8: without a field the sheet declares the sampler and an inactive window, and keeps its wake
@@ -159,7 +160,7 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
     'the procedural bow foam bar is off inside the window too (it was the last thing that followed the hull)');
   assert.match(probe.fragmentShader, /wave\.x \* uWaterWaveStrength - rippleGrad\.x \* 1\.6/, 'the field slope tilts the normal');
   assert.match(probe.fragmentShader, /rippleGrad \*= \(min\(gl, 0\.45\) \/ max\(gl, 1e-4\)\) \* rippleW;/, 'the slope is capped at a breaking face');
-  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v12', 'the program key moved with the fragment');
+  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v13', 'the program key moved with the fragment (v13: round 66, the FFT ocean)');
   // round 47: without a baked bay contour the apron keeps the round-40 ramp; with one, the coast fades past the edge
   assert.equal(probe.uniforms.uOutlandWaterSize.value, 0, 'no contour: size 0 keeps the round-40 ramp');
   assert.match(probe.fragmentShader, /if \(uOutlandWaterSize > 0\.5 && pastEdgeM > 0\.0\) \{[^}]*float coast = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r\);\s*wet = max\(coast, smoothstep\(uOutlandSeaBlend\.x, uOutlandSeaBlend\.y, pastEdgeM\)\);/,

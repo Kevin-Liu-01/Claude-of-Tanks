@@ -76,4 +76,7 @@ export default {
   sky: { ...desert.sky, sunElevationDeg: 22, sunAzimuthDeg: 104, turbidity: 5.2, fogDensity: 0.00052, fogTintHex: 0xb3ada3, fogMix: 0.46, cloudOpacity: 0.78, cloudOpacity2: 0.48, cloudAltM: 820, cloudHazeK: 0.00012, cloudUvM: 2900, cloudShadowAmp: 0.24, sunIntensity: 4.0, hemiIntensity: 0.40 },
   minimap: { ...desert.minimap, water: 'rgba(45,111,108,.86)', waterStroke: 'rgba(23,70,70,.94)' },
   shot: { pos: [-252, 52, -246], look: [86, 1, 80] },
+  // round 66 (2026-09-24, the FFT ocean): a still spring pool with a breath of desert wind — clear water over pale
+  // sand, so its caustics are the strongest of the fleet
+  ocean: { windSpeed: 2.8, windDirDeg: 120, fetchKm: 2, amplitude: 0.7, foam: 0, breakers: 0.1, caustics: 0.9 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

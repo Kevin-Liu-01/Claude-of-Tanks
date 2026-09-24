@@ -97,4 +97,7 @@ export default {
   sky: { ...coastal.sky, sunElevationDeg: 30, sunAzimuthDeg: 112, turbidity: 3.9, fogDensity: 0.00052, fogTintHex: 0x9cb8c5, fogMix: 0.48, cloudOpacity: 0.86, cloudOpacity2: 0.5, sunIntensity: 3.95, hemiIntensity: 0.42 },
   minimap: { ...coastal.minimap, base: [117, 123, 91], hard: [142, 137, 114], soft: [63, 88, 84] },
   shot: { pos: [-252, 58, -248], look: [-52, 0, 90] },
+  // round 66 (2026-09-24, the FFT ocean): the narrows' westerly runs up the bay from the open sea, a longer swell
+  // under the chop; the surf breaks on the 20 m strand (round 52) and runs up it
+  ocean: { windSpeed: 5.0, windDirDeg: 8, fetchKm: 24, swell: 0.4, swellDirDeg: 5, amplitude: 0.75, choppiness: 0.9, foam: 0.5, breakers: 0.9, caustics: 0.7 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

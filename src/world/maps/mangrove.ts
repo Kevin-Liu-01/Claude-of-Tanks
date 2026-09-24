@@ -110,4 +110,7 @@ export default {
   sky: { ...delta.sky, sunElevationDeg: 32, sunAzimuthDeg: 94, turbidity: 5.7, fogDensity: 0.00064, fogTintHex: 0x95b0b0, fogMix: 0.52, sunIntensity: 4.0, /* lighting 2026-09-13: was 3.7 */ cloudOpacity: 1.05, cloudOpacity2: 0.72 },
   minimap: { ...delta.minimap, base: [66, 101, 63], hard: [104, 102, 77], soft: [46, 80, 67] },
   shot: { pos: [-260, 49, -260], look: [52, -1, 90] },
+  // round 66 (2026-09-24, the FFT ocean): the tidal creeks under a warm air — a slow ripple on tannin-dark water,
+  // little to see of the bed
+  ocean: { windSpeed: 2.6, windDirDeg: 80, fetchKm: 3, amplitude: 0.8, foam: 0, breakers: 0.15, caustics: 0.25 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

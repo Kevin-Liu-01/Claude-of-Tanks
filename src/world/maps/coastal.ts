@@ -240,4 +240,7 @@ export default {
   // over the shallows looking up the coastline: surf + strand run the frame
   // diagonal, village + lighthouse mid-left, uplands behind
   shot: { pos: [356, 40, -300], look: [96, -10, 190] },
+  // round 66 (2026-09-24, the FFT ocean): an onshore breeze off the open sea to the east with a little swell behind
+  // it — a real coast, its breakers on the bay's strand; amplitude 0.7 keeps the swell under the jetty deck
+  ocean: { windSpeed: 5.2, windDirDeg: 190, fetchKm: 30, swell: 0.35, swellDirDeg: 185, amplitude: 0.7, choppiness: 0.9, foam: 0.5, breakers: 0.85, caustics: 0.6 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

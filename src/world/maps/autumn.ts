@@ -377,4 +377,6 @@ export default {
   // coach road over the floodplain: ally tanks near-field, the bridge and the
   // river mid-frame, the walled town and its church on the rise beyond
   shot: { pos: [388, 34, -478], look: [-60, 6, 60] },
+  // round 66 (2026-09-24, the FFT ocean): the river's ripple under a light air off the meadows
+  ocean: { windSpeed: 2.6, windDirDeg: 100, fetchKm: 2, amplitude: 0.6, foam: 0, breakers: 0.05, caustics: 0.35 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

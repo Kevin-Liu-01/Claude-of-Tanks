@@ -18,7 +18,7 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
 import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { texSize } from '../engine/quality.ts';
+import { resolvePresetName, texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask, shorelinePhases } from './shoreline.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
@@ -46,6 +46,8 @@ import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
+import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
+import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpectrumTexels } from './oceanSpectrum.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaSectorBlend, type SeaOpening } from './edgeWater.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -302,6 +304,8 @@ export interface TerrainMapConfig extends HorizonMapConfig {
   terrain?: Partial<TerrainSettings>;
   spawns?: SpawnConfig;
   splat?: SplatConfig;
+  /** Round 66: the authored sea state of the map's water (oceanSpectrum.ts); omitted fields default per water kind. */
+  ocean?: OceanConfig;
 }
 
 export interface TerrainLayout {
@@ -4705,18 +4709,39 @@ function* terrainBuildSteps(
       const ripples = createWaterRippleField(engineCtx.renderer, {
         mask: materialStep.value.waterMask, mapSizeM: heightField.size, ramp: cfg.splat.seaRamp || [0.40, 0.78],
       });
+      // Round 66 (2026-09-24): the FFT ocean — the map's authored sea state (its `ocean` block over the defaults of
+      // its water kind) becomes a time-zero spectrum on the CPU (sliced per cascade) and a field of fragment-shader
+      // transform passes on the renderer; null in receipts, on the mobile tier and without float colour buffers.
+      let ocean: OceanField | null = null;
+      if (oceanFieldSupported(engineCtx.renderer)) {
+        const oceanState = resolveOceanState(waterContactProfile(cfg.id || '').kind, cfg.ocean);
+        const oceanPreset = resolvePresetName();
+        let oceanSpectrum: OceanSpectrumTexels | null = null;
+        for (const slice of oceanSpectrumSteps(oceanState, oceanGridSize(oceanPreset))) {
+          if (slice) oceanSpectrum = slice;
+          else yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+        }
+        if (oceanSpectrum) ocean = createOceanField(engineCtx.renderer, oceanSpectrum, oceanState, { preset: oceanPreset });
+      }
       const water = createShallowWaterSurface(step.value.geometry,
         materialStep.value.waterMask, materialStep.value.waterNormal,
         heightField.size, cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78],
         // water pass 3 (2026-09-12): the sheet joins the cascaded-shadow setup like every lit world material
         (material, hook) => engineCtx.setupShadowMaterial(material, hook), ripples,
         // round 47: the apron fades along the same baked bay contour the ring faces read
-        seaOpenings.length ? { ...materialStep.value.outlandWater, sectorBlend: seaOpeningsSectorBlend } : null);
+        seaOpenings.length ? { ...materialStep.value.outlandWater, sectorBlend: seaOpeningsSectorBlend } : null,
+        ocean); // round 66: the FFT ocean the sheet displaces and shades with
       group.add(water.mesh);
       if (ripples) {
         heightField.addWaterImpulse = ripples.addImpulse;
         heightField.waterRipplesActive = () => true;
         group.userData.disposeWater = ripples.dispose;
+      }
+      if (ocean) {
+        // round 66: the ocean's targets go with the field's (one disposer, called by the world's dispose)
+        const disposeRipples = group.userData.disposeWater as (() => void) | undefined;
+        const disposeOcean = ocean.dispose;
+        group.userData.disposeWater = () => { disposeRipples?.(); disposeOcean(); };
       }
       // Round 40 (2026-09-22, "water at the edge: same level and shader beyond"): where the flattened water meets
       // the square edge the horizon ring opens to a sea apron (edgeWater.ts); the sheet continues over it with the

@@ -140,4 +140,7 @@ export default {
     roadCasing: 'rgba(47,37,33,.96)', roadFill: 'rgba(153,127,108,.95)', buildingFill: '#beb2a4',
   },
   shot: { pos: [-280, 60, -236], look: [22, 4, 92] },
+  // round 66 (2026-09-24, the FFT ocean): the mountain lake under the wind funnelled down the gorge — a clear,
+  // lively chop over the spillway reach where the sheet lay flat
+  ocean: { windSpeed: 3.8, windDirDeg: 40, fetchKm: 4, amplitude: 1, foam: 0.1, breakers: 0.25, caustics: 0.55 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

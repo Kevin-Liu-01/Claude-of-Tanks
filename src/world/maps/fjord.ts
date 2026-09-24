@@ -135,4 +135,7 @@ export default {
     roadCasing: 'rgba(37,41,43,.95)', roadFill: 'rgba(143,151,150,.96)', buildingFill: '#c2c8ca',
   },
   shot: { pos: [-226, 42, -238], look: [218, -4, 38] },
+  // round 66 (2026-09-24, the FFT ocean): a sheltered fjord — a light air down the arms, a faint swell from the mouth;
+  // the owner's approved look is kept (amplitude 0.45: centimetres, read as the same water from the chase camera)
+  ocean: { windSpeed: 3.2, windDirDeg: 250, fetchKm: 6, swell: 0.1, amplitude: 0.45, choppiness: 0.7, foam: 0.15, breakers: 0.3, caustics: 0.5 },
 } satisfies import('./contracts.ts').MapCompositionConfig;
