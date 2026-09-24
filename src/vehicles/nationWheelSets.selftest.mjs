@@ -77,7 +77,7 @@ const expect = (id, donor, kind = 'standard') => {
 };
 expect('sabra_mk2_x', 'm60a3');                 // owner 2026-09-22 correction
 expect('m60a1', 'm60a3'); expect('m48', 'm60a3'); expect('m46_patton', 'm60a3');
-expect('m1a3', 'm1a2'); expect('abramsx', 'm1a2'); expect('m1a2_legacy', 'm1a2');
+expect('m1a3', 'm1a2'); expect('abramsx', 'm1a2'); // m1a2_legacy retired 2026-09-23 (owner: "no hidden tanks")
 expect('m1a2', 'm1a2', 'donor'); expect('ua_m1a1', 'm1a2', 'donor');
 expect('m551_sheridan', 'm551a1_tts'); expect('ua_m2a3_bradley', 'm551a1_tts');
 expect('griffin_viper', 'm1a2'); expect('griffin50_x', 'm1a2'); // round 40 axial fit: paired ASCOD wheels, not the single Sheridan rim
@@ -101,16 +101,19 @@ expect('bmp3', 'bmp3m_dragun125_x'); expect('bmp2', 'bmp3m_dragun125_x'); expect
 expect('ua_t64bv', 't90'); expect('t84', 't90'); expect('ua_t80u_kursk', 't90');
 expect('kf51b', 'kf51', 'donor'); expect('leo2a4', 'leo2a6'); expect('leo2a6', 'leo2a6'); expect('mbt70', 'leo2a6'); expect('leo2a6_ua', 'leo2a6');
 expect('spz_puma', 'kf41_lynx_x'); expect('marder1a3', 'kf41_lynx_x'); expect('leo2a6_x', 'leo2a6', 'donor');
-for (const id of ['tiger1', 'kv2', 't95', 'm26_pershing', 'jpz_e100_x']) {
+// tiger1, t95 and m26_pershing retired 2026-09-23 (owner: "no hidden tanks"); the two period hulls left keep their wheels.
+for (const id of ['kv2', 'jpz_e100_x']) {
   assert.equal(resolveNationWheel(TANK_SPECS[id]).kind, 'keep', `${id} keeps its period wheels`);
 }
 
 // wheelPatternFor: the table wins; a profile may only restate it.
 assert.equal(wheelPatternFor(TANK_SPECS.leo2a4, 'rubber', 'plain-dish-twelve').id, 'plain-dish-twelve');
 assert.throws(() => wheelPatternFor(TANK_SPECS.leo2a4, 'rubber', 'pressed-six'), /contradicts the nation standard/);
-assert.equal(wheelPatternFor(TANK_SPECS.tiger1, 'dished').id, 'interleaved-dish', 'period rule');
-assert.equal(wheelPatternFor(TANK_SPECS.tiger1, 'dished', 'christie-six').id, 'christie-six', 'period hulls may still override');
-assert.equal(wheelPatternFor({ id: 'recon_tank', nation: 'Community', era: 'modern', role: 'light' }).id, 'split-rim-ten', 'community placeholder default');
+// jpz_e100_x carries the interleaved period rule since its tiger1 exemplar retired on 2026-09-23 (owner: "no hidden tanks").
+assert.equal(wheelPatternFor(TANK_SPECS.jpz_e100_x, 'dished').id, 'interleaved-dish', 'period rule');
+assert.equal(wheelPatternFor(TANK_SPECS.jpz_e100_x, 'dished', 'christie-six').id, 'christie-six', 'period hulls may still override');
+// No community placeholder hull remains (recon_tank / q_heavy retired 2026-09-23); the resolver branch is exercised with a synthetic record.
+assert.equal(wheelPatternFor({ id: 'community_fixture', nation: 'Community', era: 'modern', role: 'light' }).id, 'split-rim-ten', 'community placeholder default');
 assert.throws(() => wheelPatternFor(TANK_SPECS.leo2a4, 'rubber', 'no-such-pattern'), /Unknown wheel pattern/);
 
 // Every buildable construction draws at a foreign size at both tiers: closed solids, a radius that matches the

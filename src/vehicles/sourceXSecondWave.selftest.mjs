@@ -6,6 +6,7 @@ import { PROCEDURAL_PROFILES } from './profiledProcedurals.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
+import { donorSpec } from './donorSpecs.ts';
 
 // Independent pre-work geometry receipts from origin/main c26b3194200f52be,
 // measured before any second-wave authored builder or registry change.
@@ -27,12 +28,15 @@ const original = {
 // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
 // dont use anymore"): every second-wave hull below except the period jpz_e100 draws its nation construction
 // (nationWheelSets.ts / nationWheelConstructions.ts) at its own radius, so the digests are repinned from the current build.
+// 2026-09-23 (owner: "no hidden tanks"): the t72b_1987 (e7d8bce1), t72b3 (a6d86dc3) and jpz_e100 (9c2fc966) donor
+// records retired with the hidden fleet, so their original pins left with them; the three studies' combat donors now
+// resolve through the unregistered donorSpecs.ts templates.
   ariete_c1:'e9c14604', challenger1:'aa084d4d', leclerc:'900d83c3',
   chieftain5:'af6150d8', chieftain_mk10:'81cf7e9f', leo2a6:'1f08700c',
   k1a1:'febc57cf', strv122:'8bc6e141', t62mv1:'35f1a225',
-  t72b_1987:'e7d8bce1', t72b3:'a6d86dc3', t72b3m:'49e0a00e',
+  t72b3m:'49e0a00e',
   t72bu:'1557e0dd', t80u:'2b1a556f', type10:'51be775e', type90:'de3a7d14',
-  jpz_e100:'9c2fc966', amx30:'af643005', amx40:'b94b2314',
+  amx30:'af643005', amx40:'b94b2314',
   t90:'0441dc8a', t90a_burlak:'835118d7', t90ms:'149a209a',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
@@ -42,12 +46,15 @@ for (const [id, expected] of Object.entries(original)) {
   finally { tank.dispose(); }
 }
 for (const id of SECOND_WAVE_X_IDS) {
-  const donor = SECOND_WAVE_X_DONORS[id], spec = TANK_SPECS[id];
+  const donor = SECOND_WAVE_X_DONORS[id], spec = TANK_SPECS[id], donorRow = donorSpec(TANK_SPECS, donor);
   assert.equal(ALL_TANK_IDS.filter(x=>x===id).length, 1, `${id}: distinct selectable identity`);
   assert.ok(!spec.name.endsWith(' X'), `${id}: the X suffix was retired (owner 2026-09-15)`);
   // 2026-09-15 owner rulings (evening): the Leopard 2A6 study is tier X, the Jagdpanzer E100 study tier VII.
   // 2026-09-16: the Leclerc XLR and AMX 56 studies are tier X ("the newer models are the tier 10s")
-  const ruled = { k1a1_x: 10, leo2a6_x: 10, jpz_e100_x: 7, leclerc_x: 10, leclerc_classic_x: 10, ariete_c1_x: 10 }[id];
+  // 2026-09-23 (owner: "no hidden tanks"): the t72b_1987 and t72b3 donor records retired, so tier.ts no longer carries
+  // the rows this check read for their studies; the donors' last published tier (VIII at a10d0a30b) is pinned here.
+  const ruled = { k1a1_x: 10, leo2a6_x: 10, jpz_e100_x: 7, leclerc_x: 10, leclerc_classic_x: 10, ariete_c1_x: 10,
+    t72b_1987_x: 8, t72b3_x: 8 }[id];
   assert.equal(tankTier(id), ruled ?? tankTier(donor), `${id}: rebuild must not silently increase combat tier`);
   assert.equal(MODEL_SOURCE[id].source, 'procedural');
   assert.equal(spec.community, undefined);
@@ -55,14 +62,15 @@ for (const id of SECOND_WAVE_X_IDS) {
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'));
   assert.equal(typeof PROCEDURAL_PROFILES[id].build, 'function');
   assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
-  assert.deepEqual(spec.gun, TANK_SPECS[donor].gun);
-  assert.equal(spec.hp, TANK_SPECS[donor].hp);
-  assert.notEqual(spec.armor, TANK_SPECS[donor].armor);
+  assert.deepEqual(spec.gun, donorRow.gun);
+  assert.equal(spec.hp, donorRow.hp);
+  assert.notEqual(spec.armor, donorRow.armor);
   for (const quality of ['high','low']) {
     const tank = createTank(id, null, {...options,quality});
     try {
       assert.ok(tank.root.getObjectByName('hull')?.geometry);
-      assert.notEqual(geometryFingerprint(tank.root), original[donor], `${id}: original geometry cannot masquerade as new`);
+      // A retired donor (t72b_1987, t72b3, jpz_e100) has no buildable original left to differ from.
+      if (original[donor]) assert.notEqual(geometryFingerprint(tank.root), original[donor], `${id}: original geometry cannot masquerade as new`);
       const gear = tank.root.getObjectByName('rig_hull').userData.runningGearReceipts;
       assert.equal(gear.length, 1, `${id}/${quality}: one native closed track course`);
       tank.root.traverse(object => {
@@ -92,4 +100,4 @@ for(const owner of ['hullPlates','turretPlates']) {
     }
   }
 }
-console.log(`sourceXSecondWave: 22 originals preserved; ${SECOND_WAVE_X_IDS.length} independent draft IDs, native gear and combat metadata pass (not visual qualification)`);
+console.log(`sourceXSecondWave: ${Object.keys(original).length} originals preserved; ${SECOND_WAVE_X_IDS.length} independent draft IDs, native gear and combat metadata pass (not visual qualification)`);

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
-import {getSpec} from './specs.ts';
+import {getSpec,TANK_SPECS} from './specs.ts';
+import {donorSpec} from './donorSpecs.ts';
 import {SECOND_WAVE_X_IDS,SECOND_WAVE_X_DONORS} from './sourceXSecondWaveSpecs.ts';
 import {stripActivatedEra} from '../game/eraActivation.ts';
 import {createShell} from '../sim/ballistics.ts';
@@ -176,7 +177,9 @@ function exerciseZone(t,spec,owner,name,quality){
   setPose(t,state());
 }
 for(const id of ids){
-  const original=getSpec(id),donor=getSpec(SECOND_WAVE_X_DONORS[id]);
+  // 2026-09-23 (owner: "no hidden tanks"): the t72b_1987, t72b3 and jpz_e100 donors are unregistered templates now,
+  // so the donor row resolves through donorSpecs.ts (registered spec first, template second).
+  const original=getSpec(id),donor=donorSpec(TANK_SPECS,SECOND_WAVE_X_DONORS[id]);
   const donorSnapshot=JSON.stringify(donor.armor);
   const qualities=ERA_IDS.includes(id)?['high','low']:['low'];
   for(const quality of qualities){

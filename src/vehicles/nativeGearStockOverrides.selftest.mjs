@@ -17,7 +17,12 @@ import {KIT} from './tankFactoryCore.ts';
 // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
 // dont use anymore"): the default fixture hull draws its nation road wheel (nationWheelSets.ts /
 // nationWheelConstructions.ts) and the fleet arm seated against it, so the default digest is repinned from the current build.
-const DEFAULT_FINGERPRINT='d968afd4f142d8415c4f8615fb0a645d372decc310a123adee739fdf51ba093b';
+// 2026-09-23 (owner: "no hidden tanks"): the tiger1 record retired with the hidden fleet, taking its interleaved wheel and
+// track pattern rows with it, so jpz_e100_x — the live hull that keeps the interleaved dish and cleat the retired donor
+// authored — names the interleaved fixture. Every one of its 32 snapshot rows hashes identically to the tiger1 rows
+// measured on the pre-retirement tree (a10d0a30b) and the m1a2 / t90sm rows are unchanged, so the same twelve assemblies
+// and 96 motion snapshots stay frozen; only the folded digest moves because each row carries the fixture id.
+const DEFAULT_FINGERPRINT='074dbb3967e23e74bc253daf094cd86a1c9ca8e9fafab805149d30a8026aad07';
 const bytes=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function geom(g){const h=createHash('sha256');for(const name of Object.keys(g.attributes).sort()){
@@ -46,7 +51,7 @@ function snapshot(c){c.P.hullG.updateMatrixWorld(true);const rows=[];c.P.hullG.t
  });return{rows,receipt:c.P.hullG.userData.runningGearReceipts};}
 let defaults=0,poses=0,negativeControls=0;
 const baselineRows=[];
-for(const id of['m1a2','t90sm','tiger1'])for(const high of[true,false])for(const batch of[false,true]){
+for(const id of['m1a2','t90sm','jpz_e100_x'])for(const high of[true,false])for(const batch of[false,true]){
  const b=fixture(KIT,id,high,batch);
  try{for(let phase=0;phase<8;phase++){
   for(const c of[b]){c.gear.conform({pos:new T.Vector3(),yaw:.2,visualPitch:0,visualRoll:0},(_x,z)=>.02*Math.sin(z),0,0,1/60);

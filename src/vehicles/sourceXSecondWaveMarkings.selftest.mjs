@@ -8,6 +8,10 @@ import {SURFACE_MARKING_STYLE,VEHICLE_MARKING_ANCHORS} from './vehicleMarkings.t
 
 // This immutable hash is the 151 original anchor records at c26b3194200f52b,
 // not an acceptance baseline generated from the new candidate anchors.
+// 2026-09-23 (owner: "no hidden tanks"): ten of those records retired with their hulls (isu122s, isu152, jpz_e100,
+// m1a2_legacy, m26_pershing, m45_patton, panther_g, sturmtiger, t95, tiger1). The 141 that remain are the originals:
+// the historical set minus those ten hashes to 232c0501… on the pre-retirement tree (a10d0a30b), the value this tree
+// yields, so the count and digest below are that subset of the c26b319 baseline, not a new acceptance baseline.
 const newIds=new Set(SECOND_WAVE_X_IDS);
 // These records were added after this regression's immutable baseline (the Abrams studies;
 // the Chinese Type 100 on 2026-09-15). Do not mistake later additions for modifications of
@@ -27,14 +31,14 @@ for(const id of SUPPLIED_SOURCE_IDS)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}
 for(const id of laterAbramsIds)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: later Abrams anchor remains present`);
 const oldAnchors=Object.fromEntries(Object.entries(VEHICLE_MARKING_ANCHORS)
   .filter(([id])=>!newIds.has(id)&&!laterIds.has(id)).sort(([a],[b])=>a.localeCompare(b)));
-assert.equal(Object.keys(oldAnchors).length,151,'all pre-second-wave anchors remain');
+assert.equal(Object.keys(oldAnchors).length,141,'all pre-second-wave anchors of the live fleet remain');
 // Owner 2026-09-21: XK2 now wears the current K1A1 turret and its marking seat.
 assert.deepEqual(oldAnchors.k2, VEHICLE_MARKING_ANCHORS.k1a1_x);
 oldAnchors.k2={schemaVersion:1,owner:'turret',side:'right',longitudinal:.39,
   vertical:.44,sizeM:.24,designationDirection:-1};
 assert.equal(createHash('sha256').update(JSON.stringify(oldAnchors)).digest('hex'),
-  '229edfafa18e3982c097bbc48d1b3778ac2db97601bdee218b2816674cc2209f',
-  'the original 151 anchors are preserved apart from the authenticated XK2 turret transplant');
+  '232c050174a9397c45d2ea16c5b1b3a1347db20491fffc29246608d6b4fc204c',
+  'the original 141 anchors are preserved apart from the authenticated XK2 turret transplant');
 
 function markingNodes(mesh) {
   const p=mesh.geometry.attributes.position,index=mesh.geometry.index,nodes=new Map();
@@ -190,4 +194,4 @@ for(const id of selected)for(const quality of ['high','low']) {
   try {verify(id,quality);} catch(error) {failures.push({id,quality,error:error.message});console.error(error);}
 }
 assert.deepEqual(failures,[],'every requested actual-model marking footprint must pass');
-console.log(`sourceXSecondWaveMarkings: ${selected.length} actual native IDs pass high/low permanent paint support; original 151 anchors unchanged`);
+console.log(`sourceXSecondWaveMarkings: ${selected.length} actual native IDs pass high/low permanent paint support; original 141 anchors unchanged`);
