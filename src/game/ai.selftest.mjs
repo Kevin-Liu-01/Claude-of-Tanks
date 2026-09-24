@@ -497,4 +497,148 @@ console.log('[17] round 60: the weak-spot probe scores only zones the gun can re
     'with every zone masked from the gun there is no solution, whatever the eye sees');
 }
 
+console.log('[18] round 62: a bot without contact searches on reachable legs and rotates its goal when a leg fails');
+{
+  // The pacing receipt's survivor: no contact (the spotting gate hides the enemy), the enemy's sector in another
+  // connected component of the navigation grid. The planner answers an empty route for the sector and a
+  // two-point route for anything else; the pinned fixture hull never arrives, so every leg fails on strikes.
+  const search = (withPlanner) => {
+    const bot = entity('seeker', 'm1a2', 'player', 0, 0);
+    const hidden = entity('hidden', 't90m', 'enemy', 0, 400, Math.PI);
+    const plans = [];
+    const planRoute = (start, goal) => {
+      plans.push([goal.x, goal.z]);
+      if (Math.abs(goal.x) < 1 && Math.abs(goal.z - 400) < 1) return []; // the sector: unreachable
+      return [[(start.x + goal.x) / 2, (start.z + goal.z) / 2], [goal.x, goal.z]];
+    };
+    const ctl = controller(bot, [hidden], [], 12, 'normal', {
+      spotting: { isSpotted: () => false }, ...(withPlanner ? { planRoute } : {}),
+    });
+    const legs = [];
+    let drove = false;
+    tick(ctl, bot, 200, () => {
+      const d = ctl.debugInfo();
+      if (d.searching && (!legs.length || legs[legs.length - 1].n !== d.searchLegs)) {
+        legs.push({ n: d.searchLegs, kind: d.searchKind, x: d.searchGoalX, z: d.searchGoalZ, wps: d.wpCount, t: +d.playerBudgetT });
+      }
+      if (d.searching && bot.input.throttle > 0.25) drove = true;
+    });
+    return { legs, plans, drove, info: ctl.debugInfo() };
+  };
+  const planned = search(true);
+  ok(planned.legs.length >= 2, `legs begin and rotate on failure (${planned.legs.length} legs)`);
+  ok(planned.plans.some(([x, z]) => Math.abs(x) < 1 && Math.abs(z - 400) < 1), 'the enemy sector is asked of the planner first');
+  ok(planned.legs.every((leg) => leg.kind !== 'sector' && leg.kind !== 'direct'),
+    `the unreachable sector is never driven at (${planned.legs.map((l) => l.kind).join(',')})`);
+  ok(planned.legs.every((leg) => Math.hypot(leg.x, leg.z - 400) > 60),
+    'every leg stands on a different goal than the unreachable sector');
+  ok(planned.legs.length < 2 || Math.hypot(planned.legs[0].x - planned.legs[1].x, planned.legs[0].z - planned.legs[1].z) > 30,
+    'a failed leg is followed by a leg to another goal');
+  ok(planned.legs.every((leg) => leg.wps >= 2), 'the legs carry the planned waypoints');
+  ok(planned.drove, 'the hull drives the search legs');
+  ok(planned.info.searchFailures >= 1, `failed legs escalate the search (${planned.info.searchFailures})`);
+  const local = search(false);
+  ok(local.legs.length >= 1 && local.legs[0].kind === 'sector',
+    'without a planner the first leg is the pre-round-62 sector leg for the local router');
+  ok(local.legs.length >= 2 && local.legs[1].kind !== 'sector',
+    `and a failed leg still rotates the goal (${local.legs.map((l) => l.kind).join(',')})`);
+}
+
+console.log('[19] round 62: no round is fired at a zone the probe rates unpenetrable, HE included');
+{
+  // A Strv 103 (105 mm APDS / HEAT / HE) on a Leopard 2A7V's glacis at 80 m: nothing penetrates (best ratio
+  // 0.56) and an HE round would burst for nothing on that armour — before round 62 the HE fallback fired it
+  // anyway. The same gun on the Leopard's rear fires.
+  const shots = (targetYaw) => {
+    const bot = entity('td', 'strv103', 'player', 0, 0);
+    const foe = entity('foe', 'leo2a7v', 'enemy', 0, 80, targetYaw);
+    const ctl = controller(bot, [foe], [], 23, 'normal');
+    let fired = false;
+    let holds = 0;
+    tick(ctl, bot, 40, (_, t) => {
+      bot.combat.reload.t = Math.max(0, bot.combat.reload.t - SIM_DT);
+      if (bot.input.fire && bot.combat.reload.t <= 1e-3) { bot.combat.reload.t = bot.spec.gun.reloadS; fired = true; }
+      if (t > 20 && !bot.input.fire && ctl.debugInfo().losClear) holds++;
+    });
+    return { fired, holds, info: ctl.debugInfo() };
+  };
+  const front = shots(Math.PI); // nose on the bot
+  ok(front.info.penGateOk === false, `the glacis closes the penetration gate (ratio ${front.info.penRatio})`);
+  ok(front.info.heWorth === false && front.info.heBurst < 80,
+    `the HE round is not worth a shell on that armour (burst ${front.info.heBurst})`);
+  ok(front.fired === false, 'no round leaves the gun at the unpenetrable front');
+  ok(front.holds > 0, 'the gun held with line of sight clear');
+  const rear = shots(0); // nose away: the rear plate
+  ok(rear.info.penGateOk === true && rear.fired === true, 'the same gun fires at the rear');
+}
+
+console.log('[20] round 62: a lay the rack cannot afford is closed on, not taken');
+{
+  // At 380 m the normal tier's fire-control error (σ ≈ 6 mrad, 2.3 m) gives an M1A2 under a one-in-five chance
+  // of landing on a T-90M's silhouette. At a bot that far the round is held and the hull closes; at a live
+  // player the range doctrine is untouched and the gun fires.
+  const volley = (isPlayer) => {
+    const bot = entity('mbt', 'm1a2', 'player', 0, 0);
+    const far = entity('far', 't90m', 'enemy', 0, 380, Math.PI / 2); // side on: penetrable
+    far.isPlayer = isPlayer;
+    const ctl = controller(bot, [far], [], 45);
+    let fired = false;
+    let closed = false;
+    let sawConserving = false;
+    let nextShotS = 140;
+    tick(ctl, bot, 190, (_, t) => {
+      bot.combat.reload.t = Math.max(0, bot.combat.reload.t - SIM_DT);
+      if (bot.input.fire && bot.combat.reload.t <= 1e-3) { bot.combat.reload.t = bot.spec.gun.reloadS; fired = true; }
+      const d = ctl.debugInfo();
+      if (d.conserving) { sawConserving = true; if (bot.input.throttle > 0.25) closed = true; }
+      if (!isPlayer) return;
+      // the player keeps shooting (its reload channel cycles), so it never reads as passive
+      far.combat.reload.t = Math.max(0, far.combat.reload.t - SIM_DT);
+      if (t >= nextShotS) { far.combat.reload.t = far.spec.gun.reloadS; nextShotS = t + 6; }
+    });
+    return { fired, closed, sawConserving, info: ctl.debugInfo() };
+  };
+  const bot = volley(false);
+  ok(bot.info.hitChance < 0.35, `the expected hit chance at 380 m is low (${bot.info.hitChance})`);
+  ok(bot.sawConserving && bot.fired === false, 'the round is held at a bot that far');
+  ok(bot.closed, 'the hull closes on the target instead');
+  ok(bot.info.conserveHolds > 0, `the holds are counted (${bot.info.conserveHolds})`);
+  const player = volley(true);
+  ok(player.sawConserving === false && player.fired === true, 'a live player at 380 m is fired on as before');
+}
+
+console.log('[21] round 62: an empty rack rams when the ram law allows it and retires when it does not');
+{
+  const empty = (targetHp, ownHp = 2700) => {
+    const bot = entity('dry', 't90m', 'player', 0, 0);
+    bot.combat.hp = ownHp; bot.combat.maxHp = 2700;
+    bot.combat.ammo = [0, 0, 0]; bot.combat.ammoCapacity = [24, 16, 12];
+    const foe = entity('foe', 'm1a2', 'enemy', 0, 60, Math.PI);
+    foe.combat.hp = targetHp; foe.combat.maxHp = 2600;
+    const ctl = controller(bot, [foe], [], 9);
+    let fired = false;
+    let maxThrottle = -Infinity;
+    let throttleToward = 0; // throttle signed by whether the hull is headed at the foe
+    tick(ctl, bot, 12, () => {
+      if (bot.input.fire) fired = true;
+      const d = ctl.debugInfo();
+      if (!d.emptyRack) return;
+      maxThrottle = Math.max(maxThrottle, bot.input.throttle);
+      const toward = Math.abs(bot.state.yaw) < 0.4; // nose on +z, the foe's bearing
+      throttleToward += toward ? bot.input.throttle : -bot.input.throttle;
+    });
+    return { fired, maxThrottle, throttleToward, info: ctl.debugInfo() };
+  };
+  const kill = empty(300);
+  ok(kill.info.emptyRack === true && kill.fired === false, 'an empty rack never pulls the trigger');
+  ok(kill.info.ramming === true && kill.info.ramRuns >= 1, 'a 300 hp hull at 60 m is rammed (one run kills it)');
+  ok(kill.maxThrottle >= 0.9 && kill.throttleToward > 0, 'the run is driven at the foe at full throttle');
+  const hopeless = empty(2600);
+  ok(hopeless.info.emptyRack === true && hopeless.info.ramming === false,
+    'a full-health M1A2 would cost more hull than the rammer has: no run');
+  ok(hopeless.maxThrottle > 0.25 && hopeless.throttleToward < 0, 'the empty hull retires away from it instead');
+  const wounded = empty(300, 600);
+  ok(wounded.info.ramming === false, 'a hull that would not survive its own ram does not run');
+}
+
 console.log('ai.selftest: all shared-combat checks passed');

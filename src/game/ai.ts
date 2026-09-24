@@ -537,8 +537,10 @@ const PROBE_TURRET_FALLBACK: readonly [number, number] = [0.72, 0];
 // (see expectedHitChance, applyProbeResult, aimAndFire).
 const SEARCH_SWEEP_RING_M = 110;           // ring around the enemy's sector the sweep legs stand on
 const SEARCH_WIDE_RING_M = 220;            // the wider ring a failed sweep escalates to
-const SEARCH_LEG_MIN_S = 15;               // a leg's time budget: this plus the route length at 3 m/s
-const SEARCH_LEG_MAX_S = 90;
+const SEARCH_LEG_MIN_S = 15;               // a leg's time budget: this plus the route length at 2.5 m/s
+const SEARCH_LEG_MAX_S = 150;              // (Amberford seed 1: a 550 m cross-map route on a 90 s budget timed out
+const SEARCH_LEG_SPEED_MPS = 2.5;          // 200 m short of the host; a leg that halved its distance carries on)
+const SEARCH_SEEN_MAX_AGE_S = 45;          // a sighting older than this is no search goal
 const SEARCH_LEG_STRIKES = 3;              // stuck strikes on one leg before it is given up for the next goal
 const SEARCH_GOAL_ARRIVE_M = 30;           // a goal this close is not worth a leg
 const SEARCH_PROJECTION_M = 60;            // a dry-policy route may end this far from its goal and still count
@@ -1053,6 +1055,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let searchFailures = 0;                    // legs ended without contact since contact was last held
   let searchLegStartS = -1;
   let searchLegBudgetS = 0;
+  let searchLegStartDistM = 0;               // straight-line distance to the goal when the leg began
   let searchStrikesAtStart = 0;
   let searchSweepIndex = 0;                  // rotates the sweep bearings across legs
   let searchNextCheckS = -1;
@@ -1466,6 +1469,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!enemyAlive(target)) {
       target = null;
       losClear = false;
+      // round 62 pacing (Amberford seed 1): a dead target's last sighting is no chase point and no search goal
+      // — the survivor drove 180 s back to where its kill had stood. Forgetting it also lets the search begin
+      // at once instead of after the memory window.
+      lastSeenAtS = -Infinity;
       return false;
     }
     const position = target.state.pos;
@@ -3835,7 +3842,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return true;
     }
     if (kind === 'seen') {
-      if (lastSeenAtS === -Infinity) return false;
+      if (nowS - lastSeenAtS > SEARCH_SEEN_MAX_AGE_S) return false;
       out.x = lastSeen.x;
       out.z = lastSeen.z;
       return true;
@@ -3873,7 +3880,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     searchGoal.z = goalZ;
     searchLegs++;
     searchLegStartS = timeS;
-    searchLegBudgetS = clamp(SEARCH_LEG_MIN_S + routeLengthM / 3, SEARCH_LEG_MIN_S, SEARCH_LEG_MAX_S);
+    searchLegBudgetS = clamp(SEARCH_LEG_MIN_S + routeLengthM / SEARCH_LEG_SPEED_MPS, SEARCH_LEG_MIN_S, SEARCH_LEG_MAX_S);
+    searchLegStartDistM = Math.hypot(goalX - entity.state.pos.x, goalZ - entity.state.pos.z);
     searchStrikesAtStart = strikeEvents;
     searchNextCheckS = timeS + SEARCH_CHECK_S;
     pressUntilS = timeS + STALEMATE_PUSH_S;
@@ -3936,7 +3944,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const enemyMoved = searchKind === 'sector'
       && Math.hypot(enemy.state.pos.x - searchGoal.x, enemy.state.pos.z - searchGoal.z) > 120;
     if (!consumed && !stuck && !overBudget && !enemyMoved) return;
-    if (consumed || stuck || overBudget) searchFailures++; // the leg ended without contact
+    // a leg that ran out of time but halved its distance to the goal is progress, not a failure: it is
+    // re-planned from here toward the same goals rather than rotated away from them
+    const progressed = overBudget && !stuck && !consumed
+      && Math.hypot(searchGoal.x - position.x, searchGoal.z - position.z) < searchLegStartDistM * 0.5;
+    if ((consumed || stuck || overBudget) && !progressed) searchFailures++; // the leg ended without contact
     beginSearchLeg(enemy, timeS);
   }
 
