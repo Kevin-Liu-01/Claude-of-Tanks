@@ -51,7 +51,12 @@ function recipeFixture(surface, ground, method = body('dust'), freeze = false, w
   const emitted = [], marks = [], owners = new Set();
   const context = {
     THREE, rng: mulberry32(7919), frozen: freeze, groundY: () => -3.25,
-    heightField: { getGroundType: () => ground, getWaterMaskAt: () => water, getTrackSurfaceAt: () => surface },
+    // 2026-09-24 (round 61): the current dust method routes wet only when the contact rides within 0.6 m of the
+    // water surface (bed + sheet depth) — a bridge deck over the river stays dry. The fixture's contact sits ON the
+    // ground it declares (pos.y = groundY) with a zero sheet depth, so the predecessor and the current method see
+    // the same geometry; the parity it protects is dispatch, helper order and the RNG tail, not the deck rule.
+    heightField: { getGroundType: () => ground, getWaterMaskAt: () => water, getTrackSurfaceAt: () => surface,
+      getWaterDepthAt: () => 0 },
     engineCtx: { camera: null }, _camV: new THREE.Vector3(), _c0: new THREE.Color(),
     COLUMN_WIND_X: .82, COLUMN_WIND_Z: .28,
     _puffO: { pos: [0, 0, 0], vel: [0, 0, 0], col0: [0, 0, 0], col1: [0, 0, 0] },
@@ -93,7 +98,9 @@ function verifyPowder(method = body('dust')) {
     }
     const paused = recipeFixture(surface, 'medium', method, true); paused.dust(pos, dir, 1);
     assert.equal(paused.emitted.length + paused.marks.length, 0, 'paused contact cannot accumulate');
-    const wet = recipeFixture(surface, 'medium', method, false, .3); wet.dust(pos, dir, 1);
+    // 2026-09-24 (round 61): the wet contact rides ON the water it reports — the current method keeps a track more
+    // than 0.6 m above the water surface (a bridge deck) dry, and the shared `pos` stands 7 m over the fixture ground
+    const wet = recipeFixture(surface, 'medium', method, false, .3); wet.dust(new THREE.Vector3(pos.x, -3.25, pos.z), dir, 1);
     assert.deepEqual(wet.marks, ['wet-route'], 'liquid routing has priority');
     assert.equal(wet.emitted.length, 0);
   }
