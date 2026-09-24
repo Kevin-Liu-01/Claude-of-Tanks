@@ -112,8 +112,8 @@ interface MarshSourceConfig {
    * over the water (resolveBridgeDecks below) instead of the 14–18 m dry band every other crossing is graded through. */
   crossing?: 'bridge';
   /** Round 61: the deck's clearance over the water surface (m, default 2.4), its width between the parapets (m,
-   * default 12.4) and the approach length beyond each abutment over which the road plane grades to the deck (m,
-   * default 36). */
+   * default 12.4) and the approach length beyond each abutment over which the road plane grades to the deck (m;
+   * by default the length a 7 % grade needs from the road plane past the abutment, 8–60 m). */
   deckClearM?: number;
   deckWidthM?: number;
   approachM?: number;
@@ -147,7 +147,10 @@ export interface BridgeDeckPlane {
 const BRIDGE_ABUTMENT_M = 3;
 const BRIDGE_DECK_CLEAR_M = 2.4;
 const BRIDGE_DECK_WIDTH_M = 12.4;
-const BRIDGE_APPROACH_M = 36;
+/** An approach grades the road plane to the deck at no more than this rise per metre, within these lengths. */
+const BRIDGE_APPROACH_GRADE = 0.07;
+const BRIDGE_APPROACH_MIN_M = 8;
+const BRIDGE_APPROACH_MAX_M = 60;
 /** The road's own dry band is 18 m; nothing wider than that is graded or dried, so nothing wider is exempted. */
 const BRIDGE_CORRIDOR_HALF_WIDTH_M = 18;
 const EMPTY_BRIDGE_DECKS: readonly BridgeDeckPlane[] = [];
@@ -1550,8 +1553,9 @@ function* heightFieldBuildSteps(
   // bearing there; the span is the river's own wet reach along that axis (the liquid union before the dry band, marched
   // at 0.25 m) plus an abutment at each end; the plane is the road plane lifted clear of the water surface by the
   // authored clearance. Under the span heightAt keeps the river bed and waterWetnessAt keeps the river (bridgeTermsAt);
-  // over each approach the road plane grades to the deck. A station without a road inside its radius is an authoring
-  // error and fails here rather than silently drying a crossing.
+  // over each approach the road plane grades to the deck at no more than 7 % (the same length on both sides: the
+  // steeper side's). A station without a road inside its radius is an authoring error and fails here rather than
+  // silently drying a crossing.
   function resolveBridgeDecks(): readonly BridgeDeckPlane[] {
     const decks: BridgeDeckPlane[] = [];
     for (const station of _MARSHES) {
@@ -1578,15 +1582,20 @@ function* heightFieldBuildSteps(
           }
         }
       }
+      const halfLength = reach + BRIDGE_ABUTMENT_M;
       const bedY = heightAt(cx, cz, false, false);
       const waterY = bedY + liquidDepthM;
+      const deckY = Math.max(gridSample(gRoadElev, cx, cz), waterY + (station.deckClearM ?? BRIDGE_DECK_CLEAR_M));
+      let approachM = BRIDGE_APPROACH_MIN_M;
+      for (const sign of [-1, 1]) {
+        const rise = Math.abs(deckY - gridSample(gRoadElev, cx + ux * halfLength * sign, cz + uz * halfLength * sign));
+        approachM = Math.max(approachM, Math.min(BRIDGE_APPROACH_MAX_M, rise / BRIDGE_APPROACH_GRADE));
+      }
       decks.push({
-        x: cx, z: cz, ux, uz, route,
-        halfLength: reach + BRIDGE_ABUTMENT_M,
+        x: cx, z: cz, ux, uz, route, halfLength,
         halfWidth: (station.deckWidthM ?? BRIDGE_DECK_WIDTH_M) / 2,
-        deckY: Math.max(gridSample(gRoadElev, cx, cz), waterY + (station.deckClearM ?? BRIDGE_DECK_CLEAR_M)),
-        bedY, waterY,
-        approachM: station.approachM ?? BRIDGE_APPROACH_M,
+        deckY, bedY, waterY,
+        approachM: station.approachM ?? approachM,
       });
     }
     return decks.length ? Object.freeze(decks) : EMPTY_BRIDGE_DECKS;

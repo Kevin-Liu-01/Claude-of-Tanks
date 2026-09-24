@@ -30,7 +30,7 @@ import {
   MOORED_BOAT_HALF_BEAM_M, landingStream, planShoreJetty, type ShoreJettyPlan,
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
-import { cloneCollisionRecord, convexHull2, setConvexShape, type CollisionRecord } from '../collision.ts';
+import { cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord } from '../collision.ts';
 import {
   dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
@@ -55,6 +55,22 @@ interface DressingHeightField {
   _roadDist(x: number, z: number): number;
   /** Round 56: the baked union wetness of a liquid field (the strand's sand ends where it falls under 0.02). */
   _waterWetnessAt?(x: number, z: number): number;
+  /** Round 61: the bridge decks terrain.ts resolved from the stations authored `crossing: 'bridge'`. */
+  bridgeDecks?: readonly DressingBridgeDeck[];
+}
+
+/** Round 61: the deck plane the river kit builds its arched bridge on (terrain.ts BridgeDeckPlane). */
+interface DressingBridgeDeck {
+  x: number;
+  z: number;
+  ux: number;
+  uz: number;
+  halfLength: number;
+  halfWidth: number;
+  deckY: number;
+  bedY: number;
+  waterY: number;
+  route: number;
 }
 
 interface LayoutDisc {
@@ -1641,93 +1657,146 @@ function dressAutumnRiver({ L, heightField, rng, buckets }: FocusedDressingConte
 
 // =============================================================================
 // Round 48 — AMBERFORD river dressing (owner 2026-09-23: the Verdant-clone maps
-// "need redesign"). The coach road crosses the narrows on an INTACT stone bridge
-// (spandrel walls with three arch openings and cutwaters below the map's
-// destructible parapet walls), the other lanes get the round-1 ford posts, and
-// a weir sill holds the reach above the town with a water mill on its bank.
-// Everything is derived from the layout (route 0 = the coach road, the river
-// links, the water plane read at a link centre), so no map coordinate lives here.
+// "need redesign"). The coach road crosses the narrows on an INTACT stone bridge,
+// the other lanes get the round-1 ford posts, and a weir sill holds the reach
+// above the town with a water mill on its bank. Round 61 (2026-09-24): the bridge
+// is a true arched span on the deck plane terrain.ts resolves for the station
+// authored crossing: 'bridge' (heightField.bridgeDecks) — the water flows under
+// it through real arcs, the deck and the parapets are its collision record.
+// Everything is derived from the layout and that plane; no map coordinate lives here.
 // =============================================================================
 
-interface RiverCrossing { x: number; z: number; ux: number; uz: number; link: LayoutDisc }
-
-/** Align a box's width axis (local +x) with the world direction (dx, dz). */
+/** Align a box's width axis (local +x) with the world direction (dx, dz); local +z then points to (-dz, dx). */
 function alignWidth<T extends THREE.BufferGeometry>(geometry: T, dx: number, dz: number): T {
   geometry.rotateY(Math.atan2(-dz, dx));
   return geometry;
 }
 
-/** The road node that sits inside a river link (the causeway centre) and the road bearing there. */
-function riverCrossing(road: readonly (readonly [number, number])[] | undefined, links: readonly LayoutDisc[]): RiverCrossing | null {
-  if (!road || road.length < 3) return null;
-  let best: RiverCrossing | null = null, bestDistance = Infinity;
-  for (let i = 1; i < road.length - 1; i++) {
-    const [x, z] = road[i];
-    for (const link of links) {
-      const distance = Math.hypot(x - link.x, z - link.z);
-      if (distance > link.r * 0.55 || distance >= bestDistance) continue;
-      const [ax, az] = road[i - 1], [bx, bz] = road[i + 1];
-      const length = Math.hypot(bx - ax, bz - az) || 1;
-      best = { x, z, ux: (bx - ax) / length, uz: (bz - az) / length, link };
-      bestDistance = distance;
+/** Round 61: the pier between two arches and the abutment past the last, the parapet and the deck slab (m). */
+const BRIDGE_PIER_M = 2.0;
+const BRIDGE_PARAPET_HEIGHT_M = 1.1;
+const BRIDGE_PARAPET_THICK_M = 0.5;
+const BRIDGE_SLAB_M = 0.5;
+/** The body's bottom below the bed and its top under the slab; the spandrel fill over an arch crown. */
+const BRIDGE_BODY_BELOW_BED_M = 0.6;
+const BRIDGE_BODY_TOP_UNDER_DECK_M = 0.45;
+const BRIDGE_SPANDREL_FILL_M = 0.55;
+/** The pier face shown above the water surface before the arch springs. */
+const BRIDGE_SPRING_OVER_WATER_M = 0.3;
+
+/**
+ * Round 61 (2026-09-24): the arched stone bridge on the deck plane terrain.ts resolved — the water flows under it.
+ * The body is ONE extruded elevation profile through the full deck width: the spandrel walls with N segmental arches
+ * (the chord from the wet span, the rise from the headroom the deck leaves over the spring line) whose vault soffits are
+ * the extrusion's inner walls, so the openings are arcs, not recesses, and the sheet runs through them. Piers carry
+ * cutwaters turned into the stream, the abutments stand on the banks past the wet reach with splayed wing walls, the
+ * deck slab lies level at deckY (flush with the graded approaches) and the parapets ride on it. The collision record
+ * the ride stands on is the body plus the two parapets (a compound with per-part extents): a hull on the approach
+ * mounts the body's top as its floor, a hull in the river is pushed by its walls, and the parapets stop a hull that
+ * leaves the deck sideways. Everything is derived from the deck plane; no map coordinate lives here.
+ */
+function addArchedStoneBridge(
+  deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
+  ctx: FocusedDressingContext,
+): void {
+  const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY, waterY } = deck;
+  const vx = -uz, vz = ux; // across the road = along the river (the extrusion's local +z)
+  const width = halfWidth * 2;
+  const bodyHalf = halfLength + 1.0; // a metre into each approach embankment
+  const bottom = bedY - BRIDGE_BODY_BELOW_BED_M;
+  const top = deckY - BRIDGE_BODY_TOP_UNDER_DECK_M;
+  // the arches share the wet span between the abutments: N ≈ one per 11 m, piers between them
+  const wetSpan = Math.max(4, (halfLength - 3) * 2);
+  const arches = Math.max(1, Math.round(wetSpan / 11));
+  const chord = (wetSpan - (arches - 1) * BRIDGE_PIER_M) / arches;
+  const springY = waterY + BRIDGE_SPRING_OVER_WATER_M;
+  const crownY = top - BRIDGE_SPANDREL_FILL_M;
+  const rise = Math.max(0.4, Math.min(chord * 0.32, crownY - springY));
+  const radius = (chord * chord / 4 + rise * rise) / (2 * rise);
+  const centreY = springY + rise - radius;
+  const halfAngle = Math.asin(Math.min(1, chord / 2 / radius));
+  // the elevation profile (local x along the road, y up), traced clockwise with the arch openings cut from the bottom
+  const profile = new THREE.Shape();
+  profile.moveTo(-bodyHalf, bottom);
+  profile.lineTo(-bodyHalf, top);
+  profile.lineTo(bodyHalf, top);
+  profile.lineTo(bodyHalf, bottom);
+  for (let i = arches - 1; i >= 0; i--) {
+    const archX = -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M);
+    profile.lineTo(archX + chord / 2, bottom);
+    profile.lineTo(archX + chord / 2, springY);
+    profile.absarc(archX, centreY, radius, Math.PI / 2 - halfAngle, Math.PI / 2 + halfAngle, false);
+    profile.lineTo(archX - chord / 2, bottom);
+  }
+  profile.lineTo(-bodyHalf, bottom);
+  const body = new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false, curveSegments: 10 });
+  body.translate(0, 0, -width / 2);
+  scaleUV(body, 0.7, 0.7); // the extrusion's UVs are metres; the stone bucket's boxes carry 0.7 per metre
+  jitterUV(body, rng);
+  alignWidth(body, ux, uz);
+  buckets.stone.push(body.translate(cx, 0, cz));
+  // the deck slab, level and flush with the approaches, and the parapets on its edges with end posts
+  const slab = box(bodyHalf * 2, BRIDGE_SLAB_M, width, 0.7);
+  jitterUV(slab, rng);
+  buckets.stone.push(alignWidth(slab, ux, uz).translate(cx, deckY - BRIDGE_SLAB_M / 2, cz));
+  const parapetHalf = bodyHalf + 0.2;
+  for (const side of [-1, 1]) {
+    const inset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
+    const parapet = box(parapetHalf * 2, BRIDGE_PARAPET_HEIGHT_M, BRIDGE_PARAPET_THICK_M, 0.7);
+    jitterUV(parapet, rng);
+    buckets.stone.push(alignWidth(parapet, ux, uz)
+      .translate(cx + vx * inset * side, deckY + BRIDGE_PARAPET_HEIGHT_M / 2, cz + vz * inset * side));
+    for (const end of [-1, 1]) {
+      const post = box(0.8, BRIDGE_PARAPET_HEIGHT_M + 0.4, 0.8, 0.7);
+      jitterUV(post, rng);
+      buckets.stone.push(alignWidth(post, ux, uz).translate(
+        cx + ux * end * parapetHalf + vx * inset * side, deckY + (BRIDGE_PARAPET_HEIGHT_M + 0.4) / 2,
+        cz + uz * end * parapetHalf + vz * inset * side));
     }
   }
-  return best;
-}
-
-/** Water plane height beside a causeway: read 24 m along the river, past the road's dry band (terrain.ts zeroes the
- * mask within 14 m of a lane and the plane rules the core beyond it). */
-function waterLevelBeside(heightField: DressingHeightField, x: number, z: number, vx: number, vz: number): number {
-  return Math.min(heightField.getHeightAt(x + vx * 24, z + vz * 24), heightField.getHeightAt(x - vx * 24, z - vz * 24));
-}
-
-function addStoneBridge(crossing: RiverCrossing, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets): void {
-  const { x: cx, z: cz, ux, uz } = crossing;
-  const vx = -uz, vz = ux; // across the road = along the river
-  const deck = heightField.getHeightAt(cx, cz);
-  const water = waterLevelBeside(heightField, cx, cz, vx, vz);
-  const span = 26; // half-length along the road: bank to bank over the narrows
-  // The causeway's graded shoulder is at deck level out to ~4 m and reaches the bed at 14 m (terrain.ts road
-  // plane), and the water begins past the 14-18 m dry band: the river-side face of the bridge therefore stands
-  // 11.5 m off the centreline, at the water's edge, where the slope has dropped below the deck.
-  const face = 11.5;
-  for (const side of [-1, 1]) {
-    // the spandrel wall: from below the waterline up to just under the deck's parapet line
-    const wallX = cx + vx * face * side, wallZ = cz + vz * face * side;
-    const foot = Math.min(water - 0.6, heightField.getHeightAt(wallX, wallZ) - 0.4);
-    const tall = deck + 0.05 - foot;
-    const wall = alignWidth(box(span * 2, tall, 0.7, 0.7), ux, uz);
-    jitterUV(wall, rng);
-    buckets.stone.push(wall.translate(wallX, foot + tall / 2, wallZ));
-    // three arch openings read as dark recesses proud of the wall face
-    for (const along of [-9, 0, 9]) {
-      const archX = cx + ux * along + vx * (face + 0.42) * side, archZ = cz + uz * along + vz * (face + 0.42) * side;
-      const arch = alignWidth(box(4.4, 1.7, 0.14, 1.0), ux, uz);
-      buckets.dark.push(arch.translate(archX, water + 0.55, archZ));
-      const crown = alignWidth(box(2.6, 0.55, 0.14, 1.0), ux, uz);
-      buckets.dark.push(crown.translate(archX, water + 1.6, archZ));
+  // cutwaters on both faces of every pier, their noses turned into the stream
+  const cutwaterTop = springY + 0.5;
+  for (let i = 0; i < arches - 1; i++) {
+    const pierX = -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2;
+    for (const side of [-1, 1]) {
+      const nose = box(BRIDGE_PIER_M * 0.8, cutwaterTop - bottom, BRIDGE_PIER_M * 0.8, 0.7);
+      nose.rotateY(Math.PI / 4);
+      jitterUV(nose, rng);
+      buckets.stone.push(alignWidth(nose, ux, uz).translate(
+        cx + ux * pierX + vx * (halfWidth + 0.5) * side, (cutwaterTop + bottom) / 2,
+        cz + uz * pierX + vz * (halfWidth + 0.5) * side));
     }
-    // cutwaters between the arches, their noses turned into the stream
-    for (const along of [-4.5, 4.5]) {
-      const pierX = cx + ux * along + vx * (face + 1.2) * side, pierZ = cz + uz * along + vz * (face + 1.2) * side;
-      const pier = alignWidth(box(1.6, deck - 0.4 - (water - 0.8), 1.8, 0.7), ux, uz);
-      pier.rotateY(side * 0.78);
-      jitterUV(pier, rng);
-      buckets.stone.push(pier.translate(pierX, (water - 0.8 + deck - 0.4) / 2, pierZ));
-    }
-    // wing walls splay out at both ends of the spandrel
-    for (const end of [-1, 1]) {
-      const wingX = cx + ux * end * (span + 1.6) + vx * (face + 2.2) * side, wingZ = cz + uz * end * (span + 1.6) + vz * (face + 2.2) * side;
-      const wingY = heightField.getHeightAt(wingX, wingZ);
-      const wing = alignWidth(box(5.2, 1.5, 0.9, 0.7), ux, uz);
+  }
+  // wing walls splay from each abutment corner down the bank
+  for (const end of [-1, 1]) {
+    for (const side of [-1, 1]) {
+      const wingX = cx + ux * end * (bodyHalf + 2.2) + vx * (halfWidth + 1.4) * side;
+      const wingZ = cz + uz * end * (bodyHalf + 2.2) + vz * (halfWidth + 1.4) * side;
+      const foot = heightField.getHeightAt(wingX, wingZ) - 0.5;
+      const wingTop = deckY + 0.3;
+      const wing = box(5.2, wingTop - foot, 0.9, 0.7);
       wing.rotateY(-end * side * 0.6);
       jitterUV(wing, rng);
-      buckets.stone.push(wing.translate(wingX, wingY + 0.55, wingZ));
+      buckets.stone.push(alignWidth(wing, ux, uz).translate(wingX, (foot + wingTop) / 2, wingZ));
     }
   }
+  // the record: the body the ride stands on and the two parapets that hold it on the deck
+  const yaw = Math.atan2(ux, uz); // an OBB's forward axis is (sin yaw, cos yaw), like a hull's
+  const parapetInset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
+  const record = setCompoundShape({
+    min: [0, bottom, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge',
+  }, [
+    { kind: 'obb', cx, cz, hw: halfWidth, hl: bodyHalf, yaw, y0: bottom, y1: deckY },
+    { kind: 'obb', cx: cx - vx * parapetInset, cz: cz - vz * parapetInset, hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw,
+      y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M },
+    { kind: 'obb', cx: cx + vx * parapetInset, cz: cz + vz * parapetInset, hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw,
+      y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M },
+  ]);
+  ctx.obstacles?.push(record);
+  ctx.colliders?.push(cloneCollisionRecord(record));
 }
 
-function addWeirAndMill(links: readonly LayoutDisc[], crossing: RiverCrossing | null, heightField: DressingHeightField,
+function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: number; z: number }> | null, heightField: DressingHeightField,
   rng: Rng, buckets: DressingBuckets, ctx: FocusedDressingContext): void {
   // the reach six links upstream of the bridge (the SW end of the chain is upstream)
   let bridgeIndex = 0, bestDistance = Infinity;
@@ -1811,12 +1880,15 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
   const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
   if (links.length < 3) return;
   addRiverBankReeds(links, heightField, rng, buckets);
-  const bridge = riverCrossing(L.roads[0], links);
-  if (bridge) addStoneBridge(bridge, heightField, rng, buckets);
-  else addRuinedRiverBridge(links, heightField, rng, buckets);
-  // ford posts on every lane that wades the river; the coach road crosses on the bridge
-  addRiverFordMarkers(bridge ? L.roads.filter((_road, index) => index !== 0) : L.roads, links, heightField, rng, buckets);
-  addWeirAndMill(links, bridge, heightField, rng, buckets, ctx);
+  // round 61: the bridge stands on the deck plane terrain.ts resolved for the station authored crossing: 'bridge';
+  // a river without one keeps the round-1 ruin
+  const decks = heightField.bridgeDecks ?? [];
+  for (const deck of decks) addArchedStoneBridge(deck, heightField, rng, buckets, ctx);
+  if (!decks.length) addRuinedRiverBridge(links, heightField, rng, buckets);
+  // ford posts on every lane that wades the river; a lane a deck carries crosses dry-shod
+  addRiverFordMarkers(L.roads.filter((_road, index) => !decks.some((deck) => deck.route === index)),
+    links, heightField, rng, buckets);
+  addWeirAndMill(links, decks[0] ?? null, heightField, rng, buckets, ctx);
 }
 
 function dressLakeRiverLandings(

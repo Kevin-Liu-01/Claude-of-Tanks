@@ -50,7 +50,9 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       lakeHeightResult, composeLakeHeight, padPts, padYs, waterRampStart,
       waterRampEnd, quarryFloorY,
       // round 47 follow-up: the rim line fades near an authored bay shoreline (coastRimKeep); the standard fixture has no bay
-      coastRimKeep = () => 1 } = fixture;
+      coastRimKeep = () => 1,
+      // round 61: the road-plane blend yields under a bridge deck (bridgeTermsAt); the standard fixture authors none
+      bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }) } = fixture;
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);

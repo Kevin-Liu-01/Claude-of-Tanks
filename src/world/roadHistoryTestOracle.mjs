@@ -29,8 +29,23 @@ try { original = await import(url); } finally { hooks.deregister(); }
 // compared against this second constructor: the same projection with only those two relief laws restored on the rim.
 const historicalRim = '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH;\n';
 assert.equal(referenceSource.split(historicalRim).length, 2, 'one historical rim line in the pre-completion constructor');
+// Round 61 (2026-09-24, Amberford's bridge): the road-plane blend under a bridge deck and over its approaches is a
+// construction law of the same kind (the fixture reverts its slice to the pre-bridge text); the relief-law constructor
+// restores the CURRENT blend so the placement sampler is compared against the field it actually reproduces.
+const historicalRoadBlend = '    const rd = gridSample(gRoadDist, x, z);\n    if (rd < 14) h += (gridSample(gRoadElev, x, z) - h) * (1 - smoothstep(3.8, 14, rd));\n';
+assert.equal(referenceSource.split(historicalRoadBlend).length, 2, 'one historical road-plane blend in the pre-completion constructor');
 const reliefLawSource = referenceSource.replace(historicalRim,
-  '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);\n');
+  '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);\n')
+  .replace(historicalRoadBlend, `    const rd = gridSample(gRoadDist, x, z);
+    if (rd < 14) {
+      let roadElevation = gridSample(gRoadElev, x, z);
+      if (bridgeDecks.length) {
+        const bridge = bridgeTermsAt(x, z);
+        roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
+        h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
+      } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
+    }
+`);
 const reliefLawUrl = new URL('./terrain.ts?original-road-placement-relief-laws', import.meta.url).href;
 const reliefLawHooks = registerHooks({ load(request, context, next) {
   return request === reliefLawUrl ? {format:'module-typescript', source:reliefLawSource, shortCircuit:true} : next(request,context);

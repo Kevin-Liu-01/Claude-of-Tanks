@@ -284,6 +284,114 @@ function historicalHeightFieldSource(text) {
 `, ''],
     [`    if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
 `, ''],
+    // Round 61 (2026-09-24, Amberford's bridge over the river): a marsh station authored crossing: 'bridge' resolves a
+    // level deck plane (the deck state and its terms, the resolution after the liquid fit, the ground type and the
+    // published planes below); the road-plane blend it exempts is a fixture slice (road-constructor-history-fixture)
+    // and the dry-band line is restored here. All declared additions projected out of the HISTORICAL hash only —
+    // heights on every map without a bridge station are untouched (the resolution finds none).
+    [`  // Round 61 (2026-09-24): the bridge decks, resolved after the road plane and the liquid surfaces are frozen (below);
+  // every construction query before that sees none, so the road grid, the pads and the liquid fit are untouched.
+  let bridgeDecks: readonly BridgeDeckPlane[] = EMPTY_BRIDGE_DECKS;
+  const _bridgeTerms = { span: 0, approach: 0, deckY: 0 };
+  /**
+   * The bridge terms at a point, allocation-free: \`span\` is 1 under the deck and falls to 0 through the abutment (the
+   * road plane and the dry band are exempted by it), \`approach\` is 1 at the abutment face and falls to 0 at the end of
+   * the approach (the road plane grades toward \`deckY\` by it); both are 0 off every deck's corridor.
+   */
+  function bridgeTermsAt(x: number, z: number): typeof _bridgeTerms {
+    const out = _bridgeTerms;
+    out.span = 0; out.approach = 0; out.deckY = 0;
+    for (let i = 0; i < bridgeDecks.length; i++) {
+      const deck = bridgeDecks[i];
+      const dx = x - deck.x, dz = z - deck.z;
+      const along = Math.abs(dx * deck.ux + dz * deck.uz);
+      if (along >= deck.halfLength + deck.approachM) continue;
+      if (Math.abs(dx * deck.uz - dz * deck.ux) > BRIDGE_CORRIDOR_HALF_WIDTH_M) continue;
+      out.deckY = deck.deckY;
+      if (along < deck.halfLength) {
+        out.span = 1 - smoothstep(deck.halfLength - BRIDGE_ABUTMENT_M, deck.halfLength, along);
+        out.approach = 1;
+      } else out.approach = 1 - smoothstep(deck.halfLength, deck.halfLength + deck.approachM, along);
+      return out;
+    }
+    return out;
+  }
+  /** The deck standing over (x, z) — inside the span and between the parapets — or null. */
+  function bridgeDeckOver(x: number, z: number): BridgeDeckPlane | null {
+    for (let i = 0; i < bridgeDecks.length; i++) {
+      const deck = bridgeDecks[i];
+      const dx = x - deck.x, dz = z - deck.z;
+      if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength
+        && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth) return deck;
+    }
+    return null;
+  }
+`, ''],
+    [`  // Round 61 (2026-09-24, Amberford's bridge over the river): a marsh station authored \`crossing: 'bridge'\` carries
+  // its road over the water on a deck instead of through the 14–18 m dry band. Resolved once the road plane and the
+  // liquid surfaces are frozen: the deck centre is the road's nearest point to the station and its axis the road
+  // bearing there; the span is the river's own wet reach along that axis (the liquid union before the dry band, marched
+  // at 0.25 m) plus an abutment at each end; the plane is the road plane lifted clear of the water surface by the
+  // authored clearance. Under the span heightAt keeps the river bed and waterWetnessAt keeps the river (bridgeTermsAt);
+  // over each approach the road plane grades to the deck at no more than 7 % (the same length on both sides: the
+  // steeper side's). A station without a road inside its radius is an authoring error and fails here rather than
+  // silently drying a crossing.
+  function resolveBridgeDecks(): readonly BridgeDeckPlane[] {
+    const decks: BridgeDeckPlane[] = [];
+    for (const station of _MARSHES) {
+      if (station.crossing !== 'bridge') continue;
+      let best = Infinity, cx = station.x, cz = station.z, ux = 1, uz = 0, route = -1;
+      for (let r = 0; r < roads.length; r++) {
+        const nodes = roads[r];
+        for (let s = 0; s < nodes.length - 1; s++) {
+          const { d, t } = segDist(station.x, station.z, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);
+          if (d >= best) continue;
+          const dx = nodes[s + 1][0] - nodes[s][0], dz = nodes[s + 1][1] - nodes[s][1];
+          const length = Math.hypot(dx, dz);
+          if (length <= 0) continue;
+          best = d; route = r; ux = dx / length; uz = dz / length;
+          cx = nodes[s][0] + dx * t; cz = nodes[s][1] + dz * t;
+        }
+      }
+      if (best > station.r) throw new Error(\`bridge station at \${station.x},\${station.z} has no road inside its radius\`);
+      let reach = 0;
+      for (const sign of [-1, 1]) {
+        for (let along = 0; along <= station.r * 2; along += 0.25) {
+          if (sampleShorelineMask(_MARSHES, _LAKES, cx + ux * along * sign, cz + uz * along * sign) > waterRampStart) {
+            reach = Math.max(reach, along);
+          }
+        }
+      }
+      const halfLength = reach + BRIDGE_ABUTMENT_M;
+      const bedY = heightAt(cx, cz, false, false);
+      const waterY = bedY + liquidDepthM;
+      const deckY = Math.max(gridSample(gRoadElev, cx, cz), waterY + (station.deckClearM ?? BRIDGE_DECK_CLEAR_M));
+      let approachM = BRIDGE_APPROACH_MIN_M;
+      for (const sign of [-1, 1]) {
+        const rise = Math.abs(deckY - gridSample(gRoadElev, cx + ux * halfLength * sign, cz + uz * halfLength * sign));
+        approachM = Math.max(approachM, Math.min(BRIDGE_APPROACH_MAX_M, rise / BRIDGE_APPROACH_GRADE));
+      }
+      decks.push({
+        x: cx, z: cz, ux, uz, route, halfLength,
+        halfWidth: (station.deckWidthM ?? BRIDGE_DECK_WIDTH_M) / 2,
+        deckY, bedY, waterY,
+        approachM: station.approachM ?? approachM,
+      });
+    }
+    return decks.length ? Object.freeze(decks) : EMPTY_BRIDGE_DECKS;
+  }
+  if (liquidWater && liquidSurfaces) bridgeDecks = resolveBridgeDecks();
+
+`, ''],
+    [`    if (bridgeDecks.length && bridgeDeckOver(x, z) !== null) return 'hard'; // round 61: stone across the whole deck
+`, ''],
+    [`    // round 61: under a bridge deck the river keeps its wetness — the deck, not a causeway, carries the road
+    const roadDry = smoothstep(14, 18, gridSample(gRoadDist, x, z));
+    wetness *= bridgeDecks.length ? roadDry + (1 - roadDry) * bridgeTermsAt(x, z).span : roadDry;
+`, `    wetness *= smoothstep(14, 18, gridSample(gRoadDist, x, z));
+`],
+    [`    bridgeDecks, // round 61
+`, ''],
   ]) {
     assert.equal(text.split(current).length, 2, 'each declared historical delta occurs exactly once');
     text = text.replace(current, historical);

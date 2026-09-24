@@ -105,10 +105,25 @@ for(const mapId of MAP_IDS) {
     const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
     assert.equal(mills.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit seats a mill house`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='mill-house').length,mills.length);
-    assert.equal(candidate.obstacles.length,coal.length+mills.length);assert.equal(candidate.colliders.length,coal.length+mills.length);
+    // Round 61 (2026-09-24): Amberford's arched bridge is the second — one compound record the ride stands on (the body
+    // up to the deck plane terrain.ts resolved) with the two parapets above it; every other kit stays soft dressing.
+    const bridges=candidate.obstacles.filter(record=>record.kind==='bridge');
+    assert.equal(bridges.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit spans a bridge`);
+    assert.equal(candidate.colliders.filter(record=>record.kind==='bridge').length,bridges.length);
+    for(const bridge of bridges){
+      const deck=field.bridgeDecks[0];
+      assert.equal(bridge.shape2.kind,'compound');assert.equal(bridge.shape2.parts.length,3,'the body and two parapets');
+      const [body,...parapets]=bridge.shape2.parts;
+      assert.equal(body.y1,deck.deckY,'the body\'s top is the deck plane');assert.ok(body.y0<deck.bedY,'the body is footed below the bed');
+      assert.ok(body.hw===deck.halfWidth&&body.hl>deck.halfLength,'the body spans the deck and its abutments');
+      for(const parapet of parapets){assert.equal(parapet.y0,deck.deckY);assert.ok(parapet.y1-parapet.y0>=1,'a parapet stops a hull');}
+    }
+    const solids=coal.length+mills.length+bridges.length;
+    assert.equal(candidate.obstacles.length,solids);assert.equal(candidate.colliders.length,solids);
     if(railMaps.includes(mapId)) assert.ok(coal.length>0,`${mapId}: retain recognizable coal stockpiles`);
     else assert.equal(coal.length,0,`${mapId}: all26 other map outputs unchanged`);
-    const heaps=candidate.obstacles.filter(record=>record.kind!=='mill-house'), heapColliders=candidate.colliders.filter(record=>record.kind!=='mill-house');
+    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge';
+    const heaps=candidate.obstacles.filter(soft), heapColliders=candidate.colliders.filter(soft);
     coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field));
     totals[mapId]=coal.length;
   } finally {dispose(baseline);dispose(candidate);}

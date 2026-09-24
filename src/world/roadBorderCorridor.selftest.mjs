@@ -275,7 +275,9 @@ const constraintSource = terrainSource.slice(terrainSource.indexOf('  function a
 const constraintFactory = new Function('fixture', `
   const { GN, gRoadDist, gRoadElev, sampleHeightGridCell, composeLakeHeight,
     _LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons, lakeHeightResult,
-    padPts, padYs, smoothstep, waterRampStart, waterRampEnd, noi } = fixture;
+    padPts, padYs, smoothstep, waterRampStart, waterRampEnd, noi,
+    // round 61: the road-plane blend yields under a bridge deck (bridgeTermsAt); this fixture authors none
+    bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }) } = fixture;
   ${stripTypeScriptTypes(constraintSource)}
   return applyHeightConstraints;
 `);
