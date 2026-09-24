@@ -2174,7 +2174,7 @@ function buildT3485Base(P: Ww2BuilderPort): void {
   P.topY = 0.92;
 }
 
-export const WW2_PROFILES = {
+const WW2_PROFILES = {
   t30: { build: buildT30 },
   m4a3e8: { build: buildShermanE8 },
   tiger1: { build: buildTigerI },

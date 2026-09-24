@@ -6013,7 +6013,7 @@ function buildISU122S(P: CasemateBuilderPort): void {
   buildISU122SHullStage14();
 }
 
-export const CASEMATE_PROFILES = {
+const CASEMATE_PROFILES = {
   strv103: { build: buildStrv103 },
   jagdtiger: { build: buildJagdtiger },
   jpz_e100: { build: buildJPzE100 },
