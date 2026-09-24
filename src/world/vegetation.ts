@@ -3031,7 +3031,9 @@ function* vegetationBuildSteps(
     crng: RandomSource,
     carpet: boolean,
   ): number[] | null {
-    if (Math.max(Math.abs(x), Math.abs(z)) > 474) return null;
+    // round 67: a candidate on a railway cutting's batter face passes the rim-band cull (the deep faces at the map
+    // edge lie beyond 474 m); every other candidate out there is culled before it draws, as before
+    if (Math.max(Math.abs(x), Math.abs(z)) > 474 && !(batterSeedAt !== null && batterSeedAt(x, z) > 0)) return null;
     if (inAvoid(x, z)) return null;
     const roll = crng(), yaw = crng() * Math.PI * 2;
     const sxz = 0.74 + crng() * 0.62;
