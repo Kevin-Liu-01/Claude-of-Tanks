@@ -50,7 +50,12 @@ const roadCompletionCensus = {
   // combined round-48 tree (.qa-dev/collision-capture.mjs, same pack script); the redesign lane had left the round-1
   // shard in place, so the dedicated bots fought the old village on the new terrain (battlePacing: two Amberford
   // timeouts, a bravo pair parked on the river bank). No pre-repair capture exists: census = shard, removals 0.
-  autumn: [6091, 5927, 6035],
+  // round 61 (2026-09-24, Amberford's bridge over the river): shard recaptured on the lane tree with the capture tool's
+  // own --headless mode (private vite server + headless Chrome, the same pack script). The round-48 shard had gone stale
+  // against main's own Amberford world like Tarkhan's in round 57 — the untouched base (cb46992ac) recaptures as
+  // 5883 / 5737 / 5822 — and the bridge then retires the two parapet wall runs' records (the deck and its parapets are
+  // one compound record the ride stands on): −10 obstacles, −10 colliders, concealers unchanged.
+  autumn: [5873, 5727, 5822],
   // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling — shard recaptured headless on the new map
   // (grain station, kolkhoz corrals, kurgan kerbs, fort walls; shelterbelts replace most groves)
   // round 57 (2026-09-24, the rail spur kit): shard recaptured headless on the lane tree (.qa-dev/collision-capture.mjs
@@ -109,7 +114,7 @@ const rimRoadRemovals = {
   winter: 0, // 2026-09-23: redesigned layout, census pinned directly (see above)
   urban: 155,
   coastal: 36,
-  autumn: 0, // 2026-09-24: redesigned layout, census pinned directly (see above)
+  autumn: 0, // 2026-09-24: redesigned layout, census pinned directly (see above; round 61 recaptured on the bridge tree)
   steppe: 12,
   railyard: 152,
   frontier: 101,

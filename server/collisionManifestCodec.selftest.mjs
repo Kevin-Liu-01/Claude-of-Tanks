@@ -41,15 +41,24 @@ assert.equal(encodedFixture.obstacles[0].s[1], 0, 'fixed corpus exercises refere
 assert.ok(Buffer.byteLength(JSON.stringify(encodedFixture)) < Buffer.byteLength(codecFixtureText) * 0.8,
   'exact dictionary materially reduces the fixed mixed primitive corpus');
 assert.deepEqual(collisionCaptureOptions(['owned-session']), {
-  session: 'owned-session', mapIds: MAP_IDS, partial: false,
+  session: 'owned-session', mapIds: MAP_IDS, partial: false, headless: false, cacheDir: null,
 }, 'existing complete export keeps the full canonical roster');
 assert.deepEqual(collisionCaptureOptions(['owned-session', '--maps', 'whiteout']), {
-  session: 'owned-session', mapIds: ['whiteout'], partial: true,
+  session: 'owned-session', mapIds: ['whiteout'], partial: true, headless: false, cacheDir: null,
 });
 assert.deepEqual(collisionCaptureOptions(['--maps=whiteout,polders']).mapIds, ['polders', 'whiteout']);
 for (const args of [['--maps'], ['--maps='], ['--maps=invalid'], ['--maps=whiteout,whiteout'],
   ['--maps=whiteout', '--maps=polders'], ['owned-session', 'unexpected'], ['--unknown']]) {
   assert.throws(() => collisionCaptureOptions(args), /map|argument/);
+}
+// round 61 (2026-09-24): the headless mode captures on the tool's own checkout without a session; a warm optimizer
+// cache is the caller's own and applies to that mode only
+assert.deepEqual(collisionCaptureOptions(['--headless', '--maps', 'autumn', '--cache-dir=/tmp/warm']), {
+  session: 'cot-manifest', mapIds: ['autumn'], partial: true, headless: true, cacheDir: '/tmp/warm',
+}, 'a headless partial capture names its maps and its own cache');
+for (const args of [['--headless', 'owned-session'], ['--headless', '--headless'], ['--cache-dir=/tmp/warm'],
+  ['--headless', '--cache-dir='], ['--headless', '--cache-dir=/a', '--cache-dir=/b']]) {
+  assert.throws(() => collisionCaptureOptions(args), /headless|cache-dir/);
 }
 assert.equal(packed.encoding, 'primitive-kind-dict-v2');
 assert.deepEqual(packed.kinds, ['crate']);
@@ -184,7 +193,7 @@ assert.deepEqual(readFileSync(new URL('index.json', directory)), indexBeforeReti
 // own height, which made the city shards several times larger than the 1.5 m whole-projection slabs.
 const previousShardBytes = {
   verdant: 1854713, desert: 1138916, winter: 1837349 /* 2026-09-23 Frosthollow redesign: re-based on the recaptured shard (1670318 B) +10 % */, urban: 6905545,
-  coastal: 1355569, autumn: 1873510, steppe: 1363120 /* 2026-09-24 round 57 (rail spur kit): re-based on the shard recaptured headless on the lane tree (1239200 B; the committed round-48 shard had gone stale against main's own world, and the siding's berth re-rolls fences and hedgehogs) +10 %; round-48 base 1112279 B */, railyard: 1205662,
+  coastal: 1355569, autumn: 2009884 /* 2026-09-24 round 61 (Amberford's bridge over the river): re-based on the shard recaptured headless on the lane tree (1827167 B; the untouched base recaptures at 1829445 B against the stale round-48 shard's 1857558 B) +10 %; round-48 ceiling 1873510 B */, steppe: 1363120 /* 2026-09-24 round 57 (rail spur kit): re-based on the shard recaptured headless on the lane tree (1239200 B; the committed round-48 shard had gone stale against main's own world, and the siding's berth re-rolls fences and hedgehogs) +10 %; round-48 base 1112279 B */, railyard: 1205662,
   frontier: 2179727, fjord: 1982369, delta: 2150317, badlands: 1440584,
   monsoon: 2456485, alpine: 2420855, caldera: 1746798, foundry: 1776506,
   ruinspires: 8075245, blackglass: 3761374, titan_gorge: 1599752, skybridge: 1857511,
