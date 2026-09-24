@@ -694,6 +694,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
+    'src/engine/atmosphere.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',
     'src/engine/deviceDiag.selftest.mjs',
