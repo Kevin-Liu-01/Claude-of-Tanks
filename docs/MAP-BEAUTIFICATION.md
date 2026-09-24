@@ -850,8 +850,9 @@ triplanar-projected, ambient occlusion baked from the heightfield, aerial perspe
 (shaded faces go blue, lit faces keep their colour, a mountain is never paler than the sky behind it), forests as
 impostors in the same species palette with a tree line, and 2–3 cascades to the horizon. Our acceptance criteria are
 the fifteen ground-level checks below, judged from the player's height at the same camera/seed/tier before and after
-every change (the `.qa-dev/wall-probe.mjs` view set: corner, along-rim, outside-looking-in, first-ridge wall, centre
-skylines):
+every change (the view set of `tools/map-view-probe-views.mjs`, shot by `tools/map-view-probe.mjs` — round 48
+committed the `.qa-dev/wall-probe.mjs` the rounds used: corner, along-rim, outside-looking-in, first-ridge wall,
+centre skylines, low edge and bird / oblique shore views):
 
 | # | Check | Pass | Fail |
 |---|---|---|---|
@@ -910,9 +911,86 @@ skylines):
 | 47 | Mesa ring stack and arid skies: a nine-row mesa ladder (bench with buttes, near tables, a real valley floor, far escarpment, saddle, summits, shoulder; correlated pediment / plateau rows, 2.5:1 radial limiter, per-range cap approach 1.25 / 1.80, Redrock on the classic ladder), authored strata and outland rocks on the bland rings, textured altocumulus / cirrus decks on the arid maps, dust decks over the Mars galaxy, explicit low decks on the near-overcast maps, cooler arid haze | geometry probe (skyline shared by three ranges instead of one 55-70 % row; valley 41-74 m under 67-174 m tables on the desert), wall-probe A/B1/B on the eleven maps plus Verdant / Alpine controls (skyline metric: desert w-wall-mid 1.49 → 1.22, Oasis sky-w 1.42 → 1.15, Mars 0.97 → 0.83; controls unchanged) |
 | 47b | Shore contours (follow-up): Saltmere Bay one authored crescent with a cut-short far arc, Nordhavn Fjord three arms with peninsula ridges, authored lake bank bands, a coast rim fade on headlands, and the sea sector fully open before a contour's far arc (`seaSectorBlend` 0.5 / 0.85 + 20, key v37) | Plan-view contour plots; A (r47-combined) / B bird-e-high, bird-e-edge-n, shore-e-oblique, edge-e-low, bay-strand-n, bay-from-village, fjord-arm-in, fjord-peninsula; Saltwind A/B for the blend law | see the section |
 | 47 | Shorelines past the border: the bay contours rule the outland (rim lift yields to water, baked contour for the terrain material and the sheet apron, per-vertex ring weight, sector opens where each bay's reach ends) | Reservoir-style A/B bird and oblique captures on Coastal, Fjord, Saltwind: the beaches and bay lobes continue past the red line as their own curves; edgeWater/shallowWater/terrain receipts |
+| 48 | Probes and metrics as tools: the QA probes that verified rounds 41–47 committed from `.qa-dev/` as `tools/map-view-probe.mjs` (the wall probe; its view table in `tools/map-view-probe-views.mjs`), `tools/terrain-layer-flag-probe.mjs`, `tools/terrain-uniform-iso-probe.mjs`, `tools/world-layer-isolation-probe.mjs`, `tools/salvo-indicator-probe.mjs` and `tools/water-drive-probe.mjs` over one runtime (`tools/map-probe-runtime.mjs`), and the three Python/PIL metrics ported to `tools/map-metrics.mjs` (skyline, stripe, boxes) — see "Probes and metrics as tools" below | `tools/map-probe-runtime.selftest.mjs` (arguments, the pinned 31-view table, pose math, the mirrored-frame note, `--help` without a network) and `tools/map-metrics.selftest.mjs` (synthetic frames of known luma / wavelength / heading); the Node metrics reproduce the PIL scripts on the round-43 and round-47a frames (skyline and boxes to every printed digit, stripe wavelength within 0.07 %); one map/view per tool re-captured on this tree |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
+
+#### Probes and metrics as tools — 2026-09-23 (round 48)
+
+Owner (2026-09-23): commit the QA probes that verified rounds 41–47 as first-class tools with receipts, so the
+program's acceptance can be re-run by anyone. Until now they lived untracked in `.qa-dev/`; they now live in `tools/`
+over one runtime, `tools/map-probe-runtime.mjs`: the argument parser and `--help` (every flag is `--name=value`,
+anything unknown fails before a server exists), one private vite server per run on 127.0.0.1:5300–5399 (never
+5197–5199), the repository's headless capture flags, the desktop-tier boot (`?nosplash=1&tier=desktop&gfxreset=1`,
+wait for `__GAME_READY`), the solo-battle entry through `__DEBUG.beginSoloBattle` (wait for the pre-battle clock),
+the two pose helpers (a table view resolved against the ground, a hull-relative pose) and one JSON receipt per run
+written next to the captures (`<tool>-<tag>.receipt.json`: revision, options, settle times, per-map shots with the
+resolved poses, page errors, `ok`). Exit 1 when a map failed; the receipt still names what did run.
+
+**The probe mutex is the caller's.** A run owns a dev server and a GPU browser for a minute or more; agents hold the
+scratch mutex around the whole process and run it at low priority —
+`until mkdir "$SP/probe.lock" 2>/dev/null; do sleep 5; done; nice -n 19 node tools/map-view-probe.mjs …; rmdir
+"$SP/probe.lock"`. The tools take neither that mutex nor the release harnesses' `/tmp/cot-shots` FIFO
+(`tools/capture-lock.mjs`), so never run one beside `npm test` or `tank:release:check`, and never edit tracked source
+while a run is capturing (vite serves the tree live). The A/B of every round is two runs of the same tool with a
+different `--root` (the baseline checkout, e.g. a clean clone of `origin/main`) and `--tag`, into one `--out`.
+
+| Tool | Proves | Rounds | Re-run |
+|---|---|---|---|
+| `tools/map-view-probe.mjs` | fixed-camera captures `<map>-<tag>-<view>.png` from the 31-pose table `tools/map-view-probe-views.mjs` (corner, along-rim, outside-in, first-ridge wall, centre skylines, low edge views, bird and oblique shore views) — the A/B every round from 35 to 47 was judged on | 35–47 | `--root=<A> --out=<dir> --maps=badlands,desert --views=sw-corner-close,sky-w --tag=a`, then `--root=<B> … --tag=b`; judge by eye and with `map-metrics` |
+| `tools/terrain-layer-flag-probe.mjs` | which splat layer paints a surface: the terrain material recompiled with G yellow, D cyan, R magenta, M blue (round 45 found Monsoon's mound and Fjord's cliffs were the steep-slope layer; round 47 the desert / Oasis contour bands as the D mask) | 45, 47 | `--maps=monsoon,fjord --views=sw-corner-close,canyon-in`; the receipt counts the flagged materials (0 fails) |
+| `tools/terrain-uniform-iso-probe.mjs` | which terrain uniform carries an artefact: one zeroed at a time (`-no-<uniform>.png`), `--flat-normals` swaps the layer normal maps for a flat texel (round 47: the desert's black squiggles survived every uniform and vanished with flat normals) | 47 | `--maps=desert --views=sw-corner-close --iso-uniforms=uRipple --flat-normals`; a uniform matching no material fails |
+| `tools/world-layer-isolation-probe.mjs` | which world layer draws a step at the water edge: the sea apron, the ring forest, the ring mesh and the shallow-water sheets hidden one at a time (`-no-apron.png` …), with a census of apron / horizon / shallow-water / ring meshes | 40 | `--maps=coastal,saltwind --views=bird-e-edge,over-e-560 [--hide="no-apron=shallowWaterSeaApron;…"]`; a pattern hiding nothing is recorded, never silent |
+| `tools/salvo-indicator-probe.mjs` | the guided salvo rack drives the HUD magazine indicator through the real desktop input path: reticle crops of rest / after the first launch / during the held group reload / refilled, with the combat state per phase; a cannon autoloader and a single-shot gun as controls | 41 | default `--ids=ztz100_prototype:salvo,leclerc_x:autoloader,t72b3m:single`; pairs with `src/sim/magazineIndicator.selftest.mjs` |
+| `tools/water-drive-probe.mjs` | the wake and churn trail of a hull fording a lake at a governed 7 m/s: chase / bird / side poses 1.5–6 s after entering and 1.5–4.5 s after stopping, then a fixed shore camera (the trail must lie where the water was churned) | 46 | `--maps=reservoir,coastal [--spec=t90m_x] [--speed=7]`; entry points for reservoir, coastal, fjord, oasis, skybridge, alpine |
+| `tools/map-metrics.mjs skyline` | check 5: median ground/sky display-luma ratio at the detected skyline (> 1 = range paler than the sky) | 37, 39, 47 | `skyline <dir> <tag> <maps> [sky-w,sky-s,centre-far]` |
+| `tools/map-metrics.mjs stripe` | check 8: windowed 2-D FFT of a region's detrended luminance — peak share, wavelength, heading, top-1 % share, anisotropy, std | 43 | `stripe <image> x0,y0,x1,y1 …` (round 43 regions: desert w-wall-mid 900,480,1500,700; bird-w 200,560,1300,700; Oasis w-wall-mid 200,520,1300,800) |
+| `tools/map-metrics.mjs boxes` | checks 3, 4, 11: shaded / lit box means, ground 5th percentile and mean, wall rgb / hue / sat / luma, A → B with % deltas | 42, 45, 47 | `boxes <capdir> boxes.json <maps> a b [views]` with the round-47a boxes below |
+
+How each acceptance of the fifteen checks is re-run: checks 1, 2, 10, 12 and 13 (continuity across the red line,
+roads and tree lines, props, water at the edge) with `map-view-probe` views `out-*`, `edge-*-low`, `bird-*-edge`,
+`shore-*-oblique`, `over-e-560` and, for a step at the water, `world-layer-isolation-probe`; checks 3 and 15 (slope
+shading, ring vs playable palette) with `terrain-layer-flag-probe` and the `boxes` wall stats; checks 4 and 11
+(shaded faces bluer, shadow colour = sky ambient) with `boxes` shaded vs lit on the same cameras; checks 5, 6 and 14
+(horizon band, sun-relative haze, banding) with `skyline` on `sky-w`, `sky-s`, `centre-far`, `w-wall-mid`,
+`e-wall-300`; checks 7 and 8 (moiré, tiling) with `stripe` on the fixed regions; when a picture blames a shader
+term, `terrain-uniform-iso-probe` names it. Round 41's HUD proof is `salvo-indicator-probe`, round 46's water proof
+`water-drive-probe`.
+
+**Parity with the Python scripts (this tree, 2026-09-23).** `skyline` on the round-47c frames (desert / Titan `sky-w`,
+`sky-s`, `centre-far`, tag a) and the round-47a frames (Titan / Skybridge `centre-far`): every ratio equal to the
+printed two decimals (desert 1.39 / 0.99 / 1.01, Titan 0.99 / 0.32 / 0.95, 0.94, Skybridge 0.76). `stripe` on the
+round-43 frames: desert w-wall-mid base 0.0109 / 0.54 / 65.9 px / 116.1° / 2.81 / 18.01 and wind 0.0053 / 0.221 /
+150.0 / 0.0 / 1.06 / 18.03, Oasis w-wall-mid 0.0222 / 0.76 / 123.4 / 26.2 / 0.90 / 32.53, desert bird-w 0.0158 /
+0.547 / 366.7 / 0.0 / 2.50 / 13.12 — all equal; an odd 601 × 221 crop (the Bluestein path) 150.2 → 150.3 px
+(0.07 %), the rest equal. `boxes` on the round-47a Titan / Skybridge / Blackglass a → b1 table: every cell equal.
+The receipts `tools/map-metrics.selftest.mjs` (synthetic frames of known luma, a (12, 5)/256 stripe field recovered to
+0.05 px and 0.05°, seeded noise isotropic, the A → B table exact, the FFT against the direct DFT for n = 8…97) and
+`tools/map-probe-runtime.selftest.mjs` (arguments, the view table pinned by count and digest, ground and
+hull-relative pose math, the mirrored-frame note against a real three.js camera, `--help` and bad flags of every tool
+without a server) run in `npm test`.
+
+Round-47a boxes (`boxes.json`, 1600 × 900 frames; `"<view>"` rows with `"<map>/<view>"` overrides):
+
+```json
+{
+  "sw-corner-close": { "shaded": [850, 400, 1450, 620], "lit": [150, 300, 600, 600], "ground": [200, 300, 1350, 780] },
+  "canyon-in": { "shaded": [120, 560, 320, 680], "lit": [700, 700, 1000, 800], "ground": [330, 540, 1350, 800], "wall": [560, 330, 1180, 460] },
+  "centre-far": { "shaded": [400, 500, 1000, 620], "lit": [850, 620, 1250, 680], "ground": [380, 480, 1350, 690] },
+  "w-wall-mid": { "shaded": [700, 650, 900, 800], "lit": [1050, 500, 1350, 640], "ground": [300, 460, 1350, 800] },
+  "bird-w": { "shaded": [200, 640, 1300, 700], "lit": [400, 720, 1300, 800], "ground": [200, 380, 1350, 800], "wall": [560, 380, 1100, 540] },
+  "skybridge/canyon-in": { "shaded": [220, 560, 520, 650], "lit": [600, 720, 900, 800], "wall": [560, 300, 1150, 430] },
+  "mars/canyon-in": { "shaded": [300, 455, 900, 515], "lit": [600, 700, 1000, 800], "ground": [200, 440, 1350, 800], "wall": [1150, 470, 1550, 560] },
+  "desert/sw-corner-close": { "shaded": [850, 400, 1450, 620], "lit": [150, 300, 600, 600] },
+  "oasis/sw-corner-close": { "shaded": [850, 380, 1500, 650], "lit": [150, 250, 600, 600], "ground": [150, 250, 1350, 800] }
+}
+```
+
+The mirrored-frame note, for reading compass claims in captures: world +X is east and +Z north, the hull's forward is
+local +Z with starboard at +X, but a camera looking along a heading (fx, fz) with +Y up has screen-right = (−fz, fx)
+— looking north puts west on the right of the frame, the mirror of the north-up minimap. `screenRightOf` in the
+runtime states it and its receipt checks it against a real three.js `lookAt`.
 
 #### 31-map skyline and border audit — 2026-09-22 (captures on d0cbb9fcd, `.qa-dev/wall-probe.mjs`, six views per map: SW corner, along the north rim, centre skyline NE, outside-in at the SW wall, centre skylines W and S)
 

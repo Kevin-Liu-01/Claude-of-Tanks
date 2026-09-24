@@ -229,3 +229,32 @@ node tools/world-residency-probe.mjs --root=/absolute/candidate --production --c
 Keep the chosen map list/order, viewport, tier, settle time, and three-sweep
 protocol identical. Do not add undeclared warmup cycles, drop failed samples,
 or reinterpret a leaking baseline as passing its own boundedness gate.
+
+## Map probes and metrics (AAA map program acceptance)
+
+The QA probes that verified rounds 41–47 are committed tools over one runtime,
+`map-probe-runtime.mjs` (owner approval 2026-09-23; docs/MAP-BEAUTIFICATION.md
+"Probes and metrics as tools"). Every flag is `--name=value`; `--help` and a
+bad flag return before a server exists; every run writes
+`<tool>-<tag>.receipt.json` next to its PNGs and exits 1 when a map failed.
+
+| Tool | Proves | Typical run |
+|---|---|---|
+| `map-view-probe.mjs` | fixed-camera A/B captures from the 31-pose table `map-view-probe-views.mjs` (rounds 35–47) | `--root=<checkout> --out=<dir> --maps=badlands --views=sw-corner-close,sky-w --tag=a` |
+| `terrain-layer-flag-probe.mjs` | which splat layer paints a surface (G yellow, D cyan, R magenta, M blue; rounds 45, 47) | `--maps=monsoon --views=canyon-in` |
+| `terrain-uniform-iso-probe.mjs` | which terrain uniform carries an artefact; `--flat-normals` (round 47) | `--maps=desert --views=sw-corner-close --iso-uniforms=uRipple --flat-normals` |
+| `world-layer-isolation-probe.mjs` | which world layer draws a step at the water edge (round 40) | `--maps=coastal --views=bird-e-edge,over-e-560` |
+| `salvo-indicator-probe.mjs` | the salvo rack drives the HUD magazine indicator through real input (round 41) | default `--ids=ztz100_prototype:salvo,leclerc_x:autoloader,t72b3m:single` |
+| `water-drive-probe.mjs` | the wake and churn trail of a fording hull (round 46) | `--maps=reservoir --speed=7` |
+| `map-metrics.mjs` | Node ports of the PIL metrics: `skyline` (check 5), `stripe` (check 8), `boxes` (checks 3, 4, 11); PIL-identical on the round-43/47 frames | `skyline <dir> a desert`, `stripe <png> 900,480,1500,700`, `boxes <dir> boxes.json titan_gorge a b` |
+
+The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run and
+use `nice -n 19`. The tools take neither it nor the `/tmp/cot-shots` FIFO, so
+never run one beside `npm test` or the release gate; never edit tracked source
+while one is capturing (vite serves the tree live); the server binds
+127.0.0.1:5300–5399, never 5197–5199. Receipts:
+`map-probe-runtime.selftest.mjs` (arguments, the pinned view table, pose math,
+the mirrored-frame note, `--help` without a network) and
+`map-metrics.selftest.mjs` (synthetic frames of known luma / wavelength /
+heading). A changed view is a dated re-pin of the table digest, never a
+capture-session side effect.
