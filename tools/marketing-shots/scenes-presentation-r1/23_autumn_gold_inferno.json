@@ -6,8 +6,8 @@
       "id": "type99a",
       "name": "victim",
       "pos": [
-        -96.75,
-        -178.8
+        -58.75,
+        -16.8
       ],
       "facingDeg": 210,
       "turretDeg": 15,
@@ -18,10 +18,10 @@
       "id": "t90a_vladimir",
       "name": "passer",
       "pos": [
-        -114.75,
-        -198.8
+        -53.75,
+        -31.8
       ],
-      "facingDeg": 66,
+      "facingDeg": 290,
       "turretDeg": 40,
       "gunDeg": 0.5,
       "camo": "summer",
@@ -41,14 +41,14 @@
     {
       "type": "dust",
       "at": [
-        -113,
-        -200
+        -52,
+        -35
       ],
       "tMs": 300,
       "params": {
         "count": 14,
         "intensity": 1.2,
-        "dirDeg": 66
+        "dirDeg": 290
       }
     },
     {
@@ -63,17 +63,17 @@
   ],
   "camera": {
     "pos": [
-      -125.15,
+      -37.15,
       1.5,
-      -203
+      -46
     ],
     "lookAt": [
-      -96.75,
+      -58.75,
       2.6,
-      -181.8
+      -16.8
     ],
     "groundRel": true,
-    "fov": 45,
+    "fov": 43,
     "rollDeg": -2.5
   },
   "fxTime": 615,

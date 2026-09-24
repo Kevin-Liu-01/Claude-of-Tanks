@@ -219,7 +219,9 @@ SCENES['36_winter_birch_ambush'] = {
 // 37 — road charge head-on: M1A2 coming straight at the lens down the west
 // road, snow wake, firing on the move, an incoming round bursting off the
 // verge beside it. Round 51: the west road is now the terrace village street
-// (valley road x≈-82 at z -150); the lens sits at the street's south end.
+// (valley road x≈-82 at z -150); the lens sits at the street's south end, on
+// the street's west half — a farm truck is parked on the east verge at
+// (-77,-160) and a lens at x -80.5 had its bumper 3 m from the glass.
 SCENES['37_winter_road_charge'] = {
   map: 'winter',
   seed: 6137,
@@ -233,7 +235,7 @@ SCENES['37_winter_road_charge'] = {
     { type: 'dust', at: [-88, -126], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 14 } },
     { type: 'fire', actor: 'charger', tMs: 475, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([-80.5, 1.3, -164], [-83, 2.3, -150], 40, 4),
+  camera: cam([-83, 1.3, -164], [-83, 2.3, -150], 40, 4),
   fxTime: 500,
   timeScale: 0,
 };
@@ -563,20 +565,24 @@ SCENES['52_autumn_ford_ambush'] = {
 
 // 53 — gold inferno: AbramsX mid-ammo-rack among the orange broadleafs,
 // fire against fall color, the Leclerc rolling past close across the lens.
-// Round 51: staged down the mid-line of the south-bank mid-orchard rows.
+// Round 51: on the coach road north of the bridge — the lens on the road 29 m
+// past the narrows (inside them the parapets flank the frame), the kill on
+// the road past the bend with the walled town and its church straight ahead,
+// the Leclerc 20 m out on the bend. An orchard-row staging was rejected in
+// review (the lens stood between the oaks: foliage over the glass).
 SCENES['53_autumn_gold_inferno'] = {
   map: 'autumn',
   seed: 6153,
   actors: [
-    { id: 'abramsx', name: 'victim', pos: [-98, -181], facingDeg: 210, turretDeg: 15, camo: 'factory' },
-    { id: 'leclerc', name: 'passer', pos: [-116, -201], facingDeg: 66, turretDeg: 40, gunDeg: 0.5, camo: 'autumn', camoSeed: 531 },
+    { id: 'abramsx', name: 'victim', pos: [-60, -19], facingDeg: 210, turretDeg: 15, camo: 'factory' },
+    { id: 'leclerc', name: 'passer', pos: [-55, -34], facingDeg: 290, turretDeg: 40, gunDeg: 0.5, camo: 'autumn', camoSeed: 531 },
   ],
   effects: [
     { type: 'tank_kill', actor: 'victim', tMs: 70, params: { cause: 'ammorack', pop: true } },
-    { type: 'dust', at: [-113, -200], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 66 } },
+    { type: 'dust', at: [-52, -35], tMs: 300, params: { count: 14, intensity: 1.2, dirDeg: 290 } },
     { type: 'fire', actor: 'passer', tMs: 590, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([-128, 1.5, -204], [-98, 2.6, -184], 44, -4),
+  camera: cam([-40, 1.5, -47], [-60, 2.6, -19], 42, -4),
   fxTime: 615,
   timeScale: 0,
 };

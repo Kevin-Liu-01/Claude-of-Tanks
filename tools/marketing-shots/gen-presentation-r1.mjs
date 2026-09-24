@@ -104,7 +104,7 @@ const mapHeroes = [
   // round 51 (2026-09-24): the three round-48 redesigns — the terrace village
   // street, the stone bridge under the coach road, the escarpment crest by the
   // (60,224) kurgan; an optional sixth entry pins facing / wing placement
-  ['winter', [-84, -70], [-104, 4.5, -96], 'strv122', 'winter', { facingDeg: 200 }],
+  ['winter', [-84, -70], [-78, 4.5, -104], 'strv122', 'winter', { facingDeg: 200 }], // lens on the street: at x -104 a cabin roof filled the left of the frame
   ['urban', [36, 60], [17, 4.0, 43], 'challenger_3', 'urbanblock'],
   ['coastal', [168, 42], [143, 4.2, 22], 'merkava4b', 'naval'],
   ['autumn', [-16, -72.4], [20, 3.4, -98], 'leo2a7v', 'autumn', { facingDeg: 137, wing: [2.6, -92], wingFacingDeg: 317 }],
