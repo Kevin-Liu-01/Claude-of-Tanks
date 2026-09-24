@@ -561,7 +561,19 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 // dither and the round-22 night sky composited exactly as before: the night preset dims the atmosphere with
 // skyIntensity (.08 — a moonlit sky, the moon being the key light) and the starfield, band and moon ride on top.
 // Below the horizon the dome repeats its horizon (the ring occludes the rest), as the Preetham dome did.
-const ATMOSPHERE_SUN_DISC_RADIANCE = 40.0; // HDR: past the emissive shoulder and the bloom threshold, as the legacy disc
+// The disc's radiance follows the legacy dome's law, not a display choice: three's Preetham shader emits the disc at
+// sunIntensity(elevation) × 19000 × Fex, sky.ts scales the dome by 0.04 × SKY_RADIANCE_SCALE, and the knee exempts the
+// disc — so it stays at ~1e5 and PMREMGenerator integrates its 2.7e-4 sr into the environment's diffuse mip: a
+// shadowless fill of ~0.5 irradiance units (× envIntensity, × the foliage materials' envMapIntensity 0.85) that every
+// map's ground was tuned with (measured: a 40-radiance disc darkened Verdant's near field 37 %). The physically based
+// dome keeps that energy exactly, with the atmosphere's transmittance toward the sun in place of Preetham's Fex; the
+// visible disc is clipped by the emissive shoulder and blooms as before.
+function legacySunDiscRadiance(sunElevationY: number): number {
+  const cutoffAngle = 1.6110731556870734, steepness = 1.5, EE = 1000;
+  const zenithAngle = Math.acos(THREE.MathUtils.clamp(sunElevationY, -1, 1));
+  const sunE = EE * Math.max(0, 1 - Math.exp(-((cutoffAngle - zenithAngle) / steepness)));
+  return sunE * 19000 * 0.04 * SKY_RADIANCE_SCALE;
+}
 const ATMOSPHERE_DOME_VERTEX = /* glsl */`
 varying vec3 vWorldPosition;
 void main() {
@@ -573,6 +585,7 @@ void main() {
 const ATMOSPHERE_DOME_FRAGMENT = /* glsl */`
 uniform vec3 uSunDirection;
 uniform vec3 uSunTransmittance;
+uniform float uSunDiscRadiance;
 uniform float uSkyIntensity;
 uniform float uNight;
 uniform float uGalaxy;
@@ -590,13 +603,10 @@ void main() {
 	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR
 	float sunSpot = smoothstep( 0.99988, 0.99996, cosSun );
 	skyCol = mix( atmoKnee( skyCol ), skyCol, sunSpot );
-	// the sun disc: 0.533°, limb-darkened, through the transmittance toward the sun
-	float disc = smoothstep( ${ATMO_SUN_DISC_COS.toFixed(8)} - 0.00004, ${ATMO_SUN_DISC_COS.toFixed(8)} + 0.00002, cosSun );
-	if ( disc > 0.0 ) {
-		float r = acos( clamp( cosSun, -1.0, 1.0 ) ) / ${(Math.acos(ATMO_SUN_DISC_COS)).toFixed(8)};
-		float limb = 1.0 - 0.6 * ( 1.0 - sqrt( max( 1.0 - r * r, 0.0 ) ) );
-		skyCol += uSunTransmittance * ( disc * limb * ${ATMOSPHERE_SUN_DISC_RADIANCE.toFixed(1)} * smoothstep( -0.03, 0.0, direction.y ) );
-	}
+	// the sun disc: the legacy disc's angular size and radiance law (see legacySunDiscRadiance) through the
+	// atmosphere's transmittance toward the sun
+	float disc = smoothstep( ${ATMO_SUN_DISC_COS.toFixed(15)}, ${ATMO_SUN_DISC_COS.toFixed(15)} + 0.00002, cosSun );
+	skyCol += uSunTransmittance * ( disc * uSunDiscRadiance );
 	// the legacy compact warm forward-scatter glow (~5°) so the disc keeps its tight golden halo
 	float sunGlow = pow( max( cosSun, 0.0 ), 240.0 );
 	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * 0.50;
@@ -1061,6 +1071,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uAtmoIntensity: { value: 1 },
       uSunDirection: { value: new THREE.Vector3(0, 1, 0) },
       uSunTransmittance: { value: new THREE.Color(1, 1, 1) },
+      uSunDiscRadiance: { value: legacySunDiscRadiance(sunDir.y) },
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
@@ -1110,6 +1121,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     u.uAtmoIntensity.value = preset.skyIntensity;
     (u.uSunDirection.value as THREE.Vector3).copy(sunDir);
     (u.uSunTransmittance.value as THREE.Color).copy(summary.sunTransmittance);
+    u.uSunDiscRadiance.value = legacySunDiscRadiance(sunDir.y);
     atmosphereState.viewHeightKm = params.viewHeightKm;
     atmosphereState.skyIntensity = preset.skyIntensity;
     atmosphereState.horizonLum = 0.2126 * summary.horizon.r + 0.7152 * summary.horizon.g + 0.0722 * summary.horizon.b;

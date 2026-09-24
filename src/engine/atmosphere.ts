@@ -34,8 +34,12 @@ const [SV_W, SV_H] = ATMO_LUT_SIZES.skyView;
 export const ATMO_STEPS = Object.freeze({ transmittance: 40, multiScatterDirs: 8, multiScatter: 20, skyView: 32 });
 /** Summary texels (8×1 float): see `AtmosphereSummary`. */
 const SUMMARY_W = 8;
-/** Sun disc: 0.533° diameter (the mean apparent sun), cosine of the half angle. */
-export const ATMO_SUN_DISC_COS = Math.cos((0.533 / 2) * Math.PI / 180);
+/**
+ * The sun disc's half-angle cosine — the legacy (Preetham) dome's disc, 0.533° (twice the apparent sun), kept
+ * on purpose: PMREMGenerator folds the disc's radiance into the environment's diffuse term, and every map's
+ * ground fill was tuned with that energy (see sky.ts `legacySunDiscRadiance`).
+ */
+export const ATMO_SUN_DISC_COS = 0.999956676946448443553574619906976478926848692873900859324;
 
 /** Medium and scattering constants (per km at sea level), the paper's Table 1 / Bruneton 2017. */
 export const ATMO_MEDIUM = Object.freeze({
