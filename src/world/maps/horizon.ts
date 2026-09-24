@@ -36,7 +36,7 @@ import { registerRetainedObject3DResources } from '../../engine/resourceLifetime
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
-import { type SeaOpening, dominantSeaOpening, resolveSeaOpenings, seaOpeningWeight, seaSectorBlend } from '../edgeWater.ts';
+import { type SeaOpening, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorBlend } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
   type VistaGround,
@@ -1383,7 +1383,13 @@ function reshapeFiniteTableCaps(
  * own height and gradient onto the first exterior row; the interpolated foothill rows keep their relief and
  * re-base their linear part onto the seated row. Autumn and Redrock keep their own seams.
  */
-function seatHorizonSkirtOnGround(ring: HorizonRingGeometry, ground: CanyonGround): void {
+/** Round 49: arc beyond a sea opening's outer edge over which a headland column still slopes into the sea (rad; full
+ * strength over the first third — Nordhavn's peninsulas sit 4–8° outside both arms' openings). */
+const HEADLAND_BAND_RAD = 0.25;
+
+function seatHorizonSkirtOnGround(
+  ring: HorizonRingGeometry, ground: CanyonGround, openings: readonly HorizonSeaOpening[] = [],
+): void {
   const n = HORIZON_SEGMENTS, rows = ring.rows;
   const ridgeRow = rows.findIndex((row) => !row.skirt && !row.interpolated);
   if (ridgeRow < 2) return;
@@ -1420,14 +1426,25 @@ function seatHorizonSkirtOnGround(ring: HorizonRingGeometry, ground: CanyonGroun
     // mesa that reaches the red line carries on as the same landform instead of stopping at a seated skirt.
     const outland = ground.getOutlandHeightAt;
     if (outland) {
-      for (let ri = 1; ri < ridgeRow; ri++) {
+      // Round 49 (2026-09-23, the Saltwind-mouth diagnosis): this hand-over reached only the rows BEFORE the first
+      // authored ridge, so beside a sea opening the range profile began its rise at that row — a 25–30 m step on one
+      // 50 m strip ~210 m past the edge, drawn as a single flat quad beside the water (the dark slabs at Saltwind's,
+      // Saltmere's and Nordhavn's mouths). Across the opening's taper and 0.25 rad of columns beyond it the hand-over
+      // runs on through the ridge rows to 470 m, so a headland slopes into the sea over 250 m; every other column, and
+      // every row past 470 m, keeps its authored height to the bit (owner: never flatten the background mountains).
+      const headland = openings.length ? seaHeadlandWeight(a, openings, HEADLAND_BAND_RAD) : 0;
+      const lastRow = headland > 0 ? rows.length : ridgeRow;
+      for (let ri = 1; ri < lastRow; ri++) {
         const i = ri * n + k;
         const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
         const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 511.5;
         if (edgeOut < -40) continue; // buried under the battlefield's own chunks
+        if (ri >= ridgeRow && edgeOut >= 470) break; // rows step outward: the authored profile owns the rest
         const continued = edgeH + gradient * clamp(edgeOut, 0, 60);
         const geology = continued + (outland.call(ground, x, z) - continued) * smoothstep(0, 90, edgeOut);
-        const h = geology + (ring.heights[i] - geology) * smoothstep(60, 380, edgeOut);
+        const handOver = ri < ridgeRow ? smoothstep(60, 380, edgeOut) : 1;
+        const share = headland > 0 ? handOver + (smoothstep(200, 470, edgeOut) - handOver) * headland : handOver;
+        const h = geology + (ring.heights[i] - geology) * share;
         ring.heights[i] = h;
         ring.positions[i * 3 + 1] = h;
       }
@@ -1453,9 +1470,10 @@ export function sampleHorizonGeometry(
     style, PROFILES[style], noise, horizon.amp ?? 1,
   );
   const ring = subdivideHorizonGeometry(source, style, noise);
+  const openings = resolveSeaOpenings(horizon.seaOpening, ground, mapId);
   if (mapId === 'badlands' && horizon.redrockCanyon !== false) shapeRedrockOutland(ring, ground);
   else if (mapId === 'autumn' && ground) seatHorizonTerrainSeam(ring, ground);
-  else if (ground) seatHorizonSkirtOnGround(ring, ground);
+  else if (ground) seatHorizonSkirtOnGround(ring, ground, openings);
   if (usesFiniteTableCaps(horizon, mapId, style)) {
     // Titan's tall ranges need a slightly lower erosion stratum to expose
     // broad summit surfaces without steepening their supported approaches.
@@ -1463,7 +1481,7 @@ export function sampleHorizonGeometry(
     // 160 m inside the crest (700 -> 860): an unbounded cap put the final edge at 1.30:1 on Skybridge.
     reshapeFiniteTableCaps(ring, horizon.amp ?? 1, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
-  openHorizonToSea(ring, resolveSeaOpenings(horizon.seaOpening, ground, mapId), ground);
+  openHorizonToSea(ring, openings, ground);
   return ring;
 }
 
@@ -2660,14 +2678,15 @@ export function* buildHorizonRingSteps(
   // room for this relief within the previous vertex AND triangle ceilings.
   // Coastal apertures then lower the same annulus into a sea-level apron.
   const ring = subdivideHorizonGeometry(initialRing, style, noi);
+  // Round 40: the authored aperture plus every opening the square's flattened water derives at its edge
+  // (round 49: resolved before the seating, whose headland hand-over reads the openings)
+  const seaOpenings = resolveSeaOpenings(H.seaOpening, ground, mapId);
   if (mapId === 'badlands' && H.redrockCanyon !== false) shapeRedrockOutland(ring, ground);
   else if (mapId === 'autumn' && ground) seatHorizonTerrainSeam(ring, ground);
-  else if (ground) seatHorizonSkirtOnGround(ring, ground);
+  else if (ground) seatHorizonSkirtOnGround(ring, ground, seaOpenings);
   if (usesFiniteTableCaps(H, mapId, style)) {
     reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
-  // Round 40: the authored aperture plus every opening the square's flattened water derives at its edge
-  const seaOpenings = resolveSeaOpenings(H.seaOpening, ground, mapId);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);

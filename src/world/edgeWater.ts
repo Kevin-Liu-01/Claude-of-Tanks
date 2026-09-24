@@ -72,6 +72,20 @@ export function seaOpeningWeight(angle: number, openings: readonly SeaOpening[] 
   return weight;
 }
 
+/** Round 49 (2026-09-23): 1 inside a sea opening (its taper included) and for the first third of `bandRad` beyond its
+ * outer edge, easing to 0 at `bandRad` — the columns where a headland meets the water (a fjord peninsula sits 4–8°
+ * outside BOTH of its arms' openings); the maximum over every opening. */
+export function seaHeadlandWeight(angle: number, openings: readonly SeaOpening[] | SeaOpening | undefined, bandRad: number): number {
+  let weight = 0;
+  for (const opening of asList(openings)) {
+    const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
+    const distance = Math.abs(Math.atan2(Math.sin(angle - direction), Math.cos(angle - direction)));
+    const halfWidth = Math.min(175, Math.max(10, opening.widthDeg)) * Math.PI / 360;
+    weight = Math.max(weight, 1 - smoothstep(halfWidth + bandRad * 0.35, halfWidth + bandRad, distance));
+  }
+  return weight;
+}
+
 /** The opening that owns this azimuth (largest weight), or null on land. */
 export function dominantSeaOpening(angle: number, openings: readonly SeaOpening[] | SeaOpening | undefined): SeaOpening | null {
   let best: SeaOpening | null = null, bestWeight = 0;
