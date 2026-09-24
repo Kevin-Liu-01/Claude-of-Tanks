@@ -105,17 +105,21 @@ for(const mapId of MAP_IDS) {
     const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
     assert.equal(mills.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit seats a mill house`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='mill-house').length,mills.length);
-    // Round 61 (2026-09-24): Amberford's arched bridge is the second — one compound record the ride stands on (the body
-    // up to the deck plane terrain.ts resolved) with the two parapets above it; every other kit stays soft dressing.
+    // Round 61 (2026-09-24): Amberford's arched bridge is the second — one compound record the ride stands on with the
+    // two parapets above it; every other kit stays soft dressing. Round 63 (2026-09-24): the record's parts follow the
+    // geometry (the deck from the crown line, the abutments and piers footed below the bed, the vaults' haunch bands,
+    // the parapets last) — archedBridgeCollision.selftest certifies the openings; here only the footprint contract.
     const bridges=candidate.obstacles.filter(record=>record.kind==='bridge');
     assert.equal(bridges.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit spans a bridge`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='bridge').length,bridges.length);
     for(const bridge of bridges){
       const deck=field.bridgeDecks[0];
-      assert.equal(bridge.shape2.kind,'compound');assert.equal(bridge.shape2.parts.length,3,'the body and two parapets');
-      const [body,...parapets]=bridge.shape2.parts;
-      assert.equal(body.y1,deck.deckY,'the body\'s top is the deck plane');assert.ok(body.y0<deck.bedY,'the body is footed below the bed');
-      assert.ok(body.hw===deck.halfWidth&&body.hl>deck.halfLength,'the body spans the deck and its abutments');
+      assert.equal(bridge.shape2.kind,'compound');assert.ok(bridge.shape2.parts.length>3,'the deck, abutments, piers, vault bands and two parapets');
+      const parts=bridge.shape2.parts, [body]=parts, parapets=parts.slice(-2);
+      assert.equal(body.y1,deck.deckY,'the deck part\'s top is the deck plane');assert.ok(body.y0<deck.deckY-0.9,'the deck part is a standable floor (round 63: from the crown line)');
+      assert.ok(body.hw===deck.halfWidth&&body.hl>deck.halfLength,'the deck spans the road and its abutments');
+      assert.ok(parts.slice(1,3).every(part=>part.y0<deck.bedY&&part.hw===deck.halfWidth),'the abutments are footed below the bed');
+      assert.equal(Math.min(...parts.map(part=>part.y0)),bridge.min[1]);assert.equal(Math.max(...parts.map(part=>part.y1)),bridge.max[1]);
       for(const parapet of parapets){assert.equal(parapet.y0,deck.deckY);assert.ok(parapet.y1-parapet.y0>=1,'a parapet stops a hull');}
     }
     const solids=coal.length+mills.length+bridges.length;

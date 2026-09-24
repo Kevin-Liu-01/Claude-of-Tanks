@@ -37,7 +37,8 @@ export interface RailSpurConfig {
 export interface RailCuttingConfig {
   /**
    * The portal: a point on the spur's LAST edge where the graded bed leaves the ground. The cutting runs from here
-   * along that edge, through the path's end and on into the outland; before the portal the ground is untouched.
+   * along that edge, through the path's end and on into the outland; the rule fades in over RAIL_CUTTING_PORTAL_M
+   * before the portal (the bed there is the grade line extrapolated back) and the ground before that is untouched.
    */
   from: readonly [number, number];
   /** Rise of the bed per metre from the portal; omitted = RAIL_CUTTING_GRADE (under the 2.5 % rail grade). */
@@ -88,8 +89,10 @@ export const RAIL_SPUR_BERTH_M = 3.6;
  * Round 63: the cutting's defaults. A 2.4 % bed (a branch line's ruling grade, under the 2.5 % the round asked for)
  * on an 8 m floor — the 3 m ballast and a 2.5 m cess each side — between faces battered 0.7 horizontal per metre
  * of rise (≈ 55°, a soft-rock cutting: the terrain material's slope rock takes the faces), the floor feathered
- * 2 m into the ground beyond its edge, the whole rule fading in over the first 12 m from the portal (the plain there
- * lies within a few centimetres of the bed) and the floor widening 0.25 m per metre past the path's end.
+ * 2 m into the ground beyond its edge, the whole rule fading in over the 12 m BEFORE the portal — the plain there
+ * lies within a few decimetres of the bed, and a fade past the portal let the rim's first rise hump the bed by
+ * 0.4 m at the mouth — so the bed is fully graded from the portal on, and the floor widening 0.25 m per metre past
+ * the path's end.
  */
 export const RAIL_CUTTING_GRADE = 0.024;
 export const RAIL_CUTTING_HALF_FLOOR_M = 4;
@@ -233,8 +236,9 @@ export function railCuttingBedY(cutting: RailCutting, portalY: number, along: nu
 /**
  * The cutting applied to the ground height `h` at (x, z): inside the floor the ground becomes the graded bed (cut or
  * fill), feathered RAIL_CUTTING_FEATHER_M into the ground beyond the floor's edge; ground standing above the batter
- * face that rises from that edge is cut down to the face; the whole change fades in over RAIL_CUTTING_PORTAL_M from
- * the portal and is nothing before it. Past the path's end the floor widens by the fan. Pure and allocation-free:
+ * face that rises from that edge is cut down to the face; the whole change fades in over the RAIL_CUTTING_PORTAL_M
+ * before the portal, is full from the portal on and nothing before the fade. Past the path's end the floor widens by
+ * the fan. Pure and allocation-free:
  * heightAt and outlandHeightAt (terrain.ts) call it with the same portal height, so the notch continues across the
  * red line unchanged. `portalY` is the ground the portal stood at before the cutting was applied.
  */
@@ -245,8 +249,8 @@ export function railCuttingHeight(
     const cut = cuttings[i];
     const dx = x - cut.px, dz = z - cut.pz;
     const along = dx * cut.ux + dz * cut.uz;
-    if (along <= 0) continue;
-    const fadeIn = smoothstep01(0, RAIL_CUTTING_PORTAL_M, along);
+    if (along <= -RAIL_CUTTING_PORTAL_M) continue;
+    const fadeIn = smoothstep01(-RAIL_CUTTING_PORTAL_M, 0, along);
     const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
     const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
     const bedY = portalYs[i] + cut.grade * along;
@@ -260,10 +264,10 @@ export function railCuttingHeight(
 }
 
 /**
- * The cutting's exclusion for vegetation and scattered props: the floor and its cess shoulder past the portal, and
- * every point the cutting lowered by more than a few centimetres (the cut faces up to the daylight line). `groundAt`
- * is the ground BEFORE the cutting (terrain.ts evaluates it with the rule suspended). Cheap off the corridor: the
- * ground is only sampled inside the widest lateral band a face can reach.
+ * The cutting's exclusion for vegetation and scattered props: the floor and its cess shoulder from the portal on, and
+ * every point the cutting lowered by more than a few centimetres (the cut faces up to the daylight line, the fade
+ * before the portal included). `groundAt` is the ground BEFORE the cutting (terrain.ts evaluates it with the rule
+ * suspended). Cheap off the corridor: the ground is only sampled inside the widest lateral band a face can reach.
  */
 export function railCuttingExcludes(
   cuttings: readonly RailCutting[], portalYs: ArrayLike<number>, x: number, z: number,
@@ -273,10 +277,10 @@ export function railCuttingExcludes(
     const cut = cuttings[i];
     const dx = x - cut.px, dz = z - cut.pz;
     const along = dx * cut.ux + dz * cut.uz;
-    if (along <= 0) continue;
+    if (along <= -RAIL_CUTTING_PORTAL_M) continue;
     const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
     const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
-    if (lateral <= halfFloor + RAIL_CUTTING_SHOULDER_M) return true;
+    if (along > 0 && lateral <= halfFloor + RAIL_CUTTING_SHOULDER_M) return true;
     if (lateral > halfFloor + RAIL_CUTTING_FEATHER_M + maxDepth * cut.batter) continue;
     const ground = groundAt(x, z);
     if (ground - railCuttingHeight(cuttings, portalYs, x, z, ground) > 0.05) return true;

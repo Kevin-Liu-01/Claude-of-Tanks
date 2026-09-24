@@ -3,10 +3,11 @@
 // track is byte-identical to the fixed lines they always laid (their rail-part digests at seed 1337 are the
 // migration certificate — a re-pin here means the yards' geometry moved, which railWashout and railCoalStockpiles
 // do not detect on their own); Tarkhan Steppe's grain-station siding is laid from the layout it authored, every
-// slab bedded into the ground with no gap under any corner, sleepers on the slab and rails on the sleepers, both
-// buffer stops turned to the track, no span over liquid, no collision record published, and every draw of the
-// seeded stream accounted for; every other map's layout carries no spur and its height field's exclusion is the
-// function it was.
+// slab bedded into the ground with no gap under any corner, sleepers on the slab and rails on the sleepers, the
+// stub's buffer stop turned to the track (round 63, 2026-09-24: the line runs on to the map edge through the rim
+// cutting, so only the west stub is closed — railCutting.selftest certifies the cutting itself), no span over
+// liquid, no collision record published, and every draw of the seeded stream accounted for; every other map's
+// layout carries no spur and its height field's exclusion is the function it was.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
@@ -117,8 +118,9 @@ for (const [mapId, [count, digest]] of Object.entries(YARD_RAIL_DIGESTS)) {
 // ------------------------------------------------------------------ Tarkhan's siding
 const steppeConfig = getMapConfig('steppe');
 const authored = steppeConfig.terrain.railSpurs;
-assert.equal(authored.length, 1); assert.equal(authored[0].bufferStop, 'both');
-assert.deepEqual(authored[0].path, [[144, -181], [440, -181]], 'the loading-face siding (round 57 authoring)');
+assert.equal(authored.length, 1); assert.equal(authored[0].bufferStop, 'start', 'round 63: only the west stub is closed');
+assert.deepEqual(authored[0].path, [[144, -181], [512, -181]], 'the loading-face siding to the map edge (round 57 authoring, round 63 extension)');
+assert.deepEqual(authored[0].cutting, { from: [440, -181] }, 'the rim cutting from the round-57 stop (railCutting.selftest)');
 const steppe = createHeightField(1337, steppeConfig);
 assert.deepEqual(createLayout(steppeConfig).railSpurs, authored, 'the layout carries the authored spurs');
 assert.equal(steppe._layout.railSpurs, authored);
@@ -126,18 +128,19 @@ assert.equal(steppe._layout.railSpurs, authored);
 assert.equal(steppe._noVeg(300, -181), true); assert.equal(steppe._noVeg(300, -181 - RAIL_SPUR_BERTH_M + 0.05), true);
 assert.equal(steppe._noVeg(300, -181 - RAIL_SPUR_BERTH_M - 0.05), false); assert.equal(steppe._noVeg(300, -200), false);
 assert.equal(steppe._noVeg(144 - RAIL_SPUR_BERTH_M + 0.05, -181), true, 'the west stub and its stop');
-assert.equal(steppe._noVeg(440 + RAIL_SPUR_BERTH_M + 0.05, -181), false, 'the ground past the east stop');
+assert.equal(steppe._noVeg(440 + RAIL_SPUR_BERTH_M + 0.05, -181), true, 'round 63: the line runs on past the old east stop');
+assert.equal(steppe._noVeg(511.5, -181), true, 'to the map edge');
 const spurSpans = resampleRailPath(authored[0].path, RAIL_SPUR_LAY_M, true);
-assert.equal(spurSpans.length, 74); assert.equal(RAIL_SPUR_LAY_M, 4); assert.equal(RAIL_SPUR_SPAN_M, 10);
+assert.equal(spurSpans.length, 92, '368 m in 4 m spans'); assert.equal(RAIL_SPUR_LAY_M, 4); assert.equal(RAIL_SPUR_SPAN_M, 10);
 const built = build('steppe', steppe, 1337);
 try {
   const { slab, rail, sleeper, strut, beam } = built.parts;
-  assert.equal(slab.length, 74); assert.equal(rail.length, 148); assert.equal(strut.length, 4); assert.equal(beam.length, 2);
+  assert.equal(slab.length, 92); assert.equal(rail.length, 184); assert.equal(strut.length, 2); assert.equal(beam.length, 1, 'one stop: the west stub');
   assert.equal(sleeper.length, spurSpans.reduce((n, s) => n + Math.round(railRunLength(s.bx - s.ax, s.bz - s.az) / 1.4), 0) + 0,
     'one sleeper every ~1.4 m of every span (the fitted rise of a 4 m span never changes the count)');
   assert.equal(built.obstacles.length, 0); assert.equal(built.colliders.length, 0, 'soft dressing: no collision record');
   assert.equal(built.calls, 24 * slab.length + sleeper.length + 4 * beam.length, 'every seeded draw: 24 slab colours, one sleeper jitter, four beam UV jitters');
-  assert.equal(built.digest, 'fd4b918da035263f687f60ace17ceaad4c864f100e2a18fb12b10204acff3665', 'the siding at seed 1337 (2026-09-24 pin)');
+  assert.equal(built.digest, '564361d75c3fb68acc16789ebce89c6bdc6c86673922130633ceae56d2f6cace', 'the siding at seed 1337 (2026-09-24 pin; round 63: to the edge through the cutting, one stop)');
   // every slab bedded: no corner floats, every top corner clears the ground; every span dry
   const v = new THREE.Vector3();
   let worstGap = -Infinity, lowestTop = Infinity;
@@ -174,12 +177,14 @@ try {
     assert.ok(Math.abs(sc.z + 181) < 0.1, 'centred on the line');
   }
   for (const r of rail) { const rc = centre(r); const rise = rc.y - steppe.getHeightAt(rc.x, rc.z); assert.ok(rise > 0.08 && rise < 0.32, `a rail rides the sleepers (${rise.toFixed(3)} m over the ground)`); }
-  // the stops: 0.8 m past each end, the beam across the track, the struts astride the gauge
+  // the stop: 0.8 m past the west stub, the beam across the track, the struts astride the gauge; the east end is open
   const beamCentres = beam.map(centre).sort((a, b) => a.x - b.x);
-  assert.ok(Math.abs(beamCentres[0].x - (144 - 0.8 + 0.05)) < 0.02 && Math.abs(beamCentres[1].x - (440 + 0.8 - 0.05)) < 0.02, 'a beam 0.8 m past each end, faced to the track');
+  assert.ok(Math.abs(beamCentres[0].x - (144 - 0.8 + 0.05)) < 0.02, 'a beam 0.8 m past the stub, faced to the track');
   for (const b of beamCentres) { assert.ok(Math.abs(b.z + 181) < 0.01); assert.ok(b.y - steppe.getHeightAt(b.x, b.z) > 0.9, 'the beam at buffer height'); }
   const strutZ = strut.map((g) => centre(g).z).sort((a, b) => a - b);
-  assert.deepEqual(strutZ.map((z) => Math.round((z + 181) * 100) / 100), [-0.72, -0.72, 0.72, 0.72], 'struts astride the gauge, the stop turned to the track');
+  assert.deepEqual(strutZ.map((z) => Math.round((z + 181) * 100) / 100), [-0.72, 0.72], 'struts astride the gauge, the stop turned to the track');
+  const lastSlab = slab.map(centre).sort((a, b) => a.x - b.x)[slab.length - 1];
+  assert.ok(lastSlab.x > 509.5 && lastSlab.x < 510.5, 'the last 4 m slab is centred 2 m short of the edge (the line leaves the square)');
 } finally { dispose(built); }
 
 // ------------------------------------------------------------------ every other map: no spur, the exclusion it had
@@ -189,4 +194,4 @@ for (const mapId of MAP_IDS) {
   assert.equal(cfg.terrain?.railSpurs, undefined, `${mapId}: no authored spur`);
   assert.equal(createLayout(cfg).railSpurs, undefined, `${mapId}: no layout key`);
 }
-console.log('railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; four yards byte-identical at seed 1337; Tarkhan siding 74 spans / 148 rails / 222 sleepers / 2 stops bedded with no gap, 0 collision records; 30 other layouts unchanged');
+console.log('railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; four yards byte-identical at seed 1337; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, 0 collision records; 30 other layouts unchanged');
