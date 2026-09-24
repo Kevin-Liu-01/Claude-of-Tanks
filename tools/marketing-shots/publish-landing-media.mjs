@@ -2,7 +2,9 @@
 //
 // The existing action, foreground, and hero-rail files remain owned by their
 // source libraries. This publisher only encodes the landing-specific Studio
-// loop and writes a manifest that prevents accidental reuse or omission.
+// loop (the full-HD mp4, its poster and — round 53, 2026-09-24 — its
+// web-video-r1 mobile proxy, whose byte receipt it updates in place) and
+// writes a manifest that prevents accidental reuse or omission.
 //
 // Usage:
 //   node tools/marketing-shots/publish-landing-media.mjs
@@ -25,6 +27,9 @@ const promoManifest = JSON.parse(readFileSync(resolve('public/media/promo-v13/ma
 const sourceVideo = join(sourceDir, sourceManifest.master);
 const studioVideo = join(outputDir, 'studio-leclerc-knockout.mp4');
 const studioPoster = join(outputDir, 'studio-leclerc-knockout.jpg');
+const mobileDir = resolve('public/media/web-video-r1');
+const mobileVideo = join(mobileDir, 'studio-knockout-mobile.mp4');
+const mobileManifestFile = join(mobileDir, 'manifest.json');
 mkdirSync(outputDir, { recursive: true });
 
 function ffmpeg(input) {
@@ -51,6 +56,21 @@ ffmpeg([
   '-loglevel', 'error', '-y', '-ss', '4.15', '-i', sourceVideo, '-frames:v', '1',
   '-vf', 'scale=1920:-2:flags=lanczos', '-q:v', '2', studioPoster,
 ]);
+// The landing page's lightweight mobile proxy (web-video-r1: h264 960x540 at
+// 24 fps, no audio, ~520 kbps like its siblings) is derived from the published
+// mp4 so its byte receipt cannot drift from the film it stands in for.
+ffmpeg([
+  '-loglevel', 'error', '-y', '-i', studioVideo, '-an',
+  '-vf', 'fps=24,scale=960:540:flags=lanczos', '-c:v', 'libx264', '-preset', 'slow',
+  '-b:v', '520k', '-maxrate', '700k', '-bufsize', '1400k',
+  '-profile:v', 'high', '-level', '3.1', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
+  mobileVideo,
+]);
+const mobileManifest = readFileSync(mobileManifestFile, 'utf8');
+const mobileBytes = statSync(mobileVideo).size;
+const mobileEntry = /("path": "studio-knockout-mobile\.mp4", "bytes": )\d+/;
+if (!mobileEntry.test(mobileManifest)) throw new Error(`${mobileManifestFile}: no studio-knockout-mobile.mp4 entry`);
+writeFileSync(mobileManifestFile, mobileManifest.replace(mobileEntry, `$1${mobileBytes}`));
 
 const hero = [
   { id: 'urban-crossfire', title: 'Urban crossfire', src: '/media/featured/f10_studio_urban_crossfire.webp', collection: 'owner-directed' },
@@ -135,4 +155,5 @@ const manifest = {
 writeFileSync(join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`[landing-media] Studio video: ${manifest.studio.videoBytes} bytes`);
 console.log(`[landing-media] Studio poster: ${manifest.studio.posterBytes} bytes`);
+console.log(`[landing-media] Studio mobile proxy: ${mobileBytes} bytes`);
 console.log(`[landing-media] ${hero.length} hero stills, one relocated feature reel, ${relocatedRails.length} rail films, ${mosaic.length} mosaic frames`);

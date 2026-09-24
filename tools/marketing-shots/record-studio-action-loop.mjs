@@ -6,15 +6,21 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //   npm run studio:action:render
 //   node tools/marketing-shots/record-studio-action-loop.mjs --out shots/studio-action-loop-r2
 //
-// The staged composition starts from a camera already approved by the battle
-// screenshot campaign, then uses a deliberately narrow rail so scenery cannot
-// occlude the tanks. The WebM records the complete browser viewport so the
-// published film demonstrates the real Studio UI rather than a clean canvas.
+// The staged composition is the checked-in Studio storyboard
+// scenes-studio-r1/studio_winter_breakthrough.json — scene, actor tracks and
+// camera shots — the same file the presentation-r1 keyframes and the copyable
+// recipe come from, so the film, the stills and the recipe cannot drift apart
+// (round 53, 2026-09-24: the inline stage this file carried sat on Frosthollow's
+// retired lake at (195,-120); round 48 redesigned the map and round 51 moved the
+// storyboard onto the c(-16,-150) pond). The narrow rail keeps scenery off the
+// tanks. The WebM records the complete browser viewport so the published film
+// demonstrates the real Studio UI rather than a clean canvas.
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, statSync, writeFileSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -32,34 +38,13 @@ const bitrate = Math.max(4_000_000, Math.min(
 ));
 mkdirSync(outDir, { recursive: true });
 
-const scene = {
-  map: 'winter',
-  seed: 8222,
-  actors: [
-    { id: 'strv122', name: 'shooter', pos: [176, -108], facingDeg: 122, turretDeg: -1, gunDeg: 0.5, camo: 'winterbands', camoSeed: 8220 },
-    { id: 'leclerc', name: 'victim', pos: [198, -123], facingDeg: 300, turretDeg: 20, gunDeg: 0.5, camo: 'winterbands', camoSeed: 8221 },
-  ],
-  effects: [
-    { type: 'dust', actor: 'shooter', tMs: 250, params: { count: 14, intensity: 0.8, dirDeg: 302 } },
-    { type: 'fire', actor: 'shooter', tMs: 1120, params: { slot: 0, tracer: true, recoil: true } },
-    { type: 'impact', actor: 'victim', tMs: 1450, params: { kind: 'nonpen', caliberMm: 120, hFrac: 0.56 } },
-    { type: 'sparks', actor: 'victim', tMs: 1520, params: { caliberMm: 120, kind: 'ricochet', hFrac: 0.58 } },
-    { type: 'fire', actor: 'victim', tMs: 2720, params: { slot: 0, tracer: true, recoil: true } },
-    { type: 'sparks', actor: 'shooter', tMs: 2960, params: { caliberMm: 125, kind: 'ricochet', hFrac: 0.68 } },
-    { type: 'fire', actor: 'shooter', tMs: 3580, params: { slot: 0, tracer: true, recoil: true } },
-    { type: 'detrack', actor: 'victim', tMs: 3740, params: { side: 'L' } },
-    { type: 'tank_kill', actor: 'victim', tMs: 3980, params: { cause: 'ammorack', pop: true } },
-  ],
-  camera: {
-    pos: [164.5, 1.1, -132.8],
-    lookAt: [187, 2.4, -118.5],
-    groundRel: true,
-    fov: 30,
-    rollDeg: 1,
-  },
-  fxTime: 0,
-  timeScale: 0,
-};
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SCENE_SOURCE = 'tools/marketing-shots/scenes-studio-r1/studio_winter_breakthrough.json';
+const scene = JSON.parse(readFileSync(join(HERE, 'scenes-studio-r1', 'studio_winter_breakthrough.json'), 'utf8'));
+if (!scene.storyboard?.shots?.length || !scene.storyboard.actorTracks?.length) {
+  throw new Error(`${SCENE_SOURCE} must carry a storyboard with camera shots and actor tracks`);
+}
+const durationMs = scene.storyboard.durationMs;
 
 await acquireLock(45 * 60 * 1000);
 process.on('exit', releaseLock);
@@ -114,6 +99,7 @@ try {
 
   const staged = await page.evaluate(async (input) => {
     const S = window.__STUDIO;
+    // load() takes the storyboard with the scene (docs/STUDIO.md scene schema)
     await S.load(input);
     for (const actor of S.listActors()) {
       const info = S.getSpecInfo(actor.id);
@@ -121,39 +107,13 @@ try {
         throw new Error(`${info.id} is ${info.era}, expected a modern-era vehicle`);
       }
     }
-    const base = S.getCamera();
-    const [x, y, z] = base.pos;
-    const [lx, ly, lz] = base.lookAt;
-    const durationMs = 6500;
-    const storyboard = {
-      durationMs,
-      shots: [
-        { id: 'open', label: 'Armored contact', tMs: 0,
-          pos: [x, y, z], lookAt: [lx, ly, lz], fov: 30, rollDeg: 1, transition: 'linear' },
-        { id: 'push', label: 'Return fire', tMs: 2200,
-          pos: [x + 1.8, y + 0.4, z + 0.5], lookAt: [lx + 0.8, ly + 0.1, lz + 0.2], fov: 31, rollDeg: 0.5, transition: 'smooth' },
-        { id: 'impact', label: 'Knockout', tMs: 3850,
-          pos: [x + 3.1, y + 0.8, z + 0.9], lookAt: [195, ly + 0.1, -122.5], fov: 30, rollDeg: -0.75, transition: 'smooth' },
-        { id: 'aftermath', label: 'Breakthrough', tMs: durationMs,
-          pos: [x + 0.8, y + 1.25, z - 0.7], lookAt: [192, ly + 0.2, -121], fov: 31, rollDeg: 0, transition: 'smooth' },
-      ],
-      actorTracks: [
-        { actor: 'shooter', keys: [
-          { id: 'shooter-0', tMs: 0, pos: [176, -108], facingDeg: 122, turretDeg: -1, gunDeg: 0.5 },
-          { id: 'shooter-1', tMs: 3500, pos: [178.2, -109.4], facingDeg: 122, turretDeg: -1, gunDeg: 0.5 },
-          { id: 'shooter-2', tMs: durationMs, pos: [179.4, -110.1], facingDeg: 122, turretDeg: -1, gunDeg: 0.5 },
-        ] },
-        { actor: 'victim', keys: [
-          { id: 'victim-0', tMs: 0, pos: [198, -123], facingDeg: 300, turretDeg: 20, gunDeg: 0.5 },
-          { id: 'victim-1', tMs: 3700, pos: [196.8, -122.5], facingDeg: 300, turretDeg: 18, gunDeg: 0.5 },
-          { id: 'victim-2', tMs: durationMs, pos: [196.8, -122.5], facingDeg: 300, turretDeg: 18, gunDeg: 0.5 },
-        ] },
-      ],
-    };
-    S.setStoryboard(storyboard);
+    const board = S.getStoryboard();
+    if (board.durationMs !== input.storyboard.durationMs || board.shots.length !== input.storyboard.shots.length) {
+      throw new Error(`storyboard did not load as authored: ${board.shots.length} shots over ${board.durationMs} ms`);
+    }
     S.setRailVisible(false);
     S.seek(0);
-    return { scene: S.state(), storyboard: S.getStoryboard() };
+    return { scene: S.state(), storyboard: board };
   }, scene);
   writeFileSync(join(outDir, 'studio_leclerc_knockout.resolved.json'), `${JSON.stringify(staged.scene, null, 2)}\n`);
 
@@ -203,8 +163,9 @@ try {
     version: 1,
     renderer: { width, height, fps, bitrate },
     scene: 'studio_leclerc_knockout.resolved.json',
+    source: SCENE_SOURCE,
     master: masterFile,
-    durationMs: 6500,
+    durationMs,
     mimeType: 'video/webm',
     bytes: recordingSize,
     captureMode: 'studio-ui',
