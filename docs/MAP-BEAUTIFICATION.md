@@ -981,8 +981,9 @@ the new edge heights: max 2.05 m at three seeds), `horizonAutumnGround`, `liquid
 
 **Still open.** A true arched span with water under the deck needs the road plane to exempt the crossing from the
 14–18 m dry band (`terrain.ts`, a round-47 file — not this lane's scope); the arch openings are box recesses, not arcs.
-The garage card and featured shots (`public/maps/autumn.webp`, thumbs, `presentation-r1` autumn shots) still show the
-round-1 valley and need the 4K shot pipeline. The manor has no house builder (the park is wall, avenue, lake and the
+The garage card (`public/maps/autumn.webp`, thumbs) was re-rendered from the redesigned valley in round 50 (2026-09-24);
+the `presentation-r1` autumn shots and the home-page showcase frames still show the round-1 valley and need the
+marketing-shot pipeline. The manor has no house builder (the park is wall, avenue, lake and the
 camp); a stone town wall is field-wall height. `tools/bake-minimap-assets.mjs` serves on 7600 + pid % 200 — it was run
 under the probe mutex with its own capture lock.
 
@@ -1036,7 +1037,8 @@ grain steppe of the Virgin Lands campaign.
   (Titan byte baseline).
 - **Open.** The rail spur has no track geometry — `mapKits.ts` lays its lines at fixed centre coordinates for Cinder
   Junction only; a parameterised spur kit is a follow-up. The picker thumbnail and 4K hero (`public/maps/steppe.webp`,
-  `thumbs/`) still show the old map until `tools/screenshot.mjs` + `map-thumbs.mjs --only steppe` run.
+  `thumbs/`) and the tactical-map plate (`public/minimaps/steppe.webp`) were re-rendered in round 50 (2026-09-24) —
+  the lane had left the Verdant-clone frames in place.
 ### Titan walls, Fjord's cone and Whiteout's skyline — 2026-09-23 (round 49)
 
 Four ring items (lane r49a, from origin/main 117a14b90 + the round-47 follow-up taper d223fa491). Every capture:
@@ -1151,6 +1153,27 @@ remains is the fleet's own stalemate stock — Tidegate Polders 3/4, Whiteout 2/
 scoot leg at 290 m and every gun plinking the idle M1A2's front. Open: commit a pacing trace as a tool with a receipt;
 a sniper's cadence against a passive target; the front-plate plink.
 
+### Round 50 — 2026-09-24: the redesigned maps' plates and cards
+
+Found while chain 70 ran: the tactical-map plates of Frosthollow and Tarkhan Steppe (`public/minimaps/{winter,steppe}.webp`,
+last baked 2026-09-15 — Amberford's lane had re-baked its own) and the Garage cards of all three redesigned maps
+(`public/maps/{winter,autumn,steppe}.webp` 4K heroes and `thumbs/` 512×288 pickers, last rendered 2026-09-15) still
+showed the Verdant-clone battlefields — a tactical map of a valley that no longer exists. Re-baked and re-rendered on
+the round-50 tree under the probe mutex, niced, one job at a time: `tools/bake-minimap-assets.mjs --maps winter,steppe`
+(88818 / 59996 B; the north-up plates put west on the right — Frosthollow's terrace village strip, pond chain and
+switchback, Tarkhan's braided wadi, salt pan, highway and kolkhoz grid), then `tools/screenshot.mjs --width 3840
+--height 2160 --dyn-scale 1 --views battlefield_winter,battlefield_autumn,battlefield_steppe` and
+`tools/map-thumbs.mjs --only winter,autumn,steppe` (the generated `src/ui/mapThumbs.ts` paths are unchanged). Verified
+by eye on 1280 px reductions: Frosthollow's frozen ponds, valley road and village from the south; Amberford's wooded
+upland with the coach road and the town on the floodplain; Tarkhan's kolkhoz, grain station and shelterbelts. The
+pacing trace of the round-48 landing is committed as `tools/pacing-trace.mjs`.
+
+Receipts: map-art-guards, minimapAssetRuntime, minimapCapturePolicy, minimapOrientation, loadingScreens, landing-media,
+public-repo-hygiene, attribution. **Still open:** the home-page showcase frames of the three maps
+(`public/media/home/p2_35/37/38_winter_*`, `p2_53/54_autumn_*`, `p2_55/57_steppe_*`, `g10_winter_*`) and the
+`presentation-r1` archive frames come from the marketing-shot recipes (`tools/marketing-shots/gen-scenes2.mjs` →
+grade → `publish-landing-media.mjs`) and still show the round-1 maps — a lane of its own.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -1242,6 +1265,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 48 | Amberford redesign: a Norman / English river-ford market town replaces the Verdant clone — SW→NE river in a sculpted valley (hillScale 0.8, eleven cut/fill landforms under one graded water plane), a stone bridge and a ford as the only crossings (avoid-liquid bots), five authored lanes, the walled town on the north-bank rise, orchards and hedgerows, the escarpment woods, the manor park and lake, weir and water mill in the river kit, re-baked tactical plate | wall-probe A/B on bird/centre/sky views plus five authored gameplay-height views (bridge, ford, square, mill, valley) and two close bridge views; constraint check (0 wet gaps, banks ≤ 1.44 m, both crossings dry, pads minNy 0.85–0.97); skyline metric unchanged (sky-w 0.84 → 0.90, bird-n 0.98 → 0.98); liquidMarshSurface worst bank 0.42; matchPlacement dry routes in all modes |
 | 48 | Tarkhan Steppe redesign: a new battlefield under the kept palette — takyr-floored braided wadi across the middle, 12 m escarpment with two ramps and a kurgan line on its crest, grain station (SE), kolkhoz and corrals (W), salt pan (NW), caravanserai rise, five authored roads, shelterbelts instead of groves, three graded aprons for the objective placement, recaptured collision shard | headless layout probe (bed −4.3 m, crest 16–18 m, mounds +5..8 m, pads relief ≤ 5.8 m, both-team reach on every row); wall-probe A/B (centre-far skyline 0.99 → 0.92, kurgan-line band 181 → 164 luma, plateau-south 161 → 134; sky-w unchanged 0.87 → 0.89); 38 receipts green, two shared digests moved for the integrator |
 | 48 | Landing (2026-09-24): Amberford's and Tarkhan's dedicated collision shards recaptured on the combined tree (the lane left the round-1 Amberford shard; census receipts pin counts only), bot relocation cells on holdable ground + flank rings scored for reach + a closed penetration gate held against a stationary target starts the flank, the three redesigned player pads moved 60 / 60 / 120 m down their approaches onto flat-scanned cells | battlePacing 14/124 (from 18; ledger 17 → 16 → 17 → 16 → 14 across the five fixes), dedicatedWorldCollision census, collisionManifestCodec, terrainStreaming spawn windows, garage:terrain:check, spawnClearance / mapQuality / matchPlacement / minimapObjectives, 11 AI receipts, typecheck; chain 70 |
+| 50 | The redesigned maps' tactical-map plates (Frosthollow, Tarkhan) and Garage cards (all three: 4K hero + picker thumb) re-rendered from the new battlefields — they still showed the Verdant clones; the round-48 pacing trace committed as `tools/pacing-trace.mjs` | map-art-guards, minimapAssetRuntime / CapturePolicy / Orientation, loadingScreens, landing-media, public-repo-hygiene, attribution; eye check of the 1280 px reductions; chain 71 |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
