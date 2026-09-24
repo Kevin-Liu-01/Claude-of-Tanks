@@ -1114,8 +1114,9 @@ Chain 70's core suite stopped on `server/battlePacing.selftest` (124 seeded idle
 reach the 900 s cap): 18 timeouts. Every unchanged map's row was byte-identical to the deploy-69 run (13 timeouts);
 the three redesigned maps added five (Amberford 2, Frosthollow 2, Tarkhan 1) where the Verdant clones had none —
 their old pads stood 457 m from the enemy arc, the redesigns put them at 816–870 m, the far end of the fleet.
-Diagnosis ran on per-battle telemetry (QA-only scripts in `.qa-dev/`: `pacing-trace.mjs` per-minute rows with the
-AI controller's `debugInfo()` and shell-result tallies, `pacing-fine.mjs` 2 s hull/gun/gate rows, `pacing-path.mjs`,
+Diagnosis ran on per-battle telemetry (`tools/pacing-trace.mjs` — committed in round 50 — replays one receipt battle
+with per-interval rows, the AI controller's `debugInfo()` at chosen times and shell-result tallies; the finer QA-only
+scripts stay in `.qa-dev/`: `pacing-fine.mjs` 2 s hull/gun/gate rows, `pacing-path.mjs`,
 `pacing-full-debug.mjs`, `bog-metric.mjs`, `nav-dump.mjs` grid ASCII, `line-probe.mjs`, `manifest-near.mjs`,
 `pad-scan.mjs` / `pad-grid.mjs`), the receipt's own seeds replayed one battle at a time. Three causes, three fixes:
 
