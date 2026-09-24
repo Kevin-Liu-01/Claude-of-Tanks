@@ -108,7 +108,7 @@ for (const e of Object.values(WATER_DRIVE_ENTRIES)) assert.ok([0, Math.PI / 2].i
 // jetty (Saltmere, Nordhavn's middle and north arms, Saltwind's first pier); 38 → 42, digest re-pinned.
 assert.equal(MAP_VIEW_PROBE_VIEWS.length, 42);
 assert.equal(createHash('sha256').update(JSON.stringify(MAP_VIEW_PROBE_VIEWS)).digest('hex'),
-  '4420db93ee8b6225dd261585fceb8275172a8cc6daa189a7c3c19a26215f3514', 'view table digest (2026-09-24, round 56 strand views + round 57 spur views + round 58 jetty views)');
+  '6cf4ae52c57dad2046b8824d02010b05ccfd4085b0733c4f8e020ddc23179894', 'view table digest (2026-09-24, round 56 strand views + round 57 spur views + round 58 jetty views)');
 assert.ok(Object.isFrozen(MAP_VIEW_PROBE_VIEWS));
 assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 42, 'unique names');
 for (const v of MAP_VIEW_PROBE_VIEWS) {

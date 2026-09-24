@@ -1523,8 +1523,10 @@ block moved.
 **Still open.** The coastal kit's jetty is placed at 1.05 R of the disc: on Saltmere it stands 15–30 m inland of the
 water on the flat strand and on Nordhavn's heads ~10 m up the bank, its fixed-height sagging deck unable to run over
 the 0.72 m shallows — the larger pieces gather beside it as authored, but a pier that reaches the water is a follow-up
-(a planted deck like the river landings'). The boats stay where round 47 put them (1.09–1.19 R, 30–40 m up the flat
-strand on Saltmere). The fjord's flanks carry no wrack by the slope gate; only its arm heads do.
+(a planted deck like the river landings') — landed in round 58 below: the jetty and Saltwind's piers now stand where
+the strand law puts them, with planted piles, a gangway and a moored hull. The boats stay where round 47 put them
+(1.09–1.19 R, 30–40 m up the flat strand on Saltmere). The fjord's flanks carry no wrack by the slope gate; only its
+arm heads do.
 ### Round 57 — 2026-09-24: the rail spur kit
 
 Round 48's open item on Tarkhan Steppe (lane r57-rail-spur, from origin/main 63bf9b4a6): the grain station was
@@ -1604,6 +1606,91 @@ mangroveWaterPalette map-config digests re-pinned (steppe.ts authors railSpurs).
 **Open.** A second loading track or a run-round loop at the station; a planked deck where a spur crosses a road; a
 cutting through the rim band so a spur can leave the square; the ballast's grey against the golden ground is the
 yards' vertex paint — a per-map ballast tone if it reads too dark on a pale map.
+
+### Round 58 — 2026-09-24: jetties at the water's edge
+
+Round 56's open item (lane r58-jetties from origin/main 256feb115; A = a pristine detached worktree at that commit, B =
+this lane; `tools/map-view-probe.mjs` at seed 1337 on the round-47 shore views, the round-56 strand views and four new
+round-58 jetty views, one run at a time under the probe mutex; judged on 1280 px reductions and 2× centre crops in
+`$SP/r58/cap/`, numbers in `$SP/r58/`).
+
+**What was wrong.** The coastal kit's jetty stood at 1.05 R of the lake DISC with fixed-height piles (0.9 m, a little
+shorter per station) and a deck that sagged 5 cm a span toward water it never reached: on Saltmere Bay 25–30 m inland
+on the meadow behind the strand (the A frame from the shallows: a dark strip on the grass), on Nordhavn's arm heads ten
+metres up the bank, hidden from the water behind the slope. Saltwind's authored piers stood at 1.02 R of the contour
+(13 m from the water) with their deck 0.65 m over the BED: the sheet's surface lies 0.72 m over the bed inside a lake's
+planar core (shallowWater.ts, bed + depth), so the outer five metres of each pier rode awash.
+
+**What changed (`src/world/maps/shoreJetty.ts`, `planShoreJetty`; the kits in mapKits.ts and riverLandings.ts call it).**
+A landing is derived from the lake's authored contour and its water level, with the march the wrack line uses
+(strandWrack.ts `strandBandAt`: the water's edge is the first dry water-mask metre along the azimuth, the sand's end the
+union wetness under 0.02):
+- the shore end stands a metre landward of the wrack band's end on a flat strand (Saltmere: 9.5 m from the water's edge
+  on the level sand; Saltwind: 4.2 m) — or, where the ground rises through the deck height within that reach
+  (Nordhavn's arm heads: a 10 m shelf and a 0.14 R bank), the deck lands ON the bank where the highest ground across
+  its width comes within 5 cm of its underside;
+- the planar core (mask 1, the bed at the level, across the deck's full width) is found inside the water's edge
+  (Saltmere 2.5 m in, the fjord 2–3 m, Saltwind 4.3 m); the deck runs seaward in the kit's 1.9 m spans until it stands
+  4.6 m over the core past its boundary (a hull's half-length, a span and a fender gap), within 4–10 spans — sized to
+  the shelf: Saltmere 9 spans (17.1 m), Nordhavn's heads 5–7, Saltwind's authored 10 (19 m) kept;
+- the deck top is a constant 0.45 m over the water SURFACE at the tip (the level + the sheet's depth, 0.72 m on the
+  three sea maps: deckY = level + 1.13); every pile runs from 10 cm into the bed under it to the deck — the river
+  landings' planted kit (`jetty()` with the support field): 1.3 m piles over the shallows and on Saltmere's level sand,
+  stubs where the deck lands on the bank;
+- every pile station and the tip keep 7 m from roads and 26 m from spawn pads inside the 470 m square, and the ground
+  under every station past the shore end stays 0.30 m under the deck;
+- a gangway (one plank with three battens, run = rise / 0.36 within 1.9–4.2 m, its foot a centimetre into dry sand)
+  wherever the shore end stands more than 0.40 m over the ground — Saltmere and Saltwind (1.17 m of rise, 3.25 m of
+  run), the fjord's flatter heads (0.6–0.8 m) — and none where the deck lands on the bank;
+- a clinker hull (the beached hulls' shape, `clinkerHull`, now shared) moored alongside the outer spans where all
+  five hull points float over the core, its bottom 0.28 m under the surface (the bed 0.44 m under the keel), a slight
+  list, a mast on some, two bollards on the deck edge with a line to each gunwale — all in the existing wood bucket: no
+  new material, instance pool or collision record.
+The coastal kit draws the jetty's azimuth as before (π ± 0.25 rad) and, if that azimuth admits none, walks a twentieth
+of a radian at a time within the window; at seed 1337 / props 2002 every jetty planned at its drawn azimuth (Saltmere
+166.4°, Nordhavn 176.5° / 189.7° / 173.9°, Saltwind's authored −25° / 45°), so the old and new jetties share an axis.
+The pieces that key on a jetty draw from the landing's own stream (`landingStream`, keyed by the shore end and the
+spans) and the kit burns the retired jetty's 94 draws, so every boat, log and buoy of the map keeps its exact place;
+Saltwind's beached boat, which keys on the pier, is hauled up 3.5 m behind the gangway's foot instead of 25 m up the
+backshore; the round-56 timber, crate and rope gather beside the new shore ends through the ledger. The mangrove
+landings (no authored shelf) are untouched. Nothing is hand-placed: an azimuth's contour either admits a jetty of the
+kit's length or it does not (the receipt shows the law refusing a strand without water, a shore without a core, a
+road across the stations, a pad at the shore); at the shipped seed nothing was refused.
+
+**Verified (A → B, `$SP/r58/cap/`).** Four new views in the pinned table (38 → 42), 3 m over the bed from the shallows
+on the moored hull's side, 9 m past the tip and 13 m off the deck axis, looking at the deck's middle (`jetty-e-low`,
+`jetty-fjord-low`, `jetty-fjord-north-low`, `jetty-w-low`). By eye on the 1280 px frames and the 2× crops: Saltmere —
+A: the jetty a dark strip on the meadow behind the beach; B: the deck runs from the sand out over the turquoise water,
+the gangway down to the sand, the piles into the water, the hull alongside the outer spans with its mast and lines,
+the strand's timber beside the shore end. Nordhavn's middle arm — A: a short dark row on the grass bank; B: the deck
+leaves the bank on a short gangway and runs out over the fjord, the hull alongside. Nordhavn's north arm — A: nothing
+visible from the water (the old jetty up the bank behind the slope); B: the deck lands on the bank at grade and runs
+out, the hull alongside. Saltwind — A: the pier's outer spans ride at the surface; B: the deck stands clear of the
+water, the hull moored, the beached boat hauled up behind the gangway. Nothing floats, nothing buries, no deck touches
+the water. The round-47 / round-56 shore views (obliques, birds, strands) are unchanged to the eye apart from the
+jetties; from 260 m (bird-e-edge / bird-w-edge) a jetty is a few dark pixels at the water's edge. Headless:
+`shoreJetty.selftest` audits 321 plans over nine fields (158 with a gangway, 163 landing on a bank, 320 with a hull),
+every pile planted at bed − 0.10, every hull over the core at its draft, every gangway foot dry; the A/B receipt probe at
+seed 1337 finds Saltmere's 7 boats and 41 logs, Nordhavn's 15 logs and Saltwind's 808 wrack pieces at the same
+positions / bytes, while Saltmere's and Nordhavn's wrack lines re-roll past the jetty (the per-piece draws follow
+admission and the deck's keep-out moved) under the same law.
+
+**Collision.** The jetty was and is soft dressing (`buckets.wood`; the dedicated shards carry no jetty record), so no
+shard moved, no recapture or headless capture mode was needed, and no bot lane gains a trap.
+
+**Receipts.** `shoreJetty.selftest` (new, in `npm test`); `riverLandings` (the per-landing strides — 62 wood pieces and
+25 support receipts per Saltwind landing — the freeboard over the surface, the gangway and the hull; the main-stream
+draw count 12005 unchanged); `beachedBoat` (the nine strand rows re-pinned, dated); `winterLakeGeometry` (the three
+non-winter aggregates); `map-probe-runtime` (42 views, digest); `strandWrack`, `mangroveFisheryWharf`,
+`riverReedContact`, `railCoalStockpiles`, `railWashout`, `railSpurs`, `shallowWater`, `shoreDirtMask`, `shoreline`,
+`trackSurface`, `liquidMarshSurface`, `terrainStreaming`, `roadContinuity`, `mapQuality`, `spawnClearance`,
+`propsScheduling`, `environmentExpansion`, `worldBuildCoordinator`, `badlandsRelief`, `garage:terrain:check`,
+`public-repo-hygiene`, `attribution:check` and the typecheck green. No map source changed, so no projection block
+moved.
+
+**Open.** The moored hull is static (no bob or sway on the sheet); Saltwind's piers keep their authored 19 m rather than
+the shelf-sized length; a wrack line's stations past a landing re-roll whenever a keep-out moves — a per-station draw
+budget in strandWrack would freeze them.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -1704,6 +1791,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 55 | Titan's fine wavy partings closed: the uniform-isolation probe flattens one layer normal map at a time (and no longer keeps flat normals after its first variant), uNrmR and then the coarse wall-plane R tap named — the bedded sandstone tile's seam notches printed a parting every 0.9–2.8 m of world height in the wall plane; an analytic buttress-and-rib crag replaces that tap on the bedded maps (`uBeddedR`, key v39). Fjord's cone hills: a per-map `outcrops` knob (gneiss knobs and scree through the turf below the treeline, stands opened, `uVOutcrop`, vista key r4). Coast ring tone: the ring forest runs the battlefield's matte canopy response and a mean-centred crown mottle (key `horizon-forest-canopy-v3`); the shore fade tried was pixel-identical and not landed | one-normal-at-a-time and gate-uniform isolation runs on Titan (sw-corner 59.0 % vs 60.4 % all-flat; the coarse tap 49.7 % of the wall box), stripe metric A/B (sw-corner top-1 % 0.535 → 0.734, std 28.5 → 28.3; e-wall 0.734 → 0.770), ground boxes unchanged; fjord boxes (w-wall-mid cone 47 % / mean 4.5, sky-w 37 % / 2.8) and 2× crops; per-side crown boxes on Saltmere's west edge (ring 114° / L 0.305 → 123° / 0.278 against the square's 120° / 0.199); receipts in the section |
 | 56 | The strands' wrack line and debris (owner decision 21): a high-water band of weed / kelp mats, bent sticks, pebble patches and shells along every authored shelf (Saltmere, Nordhavn's arm heads, Saltwind), with timber, a broken crate and a rope coil beside each landing — derived from the lake contour by a marched band law (water's edge → sand's end, ≤ 8.5 m, ≥ 2.2 m), lake-phased density, gated off water / banks / roads / pads / boats / jetties / footprints; soft dressing in the vertex-coloured `baked` and `wood` buckets, no new material, instance pool or collision record; the coastal driftwood re-derived onto the same band (it lay on the disc's plain 1.03–1.12 R circle — Nordhavn's 72 logs median 7.7 m up the ridges, nine in the water) | map-view-probe A/B on the round-47 shore views plus three new gameplay-height strand views (`strand-e-low`, `strand-fjord-low`, `strand-w-low`; table 31 → 34), 2× crops, `ab-diff` strand boxes 1.9–3.1 % moved, obliques 0.4–1.4 %, birds ≤ 0.2 %; headless three-seed audit; `strandWrack.selftest` (new), beachedBoat / winterLakeGeometry / riverLandings / map-probe-runtime re-pinned, the shore and world receipts green |
 | 57 | The rail spur kit: a map authors a siding as a path (`terrain.railSpurs`, `src/world/railSpurs.ts`), the layout carries it, one span layer lays ballast / rails / sleepers / buffer stops that follow the ground (4 m spans, least-squares plane per slab, cross-slope roll, a deep slab bedded into the folds) and the height field's `_noVeg` berth keeps vegetation and scattered props 3.6 m off the line; the four rail yards migrated onto the same layer byte-identically; Tarkhan's grain station gets its loading-face siding (x 144 → 440 at z −181, buffers at both ends, a level crossing over the east track, ending at the rim foot — the road climbs the rim at 24 %); the stale steppe shard recaptured | rail-part / dressing / draw digests of the four yards A = B at three seeds (railSpurs.selftest pins them); headless slab-corner probe (no gap under any corner, tops ≥ 0.06 m clear); map-view-probe A/B on four new views (yard frame noise ≤ 0.3 %; steppe 1.7–2.6 % moved) judged on 1280 px reductions; census and storage re-pins; battlePacing 14 / 124; the receipts in the section |
+| 58 | Jetties at the water's edge (round 56's open item): the coastal kit's jetties and Saltwind's piers planned from the strand march (`src/world/maps/shoreJetty.ts`) — the shore end a metre landward of the wrack band on a flat strand or on the bank where the ground meets the deck, the tip a full span over the planar core, the deck a constant 0.45 m over the water surface (bed + the sheet's 0.72 m), every pile from the bed, sized to the shelf in 4–10 spans (Saltmere 9, Nordhavn's heads 5–7, Saltwind's authored 10); a gangway where the deck stands over the sand, a clinker hull moored alongside with bollards and lines; the kit burns the retired jetty's draws so every other boat, log and buoy keeps its place | map-view-probe A/B on the shore views plus four new jetty views from the shallows (table 38 → 42), 2× crops; `shoreJetty.selftest` (321 plans over nine fields); A/B receipt probe (7/7 boats, 41/41 + 15/15 logs, Saltwind's wrack byte-identical); riverLandings / beachedBoat / winterLakeGeometry / map-probe-runtime re-pinned; 28 world receipts and the typecheck green; no shard moved |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
