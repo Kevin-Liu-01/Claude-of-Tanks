@@ -732,7 +732,8 @@ units, a baked mask did not link): past the edge on a sea map the ring's wetness
 never the clamped edge texel, and a face that stands above the bay's water surface is its bank. `horizon.ts` lowers,
 masks, colours and clears the canopy per VERTEX from `ringSeaWeight` — the bay contour near the square, the derived
 sector beyond each opening's `coastReachM` (edgeWater.ts marches the contour outward along the opening's azimuth; the
-sector fades in from 0.7× reach and is open at 1.1× reach + 40 m) — and every column's last wet vertex before a dry row
+sector fades in from 0.5× reach and is fully open at 0.85× reach + 20 m — the follow-up below moved it from 0.7 / 1.1 + 40,
+which had left the contour's own far arc standing as a bank) — and every column's last wet vertex before a dry row
 moves radially onto the true waterline (bisection on the contour), so the sea floor runs flat to the coast and the bank
 rises from there; the ring's rows sit 60–120 m apart against a 27 m bank band, and without the snap the face before
 the band climbed out of the water 20 m early as a dark "sea" ramp along every coast. `edgeWater.ts
@@ -753,10 +754,62 @@ list, key v35 and its control, eleven texture owners), `terrainWornDirt`/`wallSk
 `sourcedTerrainPreparation` (call site), the streaming fixture's current slices (rim gate, height-field exports),
 `badlandsRelief`, every horizon receipt, `worldBuildCoordinator`, `terrainProjection`, `mapQuality`, `mapIntegration`.
 
-**Still open.** Coastal's and Fjord's bays are still plain circles (an authored `radii` contour like Saltwind's would
-shape the coast inside the square too); the strip between two bay discs continues past the edge as a headland with the
-map's full relief (a 28 m block on Coastal at z ≈ 50 where the square keeps a low sand spit); the ring's forested tone
-makes the near coast read darker than the square's own shore in bird views.
+**Still open (closed by the follow-up below except the last).** Coastal's and Fjord's bays were still plain circles; the
+strip between two bay discs continued past the edge as a headland with the map's full relief (a 28 m block on Coastal at
+z ≈ 50); the ring's forested tone makes the near coast read darker than the square's own shore in bird views.
+
+### Shore contours: Saltmere's crescent and Nordhavn's fjord arms — 2026-09-23 (round 47 follow-up)
+
+**Symptom (the round-47 "still open" list, same owner complaint).** Both coasts were three overlapping circles stacked
+along the east edge: six circle arcs with cusps between them, each crossing the border twice, and every headland between
+two discs rose to the full border rim (26 m on Saltmere, 42 m on Nordhavn) within 82 m of water at −4 / −8 m — a block
+standing on the strand. The plan view (`.qa-dev/contour-plot.mjs`, the shoreline.ts law over the map's discs with the
+square, spawns, roads, village and landforms drawn) showed the sausage plainly.
+
+**Fix (authoring first, three small laws where authoring could not reach).**
+- Saltmere Bay is ONE crescent: a 300 m disc centred 88 m past the red line (600, −40) whose west arc is the strand
+  (x ≈ 300 at the village, meeting the border at z ≈ −320 and 230 as two headlands), with 16 authored stations (a
+  promontory where the coast-road ridge dies into the bay, a low cape south of it) and its east half cut short (stations
+  13–3 at 0.19–0.42 R) so the disc's own far arc ends ~145 m past the line. The matching 344 m shore ring keeps the
+  same west stations (the beach ramp's wetness at the strand matches what the 190/218 m pairs gave the beach material)
+  but stays round on the east — a ring's fitted bank band divides by its NARROWEST station, and the cut-short stations
+  on the ring made that band 2.03 R: the meadow 700 m inland sank toward the strand level and a strongpoint at (−250, −60)
+  tilted past the cliff-grade limit. Seven beached boats and the jetty lie on the one strand (`boats`, LakeConfig).
+- Nordhavn Fjord is three ARMS: each disc a westward lobe (head at 1.0 R, flanks 0.44–0.50 R), sharing one mouth past
+  the red line, with two 12–13 m rock ridges on the peninsulas between them and two outside the outer arms. The arms'
+  banks grade over 0.14 of the local radius (15 m on a flank, 35 m at a head).
+- `LakeConfig.bankBand` (liquidMarshSurface.ts): an authored outer bank band replaces the fitted one (≥ 1.32 R, a third
+  of the radius outside the shoreline — 96 m of graded strand on a 300 m bay; on the fjord the two flanks' aprons met
+  across every peninsula and pulled it, ridges and all, down to the water level).
+- `terrain.coastRimFadeM` (terrain.ts `coastRimKeep`, in heightAt's rim line and `outlandHeightAt`): within that many
+  metres of a bay's shoreline the border rim lift fades in, so a headland climbs away from the water instead of standing
+  on it (Saltmere 120 m, Nordhavn 90 m; 0 = unchanged everywhere else). Roads keep their own rim weight.
+- `edgeWater.seaSectorBlend` = [0.5 × reach, 0.85 × reach + 20 m] (was [0.7, 1.1 + 40]; the terrain shader's twin
+  `far` and program key v37): the open-sea sector is fully open BEFORE the contour's far arc. The first crescent capture
+  had a full disc whose far arc lay 390 m out under the ring's mountains — a round lake with a cliff wall — and with the
+  old blend even a 145 m arc kept ~60 % of the ring's height as a dark bank across the sea horizon.
+- `outlandHeightAt` composes the bay banks past the square with each lake's authored band (or the legacy 1.32 R, never
+  the fitted band, which would flatten the outland's own relief), so the ring's rows grade to the water as the square
+  does; the fjord arms author `boats: 0` (a clinker hull on a 0.14 R rock bank buries its tips) and keep their jetties.
+
+**Verified (`.qa-dev/wall-probe.mjs`; A = r47-combined, B4 = this lane; `$SP/r47d/cap/`, plan views `$SP/r47d/*.png`).**
+Saltmere from above (bird-e-high, bird-e-edge-n): one concave strand between two headlands, the promontory and cape
+breaking the arc, the sea open to the horizon (B: a lake with a cliff wall; B2: a dark bank across the sea); at
+gameplay height (shore-e-oblique, bay-strand-n) the strand curves away to the north headland with the seven boats and
+the jetty on it. Nordhavn (bird-e-high, fjord-arm-in): three narrow arms sharing one mouth, the peninsulas carrying
+their ridges and spruce (B: flat at the water level, ridges buried), the far mountains as before. Saltwind (bird-w-edge
+A/B4): the bay contour unchanged inside the square, the sea open sooner past the edge, no regression. Still visible: a
+dark headland block stands on the red line north of Saltmere's bay (and beside Saltwind's mouth) — the ring's first dry
+column past a wet one; it predates this lane and is measured next.
+
+**Receipt handling.** `badlandsRelief` authenticates the exact current bay/arms/ridge/rim-fade blocks and projects them
+to the historical text next to Saltwind's round-40 contour (relief authoring by owner ruling); the streaming fixture's
+current heightAt slice carries the new rim line; `roadBorderCorridor` sandboxes the height-constraint source region, so
+`coastRimKeep` reads the settings inside the function (a top-level const touching `T` threw at load); `roadContinuity`
+caught the first fjord banks as slot walls beside the roads (bankBand), `trackSurface` the strand losing its beach
+classification (the 344 m ring), `mapQuality` the sunken meadow (the round ring). Re-pinned as map-digest movers:
+`beachedBoat` (7 boats), `shoreDirtMask`, `villageWear`, `winterLakeGeometry`, `mangroveWaterPalette`,
+`terrainStreaming`; `edgeWater` (blend numbers), `terrainMaterialOwnership` / `terrainWornDirt` / `wallSkyLight` (key v37).
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -841,6 +894,7 @@ skylines):
 | 46 | Reactive water (water pass 8): a world-anchored GPU shallow-water field (192 m / 512 texels, fixed 1/60 s) carries every hull's wake, track churn and shell splashes; the sheet reads its slope and foam and drops the hull-frame pattern inside the window | Reservoir/Coastal drive captures before/after (a1 vs b8): hull-frame slab → V wake with crests, a churn trail that stays on the path, rings from a stopped hull; receipts waterRipples + shallowWater + 101-receipt source sweep |
 | 47 | Ground palettes on the arid and ruined maps: deliberate sourced rows for the four Verdant fall-through maps (Titan/Skybridge keep their sandstone strata, Ruinspires grey, Blackglass the Caldera lift recipe), Skybridge/Titan/Mars macro-tint and strata lifts, desert hemi 0.20 → 0.28 | Titan canyon-in shaded knoll 47 → 93 and wall hue 337° → 7°; Skybridge 35 → 56; Ruinspires corner 40 → 67; Mars strata 97 → 116; desert true shade +8..11 % with lit sand +0.1..0.6 %; the tintB lever measured dead (+0.02..0.11) and the desert/Oasis contour bands identified by the layer-flag probe as the D mask on steep sand faces, unmoved by fill (+2..4 %) — a shader item (checks 3, 8, 15) |
 | 47 | Mesa ring stack and arid skies: a nine-row mesa ladder (bench with buttes, near tables, a real valley floor, far escarpment, saddle, summits, shoulder; correlated pediment / plateau rows, 2.5:1 radial limiter, per-range cap approach 1.25 / 1.80, Redrock on the classic ladder), authored strata and outland rocks on the bland rings, textured altocumulus / cirrus decks on the arid maps, dust decks over the Mars galaxy, explicit low decks on the near-overcast maps, cooler arid haze | geometry probe (skyline shared by three ranges instead of one 55-70 % row; valley 41-74 m under 67-174 m tables on the desert), wall-probe A/B1/B on the eleven maps plus Verdant / Alpine controls (skyline metric: desert w-wall-mid 1.49 → 1.22, Oasis sky-w 1.42 → 1.15, Mars 0.97 → 0.83; controls unchanged) |
+| 47b | Shore contours (follow-up): Saltmere Bay one authored crescent with a cut-short far arc, Nordhavn Fjord three arms with peninsula ridges, authored lake bank bands, a coast rim fade on headlands, and the sea sector fully open before a contour's far arc (`seaSectorBlend` 0.5 / 0.85 + 20, key v37) | Plan-view contour plots; A (r47-combined) / B bird-e-high, bird-e-edge-n, shore-e-oblique, edge-e-low, bay-strand-n, bay-from-village, fjord-arm-in, fjord-peninsula; Saltwind A/B for the blend law | see the section |
 | 47 | Shorelines past the border: the bay contours rule the outland (rim lift yields to water, baked contour for the terrain material and the sheet apron, per-vertex ring weight, sector opens where each bay's reach ends) | Reservoir-style A/B bird and oblique captures on Coastal, Fjord, Saltwind: the beaches and bay lobes continue past the red line as their own curves; edgeWater/shallowWater/terrain receipts |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
