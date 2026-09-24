@@ -512,6 +512,9 @@ const PASSIVE_PRESS_NO_PEN_S = 20;     // this bot's own shells have not penetra
 const PASSIVE_PRESS_STANDOFF_M = 70;   // the press point's distance from the target
 const PASSIVE_PRESS_ASPECT_RAD = 1.3;  // ~75° off the target's nose: a side plate, not a glacis
 const PASSIVE_PRESS_REPICK_S = 3;
+const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
+// Probe candidate the tier set falls back to when terrain hides every zone in it (the visible turret).
+const PROBE_TURRET_FALLBACK: readonly [number, number] = [0.72, 0];
 // RETURN-FIRE LOCK (controls_gunnery r4): three rounds of aggro plumbing
 // (r4 sticky slot, r5 muzzle intel + hard-commit) still measured 76 enemy
 // shells / 2 aimed at the player / 0 hits across 5 battles. Two remaining
@@ -556,6 +559,8 @@ const _vC = new Vector3();
 const _vD = new Vector3();
 const _vE = new Vector3();
 const _vF = new Vector3();
+const _vG = new Vector3();
+const _vH = new Vector3();
 const _hullEuler = new Euler(0, 0, 0, 'YXZ');
 const _hullQuat = new Quaternion();
 
@@ -1519,6 +1524,75 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     probeResult.slot = 0;
   }
 
+  // Round 60 pacing (2026-09-24): the probe used to score hull zones the terrain hides. Two Copper Mesa bots at the
+  // foot of the host's plateau probed the lower hull (ratio 14-21, gate open) and put 66 rounds into the rim in
+  // front of it: the eye-to-eye LOS and the turret-top gun lane both cleared while the hull zones sat behind the
+  // crest. A zone the shell cannot reach from the gun is not a zone. Visibility is cast once per candidate per
+  // probe pass (cached across the shell slots); when the tier's whole set is masked the probe falls back to the
+  // visible turret, and when that is masked too the round-48 probe-miss relocation moves the hull.
+  const probeVisible = [0, 0, 0, 0, 0, 0, 0, 0]; // per candidate index: 0 unknown, 1 visible, -1 masked
+
+  function probeCandidateVisible(
+    index: number,
+    candidateX: number,
+    candidateY: number,
+    candidateZ: number,
+  ): boolean {
+    if (probeVisible[index] !== 0) return probeVisible[index] > 0;
+    const source = entity.state.pos;
+    _vG.set(source.x, source.y + selfGunM, source.z);
+    _vH.set(candidateX - _vG.x, candidateY - _vG.y, candidateZ - _vG.z);
+    const distance = _vH.length();
+    let visible = true;
+    if (distance > 1e-3) {
+      _vH.multiplyScalar(1 / distance);
+      const hit = deps.raycast(_vG, _vH, distance);
+      visible = !hit || hit.dist > distance - 2.0; // the eye-LOS allowance for target-adjacent cover
+    }
+    probeVisible[index] = visible ? 1 : -1;
+    return visible;
+  }
+
+  /** @returns true when the candidate zone is in the gun's reach (scored or not). */
+  function evaluateProbeCandidate(
+    slot: number,
+    shell: DamageShellSpec,
+    pose: ReturnType<typeof tankPoseFromState>,
+    armor: ArmorModel,
+    lateralX: number,
+    lateralZ: number,
+    heightFraction: number,
+    lateralFraction: number,
+    index: number,
+  ): boolean {
+    if (!target) return false;
+    const targetPosition = target.state.pos;
+    const targetHeight = target.spec.dims.heightM;
+    const targetWidth = target.spec.dims.widthM;
+    const source = entity.state.pos;
+    const candidateX = targetPosition.x + lateralX * lateralFraction * targetWidth;
+    const candidateY = targetPosition.y + heightFraction * targetHeight;
+    const candidateZ = targetPosition.z + lateralZ * lateralFraction * targetWidth;
+    if (!probeCandidateVisible(index, candidateX, candidateY, candidateZ)) return false;
+    _vA.set(source.x, source.y + selfEyeM, source.z);
+    _vB.set(candidateX - source.x, candidateY - _vA.y, candidateZ - source.z);
+    const distance = _vB.length();
+    if (distance < 1e-3) return true;
+    _vB.multiplyScalar(1 / distance);
+    const info = queryAimArmor(_vA, _vB, distance + 10, pose, armor);
+    if (!info) return true;
+    const ratio = estimatePenRatio(shell, distance, info);
+    const score = Math.min(ratio, 1.6) - slot * 0.08 -
+      Math.abs(lateralFraction) * 0.02;
+    if (score <= probeResult.score) return true;
+    probeResult.score = score;
+    probeResult.ratio = ratio;
+    probeResult.heightFraction = heightFraction;
+    probeResult.lateralFraction = lateralFraction;
+    probeResult.slot = slot;
+    return true;
+  }
+
   function evaluateProbeSlot(
     slot: number,
     shell: DamageShellSpec,
@@ -1528,33 +1602,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     lateralZ: number,
   ): void {
     if (!target) return;
-    const targetPosition = target.state.pos;
-    const targetHeight = target.spec.dims.heightM;
-    const targetWidth = target.spec.dims.widthM;
-    const source = entity.state.pos;
     const candidates = PROBE_SETS[tier.probeLevel];
+    let anyVisible = false;
     for (let i = 0; i < candidates.length; i++) {
-      const heightFraction = candidates[i][0];
-      const lateralFraction = candidates[i][1];
-      const candidateX = targetPosition.x + lateralX * lateralFraction * targetWidth;
-      const candidateY = targetPosition.y + heightFraction * targetHeight;
-      const candidateZ = targetPosition.z + lateralZ * lateralFraction * targetWidth;
-      _vA.set(source.x, source.y + selfEyeM, source.z);
-      _vB.set(candidateX - source.x, candidateY - _vA.y, candidateZ - source.z);
-      const distance = _vB.length();
-      if (distance < 1e-3) continue;
-      _vB.multiplyScalar(1 / distance);
-      const info = queryAimArmor(_vA, _vB, distance + 10, pose, armor);
-      if (!info) continue;
-      const ratio = estimatePenRatio(shell, distance, info);
-      const score = Math.min(ratio, 1.6) - slot * 0.08 -
-        Math.abs(lateralFraction) * 0.02;
-      if (score <= probeResult.score) continue;
-      probeResult.score = score;
-      probeResult.ratio = ratio;
-      probeResult.heightFraction = heightFraction;
-      probeResult.lateralFraction = lateralFraction;
-      probeResult.slot = slot;
+      if (evaluateProbeCandidate(slot, shell, pose, armor, lateralX, lateralZ,
+        candidates[i][0], candidates[i][1], i)) anyVisible = true;
+    }
+    if (!anyVisible) {
+      evaluateProbeCandidate(slot, shell, pose, armor, lateralX, lateralZ,
+        PROBE_TURRET_FALLBACK[0], PROBE_TURRET_FALLBACK[1], probeVisible.length - 1);
     }
   }
 
@@ -1606,6 +1662,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     lateralZ /= lateralLength;
     const pose = tankPoseFromState(target.state);
     resetProbeResult();
+    probeVisible.fill(0);
     for (let slot = 0; slot < spec.gun.shells.length; slot++) {
       const shell = spec.gun.shells[slot];
       if (!shell || !slotHasAmmo(slot)) continue;
@@ -3737,6 +3794,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const x = clamp(tp.x + Math.sin(a) * PASSIVE_PRESS_STANDOFF_M, -470, 470);
       const z = clamp(tp.z + Math.cos(a) * PASSIVE_PRESS_STANDOFF_M, -470, 470);
       if (!reachableSpot(x, z)) continue;
+      // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
+      // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
+      const gunY = hf.getHeightAt(x, z) + selfGunM;
+      if (!hasLos(x, gunY, z, tp.x, tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC, tp.z)) continue;
       pressPoint.x = x;
       pressPoint.z = z;
       return true;
