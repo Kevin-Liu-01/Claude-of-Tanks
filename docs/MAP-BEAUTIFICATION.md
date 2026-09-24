@@ -1370,6 +1370,86 @@ and the loop's new poster — the frozen pond's bright ice and snow at 3 s — e
 is 80 KB.
 **Still open:** the seventeen other reels stay on their 2026-08-19 renders (their maps are unchanged); `gen-scenes.mjs`
 13–16 (the retired first production) remain on the old anchors.
+### Round 55 — 2026-09-24: Titan's partings, Fjord's outcrops, the coast ring tone
+
+Three open items of the round-49 and round-47 notes (lane r55-ring-details, from origin/main 3ca1db520). Every capture:
+`tools/map-view-probe.mjs` at the same seed / tier / cameras, A = a pristine `origin/main` worktree, B = this lane, one
+run at a time under the probe mutex; boxes and numbers in `$SP/r55/`; every pair judged on 1280 px reductions and 2×
+crops.
+
+**Titan Gorge — the fine wavy partings (round 49's open item), closed.** `tools/terrain-uniform-iso-probe.mjs` now
+flattens ONE layer normal map at a time (`--flat-normal-maps=uNrmG,uNrmD,uNrmR,uNrmM`, `<view>-flat-<uniform>.png`) and
+collects the splat material into a Set before touching it — its per-mesh visit used to overwrite `__saved` with the
+already-swapped value on the second of 64 chunk meshes, so every frame after the first variant kept flat normals
+(round 49's "no-uStrata" wrong turn). Flattening `uNrmR` alone reproduces the all-flat frame: sw-corner-close wall box
+59.0 % of pixels moved vs 60.4 % all-flat, stripe top-1 % share 0.535 → 0.746 in both; e-wall-300 29.6 % vs 29.8 %,
+0.734 → 0.803 in both; G, D and M move ≤ 2 % (w-wall-mid's ~6 % is frame noise shared by every variant). A second
+run with three temporary gate uniforms named the tap: the coarse wall-plane R sample `texture2D(uNrmR, gWallUV × 0.041)`
+(the "craggy rock at range" relief) carries the crisp contour lines (49.7 % of the wall box, mean 3.9/255); the 0.155
+wall sample 21.6 % / 1.7 (fine grain) and the 0.019 tap 10.4 % / 0.9. Mechanism: the procedural sandstone tile is
+BEDDED — a 3 px seam notch at every bed boundary, normal strength 2.6, beds of 34–110 px on a 256 px tile — so in the
+wall plane at a 24 m period it prints a parting every 0.9–2.8 m of world height that contour-traces the relief, and no
+mip bias can remove it (a step's derivative stays a line at every level: round 49's b4/b5 null results). Landed
+(`world/terrain.ts`, program key v38 → v39, lexical fetch census 92 → 94 inside the new branch): on the maps whose R
+layer is the procedural sandstone tile (`uBeddedR` = 1 — `splat.sandstone` and no sourced R in the map's plan,
+`sourcedTextures.sourcedTerrainLayerPlanned`: Titan, the desert, Redrock, Skybridge; Copper Mesa and Mars take the
+sourced photo rock and keep the tile) the coarse wall relief is analytic — buttress masses (~17 m) leaning with height,
+ribs (~6 m) and ledges of mass (~33 m) from incommensurate sines, phased per cliff by one slow noise fetch per wall
+plane (`wallCragField` / `wallCragTilt`) — so the walls keep buttresses and recesses with no line locked to world
+height. A screen-derivative bump of the mip-sampled noise field was tried first and speckled the whole wall (b1: luma
+std 28.5 → 41.5); the planar ground tap (`dnRa`) and the photo-rock maps keep the tile. Measured (stripe metric on the
+round-49 boxes, A → B): sw-corner-close top-1 % 0.535 → 0.734, anisotropy 4.92 → 4.61, luma std 28.5 → 28.3;
+e-wall-300 0.734 → 0.770, 6.84 → 6.75, 30.4 → 29.5; w-wall-mid 0.739 → 0.733; canyon-in's wall box moved 4 of 80,600
+px and its ground boxes not at all (shaded 98.2 → 98.0, lit 159.2 → 159.2). By eye: the partings are gone, the marker
+beds, joints and a faint buttress shading carry the walls.
+
+**Nordhavn Fjord — outcrops below the treeline (round 49's open item), landed.** The ring dump (`sampleHorizonGeometry`,
+seed 1337) puts the cone hills at hT 0.3–0.5 with row p50 slopes of 10–25° and p90 of 34–45° on the ridge fronts (rows
+6–12), under the vista's own rock law (from 45°) and under the treeline (0.74) that gates round 49's ribs. A per-map
+knob `outcrops` (0..1, `uVOutcrop`, default 0 — every other ring byte-identical: the term is `max(rockW, 0)`,
+`forestW × 1`, `moss × 1`) carries gneiss knobs and slabs through the turf below the treeline: slope-gated from ~9° to
+~28° (noise-broken; the interpolated-normal slope of a softened dome is well under its face slope — the first cut gated
+from 22° and fired on 8 % of the cone), slab fields of 60–140 m from the 140 / 45 / 12 m fields inside a halo of
+scree; the knobs open the forest stands (trees do not grow on slabs), stay bare of moss and carry lichen-pale crowns
+(the first cuts drowned: grey rock at the turf's luma, 40 % re-greened, blended 30–60 % INTO the dark stands). Same
+fields as the ribs — no new fetch (`horizonResources`' 13 VTRI / 3 texture2D census holds); `buildHorizonForest`'s JS
+twin keeps crowns off the knobs (its face slope is rise / run, converted to the fragment's 1 − cos); vista program key
+r3 → r4; `fjord.ts` authors `outcrops: 1` (palette unchanged), the round-47 projection module's `fjord.ts` CURRENT block
+carries the line. Measured (boxes on the ring hills, A → B5): w-wall-mid cone 47 % of pixels moved by a mean 4.5/255,
+luma std 19.9 → 19.0; sky-w cone 37 % / 2.8; shore-w-oblique ring hills 31 % / 4.9; bird-w-edge 0.3 % (its slope is
+the terrain-material rim band, not the vista). By eye: the cone's lit flank and the foothills carry pale slab fields
+and open stands where they were one green sheet; the shaded flank stays dark; the long slope in shore-w-oblique reads
+as a fjord hillside with rock through the turf. Modest under the haze — the knobs are legible, not loud.
+
+**The ring's forested tone near the coast (round 47's check 13), re-diagnosed and closed.** The layer probe on the bird
+views of Saltmere, Nordhavn and Saltwind shows the land past the red line in a bird view is the TERRAIN-MATERIAL rim
+band (paler than the square's tree-dotted ground, luma 109 vs 70 on Saltwind), and the near-coast "forest" is the
+ring's INSTANCED trees; hiding them leaves the far-shore strips unchanged, so the painted stands are not the step.
+Per-side crown boxes (green pixels, hue 85–160°) on Saltmere's west edge, ring trees just past the line against the
+square's just inside at the same distance: L 0.305 / sat 0.24 / hue 114° vs 0.199 / 0.31 / 120° (pale mint beside
+rich green), with both sides sharing one canopy palette. Two causes in `horizonVista.buildHorizonForest`: the crown
+material kept the standard response (roughness 0.92, the GGX lobe) while the battlefield's far canopy is a matte
+volume (`vegetation.ts canopyFarMat`: roughness 1.0, `applyCanopyDiffuseWrap` 0.38 with the GGX lobe dropped —
+"GGX at N·V = 0 produces a broad white grazing lobe"); and the crown mottle multiplied by the raw canopy tile, whose
+mean is 0.35 / 0.39 / 0.30 (the other vista tiles are authored at 0.5) — a systematic ×0.83 / 0.88 / 0.78 that
+darkened every crown and pushed it toward yellow. Landed: the ring forest runs the battlefield's matte response
+(roughness 1.0, the 0.38 wrap in its hook, key `horizon-forest-canopy-v3`) and the mottle is centred on the tile's
+mean (`VistaTiles.canopyMean` → `uVfCanopyMean`). Measured (A → B): ring band right 114° / 0.24 / L 0.305 → 123° /
+0.26 / 0.278 (square 120° / 0.31 / 0.199), left 110° / 0.319 → 118° / 0.291 (square 124° / 0.228) — the hue gap 6–14°
+→ 3–6°, the lightness gap a quarter narrower; every map with a ring forest gets the same crown response. NOT landed: a
+shore fade of the ring's stands and band trees over the 10 m above the sea level (`uVShoreFade`) — the far-shore
+strips of Saltwind's shore-w-oblique and Saltmere's shore-e-oblique came back pixel-identical (the ring rows behind a
+bay sit above sea level + 12 m; the strand rows are the terrain-material bands the vista never paints), so it was
+reverted rather than kept as dead weight; and the first cut's placement rule ran BEFORE a candidate's random draws,
+which re-rolled every ring tree on the sea maps (the doubled silhouettes in the difference image) — a rule that thins
+trees must decide after the draws.
+
+**Receipts.** terrainMaterialOwnership (v39, `uBeddedR`, census 94), terrainWornDirt, wallSkyLight, terrainSurfaceDetail,
+terrainProjection, terrainSandCoverage, terrainRoadMaterial, sourcedTextures, sourcedTerrainPreparation,
+terrainResources, map-probe-runtime (the new flag); horizonResources, horizonMesaSurface (r4), horizonNoiseSampling,
+horizonRockfield, titanGorgeHorizon, badlandsRelief (fjord projection), worldBuildCoordinator, edgeWater,
+horizonAutumnGround, redrockCanyonHorizon, autumnHorizonSeam, vegetationLighting, mapQuality, garage:terrain:check,
+typecheck; villageWear and mangroveWaterPalette map-config digests re-pinned (fjord.ts authors one more line).
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -1467,6 +1547,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 52 | Saltwind Narrows' strand 12 → 20 m (owner decision 20): a pale beach now separates the bay from the grass along the whole shore; boat landings kept (beachedBoat / riverLandings unchanged) | map-view-probe A/B (bird-w-edge, shore-w-oblique, edge-w-low, w-wall-mid), badlandsRelief slice, shoreDirtMask / mangroveWaterPalette / villageWear re-pins, 17 shore receipts green; chain 73 |
 | 53 | The 4K showcase frames and the studio film of the redesigned maps: the fourteen `showcase-r1` frames of Frosthollow and Tarkhan (the landing hero 113, six mosaic tiles, the README's 69 / 84 / 97) regenerated through the campaign pipeline — templates 09 / 11 / 12 re-staged (pond, pass-road descent, crossroads from the crossing road), the generator made to reproduce the published campaign (`HAND_TUNED_ACTION`), a sightline pull-in for long-lens templates and three overridden foreground lenses (`HAND_TUNED_FOREGROUND`); the landing film re-recorded from the checked-in storyboard, its poster and mobile proxy from the publisher | eye check of 1280 px reductions of all fourteen 4K masters, the four contact sheets and four mp4 frames against the lens rule; grade 60 / 60 with 46 rows byte-identical to the Aug-19 report; showcase:publish moved only the fourteen renditions, four sheets and manifests; receipts showcase-r2, battle-campaign, landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, feature-loops, og-images, public-repo-hygiene, attribution |
 | 54 | The last showcase media of the redesigned maps: `feature-loops-r1/03_winter_lake_duel`, the `hero-rails-r2` winter / steppe rails with their `web-video-r1` proxies, the `battle-reels-v3` reels 03 / 07 / 18 and `featured/f1_09_winter_lake_duel` regenerated through the repo's pipeline — the recorder's `battle-reels` collection (the library's pinned twenty-reel table, authored stages on the pond necks and the plain south of the wadi) and `--stills` framing mode, `publish-battle-reels.mjs`, subset modes for the rail / loop / featured publishers, rail proxies derived from the published WebM, the steppe rail's opening key moved off the wire-line berm | eye check of 1280 px reductions (four frames + poster per reel and rail, three per proxy, four + poster for the loop, the featured frame) after eight preview rounds against the lens rule; receipts feature-loops, hero-rails, showcase-r2, battle-campaign, landing-media, feature-evidence, loadingScreens, socialProof, showcase-library, battleReels, og-images, public-repo-hygiene, attribution; only the intended manifest rows moved |
+| 55 | Titan's fine wavy partings closed: the uniform-isolation probe flattens one layer normal map at a time (and no longer keeps flat normals after its first variant), uNrmR and then the coarse wall-plane R tap named — the bedded sandstone tile's seam notches printed a parting every 0.9–2.8 m of world height in the wall plane; an analytic buttress-and-rib crag replaces that tap on the bedded maps (`uBeddedR`, key v39). Fjord's cone hills: a per-map `outcrops` knob (gneiss knobs and scree through the turf below the treeline, stands opened, `uVOutcrop`, vista key r4). Coast ring tone: the ring forest runs the battlefield's matte canopy response and a mean-centred crown mottle (key `horizon-forest-canopy-v3`); the shore fade tried was pixel-identical and not landed | one-normal-at-a-time and gate-uniform isolation runs on Titan (sw-corner 59.0 % vs 60.4 % all-flat; the coarse tap 49.7 % of the wall box), stripe metric A/B (sw-corner top-1 % 0.535 → 0.734, std 28.5 → 28.3; e-wall 0.734 → 0.770), ground boxes unchanged; fjord boxes (w-wall-mid cone 47 % / mean 4.5, sky-w 37 % / 2.8) and 2× crops; per-side crown boxes on Saltmere's west edge (ring 114° / L 0.305 → 123° / 0.278 against the square's 120° / 0.199); receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
