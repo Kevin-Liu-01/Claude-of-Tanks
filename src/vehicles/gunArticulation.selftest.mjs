@@ -139,7 +139,10 @@ for (const id of ALL_TANK_IDS) {
 
 assert.equal(articulated + hullAimed, ALL_TANK_IDS.length,
   'every selectable procedural vehicle is classified by the gun articulation gate');
-assert.ok(articulated >= 110 && hullAimed >= 8,
+// 2026-09-24 (round 46c, owner: no hidden tanks): the 36 hidden records retired; four of the eight hull-aimed hulls
+// were among them (the unregistered WW2 / casemate donors), so the floor follows the playable fleet: 188 articulated,
+// 4 hull-aimed (the Strv 103 family and the other fixed-gun casemates) out of 192.
+assert.ok(articulated >= 110 && hullAimed >= 4,
   `fleet gate is non-vacuous (${articulated} articulated, ${hullAimed} hull-aimed)`);
 
 assert.equal(fixedBatteries, 2, 'TOS and Griffin Viper own the two explicit fixed-canister batteries');
