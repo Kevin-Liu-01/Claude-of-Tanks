@@ -47,7 +47,9 @@ const roadCompletionCensus = {
   urban: [4055, 9303, 3685],
   coastal: [4196, 3999, 4310],
   autumn: [6505, 6158, 6867],
-  steppe: [2332, 1966, 1352],
+  // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling — shard recaptured headless on the new map
+  // (grain station, kolkhoz corrals, kurgan kerbs, fort walls; shelterbelts replace most groves)
+  steppe: [2358, 2120, 1290],
   railyard: [2977, 2937, 2135],
   // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
   // unchanged seeded rejection rules alter accepted trees/props, not tolerances.
