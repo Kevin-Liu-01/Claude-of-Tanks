@@ -23,7 +23,7 @@ the fictional map reproduces a particular real-world location.
 | --- | --- |
 | verdant | Preserve the accepted pastoral watersheds and woodland; no return to the rejected mountain ring. |
 | desert | Wind-aligned dunes meeting offset sandstone cuestas; branching dry washes. |
-| winter | Snowbound farmland, low glacial undulations and distant highlands; not an alpine wall everywhere. |
+| winter | Carpathian / Tatra winter valley (round 48, 2026-09-23): a beaded frozen river down a flat kotlina floor, a linear timber street village on the west river terrace with a sawmill yard, a steep two-armed ridge with a saddle pass on the west flank, rolling moraine knolls on the east; the alpine ring stays a distant highland, not a wall everywhere. |
 | urban | A town below one dominant distant escarpment; restrained ground slopes around streets. |
 | coastal | Open sea and unequal dune/bluff headlands; preserve its working eastern aperture. |
 | autumn | Cultivated river valley with tributary hollows and unequal wooded interfluves. |

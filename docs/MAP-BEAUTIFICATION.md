@@ -107,7 +107,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
 | Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads |
 | Olympus Basin | Rust regolith and mesas under a galaxy sky, a research station of domes, modules, masts and pads (Mars mode, 2026-09-18) |
-| Frosthollow | Snowbound farms, bare birch and open snowfields; windblown/compacted route contrast |
+| Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings |
 | Glacier Pass | Frozen lake, rocky alpine catchment, sheltered village; exposed crags and drifting snow |
 | Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys |
 | Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop |
@@ -825,6 +825,74 @@ classification (the 344 m ring), `mapQuality` the sunken meadow (the round ring)
 Titan's palette route, tints, ring rows and sky decks): the round-47 projection module now carries the three Titan
 blocks and the receipt projects them before comparing, the same law badlandsRelief applies.
 
+### Frosthollow redesign — 2026-09-23 (round 48)
+
+**Ruling.** Owner (2026-09-23): "Frosthollow, Amberford and Tarkhan Steppe look good and have unique colour schemes but
+are straight rips of Verdant Field, exact same maps — not good, need redesign." The survey confirmed it for Frosthollow:
+`winter.ts` fell through to `DEFAULT_TERRAIN`'s village rect and marsh centres (its lakes sat on the default marsh
+centres), ran the procedural `roads: 'country'` like Verdant, copied Verdant's three tactical anchors byte for byte,
+copy-pasted seven of its wall runs and nudged its five landforms by 2–8 m. Palette, frozen-sheet identity, sky,
+vegetation species and dressing tones stay; the battlefield underneath is new.
+
+**Reference and layout — a Carpathian / Tatra winter valley.** A frozen river runs north–south through a valley
+trough as a beaded chain of ten frozen ponds (r 30–42 m, 84–140 m apart), each sheet just under its lowest bank; the
+two wide necks carry the crossings. A linear timber village (log cabins, alpine houses, the onion-dome church,
+woodsheds) sits on the west river terrace along the valley road, its crossroads where the pass road meets the valley
+road, a sawmill yard with a loop road, two loaded flatbeds and timber bundles at its north end (`loggingYard`, the
+Longleaf composition reused). The west flank is a steep two-armed ridge (13 / 12 m) with a saddle pass between the arms
+that the pass road switchbacks up to; the east flank rolls as moraine knolls (6.8 / 7.6 m) with a cross-bar the Bystra
+crossing cuts through; the base hills drop to `hillScale 0.62` so the kotlina floor reads flat under the ridges.
+Fifteen fieldstone wall runs edge the terrace fields, the village yards, the yard fence, the moraine fields and hay
+ground; spruce belts line the ridge toes, a birch line the terrace scarp, birch hedgerows the moraine fields; four
+`avoid` clearings are the sawmill's cut blocks. Seven authored roads (`roads.paths`, endpoints owned in
+`roadEndpoints.ts`): the valley road edge to edge (the utility line, 38 nodes), the pass road (west border → switchback
+→ crossroads), the Bystra crossing (crossroads → southern neck → moraine crossroads → east border), the moraine track,
+the sawmill lateral over the northern neck, a village back lane and the yard loop. New strongpoints: `terrace-village-
+refuge` (brawl, alpine refuge in the village), `moraine-knoll-blind` (scout, on the north-east knoll), `saddle-aid-
+station` (support, on the saddle shoulder above the pass road). Player pad on the south terrace (−160, −400), the seven
+enemy pads an arc across the north end (four on the moraine side, three on the north-west shoulder), scanned for
+relief ≤ 4.2 m over the pad radius, min normal.y ≥ 0.90, ≥ 51 m apart, ≥ 747 m from the player pad, ≥ 77 m from any
+sheet.
+
+**Layout scan (node, `createHeightField(1337)`).** 7 roads, one network component; the village rect holds 27 road-node
+building candidates for a 20-entry plan; 27 utility-pole stations on the valley road; strongpoints on normal.y
+1.000 / 0.990 / 0.975; every pond ≥ 14.7 m from a road edge; pond bank lips ≤ 8.1 m (one 9.0 m step where the river
+drops off the north-east shoulder). Two rules came out of the pond work and are recorded in the map file: overlapping
+frozen ponds are not seed-robust (two ponds' auto levels can differ by metres between seeds and the frozen blend turns
+that step into a ramp INSIDE the neighbour's sheet — the winterLakeGeometry berm audit caught a 0.37 normal on such a
+ramp), so centres are spaced ≥ 1.32·rA + 0.66·rB + 12 m and the level steps fall in the necks; and a pond whose
+shoreline ring reaches a border portal's road corridor changes level with road completion (roadContinuity's interior
+envelope), so the southern pond sits 41 m off the valley road.
+
+**Skyline re-grade (round 44, owner-approved).** Snowpack `grassTone` L 0.62 + 0.38·l → 0.52 + 0.32·l and
+`postExposure` 0.94 → 0.86 (`winter.ts`; Whiteout inherits both through its `...winter.splat` / `...winter.sky`
+spreads). Skyline metric (`skyline-metric.py`, A = origin/main f5a7bf3ae, B = this branch, same probe poses):
+Frosthollow sky-w 0.94 → 0.88, sky-s 0.92 → 0.84 — inside the 0.80–0.90 acceptance band — centre-far 1.06 → 1.05
+(that view's skyline is the far vista ring, which round 44 showed no albedo or exposure change moves). The battlefield
+still reads white: bird-view snow box (x 500–1100, y 500–800 of `bird-n`) display luma median 208 → 198, mean 199 →
+183, RGB 186/183/177 (neutral). Whiteout takes the re-grade on its ground (snow median 196 → 182) but its skyline
+metric does not move (sky-w 1.01 → 1.01, sky-s 0.92 → 0.91, centre-far 0.95 → 0.94): its skyline in these views is
+the vista ring, not the near rim band, and its horizon line is round-47-pinned — a Whiteout-specific horizon item
+(ring snowHex / haze), not a winter.ts knob.
+
+**Captures.** `.qa-dev/wall-probe.mjs` views bird-n, bird-w, centre-far, sky-w, sky-s, canyon-in plus three
+gameplay-height views added for this round (village-street, river-crossing, pass-switchback); A on `$SP/main-check`
+(tag a), B on the branch (tag b3) in `$SP/r48w/cap`. The before is Verdant's sine-curve country road through scattered
+stands; the after is the pond chain, the crossing, the belts and the terrace village.
+
+**Receipts.** mapQuality (seven pads, three roles, utility line, connected network), mapIntegration, randomBattleMaps,
+roadStations, roadContinuity, roadCutRecovery, roadInheritedGrades, roadDistanceField, roadMaskProfile,
+fieldTrenchTerrain, terrainFastGrid, shallowWater, trackSurface, riverReedContact, iceSurfaceDetail, horizonResources,
+mapCatalog, sourcedTerrainPreparation, garageArchitecture, loggingYard*, propsResources, worldBuildCoordinator,
+worldActivationRuntime, dedicatedWorldCollision, collisionManifestCodec, `garage:terrain:check`, `npm run typecheck`.
+Per-map rows re-pinned with dated comments: winterLakeGeometry (winter rows: 20 berms, no rowboat wood, budgets as a
+ceiling for the redesigned map), terrainStreaming and shoreDirtMask winter goldens, dedicatedWorldCollision's winter
+census (the recaptured shard `server/world-collision-manifests/winter.json`, 5944 / 930 / 4911), the codec's winter
+shard budget (+10 %), the garage terrain excerpt (`garage:terrain:update`) and `badlandsRelief`'s exclusion list
+(winter.ts is a new landform by owner decision). Shared digests that moved and are left for the integrator: villageWear
+(FROZEN configs) and mangroveWaterPalette (other29). playableRelief's Titan byte pin fails on `r47-combined` before this
+branch (round 47 rewrote `titanGorge.ts`).
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -912,6 +980,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 47b | Shore contours (follow-up): Saltmere Bay one authored crescent with a cut-short far arc, Nordhavn Fjord three arms with peninsula ridges, authored lake bank bands, a coast rim fade on headlands, and the sea sector fully open before a contour's far arc (`seaSectorBlend` 0.5 / 0.85 + 20, key v37) | Plan-view contour plots; A (r47-combined) / B bird-e-high, bird-e-edge-n, shore-e-oblique, edge-e-low, bay-strand-n, bay-from-village, fjord-arm-in, fjord-peninsula; Saltwind A/B for the blend law | see the section |
 | 47 | Shorelines past the border: the bay contours rule the outland (rim lift yields to water, baked contour for the terrain material and the sheet apron, per-vertex ring weight, sector opens where each bay's reach ends) | Reservoir-style A/B bird and oblique captures on Coastal, Fjord, Saltwind: the beaches and bay lobes continue past the red line as their own curves; edgeWater/shallowWater/terrain receipts |
 | 48 | Probes and metrics as tools: the QA probes that verified rounds 41–47 committed from `.qa-dev/` as `tools/map-view-probe.mjs` (the wall probe; its view table in `tools/map-view-probe-views.mjs`), `tools/terrain-layer-flag-probe.mjs`, `tools/terrain-uniform-iso-probe.mjs`, `tools/world-layer-isolation-probe.mjs`, `tools/salvo-indicator-probe.mjs` and `tools/water-drive-probe.mjs` over one runtime (`tools/map-probe-runtime.mjs`), and the three Python/PIL metrics ported to `tools/map-metrics.mjs` (skyline, stripe, boxes) — see "Probes and metrics as tools" below | `tools/map-probe-runtime.selftest.mjs` (arguments, the pinned 31-view table, pose math, the mirrored-frame note, `--help` without a network) and `tools/map-metrics.selftest.mjs` (synthetic frames of known luma / wavelength / heading); the Node metrics reproduce the PIL scripts on the round-43 and round-47a frames (skyline and boxes to every printed digit, stripe wavelength within 0.07 %); one map/view per tool re-captured on this tree |
+| 48 | Frosthollow redesign (owner: the Verdant clone maps): a Carpathian valley — ten-pond frozen river, terrace street village with a sawmill yard, two-armed ridge and saddle pass with a switchback, moraine flank, seven authored roads, new strongpoints, walls, belts, clearings, pads; the round-44 snow albedo / exposure re-grade | wall-probe A/B (six brief views + village-street, river-crossing, pass-switchback): skyline sky-w 0.94 → 0.88, sky-s 0.92 → 0.84, snow median 208 → 198; layout scan (pads, beats, candidates, pole stations, pond lips); mapQuality + road + winterLakeGeometry receipts, recaptured collision shard |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
@@ -1000,7 +1069,7 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 |---|---|---|
 | verdant | good | far ranges hazed blue, ring forest continuous; centre S view blocked by a building (probe) |
 | desert | fair | dune faces carry dark parallel ripple bands at every range — a corduroy repeat (8 — round 43: the bands swing and stretch per cell and ease past 320 m; mid-field band share 0.54 → 0.22); far mesas paler than the sky (5, round 37) |
-| winter | fair | ring is a white sheet with a few dark specks (3); skyline nearly invisible in the haze (5 — round 44: snow sits on the tonemap shoulder above the capped sky; needs a snow albedo/exposure re-grade, owner call) |
+| winter | good | round 48: redesigned as a Carpathian valley (no longer Verdant's bones); the owner-approved snow albedo / exposure re-grade puts the near rim a step below the sky (5: sky-w 0.94 → 0.88, sky-s 0.92 → 0.84); the far vista ring still reads at the sky (centre-far 1.05 — a ring item) |
 | urban | fair | pale cracked corner cliff beside green turf reads as another material (15); centre sky views blocked by buildings (probe) |
 | coastal | good | round 40: the bay runs on as the same water past the edge (terrain sea path + sheet apron); shoal pattern crosses the seam |
 | autumn | good | pale grey corner rock next to golden ground (15, mild); far ranges blue — good |
@@ -1022,7 +1091,7 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | copper_mesa | good | strata on every cliff; far mesas paler than the sky (5) |
 | airfield | good | flat ring with trees — consistent |
 | oasis | fair | dune bands repeat (8, as desert — round 43: the diagonal streaks are gone, mid-field band share 0.76 → 0.61) |
-| whiteout | fair | as winter (3, 5 — round 44: same cause, same re-grade) |
+| whiteout | fair | round 48: inherits the winter re-grade on its ground (snow 196 → 182) but its skyline is the vista ring, not the near rim — metric unchanged (1.01 / 0.91); a ring snowHex / haze item on its round-47-pinned horizon line (3, 5) |
 | orchard | good | grey corner rock beside green (15, mild); far ranges blue |
 | longleaf | good | dark corner rock; ranges good |
 | mangrove | good | flat green ring; water and trees continue |
