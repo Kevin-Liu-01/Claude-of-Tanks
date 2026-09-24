@@ -86,10 +86,15 @@ export default {
         [-110, 100], [-130, 170], [-150, 240], [-180, 330], [-210, 420], [-240, 470]],
       // 1 the manor lane: from the cross lanes north over the FORD, past the park to the north-east edge
       [[120, -170], [204, -20], [186, 24], [168, 68], [165, 110], [215, 190], [270, 270], [320, 360], [350, 470]],
-      // 2 the mill lane: from the market square west along the north bank past the mill to the west edge
-      [[-110, 100], [-180, 60], [-230, 0], [-260, -60], [-300, -120], [-360, -170], [-440, -230]],
-      // 3 the sunken lane: along the south bank between the orchards, from the west edge to the cross lanes
-      [[-470, -400], [-390, -370], [-300, -330], [-210, -290], [-130, -250], [-50, -215], [30, -200], [120, -170]],
+      // 2 the mill lane: from the market square west along the north bank above the mill reach to the west edge.
+      // Its border portal leaves at (-512,-188): the corridor the road completion stamps past radius 434 (68 m
+      // either side of the added tail) must stay clear of the river's south-west end, whose bank-band samples
+      // (1.8 R) would otherwise read a different rim in the completed and uncompleted builds (roadContinuity).
+      [[-110, 100], [-180, 60], [-230, 0], [-260, -60], [-300, -120], [-360, -150], [-440, -170]],
+      // 3 the sunken lane: along the south bank between the orchards, from the south-west corner to the cross lanes.
+      // Its portal leaves at (-512,-477), far enough south that the river's end stations sit > 32 m inward of the
+      // added tail (the stamped corridor never reaches their bank-band samples — roadContinuity).
+      [[-470, -440], [-390, -370], [-300, -330], [-210, -290], [-130, -250], [-50, -215], [30, -200], [120, -170]],
       // 4 the north lane: from the market square east between the hedged fields to the manor gates
       [[-110, 100], [-30, 140], [60, 165], [140, 180], [215, 190]],
     ] },

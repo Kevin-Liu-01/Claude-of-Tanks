@@ -918,9 +918,14 @@ market town as the real-world reference:
   aligned basin. `navigationWaterPolicy: 'avoid-liquid'` makes bots cross at the bridge and the ford (Reservoir's
   policy); `matchPlacement` proves a dry bot route between every deployment and objective in all five modes.
 - **Five authored lanes** (`roads.paths` + a `ROAD_ENDPOINT_INTENTS` row): the coach road edge to edge over the bridge
-  and through the market square, the manor lane over the ford to the north-east edge, the mill lane west, the sunken
-  lane along the south bank between the orchards, the north lane between the hedged fields to the manor gates. One
-  connected network; the coach road carries 45 stations for the utility line.
+  and through the market square, the manor lane over the ford to the north-east edge, the mill lane west (portal at
+  −512,−188), the sunken lane along the south bank between the orchards from the south-west corner (portal at
+  −512,−477), the north lane between the hedged fields to the manor gates. One connected network; the coach road
+  carries 45 stations for the utility line. The two western portals were moved once for `roadContinuity`: the road
+  completion stamps a corridor 68 m either side of each added tail past radius 434, and a river station whose
+  bank-band samples (1.8 R) read that corridor gets a different bank band in the completed and uncompleted builds —
+  141 interior cells 26–77 m from the lanes moved (the level did not, `changedLiquidCells` 0). Every river station now
+  sits > 32 m inward of, or > 68 m beside, every portal tail (`$SP/r48a/portalcheck.mjs` replicates the stamp).
 - **The walled market town** on the north-bank rise (own 180 × 170 m rect, `settlementScale: 1` so the settlement keeps
   its knoll, `relief 0.18`): church, inn, Norman tower keep, market hall and rows, shops, granaries and cottages
   (`blockFill`), the market cross on the crossroads square, a town wall whose gates open where the three streets pass.
@@ -956,7 +961,8 @@ opening); both crossings dry within 14 m of the lane, soft water beyond 18 m.
 **Receipts.** `environmentExpansion` pins the two crossings with a tangent-based widening check (the round-1 check
 assumed a W→E river), `botNavigationWater` lists Amberford beside Reservoir, `badlandsRelief` excludes `autumn.ts` from
 the historical byte projection (a redesign by owner decision, like Mars), `railCoalStockpiles` names the mill house as
-the one other kit footprint. Green: `mapQuality`, `mapIntegration`, `randomBattleMaps`, `roadDistanceField`,
+the one other kit footprint. Green: `roadContinuity` (autumn row: changedInteriorAwayFromRoads 0, outsideEnvelope 0, changedLiquidCells 0, no
+physical failures), `mapQuality`, `mapIntegration`, `randomBattleMaps`, `roadDistanceField`,
 `roadMaskProfile`, `fieldTrenchTerrain`, `authoredChannels`, `autumnHorizonSeam` (Amberford's own ring seam seats on
 the new edge heights: max 2.05 m at three seeds), `horizonAutumnGround`, `liquidMarshSurface`, `matchPlacement`,
 `minimapObjectives`, `formationPlacement`, `riverReedContact`, `riverLandings`, `beachedBoat`, `railWashout`,
