@@ -2265,6 +2265,155 @@ finish the railway's story. The cut faces are bare (the exclusion keeps grass an
 want a slope-aware seeding, not the berth). The arch record's openings are the arc quantised to 0.275 m bands; a shell
 within a band's height of the arc may meet stone the eye sees through, or pass a sliver of it. Tarkhan's picker
 thumbnail, 4K hero and tactical-map plate predate the cutting.
+### Round 65 — 2026-09-24: a physically based atmosphere
+
+Owner (2026-09-24, on dgreenheck/tidewater): "some of these assets and shaders and skies and graphics are incredible
+and will help us improve stuff a lot" — the target being its sky: a deep zenith, a bright warm horizon band, real
+aerial perspective on the far island. This round gives every battlefield that sky model. Nothing from the reference
+enters the tree: the GLSL is written from the paper with the reference for structure and constants, no shader text
+or asset is copied, and its cloud file (Sky Pro-derived) was neither read nor ported.
+
+**The model (`src/engine/atmosphere.ts`).** Sébastien Hillaire, *A Scalable and Production Ready Sky and Atmosphere
+Rendering Technique*, Computer Graphics Forum 39(4), EGSR 2020. Three look-up tables, each a small fragment pass into
+a half-float target through a full-screen quad: the transmittance LUT (256 × 64, Bruneton's (r, μ) parameterization,
+40 steps), the multiple-scattering LUT (32 × 32, 8 × 8 directions × 20 steps, the paper's isotropic second-order
+estimate with the ground bounce and the 1 / (1 − f_ms) series) and the sky-view LUT (200 × 100, horizon-centred
+non-linear latitude, sun-relative azimuth, 32 quadratic steps, Rayleigh + Cornette-Shanks phase, the multiple
+scattering added per step). The medium is the paper's Earth: Rayleigh (5.802, 13.558, 33.1) · 10⁻³ km⁻¹ at 8 km scale
+height, Mie scattering 3.996 · 10⁻³ and extinction 4.44 · 10⁻³ at 1.2 km, an ozone tent (0.650, 1.881, 0.085) · 10⁻³ at
+25 ± 15 km, radii 6360 / 6460 km. The tables rebuild only when the sun or a map's parameters change (the transmittance
+table only when the medium does), keyed exactly; a fourth 8 × 1 float pass — the *summary* — integrates the sky-view
+LUT once per change and is read back to the CPU: the cosine-weighted hemisphere irradiance, the transmittance toward
+the sun, the anti-solar horizon band at 1.25° and at 16.25° (the legacy probe's rows 8 and 14, so round 37's
+elevation falloff comes from the same numbers), the zenith and the sun-side band. Nothing runs per frame but the
+sampling. A CPU twin (`atmosphere.test-support.mjs`) carries the same constants, tables and march; the GPU summary
+agreed with it to 0.2 % on verdant and desert (headless ANGLE), and `atmosphere.selftest` pins the constants in the
+built GLSL, the parameterization round trip, the physical invariants, the mapping and its residuals.
+
+**Where it shows.** On the desktop tier `sky.ts` adds a second dome mesh whose material samples the sky-view LUT
+(`atmoSky`, one 2D fetch), adds the sun disc through the atmosphere's transmittance toward the sun, keeps the legacy
+knee (the disc exempt), the compact sun glow, the dither and the round-22 night sky exactly as before: a night preset
+dims the atmosphere with `skyIntensity` (.08 — a moonlit sky, the moon being the key light the runtime already aims)
+and the starfield, band and moon ride on top, so the night maps and Olympus Basin's galaxy are unchanged. The
+Preetham mesh stays in the scene, invisible, as the mobile tier's dome and as the fallback for a failed readback; the
+receipts that pin the legacy probe and bake are untouched (`?atmosphere=off` boots the legacy path for A/B). The
+environment bakes from the new dome (PMREM of a box sharing its material; the key carries the atmosphere
+parameters; `ENV_INTENSITY_FLOOR` applies as before). The fog colour is the summary's anti-solar band under the same
+luminance ceiling as the legacy probe (0.45), so the FogExp2, the vista's haze, the cloud decks' haze pole and the
+round-42 wall term all follow the rendered sky. The hemisphere light's sky pole takes the hue of the summary's
+irradiance at the engine constant's own luminance (`lighting.ts`), so the authored `hemiIntensity` and every key : fill
+ratio stay as tuned while shaded ground takes the colour of the sky it sits under. The post aerial pass (`post.ts`)
+keeps every distance rule of rounds 5–39 — the extinction and scatter-in curves, the height falloff, the black-point
+guard, the ceilings (0.60 / 0.55), the hue clamp, the detail octaves — and replaces only the scatter-in *target*: with
+the atmosphere active it samples the sky-view LUT along each pixel's view ray (just above the horizon for rays below
+it), so a far range converges to the sky it actually stands against — round 37's rule per pixel instead of one sampled
+ratio — under the legacy horizon ceiling, the authored `fogTintHex` / `fogMix` (the tint following the sky's own
+elevation ratio, as the round-37 falloff scaled the whole target), the directional warm / cool tints, the blue-grey
+hue guard and the far-field cap 0.385. `uAtmo 0` keeps the legacy target byte for byte (the mobile tier). The terrain
+splat material never sees a LUT — it sits at its sixteen texture units; the LUTs are sampled in the dome and the
+post pass only.
+
+**The disc is the ground's fill.** The first captures darkened Verdant's near field 37 % (grass 131 → 81 display
+luma) with the fog, the hemisphere and the environment intensity all unchanged; nulling the environment in-page
+dropped the legacy tree by the same amount. Cause: three's Preetham shader emits the sun disc at sunIntensity ×
+19000 × Fex (~10⁵ after the engine's scale) and the knee exempts it, so PMREMGenerator folds a 2.7 · 10⁻⁴ sr disc into
+the environment's diffuse mip — a shadowless fill of about 0.5 irradiance units (× envIntensity, × the foliage
+materials' envMapIntensity 0.85) that every map's ground was tuned with. The new dome keeps that energy exactly
+(`legacySunDiscRadiance`: Preetham's law with the atmosphere's transmittance in place of Fex, the legacy 0.533°
+half-angle): Verdant's near ground reads 127 against the base's 128.
+
+**Calibration — the mapping.** A map's authored sky keeps its intent; `skyPresetToAtmosphere` reads the fields the
+Preetham dome read. Preetham's Rayleigh coefficient is linear in `rayleigh` and its Mie coefficient linear in
+`turbidity × mieCoefficient` (× the engine's 1.25), so: rayleighScale = 0.7 × rayleigh, mieScale = 40 × turbidity ×
+mieCoefficient × 1.25, mieG = mieDirectionalG (clamped 0.45–0.92), ozone 1, ground albedo 0.25, sun illuminance 8.0,
+viewer height 50 m, the sun from `sunElevationDeg` / `sunAzimuthDeg`. A grid fit (mean |Δ log radiance| per channel
+over 30 directions per map, the 2–20° band weighted twice, the sun's 8° skipped) against the legacy dome on the
+twelve good maps has a flat minimum at 0.6–0.7 / 250–320 (loss 0.325), but that aerosol whitened the anti-solar sky
+the sky views look at; six capture candidates on verdant / desert (`.qa-dev/r65-atmo-probe.mjs --calib`) chose 40 /
+8.0: verdant's sky-w bands 105 / 136 / 174 display luma against the legacy 107 / 135 / 174, at saturation 0.63 against
+0.78 — the ceiling of a Rayleigh sky (a real zenith is blue / red ≈ 3–4 in linear light; Preetham's `pow 1.5`
+reached 9–11). The residual is structural: three's Preetham evaluates its Rayleigh phase at (cos θ · 0.5 + 0.5),
+halving the anti-solar sky, and its in-scatter to the power 1.5 saturates the upper sky and washes the sun's quadrant
+— the white-out the r8 / r9 critics fought; the physical model corrects both. Residuals at the pinned constants: verdant
+0.44, urban 0.51, railyard 0.60, frontier 0.39, delta 0.45, monsoon 0.38, alpine 0.39, foundry 0.45, airfield 0.45,
+orchard 0.40, longleaf 0.38, reservoir 0.39 (mean 0.435). Olympus Basin authors its own thin CO2 sky
+(`atmosphere: { rayleighScale 0.03, mieScale 60, mieG 0.76, ozoneScale 0, mieTintHex 0xe8895a, groundAlbedoHex
+0x9b6a48 }` — Rayleigh at 3 % of Earth's, dust at optical depth 0.32 absorbing blue, a rust bounce); no other map's sky
+block changed, so the Garage copies, `villageWear`, `mangroveWaterPalette` and `badlandsRelief` are unmoved.
+
+| Map | sun el/az | T / rayleigh / mie / g | → rayleigh | → mie (AOD) |
+|---|---|---|---|---|
+| verdant, orchard | 32/115, 28/132 | 4 / 1.2 / 0.006 / 0.82 | 0.84 | 1.20–1.35 (0.006–0.007) |
+| urban | 36/115 | 4 / 1.4 / 0.005 / 0.80 | 0.98 | 1.00 (0.005) |
+| frontier, longleaf, reservoir | 27/121, 24/108, 26/142 | 4.4 / 1.25 / 0.0058 / 0.82 | 0.88 | 1.22–1.28 (0.006–0.007) |
+| airfield | 30/142 | 3.8 / 1.5 / 0.005 / 0.81 | 1.05 | 0.95 (0.005) |
+| delta, mangrove | 38/104, 32/94 | 6.2 / 1.75 / 0.0085 / 0.84 | 1.22 | 2.42–2.64 (0.013–0.014) |
+| monsoon, foundry | 24/124, 25/128 | 7.8 / 2.05–1.35 / 0.012 / 0.88 | 1.43, 0.94 | 4.68 (0.025) |
+| alpine | 16/132 | 4.2 / 2.0 / 0.0052 / 0.78 | 1.40 | 1.09 (0.006) |
+| railyard | 42/115 | 9 / 2.4 / 0.0025 / 0.72 | 1.68 | 1.13 (0.006) |
+| winter, whiteout | 33/115, 13/164 | 7.2 / 2.2 / 0.002 / 0.70 | 1.54 | 0.72 (0.004) |
+| desert, oasis | 44/115, 22/104 | 7–5.2 / 0.85 / 0.009 / 0.80 | 0.59 | 3.15, 2.34 (0.017, 0.012) |
+| titan_gorge, copper_mesa | 34/126, 31/98 | 6.2–5.6 / 1.15–1.1 / 0.008–0.007 / 0.84 | 0.80, 0.77 | 2.48, 1.96 (0.013, 0.010) |
+| skybridge, ruinspires | 25/120, 24/118 | 7.4–7 / 1.22–1.15 / 0.010 / 0.86 | 0.85, 0.80 | 3.70, 3.50 (0.020, 0.019) |
+| caldera, blackglass | 22/116, 18/242 | 8.5–8.4 / 1.15–1.3 / 0.014–0.013 / 0.88 | 0.80, 0.91 | 5.95, 5.46 (0.032, 0.029) |
+| badlands, steppe, polders, fjord, coastal, saltwind, autumn | — | — | 0.73–1.26 | 0.56–3.42 |
+| mars (authored) | 24/122 | night, galaxy | 0.03 | 60 (0.32), dust tint, no ozone |
+
+**Measured (map-view-probe on both trees, 31 maps × sky-w / sky-s / centre-far / bird-w, desktop tier, seed 1337;
+sky boxes: mean display luma / HSV saturation of the upper (rows 60–200 of 720), middle and lower sky bands of the
+1280-px frame; skyline = map-metrics check 5, lower is better).** The good-map tolerance, stated: the anti-solar sky
+band (sky-w, the sun at 115° azimuth) stays within 10 % luminance on verdant (107 → 105), urban (170 → 169), frontier
+(88 → 96), delta (133 → 124), alpine (106 → 109), orchard (92 → 95), reservoir (94 → 93); it brightens on the
+dark-sky presets foundry (45 → 93), monsoon (83 → 121), longleaf (75 → 96) and darkens on the white-sky presets
+railyard (201 → 156) and airfield (139 → 110); saturation moves −0.15 there. The sun-side band (sky-s) darkens 20–35 %
+on every good map (verdant 169 → 116, urban 179 → 131, railyard 214 → 165, alpine 181 → 120) and gains saturation
+(+0.1–0.3): that is the legacy halo wash leaving. The skyline ratios of the good maps are unchanged within ±0.05
+(verdant 0.74 → 0.73, urban 1.00 → 0.98, railyard 0.70 → 0.67, delta 0.80 → 0.79, alpine 1.07 → 1.04, foundry 0.68 →
+0.61, orchard 0.79 → 0.80, reservoir 0.81 → 0.80, monsoon 0.57 → 0.56); the far ranges on centre-far are unchanged
+(copper_mesa 0.66 → 0.67 with the same haze on the mesas). The near ground is unchanged (verdant 128 → 127).
+
+The bland maps gain the gradient: desert 61 → 74 (saturation 0.90 → 0.71, a real sky instead of ink), oasis 34 → 62,
+titan 66 → 79, skybridge 42 → 77, caldera 32 → 85, ruinspires 39 → 78, copper 67 → 89, badlands 41 → 72, each with a
+deep zenith over a paler warm horizon and the ring standing in aerial perspective; and check 5 moves for the first
+time on the arid rings without touching the ring albedo: desert sky-w 1.49 → 1.18, oasis 1.19 → 0.92, titan 1.37 →
+0.95, skybridge 1.66 → 0.94, ruinspires 1.14 → 0.97, copper 1.32 → 1.00, badlands 1.58 → 1.09 — the physical sky above
+the ridges is brighter than the capped Preetham band, so the pale ranges no longer read paler than the sky behind
+them. Mars: unchanged (41 → 42; the galaxy). Winter and Whiteout (round 44, not re-graded): winter sky-w 0.89 → 0.85,
+sky-s 0.87 → 0.90 (both inside the 0.80–0.90 acceptance), centre-far 1.03 → 1.05; whiteout 1.00 → 1.01, 0.88 → 0.93,
+0.94 → 0.95 — the real sky radiance did not create the whiteout skyline; the snow stays on the shoulder above it, which
+is the owner's re-grade call.
+
+**Performance.** Per frame the model costs one 2D fetch in the dome and one in the aerial pass per ground pixel; the
+tables and the summary run once per preset (≈ 1 ms GPU, a synchronous 128-byte readback) under the loading cover.
+The round-59 probe (its copy in `.qa-dev`) at the chase pose, main → base pairs in one process: draw calls and
+triangles identical (verdant 687 / 7.32 M, desert 610 / 4.30 M), programs +7 (the three builders, the summary, the dome
+and its environment variants). The wall-clock rows, new → base, chase CPU / GPU ms with the 1-minute load beside
+them: verdant 14.6 / 38.6 → 15.4 / 43.7 (load 38–56) and 13.8 / 30.4 → 13.0 / 32.3 (64); whiteout 8.6 / 28.0 → 7.6 /
+25.4 (58–64) and 7.9 / 25.5 → 7.1 / 25.2 (54); mars 6.5 / 25.9 → 6.0 / 26.4 (46) and 10.6 / 47.3 → 9.6 / 25.2 (42–45).
+The box ran two foreign suites at load 20–64 throughout this round, where ANGLE's command-buffer timer and the
+main-thread frame are noise-bound (the same mars pair read 47 and 25 ms GPU a minute apart; a base verdant pair read
+51 ms against 15 ms for the new tree in the same minute), so the +0.5 ms GPU / +0.3 ms CPU check against the round-59
+table is not settled by these rows: the per-frame work the model adds is one LUT fetch in the dome and one in the
+aerial pass, and the rows should be re-read at the round-59 load (5–20) before the next deploy.
+
+**Receipts (exit 0).** atmosphere (new), skyEnvironmentCache, skyHorizonCache, skyCloudBake, deviceEnvRadiance,
+aerialDetail, frameLoopScheduler, lateFxColorHandoff, lateFxSceneView, postFrameAccounting, postViewportScale,
+sceneSourcePass, temporalAA, late-fx-matrix.browser, fx/lazyRuntime, garageDressingDrawRange, battleAtmosphereAccess,
+battleAtmosphereRuntime, adaptiveQualityPolicy, quality, garageSkyPresets, garageEnvironmentPresentationRuntime,
+worldActivationRuntime, map-metrics, csmShaderRelease, nearVehicleShadowDetail, shadowGeometryClaims, shadowPrime,
+shadowRefresh, shadowStability, cropBiomeIdentity, cropLighting, grassBladeShape, plasterSurfaceSharing,
+propsResources, vegetationProgramKey, vegetationResources, terrainMaterialOwnership (program key and fetch census
+untouched), horizonResources, horizonMesaSurface, mapQuality, worldBuildCoordinator, wallSkyLight,
+environmentExpansion, villageWear, mangroveWaterPalette, badlandsRelief (no digest moved: Mars sits outside the
+frozen config digests), public-repo-hygiene, attribution, typecheck.
+
+**Open.** The overcast presets (railyard, winter, whiteout, foundry, monsoon) read as a hazy blue day: their white came
+from Preetham's optical-depth saturation, which the physical model replaces with real multiple scattering, and a
+heavy aerosol (mieScale 80–150) would make a flat grey sky at 0.4 luminance while cutting the sun transmittance to
+0.3–0.5 — and with it the disc's environment fill — so it is not the answer; a physically overcast sky is a cloud
+layer, the next lane (volumetric clouds lit by this atmosphere). A per-map `atmosphere.mieScale` override exists if
+the owner wants a milkier sky meanwhile. The sun-side wash of the legacy dome is gone by construction. The calibration
+hook `window.__ATMO_CALIBRATION` (pre-boot) and `?atmosphere=off` stay as QA switches.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -2371,6 +2520,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 61 | Amberford's bridge over the river (round 48's open item): a marsh station authored `crossing: 'bridge'` resolves a level deck plane over the water (terrain.ts, published as `heightField.bridgeDecks` — the span from the river's own wet reach, the deck 2.4 m over the water surface, 7 % approaches; the road plane and the 14–18 m dry band exempted under the span, the bed the river bed, the deck stone); the river kit builds an extruded three-arch body, cutwaters, abutments, wing walls, a level flagged slab and parapets from it and publishes the compound record the ride stands on; the navigation grid routes the crossing's cells through the road axis (deck cells dry at deck height) and the liquid safety reads a deck as dry; the capture tool's `--headless` mode; the shard recaptured on the lane tree (the round-48 shard was stale; census 5873 / 5727 / 5822); the plate re-baked | map-view-probe A/B on bird-n / bird-w and two new round-61 views (bridge-bank-low: three arcs over continuous water with the far bank through each opening, cutwaters, abutments on the banks; bridge-deck-low: a level flagged deck between parapets, flush with both approaches; A: the causeway wall with box recesses on dry gravel); route proof over the deck axis and the ford; structure-support probe (the deck the floor at 2.795 m across the span, the river past the parapet line); battlePacing full 14/124, Amberford 0/4; minimap crops before/after; receipts in the section |
 | 62 | The search for a lost enemy and the empty rack (server/battlePacing 5/124 after round 60): the survivor's 8 s no-contact search re-routed every window to a midpoint inside the blocks (Urban 0 / 2, Ruinspires 3) — search legs are now planned over the match's navigation grid through `deps.planRoute` (both authorities), goals rotate (sector, a sighting under 45 s, objective, a sweep ring whose bearing turns each leg, a wider ring), an unreachable goal is skipped, a leg is given up only on its own evidence, a dead target's sighting is forgotten; the rack is finite (Steppe 1, Saltwind 0): the HE fallback fires only a real HE round whose surface burst is worth a shell, laid on the zone that priced it, the penetration gate's ratio answers the lay error (1.0 at 80 m → 1.15 at 320 m), a lay under the expected-hit-chance bar (tier σ + dispersion vs the silhouette, rising as the rack empties) is closed on rather than taken at a bot or passive target (a live player is fired on as before), an empty rack rams only when the ram law makes it survivable and otherwise retires | full receipt after every change (ledger in the section): 5 → 0 → 0 → 1 → 0 → 1 → 0 → 0 / 124, median 465.5 → 351.4 s, p10 290.1 → 258.8 s, no battle over 720 s, no map longer than its round-60 aggregate but Orchard (+4 s); the 15 s passive dwell measured and kept, the 0.25 conservation threshold measured and dropped; ai.selftest [18]–[21] (planned search legs with and without a planner, no round at an unpenetrable front HE included, the long-range hold and close vs. a live-player control, the empty rack's ram and retirement), the AI / sim / net receipts in the section, typecheck, attribution |
 | 63 | Tarkhan's railway cutting and the bridge's open arches: a spur authors `cutting: { from }` (`railSpurs.ts`) — a 2.4 % bed from the portal, an 8 m floor between 0.7:1 batter faces, dug last on final queries, the exclusion on floor/cess/faces; the siding runs to the map edge (`bufferStop: 'start'`); past the edge the notch opens into a valley along the radial and the height field publishes an outland seat weight the horizon ring seats its near rows on (every other ring byte-identical) with the ring forest off the right-of-way; Amberford's bridge record split into 31 parts that follow the geometry (deck from the crown line, abutments, piers, four vault bands per arch, parapets) so shells pass the openings and the deck stays the floor; both shards recaptured (steppe byte-identical) | headless A/B of the height field (103 corridor samples, 0 road nodes), the outland and the ring rows; map-view-probe A/B on three new cutting views (station 71.7 %, edge 86.8 %, exit bird 84.5 % of the world band moved; the bridge views frame noise); shell traces through every arch at eight heights A/B and the hull-underpass / support probe; battlePacing full 14/124 (Tarkhan 1/4, Amberford 0/4); receipts in the section |
+| 65 | A physically based atmosphere for every battlefield: Hillaire 2020 transmittance / multiple-scattering / sky-view LUTs as fragment passes with a summary readback (`engine/atmosphere.ts`), the desktop dome sampling the sky-view LUT with the sun disc through its transmittance (the legacy disc energy kept: PMREM folds it into the ground's fill), the round-22 night sky and Mars' galaxy on top, the aerial pass targeting the LUT along each view ray (round 37 per pixel), the hemisphere hue from the sky irradiance, the preset → parameter mapping calibrated against the legacy dome on the twelve good maps; Mars authors its thin CO2 sky; the Preetham path kept for the mobile tier | CPU twin vs GPU summary 0.2 %; map-view-probe A/B on 31 maps × 4 views with sky boxes and the skyline metric (good-map anti-solar bands within 10 % on seven, skylines ±0.05; arid check 5 desert 1.49 → 1.18, skybridge 1.66 → 0.94; winter 0.85 / 0.90, whiteout unchanged); eye check of the 1280 px reductions of the eleven bland and four good maps; perf counts identical (+7 programs); the receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts

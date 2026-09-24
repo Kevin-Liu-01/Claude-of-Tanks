@@ -463,6 +463,12 @@ Night sky (round 22, 2026-09-18): the dome shader adds a deterministic starfield
 moon after its intensity multiply whenever the preset dims the dome (`nightAmount`), and the preset knobs
 `nightSky` / `galaxy` / `nebulaHex` / `planetDeg` / `planetHex` let a map ask for a galaxy sky. The cloud
 decks erode thin fringes with their own alpha field (`uEdgeDetail`).
+Physically based atmosphere (round 65, 2026-09-24): on the desktop tier the visible dome, the environment bake, the
+fog colour, the hemisphere light's hue and the post aerial pass's scatter-in target all derive from
+`engine/atmosphere.ts` — Hillaire 2020's transmittance, multiple-scattering and sky-view LUTs rendered as fragment
+passes only when the sun or a map's parameters change, plus an 8 × 1 summary readback; `skyPresetToAtmosphere` maps
+every map's authored sky preset onto the model, the Preetham dome remains the mobile tier's path and the fallback,
+and the terrain material never samples a LUT (it holds its sixteen texture units).
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column
