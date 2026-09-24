@@ -217,6 +217,11 @@ export function chooseAiSupportActionBits(
 ): number {
   const combat = entity?.combat;
   if (!entity || !combat || combat.destroyed) return 0;
+  // Round 60 pacing (2026-09-24, Caldera seed 3): a bot that rolled onto its roof at 20 s lay there for the
+  // rest of the battle — the rollover lifecycle rights a settled hull after five seconds, but the bot's unstick
+  // throttle and steer kept resetting the settle, and no bot ever asked for the self-right a player has. An
+  // overturned hull asks for it (both authorities consume the bit) and finishStep holds its drive still.
+  if (entity.state?.overturned === true) return PLAYER_ACTION_BITS.SELF_RIGHT;
   if (combat.fire?.burning && supportActionReady(entity, 2, timeS)) {
     return PLAYER_ACTION_BITS.EXTINGUISHER;
   }
@@ -982,6 +987,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let passivePressing = false;
   let passivePressRepickS = -1;
   let passivePresses = 0;                    // probe-visible count of press starts
+  let passivePressRepicks = 0;               // probe-visible count of masked press points given up
+  const pressVeto = { x: 0, z: 0, untilS: -1 }; // a press point whose probe found the hull masked
   // geometry-hard blocked commit → follow the authored lane a while
   let laneFallbackUntilS = -1;
   // starved trigger + clear ray → forced clean halt (settled-shot window)
@@ -3789,18 +3796,23 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const nose = target.state.yaw;
     const nearSide = Math.abs(wrapAngle(nose + PASSIVE_PRESS_ASPECT_RAD - bearing))
       <= Math.abs(wrapAngle(nose - PASSIVE_PRESS_ASPECT_RAD - bearing)) ? 1 : -1;
-    for (let k = 0; k < 3; k++) {
-      const a = k === 2 ? bearing : nose + nearSide * (k === 0 ? 1 : -1) * PASSIVE_PRESS_ASPECT_RAD;
-      const x = clamp(tp.x + Math.sin(a) * PASSIVE_PRESS_STANDOFF_M, -470, 470);
-      const z = clamp(tp.z + Math.cos(a) * PASSIVE_PRESS_STANDOFF_M, -470, 470);
-      if (!reachableSpot(x, z)) continue;
-      // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
-      // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
-      const gunY = hf.getHeightAt(x, z) + selfGunM;
-      if (!hasLos(x, gunY, z, tp.x, tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC, tp.z)) continue;
-      pressPoint.x = x;
-      pressPoint.z = z;
-      return true;
+    // two rings (the standoff, then closer), three bearings each: near side, far side, straight in
+    for (let ring = 0; ring < 2; ring++) {
+      const radius = PASSIVE_PRESS_STANDOFF_M * (ring === 0 ? 1 : 0.65);
+      for (let k = 0; k < 3; k++) {
+        const a = k === 2 ? bearing : nose + nearSide * (k === 0 ? 1 : -1) * PASSIVE_PRESS_ASPECT_RAD;
+        const x = clamp(tp.x + Math.sin(a) * radius, -470, 470);
+        const z = clamp(tp.z + Math.cos(a) * radius, -470, 470);
+        if (nowS < pressVeto.untilS && Math.hypot(x - pressVeto.x, z - pressVeto.z) < 12) continue;
+        if (!reachableSpot(x, z)) continue;
+        // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
+        // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
+        const gunY = hf.getHeightAt(x, z) + selfGunM;
+        if (!hasLos(x, gunY, z, tp.x, tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC, tp.z)) continue;
+        pressPoint.x = x;
+        pressPoint.z = z;
+        return true;
+      }
     }
     return false;
   }
@@ -3830,7 +3842,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (timeS >= passivePressRepickS) {
       passivePressRepickS = timeS + PASSIVE_PRESS_REPICK_S;
-      if (!pickPressPoint()) passivePressing = false;
+      // Saltwind seed 3: the casemate stood on its press point with every probed zone masked by the berm the
+      // lane ray had cleared. A point whose probe finds no zone is given up for a while and another is picked.
+      const st = entity.state;
+      const atPoint = Math.hypot(pressPoint.x - st.pos.x, pressPoint.z - st.pos.z) < ARRIVE_DIST_M * 2;
+      if (atPoint && probeMiss && firstAvailableSlot() >= 0) {
+        pressVeto.x = pressPoint.x;
+        pressVeto.z = pressPoint.z;
+        pressVeto.untilS = timeS + 120;
+        passivePressRepicks++;
+        if (!pickPressPoint()) passivePressing = false;
+      }
     }
   }
 
@@ -4114,6 +4136,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       && Math.abs(entity.state.speed) < 1.5
       && Math.abs(input.throttle) < 0.2;
     input.actionBits = chooseAiSupportActionBits(entity, timeS, supportContext);
+    if (entity.state.overturned === true) {
+      // round 60 pacing: on its roof the drive only resets the rollover settle (see chooseAiSupportActionBits)
+      input.throttle = 0;
+      input.steer = 0;
+      input.brake = false;
+    }
     aimAndFire(input, dt, timeS);
     controller.state = mode;
   }
@@ -4404,6 +4432,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       targetPassiveS: target ? +Math.min(targetStillS, nowS - targetLastShotS).toFixed(1) : 0,
       passivePress: passivePressing,
       passivePresses,
+      passivePressRepicks,
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)

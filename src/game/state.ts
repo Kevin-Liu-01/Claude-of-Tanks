@@ -60,7 +60,7 @@ import {
   resolveTankBodyContacts,
 } from '../sim/tankBodyContacts.ts';
 import { tankBodyTopM, tankContactRect } from '../sim/tankContactShape.ts';
-import { stepRolloverLifecycle } from '../sim/rollover.ts';
+import { requestTankSelfRight, stepRolloverLifecycle } from '../sim/rollover.ts';
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
 } from '../sim/ballistics.ts';
@@ -2241,6 +2241,8 @@ function applyBotSupportActions(game: SoloGameState, bus: EventBus): void {
       startMagazineReload(entity.combat, entity.spec);
     }
     if (actionBits & PLAYER_ACTION_BITS.SPECIAL_ACTION) activateSpecialAction(entity);
+    // round 60 pacing: an overturned bot asks for the self-right a player has (the authority does the same)
+    if (actionBits & PLAYER_ACTION_BITS.SELF_RIGHT) requestTankSelfRight(entity.state);
     const readyAt = entity.consumableReadyAt || (entity.consumableReadyAt = [0, 0, 0]);
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
       const bit = 1 << slot;
