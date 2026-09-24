@@ -6576,7 +6576,9 @@ ${snowCap ? `
 
   // Round 67: the animated dressing gets its own mesh (the pivot at the mooring point, the hull's yaw on the mesh, so
   // the frame update rolls and pitches it about its own axes) and leaves the merged wood bucket. One draw call per
-  // moored hull; matrixAutoUpdate stays on for these meshes alone.
+  // moored hull. The world freezes every descendant's matrix after the build and makes the root's updateMatrixWorld
+  // a no-op (map.ts, the static-world governor), so the frame update composes the hull's local and world matrices
+  // itself, as the instanced crush animations write their matrices.
   const mooredHulls: { mesh: THREE.Mesh; y: number; phase: number }[] = [];
   function detachAnimatedDressing(): void {
     for (const record of animatedDressing) {
@@ -7309,9 +7311,13 @@ ${snowCap ? `
       for (let i = 0; i < mooredHulls.length; i++) {
         const hull = mooredHulls[i];
         mooredHullPose(animatedTimeS, hull.phase, _hullPose);
-        hull.mesh.position.y = hull.y + _hullPose.heave;
-        hull.mesh.rotation.x = _hullPose.pitch;
-        hull.mesh.rotation.z = _hullPose.roll;
+        const mesh = hull.mesh;
+        mesh.position.y = hull.y + _hullPose.heave;
+        mesh.rotation.x = _hullPose.pitch;
+        mesh.rotation.z = _hullPose.roll;
+        mesh.updateMatrix();
+        if (mesh.parent) mesh.matrixWorld.multiplyMatrices(mesh.parent.matrixWorld, mesh.matrix);
+        else mesh.matrixWorld.copy(mesh.matrix);
       }
     }
     fxBudget = 6; // per-frame kind-burst cap refill
