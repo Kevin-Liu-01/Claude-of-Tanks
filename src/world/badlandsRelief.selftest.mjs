@@ -211,10 +211,10 @@ function historicalVistaGroundSource(source, file) {
   assert.equal(source.split(current).length, 2, 'oasis.ts: one exact round-29 vista ground line');
   return source.replace(current, "style: 'rolling', treeline: 0.12,");
 }
-// Frosthollow redesign (owner 2026-09-23, "Frosthollow, Amberford and Tarkhan Steppe ... are straight rips of Verdant
-// Field, exact same maps — not good, need redesign"): winter.ts is a new landform by owner decision, not a projection of
-// its historical source.
-for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts') {
+// Round 48 redesigns (owner 2026-09-23, "Frosthollow, Amberford and Tarkhan Steppe ... are straight rips of Verdant
+// Field, exact same maps — not good, need redesign"): winter.ts and autumn.ts are new landforms by owner decision, like
+// the Mars registration, so their sources leave the historical byte projection instead of being projected back.
+for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
     historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(read('src/world/maps/' + file), file), file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),

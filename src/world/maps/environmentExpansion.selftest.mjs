@@ -217,7 +217,8 @@ for (const config of [delta, monsoon, autumn]) {
   let wetSamples = 0, dryFordSamples = 0;
   // Monsoon retains one separate rain-fed roadside pool after its channel.
   const channel = config.id === 'monsoon' ? config.terrain.marshes.slice(0, -1) : config.terrain.marshes;
-  assert.ok(channel.length >= 20 && channel.length <= (config.id === 'autumn' ? 56 : 36),
+  // Amberford redesign (owner 2026-09-23): the diagonal SW->NE river is longer than the round-1 W->E chain (59 stations)
+  assert.ok(channel.length >= 20 && channel.length <= (config.id === 'autumn' ? 64 : 36),
     `${config.id}: continuous river uses a bounded authoring sample count`);
   for (let index = 1; index < channel.length; index++) {
     const a = channel[index - 1], b = channel[index];
@@ -249,17 +250,28 @@ for (const config of [delta, monsoon, autumn]) {
   }
 }
 
-for (const [x, z, radius, dip] of [[-300, -142, 16, 0.8], [-20, -214, 19, 0.9], [140, -202, 16, 0.8]]) {
-  const ford = autumn.terrain.marshes.find(station => station.x === x && station.z === z);
+// Amberford redesign (owner 2026-09-23, round 48): two authored crossings — the BRIDGE narrows under the coach road and
+// the FORD under the manor lane. The river runs SW->NE now, so the widening check measures along the river's own
+// tangent at each crossing (the round-1 check assumed a west-east river and used the x axis).
+const autumnStations = autumn.terrain.marshes;
+for (const [x, z, radius, dip] of [[-20, -68, 18, 1.0], [186, 24, 17, 1.5]]) {
+  const index = autumnStations.findIndex(station => station.x === x && station.z === z);
+  const ford = autumnStations[index];
   assert.ok(ford && ford.r === radius && ford.dip === dip,
-    'Autumn preserves all three authored narrow, shallow ford stations');
+    'Amberford preserves both authored narrow crossing stations (bridge narrows and ford)');
+  // the tangent from the nearest authored neighbours either side (interpolated cells sit between them)
+  const before = autumnStations.slice(0, index).reverse().find(station => station.r === 25 && station.dip === 1.5);
+  const after = autumnStations.slice(index + 1).find(station => station.r === 25 && station.dip === 1.5);
+  const length = Math.hypot(after.x - before.x, after.z - before.z);
+  const tx = (after.x - before.x) / length, tz = (after.z - before.z) / length;
   // Interpolated cells may connect the reach but cannot widen its original
-  // ford cross-section. The radius itself includes the conservative dry bank.
-  for (const station of autumn.terrain.marshes) {
-    const along = Math.abs(station.x - x);
+  // crossing cross-section. The radius itself includes the conservative dry bank.
+  for (const station of autumnStations) {
+    const dx = station.x - x, dz = station.z - z;
+    const along = Math.abs(dx * tx + dz * tz);
     if (along >= station.r) continue;
-    const across = Math.sqrt(station.r ** 2 - along ** 2) + Math.abs(station.z - z);
-    assert.ok(across <= radius + 0.01, `Autumn ford at ${x} was widened by a neighbor`);
+    const across = Math.sqrt(station.r ** 2 - along ** 2) + Math.abs(-dx * tz + dz * tx);
+    assert.ok(across <= radius + 0.01, `Amberford crossing at ${x},${z} was widened by a neighbor`);
   }
 }
 

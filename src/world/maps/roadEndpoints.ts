@@ -39,7 +39,11 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   winter: [through, ['boundary', { junction: 0 }], [{ junction: 0 }, 'boundary'], through, join(0, 3), join(0, 1), join(0, 0)],
   urban: Array.from({ length: 8 }, () => through),
   coastal: [through, through, ['boundary', 'shore'], ['boundary', 'shore']],
-  autumn: [through, through], steppe: [through, through],
+  // Amberford redesign (owner 2026-09-23): the coach road runs edge to edge; the manor lane leaves the cross lanes
+  // and exits north-east; the mill lane leaves the market square west; the sunken lane enters from the west edge and
+  // ends at the cross lanes; the north lane links the square to the manor lane.
+  autumn: [through, [{ junction: 0 }, 'boundary'], [{ junction: 0 }, 'boundary'], ['boundary', { junction: 0 }], join(0, 1)],
+  steppe: [through, through],
   railyard: Array.from({ length: 6 }, () => through),
   frontier: [through, through, through, join(0, 2)],
   fjord: [through, through, through, join(0, 2), join(0, 2)],

@@ -1,82 +1,143 @@
-// src/world/maps/autumn.ts — maps r1: fall-palette river valley (Redshire in
-// October). A fordable river crosses the southern third as a chain of
-// shallow-dip marsh links rendered by the uSea open-water splat mode; the
-// broadleaf forest runs the vegetation hue system in orange/gold; farmland
-// patchwork, hay, and a ruined stone bridge dress the valley floor.
+// src/world/maps/autumn.ts — Amberford: a Norman / English river-ford market
+// town in October. Round 48 (owner 2026-09-23: "Frosthollow, Amberford and
+// Tarkhan Steppe look good and have unique colour schemes but are straight
+// rips of Verdant Field, exact same maps — need redesign"): the battlefield is
+// new — the river runs diagonally south-west to north-east through a
+// floodplain, crossed by the old coach road on a stone bridge below the town
+// and by a shallow gravel FORD (the name) under the manor lane; the walled
+// market town with its church square stands on the higher north bank; a weir
+// and water mill hold the reach upstream; orchards and hedged fields fill the
+// south bank between the river and a sunken lane; a wooded escarpment walls
+// the east; the manor park with its lake lies north-east. The autumn palette,
+// sky, vegetation species, prop tones, minimap and river material are the
+// round-1 identity and are unchanged.
 
 import { createMarshChannel } from './marshChannel.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
-// The river: a W-E chain of shallow channel links routed along LOW ground
-// (DP over the riverless seed-1337 heightfield — the meanders are the
-// terrain's own valleys). dip deepens where the route crosses a saddle so
-// the channel keeps reading; the two authored FORDS pinch it to a wade, and
-// the link at x=-20 sits under the N-S road = the road ford/causeway.
+// The river: SW -> NE. Stations follow the low ground of the seed-1337 field
+// (corridor DP over the marsh-less heightfield, $SP/r48a/analyze.mjs route);
+// r 25 / dip 1.5 is the open river, the two authored CROSSINGS pinch it:
+// the BRIDGE narrows under the coach road and the FORD under the manor lane.
+// Every road crossing is dry by construction (terrain.ts zeroes the water
+// mask within 14 m of a road centreline and grades the causeway), so the
+// river is fordable exactly where a lane crosses it and soft water elsewhere.
 const RIVER_STATIONS = [
-  { x: -460, z: -186, dip: 1.4 }, { x: -420, z: -206, dip: 1.4 },
-  { x: -380, z: -198, dip: 1.4 }, { x: -340, z: -170, dip: 1.6 },
-  { x: -300, z: -142, r: 16, dip: 0.8 },              // WEST FORD
-  { x: -260, z: -134, dip: 1.4 }, { x: -220, z: -122, dip: 2.4 },
-  { x: -180, z: -150, dip: 2.9 },                     // saddle cut
-  { x: -140, z: -170, dip: 1.6 }, { x: -100, z: -166, dip: 1.4 },
-  { x: -60, z: -186, dip: 1.4 },
-  { x: -20, z: -214, r: 19, dip: 0.9 },               // ROAD FORD (N-S lane)
-  { x: 20, z: -214, dip: 1.5 }, { x: 60, z: -218, dip: 1.4 },
-  { x: 100, z: -214, dip: 1.4 },
-  { x: 140, z: -202, r: 16, dip: 0.8 },               // EAST FORD
-  { x: 180, z: -174, dip: 1.7 }, { x: 220, z: -166, dip: 1.5 },
-  { x: 260, z: -166, dip: 1.4 }, { x: 300, z: -166, dip: 1.7 },
-  { x: 340, z: -162, dip: 1.4 }, { x: 380, z: -162, dip: 1.4 },
-  { x: 420, z: -170, dip: 1.4 }, { x: 460, z: -154, dip: 1.4 },
-].map((m) => ({ r: 25, ...m }));
-const FORDS = RIVER_STATIONS.filter(station => station.r < 25);
+  { x: -450, z: -330, dip: 1.4 }, { x: -410, z: -306 }, { x: -370, z: -284 }, { x: -330, z: -266 },
+  { x: -290, z: -246 }, { x: -250, z: -222 }, { x: -212, z: -196 },
+  { x: -176, z: -172 }, // the WEIR reach: the mill stands on the north bank here
+  { x: -140, z: -152 }, { x: -104, z: -134 }, { x: -70, z: -114 }, { x: -40, z: -92 },
+  { x: -20, z: -68, r: 18, dip: 1.0 }, // the BRIDGE narrows (coach road)
+  { x: 14, z: -42 }, { x: 52, z: -20 }, { x: 96, z: -4 }, { x: 140, z: 10 },
+  { x: 186, z: 24, r: 17, dip: 1.5 }, // the FORD (manor lane): the wade over gravel (dip drops the lane to the water)
+  { x: 230, z: 46 }, { x: 272, z: 78 }, { x: 312, z: 118 }, { x: 348, z: 166 },
+  { x: 378, z: 220 }, { x: 402, z: 276 }, { x: 422, z: 332 }, { x: 440, z: 390, dip: 1.3 },
+].map((m) => ({ r: 25, dip: 1.5, ...m }));
+const CROSSINGS = RIVER_STATIONS.filter(station => station.r < 25);
 const RIVER = createMarshChannel(RIVER_STATIONS).map(station => {
   let r = station.r;
-  // New overlaps connect the river, but the north/south crossing section
-  // at each authored ford stays inside its original narrow bank envelope.
-  for (const ford of FORDS) {
-    const along = Math.abs(station.x - ford.x);
+  // New overlaps connect the river, but the crossing section at each authored
+  // narrows stays inside its original bank envelope: a neighbour's circle may
+  // not widen the wade where the lane crosses. Measured along the river's own
+  // tangent at the crossing (the round-1 rule assumed a west-east river).
+  for (const ford of CROSSINGS) {
+    const index = RIVER_STATIONS.indexOf(ford);
+    const previous = RIVER_STATIONS[index - 1], next = RIVER_STATIONS[index + 1];
+    const length = Math.hypot(next.x - previous.x, next.z - previous.z);
+    const tx = (next.x - previous.x) / length, tz = (next.z - previous.z) / length;
+    const dx = station.x - ford.x, dz = station.z - ford.z;
+    const along = Math.abs(dx * tx + dz * tz);
     if (along >= r) continue;
-    const across = Math.max(0, ford.r - Math.abs(station.z - ford.z));
+    const across = Math.max(0, ford.r - Math.abs(-dx * tz + dz * tx));
     r = Math.min(r, Math.hypot(along, across));
   }
   return r === station.r ? station : { ...station, r };
 });
 
+// The walled town on the north-bank rise; its market square is the crossroads
+// where the coach road meets the mill lane and the manor lane.
+const TOWN = { x0: -200, x1: -20, z0: 20, z1: 190 };
+
 export default {
   id: 'autumn',
   name: 'Amberford',
   blurb: 'Fall-gold broadleaf valley, a fording river and hillside farms',
+  // Round 48: bots cross the river at the bridge and the ford only (the open
+  // river is soft water). Reservoir uses the same policy around its basin.
+  navigationWaterPolicy: 'avoid-liquid',
 
   terrain: {
-    hillScale: 1.05,
+    // round 48: a lowland river valley (was 1.05) — the water surface is one graded plane
+    hillScale: 0.8,
     microScale: 1.0,
     rimH: 26,
     marshes: RIVER, // the river IS the marsh chain (soft, wadeable)
     clearMarshVeg: true, // keep the channel clear of tufts; reeds stay on the banks
-    village: { x0: -60, x1: 80, z0: -40, z1: 120, cx: 10, cz: 40, feather: 42, flatten: 0.85 },
+    // the manor lake is liquid water like the river (bogged 'soft'), not an ice pan
+    softLakes: true,
+    lakes: [
+      { x: 140, z: 268, r: 50, depth: 1.2 }, // the manor park lake
+    ],
+    village: { ...TOWN, cx: -110, cz: 100, feather: 40, flatten: 0.80, relief: 0.18 },
+    roads: { paths: [
+      // 0 the old coach road: south edge -> the cross lanes -> the stone bridge -> the market square -> north edge
+      [[300, -470], [262, -380], [200, -280], [120, -170], [13, -103], [-20, -68], [-53, -33], [-90, 40],
+        [-110, 100], [-130, 170], [-150, 240], [-180, 330], [-210, 420], [-240, 470]],
+      // 1 the manor lane: from the cross lanes north over the FORD, past the park to the north-east edge
+      [[120, -170], [204, -20], [186, 24], [168, 68], [165, 110], [215, 190], [270, 270], [320, 360], [350, 470]],
+      // 2 the mill lane: from the market square west along the north bank past the mill to the west edge
+      [[-110, 100], [-180, 60], [-230, 0], [-260, -60], [-300, -120], [-360, -170], [-440, -230]],
+      // 3 the sunken lane: along the south bank between the orchards, from the west edge to the cross lanes
+      [[-470, -400], [-390, -370], [-300, -330], [-210, -290], [-130, -250], [-50, -215], [30, -200], [120, -170]],
+      // 4 the north lane: from the market square east between the hedged fields to the manor gates
+      [[-110, 100], [-30, 140], [60, 165], [140, 180], [215, 190]],
+    ] },
     landforms: [
-      { kind: 'ridge', x: -246, z: 36, length: 320, width: 74, height: 6.6, yawDeg: 10, wetScale: 0.76 },
-      { kind: 'ridge', x: 246, z: 58, length: 306, width: 74, height: 6.2, yawDeg: -12, wetScale: 0.76 },
-      { kind: 'ridge', x: -52, z: 240, length: 212, width: 60, height: 4.8, yawDeg: 76 },
-      { kind: 'knoll', x: 174, z: -272, rx: 88, rz: 66, height: 5.4, yawDeg: 20, wetScale: 0.8 },
-      { kind: 'basin', x: -148, z: -268, rx: 108, rz: 74, height: -2.2, yawDeg: -14, wetScale: 0.88 },
+      // the wooded escarpment along the east (the manor park lies beyond its northern end)
+      { kind: 'ridge', x: 420, z: -80, length: 480, width: 92, height: 11.5, yawDeg: 88 },
+      // the town rise on the north bank: the settlement keeps the whole knoll
+      { kind: 'knoll', x: -110, z: 120, rx: 190, rz: 150, height: 4.2, settlementScale: 1 },
+      // the west spur above the mill reach
+      { kind: 'ridge', x: -320, z: -40, length: 320, width: 84, height: 7.0, yawDeg: 38 },
+      // the south upland the coach road climbs out of toward the player's deployment
+      { kind: 'ridge', x: 180, z: -330, length: 300, width: 96, height: 5.0, yawDeg: 15 },
+      // The river VALLEY: the water is one graded plane (liquidMarshSurface fits a
+      // 0.5 % fall SW -> NE), so the valley floor is sculpted to it — hills the river
+      // cuts through become shallow gorges, hollows are filled to a terrace, and the
+      // banks never stand as levees above the fields. wetScale 1 keeps every form
+      // acting under the channel. Measured on the marsh-less field ($SP/r48a/design.mjs valley).
+      { kind: 'knoll', x: -370, z: -284, rx: 55, rz: 45, height: 2.6, yawDeg: 30, wetScale: 1 },
+      { kind: 'basin', x: -215, z: -200, rx: 130, rz: 75, height: -6.0, yawDeg: 33, wetScale: 1 },
+      { kind: 'knoll', x: -95, z: -140, rx: 95, rz: 60, height: 4.8, yawDeg: 33, wetScale: 1 },
+      { kind: 'knoll', x: -395, z: -335, rx: 90, rz: 60, height: 5.5, yawDeg: 30, wetScale: 1 },
+      { kind: 'knoll', x: -48, z: -98, rx: 55, rz: 45, height: 3.2, yawDeg: 33, wetScale: 1 },
+      { kind: 'knoll', x: -280, z: -180, rx: 50, rz: 40, height: 2.5, yawDeg: 33, wetScale: 1 },
+      { kind: 'knoll', x: 300, z: 50, rx: 60, rz: 45, height: 2.5, yawDeg: 30, wetScale: 1 },
+      { kind: 'basin', x: 55, z: -22, rx: 75, rz: 65, height: -4.5, yawDeg: 20, wetScale: 1 },
+      { kind: 'knoll', x: 140, z: 10, rx: 50, rz: 45, height: 4.0, wetScale: 1 },
+      { kind: 'basin', x: 312, z: 118, rx: 60, rz: 60, height: -6.0, wetScale: 1 },
+      { kind: 'basin', x: 410, z: 300, rx: 110, rz: 70, height: -4.5, yawDeg: 68, wetScale: 1 },
+      { kind: 'basin', x: 436, z: 384, rx: 62, rz: 52, height: -4.0, wetScale: 1 },
+      { kind: 'basin', x: -290, z: -246, rx: 55, rz: 50, height: -3.0, yawDeg: 30, wetScale: 1 },
+      // the FORD: the wade's bed sits at the water plane so the lane dips to a wheel-deep crossing
+      { kind: 'basin', x: 186, z: 30, rx: 60, rz: 45, height: -2.4, yawDeg: 68, wetScale: 1 },
     ],
   },
 
   spawns: {
-    // player south of the river (flat-scanned pad: minNy 0.909, Δh 1.6 over
-    // the ±55 m ally arc): the opening drive fords or bridges the channel
-    player: { x: 210, z: -350 },
-    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc north of the river (the
-    // old verdant-copied list scattered to ±330 x abreast of the village).
-    // Flat-scanned via tools/tmp-ai-r7-spawnscan.mjs — minNy>=0.86,
-    // relief<=5 m, river marsh chain rejected as soft, >=38 m apart,
-    // >=380 m from the player pad.
+    // player on the south-east upland (pad flat-scanned on the full field: minNy 0.885,
+    // relief 3.2 m over 22 m): the opening drive drops to the cross lanes and chooses
+    // the bridge or the ford. The upland is uneven beyond the pad, so the allies deploy
+    // in Reservoir's compact columns instead of the wide lateral arc.
+    player: { x: 330, z: -380, formation: { columnSpacingM: 8, rowSpacingM: 13 } },
+    // one enemy arc north of the town, clear of the coach road and the park
+    // Flat-scanned on the marsh-less field ($SP/r48a/design.mjs pads): minNy >= 0.90
+    // and relief <= 4 m over the 22 m pad, >= 30 m off a lane, >= 45 m apart, >= 800 m
+    // from the player pad, clear of the town rise, the lake apron and the river.
     enemies: [
-      { x: -108, z: 362 }, { x: -187, z: 347 }, { x: -34, z: 388 }, { x: -213, z: 378 },
-      { x: 22, z: 419 }, { x: -222, z: 328 }, { x: 67, z: 420 },
+      { x: -280, z: 370 }, { x: -180, z: 440 }, { x: -120, z: 410 }, { x: -70, z: 360 },
+      { x: -10, z: 370 }, { x: 50, z: 400 }, { x: 150, z: 410 },
     ],
   },
 
@@ -110,8 +171,10 @@ export default {
     clusterMix: [['oak', 0.45], ['aspen', 0.30], ['birch', 0.15], ['poplar', 0.10]],
     loneMix: [['oak', 0.38], ['aspen', 0.32], ['birch', 0.18], ['poplar', 0.12]],
     rimMix: [['oak', 0.38], ['aspen', 0.28], ['birch', 0.18], ['poplar', 0.16]],
-    clusterCount: 68,
-    loneCount: 150,
+    // round 48: the escarpment woods, the hedgerows and the orchard rows are
+    // authored below; the random clusters and lone trees give way to them
+    clusterCount: 50,
+    loneCount: 130,
     rimCount: 95,
     grassDensity: 0.95,
     bushCount: 1.0,
@@ -151,20 +214,77 @@ export default {
         jitterHue: 0.85,
       },
     },
+    // Authored tree lines: the escarpment woods (four staggered ranks along
+    // the east ridge), hedgerows on the field walls of both banks, the poplar
+    // avenue up the manor drive. Belts are real cover (full site rules).
+    belts: [
+      // the wooded escarpment: four staggered ranks along the east ridge
+      { x0: 372, z0: -300, x1: 372, z1: 120, gap: 10, jitter: 5, species: 'oak' },
+      { x0: 390, z0: -310, x1: 390, z1: 130, gap: 9, jitter: 5, species: 'birch' },
+      { x0: 408, z0: -300, x1: 408, z1: 140, gap: 9, jitter: 5, species: 'oak' },
+      { x0: 426, z0: -290, x1: 426, z1: 130, gap: 10, jitter: 5, species: 'aspen' },
+      // the sunken lane: hedgerows 14 m either side of the lane (south side first)
+      { x0: -384, z0: -383, x1: -294, z1: -343, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -396, z0: -357, x1: -306, z1: -317, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -294, z0: -343, x1: -204, z1: -303, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -306, z0: -317, x1: -216, z1: -277, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -204, z0: -303, x1: -124, z1: -263, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -216, z0: -277, x1: -136, z1: -237, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -124, z0: -263, x1: -44, z1: -228, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -136, z0: -237, x1: -56, z1: -202, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -47, z0: -229, x1: 33, z1: -214, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -53, z0: -201, x1: 27, z1: -186, gap: 13, jitter: 2, species: 'oak' },
+      { x0: 34, z0: -213, x1: 124, z1: -183, gap: 13, jitter: 2, species: 'oak' },
+      { x0: 26, z0: -187, x1: 116, z1: -157, gap: 13, jitter: 2, species: 'oak' },
+      // the north lane: hedgerows 14 m either side, east of the town wall
+      { x0: -26, z0: 127, x1: 64, z1: 152, gap: 13, jitter: 2, species: 'oak' },
+      { x0: -34, z0: 153, x1: 56, z1: 178, gap: 13, jitter: 2, species: 'oak' },
+      { x0: 63, z0: 151, x1: 143, z1: 166, gap: 13, jitter: 2, species: 'oak' },
+      { x0: 57, z0: 179, x1: 137, z1: 194, gap: 13, jitter: 2, species: 'oak' },
+      { x0: 142, z0: 166, x1: 217, z1: 176, gap: 13, jitter: 2, species: 'oak' },
+      { x0: 138, z0: 194, x1: 213, z1: 204, gap: 13, jitter: 2, species: 'oak' },
+      // the manor drive: a poplar avenue 13 m either side of the lane up to the park
+      { x0: 176, z0: 103, x1: 226, z1: 183, gap: 14, jitter: 1, species: 'poplar' },
+      { x0: 154, z0: 117, x1: 204, z1: 197, gap: 14, jitter: 1, species: 'poplar' },
+      { x0: 226, z0: 183, x1: 281, z1: 263, gap: 14, jitter: 1, species: 'poplar' },
+      { x0: 204, z0: 197, x1: 259, z1: 277, gap: 14, jitter: 1, species: 'poplar' },
+      { x0: 281, z0: 264, x1: 331, z1: 354, gap: 14, jitter: 1, species: 'poplar' },
+      { x0: 259, z0: 276, x1: 309, z1: 366, gap: 14, jitter: 1, species: 'poplar' },
+    ],
+    authoredTrees: [
+      // orchards on the south-bank terrace between the sunken lane and the river
+      // (rows parallel to the river; rehoused lone oaks)
+      { id: 'west-orchard-lower', species: 'oak', path: [[-300, -307], [-230, -269]], count: 10, width: 0.15 },
+      { id: 'west-orchard-upper', species: 'oak', path: [[-306, -293], [-236, -254]], count: 10, width: 0.15 },
+      { id: 'mid-orchard-lower', species: 'oak', path: [[-125, -212], [-54, -174]], count: 10, width: 0.15 },
+      { id: 'mid-orchard-upper', species: 'oak', path: [[-131, -197], [-61, -159]], count: 10, width: 0.15 },
+      { id: 'east-orchard-lower', species: 'oak', path: [[40, -134], [106, -90]], count: 10, width: 0.15 },
+      { id: 'east-orchard-upper', species: 'oak', path: [[35, -119], [101, -75]], count: 10, width: 0.15 },
+    ],
   },
 
   props: {
-    // world-dressing r1: harvest-farm catalog — farmhouse, granary, chapel
-    plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'barn', 'granary', 'ruin',
-      'cottage', 'barn', 'farmhouse', 'cottage', 'barn', 'granary', 'cottage'],
+    // round 48: a market town's plan — the church and the inn on the square,
+    // a Norman tower keep, the market hall and rows, shops, granaries and
+    // cottages; consumed along the town's three streets, the remainder fills
+    // the blocks between them
+    plan: ['tavern', 'cottage', 'church', 'cornershop', 'market', 'marketRow', 'cottage', 'tower',
+      'granary', 'cottage', 'schoolhouse', 'farmhouse', 'cottage', 'chapel', 'barn', 'cottage',
+      'cornershop', 'cottage', 'ruin', 'cottage', 'granary', 'cottage', 'farmhouse', 'woodshed',
+      'cottage', 'barn'],
+    blockFill: true,
+    monument: true, // the market cross on the square
     destructibleBuildings: ['fieldhut', 'leanto', 'longhouse', 'commandtent'],
     tacticalBeats: [
-      { id: 'western-river-farm', role: 'brawl', x: -254, z: 64, yawDeg: 10,
-        structure: 'longhouse', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },
-      { id: 'eastern-orchard-watch', role: 'scout', x: 246, z: 70, yawDeg: -10,
+      // the inn and yard at the south end of the bridge: the brawl for the crossing
+      { id: 'bridgehead-inn', role: 'brawl', x: -10, z: -135, yawDeg: -50,
+        structure: 'longhouse', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 16 },
+      // the ford watch on the south bank east of the wade
+      { id: 'ford-watch', role: 'scout', x: 240, z: -50, yawDeg: 10,
         structure: 'fieldhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
-      { id: 'northern-supply-camp', role: 'support', x: 24, z: 270, yawDeg: 4,
-        structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+      // the manor park: the headquarters camp on the lawn above the lake
+      { id: 'manor-park-camp', role: 'support', x: 235, z: 320, yawDeg: -110,
+        structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -16 },
     ],
     tones: {
       plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
@@ -176,13 +296,19 @@ export default {
     rockTone: (h: number, s: number, l: number) => [0.10, 0.10, clamp01(l * 0.95 + 0.02)], // mossy grey field stones
     wallStoneChance: 0.4,
     wallRuns: [
-      [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],
-      [-8, 110, 52, 110, 2], [38, -34, 74, -34, 1],
-      // valley-floor field boundaries either side of the river
-      [-186, -62, -118, -62, 3], [148, -196, 148, -132, 2],
-      [-64, 218, 8, 218, 4], [196, 108, 258, 108, 2], [-266, 66, -212, 66, 1],
-      [96, -320, 158, -320, 3], [-40, -240, 30, -240, 2],
-      [180, -80, 246, -80, 1], [-300, -160, -238, -160, 2],
+      // the town wall (gates open where the three streets pass)
+      [TOWN.x0 + 4, TOWN.z0 + 4, TOWN.x0 + 4, TOWN.z1 - 4], [TOWN.x0 + 4, TOWN.z1 - 4, TOWN.x1 - 4, TOWN.z1 - 4],
+      [TOWN.x1 - 4, TOWN.z1 - 4, TOWN.x1 - 4, TOWN.z0 + 4], [TOWN.x1 - 4, TOWN.z0 + 4, TOWN.x0 + 4, TOWN.z0 + 4],
+      // the bridge parapets: 6.2 m either side of the coach road over the narrows
+      [2, -83, -33, -45], [-7, -91, -42, -53],
+      // south-bank field walls: from the sunken lane's hedge toward the river bank
+      [-173, -251, -185, -228, 1], [-82, -209, -97, -176, 1], [12, -185, -2, -112, 2], [89, -161, 56, -63, 3],
+      // north-bank field walls: from the north lane down to the river bank
+      [20, 112, 28, 32, 2], [110, 160, 112, 67, 3],
+      // the manor park wall around the lake's south-west
+      [40, 220, 40, 310, 2], [40, 310, 110, 330, 3],
+      // the mill yard above the weir reach
+      [-176, -128, -120, -104, 1],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 30, rocks: 180, outcrops: 18, craters: 44, rubblePiles: 0,
@@ -194,15 +320,15 @@ export default {
     },
     sandbagLines: 10,
     hedgehogs: 5,
-    cropFields: 7, // the harvest is in — stubble plots + standing rows
+    cropFields: 8, // the harvest is in — stubble plots + standing rows on both banks
     cropForm: 'harvest',
     // world-dressing r1: harvest dressing — stook-heavy fields, wattle yard
     // hurdles, churns + laundry in the farmyards, carts on the lanes
     wallStyle: 'fieldstone',
     inhabit: {
-      stalls: 2, benches: 1, coreClutter: 8,
+      stalls: 4, benches: 2, coreClutter: 10,
       bales: 12, stooks: 14,
-      troughs: 1, churns: 1, laundry: 1, handcarts: 1, carts: 3,
+      troughs: 1, churns: 1, laundry: 1, handcarts: 2, carts: 3,
       roadFence: 'fenceplank', yardFence: 'fencewattle',
       // DESTRUCTIBLES r1: requisitioned farm lorries + roadside camps
       trucks: 3, jeeps: 1, drumClusters: 3, camps: 2,
@@ -233,7 +359,8 @@ export default {
     buildingFill: '#d9cfc0',
   },
 
-  // behind the player cluster looking across the river valley to the village:
-  // ally tanks near-field, water + ford mid-frame, gold forest beyond
-  shot: { pos: [150, 32, -428], look: [10, 4, 40] },
+  // behind the player's deployment on the south-east upland looking down the
+  // coach road over the floodplain: ally tanks near-field, the bridge and the
+  // river mid-frame, the walled town and its church on the rise beyond
+  shot: { pos: [388, 34, -478], look: [-60, 6, 60] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

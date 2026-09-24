@@ -119,9 +119,11 @@ assert.equal(frozen.getWaterMaskAt(80, 30), 0);
 assert.equal(frozen.getWaterMaskAt(-70, -20), 0);
 const frozenGrid = createBotNavigationGrid({ heightField: frozen });
 assert.equal(frozenGrid.blocked.reduce((a, b) => a + b, 0), 0, 'ice adds no liquid-blocked cells');
+// Amberford redesign (owner 2026-09-23, round 48): the river is soft water crossed at the bridge and the ford only, so
+// Amberford joins Reservoir in the dry-route policy; every other map keeps its authored wading.
 for (const id of MAP_IDS) {
   assert.equal(getMapConfig(id).navigationWaterPolicy,
-    id === 'reservoir' ? 'avoid-liquid' : undefined, 'only Reservoir opts in: ' + id);
+    id === 'reservoir' || id === 'autumn' ? 'avoid-liquid' : undefined, 'only Reservoir and Amberford opt in: ' + id);
 }
 
 // Dry nodes can straddle liquid. Cache both cardinal and diagonal sampled
