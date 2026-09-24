@@ -964,6 +964,19 @@ function ringSeaWeight(
   return { weight: sectorWeight, level: opening?.level ?? coast?.level ?? 0 };
 }
 
+/** Round 47: along a ring column, the radius where the bay contour's wetness crosses 0.5 between two radii (bisection). */
+function coastWaterlineRadius(
+  ground: CanyonGround, angle: number, innerR: number, outerR: number,
+): number {
+  const wetAt = (r: number): number => ground.getOutlandWaterAt?.(Math.cos(angle) * r, Math.sin(angle) * r)?.wetness ?? 0;
+  let lo = innerR, hi = outerR;
+  for (let step = 0; step < 10; step++) {
+    const mid = (lo + hi) * 0.5;
+    if (wetAt(mid) >= 0.5) lo = mid; else hi = mid;
+  }
+  return (lo + hi) * 0.5;
+}
+
 function openHorizonToSea(
   ring: HorizonRingGeometry, openings: readonly HorizonSeaOpening[], ground?: CanyonGround,
 ): HorizonSea {
@@ -975,10 +988,47 @@ function openHorizonToSea(
   // Round 47 (2026-09-23): the weight is per vertex — the bay contour near the square, the sector beyond (ringSeaWeight).
   const sea: HorizonSea = { weight: new Float32Array(ring.heights.length), level: new Float32Array(ring.heights.length) };
   if (!openings.length) return sea;
+  const n = HORIZON_SEGMENTS;
   for (let index = 0; index < ring.heights.length; index++) {
-    const angle = ((index % HORIZON_SEGMENTS) / HORIZON_SEGMENTS) * Math.PI * 2;
-    const x = ring.positions[index * 3], z = ring.positions[index * 3 + 2];
-    const { weight, level } = ringSeaWeight(x, z, angle, openings, ground);
+    const angle = ((index % n) / n) * Math.PI * 2;
+    let x = ring.positions[index * 3], z = ring.positions[index * 3 + 2];
+    let { weight, level } = ringSeaWeight(x, z, angle, openings, ground);
+    // Round 47 (2026-09-23): the ring's rows sit 60–120 m apart, the bay's bank band is ~27 m wide, so a vertex caught
+    // in the band lowered by its partial wetness made the face before it climb out of the water 20 m early — a dark
+    // "sea" ramp along every coast. A vertex in the band now moves radially onto the true waterline (bisection on the
+    // contour between its neighbouring rows) and sits on the sea floor; the bank rises from there to the next row.
+    const row = Math.floor(index / n);
+    if (ground?.getOutlandWaterAt && row > 0 && row < ring.rows.length - 1) {
+      const coast = ground.getOutlandWaterAt(x, z);
+      const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+      // the column's last wet vertex before a dry row (the coast weight ruling, not the far sector) moves onto the
+      // waterline; every column gets the same treatment so adjacent columns stay continuous
+      if (coast && coast.wetness >= 0.5 && Math.abs(coast.wetness - weight) < 1e-6 && edgeOut > -8) {
+        const next = (row + 1) * n + (index % n);
+        const nx = ring.positions[next * 3], nz = ring.positions[next * 3 + 2];
+        const wetNext = ground.getOutlandWaterAt(nx, nz)?.wetness ?? 0;
+        if (wetNext < 0.5) {
+          const r = Math.hypot(x, z), rNext = Math.hypot(nx, nz);
+          const waterline = coastWaterlineRadius(ground, angle, r, Math.min(rNext - 3, r + 0.7 * (rNext - r)));
+          x = Math.cos(angle) * waterline; z = Math.sin(angle) * waterline;
+          ring.positions[index * 3] = x; ring.positions[index * 3 + 2] = z;
+          weight = 1; level = coast.level;
+        }
+      } else if (coast && coast.wetness < 0.5 && coast.wetness > 0.03 && Math.abs(coast.wetness - weight) < 1e-6 && edgeOut > -8) {
+        // a vertex on the dry side of the band whose previous row is wet: the waterline lies between them — pull it
+        // back onto the waterline as well so the bank starts exactly there
+        const prev = (row - 1) * n + (index % n);
+        const px = ring.positions[prev * 3], pz = ring.positions[prev * 3 + 2];
+        const wetPrev = ground.getOutlandWaterAt(px, pz)?.wetness ?? 0;
+        if (wetPrev >= 0.5) {
+          const r = Math.hypot(x, z), rPrev = Math.hypot(px, pz);
+          const waterline = coastWaterlineRadius(ground, angle, Math.max(rPrev + 3, r - 0.7 * (r - rPrev)), r);
+          x = Math.cos(angle) * waterline; z = Math.sin(angle) * waterline;
+          ring.positions[index * 3] = x; ring.positions[index * 3 + 2] = z;
+          weight = 1; level = coast.level;
+        }
+      }
+    }
     sea.weight[index] = weight;
     sea.level[index] = level;
     if (weight <= 0) continue;

@@ -134,7 +134,9 @@ const TERRAIN_PLAN = {
     // the sourced Ground093C sand that renders. Pairs with the desert.js sun
     // 3.55 -> 3.30 + fog cut so the establishing midfield keeps texture.
     G: { set: 'sand', tint: [0.88, 0.845, 0.78], roughMul: 1.2 },
-    D: { set: 'sand', tint: [0.74, 0.675, 0.58], roughMul: 1.25 },
+    // round 47 (2026-09-23): the worn variant sits a step closer to the floor (was [0.74, 0.675, 0.58]) — with the
+    // dune faces now clean of it, the floor patches should read as darker sand, not black stains
+    D: { set: 'sand', tint: [0.80, 0.745, 0.66], roughMul: 1.25 },
     // r7: R stays PROCEDURAL (terrain.js makeSandstoneLayer). Rock063's wavy
     // metamorphic veining — magnified by the warm tint — was the swirly
     // "wet-sand" smear on every mesa/canyon wall; the procedural layer is

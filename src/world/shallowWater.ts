@@ -264,7 +264,8 @@ export function createShallowWaterSurface(
       float edgeWet = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uWaterMask, waterUvC).b);
       float wet = mix(edgeWet, 1.0, smoothstep(0.0, 320.0, pastEdgeM));
       if (uOutlandWaterSize > 0.5 && pastEdgeM > 0.0) {
-        float coast = texture2D(uOutlandWater, vWaterWorld.xz / uOutlandWaterSize + 0.5).r;
+        // the same authored ramp the square applies to its mask: the apron ends where the sheet inside would, not up the bank
+        float coast = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uOutlandWater, vWaterWorld.xz / uOutlandWaterSize + 0.5).r);
         wet = max(coast, smoothstep(uOutlandSeaBlend.x, uOutlandSeaBlend.y, pastEdgeM));
       }
       if (wet < 0.015) discard;

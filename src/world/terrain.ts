@@ -20,7 +20,7 @@ import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from '
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
-import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask } from './shoreline.ts';
+import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask, shorelinePhases } from './shoreline.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
 import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
@@ -2519,8 +2519,13 @@ uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
 uniform vec4 uSeaOpenings[4]; // round 40: sea openings past the square (direction angle, half-width, shoulder, 0)
 uniform float uSeaOpeningCount;
-uniform sampler2D uOutlandWater; // round 47: the map's bay contours baked over ±1536 m (R = wetness)
-uniform float uOutlandWaterSize;
+// round 47: the map's bay discs, so the ring faces inside a bay are its water as far as the contour reaches — evaluated
+// analytically (shoreline.ts law) because the terrain material already uses every texture image unit this GPU allows
+uniform vec4 uOutlandDiscs[3];      // x, z, r, waterline start (0.80, or the authored shelf)
+uniform vec4 uOutlandDiscPhase[3];  // plain-disc phases A/B, 1 = authored 16-station contour, the bay's floor level (m)
+uniform float uOutlandRadii[48];    // three authored contours × 16 stations (r fractions)
+uniform float uOutlandDiscCount;
+uniform float uOutlandWaterDepth;   // the map's water depth over the floor (m): a ring face above the surface is shore
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
 float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // r7 axis-triplanar wall basis (set in splatCompute): two FIXED world-axis
@@ -2619,6 +2624,43 @@ float wallNoiseG(float sc, vec2 off) {
 // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): the horizon ring's
 // faces inside a sea opening (edgeWater.ts) render with this material as the square's own open water — the same
 // mask-driven path, deep tint, fresnel and whitecaps — so the sea does not change shader one metre past the edge.
+// round 47: the local shoreline radius of disc i at a ring angle — the authored contour or the same capes and coves
+// shoreline.ts draws for a plain disc (0.80–1.00 envelope)
+float outlandDiscRadius(int i, float angle) {
+  vec4 d = uOutlandDiscs[i];
+  vec4 ph = uOutlandDiscPhase[i];
+  if (ph.z > 0.5) {
+    float turns = angle / 6.28318530718;
+    float sampleAt = (turns - floor(turns)) * 16.0;
+    int station = int(floor(sampleAt));
+    float f = sampleAt - floor(sampleAt);
+    int next = station + 1; if (next >= 16) next = 0;
+    return d.z * mix(uOutlandRadii[i * 16 + station], uOutlandRadii[i * 16 + next], f);
+  }
+  float broad = sin(angle * 3.0 + ph.x) * 0.025;
+  float cove = max(0.0, sin(angle * 5.0 - ph.y));
+  float bank = abs(sin(angle * 11.0 + ph.x + ph.y)) * 0.04;
+  return d.z * min(1.0, max(0.80, 0.99 + broad - cove * cove * 0.12 - bank));
+}
+// the bay contours' wetness at a world point (shoreline.ts shorelineWetness, lake law): 1 inside, 0 past 0.96 r
+float outlandCoastWetness(vec2 xz, vec3 wp) {
+  float wet = 0.0;
+  for (int i = 0; i < 3; i++) {
+    if (float(i) >= uOutlandDiscCount) break;
+    vec4 d = uOutlandDiscs[i];
+    vec2 rel = xz - d.xy;
+    float dist2 = dot(rel, rel);
+    if (dist2 > d.z * d.z * 1.7424) continue;
+    float dist = sqrt(dist2) / max(0.001, outlandDiscRadius(i, atan(rel.y, rel.x)));
+    float t = clamp((dist - d.w) / (0.96 - d.w), 0.0, 1.0);
+    // a face that stands above this bay's water surface is its bank, whatever the contour says (the ring's coarse
+    // rows climb out of the water over a whole face)
+    float surface = uOutlandDiscPhase[i].w + uOutlandWaterDepth;
+    float emerged = smoothstep(surface - 0.05, surface + 0.6, wp.y);
+    wet = max(wet, (1.0 - t * t * (3.0 - 2.0 * t)) * (1.0 - emerged));
+  }
+  return wet;
+}
 // round 47: each opening's .w is the bay contour's reach past the edge (m); the sector opens beyond that reach
 float outlandSeaWeight(vec2 xz, float edgeOut) {
   float angle = atan(xz.y, xz.x);
@@ -2654,10 +2696,12 @@ void splatCompute() {
   // first 120–360 m past the edge, the derived sector carries the open sea beyond it — the coast runs on as itself
   float outlandSea = 0.0;
   if (uSea > 0.5 && uSeaOpeningCount > 0.5 && edgeOut > 0.0) {
-    float coast = texture2D(uOutlandWater, wp.xz / uOutlandWaterSize + 0.5).r;
-    outlandSea = max(outlandSeaWeight(wp.xz, edgeOut), coast);
+    outlandSea = max(outlandSeaWeight(wp.xz, edgeOut), outlandCoastWetness(wp.xz, wp));
   }
-  mk.b = max(mk.b, outlandSea * mix(mk.b, 1.0, smoothstep(0.0, 320.0, edgeOut)));
+  // round 47: on a sea map the ring's wetness past the edge IS the contour/sector — a land face beyond a wet edge
+  // texel used to inherit the clamped mask's water and render as a dark wet slab (the coast's banks and headlands)
+  if (uSea > 0.5 && uSeaOpeningCount > 0.5 && edgeOut > 0.0) mk.b = outlandSea * mix(mk.b, 1.0, smoothstep(0.0, 320.0, edgeOut));
+  else mk.b = max(mk.b, outlandSea * mix(mk.b, 1.0, smoothstep(0.0, 320.0, edgeOut)));
   // r6 terrain_environment: on landform-gated maps (desert) the mask B
   // channel carries the MESA/RIM weight instead of marsh/ice — decode it and
   // zero the marsh weight so none of the wet/ice paths fire on sand.
@@ -2886,8 +2930,15 @@ void splatCompute() {
     n = mix(n, wallNrm(uNrmG, 0.240, df, mipB), triW);
   }
   // dirt patches are an XZ-projected field — on slopes they compressed into
-  // downslope smears ("dirt/grime streaks" critique); steep faces run clean
-  fD *= 1.0 - triW * 0.7;
+  // downslope smears ("dirt/grime streaks" critique); steep faces run clean.
+  // Round 47 (2026-09-23, owner: Sirocco/Sunscar "ground patterns too black"): the 30 % residue left on steep faces
+  // was the darker worn-sand D set drawn along the contour lines of every ring face — the layer-flag probe showed the
+  // dark swirls as the D mask's blend zones. Steep faces now run fully clean; flats keep their patches.
+  fD *= 1.0 - triW;
+  // Round 47 (2026-09-23, owner: Sirocco/Sunscar "the squigglies on the ground are so black"): on the arid maps the
+  // darker worn-sand D set is XZ-projected, so on a dune face its 85 m patches foreshorten into black contour
+  // lines. Arid maps (uSandMacro > 0) keep D on the floor only: it fades from ~9° and is gone by ~28°.
+  if (uSandMacro > 0.001) fD *= 1.0 - smoothstep(0.012, 0.12, slope);
   a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), fD); n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
     a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), seaSand);
@@ -3099,6 +3150,12 @@ void splatCompute() {
               + sin(rphase * 0.55 + texture2D(uNoise, uv * 0.006).g * 4.0) * 1.1
                   * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod)
               * uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
+    // Round 47 (2026-09-23, owner: Sirocco/Sunscar "the squigglies on the ground are so black and so noticeable"): the
+    // uniform-isolation probe pinned the black contour squiggles on this ripple field alone (zeroing uRipple lifted the
+    // dune-face 5th percentile 80 → 119 on Sunscar, 122 → 180 on Sirocco; nothing else moved it). At full amplitude the
+    // ripple crests tilt the normal past the low sun and go black, and on a dune face the planar phase wraps into
+    // contour lines. The tilt is capped (a ripple, not a wall) and the field fades on dune faces from ~5° to ~15°.
+    rw = clamp(rw, -0.34, 0.34) * (1.0 - 0.8 * smoothstep(0.004, 0.035, slope));
     n.xy += wind * rw;
     // r3 terrain_environment: DUNE BEDFORMS that survive the establishing
     // shot. Both ripple octaves above die by 300 m, so the whole central
@@ -3790,6 +3847,25 @@ function* createSplatMaterialSteps(
     texture.generateMipmaps = false; texture.needsUpdate = true; texture.name = 'terrain:outlandWater';
     return texture;
   })();
+  // Round 47: the bay discs the terrain shader evaluates past the square (only when the sea reaches the edge).
+  const outlandDiscs = ((): { discs: THREE.Vector4[]; phases: THREE.Vector4[]; radii: number[]; count: number } => {
+    const discs = Array.from({ length: 3 }, () => new THREE.Vector4(0, 0, 0, 0.8));
+    const phases = Array.from({ length: 3 }, () => new THREE.Vector4(0, 0, 0, 0));
+    const radii: number[] = new Array(48).fill(1);
+    let count = 0;
+    if (splatCfg?.seaLake && seaOpenings.length) {
+      for (const lake of layout.lakes ?? []) {
+        if (count >= 3 || !(lake.r > 0)) continue;
+        const waterline = lake.shelfM !== undefined ? Math.min(0.94, 1 - lake.shelfM / Math.max(1, lake.r)) : 0.80;
+        discs[count].set(lake.x, lake.z, lake.r, waterline);
+        const [phaseA, phaseB] = shorelinePhases(lake);
+        phases[count].set(phaseA, phaseB, lake.radii ? 1 : 0, outlandWaterAt?.(lake.x, lake.z)?.level ?? lake.level ?? 0);
+        if (lake.radii) for (let k = 0; k < 16; k++) radii[count * 16 + k] = lake.radii[k];
+        count++;
+      }
+    }
+    return { discs, phases, radii, count };
+  })();
   function assignSplatBiomeUniforms(shader: MaterialShader): void {
     // maps r1 (ADDITIVE, uSea-gated in the shader — 0 on every pre-existing
     // map): open-water mode. Remaps the wide marsh-mask shore ramp into a
@@ -3799,9 +3875,13 @@ function* createSplatMaterialSteps(
     // round 40: the sea openings past the square (edgeWater.ts) — the ring's faces inside them render as open water
     shader.uniforms.uSeaOpenings = { value: seaOpeningUniforms(seaOpenings) };
     shader.uniforms.uSeaOpeningCount = { value: Math.min(4, seaOpenings.length) };
-    // round 47: the map's bay contours past the square (baked once); the ring faces inside a bay are its water
-    shader.uniforms.uOutlandWater = { value: outlandWaterMask };
-    shader.uniforms.uOutlandWaterSize = { value: OUTLAND_WATER_MASK_SIZE_M };
+    // round 47: the map's bay discs (three at most) so the ring faces inside a bay are its water — uniforms, not a
+    // sampler: the material sits at the 16-unit texture budget
+    shader.uniforms.uOutlandDiscs = { value: outlandDiscs.discs };
+    shader.uniforms.uOutlandDiscPhase = { value: outlandDiscs.phases };
+    shader.uniforms.uOutlandRadii = { value: outlandDiscs.radii };
+    shader.uniforms.uOutlandDiscCount = { value: outlandDiscs.count };
+    shader.uniforms.uOutlandWaterDepth = { value: waterContactProfile(mapId).depthM };
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
@@ -3848,16 +3928,18 @@ function* createSplatMaterialSteps(
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v35'; // round 45: slope grass hold (v33: dune wind field, v32: sky light)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v36'; // round 45: slope grass hold (v33: dune wind field, v32: sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,
   // so the same ten identities remain valid through async loading/reupload.
+  // the first ten owners keep their positions (refreshHorizonGroundTone reads [0] grass and [4] rock albedo); the
+  // round-47 outland bay mask is the eleventh
   return { material: mat, waterMask: mask, waterNormal: wet.normal,
     outlandWater: { texture: outlandWaterMask, sizeM: OUTLAND_WATER_MASK_SIZE_M }, textures: [
-    outlandWaterMask,
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
+    outlandWaterMask,
   ], sourcedReady: sourcedTexturesReady.then(() => undefined, () => undefined) };
 }
 

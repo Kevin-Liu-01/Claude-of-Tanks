@@ -162,8 +162,9 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
   assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v12', 'the program key moved with the fragment');
   // round 47: without a baked bay contour the apron keeps the round-40 ramp; with one, the coast fades past the edge
   assert.equal(probe.uniforms.uOutlandWaterSize.value, 0, 'no contour: size 0 keeps the round-40 ramp');
-  assert.match(probe.fragmentShader, /if \(uOutlandWaterSize > 0\.5 && pastEdgeM > 0\.0\) \{\s*float coast = texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r;\s*wet = max\(coast, smoothstep\(uOutlandSeaBlend\.x, uOutlandSeaBlend\.y, pastEdgeM\)\);/,
+  assert.match(probe.fragmentShader, /if \(uOutlandWaterSize > 0\.5 && pastEdgeM > 0\.0\) \{[^}]*float coast = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r\);\s*wet = max\(coast, smoothstep\(uOutlandSeaBlend\.x, uOutlandSeaBlend\.y, pastEdgeM\)\);/,
     'past the edge the wetness is the bay contour, blended to open sea over the bay reach');
+  assert.match(probe.fragmentShader, /float coast = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, texture2D\(uOutlandWater,/, 'the apron ramps the contour like the square ramps its mask (no translucent band up the bank)');
 }
 assert.equal(water.mesh.material.transparent, true);
 assert.equal(water.mesh.material.depthWrite, false);

@@ -647,6 +647,19 @@ path in the sand branch (`world/terrain.ts`) — are a shader item, not a palett
 Mars' far wall foot (the vista side) stays the darkest thing in frame. Titan's floor now reads a bright ochre
 (canyon-in ground mean 143, w-wall-mid lit 175), inside the arid references (Redrock's lit walls 211) but worth an
 owner look.
+**Sirocco and Sunscar's black squiggles (integrator follow-up, 2026-09-23).** The owner's "squigglies on the ground are so
+black" were not a palette: a uniform-isolation probe (`.qa-dev/uniform-iso-probe.mjs`, one terrain uniform zeroed at a
+time on the live material) left them untouched with the worn dirt, strata, micro relief, sand macro, town wear, shoulder
+dirt and mid relief off, and with FLAT normal maps — and removed them entirely with `uRipple` off (Sunscar dune-face box
+850,380,1500,650: 5th percentile 80 → 119, share of pixels darker than 0.6× the median 4.8 % → 0.7 %; Sirocco 122 →
+180, 3.8 % → 0.3 %). The round-43 dune ripple field tilted the normal past the 22° sun on every crest, and on a dune
+face its planar phase wraps into contour lines. `terrain.ts` now caps the ripple tilt at ±0.34 and fades the field on
+dune faces from ~5° to ~15°; the flats keep their wind-swung ripples. Landed measurement (b51 vs A): Sunscar p5 73 →
+110, dark share 5.6 % → 0.9 %; Sirocco p5 113 → 176, 4.8 % → 0.3 %; lit boxes unchanged. Two smaller items rode along:
+the worn-sand D layer no longer reaches steep faces at all on the arid maps (it fades from ~9° to ~28°; the
+layer-flag probe showed its blend zones as the finer contour lines), and Sirocco's worn-sand tint sits a step closer to
+the floor ([0.74, 0.675, 0.58] → [0.80, 0.745, 0.66]).
+
 ### Mesa ring stack and textured arid skies — 2026-09-23 (round 47)
 
 Owner: on Sirocco Wadi, Titan Gorge, Skybridge Chasm, Sunscar Oasis, Olympus Basin, Obsidian Caldera, Blackglass
@@ -712,16 +725,21 @@ line the water filled a radial wedge and a beach running obliquely toward the bo
 with open water past it; and the sheet apron started on a straight chord.
 
 **Fix.** The map's own bay contours now rule the outland. `terrain.ts` publishes `getOutlandWaterAt(x, z)` (the lake
-discs' wetness and level, analytic, no clamp) and gates the rim lift by the water weight (`rimH × (1 − waterWeight)`,
-also in `outlandHeightAt`); the terrain material bakes the contour over ±1536 m (`uOutlandWater`, 256 texels) and the
-ring faces inside a bay are its water as far as the contour reaches. `horizon.ts` lowers, masks, colours and clears the
-canopy per VERTEX from `ringSeaWeight` — the bay contour near the square, the derived sector beyond each opening's
-`coastReachM` (edgeWater.ts marches the contour outward along the opening's azimuth; the sector fades in from 0.7×
-reach and is open at 1.1× reach + 40 m, so a bay mouth opens straight into the sea; 0 reach keeps the round-40 sector).
-`edgeWater.ts buildOutlandWaterGeometry` replaces the fan with a grid of carrier cells starting on the red line (a shared
-strip rendered the transparent sheet twice as a dark band), and `shallowWater.ts` (program key v12) fades the apron
-along the baked contour (`uOutlandWater`, `uOutlandSeaBlend`) instead of a chord or a cell edge — the first cut without
-that fade drew the coast as a 16 m staircase.
+discs' wetness and level, analytic, no clamp), gates the rim lift by the water weight (`rimH × (1 − waterWeight)`, also
+in `outlandHeightAt`), and evaluates the bay discs analytically in the splat fragment (`uOutlandDiscs`, the shoreline.ts
+capes/coves law or the authored 16-station contour — the material already uses every one of the GPU's sixteen texture
+units, a baked mask did not link): past the edge on a sea map the ring's wetness IS the contour or the derived sector,
+never the clamped edge texel, and a face that stands above the bay's water surface is its bank. `horizon.ts` lowers,
+masks, colours and clears the canopy per VERTEX from `ringSeaWeight` — the bay contour near the square, the derived
+sector beyond each opening's `coastReachM` (edgeWater.ts marches the contour outward along the opening's azimuth; the
+sector fades in from 0.7× reach and is open at 1.1× reach + 40 m) — and every column's last wet vertex before a dry row
+moves radially onto the true waterline (bisection on the contour), so the sea floor runs flat to the coast and the bank
+rises from there; the ring's rows sit 60–120 m apart against a 27 m bank band, and without the snap the face before
+the band climbed out of the water 20 m early as a dark "sea" ramp along every coast. `edgeWater.ts
+buildOutlandWaterGeometry` replaces the fan with a grid of carrier cells from the red line, and `shallowWater.ts`
+(program key v12) fades the apron along the baked contour through the map's own mask ramp (`uOutlandWater`,
+`uOutlandSeaBlend`) instead of a chord or a cell edge — the first cut drew the coast as a 16 m staircase, the second a
+translucent band up the bank.
 
 **Verified (`.qa-dev/wall-probe.mjs` views bird-e-edge, bird-w-edge, bird-e-edge-n, shore-e-oblique, shore-w-oblique,
 edge-e-low, edge-w-low; A = main-check, B3 = this lane; `$SP/r47/shore/`).** Saltwind: the bay lobe continues past the
@@ -736,8 +754,9 @@ list, key v35 and its control, eleven texture owners), `terrainWornDirt`/`wallSk
 `badlandsRelief`, every horizon receipt, `worldBuildCoordinator`, `terrainProjection`, `mapQuality`, `mapIntegration`.
 
 **Still open.** Coastal's and Fjord's bays are still plain circles (an authored `radii` contour like Saltwind's would
-shape the coast inside the square too); the ring's far rows beyond the bay reach keep the sector's straight shoulders
-under the haze.
+shape the coast inside the square too); the strip between two bay discs continues past the edge as a headland with the
+map's full relief (a 28 m block on Coastal at z ≈ 50 where the square keeps a low sand spit); the ring's forested tone
+makes the near coast read darker than the square's own shore in bird views.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 

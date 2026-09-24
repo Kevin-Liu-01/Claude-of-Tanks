@@ -103,7 +103,7 @@ function checkSourceContract(text) {
     'uTintA','uTintB','uTintC','uRoadTint','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
     'uWornDirtStrength','uIceDrift','uMidRelief','uFieldPatch','uRipple','uSandMacro','uIceSky',
     // round 40 (2026-09-22): the sea openings past the square (edgeWater.ts) that the ring's marine faces render as open water
-    'uMidFar','uOutlandWater','uOutlandWaterSize', // round 47 (2026-09-23): the bay contours baked past the square
+    'uMidFar','uOutlandDiscCount','uOutlandDiscPhase','uOutlandDiscs','uOutlandRadii','uOutlandWaterDepth', // round 47 (2026-09-23): the bay discs past the square (uniforms — the material sits at the 16-unit texture budget)
     'uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaRamp',
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
     'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
@@ -115,12 +115,12 @@ function checkSourceContract(text) {
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
   // round 47 (2026-09-23): the baked outland bay-contour mask joins the owners (retained and disposed with the material)
   assert.ok(compact(text).includes(compact(`textures: [
-    outlandWaterMask,
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
-  ]`)), 'the same eleven shader-only texture owners remain registered');
+    outlandWaterMask,
+  ]`)), 'the same ten shader-only texture owners keep their positions ([0] grass, [4] rock feed the horizon ground tone); the outland bay mask is the eleventh');
   // round 42 (2026-09-23): the program cache key moved with the sky-light fragment (was v31, relief pass 2 of 2026-09-12)
-  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v35';/);
+  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v36';/);
 }
 function replaceOnce(text, from, to) {
   assert.equal(text.split(from).length, 2, `unique mutation seam: ${from}`);
@@ -144,5 +144,5 @@ await rejects(replaceOnce(source, nearAlbedo(source), nearAlbedo(source).replace
 await rejects(replaceOnce(source, normalTerm(source, 'gnF'), 'gnF.xy * farM * 0.24'), 'far normal bypass');
 await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('farG *', 'farM *')), 'far albedo bypass');
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
-assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v35', 'world-terrain-splat-v34')));
+assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v36', 'world-terrain-splat-v35')));
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');

@@ -42,13 +42,17 @@ function hash(value: number): number {
   return (value ^ (value >>> 16)) >>> 0;
 }
 
+/** Round 47: the plain disc's two contour phases (the terrain shader redraws the same capes and coves past the square). */
+export function shorelinePhases(disc: ShorelineDisc): readonly [number, number] {
+  const seed = hash(Math.imul(Math.round(disc.x * 16), 73856093)
+    ^ Math.imul(Math.round(disc.z * 16), 19349663));
+  return [(seed & 0xffff) / 65536 * TAU, (seed >>> 16) / 65536 * TAU];
+}
+
 /** Center-seeded capes, coves and smaller bank cuts, inside the authored disc. */
 export function shorelineRadiusAt(disc: ShorelineDisc, angle: number): number {
   if (disc.radii) return disc.r * authoredRadiusAt(disc.radii, angle);
-  const seed = hash(Math.imul(Math.round(disc.x * 16), 73856093)
-    ^ Math.imul(Math.round(disc.z * 16), 19349663));
-  const phaseA = (seed & 0xffff) / 65536 * TAU;
-  const phaseB = (seed >>> 16) / 65536 * TAU;
+  const [phaseA, phaseB] = shorelinePhases(disc);
   // One-sided coves cut into a broad shore instead of inflating matching
   // rounded lobes. Folded banks add corners between those larger inlets.
   // Keep three trig evaluations, 64 shared samples and the same 0.8–1.0
