@@ -31,6 +31,8 @@ import {
   dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
+  RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railRunLength, resampleRailPath, type RailSpurConfig,
+} from '../railSpurs.ts';
 
 type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -76,6 +78,8 @@ interface ShoreLedger {
   keepOut: StrandKeepOut[];
   jetties: StrandJetty[];
   landings: StrandLanding[];
+  /** Round 57: authored rail spurs (terrain.railSpurs, carried by createLayout); the kit lays their track. */
+  railSpurs?: readonly RailSpurConfig[];
 }
 
 interface GroundingReceipt {
@@ -1079,6 +1083,9 @@ export function dressMapExtras({
     spawns: L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined,
     keepOut: shore.keepOut, jetties: shore.jetties, landings: shore.landings,
   });
+  // Round 57 (2026-09-24): authored spurs lay after every kit, so a map that adds one keeps the seeded stream of
+  // its earlier dressing; a map without one draws nothing here.
+  if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
 }
 
 // =============================================================================
@@ -1663,29 +1670,171 @@ function dressLakeRiverLandings(
 
 // =============================================================================
 // maps r1 — RAIL YARD dressing (track fans, buffers, coal heaps, cable drums)
+// round 57 (2026-09-24) — the same track laid along an authored path (../railSpurs.ts): a map's `terrain.railSpurs`
+// reach this kit through the layout, Tarkhan Steppe's grain-station siding first. One span layer serves both: the
+// yards keep their historical lay ('along' — byte-identical spans on their graded ground), authored spurs conform
+// to a plain ('full' — cross-slope roll, every part placed in the span's own frame).
 // =============================================================================
 
-/** Build-time footprint check against the same liquid mask used by water/wakes. */
-export function railSegmentIsDry(
-  heightField: DressingHeightField, x: number, za: number, zb: number,
+/**
+ * Build-time footprint check against the same liquid mask used by water/wakes: the whole ballast width under the
+ * straight span a→b (seven stations across), its slab overhang included (a 0.20 m margin past each end, which
+ * encloses the overhang even after the terrain-following tilt), at the quarter points as well as the ends so a wet
+ * cove between two dry endpoints is caught. For a span laid along +z the stations are the rail yards' original
+ * sample points, number for number.
+ */
+export function railSpanIsDry(
+  heightField: DressingHeightField, ax: number, az: number, bx: number, bz: number, halfWidth = 1.5,
 ): boolean {
   const waterAt = heightField.getWaterMaskAt;
   if (!waterAt) return true;
-  // Cover the 3 m ballast width, not just the rail center. The longitudinal
-  // margin encloses the slab overhang even after its terrain-following tilt.
-  // Quarter points also catch a wet cove between two otherwise dry endpoints.
+  const dx = bx - ax, dz = bz - az, run = railRunLength(dx, dz);
+  if (!(run > 0)) return true;
+  const ux = dx / run, uz = dz / run;   // along the span
+  const nx = uz, nz = -ux;              // across it (screen-right of the heading)
+  const step = halfWidth / 3;
   for (let longitudinal = 0; longitudinal <= 4; longitudinal++) {
-    const z = za - 0.20 + (zb - za + 0.40) * longitudinal / 4;
+    const t = (run + 0.40) * longitudinal / 4;
+    const px = (ax + ux * -0.20) + ux * t, pz = (az + uz * -0.20) + uz * t;
     for (let lateral = -3; lateral <= 3; lateral++) {
-      if (waterAt(x + lateral * 0.50, z) > 0.01) return false;
+      if (waterAt(px + nx * (lateral * step), pz + nz * (lateral * step)) > 0.01) return false;
     }
   }
   return true;
 }
 
-// One rail line: ballast bed + twin rails + sleepers, laid in ~10 m segments
-// that follow the terrain (the yard is near-flat; segments tilt to match).
+/** The rail yards' fixed line (x, za..zb): the span check along +z, the receipts' contract since Skybridge's washout. */
+export function railSegmentIsDry(
+  heightField: DressingHeightField, x: number, za: number, zb: number,
+): boolean {
+  return railSpanIsDry(heightField, x, za, x, zb);
+}
+
+interface RailLay {
+  gauge: number;
+  ballast: number;
+  /**
+   * 'along': the graded yards' historical lay — a span pitches with the ground between its ends, sleepers stay
+   * level at their interpolated heights and the rail / slab offsets are world-vertical (Cinder Junction, Foundry,
+   * Caldera and Skybridge byte-identical). 'full': the span also rolls with the cross-slope and every part is
+   * placed in the span's own frame, so across a plain the sleepers sit on the slab and the rails on the sleepers.
+   */
+  conform: 'along' | 'full';
+  /** Skip spans over the liquid mask (advancing their seeded draws, so the rest of the dressing is unchanged). */
+  washout: boolean;
+}
+
+/** The 'full' lay's ground samples in the slab's own frame (along, across), each ±1 = the footprint's half-extent. */
+const RAIL_FOOTPRINT_SAMPLES: ReadonlyArray<readonly [number, number]> = [
+  [-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, 0],
+];
+/** How far below the fitted plane a 'full' span seats: a fold's residual becomes bedded ballast, not a gap. */
+const RAIL_SEAT_SINK_M = 0.05;
+/** Slab overhang past the span ends (the joints of consecutive tilted slabs stay closed). */
+const RAIL_SLAB_OVERHANG_M = 0.35;
+/**
+ * The 'full' lay's ballast is a deep slab (the yards' is 0.16 m): its top stays at the yards' +0.15 m, so rails
+ * and sleepers sit where they always did, while its sides run 0.26 m below the fitted plane — deeper than the
+ * ground falls away under any corner of Tarkhan's siding (0.13 m at worst, p99 0.12), so no corner shows a gap.
+ */
+const RAIL_SLAB_DEPTH_FULL_M = 0.36;
+
+// One straight span of track: ballast bed + twin rails + sleepers, tilted to the ground between its ends.
 // Soft dressing by contract — hulls roll over the 0.2 m bed like a curb.
+function layRailSpan(
+  buckets: DressingBuckets,
+  rng: Rng,
+  heightField: DressingHeightField,
+  ax: number, az: number, bx: number, bz: number,
+  lay: RailLay,
+): void {
+  const dx = bx - ax, dz = bz - az, run = railRunLength(dx, dz);
+  const ya = heightField.getHeightAt(ax, az), yb = heightField.getHeightAt(bx, bz);
+  const xm = (ax + bx) / 2, zm = (az + bz) / 2;
+  const yaw = Math.atan2(dx, dz);
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  let ym = (ya + yb) / 2, rise = yb - ya, roll = 0;
+  if (lay.conform === 'full') {
+    // The slab is the least-squares plane through seven ground samples of its footprint — the four corners, the
+    // two end centres and the midpoint. The design is symmetric about the midpoint, so the fit decouples into the
+    // mean and the two slopes; seated RAIL_SEAT_SINK_M low, so a fold's residual reads as ballast bedded into the
+    // ground rather than a gap under a corner (Tarkhan's loading face: corners within 0.11 m of the ground, p99).
+    const hl = (run + RAIL_SLAB_OVERHANG_M) / 2, hw = lay.ballast / 2;   // the slab's real footprint
+    let sum = 0, along = 0, across = 0;
+    for (const [u, v] of RAIL_FOOTPRINT_SAMPLES) {
+      const h = heightField.getHeightAt(xm + s * u * hl + c * v * hw, zm + c * u * hl - s * v * hw);
+      sum += h; along += u * h; across += v * h;
+    }
+    ym = sum / RAIL_FOOTPRINT_SAMPLES.length - RAIL_SEAT_SINK_M;
+    rise = along / (6 * hl) * run;                 // Σu² = 6 over the seven samples; the slope times the run
+    roll = Math.atan2(across / 4, hw);             // Σv² = 4
+  }
+  const len = Math.hypot(run, rise);
+  const tilt = Math.atan2(rise, run);
+  const nS = Math.round(len / 1.4);
+  if (lay.washout && !railSpanIsDry(heightField, ax, az, bx, bz, lay.ballast / 2)) {
+    // A drowned siding ends at the bank; the liquid surface is not ground
+    // that can support a paper-thin ballast slab. Advance the original 24
+    // BoxGeometry vertex-color draws plus one jitter draw per sleeper so
+    // surviving dry rails and all later yard dressing remain identical.
+    for (let draw = 0; draw < 24 + nS; draw++) rng();
+    return;
+  }
+  // A part authored in the span's frame (x across, y up, z along): rolled about the track, pitched to the grade,
+  // turned to the heading, seated at the span's midpoint. The 'along' lay applies the offsets after the pitch, in
+  // world axes — the yards' original arithmetic.
+  const place = (part: THREE.BufferGeometry, lx: number, ly: number, lz: number): void => {
+    if (lay.conform === 'full') {
+      part.translate(lx, ly, lz);
+      if (roll !== 0) part.rotateZ(roll);
+      part.rotateX(-tilt);
+      if (yaw !== 0) part.rotateY(yaw);
+      part.translate(xm, ym, zm);
+    } else {
+      part.rotateX(-tilt);
+      if (yaw !== 0) part.rotateY(yaw);
+      part.translate(xm + lx * c + lz * s, ym + ly, zm - lx * s + lz * c);
+    }
+  };
+  // ballast slab — grey crushed-stone vertex paint on the matte 'baked'
+  // bucket (the 'stone' bucket is BRICK on railyard and read as brick beds)
+  const deep = lay.conform === 'full';
+  const bal = box(lay.ballast, deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16, len + RAIL_SLAB_OVERHANG_M, 0.55);
+  {
+    const n = bal.attributes.position.count;
+    const col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const v = 0.040 + rng() * 0.018;
+      col[i * 3] = v; col[i * 3 + 1] = v * 0.98; col[i * 3 + 2] = v * 0.94;
+    }
+    bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  }
+  place(bal, 0, deep ? 0.15 - RAIL_SLAB_DEPTH_FULL_M / 2 : 0.07, 0);
+  (buckets.baked || buckets.stone).push(bal);
+  // twin rails
+  const half = lay.gauge / 2;
+  for (const side of [-half, half]) {
+    const rail = box(0.09, 0.17, len + 0.06, 2.0);
+    place(rail, side, 0.24, 0);
+    buckets.dark.push(rail);
+  }
+  // sleepers every ~1.4 m
+  for (let sI = 0; sI < nS; sI++) {
+    const t = (sI + 0.5) / nS;
+    const sl = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
+    const jitter = (rng() - 0.5) * 0.05;
+    if (lay.conform === 'full') {
+      place(sl, jitter, 0.17, (t - 0.5) * len);
+    } else {
+      const sx = ax + dx * t, sz = az + dz * t, sy = ya + (yb - ya) * t;
+      if (yaw !== 0) sl.rotateY(yaw);
+      sl.translate(sx + jitter * c, sy + 0.17, sz - jitter * s);
+    }
+    buckets.wood.push(sl);
+  }
+}
+
+// One rail line of a yard: the fixed-x spans the yards always laid (a two-point path through the span layer).
 function railLine(
   buckets: DressingBuckets,
   rng: Rng,
@@ -1695,74 +1844,61 @@ function railLine(
   z1: number,
   washoutLiquid = false,
 ): void {
-  const segL = 10;
-  const n = Math.max(1, Math.round((z1 - z0) / segL));
-  for (let k = 0; k < n; k++) {
-    const za = z0 + k * segL, zb = Math.min(z1, za + segL);
-    const ya = heightField.getHeightAt(x, za), yb = heightField.getHeightAt(x, zb);
-    const zm = (za + zb) / 2, ym = (ya + yb) / 2;
-    const len = Math.hypot(zb - za, yb - ya);
-    const tilt = Math.atan2(yb - ya, zb - za);
-    const nS = Math.round(len / 1.4);
-    if (washoutLiquid && !railSegmentIsDry(heightField, x, za, zb)) {
-      // A drowned siding ends at the bank; the liquid surface is not ground
-      // that can support a paper-thin ballast slab. Advance the original 24
-      // BoxGeometry vertex-color draws plus one jitter draw per sleeper so
-      // surviving dry rails and all later yard dressing remain identical.
-      for (let draw = 0; draw < 24 + nS; draw++) rng();
-      continue;
-    }
-    // ballast slab — grey crushed-stone vertex paint on the matte 'baked'
-    // bucket (the 'stone' bucket is BRICK on railyard and read as brick beds)
-    const bal = box(3.0, 0.16, len + 0.35, 0.55);
-    {
-      const n = bal.attributes.position.count;
-      const col = new Float32Array(n * 3);
-      for (let i = 0; i < n; i++) {
-        const v = 0.040 + rng() * 0.018;
-        col[i * 3] = v; col[i * 3 + 1] = v * 0.98; col[i * 3 + 2] = v * 0.94;
-      }
-      bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    }
-    bal.rotateX(-tilt);
-    bal.translate(x, ym + 0.07, zm);
-    (buckets.baked || buckets.stone).push(bal);
-    // twin rails
-    for (const s of [-0.72, 0.72]) {
-      const rail = box(0.09, 0.17, len + 0.06, 2.0);
-      rail.rotateX(-tilt);
-      rail.translate(x + s, ym + 0.24, zm);
-      buckets.dark.push(rail);
-    }
-    // sleepers every ~1.4 m
-    for (let sI = 0; sI < nS; sI++) {
-      const t = (sI + 0.5) / nS;
-      const sz = za + (zb - za) * t, sy = ya + (yb - ya) * t;
-      const sl = box(2.1, 0.09, 0.28, 1.4);
-      sl.translate(x + (rng() - 0.5) * 0.05, sy + 0.17, sz);
-      buckets.wood.push(sl);
-    }
+  const lay: RailLay = { gauge: RAIL_SPUR_GAUGE_M, ballast: RAIL_SPUR_BALLAST_M, conform: 'along', washout: washoutLiquid };
+  for (const span of resampleRailPath([[x, z0], [x, z1]])) {
+    layRailSpan(buckets, rng, heightField, span.ax, span.az, span.bx, span.bz, lay);
   }
 }
 
-// timber-and-steel buffer stop closing a stub track
+// timber-and-steel buffer stop closing a stub track: the beam faces the track (local -z), the struts brace it
+// from behind. `yaw` turns it to the track's heading; the yards' stops keep their historical yaw 0 at both ends.
 function bufferStop(
   buckets: DressingBuckets,
   rng: Rng,
   heightField: DressingHeightField,
   x: number,
   z: number,
+  yaw = 0,
+  gauge = RAIL_SPUR_GAUGE_M,
 ): void {
   const y = heightField.getHeightAt(x, z);
-  for (const s of [-0.72, 0.72]) {
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  for (const side of [-gauge / 2, gauge / 2]) {
     const strut = box(0.18, 1.5, 0.18, 1.4);
     strut.rotateX(-0.5);
-    strut.translate(x + s, y + 0.75, z + 0.3);
+    if (yaw !== 0) strut.rotateY(yaw);
+    strut.translate(x + side * c + 0.3 * s, y + 0.75, z - side * s + 0.3 * c);
     buckets.dark.push(strut);
   }
   const beam = box(2.2, 0.45, 0.28, 1.0);
-  beam.translate(x, y + 1.05, z - 0.05);
+  if (yaw !== 0) beam.rotateY(yaw);
+  beam.translate(x + -0.05 * s, y + 1.05, z + -0.05 * c);
   buckets.wood.push(jitterUV(beam, rng));
+}
+
+// An authored spur: its path in spans of at most RAIL_SPUR_LAY_M (5 m — half the yards' span, so a slab across an
+// open plain's folds neither floats nor buries) that conform to the ground, a buffer stop 0.8 m past the closed
+// end(s) turned to the end span's heading. Every part is soft dressing; the height field's noVeg berth
+// (terrain.ts, railSpurs.ts) keeps vegetation and scattered props off the line before this runs.
+function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurConfig[]): void {
+  const { heightField, rng, buckets } = ctx;
+  for (const spur of spurs) {
+    const lay: RailLay = {
+      gauge: spur.gauge ?? RAIL_SPUR_GAUGE_M, ballast: spur.ballast ?? RAIL_SPUR_BALLAST_M,
+      conform: 'full', washout: true,
+    };
+    const spans = resampleRailPath(spur.path, RAIL_SPUR_LAY_M, true);
+    for (const span of spans) layRailSpan(buckets, rng, heightField, span.ax, span.az, span.bx, span.bz, lay);
+    if (!spur.bufferStop || spans.length === 0) continue;
+    const closeEnd = (from: { ax: number; az: number }, to: { bx: number; bz: number }): void => {
+      const dx = to.bx - from.ax, dz = to.bz - from.az, run = railRunLength(dx, dz);
+      const ux = dx / run, uz = dz / run;
+      bufferStop(buckets, rng, heightField, to.bx + ux * 0.8, to.bz + uz * 0.8, Math.atan2(ux, uz), lay.gauge);
+    };
+    const last = spans[spans.length - 1], first = spans[0];
+    closeEnd(last, last);
+    if (spur.bufferStop === 'both') closeEnd({ ax: first.bx, az: first.bz }, { bx: first.ax, bz: first.az });
+  }
 }
 
 const RAIL_YARD_LINES = [

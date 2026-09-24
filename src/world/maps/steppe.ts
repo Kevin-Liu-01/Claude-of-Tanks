@@ -108,6 +108,13 @@ export default {
       { x: 60, z: 90, width: 60, length: 60, yawDeg: 0, level: 2.2, grade: 0 },
       { x: 292, z: 312, width: 58, length: 58, yawDeg: 0, level: 7.5, grade: 0 },
     ],
+    // Round 57 (2026-09-24): the grain station's rail spur (railSpurs.ts; maps/mapKits.ts lays the track). One
+    // siding along the elevator row's loading face — 7 m north of the long store's back wall, past the head
+    // tower and the granaries, a level crossing over the east track — from a buffer stop west of the store to a
+    // second stop at the foot of the eastern rim band (the ground twists up from x ≈ 446): the station road
+    // climbs that rim at 24 % and no rail grade reaches the edge (a cutting through the rim is terrain work,
+    // not dressing). The height field keeps vegetation and scattered props 3.6 m off the centreline.
+    railSpurs: [{ path: [[144, -181], [440, -181]], bufferStop: 'both' }],
     // Gravel: the wadi bed is bare worked ground (the D layer's pale dusty dirt)
     // between the banks; the station forecourt and the kolkhoz yard are trodden.
     workedGround: [

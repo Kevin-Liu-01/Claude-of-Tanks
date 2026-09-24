@@ -271,6 +271,13 @@ function historicalHeightFieldSource(text) {
     [`    // Field trenches on every standard field (2026-09-17), also on the assault variant clear of its sector lines.
     fieldTrenchLines: fieldTrenchPlan(),
 `, ''],
+    // Round 57 (2026-09-24): the authored rail spur's berth joins the vegetation/prop exclusion (railSpurs.ts) — a
+    // declared addition projected out of the HISTORICAL hash only; heights are untouched (railSpurs.selftest
+    // certifies the berth and the track the kit lays on it).
+    [`  const railSpurNoVeg = createRailSpurExclusion(T.railSpurs); // round 57: the spur's berth joins noVeg below
+`, ''],
+    [`    if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
+`, ''],
   ]) {
     assert.equal(text.split(current).length, 2, 'each declared historical delta occurs exactly once');
     text = text.replace(current, historical);

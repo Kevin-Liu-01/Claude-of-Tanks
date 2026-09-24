@@ -25,6 +25,7 @@ import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, 
 import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
+import { createRailSpurExclusion, type RailSpurConfig } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
@@ -181,6 +182,8 @@ interface TerrainSettings {
   softLakes?: boolean;
   clearMarshVeg?: boolean;
   hardstands?: readonly HardstandConfig[];
+  /** Round 57 (2026-09-24): authored rail spurs — maps/mapKits.ts lays the track, the berth keeps vegetation and scattered props off it. */
+  railSpurs?: readonly RailSpurConfig[];
   workedGround?: readonly WorkedGroundPatch[];
   /** Use authored activity footprints instead of blanket settlement wear. */
   villageWear?: 'activity-patches';
@@ -259,6 +262,8 @@ export interface TerrainLayout {
   spawns: SpawnConfig;
   roads: RoadLine[];
   roadStations?: (RoadStationOrigin | null)[];
+  /** Round 57: the authored rail spurs, carried to the dressing kit like the lake discs; absent when the map lays none. */
+  railSpurs?: readonly RailSpurConfig[];
   terrain: TerrainSettings;
 }
 
@@ -609,6 +614,8 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     spawns: { player, enemies },
     roads: completed,
     ...(roadStations ? { roadStations } : {}),
+    // Round 57 (2026-09-24): authored rail spurs ride the layout to the dressing kit; no key on a map without one.
+    ...(t.railSpurs?.length ? { railSpurs: t.railSpurs } : {}),
     terrain: t,
   };
 }
@@ -731,6 +738,7 @@ function* heightFieldBuildSteps(
   const T = layout.terrain;
   const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;
   const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);
+  const railSpurNoVeg = createRailSpurExclusion(T.railSpurs); // round 57: the spur's berth joins noVeg below
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
   const _LAKES = layout.lakes;
@@ -1645,6 +1653,7 @@ function* heightFieldBuildSteps(
 
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x: number, z: number): boolean {
+    if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
     for (const lk of _LAKES) {
       if (lk.radii) {
         if (shorelineDistance(lk, x, z, 1.04) < 1.04) return true;

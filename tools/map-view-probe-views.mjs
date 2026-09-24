@@ -62,6 +62,13 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   view('strand-e-low', 56, [320, 4, -99], [329, 0, 18]),
   view('strand-fjord-low', 56, [302, 4, 38], [303, 0, 102]),
   view('strand-w-low', 56, [-305, 4, 67], [-315, 0, -47]),
+  // round 57 (rail spur kit): Tarkhan's grain-station siding at gameplay height — along the loading face from the
+  // west stub, the level crossing over the east track from the north-east — and from a bird view over the station;
+  // Cinder Junction's siding fan low from inside the yard, at the south buffers of its x = 58 line
+  view('spur-station-west', 57, [126, 3, -176], [300, 0, -181]),
+  view('spur-crossing', 57, [312, 4, -152], [252, 0, -190]),
+  view('spur-bird', 57, [294, 190, -330], [294, 0, -181]),
+  view('yard-fan-low', 57, [58, 3.5, -218], [58, 0, -40]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */
