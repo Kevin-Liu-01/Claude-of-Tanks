@@ -519,9 +519,9 @@ const STALEMATE_PUSH_S = 8;      // duration of one forced push window
 const PEN_DENIED_FLANK_S = 8;
 // Round 60 pacing (2026-09-24): the last bot against a PASSIVE target — see updatePassivePress. A target whose
 // hull has held still and whose gun has stayed silent this long is pressed to a point-blank side aspect.
-const PASSIVE_TARGET_STILL_S = 15;
-const PASSIVE_TARGET_SILENT_S = 15;
-const PASSIVE_PRESS_NO_PEN_S = 15;     // this bot's own shells have not penetrated it for this long
+const PASSIVE_TARGET_STILL_S = 20;
+const PASSIVE_TARGET_SILENT_S = 20;
+const PASSIVE_PRESS_NO_PEN_S = 20;     // this bot's own shells have not penetrated it for this long
 const PASSIVE_PRESS_STANDOFF_M = 70;   // the press point's distance from the target
 const PASSIVE_PRESS_ASPECT_RAD = 1.3;  // ~75° off the target's nose: a side plate, not a glacis
 const PASSIVE_PRESS_REPICK_S = 3;
@@ -551,7 +551,7 @@ const PEN_GATE_NEAR_M = 80;                // shell on the plate beside the one 
 const PEN_GATE_FAR_M = 320;                // on the M1A2's lower front from 50 m, every round a non-pen)
 const HE_SPLASH_WORTH_HP = 80;             // an HE fallback round must be worth this much surface burst
 const HE_ARMOR_ABSORB_PER_MM = 1.1;        // damage.ts HE_ARMOR_ABSORB (the surface-burst law)
-const CONSERVE_HIT_CHANCE_FULL = 0.25;     // hold fire under this expected hit chance with a full rack…
+const CONSERVE_HIT_CHANCE_FULL = 0.35;     // hold fire under this expected hit chance with a full rack…
 const CONSERVE_HIT_CHANCE_EMPTY = 0.6;     // …and under this one with the last rounds
 const CONSERVE_CLOSE_MARGIN = 0.1;         // close until the chance clears the threshold by this much
 const RAM_APPROACH_EFFICIENCY = 0.85;      // closing speed reached over a straight run, as a share of top speed
@@ -1063,6 +1063,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // round 62 pacing: the ammunition economy — expected hit chance, the HE fallback's worth, the empty rack
   let heWorth = false;                       // the HE fallback round would burst for HE_SPLASH_WORTH_HP or more
   let heBurstBest = 0;                       // best surface-burst estimate of the HE slot in the last probe pass
+  let heBurstHFrac = 0.5;                    // the zone that estimate was made on: the fallback round is laid there
+  let heBurstLatFrac = 0;
   let hitChance = 1;                         // expected hit chance of the current lay (tier error + dispersion)
   let conserving = false;                    // holding fire at a bot / passive target the lay is unlikely to hit
   let conserveHolds = 0;                     // probe-visible count of ticks a loaded gun held fire to conserve
@@ -1689,7 +1691,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         stackMm = info.plate.physicalMm || 0;
       }
       const burst = 0.5 * (shell.dmg || 0) - HE_ARMOR_ABSORB_PER_MM * stackMm;
-      if (burst > heBurstBest) heBurstBest = burst;
+      if (burst > heBurstBest) {
+        heBurstBest = burst;
+        heBurstHFrac = heightFraction; // the fallback round is laid on THIS zone, not on centre mass (Alpine
+        heBurstLatFrac = lateralFraction; // seed 0: eleven HE rounds into a turret cheek the lower plate had priced)
+      }
     }
     const score = Math.min(ratio, 1.6) - slot * 0.08 -
       Math.abs(lateralFraction) * 0.02;
@@ -1755,7 +1761,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!slotHasAmmo(chosenSlot)) chosenSlot = firstAvailableSlot();
     penGateOk = false;
     if (probeResult.score > -Infinity) {
-      aimHFrac = 0.5;
+      aimHFrac = heWorth ? heBurstHFrac : 0.5;
+      aimLatFrac = heWorth ? heBurstLatFrac : 0;
       cachedPenRatio = probeResult.ratio;
       probeMiss = false;
       return;
@@ -1792,6 +1799,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     resetProbeResult();
     probeVisible.fill(0);
     heBurstBest = 0;
+    heBurstHFrac = 0.5;
+    heBurstLatFrac = 0;
     const distance = currentTargetDistance();
     for (let slot = 0; slot < spec.gun.shells.length; slot++) {
       const shell = spec.gun.shells[slot];
@@ -3970,8 +3979,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       }
       return;
     }
-    const maySearch = timeS >= deploymentUntilS && timeS - lastFiredAtS > 25;
-    if (!maySearch) return;
+    const maySearch = timeS >= deploymentUntilS && timeS - lastFiredAtS > 25 && !emptyRack; // an empty rack
+    if (!maySearch) return;                                                                   // retires, it does not hunt
     const enemy = nearestLivingEnemy();
     if (!enemy) return;
     if (!searching) beginSearchLeg(enemy, timeS);
