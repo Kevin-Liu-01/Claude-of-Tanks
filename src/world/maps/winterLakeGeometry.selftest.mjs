@@ -36,19 +36,19 @@ const before = {
   // no longer exist for this layout: REDESIGNED maps use the current construction as a <= ceiling instead of a strict
   // decrease; every V25 byte digest below still freezes the geometry.
   'winter:1337': [19174, 0.3313116473145783, 51591, 189504, 2029920, 1890, 1267,
-    'a4c11d2781bf07ab81a78cb634e1914e9c93ff58b333055d03b354843a05d854'],
+    '2d8513e99bba65f2220cfc89fcd546c4a2992166db8d1a5d0ade52ae2458f7fb'], // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
   'alpine:1337': [10378, 0.27826393325813115, 35335, 89928, 1310576, 1159, 766,
     'eea867263c832df686d2925e25f61cd3c04677aa24a998aff18e41aa1c557a7b'],
   'whiteout:1337': [4791, 0.15170386852696538, 17241, 46296, 644304, 545, 398,
     '38cfcd31faee449edfad642cfeb5e1e20764c993ed76b332214abebd66f202f0'],
   'winter:2049': [19122, 0.9387341272085905, 52208, 190812, 2052280, 1936, 1306,
-    'e20acff05a16d5af6c97c92121aa8d0b3fa2710d0511e7046810c705c7435941'],
+    'a388b282ac1c24925324fcfb29d470aa74414704201c8cdf8999254127873d3d'], // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
   'alpine:2049': [9926, 0.624271342298016, 34394, 86724, 1274056, 1135, 799,
     '19059a82fc22b6f58e8c7b07e6b82e9b9e79afaddd51d7e0a0e462e500417812'],
   'whiteout:2049': [4988, 0.5925797368399799, 17142, 45072, 638688, 550, 370,
     '90493b7e5c13b7360fbf45f424c9929bc78ad39c1a525558b75e9508182885e6'],
   'winter:7719': [18962, 0.35612212866544724, 51291, 188904, 2019120, 1880, 1268,
-    '4d047f89286c08c39c551fd66c591794f86f1bb0593dbc3476686ad90a65ef61'],
+    'c1a5b73bdb570f0abdbc09bfe46683eadae4befa0b976ac594e279452a4ba068'], // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
   'alpine:7719': [10164, 0.26666903169825673, 33378, 82332, 1232760, 1117, 720,
     'badc49560ba02fb2672f3af45784017cf619fdcc2491cf09decf35bce8f9d406'],
   'whiteout:7719': [4839, 0.0683232310693711, 16877, 44316, 628696, 542, 383,
@@ -75,8 +75,8 @@ const bermRowsBefore = {
 // enforce identical support, placement and yaw, not just a metadata census.
 const fragmentBefore = {
   'winter:1337': [51591, 189504, 2029920, 1890, 351, // 2026-09-23: the Frosthollow pond chain
-    '45fadf4b851f629b3d2ef11e12e4427bf988915e6679d89fcd34e8162bdc1d2e',
-    '6fb3f72f54d30caa50a7c7af86a81731efb13ac0cd981809e8fa2bf6317aa5c6'],
+    'f6207af6cfb0c2ea53472a4e1e607c62320460029f920596e748cb2300780212', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+    'a6b61b31336183762c5cc1426194ba249d82b56f01993ae6f210a97085598e16'], // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
   'alpine:1337': [26155, 88752, 1014464, 1088, 188,
     '52b535a6ccc7154144491918c88821873127d6d7569366a40edf80cf016284a3',
     '405c02c91ffdbefba7d20fa554b073de241ff4f02bb1c3d1bfae289ea56dfa5b'],
@@ -84,8 +84,8 @@ const fragmentBefore = {
     '71f462ecf68d2fd2642269c5a3783c875789788778f70b8eeca9549c72f42946',
     '3eed2881f5f9fd054494611c8ee73328ad16523a55dec14377901f3dd7bd7402'],
   'winter:2049': [52208, 190812, 2052280, 1936, 357,
-    '244227d496910450d77e7b4a19fd621261f0e317302ce686e4e30b4f796d4256',
-    '279349da5e2ebb2d229b292cb97df6ce844fab1da597a855bb8dfcc71ac6584a'],
+    'c3cd7404053ebae19f1a5318137b0ab456d0f529eb47cbba353b92efc0761254', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+    '4698196d5c6085089026bac883b3d54c695ede82f425a2f8332b1408fea6afbd'], // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
   'alpine:2049': [24998, 85620, 971176, 1070, 142,
     '52988c1c45e95d71dd714aa2e203f236efcba90d37ed40f21c95e3b2128acce4',
     '05f96cc8aa0b3c43aaf32251377cebdf690004300d077492ded73e7c6bd4bca1'],
@@ -93,8 +93,8 @@ const fragmentBefore = {
     'f8d129718335deb35d54fac3d93a070a9d6e880b7f038cead96992c8b020dabe',
     '15aa76e3ee5c8b9f1a1416d2beed0315f642fd606e3ab07ce49ece65aa4a42a2'],
   'winter:7719': [51291, 188904, 2019120, 1880, 340,
-    '3cd663a261444f27ece61af7deda509a7a3f73a9d9a0f20258aa7a1f379b80c9',
-    '7a3c74266969bff4010d96386ef671cdc6f5c09950be3c2b92d530e4b4943b52'],
+    'e4d53587c75bf642332e646d0772d94cc1fa7929cdb3dbc186ad7c4ccfc3c7c8', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+    '9da473add1d9d426b0642bf02bcc5c2109cbff3c676ee1ad9aed3b086b7dd25b'], // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
   'alpine:7719': [24772, 81228, 955160, 1052, 211,
     'eddc3fce0b27dd32bf93863ab129392d80739d10e60dcca9ad7a6d95693a2a3e',
     'f7d93b9cbf7c438e97e0d14bd1813f3a042132e64d075a07d1f660943223da39'],
@@ -108,9 +108,9 @@ const fragmentBefore = {
 // Driftwood is unchanged from published1db.
 // Frozen rowboats and the nine Winter-family controls above are unchanged.
 const otherHashes = {
-  1337: '05d2d874617e898265d3eefc2bb3525f91b07a99f9023e68f1ca4c6848142217' /* 2026-09-19: Mars joins the non-Winter kits */,
-  2049: 'b16a5bda643e2e197246abd138fb23a720698fd9880cc43b7074d3484b27881c',
-  7719: 'e7cfdc9b1d1153159902989c01ada9cce62939104e3960306f49451fa58b5b5e',
+  1337: '5d345ccddc899b7771906f739cf56df15194eeb739bec2e92993b9d9d50387c1' /* 2026-09-19: Mars joins the non-Winter kits */,
+  2049: 'e0974b8597c067b9424fb35c4253587d220a465c9e6fab29100d5b0c31612f91', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+  7719: '983bc762e66b7a54202717f66350c80f6a2a092a34d822aacb38a6bfa37a27a1', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
 };
 
 function build(mapId, seed, historical = true) {
