@@ -519,9 +519,9 @@ const STALEMATE_PUSH_S = 8;      // duration of one forced push window
 const PEN_DENIED_FLANK_S = 8;
 // Round 60 pacing (2026-09-24): the last bot against a PASSIVE target — see updatePassivePress. A target whose
 // hull has held still and whose gun has stayed silent this long is pressed to a point-blank side aspect.
-const PASSIVE_TARGET_STILL_S = 20;
-const PASSIVE_TARGET_SILENT_S = 20;
-const PASSIVE_PRESS_NO_PEN_S = 20;     // this bot's own shells have not penetrated it for this long
+const PASSIVE_TARGET_STILL_S = 15;
+const PASSIVE_TARGET_SILENT_S = 15;
+const PASSIVE_PRESS_NO_PEN_S = 15;     // this bot's own shells have not penetrated it for this long
 const PASSIVE_PRESS_STANDOFF_M = 70;   // the press point's distance from the target
 const PASSIVE_PRESS_ASPECT_RAD = 1.3;  // ~75° off the target's nose: a side plate, not a glacis
 const PASSIVE_PRESS_REPICK_S = 3;
