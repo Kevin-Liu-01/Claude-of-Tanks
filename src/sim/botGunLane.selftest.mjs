@@ -64,10 +64,13 @@ assert.equal(JSON.stringify({ shooter, target }), before, 'probe does not mutate
 
 // Controller integration: a low berm leaves the turret eye visible. Pin
 // translation to isolate the trigger, then remove the berm without changing
-// RNG, ammunition, reload, accuracy, or the controller instance.
+// RNG, ammunition, reload, accuracy, or the controller instance. Round 60
+// (2026-09-24): the weak-spot probe now scores only zones the gun can reach and
+// falls back to the visible turret, which pitches the muzzle up enough to clear
+// a 2 m berm; 2.4 m keeps the eye clear (2.8 m) and every muzzle lane blocked.
 let bermPresent = true;
 const berm = { ...flat, getHeightAt: (x, z) => bermPresent && Math.abs(x) < 5
-  ? 2 * Math.exp(-(((z - 20) / 4) ** 2)) : 0 };
+  ? 2.4 * Math.exp(-(((z - 20) / 4) ** 2)) : 0 };
 const bermWorld = createHeadlessCollisionWorld({ heightField: berm, manifest: empty });
 const bot = entity('bot', 'm1a2', [0, 0, 0]);
 const opponent = entity('target', 'm1a2', [0, 0, 80]);

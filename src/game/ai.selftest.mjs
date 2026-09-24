@@ -389,4 +389,108 @@ if (failures) {
   console.error(`ai.selftest: ${failures} failure(s)`);
   process.exit(1);
 }
+console.log('[14] round 60: a passive target is pressed to a point-blank side aspect; an active one is not');
+{
+  // The idle host of server/battlePacing: a hull that never moves and a gun that never fires. The flanker's
+  // deployment discipline holds a 220 m contact until 135 s; the target then has to prove passive for 15 s and
+  // the bot's shells have to have failed for 15 s more before the press can begin.
+  const press = (targetFires) => {
+    const bot = entity('press-bot', 'm1a2', 'player', 0, 0);
+    const still = entity('still', 't90m', 'enemy', 0, 220, Math.PI); // nose on the bot: a front aspect
+    const ctl = controller(bot, [still], [], 77);
+    let firstPressThrottle = null; // the drive on the first pressing tick (the pinned fixture hull later trips
+    let firstPressScooting = null; // the stuck watchdog, whose unstick bursts and pocket scoots are not the press)
+    let nextShotS = 6;
+    tick(ctl, bot, 200, (_, t) => {
+      if (firstPressThrottle === null) {
+        const d = ctl.debugInfo();
+        if (d.passivePress) { firstPressThrottle = bot.input.throttle; firstPressScooting = d.scooting; }
+      }
+      if (!targetFires) return;
+      still.combat.reload.t = Math.max(0, still.combat.reload.t - SIM_DT);
+      if (t >= nextShotS) { still.combat.reload.t = still.spec.gun.reloadS; nextShotS = t + 6; }
+    });
+    return { info: ctl.debugInfo(), firstPressThrottle, firstPressScooting };
+  };
+  const passive = press(false);
+  ok(passive.info.targetPassiveS >= 15, 'a still, silent target reads as passive');
+  ok(passive.info.passivePress === true && passive.info.passivePresses >= 1,
+    'after the deployment window the bot presses a target it has not penetrated');
+  ok(passive.info.passivePressCandidate === 0 || passive.info.passivePressCandidate === 1,
+    'the press point is a side aspect, not the glacis');
+  ok(passive.firstPressThrottle !== null && passive.firstPressThrottle > 0.25, 'the hull drives at the press point');
+  ok(passive.firstPressScooting === false, 'the press begins with no shoot-and-scoot leg in hand');
+  const active = press(true);
+  ok(active.info.targetPassiveS < 15 && active.info.passivePress === false && active.info.passivePresses === 0,
+    'a target that keeps firing is never pressed (no charge at an active player)');
+}
+
+console.log('[15] round 60: a sniper with a solution on a passive target keeps firing from its spot');
+{
+  // The receipt's own reload cycle: a shot sets the channel to the spec reload, the fixture decays it.
+  const cadence = (targetFires) => {
+    const bot = entity('td', 'strv103', 'player', 0, 0);
+    const side = entity('side', 'm1a2', 'enemy', 0, 80, Math.PI / 2); // side on, inside the sniper deployment reach
+    const ctl = controller(bot, [side], [], 91);
+    let shots = 0;
+    // The target needs 20 s to prove passive and a scoot leg begun on the last shot before that runs 14 s more,
+    // so the cadence and the scoot check start at 36 s and cover the following minute.
+    let sawScooting = false;
+    let nextEnemyShotS = 5;
+    tick(ctl, bot, 96, (_, t) => {
+      bot.combat.reload.t = Math.max(0, bot.combat.reload.t - SIM_DT);
+      if (bot.input.fire && bot.combat.reload.t <= 1e-3) { bot.combat.reload.t = bot.spec.gun.reloadS; if (t > 36) shots++; }
+      if (t > 36 && ctl.debugInfo().scooting) sawScooting = true;
+      if (!targetFires) return;
+      side.combat.reload.t = Math.max(0, side.combat.reload.t - SIM_DT);
+      if (t >= nextEnemyShotS) { side.combat.reload.t = side.spec.gun.reloadS; nextEnemyShotS = t + 8; }
+    });
+    return { shots, sawScooting, info: ctl.debugInfo() };
+  };
+  const passive = cadence(false);
+  ok(passive.shots >= 8, `at least eight shots in a minute at a passive target (got ${passive.shots})`);
+  ok(!passive.sawScooting, 'no scoot leg after any of them once the target has proven passive');
+  const active = cadence(true);
+  ok(active.sawScooting, 'shoot-and-scoot is kept against a target that shoots back');
+}
+
+console.log('[16] round 60: an overturned bot asks for the self-right and holds its drive still');
+{
+  const bot = entity('roof', 'm1a2', 'player', 0, 0);
+  const foe = entity('foe', 't90m', 'enemy', 0, 90, Math.PI);
+  const ctl = controller(bot, [foe], [], 5);
+  tick(ctl, bot, 1);
+  bot.state.overturned = true;
+  ctl.update(SIM_DT, 1.1);
+  ok((bot.input.actionBits & PLAYER_ACTION_BITS.SELF_RIGHT) !== 0, 'the SELF_RIGHT bit is requested');
+  ok(bot.input.throttle === 0 && bot.input.steer === 0, 'no throttle or steer on the roof');
+  ok(chooseAiSupportActionBits(bot, 2) === PLAYER_ACTION_BITS.SELF_RIGHT,
+    'the support-action chooser answers the roof before any consumable');
+  bot.state.overturned = false;
+  ctl.update(SIM_DT, 1.2);
+  ok((bot.input.actionBits & PLAYER_ACTION_BITS.SELF_RIGHT) === 0, 'righted, the bit is gone');
+}
+
+console.log('[17] round 60: the weak-spot probe scores only zones the gun can reach');
+{
+  // A crest masks everything below 1.4 m at the target plane: the hull zones are out of reach, the turret is not.
+  const run = (raycast) => {
+    const bot = entity('probe-bot', 'm1a2', 'player', 0, 0);
+    const side = entity('side', 't90m', 'enemy', 0, 80, Math.PI / 2); // inside the flanker's deployment reach
+    const ctl = controller(bot, [side], [], 33, 'hard', { raycast });
+    let sum = 0, n = 0;
+    tick(ctl, bot, 4, (_, t) => { if (t > 2) { sum += bot.input.aimPoint.y; n++; } });
+    return { aimY: sum / n, info: ctl.debugInfo() };
+  };
+  const open = run(() => null);
+  const crest = run((origin, dir, maxDist) => (origin.y + dir.y * maxDist < 1.4 ? { dist: maxDist * 0.6 } : null));
+  const eyeY = getSpec('m1a2').dims.heightM * 0.85;
+  const masked = run((origin) => (origin.y < eyeY - 0.05 ? { dist: 40 } : null)); // every gun-height ray; the eye's still clear
+  ok(open.info.penGateOk === true, 'an open side reads as penetrable');
+  ok(crest.info.penGateOk === true, 'with the hull masked the probe falls back to the visible turret');
+  ok(crest.aimY - open.aimY > 0.3, `the aim rises from the hull to the turret (${open.aimY.toFixed(2)} -> ${crest.aimY.toFixed(2)} m)`);
+  ok(masked.info.penGateOk === false && masked.info.penRatio === 0,
+    'with every zone masked from the gun there is no solution, whatever the eye sees');
+}
+
 console.log('ai.selftest: all shared-combat checks passed');

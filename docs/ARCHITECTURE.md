@@ -833,7 +833,14 @@ teammate separation, stuck recovery and firing-lane relocation. Relocation cells
 (shoot-and-scoot legs, vantage rings) must stand on ground the hull can hold and reach:
 terrain normal.y ≥ 0.90 at the cell and ≥ 0.86 at the leg's interior samples (round 48
 pacing, 2026-09-24: a last bot chained 14 s scoot legs on Frosthollow's ridge flank for
-160 s, never arriving and never firing, until the 15-minute cap).
+160 s, never arriving and never firing, until the 15-minute cap). A target whose hull has held still and whose gun
+has stayed silent for the passive dwell, and that this bot's shells have stopped penetrating, is pressed after the
+deployment window to a 70 m side aspect whose gun-to-hull lane and elevation arc are clear — scoot legs, the
+low-health fallback, the settle holds and the flank ring yield to the press, and it ends the moment the target moves
+or fires (round 60 pacing, 2026-09-24: nine of fourteen capped battles ended with the last bot's racks empty against
+the idle host). The weak-spot probe scores only zones the gun can reach (world ray from the gun, elevation /
+depression arc) and falls back to the visible turret; a flank that leaves the gate closed carries on toward the rear;
+an overturned bot holds its drive still and requests the self-right.
 
 Before firing, `botFriendlyFireRisk()` predicts teammate motion through the shell
 corridor and HE blast radius. A blocked bot holds fire and moves laterally; state.ts

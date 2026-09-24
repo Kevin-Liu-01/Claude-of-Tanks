@@ -1691,6 +1691,84 @@ moved.
 **Open.** The moored hull is static (no bob or sway on the sheet); Saltwind's piers keep their authored 19 m rather than
 the shelf-sized length; a wrack line's stations past a landing re-roll whenever a keep-out moves — a per-station draw
 budget in strandWrack would freeze them.
+### Round 60 — 2026-09-24: the last bot against a passive target
+
+Shared main sat at 14/124 after round 48 — Tidegate Polders 3/4, Whiteout 2/4, one seed each on Desert, Frosthollow,
+Urban, Tarkhan, Railyard, Badlands, Caldera, Ruinspires and Reservoir. Every capped seed was replayed with
+`tools/pacing-trace.mjs` and three finer lane probes: 2 s hull / gate / ammunition rows, a shell ledger that reads the
+authority's `shell_fired` / `shell_hit` / `shell_impact` events and places every miss at the target plane (lateral,
+over / short, height), and a terrain profile along the gun line. What they showed, in order of weight:
+
+1. **Empty racks.** Nine of the fourteen capped battles ended with the survivor's ammunition at [0, 0, 0] — Tidegate
+   seeds 0 and 3 and Whiteout seed 3 with *two* empty bots circling a hull they could never finish. A bot fires 55–95
+   rounds a battle from a 52-round rack (24 APFSDS / 16 HEAT / 12 HE by default), and against the idle host it fought
+   from its hold band at 165–300 m: with the normal tier's fire-control error (aimErrMult 4.25 on a 0.30 m gun, σ ≈ 6
+   mrad, the after-shot bloom on top) the shells flew over the turret or dug in short — Frosthollow seed 2: 25 rounds,
+   8 on the hull; Ruinspires seed 2: 33 rounds, 3 on the hull and 22 into a rise 25–55 m in front of the pad that the
+   eye-to-eye LOS and the turret-top gun lane both cleared. Lateral error stayed under a metre: the misses are
+   vertical, which is to say a range problem, and the front-plate plink is the part that landed.
+2. **A doctrine written for return fire, applied to a gun that never fires.** Shoot-and-scoot legs (one shot per 14 s
+   leg for snipers and flankers) deferred the round-48 closed-gate flank indefinitely (`penDeniedT` 53–113 s with
+   `scooting` true), the low-health fallback cycled 8 s retreats from a target that had not fired in ten minutes
+   (Badlands 3, Whiteout 1, Railyard 2), and the stalemate settle holds froze the hull for 3.5 s at a time inside the
+   flank windows, so a casemate's ring never changed the aspect (Desert 0: aspect wobbling between 4° and 35° through
+   eleven 8 s windows).
+3. **Caldera seed 3 was no stalemate.** The bravo M1A2 rolled onto its roof at 20 s coming down the crater slope and
+   lay there for 880 s: the rollover lifecycle rights a settled hull after five seconds, but the bot's unstick throttle
+   and steer reset the settle every tick, and no bot ever asked for the self-right a player has.
+
+Fixes (`src/game/ai.ts`; one mirrored line in `src/game/state.ts`), each proved on the seed that showed it and judged
+only by the full receipt:
+
+- **The passive-target press.** A target whose hull has held still and whose gun has stayed silent for
+  `PASSIVE_TARGET_STILL_S` / `PASSIVE_TARGET_SILENT_S` (the target's own reload channel is read, so a player's shot or a
+  bot's counts the same), against which this bot's shells have stopped penetrating for `PASSIVE_PRESS_NO_PEN_S`, is
+  pressed after the deployment window to a point-blank side aspect (70 m, ~75° off the nose, the side nearer to where
+  the bot stands). Scoot legs, the low-health fallback, the settle holds and the flank ring yield to the press; the
+  moment the target moves or fires it ends and every ordinary rule resumes, so an active player is never charged and
+  the opening is untouched (Tidegate 2: 900 s → 544 s).
+- **The weak-spot probe scores only zones the gun can reach.** After the first press three Copper Mesa seeds capped:
+  the bots stood at the foot of the host's plateau, probed the lower hull (ratio 14–21, gate open) and put 66 rounds
+  into the rim in front of it. The probe now casts the world ray from the gun to each candidate once per pass (cached
+  across the shell slots), rejects zones behind terrain and zones outside the gun's elevation / depression arc (Copper
+  Mesa 2 and Coastal 3 afterwards: gate open, gun pinned at its stop, 29 rounds from 50 m with 60 mrad of pitch error
+  and no damage), and falls back to the visible turret when the tier's whole set is masked — the round-48 probe-miss
+  relocation then moves the hull when that is masked too.
+- **Press-point rules.** A press point must reach the hull with the gun (lane ray from the gun height to 0.4 h, inside
+  the arc); a point whose probe finds no zone, whose gate stays closed for 6 s or whose gun stays pinned for 3 s is
+  vetoed for two minutes and another is picked (two rings, 70 m and 45 m, three bearings each); the press honours the
+  gun-limit back-up nudge.
+- **A flank that leaves the gate closed carries on toward the rear** (Coastal 3's Strv 103 stood at 69° on the M1A2's
+  side, every flank "completing" at once), and the ring prefers the side whose first point lies further round.
+- **An overturned bot holds its drive still and requests the self-right**; both authorities consume the bit (Caldera
+  3: 900 s → 390 s).
+
+Receipts: `src/game/ai.selftest.mjs` [14] a passive target is pressed to a side aspect and an active one is not, [15] a
+sniper with a solution keeps firing from its spot (13 shots a minute, no scoot leg once the target has proven passive;
+shoot-and-scoot kept against a target that shoots back), [16] the overturned bot's SELF_RIGHT bit and stilled drive,
+[17] the probe skips masked zones, falls back to the turret and reports no solution when every gun-height ray is
+blocked. `botGunLane.selftest`'s fixture berm 2.0 → 2.4 m (aiming at the visible turret pitches the muzzle over a 2 m
+berm; 2.4 m keeps the eye clear and the muzzle lanes blocked); `authoritativeBots.selftest`'s moving-battle hit-rate
+ceiling 0.58 → 0.70 (54.7 % → 62.5 % on the same eight seeds: the fired sample loses its doomed rounds, the aim model is
+untouched).
+
+Full-receipt ledger (same 124 seeds; timeouts / median / p10):
+
+| iteration | change | timeouts | median | p10 | note |
+|---|---|---|---|---|---|
+| 0 | base 256feb115 | 14 | 448.9 | 289.9 | Tidegate 3, Whiteout 2 |
+| 1 | passive-target press | 11 | 393.3 | 261.8 | nine caps resolved; Copper Mesa 0 → 3, Delta, Saltwind, Tidegate 1 new (press at the plateau foot) |
+| 2 | + probe visibility, press lane to the hull | 5 | 458.1 | 291.2 | Tidegate 0, Whiteout 0, Copper Mesa 0; Saltwind 0 → 2 |
+| 3 | + self-right, masked press point vetoed | 5 | 437.9 | 283.0 | Caldera and Saltwind 3 resolved; Coastal 3 and Copper Mesa 2 new (gun pinned at its stop) |
+| 4 | + gun arc on probe and press, closed-gate / pinned veto, rear flank | 5 | 465.5 | 290.1 | Urban 0 and 2, Tarkhan 1, Ruinspires 3, Saltwind 0 |
+
+What remains is not the passive-target stalemate. Urban 0 / 2 and Ruinspires 3: the survivor has no target for
+200–400 s and the 8 s no-contact sector search re-routes it every window to the same midpoint it cannot reach among
+the blocks and ruins — a navigation problem for a round of its own. Tarkhan 1 and Saltwind 0: the survivors' racks are
+empty after the bot-versus-bot chase at 200–300 m, the fleet's ammunition economy. Open with them: an empty bot's
+options (ram or retire), and the median's headroom (the probe filters make every bot more patient; a shorter passive
+dwell — 15 s instead of 20 — was prepared as iteration 5 but not measured, the shared probe mutex being held by the
+round-59 performance campaign for the rest of the session).
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -1792,6 +1870,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 56 | The strands' wrack line and debris (owner decision 21): a high-water band of weed / kelp mats, bent sticks, pebble patches and shells along every authored shelf (Saltmere, Nordhavn's arm heads, Saltwind), with timber, a broken crate and a rope coil beside each landing — derived from the lake contour by a marched band law (water's edge → sand's end, ≤ 8.5 m, ≥ 2.2 m), lake-phased density, gated off water / banks / roads / pads / boats / jetties / footprints; soft dressing in the vertex-coloured `baked` and `wood` buckets, no new material, instance pool or collision record; the coastal driftwood re-derived onto the same band (it lay on the disc's plain 1.03–1.12 R circle — Nordhavn's 72 logs median 7.7 m up the ridges, nine in the water) | map-view-probe A/B on the round-47 shore views plus three new gameplay-height strand views (`strand-e-low`, `strand-fjord-low`, `strand-w-low`; table 31 → 34), 2× crops, `ab-diff` strand boxes 1.9–3.1 % moved, obliques 0.4–1.4 %, birds ≤ 0.2 %; headless three-seed audit; `strandWrack.selftest` (new), beachedBoat / winterLakeGeometry / riverLandings / map-probe-runtime re-pinned, the shore and world receipts green |
 | 57 | The rail spur kit: a map authors a siding as a path (`terrain.railSpurs`, `src/world/railSpurs.ts`), the layout carries it, one span layer lays ballast / rails / sleepers / buffer stops that follow the ground (4 m spans, least-squares plane per slab, cross-slope roll, a deep slab bedded into the folds) and the height field's `_noVeg` berth keeps vegetation and scattered props 3.6 m off the line; the four rail yards migrated onto the same layer byte-identically; Tarkhan's grain station gets its loading-face siding (x 144 → 440 at z −181, buffers at both ends, a level crossing over the east track, ending at the rim foot — the road climbs the rim at 24 %); the stale steppe shard recaptured | rail-part / dressing / draw digests of the four yards A = B at three seeds (railSpurs.selftest pins them); headless slab-corner probe (no gap under any corner, tops ≥ 0.06 m clear); map-view-probe A/B on four new views (yard frame noise ≤ 0.3 %; steppe 1.7–2.6 % moved) judged on 1280 px reductions; census and storage re-pins; battlePacing 14 / 124; the receipts in the section |
 | 58 | Jetties at the water's edge (round 56's open item): the coastal kit's jetties and Saltwind's piers planned from the strand march (`src/world/maps/shoreJetty.ts`) — the shore end a metre landward of the wrack band on a flat strand or on the bank where the ground meets the deck, the tip a full span over the planar core, the deck a constant 0.45 m over the water surface (bed + the sheet's 0.72 m), every pile from the bed, sized to the shelf in 4–10 spans (Saltmere 9, Nordhavn's heads 5–7, Saltwind's authored 10); a gangway where the deck stands over the sand, a clinker hull moored alongside with bollards and lines; the kit burns the retired jetty's draws so every other boat, log and buoy keeps its place | map-view-probe A/B on the shore views plus four new jetty views from the shallows (table 38 → 42), 2× crops; `shoreJetty.selftest` (321 plans over nine fields); A/B receipt probe (7/7 boats, 41/41 + 15/15 logs, Saltwind's wrack byte-identical); riverLandings / beachedBoat / winterLakeGeometry / map-probe-runtime re-pinned; 28 world receipts and the typecheck green; no shard moved |
+| 60 | The last bot against a passive target (server/battlePacing 14/124): nine capped battles ended with empty racks after the survivor fought the idle host from 165–300 m and the tier's vertical error flew the shells over the turret or short into the ground; a target that has held still and stayed silent for the passive dwell, and that this bot's shells have stopped penetrating, is pressed after the deployment window to a 70 m side aspect (scoot legs, the low-health fallback, the settle holds and the flank ring yield; the press ends the moment the target moves or fires); the weak-spot probe scores only zones the gun can reach (world ray from the gun, elevation / depression arc, turret fallback); press points need a gun-to-hull lane and are vetoed when masked, gate-closed or gun-pinned; a closed-gate flank carries on to the rear; an overturned bot self-rights | full receipt after every change: 14 → 11 → 5 → 5 → 5 / 124 (median 465.5 s, p10 290.1 s, no sub-two-minute battle); ai.selftest [14]–[17] (press vs. an active-target control, sniper cadence, self-right, masked-zone probe), botGunLane (fixture berm 2.4 m), authoritativeBots (moving-battle ceiling 0.70), the AI / sim / net receipts in the section, typecheck, attribution |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
