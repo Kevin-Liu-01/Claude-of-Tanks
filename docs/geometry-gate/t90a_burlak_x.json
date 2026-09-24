@@ -951,9 +951,9 @@
   },
   {
    "name": "physicalHeightM",
-   "actual": 4.6276898375637465,
+   "actual": 4.627689837643182,
    "published": 4.627689838409424,
-   "pct": 1.8274286641718868e-8,
+   "pct": 1.655776872634356e-8,
    "method": "full visible physical envelope, no raster filtering"
   },
   {
@@ -986,7 +986,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 141796,
+     "area": 141800,
      "minX": 168,
      "minY": 280,
      "maxX": 941,
@@ -1000,7 +1000,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 139100,
+     "area": 139104,
      "minX": 221,
      "minY": 280,
      "maxX": 1005,
@@ -1014,7 +1014,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 139031,
+     "area": 139035,
      "minX": 221,
      "minY": 280,
      "maxX": 1005,
@@ -1028,7 +1028,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 139174,
+     "area": 139178,
      "minX": 169,
      "minY": 280,
      "maxX": 941,
@@ -1042,7 +1042,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 141462,
+     "area": 141466,
      "minX": 177,
      "minY": 280,
      "maxX": 941,
