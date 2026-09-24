@@ -1452,33 +1452,37 @@ function addStoneBridge(crossing: RiverCrossing, heightField: DressingHeightFiel
   const deck = heightField.getHeightAt(cx, cz);
   const water = waterLevelBeside(heightField, cx, cz, vx, vz);
   const span = 26; // half-length along the road: bank to bank over the narrows
+  // The causeway's graded shoulder is at deck level out to ~4 m and reaches the bed at 14 m (terrain.ts road
+  // plane), and the water begins past the 14-18 m dry band: the river-side face of the bridge therefore stands
+  // 11.5 m off the centreline, at the water's edge, where the slope has dropped below the deck.
+  const face = 11.5;
   for (const side of [-1, 1]) {
-    // the spandrel wall stands on the graded slope 5.4 m off the centreline, from below the waterline to the deck
-    const wallX = cx + vx * 5.4 * side, wallZ = cz + vz * 5.4 * side;
+    // the spandrel wall: from below the waterline up to just under the deck's parapet line
+    const wallX = cx + vx * face * side, wallZ = cz + vz * face * side;
     const foot = Math.min(water - 0.6, heightField.getHeightAt(wallX, wallZ) - 0.4);
-    const tall = deck + 0.12 - foot;
-    const wall = alignWidth(box(span * 2, tall, 0.6, 0.7), ux, uz);
+    const tall = deck + 0.05 - foot;
+    const wall = alignWidth(box(span * 2, tall, 0.7, 0.7), ux, uz);
     jitterUV(wall, rng);
     buckets.stone.push(wall.translate(wallX, foot + tall / 2, wallZ));
     // three arch openings read as dark recesses proud of the wall face
     for (const along of [-9, 0, 9]) {
-      const archX = cx + ux * along + vx * 5.76 * side, archZ = cz + uz * along + vz * 5.76 * side;
-      const arch = alignWidth(box(4.2, 1.7, 0.12, 1.0), ux, uz);
+      const archX = cx + ux * along + vx * (face + 0.42) * side, archZ = cz + uz * along + vz * (face + 0.42) * side;
+      const arch = alignWidth(box(4.4, 1.7, 0.14, 1.0), ux, uz);
       buckets.dark.push(arch.translate(archX, water + 0.55, archZ));
-      const crown = alignWidth(box(2.4, 0.5, 0.12, 1.0), ux, uz);
-      buckets.dark.push(crown.translate(archX, water + 1.55, archZ));
+      const crown = alignWidth(box(2.6, 0.55, 0.14, 1.0), ux, uz);
+      buckets.dark.push(crown.translate(archX, water + 1.6, archZ));
     }
-    // cutwaters between the arches
+    // cutwaters between the arches, their noses turned into the stream
     for (const along of [-4.5, 4.5]) {
-      const pierX = cx + ux * along + vx * 6.5 * side, pierZ = cz + uz * along + vz * 6.5 * side;
-      const pier = alignWidth(box(1.5, deck - 0.3 - (water - 0.8), 1.7, 0.7), ux, uz);
-      pier.rotateY(side * 0.78); // a nose turned into the stream
+      const pierX = cx + ux * along + vx * (face + 1.2) * side, pierZ = cz + uz * along + vz * (face + 1.2) * side;
+      const pier = alignWidth(box(1.6, deck - 0.4 - (water - 0.8), 1.8, 0.7), ux, uz);
+      pier.rotateY(side * 0.78);
       jitterUV(pier, rng);
-      buckets.stone.push(pier.translate(pierX, (water - 0.8 + deck - 0.3) / 2, pierZ));
+      buckets.stone.push(pier.translate(pierX, (water - 0.8 + deck - 0.4) / 2, pierZ));
     }
     // wing walls splay out at both ends of the spandrel
     for (const end of [-1, 1]) {
-      const wingX = cx + ux * end * (span + 1.6) + vx * 7.4 * side, wingZ = cz + uz * end * (span + 1.6) + vz * 7.4 * side;
+      const wingX = cx + ux * end * (span + 1.6) + vx * (face + 2.2) * side, wingZ = cz + uz * end * (span + 1.6) + vz * (face + 2.2) * side;
       const wingY = heightField.getHeightAt(wingX, wingZ);
       const wing = alignWidth(box(5.2, 1.5, 0.9, 0.7), ux, uz);
       wing.rotateY(-end * side * 0.6);
