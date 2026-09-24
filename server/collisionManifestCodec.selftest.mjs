@@ -183,7 +183,7 @@ assert.deepEqual(readFileSync(new URL('index.json', directory)), indexBeforeReti
 // 2026-09-19 hitbox pass: budgets re-based on the recaptured shards (+10 %) — every roof strip now carries its
 // own height, which made the city shards several times larger than the 1.5 m whole-projection slabs.
 const previousShardBytes = {
-  verdant: 1854713, desert: 1138916, winter: 1630998, urban: 6905545,
+  verdant: 1854713, desert: 1138916, winter: 1837349 /* 2026-09-23 Frosthollow redesign: re-based on the recaptured shard (1670318 B) +10 % */, urban: 6905545,
   coastal: 1355569, autumn: 1873510, steppe: 1095875, railyard: 1205662,
   frontier: 2179727, fjord: 1982369, delta: 2150317, badlands: 1440584,
   monsoon: 2456485, alpine: 2420855, caldera: 1746798, foundry: 1776506,

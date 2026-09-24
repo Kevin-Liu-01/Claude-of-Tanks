@@ -40,7 +40,10 @@ const coalCensus = { railyard: 6, caldera: 7, foundry: 7, skybridge: 5 };
 const roadCompletionCensus = {
   verdant: [7011, 6712, 7541],
   desert: [2840, 2762, 3292],
-  winter: [5758, 5515, 4736],
+  // 2026-09-23 Frosthollow redesign (owner ruling): the shard was recaptured on the new valley layout (puppeteer
+  // capture, .qa-dev/collision-capture.mjs, same pack script); no pre-repair capture exists for it, so its census IS
+  // the captured shard and its rim-road removal count below is zero.
+  winter: [5944, 5794, 4911],
   urban: [4055, 9303, 3685],
   coastal: [4196, 3999, 4310],
   autumn: [6505, 6158, 6867],
@@ -93,7 +96,7 @@ const roadCompletionCensus = {
 const rimRoadRemovals = {
   verdant: 34,
   desert: 1,
-  winter: 33,
+  winter: 0, // 2026-09-23: redesigned layout, census pinned directly (see above)
   urban: 155,
   coastal: 36,
   autumn: 37,

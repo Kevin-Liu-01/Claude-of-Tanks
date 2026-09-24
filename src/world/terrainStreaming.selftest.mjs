@@ -160,7 +160,7 @@ console.log('terrainStreaming.selftest: cadence, bounded partial work, warm, cam
 const GEOMETRY_GOLDENS = {
   verdant: '86532d696a6ab164c64b79ea866a91cc93283bf50f4fc4af7c856119e52ae0b4',
   desert: '242cc58db7003e9ed59cd69e2cd337ef988cf229296132aaf03d3923f926ea4b',
-  winter: 'bf912f3e4ae03b039f58ec8efed1ee1113e9d8de3d06afb228c4fd9d7fad7a85',
+  winter: '49a8f6b4b05bbacef6b5bcf7e5181e24fd382f2499bd8da6b10f24e105a3d468', // 2026-09-23: Frosthollow redesign (owner ruling) — new valley heightfield
   urban: 'dc86077914e20440ae7cdcfb044343da6c1386495e2023981261725b8dbd0bd9',
   coastal: '972f0fe7bb785e12ad8ec4ea53b85690b230e3154a0667296b2771d7eff257ba',
   autumn: '607a488ca94ccb00cb0a7f25eacc7160a755c0ade180496be8a49cf9581843ec',

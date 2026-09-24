@@ -78,7 +78,7 @@ function originalRoadField(cfg) {
 const ORIGINAL = {
   verdant: '3235ff56f2be109633eb3ad158e180c0e4f3a2cf4bb13c77cdc5ece4265a7293',
   desert: '9e6191d3ca532db0f5c58ffc86aa2e0da2460c6779ac86db0214f659b94208c1',
-  winter: 'b874c34c02101b2557b789959a2b9363a8c918f59dddec216ebd6d9f147f0c29',
+  winter: '6574bffd1741c2adb8d607aa0cc198ae224f5293c81a7bfd6a670c6b0c71f4b7', // 2026-09-23: Frosthollow redesign (owner ruling) — new pond chain / roads
   urban: '7431bfb3ca249b8dff2b2022d654885873c69e732e4cd2b4e103e0700722efa8',
   coastal: '592e20a91d2388f1d96fd76e2b19d177cd83b095067b7a6fbdc448952d1bc4c9',
   autumn: '063494a5fff47230181559a3a98a5c3123f00ae6efef2b18789cb66c47bf95dc',
