@@ -788,9 +788,14 @@ square, spawns, roads, village and landforms drawn) showed the sausage plainly.
   `far` and program key v37): the open-sea sector is fully open BEFORE the contour's far arc. The first crescent capture
   had a full disc whose far arc lay 390 m out under the ring's mountains — a round lake with a cliff wall — and with the
   old blend even a 145 m arc kept ~60 % of the ring's height as a dark bank across the sea horizon.
-- `outlandHeightAt` composes the bay banks past the square with each lake's authored band (or the legacy 1.32 R, never
-  the fitted band, which would flatten the outland's own relief), so the ring's rows grade to the water as the square
-  does; the fjord arms author `boats: 0` (a clinker hull on a 0.14 R rock bank buries its tips) and keep their jetties.
+- `outlandHeightAt` now runs the composition heightAt runs inside the square — the shore rings' LIQUID surfaces (their
+  dip, bank pull and flat core), the rim gated by that water weight, then the lake banks with the same per-lake band —
+  instead of bare geology + rim. The probe that found it: at (511.5, 280) north of Saltmere's bay the square read
+  −3.8 m and the outland +21.3 m (the shore ring had flattened the square to the sea level; past the line nothing
+  applied it) — the "28 m block" of round 47 on every sea map. After: Δ ≤ 0.05 m on Saltmere, ≤ 0.4 m (micro relief)
+  on Saltwind, ≤ 0.08 m on Nordhavn along the red line. The fjord arms author `boats: 0` (a clinker hull on a 0.14 R
+  rock bank buries its tips) and keep their jetties; Saltwind authors `coastRimFadeM: 110` — with the seam closed, its
+  two mouth headlands still stood as 24 m rim slabs one row past the line.
 
 **Verified (`.qa-dev/wall-probe.mjs`; A = r47-combined, B4 = this lane; `$SP/r47d/cap/`, plan views `$SP/r47d/*.png`).**
 Saltmere from above (bird-e-high, bird-e-edge-n): one concave strand between two headlands, the promontory and cape
