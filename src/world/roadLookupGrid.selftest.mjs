@@ -221,7 +221,13 @@ function historicalHeightFieldSource(text) {
     // The marsh bank widths come from the liquid surfaces, which the dry construction pass has not built
     // yet: a plan drawn during that pass is provisional (bank band 1) and only the plan drawn once the
     // surfaces exist is cached — the final heights, the props and the receipts all read that one.
-    const provisional = !liquidSurfaces && _MARSHES.length > 0;
+    // Round 59 (2026-09-24, performance audit): only a liquid-water map ever builds those surfaces. A map
+    // whose marshes are dry (Tarkhan Steppe's takyr crusts, round 48) never does, so its plan stayed
+    // provisional for the world's whole life and every height query with roads and pads on re-planned the
+    // trenches (lines × five samples × every marsh's shoreline distance): 11.8 µs per sample against
+    // 1.0 µs at deploy 66, a 9.9 s world build. The bank-band-1 plan IS a dry map's final plan (nothing
+    // later changes it), so it is cached like every other map's — byte-identical heights and plan.
+    const provisional = liquidWater && !liquidSurfaces && _MARSHES.length > 0;
     const { alpha, bravo } = assaultTeamCenters({ x: _SPAWN_PLAYER.x, z: _SPAWN_PLAYER.z },
       _SPAWN_ENEMIES.map((point) => ({ x: point.x, z: point.z })));
     const sectors = trenchPlan();
