@@ -24,8 +24,9 @@ import {
   RAIL_CUTTING_BATTER, RAIL_CUTTING_FAN, RAIL_CUTTING_FEATHER_M, RAIL_CUTTING_GRADE, RAIL_CUTTING_HALF_FLOOR_M,
   RAIL_CUTTING_PORTAL_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_BERTH_M, RAIL_TUNNEL_BORE_DEPTH_M, RAIL_TUNNEL_BORE_HALF_M,
   RAIL_TUNNEL_CURVE_RADIUS_M, RAIL_TUNNEL_GALLERY_M, RAIL_TUNNEL_HEADWALL_HALF_M, RAIL_TUNNEL_HEADWALL_HEIGHT_M,
-  RAIL_TUNNEL_RIDGE_RUN_M, RAIL_TUNNEL_RUN_M, RAIL_TUNNEL_WALL_M, railCuttingBedY, railCuttingExcludes, railCuttingHeight,
-  railCuttingTunnel, resolveRailCuttings,
+  RAIL_TUNNEL_RIDGE_RUN_M, RAIL_TUNNEL_RUN_M, RAIL_TUNNEL_WALL_M, RAIL_CUTTING_SEED_FROM, RAIL_CUTTING_SEED_MAX,
+  RAIL_CUTTING_SEED_NORMAL_Y, railCuttingBedY, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight,
+  railCuttingSeedAdmits, railCuttingTunnel, resolveRailCuttings,
 } from './railSpurs.ts';
 
 const near = (a, b, tolerance, message) => assert.ok(Math.abs(a - b) <= tolerance, `${message}: ${a} vs ${b}`);
@@ -169,6 +170,36 @@ assert.equal(field._noVeg(500, -192), true, 'the face'); assert.equal(field._noV
 assert.equal(field._noVeg(480, -150), false, 'the plateau'); assert.equal(field._noVeg(430, -181), true, 'the spur berth before the portal');
 assert.equal(field._noVeg(430, -188), false, 'off the berth before the portal'); assert.equal(uncut._noVeg(500, -192), false, 'the same face grew before');
 assert.equal(field._noVeg(511.5, -181 - RAIL_SPUR_BERTH_M - 1), true, 'the floor at the edge past the berth');
+// ------------------------------------------------------------------ round 67: the batter faces' seeding weight
+// the exclusion above is unchanged (trees, rocks and props stay off the whole face); the seeding hook gives the tuft
+// and bush seeders a weight on the upper part of each face: 0 up to a third of the face's rise, rising to the
+// ceiling at the daylight line, 0 on the floor, the cess, the plateau and before the fade; the per-candidate hash
+// admits the weight's share of candidates; every other map publishes no hook
+assert.equal(typeof field._batterSeedAt, 'function'); assert.equal(uncut._batterSeedAt, undefined, 'a map without a cutting publishes no seeding hook');
+assert.equal(typeof createHeightField(1337, getMapConfig('verdant'))._batterSeedAt, 'undefined');
+const seedAt = (x, z) => field._batterSeedAt(x, z);
+assert.equal(seedAt(500, -181), 0, 'the floor'); assert.equal(seedAt(500, -186.5), 0, 'the cess'); assert.equal(seedAt(480, -150), 0, 'the plateau');
+assert.equal(seedAt(424, -190), 0, 'before the fade'); assert.equal(seedAt(500, -202), 0, 'beyond the daylight line');
+{ const x = 500, bed = portalY + RAIL_CUTTING_GRADE * 60, depth = uncut.getHeightAt(x, -181) - bed; // the north and south faces' rise at x 500
+  let last = 0, rising = 0, lower = 0, north = 0;
+  for (let lat = RAIL_CUTTING_HALF_FLOOR_M + 0.1; lat < RAIL_CUTTING_HALF_FLOOR_M + depth * RAIL_CUTTING_BATTER - 0.2; lat += 0.25) {
+    const rise = (lat - RAIL_CUTTING_HALF_FLOOR_M) / RAIL_CUTTING_BATTER, f = rise / depth;
+    const w = seedAt(x, -181 - lat);
+    if (seedAt(x, -181 + lat) > 0) north++; // the north face seeds its own upper band (its plateau stands a little higher)
+    if (f <= RAIL_CUTTING_SEED_FROM + 0.02) { assert.equal(w, 0, `bare on the lower third (rise ${rise.toFixed(1)} of ${depth.toFixed(1)} m)`); lower++; }
+    else if (f > RAIL_CUTTING_SEED_FROM + 0.05) { assert.ok(w > 0 && w <= RAIL_CUTTING_SEED_MAX + 1e-9, `seeded on the upper two thirds (${w.toFixed(2)} at f ${f.toFixed(2)})`); assert.ok(w >= last - 1e-9, 'the weight climbs the face'); rising++; }
+    last = Math.max(last, w);
+  }
+  assert.ok(lower > 10 && rising > 20 && north > 20, `both bands sampled on the south face (${lower} bare, ${rising} seeded), the north face seeded too (${north})`);
+  assert.ok(last > RAIL_CUTTING_SEED_MAX * 0.85, `the weight reaches the ceiling under the daylight line (${last.toFixed(2)})`);
+  assert.ok(field.getNormalAt(x, -181 - RAIL_CUTTING_HALF_FLOOR_M - 8).y < 0.78 && field.getNormalAt(x, -181 - RAIL_CUTTING_HALF_FLOOR_M - 8).y >= RAIL_CUTTING_SEED_NORMAL_Y, 'the face is steeper than the seeders\' old gate and inside the relaxed one'); }
+assert.equal(railCuttingFaceSeedAt([tarkhan], [portalY], 500, -181, () => 0, 30), 0, 'the direct helper: the floor is bare whatever the ground');
+{ let n = 0, admitted = 0, weight = 0; const rng = mulberry32(67);
+  for (let i = 0; i < 20000; i++) { const x = 445 + rng() * 66, z = -181 - (4 + rng() * 16); const w = seedAt(x, z); if (w <= 0) continue; n++; weight += w; if (railCuttingSeedAdmits(w, x, z)) admitted++; }
+  assert.ok(n > 3000, `candidates on the south face (${n})`);
+  near(admitted / n, weight / n, 0.03, 'the hash admits the weight\'s share of candidates');
+  assert.equal(railCuttingSeedAdmits(0, 500, -190), false); assert.equal(railCuttingSeedAdmits(1, 500, -190), true);
+  assert.equal(railCuttingSeedAdmits(0.3, 500.25, -190.5), railCuttingSeedAdmits(0.3, 500.25, -190.5), 'deterministic per position'); }
 // the laid track: the spans in the cutting run at the rail grade
 const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
 const buckets = Object.fromEntries(names.map((name) => [name, []]));
@@ -242,4 +273,4 @@ for (const mapId of MAP_IDS) {
   if (mapId === 'steppe') continue;
   assert.equal(resolveRailCuttings(getMapConfig(mapId).terrain?.railSpurs), null, `${mapId}: no cutting`);
 }
-console.log(`railCutting.selftest: resolution and the synthetic rim rule; Tarkhan's cutting — bed at 2.4 % from ${portalY.toFixed(2)} m to the edge, ${(uncut.getHeightAt(511.9, -181) - field.getHeightAt(511.9, -181)).toFixed(1)} m deep, ${moved} corridor samples moved and none outside, roads/water/ground types to the bit, the outland bed and fan continuous across the red line, ${ringMoved} ring vertices seated in the notch and no ridge row moved, exclusion on floor/cess/faces, ${sleepers.length} sleepers in the cutting at ≤ ${(worstGrade * 100).toFixed(2)} %; the tunnel portal ${RAIL_TUNNEL_RUN_M} m down the valley with ${outlandSleepers.length} approach sleepers on the bed (worst ${worstOutland.toFixed(3)} m), ${RAIL_TUNNEL_HEADWALL_HALF_M * 2} m headwall, a ${RAIL_TUNNEL_GALLERY_M} m gallery and a 3-part record; 30 other maps resolve none`);
+console.log(`railCutting.selftest: resolution and the synthetic rim rule; Tarkhan's cutting — bed at 2.4 % from ${portalY.toFixed(2)} m to the edge, ${(uncut.getHeightAt(511.9, -181) - field.getHeightAt(511.9, -181)).toFixed(1)} m deep, ${moved} corridor samples moved and none outside, roads/water/ground types to the bit, the outland bed and fan continuous across the red line, ${ringMoved} ring vertices seated in the notch and no ridge row moved, exclusion on floor/cess/faces with the faces' upper two thirds seeded up to ${RAIL_CUTTING_SEED_MAX}, ${sleepers.length} sleepers in the cutting at ≤ ${(worstGrade * 100).toFixed(2)} %; the tunnel portal ${RAIL_TUNNEL_RUN_M} m down the valley with ${outlandSleepers.length} approach sleepers on the bed (worst ${worstOutland.toFixed(3)} m), ${RAIL_TUNNEL_HEADWALL_HALF_M * 2} m headwall, a ${RAIL_TUNNEL_GALLERY_M} m gallery and a 3-part record; 30 other maps resolve none`);

@@ -26,7 +26,8 @@ import { composeLakeHeight, type LakeHeightResult } from './lakeHeightCompositio
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import {
-  createRailSpurExclusion, railCuttingExcludes, railCuttingHeight, railCuttingSeatWeight, resolveRailCuttings,
+  createRailSpurExclusion, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight, railCuttingSeatWeight,
+  resolveRailCuttings,
   type RailSpurConfig,
 } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
@@ -358,6 +359,10 @@ export interface HeightField {
   _roadDist(x: number, z: number): number;
   _villageMask(x: number, z: number): number;
   _noVeg(x: number, z: number): boolean;
+  /** Round 67: the seeding weight of a railway cutting's batter face (railSpurs.ts railCuttingFaceSeedAt) — grass
+   * and scrub take the upper part of a face where it is positive, thinned by railCuttingSeedAdmits, and relax their
+   * slope gates to it; absent on a map without cuttings, so every other map's seeding is what it was. */
+  _batterSeedAt?(x: number, z: number): number;
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
@@ -1925,6 +1930,9 @@ function* heightFieldBuildSteps(
     fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
+    // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion
+    ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>
+      railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8) } : {}),
     _layout: layout,
     ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);

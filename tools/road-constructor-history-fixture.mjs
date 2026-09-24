@@ -68,8 +68,10 @@ const deltas = [
   ],
   // round 47 (2026-09-23): the height field also publishes getOutlandWaterAt (the bay contours past the square); the
   // current slice follows the source, the historical side keeps the round-40 text
+  // round 67 (2026-09-24): the height field also publishes _batterSeedAt on a map with a railway cutting (the batter
+  // faces' seeding weight, railSpurs.ts); the current slice follows the source, the historical side is unchanged
   [
-    "    // Keep pavement clear without excluding vegetation along unrelated roads.\n    _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,\n    _layout: layout,\n    ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {\n      return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);\n    }} : {}),\n    _mesaW: mesaWeight,\n    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),\n  };\n",
+    "    // Keep pavement clear without excluding vegetation along unrelated roads.\n    _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,\n    // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion\n    ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>\n      railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8) } : {}),\n    _layout: layout,\n    ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {\n      return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);\n    }} : {}),\n    _mesaW: mesaWeight,\n    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),\n  };\n",
     "    // Keep pavement clear without excluding vegetation along unrelated roads.\n    _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,\n    _layout: layout,\n    _mesaW: mesaWeight,\n    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt } : {}),\n  };\n"
   ]
 ];

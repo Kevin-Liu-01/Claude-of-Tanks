@@ -131,6 +131,17 @@ export const RAIL_TUNNEL_HEADWALL_HEIGHT_M = 10.5;
 export const RAIL_TUNNEL_WALL_M = 1.5;
 /** The exclusion keeps this much more than the floor clear: the cess shoulder the spur berth keeps past its slab. */
 const RAIL_CUTTING_SHOULDER_M = RAIL_SPUR_BERTH_M - RAIL_SPUR_BALLAST_M / 2;
+/**
+ * Round 67 (2026-09-24): grass and scrub seed the upper part of a cut face. The `_noVeg` exclusion keeps the floor,
+ * the cess and the whole face bare for trees, rocks and scattered props as before; the height field's
+ * `_batterSeedAt` hook (the frame helper below) gives the tuft and bush seeders a weight on the face that is 0 up
+ * to RAIL_CUTTING_SEED_FROM of the face's rise and climbs to RAIL_CUTTING_SEED_MAX at the daylight line, thinned
+ * per candidate by a position hash (railCuttingSeedAdmits) so the batter reads as sparse growth in the rock, not a
+ * sward. The vegetation seeders relax their slope gates to RAIL_CUTTING_SEED_NORMAL_Y where the weight admits.
+ */
+export const RAIL_CUTTING_SEED_FROM = 1 / 3;
+export const RAIL_CUTTING_SEED_MAX = 0.45;
+export const RAIL_CUTTING_SEED_NORMAL_Y = 0.5;
 
 /** Horizontal run of a span. Exact for an axis-aligned span (the rail yards' fixed lines stay byte-identical). */
 export function railRunLength(dx: number, dz: number): number {
@@ -382,6 +393,59 @@ export function railCuttingExcludes(
     if (ground - railCuttingHeight(cuttings, portalYs, x, z, ground) > 0.05) return true;
   }
   return false;
+}
+
+/**
+ * Round 67: the seeding weight of a cut face at (x, z) — 0 off the faces (the floor, the cess, the fill, the ground
+ * above the daylight line, the fade before the portal), 0 on the lower RAIL_CUTTING_SEED_FROM of the face's rise,
+ * rising linearly to RAIL_CUTTING_SEED_MAX at the daylight line. The rise is read in the cutting's own frame (the
+ * face climbs (lateral − halfFloor) / batter from the floor's edge); the face's full rise at this cross-section is
+ * the uncut ground `groundAt` over the bed, so the weight is a fraction of THIS face, deep or shallow. Pure and
+ * allocation-free like the exclusion; a map without cuttings publishes no hook.
+ */
+export function railCuttingFaceSeedAt(
+  cuttings: readonly RailCutting[], portalYs: ArrayLike<number>, x: number, z: number,
+  groundAt: (x: number, z: number) => number, maxDepth: number,
+): number {
+  let weight = 0;
+  for (let i = 0; i < cuttings.length; i++) {
+    const cut = cuttings[i];
+    const terms = railCuttingTermsAt(cut, x, z);
+    if (terms === null || terms.along <= 0) continue;
+    const { along, lateral, halfFloor } = terms;
+    if (lateral <= halfFloor + RAIL_CUTTING_SHOULDER_M) return 0; // the floor and the cess stay bare
+    if (lateral > halfFloor + RAIL_CUTTING_FEATHER_M + maxDepth * cut.batter) continue;
+    const ground = groundAt(x, z);
+    const bedY = portalYs[i] + cut.grade * along;
+    const depth = ground - bedY; // the face's rise at this cross-section
+    if (depth <= 0.05) continue;
+    const rise = (lateral - halfFloor) / cut.batter; // the face's height over the floor at this lateral
+    if (rise >= depth - 0.05) continue; // above the daylight line: the ground it was
+    const f = rise / depth;
+    if (f <= RAIL_CUTTING_SEED_FROM) continue;
+    const w = RAIL_CUTTING_SEED_MAX * (f - RAIL_CUTTING_SEED_FROM) / (1 - RAIL_CUTTING_SEED_FROM);
+    if (w > weight) weight = w;
+  }
+  return weight;
+}
+
+const _seedBits = new Float64Array(2);
+const _seedWords = new Uint32Array(_seedBits.buffer);
+
+/**
+ * Round 67: whether a seeding candidate at (x, z) is admitted under a face weight — a deterministic per-position
+ * trial (the bits of the coordinates hashed, no spatial cell pattern and no draw from any stream), so the same
+ * candidate always gets the same answer and the admitted share over many candidates is the weight.
+ */
+export function railCuttingSeedAdmits(weight: number, x: number, z: number): boolean {
+  if (weight <= 0) return false;
+  _seedBits[0] = x;
+  _seedBits[1] = z;
+  let h = (_seedWords[0] ^ Math.imul(_seedWords[1], 0x9e3779b1) ^ Math.imul(_seedWords[2], 0x85ebca6b) ^ Math.imul(_seedWords[3], 0xc2b2ae35)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  h = (h ^ (h >>> 16)) >>> 0;
+  return h / 4294967296 < weight;
 }
 
 

@@ -6,6 +6,7 @@
 // Contract: docs/ARCHITECTURE.md §3.2; visuals per docs/research/graphics-aaa.md §8.
 
 import * as THREE from 'three';
+import { RAIL_CUTTING_SEED_NORMAL_Y, railCuttingSeedAdmits } from './railSpurs.ts';
 import { shapeFarTreeBase } from './farTreeBase.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone, type HeightField, type TerrainPlacementSampler } from './terrain.ts';
@@ -2958,13 +2959,23 @@ function* vegetationBuildSteps(
     }
     return false;
   }
+  // Round 67 (2026-09-24): a railway cutting's batter faces (Tarkhan) seed sparse grass and scrub on their upper
+  // part — the height field's weight thinned per candidate (railSpurs.ts), the tuft and bush slope gates relaxed
+  // to RAIL_CUTTING_SEED_NORMAL_Y where it admits; the exclusion keeps trees, rocks and props off the faces. A map
+  // without cuttings publishes no weight and seeds exactly as before (the hook is read before the constant, so the
+  // grass harnesses that extract this section run without the import).
+  const batterSeedAt = heightField._batterSeedAt ?? null;
+  const batterAdmits = (x: number, z: number): boolean =>
+    batterSeedAt !== null && railCuttingSeedAdmits(batterSeedAt(x, z), x, z);
+  const steepSeedOk = (normalY: number, x: number, z: number): boolean =>
+    normalY >= 0.78 || (batterSeedAt !== null && normalY >= RAIL_CUTTING_SEED_NORMAL_Y && batterAdmits(x, z));
   function terrainDryness(
     x: number,
     z: number,
     roll: number,
     carpet: boolean,
   ): number {
-    if (noVeg(x, z)) return -1;
+    if (noVeg(x, z) && !batterAdmits(x, z)) return -1;
     const groundType = heightField.getGroundType(x, z);
     if (groundType === 'hard' || heightField._roadDist(x, z) < 4.2) return -1;
     if (groundType === 'soft' && roll > 0.3) return -1;
@@ -3052,7 +3063,7 @@ function* vegetationBuildSteps(
     // candidate set is accepted with exactly the same appearance — the
     // rejected majority just stops paying the 4-sample normal probe
     // (measured: 1.26 M candidates per boot on verdant).
-    if (heightField.getNormalAt(x, z).y < 0.78) return null;
+    if (!steepSeedOk(heightField.getNormalAt(x, z).y, x, z)) return null;
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
     const tuftHeight = sy * syMul * (veg.stubblePatches ? stubbleHeightScale(x, z) : 1);
@@ -4602,8 +4613,8 @@ function* vegetationBuildSteps(
       if (inAvoid(x, z)) return;
       if (rng() > veg.bushCount) return; // per-map density scale
       if (admission()._roadDist(x, z) < 6) return;
-      if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return;
-      if (admission().getNormalAt(x, z).y < 0.78) return;
+      if (admission().getGroundType(x, z) === 'soft' || (noVeg(x, z) && !batterAdmits(x, z))) return;
+      if (!steepSeedOk(admission().getNormalAt(x, z).y, x, z)) return;
       let clump = 1;
       if (veg.bushCount < 1) {
         // r6 two-scale clustering (matches makeTuft): biome moisture belts x
