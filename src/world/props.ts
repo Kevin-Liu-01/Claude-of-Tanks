@@ -36,7 +36,8 @@ import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
 import { applySourcedBuildings, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
-import { dressMapExtras } from './maps/mapKits.ts'; // content_breadth r2
+import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
+import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
@@ -6508,10 +6509,14 @@ ${snowCap ? `
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
   // dressing pushes into existing buckets; small coal piles share rock collision.
   const wharfDressingStart = buckets.wood.length;
+  // Round 67 (2026-09-24): dressing the renderer poses every frame (the moored hulls, maps/mooredHullMotion.ts) —
+  // the kit lays it into the wood bucket as before and hands the same geometries here; they leave the merged mesh
+  // below for one mesh each on the shared wood material.
+  const animatedDressing: AnimatedDressing[] = [];
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
-    obstacles, colliders,
+    obstacles, colliders, animated: animatedDressing,
   });
   yield { fine: true, stage: 'map-extras' };
 
@@ -6568,6 +6573,36 @@ ${snowCap ? `
     buckets.plaster2.push(...buckets.plaster3);
     buckets.plaster3.length = 0;
   }
+
+  // Round 67: the animated dressing gets its own mesh (the pivot at the mooring point, the hull's yaw on the mesh, so
+  // the frame update rolls and pitches it about its own axes) and leaves the merged wood bucket. One draw call per
+  // moored hull; matrixAutoUpdate stays on for these meshes alone.
+  const mooredHulls: { mesh: THREE.Mesh; y: number; phase: number }[] = [];
+  function detachAnimatedDressing(): void {
+    for (const record of animatedDressing) {
+      const bucket = buckets[record.bucket];
+      for (const g of record.geometries) {
+        const at = bucket.indexOf(g);
+        if (at >= 0) bucket.splice(at, 1);
+      }
+      const parts = record.geometries.map((g) => g.toNonIndexed());
+      const merged = mergeGeometries(parts, false);
+      for (const g of parts) g.dispose();
+      for (const g of record.geometries) g.dispose();
+      merged.translate(-record.x, -record.y, -record.z);
+      merged.rotateY(-record.yaw);
+      const mesh = new THREE.Mesh(merged, mats[record.bucket]);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.set(record.x, record.y, record.z);
+      mesh.rotation.order = 'YXZ';
+      mesh.rotation.y = record.yaw;
+      group.add(mesh);
+      mooredHulls.push({ mesh, y: record.y, phase: record.phase });
+    }
+    animatedDressing.length = 0;
+  }
+  detachAnimatedDressing();
 
   // --- merge buckets into one mesh per material ---
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
@@ -7265,8 +7300,20 @@ ${snowCap ? `
     }
   }
 
+  let animatedTimeS = 0; // round 67: the world clock the moored hulls ride
+  const _hullPose: MooredHullPose = { heave: 0, roll: 0, pitch: 0 };
   function updateProps(dt: number, cameraPos: THREE.Vector3 | null = null): void {
     updatePoleLod(cameraPos);
+    if (mooredHulls.length) {
+      animatedTimeS += dt;
+      for (let i = 0; i < mooredHulls.length; i++) {
+        const hull = mooredHulls[i];
+        mooredHullPose(animatedTimeS, hull.phase, _hullPose);
+        hull.mesh.position.y = hull.y + _hullPose.heave;
+        hull.mesh.rotation.x = _hullPose.pitch;
+        hull.mesh.rotation.z = _hullPose.roll;
+      }
+    }
     fxBudget = 6; // per-frame kind-burst cap refill
     // DESTRUCTIBLES r1: deferred explosive-drum blasts (max 2/tick so chains
     // ripple instead of detonating as one frame spike)

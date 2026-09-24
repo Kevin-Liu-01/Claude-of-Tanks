@@ -30,6 +30,7 @@ import {
   MOORED_BOAT_HALF_BEAM_M, landingStream, planShoreJetty, type ShoreJettyPlan,
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
+import { mooredHullPhase } from './mooredHullMotion.ts';
 import {
   cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape,
 } from '../collision.ts';
@@ -123,6 +124,24 @@ interface GroundingReceipt {
   end?: GroundedSegmentEndpoint;
 }
 
+/**
+ * Round 67 (2026-09-24): a piece of dressing the renderer poses every frame (maps/mooredHullMotion.ts). The kit lays
+ * its geometries into the ordinary bucket exactly as before — every receipt that freezes the kit's bytes sees the
+ * same wood — and hands the SAME geometry objects here; props.ts takes them out of the merged bucket, builds one mesh
+ * on the bucket's material with the pivot at (x, y, z) and the hull's yaw, and animates it. A caller without a sink
+ * gets the static kit.
+ */
+export interface AnimatedDressing {
+  kind: 'moored-hull';
+  bucket: 'wood';
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  phase: number;
+  geometries: THREE.BufferGeometry[];
+}
+
 interface DressingContext {
   mapId?: string;
   extraKits?: readonly string[] | null;
@@ -134,11 +153,13 @@ interface DressingContext {
   groundingReceipts?: GroundingReceipt[] | null;
   obstacles?: CollisionRecord[];
   colliders?: CollisionRecord[];
+  /** Round 67: the renderer's sink for dressing it poses every frame (the moored hulls); omitted, the kit is static. */
+  animated?: AnimatedDressing[];
 }
 
 type FocusedDressingContext = Pick<
   DressingContext,
-  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders'
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated'
 > & { shore?: ShoreLedger };
 
 const _groundUp = new THREE.Vector3(0, 1, 0);
@@ -1090,11 +1111,11 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders,
+  obstacles, colliders, animated,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
-  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore };
+  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated };
   if (kits.includes('coastal')) dressCoastalShore(focused);
   if (kits.includes('river')) {
     if (riverLandings?.length) dressLakeRiverLandings(focused, riverLandings);
@@ -1355,7 +1376,12 @@ function jettyGangway(
   });
 }
 
-interface MooredBoat { x: number; z: number; yaw: number; L: number; keelY: number; bow: 1 | -1 }
+interface MooredBoat {
+  x: number; z: number; yaw: number; L: number; keelY: number; bow: 1 | -1;
+  /** Round 67: the hull's pieces (strakes, bow, transom, thwarts, a mast and boom on some) — the same objects the
+   * wood bucket holds — so the renderer can pose the hull as one animated mesh. */
+  geometries: THREE.BufferGeometry[];
+}
 
 /** The kit's clinker hull afloat beside the outer spans: the hull bottom a fixed draft under the water surface (the
  * bed lies 0.72 m below it), parallel to the deck, a slight list, a mast on some. */
@@ -1373,11 +1399,13 @@ function mooredBoat(
   const bow: 1 | -1 = rng() < 0.5 ? 1 : -1; // bow to sea or to shore
   const yaw = -Math.atan2(dz, dx) + (bow > 0 ? 0 : Math.PI) + (rng() - 0.5) * 0.05;
   const keelY = plan.surface - MOORED_BOAT_DRAFT_M;
+  const geometries: THREE.BufferGeometry[] = [];
   for (const g of parts) {
     g.rotateX(list);
     g.rotateY(yaw);
     g.translate(x, keelY, z);
     buckets.wood.push(jitterUV(g, rng));
+    geometries.push(g);
   }
   if (rng() < 0.55) {
     const mast = box(0.11, 3.4, 0.11, 2.0);
@@ -1386,6 +1414,7 @@ function mooredBoat(
     mast.rotateY(yaw);
     mast.translate(x, keelY, z);
     buckets.wood.push(mast);
+    geometries.push(mast);
     const boom = box(0.08, 0.08, 2.3, 2.0);
     boom.rotateY((rng() - 0.5) * 0.4);
     boom.translate(L * 0.18, 1.21, 0);
@@ -1393,13 +1422,14 @@ function mooredBoat(
     boom.rotateY(yaw);
     boom.translate(x, keelY, z);
     buckets.wood.push(boom);
+    geometries.push(boom);
   }
   const bed = heightField.getHeightAt(x, z);
   groundingReceipts?.push({
     kind: 'moored-boat', x, y: keelY, z, relief: 0, baseClearance: keelY - plan.surface,
     supportMin: bed, supportMax: bed,
   });
-  return { x, z, yaw, L, keelY, bow };
+  return { x, z, yaw, L, keelY, bow, geometries };
 }
 
 /** Two bollards on the deck edge beside the moored hull and a line from each to the nearer gunwale. */
@@ -1432,11 +1462,17 @@ function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan,
 /** Every piece that keys on a planned jetty, drawn from the landing's own stream (the kit's main sequence is untouched). */
 function dressShoreLanding(
   buckets: DressingBuckets, heightField: DressingHeightField, plan: ShoreJettyPlan,
-  groundingReceipts?: GroundingReceipt[] | null, rng: Rng = landingStream(plan),
+  groundingReceipts?: GroundingReceipt[] | null, rng: Rng = landingStream(plan), animated?: AnimatedDressing[],
 ): void {
   jettyGangway(buckets, rng, plan, groundingReceipts);
   const boat = mooredBoat(buckets, rng, heightField, plan, groundingReceipts);
   if (boat) jettyMoorings(buckets, rng, plan, boat);
+  // Round 67: the renderer poses the hull from the world clock (mooredHullMotion.ts); the mooring lines stay with the
+  // bollards — a few centimetres of heave on a tarred line is nothing the eye reads
+  if (boat && animated) {
+    animated.push({ kind: 'moored-hull', bucket: 'wood', x: boat.x, y: boat.keelY, z: boat.z, yaw: boat.yaw,
+      phase: mooredHullPhase(boat.x, boat.z), geometries: boat.geometries });
+  }
 }
 
 /** The shore ledger entry of a planned jetty: the wrack line keeps off the deck and the gangway, and gathers its
@@ -1459,6 +1495,7 @@ function addCoastalJetty(
   shore: ShoreLedger | undefined,
   groundingReceipts: GroundingReceipt[] | null | undefined,
   spawns: readonly { x: number; z: number }[] | undefined,
+  animated?: AnimatedDressing[],
 ): void {
   // Round 58 (2026-09-24): the jetty stood at 1.05 R of the disc with fixed-height piles and a sagging deck — 15–30 m
   // inland on Saltmere's flat strand, ten metres up the bank on Nordhavn's heads. It now stands where the strand law
@@ -1480,12 +1517,12 @@ function addCoastalJetty(
   if (!plan) return;
   const stream = landingStream(plan);
   jetty(buckets, stream, plan.x, plan.z, plan.angle, plan.deckY - 0.82, plan.length, heightField, groundingReceipts);
-  dressShoreLanding(buckets, heightField, plan, groundingReceipts, stream);
+  dressShoreLanding(buckets, heightField, plan, groundingReceipts, stream, animated);
   registerShoreLanding(shore, plan);
 }
 
 function dressCoastalShore({
-  L, heightField, rng, buckets, groundingReceipts, obstacles, shore,
+  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated,
 }: FocusedDressingContext): void {
   const spawns = L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined;
   // Round 56: the driftwood's strand admission shares the wrack line's gates (roads, pads, boats, footprints)
@@ -1498,7 +1535,7 @@ function dressCoastalShore({
     addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore);
     addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts, strand);
     addCoastalBuoys(lake, big, heightField, rng, buckets);
-    if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns);
+    if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns, animated);
   }
 }
 
@@ -1938,7 +1975,7 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
 }
 
 function dressLakeRiverLandings(
-  { L, heightField, rng, buckets, groundingReceipts, shore }: FocusedDressingContext,
+  { L, heightField, rng, buckets, groundingReceipts, shore, animated }: FocusedDressingContext,
   anchors: readonly RiverLandingAnchor[],
 ): void {
   // Authored landing budget is independent of channel interpolation density.
@@ -1951,7 +1988,7 @@ function dressLakeRiverLandings(
     jetty(buckets, rng, landing.x, landing.z, landing.angle,
       landing.deckY - 0.82, landing.length, heightField, groundingReceipts);
     // Round 58: on a sea strand the pier takes the gangway, moored boat and bollards of the derived landing
-    if (landing.shore) dressShoreLanding(buckets, heightField, landing.shore, groundingReceipts);
+    if (landing.shore) dressShoreLanding(buckets, heightField, landing.shore, groundingReceipts, undefined, animated);
     if (anchor.shoreReeds !== false) addRiverBankReeds([L.lakes![anchor.lakeIndex]], heightField, rng, buckets);
     shore?.keepOut.push({ x: landing.boatX, z: landing.boatZ, r: 4.2 });
     if (landing.shore) registerShoreLanding(shore, landing.shore);
