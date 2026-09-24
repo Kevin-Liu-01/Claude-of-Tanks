@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // First-party source-measured Kurganets-25 Epokha turret. Coordinates are
 // relative to its measured ring. No hull or running gear is built here.
 import * as THREE from 'three';
@@ -58,13 +59,15 @@ function addKurganetsTurretSides(P: TankBuilderPort): void {
     for (const side of [-1, 1]) {
         // Two Kornet canisters on each flank; thin protective housing keeps the
         // visible round tube mouths and the air below the launch rails.
-        localTurret(P, 'turretDetail', box(.407, .244, 1.263), side * 1.377, 2.859, -1.346);
-        for (const x of [1.281, 1.474]) {
-            localTurret(P, 'turretDark', cylZ(.089, .02, P.q ? 18 : 10), side * x, 2.869, -.708);
-        }
+        weaponAssembly(P, () => {
+          localTurret(P, 'turretDetail', box(.407, .244, 1.263), side * 1.377, 2.859, -1.346);
+          for (const x of [1.281, 1.474]) {
+              localTurret(P, 'turretDark', cylZ(.089, .02, P.q ? 18 : 10), side * x, 2.869, -.708);
+          }
+        });
         addKurganetsSmokeCases(P, side);
         const handed = side < 0 ? 1 : -1;
-        addKurganetsCanisterCarrier(P, side, handed);
+        weaponAssembly(P, () => addKurganetsCanisterCarrier(P, side, handed));
         localTurret(P, 'turretDetail', box(.32, .12, .40), side * .69, 3.12, -1.96);
         localTurret(P, 'turretGlass', box(.20, .075, .018), side * .69, 3.135, -1.75);
     }
@@ -179,18 +182,20 @@ function addKurganetsTurret(P: TankBuilderPort): void {
     localTurret(P, 'turretDetail', cylY(.20, .20, .07, 24), .577, 3.114, -1.433);
     // Source's raised rear rack sits on two braced feet rather than a floating
     // crossbar. Its eight small launch tubes remain distinct in both LODs.
-    for (const x of [.44, .92]) {
-        localTurret(P, 'turretDetail', box(.04, .27, .38), x, 3.14, -2.56);
-    }
-    for (const [y, xs] of [[3.291, [.526, .628, .732]], [3.463, [.479, .580, .686, .789, .893]]] as const) {
-        for (const x of xs) {
-            localTurret(P, 'turretDetail', cylZ(.046, .827, P.q ? 16 : 8), x, y, -2.821);
-            localTurret(P, 'turretDark', cylZ(.035, .015, P.q ? 12 : 8), x, y, -3.24);
-        }
-    }
-    for (const z of [-3.208, -2.429]) {
-        localTurret(P, 'turretDetail', box(.557, .045, .186), .688, 3.59, z);
-    }
+    weaponAssembly(P, () => {
+      for (const x of [.44, .92]) {
+          localTurret(P, 'turretDetail', box(.04, .27, .38), x, 3.14, -2.56);
+      }
+      for (const [y, xs] of [[3.291, [.526, .628, .732]], [3.463, [.479, .580, .686, .789, .893]]] as const) {
+          for (const x of xs) {
+              localTurret(P, 'turretDetail', cylZ(.046, .827, P.q ? 16 : 8), x, y, -2.821);
+              localTurret(P, 'turretDark', cylZ(.035, .015, P.q ? 12 : 8), x, y, -3.24);
+          }
+      }
+      for (const z of [-3.208, -2.429]) {
+          localTurret(P, 'turretDetail', box(.557, .045, .186), .688, 3.59, z);
+      }
+    });
 }
 // Object_29 has four different stepped fittings, not a symmetric pair of
 // generic whips. These independent axial calipers preserve their real stations.

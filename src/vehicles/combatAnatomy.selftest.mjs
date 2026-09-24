@@ -261,8 +261,9 @@ for (const id of ALL_TANK_IDS) {
     assert.equal(box.visualForm, 'seatedCrew', `${id}/${station.role}: human visual form`);
   }
   const missile = spec.gun.shells.some((shell) => (
-    Number(shell.reloadS || spec.gun.reloadS) >= 8
-    && (shell.guided || (spec.role === 'ifv' && shell.type === 'HEAT'))
+    shell.launcherTubes > 0
+    || (Number(shell.reloadS || spec.gun.reloadS) >= 8
+      && (shell.guided || (spec.role === 'ifv' && shell.type === 'HEAT')))
   ));
   assert.equal(names.includes('autoloader'), !!layout.systems.autoloader, `${id}: researched autoloader applicability`);
   assert.equal(names.includes('feedSystem'), !!layout.systems.feedSystem, `${id}: researched weapon-feed applicability`);

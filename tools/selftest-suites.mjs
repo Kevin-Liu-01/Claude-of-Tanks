@@ -21,6 +21,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/griffinViper.selftest.mjs',
     'src/sim/gunPitchLimits.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
+    'src/sim/weaponHousing.selftest.mjs',
+    'src/vehicles/externalWeapons.selftest.mjs',
     'src/vehicles/missileConceptMarkings.selftest.mjs',
     'src/game/missilePresentation.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',

@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -475,7 +476,7 @@ function buildK21Turret(P: TankBuilderPort): void {
         equipment(P, 'turret', 'Dark', cylY(.0058, .0126, tip - bottom, P.q ? 8 : 6), x, (bottom + tip) / 2, -1.61599);
     }
     addBasket(P);
-    addK21Launcher(P);
+    weaponAssembly(P, () => addK21Launcher(P));
     P.addGunExtra(KIT.xform(box(.34, .37, .53), 0, .06, .05, -.06));
     barrel(P, 2.391, .036, .63, undefined, .020);
     openGunTube(P, 2.391, 2.601, .045, .096, .020, .11);

@@ -107,8 +107,13 @@ Destroyed-only char and ember atlases must remain demand-owned. The battle warm
 pipeline prepares fielded variants before rollout, while `setDestroyed()` is
 the correctness fallback for Studio and diagnostic callers that skip warming;
 never restore eager wreck-map creation to ordinary vehicle construction.
-Camouflaged roof fittings, sights, launchers, stowage, and machine guns must use
-`P.addEquipment()` so they never expand armor hitboxes. Structural cupolas use
+Camouflaged roof fittings, sights, smoke dispensers, stowage, and machine guns
+must use `P.addEquipment()` so they never expand the main armor shell. Offensive
+rocket/missile launchers are damageable: scope their housings, canisters and
+supports with `weaponAssembly()` from `profiles/weaponStock.ts`. Regenerate
+anatomy to publish their exact external hit surfaces and module links. Keep
+inter-pod gaps open, retain native yaw/pitch ownership, and test direct/blast
+damage with one module roll per shot. Do not put a broad armor box over a rack. Structural cupolas use
 `P.addCupola()` (or an explicitly structural hull/turret add) and remain hittable.
 
 Canonical running gear resolves deterministic mechanical families through

@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 // Independent first-party construction of the supplied wide-cage MILAN fit.
 // Source meshes remain local comparison inputs; no source vertices are used.
@@ -510,26 +511,28 @@ function turretPeriscopes(P: TankBuilderPort, add: EquipmentAdder): void {
 function milanLauncherAndAntenna(P: TankBuilderPort, add: EquipmentAdder): void {
   // The cantilever and shim below the MILAN bearing are visible source
   // plate stock (raw Y 2.4922..2.5083 and 2.5083..2.5166 respectively).
-  add('turretDetail',box(.274,.0161,.180),-.537,2.50525,-.020);
-  add('turretDetail',box(.117,.0083,.115),-.601,2.51745,-.020);
-  // Object_29/30's compact left-hatch receiver has a low bearing and a
-  // triangular side cradle. It is not the previous tall aft-centred post.
-  add('turretDetail',box(.21,.065,.21),-.60,2.553,-.020);
-  add('turretDetail',box(.105,.155,.145),-.60,2.658,-.020);
-  add('turretDetail',cylX(.083,.166,P.q?20:12),-.60,2.683,-.020);
-  const cradleRing=[[-.131,2.704],[.284,2.704],[.284,3.096],
-    [-.085,2.954]] as const;
-  const cradle=sectionSolid([{z:-.020,ring:cradleRing.map(([z,y])=>[-z,y] as const).reverse()},
-    {z:.020,ring:cradleRing.map(([z,y])=>[-z,y] as const).reverse()}]).rotateY(Math.PI/2);
-  add('turretDetail',cradle,-.487,0,0);
-  add('turretDetail',box(.18,.039,.37),-.598,2.821,.086);
-  add('turretDetail',box(.12,.028,.841),-.644,2.863,.0485);
-  add('turretDetail',cylZ(.078,1.21,P.q?24:14),-.64,2.955,-.14);
-  add('turretDark',cylZ(.059,.016,P.q?24:14),-.64,2.955,.474);
-  add('turretDetail',cylZ(.10,.13,P.q?24:14),-.64,2.955,-.69);
-  add('turretDetail',box(.026,.056,.274),-.553,3.102,-.010);
-  add('turretDetail',box(.131,.159,.029),-.4645,3.012,.280);
-  add('turretGlass',box(.098,.112,.012),-.4645,3.012,.300);
+  weaponAssembly(P, () => {
+    add('turretDetail',box(.274,.0161,.180),-.537,2.50525,-.020);
+    add('turretDetail',box(.117,.0083,.115),-.601,2.51745,-.020);
+    // Object_29/30's compact left-hatch receiver has a low bearing and a
+    // triangular side cradle. It is not the previous tall aft-centred post.
+    add('turretDetail',box(.21,.065,.21),-.60,2.553,-.020);
+    add('turretDetail',box(.105,.155,.145),-.60,2.658,-.020);
+    add('turretDetail',cylX(.083,.166,P.q?20:12),-.60,2.683,-.020);
+    const cradleRing=[[-.131,2.704],[.284,2.704],[.284,3.096],
+      [-.085,2.954]] as const;
+    const cradle=sectionSolid([{z:-.020,ring:cradleRing.map(([z,y])=>[-z,y] as const).reverse()},
+      {z:.020,ring:cradleRing.map(([z,y])=>[-z,y] as const).reverse()}]).rotateY(Math.PI/2);
+    add('turretDetail',cradle,-.487,0,0);
+    add('turretDetail',box(.18,.039,.37),-.598,2.821,.086);
+    add('turretDetail',box(.12,.028,.841),-.644,2.863,.0485);
+    add('turretDetail',cylZ(.078,1.21,P.q?24:14),-.64,2.955,-.14);
+    add('turretDark',cylZ(.059,.016,P.q?24:14),-.64,2.955,.474);
+    add('turretDetail',cylZ(.10,.13,P.q?24:14),-.64,2.955,-.69);
+    add('turretDetail',box(.026,.056,.274),-.553,3.102,-.010);
+    add('turretDetail',box(.131,.159,.029),-.4645,3.012,.280);
+    add('turretGlass',box(.098,.112,.012),-.4645,3.012,.300);
+  });
   add('turretDetail',box(.22,.10,.12),.855,2.48,.195);
   add('turretDetail',cylY(.019,.029,.19,10),.904,2.60,.195);
   add('turretDetail',cylY(.008,.014,1.29,8),.904,3.34,.195);

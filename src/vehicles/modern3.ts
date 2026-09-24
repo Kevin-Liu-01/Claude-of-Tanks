@@ -1,3 +1,4 @@
+import { weaponAssembly } from './profiles/weaponStock.ts';
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
 // Vehicles (docs/history/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
@@ -3640,26 +3641,28 @@ export function buildBradley(P: Modern3BuilderPort) {
     // ~2.17 at its x -1.27 tip — my flat 2.41 top + 2.46 rib read +0.25 on
     // the front -1.2 cols) and its front diagonal sits ~0.1 lower than the
     // r3 cut; the tube muzzle discs sat 0.1 PROUD of the diagonal.
-    P.addGunExtra(slab(
-      [-1.155, -0.32, 0.00], [-0.785, -0.32, 0.34], [-0.785, -0.32, -0.93], [-1.155, -0.32, -0.93],
-      [-1.155, -0.075, 0.00], [-0.785, 0.16, 0.34], [-0.785, 0.16, -0.93], [-1.155, -0.075, -0.93],
-    ), 0, 0, 0);                                                                  // armored pod box (1.93..2.41 east,
-                                                                                  //   top falling to 2.175 west)
-    P.addGunExtra(box(0.22, 0.05, 1.00), -0.90, 0.185, -0.43);                    // lid rib (east half only — its
-                                                                                  //   world -1.205 end lit the front
-                                                                                  //   -1.198 col at 2.46)
-    P.addGunExtraDark(cylZ(0.115, 0.06, 14), -0.97, 0.04, 0.115);                 // upper tube muzzle (flush under
-    P.addGunExtraDark(cylZ(0.115, 0.06, 14), -0.97, -0.20, 0.115);                //   the new diagonal)
-    P.addGunExtra(box(0.32, 0.26, 0.34), -0.65, -0.04, 0.10);                     // elevation arm to the mount
-    P.addGunExtra(box(0.28, 0.16, 0.26), -0.665, 0.06, 0.40);                     // pod root bracket (laps the pod
-                                                                                  //   r4: east world -0.59 — the -0.66
-                                                                                  //   face was 2 mm outside the -0.621
-                                                                                  //   col window, ref front 0.727)
-                                                                                  //   east face — the plan -0.769
-                                                                                  //   col's ref front is 0.691; the
-                                                                                  //   arm alone read 0.414; r3 top
-                                                                                  //   2.45 -> 2.39: it painted st8's
-                                                                                  //   top 2.457 vs ref 2.42)
+    weaponAssembly(P, () => {
+      P.addGunExtra(slab(
+        [-1.155, -0.32, 0.00], [-0.785, -0.32, 0.34], [-0.785, -0.32, -0.93], [-1.155, -0.32, -0.93],
+        [-1.155, -0.075, 0.00], [-0.785, 0.16, 0.34], [-0.785, 0.16, -0.93], [-1.155, -0.075, -0.93],
+      ), 0, 0, 0);                                                                  // armored pod box (1.93..2.41 east,
+                                                                                    //   top falling to 2.175 west)
+      P.addGunExtra(box(0.22, 0.05, 1.00), -0.90, 0.185, -0.43);                    // lid rib (east half only — its
+                                                                                    //   world -1.205 end lit the front
+                                                                                    //   -1.198 col at 2.46)
+      P.addGunExtraDark(cylZ(0.115, 0.06, 14), -0.97, 0.04, 0.115);                 // upper tube muzzle (flush under
+      P.addGunExtraDark(cylZ(0.115, 0.06, 14), -0.97, -0.20, 0.115);                //   the new diagonal)
+      P.addGunExtra(box(0.32, 0.26, 0.34), -0.65, -0.04, 0.10);                     // elevation arm to the mount
+      P.addGunExtra(box(0.28, 0.16, 0.26), -0.665, 0.06, 0.40);                     // pod root bracket (laps the pod
+                                                                                    //   r4: east world -0.59 — the -0.66
+                                                                                    //   face was 2 mm outside the -0.621
+                                                                                    //   col window, ref front 0.727)
+                                                                                    //   east face — the plan -0.769
+                                                                                    //   col's ref front is 0.691; the
+                                                                                    //   arm alone read 0.414; r3 top
+                                                                                    //   2.45 -> 2.39: it painted st8's
+                                                                                    //   top 2.457 vs ref 2.42)
+    });
     // ---- 25 mm M242: box mantlet/rotor + thin tube (muzzle 2.39) ------------
     P.addGunExtra(box(0.40, 0.34, 0.42), 0.02, -0.04, 0.23);                      // rotor/mantlet block (r4: front
                                                                                   //   world 0.695 -> 0.595 — the ref
@@ -4413,11 +4416,13 @@ export function buildBMP2(P: Modern3BuilderPort) {
   // (<= -0.483 world; the slab-5 top IS the 2.39 tube — pulling it out
   // cost topPct 9.3, the r2 packet's proc-fractional law). The muzzle
   // ring still lands on the side row's mapped 2.405 column.
-  P.add('turretDetail', box(0.12, 0.14, 0.13), 0.05, 0.50, -0.385);             // pedestal
-  P.add('turretDetail', box(0.10, 0.06, 0.09), 0.05, 0.60, -0.315);             // yoke
-  P.add('turretDark', xform(cylZ(0.072, 0.66, 12), 0, 0, 0, -0.02, 0, 0), 0.05, 0.655, -0.175); // 9M113 tube
-  P.add('turretDark', xform(cylZ(0.10, 0.05, 12), 0, 0, 0.33, -0.02, 0, 0), 0.06, 0.655, -0.175); // muzzle ring
-  P.add('turretDetail', xform(cylZ(0.076, 0.04, 12), 0, 0, -0.32, -0.02, 0, 0), 0.05, 0.655, -0.175); // rear cap
+  weaponAssembly(P, () => {
+    P.add('turretDetail', box(0.12, 0.14, 0.13), 0.05, 0.50, -0.385);             // pedestal
+    P.add('turretDetail', box(0.10, 0.06, 0.09), 0.05, 0.60, -0.315);             // yoke
+    P.add('turretDark', xform(cylZ(0.072, 0.66, 12), 0, 0, 0, -0.02, 0, 0), 0.05, 0.655, -0.175); // 9M113 tube
+    P.add('turretDark', xform(cylZ(0.10, 0.05, 12), 0, 0, 0.33, -0.02, 0, 0), 0.06, 0.655, -0.175); // muzzle ring
+    P.add('turretDetail', xform(cylZ(0.076, 0.04, 12), 0, 0, -0.32, -0.02, 0, 0), 0.05, 0.655, -0.175); // rear cap
+  });
   // §B2 NO-AIR cradle riser (see-through round 2026-08-08): the 9M113 tube
   // rode ONLY the -0.385 pedestal point — dome-to-tube air forward of the
   // yoke stayed flood-enclosed (pedestal rear / TKN-3 front / housing west)
@@ -5020,15 +5025,17 @@ export function buildPuma(P: Modern3BuilderPort) {
   // recoilG rides under rig_turret). Print pod: x 1.16..1.62 world, y
   // 2.28..2.65, z -1.66..-0.36 build. Gun frame (pivot world 0.085, 2.55,
   // -0.82): x 1.07..1.53, y -0.27..+0.10, z -0.84..+0.46. ------------------
-  P.addGunExtra(box(0.46, 0.37, 1.30), 1.30, -0.085, -0.19);                   // armored twin-tube box
-  P.addGunExtra(box(0.40, 0.05, 1.20), 1.30, 0.125, -0.19);                    // lid rib
-  P.addGunExtraDark(cylZ(0.105, 0.05, 14), 1.19, -0.02, 0.44);                 // upper-left tube muzzle
-  P.addGunExtraDark(cylZ(0.105, 0.05, 14), 1.41, -0.02, 0.44);                 // upper-right tube muzzle
-  P.addGunExtra(box(0.44, 0.22, 0.30), 0.95, -0.10, -0.30);                    // elevation arm to the turret wall
-                                                                               //   (lengthened: the re-centered
-                                                                               //   core wall sits at world ~0.95,
-                                                                               //   the pod holds its print seat)
-  P.addGunExtraDark(box(0.42, 0.30, 0.05), 1.30, -0.09, -0.86);                // rear door panel
+  weaponAssembly(P, () => {
+    P.addGunExtra(box(0.46, 0.37, 1.30), 1.30, -0.085, -0.19);                   // armored twin-tube box
+    P.addGunExtra(box(0.40, 0.05, 1.20), 1.30, 0.125, -0.19);                    // lid rib
+    P.addGunExtraDark(cylZ(0.105, 0.05, 14), 1.19, -0.02, 0.44);                 // upper-left tube muzzle
+    P.addGunExtraDark(cylZ(0.105, 0.05, 14), 1.41, -0.02, 0.44);                 // upper-right tube muzzle
+    P.addGunExtra(box(0.44, 0.22, 0.30), 0.95, -0.10, -0.30);                    // elevation arm to the turret wall
+                                                                                 //   (lengthened: the re-centered
+                                                                                 //   core wall sits at world ~0.95,
+                                                                                 //   the pod holds its print seat)
+    P.addGunExtraDark(box(0.42, 0.30, 0.05), 1.30, -0.09, -0.86);                // rear door panel
+  });
   // ---- 30 mm MK30-2/ABM (§B3.1: cylinders only — cast collar, slim tube,
   // stepped muzzle brake; the coax MG4 is the census MG, FITTINGS-stamped).
   // Tube axis y 2.55 world at x +0.085 (print fused-tube plan band). -------
@@ -5294,14 +5301,16 @@ function buildType89Turret(P: Modern3BuilderPort) {
   // ---- Jyu-MAT LAUNCHER BOXES both flanks (THE identity tell): single-
   // tube armored box on a wall bracket + support strut, tilted up 8 deg,
   // seated at wall-top height so the wings read in side profile ------------
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.36, 0.36, 0.92), s * 0.92, 0.32, -0.16, -0.14, 0, 0);
-    P.add('turretDark', box(0.30, 0.30, 0.02), s * 0.92, 0.385, 0.295, -0.14, 0, 0); // muzzle door recess
-    P.add('turretDark', cylZ(0.10, 0.04, 14), s * 0.92, 0.385, 0.285, -0.14, 0, 0); // tube mouth
-    P.add('turretDetail', box(0.36, 0.05, 0.06), s * 0.92, 0.17, -0.55);       // rear cap rib
-    P.add('turret', box(0.05, 0.28, 0.52), s * 0.73, 0.30, -0.20);             // wall bracket
-    P.add('turretDetail', box(0.04, 0.04, 0.36), s * 0.85, 0.12, 0.14, 0, 0, s * 0.6); // support strut
-  }
+  weaponAssembly(P, () => {
+    for (const s of [-1, 1]) {
+      P.add('turret', box(0.36, 0.36, 0.92), s * 0.92, 0.32, -0.16, -0.14, 0, 0);
+      P.add('turretDark', box(0.30, 0.30, 0.02), s * 0.92, 0.385, 0.295, -0.14, 0, 0); // muzzle door recess
+      P.add('turretDark', cylZ(0.10, 0.04, 14), s * 0.92, 0.385, 0.285, -0.14, 0, 0); // tube mouth
+      P.add('turretDetail', box(0.36, 0.05, 0.06), s * 0.92, 0.17, -0.55);       // rear cap rib
+      P.add('turret', box(0.05, 0.28, 0.52), s * 0.73, 0.30, -0.20);             // wall bracket
+      P.add('turretDetail', box(0.04, 0.04, 0.36), s * 0.85, 0.12, 0.14, 0, 0, s * 0.6); // support strut
+    }
+  });
   // ---- commander cupola RIGHT + gunner station LEFT (the 2.5 heightM
   // anchor cluster rides the new roof: lid top 2.52, sight head 2.49) ------
   P.add('turret', cylY(0.24, 0.27, 0.06, 16), 0.33, 0.65, -0.26);              // cupola ring on the roof

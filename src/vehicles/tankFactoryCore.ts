@@ -8280,10 +8280,20 @@ function* createTankOwnedSteps(
   // final mesh transform, so profile post-assembly regrouping remains valid.
   if (geometryReceipt) {
     root.userData.combatGeometryParts = [];
+    root.userData.weaponGeometryParts = [];
     for (const [bucket, list] of Object.entries(buckets)) {
       const def = BUCKET_DEF[bucket];
       if (!def) continue;
       for (const part of list) {
+        const weapon = part.userData.weaponStock;
+        if (weapon) {
+          const position = part.getAttribute('position');
+          root.userData.weaponGeometryParts.push({ bucket, parent: def[0], ...weapon,
+            positions: Array.from({ length: position.count }, (_, i) =>
+              [position.getX(i), position.getY(i), position.getZ(i)]),
+            indices: part.index ? Array.from(part.index.array)
+              : Array.from({ length: position.count }, (_, i) => i) });
+        }
         if (!part.boundingBox) part.computeBoundingBox();
         const box = part.boundingBox;
         if (!box || box.isEmpty()) continue;

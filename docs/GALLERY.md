@@ -100,8 +100,8 @@ larger archive.
 | Layer | Canonical source | Presentation |
 | --- | --- | --- |
 | Exterior | Procedural vehicle rig | Current materials and geometry |
-| Armor | `armor.collisionShells` plus layered plates | Exact closed collision faces with canonical protection bands |
-| Modules | `armor.modules` + shared kill-cam anatomy builder | Recognizable ammo, engine, fuel, gun, optics, radio and ring models with dashed diagnostic lines |
+| Armor | `armor.collisionShells`, layered plates and `armor.externalWeapons` | Closed body collision and finite launcher surfaces with canonical protection bands |
+| Modules | `armor.modules`, shared kill-cam anatomy builder and `armor.externalWeapons` | Recognizable internal systems plus the actual damageable launcher stock |
 | Crew | `armor.crew` + shared kill-cam anatomy builder | One seated human silhouette per crew station with dashed diagnostic lines |
 
 Armor colors communicate broad kinetic-protection bands. ERA and spaced armor
@@ -118,6 +118,13 @@ segmentation never multiplies a logical module or crew station. Fleet topology,
 placement bands, evidence confidence, and source-aware visual forms come from
 `src/vehicles/internalLayoutRegistry.ts`; the research policy and primary
 references are recorded in `docs/history/research/internal-anatomy-evidence.md`.
+
+Exterior missile/rocket housings, canisters and firing supports are separately
+selectable in both armor and module layers. Their measured surfaces preserve
+open mouths and spaces between pods, follow their turret/gun articulation, and
+link to the existing missile-rack or gun damage state. Selecting a stock part
+does not create another logical module. The inspection readout identifies it
+as exterior stock, rather than an internal kill-cam model.
 
 ### Surface markup
 

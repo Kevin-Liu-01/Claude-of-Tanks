@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // Two independent first-party procedural Swedish IFVs.
 //
 // The owner-provided archive and photographs are measurement, proportion, and
@@ -565,12 +566,14 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
   P.add('turretDark', box(0.30, 0.022, 0.30), -0.58, 1.28, -0.50);
   // Flush twin-cell missile box: the forward shoulder overlaps the armor
   // course while the tubes remain visually distinct and turret-owned.
-  P.addEquipment('turret', box(0.28, 0.50, 0.68), -1.20, 0.52, -0.28, 0, 0, -0.08);
-  P.add('turretDark', box(0.16, 0.17, 0.57), -0.99, 0.52, -0.28, 0, 0, -0.48);
-  for (const y of [0.42, 0.70]) {
-    P.add('turretDark', cylZ(0.105, 0.94, 18), -1.20, y, 0.20);
-    P.add('turretDetail', KIT.torus(0.107, 0.012, 18), -1.20, y, 0.68, Math.PI / 2, 0, 0);
-  }
+  weaponAssembly(P, () => {
+    P.addEquipment('turret', box(0.28, 0.50, 0.68), -1.20, 0.52, -0.28, 0, 0, -0.08);
+    P.add('turretDark', box(0.16, 0.17, 0.57), -0.99, 0.52, -0.28, 0, 0, -0.48);
+    for (const y of [0.42, 0.70]) {
+      P.add('turretDark', cylZ(0.105, 0.94, 18), -1.20, y, 0.20);
+      P.add('turretDetail', KIT.torus(0.107, 0.012, 18), -1.20, y, 0.68, Math.PI / 2, 0, 0);
+    }
+  });
   for (const [x, z, yaw] of [
     [-1.13, 0.40, -0.18], [1.13, 0.40, 0.18],
     [-1.02, -1.38, -2.96], [1.02, -1.38, 2.96],

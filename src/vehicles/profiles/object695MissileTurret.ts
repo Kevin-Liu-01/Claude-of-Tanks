@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // First-party missile-hunter concept. No source mesh or donor
 // turret is an input. The Object hull supplies the unchanged receiving ring.
 import * as THREE from 'three';
@@ -137,9 +138,8 @@ function backupCannon(P: TankBuilderPort): void {
 export function buildObject695MissileTurret(P: TankBuilderPort): void {
   P.gunG.position.set(...OBJECT695_MISSILE_TURRET.gunPivot);
   rotatingBase(P);
-  fixedCradleSupports(P);
-  pitchingFrame(P);
-  launcherPods(P);
+  weaponAssembly(P, () => { fixedCradleSupports(P); pitchingFrame(P); }, 'gun');
+  weaponAssembly(P, () => launcherPods(P));
   sensors(P);
   backupCannon(P);
   P.topY = OBJECT695_MISSILE_TURRET.mastTop;

@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
+import type { ExternalWeaponStock } from '../sim/armor.ts';
 import { t } from '../ui/i18n.ts';
 import {
   addInternalCrewModel,
@@ -50,6 +51,7 @@ interface AnatomyCrewVolume extends InternalCrewVolumePort {
 }
 
 interface InspectionArmor extends InternalArmorModelPort {
+  externalWeapons?: readonly ExternalWeaponStock[];
   hullPlates?: ArmorPlate[];
   turretPlates?: ArmorPlate[];
   modules?: AnatomyModuleVolume[];
@@ -458,6 +460,63 @@ function addInspectionModels(
   } else if (mode === 'crew') {
     addCrewModels(spec, hullContainer, turretContainer, resources, pickables);
   }
+  if (mode === 'armor' || mode === 'modules') {
+    addWeaponModels(mode, spec, hullContainer, turretContainer, resources, pickables, gunContainer);
+  }
+}
+
+function weaponInspectionGeometry(part: ExternalWeaponStock): THREE.BufferGeometry | null {
+  const positions: number[] = [];
+  for (const plate of part.plates) {
+    for (let i = 1; i < plate.verts.length - 1; i++) {
+      positions.push(...plate.verts[0], ...plate.verts[i], ...plate.verts[i + 1]);
+    }
+  }
+  if (!positions.length) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function weaponOwnerLabel(part: ExternalWeaponStock): string {
+  if (part.gunFollow) return 'Gun assembly';
+  return part.turretLocal ? 'Turret' : 'Hull';
+}
+
+function addWeaponModels(
+  mode: 'armor' | 'modules',
+  spec: InspectionSpec,
+  hullContainer: THREE.Object3D,
+  turretContainer: THREE.Object3D,
+  resources: OverlayResource[],
+  pickables: THREE.Mesh[],
+  gunContainer?: THREE.Object3D,
+): void {
+  for (const [index, part] of (spec.armor?.externalWeapons || []).entries()) {
+    const geometry = weaponInspectionGeometry(part);
+    if (!geometry) continue;
+    const material = inspectionMaterial(mode === 'modules'
+      ? MODULE_COLORS[part.module] : armorThicknessColor(part.plates[0]), .38);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `gallery_${mode}_weapon_${index}`;
+    mesh.renderOrder = 82;
+    mesh.userData.inspection = { mode, id: `W${index + 1}`,
+      title: part.module === 'missileRack' ? 'Missile launcher / housing' : 'Launcher mechanism',
+      kind: 'external', module: part.module, physicalMm: part.plates[0].physicalMm,
+      keMm: part.plates[0].keMm, ceMm: part.plates[0].ceMm,
+      dimensionsM: part.max.map((value, axis) => Number((value - part.min[axis]).toFixed(3))),
+      owner: weaponOwnerLabel(part) };
+    const container = part.gunFollow && gunContainer ? gunContainer
+      : part.turretLocal ? turretContainer : hullContainer;
+    // Stationary turret stock is measured in the rigid combat frame. Avoid
+    // applying a presentation-only rig scale a second time (Warrior).
+    if (part.turretLocal && !part.gunFollow && turretContainer.parent) {
+      const scale = turretContainer.parent.scale;
+      mesh.scale.set(1 / scale.x, 1 / scale.y, 1 / scale.z);
+    }
+    container.add(mesh); pickables.push(mesh); resources.push(geometry, material);
+  }
 }
 
 function setAnatomyEmphasis(picker: THREE.Mesh | null, emphasized: boolean): boolean {
@@ -496,7 +555,8 @@ export function createInspectionOverlay(
   // Articulated anatomy is explicit. Legacy armor plates can carry gunFollow
   // while their profile uses different rig datums; retain those established
   // turret-owned overlays until their complete anatomy opts into this frame.
-  const articulatedAnatomy = spec.armor?.modules?.some(volume => volume.gunFollow === true);
+  const articulatedAnatomy = spec.armor?.modules?.some(volume => volume.gunFollow === true)
+    || spec.armor?.externalWeapons?.some(part => part.gunFollow);
   if (articulatedAnatomy && gun && spec.armor?.gunPivot) {
     gunContainer = attachContainer(gun, `gallery_${mode}_gun`);
     const pivot = spec.armor.gunPivot;

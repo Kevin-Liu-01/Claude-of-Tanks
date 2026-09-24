@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // First-party T-90MS-based game concept. The supplied photograph guides the
 // large 24-cell battery, not a historical or production TOS-1A claim.
 import * as THREE from 'three';
@@ -14,6 +15,11 @@ const { cylX, cylY, cylZ } = KIT;
 type Point = readonly [number, number, number];
 function stock(geometry: THREE.BufferGeometry, name: string): THREE.BufferGeometry {
   geometry.userData.tos1aTagil = name;
+  // These finite armor sheets already have exact authored combat faces in
+  // tos1aTagilSpecs. Register the remaining assembly without double armor.
+  if (['pack-skin', 'back-plate', 'cradle-foot', 'cradle-tower'].includes(name)) {
+    geometry.userData.authoredWeaponArmor = true;
+  }
   return geometry;
 }
 function fitting(P: TankBuilderPort, bucket: string, name: string, geometry: THREE.BufferGeometry,
@@ -114,7 +120,7 @@ function packLiftingEyes(P: TankBuilderPort, side: number): void {
 }
 function packFittings(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
-    packSideRibs(P, side); packSideAccess(P, side); packLiftingEyes(P, side);
+    packSideRibs(P, side); packSideAccess(P, side);
   }
   for (const x of P.q ? [-1.09, 0, 1.09] : [0]) fitting(P, 'gunMount', 'rear-hinge', cylX(.035, .22, P.q ? 12 : 8), x, -.51, -1.025);
 }
@@ -178,9 +184,17 @@ export function buildTos1aTagil(P: TankBuilderPort): void {
   buildT90MSXChassis(P);
   P.turretG.position.set(...D.turretPivot);
   P.gunG.position.set(...D.gunPivot);
-  rotatingPlatform(P); cradle(P); shell(P);
-  for (const muzzle of MUZZLES) launchCell(P, muzzle);
-  packFittings(P); sights(P); roofMachineGun(P);
+  rotatingPlatform(P);
+  weaponAssembly(P, () => cradle(P), 'gun', 20);
+  weaponAssembly(P, () => {
+    shell(P);
+    for (const muzzle of MUZZLES) launchCell(P, muzzle);
+    packFittings(P);
+  }, 'missileRack', 20);
+  // The small lifting eyes are presentation hardware, not firing components.
+  // Keep their simplified LOW torus facets out of the launcher damage stock.
+  for (const side of [-1, 1]) packLiftingEyes(P, side);
+  sights(P); roofMachineGun(P);
   retainStructuralPresentation(P);
   P.muzzleZ = D.mouthZ;
   P.topY = D.gunPivot[1] + .61;

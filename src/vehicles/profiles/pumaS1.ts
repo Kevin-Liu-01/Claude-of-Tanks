@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // Independent first-party procedural SPz Puma S1.
 //
 // The local owner-supplied GLB is used only as a proportion/anatomy oracle.
@@ -530,15 +531,17 @@ function addTurret(P: PumaS1BuilderPort): void {
   // Twin MELLS/Spike LR2 cells use square armored launch boxes like the Puma
   // S1 demonstrator.  The shallow square mouths are unmistakable from the
   // front and replace every circular tube/ring from the prior iteration.
-  const launcherX = -1.02;
-  P.addEquipment('turret', box(0.24, 0.48, 0.60), launcherX, 0.47, 0.08, 0, 0, -0.08);
-  P.addEquipment('turret', box(0.18, 0.20, 0.54), -0.84, 0.47, 0.08, 0, 0, -0.42);
-  for (const y of [0.36, 0.59]) {
-    P.addEquipment('turret', box(0.30, 0.20, 0.78), launcherX, y, 0.40);
-    P.add('turretDark', box(0.205, 0.135, 0.024), launcherX, y, 0.802);
-    P.add('turretDetail', box(0.235, 0.165, 0.014), launcherX, y, 0.818);
-    P.add('turretDark', box(0.168, 0.105, 0.018), launcherX, y, 0.830);
-  }
+  weaponAssembly(P, () => {
+    const launcherX = -1.02;
+    P.addEquipment('turret', box(0.24, 0.48, 0.60), launcherX, 0.47, 0.08, 0, 0, -0.08);
+    P.addEquipment('turret', box(0.18, 0.20, 0.54), -0.84, 0.47, 0.08, 0, 0, -0.42);
+    for (const y of [0.36, 0.59]) {
+      P.addEquipment('turret', box(0.30, 0.20, 0.78), launcherX, y, 0.40);
+      P.add('turretDark', box(0.205, 0.135, 0.024), launcherX, y, 0.802);
+      P.add('turretDetail', box(0.235, 0.165, 0.014), launcherX, y, 0.818);
+      P.add('turretDark', box(0.168, 0.105, 0.018), launcherX, y, 0.830);
+    }
+  });
   P.turretG.userData.pumaS1MellsLauncherReceipt = Object.freeze({
     architecture: 'twin-square-armored-cells-v1',
     launchCells: 2,

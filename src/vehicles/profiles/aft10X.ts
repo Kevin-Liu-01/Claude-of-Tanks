@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 import * as THREE from 'three';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import { KIT } from './kit.ts';
@@ -250,7 +251,7 @@ function buildAftLauncher(P: TankBuilderPort): void {
         equipment(P, 'turret', 'Detail', box(.14, .54, .11), side * 1.414, 2.71, -2.489);
         antenna(P, side * 1.43, 2.99, -2.49, 5.27079);
     }
-    addAftMissileCanisters(P);
+    weaponAssembly(P, () => addAftMissileCanisters(P));
     P.addEquipment('gunMount', box(2.49, .08, .20), 0, -.275, -.83);
     P.addEquipment('gunMount', box(2.49, .08, .20), 0, -.275, .78);
     addAftLauncherSensors(P);

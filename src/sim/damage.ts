@@ -77,6 +77,8 @@ export interface DamageShellSpec extends BallisticShellSpec {
 
 export interface DamageShell extends ShellEntity<DamageShellSpec> {
   freshPenRollMm?: number;
+  /** Survives screen-piercing across fixed steps; scoped to each target. */
+  weaponModuleRolls?: Map<string, Set<ModuleId>>;
 }
 
 export type DamageArmorPlate = ArmorPlate;
@@ -240,6 +242,7 @@ interface ResolutionContext {
   crewHit: string[];
   chanceScale: number;
   dmgScale: number;
+  weaponModulesRolled?: Set<ModuleId>;
 }
 
 const TRACE_CONTINUE = Symbol();
@@ -618,8 +621,13 @@ function refreshModuleState(m: CombatModuleState): ModuleStateName {
 function rollModuleDamage(
   ctx: ResolutionContext,
   moduleName: ModuleId,
+  weaponHousing = false,
 ): { fireStarted: boolean; ammoRacked: boolean } {
   const res = { fireStarted: false, ammoRacked: false };
+  // A salvo rack can have dozens of intersected tubes, walls and ready-round
+  // volumes. Its damage chance is per projectile, never per mesh triangle.
+  if (ctx.weaponModulesRolled?.has(moduleName)) return res;
+  if (weaponHousing) (ctx.weaponModulesRolled ||= new Set()).add(moduleName);
   const m = ctx.combat.modules[moduleName];
   if (!m) return res;
   const damageRoll = ctx.rng(); // always consumed — fixed order
@@ -889,6 +897,9 @@ function deflectShell(shell: DamageShell, hit: PlateHit): void {
  */
 function ensurePenRoll(shell: DamageShell, rng: Rng): void {
   if (shell.penRollDone) return;
+  // The solo battle recycles shell objects and clears penRollDone on reuse.
+  // A new projectile must never inherit another shot's launcher damage rolls.
+  shell.weaponModuleRolls?.clear();
   // True arc length accumulated by stepShell (gravity-bent paths are longer
   // than age × muzzle velocity); fall back for shells that never stepped.
   const distM = shell.distM > 0 ? shell.distM : shell.ageS * shell.spec.velocityMps;
@@ -948,7 +959,8 @@ function processModuleTraceHit(
 ): TraceAction {
   const external = hit.external === true || hit.module === 'gun';
   if (external || resolution.hullPen) {
-    mergeModuleOutcome(resolution.event, rollModuleDamage(resolution, hit.module));
+    const weapon = resolution.target.spec.armor?.externalWeapons?.some(part => part.module === hit.module);
+    mergeModuleOutcome(resolution.event, rollModuleDamage(resolution, hit.module, weapon));
   } else {
     resolution.straddlers.push(hit);
   }
@@ -1039,7 +1051,7 @@ function resolveScreenPlate(
   }
   // A missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
   if (plate.moduleLink) {
-    mergeModuleOutcome(resolution.event, rollModuleDamage(resolution, plate.moduleLink));
+    mergeModuleOutcome(resolution.event, rollModuleDamage(resolution, plate.moduleLink, plate.weaponHousing));
   }
   if (resolution.pen > 0 || resolution.hullPen) return TRACE_CONTINUE;
   stampImpact(resolution.event, hit, effMm, penBefore);
@@ -1239,6 +1251,14 @@ function resolveCarryThrough(resolution: LiveShellResolution): void {
   shell.prevPos.copy(shell.pos);
 }
 
+function weaponDamageRolls(shell: DamageShell, target: DamageTarget): Set<ModuleId> | undefined {
+  if (!target.spec.armor?.externalWeapons?.length) return undefined;
+  const targets = shell.weaponModuleRolls ||= new Map();
+  let rolled = targets.get(target.id);
+  if (!rolled) { rolled = new Set(); targets.set(target.id, rolled); }
+  return rolled;
+}
+
 /**
  * Resolve a kinetic/HEAT (or direct-fire HE) shell against one tank. Walks the
  * ordered traceTank intersections: ricochet on raw angle (3× overmatch
@@ -1305,6 +1325,7 @@ export function resolveShellHit(
     dmgRoll,
     overshootM,
     combat,
+    weaponModulesRolled: weaponDamageRolls(shell, target),
     shellSpec: spec,
     rng,
     modulesHit: event.modulesHit,

@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // First-party procedural AFV family.
 //
 // The owner-supplied GLBs are six-view silhouette/equipment oracles only.
@@ -423,29 +424,31 @@ function addTerminatorStation(P: AfvBuilderPort): void {
   // tubes per flank — cantilever arm rooted into the turntable slope, a
   // hanger web, tubes with visible air between them, clamp collars, PROUD
   // light-tone end caps reading side-on with recessed dark mouth rings.
-  for (const side of [-1, 1]) {
-    P.add('turretDark', box(0.46, 0.12, 0.42), side * 0.78, 0.46, 0.15,
-      0, 0, side * 0.08);                                                      // underslung mount block (kept)
-    P.add('turret', box(0.30, 0.07, 0.55), side * 0.66, 0.545, 0.18,
-      0, side * 0.035, 0);                                                     // rack arm off the slope flank
-    P.add('turret', box(0.06, 0.34, 0.44), side * 0.84, 0.46, 0.16,
-      0, side * 0.035, 0);                                                     // hanger web between the tubes
-    for (let row = 0; row < 2; row++) {
-      const ty = 0.335 + row * 0.24;                                           // separated pair: 7 cm air gap
-      P.add('turretDark', cylZ(0.085, 0.80, 14), side * 0.93, ty, 0.24,
-        0, side * 0.035, 0);
-      for (const cz of [0.10, 0.42]) {
-        P.add('turretDetail', cylZ(0.094, 0.03, 14), side * 0.93, ty, cz,
-          0, side * 0.035, 0);                                                 // clamp collars onto the web
+  weaponAssembly(P, () => {
+    for (const side of [-1, 1]) {
+      P.add('turretDark', box(0.46, 0.12, 0.42), side * 0.78, 0.46, 0.15,
+        0, 0, side * 0.08);                                                      // underslung mount block (kept)
+      P.add('turret', box(0.30, 0.07, 0.55), side * 0.66, 0.545, 0.18,
+        0, side * 0.035, 0);                                                     // rack arm off the slope flank
+      P.add('turret', box(0.06, 0.34, 0.44), side * 0.84, 0.46, 0.16,
+        0, side * 0.035, 0);                                                     // hanger web between the tubes
+      for (let row = 0; row < 2; row++) {
+        const ty = 0.335 + row * 0.24;                                           // separated pair: 7 cm air gap
+        P.add('turretDark', cylZ(0.085, 0.80, 14), side * 0.93, ty, 0.24,
+          0, side * 0.035, 0);
+        for (const cz of [0.10, 0.42]) {
+          P.add('turretDetail', cylZ(0.094, 0.03, 14), side * 0.93, ty, cz,
+            0, side * 0.035, 0);                                                 // clamp collars onto the web
+        }
+        P.add('turretDetail', cylZ(0.092, 0.035, 14), side * 0.93, ty, 0.645,
+          0, side * 0.035, 0);                                                   // PROUD light end cap
+        P.add('turretDark', cylZ(0.062, 0.022, 14), side * 0.93, ty, 0.668,
+          0, side * 0.035, 0);                                                   // recessed dark mouth ring
+        P.add('turretDark', cylZ(0.088, 0.02, 14), side * 0.93, ty, -0.155,
+          0, side * 0.035, 0);                                                   // rear end plate
       }
-      P.add('turretDetail', cylZ(0.092, 0.035, 14), side * 0.93, ty, 0.645,
-        0, side * 0.035, 0);                                                   // PROUD light end cap
-      P.add('turretDark', cylZ(0.062, 0.022, 14), side * 0.93, ty, 0.668,
-        0, side * 0.035, 0);                                                   // recessed dark mouth ring
-      P.add('turretDark', cylZ(0.088, 0.02, 14), side * 0.93, ty, -0.155,
-        0, side * 0.035, 0);                                                   // rear end plate
     }
-  }
+  });
   // Pano sight: the funnel read killed (square post + box head, §5.269 bar).
   P.add('turret', box(0.26, 0.08, 0.28), 0.34, 0.80, -0.18);
   P.add('turret', box(0.11, 0.26, 0.11), 0.34, 0.97, -0.18);
@@ -537,7 +540,9 @@ function addBWP1Station(P: AfvBuilderPort): void {
   P.add('turret', cylY(0.27, 0.30, 0.09, 18), 0.28, 0.73, -0.18);
   P.add('turret', box(0.54, 0.42, 0.46), 0.28, 0.98, -0.04);
   P.add('turretGlass', box(0.34, 0.18, 0.025), 0.28, 1.00, 0.205);
-  P.add('turretDark', cylZ(0.055, 0.64, 12), 0.28, 1.11, 0.44);
+  weaponAssembly(P, () => {
+    P.add('turretDark', cylZ(0.055, 0.64, 12), 0.28, 1.11, 0.44);
+  });
   // §5.349 RESIDUE (§B2 sweep handoff bwp1(a)): the sensor-head/rack
   // framed pocket (489px pre-landing / 668px live at [y 2.51..2.82] world)
   // — the head cantilevered over air behind/beside its pedestal ring. Mast
@@ -649,10 +654,12 @@ function addMarderCastTurret(P: AfvBuilderPort): void {
   P.addGunExtraDark(cylZ(0.014, 0.55, 8), 0.16, -0.05, 0.65);                  // coax MG3 tube
   muzzleTipDot(P, 0.16, -0.05, 0.93, 0.010, { parent: 'gunG' });
   // MILAN launcher on the RIGHT of the carriage (A3-era identity)
-  P.addEquipment('turret', box(0.14, 0.36, 0.30), 0.44, 0.66, -0.14);                   // launcher seat (rooted in the cast)
-  P.add('turretDark', cylZ(0.115, 1.05, 14), 0.55, 0.92, -0.10);               // MILAN tube, crown 3.06
-  P.add('turretDetail', cylZ(0.122, 0.03, 14), 0.55, 0.92, 0.43);              // tube mouth ring
-  P.add('turretDark', box(0.10, 0.16, 0.22), 0.42, 0.90, -0.36);               // sight/grip block
+  weaponAssembly(P, () => {
+    P.addEquipment('turret', box(0.14, 0.36, 0.30), 0.44, 0.66, -0.14);                   // launcher seat (rooted in the cast)
+    P.add('turretDark', cylZ(0.115, 1.05, 14), 0.55, 0.92, -0.10);               // MILAN tube, crown 3.06
+    P.add('turretDetail', cylZ(0.122, 0.03, 14), 0.55, 0.92, 0.43);              // tube mouth ring
+    P.add('turretDark', box(0.10, 0.16, 0.22), 0.42, 0.90, -0.36);               // sight/grip block
+  });
   // PERI-Z11 commander sight LEFT + gunner sight hood on the roof front
   P.add('turret', box(0.20, 0.40, 0.22), -0.32, 0.70, -0.10);                  // PERI tower, crown 3.04 (base
   P.add('turretDark', box(0.16, 0.06, 0.03), -0.32, 0.86, 0.02);
@@ -797,20 +804,22 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   // unmistakable, but its mass no longer substitutes for the turret.  The
   // root, trunnion, cradle, muzzle face and rear door make one visible load
   // path from the pod into the left side wall.
-  P.add('turret', box(0.24, 0.28, 0.46), -0.76, 0.53, -0.18);
-  P.add('turret', xform(cylX(0.090, 0.22, 12), 0, 0, 0), -0.88, 0.57, -0.18);
-  P.add('turret', box(0.11, 0.33, 0.64), -0.91, 0.60, -0.20, -0.05, 0, 0);
-  P.addEquipment('turret', box(0.40, 0.44, 1.08), -0.91, 0.73, -0.22, -0.05, 0, 0);
-  for (let k = 0; k < 3; k++) {
-    P.add('turretDark', box(0.42, 0.03, 0.05), -0.91, 0.61 + k * 0.12, -0.22, -0.05, 0, 0);
-  }
-  P.add('turretDark', box(0.36, 0.38, 0.05), -0.91, 0.75, 0.305, -0.05, 0, 0);
-  for (const dy of [-0.115, 0.115]) {
-    P.add('turretDark', cylZ(0.088, 0.04, 14), -0.91, 0.75 + dy * 0.82, 0.328, -0.05, 0, 0);
-    P.add('turretDetail', cylZ(0.097, 0.022, 14), -0.91, 0.75 + dy * 0.82, 0.352, -0.05, 0, 0);
-  }
-  P.add('turretDark', box(0.36, 0.36, 0.04), -0.91, 0.71, -0.75, -0.05, 0, 0);
+  weaponAssembly(P, () => {
+    P.add('turret', box(0.24, 0.28, 0.46), -0.76, 0.53, -0.18);
+    P.add('turret', xform(cylX(0.090, 0.22, 12), 0, 0, 0), -0.88, 0.57, -0.18);
+    P.add('turret', box(0.11, 0.33, 0.64), -0.91, 0.60, -0.20, -0.05, 0, 0);
+    P.addEquipment('turret', box(0.40, 0.44, 1.08), -0.91, 0.73, -0.22, -0.05, 0, 0);
+    for (let k = 0; k < 3; k++) {
+      P.add('turretDark', box(0.42, 0.03, 0.05), -0.91, 0.61 + k * 0.12, -0.22, -0.05, 0, 0);
+    }
+    P.add('turretDark', box(0.36, 0.38, 0.05), -0.91, 0.75, 0.305, -0.05, 0, 0);
+    for (const dy of [-0.115, 0.115]) {
+      P.add('turretDark', cylZ(0.088, 0.04, 14), -0.91, 0.75 + dy * 0.82, 0.328, -0.05, 0, 0);
+      P.add('turretDetail', cylZ(0.097, 0.022, 14), -0.91, 0.75 + dy * 0.82, 0.352, -0.05, 0, 0);
+    }
+    P.add('turretDark', box(0.36, 0.36, 0.04), -0.91, 0.71, -0.75, -0.05, 0, 0);
 
+  });
   // Right stowage wing balances the launcher and returns through a broad
   // mounting shoe rather than hovering over the turret flank.
   P.add('turret', box(0.34, 0.34, 1.08), 0.91, 0.43, -0.43);
@@ -1502,11 +1511,13 @@ function buildUpior(P: AfvBuilderPort): void {
   P.add('turretDark', box(0.26, 0.12, 0.03), -0.30, 0.88, -0.145);             // sight aperture
   P.add('turretGlass', box(0.20, 0.075, 0.015), -0.30, 0.875, -0.132);
   P.add('turretDark', box(0.03, 0.06, 0.28), -0.475, 0.80, -0.32);             // cable run on the post
-  P.add('turret', box(0.14, 0.055, 0.28), -0.30, 0.985, -0.32);                // tube saddle
-  P.add('turretDark', cylZ(0.070, 0.92, 12), -0.30, 1.042, 0.06);              // ATGM tube over the sight —
-  P.add('turretDetail', cylZ(0.077, 0.03, 12), -0.30, 1.042, 0.525);           //   crown 2.582 world: the pedestal
-  P.add('turretDark', cylZ(0.058, 0.02, 12), -0.30, 1.042, 0.543);             //   cluster IS the print's own
-  P.add('turretDetail', cylZ(0.077, 0.03, 12), -0.30, 1.042, -0.40);           //   2.55-class p95 roof
+  weaponAssembly(P, () => {
+    P.add('turret', box(0.14, 0.055, 0.28), -0.30, 0.985, -0.32);                // tube saddle
+    P.add('turretDark', cylZ(0.070, 0.92, 12), -0.30, 1.042, 0.06);              // ATGM tube over the sight —
+    P.add('turretDetail', cylZ(0.077, 0.03, 12), -0.30, 1.042, 0.525);           //   crown 2.582 world: the pedestal
+    P.add('turretDark', cylZ(0.058, 0.02, 12), -0.30, 1.042, 0.543);             //   cluster IS the print's own
+    P.add('turretDetail', cylZ(0.077, 0.03, 12), -0.30, 1.042, -0.40);           //   2.55-class p95 roof
+  });
   // low rear equipment shelf inside the drum's rear taper
   P.add('turretDark', box(0.88, 0.07, 0.045), 0, 0.16, -0.78);
   mount(P, 'turret', FITTINGS.stowageRack({
@@ -1671,7 +1682,7 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   // hanger webs, 2 columns × 2 rows of SEPARATED tubes (real air between
   // every pair), clamp collars, PROUD light end caps with recessed dark
   // mouth rings, rear end plates, and a top strap clamping both columns.
-  addTerminatorT90MissileRacks(P);
+  weaponAssembly(P, () => addTerminatorT90MissileRacks(P));
 
   // STATION ERA ("even some era"): K-5 class wedge clamshells hugging both
   // front cheeks (the t90a eraRuCheeks read, station-local), a staggered

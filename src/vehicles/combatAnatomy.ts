@@ -4,7 +4,8 @@
 // Pure array math: no DOM, WebGL or Three dependency.
 
 import { MODULE_IDS } from '../sim/moduleCatalog.ts';
-import type { EraProtection } from '../sim/armor.ts';
+import type { EraProtection, ExternalWeaponStock } from '../sim/armor.ts';
+import { prepareWeaponCollision } from './weaponCollision.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   combatAnatomyCalibration,
@@ -110,6 +111,7 @@ interface CollisionCell extends Bounds {
 }
 
 interface ArmorAnatomy {
+  externalWeapons?: ExternalWeaponStock[];
   turretPivot: Vec3;
   hullPlates: ArmorPlate[];
   turretPlates: ArmorPlate[];
@@ -121,6 +123,7 @@ interface ArmorAnatomy {
 
 interface CombatShell {
   reloadS?: number;
+  launcherTubes?: number;
   guided?: boolean;
   type?: string;
 }
@@ -1037,8 +1040,9 @@ function hasMissile(spec: CombatAnatomySpec): boolean {
   if (spec.gun?.fixedLaunchCanisters) return true;
   const defaultReloadS = spec.gun?.reloadS || 0;
   return (spec.gun?.shells || []).some((shell) => (
-    Number(shell.reloadS || defaultReloadS) >= MISSILE_RELOAD_FLOOR_S
-    && (shell.guided || (spec.role === 'ifv' && shell.type === 'HEAT'))
+    Number(shell.launcherTubes) > 0
+    || (Number(shell.reloadS || defaultReloadS) >= MISSILE_RELOAD_FLOOR_S
+      && (shell.guided || (spec.role === 'ifv' && shell.type === 'HEAT')))
   ));
 }
 
@@ -1463,6 +1467,11 @@ function assignCollisionOutputs(
   armor: ArmorAnatomy,
   calibration: CombatAnatomyCalibration | null,
 ): void {
+  if (calibration?.externalWeapons?.length) {
+    armor.externalWeapons = prepareWeaponCollision(calibration.externalWeapons);
+  } else {
+    delete armor.externalWeapons;
+  }
   armor.collisionShells = {
     hull: prepareCollisionCells([
       ...(calibration?.hullCollision || []),

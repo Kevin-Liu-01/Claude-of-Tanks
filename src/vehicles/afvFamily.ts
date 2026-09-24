@@ -337,7 +337,7 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       silhouetteWidthM: 3.61, silhouetteHeightM: 3.05 },
     armor: ifvArmor({
       hl: 3.27, hw: 1.64, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
-      turretPivot: [0, 1.895, -0.45], gunPivot: [-0.06, 0.375, 0.60],
+      turretPivot: [0.04, 1.895, -0.36], gunPivot: [-0.06, 0.252, 0.66],
       barrelLenM: 2.30, barrelRadM: 0.038,
       glacis: [45, 70, 80], lower: [45, 60, 60], side: [35, 40, 45],
       skirt: [25, 35, 70], rear: 25, roof: 20,
@@ -522,6 +522,9 @@ AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a', {
 
 // The Terminator 2 station replaces the donor tank turret and has no turret
 // ERA of its own; retaining the T-72B3M cheek plates created invisible armor.
+// Match the native station after its existing 320 mm aft reseating.
+AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPivot = [0, 1.46, -0.97];
+AFV_FAMILY_SPECS.bmpt_terminator2.armor.gunPivot = [0, 0.50, 0.36];
 AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPlates =
   AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPlates.filter(
     (plate) => plate.kind !== 'era',

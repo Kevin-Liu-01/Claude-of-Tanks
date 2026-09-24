@@ -64,6 +64,8 @@ export interface ArmorPlate {
   era?: EraProtection | null;
   moduleLink?: ModuleId | null;
   gunFollow?: boolean;
+  /** External weapon stock rolls its linked module once per projectile. */
+  weaponHousing?: boolean;
   /** One convex, planar CCW outline; opt-in so legacy quad traces stay identical. */
   convexPolygon?: boolean;
   /** Adjacent facets of one physical sheet; merge only coincident contacts. */
@@ -150,6 +152,7 @@ export interface ArmorModel {
   gunPivot?: Vec3Tuple | number[];
   hullPlates?: ArmorPlate[];
   turretPlates?: ArmorPlate[];
+  externalWeapons?: readonly ExternalWeaponStock[];
   collisionShells?: {
     hull?: readonly ArmorCollisionCell[];
     turret?: readonly ArmorCollisionCell[];
@@ -163,6 +166,15 @@ export interface ArmorModel {
   _seamMm?: number;
   _seamPlate?: ArmorPlate | null;
   __hullAabb?: { min: number[]; max: number[] } | null;
+}
+
+export interface ExternalWeaponStock {
+  min: Vec3Tuple;
+  max: Vec3Tuple;
+  module: ModuleId;
+  turretLocal: boolean;
+  gunFollow: boolean;
+  plates: readonly ArmorPlate[];
 }
 
 interface IntersectionBase {
@@ -1231,11 +1243,33 @@ function traceGunBarrel(
   }, FR_BARREL, t));
 }
 
+function traceExternalWeapons(parts: ArmorModel['externalWeapons'], out: ArmorIntersection[]): void {
+  for (const part of parts || EMPTY_WEAPONS) {
+    const frame = part.gunFollow ? FR_GUN : part.turretLocal ? FR_TURRET : FR_HULL;
+    // Reject whole authored parts before looking at their native faces. Keep
+    // only the first face of each finite part: triangle seams and the rear
+    // skin of one canister are not extra armor layers or extra damage rolls.
+    if (intersectAABB(frame, part.min, part.max) < 0) continue;
+    let nearest = Infinity, plate: ArmorPlate | null = null, nx = 0, ny = 0, nz = 0;
+    for (const face of part.plates) {
+      const t = intersectConvexPlate(frame, face.verts, undefined, face.traceBounds);
+      if (t < 0 || t >= nearest) continue;
+      nearest = t; plate = face; nx = _n.x; ny = _n.y; nz = _n.z;
+    }
+    if (!plate) continue;
+    const cosI = Math.min(1, Math.max(0, -(
+      _dirN[frame].x * nx + _dirN[frame].y * ny + _dirN[frame].z * nz)));
+    out.push(finishFrameHit({ t: nearest, kind: 'plate', plate,
+      impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD }, frame, nearest, nx, ny, nz));
+  }
+}
+const EMPTY_WEAPONS: readonly ExternalWeaponStock[] = Object.freeze([]);
+
 /**
  * Trace a world-space segment through a tank's armor model. Returns every
- * intersection — armor plates (front faces only, with world outward normal
- * and raw impact angle), module boxes, crew boxes and the external gun
- * barrel — sorted by distance along the segment. ERA plates whose names are
+ * intersection — armor plates and weapon housings (front faces only, with
+ * world outward normal and raw impact angle), module boxes, crew boxes and
+ * the external gun barrel — sorted by distance along the segment. ERA plates whose names are
  * in `eraSpent` are skipped (the tile is gone).
  *
  * @param {Vector3} from world segment start
@@ -1272,6 +1306,7 @@ export function traceTank(
   tracePlates(armorModel.turretPlates, FR_TURRET, !!turretCells?.length, eraSpent, trackShapes, out);
   traceCollisionShell(hullCells, FR_HULL, out);
   traceCollisionShell(turretCells, FR_TURRET, out);
+  traceExternalWeapons(armorModel.externalWeapons, out);
 
   if (trackShapes) traceTrackShapes(trackShapes, out);
   traceModuleVolumes(armorModel.modules, trackShapes, out);
@@ -1284,8 +1319,8 @@ export function traceTank(
 
 /**
  * Armor stack a ray would strike — used by the HUD penetration indicator and
- * AI weak-spot probing. `plate` is the first 'main' or 'spaced' surface (the
- * layer that historically gated the estimate); `layers` is EVERY plate
+ * AI weak-spot probing. `plate` is the first main/spaced surface or damageable
+ * weapon housing; `layers` is EVERY plate
  * intersection (ERA tiles, spaced screens, external tracks, main armor) in
  * ray order up to and including the first 'main' plate, so the estimate can
  * aggregate the whole stack exactly like damage resolution does.
@@ -1313,7 +1348,7 @@ export function queryAimArmor(
   for (const hit of hits) {
     if (hit.kind !== 'plate') continue;
     layers.push(hit);
-    if (!first && (hit.plate.kind === 'main' || hit.plate.kind === 'spaced')) first = hit;
+    if (!first && (hit.plate.kind === 'main' || hit.plate.kind === 'spaced' || hit.plate.weaponHousing)) first = hit;
     if (hit.plate.kind === 'main') break; // stack ends at the first main plate
   }
   if (!first) return null;
@@ -1331,8 +1366,8 @@ export function queryAimArmor(
  * center. The HE blast sweep (damage.ts) distance-tests these against the
  * blast sphere so boxes OFF the flight/burst ray — tracks beside a ground
  * burst, the rear engine on a turret hit — are still reachable, per shells
- * doc §6 / armor doc §8 step 3. Order is fixed for RNG determinism: modules
- * in model order, then crew in model order.
+ * doc §6 / armor doc §8 step 3. Order is fixed for RNG determinism: exposed
+ * weapon stock, authored modules, then crew, each in model order.
  *
  * `external` marks boxes damageable at full blast odds: explicit
  * box.external wins; by default optics and tracks count as external here
@@ -1346,6 +1381,14 @@ export function queryAimArmor(
 export function blastTargets(pose: TankArmorPose, armorModel: ArmorModel): BlastTarget[] {
   buildFrames(pose, armorModel);
   const out: BlastTarget[] = [];
+  // Exposed weapons precede internal reserve rounds sharing the same module
+  // id, so a nearby burst uses the exposed stock's full damage odds once.
+  for (const part of armorModel.externalWeapons || EMPTY_WEAPONS) {
+    const matrix = part.gunFollow ? _gunM : part.turretLocal ? _turretM : _hullM;
+    out.push({ kind: 'module', name: part.module, external: true,
+      point: new Vector3((part.min[0]+part.max[0])/2, (part.min[1]+part.max[1])/2,
+        (part.min[2]+part.max[2])/2).applyMatrix4(matrix) });
+  }
   appendBlastModuleTargets(armorModel.modules, out);
   appendBlastCrewTargets(armorModel.crew, out);
   return out;

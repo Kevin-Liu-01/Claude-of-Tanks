@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildGriffin50Chassis } from './griffin50X.ts';
@@ -62,7 +63,7 @@ export function buildGriffinViper(P: TankBuilderPort): void {
   // One convex structural base; no collision hull spanning separated pods.
   P.add('turret',box(1.50,.40,1.90),0,.20,0);
   P.addEquipment('turretDark',cylY(.94,.94,.06,P.q?48:24),0,.015,0);
-  launchPods(P); sights(P);
+  weaponAssembly(P, () => launchPods(P), 'missileRack', 15); sights(P);
   P.muzzleZ=D.mouthZ/S; P.topY=1.54;
   reduceGriffinTurret(P);
   P.hullG.userData.griffinViper={concept:true,donor:'griffin50_x',cells:16};

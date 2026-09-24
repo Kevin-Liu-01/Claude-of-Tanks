@@ -245,14 +245,18 @@ for (const id of ALL_TANK_IDS) {
     .filter((volume) => volume.module !== 'trackL' && volume.module !== 'trackR')
     .reduce((sum, volume) => sum + (volume.parts?.length || 1), 0);
   const moduleOverlay = createInspectionOverlay(tankSpec, visualRoot(), 'modules');
-  assert.equal(moduleOverlay.count, expectedModules,
-    `${id}: module overlay cardinality follows kill-cam parts, not fitted shapes`);
+  const weaponPickers = moduleOverlay.pickables.filter(picker => picker.userData.inspection.kind === 'external');
+  const internalPickers = moduleOverlay.pickables.filter(picker => picker.userData.inspection.kind !== 'external');
+  assert.equal(internalPickers.length, expectedModules,
+    `${id}: internal module cardinality follows kill-cam parts, not fitted shapes`);
+  assert.equal(weaponPickers.length, tankSpec.armor.externalWeapons?.length || 0,
+    `${id}: every damageable exterior weapon part is inspectable`);
   const ringVolumes = moduleVolumes.filter((volume) => volume.module === 'turretRing');
-  const renderedRings = moduleOverlay.pickables.filter((picker) =>
+  const renderedRings = internalPickers.filter((picker) =>
     picker.userData.inspectionVisual.userData.internalAnatomy.key === 'turretRing');
   assert.equal(renderedRings.length, ringVolumes.length,
     `${id}: each turret-ring module renders exactly once`);
-  for (const picker of moduleOverlay.pickables) {
+  for (const picker of internalPickers) {
     const model = picker.userData.inspectionVisual;
     assertModuleAboveFloor(model, `${id}:${model.userData.internalAnatomy.key}`);
   }

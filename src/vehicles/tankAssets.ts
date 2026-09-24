@@ -6,6 +6,7 @@ import { flagIconCode } from '../ui/flagCodes.ts';
 import { tankTier, tierNumeral } from './tier.ts';
 import { tankLabelRecord } from './tankLabels.ts';
 import { vehicleMarkingRecord } from './vehicleMarkings.ts';
+import type { ExternalWeaponStock } from '../sim/armor.ts';
 
 type NumericPoint = Array<number | null>;
 type NumericPointSource = readonly (number | null)[] | null | undefined;
@@ -65,6 +66,7 @@ interface TankAssetSpec {
     shells?: readonly AssetShellSpec[];
   };
   armor?: {
+    externalWeapons?: readonly ExternalWeaponStock[];
     turretPivot?: NumericPointSource;
     hullPlates?: readonly AssetPlateSpec[];
     turretPlates?: readonly AssetPlateSpec[];
@@ -208,6 +210,11 @@ export function tankAssetMetadata(spec: TankAssetSpec) {
     },
     armor: {
       schemaVersion: 3,
+      ...(armor.externalWeapons?.length ? { externalWeapons: armor.externalWeapons.map(part => ({
+        module: part.module, turretLocal: part.turretLocal, gunFollow: part.gunFollow,
+        min: point3(part.min), max: point3(part.max), physicalMm: part.plates[0]?.physicalMm,
+        surfaceFingerprint: metadataFingerprint(part.plates),
+      })) } : {}),
       turretPivot: point3(armor.turretPivot) || [0, 0, 0],
       plates: [
         ...(armor.hullPlates || []).map((plate, index) => plateMetadata(plate, false, index)),

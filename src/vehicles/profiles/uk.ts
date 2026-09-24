@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // British family procedural profiles — FROM-SCRATCH rebuild (2026-07-31).
 // Authored against the measured silhouette curves in
 // docs/references/profiles/<id>.json (mask-trace polylines decoded to
@@ -4062,20 +4063,22 @@ function fv510MilanBuild(P: UKBuilderPort): void {
   // ---- MILAN launcher: a forward-facing closed tube, armored collar,
   // elevation cradle and sight channel on the turret-right roof.  The cradle
   // penetrates the roof shoe and the tube overlaps the cradle at both ends.
-  P.addEquipment('turret', box(0.36, 0.16, 0.48), 0.56, 0.63, -0.08, 0, -0.06, 0);
-  P.addEquipment('turretDark', cylX(0.075, 0.40, 12), 0.56, 0.70, -0.03);
-  P.addEquipment('turret', box(0.12, 0.30, 0.14), 0.56, 0.79, -0.03, 0.10, 0, 0);
-  P.addEquipment('turretDark', cylZ(0.112, 1.12, 18, 0.124), 0.56, 0.92, 0.36, -0.04, 0, 0);
-  P.addEquipment('turretDetail', cylZ(0.126, 0.17, 18), 0.56, 0.92, -0.13, -0.04, 0, 0);
-  P.addEquipment('turretDark', cylZ(0.086, 0.025, 18), 0.56, 0.92, 0.927, -0.04, 0, 0);
-  P.addEquipment('turretGlass', box(0.14, 0.10, 0.018), 0.37, 0.89, 0.01, -0.02, 0, 0);
-  // Two spare missile tubes remain tied to the bustle by broad saddles.
-  for (const [x, y] of [[-0.33, 0.55], [0.02, 0.59]]) {
-    P.addEquipment('turret', box(0.20, 0.08, 0.68), x, y - 0.08, -1.20);
-    P.addEquipment('turretDark', cylZ(0.074, 0.72, 14, 0.082), x, y, -1.20);
-    P.addEquipment('turretDetail', cylZ(0.083, 0.035, 14), x, y, -0.83);
-  }
+  weaponAssembly(P, () => {
+    P.addEquipment('turret', box(0.36, 0.16, 0.48), 0.56, 0.63, -0.08, 0, -0.06, 0);
+    P.addEquipment('turretDark', cylX(0.075, 0.40, 12), 0.56, 0.70, -0.03);
+    P.addEquipment('turret', box(0.12, 0.30, 0.14), 0.56, 0.79, -0.03, 0.10, 0, 0);
+    P.addEquipment('turretDark', cylZ(0.112, 1.12, 18, 0.124), 0.56, 0.92, 0.36, -0.04, 0, 0);
+    P.addEquipment('turretDetail', cylZ(0.126, 0.17, 18), 0.56, 0.92, -0.13, -0.04, 0, 0);
+    P.addEquipment('turretDark', cylZ(0.086, 0.025, 18), 0.56, 0.92, 0.927, -0.04, 0, 0);
+    P.addEquipment('turretGlass', box(0.14, 0.10, 0.018), 0.37, 0.89, 0.01, -0.02, 0, 0);
+    // Two spare missile tubes remain tied to the bustle by broad saddles.
+    for (const [x, y] of [[-0.33, 0.55], [0.02, 0.59]]) {
+      P.addEquipment('turret', box(0.20, 0.08, 0.68), x, y - 0.08, -1.20);
+      P.addEquipment('turretDark', cylZ(0.074, 0.72, 14, 0.082), x, y, -1.20);
+      P.addEquipment('turretDetail', cylZ(0.083, 0.035, 14), x, y, -0.83);
+    }
 
+  });
   // ---- populated roof: armored rectangular hatch, panoramic head, paired
   // periscope hoods, a shielded second GPMG and compact stowage/radio boxes.
   P.addEquipment('turret', box(0.46, 0.045, 0.42), -0.29, 0.61, -0.49, 0, 0.08, 0);

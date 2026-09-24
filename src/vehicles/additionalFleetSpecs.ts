@@ -633,6 +633,11 @@ for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d
   milan.topSpeedKmh = 68;
   milan.hullTraverseDegS = 43;
   milan.visual = { ...base.visual, number: 'M9' };
+  // The Warrior's native rig is offset from the inherited Bradley frame.
+  // These are the final photo-build pivots after its 1.10 enlargement and
+  // 0.84 turret-height correction; the roof launcher must orbit this seat.
+  milan.armor.turretPivot = [0.1375, 1.914, 0.605];
+  milan.armor.gunPivot = [0.055, 0.26334, 0.605];
   milan.gun = {
     ...base.gun,
     reloadS: 0.78,

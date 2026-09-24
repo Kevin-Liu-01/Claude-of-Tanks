@@ -43,6 +43,7 @@ export interface AnatomyEraPlateReceipt extends Record<string, RuntimeValue> {
 }
 
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
+  readonly externalWeapons?: readonly AnatomyWeaponReceipt[];
   readonly hull: AnatomyCalibrationBounds;
   readonly turret?: AnatomyCalibrationBounds | null;
   readonly hullCollision?: readonly AnatomyCalibrationCell[];
@@ -57,6 +58,13 @@ export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
     readonly left: AnatomyCalibrationBounds;
     readonly right: AnatomyCalibrationBounds;
   };
+}
+
+export interface AnatomyWeaponReceipt extends AnatomyCalibrationCell {
+  readonly module: 'missileRack' | 'gun';
+  readonly armorMm: number;
+  readonly turretLocal: boolean;
+  readonly gunFollow: boolean;
 }
 
 const calibrations = new Map<string, CombatAnatomyCalibration>();

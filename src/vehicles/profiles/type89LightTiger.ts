@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // Independent first-party procedural Type 89 Light Tiger.
 //
 // The owner-supplied Type 89 GLB is a measurement and silhouette reference
@@ -283,16 +284,18 @@ function addTurret(P: LightTigerBuilderPort): void {
   // Signature Jyu-MAT Kai channels sit in proud squared armored side boxes.
   // A buried collar overlaps the turret shoulder while the wider launcher pod
   // projects far enough outboard to remain readable in front and side views.
-  for (const side of [-1, 1]) {
-    P.addEquipment('turret', box(0.18, 0.42, 0.68), side * 1.16, 0.46, 0.38,
-      0, 0, side * 0.035);
-    P.addEquipment('turret', box(0.46, 0.46, 0.62), side * 1.39, 0.46, 0.38,
-      0, 0, side * 0.035);
-    for (const y of [0.32, 0.56]) {
-      P.add('turretDark', box(0.28, 0.14, 0.025), side * 1.39, y, 0.705);
+  weaponAssembly(P, () => {
+    for (const side of [-1, 1]) {
+      P.addEquipment('turret', box(0.18, 0.42, 0.68), side * 1.16, 0.46, 0.38,
+        0, 0, side * 0.035);
+      P.addEquipment('turret', box(0.46, 0.46, 0.62), side * 1.39, 0.46, 0.38,
+        0, 0, side * 0.035);
+      for (const y of [0.32, 0.56]) {
+        P.add('turretDark', box(0.28, 0.14, 0.025), side * 1.39, y, 0.705);
+      }
     }
-  }
 
+  });
   // Twin large square roof optics echo the Type 89's paired sight boxes. The
   // housings straddle the gun instead of blocking it, with deep dark bezels
   // and inset glass rather than painted rectangles.

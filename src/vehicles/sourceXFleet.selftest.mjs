@@ -47,7 +47,10 @@ const original = {
 // Owner 2026-09-22 also selects production K2 road wheels. The wheel-seat
 // regression compares their actual geometry in HIGH/LOW/AI; the before/after
 // mesh audit preserves all hull armor, turret, gun and end-wheel geometry.
-const ownerRebuilds = { k2: '98d535e0' }; // K1A1-turret assembly was 15a3e8d2.
+// Owner 2026-09-24 narrows the Improved's hull by 10% across the front.
+// leopardImprovedHull.selftest separately verifies that exact hull-only change,
+// round wheels, live suspension, unchanged turret and independent 2A7V study.
+const ownerRebuilds = { k2: '98d535e0', leo2a7v: 'b6555130' }; // K1A1-turret assembly was 15a3e8d2.
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {
   const tank = createTank(id, null, options);

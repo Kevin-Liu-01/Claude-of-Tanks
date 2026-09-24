@@ -12,6 +12,7 @@ import {
 import { join, resolve } from 'node:path';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
+import { weaponCollisionReceipts } from './weapon-collision-receipts.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import {
   enableCombatAnatomyMeasurementMode,
@@ -579,6 +580,8 @@ function receiptFor(id) {
         tank.root, hullRig, turretRig, TANK_SPECS[id]?.armor?.modules,
       ),
       eraPlates: eraPlateReceipts(tank.root),
+      ...(tank.root.userData.weaponGeometryParts?.length
+        ? { externalWeapons: weaponCollisionReceipts(tank.root, hullRig, turretRig) } : {}),
       tracks: { left: trackL, right: trackR },
     };
   } finally {

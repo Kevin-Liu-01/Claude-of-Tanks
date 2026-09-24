@@ -8,7 +8,8 @@
 //   2. SCRIPTED SHOTS — fires a rigged mega-pen shell through each module
 //      precise authored shape centers from all six canonical bearings via the
 //      REAL traceTank + resolveShellHit pipeline and asserts:
-//        trace   — the box is crossed by the segment at all (geometry sane);
+//        trace   — the segment crosses the module volume or its explicitly
+//                  damageable exterior weapon housing (geometry sane);
 //        resolve — the module actually ROLLS damage on a penetrating hit
 //                  (externality, plate ordering and the post-pen fragment
 //                  corridor all honored — i.e. the module is reachable in
@@ -225,7 +226,12 @@ for (const id of ids) {
       for (const dir of SHOT_DIRECTIONS) {
         const { from, to } = shotSegment(centerW, dir);
         const hits = traceTank(from, to, POSE, armor, new Set());
-        if (hits.some((hit) => hit.kind === 'module' && hit.module === name)) traced = true;
+        // Ready ammunition and the gun cradle can be outside the body. Their
+        // native housing plates link to the same module as the interior stock;
+        // a real plate hit is valid even when this ray misses the reserve box.
+        if (hits.some((hit) =>
+          (hit.kind === 'module' && hit.module === name) ||
+          (hit.kind === 'plate' && hit.plate.weaponHousing && hit.plate.moduleLink === name))) traced = true;
         // Resolve on a fresh target each bearing (fires, hull damage reset).
         const target = freshTarget(spec);
         const shell = freshShell(from, to, probeShell);

@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // Original owner-directed Chinese IFV, 2026-09-19. Photographs inform the
 // fabrication language; dimensions and unmanned layout are authored game design.
 // Authority: docs/references/concepts/type100-ifv-20260919.json.
@@ -207,7 +208,7 @@ function sensors(P: TankBuilderPort): void {
 }
 function buildType100(P: TankBuilderPort): void {
   hull(P); bowAndDeck(P); stern(P); P.gear = buildType100RunningGear(P, KIT);
-  turretBody(P); cannon(P); launchers(P); sensors(P);
+  turretBody(P); cannon(P); weaponAssembly(P, () => launchers(P)); sensors(P);
   if (P.geometryReceipt) P.hullG.userData.type100Receipt = Object.freeze({
     architecture: 'type100-chinese-ifv-r6', datums: D, roadWheelsPerSide: 6,
     readyMissileCells: 4, stowedMissiles: 4, frontEngine: true, crewFrame: 'hull',

@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // Owner-directed 2026-09-19 missile-carrier concept, distinct from service ZTZ-100.
 // The historical first-party hull and complete running gear remain unchanged.
 // The broad shouldered 2x2 banks, angular low body and short backup cannon are
@@ -367,10 +368,12 @@ function sensorsAndHatches(P: TankBuilderPort): void {
 
 function turret(P: TankBuilderPort): void {
   armoredBody(P);
-  for (const side of [-1, 1]) bankHousing(P, side);
-  for (const x of ZTZ100_PROTOTYPE_LAUNCHER.columns) {
-    for (const y of ZTZ100_PROTOTYPE_LAUNCHER.rows) missileCell(P, x, y);
-  }
+  weaponAssembly(P, () => {
+    for (const side of [-1, 1]) bankHousing(P, side);
+    for (const x of ZTZ100_PROTOTYPE_LAUNCHER.columns) {
+      for (const y of ZTZ100_PROTOTYPE_LAUNCHER.rows) missileCell(P, x, y);
+    }
+  });
   backupCannon(P);
   sensorsAndHatches(P);
   P.topY = 1.33;

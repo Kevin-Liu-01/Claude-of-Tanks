@@ -705,10 +705,12 @@ function renderInspection(hit: THREE.Intersection<THREE.Object3D> | undefined): 
     });
   } else {
     const dimensions = Array.isArray(data.dimensionsM) ? data.dimensionsM : [];
+    const external = data.kind === 'external';
     $('#inspectionDetails').textContent = t('gallery.inspection.moduleDetail', {
-      label: String(data.mode === 'crew' ? t('gallery.legend.crew') : t('gallery.legend.module')),
+      label: external ? technicalLabel(data.kind)
+        : String(data.mode === 'crew' ? t('gallery.legend.crew') : t('gallery.legend.module')),
       dimensions: dimensions.join(' × '),
-      killCam: String(t('gallery.legend.killCam')),
+      killCam: external ? '' : String(t('gallery.legend.killCam')),
     });
   }
   readout.hidden = false;

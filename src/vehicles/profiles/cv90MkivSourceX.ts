@@ -1,3 +1,4 @@
+import { weaponAssembly } from './weaponStock.ts';
 // Independent owner-source CV90 Mk.IV; existing cv90_mkiv stays untouched.
 import * as THREE from 'three';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
@@ -219,15 +220,17 @@ function buildCv90RoofSights(P: TankBuilderPort, px: number, py: number, pz: num
 
 function buildCv90MissileCanisters(P: TankBuilderPort): void {
   // Thin open awning over the source's outboard sight station.
-  for(const x of [-1.38,-1.05])turretEquipment(P,'turretDetail',box(.055,.235,.74),x,2.25,-.18,-.04);
-  turretEquipment(P,'turretDetail',box(.62,.030,.99),-1.215,2.38,-.18,-.015);
-  // Supplied model's paired missile canisters remain under their real awning.
-  // Their source dimensions establish two launchers, not reserve ammunition.
-  for(const x of [-1.0525,-1.3769]) {
-    turretEquipment(P,'turretDetail',cylZ(.0553,.9508,P.q?24:12),x,2.235,-.1795,-.085);
-    for(const z of [-.52,.13])turretEquipment(P,'turretDetail',cylZ(.073,.046,P.q?20:10),x,2.235,z,-.085);
-    turretEquipment(P,'turretDark',cylZ(.046,.014,P.q?20:10),x,2.275,.303,-.085);
-  }
+  weaponAssembly(P, () => {
+    for(const x of [-1.38,-1.05])turretEquipment(P,'turretDetail',box(.055,.235,.74),x,2.25,-.18,-.04);
+    turretEquipment(P,'turretDetail',box(.62,.030,.99),-1.215,2.38,-.18,-.015);
+    // Supplied model's paired missile canisters remain under their real awning.
+    // Their source dimensions establish two launchers, not reserve ammunition.
+    for(const x of [-1.0525,-1.3769]) {
+      turretEquipment(P,'turretDetail',cylZ(.0553,.9508,P.q?24:12),x,2.235,-.1795,-.085);
+      for(const z of [-.52,.13])turretEquipment(P,'turretDetail',cylZ(.073,.046,P.q?20:10),x,2.235,z,-.085);
+      turretEquipment(P,'turretDark',cylZ(.046,.014,P.q?20:10),x,2.275,.303,-.085);
+    }
+  });
   optic(P,-.282,2.407,.25,.488,.245,.377);
 }
 

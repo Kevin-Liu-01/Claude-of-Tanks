@@ -55,13 +55,14 @@ function launcherPlate(name: string, a: [number, number, number], b: [number, nu
   const rest = (p: [number, number, number]): [number, number, number] => [
     p[0] + D.gunPivot[0], p[1] + D.gunPivot[1], p[2] + D.gunPivot[2],
   ];
-  return plate(name, 20, rest(a), rest(b), rest(c), launcherProtection);
+  return { ...plate(name, 20, rest(a), rest(b), rest(c), launcherProtection),
+    moduleLink: 'missileRack', weaponHousing: true };
 }
 type Point = [number, number, number];
 function fixedPlate(name: string, points: Point[], main = false): ArmorPlate {
   return { ...plate(name, 35, points[0], points[1], points[2],
     { keMm: 35, ceMm: 45, kind: main ? 'main' : 'spaced', moduleLink: main ? undefined : 'gun' }),
-  verts: points, convexPolygon: true };
+  verts: points, convexPolygon: true, ...(!main ? { weaponHousing: true } : {}) };
 }
 function platformPlates(): ArmorPlate[] {
   const stations = [[-1.63,1.54,.08],[-1.40,1.75,.22],[.67,1.75,.22],[.95,1.42,.22]];

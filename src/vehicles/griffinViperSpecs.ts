@@ -42,13 +42,8 @@ const boxFaces = (name: string, center: number[], size: number[], follow = false
   });
 };
 spec.armor.turretPlates.push(...boxFaces('viper_base', [0,.20,0], [1.50,.40,1.90]));
-for (const side of [-1, 1]) {
-  // Only finite side/back/top stock; the circular launch mouths remain open.
-  for (const dx of [-.515, .515]) spec.armor.turretPlates.push(...boxFaces(
-    `viper_pod_${side}_${dx}`, [side*1.02+dx,1.20,0], [.03,.61,2.56], true));
-  for (const dy of [-.29,.29]) spec.armor.turretPlates.push(...boxFaces(
-    `viper_lid_${side}_${dy}`, [side*1.02,1.20+dy,0], [1.06,.03,2.56], true));
-}
+// The generated external-weapon receipt owns the finite pod skins, caps and
+// tubes. They must not be main armor replaced by the low pedestal shell.
 spec.armor.crew = [crewBox('driver', [-1.10,.80,1.20], [-.50,1.80,2.10]),
   crewBox('gunner', [.15,.80,-.80], [.75,1.85,.15]),
   crewBox('commander', [-.75,.80,-.80], [-.15,1.85,.15])];
