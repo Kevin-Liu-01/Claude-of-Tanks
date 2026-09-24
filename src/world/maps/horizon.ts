@@ -25,6 +25,7 @@ import { prepareAutumnHorizonGround } from '../horizonAutumnGround.ts';
 //   haze,                            — aerial-perspective multiplier (default 1)
 //   grain,                           — per-vertex albedo grain amplitude (default 1)
 //   bareRock,                        — 0..1 bare upper slopes: heath, outcrop ribs, scree above the treeline (round 49)
+//   outcrops,                        — 0..1 gneiss knobs and scree through the turf on the steeper faces below the treeline (round 55)
 // }
 
 import * as THREE from 'three';
@@ -71,6 +72,9 @@ interface HorizonConfig {
   /** Round 49: 0..1 — above the treeline the turf greys to heath, outcrop ribs stand on the steeper local faces with
    * scree below them and the summit rock breaks into ribs (Fjord, Whiteout). Default 0: the ring is untouched. */
   bareRock?: number;
+  /** Round 55: 0..1 — below the treeline, gneiss knobs and slabs stand through the turf on the steeper faces (the
+   * 25–45° ridge fronts of the softened domes) inside a halo of scree (Fjord). Default 0: the ring is untouched. */
+  outcrops?: number;
   seaOpening?: HorizonSeaOpening;
   /**
    * Terrain-following canopy belts across the visible mountain faces. Off by
@@ -1875,6 +1879,8 @@ interface HorizonMaterialContext {
   ground: VistaGround;
   /** Round 49: bare upper slopes (heath, outcrop ribs, scree) above the treeline, 0..1. */
   bareRock: number;
+  /** Round 55: knobs and scree through the turf on the steeper faces below the treeline, 0..1. */
+  outcrops: number;
 }
 
 // Round 22 near-field surface (see buildHorizonMaterialSteps): runs after the style's map fragment on
@@ -1963,7 +1969,7 @@ float horizonWaterVariation = 0.0;
 
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
-  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock,
+  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops,
 }: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
@@ -2085,6 +2091,8 @@ function* buildHorizonMaterialSteps({
       uVHaze: { value: haze * (style === 'alpine' ? 0.78 : 0.92) },
       // round 49: bare upper slopes on the rings that author it (Fjord's cone, Whiteout's wind-scoured crests)
       uVBareRock: { value: bareRock },
+      // round 55: knobs and scree through the turf below the treeline on the rings that author it (Fjord)
+      uVOutcrop: { value: outcrops },
       uVFogTint: { value: new THREE.Vector3(fog.r, fog.g, fog.b) },
       uVBanding: { value: style === 'mesa' ? Math.max(banding, 0.14) * 1.7 : Math.max(banding, 0.05) },
       uVRockSlope: { value: style === 'mesa' ? new THREE.Vector2(0.16, 0.42) : new THREE.Vector2(0.30, 0.58) },
@@ -2231,7 +2239,8 @@ function* buildHorizonMaterialSteps({
         diffuseColor.rgb = mix(diffuseColor.rgb,
           diffuse * vColor.rgb * (1.0 + horizonWaterVariation), horizonMarine);`);
     };
-    mat.customProgramCacheKey = () => tiles ? 'horizon-ring-vista-r3-' + style : style === 'mesa' ? 'horizon-ring-mesa-surface-r3'
+    // round 55 (2026-09-24): r3 → r4, the below-treeline outcrop term joined the vista program
+    mat.customProgramCacheKey = () => tiles ? 'horizon-ring-vista-r4-' + style : style === 'mesa' ? 'horizon-ring-mesa-surface-r3'
       : (style === 'alpine' ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r3-') + style;
   }
   return mat;
@@ -2565,6 +2574,7 @@ interface HorizonResolvedSettings {
   banding: number;
   rockAmp: number;
   bareRock: number;
+  outcrops: number;
 }
 
 interface HorizonPalette {
@@ -2598,6 +2608,7 @@ function resolveHorizonSettings(
     banding: horizon.banding ?? (style === 'mesa' ? 0.16 : 0),
     rockAmp,
     bareRock: clamp(horizon.bareRock ?? 0, 0, 1),
+    outcrops: clamp(horizon.outcrops ?? 0, 0, 1),
   };
 }
 
@@ -2634,7 +2645,7 @@ export function* buildHorizonRingSteps(
   const style = resolveHorizonStyle(H, mapId);
   const profile = PROFILES[style];
   const {
-    amp, haze, grainAmp, snowline, treeline, treelineLayers, banding, rockAmp, bareRock,
+    amp, haze, grainAmp, snowline, treeline, treelineLayers, banding, rockAmp, bareRock, outcrops,
   } = resolveHorizonSettings(H, style);
 
   // lighting_post r7: vegetated ring base lifted toward the SUNLIT hillside
@@ -2764,7 +2775,7 @@ export function* buildHorizonRingSteps(
     noise: gnoi, banding, snowline, treeline, grainAmp, style, seed,
     mapId,
     sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
-    base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista, ground: vistaGround, bareRock,
+    base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista, ground: vistaGround, bareRock, outcrops,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -2802,6 +2813,7 @@ export function* buildHorizonRingSteps(
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     forestAmp: treeline > 0 && treeline < 1.5 ? 1 : 0,
     bareRock, // round 49: the JS twin of the fragment's outcrop ribs keeps crowns off them
+    outcrops, // round 55: and off the knobs below the treeline
     canopyDetail: vistaUniforms?.uVCanopy?.value as THREE.Texture | undefined,
     haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     palettes: {

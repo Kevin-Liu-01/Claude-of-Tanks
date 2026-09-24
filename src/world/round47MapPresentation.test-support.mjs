@@ -6,10 +6,11 @@
 import assert from 'node:assert/strict';
 
 export const ROUND47_PRESENTATION_EDITS = {
- // round 49 (2026-09-23, lane r49a): Fjord's bare upper slopes are a vista knob, not relief
+ // round 49 (2026-09-23, lane r49a): Fjord's bare upper slopes are a vista knob, not relief; round 55 (2026-09-24): its
+ // below-treeline outcrops are the same kind of knob — the CURRENT block carries both lines, the historical neither
  "fjord.ts": [
   [
-   "  horizon: {\n    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.74, snowline: 0.78,\n    forestHex: 0x213b38, rockHex: 0x657077, haze: 0.9, grain: 0.58,\n    // round 49 (owner audit 2026-09-23, \"smooth green cone hill on the rim with a darker cap\"): the softened alpine domes\n    // never reached the vista's slope-keyed rock, so a hill was one green tint with the altitude-banded summit rock as\n    // its cap; above the treeline the turf now greys to heath with gneiss ribs, scree fans and a broken summit\n    // (horizon.ts bareRock) — the palette above is unchanged\n    bareRock: 1,\n  },\n",
+   "  horizon: {\n    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.74, snowline: 0.78,\n    forestHex: 0x213b38, rockHex: 0x657077, haze: 0.9, grain: 0.58,\n    // round 49 (owner audit 2026-09-23, \"smooth green cone hill on the rim with a darker cap\"): the softened alpine domes\n    // never reached the vista's slope-keyed rock, so a hill was one green tint with the altitude-banded summit rock as\n    // its cap; above the treeline the turf now greys to heath with gneiss ribs, scree fans and a broken summit\n    // (horizon.ts bareRock) — the palette above is unchanged\n    bareRock: 1,\n    // round 55 (2026-09-24, the round-49 follow-up: the cone hills sit at hT 0.3–0.5, below the treeline that gates the\n    // ribs): gneiss knobs and slabs through the turf on the steeper faces below the treeline, inside a halo of scree\n    // (horizonVista.ts outcrops) — the palette is still unchanged\n    outcrops: 1,\n  },\n",
    "  horizon: {\n    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.74, snowline: 0.78,\n    forestHex: 0x213b38, rockHex: 0x657077, haze: 0.9, grain: 0.58,\n  },\n"
   ]
  ],

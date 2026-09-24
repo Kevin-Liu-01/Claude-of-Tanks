@@ -41,7 +41,7 @@ const FROZEN = {
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
   // round 40 (2026-09-22): coastal.ts's sea aperture dropped its authored grey (edgeWater.ts gives it the map's water colour) and
   // saltwind.ts authored its bay as one contour; the frozen config digest moved for those two maps only
-  configs: '07c4780687a5235ff5296fce9f390585ae304a8b500707683e5c69727da70f2a', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+  configs: '7d872ab325f23b91875c5b200f286f8b3df608adf11ca399628463eaa1b8e20d', // 2026-09-24 (round 55): fjord.ts horizon block authors outcrops: 1 (was 07c47806…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 

@@ -116,6 +116,10 @@ export default {
     // its cap; above the treeline the turf now greys to heath with gneiss ribs, scree fans and a broken summit
     // (horizon.ts bareRock) — the palette above is unchanged
     bareRock: 1,
+    // round 55 (2026-09-24, the round-49 follow-up: the cone hills sit at hT 0.3–0.5, below the treeline that gates the
+    // ribs): gneiss knobs and slabs through the turf on the steeper faces below the treeline, inside a halo of scree
+    // (horizonVista.ts outcrops) — the palette is still unchanged
+    outcrops: 1,
   },
   sky: {
     sunElevationDeg: 20, sunAzimuthDeg: 146, turbidity: 5.4, rayleigh: 1.55,
