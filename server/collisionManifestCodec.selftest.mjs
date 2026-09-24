@@ -184,7 +184,7 @@ assert.deepEqual(readFileSync(new URL('index.json', directory)), indexBeforeReti
 // own height, which made the city shards several times larger than the 1.5 m whole-projection slabs.
 const previousShardBytes = {
   verdant: 1854713, desert: 1138916, winter: 1837349 /* 2026-09-23 Frosthollow redesign: re-based on the recaptured shard (1670318 B) +10 % */, urban: 6905545,
-  coastal: 1355569, autumn: 1873510, steppe: 1223506 /* 2026-09-24 Tarkhan redesign: re-based on the shard recaptured on the combined round-48 tree (1112279 B) +10 % */, railyard: 1205662,
+  coastal: 1355569, autumn: 1873510, steppe: 1363120 /* 2026-09-24 round 57 (rail spur kit): re-based on the shard recaptured headless on the lane tree (1239200 B; the committed round-48 shard had gone stale against main's own world, and the siding's berth re-rolls fences and hedgehogs) +10 %; round-48 base 1112279 B */, railyard: 1205662,
   frontier: 2179727, fjord: 1982369, delta: 2150317, badlands: 1440584,
   monsoon: 2456485, alpine: 2420855, caldera: 1746798, foundry: 1776506,
   ruinspires: 8075245, blackglass: 3761374, titan_gorge: 1599752, skybridge: 1857511,

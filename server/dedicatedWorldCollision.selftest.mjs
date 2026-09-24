@@ -53,7 +53,11 @@ const roadCompletionCensus = {
   autumn: [6091, 5927, 6035],
   // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling — shard recaptured headless on the new map
   // (grain station, kolkhoz corrals, kurgan kerbs, fort walls; shelterbelts replace most groves)
-  steppe: [2358, 2120, 1290],
+  // round 57 (2026-09-24, the rail spur kit): shard recaptured headless on the lane tree (.qa-dev/collision-capture.mjs
+  // pattern, same pack script). The committed shard had gone stale against main's own steppe world — a recapture on
+  // the untouched base gave 2427 / 920 / 1302 records against the committed 2346 / 916 / 1278 — and the siding's berth
+  // then re-rolls the seeded wattle fences and hedgehog clusters off the line (+2 obstacles, structures unchanged).
+  steppe: [2441, 2152, 1314],
   railyard: [2977, 2937, 2135],
   // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
   // unchanged seeded rejection rules alter accepted trees/props, not tolerances.
