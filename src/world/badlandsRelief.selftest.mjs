@@ -75,7 +75,10 @@ const SALTWIND_BAY_CURRENT = `    // Round 40 (2026-09-22, AAA map program): the
     // metres before the red line; this contour keeps the bay's east shore and the harbour landings where they were,
     // hooks a headland cove at its north-east, and runs open to the west edge, where the horizon ring now carries
     // the same sea (edgeWater.ts). One level, as before: a connected bay cannot step at basin overlaps.
-    lakes: [{ x: -452, z: 8, r: 250, depth: 1.1, level: -7.8, shelfM: 12,
+    // Round 52 (owner decision 2026-09-23, "Saltwind strand wider: 20 m"): the graded strand between the waterline and
+    // the dry bank widens from 12 to 20 m — Saltmere's is 22 m — so the beached boats and the harbour landings rest on
+    // a real beach instead of a two-boat-length shelf.
+    lakes: [{ x: -452, z: 8, r: 250, depth: 1.1, level: -7.8, shelfM: 20,
       radii: [0.70, 0.66, 0.44, 0.48, 0.86, 1.00, 1.00, 1.00,
         1.00, 1.00, 1.00, 0.97, 0.86, 0.66, 0.58, 0.62] }],`;
 const SALTWIND_BAY_HISTORICAL = `    // A connected bay shares one level; independent automatic lake levels

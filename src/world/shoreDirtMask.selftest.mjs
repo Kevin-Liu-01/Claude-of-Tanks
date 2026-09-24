@@ -106,7 +106,7 @@ const ORIGINAL = {
   longleaf: '35eb308242df93c194fe2fa2764054e5880f581893de7eecf451b5b92670e699',
   mangrove: '9bcef3866a3c254b53208d69e8ba9a0db0665f07053dce6ba832fc35e7d8153c',
   // round 40 (2026-09-22): Saltwind's bay is one authored hooked contour open to the west edge (saltwind.ts lakes); mask re-pinned
-  saltwind: 'c080e5b0e13655ef3e4346fc8a9b7d5f56432802ae93b970599b796c8de1256e',
+  saltwind: 'f871a2739399ec256542bb9d5fbcc3ecfab144878b54883eb9e68a23a16091b2', // 2026-09-24: Saltwind strand 20 m (round 52, owner decision 20)
   reservoir: 'ce8e361f5beb374d60e58d96bdec2611f2249b18f55877142f34e2919ece69ca',
   mars: '0a3814c2ad165409f488cb8d8883e7005b874b21a6b4cd03a18db42b130a1fdb', // 2026-09-19 Olympus Basin (no water: dry-mask digest)
 };

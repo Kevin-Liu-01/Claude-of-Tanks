@@ -33,7 +33,7 @@ const FROZEN = {
   other28: { desktop: '9106c96acb4f7a7c6d58a1b49fbbda410e681037875835882fd5dc910687a856', mobile: '777cc95ccb6179f499dec658e00d7093e982f8ac0f31d4bfd33eab28913cf5c3' },
   pilotMasks: {
     coastal: { 512: '592e20a91d2388f1d96fd76e2b19d177cd83b095067b7a6fbdc448952d1bc4c9', 256: '11b9577888db144a3e0e029924d63d2bb0d616abc4baa940c71ba811262ae14c' },
-    saltwind: { 512: 'c080e5b0e13655ef3e4346fc8a9b7d5f56432802ae93b970599b796c8de1256e', 256: '975ac5fd80cea3f0019228114bc8ba7fcc9f2ca78ef636ffadb52e1bacd6d6c1' },
+    saltwind: { 512: 'f871a2739399ec256542bb9d5fbcc3ecfab144878b54883eb9e68a23a16091b2', 256: 'a031dfca24aece0ffd738fb6933b05124bb629d4fdccd9a98ea64b01c3f1a9d1' }, // 2026-09-24: Saltwind strand 20 m (round 52, owner decision 20)
   },
   // 2026-09-13 lighting: alpine/fjord/caldera/monsoon/delta/blackglass/foundry/mangrove sky presets
   // moved toward the 1049e4e key/fill ratio (graphics commit 471c7b709); repinned from the current build.
@@ -41,7 +41,7 @@ const FROZEN = {
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
   // round 40 (2026-09-22): coastal.ts's sea aperture dropped its authored grey (edgeWater.ts gives it the map's water colour) and
   // saltwind.ts authored its bay as one contour; the frozen config digest moved for those two maps only
-  configs: '8005736473ef679b9628e28e430de02d944357159ee7e09ff21888f117420eb6', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+  configs: '07c4780687a5235ff5296fce9f390585ae304a8b500707683e5c69727da70f2a', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 
