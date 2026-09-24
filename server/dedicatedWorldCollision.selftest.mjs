@@ -55,6 +55,9 @@ const roadCompletionCensus = {
   // against main's own Amberford world like Tarkhan's in round 57 — the untouched base (cb46992ac) recaptures as
   // 5883 / 5737 / 5822 — and the bridge then retires the two parapet wall runs' records (the deck and its parapets are
   // one compound record the ride stands on): −10 obstacles, −10 colliders, concealers unchanged.
+  // round 63 (2026-09-24, the bridge's open arches): shard recaptured headless on the lane tree — the bridge record is
+  // the same one record with 31 parts (deck, abutments, piers, vault bands, parapets), so the census is unchanged and
+  // only the shard's bytes moved (1827167 → 1829051 B).
   autumn: [5873, 5727, 5822],
   // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling — shard recaptured headless on the new map
   // (grain station, kolkhoz corrals, kurgan kerbs, fort walls; shelterbelts replace most groves)
@@ -62,6 +65,9 @@ const roadCompletionCensus = {
   // pattern, same pack script). The committed shard had gone stale against main's own steppe world — a recapture on
   // the untouched base gave 2427 / 920 / 1302 records against the committed 2346 / 916 / 1278 — and the siding's berth
   // then re-rolls the seeded wattle fences and hedgehog clusters off the line (+2 obstacles, structures unchanged).
+  // round 63 (2026-09-24, the railway cutting): shard recaptured headless on the lane tree and found byte-identical —
+  // no collision record stands in the cutting corridor (the rim band at z −181 east of x 440 seeds none) and the
+  // extended siding is soft dressing; census unchanged.
   steppe: [2441, 2152, 1314],
   railyard: [2977, 2937, 2135],
   // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
