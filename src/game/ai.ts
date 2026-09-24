@@ -518,6 +518,11 @@ const PASSIVE_PRESS_STANDOFF_M = 70;   // the press point's distance from the ta
 const PASSIVE_PRESS_ASPECT_RAD = 1.3;  // ~75° off the target's nose: a side plate, not a glacis
 const PASSIVE_PRESS_REPICK_S = 3;
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
+const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
+const PASSIVE_PRESS_ARC_S = 3;             // gun pinned at a pitch stop at the press point before it is given up
+const GUN_ARC_MARGIN_RAD = 0.026;          // 1.5° inside the mechanical elevation / depression stops
+// Round 60: a flank whose side aspect leaves the gate closed carries on round toward the rear.
+const FLANK_REAR_ASPECT_RAD = 2.35;        // 135° off the nose
 // Probe candidate the tier set falls back to when terrain hides every zone in it (the visible turret).
 const PROBE_TURRET_FALLBACK: readonly [number, number] = [0.72, 0];
 // RETURN-FIRE LOCK (controls_gunnery r4): three rounds of aggro plumbing
@@ -988,6 +993,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let passivePressRepickS = -1;
   let passivePresses = 0;                    // probe-visible count of press starts
   let passivePressRepicks = 0;               // probe-visible count of masked press points given up
+  let passivePressCandidate = -1;            // probe-visible: ring * 3 + bearing index of the chosen press point
+  let passivePressArcT = 0;                  // gun pinned at a pitch stop while standing on the press point
   const pressVeto = { x: 0, z: 0, untilS: -1 }; // a press point whose probe found the hull masked
   // geometry-hard blocked commit → follow the authored lane a while
   let laneFallbackUntilS = -1;
@@ -1550,8 +1557,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     _vG.set(source.x, source.y + selfGunM, source.z);
     _vH.set(candidateX - _vG.x, candidateY - _vG.y, candidateZ - _vG.z);
     const distance = _vH.length();
-    let visible = true;
-    if (distance > 1e-3) {
+    let visible = withinGunArc(Math.atan2(_vH.y, Math.hypot(_vH.x, _vH.z) || 1e-6));
+    if (visible && distance > 1e-3) {
       _vH.multiplyScalar(1 / distance);
       const hit = deps.raycast(_vG, _vH, distance);
       visible = !hit || hit.dist > distance - 2.0; // the eye-LOS allowance for target-adjacent cover
@@ -1798,7 +1805,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const dx = st.pos.x - tp.x, dz = st.pos.z - tp.z;
     const dist = Math.hypot(dx, dz) || 1;
     const baseAng = Math.atan2(dx, dz);            // bearing target → self
-    const preferred = rng() < 0.5 ? 1 : -1;
+    let preferred = rng() < 0.5 ? 1 : -1;
+    // Round 60: a hull already off the nose prefers the side whose first ring point lies further round toward the
+    // rear (the symmetric front case keeps the random side; the RNG draw above stays for stream stability).
+    const aspectPlus = Math.abs(wrapAngle(baseAng + 0.6 - target.state.yaw));
+    const aspectMinus = Math.abs(wrapAngle(baseAng - 0.6 - target.state.yaw));
+    if (Math.abs(aspectPlus - aspectMinus) > 0.2) preferred = aspectPlus > aspectMinus ? 1 : -1;
     // Round 48 pacing (2026-09-24): a flank ring drawn blind put Frosthollow's third point past the border
     // wall (z −525) and the other side's points on the west ridge's flank; the bot drove at them for three
     // 20 s windows and never changed the target's aspect. Score both sides by how many of the three points
@@ -2926,6 +2938,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // A casemate lays its gun with the hull: on Tarkhan's border rim (~15 deg) the Strv 103 sat at +12 deg of
   // elevation with 63 mrad still to go for four minutes, so its cells must be near-level (normal.y >= 0.975).
   const CASEMATE_SPOT_NORMAL_Y_MIN = 0.975;
+  // Round 60 pacing (2026-09-24, Copper Mesa seed 2 / Coastal seed 3): bots at the foot of the host's rise had the
+  // hull in view and the gate open but the gun pinned at its elevation stop — the arc-limit relaxation let rounds
+  // go with 60 mrad of pitch error (29 rounds from 50 m, no damage) and the press ignored the relocation. A zone
+  // or a press point the gun cannot be laid on is out of reach exactly like one behind a crest.
+  function withinGunArc(pitchRad: number): boolean {
+    const low = -(spec.gunDepressionDeg * (Math.PI / 180)) + GUN_ARC_MARGIN_RAD;
+    const high = spec.gunElevationDeg * (Math.PI / 180) - GUN_ARC_MARGIN_RAD;
+    return pitchRad >= low && pitchRad <= high;
+  }
+
   function reachableSpot(cx: number, cz: number): boolean {
     if (!hf.getNormalAt) return true;
     if (hf.getNormalAt(cx, cz).y < (casemate ? CASEMATE_SPOT_NORMAL_Y_MIN : SPOT_NORMAL_Y_MIN)) return false;
@@ -3405,7 +3427,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       nonPenCount = 0;
       return;
     }
-    if (timeS <= flankUntilS && aspectAngle() <= FLANK_ASPECT_RAD && flankIndex < 3) {
+    // Round 60: Coastal seed 3's Strv 103 stood at 69° on the M1A2's side with the gate still closed, and every
+    // flank it started "completed" at once — the ring now carries on toward the rear while the gate stays shut.
+    const aspect = aspectAngle();
+    const flankOpen = aspect > FLANK_ASPECT_RAD && (penGateOk || aspect > FLANK_REAR_ASPECT_RAD);
+    if (timeS <= flankUntilS && !flankOpen && flankIndex < 3) {
       return;
     }
     mode = 'engage';
@@ -3808,9 +3834,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
         // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
         const gunY = hf.getHeightAt(x, z) + selfGunM;
-        if (!hasLos(x, gunY, z, tp.x, tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC, tp.z)) continue;
+        const hullY = tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC;
+        if (!withinGunArc(Math.atan2(hullY - gunY, radius))) continue;
+        if (!hasLos(x, gunY, z, tp.x, hullY, tp.z)) continue;
         pressPoint.x = x;
         pressPoint.z = z;
+        passivePressCandidate = ring * 3 + k;
         return true;
       }
     }
@@ -3840,13 +3869,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       settleUntilS = -1;
       return;
     }
+    const st = entity.state;
+    const atPoint = Math.hypot(pressPoint.x - st.pos.x, pressPoint.z - st.pos.z) < ARRIVE_DIST_M * 2;
+    passivePressArcT = atPoint && st.atGunLimit ? passivePressArcT + dt : 0;
     if (timeS >= passivePressRepickS) {
       passivePressRepickS = timeS + PASSIVE_PRESS_REPICK_S;
       // Saltwind seed 3: the casemate stood on its press point with every probed zone masked by the berm the
       // lane ray had cleared. A point whose probe finds no zone is given up for a while and another is picked.
-      const st = entity.state;
-      const atPoint = Math.hypot(pressPoint.x - st.pos.x, pressPoint.z - st.pos.z) < ARRIVE_DIST_M * 2;
-      if (atPoint && probeMiss && firstAvailableSlot() >= 0) {
+      // Saltwind seed 0: both side points failed and the straight-in point left the gate closed (ratio 0.7 on the
+      // glacis) with the hull in plain view — a closed gate held at the press point is the same verdict, and so
+      // is a gun pinned at its pitch stop there (Coastal seed 3).
+      if (atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S)
+          && firstAvailableSlot() >= 0) {
+        passivePressArcT = 0;
         pressVeto.x = pressPoint.x;
         pressVeto.z = pressPoint.z;
         pressVeto.untilS = timeS + 120;
@@ -3858,6 +3893,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function drivePassivePress(input: AiInput): void {
     if (!target) return;
+    if (nowS < nudgeUntilS) { // the gun-limit back-up for depression / elevation keeps its meaning while pressing
+      driveGunNudge(input);
+      return;
+    }
     const st = entity.state;
     const tp = target.state.pos;
     if (driveToXZ(input, pressPoint.x, pressPoint.z, 1.0)) {
@@ -4433,6 +4472,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       passivePress: passivePressing,
       passivePresses,
       passivePressRepicks,
+      passivePressCandidate,
+      passivePressArcT: +passivePressArcT.toFixed(1),
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)
