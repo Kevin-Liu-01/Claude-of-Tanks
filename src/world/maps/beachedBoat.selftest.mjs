@@ -84,16 +84,16 @@ function dispose(built) {
 // seated river reeds are accounted for; driftwood and all boat support checks
 // below remain unchanged. Saltwind retains its approved 19 m piers.
 const controls = {
-  'coastal:1337': [1531, .4111101049929857, 8, 6177, 11448, 220560, 233, '8b49db251ed9d4cb4e5b50ef6f91fc6943910db0ff26b38d5fdc5fd284e9135b'],
-  'fjord:1337': [1585, .41451837751083076, 9, 6609, 12096, 235680, 251, '4a5c52e6a13d596619242eef5100695fa6ddab737ccf6c46dc6955690f2dc7ec'],
+  'coastal:1337': [920, 0.525485020596534, 7, 3771, 6384, 133440, 149, '6b48a24005c581c10128bfa8e07d6dd152525c6f61560bd0c969b7de1d24554f'],
+  'fjord:1337': [1110, 0.5504546379670501, 0, 4113, 8352, 148320, 147, '0b65bfa6ec8707f0f9ca2f5711ff7b31dec1cf84c6d5ebb4f66296473d7f3af7'],
   'mangrove:1337': [948, .8354170476086438, 3, 2918, 5652, 104680, 157, 'afec74e5fc20f8317d4206b2223ab748a0f2e98460e788a7ba984c22c4cf2bb7'],
   'saltwind:1337': [396, .17567920126020908, 2, 2016, 3024, 70560, 84, '1469749ced14e75c59e1bbe838b843a0cd2a7539fc5611431b73efd029c426f0'],
-  'coastal:2049': [1584, .48176062549464405, 9, 6561, 12024, 234000, 249, '9f035d8894afd6258e0ec922114cbcd21fab35bace0e26c065d1a99fbd4b5719'],
-  'fjord:2049': [1584, .48176062549464405, 9, 6561, 12024, 234000, 249, 'b62f3464bddec1b68899c509a44db29a46bc09551d42748af5227698a6c742f6'],
+  'coastal:2049': [918, 0.9577981235925108, 7, 3675, 6240, 130080, 145, 'b8dd07ea8cff61a109a252fa542fd0d4959c333a066082988d86e3e0ee5b88e4'],
+  'fjord:2049': [1110, 0.3965222879778594, 0, 4113, 8352, 148320, 147, '8871d38fbcc6d6e1e6449fe2383825a850dbc285efbae763827da255e5aa1518'],
   'mangrove:2049': [1171, .2525088486727327, 3, 3324, 6696, 119760, 186, '1829ce951029eb888a7a82b89b10c5053853311c66e89bb4c0f73f439e277e86'],
   'saltwind:2049': [396, .06904261675663292, 2, 2016, 3024, 70560, 84, '1c17da5210f45232085de9f970d5cbd5f5da5dbc044d38b0d39cde02693e01fd'],
-  'coastal:7719': [1585, .7750232561957091, 9, 6609, 12096, 235680, 251, 'c2bde624717ba45294eb82008d0d56788b8f271fdb886a12c52121404cba639e'],
-  'fjord:7719': [1585, .7750232561957091, 9, 6609, 12096, 235680, 251, '0c6b3c15357ad1a8596c7f34ab8ada0573f70e8911e6bf90fd007463bbf0544f'],
+  'coastal:7719': [919, 0.004471814259886742, 7, 3723, 6312, 131760, 147, '8a56b44e30d27b8ae1ca9e20fbb673cecbc67c76c8248d14f779db4d50dfe2ac'],
+  'fjord:7719': [1110, 0.9633991692680866, 0, 4113, 8352, 148320, 147, 'a6d8a0973f436454ee74beeefcd3f5d797c083d06aceddc2f746d7ff329a664d'],
   'mangrove:7719': [1154, .6781580389942974, 3, 3338, 6732, 120280, 187, '42198b4f72d2e8384ca6ce9dd62224e2c485747b01025935d9fc187a4507eef7'],
   'saltwind:7719': [396, .7221453771926463, 2, 2016, 3024, 70560, 84, '5b6c45097d4384dcf7634a3e2e6bf4c81917bbf18eac854ad6cc6ed69460b8c2'],
 };
@@ -150,7 +150,11 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of consumers) {
     assert.deepEqual([historical.calls, historical.next, historical.boats.length, prior.vertices, prior.indices,
       prior.bytes, prior.geometries, prior.other], controls[`${mapId}:${seed}`],
     `${mapId}/${seed}: exact shared RNG, budgets and ALL non-boat geometry bytes preserved`);
-    assert.ok(built.boats.length > 0, 'no vacuous production consumer coverage');
+    // Round 47 follow-up: a shore may author `boats: 0` on every lake (Nordhavn's fjord arms — a clinker hull on a
+    // 0.14 R rock bank buries its tips; the jetties stay). That is a deliberate opt-out, not vacuous coverage.
+    const optedOut = (getMapConfig(mapId).terrain.lakes ?? []).every(lake => lake.boats === 0);
+    assert.ok(built.boats.length > 0 || optedOut, 'no vacuous production consumer coverage');
+    if (optedOut) assert.equal(built.boats.length, 0, `${mapId}: an authored zero places no boat`);
     for (const boat of built.boats) {
       const audit = auditBoat(boat, built.field);
       deepest = Math.min(deepest, audit.minGap); realBoats++; mastBoats += +boat.withMast;

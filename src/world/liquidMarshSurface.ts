@@ -1,7 +1,7 @@
 import { minimumShorelineRadius, shorelineRadiusAt, type ShorelineDisc } from './shoreline.ts';
 
 interface LiquidMarsh extends ShorelineDisc { dip?: number; level?: number }
-interface LiquidLake extends ShorelineDisc { level: number }
+interface LiquidLake extends ShorelineDisc { level: number; bankBand?: number }
 type HeightSampler = (x: number, z: number) => number;
 
 export const LIQUID_MARSH_STRIDE = 4;
@@ -142,7 +142,8 @@ function outerBankBand(disc: ShorelineDisc, level: number, gx: number, gz: numbe
 export function buildLiquidLakeBanks(lakes: readonly LiquidLake[], sample: HeightSampler): Float64Array {
   const result = new Float64Array(lakes.length);
   for (let index = 0; index < lakes.length; index++) {
-    result[index] = outerBankBand(lakes[index], lakes[index].level, 0, 0, sample);
+    // Round 47 follow-up: an authored band wins over the fitted one (a 300 m bay would otherwise grade 96 m of strand)
+    result[index] = lakes[index].bankBand ?? outerBankBand(lakes[index], lakes[index].level, 0, 0, sample);
   }
   return result;
 }

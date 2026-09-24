@@ -87,6 +87,74 @@ const SALTWIND_LANDINGS_CURRENT = `      // round 40: two stations of the one ba
       { lakeIndex: 0, shoreAngleDeg: 45, shoreReeds: false, jettyLength: 19 },`;
 const SALTWIND_LANDINGS_HISTORICAL = `      { lakeIndex: 1, shoreAngleDeg: -15, shoreReeds: false, jettyLength: 19 },
       { lakeIndex: 2, shoreAngleDeg: -15, shoreReeds: false, jettyLength: 19 },`;
+
+// Round 47 follow-up (owner 2026-09-23, "evident right angle with shore and water at the border"): Saltmere's bay is one
+// authored crescent centred past the red line and Nordhavn's bays are three fjord arms between rock peninsulas — relief
+// authoring by owner ruling, as Saltwind's round-40 bay was. Authenticate the exact current blocks, project them back.
+const COASTAL_BAY_CURRENT = `    // round 47 follow-up (2026-09-23, owner: "evident right angle with shore and water at the border"): the bay is ONE
+    // authored crescent whose centre sits 88 m past the red line — its west arc is the strand (x ≈ 300 at the village,
+    // meeting the border at z ≈ -320 and 230) and it runs on past the edge as the same disc, so the coast reaches the
+    // border as two headlands instead of six circle arcs. Stations start east and wind toward +z: 7 is the promontory
+    // the coast-road ridge (212, 54) dies into, 10 a second low cape; the east half is cut short (stations 13–3) so the
+    // disc's own far shore ends ~145 m past the red line where the ring is still low and the sea sector opens beyond it
+    // (a full disc put that shore 390 m out, under the ring's mountains — a lake with a cliff wall around it). The bank
+    // grades over 0.10 R (30 m) instead of the fitted third of the radius, and seven boats lie on the strand.
+    lakes: [{ x: 600, z: -40, r: 300, level: -4.0, depth: 0.6, shelfM: 22, bankBand: 1.10, boats: 7,
+      radii: [0.19, 0.20, 0.26, 0.42, 0.85, 0.97, 0.99, 0.92, 1.00, 0.96, 0.90, 0.985, 0.85, 0.42, 0.26, 0.20] }],
+    // the matching shore ring paints the WIDE feathered mask ramp the uSea shader splits into beach apron / surf line /
+    // open water, and adds a gentle strand dip so the beach grades below the meadow (the west stations of the bay; at
+    // 344 m the ramp's wetness at the strand matches what the three 190 m discs and their 218 m rings gave the beach
+    // material). Its east half stays round: a ring's fitted bank band divides by its NARROWEST station, and the bay's
+    // 0.19 R east stations on this ring made that band 2.03 R — the meadow 700 m inland sank toward the strand level.
+    marshes: [{ x: 600, z: -40, r: 344, dip: 0.5,
+      radii: [1.00, 1.00, 1.00, 1.00, 1.00, 0.97, 0.99, 0.92, 1.00, 0.96, 0.90, 0.985, 1.00, 1.00, 1.00, 1.00] }],
+`;
+const COASTAL_BAY_HISTORICAL = `    lakes: [
+      { x: 460, z: -60, r: 190, level: -4.0, depth: 0.6 },
+      { x: 470, z: 160, r: 170, level: -4.0, depth: 0.6 },
+      { x: 480, z: -270, r: 150, level: -4.0, depth: 0.6 },
+    ],
+    // matching shore rings: these paint the WIDE feathered mask ramp the
+    // uSea shader splits into beach apron / surf line / open water, and add
+    // a gentle strand dip so the beach grades below the meadow
+    marshes: [
+      { x: 460, z: -60, r: 218, dip: 0.5 },
+      { x: 470, z: 160, r: 196, dip: 0.5 },
+      { x: 480, z: -270, r: 172, dip: 0.45 },
+    ],
+`;
+const FJORD_ARMS_CURRENT = `    // round 47 follow-up (2026-09-23, owner: "evident right angle with shore and water at the border"): three fjord ARMS
+    // instead of three round bays — each disc is a westward lobe (stations start east and wind toward +z: 8 is the head,
+    // 4 and 12 the narrow flanks at 0.44–0.50), the arms share one mouth past the red line, and two rock peninsulas
+    // (the ridges below) run between them; the harbour terraces meet the heads at x ≈ 250–290 as before. The banks
+    // grade over 0.14 of the local radius (15 m on a flank, 35 m at a head) — the fitted third of the radius pulled the
+    // peninsulas down to the water level and buried their ridges.
+    // No beached boats: a clinker hull on a 0.14 R rock bank buries its tips (beachedBoat.selftest); the three jetties,
+    // buoys and driftwood keep the harbour dressing.
+    lakes: [
+      { x: 438, z: -142, r: 188, depth: 2.4, level: -8.2, shelfM: 10, bankBand: 1.14, boats: 0,
+        radii: [1.00, 0.96, 0.82, 0.60, 0.46, 0.50, 0.68, 0.93, 1.00, 0.94, 0.70, 0.52, 0.46, 0.58, 0.80, 0.96] },
+      { x: 466, z: 70, r: 176, depth: 2.4, level: -8.2, shelfM: 10, bankBand: 1.14, boats: 0,
+        radii: [1.00, 0.96, 0.80, 0.58, 0.44, 0.50, 0.70, 0.95, 1.00, 0.95, 0.70, 0.50, 0.44, 0.56, 0.78, 0.96] },
+      { x: 442, z: 262, r: 152, depth: 2.4, level: -8.2, shelfM: 10, bankBand: 1.14, boats: 0,
+        radii: [1.00, 0.96, 0.82, 0.60, 0.50, 0.56, 0.72, 0.94, 1.00, 0.95, 0.74, 0.54, 0.46, 0.56, 0.80, 0.96] },
+    ],
+`;
+const FJORD_ARMS_HISTORICAL = `    lakes: [
+      { x: 438, z: -142, r: 188, depth: 2.4, level: -8.2 },
+      { x: 466, z: 70, r: 176, depth: 2.4, level: -8.2 },
+      { x: 442, z: 262, r: 152, depth: 2.4, level: -8.2 },
+    ],
+`;
+const COASTAL_RIM_FADE_CURRENT = '    coastRimFadeM: 120, // round 47 follow-up: the bay\'s headlands climb to the rim over 120 m instead of standing on the strand\n';
+const FJORD_RIM_FADE_CURRENT = '    coastRimFadeM: 90, // round 47 follow-up: the peninsulas between the arms climb to the rim over 90 m, not in one block\n';
+const FJORD_WALLS_CURRENT = `      // round 47 follow-up: the rock peninsulas between the fjord arms and the walls outside them — the arms' water
+      // flattening wins inside the lobes, so each ridge's flanks drop straight into the fjord
+      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0 },
+      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0 },
+      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4 },
+      { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4 },
+`;
 function historicalSeaApertureSource(source, file) {
   if (file === 'saltwind.ts') {
     // Round 40: Saltwind's bay is one authored contour open to the west edge and its two landings stand on two stations
@@ -95,9 +163,18 @@ function historicalSeaApertureSource(source, file) {
     assert.equal(source.split(SALTWIND_LANDINGS_CURRENT).length, 2, 'saltwind.ts: one exact round-40 landings block');
     return source.replace(SALTWIND_BAY_CURRENT, SALTWIND_BAY_HISTORICAL).replace(SALTWIND_LANDINGS_CURRENT, SALTWIND_LANDINGS_HISTORICAL);
   }
+  if (file === 'fjord.ts') {
+    assert.equal(source.split(FJORD_ARMS_CURRENT).length, 2, 'fjord.ts: one exact round-47 fjord-arms block');
+    assert.equal(source.split(FJORD_WALLS_CURRENT).length, 2, 'fjord.ts: one exact round-47 peninsula-ridges block');
+    assert.equal(source.split(FJORD_RIM_FADE_CURRENT).length, 2, 'fjord.ts: one exact round-47 coast rim fade line');
+    return source.replace(FJORD_ARMS_CURRENT, FJORD_ARMS_HISTORICAL).replace(FJORD_WALLS_CURRENT, '').replace(FJORD_RIM_FADE_CURRENT, '');
+  }
   if (file !== 'coastal.ts') return source;
   assert.equal(source.split(COASTAL_APERTURE_CURRENT).length, 2, 'coastal.ts: one exact round-40 aperture block');
-  return source.replace(COASTAL_APERTURE_CURRENT, COASTAL_APERTURE_HISTORICAL);
+  assert.equal(source.split(COASTAL_BAY_CURRENT).length, 2, 'coastal.ts: one exact round-47 crescent-bay block');
+  assert.equal(source.split(COASTAL_RIM_FADE_CURRENT).length, 2, 'coastal.ts: one exact round-47 coast rim fade line');
+  return source.replace(COASTAL_APERTURE_CURRENT, COASTAL_APERTURE_HISTORICAL).replace(COASTAL_BAY_CURRENT, COASTAL_BAY_HISTORICAL)
+    .replace(COASTAL_RIM_FADE_CURRENT, '');
 }
 function historicalLightingSource(source, file) {
   if (file === 'mangrove.ts') {

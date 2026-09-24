@@ -48,6 +48,8 @@ interface LayoutDisc {
   z: number;
   r: number;
   level?: number;
+  /** Round 47 follow-up: authored beached-boat count for this shore (terrain.ts LakeConfig). */
+  boats?: number;
 }
 
 interface DressingLayout {
@@ -1149,7 +1151,7 @@ function addCoastalBoats(
   buckets: DressingBuckets,
   groundingReceipts?: GroundingReceipt[] | null,
 ): void {
-  const boatCount = big ? 3 : 1;
+  const boatCount = lake.boats ?? (big ? 3 : 1);
   for (let i = 0; i < boatCount; i++) {
     const angle = Math.PI + (rng() - 0.5) * 1.5;
     const radius = lake.r * (1.045 + rng() * 0.05);

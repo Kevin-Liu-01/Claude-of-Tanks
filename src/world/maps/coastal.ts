@@ -16,25 +16,30 @@ export default {
     hillScale: 0.95,
     microScale: 0.9,
     rimH: 26,
+    coastRimFadeM: 120, // round 47 follow-up: the bay's headlands climb to the rim over 120 m instead of standing on the strand
     // the bay: three overlapping sheets along the east edge; softLakes =
     // liquid water (bogged 'soft' ground), not a drivable ice pan
     softLakes: true,
     // all three sheets pinned to ONE sea level so the bay never steps
     // (depth kept: its presence selects the hard-edged lake MASK branch, so
     // fM hits 1 right at the sheet edge and the open water reads to shore)
-    lakes: [
-      { x: 460, z: -60, r: 190, level: -4.0, depth: 0.6 },
-      { x: 470, z: 160, r: 170, level: -4.0, depth: 0.6 },
-      { x: 480, z: -270, r: 150, level: -4.0, depth: 0.6 },
-    ],
-    // matching shore rings: these paint the WIDE feathered mask ramp the
-    // uSea shader splits into beach apron / surf line / open water, and add
-    // a gentle strand dip so the beach grades below the meadow
-    marshes: [
-      { x: 460, z: -60, r: 218, dip: 0.5 },
-      { x: 470, z: 160, r: 196, dip: 0.5 },
-      { x: 480, z: -270, r: 172, dip: 0.45 },
-    ],
+    // round 47 follow-up (2026-09-23, owner: "evident right angle with shore and water at the border"): the bay is ONE
+    // authored crescent whose centre sits 88 m past the red line — its west arc is the strand (x ≈ 300 at the village,
+    // meeting the border at z ≈ -320 and 230) and it runs on past the edge as the same disc, so the coast reaches the
+    // border as two headlands instead of six circle arcs. Stations start east and wind toward +z: 7 is the promontory
+    // the coast-road ridge (212, 54) dies into, 10 a second low cape; the east half is cut short (stations 13–3) so the
+    // disc's own far shore ends ~145 m past the red line where the ring is still low and the sea sector opens beyond it
+    // (a full disc put that shore 390 m out, under the ring's mountains — a lake with a cliff wall around it). The bank
+    // grades over 0.10 R (30 m) instead of the fitted third of the radius, and seven boats lie on the strand.
+    lakes: [{ x: 600, z: -40, r: 300, level: -4.0, depth: 0.6, shelfM: 22, bankBand: 1.10, boats: 7,
+      radii: [0.19, 0.20, 0.26, 0.42, 0.85, 0.97, 0.99, 0.92, 1.00, 0.96, 0.90, 0.985, 0.85, 0.42, 0.26, 0.20] }],
+    // the matching shore ring paints the WIDE feathered mask ramp the uSea shader splits into beach apron / surf line /
+    // open water, and adds a gentle strand dip so the beach grades below the meadow (the west stations of the bay; at
+    // 344 m the ramp's wetness at the strand matches what the three 190 m discs and their 218 m rings gave the beach
+    // material). Its east half stays round: a ring's fitted bank band divides by its NARROWEST station, and the bay's
+    // 0.19 R east stations on this ring made that band 2.03 R — the meadow 700 m inland sank toward the strand level.
+    marshes: [{ x: 600, z: -40, r: 344, dip: 0.5,
+      radii: [1.00, 1.00, 1.00, 1.00, 1.00, 0.97, 0.99, 0.92, 1.00, 0.96, 0.90, 0.985, 1.00, 1.00, 1.00, 1.00] }],
     dunes: { amp: 3.4 }, // low transverse dune band over the open ground
     // (r2: the mesa bluffs are OUT — the noise-placed walls landed as grey
     // slab cliffs mid-meadow and read as artifacts, not headlands)

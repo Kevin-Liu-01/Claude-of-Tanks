@@ -102,6 +102,8 @@ interface MarshSourceConfig {
   x: number;
   z: number;
   r: number;
+  /** Round 47 follow-up: a shore ring that mirrors an authored bay contour (Saltmere's strand ramp). */
+  radii?: import('./shoreline.ts').ShorelineRadii;
   dip?: number;
   depth?: number;
   level?: number;
@@ -120,6 +122,11 @@ interface LakeConfig {
   radii?: import('./shoreline.ts').ShorelineRadii;
   /** Round 40: the wet shelf's width in metres from the authored shoreline to the waterline (shoreline.ts). */
   shelfM?: number;
+  /** Round 47 follow-up: the outer bank band in units of the local radius (≥ 0.96), replacing the fitted ≥ 1.32 band —
+   * a big authored bay grades its bank over metres, not over a third of its radius (liquidMarshSurface.ts). */
+  bankBand?: number;
+  /** Round 47 follow-up: beached boats on this shore (mapKits.ts; default 3 on a ≥ 110 m disc, else 1). */
+  boats?: number;
 }
 
 interface LandformConfig {
@@ -161,6 +168,8 @@ interface TerrainSettings {
   hillScale: number;
   microScale: number;
   rimH: number;
+  /** Round 47 follow-up: metres from a bay's shoreline over which the border rim lift fades in (0 = rim beside water). */
+  coastRimFadeM?: number;
   village: VillageConfig;
   marshes: MarshSourceConfig[];
   lakes: LakeConfig[];
@@ -1093,14 +1102,39 @@ function* heightFieldBuildSteps(
     }
     return wetness;
   }
+  // Round 47 follow-up (2026-09-23): a headland beside a bay rose to the full border rim within 82 m of the water (a
+  // 26–42 m block against a -4…-8 m sheet). Within `coastRimFadeM` of a bay's shoreline the rim lift fades in, so a
+  // headland climbs away from the strand instead of standing on it. Pure function of (x, z); off unless the map authors it.
+  function coastRimKeep(x: number, z: number): number {
+    const coastRimFadeM = T.coastRimFadeM ?? 0;
+    if (coastRimFadeM <= 0) return 1;
+    let keep = 1;
+    for (let li = 0; li < _LAKES.length; li++) {
+      const lake = _LAKES[li];
+      const dx = x - lake.x, dz = z - lake.z;
+      const outside = Math.hypot(dx, dz) - shorelineRadiusAt(lake, Math.atan2(dz, dx)) * 0.96;
+      keep = Math.min(keep, smoothstep(0, coastRimFadeM, outside));
+    }
+    return keep;
+  }
   function outlandHeightAt(x: number, z: number): number {
     let h = baseTerrainHeight(x, z, 0, 0);
     h = applyMacroTerrain(x, z, h, 0, 0, 0);
+    // Round 47 follow-up (2026-09-23): the bay's bank grades past the square exactly as inside it. Without this the
+    // ring's first outer row stood at the geology's full height beside a strand the square had graded to the water —
+    // the "28 m block" on every coast where a headland met the red line. The outland uses each lake's authored band
+    // or the legacy 1.32 R, never the fitted band (a wide fitted band would flatten the outland's own relief).
+    if (liquidLakeBanks !== null) {
+      composeLakeHeight(_LAKES, lakeLevels, outlandLakeBanks!, continuousLakeAprons, x, z, h, 0, outlandLakeHeight);
+      h = outlandLakeHeight.height;
+    }
     const borderRadius = Math.max(Math.abs(x), Math.abs(z));
     const rim = smoothstep(430, HALF, borderRadius);
     // round 47 (2026-09-23): the border rim yields to a bay so its shore continues past the square instead of a wall
-    return h + rim * rim * T.rimH * (1 - outlandLakeWetness(x, z));
+    return h + rim * rim * T.rimH * (1 - outlandLakeWetness(x, z)) * (rim > 0 ? coastRimKeep(x, z) : 1);
   }
+  const outlandLakeHeight: LakeHeightResult = { height: 0, wetness: 0 };
+  let outlandLakeBanks: Float64Array | null = null;
 
   function heightAt(
     x: number,
@@ -1213,7 +1247,7 @@ function* heightFieldBuildSteps(
     // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): the square rim lift is a
     // Chebyshev square, so inside a bay's bank band it forced the waterline parallel to the red line and raised a wall
     // where the shore should run on; the lift yields to the water weight, so the shore keeps the bay's own contour.
-    h += rim * rim * T.rimH * (1 - waterWeight) * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
+    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1) * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
     if (waterWeight > 0) {
       const target = waterLevelSum / waterWeightSum;
       h += (target - h) * waterWeight;
@@ -1392,6 +1426,7 @@ function* heightFieldBuildSteps(
     // cram a multi-metre bank into the fixed ice lake's 0.38-radius apron.
     liquidLakeBanks = buildLiquidLakeBanks(liquidLakes,
       (x, z) => heightAt(x, z, false, false, false));
+    outlandLakeBanks = Float64Array.from(liquidLakes, (lake) => lake.bankBand ?? 1.32);
   }
 
   // Freeze original road, junction, pad and water support before activating
@@ -2669,7 +2704,7 @@ float outlandSeaWeight(vec2 xz, float edgeOut) {
     if (float(i) >= uSeaOpeningCount) break;
     vec4 o = uSeaOpenings[i];
     float d = abs(atan(sin(angle - o.x), cos(angle - o.x)));
-    float far = smoothstep(o.w * 0.7, o.w * 1.1 + 40.0, edgeOut);
+    float far = smoothstep(o.w * 0.5, o.w * 0.85 + 20.0, edgeOut); // edgeWater.ts seaSectorBlend: open before the contour's far arc
     weight = max(weight, (1.0 - smoothstep(o.y * o.z, o.y, d)) * far);
   }
   return weight;
@@ -3928,7 +3963,7 @@ function* createSplatMaterialSteps(
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v36'; // round 45: slope grass hold (v33: dune wind field, v32: sky light)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v37'; // round 47 follow-up: sea sector opens before the contour's far arc (v36: coast contour, v33: dune wind field, v32: sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

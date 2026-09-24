@@ -30,9 +30,9 @@ const foundryPatches = [
 // channel-masked comparison against the previous painter is recorded in
 // docs/research/map-pass-20260912.md (road pass section).
 const FROZEN = {
-  other28: { desktop: '7cfb2658c945d2d1772cbbaa58df805247805d50986abc4bc599ab04fcd3b9e1', mobile: '3a4e0bf7cb55dc90d241adffdf75000e48bc58f1c60189c9bb3398d0b8687f71' },
+  other28: { desktop: '44019728e8493449d7b7533af24d7bb2de511eb3534db98f6e4163bb6528fdbb', mobile: '72cdf2c82057387786b23ffc4e211133250622f4e86428b1037ca362149d100d' },
   pilotMasks: {
-    coastal: { 512: '1cd1ec0f2649e5f67e7c5a820c52953594cca026a6abae22bb30ca0bdf86bd6c', 256: '734eecb8ca9cbe6fc0bc62c94642b91825c11d640769b8a352842b2fb672c278' },
+    coastal: { 512: '592e20a91d2388f1d96fd76e2b19d177cd83b095067b7a6fbdc448952d1bc4c9', 256: '11b9577888db144a3e0e029924d63d2bb0d616abc4baa940c71ba811262ae14c' },
     saltwind: { 512: 'c080e5b0e13655ef3e4346fc8a9b7d5f56432802ae93b970599b796c8de1256e', 256: '975ac5fd80cea3f0019228114bc8ba7fcc9f2ca78ef636ffadb52e1bacd6d6c1' },
   },
   // 2026-09-13 lighting: alpine/fjord/caldera/monsoon/delta/blackglass/foundry/mangrove sky presets
@@ -41,7 +41,7 @@ const FROZEN = {
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
   // round 40 (2026-09-22): coastal.ts's sea aperture dropped its authored grey (edgeWater.ts gives it the map's water colour) and
   // saltwind.ts authored its bay as one contour; the frozen config digest moved for those two maps only
-  configs: 'a24124cb760aacbfc68d56a8a67060c7e8a9f0ba6f1ab4fac4aad9405de61924',
+  configs: '96863621c310d13fc4bde352341d845a3d91732139c481bf796d34e10ce02ea7',
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 

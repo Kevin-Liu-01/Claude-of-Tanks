@@ -72,7 +72,8 @@ for (const id of MAP_IDS) {
     authoredLevelChecks++;
   }
 }
-assert.ok(authoredLevelChecks > 40, 'all registered authored liquid reaches enter the component audit');
+// round 47 follow-up: Saltmere's three authored discs became one crescent, so the registry carries two fewer reaches
+assert.ok(authoredLevelChecks > 38, 'all registered authored liquid reaches enter the component audit');
 const lakeBanks = buildLiquidLakeBanks(smallLakes, () => 9);
 assert.equal(lakeBanks.byteLength, smallLakes.length * 8, 'liquid lakes retain one bank-width scalar only');
 assert.ok(lakeBanks.every(band => band > 1.32), 'small deep cells widen their grade instead of making quarry walls');

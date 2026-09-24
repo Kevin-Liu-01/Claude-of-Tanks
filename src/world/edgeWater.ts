@@ -199,11 +199,14 @@ export function resolveSeaOpenings(
 
 /** Round 47 (2026-09-23): a bay's own contour evaluated past the square (terrain.ts outlandWaterAt). */
 export type OutlandWaterQuery = (x: number, z: number) => { wetness: number; level: number } | null;
-/** The open-sea sector fades in over the last part of the bay contour's reach past the edge and is fully open a
- * little beyond it, so a bay mouth opens straight into the sea; with no contour (reach 0) it opens within 40 m. */
+/** The open-sea sector fades in over the second half of the bay contour's reach past the edge and is fully open
+ * BEFORE the contour's own far shore (0.85 of the reach + 20 m), so a bay mouth opens straight into the sea and the
+ * disc's far arc — a modelling artifact, never geography — is under water by the time the ring reaches it. The
+ * round-47 law ([0.7, 1.1 + 40]) left ~60 % of the ring's height standing on that arc: a dark bank across every sea
+ * horizon, and a cliff wall when the arc lay under the ring's mountains. With no contour (reach 0) it opens within 20 m. */
 export function seaSectorBlend(coastReachM: number | undefined): readonly [number, number] {
   const reach = Math.max(0, coastReachM ?? 0);
-  return [reach * 0.7, reach * 1.1 + 40];
+  return [reach * 0.5, reach * 0.85 + 20];
 }
 /** March the bay contour outward from the square edge along an opening's azimuth: the last wet metre. */
 export function coastReachAlong(opening: SeaOpening, waterAt: OutlandWaterQuery | null | undefined, halfSize = 512): number {

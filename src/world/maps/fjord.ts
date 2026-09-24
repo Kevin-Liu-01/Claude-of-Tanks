@@ -9,10 +9,22 @@ export default {
   blurb: 'A cold fjord harbor where cliff roads descend into a battered fishing town',
   terrain: {
     hillScale: 1.22, microScale: 0.92, rimH: 42, softLakes: true,
+    coastRimFadeM: 90, // round 47 follow-up: the peninsulas between the arms climb to the rim over 90 m, not in one block
+    // round 47 follow-up (2026-09-23, owner: "evident right angle with shore and water at the border"): three fjord ARMS
+    // instead of three round bays — each disc is a westward lobe (stations start east and wind toward +z: 8 is the head,
+    // 4 and 12 the narrow flanks at 0.44–0.50), the arms share one mouth past the red line, and two rock peninsulas
+    // (the ridges below) run between them; the harbour terraces meet the heads at x ≈ 250–290 as before. The banks
+    // grade over 0.14 of the local radius (15 m on a flank, 35 m at a head) — the fitted third of the radius pulled the
+    // peninsulas down to the water level and buried their ridges.
+    // No beached boats: a clinker hull on a 0.14 R rock bank buries its tips (beachedBoat.selftest); the three jetties,
+    // buoys and driftwood keep the harbour dressing.
     lakes: [
-      { x: 438, z: -142, r: 188, depth: 2.4, level: -8.2 },
-      { x: 466, z: 70, r: 176, depth: 2.4, level: -8.2 },
-      { x: 442, z: 262, r: 152, depth: 2.4, level: -8.2 },
+      { x: 438, z: -142, r: 188, depth: 2.4, level: -8.2, shelfM: 10, bankBand: 1.14, boats: 0,
+        radii: [1.00, 0.96, 0.82, 0.60, 0.46, 0.50, 0.68, 0.93, 1.00, 0.94, 0.70, 0.52, 0.46, 0.58, 0.80, 0.96] },
+      { x: 466, z: 70, r: 176, depth: 2.4, level: -8.2, shelfM: 10, bankBand: 1.14, boats: 0,
+        radii: [1.00, 0.96, 0.80, 0.58, 0.44, 0.50, 0.70, 0.95, 1.00, 0.95, 0.70, 0.50, 0.44, 0.56, 0.78, 0.96] },
+      { x: 442, z: 262, r: 152, depth: 2.4, level: -8.2, shelfM: 10, bankBand: 1.14, boats: 0,
+        radii: [1.00, 0.96, 0.82, 0.60, 0.50, 0.56, 0.72, 0.94, 1.00, 0.95, 0.74, 0.54, 0.46, 0.56, 0.80, 0.96] },
     ],
     marshes: [{ x: 286, z: -218, r: 36, dip: 1.0 }],
     roads: { paths: [
@@ -31,6 +43,12 @@ export default {
       { kind: 'ridge', x: 176, z: -108, length: 190, width: 54, height: 6.2, yawDeg: -38, corridorScale: 0.74, settlementScale: 0.64 },
       { kind: 'knoll', x: -112, z: 188, rx: 78, rz: 62, height: 6.4, yawDeg: -24 },
       { kind: 'basin', x: 252, z: 32, rx: 98, rz: 150, height: -3.2, yawDeg: 3, wetScale: 0.8 },
+      // round 47 follow-up: the rock peninsulas between the fjord arms and the walls outside them — the arms' water
+      // flattening wins inside the lobes, so each ridge's flanks drop straight into the fjord
+      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0 },
+      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0 },
+      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4 },
+      { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4 },
     ],
   },
   spawns: {
