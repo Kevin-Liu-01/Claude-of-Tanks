@@ -27,6 +27,10 @@ import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './e
 import { planRiverLanding, type RiverLandingAnchor } from './riverLandings.ts';
 import { createSnowDrift } from './snowDrift.ts';
 import { cloneCollisionRecord, convexHull2, setConvexShape, type CollisionRecord } from '../collision.ts';
+import {
+  dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
+  type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
+} from './strandWrack.ts';
 
 type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -42,6 +46,8 @@ interface DressingHeightField {
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
+  /** Round 56: the baked union wetness of a liquid field (the strand's sand ends where it falls under 0.02). */
+  _waterWetnessAt?(x: number, z: number): number;
 }
 
 interface LayoutDisc {
@@ -51,6 +57,9 @@ interface LayoutDisc {
   level?: number;
   /** Round 47 follow-up: authored beached-boat count for this shore (terrain.ts LakeConfig). */
   boats?: number;
+  /** Round 56: an authored shelf marks a sea strand — the wrack line and the coastal driftwood follow its contour. */
+  shelfM?: number;
+  radii?: import('../shoreline.ts').ShorelineRadii;
 }
 
 interface DressingLayout {
@@ -58,6 +67,15 @@ interface DressingLayout {
   marshes?: LayoutDisc[];
   roads: Array<Array<readonly [number, number]>>;
   village: { x0: number; z0: number; z1: number };
+  spawns?: { player: { x: number; z: number }; enemies: Array<{ x: number; z: number }> };
+}
+
+/** Round 56: what the kits laid on a shore, so the wrack line keeps off it (boats, jetties) and gathers its larger
+ * pieces beside the landings. Created per dressMapExtras call; never retained. */
+interface ShoreLedger {
+  keepOut: StrandKeepOut[];
+  jetties: StrandJetty[];
+  landings: StrandLanding[];
 }
 
 interface GroundingReceipt {
@@ -89,7 +107,7 @@ interface DressingContext {
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders'
->;
+> & { shore?: ShoreLedger };
 
 const _groundUp = new THREE.Vector3(0, 1, 0);
 const _groundRight = new THREE.Vector3(1, 0, 0);
@@ -1043,7 +1061,8 @@ export function dressMapExtras({
   obstacles, colliders,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
-  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders };
+  const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
+  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore };
   if (kits.includes('coastal')) dressCoastalShore(focused);
   if (kits.includes('river')) {
     if (riverLandings?.length) dressLakeRiverLandings(focused, riverLandings);
@@ -1052,6 +1071,14 @@ export function dressMapExtras({
   }
   if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
   if (kits.includes('winterLake')) dressWinterLakes(focused);
+  // Round 56 (2026-09-24, owner decision 21 of 2026-09-23): the wrack line and debris of every strand the map authors
+  // (a sea lake with a shelf), after every kit so the boats, jetties and landings above are known and the kits' own
+  // draw sequences are untouched. Soft dressing in the existing baked/wood buckets; no collision record.
+  dressStrandWrack({
+    lakes: L.lakes ?? [], heightField, rng, buckets, obstacles, groundingReceipts,
+    spawns: L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined,
+    keepOut: shore.keepOut, jetties: shore.jetties, landings: shore.landings,
+  });
 }
 
 // =============================================================================
@@ -1152,6 +1179,7 @@ function addCoastalBoats(
   rng: Rng,
   buckets: DressingBuckets,
   groundingReceipts?: GroundingReceipt[] | null,
+  shore?: ShoreLedger,
 ): void {
   const boatCount = lake.boats ?? (big ? 3 : 1);
   for (let i = 0; i < boatCount; i++) {
@@ -1162,6 +1190,7 @@ function addCoastalBoats(
     if (!isDressingPointClear(heightField, x, z, 470, 7)) continue;
     beachedBoat(buckets, rng, heightField, x, z,
       angle + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55, groundingReceipts);
+    shore?.keepOut.push({ x, z, r: 4.2 });
   }
 }
 
@@ -1171,25 +1200,43 @@ function addCoastalDriftwood(
   rng: Rng,
   buckets: DressingBuckets,
   groundingReceipts?: GroundingReceipt[] | null,
+  strand: StrandContext | null = null,
 ): void {
   const driftCount = Math.round(lake.r * 0.14);
+  // Round 56 (2026-09-24): on a shore that authors a shelf the logs lie in the strand's wrack band (strandWrack.ts)
+  // instead of on the plain 1.03–1.12 R circle, which put them on the meadow behind Saltmere's crescent and up the
+  // fjord's rock ridges (seed 1337: median 7.7 m above the water, nine in the water). The draws and the original
+  // clearance gate are unchanged, so the buoys and the jetty keep their positions; a log the strand refuses is not built.
+  const onStrand = strand !== null && lake.shelfM !== undefined && Number.isFinite(lake.level);
   for (let i = 0; i < driftCount; i++) {
     const angle = Math.PI + (rng() - 0.5) * 2.2;
-    const radius = lake.r * (1.03 + rng() * 0.09);
-    const x = lake.x + Math.cos(angle) * radius;
-    const z = lake.z + Math.sin(angle) * radius;
+    const spread = rng();
+    const radius = lake.r * (1.03 + spread * 0.09);
+    let x = lake.x + Math.cos(angle) * radius;
+    let z = lake.z + Math.sin(angle) * radius;
     if (!isDressingPointClear(heightField, x, z, 470, 6)) continue;
     const length = 1.6 + rng() * 2.6;
     const yaw = angle + Math.PI / 2 + (rng() - 0.5) * 0.8;
+    const log = box(length, 0.16 + rng() * 0.12, 0.16 + rng() * 0.12, 1.4);
+    jitterUV(log, rng);
+    if (onStrand) {
+      const band = strandBandAt(heightField, lake, angle);
+      if (!band) { log.dispose(); continue; }
+      const [start, end] = wrackBand(band);
+      const r = start + (end - start) * (0.25 + spread * 0.75);
+      x = lake.x + Math.cos(angle) * r;
+      z = lake.z + Math.sin(angle) * r;
+      if (!strandAdmits(strand, lake as LayoutDisc & { level: number }, x, z, length * 0.5 + 0.1)) { log.dispose(); continue; }
+    }
     const pose = planGroundedSegment(
       heightField, x, z, Math.cos(yaw), -Math.sin(yaw), length, 0.12, 0.03,
     );
-    const log = box(length, 0.16 + rng() * 0.12, 0.16 + rng() * 0.12, 1.4);
+    if (onStrand && pose.relief > 0.35) { log.dispose(); continue; }
     _groundNormal.set(pose.axisX, pose.axisY, pose.axisZ);
     _groundQuat.setFromUnitVectors(_groundRight, _groundNormal);
     log.applyQuaternion(_groundQuat);
     log.translate(x, pose.y, z);
-    buckets.wood.push(jitterUV(log, rng));
+    buckets.wood.push(log);
     groundingReceipts?.push({
       kind: 'driftwood', x, y: pose.y, z, relief: pose.relief,
       baseClearance: -0.03, start: pose.start, end: pose.end,
@@ -1225,22 +1272,31 @@ function addCoastalJetty(
   heightField: DressingHeightField,
   rng: Rng,
   buckets: DressingBuckets,
+  shore?: ShoreLedger,
 ): void {
   const angle = Math.PI + (rng() - 0.5) * 0.5;
   const x = lake.x + Math.cos(angle) * lake.r * 1.05;
   const z = lake.z + Math.sin(angle) * lake.r * 1.05;
   jetty(buckets, rng, x, z, angle + Math.PI, heightField.getHeightAt(x, z), 11);
+  shore?.jetties.push({ x0: x, z0: z, x1: x + Math.cos(angle + Math.PI) * 11, z1: z + Math.sin(angle + Math.PI) * 11, r: 2.6 });
+  shore?.landings.push({ x, z, angle });
 }
 
 function dressCoastalShore({
-  L, heightField, rng, buckets, groundingReceipts,
+  L, heightField, rng, buckets, groundingReceipts, obstacles, shore,
 }: FocusedDressingContext): void {
+  // Round 56: the driftwood's strand admission shares the wrack line's gates (roads, pads, boats, footprints)
+  const strand: StrandContext = {
+    lakes: L.lakes ?? [], heightField, rng, buckets, obstacles,
+    spawns: L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined,
+    keepOut: shore?.keepOut, jetties: shore?.jetties,
+  };
   for (const lake of L.lakes || []) {
     const big = lake.r >= 110;
-    addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts);
-    addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts);
+    addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore);
+    addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts, strand);
     addCoastalBuoys(lake, big, heightField, rng, buckets);
-    if (big) addCoastalJetty(lake, heightField, rng, buckets);
+    if (big) addCoastalJetty(lake, heightField, rng, buckets, shore);
   }
 }
 
@@ -1585,7 +1641,7 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
 }
 
 function dressLakeRiverLandings(
-  { L, heightField, rng, buckets, groundingReceipts }: FocusedDressingContext,
+  { L, heightField, rng, buckets, groundingReceipts, shore }: FocusedDressingContext,
   anchors: readonly RiverLandingAnchor[],
 ): void {
   // Authored landing budget is independent of channel interpolation density.
@@ -1598,6 +1654,10 @@ function dressLakeRiverLandings(
     jetty(buckets, rng, landing.x, landing.z, landing.angle,
       landing.deckY - 0.82, landing.length, heightField, groundingReceipts);
     if (anchor.shoreReeds !== false) addRiverBankReeds([L.lakes![anchor.lakeIndex]], heightField, rng, buckets);
+    shore?.keepOut.push({ x: landing.boatX, z: landing.boatZ, r: 4.2 });
+    shore?.jetties.push({ x0: landing.x, z0: landing.z, x1: landing.x + Math.cos(landing.angle) * landing.length,
+      z1: landing.z + Math.sin(landing.angle) * landing.length, r: 2.6 });
+    shore?.landings.push({ x: landing.x, z: landing.z, angle: anchor.shoreAngleDeg * Math.PI / 180 });
   }
 }
 

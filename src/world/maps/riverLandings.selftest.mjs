@@ -230,36 +230,51 @@ for (const seed of [1337, 2025, 7719]) {
   assert.equal(planRiverLanding({ ...field, _roadDist: (x, z) => Math.hypot(x - blockedX, z - blockedZ) < 1 ? 0 : 100 },
     saltwind.terrain.lakes, site), null, 'intermediate pile stations use the complete authored footprint');
   const before = build(saltwind, field, [], []);
-  assert.equal(before.calls, 0, 'Saltwind previously had no special shoreline kit');
-  assert.ok(Object.values(before.buckets).every((geometries) => geometries.length === 0));
+  // round 56 (2026-09-24): the strand's wrack line follows the authored shelf, not a kit — without its landings Saltwind
+  // still carries the weed, pebbles and shells of its high-water mark (vertex-coloured `baked`) and nothing else; the
+  // larger pieces that need a landing (timber, crate, rope) only appear beside the piers below
+  assert.ok(before.calls > 0 && before.receipts.length === 0 && before.buckets.baked.length > 0,
+    'Saltwind without its landings carries only the strand\'s wrack line');
+  assert.ok(Object.entries(before.buckets).every(([bucket, geometries]) => bucket === 'baked' || geometries.length === 0));
   const result = build(saltwind, field);
   assert.equal(result.receipts.filter((r) => r.kind === 'beached-boat').length, 2);
   assert.equal(result.receipts.filter((r) => r.kind === 'jetty-pile').length, 44);
-  assert.equal(result.buckets.wood.length, 84, 'two complete boats, forty-four piles and twenty deck segments');
+  const strandWood = result.receipts.filter((r) => r.kind === 'strand-timber').length
+    + 6 * result.receipts.filter((r) => r.kind === 'strand-crate').length;
+  assert.ok(strandWood > 0, 'the wrack line gathers timber or a broken crate beside the piers');
+  assert.equal(result.buckets.wood.length, 84 + strandWood,
+    'two complete boats, forty-four piles and twenty deck segments, then the wrack line\'s timber and crate planks');
   for (const [bucket, geometries] of Object.entries(result.buckets)) {
-    if (bucket !== 'wood') assert.equal(geometries.length, 0, 'dry landings do not activate a straw or other new bucket');
+    if (bucket !== 'wood' && bucket !== 'baked') assert.equal(geometries.length, 0, 'dry landings do not activate a straw or other new bucket');
     for (const geometry of geometries) for (const attribute of Object.values(geometry.attributes)) {
       assert.ok([...attribute.array].every(Number.isFinite));
     }
   }
   saltwind.props.riverLandings.forEach((site, i) => checkSaltwindSite(field, site, result.buckets.wood, result.receipts, i));
-  const metrics = geometryReceipt(result.buckets);
+  // round 56 (2026-09-24): the landings are the first 84 wood pieces; the strand's wrack line that follows them (its
+  // timber and crate planks in wood, everything else in baked) is audited by strandWrack.selftest, so the budgets
+  // below are the landings' own
+  const landings = { wood: result.buckets.wood.slice(0, 84) };
+  const metrics = geometryReceipt(landings);
   assert.equal(metrics.triangles, 1008);
   assert.equal(metrics.bytes, 70560);
   assert.equal(metrics.vertices, 2016);
   // Same non-indexed merge used by props.ts: incremental bytes in its existing
   // wood batch, not a whole-world draw-count or renderer-memory certification.
-  const expanded = result.buckets.wood.map((geometry) => geometry.toNonIndexed());
+  const expanded = landings.wood.map((geometry) => geometry.toNonIndexed());
   const merged = mergeGeometries(expanded, false);
   assert.equal(merged.attributes.position.count, 3024);
   assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 96768);
   for (const geometry of expanded) geometry.dispose();
   merged.dispose();
   const replay = build(saltwind, field);
-  assert.deepEqual(geometryReceipt(replay.buckets), metrics, 'all emitted geometry bytes repeat exactly');
+  assert.deepEqual(geometryReceipt({ wood: replay.buckets.wood.slice(0, 84) }), metrics, 'all emitted landing bytes repeat exactly');
+  assert.deepEqual(geometryReceipt(replay.buckets), geometryReceipt(result.buckets), 'the whole shore, landings and wrack line, repeats exactly');
   assert.deepEqual(replay.receipts, result.receipts);
-  assert.equal(result.calls, 396);
-  assert.equal(result.state, 1264123100);
+  // 396 / 1264123100 were the landings alone; the wrack line's draws follow them (round 56, 2026-09-24) and do not
+  // depend on the field seed
+  assert.equal(result.calls, 12005);
+  assert.equal(result.state, -458513949);
   assert.equal(replay.state, result.state);
   disposeBuckets(result.buckets);
   disposeBuckets(replay.buckets);

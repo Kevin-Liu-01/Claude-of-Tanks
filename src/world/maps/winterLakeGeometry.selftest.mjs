@@ -108,9 +108,9 @@ const fragmentBefore = {
 // Driftwood is unchanged from published1db.
 // Frozen rowboats and the nine Winter-family controls above are unchanged.
 const otherHashes = {
-  1337: '5d345ccddc899b7771906f739cf56df15194eeb739bec2e92993b9d9d50387c1' /* 2026-09-19: Mars joins the non-Winter kits */,
-  2049: 'e0974b8597c067b9424fb35c4253587d220a465c9e6fab29100d5b0c31612f91', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
-  7719: '983bc762e66b7a54202717f66350c80f6a2a092a34d822aacb38a6bfa37a27a1', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+  1337: '0113c1c2c3006fd93497ae024abf6cfcf16227299bbc6e43adc05aa966abe227' /* 2026-09-19: Mars joins the non-Winter kits */,
+  2049: '72addc3ba16200ce1f75441eea531324b5da56524bc27cb93c9ce0f47ca755c4', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+  7719: '209ebc1608c1c08b04e829a213eae75586d0d416287457c93292f31c898e7de2', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
 };
 
 function build(mapId, seed, historical = true) {
