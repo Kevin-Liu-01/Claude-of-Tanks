@@ -26,8 +26,12 @@ const near = (a, b, tolerance, message) => assert.ok(Math.abs(a - b) <= toleranc
 assert.equal(resolveRailCuttings(undefined), null); assert.equal(resolveRailCuttings([]), null);
 assert.equal(resolveRailCuttings([{ path: [[0, 0], [100, 0]] }]), null, 'a spur without a cutting resolves none');
 const [cut] = resolveRailCuttings([{ path: [[0, 5], [100, 5]], cutting: { from: [60, 5] } }]);
-assert.deepEqual(cut, { px: 60, pz: 5, ux: 1, uz: 0, endAlong: 40, grade: RAIL_CUTTING_GRADE, halfFloor: RAIL_CUTTING_HALF_FLOOR_M,
-  batter: RAIL_CUTTING_BATTER, fan: RAIL_CUTTING_FAN }, 'the defaults on the last edge');
+assert.deepEqual(cut, { px: 60, pz: 5, ux: 1, uz: 0, endAlong: 40, ex: 100, ez: 5, fx: 100 / Math.hypot(100, 5), fz: 5 / Math.hypot(100, 5),
+  grade: RAIL_CUTTING_GRADE, halfFloor: RAIL_CUTTING_HALF_FLOOR_M, batter: RAIL_CUTTING_BATTER, fan: RAIL_CUTTING_FAN }, 'the defaults on the last edge, the valley along the radial through the end');
+assert.deepEqual(RAIL_CUTTING_FAN, 0.35);
+// the synthetic rim below runs on the x axis, where the radial through the end point IS the axis
+const [axisCut] = resolveRailCuttings([{ path: [[0, 0], [100, 0]], cutting: { from: [60, 0] } }]);
+assert.deepEqual([axisCut.fx, axisCut.fz], [1, 0]);
 assert.deepEqual(RAIL_CUTTING_GRADE, 0.024); assert.ok(RAIL_CUTTING_GRADE <= 0.025, 'under the 2.5 % rail grade');
 const [diagonal] = resolveRailCuttings([{ path: [[-40, -40], [0, 0], [30, 40]], cutting: { from: [15, 20], grade: 0.01, halfFloor: 5, batter: 1, fan: 0 } }]);
 near(diagonal.ux, 0.6, 1e-12, 'axis x'); near(diagonal.uz, 0.8, 1e-12, 'axis z'); near(diagonal.endAlong, 25, 1e-9, 'run to the end');
@@ -40,43 +44,44 @@ assert.throws(() => resolveRailCuttings([{ path: [[7, 7]], cutting: { from: [7, 
 // ------------------------------------------------------------------ the rule on a synthetic rim (a 60 % rise from the portal at x 60)
 const ground = (x) => (x < 60 ? 0 : (x - 60) * 0.6);
 const portalYs = [ground(60)];
-const H = (x, z) => railCuttingHeight([cut], portalYs, x, z, ground(x));
-const bed = (x) => railCuttingBedY(cut, portalYs[0], x - 60);
-assert.equal(H(40, 5), ground(40), 'untouched before the fade');
-assert.equal(H(60 - RAIL_CUTTING_PORTAL_M - 0.01, 5), ground(47.99), 'untouched at the fade start');
-near(H(60, 5), bed(60), 1e-12, 'the bed exact at the portal (the ground there is the portal height by construction)');
+const H = (x, z) => railCuttingHeight([axisCut], portalYs, x, z, ground(x));
+const bed = (x) => railCuttingBedY(axisCut, portalYs[0], x - 60);
+assert.equal(H(40, 0), ground(40), 'untouched before the fade');
+assert.equal(H(60 - RAIL_CUTTING_PORTAL_M - 0.01, 0), ground(47.99), 'untouched at the fade start');
+near(H(60, 0), bed(60), 1e-12, 'the bed exact at the portal (the ground there is the portal height by construction)');
 for (let x = 60; x <= 120; x += 2.5) {
-  near(H(x, 5), bed(x), 1e-12, `the bed at 2.4 % on the axis (x ${x})`);
-  near(H(x, 5 + 3.9), bed(x), 1e-12, 'the floor is level to its edge'); near(H(x, 5 - 3.9), bed(x), 1e-12, 'both sides');
+  near(H(x, 0), bed(x), 1e-12, `the bed at 2.4 % on the axis (x ${x})`);
+  near(H(x, 3.9), bed(x), 1e-12, 'the floor is level to its edge'); near(H(x, -3.9), bed(x), 1e-12, 'both sides');
 }
 const x80 = 80, g80 = ground(x80), b80 = bed(x80);
-near(H(x80, 5 + 8), b80 + 4 / RAIL_CUTTING_BATTER, 1e-12, 'the face rises at the batter from the floor edge');
-near(H(x80, 5 + 12), b80 + 8 / RAIL_CUTTING_BATTER, 1e-12, 'still on the face');
-assert.equal(H(x80, 5 + 13), g80, 'the ground above the daylight line is untouched');
-near(H(x80, 5 + 5), b80 + 1 / RAIL_CUTTING_BATTER, 1e-12, 'in cut the face governs from the floor edge (no feather toe)');
-near(railCuttingHeight([cut], portalYs, x80, 5, -1), b80, 1e-12, 'ground under the bed is filled to it');
-near(railCuttingHeight([cut], portalYs, x80, 5 + RAIL_CUTTING_HALF_FLOOR_M + RAIL_CUTTING_FEATHER_M / 2, -1), -1 + (b80 + 1) * 0.5, 1e-12, 'the fill feathers out');
-assert.equal(railCuttingHeight([cut], portalYs, x80, 5 + 20, -1), -1, 'low ground beyond the floor is not filled');
+near(H(x80, 8), b80 + 4 / RAIL_CUTTING_BATTER, 1e-12, 'the face rises at the batter from the floor edge');
+near(H(x80, 12), b80 + 8 / RAIL_CUTTING_BATTER, 1e-12, 'still on the face');
+assert.equal(H(x80, 13), g80, 'the ground above the daylight line is untouched');
+near(H(x80, 5), b80 + 1 / RAIL_CUTTING_BATTER, 1e-12, 'in cut the face governs from the floor edge (no feather toe)');
+near(railCuttingHeight([axisCut], portalYs, x80, 0, -1), b80, 1e-12, 'ground under the bed is filled to it');
+near(railCuttingHeight([axisCut], portalYs, x80, RAIL_CUTTING_HALF_FLOOR_M + RAIL_CUTTING_FEATHER_M / 2, -1), -1 + (b80 + 1) * 0.5, 1e-12, 'the fill feathers out');
+assert.equal(railCuttingHeight([axisCut], portalYs, x80, 20, -1), -1, 'low ground beyond the floor is not filled');
 const fanX = 60 + 40 + 60; // 60 m past the path's end
-near(H(fanX, 5 + RAIL_CUTTING_HALF_FLOOR_M + 60 * RAIL_CUTTING_FAN - 0.1), bed(fanX), 1e-12, 'the floor widens by the fan past the end');
-near(H(fanX, 5 + RAIL_CUTTING_HALF_FLOOR_M + 60 * RAIL_CUTTING_FAN + 4), bed(fanX) + 4 / RAIL_CUTTING_BATTER, 1e-12, 'and the face rises from the widened edge');
-near(H(60 - RAIL_CUTTING_PORTAL_M / 2, 5), ground(54) + (bed(54) - ground(54)) * 0.5, 1e-12, 'half-way through the fade: half the change');
+near(H(fanX, RAIL_CUTTING_HALF_FLOOR_M + 60 * RAIL_CUTTING_FAN - 0.1), bed(fanX), 1e-12, 'the floor widens by the fan past the end');
+near(H(fanX, RAIL_CUTTING_HALF_FLOOR_M + 60 * RAIL_CUTTING_FAN + 4), bed(fanX) + 4 / RAIL_CUTTING_BATTER, 1e-12, 'and the face rises from the widened edge');
+near(H(60 - RAIL_CUTTING_PORTAL_M / 2, 0), ground(54) + (bed(54) - ground(54)) * 0.5, 1e-12, 'half-way through the fade: half the change');
 let worstStep = 0;
-for (let x = 44; x <= 130; x += 0.1) for (let z = -20; z <= 30; z += 0.1) {
+for (let x = 44; x <= 130; x += 0.1) for (let z = -25; z <= 25; z += 0.1) {
   const h = H(x, z);
   worstStep = Math.max(worstStep, Math.abs(H(x + 0.1, z) - h), Math.abs(H(x, z + 0.1) - h));
 }
 assert.ok(worstStep < 0.16, `no step anywhere: the steepest 0.1 m rise is ${worstStep.toFixed(3)} m (the batter's 0.143)`);
-assert.ok(railCuttingExcludes([cut], portalYs, 80, 5 + 6, ground, 30) && !railCuttingExcludes([cut], portalYs, 80, 5 + 20, ground, 30), 'the exclusion: cess in, plateau out');
-assert.ok(railCuttingExcludes([cut], portalYs, 80, 5 + 11, ground, 30), 'a cut face is excluded');
-assert.ok(!railCuttingExcludes([cut], portalYs, 40, 5, ground, 30), 'nothing before the fade');
+assert.ok(railCuttingExcludes([axisCut], portalYs, 80, 6, ground, 30) && !railCuttingExcludes([axisCut], portalYs, 80, 20, ground, 30), 'the exclusion: cess in, plateau out');
+assert.ok(railCuttingExcludes([axisCut], portalYs, 80, 11, ground, 30), 'a cut face is excluded');
+assert.ok(!railCuttingExcludes([axisCut], portalYs, 40, 0, ground, 30), 'nothing before the fade');
 
 // ------------------------------------------------------------------ Tarkhan Steppe at seed 1337
 const cfg = getMapConfig('steppe');
 const spur = cfg.terrain.railSpurs[0];
 assert.deepEqual(spur.cutting, { from: [440, -181] }, 'the portal at the round-57 stop, defaults otherwise');
 const [tarkhan] = resolveRailCuttings(cfg.terrain.railSpurs);
-assert.deepEqual([tarkhan.ux, tarkhan.uz, tarkhan.endAlong], [1, 0, 72], 'east along the siding, 72 m to the edge');
+assert.deepEqual([tarkhan.ux, tarkhan.uz, tarkhan.endAlong, tarkhan.ex, tarkhan.ez], [1, 0, 72, 512, -181], 'east along the siding, 72 m to the edge');
+near(Math.atan2(tarkhan.fz, tarkhan.fx), Math.atan2(-181, 512), 1e-12, 'the valley runs along the radial through the mouth (19.5° off the line)');
 const field = createHeightField(1337, cfg);
 const uncut = createHeightField(1337, { ...cfg, terrain: { ...cfg.terrain, railSpurs: [{ path: spur.path, bufferStop: spur.bufferStop }] } });
 const portalY = field.getHeightAt(440, -181);
@@ -111,10 +116,13 @@ assert.equal(field.minY, uncut.minY); assert.equal(field.maxY, uncut.maxY);
 // the outland: the bed and the fan continue past the red line without a step
 near(field.getOutlandHeightAt(512, -181), field.getHeightAt(512, -181), 1e-9, 'no step across the red line on the axis');
 near(field.getOutlandHeightAt(512, -184.5), field.getHeightAt(512, -184.5), 1e-9, 'nor across the floor');
-for (let x = 512; x <= 800; x += 16) near(field.getOutlandHeightAt(x, -181), portalY + RAIL_CUTTING_GRADE * (x - 440), 1e-9, `the bed continues at grade (x ${x})`);
-const fanHalf = RAIL_CUTTING_HALF_FLOOR_M + (620 - 512) * RAIL_CUTTING_FAN;
-near(field.getOutlandHeightAt(620, -181 - fanHalf + 0.5), portalY + RAIL_CUTTING_GRADE * 180, 1e-9, 'the fan floor 108 m past the edge');
-assert.ok(field.getOutlandHeightAt(620, -181 - fanHalf - 30) > 14, 'the plateau beyond the fan');
+const radial = (run, side = 0) => [512 + tarkhan.fx * run - tarkhan.fz * side, -181 + tarkhan.fz * run + tarkhan.fx * side];
+for (let run = 0; run <= 300; run += 16) near(field.getOutlandHeightAt(...radial(run)), portalY + RAIL_CUTTING_GRADE * (72 + run), 1e-9, `the bed continues at grade along the radial (${run} m out)`);
+const fanHalf = RAIL_CUTTING_HALF_FLOOR_M + 108 * RAIL_CUTTING_FAN;
+near(field.getOutlandHeightAt(...radial(108, fanHalf - 0.5)), portalY + RAIL_CUTTING_GRADE * 180, 1e-9, 'the valley floor 108 m out, at its edge');
+near(field.getOutlandHeightAt(...radial(108, -fanHalf + 0.5)), portalY + RAIL_CUTTING_GRADE * 180, 1e-9, 'both sides');
+assert.ok(field.getOutlandHeightAt(...radial(108, fanHalf + 40)) > 14, 'the plateau beyond the valley');
+for (let x = 520; x <= 690; x += 10) near(field.getOutlandHeightAt(x, -181), portalY + RAIL_CUTTING_GRADE * (72 + (x - 512) * tarkhan.fx), 1e-9, `the straight-ahead line from the mouth lies on the valley floor (x ${x})`);
 assert.equal(field.getOutlandHeightAt(300, -181), uncut.getOutlandHeightAt(300, -181), 'the outland sampler is the composition it was elsewhere');
 assert.equal(field.getOutlandHeightAt(600, 200), uncut.getOutlandHeightAt(600, 200));
 // the ring: near rows seat in the notch, every authored ridge row keeps its height to the bit, no other column moves
@@ -133,9 +141,10 @@ for (let i = 0; i < ring.heights.length; i++) {
 assert.equal(ringOutside, 0, 'only the seated rows inside the notch move; the authored ridges never');
 assert.ok(ringMoved >= 8, `the ring carries the notch (${ringMoved} vertices)`);
 const axisColumn = [...Array(n).keys()].sort((p, q) => Math.abs(((p / n) * Math.PI * 2 - Math.PI * 2) - axisAngle) - Math.abs(((q / n) * Math.PI * 2 - Math.PI * 2) - axisAngle))[0];
-for (let row = 1; row < 4; row++) {
-  const i = row * n + axisColumn, edgeOut = Math.max(Math.abs(ring.positions[i * 3]), Math.abs(ring.positions[i * 3 + 2])) - 511.5;
-  assert.ok(ring.heights[i] < portalY + RAIL_CUTTING_GRADE * (72 + edgeOut) + 4, `ring row ${row} (${edgeOut.toFixed(0)} m out) seats on the fan floor: ${ring.heights[i].toFixed(2)} m`);
+for (let row = 1; row < 4; row++) for (const column of [axisColumn - 1, axisColumn, axisColumn + 1]) {
+  const i = row * n + column, edgeOut = Math.max(Math.abs(ring.positions[i * 3]), Math.abs(ring.positions[i * 3 + 2])) - 511.5;
+  const bedHere = portalY + RAIL_CUTTING_GRADE * (72 + edgeOut);
+  assert.ok(ring.heights[i] < bedHere + 4 && ring.heights[i] > bedHere - 1.5, `ring row ${row} (${edgeOut.toFixed(0)} m out) seats on the valley floor: ${ring.heights[i].toFixed(2)} m`);
   assert.ok(ringUncut.heights[i] > 14, 'where the plateau stood');
 }
 // the exclusion: floor, cess and faces, not the plateau beside the notch nor the plain before the fade

@@ -11,8 +11,9 @@
 // ground above the graded bed is cut away to a level floor between batter faces, the ground below it is filled, and
 // the height field applies the same rule inside the square (terrain.ts heightAt, after every road, pad, lake and
 // trench constraint) and in the outland (outlandHeightAt, the horizon ring's near rows), so the line leaves the
-// plateau through a real notch instead of stopping at the rim foot. Past the path's end the floor widens (the fan),
-// so the ring's columns can carry the valley mouth the cutting opens into.
+// plateau through a real notch instead of stopping at the rim foot. Past the path's end the notch opens as a valley
+// along the RADIAL through the end point — the direction the horizon ring's columns run, so the ring carries the
+// valley without the oblique ramps a straight off-centre fan drew across the mouth — widening at the fan rate.
 
 export interface RailSpurConfig {
   /**
@@ -47,7 +48,7 @@ export interface RailCuttingConfig {
   halfFloor?: number;
   /** Batter of the cut faces as horizontal run per metre of rise; omitted = RAIL_CUTTING_BATTER. */
   batter?: number;
-  /** Growth of the floor's half-width per metre past the path's end (the outland fan); omitted = RAIL_CUTTING_FAN. */
+  /** Growth of the floor's half-width per metre past the path's end (the outland valley); omitted = RAIL_CUTTING_FAN. */
   fan?: number;
 }
 
@@ -57,8 +58,13 @@ export interface RailCutting {
   pz: number;
   ux: number;
   uz: number;
-  /** Distance from the portal to the path's last point along the axis: the fan opens past it. */
+  /** Distance from the portal to the path's last point along the axis: the valley opens past it. */
   endAlong: number;
+  /** The path's last point and the unit radial through it (from the map centre): the outland valley's axis. */
+  ex: number;
+  ez: number;
+  fx: number;
+  fz: number;
   grade: number;
   halfFloor: number;
   batter: number;
@@ -91,13 +97,15 @@ export const RAIL_SPUR_BERTH_M = 3.6;
  * of rise (≈ 55°, a soft-rock cutting: the terrain material's slope rock takes the faces), the floor feathered
  * 2 m into the ground beyond its edge, the whole rule fading in over the 12 m BEFORE the portal — the plain there
  * lies within a few decimetres of the bed, and a fade past the portal let the rim's first rise hump the bed by
- * 0.4 m at the mouth — so the bed is fully graded from the portal on, and the floor widening 0.25 m per metre past
- * the path's end.
+ * 0.4 m at the mouth — so the bed is fully graded from the portal on, and the valley past the path's end widening
+ * 0.35 m per metre along the radial: at Tarkhan's 19.5° between the line and the radial, the floor keeps the
+ * straight-ahead sightline from the mouth inside it to the ring's first ridge (174 m out: 58 m off the valley's
+ * axis against a 65 m half-floor).
  */
 export const RAIL_CUTTING_GRADE = 0.024;
 export const RAIL_CUTTING_HALF_FLOOR_M = 4;
 export const RAIL_CUTTING_BATTER = 0.7;
-export const RAIL_CUTTING_FAN = 0.25;
+export const RAIL_CUTTING_FAN = 0.35;
 export const RAIL_CUTTING_FEATHER_M = 2;
 export const RAIL_CUTTING_PORTAL_M = 12;
 /** The exclusion keeps this much more than the floor clear: the cess shoulder the spur berth keeps past its slab. */
@@ -217,8 +225,10 @@ export function resolveRailCuttings(spurs: readonly RailSpurConfig[] | undefined
     if (off > 0.01 || endAlong < 0 || endAlong > run + 0.01) {
       throw new Error(`rail cutting portal ${px},${pz} is not on the spur's last edge`);
     }
+    const ex = px + ux * endAlong, ez = pz + uz * endAlong, radius = Math.hypot(ex, ez);
     out.push({
-      px, pz, ux, uz, endAlong,
+      px, pz, ux, uz, endAlong, ex, ez,
+      fx: radius > 1e-6 ? ex / radius : ux, fz: radius > 1e-6 ? ez / radius : uz,
       grade: cutting.grade ?? RAIL_CUTTING_GRADE,
       halfFloor: cutting.halfFloor ?? RAIL_CUTTING_HALF_FLOOR_M,
       batter: cutting.batter ?? RAIL_CUTTING_BATTER,
@@ -231,6 +241,41 @@ export function resolveRailCuttings(spurs: readonly RailSpurConfig[] | undefined
 /** The graded bed's height `along` metres past the portal whose ground stood at `portalY`. */
 export function railCuttingBedY(cutting: RailCutting, portalY: number, along: number): number {
   return portalY + cutting.grade * along;
+}
+
+/** A point in a cutting's frame: the run from the portal (the bed's argument), the lateral distance and the floor's half-width there. */
+export interface RailCuttingTerms {
+  along: number;
+  lateral: number;
+  halfFloor: number;
+}
+const _cuttingTerms: RailCuttingTerms = { along: 0, lateral: 0, halfFloor: 0 };
+
+/**
+ * The cutting's frame at (x, z), allocation-free (the shared scratch is returned): inside the square the straight
+ * axis from the portal; past the path's end, where the point lies in front of the end plane of the RADIAL through
+ * that point, the valley along the radial — the run continues from the path's end, the floor widens by the fan.
+ * Null before the fade's start (RAIL_CUTTING_PORTAL_M before the portal) — nothing to do there.
+ */
+export function railCuttingTermsAt(cut: RailCutting, x: number, z: number): RailCuttingTerms | null {
+  const dx = x - cut.px, dz = z - cut.pz;
+  const along = dx * cut.ux + dz * cut.uz;
+  if (along <= -RAIL_CUTTING_PORTAL_M) return null;
+  const out = _cuttingTerms;
+  if (along > cut.endAlong) {
+    const ox = x - cut.ex, oz = z - cut.ez;
+    const run = ox * cut.fx + oz * cut.fz;
+    if (run > 0) {
+      out.along = cut.endAlong + run;
+      out.lateral = Math.abs(ox * -cut.fz + oz * cut.fx);
+      out.halfFloor = cut.halfFloor + run * cut.fan;
+      return out;
+    }
+  }
+  out.along = along;
+  out.lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
+  out.halfFloor = cut.halfFloor;
+  return out;
 }
 
 /**
@@ -248,12 +293,10 @@ export function railCuttingHeight(
 ): number {
   for (let i = 0; i < cuttings.length; i++) {
     const cut = cuttings[i];
-    const dx = x - cut.px, dz = z - cut.pz;
-    const along = dx * cut.ux + dz * cut.uz;
-    if (along <= -RAIL_CUTTING_PORTAL_M) continue;
+    const terms = railCuttingTermsAt(cut, x, z);
+    if (terms === null) continue;
+    const { along, lateral, halfFloor } = terms;
     const fadeIn = smoothstep01(-RAIL_CUTTING_PORTAL_M, 0, along);
-    const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
-    const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
     const bedY = portalYs[i] + cut.grade * along;
     let target: number;
     if (h < bedY) {
@@ -285,11 +328,9 @@ export function railCuttingSeatWeight(
   let weight = 0;
   for (let i = 0; i < cuttings.length; i++) {
     const cut = cuttings[i];
-    const dx = x - cut.px, dz = z - cut.pz;
-    const along = dx * cut.ux + dz * cut.uz;
-    if (along <= 0) continue;
-    const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
-    const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
+    const terms = railCuttingTermsAt(cut, x, z);
+    if (terms === null || terms.along <= 0) continue;
+    const { along, lateral, halfFloor } = terms;
     const depth = groundAt(x, z) - (portalYs[i] + cut.grade * along);
     const daylight = halfFloor + (depth > 0 ? depth * cut.batter : 0);
     if (lateral >= daylight + RAIL_CUTTING_SEAT_FADE_M) continue;
@@ -311,11 +352,9 @@ export function railCuttingExcludes(
 ): boolean {
   for (let i = 0; i < cuttings.length; i++) {
     const cut = cuttings[i];
-    const dx = x - cut.px, dz = z - cut.pz;
-    const along = dx * cut.ux + dz * cut.uz;
-    if (along <= -RAIL_CUTTING_PORTAL_M) continue;
-    const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
-    const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
+    const terms = railCuttingTermsAt(cut, x, z);
+    if (terms === null) continue;
+    const { along, lateral, halfFloor } = terms;
     if (along > 0 && lateral <= halfFloor + RAIL_CUTTING_SHOULDER_M) return true;
     if (lateral > halfFloor + RAIL_CUTTING_FEATHER_M + maxDepth * cut.batter) continue;
     const ground = groundAt(x, z);

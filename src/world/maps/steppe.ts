@@ -114,8 +114,9 @@ export default {
     // Round 63 (2026-09-24): the line leaves the square through a railway cutting in the eastern rim band — the
     // bed graded at 2.4 % from the portal at x 440 (the ground twists up from x ≈ 446; the station road climbs
     // the rim at 24 % beside it) to the map edge, an 8 m floor between faces battered 0.7:1, ~18 m deep at the
-    // edge, continuing into the outland as the valley mouth the horizon ring seats on (terrain.ts). The height
-    // field keeps vegetation and scattered props 3.6 m off the centreline and off the cutting's floor and faces.
+    // edge, opening past it into a valley along the radial (the horizon ring seats its near rows on it, terrain.ts).
+    // The height field keeps vegetation and scattered props 3.6 m off the centreline and off the cutting's floor
+    // and faces.
     railSpurs: [{ path: [[144, -181], [512, -181]], bufferStop: 'start', cutting: { from: [440, -181] } }],
     // Gravel: the wadi bed is bare worked ground (the D layer's pale dusty dirt)
     // between the banks; the station forecourt and the kolkhoz yard are trodden.
