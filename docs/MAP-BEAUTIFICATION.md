@@ -1769,6 +1769,173 @@ empty after the bot-versus-bot chase at 200–300 m, the fleet's ammunition econ
 options (ram or retire), and the median's headroom (the probe filters make every bot more patient; a shorter passive
 dwell — 15 s instead of 20 — was prepared as iteration 5 but not measured, the shared probe mutex being held by the
 round-59 performance campaign for the rest of the session).
+### Round 59 — 2026-09-24: performance audit after the map rounds
+
+Lane r59-perf-audit from origin/main 256feb115 (the deploy-79 row), measured against deploy 66 (ad233e1a1, water pass 8 —
+the tree before rounds 47–57); `package.json` differs by two script lines, no dependency moved. Rounds 47–57 gave the
+battlefields three redesigns (Frosthollow, Amberford, Tarkhan Steppe), the mesa ring stack and the arid skies, the sea
+contours and the outland water field, the ring forest's matte canopy and Titan's analytic wall crag (55), the strands'
+wrack (56) and the rail spur kit (57). This round measures all thirty-one maps on both trees, fixes what regressed and
+records what the designs cost.
+
+**The probe.** `tools/tmp-r59-map-perf-probe.mjs` (a throwaway over `tools/map-probe-runtime.mjs`, the round-48
+convention): one private vite server and one headless browser per tree, one page per map, the desktop tier at seed
+1337 in a `t90m_x`, a solo battle through `__DEBUG.beginSoloBattle`; the activation trace (`window.__WORLD_LOAD`: build,
+its height-field / terrain / vegetation / props stages, the vegetation slice timings), long tasks from document start
+(`PerformanceObserver`), the sourced textures awaited, every bot frozen (`aiCtl = null`); then four poses — chase and
+bird relative to the hull (`HULL_RELATIVE_POSES`), `edge-e-low` and `centre-far` from the view table — with 90 rendered
+frames each: main-thread ms per frame (the game's animation-frame callback, `performance.now()` against the frame's
+timestamp; the callback order is detected at run time), GPU ms (`EXT_disjoint_timer_query_webgl2` from the frame's first
+renderer submission to the post-frame task — ANGLE Metal answers timer queries at command-buffer granularity, so GPU ms
+is supporting evidence, never the verdict), `renderer.info` calls and triangles over all passes; then the scene
+inventory — instances per subsystem (trees are the `InstancedMesh`es carrying `aLodF`, grass the `world-grass` program
+key, the ring forest `horizon-forest`), the texture-byte estimate of `tools/perfprobe.mjs`, geometry bytes, programs —
+and, with `--breakdown`, one subsystem hidden at a time at the chase pose (draw attribution). The receipts, the
+tables and the captures live in the lane's scratch (`r59/C`, `C2`, `F`, `F2`, `W`); the summary is
+`docs/references/perf/round59-map-perf-audit.json`.
+
+**Machine and protocol.** The box was never idle: two sibling lanes ran their fleet receipts throughout and the
+1-minute load sat at 5–20 (up to 30 during the fixed-branch pass), so the campaign ran under one hold of the probe mutex
+at `nice -n 19` with every map measured main → base → main → base inside one process — drift and bursts cancel inside
+each pair — and the load average is printed beside every wall-clock number. Wall-clock is secondary evidence here:
+draw calls, triangles, instance counts, texture / geometry bytes, programs, long-task counts and the ratios between
+build stages are load-insensitive and decide the round. Chunk 1 (verdant, desert) coincided with a foreign `tsc` burst
+at load 12–14 and was re-measured; the skybridge and blackglass pairs disagreed by more than 1.25× with every unrelated
+stage — the page's own boot before the map, the height field, the same slowest prop slices — moved by the same 30–45 %,
+the signature of host drift, and were re-run (0.97× and 1.02×). Budgets read against: `tools/perfprobe.mjs` (fps median
+≥ 60, frame p99 ≤ 25 ms, worst-frame draw calls ≤ 900, triangles ≤ 7 M with the 6 M ratchet, scene textures ≤ 512 MB,
+load-to-ready ≤ 5 s) and `tools/loading-budget-probe.mjs` (Garage → battle < 5 s, click-to-control < 7.5 s, transition
+frame gap < 500 ms; both are production-build measurements, so a dev-server build here is compared with its own
+baseline and the fleet, not with the 5 s line).
+
+**Every battlefield on current main (256feb115).** Means over the two runs per map; the load1 beside the build is the
+1-minute average when that map started (verdant 4.7–4.9 s at load 3 in the smoke runs, 5.1 s at load 7.7 here).
+
+| Map | build ms (load1) | activation ms | chase CPU / GPU ms | bird CPU / GPU | edge CPU / GPU | far CPU / GPU | calls (chase / worst) | tris M (chase / worst) | trees | ring | props | grass | tex MB | geo MB | programs | entry long tasks (max ms) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Verdant Field (`verdant`) | 5,064 (7.7) | 5,064 | 5.4 / 26.3 | 7.0 / 20.4 | 8.6 / 20.4 | 7.0 / 13.0 | 693 / 848 | 7.32 / 7.68 | 15,187 | 8,000 | 2,329 | 10,818 | 115.3 | 31.8 | 208 | 26 (645) |
+| Dust Line (`desert`) | 3,249 (6.7) | 3,257 | 4.5 / 22.9 | 6.8 / 15.8 | 3.7 / 23.9 | 3.3 / 24.7 | 616 / 828 | 4.30 / 4.30 | 5,733 | 0 | 2,094 | 27,703 | 111.9 | 28.9 | 204 | 9 (608) |
+| Frosthollow (`winter`) | 5,539 (10.7) | 5,549 | 13.7 / 25.0 | 15.6 / 16.1 | 10.2 / 14.7 | 5.3 / 17.4 | 764 / 824 | 7.18 / 7.18 | 11,126 | 0 | 2,900 | 432 | 111.5 | 39.3 | 207 | 25 (1,022) |
+| Ashfall City (`urban`) | 5,011 (11.0) | 5,021 | 4.5 / 20.4 | 7.3 / 18.4 | 4.3 / 25.1 | 3.5 / 16.3 | 644 / 789 | 8.64 / 8.64 | 6,876 | 8,000 | 2,201 | 13,265 | 109.8 | 102.0 | 209 | 9 (687) |
+| Saltmere Coast (`coastal`) | 3,248 (10.5) | 3,255 | 6.3 / 27.6 | 8.3 / 18.0 | 6.0 / 24.8 | 3.5 / 18.5 | 732 / 843 | 5.78 / 5.78 | 8,180 | 8,000 | 2,353 | 834 | 111.9 | 31.6 | 208 | 10 (677) |
+| Amberford (`autumn`) | 3,914 (7.7) | 3,920 | 4.8 / 24.8 | 9.1 / 25.2 | 6.2 / 22.2 | 5.3 / 19.4 | 691 / 837 | 9.55 / 9.55 | 12,353 | 8,000 | 2,994 | 35,661 | 114.3 | 35.3 | 213 | 9 (616) |
+| Tarkhan Steppe (`steppe`) | 9,726 (8.5) | 9,733 | 4.7 / 20.8 | 8.8 / 19.7 | 9.0 / 21.3 | 6.8 / 18.2 | 656 / 795 | 4.81 / 4.81 | 2,949 | 8,000 | 2,846 | 14,301 | 112.9 | 28.8 | 209 | 27 (678) |
+| Cinder Junction (`railyard`) | 3,206 (10.3) | 3,213 | 6.0 / 22.9 | 8.1 / 19.2 | 5.3 / 26.0 | 6.0 / 10.5 | 663 / 786 | 4.81 / 4.99 | 4,482 | 8,000 | 2,399 | 2,566 | 125.1 | 38.1 | 206 | 9 (608) |
+| Frontier (`frontier`) | 4,453 (9.4) | 4,461 | 6.6 / 19.9 | 9.2 / 20.6 | 6.2 / 21.6 | 4.7 / 15.8 | 824 / 899 | 9.56 / 9.60 | 16,878 | 8,000 | 2,327 | 10,786 | 113.2 | 34.2 | 209 | 24 (631) |
+| Nordhavn Fjord (`fjord`) | 4,697 (12.8) | 4,707 | 8.4 / 17.6 | 8.7 / 18.3 | 5.3 / 21.5 | 5.6 / 18.0 | 779 / 780 | 9.48 / 9.48 | 14,580 | 8,000 | 2,441 | 3,972 | 111.4 | 33.7 | 210 | 14 (877) |
+| Delta (`delta`) | 4,754 (15.9) | 4,762 | 7.3 / 22.2 | 10.4 / 21.6 | 6.8 / 19.6 | 4.5 / 16.5 | 690 / 823 | 9.60 / 9.60 | 18,584 | 8,000 | 1,057 | 12,441 | 114.9 | 36.0 | 211 | 17 (815) |
+| Badlands (`badlands`) | 4,594 (18.5) | 4,605 | 8.9 / 22.8 | 11.1 / 20.0 | 6.3 / 19.3 | 4.3 / 17.7 | 715 / 826 | 4.32 / 4.32 | 4,137 | 0 | 3,187 | 1,836 | 113.2 | 39.0 | 205 | 14 (829) |
+| Monsoon (`monsoon`) | 4,640 (14.8) | 4,648 | 9.6 / 32.9 | 9.7 / 17.4 | 7.7 / 21.3 | 5.5 / 14.6 | 728 / 755 | 12.32 / 12.32 | 23,365 | 8,000 | 2,131 | 12,463 | 113.7 | 36.4 | 208 | 14 (715) |
+| Alpine (`alpine`) | 4,238 (10.3) | 4,245 | 10.3 / 19.2 | 10.8 / 18.7 | 8.7 / 17.6 | 4.5 / 16.7 | 867 / 868 | 9.72 / 9.72 | 18,249 | 8,000 | 2,438 | 1,898 | 110.4 | 38.8 | 208 | 13 (789) |
+| Caldera (`caldera`) | 3,661 (15.0) | 3,668 | 7.3 / 22.2 | 10.1 / 18.8 | 5.8 / 19.9 | 3.5 / 18.9 | 741 / 874 | 7.37 / 7.37 | 8,497 | 8,000 | 3,770 | 2,531 | 124.1 | 36.1 | 203 | 7 (663) |
+| Foundry (`foundry`) | 3,090 (8.9) | 3,097 | 4.8 / 25.8 | 7.0 / 18.2 | 3.3 / 19.7 | 2.9 / 18.1 | 654 / 795 | 6.50 / 6.50 | 7,271 | 8,000 | 2,658 | 2,161 | 125.4 | 39.2 | 206 | 10 (618) |
+| Ruinspires (`ruinspires`) | 4,737 (6.0) | 4,746 | 5.2 / 26.1 | 7.5 / 19.0 | 4.7 / 24.7 | 3.5 / 18.6 | 696 / 837 | 7.69 / 7.69 | 2,677 | 0 | 2,279 | 1,023 | 110.8 | 108.9 | 208 | 15 (599) |
+| Blackglass (`blackglass`) | 4,500 (10.7) | 4,508 | 7.2 / 21.2 | 9.3 / 18.0 | 5.5 / 18.1 | 5.3 / 17.5 | 698 / 866 | 6.84 / 6.84 | 5,455 | 1,724 | 3,165 | 1,561 | 123.8 | 62.7 | 210 | 15 (693) |
+| Titan Gorge (`titan_gorge`) | 3,508 (10.7) | 3,515 | 7.0 / 24.7 | 8.2 / 22.2 | 4.8 / 18.6 | 2.9 / 19.8 | 734 / 784 | 3.72 / 3.72 | 2,852 | 0 | 2,986 | 1,274 | 113.2 | 32.0 | 205 | 11 (668) |
+| Skybridge (`skybridge`) | 3,834 (11.2) | 3,843 | 5.2 / 23.2 | 7.0 / 20.4 | 4.8 / 21.6 | 3.4 / 10.0 | 656 / 772 | 4.53 / 4.53 | 4,633 | 0 | 2,812 | 1,719 | 123.9 | 37.4 | 207 | 14 (767) |
+| Polders (`polders`) | 3,649 (12.0) | 3,657 | 5.0 / 25.1 | 7.6 / 16.1 | 5.5 / 22.4 | 3.5 / 12.9 | 679 / 790 | 6.27 / 6.27 | 8,340 | 809 | 1,003 | 12,691 | 114.9 | 30.7 | 211 | 10 (763) |
+| Copper Mesa (`copper_mesa`) | 2,942 (6.4) | 2,949 | 4.5 / 25.5 | 6.7 / 18.2 | 4.4 / 22.2 | 2.7 / 11.2 | 649 / 813 | 4.02 / 4.02 | 4,441 | 0 | 1,221 | 2,055 | 111.6 | 24.8 | 201 | 9 (623) |
+| Airfield (`airfield`) | 3,339 (4.8) | 3,346 | 4.4 / 26.3 | 6.2 / 22.0 | 4.7 / 18.2 | 3.5 / 17.1 | 683 / 771 | 5.39 / 5.39 | 7,412 | 8,000 | 795 | 10,309 | 112.1 | 27.7 | 202 | 9 (608) |
+| Oasis (`oasis`) | 2,845 (5.2) | 2,851 | 5.2 / 24.8 | 6.5 / 19.2 | 3.6 / 25.7 | 2.8 / 10.8 | 733 / 791 | 4.27 / 4.27 | 4,346 | 0 | 1,067 | 15,322 | 113.2 | 29.8 | 208 | 8 (603) |
+| Whiteout (`whiteout`) | 2,736 (5.6) | 2,742 | 4.3 / 19.8 | 6.1 / 14.7 | 3.3 / 19.3 | 2.5 / 8.3 | 661 / 833 | 3.69 / 3.69 | 2,016 | 0 | 1,024 | 1,282 | 110.9 | 29.4 | 204 | 10 (605) |
+| Orchard (`orchard`) | 3,856 (5.0) | 3,863 | 4.7 / 21.7 | 6.2 / 20.9 | 5.3 / 22.9 | 3.9 / 15.0 | 686 / 742 | 6.25 / 6.25 | 10,385 | 8,000 | 1,156 | 9,647 | 112.4 | 27.5 | 204 | 15 (629) |
+| Longleaf (`longleaf`) | 5,140 (15.9) | 5,146 | 7.1 / 20.6 | 7.3 / 18.7 | 6.3 / 21.3 | 4.7 / 17.0 | 726 / 767 | 7.70 / 7.70 | 13,939 | 8,000 | 1,133 | 11,855 | 112.6 | 29.3 | 207 | 23 (686) |
+| Mangrove (`mangrove`) | 3,478 (10.4) | 3,485 | 6.9 / 25.0 | 7.7 / 18.5 | 5.7 / 21.6 | 4.1 / 18.1 | 675 / 789 | 7.33 / 7.33 | 12,548 | 8,000 | 878 | 11,020 | 113.6 | 27.5 | 211 | 11 (630) |
+| Saltwind Narrows (`saltwind`) | 3,566 (8.2) | 3,573 | 5.7 / 22.5 | 6.8 / 21.6 | 5.3 / 20.1 | 4.5 / 18.1 | 698 / 704 | 6.22 / 6.22 | 7,904 | 8,000 | 1,174 | 9,684 | 112.6 | 29.6 | 210 | 10 (650) |
+| Reservoir (`reservoir`) | 3,114 (8.0) | 3,121 | 4.3 / 20.1 | 5.3 / 16.7 | 3.4 / 23.4 | 3.4 / 10.8 | 656 / 814 | 6.73 / 6.73 | 14,403 | 8,000 | 1,138 | 9,506 | 110.6 | 29.3 | 208 | 11 (622) |
+| Olympus Basin (`mars`) | 6,252 (10.3) | 6,265 | 9.3 / 48.9 | 19.0 / 16.7 | 7.7 / 30.9 | 6.3 / 15.2 | 480 / 660 | 2.87 / 2.87 | 0 | 0 | 1,296 | 0 | 78.5 | 23.4 | 194 | 19 (1,079) |
+| **fleet median** | 3,856 (10.3) | 3,863 | 5.7 / 22.9 | 7.7 / 18.7 | 5.5 / 21.5 | 4.1 / 17.0 | 691 / 795 | 6.50 / 6.50 | 7,904 | 8,000 | 2,279 | 9,506 | 112.9 | 32.0 | 208 | 11 (663) |
+
+**Deploy 66 → current main, the nineteen maps whose sources changed.** Counts, programs and bytes are exact; the
+timings carry both loads. The twelve unchanged maps (verdant, urban, frontier, delta, badlands, monsoon, alpine, airfield,
+orchard, longleaf, mangrove, reservoir) read identical calls, triangles, instances, textures and programs on both trees.
+
+| Map | build ms, deploy 66 → main (×) [load1] | terrain / vegetation / props stage ms, main (deploy 66) | chase CPU ms (×) | chase GPU ms (×) | calls | tris M (×) | trees | props | tex MB | geo MB | programs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Frosthollow (`winter`) | 4,706 → 5,539 (1.18) [9.6 / 10.7] | 2,726 / 298 / 1,834 (2,463 / 170 / 1,624) | 15.1 → 13.7 (0.90) | 24.3 → 25.0 (1.03) | 685 → 764 | 5.52 → 7.18 (1.30) | 10,577 → 11,126 | 2,508 → 2,900 | 111.2 → 111.5 | 35.8 → 39.3 | 206 → 207 |
+| Amberford (`autumn`) | 4,294 → 3,914 (0.91) [7.8 / 7.7] | 1,784 / 717 / 1,135 (2,128 / 646 / 1,177) | 6.1 → 4.8 (0.79) | 20.5 → 24.8 (1.21) | 710 → 691 | 9.18 → 9.55 (1.04) | 13,486 → 12,353 | 2,279 → 2,994 | 113.9 → 114.3 | 33.6 → 35.3 | 211 → 213 |
+| Tarkhan Steppe (`steppe`) | 3,948 → 9,726 (2.46) [8.3 / 8.5] | 3,132 / 4,232 / 1,440 (1,399 / 572 / 1,296) | 5.3 → 4.7 (0.89) | 21.9 → 20.8 (0.95) | 684 → 656 | 4.80 → 4.81 (1.00) | 3,133 → 2,949 | 2,438 → 2,846 | 113.9 → 112.9 | 27.2 → 28.8 | 210 → 209 |
+| Saltmere Coast (`coastal`) | 4,006 → 3,248 (0.81) [10.5 / 10.5] | 1,566 / 412 / 1,022 (2,034 / 499 / 1,130) | 6.9 → 6.3 (0.91) | 21.9 → 27.6 (1.26) | 776 → 732 | 5.74 → 5.78 (1.01) | 7,843 → 8,180 | 2,340 → 2,353 | 111.9 → 111.9 | 29.9 → 31.6 | 207 → 208 |
+| Nordhavn Fjord (`fjord`) | 5,005 → 4,697 (0.94) [13.7 / 12.8] | 1,858 / 527 / 1,478 (1,890 / 499 / 1,621) | 8.7 → 8.4 (0.97) | 22.8 → 17.6 (0.77) | 745 → 779 | 9.11 → 9.48 (1.04) | 13,241 → 14,580 | 2,418 → 2,441 | 111.4 → 111.4 | 32.7 → 33.7 | 211 → 210 |
+| Saltwind Narrows (`saltwind`) | 3,593 → 3,566 (0.99) [9.8 / 8.2] | 1,355 / 422 / 1,084 (1,450 / 395 / 1,070) | 5.4 → 5.7 (1.06) | 22.8 → 22.5 (0.98) | 703 → 698 | 6.24 → 6.22 (1.00) | 7,904 → 7,904 | 1,174 → 1,174 | 112.6 → 112.6 | 28.0 → 29.6 | 209 → 210 |
+| Titan Gorge (`titan_gorge`) | 3,532 → 3,508 (0.99) [10.6 / 10.7] | 1,812 / 141 / 1,208 (1,812 / 127 / 1,323) | 7.2 → 7.0 (0.97) | 27.0 → 24.7 (0.92) | 742 → 734 | 3.72 → 3.72 (1.00) | 2,852 → 2,852 | 2,986 → 2,986 | 113.2 → 113.2 | 31.6 → 32.0 | 205 → 205 |
+| Skybridge (`skybridge`) | 3,379 → 3,834 (1.13) [11.2 / 11.2] | 1,765 / 155 / 1,409 (1,627 / 124 / 1,189) | 5.5 → 5.2 (0.95) | 22.6 → 23.2 (1.03) | 662 → 656 | 4.53 → 4.53 (1.00) | 4,633 → 4,633 | 2,812 → 2,812 | 123.9 → 123.9 | 37.1 → 37.4 | 206 → 207 |
+| Dust Line (`desert`) | 3,105 → 3,249 (1.05) [6.5 / 6.7] | 1,664 / 418 / 928 (1,524 / 425 / 926) | 4.3 → 4.5 (1.07) | 26.0 → 22.9 (0.88) | 622 → 616 | 4.29 → 4.30 (1.00) | 5,733 → 5,733 | 2,094 → 2,094 | 111.9 → 111.9 | 28.7 → 28.9 | 204 → 204 |
+| Oasis (`oasis`) | 2,966 → 2,845 (0.96) [4.9 / 5.2] | 1,425 / 305 / 890 (1,531 / 304 / 906) | 4.8 → 5.2 (1.07) | 21.3 → 24.8 (1.16) | 741 → 733 | 4.26 → 4.27 (1.00) | 4,346 → 4,346 | 1,067 → 1,067 | 113.2 → 113.2 | 29.7 → 29.8 | 208 → 208 |
+| Copper Mesa (`copper_mesa`) | 3,032 → 2,942 (0.97) [5.4 / 6.4] | 1,263 / 157 / 857 (1,406 / 158 / 865) | 4.3 → 4.5 (1.06) | 27.7 → 25.5 (0.92) | 649 → 649 | 4.00 → 4.02 (1.01) | 4,441 → 4,441 | 1,221 → 1,221 | 111.6 → 111.6 | 24.5 → 24.8 | 201 → 201 |
+| Blackglass (`blackglass`) | 5,255 → 4,500 (0.86) [11.6 / 10.7] | 1,697 / 151 / 2,150 (1,949 / 179 / 2,494) | 8.4 → 7.2 (0.86) | 22.3 → 21.2 (0.95) | 684 → 698 | 6.44 → 6.84 (1.06) | 5,455 → 5,455 | 3,165 → 3,165 | 123.8 → 123.8 | 62.6 → 62.7 | 209 → 210 |
+| Caldera (`caldera`) | 3,856 → 3,661 (0.95) [13.9 / 15.0] | 1,855 / 222 / 1,322 (1,952 / 244 / 1,382) | 7.7 → 7.3 (0.95) | 21.7 → 22.2 (1.02) | 746 → 741 | 7.24 → 7.37 (1.02) | 8,497 → 8,497 | 3,770 → 3,770 | 124.1 → 124.1 | 35.8 → 36.1 | 203 → 203 |
+| Ruinspires (`ruinspires`) | 4,806 → 4,737 (0.99) [5.5 / 6.0] | 1,561 / 72 / 2,827 (1,615 / 79 / 2,876) | 5.2 → 5.2 (1.00) | 27.0 → 26.1 (0.97) | 686 → 696 | 7.33 → 7.69 (1.05) | 2,677 → 2,677 | 2,279 → 2,279 | 110.8 → 110.8 | 108.7 → 108.9 | 206 → 208 |
+| Polders (`polders`) | 3,992 → 3,649 (0.91) [11.4 / 12.0] | 1,640 / 552 / 1,161 (1,900 / 571 / 1,223) | 6.9 → 5.0 (0.73) | 21.3 → 25.1 (1.18) | 668 → 679 | 6.03 → 6.27 (1.04) | 8,340 → 8,340 | 1,003 → 1,003 | 114.9 → 114.9 | 30.5 → 30.7 | 210 → 211 |
+| Whiteout (`whiteout`) | 2,790 → 2,736 (0.98) [6.2 / 5.6] | 1,431 / 100 / 971 (1,496 / 110 / 958) | 4.4 → 4.3 (0.97) | 25.9 → 19.8 (0.76) | 672 → 661 | 3.69 → 3.69 (1.00) | 2,016 → 2,016 | 1,024 → 1,024 | 110.9 → 110.9 | 29.4 → 29.4 | 204 → 204 |
+| Olympus Basin (`mars`) | 8,117 → 6,252 (0.77) [15.5 / 10.3] | 2,987 / 90 / 2,282 (3,635 / 171 / 2,896) | 10.6 → 9.3 (0.87) | 54.1 → 48.9 (0.90) | 481 → 480 | 2.85 → 2.87 (1.01) | 0 → 0 | 1,296 → 1,296 | 78.5 → 78.5 | 23.1 → 23.4 | 194 → 194 |
+| Cinder Junction (`railyard`) | 3,081 → 3,206 (1.04) [11.4 / 10.3] | 1,721 / 145 / 1,029 (1,665 / 131 / 1,008) | 4.4 → 6.0 (1.35) | 22.4 → 22.9 (1.02) | 676 → 663 | 4.81 → 4.81 (1.00) | 4,482 → 4,482 | 2,399 → 2,399 | 125.1 → 125.1 | 38.1 → 38.1 | 206 → 206 |
+| Foundry (`foundry`) | 3,086 → 3,090 (1.00) [7.2 / 8.9] | 1,635 / 147 / 1,065 (1,653 / 155 / 1,054) | 4.0 → 4.8 (1.20) | 25.2 → 25.8 (1.03) | 662 → 654 | 6.50 → 6.50 (1.00) | 7,271 → 7,271 | 2,658 → 2,658 | 125.4 → 125.4 | 39.1 → 39.2 | 206 → 206 |
+
+**Tarkhan Steppe: the world build 2.5–2.7× its baseline — a regression, fixed.** 3.9 → 9.7 s in the pairs (load 8.5),
+3.5 → 9.5 s in a main / base / fixed triple at load 4.9, with the counts unmoved (656 calls, 4.81 M triangles, 2,949 trees,
+112.9 MB). The stage timings named the vegetation step (4.1 s against 0.4 s, `grassScatter` 3.9 s in 98 slices with a
+293 ms slice against 0.3 s / 25 ms) and the terrain step (2.6 s against 1.2 s) — the per-sample cost of the height field
+itself: a `node --cpu-prof` of `getHeightAt` on steppe put 34 % of its self time in `fieldTrenchPlan`'s `dryFactor`, 19 %
+in `shorelineDistance` and 13 % in `waterWetnessAt`, and a headless survey of all thirty-one maps on both trees read
+11.8 µs per sample on steppe against 1.0 µs at deploy 66 and 0.8–4.2 µs everywhere else. The field-trench planner
+(2026-09-17) draws its plan provisionally — uncached — while a liquid-water map's marsh surfaces are pending and caches
+it once they exist; a map whose marshes are dry never builds those surfaces, so its plan stayed provisional for the
+world's whole life and every height query with roads and pads on re-planned the trenches (the lines × five stations ×
+every marsh's shoreline distance). Base steppe had no marshes; the redesign's twenty-two takyr crusts are dry marshes.
+The fix (`terrain.ts`, commit 3fba2df4c): provisional only while a liquid-water map's surfaces are pending — a dry map's
+bank-band-1 plan is its final plan, so nothing changes but the caching. Heights, water mask, exclusion and the plan
+hash byte-identical on steppe, frontier, autumn, coastal, delta and longleaf (60k samples each); steppe's 60k-sample time
+525 → 186 ms (the 22-marsh dip loop is what remains). In the browser (triple at load 4.9): build 9,471 → 3,843 ms beside
+the base's 3,522 (1.09× — the remaining 0.3 s is the redesign: 22 crusts, 17 landforms, the station kit and the spur),
+height field 556 → 152 ms, terrain 2,588 → 1,322, vegetation 4,115 → 649 (`grassScatter` 3,939 → 511, max slice 293 →
+37 ms), props 1,476 → 987, entry long tasks 26 → 10; at equal load 25 the main → fixed pair read 16.7 → 7.1 s. The
+captures are the same battlefield by eye (chase and far poses, 1280 px reductions; the far pose moved 0.02 % of its
+pixels against a 3.5 % run-to-run floor, the chase pose's 38 % is the wind-swayed grass and the bots' poses against a
+25 % floor on an unchanged tree). `roadLookupGrid`'s declared historical delta carries the new line; every terrain,
+trench, relief and vegetation receipt passes unchanged.
+
+**Frosthollow: +30 % triangles at the chase pose — the redesign's stands at the deployment, not a regression.** 5.52 →
+7.18 M rendered triangles and 685 → 764 calls at the chase pose (bird 5.74 → 7.06 M; edge and far +4 %), with the
+frame time unchanged (CPU 0.90×, GPU 1.03× its baseline) and the count columns modest: trees 10,577 → 11,126, props
+2,508 → 2,900 (the terrace village, the sawmill yard, the frozen river's ponds), geometry 35.8 → 39.3 MB, +1 program.
+The hide-one attribution puts +1.49 M of the +1.57 M in vegetation and +1.17 M in the shadow passes while the static
+vegetation inventory grew 3 % (10,984 → 11,558 instances): the conifer stands the redesign put on both flanks of the
+player deployment are near-LOD casters, where the Verdant clone kept its forest far away behind the barns (captures).
+7.2 M at the spawn is Verdant's own 7.3 M, 764 calls sit under the 900 line, so this is the map's cost, recorded; if
+the near-tree cascades ever need trimming it is a fleet lever (the caster LOD), not Frosthollow's stands.
+
+**Amberford and the rest.** Amberford: 9.18 → 9.55 M (+4 %), calls 710 → 691, trees 13,486 → 12,353 (the twenty-eight
+belts and the orchards replace the clone's scatter — round 48's tree concern closes with fewer trees than the clone
+had), props 2,279 → 2,994 (the town), grass at the pad 19,778 → 35,661 instances (the meadows), +2 programs (the river
+kit), build 4.3 → 3.9 s. Nordhavn Fjord +4 % triangles and +10 % trees (13,241 → 14,580), Saltmere +4 % trees with the
+wrack and +1 program, Saltwind identical counts with +1.6 MB of geometry (the 20 m strand and its wrack) and +1 program;
+the mesa-ring maps +2–6 % triangles for their ring rows and outland rocks (ruinspires 7.33 → 7.69 M and +2 programs,
+blackglass 6.44 → 6.84 M with 1,724 ring instances, caldera 7.24 → 7.37 M, polders 6.03 → 6.27 M) and copper_mesa,
+oasis, desert, whiteout, mars, Titan (3.72 M, 205 programs) and skybridge (4.53 M) unchanged — the analytic wall crag
+is a uniform branch of the one terrain program and the matte canopy costs no program; the four rail-kit yards
+(railyard, foundry, caldera, skybridge) byte-identical in every count, as round 57 certified. Scene textures 78.5–125.4 MB
+(Foundry the highest) within 0.4 MB of their baselines against the 512 MB line; programs 194–213; the worst-frame draw
+calls of the fleet 899 (Frontier, both trees) under the 900 line; entry long tasks 7–27 per map with a 600–1,100 ms
+maximum on both trees (the shader warm and the roster staging, not the maps).
+
+**Fleet-median flags and what they are.** Monsoon 12.3 M (1.89× the 6.5 M median), alpine 9.7 M, delta 9.6 M,
+frontier 9.6 M, Amberford 9.55 M, Fjord 9.5 M and Ashfall City 8.6 M at the chase pose are the forest and city maps'
+pre-existing density — identical to deploy 66 except Amberford's and Fjord's +4 % — and Alpine's 867 calls its
+baseline too; none is a change of these rounds. They stand above the `perfprobe` 7 M triangle line at the spawn pose
+(that gate is Verdant's 60 s drive at 1920 × 1080 with vsync off, a different measurement), which is the open fleet
+ratchet, not a map-round regression.
+
+**Receipts (exit 0).** perfprobe, perfprobe-draw-attribution, mapQuality, treePoolCapacity, propsScheduling,
+terrainStreaming, environmentExpansion, worldBuildCoordinator, badlandsRelief, roadLookupGrid (the declared delta),
+fieldTrenchTerrain, assaultTrenchTerrain, playableRelief, terrainProjection, terrainFastGrid, railSpurs,
+authoredTreePlacement, vegetationProgramKey, grassAtlasPadding, vegetationClearance, garage:terrain:check, typecheck,
+public-repo-hygiene, attribution:check. No digest moved (the fix is byte-identical), so no re-pin.
+
+**Open.** The fleet triangle ratchet (6 M) against forest maps at 9–12 M at their spawns; GPU time is command-buffer
+granular on this backend (a finer timer needs a native capture); Frosthollow's near-tree shadow passes as the fleet
+lever if the cascades are ever trimmed; the probe stays a `tools/tmp-*` throwaway — promoting it beside the round-48
+probes is a separate decision.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -1871,6 +2038,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 57 | The rail spur kit: a map authors a siding as a path (`terrain.railSpurs`, `src/world/railSpurs.ts`), the layout carries it, one span layer lays ballast / rails / sleepers / buffer stops that follow the ground (4 m spans, least-squares plane per slab, cross-slope roll, a deep slab bedded into the folds) and the height field's `_noVeg` berth keeps vegetation and scattered props 3.6 m off the line; the four rail yards migrated onto the same layer byte-identically; Tarkhan's grain station gets its loading-face siding (x 144 → 440 at z −181, buffers at both ends, a level crossing over the east track, ending at the rim foot — the road climbs the rim at 24 %); the stale steppe shard recaptured | rail-part / dressing / draw digests of the four yards A = B at three seeds (railSpurs.selftest pins them); headless slab-corner probe (no gap under any corner, tops ≥ 0.06 m clear); map-view-probe A/B on four new views (yard frame noise ≤ 0.3 %; steppe 1.7–2.6 % moved) judged on 1280 px reductions; census and storage re-pins; battlePacing 14 / 124; the receipts in the section |
 | 58 | Jetties at the water's edge (round 56's open item): the coastal kit's jetties and Saltwind's piers planned from the strand march (`src/world/maps/shoreJetty.ts`) — the shore end a metre landward of the wrack band on a flat strand or on the bank where the ground meets the deck, the tip a full span over the planar core, the deck a constant 0.45 m over the water surface (bed + the sheet's 0.72 m), every pile from the bed, sized to the shelf in 4–10 spans (Saltmere 9, Nordhavn's heads 5–7, Saltwind's authored 10); a gangway where the deck stands over the sand, a clinker hull moored alongside with bollards and lines; the kit burns the retired jetty's draws so every other boat, log and buoy keeps its place | map-view-probe A/B on the shore views plus four new jetty views from the shallows (table 38 → 42), 2× crops; `shoreJetty.selftest` (321 plans over nine fields); A/B receipt probe (7/7 boats, 41/41 + 15/15 logs, Saltwind's wrack byte-identical); riverLandings / beachedBoat / winterLakeGeometry / map-probe-runtime re-pinned; 28 world receipts and the typecheck green; no shard moved |
 | 60 | The last bot against a passive target (server/battlePacing 14/124): nine capped battles ended with empty racks after the survivor fought the idle host from 165–300 m and the tier's vertical error flew the shells over the turret or short into the ground; a target that has held still and stayed silent for the passive dwell, and that this bot's shells have stopped penetrating, is pressed after the deployment window to a 70 m side aspect (scoot legs, the low-health fallback, the settle holds and the flank ring yield; the press ends the moment the target moves or fires); the weak-spot probe scores only zones the gun can reach (world ray from the gun, elevation / depression arc, turret fallback); press points need a gun-to-hull lane and are vetoed when masked, gate-closed or gun-pinned; a closed-gate flank carries on to the rear; an overturned bot self-rights | full receipt after every change: 14 → 11 → 5 → 5 → 5 / 124 (median 465.5 s, p10 290.1 s, no sub-two-minute battle); ai.selftest [14]–[17] (press vs. an active-target control, sniper cadence, self-right, masked-zone probe), botGunLane (fixture berm 2.4 m), authoritativeBots (moving-battle ceiling 0.70), the AI / sim / net receipts in the section, typecheck, attribution |
+| 59 | Performance audit after the map rounds: every battlefield measured on main and at deploy 66 (main → base → main → base per map, the load beside every wall-clock number, counts / programs / bytes decisive) — Tarkhan Steppe's world build 2.5–2.7× its baseline: the field-trench plan re-planned on every height query of a dry-marsh map (a latent 2026-09-17 trap the takyr crusts walked into), now cached with byte-identical heights, 9.5 → 3.8 s beside the base's 3.5; Frosthollow +30 % triangles at the chase pose (the redesign's stands at the deployment, frame time unchanged) and Amberford +4 % recorded as design costs; every other map within 6 % of deploy 66, textures within 0.4 MB, programs 194–213, worst-frame calls ≤ 899 | `tools/tmp-r59-map-perf-probe.mjs` (124 main / base runs, the re-run pairs, the main / base / fixed triple), `node --cpu-prof` attribution, height / plan hashes, `roadLookupGrid` declared delta, the terrain / trench / relief / vegetation / perfprobe receipts, typecheck, hygiene, attribution; summary `docs/references/perf/round59-map-perf-audit.json` |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
