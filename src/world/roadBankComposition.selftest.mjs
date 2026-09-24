@@ -48,7 +48,9 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       applyMacroTerrain, noi, liquidSurfaces, liquidIndex, liquidIndexWords,
       _MARSHES, _LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
       lakeHeightResult, composeLakeHeight, padPts, padYs, waterRampStart,
-      waterRampEnd, quarryFloorY } = fixture;
+      waterRampEnd, quarryFloorY,
+      // round 47 follow-up: the rim line fades near an authored bay shoreline (coastRimKeep); the standard fixture has no bay
+      coastRimKeep = () => 1 } = fixture;
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);
