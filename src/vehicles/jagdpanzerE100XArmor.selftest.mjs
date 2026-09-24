@@ -15,7 +15,7 @@ const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
 // armor vertices are embedded in the regression.
 // Repinned 2026-09-15: the owner roster pass renamed donor display names (AMX-30B -> AMX-30,
 // AMX-40 -> AMX-40 Prototype, C1 Ariete -> Serie 1, Challenger 1 Mk 3 -> Mk 2 ...); no armor row moved.
-const donorHash = '09842f4d09b48cef27744d80a99ac8e512084354a116f608492c0d85c8dac942';
+const donorHash = 'd299134d61c47c15edb38d5c5088ad9c187657a567ab04d42884c3ba9f5ca0d5';
 function historicalDonors(rows = donorRows()) {
   const restored = structuredClone(rows);
   const ariete = restored.find(([id]) => id === 'ariete_c1')[1];
