@@ -1451,6 +1451,79 @@ horizonRockfield, titanGorgeHorizon, badlandsRelief (fjord projection), worldBui
 horizonAutumnGround, redrockCanyonHorizon, autumnHorizonSeam, vegetationLighting, mapQuality, garage:terrain:check,
 typecheck; villageWear and mangroveWaterPalette map-config digests re-pinned (fjord.ts authors one more line).
 
+### Round 56 — 2026-09-24: the strands' wrack line and debris
+
+Owner decision 21 (2026-09-23, "coastal apron debris specks — later"; now). Lane r56-coast-debris from r55-ring-details
+(81eafdead); A = a pristine detached worktree at that commit, B = this lane, `tools/map-view-probe.mjs` at seed 1337 on
+the round-47 shore views plus three new round-56 views, one run at a time under the probe mutex; judged on 1280 px
+reductions and 2× crops in `$SP/r56/cap/`, numbers in `$SP/r56/`.
+
+**What was wrong.** The strands of the three sea maps — Saltmere Bay's 22 m crescent strand, Nordhavn's 10 m shelves,
+Saltwind's strand just widened to 20 m in round 52 — read as clean graded sand between the water and the grass (the
+round-52 capture: a pale strip with turf straight up to it). A real strand carries a wrack line at the high-water mark.
+Measured first (`strand-profile.mjs`, the beachedBoat receipt's headless build): Saltmere's strand is dead flat at the
+sea level from the water's edge (0.95 of the local authored radius) out past its 1.10 R bank band — there is no graded
+slope at all, the meadow behind it is at the same level; Saltwind's dry sand is only ~3 m wide (the shader's sand is
+`smoothstep(0.02, seaRamp.x, wetness)` of the baked union mask, and its bay has no shore ring to widen it) before a
+flat backshore, with the bank rising from ~1.05 R; the fjord's shelves rise 5–10 % at the arm heads and 44–50 % on the
+flanks straight off the waterline. And the coastal kit's own driftwood (`addCoastalDriftwood`) lay on the plain
+1.03–1.12 R circle of the DISC, blind to the authored contour: on Saltmere 42 logs at 1.05–1.24 R on the meadow behind
+the strand (up to 3.3 m above the water, none on the beach class); on the fjord 72 logs from 0.52 to 1.88 R, median
+7.7 m above the water, nine of them in the water.
+
+**What changed (`src/world/maps/strandWrack.ts`, called last in `dressMapExtras`).** A sea lake that authors a shelf
+(`LakeConfig.shelfM` — exactly the three sea maps) gets a wrack line derived from its contour: the band law marches
+each azimuth of the authored contour for the water's edge (the first dry water-mask metre, refined to 0.25 m) and the
+sand's end (union wetness < 0.02, `_waterWetnessAt`), every ~4 m of arc and interpolated between; the band runs from a
+metre above the water's edge to the sand's end, at most 8.5 m up the beach and never narrower than 2.2 m (Saltwind).
+Along the arc one draw station per half metre lays weed / kelp mats (three or four flat fronds thrown over each other —
+brown bladder wrack, fresher green, dark olive), bleached bent sticks, patches of half-buried pebbles and pale shells,
+with the line's density and its position in the band wandering on lake-phased sines (`shorelinePhases`) so there are
+stretches of thick wrack and stretches of nearly clean sand; beside each landing (the coastal jetties, Saltwind's two
+piers — a shore ledger the kits fill in) a timber baulk, a broken crate and a rope coil. Gates: never in the water (the
+whole footprint against the mask — a frond's corner had crossed the harbour pond's edge on Saltwind), within 0.6 m of
+the water level and under ~9° of slope (never the bank above the beach — the fjord's flanks carry nothing, its heads a
+light line), ≥ 6 m from roads, 26 m from spawn pads, off the beached boats (4.2 m), the jetty decks (2.6 m) and every
+building footprint, a metre inside the 470 m dressing square. Everything is soft dressing in the existing buckets:
+vertex-coloured `baked` (one merged mesh per map, the coal heaps' attribute set) and textured `wood` for the timber and
+planks — no new material, instance pool or collision record, so no dedicated shard moved. The coastal driftwood now lies
+in the same band (its draws and original clearance gate untouched, so the buoys and jetties keep their positions; a log
+the strand refuses is not built). Seed 1337: Saltmere 1,328 stations → 194 mats, 38 sticks, 270 pebbles, 125 shells,
+4 landing pieces (1,164 pieces, 14,076 triangles, 23 ms); Saltwind 148 / 20 / 141 / 95 / 7 (808 pieces, 9,912 tris);
+Nordhavn 75 / 5 / 143 / 61 / 7 (487 pieces, 6,060 tris); every driftwood log on the strand within 0.37 m of the water.
+
+**Verified (A → B).** Three new views in the pinned table, 4 m over the wrack band looking along the beach at gameplay
+height (`strand-e-low` Saltmere 192° → 168°, `strand-fjord-low` the middle arm's head, `strand-w-low` Saltwind's east
+shore 22° → −22°, the band law's own points). By eye: Saltmere's strand carries a broken dark band a few metres above
+the water — clumps of mixed olive, green and brown, a log, a stick, grey pebbles and white shell specks, gaps between
+the thick stretches — the first cut's two-frond 0.45–1.0 m mats read as dark rectangles in the 2× crop and were
+re-authored as ragged three-to-four-frond clumps; Saltwind's line sits on its 3 m sand at the grass edge; Nordhavn's
+head shows logs, pebbles and shells on the grass edge above the wet strip and nothing on the rock flanks; nothing
+floats, nothing stands in the water, nothing on a bank. At 40 m (shore-e/w-oblique) the line is a faint broken band
+along the beach's upper edge, not a row; from 260 m (bird-e/w-edge) it is sub-pixel. Pixels moved (|Δluma| > 8,
+`ab-diff.mjs` on the repository's decoder): the strand boxes of the low views 2.1 % (Saltmere, mean 2.15/255), 1.9 %
+(Saltwind), 3.1 % (Nordhavn); the obliques 0.4–1.4 %; the birds ≤ 0.2 %; views over grassland move 12–22 % between
+any two runs (grass, trees and cloud animation — frame noise, the r55 caveat). Headless, three seeds
+(`wrack-audit.mjs`, and the receipt): no vertex over water, lowest vertex within 3 cm of the ground, ≤ 0.6 m above the
+level, off roads / pads / the square's edge.
+
+**Receipts.** `strandWrack.selftest` (new, in `npm test`: the three consumers and only those, every piece of nine
+builds against the rules, the band law on Saltmere, the density's range and phase keying, the no-shelf opt-out,
+determinism); `beachedBoat` (its twelve historical control rows re-pinned — the mangrove rows unchanged),
+`winterLakeGeometry` (the three non-winter aggregates), `riverLandings` (Saltwind's budgets now measure the 84 landing
+pieces alone; the draw count and state re-pinned — the wrack's draws follow the landings', seed-independent),
+`map-probe-runtime` (34 views, digest); `riverReedContact`, `shallowWater`, `railCoalStockpiles`, `railWashout`,
+`shoreline`, `trackSurface`, `liquidMarshSurface`, `terrainStreaming`, `roadContinuity`, `mapQuality`, `spawnClearance`,
+`propsScheduling`, `environmentExpansion`, `worldBuildCoordinator`, `badlandsRelief`, `garage:terrain:check` and the
+typecheck unchanged and green. No map source changed (the derivation keys on the authored shelf), so no projection
+block moved.
+
+**Still open.** The coastal kit's jetty is placed at 1.05 R of the disc: on Saltmere it stands 15–30 m inland of the
+water on the flat strand and on Nordhavn's heads ~10 m up the bank, its fixed-height sagging deck unable to run over
+the 0.72 m shallows — the larger pieces gather beside it as authored, but a pier that reaches the water is a follow-up
+(a planted deck like the river landings'). The boats stay where round 47 put them (1.09–1.19 R, 30–40 m up the flat
+strand on Saltmere). The fjord's flanks carry no wrack by the slope gate; only its arm heads do.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -1548,6 +1621,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 53 | The 4K showcase frames and the studio film of the redesigned maps: the fourteen `showcase-r1` frames of Frosthollow and Tarkhan (the landing hero 113, six mosaic tiles, the README's 69 / 84 / 97) regenerated through the campaign pipeline — templates 09 / 11 / 12 re-staged (pond, pass-road descent, crossroads from the crossing road), the generator made to reproduce the published campaign (`HAND_TUNED_ACTION`), a sightline pull-in for long-lens templates and three overridden foreground lenses (`HAND_TUNED_FOREGROUND`); the landing film re-recorded from the checked-in storyboard, its poster and mobile proxy from the publisher | eye check of 1280 px reductions of all fourteen 4K masters, the four contact sheets and four mp4 frames against the lens rule; grade 60 / 60 with 46 rows byte-identical to the Aug-19 report; showcase:publish moved only the fourteen renditions, four sheets and manifests; receipts showcase-r2, battle-campaign, landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, feature-loops, og-images, public-repo-hygiene, attribution |
 | 54 | The last showcase media of the redesigned maps: `feature-loops-r1/03_winter_lake_duel`, the `hero-rails-r2` winter / steppe rails with their `web-video-r1` proxies, the `battle-reels-v3` reels 03 / 07 / 18 and `featured/f1_09_winter_lake_duel` regenerated through the repo's pipeline — the recorder's `battle-reels` collection (the library's pinned twenty-reel table, authored stages on the pond necks and the plain south of the wadi) and `--stills` framing mode, `publish-battle-reels.mjs`, subset modes for the rail / loop / featured publishers, rail proxies derived from the published WebM, the steppe rail's opening key moved off the wire-line berm | eye check of 1280 px reductions (four frames + poster per reel and rail, three per proxy, four + poster for the loop, the featured frame) after eight preview rounds against the lens rule; receipts feature-loops, hero-rails, showcase-r2, battle-campaign, landing-media, feature-evidence, loadingScreens, socialProof, showcase-library, battleReels, og-images, public-repo-hygiene, attribution; only the intended manifest rows moved |
 | 55 | Titan's fine wavy partings closed: the uniform-isolation probe flattens one layer normal map at a time (and no longer keeps flat normals after its first variant), uNrmR and then the coarse wall-plane R tap named — the bedded sandstone tile's seam notches printed a parting every 0.9–2.8 m of world height in the wall plane; an analytic buttress-and-rib crag replaces that tap on the bedded maps (`uBeddedR`, key v39). Fjord's cone hills: a per-map `outcrops` knob (gneiss knobs and scree through the turf below the treeline, stands opened, `uVOutcrop`, vista key r4). Coast ring tone: the ring forest runs the battlefield's matte canopy response and a mean-centred crown mottle (key `horizon-forest-canopy-v3`); the shore fade tried was pixel-identical and not landed | one-normal-at-a-time and gate-uniform isolation runs on Titan (sw-corner 59.0 % vs 60.4 % all-flat; the coarse tap 49.7 % of the wall box), stripe metric A/B (sw-corner top-1 % 0.535 → 0.734, std 28.5 → 28.3; e-wall 0.734 → 0.770), ground boxes unchanged; fjord boxes (w-wall-mid cone 47 % / mean 4.5, sky-w 37 % / 2.8) and 2× crops; per-side crown boxes on Saltmere's west edge (ring 114° / L 0.305 → 123° / 0.278 against the square's 120° / 0.199); receipts in the section |
+| 56 | The strands' wrack line and debris (owner decision 21): a high-water band of weed / kelp mats, bent sticks, pebble patches and shells along every authored shelf (Saltmere, Nordhavn's arm heads, Saltwind), with timber, a broken crate and a rope coil beside each landing — derived from the lake contour by a marched band law (water's edge → sand's end, ≤ 8.5 m, ≥ 2.2 m), lake-phased density, gated off water / banks / roads / pads / boats / jetties / footprints; soft dressing in the vertex-coloured `baked` and `wood` buckets, no new material, instance pool or collision record; the coastal driftwood re-derived onto the same band (it lay on the disc's plain 1.03–1.12 R circle — Nordhavn's 72 logs median 7.7 m up the ridges, nine in the water) | map-view-probe A/B on the round-47 shore views plus three new gameplay-height strand views (`strand-e-low`, `strand-fjord-low`, `strand-w-low`; table 31 → 34), 2× crops, `ab-diff` strand boxes 1.9–3.1 % moved, obliques 0.4–1.4 %, birds ≤ 0.2 %; headless three-seed audit; `strandWrack.selftest` (new), beachedBoat / winterLakeGeometry / riverLandings / map-probe-runtime re-pinned, the shore and world receipts green |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
