@@ -183,7 +183,7 @@ function verifyHistoricalConfigs(resolve) {
   assert.equal(hash(JSON.stringify(unchangedMaps)),
     // round 40 (2026-09-22): coastal.ts's aperture lost its authored grey (edgeWater.ts colours it from the water profile) and
     // saltwind.ts authored its bay as one contour open to the west — the other-29 config digest moved for those two maps
-    '9302580adbfe20cc5a3e0a5ac1d447cc040a4bb3b0f13e6bff39cdca4af3b436',
+    '718a5c268e92fa22b52862d7ae98acf4cd81cd1f60a1d7f6a16e813d6c95c52c',
     'other29 config digest retains original donor policy and authenticated historical Foundry/Autumn inputs');
   const historical = paletteReceiptInput(historicalShorelineConfig(resolve('mangrove')));
   assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),

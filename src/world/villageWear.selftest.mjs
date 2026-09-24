@@ -41,7 +41,7 @@ const FROZEN = {
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
   // round 40 (2026-09-22): coastal.ts's sea aperture dropped its authored grey (edgeWater.ts gives it the map's water colour) and
   // saltwind.ts authored its bay as one contour; the frozen config digest moved for those two maps only
-  configs: '96863621c310d13fc4bde352341d845a3d91732139c481bf796d34e10ce02ea7',
+  configs: 'bf6626ab755d4fe9028705d385f44da4bd7671a88888e9895aacd1f87e1ec74a',
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 

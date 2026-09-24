@@ -147,6 +147,7 @@ const FJORD_ARMS_HISTORICAL = `    lakes: [
     ],
 `;
 const COASTAL_RIM_FADE_CURRENT = '    coastRimFadeM: 120, // round 47 follow-up: the bay\'s headlands climb to the rim over 120 m instead of standing on the strand\n';
+const SALTWIND_RIM_FADE_CURRENT = '    coastRimFadeM: 110, // round 47 follow-up: the bay-mouth headlands climb to the rim over 110 m instead of standing as slabs one row past the line\n';
 const FJORD_RIM_FADE_CURRENT = '    coastRimFadeM: 90, // round 47 follow-up: the peninsulas between the arms climb to the rim over 90 m, not in one block\n';
 const FJORD_WALLS_CURRENT = `      // round 47 follow-up: the rock peninsulas between the fjord arms and the walls outside them — the arms' water
       // flattening wins inside the lobes, so each ridge's flanks drop straight into the fjord
@@ -161,7 +162,9 @@ function historicalSeaApertureSource(source, file) {
     // of that one shore; relief authoring elsewhere is untouched — authenticate both current blocks, project them back.
     assert.equal(source.split(SALTWIND_BAY_CURRENT).length, 2, 'saltwind.ts: one exact round-40 bay block');
     assert.equal(source.split(SALTWIND_LANDINGS_CURRENT).length, 2, 'saltwind.ts: one exact round-40 landings block');
-    return source.replace(SALTWIND_BAY_CURRENT, SALTWIND_BAY_HISTORICAL).replace(SALTWIND_LANDINGS_CURRENT, SALTWIND_LANDINGS_HISTORICAL);
+    assert.equal(source.split(SALTWIND_RIM_FADE_CURRENT).length, 2, 'saltwind.ts: one exact round-47 coast rim fade line');
+    return source.replace(SALTWIND_BAY_CURRENT, SALTWIND_BAY_HISTORICAL).replace(SALTWIND_LANDINGS_CURRENT, SALTWIND_LANDINGS_HISTORICAL)
+      .replace(SALTWIND_RIM_FADE_CURRENT, '');
   }
   if (file === 'fjord.ts') {
     assert.equal(source.split(FJORD_ARMS_CURRENT).length, 2, 'fjord.ts: one exact round-47 fjord-arms block');

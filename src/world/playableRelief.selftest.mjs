@@ -1,3 +1,4 @@
+import { historicalRound47PresentationSource } from './round47MapPresentation.test-support.mjs';
 import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
@@ -27,8 +28,10 @@ registerHooks({load(url,context,next){return ports.has(url)?{format:'module',sou
 const current=await import(`${terrainURL}?relief-current`),baseline=await import(`${terrainURL}?relief-baseline`);
 const selected=new Map([['frontier','frontier'],['alpine','alpine']]);
 const seeds=[1337,7719],receipts=[];
-assert.equal(readFileSync(new URL('./maps/titanGorge.ts',import.meta.url),'utf8'),oldSource('src/world/maps/titanGorge.ts'),
-  'Held Titan authoring is byte-exact baseline; its heights also pass the 28-map legacy loop below');
+// Round 47 (owner map audit) re-authored Titan's presentation blocks (palette route, tints, ring rows, sky decks); relief
+// authoring never feeds heights, so the byte receipt projects those exact blocks back before comparing (badlandsRelief law).
+assert.equal(historicalRound47PresentationSource(readFileSync(new URL('./maps/titanGorge.ts',import.meta.url),'utf8'),'titanGorge.ts'),oldSource('src/world/maps/titanGorge.ts'),
+  'Held Titan authoring is byte-exact baseline once round 47\'s presentation blocks are projected; its heights also pass the 28-map legacy loop below');
 assert.equal(MAP_IDS.length-selected.size,29,'Exactly two playable-relief pilots'); // 2026-09-19: Mars joins the legacy loop
 const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
 const supportHashes=s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v?hash(v):null]));

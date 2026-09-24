@@ -1093,15 +1093,6 @@ function* heightFieldBuildSteps(
   // lift, which is 1 beyond the edge — without roads, corridors, villages, lakes, pads or the tactical micro-terrain.
   // The horizon ring's near rows seat on this so the border is a rule, not a change of geology. Pure function of
   // (x, z): no grid, no clamp, no allocation.
-  /** Round 47: a bay's own contour, evaluated with no clamp — the union of the lake discs' wetness (0..1). */
-  function outlandLakeWetness(x: number, z: number): number {
-    let wetness = 0;
-    for (let li = 0; li < _LAKES.length; li++) {
-      wetness = Math.max(wetness, shorelineWetness(_LAKES[li], x, z, true));
-      if (wetness >= 1) break;
-    }
-    return wetness;
-  }
   // Round 47 follow-up (2026-09-23): a headland beside a bay rose to the full border rim within 82 m of the water (a
   // 26–42 m block against a -4…-8 m sheet). Within `coastRimFadeM` of a bay's shoreline the rim lift fades in, so a
   // headland climbs away from the strand instead of standing on it. Pure function of (x, z); off unless the map authors it.
@@ -1118,23 +1109,44 @@ function* heightFieldBuildSteps(
     return keep;
   }
   function outlandHeightAt(x: number, z: number): number {
-    let h = baseTerrainHeight(x, z, 0, 0);
-    h = applyMacroTerrain(x, z, h, 0, 0, 0);
-    // Round 47 follow-up (2026-09-23): the bay's bank grades past the square exactly as inside it. Without this the
-    // ring's first outer row stood at the geology's full height beside a strand the square had graded to the water —
-    // the "28 m block" on every coast where a headland met the red line. The outland uses each lake's authored band
-    // or the legacy 1.32 R, never the fitted band (a wide fitted band would flatten the outland's own relief).
+    // Round 47 follow-up (2026-09-23): the composition heightAt applies inside the square continues past the red line —
+    // the shore rings' liquid surfaces (their dip, their bank pull, their flat core), the border rim gated by that water
+    // weight, then the bay banks with the SAME per-lake band the square uses (authored or fitted — a narrower band
+    // out here left Saltwind's headlands standing as slabs on the line). Without it a shore ring flattened the square
+    // to the sea level while the ring's first outer row stood at the geology's full height: a 25 m step on the red
+    // line north of Saltmere's bay, the "28 m block" of round 47. Roads, pads and the micro relief stay inside.
+    let liquidDip = 0, marshW = 0, waterWeight = 0, waterLevelSum = 0, waterWeightSum = 0, waterCoreSum = 0, waterCoreCount = 0;
+    if (liquidSurfaces) for (let mi = 0; mi < _MARSHES.length; mi++) {
+      const m = _MARSHES[mi], surfaceOffset = mi * LIQUID_MARSH_STRIDE, bankBand = liquidSurfaces[surfaceOffset + 3];
+      const md = shorelineDistance(m, x, z, bankBand);
+      if (md < 1) { const t = 1 - md; liquidDip += m.dip * t * t * (3 - 2 * t); marshW = Math.max(marshW, t); }
+      if (md < bankBand) {
+        const weight = smoothstep(bankBand, LIQUID_MARSH_CORE, md);
+        const level = liquidSurfaces[surfaceOffset] + liquidSurfaces[surfaceOffset + 1] * x + liquidSurfaces[surfaceOffset + 2] * z;
+        waterWeight = Math.max(waterWeight, weight);
+        const priority = weight / Math.max(1e-9, 1 - weight);
+        waterWeightSum += priority; waterLevelSum += level * priority;
+        if (md <= LIQUID_MARSH_CORE) { waterCoreSum += level; waterCoreCount++; }
+      }
+    }
+    let h: number;
+    if (waterCoreCount) h = waterCoreSum / waterCoreCount;
+    else {
+      h = baseTerrainHeight(x, z, 0, 0) - liquidDip;
+      h = applyMacroTerrain(x, z, h, 0, 0, marshW);
+      const borderRadius = Math.max(Math.abs(x), Math.abs(z));
+      const rim = smoothstep(430, HALF, borderRadius);
+      // round 47 (2026-09-23): the border rim yields to the water so a shore continues past the square instead of a wall
+      h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);
+      if (waterWeight > 0) h += (waterLevelSum / waterWeightSum - h) * waterWeight;
+    }
     if (liquidLakeBanks !== null) {
-      composeLakeHeight(_LAKES, lakeLevels, outlandLakeBanks!, continuousLakeAprons, x, z, h, 0, outlandLakeHeight);
+      composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons, x, z, h, 0, outlandLakeHeight);
       h = outlandLakeHeight.height;
     }
-    const borderRadius = Math.max(Math.abs(x), Math.abs(z));
-    const rim = smoothstep(430, HALF, borderRadius);
-    // round 47 (2026-09-23): the border rim yields to a bay so its shore continues past the square instead of a wall
-    return h + rim * rim * T.rimH * (1 - outlandLakeWetness(x, z)) * (rim > 0 ? coastRimKeep(x, z) : 1);
+    return h;
   }
   const outlandLakeHeight: LakeHeightResult = { height: 0, wetness: 0 };
-  let outlandLakeBanks: Float64Array | null = null;
 
   function heightAt(
     x: number,
@@ -1426,7 +1438,6 @@ function* heightFieldBuildSteps(
     // cram a multi-metre bank into the fixed ice lake's 0.38-radius apron.
     liquidLakeBanks = buildLiquidLakeBanks(liquidLakes,
       (x, z) => heightAt(x, z, false, false, false));
-    outlandLakeBanks = Float64Array.from(liquidLakes, (lake) => lake.bankBand ?? 1.32);
   }
 
   // Freeze original road, junction, pad and water support before activating

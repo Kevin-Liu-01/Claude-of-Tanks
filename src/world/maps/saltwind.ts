@@ -6,6 +6,7 @@ export default {
   blurb: 'A limestone fishing coast bends around a sheltered bay below dry scrub terraces',
   terrain: {
     hillScale: 0.86, microScale: 0.70, rimH: 28, clearMarshVeg: true, softLakes: true,
+    coastRimFadeM: 110, // round 47 follow-up: the bay-mouth headlands climb to the rim over 110 m instead of standing as slabs one row past the line
     village: { x0: -252, x1: -18, z0: -116, z1: 138, cx: -136, cz: 10, feather: 44, flatten: 0.86, relief: 0.14 },
     villageWear: 'activity-patches',
     workedGround: [
