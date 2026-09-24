@@ -107,8 +107,11 @@ whose output ships stays and is documented here; the one-off proof pass
 | `tools/marketing-shots/capture-presentation-ui.mjs` | raw UI captures under `shots/presentation-r1/ui-raw` (gitignored input of the publisher below) |
 | `tools/marketing-shots/gen-presentation-r1.mjs` | `tools/marketing-shots/scenes-presentation-r1/*.json` — the scene records cited by `public/media/showcase-r1/manifest.json` and `public/media/presentation-r1/manifest.json` |
 | `tools/marketing-shots/publish-presentation-r1.mjs` | `public/media/presentation-r1/**` (home, docs and featured panels) |
-| `tools/marketing-shots/publish-hero-rails.mjs` | `public/media/hero-rails-r2/**` (`hero-rails.selftest`) |
+| `tools/studio-example-videos.mjs` | the Studio recorder behind `npm run studio:examples`, `studio:features:render` and `reels:render` — collections `duels`, `features`, `hero-rails` and `battle-reels` (the Docs library's pinned twenty-reel table in `tools/studio-example-scenarios.mjs`), `--only` for a subset, `--stills <ms,…>` for framing-review PNGs without a video; masters under `shots/` (gitignored input of the publishers below) |
+| `tools/marketing-shots/publish-hero-rails.mjs` | `public/media/hero-rails-r2/**` and the rails' `public/media/web-video-r1` mobile proxies (`hero-rails.selftest`, `landing-media.selftest`); `--match <slug,…>` re-publishes named rails into the existing manifest |
+| `tools/marketing-shots/publish-feature-loops.mjs` | `public/media/feature-loops-r1/**` (`feature-loops.selftest`, `npm run studio:features:publish`); `--match <id,…>` re-encodes named loops into the existing manifest |
+| `tools/marketing-shots/publish-battle-reels.mjs` | `public/media/battle-reels-v3/**` (`battleReels.selftest`, `npm run reels:publish`): h264 720p reels and 640×360 posters from the `battle-reels` masters, `--only <n,…>` for a subset |
 | `tools/marketing-shots/publish-feature-evidence.mjs` | `public/media/feature-evidence-r2/**` (`feature-evidence.selftest`) |
-| `tools/marketing-shots/encode-featured.mjs` | `public/media/featured/*.webp` and `public/brand/og-image.png` (`landing-media.selftest`) |
+| `tools/marketing-shots/encode-featured.mjs` | `public/media/featured/*.webp` and `public/brand/og-image.png` (`landing-media.selftest`); `--only <name,…>` re-encodes named sources into the `f<N>_` slots they occupy |
 | `tools/marketing-shots/gen-scenes.mjs` | `tools/marketing-shots/scenes/*.json`, the first scene set cited by `public/media/capture-recipes-r1.json` |
 | `tools/marketing-shots/gen-scenes2.mjs` | `tools/marketing-shots/scenes2/*.json`, read by `npm run shots:battle:generate` and `public/media/capture-recipes-r1.json` |

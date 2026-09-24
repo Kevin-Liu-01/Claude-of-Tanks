@@ -1318,6 +1318,59 @@ attribution. **Still open:** `feature-loops-r1/03_winter_lake_duel.webm` (its co
 proxies, the `battle-reels-v3` winter / steppe reels and `featured/f1_09_winter_lake_duel` — all still the round-1
 battlefields; `gen-scenes.mjs` 13–16 (the retired first production) stay on the old anchors.
 
+### Round 54 — 2026-09-24: the last showcase media of the redesigned maps
+
+Round 53 left five public media of Frosthollow and Tarkhan Steppe on the round-1 battlefields: the feature loop
+`feature-loops-r1/03_winter_lake_duel` (its copyable recipe already derived from the re-staged 67 while the film was
+the old lake), the hero rails `hero-rails-r2/02_winter-ice-orbit` and `03_steppe-charge-thread` with their
+`web-video-r1` mobile proxies, the `battle-reels-v3` reels 03 (Challenger 3 vs Leopard 2A7V), 07 (M1A2 TUSK vs T-90SM)
+and 18 (Merkava Mk 3D vs AMX-40) — a library encoded outside this repository on 2026-08-19 — and the featured splash
+frame `featured/f1_09_winter_lake_duel`. All went back through the repo's own pipeline on this tree, one capture at a
+time under the probe mutex, niced:
+
+- **Recorder.** `tools/studio-example-videos.mjs` gained the `battle-reels` collection — the Docs library's pinned
+  twenty-reel table (`BATTLE_REEL_SCENARIOS` in `tools/studio-example-scenarios.mjs`: the sixteen maps registered on
+  2026-08-19 plus the four repeats, the tank pairs, `directDuel({variant: index})`, seeds 24001 + 137 (index − 1); the
+  library's ids are pinned to it by `battleReels.selftest`) — and a `--stills <ms,…>` framing-review mode that stages a
+  job and captures PNGs at storyboard times instead of recording a video (eight preview rounds here without an encode).
+  The reels of the redesigned maps carry authored stages (`BATTLE_REEL_STAGES`): the stage rule (two enemy pads about
+  62 m apart) puts them on bare snowfield at Frosthollow's north wall and on the plateau behind Tarkhan's escarpment
+  since round 48 moved the pads to the edges. 03 runs south across the neck between the c(54,150) r36 and c(38,70) r40
+  ponds with the lenses on the open east bank (the ponds 3–4 neck was tried first: birch trunks and a pole line stood
+  inside the wide style's 52 m lateral excursion); 18 runs north across the neck between the c(−16,−150) r38 and
+  c(−14,−60) r30 ponds east of the village crossroads — the street, the onion-dome church and the pass road in every
+  wide shot; 07 runs east→west on the open grass south of the wadi at z −110 with the lenses on the south side, the
+  grain station and the shelterbelts behind the return fire. Both hulls of a pond reel start inside r − 15 so every
+  duel-track drive stays on the ice.
+- **Publishers.** New `tools/marketing-shots/publish-battle-reels.mjs` (`npm run reels:render` / `reels:publish`)
+  encodes a reel master to the shipped delivery contract — h264 High 4.0 1280×720 at 30 fps, 3.2 Mbps average with a
+  4.4 Mbps peak (the x264 receipt of the 2026-08-21 files), faststart, no audio — and cuts the 640×360 poster at 2.6 s
+  with `cwebp -m 6 -q 85 -sharp_yuv`, which reproduces the shipped posters' bytes within 0.2 %; it refuses an id the
+  library does not list. `publish-hero-rails.mjs --match` and `publish-feature-loops.mjs --match` re-publish named
+  rails / loops into the existing manifests (the other rows, the 4K gameplay film and their receipts untouched), and
+  every published rail now derives its `web-video-r1` mobile proxy from the published WebM (h264 960×540 at 24 fps,
+  crf 29 — the proxies' own x264 receipt) and re-pins its byte receipt in place. `encode-featured.mjs --only` re-encodes
+  a featured source into the `f<N>_` slot it occupies without wiping the set or touching the OG composite.
+- **Rails.** The steppe rail's opening key sat 5 m behind the re-staged 84's lens, inside the berm of the wire line
+  that crosses the plain (the first frame was a wall of sand); it opens 1 m ahead of the lens on the clear grass now
+  (`HERO_RAIL_FILES`, dated note). The winter rail (83, the c(38,70) pond) and the feature loop (67) needed no change.
+
+Verified by eye on 1280 px reductions: four frames of each reel (2.6 / 7.2 / 10.8 / 14.0 s) and its poster, four
+frames of each rail (0.5 / 2.4 / 4.2 / 5.7 s) and its poster, three frames of each mobile proxy, four frames of the
+feature loop (0.5 / 3.0 / 4.3 / 5.7 s) and its poster, and the featured frame — all pass the lens rule: nothing but
+the Direct Duel storyboard's own style-2 pursuit and whip shots (reel 18) and the rails' impact dives within ~8 m of
+the glass, the burning or firing subject the centre of interest, the frozen ponds, spruce banks, village barns, church
+and ridge / the wire line, earthworks, grain station and shelterbelts recognisable. Receipts (exit 0): feature-loops,
+hero-rails, showcase-r2, battle-campaign, landing-media, feature-evidence, loadingScreens, socialProof,
+showcase-library, battleReels, og-images (its sources unchanged), public-repo-hygiene, attribution. The manifests moved
+only the intended rows — three byte receipts and the actors' current registered names in `feature-loops-r1` and
+`hero-rails-r2`, two proxy byte receipts in `web-video-r1`; `battle-reels-v3/manifest.json` came back byte-identical.
+One receipt floor re-pinned with a dated note: `feature-loops.selftest` wanted every 1280-wide q3 poster above 100 KB,
+and the loop's new poster — the frozen pond's bright ice and snow at 3 s — encodes to 97.5 KB, so the presence floor
+is 80 KB.
+**Still open:** the seventeen other reels stay on their 2026-08-19 renders (their maps are unchanged); `gen-scenes.mjs`
+13–16 (the retired first production) remain on the old anchors.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -1413,6 +1466,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 51 | Home showcase frames of the redesigned maps: the eight orphaned `public/media/home` frames, thirteen `presentation-r1` frames (five owner picks on the home rail / maps section / featured gallery / docs page, eight archive frames) and the five Frosthollow studio-loop keyframes re-rendered from the round-48 battlefields; every recipe on the three maps re-staged in its generator (ponds, terrace village street and crossroads, orchard rows, the coach road under the town, stone bridge, ford, open steppe, highway belts, kurgan crest); `publish-presentation-r1.mjs --match` subset mode | eye check of 1280 px reductions after seven preview rounds against the review's lens rule (nothing within ~8 m of the glass but a deliberate hull); campaign image metrics 26 / 26; landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, public-repo-hygiene, attribution — no digest moved |
 | 52 | Saltwind Narrows' strand 12 → 20 m (owner decision 20): a pale beach now separates the bay from the grass along the whole shore; boat landings kept (beachedBoat / riverLandings unchanged) | map-view-probe A/B (bird-w-edge, shore-w-oblique, edge-w-low, w-wall-mid), badlandsRelief slice, shoreDirtMask / mangroveWaterPalette / villageWear re-pins, 17 shore receipts green; chain 73 |
 | 53 | The 4K showcase frames and the studio film of the redesigned maps: the fourteen `showcase-r1` frames of Frosthollow and Tarkhan (the landing hero 113, six mosaic tiles, the README's 69 / 84 / 97) regenerated through the campaign pipeline — templates 09 / 11 / 12 re-staged (pond, pass-road descent, crossroads from the crossing road), the generator made to reproduce the published campaign (`HAND_TUNED_ACTION`), a sightline pull-in for long-lens templates and three overridden foreground lenses (`HAND_TUNED_FOREGROUND`); the landing film re-recorded from the checked-in storyboard, its poster and mobile proxy from the publisher | eye check of 1280 px reductions of all fourteen 4K masters, the four contact sheets and four mp4 frames against the lens rule; grade 60 / 60 with 46 rows byte-identical to the Aug-19 report; showcase:publish moved only the fourteen renditions, four sheets and manifests; receipts showcase-r2, battle-campaign, landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, feature-loops, og-images, public-repo-hygiene, attribution |
+| 54 | The last showcase media of the redesigned maps: `feature-loops-r1/03_winter_lake_duel`, the `hero-rails-r2` winter / steppe rails with their `web-video-r1` proxies, the `battle-reels-v3` reels 03 / 07 / 18 and `featured/f1_09_winter_lake_duel` regenerated through the repo's pipeline — the recorder's `battle-reels` collection (the library's pinned twenty-reel table, authored stages on the pond necks and the plain south of the wadi) and `--stills` framing mode, `publish-battle-reels.mjs`, subset modes for the rail / loop / featured publishers, rail proxies derived from the published WebM, the steppe rail's opening key moved off the wire-line berm | eye check of 1280 px reductions (four frames + poster per reel and rail, three per proxy, four + poster for the loop, the featured frame) after eight preview rounds against the lens rule; receipts feature-loops, hero-rails, showcase-r2, battle-campaign, landing-media, feature-evidence, loadingScreens, socialProof, showcase-library, battleReels, og-images, public-repo-hygiene, attribution; only the intended manifest rows moved |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts

@@ -328,7 +328,11 @@ records timeline and actual container duration, opening lead-in, file bytes,
 actors, map, stage, and camera variant. Container validation rejects truncated
 playback; the measured encoder lead-in is accounted for separately. Use
 `--only 3,7,11` to replace selected scenario numbers while preserving other
-entries with the same renderer settings. Generated scenes still require native
+entries with the same renderer settings. `--collection features|hero-rails|battle-reels`
+renders the feature loops, the landing rails or the Docs' pinned reel library
+instead (round 54, 2026-09-24; `tools/studio-example-scenarios.mjs`), and
+`--stills 0,1850,3900` captures a PNG at each storyboard time in place of the
+video for framing review. Generated scenes still require native
 framing review: an authored spawn is not proof that every camera avoids terrain
 or buildings. Preserve failed acquisitions and use a new output directory for
 comparison renders.
