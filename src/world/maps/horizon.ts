@@ -2104,7 +2104,7 @@ function* buildHorizonMaterialSteps({
       uVDayDiffuse: { value: mat.color.r },
     } : {};
     mat.userData.horizonDetailNoise = detailNoise;
-    if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone() };
+    if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone(), canopyMean: tiles.canopyMean };
     mat.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, vistaUniforms);
       shader.uniforms.uNearDetail = { value: nearDetail };
@@ -2804,7 +2804,8 @@ export function* buildHorizonRingSteps(
   const leadOf = (conifer: boolean): string | undefined =>
     rimMix.filter(([species]) => isConifer(species) === conifer).slice().sort((a, b) => b[1] - a[1])[0]?.[0];
   const rimConiferLead = leadOf(true), rimBroadleaf = leadOf(false);
-  const vistaUniforms = (mat.userData.horizonVista as { uniforms: Record<string, THREE.IUniform> } | undefined)?.uniforms;
+  const horizonVista = mat.userData.horizonVista as { uniforms: Record<string, THREE.IUniform>; canopyMean?: THREE.Vector3 } | undefined;
+  const vistaUniforms = horizonVista?.uniforms;
   const forestGroup = buildHorizonForest({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
@@ -2814,6 +2815,7 @@ export function* buildHorizonRingSteps(
     forestAmp: treeline > 0 && treeline < 1.5 ? 1 : 0,
     bareRock, // round 49: the JS twin of the fragment's outcrop ribs keeps crowns off them
     outcrops, // round 55: and off the knobs below the treeline
+    canopyMean: horizonVista?.canopyMean, // round 55: the crown mottle centred on the canopy tile's mean
     canopyDetail: vistaUniforms?.uVCanopy?.value as THREE.Texture | undefined,
     haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     palettes: {

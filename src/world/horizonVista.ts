@@ -14,6 +14,7 @@
 //     and silhouettes as vegetation.ts), so the battlefield's rim forest continues over the edge and into the first
 //     ranges instead of stopping at a flat green wall.
 import * as THREE from 'three';
+import { applyCanopyDiffuseWrap } from './vegetation.ts';
 
 // ---------------------------------------------------------------------------
 // tiles
@@ -21,6 +22,10 @@ import * as THREE from 'three';
 const VISTA_TILE_SIZE = 512;
 
 interface VistaTiles {
+  /** Round 55: twice the canopy tile's mean colour — the divisor that centres its mottle at 1 (the ring forest's
+   * crown hook used the raw tile, whose mean is 0.35 / 0.39 / 0.30, so every crown was darkened 12-17 % and pushed
+   * toward yellow; the other tiles are authored at mean 0.5). */
+  canopyMean: THREE.Vector3;
   meadow: THREE.CanvasTexture;
   /** Round 29 (2026-09-20): dune sand / alluvium for the arid maps — bound as the ground tile instead of the meadow. */
   sand: THREE.CanvasTexture;
@@ -279,6 +284,13 @@ function makeSnowTile(size: number): TilePixels {
 }
 
 let sharedTiles: { meadow: TilePixels; sand: TilePixels; canopy: TilePixels; rock: TilePixels; scree: TilePixels; snow: TilePixels } | null = null;
+/** Round 55: twice the mean of a tile's channels (the `tile * 2.0` modulation's centre). */
+function tileMean2(tile: TilePixels): THREE.Vector3 {
+  const sum = [0, 0, 0];
+  const n = tile.size * tile.size;
+  for (let i = 0; i < n; i++) for (let c = 0; c < 3; c++) sum[c] += clamp01(tile.data[i * 3 + c]);
+  return new THREE.Vector3(2 * sum[0] / n, 2 * sum[1] / n, 2 * sum[2] / n);
+}
 
 /** Tile pixels are authored once per page (about 60 ms); each ring owns its own GPU textures over them. */
 export function createVistaTiles(size = VISTA_TILE_SIZE): VistaTiles {
@@ -289,6 +301,7 @@ export function createVistaTiles(size = VISTA_TILE_SIZE): VistaTiles {
     };
   }
   return {
+    canopyMean: tileMean2(sharedTiles.canopy),
     meadow: tileToTexture(sharedTiles.meadow), sand: tileToTexture(sharedTiles.sand), canopy: tileToTexture(sharedTiles.canopy),
     rock: tileToTexture(sharedTiles.rock), scree: tileToTexture(sharedTiles.scree), snow: tileToTexture(sharedTiles.snow),
   };
@@ -552,6 +565,8 @@ interface HorizonForestOptions {
   bareRock?: number;
   /** Round 55: the ring's below-treeline outcrop amplitude (horizon.outcrops); the stands keep off the knobs. */
   outcrops?: number;
+  /** Round 55: twice the canopy tile's mean colour (VistaTiles.canopyMean) — centres the crown mottle at 1. */
+  canopyMean?: THREE.Vector3;
   /** The vista canopy tile: world-anchored clump mottle for the ring's own trees. */
   canopyDetail?: THREE.Texture;
   /** First authored ridge row. The rows below it are the terrain-material bands where the battlefield's rim forest
@@ -722,7 +737,7 @@ function buildRingBroadleaf(rng: TileRng, pal: HorizonForestSpeciesPalette, deta
   return { geometry: mergeGeometries(parts), height: 6.4 * tall };
 }
 
-type ForestCompileHook = (shader: { uniforms: Record<string, THREE.IUniform>; vertexShader: string; fragmentShader: string }) => void;
+type ForestCompileHook = (shader: THREE.WebGLProgramParametersWithUniforms) => void; // round 55: three's own hook type (the canopy wrap reads it)
 
 interface ForestPlacement {
   x: number; y: number; z: number; scale: number; yaw: number; conifer: boolean;
@@ -834,10 +849,11 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         if (rng() > (band ? stand * 1.2 : stand * stand * 1.6)) continue;
         const snowFade = snowline <= 1 ? 1 - Math.min(1, Math.max(0, (y / maxHeight - (snowline - 0.06)) / 0.08)) : 1;
         if (rng() > snowFade) continue;
-        candidates.push({
+        const placement: ForestPlacement = {
           x, y: y - 0.4, z, scale: 0.9 + rng() * 0.55, yaw: rng() * Math.PI * 2, conifer: rng() < options.coniferShare,
           band, beyond: beyondRim(x, z), detail: 1, variant: rng() < 0.5 ? 0 : 1, tone: 0.86 + rng() * 0.26, key: rng(),
-        });
+        };
+        candidates.push(placement);
       }
     }
   }
@@ -855,7 +871,12 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   const nearCount = placements.filter((placement) => placement.detail === 2).length;
   const group = new THREE.Group();
   group.name = 'horizon-forest';
-  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 });
+  // Round 55 (2026-09-24, round 47's check 13): the ring's trees and the battlefield's far trees share their canopy
+  // palettes, but the battlefield's far canopy is a matte volume (vegetation.ts canopyFarMat: roughness 1.0 and the
+  // 0.38 diffuse wrap with the GGX lobe dropped) while this material kept the standard response — its GGX grazing
+  // lobe read as pale mint crowns beside the square's rich green ones across the red line (Saltmere's west edge:
+  // ring crowns HSL L 0.31 / sat 0.24 against the square's 0.20 / 0.31 at the same distance). Same response now.
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1.0, metalness: 0 });
   material.envMapIntensity = 1.08;
   material.side = THREE.DoubleSide;
   let canopyDetail = options.canopyDetail;
@@ -867,8 +888,10 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     canopyDetail = flat;
   }
   const hazeStrength = options.haze ?? 0.9;
+  const canopyMean = options.canopyMean ?? new THREE.Vector3(1, 1, 1);
   const hook: ForestCompileHook = (shader) => {
     shader.uniforms.uVfCanopy = { value: canopyDetail };
+    shader.uniforms.uVfCanopyMean = { value: canopyMean };
     shader.uniforms.uVfFog = { value: fog.clone() };
     shader.uniforms.uVfHaze = { value: hazeStrength };
     shader.vertexShader = shader.vertexShader
@@ -883,13 +906,16 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
       }
       #include <project_vertex>`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uVfCanopy;\nuniform vec3 uVfFog;\nuniform float uVfHaze;\nvarying vec3 vVfWorld;')
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uVfCanopy;\nuniform vec3 uVfCanopyMean;\nuniform vec3 uVfFog;\nuniform float uVfHaze;\nvarying vec3 vVfWorld;')
       .replace('#include <map_fragment>', /* glsl */`#include <map_fragment>
       {
-        // metre-scale clump mottle from the canopy tile plus rim darkening, so the crowns read as foliage volumes
+        // metre-scale clump mottle from the canopy tile plus rim darkening, so the crowns read as foliage volumes.
+        // Round 55: the mottle is centred on the tile's mean (uVfCanopyMean) — the raw tile (mean 0.35 / 0.39 / 0.30)
+        // darkened every crown 12-17 % and pushed it toward yellow, so the ring's trees never matched the square's
+        // trees of the same palette across the red line.
         vec3 vfA = texture2D(uVfCanopy, vVfWorld.xz * 0.11 + vec2(0.23, 0.61)).rgb * 2.0;
         vec3 vfB = texture2D(uVfCanopy, vec2(vVfWorld.x * 0.09 + 0.47, vVfWorld.y * 0.13 + 0.19)).rgb * 2.0;
-        diffuseColor.rgb *= mix(vec3(1.0), vfA * 0.55 + vfB * 0.45, 0.55);
+        diffuseColor.rgb *= mix(vec3(1.0), (vfA * 0.55 + vfB * 0.45) / uVfCanopyMean, 0.55);
         float vfNdv = abs(dot(normalize(vNormal), normalize(vViewPosition)));
         float vfRim = 1.0 - vfNdv;
         diffuseColor.rgb *= 1.0 - vfRim * vfRim * 0.32;
@@ -897,9 +923,10 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         float vfHz = smoothstep(430.0, 1330.0, length(vVfWorld.xz));
         diffuseColor.rgb = mix(diffuseColor.rgb, uVfFog, clamp((0.04 + vfHz * vfHz * 0.72) * uVfHaze, 0.0, 0.9));
       }`);
+    applyCanopyDiffuseWrap(shader, 0.38, true); // round 55: the battlefield's matte far-canopy response
   };
   material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'horizon-forest-canopy-v2';
+  material.customProgramCacheKey = () => 'horizon-forest-canopy-v3'; // round 55: mean-centred mottle
   group.userData.horizonForestHook = hook;
   const species: Array<{ name: string; tree: TreeGeometry; own: ForestPlacement[]; shadow: boolean }> = [];
   for (const conifer of [true, false]) {
