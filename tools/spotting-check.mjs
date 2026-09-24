@@ -73,7 +73,7 @@ try {
   // ---- 2/3/4. bush concealment on the live battlefield ---------------------
   const res = await page.evaluate(async () => {
     const D = window.__DEBUG;
-    await D.startBattle('m4a3e8', 'verdant');
+    await D.startBattle('m1a2', 'verdant'); // m4a3e8 retired 2026-09-23 (owner: "no hidden tanks")
     const g = D.game;
     const sp = D.spotting;
     const world = D.world;
@@ -218,7 +218,7 @@ try {
   // ---- 5. live battle: sixth-sense lamp + camo indicator -------------------
   const lamp = await page.evaluate(async () => {
     const D = window.__DEBUG;
-    await D.startBattle('m4a3e8', 'verdant'); // fresh battle (resets the wrecks above)
+    await D.startBattle('m1a2', 'verdant'); // fresh battle (resets the wrecks above)
     const g = D.game;
     const hf = D.world.heightField;
     // camo_spotting r3: random rosters — the observer must be ENEMY-team

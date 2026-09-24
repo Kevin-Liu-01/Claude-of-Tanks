@@ -38,9 +38,9 @@ const screenshotPath = opt('screenshot', '');
 const verifyDecorationProbe = args.includes('--decor-probe');
 
 const DEFAULT_SEQUENCE = [
-  'm1a1', 'leclerc', 'tiger1',           // cold representatives
+  'm1a1', 'leclerc', 'jpz_e100_x',       // cold representatives (tiger1 retired 2026-09-23)
   'm1a1', 'leclerc',                     // warm revisits (LRU hits)
-  't90m', 'kv2', 'tiger1',               // cold proc, cold community GLB, warm proc
+  't90m', 'kv2', 'jpz_e100_x',           // cold proc, cold period proc, warm proc
   'm1a2', 'leo2a6',                      // warm boot hero, cold GLB
 ];
 

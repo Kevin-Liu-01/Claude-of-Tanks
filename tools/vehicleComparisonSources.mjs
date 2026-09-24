@@ -12,22 +12,7 @@ export const VEHICLE_COMPARISON_SOURCES = Object.freeze({
     paintUntextured: true,
     stripBakedTextures: true,
   }),
-  jpz_e100: Object.freeze({
-    path: '/models/tanks/community/jagdpanzer_e100_haphazard.glb',
-    fixedMount: true,
-    paintUntextured: true,
-  }),
-  sturmtiger: Object.freeze({
-    path: '/models/tanks/community/sturmtiger-tomrs.glb',
-    fixedMount: true,
-    yawOffset: -Math.PI / 2,
-  }),
-  t95: Object.freeze({
-    path: '/models/tanks/community/t95_doomturtle_haphazard.glb',
-    fixedMount: true,
-    yawOffset: Math.PI,
-    paintUntextured: true,
-  }),
+  // jpz_e100, sturmtiger and t95 records retired 2026-09-23 (owner: "no hidden tanks"); their comparison rows left with them.
   m1a2_tusk: Object.freeze({
     path: '/models/tanks/community/variants/m1a2_tusk_dannzjs_variant.glb',
     turretNode: 'TurretPivot',

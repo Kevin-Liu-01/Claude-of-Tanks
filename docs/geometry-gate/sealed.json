@@ -284,30 +284,6 @@
    "seeThroughPx": 0,
    "tris": 72370
   },
-  "isu122s": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 386,
-   "seeThroughPx": 4,
-   "tris": 141460
-  },
-  "isu152": {
-   "sealed": false,
-   "openPx": 180,
-   "openViews": 14,
-   "insideOutPx": 110,
-   "seeThroughPx": 0,
-   "tris": 151568
-  },
-  "jpz_e100": {
-   "sealed": true,
-   "openPx": 11,
-   "openViews": 0,
-   "insideOutPx": 512,
-   "seeThroughPx": 7157,
-   "tris": 92718
-  },
   "jpz_e100_x": {
    "sealed": true,
    "openPx": 0,
@@ -588,14 +564,6 @@
    "seeThroughPx": 0,
    "tris": 114230
   },
-  "m1a2_legacy": {
-   "sealed": true,
-   "openPx": 2,
-   "openViews": 0,
-   "insideOutPx": 266,
-   "seeThroughPx": 8,
-   "tris": 98630
-  },
   "m1a2_sepv2": {
    "sealed": true,
    "openPx": 0,
@@ -660,14 +628,6 @@
    "seeThroughPx": 0,
    "tris": 87262
   },
-  "m26_pershing": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 148,
-   "seeThroughPx": 5,
-   "tris": 78482
-  },
   "m2a2_bradley": {
    "sealed": false,
    "openPx": 549,
@@ -683,14 +643,6 @@
    "insideOutPx": 856,
    "seeThroughPx": 15,
    "tris": 76746
-  },
-  "m45_patton": {
-   "sealed": true,
-   "openPx": 35,
-   "openViews": 0,
-   "insideOutPx": 810,
-   "seeThroughPx": 6,
-   "tris": 75094
   },
   "m46_patton": {
    "sealed": false,
@@ -836,14 +788,6 @@
    "seeThroughPx": 0,
    "tris": 113068
   },
-  "panther_g": {
-   "sealed": true,
-   "openPx": 5,
-   "openViews": 0,
-   "insideOutPx": 579,
-   "seeThroughPx": 3218,
-   "tris": 73980
-  },
   "pl01": {
    "sealed": true,
    "openPx": 1,
@@ -939,14 +883,6 @@
    "insideOutPx": 108,
    "seeThroughPx": 7,
    "tris": 84158
-  },
-  "sturmtiger": {
-   "sealed": true,
-   "openPx": 6,
-   "openViews": 0,
-   "insideOutPx": 934,
-   "seeThroughPx": 0,
-   "tris": 68654
   },
   "t14": {
    "sealed": false,
@@ -1211,22 +1147,6 @@
    "insideOutPx": 193,
    "seeThroughPx": 4,
    "tris": 106724
-  },
-  "t95": {
-   "sealed": true,
-   "openPx": 9,
-   "openViews": 0,
-   "insideOutPx": 249,
-   "seeThroughPx": 0,
-   "tris": 117626
-  },
-  "tiger1": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 676,
-   "seeThroughPx": 549,
-   "tris": 98204
   },
   "type10": {
    "sealed": true,
