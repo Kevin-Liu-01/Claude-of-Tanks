@@ -25,6 +25,7 @@ import { factoryCamoPatternIdFor,
 import type { CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { catalogCamoArtId } from './catalogCamoPainter.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
 import {
   canPaintMaterialBaseInWorker, tryPaintMaterialBase,
@@ -1583,8 +1584,8 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     // British desert pink (Caunter-family): stone-pink base under parallel
     // slate blue-grey + dark earth diagonals. Pink kept at sat ~0.25 so the
     // warm key lands on dusty stone, not salmon (the r3 salmon lesson).
-    o = { scheme: 'caunter', base: '#b49a7d', weather: '#c2a98a',
-      patches: ['#68757d', '#5c5442'] };
+    o = { scheme: 'caunter', base: '#b09989', weather: '#bba496',
+      patches: ['#727a79', '#5d574c'] };
   } else if (patternId === 'splinter') {
     // WWII German Splittertarn: green + red-brown hard wedges over tan.
     // Tones ride the calibrated Hinterhalt family (olivgruen '#4c5a3c'
@@ -1825,7 +1826,11 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
   // Round 35 (owner 2026-09-21): a built-in pattern's morphology belongs to the pattern, never to the hull it is
   // worn on — the same reset the shared presets get in applySharedCamoVisual. Hull-relative COLOUR (winter
   // whitewash over the authored coat) still follows the hull; patch density, cell pitch and band knobs do not.
-  return selected ? { ...v, ...NEUTRAL_PATTERN_MORPHOLOGY, ...selected } : v;
+  if (!selected) return v;
+  const resolved = { ...v, ...NEUTRAL_PATTERN_MORPHOLOGY, ...selected };
+  const catalogPattern = catalogCamoArtId(patternId);
+  if (catalogPattern) resolved.catalogPattern = catalogPattern;
+  return resolved;
 }
 
 /** Resolved visual (spec.visual with the active pattern applied). */

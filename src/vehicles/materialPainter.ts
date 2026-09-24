@@ -2,6 +2,7 @@
 // off-thread prebakes. No Three.js, fleet, DOM creation, or quality policy at import.
 import { paintBrandCamo } from './brandCamoPainter.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
+import { createCatalogCamoPainter, type CatalogCamoArtId } from './catalogCamoPainter.ts';
 import { camoPatchWorldScale } from './camoWorldScale.ts';
 import type { CustomCamoStroke } from './camoPolicy.ts';
 
@@ -12,6 +13,8 @@ type Rgb = [number, number, number];
 
 export interface MaterialVisual {
   scheme?: string;
+  /** Selectable catalog art; absent on authored vehicle/service recipes. */
+  catalogPattern?: CatalogCamoArtId;
   base: string;
   weather?: string;
   patches?: string[];
@@ -236,6 +239,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
 
 
   const makeCanvas = createCanvas;
+  const paintCatalogCamo = createCatalogCamoPainter(makeCanvas);
 
   function hexToRgb(hex: string): Rgb {
     const n = parseInt(hex.slice(1), 16);
@@ -591,7 +595,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     };
     paintSolidBasePatina();
 
-    const scheme = visual.scheme || 'solid';
+    const scheme = visual.catalogPattern ? 'catalog' : visual.scheme || 'solid';
     // camo_spotting r2 (close-orbit edge critique): the r8 wide feather made
     // sprayed patches read hand-painted at ~5 m. Real spray has a HARD core
     // edge (1-2 px feather) with a separate faint overspray halo plus droplet
@@ -2990,6 +2994,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       paintSolidScheme();
     };
     paintExperimentalSchemes();
+    paintCatalogCamo(ctx, S, visual, rng);
 
     // Zimmerit is a common post-pattern pass; it is independent of the scheme.
     const paintZimmeritAlbedo = (): void => {
@@ -3121,7 +3126,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     // desert/summer flanks bleached toward one flat tint (r7 wash critique).
     const dustCol = rgb(scale3(mix(weather, base, 0.4), 1.14), 0.09);
     const paintDustAndOilStreaks = (): void => {
-      for (let i = 0; i < 240; i++) {
+      for (let i = 0; i < (visual.catalogPattern ? 70 : 240); i++) {
         const x = rng() * S, y = rng() * S, len = S * (0.03 + rng() * 0.12);
         ctx.strokeStyle = rng() < 0.45 ? 'rgba(30,26,20,0.13)' : dustCol;
         ctx.lineWidth = 1 + rng() * 3;

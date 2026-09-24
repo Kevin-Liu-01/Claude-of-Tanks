@@ -63,6 +63,7 @@ export function camoSwatchRecipe(spec: FleetTankSpec, pid: string): CamoSwatchRe
   const resolved = resolveCamoVisual(spec, pid);
   const visual: MaterialVisual = { base: resolved.base || '#5a6b46' };
   if (resolved.scheme !== undefined) visual.scheme = resolved.scheme;
+  if (resolved.catalogPattern !== undefined) visual.catalogPattern = resolved.catalogPattern;
   if (resolved.weather !== undefined) visual.weather = resolved.weather;
   if (resolved.patches !== undefined) visual.patches = [...resolved.patches];
   if (resolved.camoScale !== undefined) visual.camoScale = resolved.camoScale;

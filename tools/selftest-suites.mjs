@@ -555,6 +555,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/camoPatternSeed.selftest.mjs',
     'src/vehicles/camoWorldScale.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
+    'src/vehicles/catalogCamoPainter.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
