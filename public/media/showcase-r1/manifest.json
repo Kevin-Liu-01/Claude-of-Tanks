@@ -818,13 +818,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 181.1272,
-          "p05": 88.7404,
-          "p95": 211.1152,
+          "meanLuma": 162.8254,
+          "p05": 68.4968,
+          "p95": 203.9026,
           "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.1495,
-          "edgeMean": 5.0324
+          "meanSaturation": 0.1743,
+          "edgeMean": 5.559
         }
       },
       "sequence": 20
@@ -865,13 +865,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 173.8446,
-          "p05": 65.6808,
-          "p95": 213.7542,
-          "clippedBlack": 0.0014,
+          "meanLuma": 158.3137,
+          "p05": 71.4994,
+          "p95": 205.6046,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.1661,
-          "edgeMean": 4.3044
+          "meanSaturation": 0.2246,
+          "edgeMean": 6.2676
         }
       },
       "sequence": 21
@@ -912,13 +912,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 150.7743,
-          "p05": 45.0252,
-          "p95": 211.219,
+          "meanLuma": 142.0848,
+          "p05": 39.9828,
+          "p95": 204.7084,
           "clippedBlack": 0.0001,
           "clippedWhite": 0,
-          "meanSaturation": 0.1541,
-          "edgeMean": 5.9039
+          "meanSaturation": 0.1589,
+          "edgeMean": 5.515
         }
       },
       "sequence": 22
@@ -957,13 +957,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 170.9585,
-          "p05": 69.4464,
-          "p95": 214.1886,
-          "clippedBlack": 0,
+          "meanLuma": 161.5874,
+          "p05": 45.7244,
+          "p95": 207.0482,
+          "clippedBlack": 0.0003,
           "clippedWhite": 0,
-          "meanSaturation": 0.0919,
-          "edgeMean": 5.4929
+          "meanSaturation": 0.119,
+          "edgeMean": 5.8457
         }
       },
       "sequence": 23
@@ -1462,13 +1462,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 159.1128,
-          "p05": 48.5062,
-          "p95": 208.0958,
-          "clippedBlack": 0.0011,
+          "meanLuma": 152.5224,
+          "p05": 61.325,
+          "p95": 209.576,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.4417,
-          "edgeMean": 7.5757
+          "meanSaturation": 0.4296,
+          "edgeMean": 9.4583
         }
       },
       "sequence": 34
@@ -1552,13 +1552,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 168.0209,
-          "p05": 67.271,
-          "p95": 213.925,
-          "clippedBlack": 0.0002,
+          "meanLuma": 172.2987,
+          "p05": 70.823,
+          "p95": 206.7084,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.1262,
-          "edgeMean": 5.8034
+          "meanSaturation": 0.095,
+          "edgeMean": 3.8582
         }
       },
       "sequence": 36
@@ -1597,13 +1597,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 174.6256,
-          "p05": 123.8214,
-          "p95": 209.042,
+          "meanLuma": 176.9022,
+          "p05": 136.0092,
+          "p95": 209.87,
           "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.4413,
-          "edgeMean": 5.9955
+          "meanSaturation": 0.3918,
+          "edgeMean": 4.4319
         }
       },
       "sequence": 37
@@ -2198,13 +2198,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 173.2694,
-          "p05": 59.0412,
-          "p95": 214.4224,
-          "clippedBlack": 0.0042,
+          "meanLuma": 165.2116,
+          "p05": 49.1232,
+          "p95": 207.0654,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.1128,
-          "edgeMean": 4.846
+          "meanSaturation": 0.1176,
+          "edgeMean": 4.7923
         }
       },
       "sequence": 50
@@ -2246,13 +2246,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 169.0862,
-          "p05": 54.2238,
-          "p95": 214.278,
-          "clippedBlack": 0.0045,
+          "meanLuma": 166.4152,
+          "p05": 50.2226,
+          "p95": 204.4368,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.1391,
-          "edgeMean": 4.7664
+          "meanSaturation": 0.1347,
+          "edgeMean": 5.6152
         }
       },
       "sequence": 51
@@ -2294,13 +2294,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 170.9621,
-          "p05": 50.878,
-          "p95": 209.4408,
-          "clippedBlack": 0.001,
+          "meanLuma": 147.7067,
+          "p05": 38.9366,
+          "p95": 206.274,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.1375,
-          "edgeMean": 5.2369
+          "meanSaturation": 0.1698,
+          "edgeMean": 5.18
         }
       },
       "sequence": 52
@@ -2340,13 +2340,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 173.93,
-          "p05": 60.302,
-          "p95": 214.4906,
-          "clippedBlack": 0.0004,
+          "meanLuma": 156.5357,
+          "p05": 33.992,
+          "p95": 207.3462,
+          "clippedBlack": 0.0001,
           "clippedWhite": 0,
-          "meanSaturation": 0.1022,
-          "edgeMean": 4.8982
+          "meanSaturation": 0.1336,
+          "edgeMean": 4.3338
         }
       },
       "sequence": 53
@@ -2854,13 +2854,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 165.0011,
-          "p05": 70.1782,
-          "p95": 215.2368,
-          "clippedBlack": 0.0003,
+          "meanLuma": 165.0789,
+          "p05": 77.274,
+          "p95": 208.9974,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.4341,
-          "edgeMean": 7.1822
+          "meanSaturation": 0.4531,
+          "edgeMean": 10.3496
         }
       },
       "sequence": 64
@@ -2946,13 +2946,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 168.0648,
-          "p05": 47.4156,
-          "p95": 214.278,
-          "clippedBlack": 0.0076,
+          "meanLuma": 167.6305,
+          "p05": 52.4166,
+          "p95": 207.0614,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.1171,
-          "edgeMean": 4.7192
+          "meanSaturation": 0.111,
+          "edgeMean": 3.8394
         }
       },
       "sequence": 66
@@ -2992,13 +2992,13 @@
           "height": 2160
         },
         "metrics": {
-          "meanLuma": 168.2244,
-          "p05": 85.4206,
-          "p95": 209.811,
-          "clippedBlack": 0.0037,
+          "meanLuma": 168.3586,
+          "p05": 85.4888,
+          "p95": 210.5984,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.4445,
-          "edgeMean": 8.0914
+          "meanSaturation": 0.4208,
+          "edgeMean": 5.155
         }
       },
       "sequence": 67
@@ -3295,9 +3295,7 @@
       "alt": "Armored contact in the animated Scene Studio battle sequence",
       "actors": [
         "strv122",
-        "type99a",
-        "pt91m",
-        "type99a"
+        "leclerc"
       ],
       "effects": [
         "dust"
@@ -3322,9 +3320,7 @@
       "alt": "First impact in the animated Scene Studio battle sequence",
       "actors": [
         "strv122",
-        "type99a",
-        "pt91m",
-        "type99a"
+        "leclerc"
       ],
       "effects": [
         "dust",
@@ -3352,9 +3348,7 @@
       "alt": "Return fire in the animated Scene Studio battle sequence",
       "actors": [
         "strv122",
-        "type99a",
-        "pt91m",
-        "type99a"
+        "leclerc"
       ],
       "effects": [
         "dust",
@@ -3382,9 +3376,7 @@
       "alt": "Knockout in the animated Scene Studio battle sequence",
       "actors": [
         "strv122",
-        "type99a",
-        "pt91m",
-        "type99a"
+        "leclerc"
       ],
       "effects": [
         "dust",
@@ -3413,9 +3405,7 @@
       "alt": "Burning advance in the animated Scene Studio battle sequence",
       "actors": [
         "strv122",
-        "type99a",
-        "pt91m",
-        "type99a"
+        "leclerc"
       ],
       "effects": [
         "dust",
