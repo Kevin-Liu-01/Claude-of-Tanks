@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { getSpec } from './specs.ts';
+import { getSpec, TANK_SPECS } from './specs.ts';
+import { donorSpec } from './donorSpecs.ts'; // 2026-09-24: retired donors (merkava4 …) resolve through the unregistered templates
 import { SOURCE_X_IDS, SOURCE_X_DONORS, synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
 
 const donorArmor = new Map(SOURCE_X_IDS.map(id => [id,
-  structuredClone(getSpec(SOURCE_X_DONORS[id]).armor)]));
+  structuredClone(donorSpec(TANK_SPECS, SOURCE_X_DONORS[id]).armor)]));
 const frames = SOURCE_X_IDS.map(id => {
   const armor = getSpec(id).armor;
   return structuredClone([armor.turretPivot, armor.gunPivot, armor.gunBarrel]);
@@ -16,7 +17,7 @@ synchronizeSourceXCombatMetadata();
 for (const [i, id] of SOURCE_X_IDS.entries()) {
   const armor = getSpec(id).armor;
   assert.deepEqual([armor.turretPivot, armor.gunPivot, armor.gunBarrel], frames[i]);
-  assert.deepEqual(getSpec(SOURCE_X_DONORS[id]).armor, donorArmor.get(id), 'donors are untouched');
+  assert.deepEqual(donorSpec(TANK_SPECS, SOURCE_X_DONORS[id]).armor, donorArmor.get(id), 'donors are untouched');
 }
 
 function assertFrame(tank, spec, turret, gun) {

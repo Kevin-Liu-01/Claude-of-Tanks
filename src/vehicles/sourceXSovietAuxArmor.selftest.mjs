@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
-import {getSpec} from './specs.ts';
+import {getSpec,TANK_SPECS} from './specs.ts';
+import {donorSpec} from './donorSpecs.ts'; // 2026-09-24: the t72b_1987 donor record retired with the hidden fleet (owner: no hidden tanks)
 import {SECOND_WAVE_X_DONORS} from './sourceXSecondWaveSpecs.ts';
 import {applySourceXSovietAuxArmor,SOVIET_AUX_IDS} from './sourceXSovietAuxArmor.ts';
 import {traceTank} from '../sim/armor.ts';
@@ -213,7 +214,7 @@ const ids=arg?arg.slice(6).split(','):SOVIET_AUX_IDS;
 let facets=0;
 for(const id of ids){
   assert.ok(SOVIET_AUX_IDS.includes(id));
-  const donor=getSpec(SECOND_WAVE_X_DONORS[id]),original=JSON.stringify(donor);
+  const donor=donorSpec(TANK_SPECS,SECOND_WAVE_X_DONORS[id]),original=JSON.stringify(donor); // retired donors come from the donorSpecs.ts templates
   const noOp=structuredClone(donor),noOpBefore=JSON.stringify(noOp);applySourceXSovietAuxArmor(noOp,donor.id);
   assert.equal(JSON.stringify(noOp),noOpBefore,'original donor API is exact no-op');
   for(const quality of ['high','low']){

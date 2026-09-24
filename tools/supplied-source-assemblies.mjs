@@ -1,5 +1,7 @@
 // Browser-safe, local-QA source certificates. These files never enter gameplay.
 // Original exports remain available; assembly recipes preserve the source frame.
+// 2026-09-24 (round 46c): the five 20260918 recipe hashes re-pinned after the research notes moved to docs/history/research —
+// each recipe's `ownerDecision` and review `path` strings were re-rooted; no geometry, source hash or frame value changed.
 export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
   "fv510_milan_x": {
     "originalSha256": "e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04",
@@ -7,7 +9,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
     "sha256": "f9eeb72db9039d2355912ecb85471be2d5559493400eff3d6d211ad9fc366045",
     "path": "/models/community-candidates/fv510_milan_x_assembled_20260918.glb",
     "recipePath": "docs/references/source-assemblies/20260918/fv510_milan_x.json",
-    "recipeSha256": "e85f38906c929c604c2bf92a53ac8de651b0ae646f07c25453d8d4c43f15872a",
+    "recipeSha256": "d1a09c7e27ec4e627ea4923d09399e3286a7cbd305e396e30defee2b1d3e501a",
     "originalFrame": {
       "sha256": "e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04",
       "fused": true,
@@ -29,7 +31,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
     "sha256": "1aef6401c01b5d9a6adfc65838c94d350f4aa39afa039709241c426371ca2003",
     "path": "/models/community-candidates/griffin50_x_assembled_20260918.glb",
     "recipePath": "docs/references/source-assemblies/20260918/griffin50_x.json",
-    "recipeSha256": "dccc635b066b3a7100623e69db1ca0a6828f2d401784efcb4447ab09e9a1f2fd",
+    "recipeSha256": "40e8486eb48d5bbf0b2a50e0676942747d58eea2cc758a5884acbe845575507c",
     "originalFrame": {
       "sha256": "62f6e270698d7b218184ada575289da3cc1b362da4d96a8314d6e1277d618d34",
       "fused": true,
@@ -51,7 +53,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
     "sha256": "417ea9738b986a591ba049e25ef86fe2dd0f240048d3630d8f23551c17b7d793",
     "path": "/models/community-candidates/kurganets25_x_assembled_20260918.glb",
     "recipePath": "docs/references/source-assemblies/20260918/kurganets25_x.json",
-    "recipeSha256": "279acea09049ef55b35fbea7c7ee0fd0f6f629512c6193f9f0230cdee11eb0b7",
+    "recipeSha256": "f1f97a7fea0f12a5a0d8156c0421340d5fddc2fc76d20f8c1d326b964328570c",
     "originalFrame": {
       "sha256": "a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0",
       "fused": true,
@@ -73,7 +75,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
     "sha256": "d79a8383dd79d8dfefc98ae47b9b12d6c60bac55df3eb1671266fef6029fc8e8",
     "path": "/models/community-candidates/bmp3m_dragun125_x_assembled_20260918.glb",
     "recipePath": "docs/references/source-assemblies/20260918/bmp3m_dragun125_x.json",
-    "recipeSha256": "d1e3f7ec781958998b11046e4e162f4c798f5d2eb745d2b316a9108378133806",
+    "recipeSha256": "37d7115cb1166675c88c7d85d25a756cf4edf2bcdff8634c0bcb2f814de50d2d",
     "originalFrame": {
       "sha256": "4fd69d170bf494b8a795bf5d6618e94db10c7cdb562b9f37210bc613f402af16",
       "fused": true,
@@ -95,7 +97,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
     "sha256": "e2103e87628337778107ba4beec0fb5f6ad9e29136eab65ba27aa7f8bfdd956b",
     "path": "/models/community-candidates/k21_x_assembled_20260918.glb",
     "recipePath": "docs/references/source-assemblies/20260918/k21_x.json",
-    "recipeSha256": "40f856b42f4156de4db139d9caba4408ed1f7206a214ffa0adc4b664f0f4d68f",
+    "recipeSha256": "3266271ed32941ea9647def0565faa8cb2366ab145a26b0da6bc28f04eb1c573",
     "originalFrame": {
       "sha256": "ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8",
       "fused": true,

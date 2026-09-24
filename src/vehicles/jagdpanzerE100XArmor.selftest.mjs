@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { TANK_SPECS } from './specs.ts';
+import { donorSpec } from './donorSpecs.ts'; // 2026-09-24: retired donor records resolve through the unregistered templates (owner: no hidden tanks)
 import { SECOND_WAVE_X_DONORS, synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { geometryFingerprint } from './tankAssets.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
@@ -10,12 +11,16 @@ import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 // Round 32 (2026-09-21): goldens re-based — each side's end wraps now pivot about its own outer road wheels on staggered rigs (t90ms_x, tos1a_tagil, cv90105_tml_x, cv90_mkiv_x, ztz100_x) and the Jagdpanzer E100 X reuses the dished wheel primitive.
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
-  .map(id => [id, TANK_SPECS[id]]);
+  .map(id => [id, donorSpec(TANK_SPECS, id)]); // 2026-09-24: retired donors come back verbatim from donorSpecs.ts
 // Captured before this metadata correction. No source meshes or generated
 // armor vertices are embedded in the regression.
 // Repinned 2026-09-15: the owner roster pass renamed donor display names (AMX-30B -> AMX-30,
 // AMX-40 -> AMX-40 Prototype, C1 Ariete -> Serie 1, Challenger 1 Mk 3 -> Mk 2 ...); no armor row moved.
-const donorHash = '655f23ac0c8aec1e805526cbed0823012ac5c1adabe37a5f6323651f8d5659b3';
+// 2026-09-24 (round 46c, owner: no hidden tanks): the jpz_e100 / t72b3 / t72b_1987 donor records retired; their rows now
+// come from the donorSpecs.ts templates, which carry the authored spec without the registry's generated anatomy enrichment
+// (bodyContactPoints, collisionShells, crew layout metadata) — the hash moves for that reason alone. All 192 playable specs
+// are byte-identical between shared main and this tree (.qa-dev spec dump, 0 differing).
+const donorHash = '6c47eda02c0058dd97df98871b890485d534a4b883de95ec6446dd1bc8ed5575';
 function historicalDonors(rows = donorRows()) {
   const restored = structuredClone(rows);
   const ariete = restored.find(([id]) => id === 'ariete_c1')[1];
