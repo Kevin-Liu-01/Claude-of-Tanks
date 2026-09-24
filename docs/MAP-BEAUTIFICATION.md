@@ -794,8 +794,8 @@ square, spawns, roads, village and landforms drawn) showed the sausage plainly.
   −3.8 m and the outland +21.3 m (the shore ring had flattened the square to the sea level; past the line nothing
   applied it) — the "28 m block" of round 47 on every sea map. After: Δ ≤ 0.05 m on Saltmere, ≤ 0.4 m (micro relief)
   on Saltwind, ≤ 0.08 m on Nordhavn along the red line. The fjord arms author `boats: 0` (a clinker hull on a 0.14 R
-  rock bank buries its tips) and keep their jetties; Saltwind authors `coastRimFadeM: 110` — with the seam closed, its
-  two mouth headlands still stood as 24 m rim slabs one row past the line.
+  rock bank buries its tips) and keep their jetties; Saltwind authors `coastRimFadeM: 110` for the same headland law
+  (it did not change what the bird view shows at its mouth — see Still open).
 
 **Verified (`.qa-dev/wall-probe.mjs`; A = r47-combined, B4 = this lane; `$SP/r47d/cap/`, plan views `$SP/r47d/*.png`).**
 Saltmere from above (bird-e-high, bird-e-edge-n): one concave strand between two headlands, the promontory and cape
@@ -803,9 +803,15 @@ breaking the arc, the sea open to the horizon (B: a lake with a cliff wall; B2: 
 gameplay height (shore-e-oblique, bay-strand-n) the strand curves away to the north headland with the seven boats and
 the jetty on it. Nordhavn (bird-e-high, fjord-arm-in): three narrow arms sharing one mouth, the peninsulas carrying
 their ridges and spruce (B: flat at the water level, ridges buried), the far mountains as before. Saltwind (bird-w-edge
-A/B4): the bay contour unchanged inside the square, the sea open sooner past the edge, no regression. Still visible: a
-dark headland block stands on the red line north of Saltmere's bay (and beside Saltwind's mouth) — the ring's first dry
-column past a wet one; it predates this lane and is measured next.
+A/B4): the bay contour unchanged inside the square, the sea open sooner past the edge, no regression. B5/B6 (after the
+outland composition): the dark block that stood on the red line north of Saltmere's bay is gone — the cape and meadow
+run past the line (seam probe Δ ≤ 0.05 m).
+
+**Still open.** Saltwind's two mouth headlands still read as dark slabs in the bird view (B7, unchanged from A): the
+seam probe shows the square and the outland agree along the red line there too, and `sampleHorizonGeometry` puts the
+flank columns' rows at −18…+12 m against the sea columns' −7.8 m, so the slab is the ring's own face between a sea
+column and its dry neighbour (rows 0–3 across ~6° of arc), not a height-field step — a layer-isolation capture is the
+next step. The ring's forested tone near the coast (round 47) also stays open.
 
 **Receipt handling.** `badlandsRelief` authenticates the exact current bay/arms/ridge/rim-fade blocks and projects them
 to the historical text next to Saltwind's round-40 contour (relief authoring by owner ruling); the streaming fixture's
@@ -815,6 +821,9 @@ caught the first fjord banks as slot walls beside the roads (bankBand), `trackSu
 classification (the 344 m ring), `mapQuality` the sunken meadow (the round ring). Re-pinned as map-digest movers:
 `beachedBoat` (7 boats), `shoreDirtMask`, `villageWear`, `winterLakeGeometry`, `mangroveWaterPalette`,
 `terrainStreaming`; `edgeWater` (blend numbers), `terrainMaterialOwnership` / `terrainWornDirt` / `wallSkyLight` (key v37).
+`playableRelief` byte-compared titanGorge.ts against the baseline and was red on r47-combined (round 47 re-authored
+Titan's palette route, tints, ring rows and sky decks): the round-47 projection module now carries the three Titan
+blocks and the receipt projects them before comparing, the same law badlandsRelief applies.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
