@@ -5,6 +5,14 @@
 // `_noVeg` exclusion the hardstand aprons use. Renderer-free: the path resampler and the distance math are shared
 // by terrain.ts, the kit and the receipts. Soft dressing by contract — a hull rolls over the 0.2 m bed like a curb
 // and no collision record is published.
+//
+// Round 63 (2026-09-24): a spur may author a CUTTING — terrain work, not dressing. From a portal on the spur's last
+// edge the bed is graded at a rail grade along that edge to the path's end and on past the edge of the square; the
+// ground above the graded bed is cut away to a level floor between batter faces, the ground below it is filled, and
+// the height field applies the same rule inside the square (terrain.ts heightAt, after every road, pad, lake and
+// trench constraint) and in the outland (outlandHeightAt, the horizon ring's near rows), so the line leaves the
+// plateau through a real notch instead of stopping at the rim foot. Past the path's end the floor widens (the fan),
+// so the ring's columns can carry the valley mouth the cutting opens into.
 
 export interface RailSpurConfig {
   /**
@@ -17,8 +25,43 @@ export interface RailSpurConfig {
   gauge?: number;
   /** Ballast slab width; omitted = RAIL_SPUR_BALLAST_M. */
   ballast?: number;
-  /** Buffer stops: 'end' closes the last point of the path, 'both' closes both ends; omitted leaves the ends open. */
-  bufferStop?: 'end' | 'both';
+  /**
+   * Buffer stops: 'end' closes the last point of the path, 'start' the first, 'both' closes both ends; omitted leaves
+   * the ends open (round 63: a spur that leaves the square through a cutting closes only its stub).
+   */
+  bufferStop?: 'start' | 'end' | 'both';
+  /** Round 63: the cutting the spur leaves the square through (terrain work: terrain.ts carves it, the kit lays on it). */
+  cutting?: RailCuttingConfig;
+}
+
+export interface RailCuttingConfig {
+  /**
+   * The portal: a point on the spur's LAST edge where the graded bed leaves the ground. The cutting runs from here
+   * along that edge, through the path's end and on into the outland; before the portal the ground is untouched.
+   */
+  from: readonly [number, number];
+  /** Rise of the bed per metre from the portal; omitted = RAIL_CUTTING_GRADE (under the 2.5 % rail grade). */
+  grade?: number;
+  /** Half-width of the level floor; omitted = RAIL_CUTTING_HALF_FLOOR_M (the ballast and a cess each side). */
+  halfFloor?: number;
+  /** Batter of the cut faces as horizontal run per metre of rise; omitted = RAIL_CUTTING_BATTER. */
+  batter?: number;
+  /** Growth of the floor's half-width per metre past the path's end (the outland fan); omitted = RAIL_CUTTING_FAN. */
+  fan?: number;
+}
+
+/** A resolved cutting: the portal, the unit axis of the spur's last edge, the run to the path's end, its parameters. */
+export interface RailCutting {
+  px: number;
+  pz: number;
+  ux: number;
+  uz: number;
+  /** Distance from the portal to the path's last point along the axis: the fan opens past it. */
+  endAlong: number;
+  grade: number;
+  halfFloor: number;
+  batter: number;
+  fan: number;
 }
 
 interface RailSpan {
@@ -41,6 +84,21 @@ export const RAIL_SPUR_GAUGE_M = 1.44;
 export const RAIL_SPUR_BALLAST_M = 3.0;
 /** Vegetation and scattered props keep this far from the centreline: the slab's half-width plus 2.1 m of shoulder. */
 export const RAIL_SPUR_BERTH_M = 3.6;
+/**
+ * Round 63: the cutting's defaults. A 2.4 % bed (a branch line's ruling grade, under the 2.5 % the round asked for)
+ * on an 8 m floor — the 3 m ballast and a 2.5 m cess each side — between faces battered 0.7 horizontal per metre
+ * of rise (≈ 55°, a soft-rock cutting: the terrain material's slope rock takes the faces), the floor feathered
+ * 2 m into the ground beyond its edge, the whole rule fading in over the first 12 m from the portal (the plain there
+ * lies within a few centimetres of the bed) and the floor widening 0.25 m per metre past the path's end.
+ */
+export const RAIL_CUTTING_GRADE = 0.024;
+export const RAIL_CUTTING_HALF_FLOOR_M = 4;
+export const RAIL_CUTTING_BATTER = 0.7;
+export const RAIL_CUTTING_FAN = 0.25;
+export const RAIL_CUTTING_FEATHER_M = 2;
+export const RAIL_CUTTING_PORTAL_M = 12;
+/** The exclusion keeps this much more than the floor clear: the cess shoulder the spur berth keeps past its slab. */
+const RAIL_CUTTING_SHOULDER_M = RAIL_SPUR_BERTH_M - RAIL_SPUR_BALLAST_M / 2;
 
 /** Horizontal run of a span. Exact for an axis-aligned span (the rail yards' fixed lines stay byte-identical). */
 export function railRunLength(dx: number, dz: number): number {
@@ -125,3 +183,104 @@ export function createRailSpurExclusion(
     return false;
   };
 }
+
+// ---------------------------------------------------------------------------------------------- the cutting (round 63)
+
+function smoothstep01(edge0: number, edge1: number, value: number): number {
+  const t = (value - edge0) / (edge1 - edge0);
+  const c = t < 0 ? 0 : t > 1 ? 1 : t;
+  return c * c * (3 - 2 * c);
+}
+
+/**
+ * The cuttings the spurs author, resolved on their last edges: null when no spur authors one (every map without a
+ * cutting keeps the height field it had). A portal off the last edge's line or past its end is an authoring error.
+ */
+export function resolveRailCuttings(spurs: readonly RailSpurConfig[] | undefined): readonly RailCutting[] | null {
+  if (!spurs?.length) return null;
+  const out: RailCutting[] = [];
+  for (const spur of spurs) {
+    const cutting = spur.cutting;
+    if (!cutting) continue;
+    const path = spur.path;
+    if (path.length < 2) throw new Error('a rail cutting needs a spur path of two or more points');
+    const [ax, az] = path[path.length - 2], [bx, bz] = path[path.length - 1];
+    const dx = bx - ax, dz = bz - az, run = railRunLength(dx, dz);
+    if (!(run > 0)) throw new Error('a rail cutting needs a last edge with length');
+    const ux = dx / run, uz = dz / run;
+    const [px, pz] = cutting.from;
+    const off = Math.abs((px - ax) * -uz + (pz - az) * ux);
+    const endAlong = (bx - px) * ux + (bz - pz) * uz;
+    if (off > 0.01 || endAlong < 0 || endAlong > run + 0.01) {
+      throw new Error(`rail cutting portal ${px},${pz} is not on the spur's last edge`);
+    }
+    out.push({
+      px, pz, ux, uz, endAlong,
+      grade: cutting.grade ?? RAIL_CUTTING_GRADE,
+      halfFloor: cutting.halfFloor ?? RAIL_CUTTING_HALF_FLOOR_M,
+      batter: cutting.batter ?? RAIL_CUTTING_BATTER,
+      fan: cutting.fan ?? RAIL_CUTTING_FAN,
+    });
+  }
+  return out.length ? out : null;
+}
+
+/** The graded bed's height `along` metres past the portal whose ground stood at `portalY`. */
+export function railCuttingBedY(cutting: RailCutting, portalY: number, along: number): number {
+  return portalY + cutting.grade * along;
+}
+
+/**
+ * The cutting applied to the ground height `h` at (x, z): inside the floor the ground becomes the graded bed (cut or
+ * fill), feathered RAIL_CUTTING_FEATHER_M into the ground beyond the floor's edge; ground standing above the batter
+ * face that rises from that edge is cut down to the face; the whole change fades in over RAIL_CUTTING_PORTAL_M from
+ * the portal and is nothing before it. Past the path's end the floor widens by the fan. Pure and allocation-free:
+ * heightAt and outlandHeightAt (terrain.ts) call it with the same portal height, so the notch continues across the
+ * red line unchanged. `portalY` is the ground the portal stood at before the cutting was applied.
+ */
+export function railCuttingHeight(
+  cuttings: readonly RailCutting[], portalYs: ArrayLike<number>, x: number, z: number, h: number,
+): number {
+  for (let i = 0; i < cuttings.length; i++) {
+    const cut = cuttings[i];
+    const dx = x - cut.px, dz = z - cut.pz;
+    const along = dx * cut.ux + dz * cut.uz;
+    if (along <= 0) continue;
+    const fadeIn = smoothstep01(0, RAIL_CUTTING_PORTAL_M, along);
+    const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
+    const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
+    const bedY = portalYs[i] + cut.grade * along;
+    const bed = 1 - smoothstep01(halfFloor, halfFloor + RAIL_CUTTING_FEATHER_M, lateral);
+    const face = bedY + (lateral > halfFloor ? (lateral - halfFloor) / cut.batter : 0);
+    let target = h + (bedY - h) * bed;
+    if (target > face) target = face;
+    h += (target - h) * fadeIn;
+  }
+  return h;
+}
+
+/**
+ * The cutting's exclusion for vegetation and scattered props: the floor and its cess shoulder past the portal, and
+ * every point the cutting lowered by more than a few centimetres (the cut faces up to the daylight line). `groundAt`
+ * is the ground BEFORE the cutting (terrain.ts evaluates it with the rule suspended). Cheap off the corridor: the
+ * ground is only sampled inside the widest lateral band a face can reach.
+ */
+export function railCuttingExcludes(
+  cuttings: readonly RailCutting[], portalYs: ArrayLike<number>, x: number, z: number,
+  groundAt: (x: number, z: number) => number, maxDepth: number,
+): boolean {
+  for (let i = 0; i < cuttings.length; i++) {
+    const cut = cuttings[i];
+    const dx = x - cut.px, dz = z - cut.pz;
+    const along = dx * cut.ux + dz * cut.uz;
+    if (along <= 0) continue;
+    const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
+    const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
+    if (lateral <= halfFloor + RAIL_CUTTING_SHOULDER_M) return true;
+    if (lateral > halfFloor + RAIL_CUTTING_FEATHER_M + maxDepth * cut.batter) continue;
+    const ground = groundAt(x, z);
+    if (ground - railCuttingHeight(cuttings, portalYs, x, z, ground) > 0.05) return true;
+  }
+  return false;
+}
+

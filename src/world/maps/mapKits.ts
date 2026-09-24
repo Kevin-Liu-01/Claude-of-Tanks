@@ -30,7 +30,9 @@ import {
   MOORED_BOAT_HALF_BEAM_M, landingStream, planShoreJetty, type ShoreJettyPlan,
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
-import { cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord } from '../collision.ts';
+import {
+  cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape,
+} from '../collision.ts';
 import {
   dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
@@ -1683,6 +1685,8 @@ const BRIDGE_BODY_TOP_UNDER_DECK_M = 0.45;
 const BRIDGE_SPANDREL_FILL_M = 0.55;
 /** The pier face shown above the water surface before the arch springs. */
 const BRIDGE_SPRING_OVER_WATER_M = 0.3;
+/** Round 63: the vault's collision bands (the building hitboxes' shell bands are 0.5 m; the arcs are finer). */
+const BRIDGE_VAULT_BAND_M = 0.3;
 
 /**
  * Round 61 (2026-09-24): the arched stone bridge on the deck plane terrain.ts resolved — the water flows under it.
@@ -1691,9 +1695,13 @@ const BRIDGE_SPRING_OVER_WATER_M = 0.3;
  * the extrusion's inner walls, so the openings are arcs, not recesses, and the sheet runs through them. Piers carry
  * cutwaters turned into the stream, the abutments stand on the banks past the wet reach with splayed wing walls, the
  * deck slab lies level at deckY (flush with the graded approaches) and the parapets ride on it. The collision record
- * the ride stands on is the body plus the two parapets (a compound with per-part extents): a hull on the approach
- * mounts the body's top as its floor, a hull in the river is pushed by its walls, and the parapets stop a hull that
- * leaves the deck sideways. Everything is derived from the deck plane; no map coordinate lives here.
+ * the ride stands on is a compound whose parts follow the geometry (round 63, 2026-09-24 — it was one solid body
+ * from the footing to the deck, an invisible wall across every arch): the deck from the crown line up, the piers and
+ * abutments from the footing to the crown line, each vault as thin bands whose haunches reach from the pier faces to
+ * the arc, and the two parapets. A hull on the approach mounts the deck part as its floor, a shell through an
+ * opening passes, a hull low enough for the vault passes under it, a hull in the river is pushed by the piers and
+ * the vault, and the parapets stop a hull that leaves the deck sideways. Everything is derived from the deck plane;
+ * no map coordinate lives here.
  */
 function addArchedStoneBridge(
   deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
@@ -1781,18 +1789,44 @@ function addArchedStoneBridge(
       buckets.stone.push(alignWidth(wing, ux, uz).translate(wingX, (foot + wingTop) / 2, wingZ));
     }
   }
-  // the record: the body the ride stands on and the two parapets that hold it on the deck
+  // The record (round 63, 2026-09-24): parts that follow the geometry. The deck part is the spandrel fill and the slab
+  // from the crown line up — deckY − crownY = BRIDGE_BODY_TOP_UNDER_DECK_M + BRIDGE_SPANDREL_FILL_M = 1.0 m, over
+  // HULL_STANDABLE_HEIGHT_M (0.9), so a hull on the deck mounts it as its floor and is not pushed by its sides — the
+  // abutments and the piers stand from the footing to the crown line, and each vault is BRIDGE_VAULT_BAND_M bands
+  // (the shell bands of the building hitboxes) whose solid haunches reach in from the pier faces to the arc at the
+  // band's middle height, so the opening a shell or a low hull sees is the arc to within a band. Below the spring
+  // line the openings are clear from pier to pier.
   const yaw = Math.atan2(ux, uz); // an OBB's forward axis is (sin yaw, cos yaw), like a hull's
+  const parts: SimpleCollisionShape[] = [{ kind: 'obb', cx, cz, hw: halfWidth, hl: bodyHalf, yaw, y0: crownY, y1: deckY }];
+  const solid = (from: number, to: number, y0: number, y1: number): void => {
+    // one solid slice of the body between two stations along the road, through the full deck width
+    const at = (from + to) / 2;
+    parts.push({ kind: 'obb', cx: cx + ux * at, cz: cz + uz * at, hw: halfWidth, hl: (to - from) / 2, yaw, y0, y1 });
+  };
+  solid(-bodyHalf, -wetSpan / 2, bottom, crownY); // the abutments
+  solid(wetSpan / 2, bodyHalf, bottom, crownY);
+  for (let i = 0; i < arches - 1; i++) { // the piers
+    const pierX = -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M;
+    solid(pierX, pierX + BRIDGE_PIER_M, bottom, crownY);
+  }
+  const bands = Math.max(1, Math.ceil((crownY - springY) / BRIDGE_VAULT_BAND_M));
+  for (let i = 0; i < arches; i++) { // the vaults' haunches, band by band
+    const archX = -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M);
+    for (let band = 0; band < bands; band++) {
+      const y0 = springY + (crownY - springY) * band / bands, y1 = springY + (crownY - springY) * (band + 1) / bands;
+      const dy = (y0 + y1) / 2 - centreY;
+      const opening = Math.sqrt(Math.max(0, radius * radius - dy * dy)); // the arc's half-opening at the band's middle
+      if (opening >= chord / 2) continue;
+      solid(archX - chord / 2, archX - opening, y0, y1);
+      solid(archX + opening, archX + chord / 2, y0, y1);
+    }
+  }
   const parapetInset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
-  const record = setCompoundShape({
-    min: [0, bottom, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge',
-  }, [
-    { kind: 'obb', cx, cz, hw: halfWidth, hl: bodyHalf, yaw, y0: bottom, y1: deckY },
-    { kind: 'obb', cx: cx - vx * parapetInset, cz: cz - vz * parapetInset, hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw,
-      y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M },
-    { kind: 'obb', cx: cx + vx * parapetInset, cz: cz + vz * parapetInset, hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw,
-      y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M },
-  ]);
+  for (const side of [-1, 1]) {
+    parts.push({ kind: 'obb', cx: cx + vx * parapetInset * side, cz: cz + vz * parapetInset * side,
+      hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw, y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M });
+  }
+  const record = setCompoundShape({ min: [0, bottom, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge' }, parts);
   ctx.obstacles?.push(record);
   ctx.colliders?.push(cloneCollisionRecord(record));
 }
@@ -2146,8 +2180,8 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
       bufferStop(buckets, rng, heightField, to.bx + ux * 0.8, to.bz + uz * 0.8, Math.atan2(ux, uz), lay.gauge);
     };
     const last = spans[spans.length - 1], first = spans[0];
-    closeEnd(last, last);
-    if (spur.bufferStop === 'both') closeEnd({ ax: first.bx, az: first.bz }, { bx: first.ax, bz: first.az });
+    if (spur.bufferStop !== 'start') closeEnd(last, last);
+    if (spur.bufferStop !== 'end') closeEnd({ ax: first.bx, az: first.bz }, { bx: first.ax, bz: first.az });
   }
 }
 

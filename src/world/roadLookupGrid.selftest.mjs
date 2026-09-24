@@ -139,7 +139,13 @@ function historicalHeightFieldSource(text) {
   const outlandLakeHeight: LakeHeightResult = { height: 0, wetness: 0 };
 
 `, ''],
-    ['    getOutlandHeightAt: outlandHeightAt,\n', ''],
+    // Round 63 (2026-09-24, Tarkhan's railway cutting): the published outland sampler carries the spurs' cuttings past
+    // the red line (railSpurs.ts railCuttingHeight) — the same one-line publication, now composed; HISTORICAL '' as before.
+    [`    // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch
+    getOutlandHeightAt: railCuttings !== null
+      ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z))
+      : outlandHeightAt,
+`, ''],
     // Round 47 (2026-09-23, shorelines): the bay contour query the ring, the material bake and the sheet apron read is a
     // declared addition beside the wetness sampler — projected out of the HISTORICAL hash only.
     [`  /** Round 47: the bay contour and its water level at any point (the ring, the material bake and the apron read it). */
@@ -283,6 +289,47 @@ function historicalHeightFieldSource(text) {
     [`  const railSpurNoVeg = createRailSpurExclusion(T.railSpurs); // round 57: the spur's berth joins noVeg below
 `, ''],
     [`    if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
+`, ''],
+    // Round 63 (2026-09-24, Tarkhan's railway cutting): a spur's cutting (railSpurs.ts) is resolved beside the berth,
+    // its portals read on the finished surface, dug on final queries after every constraint, suspended for the
+    // exclusion's uncut ground, and joined to the vegetation/prop exclusion — declared additions projected out of the
+    // HISTORICAL hash only; every map without a cutting is untouched (the resolution finds none) and railCutting.selftest
+    // certifies the notch, the graded bed and the outland continuation on Tarkhan Steppe.
+    [`  // Round 63 (2026-09-24): the spurs' cuttings (railSpurs.ts) — terrain work: from a portal the bed is graded at a rail
+  // grade through the rim band to the edge and on into the outland, the ground above it cut to a floor between batter
+  // faces. Applied to every final query once the portals' ground is frozen (below); null on every map without one.
+  const railCuttings = resolveRailCuttings(T.railSpurs);
+  const railCuttingPortalYs = new Float64Array(railCuttings ? railCuttings.length : 0);
+  let railCuttingsOn = false, railCuttingsSuspended = false;
+`, ''],
+    [`    // round 63: the rail cutting is dug last, through the rim band and every constraint above, on final queries only
+    if (railCuttingsOn && roadsOn && padsOn && !railCuttingsSuspended) {
+      h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h);
+    }
+`, ''],
+    [`  // Round 63 (2026-09-24): the rail cuttings' portals read the finished authored surface — every road, pad, lake and
+  // trench constraint frozen above — and the rule then applies to every final query, inside the square and past it.
+  if (railCuttings !== null) {
+    landformPhase = 'authored-relief';
+    for (let i = 0; i < railCuttings.length; i++) {
+      railCuttingPortalYs[i] = heightAt(railCuttings[i].px, railCuttings[i].pz, true, true);
+    }
+    railCuttingsOn = true;
+  }
+`, ''],
+    [`    // round 63: the cutting's floor, cess and faces — the daylight line is read on the ground before the cut
+    if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8)) {
+      return true;
+    }
+`, ''],
+    [`  /** Round 63: the final surface with the rail cuttings suspended (the exclusion measures the cut against it). */
+  function uncutHeightAt(x: number, z: number): number {
+    railCuttingsSuspended = true;
+    const h = heightAt(x, z, true, true);
+    railCuttingsSuspended = false;
+    return h;
+  }
+
 `, ''],
     // Round 61 (2026-09-24, Amberford's bridge over the river): a marsh station authored crossing: 'bridge' resolves a
     // level deck plane (the deck state and its terms, the resolution after the liquid fit, the ground type and the

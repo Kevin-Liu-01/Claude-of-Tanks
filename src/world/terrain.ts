@@ -25,7 +25,9 @@ import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, 
 import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
-import { createRailSpurExclusion, type RailSpurConfig } from './railSpurs.ts';
+import {
+  createRailSpurExclusion, railCuttingExcludes, railCuttingHeight, resolveRailCuttings, type RailSpurConfig,
+} from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
@@ -787,6 +789,12 @@ function* heightFieldBuildSteps(
   const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;
   const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);
   const railSpurNoVeg = createRailSpurExclusion(T.railSpurs); // round 57: the spur's berth joins noVeg below
+  // Round 63 (2026-09-24): the spurs' cuttings (railSpurs.ts) — terrain work: from a portal the bed is graded at a rail
+  // grade through the rim band to the edge and on into the outland, the ground above it cut to a floor between batter
+  // faces. Applied to every final query once the portals' ground is frozen (below); null on every map without one.
+  const railCuttings = resolveRailCuttings(T.railSpurs);
+  const railCuttingPortalYs = new Float64Array(railCuttings ? railCuttings.length : 0);
+  let railCuttingsOn = false, railCuttingsSuspended = false;
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
   const _LAKES = layout.lakes;
@@ -1401,6 +1409,10 @@ function* heightFieldBuildSteps(
         if (carve > 0) h -= carve * (1 - vm) * (1 - marshW);
       }
     }
+    // round 63: the rail cutting is dug last, through the rim band and every constraint above, on final queries only
+    if (railCuttingsOn && roadsOn && padsOn && !railCuttingsSuspended) {
+      h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h);
+    }
     return h;
   }
 
@@ -1608,6 +1620,15 @@ function* heightFieldBuildSteps(
   if (cfg?.id === 'copper_mesa' && T.quarryBenches) {
     quarryFloorY = heightAt(COPPER_QUARRY.x, COPPER_QUARRY.z, true, true);
   }
+  // Round 63 (2026-09-24): the rail cuttings' portals read the finished authored surface — every road, pad, lake and
+  // trench constraint frozen above — and the rule then applies to every final query, inside the square and past it.
+  if (railCuttings !== null) {
+    landformPhase = 'authored-relief';
+    for (let i = 0; i < railCuttings.length; i++) {
+      railCuttingPortalYs[i] = heightAt(railCuttings[i].px, railCuttings[i].pz, true, true);
+    }
+    railCuttingsOn = true;
+  }
   // Explicit second phase: all legacy support targets above are frozen.
   // Exact mesh/physics and the existing one-metre live cache share this surface.
   landformPhase = 'authored-relief';
@@ -1808,6 +1829,10 @@ function* heightFieldBuildSteps(
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x: number, z: number): boolean {
     if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
+    // round 63: the cutting's floor, cess and faces — the daylight line is read on the ground before the cut
+    if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8)) {
+      return true;
+    }
     for (const lk of _LAKES) {
       if (lk.radii) {
         if (shorelineDistance(lk, x, z, 1.04) < 1.04) return true;
@@ -1827,6 +1852,14 @@ function* heightFieldBuildSteps(
       if ((T.clearMarshVeg || liquidWater) && distanceSquared < clearRadius * clearRadius) return true;
     }
     return false;
+  }
+
+  /** Round 63: the final surface with the rail cuttings suspended (the exclusion measures the cut against it). */
+  function uncutHeightAt(x: number, z: number): number {
+    railCuttingsSuspended = true;
+    const h = heightAt(x, z, true, true);
+    railCuttingsSuspended = false;
+    return h;
   }
 
   function* measureHeightRange(): Generator<number, [number, number], void> {
@@ -1869,7 +1902,10 @@ function* heightFieldBuildSteps(
 
   return {
     getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
-    getOutlandHeightAt: outlandHeightAt,
+    // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch
+    getOutlandHeightAt: railCuttings !== null
+      ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z))
+      : outlandHeightAt,
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
