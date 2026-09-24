@@ -23,6 +23,21 @@ const hooks = registerHooks({ load(request, context, next) {
 } });
 let original;
 try { original = await import(url); } finally { hooks.deregister(); }
+// Round 47 follow-up (2026-09-23): the pre-completion constructor above is the authenticated HISTORICAL text — its rim
+// line predates the water gate (round 47) and the coast rim fade (follow-up), which are relief laws, not road
+// completion. The placement sampler (roadPlacementAdmission) reproduces the CURRENT pre-completion field, so it is
+// compared against this second constructor: the same projection with only those two relief laws restored on the rim.
+const historicalRim = '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH;\n';
+assert.equal(referenceSource.split(historicalRim).length, 2, 'one historical rim line in the pre-completion constructor');
+const reliefLawSource = referenceSource.replace(historicalRim,
+  '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);\n');
+const reliefLawUrl = new URL('./terrain.ts?original-road-placement-relief-laws', import.meta.url).href;
+const reliefLawHooks = registerHooks({ load(request, context, next) {
+  return request === reliefLawUrl ? {format:'module-typescript', source:reliefLawSource, shortCircuit:true} : next(request,context);
+} });
+let reliefLaws;
+try { reliefLaws = await import(reliefLawUrl); } finally { reliefLawHooks.deregister(); }
 export const historicalRoadHeightField = original.createHeightField;
+export const historicalRoadHeightFieldWithReliefLaws = reliefLaws.createHeightField;
 export const historicalRoadLayout = original.createLayout;
 export const historicalRoadTerrainSource = referenceSource;

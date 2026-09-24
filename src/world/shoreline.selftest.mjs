@@ -34,12 +34,26 @@ const originalOasisLakes = [
 const originalSaltwindLakes = [
   { x: -434, z: -160, r: 126 }, { x: -410, z: 12, r: 138 }, { x: -424, z: 184, r: 122 },
 ];
+// Round 47 follow-up (2026-09-23, owner: "evident right angle with shore and water at the border"): Saltmere's three
+// discs and their three shore rings became one authored crescent and one shaped ring; Nordhavn's three discs became
+// three authored fjord arms. Like Oasis and Saltwind, the legacy formula comparisons keep running on the original discs.
+const originalCoastalLakes = [
+  { x: 460, z: -60, r: 190 }, { x: 470, z: 160, r: 170 }, { x: 480, z: -270, r: 150 },
+];
+const originalCoastalMarshes = [
+  { x: 460, z: -60, r: 218 }, { x: 470, z: 160, r: 196 }, { x: 480, z: -270, r: 172 },
+];
+const originalFjordLakes = [
+  { x: 438, z: -142, r: 188 }, { x: 466, z: 70, r: 176 }, { x: 442, z: 262, r: 152 },
+];
 for (const id of MAP_IDS.filter(id => id !== 'polders')) {
   const terrain = getMapConfig(id).terrain;
   // Oasis explicitly migrated to one authored basin; preserve all of its
   // historical formula comparisons, not an exemption that deletes coverage.
-  const lakes = id === 'oasis' ? originalOasisLakes : id === 'saltwind' ? originalSaltwindLakes : terrain.lakes ?? [];
-  for (const disc of [...lakes, ...(terrain.marshes ?? [])]) {
+  const lakes = id === 'oasis' ? originalOasisLakes : id === 'saltwind' ? originalSaltwindLakes
+    : id === 'coastal' ? originalCoastalLakes : id === 'fjord' ? originalFjordLakes : terrain.lakes ?? [];
+  const marshes = id === 'coastal' ? originalCoastalMarshes : terrain.marshes ?? [];
+  for (const disc of [...lakes, ...marshes]) {
     assert.equal(disc.radii, undefined, `${id}: no implicit profile migration`);
     assert.equal(minimumShorelineRadius(disc), disc.r * 0.8);
     for (let i = -64; i <= 64; i++) {

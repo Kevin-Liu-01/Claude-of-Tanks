@@ -3,7 +3,7 @@ import { createHeightField, createLayout } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { originalRoadPlacementConfig } from './maps/roadEndpoints.ts';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
-import { historicalRoadHeightField, historicalRoadLayout } from './roadHistoryTestOracle.mjs';
+import { historicalRoadHeightFieldWithReliefLaws, historicalRoadLayout } from './roadHistoryTestOracle.mjs';
 
 let samples = 0;
 for (const id of MAP_IDS) {
@@ -12,7 +12,9 @@ for (const id of MAP_IDS) {
   assert.deepEqual(createLayout(originalCfg, false).roads, historicalRoadLayout(originalCfg).roads,
     `${id}: original sampled grid and authored paths, including clipped Coastal terminals`);
   for (const seed of [1337, ...(['coastal','frontier','alpine','reservoir'].includes(id) ? [2025] : [])]) {
-    const field = createHeightField(seed, cfg), expected = historicalRoadHeightField(seed, originalCfg);
+    // the sampler reproduces the CURRENT pre-completion field, whose rim carries the round-47 water gate and coast fade
+    // (relief laws); the oracle's relief-law constructor is the pre-completion text with exactly those two laws restored
+    const field = createHeightField(seed, cfg), expected = historicalRoadHeightFieldWithReliefLaws(seed, originalCfg);
     if (!field._createRoadPlacementSampler) continue;
     const allocations = [], NativeFloat32Array = globalThis.Float32Array;
     globalThis.Float32Array = new Proxy(NativeFloat32Array, {construct(Target,args) {
