@@ -417,6 +417,7 @@ export function createShallowWaterSurface(
       vec2 oceanJ = vec2(0.0);
       float oceanFoam = 0.0;
       float oceanLift = 0.0;
+      float oceanLiftMid = 0.0;
       float oceanFineW = 0.0;
       float oceanWhite = 0.0;
       oceanDebug = 0.0;
@@ -433,19 +434,22 @@ export function createShallowWaterSurface(
           oceanJ += dv.zw * w;
           oceanFoam += dp.a * w;
           if (c == 0) oceanLift = dp.y;
+          if (c == 1) oceanLiftMid = dp.y;
           if (c == 2) oceanFineW = w;
         }
-        // the shelf: where the bed rises into the wave band the waves steepen (shoaling) and their crests break white
-        // over the bank band; past the break the whitewater runs up the strand with the crest (the run-up)
+        // the shelf: where the bed rises into the wave band the waves steepen (shoaling) and only the TOP of each
+        // crest breaks white as it crosses the bank band — a moving line torn by the fine texture, never a foam band;
+        // past the break the whitewater runs up the strand with the crest and drains back (the run-up)
         float bankBand = smoothstep(0.03, 0.16, wet) * (1.0 - smoothstep(0.30, 0.62, wet));
-        float crest = smoothstep(0.15, 0.85, oceanLift / max(uOceanLook.w, 0.02) * 1.6 + 0.5);
+        float crestPhase = (oceanLift + 0.6 * oceanLiftMid) / max(uOceanLook.w, 0.02) * 1.6 + 0.5;
+        float crest = smoothstep(0.55, 0.95, crestPhase);
         oceanSlope *= 1.0 + 1.2 * uOceanLook.y * (1.0 - smoothstep(0.08, 0.55, wet));
         float breaker = uOceanLook.y * bankBand * crest;
-        float swash = uOceanLook.y * (1.0 - smoothstep(0.0, 0.10, wet)) * smoothstep(0.35, 0.9, crest) * smoothstep(0.015, 0.05, wet);
+        float swash = uOceanLook.y * (1.0 - smoothstep(0.0, 0.07, wet)) * smoothstep(0.6, 0.95, crestPhase) * smoothstep(0.015, 0.04, wet);
         // whitecaps only where the Jacobian folded the surface; every foam is torn by the fine wave texture (round 46)
         oceanWhite = oceanFoam * uOceanLook.x * (0.35 + 1.3 * waveFine.x)
-          + breaker * (0.5 + 0.9 * waveFine.y) + swash * (0.6 + 0.6 * waveFine.x);
-        oceanDebug = uWaterDebug > 3.5 ? oceanFineW : uWaterDebug > 2.5 ? clamp(oceanWhite, 0.0, 1.0)
+          + breaker * (0.3 + 1.4 * waveFine.y) + swash * (0.5 + 0.8 * waveFine.x);
+        oceanDebug = uWaterDebug > 4.5 ? 0.0 : uWaterDebug > 3.5 ? oceanFineW : uWaterDebug > 2.5 ? clamp(oceanWhite, 0.0, 1.0)
           : clamp(oceanLift / max(uOceanLook.w, 0.02) + 0.5, 0.0, 1.0);
       }
       vec2 oceanN = vec2(oceanSlope.x / max(1.0 + oceanJ.x, 0.3), oceanSlope.y / max(1.0 + oceanJ.y, 0.3));
@@ -584,11 +588,13 @@ export function createShallowWaterSurface(
         vec2 du = vec2(1.0 / uOceanGrid.x, 0.0), dv2 = vec2(0.0, 1.0 / (uOceanGrid.y * uOceanGrid.z));
         float causticLap = (texture2D(uOceanDeriv, cuv + du).x - texture2D(uOceanDeriv, cuv - du).x
           + texture2D(uOceanDeriv, cuv + dv2).y - texture2D(uOceanDeriv, cuv - dv2).y) / (2.0 * causticTexel);
-        float causticFocus = clamp(1.0 / max(0.3, 1.0 + 0.25 * oceanBed * causticLap) - 1.0, -0.6, 1.6);
+        // the lens constant (1 − 1/n = 0.25) is raised twelvefold: the finest grid resolves ripples of 20 cm and
+        // longer, whose curvature is a fraction of the capillary ripples that focus real shallow-water caustics
+        float causticFocus = clamp(1.0 / max(0.3, 1.0 + 3.0 * oceanBed * causticLap) - 1.0, -0.6, 1.6);
         float causticGain = uOceanLook.z * causticFineW * smoothstep(0.03, 0.14, oceanBed) * (1.0 - smoothstep(0.35, 0.85, waterDeep));
         vec3 causticSunColor = directionalLights[0].color / max(max(directionalLights[0].color.r, max(directionalLights[0].color.g, directionalLights[0].color.b)), 1e-3);
-        outgoingLight += causticFocus * causticGain * 0.34 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.25);
-        if (uWaterDebug > 4.5) oceanDebug = clamp(0.5 + causticFocus * 0.4, 0.0, 1.0) * causticGain;
+        outgoingLight += causticFocus * causticGain * 0.5 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.25);
+        if (uWaterDebug > 4.5) oceanDebug = clamp(0.5 + causticFocus * 0.4, 0.0, 1.0);
       }
       #endif
       if (uWaterDebug > 0.5) { outgoingLight = uWaterDebug > 1.5 ? vec3(oceanDebug) : vec3(waterTurbidity); diffuseColor.a = 1.0; }

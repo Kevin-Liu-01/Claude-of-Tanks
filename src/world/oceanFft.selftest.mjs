@@ -235,7 +235,8 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
     assert.ok(probe.vertexShader.includes(line), `vertex: ${line}`);
   for (const line of ['oceanSlope += dv.xy * w;', 'float w = 1.0 - smoothstep(texel * 1.5, texel * 5.0, oceanFootprint);',
     'oceanBed = uOceanDepth * wet * wet * (3.0 - 2.0 * wet);', 'wakeFoam += oceanWhite;',
-    'float causticFocus = clamp(1.0 / max(0.3, 1.0 + 0.25 * oceanBed * causticLap) - 1.0, -0.6, 1.6);',
+    'float causticFocus = clamp(1.0 / max(0.3, 1.0 + 3.0 * oceanBed * causticLap) - 1.0, -0.6, 1.6);',
+    'float crest = smoothstep(0.55, 0.95, crestPhase);',
     'return vec2(f.x + 0.5 / uOceanGrid.x, (f.y * uOceanGrid.x + 0.5 + c * uOceanGrid.y) / (uOceanGrid.y * uOceanGrid.z));'])
     assert.ok(probe.fragmentShader.includes(line), `fragment: ${line}`);
   assert.equal((probe.fragmentShader.match(/texture2D\(uWaterWave/g) ?? []).length, 3, 'the normal-map wave keeps its three fetches beside the cascades');

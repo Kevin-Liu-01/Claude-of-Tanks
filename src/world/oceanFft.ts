@@ -110,8 +110,9 @@ export function createOceanField(
     uDt: { value: 1 / 60 },
     uDepth: { value: state.depthM },
     uChop: { value: state.choppiness },
-    // whitecaps: the Jacobian below which foam is made, its gain, its decay (1/s) and the rate it accumulates at
-    uFoam: { value: new THREE.Vector4(0.55 + 0.35 * state.foam, 3.0, 0.35, 2.5) },
+    // whitecaps: the Jacobian below which foam is made (0.62 at foam 0 — only a fold; 1.0 at foam 1 — every
+    // compression), its gain, its decay (1/s) and the rate it accumulates at
+    uFoam: { value: new THREE.Vector4(0.62 + 0.38 * state.foam, 3.0, 0.35, 2.5) },
     uPatch: { value: new THREE.Vector3(...state.patches) },
   };
   const passes = oceanPassPlan(n, cascades).map((pass) => {
