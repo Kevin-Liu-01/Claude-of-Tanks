@@ -43,7 +43,9 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // and exits north-east; the mill lane leaves the market square west; the sunken lane enters from the west edge and
   // ends at the cross lanes; the north lane links the square to the manor lane.
   autumn: [through, [{ junction: 0 }, 'boundary'], [{ junction: 0 }, 'boundary'], ['boundary', { junction: 0 }], join(0, 1)],
-  steppe: [through, through],
+  // Tarkhan Steppe (round 48, owner 2026-09-23 redesign): highway, station road, east track and plateau road
+  // all leave the square; the sor track starts on the station road and ends at the salt pan's shore.
+  steppe: [through, through, through, through, [{ junction: 1 }, 'shore']],
   railyard: Array.from({ length: 6 }, () => through),
   frontier: [through, through, through, join(0, 2)],
   fjord: [through, through, through, join(0, 2), join(0, 2)],

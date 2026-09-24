@@ -212,9 +212,10 @@ function historicalVistaGroundSource(source, file) {
   return source.replace(current, "style: 'rolling', treeline: 0.12,");
 }
 // Round 48 redesigns (owner 2026-09-23, "Frosthollow, Amberford and Tarkhan Steppe ... are straight rips of Verdant
-// Field, exact same maps — not good, need redesign"): winter.ts and autumn.ts are new landforms by owner decision, like
-// the Mars registration, so their sources leave the historical byte projection instead of being projected back.
-for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts') {
+// Field, exact same maps — not good, need redesign"): winter.ts, autumn.ts and steppe.ts are new landforms by owner
+// decision, like the Mars registration, so their sources leave the historical byte projection instead of being projected
+// back; their own receipts (mapQuality, terrainStreaming, shoreDirtMask, assaultTrenchTerrain, roadContinuity) pin them.
+for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts' && file !== 'steppe.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
     historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(read('src/world/maps/' + file), file), file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),

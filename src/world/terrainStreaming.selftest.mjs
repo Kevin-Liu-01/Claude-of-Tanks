@@ -164,7 +164,9 @@ const GEOMETRY_GOLDENS = {
   urban: 'dc86077914e20440ae7cdcfb044343da6c1386495e2023981261725b8dbd0bd9',
   coastal: '972f0fe7bb785e12ad8ec4ea53b85690b230e3154a0667296b2771d7eff257ba',
   autumn: '922de189c86f1fc1c28a5dfc4aae946eb1a8b1f58f2ecd88e822bc7e24a897c7',
-  steppe: 'a25c054b4fd84f49464f4f6352a6fce3b9e1f486649483236e75f2ef238c2836',
+  // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling (wadi, escarpment, kurgans, grain station);
+  // geometry/bounds digest re-pinned on the new authored relief
+  steppe: 'a57424762e00f76b859018607c16f7289711e256508df0295b6489a626e0504f',
   railyard: '3d7a7820ec57287383057592bf0385b7fc0bbb541605e012274319363ff2559e',
   frontier: '7923000c873765c228c7639f8b061c6c14902777bb0ca8c3865ba4e953e0a809',
   fjord: '28d5248b4252d0efb826de8161d5ef450cf4179f1b284363993d9f8baffe45ab',

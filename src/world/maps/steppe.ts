@@ -1,45 +1,172 @@
-// src/world/maps/steppe.ts — maps r1: Prokhorovka's older, drier cousin. A
-// golden feather-grass plain with LONG sightlines, hull-down micro-folds
-// (microScale pushed hard), planted windbreak tree LINES (the additive
-// vegetation `belts` feature), granite outcrop spurs, a whitewashed khutor
-// hamlet at the crossroads and a dusty heat-haze horizon.
+// src/world/maps/steppe.ts — Tarkhan Steppe, round 48 redesign (owner 2026-09-23:
+// "Frosthollow, Amberford and Tarkhan Steppe look good and have unique colour
+// schemes but are straight rips of Verdant Field, exact same maps — need
+// redesign"). The palette, sky, vegetation species, prop tones, name and id are
+// the map's identity and stay; the battlefield underneath is new.
+//
+// Reference: the Kazakh Sary-Arka grain steppe of the Virgin Lands campaign —
+// a dry braided riverbed (a wide gravel sor-wadi, shallow, crossable everywhere
+// and exposed everywhere) running east–west through the middle; a long gentle
+// escarpment north of it, the edge of a low plateau, opened by two natural
+// ramps; a line of kurgan burial mounds with stone kerbs along the plateau; a
+// Soviet-era rail-spur grain station (elevator head tower, long grain stores,
+// platform hall, loading gantry) as the built-up anchor in the south-east; a
+// collective-farm compound with stone corrals in the west; a salt pan in the
+// north-western lowland; an old caravanserai fort ruin on a rise between the
+// wadi and the escarpment; a straight steppe highway crossing the wadi at a
+// ford and climbing the western ramp; farm tracks; poplar shelterbelts instead
+// of forests. Wide-open sightlines are the point — the wadi banks and the
+// escarpment crest are the cover geometry.
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+// The wadi centreline (metres): z per x, a gentle meander from the west edge to
+// the east edge. The basins below, the gravel bed and the ford all follow it.
+const WADI = [[-450, -30], [-300, -8], [-150, 16], [0, 30], [150, 26], [300, 6], [450, -22]] as const;
+
+// The takyr crusts: one shallow pale marsh every 48 m along the wadi
+// centreline across the playable square.
+function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
+  const out: { x: number; z: number; r: number; dip: number }[] = [];
+  const zAt = (x: number): number => {
+    if (x <= WADI[0][0]) return WADI[0][1] + (x - WADI[0][0]) * 0.14;
+    if (x >= WADI[WADI.length - 1][0]) return WADI[WADI.length - 1][1] - (x - WADI[WADI.length - 1][0]) * 0.18;
+    for (let i = 1; i < WADI.length; i++) {
+      if (x <= WADI[i][0]) {
+        const t = (x - WADI[i - 1][0]) / (WADI[i][0] - WADI[i - 1][0]);
+        return WADI[i - 1][1] + (WADI[i][1] - WADI[i - 1][1]) * t;
+      }
+    }
+    return 0;
+  };
+  // the crusts stop where the border rim begins to lift (|x| > 470); the basins themselves run on past the edge
+  for (let x = -456; x <= 456; x += 48) out.push({ x, z: Math.round(zAt(x)), r: 28, dip: 0.8 });
+  return out;
+}
+
+// Stone kerb (kromlech) around a kurgan: a hexagon of low fieldstone walls with
+// one gap on the south side, radius r around (cx, cz).
+function kurganKerb(cx: number, cz: number, r: number): readonly [number, number, number, number, number][] {
+  const p = (k: number): [number, number] => [cx + r * Math.cos((k * Math.PI) / 3), cz + r * Math.sin((k * Math.PI) / 3)];
+  const ring: [number, number, number, number, number][] = [];
+  for (let k = 0; k < 6; k++) {
+    if (k === 4) continue; // the entrance gap faces south
+    const [x0, z0] = p(k), [x1, z1] = p(k + 1);
+    ring.push([Math.round(x0), Math.round(z0), Math.round(x1), Math.round(z1), (k % 3) + 1]);
+  }
+  return ring;
+}
 
 export default {
   id: 'steppe',
   name: 'Tarkhan Steppe',
-  blurb: 'Golden grassland — long sightlines, shallow folds, windbreak lines',
+  blurb: 'Golden grassland — a dry gravel riverbed, a plateau edge and a grain station',
 
   terrain: {
-    hillScale: 0.85,   // broad, unhurried landforms...
-    // r2: 1.7 -> 1.35 — still real hull-down folds, but at 1.7 every crest
-    // crossed the splat's slope-rock threshold and the plain speckled grey
-    microScale: 1.35,  // ...but STRONG berm/scrape folds: hull-down country
+    hillScale: 0.36,   // a flat steppe: the authored wadi, scarp and kurgans carry the relief (was 0.85)
+    microScale: 1.2,   // still hull-down folds on the open plain, softer than r2's 1.35
     rimH: 18,
-    marshes: [],       // bone dry
-    village: { x0: -70, x1: 70, z0: -20, z1: 110, cx: 0, cz: 45, feather: 40, flatten: 0.82 },
+    // The wadi's takyr floor: a chain of shallow pale crusts (the M layer with
+    // the salt-pan tone below) 48 m apart along WADI inside the basin chain —
+    // a dry silt bed that slows a crossing hull, banked by firm gravel
+    // shoulders — plus the salt pan (sor): two pale dry basins in the
+    // north-western lowland between the wadi's north bank and the escarpment
+    // foot. dip well under the 2.6 m soggy-bowl default — crusts, not bogs.
+    marshes: [
+      ...wadiCrusts(),
+      { x: -318, z: 128, r: 66, dip: 0.6 },
+      { x: -404, z: 62, r: 40, dip: 0.5 },
+    ],
+    clearMarshVeg: true, // a dry crust grows no tufts
+    // The grain station: one graded rect around the station road / east track
+    // junction in the south-east.
+    village: { x0: 150, x1: 410, z0: -330, z1: -120, cx: 284, cz: -222, feather: 44, flatten: 0.86, relief: 0.12 },
+    roads: { paths: [
+      // 0 — the steppe highway: one straight bearing from the south edge across
+      // the wadi ford, through the western escarpment ramp and over the plateau.
+      // Road 0 also carries the utility-pole line (mapQuality).
+      [[-138, -512], [-118, -330], [-98, -160], [-80, -14], [-62, 130], [-40, 356], [-22, 512]],
+      // 1 — the station road: west edge → kolkhoz → highway crossing → grain
+      // station → east edge, along the south bank of the wadi.
+      [[-512, -150], [-386, -146], [-300, -142], [-190, -158], [-92, -172], [40, -196], [160, -212], [284, -222], [410, -226], [512, -232]],
+      // 2 — the east track: south edge → station → wadi crossing → the eastern
+      // escarpment ramp → plateau → north edge.
+      [[336, -512], [318, -400], [296, -290], [284, -222], [272, -120], [262, 20], [256, 150], [248, 344], [244, 400], [240, 512]],
+      // 3 — the plateau road: across the plateau behind the kurgan line.
+      [[-512, 368], [-380, 364], [-230, 360], [-40, 356], [110, 350], [248, 344], [400, 338], [512, 334]],
+      // 4 — the sor track: from the kolkhoz across the wadi to the salt pan's shore (a dead end).
+      [[-300, -142], [-306, -60], [-302, 20], [-282, 96], [-250, 136]],
+    ] },
+    // Three graded aprons (hardstandSurface.ts): the kolkhoz machine yard south
+    // of the corrals, the caravanserai's beaten forecourt at the foot of its
+    // rise, and the post-road halt beside the east track on the eastern ramp
+    // — firm level ground the objective placement seats its 30 m zones on
+    // (the open folds, the road banks and the seeded props leave no such disc
+    // west of centre or on the ramps).
+    hardstands: [
+      { x: -330, z: -240, width: 64, length: 68, yawDeg: 0, level: -2.0, grade: 0 },
+      { x: 60, z: 90, width: 60, length: 60, yawDeg: 0, level: 2.2, grade: 0 },
+      { x: 292, z: 312, width: 58, length: 58, yawDeg: 0, level: 7.5, grade: 0 },
+    ],
+    // Gravel: the wadi bed is bare worked ground (the D layer's pale dusty dirt)
+    // between the banks; the station forecourt and the kolkhoz yard are trodden.
+    workedGround: [
+      { feather: 24, strength: 0.9, boundary: [
+        [-512, 6], [-450, 6], [-300, 30], [-150, 56], [0, 72], [150, 66], [300, 44], [450, 14], [512, 6],
+        [512, -46], [450, -58], [300, -32], [150, -14], [0, -12], [-150, -24], [-300, -46], [-450, -66], [-512, -66],
+      ] },
+      { feather: 16, strength: 0.7, boundary: [[226, -292], [372, -292], [372, -150], [226, -150]] },
+      { feather: 14, strength: 0.6, boundary: [[-372, -206], [-246, -206], [-246, -96], [-372, -96]] },
+    ],
     landforms: [
-      { kind: 'ridge', x: -252, z: 24, length: 390, width: 62, height: 5.8, yawDeg: 6 },
-      { kind: 'ridge', x: 252, z: 48, length: 382, width: 62, height: 5.6, yawDeg: -8 },
-      { kind: 'ridge', x: -48, z: 244, length: 260, width: 54, height: 4.6, yawDeg: 82 },
-      { kind: 'ridge', x: 74, z: -236, length: 248, width: 52, height: 4.4, yawDeg: 78 },
-      { kind: 'basin', x: -146, z: -176, rx: 124, rz: 72, height: -2.4, yawDeg: -12 },
+      // The wadi: a chain of shallow basins along WADI, 150 m apart with rx 130 so
+      // the bed stays within 8 % of one level between centres; the outer two
+      // reach past the red line, so the riverbed continues into the outland.
+      ...WADI.map(([x, z], i) => ({
+        kind: 'basin', x, z, rx: 130,
+        rz: [58, 62, 66, 68, 66, 62, 58][i],
+        height: [-4.6, -5.1, -5.6, -5.8, -5.6, -5.1, -4.6][i],
+        yawDeg: [8, 9, 7, 2, -5, -9, -10][i],
+        wetScale: 1, // the takyr crusts lie IN the bed: the marsh must not lift the basin back up
+      })),
+      // The escarpment (the plateau edge): three ridge segments with the crest
+      // near z ≈ 220, with two gaps — the highway ramp (x ≈ −120..0) and the
+      // east-track ramp (x ≈ 230..310). The segments end with the ridge's own
+      // 28 % taper, so the gaps read as saddles, not cuts.
+      { kind: 'ridge', x: -330, z: 232, length: 420, width: 170, height: 12.0, yawDeg: -3 },
+      { kind: 'ridge', x: 112, z: 222, length: 230, width: 170, height: 11.4, yawDeg: -3 },
+      { kind: 'ridge', x: 440, z: 206, length: 260, width: 170, height: 11.8, yawDeg: -4 },
+      // The plateau behind the crest: one broad low ridge whose southern
+      // shoulder lengthens the back slope and which has tapered out before the
+      // enemy deployment ground (pads sit on base terrain: the spawn-clear
+      // fade would otherwise dimple every pad into a landform). The plateau
+      // road runs across it behind the kurgans.
+      { kind: 'ridge', x: 0, z: 270, length: 1400, width: 170, height: 4.5, yawDeg: -3 },
+      // The kurgan line: five burial mounds on the crest of the plateau edge —
+      // the valley-edge placement of the real steppe, seen on the skyline from
+      // the southern approach and hull-down ground for the plateau side. The
+      // highway ramp breaks the line between the third and fourth mounds.
+      { kind: 'knoll', x: -400, z: 236, r: 32, height: 7.2 },
+      { kind: 'knoll', x: -270, z: 231, r: 28, height: 6.2 },
+      { kind: 'knoll', x: -150, z: 227, r: 36, height: 8.4 },  // the great kurgan
+      { kind: 'knoll', x: 60, z: 224, r: 30, height: 6.6 },
+      { kind: 'knoll', x: 170, z: 220, r: 32, height: 7.0 },
+      // The caravanserai rise between the wadi's north bank and the escarpment foot.
+      // (its forecourt apron below flattens the toe; the mound stands 20 m up-slope of the apron's edge)
+      { kind: 'knoll', x: 70, z: 142, rx: 56, rz: 46, height: 6.5, yawDeg: 12 },
     ],
   },
 
   spawns: {
-    // flat-scanned pad (Δh 2.9 over the ally arc — the folds stay OUT of the
-    // spawn apron; they start where the drive does)
-    player: { x: 250, z: -330 },
-    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc on the far northwest
-    // rise (the old list scattered to ±330 x abreast of the village).
-    // Flat-scanned via tools/tmp-ai-r7-spawnscan.mjs — minNy>=0.86,
-    // relief<=5 m over the pad radius, >=38 m apart, >=380 m from the
-    // player pad.
+    // The player team deploys on the low southern steppe west of the highway;
+    // the enemy arc stands on the plateau ~180 m behind the kurgan crest (the
+    // spawn-clear fade ends at 90 m, so the mounds keep their height), with the
+    // highway and the east track passing between pads, short of the rim lift
+    // (past z ≈ 470).
+    player: { x: -210, z: -424 },
     enemies: [
-      { x: -125, z: 378 }, { x: -188, z: 352 }, { x: -61, z: 399 }, { x: -229, z: 363 },
-      { x: -32, z: 426 }, { x: -270, z: 325 }, { x: 27, z: 429 },
+      { x: -262, z: 416 }, { x: -172, z: 424 }, { x: -84, z: 410 }, { x: 10, z: 422 },
+      { x: 100, z: 414 }, { x: 186, z: 426 }, { x: 300, z: 402 },
     ],
   },
 
@@ -51,7 +178,9 @@ export default {
     // r2: warm sun-bleached outcrop stone — the neutral grey read as cold
     // blue slag wherever a fold crest picked up partial rock
     rockTone: (h: number, s: number, l: number) => [0.082, clamp01(s * 0.30 + 0.10), clamp01(l * 1.05 + 0.05)],
-    mudTone: (h: number, s: number, l: number) => [0.08, 0.28, clamp01(l * 1.2 + 0.02)],
+    // round 48: the marsh layer is the salt pan — a pale, near-white crust
+    mudTone: (h: number, s: number, l: number) => [0.10, 0.10, clamp01(l * 1.45 + 0.22)],
+    mudRough: 1.2,
     // straw lift / olive-brown DARKENER / pale hay — the macro range that
     // keeps 300-800 m readable on an open plain (the desert r3 lesson)
     // r3: darkener pulled off red toward olive — the brown fields read as
@@ -71,23 +200,25 @@ export default {
     clusterMix: [['poplar', 0.50], ['oak', 0.35], ['pine', 0.15]],
     loneMix: [['poplar', 0.54], ['oak', 0.34], ['pine', 0.12]],
     rimMix: [['poplar', 0.40], ['oak', 0.35], ['pine', 0.25]],
-    clusterCount: 7,   // the plain is the point — groves are rare landmarks
-    loneCount: 30,
+    clusterCount: 5,   // the plain is the point — groves are rare landmarks
+    loneCount: 24,
     rimCount: 34,
     grassDensity: 1.1,
     bushCount: 0.72,
     bushSpecies: 'oak',
-    // planted WINDBREAK LINES (vegetation.ts belts, maps r1): field-boundary
-    // rows that read as the steppe's signature man-made geometry and serve
-    // as the map's concealment corridors
+    // Shelterbelts (vegetation.ts belts): poplar rows along the highway and the
+    // station road, oak windbreaks on the kolkhoz and the plateau — the
+    // steppe's man-made tree geometry and its concealment corridors.
     belts: [
-      { x0: -420, z0: -150, x1: -70, z1: -162, species: 'poplar', gap: 7 },
-      { x0: -380, z0: 58, x1: -130, z1: 72, species: 'poplar', gap: 7 },
-      { x0: 120, z0: -205, x1: 400, z1: -188, species: 'poplar', gap: 7 },
-      { x0: 95, z0: 168, x1: 380, z1: 188, species: 'poplar', gap: 7 },
-      { x0: -300, z0: 258, x1: -50, z1: 272, species: 'oak', gap: 8 },
-      { x0: 205, z0: -35, x1: 430, z1: -15, species: 'poplar', gap: 8 },
-      { x0: -430, z0: -300, x1: -180, z1: -312, species: 'oak', gap: 8 },
+      { x0: -150, z0: -470, x1: -102, z1: -60, species: 'poplar', gap: 9 },   // highway, west verge (south)
+      { x0: -118, z0: -470, x1: -70, z1: -60, species: 'poplar', gap: 9 },    // highway, east verge (south)
+      { x0: -82, z0: 90, x1: -58, z1: 330, species: 'poplar', gap: 9 },       // highway, west verge (north)
+      { x0: -50, z0: 90, x1: -27, z1: 330, species: 'poplar', gap: 9 },       // highway, east verge (north)
+      { x0: -380, z0: -130, x1: -190, z1: -142, species: 'poplar', gap: 8 },  // station road, kolkhoz reach
+      { x0: -190, z0: -142, x1: 150, z1: -196, species: 'poplar', gap: 8 },   // station road, to the station
+      { x0: 300, z0: -470, x1: 266, z1: -240, species: 'poplar', gap: 9 },    // east track approach
+      { x0: -370, z0: -86, x1: -250, z1: -80, species: 'oak', gap: 8 },       // kolkhoz windbreak
+      { x0: -440, z0: 386, x1: -300, z1: 382, species: 'oak', gap: 10 },      // plateau field boundary
     ],
     grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
     tuftTone: (h: number, s: number, l: number) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
@@ -106,17 +237,26 @@ export default {
   },
 
   props: {
-    // world-dressing r1: steppe farmstead catalog — farmhouse, granary, mill
-    plan: ['farmhouse', 'barn', 'tavern', 'mill', 'cottage', 'barn', 'ruin',
-      'granary', 'barn', 'farmhouse', 'cottage'],
-    destructibleBuildings: ['longhouse', 'deserttent', 'motorpool', 'fieldhut'],
+    // The grain station (round 48): the elevator's head tower, long grain
+    // stores, the platform hall, the loading gantry, freight ranks and the
+    // railway workers' houses along the station road and the east track.
+    plan: ['watertower', 'warehouse', 'depot', 'granary', 'gantry', 'warehouse', 'cornershop',
+      'shed', 'containerRow', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
+      'cottage', 'ruin', 'barn', 'containerRow', 'cottage'],
+    destructibleBuildings: ['longhouse', 'deserttent', 'motorpool', 'quonsethut'],
+    // rail-kit stores are wide: the same lateral step and ground-fit tolerance
+    // as Cinder Junction
+    sideSkip: 0.15, spacingPad: 7, buildingLat: [12, 5], maxSpread: 2.4,
     tacticalBeats: [
-      { id: 'western-armored-farm', role: 'brawl', x: -254, z: 64, yawDeg: 8,
-        structure: 'motorpool', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -15 },
-      { id: 'eastern-windbreak-post', role: 'scout', x: 246, z: 62, yawDeg: -8,
-        structure: 'fieldhut', outcrop: { count: 4, radius: 8, scaleMax: 2.5 } },
-      { id: 'northern-khutor', role: 'support', x: 24, z: 270, yawDeg: 4,
-        structure: 'longhouse', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+      // the kolkhoz: a long cattle barn inside the stone corrals, west lane
+      { id: 'kolkhoz-cattle-barn', role: 'brawl', x: -318, z: -118, yawDeg: 90,
+        structure: 'longhouse', redoubt: true, outcrop: false, wreck: true, wreckOffsetX: -18 },
+      // the caravanserai ruin on its rise: broken fort walls, tumbled stone, a herders' camp
+      { id: 'tarkhan-caravanserai-ruin', role: 'scout', x: 70, z: 142, yawDeg: 12,
+        structure: 'deserttent', outcrop: { count: 7, radius: 12, scaleMax: 3.0 } },
+      // the station's machine yard under the elevator, east lane
+      { id: 'elevator-machine-yard', role: 'support', x: 330, z: -160, yawDeg: 0,
+        structure: 'motorpool', redoubt: true, outcrop: false, wreck: true, wreckOffsetZ: 16 },
     ],
     tones: {
       plaster: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
@@ -128,12 +268,18 @@ export default {
     rockTone: (h: number, s: number, l: number) => [0.085, 0.09, clamp01(l * 0.95)], // granite spur boulders
     wallStoneChance: 0.3,
     wallRuns: [
-      [-58, 4, -58, 56, 2], [70, 24, 70, 88, 3], [-6, 102, 46, 102, 1],
-      // long field boundaries knitting the open plain
-      [-220, -80, -150, -80, 2], [150, -140, 216, -140, 3],
-      [-70, 200, 0, 200, 2], [220, 90, 286, 90, 1],
-      [-320, 30, -252, 30, 3], [60, -260, 128, -260, 2],
-      [-160, -280, -96, -280, 1], [260, -60, 322, -60, 2],
+      // kolkhoz stone corrals south of the station road, and the yard wall north of it
+      [-360, -200, -290, -200, 2], [-360, -200, -360, -166, 1], [-290, -200, -290, -166, 3], [-330, -166, -330, -200, 2],
+      [-350, -104, -286, -104, 3], [-350, -104, -350, -134, 1], [-260, -92, -260, -128, 2],
+      // the caravanserai fort: three breached walls on the rise
+      [48, 122, 80, 122, 2], [96, 130, 96, 164, 3], [48, 164, 74, 164, 1], [48, 130, 48, 152, 2],
+      // stone kerbs around the great kurgan and the western kurgan
+      ...kurganKerb(-150, 227, 46),
+      ...kurganKerb(-400, 236, 42),
+      // station yard walls
+      [230, -300, 300, -300, 3], [366, -296, 366, -250, 2],
+      // plateau field boundaries
+      [-440, 396, -350, 400, 2], [330, 372, 420, 366, 1],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // the steppe's dressing IS hay + stone: bale silhouettes on every fold
@@ -183,12 +329,14 @@ export default {
   minimap: {
     base: [140, 124, 74], hard: [126, 116, 96], soft: [110, 102, 64],
     forest: 'rgba(74,88,40,0.85)', forestStroke: 'rgba(44,54,24,0.9)',
-    water: 'rgba(120,112,80,0.6)', waterStroke: 'rgba(80,74,52,0.7)',
+    // round 48: the only "water" is the salt pan — a pale crust on the plate
+    water: 'rgba(216,210,190,0.78)', waterStroke: 'rgba(150,142,118,0.7)',
     roadCasing: 'rgba(70,58,38,0.9)', roadFill: 'rgba(212,192,148,0.95)',
     buildingFill: '#e8e2d0',
   },
 
-  // behind the spawn looking down the long axis: ally tanks near-field, the
-  // fold country + windbreak lines + hamlet running away to the dust haze
-  shot: { pos: [320, 30, -420], look: [-40, 6, 140] },
+  // behind the player deployment looking north-east: ally tanks near-field,
+  // the kolkhoz road and the wadi running away to the caravanserai rise and
+  // the escarpment in the dust haze
+  shot: { pos: [-330, 36, -470], look: [60, 6, 60] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

@@ -70,8 +70,13 @@ export function assertRoadNetwork(mapId, roads) {
       if (intent === 'boundary') assert.ok(Math.abs(Math.max(...p.map(Math.abs)) - 512) < 1e-7, `${mapId}/${index}/${end}: portal reaches terrain edge`);
       else if (intent === 'loop') assert.deepEqual(road[0], road.at(-1), 'closed loop has no naked terminal');
       else if (intent === 'shore') {
-        assert.equal(mapId, 'coastal', 'no undocumented yard/shore terminal exemption');
-        assert.equal(p[0], 262, 'shore road reaches exact authored strand limit, not the previous256m sample');
+        if (mapId === 'steppe') {
+          // round 48 (2026-09-23, Tarkhan Steppe redesign): the sor track is a farm dead end on the salt pan's shore
+          assert.deepEqual(p, [-250, 136], 'steppe sor track ends at the authored pan shore');
+        } else {
+          assert.equal(mapId, 'coastal', 'no undocumented yard/shore terminal exemption');
+          assert.equal(p[0], 262, 'shore road reaches exact authored strand limit, not the previous256m sample');
+        }
       } else assert.ok(distance(p, roads[intent.junction]) < 1e-6, `${mapId}/${index}/${end}: endpoint touches named spine${intent.junction}`);
     });
   });
