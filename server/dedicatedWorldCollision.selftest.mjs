@@ -59,6 +59,8 @@ const roadCompletionCensus = {
   // round 63 (2026-09-24, the bridge's open arches): shard recaptured headless on the lane tree — the bridge record is
   // the same one record with 31 parts (deck, abutments, piers, vault bands, parapets), so the census is unchanged and
   // only the shard's bytes moved (1827167 → 1829051 B).
+  // round 67 (2026-09-24, the bridge's vault bands halved): shard recaptured headless on the lane tree — the one bridge
+  // record now carries 55 parts (eight 0.1375 m haunch bands per arch); census unchanged (1829051 → 1830655 B).
   autumn: [5873, 5727, 5822],
   // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling — shard recaptured headless on the new map
   // (grain station, kolkhoz corrals, kurgan kerbs, fort walls; shelterbelts replace most groves)

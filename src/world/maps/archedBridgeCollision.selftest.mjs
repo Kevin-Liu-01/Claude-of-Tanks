@@ -1,8 +1,11 @@
 // Receipt of the arched bridge's collision record (round 63, 2026-09-24; round 61's open item "a shell fired through
 // an arch opening hits the body"): Amberford's record is a compound whose parts follow the kit's geometry — the deck
 // from the crown line up (1.0 m: over the 0.9 m standable height, so a hull on the deck mounts it and is never pushed
-// by its sides), the abutments and piers from the footing to the crown line, each vault as 0.3 m haunch bands
-// reaching from the pier faces to the arc at the band's middle height, the parapets last — so a shell along the river
+// by its sides), the abutments and piers from the footing to the crown line, each vault as 0.15 m haunch bands
+// (round 67, 2026-09-24: halved from 0.3 — eight 0.1375 m bands over the 1.1 m rise instead of four 0.275 m ones,
+// so a shell's height error against the arc is at most half a band, 6.9 cm, half what it was) reaching from the
+// pier faces to the arc at the band's middle
+// height, the parapets last — so a shell along the river
 // passes through every arch up to the vault and hits the piers, the deck and the parapets; a hull low enough for the
 // vault passes under the deck and a taller one is pushed by it; the structure support keeps the deck as the floor;
 // and the committed dedicated shard carries the same parts (a stale shard would give the server the round-61 wall).
@@ -37,8 +40,9 @@ const along = (offset) => [cx + ux * offset, cz + uz * offset];
 
 // ------------------------------------------------------------------ the parts
 const parts = record.shape2.parts;
-const bands = Math.ceil((crownY - springY) / 0.3);
-assert.equal(bands, 4); assert.equal(parts.length, 1 + 2 + (arches - 1) + arches * bands * 2 + 2, 'deck, abutments, piers, vault bands, parapets');
+const bands = Math.ceil((crownY - springY) / 0.15);
+assert.equal(bands, 8, 'round 67: eight 0.1375 m bands over the 1.1 m rise'); assert.equal(parts.length, 1 + 2 + (arches - 1) + arches * bands * 2 + 2, 'deck, abutments, piers, vault bands, parapets');
+near((crownY - springY) / bands, 0.1375, 1e-9, 'the band height');
 const [deckPart, abutmentA, abutmentB, ...rest] = parts, piers = rest.slice(0, arches - 1), haunches = rest.slice(arches - 1, rest.length - 2), parapets = rest.slice(-2);
 near(deckPart.y0, crownY, 1e-9, 'the deck part starts at the crown line'); assert.equal(deckPart.y1, deckY);
 assert.ok(deckPart.y1 - deckPart.y0 >= HULL_STANDABLE_HEIGHT_M + 0.05, 'the deck part is a standable floor with margin');
@@ -67,7 +71,14 @@ for (let i = 0; i < arches; i++) for (let band = 0; band < bands; band++) {
   near(left.cx, lx, 1e-9, 'left haunch'); near(left.cz, lz, 1e-9, 'left haunch'); near(right.cx, rx, 1e-9, 'right haunch'); near(right.cz, rz, 1e-9, 'right haunch');
   if (band === 0) assert.ok(opening > 0.9 * chord / 2, 'the lowest band is nearly the full chord');
   if (band === bands - 1) assert.ok(opening < 0.45 * chord / 2, 'the crown band is narrow');
+  // round 67: the haunch edge lies ON the arc at the band's middle height, so the arc's height at the haunch's
+  // opening is within half a band (6.9 cm) of any height inside the band — a shell's error against the arc
+  { const arcY = centreY + Math.sqrt(Math.max(0, radius * radius - opening * opening));
+    near(arcY, (y0 + y1) / 2, 1e-9, 'the haunch edge is on the arc at the band middle');
+    assert.ok(y1 - y0 <= 0.1375 + 1e-9 && Math.max(arcY - y0, y1 - arcY) <= 0.06875 + 1e-9, 'a shell meets or passes the haunch within 6.9 cm of the arc\'s height'); }
 }
+// round 67: the deck part and the parapets are byte-identical to the round-63 record (the navigation reads the deck)
+assert.deepEqual([deckPart.kind, deckPart.hw, deckPart.hl, deckPart.y1], ['obb', halfWidth, bodyHalf, deckY]);
 for (const parapet of parapets) { assert.equal(parapet.y0, deckY); near(parapet.y1, deckY + 1.1, 1e-9, 'parapet height'); assert.equal(parapet.hw, 0.25); }
 assert.equal(record.min[1], bottom); near(record.max[1], deckY + 1.1, 1e-9, 'the record spans footing to parapet top');
 
@@ -119,4 +130,4 @@ for (let i = 0; i < parts.length; i++) for (const key of ['cx', 'cz', 'hw', 'hl'
   const high = world.raycast(new THREE.Vector3(ax - vx * 30, waterY + 2.0, az - vz * 30), new THREE.Vector3(vx, 0, vz), 60);
   assert.equal(high?.record?.kind, 'bridge', 'the server: the deck stops the high shot'); }
 world.release?.();
-console.log(`archedBridgeCollision.selftest: ${parts.length} parts (deck ${(deckY - crownY).toFixed(2)} m from the crown line, 2 abutments, ${piers.length} piers, ${haunches.length} vault haunches in ${bands} bands, 2 parapets); shells pass every arch up to 1.3 m over the water and meet the haunches, piers, deck and parapets; a 1.5 m body passes under the middle arch, a 2.2 m body is stopped; the deck is the floor; the committed shard matches`);
+console.log(`archedBridgeCollision.selftest (round 67 bands): ${parts.length} parts (deck ${(deckY - crownY).toFixed(2)} m from the crown line, 2 abutments, ${piers.length} piers, ${haunches.length} vault haunches in ${bands} bands, 2 parapets); shells pass every arch up to 1.3 m over the water and meet the haunches, piers, deck and parapets; a 1.5 m body passes under the middle arch, a 2.2 m body is stopped; the deck is the floor; the committed shard matches`);

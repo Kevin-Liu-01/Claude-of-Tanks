@@ -1690,8 +1690,14 @@ const BRIDGE_BODY_TOP_UNDER_DECK_M = 0.45;
 const BRIDGE_SPANDREL_FILL_M = 0.55;
 /** The pier face shown above the water surface before the arch springs. */
 const BRIDGE_SPRING_OVER_WATER_M = 0.3;
-/** Round 63: the vault's collision bands (the building hitboxes' shell bands are 0.5 m; the arcs are finer). */
-const BRIDGE_VAULT_BAND_M = 0.3;
+/**
+ * Round 63: the vault's collision bands (the building hitboxes' shell bands are 0.5 m; the arcs are finer). Round 67
+ * (2026-09-24): halved — at 0.3 (four 0.275 m bands over the 1.1 m rise) a shell within a band's height of the arc
+ * could meet stone the eye sees through or pass a sliver of it; eight 0.1375 m bands halve that — every haunch edge
+ * lies ON the arc at its band's middle height, so a shell's height error against the arc is at most half a band,
+ * 6.9 cm (13 cm before). The deck part, the abutments, the piers and the parapets are the parts they were.
+ */
+const BRIDGE_VAULT_BAND_M = 0.15;
 
 /**
  * Round 61 (2026-09-24): the arched stone bridge on the deck plane terrain.ts resolved — the water flows under it.
