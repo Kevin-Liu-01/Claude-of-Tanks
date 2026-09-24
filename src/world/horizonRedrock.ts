@@ -17,6 +17,9 @@ export interface CanyonGround {
   /** Round 47 (2026-09-23): the map's own bay contours evaluated past the square — wetness 0..1 and the bay's water
    * level — so the ring's marine faces and the sheet apron continue the coast instead of a radial sector. */
   getOutlandWaterAt?(x: number, z: number): { wetness: number; level: number } | null;
+  /** Round 63 (2026-09-24): 0..1 where the ring's near rows must seat on the outland itself (terrain.ts, a railway
+   * cutting's mouth); absent on every map without one, whose ring is byte-identical. */
+  getOutlandSeatWeightAt?(x: number, z: number): number;
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }

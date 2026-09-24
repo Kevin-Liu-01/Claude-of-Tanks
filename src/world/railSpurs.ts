@@ -267,6 +267,38 @@ export function railCuttingHeight(
   return h;
 }
 
+/** The horizon ring's near rows seat on the outland exactly inside the notch and hand back over this far past the daylight line. */
+export const RAIL_CUTTING_SEAT_FADE_M = 30;
+
+/**
+ * Round 63: how far the horizon ring's near rows must seat on the outland itself at (x, z) — 1 inside the cutting's
+ * outland corridor (the fan floor and its faces up to the daylight line, read on the uncut outland `groundAt`), fading
+ * to 0 over RAIL_CUTTING_SEAT_FADE_M beyond it, 0 everywhere else. The ring continues the square's edge by the rim's
+ * interior gradient, sampled 36 m inward along the RADIAL; at a notch narrower than that skew the sample lands on a
+ * face or on the floor 12 m off the axis and the ring carried the south face across the mouth as a 10 m hill
+ * (maps/horizon.ts seatHorizonSkirtOnGround reads this weight; a map without cuttings publishes none).
+ */
+export function railCuttingSeatWeight(
+  cuttings: readonly RailCutting[], portalYs: ArrayLike<number>, x: number, z: number,
+  groundAt: (x: number, z: number) => number,
+): number {
+  let weight = 0;
+  for (let i = 0; i < cuttings.length; i++) {
+    const cut = cuttings[i];
+    const dx = x - cut.px, dz = z - cut.pz;
+    const along = dx * cut.ux + dz * cut.uz;
+    if (along <= 0) continue;
+    const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
+    const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
+    const depth = groundAt(x, z) - (portalYs[i] + cut.grade * along);
+    const daylight = halfFloor + (depth > 0 ? depth * cut.batter : 0);
+    if (lateral >= daylight + RAIL_CUTTING_SEAT_FADE_M) continue;
+    const w = 1 - smoothstep01(daylight, daylight + RAIL_CUTTING_SEAT_FADE_M, lateral);
+    if (w > weight) weight = w;
+  }
+  return weight;
+}
+
 /**
  * The cutting's exclusion for vegetation and scattered props: the floor and its cess shoulder from the portal on, and
  * every point the cutting lowered by more than a few centimetres (the cut faces up to the daylight line, the fade

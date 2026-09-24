@@ -1429,6 +1429,11 @@ function seatHorizonSkirtOnGround(
     // within 90 m, and the authored ring relief takes over between 60 and 380 m past the edge — so a hill, dune or
     // mesa that reaches the red line carries on as the same landform instead of stopping at a seated skirt.
     const outland = ground.getOutlandHeightAt;
+    // Round 63 (2026-09-24, Tarkhan's railway cutting): the rim's interior gradient is sampled 36 m inward along the
+    // radial, 12 m off a notch's axis at that column, so the ring carried the cutting's south face across its mouth as
+    // a 10 m hill. Where the height field says so (a cutting's outland corridor, fading out past its daylight line) the
+    // near rows seat on the outland itself; every other map publishes no weight and keeps its rows to the bit.
+    const seatWeight = ground.getOutlandSeatWeightAt;
     if (outland) {
       // Round 49 (2026-09-23, the Saltwind-mouth diagnosis): this hand-over reached only the rows BEFORE the first
       // authored ridge, so beside a sea opening the range profile began its rise at that row — a 25–30 m step on one
@@ -1445,7 +1450,11 @@ function seatHorizonSkirtOnGround(
         if (edgeOut < -40) continue; // buried under the battlefield's own chunks
         if (ri >= ridgeRow && edgeOut >= 470) break; // rows step outward: the authored profile owns the rest
         const continued = edgeH + gradient * clamp(edgeOut, 0, 60);
-        const geology = continued + (outland.call(ground, x, z) - continued) * smoothstep(0, 90, edgeOut);
+        let geology = continued + (outland.call(ground, x, z) - continued) * smoothstep(0, 90, edgeOut);
+        if (seatWeight) {
+          const seat = seatWeight.call(ground, x, z);
+          if (seat > 0) geology += (outland.call(ground, x, z) - geology) * seat;
+        }
         const handOver = ri < ridgeRow ? smoothstep(60, 380, edgeOut) : 1;
         const share = headland > 0 ? handOver + (smoothstep(200, 470, edgeOut) - handOver) * headland : handOver;
         const h = geology + (ring.heights[i] - geology) * share;
@@ -2817,6 +2826,8 @@ export function* buildHorizonRingSteps(
     outcrops, // round 55: and off the knobs below the treeline
     canopyMean: horizonVista?.canopyMean, // round 55: the crown mottle centred on the canopy tile's mean
     canopyDetail: vistaUniforms?.uVCanopy?.value as THREE.Texture | undefined,
+    // round 63: no ring trees on a railway cutting's outland corridor (the line's right-of-way through the mouth)
+    ...(ground?.getOutlandSeatWeightAt ? { clearAt: ground.getOutlandSeatWeightAt.bind(ground) } : {}),
     haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     palettes: {
       conifer: rimConiferLead ? vegetation?.palettes?.[rimConiferLead]?.canopy : undefined,

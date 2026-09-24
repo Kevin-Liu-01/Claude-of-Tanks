@@ -580,6 +580,9 @@ interface HorizonForestOptions {
   haze?: number;
   /** Textures created here join the ring's retained list. */
   retainedTextures?: THREE.Texture[];
+  /** Round 63 (2026-09-24): 0..1 where the ring must stay clear of trees — a railway cutting's outland corridor, the
+   * line's right-of-way (terrain.ts getOutlandSeatWeightAt); absent on every other map, whose draws are unchanged. */
+  clearAt?: (x: number, z: number) => number;
 }
 
 /** vegetation.ts buildPineFarGeometry / buildOakFarGeometry defaults (vista pass values). */
@@ -845,6 +848,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         const z = positions[i00 * 3 + 2] + (positions[i01 * 3 + 2] - positions[i00 * 3 + 2]) * u + dz * w;
         const y = heights[i00] + (heights[i01] - heights[i00]) * u + (heights[i10] - heights[i00]) * w;
         if (y < 1.0) continue; // the sea aperture
+        if (options.clearAt && options.clearAt(x, z) > 0.5) continue; // round 63: the cutting's right-of-way
         const stand = standWeightAt(x, y, z, slope, band);
         if (rng() > (band ? stand * 1.2 : stand * stand * 1.6)) continue;
         const snowFade = snowline <= 1 ? 1 - Math.min(1, Math.max(0, (y / maxHeight - (snowline - 0.06)) / 0.08)) : 1;

@@ -26,7 +26,8 @@ import { composeLakeHeight, type LakeHeightResult } from './lakeHeightCompositio
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import {
-  createRailSpurExclusion, railCuttingExcludes, railCuttingHeight, resolveRailCuttings, type RailSpurConfig,
+  createRailSpurExclusion, railCuttingExcludes, railCuttingHeight, railCuttingSeatWeight, resolveRailCuttings,
+  type RailSpurConfig,
 } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
@@ -327,6 +328,9 @@ export interface HeightField {
    * the rim lift) with no roads, corridors, villages, lakes, pads or micro-relief — the horizon ring seats its near
    * rows on it so the geology continues across the border instead of switching to the authored ring relief. */
   getOutlandHeightAt?(x: number, z: number): number;
+  /** Round 63: 0..1 — where the horizon ring's near rows must seat on the outland itself (a railway cutting's mouth:
+   * the rim's interior gradient would carry the notch's faces across it); absent on a map without cuttings. */
+  getOutlandSeatWeightAt?(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
@@ -1906,6 +1910,8 @@ function* heightFieldBuildSteps(
     getOutlandHeightAt: railCuttings !== null
       ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z))
       : outlandHeightAt,
+    ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
+      railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),

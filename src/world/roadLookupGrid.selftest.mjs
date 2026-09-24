@@ -145,6 +145,8 @@ function historicalHeightFieldSource(text) {
     getOutlandHeightAt: railCuttings !== null
       ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z))
       : outlandHeightAt,
+    ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
+      railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt) } : {}),
 `, ''],
     // Round 47 (2026-09-23, shorelines): the bay contour query the ring, the material bake and the sheet apron read is a
     // declared addition beside the wetness sampler — projected out of the HISTORICAL hash only.
