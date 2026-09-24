@@ -1749,9 +1749,13 @@ function buildT72B3M(P: T72BuilderPort): void {
     for (const s of [-1, 1]) P.add('hull', box(0.033, 0.06, 0.20), s * 1.6415, 1.36, -3.90);
     // r10c: rear-ramp skids (ref side bottoms 0.376@-3.79 / 0.43@-3.90 are its
     // faded track, NOT belly — front-floor law above)
+    // 2026-09-23 (round 46b): the (-3.76, 0.54) sprocket wrap now encloses both skids (its lower run
+    // passes 0.24-0.32 under them, the wheel body outboard of them), so they read nothing in side view
+    // any more; they move one voxel inboard of the 1.04 shoe lane (x 0.97..1.02, the §B4 tub law) so
+    // the strict sweep never meets them. Sizes and z stay.
     for (const s of [-1, 1]) {
-      P.add('hull', box(0.05, 0.135, 0.12), s * 1.04, 0.4425, -3.80);
-      P.add('hull', box(0.05, 0.115, 0.08), s * 1.04, 0.5775, -3.90);
+      P.add('hull', box(0.05, 0.135, 0.12), s * 0.995, 0.4425, -3.80);
+      P.add('hull', box(0.05, 0.115, 0.08), s * 0.995, 0.5775, -3.90);
     }
     // r10: hatch dropped onto the LOCAL deck line (deckY 1.38 is the plateau;
     // at hatchZ 0.60 the plate is 1.34 — the old 1.425 crown owned 3 side cols)
@@ -1994,15 +1998,24 @@ function buildT72B3M(P: T72BuilderPort): void {
       // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): the 0.662 rear
       // pitch put 2R/pitch at 1.13 — the two rear tires overlapped by 9 cm and the -3.46 sprocket sat
       // inside the rear wheel. The real T-72B3M runs six 750 mm wheels on a ~0.80 m pitch, so the six
-      // stations respread to 0.80 from the (unchanged) front wheel back (2R/pitch 0.94, a 5 cm gap) and
-      // the sprocket moves aft to -3.72 to clear the rear wheel by 4 cm (0.72 m from the -4.436 plate,
-      // as on the real hull; the wrap crown stays under the 1.22 sponson floor). The front idler, its
-      // print-tuned ramp and the mudflap are untouched.
+      // stations respread to 0.80 from the (unchanged) front wheel back (2R/pitch 0.94, a 5 cm gap).
+      // The front idler, its print-tuned ramp and the mudflap are untouched.
       wheelZs: [-3.11, -2.31, -1.51, -0.71, 0.09, 0.89],
       // r9 gear-fade tracking: ref front bottom ramp 0.11@1.26 -> 0.89@1.90
       // (idler higher/smaller still); rear ramp 0.16@-3.47 -> 0.35@-3.79
       // (sprocket nudged up/forward). Certified print-fade class, softened.
-      sprocket: { z: -3.72, y: 0.74, r: 0.26 }, idler: { z: 1.38, y: 0.80, r: 0.18 },
+      // 2026-09-23 (round 46b, strict track-sweep clip): the respread sprocket first went to (-3.72, 0.74),
+      // which put its wrap window (z -3.98..-3.46, crown 1.03 + shoes) under the stern fuel drums — the
+      // drum bodies bottom at 0.90 from z -3.96 forward to -3.82, their strap rings at 0.88 (-3.97) and
+      // cradle bars at 0.895 (-3.99) — so the band and shoes crossed drum, cradle and the rear-ramp skids
+      // (200 vox / 12 shoe vox on t72b3m and bmpt_terminator2). The drums are certified plan/rear reads
+      // and stay; the sprocket instead sits where the wrap passes UNDER them: centre (-3.76, 0.54), 0.657 m
+      // from the rear wheel centre (2 cm tire-to-sprocket air), band crown 0.83 = the road-wheel tops
+      // (the upper run stays level), shoe crown 0.865 = 3.5 cm under the drum bottoms at their front
+      // caps and 8 cm under the strap rings; the band's rear arc ends at -4.05, 8 cm under the mud
+      // flaps. The rear arc bottom now reads 0.25@-3.79 / 0.29@-3.90 (the print's 0.376 / 0.43 were
+      // carried by the fade skids, which the wrap now encloses).
+      sprocket: { z: -3.76, y: 0.54, r: 0.26 }, idler: { z: 1.38, y: 0.80, r: 0.18 },
       // owner 2026-09-23: no return rollers — the real T-72/T-90 family carries its upper run on the
       // road-wheel tops (the three fictional rollers leave, as on the round-40 Polish T-72 hulls).
       rollers: [],
@@ -2106,9 +2119,9 @@ function buildT72B3M(P: T72BuilderPort): void {
         // against the shoes rather than their own wheel-mounted face package.
         P.add('hullRunningGearDark', torus(0.115, 0.012, 14), s * 1.4425, 0.80, 1.48, 0, 0, Math.PI / 2);
         P.add('hullRunningGearDetail', cylX(0.062, 0.05, 10), s * 1.4435, 0.80, 1.48);
-        // (sprocket hub set follows the -3.72 final drive, owner 2026-09-23 wheel follow-up)
-        P.add('hullRunningGearDark', torus(0.165, 0.013, 16), s * 1.4425, 0.74, -3.72, 0, 0, Math.PI / 2);
-        P.add('hullRunningGearDetail', cylX(0.085, 0.05, 10), s * 1.4435, 0.74, -3.72);
+        // (sprocket hub set follows the (-3.76, 0.54) final drive, owner 2026-09-23 wheel follow-up / round 46b)
+        P.add('hullRunningGearDark', torus(0.165, 0.013, 16), s * 1.4425, 0.54, -3.76, 0, 0, Math.PI / 2);
+        P.add('hullRunningGearDetail', cylX(0.085, 0.05, 10), s * 1.4435, 0.54, -3.76);
       }
     }
     // Relikt soft-bag skirt courses + hard front plates (stations 3.58 uniform)
