@@ -1,56 +1,127 @@
-// src/world/maps/winter.ts — Erlenberg vibes: snow splat, a frozen lake you
-// can drive across, bare birches, snow-dusted pines, flat overcast light.
+// src/world/maps/winter.ts — Frosthollow: a Carpathian / Tatra winter valley.
+//
+// Round 48 redesign (owner 2026-09-23: "Frosthollow, Amberford and Tarkhan
+// Steppe look good and have unique colour schemes but are straight rips of
+// Verdant Field, exact same maps — not good, need redesign"). Until this round
+// the map fell through to DEFAULT_TERRAIN's village rect and marsh centres,
+// ran the procedural 'country' roads, copied Verdant's tactical anchors byte
+// for byte and nudged its five landforms by a few metres. The snow palette,
+// the frozen-sheet identity, the overcast sky, the vegetation and the dressing
+// tones stay; the battlefield underneath is new:
+//   - a frozen river (a chain of frozen pools) meanders north–south through
+//     a valley trough; two land necks carry the crossings;
+//   - a linear timber village on the WEST river terrace, its crossroads where
+//     the pass road meets the valley road, a sawmill yard at its north end;
+//   - the west flank is a steep two-armed ridge with a saddle pass between
+//     the arms (the pass road switchbacks up to it); the east flank rolls as
+//     moraine knolls with a cross-bar the crossing road cuts through;
+//   - fieldstone walls edge the terrace and moraine fields, spruce blocks
+//     stand on the slopes with cut clearings, birch hedgerows on the fields;
+//   - the roads are authored: the valley road (utility line), the pass road,
+//     the Bystra crossing, the moraine track, the sawmill lateral, a village
+//     back lane and the yard loop (roadEndpoints.ts owns their endpoints).
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export default {
   id: 'winter',
   name: 'Frosthollow',
-  blurb: 'Snowbound farmland, bare birch stands and a frozen lake',
+  blurb: 'A frozen river winds through a snowbound timber valley below a saddle pass',
 
   terrain: {
-    hillScale: 1.0,
+    hillScale: 0.62, // round 48: a broad kotlina floor under the ridge arms (the +-8 m base hills made 10-18 m river banks)
     microScale: 0.9,
     rimH: 25,
     frozenMarshes: true,
     // no soggy marsh bowls — everything frozen reads as a crisp ice sheet
     marshes: [],
-    // shallow depths: the sheet now flattens nearly to the shoreline and the
-    // level tracks the LOWEST bank point, so banks stay ~0.5 m snow lips —
-    // the old 1.0-1.3 m drops read as steep-walled craters, not lakes
+    // The frozen river: a beaded chain of frozen ponds from the south edge to
+    // the north edge, each sheet just under its lowest bank (depth). Centres
+    // sit 92-112 m apart so no pond's bank band (1.32 r) reaches its
+    // neighbour's sheet: two ponds' auto levels can differ by metres between
+    // seeds and an overlap would turn that step into a ramp INSIDE the ice
+    // (the round-48 berm audit caught exactly that); the steps now fall in
+    // the short snow necks between ponds. Two wider necks carry the crossings
+    // (the Bystra crossing at z -30..32, the sawmill lateral at z 184..224).
     lakes: [
-      { x: 195, z: -120, r: 88, depth: 0.55 },
-      { x: -190, z: -210, r: 62, depth: 0.5 },
-      { x: -265, z: 265, r: 56, depth: 0.45 },
+      { x: -36, z: -434, r: 34, depth: 0.5 },
+      { x: -44, z: -340, r: 38, depth: 0.5 },
+      { x: -24, z: -246, r: 40, depth: 0.55 },
+      { x: -16, z: -150, r: 38, depth: 0.5 },
+      { x: -14, z: -60, r: 30, depth: 0.45 },
+      // Bystra neck
+      { x: 38, z: 70, r: 40, depth: 0.55 },
+      { x: 54, z: 150, r: 36, depth: 0.5 },
+      // sawmill neck
+      { x: 44, z: 262, r: 40, depth: 0.55 },
+      { x: 18, z: 356, r: 42, depth: 0.55 },
+      { x: -36, z: 424, r: 30, depth: 0.45 },
     ],
-    // wider settlement footprint: the hamlet reads as a proper village core
-    // instead of one lonely building cluster on an empty snowfield
-    village: { x0: -84, x1: 100, z0: -56, z1: 150, cx: 10, cz: 40, feather: 42, flatten: 0.85 },
+    // The linear terrace village: a Carpathian street village along the
+    // valley road on the west bank, the sawmill yard at its north end. The
+    // rect keeps clear of the river sheets (x1 -54) and of the ridge toe.
+    village: { x0: -206, x1: -54, z0: -150, z1: 150, cx: -110, cz: -40, feather: 42, flatten: 0.85, relief: 0.12 },
+    roads: { paths: [
+      // 0 — the valley road on the west terrace (the utility line, the
+      //     village street, the sawmill yard frontage), south edge to north edge
+      [[-108, -480], [-112, -400], [-104, -310], [-92, -220], [-80, -130], [-80, -40], [-74, 40], [-84, 130],
+        [-98, 220], [-118, 310], [-126, 400], [-128, 480]],
+      // 1 — the pass road: from the west border up the switchback onto the
+      //     saddle between the two ridge arms and down to the village crossroads
+      [[-480, 44], [-440, 18], [-404, 64], [-366, 34], [-322, 54], [-272, 20], [-214, -10], [-160, -30], [-118, -40], [-80, -40]],
+      // 2 — the Bystra crossing: crossroads → the southern pool neck → the
+      //     moraine crossroads → through the moraine bar to the east border
+      [[-80, -40], [-40, -16], [0, 4], [40, 10], [90, -2], [150, -24], [190, -40], [262, -30], [330, 4], [400, -10], [480, -2]],
+      // 3 — the moraine track on the east flank, south edge to north edge
+      [[280, -480], [262, -380], [236, -280], [214, -180], [196, -100], [190, -40], [214, 60], [250, 160], [262, 260], [236, 360], [214, 480]],
+      // 4 — the sawmill lateral: yard → the northern pool neck → the moraine track
+      [[-84, 130], [-40, 152], [10, 186], [60, 208], [130, 196], [200, 178], [250, 160]],
+      // 5 — the village back lane behind the church row
+      [[-80, -130], [-140, -120], [-172, -70], [-160, -30]],
+      // 6 — the sawmill yard loop
+      [[-84, 130], [-130, 140], [-150, 100], [-120, 74], [-74, 40]],
+    ] },
     landforms: [
-      { kind: 'ridge', x: -246, z: 20, length: 322, width: 80, height: 7.2, yawDeg: 12 },
-      { kind: 'ridge', x: 248, z: 56, length: 304, width: 82, height: 6.8, yawDeg: -14 },
-      { kind: 'ridge', x: -48, z: 242, length: 206, width: 66, height: 5.4, yawDeg: 76 },
-      { kind: 'knoll', x: 172, z: -222, rx: 88, rz: 68, height: 6.2, yawDeg: 20 },
-      { kind: 'basin', x: -146, z: -178, rx: 104, rz: 76, height: -2.7, yawDeg: -16 },
+      // west flank — the steep Tatra-side ridge in two arms; the saddle pass
+      // lies between them (z 5..96) over a low hump the switchback climbs
+      { kind: 'ridge', x: -300, z: -160, length: 330, width: 105, height: 13.0, yawDeg: 84 },
+      { kind: 'ridge', x: -312, z: 246, length: 300, width: 100, height: 12.0, yawDeg: 96 },
+      { kind: 'knoll', x: -330, z: 46, rx: 110, rz: 70, height: 9.0, yawDeg: 0 },
+      // the valley trough the river follows
+      { kind: 'basin', x: 8, z: 10, rx: 150, rz: 500, height: -3.2, yawDeg: -3 },
+      // the floodplain meadow east of the southern reach (a base-noise hill stood 9 m over the sheets)
+      { kind: 'basin', x: 66, z: -330, rx: 84, rz: 96, height: -5.5, yawDeg: 0 },
+      // east flank — rolling moraine: two knolls and a bar the crossing road cuts
+      { kind: 'knoll', x: 244, z: -206, rx: 122, rz: 84, height: 6.8, yawDeg: -18 },
+      { kind: 'knoll', x: 288, z: 214, rx: 118, rz: 96, height: 7.6, yawDeg: 14 },
+      { kind: 'ridge', x: 330, z: 40, length: 220, width: 80, height: 4.4, yawDeg: 60 },
+      // the north-west shoulder under the enemy deployment's west pads
+      { kind: 'knoll', x: -170, z: 350, rx: 100, rz: 70, height: 4.2, yawDeg: 20 },
     ],
   },
 
   spawns: {
-    player: { x: 14, z: -78 },
-    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc on the base side (was a
-    // mid-map scatter reaching ±330 x abreast of the village). Flat-scanned
-    // via tools/tmp-ai-r7-spawnscan.mjs — minNy>=0.86, relief<=5 m over the
-    // pad radius, frozen-lake sheets avoided, >=38 m apart, >=380 m from the
-    // player pad.
+    // The player deploys on the south terrace beside the valley road; the
+    // seven enemy pads form an arc across the north end — four on the moraine
+    // side of the river, three on the north-west shoulder — on flat ground
+    // (relief probed with the round-48 layout scan), off the frozen sheets,
+    // >= 38 m apart and >= 750 m from the player pad.
+    player: { x: -160, z: -400 },
     enemies: [
-      { x: 38, z: 332 }, { x: -33, z: 336 }, { x: 69, z: 308 }, { x: -63, z: 370 },
-      { x: 140, z: 418 }, { x: -132, z: 392 }, { x: 186, z: 380 },
+      { x: 262, z: 352 }, { x: 334, z: 382 }, { x: 202, z: 400 }, { x: 124, z: 430 },
+      { x: -210, z: 346 }, { x: -240, z: 388 }, { x: -186, z: 436 },
     ],
   },
 
   splat: {
     // lighting_post r5: saturation 0.05 -> 0.03 — shadowed snow read as blue paint
-    grassTone: (h: number, s: number, l: number) => [0.575, 0.03, clamp01(0.62 + l * 0.38)], // snowpack
+    // round 48 (owner-approved round-44 re-grade, 2026-09-23): snowpack L
+    // 0.62 + 0.38·l -> 0.52 + 0.32·l. The skyline could not exist while the
+    // lit snow sat on the tonemap shoulder above the capped sky (round 44);
+    // with postExposure 0.94 -> 0.86 below the pair leaves the shoulder and
+    // the sky is again the brightest surface (skyline metric in the round-48
+    // section of docs/MAP-BEAUTIFICATION.md).
+    grassTone: (h: number, s: number, l: number) => [0.575, 0.03, clamp01(0.52 + l * 0.32)], // snowpack
     dirtTone: (h: number, s: number, l: number) => [0.075, 0.11, clamp01(l * 0.85 + 0.10)], // frozen mud
     // pale snow-dusted rock: keeps steep lake banks / cut slopes from reading
     // as dark holes punched into the snowfield
@@ -59,34 +130,14 @@ export default {
     mudRough: 0.18,
     marshGloss: 1.0, // r6: full ice response — the sheet needs a real sheen
     // dedicated ice-sheet layer: blue-grey albedo, bright refrozen pressure
-    // cracks, dark depth blotches, glossy clear-ice roughness. Drift LOW:
-    // 0.85 buried most of the sheet back under snow albedo and the "lake"
-    // vanished into the snowfield
+    // cracks, dark depth blotches, glossy clear-ice roughness (history of the
+    // drift value: 0.85 -> 0.45 -> 0.30 -> 0.18 -> 0.12 -> 0.20 across the
+    // content_breadth rounds — 0.20 keeps partial snow-drift patches while
+    // the crack veins still read)
     iceLake: true,
-    // 0.45 (r5): more windblown snow encroaching from the shores — the sheet
-    // grades into the snowfield instead of sitting as a clean punched ellipse
-    // r9: 0.45 -> 0.30 — at 0.45 the drift + bright macro buried the clear-
-    // ice fields and the signature lake read as a snow-swept depression from
-    // the establishing camera; 0.30 keeps the drifted shore band but exposes
-    // the darker glossy ice interior (pairs with the makeIceLayer value-
-    // contrast push and the 0.20 ice roughness floor in terrain.js)
-    // r2 (content_breadth): 0.30 -> 0.18 — the lake still read as a "soft
-    // white-blue smudge" in the establishing shot; less windblown snow on the
-    // sheet exposes the refrozen crack veins + glossy clear-ice fields so the
-    // basin finally reads as ICE (pairs with the new shoreline reed/pressure-
-    // ridge dressing in maps/mapKits.ts)
-    // r4: 0.18 -> 0.12 — pairs with the darker makeIceLayer fields; less
-    // wind-blown snow albedo re-burying the clear-ice interior
-    // r6 (content_breadth): 0.12 -> 0.20 — the critique flipped back: the
-    // fully-exposed sheet reads as one uniform pale print with a hard rim.
-    // 0.20 restores partial snow-drift patches (pairs with the new mapKits
-    // drift-lens geometry) while the crack veins still read.
     iceDrift: 0.20,
-    // terrain_environment r3: fresnel sky tint the clear-ice fields reflect
-    // at grazing view angles (terrain.js uIceSky) — pairs with the darker
-    // makeIceLayer fields + 0.13 roughness floor for a real ice identity
-    // r4: brightened a step — pairs with the stronger 0.48 fresnel weight in
-    // terrain.js so the sheet reads specular from the establishing camera
+    // terrain_environment r3/r4: fresnel sky tint the clear-ice fields reflect
+    // at grazing view angles (terrain.js uIceSky)
     iceSky: [0.76, 0.82, 0.92],
     // lighting_post r5: tintB desaturated toward neutral (was [0.90,0.93,1.00])
     tintA: [1.03, 1.04, 1.09], tintB: [0.95, 0.965, 1.005], tintC: [1.04, 1.04, 1.07],
@@ -95,23 +146,31 @@ export default {
 
   vegetation: {
     species: ['birch', 'spruce', 'fir', 'aspen'],
-    clusterMix: [['birch', 0.32], ['spruce', 0.30], ['fir', 0.22], ['aspen', 0.16]],
+    // round 48: spruce-led stands — the forest blocks on the ridge slopes are
+    // Carpathian spruce with fir, birch and aspen on the lower ground
+    clusterMix: [['spruce', 0.40], ['fir', 0.24], ['birch', 0.24], ['aspen', 0.12]],
     loneMix: [['birch', 0.34], ['aspen', 0.28], ['spruce', 0.23], ['fir', 0.15]],
     rimMix: [['spruce', 0.48], ['fir', 0.27], ['birch', 0.15], ['aspen', 0.10]],
-    clusterCount: 66, // denser birch/pine stands — forest blocks as landmarks (r5)
+    clusterCount: 74, // denser stands on the two ridge arms and the moraine (was 66)
     loneCount: 92,
     rimCount: 64,
+    // round 48: the sawmill's cut blocks — no random stand lands in the four
+    // clearings (three cuts on the ridge arms, the open saddle pass)
+    avoid: [{ x: -300, z: -226, r: 56 }, { x: -362, z: -66, r: 46 }, { x: -262, z: 302, r: 54 }, { x: -336, z: 42, r: 72 }],
+    // round 48: planted lines — spruce forest edges along the ridge toes, a
+    // birch line on the terrace scarp above the river and birch hedgerows
+    // on the moraine fields (real cover: belts go through the tree admission)
+    belts: [
+      { x0: -206, z0: -330, x1: -212, z1: -176, gap: 11, jitter: 4, skip: 0.16, species: 'spruce' },
+      { x0: -214, z0: 176, x1: -222, z1: 330, gap: 11, jitter: 4, skip: 0.16, species: 'spruce' },
+      { x0: -44, z0: -300, x1: -48, z1: -196, gap: 12, jitter: 4, skip: 0.2, species: 'birch' },
+      { x0: 136, z0: -150, x1: 136, z1: -62, gap: 10, jitter: 3, skip: 0.18, species: 'birch' },
+      { x0: 150, z0: 236, x1: 150, z1: 330, gap: 10, jitter: 3, skip: 0.18, species: 'birch' },
+    ],
     // sparser, FROSTED tufts: the old dark dense scatter read as uniform
-    // speckle noise across the snowfield in wide shots. r5: slightly up now
-    // that the scatter clumps in hollows instead of pepper-spraying
-    // r7: 0.24 -> 0.10 — even clumped, the scatter read as high-contrast
-    // dark speckle ("scattered dirt") across the snowfield in wide shots;
-    // winter growth stays sparse and hugs features, with LIGHTER rime tones
-    // r8 (critique: "leafless scrub renders as tiny insect-like scribbles
-    // scattered on the snow"): density 0.10 -> 0.07 and bushes 0.22 -> 0.15
-    // cull the smallest scatter class that degenerates into mid-field
-    // speckle, and the surviving tufts ride even lighter/waxier rime tones
-    // so they read as frost-bound straw, not debris.
+    // speckle noise across the snowfield in wide shots (r5 -> r7 -> r8: 0.24
+    // -> 0.10 -> 0.07; the surviving tufts ride lighter, waxier rime tones so
+    // they read as frost-bound straw, not debris)
     grassDensity: 0.07,
     grassTexTone: (h: number, s: number, l: number) => [0.105, 0.10, clamp01(l * 1.0 + 0.36)], // rimed straw
     tuftTone: (h: number, s: number, l: number) => [0.11, 0.07, clamp01(l * 0.9 + 0.40)],
@@ -120,113 +179,103 @@ export default {
     // as speckle noise against the snow in establishing shots
     bushSpecies: 'spruce',
     palettes: {
-      // r3 (content_breadth): the foreground stands read as DEAD AUTUMN
-      // SAPLINGS — pale trunks, beige-mauve twig puffs, zero snow, one
-      // saturated green pine breaking the set (critique, major). Both
-      // species now run a HOAR-FROST palette: twig/needle textures pushed
-      // toward pale rime, near-card tints cooled and lifted, and the new
-      // `snow` knob (vegetation.ts, handoff r3) lays a white top-weighted
-      // snow load on the card cloud. `jitterHue` clamps the per-instance
-      // hue jitter (authored for verdant variety) to near value-only so no
-      // lone summer-green tree can survive on a snow map.
+      // r3 (content_breadth): both species run a HOAR-FROST palette — twig/
+      // needle textures pushed toward pale rime, near-card tints cooled and
+      // lifted, the `snow` knob lays a white top-weighted snow load on the
+      // card cloud; `jitterHue` clamps the per-instance hue jitter to near
+      // value-only so no lone summer-green tree survives on a snow map.
       birch: {
-        // r4 (content_breadth): snow 0.60 -> 0.75 — feeds the new branch-
-        // conforming snow-cap lobes in vegetation.ts buildBirchGeometry (the
-        // crowns read as "floating white confetti" without an opaque snow
-        // mass tying the card cloud together)
+        // r4 (content_breadth): snow 0.60 -> 0.75 — feeds the branch-
+        // conforming snow-cap lobes in vegetation.ts buildBirchGeometry
         cardHue: 0.58, cardSat: 0.03, cardL0: 0.46,
-        // rime-grey twig haze: cool hue, near-zero sat, high floor — the
-        // twig texture's dark strokes read as frost-bound brush, not brown
         texTone: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.14), clamp01(l * 0.62 + 0.34)],
         canopy: { hue: 0.575, sat: 0.045, l0: 0.42, l1: 0.60 },
         snow: 0.75, jitterHue: 0.22,
       },
-      pine: { // winter spruce under snow load: frosted blue-green underlayer,
-        // the `snow` knob whitens the upward tier surfaces (near cards) and
-        // the lifted canopy l1 carries the same read in the far LOD
+      pine: { // winter spruce under snow load: frosted blue-green underlayer
         texTone: (h: number, s: number, l: number) => [clamp01(h * 0.98), clamp01(s * 0.32), clamp01(l * 1.02 + 0.18)],
         cardHue: 0.40, cardSat: 0.07, cardL0: 0.42,
         canopy: { hue: 0.46, sat: 0.05, l0: 0.42, l1: 0.66 },
-        // r6 terrain_environment: 0.55 -> 0.90 — "conifers carry zero snow
-        // load and read summer-green against full snow cover" (critique).
-        // Feeds the strengthened card whitening AND the new opaque bough
-        // snow lobes in vegetation.ts buildPineTrunk.
+        // r6 terrain_environment: 0.55 -> 0.90 — conifers carry a real snow load
         snow: 0.90, jitterHue: 0.22,
       },
     },
   },
 
   props: {
-    // world-dressing r1: winter catalog — log cabins, steep-roof alpine
-    // houses, an onion-dome church and open woodsheds replace the all-cottage
-    // village (every up-facing surface takes the snow-cap shader load)
-    plan: ['rangerlodge', 'alpine', 'schoolhouse', 'onionchurch', 'logcabin', 'ruin',
-      'woodshed', 'alpine', 'cottage', 'logcabin', 'barn', 'woodshed',
-      'alpine', 'ruin', 'logcabin', 'barn'],
-    destructibleBuildings: ['saunahut', 'alpinerefuge', 'fieldhospital', 'huntingblind'],
+    // round 48: the timber-valley catalog — log cabins, steep-roof alpine
+    // houses, the onion-dome church and open woodsheds make the terrace
+    // village; depots, a warehouse and woodsheds make the sawmill yard at its
+    // north end (buildings land on the road nodes inside the village rect)
+    plan: ['rangerlodge', 'alpine', 'schoolhouse', 'onionchurch', 'logcabin', 'woodshed', 'barn', 'alpine',
+      'logcabin', 'cottage', 'woodshed', 'depot', 'warehouse', 'woodshed', 'alpine', 'barn',
+      'logcabin', 'ruin', 'depot', 'woodshed'],
+    destructibleBuildings: ['saunahut', 'alpinerefuge', 'fieldhospital', 'huntingblind', 'leanto'],
+    buildingLat: [12, 3], sideSkip: 0.10,
+    // round 48: the three strongpoints follow the new lanes — the brawl in
+    // the terrace village, the scout on the north-east moraine knoll, the
+    // support on the saddle shoulder above the pass road
     tacticalBeats: [
-      { id: 'western-moraine-refuge', role: 'brawl', x: -254, z: 64, yawDeg: 12,
-        structure: 'alpinerefuge', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
-      { id: 'eastern-snow-watch', role: 'scout', x: 246, z: 70, yawDeg: -12,
+      { id: 'terrace-village-refuge', role: 'brawl', x: -126, z: -96, yawDeg: 84,
+        structure: 'alpinerefuge', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 16 },
+      { id: 'moraine-knoll-blind', role: 'scout', x: 288, z: 226, yawDeg: -70,
         structure: 'huntingblind', outcrop: { count: 5, radius: 9, scaleMax: 2.8 } },
-      { id: 'northern-aid-station', role: 'support', x: 24, z: 270, yawDeg: 4,
+      { id: 'saddle-aid-station', role: 'support', x: -296, z: 94, yawDeg: 20,
         structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
     ],
+    // round 48: the sawmill yard — two flatbeds load beside grounded timber
+    // bundles inside the yard loop; the cut route runs through the clearings
+    // on the southern ridge arm (composeLoggingYard moves accepted props,
+    // never adds them: <= 2 flatbeds, <= 10 bundles, 2..6 cut stations)
+    loggingYard: {
+      flatbeds: [{ x: -112, z: 106, yaw: 0 }, { x: -112, z: 128, yaw: 0 }],
+      bundles: [
+        { x: -128, z: 106, yaw: -Math.PI / 2 }, { x: -127.2, z: 106, yaw: -Math.PI / 2 },
+        { x: -126.4, z: 106, yaw: -Math.PI / 2 }, { x: -125.6, z: 106, yaw: -Math.PI / 2 },
+        { x: -124.8, z: 106, yaw: -Math.PI / 2 },
+        { x: -128, z: 128, yaw: -Math.PI / 2 }, { x: -127.2, z: 128, yaw: -Math.PI / 2 },
+        { x: -126.4, z: 128, yaw: -Math.PI / 2 }, { x: -125.6, z: 128, yaw: -Math.PI / 2 },
+        { x: -124.8, z: 128, yaw: -Math.PI / 2 },
+      ],
+      clearcut: [[-318, -250], [-286, -198], [-346, -100], [-372, -60]],
+    },
     tones: {
       plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
       roof: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
       stone: (h: number, s: number, l: number) => [0.60, clamp01(s * 0.35), clamp01(l * 1.05 + 0.05)],
       wood: (h: number, s: number, l: number) => [h, clamp01(s * 0.7), clamp01(l * 0.95 + 0.02)],
-      // terrain_environment r3: the all-white "snowed-over" tone erased the
-      // thatch texture entirely — foreground stacks read as raw untextured
-      // white primitives (the critique's "unsubdivided icosphere rock").
-      // Frosted warm straw keeps the haystack identity under a pale rime.
+      // terrain_environment r3: frosted warm straw keeps the haystack identity
+      // under a pale rime (the all-white tone erased the thatch texture)
       straw: (h: number, s: number, l: number) => [0.105, clamp01(s * 0.42 + 0.06), clamp01(l * 1.02 + 0.10)],
     },
-    // terrain_environment r3: l*1.25+0.12 -> l*0.70+0.02 — the near-white
-    // boulders read as featureless dough lumps on the snow (probed: the
-    // "raw icosphere" in the establishing foreground was rock instance 49
-    // at [67,-226]). Under the BRIGHT overcast fill (hemi 0.92, env 0.60)
-    // even mid-grey albedo renders pale, so the sides must go properly dark;
-    // the geometry's up-facing gradient (props.ts) keeps snow-dusted caps.
+    // terrain_environment r3: under the BRIGHT overcast fill even mid-grey
+    // albedo renders pale, so boulder sides go properly dark; the geometry's
+    // up-facing gradient (props.ts) keeps snow-dusted caps
     rockTone: (h: number, s: number, l: number) => [0.60, 0.05, clamp01(l * 0.70 + 0.02)],
     wallStoneChance: 0.25,
+    // round 48: fieldstone walls edge the valley fields — the terrace strips
+    // between the village lane and the river bank, the village yards, the
+    // sawmill yard fence line, the moraine fields and hay ground, the pass
+    // approach and the north terrace boundary ([x0, z0, x1, z1, style])
     wallRuns: [
-      [-56, 8, -56, 64, 2], [74, 30, 74, 96, 4], [-8, 110, 52, 110, 2],
-      [-186, -62, -118, -62, 3], [-64, 218, 8, 218, 4], [196, 108, 258, 108, 2],
-      [-266, 66, -212, 66, 1],
-      // r2 (content_breadth): the establishing shot's lower-left two-thirds
-      // was featureless snowfield — snow-capped field-boundary walls stage
-      // the foreground and lead the eye to the frozen lake (basin at
-      // [195,-120] r88; camera [40,52,-288] -> [175,-4,-75])
-      [66, -244, 138, -244, 2], [138, -244, 138, -186, 1],
-      [88, -178, 156, -178, 3],
-      // north-shore run beyond the lake for depth layering
-      [216, -46, 272, -46, 2],
-      // r4 (content_breadth): the establishing frame's bare bottom-left
-      // third (projection-probed: screen-left = INCREASING world x for the
-      // [40,52,-288]->[175,-4,-75] camera, so the bowl is x 150..260,
-      // z -300..-235, south of the [66,-244] run) gets an L-shaped field
-      // boundary + a cross run, and the bottom-center approach two more —
-      // the quadrant reads composed and holds hull-down cover
-      [-24, -206, 48, -206, 2], [-2, -158, 56, -158, 3],
-      [150, -262, 224, -262, 2], [224, -262, 224, -306, 1],
-      [162, -240, 162, -290, 3],
+      [-66, -262, -66, -200, 2],
+      [-190, -310, -120, -310, 2], [-120, -310, -120, -262, 1],
+      [-196, -126, -196, -66, 2], [-150, -140, -100, -140, 3],
+      [-170, 100, -170, 160, 2], [-170, 160, -108, 160, 4],
+      [-200, 200, -140, 200, 2],
+      [120, -136, 180, -136, 2], [120, -136, 120, -80, 1],
+      [160, 226, 232, 226, 3], [232, 226, 232, 286, 2],
+      [108, 300, 172, 300, 2],
+      [-390, -24, -330, -24, 1],
+      [-96, 330, -52, 330, 2],
     ],
-    // r3 terrain_environment: winter boulders sink to ~45% — a rock standing
-    // proud ON the snow renders as a pale dough ball under the flat overcast
-    // (albedo-independent engine fill washes small props); half-drifted rock
+    // r3 terrain_environment: winter boulders sink to ~45% — half-drifted rock
     // shoulders read natural and keep their cover role
     rockSink: 0.45,
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    // r2: haystacks 4 -> 8 (snow-capped stacks as mid-field silhouettes),
-    // outcrops 12 -> 15, +1 road wreck — the open snowfield needed more
-    // battle-worn anchors between the village and the basin
-    // r4 (content_breadth): haystacks 8 -> 12, rocks 150 -> 190, outcrops
-    // 15 -> 19 — pairs with the SW wall runs above so the bare bowl west of
-    // the establishing camera picks up drifted rocks/stack silhouettes too
-    // r5 terrain_environment: craters 22 -> 36 — battle scarring reads
-    // LOUDEST on snow (dark pits on white); the map carried almost none
+    // dressing counts (map pass 2026-09-12 leaves pinned by mapPassDressing):
+    // snow-capped stacks as mid-field silhouettes, drifted rocks, outcrops,
+    // battle scarring that reads loudest on snow
     haystacks: 12, rocks: 270, outcrops: 32, craters: 36, rubblePiles: 0,
     // Legacy-map quality backport: snow-bound modern hulks (the
     // snow-cap shader dusts them like every prop), frozen supply columns
@@ -236,13 +285,13 @@ export default {
     },
     sandbagLines: 10,
     hedgehogs: 8,
-    // world-dressing r1: winter inhabitants — sleds on the snowfield (the
-    // snow-cap shader dresses them drifted), firewood in every yard, rail
-    // fences along the lanes
+    // world-dressing r1: winter inhabitants — sleds on the snowfield, firewood
+    // in every yard, rail fences along the lanes; round 48 adds hay bales in
+    // the terrace and moraine fields (the hay-barn clusters)
     wallStyle: 'fieldstone',
     inhabit: {
       stalls: 1, benches: 1, coreClutter: 6,
-      sleds: 6,
+      sleds: 6, bales: 8,
       troughs: 1, handcarts: 1, carts: 2,
       roadFence: 'fencerail', yardFence: 'fenceplank',
       // DESTRUCTIBLES r1: a frozen supply column + winter bivouacs
@@ -252,21 +301,12 @@ export default {
   },
 
   horizon: {
-    // r3: the 0.38 snowline left every foothill and the whole near wall bare
-    // — with the warm grade on top the range read as tan desert dunes framing
-    // a snow map. Snowline dropped to 0.18 (snow-bound to the valley floor,
-    // rock only piercing on cliffs), base/rock pushed cold blue-grey and the
-    // caps near-white so the ring still reads FROZEN through fog + warm grade.
+    // r3: snowline dropped to the valley floor, base/rock pushed cold
+    // blue-grey and the caps near-white so the ring reads FROZEN through fog
+    // + warm grade; r8: snowHex 0xf4f8fe -> 0xdfe7f1 and haze 0.68 -> 0.60
+    // (the near-white wall sat on the tonemap shoulder where the sastrugi/
+    // rib texture compressed to nothing)
     baseHex: 0x76839a, amp: 1.04, style: 'alpine', snowline: 0.24,
-    // r7: haze 0.8 -> 0.68 — the aerial ramp buried the rebuilt ridge detail
-    // (sastrugi/rib texture) under fog by the second row; the overcast scene
-    // fog still softens the ring, the bake just stops double-fogging it
-    // r8: snowHex 0xf4f8fe -> 0xdfe7f1 and haze 0.68 -> 0.60. The near-white
-    // snow wall sat on the tonemap shoulder where the (boosted) sastrugi/rib
-    // texture contrast compressed to nothing — the ring rendered as a flat
-    // untextured gradient (critique). A step darker drops the wall into the
-    // midtones where surface structure actually reads, and the lighter haze
-    // stops double-washing it; the scene fog still provides depth recession.
     rockHex: 0x424c66, snowHex: 0xdfe7f1, haze: 0.60,
   },
 
@@ -274,34 +314,21 @@ export default {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse
     sunElevationDeg: 33, sunAzimuthDeg: 115,
-    // turbidity 13 → 8.5: the mie-loaded sky sampled a warm CREAM horizon
-    // color that leaked into the fog mix + aerial scatter and tanned the
-    // whole alpine ring; 8.5 keeps the milky overcast without the sepia cast
+    // turbidity 13 -> 8.5 -> 7.2: the mie-loaded sky sampled a warm CREAM
+    // horizon that tanned the alpine ring; 7.2 keeps the milky overcast
     turbidity: 7.2, rayleigh: 2.2, mieCoefficient: 0.002, mieDirectionalG: 0.7,
-    // 0.0018 fogged the alpine wall to a flat cutout by 800 m — 0.0011 keeps
-    // the overcast depth while letting snow/rock contrast survive to the ridge
-    // envIntensity raised for the ice sheet's sky reflection; sun dropped and
-    // hemi raised so light reads flatter/more diffuse (overcast brief)
-    // fogMix 0.88 → 0.94: scene fog locks to the COLD tint, not the sky sample
-    // r7: 0.0011 -> 0.00088 — with the rebuilt fractal alpine ring the fog
-    // was still averaging the 4 ridge rows into one flat cream wall; the
-    // lighter fog keeps per-row aerial separation legible
-    // r8: 0.00088 -> 0.00064. Debug-painting the ring rows proved the wall's
-    // baked snow/rock texture is ~70-90% buried under the white wash stack
-    // (scene fog + post.ts aerial scatter-in + desat) — no amount of baked
-    // contrast survives it. Halving the scene-fog share (0.47 -> 0.27 at
-    // 900 m) lets the rebuilt sastrugi/rib/crag structure and the darker
-    // alpine recenter finally read; the aerial pass still owns depth grading.
-    // terrain_environment r3: envIntensity 0.52 -> 0.60 — the ice sheet's
-    // sky-reflection term needs the headroom (roughness floor now 0.13)
+    // fog 0.0018 -> 0.0011 -> 0.00088 -> 0.00064 -> 0.00058: each step let more
+    // of the ring's baked snow/rock structure survive the white wash stack
+    // (scene fog + aerial scatter-in); the aerial pass owns depth grading
     fogDensity: 0.00058, fogTintHex: 0xaebdce, fogMix: 0.82, envIntensity: 0.30,
-    // lighting_post r3 (round 3): per-map overcast deck tuning (overrides the
-    // sky.ts overcast auto-detect values) — a lower/darker broken stratus
-    // deck (tint 0xaab2bc -> 0x9aa3ae) reads against the bright snow bounce
-    // in the 2-12° establishing band.
+    // lighting_post r3: a lower/darker broken stratus deck reads against the
+    // bright snow bounce in the 2-12° establishing band
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0x9aa3ae,
     cloudAltM: 320, cloudHazeK: 0.00013, cloudUvM: 2200,
-    sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74, postExposure: 0.94,
+    // round 48 (owner-approved round-44 re-grade, 2026-09-23): postExposure
+    // 0.94 -> 0.86 with the snowpack L step above — the lit snow leaves the
+    // tonemap shoulder so the skyline against the capped sky can exist
+    sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74, postExposure: 0.86,
   },
 
   minimap: {
@@ -312,10 +339,8 @@ export default {
     buildingFill: '#e4e7ec',
   },
 
-  // camera raised (42 -> 56): from 42 m the frozen lake subtends a few pixels
-  // of near-grazing sliver and its signature ice sheet could not read at all
-  // framed so the frozen lake (the map's signature feature) reads clearly:
-  // slightly raised and shifted vs the old [16,42,-302] which caught the
-  // sheet at a few pixels of near-grazing sliver
-  shot: { pos: [40, 52, -288], look: [175, -4, -75] },
+  // round 48: from the south-west terrace over the village roofs to the
+  // frozen river and the moraine — the valley's signature read (river, the
+  // street village on its terrace, the far ridge arm on the right)
+  shot: { pos: [-236, 46, -318], look: [46, -2, 40] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

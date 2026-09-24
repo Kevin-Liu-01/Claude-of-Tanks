@@ -31,7 +31,12 @@ const join = (start: number, end: number): RoadEnds => [{ junction: start }, { j
  * sole shore termini; Caldera's first road is a genuine closed mining loop.
  */
 export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>> = {
-  verdant: [through, through], desert: [through, through], winter: [through, through],
+  verdant: [through, through], desert: [through, through],
+  // Frosthollow redesign (owner 2026-09-23): the valley road and the moraine track run edge to edge, the pass road
+  // leaves the west border and ends on the valley road, the Bystra crossing starts there and leaves east, the sawmill
+  // lateral links the valley road to the moraine track, the back lane joins the valley road to the pass road and the
+  // yard loop rejoins the valley road at both ends.
+  winter: [through, ['boundary', { junction: 0 }], [{ junction: 0 }, 'boundary'], through, join(0, 3), join(0, 1), join(0, 0)],
   urban: Array.from({ length: 8 }, () => through),
   coastal: [through, through, ['boundary', 'shore'], ['boundary', 'shore']],
   autumn: [through, through], steppe: [through, through],
