@@ -56,6 +56,12 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   view('bird-e-edge-n', 47, [380, 260, 160], [560, 0, 160]),
   view('shore-e-oblique', 47, [400, 40, -300], [520, -4, 40]),
   view('shore-w-oblique', 47, [-400, 40, 300], [-520, -4, -40]),
+  // round 56 (2026-09-24, the strands' wrack line): 4 m over the wrack band looking along the beach at gameplay
+  // height — Saltmere's crescent from its 192° station toward 168°, Nordhavn's middle arm head from 191° toward 169°,
+  // Saltwind's east shore from 22° toward -22° (the points are the band law's own, strandWrack.ts at seed 1337)
+  view('strand-e-low', 56, [320, 4, -99], [329, 0, 18]),
+  view('strand-fjord-low', 56, [302, 4, 38], [303, 0, 102]),
+  view('strand-w-low', 56, [-305, 4, 67], [-315, 0, -47]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */

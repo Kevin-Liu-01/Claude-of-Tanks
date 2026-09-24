@@ -101,21 +101,23 @@ for (const e of Object.values(WATER_DRIVE_ENTRIES)) assert.ok([0, Math.PI / 2].i
 
 // ------------------------------------------------------------------ the view table (pinned)
 // owner 2026-09-23: the table is the acceptance record of rounds 35–47; re-pin count and digest with a dated note.
-assert.equal(MAP_VIEW_PROBE_VIEWS.length, 31);
+// round 56 (2026-09-24): three low strand views (4 m over the wrack band, along the beach) — 31 → 34, digest re-pinned
+assert.equal(MAP_VIEW_PROBE_VIEWS.length, 34);
 assert.equal(createHash('sha256').update(JSON.stringify(MAP_VIEW_PROBE_VIEWS)).digest('hex'),
-  '76914e102003e1004a2ba955aba7d3b4ae829a0ec753d0a89fee91be90a17d9e', 'view table digest (2026-09-23)');
+  '68ef482b11df31052934dccbbaf2e4c86a8119637df858dd7e5fc8bfaa0fcb49', 'view table digest (2026-09-24, round 56 strand views)');
 assert.ok(Object.isFrozen(MAP_VIEW_PROBE_VIEWS));
-assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 31, 'unique names');
+assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 34, 'unique names');
 for (const v of MAP_VIEW_PROBE_VIEWS) {
   assert.ok(Object.isFrozen(v) && Object.isFrozen(v.cam) && Object.isFrozen(v.at), v.name);
   assert.match(v.name, /^[a-z0-9]+(?:-[a-z0-9.]+)*$/, `${v.name}: kebab file-name token`);
-  assert.ok([35, 36, 40, 47].includes(v.round), `${v.name}: round`);
+  assert.ok([35, 36, 40, 47, 56].includes(v.round), `${v.name}: round`);
   for (const p of [v.cam, v.at]) { assert.equal(p.length, 3); for (const n of p) assert.ok(Number.isFinite(n), `${v.name}: finite`); }
   assert.ok(Math.abs(v.cam[0]) <= 560 && Math.abs(v.cam[2]) <= 560, `${v.name}: camera near or inside the square`);
 }
 assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 47).map((v) => v.name), ['bird-e-edge', 'bird-w-edge', 'bird-e-edge-n', 'shore-e-oblique', 'shore-w-oblique'], 'round-47 edge views');
 assert.deepEqual(selectMapViews(['canyon-in', 'sw-corner-close']).map((v) => v.name), ['sw-corner-close', 'canyon-in']);
-assert.equal(selectMapViews(null).length, 31); assert.equal(selectMapViews([]).length, 31);
+assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 56).map((v) => v.name), ['strand-e-low', 'strand-fjord-low', 'strand-w-low'], 'round-56 strand views');
+assert.equal(selectMapViews(null).length, 34); assert.equal(selectMapViews([]).length, 34);
 assert.throws(() => selectMapViews(['sw-corner-close', 'x', 'y']), /Unknown view\(s\): x, y/);
 assert.deepEqual(MAP_VIEW_PROBE_VIEWPORT, { width: 1600, height: 900 }); assert.equal(MAP_VIEW_PROBE_FOV, 55); assert.equal(MAP_VIEW_PROBE_HALF, MAP_PROBE_HEIGHT_CLAMP);
 
@@ -204,4 +206,4 @@ assert.match(runtime, /probe\.lock/); assert.match(runtime, /never on 5197–519
 const metricsHelp = execFileSync(process.execPath, ['tools/map-metrics.mjs', '--help'], { cwd: ROOT, encoding: 'utf8' });
 assert.match(metricsHelp, /skyline .*stripe .*boxes/s);
 
-console.log(`map-probe-runtime.selftest: ${TOOLS.length} tools parse and --help without a network; ${MAP_VIEW_PROBE_VIEWS.length}-view table pinned (76914e10…); ground and hull-relative pose math exact; screen-right = (−fz, fx) against three.js lookAt (looking north, west is right); receipt fields recorded`);
+console.log(`map-probe-runtime.selftest: ${TOOLS.length} tools parse and --help without a network; ${MAP_VIEW_PROBE_VIEWS.length}-view table pinned (68ef482b…); ground and hull-relative pose math exact; screen-right = (−fz, fx) against three.js lookAt (looking north, west is right); receipt fields recorded`);
