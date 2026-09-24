@@ -83,5 +83,16 @@ Rebased onto `origin/main` at `5a0c2e679`, retaining the intervening map,
 bridge, performance and bot-ammunition changes. After integration, missile
 roles, rocket batteries, weapon-housing damage, all 541 combat assertions,
 authoritative simulation, bridge navigation, bot behavior/aim, type checking
-and the public production build pass again. The branch remains local; this
-record does not indicate a push or deployment.
+and the public production build pass again. That initial verification was
+local and did not indicate a push or deployment.
+
+Publication integration (2026-09-24): the owner explicitly requested that this
+batch, the M1A3/Leopard Improved geometry edits, and the legacy camouflage art
+pass all land on `origin/main`, including the quoted comparison-reference
+limitation. All three patches were rebased unchanged onto `b60223ea9`, retaining
+the eight intervening map and terrain commits and their regression registrations.
+The combined tree passes eight focused geometry, launcher, camouflage, railway
+cutting and arched-bridge checks, the full type-check command, and the public
+production build. Evidence is in `.qa-dev/camo/main-integration.log`.
+This authorization does not turn unavailable reference comparisons into a
+passing qualification or indicate a production deployment.
