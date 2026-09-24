@@ -3124,9 +3124,11 @@ void splatCompute() {
     // wavy: water. Bedded sandstone reads as rock through a FEW thick beds of unequal thickness and tone, thin
     // recessed partings, joint blocks whose weathering tone steps along the wall, and dark varnish streaks below the
     // ledges. The fine laminae stay inside ~200 m, where they are laminae and not moiré.
-    float lamW = 1.0 - smoothstep(70.0, 220.0, effDist);
+    // (B1/B2 captures: a face-on wall's XZ pixel footprint is tiny, so effDist read the 300 m wall as near and the
+    // laminae still drew the fine wavy lines there — they are gated by the TRUE camera distance, gone by 120 m)
+    float lamW = 1.0 - smoothstep(40.0, 120.0, camDist);
     float lamina = sin(wp.y * 1.9 * bedF + n2Wall * 2.2 + gCliffJ * 9.3);
-    a.rgb *= 1.0 + lamina * bedAmp * 0.40 * lamW;
+    a.rgb *= 1.0 + lamina * bedAmp * 0.30 * lamW;
     // marker beds: the two long-period terms thresholded into discrete beds — a rust-stained bed 2–5 m thick every
     // 11–17 m on one term, a bleached caprock bed on the other — phase and thickness per cliff (gCliffJ) so no two
     // faces share a sequence, and a thin recessed parting under each rust bed inside 700 m
@@ -3142,18 +3144,18 @@ void splatCompute() {
     // and Mars 0.12 six tenths, the desert's 0.10 four tenths, Caldera / Badlands none)
     float jointAmp = smoothstep(0.06, 0.16, uStrata) * steep;
     if (jointAmp > 0.002) {
-      // blocks ~11 m along the wall and ~6.5 m tall, one weathering tone per block: the noise texture read at block
-      // centres in BOTH wall projections and mixed by the axis weight (samples, never coordinates)
-      vec2 jX = floor(gWallUVx / vec2(11.0, 6.5) + gCliffJ * 3.0);
-      vec2 jZ = floor(gWallUVz / vec2(11.0, 6.5) + gCliffJ * 3.0);
-      float block = mix(texture2D(uNoise, jX * vec2(0.173, 0.291) + vec2(0.31, 0.77)).r,
-                        texture2D(uNoise, jZ * vec2(0.173, 0.291) + vec2(0.31, 0.77)).r, gWallW) - 0.5;
+      // blocks ~9 m along the wall and ~5 m tall, one weathering tone per block: the noise texture read at block
+      // centres in BOTH wall projections and mixed by the axis weight (samples, never coordinates); the block index
+      // steps 95 / 158 texels so neighbouring blocks decorrelate, and the smooth noise's ±0.2 is stretched to a tone
+      float block = mix(texture2D(uNoise, floor(gWallUVx / vec2(9.0, 5.0) + gCliffJ * 3.0) * vec2(0.373, 0.617) + vec2(0.31, 0.77)).r,
+                        texture2D(uNoise, floor(gWallUVz / vec2(9.0, 5.0) + gCliffJ * 3.0) * vec2(0.373, 0.617) + vec2(0.31, 0.77)).r, gWallW);
+      block = clamp((block - 0.5) * 2.4, -0.5, 0.5);
       a.rgb *= 1.0 + block * 0.26 * jointAmp;
       // varnish: along-wall noise stretched ~17:1 down the face, darkest under the pale caprock beds
       float streak = mix(texture2D(uNoise, gWallUVx * vec2(0.010, 0.0006) + vec2(0.61, 0.29)).g,
                          texture2D(uNoise, gWallUVz * vec2(0.010, 0.0006) + vec2(0.61, 0.29)).g, gWallW);
-      streak = smoothstep(0.56, 0.86, streak) * (0.5 + 0.5 * pale);
-      a.rgb = mix(a.rgb, a.rgb * vec3(0.66, 0.64, 0.66), streak * 0.42 * jointAmp);
+      streak = smoothstep(0.50, 0.80, streak) * (0.5 + 0.5 * pale);
+      a.rgb = mix(a.rgb, a.rgb * vec3(0.66, 0.64, 0.66), streak * 0.50 * jointAmp);
     }
     // r8 per-cliff color drift: warm iron-stained faces vs paler washed faces
     // r4: 0.5 -> 0.30 and flush 0.22 -> 0.12 — the stacked warm shifts were

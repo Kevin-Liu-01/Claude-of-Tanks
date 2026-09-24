@@ -357,15 +357,19 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   // ribs stand on the steeper local faces with scree fans below them, and the summit rock breaks into ribs instead of
   // one cap. The palette is untouched - only where its own rock, scree and snow appear changes.
   float bareUp = uVBareRock * smoothstep(uTreeline * 0.80, uTreeline * 1.12 + 0.04, hT + nD * 0.06 + nC * 0.04);
-  float rib = smoothstep(0.34, 0.66, 0.5 + nC * 0.55 + nD * 1.0 + nE * 0.45);
+  float rib = smoothstep(0.38, 0.62, 0.5 + nC * 0.55 + nD * 1.0 + nE * 0.45);
   float ribSlope = smoothstep(0.05, 0.24, slope + nD * 0.08);
-  rockW = max(rockW, bareUp * rib * (0.30 + 0.70 * ribSlope));
+  // wind-scoured crests: the upper third of the tallest ranges is mostly bare rock with snow only between the ribs
+  float crestRock = bareUp * smoothstep(0.55, 0.85, hT + nC * 0.10) * (0.55 + 0.45 * rib);
+  float bareRockW = max(bareUp * rib * (0.55 + 0.45 * ribSlope), crestRock);
+  rockW = max(rockW, bareRockW);
   rockW = max(rockW, smoothstep(0.60, 0.92, hT + nC * 0.12 + nD * 0.06) * uVPeakRock * mix(1.0, 0.25 + 0.75 * rib, uVBareRock));
   float snowW = 0.0;
   if (uSnowline < 1.5) {
     snowW = smoothstep(uSnowline - 0.03, uSnowline + 0.15, hT + nD * 0.07 + nC * 0.05)
       * (1.0 - smoothstep(0.42, 0.82, slope + nE * 0.10));
     snowW = max(snowW, smoothstep(0.80, 0.97, hT) * (1.0 - smoothstep(0.55, 0.90, slope)) * step(uSnowline, 1.5));
+    snowW *= 1.0 - bareRockW * 0.9; // round 49: the scoured ribs and crests stay bare
   }
   float screeW = smoothstep(0.16, 0.40, slope + nD * 0.22 + nE * 0.10) * (1.0 - rockW) * uVScreeAmp
     * (0.55 + 0.45 * smoothstep(0.15, 0.55, hT));
