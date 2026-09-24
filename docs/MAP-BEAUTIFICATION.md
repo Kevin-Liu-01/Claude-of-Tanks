@@ -1173,6 +1173,21 @@ public-repo-hygiene, attribution. **Still open:** the home-page showcase frames 
 (`public/media/home/p2_35/37/38_winter_*`, `p2_53/54_autumn_*`, `p2_55/57_steppe_*`, `g10_winter_*`) and the
 `presentation-r1` archive frames come from the marketing-shot recipes (`tools/marketing-shots/gen-scenes2.mjs` →
 grade → `publish-landing-media.mjs`) and still show the round-1 maps — a lane of its own.
+### Round 52 — 2026-09-24: Saltwind Narrows' strand
+
+Owner decision 20 (2026-09-23): "Saltwind strand wider: 20 m, re-plan the boat landings". The hooked bay's graded
+strand between the waterline and the dry bank (`LakeConfig.shelfM`, the shader's sea-lake waterline `1 − shelfM / r`)
+goes from 12 to 20 m — Saltmere's is 22 m. Before/after on the same views (`tools/map-view-probe.mjs`, views
+bird-w-edge / shore-w-oblique / edge-w-low / w-wall-mid, a = deploy 70's tree, b = this round): on shore-w-oblique the
+near shore that met the water grass-to-water now carries a pale sand beach along its whole length, the north headland's
+strand widens the same way; from the bird view the wet lower strand reads as shallows, the dry upper strand as sand.
+The boat landings needed no re-plan: `beachedBoat` (every hull's contact at every seed) and `riverLandings` pass
+unchanged, so the two east-shore stations keep their boats and jetties on the wider beach. Receipts: badlandsRelief's
+exact Saltwind bay slice follows the source; shoreDirtMask (Saltwind RGBA control), the shared kit digest
+(mangroveWaterPalette) and the all-map config digest (villageWear) re-pinned with dated notes; shoreline, trackSurface,
+liquidMarshSurface, terrainStreaming, roadContinuity, mapQuality, shallowWater, edgeWater, terrainSandCoverage,
+terrainWornDirt, sourcedTextures, autumnHorizonSeam, terrainSplatFields, environmentExpansion, spawnClearance and
+garage-terrain-patches unchanged. Decision 21 (coastal apron debris specks) stays open.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -1266,6 +1281,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 48 | Tarkhan Steppe redesign: a new battlefield under the kept palette — takyr-floored braided wadi across the middle, 12 m escarpment with two ramps and a kurgan line on its crest, grain station (SE), kolkhoz and corrals (W), salt pan (NW), caravanserai rise, five authored roads, shelterbelts instead of groves, three graded aprons for the objective placement, recaptured collision shard | headless layout probe (bed −4.3 m, crest 16–18 m, mounds +5..8 m, pads relief ≤ 5.8 m, both-team reach on every row); wall-probe A/B (centre-far skyline 0.99 → 0.92, kurgan-line band 181 → 164 luma, plateau-south 161 → 134; sky-w unchanged 0.87 → 0.89); 38 receipts green, two shared digests moved for the integrator |
 | 48 | Landing (2026-09-24): Amberford's and Tarkhan's dedicated collision shards recaptured on the combined tree (the lane left the round-1 Amberford shard; census receipts pin counts only), bot relocation cells on holdable ground + flank rings scored for reach + a closed penetration gate held against a stationary target starts the flank, the three redesigned player pads moved 60 / 60 / 120 m down their approaches onto flat-scanned cells | battlePacing 14/124 (from 18; ledger 17 → 16 → 17 → 16 → 14 across the five fixes), dedicatedWorldCollision census, collisionManifestCodec, terrainStreaming spawn windows, garage:terrain:check, spawnClearance / mapQuality / matchPlacement / minimapObjectives, 11 AI receipts, typecheck; chain 70 |
 | 50 | The redesigned maps' tactical-map plates (Frosthollow, Tarkhan) and Garage cards (all three: 4K hero + picker thumb) re-rendered from the new battlefields — they still showed the Verdant clones; the round-48 pacing trace committed as `tools/pacing-trace.mjs` | map-art-guards, minimapAssetRuntime / CapturePolicy / Orientation, loadingScreens, landing-media, public-repo-hygiene, attribution; eye check of the 1280 px reductions; chain 71 |
+| 52 | Saltwind Narrows' strand 12 → 20 m (owner decision 20): a pale beach now separates the bay from the grass along the whole shore; boat landings kept (beachedBoat / riverLandings unchanged) | map-view-probe A/B (bird-w-edge, shore-w-oblique, edge-w-low, w-wall-mid), badlandsRelief slice, shoreDirtMask / mangroveWaterPalette / villageWear re-pins, 17 shore receipts green; chain 73 |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
