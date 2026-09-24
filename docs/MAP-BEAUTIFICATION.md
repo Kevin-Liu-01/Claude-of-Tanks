@@ -1037,6 +1037,76 @@ grain steppe of the Virgin Lands campaign.
 - **Open.** The rail spur has no track geometry — `mapKits.ts` lays its lines at fixed centre coordinates for Cinder
   Junction only; a parameterised spur kit is a follow-up. The picker thumbnail and 4K hero (`public/maps/steppe.webp`,
   `thumbs/`) still show the old map until `tools/screenshot.mjs` + `map-thumbs.mjs --only steppe` run.
+### Titan walls, Fjord's cone and Whiteout's skyline — 2026-09-23 (round 49)
+
+Four ring items (lane r49a, from origin/main 117a14b90 + the round-47 follow-up taper d223fa491). Every capture:
+`.qa-dev/wall-probe.mjs` (plus its layer-flag, uniform-isolation and layers variants), same cameras / seed / tier,
+one at a time under the probe mutex; boxes and numbers in `$SP/r49a/report.md`.
+
+**Titan Gorge — "marbled near walls read as flowing water at 300 m", "smooth beige ridge faces without strata".**
+The layer-flag probe puts the marble on the R layer — Titan's R is the PROCEDURAL sandstone tile (`R: null` in its
+TERRAIN_PLAN row); the beige tops and moderate faces are the sand G set. The 2× crops of the 200 m and 450 m ring
+walls show thin dark parting lines of near-equal vertical spacing contour-tracing a smoothly undulating face — a
+topographic map — and the lines' spacing scales with distance (1.5–2.5 m of world height at both ranges): they are
+the tile's NEAR-variant beds (0.9–2.8 m). Cause: the FOV-aware detail distance `effDist = min(camDist,
+length(fwidth(wp.xz)) · 935)` uses the pixel's XZ footprint, which is tiny on a face-on wall (a pixel step down a
+wall moves in Y), so a wall never blended to its far variant and carried centimetre-scale bed partings to the
+horizon. A wrong turn worth recording: the uniform-isolation probe's "no-uStrata" shot looked calm and pointed at the
+strata sine ladder — but that probe's flat-normals restore is broken for a material shared by 64 chunk meshes (the
+second visit saves the flat texture as `__saved`), so that shot really showed flat normals; the strata block was
+rewritten on that evidence before the crops corrected it. Landed (`world/terrain.ts`, program key v37 → v38, fetch
+census 88 → 92 inside the uStrata branch): the strata block paints a few thick marker beds of unequal thickness and tone (thresholded long-period
+terms, rust and bleached beds per cliff), thin partings inside 700 m, joint blocks ~9 × 5 m with a decorrelated
+per-block weathering tone, varnish streaks under the caprock, laminae only inside 120 m of the camera (true distance); the far-cliff
+ledge ladder's along-wall wander 2.6 → 1.0 rad; `splat.ringRockSlope` (uniform `uRingRock`, default [0.22, 0.48])
+authors the ring rock band per landform-gated map — Titan [0.15, 0.36] (34–47°); a wider [0.10, 0.30] band showed no
+visible change and was not kept. Measured (stripe metric, same boxes): sw-corner ring wall top-1 % share 0.537 → 0.567,
+anisotropy 4.86 → 4.80, luma std 28.6 → 27.8; e-wall-300 0.742 / 6.87 → 0.734 / 6.84; w-wall-mid 0.744 / 5.92 →
+0.737 / 5.90 — the marker beds, joints and iron tones render (half the wall's pixels move, mean 13/255), but the fine
+wavy partings on the 200–450 m walls did NOT: laminae gated by camera distance (b3 ≡ b2), a +2.2 mip bias on the wall
+R samples (b4), the wall samples' near/far blend by true distance (b5 ≡ b4) and the planar rock sample's blend by true
+distance on slopes (b6 ≡ b5) were byte-identical, so the lines are not the R tile at any variant or scale and not the
+strata block; the three distance experiments were reverted. What is known: they are shading (flat magenta keeps
+them), they vanish with all four detail normal maps flattened, their world-height spacing is ~1.5–2.5 m at every
+range, and they contour-trace the smooth relief. Still open under check 3 — next probe: flatten ONE normal map at a
+time with a fixed restore (the shared-material `__saved` bug), then the coarse planar `dnRa` / `rnGround` taps.
+
+**Nordhavn Fjord — "smooth green cone hill on the rim with a darker cap".** The alpine massifs are softened domes
+under 15°, so nothing slope-keyed in the vista fragment fires on them (rock from 0.30 slope, scree from 0.16): a hill
+is the meadow tint with stands below the treeline, and its only rock is the altitude-banded summit cap
+`smoothstep(0.60, 0.92, hT) × rockHex` — the darker cap. Landed: a per-map horizon knob `bareRock` (0..1, default 0,
+every other ring byte-identical) → `uVBareRock`: above the treeline the turf greys toward the map's own scree tint
+(heath), outcrop ribs from the 140 / 45 / 12 m fields stand on the steeper local faces with scree fans below, the
+summit cap breaks into ribs, snow leaves the ribs bare, and the ring forest's JS twin keeps crowns off them; Fjord
+authors 1 (palette untouched). Verified plumbed (the live ring material carries `uVBareRock = 1`), but NOT visible in
+the audited views: the cone hill sits at hT 0.3–0.5, below the treeline that gates the ribs, and the qualifying
+summits are 50–87 % atmosphere. Still open under check 3: outcrops below the treeline on the alpine hills (a fjord
+hillside's gneiss knobs through the turf) — the knob and fragment are in place for it.
+
+**Whiteout Station — skyline metric 0.80–0.90.** The layers probe answers the round-44/48 question: with the ring
+mesh hidden the skyline metric moves 1.005 → 1.009 and the edge row stays at 617/618 — in the sky-w / sky-s views the
+skyline is the TERRAIN-MATERIAL rim band, not the vista ring, and the far ring keeps only ~13 % of its own colour under
+haze + fog + the aerial pass. No ring knob can move this metric; round 44's proposal (snowpack tone / exposure
+re-grade, owner call) stands. Landed on the ring side only what the scoured-crest look needs (`bareRock` 1, rockHex
+0x9da9b4 → 0x5b6772); the snow-tone and haze moves tried were reverted as unverifiable. Winter untouched.
+
+**Sea-opening headland slab (Saltwind's and Nordhavn's mouths).** `seatHorizonSkirtOnGround` hands the ring over from
+the battlefield's geology to the authored profile between 60 and 380 m past the edge — but only for the rows BEFORE
+the first authored ridge; that row (~210 m out) carried the full profile while the row before it was three quarters
+geology: beside a low shore, a 25–30 m step on one 50 m strip drawn as a single flat quad beside the water. Landed
+(`world/maps/horizon.ts`, `world/edgeWater.ts`): `seaHeadlandWeight` — 1 inside an opening (taper included) and for
+the first third of 0.25 rad beyond its edge, 0 at 0.25 rad — and on those columns the hand-over runs on through the
+ridge rows to 470 m (`smoothstep(200, 470)`); every other column and every row past 470 m is bit-identical. Rows
+(radius / height, seed 1337): Saltwind 141° r4..r8 21 / 47 / 55 / 59 / 62 m → 19 / 20 / 22 / 22 / 27 (…42 / 61 / 76 by
+r12); Nordhavn's peninsula 365° 44 / 121 / 123 … 132 → 26 / 45 / 45 / 44 / 45 … 60 (the 20 m first step is the
+peninsula ridge's own geology). By eye (bird-w-edge, bird-e-high): the dark slabs at Saltwind's mouth are a low
+sloping shore, the pale wedge behind Nordhavn's arms is a low ridge with the massif starting farther out.
+
+**Receipts.** terrainMaterialOwnership / terrainWornDirt / wallSkyLight / terrainSurfaceDetail (v38, uRingRock, census
+92), mapQuality, horizonResources, titanGorgeHorizon, badlandsRelief (round-49 projections for titanGorge / fjord /
+whiteout in `round47MapPresentation.test-support.mjs`, which carries two `"titanGorge.ts"` keys — JavaScript keeps
+the last), worldBuildCoordinator, horizonRockfield, edgeWater, sourcedTextures, garageSkyPresets green; villageWear
+and mangroveWaterPalette digests moved (map configs) — integrator re-pin.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -1128,6 +1198,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 48 | Frosthollow redesign (owner: the Verdant clone maps): a Carpathian valley — ten-pond frozen river, terrace street village with a sawmill yard, two-armed ridge and saddle pass with a switchback, moraine flank, seven authored roads, new strongpoints, walls, belts, clearings, pads; the round-44 snow albedo / exposure re-grade | wall-probe A/B (six brief views + village-street, river-crossing, pass-switchback): skyline sky-w 0.94 → 0.88, sky-s 0.92 → 0.84, snow median 208 → 198; layout scan (pads, beats, candidates, pole stations, pond lips); mapQuality + road + winterLakeGeometry receipts, recaptured collision shard |
 | 48 | Amberford redesign: a Norman / English river-ford market town replaces the Verdant clone — SW→NE river in a sculpted valley (hillScale 0.8, eleven cut/fill landforms under one graded water plane), a stone bridge and a ford as the only crossings (avoid-liquid bots), five authored lanes, the walled town on the north-bank rise, orchards and hedgerows, the escarpment woods, the manor park and lake, weir and water mill in the river kit, re-baked tactical plate | wall-probe A/B on bird/centre/sky views plus five authored gameplay-height views (bridge, ford, square, mill, valley) and two close bridge views; constraint check (0 wet gaps, banks ≤ 1.44 m, both crossings dry, pads minNy 0.85–0.97); skyline metric unchanged (sky-w 0.84 → 0.90, bird-n 0.98 → 0.98); liquidMarshSurface worst bank 0.42; matchPlacement dry routes in all modes |
 | 48 | Tarkhan Steppe redesign: a new battlefield under the kept palette — takyr-floored braided wadi across the middle, 12 m escarpment with two ramps and a kurgan line on its crest, grain station (SE), kolkhoz and corrals (W), salt pan (NW), caravanserai rise, five authored roads, shelterbelts instead of groves, three graded aprons for the objective placement, recaptured collision shard | headless layout probe (bed −4.3 m, crest 16–18 m, mounds +5..8 m, pads relief ≤ 5.8 m, both-team reach on every row); wall-probe A/B (centre-far skyline 0.99 → 0.92, kurgan-line band 181 → 164 luma, plateau-south 161 → 134; sky-w unchanged 0.87 → 0.89); 38 receipts green, two shared digests moved for the integrator |
+| 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
