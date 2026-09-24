@@ -2058,6 +2058,106 @@ through the smoothstep's middle. The road's splat tint stays on the bed under th
 exempted) and is hidden by the slab from every gameplay height. The Delta river keeps its round-1 ruined bridge (no
 station authors the kind), and the `presentation-r1` autumn shots and the home showcase frames predate the span.
 
+### Round 62 — 2026-09-24: the search for a lost enemy and the empty rack
+
+Shared main sat at 5/124 after round 60 (median 465.5 s, 15 s under the receipt's 480 s ceiling; p10 290.1 s). The
+five capped seeds were replayed with `tools/pacing-trace.mjs`, a 2 s lane trace with the controller's search / gate /
+ammunition fields, a navigation-grid probe (the 25 m grid as ASCII with the planner's route from the survivor to the
+host) and a shell ledger with the damage of every result. Three mechanisms, in order of weight:
+
+1. **The midpoint inside the block.** Urban seeds 0 and 2 and Ruinspires 3: the survivor killed the last enemy bot at
+   400–510 s and then had no target for 200–400 s. The 8 s no-contact search (`updateStalematePolicy`) re-routed it
+   every window to the midpoint between its hull and the enemy's 50 m sector — on Urban seed 0 the cell (64, −100),
+   inside a building — and the corner-hop router, which sees one box 85 m ahead, cannot solve a maze: the T-90M
+   wandered the cluster at (90…150, −110…−10) from 540 s to 880 s, strikes cycling, and reached the host at 890 s
+   with ten seconds to go. The navigation grid had a route the whole time (east round the blocks at x = 250, then
+   south — 13 waypoints); Ruinspires' pocket at (−36, −31) likewise (19 waypoints, east to x = 250). The urban
+   survivor of seed 2 stood in a courtyard the grid reads as solid: no route at all from there.
+2. **Shells the rack could not afford.** Steppe seed 1: the T-90M Proryv fired 21 recorded results and its whole rack
+   (16 / 16 / 4 → 0 / 0 / 0) by 875 s — eleven HEAT rounds at a bot 270–340 m away between 700 s and 875 s and not
+   one hit; at 75 m from the host it put 6 of 12 APFSDS into the turret cheek and roof (non-pens, ricochets) around
+   the lower-front zone the probe had chosen (ratio 12–15): with the normal tier's persistent error (σ ≈ 6 mrad, held
+   for seconds) the shell lands on the plate beside the probed one. Saltwind seed 0: 13 of 24 APFSDS missed at
+   170–270 m against a moving bot; against the host the HEAT rounds went at a lower-front ratio flickering 0.86–0.90
+   around the gate, every one a non-pen, and the survivor stood empty at 77 m with 300 s left. Urban seed 2 (both
+   survivors) and Ruinspires 3: ten HE rounds into turret cheeks and mantlets — the pen-gate's HE fallback
+   (`chosenSlot === heSlot` bypassed the gate) bursting for nothing on 600 mm of armour, and on a magazine without
+   HE `findHeShellSlot` answers the last slot, so HEAT went through the bypass too.
+3. **An empty rack has no rules.** The standard ruleset resupplies nothing (`matchRuleset.ts`: ammo `'spec'`, no
+   respawn; consumables are repair / first aid / extinguisher). An empty bot kept pressing (Saltwind 0: at its press
+   point, `slot=1`, `input.fire` false, strikes cycling on the arc-limit scoot) — nothing in the doctrine knew.
+
+Fixes (`src/game/ai.ts`; `deps.planRoute` wired in `src/sim/authoritativeMatch.ts` and `src/game/state.ts`):
+
+- **Search legs planned over the navigation grid.** An optional `deps.planRoute(start, goal)` — `planBotRoute` over
+  the match's shared grid, no role detour, its own seeded stream — plans every search leg, so the waypoints are cells
+  the hull can reach; a goal in another connected component (an empty plan) is skipped, not driven at. Goals rotate
+  by how many legs have ended without contact: the enemy's sector, a sighting younger than 45 s, the mission
+  objective, a 110 m sweep ring round the sector whose bearing turns with every leg (0°, +45°, −45°, +90°…), then
+  a 220 m ring. A leg is given up only on its own evidence — route consumed without contact, three stuck strikes,
+  or its time budget (15 s plus the route at 2.5 m/s, at most 150 s; a leg that halved its distance re-plans
+  instead of counting) — contact resets the escalation, and without a planner (headless fixtures) the first leg
+  is the old two-point leg for the local router, rotated the same way. A dead target's last sighting is forgotten
+  when it dies (Amberford seed 1's survivor drove 180 s back to where its kill had stood).
+- **The HE fallback fires only a real HE round whose surface burst is worth a shell, laid on the zone that priced
+  it.** The probe estimates the burst of the HE slot on each zone it scores (`0.5 · dmg − 1.1 mm⁻¹ · armour stack`,
+  the `applyHeSurfaceBurst` law), the bypass needs `HE_SPLASH_WORTH_HP` (80) of it, and the round is aimed at that
+  zone rather than at centre mass (Alpine seed 0 under iteration 3: eleven HE rounds into the turret cheek the
+  lower plate had priced); otherwise the gate stays shut and the closed-gate flank and the press change the geometry.
+- **The penetration gate's ratio answers the lay error as well as the penetration roll**: 1.0 at ≤ 80 m (the
+  historical 0.9 covered the roll; Polders seed 2 under iteration 5 pressed straight in at 76 m, the gate open on a
+  lower-front strip rated ~1.0, and eleven of thirteen HEAT rounds landed on the glacis beside it) rising to 1.15
+  at ≥ 320 m.
+- **A lay the rack cannot afford is closed on, not taken.** `expectedHitChance`: the tier's σ and the gun's
+  dispersion in metres at the range against the target's width and 80 % of its height (erf); a shot needs 0.35
+  with a full rack, rising to 0.6 with the last rounds. Below it, at a bot or a passive target, the round is held
+  (`conserveHolds`) and the hull closes (`driveEngage`) unless it is the lone spearhead; the settle holds and the
+  stalemate push's settle stand down while it closes. A live player is fired on from range exactly as before —
+  the player-facing doctrine ("threatened rather than hit") is untouched.
+- **The empty rack rams or retires.** With every slot at zero the bot rams the current target only when the ram law
+  (`ramDamage`, the closing speed a straight run reaches, at most 14 m/s) says the rams a kill needs cost under 80 %
+  of its own hull — a run straight through the hull, a 3.5 s back-off to 45 m when a run has stalled — and
+  otherwise keeps 240 m from every enemy (toward support when there is any), starts no search legs, and leaves
+  the finish to its team.
+- The gun-lane relocation is judged on the lay, not on the gate (a muzzle behind a berm still schedules it while the
+  probe, casting from the same gun, finds no zone).
+
+Receipts: `src/game/ai.selftest.mjs` [18] a bot without contact searches on reachable legs and rotates its goal when a
+leg fails (with a planner the unreachable sector is never driven at; without one the old sector leg comes first and
+still rotates), [19] no round at a zone the probe rates unpenetrable, HE included (a Strv 103 on a Leopard 2A7V's
+glacis at 80 m, best ratio 0.56, burst 0; the same gun fires at the rear), [20] the long-range hold and close at a bot
+target (M1A2 on a T-90M at 380 m: chance 0.17, no shot, the hull closes) while a live player at 380 m is fired on as
+before, [21] the empty rack rams a 300 hp hull at 60 m and retires from a full-health M1A2 (and a hull that would
+not survive its own ram does not run). [14] samples the press drive over its first three seconds (the conservation
+chase closes on the 220 m contact before the press, and the pinned fixture hull trips the stuck watchdog).
+
+Full-receipt ledger (same 124 seeds; timeouts / median / p10):
+
+| iteration | change | timeouts | median | p10 | note |
+|---|---|---|---|---|---|
+| 0 | base d2e588d4d (deploy 81) | 5 | 465.5 | 290.1 | Urban 0 and 2, Tarkhan 1, Ruinspires 3, Saltwind 0 |
+| 1 | planned search legs, HE worth, ranged gate, hit-chance hold, empty rack | 0 | 365.4 | 268.0 | 29 maps shorter in aggregate, Amberford longer (seed 1: 567 → 781, the dead target's sighting), Orchard +33 |
+| 2 | + dead target's sighting forgotten, cross-map leg budget, 45 s sighting age | 0 | 357.7 | 265.7 | 30 maps shorter; Amberford +47 (seed 2: 527 → 611, a long fight in the woods and a 100 s search — no stuck behaviour); no battle over 700 s |
+| 3 | + the 15 s passive dwell (round 60's prepared measurement) | 1 | 350.6 | 258.3 | Alpine 0 capped: a 10 hp survivor put eleven HE rounds into the host's turret cheek — the burst was priced on the lower plate, the round laid on centre mass (fixed in 5); Coastal, Amberford, Alpine longer |
+| 4 | + conservation threshold 0.35 → 0.25 with a full rack | 0 | 362.6 | 271.6 | the hold is not what shortened the battles: +12 s of median for more rounds spent — 0.35 kept |
+| 5 | HE laid on the priced zone, an empty rack does not hunt; dwell 20 s, threshold 0.35 | 1 | 360.4 | 265.0 | Polders 2 capped: a straight-in press at 76 m, the gate open on a lower-front strip rated ~1.0, eleven of thirteen HEAT rounds on the glacis beside it (fixed in 7); Polders, Longleaf, Mars longer |
+| 6 | the same with the 15 s dwell | 0 | 350.6 | 258.8 | no map worse than its round-60 aggregate (31 of 31 shorter) — the receipt prefers the 15 s dwell, kept |
+| 7 | + the gate ratio 1.0 at point-blank range (final, b94c22c78) | 0 | 351.4 | 258.8 | Orchard +4 s in aggregate (1307 → 1311), the other 30 maps shorter; no battle over 720 s |
+
+The economy, on the same 124 battles (a replay tallying every reload channel): the 372 bots fired 11,330 rounds on
+the round-60 tree and 5,493 on this one (30.5 → 14.8 a bot) for slightly MORE recorded damage (779 k → 803 k hp), three
+racks stood empty at the end before and none after, 692 search legs were planned, and no ram run was ever worth it
+(the idle host keeps its 2,600 hp; the ram law is right to refuse).
+
+What remains is the median. Round 60 left it 15 s under the 480 s ceiling; this tree leaves it 51 s over the 300 s
+floor (351 s, p10 259 s, no battle under two minutes) — under the 380–440 s band the round set out for, because a fight
+in which no round is wasted is simply shorter, on every map. The two levers measured do not lift it: a full rack
+taking one-in-four shots (iteration 4) added 12 s of median for more rounds spent, and the 20 s dwell (iterations 2 and
+5) added 7–9 s and a cap. Lifting it into the band would take an opening the bots spend longer in — the deployment
+window (`DEPLOYMENT_TUNING`, 120–165 s, engagement inside 85–100 m) is the owner's lever, not this round's. Open with
+it: the press point's ring has no third bearing once both side points stand on water (Polders 2 pressed straight in),
+and the empty rack's retirement is a draw by design — a resupply rule would be the alternative, and there is none.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -2161,6 +2261,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 60 | The last bot against a passive target (server/battlePacing 14/124): nine capped battles ended with empty racks after the survivor fought the idle host from 165–300 m and the tier's vertical error flew the shells over the turret or short into the ground; a target that has held still and stayed silent for the passive dwell, and that this bot's shells have stopped penetrating, is pressed after the deployment window to a 70 m side aspect (scoot legs, the low-health fallback, the settle holds and the flank ring yield; the press ends the moment the target moves or fires); the weak-spot probe scores only zones the gun can reach (world ray from the gun, elevation / depression arc, turret fallback); press points need a gun-to-hull lane and are vetoed when masked, gate-closed or gun-pinned; a closed-gate flank carries on to the rear; an overturned bot self-rights | full receipt after every change: 14 → 11 → 5 → 5 → 5 / 124 (median 465.5 s, p10 290.1 s, no sub-two-minute battle); ai.selftest [14]–[17] (press vs. an active-target control, sniper cadence, self-right, masked-zone probe), botGunLane (fixture berm 2.4 m), authoritativeBots (moving-battle ceiling 0.70), the AI / sim / net receipts in the section, typecheck, attribution |
 | 59 | Performance audit after the map rounds: every battlefield measured on main and at deploy 66 (main → base → main → base per map, the load beside every wall-clock number, counts / programs / bytes decisive) — Tarkhan Steppe's world build 2.5–2.7× its baseline: the field-trench plan re-planned on every height query of a dry-marsh map (a latent 2026-09-17 trap the takyr crusts walked into), now cached with byte-identical heights, 9.5 → 3.8 s beside the base's 3.5; Frosthollow +30 % triangles at the chase pose (the redesign's stands at the deployment, frame time unchanged) and Amberford +4 % recorded as design costs; every other map within 6 % of deploy 66, textures within 0.4 MB, programs 194–213, worst-frame calls ≤ 899 | `tools/tmp-r59-map-perf-probe.mjs` (124 main / base runs, the re-run pairs, the main / base / fixed triple), `node --cpu-prof` attribution, height / plan hashes, `roadLookupGrid` declared delta, the terrain / trench / relief / vegetation / perfprobe receipts, typecheck, hygiene, attribution; summary `docs/references/perf/round59-map-perf-audit.json` |
 | 61 | Amberford's bridge over the river (round 48's open item): a marsh station authored `crossing: 'bridge'` resolves a level deck plane over the water (terrain.ts, published as `heightField.bridgeDecks` — the span from the river's own wet reach, the deck 2.4 m over the water surface, 7 % approaches; the road plane and the 14–18 m dry band exempted under the span, the bed the river bed, the deck stone); the river kit builds an extruded three-arch body, cutwaters, abutments, wing walls, a level flagged slab and parapets from it and publishes the compound record the ride stands on; the navigation grid routes the crossing's cells through the road axis (deck cells dry at deck height) and the liquid safety reads a deck as dry; the capture tool's `--headless` mode; the shard recaptured on the lane tree (the round-48 shard was stale; census 5873 / 5727 / 5822); the plate re-baked | map-view-probe A/B on bird-n / bird-w and two new round-61 views (bridge-bank-low: three arcs over continuous water with the far bank through each opening, cutwaters, abutments on the banks; bridge-deck-low: a level flagged deck between parapets, flush with both approaches; A: the causeway wall with box recesses on dry gravel); route proof over the deck axis and the ford; structure-support probe (the deck the floor at 2.795 m across the span, the river past the parapet line); battlePacing full 14/124, Amberford 0/4; minimap crops before/after; receipts in the section |
+| 62 | The search for a lost enemy and the empty rack (server/battlePacing 5/124 after round 60): the survivor's 8 s no-contact search re-routed every window to a midpoint inside the blocks (Urban 0 / 2, Ruinspires 3) — search legs are now planned over the match's navigation grid through `deps.planRoute` (both authorities), goals rotate (sector, a sighting under 45 s, objective, a sweep ring whose bearing turns each leg, a wider ring), an unreachable goal is skipped, a leg is given up only on its own evidence, a dead target's sighting is forgotten; the rack is finite (Steppe 1, Saltwind 0): the HE fallback fires only a real HE round whose surface burst is worth a shell, laid on the zone that priced it, the penetration gate's ratio answers the lay error (1.0 at 80 m → 1.15 at 320 m), a lay under the expected-hit-chance bar (tier σ + dispersion vs the silhouette, rising as the rack empties) is closed on rather than taken at a bot or passive target (a live player is fired on as before), an empty rack rams only when the ram law makes it survivable and otherwise retires | full receipt after every change (ledger in the section): 5 → 0 → 0 → 1 → 0 → 1 → 0 → 0 / 124, median 465.5 → 351.4 s, p10 290.1 → 258.8 s, no battle over 720 s, no map longer than its round-60 aggregate but Orchard (+4 s); the 15 s passive dwell measured and kept, the 0.25 conservation threshold measured and dropped; ai.selftest [18]–[21] (planned search legs with and without a planner, no round at an unpenetrable front HE included, the long-range hold and close vs. a live-player control, the empty rack's ram and retirement), the AI / sim / net receipts in the section, typecheck, attribution |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts

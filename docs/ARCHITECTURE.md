@@ -840,7 +840,17 @@ low-health fallback, the settle holds and the flank ring yield to the press, and
 or fires (round 60 pacing, 2026-09-24: nine of fourteen capped battles ended with the last bot's racks empty against
 the idle host). The weak-spot probe scores only zones the gun can reach (world ray from the gun, elevation /
 depression arc) and falls back to the visible turret; a flank that leaves the gate closed carries on toward the rear;
-an overturned bot holds its drive still and requests the self-right.
+an overturned bot holds its drive still and requests the self-right. A bot without contact searches on legs planned
+over the match's navigation grid (`deps.planRoute`, the opening-route planner without its role detour): the goals
+rotate through the enemy's sector, a sighting younger than 45 s, the objective and a sweep ring whose bearing turns
+with every leg, a goal in another connected component is skipped, and a leg is given up only on its own evidence
+(route consumed, three stuck strikes, its time budget) — round 62 pacing, 2026-09-24: Urban's survivor re-routed
+every 8 s to a midpoint inside a block for 340 s. The rack is finite: the HE fallback fires only a real HE round whose
+surface burst is worth a shell, laid on the zone that priced it; the penetration gate's ratio answers the lay error
+as well as the penetration roll (1.0 at 80 m, rising to 1.15 at 320 m); a lay
+whose expected hit chance (tier σ plus dispersion against the silhouette, the bar rising as the rack empties) is too
+low is closed on rather than taken at a bot or a passive target — a live player is threatened from range as before —
+and an empty rack rams only when the ram law makes the exchange survivable, otherwise retires.
 
 Before firing, `botFriendlyFireRisk()` predicts teammate motion through the shell
 corridor and HE blast radius. A blocked bot holds fire and moves laterally; state.ts
