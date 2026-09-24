@@ -979,9 +979,11 @@ the new edge heights: max 2.05 m at three seeds), `horizonAutumnGround`, `liquid
 `villageWear` (FROZEN configs), `mangroveWaterPalette` (other29), `terrainStreaming` (autumn geometry golden),
 `shoreDirtMask` (autumn RGBA control), `winterLakeGeometry` (28-map non-Winter kit digest).
 
-**Still open.** A true arched span with water under the deck needs the road plane to exempt the crossing from the
-14–18 m dry band (`terrain.ts`, a round-47 file — not this lane's scope); the arch openings are box recesses, not arcs.
-The garage card (`public/maps/autumn.webp`, thumbs) was re-rendered from the redesigned valley in round 50 (2026-09-24);
+**Still open (the span closed by round 61).** A true arched span with water under the deck needed the road plane to
+exempt the crossing from the 14–18 m dry band (`terrain.ts`, a round-47 file — not this lane's scope) and the arch
+openings were box recesses, not arcs — round 61 (2026-09-24) authors `crossing: 'bridge'` on the narrows and the kit
+builds real arcs over the river on the deck plane terrain.ts resolves (see "Round 61 — 2026-09-24: Amberford's bridge
+over the river"). The garage card (`public/maps/autumn.webp`, thumbs) was re-rendered from the redesigned valley in round 50 (2026-09-24);
 the `presentation-r1` autumn shots and the home-page showcase frames still show the round-1 valley and need the
 marketing-shot pipeline. The manor has no house builder (the park is wall, avenue, lake and the
 camp); a stone town wall is field-wall height. `tools/bake-minimap-assets.mjs` serves on 7600 + pid % 200 — it was run
@@ -1937,6 +1939,125 @@ granular on this backend (a finer timer needs a native capture); Frosthollow's n
 lever if the cascades are ever trimmed; the probe stays a `tools/tmp-*` throwaway — promoting it beside the round-48
 probes is a separate decision.
 
+### Round 61 — 2026-09-24: Amberford's bridge over the river
+
+Round 48's open item ("a true arched span with water under the deck needs the road plane to exempt the crossing from
+the 14–18 m dry band"; lane r61-amberford-bridge from cb46992ac, the round-58 tip; A = a pristine detached worktree at
+that commit, B = this lane; `tools/map-view-probe.mjs` at seed 1337 on the bird views and two new round-61 bridge views,
+one run at a time under the probe mutex; judged on 1280 px reductions and 2× crops in `$SP/r61/cap/`, numbers in
+`$SP/r61/`).
+
+**What was wrong.** Every road crossing is dry by construction: `terrain.ts` zeroes the water mask within 14 m of a
+road centreline (`smoothstep(14, 18, rd)` in `waterWetnessAt`) and grades the causeway to the road plane
+(`applyHeightConstraints`, `rd < 14`). The round-48 bridge therefore carried the coach road over dry gravel 0.5 m above
+the water surface (the road plane 0.93 m, the liquid plane −0.25 m, the sheet 0.64 m over it): its "arches" were dark
+box recesses proud of a solid spandrel wall standing on the causeway's shoulder, and its parapets were two field-wall
+runs of the map's `wallRuns` seated on that gravel.
+
+**The rule (authored, not a special case).** A marsh station authors `crossing: 'bridge'` (`MarshSourceConfig`, with
+optional `deckClearM` 2.4, `deckWidthM` 12.4, `approachM`); Amberford's bridge narrows `{ x: -20, z: -68, r: 18 }` does.
+Once the road plane and the liquid surfaces are frozen, `terrain.ts resolveBridgeDecks` turns each into a
+`BridgeDeckPlane` published as `heightField.bridgeDecks`:
+- the deck centre is the road's nearest point to the station (route 0, the coach road, at the node itself) and its
+  axis the road bearing there ((−0.686, 0.728));
+- the span is the river's own wet reach along that axis — the liquid union BEFORE the dry band, marched at 0.25 m
+  (15 m each way at the r 18 narrows) — plus a 3 m abutment at each end: half-length 18 m; the deck is 12.4 m wide
+  between the parapet lines;
+- the plane is level: the road plane lifted clear of the water surface by the clearance — max(0.93, 0.395 + 2.4) =
+  2.795 m; the bed under it is the liquid plane (−0.245 m);
+- the approach beyond each abutment is the length a 7 % grade needs from the road plane there (north 33 m, south 11 m;
+  one length for both sides, 8–60 m).
+Under the span the road-plane blend and the dry band are exempted (`bridgeTermsAt`: `span` 1 under the deck, falling to
+0 through the abutment; the height field keeps the river bed, `waterWetnessAt` keeps the river — mask 1 across the
+deck's full width and beside it), through the abutment the terrain climbs from the bed to the deck, over the approach
+the road plane grades to the deck (`approach` 1 at the abutment face, 0 at its end: the north approach 2.795 → 0.66 m
+over 33 m), and `getGroundType` reads the deck as stone. Everything else is byte-identical: 179 four-metre samples
+moved, none beyond 80 m of the deck, every road node keeps its height, the ford at (186, 24) keeps its wade (mask 0,
+the lane dipping to −0.71 m), every map without a bridge station resolves no deck and is untouched.
+
+**The kit (`mapKits.ts addArchedStoneBridge`, derived from the plane; no map coordinate lives in it).** The body is
+ONE extruded elevation profile through the full deck width: spandrel walls with three segmental arches (chord 8.67 m,
+rise 1.1 m, radius 9.1 m; the spring 0.3 m over the water surface, the crown 0.55 m under the body top) whose vault
+soffits are the extrusion's inner walls — the openings are arcs the sheet runs through, not recesses — with 2 m piers
+between them carrying cutwaters turned into the stream, abutments a metre into each approach embankment with splayed
+wing walls seated on the banks, a 0.5 m deck slab level at the deck plane and flush with the graded approaches, and
+1.1 m parapets with end posts on its edges (the two `wallRuns` left `autumn.ts`). Its collision record is a compound
+the ride stands on: the body (footed 0.6 m under the bed, topped at the deck plane) and the two parapets
+(deck → +1.1 m), kind `'bridge'`, in both sinks (the stockpile census counts it beside the mill house). A hull that
+arrives on the approach mounts the body's top as its floor across the span (the structure support field: 2.795 m at
+every station of the deck, the river −0.2 m past the parapet line), a hull in the river is pushed by the body's walls,
+and a hull that leaves the deck sideways is stopped by the parapet parts before it can fall; ford posts skip the route
+the deck carries.
+
+**Bots.** The dedicated navigation grid (`sim/botRoutePlanner.ts`, `sim/bridgeDeckNavigation.ts`) routes a cell that
+lies within half a cell (12.5 m) of the crossing's road axis over the span or an approach through that axis — over the
+span at the deck's height, on stone, dry and unblocked (the deck's record is its floor), over an approach sampled on
+the road like any cell — so the route runs down the road, over the abutment and along the middle of the deck; a cell
+centre on the embankment shoulder no longer draws the edge through the water beside the deck (the first cut, snapping
+span cells only, left the south approach cell (0, −75) 9.7 m off-axis and its edge blocked). `navigationSampleIsLiquid`
+and the hull-rectangle liquid safety (`navigationLiquidSafety.ts`, the AI's local brake) read a point under a deck as
+dry; the water beside it stays liquid. Proof (`$SP/r61/route.mjs`): from the player pad, routes to the two western
+enemy pads cross on the deck axis ((−7, −82) → (−19, −69) → (−31, −56)) and the eastern pad still fords at (186, 24);
+the liquid safety is clear at the deck centre and blocked 8 m across it and in the open river. Track dust reads the
+contact point's height against the water surface (`effects.ts`), so a track on the deck does not splash the river it
+spans. `matchPlacement` (its reduced view passes `bridgeDecks`): 496 both-team dry routes, all modes.
+
+**Collision shard and pacing.** Amberford's dedicated shard was recaptured ON THIS TREE with the capture tool's new
+`--headless` mode (`tools/capture-world-collision-manifests.mjs --headless --maps autumn`: a private vite server on a
+5300–5399 port with its own optimizer cache under `$SP/r61/`, headless Chrome with `--use-gl=angle`, `__GAME_READY`,
+`__DEBUG.switchMap`, the tool's own pack script, `assertUnchangedCollisionShards` for the other thirty): 5873
+obstacles / 5727 colliders / 5822 concealers (1827167 B). The untouched base recaptured with the same tool reads
+5883 / 5737 / 5822 — the committed round-48 shard (6091 / 5927 / 6035) had gone stale against main's own Amberford
+world like Tarkhan's in round 57 — and the bridge then retires the two parapet runs' nine wall records and two posts
+for the one bridge record; concealers unchanged. Census and storage ceiling re-pinned with dated notes
+(`dedicatedWorldCollision`, `collisionManifestCodec`). `battlePacing` in full under the mutex: 14/124 timeouts (the cap is 15), Amberford's own
+rows 367 / 585 / 473 / 296 s with 0/4 — the bots cross on the deck or wade the ford.
+
+**The tactical-map plate.** Re-baked (`tools/bake-minimap-assets.mjs --maps autumn` under the probe mutex; the
+release harness's FIFO was empty): the river runs up to both sides of the coach road where the round-48 plate pinched
+it off with a 28 m strip of dry causeway — the road line over continuous water is the bridge on the map
+(`$SP/r61/minimap-{before,after}-crop.png`). The shared `MINIMAP_RASTER_REVISION` is left for the round's one bump.
+
+**Verified (`tools/map-view-probe.mjs` at seed 1337; A = the base worktree, B = this lane — tag b2 after the deck slab
+took `slabBox` UVs; `$SP/r61/cap/`, 1280 px reductions and 2× centre crops).** `bridge-bank-low` (from the north bank
+downstream of the crossing, 2 m over the water's edge, looking across the water): A — a dark wall standing on dry
+gravel with three black rectangles in it and the water ending short of it on both sides; B — three segmental arches
+over continuous water, the far bank and its reeds visible THROUGH every opening, the two piers standing in the river
+with their cutwaters, the level deck and parapet line above them, the wing walls meeting both banks, and no z-fighting
+between the sheet and the deck (the water surface is 2.4 m under it). `bridge-deck-low` (the coach road on the south
+approach): A — the road running level over the causeway between two low field walls; B — the road rising onto a level
+stone-flagged deck between 1.1 m parapets with end posts, flush at both ends (no step; the first B frame's slab showed
+the thin-slab stripe of `box()`'s UVs, the reason for `slabBox`), the town beyond. `bird-n` / `bird-w`: no change
+beyond the crossing. The ford at (186, 24) is unchanged in the field (mask 0, the lane dipping to −0.71 m) and on the
+plate.
+
+**Receipts (all exit 0 on the final tree).** roadContinuity (autumn row unchanged: the deck is derived from an
+interior segment, identical in the completed and uncompleted builds), roadLookupGrid (the deck state, resolution,
+ground type and published planes declared as historical projections; the road-plane blend is the fixture's current
+slice), roadPlacementAdmission (the oracle's relief-law constructor restores the current blend, like the round-47 rim
+laws), roadBankComposition and roadBorderCorridor (their constraint sandboxes author no decks), roadInheritedGrades,
+roadStations, roadDistanceField, badlandsRelief, terrainStreaming, playableRelief, shoreDirtMask (autumn's RGBA
+control re-pinned, dated), terrainWetLayer, trackSurface, shallowWater, waterRipples, liquidMarshSurface,
+riverLandings, riverReedContact, beachedBoat, shoreJetty, strandWrack, railWashout, railSpurs, railCoalStockpiles
+(the bridge is Amberford's second footprint: three OBB parts checked against the deck plane), winterLakeGeometry (the
+28-map kit digests re-pinned, dated), autumnHeadlands, structureCollision, structureSupport, collision,
+botRoutePlanner, navigationLiquidSafety, botNavigationWater, matchPlacement, environmentExpansion (a bridge station's
+span is wet and stone, its abutments skipped, every other crossing dry), mapQuality, spawnClearance, propsScheduling,
+worldBuildCoordinator, dedicatedWorldCollision (census re-pinned, dated), collisionManifestCodec (ceiling re-based,
+dated; the headless option shape), collisionManifestLoader, battlePacing (full), map-probe-runtime (44 views),
+minimapAssetRuntime, minimapCapturePolicy, minimapOrientation, map-art-guards, garage:terrain:check (no pad moved),
+typecheck, public-repo-hygiene, attribution:check. There is no `roadEndpoints.selftest`; `maps/roadEndpoints.ts` is
+exercised by roadContinuity, roadStations, roadCutRecovery, shoreDirtMask and mapQuality.
+
+**Still open.** A shell fired through an arch opening hits the body: the record is one solid part from the bed to the
+deck (the arches are open to the eye, the sheet and the bots' liquid test, not to rays or to a hull in the river); a
+compound of piers and a slab with per-part extents would let shells and a low hull pass beneath, at the cost of the
+ride's floor test on a 0.5 m slab (`HULL_STANDABLE_HEIGHT_M` is 0.9). The deck clearance is the 2.4 m default (author
+`deckClearM` for a taller span — the arches' rise is 1.1 m over an 8.7 m chord); the 7 % approach peaks near 10 %
+through the smoothstep's middle. The road's splat tint stays on the bed under the deck (the road distance is not
+exempted) and is hidden by the slab from every gameplay height. The Delta river keeps its round-1 ruined bridge (no
+station authors the kind), and the `presentation-r1` autumn shots and the home showcase frames predate the span.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -2039,6 +2160,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 58 | Jetties at the water's edge (round 56's open item): the coastal kit's jetties and Saltwind's piers planned from the strand march (`src/world/maps/shoreJetty.ts`) — the shore end a metre landward of the wrack band on a flat strand or on the bank where the ground meets the deck, the tip a full span over the planar core, the deck a constant 0.45 m over the water surface (bed + the sheet's 0.72 m), every pile from the bed, sized to the shelf in 4–10 spans (Saltmere 9, Nordhavn's heads 5–7, Saltwind's authored 10); a gangway where the deck stands over the sand, a clinker hull moored alongside with bollards and lines; the kit burns the retired jetty's draws so every other boat, log and buoy keeps its place | map-view-probe A/B on the shore views plus four new jetty views from the shallows (table 38 → 42), 2× crops; `shoreJetty.selftest` (321 plans over nine fields); A/B receipt probe (7/7 boats, 41/41 + 15/15 logs, Saltwind's wrack byte-identical); riverLandings / beachedBoat / winterLakeGeometry / map-probe-runtime re-pinned; 28 world receipts and the typecheck green; no shard moved |
 | 60 | The last bot against a passive target (server/battlePacing 14/124): nine capped battles ended with empty racks after the survivor fought the idle host from 165–300 m and the tier's vertical error flew the shells over the turret or short into the ground; a target that has held still and stayed silent for the passive dwell, and that this bot's shells have stopped penetrating, is pressed after the deployment window to a 70 m side aspect (scoot legs, the low-health fallback, the settle holds and the flank ring yield; the press ends the moment the target moves or fires); the weak-spot probe scores only zones the gun can reach (world ray from the gun, elevation / depression arc, turret fallback); press points need a gun-to-hull lane and are vetoed when masked, gate-closed or gun-pinned; a closed-gate flank carries on to the rear; an overturned bot self-rights | full receipt after every change: 14 → 11 → 5 → 5 → 5 / 124 (median 465.5 s, p10 290.1 s, no sub-two-minute battle); ai.selftest [14]–[17] (press vs. an active-target control, sniper cadence, self-right, masked-zone probe), botGunLane (fixture berm 2.4 m), authoritativeBots (moving-battle ceiling 0.70), the AI / sim / net receipts in the section, typecheck, attribution |
 | 59 | Performance audit after the map rounds: every battlefield measured on main and at deploy 66 (main → base → main → base per map, the load beside every wall-clock number, counts / programs / bytes decisive) — Tarkhan Steppe's world build 2.5–2.7× its baseline: the field-trench plan re-planned on every height query of a dry-marsh map (a latent 2026-09-17 trap the takyr crusts walked into), now cached with byte-identical heights, 9.5 → 3.8 s beside the base's 3.5; Frosthollow +30 % triangles at the chase pose (the redesign's stands at the deployment, frame time unchanged) and Amberford +4 % recorded as design costs; every other map within 6 % of deploy 66, textures within 0.4 MB, programs 194–213, worst-frame calls ≤ 899 | `tools/tmp-r59-map-perf-probe.mjs` (124 main / base runs, the re-run pairs, the main / base / fixed triple), `node --cpu-prof` attribution, height / plan hashes, `roadLookupGrid` declared delta, the terrain / trench / relief / vegetation / perfprobe receipts, typecheck, hygiene, attribution; summary `docs/references/perf/round59-map-perf-audit.json` |
+| 61 | Amberford's bridge over the river (round 48's open item): a marsh station authored `crossing: 'bridge'` resolves a level deck plane over the water (terrain.ts, published as `heightField.bridgeDecks` — the span from the river's own wet reach, the deck 2.4 m over the water surface, 7 % approaches; the road plane and the 14–18 m dry band exempted under the span, the bed the river bed, the deck stone); the river kit builds an extruded three-arch body, cutwaters, abutments, wing walls, a level flagged slab and parapets from it and publishes the compound record the ride stands on; the navigation grid routes the crossing's cells through the road axis (deck cells dry at deck height) and the liquid safety reads a deck as dry; the capture tool's `--headless` mode; the shard recaptured on the lane tree (the round-48 shard was stale; census 5873 / 5727 / 5822); the plate re-baked | map-view-probe A/B on bird-n / bird-w and two new round-61 views (bridge-bank-low: three arcs over continuous water with the far bank through each opening, cutwaters, abutments on the banks; bridge-deck-low: a level flagged deck between parapets, flush with both approaches; A: the causeway wall with box recesses on dry gravel); route proof over the deck axis and the ford; structure-support probe (the deck the floor at 2.795 m across the span, the river past the parapet line); battlePacing full 14/124, Amberford 0/4; minimap crops before/after; receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
