@@ -29,7 +29,7 @@
 // WIDTH GUARD: the fidelity lab width-normalizes both models to the spec
 // width and crops the gun-overhang metric at the union of both hull masks'
 // z-extent. Committed max widths: leo2a6/leo2a5 3.75, leopard2_proto 3.70,
-// kf51 3.60, leo2a7v/leo2_revolution 4.00. Nothing may stand wider, and the
+// kf51/leo2a7v 3.60, leo2_revolution 4.00. Nothing may stand wider, and the
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -39,6 +39,7 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { buildLeopardRevolution } from './leopardRevolution.ts';
 import { recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
 import { buildLeopardRevolutionPrototypeTurret } from './leopardRevolutionPrototypeTurret.ts';
+import { LEOPARD_IMPROVED_HULL_WIDTH_SCALE } from './leopardImprovedHull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
@@ -7723,6 +7724,8 @@ function addLeo2A7VFrontalProtection(P: TankBuilderPort) {
 // sensor pods on the roof corners (photo class).
 // ---------------------------------------------------------------------------
 function buildLeo2A7V(P: TankBuilderPort) {
+  // Hull coordinates below retain the original authoring frame; the final
+  // hull-only X transform reduces its nominal 4.00 m width to 3.60 m.
   const { box, cylY, cylZ } = KIT;
   const buildLeo2A7VMarkingsStage1 = (): void => {
     leoHullV3(P, {
@@ -8140,6 +8143,16 @@ function buildLeo2A7V(P: TankBuilderPort) {
     P.topY = 1.24;
   };
   buildLeo2A7VGunStage2();
+  // One owner transform keeps the deck, skirts, ERA, wheels and tracks seated
+  // together. Turret and gun are sibling rigs and retain their full width.
+  P.hullG.scale.x *= LEOPARD_IMPROVED_HULL_WIDTH_SCALE;
+  if (P.gear) {
+    P.gear.contactGeom.halfWidM *= LEOPARD_IMPROVED_HULL_WIDTH_SCALE;
+    for (const lane of P.gear.trackHitbox ?? []) {
+      lane.x0 *= LEOPARD_IMPROVED_HULL_WIDTH_SCALE;
+      lane.x1 *= LEOPARD_IMPROVED_HULL_WIDTH_SCALE;
+    }
+  }
 }
 
 function addLeo2PrototypeRunningGearFinish(P: TankBuilderPort): void {

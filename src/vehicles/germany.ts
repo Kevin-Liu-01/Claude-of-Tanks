@@ -3,6 +3,7 @@
 // first-party procedural work in profiles/leopard.ts and profiles/germany.ts.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
+import { LEOPARD_IMPROVED_HULL_WIDTH_SCALE } from './profiles/leopardImprovedHull.ts';
 import {
   frontPlate,
   leftCheekPlate,
@@ -212,7 +213,7 @@ registries.tankSpecs.leo2a6m.armor.turretPlates.push(
 // layers as non-consumable spaced armor so damage, gallery overlays and the
 // procedural panel geometry all describe the same construction.
 registries.tankSpecs.leo2a7v.armor.hullPlates.push(
-  frontPlate('a7v_upper_glacis_era', 18, 1.50, 1.60, 2.10, 1.43, 2.84,
+  frontPlate('a7v_upper_glacis_era', 18, 1.50 * LEOPARD_IMPROVED_HULL_WIDTH_SCALE, 1.60, 2.10, 1.43, 2.84,
     eraLayer(ukrainianNizh, 620, 1120)),
 );
 registries.tankSpecs.leo2a7v.armor.turretPlates.push(

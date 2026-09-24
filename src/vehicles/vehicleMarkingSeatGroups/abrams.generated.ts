@@ -330,15 +330,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.26,
         "pos": [
-          1.478377,
-          0.4139568,
+          1.3168077,
+          0.4155904,
           -0.4332
         ],
         "quaternion": [
-          -0.0529928,
-          0.7051183,
-          0.0529928,
-          0.7051183
+          -0.152708,
+          0.6904204,
+          0.152708,
+          0.6904204
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a3",

@@ -282,3 +282,25 @@ Final native freeze: `ec69fe94`, 46 meshes / 110,055 vertices. Fidelity
 0 plan holes. The 45-frame evidence packet is unique and proves genuine yaw,
 complete turret ownership and fixed engine-deck/APU ownership. No source
 geometry is used by the playable.
+
+## 2026-09-24 owner hull-width adjustment
+
+The owner requested a 10% narrower **Leopard 2 Improved** (`leo2a7v`),
+clarifying that this means left-to-right width when facing it head-on.
+The nominal hull width changes from 4.00 m to 3.60 m. The complete hull rig,
+including skirts, ERA, fenders, wheels and tracks, shares the lateral change;
+length, height, wheel radius, turret and gun dimensions are retained.
+Hull armor, track collision lanes and ground-contact width follow that frame.
+The anatomy generator measures this scaled hull in rigid tank coordinates,
+so calibration cannot restore the old-width collision shell. Interior fills
+also require regeneration: their saved boxes use tank coordinates and cancel
+the rig scale when mounted, so the previous fill would enter the new track lane.
+
+The separately authored Leopard 2A7V (`leo2a7v_x`) retains its original 4.00 m
+width. Its copied combat metadata explicitly restores the donor's original
+hull frame before fitting its own dimensions. Pre/post measurements confirm
+unchanged geometry and combat metadata for that control vehicle (within
+floating-point precision).
+
+This is an owner-directed proportion revision, not a new source comparison
+certification. Earlier source scores above describe their original revisions.

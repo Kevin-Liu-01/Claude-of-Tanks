@@ -156,17 +156,34 @@ for (const quality of ['high', 'low']) {
     assert.ok(Math.abs(turret.worldToLocal(hit.point.clone()).x)<1.3,'visible stock is the bearing, not a turret side panel');
   }
   for (const side of [-1, 1]) {
-    for (const x of [1.36,1.68]) {
-      const trayBottom = verticalHit(m1, ['turretEquipment'], side*x, .65, -1.52, -1);
+    for (const x of [1.10,1.45]) {
+      const trayBottom = verticalHit(m1, ['turretEquipment'], side*x, .62, -1.52, -1);
       const stock = verticalHit(m1, ['turret','turretExternalArmor'], side*x, 1, -1.52, -1);
-      assert.ok(trayBottom<.60 && trayBottom<=stock, 'service tray bridges real stock at both ends');
+      assert.ok(trayBottom<.60 && trayBottom<=stock, `service tray bridges real stock at ${side*x}: bottom ${trayBottom}, receiving ${stock}`);
     }
     for (const z of [1.05,.65]) {
-      const plateTop = verticalHit(m1, ['turretEquipment'], side*1.22, .75, z, -1);
-      const stock = verticalHit(m1, ['turret','turretExternalArmor'], side*1.22, .75, z, -1);
+      const plateTop = verticalHit(m1, ['turretEquipment'], side*1.04, .75, z, -1);
+      const stock = verticalHit(m1, ['turret','turretExternalArmor'], side*1.04, .75, z, -1);
       assert.ok(plateTop>stock && plateTop-stock<.026, 'lifting-eye base is seated on the sloped cheek');
     }
   }
+  // The exact marked front caps are removed as solids, not clipped faces.
+  const externalArmor = m1.root.getObjectByName('turretExternalArmor').geometry;
+  externalArmor.computeBoundingBox();
+  assert.ok(externalArmor.boundingBox.max.z < 0, 'no added cheek cap remains on either side');
+  const sideProbe = new THREE.Mesh(m1.root.getObjectByName('turret').geometry,
+    new THREE.MeshBasicMaterial({side: THREE.DoubleSide}));
+  const sideRay = new THREE.Raycaster();
+  for (const side of [-1, 1]) for (const z of [0, -1.3, -2.3]) {
+    const hits = [.15, .60].map(y => {
+      sideRay.set(new THREE.Vector3(side*3,y,z),new THREE.Vector3(-side,0,0));
+      const hit = sideRay.intersectObject(sideProbe)[0];
+      assert.ok(hit, 'sloped turret remains closed');
+      return Math.abs(hit.point.x);
+    });
+    assert.ok(hits[0]-hits[1]>.20, 'both turret sides visibly slope inward toward the roof');
+  }
+  sideProbe.material.dispose();
   // Finite first-hit probes of the actual closed hull stock. These samples
   // sat inside the old front/rear holes; thin detached dressing cannot win.
   const hullProbe = new THREE.Mesh(m1.root.getObjectByName('hull').geometry,

@@ -3,6 +3,11 @@
 // visual geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { REVOLUTION_PROTO_FRAME } from './profiles/leopardRevolutionPrototypeFrame.ts';
+import {
+  LEOPARD_IMPROVED_AUTHORED_WIDTH_M,
+  LEOPARD_IMPROVED_HULL_WIDTH_SCALE,
+  scaleLeopardImprovedHullArmor,
+} from './profiles/leopardImprovedHull.ts';
 import { DONOR_SPECS, donorSpec } from './donorSpecs.ts';
 import {
   apfsdsPenetration as apfsdsPens,
@@ -131,6 +136,20 @@ function makeRevolutionPrototype(): FleetTankSpec {
   return spec;
 }
 
+function makeLeopardImproved(): FleetTankSpec {
+  const spec = make('leo2a7', 'leo2a7v', 'Leopard 2 Improved', 'Germany', {
+    hp: 2650, weightTons: 66.5, topSpeedKmh: 63,
+    // Preserve the configured height and broad-body P95 datum. Narrow only
+    // the hull after the donor fit so the turret armor does not shrink.
+    dims: { hullLengthM: 7.72, overallLengthM: 10.97,
+      widthM: LEOPARD_IMPROVED_AUTHORED_WIDTH_M,
+      heightM: 2.87, silhouetteHeightM: 2.50 },
+  });
+  scaleLeopardImprovedHullArmor(spec.armor, LEOPARD_IMPROVED_HULL_WIDTH_SCALE);
+  spec.dims.widthM *= LEOPARD_IMPROVED_HULL_WIDTH_SCALE;
+  return spec;
+}
+
 function merkavaGun({
   reloadS, accuracy, aimTimeS, kinetic, heat, heDamage, moduleDmg, bloom,
 }: MerkavaGunOptions): FleetGunSpec {
@@ -235,15 +254,7 @@ const SPECS: FleetTankSpec[] = [
       // ref 59.9, deck sub45 -507, hero-rr -307, gear/rear/glacis identical;
       // caution logged: deck over92 72 -> 154 vs ref 29 — critic adjudicates).
       visual: { bakeDirtDeckEq: true } }),
-  make('leo2a7', 'leo2a7v', 'Leopard 2 Improved', 'Germany',
-    { hp: 2650, weightTons: 66.5, topSpeedKmh: 63,
-      // 2.87 m remains the published configured-vehicle envelope.  Geometry
-      // validation uses the authored broad-body P95 (2.50 m) rather than
-      // pretending the narrow PERI/antenna equipment peak fills the roof.
-      // The retained reference measures its broad welded roof around 2.44 m;
-      // this target therefore remains source-close without copying its mesh.
-      dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.00,
-        heightM: 2.87, silhouetteHeightM: 2.50 } }),
+  makeLeopardImproved(),
   make('m1a1', 'm1a1ha', 'M1A1HA Abrams', 'USA',
     { hp: 2350, weightTons: 62, gun: { reloadS: 6.3 },
       // §5.73-1 P95 datum: the owner-mandatory full-vehicle ghillie now

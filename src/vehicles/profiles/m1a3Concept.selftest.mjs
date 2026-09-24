@@ -101,9 +101,9 @@ const turretVertexY = (x, z, positions = turretPositions, offset = {x:0,y:0,z:0}
 const roofRampY = (z) => 0.68 + (0.76 - 0.68) * ((z - 1.08) / (-0.54 - 1.08));
 const near = (actual, expected, label) => assert.ok(Math.abs(actual - expected) < 1e-4,
   `${label}: expected ${expected.toFixed(4)}, got ${actual.toFixed(4)}`);
-assert.ok(Math.abs(turretVertexY(-1.42, 1.08) - 0.68) < 1e-4,
+assert.ok(Math.abs(turretVertexY(-1.15, 1.08) - 0.68) < 1e-4,
   'left shoulder retains the broad front-plane roof seam');
-assert.ok(Math.abs(turretVertexY(1.42, 1.08) - 0.68) < 1e-4,
+assert.ok(Math.abs(turretVertexY(1.15, 1.08) - 0.68) < 1e-4,
   'right shoulder retains the broad front-plane roof seam');
 near(turretVertexY(-0.36, 1.74), 0.50,
   'left cheek preserves the low mantlet brow');
@@ -116,15 +116,15 @@ near(turretVertexY(-0.36, 1.03), roofRampY(1.03),
   'left cheek rear edge rises into the existing roof plane');
 near(turretVertexY(0.36, 1.03), roofRampY(1.03),
   'right cheek rear edge rises into the existing roof plane');
-near(turretVertexY(1.42, 0.38), roofRampY(0.38),
+near(turretVertexY(1.15, 0.38), roofRampY(0.38),
   'outer cheek rear edge rises into the existing roof plane');
 near(turretVertexY(0.348, 0.72, mountPositions, gunRig.position), roofRampY(0.72),
   'center throat rear edge rises into the existing roof plane');
 
 const cheekRoofCorners = (side) => [
   [side * 0.36, 0.50, 1.74],
-  [side * 1.42, 0.68, 1.08],
-  [side * 1.42, roofRampY(0.38), 0.38],
+  [side * 1.15, 0.68, 1.08],
+  [side * 1.15, roofRampY(0.38), 0.38],
   [side * 0.36, roofRampY(1.03), 1.03],
 ];
 const vertexMatches = (position, expected) => expected.some(([x, y, z]) =>
@@ -196,7 +196,8 @@ assert.deepEqual(receipt, {
   turretForwardShiftM: 0.30,
   turretRingZ: 0.15,
   turretVerticalOffsetM: 0.128,
-  enhancedCheekModules: 2,
+  enhancedCheekModules: 0,
+  turretRoofInsetM: .45,
   mantletRoofRamp: expectedMantletRoofRamp,
   cheekRoofSurface: 'joined-mirrored-facet',
 }, 'the visible M1A3 feature receipt remains complete');

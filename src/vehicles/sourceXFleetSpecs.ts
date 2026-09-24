@@ -6,6 +6,11 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.
 import { bindFleetRegistries, cloneFleetVariantFrom, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 import { donorSpec } from './donorSpecs.ts';
 import type { FleetTankSpec, FleetDimensions } from './specContracts.ts';
+import {
+  LEOPARD_IMPROVED_AUTHORED_WIDTH_M,
+  LEOPARD_IMPROVED_HULL_WIDTH_SCALE,
+  scaleLeopardImprovedHullArmor,
+} from './profiles/leopardImprovedHull.ts';
 
 const entries = [
   ['leo2a7v_x', 'leo2a7v', 'Leopard 2A7V'],
@@ -86,6 +91,18 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
   spec.armor.gunBarrel.lengthM = frame.muzzleZ - frame.gun[2];
 }
 const specs: Record<string, FleetTankSpec> = {};
+
+function fitSourceArmor(spec: FleetTankSpec, donorDimensions: FleetDimensions): void {
+  let baseDimensions = donorDimensions;
+  if (spec.id === 'leo2a7v_x') {
+    // The independent 2A7V retains its original hull and turret proportions.
+    // Undo the Improved donor's hull-only edit before fitting its source frame.
+    scaleLeopardImprovedHullArmor(spec.armor, 1 / LEOPARD_IMPROVED_HULL_WIDTH_SCALE);
+    baseDimensions = { ...donorDimensions, widthM: LEOPARD_IMPROVED_AUTHORED_WIDTH_M };
+  }
+  fitArmorToDims(spec.armor, baseDimensions, spec.dims);
+}
+
 for (const [id, donorId, name] of entries) {
   // Registered donors first, then the unregistered templates (merkava4 retired 2026-09-23).
   const donor = donorSpec(registries.tankSpecs, donorId);
@@ -99,7 +116,7 @@ for (const [id, donorId, name] of entries) {
   stripSilhouetteDimensions(spec.dims);
   const baseDimensions = { ...spec.dims };
   Object.assign(spec.dims, dimensions[id]);
-  fitArmorToDims(spec.armor, baseDimensions, spec.dims);
+  fitSourceArmor(spec, baseDimensions);
   applySourceFrame(spec, id);
   specs[id] = spec;
 }
@@ -117,7 +134,7 @@ export function synchronizeSourceXCombatMetadata(): void {
     const donor = donorId === 'k2' ? { ...registered, ...k2SourceMetadata() } : registered;
     for (const key of fields) Object.assign(target, { [key]: structuredClone(donor[key]) });
     target.armor = structuredClone(donor.armor);
-    fitArmorToDims(target.armor, donor.dims, target.dims);
+    fitSourceArmor(target, donor.dims);
     applySourceFrame(target, id);
   }
 }
