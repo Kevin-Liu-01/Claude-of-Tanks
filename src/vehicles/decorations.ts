@@ -365,8 +365,8 @@ function fnv1a(str: string): number {
 }
 
 function decorIdentityFor(specId: string): string {
-  // The renamed original must keep its exact old cargo, side and jitter.
-  // The rebuilt Revolution still takes its own explicit manifest below.
+  // Keep the prototype hull-kit seed stable across its turret redesign.
+  // Both Revolution variants choose their explicit manifests below.
   return specId === 'leo2_revolution_proto' ? 'leo2_revolution' : specId;
 }
 
@@ -2514,8 +2514,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // The source-authored Revolution already carries its complete SEOSS,
   // RCWS, hatch, smoke, cable and service package. Generic coolers/crates
   // on this low roof obscure that equipment and the large EMES recess.
-  // Keep only restrained engine-deck tools; Proto retains its old loadout.
-  if (spec.id === 'leo2_revolution') return [
+  // The redesigned ancestor also owns its complete turret equipment. Keep
+  // generic coolers, rangefinders and duplicate weapons off both roofs.
+  if (spec.id === 'leo2_revolution' || spec.id === 'leo2_revolution_proto') return [
     { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] },
       slot: ['fender', { side: -1, zFrac: -0.31, along: true }] },
   ];

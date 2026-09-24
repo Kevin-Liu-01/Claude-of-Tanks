@@ -2,6 +2,7 @@
 // the nearest researched donor and applies explicit identity/balance changes;
 // visual geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
+import { REVOLUTION_PROTO_FRAME } from './profiles/leopardRevolutionPrototypeFrame.ts';
 import {
   apfsdsPenetration as apfsdsPens,
   reactivePlate,
@@ -115,6 +116,20 @@ function make(
   return spec;
 }
 
+function makeRevolutionPrototype(): FleetTankSpec {
+  const spec = make('leo2a7', 'leo2_revolution_proto', 'Leopard 2 Revolution Proto', 'Germany', {
+    hp: 2550, weightTons: 60, topSpeedKmh: 70,
+    dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 4.00, heightM: 2.64 },
+  });
+  // The redesigned turret keeps the authored gun station. Replace the stale
+  // donor firing frame so shells and barrel collision follow the visible gun.
+  spec.armor.turretPivot = [...REVOLUTION_PROTO_FRAME.turretPivot];
+  spec.armor.gunPivot = [...REVOLUTION_PROTO_FRAME.gunPivot];
+  spec.armor.gunBarrel.lengthM = REVOLUTION_PROTO_FRAME.barrelLengthM;
+  spec.armor.gunBarrel.radiusM = REVOLUTION_PROTO_FRAME.barrelRadiusM;
+  return spec;
+}
+
 function merkavaGun({
   reloadS, accuracy, aimTimeS, kinetic, heat, heDamage, moduleDmg, bloom,
 }: MerkavaGunOptions): FleetGunSpec {
@@ -197,12 +212,9 @@ const SPECS: FleetTankSpec[] = [
         ],
       },
       dims: { hullLengthM: 6.34, overallLengthM: 6.34, widthM: 3.03, heightM: 2.80 } }),
-  // Preserve the original authored Revolution as its own vehicle. Clone the
-  // original donor independently so later Revolution geometry/spec revisions
-  // cannot change the prototype's dimensions, paint or combat data.
-  make('leo2a7', 'leo2_revolution_proto', 'Leopard 2 Revolution Proto', 'Germany',
-    { hp: 2550, weightTons: 60, topSpeedKmh: 70,
-      dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 4.00, heightM: 2.64 } }),
+  // Independent prototype: retained chassis and combat data, owner-directed
+  // ancestor turret (2026-09-23), distinct from the current Revolution.
+  makeRevolutionPrototype(),
   make('leo2a7', 'leo2_revolution', 'Leopard 2 Revolution', 'Germany',
     { hp: 2550, weightTons: 60, topSpeedKmh: 70,
       // Published basic height excludes the elevated weapon-station hood.
@@ -646,4 +658,3 @@ for (const spec of SPECS) {
   tankSpecs[spec.id] ||= spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
-

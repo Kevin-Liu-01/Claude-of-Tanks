@@ -33,12 +33,12 @@ assert.equal(tierNumeral(protoId), 'IX');
 assert.equal(tankTier(revolutionId), 10);
 assert.equal(tierNumeral(revolutionId), 'X');
 
-// This is the preserved model's authored envelope before the rebuild. The
-// new Revolution is free to use its own source-derived dimensions.
+// The turret redesign retains the prototype chassis dimensions and balance.
+// The production Revolution still owns its independent source-derived data.
 assert.deepEqual(
   ['hullLengthM', 'overallLengthM', 'widthM', 'heightM'].map((key) => proto.dims[key]),
   [7.72, 9.97, 4, 2.64],
-  'the preserved prototype retains the original authored dimensions',
+  'the prototype retains its original chassis specification',
 );
 assert.equal(proto.variantOf, 'leo2a7', 'prototype retains the original independent donor');
 for (const other of [revolution, getSpec('leo2a7')]) {
@@ -61,7 +61,7 @@ assert.equal(FLEET_GROUP_BY_ID[protoId], 'leopard');
 assert.equal(FLEET_GROUP_BY_ID[revolutionId], 'leopard');
 assert.equal(NATIVE_FAMILY_ORDER.leopard.indexOf(protoId) + 1,
   NATIVE_FAMILY_ORDER.leopard.indexOf(revolutionId),
-  'canonical Leopard progression places the preserved prototype before Revolution');
+  'canonical Leopard progression places the prototype before Revolution');
 
 const protoFiles = Object.values(requiredTankAssetFiles(protoId));
 const revolutionFiles = new Set(Object.values(requiredTankAssetFiles(revolutionId)));

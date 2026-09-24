@@ -38,6 +38,15 @@ authorize deleting the housing.
 This bounded owner-markup repair does not supply the missing comparison
 oracle described below. Full source qualification remains unavailable.
 
+Publication follow-up (2026-09-23): after the source-reference limitation and
+local-only status were disclosed, the owner requested "commit and push origin
+all our recent changes". The three saved repair commits through `082491ec8`
+are integrated with the Revolution Proto redesign on
+`codex/turret-publish-20260923`, based on `f5a7bf3ae`. This authorizes their
+publication with the known missing-reference limitation; it does not certify
+source fidelity or waive fresh integration/type/core checks. The integration
+record is [Revolution Proto's publication section](leo2_revolution_proto.md#publication-integration-2026-09-23).
+
 ## Class: FALSE-0 / photo-class — NEVER GATE
 No usable oracle: the owner FBX drop that seeded buildKF51OwnerExact is an
 external comparison source only (baked-shading demonstrator read); the id

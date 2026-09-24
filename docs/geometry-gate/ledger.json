@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-09-23T09:20:44.526Z",
+ "generatedAt": "2026-09-24T02:49:09.500Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 80,
+ "passed": 79,
  "total": 179,
  "rows": [
   {
@@ -422,6 +422,16 @@
    "geoMin": 0,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
+   }
+  },
+  {
+   "id": "leo2_revolution_proto",
+   "geoMin": 0,
+   "requiredMinimum": 99,
+   "qualityBar": "preservation",
    "gatePassed": false,
    "components": {
     "oracleAvailability": 0
@@ -2304,28 +2314,6 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "leo2_revolution_proto",
-   "geoMin": 99.3,
-   "requiredMinimum": 99,
-   "qualityBar": "preservation",
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 99.3,
-    "stations": 100,
-    "turretCurves": 99.7,
-    "wholeCurves": 99.4,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "preservation",
-   "preservationBaseline": {
-    "sourceCommit": "da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b",
-    "sourceId": "leo2_revolution",
-    "glbSha256": "ce63f41864d158627df7a89f0fc22e7f71ae753ded72e350206230bf2f417ff7",
-    "geometrySha256": "305ff0250dea38d45a53738d775686727300440890467023e5fb7e8e94711f38"
-   }
   },
   {
    "id": "ztz100_prototype",

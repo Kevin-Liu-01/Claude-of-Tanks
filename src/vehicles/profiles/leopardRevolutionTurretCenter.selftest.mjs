@@ -1,176 +1,119 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { getSpec } from '../specs.ts';
+import { ensureInteriorFills } from '../interiorFills.ts';
+import { createTankState } from '../../sim/movement.ts';
 
-// Preserve the original Revolution's complete articulation and attachment
-// regression under its new Proto identity.
-const tank = createTank('leo2_revolution_proto', null, {
-  proceduralOnly: true,
-  geometryReceipt: true,
-});
+await ensureInteriorFills(['leo2_revolution_proto']);
+const close = (a,b,epsilon=1e-5) => assert.ok(Math.abs(a-b)<epsilon, `${a} != ${b}`);
+for (const quality of ['high','low']) {
+  const spec=getSpec('leo2_revolution_proto');
+  const tank=createTank(spec.id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
+  try {
+    const turret=tank.root.getObjectByName('rig_turret');
+    const gun=tank.root.getObjectByName('rig_gun');
+    const mount=tank.root.getObjectByName('gunMount');
+    const recoil=tank.root.getObjectByName('rig_recoil');
+    const muzzle=tank.root.getObjectByName('rig_muzzle');
+    const state=createTankState(spec,new THREE.Vector3(),0);
+    assert.equal(gun.parent,turret);
+    assert.equal(mount.parent,gun);
+    assert.equal(recoil.parent,gun);
+    assert.equal(tank.root.getObjectByName('revolutionPrototypeMachineGun').parent,turret);
+    assert.ok(!tank.root.getObjectByName('rig_decor_turret'), 'authored prototype roof has no duplicate generic cargo or weapons');
+    assert.deepEqual(turret.position.toArray(),spec.armor.turretPivot);
+    assert.deepEqual(gun.position.toArray(),spec.armor.gunPivot);
+    close(muzzle.position.z,spec.armor.gunBarrel.lengthM);
+    const armor=tank.root.getObjectByName('turret');
+    armor.geometry.computeBoundingBox();
+    const bounds=armor.geometry.boundingBox;
+    assert.ok(bounds.max.x-bounds.min.x<3.15,'early cheek kit is narrower than the production Revolution');
+    assert.ok(bounds.max.z-bounds.min.z<3.8,'compact early bustle and cheeks replace the long legacy wedge');
+    close(bounds.min.x,-bounds.max.x);
+    // Actual solid ring must remain concentric at every turret heading.
+    const ring=tank.root.userData.combatGeometryParts.find(p=>p.bucket==='turret'
+      && Math.abs(p.min[1]+.02)<.002 && Math.abs(p.max[1]-.10)<.002);
+    assert.ok(ring,'closed circular turret bearing exists');
+    close(ring.min[0],-ring.max[0]);close(ring.min[2],-ring.max[2]);
+    close(ring.max[0]-ring.min[0],ring.max[2]-ring.min[2]);
 
-try {
-  const turret = tank.root.getObjectByName('rig_turret');
-  const gun = tank.root.getObjectByName('rig_gun');
-  const recoil = tank.root.getObjectByName('rig_recoil');
-  const muzzle = tank.root.getObjectByName('rig_muzzle');
-  const bore = tank.root.getObjectByName('muzzleBoreShadowFallback');
-  const turretArmor = tank.root.getObjectByName('turret');
-  const gunMount = tank.root.getObjectByName('gunMount');
-  const barrel = tank.root.getObjectByName('gun');
-  const barrelDark = tank.root.getObjectByName('gunDark');
-  const muzzleSeat = bore?.userData?.muzzleSeatReceipt;
-
-  assert.ok(turret, 'Leopard 2 Revolution Proto rotating turret rig exists');
-  assert.equal(turret.position.x, 0,
-    'Leopard 2 Revolution Proto turret remains centered laterally');
-  assert.ok(Math.abs(turret.position.z - 0.45) < 1e-9,
-    'Leopard 2 Revolution Proto yaw pivot sits at the structural turret center');
-  assert.equal(gun?.parent, turret,
-    'Leopard 2 Revolution Proto gun remains owned by the translated turret rig');
-  assert.equal(gun.position.z, 1.45,
-    'Leopard 2 Revolution Proto gun pitches at the visible mantlet trunnion');
-  assert.ok(gunMount?.geometry && barrel?.geometry,
-    'Leopard 2 Revolution Proto keeps gun-owned mantlet and barrel geometry');
-  assert.equal(bore?.parent, muzzle,
-    'Leopard 2 Revolution Proto bore fallback remains owned by its muzzle anchor');
-  assert.equal(muzzleSeat?.supportSource, 'terminal-cap',
-    'Leopard 2 Revolution Proto bore is measured from its physical terminal cap');
-  // terminal-surface-fit-r2 (2026-09-12): the visible mouth finishes at the
-  // ballistic marker. The lip front sits at most 1 mm past the marker (0.9 mm
-  // crown), whether the tube reaches the marker (flush seat) or stops short
-  // and is completed by the lip; the rest of the torus stays in the tube.
-  assert.ok(Number.isFinite(muzzleSeat?.markerGapM) && muzzleSeat.markerGapM >= 0,
-    'Leopard 2 Revolution Proto bore reports its marker gap');
-  assert.ok(muzzleSeat?.lipFrontM > 0 && muzzleSeat?.lipFrontM <= muzzleSeat.markerGapM + 0.001,
-    'Leopard 2 Revolution Proto bore finishes its lip at the muzzle marker');
-
-  turretArmor.geometry.computeBoundingBox();
-  const turretArmorCenter = turretArmor.geometry.boundingBox.getCenter(new THREE.Vector3());
-  assert.ok(Math.abs(turretArmorCenter.x) < 0.001 && Math.abs(turretArmorCenter.z + 0.10) < 0.002,
-    'removing the asymmetric bow lip changes only the visual envelope, not the yaw origin');
-
-  // The static slot face is centered at turret-local (0, .28, 1.65).  The
-  // dark hole and armored ring are gun-owned at z=.205/.229 from the new
-  // trunnion.  Their center must stay inside the slot throughout the legal
-  // pitch sweep; the old deep pivot made the complete aperture orbit by more
-  // than a metre through the turret face.
-  const openingLocal = new THREE.Vector3(0, 0.28, 1.65);
-  const apertureLocal = new THREE.Vector3(0, 0.03, 0.215);
-  for (const pitchDeg of [-8, 0, 15]) {
-    gun.rotation.x = -pitchDeg * Math.PI / 180;
     tank.root.updateMatrixWorld(true);
-    const openingWorld = turret.localToWorld(openingLocal.clone());
-    const apertureWorld = gun.localToWorld(apertureLocal.clone());
-    assert.ok(apertureWorld.distanceTo(openingWorld) < 0.10,
-      `mantlet ring and hole stay seated at ${pitchDeg} degrees`);
-  }
-
-  // Moving the pivot must not change the certified level-fire muzzle station.
-  gun.rotation.x = 0;
-  tank.root.updateMatrixWorld(true);
-  const barrelBounds = new THREE.Box3().setFromObject(barrel);
-  assert.ok(barrelBounds.max.z > 5.82 && barrelBounds.max.z < 5.85,
-    'level-fire muzzle station remains unchanged');
-
-  // The trunnion repair counter-shifts the physical tube by 1.05 m.  Its
-  // firing datum must receive the same shift or the universal bore fallback
-  // clamps 20 cm behind the stale datum and visibly floats past the cannon.
-  const localFaceZ = Math.max(
-    barrel.geometry.boundingBox?.max.z ?? -Infinity,
-    barrelDark.geometry.boundingBox?.max.z ?? -Infinity,
-  );
-  assert.ok(Math.abs(muzzle.position.z - (localFaceZ + 0.020)) < 0.002,
-    'muzzle anchor follows the counter-shifted physical tube face');
-
-  const parts = tank.root.userData.combatGeometryParts;
-  const detachedRightForeWing = parts.find((part) =>
-    part.bucket === 'turret'
-    && Math.abs(part.min[0] - 0.10) < 0.002
-    && Math.abs(part.max[0] - 1.42) < 0.002
-    && Math.abs(part.min[1] - 0.19) < 0.002
-    && Math.abs(part.max[2] - 2.87) < 0.002);
-  assert.equal(detachedRightForeWing, undefined,
-    'the detached right-front turret wing remains removed');
-  const detachedRightBowLip = parts.find((part) =>
-    part.bucket === 'turret'
-    && Math.abs(part.min[0] - 0.10) < 0.002
-    && Math.abs(part.max[0] - 0.62) < 0.002
-    && Math.abs(part.min[1] - 0.28) < 0.002
-    && Math.abs(part.max[1] - 0.37) < 0.002
-    && Math.abs(part.max[2] - 2.87) < 0.002);
-  assert.equal(detachedRightBowLip, undefined,
-    'the owner-selected right bow lip remains removed');
-  const detachedRightBowTint = turret.children.find((child) => {
-    if (!child.isMesh || !child.geometry) return false;
-    child.geometry.computeBoundingBox();
-    const bounds = child.geometry.boundingBox;
-    return bounds
-      && Math.abs(bounds.min.x + 0.92) < 0.002
-      && Math.abs(bounds.max.x - 0.83) < 0.002
-      && Math.abs(bounds.min.y - 0.3175) < 0.002
-      && Math.abs(bounds.max.y - 0.666) < 0.002
-      && Math.abs(bounds.max.z - 3.79) < 0.002;
-  });
-  assert.equal(detachedRightBowTint, undefined,
-    'the owner-selected right bow tint remains removed');
-  const turretRingApron = parts.find((part) =>
-    part.bucket === 'turret'
-    && Math.abs(part.min[1] - 0.035) < 0.002
-    && Math.abs(part.max[1] - 0.18) < 0.002
-    && Math.abs((part.max[0] - part.min[0]) - 2.68) < 0.01
-    && Math.abs((part.max[2] - part.min[2]) - 2.68) < 0.01);
-  assert.ok(turretRingApron, 'the closed turret-ring apron remains present');
-  const ringCenterLocal = new THREE.Vector3(
-    (turretRingApron.min[0] + turretRingApron.max[0]) * 0.5,
-    (turretRingApron.min[1] + turretRingApron.max[1]) * 0.5,
-    (turretRingApron.min[2] + turretRingApron.max[2]) * 0.5,
-  );
-  assert.ok(Math.abs(ringCenterLocal.x) < 0.002 && Math.abs(ringCenterLocal.z) < 0.002,
-    'the closed turret-ring apron is centered on the corrected yaw axis');
-  for (const yawDeg of [0, 78, -78, 180]) {
-    turret.rotation.y = yawDeg * Math.PI / 180;
-    tank.root.updateMatrixWorld(true);
-    const ringCenterWorld = turret.localToWorld(ringCenterLocal.clone());
-    const pivotWorld = turret.getWorldPosition(new THREE.Vector3());
-    assert.ok(Math.hypot(ringCenterWorld.x - pivotWorld.x, ringCenterWorld.z - pivotWorld.z) < 0.002,
-      `turret-ring apron stays on the yaw axis at ${yawDeg} degrees`);
-  }
-  turret.rotation.y = 0;
-
-  const centerOf = (part) => ({
-    x: (part.min[0] + part.max[0]) * 0.5,
-    z: (part.min[2] + part.max[2]) * 0.5,
-  });
-  const roofSeat = (bucket, x, z, label) => {
-    const part = parts.find((candidate) => {
-      if (candidate.bucket !== bucket) return false;
-      const center = centerOf(candidate);
-      return Math.abs(center.x - x) < 0.006 && Math.abs(center.z - z) < 0.006;
+    const fixed=[];
+    turret.traverseVisible(object=>{
+      if(!object.isMesh||object.userData.shadowOnly||object.userData.authoredShadowProxy)return;
+      for(let owner=object;owner;owner=owner.parent)if(owner===gun)return;
+      fixed.push(object);
     });
-    assert.ok(part, `${label} remains present after the yaw-pivot rebase`);
-    assert.ok(Math.abs(part.min[1] - 0.66) < 0.006,
-      `${label} is seated directly on the turret roof`);
-  };
-  roofSeat('turretDark', -0.80, -1.525, 'SEOSS pedestal');
-  roofSeat('turretEquipment', -0.85, -2.21, 'rear electronics module');
-  roofSeat('turretEquipment', 0.43, -2.20, 'RWS base plate');
-  roofSeat('turretEquipment', 0.22, -2.15, 'RWS ammunition bin');
-  roofSeat('turretEquipment', -0.30, -2.52, 'crosswind mast base');
-  roofSeat('turretHatch', 0.55, -1.05, 'commander hatch');
-  roofSeat('turretHatch', -0.60, -0.90, 'loader hatch');
+    const ray=new THREE.Raycaster();
+    const hit=(origin,direction,distance)=>{
+      ray.set(turret.localToWorld(new THREE.Vector3(...origin)),new THREE.Vector3(...direction).transformDirection(turret.matrixWorld));
+      ray.far=distance;return ray.intersectObjects(fixed,false)[0];
+    };
+    for(const x of [-.38,0,.38])for(const z of [1.10,1.32,1.55,1.70]){
+      assert.ok(!hit([x,.90,z],[0,-1,0],.80),`${quality}: real elevation opening at ${x}/${z}, including generated backing`);
+    }
+    for(const side of [-1,1]){
+      const wall=hit([0,.30,1.46],[side,0,0],.60);
+      assert.ok(wall,'bearing is carried by a closed inner cheek');
+      close(Math.abs(turret.worldToLocal(wall.point.clone()).x),.43);
+    }
+    const optic=hit([.735,.455,1.75],[0,0,-1],.9);
+    assert.ok(optic,'right front optical well has a seated rear lens');
+    assert.ok(turret.worldToLocal(optic.point.clone()).z<1.03,'optic recess is real depth, not glass pasted on the nose');
+    const rear=hit([0,.32,1.12],[0,0,-1],.4);
+    assert.ok(rear,'gun channel ends at a closed bulkhead');
 
-  for (const [yawDeg, pitchDeg] of [[0, 0], [31, -8], [-47, 15]]) {
-    turret.rotation.y = yawDeg * Math.PI / 180;
-    gun.rotation.x = -pitchDeg * Math.PI / 180;
-    tank.root.updateMatrixWorld(true);
-    const faceWorld = recoil.localToWorld(new THREE.Vector3(0, 0, localFaceZ));
-    const boreWorld = bore.getWorldPosition(new THREE.Vector3());
-    assert.ok(Math.abs(faceWorld.distanceTo(boreWorld) - Math.abs(muzzleSeat.lipAdvanceM)) < 0.002,
-      `gun hole stays on the physical muzzle at yaw ${yawDeg}, pitch ${pitchDeg}`);
-  }
-} finally {
-  tank.dispose();
+    // The bustle roof slopes down behind the bins. Every rack leg must meet
+    // the actual armor there, not merely share the turret's owner group.
+    const equipment=tank.root.userData.combatGeometryParts.filter(p=>p.bucket==='turretDetail');
+    const rackPosts=equipment.filter(p=>Math.abs(p.max[0]-p.min[0]-.03)<.001
+      && Math.abs(p.max[2]-p.min[2]-.03)<.001 && p.max[1]-p.min[1]>.1
+      && p.min[2]>-2.05 && p.max[2]<-1.75);
+    assert.equal(rackPosts.length,4,'four physical rack supports are present');
+    for(const post of rackPosts){
+      const x=(post.min[0]+post.max[0])/2,z=(post.min[2]+post.max[2])/2;
+      ray.set(turret.localToWorld(new THREE.Vector3(x,1,z)),
+        new THREE.Vector3(0,-1,0).transformDirection(turret.matrixWorld));
+      ray.far=1;
+      const roof=ray.intersectObject(armor,false)[0];
+      assert.ok(roof,`${quality}: rack has armor beneath it at ${x}/${z}`);
+      const roofY=turret.worldToLocal(roof.point.clone()).y;
+      assert.ok(post.min[1]<=roofY+.002,`${quality}: rack foot floats above roof at ${x}/${z}`);
+      assert.ok(equipment.some(p=>p!==post && p.max[1]-p.min[1]<.04
+        && p.min[0]<=x && p.max[0]>=x && p.min[2]<=z && p.max[2]>=z
+        && p.min[1]<=post.max[1] && p.max[1]>=post.max[1]),'rack leg reaches its rail');
+    }
+
+    for(const yaw of [0,90,-90,180])for(const pitch of [-spec.gunDepressionDeg,0,spec.gunElevationDeg]){
+      state.turretYaw=THREE.MathUtils.degToRad(yaw);
+      state.gunPitch=THREE.MathUtils.degToRad(pitch);
+      tank.syncFromState(state,0);
+      tank.root.updateMatrixWorld(true);
+      const position=mount.geometry.getAttribute('position');
+      for(let i=0;i<position.count;i++){
+        const p=turret.worldToLocal(mount.localToWorld(new THREE.Vector3().fromBufferAttribute(position,i)));
+        assert.ok(Math.abs(p.x)<.38&&p.z>1.15,`${quality}: mantlet clears fixed armor at ${yaw}/${pitch}`);
+      }
+      const expected=new THREE.Vector3(0,0,spec.armor.gunBarrel.lengthM)
+        .applyAxisAngle(new THREE.Vector3(1,0,0),-state.gunPitch)
+        .add(new THREE.Vector3(...spec.armor.gunPivot))
+        .applyAxisAngle(new THREE.Vector3(0,1,0),state.turretYaw)
+        .add(new THREE.Vector3(...spec.armor.turretPivot));
+      const actual=tank.root.worldToLocal(muzzle.getWorldPosition(new THREE.Vector3()));
+      assert.ok(actual.distanceTo(expected)<1e-5,'visible muzzle matches the firing frame through articulation');
+    }
+    tank.recoilKick(0,1);tank.syncFromState(state,.12);tank.root.updateMatrixWorld(true);
+    assert.ok(recoil.position.z<-.05,'barrel recoils within the fixed mantlet');
+    recoil.traverseVisible(object=>{
+      if(object.userData.shadowOnly||object.userData.authoredShadowProxy)return;
+      const positions=object.geometry?.getAttribute('position');if(!positions)return;
+      for(let i=0;i<positions.count;i++){
+        const p=turret.worldToLocal(object.localToWorld(new THREE.Vector3().fromBufferAttribute(positions,i)));
+        assert.ok(p.z>.98,`${quality}: recoiling ${object.name} clears the rear bulkhead`);
+      }
+    });
+    tank.syncFromState(state,1);close(recoil.position.z,0);
+  } finally {tank.dispose();}
 }
-
-console.log('leopardRevolutionTurretCenter.selftest: preserved Proto centered turret and gun ownership pass');
+console.log('leopardRevolutionTurretCenter.selftest: ancestor turret, real apertures, closed bearing, HIGH/LOW articulation and recoil passed');
