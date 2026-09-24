@@ -159,8 +159,9 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
 }
 
 {
-  const hinted = build({ mapId: 'steppe', obstacles: [{ min: [-46, 0, -26], max: [-30, 8, -10] }] }, 'zone_control');
-  assert.notDeepEqual(hinted.zones[0], { x: -38, z: -18 }, 'authored hints still relocate when their clearing is invalidated');
+  // round 48 (2026-09-23): the Steppe hint moved with the redesign (the caravanserai forecourt at (60, 90)); the obstacle covers it
+  const hinted = build({ mapId: 'steppe', obstacles: [{ min: [52, 0, 82], max: [68, 8, 98] }] }, 'zone_control');
+  assert.notDeepEqual(hinted.zones[0], { x: 60, z: 90 }, 'authored hints still relocate when their clearing is invalidated');
 }
 
 // Execute both real battle-composition owners. Only renderer-facing visuals

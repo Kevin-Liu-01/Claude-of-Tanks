@@ -7,9 +7,13 @@ export const MATCH_MODE_ARENA_HALF_EXTENT_M = 420;
 export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   zones: readonly { x: number; z: number }[];
 }>> = {
-  // Independent 4 m scan of the current Steppe height field + manifest found
-  // these three separated 30 m firm clearings; a 20 m lattice misses the last.
-  steppe: { zones: [{ x: -38, z: -18 }, { x: 66, z: 30 }, { x: -22, z: 166 }] },
+  // Tarkhan Steppe (round 48 redesign, 2026-09-23): a 10 m lattice scan of the new height field + manifest
+  // (30 m discs, relief <= 7 m, normal.y >= 0.94, firm ground, no obstacles, both teams' round-trip reach) — the
+  // caravanserai forecourt at the foot of its rise, the post-road halt on the eastern ramp and the kolkhoz machine
+  // yard — three graded aprons in the map file — a
+  // south-west / centre / north-east diagonal. Both authorities revalidate each disc against the current terrain
+  // and manifest and relocate any hint the ground no longer clears.
+  steppe: { zones: [{ x: 60, z: 90 }, { x: 292, z: 312 }, { x: -330, z: -240 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates
   // every footprint and both-team connection before using the ordinary search.
