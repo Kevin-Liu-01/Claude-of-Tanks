@@ -79,6 +79,12 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   view('jetty-fjord-low', 58, [319, 3, 58], [306, 0.8, 43]),
   view('jetty-fjord-north-low', 58, [318, 3, 288], [303, 0.8, 277]),
   view('jetty-w-low', 58, [-348, 3, -55], [-326, 0.8, -51]),
+  // round 61 (2026-09-24, Amberford's bridge over the river): the arched span at gameplay height — from the river's
+  // north bank downstream of the crossing, 2 m over the water's edge looking across the water at the three arches
+  // (the deck at (-20,-68), axis (-0.686, 0.728); the camera 34 m along the river, 12 m off the deck axis), and from
+  // the coach road on the south approach looking down the deck between the parapets at the town beyond
+  view('bridge-bank-low', 61, [-45, 2, -91], [-14, 1.5, -62]),
+  view('bridge-deck-low', 61, [8, 2.2, -98], [-40, 1.2, -47]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */

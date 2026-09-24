@@ -8,9 +8,18 @@
  *   agent-browser --session cot-manifest open http://127.0.0.1:5197/
  *   node tools/capture-world-collision-manifests.mjs cot-manifest
  *   node tools/capture-world-collision-manifests.mjs cot-manifest --maps whiteout
+ *
+ * Round 61 (2026-09-24): the headless mode needs no session or dev server — it serves THIS checkout on a private
+ * vite server (a 5300–5399 port, its own optimizer cache; tools/map-probe-runtime.mjs) in a headless Chrome
+ * (`--use-gl=angle`), waits for window.__GAME_READY, switches maps through window.__DEBUG.switchMap and runs the
+ * same pack script as the session mode, so a lane recaptures a map's shard on its own tree:
+ *   node tools/capture-world-collision-manifests.mjs --headless --maps autumn
+ * Hold the shared probe mutex around it and run it under nice -n 19 like the other probes; a partial capture keeps
+ * every other shard byte-identical (assertUnchangedCollisionShards) and republishes the complete index.
  */
 
 import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries,
@@ -21,28 +30,13 @@ const options = collisionCaptureOptions(process.argv.slice(2));
 const { session } = options;
 const maps = options.partial ? readCollisionCaptureEntries(options.mapIds) : {};
 const CAPTURE_TIMEOUT_MS = 60_000;
+/** The headless page boots the whole fleet index before __GAME_READY; a cold optimizer cache adds a minute. */
+const HEADLESS_READY_TIMEOUT_MS = 300_000;
+const HEADLESS_CAPTURE_TIMEOUT_MS = 240_000;
 
-function evaluate(script) {
-  const raw = execFileSync('agent-browser', [
-    '--session', session,
-    '--json',
-    'eval',
-    script,
-  ], {
-    encoding: 'utf8', maxBuffer: 128 * 1024 * 1024,
-    timeout: CAPTURE_TIMEOUT_MS, killSignal: 'SIGTERM',
-  });
-  const envelope = JSON.parse(raw);
-  if (!envelope.success) throw new Error(envelope.error || 'browser evaluation failed');
-  return envelope.data.result;
-}
-
-const ready = evaluate('typeof window.__DEBUG === "object"');
-if (!ready) throw new Error('game debug facade is not ready in the capture browser');
-
-for (const mapId of options.mapIds) {
-  console.log(`capturing ${mapId} (timeout ${CAPTURE_TIMEOUT_MS / 1000}s)`);
-  const script = `(async () => {
+/** The capture script the page evaluates: switch to the map, then pack every record the way the server reads it. */
+export function collisionCaptureScript(mapId) {
+  return `(async () => {
     const world = await window.__DEBUG.switchMap(${JSON.stringify(mapId)});
     const n = (value) => Math.round(value * 10000) / 10000;
     const pack = (record) => {
@@ -85,10 +79,54 @@ for (const mapId of options.mapIds) {
       concealers: world.getConcealment().map((entry) => [n(entry.x), n(entry.z), n(entry.r), n(entry.add)]),
     };
   })()`;
-  const data = evaluate(script);
+}
+
+function evaluate(script) {
+  const raw = execFileSync('agent-browser', [
+    '--session', session,
+    '--json',
+    'eval',
+    script,
+  ], {
+    encoding: 'utf8', maxBuffer: 128 * 1024 * 1024,
+    timeout: CAPTURE_TIMEOUT_MS, killSignal: 'SIGTERM',
+  });
+  const envelope = JSON.parse(raw);
+  if (!envelope.success) throw new Error(envelope.error || 'browser evaluation failed');
+  return envelope.data.result;
+}
+
+function publish(mapId, data) {
   maps[mapId] = writeCollisionManifestShard(mapId, data);
   console.log(`${mapId}: ${data.obstacles.length} obstacles, ` +
     `${data.colliders.length} colliders, ${data.concealers.length} concealers`);
+}
+
+if (options.headless) {
+  const { openGamePage, withMapProbeSession } = await import('./map-probe-runtime.mjs');
+  const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
+  await withMapProbeSession({ root, cacheDir: options.cacheDir, launch: { width: 1280, height: 720 } }, async ({ browser, port }) => {
+    const { page, errors } = await openGamePage(browser, {
+      port, viewport: { width: 1280, height: 720 }, readyTimeoutMs: HEADLESS_READY_TIMEOUT_MS,
+    });
+    try {
+      for (const mapId of options.mapIds) {
+        console.log(`capturing ${mapId} headless on ${root} (timeout ${HEADLESS_CAPTURE_TIMEOUT_MS / 1000}s)`);
+        const data = await page.evaluate(collisionCaptureScript(mapId));
+        if (errors.length) throw new Error(`page errors before ${mapId} was packed:\n${errors.join('\n')}`);
+        publish(mapId, data);
+      }
+    } finally {
+      await page.close().catch(() => {});
+    }
+  });
+} else {
+  const ready = evaluate('typeof window.__DEBUG === "object"');
+  if (!ready) throw new Error('game debug facade is not ready in the capture browser');
+  for (const mapId of options.mapIds) {
+    console.log(`capturing ${mapId} (timeout ${CAPTURE_TIMEOUT_MS / 1000}s)`);
+    publish(mapId, evaluate(collisionCaptureScript(mapId)));
+  }
 }
 
 if (options.partial) assertUnchangedCollisionShards(maps, options.mapIds);

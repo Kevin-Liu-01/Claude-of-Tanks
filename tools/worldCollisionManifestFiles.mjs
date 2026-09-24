@@ -19,7 +19,7 @@ function assertCollisionCaptureArgs(args) {
 /** Resolve CLI intent before opening a browser or touching any shard. */
 export function collisionCaptureOptions(args) {
   assertCollisionCaptureArgs(args);
-  let session = null, selected = null;
+  let session = null, selected = null, headless = false, cacheDir = null;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--maps' || arg.startsWith('--maps=')) {
@@ -29,11 +29,22 @@ export function collisionCaptureOptions(args) {
       if (selected.some((id) => !isMapId(id)) || new Set(selected).size !== selected.length) {
         throw new Error('--maps requires unique canonical map IDs');
       }
+    } else if (arg === '--headless') {
+      // round 61: a private vite server + headless Chrome on this checkout instead of an agent-browser session
+      if (headless) throw new Error('--headless may be supplied only once');
+      headless = true;
+    } else if (arg.startsWith('--cache-dir=')) {
+      // a warm vite optimizer cache of the caller's own (headless mode; default: a fresh temporary directory)
+      if (cacheDir !== null) throw new Error('--cache-dir may be supplied only once');
+      cacheDir = arg.slice('--cache-dir='.length);
+      if (!cacheDir) throw new Error('--cache-dir requires a directory');
     } else if (arg.startsWith('-') || session !== null) {
       throw new Error(`invalid collision capture argument: ${arg}`);
     } else session = arg;
   }
-  return { session: session || 'cot-manifest', partial: selected !== null,
+  if (headless && session !== null) throw new Error('--headless takes no agent-browser session');
+  if (!headless && cacheDir !== null) throw new Error('--cache-dir applies to --headless captures only');
+  return { session: session || 'cot-manifest', partial: selected !== null, headless, cacheDir,
     mapIds: selected === null ? MAP_IDS : MAP_IDS.filter((id) => selected.includes(id)) };
 }
 

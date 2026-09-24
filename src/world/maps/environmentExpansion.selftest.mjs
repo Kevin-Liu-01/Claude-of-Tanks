@@ -214,7 +214,21 @@ assert.deepEqual(createMarshChannel([loneStation]), [loneStation], 'single-stati
 for (const config of [delta, monsoon, autumn]) {
   const hf = createHeightField(1337, config);
   const protectedPads = [hf._layout.spawns.player, ...hf._layout.spawns.enemies];
-  let wetSamples = 0, dryFordSamples = 0;
+  let wetSamples = 0, dryFordSamples = 0, deckSamples = 0;
+  // Round 61 (2026-09-24, Amberford's bridge): a station authored crossing: 'bridge' carries its lane on a deck the
+  // terrain resolves (heightField.bridgeDecks) — under the span the river keeps its water and the deck is stone; the
+  // abutment (3 m) is the climb from the bed to the deck and is skipped; every other lane crossing stays a dry ford.
+  const decks = hf.bridgeDecks ?? [];
+  assert.equal(decks.length, config.terrain.marshes.filter((station) => station.crossing === 'bridge').length,
+    `${config.id}: one resolved deck per station authored as a bridge`);
+  const deckSpan = (x, z) => {
+    for (const deck of decks) {
+      const dx = x - deck.x, dz = z - deck.z;
+      const along = Math.abs(dx * deck.ux + dz * deck.uz), across = Math.abs(dx * deck.uz - dz * deck.ux);
+      if (across <= 18 && along <= deck.halfLength) return along <= deck.halfLength - 3 ? 'span' : 'abutment';
+    }
+    return null;
+  };
   // Monsoon retains one separate rain-fed roadside pool after its channel.
   const channel = config.id === 'monsoon' ? config.terrain.marshes.slice(0, -1) : config.terrain.marshes;
   // Amberford redesign (owner 2026-09-23): the diagonal SW->NE river is longer than the round-1 W->E chain (59 stations)
@@ -229,7 +243,13 @@ for (const config of [delta, monsoon, autumn]) {
       const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
       const roadDistance = hf._roadDist(x, z);
       const padDistance = Math.min(...protectedPads.map((pad) => Math.hypot(pad.x - x, pad.z - z)));
-      if (roadDistance <= 14 || padDistance <= 22) {
+      const span = deckSpan(x, z);
+      if (span === 'abutment') continue;
+      if (span === 'span') {
+        assert.ok(hf.getWaterMaskAt(x, z) >= 0.95, `${config.id}: the river runs under the bridge deck at ${x},${z}`);
+        if (roadDistance < 3.8) assert.equal(hf.getGroundType(x, z), 'hard', `${config.id}: the deck is stone`);
+        deckSamples++;
+      } else if (roadDistance <= 14 || padDistance <= 22) {
         assert.equal(hf.getWaterMaskAt(x, z), 0,
           `${config.id}: dry ford/pad height-priority zone never paints uphill liquid`);
         if (roadDistance < 3.8) assert.equal(hf.getGroundType(x, z), 'hard',
@@ -244,6 +264,7 @@ for (const config of [delta, monsoon, autumn]) {
   }
   assert.ok(wetSamples >= 60 && dryFordSamples >= 1,
     `${config.id}: independently cover continuous open water and intentional dry crossings`);
+  assert.equal(deckSamples >= 1, decks.length > 0, `${config.id}: the channel samples every authored bridge span`);
   for (const beat of config.props.tacticalBeats) {
     assert.equal(hf.getWaterMaskAt(beat.x, beat.z), 0,
       `${config.id}/${beat.id}: river repair does not flood an authored strongpoint`);
