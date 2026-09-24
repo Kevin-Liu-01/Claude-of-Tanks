@@ -69,7 +69,11 @@ const roadCompletionCensus = {
   // round 63 (2026-09-24, the railway cutting): shard recaptured headless on the lane tree and found byte-identical —
   // no collision record stands in the cutting corridor (the rim band at z −181 east of x 440 seeds none) and the
   // extended siding is soft dressing; census unchanged.
-  steppe: [2441, 2152, 1314],
+  // round 67 (2026-09-24, the cutting's tunnel portal): shard recaptured headless on the lane tree
+  // (tools/capture-world-collision-manifests.mjs --headless --maps steppe): the one compound 'tunnel-portal' record
+  // (the gallery block and two flank walls closing the valley 125 m past the red line) joins both sinks, +1 / +1;
+  // the approach track is soft dressing; concealers unchanged (1239200 → 1239550 B, under the ceiling).
+  steppe: [2442, 2153, 1314],
   railyard: [2977, 2937, 2135],
   // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
   // unchanged seeded rejection rules alter accepted trees/props, not tolerances.

@@ -92,6 +92,10 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   view('cutting-station-low', 63, [392, 2.4, -181], [512, 1.2, -181]),
   view('cutting-edge-low', 63, [506, 2.4, -181], [340, 0.6, -181]),
   view('cutting-exit-bird', 63, [430, 70, -181], [640, 2, -181]),
+  // round 67 (2026-09-24, the tunnel portal): from the bed at the map edge looking down the valley at the portal's
+  // headwall 125 m out on the radial (its centre (632, −218), 5 m to screen-left of the axis where the approach curve
+  // lands), the bore at the vanishing point of the rails
+  view('cutting-portal-low', 67, [508, 2.4, -181], [632, 4, -218]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */

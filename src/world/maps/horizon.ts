@@ -1051,14 +1051,22 @@ function openHorizonToSea(
   return sea;
 }
 
+/**
+ * Round 67 (2026-09-24): the first authored ridge of every style stands this far past the rim (its row margin below;
+ * the row's own radius only exceeds it on the square's sides) — a railway cutting's tunnel portal (railSpurs.ts
+ * RAIL_TUNNEL_RIDGE_RUN_M, held equal by railCutting.selftest) ends its gallery on that line.
+ */
+export const HORIZON_FIRST_RIDGE_MARGIN_M = 200;
+
 function horizonRowMargins(rowCount: number, style: HorizonStyle): readonly number[] {
   // Round 47: at the square corners (rim 724 m) the mesa stack keeps its two cap ranges 140 / 260 m deep (each cap
   // front needs 80 / 90 m plus its supported approach) and its valley floor 80 m wide; every row still steps outward
   // (the far rows by at least half their authored span, see buildInitialHorizonGeometry).
-  if (rowCount === 9 && style === 'mesa') return [-34, 22, 200, 340, 420, 680, 730, 770, 800];
-  if (rowCount === 9) return [-34, 22, 200, 250, 300, 380, 450, 560, 800];
-  if (rowCount === 7) return [-34, 22, 200, 260, 380, 560, 800];
-  return [-34, 22, 200, 340, 560, 800];
+  const ridge = HORIZON_FIRST_RIDGE_MARGIN_M;
+  if (rowCount === 9 && style === 'mesa') return [-34, 22, ridge, 340, 420, 680, 730, 770, 800];
+  if (rowCount === 9) return [-34, 22, ridge, 250, 300, 380, 450, 560, 800];
+  if (rowCount === 7) return [-34, 22, ridge, 260, 380, 560, 800];
+  return [-34, 22, ridge, 340, 560, 800];
 }
 
 function sampleRingRowHeight(
@@ -1451,12 +1459,18 @@ function seatHorizonSkirtOnGround(
         if (ri >= ridgeRow && edgeOut >= 470) break; // rows step outward: the authored profile owns the rest
         const continued = edgeH + gradient * clamp(edgeOut, 0, 60);
         let geology = continued + (outland.call(ground, x, z) - continued) * smoothstep(0, 90, edgeOut);
+        let seat = 0;
         if (seatWeight) {
-          const seat = seatWeight.call(ground, x, z);
+          seat = seatWeight.call(ground, x, z);
           if (seat > 0) geology += (outland.call(ground, x, z) - geology) * seat;
         }
         const handOver = ri < ridgeRow ? smoothstep(60, 380, edgeOut) : 1;
-        const share = headland > 0 ? handOver + (smoothstep(200, 470, edgeOut) - handOver) * headland : handOver;
+        // Round 67 (2026-09-24, the cutting's tunnel portal): where the weight says the row seats on the outland, the
+        // authored profile's share stands down with it — the hand-over left the seated rows 0.5–3.4 m over the bed
+        // 100–145 m out (a track laid on the bed there ran under the ring), and the valley now lies on the bed plane
+        // to the first authored ridge row, which keeps its height to the bit. Without a weight the share is what it was.
+        const share = (headland > 0 ? handOver + (smoothstep(200, 470, edgeOut) - handOver) * headland : handOver)
+          * (1 - seat);
         const h = geology + (ring.heights[i] - geology) * share;
         ring.heights[i] = h;
         ring.positions[i * 3 + 1] = h;

@@ -108,6 +108,27 @@ export const RAIL_CUTTING_BATTER = 0.7;
 export const RAIL_CUTTING_FAN = 0.35;
 export const RAIL_CUTTING_FEATHER_M = 2;
 export const RAIL_CUTTING_PORTAL_M = 12;
+/**
+ * Round 67 (2026-09-24): the tunnel portal that ends the valley. The horizon ring's first authored ridge stands
+ * RAIL_TUNNEL_RIDGE_RUN_M past the rim on every style (maps/horizon.ts HORIZON_FIRST_RIDGE_MARGIN_M — the receipt
+ * holds the two equal), meandering ±3 %, with the seated foothill rows a quarter of that span apart; so the portal's
+ * headwall stands RAIL_TUNNEL_RUN_M past the path's end, before the ridge's foot can wander, and a masonry gallery
+ * runs from it to the ridge line, its roof meeting the face wherever the face has climbed to it. The approach bends
+ * from the line's heading onto the valley's axis (the radial) on a RAIL_TUNNEL_CURVE_RADIUS_M curve, and the bore is
+ * the cutting's floor: RAIL_TUNNEL_BORE_HALF_M each side of the line, a segmental arch springing at
+ * RAIL_TUNNEL_SPRING_M with RAIL_TUNNEL_RISE_M of rise, RAIL_TUNNEL_BORE_DEPTH_M of dark bore behind the headwall.
+ */
+export const RAIL_TUNNEL_RIDGE_RUN_M = 200;
+export const RAIL_TUNNEL_RUN_M = 125;
+export const RAIL_TUNNEL_GALLERY_M = RAIL_TUNNEL_RIDGE_RUN_M - RAIL_TUNNEL_RUN_M;
+export const RAIL_TUNNEL_CURVE_RADIUS_M = 90;
+export const RAIL_TUNNEL_BORE_HALF_M = RAIL_CUTTING_HALF_FLOOR_M;
+export const RAIL_TUNNEL_BORE_DEPTH_M = 7;
+export const RAIL_TUNNEL_SPRING_M = 4.5;
+export const RAIL_TUNNEL_RISE_M = 2.5;
+export const RAIL_TUNNEL_HEADWALL_HALF_M = 9;
+export const RAIL_TUNNEL_HEADWALL_HEIGHT_M = 10.5;
+export const RAIL_TUNNEL_WALL_M = 1.5;
 /** The exclusion keeps this much more than the floor clear: the cess shoulder the spur berth keeps past its slab. */
 const RAIL_CUTTING_SHOULDER_M = RAIL_SPUR_BERTH_M - RAIL_SPUR_BALLAST_M / 2;
 
@@ -363,3 +384,59 @@ export function railCuttingExcludes(
   return false;
 }
 
+
+// ---------------------------------------------------------------------------------------------- the tunnel (round 67)
+
+/** The resolved portal of a cutting: the headwall's centre on the bed, the bore's axis (the valley's radial), the
+ * approach path from the spur's last point into the bore, and the run of the headwall in the cutting's frame. */
+export interface RailTunnel {
+  x: number;
+  z: number;
+  ux: number;
+  uz: number;
+  /** The headwall's run past the path's end along the valley's axis (RAIL_TUNNEL_RUN_M) and its bed argument. */
+  run: number;
+  along: number;
+  /** How far the approach line lies off the valley's axis (the curve's offset), to screen-left of the axis. */
+  offset: number;
+  /** The track from the path's end: the curve onto the axis, the straight to the headwall and RAIL_TUNNEL_WALL_M + 2 m into the bore. */
+  approach: [number, number][];
+}
+
+/**
+ * Round 67: the tunnel a cutting's valley ends in — derived, never authored: the headwall RAIL_TUNNEL_RUN_M past the
+ * path's end along the radial the valley follows, the approach a circular curve from the line's heading onto that
+ * radial (a straight when they agree within a milliradian) sampled every ~4 m, then straight to the headwall and a
+ * little into the bore. The curve leaves the line RAIL_TUNNEL_CURVE_RADIUS_M·(1 − cos θ) off the axis; the portal
+ * stands on that line, on the floor (the fan is wider than the offset from a few metres out).
+ */
+export function railCuttingTunnel(cut: RailCutting): RailTunnel {
+  const { ex, ez, ux, uz, fx, fz } = cut;
+  const dot = ux * fx + uz * fz, cross = ux * fz - uz * fx;
+  const theta = Math.atan2(cross, dot); // the turn from the line's heading to the radial (signed)
+  const approach: [number, number][] = [[ex, ez]];
+  let ax = ex, az = ez;
+  if (Math.abs(theta) > 1e-3) {
+    // the curve's centre lies to the side of the turn; the heading sweeps from (ux, uz) to (fx, fz)
+    const side = theta > 0 ? 1 : -1; // +1: the radial lies counter-clockwise of the heading (x east, z north)
+    const R = RAIL_TUNNEL_CURVE_RADIUS_M;
+    const nx = -uz * side, nz = ux * side; // the perpendicular toward the curve's centre
+    const cx = ex + nx * R, cz = ez + nz * R;
+    const steps = Math.max(2, Math.ceil(Math.abs(theta) * R / RAIL_SPUR_LAY_M));
+    const rx = ex - cx, rz = ez - cz; // the radius vector from the centre to the path's end
+    for (let k = 1; k <= steps; k++) {
+      const a = theta * k / steps; // signed: the radius vector turns with the heading
+      const c = Math.cos(a), s = Math.sin(a);
+      const px = cx + rx * c - rz * s, pz = cz + rx * s + rz * c;
+      approach.push([px, pz]);
+      ax = px; az = pz;
+    }
+  }
+  const offset = (ax - ex) * -fz + (az - ez) * fx;
+  const along = (ax - ex) * fx + (az - ez) * fz;
+  const run = RAIL_TUNNEL_RUN_M;
+  const x = ax + fx * (run - along), z = az + fz * (run - along);
+  if (run - along > 1e-6) approach.push([x, z]);
+  approach.push([x + fx * (RAIL_TUNNEL_WALL_M + 2), z + fz * (RAIL_TUNNEL_WALL_M + 2)]);
+  return { x, z, ux: fx, uz: fz, run, along: cut.endAlong + run, offset, approach };
+}

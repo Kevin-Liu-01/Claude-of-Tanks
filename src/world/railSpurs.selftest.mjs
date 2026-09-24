@@ -134,13 +134,22 @@ const spurSpans = resampleRailPath(authored[0].path, RAIL_SPUR_LAY_M, true);
 assert.equal(spurSpans.length, 92, '368 m in 4 m spans'); assert.equal(RAIL_SPUR_LAY_M, 4); assert.equal(RAIL_SPUR_SPAN_M, 10);
 const built = build('steppe', steppe, 1337);
 try {
-  const { slab, rail, sleeper, strut, beam } = built.parts;
+  // round 67 (2026-09-24): the line runs on past the edge to the tunnel portal (railCutting.selftest audits that
+  // approach and the portal); the siding's own parts are the ones inside the square
+  const centreX = (g) => { g.computeBoundingBox(); return g.boundingBox.getCenter(new THREE.Vector3()).x; };
+  const inSquare = (list) => list.filter((g) => centreX(g) <= 512);
+  const approach = { slab: built.parts.slab.filter((g) => centreX(g) > 512), sleeper: built.parts.sleeper.filter((g) => centreX(g) > 512), rail: built.parts.rail.filter((g) => centreX(g) > 512) };
+  const slab = inSquare(built.parts.slab), rail = inSquare(built.parts.rail), sleeper = inSquare(built.parts.sleeper), { strut, beam } = built.parts;
   assert.equal(slab.length, 92); assert.equal(rail.length, 184); assert.equal(strut.length, 2); assert.equal(beam.length, 1, 'one stop: the west stub');
   assert.equal(sleeper.length, spurSpans.reduce((n, s) => n + Math.round(railRunLength(s.bx - s.ax, s.bz - s.az) / 1.4), 0) + 0,
     'one sleeper every ~1.4 m of every span (the fitted rise of a 4 m span never changes the count)');
-  assert.equal(built.obstacles.length, 0); assert.equal(built.colliders.length, 0, 'soft dressing: no collision record');
-  assert.equal(built.calls, 24 * slab.length + sleeper.length + 4 * beam.length, 'every seeded draw: 24 slab colours, one sleeper jitter, four beam UV jitters');
-  assert.equal(built.digest, '564361d75c3fb68acc16789ebce89c6bdc6c86673922130633ceae56d2f6cace', 'the siding at seed 1337 (2026-09-24 pin; round 63: to the edge through the cutting, one stop)');
+  assert.equal(approach.slab.length, 33, 'round 67: the approach down the valley to the portal, 33 spans'); assert.equal(approach.rail.length, 66);
+  assert.equal(built.obstacles.length, 1); assert.equal(built.colliders.length, 1, 'round 67: the tunnel portal is the one record; the track is soft dressing');
+  assert.equal(built.obstacles[0].kind, 'tunnel-portal');
+  const stoneJitters = 4 * built.buckets.stone.length; // round 67: the portal's nine stone pieces take four UV draws each
+  assert.equal(built.calls, 24 * (slab.length + approach.slab.length) + sleeper.length + approach.sleeper.length + 4 * beam.length + stoneJitters,
+    'every seeded draw: 24 slab colours, one sleeper jitter, four beam UV jitters, the portal masonry\'s UV jitters');
+  assert.equal(built.digest, '77fdc642974bab1e8fef7ff7356208e24777a82fed252766d599ddd77c6a8d93', 'the siding at seed 1337 (2026-09-24 pin; round 67: the approach to the tunnel portal past the edge; round 63: to the edge through the cutting, one stop)');
   // every slab bedded: no corner floats, every top corner clears the ground; every span dry
   const v = new THREE.Vector3();
   let worstGap = -Infinity, lowestTop = Infinity;
@@ -176,6 +185,7 @@ try {
     assert.ok(rise > 0.03 && rise < 0.25, `a sleeper lies on the bedded slab (${rise.toFixed(3)} m over the ground)`);
     assert.ok(Math.abs(sc.z + 181) < 0.1, 'centred on the line');
   }
+  for (const s of approach.sleeper) { const sc = centre(s), rise = sc.y - steppe.getOutlandHeightAt(sc.x, sc.z); assert.ok(rise > 0.03 && rise < 0.25, `round 67: an approach sleeper lies on the valley floor the ring seats on (${rise.toFixed(3)} m)`); }
   for (const r of rail) { const rc = centre(r); const rise = rc.y - steppe.getHeightAt(rc.x, rc.z); assert.ok(rise > 0.08 && rise < 0.32, `a rail rides the sleepers (${rise.toFixed(3)} m over the ground)`); }
   // the stop: 0.8 m past the west stub, the beam across the track, the struts astride the gauge; the east end is open
   const beamCentres = beam.map(centre).sort((a, b) => a.x - b.x);
@@ -184,7 +194,7 @@ try {
   const strutZ = strut.map((g) => centre(g).z).sort((a, b) => a - b);
   assert.deepEqual(strutZ.map((z) => Math.round((z + 181) * 100) / 100), [-0.72, 0.72], 'struts astride the gauge, the stop turned to the track');
   const lastSlab = slab.map(centre).sort((a, b) => a.x - b.x)[slab.length - 1];
-  assert.ok(lastSlab.x > 509.5 && lastSlab.x < 510.5, 'the last 4 m slab is centred 2 m short of the edge (the line leaves the square)');
+  assert.ok(lastSlab.x > 509.5 && lastSlab.x < 510.5, 'the last 4 m slab in the square is centred 2 m short of the edge (the line leaves the square)');
 } finally { dispose(built); }
 
 // ------------------------------------------------------------------ every other map: no spur, the exclusion it had
@@ -194,4 +204,4 @@ for (const mapId of MAP_IDS) {
   assert.equal(cfg.terrain?.railSpurs, undefined, `${mapId}: no authored spur`);
   assert.equal(createLayout(cfg).railSpurs, undefined, `${mapId}: no layout key`);
 }
-console.log('railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; four yards byte-identical at seed 1337; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, 0 collision records; 30 other layouts unchanged');
+console.log('railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; four yards byte-identical at seed 1337; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then 33 spans down the valley to the tunnel portal (its one record); 30 other layouts unchanged');

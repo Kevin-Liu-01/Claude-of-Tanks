@@ -38,7 +38,10 @@ import {
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
 import {
-  RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railRunLength, resampleRailPath, type RailSpurConfig,
+  RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, RAIL_TUNNEL_BORE_DEPTH_M, RAIL_TUNNEL_BORE_HALF_M,
+  RAIL_TUNNEL_GALLERY_M, RAIL_TUNNEL_HEADWALL_HALF_M, RAIL_TUNNEL_HEADWALL_HEIGHT_M, RAIL_TUNNEL_RISE_M,
+  RAIL_TUNNEL_SPRING_M, RAIL_TUNNEL_WALL_M, railCuttingTunnel, railRunLength, resampleRailPath, resolveRailCuttings,
+  type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
 
 type Rng = () => number;
@@ -59,6 +62,8 @@ interface DressingHeightField {
   _waterWetnessAt?(x: number, z: number): number;
   /** Round 61: the bridge decks terrain.ts resolved from the stations authored `crossing: 'bridge'`. */
   bridgeDecks?: readonly DressingBridgeDeck[];
+  /** Round 67: the outland relief the horizon ring's near rows seat on (a cutting's valley floor past the red line). */
+  getOutlandHeightAt?(x: number, z: number): number;
 }
 
 /** Round 61: the deck plane the river kit builds its arched bridge on (terrain.ts BridgeDeckPlane). */
@@ -2182,7 +2187,98 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
     const last = spans[spans.length - 1], first = spans[0];
     if (spur.bufferStop !== 'start') closeEnd(last, last);
     if (spur.bufferStop !== 'end') closeEnd({ ax: first.bx, az: first.bz }, { bx: first.ax, bz: first.az });
+    // Round 67 (2026-09-24): a spur that leaves the square through a cutting runs on down the valley to the tunnel
+    // portal that ends it (after the stops, so the square's dressing keeps its draws)
+    const cuttings = resolveRailCuttings([spur]);
+    if (cuttings && heightField.getOutlandHeightAt) dressRailTunnelPortal(ctx, cuttings[0], lay);
   }
+}
+
+// Round 67 (2026-09-24): the tunnel portal a cutting's valley ends in (railSpurs.ts railCuttingTunnel — derived from
+// the cutting, never authored). The approach runs from the path's end on the valley floor the horizon ring seats on
+// (the outland bed: the same lay, the floor dry by construction) round the curve onto the valley's axis and into the
+// bore; the portal is a masonry headwall with a segmental arch the width of the cutting's floor, a gallery whose walls
+// and roof run from the headwall to the ring's first ridge line so its roof meets the ridge face wherever the face has
+// climbed to it (the ring's rows meander ±3 %, so the face's foot wanders ±20 m between battle seeds), stepped wing
+// walls splayed down the valley from the headwall's corners, and behind the arch a dark bore a few metres deep with
+// no interior: dark walls, a dark ceiling and a dark floor rising at 45° into the dark — the ridge face the ring draws
+// through any bore lies under that floor. One compound collision record, kind 'tunnel-portal', closes the valley at
+// the headwall's plane: the gallery block and a flank wall each side to the cutting's floor edge, so a hull cannot
+// drive into the drawn ridge anywhere across the floor (the cliff rule already holds it off the batter faces).
+function dressRailTunnelPortal(ctx: FocusedDressingContext, cut: RailCutting, lay: RailLay): void {
+  const { heightField, rng, buckets } = ctx;
+  const tunnel = railCuttingTunnel(cut);
+  const outland = (x: number, z: number): number => heightField.getOutlandHeightAt!(x, z);
+  const bed: DressingHeightField = { ...heightField, getHeightAt: outland, getWaterMaskAt: () => 0 };
+  for (const span of resampleRailPath(tunnel.approach, RAIL_SPUR_LAY_M, true)) {
+    layRailSpan(buckets, rng, bed, span.ax, span.az, span.bx, span.bz, { ...lay, washout: false });
+  }
+  const { x: px, z: pz, ux, uz } = tunnel;
+  const vx = uz, vz = -ux; // across the bore (the local +x of the frame below)
+  const bedY = outland(px, pz);
+  const yaw = Math.atan2(ux, uz); // local +z → (ux, uz) into the ridge, local +x → (uz, −ux) across
+  const place = <T extends THREE.BufferGeometry>(g: T, lx: number, ly: number, lz: number): T => {
+    g.translate(lx, ly, lz);
+    g.rotateY(yaw);
+    g.translate(px, bedY, pz);
+    return g;
+  };
+  const stone = (g: THREE.BufferGeometry, lx: number, ly: number, lz: number): void => { buckets.stone.push(place(jitterUV(g, rng), lx, ly, lz)); };
+  const dark = (g: THREE.BufferGeometry, lx: number, ly: number, lz: number): void => { buckets.dark.push(place(g, lx, ly, lz)); };
+  const a = RAIL_TUNNEL_BORE_HALF_M, W = RAIL_TUNNEL_HEADWALL_HALF_M, H = RAIL_TUNNEL_HEADWALL_HEIGHT_M;
+  const wall = RAIL_TUNNEL_WALL_M, gallery = RAIL_TUNNEL_GALLERY_M, bore = RAIL_TUNNEL_BORE_DEPTH_M;
+  const springY = RAIL_TUNNEL_SPRING_M, rise = RAIL_TUNNEL_RISE_M, crownY = springY + rise;
+  // the headwall: one elevation profile (across, up) with the arch opening cut from its foot, extruded into the ridge
+  const radius = (a * a + rise * rise) / (2 * rise), centreY = springY + rise - radius;
+  const halfAngle = Math.asin(Math.min(1, a / radius));
+  const profile = new THREE.Shape();
+  profile.moveTo(-W, -0.5);
+  profile.lineTo(-W, H);
+  profile.lineTo(W, H);
+  profile.lineTo(W, -0.5);
+  profile.lineTo(a, -0.5);
+  profile.lineTo(a, springY);
+  profile.absarc(0, centreY, radius, Math.PI / 2 - halfAngle, Math.PI / 2 + halfAngle, false);
+  profile.lineTo(-a, -0.5);
+  profile.lineTo(-W, -0.5);
+  const headwall = new THREE.ExtrudeGeometry(profile, { depth: wall, bevelEnabled: false, curveSegments: 12 });
+  scaleUV(headwall, 0.7, 0.7);
+  stone(headwall, 0, 0, 0);
+  // the gallery: walls either side of the bore from the headwall to the ridge line, the roof over the crown, a rear plate
+  for (const side of [-1, 1]) stone(box(wall, H + 0.5, gallery, 0.7), side * (a + wall / 2), (H - 0.5) / 2, wall + gallery / 2);
+  stone(box(2 * (a + wall), H - crownY, gallery, 0.7), 0, (H + crownY) / 2, wall + gallery / 2);
+  stone(box(2 * (a + wall), H + 0.5, 1.0, 0.7), 0, (H - 0.5) / 2, wall + gallery + 0.5);
+  // the bore: dark walls, a dark ceiling at the crown, a dark floor rising at 45° from the headwall's back into the dark
+  for (const side of [-1, 1]) dark(box(0.2, crownY + 0.5, bore, 1), side * (a - 0.1), (crownY - 0.5) / 2, wall + bore / 2);
+  dark(box(2 * a, 0.2, bore, 1), 0, crownY - 0.1, wall + bore / 2);
+  const ramp = box(2 * a, 0.3, bore * Math.SQRT2, 1);
+  ramp.rotateX(-Math.PI / 4);
+  dark(ramp, 0, bore / 2 - 0.1, wall + bore / 2);
+  // stepped wing walls splayed 35° down the valley from the headwall's corners: a tall inner leaf, a low outer one
+  for (const side of [-1, 1]) {
+    const turn = side > 0 ? 55 * Math.PI / 180 : 125 * Math.PI / 180; // the leaf's length axis → (±sin 35°, −cos 35°)
+    const dx = side * Math.sin(35 * Math.PI / 180), dz = -Math.cos(35 * Math.PI / 180);
+    const inner = box(6, 9, 1.0, 0.7);
+    inner.rotateY(turn);
+    stone(inner, side * W + dx * 3, 4.0, dz * 3);
+    const outer = box(6, 4, 1.0, 0.7);
+    outer.rotateY(turn);
+    stone(outer, side * W + dx * 9, 1.5, dz * 9);
+  }
+  // the record: the gallery block and the flank walls across the rest of the floor at the headwall's plane
+  const floorHalf = cut.halfFloor + tunnel.run * cut.fan + 2;
+  const parts: SimpleCollisionShape[] = [{
+    kind: 'obb', cx: px + ux * (wall + gallery) / 2, cz: pz + uz * (wall + gallery) / 2,
+    hw: a + wall, hl: (wall + gallery) / 2, yaw, y0: bedY - 0.5, y1: bedY + H,
+  }];
+  for (const side of [-1, 1]) {
+    const hw = (floorHalf - (a + wall)) / 2, at = (a + wall + hw) * side;
+    parts.push({ kind: 'obb', cx: px + vx * at, cz: pz + vz * at, hw, hl: 1.5, yaw, y0: bedY - 0.5, y1: bedY + H + 1.5 });
+  }
+  const record = setCompoundShape({ min: [0, bedY - 0.5, 0], max: [0, bedY + H + 1.5, 0], kind: 'tunnel-portal' }, parts);
+  ctx.obstacles?.push(record);
+  ctx.colliders?.push(cloneCollisionRecord(record));
+  ctx.groundingReceipts?.push({ kind: 'tunnel-portal', x: px, y: bedY, z: pz, relief: 0, baseClearance: -0.5 });
 }
 
 const RAIL_YARD_LINES = [
