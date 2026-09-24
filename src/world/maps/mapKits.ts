@@ -1735,8 +1735,9 @@ function addArchedStoneBridge(
   jitterUV(body, rng);
   alignWidth(body, ux, uz);
   buckets.stone.push(body.translate(cx, 0, cz));
-  // the deck slab, level and flush with the approaches, and the parapets on its edges with end posts
-  const slab = box(bodyHalf * 2, BRIDGE_SLAB_M, width, 0.7);
+  // the deck slab, level and flush with the approaches (a thin slab takes per-face metre UVs — box() would stretch
+  // the stone across the deck's width into stripes), and the parapets on its edges with end posts
+  const slab = slabBox(bodyHalf * 2, BRIDGE_SLAB_M, width, 0.7);
   jitterUV(slab, rng);
   buckets.stone.push(alignWidth(slab, ux, uz).translate(cx, deckY - BRIDGE_SLAB_M / 2, cz));
   const parapetHalf = bodyHalf + 0.2;
