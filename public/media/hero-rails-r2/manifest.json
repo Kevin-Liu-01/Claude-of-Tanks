@@ -60,14 +60,14 @@
       "durationMs": 6000,
       "video": "/media/hero-rails-r2/02_winter-ice-orbit.webm",
       "poster": "/media/hero-rails-r2/02_winter-ice-orbit.jpg",
-      "videoBytes": 8242237,
-      "posterBytes": 321299,
+      "videoBytes": 7703763,
+      "posterBytes": 208576,
       "cameraShots": 4,
       "effects": 10,
       "actors": [
         {
           "id": "strv122",
-          "name": "Stridsvagn 122"
+          "name": "Stridsvagn 121"
         },
         {
           "id": "type99a",
@@ -82,18 +82,18 @@
       "durationMs": 6000,
       "video": "/media/hero-rails-r2/03_steppe-charge-thread.webm",
       "poster": "/media/hero-rails-r2/03_steppe-charge-thread.jpg",
-      "videoBytes": 8492006,
-      "posterBytes": 278991,
+      "videoBytes": 9657747,
+      "posterBytes": 342099,
       "cameraShots": 4,
       "effects": 13,
       "actors": [
         {
           "id": "k2",
-          "name": "K2 Black Panther"
+          "name": "XK2 Black Panther"
         },
         {
           "id": "t14",
-          "name": "T-14 Armata"
+          "name": "Object 148 Proto"
         }
       ]
     },

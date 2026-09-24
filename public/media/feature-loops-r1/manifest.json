@@ -65,15 +65,15 @@
       "durationMs": 6000,
       "video": "/media/feature-loops-r1/03_winter_lake_duel.webm",
       "poster": "/media/feature-loops-r1/03_winter_lake_duel.jpg",
-      "videoBytes": 1756750,
+      "videoBytes": 2130547,
       "actors": [
         {
           "id": "t80u",
-          "name": "T-80U"
+          "name": "T-80UK"
         },
         {
           "id": "challenger_3",
-          "name": "Challenger 3"
+          "name": "Challenger 3 Prototype"
         }
       ]
     },
