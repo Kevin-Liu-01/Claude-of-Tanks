@@ -20,6 +20,8 @@ import {
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation, excludeVegetation } from './vegetationClearance.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
+import { applyCanopyDiffuseWrap } from './canopyLighting.ts'; // round 55: shared with the horizon ring (leaf module)
+export { applyCanopyDiffuseWrap };
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
@@ -365,54 +367,6 @@ function mipAlphaGuard(shader: MaterialShader): void {
 function useAttributeNormal(shader: MaterialShader): void {
   shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
     '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
-}
-
-/** Light-driven DIFFUSE scattering; keep microfacet specular incidence intact. */
-export function applyCanopyDiffuseWrap(
-  shader: MaterialShader,
-  wrap: number,
-  matteCanopy = false,
-): void {
-  if (wrap <= 0) return;
-  const reciprocal = (1 / (1 + wrap)).toFixed(6);
-  let wrappedPhysical = _mustReplace(
-    THREE.ShaderChunk.lights_physical_pars_fragment,
-    'float dotNL = saturate( dot( geometryNormal, directLight.direction ) );',
-    'float canopyRawNL = dot( geometryNormal, directLight.direction );\n\tfloat dotNL = saturate( canopyRawNL );',
-  );
-  // Do not wrap irradiance: GGX uses the original clamped incidence inside
-  // its Smith visibility denominator. Lighting a backface through that term
-  // exposes its 1/EPSILON singularity and turns crowns into white bloom lamps.
-  // Only the Lambert diffuse lobe scatters through the leaf volume.
-  wrappedPhysical = _mustReplace(
-    wrappedPhysical,
-    'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution );',
-    `float canopyDiffuseNL = saturate( ( canopyRawNL + ${wrap.toFixed(2)} ) * ${reciprocal} ) * ${reciprocal};\n\t${matteCanopy ? 'canopyDiffuseNL = canopyDiffuseNL * 0.70 + 0.075;\n\t' : ''}reflectedLight.directDiffuse += canopyDiffuseNL * directLight.color * BRDF_Lambert( material.diffuseContribution );`,
-  );
-  if (matteCanopy) {
-    // A spray represents many differently oriented leaves. Mix 30% of an
-    // isotropic volume lobe into its directional wrap so entire reverse-facing
-    // sprays do not become black panels. Both lobes integrate to 0.5 over
-    // incidence [-1, 1]: 0.70 * 0.5 + 2 * 0.075 = 0.5. This redistributes
-    // actual incident light; it adds neither emission nor a night-time floor.
-    // Near cards and far crown proxies use the same response.
-    // Volume-bent leaf normals intentionally do not flip toward the camera.
-    // They describe a scattering crown, not a glossy microfacet surface:
-    // GGX at N.V=0 produces a broad white grazing lobe across these cards.
-    // Use the diffuse crown model for direct sun; retain the existing IBL
-    // and hemisphere bounce. Omitting GGX also removes its two DFG lookups.
-    wrappedPhysical = _mustReplace(
-      wrappedPhysical,
-      'reflectedLight.directSpecular += irradiance * BRDF_GGX_Multiscatter( directLight.direction, geometryViewDir, geometryNormal, material );',
-      '// Matte canopy: direct illumination is the volume-diffuse lobe below.',
-    );
-  }
-  // Three renamed this parameter from normal to geometryNormal. The former
-  // unchecked replacement silently disabled scattering, leaving white-facing
-  // cards beside black interiors. Fail explicitly if that contract changes.
-  shader.fragmentShader = _mustReplace(
-    shader.fragmentShader, '#include <lights_physical_pars_fragment>', wrappedPhysical,
-  );
 }
 
 // ---------------------------------------------------------------------------

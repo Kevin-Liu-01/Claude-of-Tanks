@@ -14,7 +14,7 @@
 //     and silhouettes as vegetation.ts), so the battlefield's rim forest continues over the edge and into the first
 //     ranges instead of stopping at a flat green wall.
 import * as THREE from 'three';
-import { applyCanopyDiffuseWrap } from './vegetation.ts';
+import { applyCanopyDiffuseWrap } from './canopyLighting.ts'; // round 55: a leaf import — vegetation.ts must not join the horizon chain (tidalMangrove hook)
 
 // ---------------------------------------------------------------------------
 // tiles
