@@ -26,6 +26,16 @@ modern fleet. The generator refuses a campaign unless all of these are true:
 - lens between 30 and 52 degrees;
 - unique source composition for every action/foreground pair.
 
+The generator also carries two explicit override tables (2026-09-24, round 53):
+`HAND_TUNED_ACTION` reproduces the two action frames that were hand-edited after
+the 2026-08-19 generation and rendered as edited (62's victim, 89's
+reinforcement), so a regeneration is byte for byte the published campaign, and
+`HAND_TUNED_FOREGROUND` carries the foreground lenses whose formula position
+lands on a prop of a redesigned battlefield (98, 99, 111). A template staged as a
+long lens is pulled in along its own sightline until a hull is within 28 m
+instead of being re-staged (81). Add to these tables with a dated note; never
+edit a generated scene file by hand.
+
 The action contact sheet must visibly show multiple readable tanks in every
 frame. The foreground sheet must show a large, readable anchor tank plus battle
 depth. Actor counts alone do not establish acceptable composition. Reject frames with
@@ -49,6 +59,10 @@ Generate low-cost review frames and contact sheets first:
     node tools/marketing-shots/contact.mjs --all \
       --dir shots/marketing-battles-r3/foreground-review \
       --out shots/marketing-battles-r3/foreground-review-sheets --tile 480 --cols 5
+
+`shoot.mjs --match 67_,97_` renders a subset; the grade and the publisher still
+need all 60 masters, so link the approved masters of the unchanged frames into
+the campaign root (`showcase:publish -- --campaign-root …`) beside the new ones.
 
 After visual approval, export exact 3840x2160 PNGs:
 

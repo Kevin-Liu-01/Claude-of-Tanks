@@ -1248,6 +1248,76 @@ liquidMarshSurface, terrainStreaming, roadContinuity, mapQuality, shallowWater, 
 terrainWornDirt, sourcedTextures, autumnHorizonSeam, terrainSplatFields, environmentExpansion, spawnClearance and
 garage-terrain-patches unchanged. Decision 21 (coastal apron debris specks) stays open.
 
+### Round 53 — 2026-09-24: the 4K showcase frames and the studio video of the redesigned maps
+
+Round 51 left the fourteen `showcase-r1` frames of Frosthollow and Tarkhan Steppe on the round-1 battlefields — the
+landing hero `113_foreground_winter_ice_breaker`, the six mosaic tiles (`67 / 69 / 84_action_*`, `97 / 99 /
+111_foreground_*`), the README's `69 / 84 / 97` and the seven archive frames (`68 / 70 / 81 / 83_action_*`, `98 / 100 /
+113 / 114_foreground_*`) — plus the byte-pinned landing film `landing-r1/studio-leclerc-knockout.mp4`, whose recorder
+carried its own inline stage on the retired lake. Both went back through the repo's own pipeline on this tree, one
+capture at a time under the probe mutex, niced:
+
+- **Templates.** The campaign derives the winter frames from `gen-scenes.mjs` 09 / 10 / 11 / 12 and `gen-scenes2.mjs`
+  35, the steppe frames from 55 / 57. Round 51 had re-staged 10 / 35 / 55 / 57; 09, 11 and 12 were still on the lake at
+  (195,−120), the west road and the farm crossing. Re-staged: the lake duel (09 → 67 / 97) on the c(−24,−246) r40 pond
+  of the frozen river, the lens on the ice at its south-east looking north-west over the burning victim at the shooter,
+  the terrace scarp's birch line and the southern ridge arm behind; the column under fire (11 → 70 / 100) coming down
+  the pass road from the saddle toward the village ((−272,20) → (−214,−10), heading ≈115°), the lens up-slope on the
+  road behind it looking over the column into the valley — the village street, its onion-dome church and the moraine —
+  on the road's north-east half (on the centreline a snow-bound wreck hull and a boulder on the south-west verge filled
+  the frame's left edge); the village brawl (12 → 69 / 99) at the terrace village's crossroads (−80,−40) shot from the
+  Bystra crossing road outside the village rect: the foe drives in along the crossing road 20 m ahead of the lens with
+  its gun on the SEPv2 holding the street beside the church, the KF51 comes down the pass road beyond the crossroads,
+  the burst is at the crossroads, the saddle and ridge arms the skyline. The street itself has no lens position with
+  nothing inside 8 m — the utility poles stand within ~1 m of the centreline (x −75..−77 at z −7..8), the east verge has
+  a log cabin at (−68..−60, 6..22) and a rail fence, the west verge the barn row; four street lenses and a first
+  re-stage in the sawmill yard (the yard's cabin at (−92,67) filled the left half of a north-looking lens) were
+  rejected on 1280 px previews.
+- **Generator.** `gen-battle-campaign.mjs` did not reproduce the checked-in campaign: 62's victim and 89's reinforcement
+  had been hand-edited after the 2026-08-19 generation (the 2026-08-20 showcase overhaul) and rendered as edited, their
+  foreground twins not. Those edits now live in an explicit `HAND_TUNED_ACTION` table, so a regeneration is byte for byte
+  the published campaign. Round 51's long-lens re-staging of 57 (the sniper 60 m from the lens) broke the action
+  contract (a hull within 29 m); rather than re-stage the approved home frame, a template whose nearest hull is past 29 m
+  is pulled in along its own sightline until one is within 28 m (81: 60.1 → 27.7 m; its sightline foreground follows).
+  Three foreground lenses whose formula position landed on a prop of the redesigned ground are overridden in
+  `HAND_TUNED_FOREGROUND` with dated notes: 98 (the orbit lens stood behind a snow rise that hid both hulls' lower halves
+  — mirrored to the pair's north side on the valley floor), 111 (3 m from a highway utility pole — onto the carriageway,
+  13 m from the sniper), 99 (3 m from a hedgehog beside the crossing road's woodshed and yard clutter — 1.5 m east and
+  1.2 m south, 8.5 m from the foe, the church centred behind the hull). Every override keeps the 7–14 m anchor contract;
+  `battle-campaign.selftest` passes; exactly the fourteen intended scene files moved.
+- **Renders and gate.** Eight 1280 px preview rounds (`shoot.mjs` on scratch scene sets with `cameraVariants`), then the
+  fourteen 4K masters (`shoot.mjs --match … --width 3840`, two jobs) into a campaign root beside the 46 approved Aug-19
+  masters linked from the shared archive; `grade-battle-campaign.mjs` 60 / 60 with the 46 unchanged rows byte-identical
+  (metrics and bytes) to the 2026-08-20 report; `showcase:publish` with `--campaign-root` / `--studio-root` (the
+  round-51 keyframe PNGs plus a `studio_winter_breakthrough.resolved.json` from the recorder run) re-encoded all 60
+  renditions — the 46 unchanged came back byte-identical, so only the fourteen renditions, the four contact sheets that
+  carry them (`action / foreground-review-01 / -03`), the two manifests and `capture-recipes-r1.json` moved. The
+  showcase manifest's studio shots now list the storyboard's cast (`strv122`, `leclerc`; the Aug-19 resolved state had
+  carried the 83 ice-breaker cast).
+- **Studio film.** `record-studio-action-loop.mjs` loads the checked-in `scenes-studio-r1/studio_winter_breakthrough.json`
+  (scene, actor tracks, camera shots) instead of an inline stage — one source for the film, the presentation-r1
+  keyframes and the copyable recipe — and refuses a storyboard that did not load as authored. `publish-landing-media.mjs`
+  encoded the mp4 (6867 ms, 7,187,726 B), the 4.15 s poster (579,052 B) and, new, the `web-video-r1` mobile proxy
+  (h264 960×540 24 fps, 416,505 B) whose byte receipt it updates in place; the landing-r1 pins (`durationMs`,
+  `videoBytes`, `posterBytes`) re-pinned by the publisher on 2026-09-24, the proxy library 8,791,590 B under the 9 MB
+  budget.
+
+Verified by eye on 1280 px reductions of every 4K master (67 lake duel: burning victim and airborne turret left, the
+shooter's tracer centre, the pond's cracked ice, birch line, walls and ridge — pass; 68 ram: the deliberate hull close-up
+with the fireball — pass; 69 crossroads: foe, burst, log racks, church, ridge skyline — pass; 70 pass road: the column
+with the village and church below, the frozen supply truck on the verge — pass; 81 highway: sniper left, kill centre,
+poplar belts and pole line — pass; 83 pond: kill and shooter over the ice — pass; 84 plain: the charge with the
+escarpment and kurgans on the horizon — pass; 97 / 113 / 114 / 100 / 98 / 111 / 99: the anchor hull 8.5–12.3 m out with
+the burst, church, pond, highway or plain behind — pass; nothing but a deliberate hull inside ~8 m in any frame), the
+four regenerated contact sheets, and four frames of the published mp4 (0.9 / 2.6 / 4.15 / 5.8 s: the pair on the pond,
+return fire, the ammo-rack knockout, the burning wreck, the Studio dock in every frame), the poster and the proxy's
+4.15 s frame. Receipts (exit 0): showcase-r2, battle-campaign, landing-media, feature-evidence, hero-rails,
+loadingScreens, socialProof, showcase-library, feature-loops, og-images (its sources unchanged), public-repo-hygiene,
+attribution. **Still open:** `feature-loops-r1/03_winter_lake_duel.webm` (its copyable recipe now derives from the new
+67 while the film is the old lake), `hero-rails-r2/02_winter-ice-orbit` and `03_steppe-charge-thread` with their mobile
+proxies, the `battle-reels-v3` winter / steppe reels and `featured/f1_09_winter_lake_duel` — all still the round-1
+battlefields; `gen-scenes.mjs` 13–16 (the retired first production) stay on the old anchors.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -1342,6 +1412,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 50 | The redesigned maps' tactical-map plates (Frosthollow, Tarkhan) and Garage cards (all three: 4K hero + picker thumb) re-rendered from the new battlefields — they still showed the Verdant clones; the round-48 pacing trace committed as `tools/pacing-trace.mjs` | map-art-guards, minimapAssetRuntime / CapturePolicy / Orientation, loadingScreens, landing-media, public-repo-hygiene, attribution; eye check of the 1280 px reductions; chain 71 |
 | 51 | Home showcase frames of the redesigned maps: the eight orphaned `public/media/home` frames, thirteen `presentation-r1` frames (five owner picks on the home rail / maps section / featured gallery / docs page, eight archive frames) and the five Frosthollow studio-loop keyframes re-rendered from the round-48 battlefields; every recipe on the three maps re-staged in its generator (ponds, terrace village street and crossroads, orchard rows, the coach road under the town, stone bridge, ford, open steppe, highway belts, kurgan crest); `publish-presentation-r1.mjs --match` subset mode | eye check of 1280 px reductions after seven preview rounds against the review's lens rule (nothing within ~8 m of the glass but a deliberate hull); campaign image metrics 26 / 26; landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, public-repo-hygiene, attribution — no digest moved |
 | 52 | Saltwind Narrows' strand 12 → 20 m (owner decision 20): a pale beach now separates the bay from the grass along the whole shore; boat landings kept (beachedBoat / riverLandings unchanged) | map-view-probe A/B (bird-w-edge, shore-w-oblique, edge-w-low, w-wall-mid), badlandsRelief slice, shoreDirtMask / mangroveWaterPalette / villageWear re-pins, 17 shore receipts green; chain 73 |
+| 53 | The 4K showcase frames and the studio film of the redesigned maps: the fourteen `showcase-r1` frames of Frosthollow and Tarkhan (the landing hero 113, six mosaic tiles, the README's 69 / 84 / 97) regenerated through the campaign pipeline — templates 09 / 11 / 12 re-staged (pond, pass-road descent, crossroads from the crossing road), the generator made to reproduce the published campaign (`HAND_TUNED_ACTION`), a sightline pull-in for long-lens templates and three overridden foreground lenses (`HAND_TUNED_FOREGROUND`); the landing film re-recorded from the checked-in storyboard, its poster and mobile proxy from the publisher | eye check of 1280 px reductions of all fourteen 4K masters, the four contact sheets and four mp4 frames against the lens rule; grade 60 / 60 with 46 rows byte-identical to the Aug-19 report; showcase:publish moved only the fourteen renditions, four sheets and manifests; receipts showcase-r2, battle-campaign, landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, feature-loops, og-images, public-repo-hygiene, attribution |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
