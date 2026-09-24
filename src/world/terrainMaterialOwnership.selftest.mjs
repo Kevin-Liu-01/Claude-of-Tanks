@@ -110,6 +110,7 @@ function checkSourceContract(text) {
     // round 42 (2026-09-23, AAA checks 4/11): the sun the vista ring shades with and the sky-light weight for steep faces turned from it
     'uSunDirW', 'uWallSkyLift',
     'uSlopeGrassHold', // round 45 (2026-09-23): tropical hills hold turf to steeper slopes (scalar, no sampler)
+    'uRingRock', // round 49 (2026-09-23): per-map slope band over which a ring face past the square becomes landform rock (vec2, no sampler)
   ].sort();
   assert.deepEqual(uniforms, expected, 'no new shader uniform or sampler');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -120,7 +121,8 @@ function checkSourceContract(text) {
     outlandWaterMask,
   ]`)), 'the same ten shader-only texture owners keep their positions ([0] grass, [4] rock feed the horizon ground tone); the outland bay mask is the eleventh');
   // round 42 (2026-09-23): the program cache key moved with the sky-light fragment (was v31, relief pass 2 of 2026-09-12)
-  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v37';/);
+  // round 49 (2026-09-23): v38 — jointed marker-bed strata and the per-map ring rock band
+  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v38';/);
 }
 function replaceOnce(text, from, to) {
   assert.equal(text.split(from).length, 2, `unique mutation seam: ${from}`);
@@ -144,5 +146,5 @@ await rejects(replaceOnce(source, nearAlbedo(source), nearAlbedo(source).replace
 await rejects(replaceOnce(source, normalTerm(source, 'gnF'), 'gnF.xy * farM * 0.24'), 'far normal bypass');
 await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('farG *', 'farM *')), 'far albedo bypass');
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
-assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v37', 'world-terrain-splat-v36')));
+assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v38', 'world-terrain-splat-v37')));
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');

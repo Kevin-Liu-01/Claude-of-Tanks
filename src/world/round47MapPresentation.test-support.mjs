@@ -139,6 +139,12 @@ export const ROUND47_PRESENTATION_EDITS = {
   ]
  ],
  "titanGorge.ts": [
+  // round 49 (2026-09-23, lane r49a): the ring rock band is presentation only. NOTE: this object carries two
+  // "titanGorge.ts" keys (both round-47 lanes added one); JavaScript keeps the LAST, so round-49 pairs live here.
+  [
+   "    // round 49 (owner audit 2026-09-23, \"smooth beige ridge faces without strata\"): the ring's 35–47° faces past the edge\n    // become the bedded landform rock (default band 0.22–0.48 left them the wall-projected sand set)\n    ringRockSlope: [0.15, 0.36],\n",
+   ""
+  ],
   [
    "    // round 47 (2026-09-23, owner: \"ground patterns are too black\"): without this the sourced-texture resolver fell\n    // through to Verdant — photo grass/dirt and raw near-black Rock058 in place of the sandstone strata above\n    sourcedPalette: 'titan_gorge',\n    // round 47 (2026-09-23): tintB 0.71/0.54/0.45 (luma ×0.58 in the dark patches) → same ochre hue (18°), every\n    // channel ≥ 0.78 (luma ×0.83) — the patches stay darker than the shelves without going black\n    tintA: [1.10, 0.88, 0.69], tintB: [0.90, 0.82, 0.78], tintC: [1.06, 0.84, 0.67],\n",
    "    tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],\n"

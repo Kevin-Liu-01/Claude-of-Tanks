@@ -223,6 +223,9 @@ interface SplatConfig {
   midRelief?: number;
   /** Round 45: slope (1 − n.y) subtracted before the grass→rock thresholds — wet tropical hills keep turf on steeper ground (default 0). */
   slopeGrassHold?: number;
+  /** Round 49: slope band (1 − n.y) over which a RING face past the square becomes landform rock on landform-gated
+   * maps (default [0.22, 0.48] ≈ 39°–59°); Titan authors [0.15, 0.36] so its bedded walls start at ~34°. */
+  ringRockSlope?: readonly [number, number];
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -2556,6 +2559,7 @@ uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour s
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
 uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
 uniform float uSlopeGrassHold; // round 45: shifts the slope→rock thresholds (tropical hills hold turf longer)
+uniform vec2 uRingRock;        // round 49: slope band over which a ring face past the square becomes landform rock
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
 float gWallSky = 0.0;     // round 42: steep × turned-from-the-sun weight, read by the indirect-light hook
@@ -2759,7 +2763,10 @@ void splatCompute() {
     // (Redrock, Titan, Skybridge, Caldera, the desert, Mars) rendered as a sand slip face — a dark, ripple-striated,
     // bare wall — instead of the bedded rock the same slope carries inside the square. Outside, the ring's own slope
     // supplies the landform weight: steep faces are mesa rock with their strata, floors stay sand.
-    mkB = max(mkB, smoothstep(0.22, 0.48, 1.0 - clamp(wn.y, 0.0, 1.0)) * outsideW);
+    // Round 49 (owner audit 2026-09-23, Titan "smooth beige ridge faces without strata"): the band was fixed at
+    // 0.22–0.48 (39°–59°), so a ring face of 35–50° stayed the wall-projected sand set — smooth beige, no beds. The
+    // band is authored per map (splat.ringRockSlope); Titan's bedded walls start at ~34° and are rock by ~47°.
+    mkB = max(mkB, smoothstep(uRingRock.x, uRingRock.y, 1.0 - clamp(wn.y, 0.0, 1.0)) * outsideW);
     rockGate = smoothstep(0.10, 0.45, mkB);
     mkB = 0.0;
   }
@@ -3109,13 +3116,45 @@ void splatCompute() {
     // amplitude itself breathes so some faces are strongly bedded, others
     // nearly massive rock.
     float bedF = 0.76 + gCliffJ * 0.60;
-    float band = sin(wp.y * 1.9 * bedF + n2Wall * 2.2 + gCliffJ * 9.3) * 0.55
-               + sin(wp.y * 0.57 * bedF + n2Wall * 1.9 + gCliffJ * 5.1) * 0.45;
-    a.rgb *= 1.0 + band * uStrata * steep * (0.65 + gCliffJ * 0.7);
-    // pale caprock marker beds: wide constant-altitude stripes that survive
-    // distance where the fine beds mip away
-    float bed = smoothstep(0.55, 0.9, sin(wp.y * 0.23 * bedF + n2Wall * 1.1 + 0.8 + gCliffJ * 3.7));
-    a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), bed * steep * 0.4);
+    float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7);
+    // Round 49 (owner 2026-09-23, "Titan's marbled near walls — the round-35 wall texture reads as flowing water at
+    // 300 m"): the uniform-isolation probe pinned the swirl on THIS block (zeroing uStrata calmed the sw-corner ring
+    // wall; flat normals changed nothing). A continuous 3.3 m sine ladder (±30 %) lay over the bed tile's own 4–12 m
+    // beds, and every band traced the smooth face's contours with nothing breaking it along the wall — dense, even,
+    // wavy: water. Bedded sandstone reads as rock through a FEW thick beds of unequal thickness and tone, thin
+    // recessed partings, joint blocks whose weathering tone steps along the wall, and dark varnish streaks below the
+    // ledges. The fine laminae stay inside ~200 m, where they are laminae and not moiré.
+    float lamW = 1.0 - smoothstep(70.0, 220.0, effDist);
+    float lamina = sin(wp.y * 1.9 * bedF + n2Wall * 2.2 + gCliffJ * 9.3);
+    a.rgb *= 1.0 + lamina * bedAmp * 0.40 * lamW;
+    // marker beds: the two long-period terms thresholded into discrete beds — a rust-stained bed 2–5 m thick every
+    // 11–17 m on one term, a bleached caprock bed on the other — phase and thickness per cliff (gCliffJ) so no two
+    // faces share a sequence, and a thin recessed parting under each rust bed inside 700 m
+    float bedA = sin(wp.y * 0.57 * bedF + n2Wall * 1.9 + gCliffJ * 5.1);
+    float bedB = sin(wp.y * 0.23 * bedF + n2Wall * 1.1 + 0.8 + gCliffJ * 3.7);
+    float rust = smoothstep(0.50, 0.82, bedA) * (0.55 + 0.45 * smoothstep(-0.3, 0.4, bedB));
+    float pale = smoothstep(0.55, 0.90, bedB) * (1.0 - rust);
+    float parting = smoothstep(0.84, 0.97, -bedA) * (1.0 - smoothstep(300.0, 700.0, effDist));
+    a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.68, 0.62), rust * min(bedAmp * 2.6, 0.7));
+    a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), pale * steep * 0.40);
+    a.rgb *= 1.0 - parting * min(bedAmp * 1.6, 0.35);
+    // joint blocks and varnish where the beds are authored strongly (Titan 0.22 and Skybridge 0.18 full, Copper Mesa
+    // and Mars 0.12 six tenths, the desert's 0.10 four tenths, Caldera / Badlands none)
+    float jointAmp = smoothstep(0.06, 0.16, uStrata) * steep;
+    if (jointAmp > 0.002) {
+      // blocks ~11 m along the wall and ~6.5 m tall, one weathering tone per block: the noise texture read at block
+      // centres in BOTH wall projections and mixed by the axis weight (samples, never coordinates)
+      vec2 jX = floor(gWallUVx / vec2(11.0, 6.5) + gCliffJ * 3.0);
+      vec2 jZ = floor(gWallUVz / vec2(11.0, 6.5) + gCliffJ * 3.0);
+      float block = mix(texture2D(uNoise, jX * vec2(0.173, 0.291) + vec2(0.31, 0.77)).r,
+                        texture2D(uNoise, jZ * vec2(0.173, 0.291) + vec2(0.31, 0.77)).r, gWallW) - 0.5;
+      a.rgb *= 1.0 + block * 0.26 * jointAmp;
+      // varnish: along-wall noise stretched ~17:1 down the face, darkest under the pale caprock beds
+      float streak = mix(texture2D(uNoise, gWallUVx * vec2(0.010, 0.0006) + vec2(0.61, 0.29)).g,
+                         texture2D(uNoise, gWallUVz * vec2(0.010, 0.0006) + vec2(0.61, 0.29)).g, gWallW);
+      streak = smoothstep(0.56, 0.86, streak) * (0.5 + 0.5 * pale);
+      a.rgb = mix(a.rgb, a.rgb * vec3(0.66, 0.64, 0.66), streak * 0.42 * jointAmp);
+    }
     // r8 per-cliff color drift: warm iron-stained faces vs paler washed faces
     // r4: 0.5 -> 0.30 and flush 0.22 -> 0.12 — the stacked warm shifts were
     // the residual PINK cast in the marbled-cliff read
@@ -3151,7 +3190,9 @@ void splatCompute() {
       float wallFar = farRock * steepW;
       float rrM = dot(wallTex(uAlbR, 0.011), vec3(0.36, 0.42, 0.22));
       a.rgb *= 1.0 + (rrM - 0.5) * 0.36 * wallFar;
-      float ledgePhase = wp.y * 0.45 + gCliffJ * 7.0 + wallNoiseG(0.02, vec2(0.31, 0.77)) * 2.6;
+      // Round 49: the ladder's along-wall wander 2.6 → 1.0 rad (±5.8 m per 50 m was a third wave system on top of
+      // the tile beds and the marker beds; ±2.2 m reads as a gentle fault, not a swell)
+      float ledgePhase = wp.y * 0.45 + gCliffJ * 7.0 + wallNoiseG(0.02, vec2(0.31, 0.77)) * 1.0;
       float ledge = sin(ledgePhase);
       float ledgeAmp = mix(0.5, 1.0, smoothstep(0.02, 0.12, uStrata)) * wallFar;
       a.rgb *= 1.0 + (smoothstep(0.35, 0.9, ledge) * 0.10 - smoothstep(0.35, 0.9, -ledge) * 0.16) * ledgeAmp;
@@ -3932,6 +3973,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
+    shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     shader.uniforms.uFieldPatch = { value: S.fieldPatch ?? 0 };
     // r3: desert macro sheet variation + ice fresnel sky tint
@@ -3974,7 +4016,7 @@ function* createSplatMaterialSteps(
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v37'; // round 47 follow-up: sea sector opens before the contour's far arc (v36: coast contour, v33: dune wind field, v32: sky light)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v38'; // round 49: jointed marker-bed strata and the per-map ring rock band (v37: sea sector, v36: coast contour, v33: dune wind field, v32: sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

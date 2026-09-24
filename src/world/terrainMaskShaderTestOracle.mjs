@@ -72,6 +72,8 @@ export function assertTerrainFetchExpressionCensus(source) {
   // luminance taps) and the along-lane tyre streak (one noise tap).
   // round 43 (2026-09-23): +3 — the dune ripples' local wind field (two swing taps, one wavelength tap), all three
   // inside the sand-ripple branch, so only sand maps pay them.
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
-    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps; lexical census only');
+  // round 49 (2026-09-23): +4 — the strata block's joint-block tone (two wall projections) and varnish streak (two),
+  // all inside the uStrata branch, so only the bedded maps pay them.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps; lexical census only');
 }

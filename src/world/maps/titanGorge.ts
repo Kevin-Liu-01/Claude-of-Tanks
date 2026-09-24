@@ -48,6 +48,9 @@ export default {
     // channel ≥ 0.78 (luma ×0.83) — the patches stay darker than the shelves without going black
     tintA: [1.10, 0.88, 0.69], tintB: [0.90, 0.82, 0.78], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.22, sandMacro: 0.82,
+    // round 49 (owner audit 2026-09-23, "smooth beige ridge faces without strata"): the ring's 35–47° faces past the edge
+    // become the bedded landform rock (default band 0.22–0.48 left them the wall-projected sand set)
+    ringRockSlope: [0.15, 0.36],
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,
   },
   vegetation: {
