@@ -832,7 +832,11 @@ easy/hard remain 1.2/0.3 s, 0.6/1.2 and ×2.0/×1.0.
 Survival is role-aware: reload cover, hull-down search, outnumbered advance guard,
 shoot-and-scoot, scout kiting, damage-burst memory, and low-HP/track fallback toward
 support (or away from the threat when alone). Navigation includes obstacle corner hops,
-teammate separation, stuck recovery and firing-lane relocation.
+teammate separation, stuck recovery and firing-lane relocation. Relocation cells
+(shoot-and-scoot legs, vantage rings) must stand on ground the hull can hold and reach:
+terrain normal.y ≥ 0.90 at the cell and ≥ 0.86 at the leg's interior samples (round 48
+pacing, 2026-09-24: a last bot chained 14 s scoot legs on Frosthollow's ridge flank for
+160 s, never arriving and never firing, until the 15-minute cap).
 
 Before firing, `botFriendlyFireRisk()` predicts teammate motion through the shell
 corridor and HE blast radius. A blocked bot holds fire and moves laterally; state.ts

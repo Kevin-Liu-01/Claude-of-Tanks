@@ -857,9 +857,9 @@ ground; spruce belts line the ridge toes, a birch line the terrace scarp, birch 
 → crossroads), the Bystra crossing (crossroads → southern neck → moraine crossroads → east border), the moraine track,
 the sawmill lateral over the northern neck, a village back lane and the yard loop. New strongpoints: `terrace-village-
 refuge` (brawl, alpine refuge in the village), `moraine-knoll-blind` (scout, on the north-east knoll), `saddle-aid-
-station` (support, on the saddle shoulder above the pass road). Player pad on the south terrace (−160, −400), the seven
+station` (support, on the saddle shoulder above the pass road). Player pad on the valley floor (−145, −342; the south-terrace pad (−160, −400) moved 60 m down the approach on 2026-09-24 — see the round-48 landing note), the seven
 enemy pads an arc across the north end (four on the moraine side, three on the north-west shoulder), scanned for
-relief ≤ 4.2 m over the pad radius, min normal.y ≥ 0.90, ≥ 51 m apart, ≥ 747 m from the player pad, ≥ 77 m from any
+relief ≤ 4.2 m over the pad radius, min normal.y ≥ 0.90, ≥ 51 m apart, ≥ 690 m from the player pad, ≥ 77 m from any
 sheet.
 
 **Layout scan (node, `createHeightField(1337)`).** 7 roads, one network component; the village rect holds 27 road-node
@@ -950,7 +950,7 @@ market town as the real-world reference:
   parapet `wallRuns` — ford posts on the wading lanes, and on the reach six links above the bridge a weir sill with end
   piers and a water mill (stone body, tiled gable, wheel and axle in a stone leat) that publishes a convex footprint like
   the coal heaps. Everything is derived from the layout; no map coordinate lives in the kit.
-- **Pads**: player on the south-east upland in Reservoir's column formation (the upland is uneven beyond the pad), an
+- **Pads**: player on the south-east upland's lower shelf (303, −327; the (330, −380) pad moved 60 m down the approach on 2026-09-24 — see the round-48 landing note) in Reservoir's column formation (the upland is uneven beyond the pad), an
   enemy arc north of the town; every pad flat-scanned on the full field — minNy 0.85–0.97, relief 3.2–6.3 m over 22 m,
   inside the shipped range (Verdant 0.82–0.94 / 3.3–6.2, Frontier's player pad 0.62 / 13.6).
 - **The tactical-map plate** is re-baked (`tools/bake-minimap-assets.mjs --maps autumn`); the shared
@@ -1016,7 +1016,7 @@ grain steppe of the Virgin Lands campaign.
   east edge), the east track (south edge → station → wadi → eastern ramp → north edge), the plateau road behind the
   kurgans, and the sor track (kolkhoz → wadi → salt-pan shore, a documented dead end). Nine poplar/oak shelterbelts
   replace the groves (clusterCount 7 → 5, loneCount 30 → 24).
-- **Spawns.** Player (−210, −424) on the low southern steppe; seven enemy pads at z 402–426 on base terrain north of
+- **Spawns.** Player (−160, −310) on the low southern steppe (the corner pad (−210, −424) moved 120 m up the approach on 2026-09-24 — see the round-48 landing note); seven enemy pads at z 402–426 on base terrain north of
   the crest — the spawn-clear fade would dimple any pad standing on a landform — 41–65 m off every road cut.
 - **Measured** (headless probe, seed 1337): bed −4.3 m at x −300 and −4.1..−4.3 m at x 150 against banks near 0;
   crest 16–18 m at x −300 with the kurgans 5–8 m proud; ramp saddles 5–8 m; the highway ford dips 2.3 m; pads relief
@@ -1108,6 +1108,48 @@ whiteout in `round47MapPresentation.test-support.mjs`, which carries two `"titan
 the last), worldBuildCoordinator, horizonRockfield, edgeWater, sourcedTextures, garageSkyPresets green; villageWear
 and mangroveWaterPalette digests moved (map configs) — integrator re-pin.
 
+### Round 48 landing — 2026-09-24: stale shards, the pacing receipt and the last bot
+
+Chain 70's core suite stopped on `server/battlePacing.selftest` (124 seeded idle-host 2v2 battles, at most 15 may
+reach the 900 s cap): 18 timeouts. Every unchanged map's row was byte-identical to the deploy-69 run (13 timeouts);
+the three redesigned maps added five (Amberford 2, Frosthollow 2, Tarkhan 1) where the Verdant clones had none —
+their old pads stood 457 m from the enemy arc, the redesigns put them at 816–870 m, the far end of the fleet.
+Diagnosis ran on per-battle telemetry (QA-only scripts in `.qa-dev/`: `pacing-trace.mjs` per-minute rows with the
+AI controller's `debugInfo()` and shell-result tallies, `pacing-fine.mjs` 2 s hull/gun/gate rows, `pacing-path.mjs`,
+`pacing-full-debug.mjs`, `bog-metric.mjs`, `nav-dump.mjs` grid ASCII, `line-probe.mjs`, `manifest-near.mjs`,
+`pad-scan.mjs` / `pad-grid.mjs`), the receipt's own seeds replayed one battle at a time. Three causes, three fixes:
+
+1. **Stale dedicated shards.** Amberford's redesign lane never recaptured `server/world-collision-manifests/autumn.json`
+   (the census receipt pins counts, and the round-1 counts still matched), so the dedicated bots fought the old
+   village and bridge on the new terrain — two Amberford seeds parked a bravo pair on the river bank for eleven
+   minutes. Tarkhan's shard had been captured on the lane's own tree (same census, different bytes on the combined
+   kits). Both recaptured headless on r48-combined (`.qa-dev/collision-capture.mjs`, the capture tool's pack script);
+   Frosthollow's recapture was byte-identical. Amberford 2 → 1, Tarkhan's seed 2 resolved at 584 s. The rule is now in
+   DEVELOPMENT.md: a combined tree that changes a map's structures recaptures that map's shard on that tree.
+2. **The last bot.** Frosthollow's survivor (a T-90M at half health) chained 14 s shoot-and-scoot legs on the west
+   ridge's flank for 160 s — every candidate 45–85 m out stood on a 25–30° face, relocations frozen, no shot fired
+   (`pickScoot` and `scanVantageRing` checked line of sight only). Tarkhan's Strv 103 parked on the border rim at
+   +12° of elevation with 63 mrad still to go. Frosthollow's seed 3 Strv 103 stood 263 m from the idle host for six
+   minutes with the penetration gate closed on every probed front plate and its two HE rounds spent — no shell, so
+   no non-penetration event, so no flank. `src/game/ai.ts`: relocation cells must be ground the hull can hold and
+   reach (`reachableSpot`: normal.y ≥ 0.90 at the cell, ≥ 0.86 at the leg's interior samples, casemates ≥ 0.975),
+   flank rings score both sides for in-arena reachable points and shrink before giving a side up, and a closed gate
+   held 8 s against a target whose hull holds still starts the flank two non-pens would.
+3. **Pads.** The redesigned player pads sat in corner terrain with the arc 816–870 m away; the receipt's whole window
+   went to the approach and the endgame. Each moved down its approach onto a flat-scanned cell (relief ≤ 4 m over
+   22 m, min normal.y ≥ 0.90, ≥ 30 m off a lane, no solid record within 18 m): Frosthollow (−160, −400) → (−145, −342)
+   on the valley floor (60 m; the rise with the ridge as its only vantage is gone), Amberford (330, −380) →
+   (303, −327) (60 m), Tarkhan (−210, −424) → (−160, −310) (120 m, the grid's flattest cell, 44 m off the highway).
+   `npm run garage:terrain:update` re-anchored Frosthollow's Garage patch; terrainStreaming's spawn-relative windows
+   re-pinned for the three maps (`tools/receipt-repin.mjs`).
+
+Full-receipt ledger (same 124 seeds): fresh shards 17 → relocation filter 16 → closed-gate flank + flank ring 17 →
+flank limited to stationary targets 16 → pads 14 (median 448.9 s, p10 290.7 s, no sub-two-minute battle). The
+unchanged 28 maps went 13 → 12 with the relocation filter and held there; the three redesigned maps 5 → 2. What
+remains is the fleet's own stalemate stock — Tidegate Polders 3/4, Whiteout 2/4 — the Strv 103 sniper's one shot per
+scoot leg at 290 m and every gun plinking the idle M1A2's front. Open: commit a pacing trace as a tool with a receipt;
+a sniper's cadence against a passive target; the front-plate plink.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -1198,6 +1240,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 48 | Frosthollow redesign (owner: the Verdant clone maps): a Carpathian valley — ten-pond frozen river, terrace street village with a sawmill yard, two-armed ridge and saddle pass with a switchback, moraine flank, seven authored roads, new strongpoints, walls, belts, clearings, pads; the round-44 snow albedo / exposure re-grade | wall-probe A/B (six brief views + village-street, river-crossing, pass-switchback): skyline sky-w 0.94 → 0.88, sky-s 0.92 → 0.84, snow median 208 → 198; layout scan (pads, beats, candidates, pole stations, pond lips); mapQuality + road + winterLakeGeometry receipts, recaptured collision shard |
 | 48 | Amberford redesign: a Norman / English river-ford market town replaces the Verdant clone — SW→NE river in a sculpted valley (hillScale 0.8, eleven cut/fill landforms under one graded water plane), a stone bridge and a ford as the only crossings (avoid-liquid bots), five authored lanes, the walled town on the north-bank rise, orchards and hedgerows, the escarpment woods, the manor park and lake, weir and water mill in the river kit, re-baked tactical plate | wall-probe A/B on bird/centre/sky views plus five authored gameplay-height views (bridge, ford, square, mill, valley) and two close bridge views; constraint check (0 wet gaps, banks ≤ 1.44 m, both crossings dry, pads minNy 0.85–0.97); skyline metric unchanged (sky-w 0.84 → 0.90, bird-n 0.98 → 0.98); liquidMarshSurface worst bank 0.42; matchPlacement dry routes in all modes |
 | 48 | Tarkhan Steppe redesign: a new battlefield under the kept palette — takyr-floored braided wadi across the middle, 12 m escarpment with two ramps and a kurgan line on its crest, grain station (SE), kolkhoz and corrals (W), salt pan (NW), caravanserai rise, five authored roads, shelterbelts instead of groves, three graded aprons for the objective placement, recaptured collision shard | headless layout probe (bed −4.3 m, crest 16–18 m, mounds +5..8 m, pads relief ≤ 5.8 m, both-team reach on every row); wall-probe A/B (centre-far skyline 0.99 → 0.92, kurgan-line band 181 → 164 luma, plateau-south 161 → 134; sky-w unchanged 0.87 → 0.89); 38 receipts green, two shared digests moved for the integrator |
+| 48 | Landing (2026-09-24): Amberford's and Tarkhan's dedicated collision shards recaptured on the combined tree (the lane left the round-1 Amberford shard; census receipts pin counts only), bot relocation cells on holdable ground + flank rings scored for reach + a closed penetration gate held against a stationary target starts the flank, the three redesigned player pads moved 60 / 60 / 120 m down their approaches onto flat-scanned cells | battlePacing 14/124 (from 18; ledger 17 → 16 → 17 → 16 → 14 across the five fixes), dedicatedWorldCollision census, collisionManifestCodec, terrainStreaming spawn windows, garage:terrain:check, spawnClearance / mapQuality / matchPlacement / minimapObjectives, 11 AI receipts, typecheck; chain 70 |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts

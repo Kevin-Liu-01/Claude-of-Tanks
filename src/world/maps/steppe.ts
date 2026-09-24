@@ -158,12 +158,15 @@ export default {
   },
 
   spawns: {
-    // The player team deploys on the low southern steppe west of the highway;
-    // the enemy arc stands on the plateau ~180 m behind the kurgan crest (the
-    // spawn-clear fade ends at 90 m, so the mounds keep their height), with the
-    // highway and the east track passing between pads, short of the rim lift
-    // (past z ≈ 470).
-    player: { x: -210, z: -424 },
+    // The player team deploys on the low southern steppe west of the highway
+    // (round 48 pacing, 2026-09-24: the corner pad at (-210, -424) put the arc
+    // 869 m away and its last bots — a Strv 103 on the border rim among them —
+    // ran out of clock; the 10 m grid scan's flattest cell 120 m up the approach,
+    // minNy 0.981, relief 1.5 m, 44 m off the highway); the enemy arc stands on
+    // the plateau ~180 m behind the kurgan crest (the spawn-clear fade ends at
+    // 90 m, so the mounds keep their height), with the highway and the east
+    // track passing between pads, short of the rim lift (past z ≈ 470).
+    player: { x: -160, z: -310 },
     enemies: [
       { x: -262, z: 416 }, { x: -172, z: 424 }, { x: -84, z: 410 }, { x: 10, z: 422 },
       { x: 100, z: 414 }, { x: 186, z: 426 }, { x: 300, z: 402 },

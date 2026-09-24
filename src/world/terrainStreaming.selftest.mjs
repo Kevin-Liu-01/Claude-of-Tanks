@@ -160,13 +160,14 @@ console.log('terrainStreaming.selftest: cadence, bounded partial work, warm, cam
 const GEOMETRY_GOLDENS = {
   verdant: '86532d696a6ab164c64b79ea866a91cc93283bf50f4fc4af7c856119e52ae0b4',
   desert: '242cc58db7003e9ed59cd69e2cd337ef988cf229296132aaf03d3923f926ea4b',
-  winter: '49a8f6b4b05bbacef6b5bcf7e5181e24fd382f2499bd8da6b10f24e105a3d468', // 2026-09-23: Frosthollow redesign (owner ruling) — new valley heightfield
+  winter: 'e46f1032ff2d7d9dfdc4ada3063f29f6f8614fc7cfd40b45fc5b1191b0547387', // 2026-09-23: Frosthollow redesign (owner ruling) — new valley heightfield; 2026-09-24: player pad moved to (−145, −342) (round-48 pacing), spawn-relative window re-pinned
   urban: 'dc86077914e20440ae7cdcfb044343da6c1386495e2023981261725b8dbd0bd9',
   coastal: '972f0fe7bb785e12ad8ec4ea53b85690b230e3154a0667296b2771d7eff257ba',
-  autumn: 'a823893a702abfcd171b1d2ed773555a0808b1e9918609b5eb8ca274152690cd',
+  autumn: 'dda358b09025e32ee7569aa8716b1a9392ef8ac8886a922c0d22e739c58b3633', // 2026-09-24: Amberford player pad moved to (303, −327) (round-48 pacing), spawn-relative window re-pinned
   // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling (wadi, escarpment, kurgans, grain station);
-  // geometry/bounds digest re-pinned on the new authored relief
-  steppe: 'a57424762e00f76b859018607c16f7289711e256508df0295b6489a626e0504f',
+  // geometry/bounds digest re-pinned on the new authored relief; 2026-09-24: player pad moved to (−160, −310)
+  // (round-48 pacing), spawn-relative window re-pinned
+  steppe: '54f282c3c188f068e53f41de31eeeae84b42c77d81c59a6e1c4fb700630b7f39',
   railyard: '3d7a7820ec57287383057592bf0385b7fc0bbb541605e012274319363ff2559e',
   frontier: '7923000c873765c228c7639f8b061c6c14902777bb0ca8c3865ba4e953e0a809',
   fjord: '28d5248b4252d0efb826de8161d5ef450cf4179f1b284363993d9f8baffe45ab',

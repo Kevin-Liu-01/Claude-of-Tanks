@@ -101,12 +101,17 @@ export default {
   },
 
   spawns: {
-    // The player deploys on the south terrace beside the valley road; the
-    // seven enemy pads form an arc across the north end — four on the moraine
-    // side of the river, three on the north-west shoulder — on flat ground
-    // (relief probed with the round-48 layout scan), off the frozen sheets,
-    // >= 38 m apart and >= 750 m from the player pad.
-    player: { x: -160, z: -400 },
+    // The player deploys on the valley floor beside the valley road (round 48
+    // pacing, 2026-09-24: the first pad sat on the 6.5 m rise in the south-west
+    // corner with the west ridge's south tip as the only vantage over it — the
+    // last bots plinked its front from the ridge flank until the 15 min cap on
+    // two of four battlePacing seeds; 60 m down the approach, h 3.1, minNy 0.93,
+    // relief 3.5 m, all four seeds resolve in 315-564 s). The seven enemy pads
+    // form an arc across the north end — four on the moraine side of the river,
+    // three on the north-west shoulder — on flat ground (relief probed with the
+    // round-48 layout scan), off the frozen sheets, >= 38 m apart and >= 690 m
+    // from the player pad.
+    player: { x: -145, z: -342 },
     enemies: [
       { x: 262, z: 352 }, { x: 334, z: 382 }, { x: 202, z: 400 }, { x: 124, z: 430 },
       { x: -210, z: 346 }, { x: -240, z: 388 }, { x: -186, z: 436 },

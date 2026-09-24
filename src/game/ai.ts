@@ -501,6 +501,9 @@ const MUZZLE_INTEL_WINDOW_S = 18;
 const MUZZLE_INTEL_REPEAT_WINDOW_S = 45;
 const STALEMATE_SILENT_S = 12;   // no shot fired this long w/ contact → push
 const STALEMATE_PUSH_S = 8;      // duration of one forced push window
+// Round 48 pacing (2026-09-24): seconds of a closed penetration gate (no zone at or above the 0.9 ratio, no HE
+// left to fall back on) against a live, visible target before the bot changes the geometry with a flank.
+const PEN_DENIED_FLANK_S = 8;
 // RETURN-FIRE LOCK (controls_gunnery r4): three rounds of aggro plumbing
 // (r4 sticky slot, r5 muzzle intel + hard-commit) still measured 76 enemy
 // shells / 2 aimed at the player / 0 hits across 5 battles. Two remaining
@@ -954,6 +957,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // hull-down stare-down breaker (see runProbes miss branch)
   let probeMiss = false;
   let probeMissT = 0;
+  let penDeniedT = 0;                        // round 48 pacing: closed pen gate dwell (see updatePenDeniedManeuver)
   // geometry-hard blocked commit → follow the authored lane a while
   let laneFallbackUntilS = -1;
   // starved trigger + clear ray → forced clean halt (settled-shot window)
@@ -1665,6 +1669,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const candidateX = centerX + Math.sin(angle) * radius;
       const candidateZ = centerZ + Math.cos(angle) * radius;
       if (vantageVetoed(candidateX, candidateZ)) continue;
+      if (!reachableSpot(candidateX, candidateZ)) continue; // round 48 pacing: a vantage the hull can hold
       const candidateY = hf.getHeightAt(candidateX, candidateZ) + selfEyeM;
       if (!hasLos(
         candidateX, candidateY, candidateZ,
@@ -1709,13 +1714,34 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const tp = target.state.pos;
     const dx = st.pos.x - tp.x, dz = st.pos.z - tp.z;
     const dist = Math.hypot(dx, dz) || 1;
-    const r = clamp(dist, 80, 200);
     const baseAng = Math.atan2(dx, dz);            // bearing target → self
-    const side = rng() < 0.5 ? 1 : -1;
+    const preferred = rng() < 0.5 ? 1 : -1;
+    // Round 48 pacing (2026-09-24): a flank ring drawn blind put Frosthollow's third point past the border
+    // wall (z −525) and the other side's points on the west ridge's flank; the bot drove at them for three
+    // 20 s windows and never changed the target's aspect. Score both sides by how many of the three points
+    // lie inside the arena on ground the hull can hold and reach (reachableSpot), shrink the ring before
+    // giving a side up, and keep the random side when the scores tie.
+    let bestSide = preferred;
+    let bestR = clamp(dist, 80, 200);
+    let bestScore = -1;
+    for (let s = 0; s < 2 && bestScore < 3; s++) {
+      const side = s === 0 ? preferred : -preferred;
+      const radii = [clamp(dist, 80, 200), clamp(dist * 0.7, 80, 200), 80];
+      for (let k = 0; k < radii.length && bestScore < 3; k++) {
+        let score = 0;
+        for (let i = 0; i < 3; i++) {
+          const a = baseAng + side * (0.6 + 0.6 * i);
+          const x = tp.x + Math.sin(a) * radii[k];
+          const z = tp.z + Math.cos(a) * radii[k];
+          if (Math.max(Math.abs(x), Math.abs(z)) <= 470 && reachableSpot(x, z)) score++;
+        }
+        if (score > bestScore) { bestScore = score; bestSide = side; bestR = radii[k]; }
+      }
+    }
     for (let i = 0; i < 3; i++) {
-      const a = baseAng + side * (0.6 + 0.6 * i);  // 34°, 69°, 103° around the target
-      flankPoints[i].x = tp.x + Math.sin(a) * r;
-      flankPoints[i].z = tp.z + Math.cos(a) * r;
+      const a = baseAng + bestSide * (0.6 + 0.6 * i);  // 34°, 69°, 103° around the target
+      flankPoints[i].x = clamp(tp.x + Math.sin(a) * bestR, -470, 470);
+      flankPoints[i].z = clamp(tp.z + Math.cos(a) * bestR, -470, 470);
     }
     flankIndex = 0;
     flankUntilS = timeS + FLANK_TIMEOUT_S;
@@ -2806,6 +2832,30 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
+  // Round 48 pacing (2026-09-24, Frosthollow redesign): the last bravo bot chained 14 s scoot legs for 160 s on
+  // the west ridge's flanks — every candidate 45-85 m out stood on a 25-30 deg face (normal.y 0.86-0.90) that the
+  // hull crawled and slid on; it never arrived (relocations frozen at 18), never fired (each probe-miss window
+  // re-armed the next leg) and the idle host survived the 15 min cap. A relocation cell must be ground a tank can
+  // hold and reach: the cell itself flat enough to fire from (pickFlatCell's ring uses 0.94; a hair looser here)
+  // and the leg's two interior samples no steeper than a comfortable climb. Terrain without normals passes.
+  const SPOT_NORMAL_Y_MIN = 0.90;
+  const LEG_NORMAL_Y_MIN = 0.86;
+  // A casemate lays its gun with the hull: on Tarkhan's border rim (~15 deg) the Strv 103 sat at +12 deg of
+  // elevation with 63 mrad still to go for four minutes, so its cells must be near-level (normal.y >= 0.975).
+  const CASEMATE_SPOT_NORMAL_Y_MIN = 0.975;
+  function reachableSpot(cx: number, cz: number): boolean {
+    if (!hf.getNormalAt) return true;
+    if (hf.getNormalAt(cx, cz).y < (casemate ? CASEMATE_SPOT_NORMAL_Y_MIN : SPOT_NORMAL_Y_MIN)) return false;
+    const st = entity.state;
+    for (let i = 1; i <= 2; i++) {
+      const f = i / 3;
+      const sx = st.pos.x + (cx - st.pos.x) * f;
+      const sz = st.pos.z + (cz - st.pos.z) * f;
+      if (hf.getNormalAt(sx, sz).y < LEG_NORMAL_Y_MIN) return false;
+    }
+    return true;
+  }
+
   /**
    * BATTLE-AI r7: sample a relocation cell 45-85 m out, biased to the rear
    * quarters of the target bearing; prefer one that keeps a sightline to the
@@ -2826,6 +2876,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const cx = st.pos.x + Math.sin(a) * r;
       const cz = st.pos.z + Math.cos(a) * r;
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
+      if (!reachableSpot(cx, cz)) continue; // round 48 pacing: no scoot onto a ridge flank
       const cy = hf.getHeightAt(cx, cz) + selfEyeM;
       const sight = hasLos(cx, cy, cz, lastSeen.x, ty, lastSeen.z);
       if (!found || sight) { fx = cx; fz = cz; found = true; }
@@ -3589,7 +3640,28 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   ): void {
     updateShotRelocation(combat, timeS);
     updateProbeRelocation(dt, timeS);
+    updatePenDeniedManeuver(dt, timeS);
     maybeStartFallback(combat, timeS, targetDistance);
+  }
+
+  // Round 48 pacing (2026-09-24, Frosthollow seed 3 of server/battlePacing): a lone Strv 103 stood 263 m from
+  // the idle host for six minutes. Every probed zone of the M1A2's front came back under the 0.9 penetration
+  // gate, its two HE rounds were spent, and since no shell left the gun no non-penetration event ever reached
+  // notifyShellResult to start the flank — a stalemate the fire discipline itself created. A tanker who cannot
+  // beat the armour he is shown changes the geometry: after PEN_DENIED_FLANK_S of a closed gate against a live,
+  // visible target the bot starts the same flank two non-pens would (a side aspect, and the kinetic round comes
+  // inside 200 m). The dwell restarts after each flank window, so a target that keeps its nose on the bot is
+  // flanked again from the other side rather than stared at. Only a target that HOLDS its aspect (hull speed
+  // under 0.5 m/s) arms the dwell: a moving hull shows new plates on its own, and flanking it on every closed
+  // probe turned the casemates into perpetual pivots (the 124-battle receipt: no fewer timeouts, more churn).
+  function updatePenDeniedManeuver(dt: number, timeS: number): void {
+    const canShootHe = chosenSlot === heSlot && slotHasAmmo(heSlot);
+    const targetHolds = !!target && Math.abs(target.state.speed ?? 0) < 0.5;
+    const denied = targetHolds && losClear && !penGateOk && !canShootHe && mode !== 'flank';
+    penDeniedT = denied ? penDeniedT + dt : 0;
+    if (penDeniedT < PEN_DENIED_FLANK_S || timeS < scootUntilS) return;
+    penDeniedT = 0;
+    startFlank(timeS);
   }
 
   function updateFriendlyLaneRelocation(timeS: number): void {
@@ -4143,6 +4215,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       allyEmergencyStops, allyReverseEscapes,
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
       navT: +navNoProgressT.toFixed(1), strikes: stuckStrikes, // r6 watchdog
+      penDeniedT: +penDeniedT.toFixed(1), // round 48 pacing: closed pen gate dwell
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)

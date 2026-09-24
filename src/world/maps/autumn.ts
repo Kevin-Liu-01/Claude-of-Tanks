@@ -131,11 +131,14 @@ export default {
   },
 
   spawns: {
-    // player on the south-east upland (pad flat-scanned on the full field: minNy 0.885,
-    // relief 3.2 m over 22 m): the opening drive drops to the cross lanes and chooses
-    // the bridge or the ford. The upland is uneven beyond the pad, so the allies deploy
-    // in Reservoir's compact columns instead of the wide lateral arc.
-    player: { x: 330, z: -380, formation: { columnSpacingM: 8, rowSpacingM: 13 } },
+    // player on the south-east upland's lower shelf (round 48 pacing, 2026-09-24:
+    // the first pad at (330, -380) put the arc 870 m away — the far end of the
+    // fleet — and the last bots ran out of clock; 60 m down the approach, minNy
+    // 0.924, relief 2.8 m over 22 m, all four battlePacing seeds resolve): the
+    // opening drive drops to the cross lanes and chooses the bridge or the ford.
+    // The upland is uneven beyond the pad, so the allies deploy in Reservoir's
+    // compact columns instead of the wide lateral arc.
+    player: { x: 303, z: -327, formation: { columnSpacingM: 8, rowSpacingM: 13 } },
     // one enemy arc north of the town, clear of the coach road and the park
     // Flat-scanned on the marsh-less field ($SP/r48a/design.mjs pads): minNy >= 0.90
     // and relief <= 4 m over the 22 m pad, >= 30 m off a lane, >= 45 m apart, >= 800 m

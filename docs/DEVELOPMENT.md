@@ -29,6 +29,14 @@ Before publishing:
    Record the validated commit. An earlier branch's green result does
    not certify conflict resolution or later source edits. For geometry, use
    the complete anatomy and targeted release procedure in `AGENTS.md`.
+   A combined tree that changes a map's structures, kits, roads or terrain
+   must recapture that map's dedicated collision shard ON THAT TREE
+   (`tools/capture-world-collision-manifests.mjs`, or the headless
+   `.qa-dev/collision-capture.mjs` variant) and re-pin the census and storage
+   receipts: `dedicatedWorldCollision.selftest` pins record counts only, so a
+   lane's stale shard passes silently (round 48, 2026-09-24: Amberford's
+   round-1 village haunted the dedicated bots on the new terrain and
+   `server/battlePacing.selftest` went red).
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their
