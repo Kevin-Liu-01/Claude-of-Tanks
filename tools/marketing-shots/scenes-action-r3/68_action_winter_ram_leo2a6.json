@@ -6,10 +6,10 @@
       "id": "abramsx",
       "name": "rammer",
       "pos": [
-        76,
-        -44
+        62,
+        -18
       ],
-      "facingDeg": 65,
+      "facingDeg": 245,
       "turretDeg": 0,
       "gunDeg": -2,
       "camo": "winterbands",
@@ -19,10 +19,10 @@
       "id": "strv122",
       "name": "victim",
       "pos": [
-        81.4,
-        -41.6
+        56.6,
+        -20.4
       ],
-      "facingDeg": 15,
+      "facingDeg": 195,
       "turretDeg": 100,
       "gunDeg": 3,
       "camo": "merdcwinter",
@@ -32,10 +32,10 @@
       "id": "type10",
       "name": "reinforcement",
       "pos": [
-        82.6,
-        -29.9
+        55.4,
+        -32.1
       ],
-      "facingDeg": -173.9,
+      "facingDeg": 6.1,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "washworn",
@@ -45,10 +45,10 @@
       "id": "type99a",
       "name": "reinforcement1",
       "pos": [
-        100.2,
-        -43.8
+        37.8,
+        -18.2
       ],
-      "facingDeg": -83.4,
+      "facingDeg": 96.6,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "winter",
@@ -67,27 +67,27 @@
     {
       "type": "dust",
       "at": [
-        79,
-        -43
+        59,
+        -19
       ],
       "tMs": 180,
       "params": {
         "count": 26,
         "intensity": 1.8,
-        "dirDeg": 65
+        "dirDeg": 245
       }
     },
     {
       "type": "dust",
       "at": [
-        72,
-        -48
+        66,
+        -14
       ],
       "tMs": 200,
       "params": {
         "count": 12,
         "intensity": 1.1,
-        "dirDeg": 245
+        "dirDeg": 65
       }
     },
     {
@@ -147,14 +147,14 @@
       "params": {
         "count": 8,
         "intensity": 0.65,
-        "dirDeg": 245
+        "dirDeg": 425
       }
     },
     {
       "type": "explosion",
       "at": [
-        81.4,
-        -41.6
+        56.6,
+        -20.4
       ],
       "tMs": 150,
       "params": {
@@ -165,14 +165,14 @@
   ],
   "camera": {
     "pos": [
-      74.3,
+      62.3,
       1.1,
-      -33.1
+      -28.1
     ],
     "lookAt": [
-      79.5,
+      58.5,
       1.5,
-      -42.8
+      -19.2
     ],
     "groundRel": true,
     "fov": 48,

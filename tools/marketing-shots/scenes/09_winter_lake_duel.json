@@ -6,21 +6,21 @@
       "id": "leo2a7v",
       "name": "shooter",
       "pos": [
-        166,
-        -98
+        -34,
+        -238
       ],
       "facingDeg": 118,
       "gunDeg": 0.5,
       "camo": "winter",
       "camoSeed": 91,
-      "turretDeg": 5
+      "turretDeg": 0.6
     },
     {
       "id": "t90m",
       "name": "victim",
       "pos": [
-        206,
-        -124
+        -12,
+        -250
       ],
       "facingDeg": 300,
       "turretDeg": 40,
@@ -50,14 +50,14 @@
   ],
   "camera": {
     "pos": [
-      216,
+      -2,
       1.8,
-      -136
+      -262
     ],
     "lookAt": [
-      176,
+      -27.5,
       2.2,
-      -106
+      -242.9
     ],
     "groundRel": true,
     "fov": 40

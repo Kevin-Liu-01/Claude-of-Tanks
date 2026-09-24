@@ -6,49 +6,49 @@
       "id": "leo2a7v",
       "name": "foe",
       "pos": [
-        30,
-        30
+        -61.3,
+        -26.6
       ],
-      "facingDeg": 325,
+      "facingDeg": 240,
       "gunDeg": 0.5,
       "camo": "winterbands",
       "camoSeed": 8080,
-      "turretDeg": -14.8
+      "turretDeg": -28.2
     },
     {
       "id": "k2",
       "name": "ally2",
       "pos": [
-        4,
-        52
+        -104,
+        -42
       ],
-      "facingDeg": 145,
+      "facingDeg": 70,
       "gunDeg": 0.5,
       "camo": "merdcwinter",
       "camoSeed": 8081,
-      "turretDeg": -14.8
+      "turretDeg": 0.2
     },
     {
       "id": "t14",
       "name": "ally1",
       "pos": [
-        -14,
-        24
+        -82,
+        -60
       ],
-      "facingDeg": 50,
+      "facingDeg": 32,
       "gunDeg": 0.5,
       "camo": "washworn",
       "camoSeed": 8082,
-      "turretDeg": 32.2
+      "turretDeg": -0.2
     },
     {
       "id": "ua_t84_oplot_m",
       "name": "reinforcement",
       "pos": [
-        29.8,
-        49.4
+        -80.7,
+        -25.1
       ],
-      "facingDeg": -84.3,
+      "facingDeg": -125.9,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "winter",
@@ -59,8 +59,8 @@
     {
       "type": "explosion",
       "at": [
-        18,
-        44
+        -75,
+        -37
       ],
       "tMs": 145,
       "params": {
@@ -124,7 +124,7 @@
       "params": {
         "count": 8,
         "intensity": 0.65,
-        "dirDeg": 505
+        "dirDeg": 420
       }
     },
     {
@@ -140,14 +140,14 @@
   ],
   "camera": {
     "pos": [
-      18.7,
+      -44.3,
       2.4,
-      11.7
+      -15.3
     ],
     "lookAt": [
-      20,
+      -80,
       2,
-      46
+      -40
     ],
     "groundRel": true,
     "fov": 50,

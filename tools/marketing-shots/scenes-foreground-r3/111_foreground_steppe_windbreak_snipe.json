@@ -6,23 +6,23 @@
       "id": "m1a2_sepv3",
       "name": "sniper",
       "pos": [
-        -114,
-        -52
+        -118,
+        -204
       ],
-      "facingDeg": 92,
+      "facingDeg": 34,
       "gunDeg": 0.5,
       "camo": "dpm",
       "camoSeed": 8200,
-      "turretDeg": 5.6
+      "turretDeg": 2.9
     },
     {
       "id": "leo2_revolution",
       "name": "victim",
       "pos": [
-        -84,
-        -56
+        -97,
+        -176
       ],
-      "facingDeg": 275,
+      "facingDeg": 217,
       "turretDeg": 20,
       "camo": "flecktarn",
       "camoSeed": 8201
@@ -31,10 +31,10 @@
       "id": "m1a2_tusk",
       "name": "reinforcement",
       "pos": [
-        -101.7,
-        -42.4
+        -119.6,
+        -188.5
       ],
-      "facingDeg": 127.6,
+      "facingDeg": 61.1,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "factory",
@@ -44,10 +44,10 @@
       "id": "challenger_3",
       "name": "reinforcement1",
       "pos": [
-        -92.4,
-        -62.8
+        -97.4,
+        -191.4
       ],
-      "facingDeg": 51,
+      "facingDeg": 1.5,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "factory",
@@ -101,7 +101,7 @@
       "params": {
         "count": 8,
         "intensity": 0.65,
-        "dirDeg": 272
+        "dirDeg": 214
       }
     },
     {
@@ -125,14 +125,14 @@
   ],
   "camera": {
     "pos": [
-      -107.2,
+      -106.7,
       2.4,
-      -62.2
+      -210.6
     ],
     "lookAt": [
-      -109,
+      -115,
       2.25,
-      -52.7
+      -200
     ],
     "groundRel": true,
     "fov": 44,

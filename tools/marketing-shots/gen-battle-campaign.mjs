@@ -80,6 +80,56 @@ const MAP_CAMOS = {
 // so move inward along that same ray instead of inventing a new approach.
 const SIGHTLINE_FOREGROUND_INDICES = new Set([9, 10, 12, 13, 15, 20, 26, 29]);
 const CLOSE_ACTION_INDICES = new Set([9, 26, 29]);
+// The action contract: a hull within 29 m of the lens. A template staged as a
+// long lens (round 51, 2026-09-24, re-staged 57_steppe_windbreak_snipe down the
+// Tarkhan highway with its sniper 60 m out) is pulled in along its own sightline
+// until a hull is within ACTION_NEAREST_M, instead of re-staging the approved
+// home frame; templates already inside the contract are untouched.
+const ACTION_NEAREST_M = 28;
+
+// Two action frames were hand-tuned after the 2026-08-19 generation (the
+// 2026-08-20 showcase overhaul) and rendered as tuned; their foreground twins
+// kept the generated values. The edits live here so a regeneration reproduces
+// the published campaign byte for byte (recorded 2026-09-24, round 53).
+const HAND_TUNED_ACTION = {
+  '62_action_desert_ram_abramsx_t90m': (scene) => {
+    const victim = scene.actors.find((actor) => actor.name === 'victim');
+    victim.pos = [31, 75];
+    for (const effect of scene.effects) {
+      if (effect.type === 'dust' && effect.at && effect.tMs === 140) effect.at = [25, 71.5];
+      if (effect.type === 'explosion' && effect.at) effect.at = [31, 75];
+    }
+    scene.camera.lookAt = [24.5, 1.6, 71.5];
+  },
+  '89_action_coastal_beach_storm': (scene) => {
+    scene.actors.find((actor) => actor.name === 'reinforcement').pos[0] = 190;
+  },
+};
+
+// Foreground lenses whose formula position lands on a prop of the round-48
+// redesigned battlefields (2026-09-24, round 53): the orbit lens of the
+// Frosthollow ram stood behind a snow rise that hid both hulls' lower halves
+// (mirrored to the pair's north side, on the valley floor); the sightline
+// lens of the Tarkhan snipe stood 3 m from a highway utility pole (moved onto
+// the carriageway, 13 m from the sniper); the orbit lens of the Frosthollow
+// crossroads brawl stood 3 m from a hedgehog with a woodshed and yard clutter
+// on the crossing road's north verge (moved 1.5 m east and 1.2 m south, 8.5 m
+// from the foe, the onion-dome church centred behind the hull). All keep the
+// 7-14 m anchor contract.
+const HAND_TUNED_FOREGROUND = {
+  '99_foreground_winter_village_brawl': (scene) => {
+    scene.camera.pos = [-64, 1.7, -18.5];
+    scene.camera.lookAt = [-65, 2.25, -32.5];
+  },
+  '98_foreground_winter_ram_leo2a6': (scene) => {
+    scene.camera.pos = [62.4, 1.45, -6.7];
+    scene.camera.lookAt = [55.7, 2.25, -21];
+  },
+  '111_foreground_steppe_windbreak_snipe': (scene) => {
+    scene.camera.pos = [-106.7, 2.4, -210.6];
+    scene.camera.lookAt = [-115, 2.25, -200];
+  },
+};
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const toRad = (degrees) => degrees * Math.PI / 180;
@@ -192,8 +242,30 @@ function addBattleEffects(scene, campaignIndex) {
   }
 }
 
+function nearestHullM(scene) {
+  const [cx, , cz] = scene.camera.pos;
+  return Math.min(...scene.actors.map((actor) => Math.hypot(actor.pos[0] - cx, actor.pos[1] - cz)));
+}
+
+function pullInLongLens(scene) {
+  const camera = scene.camera;
+  if (nearestHullM(scene) <= 29) return;
+  const dx = camera.lookAt[0] - camera.pos[0];
+  const dz = camera.lookAt[2] - camera.pos[2];
+  const length = Math.hypot(dx, dz);
+  let moved = 0;
+  while (nearestHullM(scene) > ACTION_NEAREST_M && moved < length - 10) {
+    camera.pos[0] += dx / length;
+    camera.pos[2] += dz / length;
+    moved += 1;
+  }
+  camera.pos[0] = Math.round(camera.pos[0] * 10) / 10;
+  camera.pos[2] = Math.round(camera.pos[2] * 10) / 10;
+}
+
 function actionCamera(scene, campaignIndex) {
   const camera = scene.camera;
+  pullInLongLens(scene);
   const nudge = campaignIndex % 2 ? -0.7 : 0.7;
   camera.pos[0] = Math.round((camera.pos[0] + nudge) * 10) / 10;
   camera.pos[2] = Math.round((camera.pos[2] - nudge * 0.5) * 10) / 10;
@@ -307,11 +379,12 @@ for (let index = 0; index < TEMPLATES.length; index++) {
   };
   const actionNo = 61 + index;
   const actionName = `${String(actionNo).padStart(2, '0')}_action_${nameStem(sourceFile)}`;
+  const foreground = clone(action);
+  HAND_TUNED_ACTION[actionName]?.(action);
   assertScene(action, 'action', actionName);
   writeFileSync(join(ACTION_OUT, `${actionName}.json`), `${JSON.stringify(action, null, 2)}\n`);
   actionCount++;
 
-  const foreground = clone(action);
   foregroundCamera(foreground, index);
   foreground.seed = 9200 + index;
   foreground.meta = {
@@ -320,6 +393,7 @@ for (let index = 0; index < TEMPLATES.length; index++) {
   };
   const foregroundNo = 91 + index;
   const foregroundName = `${String(foregroundNo).padStart(2, '0')}_foreground_${nameStem(sourceFile)}`;
+  HAND_TUNED_FOREGROUND[foregroundName]?.(foreground);
   assertScene(foreground, 'foreground', foregroundName);
   writeFileSync(join(FOREGROUND_OUT, `${foregroundName}.json`), `${JSON.stringify(foreground, null, 2)}\n`);
   foregroundCount++;

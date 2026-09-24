@@ -6,8 +6,8 @@
       "id": "strv122",
       "name": "shooter",
       "pos": [
-        176,
-        -108
+        27,
+        87
       ],
       "facingDeg": 122,
       "gunDeg": 0.5,
@@ -19,8 +19,8 @@
       "id": "type99a",
       "name": "kill1",
       "pos": [
-        206,
-        -126
+        57,
+        69
       ],
       "facingDeg": 300,
       "turretDeg": 20,
@@ -31,8 +31,8 @@
       "id": "pt91m",
       "name": "kill2",
       "pos": [
-        188,
-        -142
+        39,
+        53
       ],
       "facingDeg": 350,
       "turretDeg": -35,
@@ -43,8 +43,8 @@
       "id": "type99a",
       "name": "reinforcement",
       "pos": [
-        183.7,
-        -125.8
+        34.7,
+        69.2
       ],
       "facingDeg": 90.5,
       "turretDeg": 0,
@@ -115,14 +115,14 @@
   ],
   "camera": {
     "pos": [
-      163.7,
+      14.7,
       1.1,
-      -132.3
+      62.7
     ],
     "lookAt": [
-      193,
+      44,
       2.4,
-      -124
+      71
     ],
     "groundRel": true,
     "fov": 32,

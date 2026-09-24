@@ -6,48 +6,48 @@
       "id": "leclerc",
       "name": "foe",
       "pos": [
-        30,
-        30
+        -61.3,
+        -26.6
       ],
-      "facingDeg": 325,
+      "facingDeg": 240,
       "gunDeg": 0.5,
       "camo": "factory",
       "camoSeed": 123,
-      "turretDeg": -14.8
+      "turretDeg": -28.2
     },
     {
       "id": "kf51",
       "name": "ally2",
       "pos": [
-        4,
-        52
+        -104,
+        -42
       ],
-      "facingDeg": 145,
+      "facingDeg": 70,
       "gunDeg": 0.5,
       "camo": "digital",
       "camoSeed": 122,
-      "turretDeg": -14.8
+      "turretDeg": 0.2
     },
     {
       "id": "m1a2_sepv2",
       "name": "ally1",
       "pos": [
-        -14,
-        24
+        -82,
+        -60
       ],
-      "facingDeg": 50,
+      "facingDeg": 32,
       "gunDeg": 0.5,
       "camo": "winter",
       "camoSeed": 121,
-      "turretDeg": 32.2
+      "turretDeg": -0.2
     }
   ],
   "effects": [
     {
       "type": "explosion",
       "at": [
-        18,
-        44
+        -75,
+        -37
       ],
       "tMs": 145,
       "params": {
@@ -85,14 +85,14 @@
   ],
   "camera": {
     "pos": [
-      18,
+      -45,
       2.4,
-      12
+      -15
     ],
     "lookAt": [
-      20,
+      -80,
       2,
-      46
+      -40
     ],
     "groundRel": true,
     "fov": 50

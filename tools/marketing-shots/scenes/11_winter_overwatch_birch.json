@@ -6,23 +6,23 @@
       "id": "t90m",
       "name": "far",
       "pos": [
-        -120,
-        60
+        -236,
+        1.5
       ],
-      "facingDeg": 95,
+      "facingDeg": 115,
       "gunDeg": 1,
       "camo": "winter",
       "camoSeed": 111,
-      "turretDeg": -1.2
+      "turretDeg": -10.1
     },
     {
       "id": "t90a",
       "name": "near",
       "pos": [
-        -112,
-        42
+        -236.4,
+        -18.2
       ],
-      "facingDeg": 100,
+      "facingDeg": 120,
       "turretDeg": -35,
       "gunDeg": 1,
       "camo": "winter",
@@ -33,8 +33,8 @@
     {
       "type": "explosion",
       "at": [
-        -101,
-        53
+        -216,
+        -3.5
       ],
       "tMs": 180,
       "params": {
@@ -44,14 +44,14 @@
     {
       "type": "dust",
       "at": [
-        -119,
-        41
+        -243,
+        -15.3
       ],
       "tMs": 260,
       "params": {
         "count": 12,
         "intensity": 1,
-        "dirDeg": 280
+        "dirDeg": 295
       }
     },
     {
@@ -75,14 +75,14 @@
   ],
   "camera": {
     "pos": [
-      -150,
+      -258,
       4.2,
-      62
+      15.4
     ],
     "lookAt": [
-      -100,
+      -213.4,
       2,
-      44
+      -9.2
     ],
     "groundRel": true,
     "fov": 27

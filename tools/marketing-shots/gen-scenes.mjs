@@ -29,8 +29,10 @@
 //             ROUND 48 (2026-09-23) redesigned Frosthollow: the lake and that
 //             village are gone — see gen-scenes2.mjs for the new anchors
 //             (pond chain, west-bank terrace village, crossroads (-80,-40)).
-//             Only 10_winter_ram_leo2a6 was re-staged (round 51); the other
-//             winter scenes here are the retired first production.
+//             10_winter_ram_leo2a6 was re-staged in round 51; 09, 11 and 12
+//             (the templates of the 4K campaign's 67/97, 70/100 and 69/99)
+//             in round 53 (2026-09-24) — see each scene's note. 13-16 are the
+//             retired first production and stay on the old anchors.
 //   urban   — street grid xs[-112,-40,36,112] zs[-96,-16,60,136]; keep tanks
 //             AND cameras within ~±4 m of a carriageway centerline or at
 //             intersections; blocks are walled courtyards (cameras inside
@@ -254,18 +256,24 @@ SCENES['08_desert_dune_charge'] = {
 // -- WINTER (8) ---------------------------------------------------------------
 
 // 09 — frozen-lake duel: Leopard 2A7V firing across the ice, T-90M erupting.
+// 09 — lake duel on the ice. Round 53: re-staged on the c(-24,-246) r40 pond
+// of the frozen river (the old lake at (195,-120) is a snowfield since the
+// round-48 redesign): the lens on the ice at the pond's south-east looking
+// north-west over the burning victim at the shooter, the terrace scarp's
+// birch line and the southern ridge arm behind. The pair sits inside r-15;
+// the campaign's two reinforcements (hero +12/+22 m) land on the sheet too.
 SCENES['09_winter_lake_duel'] = {
   map: 'winter',
   seed: 5109,
   actors: [
-    { id: 'leo2a7v', name: 'shooter', pos: [166, -98], facingDeg: 118, aimAt: [206, -124], gunDeg: 0.5, camo: 'winter', camoSeed: 91 },
-    { id: 't90m', name: 'victim', pos: [206, -124], facingDeg: 300, turretDeg: 40, camo: 'winter', camoSeed: 92 },
+    { id: 'leo2a7v', name: 'shooter', pos: [-34, -238], facingDeg: 118, aimAt: [-12, -250], gunDeg: 0.5, camo: 'winter', camoSeed: 91 },
+    { id: 't90m', name: 'victim', pos: [-12, -250], facingDeg: 300, turretDeg: 40, camo: 'winter', camoSeed: 92 },
   ],
   effects: [
     { type: 'tank_kill', actor: 'victim', tMs: 60, params: { cause: 'ammorack', pop: true } },
     { type: 'fire', actor: 'shooter', tMs: 595, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([216, 1.8, -136], [176, 2.2, -106], 40),
+  camera: cam([-2, 1.8, -262], [-27.5, 2.2, -242.9], 40),
   fxTime: 620,
   timeScale: 0,
 };
@@ -292,44 +300,67 @@ SCENES['10_winter_ram_leo2a6'] = {
   timeScale: 0,
 };
 
-// 11 — column under fire on the west road: the T-90 pair advancing east,
-// the near tank firing across the camera axis, incoming round bursting off
-// the roadside.
+// 11 — column under fire: the T-90 pair advancing east, the near tank
+// firing across the camera axis, incoming round bursting off the roadside.
+// Round 53: the west road is gone — the column now comes DOWN the pass road
+// from the saddle toward the terrace village (road nodes (-272,20) →
+// (-214,-10) → (-160,-30), heading ≈115°), the lens up-slope on the road
+// behind it looking east over the column into the valley: the village
+// street, its onion-dome church and the moraine beyond. The lens stands on
+// the road's north-east half (on the centreline a snow-bound wreck hull and
+// a boulder on the south-west verge filled the frame's left edge).
 SCENES['11_winter_overwatch_birch'] = {
   map: 'winter',
   seed: 5111,
   actors: [
-    { id: 't90m', name: 'far', pos: [-120, 60], facingDeg: 95, aimAt: [0, 52], gunDeg: 1, camo: 'winter', camoSeed: 111 },
-    { id: 't90a', name: 'near', pos: [-112, 42], facingDeg: 100, turretDeg: -35, gunDeg: 1, camo: 'winter', camoSeed: 112 },
+    { id: 't90m', name: 'far', pos: [-236, 1.5], facingDeg: 115, aimAt: [-80, -40], gunDeg: 1, camo: 'winter', camoSeed: 111 },
+    { id: 't90a', name: 'near', pos: [-236.4, -18.2], facingDeg: 120, turretDeg: -35, gunDeg: 1, camo: 'winter', camoSeed: 112 },
   ],
   effects: [
-    { type: 'explosion', at: [-101, 53], tMs: 180, params: { size: 'small' } },
-    { type: 'dust', at: [-119, 41], tMs: 260, params: { count: 12, intensity: 1.0, dirDeg: 280 } },
+    { type: 'explosion', at: [-216, -3.5], tMs: 180, params: { size: 'small' } },
+    { type: 'dust', at: [-243, -15.3], tMs: 260, params: { count: 12, intensity: 1.0, dirDeg: 295 } },
     { type: 'fire', actor: 'far', tMs: 200, params: { slot: 0, tracer: true } },
     { type: 'fire', actor: 'near', tMs: 578, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([-150, 4.2, 62], [-100, 2.0, 44], 27),
+  camera: cam([-258, 4.2, 15.4], [-213.4, 2.0, -9.2], 27),
   fxTime: 600,
   timeScale: 0,
 };
 
 // 12 — village brawl in the snow: SEPv2 and KF51 converging on a dark-green
-// Leclerc at the farm crossing.
+// Leclerc. Round 53: the farm crossing is gone — the brawl is at the terrace
+// village's crossroads (-80,-40), shot from the Bystra crossing road east of
+// the village: the foe drives in along the crossing road 20 m ahead of the
+// lens with its gun on the SEPv2 holding the street beside the onion-dome
+// church at the crossroads' south-east corner (-68,-55), the KF51 comes down
+// the pass road beyond the crossroads, the burst is at the crossroads (the
+// gun on the SEPv2 puts the campaign's orbit lens north of the crossing road
+// looking south over the foe at the church; aimed at the KF51 it stood in
+// the woodshed and clutter at (-58,-15));
+// the saddle pass and the ridge arms are the skyline. The lens stands on the
+// crossing road outside the village rect (x1 -54), the only approach with
+// nothing within 8 m: on the street itself the utility poles stand within
+// ~1 m of the centreline (x -75..-77 at z -7..8), the east verge has a log
+// cabin at (-68..-60, 6..22) and a rail fence, the west verge the barn row
+// (four street lenses tried); a first re-stage in the sawmill yard looking
+// north from (-100,52) had the yard's cabin filling its left half. The
+// campaign's reinforcement (hero +16 m along the 240° hull) lands on the
+// street 15 m north of the crossroads.
 SCENES['12_winter_village_brawl'] = {
   map: 'winter',
   seed: 5112,
   actors: [
-    { id: 'leclerc', name: 'foe', pos: [30, 30], facingDeg: 325, aimAt: [4, 52], gunDeg: 0.5, camo: 'factory', camoSeed: 123 },
-    { id: 'kf51', name: 'ally2', pos: [4, 52], facingDeg: 145, aimAt: [30, 30], gunDeg: 0.5, camo: 'digital', camoSeed: 122 },
-    { id: 'm1a2_sepv2', name: 'ally1', pos: [-14, 24], facingDeg: 50, aimAt: [30, 30], gunDeg: 0.5, camo: 'winter', camoSeed: 121 },
+    { id: 'leclerc', name: 'foe', pos: [-61.3, -26.6], facingDeg: 240, aimAt: [-82, -60], gunDeg: 0.5, camo: 'factory', camoSeed: 123 },
+    { id: 'kf51', name: 'ally2', pos: [-104, -42], facingDeg: 70, aimAt: [-61.3, -26.6], gunDeg: 0.5, camo: 'digital', camoSeed: 122 },
+    { id: 'm1a2_sepv2', name: 'ally1', pos: [-82, -60], facingDeg: 32, aimAt: [-61.3, -26.6], gunDeg: 0.5, camo: 'winter', camoSeed: 121 },
   ],
   effects: [
-    { type: 'explosion', at: [18, 44], tMs: 145, params: { size: 'medium' } },
+    { type: 'explosion', at: [-75, -37], tMs: 145, params: { size: 'medium' } },
     { type: 'impact', actor: 'foe', tMs: 550, params: { kind: 'pen', caliberMm: 120, hFrac: 0.65 } },
     { type: 'fire', actor: 'foe', tMs: 625, params: { slot: 0, tracer: true } },
     { type: 'fire', actor: 'ally2', tMs: 612, params: { slot: 0, tracer: true } },
   ],
-  camera: cam([18, 2.4, 12], [20, 2.0, 46], 50),
+  camera: cam([-45, 2.4, -15], [-80, 2.0, -40], 50),
   fxTime: 650,
   timeScale: 0,
 };

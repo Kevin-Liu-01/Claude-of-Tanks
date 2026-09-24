@@ -6,21 +6,21 @@
       "id": "t80u",
       "name": "shooter",
       "pos": [
-        166,
-        -98
+        -34,
+        -238
       ],
       "facingDeg": 118,
       "gunDeg": 0.5,
       "camo": "winterbands",
       "camoSeed": 8060,
-      "turretDeg": 5
+      "turretDeg": 0.6
     },
     {
       "id": "challenger_3",
       "name": "victim",
       "pos": [
-        206,
-        -124
+        -12,
+        -250
       ],
       "facingDeg": 300,
       "turretDeg": 40,
@@ -31,10 +31,10 @@
       "id": "strv122",
       "name": "reinforcement",
       "pos": [
-        181.3,
-        -94.8
+        -18.7,
+        -234.8
       ],
-      "facingDeg": 139.8,
+      "facingDeg": 156.2,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "washworn",
@@ -44,10 +44,10 @@
       "id": "leclerc_xlr",
       "name": "reinforcement1",
       "pos": [
-        180.7,
-        -117.2
+        -19.3,
+        -257.2
       ],
-      "facingDeg": 105.2,
+      "facingDeg": 45.4,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "winter",
@@ -117,14 +117,14 @@
   ],
   "camera": {
     "pos": [
-      216.7,
+      -1.3,
       1.8,
-      -136.3
+      -262.3
     ],
     "lookAt": [
-      176,
+      -27.5,
       2.2,
-      -106
+      -242.9
     ],
     "groundRel": true,
     "fov": 39,

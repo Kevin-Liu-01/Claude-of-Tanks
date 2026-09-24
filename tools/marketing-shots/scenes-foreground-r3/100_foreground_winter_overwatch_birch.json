@@ -6,23 +6,23 @@
       "id": "leclerc_xlr",
       "name": "far",
       "pos": [
-        -120,
-        60
+        -236,
+        1.5
       ],
-      "facingDeg": 95,
+      "facingDeg": 115,
       "gunDeg": 1,
       "camo": "winterbands",
       "camoSeed": 8090,
-      "turretDeg": -1.2
+      "turretDeg": -10.1
     },
     {
       "id": "t90m",
       "name": "near",
       "pos": [
-        -112,
-        42
+        -236.4,
+        -18.2
       ],
-      "facingDeg": 100,
+      "facingDeg": 120,
       "turretDeg": -35,
       "gunDeg": 1,
       "camo": "merdcwinter",
@@ -32,10 +32,10 @@
       "id": "t80u",
       "name": "reinforcement",
       "pos": [
-        -107.2,
-        68.9
+        -220.9,
+        5.5
       ],
-      "facingDeg": -169.8,
+      "facingDeg": -146.8,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "washworn",
@@ -45,10 +45,10 @@
       "id": "t72b3m",
       "name": "reinforcement1",
       "pos": [
-        -99,
-        48.1
+        -220.3,
+        -16.9
       ],
-      "facingDeg": -115.1,
+      "facingDeg": -94.8,
       "turretDeg": 0,
       "gunDeg": 0.5,
       "camo": "winter",
@@ -59,8 +59,8 @@
     {
       "type": "explosion",
       "at": [
-        -101,
-        53
+        -216,
+        -3.5
       ],
       "tMs": 180,
       "params": {
@@ -70,14 +70,14 @@
     {
       "type": "dust",
       "at": [
-        -119,
-        41
+        -243,
+        -15.3
       ],
       "tMs": 260,
       "params": {
         "count": 12,
         "intensity": 1,
-        "dirDeg": 280
+        "dirDeg": 295
       }
     },
     {
@@ -117,7 +117,7 @@
       "params": {
         "count": 8,
         "intensity": 0.65,
-        "dirDeg": 275
+        "dirDeg": 295
       }
     },
     {
@@ -131,14 +131,14 @@
   ],
   "camera": {
     "pos": [
-      -132.2,
+      -246.3,
       2.5,
-      60.7
+      8.1
     ],
     "lookAt": [
-      -115,
+      -231.2,
       2.25,
-      59.7
+      0.2
     ],
     "groundRel": true,
     "fov": 44,
