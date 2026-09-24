@@ -14,8 +14,9 @@ export const FIXED_SOURCE_SKIRTS=Object.freeze({
   // wheel, nationWheelSets.ts); the pre-finish source digests are repinned from the current profiles.
   t72bu_x:{build:buildT72BUX,label:'t72bu-x-side-leaf',count:12,file:'t72buX.ts',
     // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
-    // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
-    sha:'845f0f3dba0fdc96fd82a0c54a7c9ecc53114498e3aeb115330b5e4a00db9600'},
+    // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build.
+    // round 46b (2026-09-23, owner: the T-72 family has no return rollers): t72bu_x drops its inferred rollers — pre-finish source re-pinned
+    sha:'65829495639300b790136f11fe0c8d64ca986c5b7f52185d9265c6f3335f8723'},
   t62mv1_x:{build:buildT62MV1X,label:'t62mv1-x-skirt',count:20,file:'t62mv1X.ts',
     // 2026-09-22 (owner: holes are added, not carved, to save triangles): t62mv1X closed its main gun
     // at the source tip (measuredPrimitives cappedTube; the measured bore floor 5.65940 stays recorded
