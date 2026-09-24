@@ -978,6 +978,58 @@ round-1 valley and need the 4K shot pipeline. The manor has no house builder (th
 camp); a stone town wall is field-wall height. `tools/bake-minimap-assets.mjs` serves on 7600 + pid % 200 — it was run
 under the probe mutex with its own capture lock.
 
+### Tarkhan Steppe redesign — 2026-09-23 (round 48)
+
+Owner (2026-09-23): "Frosthollow, Amberford and Tarkhan Steppe look good and have unique colour schemes but are
+straight rips of Verdant Field, exact same maps — need redesign." The survey confirmed it for Tarkhan: `steppe.ts` ran
+the procedural country roads, Verdant's five landforms stretched by a quarter, the default village rect and
+byte-identical tactical-beat anchors. The identity stays — palette, sky, species, prop tones, name, id, spawn count,
+the campaign operation — and the battlefield underneath is new, on one real-world reference: the Kazakh Sary-Arka
+grain steppe of the Virgin Lands campaign.
+
+- **Landform.** A dry braided riverbed crosses the middle east–west: seven `basin` landforms (130 × 58–68 m,
+  4.6–5.8 m deep) that run past both edges so the bed continues into the outland (check 1), floored by a chain of
+  twenty shallow takyr crusts (marshes r 28, dip 0.8, the M layer under a pale salt tone, `wetScale: 1` so the crust
+  never lifts the basin back up) between worked-ground gravel shoulders — soft, slow and exposed to cross, firm on
+  the banks. North of it a three-segment escarpment (12 m, width 170, crest z ≈ 220) with two natural saddles — the
+  highway ramp and the east-track ramp — over a broad back-slope ridge that tapers out before the deployment ground;
+  five kurgans (r 28–36, 6.2–8.4 m) on the crest, two inside hexagonal fieldstone kerbs; a salt pan of two pale
+  marshes in the north-western lowland; the caravanserai rise (6.5 m) at the scarp's foot with three breached walls,
+  tumbled stone and a herders' camp. `hillScale` 0.85 → 0.36, `microScale` 1.35 → 1.2 — the authored forms carry the
+  relief, the folds stay for hull-down work.
+- **Built-up.** The grain station is the settlement rect (150..410 × −330..−120) on the station-road / east-track
+  junction: elevator head tower, long grain stores, the platform hall, a loading gantry, freight ranks, granaries and
+  the railway workers' houses. The kolkhoz in the west is a long cattle-barn strongpoint inside seven stone corral
+  walls with a machine-yard apron; the fort ruin is the scout strongpoint; the station's machine yard the support
+  one. Three graded aprons (`hardstands` — machine yard, forecourt, post-road halt) give the objective placement its
+  30 m discs where folds, road banks and seeded props leave none.
+- **Roads and trees.** Five authored paths — the straight highway (south edge → wadi ford → western ramp → plateau →
+  north edge; it carries the utility-pole line), the station road (west edge → kolkhoz → highway crossing → station →
+  east edge), the east track (south edge → station → wadi → eastern ramp → north edge), the plateau road behind the
+  kurgans, and the sor track (kolkhoz → wadi → salt-pan shore, a documented dead end). Nine poplar/oak shelterbelts
+  replace the groves (clusterCount 7 → 5, loneCount 30 → 24).
+- **Spawns.** Player (−210, −424) on the low southern steppe; seven enemy pads at z 402–426 on base terrain north of
+  the crest — the spawn-clear fade would dimple any pad standing on a landform — 41–65 m off every road cut.
+- **Measured** (headless probe, seed 1337): bed −4.3 m at x −300 and −4.1..−4.3 m at x 150 against banks near 0;
+  crest 16–18 m at x −300 with the kurgans 5–8 m proud; ramp saddles 5–8 m; the highway ford dips 2.3 m; pads relief
+  3.3–5.8 m over ±44 × ±22 m at min normal.y 0.89–0.98; strongpoints normal.y 0.99–1.00 on medium ground; both teams
+  reach every 20 m row of the square. Captures (`.qa-dev/wall-probe.mjs`, A = origin/main, B = this lane, nine
+  views): centre-far skyline metric 0.99 → 0.92 (the scarp now stands against the sky), sky-w 0.87 → 0.89 (sky
+  unchanged); kurgan-line band luma 181 → 164 with dark share 1.3 % → 7.4 % (tree line and crest replace open plain);
+  plateau-south ground 161 → 134 (the back slope and crest fill the frame); wadi-east pale share 1.0 → 2.3 % (the
+  crust strip).
+- **Receipts.** mapQuality, fieldTrenchTerrain, assaultTrenchTerrain (steppe: all three sector lines carved, dry
+  floor measured — the crusts scale the carve), roadContinuity (documented steppe shore terminal), terrainStreaming
+  and shoreDirtMask (steppe goldens re-pinned), dedicatedWorldCollision (census 2358/2120/1290 on the recaptured
+  shard), matchPlacement (zone_control reads 111 k → 37 k against the 65 k bound), the road family, catalog, campaign
+  and UI receipts pass. badlandsRelief leaves steppe.ts out of the historical byte projection by owner ruling.
+  villageWear (FROZEN configs / other28) and mangroveWaterPalette (other29 digest) move and wait for the integrator's
+  single re-pin. Pre-existing on the round-47 base: roadLookupGrid, roadPlacementAdmission (coastal), playableRelief
+  (Titan byte baseline).
+- **Open.** The rail spur has no track geometry — `mapKits.ts` lays its lines at fixed centre coordinates for Cinder
+  Junction only; a parameterised spur kit is a follow-up. The picker thumbnail and 4K hero (`public/maps/steppe.webp`,
+  `thumbs/`) still show the old map until `tools/screenshot.mjs` + `map-thumbs.mjs --only steppe` run.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -1067,6 +1119,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 48 | Probes and metrics as tools: the QA probes that verified rounds 41–47 committed from `.qa-dev/` as `tools/map-view-probe.mjs` (the wall probe; its view table in `tools/map-view-probe-views.mjs`), `tools/terrain-layer-flag-probe.mjs`, `tools/terrain-uniform-iso-probe.mjs`, `tools/world-layer-isolation-probe.mjs`, `tools/salvo-indicator-probe.mjs` and `tools/water-drive-probe.mjs` over one runtime (`tools/map-probe-runtime.mjs`), and the three Python/PIL metrics ported to `tools/map-metrics.mjs` (skyline, stripe, boxes) — see "Probes and metrics as tools" below | `tools/map-probe-runtime.selftest.mjs` (arguments, the pinned 31-view table, pose math, the mirrored-frame note, `--help` without a network) and `tools/map-metrics.selftest.mjs` (synthetic frames of known luma / wavelength / heading); the Node metrics reproduce the PIL scripts on the round-43 and round-47a frames (skyline and boxes to every printed digit, stripe wavelength within 0.07 %); one map/view per tool re-captured on this tree |
 | 48 | Frosthollow redesign (owner: the Verdant clone maps): a Carpathian valley — ten-pond frozen river, terrace street village with a sawmill yard, two-armed ridge and saddle pass with a switchback, moraine flank, seven authored roads, new strongpoints, walls, belts, clearings, pads; the round-44 snow albedo / exposure re-grade | wall-probe A/B (six brief views + village-street, river-crossing, pass-switchback): skyline sky-w 0.94 → 0.88, sky-s 0.92 → 0.84, snow median 208 → 198; layout scan (pads, beats, candidates, pole stations, pond lips); mapQuality + road + winterLakeGeometry receipts, recaptured collision shard |
 | 48 | Amberford redesign: a Norman / English river-ford market town replaces the Verdant clone — SW→NE river in a sculpted valley (hillScale 0.8, eleven cut/fill landforms under one graded water plane), a stone bridge and a ford as the only crossings (avoid-liquid bots), five authored lanes, the walled town on the north-bank rise, orchards and hedgerows, the escarpment woods, the manor park and lake, weir and water mill in the river kit, re-baked tactical plate | wall-probe A/B on bird/centre/sky views plus five authored gameplay-height views (bridge, ford, square, mill, valley) and two close bridge views; constraint check (0 wet gaps, banks ≤ 1.44 m, both crossings dry, pads minNy 0.85–0.97); skyline metric unchanged (sky-w 0.84 → 0.90, bird-n 0.98 → 0.98); liquidMarshSurface worst bank 0.42; matchPlacement dry routes in all modes |
+| 48 | Tarkhan Steppe redesign: a new battlefield under the kept palette — takyr-floored braided wadi across the middle, 12 m escarpment with two ramps and a kurgan line on its crest, grain station (SE), kolkhoz and corrals (W), salt pan (NW), caravanserai rise, five authored roads, shelterbelts instead of groves, three graded aprons for the objective placement, recaptured collision shard | headless layout probe (bed −4.3 m, crest 16–18 m, mounds +5..8 m, pads relief ≤ 5.8 m, both-team reach on every row); wall-probe A/B (centre-far skyline 0.99 → 0.92, kurgan-line band 181 → 164 luma, plateau-south 161 → 134; sky-w unchanged 0.87 → 0.89); 38 receipts green, two shared digests moved for the integrator |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
 re-established with dated notes, and captures on the same camera/seed/tier before and after.
