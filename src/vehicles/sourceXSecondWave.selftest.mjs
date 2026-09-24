@@ -30,7 +30,7 @@ const original = {
   ariete_c1:'e9c14604', challenger1:'aa084d4d', leclerc:'900d83c3',
   chieftain5:'af6150d8', chieftain_mk10:'81cf7e9f', leo2a6:'1f08700c',
   k1a1:'febc57cf', strv122:'8bc6e141', t62mv1:'35f1a225',
-  t72b_1987:'e7d8bce1', t72b3:'a6d86dc3', t72b3m:'aaa72338',
+  t72b_1987:'e7d8bce1', t72b3:'a6d86dc3', t72b3m:'49e0a00e',
   t72bu:'1557e0dd', t80u:'2b1a556f', type10:'51be775e', type90:'de3a7d14',
   jpz_e100:'9c2fc966', amx30:'af643005', amx40:'b94b2314',
   t90:'0441dc8a', t90a_burlak:'835118d7', t90ms:'149a209a',
