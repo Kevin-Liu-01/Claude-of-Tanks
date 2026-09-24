@@ -108,9 +108,9 @@ const fragmentBefore = {
 // Driftwood is unchanged from published1db.
 // Frozen rowboats and the nine Winter-family controls above are unchanged.
 const otherHashes = {
-  1337: '0113c1c2c3006fd93497ae024abf6cfcf16227299bbc6e43adc05aa966abe227' /* 2026-09-19: Mars joins the non-Winter kits */,
-  2049: '72addc3ba16200ce1f75441eea531324b5da56524bc27cb93c9ce0f47ca755c4', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
-  7719: '209ebc1608c1c08b04e829a213eae75586d0d416287457c93292f31c898e7de2', // 2026-09-24: Frosthollow / Amberford / Tarkhan player pads moved (round-48 pacing landing)
+  1337: 'e16d4a6d89dd4731ada5aeaeb0a60df0121c0e64e25dfb1acde6ebf479b7fda3', // 2026-09-24 (round 58): the fjord's jetties at the water's edge (planted piles, gangways, moored hulls); was 2026-09-19 Mars joins the non-Winter kits
+  2049: 'dbd25e11bc5b5e74a9cb75d7c2c578f276cbb0329253317c3adabcdf166b0cd1', // 2026-09-24 (round 58): the fjord's jetties at the water's edge; before that the round-48 pacing landing
+  7719: '0cf110e8a20ae3a77ef72f5d19daded740fa56c82b2a55db9a6bdee6223ad2a4', // 2026-09-24 (round 58): the fjord's jetties at the water's edge; before that the round-48 pacing landing
 };
 
 function build(mapId, seed, historical = true) {

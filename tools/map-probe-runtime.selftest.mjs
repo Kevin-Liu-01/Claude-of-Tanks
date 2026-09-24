@@ -104,22 +104,25 @@ for (const e of Object.values(WATER_DRIVE_ENTRIES)) assert.ok([0, Math.PI / 2].i
 // round 56 (2026-09-24): three low strand views (4 m over the wrack band, along the beach) — 31 → 34, digest re-pinned
 // round 57 (2026-09-24, the rail spur kit): four more — Tarkhan's station siding at gameplay height from the west stub
 // and at the east-track crossing, a bird view over the station, Cinder Junction's siding fan low; 34 → 38.
-assert.equal(MAP_VIEW_PROBE_VIEWS.length, 38);
+// round 58 (2026-09-24, jetties at the water's edge): four boat-height views from the shallows of each sea map's derived
+// jetty (Saltmere, Nordhavn's middle and north arms, Saltwind's first pier); 38 → 42, digest re-pinned.
+assert.equal(MAP_VIEW_PROBE_VIEWS.length, 42);
 assert.equal(createHash('sha256').update(JSON.stringify(MAP_VIEW_PROBE_VIEWS)).digest('hex'),
-  '0dae2ea9e82dbf14da695177dde809a07f20b734624f9480f70158696d25e60d', 'view table digest (2026-09-24, round 56 strand views + round 57 spur views)');
+  '4420db93ee8b6225dd261585fceb8275172a8cc6daa189a7c3c19a26215f3514', 'view table digest (2026-09-24, round 56 strand views + round 57 spur views + round 58 jetty views)');
 assert.ok(Object.isFrozen(MAP_VIEW_PROBE_VIEWS));
-assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 38, 'unique names');
+assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 42, 'unique names');
 for (const v of MAP_VIEW_PROBE_VIEWS) {
   assert.ok(Object.isFrozen(v) && Object.isFrozen(v.cam) && Object.isFrozen(v.at), v.name);
   assert.match(v.name, /^[a-z0-9]+(?:-[a-z0-9.]+)*$/, `${v.name}: kebab file-name token`);
-  assert.ok([35, 36, 40, 47, 56, 57].includes(v.round), `${v.name}: round`);
+  assert.ok([35, 36, 40, 47, 56, 57, 58].includes(v.round), `${v.name}: round`);
   for (const p of [v.cam, v.at]) { assert.equal(p.length, 3); for (const n of p) assert.ok(Number.isFinite(n), `${v.name}: finite`); }
   assert.ok(Math.abs(v.cam[0]) <= 560 && Math.abs(v.cam[2]) <= 560, `${v.name}: camera near or inside the square`);
 }
 assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 47).map((v) => v.name), ['bird-e-edge', 'bird-w-edge', 'bird-e-edge-n', 'shore-e-oblique', 'shore-w-oblique'], 'round-47 edge views');
 assert.deepEqual(selectMapViews(['canyon-in', 'sw-corner-close']).map((v) => v.name), ['sw-corner-close', 'canyon-in']);
 assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 56).map((v) => v.name), ['strand-e-low', 'strand-fjord-low', 'strand-w-low'], 'round-56 strand views');
-assert.equal(selectMapViews(null).length, 38); assert.equal(selectMapViews([]).length, 38);
+assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 58).map((v) => v.name), ['jetty-e-low', 'jetty-fjord-low', 'jetty-fjord-north-low', 'jetty-w-low'], 'round-58 jetty views');
+assert.equal(selectMapViews(null).length, 42); assert.equal(selectMapViews([]).length, 42);
 assert.throws(() => selectMapViews(['sw-corner-close', 'x', 'y']), /Unknown view\(s\): x, y/);
 assert.deepEqual(MAP_VIEW_PROBE_VIEWPORT, { width: 1600, height: 900 }); assert.equal(MAP_VIEW_PROBE_FOV, 55); assert.equal(MAP_VIEW_PROBE_HALF, MAP_PROBE_HEIGHT_CLAMP);
 

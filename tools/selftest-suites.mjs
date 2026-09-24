@@ -1038,6 +1038,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/riverReedContact.selftest.mjs',
     'src/world/maps/beachedBoat.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
+    'src/world/maps/shoreJetty.selftest.mjs',
     'src/world/maps/railWashout.selftest.mjs',
     'src/world/maps/railCoalStockpiles.selftest.mjs',
     'src/world/railSpurs.selftest.mjs',

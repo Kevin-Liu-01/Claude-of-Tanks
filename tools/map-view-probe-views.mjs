@@ -69,6 +69,16 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   view('spur-crossing', 57, [312, 4, -152], [252, 0, -190]),
   view('spur-bird', 57, [294, 190, -330], [294, 0, -181]),
   view('yard-fan-low', 57, [58, 3.5, -218], [58, 0, -40]),
+  // round 58 (2026-09-24, jetties at the water's edge): each sea map's derived jetty seen from the shallows at boat
+  // height, side on with the strand behind — the camera 3 m over the bed on the moored hull's side, 9 m past the tip
+  // and 13 m off the deck axis, looking at the deck's middle; the old kit's jetty (1.05 R of the disc, the same axis)
+  // stands inland behind it in the A frame. Saltmere's jetty (drawn azimuth 166.4° at seed 1337, shore end (328, 26)),
+  // Nordhavn's middle arm (188°, (298, 47)) and north arm (191°, (301, 235) — the deck landing on the bank at grade),
+  // Saltwind's first pier (−25°, (−317, −55))
+  view('jetty-e-low', 58, [351, 3, 6], [336, 0.8, 24]),
+  view('jetty-fjord-low', 58, [319, 3, 63], [305, 0.8, 48]),
+  view('jetty-fjord-north-low', 58, [316, 3, 251], [305, 0.8, 236]),
+  view('jetty-w-low', 58, [-348, 3, -55], [-326, 0.8, -51]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */
