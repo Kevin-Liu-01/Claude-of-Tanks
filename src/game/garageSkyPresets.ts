@@ -28,7 +28,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0x9aa3ae,
     cloudAltM: 320, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74,
-    postExposure: 0.94,
+    postExposure: 0.86, // round 48: mirrors winter.ts (owner-approved round-44 snow re-grade)
   }),
   urban: Object.freeze({
     sunElevationDeg: 36, sunAzimuthDeg: 115,

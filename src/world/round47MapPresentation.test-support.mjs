@@ -25,6 +25,10 @@ export const ROUND47_PRESENTATION_EDITS = {
    [
      "    // round 47 (owner 2026-09-23, \"the skybox and mountains are too bland\"): the haze a step cooler than the 0xffc89b sun\n    // (0xb88970 -> 0xb3a698: sun and haze sat in one ochre family and read as a single wash), broken altocumulus\n    // (0.68 / 0.30 -> 0.82 / 0.52) on an explicit 860 m deck that keeps its texture at 2-12°, and patchy light over\n    // the canyon (cloudShadowAmp 0.30)\n    fogTintHex: 0xb3a698, fogMix: 0.49, envIntensity: 0.18,\n    cloudOpacity: 0.82, cloudOpacity2: 0.52, cloudTintHex: 0xffe0c7,\n    cloudAltM: 860, cloudHazeK: 0.00013, cloudUvM: 2800, cloudShadowAmp: 0.30,\n",
      "    fogTintHex: 0xb88970, fogMix: 0.49, envIntensity: 0.18,\n    cloudOpacity: 0.68, cloudOpacity2: 0.30, cloudTintHex: 0xffe0c7,\n"
+   ],
+   [
+     "    // round 49 (owner audit 2026-09-23, \"smooth beige ridge faces without strata\"): the ring's 35–47° faces past the edge\n    // become the bedded landform rock (default band 0.22–0.48 left them the wall-projected sand set)\n    ringRockSlope: [0.15, 0.36],\n",
+     ""
    ]
  ],
  "blackglass.ts": [
@@ -143,26 +147,6 @@ export const ROUND47_PRESENTATION_EDITS = {
   [
    "    cloudAltM: 380, cloudHazeK: 0.00015, cloudUvM: 2500, cloudShadowAmp: 0.14,\n",
    ""
-  ]
- ],
- "titanGorge.ts": [
-  // round 49 (2026-09-23, lane r49a): the ring rock band is presentation only. NOTE: this object carries two
-  // "titanGorge.ts" keys (both round-47 lanes added one); JavaScript keeps the LAST, so round-49 pairs live here.
-  [
-   "    // round 49 (owner audit 2026-09-23, \"smooth beige ridge faces without strata\"): the ring's 35–47° faces past the edge\n    // become the bedded landform rock (default band 0.22–0.48 left them the wall-projected sand set)\n    ringRockSlope: [0.15, 0.36],\n",
-   ""
-  ],
-  [
-   "    // round 47 (2026-09-23, owner: \"ground patterns are too black\"): without this the sourced-texture resolver fell\n    // through to Verdant — photo grass/dirt and raw near-black Rock058 in place of the sandstone strata above\n    sourcedPalette: 'titan_gorge',\n    // round 47 (2026-09-23): tintB 0.71/0.54/0.45 (luma ×0.58 in the dark patches) → same ochre hue (18°), every\n    // channel ≥ 0.78 (luma ×0.83) — the patches stay darker than the shelves without going black\n    tintA: [1.10, 0.88, 0.69], tintB: [0.90, 0.82, 0.78], tintC: [1.06, 0.84, 0.67],\n",
-   "    tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],\n"
-  ],
-  [
-   "    // round 47 (owner 2026-09-23, \"the skybox and mountains are too bland\"): authored strata for the orange sandstone\n    // walls (the style default 0.16 gave the canyon's own bedded rock the faintest beds of any mesa ring)\n    banding: 0.24,\n",
-   ""
-  ],
-  [
-   "    // round 47 (owner 2026-09-23, \"the skybox and mountains are too bland\"): the haze a step cooler than the 0xffc89b sun\n    // (0xb88970 -> 0xb3a698: sun and haze sat in one ochre family and read as a single wash), broken altocumulus\n    // (0.68 / 0.30 -> 0.82 / 0.52) on an explicit 860 m deck that keeps its texture at 2-12°, and patchy light over\n    // the canyon (cloudShadowAmp 0.30)\n    fogTintHex: 0xb3a698, fogMix: 0.49, envIntensity: 0.18,\n    cloudOpacity: 0.82, cloudOpacity2: 0.52, cloudTintHex: 0xffe0c7,\n    cloudAltM: 860, cloudHazeK: 0.00013, cloudUvM: 2800, cloudShadowAmp: 0.30,\n",
-   "    fogTintHex: 0xb88970, fogMix: 0.49, envIntensity: 0.18,\n    cloudOpacity: 0.68, cloudOpacity2: 0.30, cloudTintHex: 0xffe0c7,\n"
   ]
  ],
  "whiteout.ts": [
