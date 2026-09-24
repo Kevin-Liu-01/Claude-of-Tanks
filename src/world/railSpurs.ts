@@ -234,11 +234,12 @@ export function railCuttingBedY(cutting: RailCutting, portalY: number, along: nu
 }
 
 /**
- * The cutting applied to the ground height `h` at (x, z): inside the floor the ground becomes the graded bed (cut or
- * fill), feathered RAIL_CUTTING_FEATHER_M into the ground beyond the floor's edge; ground standing above the batter
- * face that rises from that edge is cut down to the face; the whole change fades in over the RAIL_CUTTING_PORTAL_M
- * before the portal, is full from the portal on and nothing before the fade. Past the path's end the floor widens by
- * the fan. Pure and allocation-free:
+ * The cutting applied to the ground height `h` at (x, z): ground standing above the bed is cut to the floor and to
+ * the batter face that rises from the floor's edge (the face governs from that edge — a feather there climbed to the
+ * ground faster than the batter); ground lying under the bed is filled to it, feathered RAIL_CUTTING_FEATHER_M into
+ * the ground beyond the floor's edge; the whole change fades in over the RAIL_CUTTING_PORTAL_M before the portal, is
+ * full from the portal on and nothing before the fade. Past the path's end the floor widens by the fan. Pure and
+ * allocation-free:
  * heightAt and outlandHeightAt (terrain.ts) call it with the same portal height, so the notch continues across the
  * red line unchanged. `portalY` is the ground the portal stood at before the cutting was applied.
  */
@@ -254,10 +255,13 @@ export function railCuttingHeight(
     const lateral = Math.abs(dx * -cut.uz + dz * cut.ux);
     const halfFloor = cut.halfFloor + (along > cut.endAlong ? (along - cut.endAlong) * cut.fan : 0);
     const bedY = portalYs[i] + cut.grade * along;
-    const bed = 1 - smoothstep01(halfFloor, halfFloor + RAIL_CUTTING_FEATHER_M, lateral);
-    const face = bedY + (lateral > halfFloor ? (lateral - halfFloor) / cut.batter : 0);
-    let target = h + (bedY - h) * bed;
-    if (target > face) target = face;
+    let target: number;
+    if (h < bedY) {
+      target = h + (bedY - h) * (1 - smoothstep01(halfFloor, halfFloor + RAIL_CUTTING_FEATHER_M, lateral)); // fill
+    } else {
+      const face = bedY + (lateral > halfFloor ? (lateral - halfFloor) / cut.batter : 0); // the floor, then the batter
+      target = h > face ? face : h;
+    }
     h += (target - h) * fadeIn;
   }
   return h;

@@ -85,6 +85,13 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   // the coach road on the south approach looking down the deck between the parapets at the town beyond
   view('bridge-bank-low', 61, [-45, 2, -91], [-14, 1.5, -62]),
   view('bridge-deck-low', 61, [8, 2.2, -98], [-40, 1.2, -47]),
+  // round 63 (2026-09-24, Tarkhan's railway cutting): the line leaving the square through the eastern rim band at
+  // gameplay height — from the siding east of the station looking down the track into the cutting's mouth and out to
+  // the ring beyond it; from the cutting's floor at the map edge looking back down the line at the station; and from
+  // the rim top south of the notch looking across it to the outland, the faces and the fan the ring seats on
+  view('cutting-station-low', 63, [392, 2.4, -181], [512, 1.2, -181]),
+  view('cutting-edge-low', 63, [506, 2.4, -181], [340, 0.6, -181]),
+  view('cutting-exit-bird', 63, [430, 70, -181], [640, 2, -181]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */

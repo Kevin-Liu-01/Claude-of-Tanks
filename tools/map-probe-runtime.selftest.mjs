@@ -108,15 +108,18 @@ for (const e of Object.values(WATER_DRIVE_ENTRIES)) assert.ok([0, Math.PI / 2].i
 // jetty (Saltmere, Nordhavn's middle and north arms, Saltwind's first pier); 38 → 42, digest re-pinned.
 // round 61 (2026-09-24, Amberford's bridge over the river): two gameplay-height views of the arched span — from the
 // river bank across the water at the arches, and down the deck between the parapets from the south approach; 42 → 44.
-assert.equal(MAP_VIEW_PROBE_VIEWS.length, 44);
+// round 63 (2026-09-24, Tarkhan's railway cutting): three views of the line leaving the square through the eastern rim —
+// along the track into the cutting's mouth from the siding, back down the line from the cutting floor at the map edge,
+// and a bird view over the notch and the fan the ring seats on; 44 → 47, digest re-pinned.
+assert.equal(MAP_VIEW_PROBE_VIEWS.length, 47);
 assert.equal(createHash('sha256').update(JSON.stringify(MAP_VIEW_PROBE_VIEWS)).digest('hex'),
-  'b19fd0f0b231c5d6fdfef40071160aced1a79f92c309edbe3a50285b1c620942', 'view table digest (2026-09-24, round 56 strand + round 57 spur + round 58 jetty + round 61 bridge views)');
+  '623a0e2ea5155e32c672611610dd57f1d0532b327ed4ba1d8990bc03114a3b92', 'view table digest (2026-09-24, round 56 strand + round 57 spur + round 58 jetty + round 61 bridge + round 63 cutting views)');
 assert.ok(Object.isFrozen(MAP_VIEW_PROBE_VIEWS));
-assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 44, 'unique names');
+assert.equal(new Set(MAP_VIEW_PROBE_VIEWS.map((v) => v.name)).size, 47, 'unique names');
 for (const v of MAP_VIEW_PROBE_VIEWS) {
   assert.ok(Object.isFrozen(v) && Object.isFrozen(v.cam) && Object.isFrozen(v.at), v.name);
   assert.match(v.name, /^[a-z0-9]+(?:-[a-z0-9.]+)*$/, `${v.name}: kebab file-name token`);
-  assert.ok([35, 36, 40, 47, 56, 57, 58, 61].includes(v.round), `${v.name}: round`);
+  assert.ok([35, 36, 40, 47, 56, 57, 58, 61, 63].includes(v.round), `${v.name}: round`);
   for (const p of [v.cam, v.at]) { assert.equal(p.length, 3); for (const n of p) assert.ok(Number.isFinite(n), `${v.name}: finite`); }
   assert.ok(Math.abs(v.cam[0]) <= 560 && Math.abs(v.cam[2]) <= 560, `${v.name}: camera near or inside the square`);
 }
@@ -125,7 +128,8 @@ assert.deepEqual(selectMapViews(['canyon-in', 'sw-corner-close']).map((v) => v.n
 assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 56).map((v) => v.name), ['strand-e-low', 'strand-fjord-low', 'strand-w-low'], 'round-56 strand views');
 assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 58).map((v) => v.name), ['jetty-e-low', 'jetty-fjord-low', 'jetty-fjord-north-low', 'jetty-w-low'], 'round-58 jetty views');
 assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 61).map((v) => v.name), ['bridge-bank-low', 'bridge-deck-low'], 'round-61 bridge views');
-assert.equal(selectMapViews(null).length, 44); assert.equal(selectMapViews([]).length, 44);
+assert.deepEqual(MAP_VIEW_PROBE_VIEWS.filter((v) => v.round === 63).map((v) => v.name), ['cutting-station-low', 'cutting-edge-low', 'cutting-exit-bird'], 'round-63 cutting views');
+assert.equal(selectMapViews(null).length, 47); assert.equal(selectMapViews([]).length, 47);
 assert.throws(() => selectMapViews(['sw-corner-close', 'x', 'y']), /Unknown view\(s\): x, y/);
 assert.deepEqual(MAP_VIEW_PROBE_VIEWPORT, { width: 1600, height: 900 }); assert.equal(MAP_VIEW_PROBE_FOV, 55); assert.equal(MAP_VIEW_PROBE_HALF, MAP_PROBE_HEIGHT_CLAMP);
 
