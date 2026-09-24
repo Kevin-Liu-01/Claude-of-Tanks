@@ -118,10 +118,13 @@ for (const id of GOOD) {
   const preset = { ...LEGACY_DEFAULT_PRESET, ...getMapConfig(id).sky };
   const coarse = new CpuAtmosphere(skyPresetToAtmosphere(preset), { msDirs: 4, msSteps: 10 });
   residuals[id] = calibrationResidual(preset, coarse).meanAbsLog;
-  assert.ok(residuals[id] < 0.5, `${id}: mean |log| residual ${residuals[id].toFixed(3)} against the legacy dome stays under 0.5`);
+  // 2026-09-24 at the pinned constants: verdant 0.438, urban 0.510, railyard 0.600 (the overcast preset's bright
+  // legacy dome), frontier 0.392, delta 0.445, monsoon 0.381, alpine 0.389, foundry 0.447, airfield 0.454,
+  // orchard 0.395, longleaf 0.378, reservoir 0.388 — mean 0.435 (the loss minimum's 0.325 whitened the sky)
+  assert.ok(residuals[id] < 0.65, `${id}: mean |log| residual ${residuals[id].toFixed(3)} against the legacy dome stays under 0.65`);
 }
 const mean = Object.values(residuals).reduce((a, b) => a + b) / GOOD.length;
-assert.ok(mean < 0.42, `mean residual over the good maps ${mean.toFixed(3)} (fit: 0.33 at the pinned constants)`);
-assert.equal(calibrationDirections(verdant.sunDir).length, 31, 'the fit\'s 31 directions (35 minus the sun\'s neighbourhood)');
+assert.ok(mean < 0.5, `mean residual over the good maps ${mean.toFixed(3)} (0.435 at the pinned constants)`);
+assert.equal(calibrationDirections(verdant.sunDir).length, 30, 'the fit\'s 30 directions (31 minus the 35° direction 3° from the sun)');
 
 console.log(`atmosphere.selftest: paper constants in the GLSL, LUT round trip, physical invariants, calibration mapping (verdant rayleigh ${verdant.rayleighScale.toFixed(2)} / mie ${verdant.mieScale.toFixed(1)}), Mars overrides, keys, legacy twin, good-map residual mean ${mean.toFixed(3)} PASS`);
