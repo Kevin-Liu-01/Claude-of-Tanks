@@ -46,7 +46,11 @@ const roadCompletionCensus = {
   winter: [5944, 5794, 4911],
   urban: [4055, 9303, 3685],
   coastal: [4196, 3999, 4310],
-  autumn: [6505, 6158, 6867],
+  // round 48 (2026-09-24): Amberford redesigned (river-ford market town) — the shard was recaptured headless on the
+  // combined round-48 tree (.qa-dev/collision-capture.mjs, same pack script); the redesign lane had left the round-1
+  // shard in place, so the dedicated bots fought the old village on the new terrain (battlePacing: two Amberford
+  // timeouts, a bravo pair parked on the river bank). No pre-repair capture exists: census = shard, removals 0.
+  autumn: [6091, 5927, 6035],
   // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling — shard recaptured headless on the new map
   // (grain station, kolkhoz corrals, kurgan kerbs, fort walls; shelterbelts replace most groves)
   steppe: [2358, 2120, 1290],
@@ -101,7 +105,7 @@ const rimRoadRemovals = {
   winter: 0, // 2026-09-23: redesigned layout, census pinned directly (see above)
   urban: 155,
   coastal: 36,
-  autumn: 37,
+  autumn: 0, // 2026-09-24: redesigned layout, census pinned directly (see above)
   steppe: 12,
   railyard: 152,
   frontier: 101,
