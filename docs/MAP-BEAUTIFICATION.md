@@ -1173,6 +1173,59 @@ public-repo-hygiene, attribution. **Still open:** the home-page showcase frames 
 (`public/media/home/p2_35/37/38_winter_*`, `p2_53/54_autumn_*`, `p2_55/57_steppe_*`, `g10_winter_*`) and the
 `presentation-r1` archive frames come from the marketing-shot recipes (`tools/marketing-shots/gen-scenes2.mjs` →
 grade → `publish-landing-media.mjs`) and still show the round-1 maps — a lane of its own.
+### Round 51 — 2026-09-24: home showcase frames of the redesigned maps
+
+The showcase frames of the three round-48 redesigns still showed the Verdant-clone battlefields: the eight orphaned
+home-r2 gallery frames under `public/media/home/` (`p2_35/37/38_winter_*`, `g10_winter_ram_leo2a6`,
+`p2_53/54_autumn_*`, `p2_55/57_steppe_*` — rendered 2026-08-02, unreferenced since the 2026-08-19 landing rebuild but
+still shipped), the eighteen `presentation-r1` frames of those maps (the five owner picks `05/08_winter`,
+`23/24_autumn`, `25_steppe` that the home shot rail, the maps section, the Garage featured gallery, the docs topic
+page and `socialProof` consume; the eight shipped-but-unlisted archive frames `06/07_winter`, `22_autumn`,
+`26/27_steppe`, `37/40/41_*_contact`; the five `studio_action_0N` keyframes of the Frosthollow studio loop), all
+rendered 2026-08-19. Re-rendered on this tree through the marketing-shot pipeline, one job at a time under the probe
+mutex, niced: the recipes were re-staged in their generators (`gen-scenes2.mjs`; `gen-scenes.mjs` for scene 10; the
+`mapHeroes` rows of `gen-presentation-r1.mjs`, which now take an optional facing / wing entry; the
+`scenes-studio-r1` storyboard), the JSONs regenerated (only the 21 intended scene files moved), `shoot.mjs` captured the
+home frames at 1920 and the presentation frames at 1600 (their existing sizes), the studio keyframes came from the
+storyboard scene seeked to 850 / 1550 / 2600 / 3900 / 5050 ms (`__STUDIO.load` → `seek` → `capture`, the recorder's
+keyframe loop without the video, a `.qa-dev` driver), and the encodes used the pipeline's cwebp parameters
+(`publish-presentation-r1.mjs --match …`, a new subset mode that re-encodes named frames and leaves the schema-2
+manifest to `showcase:publish`; `-m 6 -q 80 -sharp_yuv` for the home frames; the `studioShots()` q 82 call for the
+keyframes). `build-capture-recipes.mjs` refreshed the ten copyable recipes that moved.
+
+Every recipe on the three maps needed re-staging — the anchors they were scouted on (the winter lake at (195,−120),
+the autumn village at (10,40), the steppe hamlet at (0,45)) no longer exist, so the old positions landed on birch
+slopes, behind field walls, inside a spruce, on the (−14,−60) pond and inside the highway's poplar belts:
+
+- **Frosthollow** — ice breaker (35 / 05) and the studio loop moved onto the (38,70) and (−16,−150) ponds; the road
+  charge (37 / 07) comes down the terrace village street toward the lens (onion-dome church, cabins, the utility line,
+  the sawmill yard); village hell (38 / 08) is a drone over the (−80,−40) crossroads with the wreck blocking the
+  street; the ram (10) sits on the valley floor south of the Bystra crossing; the hero (37_contact) fires beside the
+  church.
+- **Amberford** — gold inferno (53 / 23) runs down the mid-line of the mid-orchard rows (the passer offset 5 m so the
+  ammo-rack fireball clears it); orchard stand (54 / 24) between the east orchard rows, the composition rotated +101°
+  to look up the rows; the ford ambush (52 / 22) on the manor-lane ford from the lane's south approach; the hero
+  (40_contact) on the stone bridge with the walled town and its church on the rise behind.
+- **Tarkhan Steppe** — horizon charge (55 / 25) on the open plain south of the wadi with the escarpment and its
+  kurgans as the horizon (moved 12 m north once: a wire obstacle ran across the lens's feet); windbreak snipe (57 / 27)
+  as a long lens down the highway between the poplar belts and the pole line (a side-on 36 m baseline at 21 m clipped
+  both hulls); the hero (41_contact) on the escarpment crest beside the un-kerbed (60,224) kurgan.
+
+The storyboard's "open" / "push" shots were re-aimed at the pond centre and widened 30 → 36° / 31 → 37° so both hulls
+clear the frame; the storyboard's authored camera heights were kept (the keyframes read as a low lens at the pond's
+edge).
+
+Verified by eye on 1280 px reductions of every rendition after three preview rounds (the frozen ponds, the terrace
+village and ridge, the bridge, ford, orchards and town, the wadi, escarpment, kurgans and highway belts), plus the
+`grade-battle-campaign.mjs` image metrics over the 26 raws (26 / 26 pass). Receipts: landing-media, feature-evidence,
+hero-rails, loadingScreens, socialProof, showcase-library (manifest + copyable recipes), public-repo-hygiene,
+attribution — no digest moved (the manifests pin ids, effect types and seeds, all unchanged). **Still open:** the
+fourteen `showcase-r1` frames of Frosthollow and Tarkhan (`67–70 / 81 / 83 / 84_action_*`,
+`97–100 / 111 / 113 / 114_foreground_*`) — the landing hero `113_foreground_winter_ice_breaker`, six mosaic tiles and
+the README's `84_action_steppe_horizon_charge` — still show the round-1 maps; they are the 4K battle campaign
+(`gen-battle-campaign.mjs` derives them from the scenes2 recipes, so a regeneration inherits these stagings) and need
+the campaign's own 60-frame grade, contact-sheet review and `showcase:publish` gate. The landing-r1 studio video
+(`studio-leclerc-knockout.mp4`, the r2 recorder's inline scene on the old lake) is byte-pinned and also open.
 ### Round 52 — 2026-09-24: Saltwind Narrows' strand
 
 Owner decision 20 (2026-09-23): "Saltwind strand wider: 20 m, re-plan the boat landings". The hooked bay's graded
@@ -1281,6 +1334,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 48 | Tarkhan Steppe redesign: a new battlefield under the kept palette — takyr-floored braided wadi across the middle, 12 m escarpment with two ramps and a kurgan line on its crest, grain station (SE), kolkhoz and corrals (W), salt pan (NW), caravanserai rise, five authored roads, shelterbelts instead of groves, three graded aprons for the objective placement, recaptured collision shard | headless layout probe (bed −4.3 m, crest 16–18 m, mounds +5..8 m, pads relief ≤ 5.8 m, both-team reach on every row); wall-probe A/B (centre-far skyline 0.99 → 0.92, kurgan-line band 181 → 164 luma, plateau-south 161 → 134; sky-w unchanged 0.87 → 0.89); 38 receipts green, two shared digests moved for the integrator |
 | 48 | Landing (2026-09-24): Amberford's and Tarkhan's dedicated collision shards recaptured on the combined tree (the lane left the round-1 Amberford shard; census receipts pin counts only), bot relocation cells on holdable ground + flank rings scored for reach + a closed penetration gate held against a stationary target starts the flank, the three redesigned player pads moved 60 / 60 / 120 m down their approaches onto flat-scanned cells | battlePacing 14/124 (from 18; ledger 17 → 16 → 17 → 16 → 14 across the five fixes), dedicatedWorldCollision census, collisionManifestCodec, terrainStreaming spawn windows, garage:terrain:check, spawnClearance / mapQuality / matchPlacement / minimapObjectives, 11 AI receipts, typecheck; chain 70 |
 | 50 | The redesigned maps' tactical-map plates (Frosthollow, Tarkhan) and Garage cards (all three: 4K hero + picker thumb) re-rendered from the new battlefields — they still showed the Verdant clones; the round-48 pacing trace committed as `tools/pacing-trace.mjs` | map-art-guards, minimapAssetRuntime / CapturePolicy / Orientation, loadingScreens, landing-media, public-repo-hygiene, attribution; eye check of the 1280 px reductions; chain 71 |
+| 51 | Home showcase frames of the redesigned maps: the eight orphaned `public/media/home` frames, thirteen `presentation-r1` frames (five owner picks on the home rail / maps section / featured gallery / docs page, eight archive frames) and the five Frosthollow studio-loop keyframes re-rendered from the round-48 battlefields; every recipe on the three maps re-staged in its generator (ponds, terrace village street and crossroads, orchard rows, stone bridge, ford, open steppe, highway belts, kurgan crest); `publish-presentation-r1.mjs --match` subset mode | eye check of 1280 px reductions after three preview rounds; campaign image metrics 26 / 26; landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, public-repo-hygiene, attribution — no digest moved |
 | 52 | Saltwind Narrows' strand 12 → 20 m (owner decision 20): a pale beach now separates the bay from the grass along the whole shore; boat landings kept (beachedBoat / riverLandings unchanged) | map-view-probe A/B (bird-w-edge, shore-w-oblique, edge-w-low, w-wall-mid), badlandsRelief slice, shoreDirtMask / mangroveWaterPalette / villageWear re-pins, 17 shore receipts green; chain 73 |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
