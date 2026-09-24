@@ -29,6 +29,12 @@ kl01s-projects` must list only the intentional deployments in this table.
 
 Bundle = the hashed entry chunk served by production after the deploy (`main-<hash>.js`), the
 quickest proof that the live site is the gate build.
+An assets-only round (tactical-map plates, Garage cards, showcase frames) keeps the previous
+`main-<hash>.js`, so the bundle name proves nothing there: the proof is the served
+`application-version` meta (`v1.0.0+g<gated sha>`) plus a served-vs-local byte check of every
+changed asset (`curl -sI .../<asset>` content-length against `stat -f %z public/<asset>`). Deploys 71
+and 74 (2026-09-24) landed this way; a landing script that stops on "the bundle did not change" has
+misread such a round.
 
 Garage visual fixes require a real Garage check against the production build,
 then against the production URL after deployment. Record the served
