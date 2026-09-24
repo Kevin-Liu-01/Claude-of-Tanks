@@ -88,20 +88,21 @@ function dispose(built) {
 // in the strand's band instead of on the plain 1.03–1.12 R circle; the mangrove rows (no authored shelf) are unchanged.
 // 2026-09-24 (round 58, jetties at the water's edge): the nine strand rows re-pinned again — the coastal kit's jetty and
 // Saltwind's piers now stand where the strand law puts them (shoreJetty.ts: planted piles from the bed, the deck a
-// constant freeboard over the water surface, a gangway, a moored clinker hull with bollards and lines), so the shared
-// draw count moves on Saltmere and Nordhavn (the deck spans follow the shelf) and every non-boat byte with it; the
-// mangrove rows are unchanged.
+// constant freeboard over the water surface, a gangway, a moored clinker hull with bollards and lines). The kit burns
+// the retired jetty's 94 draws, so every boat, log and buoy keeps its place; the wrack line's per-piece draws follow
+// its admission past the deck's keep-out, so the shared count and the non-boat bytes still move on Saltmere and
+// Nordhavn; Saltwind's count is unchanged; the mangrove rows are unchanged.
 const controls = {
-'coastal:1337': [15988, 0.6050490257330239, 7, 31089, 47604, 1407504, 1285, 'f8bc2a1bb0284bd5af92034875ffe41eb413153e13b8389834830a59679117ec'],
-  'fjord:1337': [16473, 0.7798096521291882, 0, 14205, 23976, 621312, 563, '96013f393287d9380f9fb1b9fbd71c239077828cfe684be0220bc3f954fe4a5e'],
+'coastal:1337': [15988, 0.6050490257330239, 7, 30777, 47136, 1392840, 1272, '2d1282350520cdf64d1d12429a39a8297c0438231d2bdc639978ea807ad1ab38'],
+  'fjord:1337': [16295, 0.10437886603176594, 0, 13941, 23580, 606600, 552, 'bd45ce523a14a00abb737ba03c488710ae781f190f52bcf5ffb3c4ccaf3ee3cc'],
   'mangrove:1337': [948, 0.8354170476086438, 3, 2918, 5652, 104680, 157, 'afec74e5fc20f8317d4206b2223ab748a0f2e98460e788a7ba984c22c4cf2bb7'],
   'saltwind:1337': [11683, 0.8688368322327733, 2, 22836, 34740, 1034232, 947, '355ff90b64a1568a90b99e35b7e78f278829322b8ed2b58c60ef8d41b46b4bf0'],
-  'coastal:2049': [17211, 0.9449044358916581, 7, 33537, 51276, 1523424, 1387, '01042cd750891e97087022be1e753105a52a7ab9e612f865d4fbf03866b06d1a'],
-  'fjord:2049': [18133, 0.19706391007639468, 0, 18309, 30132, 816792, 734, '4d1b0dad829775b1a275d71df5fff6a7899e8da8084eea29c6f1839e624caf98'],
+  'coastal:2049': [17211, 0.9449044358916581, 7, 33753, 51600, 1533576, 1396, 'c97363c3bf970dc214800ebf9f35263c88e44c104857155294081deabd9dc696'],
+  'fjord:2049': [18120, 0.38512790366075933, 0, 18519, 30204, 821280, 745, '9e36ed9024092c8e99e97559a5e679f9596ac1ee1e5da6adeed1db5bde8077ef'],
   'mangrove:2049': [1171, 0.2525088486727327, 3, 3324, 6696, 119760, 186, '1829ce951029eb888a7a82b89b10c5053853311c66e89bb4c0f73f439e277e86'],
   'saltwind:2049': [12995, 0.2858398121315986, 2, 26268, 39888, 1195536, 1090, '799f7bcc39933da1d367c2bbf3f13b09d0385c8a8b813c15b29c6e120d4c267b'],
-  'coastal:7719': [16469, 0.712008988019079, 7, 32001, 48972, 1451232, 1323, '74e38392241b8227359c0fdedf8ced3eadb672f3c93bf2016de1410fe774576a'],
-  'fjord:7719': [15546, 0.044934268575161695, 0, 11199, 19224, 482136, 440, '03b7674186c3ac3649474cc63508628aa54b98c98c15f182e4c700ecbacbb5c4'],
+  'coastal:7719': [16051, 0.0014915757346898317, 7, 31137, 47676, 1411200, 1287, '1af66cf45b40ab500344db88e9fa7173a9aca8277406d08af70c92d7bd304fb6'],
+  'fjord:7719': [15546, 0.044934268575161695, 0, 11175, 19188, 481872, 439, '8adbfbca6735654580ed3ac9e9abf9073a83fafc6668116d422dd291a1adb5b8'],
   'mangrove:7719': [1154, 0.6781580389942974, 3, 3338, 6732, 120280, 187, '42198b4f72d2e8384ca6ce9dd62224e2c485747b01025935d9fc187a4507eef7'],
   'saltwind:7719': [12274, 0.25415970711037517, 2, 24444, 37152, 1109520, 1014, '2e285809296137b6fca4bde1ce2b91d047b66ee380b7bab9235c34569ad0425b'],
 };

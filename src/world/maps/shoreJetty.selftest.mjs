@@ -150,7 +150,9 @@ console.log(`shoreJetty.selftest: ${plans} plans audited over nine fields — ${
 // ------------------------------------------------------------------ the built kit stands where the plan says
 {
   const kits = readFileSync(new URL('./mapKits.ts', import.meta.url), 'utf8');
-  assert.match(kits, /const rng = landingStream\(plan\);/, 'the landing pieces draw from the landing\'s own stream');
+  assert.match(kits, /rng: Rng = landingStream\(plan\)/, 'the landing pieces draw from the landing\'s own stream');
+  assert.match(kits, /for \(let i = 0; i < LEGACY_COASTAL_JETTY_DRAWS; i\+\+\) rng\(\);/, 'the coastal kit burns the retired jetty\'s draws so later dressing keeps its place');
+  assert.match(kits, /const stream = landingStream\(plan\);\n  jetty\(buckets, stream,/, 'the coastal jetty\'s timber comes from the landing stream');
   assert.ok(!/buckets\.dark\.push/.test(kits.slice(kits.indexOf('function jettyMoorings'), kits.indexOf('function dressShoreLanding'))), 'the mooring lines open no new bucket');
   const a = landingStream({ x: 10, z: -20, spans: 7 }), b = landingStream({ x: 10, z: -20, spans: 7 }), c = landingStream({ x: 10, z: -20, spans: 8 });
   const seqA = [a(), a(), a()], seqB = [b(), b(), b()], seqC = [c(), c(), c()];

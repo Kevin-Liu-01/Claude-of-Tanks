@@ -1287,6 +1287,9 @@ function addCoastalBuoys(
   }
 }
 
+/** The draws of the retired 1.05 R coastal jetty (14 piles × (a yaw + four UV draws) + 6 deck segments × four UV draws). */
+const LEGACY_COASTAL_JETTY_DRAWS = 94;
+
 // =============================================================================
 // round 58 (2026-09-24) — the pieces that key on a jetty at the water's edge (shoreJetty.ts plans it): the gangway
 // from the sand, the boat moored alongside its outer spans, the bollards and mooring lines. Both the coastal kit's
@@ -1406,9 +1409,8 @@ function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan,
 /** Every piece that keys on a planned jetty, drawn from the landing's own stream (the kit's main sequence is untouched). */
 function dressShoreLanding(
   buckets: DressingBuckets, heightField: DressingHeightField, plan: ShoreJettyPlan,
-  groundingReceipts?: GroundingReceipt[] | null,
+  groundingReceipts?: GroundingReceipt[] | null, rng: Rng = landingStream(plan),
 ): void {
-  const rng = landingStream(plan);
   jettyGangway(buckets, rng, plan, groundingReceipts);
   const boat = mooredBoat(buckets, rng, heightField, plan, groundingReceipts);
   if (boat) jettyMoorings(buckets, rng, plan, boat);
@@ -1441,6 +1443,10 @@ function addCoastalJetty(
   // the kit's window, the first whose contour admits a jetty of the kit's length; a shore that admits none keeps its
   // boats, driftwood and buoys and gets no jetty. The deck and piles are the river landings' planted kit.
   const drawn = Math.PI + (rng() - 0.5) * 0.5;
+  // The old 11 m kit drew 94 values for its fourteen piles and six deck segments. The planted kit takes its timber from
+  // the landing's own stream below and burns those 94 here, so every later draw of the map — the next arm's driftwood
+  // and buoys, the wrack line — keeps the place it had; only the jetty and what keys on it move.
+  for (let i = 0; i < LEGACY_COASTAL_JETTY_DRAWS; i++) rng();
   let plan: ShoreJettyPlan | null = null;
   for (let step = 0; step <= 5 && !plan; step++) {
     for (const sign of step === 0 ? [1] : [1, -1]) {
@@ -1449,8 +1455,9 @@ function addCoastalJetty(
     }
   }
   if (!plan) return;
-  jetty(buckets, rng, plan.x, plan.z, plan.angle, plan.deckY - 0.82, plan.length, heightField, groundingReceipts);
-  dressShoreLanding(buckets, heightField, plan, groundingReceipts);
+  const stream = landingStream(plan);
+  jetty(buckets, stream, plan.x, plan.z, plan.angle, plan.deckY - 0.82, plan.length, heightField, groundingReceipts);
+  dressShoreLanding(buckets, heightField, plan, groundingReceipts, stream);
   registerShoreLanding(shore, plan);
 }
 
