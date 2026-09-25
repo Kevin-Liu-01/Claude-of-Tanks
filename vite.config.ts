@@ -119,7 +119,10 @@ export default defineConfig({
       name: 'cot-app-version',
       enforce: 'pre',
       transformIndexHtml(html) {
-        return replaceAppVersionTokens(html, appVersion);
+        // entry telemetry (docs/ENTRY-RESILIENCE.md): the inline watchdog's
+        // beacon follows the same self-hosted switch as src/analytics.ts.
+        return replaceAppVersionTokens(html, appVersion)
+          .replaceAll('{{COT_TELEMETRY}}', process.env.VITE_SELF_HOSTED === '1' ? 'off' : 'on');
       },
     },
     {

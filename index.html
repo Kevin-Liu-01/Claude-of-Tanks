@@ -18,6 +18,8 @@
   <meta name="description" content="Claude of Tanks is a free browser-native armored warfare game with {{COT_PRODUCTION_VEHICLES}} production vehicles, {{COT_BATTLEFIELDS}} battlefields, bot and multiplayer battles, X-ray killcams, and a cinematic scene studio — pure Three.js, no install, no account." />
   <meta name="application-name" content="Claude of Tanks" />
   <meta name="application-version" content="{{COT_APP_VERSION}}" />
+  <!-- entry telemetry (docs/ENTRY-RESILIENCE.md): the inline watchdog beacons only when this is on; self-hosted builds set off -->
+  <meta name="cot-telemetry" content="{{COT_TELEMETRY}}" />
   <link rel="canonical" href="https://cot.kevinliu.studio/" />
   <link rel="describedby" href="/llms.txt" type="text/plain" />
   <link rel="manifest" href="/site.webmanifest" />
@@ -437,12 +439,22 @@
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-tip { height: 144px; }
   </style>
   <script>
-    // CHUNK RECOVERY r3: production sessions are deployment-pinned by routing
+    // CHUNK RECOVERY r4: production sessions are deployment-pinned by routing
     // middleware, but a missing/obsolete pin can leave an old document asking
     // the current deployment for a removed lazy hash. Weak/mobile browsers can
     // also abort a large module fetch. Keep the rejected import rejected so its
     // real cause is observable, recover the document at most twice, then expose
     // an honest retry instead of entering a refresh loop.
+    // r4 (2026-09-25, docs/ENTRY-RESILIENCE.md): the document watchdogs measure
+    // downloads. They used to fire 30/60 s after load while a slow connection
+    // was still delivering the entry graph; now every Resource Timing arrival
+    // (and every module stage) re-arms them, so they fire only after a full
+    // window with nothing arriving, a silent minute is confirmed against a
+    // connectivity probe before the document is replaced, and the terminal
+    // message says which it was: a file that failed to download (named), a
+    // graphics driver that refused, or a connection that is merely slow. The
+    // terminal outcomes are beaconed to /api/telemetry with the same anonymous
+    // session id the module client reuses.
     (() => {
       const KEY = 'cot.bootRecovery.v1';
       const MAX_AUTO_RELOADS = 2;
@@ -464,14 +476,37 @@
       const STAGE_NOTICE_MS = 16000;
       const STAGE_RECOVER_MS = 30000;
       const STABLE_READY_MS = 30000;
+      // Bytes seen within this window mean the connection is delivering, however slowly.
+      const NETWORK_FRESH_MS = 15000;
+      const loadedAt = Date.now();
       let navigating = false;
       let recoveryScheduled = false;
       let stageTimer = 0;
       let stageRecoveryTimer = 0;
+      let noticeTimer = 0;
+      let recoverTimer = 0;
+      let lastArmedAt = 0;
       let deferredRecoveryReason = '';
       // Capability gate (2026-09-24): a deliberate stop on the boot screen
       // (no WebGL2, refused context) must never be "recovered" by a reload.
       let halted = false;
+      let moduleOwnsStage = false;
+      let lastStage = 'download';
+      let lastFailedFile = '';
+      let lastErrorText = '';
+      let terminalBeaconSent = false;
+      let surfaceOwned = false;
+      let failedByStatus = '';
+      const network = { entries: 0, scripts: 0, bytes: 0, expected: 0, lastProgressAt: loadedAt };
+
+      // One anonymous session id per page load, shared with src/entry/telemetry.ts.
+      try {
+        if (!window.__COT_TELEMETRY_SID) {
+          let id = 's';
+          for (let i = 0; i < 16; i++) id += Math.floor(Math.random() * 36).toString(36);
+          window.__COT_TELEMETRY_SID = id;
+        }
+      } catch (_) { /* a frozen window still boots */ }
 
       function retryCountFromUrl() {
         try {
@@ -498,6 +533,80 @@
         try { sessionStorage.setItem(KEY, JSON.stringify(value)); } catch (_) { /* ok */ }
       }
 
+      // Same opt-outs as the module client: ?telemetry=off, the Diagnostics
+      // setting, Do Not Track / GPC, automation, and self-hosted builds (meta).
+      function telemetryAllowed() {
+        try {
+          const meta = document.querySelector && document.querySelector('meta[name="cot-telemetry"]');
+          if (meta && meta.getAttribute('content') === 'off') return false;
+          const query = String(location.search || '');
+          if (/[?&]telemetry=off(?:[&#]|$)/.test(query)) return false;
+          if (/[?&]telemetry=on(?:[&#]|$)/.test(query)) return true;
+          const nav = globalThis.navigator || {};
+          if (nav.doNotTrack === '1' || window.doNotTrack === '1' || nav.globalPrivacyControl === true || nav.webdriver === true) return false;
+          try { if (localStorage.getItem('cot.telemetry') === 'off') return false; } catch (_) { /* blocked storage is not an opt-out */ }
+          return true;
+        } catch (_) { return false; }
+      }
+      function bounded(value) {
+        return String(value || '').replace(/[^A-Za-z0-9_.:-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 48) || 'unknown';
+      }
+      function beacon(event) {
+        if (!telemetryAllowed()) return;
+        try {
+          const meta = document.querySelector && document.querySelector('meta[name="application-version"]');
+          const build = String(meta && meta.getAttribute('content') || 'unknown').replace(/[^A-Za-z0-9+._-]+/g, '_').slice(0, 64) || 'unknown';
+          const body = JSON.stringify(Object.assign({ v: 1, sid: window.__COT_TELEMETRY_SID, build, ms: Date.now() - loadedAt }, event));
+          const nav = globalThis.navigator;
+          if (nav && typeof nav.sendBeacon === 'function' && nav.sendBeacon('/api/telemetry', body)) return;
+          if (typeof fetch === 'function') {
+            fetch('/api/telemetry', { method: 'POST', body, keepalive: true, credentials: 'omit',
+              headers: { 'content-type': 'text/plain;charset=UTF-8' } }).catch(() => {});
+          }
+        } catch (_) { /* the beacon never breaks recovery */ }
+      }
+
+      // Which failure is this? The words on the retry surface follow the class.
+      function classify(reason) {
+        const text = String(reason || '');
+        if (/^manual:/.test(text)) return classify(text.slice(7));
+        if (text === 'offline') return 'offline';
+        if (/^(?:preload|module|module-promise)$/.test(text)) return 'chunk';
+        if (/^(?:boot-runtime|boot-promise)$/.test(text)) {
+          if (/webgl|context|shader|program|framebuffer|gl_|renderer/i.test(lastErrorText)) return 'driver';
+          return lastFailedFile ? 'chunk' : 'script';
+        }
+        if (Date.now() - network.lastProgressAt < NETWORK_FRESH_MS) return 'slow';
+        const nav = globalThis.navigator;
+        if (nav && nav.onLine === false) return 'offline';
+        return 'stalled';
+      }
+      const MESSAGES = {
+        chunk: 'A game file failed to download',
+        driver: 'The graphics driver refused to start — close other 3D tabs or reload',
+        script: 'The game hit an error while starting — reload',
+        slow: 'Loading is taking longer than expected on this connection — keep waiting or reload',
+        offline: 'Nothing has downloaded for a while — check your connection and reload',
+        stalled: 'Loading stalled — nothing arrived for a minute; reload',
+      };
+      function describe(reason) {
+        const kind = classify(reason);
+        const file = failedByStatus || lastFailedFile;
+        const nav = globalThis.navigator;
+        let text = MESSAGES[kind];
+        if (kind === 'chunk' && file) text += ' (' + file + ')';
+        if (kind === 'chunk' && nav && nav.onLine === false) text += ' — you appear to be offline; it retries when the connection returns';
+        return { kind, text };
+      }
+      // A failed import names the entry script, not the dependency that 404ed;
+      // Resource Timing's responseStatus (noteNetworkProgress) names that file.
+      function noteFailure(text) {
+        const joined = String(text || '').replace(/\s+/g, ' ').trim();
+        if (joined) lastErrorText = joined.slice(0, 300);
+        const asset = /\/assets\/([^\s'")?#]+)/.exec(joined);
+        if (asset) lastFailedFile = asset[1];
+      }
+
       function reload(reason) {
         if (navigating) return;
         navigating = true;
@@ -518,25 +627,24 @@
 
       function showNotice(reason) {
         if (halted || navigating || window.__GAME_READY) return;
+        surfaceOwned = true;
         const stage = document.getElementById('cot-boot-stage');
-        if (stage) stage.textContent = reason === 'timeout' || reason.startsWith('stall:')
-          ? 'Loading is taking longer than expected'
-          : 'A game file did not load';
+        if (stage) stage.textContent = describe(reason).text;
       }
       function showRetry(reason) {
         if (halted || navigating) return;
+        surfaceOwned = true;
+        const verdict = describe(reason);
         const stage = document.getElementById('cot-boot-stage');
         let retry = document.getElementById('cot-boot-retry');
-        if (stage) stage.textContent = reason === 'timeout' || reason.startsWith('stall:')
-          ? 'Loading is taking longer than expected'
-          : 'A game file did not load';
+        if (stage) stage.textContent = verdict.text;
         // bootScreen removes its DOM after entry. A post-boot network failure
         // still needs a visible recovery action if the one automatic reload
         // has already been spent.
         if (!retry && window.__GAME_READY) {
           retry = document.createElement('button');
           retry.id = 'cot-runtime-retry';
-          retry.textContent = 'A game file did not load — reload';
+          retry.textContent = verdict.text + ' — reload';
           retry.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:1px solid #f0a030;background:#0b1117;color:#ffe4b0;font:700 12px sans-serif;cursor:pointer';
           document.body.appendChild(retry);
         }
@@ -544,11 +652,32 @@
           retry.classList.add('on');
           retry.onclick = () => reload(`manual:${reason}`);
         }
+        if (!terminalBeaconSent) {
+          terminalBeaconSent = true;
+          const exhausted = state().count >= MAX_AUTO_RELOADS || !canAutoRecover() || verdict.kind === 'offline';
+          beacon({ kind: 'boot_error', stage: bounded(lastStage), reason: bounded(reason), code: verdict.kind,
+            outcome: exhausted ? 'halted' : 'notice',
+            error: { message: lastErrorText || verdict.text, frames: [failedByStatus, lastFailedFile].filter(Boolean).slice(0, 2) } });
+        }
       }
 
       function canAutoRecover() {
         if (document.hidden) return false;
         return !globalThis.navigator || globalThis.navigator.onLine !== false;
+      }
+
+      // A silent minute with a working connection means the requests are stuck
+      // and a fresh document restarts them; without a connection a reload only
+      // produces an error page, so the document waits for `online` instead.
+      function probeConnectivity(done) {
+        if (typeof fetch !== 'function') { done(true); return; }
+        let settled = false;
+        const finish = (ok) => { if (settled) return; settled = true; done(ok); };
+        setTimeout(() => finish(false), 5000);
+        try {
+          fetch('/humans.txt?_cotprobe=' + Date.now().toString(36), { cache: 'no-store', credentials: 'omit' })
+            .then((response) => finish(!!response && response.ok), () => finish(false));
+        } catch (_) { finish(false); }
       }
 
       function recover(reason) {
@@ -559,18 +688,57 @@
           return;
         }
         deferredRecoveryReason = '';
-        if (state().count < MAX_AUTO_RELOADS) {
+        if (state().count >= MAX_AUTO_RELOADS) {
+          showRetry(reason);
+          return;
+        }
+        const commit = () => {
+          if (halted || navigating || recoveryScheduled) return;
           recoveryScheduled = true;
           window.__CHUNK_RECOVERY_PENDING = true;
+          beacon({ kind: 'boot_error', stage: bounded(lastStage), reason: bounded(reason), code: 'reload:' + classify(reason),
+            outcome: 'failed', error: { message: lastErrorText || String(reason), frames: [failedByStatus, lastFailedFile].filter(Boolean).slice(0, 2) } });
           // Let the failed request unwind before replacing the document.
           setTimeout(() => reload(reason), 150);
-        } else {
-          showRetry(reason);
+        };
+        if (reason === 'timeout' || /^stall:/.test(String(reason))) {
+          probeConnectivity((ok) => {
+            if (ok) commit();
+            else { deferredRecoveryReason = reason; showRetry('offline'); }
+          });
+          return;
         }
+        commit();
       }
 
-      function progress(stage = 'unknown') {
-        if (window.__GAME_READY || navigating) return;
+      function clearDocumentWatchdogs() {
+        if (noticeTimer) clearTimeout(noticeTimer);
+        if (recoverTimer) clearTimeout(recoverTimer);
+        noticeTimer = 0;
+        recoverTimer = 0;
+      }
+      // Both document watchdogs measure silence: every arrival re-arms them.
+      function armDocumentWatchdogs() {
+        if (window.__GAME_READY || navigating || halted) return;
+        clearDocumentWatchdogs();
+        lastArmedAt = Date.now();
+        noticeTimer = setTimeout(() => {
+          if (window.__GAME_READY || halted) return;
+          showRetry('timeout');
+        }, WATCHDOG_NOTICE_MS);
+        recoverTimer = setTimeout(() => {
+          if (window.__GAME_READY || halted) return;
+          if (state().count < MAX_AUTO_RELOADS) recover('timeout');
+          else showRetry('timeout');
+        }, WATCHDOG_RECOVER_MS);
+      }
+
+      function progress(stage = 'unknown', fromModule = true) {
+        if (window.__GAME_READY || navigating || halted) return;
+        if (fromModule) {
+          moduleOwnsStage = true;
+          lastStage = String(stage);
+        }
         window.__COT_BOOT_HEARTBEAT_AT = Date.now();
         if (stageTimer) clearTimeout(stageTimer);
         if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
@@ -580,6 +748,61 @@
         stageRecoveryTimer = setTimeout(() => {
           if (!window.__GAME_READY) recover(`stall:${stage}`);
         }, STAGE_RECOVER_MS);
+        armDocumentWatchdogs();
+      }
+
+      // Resource Timing is the download meter: entries and bytes arriving keep
+      // the document alive, and until the module claims the stage line the
+      // splash counts the entry graph's files as they land.
+      function paintDownloadProgress() {
+        if (moduleOwnsStage || surfaceOwned || halted || navigating || !network.expected) return;
+        const stage = document.getElementById('cot-boot-stage');
+        if (stage) stage.textContent = `Downloading game files · ${Math.min(network.scripts, network.expected)} / ${network.expected}`;
+      }
+      function noteNetworkProgress(entries) {
+        let bytes = 0;
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i] || {};
+          const name = String(entry.name || '');
+          network.entries += 1;
+          bytes += Number(entry.transferSize || entry.encodedBodySize || 0) || 0;
+          if (/\/assets\/[^/?#]+\.js(?:[?#]|$)/.test(name)) network.scripts += 1;
+          if (Number(entry.responseStatus) >= 400 && /\/assets\//.test(name)) failedByStatus = name.split('/').pop().split('?')[0];
+        }
+        network.bytes += bytes;
+        network.lastProgressAt = Date.now();
+        // Vite writes the modulepreload links after this inline script and the
+        // parser is still adding them while the first files land: recount until
+        // the module owns the stage line (browser proof 2026-09-25 read 17 of 104).
+        if (!moduleOwnsStage) {
+          try { network.expected = Math.max(network.expected, document.querySelectorAll('link[rel="modulepreload"]').length + 1); } catch (_) { /* keep the count */ }
+        }
+        paintDownloadProgress();
+        if (Date.now() - lastArmedAt >= 1000) armDocumentWatchdogs();
+      }
+      function watchNetwork() {
+        try {
+          if (typeof document.querySelectorAll === 'function') {
+            network.expected = document.querySelectorAll('link[rel="modulepreload"]').length + 1;
+          }
+        } catch (_) { /* no preload list, no counter */ }
+        try {
+          if (typeof PerformanceObserver === 'function') {
+            const observer = new PerformanceObserver((list) => noteNetworkProgress(list.getEntries()));
+            observer.observe({ type: 'resource', buffered: true });
+            return;
+          }
+        } catch (_) { /* fall back to polling */ }
+        try {
+          if (typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function') {
+            let seen = 0;
+            const poll = setInterval(() => {
+              if (window.__GAME_READY || navigating) { clearInterval(poll); return; }
+              const entries = performance.getEntriesByType('resource');
+              if (entries.length > seen) { noteNetworkProgress(entries.slice(seen)); seen = entries.length; }
+            }, 2000);
+          }
+        } catch (_) { /* no timing API: the watchdogs keep their load-time arming */ }
       }
 
       function isSameOriginGameCode(value) {
@@ -604,10 +827,12 @@
         } catch (_) { return false; }
       }
 
-      addEventListener('vite:preloadError', () => {
+      addEventListener('vite:preloadError', (event) => {
         // Preventing this event tells Vite that the failed import was handled,
         // so it resolves the import as `undefined`. That manufactured the
         // later Object.entries/createKillCam errors seen on battle re-entry.
+        const payload = event && event.payload;
+        noteFailure(payload && (payload.message || String(payload)));
         recover('preload');
       });
       addEventListener('error', (event) => {
@@ -619,6 +844,7 @@
           && (isSameOriginGameCode(`${event.filename || ''} ${event.error?.stack || ''}`)
             || isBootDocumentException(event));
         if (moduleScript || bootRuntime || /module script|dynamically imported module|module preload/i.test(message)) {
+          noteFailure(`${moduleScript && node.src ? node.src : ''} ${event.filename || ''} ${message} ${event.error?.message || ''} ${event.error?.stack || ''}`);
           recover(bootRuntime ? 'boot-runtime' : 'module');
         }
       }, true);
@@ -628,17 +854,18 @@
         const bootRuntime = !window.__GAME_READY
           && isSameOriginGameCode(`${message} ${event.reason?.stack || ''}`);
         if (bootRuntime || /module script|dynamically imported module|module preload|failed to fetch/i.test(message)) {
+          noteFailure(`${message} ${event.reason?.stack || ''}`);
           recover(bootRuntime ? 'boot-promise' : 'module-promise');
         }
       });
       const resumeDeferredRecovery = () => {
-        if (window.__GAME_READY || navigating) return;
+        if (window.__GAME_READY || navigating || halted) return;
         if (deferredRecoveryReason && canAutoRecover()) {
           const reason = deferredRecoveryReason;
           deferredRecoveryReason = '';
           recover(reason);
         } else if (canAutoRecover()) {
-          progress(document.hidden ? 'background' : 'resumed');
+          progress(document.hidden ? 'background' : 'resumed', false);
         }
       };
       addEventListener('visibilitychange', resumeDeferredRecovery);
@@ -649,6 +876,7 @@
         clearInterval(health);
         if (stageTimer) clearTimeout(stageTimer);
         if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
+        clearDocumentWatchdogs();
         // Keep the short-lived receipt. Clearing it immediately at ready made
         // a persistently missing post-boot chunk eligible for another reload
         // before the user could request it again.
@@ -664,15 +892,6 @@
           try { sessionStorage.removeItem(KEY); } catch (_) { /* storage may be blocked */ }
         }, STABLE_READY_MS);
       }, 500);
-      setTimeout(() => {
-        if (window.__GAME_READY) return;
-        showRetry('timeout');
-      }, WATCHDOG_NOTICE_MS);
-      setTimeout(() => {
-        if (window.__GAME_READY) return;
-        if (state().count < MAX_AUTO_RELOADS) recover('timeout');
-        else showRetry('timeout');
-      }, WATCHDOG_RECOVER_MS);
 
       // The capability gate stops the boot on purpose: keep its sentence on the
       // stage line, disarm every watchdog and ignore later document errors.
@@ -681,11 +900,19 @@
         window.__COT_BOOT_HALTED = String(code || 'halted');
         if (stageTimer) clearTimeout(stageTimer);
         if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
+        clearDocumentWatchdogs();
         const stage = document.getElementById('cot-boot-stage');
         if (stage && message) stage.textContent = String(message);
       }
 
-      window.__COT_BOOT_RECOVERY = { recover, showRetry, progress, state, halt };
+      watchNetwork();
+      armDocumentWatchdogs();
+
+      window.__COT_BOOT_RECOVERY = {
+        recover, showRetry, progress, state, halt,
+        network: () => ({ entries: network.entries, scripts: network.scripts, bytes: network.bytes,
+          expected: network.expected, sinceProgressMs: Date.now() - network.lastProgressAt, kind: classify('timeout') }),
+      };
     })();
   </script>
 </head>
