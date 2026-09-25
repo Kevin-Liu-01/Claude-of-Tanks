@@ -70,6 +70,8 @@ export const CLOUD_CUT_ZOOM = 1e-3;
 export const CLOUD_AERIAL = Object.freeze({
   density: 0.00145, hazeDensity: 0.00092, hazeStart: 85, extCeiling: 0.60, scatterCeiling: 0.55,
   desat: 0.62, cool: [0.90, 0.97, 1.08] as const, horizonCap: 0.45, hazeLumCap: 0.385,
+  /** the pass's height-aware atmosphere: the falloff's start over the camera (m), its e-fold height, the shares */
+  heightRef: 30, heightScale: 150, heightScatterK: 0.75, heightExtK: 0.35,
 });
 /** Light march toward the sun: sample distances (m) from the point, coarse taps beyond the detailed pair. */
 export const CLOUD_LIGHT_TAPS = Object.freeze([14, 34, 70, 140, 280, 560] as const);
@@ -155,9 +157,11 @@ float ign( vec2 px ) { return fract( 52.9829189 * fract( dot( px, vec2( 0.067110
 vec3 cloudWeather( vec2 pxz ) {
 	vec2 uv = ( pxz + uWeatherShift ) / ${f(CLOUD_WEATHER_TILE_M)};
 	vec4 w = texture2D( tWeather, uv );
-	float cov = clamp( ( w.r - ( 1.0 - uCoverage ) ) / max( uCoverage * 0.45, 0.02 ), 0.0, 1.0 );
+	// the equalised field admits exactly the map's coverage; inside, the local coverage runs 0..1 (skewed
+	// high) and carves the base shape into lumps — a region is never one solid slab
+	float cov = pow( clamp( ( w.r - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), 0.7 );
 	// cumuliform columns rise with the cell profile and the turret noise; a stratus ceiling is nearly flat
-	float cumTop = clamp( 0.30 + 0.70 * w.g * ( 0.65 + 0.7 * w.b ), 0.22, 1.0 );
+	float cumTop = clamp( 0.55 + 0.45 * w.g + ( w.b - 0.5 ) * 0.3, 0.3, 1.0 );
 	cumTop = mix( cumTop, 1.0, uTowers * w.g );
 	float strTop = 0.78 + 0.22 * w.b;
 	return vec3( cov, mix( cumTop, strTop, uStratiform ), w.a );
@@ -168,21 +172,23 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 	float hN = hRel / max( w.y, 0.05 );
 	if ( hN <= 0.0 || hN >= 1.0 || w.x <= 0.0 ) return 0.0;
 	// rounded bottom, eroded top (a stratus keeps its flat sheet almost to its top)
-	float hg = smoothstep( 0.0, 0.08, hN ) * smoothstep( 1.0, mix( 0.62, 0.92, uStratiform ), hN );
-	vec3 sp = ( p + uNoiseShift ) / uShapeTile;
+	float hg = smoothstep( 0.0, 0.12, hN ) * smoothstep( 1.0, mix( 0.62, 0.92, uStratiform ), hN );
+	// the slab is a few hundred metres thick against a kilometres-wide shape period: the volume is sampled
+	// with its vertical axis compressed so the billows read as tall as they are wide
+	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 2.5, 1.0 ) / uShapeTile;
 	vec4 s = texture( tShape, sp );
 	float lowFreq = s.g * 0.625 + s.b * 0.25 + s.a * 0.125;
 	float base = remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) * hg;
 	// a stratus sheet is dense across its footprint; cumulus keeps the shape's billows
 	base = mix( base, base * 0.35 + 0.65 * hg, uStratiform * 0.7 );
 	float d = remap( base, 1.0 - w.x, 1.0, 0.0, 1.0 ) * w.x;
-	if ( detail && d > 0.0 && d < 0.85 ) {
-		vec3 dp = ( p + uNoiseShift * 1.31 ) / ${f(CLOUD_DETAIL_TILE_M)};
+	if ( detail && d > 0.0 && d < 0.95 ) {
+		vec3 dp = ( p + uNoiseShift * 1.31 ) * vec3( 1.0, 1.5, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
 		float hf = dn.r * 0.625 + dn.g * 0.25 + dn.b * 0.125;
 		// wisps underneath, cauliflower lumps on top; a stratus erodes less
 		float erode = mix( hf, 1.0 - hf, clamp( hN * 8.0, 0.0, 1.0 ) );
-		d = remap( d, erode * 0.32 * ( 1.0 - uStratiform * 0.65 ), 1.0, 0.0, 1.0 );
+		d = remap( d, erode * 0.42 * ( 1.0 - uStratiform * 0.65 ), 1.0, 0.0, 1.0 );
 	}
 	return d;
 }
@@ -272,15 +278,17 @@ void main() {
 		float opacity = 1.0 - T;
 		if ( wAcc > 1e-4 ) {
 			// the aerial pass's law on the cloud's mean distance: desaturation and a cool shift, then the
-			// scatter-in toward the sky-view LUT along the ray under the same ceilings and caps
+			// scatter-in toward the sky-view LUT along the ray under the same ceilings and caps, both decaying
+			// with the cloud's altitude over the camera as the pass's height-aware atmosphere does
 			float dist = tAcc / wAcc;
+			float hAtt = exp( -max( dir.y * dist - ${f(CLOUD_AERIAL.heightRef)}, 0.0 ) / ${f(CLOUD_AERIAL.heightScale)} );
 			float x = dist * ${f(CLOUD_AERIAL.density)};
-			float fe = min( 1.0 - exp( -x * x ), ${f(CLOUD_AERIAL.extCeiling)} );
+			float fe = min( 1.0 - exp( -x * x ), ${f(CLOUD_AERIAL.extCeiling)} ) * mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightExtK)} );
 			float lum = dot( L, vec3( 0.2126, 0.7152, 0.0722 ) );
 			vec3 hazy = mix( L, vec3( lum ), ${f(CLOUD_AERIAL.desat)} ) * vec3( ${CLOUD_AERIAL.cool.map(f).join(', ')} );
 			L = mix( L, hazy, fe );
 			float hz = max( dist - ${f(CLOUD_AERIAL.hazeStart)}, 0.0 ) * ${f(CLOUD_AERIAL.hazeDensity)};
-			float fs = min( 1.0 - exp( -hz * hz ), ${f(CLOUD_AERIAL.scatterCeiling)} );
+			float fs = min( 1.0 - exp( -hz * hz ), ${f(CLOUD_AERIAL.scatterCeiling)} ) * mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightScatterK)} );
 			vec3 skyDir = normalize( vec3( dir.x, max( dir.y, 0.02 ), dir.z ) );
 			vec3 target = atmoSkyVisible( skyDir );
 			float tl = dot( target, vec3( 0.2126, 0.7152, 0.0722 ) );
@@ -762,7 +770,7 @@ export class VolumetricCloudLayer {
     const irr = summary?.irradiance ?? a.irradiance;
     (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.9);
     const hz = summary?.horizon ?? irr;
-    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.55);
+    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.42);
     this.domeMaterial.uniforms.uSkyIntensity.value = a.skyIntensity;
   }
 
