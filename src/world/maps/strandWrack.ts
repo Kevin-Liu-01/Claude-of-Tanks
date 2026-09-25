@@ -10,6 +10,11 @@
 // buckets (vertex-coloured `baked`, textured `wood`): no new material, draw call, collision record or instance pool.
 // Nothing is hand-placed; the pieces follow the contour, the marched band, the map's roads, spawn pads, boats, jetties
 // and building footprints. Deterministic: one seeded draw sequence, no wall clock.
+//
+// Round 67 (2026-09-24): a per-station draw budget. Every station and every landing piece draws from its own stream,
+// keyed by one salt the map's stream hands each lake and by the station's index, so a keep-out that moves (a jetty
+// re-planned, a boat hauled up) changes only the stations it touches and every other station lays the bytes it laid
+// — before, the pieces' draws followed admission on the shared stream and the whole line past a landing re-rolled.
 
 import * as THREE from 'three';
 import { box, jitterUV } from '../propGeometry.ts';
@@ -100,6 +105,17 @@ const _right = new THREE.Vector3(1, 0, 0);
 const _normal = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 const _color = new THREE.Color();
+
+/** Round 67: a station's own stream (terrain.ts's mulberry32) from the lake's salt and the station's index. */
+export function stationStream(salt: number, index: number): Rng {
+  let a = (Math.imul(salt | 0, 0x9e3779b1) ^ Math.imul(index + 1, 0x85ebca6b)) | 0;
+  return function () {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
 
 function hash32(value: number): number {
   value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
@@ -453,20 +469,23 @@ function isStrandLake(lake: StrandLake): lake is StrandLake & { level: number; s
 export function dressStrandWrack(ctx: StrandContext): StrandWrackCensus {
   const census: StrandWrackCensus = { lakes: 0, stations: 0, mats: 0, sticks: 0, pebbles: 0, shells: 0, landingPieces: 0 };
   const extent = ctx.extent ?? EXTENT_M;
-  const { rng, heightField: field } = ctx;
+  const { heightField: field } = ctx;
   ctx.lakes.forEach((lake, lakeIndex) => {
     if (!isStrandLake(lake)) return;
     census.lakes++;
     const [phaseA, phaseB] = shorelinePhases(lake);
     const table = marchBands(field, lake, extent);
     const p: Placement = { ctx, lake, level: lake.level, extent, salt: hash32(lakeIndex * 2654435761 + 97) };
-    let angle = 0, s = 0;
+    // round 67: the map's stream hands this lake one salt; every station and landing piece draws from its own stream
+    const lakeSalt = Math.floor(ctx.rng() * 4294967296);
+    let angle = 0, s = 0, station = 0;
     while (angle < TAU) {
       const here = angle;
       const radius = shorelineRadiusAt(lake, here);
       const cos = Math.cos(here), sin = Math.sin(here);
       angle += STATION_M / radius;
       s += STATION_M;
+      station++;
       if (Math.max(Math.abs(lake.x + cos * radius), Math.abs(lake.z + sin * radius)) > extent + 12) continue;
       const band = bandAt(table, here);
       if (!band) continue;
@@ -475,7 +494,9 @@ export function dressStrandWrack(ctx: StrandContext): StrandWrackCensus {
       const line = wrackLine(s, phaseA, phaseB);
       const width = band[1] - band[0];
       const tangent = here + Math.PI / 2;
-      // one draw per kind per station, in a fixed order, so the sequence never depends on what was admitted
+      const rng = stationStream(lakeSalt, station);
+      // one draw per kind per station, in a fixed order, from the station's own stream: what this station lays never
+      // depends on what any other station admitted
       if (rng() < KELP_CHANCE * density * Math.sqrt(density)) {
         let t = line + (rng() - 0.5) * 0.35;
         t = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -498,12 +519,14 @@ export function dressStrandWrack(ctx: StrandContext): StrandWrackCensus {
       }
     }
     // the larger pieces beside each landing on this shore: a timber baulk, a broken crate, a rope coil, a second baulk
+    // (round 67: each piece from its own stream, keyed by the landing's shore end and the piece's index)
     if (ctx.landings) for (const landing of ctx.landings) {
       const dx = landing.x - lake.x, dz = landing.z - lake.z;
       const at = Math.atan2(dz, dx);
       const here = shorelineRadiusAt(lake, at);
       if (Math.abs(Math.hypot(dx, dz) - here) > here * 0.25) continue; // another lake's landing
       for (let k = 0; k < 4; k++) {
+        const rng = stationStream(lakeSalt ^ hash32(Math.round(landing.x * 8) * 73856093 ^ Math.round(landing.z * 8) * 19349663), 1000003 + k);
         const side = rng() < 0.5 ? -1 : 1;
         const along = (4 + rng() * 10) * side;
         const a = at + along / here;

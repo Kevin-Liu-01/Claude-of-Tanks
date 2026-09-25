@@ -298,7 +298,9 @@ for (const seed of [1337, 2025, 7719]) {
   // round 58 (2026-09-24): 1008 / 70560 / 2016 were the two boats, piles and decks; the gangways, moored hulls, bollards
   // and lines add 480 triangles (seed-independent: the plans and their streams key on the shore ends)
   // round 67 (2026-09-24): the shelf-sized piers (7 + 8 spans, 34 piles, one mast) — 1488 / 104160 / 2976 → 1284 / 89880 / 2568,
-  // the merged 4464 / 142848 → 3852 / 123264, the draw count 12005 → 11964 and its state re-pinned
+  // the merged 4464 / 142848 → 3852 / 123264, the draw count 12005 → 11964 and its state re-pinned; then the wrack line's
+  // per-station draw budget (round 67): the wrack takes one salt per lake from the main stream instead of every piece's
+  // draws, so the count and state re-pinned again
   assert.equal(metrics.triangles, 1284);
   assert.equal(metrics.bytes, 89880);
   assert.equal(metrics.vertices, 2568);
@@ -316,8 +318,8 @@ for (const seed of [1337, 2025, 7719]) {
   assert.deepEqual(replay.receipts, result.receipts);
   // 396 / 1264123100 were the landings alone; the wrack line's draws follow them (round 56, 2026-09-24) and do not
   // depend on the field seed
-  assert.equal(result.calls, 11964);
-  assert.equal(result.state, -1509049396);
+  assert.equal(result.calls, 327);
+  assert.equal(result.state, -419840147);
   assert.equal(replay.state, result.state);
   disposeBuckets(result.buckets);
   disposeBuckets(replay.buckets);

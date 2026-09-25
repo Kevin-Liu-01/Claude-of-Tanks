@@ -168,3 +168,36 @@ console.log(`strandWrack.selftest: ${pieces} wrack pieces, ${logs} strand logs a
   assert.equal(dry.lakes, 1); assert.equal(dry.stations, 0, 'a shelf with no water under it has no strand');
 }
 console.log('strandWrack.selftest: band law, density, opt-out and empty-context checks pass');
+
+// Round 67 (2026-09-24): the per-station draw budget. A keep-out that moves changes only the stations it touches:
+// Saltmere's line laid with the kit's shipped keep-outs, then again with one more 4.2 m keep-out (a boat hauled up
+// on the wrack band far from the landings) — every piece more than 8 m from the added keep-out is byte-identical,
+// piece for piece; only stations inside it lose their pieces. Before this round the whole line past the first
+// affected station re-rolled (the pieces' draws followed admission on the shared stream).
+{
+  const config = getMapConfig('coastal'), field = createHeightField(1337, config), lake = field._layout.lakes[0];
+  const azimuth = 140 * Math.PI / 180;
+  const band = strandBandAt(field, lake, azimuth), [start, end] = wrackBand(band);
+  const r = (start + end) / 2, extra = { x: lake.x + Math.cos(azimuth) * r, z: lake.z + Math.sin(azimuth) * r, r: 4.2 };
+  const lay = (keepOut) => {
+    const buckets = { wood: [], baked: [] };
+    const census = dressStrandWrack({ lakes: field._layout.lakes, heightField: field, rng: mulberry32(1337 ^ 0x5a17), buckets,
+      spawns: [config.spawns.player, ...config.spawns.enemies], keepOut });
+    const pieces = buckets.baked.map((g) => {
+      const p = g.attributes.position; let cx = 0, cz = 0;
+      for (let i = 0; i < p.count; i++) { cx += p.getX(i) / p.count; cz += p.getZ(i) / p.count; }
+      return { cx, cz, digest: digest([g]) };
+    });
+    for (const g of [...buckets.baked, ...buckets.wood]) g.dispose();
+    return { census, pieces };
+  };
+  const before = lay([]), after = lay([extra]);
+  const far = (piece) => Math.hypot(piece.cx - extra.x, piece.cz - extra.z) > extra.r + 8;
+  const farBefore = before.pieces.filter(far).map((p) => p.digest).sort(), farAfter = after.pieces.filter(far).map((p) => p.digest).sort();
+  assert.ok(before.pieces.length > 500 && farBefore.length > 400, `Saltmere's line (${before.pieces.length} pieces, ${farBefore.length} far from the added keep-out)`);
+  assert.deepEqual(farAfter, farBefore, 'every piece more than 8 m from the moved keep-out is byte-identical');
+  const nearBefore = before.pieces.length - farBefore.length, nearAfter = after.pieces.length - farAfter.length;
+  assert.ok(nearBefore > 0 && nearAfter < nearBefore, `only the stations inside the keep-out change (${nearBefore} → ${nearAfter} pieces beside it)`);
+  assert.equal(after.census.stations, before.census.stations, 'the station count is the law\'s, not the keep-out\'s');
+  console.log(`strandWrack.selftest: per-station budget — ${farBefore.length} pieces byte-identical past a moved keep-out, ${nearBefore} → ${nearAfter} beside it`);
+}
