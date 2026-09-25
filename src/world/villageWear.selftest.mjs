@@ -41,7 +41,7 @@ const FROZEN = {
   // digests move; every other map and every non-sky input is unchanged (repinned from the current build)
   // round 40 (2026-09-22): coastal.ts's sea aperture dropped its authored grey (edgeWater.ts gives it the map's water colour) and
   // saltwind.ts authored its bay as one contour; the frozen config digest moved for those two maps only
-  configs: 'a439b2ae962b059f0546e0df6f42a366b27b54914763234d4d40827802a3f8d2', // 2026-09-24 (round 66): the eleven sea-sheet maps author an `ocean` block (was 46963b38…: round 57, steppe.ts terrain block authors railSpurs; 7d872ab3…: round 55, fjord.ts horizon block authors outcrops: 1; 07c47806…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
+  configs: '8698d0c798c55f7b19a0f657b2780a5278fffb34658447d8d5ccfae78bfb68d1', // 2026-09-24 (round 66): the eleven sea-sheet maps author an `ocean` block (was 46963b38…: round 57, steppe.ts terrain block authors railSpurs; 7d872ab3…: round 55, fjord.ts horizon block authors outcrops: 1; 07c47806…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 
