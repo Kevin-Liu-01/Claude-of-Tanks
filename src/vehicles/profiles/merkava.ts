@@ -616,7 +616,9 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     ? (b: string) => (b === 'hull' ? 'turret'
       : b === 'hullCloth' ? 'turretCloth'
       : b === 'hullDark' ? 'turretDark'
-      : b === 'hullDetail' ? 'turretDetail' : b)
+      : b === 'hullDetail' ? 'turretDetail'
+      : b === 'hullCanvasPale' ? 'turretCanvasPale'
+      : b === 'hullFittingPaint' ? 'turretFittingPaint' : b)
     : (b: string) => b;
 
   // Upper body: one continuous loft following the measured deck/glacis top
@@ -2748,7 +2750,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
             // the solid rack body (render-inert since r7) but its surfaces still
             // voxel-hit the wrap crest — it slides inboard of the band's inner
             // face (still embedded, zero visual delta).
-            KIT.jerryCan(P, c.paleKit ? 'hullDetail' : 'hullCloth',
+            KIT.jerryCan(P, 'hullFittingPaint',
               tr.wrapClear ? -1.02 : -railX + 0.25,
               // §B5-r2: the can crest ducks the falling band line at its own z
               // (identity without tr.fall).
@@ -2782,7 +2784,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
             const ms = midShelf; // { x1, z1, top }
             // paleKit (3D visual r2): the olive canvas shelf was the rear view's
             // "uniform-L56 inset decal" — pale sand kit + strap seams instead.
-            const msMat = c.paleKit ? 'hull' : 'hullCloth';
+            const msMat = c.paleKit ? 'hullCanvasPale' : 'hullCloth';
             for (const s of [-1, 1]) {
               P.add(msMat, box(ms.x1 - x0, ((ms.top ?? tr.top) - tr.bot) * 0.92, (tr.z0 - ms.z1) * 0.94),
                 s * (x0 + ms.x1) / 2, ((ms.top ?? tr.top) + tr.bot) / 2, (tr.z0 + ms.z1) / 2);
@@ -2869,7 +2871,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                   } else {
                     const merkavaChassisHullCourse60 = (): void => {
                       const merkavaChassisHullCourse49 = (): void => {
-                        P.add(wB(c.paleKit ? 'hull' : 'hullCloth'), box(wd, (wg.top - wg.bot) * 0.9, wlen * 0.96 - wPull), xm, (wg.top + wg.bot) / 2 + wY, wmid + wPull / 2 + wZ);
+                        P.add(wB(c.paleKit ? 'hullCanvasPale' : 'hullCloth'), box(wd, (wg.top - wg.bot) * 0.9, wlen * 0.96 - wPull), xm, (wg.top + wg.bot) / 2 + wY, wmid + wPull / 2 + wZ);
                         if (c.paleKit && c.rackX) {
                           // r9 LATCH ROWS (critic r8 polish: "box-face latch rows — blank
                           // faces"): the ref's rear bins carry dotted hardware rows along
@@ -3223,7 +3225,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         // underside: the swinging bustle would plough through a hull-fixed
         // pile). Slabs are authored in absolute coords, so the re-parent rides
         // P.add's translate args (world pose preserved exactly).
-        const packMat = bpB(c.paleKit ? 'hull' : 'hullCloth');
+        const packMat = bpB(c.paleKit ? 'hullCanvasPale' : 'hullCloth');
         const tz = rp.taperZ ?? rp.z1;
         if (c.paleKit && tz > rp.z1) {
           // r8 crown displacement (critic item 1 — the r7 rear-corner dips were
@@ -4253,7 +4255,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
   const packLen = b.shelf ? 0.52 : 0.92;
   const merkavaBasketTurretStage4 = (): void => {
     if (!b.openPack) {
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 1.86, (b.top - b.bot) * packH, len * packLen),
+      P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 1.86, (b.top - b.bot) * packH, len * packLen),
         bx - b.hw * 0.04, b.bot + (b.top - b.bot) * (packH * 0.5 + 0.02), b.shelf ? b.z0 - 0.02 - len * packLen / 2 : mid - len * 0.02);
     } else {
       // Source-reference baskets are visibly open pipe frames carrying
@@ -4266,7 +4268,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
       const rollZ = b.z1 + len * 0.34;
       for (const [f, r, d, yaw] of [[-0.48, 0.19, 0.58, -0.05], [0.48, 0.21, 0.62, 0.06]]) {
         const x = bx + b.hw * f;
-        P.add(b.pale ? 'turret' : 'turretCloth', cylZ(r, d, 18), x, rollY, rollZ, 0, yaw, 0);
+        P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', cylZ(r, d, 18), x, rollY, rollZ, 0, yaw, 0);
         P.add('turretDark', box(r * 2.06, 0.025, 0.035), x, rollY + r * 0.45, rollZ - d * 0.20, 0, yaw, 0);
         P.add('turretDark', box(r * 2.06, 0.025, 0.035), x, rollY + r * 0.45, rollZ + d * 0.20, 0, yaw, 0);
       }
@@ -4274,7 +4276,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
       P.add('turretDark', box(0.024, bh * 0.42, len * 0.26), bx, b.bot + bh * 0.22, b.z0 - len * 0.24, 0.04, 0.08, 0);
       for (const s of [-1, 1]) {
         merkavaTarpLump(P, bx + s * b.hw * 0.30, b.bot + bh * 0.58, b.z0 - len * 0.38,
-          b.hw * 0.44, len * 0.32, b.pale ? 'turret' : 'turretCloth', s * 0.09);
+          b.hw * 0.44, len * 0.32, b.pale ? 'turretCanvasPale' : 'turretCloth', s * 0.09);
       }
     }
   };
@@ -4311,19 +4313,19 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
         for (const [rf9, rw9, rz9, rx9] of [
           [-0.85, 0.28, 0.16, 0.60], [-0.52, 0.44, 0.14, 0.58], [0.55, 0.46, 0.11, 0.55], [0.80, 0.34, 0.18, 0.62],
         ]) {
-          P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * rw9, 0.085, 0.030),
+          P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * rw9, 0.085, 0.030),
             bx + b.hw * rf9, rollY9 - 0.012, b.z1 + rz9, rx9, ((rf9 * 7) % 2) * 0.06, 0);
         }
         for (const [rf9, rw9, rz9, rx9] of [[-0.68, 0.30, 0.26, 0.52], [0.68, 0.32, 0.24, 0.56]]) {
-          P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * rw9, 0.075, 0.028),
+          P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * rw9, 0.075, 0.028),
             bx + b.hw * rf9, rollY9 - 0.070, b.z1 + rz9, rx9, ((rf9 * 5) % 2) * 0.05, 0);
         }
         P.add('turretCloth', box(b.hw * 0.30, 0.009, 0.012), bx + b.hw * 0.28, rollY9 - 0.022, b.z1 + 0.17); // strap seam between rolls (r13b: cloth — the ref window floors at 75)
         // 3c strap crowns: small sun-graze bumps riding the right-flank rolls
         // (the r6 0.55-0.72 rad calibration class renders 103-118 — the ref
         // window's own p75/p95 99.5/107 class); crests <= rollY9 + 0.006.
-        P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.10, 0.014, 0.018), bx + b.hw * 0.50, rollY9 + 0.004, b.z1 + 0.11, 0.66, 0.04, 0);
-        P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.09, 0.013, 0.017), bx + b.hw * 0.72, rollY9 + 0.002, b.z1 + 0.16, 0.60, -0.05, 0);
+        P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.10, 0.014, 0.018), bx + b.hw * 0.50, rollY9 + 0.004, b.z1 + 0.11, 0.66, 0.04, 0);
+        P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.09, 0.013, 0.017), bx + b.hw * 0.72, rollY9 + 0.002, b.z1 + 0.16, 0.60, -0.05, 0);
         // r13b 3c SLAT ROWS (the decisive 4x read: ref = pale slats over deep
         // through-shadow; proc = one flat wall + dark L-frame): tone-on-tone
         // slat bars on the NEAR/right side face flush against the rail plane
@@ -4369,7 +4371,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
   merkavaBasketTurretStage5();
   const merkavaBasketTurretStage6 = (): void => {
     if (!b.openPack) {
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.90, (b.top - b.bot) * 0.55, len * 0.52),
+      P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.90, (b.top - b.bot) * 0.55, len * 0.52),
         b.hw * 0.42, b.bot + (b.top - b.bot) * 0.32, b.shelf ? b.z0 - 0.02 - len * 0.28 : mid + len * 0.08);
     }
   };
@@ -4378,7 +4380,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     if (b.shelf) {
       const bH2 = b.top - b.bot;
       const shZ = b.z1 + 0.02 + len * 0.17; // shelf band center (rear third)
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 1.78, 0.026, len * 0.52), bx, b.bot + bH2 * 0.30, b.z1 + 0.02 + len * 0.26); // shelf board (meets the pack — no dark top slot)
+      P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 1.78, 0.026, len * 0.52), bx, b.bot + bH2 * 0.30, b.z1 + 0.02 + len * 0.26); // shelf board (meets the pack — no dark top slot)
       P.add('turretDark', box(b.hw * 1.78, 0.020, 0.020), bx, b.bot + bH2 * 0.30 - 0.05, b.z1 + 0.03); // shelf edge rail
       // r9 ONE CAN ROW (critic r8 item 3): the pots/roll/box/pouch mix read as
       // a jumble with the crossing rails — the ref's center grammar is the rim
@@ -4391,18 +4393,18 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
         const ch = 0.105 + ((k9 * 5) % 4) * 0.014;
         const cr = 0.050 + ((k9 * 3) % 3) * 0.006;
         const cz = shZ + ((k9 * 11) % 5 - 2) * 0.016;
-        P.add(k9 % 2 ? 'turretDetail' : (b.pale ? 'turret' : 'turretCloth'),
+        P.add(k9 % 2 ? 'turretDetail' : (b.pale ? 'turretCanvasPale' : 'turretCloth'),
           KIT.cylY(cr, cr + 0.003, ch, 10), bx + b.hw * cf, shY + ch / 2, cz);
-        P.add(b.pale ? 'turret' : 'turretCloth', KIT.cylY(cr * 0.88, cr * 0.88, 0.012, 10),
+        P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', KIT.cylY(cr * 0.88, cr * 0.88, 0.012, 10),
           bx + b.hw * cf, shY + ch + 0.004, cz); // pale lid
       }
       // lit crown strips riding the pack rear edge + heap crowns: the banked
       // rear-p95 highlight class (sun-graze 110-118 crowns the old solid band
       // carried; the r6 calibration's 0.60-0.72 rad band)
       const pkTop = b.bot + (b.top - b.bot) * (packH + 0.04);
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.34, 0.055, 0.013), bx - b.hw * 0.52, pkTop + 0.012, b.z0 - 0.02 - len * 0.50, 0.66, 0.03, 0);
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.26, 0.050, 0.012), bx - b.hw * 0.10, pkTop + 0.045, b.z0 - 0.02 - len * 0.48, 0.60, -0.05, 0);
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.22, 0.048, 0.012), bx + b.hw * 0.24, pkTop - 0.01, b.z0 - 0.02 - len * 0.52, 0.70, 0.04, 0);
+      P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.34, 0.055, 0.013), bx - b.hw * 0.52, pkTop + 0.012, b.z0 - 0.02 - len * 0.50, 0.66, 0.03, 0);
+      P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.26, 0.050, 0.012), bx - b.hw * 0.10, pkTop + 0.045, b.z0 - 0.02 - len * 0.48, 0.60, -0.05, 0);
+      P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.22, 0.048, 0.012), bx + b.hw * 0.24, pkTop - 0.01, b.z0 - 0.02 - len * 0.52, 0.70, 0.04, 0);
       // r9 CROSSING RAILS DIE (critic r8 item 3): the rear-bay X-lattice
       // (one pale + one dark member per bay) and the side-face corner
       // diagonals were "five crossing rails" jumbling the center read — the
@@ -4424,7 +4426,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
         P.add('turretTrack', box(b.hw * vw, bH * vh, 0.006),
           bx + b.hw * vx2, b.top - bH * (vyF + vh / 2), b.z1 + (vz + 0.40) * 0.1 + 0.024);
       }
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.24, bH * 0.20, 0.010),
+      P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.24, bH * 0.20, 0.010),
         bx + b.hw * 0.33, b.top - bH * 0.34, b.z1 + 0.030, 0.06, 0, -0.07);   // hanging pouch between pockets
       P.add('turretDark', box(b.hw * 0.20, 0.011, 0.014), bx + b.hw * 0.33, b.top - bH * 0.25, b.z1 + 0.034); // its strap
       // top voids between crowns (the toptilt/plan fill breaks)
@@ -4459,7 +4461,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
           const dl9 = Math.hypot(x1 - x0, y1 - y0, z1a - z0a);
           const ry9 = Math.atan2(z1a - z0a, x1 - x0);
           const rz9 = Math.atan2(y1 - y0, Math.hypot(x1 - x0, z1a - z0a));
-          P.add(b.pale ? 'turret' : 'turretCloth', box(dl9 + 0.014, 0.040, 0.040),
+          P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(dl9 + 0.014, 0.040, 0.040),
             (x0 + x1) / 2, (y0 + y1) / 2, (z0a + z1a) / 2, 0, -ry9, rz9);
           // plan-face outline: a dark plate wider than the pipe just under
           // its top — from the top the emerging arc reads pale-with-dark-
@@ -4473,7 +4475,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
           P.add('turretCloth', box(dl9 * 0.96, 0.008, 0.096),
             (x0 + x1) / 2, (y0 + y1) / 2 - 0.008, (z0a + z1a) / 2, 0, -ry9, rz9);
         }
-        P.add(b.pale ? 'turret' : 'turretCloth', box(0.32, 0.075, 0.10), -0.18, topR - 0.062, b.z1 - 0.160, 0.04, 0.07, 0); // kit under the apex (top 2.4105)
+        P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(0.32, 0.075, 0.10), -0.18, topR - 0.062, b.z1 - 0.160, 0.04, 0.07, 0); // kit under the apex (top 2.4105)
         P.add('turretDetail', KIT.cylY(0.050, 0.053, 0.082, 10), 0.26, topR - 0.054, b.z1 - 0.180); // drum (top 2.422 — inside the ref 2.437 line)
       }
     } else if (b.soft && b.voids && b.shelf) {
@@ -4481,7 +4483,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
       // bay replaces them (grammar: punch-kill). One pouch hangs off the pack
       // rear edge; one top void slot stays on the pack.
       const bH = b.top - b.bot;
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.22, bH * 0.18, 0.012),
+      P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.22, bH * 0.18, 0.012),
         bx - b.hw * 0.20, b.bot + bH * packH - 0.05, b.z0 - 0.02 - len * 0.56, 0.08, 0, -0.06); // pouch on the pack rear face
       P.add('turretTrack', box(b.hw * 0.34, 0.006, len * 0.18), bx - b.hw * 0.30, b.bot + bH * packH + 0.028, b.z0 - 0.02 - len * 0.30);
     }
@@ -4505,7 +4507,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
             ? (fx < 0.3 ? rimAt(lz) - 0.055 : b.bot + (b.top - b.bot) * packH + 0.035) - ((fx * 37) % 1 < 0 ? 0.01 : 0.02)
             : rimAt(lz) - 0.012 - ((fx * 37) % 1 < 0 ? 0.01 : 0.02);
           merkavaTarpLump(P, bx + fx * b.hw, crestY,
-            lz, b.hw * w, len * d, b.pale ? 'turret' : 'turretCloth', ry);
+            lz, b.hw * w, len * d, b.pale ? 'turretCanvasPale' : 'turretCloth', ry);
         }
         // two leaning tie-down rods breaking the even post rhythm
         const rodZ1 = b.shelf ? mid + len * 0.30 : mid + len * 0.18;
@@ -4747,7 +4749,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
   // glassTiles false routes the sky-mirror tiles dark; pale routes the olive
   // canvas kit onto the sand camo bucket (3B/3C graduation recipe).
   const glassMat = t.glassTiles === false ? 'turretDark' : 'turretGlass';
-  const clothMat = t.pale ? 'turret' : 'turretCloth';
+  const clothMat = t.pale ? 'turretCanvasPale' : 'turretCloth';
 
   // Shell: one low casting capped at the SADDLE line (the old full-height
   // prism poked through the measured saddle dip); base at the carved ring
@@ -5284,8 +5286,8 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     }
     if (t.pale) { // crumpled tarp crowns over the stow shelf (form, not tone —
       // crowns tucked UNDER the certified stow top so silhouettes never move)
-      merkavaTarpLump(P, stX - stHW * 0.35, t.stow.top - 0.012, stMid + 0.02, stHW * 0.75, stLen * 0.42, 'turret', 0.10);
-      merkavaTarpLump(P, stX + stHW * 0.45, t.stow.top - 0.030, stMid - 0.04, stHW * 0.62, stLen * 0.36, 'turret', -0.12);
+      merkavaTarpLump(P, stX - stHW * 0.35, t.stow.top - 0.012, stMid + 0.02, stHW * 0.75, stLen * 0.42, 'turretCanvasPale', 0.10);
+      merkavaTarpLump(P, stX + stHW * 0.45, t.stow.top - 0.030, stMid - 0.04, stHW * 0.62, stLen * 0.36, 'turretCanvasPale', -0.12);
     } else if (t.stowTell && !t.stowLoose) {
       // §B3 stow identity (2B/2D, owner directive 2026-08-05): the bare cloth
       // block read as a shipping crate behind the turret — same envelope, now
@@ -5310,7 +5312,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
       P.add('turretDark', box((s2.hw ?? stHW) * 2 + 0.02, (s2.top - s2.bot) * 0.9, 0.018),
         s2.xoff ?? 0, (s2.top + s2.bot) / 2, (s2.z0 + s2.z1) / 2 - 0.05);
       if (t.pale) {
-        merkavaTarpLump(P, (s2.xoff ?? 0) + 0.14, s2.top - 0.014, (s2.z0 + s2.z1) / 2, (s2.hw ?? stHW) * 0.9, (s2.z0 - s2.z1) * 0.5, 'turret', 0.09);
+        merkavaTarpLump(P, (s2.xoff ?? 0) + 0.14, s2.top - 0.014, (s2.z0 + s2.z1) / 2, (s2.hw ?? stHW) * 0.9, (s2.z0 - s2.z1) * 0.5, 'turretCanvasPale', 0.09);
       }
     }
     merkavaBasket(P, {
@@ -6183,7 +6185,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
           // the sand bucket with a hairline dark under-line (pale-on-shadow);
           // 3B/3C keep the dark rail byte-identical (bucket move = hash move).
           const merkavaModularTurretTurretCourse8 = (): void => {
-            const spineMat = tv.lattice ? (t.pale ? 'turret' : 'turretCloth') : 'turretDark';
+            const spineMat = tv.lattice ? (t.pale ? 'turretCanvasPale' : 'turretCloth') : 'turretDark';
             P.add(spineMat, KIT.slab(
               [vx - 0.02, tv.top - 0.045, tv.z0 + 0.02], [vx + 0.02, tv.top - 0.045, tv.z0 + 0.02],
               [vx + 0.02, topM - 0.045, zM], [vx - 0.02, topM - 0.045, zM],
@@ -6211,7 +6213,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
         }
         // t.pale: the vane IS the ref's ball-and-chain mat (absorbed ex_armor)
         // — pale sand, not olive canvas.
-        const vaneMat = t.pale ? 'turret' : 'turretCloth';
+        const vaneMat = t.pale ? 'turretCanvasPale' : 'turretCloth';
         if (t.softGoods) {
           // r4c (elevated-camera crown law, see the 1B vane note): the mat's
           // straight full-width z0 top edge rules the projected crown in the
@@ -11232,7 +11234,7 @@ function merkava3dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
   merkava3Kit(P, p, t, { pale: p.paleKit, noMGs: p.paleKit, m2: p.softGoods });
   const L = (z: number): number => z - p.pivotZ;
   const V = (y: number): number => y - (p.deckY + 0.02);
-  const km = p.paleKit ? 'turret' : 'turretCloth';
+  const km = p.paleKit ? 'turretCanvasPale' : 'turretCloth';
   // r4: the old mid-cheek applique wedges (x ~0.7, poking to z +1.4) owned
   // four t_plan front worst rows — the print's Dor-Dalet armor is the SIDE
   // plate run (x 1.30-1.58 to z -2.55), authored via roofBoxes.
@@ -11587,7 +11589,7 @@ function merkava3bKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
   merkava3Kit(P, p, t, { pale: p.paleKit, ringMGs: !!p.cupolaRing, loaderDrop: 0.24 });
   const L = (z: number): number => z - p.pivotZ;
   const V = (y: number): number => y - (p.deckY + 0.02);
-  const km = p.paleKit ? 'turret' : 'turretCloth';
+  const km = p.paleKit ? 'turretCanvasPale' : 'turretCloth';
   // Warped-ref rear-roof stack: hump 2.57-2.59 over z -2.45..-2.53 + the
   // low 2.46-2.49 bundle across the bustle root. Visual round: strapped
   // stack, edge held at x -0.94 (ref front tops fall 2.58 there — the r1
@@ -11787,7 +11789,7 @@ function merkava3cKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
   merkava3Kit(P, p, t, { pale: p.paleKit, ringMGs: !!p.cupolaRing, loaderDrop: 0.21 });
   const L = (z: number): number => z - p.pivotZ;
   const V = (y: number): number => y - (p.deckY + 0.02);
-  const km = p.paleKit ? 'turret' : 'turretCloth';
+  const km = p.paleKit ? 'turretCanvasPale' : 'turretCloth';
   // Warped-ref Kasag stack: the 2.65 hump now sits at z -2.56..-2.61 (the
   // pre-warp 2.76@-2.24 band was compressed + shifted); low bundle rides
   // the bustle root at 2.46-2.49. Visual round: the toy-scaled single box
