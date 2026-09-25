@@ -6,6 +6,7 @@
  *   COT_MATCH_HOST             bind address (default 0.0.0.0)
  *   COT_MATCH_ALLOWED_ORIGINS  comma-separated exact origins; unset allows any (LAN / development)
  *   COT_MATCH_SEAT_SECRET      HMAC secret shared with the room service (required, >= 16 chars)
+ *   COT_MATCH_CONTROL_SECRET   bearer secret of the /control/* routes the room host calls (defaults to the seat secret)
  *   COT_MATCH_MAX_ACTORS       rooms this process may host at once (default 1 on Cloudflare, N on a VPS)
  *   COT_MATCH_LOG_LEVEL        debug | info | warn | error (default info)
  *
@@ -37,6 +38,7 @@ export async function startMatchServiceFromEnv(env: NodeJS.ProcessEnv = process.
     port: integerEnv('COT_MATCH_PORT', 8791, 0, 65535),
     allowedOrigins,
     seatSecret,
+    controlSecret: env.COT_MATCH_CONTROL_SECRET || seatSecret,
     maxActors: integerEnv('COT_MATCH_MAX_ACTORS', 1, 1, 1024),
     log,
   });

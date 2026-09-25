@@ -7,7 +7,6 @@
  * actor. Origin allowlist, payload and rate bounds, graceful drain.
  */
 import http from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { CLOSE_REASON, CLOSE_REASON_NAMES, MAX_CLIENT_MESSAGE_BYTES, MESSAGE_TYPE } from '../../src/mp/wire/constants.ts';
@@ -17,13 +16,12 @@ import { toUint8Array } from '../../src/mp/wire/bytes.ts';
 import type { ClientLink } from './link.ts';
 import { createLogger, type Logger } from './log.ts';
 import { createMatchActor, type MatchActor, type MatchActorOptions, type MatchActorStats } from './matchActor.ts';
-import { createLocalRoomService, type LocalRoomOptions, type LocalRoomService } from './localRoomService.ts';
 import { verifySeatToken } from './seatToken.ts';
+import { createMatchControl } from './control.ts';
+import type { MatchStartRequest } from './control.ts';
 
 const HELLO_TIMEOUT_MS = 5000;
 const WS_PATH = '/match';
-const MAX_ADMIN_BODY_BYTES = 64 * 1024;
-const ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
 
 export interface MatchServiceOptions {
   host?: string;
@@ -31,11 +29,19 @@ export interface MatchServiceOptions {
   /** Exact origins allowed to connect; null allows any (LAN / development). */
   allowedOrigins?: readonly string[] | null;
   seatSecret: string;
+  /** Bearer secret of the `/control/*` routes (defaults to the seat secret). */
+  controlSecret?: string;
   maxActors?: number;
   log?: Logger;
   now?: () => number;
   /** Wall clock for token expiry (Date.now). */
   wallClock?: () => number;
+  /**
+   * Mount on an existing HTTP server instead of listening: the owner dispatches
+   * requests and upgrades through `handleRequest` / `handleUpgrade` (the LAN
+   * helper serves rooms and the match on one port this way).
+   */
+  server?: http.Server;
 }
 
 export interface MatchServiceStats {
@@ -58,12 +64,14 @@ export interface MatchService {
   readonly url: string;
   readonly draining: boolean;
   readonly actors: ReadonlyMap<string, MatchActor>;
-  /** The embedded room side (tokens + actors) the admin API and local tooling use. */
-  readonly rooms: LocalRoomService;
   createActor(options: Omit<MatchActorOptions, 'log' | 'now'> & Partial<Pick<MatchActorOptions, 'log' | 'now'>>): MatchActor;
   removeActor(roomId: string, reason?: CloseReasonId): boolean;
   stats(): MatchServiceStats;
   actorStats(): MatchActorStats[];
+  /** True when the request was one of the service's routes (`/healthz`, `/metrics`, `/control/*`). */
+  handleRequest(request: http.IncomingMessage, response: http.ServerResponse): boolean;
+  /** True when the upgrade was for `/match` (admitted or refused). */
+  handleUpgrade(request: http.IncomingMessage, socket: import('node:stream').Duplex, head: Buffer): boolean;
   /** Drain: stop admitting, close every actor with SERVER_DRAIN, close the listeners. */
   close(options?: { reason?: CloseReasonId; detail?: string }): Promise<void>;
 }
@@ -72,93 +80,6 @@ function parseAllowedOrigins(value: readonly string[] | null | undefined): Set<s
   if (!value) return null;
   const origins = new Set(value.map((origin) => origin.trim()).filter(Boolean));
   return origins.size ? origins : null;
-}
-
-/** Constant-time bearer check against the seat secret (the room service's credential). */
-function bearerMatches(request: http.IncomingMessage, secret: string): boolean {
-  const match = /^Bearer\s+(.+)$/i.exec(String(request.headers.authorization || ''));
-  if (!match) return false;
-  const provided = Buffer.from(match[1]!);
-  const expected = Buffer.from(secret);
-  return provided.length === expected.length && timingSafeEqual(provided, expected);
-}
-
-async function readJsonBody(request: http.IncomingMessage): Promise<Record<string, unknown>> {
-  let size = 0;
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) {
-    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    size += bytes.length;
-    if (size > MAX_ADMIN_BODY_BYTES) throw Object.assign(new Error('request body is too large'), { status: 413 });
-    chunks.push(bytes);
-  }
-  let parsed: unknown;
-  try { parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch { throw Object.assign(new Error('request body must be JSON'), { status: 400 }); }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Object.assign(new Error('request body must be an object'), { status: 400 });
-  return parsed as Record<string, unknown>;
-}
-
-function optionalString(value: unknown, field: string, pattern: RegExp | null = null): string | undefined {
-  if (value == null) return undefined;
-  if (typeof value !== 'string' || (pattern && !pattern.test(value))) throw Object.assign(new Error(`${field} is invalid`), { status: 400 });
-  return value;
-}
-
-function optionalNumber(value: unknown, field: string, low: number, high: number): number | undefined {
-  if (value == null) return undefined;
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < low || value > high) throw Object.assign(new Error(`${field} is invalid`), { status: 400 });
-  return value;
-}
-
-/** Validate a room-creation body before the actor sees it (the actor re-validates the roster). */
-function roomOptionsFromBody(body: Record<string, unknown>): LocalRoomOptions {
-  const mapId = optionalString(body.mapId, 'mapId', ID_RE);
-  if (!mapId) throw Object.assign(new Error('mapId is required'), { status: 400 });
-  const seatsRaw = body.seats;
-  if (!Array.isArray(seatsRaw) || seatsRaw.length > 64) throw Object.assign(new Error('seats must be an array of at most 64'), { status: 400 });
-  const seats: LocalRoomOptions['seats'] = seatsRaw.map((entry, index) => {
-    const seat = entry && typeof entry === 'object' ? entry as Record<string, unknown> : {};
-    const team = seat.team as 'alpha' | 'bravo' | 'spectator';
-    if (team !== 'alpha' && team !== 'bravo' && team !== 'spectator') throw Object.assign(new Error(`seats[${index}].team is invalid`), { status: 400 });
-    return {
-      playerId: optionalString(seat.playerId, `seats[${index}].playerId`, ID_RE) ?? `p${index}`,
-      name: (optionalString(seat.name, `seats[${index}].name`) ?? `Player ${index}`).slice(0, 32),
-      team,
-      specId: optionalString(seat.specId, `seats[${index}].specId`) ?? '',
-      seat: optionalNumber(seat.seat, `seats[${index}].seat`, 0, 63),
-    };
-  });
-  const botsRaw = body.bots ?? [];
-  if (!Array.isArray(botsRaw) || botsRaw.length > 64) throw Object.assign(new Error('bots must be an array of at most 64'), { status: 400 });
-  const bots: NonNullable<LocalRoomOptions['bots']> = botsRaw.map((entry, index) => {
-    const bot = entry && typeof entry === 'object' ? entry as Record<string, unknown> : {};
-    const team = bot.team as 'alpha' | 'bravo';
-    if (team !== 'alpha' && team !== 'bravo') throw Object.assign(new Error(`bots[${index}].team is invalid`), { status: 400 });
-    const difficulty = bot.difficulty as 'easy' | 'normal' | 'hard' | null | undefined;
-    if (difficulty != null && difficulty !== 'easy' && difficulty !== 'normal' && difficulty !== 'hard') throw Object.assign(new Error(`bots[${index}].difficulty is invalid`), { status: 400 });
-    return {
-      playerId: optionalString(bot.playerId, `bots[${index}].playerId`, ID_RE) ?? `bot-${index}`,
-      name: (optionalString(bot.name, `bots[${index}].name`) ?? `Bot ${index}`).slice(0, 32),
-      team,
-      specId: optionalString(bot.specId, `bots[${index}].specId`) ?? '',
-      ...(difficulty ? { difficulty } : {}),
-    };
-  });
-  const world = body.world;
-  if (world != null && world !== 'dedicated' && world !== 'terrain') throw Object.assign(new Error('world is invalid'), { status: 400 });
-  return {
-    roomId: optionalString(body.roomId, 'roomId', ID_RE),
-    mapId,
-    mode: optionalString(body.mode, 'mode', ID_RE),
-    seed: optionalNumber(body.seed, 'seed', 0, 0xffffffff),
-    seats,
-    bots,
-    countdownS: optionalNumber(body.countdownS, 'countdownS', 0, 600),
-    battleLimitS: optionalNumber(body.battleLimitS, 'battleLimitS', 1, 86_400),
-    world: world as LocalRoomOptions['world'],
-    tokenTtlMs: optionalNumber(body.tokenTtlMs, 'tokenTtlMs', 1000, 7 * 86_400_000),
-    endedLingerTicks: optionalNumber(body.endedLingerTicks, 'endedLingerTicks', 0, 36_000),
-  };
 }
 
 function json(response: http.ServerResponse, status: number, body: unknown): void {
@@ -217,12 +138,15 @@ export async function createMatchService({
   port = 0,
   allowedOrigins = null,
   seatSecret,
+  controlSecret = seatSecret,
   maxActors = 64,
   log = createLogger(),
   now = () => performance.now(),
   wallClock = () => Date.now(),
+  server: externalServer,
 }: MatchServiceOptions): Promise<MatchService> {
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
+  if (typeof controlSecret !== 'string' || controlSecret.length < 16) throw new TypeError('controlSecret must be at least 16 characters');
   if (!Number.isInteger(maxActors) || maxActors < 1 || maxActors > 1024) throw new TypeError('maxActors must be 1..1024');
   const origins = parseAllowedOrigins(allowedOrigins);
   const actors = new Map<string, MatchActor>();
@@ -270,75 +194,73 @@ export async function createMatchService({
     };
   }
 
-  let rooms: LocalRoomService;
-
-  /**
-   * The admin surface the room service uses (bearer = the seat secret, never a player credential):
-   * POST /rooms creates a match and returns its seat tokens; GET /rooms/:id reports its stats;
-   * DELETE /rooms/:id stops it. /metrics?gc=1 forces a collection first (soak memory gate).
-   */
-  async function handleHttp(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
-    const [path, query = ''] = (request.url || '').split('?', 2) as [string, string?];
-    const method = request.method || 'GET';
-    if (method === 'GET' && path === '/healthz') {
-      const body = stats();
-      json(response, body.ok ? 200 : 503, body);
-      return;
-    }
-    if (method === 'GET' && path === '/metrics') {
-      if (query.includes('gc=1') && bearerMatches(request, seatSecret) && typeof globalThis.gc === 'function') globalThis.gc();
-      json(response, 200, { service: stats(), actors: [...actors.values()].map((actor) => actor.stats()) });
-      return;
-    }
-    if (path === '/rooms' || path.startsWith('/rooms/')) {
-      if (!bearerMatches(request, seatSecret)) { json(response, 401, { error: 'unauthorized' }); return; }
-      const roomId = path.length > 7 ? decodeURIComponent(path.slice(7)) : '';
-      try {
-        if (method === 'POST' && !roomId) {
-          if (draining) { json(response, 503, { error: 'draining' }); return; }
-          const room = rooms.createRoom(roomOptionsFromBody(await readJsonBody(request)));
-          json(response, 201, {
-            roomId: room.roomId, url, tokens: Object.fromEntries(room.tokens),
-            seats: room.seats, stats: room.actor.stats(),
-          });
-          return;
-        }
-        if (roomId && !ID_RE.test(roomId)) { json(response, 400, { error: 'invalid_room' }); return; }
-        const actor = roomId ? actors.get(roomId) : undefined;
-        if (method === 'GET' && roomId) {
-          if (!actor) { json(response, 404, { error: 'room_not_found' }); return; }
-          json(response, 200, { stats: actor.stats(), clients: actor.clientStats() });
-          return;
-        }
-        if (method === 'DELETE' && roomId) {
-          json(response, actor ? 200 : 404, actor ? { removed: rooms.closeRoom(roomId) } : { error: 'room_not_found' });
-          return;
-        }
-        json(response, 405, { error: 'method_not_allowed' });
-      } catch (error) {
-        const status = typeof (error as { status?: number }).status === 'number' ? (error as { status: number }).status : 400;
-        json(response, status, { error: 'invalid_request', message: error instanceof Error ? error.message : String(error) });
-      }
-      return;
-    }
-    json(response, 404, { error: 'not_found' });
+  function createActor(options: Parameters<MatchService['createActor']>[0]): MatchActor {
+    if (draining) throw new Error('match service is draining');
+    // stopped actors are reclaimed lazily so a room can rematch under the same id
+    for (const [roomId, actor] of actors) if (actor.stopped) actors.delete(roomId);
+    if (actors.has(options.roomId)) throw new Error(`room ${options.roomId} already has a match`);
+    if (actors.size >= maxActors) throw new Error(`match service is full (${maxActors})`);
+    const actor = createMatchActor({ log, now, ...options });
+    actors.set(options.roomId, actor);
+    log.info('actor created', { room: options.roomId, map: options.mapId, seats: options.seats.length, bots: options.bots?.length ?? 0 });
+    return actor;
   }
 
-  const server = http.createServer((request, response) => { void handleHttp(request, response); });
+  const control = createMatchControl({
+    controlSecret,
+    matchPath: WS_PATH,
+    port: {
+      actor: (roomId) => actors.get(roomId),
+      createActor: (request: MatchStartRequest) => createActor({
+        roomId: request.roomId, mapId: request.mapId, mode: request.mode, seed: request.seed, seats: request.seats, bots: request.bots,
+        countdownS: request.countdownS, battleLimitS: request.battleLimitS,
+      }),
+      removeActor: (roomId, reason) => removeActor(roomId, reason as CloseReasonId | undefined),
+    },
+  });
+
+  function handleRequest(request: http.IncomingMessage, response: http.ServerResponse): boolean {
+    const path = (request.url || '').split('?', 1)[0];
+    if (request.method === 'GET' && path === '/healthz') {
+      const body = stats();
+      json(response, body.ok ? 200 : 503, body);
+      return true;
+    }
+    if (request.method === 'GET' && path === '/metrics') {
+      json(response, 200, { service: stats(), actors: [...actors.values()].map((actor) => actor.stats()) });
+      return true;
+    }
+    return control.handle(request, response);
+  }
 
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_CLIENT_MESSAGE_BYTES, perMessageDeflate: false });
 
-  server.on('upgrade', (request, socket, head) => {
+  function handleUpgrade(request: http.IncomingMessage, socket: import('node:stream').Duplex, head: Buffer): boolean {
     const path = (request.url || '').split('?', 1)[0];
+    if (path !== WS_PATH) return false;
     const origin = request.headers.origin;
-    if (draining || path !== WS_PATH || (origins && (!origin || !origins.has(origin)))) {
+    if (draining || (origins && (!origin || !origins.has(origin)))) {
       counters.rejectedUpgrades++;
       socket.write(draining ? 'HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n' : 'HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
-      return;
+      return true;
     }
     sockets.handleUpgrade(request, socket, head, (websocket) => sockets.emit('connection', websocket, request));
+    return true;
+  }
+
+  const ownsServer = !externalServer;
+  const server = externalServer ?? http.createServer((request, response) => {
+    if (!handleRequest(request, response)) json(response, 404, { error: 'not_found' });
   });
+  if (ownsServer) {
+    server.on('upgrade', (request, socket, head) => {
+      if (handleUpgrade(request, socket, head)) return;
+      counters.rejectedUpgrades++;
+      socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+    });
+  }
 
   sockets.on('connection', (socket: WebSocket, request: http.IncomingMessage) => {
     counters.connections++;
@@ -374,14 +296,24 @@ export async function createMatchService({
     link.onClose(() => clearTimeout(timeout));
   });
 
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, host, () => { server.off('error', reject); resolve(); });
-  });
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('match service did not bind a TCP address');
-  const url = `ws://${host}:${address.port}${WS_PATH}`;
-  log.info('match service listening', { url, origins: origins ? [...origins].join(',') : 'any', maxActors });
+  if (ownsServer) {
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(port, host, () => { server.off('error', reject); resolve(); });
+    });
+  }
+  // An external server may listen after mounting: read the address lazily, then remember it (it stays readable after close).
+  let cachedAddress: AddressInfo | null = null;
+  const boundAddress = (): AddressInfo => {
+    if (cachedAddress) return cachedAddress;
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('match service did not bind a TCP address');
+    cachedAddress = address;
+    return address;
+  };
+  const boundUrl = (): string => `ws://${host}:${boundAddress().port}${WS_PATH}`;
+  if (ownsServer) log.info('match service listening', { url: boundUrl(), origins: origins ? [...origins].join(',') : 'any', maxActors });
+  else log.info('match service mounted', { path: WS_PATH, origins: origins ? [...origins].join(',') : 'any', maxActors });
 
   function removeActor(roomId: string, reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED): boolean {
     const actor = actors.get(roomId);
@@ -391,26 +323,17 @@ export async function createMatchService({
     return true;
   }
 
-  const service: MatchService = {
-    address,
-    url,
+  return {
+    get address() { return boundAddress(); },
+    get url() { return boundUrl(); },
     get draining() { return draining; },
     actors,
-    get rooms() { return rooms; },
-    createActor(options) {
-      if (draining) throw new Error('match service is draining');
-      // stopped actors are reclaimed lazily so a room can rematch under the same id
-      for (const [roomId, actor] of actors) if (actor.stopped) actors.delete(roomId);
-      if (actors.has(options.roomId)) throw new Error(`room ${options.roomId} already has a match`);
-      if (actors.size >= maxActors) throw new Error(`match service is full (${maxActors})`);
-      const actor = createMatchActor({ log, now, ...options });
-      actors.set(options.roomId, actor);
-      log.info('actor created', { room: options.roomId, map: options.mapId, seats: options.seats.length, bots: options.bots?.length ?? 0 });
-      return actor;
-    },
+    createActor,
     removeActor,
     stats,
     actorStats: () => [...actors.values()].map((actor) => actor.stats()),
+    handleRequest,
+    handleUpgrade,
     async close({ reason = CLOSE_REASON.SERVER_DRAIN, detail = 'drain' } = {}) {
       if (draining) return;
       draining = true;
@@ -418,10 +341,8 @@ export async function createMatchService({
       for (const roomId of [...actors.keys()]) removeActor(roomId, reason);
       for (const client of sockets.clients) client.close(1001, detail);
       await new Promise<void>((resolve) => sockets.close(() => resolve()));
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+      if (ownsServer) await new Promise<void>((resolve) => server.close(() => resolve()));
       log.info('match service closed');
     },
   };
-  rooms = createLocalRoomService({ service, seatSecret, log });
-  return service;
 }
