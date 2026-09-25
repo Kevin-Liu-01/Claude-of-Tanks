@@ -79,10 +79,12 @@ const ORIGINALS = {
 // 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail, owner: the LOW tier must cost less): no bolt rings,
 // ribs, lightening holes or face hardware at LOW, source lathes at 12 segments, the hollow paired tire without its inner
 // bevel — the four LOW gear digests moved; HIGH digests are byte-identical. Repinned from the current build.
-  t90sm: ['736515f773ee8e083de4f9c9297cc7af2d0db162060cc2d877ec6c4d7c7db909',
-    '2b598b3116ae68c669cd6761589e3c4a2c739667e26f15d782a03e54d71ae2d3'],
-  t90m: ['3d6e042f634eadb1db96f879258e3f8acc166ed3cddfae57303c430230a33a09',
-    '22b405c590f9b392d5dc42388c376db4b58b973da63ca6989d83f919bfbe31f0'],
+  // 2026-09-25 FSP-03: T-90SM / T-90M fleet digests re-pinned once — their upper runs ride three fitted return rollers
+  // again (the rest heights and donor construction are unchanged; the course re-samples).
+  t90sm: ['6ca34c4de4e1ba3c586f9fc7d6dc52c1c0adc9b81c775fe4945fec06d9f82b07',
+    '3341701304b97cb2c2dbd0ddbb2cc0b90532f31182b1d8e0368a108f588ab3aa'],
+  t90m: ['e09079788bb7dcf4d31cf3c6d2a7c4d959a8733042e9c8df0950296d0a0ec947',
+    '2b58ae070f483f60f1a344b38727e91a719233da685230a56d17604c5f844f5b'],
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts) and lost
   // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
   m1a2: ['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253',
