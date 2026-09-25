@@ -894,11 +894,13 @@ ${GROUND_BOUNCE_GLSL_PARS}
 #endif
 ${THREE.ShaderChunk.lights_pars_begin}`;
 
-  // Round 69: an opaque lit pixel writes its sun visibility (cotSunVis, captured above) into the scene target's
-  // alpha — the canvas is opaque (renderer.ts, alpha false), so the channel is free — and the post aerial pass
-  // reads it to blend the screen-space contact shadows into the shadow term (contactShadows.ts) before
-  // restoring an alpha of one. OPAQUE is Three's own define for non-transparent, normally blended materials, so
-  // glass, water and every blended card keep their real alpha.
+  // Round 69: an opaque lit pixel writes 2 + its sun visibility (cotSunVis, captured above) into the scene
+  // target's alpha — the canvas is opaque (renderer.ts, alpha false) and opaque draws blend nothing, so the
+  // channel is free — and the post aerial pass decodes it to blend the screen-space contact shadows into the
+  // shadow term (contactShadows.ts) before restoring an alpha of one. OPAQUE is Three's own define for
+  // non-transparent, normally blended, non-alpha-to-coverage materials, so the grass and leaf cards (whose alpha
+  // is their coverage), glass and water keep their real alpha, below 1.5 — and the march treats every such pixel
+  // as neither a contact receiver nor an occluder: the blades never cast in the cascades either.
   const opaqueAnchor = 'gl_FragColor = vec4( outgoingLight, diffuseColor.a );';
   const opaque = THREE.ShaderChunk.opaque_fragment;
   if (!opaque.includes(opaqueAnchor)) {
@@ -906,7 +908,7 @@ ${THREE.ShaderChunk.lights_pars_begin}`;
   }
   THREE.ShaderChunk.opaque_fragment = opaque.replace(opaqueAnchor, `${opaqueAnchor}
 #if defined( COT_SUN_VIS_CAPTURED ) && defined( OPAQUE ) && defined( USE_CSM )
-gl_FragColor.a = cotSunVis;
+gl_FragColor.a = 2.0 + cotSunVis;
 #endif`);
 }
 

@@ -12,8 +12,11 @@
  *
  * Blended into the shadow term, not multiplied on top of it. The forward renderer has no G-buffer, so the lit
  * materials carry the CSM sun visibility of every opaque pixel in the scene target's alpha (lighting.ts writes
- * `cotSunVis` there; the canvas is opaque, `alpha: false`, so that channel is free), and the pass reconstructs the
- * normal from depth. With the receiver's visibility v, the sun term T = sunLum · max(n·l, 0) · v and the ambient
+ * `2 + cotSunVis` there; the canvas is opaque, `alpha: false`, so that channel is free), and the pass reconstructs
+ * the normal from depth. An alpha below 1.5 is not an opaque lit surface — a grass or leaf card (alpha-to-coverage:
+ * its alpha is its coverage), water, glass, an unlit material — and such a pixel is neither a receiver nor an
+ * occluder: the cards never cast in the cascades, and the first captures showed every meadow combed by its own
+ * blades. With the receiver's visibility v, the sun term T = sunLum · max(n·l, 0) · v and the ambient
  * A(n) the light rig gives that normal (hemisphere, environment, the anti-sun fill), the colour of an occluded
  * pixel becomes colour · (1 − occ · T / (T + A)): a pixel the cascades already shadow (v = 0) is untouched, a lit
  * pixel loses exactly its sun share. The share is `contactShadowSunShare` below, pinned by the receipt together
@@ -39,11 +42,12 @@ export const CONTACT_SHADOW_FADE_M = 25;
 export const CONTACT_SHADOW_STRENGTH = 0.92;
 /** The last part of the ray fades so the shadow has no cut-off line at its length. */
 export const CONTACT_SHADOW_TAIL_FADE = 0.55;
+/** Scene-target alpha at or above this decodes as 2 + CSM sun visibility of an opaque lit surface. */
+export const CONTACT_SHADOW_ALPHA_OPAQUE = 1.5;
 /**
  * An occluder counts only when the depth this many pixels either side of the hit lies on the same surface (within
- * WIDTH_M + WIDTH_PER_M × distance): grass blades, wires and far poles — a few pixels wide, never cascade casters —
- * are skipped, hulls, tracks, wheels, walls and rocks pass (an oblique face changes depth by ~0.1 m over 5 px at
- * 10 m; a blade's neighbours are the ground 0.3–1 m behind it).
+ * WIDTH_M + WIDTH_PER_M × distance): wires, rails and far poles — a few pixels wide, never cascade casters — are
+ * skipped, hulls, tracks, wheels, walls and rocks pass (an oblique face changes depth by ~0.1 m over 5 px at 10 m).
  */
 export const CONTACT_SHADOW_WIDTH_PX = 5;
 export const CONTACT_SHADOW_WIDTH_M = 0.12;
@@ -95,6 +99,11 @@ export interface ContactShadowAmbient {
  * visibility and A the ambient the rig gives the normal. 0 when the cascades already shadow the pixel or the face
  * turns from the sun; approaches 1 for a sunlit face under a dim sky.
  */
+/** Decode the scene target's alpha: the CSM sun visibility of an opaque lit surface, or -1 for anything else. */
+export function contactShadowSunVisibility(alpha: number): number {
+  return alpha >= CONTACT_SHADOW_ALPHA_OPAQUE ? THREE.MathUtils.clamp(alpha - 2, 0, 1) : -1;
+}
+
 export function contactShadowSunShare(
   nDotL: number, sunVisibility: number, sunLum: number, ambient: ContactShadowAmbient, normalY: number, nDotFill: number,
 ): number {
@@ -191,6 +200,10 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
         + uCamUp * ( uv.y * 2.0 - 1.0 ) * uTan.y );
       return uCamPos + r * ( dist / max( dot( r, uCamFwd ), 0.05 ) );
     }
+    // the scene target's alpha: 2 + the CSM sun visibility of an opaque lit surface, below 1.5 anything else
+    float cotSunVisOf( float a ) {
+      return a >= ${f(CONTACT_SHADOW_ALPHA_OPAQUE)} ? clamp( a - 2.0, 0.0, 1.0 ) : -1.0;
+    }
     // best-pair normal from the depth neighbours (the smaller step on each axis stays on the surface)
     vec3 cotNormalAt( vec2 uv, vec3 P ) {
       vec3 px1 = cotWorldAt( uv + vec2( uInvSize.x, 0.0 ) );
@@ -217,9 +230,10 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
         float diff = c.w - cotDepthToDist( texture2D( tDepth, quv ).x );
         float bias = 0.015 + c.w * 0.003;
         float thick = 0.10 + u * len * 0.45 + c.w * 0.012;
-        if ( diff > bias && diff < thick ) {
-          // a wide occluder only: grass blades, wires and far poles are a few pixels wide and never cast in
-          // the cascades — the depth five pixels either side of the hit must belong to the same surface
+        if ( diff > bias && diff < thick && texture2D( tDiffuse, quv ).a >= ${f(CONTACT_SHADOW_ALPHA_OPAQUE)} ) {
+          // an opaque lit occluder (never a grass or leaf card, water or glass), and a wide one: wires and far
+          // poles are a few pixels wide and never cast in the cascades — the depth five pixels either side of the
+          // hit must belong to the same surface
           float occ = c.w - diff;
           float wide = ${f(CONTACT_SHADOW_WIDTH_M)} + occ * ${f(CONTACT_SHADOW_WIDTH_PER_M)};
           vec2 side = vec2( uInvSize.x * ${f(CONTACT_SHADOW_WIDTH_PX)}, 0.0 );
@@ -231,8 +245,9 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
       return hit <= 1.0 ? 1.0 - smoothstep( ${f(CONTACT_SHADOW_TAIL_FADE)}, 1.0, hit ) : 0.0;
     }
     // colour multiplier: the pixel's sun share removed where the march finds an occluder
-    float cotContactShade( vec2 uv, vec3 P, float dist, float sunVis ) {
-      if ( sunVis <= 0.02 ) return 1.0; // already in cascade shadow: nothing to lose, no normal taps
+    float cotContactShade( vec2 uv, vec3 P, float dist, float alpha ) {
+      float sunVis = cotSunVisOf( alpha );
+      if ( sunVis <= 0.02 ) return 1.0; // a card / water / unlit pixel, or already in cascade shadow: no normal taps
       vec3 N = cotNormalAt( uv, P );
       float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( sunVis, 0.0, 1.0 );
       if ( T <= 1e-3 ) return 1.0;

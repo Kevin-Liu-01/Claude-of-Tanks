@@ -5,11 +5,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  CONTACT_SHADOW_FADE_M, CONTACT_SHADOW_FAR_M, CONTACT_SHADOW_GLSL, CONTACT_SHADOW_NEAR_M, CONTACT_SHADOW_RANGE_M,
+  CONTACT_SHADOW_ALPHA_OPAQUE, CONTACT_SHADOW_FADE_M, CONTACT_SHADOW_FAR_M, CONTACT_SHADOW_GLSL, CONTACT_SHADOW_NEAR_M,
+  CONTACT_SHADOW_RANGE_M,
   CONTACT_SHADOW_STEPS, CONTACT_SHADOW_STRENGTH, CONTACT_SHADOW_TAIL_FADE, CONTACT_SHADOW_WIDTH_M,
   CONTACT_SHADOW_WIDTH_PER_M, CONTACT_SHADOW_WIDTH_PX, contactShadowMarchLength,
   contactShadowOcclusion, contactShadowRangeFade, contactShadowStepParameter, contactShadowStepTable,
-  contactShadowSunShare, createContactShadowUniforms, updateContactShadowUniforms,
+  contactShadowSunShare, contactShadowSunVisibility, createContactShadowUniforms, updateContactShadowUniforms,
 } from './contactShadows.ts';
 
 const near = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol;
@@ -108,7 +109,7 @@ assert.ok(CONTACT_SHADOW_GLSL.includes(`smoothstep( ${CONTACT_SHADOW_TAIL_FADE.t
 assert.ok(CONTACT_SHADOW_GLSL.includes(`${(CONTACT_SHADOW_RANGE_M - CONTACT_SHADOW_FADE_M).toFixed(4)}, ${CONTACT_SHADOW_RANGE_M.toFixed(4)}, dist`), 'the same range fade');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`occ * share * ${CONTACT_SHADOW_STRENGTH.toFixed(4)}`), 'the strength');
 assert.match(CONTACT_SHADOW_GLSL, /float share = T \/ \( T \+ amb \);/, 'T / (T + A)');
-assert.match(CONTACT_SHADOW_GLSL, /if \( diff > bias && diff < thick \) \{/, 'bias below, thickness above');
+assert.match(CONTACT_SHADOW_GLSL, /if \( diff > bias && diff < thick && texture2D\( tDiffuse, quv \)\.a >= /, 'bias below, thickness above, an opaque lit occluder');
 assert.match(CONTACT_SHADOW_GLSL, /if \( abs\( dl - occ \) < wide && abs\( dr - occ \) < wide \) \{ hit = u; break; \}/,
   'only a wide occluder counts (grass blades and wires, a few pixels wide, never cast in the cascades)');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`uInvSize.x * ${CONTACT_SHADOW_WIDTH_PX.toFixed(4)}`), 'the width test spans five pixels either side');
@@ -135,8 +136,16 @@ assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene
 
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /#define COT_SUN_VIS_CAPTURED 1\nfloat cotSunVis = 1\.0;/, 'the capture marks itself for the alpha write');
-assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\ngl_FragColor\.a = cotSunVis;\n#endif/,
-  'opaque CSM pixels write their sun visibility into alpha');
+assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\ngl_FragColor\.a = 2\.0 \+ cotSunVis;\n#endif/,
+  'opaque CSM pixels write two plus their sun visibility into alpha (cards, water and glass stay below 1.5)');
+assert.equal(contactShadowSunVisibility(2.0), 0, 'decode: an opaque pixel in cascade shadow');
+assert.equal(contactShadowSunVisibility(3.0), 1, 'decode: a sunlit opaque pixel');
+assert.ok(near(contactShadowSunVisibility(2.4), 0.4), 'decode: a penumbra pixel');
+assert.equal(contactShadowSunVisibility(1.0), -1, 'decode: an unlit material or the sky is no receiver');
+assert.equal(contactShadowSunVisibility(0.7), -1, 'decode: a grass card (its coverage alpha) is no receiver');
+assert.equal(CONTACT_SHADOW_ALPHA_OPAQUE, 1.5);
+assert.match(CONTACT_SHADOW_GLSL, /texture2D\( tDiffuse, quv \)\.a >= 1\.5000/, 'an occluder must be an opaque lit surface: cards never cast');
+assert.match(CONTACT_SHADOW_GLSL, /float sunVis = cotSunVisOf\( alpha \);\s*if \( sunVis <= 0\.02 \) return 1\.0;/, 'a card or shadowed receiver returns before the normal taps');
 assert.match(lighting, /const opaqueAnchor = 'gl_FragColor = vec4\( outgoingLight, diffuseColor\.a \);';/, 'anchored on the chunk\'s own write');
 assert.match(lighting, /scene\.userData\.lightRig = lightRig;/, 'the rig is published for the post chain');
 const renderer = readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8');
