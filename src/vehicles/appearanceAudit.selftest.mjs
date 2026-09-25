@@ -64,3 +64,51 @@ extra.getColorAt(0, extraColor);
 assert.equal(extraColor.getHex(), VEHICLE_APPEARANCE_PALETTE.trackPad);
 assert.deepEqual(near.instanceColor.array.slice(3), original.slice(3));
 assert.deepEqual(auditTankAppearance(tracks).issues, []);
+
+// ---------------------------------------------------------------------------------------------------------------
+// FSP-06 material roles (owner 2026-09-25: "camouflage on painted vehicle bodywork; distinct materials/colors for
+// accessory equipment, cloth, bags and mechanisms"). The fleet census is tools/material-roles-audit.mjs
+// (docs/tank-generation/material-roles-audit-20260925.md); this receipt pins the vocabulary and the role split of
+// the representative re-roled hulls on real builds so a regression that folds the pale canvas back into the
+// camouflage, or re-camouflages the Leclerc boot, fails here.
+{
+  await import('../../tools/tank-surface-collect.mjs'); // node canvas shim: materials are set as shipped
+  const { createTank } = await import('./tankFactory.ts');
+  const build = (id) => createTank(id, null, { proceduralOnly: true, quality: 'high', batchStatic: false });
+  const rolesOf = (root) => auditTankAppearance(root).roles;
+  const materialsOf = (root) => {
+    const set = new Set();
+    root.traverse((o) => {
+      if (!o.isMesh && !o.isInstancedMesh) return;
+      if (o.userData?.shadowOnly || /^procShadow_/.test(o.name || '')) return;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m) set.add(m);
+    });
+    return set;
+  };
+  // Role counts after the 2026-09-25 re-roling (mesh slots; the census JSON carries triangles), and the distinct
+  // rendered materials per tank: Merkava hulls grew by exactly the +2 bound (pale canvas + the fitting paint the
+  // jerry cans now share); the other re-roled hulls grew by 0.
+  const expected = {
+    merkava3c: { canvasPale: 2, materialsMax: 26, before: 24 },
+    merkava4b: { canvasPale: 2, materialsMax: 24, before: 22 },
+    leclerc: { canvas: 2, materialsMax: 22, before: 22 },
+    k2b: { materialsMax: 25, before: 25 },
+    carro45t: { materialsMax: 23, before: 23 },
+  };
+  for (const [id, want] of Object.entries(expected)) {
+    const tank = build(id);
+    const roles = rolesOf(tank.root);
+    const materials = materialsOf(tank.root);
+    assert.deepEqual(auditTankAppearance(tank.root).issues, [], `${id}: no running-gear or armor material issues`);
+    if (want.canvasPale) assert.equal(roles.canvasPale, want.canvasPale, `${id}: pale canvas rides hull and turret`);
+    else assert.equal(roles.canvasPale, undefined, `${id}: no pale canvas on a non-desert kit`);
+    if (want.canvas) assert.ok((roles.canvas ?? 0) >= want.canvas, `${id}: canvas boot/kit present`);
+    assert.ok(materials.size <= want.materialsMax && materials.size <= want.before + 2,
+      `${id}: ${materials.size} materials (before ${want.before}, bound +2)`);
+    const pale = [...materials].filter((m) => m.userData?.appearanceRole === 'canvasPale');
+    assert.ok(pale.length <= 1, `${id}: at most one pale canvas material`);
+    for (const m of pale) assert.equal(m.name, 'cot:canvas-pale');
+    tank.dispose?.();
+  }
+  console.log('appearanceAudit: FSP-06 material roles — pale canvas, canvas boot and fitting paint pinned on representative builds (2026-09-25)');
+}
