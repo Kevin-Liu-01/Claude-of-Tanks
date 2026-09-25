@@ -75,7 +75,7 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   overcastTurbidity: 7,
   /** an authored deck this low with an opaque low deck is a stratus ceiling too */
   overcastAuthoredAltM: 400,
-  overcastCoverageFloor: 0.9,
+  overcastCoverageFloor: 0.94,
   /** a storm is an overcast preset with the thickest fog (Monsoon: 0.00088) */
   stormFogDensity: 0.00086,
   /** scattered below, broken from here */

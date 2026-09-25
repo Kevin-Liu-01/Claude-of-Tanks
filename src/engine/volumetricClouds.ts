@@ -55,7 +55,7 @@ export const CLOUD_SHAPE_TILE_M = 3400;
 export const CLOUD_SHAPE_TILE_STRATUS_M = 4200;
 export const CLOUD_DETAIL_TILE_M = 400;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
-export const CLOUD_MARCH_STEPS = 96;
+export const CLOUD_MARCH_STEPS = 72;
 export const CLOUD_MARCH_MAX_M = 14000;
 export const CLOUD_DOME_RADIUS_M = 3400;
 /** Camera-cut thresholds: a jump (m), a turn (rad) or a zoom (relative tangent) that invalidates the history. */
@@ -73,7 +73,7 @@ export const CLOUD_AERIAL = Object.freeze({
   /** the pass's height-aware atmosphere: the falloff's start over the camera (m), its e-fold height, the shares */
   heightRef: 30, heightScale: 150, heightScatterK: 0.75, heightExtK: 0.35,
 });
-/** Light march toward the sun: sample distances (m) from the point, coarse taps beyond the detailed pair. */
+/** Light march toward the sun: sample distances (m) from the point, on the base shape (no detail erosion). */
 export const CLOUD_LIGHT_TAPS = Object.freeze([14, 34, 70, 140, 280, 560] as const);
 
 const f = (x: number): string => { const s = String(x); return s.includes('.') || s.includes('e') ? s : `${s}.0`; };
@@ -206,7 +206,7 @@ float cloudLightDepth( vec3 p, vec3 w ) {
 ${CLOUD_LIGHT_TAPS.map((dist, k) => `	{
 		vec3 lp = p + uSunDir * ${f(dist)};
 		vec3 lw = ${k < 2 ? 'w' : 'cloudWeather( lp.xz )'};
-		od += cloudDensity( lp, lw, ${k < 2 ? 'true' : 'false'} ) * ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))};
+		od += cloudDensity( lp, lw, false ) * ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))};
 	}`).join('\n')}
 	return od * uDensity;
 }
@@ -238,14 +238,14 @@ void main() {
 		// the powder term fades toward the sun, where the forward peak lights the thin edges instead
 		float powderK = clamp( cosT * -0.5 + 0.6, 0.0, 1.0 );
 		float span = t1 - t0;
-		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, 8.0, 90.0 );
+		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( 8.0, uThick / 24.0 ), 90.0 );
 		float t = t0 + ds * jitter;
 		vec3 L = vec3( 0.0 );
 		float T = 1.0;
 		float tAcc = 0.0, wAcc = 0.0;
 		int empty = 0;
 		for ( int i = 0; i < ${CLOUD_MARCH_STEPS}; i++ ) {
-			if ( t > t1 || T < 0.012 ) break;
+			if ( t > t1 || T < 0.02 ) break;
 			vec3 p = uCamPos + dir * t;
 			vec3 w = cloudWeather( p.xz );
 			float dens = w.x > 0.0 ? cloudDensity( p, w, true ) : 0.0;
@@ -262,20 +262,23 @@ void main() {
 				float tau = cloudLightDepth( p, w ) + sig * 4.0;
 				// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
 				float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
+				// an overcast sheet is lit by the whole sky above it, not by one reddened low sun: its diffused
+				// light is the sun's luminance, neutral
+				vec3 sunDiff = mix( uSunRadiance, vec3( dot( uSunRadiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), uStratiform * 0.85 );
 				// the diffusion regime of a thick non-absorbing cloud: diffuse light is transmitted about
 				// 1 / (1 + 0.75 (1 - g) tau), so the base of an overcast sheet is bright and the shaded side of a
 				// cumulus stays grey, not black; it builds with height in the cloud (the lower parts are darker)
 				float msV = mix( 0.55, 1.0, smoothstep( 0.0, 0.45, hN ) );
-				sun += 0.28 / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
+				float diffusion = 0.28 / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 				// in-scatter probability (powder): light builds up inside the cloud, so thin edges and the
 				// underside read darker when lit from behind the viewer
 				float powder = mix( 1.0, ( 1.0 - exp( -sig * 24.0 ) ) * ( 0.15 + 0.85 * smoothstep( 0.02, 0.25, hN ) ), powderK * 0.7 );
 				// darker bases: their direct light is scattered away by the cloud above
 				float baseShadow = mix( 0.55, 1.0, smoothstep( -0.1, 0.45, hN ) );
 				// ambient: the sky lights the tops, the bases see the horizon; a stratus sheet is diffuser-lit
-				vec3 amb = mix( uAmbientBottom, uAmbientTop, smoothstep( 0.0, 0.9, hN ) ) * ( 1.0 + uStratiform * 0.9 );
+				vec3 amb = mix( uAmbientBottom, uAmbientTop, max( smoothstep( 0.0, 0.9, hN ), uStratiform * 0.75 ) ) * ( 1.0 + uStratiform * 1.2 );
 				amb *= mix( 0.45, 1.0, 1.0 - dens * 0.5 );
-				vec3 S = ( uSunRadiance * sun * powder * baseShadow * uSunGain + amb ) * uTint;
+				vec3 S = ( ( uSunRadiance * sun + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
 				float Tstep = exp( -sig * ds );
 				float dT = T * ( 1.0 - Tstep );
 				L += S * dT;
