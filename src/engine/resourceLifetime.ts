@@ -63,9 +63,11 @@ function createResourceBag(): ResourceBag {
 const LIMITS = Object.freeze({
   // Keep enough recent heroes/maps for quick backtracking without allowing a
   // long browsing session to become an unbounded GPU/heap residency policy.
-  // Four preview tanks and two worlds preserve useful reuse while putting a
-  // deterministic ceiling on hidden scene graphs, textures and programs.
-  desktop: Object.freeze({ pedestalVisuals: 4, worldScenes: 2 }),
+  // Six preview tanks (four recently shown heroes plus the two adjacent cards
+  // built ahead in the quiet window, FSP-01 R2) and two worlds preserve useful
+  // reuse while putting a deterministic ceiling on hidden scene graphs,
+  // textures and programs.
+  desktop: Object.freeze({ pedestalVisuals: 6, worldScenes: 2 }),
   mobile: Object.freeze({ pedestalVisuals: 2, worldScenes: 1 }),
 });
 

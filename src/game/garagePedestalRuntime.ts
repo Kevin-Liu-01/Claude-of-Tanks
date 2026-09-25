@@ -46,7 +46,7 @@ type GarageSwitchStageName = 'import' | 'paint' | 'build' | 'stage' | 'compile';
 export interface GarageSwitchRecord {
   id: string;
   token: number;
-  path: 'cached' | 'procedural' | 'aborted';
+  path: 'cached' | 'procedural' | 'speculative' | 'aborted';
   startedAt: number;
   revealMs: number | null;
   stages: Partial<Record<GarageSwitchStageName, GarageSwitchStageSpan>>;
@@ -130,6 +130,8 @@ interface GaragePedestalRuntimeOptions {
   isBootComplete(): boolean;
   getSelectedId(): string;
   getNeighborIds(): readonly string[];
+  /** Nearest cards constructed ahead into the warm cache while the Garage is quiet. */
+  getSpeculativeIds?(): readonly string[];
   getBattlePlayer(): BattleEntity | null | undefined;
   getBattleEntity(specId: string): BattleEntity | null | undefined;
   groundSampler: RuntimeValue;
@@ -161,6 +163,11 @@ export interface GaragePedestalRuntime {
   poseCurrent(): void;
   adoptBattlePlayer(specId: string): boolean;
   lendToBattle(specId: string): boolean;
+  buildSpeculative(
+    specId: string,
+    stillValid?: () => boolean,
+    protectedIds?: readonly string[],
+  ): Promise<boolean>;
   dispose(): void;
 }
 
@@ -197,6 +204,7 @@ export function createGaragePedestalRuntime({
   isBootComplete,
   getSelectedId,
   getNeighborIds,
+  getSpeculativeIds = () => [],
   getBattlePlayer,
   getBattleEntity,
   groundSampler,
@@ -441,6 +449,8 @@ export function createGaragePedestalRuntime({
     acquireBackgroundWork,
     anisotropy,
     warn,
+    getSpeculativeIds,
+    buildSpeculative: (specId, stillValid, protectedIds) => buildSpeculative(specId, stillValid, protectedIds),
   });
 
   const recordSwitch = (
@@ -584,6 +594,80 @@ export function createGaragePedestalRuntime({
     } catch (_) {
       // The first visible render remains the compatibility fallback.
     }
+  };
+
+  /**
+   * FSP-01 R2: construct a likely next hero into the warm cache while the
+   * Garage is quiet. Never shown until selected; never displaces a hero the
+   * player has seen (only a stale never-shown entry outside `protectedIds`);
+   * cancelled at every checkpoint by fresh input through `stillValid`. A
+   * selection of this very vehicle during the link wait keeps the wait alive
+   * so the selection reveals fully prepared.
+   */
+  const buildSpeculative = async (
+    specId: string,
+    stillValid: () => boolean = () => true,
+    protectedIds: readonly string[] = [],
+  ): Promise<boolean> => {
+    if (disposed || getDeviceTier() === 'mobile' || !isBootComplete() || getPhase() !== 'garage') return false;
+    if (cache.has(specId) || specId === getSelectedId() || current?.specId === specId) return false;
+    if (cache.size >= residentLimit) {
+      const displaceable = [...cache.values()].some((visual) => !visual.__everShown
+        && visual !== current && !visual.__pedestalCompiling && !isOnStage(visual)
+        && !fielded(visual) && !protectedIds.includes(visual.specId));
+      if (!displaceable) return false;
+    }
+    const valid = () => stillValid() && canStage() && getPhase() === 'garage'
+      && !cache.has(specId) && getSelectedId() !== specId;
+    const record = openSwitchRecord(specId, 0, now(), 'speculative');
+    const phases: Record<string, number> = { prebakeMs: 0, buildMs: 0, compileMs: 0 };
+    const prebakeAt = now();
+    try {
+      await ensureTankBuilder(specId);
+      await prebakeSharedTextures(getSpec(specId), anisotropy, 'ai', createBudgetYield(6));
+    } catch (error) {
+      warn('[garage] speculative hero preparation failed:', error);
+      return false;
+    }
+    closeStage(record, 'paint', prebakeAt);
+    if (!valid()) {
+      abortSwitchRecord(record, 'speculative-stale');
+      return false;
+    }
+    const buildStartedAt = now();
+    const incoming = await buildVisual(specId, valid, phases);
+    closeStage(record, 'build', buildStartedAt);
+    if (!incoming || !valid()) {
+      incoming?.dispose();
+      abortSwitchRecord(record, 'speculative-stale');
+      return false;
+    }
+    record.build = {
+      workMs: round1(phases.buildMs), yieldMs: round1(phases.buildYieldMs),
+      checkpointCount: phases.buildCheckpointCount, maxStepMs: round1(phases.maxBuildStepMs),
+    };
+    Object.assign(record, buildTimingDurations(incoming.root));
+    incoming.spec = getSpec(specId);
+    pose(incoming);
+    incoming.root.position.y = garagePosition.y + PARK_OFFSET_Y;
+    scene.add(incoming.root);
+    incoming.__pedestalCompiling = true;
+    touch(specId, incoming);
+    const compileAt = now();
+    const warmValid = () => canStage() && cache.get(specId) === incoming
+      && (stillValid() || getSelectedId() === specId);
+    incoming.__pedestalCompileP = warmPrograms(incoming, warmValid, record).finally(() => {
+      incoming.__pedestalCompiling = false;
+      incoming.__pedestalCompileP = null;
+    });
+    await incoming.__pedestalCompileP;
+    closeStage(record, 'compile', compileAt);
+    if (cache.get(specId) !== incoming || retired.has(incoming)) return false;
+    // A selection made during the wait reveals through the cached path; an
+    // unselected hero waits parked, hidden and detached, like any warm entry.
+    if (current !== incoming && !isOnStage(incoming)) park(incoming);
+    publishSwitchRecord(record);
+    return true;
   };
 
   const set = (specId: string, force = false): Promise<void> => {
@@ -817,6 +901,7 @@ export function createGaragePedestalRuntime({
     poseCurrent: () => { if (current && !parked.has(current)) pose(current); },
     adoptBattlePlayer,
     lendToBattle,
+    buildSpeculative,
     dispose: () => {
       if (disposed) return;
       disposed = true;

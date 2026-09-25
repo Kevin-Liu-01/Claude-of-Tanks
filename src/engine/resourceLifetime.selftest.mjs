@@ -13,7 +13,7 @@ assert.deepEqual(residentResourceLimits('mobile'), {
   worldScenes: 1,
 });
 assert.deepEqual(residentResourceLimits('desktop'), {
-  pedestalVisuals: 4,
+  pedestalVisuals: 6,
   worldScenes: 2,
 });
 assert.ok(Number.isFinite(residentResourceLimits('desktop').worldScenes),

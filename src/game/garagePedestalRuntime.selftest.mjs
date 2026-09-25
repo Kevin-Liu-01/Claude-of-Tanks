@@ -10,7 +10,7 @@ function deferred() {
 
 function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayedFrames = [],
   delayedBuilds = [], buildCheckpoints = 0, failBudget = false, programSlices = 0,
-  programOutcome = null } = {}) {
+  programOutcome = null, speculativeIds = [] } = {}) {
   const scene = new THREE.Scene();
   const garagePosition = new THREE.Vector3(10, 5, -12);
   const debugTarget = {};
@@ -145,6 +145,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     isBootComplete: () => bootComplete,
     getSelectedId: () => selectedId,
     getNeighborIds: () => [],
+    getSpeculativeIds: () => speculativeIds,
     getBattlePlayer: () => player,
     getBattleEntity: (specId) => entities.get(specId),
     groundSampler: 'terrain-sampler',
@@ -690,4 +691,52 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   h.runtime.dispose();
 }
 
-console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, program link preparation, detached warm LRU, resource preservation and battle handoff passed');
+{
+  // FSP-01 R2: the quiet window constructs the adjacent card into the warm
+  // cache (built, link-prepared, parked, never shown); selecting it later is
+  // a cache hit revealed through the cached path.
+  const h = createHarness({ residentLimit: 3, speculativeIds: ['bravo'], programSlices: 1,
+    programOutcome: { status: 'complete', pending: 0 } });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  h.setSelected('alpha');
+  await h.runtime.set('alpha', true);
+  assert.equal(h.delayed.length, 1, 'the reveal queues the quiet-window work');
+  h.delayed.shift().callback();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.ok(h.runtime.hasCached('bravo'), 'the adjacent card was constructed ahead');
+  assert.equal(h.runtime.current?.specId, 'alpha', 'the speculative hero is never shown on its own');
+  const speculative = h.visuals.find((visual) => visual.specId === 'bravo');
+  assert.equal(speculative.root.parent, null, 'a speculative hero waits parked and detached');
+  assert.equal(speculative.root.visible, false);
+  assert.equal(h.prebakes.at(-1), 'ai', 'the speculative build uses the Garage texture tier');
+  const record = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'bravo');
+  assert.equal(record.path, 'speculative');
+  assert.equal(record.revealMs, null);
+  assert.equal(record.link.status, 'complete');
+  assert.ok(record.stages.build && record.stages.compile);
+  h.setSelected('bravo');
+  await h.runtime.set('bravo');
+  assert.equal(h.runtime.current, speculative, 'the selection reuses the pre-built hero');
+  assert.equal(h.debugTarget.__SWITCH_TIMINGS.at(-1).path, 'cached');
+  assert.equal(h.runtime.isOnStage(), true);
+  assert.deepEqual(h.disposed, []);
+  h.runtime.dispose();
+}
+{
+  // A full cache of heroes the player has seen is never displaced by speculation.
+  const h = createHarness({ residentLimit: 2, speculativeIds: ['charlie'] });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  h.setSelected('bravo');
+  await h.runtime.set('bravo');
+  assert.deepEqual([...h.runtime.cacheIds].sort(), ['alpha', 'bravo']);
+  assert.equal(await h.runtime.buildSpeculative('charlie'), false);
+  assert.deepEqual([...h.runtime.cacheIds].sort(), ['alpha', 'bravo'], 'shown heroes stay resident');
+  assert.deepEqual(h.disposed, []);
+  assert.equal(await h.runtime.buildSpeculative('bravo'), false, 'the selected hero is never built twice');
+  h.runtime.dispose();
+}
+
+console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, program link preparation, speculative neighbors, detached warm LRU, resource preservation and battle handoff passed');

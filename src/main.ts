@@ -925,6 +925,8 @@ const pedestal = createGaragePedestalRuntime({
   isBootComplete: () => bootComplete,
   getSelectedId: () => selectedVehicle.id,
   getNeighborIds: () => garage?.getNeighborIds?.(2) || [],
+  // FSP-01 R2: the two adjacent cards are built ahead in the quiet window.
+  getSpeculativeIds: () => garage?.getNeighborIds?.(1) || [],
   getBattlePlayer: () => game.player,
   getBattleEntity: (specId) => game.tankById.get(specId),
   groundSampler,

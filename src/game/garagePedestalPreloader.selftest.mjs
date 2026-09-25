@@ -117,4 +117,48 @@ assert.deepEqual(intent.retainedIds, ['y', 'z']);
 assert.deepEqual(intentDiscarded, ['x']);
 assert.equal(intent.pendingIntents, 0);
 
-console.log('garagePedestalPreloader.selftest: cancellation, coalescing and retention pass');
+// FSP-01 R2: after the neighbor textures are warm, the nearest cards are
+// constructed ahead through the runtime's speculative port; fresh input
+// cancels between constructions.
+{
+  const built = [];
+  const specScheduled = [];
+  let specFrames = 0;
+  let specCached = new Set(['p']);
+  const speculative = createGaragePedestalPreloader({
+    getPhase: () => 'garage',
+    isBootComplete: () => true,
+    getSelectedId: () => 'sel',
+    getNeighborIds: () => ['n', 'p', 'q', 'sel'],
+    hasCachedVisual: (id) => specCached.has(id),
+    ensureTankBuilder: async () => {},
+    ensureTankBuilders: async () => {},
+    getSpec: (id) => ({ id }),
+    prebakeSharedTextures: async () => {},
+    discardSharedTextures: () => {},
+    createBudgetYield: () => async () => {},
+    nextFrame: async () => { specFrames += 1; },
+    scheduleDelay: (callback) => specScheduled.push(callback),
+    anisotropy: 4,
+    getSpeculativeIds: () => ['n', 'p', 'sel'],
+    buildSpeculative: async (id, stillValid, protectedIds) => {
+      built.push({ id, protectedIds: [...protectedIds], valid: stillValid() });
+      if (id === 'n') speculative.invalidate();
+      return true;
+    },
+  });
+  speculative.queueNeighbors();
+  specScheduled.shift()();
+  await flush();
+  assert.deepEqual(built, [{ id: 'n', protectedIds: ['n'], valid: true }],
+    'only uncached, unselected nearest cards are built, after every texture bake, until fresh input cancels');
+  assert.equal(specFrames, 3, 'two texture bakes and one construction each yield a frame');
+  specCached = new Set();
+  built.length = 0;
+  speculative.queueNeighbors();
+  specScheduled.shift()();
+  await flush();
+  assert.deepEqual(built.map((entry) => entry.id), ['n'], 'a cancelled pass stops before the second card');
+}
+
+console.log('garagePedestalPreloader.selftest: cancellation, coalescing, retention and speculative construction pass');

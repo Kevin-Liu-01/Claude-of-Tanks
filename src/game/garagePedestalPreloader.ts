@@ -28,6 +28,13 @@ interface GaragePedestalPreloaderOptions {
   warn?: (message: string, error: RuntimeValue) => void;
   retainedIntentLimit?: number;
   neighborDelayMs?: number;
+  /** FSP-01 R2: nearest cards to construct ahead once their textures are warm. */
+  getSpeculativeIds?: () => readonly string[];
+  buildSpeculative?: ((
+    specId: string,
+    stillValid: () => boolean,
+    protectedIds: readonly string[],
+  ) => Promise<boolean>) | null;
 }
 
 interface GaragePedestalPreloader {
@@ -60,6 +67,8 @@ export function createGaragePedestalPreloader({
   warn = (message, error) => console.warn(message, error),
   retainedIntentLimit = 4,
   neighborDelayMs = 1800,
+  getSpeculativeIds = () => [],
+  buildSpeculative = null,
 }: GaragePedestalPreloaderOptions): GaragePedestalPreloader {
   const required = [getPhase, isBootComplete, getSelectedId, getNeighborIds,
     hasCachedVisual, ensureTankBuilder, ensureTankBuilders, getSpec,
@@ -117,6 +126,17 @@ export function createGaragePedestalPreloader({
             }
             retainedIds.add(id);
             await nextFrame();
+          }
+          if (buildSpeculative) {
+            // The nearest cards are constructed into the warm cache while the
+            // window stays quiet, so the next adjacent selection is a cache hit.
+            const speculative = [...getSpeculativeIds()]
+              .filter((id) => id !== selectedId && !hasCachedVisual(id));
+            for (const id of speculative) {
+              if (!active(token)) throw CANCELLED;
+              await buildSpeculative(id, () => active(token), speculative);
+              await nextFrame();
+            }
           }
         } catch (error) {
           if (error !== CANCELLED) warn('[garage] neighbor texture prefetch failed:', error);
