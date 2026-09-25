@@ -1244,7 +1244,8 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     rz = 0,
     scale: GeometryScale = 1,
   ): void => {
-    const movingBucket = bucket === 'turretDark' ? 'gunMountDark' : 'gunMount';
+    // FSP-06: 'turretCloth' is the canvas mantlet boot — silhouette skin on the gun mount (gunMountCanvasSkin).
+    const movingBucket = bucket === 'turretDark' ? 'gunMountDark' : bucket === 'turretCloth' ? 'gunMountCanvasSkin' : 'gunMount';
     P.add(movingBucket, geo, x, y - P.gunG.position.y, z - P.gunG.position.z,
       rx, ry, rz, scale);
   };
@@ -1541,10 +1542,10 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // OWNS plan cols +-0.29 (ref 2.091, err 0.005 — the old spine read
     // +0.054). Envelope holds the priced side shelves: top 2.13w over z_w
     // 2.09..2.62, bottom 1.727w.
-    gunHousing('turret', box(0.42, 0.328, 0.53), 0, 0.291, 2.455);               // boot body: x +-0.21, bottom 1.727w, z_w 2.09..2.62 at neutral
-    gunHousing('turret', box(0.29, 0.075, 0.53), 0, 0.4925, 2.455);              // boot cap: top 2.13w held at neutral
+    gunHousing('turretCloth', box(0.42, 0.328, 0.53), 0, 0.291, 2.455);          // boot body (canvas, FSP-06): x +-0.21, bottom 1.727w, z_w 2.09..2.62 at neutral
+    gunHousing('turretCloth', box(0.29, 0.075, 0.53), 0, 0.4925, 2.455);         // boot cap (canvas, FSP-06): top 2.13w held at neutral
     for (const s of [-1, 1]) {
-      gunHousing('turret', slab(                                                 // canvas shoulder chamfer closing body->cap (soft edge)
+      gunHousing('turretCloth', slab(                                            // canvas shoulder chamfer closing body->cap (soft edge)
         [s * 0.21, 0.455, 2.19], [s * 0.21, 0.455, 2.72], [s * 0.145, 0.53, 2.72], [s * 0.145, 0.53, 2.19],
         [s * 0.155, 0.455, 2.19], [s * 0.155, 0.455, 2.72], [s * 0.10, 0.53, 2.72], [s * 0.10, 0.53, 2.19]), 0, 0, 0);
       gunHousing('turretDark', box(0.004, 0.36, 0.030), s * 0.212, 0.32, 2.38);  // side sag creases (2 mm proud)
@@ -1754,8 +1755,8 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       [-1.102, 0.795, -0.975], [-1.06, 0.795, -0.975], [-1.06, 0.795, -0.925], [-1.102, 0.795, -0.925],
       [-1.102, 0.93, -0.975], [-1.06, 0.83, -0.975], [-1.06, 0.83, -0.925], [-1.102, 0.93, -0.925])); // tapered mast fairing closes the real load path into the broad sensor base
     // whips STOWED along the bustle roof (the print carries no raised spikes)
-    P.add('turretDetail', box(0.022, 0.022, 0.62), 0.95, roofAt(-1.75) + 0.03, -1.62);
-    P.add('turretDetail', box(0.022, 0.022, 0.62), -0.95, roofAt(-1.75) + 0.03, -1.62);
+    P.add('turretDark', box(0.022, 0.022, 0.62), 0.95, roofAt(-1.75) + 0.03, -1.62);   // FSP-06: whip rods are dark
+    P.add('turretDark', box(0.022, 0.022, 0.62), -0.95, roofAt(-1.75) + 0.03, -1.62);
     // GALIX: LEFT bank deep/outboard (the print's tall left corner), RIGHT
     // bank short/low/inboard (ref right cols top 1.94-2.06, rear -1.76).
     // §B3.2 density (2026-08-06): the real GALIX 80 fit is NINE tubes per
@@ -4166,8 +4167,8 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     }
     if (!b2) {
       // French rear-fender jerrican pair (B; the B2 carries service bins there)
-      jerryCan(P, 'hullDetail', -1.42, 1.815, -2.05, 0.10);
-      jerryCan(P, 'hullDetail', -1.42, 1.815, -2.42, -0.06);
+      jerryCan(P, 'hullFittingPaint', -1.42, 1.815, -2.05, 0.10);           // FSP-06: solid fitting paint
+      jerryCan(P, 'hullFittingPaint', -1.42, 1.815, -2.42, -0.06);
       P.add('hullDark', box(0.18, 0.02, 0.42), -1.42, 1.60, -2.23);              // can saddle strip
     }
     liftEye(P, 'hullDetail', -1.38, 1.585, 1.16);
