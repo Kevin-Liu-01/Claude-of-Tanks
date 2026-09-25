@@ -93,6 +93,20 @@ The default local URL is usually http://localhost:5173.
 The home and docs routes are separate Vite entries. They must remain able to
 load without preloading the game module graph.
 
+### Asset caching (2026-09-25)
+
+Everything Vite writes under `/assets/` is content-hashed, so `vercel.json`
+serves that prefix with `Cache-Control: public, max-age=31536000, immutable`:
+a warm browser never revalidates the 105-file entry graph before boot, and a
+new deployment changes every hash. Nothing else is immutable — `index.html`
+and the localized documents stay `must-revalidate` so a stale document cannot
+outlive its module graph, and `public/maps`, `public/minimaps` and every other
+unhashed path keep Vercel's default because the tactical-map plates are
+re-baked in place. Verify a header change with `vercel build` (no deploy) and
+read `.vercel/output/config.json`; the run rewrites `package-lock.json`, which
+must not be committed. The entry-resilience program that introduced the rule
+is in [ENTRY-RESILIENCE.md](ENTRY-RESILIENCE.md).
+
 ## Development services
 
 Start local signaling:
