@@ -1598,6 +1598,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   // A watchdog past the longest possible replay (3.4 s flight + 7 s hold +
   // slack) guarantees a stuck replay can never eat the report.
   let kcReplayActive = false;
+  // battle endings (2026-09-25): a camera beat (time's up, objective orbit, wreck orbit) owns the screen
+  // exactly like a replay — 'ending:begin' / 'ending:done' from the result presentation runtime
+  let endingBeatActive = false;
   let pendingReport: EndScreenResult | null = null; // buffered battle:ended result ('' is valid)
   let reportFlushTimer: TimerHandle | null = null;
   let reportWatchdog: TimerHandle | null = null;
@@ -1620,7 +1623,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const decide = () => {
       if (pendingReport === null) return;
       if (reportFlushTimer) { clearTimeout(reportFlushTimer); reportFlushTimer = null; }
-      if (!kcReplayActive) { flushReport(); return; }
+      if (!kcReplayActive && !endingBeatActive) { flushReport(); return; }
       // replay owns the screen: killcam:done flushes; watchdog backstops
       if (!reportWatchdog) reportWatchdog = setTimeout(flushReport, REPORT_MAX_WAIT_MS);
     };
@@ -1637,7 +1640,12 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   bus.on('killcam:begin', () => { kcReplayActive = true; });
   bus.on('killcam:done', () => {
     kcReplayActive = false;
-    if (pendingReport !== null) flushReport();
+    if (pendingReport !== null && !endingBeatActive) flushReport();
+  });
+  bus.on('ending:begin', () => { endingBeatActive = true; });
+  bus.on('ending:done', () => {
+    endingBeatActive = false;
+    if (pendingReport !== null && !kcReplayActive) flushReport();
   });
 
   bus.on('battle:ended', (payload) => {

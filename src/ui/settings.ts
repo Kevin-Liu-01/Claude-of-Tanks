@@ -1567,6 +1567,17 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       kcReplay = false;
       kcDoneMs = nowMs();
     });
+    // battle endings (2026-09-25): the director's camera beats own the screen the same way — their
+    // any-key skip must win over the Esc menu and the resume veil
+    bus.on('ending:begin', () => {
+      kcReplay = true;
+      hideResumeVeil();
+      if (open) { relockOnClose = false; closePanel(); }
+    });
+    bus.on('ending:done', () => {
+      kcReplay = false;
+      kcDoneMs = nowMs();
+    });
   }
   setInterval(updateGear, 150); // fallback only — events above hide/show instantly
   updateGear();

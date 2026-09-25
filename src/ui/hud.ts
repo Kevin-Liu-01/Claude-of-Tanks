@@ -318,6 +318,11 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   module?: string;
   state?: string;
   repaired?: boolean;
+  /** battle endings (2026-09-25): 'ending:begin' / 'ending:done' — the beat and its caption */
+  beat?: string;
+  captionKey?: string | null;
+  captionValues?: Record<string, string> | null;
+  clockFlash?: boolean;
 }
 
 interface HitDirection {
@@ -1264,6 +1269,10 @@ const HUD_CSS = `
 .cot-top .tm{font-size:18px;font-weight:750;color:#e2ebf2;letter-spacing:.08em;
   font-family:${FONT_COND};text-shadow:0 1px 3px rgba(0,0,0,.9);
   font-variant-numeric:tabular-nums;line-height:1;}
+/* battle endings (2026-09-25): the clock flashes amber through the time's-up beat */
+.cot-top.times-up .tm{color:#ffd27a;animation:cotTimesUp .36s steps(1,end) 7;}
+.cot-top.times-up .tm-label{color:#ffd27a;}
+@keyframes cotTimesUp{50%{opacity:.18;}}
 /* One socket per opposing vehicle; kills illuminate outward from the clock. */
 .cot-top .wedge{display:flex;gap:3px;align-items:center;min-width:0;}
 .cot-top .wedge i{display:block;width:6px;height:6px;
@@ -5911,6 +5920,13 @@ export function initHud(bus: EventBus): HudRuntime {
       icon: 'modeTurbo', tone: allied ? 'success' : 'danger',
     });
   });
+  // battle endings (2026-09-25): the director's camera beat (battleResultPresentationRuntime) — the clock
+  // flashes for time's up and the beat's caption rides the alert strip; the class clears when the beat ends
+  on('ending:begin', ({ clockFlash, captionKey, captionValues }) => {
+    topPlate.classList.toggle('times-up', !!clockFlash);
+    if (captionKey) showAlert(t(captionKey, captionValues || {}), { icon: clockFlash ? 'clock' : 'battleRecord', tone: 'info' });
+  });
+  on('ending:done', () => { topPlate.classList.remove('times-up'); });
   // batch 19 (2026-09-14): the remaining mode events reach the player — sectors taken, waves cleared
   // (with the repair), respawns, the flag changing hands, caches dropping
   on('mode:line_advanced', ({ line, total }) => {

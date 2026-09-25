@@ -58,6 +58,10 @@ spotting disclosure, aim publication, scoped armor targeting, and damage-panel
 transaction;
 `battleResultPresentationRuntime.ts` owns live player-death holds, result
 replay handoff, final verdict presentation, and round/exit reset state;
+`battleEnding.ts` is the pure battle-ending director (beat per mode × verdict
+reason, the deciding objective from observed mode events, the beat clock and
+skip), `battleEndingCamera.ts` poses its camera beats through the rig, and
+`killcamSelection.ts` is the pure final-kill replay policy the killcam reads;
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
 facade; `killcam.ts` owns replay presentation, while `studio.ts` renders the
 Scene Studio and `studioTimeline.ts` owns its strict JSON-safe storyboard and

@@ -149,6 +149,18 @@ have their own reveal rules. Inputs that are stale, implausibly far ahead,
 malformed, or sent before the handshake are rejected without poisoning the
 connection sequence.
 
+Battle endings (2026-09-25): the verdict does not freeze the authority on the spot. For the
+ruleset's post-verdict hold (`matchRuleset.endingHoldS`, 8 s) the match keeps stepping with
+every trigger silenced — bots and humans alike — so wrecks settle, fires burn and shells in
+flight land while snapshots keep publishing at the usual cadence; once the hold expires the
+step returns early and the field stands still. `AuthoritativeMatchRuntime` defers the room's
+post-match transition (`roomController.finish` → `finishLobbyRound`, the waiting / rematch
+state) by the same hold, so every client's ending beat plays over live snapshots before the
+room can move on (the dedicated registry's 30 s reclaim window sits well past it). On the
+client the browser bridge feeds the killcam every observable lethal `shell_hit`
+(`game.killcam.onShellHit` for any pair the reveal rules let the viewer see), and the same
+ending director runs on the mirrored `battle:ended` verdict as in solo play.
+
 ## Delivery model
 
 LAN/private WebRTC uses two data channels:

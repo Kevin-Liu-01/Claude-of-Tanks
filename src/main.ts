@@ -164,6 +164,7 @@ import { createBattlePresentationRuntime } from './game/battlePresentationRuntim
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
+import { createBattleEndingCamera } from './game/battleEndingCamera.ts';
 import { createSoloBattleDeploymentAccess } from './game/soloBattleDeploymentAccess.ts';
 import { createSoloBattleLoadingAccess } from './game/soloBattleLoadingAccess.ts';
 import type { SoloBattleLoadingStartOptions } from './game/soloBattleLoadingRuntime.ts';
@@ -1601,6 +1602,16 @@ const endOverlay = createEndOverlayRuntime({
 // the settings panel (src/ui/settings.ts). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
 const debugFlags: { forceFire: boolean; lastEndFlow?: RuntimeValue } = { forceFire: false };
+// Battle endings (owner 2026-09-25): the director (src/game/battleEnding.ts) chooses every verdict's close —
+// the final-kill replay through the killcam, or a camera beat (time's up, objective orbit, wreck orbit,
+// pull-back) posed through the rig by the ending camera; 'ending:begin' / 'ending:done' gate the report,
+// flash the HUD clock and carry the caption.
+const battleEndingCamera = createBattleEndingCamera({
+  rig,
+  camera,
+  getPlayerYaw: () => game.player?.state?.yaw ?? null,
+  getHeightAt: (x: number, z: number) => hfProxy.getHeightAt(x, z),
+});
 const battleResultPresentation = createBattleResultPresentationRuntime({
   game,
   killcam,
@@ -1610,7 +1621,21 @@ const battleResultPresentation = createBattleResultPresentationRuntime({
   emitPresented: (result: RuntimeValue) => bus.emit('battle:presented', { result }),
   exitPointerLock: () => { document.exitPointerLock?.(); },
   recordFlow: (receipt: RuntimeValue) => { debugFlags.lastEndFlow = receipt; },
+  ending: {
+    camera: battleEndingCamera,
+    modeState: () => game.matchModeState,
+    emitBeat: (phase, plan) => bus.emit(phase === 'begin' ? 'ending:begin' : 'ending:done', {
+      beat: plan.beat,
+      durationS: plan.durationS,
+      clockFlash: plan.clockFlash,
+      captionKey: plan.caption?.key ?? null,
+      captionValues: plan.caption?.values ?? null,
+    }),
+  },
 });
+for (const type of ['mode:flag_captured', 'mode:zone_captured', 'mode:goal_scored', 'mode:wave_started', 'tank:destroyed']) {
+  bus.on(type, (payload) => battleResultPresentation.observe(type, payload));
+}
 const battlePhase = createBattlePhasePolicy({
   getPhase: () => game.phase,
   hasResult: () => !!game.result,

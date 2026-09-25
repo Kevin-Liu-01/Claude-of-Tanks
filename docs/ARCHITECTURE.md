@@ -1105,6 +1105,44 @@ bounds, and never blocks the Garage render loop with a synchronous fleet build.
 `garageWorkshopTransfer.ts` reconstructs the hierarchy in bounded frame slices
 before the quiet scheduler reveals each finished exhibit.
 
+#### 3.7.4 Battle endings — `src/game/battleEnding.ts`, `battleEndingCamera.ts`, `killcamSelection.ts`
+
+Owner 2026-09-25 ("for the final kill in a battle, in regular it just ends instead of
+showing a final kill cam or something. handle battle ends better and consider all
+modes"). Every verdict closes with a beat before the report. `battleEnding.ts` is a pure
+director (Node-testable): from the mode, the verdict reason and the facts it observed on
+the bus (`mode:flag_captured`, `mode:zone_captured`, `mode:goal_scored`, `mode:wave_started`,
+`tank:destroyed`) it plans one of
+
+| reason | beat |
+|---|---|
+| `elimination` (any result) | the final-kill replay whoever fired it (`killcam.playForResult` with `finalKill`), else an orbit of the last wreck, else a pull-back |
+| `time_limit` (victory / defeat / draw) | "time's up": the HUD clock flashes and the camera pulls back over the player's tank for 2.5 s |
+| `flag_limit` / `score_limit` / `goal_limit` | a 2.5 s orbit of the deciding objective — the base the last capture ran to, the zone the winner took last (or holds strongest), the goal the ball entered; the player's tank when unknown |
+| `horde_overrun` | the player's last stand: the death replay, else the wreck orbit; the wave milestone reaches the report |
+| `line_held` / `assault_overrun` | the overview of the line's last sector (the death replay first when the assault fell with the player); a campaign sortie gets the same beats before its debrief |
+| `network_disconnect` | no beat |
+| anything else | a pull-back over the player — never a bare cut; draws included |
+
+`battleResultPresentationRuntime.ts` drives it: replay beats go through the killcam, whose
+`killcamSelection.ts` policy picks the player's own fresh death first, then the last lethal
+chain on any pair (an ally's shell, a bot's ram, a burn-out's lighting shell as x-ray), then
+the old fallbacks — a 'final' playback kind titles the replay "FINAL BLOW — A destroyed B".
+Camera beats are posed by `battleEndingCamera.ts` through `rig.setExternalPose` (eased
+pull-back, blended orbits, terrain clearance) and end on any key / click. The runtime emits
+`ending:begin` / `ending:done`: `shotInfo.ts` holds the report (the REPORT GATE treats a beat
+like a replay), `hud.ts` flashes the clock and shows the caption, `settings.ts` yields the
+Esc menu. The report's hero line names the final blow (shooter, victim, shell / ram / fire)
+from `shotInfo.ts`'s resolved events (`resolveFinalBlow`), and the Horde report names the
+wave the last stand fell on.
+
+The verdict does not stop the world: `matchRuleset.endingHoldS` (8 s, bounded by
+`ENDING_HOLD_LIMIT_S`) is read by the solo step and the authority alike — wrecks settle,
+fires burn and shells in flight land with every trigger silent
+(`silenceGunsAfterVerdict`), then `simStep` / `stepPlaying` return early and the field
+stands still under the report. The killcam replays freeze sim time as before; the camera
+beats run over the living field.
+
 ### 3.8 fx — `src/fx/`
 
 #### 3.8.1 `particles.ts` (fx-internal engine)
