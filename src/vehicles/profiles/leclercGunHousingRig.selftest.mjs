@@ -28,14 +28,17 @@ function findTriangle(mesh, points) {
   return null;
 }
 
+// FSP-06 (2026-09-25): the canvas mantlet boot (body, cap, shoulder chamfers) rides the gun-owned LOD0 canvas
+// skin bucket (gunMountCanvasSkin) instead of the camouflaged gunMount; it still moves with rig_gun. The rotor
+// face and thermal clamp keep gunMount / gunMountDark.
 const movingTriangles = [
   {
-    mesh: 'gunMount',
+    mesh: 'gunMountCanvasSkin',
     label: 'marked boot-cap top',
     points: [[-0.127, 0.260, 1.708], [-0.127, 0.260, 2.202], [0.127, 0.260, 1.708]],
   },
   {
-    mesh: 'gunMount',
+    mesh: 'gunMountCanvasSkin',
     label: 'marked boot left wall',
     points: [[-0.21, 0.161, 1.714], [-0.21, -0.119, 1.714], [-0.21, 0.161, 2.196]],
   },
