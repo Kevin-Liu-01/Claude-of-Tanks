@@ -53,7 +53,7 @@ export const CLOUD_SLOT_ORDER: readonly (readonly [number, number])[] = Object.f
 export const CLOUD_WEATHER_TILE_M = 12000;
 export const CLOUD_SHAPE_TILE_M = 3400;
 export const CLOUD_SHAPE_TILE_STRATUS_M = 4200;
-export const CLOUD_DETAIL_TILE_M = 320;
+export const CLOUD_DETAIL_TILE_M = 400;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
 export const CLOUD_MARCH_STEPS = 96;
 export const CLOUD_MARCH_MAX_M = 14000;
@@ -160,20 +160,22 @@ vec3 cloudWeather( vec2 pxz ) {
 	// the equalised field admits exactly the map's coverage; inside, the local coverage runs 0..1 (skewed
 	// high) and carves the base shape into lumps — a region is never one solid slab
 	float cov = pow( clamp( ( w.r - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), 0.7 );
-	// cumuliform columns rise with the cell profile and the turret noise; a stratus ceiling is nearly flat
-	float cumTop = clamp( 0.6 + 0.35 * w.g + ( w.b - 0.5 ) * 0.25, 0.35, 1.0 );
+	// cumuliform columns rise where the local coverage is deepest (one dome per mass, not a tower per cell)
+	// with the turret noise on top; storms add towers at the cells; a stratus ceiling is nearly flat
+	float cumTop = clamp( 0.5 + 0.5 * sqrt( cov ) + ( w.b - 0.5 ) * 0.2, 0.3, 1.0 );
 	cumTop = mix( cumTop, 1.0, uTowers * w.g );
 	float strTop = 0.78 + 0.22 * w.b;
 	return vec3( cov, mix( cumTop, strTop, uStratiform ), w.a );
 }
 // density 0..1 at a world point. detail: whether the erosion volume is sampled (the light march skips it)
 float cloudDensity( vec3 p, vec3 w, bool detail ) {
-	float hRel = ( p.y - uBase ) / uThick;
+	// the base line wanders a little per column (the breakup channel) so no razor-straight edge crosses the sky
+	float hRel = ( p.y - uBase - ( w.z - 0.5 ) * 0.16 * uThick ) / uThick;
 	float hN = hRel / max( w.y, 0.05 );
 	if ( hN <= 0.0 || hN >= 1.0 || w.x <= 0.0 ) return 0.0;
 	// rounded bottom, eroded top (a stratus keeps its flat sheet almost to its top); a cumulus narrows
 	// toward its top so its silhouette is a dome over a wide base, not a lens
-	float hg = smoothstep( 0.0, 0.12, hN ) * smoothstep( 1.0, mix( 0.72, 0.92, uStratiform ), hN ) * ( 1.0 - 0.35 * hN * ( 1.0 - uStratiform ) );
+	float hg = smoothstep( 0.0, 0.06, hN ) * smoothstep( 1.0, mix( 0.72, 0.92, uStratiform ), hN ) * ( 1.0 - 0.2 * hN * ( 1.0 - uStratiform ) );
 	// the slab is a few hundred metres thick against a kilometres-wide shape period: the volume is sampled
 	// with its vertical axis compressed so the billows read as tall as they are wide
 	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 1.4, 1.0 ) / uShapeTile;
@@ -182,7 +184,9 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 	float base = remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) * hg;
 	// a stratus sheet is dense across its footprint (with a little mottle); cumulus keeps the shape's billows
 	base = mix( base, base * 0.35 + 0.65 * hg, uStratiform * 0.5 );
-	float d = remap( base, 1.0 - w.x, 1.0, 0.0, 1.0 ) * w.x;
+	// the coverage threshold rises with height so a mass is widest at its base and narrows to a dome
+	float covH = w.x * ( 1.0 - 0.45 * hN * ( 1.0 - uStratiform ) );
+	float d = remap( base, 1.0 - covH, 1.0, 0.0, 1.0 ) * w.x;
 	if ( detail && d > 0.0 && d < 0.95 ) {
 		vec3 dp = ( p + uNoiseShift * 1.31 ) * vec3( 1.0, 1.5, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
@@ -190,7 +194,7 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 		// wisps underneath, cauliflower lumps on top; the erosion grows with height in the cloud (dense
 		// bodies, billowy tops) and tears the very base into rags; a stratus erodes less
 		float erode = mix( hf, 1.0 - hf, clamp( hN * 8.0, 0.0, 1.0 ) );
-		float amount = 0.42 * ( mix( 0.35, 1.0, smoothstep( 0.05, 0.6, hN ) ) + 0.7 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.65 );
+		float amount = 0.5 * ( mix( 0.35, 1.0, smoothstep( 0.05, 0.6, hN ) ) + 0.7 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.65 );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 	}
 	return d;
