@@ -51,6 +51,8 @@
   "boot.gate.actionOtherBrowser": "Try another browser",
   "boot.credits": "Credits",
   "boot.retry": "Retry loading",
+  "battle.entryFailed.title": "The battle could not start",
+  "battle.entryFailed.body": "{reason}. You are back in the Garage — try again; if it repeats, reload the page.",
   "boot.pressAnyKey": "Tap or press any key to continue",
   "credits.kicker": "Creator / designer / director",
   "credits.body1": "I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration. Claude and Codex were development tools, not co-authors.",

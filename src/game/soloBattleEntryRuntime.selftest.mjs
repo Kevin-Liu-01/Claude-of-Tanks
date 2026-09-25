@@ -34,14 +34,18 @@ const runtime = createSoloBattleEntryRuntime({
   getSelectedSpecId: () => 'leo2a7v',
   getSelectedMapId: () => 'desert',
   reportError: () => order.push('error'),
+  // entry resilience (2026-09-25): the player sees the reason after the Garage is painted and the loader faded
+  presentFailure: async (error) => { order.push(`notice:${error.message}`); },
+  onFailure: (error) => order.push(`beacon:${error.message}`),
 });
 
 await runtime.beginSelected({ specId: 'invalid', randomRoster: false, gameMode: 'horde' });
 assert.deepEqual(loadingArgs, [
   'leo2a7v', 'desert', { randomRoster: false, gameMode: 'horde' },
 ]);
-assert.deepEqual(order, ['cover', 'load', 'error', 'loading:false', 'garage', 'frame', 'hide'],
-  'failure restores and paints the Garage before the opaque loader fades');
+assert.deepEqual(order, ['cover', 'load', 'error', 'beacon:cold chunk failed', 'loading:false', 'garage', 'frame', 'hide',
+  'notice:cold chunk failed'],
+  'failure restores and paints the Garage before the opaque loader fades, then shows the reason');
 assert.equal(lifecycle.pending, false);
 assert.equal(lifecycle.renderingCovered, false);
 
@@ -62,6 +66,31 @@ for (const mapId of MAP_IDS) {
 }
 
 assert.throws(() => createSoloBattleEntryRuntime({}), /requires every recovery port/);
+
+{
+  // A notice that cannot load (or throws) is reported and never masks the recovered Garage.
+  const events = [];
+  const noisy = createSoloBattleEntryRuntime({
+    lifecycle: createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 }),
+    loading: { async begin() { throw new Error('world build failed'); } },
+    battleLoad: { showPending: () => events.push('cover'), hide: async () => { events.push('hide'); } },
+    audio: { loadingOn: () => {} },
+    enterGarage: () => events.push('garage'),
+    nextFrame: async () => {},
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a2', getSelectedMapId: () => 'desert',
+    reportError: (message) => events.push(`report:${message}`),
+    presentFailure: () => { throw new Error('modal unavailable'); },
+    onFailure: () => { throw new Error('beacon unavailable'); },
+  });
+  await noisy.beginSelected();
+  assert.deepEqual(events, ['cover', 'report:[battle] entry failed', 'garage', 'hide', 'report:[battle] entry failure notice unavailable'],
+    'a throwing beacon or notice is only reported; the Garage recovery already completed');
+  assert.throws(() => createSoloBattleEntryRuntime({
+    lifecycle: createBattleEntryLifecycle({ nextFrame: async () => {} }), loading: { begin() {} },
+    battleLoad: { showPending() {} }, audio: { loadingOn() {} }, enterGarage() {}, nextFrame: async () => {},
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a2', getSelectedMapId: () => 'desert', presentFailure: 'nope',
+  }), /requires every recovery port/, 'a non-callable notice port is refused');
+}
 
 for (const outcome of ['success', 'import-failure', 'paint-failure']) {
   const rejectImport = outcome !== 'success';
@@ -176,5 +205,11 @@ const entryComposition = mainSource.slice(mainSource.indexOf('const soloBattleEn
 assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /nextFrame: nextPaintFrame,/,
   'browser recovery must cross the real post-rAF task boundary before fading its cover');
+assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
+  /presentFailure: \(error\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,
+  'the solo failure notice is demand-loaded from the same failure-only owner as the return notice');
+assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
+  /onFailure: \(error\) => entryTelemetry\.send\(\{[\s\S]{0,160}kind: 'entry_result'/,
+  'a failed solo entry is beaconed as an entry_result');
 
 console.log('soloBattleEntryRuntime.selftest: selection and covered failure recovery pass');

@@ -230,7 +230,7 @@ import { releaseObject3DGpuResources } from './engine/resourceLifetime.ts';
 import { createBootScreen } from './ui/bootScreen.ts';
 // ENTRY TELEMETRY (docs/ENTRY-RESILIENCE.md): the anonymous beacon that turns
 // a friend's "it did not load" into a stage, a build and an error message.
-import { getEntryTelemetry, installEntryErrorTelemetry } from './entry/telemetry.ts';
+import { describeError, getEntryTelemetry, installEntryErrorTelemetry } from './entry/telemetry.ts';
 // CAPABILITY GATE: WebGL2, texture units, renderer family, storage and
 // workers are checked on a throwaway context before the real renderer.
 import {
@@ -1863,6 +1863,11 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   }),
   onReveal: (receipt) => {
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
+    // The first presented battle frame is the successful end of every entry path.
+    entryTelemetry.send({
+      kind: 'entry_result', mode: networkSession.match ? 'network' : 'solo', outcome: 'ok',
+      ms: receipt.waitMs, ...(receipt.slow ? { code: `slow_${receipt.slow}` } : {}),
+    });
   },
   // Entry resilience (2026-09-25): a reveal past its wall-clock budget is a
   // beacon, not a failed entry; the lifecycle extends once and then waits.
@@ -2409,6 +2414,13 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
         setNetworkStatus: (status) => networkSession.status?.set(status),
         recordEntryFailure: (failure) => {
           if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
+          // A null clears the diagnostic at entry start; a diagnostic is a failed network entry.
+          if (failure) {
+            entryTelemetry.send({
+              kind: 'entry_result', mode: 'network', outcome: 'failed', code: `entry_failed_${failure.role || 'peer'}`,
+              error: describeError(failure.message, location.origin),
+            });
+          }
         },
       },
       // Joined-room intent is stronger than browsing the picker but weaker than
@@ -2675,6 +2687,12 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),
+  // Entry resilience (2026-09-25): the reason reaches the player over the
+  // recovered Garage, and the beacon, instead of only the console.
+  presentFailure: (error) => import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error)),
+  onFailure: (error) => entryTelemetry.send({
+    kind: 'entry_result', mode: 'solo', outcome: 'failed', code: 'entry_failed', error: describeError(error, location.origin),
+  }),
 });
 
 const battleAgainAction = createBattleAgainAction({

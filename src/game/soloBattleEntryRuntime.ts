@@ -33,6 +33,15 @@ interface SoloBattleEntryRuntimeOptions {
   getSelectedSpecId(): string;
   getSelectedMapId(): string;
   reportError?(message: string, error: RuntimeValue): void;
+  /**
+   * Entry resilience (2026-09-25): show the player why the battle did not
+   * start, after the recovered Garage is painted and the loader has faded.
+   * Demand-loaded by the composition root; a failed notice never masks the
+   * original failure.
+   */
+  presentFailure?(error: RuntimeValue): Promise<RuntimeValue> | RuntimeValue;
+  /** Beacon port: the bounded outcome of a failed solo entry. */
+  onFailure?(error: RuntimeValue): void;
 }
 
 interface SoloBattleEntryRuntime {
@@ -61,10 +70,12 @@ export function createSoloBattleEntryRuntime({
   getSelectedSpecId,
   getSelectedMapId,
   reportError = (message, error) => console.error(message, error),
+  presentFailure = () => {},
+  onFailure = () => {},
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
-    nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError];
+    nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, onFailure];
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
@@ -82,11 +93,20 @@ export function createSoloBattleEntryRuntime({
       await loading.begin(specId, mapId, options);
     } catch (error) {
       reportError('[battle] entry failed', error);
+      try { onFailure(error); } catch (_) { /* a beacon never changes recovery */ }
       audio.loadingOn(false);
       await enterGarage();
       lifecycle.uncoverRendering();
       await nextFrame();
       await battleLoad.hide?.();
+      // Entry resilience (2026-09-25): the player used to be returned to the
+      // Garage with nothing but a console line. The notice comes last so it
+      // opens over a painted Garage, and its own failure is only reported.
+      try {
+        await presentFailure(error);
+      } catch (noticeError) {
+        reportError('[battle] entry failure notice unavailable', noticeError);
+      }
     }
   }, undefined);
 

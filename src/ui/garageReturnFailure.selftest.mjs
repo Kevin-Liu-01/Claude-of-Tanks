@@ -27,7 +27,25 @@ assert.equal(opened, 2);
 show.hide();
 assert.deepEqual(closes, [{ restoreFocus: false, immediate: true }]);
 
+// entry resilience (2026-09-25): the solo entry notice formats the reason into a sentence with the one action
+const formatted = { textContent: '' };
+const solo = createGarageReturnFailurePresenter(
+  () => ({ body: formatted, setTitle() {}, open() {}, close() {} }),
+  () => 'The battle could not start',
+  (reason) => `${reason}. Back in the Garage — try again.`,
+);
+solo(new Error('World build failed'));
+assert.equal(formatted.textContent, 'World build failed. Back in the Garage — try again.', 'the formatter receives the reason text');
+solo('not an error');
+assert.equal(formatted.textContent, 'The battle could not start. Back in the Garage — try again.',
+  'an unknown failure formats the title as its reason');
+const presenterSource = await readFile(new URL('./garageReturnFailure.ts', import.meta.url), 'utf8');
+assert.match(presenterSource, /export const showSoloEntryFailure = createGarageReturnFailurePresenter\([\s\S]{0,200}t\('battle\.entryFailed\.title'\)[\s\S]{0,120}t\('battle\.entryFailed\.body', \{ reason \}\)/,
+  'the solo notice is a second failure-only presenter over the same modal');
+
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(main, /presentFailure: \(error\) => import\('\.\/ui\/garageReturnFailure\.ts'\)\.then\(\(\{ showSoloEntryFailure \}\) => showSoloEntryFailure\(error\)\)/,
+  'a failed solo entry demand-loads the notice from the failure-only owner');
 assert.match(main, /void battleAgainAction\.run\(\)/,
   'the bus must use the action-scoped failure owner');
 assert.match(main, /loadFailure: \(\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,

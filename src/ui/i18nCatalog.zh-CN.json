@@ -51,6 +51,8 @@
   "boot.gate.actionOtherBrowser": "换个浏览器试试",
   "boot.credits": "制作名单",
   "boot.retry": "重试加载",
+  "battle.entryFailed.title": "战斗无法开始",
+  "battle.entryFailed.body": "{reason}。已返回车库——请再试一次；若反复出现，请重新加载页面。",
   "boot.pressAnyKey": "点击屏幕或按任意键继续",
   "credits.kicker": "创作者 / 设计者 / 制作人",
   "credits.body1": "我设计并开发了《Claude of Tanks》——这是一次实验，尝试看看一个人能在多大程度上凭借持续的多智能体协作，独立完成一款原创浏览器游戏。Claude 和 Codex 只是开发工具，不是共同作者。",
