@@ -1025,6 +1025,10 @@ interface TankFactoryOptions {
   battleDetailLod?: boolean;
   staticPreview?: boolean;
   decor?: boolean;
+  /** FSP-06 material-role census (tools/material-roles-audit.mjs): observes every authored part with the
+   * bucket it merges into, before the merge erases part identity. Diagnostic only; builds are byte-identical
+   * when absent. */
+  partCensus?: ((bucket: string, part: THREE.BufferGeometry, source: 'add' | 'mudguard' | 'moduleVisual') => void) | null;
 }
 
 interface TankEngineContext {
@@ -6993,6 +6997,12 @@ const CAMO_BUCKETS = new Set([
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
 ]);
+/** FSP-06 (tools/material-roles-audit.mjs): the material key a bucket merges into, or null for an unknown bucket.
+ * `hull`/`barrel` carry the camouflage map; `wheels`/`detail`/`canvasCloth` are scheme-tinted solids; the rest are
+ * fixed non-camouflage finishes. Read-only view of BUCKET_DEF for diagnostics. */
+export function bucketMaterialKey(bucket: string): TankMaterialKey | null {
+  return BUCKET_DEF[bucket]?.[1] ?? null;
+}
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
 const LOD0_KEEP = new Set([
@@ -7310,6 +7320,7 @@ function* createTankOwnedSteps(
     batchStatic = false,
     deferStaticBatch = false,
     battleDetailLod = false,
+    partCensus = null,
   } = opts;
   if (materialMode !== 'rendered' && materialMode !== 'geometry-only') {
     throw new TypeError(`Unsupported tank material mode '${String(materialMode)}'`);
@@ -7424,6 +7435,7 @@ function* createTankOwnedSteps(
         ? `${eraOwner}ExternalArmor`
         : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
+      partCensus?.(targetBucket, part, 'add');
       if (activeDestructibleCluster) {
         destructiblePartCluster.set(part, activeDestructibleCluster);
         const destructibleOwner = bucket.startsWith('turret') ? 'turret' : 'hull';
@@ -7471,6 +7483,7 @@ function* createTankOwnedSteps(
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       (buckets[bucket] || (buckets[bucket] = [])).push(part);
       mudguardParts.push({ label, bucket, part });
+      partCensus?.(bucket, part, 'mudguard');
     },
     // Painted fittings sometimes share the hull/turret material, but they do
     // not own armor. Keep them in a separate semantic bucket so geometry
@@ -7516,6 +7529,7 @@ function* createTankOwnedSteps(
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
       moduleVisualParts.set(part, module);
+      partCensus?.(visualBucket, part, 'moduleVisual');
     },
     // Variant builders may replace a canonical family's turret, mantlet or
     // cannon while retaining its detailed hull and suspension. Clearing an

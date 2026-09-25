@@ -81,4 +81,4 @@ configureTankFactory({
   fittings: FITTINGS,
 });
 
-export { KIT, createTank } from './tankFactoryCore.ts';
+export { KIT, bucketMaterialKey, createTank } from './tankFactoryCore.ts';
