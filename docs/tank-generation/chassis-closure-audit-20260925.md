@@ -181,6 +181,11 @@ standard check, sealed ledger, module-visual-align probe, `npm test`,
   1–8 enclosed 6 cm cells at the bow corners and the K2B's scaled left guard flare,
   invisible from the chase ring, and belong to the next chassis round together
   with the floating-panel candidates above.
+- `tools/track-duplicate-audit.mjs` reports `m46_patton` for a static road-wheel
+  overlay (`hullRunningGearDark`, 12 stations, 2,400 triangles, radius ratio
+  0.716): the Patton running-gear fit dressing, untouched by this round — the
+  same audit on the `8d1178d09` worktree returns the identical record, so the
+  release check's probe stage carries this pre-existing FAIL for the M46.
 - Turret-owned openings (`carro45t`, `amx40`, `m60a1`, `m60a3`, `t90a`, `t90sm`),
   the `object695_x` ERA corner, and the `t80u` stern interior-escape reading.
 - `tools/winding-audit.mjs` fleet coverage (31 of 192 reached; the audit was
