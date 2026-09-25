@@ -486,6 +486,12 @@ resolved depth and blended into the CSM visibility the opaque lit materials writ
 through the CSM shader patch (`engine/groundBounce.ts`), and quarter-resolution sun shafts and a lens flare
 (`engine/sunShafts.ts`, `engine/lensFlare.ts`) written into one light target the grade adds before its tonemap; the
 pass order above is unchanged and no full-resolution pass was added.
+Volumetric clouds (round 68, 2026-09-24): on the desktop tier `engine/volumetricClouds.ts` raymarches a per-map cloud
+slab (its layer derived by `engine/cloudPresets.ts` from the map's authored sky block, its noise volumes baked by
+`engine/cloudNoise.ts` in a worker) at one sixteenth of a half-resolution history with a 4 × 4 slot cycle and
+reprojection, lit by the atmosphere's sun transmittance and sky irradiance, composited premultiplied through a
+depth-tested dome behind the aerial pass's haze law; per-cascade alpha-tested planes on the shadow-only layer carry
+the cloud shadows through the CSM, `post.ts` owns the single per-frame hook, and `?clouds=off` keeps the baked decks.
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column

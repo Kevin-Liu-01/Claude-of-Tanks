@@ -2409,7 +2409,7 @@ untouched), horizonResources, horizonMesaSurface, mapQuality, worldBuildCoordina
 environmentExpansion, villageWear, mangroveWaterPalette, badlandsRelief (no digest moved: Mars sits outside the
 frozen config digests), public-repo-hygiene, attribution, typecheck.
 
-**Open.** The overcast presets (railyard, winter, whiteout, foundry, monsoon) read as a hazy blue day: their white came
+**Open (closed by round 68).** The overcast presets (railyard, winter, whiteout, foundry, monsoon) read as a hazy blue day: their white came
 from Preetham's optical-depth saturation, which the physical model replaces with real multiple scattering, and a
 heavy aerosol (mieScale 80–150) would make a flat grey sky at 0.4 luminance while cutting the sun transmittance to
 0.3–0.5 — and with it the disc's environment fill — so it is not the answer; a physically overcast sky is a cloud
@@ -2841,6 +2841,121 @@ tone is the rig's constant ground pole — a per-map terrain tone (the palette's
 round-68 cloud transmittance has its hook in the shafts' mask; the contact edge's per-pixel jitter reads as a faint
 static grain without temporal AA.
 
+### Round 68 — 2026-09-24: volumetric clouds
+
+Round 65 left one note open: the overcast presets (railyard, winter, whiteout, foundry, monsoon) read as a hazy blue day
+under the physical sky, because their white came from Preetham's optical-depth saturation, and a physically overcast sky
+is a cloud layer. This round gives every battlefield a raymarched cloud layer lit by that atmosphere. Nothing from the
+reference enters the tree: the density model, the lighting and the temporal scheme are written from Schneider & Vos
+(*The Real-time Volumetric Cloudscapes of Horizon Zero Dawn*, SIGGRAPH 2015 / Nubis 2017), Hillaire 2016 (the Frostbite
+multiple-scattering approximation) and Wrenninge 2013 (the scattering octaves), with the reference for structure only;
+every noise texture is generated at boot by first-party code, and no shader text, noise file or asset was copied.
+
+**The layer (`src/engine/volumetricClouds.ts`).** A slab between a map's cloud base and top. Its coverage is cut from
+a 256² weather field (`src/engine/cloudNoise.ts`: a mesoscale gradient-noise field lifted by two cumulus cell fields,
+histogram-equalised so a map's coverage *c* admits exactly the fraction *c* of the field; G the cell profile that
+raises columns, B the turret variation, A a fine breakup), its shape from a tileable 64³ Perlin–Worley volume (R the
+Perlin fbm dilated by inverted Worley, GBA Worley fbm at 4 / 8 / 16 cells per period, five Worley fields shared
+between the channels) with the Nubis remap and a rounded-bottom / eroded-top height gradient, its edges eroded by a
+32³ Worley-fbm detail volume (wisps under the base, cauliflower lumps on the tops). The volumes are sampled with the
+vertical axis compressed (×2.5 shape, ×1.5 detail) because the slab is a few hundred metres thick against a 2.6 km
+shape period. The bakes are pure and deterministic — they run in `cloudNoiseWorker.ts` behind the loading cover,
+the synchronous bake is the fallback, and the receipt digests their bytes in Node. Lighting per sample: the sun's
+irradiance at the viewer's transmittance (the round-65 summary) in the sky's own units, a six-tap light march toward
+the sun (the two near taps detailed, the far four on the base shape), Beer–Lambert with three multiple-scattering
+octaves (contribution, attenuation and eccentricity each halved: dual-lobe Henyey–Greenstein 0.8 / −0.2, then 0.4 /
+−0.1, 0.2 / −0.05), a diffusion term that keeps the shaded side grey rather than black and builds with height in the
+cloud, the powder term fading toward the sun where the forward lobe lights the thin edges instead (the silver lining),
+darker bases, and an ambient from the summary — the cosine-weighted sky irradiance on the tops, the anti-solar horizon
+band on the bases, a stratus sheet diffuser-lit. The far haze is the aerial pass's own law (post.ts's densities,
+ceilings, desaturation and cool shift, its height-aware attenuation) with the sky-view LUT along the ray as the target
+under the same caps, so a distant bank and the far ring converge on the same sky; the receipt pins the mirror.
+
+**Cost.** The march runs into a trace target of one sixteenth of a half-resolution history: a 4 × 4 Bayer slot cycle
+refreshes one cell of every block a frame (four slots a frame for four frames after a camera cut — a jump over 6 m, a
+turn over 0.35 rad, a zoom, the killcam's cut, a preset or size change), 96 steps at most with longer strides through
+empty air, and a resolve pass reprojects the previous history through the previous camera (the anchor is the slab's
+mid-altitude along the ray, Catmull-Rom in five bilinear taps), clamps it to the 3 × 3 neighbourhood of this frame's
+samples with a margin and blends the fresh slot in (a running average after a cut, then an exponential one). The
+composite is a horizon-flattened dome mesh in the scene's transparent queue — depth-tested by the terrain and the ring,
+never writing depth, premultiplied over the physically based dome, the knee and the dome intensity applied once — so
+the night maps keep their starfield and moon with the clouds as dark occluders lit by the moon, and the AO prepass
+ignores it like the decks. `post.ts` owns one hook, `scene.userData.volumetricClouds?.beforeSceneRender(...)` at the
+top of its frame transaction before the TAA jitter; the cirrus veil stays the baked deck, the baked cumulus deck hides
+while the layer shows and returns on the mobile tier, on a failed atmosphere readback, and under `?clouds=off` (the
+pinned bake receipts).
+
+**Every map keeps its identity (`src/engine/cloudPresets.ts`).** No map's sky block changed — the Garage copies deep-equal
+them — the layer derives from the fields the decks read: coverage = 0.42 · cloudOpacity^1.3 (the 1049 fair-weather deck
+at cloudOpacity 1 maps onto 0.42 of the field; Olympus Basin's 0.3 → 0.09 wisps; delta's 1.16 → 0.51), the legacy
+overcast rule of sky.ts (both decks near-opaque under turbidity ≥ 7) or an authored deck at or below 400 m → the stratus
+regime (coverage 0.9, base at the authored deck, 320 m thick, flat tops, density 0.035, diffuser-lit), an overcast
+preset with the thickest fog (Monsoon) → the storm regime (1400 m of towers), the arid maps keep their authored 820–900 m
+bases, the tint is the authored `cloudTintHex` perceptually halved, the wind runs across the sun. `sky.cloudLayer` lets a
+map author any field. The receipt pins the table of all 31.
+
+**Cloud shadows.** The terrain material never gains a sampler (its sixteen units): a per-cascade plane on the shadow-only
+layer, parented to the CSM lights each frame (at the light, facing it, sized to the shadow box, its UVs projected along
+the sun onto the cloud base, drifting with the wind), alpha-tests the weather's coverage field at the cloud's dense core
+so the cascades carry the shadows at no shading cost. Cumulus regimes under a day sun cast (the legacy fair-weather
+patchiness `cloudShadeAmp` ≥ 0.15); overcast decks, thin decks and the night preset keep the aerial pass's soft term;
+where the gobos cast, `scene.userData.cloudShadeAmp` is 0 so nothing is shadowed twice.
+
+**Measured.** `tools/map-view-probe.mjs` on both trees (base b9e18f308 = round 65, the lane tree at 4052e3616
+before the last overcast passes), 31 maps × sky-w / sky-s / centre-far / bird-w, desktop tier, seed 1337; skyline =
+`map-metrics` check 5 (ground / sky display luma at the skyline, lower is better), base → round 68. The overcast five
+read as ceilings again: winter 0.86 / 0.91 → 0.87 / 0.86 (sky-w / sky-s, the final tree at 82d7cf531 — inside the
+0.80–0.90 acceptance), whiteout 1.01 / 0.93 → 0.92 / 0.84 (it was never inside the band; the sky-s view now is, the
+sky-w view sits at the edge — a bright pale ceiling instead of round 65's hazy blue), railyard 0.67 / 0.73 → 0.68 /
+0.74 (a warm-grey industrial overcast), foundry 0.61 / 0.58 → 0.65 / 0.61 (a light-grey ceiling with blue gaps at the
+horizon), monsoon 0.56 / 0.54 → 0.62 / 0.57 (a dark storm ceiling with towers on the wall). The good maps keep their
+skylines within a tenth with real cumulus in the band above them: verdant 0.73 / 0.71 → 0.77 / 0.59, alpine 1.04 /
+0.90 → 1.11 / 0.91, reservoir 0.80 / 0.75 → 0.79 / 0.71, delta 0.78 / 0.71 → 0.90 / 0.73 (its broken tropical deck
+stands over the skyline), urban, autumn, frontier, orchard, airfield, saltwind, mars unchanged within 0.02. The bland
+maps gain scattered white cumulus over their deep blue: desert 1.17 / 0.99 → 1.20 / 0.98, titan_gorge 0.95 / 0.80 →
+0.95 / 0.79, caldera 0.72 / 0.51 → 0.60 / 0.52 (a heavy broken ash-tinted deck), copper_mesa 1.00 → 0.58 (a cloud
+bank over the mesa skyline). Eye-check of the 1280-px A/B grids (`$SP/r68/grids`): the overcast five read white or
+grey ceilings with gaps, verdant / reservoir / desert / titan show white lit tops over grey-blue bases with cloud
+shadows drifting over the fields in the bird views, delta and alpine carry heavy cumulus, Olympus Basin's wisps are
+dark occluders on its galaxy. What still reads short of the reference: the cumulus bodies are smooth "cotton"
+masses — the 32³ detail erosion is soft at a 400 m period, there is little cauliflower crinkle at range, and the
+low-sun maps' masses are warm and blobby (alpine).
+
+**Performance.** The within-page A/B (`.qa-dev/r68-inpage-perf.mjs`: one page per map at the chase pose, the layer
+alternated on / off against the baked decks four times, 90 frames each, so contention hits both states alike; at
+load 10–17, the final trace minus the two hue / floor passes) reads, medians of the four on − off pairs: whiteout
+(overcast) CPU +0.4 ms / GPU −2.2 ms, verdant (scattered, gobos on) +0.6 / +0.9, desert (scattered) +0.2 / −6.4 —
+the pair spreads are ±1.5 ms CPU and ±5 ms GPU, so the layer sits inside the noise of the baked decks it replaces
+(the deck's grazing-angle anisotropic sampling over the whole dome costs about what the march does). The first
+overcast build read +5 ms GPU on whiteout (three of four pairs): a thin stratus marched at eight-metre steps with a
+detailed light march at every step; the step floor now follows the slab (thickness / 24), the light march samples the
+base shape only, 72 steps, exit at 2 % transmittance. The two-tree round-59 probe rows (`$SP/r68/perf`, base → new,
+alternated, two repeats) were noise-bound at load 22–34 (the base tree's own verdant GPU medians read 41.8 and 25.4 a
+minute apart), so the +1.0 ms GPU / +0.3 ms CPU check rests on the within-page pairs. Programs +7 (215 → 222: the
+trace, the resolve, the dome and the gobos' depth variants); the noise bakes run in the worker under the loading
+cover (~0.7 s at normal load for the 64³ shape); no per-frame allocation.
+
+**Receipts (exit 0).** volumetricClouds (new: the noise digests, tiling and equalisation, the 31-map layer table, the shadow
+policy, the slot cycle, the haze mirror of post.ts, the hooks), atmosphere, skyCloudBake, skyHorizonCache,
+skyEnvironmentCache (configureSkyUniforms hash unchanged), deviceEnvRadiance, aerialDetail, postFrameAccounting,
+lateFxColorHandoff, lateFxSceneView, postViewportScale, sceneSourcePass, temporalAA, frameLoopScheduler, fx/lazyRuntime,
+garageDressingDrawRange, late-fx-matrix.browser, shadowPrime, shadowGeometryClaims, csmShaderRelease, shadowRefresh,
+nearVehicleShadowDetail, shadowStability, renderLayers, adaptiveQualityPolicy, quality, garageSkyPresets
+(byte-identical), battleAtmosphereAccess, battleAtmosphereRuntime, worldActivationRuntime, terrainMaterialOwnership
+(untouched), horizonResources, mapQuality, environmentExpansion, worldBuildCoordinator, villageWear, mangroveWaterPalette,
+badlandsRelief (no map config moved), public-repo-hygiene, attribution, typecheck (+ the unused-symbol check), the
+public build (the noise worker chunk emitted).
+
+**Open.** The cumulus bodies want the reference's crinkle: a finer detail period near the camera (a second
+detail fetch at close range), a per-column shape warp, and cirrus lifted into the layer (it stays the baked veil).
+Whiteout's sky-w skyline sits at 0.92 against the 0.80–0.90 band (it was 1.01 before this round); the snow
+re-grade of round 44 remains the owner's call. A camera inside or above the slab (the bird pose over a 300 m
+ceiling) sees the terrain unclouded, as with the decks: the composite is depth-tested and never in front of geometry.
+The gobos draw into every cascade (each cascade's map holds its own and its nearer neighbours' planes — the same
+footprint, so no shadow doubles); a cascade policy could trim the extra draws. The garage keeps the baked decks
+until the noise lands (it lands during boot); night maps' clouds are black against the starfield — a faint moonlit
+edge would read better. `?clouds=off` boots the baked decks for A/B.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -2950,6 +3065,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 67 | The open notes of rounds 58–63 closed, one commit each: Tarkhan's spur runs on down the valley to a derived tunnel portal (headwall 125 m out on the radial, a 75 m gallery to the ring's first ridge line — rim + 200 m, the same constant in horizon.ts and railSpurs.ts — a dark 45° bore floor hiding the ring face, one `tunnel-portal` record across the floor; the ring's seated rows now exactly on the outland bed inside the corridor); the batter faces seed sparse grass and scrub on their upper two thirds through a `_batterSeedAt` height-field hook (the exclusion keeps trees and props off; a face candidate passes the 474 m rim cull); the bridge's vault bands halved to 0.1375 m (a shell's height error against the arc ≤ 6.9 cm; 31 → 55 parts, Amberford's shard recaptured); the moored hull bobs and sways render-side from the world clock (one mesh per hull, matrices composed under the frozen world); Saltwind's piers sized to the shelf (7 / 8 spans); the wrack line's per-station draw streams (1,186 pieces byte-identical past a moved keep-out); the press ring's land-only fallback bearings (Polders 2's straight-in press); round 64's plate/hero/thumbnail closed as render noise. Pacing 0/124, median 351.4 s. | Tarkhan `cutting-exit-bird` 29.4 % of the world band moved (the portal, the track, the gallery), `cutting-portal-low` 8.8 %, the batter crops seeded, Saltwind `jetty-w-low` 8.2 %; steppe and autumn shards recaptured headless. |
 | 66 | An FFT ocean on every sea, bay and lake sheet (Tessendorf 2001, Horvath 2015): a JONSWAP + TMA directional spectrum per map (`ocean` block on the config: wind, fetch, swell, amplitude, choppiness, foam, breakers, caustics), three cascades in one stacked-tile texture, the inverse FFT as four fragment-shader Stockham passes (radix 16 / 8 per axis) over RGBA32F ping-pong MRT targets — no compute on WebGL2 — writing displacement / derivative / Jacobian-foam maps; the sheet (`shallowWater.ts` v13) displaces its vertices with the long cascade (flattened over the bank, a run-up film at the edge), joins the cascades' slopes to its normal with a footprint fade, whitens by the Jacobian, breaks the crest tops over the bank band and runs the whitewater up the strand (depth-aware from `getWaterDepthAt`'s bed law in the shader), and lights the shelf bed with thin-lens caustics from the finest cascade; the round-46 field composes on top, the terrain material and the marine ring faces untouched; the four approved maps at low amplitude, the flat seas (Saltwind, the polders, Skybridge, Mangrove Reach, the oasis) gain the moving surface; mobile keeps the old sheet, low halves the grid, medium alternates frames | oceanFft.selftest (butterfly vs DFT 1e-14, 8×8 field vs the double sum, spectrum symmetry, pass GLSL, gates, pass sequence, presets, handshake, wiring, eleven sea states); headless GPU read-back vs the CPU reference 2.4·10⁻⁴ m, 215 programs linked, terrain at 16 samplers; map-view-probe 198-pair A/B (far / bird ≤ 2.6 % moved, ≤ 0.7 mean |Δ|), in-water chase A/B (approved maps' water box within ±2 / 255), close-ups with debug channels and term isolation, eye check of 1280 px reductions; transform 0.61–0.77 ms GPU (granular timer, upper bound) / 0.014 ms CPU by the slope method; the receipts in the section |
 | 69 | Contact shadows, ground bounce, sun shafts and lens flare on the desktop tier, each behind its own quality lever (`?fx=off` keeps every pinned capture): a twelve-rung screen-space march toward the sun inside the aerial pass, blended into the shadow term through the CSM visibility the lit materials carry in the opaque scene target's alpha (wide occluders only — the grass blades combed the meadows); an analytic energy-conserved ground bounce in the lit materials (the excess of sunlit ground over the hemisphere's ground pole × the lower-hemisphere view factor); Mittring / Sousa rays from a sky mask blurred toward the sun at quarter resolution, coloured by the atmosphere's sun transmittance and gated per map by the preset's haze and sun height; a four-ghost, halo and streak flare with a 24-tap depth occlusion disc, eased; one quarter-res light target the grade adds before its tonemap | headless smoke on four maps (every program links, `?fx=off` exact), on/off crops and region numbers; map-view-probe A/B on 31 maps × 4 views with 1280 px eye checks on eight maps per effect; the round-59 perf probe new → base at the chase pose; receipts in the section |
+| 68 | Volumetric clouds over every battlefield: a raymarched slab lit by the round-65 atmosphere (`src/engine/volumetricClouds.ts`, `cloudNoise.ts` bakes in a worker, `cloudPresets.ts` derives each map's layer from its authored sky block — the overcast five take a stratus ceiling that restores their white sky and closes the round-65 open note, Monsoon a storm, the rest scattered / broken cumulus), traced at 1/16 of a half-res history in a 4 × 4 Bayer slot cycle with reprojection, composited premultiplied through a depth-tested dome, hazed by the aerial pass's own law toward the sky-view LUT; cloud shadows from per-cascade alpha-tested gobos on the shadow-only layer (no terrain sampler); one post.ts hook; `?clouds=off` keeps the baked decks | map-view-probe A/B on 31 maps × 4 views with map-metrics skylines (winter 0.87 / 0.86 in the band, whiteout 1.01 → 0.92 / 0.84), eye-check of the 1280-px grids of the overcast five, four good and four bland maps; within-page perf pairs (CPU +0.2–0.6 ms, GPU −6.4–+0.9 ms at load 10–17, inside the decks' noise); volumetricClouds receipt (new) and the receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
