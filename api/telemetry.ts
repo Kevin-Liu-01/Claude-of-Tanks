@@ -219,6 +219,61 @@ type TelemetryValidation =
   | { ok: true; events: TelemetryEventRecord[] }
   | { ok: false; error: string };
 
+/** The first personal field name in the event or its nested objects, else null. */
+function eventPiiField(raw: Record<string, RuntimeValue>): string | null {
+  for (const value of [raw, raw.capability, raw.error, raw.timings]) {
+    const field = isRecord(value) ? piiField(value) : null;
+    if (field) return field;
+  }
+  return null;
+}
+
+/** Optional enumerated string fields; an absent field is fine, an unknown value is an error. */
+const ENUM_FIELDS: ReadonlyArray<readonly [key: 'phase' | 'outcome' | 'mode', values: Set<string>]> = [
+  ['phase', PHASES], ['outcome', OUTCOMES], ['mode', MODES],
+];
+/** Optional bounded text fields with their alphabet and length. */
+const TEXT_FIELDS: ReadonlyArray<readonly [key: 'stage' | 'code' | 'reason', pattern: RegExp, max: number]> = [
+  ['stage', STAGE_RE, 32], ['code', CODE_RE, 48], ['reason', CODE_RE, 48],
+];
+
+type EventValidation = { ok: true; event: TelemetryEventRecord } | { ok: false; error: string };
+
+/** Validate one event against the schema; the envelope fields arrive already checked. */
+function readEvent(
+  raw: RuntimeValue,
+  base: Pick<TelemetryEventRecord, 'at' | 'sid' | 'build'>,
+): EventValidation {
+  if (!isRecord(raw)) return { ok: false, error: 'invalid_event:events' };
+  const pii = eventPiiField(raw);
+  if (pii) return { ok: false, error: `pii_field:${pii}` };
+  const kind = String(raw.kind || '');
+  if (!(TELEMETRY_KINDS as readonly string[]).includes(kind)) return { ok: false, error: 'invalid_event:kind' };
+  const event: TelemetryEventRecord = { v: TELEMETRY_SCHEMA_VERSION, ...base, kind: kind as TelemetryKind };
+  for (const [key, pattern, max] of TEXT_FIELDS) {
+    if (raw[key] === undefined) continue;
+    const text = cleanText(raw[key], max);
+    if (!pattern.test(text)) return { ok: false, error: `invalid_event:${key}` };
+    event[key] = text;
+  }
+  for (const [key, values] of ENUM_FIELDS) {
+    if (raw[key] === undefined) continue;
+    const value = String(raw[key]);
+    if (!values.has(value)) return { ok: false, error: `invalid_event:${key}` };
+    if (key === 'phase') event.phase = value as 'begin' | 'end';
+    else event[key] = value;
+  }
+  const ms = boundedInt(raw.ms);
+  if (ms !== undefined) event.ms = ms;
+  const error = readError(raw.error);
+  if (error) event.error = error;
+  const capability = readCapability(raw.capability);
+  if (capability) event.capability = capability;
+  const timings = readTimings(raw.timings);
+  if (timings) event.timings = timings;
+  return { ok: true, event };
+}
+
 /**
  * Validate one beacon body: `{ v, sid, build, events: [...] }` or a single
  * event carrying `v`, `sid`, `build` itself. Unknown fields are dropped;
@@ -239,49 +294,9 @@ export function validateTelemetryBody(input: RuntimeValue, at: string): Telemetr
   }
   const events: TelemetryEventRecord[] = [];
   for (const raw of rawEvents) {
-    if (!isRecord(raw)) return { ok: false, error: 'invalid_event:events' };
-    const nestedPii = piiField(raw)
-      || (isRecord(raw.capability) ? piiField(raw.capability) : null)
-      || (isRecord(raw.error) ? piiField(raw.error) : null)
-      || (isRecord(raw.timings) ? piiField(raw.timings) : null);
-    if (nestedPii) return { ok: false, error: `pii_field:${nestedPii}` };
-    const kind = String(raw.kind || '');
-    if (!(TELEMETRY_KINDS as readonly string[]).includes(kind)) return { ok: false, error: 'invalid_event:kind' };
-    const event: TelemetryEventRecord = {
-      v: TELEMETRY_SCHEMA_VERSION, at, sid, build, kind: kind as TelemetryKind,
-    };
-    if (raw.stage !== undefined) {
-      const stage = cleanText(raw.stage, 32);
-      if (!STAGE_RE.test(stage)) return { ok: false, error: 'invalid_event:stage' };
-      event.stage = stage;
-    }
-    if (raw.phase !== undefined) {
-      if (!PHASES.has(String(raw.phase))) return { ok: false, error: 'invalid_event:phase' };
-      event.phase = raw.phase as 'begin' | 'end';
-    }
-    const ms = boundedInt(raw.ms);
-    if (ms !== undefined) event.ms = ms;
-    if (raw.outcome !== undefined) {
-      if (!OUTCOMES.has(String(raw.outcome))) return { ok: false, error: 'invalid_event:outcome' };
-      event.outcome = String(raw.outcome);
-    }
-    if (raw.mode !== undefined) {
-      if (!MODES.has(String(raw.mode))) return { ok: false, error: 'invalid_event:mode' };
-      event.mode = String(raw.mode);
-    }
-    for (const key of ['code', 'reason'] as const) {
-      if (raw[key] === undefined) continue;
-      const text = cleanText(raw[key], 48);
-      if (!CODE_RE.test(text)) return { ok: false, error: `invalid_event:${key}` };
-      event[key] = text;
-    }
-    const error = readError(raw.error);
-    if (error) event.error = error;
-    const capability = readCapability(raw.capability);
-    if (capability) event.capability = capability;
-    const timings = readTimings(raw.timings);
-    if (timings) event.timings = timings;
-    events.push(event);
+    const validated = readEvent(raw, { at, sid, build });
+    if (!validated.ok) return validated;
+    events.push(validated.event);
   }
   return { ok: true, events };
 }

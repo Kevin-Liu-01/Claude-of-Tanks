@@ -51,120 +51,118 @@ function sortedEntries(map, limit = 50) {
   return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
 }
 
-/** Aggregate events into the funnel and failure tables. */
-export function summarizeTelemetry(events, { since = null } = {}) {
-  const rows = since === null ? events : events.filter((event) => Date.parse(event.at) >= since);
-  const sessions = new Map();
-  const failures = new Map();
-  const lastStage = new Map();
-  const bootMs = [];
-  const stageMs = new Map();
-  const entryOutcomes = new Map();
-  const entryByMode = new Map();
-  const capabilityStops = new Map();
-  const iceDegraded = new Map();
-  const roomFailures = new Map();
-  const slowReveals = new Map();
-  const builds = new Map();
-
-  const session = (sid) => {
-    let entry = sessions.get(sid);
+function createAccumulator() {
+  const acc = {
+    sessions: new Map(), failures: new Map(), stageMs: new Map(), bootMs: [], entryOutcomes: new Map(),
+    entryByMode: new Map(), capabilityStops: new Map(), iceDegraded: new Map(), roomFailures: new Map(),
+    slowReveals: new Map(), builds: new Map(),
+  };
+  acc.session = (sid) => {
+    let entry = acc.sessions.get(sid);
     if (!entry) {
       entry = { ready: false, error: false, entered: false, stage: null, build: null };
-      sessions.set(sid, entry);
+      acc.sessions.set(sid, entry);
     }
     return entry;
   };
-  const failureKey = (event, code) => `${event.kind}|${event.stage || '-'}|${code || '-'}|${event.build || '-'}`;
-  const noteFailure = (event, code, message) => {
-    const key = failureKey(event, code);
-    const entry = failures.get(key) || { kind: event.kind, stage: event.stage || null, code: code || null,
+  acc.build = (name) => {
+    let entry = acc.builds.get(name);
+    if (!entry) {
+      entry = { sessions: new Set(), ready: 0, errors: 0 };
+      acc.builds.set(name, entry);
+    }
+    return entry;
+  };
+  acc.noteFailure = (event, code, message) => {
+    const key = `${event.kind}|${event.stage || '-'}|${code || '-'}|${event.build || '-'}`;
+    const entry = acc.failures.get(key) || { kind: event.kind, stage: event.stage || null, code: code || null,
       build: event.build || null, count: 0, sample: null };
     entry.count += 1;
     if (!entry.sample && message) entry.sample = String(message).slice(0, 120);
-    failures.set(key, entry);
+    acc.failures.set(key, entry);
   };
+  return acc;
+}
 
-  for (const event of rows) {
-    const s = session(event.sid);
-    s.build = event.build || s.build;
-    const build = builds.get(event.build || 'unknown') || { sessions: new Set(), ready: 0, errors: 0 };
-    build.sessions.add(event.sid);
-    builds.set(event.build || 'unknown', build);
-    switch (event.kind) {
-      case 'boot_stage':
-        if (event.phase === 'begin') s.stage = event.stage || s.stage;
-        if (event.phase === 'end' && typeof event.ms === 'number') {
-          const list = stageMs.get(event.stage) || [];
-          list.push(event.ms);
-          stageMs.set(event.stage, list);
-        }
-        break;
-      case 'boot_ready':
-        if (!s.ready) build.ready += 1;
-        s.ready = true;
-        if (typeof event.ms === 'number') bootMs.push(event.ms);
-        break;
-      case 'boot_error':
-        if (!s.error) build.errors += 1;
-        s.error = true;
-        noteFailure(event, event.code || event.reason, event.error?.message);
-        break;
-      case 'capability':
-        if (event.outcome === 'halted') {
-          count(capabilityStops, event.code || 'unknown');
-          noteFailure(event, event.code, event.reason);
-        }
-        break;
-      case 'entry_result':
-        s.entered = true;
-        count(entryOutcomes, event.outcome || 'unknown');
-        count(entryByMode, `${event.mode || 'unknown'}:${event.outcome || 'unknown'}`);
-        if (event.outcome && event.outcome !== 'ok') noteFailure(event, event.code, event.error?.message);
-        break;
-      case 'slow_reveal':
-        count(slowReveals, event.code || event.stage || 'unknown');
-        break;
-      case 'room_failure':
-        count(roomFailures, event.code || 'unknown');
-        noteFailure(event, event.code, null);
-        break;
-      case 'ice_degraded':
-        count(iceDegraded, event.reason || event.code || 'unknown');
-        break;
-      default:
-        break;
+/** One fold per event kind; each receives the accumulator, the event, its session and its build row. */
+const FOLDS = {
+  boot_stage(acc, event, session) {
+    if (event.phase === 'begin') session.stage = event.stage || session.stage;
+    if (event.phase === 'end' && typeof event.ms === 'number') {
+      const list = acc.stageMs.get(event.stage) || [];
+      list.push(event.ms);
+      acc.stageMs.set(event.stage, list);
     }
+  },
+  boot_ready(acc, event, session, build) {
+    if (!session.ready) build.ready += 1;
+    session.ready = true;
+    if (typeof event.ms === 'number') acc.bootMs.push(event.ms);
+  },
+  boot_error(acc, event, session, build) {
+    if (!session.error) build.errors += 1;
+    session.error = true;
+    acc.noteFailure(event, event.code || event.reason, event.error?.message);
+  },
+  capability(acc, event) {
+    if (event.outcome !== 'halted') return;
+    count(acc.capabilityStops, event.code || 'unknown');
+    acc.noteFailure(event, event.code, event.reason);
+  },
+  entry_result(acc, event, session) {
+    session.entered = true;
+    count(acc.entryOutcomes, event.outcome || 'unknown');
+    count(acc.entryByMode, `${event.mode || 'unknown'}:${event.outcome || 'unknown'}`);
+    if (event.outcome && event.outcome !== 'ok') acc.noteFailure(event, event.code, event.error?.message);
+  },
+  slow_reveal(acc, event) { count(acc.slowReveals, event.code || event.stage || 'unknown'); },
+  room_failure(acc, event) {
+    count(acc.roomFailures, event.code || 'unknown');
+    acc.noteFailure(event, event.code, null);
+  },
+  ice_degraded(acc, event) { count(acc.iceDegraded, event.reason || event.code || 'unknown'); },
+};
+
+const percentiles = (list) => ({ p50: percentile(list, 0.5), p90: percentile(list, 0.9), samples: list.length });
+
+/** Aggregate events into the funnel and failure tables. */
+export function summarizeTelemetry(events, { since = null } = {}) {
+  const rows = since === null ? events : events.filter((event) => Date.parse(event.at) >= since);
+  const acc = createAccumulator();
+  for (const event of rows) {
+    const session = acc.session(event.sid);
+    session.build = event.build || session.build;
+    const build = acc.build(event.build || 'unknown');
+    build.sessions.add(event.sid);
+    FOLDS[event.kind]?.(acc, event, session, build);
   }
-  for (const entry of sessions.values()) {
+  const lastStage = new Map();
+  for (const entry of acc.sessions.values()) {
     if (!entry.ready) count(lastStage, entry.stage || '(before renderer)');
   }
-  const total = sessions.size;
-  const ready = [...sessions.values()].filter((entry) => entry.ready).length;
-  const errored = [...sessions.values()].filter((entry) => entry.error).length;
-  const entered = [...sessions.values()].filter((entry) => entry.entered).length;
+  const sessions = [...acc.sessions.values()];
+  const total = sessions.length;
+  const ready = sessions.filter((entry) => entry.ready).length;
   return {
     events: rows.length,
     sessions: total,
     ready,
     readyRate: total ? ready / total : null,
-    errored,
-    entered,
-    bootMs: { p50: percentile(bootMs, 0.5), p90: percentile(bootMs, 0.9), samples: bootMs.length },
-    stageMs: Object.fromEntries([...stageMs.entries()].map(([stage, list]) => [stage, {
-      p50: percentile(list, 0.5), p90: percentile(list, 0.9), samples: list.length,
-    }])),
-    entries: Object.fromEntries(OUTCOMES.map((outcome) => [outcome, entryOutcomes.get(outcome) || 0])),
-    entryByMode: Object.fromEntries(sortedEntries(entryByMode)),
+    errored: sessions.filter((entry) => entry.error).length,
+    entered: sessions.filter((entry) => entry.entered).length,
+    bootMs: percentiles(acc.bootMs),
+    stageMs: Object.fromEntries([...acc.stageMs.entries()].map(([stage, list]) => [stage, percentiles(list)])),
+    entries: Object.fromEntries(OUTCOMES.map((outcome) => [outcome, acc.entryOutcomes.get(outcome) || 0])),
+    entryByMode: Object.fromEntries(sortedEntries(acc.entryByMode)),
     lastStageWithoutReady: Object.fromEntries(sortedEntries(lastStage)),
-    capabilityStops: Object.fromEntries(sortedEntries(capabilityStops)),
-    slowReveals: Object.fromEntries(sortedEntries(slowReveals)),
-    roomFailures: Object.fromEntries(sortedEntries(roomFailures)),
-    iceDegraded: Object.fromEntries(sortedEntries(iceDegraded)),
-    builds: Object.fromEntries([...builds.entries()].map(([build, entry]) => [build, {
+    capabilityStops: Object.fromEntries(sortedEntries(acc.capabilityStops)),
+    slowReveals: Object.fromEntries(sortedEntries(acc.slowReveals)),
+    roomFailures: Object.fromEntries(sortedEntries(acc.roomFailures)),
+    iceDegraded: Object.fromEntries(sortedEntries(acc.iceDegraded)),
+    builds: Object.fromEntries([...acc.builds.entries()].map(([build, entry]) => [build, {
       sessions: entry.sessions.size, ready: entry.ready, errors: entry.errors,
     }])),
-    failures: [...failures.values()].sort((a, b) => b.count - a.count).slice(0, 40),
+    failures: [...acc.failures.values()].sort((a, b) => b.count - a.count).slice(0, 40),
   };
 }
 
