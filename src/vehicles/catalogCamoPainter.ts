@@ -1,5 +1,5 @@
-// Art direction for selectable field/graphic finishes. Authored vehicle and
-// service paints keep their original painters. These are baked albedo marks:
+// Art direction for field, factory and graphic finishes. Fleet recipes keep
+// their palettes and morphology while sharing these bounded baked artists:
 // no extra GPU textures, geometry, shaders, or work during a rendered frame.
 import type { MaterialCanvas, MaterialCanvasContext, MaterialVisual } from './materialPainter.ts';
 
@@ -11,11 +11,23 @@ export const CATALOG_CAMO_ART_IDS = [
   'oakleaf', 'hexfield', 'midnight', 'ducky', 'suits', 'flames',
   'leopardprint', 'bolt', 'stars', 'daisy', 'circuit', 'racing', 'paintball',
   'normandy44', 'berlin45', 'ardennes44', 'pacific45', 'jungleops', 'rasputitsa',
+  'mono', 'carbon', 'prism',
 ] as const;
-export type CatalogCamoArtId = typeof CATALOG_CAMO_ART_IDS[number];
+export type CatalogCamoArtId = typeof CATALOG_CAMO_ART_IDS[number] | 'enamel' | 'service-stripes' | 'caunter';
 const ids = new Set<string>(CATALOG_CAMO_ART_IDS);
 export function catalogCamoArtId(id: string): CatalogCamoArtId | undefined {
   return ids.has(id) ? id as CatalogCamoArtId : undefined;
+}
+
+/** Keep the source scheme's construction language; never replace fleet palettes. */
+export function fleetCamoArtId(scheme = 'solid'): CatalogCamoArtId | undefined {
+  const families: Readonly<Record<string, CatalogCamoArtId>> = {
+    solid: 'enamel', nato: 'summer', stripes: 'service-stripes', digital: 'digital',
+    desert: 'desert', splinter: 'm90', fleck: 'flecktarn', blotch: 'amoeba',
+    amoeba: 'amoeba', chip6: 'chocchip', caunter: 'caunter', hexfield: 'hexfield',
+    brush: 'dpm', 'russian-digital': 'digital', woodland: 'summer',
+  };
+  return families[scheme];
 }
 
 type Context = MaterialCanvasContext;
@@ -68,13 +80,14 @@ function paintField<C extends MaterialCanvas>(
   const pixel = id === 'digital' || id === 'digitaldesert';
   const fleck = id === 'flecktarn' || id === 'oakleaf' || id === 'ambushdot';
   const wash = ['winter', 'washworn', 'ardennes44', 'rasputitsa'].includes(id);
-  const band = ['tigerstripe', 'naval', 'winterbands', 'pacific45'].includes(id);
-  const n = pixel ? 80 : Math.min(192, size);
+  const band = ['tigerstripe', 'naval', 'winterbands', 'pacific45', 'service-stripes'].includes(id);
+  const n = pixel ? Math.round(80 / Math.max(.85, visual.digitalCellK || 1)) : Math.min(192, size);
   scratch.width = scratch.height = n;
   const raster = scratch.getContext('2d') as Context;
   const image = raster.createImageData(n, n), values = new Float32Array(n * n);
   const secondary = new Float32Array(n * n);
-  const macro = noise(rng, id === 'amoeba' ? 3 : 4);
+  const density = Math.max(2, Math.min(7, Math.round(4 * (visual.camoScale || .5) / .5 / (visual.patchK || 1))));
+  const macro = noise(rng, id === 'amoeba' ? 3 : density);
   const detail = noise(rng, fleck ? 29 : 13), warpX = noise(rng, 5), warpY = noise(rng, 5);
   const phase = rng() * TAU;
   const palette = [visual.base, ...(visual.patches || [])].map(parse);
@@ -368,6 +381,34 @@ function paintHex(ctx: Context, colors: string[]): void {
   }
 }
 
+/** Bounded enamel/twill substrate. Soft pigment mottling and fine weave replace
+ * marker-like strokes; periodic sampling prevents seams at the two-metre repeat. */
+function paintSubstrate<C extends MaterialCanvas>(
+  ctx: Context, size: number, visual: MaterialVisual, rng: Rng, scratch: C,
+): void {
+  const n = Math.min(192, size);
+  scratch.width = scratch.height = n;
+  const raster = scratch.getContext('2d') as Context;
+  const image = raster.createImageData(n, n), base = parse(visual.base);
+  const pigment = noise(rng, 5), grain = noise(rng, 48);
+  const carbon = visual.catalogPattern === 'carbon';
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const u = x / n, v = y / n;
+    let light = 1 + (pigment(u, v) - .5) * .085 + (grain(u, v) - .5) * .035;
+    if (carbon) {
+      const cx = Math.floor(u * 48), cy = Math.floor(v * 48);
+      const across = (cx - cy + 96) % 4 < 2;
+      const fiber = Math.cos(TAU * (across ? v : u) * 144);
+      light += (across ? .07 : -.045) + fiber * .025;
+    }
+    const at = (y * n + x) * 4;
+    for (let ch = 0; ch < 3; ch++) image.data[at + ch] = base[ch] * light;
+    image.data[at + 3] = 255;
+  }
+  raster.putImageData(image, 0, 0);
+  ctx.drawImage(scratch, 0, 0, size, size);
+}
+
 export function createCatalogCamoPainter<C extends MaterialCanvas>(makeCanvas: (w: number, h: number) => C) {
   let fieldScratch: C | null = null;
   return (ctx: Context, size: number, visual: MaterialVisual, rng: Rng): void => {
@@ -375,15 +416,24 @@ export function createCatalogCamoPainter<C extends MaterialCanvas>(makeCanvas: (
     if (!id) return;
     const colors = [visual.base, ...(visual.patches || [])];
     const graphic = ['flames', 'leopardprint', 'ducky', 'suits', 'bolt', 'stars', 'daisy', 'circuit', 'racing', 'paintball'];
-    const geometric = ['splinter', 'm90', 'dazzle', 'pinkdesert', 'urbanblock', 'berlin'];
-    if (!graphic.includes(id) && !geometric.includes(id) && id !== 'normandy44' && id !== 'berlin45') {
+    const geometric = ['splinter', 'm90', 'dazzle', 'pinkdesert', 'caunter', 'urbanblock', 'berlin', 'mono', 'prism'];
+    if (id === 'enamel' || id === 'carbon' || id === 'mono' || id === 'prism') {
+      fieldScratch ??= makeCanvas(192, 192);
+      paintSubstrate(ctx, size, visual, rng, fieldScratch);
+    } else if (!graphic.includes(id) && !geometric.includes(id) && id !== 'normandy44' && id !== 'berlin45') {
       fieldScratch ??= makeCanvas(256, 256);
       paintField(ctx, size, visual, rng, fieldScratch);
     }
     ctx.save(); ctx.scale(size, size);
-    if (['splinter', 'm90', 'dazzle'].includes(id)) paintSplinter(ctx, rng, colors, id);
+    if (['splinter', 'm90', 'dazzle', 'prism'].includes(id)) paintSplinter(ctx, rng, colors, id);
+    else if (id === 'mono') {
+      repeat(ctx, () => {
+        polygon(ctx, [[-.15, .15], [.34, .15], [.85, .66], [.68, .83]], colors[1]);
+        polygon(ctx, [[.48, -.08], [.63, -.08], [1.08, .37], [1.08, .52]], colors[2]);
+      });
+    }
     else if (id === 'urbanblock' || id === 'berlin') paintBlocks(ctx, rng, colors);
-    else if (id === 'pinkdesert') {
+    else if (id === 'pinkdesert' || id === 'caunter') {
       repeat(ctx, () => {
         polygon(ctx, [[-.2, .28], [.28, .17], [.60, .42], [1.2, .15], [1.2, .42], [.59, .67], [.24, .40], [-.2, .51]], colors[1]);
         polygon(ctx, [[-.2, .73], [.38, .63], [.63, .86], [1.2, .62], [1.2, .75], [.61, 1.02], [.36, .78], [-.2, .91]], colors[2]);

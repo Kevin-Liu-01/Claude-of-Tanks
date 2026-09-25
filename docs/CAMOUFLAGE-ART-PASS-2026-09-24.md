@@ -77,3 +77,33 @@ Local review evidence is in `.qa-dev/camo/`: baseline and revised tile sheets,
 `before-m1a3-garage/`, `after-m1a3-garage/`, `garage-comparison.png`,
 `benchmark.json`, and verification/build logs. These local screenshots are not
 published assets or a deployment receipt.
+
+## Factory and fleet completion
+
+The second pass extends the bounded artist to all 104 shared fleet recipes.
+Their palettes remain intact; NATO/woodland, service bands, digital, splinter,
+Caunter, six-color desert, and plain enamel keep distinct construction styles.
+Mono now uses geometric bands, Carbon uses a subtle twill weave, and Prism uses
+interlocking colored facets. Official brand paths remain unchanged, with a
+refined enamel substrate and finer weathering. Custom drawings remain intact.
+No meshes, draw calls, GPU passes, or per-frame texture work were added.
+
+Factory now resolves through `stockCamoPatternIdFor`: the previously selected
+stock signature or override, then era-aware service fallback. All 192 vehicles
+start on Factory when no saved selection exists. Existing named, generic and
+custom selections still win. Factory aliases the stock pattern's noise stream,
+so choosing the reusable version produces the same paint, not another layout.
+The temperate American stock recipes retain their existing seasonal bonus.
+
+The Garage's Default collection contains generic patterns, reusable service
+versions and national colors. Country flags collect named vehicle liveries;
+all remain usable across countries. Arrow buttons, wheel scrolling, touch and
+keyboard access keep the flag strip reachable. Secondary environment/style
+filters operate inside a collection. Only visible-group swatches are queued;
+returning to an already painted group reuses them. The same local English and
+Chinese catalogs supply the new navigation copy.
+
+Coverage extends the existing policy, Factory, artist and Ariete tests rather
+than adding another full-fleet generation pass. Painter checks cover every
+shared recipe, all 47 generic art identities, opaque/deterministic output,
+worker parity, periodic edges, exact Factory swatches, and official-logo isolation.

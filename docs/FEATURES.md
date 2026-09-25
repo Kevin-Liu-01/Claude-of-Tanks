@@ -316,9 +316,10 @@ Signature, Service or national preset (18 entries over 70 hulls). Entries are
 named for their nation and pattern, never a vehicle ("US Army Three-Tone
 Woodland", "Wehrmacht Bands Desert", "Soviet Plain Olive"; a second paint with
 the same words takes a numeral), with a Simplified-Chinese label built from the
-same parts. The Factory choice is the nation's service pattern as it was before
-round 31 (era-aware: Soviet wartime and cold-war hulls wear their period
-schemes); thirteen national colour schemes (`national_usa` … `national_ua`) are
+same parts. Factory restores each tank's stock appearance, including named
+fleet defaults, temperate American exceptions, and era-aware Soviet finishes.
+Default collects generic field/design patterns and service colors; country flags
+collect named tank liveries, all selectable on any hull. The thirteen national colour schemes (`national_usa` … `national_ua`) are
 plain single-colour coats selectable on any hull and what the Garage workshop
 exhibits wear. Any hull can wear any other hull's paint identically: the paint
 noise stream is keyed by the recipe and pattern id (`camoPatternStreamSeed`),

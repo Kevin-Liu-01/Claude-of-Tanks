@@ -829,6 +829,23 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-camo-tags{display:flex;flex:0 0 auto;gap:4px;margin:0 0 6px;min-width:0;overflow-x:auto;
   overscroll-behavior-x:contain;scrollbar-width:none;scroll-snap-type:x proximity}
 .cot-camo-tags::-webkit-scrollbar{display:none}
+.cot-camo-collections{display:flex;flex:0 0 auto;gap:5px;margin-bottom:6px;overflow-x:auto;
+  overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#56626b transparent;padding-bottom:3px}
+.cot-camo-collection-nav{display:flex;flex:0 0 auto;min-width:0;gap:3px}
+.cot-camo-collection-nav .cot-camo-collections{flex:1 1 auto;min-width:0}
+.cot-camo-collection-scroll{flex:0 0 18px;align-self:stretch;margin-bottom:9px;padding:0;border:0;background:#101820;color:#d4b57e;cursor:pointer}
+.cot-camo-collection-scroll:disabled{opacity:.25;cursor:default}
+body[data-cot-panels='persistent'] .cot-camos{flex-basis:calc(var(--cot-sidebar-panel-height,280px) + 64px);min-height:220px}
+body[data-cot-panels='persistent'] .cot-maps{flex-basis:calc(var(--cot-sidebar-panel-height,280px) - 64px)}
+.cot-camo-collection{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-width:36px;min-height:34px;
+  padding:5px 8px;border:1px solid #37434b;background:#111920;color:#c2cdd5;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700}
+.cot-camo-collection .cot-flag{width:22px;height:16px;object-fit:cover}
+.cot-camo-collection[aria-pressed='true']{background:#49351c;border-color:#f0a030;color:#ffd27a}
+.cot-camo-collection:focus-visible,.cot-camo-card:focus-visible{outline:2px solid #ffd27a;outline-offset:-2px}
+.cot-camo-collection-caption{flex:0 0 auto;margin-bottom:6px;color:#aebec9;font-size:10px;line-height:1.4}
+.cot-camo-card .cs{font-size:8px;line-height:1.3;color:#899ba7;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-camo-card .cs:empty{display:none}
+.cot-camo-card[hidden],.cot-camo-tag[hidden]{display:none}
 .cot-camo-tag{flex:0 0 auto;min-height:22px;padding:0 7px;border:1px solid rgba(146,164,180,.24);
   background:rgba(9,13,17,.72);color:#8293a1;cursor:pointer;scroll-snap-align:start;
   font:900 7px/1 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
@@ -841,7 +858,7 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 /* garage_polish r9: minmax(0,1fr) + min-width:0 — grid items default to
    min-width:auto, so the widest nowrap label (DESERT PINK ~80px) silently
    inflated every track past the panel and CLIPPED the third column. */
-.cot-camos .cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
+.cot-camos .cgrid{display:grid;align-content:start;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
 /* camo r8: the paint roster grew 6 -> 16 — the CAMO grid scrolls (equipment
    grid below stays static). The bottom fade signals overflow without a
    scrollbar gutter narrowing and misaligning the swatch columns. */

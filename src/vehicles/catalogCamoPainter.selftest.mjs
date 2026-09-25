@@ -5,6 +5,7 @@ import { CATALOG_CAMO_ART_IDS, createCatalogCamoPainter } from './catalogCamoPai
 import { createMaterialPainter } from './materialPainter.ts';
 import { paintMaterialBase } from './materialPainterWorker.ts';
 import { resolveCamoVisual, camoPatternIdHash, camoPatternStreamSeed } from './materials.ts';
+import { SHARED_CAMO_PRESETS, stockCamoPatternIdFor } from './camoPolicy.ts';
 import { camoSwatchRecipe } from '../ui/camoSwatchPainter.ts';
 Object.assign(globalThis, { Path2D, DOMMatrix, ImageData });
 const painter = createMaterialPainter(createCanvas), catalog = createCatalogCamoPainter(createCanvas);
@@ -35,7 +36,7 @@ for (const id of CATALOG_CAMO_ART_IDS) {
 assert.equal(hashes.size, CATALOG_CAMO_ART_IDS.length, 'every named finish has distinct artwork');
 
 // Production worker and synchronous path must publish identical complete maps.
-for (const id of ['summer', 'winter', 'digital', 'splinter', 'flames', 'leopardprint']) {
+for (const id of ['summer', 'winter', 'digital', 'splinter', 'flames', 'leopardprint', 'factory', 'sig_k2', 'service_challenger_3', 'national_il', 'carbon', 'prism']) {
   const visual = resolveCamoVisual(spec, id);
   const request = { identity: `catalog:${id}`, visual, seed: 4242, dimensions: { albedo: 128, map: 64 },
     plateLines: false, camoStreamSeed: camoPatternStreamSeed(visual, camoPatternIdHash(id)) };
@@ -59,12 +60,38 @@ for (const id of ['summer', 'desert', 'winter', 'merdc', 'tropic', 'digital', 'd
   }
   assert.ok(seam / 384 < interior / (192 * 191) * 3 + 3, `${id}: periodic boundaries stay within local edge contrast`);
 }
-for (const id of ['factory', 'sig_abramsx', 'sig_k2', 'sig_tos1a_tagil', 'service_usa_desert', 'national_de',
-  'paint_cv90_mkiv', 'openai', 'gemini', 'xai', 'mono', 'carbon', 'prism']) {
-  const visual = resolveCamoVisual(spec, id);
-  assert.equal(visual.catalogPattern, undefined, `${id}: authored/brand finish retains its own painter`);
-  const c = createCanvas(16, 16), before = hash(pixels(c));
-  catalog(c.getContext('2d'), 16, visual, () => { throw Error('Authored recipe consumed catalog RNG'); });
-  assert.equal(hash(pixels(c)), before, `${id}: catalog artist cannot overwrite authored artwork`);
+// Every fleet recipe uses an explicit art family and retains its source palette.
+for (const preset of SHARED_CAMO_PRESETS) {
+  const visual = resolveCamoVisual(spec, preset.id);
+  assert.ok(visual.catalogPattern, `${preset.id}: improved fleet art is reachable`);
+  assert.equal(visual.base, preset.visual.base);
+  assert.deepEqual(visual.patches, preset.visual.patches);
+  const swatch = camoSwatchRecipe(spec, preset.id);
+  assert.equal(swatch.visual.catalogPattern, visual.catalogPattern);
+  const seed = camoPatternStreamSeed(visual, camoPatternIdHash(preset.id));
+  assert.equal(seed, swatch.streamSeed);
+  const a = createCanvas(96, 96), b = createCanvas(96, 96);
+  painter.paintCamo(a, visual, painter.mulberry32(seed), empty, seed);
+  painter.paintCamo(b, visual, painter.mulberry32(seed), empty, seed);
+  assert.deepEqual(pixels(a), pixels(b), `${preset.id}: repeatable paint`);
+  const px = pixels(a); for (let at = 3; at < px.length; at += 4) assert.equal(px[at], 255);
 }
-console.log(`catalogCamoPainter: ${CATALOG_CAMO_ART_IDS.length} distinct deterministic paints, worker parity, periodic fields, authored isolation passed`);
+for (const tank of [spec, { ...spec, id: 'abramsx' }, { ...spec, id: 'm48' }, { ...spec, id: 'merkava3d_x', nation: 'Israel' }]) {
+  const source = stockCamoPatternIdFor(tank.id, tank.nation, tank.era);
+  const factory = camoSwatchRecipe(tank, 'factory'), named = camoSwatchRecipe(tank, source);
+  assert.equal(factory.streamSeed, named.streamSeed, `${tank.id}: Factory uses the named colorway's exact pattern`);
+  assert.equal(factory.key, named.key, `${tank.id}: Factory reuses the named swatch cache entry`);
+  const a = createCanvas(128, 128), b = createCanvas(128, 128);
+  painter.paintCamo(a, factory.visual, painter.mulberry32(factory.streamSeed), empty, factory.streamSeed);
+  painter.paintCamo(b, named.visual, painter.mulberry32(named.streamSeed), empty, named.streamSeed);
+  assert.deepEqual(pixels(a), pixels(b), `${tank.id}: Factory and its reusable colorway have identical pixels`);
+}
+// Complete official logos retain their dedicated artist; surface finish never substitutes a glyph.
+for (const id of ['openai', 'gemini', 'xai', 'claude', 'spark']) {
+  const visual = resolveCamoVisual(spec, id);
+  assert.equal(visual.catalogPattern, undefined);
+  const c = createCanvas(16, 16), before = hash(pixels(c));
+  catalog(c.getContext('2d'), 16, visual, () => { throw Error('Brand recipe consumed catalog RNG'); });
+  assert.equal(hash(pixels(c)), before);
+}
+console.log(`catalogCamoPainter: ${CATALOG_CAMO_ART_IDS.length} catalog and ${SHARED_CAMO_PRESETS.length} fleet paints, worker parity, Factory equivalence and logo isolation passed`);

@@ -11,7 +11,7 @@
  * hull projects one tile per CAMO_TILE_SPAN_M (2 m), so the 128 x 44 swatch is the tile's middle 2 m x 0.69 m band
  * at 2:1 — what that much armour looks like on ANY hull wearing the pattern. Hull-only surface knobs (zimmerit, panel
  * plan, markings) are not part of a pattern and stay out of the swatch; a pattern that legitimately depends on the
- * vehicle (Factory = the nation's service pattern, Signature, winter over the authored coat) still resolves per spec.
+ * vehicle (Factory = the tank's stock recipe, Signature, winter over the authored coat) still resolves per spec.
  */
 import {
   createMaterialPainter, type MaterialVisual, type PlateFeatures,
@@ -64,6 +64,7 @@ export function camoSwatchRecipe(spec: FleetTankSpec, pid: string): CamoSwatchRe
   const visual: MaterialVisual = { base: resolved.base || '#5a6b46' };
   if (resolved.scheme !== undefined) visual.scheme = resolved.scheme;
   if (resolved.catalogPattern !== undefined) visual.catalogPattern = resolved.catalogPattern;
+  if (resolved.patternSeedId !== undefined) visual.patternSeedId = resolved.patternSeedId;
   if (resolved.weather !== undefined) visual.weather = resolved.weather;
   if (resolved.patches !== undefined) visual.patches = [...resolved.patches];
   if (resolved.camoScale !== undefined) visual.camoScale = resolved.camoScale;
@@ -80,6 +81,9 @@ export function camoSwatchRecipe(spec: FleetTankSpec, pid: string): CamoSwatchRe
   if (resolved.drawRotation !== undefined) visual.drawRotation = resolved.drawRotation;
   if (resolved.drawMirror !== undefined) visual.drawMirror = resolved.drawMirror;
   const streamSeed = camoPatternStreamSeed(visual, camoPatternIdHash(pid));
+  // The alias is consumed by seed resolution, not painting. Factory and its
+  // named version share the exact cached tile instead of keeping duplicates.
+  delete visual.patternSeedId;
   return { visual, streamSeed, key: `${streamSeed}|${JSON.stringify(visual)}` };
 }
 

@@ -12,7 +12,7 @@ import { assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
 import { FLEET_GROUP_BY_ID, FLEET_GROUP_IDS } from './fleetManifest.ts';
 import { tankTier } from './tier.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
-import { defaultCamoPatternId } from './camoPolicy.ts';
+import { defaultCamoPatternId, stockCamoPatternIdFor } from './camoPolicy.ts';
 import { getCamoSelection, setCamoSelection, resolveCamoVisual } from './materials.ts';
 import { compareCountryThenTierThenName } from '../ui/garageOrder.ts';
 import { auditFleetBalance, sustainedPrimaryDpm } from './balanceAudit.ts';
@@ -208,8 +208,9 @@ const priorStorage = globalThis.localStorage;
 globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) };
 try {
   for (const spec of [c1, c2]) {
-    assert.equal(defaultCamoPatternId(spec.id), 'service_ariete_c1');
-    assert.equal(getCamoSelection(spec.id), 'service_ariete_c1');
+    assert.equal(defaultCamoPatternId(spec.id), 'factory');
+    assert.equal(stockCamoPatternIdFor(spec.id), 'service_ariete_c1');
+    assert.equal(getCamoSelection(spec.id), 'factory');
     setCamoSelection(spec.id, 'winter');
     assert.equal(getCamoSelection(spec.id), 'winter', 'explicit saved paint overrides new default');
     assert.notDeepEqual(resolveCamoVisual(spec, 'winter'), resolveCamoVisual(spec, 'factory'));

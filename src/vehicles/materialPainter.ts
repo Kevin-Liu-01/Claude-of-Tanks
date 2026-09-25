@@ -13,8 +13,10 @@ type Rgb = [number, number, number];
 
 export interface MaterialVisual {
   scheme?: string;
-  /** Selectable catalog art; absent on authored vehicle/service recipes. */
+  /** Baked art family; palette and morphology remain owned by the selected recipe. */
   catalogPattern?: CatalogCamoArtId;
+  /** Factory aliases its stock recipe so its swatch and reusable colorway match. */
+  patternSeedId?: string;
   base: string;
   weather?: string;
   patches?: string[];
@@ -594,6 +596,12 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       }
     };
     paintSolidBasePatina();
+
+    // Brand artwork stays intact on a restrained enamel substrate. This is a
+    // bake-only finish, shared by the worker, synchronous path and swatches.
+    if (['claude', 'spark', 'openai', 'xai', 'gemini'].includes(visual.scheme || '')) {
+      paintCatalogCamo(ctx, S, { ...visual, catalogPattern: 'enamel' }, rng);
+    }
 
     const scheme = visual.catalogPattern ? 'catalog' : visual.scheme || 'solid';
     // camo_spotting r2 (close-orbit edge critique): the r8 wide feather made
@@ -3126,11 +3134,12 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     // desert/summer flanks bleached toward one flat tint (r7 wash critique).
     const dustCol = rgb(scale3(mix(weather, base, 0.4), 1.14), 0.09);
     const paintDustAndOilStreaks = (): void => {
-      for (let i = 0; i < (visual.catalogPattern ? 70 : 240); i++) {
-        const x = rng() * S, y = rng() * S, len = S * (0.03 + rng() * 0.12);
-        ctx.strokeStyle = rng() < 0.45 ? 'rgba(30,26,20,0.13)' : dustCol;
-        ctx.lineWidth = 1 + rng() * 3;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rng() - 0.5) * 8, y + len); ctx.stroke();
+      const finishedPaint = visual.catalogPattern || ['claude', 'spark', 'openai', 'xai', 'gemini'].includes(scheme);
+      for (let i = 0; i < (finishedPaint ? 70 : 240); i++) {
+        const x = rng() * S, y = rng() * S, len = S * (finishedPaint ? .015 + rng() * .06 : .03 + rng() * .12);
+        ctx.strokeStyle = rng() < .45 ? (finishedPaint ? 'rgba(30,26,20,0.065)' : 'rgba(30,26,20,0.13)') : dustCol;
+        ctx.lineWidth = finishedPaint ? S / 512 * (.6 + rng() * .7) : 1 + rng() * 3;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rng() - .5) * (finishedPaint ? S * .006 : 8), y + len); ctx.stroke();
       }
     };
     paintDustAndOilStreaks();

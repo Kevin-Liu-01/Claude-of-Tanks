@@ -14,8 +14,9 @@ import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThum
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {
-  CAMO_TAG_IDS, CAMO_TAG_LABEL, CUSTOM_CAMO_ID,
-  camoMatchesTag, camoPatternTags, customCamoPatternId,
+  CAMO_TAG_IDS, CAMO_TAG_LABEL, CAMO_COUNTRY_TAG_IDS, CUSTOM_CAMO_ID,
+  camoMatchesTag, camoPatternTags, customCamoPatternId, camoInCollection,
+  camoCollectionFor, sharedCamoPreset, stockCamoPatternIdFor,
 } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 import { createModal } from './modal.ts';
@@ -66,7 +67,7 @@ import type { GameModeId } from '../sim/matchModes.ts';
 import type { FleetGunSpec, FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { ShellSpec } from '../vehicles/specHelpers.ts';
 import type { GarageVariant } from '../game/garageVariants.ts';
-import type { CamoTagId, CustomCamo } from '../vehicles/camoPolicy.ts';
+import type { CamoTagId, CamoCollectionId, CustomCamo } from '../vehicles/camoPolicy.ts';
 import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 
@@ -1471,7 +1472,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   camosEl.addEventListener('touchstart', promoteCamoSwatches, { once: true, passive: true });
   const camoCardById = new Map<string, HTMLElement>();
   const camoTagButtonById = new Map<CamoTagId, HTMLButtonElement>();
+  const camoCollectionButtons = new Map<CamoCollectionId, HTMLButtonElement>();
+  let activeCamoCollection: CamoCollectionId = 'default';
   let activeCamoTag: CamoTagId = 'all';
+  const stockSources = new Map<string, GarageTankSpec[]>();
+  for (const spec of specById.values()) {
+    const pattern = stockCamoPatternIdFor(spec.id, spec.nation, spec.era);
+    if (pattern) stockSources.set(pattern, [...(stockSources.get(pattern) || []), spec]);
+  }
+  let camoCollectionCaption: HTMLElement | null = null;
   let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
   function initializeCamoPicker(): void {
     if (!camoOpts?.patterns?.length) return;
@@ -1522,11 +1531,69 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     title.appendChild(titleActions);
     camosEl.appendChild(title);
+    const collections = document.createElement('div');
+    collections.className = 'cot-camo-collections';
+    collections.addEventListener('wheel', (event) => {
+      if (collections.scrollWidth <= collections.clientWidth) return;
+      event.preventDefault();
+      collections.scrollLeft += event.deltaX || event.deltaY;
+    }, { passive: false });
+    collections.setAttribute('role', 'group');
+    collections.setAttribute('aria-label', t('garage.camo.collections'));
+    for (const id of ['default', ...CAMO_COUNTRY_TAG_IDS] as const) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'cot-camo-collection';
+      button.dataset.camoCollection = id;
+      const nation = id === 'default' ? null : CAMO_TAG_NATION[id];
+      const label = nation ? tNation(nation) : t('garage.camo.defaultCollection');
+      if (nation) button.innerHTML = flagIconHTML(nation, 22);
+      else button.textContent = label;
+      button.title = label;
+      button.setAttribute('aria-label', label);
+      button.addEventListener('click', () => {
+        emit('ui:click', {});
+        activeCamoCollection = id;
+        activeCamoTag = 'all';
+        refreshCamoTagFilters();
+        const spec = specById.get(selectedId);
+        if (spec) repaintTankCamoSwatches(spec);
+        grid.scrollTop = 0;
+      });
+      collections.appendChild(button);
+      camoCollectionButtons.set(id, button);
+    }
+    const collectionNav = document.createElement('div');
+    collectionNav.className = 'cot-camo-collection-nav';
+    const previousCollection = document.createElement('button');
+    const nextCollection = document.createElement('button');
+    for (const [button, direction] of [[previousCollection, -1], [nextCollection, 1]] as const) {
+      button.type = 'button';
+      button.className = 'cot-camo-collection-scroll';
+      button.innerHTML = uiIconSVG(direction < 0 ? 'chevronLeft' : 'chevronRight', 12);
+      button.setAttribute('aria-label', t(direction < 0 ? 'garage.country.scrollLeft' : 'garage.country.scrollRight'));
+      button.addEventListener('click', () => collections.scrollBy({ left: direction * collections.clientWidth * .8 }));
+    }
+    collectionNav.append(previousCollection, collections, nextCollection);
+    camosEl.appendChild(collectionNav);
+    const updateCollectionScroll = () => {
+      previousCollection.disabled = collections.scrollLeft <= 1;
+      nextCollection.disabled = collections.scrollLeft >= collections.scrollWidth - collections.clientWidth - 1;
+    };
+    collections.addEventListener('scroll', updateCollectionScroll, { passive: true });
+    requestAnimationFrame(updateCollectionScroll);
+    camoCollectionCaption = document.createElement('div');
+    camoCollectionCaption.className = 'cot-camo-collection-caption';
+    camoCollectionCaption.setAttribute('aria-live', 'polite');
+    camosEl.appendChild(camoCollectionCaption);
     const tagBar = document.createElement('div');
     tagBar.className = 'cot-camo-tags';
     tagBar.setAttribute('role', 'toolbar');
     tagBar.setAttribute('aria-label', t('garage.camo.filterByTag'));
     for (const tagId of CAMO_TAG_IDS) {
+      // Nations are primary collections; factory/signature are organization,
+      // not useful secondary filters inside those collections.
+      if (CAMO_TAG_NATION[tagId] || tagId === 'factory' || tagId === 'signature') continue;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'cot-camo-tag';
@@ -1539,13 +1606,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       } else {
         button.textContent = tagLabel;
       }
-      button.title = `${t('garage.camo.showTag')} ${tagLabel}`;
-      button.setAttribute('aria-label', `${t('garage.camo.showTag')} ${tagLabel}`);
+      button.title = t('garage.camo.showTag', { tag: tagLabel });
+      button.setAttribute('aria-label', t('garage.camo.showTag', { tag: tagLabel }));
       button.setAttribute('aria-pressed', String(tagId === activeCamoTag));
       button.addEventListener('click', () => {
         emit('ui:click', {});
         activeCamoTag = activeCamoTag === tagId && tagId !== 'all' ? 'all' : tagId;
         refreshCamoTagFilters();
+        const spec = specById.get(selectedId);
+        if (spec) repaintTankCamoSwatches(spec);
       });
       tagBar.appendChild(button);
       camoTagButtonById.set(tagId, button);
@@ -1557,13 +1626,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // static. Tools query `.cot-camos .cgrid` first-match as before.
     grid.className = 'cgrid camo';
     camosEl.appendChild(grid);
-    for (const pid of camoOpts.patterns) {
-      const card = document.createElement('div');
+    for (const pid of ['factory', ...camoOpts.patterns.filter(id => id !== 'factory')]) {
+      const card = document.createElement('button');
+      card.type = 'button';
       card.className = 'cot-camo-card';
       card.dataset.pid = pid; // camo r8: stable hook for tools + tests
       card.innerHTML = pid === 'auto'
-        ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div>`
-        : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
+        ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div><div class="cs"></div>`
+        : `<div class="sw"><canvas></canvas></div><div class="cl"></div><div class="cs"></div>`;
       requiredElement<HTMLElement>(card, '.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
       card.title = (camoOpts.label && camoOpts.label[pid]) || pid;
@@ -1999,7 +2069,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!spec) return;
     const available = new Set<CamoTagId>(['all']);
     for (const pid of camoOpts.patterns) {
+      if (!camoInCollection(pid, activeCamoCollection)) continue;
       for (const tagId of camoPatternTags(pid, spec.nation)) available.add(tagId);
+    }
+    for (const [id, button] of camoCollectionButtons) {
+      button.setAttribute('aria-pressed', String(id === activeCamoCollection));
+    }
+    if (camoCollectionCaption) {
+      camoCollectionCaption.textContent = activeCamoCollection === 'default'
+        ? t('garage.camo.defaultDescription')
+        : t('garage.camo.countryDescription', { country: tNation(CAMO_TAG_NATION[activeCamoCollection] || '') });
     }
     if (!available.has(activeCamoTag)) activeCamoTag = 'all';
     for (const [tagId, button] of camoTagButtonById) {
@@ -2008,10 +2087,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     for (const [pid, card] of camoCardById) {
       const tags = camoPatternTags(pid, spec.nation);
-      card.hidden = !camoMatchesTag(pid, spec.nation, activeCamoTag);
+      card.hidden = !camoInCollection(pid, activeCamoCollection) || !camoMatchesTag(pid, spec.nation, activeCamoTag);
       card.dataset.tags = tags.join(' ');
-      const label = (camoOpts.label && camoOpts.label[pid]) || pid;
-      card.title = `${label} · ${tags.map((tagId) => t(`camoTag.${tagId}`) || CAMO_TAG_LABEL[tagId]).join(', ')}`;
+      const preset = sharedCamoPreset(pid);
+      const source = (preset?.sourceTankId ? specById.get(preset.sourceTankId) : null) || stockSources.get(pid)?.[0];
+      const originalLabel = camoOpts.label?.[pid] || pid;
+      const genericKey = `garage.camo.generic.${pid}`;
+      const genericLabel = t(genericKey);
+      const label = activeCamoCollection !== 'default' && source
+        ? source.label?.displayName || source.name
+        : genericLabel !== genericKey ? genericLabel : originalLabel;
+      requiredElement<HTMLElement>(card, '.cl').textContent = label;
+      const subtitle = pid === 'factory' ? spec.label?.displayName || spec.name
+        : activeCamoCollection !== 'default' && source ? originalLabel : '';
+      requiredElement<HTMLElement>(card, '.cs').textContent = subtitle;
+      card.setAttribute('aria-label', subtitle ? `${label} · ${subtitle}` : label);
+      const owners = (stockSources.get(pid) || []).map(tank => tank.label?.displayName || tank.name);
+      card.title = `${label} · ${owners.length ? owners.join(', ') : tags.map((tagId) => t(`camoTag.${tagId}`) || CAMO_TAG_LABEL[tagId]).join(', ')}`;
     }
     requestAnimationFrame(syncScrollFades);
   }
@@ -2020,6 +2112,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     for (const [patternId, card] of camoCardById) {
       const selected = patternId === selectedPatternId;
       card.classList.toggle('sel', selected);
+      card.setAttribute('aria-pressed', String(selected));
       // The grid scrolls, so restoring a persisted selection must keep its
       // active card visible without disturbing a deliberately filtered list.
       if (selected && !card.hidden) card.scrollIntoView?.({ block: 'nearest' });
@@ -2028,10 +2121,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function repaintTankCamoSwatches(spec: GarageTankSpec): void {
     for (const [patternId, card] of camoCardById) {
+      if (card.hidden || card.dataset.swatchSpec === spec.id) continue;
       const canvas = card.querySelector<HTMLCanvasElement>('.sw canvas');
       if (!canvas) continue;
       if (patternId === 'auto') paintAutoCamoSwatch(canvas, spec);
       else paintCamoSwatch(canvas, spec, patternId);
+      card.dataset.swatchSpec = spec.id;
     }
   }
 
@@ -2056,6 +2151,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const selectedPatternId = camoOpts.get(selectedId);
+    if (swatchesFor !== selectedId) {
+      activeCamoCollection = camoCollectionFor(selectedPatternId);
+      activeCamoTag = 'all';
+    }
     customCamoStudioAccess?.peek()?.syncSelected();
     refreshCamoTagFilters();
     syncCamoCardSelection(selectedPatternId);

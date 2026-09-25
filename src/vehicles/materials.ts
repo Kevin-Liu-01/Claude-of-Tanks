@@ -7,7 +7,7 @@
 // No top-level side effects — canvases are created inside createTankMaterials.
 
 import * as THREE from 'three';
-import { factoryCamoPatternIdFor,
+import { stockCamoPatternIdFor,
   CAMO_PATTERN_IDS,
   CAMO_CATALOG_PATTERN_IDS,
   CAMO_PATTERN_LABEL,
@@ -25,7 +25,7 @@ import { factoryCamoPatternIdFor,
 import type { CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { catalogCamoArtId } from './catalogCamoPainter.ts';
+import { catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
 import {
   canPaintMaterialBaseInWorker, tryPaintMaterialBase,
@@ -1336,10 +1336,12 @@ const PATTERN_SEASON: Readonly<Record<string, readonly string[]>> = {
  * season list (a green-grass coastal map auto-resolves inside the green
  * pool; the pick must still earn its +3.5%).
  * A mismatched manual pick (winter paint on the desert map) still repaints
- * the tank but earns no concealment bonus; 'factory' never qualifies.
+ * the tank but earns no concealment bonus. Factory preserves any seasonal
+ * benefit the vehicle's stock recipe already had.
  */
 export function hasCamoPaint(specId: string): boolean {
-  const pat = resolveCamoPattern(specId);
+  const selection = resolveCamoPattern(specId);
+  const pat = selection === 'factory' ? stockCamoPatternIdFor(specId) || selection : selection;
   if (pat === 'factory') return false;
   // second clause: pool membership (camo r2 — BIOME_PATTERN rows are pools
   // now). AUTO always resolves to a pool member, so AUTO always qualifies;
@@ -1372,13 +1374,10 @@ function applySharedCamoVisual(
     bandAngle: undefined,
     blackK: undefined,
     rainK: undefined,
+    catalogPattern: fleetCamoArtId(recipe.scheme),
   };
 }
 
-/**
- * Round 31 (owner 2026-09-20: "make factory camos be their tank specific camos"): Factory is the vehicle's own
- * authored paint again. The nation's plain colour is its own catalog entry (national_*), see camoPolicy.ts.
- */
 /** Round 32: the noise stream a camo pattern paints with — keyed by the visible recipe and the pattern id, never the
  * hull, so a shared preset lays out identically on every vehicle and re-bakes are byte-comparable. */
 export function camoPatternIdHash(patternId: string): number {
@@ -1389,15 +1388,15 @@ export function camoPatternIdHash(patternId: string): number {
 
 export function camoPatternStreamSeed(visual: MaterialVisual, patternHash: number): number {
   const recipe = `${visual.scheme || 'solid'}|${visual.base}|${visual.weather}|${(visual.patches || []).join(',')}|${visual.camoScale ?? ''}`;
-  let h = 0x2c1b3c6d ^ (patternHash | 0);
+  let h = 0x2c1b3c6d ^ (visual.patternSeedId ? camoPatternIdHash(visual.patternSeedId) : patternHash | 0);
   for (const ch of recipe) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return h >>> 0;
 }
 
 function factoryVisual(spec: MaterialTankSpec, authored: MaterialVisual): MaterialVisual {
-  // Round 32 (owner 2026-09-21): the pre-round-31 default — the nation's (era-aware) service pattern on the hull.
-  const patternId = factoryCamoPatternIdFor(spec.nation, spec.era);
-  return patternId ? applySharedCamoVisual(authored, patternId) || authored : authored;
+  const patternId = stockCamoPatternIdFor(spec.id, spec.nation, spec.era);
+  return patternId ? { ...patternVisual(spec, patternId), patternSeedId: patternId }
+    : { ...authored, catalogPattern: fleetCamoArtId(authored.scheme) };
 }
 
 const NEUTRAL_PATTERN_MORPHOLOGY: Readonly<Pick<MaterialVisual,

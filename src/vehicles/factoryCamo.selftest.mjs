@@ -14,20 +14,15 @@ import {
   camoPatternTags,
   defaultCamoPatternId,
   factoryCamoPatternIdFor,
+  stockCamoPatternIdFor,
   hasSignatureCamo,
   sharedCamoPreset,
   signatureCamoPatternId,
 } from './camoPolicy.ts';
-import { getCamoSelection, resolveCamoVisual } from './materials.ts';
+import { getCamoSelection, resolveCamoVisual, hasCamoPaint, setCamoBiome } from './materials.ts';
 import { tankDisplayName } from './tankLabels.ts';
 
-// Round 31 (owner 2026-09-20): "make our tank specific camos into their own camos ... add national color schemes that
-// are just the monocolor ones". Round 32 (owner 2026-09-21): "i want the default camos of our tanks to be what they were
-// before, but just organized a lot better especially preventing duplicate camos being stored and them sounding less
-// generic". Factory is the nation's service pattern again (era-aware for Soviet hulls); the national colours are plain
-// single-colour schemes, one per nation, selectable on any hull; the authored paints (authoredPaintCatalog.ts) make
-// every distinct fleet recipe selectable exactly once, under a nation + pattern name rather than a vehicle name.
-
+// Factory is the stock recipe, including the fleet’s named and era-specific defaults.
 // a plain coat carries no pattern knobs, so solids compare by colour alone (the generator normalises them the same way)
 const paletteKey = (visual) => JSON.stringify(visual.scheme === 'solid'
   ? ['solid', visual.base, visual.weather]
@@ -40,20 +35,18 @@ const coloursOf = (v) => [v.base, v.weather, ...((v.scheme || 'solid') === 'soli
 const nearRecipe = (a, b) => (a.scheme || 'solid') === (b.scheme || 'solid') && coloursOf(a).length === coloursOf(b).length
   && coloursOf(a).every((c, i) => sameShade(c, coloursOf(b)[i]));
 
-// --- Factory = the nation's service pattern (era-aware), identical on every hull of that nation
+// --- Every Factory restores stock paint, including the historical exceptions.
 let checked = 0;
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
   if (!spec.visual?.base) continue;
-  const servicePatternId = factoryCamoPatternIdFor(spec.nation, spec.era);
+  const stockId = stockCamoPatternIdFor(id, spec.nation, spec.era);
   const resolved = resolveCamoVisual(spec, 'factory');
-  if (servicePatternId) {
-    const service = sharedCamoPreset(servicePatternId);
-    assert.ok(service && servicePatternId.startsWith('service_'), `${id}: Factory routes to a Service pattern (${servicePatternId})`);
-    assert.equal(paletteKey(resolved), paletteKey(service.visual), `${id}: Factory is the ${spec.nation} service pattern`);
-  } else {
-    assert.equal(paletteKey(resolved), paletteKey(spec.visual), `${id}: a hull without a national service pattern keeps its authored paint as Factory`);
-  }
+  assert.equal(defaultCamoPatternId(id), 'factory', id);
+  if (stockId) {
+    assert.equal(paletteKey(resolved), paletteKey(resolveCamoVisual(spec, stockId)), `${id}: Factory preserves its stock recipe`);
+    assert.equal(resolved.patternSeedId, stockId, `${id}: Factory aliases the reusable recipe's exact layout`);
+  } else assert.equal(paletteKey(resolved), paletteKey(spec.visual), `${id}: unknown nation retains authored paint`);
   checked += 1;
 }
 assert.ok(checked >= 190, `the whole fleet resolves Factory (${checked})`);
@@ -140,7 +133,8 @@ for (const id of SIGNATURE_CAMO_TANK_IDS) {
   assert.equal(hasSignatureCamo(id), true);
   const signaturePatternId = signatureCamoPatternId(id);
   assert.ok(signaturePatternId, `${id} must own a named reusable Signature finish`);
-  assert.equal(defaultCamoPatternId(id), signaturePatternId, `${id} must initially wear its named Signature finish`);
+  assert.equal(defaultCamoPatternId(id), 'factory');
+  assert.equal(stockCamoPatternIdFor(id), signaturePatternId, `${id}: named stock paint is preserved`);
   const signature = resolveCamoVisual(getSpec(id), signaturePatternId);
   assert.notEqual(signature.scheme, 'solid', `${id} Signature must be a real patterned finish`);
   assert.ok((signature.patches || []).length >= 2, `${id} Signature must retain a multi-tone pattern palette`);
@@ -150,8 +144,8 @@ const requestedIsraeliDefaults = [
 ];
 for (const id of requestedIsraeliDefaults) {
   assert.ok(SIGNATURE_CAMO_TANK_IDS.includes(id), `${id} must retain its requested Signature entry`);
-  assert.equal(defaultCamoPatternId(id), `sig_${id}`, `${id} owns its distinct requested default`);
-  assert.equal(getCamoSelection(id), `sig_${id}`, `${id} initially presents its default when unset`);
+  assert.equal(stockCamoPatternIdFor(id), `sig_${id}`, `${id} owns its distinct requested default`);
+  assert.equal(getCamoSelection(id), 'factory', `${id} initially presents Factory when unset`);
 }
 const russianDigitalSignatures = ['bmpt_t90', 't90sm', 't90a_burlak', 't90m', 't90m_proryv', 't90a', 't90a_vladimir'];
 for (const id of russianDigitalSignatures) {
@@ -178,12 +172,18 @@ assert.equal(paletteKey(abramsXOnAbrams), paletteKey(abramsXOnT90), 'a named veh
 // --- selection defaults and persistence
 assert.equal(defaultCamoPatternId('m1a2'), 'factory');
 for (const id of ['m46_patton', 'm47_patton', 'm48', 'm2a2_bradley']) {
-  assert.equal(defaultCamoPatternId(id), 'summer', `${id} must initially select Summer`);
-  assert.equal(getCamoSelection(id), 'summer');
+  assert.equal(defaultCamoPatternId(id), 'factory');
+  assert.equal(stockCamoPatternIdFor(id), 'summer', `${id} preserves its temperate stock finish`);
+  assert.equal(getCamoSelection(id), 'factory');
   assert.equal(resolveCamoVisual(getSpec(id), 'summer').scheme, 'nato');
 }
-assert.equal(getCamoSelection('abramsx'), 'sig_abramsx');
+assert.equal(getCamoSelection('abramsx'), 'factory');
 assert.equal(getCamoSelection('m1a2'), 'factory');
+setCamoBiome('verdant');
+assert.equal(hasCamoPaint('m48'), true, 'Factory preserves the temperate stock recipe’s seasonal bonus');
+assert.equal(hasCamoPaint('m1a2'), false, 'reorganizing paint does not add a bonus to desert stock on woodland');
+setCamoBiome('desert');
+assert.equal(hasCamoPaint('m48'), false, 'temperate Factory paint still mismatches desert');
 const previousLocalStorage = globalThis.localStorage;
 globalThis.localStorage = {
   getItem: (key) => {
@@ -209,4 +209,4 @@ try {
   else globalThis.localStorage = previousLocalStorage;
 }
 
-console.log(`factoryCamo.selftest: Factory is the national service pattern on ${checked} hulls, ${NATIONAL_CAMO_PATTERN_IDS.length} national colours, ${paints} authored paints, ${SIGNATURE_CAMO_TANK_IDS.length} Signature defaults`);
+console.log(`factoryCamo.selftest: Factory restores stock paint on ${checked} hulls, ${NATIONAL_CAMO_PATTERN_IDS.length} national colours, ${paints} authored paints, ${SIGNATURE_CAMO_TANK_IDS.length} named stock recipes`);

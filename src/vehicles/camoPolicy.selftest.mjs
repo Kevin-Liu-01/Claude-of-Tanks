@@ -19,6 +19,7 @@ import {
   customCamoPatternId,
   defaultCamoPatternId,
   factoryCamoPatternIdFor,
+  stockCamoPatternIdFor, camoInCollection, camoCollectionFor, CAMO_COUNTRY_TAG_IDS,
   hasSignatureCamo,
   isBuiltInCamoId,
   networkCamoId,
@@ -41,13 +42,18 @@ assert.equal(isBuiltInCamoId('signature'), true,
 assert.equal(CAMO_CATALOG_PATTERN_IDS.includes('signature'), false,
   'the legacy generic Signature id stays out of the named player catalog');
 assert.equal(CAMO_CATALOG_PATTERN_IDS.length, CAMO_PATTERN_IDS.length - 1);
-assert.equal(defaultCamoPatternId('abramsx'), 'sig_abramsx');
-assert.equal(defaultCamoPatternId('t90'), 'sig_t90');
-assert.equal(defaultCamoPatternId('t90sm'), 'sig_t90sm');
-assert.equal(defaultCamoPatternId('t90ms'), 'sig_t90ms');
+assert.equal(defaultCamoPatternId('abramsx'), 'factory');
+assert.equal(stockCamoPatternIdFor('abramsx'), 'sig_abramsx');
+assert.equal(defaultCamoPatternId('t90'), 'factory');
+assert.equal(stockCamoPatternIdFor('t90'), 'sig_t90');
+assert.equal(defaultCamoPatternId('t90sm'), 'factory');
+assert.equal(stockCamoPatternIdFor('t90sm'), 'sig_t90sm');
+assert.equal(defaultCamoPatternId('t90ms'), 'factory');
+assert.equal(stockCamoPatternIdFor('t90ms'), 'sig_t90ms');
 assert.equal(defaultCamoPatternId('m1a2'), 'factory');
 for (const id of ['m46_patton', 'm47_patton', 'm48', 'm2a2_bradley']) {
-  assert.equal(defaultCamoPatternId(id), 'summer', `${id} should initially wear Summer camouflage`);
+  assert.equal(defaultCamoPatternId(id), 'factory');
+  assert.equal(stockCamoPatternIdFor(id), 'summer', `${id} should initially wear Summer camouflage`);
 }
 assert.ok(SIGNATURE_CAMO_TANK_IDS.length >= 45,
   'the requested personality fleet must remain explicit and substantial');
@@ -269,7 +275,8 @@ const catalogContract = {
 };
 // The new signature appends one network ID; every preceding catalog byte stays fixed.
 assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'sig_tos1a_tagil'); // round 31: the base list ends here; national colours and generated paints follow
-assert.equal(defaultCamoPatternId('tos1a_tagil'), 'sig_tos1a_tagil');
+assert.equal(defaultCamoPatternId('tos1a_tagil'), 'factory');
+assert.equal(stockCamoPatternIdFor('tos1a_tagil'), 'sig_tos1a_tagil');
 assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
 const precedingCatalog = structuredClone(catalogContract);
 // The owner renamed this vehicle without changing its saved paint ID or recipe.
@@ -311,7 +318,8 @@ assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil') + 1], 
 assert.ok(CAMO_PATTERN_IDS.at(-1).startsWith('paint_'), 'the generated authored paints close the catalog');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
-assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'sig_sabra_mk2_x');
+assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'factory');
+assert.equal(stockCamoPatternIdFor('sabra_mk2_x'), 'sig_sabra_mk2_x');
 const historicalCatalog = structuredClone(precedingCatalog);
 historicalCatalog.patterns = historicalCatalog.patterns.filter(id => !addedPaints.includes(id));
 historicalCatalog.catalog = historicalCatalog.catalog.filter(id => !addedPaints.includes(id));
@@ -336,3 +344,17 @@ assert.equal(
 );
 
 console.log('camoPolicy.selftest: network boundary and custom pattern codec passed');
+
+// Every selectable finish stays reachable. Flags contain shared fleet recipes,
+// not generic seasonal art that happened to carry a historical country tag.
+for (const id of CAMO_CATALOG_PATTERN_IDS) {
+  assert.ok(camoInCollection(id, 'default') || CAMO_COUNTRY_TAG_IDS.some(n => camoInCollection(id, n)), id);
+  assert.ok(camoInCollection(id, camoCollectionFor(id)), `${id}: saved selection opens its collection`);
+}
+assert.equal(camoInCollection('factory', 'default'), true);
+assert.equal(camoInCollection('service_t90m', 'default'), true);
+assert.equal(camoInCollection('sig_merkava3d_x', 'default'), false);
+assert.equal(camoInCollection('sig_merkava3d_x', 'il'), true);
+assert.equal(camoInCollection('sig_merkava3d_x', 'usa'), false);
+assert.equal(camoInCollection('summer', 'usa'), false);
+assert.equal(camoInCollection('normandy44', 'usa'), false);

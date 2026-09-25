@@ -492,7 +492,7 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'caunter', base: '#b49a7d', weather: '#c2a98a', patches: ['#68757d', '#5c5442'], camoScale: 0.46 }),
   preset('sig_merkava4b', 'merkava4b', signatureTags('il', 'desert', 'geometric'),
     { scheme: 'hexfield', base: '#827f6a', weather: '#918d77', patches: ['#5f6254', '#aaa287'], camoScale: 0.38 }),
-  // Authored fleet camouflage; the solid national delivery coat remains Factory.
+  // Stock Israeli liveries; the plain delivery color remains separately selectable.
   preset('sig_merkava2d', 'merkava2d', signatureTags('il', 'desert', 'organic'),
     { scheme: 'desert', base: '#858574', weather: '#aaa48a', patches: ['#5d6557', '#c0b597', '#6d604a'], camoScale: 0.52 }),
   preset('sig_merkava3d_x', 'merkava3d_x', signatureTags('il', 'desert', 'stripes'),
@@ -538,14 +538,8 @@ export function sharedCamoPreset(patternId: string | null | undefined): SharedCa
   return SHARED_CAMO_PRESET_BY_ID.get(patternId as CamoPatternId) || null;
 }
 
-/**
- * Round 31 (owner 2026-09-20): the national colour scheme of each nation — the plain delivery colour. Factory
- * itself is the vehicle's own authored paint (materials.ts factoryVisual); this table names the monocolor scheme
- * a nation's hulls share, used by the Garage workshop exhibits and offered in the catalog.
- */
+/** Era-aware service fallback; named stock overrides take precedence. */
 export const FACTORY_CAMO_PATTERN_BY_NATION: Readonly<Record<string, CamoPatternId>> = Object.freeze({
-  // Round 32 (owner 2026-09-21): Factory is the nation's service pattern again — "i want the default camos of our
-  // tanks to be what they were before". The plain national colours stay selectable as their own entries.
   USA: 'service_usa_desert',
   Germany: 'service_leo2a6m',
   Russia: 'service_t90m',
@@ -561,8 +555,7 @@ export const FACTORY_CAMO_PATTERN_BY_NATION: Readonly<Record<string, CamoPattern
   Ukraine: 'service_ua_m2a3_bradley',
 });
 
-/** The nation's plain colour scheme (Soviet-era hulls share the Russian khaki green). */
-/** Era-aware Factory owner. Soviet vehicles retain period-specific field paint. */
+/** Era-aware service fallback. Soviet vehicles retain period-specific field paint. */
 export function factoryCamoPatternIdFor(nation: string | undefined, era: string | null | undefined): CamoPatternId | null {
   const nationKey = nation === 'USSR' || nation === 'USSR/Russia'
     ? 'Russia'
@@ -726,9 +719,36 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   ztz100_prototype: 'sig_ztz100_x',
 });
 
-/** Initial presentation choice; an explicit player selection always wins. */
-export function defaultCamoPatternId(specId: string): CamoPatternId {
-  return signatureCamoPatternId(specId) || DEFAULT_CAMO_PATTERN_BY_TANK_ID[specId] || 'factory';
+/** The stock appearance, independent of the player's saved selection. */
+export function stockCamoPatternIdFor(specId: string, nation?: string, era?: string | null): CamoPatternId | null {
+  return signatureCamoPatternId(specId) || DEFAULT_CAMO_PATTERN_BY_TANK_ID[specId]
+    || factoryCamoPatternIdFor(nation, era);
+}
+
+/** Factory always restores the vehicle's stock appearance; saved selections still win. */
+export function defaultCamoPatternId(_specId: string): CamoPatternId {
+  return 'factory';
+}
+
+export const CAMO_COUNTRY_TAG_IDS = Object.freeze([
+  'usa', 'de', 'ru', 'uk', 'fr', 'cn', 'it', 'jp', 'pl', 'kr', 'se', 'il', 'ua',
+] as const);
+export type CamoCountryTagId = typeof CAMO_COUNTRY_TAG_IDS[number];
+export type CamoCollectionId = 'default' | CamoCountryTagId;
+
+/** Default holds reusable field/design patterns. Flags collect fleet colorways.
+ * Service paints appear in both: generic names in Default, source tank names under a flag.
+ * IDs stay stable for saves and multiplayer; browsing never rewrites a selection.
+ */
+export function camoInCollection(patternId: string, collection: CamoCollectionId): boolean {
+  if (collection === 'default') return !patternId.startsWith('sig_') && patternId !== 'signature';
+  const shared = sharedCamoPreset(patternId);
+  return Boolean(shared?.tags.includes(collection));
+}
+
+export function camoCollectionFor(patternId: string): CamoCollectionId {
+  if (camoInCollection(patternId, 'default')) return 'default';
+  return CAMO_COUNTRY_TAG_IDS.find(id => sharedCamoPreset(patternId)?.tags.includes(id)) || 'default';
 }
 
 export const CUSTOM_CAMO_ID = 'custom';
