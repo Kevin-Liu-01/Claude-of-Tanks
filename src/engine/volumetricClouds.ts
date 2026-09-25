@@ -796,7 +796,9 @@ export class VolumetricCloudLayer {
     // luminance — the sky a far ceiling replaces at the skyline is the horizon band, the brightest of a hazy sky
     const hl = Math.max(1e-4, 0.2126 * hz.r + 0.7152 * hz.g + 0.0722 * hz.b);
     const mean = summary?.meanLuminance ?? hl;
-    (t.uSkyMean.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(Math.max(hl, mean) / hl);
+    // in a hue half way from the band's (a low sun reddens it) to neutral: a white-out ceiling, not a tan one
+    const floorLum = Math.max(hl, mean);
+    (t.uSkyMean.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(floorLum / hl).lerp(new THREE.Vector3(floorLum, floorLum, floorLum), 0.6);
     this.domeMaterial.uniforms.uSkyIntensity.value = a.skyIntensity;
   }
 
