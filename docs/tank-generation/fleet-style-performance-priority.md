@@ -159,7 +159,7 @@ release result with a collection of unrelated narrow passes.
 | FSP-03 | Add and verify return rollers across the full fleet wherever the actual vehicle has them; preserve genuinely rollerless suspensions. | OPEN — the initial 11 zero-station cases require vehicle-specific eligibility and physical verification, not blanket additions |
 | FSP-04 | Thicken the new tracks to the established original-fleet visual standard, with correct moving-shoe and end-wheel clearances. | OPEN |
 | FSP-05 | Complete lower hull/chassis side plates and connect hull sides, shoulders, fenders and skirts without accidental holes or floating panels. | OPEN |
-| FSP-06 | Apply deliberate material roles: camouflage on painted vehicle bodywork; distinct materials/colors for accessory equipment, cloth, bags and mechanisms. | OPEN |
+| FSP-06 | Apply deliberate material roles: camouflage on painted vehicle bodywork; distinct materials/colors for accessory equipment, cloth, bags and mechanisms. | LANDED 2026-09-25 (owner: yes) — 17 hulls re-roled ([audit](material-roles-audit-20260925.md)): `canvasPale` + `hull/turretFittingPaint` vocabulary, Merkava pale kit, Leclerc canvas boot, AMX-30 jerricans, Korean / Italian whips, cables and tools; 175 ERA-cluster overrides and the T-72B3M pack band recorded open |
 
 ## Initial measured evidence — not an implementation pass
 

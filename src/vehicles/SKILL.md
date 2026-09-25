@@ -138,6 +138,18 @@ per-hull wheel hex, clone the wheel paint, or retint it in a profile. Run the th
 pattern checks, `nationWheelSets.selftest.mjs`, `wheelQuality.selftest.mjs` and
 `node tools/wheel-review.mjs --all --gate` after any wheel or running-gear
 change; `node tools/wheel-inventory.mjs --all` lists every hull's wheel.
+Material roles (owner 2026-09-25, FSP-06): camouflage belongs to painted bodywork — hull, turret, guards,
+bins, cases, mounts and their hardware plates — through the camo buckets (`hull*`/`turret*`/`*Detail`/`*Equipment`);
+everything a crew does not spray takes its own bucket: `hullCloth`/`turretCloth` (OD canvas: tarps, packs,
+bedrolls, mantlet boots via `gunMountCanvasSkin`), `hullCanvasPale`/`turretCanvasPale` (sand-khaki desert / IDF
+kit), `hullFittingPaint`/`turretFittingPaint` (solid scheme paint for small painted steel such as jerry cans, which
+a hull-scale camouflage tile would splash), `hullRubber` (flaps, tires), `hullWood`, `hullGlass`/`turretGlass`
+(lenses, vision blocks), `hullDark`/`turretDark` (gunmetal: tow cables, coils, whip rods and antenna bases, MG
+bodies, exhaust pipes, tool heads). Parts authored inside an ERA cluster always take the camouflaged external-armor
+bucket (they collapse with the brick) — emit hardware that must stay dark after the cluster closes. Census with
+`node tools/material-roles-audit.mjs [--ids=… | --all] --md=<path>` (part census hook `partCensus`, lexical evidence
+per part, per-tank role and material counts); the audit and its verdicts are
+[`docs/tank-generation/material-roles-audit-20260925.md`](../../docs/tank-generation/material-roles-audit-20260925.md).
 Read actual assembled wheel centers: the ground-seating law can override an
 authored `wheelY`. Source-backed track courses must fit finite wheel stock,
 including the central drum, tread rings and tooth crowns at their actual axial
