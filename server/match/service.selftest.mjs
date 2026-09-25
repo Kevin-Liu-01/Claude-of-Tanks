@@ -135,6 +135,39 @@ assert.ok(room.actor.tick > tickBefore + 10, 'the match keeps ticking after depa
 assert.ok(alice.frames.at(-1).tick > tickBefore, 'alice still receives snapshots');
 console.log('service.selftest: seat replacement and leave over sockets; the match runs on');
 
+// The admin room API: bearer-guarded create / inspect / delete, the hook the room service will call.
+{
+  const base = `http://127.0.0.1:${service.address.port}`;
+  const auth = { authorization: `Bearer ${secret}`, 'content-type': 'application/json' };
+  const body = JSON.stringify({ mapId: 'verdant', seed: 5, countdownS: 0, world: 'terrain', seats: [
+    { playerId: 'carol', name: 'Carol', team: 'alpha', specId: 'm1a2' }, { playerId: 'dan', name: 'Dan', team: 'bravo', specId: 't90m' },
+  ], bots: [{ playerId: 'bot-x', name: 'X', team: 'bravo', specId: 'leo2a7v' }] });
+  assert.equal((await fetch(`${base}/rooms`, { method: 'POST', body, headers: { 'content-type': 'application/json' } })).status, 401, 'no bearer, no room');
+  assert.equal((await fetch(`${base}/rooms`, { method: 'POST', body, headers: { ...auth, authorization: 'Bearer wrong-secret-0123456789' } })).status, 401);
+  const bad = await fetch(`${base}/rooms`, { method: 'POST', body: JSON.stringify({ mapId: 'verdant', seats: [{ team: 'red' }] }), headers: auth });
+  assert.equal(bad.status, 400);
+  const created = await fetch(`${base}/rooms`, { method: 'POST', body, headers: auth });
+  assert.equal(created.status, 201);
+  const room2 = await created.json();
+  assert.ok(room2.roomId && room2.tokens.carol && room2.tokens.dan && room2.url === service.url);
+  assert.equal(room2.stats.bots, 1);
+  const carol = await connect({ token: room2.tokens.carol });
+  await sleep(400);
+  assert.ok(carol.welcome && carol.welcome.roomId === room2.roomId, 'a token from the admin API admits its seat');
+  const inspected = await (await fetch(`${base}/rooms/${room2.roomId}`, { headers: auth })).json();
+  assert.equal(inspected.stats.clients, 1);
+  assert.equal(inspected.clients[0].playerId, 'carol');
+  assert.equal((await fetch(`${base}/rooms/${room2.roomId}`)).status, 401);
+  assert.equal((await fetch(`${base}/rooms/nope`, { headers: auth })).status, 404);
+  const gcMetrics = await (await fetch(`${base}/metrics?gc=1`, { headers: auth })).json();
+  assert.equal(gcMetrics.actors.length, 2);
+  assert.equal((await fetch(`${base}/rooms/${room2.roomId}`, { method: 'DELETE', headers: auth })).status, 200);
+  await sleep(200);
+  assert.equal(closeOf(carol)?.reason, CLOSE_REASON.ROOM_CLOSED, 'deleting the room closes its clients');
+  assert.equal((await fetch(`${base}/rooms/${room2.roomId}`, { method: 'DELETE', headers: auth })).status, 404);
+  console.log('service.selftest: admin room API creates, inspects and deletes rooms behind the bearer secret');
+}
+
 // Capacity and duplicate rooms are refused; drain closes every client with SERVER_DRAIN and stops the listeners.
 assert.throws(() => rooms.createRoom({ roomId: 'svc-room', mapId: 'verdant', seats: [{ playerId: 'x', name: 'x', team: 'alpha', specId: 'm1a2' }], world: 'terrain' }), /already has a match/);
 for (let index = 0; index < 3; index++) {

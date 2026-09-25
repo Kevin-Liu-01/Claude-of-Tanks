@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
  * Multiplayer v2 headless soak: N Node clients speaking the real binary wire to
- * the match service (in-process by default, or a child `node server/match/main.ts`)
- * through injected latency, jitter and loss on both directions.
+ * the match service through injected latency, jitter and loss on both directions.
+ * The server runs as a child `node server/match/main.ts` by default (its own event
+ * loop, rooms created through the bearer-guarded admin API, stats read over HTTP);
+ * --server=inprocess hosts it in this process (the short receipt: quick, seeded).
  *
  *   npm run test:net:v2:soak                      28 clients, 14v14, 5 minutes, heaviest map, tick-cost child
  *   node tools/mp-soak.mjs --short                4 clients, 20 s, deterministic seed (the core receipt)
@@ -11,8 +13,9 @@
  * Gates (exit 1 on any): every client welcomed and spawned; snapshot cadence per
  * client (30 Hz +- jitter); input acknowledgement lag p95 (the lead the client chose at send
  * time subtracted) <= RTT p95 + 2 ticks (+ the server's jitter buffer growth beyond one tick);
- * pose continuity of interpolated remote samples at a 2-interval delay (no step
- * > 0.5 m, no backwards step > 0.3 m); an EVENT delivered to every client; no
+ * pose continuity of interpolated remote samples at a 2..4-interval delay (no
+ * sampler-introduced step > 0.5 m beyond the motion the wire carries, no backwards
+ * step > 0.3 m the wire does not carry); an EVENT delivered to every client; no
  * backpressure close; server tick p95 <= 6 ms; RSS drift < 10 % over the run
  * (full runs); half the clients leave mid-match without a tick stall; the
  * creator's socket is killed and the match runs on. The full run also spawns
@@ -30,7 +33,6 @@ import {
 } from '../src/mp/wire/constants.ts';
 import { applySnapshotPacket, decodeMessage, encodeMessage, peekMessageType } from '../src/mp/wire/codec.ts';
 import { dequantizePosition, quantizeAimDistance, quantizeAngle } from '../src/mp/wire/quantize.ts';
-import { createLocalRoomService } from '../server/match/localRoomService.ts';
 import { createLogger } from '../server/match/log.ts';
 import { createMatchService } from '../server/match/service.ts';
 
@@ -55,12 +57,15 @@ const jitterMs = numberArg('jitter', short ? 10 : 20);
 const lossPercent = numberArg('loss', short ? 2 : 3);
 const seed = Math.floor(numberArg('seed', short ? 7 : 1));
 const mapArg = argValue('map', short ? 'verdant' : 'heaviest');
-const serverMode = argValue('server', 'inprocess');
+const serverMode = argValue('server', short ? 'inprocess' : 'child');
+if (serverMode !== 'child' && serverMode !== 'inprocess') throw new TypeError('server must be child or inprocess');
 const runTickCost = !short && !process.argv.includes('--no-tick-cost');
+const diag = process.argv.includes('--diag');
 const secret = 'mp-soak-seat-secret-0123456789abcdef';
 const TICK_BUDGET_MS = 6;
 const SNAPSHOT_INTERVAL_TICKS = 2;
-const INTERP_DELAY_INTERVALS = 2;
+const INTERP_DELAY_MIN_INTERVALS = 2;
+const INTERP_DELAY_MAX_INTERVALS = 4;
 
 function mulberry32(value) {
   let state = value >>> 0;
@@ -73,6 +78,23 @@ function mulberry32(value) {
 }
 const rng = mulberry32(seed);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Bounded sample reservoir: the soak's own metrics must not become the memory it measures. */
+function createReservoir(capacity = 20_000) {
+  const values = [];
+  let seen = 0;
+  return {
+    values,
+    push(value) {
+      seen++;
+      if (values.length < capacity) values.push(value);
+      else {
+        const slot = Math.floor(rng() * seen);
+        if (slot < capacity) values[slot] = value;
+      }
+    },
+    get length() { return seen; },
+  };
+}
 const quantile = (values, q) => {
   if (!values.length) return 0;
   const sorted = values.slice().sort((a, b) => a - b);
@@ -126,12 +148,14 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
   const client = {
     index, creator, welcome: null, entityId: 0, team: null, closed: null, closeReason: null,
     frames: [], history: new Map(), missingBaselines: 0,
-    snapshotGaps: [], lastSnapshotTick: null, snapshotsReceived: 0,
-    sentTicks: new Map(), ackLags: [], intrinsicAckLags: [], acked: -1, minMargin: Infinity, leadAdjustedAt: 0,
+    snapshotGaps: createReservoir(), lastSnapshotTick: null, snapshotsReceived: 0,
+    sentTicks: new Map(), ackLags: createReservoir(), intrinsicAckLags: createReservoir(), acked: -1, minMargin: Infinity, leadAdjustedAt: 0,
     rttSamples: [], serverOffsetMs: 0, serverTickAt: null, clockOffsetTicks: null, clockTargetTicks: null,
     events: 0, eventMessages: 0, chatSeen: false, errors: [],
     lead: 3, margin: null,
-    poseSteps: [], backwardSteps: 0, maxStep: 0, lastSample: new Map(),
+    poseSteps: createReservoir(), backwardSteps: 0, maxStep: 0, maxExcess: 0, lastSample: new Map(), lastSampleAt: 0, lastRenderTick: null,
+    interpDelayIntervals: INTERP_DELAY_MIN_INTERVALS, underruns: 0, delayRelaxedAt: 0,
+    frameStepMax: 0, frameStepsOver: 0,
     fireSeq: 0, actionSeq: 0, controls: [], clientTick: 0,
     left: false, killed: false, socket: null, timers: [],
   };
@@ -185,8 +209,20 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
           throw error;
         }
         target.snapshotsReceived++;
+        frame.byId = new Map(frame.entities.map((row) => [row.entityId, row]));
         if (target.lastSnapshotTick != null && frame.tick > target.lastSnapshotTick) target.snapshotGaps.push((frame.tick - target.lastSnapshotTick) / SNAPSHOT_INTERVAL_TICKS);
         if (target.lastSnapshotTick == null || frame.tick > target.lastSnapshotTick) {
+          const previous = target.frames.at(-1);
+          if (previous) {
+            const span = frame.tick - previous.tick;
+            for (const row of frame.entities) {
+              const before = previous.byId.get(row.entityId);
+              if (!before) continue;
+              const perTick = Math.hypot(row.x - before.x, row.y - before.y, row.z - before.z) / 1000 / span;
+              if (perTick > target.frameStepMax) target.frameStepMax = perTick;
+              if (perTick > 0.5) target.frameStepsOver++;
+            }
+          }
           target.lastSnapshotTick = frame.tick;
           target.frames.push(frame);
           if (target.frames.length > 8) target.frames.shift();
@@ -279,14 +315,16 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
       lastInputAt = now;
       for (let n = 0; n < due; n++) client.controls.push(control(now));
       while (client.controls.length > 3) client.controls.shift();
-      const clientTick = Math.max(client.clientTick + 1, Math.floor(serverTickNow()) + client.lead);
+      // the intended server tick: never behind what was already sent, never ratcheting ahead of the estimate
+      const clientTick = Math.max(client.clientTick, Math.floor(serverTickNow()) + client.lead);
+      if (clientTick === client.clientTick && client.clientTick > 0) return;
       client.clientTick = clientTick;
       // remember when the control left and how far ahead of the estimated server tick it was sent
       client.sentTicks.set(clientTick, { at: now, leadTicks: clientTick - serverTickNow() });
       if (client.sentTicks.size > 120) client.sentTicks.delete(client.sentTicks.keys().next().value);
       socket.send(encodeMessage({
         type: MESSAGE_TYPE.INPUT, clientTick, snapshotAckTick: client.lastSnapshotTick ?? NO_TICK,
-        interpDelayMs: Math.round(INTERP_DELAY_INTERVALS * SNAPSHOT_INTERVAL_TICKS * TICK_MS), controls: client.controls.slice(),
+        interpDelayMs: Math.round(client.interpDelayIntervals * SNAPSHOT_INTERVAL_TICKS * TICK_MS), controls: client.controls.slice(),
       }));
     }, TICK_MS));
     client.timers.push(setInterval(() => {
@@ -297,18 +335,34 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
     client.timers.push(setInterval(() => {
       slewClock();
       const frames = client.frames;
+      const sampleNow = performance.now();
+      const sampleScale = client.lastSampleAt ? TICK_MS / Math.max(TICK_MS, sampleNow - client.lastSampleAt) : 1;
+      client.lastSampleAt = sampleNow;
       if (frames.length < 2) return;
-      const renderTick = serverTickNow() - INTERP_DELAY_INTERVALS * SNAPSHOT_INTERVAL_TICKS;
+      const renderTick = serverTickNow() - client.interpDelayIntervals * SNAPSHOT_INTERVAL_TICKS;
       let older = null, newer = null;
       for (let i = frames.length - 1; i >= 0; i--) {
         if (frames[i].tick <= renderTick) { older = frames[i]; newer = frames[i + 1] ?? null; break; }
       }
+      // adaptive delay (charter section 4): an underrun past the newest frame widens the delay up to
+      // four intervals at once; ten quiet seconds relax it by one interval
+      if (!newer && client.interpDelayIntervals < INTERP_DELAY_MAX_INTERVALS) {
+        client.interpDelayIntervals++;
+        client.underruns++;
+        client.delayRelaxedAt = sampleNow;
+      } else if (client.interpDelayIntervals > INTERP_DELAY_MIN_INTERVALS && sampleNow - client.delayRelaxedAt > 10_000) {
+        client.interpDelayIntervals--;
+        client.delayRelaxedAt = sampleNow;
+      }
       if (!older) return;
       const extrapolateTicks = newer ? 0 : Math.min(SNAPSHOT_INTERVAL_TICKS, renderTick - older.tick);
       const t = newer ? Math.max(0, Math.min(1, (renderTick - older.tick) / (newer.tick - older.tick))) : 0;
+      const renderAdvance = client.lastRenderTick == null ? 1 : Math.max(0, renderTick - client.lastRenderTick);
+      client.lastRenderTick = renderTick;
+      const seen = new Set();
       for (const row of older.entities) {
         if (row.entityId === client.entityId) continue;
-        const next = newer ? newer.entities.find((entry) => entry.entityId === row.entityId) : row;
+        const next = newer ? newer.byId.get(row.entityId) : row;
         if (!next) continue;
         const yaw = row.yaw / 65536 * Math.PI * 2;
         const vx = Math.sin(yaw) * row.speed / 100, vz = Math.cos(yaw) * row.speed / 100, vy = row.verticalSpeed / 100;
@@ -316,42 +370,125 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
         const x = dequantizePosition(row.x + (next.x - row.x) * t) + vx * extrapolateS;
         const y = dequantizePosition(row.y + (next.y - row.y) * t) + vy * extrapolateS;
         const z = dequantizePosition(row.z + (next.z - row.z) * t) + vz * extrapolateS;
+        // the motion the wire itself carries across this sample's span: the pair's per-tick displacement
+        const span = newer ? Math.max(1, newer.tick - older.tick) : 1;
+        const wirePerTick = newer ? Math.hypot(next.x - row.x, next.y - row.y, next.z - row.z) / 1000 / span : Math.hypot(vx, vy, vz) * TICK_MS / 1000;
         const last = client.lastSample.get(row.entityId);
         if (last) {
           const dx = x - last.x, dy = y - last.y, dz = z - last.z;
-          const step = Math.hypot(dx, dy, dz);
+          // a late sampler tick spans several simulation ticks; judge the step a 60 Hz frame would have seen
+          const step = Math.hypot(dx, dy, dz) * sampleScale;
+          // what the wire's own motion accounts for; the rest is the sampler's (an underrun catch-up, a clock jump)
+          const expected = Math.max(wirePerTick, last.wirePerTick) * Math.max(1, renderAdvance) * sampleScale;
+          const excess = Math.max(0, step - expected);
           client.poseSteps.push(step);
           if (step > client.maxStep) client.maxStep = step;
-          const along = dx * last.vx + dz * last.vz;
-          if (step > 0.3 && along < 0 && Math.hypot(last.vx, last.vz) > 0.5) client.backwardSteps++;
+          if (excess > client.maxExcess) client.maxExcess = excess;
+          const speed = Math.hypot(last.vx, last.vz);
+          if (speed > 0.5) {
+            const along = (dx * last.vx + dz * last.vz) / speed * sampleScale;
+            const wireAlong = newer ? ((next.x - row.x) * last.vx + (next.z - row.z) * last.vz) / 1000 / speed / span : 0;
+            if (along < -0.3 && wireAlong >= -0.05) client.backwardSteps++;
+          }
         }
-        client.lastSample.set(row.entityId, { x, y, z, vx, vz });
+        client.lastSample.set(row.entityId, { x, y, z, vx, vz, wirePerTick });
+        seen.add(row.entityId);
       }
+      // an entity that left the viewer's interest set (hidden by spotting) reappears as a new sample, not a step
+      for (const entityId of client.lastSample.keys()) if (!seen.has(entityId)) client.lastSample.delete(entityId);
     }, TICK_MS));
   }
   return client;
 }
 
+// ------------------------------------------------------------ server access (child process or in-process)
+const roomBody = (mapId, seats) => ({ roomId: 'soak', mapId, seed, countdownS: 1, seats, world: 'dedicated', endedLingerTicks: 600 });
+
+async function startChildServer() {
+  const script = fileURLToPath(new URL('../server/match/main.ts', import.meta.url));
+  const child = spawn(process.execPath, ['--expose-gc', script], {
+    env: { ...process.env, COT_MATCH_HOST: '127.0.0.1', COT_MATCH_PORT: '0', COT_MATCH_SEAT_SECRET: secret, COT_MATCH_MAX_ACTORS: '2', COT_MATCH_LOG_LEVEL: 'info' },
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
+  const url = await new Promise((resolve, reject) => {
+    let buffer = '';
+    child.stdout.on('data', (chunk) => {
+      buffer += chunk;
+      let newline;
+      while ((newline = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, newline);
+        buffer = buffer.slice(newline + 1);
+        let entry = null;
+        try { entry = JSON.parse(line); } catch { /* not a log line */ }
+        if (entry?.msg === 'match service listening') resolve(entry.url);
+        else if (entry && (entry.level === 'warn' || entry.level === 'error')) console.log(`[mp-soak:server] ${line}`);
+      }
+    });
+    child.once('exit', (code) => reject(new Error(`match service exited early (${code})`)));
+    setTimeout(() => reject(new Error('match service did not start within 60 s')), 60_000).unref();
+  });
+  const base = url.replace(/^ws/, 'http').replace(/\/match$/, '');
+  const headers = { authorization: `Bearer ${secret}`, 'content-type': 'application/json' };
+  const api = async (path, init = {}) => {
+    const response = await fetch(`${base}${path}`, { ...init, headers: { ...headers, ...(init.headers || {}) } });
+    if (!response.ok) throw new Error(`${init.method || 'GET'} ${path} -> ${response.status} ${await response.text()}`);
+    return response.json();
+  };
+  let roomId = null;
+  return {
+    mode: 'child',
+    url,
+    async createRoom(mapId, seats) {
+      const room = await api('/rooms', { method: 'POST', body: JSON.stringify(roomBody(mapId, seats)) });
+      roomId = room.roomId;
+      return { tokens: new Map(Object.entries(room.tokens)) };
+    },
+    async inspect() { return api(`/rooms/${roomId}`); },
+    async memory() { return (await api('/metrics?gc=1')).service.rssMb * 1048576; },
+    async close() {
+      child.kill('SIGTERM');
+      await new Promise((resolve) => { child.once('exit', resolve); setTimeout(resolve, 15_000).unref(); });
+    },
+  };
+}
+
+async function startInProcessServer() {
+  const log = createLogger({ level: 'warn' });
+  const service = await createMatchService({ host: '127.0.0.1', port: 0, allowedOrigins: null, seatSecret: secret, log, maxActors: 2 });
+  let actor = null;
+  return {
+    mode: 'inprocess',
+    url: service.url,
+    async createRoom(mapId, seats) {
+      const room = service.rooms.createRoom(roomBody(mapId, seats));
+      actor = room.actor;
+      return { tokens: room.tokens };
+    },
+    async inspect() { return { stats: actor.stats(), clients: actor.clientStats() }; },
+    async memory() { if (typeof globalThis.gc === 'function') globalThis.gc(); return process.memoryUsage().rss; },
+    async close() { await service.close(); },
+  };
+}
+
 // ------------------------------------------------------------ the run
 async function main() {
   const mapId = mapArg === 'heaviest' ? await heaviestMap() : mapArg;
-  const log = createLogger({ level: 'warn' });
-  const service = await createMatchService({ host: '127.0.0.1', port: 0, allowedOrigins: null, seatSecret: secret, log, maxActors: 2 });
-  const rooms = createLocalRoomService({ service, seatSecret: secret, log });
+  const server = serverMode === 'child' ? await startChildServer() : await startInProcessServer();
   const seats = [];
   for (let index = 0; index < clientCount; index++) {
     seats.push({ playerId: `c${index}`, name: `Soak ${index}`, team: index < teamSize ? 'alpha' : 'bravo', specId: index % 2 ? 't90m' : 'm1a2' });
   }
-  const room = rooms.createRoom({ roomId: 'soak', mapId, seed, countdownS: 1, seats, world: 'dedicated', endedLingerTicks: 600 });
-  const actor = room.actor;
-  const url = service.url;
-  console.log(`[mp-soak] map=${mapId} clients=${clientCount} (${teamSize}v${teamSize}) duration=${durationS}s latency=${latencyMs}ms jitter=${jitterMs}ms loss=${lossPercent}% seed=${seed} server=${serverMode} url=${url}`);
+  const room = await server.createRoom(mapId, seats);
+  const url = server.url;
+  const { loadavg } = await import('node:os');
+  console.log(`[mp-soak] map=${mapId} clients=${clientCount} (${teamSize}v${teamSize}) duration=${durationS}s latency=${latencyMs}ms jitter=${jitterMs}ms loss=${lossPercent}% seed=${seed} server=${server.mode} url=${url} load1=${loadavg()[0].toFixed(1)}`);
 
   const clients = seats.map((seat, index) => createSoakClient(index, url, room.tokens.get(seat.playerId), { creator: index === 0 }));
   const started = performance.now();
   const rssSamples = [];
   const tickRate = [];
-  let lastTickSample = { tick: actor.tick, at: performance.now() };
+  let last = await server.inspect();
+  let lastTickSample = { tick: last.stats.tick, at: performance.now() };
   let stallsAtDeparture = 0;
   let ticksAfterDeparture = null;
   let departed = false;
@@ -364,10 +501,19 @@ async function main() {
   while (performance.now() - started < durationS * 1000) {
     await sleep(1000);
     const elapsed = (performance.now() - started) / 1000;
+    last = await server.inspect();
     const now = performance.now();
-    tickRate.push((actor.tick - lastTickSample.tick) / ((now - lastTickSample.at) / 1000));
-    lastTickSample = { tick: actor.tick, at: now };
-    if (elapsed > 5) rssSamples.push(process.memoryUsage().rss);
+    tickRate.push((last.stats.tick - lastTickSample.tick) / ((now - lastTickSample.at) / 1000));
+    lastTickSample = { tick: last.stats.tick, at: now };
+    if (elapsed >= 30 && Math.round(elapsed) % 10 === 0) {
+      // retained memory of the server: a forced collection first (the child runs with --expose-gc)
+      const rss = await server.memory();
+      rssSamples.push(rss);
+      if (diag) {
+        const live = clients.filter((c) => c.welcome && !c.left && !c.killed);
+        console.log(`[mp-soak:diag] t=${elapsed.toFixed(0)}s rss=${(rss / 1048576).toFixed(0)}MB tick=${last.stats.tick} lead p50=${quantile(live.map((c) => c.lead), 0.5)} margin p50=${quantile(live.map((c) => c.margin ?? 0), 0.5)} clockErr p50=${quantile(live.map((c) => (c.clockTargetTicks ?? 0) - (c.clockOffsetTicks ?? 0)), 0.5).toFixed(2)} rtt p50=${quantile(live.flatMap((c) => c.rttSamples), 0.5).toFixed(0)} serverTick-est p50=${quantile(live.map((c) => c.serverTickNow() - last.stats.tick), 0.5).toFixed(1)} delay p50=${quantile(live.map((c) => c.interpDelayIntervals), 0.5)}`);
+      }
+    }
     if (!chatSent && elapsed > 3 && clients[1].welcome) {
       clients[1].socket.send(encodeMessage({ type: MESSAGE_TYPE.CHAT, text: 'soak chat' }));
       chatSent = true;
@@ -380,47 +526,53 @@ async function main() {
     }
     if (!departed && elapsed >= durationS * 0.5) {
       departed = true;
-      stallsAtDeparture = actor.loop.stats.stalls;
-      const tickBefore = actor.tick;
+      const before = await server.inspect();
+      stallsAtDeparture = before.stats.loop.stalls;
       for (let index = 1; index < clientCount; index += 2) {
         clients[index].left = true;
         clients[index].stop();
         clients[index].socket.send(encodeMessage({ type: MESSAGE_TYPE.LEAVE, reason: CLOSE_REASON.CLIENT_LEAVE }));
       }
       await sleep(2000);
-      ticksAfterDeparture = actor.tick - tickBefore;
+      ticksAfterDeparture = (await server.inspect()).stats.tick - before.stats.tick;
     }
   }
   for (const client of clients) client.stop();
+  const final = await server.inspect();
+  const stats = final.stats;
 
   // ------------------------------------------------------------ gates
-  const stats = actor.stats();
   const welcomed = clients.filter((client) => client.welcome);
   if (welcomed.length === clientCount && welcomed.every((client) => client.entityId > 0)) pass('welcomed+spawned', `${welcomed.length}/${clientCount}`);
   else fail('welcomed+spawned', `${welcomed.length}/${clientCount}`);
   const survivors = clients.filter((client) => !client.left && !client.killed);
   const cadenceBad = survivors.filter((client) => {
     const expected = 30 * (durationS - 2);
-    return client.snapshotsReceived < expected * (1 - lossPercent / 100) * 0.85 || quantile(client.snapshotGaps, 0.95) > 3;
+    return client.snapshotsReceived < expected * (1 - lossPercent / 100) * 0.85 || quantile(client.snapshotGaps.values, 0.95) > 3;
   });
-  const cadenceDetail = `min ${Math.min(...survivors.map((c) => c.snapshotsReceived))} snapshots, gap p95 ${Math.max(...survivors.map((c) => quantile(c.snapshotGaps, 0.95)))} intervals, missing baselines ${survivors.reduce((sum, c) => sum + c.missingBaselines, 0)}`;
+  const cadenceDetail = `min ${Math.min(...survivors.map((c) => c.snapshotsReceived))} snapshots, gap p95 ${Math.max(...survivors.map((c) => quantile(c.snapshotGaps.values, 0.95)))} intervals, missing baselines ${survivors.reduce((sum, c) => sum + c.missingBaselines, 0)}`;
   if (!cadenceBad.length) pass('snapshot cadence', cadenceDetail); else fail('snapshot cadence', `${cadenceBad.length} clients: ${cadenceDetail}`);
   const rttP95 = quantile(survivors.flatMap((client) => client.rttSamples), 0.95);
-  const ackP95 = quantile(survivors.flatMap((client) => client.ackLags), 0.95);
-  const intrinsicP95 = quantile(survivors.flatMap((client) => client.intrinsicAckLags), 0.95);
-  // the server applies a control within its jitter buffer (1..3 ticks) of the tick it was sent for
-  const bufferTicks = Math.max(1, ...actor.clientStats().map((entry) => entry.bufferTicks));
+  const ackP95 = quantile(survivors.flatMap((client) => client.ackLags.values), 0.95);
+  const intrinsicP95 = quantile(survivors.flatMap((client) => client.intrinsicAckLags.values), 0.95);
   // RTT + 2 ticks: applied on the next tick, acknowledged by the next 30 Hz snapshot; plus the jitter buffer beyond one tick
+  const bufferTicks = Math.max(1, ...final.clients.map((entry) => entry.bufferTicks));
   const ackBound = rttP95 + (2 + bufferTicks - 1) * TICK_MS;
   const rttP50 = quantile(survivors.flatMap((client) => client.rttSamples), 0.5);
-  const intrinsicP50 = quantile(survivors.flatMap((client) => client.intrinsicAckLags), 0.5);
+  const intrinsicP50 = quantile(survivors.flatMap((client) => client.intrinsicAckLags.values), 0.5);
   if (intrinsicP95 <= ackBound && survivors.every((client) => client.ackLags.length > 0)) pass('input ack lag', `p50 ${intrinsicP50.toFixed(0)} / p95 ${intrinsicP95.toFixed(0)} ms (raw p95 ${ackP95.toFixed(0)} incl. lead) <= rtt p95 ${rttP95.toFixed(0)} (p50 ${rttP50.toFixed(0)}) + ${1 + bufferTicks} ticks`);
   else fail('input ack lag', `p50 ${intrinsicP50.toFixed(0)} / p95 ${intrinsicP95.toFixed(0)} ms (raw ${ackP95.toFixed(0)}) vs bound ${ackBound.toFixed(0)} ms (rtt p95 ${rttP95.toFixed(0)}, buffer ${bufferTicks})`);
   const maxStep = Math.max(...survivors.map((client) => client.maxStep));
+  const maxExcess = Math.max(...survivors.map((client) => client.maxExcess));
   const backward = survivors.reduce((sum, client) => sum + client.backwardSteps, 0);
   const steps = survivors.reduce((sum, client) => sum + client.poseSteps.length, 0);
-  if (maxStep <= 0.5 && backward === 0 && steps > 0) pass('pose continuity', `max step ${maxStep.toFixed(3)} m over ${steps} samples, backwards 0`);
-  else fail('pose continuity', `max step ${maxStep.toFixed(3)} m, backwards ${backward}, samples ${steps}`);
+  const frameStepMax = Math.max(...survivors.map((client) => client.frameStepMax));
+  const frameStepsOver = survivors.reduce((sum, client) => sum + client.frameStepsOver, 0);
+  // the gate judges what the sampler adds beyond the motion the wire carries: an underrun catch-up or a clock
+  // jump fails it; the simulation's own per-tick motion (ram pushes, structure steps) is reported beside it
+  const delayDetail = `delay ${quantile(survivors.map((c) => c.interpDelayIntervals), 0.5)} intervals median, ${survivors.reduce((sum, c) => sum + c.underruns, 0)} underruns; sim motion on the wire max ${frameStepMax.toFixed(3)} m/tick (${frameStepsOver} frame steps over 0.5)`;
+  if (maxExcess <= 0.5 && backward === 0 && steps > 0) pass('pose continuity', `sampler excess max ${maxExcess.toFixed(3)} m (raw step max ${maxStep.toFixed(3)} m) over ${steps} samples, backwards 0; ${delayDetail}`);
+  else fail('pose continuity', `sampler excess max ${maxExcess.toFixed(3)} m (raw step max ${maxStep.toFixed(3)} m), backwards ${backward}, samples ${steps}; ${delayDetail}`);
   const eventless = welcomed.filter((client) => client.events === 0);
   const chatMissing = survivors.filter((client) => !client.chatSeen);
   if (!eventless.length && !chatMissing.length) pass('event delivery', `${welcomed.reduce((s, c) => s + c.events, 0)} events, chat to every survivor`);
@@ -429,19 +581,19 @@ async function main() {
   else fail('no backpressure closes', `closes ${stats.backpressureCloses}, survivors closed ${survivors.filter((c) => c.closed).length}`);
   if (stats.tickMs.p95 <= TICK_BUDGET_MS) pass('server tick p95', `${stats.tickMs.p95.toFixed(2)} ms (p50 ${stats.tickMs.p50.toFixed(2)}, max ${stats.tickMs.max.toFixed(2)})`);
   else fail('server tick p95', `${stats.tickMs.p95.toFixed(2)} ms > ${TICK_BUDGET_MS}`);
-  if (durationS >= 60) {
-    const first = rssSamples[0], last = rssSamples.at(-1);
-    const drift = (last - first) / first;
-    if (Math.abs(drift) < 0.1) pass('memory stable', `rss ${(first / 1048576).toFixed(0)} -> ${(last / 1048576).toFixed(0)} MB (${(drift * 100).toFixed(1)} %)`);
-    else fail('memory stable', `rss drift ${(drift * 100).toFixed(1)} %`);
-  } else pass('memory stable', `skipped (run < 60 s), rss ${(process.memoryUsage().rss / 1048576).toFixed(0)} MB`);
-  if (departed && ticksAfterDeparture >= 110 && actor.loop.stats.stalls === stallsAtDeparture) pass('half leave, no stall', `${ticksAfterDeparture} ticks in the 2 s after ${Math.floor(clientCount / 2)} departures`);
-  else fail('half leave, no stall', `${ticksAfterDeparture} ticks, stalls ${actor.loop.stats.stalls - stallsAtDeparture}`);
-  const creatorGone = clients[0].killed && actor.clientStats().every((entry) => entry.playerId !== 'c0');
-  if (creatorGone && !actor.stopped && !actor.ended) pass('creator killed, match runs', `tick ${actor.tick}, phase ${stats.phase}`);
-  else fail('creator killed, match runs', `stopped ${actor.stopped}, ended ${actor.ended}`);
+  if (durationS >= 60 && rssSamples.length >= 2) {
+    const first = rssSamples[0], lastRss = rssSamples.at(-1);
+    const drift = (lastRss - first) / first;
+    if (Math.abs(drift) < 0.1) pass('memory stable', `server rss ${(first / 1048576).toFixed(0)} -> ${(lastRss / 1048576).toFixed(0)} MB (${(drift * 100).toFixed(1)} % from 30 s, after forced gc)`);
+    else fail('memory stable', `server rss drift ${(drift * 100).toFixed(1)} % (${(first / 1048576).toFixed(0)} -> ${(lastRss / 1048576).toFixed(0)} MB)`);
+  } else pass('memory stable', `skipped (run < 60 s), server rss ${((await server.memory()) / 1048576).toFixed(0)} MB`);
+  if (departed && ticksAfterDeparture >= 110 && stats.loop.stalls === stallsAtDeparture) pass('half leave, no stall', `${ticksAfterDeparture} ticks in the 2 s after ${Math.floor(clientCount / 2)} departures`);
+  else fail('half leave, no stall', `${ticksAfterDeparture} ticks, stalls ${stats.loop.stalls - stallsAtDeparture}`);
+  const creatorGone = clients[0].killed && final.clients.every((entry) => entry.playerId !== 'c0');
+  if (creatorGone && stats.phase === 'playing' && !stats.verdict) pass('creator killed, match runs', `tick ${stats.tick}, phase ${stats.phase}`);
+  else fail('creator killed, match runs', `phase ${stats.phase}, verdict ${stats.verdict}, creator present ${!creatorGone}`);
   const rate = quantile(tickRate, 0.05);
-  if (rate >= 57) pass('tick rate', `p05 ${rate.toFixed(1)} Hz, dropped ${actor.loop.stats.droppedTicks}, stalls ${actor.loop.stats.stalls}`);
+  if (rate >= 57) pass('tick rate', `p05 ${rate.toFixed(1)} Hz, dropped ${stats.loop.droppedTicks}, stalls ${stats.loop.stalls}, late wake max ${stats.loop.lateWakeupMaxMs.toFixed(0)} ms`);
   else fail('tick rate', `p05 ${rate.toFixed(1)} Hz`);
 
   // ------------------------------------------------------------ table
@@ -449,7 +601,7 @@ async function main() {
   console.log('\n[mp-soak] gate                          result  detail');
   for (const gate of gates) console.log(`[mp-soak] ${gate.name.padEnd(30)} ${gate.ok ? 'PASS ' : 'FAIL '}  ${gate.detail}`);
   console.log(`[mp-soak] snapshots ${stats.snapshots} (keyframes ${stats.keyframes}), events ${stats.events}, egress ${egress.toFixed(1)} KB/s per client, ingress ${(stats.bytesIn / clientCount / durationS / 1024).toFixed(1)} KB/s per client`);
-  console.log(`[mp-soak] lag compensation: ${stats.lagComp.rewoundShots} rewound shots, reticle mismatch removed mean ${stats.lagComp.mismatchMeanM.toFixed(2)} m max ${stats.lagComp.mismatchMaxM.toFixed(2)} m; rewind ${quantile(actor.clientStats().map((c) => c.rewindTicks), 0.5)} ticks median, buffer ${quantile(actor.clientStats().map((c) => c.bufferTicks), 0.5)} ticks median, margin ${quantile(actor.clientStats().map((c) => c.inputMargin ?? 0), 0.5)}`);
+  console.log(`[mp-soak] lag compensation: ${stats.lagComp.rewoundShots} rewound shots, reticle mismatch removed mean ${stats.lagComp.mismatchMeanM.toFixed(2)} m max ${stats.lagComp.mismatchMaxM.toFixed(2)} m; rewind ${quantile(final.clients.map((c) => c.rewindTicks), 0.5)} ticks median, buffer ${quantile(final.clients.map((c) => c.bufferTicks), 0.5)} ticks median, margin ${quantile(final.clients.map((c) => c.inputMargin ?? 0), 0.5)}`);
   const errorSummary = new Map();
   for (const client of clients) for (const error of client.errors) errorSummary.set(error, (errorSummary.get(error) || 0) + 1);
   if (errorSummary.size) console.log(`[mp-soak] client errors: ${[...errorSummary].map(([k, v]) => `${k}x${v}`).join(' ')}`);
@@ -464,7 +616,7 @@ async function main() {
   }
 
   for (const client of clients) { try { client.socket.close(); } catch { /* closing */ } }
-  await service.close();
+  await server.close();
   const failed = gates.filter((gate) => !gate.ok);
   if (failed.length || !tickCostOk) {
     console.log(`[mp-soak] FAILED: ${failed.map((gate) => gate.name).join(', ')}${tickCostOk ? '' : ', tick cost'}`);

@@ -2,7 +2,7 @@
  * Match service entry point: `node server/match/main.ts`.
  *
  * Environment (names only; values live in the platform's secret store):
- *   COT_MATCH_PORT             TCP port (default 8791)
+ *   COT_MATCH_PORT             TCP port (default 8791; 0 binds an ephemeral port, logged at start)
  *   COT_MATCH_HOST             bind address (default 0.0.0.0)
  *   COT_MATCH_ALLOWED_ORIGINS  comma-separated exact origins; unset allows any (LAN / development)
  *   COT_MATCH_SEAT_SECRET      HMAC secret shared with the room service (required, >= 16 chars)
@@ -34,7 +34,7 @@ export async function startMatchServiceFromEnv(env: NodeJS.ProcessEnv = process.
     : null;
   return createMatchService({
     host: env.COT_MATCH_HOST || '0.0.0.0',
-    port: integerEnv('COT_MATCH_PORT', 8791, 1, 65535),
+    port: integerEnv('COT_MATCH_PORT', 8791, 0, 65535),
     allowedOrigins,
     seatSecret,
     maxActors: integerEnv('COT_MATCH_MAX_ACTORS', 1, 1, 1024),

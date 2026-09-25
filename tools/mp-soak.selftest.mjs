@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 // match service for 20 s through 40 ms +- 10 ms latency and 2 % replaceable-frame
 // loss; every soak gate except the five-minute memory drift and the tick-cost child.
 const script = fileURLToPath(new URL('./mp-soak.mjs', import.meta.url));
-const child = spawn(process.execPath, [script, '--short'], { stdio: ['ignore', 'pipe', 'inherit'] });
+const child = spawn(process.execPath, ['--expose-gc', script, '--short'], { stdio: ['ignore', 'pipe', 'inherit'] });
 let output = '';
 child.stdout.on('data', (chunk) => { output += chunk; process.stdout.write(chunk); });
 const code = await new Promise((resolve) => child.on('close', resolve));
