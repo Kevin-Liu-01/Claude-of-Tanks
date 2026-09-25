@@ -18,7 +18,7 @@ import {
 import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
 import {
-  CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_TRACE_DIVISOR,
+  CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -219,7 +219,7 @@ assert.deepEqual(table, {
   delta: { regime: 'towering-cumulus', coverage: 0.36, baseM: 1200, thicknessM: 1800, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
   badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15 },
   monsoon: { regime: 'cumulonimbus-front', coverage: 0.34, baseM: 1000, thicknessM: 3200, shadow: true, streets: 0.15, cirrus: 0.25, farBand: 0.4 },
-  alpine: { regime: 'lenticular', coverage: 0.18, baseM: 2400, thicknessM: 500, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5 },
+  alpine: { regime: 'lenticular', coverage: 0.16, baseM: 2400, thicknessM: 450, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5 },
   caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15 },
   foundry: { regime: 'hazy-altostratus', coverage: 0.72, baseM: 2600, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 720, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
@@ -230,7 +230,7 @@ assert.deepEqual(table, {
   copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
   airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
   oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
-  whiteout: { regime: 'low-stratus', coverage: 0.9, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5 },
+  whiteout: { regime: 'low-stratus', coverage: 0.95, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5 },
   orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25 },
   longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25 },
   mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1800, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
@@ -264,7 +264,7 @@ assert.deepEqual(table, {
   const delta = deriveCloudLayerPreset(skyOf('delta'));
   assert.equal(delta.shearM, 0.25 * 1800);
   const alpine = deriveCloudLayerPreset(skyOf('alpine'));
-  assert.deepEqual([alpine.windSpeed, alpine.shearM, alpine.wispiness], [0, 0, 0.05]);
+  assert.deepEqual([alpine.windSpeed, alpine.shearM, alpine.wispiness, alpine.fieldMix], [0, 0, 0, 1], 'a lenticular cap is stationary, smooth and cut from the broad field');
 }
 // the shadow policy: a night sky (the runtime's night preset dims the dome to .08) casts none; an authored override wins;
 // a map without a cloudscape (the Garage's copies) keeps the round-68 derivation
@@ -300,6 +300,7 @@ for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
   assert.deepEqual(CLOUD_SLOT_ORDER[CLOUD_BAYER_4[y][x]], [x, y]);
 }
 assert.deepEqual([CLOUD_HISTORY_SCALE, CLOUD_TRACE_DIVISOR, CLOUD_REBUILD_SLOTS], [0.5, 4, 4], 'half-res history, 1/16 traced a frame, four slots a frame after a cut');
+assert.deepEqual(CLOUD_STEP_SCALE_BY_PRESET, { low: 1.8, medium: 1.3, high: 1, ultra: 1 }, 'the low preset marches coarser; high and ultra at the full stride');
 
 // ---- the haze law mirrors the aerial pass, the hook and the gates are in place
 const postSource = here('./post.ts');
@@ -338,6 +339,7 @@ assert.match(mainSource, /cloudscape: config\.clouds/, 'the map\'s clouds block 
 assert.ok(layerSource.includes('${ATMOSPHERE_SKY_GLSL}') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');
 assert.ok(layerSource.includes('markShadowOnly(gobo)'), 'the gobos live on the shadow-only layer');
 assert.ok(layerSource.includes('gobo.customDepthMaterial = this.goboMaterial'), 'the gobos discard by the same two weather fields the trace reads');
+assert.match(layerSource, /t\.uStepScale\.value = CLOUD_STEP_SCALE_BY_PRESET\[resolvePresetName\(\)\]/, 'the stride scale follows the quality preset every frame');
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');
 assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDetail;[\s\S]*uniform sampler3D tCurl;/, 'the volumes are 3D textures');
 for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK )', 'texelFetch( tBlue', 'cloudCoverageAt(', 'uAnvil', 'uShearM', 'uWispiness', 'uCirrus', 'uFarBand', 'uScud', 'halo']) {

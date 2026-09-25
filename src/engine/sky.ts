@@ -1552,7 +1552,9 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       }
     }
     cloudsFar.material.uniforms.uOpacity.value = preset.cloudOpacity2;
-    cloudsFar.visible = preset.cloudOpacity2 > 0.01;
+    // round 71: the volumetric layer draws its own cirrus sheet, so the baked veil hides while the layer shows
+    // (its sheared filaments crossed the layer's streaks as a lattice)
+    cloudsFar.visible = preset.cloudOpacity2 > 0.01 && !(volumetricClouds?.active ?? false);
     // Per-map deck decorrelation (terrain_environment r1): with a fixed
     // uOff the SAME cumulus mass recurred at the SAME screen azimuth on
     // every map ("tall blurry vertical wisp top-center across maps").

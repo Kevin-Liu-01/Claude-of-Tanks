@@ -39,6 +39,7 @@ import type { AtmospherePublishedState } from './sky.ts';
 import { markShadowOnly } from './renderLayers.ts';
 import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
 import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
+import { resolvePresetName } from './quality.ts';
 
 /** History resolution relative to the scene target; the trace target is a quarter of the history each way. */
 export const CLOUD_HISTORY_SCALE = 0.5;
@@ -62,20 +63,20 @@ export const CLOUD_SLOT_ORDER: readonly (readonly [number, number])[] = Object.f
 }));
 /** World periods (m): the weather fields, the shape volume (cumuliform / stratiform), the detail and curl volumes. */
 export const CLOUD_WEATHER_TILE_M = 12000;
-export const CLOUD_STREET_TILE_M = 12000;
+const CLOUD_STREET_TILE_M = 12000;
 /** The cirrus sheet and the far band sample the fields at longer periods (a streak is tens of kilometres long). */
-export const CLOUD_CIRRUS_TILE_M = 30000;
-export const CLOUD_FARBAND_PERIOD_K = 2;
+const CLOUD_CIRRUS_TILE_M = 30000;
+const CLOUD_FARBAND_PERIOD_K = 2;
 export const CLOUD_SHAPE_TILE_M = 1000;
 export const CLOUD_SHAPE_TILE_STRATUS_M = 4200;
 export const CLOUD_DETAIL_TILE_M = 300;
-export const CLOUD_CURL_TILE_M = 900;
+const CLOUD_CURL_TILE_M = 900;
 /** The curl warp's amplitude (m) at full height in the cloud. */
-export const CLOUD_CURL_M = 60;
+const CLOUD_CURL_M = 60;
 /** The scud band under the base (m) where a regime asks for ragged fragments. */
-export const CLOUD_SCUD_BAND_M = 380;
+const CLOUD_SCUD_BAND_M = 380;
 /** The far band shows beyond this horizontal distance (m), fading in over the next three kilometres. */
-export const CLOUD_FARBAND_START_M = 8000;
+const CLOUD_FARBAND_START_M = 8000;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
 export const CLOUD_MARCH_STEPS = 96;
 /** The farthest slant distance marched (m): a bank beyond it has melted into the sky (the far scatter ramp). */
@@ -109,6 +110,8 @@ export const CLOUD_AERIAL = Object.freeze({
   /** the cirrus sheet's slant through the boundary-layer haze: its e-fold height (m) */
   cirrusHazeScaleM: 1500,
 });
+/** The march's stride scale per quality preset (low tier: coarser steps, fewer of them; the mobile tier never runs the layer). */
+export const CLOUD_STEP_SCALE_BY_PRESET: Readonly<Record<string, number>> = Object.freeze({ low: 1.8, medium: 1.3, high: 1, ultra: 1 });
 /** Light march toward the sun: sample distances (m) from the point, on the base shape (no detail erosion); a stratus sheet takes the first three. */
 export const CLOUD_LIGHT_TAPS = Object.freeze([14, 34, 70, 150, 320] as const);
 /** The noise uploads the layer needs, in the worker's posting order. */
@@ -220,6 +223,10 @@ uniform float uCirrusDensity;
 uniform float uFarBand;
 uniform float uFarBandAlt;
 uniform vec2 uFarBandShift;
+uniform float uStepScale;
+// QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
+// 5 = the shape volume sampled unstretched, 6 = the height profile alone (no shape noise), 7 = no column top variation
+uniform float uDebug;
 varying vec2 vUv;
 const float CL_PI = 3.14159265358979;
 float remap( float v, float lo, float hi, float nlo, float nhi ) {
@@ -261,7 +268,14 @@ Weather cloudWeather( vec2 pxz ) {
 	float top = o.type < 0.5 ? mix( topS, topC, o.type * 2.0 ) : mix( topC, 1.0, ( o.type - 0.5 ) * 2.0 );
 	top = mix( top, 1.0, uTowers * pow( o.cov, 0.6 ) * smoothstep( 0.3, 0.8, o.type ) );
 	o.top = mix( top, 0.78 + 0.22 * w.a, uStratiform );
+	if ( uDebug == 7.0 ) o.top = 1.0;
 	return o;
+}
+// the xz of the column a point belongs to: a column leans downwind with height (wind shear), and its weather
+// and its noise are read in the column's own frame so the lean is rigid — displacing only the noise slid the
+// billows through an upright outline and read as stacked layers
+vec2 cloudColumnXZ( vec3 p ) {
+	return p.xz - uWindDir * ( uShearM * clamp( ( p.y - uBase ) / uThick, 0.0, 1.0 ) );
 }
 // coverage only (the empty-space test before the march)
 float cloudCoverageAt( vec2 pxz ) {
@@ -302,16 +316,15 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 	float anv = w.anvil * smoothstep( 0.7, 0.92, hN );
 	fallStart = mix( fallStart, 0.95, w.anvil );
 	float hg = smoothstep( 0.0, riseEnd, hN ) * ( 1.0 - smoothstep( fallStart, 1.0, hN ) );
-	// wind shear: the column leans downwind with height, the anvil farther
-	vec3 ps = p;
-	ps.xz += uWindDir * ( uShearM * hRel + anv * 900.0 );
+	// the column's own frame (the lean is rigid: cloudColumnXZ)
+	vec3 ps = vec3( cloudColumnXZ( p ), p.y ).xzy;
 	// a thin slab against a kilometre-wide shape period is sampled with its vertical axis compressed so the
 	// billows read as tall as they are wide; a tall storm slab is not (compressed cells stack into layers); an
 	// anvil is flattened
-	vec3 sp = ( ps + uNoiseShift ) * vec3( 1.0, uVertScale * mix( 1.0, 0.45, anv ), 1.0 ) / uShapeTile;
+	vec3 sp = ( ps + uNoiseShift ) * vec3( 1.0, ( uDebug == 5.0 ? 1.0 : uVertScale ) * mix( 1.0, 0.45, anv ), 1.0 ) / uShapeTile;
 	vec4 s = texture( tShape, sp );
 	float lowFreq = s.g * 0.625 + s.b * 0.25 + s.a * 0.125;
-	float base = remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) * hg;
+	float base = ( uDebug == 6.0 ? 0.8 : remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) ) * hg;
 	// a stratus sheet is dense across its footprint (with a little mottle); cumulus keeps the shape's billows
 	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 );
 	// the coverage threshold rises with height so a mass is widest at its base and narrows to a dome (a tower
@@ -319,7 +332,7 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 	float narrow = mix( 0.45, 0.75, uTowers ) * ( 1.0 - uStratiform ) * ( 1.0 - 0.6 * smoothstep( 0.6, 1.0, t ) );
 	float covH = min( 1.0, w.cov * ( 1.0 - narrow * hN ) + anv * 0.55 );
 	float d = remap( base, 1.0 - covH, 1.0, 0.0, 1.0 ) * w.cov;
-	if ( detail && d > 0.0 && d < 0.95 ) {
+	if ( detail && d > 0.0 && d < 0.95 && uDebug != 2.0 ) {
 		// two Worley-fbm fetches on a lattice the curl field advects (more with height: turbulent tops, calm
 		// bases): the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where the pixel
 		// footprint resolves it; the octaves lean to the high frequencies so the silhouette crinkles
@@ -338,7 +351,7 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 		float wispy = clamp( mix( hN * 1.4 - 0.15, 1.0, uWispiness ), 0.0, 1.0 );
 		float erode = mix( hf, 1.0 - hf, wispy );
 		float amount = ( mix( 0.3, 0.72, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
-			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness );
+			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 	}
 	return d;
@@ -349,7 +362,7 @@ float cloudLightDepth( vec3 p, Weather w, float scale ) {
 	float od = 0.0;
 ${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? `if ( od * uDensity < 8.0${k >= 3 ? ' && uStratiform < 0.5' : ''} ) ` : ''}{
 		vec3 lp = p + uSunDir * ( ${f(dist)} * scale );
-		Weather lw = ${k < 2 ? 'w' : 'cloudWeather( lp.xz )'};
+		Weather lw = ${k < 2 ? 'w' : 'cloudWeather( cloudColumnXZ( lp ) )'};
 		od += cloudDensity( lp, lw, false, 0.0 ) * ( ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))} * scale );
 	}`).join('\n')}
 	return od * uDensity;
@@ -409,7 +422,7 @@ void main() {
 			any = false;
 			for ( int k = 0; k < 6; k++ ) {
 				float tk = t0 + span * ( float( k ) + 0.5 ) / 6.0;
-				if ( cloudCoverageAt( ( uCamPos + dir * tk ).xz ) > 0.0 ) { any = true; break; }
+				if ( cloudCoverageAt( cloudColumnXZ( uCamPos + dir * tk ) ) > 0.0 ) { any = true; break; }
 			}
 		}
 		if ( any ) {
@@ -417,8 +430,10 @@ void main() {
 			vec3 phase = vec3( phaseDual( cosT, 0.8 ), phaseDual( cosT, 0.4 ), phaseDual( cosT, 0.2 ) );
 			// the Beer–powder term applies toward the sun (the sunlit face's crevices), not on the shaded side
 			float powderK = smoothstep( -0.25, 0.65, cosT ) * ( 1.0 - uStratiform );
-			float lightScale = 0.75 + 0.5 * bn;
-			float ds0 = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + 1.5 * uStratiform ), ${f(CLOUD_STEP_MAX_M)} );
+			// the ladder scale rotates with the frame like the start offset (a static per-texel scale never averages
+			// out of the history and read as a block pattern)
+			float lightScale = 0.75 + 0.5 * jitter;
+			float ds0 = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + 1.5 * uStratiform ) * uStepScale, ${f(CLOUD_STEP_MAX_M)} );
 			float t = t0 + ds0 * jitter;
 			float tAcc = 0.0, wAcc = 0.0;
 			int empty = 0;
@@ -427,7 +442,7 @@ void main() {
 				// the stride grows with the pixel footprint at range (a far bank needs no eight-metre steps)
 				float ds = max( ds0, min( t * uPixelAngle * 1.5, ${f(CLOUD_STEP_MAX_M)} ) );
 				vec3 p = uCamPos + dir * t;
-				Weather w = cloudWeather( p.xz );
+				Weather w = cloudWeather( cloudColumnXZ( p ) );
 				float dens = w.cov > 0.0 ? cloudDensity( p, w, true, t * uPixelAngle ) : 0.0;
 				if ( dens > 0.003 ) {
 					if ( empty > 0 ) {
@@ -439,7 +454,7 @@ void main() {
 					}
 					float hN = clamp( ( p.y - uBase ) / ( uThick * max( w.top, 0.05 ) ), 0.0, 1.0 );
 					float sig = dens * uDensity;
-					float tau = cloudLightDepth( p, w, lightScale ) + sig * 2.0;
+					float tau = ( uDebug == 3.0 ? 0.0 : cloudLightDepth( p, w, lightScale ) ) + sig * 2.0;
 					// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
 					float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
 					// an overcast sheet is lit by the whole sky above it, not by one reddened low sun: its diffused
@@ -449,23 +464,28 @@ void main() {
 					// 1 / (1 + 0.75 (1 - g) tau), so the base of an overcast sheet is bright and the shaded side of a
 					// cumulus stays grey, not black; it builds with height in the cloud (the lower parts are darker)
 					float msV = mix( 0.55, 1.0, smoothstep( 0.0, 0.45, hN ) );
-					float diffusion = 0.2 / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
+					float diffusion = mix( 0.2, 0.3, uStratiform ) / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 					// Beer–powder: light builds up inside the mass, so the sunlit face's crevices and thin edges
 					// read darker than its body
 					float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK );
 					// darker bases: their direct light is scattered away by the cloud above
-					float baseShadow = mix( 0.6, 1.0, smoothstep( -0.1, 0.4, hN ) );
+					float baseShadow = mix( 0.5, 1.0, smoothstep( -0.1, 0.4, hN ) );
 					// ambient: the sky's irradiance lights the tops, the bases see the horizon band and the ground; a
 					// stratus sheet is diffuser-lit; the deeper into the mass, the less of either arrives, and the
 					// underside of a thick lump is darker than a thin edge (the depth above it)
 					float up = smoothstep( 0.0, 0.85, hN );
 					float sheet = smoothstep( 0.5, 0.9, uStratiform );
+					float tauUp = uDebug == 1.0 ? 0.0 : cloudDepthAbove( p, w );
 					vec3 amb = mix( uAmbientBottom, uAmbientTop, max( up, uStratiform * 0.75 ) ) * ( 1.0 + sheet * 1.2 );
-					// an overcast sheet is the sky: it is never darker than the mean sky it replaces
-					amb = mix( amb, max( amb, uSkyMean * 1.25 ), sheet );
-					float tauUp = cloudDepthAbove( p, w );
-					amb *= uAmbientScale * mix( 0.42, 1.0, 1.0 - dens * 0.6 ) * mix( 0.85, 1.12, up ) * mix( exp( -tauUp * 0.15 ), 1.0, sheet * 0.6 );
+					amb *= mix( 0.42, 1.0, 1.0 - dens * 0.6 ) * mix( 0.85, 1.12, up ) * mix( exp( -tauUp * 0.08 ), 1.0, sheet * 0.6 );
+					// a deck or a sheet is lit through by the whole sky: its underside is never much darker than the mean
+					// sky it replaces (a sheet takes the floor whole, a stratocumulus deck by its share, the thick lumps a
+					// little darker than the thin parts so the deck keeps its relief)
+					float deckFloor = smoothstep( 0.3, 0.9, uStratiform );
+					amb = mix( amb, max( amb, uSkyMean * 1.25 * exp( -tauUp * 0.04 ) ), deckFloor );
+					amb *= uAmbientScale;
 					vec3 S = ( ( uSunRadiance * sun * ( 1.0 - 0.7 * uStratiform ) + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
+					if ( uDebug == 4.0 ) S = vec3( 0.6 );
 					// energy-conserving step integration: the in-scatter over the step's own transmittance
 					float Tstep = exp( -sig * ds );
 					float dT = T * ( 1.0 - Tstep );
@@ -516,18 +536,19 @@ void main() {
 			vec4 c1 = texture2D( tStreets, ( q + uCirrusShift ) / ${f(CLOUD_CIRRUS_TILE_M)} );
 			// the second octave keeps the streak axis (both axes scaled alike: unequal scales rotate the streaks
 			// into a lattice of crossing lines)
-			vec4 c2 = texture2D( tStreets, ( q * 2.7 + uCirrusShift * 1.7 + vec2( 3100.0, 900.0 ) ) / ${f(CLOUD_CIRRUS_TILE_M)} );
+			vec4 c2 = texture2D( tStreets, ( q * 1.6 + uCirrusShift * 1.7 + vec2( 3100.0, 900.0 ) ) / ${f(CLOUD_CIRRUS_TILE_M)} );
 			float streak = c1.b * 0.7 + c2.b * 0.3;
-			float covC = smoothstep( 1.0 - uCirrus, 1.0 - uCirrus + 0.6, streak );
+			float covC = smoothstep( 1.0 - uCirrus, 1.0 - uCirrus + 0.65, streak );
 			if ( covC > 0.0 ) {
-				float fibres = mix( 0.55, 1.0, c2.a ) * mix( 0.7, 1.0, c1.a );
+				// the fibres modulate gently: a fibrous sheet, not a comb of parallel lines
+				float fibres = mix( 0.75, 1.0, c2.a ) * mix( 0.85, 1.0, c1.a );
 				float tauC = covC * fibres * uCirrusDensity / max( dir.y, 0.1 );
 				float TC = exp( -tauC );
 				float ang = acos( clamp( cosT, -1.0, 1.0 ) );
 				// ice: a strong forward lobe with the 22° halo of hexagonal crystals (a soft ring — the haze around the sun)
 				float halo = exp( -pow( ( ang - 0.384 ) / 0.07, 2.0 ) ) * 0.10;
 				float phC = phaseHG( cosT, 0.7 ) * 0.65 + phaseHG( cosT, -0.25 ) * 0.35 + halo;
-				vec3 SC = ( uSunRadiance * phC * 1.6 * uSunGain + uAmbientTop * 0.6 * uAmbientScale ) * uTint;
+				vec3 SC = ( uSunRadiance * phC * 1.2 * uSunGain + uAmbientTop * 0.6 * uAmbientScale ) * uTint;
 				// aerial: the slant through the boundary-layer haze — a cirrus overhead stays clear, one at the horizon melts
 				float distC = tc * clamp( ${f(CLOUD_AERIAL.cirrusHazeScaleM)} / max( uCirrusAlt - uCamPos.y, 100.0 ), 0.0, 1.0 );
 				vec3 LC = cloudHaze( SC * ( 1.0 - TC ), 1.0 - TC, distC, dir, 1.0 );
@@ -719,7 +740,7 @@ export interface CloudShadowCascades {
 }
 
 /** QA: one readback of the history (bottom-up rows, RGBA8: the radiance clamped, alpha = transmittance). */
-export interface CloudHistoryReadback {
+interface CloudHistoryReadback {
   width: number;
   height: number;
   rgba: Uint8Array;
@@ -817,6 +838,8 @@ export class VolumetricCloudLayer {
   lastTraceGpuMs = -1;
   /** QA: trace and resolve the frame's slot this many times (a repeat benchmark amortises the frame's noise). */
   benchRepeat = 1;
+  /** QA: isolate a term (0 = off; 1 no depth-above, 2 no erosion, 3 no light march, 4 flat density); the history re-keys on a change. */
+  debugMode = 0;
   private timerExt: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null | undefined;
   private timerQuery: WebGLQuery | null = null;
   private timerOpen = false;
@@ -856,6 +879,7 @@ export class VolumetricCloudLayer {
         uScud: { value: 0 }, uSlabLow: { value: 620 },
         uCirrus: { value: 0 }, uCirrusDir: { value: new THREE.Vector2(1, 0) }, uCirrusAlt: { value: 10000 }, uCirrusShift: { value: new THREE.Vector2() }, uCirrusDensity: { value: 0.7 },
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
+        uStepScale: { value: 1 }, uDebug: { value: 0 },
       },
     });
     this.resolveMaterial = new THREE.ShaderMaterial({
@@ -1099,7 +1123,7 @@ export class VolumetricCloudLayer {
     const stratiform = this.preset?.stratiform ?? 0;
     // cumulus bases see the horizon band and the ground; an overcast sheet's base is lit through the sheet by
     // the whole sky, so it takes the sky irradiance's cool hue, never the low sun's warm band
-    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.3)
+    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.24)
       .lerp(this.scratch.set(irr.r, irr.g, irr.b).multiplyScalar(0.42), stratiform);
     // the stratus floor: the brighter of the horizon band's and the mean upper sky's luminance — the sky a far
     // ceiling replaces at the skyline is the horizon band, the brightest of a hazy sky — in a hue half way from
@@ -1231,6 +1255,9 @@ export class VolumetricCloudLayer {
     (t.uFarBandShift.value as THREE.Vector2).set(shift.x * 0.5 + offX * 1.37, shift.y * 0.5 + offY * 0.61);
     this.applyPresetUniforms(preset);
     this.applyAtmosphereUniforms();
+    // the low quality preset marches coarser (the same slab, fewer steps); the mobile tier never creates the layer
+    t.uStepScale.value = CLOUD_STEP_SCALE_BY_PRESET[resolvePresetName()] ?? 1;
+    if (t.uDebug.value !== this.debugMode) { t.uDebug.value = this.debugMode; this.resetHistory(); }
 
     // camera frame; cuts (teleports, big turns, zooms) rebuild the history at four slots a frame
     const P = this.prevCam, C = this.cam;

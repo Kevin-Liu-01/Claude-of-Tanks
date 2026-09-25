@@ -134,7 +134,7 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   /** round 71: a sheet this stratiform takes the overcast tint power (a quarter) and the diffuse lighting */
   sheetStratiform: 0.7,
   /** round 71: the cirrus sheet's optical density at full coverage and the far band's ceiling altitude (m) */
-  cirrusDensity: 0.45,
+  cirrusDensity: 0.35,
   farBandMaxAltM: 2200,
   /** round 71: the cirrus streak direction sits a third of a quarter turn off the wind (the upper wind veers) */
   cirrusVeerRad: Math.PI / 6,

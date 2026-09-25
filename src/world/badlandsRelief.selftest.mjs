@@ -3,6 +3,7 @@ import { historicalMapPassDressingSource } from './mapPassDressing.test-support.
 import { historicalRound47PresentationSource } from './round47MapPresentation.test-support.mjs';
 import { historicalRound66OceanSource } from './round66Ocean.test-support.mjs';
 import { historicalRound70SnowRegradeSource } from './round70SnowRegrade.test-support.mjs';
+import { historicalRound71CloudsSource } from './round71Clouds.test-support.mjs';
 import { originalExitConfig, historicalAuthoredExitSource } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -227,7 +228,7 @@ function historicalVistaGroundSource(source, file) {
 for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts' && file !== 'steppe.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound70SnowRegradeSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
+    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 
@@ -265,8 +266,9 @@ for (const index of [0, 2]) {
   assert.deepEqual(config.terrain.roads.paths[index].at(-1), original.terrain.roads.paths[index].at(-1));
 }
 // Later material-only refinement is independently bounded by redrockMaterial.
+// round 71 (2026-09-25): the cloudscape block (the volumetric layer's per-map authoring) never feeds relief; projected out
 assert.equal(serialize({ ...config, blurb: original.blurb, terrain: original.terrain,
-  splat: original.splat, horizon: original.horizon,
+  splat: original.splat, horizon: original.horizon, clouds: undefined,
   props: { ...config.props, tacticalBeats: original.props.tacticalBeats, wallRuns: original.props.wallRuns } }),
 serialize(original), 'only scoped terrain, blurb, materials and floor-reseated tactical/wall records change');
 

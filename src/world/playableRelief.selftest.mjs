@@ -1,4 +1,5 @@
 import { historicalRound47PresentationSource } from './round47MapPresentation.test-support.mjs';
+import { historicalRound71CloudsSource } from './round71Clouds.test-support.mjs';
 import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
@@ -30,7 +31,7 @@ const selected=new Map([['frontier','frontier'],['alpine','alpine']]);
 const seeds=[1337,7719],receipts=[];
 // Round 47 (owner map audit) re-authored Titan's presentation blocks (palette route, tints, ring rows, sky decks); relief
 // authoring never feeds heights, so the byte receipt projects those exact blocks back before comparing (badlandsRelief law).
-assert.equal(historicalRound47PresentationSource(readFileSync(new URL('./maps/titanGorge.ts',import.meta.url),'utf8'),'titanGorge.ts'),oldSource('src/world/maps/titanGorge.ts'),
+assert.equal(historicalRound47PresentationSource(historicalRound71CloudsSource(readFileSync(new URL('./maps/titanGorge.ts',import.meta.url),'utf8'),'titanGorge.ts'),'titanGorge.ts'),oldSource('src/world/maps/titanGorge.ts'),
   'Held Titan authoring is byte-exact baseline once round 47\'s presentation blocks are projected; its heights also pass the 28-map legacy loop below');
 assert.equal(MAP_IDS.length-selected.size,29,'Exactly two playable-relief pilots'); // 2026-09-19: Mars joins the legacy loop
 const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
@@ -71,6 +72,8 @@ for(const [id,file]of selected){
     assert.equal(old.sky.sunIntensity,2.85);assert.equal(old.sky.sunColorHex,0xffddbe);assert.equal(old.sky.hemiIntensity,0.54);
     normalized.sky={...cfg.sky,sunIntensity:2.85,sunColorHex:0xffddbe,hemiIntensity:0.54};
   }
+  // round 71 (2026-09-25): the cloudscape block (the volumetric layer's per-map authoring) never feeds relief; projected out
+  delete normalized.clouds;
   const stringify=value=>JSON.stringify(value,(_k,v)=>typeof v==='function'?v.toString():v);
   assert.equal(stringify(normalized),stringify(old),`${id}: all non-relief authoring retained`);
 }
