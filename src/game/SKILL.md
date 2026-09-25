@@ -24,6 +24,12 @@ dependency order and timing; `battleWarmRuntime.ts` owns battle-only terrain,
 wreck, Studio/shared FX, and covered deployment-program residency behind a
 retryable typed access facade; `ai.ts`
 owns bot decisions and is injected into the headless multiplayer authority;
+`jevCommander.ts` is the Jev commander (docs/JEV-COMMANDER.md): one text-only
+team document per team every few seconds through an injected transport,
+TypeSafe's answers gated by freshness and confidence into standing orders the
+classic controller takes through `setOrder()` and drops on expiry — the
+classic brain is byte-identical with no order; `jevProtocol.ts` is the shared
+wire schema the proxy validates and builds the questions from;
 `input.ts` normalizes devices; `profile.ts` persists real local match history;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and
 local-versus-network command policy without importing the combat runtime;
@@ -190,7 +196,9 @@ device polling through `playerFrameInput.ts`; keep the render loop ignorant of
 bindings and device modes. Route rendered tank updates through
 `battlePresentationRuntime.ts`; never apply the solo interpolation buffer to
 already-smoothed network poses. Bot changes require both focused AI tests and
-battle probes.
+battle probes. A commander change runs `node src/game/jevCommander.selftest.mjs`
+and `node src/game/ai.selftest.mjs` (the classic path must stay green and
+unchanged); a real played battle uses the dev proxy (`npm run jev:dev`).
 Route mobile battle UI acquisition through `mobileBattleInputAccess.ts`; do not
 restore touch/auto-aim promise state or sound-toggle state in `main.ts`.
 Route phase-sensitive browser predicates through `battlePhasePolicy.ts`; do not

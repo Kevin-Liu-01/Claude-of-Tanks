@@ -17,6 +17,7 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 | FEATURES.md | Players, reviewers, contributors | Visible features connected to their implementation and verification |
 | HOW-IT-WORKS.md | Technical readers | Technical description of the current game from boot to results |
 | GAME-MODES.md | Players and engineers | Standard, flag, zone, Turbo Ball, and Horde rules, authority, presentation, and tests |
+| JEV-COMMANDER.md | Players and engineers | The Opponent brain option: Jev (TypeSafe's System One model) commanding the solo bots — proxy, team document, questions, orders, gating, budget, cost, dev path, privacy |
 | GARAGE-ENVIRONMENTS.md | Players, designers, and engineers | Ten Garage locations, visual contract, scene-pack lifecycle, collision, performance, and quality gates |
 | SYSTEMS.md | Engineers | Current subsystem ownership, data flow, lifecycle, and invariants |
 | DEVELOPMENT.md | Engineers and release owners | Local setup, services, test matrix, tools, and release procedure |
@@ -42,6 +43,7 @@ complete current environment set.
 | MULTIPLAYER-ARCHITECTURE.md | Authority arrangements, protocol v5, delivery, prediction, rooms, signaling, ranked services, trust, and verification |
 | ENTRY-RESILIENCE.md | First-visit entry: the anonymous telemetry beacon and its report, the capability gate, download-aware boot watchdogs, immutable assets, reveal budgets, entry failure surfaces |
 | GAME-MODES.md | Shared deterministic objectives, respawns, scores, waves, loot, bot targets, and presentation |
+| JEV-COMMANDER.md | The Jev commander: the `/api/jev` proxy, the team document schema, the question set, orders and their gating, budgets, measured cost, the dev path |
 | PERFORMANCE.md | Boot, route isolation, device quality, render recovery, frame ownership, event budgets, and measurement |
 | GARAGE-ENVIRONMENTS.md | Garage destination roster, canonical composition, scene packs, workshop exhibits, structure collision, resource ownership, and quality gates |
 | STUDIO.md | Scene Studio interaction, scripted API, scene schema, effects, capture, and determinism |

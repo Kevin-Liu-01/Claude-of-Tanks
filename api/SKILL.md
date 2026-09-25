@@ -21,6 +21,11 @@ unset: one v2 record per request validated through the shared schema
 `server/telemetryRecord.ts` (personal field names refused), one log line per
 record, no store. The production sink is the Cloudflare Worker
 `cloudflare/telemetry` (Workers Analytics Engine).
+`jev.ts` is the Jev commander proxy (`docs/JEV-COMMANDER.md`): one text-only
+team document per request, validated and bounded, the TypeSafe questions built
+server-side, the server-held `TYPESAFE_API_KEY` never leaving the function,
+upstream 401/422/429/529/timeouts mapped to clean errors with a cool-down,
+per-address and per-session buckets, a session budget and a global ceiling.
 Deployment routes are configured in `vercel.json`.
 
 ## Patterns to follow / invariants
@@ -48,6 +53,10 @@ Deployment routes are configured in `vercel.json`.
   the Worker sink is `npm run test:telemetry:cloudflare`; read the funnel with
   `node tools/telemetry-report.mjs` (docs/ENTRY-RESILIENCE.md,
   `cloudflare/telemetry/README.md`).
+- Jev commander proxy: run `node server/jev.selftest.mjs` (fake upstream:
+  auth header, server-built questions, every error mapping, rate limits,
+  budget, origin and state validation); locally `npm run jev:dev` serves it
+  on 8794 with the key from the environment (docs/JEV-COMMANDER.md).
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

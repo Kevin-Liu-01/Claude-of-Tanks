@@ -887,6 +887,12 @@ whose expected hit chance (tier σ plus dispersion against the silhouette, the b
 low is closed on rather than taken at a bot or a passive target — a live player is threatened from range as before —
 and an empty rack rams only when the ram law makes the exchange survivable, otherwise retires.
 
+A commander may hand the controller a standing order (`setOrder(AiOrder)`: posture, target, fire
+discipline, threat read, a point, an expiry) — the Jev commander (`docs/JEV-COMMANDER.md`,
+`src/game/jevCommander.ts`) asks TypeSafe's System One model once per team every few seconds and
+applies its answers this way; every read of the order is gated on it being live, so with no order
+the controller is byte-identical to the classic brain, and an expired order restores it.
+
 Before firing, `botFriendlyFireRisk()` predicts teammate motion through the shell
 corridor and HE blast radius. A blocked bot holds fire and moves laterally; state.ts
 repeats the same guard authoritatively, makes bot HE splash team-safe, and applies zero

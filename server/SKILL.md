@@ -31,6 +31,10 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
   ranked authority to a player.
 - Production signaling must run behind TLS with an explicit origin allowlist.
 - TURN credentials come from deployment configuration and are never committed.
+- `jev/main.ts` is the local HTTP wrapper around `api/jev.ts` for the Vite dev
+  server (`npm run jev:dev`, port 8794): the TypeSafe key comes from the
+  environment of that shell only, localhost origins are accepted there and
+  nowhere else (docs/JEV-COMMANDER.md).
 - Keep payloads, queues, rooms, rates, and lifetimes bounded.
 
 ## Verification
