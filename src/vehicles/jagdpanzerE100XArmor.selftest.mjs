@@ -20,7 +20,9 @@ const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
 // come from the donorSpecs.ts templates, which carry the authored spec without the registry's generated anatomy enrichment
 // (bodyContactPoints, collisionShells, crew layout metadata) — the hash moves for that reason alone. All 192 playable specs
 // are byte-identical between shared main and this tree (.qa-dev spec dump, 0 differing).
-const donorHash = '6c47eda02c0058dd97df98871b890485d534a4b883de95ec6446dd1bc8ed5575';
+// 2026-09-25 FSP-03: donor-spec digest re-pinned once — the regenerated combat anatomy of the roller hulls moved the
+// registry's generated enrichment (contact points / shells) on the T-72/T-90 donor rows; the authored specs are unchanged.
+const donorHash = 'f1d2943a695eee71ce1237c8ff808404b3c4c3752ea6dfeaff2976eed7b995f7';
 function historicalDonors(rows = donorRows()) {
   const restored = structuredClone(rows);
   const ariete = restored.find(([id]) => id === 'ariete_c1')[1];

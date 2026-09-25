@@ -16,7 +16,9 @@ export const FIXED_SOURCE_SKIRTS=Object.freeze({
     // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
     // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build.
     // round 46b (2026-09-23, owner: the T-72 family has no return rollers): t72bu_x drops its inferred rollers — pre-finish source re-pinned
-    sha:'65829495639300b790136f11fe0c8d64ca986c5b7f52185d9265c6f3335f8723'},
+    // FSP-03 (2026-09-25, owner: rollers wherever the real vehicle has them): t72bu_x carries its three source-measured rollers
+    // again — pre-finish source re-pinned once (97d05adc0 reversed; the T-72/T-90 line has three per side).
+    sha:'ed02bec30c889c1620bd0cdaa8af4ed9d791337bfef5c0b91e8eef17c9f17400'},
   t62mv1_x:{build:buildT62MV1X,label:'t62mv1-x-skirt',count:20,file:'t62mv1X.ts',
     // 2026-09-22 (owner: holes are added, not carved, to save triangles): t62mv1X closed its main gun
     // at the source tip (measuredPrimitives cappedTube; the measured bore floor 5.65940 stays recorded
