@@ -3087,7 +3087,48 @@ mask at history resolution) for the metrics; `.qa-dev/r71-capture.mjs` shoots ea
 measures, `r71-sheet.mjs` builds the review sheet, `r71-trace-bench.mjs` is round 68's per-slot bench with the opt-in
 query.
 
-**Measured.** {{MEASURED}}
+**Measured.** Captures on the lane tree (`.qa-dev/r71-capture.mjs`, 31 maps × sky-w / sky-s, desktop tier, seed 1337,
+`?clouds=volumetric` on both trees; before = tip d4afb619e's round-68 layer, after = this round; base = the baked decks
+on the twelve rule maps): the review sheets `$SP/r71/review/contact-sheet.png` (sky-w) and `contact-sheet-sky-s.png`
+(31 rows, before | after), the per-map frames `$SP/r71/review/<map>-before.png` / `<map>-after.png`, the numbers in
+`$SP/r71/metrics-after.txt` (`.qa-dev/r71-metrics.mjs` on the history masks), `skyline-{before,after,base}.txt`
+(`map-metrics` check 5) and `bands-after-vs-base.txt`. **Structure** (connected components of the cloud mask at
+α ≥ 0.35, the largest component's share of the cloud area, the size spread p10 / p50 / p90 in mask pixels): the decks
+and sheets hold one structure — winter 95 / 100 %, whiteout 100 / 100, railyard 100 / 100, foundry 99 / 100, titan 100
+/ 100, fjord 87 / 58, polders 96 / 100, urban 85 / 59, blackglass 61 / 91, alpine 51 / 38 (its lens caps are separate by
+nature) — against round 68's carpet of same-sized puffs (verdant before: 20 components, p50 310, largest 61 % from one
+bank); the streets connect on one view and read as rows on the other (coastal 48 / 42 %, saltwind 44 / 27, steppe 28 /
+47, frontier 29 / 27 — a street is a row of separate cells, so the 40 % rule reads them as rows, which is the intent);
+the fair-weather skies spread their sizes an order of magnitude (verdant p10 / p50 / p90 18 / 235 / 1547 and 14 / 612 /
+9190, longleaf 13 / 191 / 7679, airfield 13 / 167 / 4123, delta 43 / 805 / 13322), the humilis skies stay peppers of
+small cells by design (desert p50 19–29 px, 115–139 components) under their cirrus. **Lighting** (the sunlit top quarter
+over the base quarter of each dense column run, and the p80 / p20 contrast of the dense pixels): the metric resolves
+only masses over ten mask rows, so on the humilis maps it reads the contrast alone (1.3–1.9); where masses stand the
+contrast reaches 2.6–3.5 (verdant 3.0 / 3.2, coastal 2.9, monsoon 2.7, delta 2.7, steppe 2.7, saltwind 2.7, urban 2.6 /
+3.5) and the top / base ratio 1.1–1.7 (airfield 1.65, desert 1.63, urban 1.5 / 3.0, fjord 1.5) — short of the 1.6 target
+on most cumulus views because a base seen from below at 1400 m is lit by the ground bounce and the horizon band, not
+black; the towers lean and shade (monsoon 0.8: their bases read darker than their tops, the ratio inverted by the
+scud). **Edges** (the α-gradient histogram on the edge texels): the wispy tail 50–70 % on the cumulus maps, 85–100 % on
+the sheets and the humilis wisps, the crisp share ≤ 13 %. **Sky bands** (the round-65 / 68 rule: the nine good maps'
+middle band within ±15 % of the baked base, lower within ±10 %): verdant −2 / −5 (lower 0 / 0), delta 0 / +3 (−1 / −5),
+alpine +8 / +1 (+2 / +4), reservoir −5 / −1 (−1 / 0), urban 0 / +18 (0 / +8 — the milky altostratus over the city's
+sky-s view, the one band outside the rule), frontier 0 / −5 (+2 / −3), orchard +1 / −2 (0 / −2), longleaf +6 / −4 (−1 /
+−3), airfield +5 / −2 (0 / −4); the decks lift winter +29 / +28 (lower +9 / +9) and whiteout +59 / +37 (+46 / +12) toward
+white, monsoon +7 / −7 (−8 / −20 under its front). **Skylines** (check 5, before → after; base): winter 0.88 / 0.88 →
+0.89 / 0.89 (base 0.88 / 0.88, inside the 0.80–0.90 band), whiteout 0.92 / 0.86 → 0.91 / 0.86 (base 1.01 / 0.94; sky-w
+still a hundredth over the band, as in round 68), monsoon 0.56 / 0.54 → 0.62 / 0.59 (its towers over the ridge),
+verdant 0.75 / 0.70 → 0.75 / 0.72, frontier 0.75 / 0.66 → 0.76 / 0.69, delta 0.79 / 0.73 → 0.81 / 0.78, alpine 0.93 / 0.91
+→ 1.04 / 0.91 (a lens cap over the ridge; the base reads 1.03 / 0.90), airfield and railyard unchanged, copper_mesa's
+sky-w 0.56 → 1.00 and ruinspires' 0.88 → 1.00 (the round-68 bank over their skylines is gone; the base reads 1.00),
+skybridge 0.84 → 0.66 and titan 1.00 → 0.91 (a deck over the mesas). **Eye check of the sheet:** the puffs are gone —
+verdant, orchard, longleaf and reservoir carry a few cumulus of different sizes with darker bases over an open sky;
+frontier and steppe read as rows along the wind; coastal and saltwind as streets off the sea; delta, mangrove and
+monsoon as leaning congestus with anvils on the front; the desert five as dry skies under cirrus veils; winter,
+polders, fjord and railyard as decks with breaks; whiteout, titan and foundry as ceilings; alpine as smooth caps;
+blackglass as an ash veil; Mars as dark ice wisps on its galaxy. Weak: the towers still read as columns more than
+cauliflower (the shape volume's kilometre period stacks along a 1.5–3 km slab), the lens caps are smooth blobs rather
+than lenses from below, urban's sky-w view faces a wall (the table view, not the sky), and a fair-weather sky can open
+wide on one view (reservoir 7 % cloud on sky-w).
 
 **Performance.** Per-slot trace + resolve by repetition (`.qa-dev/r71-trace-bench.mjs`: the frame's GPU ms with the slot
 traced once against eleven times, Δ / 10, 90 frames × 3 rounds at the chase pose) — measured with the release chain
@@ -3100,7 +3141,7 @@ pass (they ride in the trace); the six bakes run in the worker under the loading
 curl 80 ms, blue noise 150 ms in Node); the low quality preset marches at 1.8 × the stride. A quiet-window re-run of the
 bench is the first open item.
 
-**Receipts (exit 0, tip {{TIP}}).** volumetricClouds (rewritten: six bake digests, tiling on both axes, the equalised fields, the street and cirrus
+**Receipts (exit 0, tip f33f36bdb).** volumetricClouds (rewritten: six bake digests, tiling on both axes, the equalised fields, the street and cirrus
 anisotropy, the synoptic clustering of the cumuliform field, the blue-noise ranks, the 31-map cloudscape table, the
 eighteen regime rows, the monsoon / whiteout / winter / coastal / delta / alpine identities, the shadow and override
 policies, the slot cycle, the far ramp, the stride scale, the haze mirror, the hooks and the gobo material), atmosphere,
@@ -3115,7 +3156,14 @@ adaptiveQualityPolicy, quality, wallSkyLight, sourcedTerrainPreparation, terrain
 worldBuildCoordinator, daynight-atmosphere-probe, postLightFxPolicy; `npm run typecheck` (the native tsc and the
 core unused-symbol check).
 
-**Open.** {{OPEN}}
+**Open.** A quiet-window perf re-run (the bench above ran at load 100–150; monsoon's 1.5 ms per slot wants fewer light
+taps under a 3 km slab or a shorter tap ladder past 2 km); cauliflower tops on the congestus towers (a second shape
+octave along the slab, or a taller shape period for the tall regimes); lens-shaped caps for the lenticular regime (an
+authored ellipsoid profile rather than the broad field); the top / base lighting ratio short of 1.6 on the cumulus
+views (a ground-bounce term that darkens with the base's depth would separate them further); urban's sky-s middle band
++18 % under its altostratus; whiteout's sky-w skyline 0.91 at the band's edge (round 44's re-grade call stands); the
+`?clouds=volumetric` default stays with the owner — the sheet is the review; the round-68 open items not closed here
+(the inside-the-slab camera, the cascade policy for the gobos, a moonlit edge at night).
 
 ### Round 70 — 2026-09-25: Whiteout's snow re-grade (owner: yes)
 
@@ -3370,6 +3418,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 71 | Impact physics (owner 2026-09-25): energy-based crash and fall damage through one function in both sims (`sim/impact.ts`: ½·m·(v − v_min)² kJ × the ruleset's hp/kJ, glacis 0.7 / stern 0.85 / broadside 1, tracks first, the engine on a frontal crash or a hard landing, crew shock above 16 / 14 m/s, a two-tick crash priced once), a `physics` block per ruleset (restitution, rebound floor, fall and crash thresholds and rates, ram scale and restitution — Turbo Ball and Mars bounce, a single jump lands free), the ram split by mass / aggression / face with a momentum-conserving exchange, the swept landing contact with restitution (several decaying hops at low gravity, no tunnelling at 40 m/s), the landing torque toward the ground plane, a slide law on faces the tracks cannot hold, a lateral-grip cap on the yaw rate at speed, a static hold at rest, the settle chatter fixed (a parked hull on a grade crept 4 cm/s and chattered ±0.4° on the base tree), movement checkpoints v2, CRASHED / FELL on the kill feed and the final-blow line, `tank_impact` on the wire | impact / impactPhysics / impactParity receipts (new), movement 218, combat 541, authoritativeMatch, matchRuleset, ai, authoritativeBots (mobile 6/6), the mp / net / server-match receipts with their re-anchored pins, typecheck; headless Verdant 5 min (37 crashes, 631 hp, none stuck or tunnelled) and Mars 3.8 min (163 landings, 2413 hp, one fall death, 18-hop chains, none stuck or tunnelled), the 30 m Mars drop (14.9 m/s → 7.4 m/s rebound); `server/battlePacing` full 124: median 335.2 s, p10 260.8 s, 0 sub-120, 0 timeouts |
 | 70 | Whiteout's snow re-grade (owner: yes, 2026-09-25): round 48's tone law never reached the sourced snow — a per-layer `sourcedTint` on the splat settings now grades the photo albedo that renders on both sourced paths; Whiteout's snow × 0.88 neutral-cold, the fallback law stepped alike (0.46 + 0.28·l), postExposure 0.83; winter and the Garage untouched | map-view-probe five views A/B on main with round 68's overcast (sky-w 0.92 → 0.84, sky-s 0.88 → 0.85, inside 0.80–0.90) and on the pre-cloud tree (1.01 → 0.96, 0.95 → 0.91: the physical sky alone leaves the rim band haze-dominated); snow boxes (bird-w 175 → 162, wall hue / saturation unchanged); 1280 px eye check of the five views; sourcedTextures graded-composite contract, sourcedTerrainPreparation parity under a tint; villageWear / mangroveWaterPalette digests re-pinned, the byte receipt's round-47 pin extended and a round-70 projection added; the receipts in the section |
 | 71 | {{ROW}} |
+| 71 | The cloudscape pass on the opt-in volumetric layer (owner: round 68 was "just puffs", 5 / 10): a `clouds` block on every map config resolved through eighteen regime rows (`engine/cloudscapes.ts`: fair-weather cumulus, cloud streets, sea streets, towering cumulus, cumulonimbus front, cumulus humilis, lenticular, broken / closed stratocumulus, overcast and low stratus, ice fog, hazy altostratus, dense overcast, ash veil, cirrus, thin ice clouds), a multi-scale weather field with a type channel and a street / anvil / cirrus field in the wind frame, a curl volume and a blue-noise tile (`cloudNoise.ts`), type height profiles, a rigid wind lean, anvils, scud, curl-warped erosion with a per-map wispiness, the Hillaire octaves under a dual-lobe phase with Beer–powder toward the sun, the ambient split with the depth above and a deck floor, a far stratocumulus band and a wind-sheared cirrus sheet with the 22° halo, weather-gated empty-space striding, gobos that discard by the same fields; the baked decks stay the default and byte-identical | 31-map before / after review sheets (`$SP/r71/review/contact-sheet*.png`) with the structure / lighting / edge metrics on the history masks (decks one structure, fair-weather sizes spread an order of magnitude, contrast 2.6–3.5 on the masses), the sky-band rule (eight of nine good maps within ±8 % middle / ±5 % lower; urban sky-s +18 %), skylines (winter 0.89 / 0.89, whiteout 0.91 / 0.86, monsoon 0.62 / 0.59); per-slot 0.22–1.54 ms GPU by repetition at load 100–150; volumetricClouds receipt (rewritten) and the receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
