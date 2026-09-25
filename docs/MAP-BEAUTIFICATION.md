@@ -2797,11 +2797,12 @@ earlier cut's second blur pass overwrote the mask target, so the hold-back read 
 onto the open sky; the last blur pass now writes the light directly (three draws) and the mask stays the mask. The tank's contact band reads under the hull edge and rear plate at chase range; the urban centre
 view (sky-w, the camera against a brick block) shows a window sill floating on a lit seam in the base frame and
 casting a soft-edged dark band on the bricks in the new one. Map-view-probe A/B on eight maps × four views (verdant,
-desert, titan_gorge, fjord, monsoon, winter, mars, urban; base b9e18f308 vs the branch): the far-field views — sky-w,
-centre-far, bird-w — read 0.04–1.6 mean |Δ| on every map (Mars ≤ 0.05 everywhere: no haze, a dim sun), the sun-ahead
-e-wall-300 view carries the rays (titan +3.5 % luma, verdant +2.7 %, monsoon +2.4 %, urban +1.3 %, desert +0.4 %,
-fjord 0 with its sun 56° outside the frame), and the two larger numbers are not the effects (winter e-wall 13.4 =
-the wind-swayed bare tree at the frame edge; urban sky-w 3.4 = the sill's band). Eye check on the 1280 px reductions
+desert, titan_gorge, fjord, monsoon, winter, mars, urban; base b9e18f308 vs the branch tip, the b frames re-shot after
+the write fold): the far-field views — sky-w, centre-far, bird-w — read 0.02–2.2 mean |Δ| on every map (Mars ≤ 0.03
+everywhere: no haze, a dim sun), the sun-ahead e-wall-300 view carries the rays (titan +4.0 % luma, verdant +2.0 %,
+monsoon +0.7 %, urban +0.5 %, desert +0.4 %, fjord 0 with its sun 56° outside the frame), and the two larger numbers
+are not the effects (winter e-wall 14.5 = the wind-swayed bare tree at the frame edge; urban sky-w 3.9 = the sill's
+band). Eye check on the 1280 px reductions
 of the eight maps: the sky is not washed, the rays stay what the silhouettes carve, the flare is a faint halo arc and
 a ghost on the sun-to-centre line, the far ranges unchanged.
 
