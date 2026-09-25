@@ -166,6 +166,13 @@ export interface MatchRuleset {
   readonly timeLimitS: number | null;
   /** How an expired clock resolves when the score is level (or has no score). */
   readonly timeout: RulesetTimeout;
+  /**
+   * Battle endings (owner 2026-09-25: "handle battle ends better"): seconds the world keeps simulating after
+   * the verdict — wrecks settle, fires burn, shells in flight land — with every gun silent, so the ending beat
+   * (final-kill replay, time's-up pull-back, objective orbit) plays over a living field. Past the hold the
+   * simulation stands still under the report. Bounded: see ENDING_HOLD_LIMIT_S.
+   */
+  readonly endingHoldS: number;
   /** Solo roster split: allied bots and enemy bots (null keeps the default 6 / 7). */
   readonly allies: number | null;
   readonly enemies: number | null;
@@ -185,10 +192,15 @@ export interface CampaignRulesetInput {
   readonly enemy?: string | null;
 }
 
+/** The longest post-verdict hold any ruleset may declare (the report gate's watchdog sits at 16 s). */
+export const ENDING_HOLD_LIMIT_S = 12;
+/** Whole-game post-verdict hold: long enough for the 2.5 s beats and the killcam's live wreck hold. */
+const ENDING_HOLD_S = 8;
+
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
-  respawnS: null, timeLimitS: 900, timeout: 'draw',
+  respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
 });
 
@@ -239,6 +251,21 @@ export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.fr
 export const FLAG_CARRIER_SPEED_SCALE = 0.85;
 /** Share of maximum hull repaired on every surviving attacker when a Horde wave is cleared. */
 export const HORDE_WAVE_REPAIR = 0.3;
+
+/**
+ * The post-verdict hold, read by the solo step and the authority alike: while it runs the world keeps
+ * simulating with every gun silent; once it expires the step returns early and the field stands still.
+ * A null verdict time means no verdict yet (never expired); the hold is clamped to ENDING_HOLD_LIMIT_S.
+ */
+export function endingHoldExpired(
+  ruleset: Pick<MatchRuleset, 'endingHoldS'>,
+  resultTimeS: number | null | undefined,
+  timeS: number,
+): boolean {
+  if (resultTimeS == null || !Number.isFinite(resultTimeS)) return false;
+  const holdS = Number.isFinite(ruleset.endingHoldS) ? Math.min(ENDING_HOLD_LIMIT_S, Math.max(0, ruleset.endingHoldS)) : 0;
+  return timeS - resultTimeS >= holdS - 1e-9;
+}
 
 /** The wave modes: their enemy side is a pool drawn per wave (Horde) or per sector (Frontline). */
 export function isWaveMode(mode: GameModeId): mode is 'endless_horde' | 'frontline_assault' {

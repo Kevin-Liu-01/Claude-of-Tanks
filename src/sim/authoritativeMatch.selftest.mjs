@@ -446,6 +446,28 @@ assert.equal(eliminatedMatch.resultReason, 'elimination');
 assert.ok(eliminatedMatch.snapshot({ tick: 1, serverTimeMs: 1000 / 60,
   viewerId: 'elim-a', ackInputSeq: 0 }).events.some((event) =>
   event.type === 'match_ended' && event.reason === 'elimination'));
+// battle endings (2026-09-25): the verdict stamps its time, silences every trigger through the ruleset's hold
+// while the world keeps stepping, and freezes the step once the hold expires (the room waits for it)
+{
+  assert.equal(eliminatedMatch.endingHoldS, 8, 'the authority publishes the ruleset hold');
+  assert.ok(Math.abs(eliminatedMatch.resultTimeS - 1 / 60) < 1e-9, 'the verdict time is the step that decided it');
+  const firing = new Map([['elim-a', {
+    throttle: 1, steer: 0, brake: false, fire: true, aimYaw: 0, aimPitch: 0, shellSlot: 0,
+  }]]);
+  const shooter = eliminatedMatch.entityById.get('elim-a');
+  const before = eliminatedMatch.timeS;
+  eliminatedMatch.step({ dt: 1 / 60, inputs: firing });
+  assert.equal(shooter.input.fire, false, 'a human trigger is silenced after the verdict');
+  assert.equal(shooter.input.throttle, 1, 'steering and throttle stay live through the hold');
+  assert.ok(eliminatedMatch.timeS > before, 'the world keeps stepping through the hold');
+  for (let i = 0; i < 8 * 60; i++) eliminatedMatch.step({ dt: 1 / 60, inputs: firing });
+  const frozenAt = eliminatedMatch.timeS;
+  assert.ok(frozenAt - eliminatedMatch.resultTimeS >= 8 - 1e-6 && frozenAt - eliminatedMatch.resultTimeS < 8 + 1 / 60 + 1e-6,
+    `the step stops advancing exactly at the hold (${frozenAt - eliminatedMatch.resultTimeS})`);
+  for (let i = 0; i < 30; i++) eliminatedMatch.step({ dt: 1 / 60, inputs: firing });
+  assert.equal(eliminatedMatch.timeS, frozenAt, 'past the hold the field stands still');
+  assert.equal(eliminatedMatch.result, 'alpha', 'the verdict never changes');
+}
 
 const guidedMatch = createAuthoritativeMatch({
   countdownS: 0,

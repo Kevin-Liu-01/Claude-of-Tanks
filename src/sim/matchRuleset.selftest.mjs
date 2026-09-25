@@ -7,7 +7,7 @@ import {
   applyRulesetToCombat, rulesetLoadout, refillUnlimitedAmmunition, rulesetAllyCap,
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
   acceptsTeamArrangement, hordeWaveSize, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
-  MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS,
+  MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS, ENDING_HOLD_LIMIT_S, endingHoldExpired,
 } from './matchRuleset.ts';
 
 for (const mode of GAME_MODE_IDS) {
@@ -196,4 +196,22 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
   assert.equal(matchRulesetFor('standard', null, { marsGravity: 'moon' }).gravityScale, 1, 'Standard ignores Mars settings');
 }
 
-console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps and ammo/reload helpers verified');
+// battle endings (owner 2026-09-25): every mode declares the post-verdict hold the solo step and the authority
+// read — bounded, positive, and the same rule for both simulations
+{
+  for (const mode of GAME_MODE_IDS) {
+    const hold = matchRulesetFor(mode).endingHoldS;
+    assert.ok(Number.isFinite(hold) && hold > 0 && hold <= ENDING_HOLD_LIMIT_S, `${mode}: a bounded positive ending hold (${hold})`);
+    assert.equal(hold, 8, `${mode}: the whole-game hold covers the 2.5 s beats and the killcam wreck hold`);
+  }
+  assert.equal(ENDING_HOLD_LIMIT_S, 12, 'the hold ceiling stays under the report gate watchdog (16 s)');
+  assert.equal(endingHoldExpired(standard, null, 500), false, 'no verdict yet: the hold never expires');
+  assert.equal(endingHoldExpired(standard, 100, 100), false, 'the verdict tick starts the hold');
+  assert.equal(endingHoldExpired(standard, 100, 107.99), false, 'the field keeps living through the hold');
+  assert.equal(endingHoldExpired(standard, 100, 108), true, 'the hold expires exactly endingHoldS after the verdict');
+  assert.equal(endingHoldExpired({ endingHoldS: 99 }, 100, 112), true, 'a hold past the ceiling is clamped to it');
+  assert.equal(endingHoldExpired({ endingHoldS: 0 }, 100, 100), true, 'a zero hold freezes at the verdict');
+  assert.equal(endingHoldExpired({ endingHoldS: Number.NaN }, 100, 100), true, 'a malformed hold reads as zero');
+}
+
+console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers and the post-verdict hold verified');

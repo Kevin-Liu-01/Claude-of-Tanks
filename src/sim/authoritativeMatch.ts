@@ -104,7 +104,7 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, matchRulesetFor, refillUnlimitedAmmunition, rulesetLoadout, type MatchRuleset,
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetLoadout, type MatchRuleset,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius } from './matchPlacement.ts';
 import type {
@@ -286,6 +286,10 @@ export interface AuthoritativeMatch {
   readonly timeS: number;
   readonly result: MatchResult | null;
   readonly resultReason: string | null;
+  /** Sim time of the verdict; the ruleset's post-verdict hold (endingHoldS) counts from here. */
+  readonly resultTimeS: number | null;
+  /** The ruleset's post-verdict hold in seconds: the room's post-match transition waits for it. */
+  readonly endingHoldS: number;
   readonly phase: MatchPhase;
   readonly gameMode: GameModeId;
   readonly pendingEventCount: number;
@@ -703,6 +707,7 @@ export function createAuthoritativeMatch({
   let fireTickAcc = 0;
   let result: MatchResult | null = null;
   let resultReason: string | null = null;
+  let resultTimeS: number | null = null;
   let phase: MatchPhase = 'loading';
   let countdownRemainingS = Math.max(0, finite(countdownS, 5));
   const staticObstacles = worldCollision && typeof worldCollision.getObstacles === 'function'
@@ -1724,6 +1729,7 @@ export function createAuthoritativeMatch({
   function finishMatch(nextResult: MatchResult, reason: string): void {
     result = nextResult;
     resultReason = reason;
+    resultTimeS = timeS;
     emit('match_ended', { result, reason: resultReason });
   }
 
@@ -1762,6 +1768,7 @@ export function createAuthoritativeMatch({
   }
 
   function determineResult(modeResult: MatchModeResult | null = null): void {
+    if (result) return; // one verdict: the hold keeps stepping the mode controller, never re-finishing
     if (modeResult) {
       finishMatch(modeResult.result, modeResult.reason);
       return;
@@ -1834,6 +1841,9 @@ export function createAuthoritativeMatch({
       }
       useConsumables(entity);
     }
+    // battle endings (2026-09-25): the verdict silences every trigger — bots and humans — while the ruleset's
+    // hold keeps the field alive (the solo step does the same in state.ts silenceGunsAfterVerdict)
+    if (result) for (const entity of entities) entity.input.fire = false;
   }
 
   let movingEntity: AuthoritativeEntity | null = null;
@@ -1923,6 +1933,8 @@ export function createAuthoritativeMatch({
     dt: number,
     inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>,
   ): void {
+    // past the ruleset's post-verdict hold the field stands still (snapshots keep publishing the frozen state)
+    if (endingHoldExpired(ruleset, resultTimeS, timeS)) return;
     timeS += dt;
     refreshModeBotRoutes();
     updateEntityControls(dt, inputs);
@@ -1964,6 +1976,8 @@ export function createAuthoritativeMatch({
     get timeS() { return timeS; },
     get result() { return result; },
     get resultReason() { return resultReason; },
+    get resultTimeS() { return resultTimeS; },
+    endingHoldS: ruleset.endingHoldS,
     get phase() { return phase; },
     gameMode: normalizedGameMode,
     modeController,
@@ -1995,7 +2009,8 @@ export function createAuthoritativeMatch({
     },
 
     step({ dt, countdownElapsedS = dt, inputs }: AuthoritativeStepOptions): void {
-      if (result) return;
+      // battle endings (2026-09-25): the verdict no longer freezes the field on the spot — stepPlaying keeps the
+      // world alive (guns silent) through the ruleset's hold and stands still once it expires
       if (Math.abs(dt - SIM_DT) > 1e-9) {
         throw new Error(`authoritative match requires ${SIM_DT}s fixed steps`);
       }

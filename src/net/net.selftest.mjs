@@ -1776,6 +1776,40 @@ function createTestSimulation() {
   host.close();
 }
 
+// battle endings (2026-09-25): the room's post-match transition waits for the simulation's post-verdict hold
+// (matchRuleset.endingHoldS) so every client's ending beat plays over live snapshots; the authority keeps
+// ticking meanwhile. A simulation that declares no hold finishes the round on the verdict tick as before.
+{
+  const room = { phase: 'playing', round: 1, revision: 1, players: [{ id: 'hold-a', team: 'alpha' }] };
+  let finished = 0;
+  const roomController = {
+    state: () => ({ ...room, players: room.players.map((player) => ({ ...player })) }),
+    command() { room.revision++; return this.state(); },
+    finish() { finished++; room.phase = 'waiting'; room.revision++; return this.state(); },
+  };
+  const simulation = createTestSimulation();
+  simulation.result = 'alpha';
+  simulation.resultReason = 'elimination';
+  simulation.endingHoldS = 0.05; // three ticks at 60 Hz
+  const host = new AuthoritativeMatchRuntime({
+    simulation, roomController, scheduleRoomStateFanout: () => {}, roomStateFanoutBatchSize: 1,
+  });
+  host.matchStarted = true;
+  host.advance(1000 / 60);
+  assert.equal(finished, 0, 'the verdict tick starts the hold instead of finishing the round');
+  assert.equal(host.resultTick, host.tick, 'the verdict tick is remembered');
+  host.advance(1000 / 60);
+  host.advance(1000 / 60);
+  assert.equal(finished, 0, 'the room stays in play through the hold');
+  assert.equal(room.phase, 'playing');
+  host.advance(1000 / 60);
+  assert.equal(finished, 1, 'the round finishes once the hold has elapsed');
+  assert.equal(room.phase, 'waiting');
+  host.advance(1000 / 60);
+  assert.equal(finished, 1, 'the round finishes exactly once');
+  host.close();
+}
+
 // A pre-handshake packet must be rejected without making a later valid HELLO
 // look stale. Real transports are ordered; this defense keeps a simulated or
 // hostile first packet from permanently poisoning the connection.

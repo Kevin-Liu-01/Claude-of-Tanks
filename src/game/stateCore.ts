@@ -34,6 +34,8 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   combatRng: RandomSource;
   result: 'victory' | 'defeat' | 'draw' | null;
   resultReason: string | null;
+  /** Sim time of the verdict (battle endings, 2026-09-25): the ruleset's post-verdict hold counts from here. */
+  resultTimeS: number | null;
   spotting: Spotting | null;
   openingRouteJobs: RuntimeValue[];
   gameMode: string;
@@ -118,6 +120,7 @@ export function createGameState<
     combatRng: mulberry32(6000),
     result: null,
     resultReason: null,
+    resultTimeS: null,
     spotting: null,
     openingRouteJobs: [],
     gameMode: 'standard',

@@ -36,8 +36,8 @@ import type {
 // RULESETS (2026-09-14): one pure description per mode of how the sim bends — hull, damage taken,
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
-  applyRulesetToCombat, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetLoadout,
-  type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
+  applyRulesetToCombat, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap,
+  rulesetLoadout, type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { allySpawnPoint, reuseSpawnPad } from '../sim/spawnPads.ts';
 import { campaignEnemyNations, campaignRulesetInput } from './campaignOperations.ts';
 import { enemyNationSpecNations, readTeamArrangement } from './teamArrangement.ts';
@@ -267,6 +267,7 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   combatRng: RandomSource;
   result: 'victory' | 'defeat' | 'draw' | null;
   resultReason: string | null;
+  resultTimeS: number | null;
   gameMode: GameModeId;
   matchModeState: MatchModePresentationState | null;
   matchModeController: MatchModeController<SoloEntity> | null;
@@ -583,6 +584,7 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.combatRng = mulberry32(COMBAT_SEED);
   game.result = null;
   game.resultReason = null;
+  game.resultTimeS = null;
   game.gameMode = normalizeGameMode(options.gameMode);
   game.campaignOperationId = game.gameMode === 'frontline_assault' ? (options.campaignOperationId ?? null) : null;
   game.ruleset = matchRulesetFor(game.gameMode, campaignRulesetInput(game.campaignOperationId),
@@ -2606,6 +2608,8 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     // campaign slice 4 (2026-09-12): the campaign record needs the mode and the line state
     gameMode: game.gameMode,
     line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,
+    // battle endings (2026-09-25): the Horde report names the wave the last stand fell on
+    hordeWave: game.matchModeState?.horde ? game.matchModeState.horde.wave : null,
     roster: game.tanks.map((entity) => ({
       id: entity.id,
       specId: entity.specId,
@@ -2639,7 +2643,20 @@ function settleBattleResult(
   } else {
     applyTimedModeResult(game);
   }
-  if (game.result !== null) emitBattleEnded(game, bus);
+  if (game.result !== null) {
+    game.resultTimeS = game.timeS;
+    emitBattleEnded(game, bus);
+  }
+}
+
+/**
+ * Battle endings (owner 2026-09-25: "handle battle ends better"): the verdict silences every gun — bots and
+ * player alike — while the ruleset's post-verdict hold keeps the rest of the world alive (wrecks settle, fires
+ * burn, shells already in flight land) under the ending beat. The AI keeps steering; only its trigger is cut.
+ */
+function silenceGunsAfterVerdict(game: SoloGameState): void {
+  if (game.result === null) return;
+  for (const entity of game.tanks) entity.input.fire = false;
 }
 
 /**
@@ -2654,10 +2671,13 @@ export function simStep(
   rig: CameraRig | null,
   collider: CollisionBundle,
 ): void {
+  // Past the ruleset's post-verdict hold the field stands still under the report (matchRuleset.endingHoldS).
+  if (endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS)) return;
   game.timeS += SIM_DT;
   stepSpotting(game, bus);
   retargetObjectiveBots(game);
   stepBotControllers(game);
+  silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);
   stepTankMovement(game, bus, world, rig, collider);
   resolveTankBodyContacts(game.tanks, SIM_DT,

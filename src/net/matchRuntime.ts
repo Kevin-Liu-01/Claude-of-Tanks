@@ -90,6 +90,8 @@ export interface MatchSimulation {
   requiredPeerIds?: RuntimeValue[];
   result?: RuntimeValue;
   resultReason?: RuntimeValue;
+  /** The ruleset's post-verdict hold (seconds); the room's post-match transition waits for it. */
+  readonly endingHoldS?: number;
   readonly pendingEventCount?: number;
   readonly shotFeedbackVersion?: number;
   eventsForViewer?(viewerId: string): MatchEvent[];
@@ -375,6 +377,8 @@ export class AuthoritativeMatchRuntime {
   roomRound: number;
   roundPending = false;
   roundFinished = false;
+  /** Tick of the verdict; the room finishes the round endingHoldS later (battle endings, 2026-09-25). */
+  resultTick: number | null = null;
   readonly stats: AuthoritativeMatchStats;
 
   constructor({
@@ -713,6 +717,7 @@ export class AuthoritativeMatchRuntime {
       this.roomRound = nextRound;
       this.roundPending = true;
       this.roundFinished = false;
+      this.resultTick = null;
       this.matchStarted = false;
       this.accumulatorMs = 0;
       this.pendingCountdownMs = 0;
@@ -837,6 +842,7 @@ export class AuthoritativeMatchRuntime {
     this.roomRound = round;
     this.roundPending = false;
     this.roundFinished = false;
+    this.resultTick = null;
     this.matchStarted = false;
     this.accumulatorMs = 0;
     this.pendingCountdownMs = 0;
@@ -1009,6 +1015,12 @@ export class AuthoritativeMatchRuntime {
       inputs: this.#collectInputs(),
     });
     if (this.roundFinished || !this.simulation.result) return;
+    // battle endings (2026-09-25): the room's post-match transition (waiting / rematch votes) waits for the
+    // ruleset's hold so every client's ending beat plays over live snapshots; ticks keep stepping and
+    // publishing meanwhile, and the authority itself stands still once the hold expires.
+    if (this.resultTick == null) this.resultTick = this.tick;
+    const holdTicks = Math.ceil(Math.max(0, Number(this.simulation.endingHoldS) || 0) * this.tickHz);
+    if (this.tick - this.resultTick < holdTicks) return;
     this.roundFinished = true;
     if (this.roomController?.finish) {
       this.roomController.finish({
