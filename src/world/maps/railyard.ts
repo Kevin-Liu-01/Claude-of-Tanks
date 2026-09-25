@@ -168,6 +168,8 @@ export default {
     forestHex: 0x35402f, rockHex: 0x62655c, haze: 1.06, grain: 0.8,
   },
 
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'hazy-altostratus', coverage: 0.78, baseM: 2200 },
   sky: {
     // FLAT OVERCAST (trips the sky.ts overcast deck auto-detect: opacity 1.0
     // + layer2 0.95 + turbidity 9): weak high sun, dirty stratus, lifted fill

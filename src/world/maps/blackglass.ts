@@ -109,6 +109,8 @@ export default {
     banding: 0.10, outlandRocks: 0.45,
     forestHex: 0x263431, rockHex: 0x53606a, haze: 1.0, grain: 0.60,
   },
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'ash-veil' },
   sky: {
     sunElevationDeg: 18, sunAzimuthDeg: 242, turbidity: 8.4, rayleigh: 1.3,
     mieCoefficient: 0.013, mieDirectionalG: 0.88, fogDensity: 0.00082,

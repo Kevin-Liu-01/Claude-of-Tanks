@@ -1,24 +1,32 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
+  CLOUD_BLUE_SIZE,
+  CLOUD_CURL_SIZE,
   CLOUD_DETAIL_SIZE,
   CLOUD_NOISE_SEED,
   CLOUD_SHAPE_SIZE,
   CLOUD_WEATHER_SIZE,
+  bakeCloudBlueNoise,
+  bakeCloudCurlVolume,
   bakeCloudDetailVolume,
   bakeCloudShapeVolume,
   bakeCloudWeatherMap,
+  bakeCloudWeatherStreets,
 } from './cloudNoise.ts';
 
 /**
  * Round 68 (2026-09-24): the volumetric cloud layer's noise bakes off the main thread (the pattern of
- * skyCloudWorker.ts). The three buffers are posted as they finish, each transferred, smallest first so the
- * layer can upload the weather field and the detail volume while the shape volume is still baking.
+ * skyCloudWorker.ts). The buffers are posted as they finish, each transferred, smallest first so the layer can
+ * upload the blue-noise tile, the two weather fields and the curl and detail volumes while the shape volume is
+ * still baking (round 71 added the street field, the curl volume and the blue noise).
  */
 interface CloudNoiseRequest {
   seed?: number;
   shapeSize?: number;
   detailSize?: number;
   weatherSize?: number;
+  curlSize?: number;
+  blueSize?: number;
 }
 
 interface CloudNoiseWorkerScope {
@@ -42,10 +50,15 @@ workerScope.onmessage = ({ data }) => {
   const weatherSize = data?.weatherSize ?? CLOUD_WEATHER_SIZE;
   const detailSize = data?.detailSize ?? CLOUD_DETAIL_SIZE;
   const shapeSize = data?.shapeSize ?? CLOUD_SHAPE_SIZE;
-  const weather = bakeCloudWeatherMap(weatherSize, seed);
-  workerScope.postMessage({ kind: 'weather', size: weatherSize, pixels: weather }, [weather.buffer as ArrayBuffer]);
-  const detail = bakeCloudDetailVolume(detailSize, seed);
-  workerScope.postMessage({ kind: 'detail', size: detailSize, pixels: detail }, [detail.buffer as ArrayBuffer]);
-  const shape = bakeCloudShapeVolume(shapeSize, seed);
-  workerScope.postMessage({ kind: 'shape', size: shapeSize, pixels: shape }, [shape.buffer as ArrayBuffer]);
+  const curlSize = data?.curlSize ?? CLOUD_CURL_SIZE;
+  const blueSize = data?.blueSize ?? CLOUD_BLUE_SIZE;
+  const post = (kind: string, size: number, pixels: Uint8Array): void => {
+    workerScope.postMessage({ kind, size, pixels }, [pixels.buffer as ArrayBuffer]);
+  };
+  post('blue', blueSize, bakeCloudBlueNoise(blueSize, seed));
+  post('weather', weatherSize, bakeCloudWeatherMap(weatherSize, seed));
+  post('streets', weatherSize, bakeCloudWeatherStreets(weatherSize, seed));
+  post('curl', curlSize, bakeCloudCurlVolume(curlSize, seed));
+  post('detail', detailSize, bakeCloudDetailVolume(detailSize, seed));
+  post('shape', shapeSize, bakeCloudShapeVolume(shapeSize, seed));
 };

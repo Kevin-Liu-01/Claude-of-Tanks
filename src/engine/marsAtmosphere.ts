@@ -21,4 +21,7 @@ export const MARS_SKY_PRESET = Object.freeze({
   // sky), no ozone, a rust ground bounce. The dome stays dimmed to the galaxy; the dust glows near the key light.
   // The shared preset carries it so every map played under the Mars ruleset gets the same sky.
   atmosphere: { rayleighScale: 0.03, mieScale: 60, mieG: 0.76, ozoneScale: 0, mieTintHex: 0xe8895a, groundAlbedoHex: 0x9b6a48 },
+  // round 71 (2026-09-25): thin high water-ice clouds under the dust veil — the opt-in volumetric layer's cloudscape
+  // (the Mars ruleset applies this shared preset directly, so the block lives here, not on the map config)
+  cloudscape: { regime: 'thin-ice-clouds', windDirDeg: 212, tintHex: 0x8a6a62 },
 } satisfies MapSkyConfig);

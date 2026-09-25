@@ -101,6 +101,7 @@ import {
   getLocalizedMapName,
   resolveMapId,
 } from './world/maps/catalog.ts';
+import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
@@ -1476,7 +1477,14 @@ let battleWatchdogRadianceScale = 1;
 const battleAtmosphere = createBattleAtmosphereAccess(() => ({
   getGameMode: () => game.gameMode,
   getWorldRoot: () => currentWorld()?.group ?? null,
-  getAuthoredPreset: () => currentWorld()?.config.sky ?? {},
+  getAuthoredPreset: () => {
+    const config: MapCompositionConfig | undefined = currentWorld()?.config;
+    if (!config) return {};
+    const sky = config.sky ?? {};
+    // round 71: the map's authored cloudscape (its `clouds` block) rides with its sky block so the volumetric
+    // layer derives per map (cloudPresets.ts); the sky block itself stays byte-identical to the Garage's copy
+    return config.clouds ? { ...sky, cloudscape: config.clouds } : sky;
+  },
   applyPreset: (preset) => {
     sky.applyPreset(preset, scene);
     lighting.setSun(sky.sunDir, preset);

@@ -225,6 +225,8 @@ export default {
     forestHex: 0x323f30, haze: 1.0,
   },
 
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'hazy-altostratus', coverage: 0.60, cirrus: 0.35, baseM: 2800 },
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,
     // lighting_post r5: turbidity 5.5->4.0, mie 0.007->0.005, fog 0.00092->

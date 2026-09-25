@@ -107,6 +107,8 @@ export default {
     inhabit: { stalls: 4, benches: 3, coreClutter: 20, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 3, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   horizon: { baseHex: 0x56735c, amp: 0.46, style: 'rolling', treeline: 0.82, forestHex: 0x2d533b, rockHex: 0x7a8370, haze: 0.94, grain: 0.54 },
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'towering-cumulus', coverage: 0.34, windDirDeg: 80, towers: 0.6 },
   sky: { ...delta.sky, sunElevationDeg: 32, sunAzimuthDeg: 94, turbidity: 5.7, fogDensity: 0.00064, fogTintHex: 0x95b0b0, fogMix: 0.52, sunIntensity: 4.0, /* lighting 2026-09-13: was 3.7 */ cloudOpacity: 1.05, cloudOpacity2: 0.72 },
   minimap: { ...delta.minimap, base: [66, 101, 63], hard: [104, 102, 77], soft: [46, 80, 67] },
   shot: { pos: [-260, 49, -260], look: [52, -1, 90] },

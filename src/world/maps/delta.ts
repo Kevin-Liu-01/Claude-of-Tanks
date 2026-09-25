@@ -93,6 +93,8 @@ export default {
     baseHex: 0x436645, amp: 0.9, style: 'rolling', treeline: 0.96, treelineLayers: 3,
     forestHex: 0x244b2b, rockHex: 0x69705d, haze: 0.96, grain: 0.72,
   },
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'towering-cumulus', windDirDeg: 110 },
   sky: {
     sunElevationDeg: 38, sunAzimuthDeg: 104, turbidity: 6.2, rayleigh: 1.75,
     mieCoefficient: 0.0085, mieDirectionalG: 0.84, fogDensity: 0.00076,

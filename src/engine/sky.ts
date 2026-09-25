@@ -39,7 +39,8 @@ import {
   type CumulusBakeConfig,
 } from './skyCloudBake.ts';
 import { deriveCloudLayerPreset, type CloudLayerPreset } from './cloudPresets.ts';
-import { VolumetricCloudLayer, type CloudNoiseUpload, type CloudShadowCascades } from './volumetricClouds.ts';
+import type { CloudscapeConfig } from './cloudscapes.ts';
+import { CLOUD_NOISE_KINDS, VolumetricCloudLayer, type CloudNoiseKind, type CloudNoiseUpload, type CloudShadowCascades } from './volumetricClouds.ts';
 import { bakeCloudNoise } from './cloudNoise.ts';
 
 type ColorTriple = readonly [number, number, number];
@@ -87,6 +88,11 @@ export interface SkyPreset {
    * authored source of every map's cloud identity.
    */
   cloudLayer: Partial<CloudLayerPreset> | null;
+  /**
+   * Round 71 (2026-09-25): the map's authored cloudscape (its config's `clouds` block, engine/cloudscapes.ts),
+   * carried here by main.ts's authored-preset getter; null = the layer derived from the deck fields alone.
+   */
+  cloudscape: CloudscapeConfig | null;
 }
 
 interface CloudBakePixels {
@@ -483,6 +489,7 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   planetHex: 0xedf2ff,
   atmosphere: null,
   cloudLayer: null,
+  cloudscape: null,
 });
 
 /** Round 68: the complete default preset (the receipts merge a map's sky block over it as the rig does). */
@@ -1390,10 +1397,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         worker.terminate();
         cloudNoiseSettled = true;
       });
-      worker.onmessage = ({ data }: MessageEvent<{ kind: 'shape' | 'detail' | 'weather'; pixels: Uint8Array }>) => {
+      worker.onmessage = ({ data }: MessageEvent<{ kind: CloudNoiseKind; pixels: Uint8Array }>) => {
         cloudNoiseUpload[data.kind] = data.pixels;
         installCloudNoise();
-        if (cloudNoiseUpload.shape && cloudNoiseUpload.detail && cloudNoiseUpload.weather) {
+        if (CLOUD_NOISE_KINDS.every((kind) => cloudNoiseUpload[kind])) {
           if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
         }
       };
@@ -1412,12 +1419,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   /** Synchronous fallback: bake whatever the worker did not deliver (idempotent). */
   const ensureCloudNoise = (): void => {
     if (!volumetricClouds || volumetricClouds.noiseReady) return;
-    const missing = !cloudNoiseUpload.shape || !cloudNoiseUpload.detail || !cloudNoiseUpload.weather;
+    const missing = CLOUD_NOISE_KINDS.some((kind) => !cloudNoiseUpload[kind]);
     if (missing) {
       const bake = bakeCloudNoise();
-      cloudNoiseUpload.shape ??= bake.shape;
-      cloudNoiseUpload.detail ??= bake.detail;
-      cloudNoiseUpload.weather ??= bake.weather;
+      for (const kind of CLOUD_NOISE_KINDS) cloudNoiseUpload[kind] ??= bake[kind];
     }
     cloudNoiseSettled = true;
     installCloudNoise();

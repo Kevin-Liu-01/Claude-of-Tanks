@@ -48,6 +48,7 @@ import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowW
 import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
 import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpectrumTexels } from './oceanSpectrum.ts';
+import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaSectorBlend, type SeaOpening } from './edgeWater.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -309,6 +310,8 @@ export interface TerrainMapConfig extends HorizonMapConfig {
   splat?: SplatConfig;
   /** Round 66: the authored sea state of the map's water (oceanSpectrum.ts); omitted fields default per water kind. */
   ocean?: OceanConfig;
+  /** Round 71: the authored cloudscape of the volumetric layer (engine/cloudscapes.ts); omitted knobs default per regime. */
+  clouds?: CloudscapeConfig;
 }
 
 export interface TerrainLayout {

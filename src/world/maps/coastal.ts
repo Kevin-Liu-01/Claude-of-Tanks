@@ -219,6 +219,8 @@ export default {
     seaOpening: { azimuthDeg: 90, widthDeg: 118, level: -4.0 },
   },
 
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'sea-streets', windDirDeg: 190, farBand: 0.65 },
   sky: {
     sunElevationDeg: 38, sunAzimuthDeg: 115,
     turbidity: 2.8, rayleigh: 1.8, mieCoefficient: 0.004, mieDirectionalG: 0.80,

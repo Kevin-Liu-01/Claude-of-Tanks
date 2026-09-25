@@ -61,6 +61,8 @@ export default {
     inhabit: { stalls: 0, benches: 2, coreClutter: 20, drums: 10, trucks: 7, jeeps: 5, drumClusters: 5, camps: 3, modernClutter: 22, looseClutter: 18, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
   horizon: { baseHex: 0x6f795e, amp: 0.65, style: 'rolling', treeline: 0.60, forestHex: 0x394e37, rockHex: 0x7a7c70, haze: 0.90, grain: 0.42 },
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.38, streets: 0.35 },
   sky: { sunElevationDeg: 30, sunAzimuthDeg: 142, turbidity: 3.8, rayleigh: 1.5, mieCoefficient: 0.005, mieDirectionalG: 0.81, fogDensity: 0.00048, fogTintHex: 0x92a9b7, fogMix: 0.46, envIntensity: 0.24, cloudOpacity: 0.85, cloudOpacity2: 0.45, cloudTintHex: 0xf1f2ed, sunIntensity: 4.0, sunColorHex: 0xffedda, hemiIntensity: 0.40 },
   minimap: { base: [99, 111, 77], hard: [114, 118, 111], soft: [62, 80, 64], forest: 'rgba(46,71,41,.84)', forestStroke: 'rgba(27,44,25,.94)', water: 'rgba(61,91,99,.8)', waterStroke: 'rgba(33,60,69,.94)', roadCasing: 'rgba(37,39,37,.94)', roadFill: 'rgba(149,151,144,.96)', buildingFill: '#d0d0c4' },
   shot: { pos: [-294, 52, -310], look: [80, 1, 90] },

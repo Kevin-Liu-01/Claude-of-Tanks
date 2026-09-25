@@ -315,6 +315,8 @@ export default {
     rockHex: 0x424c66, snowHex: 0xdfe7f1, haze: 0.60,
   },
 
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'stratocumulus-deck' },
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse

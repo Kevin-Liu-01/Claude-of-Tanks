@@ -328,6 +328,8 @@ export default {
     forestHex: 0x565232, rockHex: 0x7d7663, haze: 1.08, grain: 0.6,
   },
 
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'cloud-streets', coverage: 0.28, streets: 0.9, cirrus: 0.2 },
   sky: {
     // high dry-season sun through light dust: warm-white light, hazy skirt.
     // r2: rayleigh up / turbidity + warm casts down — the first render came

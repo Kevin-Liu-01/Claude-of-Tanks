@@ -139,6 +139,8 @@ export default {
     forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.95, grain: 0.7,
   },
 
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'fair-weather-cumulus', streets: 0.45, coverage: 0.30 },
   sky: DEFAULT_GARAGE_SKY,
 
   minimap: {

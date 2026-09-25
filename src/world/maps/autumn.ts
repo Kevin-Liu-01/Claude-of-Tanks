@@ -356,6 +356,8 @@ export default {
     forestHex: 0x6a4d28, rockHex: 0x7a7260, haze: 0.95, grain: 0.7,
   },
 
+  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, windDirDeg: 100 },
   sky: {
     // low golden-afternoon sun — the light that sells the season
     sunElevationDeg: 24, sunAzimuthDeg: 115,
