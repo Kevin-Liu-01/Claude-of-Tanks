@@ -163,10 +163,20 @@ the KIT.fittings decoration census (`mg1+0d` on every Merkava, whose decoration
 is hand-authored). The same standard check run on a worktree at `8d1178d09`
 reads the identical gate / clip / contiguity / decoration verdict on every one
 of the 20 (0/20 pass there too, same hole cells and centroids), so none of the
-misses is introduced by this round. The release check therefore runs to
-completion on the two ids the standard check admits (`--ids=k2,m46_patton`:
-standard check, sealed ledger, module-visual-align probe, `npm test`,
-`build:private`); its result is in the lane's final report.
+misses is introduced by this round. The release check was therefore run on the two ids the standard check admits
+(`tank:release:check --ids=k2,m46_patton`, tree `933778878`): standard check
+2/2 PASS, sealed ledger PASS, combat-anatomy and presentation-centering checks
+PASS, module-visual-align and module-hit probes PASS, tank-assets, muzzle-bore
+and barrel-circularity PASS, `build:private` PASS (1,373 s). Two steps failed:
+`track-duplicate-audit` on the pre-existing M46 wheel overlay recorded under
+"Open after this round", and `npm test`, whose pre group passed 120 of 411
+receipts and then hung in `tools/existing-document-route.selftest.mjs` (a
+vite-server receipt; this worktree's `node_modules` is the symlinked shared
+tree, and its `.vite` optimizer cache was in use by three other lanes' vite
+processes — the documented shared-cache stall); the run was stopped after 23
+minutes on that receipt, no receipt failed on its own. The full `npm test` for
+this tree belongs to the integrator's landing chain on a quiet cache; the 57
+family, tool and typecheck receipts above are the lane's receipt evidence.
 
 ## Open after this round
 
