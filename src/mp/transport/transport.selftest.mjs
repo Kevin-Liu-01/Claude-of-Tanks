@@ -340,13 +340,21 @@ assert.equal(resumeUrl('wss://h/x?room=1', 'a b', 1), 'wss://h/x?room=1&resume=a
   assert.deepEqual(serverSeen.map((c) => [c.state, c.resumed ?? null]), [['reconnecting', null], ['open', true]]);
   assert.equal(impaired.client.stats.reconnects, 1);
 
-  // Either end closing closes the other's socket with the matching reason.
+  // Either end closing closes the other's socket with the matching reason, after the frames sent before it.
+  const lastWords = [];
+  impaired.client.onFrame((frame) => lastWords.push(frame[0]));
+  impaired.server.send(new Uint8Array([42]));
   impaired.server.close(TRANSPORT_CLOSE.SERVER, 'match_ended');
+  assert.equal(impaired.client.state, 'open', 'the close travels behind the data');
+  nowMs += 100;
+  impaired.pump();
+  assert.deepEqual(lastWords, [42], 'the frame sent before the close arrived');
   assert.equal(impaired.client.state, 'closed');
   const other = createLoopbackPair({ clock: () => nowMs });
   other.server.open();
   other.client.open();
   other.client.close();
+  other.pump();
   assert.equal(other.server.state, 'closed');
   assert.equal(other.client.send(new Uint8Array(1)), false);
 }

@@ -27,6 +27,12 @@ export interface LinkImpairment {
   jitterMs: number;
   /** Fraction of frames lost in [0, 1]. */
   loss: number;
+  /**
+   * Which frames the loss may take (all of them by default). An ordered socket
+   * never loses a frame, but a sender drops a stale snapshot under
+   * backpressure and a datagram transport loses inputs: a filter models those.
+   */
+  lossFilter?: ((frame: Uint8Array) => boolean) | null;
 }
 
 export interface LinkStats {
@@ -57,10 +63,12 @@ export interface LoopbackPairOptions {
 interface QueuedFrame {
   sentMs: number;
   dueMs: number;
-  bytes: Uint8Array;
+  /** null: a graceful close marker (the peer closes once everything sent before it has arrived). */
+  bytes: Uint8Array | null;
+  close?: { reason: TransportCloseReason; detail: string };
 }
 
-const NO_IMPAIRMENT: LinkImpairment = Object.freeze({ latencyMs: 0, jitterMs: 0, loss: 0 });
+const NO_IMPAIRMENT: LinkImpairment = Object.freeze({ latencyMs: 0, jitterMs: 0, loss: 0, lossFilter: null });
 const DEFAULT_MAX_FRAME_BYTES = 64 * 1024;
 
 function seededRandom(seed: number): () => number {
@@ -99,7 +107,8 @@ class Link {
 
   /** Queue a frame; returns false when the impairment lost it. */
   push(bytes: Uint8Array, nowMs: number): boolean {
-    if (this.impairment.loss > 0 && this.random() < this.impairment.loss) {
+    const lossy = this.impairment.loss > 0 && (!this.impairment.lossFilter || this.impairment.lossFilter(bytes));
+    if (lossy && this.random() < this.impairment.loss) {
       this.stats.lost++;
       return false;
     }
@@ -112,11 +121,23 @@ class Link {
     return true;
   }
 
-  /** Frames due at `nowMs`, oldest first. */
-  drain(nowMs: number, deliver: (bytes: Uint8Array) => void): number {
+  /** A graceful close: the peer observes it after every frame sent before it (a FIN behind the data). */
+  pushClose(nowMs: number, reason: TransportCloseReason, detail: string): void {
+    const dueMs = Math.max(this.lastDueMs, nowMs + this.impairment.latencyMs);
+    this.lastDueMs = dueMs;
+    this.queue.push({ sentMs: nowMs, dueMs, bytes: null, close: { reason, detail } });
+  }
+
+  /** Frames due at `nowMs`, oldest first; a due close marker ends the drain through `onClose`. */
+  drain(nowMs: number, deliver: (bytes: Uint8Array) => void, onClose: (reason: TransportCloseReason, detail: string) => void): number {
     let count = 0;
     while (this.queue.length && this.queue[0]!.dueMs <= nowMs) {
       const frame = this.queue.shift()!;
+      if (!frame.bytes) {
+        this.flush();
+        onClose(frame.close!.reason, frame.close!.detail);
+        break;
+      }
       this.bufferedBytes -= frame.bytes.byteLength;
       this.stats.delivered++;
       this.stats.lastDelayMs = frame.dueMs - frame.sentMs;
@@ -297,15 +318,15 @@ export function createLoopbackPair({
       if (server.state === 'open') server.transition('reconnecting', { reason, detail, attempt });
     },
     peerClosed(role, detail) {
-      upLink.flush();
-      downLink.flush();
       connectDueMs = null;
-      // The pair models one connection: either end closing closes the other's socket.
+      // The pair models one connection: either end closing closes the other's
+      // socket, after the frames it sent before closing have been delivered.
       const peer = role === 'client' ? server : client;
-      if (peer.state === 'closed' || peer.state === 'idle') return;
-      peer.transition('closed', {
-        reason: role === 'client' ? TRANSPORT_CLOSE.CLIENT : TRANSPORT_CLOSE.SERVER, detail,
-      });
+      const toCloser = role === 'client' ? downLink : upLink;
+      const toPeer = role === 'client' ? upLink : downLink;
+      toCloser.flush();
+      if (peer.state === 'closed' || peer.state === 'idle') { toPeer.flush(); return; }
+      toPeer.pushClose(clock(), role === 'client' ? TRANSPORT_CLOSE.CLIENT : TRANSPORT_CLOSE.SERVER, detail);
     },
   };
   client.attach(internals);
@@ -317,8 +338,11 @@ export function createLoopbackPair({
     pump(nowMs = clock()) {
       if (connectDueMs !== null && nowMs >= connectDueMs) finishConnect();
       let delivered = 0;
-      delivered += upLink.drain(nowMs, (bytes) => server.deliver(bytes, maxFrameBytes));
-      delivered += downLink.drain(nowMs, (bytes) => client.deliver(bytes, maxFrameBytes));
+      const closePeer = (peer: LoopbackTransport) => (reason: TransportCloseReason, detail: string) => {
+        if (peer.state !== 'closed' && peer.state !== 'idle') peer.transition('closed', { reason, detail });
+      };
+      delivered += upLink.drain(nowMs, (bytes) => server.deliver(bytes, maxFrameBytes), closePeer(server));
+      delivered += downLink.drain(nowMs, (bytes) => client.deliver(bytes, maxFrameBytes), closePeer(client));
       return delivered;
     },
     setImpairment(direction, impairment) {
