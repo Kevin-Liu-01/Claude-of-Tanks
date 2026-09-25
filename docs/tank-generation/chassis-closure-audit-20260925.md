@@ -129,6 +129,37 @@ shoulder above reads as painted armor from the chase ring and shows no dark
 interior from below; the K2 fender shoulder is a solid canted face on both
 sides.
 
+## Receipts (combined tree `00ced2cf8`)
+
+Per-id procedure for the 22 changed ids, every step exit 0: `presentation-centering
+--update --ids`, `tank:anatomy:update` (fleet), `genIcons --ids`, `tank:anatomy:check`
+(combat anatomy 192 receipts current, marking seats 192 current, module-hit probe
+0 FAIL / 0 outside-envelope), `presentation-centering --check --ids`; the
+regenerated payloads are commit `390a20708`.
+
+One receipt per call, all exit 0: sealed ledger gate for the 22 ids
+(`tank-sealed-check --ids --ledger --gate`), `tank-sealed-check.selftest`,
+`interior-fill-body-policy`, `interior-fill-selection`,
+`native-interior-fill-policy`, `coplanar-surface-overlap`, `section-slab-bounds`,
+`track-lane-boxes` (unchanged), `public-repo-hygiene`, `attribution:check`,
+`typecheck`, and the 46 family receipts under `src/vehicles/` whose names carry
+merkava / patton / bradley / marder / t64 / russia / ukraine / misc / amx30 /
+t14 / k2 / modern2 / modern3 / afv (including `bradleyHullClosure`,
+`merkava2Fit`, `merkavaRunningGear`, `amx30X`, `t14XReturnRollers`).
+
+`tank:release:check --gate` cannot be run for any of the 22 in a current tree:
+of the ids with a `docs/geometry-gate` row, `merkava1b`, `merkava3c`,
+`merkava3d` and `m46_patton` register community-recovered oracles whose GLBs
+exist only as `.glb.bak` archives (the gate reports "registered fleet comparison
+oracle unavailable"), `k2` has no comparison registration any more, and the
+remaining rows were below the 90 floor before this round (t64bv1 89.5, t14
+59.9, amx30 83.8, amx30b2 82.8, marder1a3 82.4, m2a2_bradley 53.4, merkava2b
+39.6, merkava2d 34.9, ua_t64bv 24.9, m48 59.6; type74 / m60a1 / m60a3 /
+m3a3_bradley 0). The un-gated release check (`tank:release:check --ids=<22>`:
+standard check, sealed ledger, module-visual-align probe, `npm test`,
+`build:private`) is the release receipt for this round — its result is in the
+lane's final report.
+
 ## Per-id evidence
 
 Sorted by chase-ring opening pixels on the base tree, then total openings.
