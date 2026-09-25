@@ -36,6 +36,8 @@
     "test": "node tools/run-selftests.mjs core",
     "posttest": "node tools/run-selftests.mjs post",
     "server:signal": "node server/signalingServer.ts",
+    "jev:dev": "node server/jev/main.ts",
+    "test:jev": "node server/jev.selftest.mjs && node src/game/jevCommander.selftest.mjs",
     "selfhost:config": "docker compose --env-file .env -f compose.selfhost.yaml config",
     "multiplayer:config": "docker compose --env-file .env.multiplayer -f compose.multiplayer.yaml config --quiet",
     "prebuild": "npm run i18n:validate",

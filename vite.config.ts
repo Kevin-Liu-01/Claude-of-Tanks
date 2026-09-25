@@ -184,6 +184,12 @@ export default defineConfig({
     },
   ],
   server: {
+    // Jev commander dev path (docs/JEV-COMMANDER.md): the dev server has no function runtime, so the
+    // same-origin /api/jev route forwards to the local proxy (`npm run jev:dev`, port 8794). A battle with
+    // the proxy down simply falls back to the classic brain; VITE_JEV_URL overrides the route entirely.
+    proxy: {
+      '/api/jev': { target: process.env.COT_JEV_DEV_URL || 'http://127.0.0.1:8794', changeOrigin: false },
+    },
     warmup: {
       // same reachable set as the preload links: pre-transform in parallel at
       // server start, so the browser's preload wave hits a warm cache

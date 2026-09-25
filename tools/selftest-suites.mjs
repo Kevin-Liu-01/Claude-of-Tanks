@@ -826,6 +826,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/ice.selftest.mjs',
     'server/telemetryRecord.selftest.mjs',
     'server/telemetry.selftest.mjs',
+    'server/jev.selftest.mjs',
     'server/distributedRoomStore.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
     'server/mapResourceCache.selftest.mjs',
