@@ -752,6 +752,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/roomActor.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
+    'tools/mp-rooms-e2e.selftest.mjs',
     'src/net/net.selftest.mjs',
     'src/net/signalEndpoint.selftest.mjs',
     'src/net/signalingRoomRoute.selftest.mjs',
