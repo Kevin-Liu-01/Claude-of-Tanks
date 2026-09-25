@@ -34,4 +34,15 @@ assert.match(privateRoomFailurePresentation('resume_denied').detail, /not take t
 assert.match(privateRoomFailurePresentation('kicked').title, /Removed/,
   'a host-removed seat is not described as a voluntary departure');
 assert.equal(privateRoomFailurePresentation(new Error('secret-server-detail')).code, 'connection_failed');
+// entry resilience (2026-09-25): the 60 s WebRTC timeout names the missing relay when the room was direct-only
+const degraded = privateRoomFailurePresentation({ code: 'rtc_connect_timeout' }, { iceDegraded: true });
+assert.match(degraded.detail, /direct connections only/i, 'a direct-only room blames the missing relay, not the host');
+assert.match(degraded.detail, /60 seconds/, 'the detail names the timeout the player just waited through');
+assert.equal(degraded.title, privateRoomFailurePresentation('rtc_connect_timeout').title, 'the title is unchanged');
+assert.doesNotMatch(privateRoomFailurePresentation('rtc_connect_timeout', { iceDegraded: false }).detail, /direct connections only/i,
+  'a room with a relay keeps the generic timeout detail');
+assert.doesNotMatch(privateRoomFailurePresentation('connection_failed', { iceDegraded: true }).detail, /direct connections only/i,
+  'only the WebRTC timeout carries the direct-only detail');
+assert.equal(degraded.editSettings, true);
+
 console.log('privateRoomFailurePresentation.selftest: every failure has safe actionable copy and terminal retry policy');

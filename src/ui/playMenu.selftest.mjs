@@ -118,3 +118,15 @@ for (const [optionTop, optionBottom, initialScroll, expected] of [
 }
 assert.equal((source.match(/revealMenuSelectOption\(list, /g)||[]).length,2,
   'opening and keyboard navigation share the same list-only reveal');
+
+// entry resilience (2026-09-25): a direct-only room is visible in the lobby note and in the beacon, and the 60 s
+// WebRTC timeout names the degraded ICE when that was the room's state.
+assert.match(source, /if \(connection\.ice\.source === 'host-fallback'\) \{[\s\S]{0,200}kind: 'ice_degraded', reason: connection\.ice\.degradedReason \|\| 'host_fallback'/,
+  'adopting a host-fallback room beacons the degraded reason code');
+assert.match(source, /const iceDegraded = mode === 'private' && !!roomIce && !roomIce\.relayAvailable;\s*const failure = privateRoomFailurePresentation\(error, \{ iceDegraded \}\);/,
+  'the failure panel tells the presentation whether the room was direct-only');
+assert.match(source, /kind: 'room_failure', code: failure\.code/, 'every failure panel beacons its classified code');
+assert.doesNotMatch(source, /kind: 'room_failure'[^\n]*(?:roomCode|hostName|codeInput\.value)/, 'the beacon never carries the room code or host name');
+assert.match(source, /relayNote = mode === 'private' && roomIce && !roomIce\.relayAvailable\s*\? t\('playMenu\.note\.relayUnavailable'\)/,
+  'the lobby note keeps the direct-only sentence');
+console.log('playMenu.selftest: ICE degradation is visible in the note, the timeout detail and the beacon');

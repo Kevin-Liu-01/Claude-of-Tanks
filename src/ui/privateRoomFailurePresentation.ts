@@ -62,15 +62,26 @@ const COPY_KEYS: Record<PrivateRoomFailureCode, { titleKey: string; detailKey: s
   },
 };
 
-function resolveCopy(code: PrivateRoomFailureCode): FailureCopy {
+/** Entry resilience (2026-09-25): what the room already knew when the failure arrived. */
+export interface RoomFailureContext {
+  /** The room fell back to host candidates only (iceConfig.ts host-fallback): no relay was available. */
+  iceDegraded?: boolean;
+}
+
+function resolveCopy(code: PrivateRoomFailureCode, context: RoomFailureContext): FailureCopy {
   const keys = COPY_KEYS[code];
-  return { title: t(keys.titleKey), detail: t(keys.detailKey) };
+  // A 60 s WebRTC timeout in a direct-only room is almost always the missing
+  // relay, not an absent host; the detail says so instead of the generic text.
+  const detailKey = code === 'rtc_connect_timeout' && context.iceDegraded
+    ? 'playMenu.roomFailure.rtcConnectTimeout.detailDirectOnly'
+    : keys.detailKey;
+  return { title: t(keys.titleKey), detail: t(detailKey) };
 }
 
 /** Only curated text reaches the room error surface; transport prose may contain sensitive data. */
-export function privateRoomFailurePresentation(error: RuntimeValue) {
+export function privateRoomFailurePresentation(error: RuntimeValue, context: RoomFailureContext = {}) {
   const failure = classifyPrivateRoomFailure(error);
-  return { ...failure, ...resolveCopy(failure.code),
+  return { ...failure, ...resolveCopy(failure.code, context),
     editCode: failure.code !== 'signaling_unavailable',
     editSettings: failure.code === 'signaling_unavailable' || failure.code === 'access_denied'
       || failure.code === 'rtc_connect_timeout' || failure.code === 'connection_failed',

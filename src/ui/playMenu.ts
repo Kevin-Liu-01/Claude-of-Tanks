@@ -21,6 +21,8 @@ import {
 import { resolveIceConfigUrl, resolveSignalUrl } from '../net/signalEndpoint.ts';
 import { normalizePlayMode, type PlayMode } from '../net/playMode.ts';
 import { isIntentionalRoomCloseReason } from '../net/roomFailure.ts';
+// entry resilience (2026-09-25): room failure codes and ICE degradation are beaconed (never prose or codes of rooms)
+import { getEntryTelemetry } from '../entry/telemetry.ts';
 import { privateRoomFailurePresentation } from './privateRoomFailurePresentation.ts';
 export type { PlayMode } from '../net/playMode.ts';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.ts';
@@ -1101,6 +1103,12 @@ export function createPlayMenu({
     session = connection.session;
     role = connection.role;
     roomIce = connection.ice;
+    // A room that fell back to host candidates is visible in the lobby note
+    // (renderLobbyNote) and in the funnel: the degraded reason code, nothing else.
+    if (connection.ice.source === 'host-fallback') {
+      getEntryTelemetry().send({ kind: 'ice_degraded', reason: connection.ice.degradedReason || 'host_fallback',
+        mode: mode === 'lan' ? 'lan' : 'private' });
+    }
     clearFailure();
   }
 
@@ -1198,7 +1206,11 @@ export function createPlayMenu({
   }
 
   function showFailure(error: RuntimeValue): void {
-    const failure = privateRoomFailurePresentation(error);
+    // A 60 s WebRTC timeout in a direct-only room names the missing relay (entry resilience 2026-09-25).
+    const iceDegraded = mode === 'private' && !!roomIce && !roomIce.relayAvailable;
+    const failure = privateRoomFailurePresentation(error, { iceDegraded });
+    getEntryTelemetry().send({ kind: 'room_failure', code: failure.code, mode: mode === 'lan' ? 'lan' : 'private',
+      ...(iceDegraded ? { reason: roomIce?.degradedReason || 'host_fallback' } : {}) });
     failurePanel.dataset.reason = failure.code;
     failureTitle.textContent = failure.title;
     failureDetail.textContent = failure.detail;
