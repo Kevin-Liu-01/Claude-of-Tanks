@@ -84,10 +84,7 @@ export interface LagCompensation extends ShellRewindHook {
   readonly currentTick: number;
 }
 
-export function createLagCompensation({ entities, tickMs = SIM_DT * 1000 }: {
-  entities: readonly AuthoritativeEntity[];
-  tickMs?: number;
-}): LagCompensation {
+export function createLagCompensation({ entities }: { entities: readonly AuthoritativeEntity[] }): LagCompensation {
   const history = createPoseHistory({ capacityTicks: POSE_HISTORY_TICKS, maxSlots: 64 });
   const slots = new Map<AuthoritativeEntity, number>();
   const rewindByShooter = new Map<string, number>();

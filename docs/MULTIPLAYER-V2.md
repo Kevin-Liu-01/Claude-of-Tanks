@@ -286,6 +286,91 @@ in Wrangler/Vercel configuration; nothing is committed.
 Every lane commits after each verified step, keeps the sim modules untouched, adds receipts to
 `tools/selftest-suites.mjs`, and reports exit codes. No lane deploys; the integrator deploys.
 
+## 11. Server (phase 1, lane `match-server`, 2026-09-25)
+
+What landed on `mp/match-server`, measured rather than claimed.
+
+### Module layout
+
+```
+src/mp/wire/            the binary schema both sides share (pure TS; README.md is the client's contract)
+  constants.ts          message types, close reasons, teams/phases/verdicts, flags, row groups, limits, scales
+  messages.ts           the TypeScript shape of every message, row, patch and frame
+  bytes.ts              ByteWriter / ByteReader (LE, varint, bounded strings), WireError
+  quantize.ts           mm / cm/s / u16-turn / 2 ms conversions
+  rows.ts               entity row groups, delta vs baseline, ERA and destroyed index lists
+  codec.ts              encodeMessage / decodeMessage (never throws), buildSnapshotPacket / applySnapshotPacket
+  era.ts                ERA cassette index <-> plate name from the spec's plate order
+src/sim/poseHistory.ts  400 ms pose ring per entity slot (new); authoritativeMatch.ts: `shellRewind` seam, cap 14 -> 64
+server/match/           main.ts (env, drain) · service.ts (/healthz, /metrics, /match upgrade, admission, registry)
+                        matchActor.ts (one room) · loop.ts · inputBuffer.ts · lagCompensation.ts · publisher.ts
+                        entityRows.ts · seatToken.ts · localRoomService.ts · link.ts · chat.ts · log.ts · metrics.ts
+                        Dockerfile (+ Dockerfile.dockerignore), README.md
+tools/mp-soak.mjs       the headless wire soak (npm run test:net:v2:soak; --short is the core receipt)
+```
+
+### Wire schema summary
+
+One binary WebSocket frame per message: `u8 wireVersion`, `u8 type`, fixed layout, little-endian,
+varint lengths, bounded strings, a finite `CLOSE_REASON` enum. Client → server: HELLO (protocol
+version, capabilities, seat token), INPUT (the last three ticks of controls: `i8` throttle/steer,
+flags, `u16` aim yaw, `i16` aim pitch, `u16` aim distance in 5 cm, shell slot, `u16` fireSeq,
+`u16` actionSeq, action bits; plus client tick, snapshot ack, interpolation delay), SNAPSHOT_ACK,
+PING, CHAT, LEAVE. Server → client: WELCOME (rates, seat, entity id, team, tick/time, seed,
+map, mode, ruleset JSON, roster), SNAPSHOT (tick, time, keyframe flag, base tick, acked input
+tick / fireSeq / actionSeq, input margin, phase / countdown / battle time / verdict /
+destructible revision, destroyed index list, entity rows, removed ids, shells, the viewer's
+prediction section, mode state JSON), EVENT (kind byte + bounded JSON payload), PONG, CLOSE,
+ERROR. Rows: `u8` entity id, a varint group mask, then only the present groups — position
+`3 × i32` mm (or `3 × i16` relative), speed + vertical speed `i16` cm/s, five angles `u16` turns
+(tilt also as `i8` deltas), hp/maxHp `u16`, reload channels `u16` in 2 ms steps, magazine
+`u8 × 2`, ammo varints, a `u16` status word (reload kinds, slot, gun-reload mirror bit, nine
+flags), ERA cassettes as gap-coded spec-order plate indices. Entity ids are 1..64, seats 0..63.
+
+### Lag-compensation rule
+
+Every sweep of a shell fired by a seated player tests every other tank at the pose it had
+`R` ticks earlier, `R = round((owd + interp) / tickMs)` clamped to `[0, 15]` (250 ms): `owd`
+is the server's own measurement (half the median of the last eight round trips, each from a
+snapshot's send time to the first acknowledgement of its tick), `interp` the interpolation delay
+the client reports in every INPUT. `R` holds for the shell's whole flight, so the reticle is
+truthful at any range and a victim is hit at most 250 ms "in the past". The rewind wraps the
+whole sweep (trace, damage localization, exit trace, HE bursts) through one additive seam in
+`authoritativeMatch.ts` and restores the live poses before the next shell; bots and spectators
+never rewind. `src/sim/poseHistory.selftest`: a target displaced 6 m after the shooter looked is
+missed live and hit rewound.
+
+### Measured
+
+| What | Number |
+|---|---|
+| Full entity row (keyframe, typical tank) | 44 B mean; worst distinct gun channel + 3 ERA cassettes 53 B |
+| Typical moving delta row (pos rel, velocity, yaw, tilt rel, turret) | 16 B |
+| 28-entity keyframe incl. viewer section | 1473 B; delta snapshot 489 B; snapshot header 41 B |
+| Input frame (3 controls) | 57 B (1.7 KB/s at 30 frames/s, 3.4 KB/s at 60) |
+| Tick p95, 28 bots, dedicated shards, headless | winter 1.53 · mars 1.82 · alpine 3.99 · badlands 2.03 · delta 3.11 · steppe 2.79 · monsoon 2.68 ms |
+| Tick p95, 28 bots + 28 acknowledging viewers | 3.79 · 2.48 · 3.76 · 3.79 · 3.70 · 2.27 · 4.17 ms (budget 6) |
+| Egress per spectator viewer (all 28 rows, deltas) | 26–29 KB/s |
+| Short soak (4 clients, 40 ± 10 ms, 2 % loss) | ack lag p50 67 / p95 88 ms (RTT p95 97), max pose step 0.34 m, tick p95 0.64 ms, 4.9 KB/s down / 1.8 KB/s up per client, lag comp removed 0.45 m mean reticle mismatch |
+| Container | three stages (`node:24-alpine` deps, pruned sources, plain Alpine + stripped node binary): 291 MB in `docker image ls` (Docker 29 containerd store counts compressed + unpacked), 216 MB unpacked layers, 75 MB compressed content; `/healthz` ready ≈ 3 s after start |
+
+### Open
+
+- The client lane's real prediction/interpolation against this server (the soak's sampler is a
+  stand-in): the pose-step gate is measured with linear interpolation and one interval of
+  extrapolation, not with `localTankPrediction`.
+- The full 28-client, 5-minute soak (`npm run test:net:v2:soak`, memory drift gate) was run
+  short; the long run is the integrator's certification step.
+- Phase changes reach seated viewers only through snapshot meta (the authority's reveal rule
+  hides `match_started` from entities); `roster` / `chat` / `admin` events are server-originated.
+- Mode presentation state and events travel as bounded JSON inside the binary frames; a
+  fixed-layout mode state can replace it when a mode's HUD contract is final.
+- One additive seam and the roster cap (14 → 64) touched `src/sim/authoritativeMatch.ts`; the
+  Room Durable Object (phase 2) replaces `LocalRoomService` and drives `createActor` / verdicts.
+- The image runs Node 24's native type stripping (no enums, namespaces or parameter properties
+  in the closure); the legacy Docker builder ignores `Dockerfile.dockerignore`, so the Dockerfile
+  prunes in a `sources` stage instead.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** Run the match containers in the existing Cloudflare account (Workers

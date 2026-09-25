@@ -128,13 +128,31 @@ max, clients, bytes, snapshot/keyframe/drop counts, lag-compensation stats).
 
 ## Container
 
-`server/match/Dockerfile` (`node:24-alpine`, production dependencies only,
-runs `node server/match/main.ts` through Node's native type stripping):
+`server/match/Dockerfile`: a `node:24-alpine` deps stage (production dependencies
+pruned to `three`'s ESM build plus the four `examples/jsm` directories the
+vehicle and world modules import, and `ws`; the node binary stripped), a
+`sources` stage that drops receipts, docs and the browser-only subsystems, and a
+plain Alpine runtime with the node binary that runs `node server/match/main.ts`
+through Node's native type stripping. Measured 2026-09-25 (Docker 29, colima):
+291 MB in `docker image ls` (the containerd store counts compressed + unpacked),
+216 MB of unpacked layers, 75 MB compressed content; `/healthz` answers about
+3 s after start. `Dockerfile.dockerignore` trims the BuildKit context; the
+legacy builder ignores it, which is why the Dockerfile prunes in stages.
 
 ```
 docker build -f server/match/Dockerfile -t cot-match .
 docker image ls cot-match
 docker run --rm -p 8791:8791 -e COT_MATCH_SEAT_SECRET=<secret> cot-match
+```
+
+The in-container closure check (the pruned tree must still load every map,
+vehicle and `three` module the actor needs):
+
+```
+docker run --rm cot-match node --input-type=module -e "import { createMatchActor } from '/app/server/match/matchActor.ts';
+const bots = []; for (let i = 0; i < 28; i++) bots.push({ playerId: 'b' + i, name: 'b', team: i < 14 ? 'alpha' : 'bravo', specId: i % 2 ? 't90m' : 'm1a2' });
+let now = 0; const actor = createMatchActor({ roomId: 'smoke', mapId: 'alpine', seed: 1, seats: [], bots, world: 'dedicated', countdownS: 0, now: () => now, schedule: () => () => {} });
+for (let t = 0; t < 120; t++) { now += 1000 / 60; actor.advance(now); } console.log(actor.tick); actor.stop();"
 ```
 
 ## Receipts

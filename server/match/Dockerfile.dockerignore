@@ -1,14 +1,29 @@
-# BuildKit applies this file when building with -f server/match/Dockerfile: the context is
-# only what the image copies (sources, the service, its collision shards, the perf table).
+# BuildKit applies this file when building with -f server/match/Dockerfile: the context holds only
+# what the image copies, and inside those trees no receipts, docs or browser-only subsystems.
 *
 !package.json
 !package-lock.json
-!src
-!server
-!docs/references/perf
 !LICENSE
 !LICENSE-POLICY.md
-!LICENSES
 !NOTICE.md
+!docs/references/perf
+!src/authorship.ts
+!src/runtimeTypes.ts
+!src/mp
+!src/sim
+!src/vehicles
+!src/world
+!src/engine
+!src/fx
+!src/game
+!src/net
+!src/ui
+!server
+server/world-collision-manifests/**/*.bak
 **/node_modules
 **/.DS_Store
+**/*.selftest.mjs
+**/*.test-support.mjs
+**/*.md
+!NOTICE.md
+!LICENSE-POLICY.md

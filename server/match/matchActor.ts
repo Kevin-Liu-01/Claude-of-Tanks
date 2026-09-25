@@ -239,7 +239,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       worldCollision: collision,
       shellRewind: { begin: (shell) => bound.hook?.begin(shell), end: (shell) => bound.hook?.end(shell) },
     });
-    lagComp = createLagCompensation({ entities: authority.entities, tickMs: TICK_MS });
+    lagComp = createLagCompensation({ entities: authority.entities });
     bound.hook = lagComp;
   } catch (error) {
     releaseWorld();

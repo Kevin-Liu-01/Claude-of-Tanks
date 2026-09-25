@@ -19,6 +19,9 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 - `signalingServer.ts` owns HTTP upgrade, origin/rate/payload gates, and relay.
 - `dedicatedMatchRegistry.ts` owns authenticated match lifecycle and reconnects.
 - `dedicatedMatchServer.ts` owns the authoritative WebSocket service boundary.
+- `match/` is the Multiplayer v2 match service (`docs/MULTIPLAYER-V2.md` §11): one
+  process, N `MatchActor`s, the binary wire in `src/mp/wire`, seat tokens from the room
+  service, lag compensation, 30 Hz interest-managed snapshots, `server/match/README.md`.
 - `rankedMatchmaker.ts` owns bounded queues, team balance, and match-ticket handoff;
   `ratingStore.ts` owns bearer identities, persistent Elo, and idempotent results.
 - `dedicatedWorldCollision.ts` inflates match-local state from generated
