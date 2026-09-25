@@ -1694,7 +1694,8 @@ moved.
 
 **Open.** The moored hull is static (no bob or sway on the sheet); Saltwind's piers keep their authored 19 m rather than
 the shelf-sized length; a wrack line's stations past a landing re-roll whenever a keep-out moves — a per-station draw
-budget in strandWrack would freeze them.
+budget in strandWrack would freeze them. (All three closed by round 67: the hull bobs and sways
+render-side, the piers are sized to the shelf, and every station draws from its own stream.)
 ### Round 60 — 2026-09-24: the last bot against a passive target
 
 Shared main sat at 14/124 after round 48 — Tidegate Polders 3/4, Whiteout 2/4, one seed each on Desert, Frosthollow,
@@ -2053,7 +2054,7 @@ exercised by roadContinuity, roadStations, roadCutRecovery, shoreDirtMask and ma
 
 **Still open.** The record's solid body was split in round 63 (2026-09-24): the deck part from the crown line (1.0 m,
 over the 0.9 m floor test), abutments, piers and four vault bands per arch, so shells pass the openings and a hull low
-enough passes beneath (see the round-63 section). The deck clearance is the 2.4 m default (author
+enough passes beneath (see the round-63 section; the bands were halved to 0.1375 m in round 67). The deck clearance is the 2.4 m default (author
 `deckClearM` for a taller span — the arches' rise is 1.1 m over an 8.7 m chord); the 7 % approach peaks near 10 %
 through the smoothstep's middle. The road's splat tint stays on the bed under the deck (the road distance is not
 exempted) and is hidden by the slab from every gameplay height. The Delta river keeps its round-1 ruined bridge (no
@@ -2156,8 +2157,9 @@ in which no round is wasted is simply shorter, on every map. The two levers meas
 taking one-in-four shots (iteration 4) added 12 s of median for more rounds spent, and the 20 s dwell (iterations 2 and
 5) added 7–9 s and a cap. Lifting it into the band would take an opening the bots spend longer in — the deployment
 window (`DEPLOYMENT_TUNING`, 120–165 s, engagement inside 85–100 m) is the owner's lever, not this round's. Open with
-it: the press point's ring has no third bearing once both side points stand on water (Polders 2 pressed straight in),
-and the empty rack's retirement is a draw by design — a resupply rule would be the alternative, and there is none.
+it: the press point's ring has no third bearing once both side points stand on water (Polders 2 pressed straight in;
+closed by round 67 with land-only fallback bearings), and the empty rack's retirement is a draw by design — a resupply
+rule would be the alternative, and there is none.
 ### Round 63 — 2026-09-24: Tarkhan's railway cutting and the bridge's open arches
 
 Round 57's open item on Tarkhan Steppe (the siding stopped at the rim foot — the station road climbs the rim at 24 %,
@@ -2414,6 +2416,154 @@ heavy aerosol (mieScale 80–150) would make a flat grey sky at 0.4 luminance wh
 layer, the next lane (volumetric clouds lit by this atmosphere). A per-map `atmosphere.mieScale` override exists if
 the owner wants a milkier sky meanwhile. The sun-side wash of the legacy dome is gone by construction. The calibration
 hook `window.__ATMO_CALIBRATION` (pre-boot) and `?atmosphere=off` stay as QA switches.
+thumbnail, 4K hero and tactical-map plate predate the cutting. (Closed by round 67: the tunnel portal and
+gallery, the batters' seeding, the vault bands halved, and the thumbnail / hero / plate closed as render noise; the
+ring's seating rule stays open.)
+
+### Round 67 — 2026-09-24: the open notes closed
+
+The small notes rounds 58–63 left open, one commit each (lane r67-open-notes from 47103edf4, the round-63 tip; A = a
+pristine detached worktree at that commit, B = this lane; `tools/map-view-probe.mjs` at seed 1337 under the probe
+mutex, one run at a time, judged on 1280 px reductions and 2× crops in `$SP/r67/cap/`; numbers in `$SP/r67/`; the
+A/B pixel figures below are the world band between the roster panels, above the HUD bar, |Δluma| > 8 = "moved").
+
+**1. Tarkhan's tunnel portal (railSpurs.ts `railCuttingTunnel`, mapKits.ts `dressRailTunnelPortal`, horizon.ts).**
+A spur that leaves the square through a cutting now runs on down the valley to a portal derived from the cutting,
+never authored. The horizon ring's first authored ridge stands rim + 200 m on every style (`horizonRowMargins`,
+now `HORIZON_FIRST_RIDGE_MARGIN_M`, held equal to `RAIL_TUNNEL_RIDGE_RUN_M` by the receipt) and meanders ±3 %, so
+the headwall stands 125 m past the path's end on the valley's radial — before the ridge's foot can wander — and a
+75 m masonry gallery runs from it to the ridge line, its roof meeting the face wherever the face has climbed to it.
+The approach bends from the line's heading onto the radial on a 90 m curve (5.1 m off the axis, on the floor), 33
+spans of the same lay on the outland bed. The portal: an 18 × 10.5 m headwall with a segmental arch the width of the
+8 m floor (spring 4.5 m, rise 2.5 m — the bridge's arc vocabulary), stepped wing walls splayed 35° down the valley,
+gallery walls, roof and rear plate in the map's stone; behind the arch a dark bore 7 m deep with no interior — dark
+walls, a dark ceiling and a dark floor rising at 45° into the dark, which is what hides the ring face that runs
+through any bore (the face rises 32 m over the 47 m between the last seated row and the ridge row: no bore could be
+dug into it). The ring's seated rows inside the corridor now lie EXACTLY on the outland bed to the first authored
+ridge row (the hand-over share stands down with the seat weight — it had left rows 3–4 0.5–3.4 m over the bed at
+100–145 m out, where the approach would have run under the ring); every other map's ring is unchanged (share × 1)
+and the ridge row keeps its height to the bit. One compound record, kind `tunnel-portal`, closes the valley at the
+headwall's plane: the gallery block (hw 5.5, hl 38.25) and a flank wall each side to the floor's edge (hw 22.1), so
+no hull drives into the drawn ridge anywhere across the 88 m floor (the cliff rule already holds it off the batters;
+nothing else stops a hull past the red line — the sim's height field continues the bed and the ring has no
+collision). Measured (headless): the 99 approach sleepers on the bed at grade (worst 0.050 m, the seat sink), the
+ring's foot row at run 142 on the bed and the ridge at run 190 at 37.0 m inside the gallery's reach, 71 ring
+vertices seated in the notch and no ridge row moved. Tarkhan's shard recaptured headless: 2430 / 921 / 1302 raw
+(+1 obstacle, +1 collider: the portal), census 2442 / 2153 / 1314 re-pinned, 1239550 B under the ceiling; bots
+untouched (the grid stops at the square). Captures: `cutting-exit-bird` — A: the empty valley to the ring's first
+ridge; B: the track running down the valley into a masonry portal whose bore reads black, the gallery roof a light
+slab running back into the ridge, wing walls splayed on the floor (29.4 % moved, mean |Δ| 13.3/255);
+`cutting-portal-low` (new, from the bed at the map edge looking down the valley — 48 views, `map-probe-runtime`
+re-pinned) — A: the bare floor to the ridge with the hump the hand-over left; B: the rails curving right onto the
+radial and running into a shaded headwall with a black arch, the ridge behind (8.8 %, 3.6/255);
+`cutting-station-low` — the ridge through the mouth as before, the portal off the sightline to the right at 240 m
+(5.5 %, 2.0/255); `centre-far` / `bird-w` frame noise (0.8–1.0/255). The lane's first A run was killed by another
+lane while it waited on the mutex; the A frames were re-taken (`a2`) and are byte-identical on `cutting-exit-bird`.
+
+**2. The batter faces seed grass and scrub (railSpurs.ts `railCuttingFaceSeedAt` / `railCuttingSeedAdmits`,
+terrain.ts `_batterSeedAt`, vegetation.ts).** The `_noVeg` exclusion keeps the floor, the cess and the whole face
+bare for trees, rocks and scattered props as before; the height field now also publishes `_batterSeedAt` (read on
+the uncut ground like the exclusion, absent on every map without a cutting): a weight on each batter face that is 0
+up to a third of the face's rise and climbs to 0.45 at the daylight line. The tuft and bush seeders take the
+weight's share of their candidates on the face (a deterministic per-position trial — the bits of the coordinates
+hashed, no stream draw, no cell pattern) and relax their 0.78 slope gate to 0.5 there (the batter is 55°, normal.y
+0.57), so the batter reads as sparse growth in the rock thickening toward the daylight line, not a sward. The deep
+faces at the map edge lie beyond the tuft seeder's 474 m rim-band cull, which culled every candidate before it
+drew: a candidate the weight admits now passes that cull (the first B frame showed the deep faces bare); scrub
+keeps its 470 m limit — relaxing it would shift the shared bush stream across the whole map. Headless: the
+production filters admit 1,565 tufts of 60k candidates over the corridor, none on the floor or the cess; the admitted
+share equals the mean weight (0.22 of 0.23); the `_batterSeedAt` publication is a declared round-67 delta in
+`tools/road-constructor-history-fixture.mjs`. Captures: `cutting-edge-low` 2× crops — A: bare rock faces; B: sparse
+golden tufts on the upper two thirds of both faces, thickest under the daylight line, the lower third and the cess
+bare (2.8 % moved, 1.2/255 — small tufts on a wide face).
+
+**3. The bridge's vault bands halved (mapKits.ts `BRIDGE_VAULT_BAND_M` 0.3 → 0.15).** Eight 0.1375 m bands per arch
+instead of four 0.275 m ones; every haunch edge lies on the arc at its band's middle height, so a shell's height
+error against the arc is at most half a band, 6.9 cm (13 cm before — the note's "a shell within a band's height of
+the arc may meet stone the eye sees through or pass a sliver of it"). The deck part (the navigation's floor), the
+abutments, the piers and the parapets are byte-identical; `bridgeDeckNavigation.ts` is untouched; the record is
+31 → 55 parts. Amberford's shard recaptured headless on this tree (5873 / 5727 / 5822, census unchanged, 1829051 →
+1830655 B under the round-63 ceiling; dated notes in the census and storage receipts). The round-63 shell traces
+(`$SP/r67/bridge-trace-{base,new}.txt`) read the same: every level shot 0.15–1.3 m over the water passes all three
+arches, 1.6 m and over meets the deck, a pier, the deck and a parapet stop a shell, the oblique bank shot meets the
+haunch, a 1.5 m body passes under the middle arch and a 2.2 m body is stopped by the deck.
+
+**4. The moored hull bobs and sways (maps/mooredHullMotion.ts, mapKits.ts `AnimatedDressing`, props.ts).** The kit lays
+the hull into the wood bucket exactly as before and, when the caller supplies an `animated` sink, hands the same
+geometry objects to it with the mooring point, the hull's yaw and a phase from the mooring point; props.ts takes
+those pieces out of the merged wood mesh, builds one mesh per hull on the shared wood material (one draw call each)
+and poses it every rendered frame in `updateProps` from an accumulated world clock: 3.5 cm of heave with 1.2 cm of
+chop, 1.3° of roll, 0.5° of pitch on incommensurate periods (4.3 / 2.7 / 3.6 / 5.1 s), zero-mean, no stream draw,
+no wall clock, no simulation state — the sim, the authority and the dedicated shards never see the hull move; the
+mooring lines stay with the bollards. The world freezes every descendant's matrix after the build and makes the
+root's `updateMatrixWorld` a no-op (map.ts), so the frame update composes the hull's local and world matrices
+itself, as the instanced crush animations write theirs. Independent of the sheet shader by design (round 66 may
+drive it from the ocean displacement later). A caller without a sink — every receipt — gets the static kit, so the
+receipts that freeze the kit's bytes are untouched. Proof: `mooredHullMotion.selftest` (bounds, zero mean,
+determinism, no repeat inside a minute, phase spread, no `Math.random` / `Date` in the module), `shoreJetty` (one
+animated record per moored hull, the wood bucket byte-identical with and without the sink), and a headless runtime
+probe on Saltwind that finds the two hull meshes and samples them a second apart: world y −7.331 → −7.352 m and
+−7.338 → −7.361 m, roll 0.021 → −0.014 rad, the two hulls out of step, no page errors. A static capture cannot show
+a 3 cm bob; none is claimed.
+
+**5. Saltwind's piers take the shelf-sized length (riverLandings.ts, saltwind.ts).** A sea-strand landing that
+authors no `jettyLength` now plans with the strand law's own length (from the shore end over the planar core with
+room for the moored hull, within 4–10 spans); Saltwind's two anchors drop `jettyLength: 19` and plan 7 spans
+(13.3 m) at −25° and 8 (15.2 m) at 45° at every seed, both with a gangway and a moored hull; an authored length is
+still the pier's length, and the river and lake landings keep the 7.6 m kit default. Capture `jetty-w-low` — A: the
+19 m pier running far out over the bay with the hull at its outer spans; B: the 13.3 m pier ending over the
+shallows with the hull alongside, mast up, the shore end and gangway where they were (8.2 % moved, 4.1/255);
+`strand-w-low` 2.1 %, 1.1/255.
+
+**6. The wrack line's per-station draw budget (strandWrack.ts `stationStream`).** Every station and every landing
+piece draws from its own stream, keyed by one salt the map's stream hands each lake and by the station's index, so
+what a station lays never depends on what any other station admitted. Proof in the receipt: Saltmere's line laid
+with the shipped keep-outs and again with one more 4.2 m keep-out on the band — 1,186 pieces more than 8 m from it
+byte-identical piece for piece, 44 → 27 pieces beside it, the station count unchanged. The three strand maps' wrack
+bytes move once for the new streams (the same law, different draws): beachedBoat's nine strand rows,
+winterLakeGeometry's three digests and riverLandings' draw count (the main stream now spends one draw per lake:
+11964 → 327) re-pinned with dated notes.
+
+**7. The press ring's land-only bearings (ai.ts `pickPressPoint`).** On each ring the bearings are now the near side,
+the far side, eight land-only fallbacks around the side aspects (90°, 60°, 105°, 45° off the nose, alternating
+sides) and the straight approach last; a point on water is no press point where the map avoids liquid (the local
+brake's own hull-corridor test, the hull facing the target). `ai.selftest` [22]: water beyond 55 m either side of
+the target's axis — the ring takes the 45° near-side bearing (candidate 8), on land, 45° off the nose; without water
+a side point as before. The receipt's failure count is now checked at the end as well: checks [14]–[21] could print
+FAIL and still exit 0. `server/battlePacing` in full on this tree under the mutex: 0/124 timeouts, median 351.4 s,
+p10 265.9 s, no battle under 120 s; the untouched base 47103edf4 measured the same way reads 0/124, 353.9 s,
+258.8 s. Per-map rows reshuffle as every AI change does (Polders 379/312/376/414 → 379/332/428/369 s, Saltwind
+389/268/298/419 → 389/307/298/451 s); Urban and Ruinspires to the bit.
+
+**Round 64 — 2026-09-24: Tarkhan's picker thumbnail, 4K hero and tactical-map plate (docs closure, no code).**
+Re-baked on the round-63 tree, the three images differ from the deployed ones only by render noise — hero: mean
+|Δ| 1.63/255 per channel, 0.69 % of pixels over 16; plate: 0.36/255, 0.17 % — because the cutting lies at the
+eastern rim outside the plate's square and off the hero's framing. The deployed images stand and the note closes
+without a deploy.
+
+**Receipts (exit 0 on the final tree; the changed files' receipts by name).** railCutting (the tunnel section:
+resolution, the curve, the approach sleepers on the bed at grade, the stone and dark pieces, the 3-part record, the
+ridge within the gallery's reach, `HORIZON_FIRST_RIDGE_MARGIN_M` = `RAIL_TUNNEL_RIDGE_RUN_M`; the faces' seeding
+weight, the admitted share, the hook absent elsewhere), railSpurs (siding vs approach, the portal record, digest
+re-pinned), railCoalStockpiles (the portal's footprint contract), map-probe-runtime (48 views, dated), the horizon
+family, roadLookupGrid + badlandsRelief + terrainStreaming + foundryServiceCourt + environmentExpansion + villageWear
+(the `_batterSeedAt` publication a declared delta), loggingYardGrass + grassChunkWork + grassCarpetWork and the
+vegetation family, mapQuality, propsScheduling, spawnClearance, the road receipts, archedBridgeCollision (8 bands,
+the haunch on the arc, the shard's parts), dedicatedWorldCollision (steppe census +1/+1; autumn note),
+collisionManifestCodec/Loader/Memory, structureCollision, structureSupport, collision, bridgeDeckNavigation,
+botRoutePlanner, matchPlacement, navigationLiquidSafety, mooredHullMotion (new, in the core inventory), shoreJetty,
+riverLandings (per-landing strides; 1284 / 89880 / 2568, the merged 3852 / 123264, the draw count and state
+re-pinned twice, dated), beachedBoat (the nine strand rows, dated), winterLakeGeometry (three digests, dated),
+strandWrack (the freeze proof), villageWear + mangroveWaterPalette (saltwind.ts config digests, dated),
+shoreDirtMask, mangroveFisheryWharf, riverReedContact, railWashout, shallowWater, selftest-suites, ai (+ [22]),
+ai.aim, botGunLane, authoritativeBots, spotting, combatMaintenance, battlePacing (full), garage:terrain:check,
+public-repo-hygiene, attribution:check, typecheck.
+
+**Still open.** The ring's own seating rule still continues every other column by the rim's interior gradient (the
+round-63 note; owner: never flatten the background mountains). The gallery's roof is a plain stone slab where it
+stands proud of the face; an earth-covered gallery (a fill prism on the roof) would read softer from the bird view.
+The A/B captures of items 4 and 6 are the receipts, not frames (a 3 cm bob and a re-rolled wrack line under the same
+law are not pictures).
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -2521,6 +2671,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 62 | The search for a lost enemy and the empty rack (server/battlePacing 5/124 after round 60): the survivor's 8 s no-contact search re-routed every window to a midpoint inside the blocks (Urban 0 / 2, Ruinspires 3) — search legs are now planned over the match's navigation grid through `deps.planRoute` (both authorities), goals rotate (sector, a sighting under 45 s, objective, a sweep ring whose bearing turns each leg, a wider ring), an unreachable goal is skipped, a leg is given up only on its own evidence, a dead target's sighting is forgotten; the rack is finite (Steppe 1, Saltwind 0): the HE fallback fires only a real HE round whose surface burst is worth a shell, laid on the zone that priced it, the penetration gate's ratio answers the lay error (1.0 at 80 m → 1.15 at 320 m), a lay under the expected-hit-chance bar (tier σ + dispersion vs the silhouette, rising as the rack empties) is closed on rather than taken at a bot or passive target (a live player is fired on as before), an empty rack rams only when the ram law makes it survivable and otherwise retires | full receipt after every change (ledger in the section): 5 → 0 → 0 → 1 → 0 → 1 → 0 → 0 / 124, median 465.5 → 351.4 s, p10 290.1 → 258.8 s, no battle over 720 s, no map longer than its round-60 aggregate but Orchard (+4 s); the 15 s passive dwell measured and kept, the 0.25 conservation threshold measured and dropped; ai.selftest [18]–[21] (planned search legs with and without a planner, no round at an unpenetrable front HE included, the long-range hold and close vs. a live-player control, the empty rack's ram and retirement), the AI / sim / net receipts in the section, typecheck, attribution |
 | 63 | Tarkhan's railway cutting and the bridge's open arches: a spur authors `cutting: { from }` (`railSpurs.ts`) — a 2.4 % bed from the portal, an 8 m floor between 0.7:1 batter faces, dug last on final queries, the exclusion on floor/cess/faces; the siding runs to the map edge (`bufferStop: 'start'`); past the edge the notch opens into a valley along the radial and the height field publishes an outland seat weight the horizon ring seats its near rows on (every other ring byte-identical) with the ring forest off the right-of-way; Amberford's bridge record split into 31 parts that follow the geometry (deck from the crown line, abutments, piers, four vault bands per arch, parapets) so shells pass the openings and the deck stays the floor; both shards recaptured (steppe byte-identical) | headless A/B of the height field (103 corridor samples, 0 road nodes), the outland and the ring rows; map-view-probe A/B on three new cutting views (station 71.7 %, edge 86.8 %, exit bird 84.5 % of the world band moved; the bridge views frame noise); shell traces through every arch at eight heights A/B and the hull-underpass / support probe; battlePacing full 14/124 (Tarkhan 1/4, Amberford 0/4); receipts in the section |
 | 65 | A physically based atmosphere for every battlefield: Hillaire 2020 transmittance / multiple-scattering / sky-view LUTs as fragment passes with a summary readback (`engine/atmosphere.ts`), the desktop dome sampling the sky-view LUT with the sun disc through its transmittance (the legacy disc energy kept: PMREM folds it into the ground's fill), the round-22 night sky and Mars' galaxy on top, the aerial pass targeting the LUT along each view ray (round 37 per pixel), the hemisphere hue from the sky irradiance, the preset → parameter mapping calibrated against the legacy dome on the twelve good maps; Mars authors its thin CO2 sky; the Preetham path kept for the mobile tier | CPU twin vs GPU summary 0.2 %; map-view-probe A/B on 31 maps × 4 views with sky boxes and the skyline metric (good-map anti-solar bands within 10 % on seven, skylines ±0.05; arid check 5 desert 1.49 → 1.18, skybridge 1.66 → 0.94; winter 0.85 / 0.90, whiteout unchanged); eye check of the 1280 px reductions of the eleven bland and four good maps; perf counts identical (+7 programs); the receipts in the section |
+| 67 | The open notes of rounds 58–63 closed, one commit each: Tarkhan's spur runs on down the valley to a derived tunnel portal (headwall 125 m out on the radial, a 75 m gallery to the ring's first ridge line — rim + 200 m, the same constant in horizon.ts and railSpurs.ts — a dark 45° bore floor hiding the ring face, one `tunnel-portal` record across the floor; the ring's seated rows now exactly on the outland bed inside the corridor); the batter faces seed sparse grass and scrub on their upper two thirds through a `_batterSeedAt` height-field hook (the exclusion keeps trees and props off; a face candidate passes the 474 m rim cull); the bridge's vault bands halved to 0.1375 m (a shell's height error against the arc ≤ 6.9 cm; 31 → 55 parts, Amberford's shard recaptured); the moored hull bobs and sways render-side from the world clock (one mesh per hull, matrices composed under the frozen world); Saltwind's piers sized to the shelf (7 / 8 spans); the wrack line's per-station draw streams (1,186 pieces byte-identical past a moved keep-out); the press ring's land-only fallback bearings (Polders 2's straight-in press); round 64's plate/hero/thumbnail closed as render noise. Pacing 0/124, median 351.4 s. | Tarkhan `cutting-exit-bird` 29.4 % of the world band moved (the portal, the track, the gallery), `cutting-portal-low` 8.8 %, the batter crops seeded, Saltwind `jetty-w-low` 8.2 %; steppe and autumn shards recaptured headless. |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
