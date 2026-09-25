@@ -4,6 +4,8 @@ import { createBootLifecycle } from './bootLifecycle.ts';
 let nowMs = 120;
 let yields = 0;
 const events = [];
+// entry telemetry (2026-09-24): the observer sees every boundary the screen sees, plus the measured end duration
+const stageEvents = [];
 const lifecycle = createBootLifecycle({
   screen: {
     begin: (stage) => events.push(`begin:${stage}`),
@@ -12,6 +14,7 @@ const lifecycle = createBootLifecycle({
   yieldFrame: async () => { yields++; nowMs += 5; },
   now: () => nowMs,
   heavyStageMs: 20,
+  onStage: (stage, phase, ms) => stageEvents.push([stage, phase, ms]),
 });
 
 assert.equal(lifecycle.startedAt, 120);
@@ -42,10 +45,20 @@ assert.deepEqual(events, [
   'begin:fast', 'end:fast',
   'begin:heavy', 'end:heavy',
 ]);
+assert.deepEqual(stageEvents, [
+  ['renderer', 'end', 12],
+  ['fast', 'begin', undefined], ['fast', 'end', 8],
+  ['heavy', 'begin', undefined], ['heavy', 'end', 21],
+], 'the stage observer receives each boundary once, with the measured duration on end');
 
 assert.throws(() => createBootLifecycle({
   screen: null,
   yieldFrame: async () => {},
 }), /progress screen/);
+assert.throws(() => createBootLifecycle({
+  screen: { begin() {}, end() {} },
+  yieldFrame: async () => {},
+  onStage: 'not callable',
+}), /frame and clock/, 'a non-callable stage observer is refused at construction');
 
 console.log('bootLifecycle.selftest: stage attribution and bounded paint yields passed');

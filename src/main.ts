@@ -227,6 +227,9 @@ import { releaseObject3DGpuResources } from './engine/resourceLifetime.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.ts';
+// ENTRY TELEMETRY (docs/ENTRY-RESILIENCE.md): the anonymous beacon that turns
+// a friend's "it did not load" into a stage, a build and an error message.
+import { getEntryTelemetry, installEntryErrorTelemetry } from './entry/telemetry.ts';
 import { createBattleLoadScreen } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
@@ -307,6 +310,10 @@ const _rayO = new THREE.Vector3();
 // top-level consts are still in their temporal dead zone.
 // ---------------------------------------------------------------------------
 const boot = createBootScreen({ mode: STUDIO_BOOT_INTENT ? 'studio' : 'garage' });
+// The beacon shares the inline watchdog's session id and reports the first
+// uncaught errors against the stage they interrupted (opt-outs: telemetry.ts).
+const entryTelemetry = getEntryTelemetry();
+installEntryErrorTelemetry(entryTelemetry, window);
 // Every UI surface consumes the same semantic viewport contract. Install it
 // before HUD/garage construction so their first visible frame already has the
 // correct width, height, orientation and interaction-mode attributes.
@@ -318,7 +325,11 @@ installPinchZoomGuard();
 // gate prompt, and retry button respect the active locale from first paint.
 bindStaticI18nAuto();
 let bootComplete = false;
-const bootLifecycle = createBootLifecycle({ screen: boot, yieldFrame: nextFrame });
+const bootLifecycle = createBootLifecycle({
+  screen: boot,
+  yieldFrame: nextFrame,
+  onStage: (stage, phase, ms) => entryTelemetry.stage(stage, phase, ms),
+});
 const BOOT_TIMINGS = bootLifecycle.timings;
 const BOOT_T0 = bootLifecycle.startedAt;
 const bootStage = bootLifecycle.run;
@@ -328,6 +339,7 @@ const bootStage = bootLifecycle.run;
 const container = document.getElementById('app');
 if (!container) throw new Error('application root #app is missing');
 boot.begin('renderer');
+entryTelemetry.stage('renderer', 'begin');
 const renderer = createRenderer(container);
 let graphicsContextLost = false;
 let rearmRafAfterContext = () => {}; // installed when the main loop is ready
@@ -3242,6 +3254,12 @@ pedestal.queueNeighbors();
 if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
+entryTelemetry.send({
+  kind: 'boot_ready',
+  ms: window.__BOOT_MS,
+  mode: STUDIO_BOOT_INTENT ? 'studio' : 'unknown',
+  timings: Object.fromEntries(Object.entries(BOOT_TIMINGS).filter(([key]) => !key.startsWith('gap>'))),
+});
 // Direct Studio navigation skips garage-only construction on the critical
 // path. Build the workshop shell while idle; enterGarage() resumes the normal
 // quiet set-piece stream if the user later leaves Studio for the garage.

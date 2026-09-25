@@ -19,6 +19,8 @@ interface BootLifecycleOptions {
   yieldFrame: () => Promise<RuntimeValue>;
   now?: () => number;
   heavyStageMs?: number;
+  /** Entry telemetry (2026-09-24): every stage boundary, with the measured duration on `end`. */
+  onStage?: (stage: string, phase: 'begin' | 'end', ms?: number) => void;
 }
 
 /**
@@ -31,11 +33,12 @@ export function createBootLifecycle({
   yieldFrame,
   now = () => performance.now(),
   heavyStageMs = 20,
+  onStage = () => {},
 }: BootLifecycleOptions): BootLifecycle {
   if (!screen || typeof screen.begin !== 'function' || typeof screen.end !== 'function') {
     throw new TypeError('boot lifecycle requires a progress screen');
   }
-  if (typeof yieldFrame !== 'function' || typeof now !== 'function') {
+  if (typeof yieldFrame !== 'function' || typeof now !== 'function' || typeof onStage !== 'function') {
     throw new TypeError('boot lifecycle requires frame and clock functions');
   }
   if (!Number.isFinite(heavyStageMs) || heavyStageMs < 0) {
@@ -56,6 +59,7 @@ export function createBootLifecycle({
     const completedAt = now();
     screen.end(stage);
     timings[stage] = Math.round(completedAt - stageStartedAt);
+    onStage(stage, 'end', timings[stage]);
     lastMark = completedAt;
   };
 
@@ -67,12 +71,14 @@ export function createBootLifecycle({
   ): Promise<T | undefined> {
     markGap(stage, now());
     screen.begin(stage);
+    onStage(stage, 'begin');
     await yieldFrame();
     const stageStartedAt = now();
     const output = work ? await work() : undefined;
     const completedAt = now();
     timings[stage] = Math.round(completedAt - stageStartedAt);
     screen.end(stage);
+    onStage(stage, 'end', timings[stage]);
     if (completedAt - stageStartedAt > heavyStageMs) await yieldFrame();
     lastMark = now();
     return output;

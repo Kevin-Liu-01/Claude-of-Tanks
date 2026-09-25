@@ -60,6 +60,8 @@ import {
   setMobilePresetName, setPresetName,
   type PresetName,
 } from '../engine/quality.ts';
+// entry telemetry (2026-09-24): the anonymous crash/load beacon is a player choice
+import { setTelemetryOptOut, telemetryOptOutStored } from '../entry/telemetry.ts';
 
 const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
   ultra: 'settings.preset.ultra',
@@ -1070,6 +1072,36 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       ? t('settings.graphics.note.mobile')
       : t('settings.graphics.note.desktop');
 
+    // entry telemetry (2026-09-24): the anonymous load/crash beacon
+    // (docs/ENTRY-RESILIENCE.md) is a player choice stored beside the presets.
+    const diagnostics = groupCard(body, t('settings.diagnostics.title'));
+    const diagRow = el('div', 'cot-set-row', diagnostics);
+    settingLabel(diagRow, t('settings.diagnostics.telemetry'), SETTINGS_OPTION_ICONS.showDebugHud);
+    const diagSeg = el('div', 'cot-set-seg onoff', diagRow);
+    const diagBtns: HTMLButtonElement[] = [];
+    const diagStorage = (): Storage | null => { try { return window.localStorage; } catch (_) { return null; } };
+    const syncDiag = () => {
+      const on = !telemetryOptOutStored(diagStorage());
+      diagBtns[0].classList.toggle('sel', !on);
+      diagBtns[1].classList.toggle('sel', on);
+      diagBtns[0].setAttribute('aria-pressed', String(!on));
+      diagBtns[1].setAttribute('aria-pressed', String(on));
+    };
+    for (const [val, txt] of [[false, t('settings.off')], [true, t('settings.on')]] as const) {
+      const b = el('button', '', diagSeg);
+      b.type = 'button';
+      b.textContent = txt;
+      b.setAttribute('aria-label', `${t('settings.diagnostics.telemetry')}: ${txt}`);
+      b.addEventListener('click', () => {
+        if (!telemetryOptOutStored(diagStorage()) === val) return;
+        setTelemetryOptOut(!val, diagStorage());
+        syncDiag();
+        emit('ui:click', {});
+      });
+      diagBtns.push(b);
+    }
+    syncDiag();
+    el('div', 'cot-set-note', diagnostics).textContent = t('settings.diagnostics.note');
   }
 
   // --- LANGUAGE tab -----------------------------------------------------------
