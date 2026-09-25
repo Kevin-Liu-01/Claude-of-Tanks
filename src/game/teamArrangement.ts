@@ -149,7 +149,7 @@ export function writeMarsSettings(
 // ---------------------------------------------------------------------------
 
 export const BRAIN_STORAGE_KEY = 'cot.game.brain.v1';
-export type BotBrainId = 'classic' | 'jev';
+type BotBrainId = 'classic' | 'jev';
 
 export interface BrainSettings {
   /** Who commands the enemy bots: the classic controller, or Jev (TypeSafe's System One model). */

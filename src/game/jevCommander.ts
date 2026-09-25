@@ -89,6 +89,8 @@ export interface JevTeamStats {
   discardedDead: number;
   discardedChanged: number;
   lowConfidence: number;
+  /** Orders that carried only a confident target while the posture stayed classic. */
+  targetOnly: number;
   unmapped: number;
   inputTokens: number;
   outputTokens: number;
@@ -419,7 +421,7 @@ interface Arrival {
 function emptyStats(): JevTeamStats {
   return {
     requests: 0, answered: 0, failed: 0, skippedQuiet: 0, budgetSpent: false, ordersApplied: 0,
-    discardedStale: 0, discardedDead: 0, discardedChanged: 0, lowConfidence: 0, unmapped: 0,
+    discardedStale: 0, discardedDead: 0, discardedChanged: 0, lowConfidence: 0, targetOnly: 0, unmapped: 0,
     inputTokens: 0, outputTokens: 0, lastLatencyMs: 0, meanLatencyMs: 0, maxLatencyMs: 0, lastError: null, backoffS: 0,
   };
 }
@@ -434,7 +436,7 @@ function choice(answer: JevAnswer | undefined): { choice: string; confidence: nu
 
 export function createJevCommander({
   transport, teams, cadenceS = 2, quietCadenceS = 8, orderTtlS = 5, staleAfterS = 6, requestsPerTeam = 450,
-  minPostureConfidence = 0.45, minTargetConfidence = 0.4, minFocusConfidence = 0.45, logCapacity = 64, now = Date.now,
+  minPostureConfidence = 0.3, minTargetConfidence = 0.4, minFocusConfidence = 0.45, logCapacity = 64, now = Date.now,
 }: JevCommanderOptions): JevCommander {
   const commanded = new Set(teams);
   const stats = new Map<string, JevTeamStats>();
@@ -528,24 +530,25 @@ export function createJevCommander({
         entry(false, 'changed', null);
         continue;
       }
-      if (!posture || !isPosture(posture.choice)) {
-        row.unmapped++;
-        entry(false, 'no_posture', null);
-        continue;
-      }
-      if (posture.confidence < minPostureConfidence) {
-        row.lowConfidence++;
-        entry(false, 'low_confidence', null);
-        continue;
-      }
       let targetId: string | null = null;
       if (targetAnswer && targetAnswer.choice !== JEV_TARGET_NONE && targetAnswer.confidence >= minTargetConfidence) {
         const candidateId = snapshot.labels.enemyIds.get(targetAnswer.choice) ?? null;
         const candidate = candidateId ? byId.get(candidateId) : null;
         if (candidate && alive(candidate) && (!view.spotting || view.spotting.isSpotted(candidate.id, team))) targetId = candidate.id;
       }
+      // A seven-way posture spreads probability (a live 7 v 7 read 0.18–0.48 on most bots): below the bar
+      // the posture stays classic, but a confident target still rides a target-only order.
+      const postureKnown = !!posture && isPosture(posture.choice);
+      const postureConfident = postureKnown && posture!.confidence >= minPostureConfidence;
+      if (!postureConfident) {
+        if (!postureKnown) row.unmapped++; else row.lowConfidence++;
+        if (!targetId) {
+          entry(false, postureKnown ? 'low_confidence' : 'no_posture', null);
+          continue;
+        }
+      }
       let point: { x: number; z: number } | null = null;
-      let mapped: AiOrderPosture = posture.choice;
+      let mapped: AiOrderPosture | null = postureConfident ? posture!.choice as AiOrderPosture : null;
       if (mapped === 'capture') {
         const own = view.objectiveFor?.(entity) ?? null;
         point = focusPoint ?? (own ? { x: own.x, z: own.z } : null);
@@ -573,7 +576,8 @@ export function createJevCommander({
       const order: AiOrder = { posture: mapped, targetId, fire, threat, point, untilS: view.timeS + orderTtlS };
       entity.aiCtl.setOrder(order);
       row.ordersApplied++;
-      entry(true, 'applied', order);
+      if (!mapped) row.targetOnly++;
+      entry(true, mapped ? 'applied' : 'target_only', order);
     }
   }
 
@@ -619,7 +623,8 @@ export function createJevCommander({
         total.requests += row.requests; total.answered += row.answered; total.failed += row.failed; total.skippedQuiet += row.skippedQuiet;
         total.budgetSpent = total.budgetSpent || row.budgetSpent; total.ordersApplied += row.ordersApplied;
         total.discardedStale += row.discardedStale; total.discardedDead += row.discardedDead; total.discardedChanged += row.discardedChanged;
-        total.lowConfidence += row.lowConfidence; total.unmapped += row.unmapped; total.inputTokens += row.inputTokens; total.outputTokens += row.outputTokens;
+        total.lowConfidence += row.lowConfidence; total.targetOnly += row.targetOnly; total.unmapped += row.unmapped;
+        total.inputTokens += row.inputTokens; total.outputTokens += row.outputTokens;
         total.lastLatencyMs = row.lastLatencyMs || total.lastLatencyMs; total.maxLatencyMs = Math.max(total.maxLatencyMs, row.maxLatencyMs);
         total.meanLatencyMs += row.meanLatencyMs * row.answered; answered += row.answered;
         total.lastError = row.lastError ?? total.lastError; total.backoffS = Math.max(total.backoffS, row.backoffS);

@@ -234,7 +234,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
     if (id === `posture_${enemyLabels.t72b3m}`) return confident('flank_left', Object.keys(question.criteria));
     if (id === `target_${enemyLabels.t72b3m}`) return confident(JEV_TARGET_NONE, Object.keys(question.criteria));
     if (id === `fire_${enemyLabels.t72b3m}`) return { type: 'noul', noul: 0.2 };
-    if (id === `posture_${enemyLabels.t90ms}`) return confident('hold', Object.keys(question.criteria), 0.3);
+    if (id === `posture_${enemyLabels.t90ms}`) return confident('hold', Object.keys(question.criteria), 0.2);
     if (id.startsWith('threat_')) return scoreAnswer(2.6);
     if (id === 'focus') return confident('zone_a', Object.keys(question.criteria));
     return null;
@@ -245,7 +245,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   const enemyStats = commander.stats('enemy');
   assert.equal(enemyStats.answered, 1);
   assert.equal(enemyStats.ordersApplied, 2, 'two confident postures became orders');
-  assert.equal(enemyStats.lowConfidence, 1, 'the 0.3-confidence hold kept the classic brain');
+  assert.equal(enemyStats.lowConfidence, 1, 'the 0.2-confidence hold kept the classic brain');
   assert.equal(enemyStats.inputTokens, 3000);
   assert.equal(enemyStats.lastLatencyMs, 0);
   const kv2 = f.byId('kv2').aiCtl.debugInfo();
@@ -325,6 +325,24 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(f.byId('t72b3m').aiCtl.debugInfo().orderPosture, 'hold');
   assert.equal(f.byId('t72b3m').aiCtl.debugInfo().orderTarget, null, 'a dead target is never ordered');
   f.byId('m1a2').combat.destroyed = false;
+  // a weak posture with a confident target is a target-only order: the target claim, no posture effect
+  // (the request issued while the human was dead is answered empty first, so the next document lists it again)
+  if (fake.pending) { fake.answer(() => null); await tick(); }
+  f.set(15);
+  commander.step(f.view);
+  const humanLabelNow = Object.entries(fake.requests.at(-1).body.state.enemies).find(([, row]) => row.human_player)[0];
+  fake.answer((id, question) => {
+    if (id.startsWith('posture_')) return confident('push', Object.keys(question.criteria), 0.1);
+    if (id.startsWith('target_')) return question.criteria[humanLabelNow] ? confident(humanLabelNow, Object.keys(question.criteria), 0.9) : null;
+    return null;
+  });
+  await tick();
+  commander.step(f.view);
+  const targetOnly = f.byId('t72b3m').aiCtl.debugInfo();
+  assert.equal(targetOnly.orderPosture, null, 'no posture effect below the bar');
+  assert.equal(targetOnly.orderTarget, 'm1a2', 'the confident target is still ordered');
+  assert.equal(commander.stats('enemy').targetOnly >= 1, true);
+  assert.equal(commander.orderLog.filter((entry) => entry.reason === 'target_only').length >= 1, true);
   // capture without any objective and support without a teammate keep the classic brain
   const lone = fixture();
   for (const id of ['kv2', 't90ms']) lone.byId(id).combat.destroyed = true;

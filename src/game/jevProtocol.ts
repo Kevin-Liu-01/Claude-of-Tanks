@@ -122,7 +122,7 @@ export type JevAnswer =
   | { readonly type: 'noul'; readonly noul: number }
   | { readonly type: 'score'; readonly score: number; readonly probabilities: Readonly<Record<string, number>>; readonly confidence: number };
 
-export interface JevUsage {
+interface JevUsage {
   readonly input_tokens: number;
   readonly output_tokens: number;
 }

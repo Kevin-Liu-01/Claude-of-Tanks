@@ -177,7 +177,8 @@ export type AiOrderPosture = 'hold' | 'push' | 'flank_left' | 'flank_right' | 'r
  * byte-identical to the classic brain — every use below is gated on it.
  */
 export interface AiOrder {
-  posture: AiOrderPosture;
+  /** The posture, or null for a target-only order (no band, cover or driving change). */
+  posture: AiOrderPosture | null;
   /** Enemy to engage (entity id); null keeps the classic pick. */
   targetId: string | null;
   /** Fire discipline: 'press' fires whenever the lay is ready, 'hold' saves rounds; null keeps the classic gate. */
@@ -5009,7 +5010,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         }
         break;
       default:
-        break; // hold: the wider band and the cover discipline do the work
+        break; // hold (or a target-only order): the gated reads do the work
     }
   }
 
