@@ -140,7 +140,7 @@ interface CrewAnchor {
 type DamagePanelAnatomyAnchor = ModuleAnchor | CrewAnchor;
 
 /** A marker as last painted: its projected panel point (probe/receipt introspection). */
-export interface DamagePanelMarkerDebug {
+interface DamagePanelMarkerDebug {
   kind: 'module' | 'crew';
   name: string;
   x: number;
@@ -150,17 +150,17 @@ export interface DamagePanelMarkerDebug {
 type ModuleIconPainter = (context: CanvasRenderingContext2D, color: string) => void;
 
 /** The mask pipeline the panel talks to (tankThumbs by default; receipts script it). */
-export interface DamagePanelMaskSource {
+interface DamagePanelMaskSource {
   get: typeof getTopDownMasks;
   prepare: typeof prepareTopDownMasks;
 }
 
 /** Where a terminal mask failure is reported (the entry beacon by default). */
-export interface DamagePanelTelemetrySink {
+interface DamagePanelTelemetrySink {
   send(event: TelemetryEvent): boolean;
 }
 
-export interface DamagePanelOptions {
+interface DamagePanelOptions {
   maskSource?: DamagePanelMaskSource;
   /** `null` disables reporting; omitted resolves the page's entry beacon lazily (browser only). */
   telemetry?: DamagePanelTelemetrySink | null;

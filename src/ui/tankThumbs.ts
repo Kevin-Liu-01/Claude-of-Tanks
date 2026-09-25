@@ -107,7 +107,7 @@ export interface TopDownMaskFailure {
 }
 
 /** `ready` false carries the failure; zero-argument subscribers keep working. */
-export type TopDownMaskSubscriber = (ready: boolean, failure?: TopDownMaskFailure | null) => void;
+type TopDownMaskSubscriber = (ready: boolean, failure?: TopDownMaskFailure | null) => void;
 
 type MaskCacheValue = TopDownMaskEntry | 'failed';
 
