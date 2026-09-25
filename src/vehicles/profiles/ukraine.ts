@@ -717,8 +717,11 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
 
   // Bow: plan arrow corners + fender tips + front flaps over the raised
   // idler (print bow tip 0.66..0.70 band at +3.27).
+  // FSP-05 (2026-09-25): the LEFT prong took the mirrored ring handedness and
+  // shipped inside-out (sealed check: 21 of 33 views looked into the bow at
+  // x -0.5); orientedSlab re-orders the reversed copy only.
   for (const s of [-1, 1]) {
-    P.add('hull', slab(
+    P.add('hull', orientedSlab(
       [s * 0.35, 0.62, 3.27], [s * 0.60, 0.65, 3.16], [s * 0.90, 0.70, 2.96], [s * 0.35, 0.64, 2.96],
       [s * 0.35, 0.88, 3.27], [s * 0.60, 0.92, 3.16], [s * 0.90, 0.98, 2.96], [s * 0.35, 0.92, 2.96]));
     P.add('hull', box(0.30, 0.26, 0.24), s * 0.74, 0.88, 2.86, -0.10, 0, 0);

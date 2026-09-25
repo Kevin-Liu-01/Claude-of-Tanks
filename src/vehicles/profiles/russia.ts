@@ -1926,11 +1926,15 @@ function buildT64BV1(P: RussiaBuilderPort): void {
   // Bow corner prongs: the measured plan edge steps 2.655@0.33 -> 2.75@0.53
   // -> 2.88@0.73 -> 2.93@0.85 (FLAT slabs — the r8 rotated-prong lesson) and
   // the fender tips that carry the front flap hangers over the idler.
+  // FSP-05 (2026-09-25): the mirrored loop handed the LEFT prongs the opposite
+  // ring handedness (§C missing-side class) — both were wound inside-out and the
+  // sealed check looked into the bow at x -0.5 from 15 of 33 views. orientedSlab
+  // re-orders only the reversed copy; the right prongs stay byte-identical.
   for (const s of [-1, 1]) {
-    P.add('hull', slab(
+    P.add('hull', orientedSlab(
       [s * 0.33, 0.60, 2.655], [s * 0.53, 0.62, 2.75], [s * 0.73, 0.66, 2.60], [s * 0.33, 0.62, 2.60],
       [s * 0.33, 0.86, 2.655], [s * 0.53, 0.90, 2.75], [s * 0.73, 0.95, 2.60], [s * 0.33, 0.90, 2.60]));
-    P.add('hull', slab(
+    P.add('hull', orientedSlab(
       [s * 0.53, 0.64, 2.75], [s * 0.73, 0.68, 2.88], [s * 0.90, 0.72, 2.70], [s * 0.53, 0.66, 2.62],
       [s * 0.53, 0.90, 2.75], [s * 0.73, 0.95, 2.88], [s * 0.90, 1.00, 2.70], [s * 0.53, 0.92, 2.62]));
     P.add('hull', box(0.42, 0.26, 0.24), s * 0.74, 0.84, 2.80, -0.10, 0, 0);
