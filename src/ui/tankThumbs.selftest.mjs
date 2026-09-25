@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { initTopMaskRig, prepareTopDownMasks, getTopDownMasks } from './tankThumbs.ts';
+import { initTopMaskRig, prepareTopDownMasks, getTopDownMasks, TOP_DOWN_MASK_RETRY } from './tankThumbs.ts';
 
 function deferred() {
   let resolve;
@@ -991,6 +991,69 @@ try {
   assert.equal(await settle(failureRetry), null);
   assert.equal(fake.events.filter((event) => event.kind === 'compile' && event.id === 'mask-failed-cache-3').length, 2,
     'failure eviction allows one coalesced retry, not duplicate queued failures');
+
+  // 2026-09-25 (owner report: an M1A3 panel kept the vector stand-in for a
+  // whole battle): subscribers hear failures, the negative cache expires, and
+  // the per-session attempt cap holds.
+  {
+    const retry = addSource('mask-retry-policy');
+    fake.compileFailures.add(retry.root.name);
+    const notices = [];
+    const subscriber = (ready, failure) => notices.push({ ready, failure });
+    const compiles = () => fake.events.filter((event) => event.kind === 'compile' && event.id === retry.root.name).length;
+    const hardFailure = (attempts) => ({ code: 'mask_build_error', message: 'injected compile failure', attempts,
+      retryable: attempts < TOP_DOWN_MASK_RETRY.maxAttempts });
+    assert.deepEqual(TOP_DOWN_MASK_RETRY, { negativeCacheMs: 8000, maxAttempts: 3 });
+    assert.equal(getTopDownMasks(spec(retry.root.name), subscriber, retry.visual), null);
+    await advanceUntil(() => notices.length === 1);
+    assert.deepEqual(notices[0], { ready: false, failure: hardFailure(1) },
+      'a failed build notifies its subscriber with the pipeline failure');
+    assert.equal(compiles(), 1);
+    assert.equal(getTopDownMasks(spec(retry.root.name), subscriber, retry.visual), null);
+    assert.equal(notices.length, 1, 'a hot negative cache answers asynchronously, never re-entrantly');
+    await microtasks();
+    assert.deepEqual(notices[1], { ready: false, failure: hardFailure(1) }, 'a hot negative cache still tells the subscriber why');
+    assert.equal(await prepareTopDownMasks(spec(retry.root.name), retry.visual), null);
+    assert.equal(compiles(), 1, 'a hot negative cache enqueues no rebuild');
+    clock += TOP_DOWN_MASK_RETRY.negativeCacheMs;
+    assert.equal(getTopDownMasks(spec(retry.root.name), subscriber, retry.visual), null);
+    await advanceUntil(() => notices.length === 3);
+    assert.equal(compiles(), 2, 'an aged-out negative cache allows one coalesced rebuild');
+    assert.deepEqual(notices[2].failure, hardFailure(2));
+    clock += TOP_DOWN_MASK_RETRY.negativeCacheMs;
+    assert.equal(await settle(prepareTopDownMasks(spec(retry.root.name), retry.visual)), null);
+    assert.equal(compiles(), 3);
+    clock += TOP_DOWN_MASK_RETRY.negativeCacheMs;
+    assert.equal(getTopDownMasks(spec(retry.root.name), subscriber, retry.visual), null);
+    await microtasks();
+    assert.deepEqual(notices[3].failure, hardFailure(3), 'the third failure reports the cap');
+    assert.equal(notices[3].failure.retryable, false);
+    assert.equal(await prepareTopDownMasks(spec(retry.root.name), retry.visual), null);
+    assert.equal(compiles(), 3, 'the per-session attempt cap holds after the cache has aged out');
+    assert.equal(retry.clones, 3, 'each rebuild clones the live source once');
+    assert.equal(window.__TOP_MASK_LOAD.status, 'failed');
+  }
+  // A borrowed source disposed mid-build (the battle-start race) is reported
+  // as the race it is, never counted or negatively cached: a live source
+  // rebuilds at once.
+  {
+    const raced = addSource('mask-retry-raced');
+    const afterRace = addSource('mask-retry-after-race');
+    const notices = [];
+    fake.holdFences();
+    assert.equal(getTopDownMasks(spec(raced.root.name), (ready, failure) => notices.push({ ready, failure }), raced.visual), null);
+    await advanceUntil(() => fake.events.some((event) => event.kind === 'compile' && event.id === raced.root.name));
+    raced.disposeBorrowed('material');
+    fake.releaseFences();
+    await advanceUntil(() => notices.length === 1);
+    assert.deepEqual(notices[0], { ready: false, failure: {
+      code: 'top_mask_source_disposed', message: 'top_mask_source_disposed', attempts: 0, retryable: true,
+    } }, 'a borrowed source disposed mid-build reports the race without counting an attempt');
+    const rebuilt = await settle(prepareTopDownMasks(spec(raced.root.name), afterRace.visual));
+    assert(rebuilt?.ready, 'the race is not negatively cached: a live source rebuilds at once');
+    assert.strictEqual(getTopDownMasks(spec(raced.root.name), null, null), rebuilt);
+    assert.equal(afterRace.clones, 1);
+  }
 
   for (const source of sources.values()) source.assertUntouched();
   fake.assertReleased();

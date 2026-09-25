@@ -128,6 +128,93 @@ for (const mapId of MAP_IDS) {
 }
 assert.ok(testedPatches > 0, 'the all-map fallback test actually covers authored shorelines');
 
+// Owner rule (2026-09-25): minimap markers may overlap. No jitter or separation
+// pass moves co-located markers apart (the r5/r7 relax-to-13.5 px pass and the
+// per-id jitter made them wiggle around each other); each arrow keeps its own
+// hull heading and every objective glyph stays upright.
+assert.doesNotMatch(hudSource, /relaxMinimapBlip|blipJitter|minSeparation/,
+  'no pass nudges co-located minimap markers apart');
+const glyphSource = await readFile(new URL('./objectiveGlyphs.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate the context: they stay upright');
+{
+  const pool = [];
+  const pushLiveBlip = (x, y, yaw, fill, s, a, fixed) => pool.push({ x, y, yaw, fill, s, a, fixed });
+  const pushTankBlip = hudPainter('pushTankMinimapBlip', 'collectMinimapTankBlips', {
+    worldToMap: (x, z) => projectWorldToMinimap(x, z, worldSize, mapSize, painterPoint),
+    pushLiveBlip, spotById: new Map([['enemy', { vis: true, ever: true }]]),
+    PEN_GREEN: '#7ee87e', PEN_RED: '#f05a5a',
+    drawGhostMarker() { assert.fail('a spotted enemy is a live arrow, not a ghost'); }, mmCtx: {},
+  });
+  const stacked = { pos: { x: 100, z: -40 } };
+  pushTankBlip({ id: 'ally-1', team: 'player' }, { ...stacked, yaw: 0.4 });
+  pushTankBlip({ id: 'ally-2', team: 'player' }, { ...stacked, yaw: 2.9 });
+  pushTankBlip({ id: 'enemy', team: 'enemy' }, { ...stacked, yaw: -1.2 });
+  const expected = projectWorldToMinimap(100, -40, worldSize, mapSize);
+  assert.deepEqual(pool.map((blip) => [blip.x, blip.y]), [expected, expected, expected],
+    'co-located tanks put their arrows on exactly the same projected point (they overlap)');
+  assert.deepEqual(pool.map((blip) => blip.yaw), [0.4, 2.9, -1.2], 'each arrow keeps its own hull heading');
+  assert.deepEqual(pool.map((blip) => blip.fill), ['#7ee87e', '#7ee87e', '#f05a5a']);
+
+  // the painter draws every pooled arrow where it was pushed (frame clamp only), player last
+  const drawn = [];
+  const paint = hudPainter('paintMinimapBlips', 'drawMinimap', {
+    _liveBlipPool: [...pool, { x: expected[0], y: expected[1], yaw: 1.1, fill: '#f2f8ff', s: 6.6, a: 1, fixed: true }],
+    _liveBlipCount: pool.length + 1, MM: mapSize, mmCtx: {},
+    drawArrowBlip: (c, x, y, yaw, fill) => drawn.push([x, y, yaw, fill]),
+  });
+  paint();
+  assert.deepEqual(drawn.map(([x, y]) => [x, y]), [expected, expected, expected, expected],
+    'overlapping arrows are painted on the same point without a separation pass');
+  assert.deepEqual(drawn.map(([, , yaw]) => yaw), [0.4, 2.9, -1.2, 1.1], 'painted arrows keep their headings');
+  assert.equal(drawn.at(-1)[3], '#f2f8ff', 'the player arrow is painted last, on top');
+}
+{
+  // the arrow itself rotates with its tank's yaw
+  const ops = [];
+  const context = new Proxy({}, {
+    get: (target, key) => (key in target ? target[key] : (...args) => { ops.push([key, args]); }),
+    set: (target, key, value) => { target[key] = value; return true; },
+  });
+  const drawArrowBlip = hudPainter('drawArrowBlip', 'pushLiveBlip', { minimapYawForHeading });
+  drawArrowBlip(context, 40, 50, -Math.PI / 2, '#7ee87e', 5, 0.95);
+  assert.deepEqual(ops.slice(0, 3), [['save', []], ['translate', [40, 50]], ['rotate', [minimapYawForHeading(-Math.PI / 2)]]],
+    'an arrow translates to its point and rotates to its own hull heading before its nose is drawn');
+  assert.ok(ops.some(([op]) => op === 'moveTo') && ops.at(-1)[0] === 'restore', 'the arrow path is drawn inside the rotated frame');
+}
+{
+  // objective markers: co-located markers draw at one exact point and the
+  // context is never rotated for them
+  const context = new Proxy({}, {
+    get: (target, key) => {
+      if (key in target) return target[key];
+      if (key === 'rotate') return () => assert.fail('objective glyphs stay upright: the minimap never rotates the context for them');
+      return () => {};
+    },
+    set: (target, key, value) => { target[key] = value; return true; },
+  });
+  const placed = [];
+  const drawObjectives = hudPainter('drawMinimapObjectives', 'drawDestroyedMinimapTank', {
+    worldToMap: (x, z) => projectWorldToMinimap(x, z, worldSize, mapSize, painterPoint),
+    MM: mapSize, mmCtx: context, FONT_COND: 'sans-serif',
+    sideColor: () => '#fff', sideFill: () => '#000', OBJECTIVE_PALETTE: { keyline: '#000' },
+    drawSpawnGlyph: (c, x, y) => placed.push(['spawn', x, y]),
+    drawHexBadge: (c, x, y) => placed.push(['badge', x, y]),
+    drawGoalGlyph: (c, x, y) => placed.push(['goal', x, y]),
+    drawBallGlyph: (c, x, y) => placed.push(['ball', x, y]),
+    drawPickupGlyph: (c, x, y) => placed.push(['pickup', x, y]),
+    drawPennant: (c, x, y) => placed.push(['pennant', x, y]),
+    drawProgressArc() {}, drawCheck() {},
+  });
+  drawObjectives([
+    { kind: 'spawn', x: 100, z: -40, side: 'own', status: 'active' },
+    { kind: 'zone', x: 100, z: -40, side: 'neutral', label: 'A', status: 'active' },
+    { kind: 'goal', x: 100, z: -40, side: 'enemy' },
+  ], 1.5, 999, 999, false);
+  const expected = projectWorldToMinimap(100, -40, worldSize, mapSize);
+  assert.deepEqual(placed, [['spawn', ...expected], ['badge', ...expected], ['goal', ...expected]],
+    'co-located objective glyphs share one exact point instead of being spread apart');
+}
+
 const paintTerrain = hudPainter('paintProceduralMinimapTerrain', 'paintMinimapWater', {
   mapWorldSize: worldSize,
 });

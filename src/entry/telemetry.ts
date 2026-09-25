@@ -22,8 +22,10 @@ const DEFAULT_MAX_BODY_BYTES = 3800;
 const MAX_EVENTS_PER_FLUSH = 25;
 const IMMEDIATE_KINDS = new Set(['boot_error', 'entry_result', 'room_failure', 'ice_degraded', 'slow_reveal']);
 
+/** `hud_mask_failed` (2026-09-25): the damage panel gave up on a tank's top-down masks —
+ *  `stage` damagePanel, `code` the mask pipeline's failure code, `reason` the spec id. */
 export type TelemetryKind = 'boot_stage' | 'boot_ready' | 'boot_error' | 'entry_result' | 'capability'
-  | 'slow_reveal' | 'room_failure' | 'ice_degraded';
+  | 'slow_reveal' | 'room_failure' | 'ice_degraded' | 'hud_mask_failed';
 type TelemetryOutcome = 'ok' | 'failed' | 'cancelled' | 'timeout' | 'halted' | 'notice';
 type TelemetryMode = 'solo' | 'private' | 'lan' | 'studio' | 'network' | 'unknown';
 
@@ -32,7 +34,7 @@ interface TelemetryErrorSummary {
   frames: string[];
 }
 
-interface TelemetryEvent {
+export interface TelemetryEvent {
   kind: TelemetryKind;
   stage?: string;
   phase?: 'begin' | 'end';

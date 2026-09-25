@@ -545,6 +545,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/productStats.selftest.mjs',
     'src/ui/garageDossier.selftest.mjs',
     'src/ui/damagePanel.selftest.mjs',
+    'src/ui/damagePanelMarkers.selftest.mjs',
+    'src/ui/damagePanelMaskRetry.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',

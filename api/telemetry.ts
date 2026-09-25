@@ -34,6 +34,8 @@ const OFFICIAL_ORIGINS = new Set([
 const TELEMETRY_KINDS = Object.freeze([
   'boot_stage', 'boot_ready', 'boot_error', 'entry_result', 'capability',
   'slow_reveal', 'room_failure', 'ice_degraded',
+  // 2026-09-25: the damage panel gave up on a tank's top-down masks (code + spec id in reason)
+  'hud_mask_failed',
 ] as const);
 export type TelemetryKind = (typeof TELEMETRY_KINDS)[number];
 const OUTCOMES = new Set(['ok', 'failed', 'cancelled', 'timeout', 'halted', 'notice']);

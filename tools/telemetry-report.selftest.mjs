@@ -30,6 +30,9 @@ const rows = [
   { v: 1, at: at(18), sid: 'sessionDDDD', build, kind: 'entry_result', mode: 'private', outcome: 'failed',
     code: 'rtc_connect_timeout' },
   { v: 1, at: at(17), sid: 'sessionDDDD', build, kind: 'slow_reveal', stage: 'primeReveal', code: 'extended', ms: 1600 },
+  // 2026-09-25: the damage panel gave up on the M1A3's top-down masks
+  { v: 1, at: at(16), sid: 'sessionDDDD', build, kind: 'hud_mask_failed', stage: 'damagePanel',
+    code: 'top_mask_source_disposed', reason: 'm1a3', error: { message: 'top_mask_source_disposed', frames: [] } },
   // session E: very old, filtered out by --since
   { v: 1, at: at(60 * 48), sid: 'sessionEEEE', build, kind: 'boot_ready', ms: 100 },
 ];
@@ -57,6 +60,7 @@ assert.deepEqual(summary.capabilityStops, { no_webgl2: 1 });
 assert.deepEqual(summary.iceDegraded, { turn_service_unconfigured: 1 });
 assert.deepEqual(summary.roomFailures, { rtc_connect_timeout: 1 });
 assert.deepEqual(summary.slowReveals, { extended: 1 });
+assert.deepEqual(summary.hudMaskFailures, { 'm1a3:top_mask_source_disposed': 1 }, 'mask failures count per tank and pipeline code');
 assert.deepEqual(summary.bootMs, { p50: 4200, p90: 6100, samples: 3 });
 assert.deepEqual(summary.stageMs.vehicle, { p50: 900, p90: 900, samples: 1 });
 assert.deepEqual(summary.builds, {
@@ -68,8 +72,10 @@ assert.deepEqual(summary.failures.map(({ kind, stage, code, build: b, count }) =
   ['capability', null, 'no_webgl2', 'v0.9.0', 1],
   ['entry_result', null, 'rtc_connect_timeout', build, 1],
   ['room_failure', null, 'rtc_connect_timeout', build, 1],
+  ['hud_mask_failed', 'damagePanel', 'top_mask_source_disposed', build, 1],
 ].sort());
 assert.equal(summary.failures.find(({ kind }) => kind === 'boot_error').sample, 'Injected sky failure');
+assert.equal(summary.failures.find(({ kind }) => kind === 'hud_mask_failed').sample, 'top_mask_source_disposed');
 
 const recent = summarizeTelemetry(events, { since: parseSince('24h', Date.parse('2026-09-24T12:00:00.000Z')) });
 assert.equal(recent.sessions, 4, '--since drops events older than the window');
@@ -84,6 +90,7 @@ assert.match(text, /boot-to-ready p50 4200 ms {2}p90 6100 ms/);
 assert.match(text, /entry results: ok 1 {2}failed 1/);
 assert.match(text, /\n {4}sky\s+1\n/);
 assert.match(text, /\n {4}no_webgl2\s+1\n/);
+assert.match(text, /HUD mask failures \(tank:code\):\n {4}m1a3:top_mask_source_disposed\s+1\n/);
 assert.match(text, /FAILURES[\s\S]*boot_error\s+sky\s+uncaught[\s\S]*Injected sky failure/);
 assert.doesNotMatch(text, /sessionAAAA/, 'session ids are aggregated, never listed');
 

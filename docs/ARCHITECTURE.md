@@ -951,10 +951,30 @@ turret masks. Mechanical systems use green carriers at the exact centers of thei
 authoritative armor-model volumes: weapon systems are diamonds and movement
 systems are broad hexagons. Crew stations use saturated-blue circular carriers at their
 authoritative centers, keeping people distinct by both color and silhouette.
-Dense markers resolve together only after hull/turret projection and stay
-within a short leader-line tether to the source point. Damaged modules promote to
-yellow/red, incapacitated crew promotes to red, and the panel also carries the HP
-bar plus the fire indicator.
+Damaged modules promote to yellow/red, incapacitated crew promotes to red, and
+the panel also carries the HP bar plus the fire indicator.
+
+**Marker rule (owner, 2026-09-25).** Every marker sits exactly on its hull- or
+turret-space anchor projected through that layer's rotation; markers may
+overlap, and the icon is painted upright in panel space (translated to the
+point, never rotated with the layer). There is no screen-space separation,
+tether or smoothing pass — the old solver made co-located markers wiggle
+around each other as the layers turned. Receipt:
+`src/ui/damagePanelMarkers.selftest.mjs` (120 rotating poses through the real
+panel, transform-tracked primitives). The minimap follows the same rule:
+arrows sit on their projected positions, rotate with their own hull heading,
+and objective glyphs stay upright; nothing nudges them apart.
+
+**Mask retry policy.** `setTank` asks `tankThumbs.getTopDownMasks` for the
+real top-down masks and keeps the vector stand-in meanwhile. The subscriber is
+notified on failure too (`onReady(ready, failure)`); a failed build is
+negatively cached for 8 s with at most 3 builds per spec per session
+(`TOP_DOWN_MASK_RETRY`), while a borrowed live visual disposed mid-build (the
+battle-start race) is never cached. The panel retries after 1.5 s WITHOUT the
+borrowed visual so the factory build owns its resources, then after 8 s more
+(`DAMAGE_PANEL_MASK_RETRY`); the third failure warns once and beacons
+`hud_mask_failed` (`stage` damagePanel, `code` the pipeline's failure code,
+`reason` the spec id). Receipt: `src/ui/damagePanelMaskRetry.selftest.mjs`.
 
 #### 3.7.3 `garage.ts`
 ```js

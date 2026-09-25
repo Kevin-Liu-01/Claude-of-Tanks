@@ -55,7 +55,7 @@ function createAccumulator() {
   const acc = {
     sessions: new Map(), failures: new Map(), stageMs: new Map(), bootMs: [], entryOutcomes: new Map(),
     entryByMode: new Map(), capabilityStops: new Map(), iceDegraded: new Map(), roomFailures: new Map(),
-    slowReveals: new Map(), builds: new Map(),
+    slowReveals: new Map(), hudMaskFailures: new Map(), builds: new Map(),
   };
   acc.session = (sid) => {
     let entry = acc.sessions.get(sid);
@@ -121,6 +121,11 @@ const FOLDS = {
     acc.noteFailure(event, event.code, null);
   },
   ice_degraded(acc, event) { count(acc.iceDegraded, event.reason || event.code || 'unknown'); },
+  // 2026-09-25: the damage panel gave up on a tank's masks — reason is the spec id, code the pipeline failure
+  hud_mask_failed(acc, event) {
+    count(acc.hudMaskFailures, `${event.reason || 'unknown'}:${event.code || 'unknown'}`);
+    acc.noteFailure(event, event.code, event.error?.message);
+  },
 };
 
 const percentiles = (list) => ({ p50: percentile(list, 0.5), p90: percentile(list, 0.9), samples: list.length });
@@ -159,6 +164,7 @@ export function summarizeTelemetry(events, { since = null } = {}) {
     slowReveals: Object.fromEntries(sortedEntries(acc.slowReveals)),
     roomFailures: Object.fromEntries(sortedEntries(acc.roomFailures)),
     iceDegraded: Object.fromEntries(sortedEntries(acc.iceDegraded)),
+    hudMaskFailures: Object.fromEntries(sortedEntries(acc.hudMaskFailures)),
     builds: Object.fromEntries([...acc.builds.entries()].map(([build, entry]) => [build, {
       sessions: entry.sessions.size, ready: entry.ready, errors: entry.errors,
     }])),
@@ -193,6 +199,7 @@ export function formatTelemetryReport(summary) {
   for (const [title, table] of [
     ['  capability stops:', summary.capabilityStops], ['  slow reveals:', summary.slowReveals],
     ['  room failures:', summary.roomFailures], ['  ICE degraded:', summary.iceDegraded],
+    ['  HUD mask failures (tank:code):', summary.hudMaskFailures],
   ]) {
     const entries = Object.entries(table);
     if (!entries.length) continue;

@@ -95,6 +95,20 @@ export interface TopDownMaskEntry {
   pxPerM: number;
 }
 
+/** Why the last top-down mask build for a spec failed; getTopDownMasks hands it to its subscriber. */
+export interface TopDownMaskFailure {
+  /** The pipeline's thrown code (`top_mask_source_disposed`, `rgba8_readback_timeout`, …) or the error name. */
+  readonly code: string;
+  readonly message: string;
+  /** Hard (negatively cached) builds attempted for this spec this session. */
+  readonly attempts: number;
+  /** False once the per-session attempt cap is reached: no later request rebuilds. */
+  readonly retryable: boolean;
+}
+
+/** `ready` false carries the failure; zero-argument subscribers keep working. */
+export type TopDownMaskSubscriber = (ready: boolean, failure?: TopDownMaskFailure | null) => void;
+
 type MaskCacheValue = TopDownMaskEntry | 'failed';
 
 type TopMaskLoadStage = 'clone' | 'build' | 'hullCompile' | 'hullRender' | 'hullReadback' | 'hullCanvas'
@@ -460,6 +474,20 @@ const maskCache = new Map<string, MaskCacheValue>();
 const pendingMasks = new Map<string, Promise<TopDownMaskEntry | null>>();
 let maskWorkTail = Promise.resolve();
 const MASK_CACHE_MAX = 10;
+// 2026-09-25 (owner report: an M1A3 panel kept the vector stand-in for a whole
+// battle): a failed build is remembered for `negativeCacheMs`, after which one
+// more build may run, up to `maxAttempts` hard failures per spec per session.
+// A borrowed live source disposed mid-build (the battle-start race) is not a
+// hard failure: it is recorded for the subscriber but never counted or cached.
+export const TOP_DOWN_MASK_RETRY = Object.freeze({ negativeCacheMs: 8000, maxAttempts: 3 });
+interface MaskFailureRecord {
+  code: string;
+  message: string;
+  at: number;
+  attempts: number;
+}
+const maskFailures = new Map<string, MaskFailureRecord>();
+const MASK_FAILURE_RECORDS_MAX = 32;
 let maskRT: THREE.WebGLRenderTarget | null = null;
 const maskPixels: Partial<Record<'hull' | 'turret', Uint8Array>> = {};
 
@@ -940,10 +968,66 @@ function completedMaskPass(result: PromiseSettledResult<MaskPassResult | null>):
   return result.value;
 }
 
+function maskFailureCode(error: RuntimeValue): string {
+  const message = errorMessage(error);
+  // The pipeline throws bare snake_case codes; free-form messages report their error name.
+  if (/^[A-Za-z0-9_.:-]{1,48}$/.test(message)) return message;
+  return error instanceof Error && error.name && error.name !== 'Error' ? error.name : 'mask_build_error';
+}
+
+function recordMaskFailure(id: string, error: RuntimeValue, hard: boolean): void {
+  const previous = maskFailures.get(id);
+  maskFailures.delete(id);
+  maskFailures.set(id, {
+    code: maskFailureCode(error),
+    message: errorMessage(error).slice(0, 200),
+    at: performance.now(),
+    attempts: (previous?.attempts ?? 0) + (hard ? 1 : 0),
+  });
+  while (maskFailures.size > MASK_FAILURE_RECORDS_MAX) {
+    const oldest = maskFailures.keys().next().value;
+    if (oldest === undefined) break;
+    maskFailures.delete(oldest);
+  }
+}
+
+function maskFailureView(id: string): TopDownMaskFailure {
+  const record = maskFailures.get(id);
+  const attempts = record?.attempts ?? 0;
+  return {
+    code: record?.code ?? 'top_mask_unavailable',
+    message: record?.message ?? 'top-down mask unavailable',
+    attempts,
+    retryable: attempts < TOP_DOWN_MASK_RETRY.maxAttempts,
+  };
+}
+
+/** A negatively cached spec may rebuild once its failure has aged out, until the attempt cap. */
+function maskFailureBlocks(id: string): boolean {
+  const record = maskFailures.get(id);
+  if (!record) return false;
+  return record.attempts >= TOP_DOWN_MASK_RETRY.maxAttempts
+    || performance.now() - record.at < TOP_DOWN_MASK_RETRY.negativeCacheMs;
+}
+
+function notifyMaskSubscriber(
+  onReady: TopDownMaskSubscriber,
+  ready: boolean,
+  failure: TopDownMaskFailure | null,
+): void {
+  try { onReady(ready, failure); }
+  catch (error) { console.warn('[tankThumbs] mask subscriber failed:', errorMessage(error)); }
+}
+
 /**
  * Per-tank top-down layer masks for the damage panel. Returns the cached
  * entry, or null while building/unavailable. The caller keeps its vector
- * fallback on failure. Every pending subscriber receives its own callback.
+ * fallback on failure. Every pending subscriber receives its own callback:
+ * `onReady(true)` when the entry is cached, `onReady(false, failure)` when the
+ * build failed or a hot negative cache refused it (2026-09-25: the old
+ * success-only callback left the damage panel on its stand-in until reload).
+ * Without a rig (harness/booth contexts) the masks are unavailable, not
+ * failed, and nobody is notified.
  * @param {TankSpec} spec full tank spec (dims + armor needed)
  * @param {?Function} onReady
  * @param {?object} sourceVisual optional already-built first-party visual
@@ -951,18 +1035,22 @@ function completedMaskPass(result: PromiseSettledResult<MaskPassResult | null>):
  */
 export function getTopDownMasks(
   spec: TankMaskSpec,
-  onReady: (() => void) | null,
+  onReady: TopDownMaskSubscriber | null,
   sourceVisual: TankMaskVisual | null = null,
 ): TopDownMaskEntry | null {
   if (!spec || typeof document === 'undefined') return null;
   const got = maskCache.get(spec.id);
   if (got && got !== 'failed') return got;
-  if (got === 'failed' || !maskEngineCtx) return null;
+  if (!maskEngineCtx) return null;
+  if (got === 'failed' && maskFailureBlocks(spec.id)) {
+    // Hot negative cache: no GPU work, but the subscriber still learns the
+    // terminal state so its own retry policy continues. Asynchronous like a
+    // real build, so no caller observes a re-entrant callback.
+    if (onReady) void Promise.resolve().then(() => notifyMaskSubscriber(onReady, false, maskFailureView(spec.id)));
+    return null;
+  }
   void prepareTopDownMasks(spec, sourceVisual).then((entry) => {
-    if (entry && onReady) {
-      try { onReady(); }
-      catch (error) { console.warn('[tankThumbs] mask subscriber failed:', errorMessage(error)); }
-    }
+    if (onReady) notifyMaskSubscriber(onReady, !!entry, entry ? null : maskFailureView(spec.id));
   });
   return null;
 }
@@ -985,6 +1073,7 @@ async function buildTopDownMasks(
 ): Promise<TopDownMaskEntry | null> {
   let visual: TankMaskVisual | null = null;
   let entry: TopDownMaskEntry | null = null;
+  let failure: RuntimeValue = null;
   try {
     // Preserve lazy setTank semantics, but expose a promise for covered entry.
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -1003,15 +1092,25 @@ async function buildTopDownMasks(
     sourceLifetime?.assertAlive();
     entry = prepared;
   } catch (error) {
+    failure = error;
     console.warn(`[tankThumbs] top-down mask build failed for ${spec.id}:`, errorMessage(error));
   } finally {
     // Full factory builds own their resources. The queue finalizer separately
     // releases only the per-mesh allocations owned by borrowed hierarchies.
     try { visual?.dispose(); } catch { /* released */ }
   }
-  // A cancelled source belongs to an old match, not a permanently bad spec.
-  // Preserve ordinary failed-GPU negative caching, but let a new live source retry.
-  if (entry || !sourceLifetime?.invalidated) cacheMaskResult(spec.id, entry);
+  if (entry) {
+    maskFailures.delete(spec.id);
+    cacheMaskResult(spec.id, entry);
+  } else {
+    // A cancelled source belongs to an old match, not a permanently bad spec.
+    // Preserve ordinary failed-GPU negative caching (expiring, attempt-capped),
+    // but let a new live source retry at once; either way the subscriber
+    // learns why.
+    const hard = !sourceLifetime?.invalidated;
+    recordMaskFailure(spec.id, failure ?? new Error('top_mask_render_unavailable'), hard);
+    if (hard) cacheMaskResult(spec.id, null);
+  }
   finishTopMaskLoad(trace, entry ? 'complete' : 'failed');
   return entry;
 }
@@ -1024,12 +1123,15 @@ export function prepareTopDownMasks(
   if (!spec || typeof document === 'undefined' || !maskEngineCtx) return Promise.resolve(null);
   const id = spec.id;
   const got = maskCache.get(id);
-  if (got) {
+  if (got && (got !== 'failed' || maskFailureBlocks(id))) {
     // Touch completed entries, while keeping pending ownership out of the LRU.
     maskCache.delete(id);
     maskCache.set(id, got);
     return Promise.resolve(got === 'failed' ? null : got);
   }
+  // An aged-out failure rebuilds: this pass owns the id until it settles, and a
+  // repeated failure re-inserts the sentinel with one more attempt counted.
+  if (got === 'failed') maskCache.delete(id);
   const pending = pendingMasks.get(id);
   if (pending) return pending;
   const trace = beginTopMaskLoad();
@@ -1047,6 +1149,7 @@ export function prepareTopDownMasks(
   } catch (error) {
     disposeMaskClone(clonedRoot);
     finishTopMaskLoad(trace, 'failed');
+    recordMaskFailure(id, error, true);
     cacheMaskResult(id, null);
     console.warn('[tankThumbs] mask clone failed:', errorMessage(error));
     return Promise.resolve(null);

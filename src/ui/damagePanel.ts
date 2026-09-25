@@ -9,11 +9,16 @@
 // in HULL space (turret modules in TURRET space) so they ride their layer.
 // The healthy panel now keeps a quiet module-location layer visible: every
 // authored damageable system and crew station gets a compact glyph at its real
-// hull/turret volume center. Closely packed markers separate only in final
-// screen space, stay tightly tethered to that exact source point, and resolve
-// across hull/turret ownership. Damage promotes the same marker to the shared
+// hull/turret volume center. Owner rule (2026-09-25): a marker sits EXACTLY on
+// that center projected through its layer's rotation, markers MAY overlap, and
+// every icon is painted upright in panel space, never rotated with its layer —
+// the old screen-space separation solver made markers wiggle around each other
+// as the layers turned. Damage promotes the same marker to the shared
 // orange/red state language; hit-zone floods still come from the real armor
 // model. No letterforms inside the silhouette, ever. HP bar and fire indicator.
+// Mask readiness (2026-09-25): a failed or race-cancelled mask build is retried
+// (1.5 s without the borrowed live visual, then 8 s more) before the panel
+// keeps the vector stand-in, warns once and beacons `hud_mask_failed`.
 // Contract: docs/ARCHITECTURE.md §3.7.2 (API preserved; setPose added).
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
@@ -25,7 +30,9 @@ import {
   type TankMaskSpec,
   type TankMaskVisual,
   type TopDownMaskEntry,
+  type TopDownMaskFailure,
 } from './tankThumbs.ts';
+import { getEntryTelemetry, type TelemetryEvent } from '../entry/telemetry.ts';
 // EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
 import { equipIconSVG } from './equipIcons.ts';
@@ -132,19 +139,46 @@ interface CrewAnchor {
 
 type DamagePanelAnatomyAnchor = ModuleAnchor | CrewAnchor;
 
-interface DamagePanelScreenAnchorInput {
+/** A marker as last painted: its projected panel point (probe/receipt introspection). */
+export interface DamagePanelMarkerDebug {
   kind: 'module' | 'crew';
   name: string;
-  sourcePx: number;
-  sourcePy: number;
-}
-
-interface DamagePanelScreenAnchor extends DamagePanelScreenAnchorInput {
   x: number;
   y: number;
 }
 
 type ModuleIconPainter = (context: CanvasRenderingContext2D, color: string) => void;
+
+/** The mask pipeline the panel talks to (tankThumbs by default; receipts script it). */
+export interface DamagePanelMaskSource {
+  get: typeof getTopDownMasks;
+  prepare: typeof prepareTopDownMasks;
+}
+
+/** Where a terminal mask failure is reported (the entry beacon by default). */
+export interface DamagePanelTelemetrySink {
+  send(event: TelemetryEvent): boolean;
+}
+
+export interface DamagePanelOptions {
+  maskSource?: DamagePanelMaskSource;
+  /** `null` disables reporting; omitted resolves the page's entry beacon lazily (browser only). */
+  telemetry?: DamagePanelTelemetrySink | null;
+  schedule?: (callback: () => void, delayMs: number) => unknown;
+  cancel?: (handle: unknown) => void;
+}
+
+// Mask retry policy (2026-09-25 owner report: an M1A3 battle kept the vector
+// stand-in until reload). Attempt 1 borrows the live battle visual; attempt 2
+// (after 1.5 s) drops it, so a source disposed mid-build cannot cancel the
+// rebuild and the factory build path owns its resources; attempt 3 follows
+// 8 s later. Then the panel keeps the stand-in, warns once and beacons
+// `hud_mask_failed` with the spec id and the pipeline's failure code.
+export const DAMAGE_PANEL_MASK_RETRY = Object.freeze({
+  maxAttempts: 3,
+  /** Delay before attempt n+1 once attempt n has failed. */
+  delaysMs: Object.freeze([1500, 8000] as const),
+});
 
 export interface DamagePanelController {
   root: HTMLElement;
@@ -154,7 +188,13 @@ export interface DamagePanelController {
   setPose(hullYaw?: number | null, turretYaw?: number | null, camYaw?: number | null): void;
   setTurretYaw(yaw?: number | null): void;
   setEquipment(ids: readonly string[] | null): void;
-  debugState(): { masksReady: boolean; hullPhi: number; gunPhi: number; specId: string | null };
+  debugState(): {
+    masksReady: boolean;
+    hullPhi: number;
+    gunPhi: number;
+    specId: string | null;
+    markers: DamagePanelMarkerDebug[];
+  };
   setState(sample: DamagePanelStateSample | DamagePanelCombatState): void;
 }
 
@@ -426,9 +466,10 @@ CREW_ICON.weaponOperatorRight = CREW_ICON.gunner;
 export const DAMAGE_PANEL_CREW_ICON_IDS = Object.freeze(Object.keys(CREW_ICON));
 
 /**
- * Collect exact module centers from the authoritative combat volumes. Marker
- * separation happens after hull/turret projection so these coordinates never
- * drift away from the simulation truth.
+ * Collect exact module centers from the authoritative combat volumes. The
+ * panel paints each marker exactly on its center projected through the hull or
+ * turret rotation; nothing nudges these coordinates away from the simulation
+ * truth (owner rule 2026-09-25: overlapping markers are allowed).
  */
 export function layoutDamagePanelModuleAnchors(
   modules: readonly DamagePanelModuleVolume[],
@@ -475,95 +516,20 @@ export function layoutDamagePanelCrewAnchors(
   return points;
 }
 
-function separateDamagePanelScreenAnchors(
-  points: DamagePanelScreenAnchor[],
-  firstIndex: number,
-  secondIndex: number,
-  iteration: number,
-  minDistance: number,
-): void {
-  const first = points[firstIndex];
-  const second = points[secondIndex];
-  let dx = second.x - first.x;
-  let dy = second.y - first.y;
-  let distance = Math.hypot(dx, dy);
-  if (distance >= minDistance) return;
-  if (distance < 0.01) {
-    const angle = ((firstIndex * 5 + secondIndex * 7 + iteration * 3) % 24) * Math.PI / 12;
-    dx = Math.cos(angle);
-    dy = Math.sin(angle);
-    distance = 0;
-  } else {
-    dx /= distance;
-    dy /= distance;
-  }
-  const push = (minDistance - distance) * 0.52;
-  first.x -= dx * push;
-  first.y -= dy * push;
-  second.x += dx * push;
-  second.y += dy * push;
-}
-
-/**
- * Resolve final marker collisions in screen space. The solver has a strong
- * source spring and a hard 14 px tether, so it can separate dense bays without
- * making an icon appear to describe a different compartment.
- */
-export function layoutDamagePanelScreenAnchors(
-  inputs: readonly DamagePanelScreenAnchorInput[],
-  width: number,
-  height: number,
-): DamagePanelScreenAnchor[] {
-  const points = inputs.map((point, index) => {
-    // A sub-pixel golden-angle seed prevents exactly coincident volumes from
-    // collapsing into a single repulsion axis. It is presentation-only; the
-    // immutable source remains the real combat coordinate.
-    const angle = index * 2.399963229728653;
-    return {
-      ...point,
-      x: point.sourcePx + Math.cos(angle) * 0.05,
-      y: point.sourcePy + Math.sin(angle) * 0.05,
-    };
-  });
-  const edge = 6.5;
-  const minDistance = 11.5;
-  const maxTether = 14;
-
-  for (let iteration = 0; iteration < 22; iteration++) {
-    for (let i = 0; i < points.length; i++) {
-      for (let j = i + 1; j < points.length; j++) {
-        separateDamagePanelScreenAnchors(points, i, j, iteration, minDistance);
-      }
-    }
-
-    for (const point of points) {
-      // Strong source attraction early; final iterations settle collisions.
-      if (iteration < 17) {
-        point.x += (point.sourcePx - point.x) * 0.12;
-        point.y += (point.sourcePy - point.y) * 0.12;
-      }
-      const ox = point.x - point.sourcePx;
-      const oy = point.y - point.sourcePy;
-      const offset = Math.hypot(ox, oy);
-      if (offset > maxTether) {
-        point.x = point.sourcePx + ox / offset * maxTether;
-        point.y = point.sourcePy + oy / offset * maxTether;
-      }
-      point.x = Math.max(edge, Math.min(width - edge, point.x));
-      point.y = Math.max(edge, Math.min(height - edge, point.y));
-    }
-  }
-  return points;
-}
-
 /**
  * Create the player damage panel (top-down plan layers + modules + HP + fire).
  * The root is not attached to the document — hud.setDamagePanel mounts it.
+ * @param {DamagePanelOptions} options mask source, failure sink and timers (receipts inject them)
  * @returns {{root:HTMLElement,setTank:Function,update:Function,setPose:Function,setTurretYaw:Function,setEquipment:Function,setState:Function}} Panel
  */
-export function createDamagePanel(): DamagePanelController {
+export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanelController {
   ensureFonts();
   ensureStyle('cot-dp-style', DP_CSS);
+  const maskSource: DamagePanelMaskSource = options.maskSource
+    ?? { get: getTopDownMasks, prepare: prepareTopDownMasks };
+  const telemetry = options.telemetry;
+  const schedule = options.schedule ?? ((callback, delayMs) => setTimeout(callback, delayMs));
+  const cancel = options.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
 
   const root = document.createElement('div');
   root.className = 'cot-dp';
@@ -642,16 +608,78 @@ export function createDamagePanel(): DamagePanelController {
     }
     return tints.turretBody[st];
   }
+  // --- mask retry (2026-09-25) ------------------------------------------------
+  let maskAttempt = 0;                 // builds requested for the current tank
+  let maskRetryHandle: unknown = null; // pending backoff timer
+  let maskRequestSerial = 0;           // setTank generation: stale callbacks are ignored
+
+  function cancelMaskRetry(): void {
+    if (maskRetryHandle === null) return;
+    cancel(maskRetryHandle);
+    maskRetryHandle = null;
+  }
+
+  // Terminal: one warning for the console, one bounded beacon for the field
+  // (the entry client caps events per session; the panel sends one per tank).
+  function reportMaskFailure(
+    failedSpec: DamagePanelTankSpec,
+    attempts: number,
+    failure: TopDownMaskFailure | null,
+  ): void {
+    const code = failure ? failure.code : 'unknown';
+    const message = failure ? failure.message : 'no failure detail';
+    console.warn(`[damagePanel] top-down mask unavailable for ${failedSpec.id} after ${attempts} attempt(s)`
+      + ` (${code}: ${message}); keeping the vector stand-in`);
+    let sink: DamagePanelTelemetrySink | null = null;
+    if (telemetry !== undefined) sink = telemetry;
+    else { try { sink = getEntryTelemetry(); } catch { sink = null; } }
+    if (!sink) return;
+    try {
+      sink.send({
+        kind: 'hud_mask_failed', stage: 'damagePanel', code, reason: failedSpec.id,
+        error: { message, frames: [] },
+      });
+    } catch { /* the beacon never breaks the HUD */ }
+  }
+
+  function scheduleMaskRetry(
+    failedSpec: DamagePanelTankSpec,
+    attempt: number,
+    failure: TopDownMaskFailure | null,
+  ): void {
+    const delay = DAMAGE_PANEL_MASK_RETRY.delaysMs[attempt - 1];
+    if (delay === undefined || attempt >= DAMAGE_PANEL_MASK_RETRY.maxAttempts || (failure && !failure.retryable)) {
+      reportMaskFailure(failedSpec, attempt, failure);
+      return;
+    }
+    cancelMaskRetry();
+    const serial = maskRequestSerial;
+    maskRetryHandle = schedule(() => {
+      maskRetryHandle = null;
+      if (serial !== maskRequestSerial || spec !== failedSpec) return;
+      requestMasks();
+    }, delay);
+  }
+
   function requestMasks(): void {
     if (!spec) return;
-    const initialSpec = spec;
-    const entry = getTopDownMasks(initialSpec, () => {
-      // The first-party mask is ready — re-adopt if this is still the tank.
-      const currentSpec = spec;
-      if (!currentSpec) return;
-      const e2 = getTopDownMasks(currentSpec, null);
-      if (e2) { adoptMasks(e2); lastDrawSig = null; draw(); }
-    }, maskSourceVisual);
+    const requestSpec = spec;
+    const serial = maskRequestSerial;
+    const attempt = ++maskAttempt;
+    // Later attempts drop the borrowed live visual: a source disposed
+    // mid-build (the battle-start race) resolves without caching, and the
+    // factory build path owns every resource it renders.
+    const source = attempt === 1 ? maskSourceVisual : null;
+    const entry = maskSource.get(requestSpec, (ready, failure) => {
+      if (serial !== maskRequestSerial || spec !== requestSpec) return; // an older tank's build
+      if (!ready) {
+        scheduleMaskRetry(requestSpec, attempt, failure ?? null);
+        return;
+      }
+      // The first-party mask is ready — adopt it for the tank still shown.
+      const built = maskSource.get(requestSpec, null);
+      if (built) { adoptMasks(built); lastDrawSig = null; draw(); }
+    }, source);
     if (entry) adoptMasks(entry);
   }
 
@@ -675,7 +703,10 @@ export function createDamagePanel(): DamagePanelController {
     return out;
   }
   function panelPtTurret(mx: number, mz: number, out: Vec2 = [0, 0]): Vec2 {
-    const piv = masks ? masks.pivot : [0, 0];
+    // The stand-in turns its turret about the authored pivot, so turret-space
+    // markers use the same point until the mask entry supplies the measured one.
+    const authored = spec && spec.armor && spec.armor.turretPivot;
+    const piv: readonly [number, number] = masks ? masks.pivot : authored ? [authored[0], authored[2]] : [0, 0];
     const pp = panelPtHull(piv[0], piv[1]);
     const lx = -mx * scaleS;
     const ly = -mz * scaleS;
@@ -979,55 +1010,40 @@ export function createDamagePanel(): DamagePanelController {
     drawTurretLayer();
   }
 
-  function drawAnatomyAnchor(marker: DamagePanelScreenAnchor): void {
-    const state = marker.kind === 'module' ? moduleState(marker.name) : 'ok';
-    const crewAlive = marker.kind === 'crew'
-      ? (!combat || !combat.crew || combat.crew[marker.name] !== false)
-      : true;
-
-    // Dense bays separate only as far as needed to read. The exact authored
-    // source remains a visible pin joined to its marker.
-    if (Math.hypot(marker.x - marker.sourcePx, marker.y - marker.sourcePy) > 1.5) {
-      const color = marker.kind === 'crew'
-        ? (crewAlive ? HEALTHY_CREW_COLOR : STATE_COLOR.red)
-        : (state === 'ok' ? HEALTHY_MODULE_COLOR : STATE_COLOR[state]);
-      ctx.save();
-      ctx.strokeStyle = color;
-      ctx.fillStyle = color;
-      ctx.globalAlpha = (state === 'ok' && crewAlive) ? 0.42 : 0.78;
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(marker.sourcePx, marker.sourcePy);
-      ctx.lineTo(marker.x, marker.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(marker.sourcePx, marker.sourcePy, 1.35, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-    if (marker.kind === 'crew') drawCrewPip(marker.name, marker.x, marker.y, crewAlive);
-    else drawPip(marker.name, marker.x, marker.y, state);
-  }
+  // Last painted marker points (probe/receipt introspection via debugState);
+  // records are reused across repaints.
+  const lastMarkers: DamagePanelMarkerDebug[] = [];
+  let lastMarkerCount = 0;
 
   function drawAnatomyAnchors(): void {
     if (!anchors) computeAnchors();
     if (!anchors) return;
     const point: Vec2 = [0, 0];
-    const projected = anchors.map((anchor): DamagePanelScreenAnchorInput => {
-      if (anchor.turretLocal) {
-        panelPtTurret(anchor.sourceX, anchor.sourceZ, point);
+    lastMarkerCount = 0;
+    for (const anchor of anchors) {
+      // Owner rule (2026-09-25): the marker sits exactly on its hull-/turret-
+      // space center projected through its layer's rotation; markers may
+      // overlap. drawPip/drawCrewPip only translate to that point, so the icon
+      // is painted upright in panel space and never rotates with the layer.
+      if (anchor.turretLocal) panelPtTurret(anchor.sourceX, anchor.sourceZ, point);
+      else panelPtHull(anchor.sourceX, anchor.sourceZ, point);
+      if (anchor.kind === 'crew') {
+        const alive = !combat || !combat.crew || combat.crew[anchor.name] !== false;
+        drawCrewPip(anchor.name, point[0], point[1], alive);
       } else {
-        panelPtHull(anchor.sourceX, anchor.sourceZ, point);
+        drawPip(anchor.name, point[0], point[1], moduleState(anchor.name));
       }
-      return {
-        kind: anchor.kind,
-        name: anchor.name,
-        sourcePx: point[0],
-        sourcePy: point[1],
-      };
-    });
-    const screen = layoutDamagePanelScreenAnchors(projected, CW, CH);
-    for (const marker of screen) drawAnatomyAnchor(marker);
+      let record = lastMarkers[lastMarkerCount];
+      if (!record) {
+        record = { kind: anchor.kind, name: anchor.name, x: 0, y: 0 };
+        lastMarkers[lastMarkerCount] = record;
+      }
+      record.kind = anchor.kind;
+      record.name = anchor.name;
+      record.x = point[0];
+      record.y = point[1];
+      lastMarkerCount++;
+    }
   }
 
   function draw(): void {
@@ -1042,9 +1058,9 @@ export function createDamagePanel(): DamagePanelController {
     // Healthy location awareness comes from the precise glyph layer below.
     drawDamagedRegions();
 
-    // Persistent module and crew chips at their authored vehicle-space
-    // anchors. Hull/turret sources project first; only then does the bounded
-    // screen-space solver separate colliding markers.
+    // Persistent module and crew chips exactly at their authored vehicle-space
+    // anchors projected through the hull/turret rotation; overlapping markers
+    // are allowed and every icon stays upright (owner rule 2026-09-25).
     drawAnatomyAnchors();
   }
 
@@ -1139,7 +1155,9 @@ export function createDamagePanel(): DamagePanelController {
     /**
      * Set the tank whose plan/modules the panel shows. Kicks the offscreen
      * top-down mask build for the ACTUAL vehicle (tankThumbs rig); the
-     * vector stand-in covers the first frames.
+     * vector stand-in covers the first frames and any retry backoff
+     * (DAMAGE_PANEL_MASK_RETRY). A pending retry for the previous tank is
+     * cancelled and its late callbacks are ignored.
      * @param {TankSpec} s
      * @param {?object} sourceVisual already-built visual to clone for the mask
      */
@@ -1153,6 +1171,9 @@ export function createDamagePanel(): DamagePanelController {
       tints = null;
       anchors = null;
       lastDrawSig = null;
+      cancelMaskRetry();
+      maskRequestSerial += 1;
+      maskAttempt = 0;
       refreshDom();
       requestMasks();
       draw();
@@ -1219,14 +1240,16 @@ export function createDamagePanel(): DamagePanelController {
       equipRow.innerHTML = html;
     },
 
-    /** Probe/tooling introspection (E2E gates): mask readiness + live pose.
-     *  @returns {{masksReady:boolean,hullPhi:number,gunPhi:number,specId:?string}} */
+    /** Probe/tooling introspection (E2E gates): mask readiness, live pose and
+     *  the marker points of the last repaint.
+     *  @returns {{masksReady:boolean,hullPhi:number,gunPhi:number,specId:?string,markers:Array}} */
     debugState() {
       return {
         masksReady: !!(masks && tints),
         hullPhi: hullPhi(),
         gunPhi: gunPhi(),
         specId: spec ? spec.id : null,
+        markers: lastMarkers.slice(0, lastMarkerCount).map((marker) => ({ ...marker })),
       };
     },
 

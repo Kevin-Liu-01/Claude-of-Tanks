@@ -200,6 +200,18 @@ function accepted(body) {
   assert.equal(telemetryBuild(' v1 dev '), '_v1_dev_');
   assert.equal(telemetryBuild(''), 'unknown');
   accepted({ v: 1, sid: 'sess_build_check', build: telemetryBuild('v1.0.0+gd464a813f.dirty'), kind: 'boot_ready' });
+  // 2026-09-25: the damage panel's terminal mask failure travels with the spec id
+  // (reason) and the mask pipeline's code/message, through the client and the validator
+  const masks = fixture();
+  assert.equal(masks.telemetry.send({ kind: 'hud_mask_failed', stage: 'damagePanel', code: 'top_mask_source_disposed',
+    reason: 'm1a3', error: { message: 'top_mask_source_disposed', frames: [] } }), true);
+  masks.runTimers();
+  const [maskFailed] = accepted(masks.bodies[0].body);
+  assert.deepEqual(
+    [maskFailed.kind, maskFailed.stage, maskFailed.code, maskFailed.reason, maskFailed.error],
+    ['hud_mask_failed', 'damagePanel', 'top_mask_source_disposed', 'm1a3', { message: 'top_mask_source_disposed', frames: [] }],
+    'hud_mask_failed keeps the spec id and the pipeline code end to end',
+  );
   for (let i = 0; i < 20; i++) {
     const id = randomSessionId();
     assert.match(id, /^s[a-z0-9]{13,}$/, 'session ids fit the server alphabet');

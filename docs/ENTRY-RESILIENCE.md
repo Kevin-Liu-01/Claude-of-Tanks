@@ -41,12 +41,12 @@ dropped, and a body naming a personal field (`ip`, `userAgent`, `name`,
 
 | Field | Values |
 |---|---|
-| `kind` | `boot_stage`, `boot_ready`, `boot_error`, `entry_result`, `capability`, `slow_reveal`, `room_failure`, `ice_degraded` |
+| `kind` | `boot_stage`, `boot_ready`, `boot_error`, `entry_result`, `capability`, `slow_reveal`, `room_failure`, `ice_degraded`, `hud_mask_failed` (2026-09-25: the damage panel gave up on a tank's top-down masks after its retries — `stage` damagePanel, `code` the mask pipeline's failure code, `reason` the spec id, `error.message` its message) |
 | `stage` | boot stage name (`renderer`, `sky`, …, `ready`), `download` (inline watchdog), `primeReveal`, `paint`; ≤ 32 chars |
 | `phase` | `begin`, `end` (boot stages) |
 | `ms` | integer milliseconds (stage duration, boot-to-ready, wait) |
 | `outcome` | `ok`, `failed`, `cancelled`, `timeout`, `halted`, `notice` |
-| `code`, `reason` | ≤ 48 chars of `[A-Za-z0-9_.:-]` — gate codes (`no_webgl2`, `context_refused`, `texture_units`, `software_rendering`, `storage_blocked`, `worker_blocked`), watchdog classes (`chunk`, `driver`, `script`, `slow`, `offline`, `stalled`, `reload:<class>`), room failure codes, ICE reasons, slow-reveal phases |
+| `code`, `reason` | ≤ 48 chars of `[A-Za-z0-9_.:-]` — gate codes (`no_webgl2`, `context_refused`, `texture_units`, `software_rendering`, `storage_blocked`, `worker_blocked`), watchdog classes (`chunk`, `driver`, `script`, `slow`, `offline`, `stalled`, `reload:<class>`), room failure codes, ICE reasons, slow-reveal phases, mask pipeline codes (`top_mask_source_disposed`, `rgba8_readback_timeout`, `mask_build_error`, …) with the tank spec id as `reason` |
 | `mode` | `solo`, `private`, `lan`, `studio`, `network`, `unknown` |
 | `error` | `{ message ≤ 200, frames: ≤ 3 × ≤ 160 }`, origin-stripped |
 | `capability` | `webgl2`, `rendererFamily` (nvidia/amd/intel/apple/arm/qualcomm/imagination/software/unknown — never the raw string), `software`, `maxTextureUnits`, `maxTextureSize`, `vertexTextureUnits`, `colorBufferFloat`, `storage`, `worker`, `memoryClass` (low ≤ 2 GB, mid ≤ 4, high), `tier`, `autoTier`, `requiredTextureUnits` |
@@ -123,7 +123,8 @@ English, like the r3 copy they replace, because they run before the catalog.
 ## Receipts
 
 `server/telemetry.selftest.mjs`, `src/entry/telemetry.selftest.mjs`,
-`tools/telemetry-report.selftest.mjs`, `src/engine/capabilityGate.selftest.mjs`,
+`tools/telemetry-report.selftest.mjs`, `src/ui/damagePanelMaskRetry.selftest.mjs`
+(the `hud_mask_failed` beacon through the real validator), `src/engine/capabilityGate.selftest.mjs`,
 `src/ui/chunkRecovery.selftest.mjs` (r3 cases plus the clocked network
 harness), `src/gallery/chunkRecovery.selftest.mjs` (the immutable rule),
 `src/game/battleEntryLifecycle.selftest.mjs`, `src/engine/frameScheduler.selftest.mjs`,

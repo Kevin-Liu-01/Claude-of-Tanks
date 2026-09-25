@@ -5167,13 +5167,10 @@ export function initHud(bus: EventBus): HudRuntime {
     c.restore();
   }
 
-  // deterministic per-entity blip jitter (±2 px): keeps co-located spawn
-  // markers individually visible instead of merging into one blob
-  // performance_budget r4: memoized per id — the fresh 2-element array per
-  // blip per 20 Hz repaint (~320 small arrays/s in a 16-tank battle) was the
-  // last steady per-frame allocation in the hot loop. Jitter is deterministic
-  // per id, so the memo is exact.
-  const _bj = new Map<string, [number, number]>(); // id -> [dx, dy]
+  // Owner rule (2026-09-25): blips sit exactly on their projected world
+  // position and MAY overlap — the per-id jitter and the pairwise separation
+  // pass that used to keep co-located markers apart made them wiggle around
+  // each other; each arrow keeps its own heading instead.
   // PERF r3: minimap blip record pool (see drawMinimap)
   const _liveBlipPool: MinimapBlip[] = [];
   let _liveBlipCount = 0;
@@ -5190,15 +5187,6 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!b) { b = { x: 0, y: 0, yaw: 0, fill: '', s: 0, a: 0, fixed: false }; _liveBlipPool[_liveBlipCount] = b; }
     b.x = x; b.y = y; b.yaw = yaw; b.fill = fill; b.s = s; b.a = a; b.fixed = fixed;
     _liveBlipCount++;
-  }
-  function blipJitter(id: string): [number, number] {
-    let v = _bj.get(id);
-    if (!v) {
-      const j = hashStr(String(id));
-      v = [((j % 5) - 2) * 0.9, (((j >> 3) % 5) - 2) * 0.9];
-      _bj.set(id, v);
-    }
-    return v;
   }
 
   // Last-known contacts use one neutral stale-intel marker. Era is metadata,
@@ -5372,32 +5360,15 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function pushTankMinimapBlip(tank: HudTank, state: TankState): void {
     const ally = tank.team === 'player';
-    const jitter = blipJitter(tank.id);
     if (ally) {
       const point = worldToMap(state.pos.x, state.pos.z);
-      pushLiveBlip(
-        point[0] + jitter[0],
-        point[1] + jitter[1],
-        state.yaw,
-        PEN_GREEN,
-        5,
-        0.95,
-        false,
-      );
+      pushLiveBlip(point[0], point[1], state.yaw, PEN_GREEN, 5, 0.95, false);
       return;
     }
     const spotted = spotById.get(tank.id);
     if (spotted?.vis) {
       const point = worldToMap(state.pos.x, state.pos.z);
-      pushLiveBlip(
-        point[0] + jitter[0],
-        point[1] + jitter[1],
-        state.yaw,
-        PEN_RED,
-        5,
-        0.95,
-        false,
-      );
+      pushLiveBlip(point[0], point[1], state.yaw, PEN_RED, 5, 0.95, false);
     } else if (spotted?.ever) {
       const point = worldToMap(spotted.lastX, spotted.lastZ);
       drawGhostMarker(mmCtx, point[0], point[1]);
@@ -5474,53 +5445,9 @@ export function initHud(bus: EventBus): HudRuntime {
     );
   }
 
-  function relaxMinimapBlipPair(
-    first: MinimapBlip,
-    second: MinimapBlip,
-    firstIndex: number,
-    secondIndex: number,
-  ): boolean {
-    const minSeparation = 13.5;
-    let dx = second.x - first.x;
-    let dy = second.y - first.y;
-    const distance = Math.hypot(dx, dy);
-    if (distance >= minSeparation) return false;
-    if (distance < 0.01) {
-      const angle = (firstIndex * 2.399 + secondIndex) % (Math.PI * 2);
-      dx = Math.cos(angle);
-      dy = Math.sin(angle);
-    } else {
-      dx /= distance;
-      dy /= distance;
-    }
-    const push = minSeparation - distance;
-    if (first.fixed && !second.fixed) {
-      second.x += dx * push;
-      second.y += dy * push;
-    } else if (second.fixed && !first.fixed) {
-      first.x -= dx * push;
-      first.y -= dy * push;
-    } else if (!first.fixed && !second.fixed) {
-      first.x -= dx * push / 2;
-      first.y -= dy * push / 2;
-      second.x += dx * push / 2;
-      second.y += dy * push / 2;
-    }
-    return true;
-  }
-
-  function relaxMinimapBlips(): void {
-    for (let iteration = 0; iteration < 6; iteration++) {
-      let moved = false;
-      for (let i = 0; i < _liveBlipCount; i++) {
-        for (let j = i + 1; j < _liveBlipCount; j++) {
-          if (relaxMinimapBlipPair(_liveBlipPool[i], _liveBlipPool[j], i, j)) moved = true;
-        }
-      }
-      if (!moved) break;
-    }
-  }
-
+  // Every arrow is drawn exactly where its tank projects (clamped only at the
+  // map frame), rotated to its own hull heading; the player arrow is fixed
+  // and drawn last so it always sits on top.
   function paintMinimapBlips(): void {
     let playerBlip: MinimapBlip | null = null;
     for (let i = 0; i < _liveBlipCount; i++) {
@@ -5568,27 +5495,24 @@ export function initHud(bus: EventBus): HudRuntime {
       drawMinimapObjectives(markers, frame.timeS, plMapX, plMapY, !!player?.combat?.destroyed);
     }
     // enemy / ally blips (spotting-gated for live enemies)
-    // r5: live arrow blips are COLLECTED first, then relaxed to a minimum
-    // 8px screen separation before drawing (player arrow fixed, drawn last)
-    // — at battle start all three ally arrows, the own-base ring and the
-    // player arrow stacked into one unreadable green clump.
+    // r5: live arrow blips are COLLECTED first, then drawn (player arrow
+    // fixed, drawn last). Owner rule (2026-09-25): no separation pass — the
+    // r5/r7 relax-to-13.5 px nudge and the per-id jitter made co-located
+    // arrows wiggle around each other; arrows now overlap where their tanks
+    // overlap and each keeps its own heading (the near-black keyline keeps
+    // every arrow's edge readable on a stack).
     // PERF (performance_budget r3): pooled blip records — this redraw runs
     // at 20 Hz and the array + per-blip objects were the last steady
-    // allocations in the HUD hot loop (worldToMap/blipJitter already return
-    // reused module tuples). Pool indexes are stable within one redraw.
+    // allocations in the HUD hot loop (worldToMap already returns a reused
+    // module tuple). Pool indexes are stable within one redraw.
     collectMinimapTankBlips(tanks);
     // player: spot-range circle + view wedge + arrow. r4: the white
     // render-range SQUARE is gone — at 500 m on a 1 km map its edges sliced
     // across the terrain and read as a stray playable-bounds frame floating
     // inset from the map border (the panel frame IS the map bound).
     if (player?.state) drawPlayerMinimapOverlay(player.state, frame.camera);
-    // r7: relax overlapping blips to a minimum separation (radial nudge,
-    // the player arrow never moves), clamp inside the map frame, and draw
-    // the player arrow LAST so it always sits on top. r7-2: 11 → 13.5 px —
-    // at 11 the four spawn arrows still touched tail-to-nose on the base
-    // ring and fused into a wreath; 13.5 leaves a visible seam of map
-    // between every pair (arrow footprint is ~10 px at s=5).
-    relaxMinimapBlips();
+    // clamp inside the map frame and draw the player arrow LAST so it always
+    // sits on top.
     paintMinimapBlips();
   }
 

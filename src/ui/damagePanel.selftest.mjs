@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   DAMAGE_PANEL_CREW_ICON_IDS,
@@ -7,8 +8,8 @@ import {
   DAMAGE_PANEL_MODULE_KIND_BY_ID,
   layoutDamagePanelCrewAnchors,
   layoutDamagePanelModuleAnchors,
-  layoutDamagePanelScreenAnchors,
 } from './damagePanel.ts';
+import { telemetryCode } from '../entry/telemetry.ts';
 import { MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { CREW_ORDER } from './moduleRegistry.ts';
 
@@ -83,28 +84,29 @@ assert.deepEqual(
   'crew markers use exact authored hull/turret volume centers',
 );
 
-const screenMarkers = layoutDamagePanelScreenAnchors([
-  { kind: 'module', name: 'ammoRack', sourcePx: 50, sourcePy: 50 },
-  { kind: 'module', name: 'autoloader', sourcePx: 50, sourcePy: 50 },
-  { kind: 'crew', name: 'gunner', sourcePx: 50, sourcePy: 50 },
-  { kind: 'crew', name: 'commander', sourcePx: 50, sourcePy: 50 },
-], 100, 100);
-for (const marker of screenMarkers) {
-  assert(
-    Math.hypot(marker.x - marker.sourcePx, marker.y - marker.sourcePy) <= 14.01,
-    `${marker.kind}/${marker.name}: collision layout stays attached to the authored source`,
-  );
-  assert(marker.x >= 6.5 && marker.x <= 93.5 && marker.y >= 6.5 && marker.y <= 93.5,
-    `${marker.kind}/${marker.name}: marker stays inside the diagram`);
-}
-for (let i = 0; i < screenMarkers.length; i++) {
-  for (let j = i + 1; j < screenMarkers.length; j++) {
-    assert(
-      Math.hypot(screenMarkers[i].x - screenMarkers[j].x, screenMarkers[i].y - screenMarkers[j].y) >= 10.5,
-      'dense module and crew markers resolve together in final screen space',
-    );
-  }
-}
+// 2026-09-25 (owner rule): markers are never separated in screen space. They
+// sit exactly on their projected anchors, MAY overlap, and their icons stay
+// upright — the golden-angle repulsion solver with its 14 px tether made
+// co-located markers wiggle around each other as the layers rotated, so it
+// and its bounded-layout expectations are gone. The panel's marker receipt is
+// damagePanelMarkers.selftest.mjs (120 rotating poses through the real panel);
+// its mask retry receipt is damagePanelMaskRetry.selftest.mjs.
+const panelSource = await readFile(new URL('./damagePanel.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(
+  panelSource,
+  /layoutDamagePanelScreenAnchors|separateDamagePanelScreenAnchors|maxTether|minDistance|golden-angle seed/,
+  'no screen-space separation pass survives in the panel',
+);
+assert.match(
+  panelSource,
+  /function drawPip\([\s\S]{0,400}ctx\.translate\(px, py\);(?:(?!ctx\.rotate)[\s\S]){0,900}ctx\.restore\(\);/,
+  'module icons translate to their point and never rotate with the layer',
+);
+assert.match(
+  panelSource,
+  /function drawCrewPip\([\s\S]{0,400}ctx\.translate\(px, py\);(?:(?!ctx\.rotate)[\s\S]){0,900}ctx\.restore\(\);/,
+  'crew icons translate to their point and never rotate with the layer',
+);
 
 await import('../vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../vehicles/specs.ts');
@@ -136,9 +138,13 @@ for (const id of ALL_TANK_IDS) {
     );
   }
   authoredCrewMarkerCount += crewLayout.length;
+
+  // 2026-09-25: hud_mask_failed carries the spec id in `reason` (api/telemetry.ts
+  // CODE_RE, 48 chars) — every fleet id must survive the beacon alphabet unchanged.
+  assert.equal(telemetryCode(id), id, `${id}: the spec id fits the telemetry code alphabet`);
 }
 
 console.log(
   `damagePanel.selftest: ${ALL_TANK_IDS.length} tanks / ${authoredMarkerCount} module + `
-  + `${authoredCrewMarkerCount} crew markers, exact-source coverage and bounded screen layout passed`,
+  + `${authoredCrewMarkerCount} crew markers, exact-source coverage, no screen separation and beacon ids passed`,
 );
