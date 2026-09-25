@@ -24,7 +24,7 @@ export function revealTimeoutForField(vehicles: number, base = REVEAL_BUDGET_BAS
 }
 
 /** Entry resilience (2026-09-25): a reveal that outran its budget, reported once per phase. */
-export interface SlowRevealReceipt {
+interface SlowRevealReceipt {
   budgetMs: number;
   waitedMs: number;
   /** `extended`: the budget passed once and the wait continues for another budget; `stalled`: that passed too. */

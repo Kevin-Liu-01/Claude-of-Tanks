@@ -40,6 +40,7 @@ complete current environment set.
 | Document | Authoritative scope |
 | --- | --- |
 | MULTIPLAYER-ARCHITECTURE.md | Authority arrangements, protocol v5, delivery, prediction, rooms, signaling, ranked services, trust, and verification |
+| ENTRY-RESILIENCE.md | First-visit entry: the anonymous telemetry beacon and its report, the capability gate, download-aware boot watchdogs, immutable assets, reveal budgets, entry failure surfaces |
 | GAME-MODES.md | Shared deterministic objectives, respawns, scores, waves, loot, bot targets, and presentation |
 | PERFORMANCE.md | Boot, route isolation, device quality, render recovery, frame ownership, event budgets, and measurement |
 | GARAGE-ENVIRONMENTS.md | Garage destination roster, canonical composition, scene packs, workshop exhibits, structure collision, resource ownership, and quality gates |

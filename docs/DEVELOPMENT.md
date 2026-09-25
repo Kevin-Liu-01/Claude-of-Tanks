@@ -582,6 +582,7 @@ Before a production release:
 - FEATURES.md: visible product capabilities
 - SYSTEMS.md: internal runtime ownership
 - MULTIPLAYER-ARCHITECTURE.md: protocol, rooms, services, and trust
+- ENTRY-RESILIENCE.md: first-visit telemetry beacon, capability gate, download-aware boot watchdogs, entry failure surfaces
 - PERFORMANCE.md: render/load/per-frame performance design
 - STUDIO.md: Scene Studio API and determinism
 - TANK-ASSET-PIPELINE.md: generated vehicle asset contract

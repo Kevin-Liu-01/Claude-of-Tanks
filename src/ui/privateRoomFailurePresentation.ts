@@ -63,7 +63,7 @@ const COPY_KEYS: Record<PrivateRoomFailureCode, { titleKey: string; detailKey: s
 };
 
 /** Entry resilience (2026-09-25): what the room already knew when the failure arrived. */
-export interface RoomFailureContext {
+interface RoomFailureContext {
   /** The room fell back to host candidates only (iceConfig.ts host-fallback): no relay was available. */
   iceDegraded?: boolean;
 }

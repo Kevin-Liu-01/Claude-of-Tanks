@@ -29,11 +29,11 @@ export const TERRAIN_SAMPLERS_DECLARED = 10;
 export const TERRAIN_SAMPLERS_BUILTIN_DESKTOP = 1 + 1 + 4;
 export const TERRAIN_TEXTURE_UNITS_REQUIRED = TERRAIN_SAMPLERS_DECLARED + TERRAIN_SAMPLERS_BUILTIN_DESKTOP;
 
-export type RendererFamily =
+type RendererFamily =
   | 'nvidia' | 'amd' | 'intel' | 'apple' | 'arm' | 'qualcomm' | 'imagination' | 'software' | 'unknown';
-export type MemoryClass = 'low' | 'mid' | 'high' | 'unknown';
+type MemoryClass = 'low' | 'mid' | 'high' | 'unknown';
 
-export interface CapabilityProbe {
+interface CapabilityProbe {
   webgl2: boolean;
   /** The exception message when the context request threw, else null. */
   contextError: string | null;
@@ -50,9 +50,9 @@ export interface CapabilityProbe {
   memoryClass: MemoryClass;
 }
 
-export interface CapabilityNotice { code: string; message: string }
+interface CapabilityNotice { code: string; message: string }
 
-export type CapabilityVerdict =
+type CapabilityVerdict =
   | { kind: 'proceed'; notices: CapabilityNotice[] }
   | { kind: 'stop'; code: string; message: string; action: string; retry: boolean; notices: CapabilityNotice[] };
 
@@ -67,7 +67,7 @@ interface ProbeCanvasContext {
   RENDERER: number;
 }
 
-export interface CapabilityProbeHost {
+interface CapabilityProbeHost {
   createCanvas(): { getContext(name: string, attributes?: Record<string, RuntimeValue>): RuntimeValue } | null;
   deviceMemory?: number;
   storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem(key: string): void } | null;
@@ -201,7 +201,7 @@ export function capabilitySummary(
   };
 }
 
-export interface CapabilityScreen {
+interface CapabilityScreen {
   stage: { textContent: string | null } | null;
   retry: { textContent: string | null; classList: { add(name: string): void }; onclick: (() => void) | null } | null;
   notice: { textContent: string | null; classList: { add(name: string): void } } | null;
@@ -239,7 +239,7 @@ interface BootCapabilityGateOptions {
   requiredTextureUnits?: number;
 }
 
-export interface BootCapabilityGateResult {
+interface BootCapabilityGateResult {
   probe: CapabilityProbe;
   verdict: CapabilityVerdict;
 }

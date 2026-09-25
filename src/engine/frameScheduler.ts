@@ -22,7 +22,7 @@ const defaultNow: Clock = () => performance.now();
 export const PAINT_WAIT_BUDGET_MS = 1000;
 
 /** Entry resilience (2026-09-25): a visible paint wait that outran its budget, reported once per phase. */
-export interface PaintStallEvent {
+interface PaintStallEvent {
   /** `extended`: the budget passed once and the wait continues for another budget; `continued`: that passed too and loading goes on without the frame. */
   phase: 'extended' | 'continued';
   waitedMs: number;

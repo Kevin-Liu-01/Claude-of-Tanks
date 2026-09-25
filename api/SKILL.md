@@ -15,7 +15,10 @@ adapters thin; room/session policy belongs to `server/`, not browser code.
 `signal.ts` configures the shared signaling server and distributed room store.
 `ice.ts` provides validated static, coturn, or Cloudflare TURN configuration.
 `github-stars.ts` proxies the public repository count with bounded upstream
-requests and cache headers. Deployment routes are configured in `vercel.json`.
+requests and cache headers. `telemetry.ts` is the anonymous entry-resilience
+beacon sink (`docs/ENTRY-RESILIENCE.md`): a strict bounded schema, personal
+field names refused, one log line per event, an optional bounded Redis list.
+Deployment routes are configured in `vercel.json`.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -37,6 +40,9 @@ requests and cache headers. Deployment routes are configured in `vercel.json`.
   `server/distributedRoomStore.ts`; start with the corresponding server tests.
 - Star-count responses: run `node server/githubStars.selftest.mjs`; inspect
   `src/ui/githubStars.ts` for the loading/error presentation contract.
+- Telemetry beacon: run `node server/telemetry.selftest.mjs` and
+  `node src/entry/telemetry.selftest.mjs`; read the funnel with
+  `node tools/telemetry-report.mjs` (docs/ENTRY-RESILIENCE.md).
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
