@@ -79,6 +79,7 @@ import {
   createOpaqueLoadingYielder,
   nextFrame,
   nextPaintFrame,
+  onPaintStall,
 } from './engine/frameScheduler.ts';
 import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
@@ -319,6 +320,11 @@ const boot = createBootScreen({ mode: STUDIO_BOOT_INTENT ? 'studio' : 'garage' }
 // uncaught errors against the stage they interrupted (opt-outs: telemetry.ts).
 const entryTelemetry = getEntryTelemetry();
 installEntryErrorTelemetry(entryTelemetry, window);
+// A visible paint wait that outruns its budget extends once and continues
+// (frameScheduler.ts, 2026-09-25); each phase is one beacon, never a failed entry.
+onPaintStall(({ phase, waitedMs }) => entryTelemetry.send({
+  kind: 'slow_reveal', stage: 'paint', code: phase, ms: waitedMs,
+}));
 // Every UI surface consumes the same semantic viewport contract. Install it
 // before HUD/garage construction so their first visible frame already has the
 // correct width, height, orientation and interaction-mode attributes.
@@ -1858,6 +1864,12 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   onReveal: (receipt) => {
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
   },
+  // Entry resilience (2026-09-25): a reveal past its wall-clock budget is a
+  // beacon, not a failed entry; the lifecycle extends once and then waits.
+  onSlowReveal: ({ phase, waitedMs, budgetMs }) => entryTelemetry.send({
+    kind: 'slow_reveal', stage: 'primeReveal', code: phase, ms: waitedMs,
+    mode: networkSession.match ? 'network' : 'solo', timings: { budgetMs },
+  }),
 });
 const networkBattleIntentCover = createNetworkBattleIntentCover({
   game,

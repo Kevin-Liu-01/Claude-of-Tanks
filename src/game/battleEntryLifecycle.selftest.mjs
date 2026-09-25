@@ -255,6 +255,7 @@ assert.equal(revealTimeoutForField(Number.NaN), 1500, 'an unknown field takes th
 {
   let fieldNow = 0, vehicles = 28, framesUntilPresent = 3;
   const budgets = [];
+  const slowReveals = [];
   let sized = null;
   sized = createBattleEntryLifecycle({
     now: () => fieldNow,
@@ -262,31 +263,51 @@ assert.equal(revealTimeoutForField(Number.NaN), 1500, 'an unknown field takes th
     // every frame costs a second; the battle frame presents after `framesUntilPresent` of them
     nextFrame: async () => { fieldNow += 1000; if (--framesUntilPresent <= 0) sized.noteBattleFrame(); },
     onReveal: (row) => budgets.push(row.budgetMs),
+    onSlowReveal: (row) => slowReveals.push(row),
   });
   // 28 vehicles: the first frame lands after 3 s, inside the 3.18 s budget (the fixed 1.5 s would have bounced it)
   const wide = await sized.primeReveal();
   assert.equal(wide.budgetMs, 3180, 'the budget port is read at the reveal');
   assert.equal(wide.waitMs, 3000);
+  assert.equal(wide.slow, undefined, 'a reveal inside its budget carries no slow mark');
   vehicles = 14; framesUntilPresent = 1;
   const slim = await sized.primeReveal();
   assert.equal(slim.budgetMs, 1500, 'a later 7 v 7 reveal reads the smaller budget');
   assert.deepEqual(budgets, [3180, 1500]);
+  assert.deepEqual(slowReveals, [], 'reveals inside their budget report nothing');
+  // Entry resilience (2026-09-25): the 7 v 7 budget used to bounce a 3 s first frame with a thrown error
+  // (a failed join on the network path). It now reports the miss once, extends by one budget, and
+  // continues with the frame that arrives.
   vehicles = 14; framesUntilPresent = 3;
-  await assert.rejects(sized.primeReveal(), /did not present/, 'the 7 v 7 budget still bounces a 3 s first frame');
+  const late = await sized.primeReveal();
+  assert.equal(late.waitMs, 3000, 'the reveal completes with the frame that arrives after the budget');
+  assert.equal(late.slow, 'extended', 'the receipt marks the reveal as having used its extension');
+  assert.deepEqual(slowReveals, [{ budgetMs: 1500, waitedMs: 2000, phase: 'extended' }],
+    'one extension report, at the first frame checkpoint past the budget');
   const bad = createBattleEntryLifecycle({ nextFrame: async () => {}, revealTimeoutMs: () => 0 });
   await assert.rejects(bad.primeReveal(), /positive and finite/, 'a budget port returning nothing valid is refused at the reveal');
 }
 
+// 2026-09-25: a frame that outruns even the extension reports a stall and the reveal still waits for it
+// rather than throwing; covered rendering is released at the reveal start as before.
 let stalledNow = 0;
-const stalled = createBattleEntryLifecycle({
+let stalledFrames = 0;
+const stalledReports = [];
+let stalled = null;
+stalled = createBattleEntryLifecycle({
   now: () => stalledNow,
   revealTimeoutMs: 20,
-  nextFrame: async () => { stalledNow += 11; },
+  nextFrame: async () => { stalledNow += 11; if (++stalledFrames === 6) stalled.noteBattleFrame(); },
+  onSlowReveal: (row) => stalledReports.push(row),
 });
 stalled.coverRendering();
-await assert.rejects(stalled.primeReveal(), /did not present/);
+const stalledReceipt = await stalled.primeReveal();
 assert.equal(stalled.renderingCovered, false,
-  'a reveal timeout still releases covered rendering for recovery');
+  'a slow reveal still releases covered rendering at its start');
+assert.equal(stalledReceipt.slow, 'stalled');
+assert.equal(stalledReceipt.waitMs, 66);
+assert.deepEqual(stalledReports.map(({ phase, waitedMs }) => [phase, waitedMs]), [['extended', 22], ['stalled', 44]],
+  'the extension and the stall are each reported once');
 
 assert.throws(
   () => createBattleEntryLifecycle({ nextFrame: async () => {}, revealTimeoutMs: 0 }),
@@ -295,6 +316,10 @@ assert.throws(
 assert.throws(
   () => createBattleEntryLifecycle({ nextFrame: async () => {}, wakeFrameLoop: true }),
   /requires frame/,
+);
+assert.throws(
+  () => createBattleEntryLifecycle({ nextFrame: async () => {}, onSlowReveal: 'nope' }),
+  /requires frame/, 'a non-callable slow-reveal observer is refused at construction',
 );
 
 console.log('battleEntryLifecycle.selftest: idle wake, exclusivity and covered reveal passed');

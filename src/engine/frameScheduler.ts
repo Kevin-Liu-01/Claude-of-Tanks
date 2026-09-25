@@ -18,6 +18,30 @@ export interface FrameSchedulerOptions {
 
 const defaultNow: Clock = () => performance.now();
 
+/** Milliseconds a visible document may take to deliver one animation callback before the wait is reported. */
+export const PAINT_WAIT_BUDGET_MS = 1000;
+
+/** Entry resilience (2026-09-25): a visible paint wait that outran its budget, reported once per phase. */
+export interface PaintStallEvent {
+  /** `extended`: the budget passed once and the wait continues for another budget; `continued`: that passed too and loading goes on without the frame. */
+  phase: 'extended' | 'continued';
+  waitedMs: number;
+}
+type PaintStallListener = (event: PaintStallEvent) => void;
+const paintStallListeners = new Set<PaintStallListener>();
+
+/** Observe visible paint waits that outrun their budget (the entry beacon subscribes once). */
+export function onPaintStall(listener: PaintStallListener): () => void {
+  paintStallListeners.add(listener);
+  return () => { paintStallListeners.delete(listener); };
+}
+
+function reportPaintStall(event: PaintStallEvent): void {
+  for (const listener of paintStallListeners) {
+    try { listener(event); } catch (_) { /* an observer never breaks loading */ }
+  }
+}
+
 function defaultTaskYield(): Promise<void> {
   const host = globalThis as typeof globalThis & {
     scheduler?: { yield?: () => Promise<void> };
@@ -54,6 +78,7 @@ function waitForPaintOpportunity(): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let timerRevision = 0;
     let requiresFrame = false;
+    let extended = false;
     const cleanup = (): boolean => {
       if (done) return false;
       done = true;
@@ -63,10 +88,23 @@ function waitForPaintOpportunity(): Promise<void> {
       return true;
     };
     const finish = (): void => { if (cleanup()) resolve(); };
+    // Entry resilience (2026-09-25): a visible document whose animation
+    // callback has not arrived within the budget used to reject the wait, which
+    // failed the whole entry on a busy GPU. The first miss extends the wait by
+    // one more budget and reports it; the second reports again and continues
+    // without the frame — loading is a rendering opportunity, not a proof.
     const deadline = (): void => {
+      if (done) return;
       if (hasFrame && visible()) {
-        if (cleanup()) reject(new Error('Visible paint frame did not arrive within 1000 ms'));
-      } else finish();
+        if (!extended) {
+          extended = true;
+          reportPaintStall({ phase: 'extended', waitedMs: PAINT_WAIT_BUDGET_MS });
+          armDeadline();
+          return;
+        }
+        reportPaintStall({ phase: 'continued', waitedMs: PAINT_WAIT_BUDGET_MS * 2 });
+      }
+      finish();
     };
     const armDeadline = (): void => {
       if (timer !== null) clearTimeout(timer);
@@ -74,7 +112,7 @@ function waitForPaintOpportunity(): Promise<void> {
       const revision = ++timerRevision;
       timer = setTimeout(() => {
         if (revision === timerRevision) deadline();
-      }, requiresFrame ? 1000 : 34);
+      }, requiresFrame ? PAINT_WAIT_BUDGET_MS : 34);
     };
     function visibilityChanged(): void {
       if (done) return;
@@ -97,7 +135,8 @@ function waitForPaintOpportunity(): Promise<void> {
  * Require a genuine animation callback while visible, then leave its pre-paint
  * microtask checkpoint. The task is a rendering opportunity, not a GPU/display
  * acknowledgement. Hidden/no-rAF hosts retain a bounded fallback; a visible
- * document with no arriving rAF rejects rather than pretending it painted.
+ * document with no arriving rAF waits one extended budget, reports the stall
+ * through onPaintStall, and then continues (2026-09-25) instead of rejecting.
  */
 export async function nextPaintFrame(): Promise<void> {
   await waitForPaintOpportunity();

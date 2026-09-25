@@ -23,6 +23,14 @@ export function revealTimeoutForField(vehicles: number, base = REVEAL_BUDGET_BAS
   return base + Math.max(0, count - REVEAL_BUDGET_FIELD) * REVEAL_BUDGET_PER_VEHICLE_MS;
 }
 
+/** Entry resilience (2026-09-25): a reveal that outran its budget, reported once per phase. */
+export interface SlowRevealReceipt {
+  budgetMs: number;
+  waitedMs: number;
+  /** `extended`: the budget passed once and the wait continues for another budget; `stalled`: that passed too. */
+  phase: 'extended' | 'stalled';
+}
+
 interface BattleEntryLifecycleOptions {
   nextFrame: () => Promise<RuntimeValue>;
   wakeFrameLoop?: () => void;
@@ -31,6 +39,7 @@ interface BattleEntryLifecycleOptions {
   revealTimeoutMs?: number | (() => number);
   getRevealContext?: () => Record<string, RuntimeValue>;
   onReveal?: (receipt: RevealReceipt) => void;
+  onSlowReveal?: (receipt: SlowRevealReceipt) => void;
 }
 
 export interface BattleEntryLifecycle {
@@ -55,9 +64,10 @@ export function createBattleEntryLifecycle({
   revealTimeoutMs = 1500,
   getRevealContext = () => ({}),
   onReveal = () => {},
+  onSlowReveal = () => {},
 }: BattleEntryLifecycleOptions): BattleEntryLifecycle {
   if (typeof nextFrame !== 'function' || typeof wakeFrameLoop !== 'function' || typeof now !== 'function'
-    || typeof getRevealContext !== 'function' || typeof onReveal !== 'function') {
+    || typeof getRevealContext !== 'function' || typeof onReveal !== 'function' || typeof onSlowReveal !== 'function') {
     throw new TypeError('battle entry lifecycle requires frame, clock, and receipt ports');
   }
   const checkedTimeout = (value: RuntimeValue): number => {
@@ -102,9 +112,21 @@ export function createBattleEntryLifecycle({
       const startedAt = now();
       const budgetMs = revealBudgetMs();
       renderingCovered = false;
+      // Entry resilience (2026-09-25): the budget is a wall-clock guess about
+      // the player's GPU. Missing it used to throw and, on the network path,
+      // fail the join while the peer kept waiting. Now the first miss extends
+      // the wait by one more budget and reports it; a second miss reports a
+      // stall; the reveal then continues with the frame that does arrive.
+      // A truly black scene is still refused by the black-frame verdict.
+      let phase: SlowRevealReceipt['phase'] | null = null;
       while (presentedBattleFrameSerial < firstRequiredSerial) {
-        if (now() - startedAt > budgetMs) {
-          throw new Error('Battlefield did not present before the loading screen exit.');
+        const waitedMs = now() - startedAt;
+        if (phase === null && waitedMs > budgetMs) {
+          phase = 'extended';
+          onSlowReveal({ budgetMs, waitedMs: Math.round(waitedMs), phase });
+        } else if (phase === 'extended' && waitedMs > budgetMs * 2) {
+          phase = 'stalled';
+          onSlowReveal({ budgetMs, waitedMs: Math.round(waitedMs), phase });
         }
         await nextFrame();
       }
@@ -113,6 +135,7 @@ export function createBattleEntryLifecycle({
         frameSerial: presentedBattleFrameSerial,
         waitMs: Math.round(now() - startedAt),
         budgetMs,
+        ...(phase ? { slow: phase } : {}),
         ...getRevealContext(),
       };
       onReveal(receipt);

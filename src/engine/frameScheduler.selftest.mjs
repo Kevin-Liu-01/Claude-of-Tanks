@@ -4,6 +4,8 @@ import {
   createOpaqueLoadingYielder,
   nextFrame,
   nextPaintFrame,
+  onPaintStall,
+  PAINT_WAIT_BUDGET_MS,
 } from './frameScheduler.ts';
 
 async function withFrameHost({ animationFrame = true, taskScheduler = false,
@@ -121,17 +123,67 @@ await withFrameHost({ taskScheduler: true }, async ({ frames, timers, tasks }) =
   assert.equal(completed, true);
 });
 
+// Entry resilience (2026-09-25): a visible deadline used to reject the wait, which failed the whole entry on a
+// busy GPU. The first miss extends the wait by one budget and reports it; the second reports again and continues.
 await withFrameHost({}, async ({ frames, timers, cancelledFrames, listeners }) => {
-  const pending = nextPaintFrame();
-  const rejected = assert.rejects(pending, /Visible paint frame did not arrive within 1000 ms/);
+  const stalls = [];
+  const unsubscribe = onPaintStall((event) => stalls.push(event));
+  let completed = false;
+  const pending = nextPaintFrame().then(() => { completed = true; });
+  assert.equal(PAINT_WAIT_BUDGET_MS, 1000);
   timers[0].callback();
-  await rejected;
-  assert.equal(timers[0].cancelled, true);
+  await Promise.resolve();
+  assert.equal(completed, false, 'the first missed budget does not settle the wait');
+  assert.deepEqual(stalls, [{ phase: 'extended', waitedMs: 1000 }], 'the first miss is reported as an extension');
+  assert.deepEqual(timers.map(({ delay }) => delay), [1000, 1000], 'the wait is re-armed for exactly one more budget');
+  assert.equal(listeners.size, 1, 'the extended wait keeps its visibility listener');
+  frames[0]();
+  await Promise.resolve();
+  assert.equal(completed, false, 'the real frame still crosses the post-frame task before continuing');
+  timers.find(({ delay }) => delay === 0).callback();
+  await pending;
+  assert.equal(completed, true, 'a frame arriving inside the extension completes the wait normally');
+  assert.equal(timers[1].cancelled, true);
   assert.deepEqual(cancelledFrames, [1]);
   assert.equal(listeners.size, 0);
-  frames[0](); timers[0].callback();
+  assert.equal(stalls.length, 1, 'a frame inside the extension is not reported as a stall');
+  unsubscribe();
+});
+
+await withFrameHost({}, async ({ frames, timers, cancelledFrames, listeners }) => {
+  const stalls = [];
+  const unsubscribe = onPaintStall((event) => stalls.push(event));
+  let completed = false;
+  const pending = nextPaintFrame().then(() => { completed = true; });
+  timers[0].callback();
+  timers[1].callback();
   await Promise.resolve();
-  assert.equal(timers.length, 1, 'a failed or late visible frame cannot schedule heavy continuation');
+  assert.deepEqual(stalls, [{ phase: 'extended', waitedMs: 1000 }, { phase: 'continued', waitedMs: 2000 }],
+    'a second missed budget is reported as a continuation');
+  assert.equal(completed, false, 'continuation still crosses a task boundary');
+  assert.deepEqual(timers.map(({ delay }) => delay), [1000, 1000, 0]);
+  timers[2].callback();
+  await pending;
+  assert.equal(completed, true, 'loading continues without the frame instead of failing');
+  assert.deepEqual(cancelledFrames, [1]);
+  assert.equal(listeners.size, 0);
+  frames[0](); timers[0].callback(); timers[1].callback();
+  await Promise.resolve();
+  assert.equal(timers.length, 3, 'late frame/deadline callbacks cannot schedule heavy continuation twice');
+  unsubscribe();
+});
+
+await withFrameHost({}, async ({ timers }) => {
+  const unsubscribe = onPaintStall(() => { throw new Error('observer failure'); });
+  let completed = false;
+  const pending = nextPaintFrame().then(() => { completed = true; });
+  timers[0].callback();
+  timers[1].callback();
+  await Promise.resolve();
+  timers.find(({ delay }) => delay === 0).callback();
+  await pending;
+  assert.equal(completed, true, 'a throwing stall observer never breaks the wait');
+  unsubscribe();
 });
 
 await withFrameHost({}, async ({ frames, timers, cancelledFrames, listeners, setHidden }) => {
@@ -253,20 +305,16 @@ await withFrameHost({ taskScheduler: true }, async ({ frames, tasks, timers }) =
   assert.deepEqual(timers.map(({ delay }) => delay), [34]);
 });
 
-for (const failureAt of ['timeout', 'task']) {
+{
   await withFrameHost({ taskScheduler: true }, async ({ frames, tasks, timers, cancelledFrames, listeners }) => {
     let clock = 0;
     const yieldWork = createOpaqueLoadingYielder(12, 80, { now: () => clock });
     const expected = new Error('post-frame task rejected');
     clock = 80;
     const pending = yieldWork();
-    const rejected = assert.rejects(pending, failureAt === 'timeout'
-      ? /Visible paint frame did not arrive within 1000 ms/ : error => error === expected);
-    if (failureAt === 'timeout') timers[0].callback();
-    else {
-      frames[0](); await Promise.resolve();
-      tasks[0].reject(expected);
-    }
+    const rejected = assert.rejects(pending, error => error === expected);
+    frames[0](); await Promise.resolve();
+    tasks[0].reject(expected);
     await rejected;
     assert.equal(timers[0].cancelled, true);
     assert.deepEqual(cancelledFrames, [1]);
@@ -278,6 +326,21 @@ for (const failureAt of ['timeout', 'task']) {
     assert.equal(frames.length, 2, 'failed default frame/task leaves both deadlines unsatisfied');
     frames[1](); await Promise.resolve();
     tasks.at(-1)(); await retry;
+  });
+  // 2026-09-25: a visible deadline inside the opaque yielder extends once and then continues the loading slice.
+  await withFrameHost({ taskScheduler: true }, async ({ frames, tasks, timers }) => {
+    let clock = 0, completed = false;
+    const yieldWork = createOpaqueLoadingYielder(12, 80, { now: () => clock });
+    clock = 80;
+    const pending = yieldWork().then(() => { completed = true; });
+    timers[0].callback();
+    timers[1].callback();
+    await Promise.resolve();
+    assert.equal(completed, false);
+    assert.equal(tasks.length, 1, 'the continued wait still crosses the post-frame task');
+    tasks[0](); await pending;
+    assert.equal(completed, true, 'covered loading continues after two missed paint budgets');
+    assert.equal(frames.length, 1);
   });
 }
 
