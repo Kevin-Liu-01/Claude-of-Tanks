@@ -2197,12 +2197,12 @@ export function createPost(
   const resolveLightFx = (): void => {
     const resolved = resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery());
     const next = lightFxOverrides ? Object.freeze({ ...resolved, ...lightFxOverrides }) : resolved;
+    renderer.domElement.dataset.lightFx = ['contact', 'bounce', 'shafts', 'flare']
+      .filter((_, i) => [next.contactShadows, next.groundBounce, next.sunShafts, next.lensFlare][i]).join('+') || 'off';
     if (samePostLightFx(next, lightFx)) return;
     lightFx = next;
     sunShafts.enabled = next.sunShafts;
     lensFlare.enabled = next.sunShafts || next.lensFlare; // the flare pass also clears the shared target
-    renderer.domElement.dataset.lightFx = ['contact', 'bounce', 'shafts', 'flare']
-      .filter((_, i) => [next.contactShadows, next.groundBounce, next.sunShafts, next.lensFlare][i]).join('+') || 'off';
   };
   resolveLightFx();
 

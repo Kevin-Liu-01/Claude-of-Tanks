@@ -39,6 +39,15 @@ export const CONTACT_SHADOW_FADE_M = 25;
 export const CONTACT_SHADOW_STRENGTH = 0.92;
 /** The last part of the ray fades so the shadow has no cut-off line at its length. */
 export const CONTACT_SHADOW_TAIL_FADE = 0.55;
+/**
+ * An occluder counts only when the depth this many pixels either side of the hit lies on the same surface (within
+ * WIDTH_M + WIDTH_PER_M × distance): grass blades, wires and far poles — a few pixels wide, never cascade casters —
+ * are skipped, hulls, tracks, wheels, walls and rocks pass (an oblique face changes depth by ~0.1 m over 5 px at
+ * 10 m; a blade's neighbours are the ground 0.3–1 m behind it).
+ */
+export const CONTACT_SHADOW_WIDTH_PX = 5;
+export const CONTACT_SHADOW_WIDTH_M = 0.12;
+export const CONTACT_SHADOW_WIDTH_PER_M = 0.012;
 
 /** Ray parameter of step `i` (0-based) with a per-pixel jitter in [0, 1): quadratic, denser at the contact. */
 export function contactShadowStepParameter(step: number, jitter = 0.5, steps = CONTACT_SHADOW_STEPS): number {
@@ -208,7 +217,16 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
         float diff = c.w - cotDepthToDist( texture2D( tDepth, quv ).x );
         float bias = 0.015 + c.w * 0.003;
         float thick = 0.10 + u * len * 0.45 + c.w * 0.012;
-        if ( diff > bias && diff < thick ) { hit = u; break; }
+        if ( diff > bias && diff < thick ) {
+          // a wide occluder only: grass blades, wires and far poles are a few pixels wide and never cast in
+          // the cascades — the depth five pixels either side of the hit must belong to the same surface
+          float occ = c.w - diff;
+          float wide = ${f(CONTACT_SHADOW_WIDTH_M)} + occ * ${f(CONTACT_SHADOW_WIDTH_PER_M)};
+          vec2 side = vec2( uInvSize.x * ${f(CONTACT_SHADOW_WIDTH_PX)}, 0.0 );
+          float dl = cotDepthToDist( texture2D( tDepth, quv - side ).x );
+          float dr = cotDepthToDist( texture2D( tDepth, quv + side ).x );
+          if ( abs( dl - occ ) < wide && abs( dr - occ ) < wide ) { hit = u; break; }
+        }
       }
       return hit <= 1.0 ? 1.0 - smoothstep( ${f(CONTACT_SHADOW_TAIL_FADE)}, 1.0, hit ) : 0.0;
     }

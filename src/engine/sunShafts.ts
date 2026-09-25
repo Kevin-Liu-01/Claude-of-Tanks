@@ -30,9 +30,11 @@ export const SUN_SHAFT_TAPS = 12;
 export const SUN_SHAFT_DECAY = 0.90;
 export const SUN_SHAFT_SPANS = Object.freeze([1.0, 1 / SUN_SHAFT_TAPS]);
 /** Radius of the sky region around the sun that feeds the shafts (screen-height units, aspect corrected). */
-export const SUN_SHAFT_MASK_RADIUS = 0.62;
+export const SUN_SHAFT_MASK_RADIUS = 0.40;
 /** Linear HDR gain of the fully lit shaft field (the sky near the sun sits around 1.0–1.45). */
-export const SUN_SHAFT_GAIN = 0.34;
+export const SUN_SHAFT_GAIN = 0.16;
+/** Share of the ray field the open sky keeps: the rays read against silhouettes, not as a wash over the sky. */
+export const SUN_SHAFT_OPEN_SKY = 0.25;
 export const SUN_SHAFT_TINT = Object.freeze([1.0, 0.93, 0.80] as const);
 /** The sun may leave the frame by this much (NDC) before the rays fade out. */
 export const SUN_SHAFT_FRAME_FADE = Object.freeze([1.0, 1.55] as const);
@@ -122,7 +124,7 @@ void main() {
   float sky = step( 0.9999999, texture2D( tDepth, vUv ).x );
   vec2 q = ( vUv - uSun ) * vec2( uAspect, 1.0 );
   float w = 1.0 - smoothstep( 0.0, ${SUN_SHAFT_MASK_RADIUS.toFixed(3)}, length( q ) );
-  gl_FragColor = vec4( sky * w, 0.0, 0.0, 1.0 );
+  gl_FragColor = vec4( sky * w * w, 0.0, 0.0, 1.0 );
 }`;
 
 const BLUR_FRAGMENT = /* glsl */`
@@ -145,10 +147,14 @@ void main() {
 
 const WRITE_FRAGMENT = /* glsl */`
 uniform sampler2D tSrc;
+uniform sampler2D tMask;
 uniform vec3 uColor;
 varying vec2 vUv;
 void main() {
-  gl_FragColor = vec4( uColor * texture2D( tSrc, vUv ).r, 1.0 );
+  // the blurred field, held back where the texel itself is open sky near the sun (the rays are what the
+  // silhouettes carve out of the field; the open sky keeps a share so the field has no hard edge)
+  float rays = texture2D( tSrc, vUv ).r * mix( 1.0, ${SUN_SHAFT_OPEN_SKY.toFixed(3)}, texture2D( tMask, vUv ).r );
+  gl_FragColor = vec4( uColor * rays, 1.0 );
 }`;
 
 function quarterTarget(width: number, height: number, name: string): THREE.WebGLRenderTarget {
@@ -212,7 +218,7 @@ export class SunShaftsPass extends Pass {
       tSrc: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uSpan: { value: 1 },
     }, 'SunShafts.blur');
     this.writeMaterial = material(WRITE_FRAGMENT, {
-      tSrc: { value: null }, uColor: { value: new THREE.Vector3(1, 1, 1) },
+      tSrc: { value: null }, tMask: { value: null }, uColor: { value: new THREE.Vector3(1, 1, 1) },
     }, 'SunShafts.write');
     this.quad = new FullScreenQuad(this.maskMaterial);
   }
@@ -284,6 +290,7 @@ export class SunShaftsPass extends Pass {
       }
       const wu = this.writeMaterial.uniforms;
       wu.tSrc.value = source.texture;
+      wu.tMask.value = this.mask.texture;
       const k = SUN_SHAFT_GAIN * this.strength;
       wu.uColor.value.set(this.color.r * k, this.color.g * k, this.color.b * k);
       this.quad.material = this.writeMaterial;

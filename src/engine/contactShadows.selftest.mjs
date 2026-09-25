@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   CONTACT_SHADOW_FADE_M, CONTACT_SHADOW_FAR_M, CONTACT_SHADOW_GLSL, CONTACT_SHADOW_NEAR_M, CONTACT_SHADOW_RANGE_M,
-  CONTACT_SHADOW_STEPS, CONTACT_SHADOW_STRENGTH, CONTACT_SHADOW_TAIL_FADE, contactShadowMarchLength,
+  CONTACT_SHADOW_STEPS, CONTACT_SHADOW_STRENGTH, CONTACT_SHADOW_TAIL_FADE, CONTACT_SHADOW_WIDTH_M,
+  CONTACT_SHADOW_WIDTH_PER_M, CONTACT_SHADOW_WIDTH_PX, contactShadowMarchLength,
   contactShadowOcclusion, contactShadowRangeFade, contactShadowStepParameter, contactShadowStepTable,
   contactShadowSunShare, createContactShadowUniforms, updateContactShadowUniforms,
 } from './contactShadows.ts';
@@ -107,7 +108,11 @@ assert.ok(CONTACT_SHADOW_GLSL.includes(`smoothstep( ${CONTACT_SHADOW_TAIL_FADE.t
 assert.ok(CONTACT_SHADOW_GLSL.includes(`${(CONTACT_SHADOW_RANGE_M - CONTACT_SHADOW_FADE_M).toFixed(4)}, ${CONTACT_SHADOW_RANGE_M.toFixed(4)}, dist`), 'the same range fade');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`occ * share * ${CONTACT_SHADOW_STRENGTH.toFixed(4)}`), 'the strength');
 assert.match(CONTACT_SHADOW_GLSL, /float share = T \/ \( T \+ amb \);/, 'T / (T + A)');
-assert.match(CONTACT_SHADOW_GLSL, /if \( diff > bias && diff < thick \) \{ hit = u; break; \}/, 'bias below, thickness above');
+assert.match(CONTACT_SHADOW_GLSL, /if \( diff > bias && diff < thick \) \{/, 'bias below, thickness above');
+assert.match(CONTACT_SHADOW_GLSL, /if \( abs\( dl - occ \) < wide && abs\( dr - occ \) < wide \) \{ hit = u; break; \}/,
+  'only a wide occluder counts (grass blades and wires, a few pixels wide, never cast in the cascades)');
+assert.ok(CONTACT_SHADOW_GLSL.includes(`uInvSize.x * ${CONTACT_SHADOW_WIDTH_PX.toFixed(4)}`), 'the width test spans five pixels either side');
+assert.ok(CONTACT_SHADOW_GLSL.includes(`${CONTACT_SHADOW_WIDTH_M.toFixed(4)} + occ * ${CONTACT_SHADOW_WIDTH_PER_M.toFixed(4)}`), 'the same-surface tolerance grows with distance');
 assert.match(CONTACT_SHADOW_GLSL, /clamp\( sunVis, 0\.0, 1\.0 \)/, 'the CSM visibility gates the sun term');
 assert.match(CONTACT_SHADOW_GLSL, /cross\( dx, dy \)/, 'best-pair normal from the depth neighbours');
 
