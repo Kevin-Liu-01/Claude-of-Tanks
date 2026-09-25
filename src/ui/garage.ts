@@ -1581,6 +1581,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       nextCollection.disabled = collections.scrollLeft >= collections.scrollWidth - collections.clientWidth - 1;
     };
     collections.addEventListener('scroll', updateCollectionScroll, { passive: true });
+    // The mobile picker is hidden at boot; measure again when it opens or
+    // changes width so offscreen countries never get stuck behind disabled arrows.
+    if (typeof ResizeObserver === 'function') new ResizeObserver(updateCollectionScroll).observe(collections);
     requestAnimationFrame(updateCollectionScroll);
     camoCollectionCaption = document.createElement('div');
     camoCollectionCaption.className = 'cot-camo-collection-caption';
