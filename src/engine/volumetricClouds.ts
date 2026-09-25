@@ -792,11 +792,11 @@ export class VolumetricCloudLayer {
     (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.65);
     const hz = summary?.horizon ?? irr;
     (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.3);
-    // the mean upper-sky luminance in the zenith's hue (the stratus floor)
-    const zenith = summary?.zenith ?? irr;
-    const zl = Math.max(1e-4, 0.2126 * zenith.r + 0.7152 * zenith.g + 0.0722 * zenith.b);
-    const mean = summary?.meanLuminance ?? zl;
-    (t.uSkyMean.value as THREE.Vector3).set(zenith.r, zenith.g, zenith.b).multiplyScalar(mean / zl);
+    // the stratus floor: the horizon band's colour at the brighter of the band's and the mean upper sky's
+    // luminance — the sky a far ceiling replaces at the skyline is the horizon band, the brightest of a hazy sky
+    const hl = Math.max(1e-4, 0.2126 * hz.r + 0.7152 * hz.g + 0.0722 * hz.b);
+    const mean = summary?.meanLuminance ?? hl;
+    (t.uSkyMean.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(Math.max(hl, mean) / hl);
     this.domeMaterial.uniforms.uSkyIntensity.value = a.skyIntensity;
   }
 
