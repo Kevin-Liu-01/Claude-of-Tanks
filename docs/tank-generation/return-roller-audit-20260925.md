@@ -80,12 +80,30 @@ type99a carries three where the published Type 99A count is four; kurganets25_x 
 where tank-afv counts four; the delisted `buildT72B87NativeTyped` builder in t72.ts keeps its
 empty station list (not playable).
 
-Verification per changed id: scratch station probe (rollers/side as tabled), lane-ceiling probe
-(crest under every ceiling by the margins above), `npm run typecheck`, the family receipts,
-`tools/wheel-review.mjs --gate`, the track receipts, `tools/tank-sealed-check.mjs`, then the
-presentation-centering / combat-anatomy / icon regeneration and the per-id release checks; the
-whole-model digests that moved (`t90XEraBindings`, `sourceXSovietAuxArmor`, `tos1aTagil`,
-`t72b3mXSideMounts` ledger, `object695X` triangle ceiling) were re-pinned with dated notes.
+Verification per changed id: scratch station probe (rollers/side as tabled), lane-ceiling probe (crest
+under every ceiling by the margins above), `npm run typecheck`, the family receipts, `tools/wheel-review.mjs
+--gate` (38 tanks, 0 flagged), `tools/wheel-inventory.mjs` (38, 0 failed), the track receipts
+(track-geometry, track-clip-classification/options/result, track-lane-boxes, trackEndRamp/Wrap,
+trackGlitchSimulation, trackShoeDimensions), `tools/tank-sealed-check.mjs --ledger docs/geometry-gate/sealed.json
+--gate` (every id holds its ledger row), the presentation-centering / combat-anatomy / icon regeneration
+(centering PASS 192 tanks, 0.00 px residual; anatomy check PASS), attribution and public-repo hygiene.
+Whole-model digests that moved (`t90XEraBindings`, `sourceXSovietAuxArmor`, `tos1aTagil`,
+`t72b3mXSideMounts` ledger, `pl01GunGlacisCrows`, `object695X` count and ceiling, `trackShoeDimensions`)
+were re-pinned once with dated notes; the three receipts that asserted the rollerless reading
+(`t72JaguarRedesign`, `pt91mPendekarFidelity`, `trackShoeDimensions` round-46b) now assert the rollers.
+
+Release checks: the eleven registered T-72/T-90 X ids pass the geometry gate (92.2-95.7 against their
+90/92 bars, the T-90SM X and T-90MS X rows rising from 91.9 to 92.2), the sealed ledger and the strict
+track-clip audit; two misses pre-date the lane and reproduce byte-for-byte on an untouched origin/main
+worktree — `t72b3m_x` (shoulder-channel holes at (±1.85, z 2.83-2.85), contiguity 9; its geoMin is 93.5
+here against 91.9 on the base tree) and `t72b3_x` (fidelity component `turret.left` 91.8457/92 with an
+overall 96.7). The first-party hulls' standard check reads the same 9/27 machine-gate passes as the base
+tree (the unregistered hulls' stale-board scores and the pre-existing holes on the T-72B3M, T-90A, Burlak,
+BMPT, ZTZ-99A2 family, Strv 103 and Strv 81 are identical on both trees); the one roller-induced read —
+the raised T-72B3M / BMPT run sweeping 16 voxels of committed interior fill — was closed by regenerating
+those two hulls' fills (watertight 0 L, strict sweep 0/0). The ZTZ-99A2 family's bow clip is hull geometry
+that already failed the clip gate (front 211 on base, 269 with the higher approach ramp; roller height
+does not move it) and is left to a bow pass.
 
 Eye-check (dev-server track-audit page, 1600 x 900, left elevation, every changed family): on the
 T-72/T-90 fleet and X hulls, the Chinese hulls, PL-01, Object 695 X and the Strv 103 the raised run and
