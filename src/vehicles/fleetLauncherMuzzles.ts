@@ -26,7 +26,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   m3a3_bradley: [-.115, .115].map(dy => turret(-.91, .75 + dy * .82 + .011 * Math.sin(.05), .352 + .011 * Math.cos(.05), .05)),
   upior: [turret(-.30, 1.042, .553)],
   bmpt_t90: [-1, 1].flatMap(s => [1.005, 1.245].flatMap(x => [.35, .60].map(y => turret(s * (x + .011 * Math.sin(.03)), y, .724 + .011 * Math.cos(.03), 0, s * .03)))),
-  aft10_x: [-1, 1].flatMap(s => [0, 1].flatMap(c => [0, 1].map(r => ({ ...mouth(s * (.505 + c * .53), -.025 + r * .475, 1.244), covered: true })))),
+  // Preserve the source battery's left-to-right, lower/upper firing order.
+  aft10_x: [-1.035, -.505, .505, 1.035].flatMap(x => [0, 1].map(r => ({ ...mouth(x, -.025 + r * .475, 1.244), covered: true }))),
 };
 
 /** Install after donor/spec synchronization, without loading visual builders. */

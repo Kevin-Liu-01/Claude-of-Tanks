@@ -468,12 +468,14 @@ const guidedShooter = guidedMatch.entityById.get('guided-a');
 guidedShooter.combat.reload.t = 0;
 const guidedAccuracy = guidedShooter.spec.gun.baseAccuracy;
 guidedShooter.spec.gun.baseAccuracy = 0;
+const guidedLaunchAxis = articulatedGunDirection(guidedShooter);
 guidedInput.get('guided-a').fire = true;
 guidedMatch.step({ dt: 1 / 60, inputs: guidedInput });
 guidedShooter.spec.gun.baseAccuracy = guidedAccuracy;
-const guidedEvent = guidedMatch.snapshot({
+const guidedSnapshot = guidedMatch.snapshot({
   tick: 241, serverTimeMs: 241000 / 60, viewerId: 'guided-a', ackInputSeq: 1,
-}).events.find((event) => event.type === 'shell_fired' && event.shooterId === 'guided-a');
+});
+const guidedEvent = guidedSnapshot.events.find((event) => event.type === 'shell_fired' && event.shooterId === 'guided-a');
 assert.ok(guidedEvent, 'authority emits the controlled guided shot');
 assert.equal(guidedEvent.weaponSound, 'spike-launch',
   'authority routes the guided round to its launcher report');
@@ -481,9 +483,18 @@ const guidedEntity = guidedMatch.entityById.get('guided-a');
 const guidedDirect = guidedEntity.input.aimPoint.clone().sub(new Vector3(
   guidedEvent.x, guidedEvent.y, guidedEvent.z,
 )).normalize();
-assert.ok(guidedDirect.dot(new Vector3(
-  guidedEvent.dx, guidedEvent.dy, guidedEvent.dz,
-)) > 1 - 1e-10, 'authoritative guided shot launches through the center plus');
+const guidedExitDirection = new Vector3(guidedEvent.dx, guidedEvent.dy, guidedEvent.dz);
+assert.ok(guidedLaunchAxis.dot(guidedExitDirection) > 1 - 1e-10,
+  'the Puma missile exits along its physical tube before guidance turns it');
+assert.equal(guidedEvent.muzzleIndex, 0, 'first guided shot selects the first physical tube');
+// An offset launcher is parallel to the cannon; aiming it directly from its
+// mouth at the reticle would silently bend the launch axis. Guidance acts on
+// the live projectile after exit, and must still converge on the centre plus.
+const guidedLive = guidedSnapshot.shells.find(shell => shell.id === guidedEvent.shellId);
+assert.ok(guidedLive?.guided, 'authority retains the launched guided projectile');
+const guidedFlightDirection = new Vector3(guidedLive.vx, guidedLive.vy, guidedLive.vz).normalize();
+assert.ok(guidedFlightDirection.dot(guidedDirect) > guidedExitDirection.dot(guidedDirect),
+  'post-exit guidance steers the offset missile toward the centre plus');
 
 // An ordinary multiplayer round must also leave on the visible articulated
 // bore. The authority rebuilds the input ray at 1,000 m; the former trigger-
