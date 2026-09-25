@@ -57,6 +57,24 @@ assert.match(source, /function mergeXrayModuleHits[\s\S]*const merged = new Map(
   'multiple physical hits on one module collapse into one final-state callout');
 assert.match(source, /function separateFinalXrayLabels[\s\S]*const placed(?:: KillcamLabel\[\])? = \[\][\s\S]*settleXrayLabel/,
   'label separation is repeated after geometry and fixed-panel repulsion');
+// battle endings (2026-09-25): the final-kill capture — every tank's last hit, the last lethal chain whoever
+// fired, the last destruction from the bus — and the neutral 'final' playback kind with its own title line
+assert.match(source, /import \{ selectResultReplay, type DestroyedRecord, type ReplayResult \} from '\.\/killcamSelection\.ts';/,
+  'the replay selection policy is the pure killcamSelection module');
+assert.match(source, /let lastLethal(?:: ReplaySnapshot \| null)? = null;/, 'the last lethal chain on any tank is captured');
+assert.match(source, /const lastHitByTarget = new Map(?:<[^;]+>)?\(\);/, 'the last hit each tank took is captured for burn-outs');
+assert.match(source, /bus\.on\('tank:destroyed', \(payload\) => \{[\s\S]*?lastDestroyed = \{/, 'every destruction is remembered from the bus');
+assert.match(source, /if \(target\.visual\) \{\n\s*lastHitByTarget\.set\(target\.id, snap\);\n\s*if \(ev\.destroyed\) lastLethal = snap;/,
+  'onShellHit records the chain whoever fired');
+assert.match(source, /selectAnyRamReplay\(ev, a, b\)/, 'a lethal ram between any pair is captured');
+assert.match(source, /type PlaybackKind = 'death' \| 'victory' \| 'final';/, 'the final-kill playback kind exists');
+assert.match(source, /const finalBlow = pb\.kind === 'final' && !playerKill && !pb\.isDeathView;/,
+  'a final blow between two other tanks reads as a neutral line');
+assert.match(source, /'killcam\.finalRamLine' : 'killcam\.finalBlowLine'/, 'the neutral line has ram and shell variants');
+assert.match(source, /\|\| pb\.kind === 'final';/, 'the final-kill x-ray draws the victim as a corpse');
+assert.equal((source.match(/lastLethal = lastDestroyed = null;\n\s*lastHitByTarget\.clear\(\);/g) || []).length, 2,
+  'both battle-entry paths clear the final-kill capture');
+
 assert.match(source, /const poseHistory = new Map(?:<[^;]+>)?\(\)/,
   'killcam retains the preceding simulation frame instead of reconstructing it after death');
 assert.match(source, /replayKind: 'collision'[\s\S]*trajPts: null/,
@@ -125,7 +143,9 @@ assert.match(effects, /vehicleCollision\([\s\S]{0,180}closingMps(?:\s*:\s*number
   const respawnHandler = source.slice(respawnAt, source.indexOf('});', respawnAt));
   assert.ok(respawnHandler.includes('pendingDeath = lastHitOnPlayer = null;'),
     'the revive clears pendingDeath and lastHitOnPlayer inside the mode:respawn handler');
-  assert.match(source, /if \(result === 'defeat'\) \{\n\s*snap = pendingDeath \|\| lastHitOnPlayer;/,
+  // battle endings (2026-09-25): the defeat replay reads the (now last-life-only) death chain and the burn-out
+  // fallback through the pure selection policy — the same two fields the revive clears
+  assert.match(source, /selectResultReplay<ReplaySnapshot>\(\{[\s\S]*?pendingDeath,\n\s*pendingVictory,\n\s*lastHitOnPlayer,/,
     'the defeat replay still reads the (now last-life-only) death chain with the burn-out fallback');
 }
 

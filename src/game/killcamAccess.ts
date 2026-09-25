@@ -9,7 +9,7 @@ import type {
 
 type MaybePromise<T> = T | PromiseLike<T>;
 
-type KillcamResult = 'victory' | 'defeat';
+type KillcamResult = 'victory' | 'defeat' | 'draw';
 type KillcamCapturePhase = 'xray' | 'firing' | 'collision';
 
 interface KillcamReplayInfo {
@@ -36,6 +36,10 @@ interface KillcamReplayInfo {
 
 interface KillcamPlayOptions {
   freshKill?: boolean;
+  /** Battle endings: ask for the battle-deciding kill whoever fired it (killcamSelection.ts). */
+  finalKill?: boolean;
+  /** False once the player's own death already replayed mid-battle. */
+  ownDeath?: boolean;
 }
 
 interface KillcamSpectateAccess {

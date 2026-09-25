@@ -1,5 +1,6 @@
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
+import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './killcamSelection.ts';
 /**
  * killcam.ts — War Thunder-class kill camera (integration-owned module).
  *
@@ -107,7 +108,9 @@ type Vec3Tuple = [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';
 type ModuleStates = Partial<Record<string, ModuleStateName>>;
 export type ReplayKind = 'projectile' | 'collision';
-type PlaybackKind = 'death' | 'victory';
+// 'final' (battle endings, 2026-09-25): the battle-deciding kill whoever fired it — an ally's shell, a bot's
+// ram — replayed from the shooter's side with a neutral title.
+type PlaybackKind = 'death' | 'victory' | 'final';
 export type PlaybackPhase = 'wreck' | 'approach' | 'firing' | 'flight' | 'contact'
   | 'collision' | 'impact' | 'xray' | 'exit';
 type Disposable = { dispose(): void };
@@ -209,6 +212,7 @@ interface KillcamShell {
 export interface KillcamGame {
   phase: string;
   result: string | null;
+  timeS?: number;
   tanks: KillcamEntity[];
   shells: KillcamShell[];
   tankById: Map<string, KillcamEntity>;
@@ -644,6 +648,19 @@ function selectRamReplay(
   return null;
 }
 
+/** A lethal ram between any two tanks (battle endings): the wreck is the target, the other hull the attacker. */
+function selectAnyRamReplay(
+  ev: KillcamHitEvent,
+  a: KillcamEntity,
+  b: KillcamEntity,
+): RamReplaySelection | null {
+  const normal = cloneVec3Tuple(ev.normal);
+  const reverseNormal: Vec3Tuple = [-normal[0], -normal[1], -normal[2]];
+  if (b.combat.destroyed) return { target: b, attacker: a, modules: ev.bModulesHit || [], direction: normal };
+  if (a.combat.destroyed) return { target: a, attacker: b, modules: ev.aModulesHit || [], direction: reverseNormal };
+  return null;
+}
+
 const XRAY_HOLD_S = 7.0;
 const FLIGHT_MIN_S = 1.9;
 const FLIGHT_MAX_S = 3.4;
@@ -695,7 +712,7 @@ const FINALE_XRAY_FLOOR_S = 3.6; // x-ray floor while a finale still has to play
 const TRAJ_KEEP = 32;          // shell traces retained (oldest evicted)
 const TRAJ_MAX_PTS = 400 * 3;  // ≥ SHELL_MAX_LIFETIME_S at 60 Hz
 const ORBIT_RAD_S = 0.05;      // x-ray camera drift
-const VICTORY_WINDOW_S = 1.0;  // final blow must be this fresh at battle end
+// the victory / final-kill freshness windows live with the selection policy (killcamSelection.ts)
 
 const KC_MODULE_ICON: Readonly<Record<string, string>> = Object.freeze({
   trackL: 'track', trackR: 'track', engine: 'engine', transmission: 'transmission',
@@ -1376,6 +1393,12 @@ export function createKillCam(deps: KillcamDeps) {
   let pendingDeath: ReplaySnapshot | null = null;    // lethal shell snapshot, target = player
   let pendingVictory: ReplaySnapshot | null = null;  // lethal shell snapshot, attacker = player
   let lastHitOnPlayer: ReplaySnapshot | null = null; // fallback for fire deaths (x-ray only)
+  // battle endings (2026-09-25): the last lethal chain on ANY tank (attacker any, target any) for the
+  // final-kill replay, the last hit every tank took (a burn-out's x-ray shows the shell that lit it) and the
+  // last destruction the bus announced (fire / ram deaths carry no lethal shell of their own).
+  let lastLethal: ReplaySnapshot | null = null;
+  const lastHitByTarget = new Map<string, ReplaySnapshot>();
+  let lastDestroyed: DestroyedRecord | null = null;
 
   // ---- playback state ----
   let active = false;
@@ -1721,12 +1744,27 @@ export function createKillCam(deps: KillcamDeps) {
         traj.clear();
         poseHistory.clear();
         pendingDeath = pendingVictory = lastHitOnPlayer = null;
+        lastLethal = lastDestroyed = null;
+        lastHitByTarget.clear();
         api.cancel();
         spectate.stop(false); // fresh battle never inherits an ally chase
       });
       // SPECTATE lifecycle: the chase ends the moment the battle is decided
       // (the end flow takes the camera) or the phase leaves battle (garage).
       bus.on('battle:ended', () => spectate.stop(true));
+      // battle endings: every destruction is remembered, whatever its cause — a burn-out or a ram that decides
+      // the battle has no lethal shell of its own, so the final-kill selection reads this record instead
+      bus.on('tank:destroyed', (payload) => {
+        const p = payload as { id?: string; cause?: string; killerId?: string | null } | null;
+        if (!p || typeof p.id !== 'string') return;
+        const game = getGame ? getGame() : null;
+        lastDestroyed = {
+          id: p.id,
+          cause: typeof p.cause === 'string' ? p.cause : 'shot',
+          timeS: Number(game?.timeS) || 0,
+          killerId: typeof p.killerId === 'string' ? p.killerId : null,
+        };
+      });
       // RESPAWN (2026-09-15): in a mode that revives the player, the revive takes the camera back —
       // the ally chase ends, a pending death view is cancelled, and the HUD leaves its spectating state.
       bus.on('mode:respawn', (payload) => {
@@ -1764,6 +1802,8 @@ export function createKillCam(deps: KillcamDeps) {
         traj.clear();
         poseHistory.clear();
         pendingDeath = pendingVictory = lastHitOnPlayer = null;
+        lastLethal = lastDestroyed = null;
+        lastHitByTarget.clear();
       });
     },
 
@@ -1802,12 +1842,17 @@ export function createKillCam(deps: KillcamDeps) {
     onShellHit(ev: KillcamHitEvent, target: KillcamEntity | null) {
       if (!target || !target.state || !ev.localPos) return;
       const player = getPlayer();
-      if (!player) return;
-      if (ev.targetId === player.id) {
-        lastHitOnPlayer = makeSnapshot(ev, target);
-        if (ev.destroyed) pendingDeath = lastHitOnPlayer;
-      } else if (ev.attackerId === player.id && ev.destroyed) {
-        pendingVictory = makeSnapshot(ev, target);
+      const snap = makeSnapshot(ev, target);
+      if (player && ev.targetId === player.id) {
+        lastHitOnPlayer = snap;
+        if (ev.destroyed) pendingDeath = snap;
+      } else if (player && ev.attackerId === player.id && ev.destroyed) {
+        pendingVictory = snap;
+      }
+      // battle endings: every tank's last hit and the last lethal chain, whoever fired (a spectator's view too)
+      if (target.visual) {
+        lastHitByTarget.set(target.id, snap);
+        if (ev.destroyed) lastLethal = snap;
       }
     },
 
@@ -1815,8 +1860,9 @@ export function createKillCam(deps: KillcamDeps) {
     onRam(ev: KillcamHitEvent, a: KillcamEntity | null, b: KillcamEntity | null) {
       if (!ev || !a || !b) return;
       const player = getPlayer();
-      if (!player) return;
-      const selection = selectRamReplay(ev, a, b, player);
+      // the player's own ram (either side) keeps its death / victory chain; any other lethal ram is still the
+      // battle's last blow when it decides the ending (battle endings)
+      const selection = (player && selectRamReplay(ev, a, b, player)) || selectAnyRamReplay(ev, a, b);
       if (!selection?.target.visual || !selection.attacker.visual) return;
       const snap = makeCollisionSnapshot(
         { ...ev, normal: selection.direction },
@@ -1824,40 +1870,50 @@ export function createKillCam(deps: KillcamDeps) {
         selection.attacker,
         selection.modules,
       );
-      if (selection.target === player) pendingDeath = snap;
-      else pendingVictory = snap;
+      if (player && selection.target === player) pendingDeath = snap;
+      else if (player && selection.attacker === player) pendingVictory = snap;
+      lastLethal = snap;
     },
 
     /**
      * Start the end-of-battle cinematic if a matching snapshot exists.
-     * @param {'victory'|'defeat'} result battle result
+     * @param {'victory'|'defeat'|'draw'} result battle result
      * @param {number} timeS current sim time (freshness gate for victory)
      * @param {Function} onDone called when the replay finishes or is skipped
-     * @param {{freshKill?:boolean}} [opts] killcam r2: freshKill marks a
+     * @param {{freshKill?:boolean, finalKill?:boolean}} [opts] killcam r2: freshKill marks a
      *   battle-deciding death that happened THIS tick — the replay opens
      *   with the live WRECK hold (the real destruction plays on screen
      *   before the cinematic). Mid-battle deaths get their live beat from
-     *   main.ts instead and never set it.
+     *   main.ts instead and never set it. finalKill (battle endings,
+     *   2026-09-25) asks for the battle-deciding kill whoever fired it when
+     *   the player's own chain is not the story (killcamSelection.ts); ownDeath
+     *   false means the player's own death already replayed mid-battle.
      * @returns {boolean} true if a replay started (caller defers the overlay)
      */
     playForResult(
-      result: 'victory' | 'defeat',
+      result: ReplayResult,
       timeS: number,
       onDone: () => void,
-      opts?: { freshKill?: boolean },
+      opts?: { freshKill?: boolean; finalKill?: boolean; ownDeath?: boolean },
     ): boolean {
-      let snap: ReplaySnapshot | null = null;
-      let kind: PlaybackKind = 'death';
-      let xrayOnly = false;
-      if (result === 'defeat') {
-        snap = pendingDeath || lastHitOnPlayer;
-        xrayOnly = !pendingDeath; // died to fire: show the shell that lit it
-      } else if (result === 'victory') {
-        kind = 'victory';
-        if (pendingVictory && timeS - pendingVictory.timeS <= VICTORY_WINDOW_S) {
-          snap = pendingVictory;
-        }
-      }
+      const player = getPlayer();
+      const selection = selectResultReplay<ReplaySnapshot>({
+        result,
+        timeS,
+        finalKill: !!(opts && opts.finalKill),
+        allowOwnDeath: !opts || opts.ownDeath !== false,
+        playerId: player ? player.id : null,
+        pendingDeath,
+        pendingVictory,
+        lastHitOnPlayer,
+        lastLethal,
+        lastDestroyed,
+        lastHitOn: (id) => lastHitByTarget.get(id) ?? null,
+        timeOf: (candidate) => candidate.timeS,
+      });
+      const snap = selection ? selection.snap : null;
+      const kind: PlaybackKind = selection ? selection.kind : 'death';
+      const xrayOnly = !!selection && selection.xrayOnly;
       if (!snap || !snap.targetEnt || !snap.targetEnt.visual) {
         // NO-REPLAY DEATH (killcam_endscreen r1): the player died without a
         // captured lethal chain (no hit ever recorded — pure ram/edge cases).
@@ -2397,14 +2453,21 @@ export function createKillCam(deps: KillcamDeps) {
 
   function populateReplayDom(d: KillcamDom, playerKill: boolean): void {
     const event = pb.snap.ev;
-    d.titleT.textContent = playerKill ? t('killcam.finalBlow') : t('killcam.killCam');
-    d.titleS.textContent = pb.replayKind === 'collision'
-      ? (playerKill
-        ? t('killcam.rammedTarget', { name: event.targetName || t('killcam.enemy') })
-        : t('killcam.rammedBy', { name: event.attackerName || t('killcam.enemy') }))
-      : (playerKill
-        ? t('killcam.destroyedTarget', { name: event.targetName || t('killcam.enemy') })
-        : t('killcam.destroyedByLine', { name: event.attackerName || t('killcam.enemyFire') }));
+    // battle endings: a final blow between two other tanks reads as a neutral "A destroyed B" line; the
+    // player's own kill and the player's own death keep their existing titles
+    const finalBlow = pb.kind === 'final' && !playerKill && !pb.isDeathView;
+    d.titleT.textContent = playerKill || finalBlow ? t('killcam.finalBlow') : t('killcam.killCam');
+    d.titleS.textContent = finalBlow
+      ? t(pb.replayKind === 'collision' ? 'killcam.finalRamLine' : 'killcam.finalBlowLine', {
+        attacker: event.attackerName || t('killcam.enemy'), target: event.targetName || t('killcam.enemy'),
+      })
+      : pb.replayKind === 'collision'
+        ? (playerKill
+          ? t('killcam.rammedTarget', { name: event.targetName || t('killcam.enemy') })
+          : t('killcam.rammedBy', { name: event.attackerName || t('killcam.enemy') }))
+        : (playerKill
+          ? t('killcam.destroyedTarget', { name: event.targetName || t('killcam.enemy') })
+          : t('killcam.destroyedByLine', { name: event.attackerName || t('killcam.enemyFire') }));
     const shellName = shellDisplayName(event);
     d.hdK.textContent = shellName
       ? `${event.shellType || ''} · ${shellName}`
@@ -4505,7 +4568,8 @@ export function createKillCam(deps: KillcamDeps) {
   function addXrayCrewInternals(context: XrayBuildContext): void {
     const corpse = !!context.event.destroyed
       || pb.kind === 'death'
-      || pb.kind === 'victory';
+      || pb.kind === 'victory'
+      || pb.kind === 'final';
     const crewAlive = context.snap.crewAlive;
     for (const crew of context.armor.crew || []) {
       const down = context.crewHits.has(crew.crew)

@@ -598,6 +598,8 @@
   "killcam.rammedBy": "rammed by {name}",
   "killcam.destroyedTarget": "{name} destroyed",
   "killcam.destroyedByLine": "destroyed by {name}",
+  "killcam.finalBlowLine": "{attacker} destroyed {target}",
+  "killcam.finalRamLine": "{attacker} rammed {target}",
   "killcam.stat.distance": "Distance",
   "killcam.stat.impactAngle": "Impact angle",
   "killcam.stat.armor": "Armor",

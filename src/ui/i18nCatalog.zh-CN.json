@@ -598,6 +598,8 @@
   "killcam.rammedBy": "被 {name} 撞击",
   "killcam.destroyedTarget": "击毁 {name}",
   "killcam.destroyedByLine": "被 {name} 击毁",
+  "killcam.finalBlowLine": "{attacker} 击毁了 {target}",
+  "killcam.finalRamLine": "{attacker} 撞毁了 {target}",
   "killcam.stat.distance": "距离",
   "killcam.stat.impactAngle": "入射角",
   "killcam.stat.armor": "装甲",
