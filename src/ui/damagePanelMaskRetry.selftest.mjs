@@ -4,11 +4,12 @@
 // injected timers: a build that fails or is cancelled by a disposed borrowed
 // visual is retried after 1.5 s WITHOUT the borrowed visual, then after 8 s;
 // the third failure warns once and beacons one `hud_mask_failed` event that
-// the real API validator accepts. A new tank cancels a pending retry and
+// the v2 client folds into a session note the shared validator accepts. A new tank cancels a pending retry and
 // ignores late callbacks from the old build.
 import assert from 'node:assert/strict';
 import { createDamagePanel, DAMAGE_PANEL_MASK_RETRY } from './damagePanel.ts';
-import { validateTelemetryBody } from '../../api/telemetry.ts';
+import { createEntryTelemetry } from '../entry/telemetry.ts';
+import { validateTelemetryRecord } from '../../server/telemetryRecord.ts';
 
 function fakeElement(tag) {
   const selected = new Map();
@@ -179,15 +180,21 @@ try {
       kind: 'hud_mask_failed', stage: 'damagePanel', code: 'mask_build_error', reason: 'receipt-tank',
       error: { message: 'injected compile failure', frames: [] },
     }], 'one hud_mask_failed event with the spec id and the pipeline code/message');
-    const validation = validateTelemetryBody(
-      { v: 1, sid: 'sess_hud_mask_1', build: 'v1.0.0+greceipt', events: h.telemetry.events },
-      '2026-09-25T00:00:00.000Z',
-    );
-    assert.equal(validation.ok, true, `the API accepts the event: ${JSON.stringify(validation)}`);
-    assert.deepEqual(
-      [validation.events[0].kind, validation.events[0].stage, validation.events[0].code, validation.events[0].reason, validation.events[0].error],
-      ['hud_mask_failed', 'damagePanel', 'mask_build_error', 'receipt-tank', { message: 'injected compile failure', frames: [] }],
-    );
+    // Telemetry v2: the event folds into one session note that the shared validator accepts.
+    const bodies = [];
+    const client = createEntryTelemetry({
+      build: 'v1.0.0+greceipt', sessionId: 'sess_hud_mask_1', now: () => 10_000,
+      endpoints: { session: '/api/telemetry', error: '/api/telemetry' },
+      transport: (endpoint, body) => { bodies.push(JSON.parse(body)); return true; },
+      schedule: () => 1, cancel: () => {},
+    });
+    for (const event of h.telemetry.events) assert.equal(client.send(event), true, 'the v2 client folds the event');
+    client.flush();
+    assert.equal(bodies.length, 1, 'one session record carries the note');
+    const validation = validateTelemetryRecord(bodies[0]);
+    assert.equal(validation.ok, true, `the shared validator accepts the record: ${JSON.stringify(validation)}`);
+    assert.deepEqual(validation.record.notes, ['hud_mask:receipt-tank:mask_build_error'],
+      'the spec id and the pipeline code travel as one session note');
     assert.equal(h.panel.debugState().masksReady, false);
     assert.equal(h.panel.debugState().markers.length, 3, 'the stand-in keeps painting the module map');
     warnings.length = 0;

@@ -278,7 +278,7 @@ export function formatTelemetryReport(summary) {
   for (const [title, table] of [
     ['  renderer / tier / auto tier:', summary.capabilityClasses], ['  memory class:', summary.memoryClasses],
     ['  flags (webgl2 / rasteriser / float buffers / storage / workers):', summary.capabilityFlags],
-    ['  notices and stops:', summary.capabilityVerdicts], ['  notes (slow reveals, room failures, degraded ICE):', summary.notes],
+    ['  notices and stops:', summary.capabilityVerdicts], ['  notes (slow reveals, room failures, degraded ICE, HUD mask failures):', summary.notes],
   ]) {
     const entries = Object.entries(table);
     if (!entries.length) continue;

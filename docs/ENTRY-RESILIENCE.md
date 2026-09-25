@@ -65,7 +65,7 @@ inline watchdog and reused by the module — `window.__COT_TELEMETRY_SID`),
 | `error`, `errors` | `{ message ≤ 200, frames ≤ 3 × ≤ 160, stage, code }`, origin-stripped; a session record folds the first error of the boot, an error record carries the first of a burst plus up to two more in `errors` |
 | `code` | ≤ 48 chars of `[A-Za-z0-9_.:-]`: entry codes (`entry_failed`, `entry_failed_<role>`, `slow_<phase>`), error codes (`uncaught`, `unhandled_rejection`, `context_refused`), watchdog classes (`chunk`, `driver`, `script`, `slow`, `offline`, `stalled`, `reload:<class>`; the raw reason rides as `error.code`) |
 | `ready` | error only: whether boot had reached ready |
-| `notes` | ≤ 6 codes folded from what used to be their own events — `slow_reveal:<phase>`, `room_failure:<code>`, `ice_degraded:<reason>` — riding on the next record, never costing a request |
+| `notes` | ≤ 6 codes folded from what used to be their own events — `slow_reveal:<phase>`, `room_failure:<code>`, `ice_degraded:<reason>`, `hud_mask:<spec id>:<code>` (the damage panel gave up on a tank's top-down masks, 2026-09-25) — riding on the next record, never costing a request |
 | `w` | the clean-session sample weight (`VITE_TELEMETRY_SAMPLE` = 0.25 → `w: 4`); absent when every session sends |
 
 Unknown fields are dropped; enumerations must match; a body naming a
@@ -131,7 +131,7 @@ the last stage they began follow — `download` means the inline watchdog
 spoke (`chunk` / `driver` / `slow` / `offline` / `stalled`), `(before
 renderer)` that nothing did. Then CAPABILITY: renderer family / tier / auto
 tier, memory class, the flag string (webgl2 / rasteriser / float buffers /
-storage / workers), notices and stops, and the notes (slow reveals, room
+storage / workers), notices and stops, and the notes (slow reveals, HUD mask failures, room
 failures, degraded ICE); BUILDS; and the failure table (kind / stage / code
 / build → count, one sample message). Session ids are aggregated, never
 listed.
@@ -161,7 +161,8 @@ English, like the r3 copy they replace, because they run before the catalog.
 
 `server/telemetryRecord.selftest.mjs` (the v2 schema and the Analytics Engine
 layout), `server/telemetry.selftest.mjs` (the fallback), `src/entry/telemetry.selftest.mjs`
-(the client, every body through the shared validator), `tools/telemetry-report.selftest.mjs`,
+(the client, every body through the shared validator), `src/ui/damagePanelMaskRetry.selftest.mjs`
+(the HUD mask note through the v2 client and the shared validator), `tools/telemetry-report.selftest.mjs`,
 `cloudflare/telemetry/test/telemetry.test.ts` (the Worker, Workers runtime —
 `npm run test:telemetry:cloudflare`), `src/engine/capabilityGate.selftest.mjs`,
 `src/ui/chunkRecovery.selftest.mjs` (r3 cases plus the clocked network
