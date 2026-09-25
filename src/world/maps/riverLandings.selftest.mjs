@@ -130,17 +130,26 @@ for (const [seed, hash] of [
   disposeBuckets(defaults.buckets); disposeBuckets(explicit.buckets);
 }
 
-// round 58 (2026-09-24, jetties at the water's edge): a Saltwind landing is the beached boat (10 wood), 22 planted
-// piles, 10 deck segments, then the pieces that key on the derived jetty from its own stream — the gangway plank and
-// three battens (4), the moored clinker hull with its mast and boom (12), two bollards and their lines (4): 62 wood
-// pieces and 25 support receipts (boat, 22 piles, gangway, moored boat) per landing
-const LANDING_WOOD = 62, LANDING_RECEIPTS = 25;
-function checkSaltwindSite(field, site, wood, supportReceipts, index) {
+// round 58 (2026-09-24, jetties at the water's edge): a Saltwind landing is the beached boat (10 wood), the planted
+// piles (two per station), the deck segments (one per span), then the pieces that key on the derived jetty from its
+// own stream — the gangway plank and three battens (4), the moored clinker hull (10, with its mast and boom 12), two
+// bollards and their lines (4) — and its support receipts (boat, the piles, gangway, moored boat).
+// round 67 (2026-09-24): the piers take the strand law's shelf-sized length instead of the authored 19 m — 7 spans
+// (13.3 m) at −25° and 8 (15.2 m) at 45° at every seed — so the wood and receipt strides are the landing's own
+// (the landing stream keys on the spans, so the mast draw re-rolled: the −25° hull carries none).
+const SALTWIND_SPANS = { '-25': 7, '45': 8 };
+const near = (a, b, tolerance, message) => assert.ok(Math.abs(a - b) <= tolerance, `${message}: ${a} vs ${b}`);
+const landingWood = (spans, mast) => 10 + 2 * (spans + 1) + spans + 4 + (mast ? 12 : 10) + 4;
+const landingReceipts = (spans) => 1 + 2 * (spans + 1) + 2;
+function checkSaltwindSite(field, site, wood, supportReceipts, woodStart, receiptStart) {
   const p = planRiverLanding(field, saltwind.terrain.lakes, site);
   assert.ok(p, `Saltwind lake ${site.lakeIndex}: actual low-bank landing is usable`);
-  assert.equal(p.length, 19);
+  const spans = SALTWIND_SPANS[String(site.shoreAngleDeg)];
+  assert.equal(p.shore.spans, spans, `round 67: the ${site.shoreAngleDeg}° pier is sized to the shelf (${spans} spans)`);
+  near(p.length, spans * 1.9, 1e-9, 'whole 1.9 m spans');
+  assert.ok(p.shore.tipR <= p.shore.core - 1.9 && p.shore.shoreR - p.shore.core + 4.6 <= p.length + 1e-9, 'from the shore end over the core with room for the hull, as the strand law sizes a jetty');
   assert.ok(p.shore, 'a shelf shore plans the jetty from the strand law');
-  const boat = supportReceipts[index * LANDING_RECEIPTS];
+  const boat = supportReceipts[receiptStart];
   assert.equal(boat.kind, 'beached-boat');
   assert.equal(boat.x, p.boatX);
   assert.equal(boat.z, p.boatZ);
@@ -154,7 +163,7 @@ function checkSaltwindSite(field, site, wood, supportReceipts, index) {
     }
   }
   let lowestHullGap = Infinity, highestHullGap = -Infinity;
-  for (const geometry of wood.slice(index * LANDING_WOOD, index * LANDING_WOOD + 10)) {
+  for (const geometry of wood.slice(woodStart, woodStart + 10)) {
     const a = geometry.attributes.position;
     for (let i = 0; i < a.count; i++) {
       const gap = a.getY(i) - field.getHeightAt(a.getX(i), a.getZ(i));
@@ -165,11 +174,12 @@ function checkSaltwindSite(field, site, wood, supportReceipts, index) {
   // Inspect the emitted hull, not just its support-plane receipt. Detailed
   // keel/bow burial bounds belong to the separately owned boat-grounding test.
   assert.ok(lowestHullGap <= 0 && highestHullGap > 0.30, 'actual hull touches shore and is not wholly buried');
-  for (let i = 0; i < 22; i++) {
-    const pile = supportReceipts[index * LANDING_RECEIPTS + 1 + i];
+  const piles = 2 * (spans + 1);
+  for (let i = 0; i < piles; i++) {
+    const pile = supportReceipts[receiptStart + 1 + i];
     assert.equal(pile.kind, 'jetty-pile');
     assert.ok(Math.abs(pile.y - (field.getHeightAt(pile.x, pile.z) - 0.10)) < 1e-8);
-    const geometry = wood[index * LANDING_WOOD + 10 + i];
+    const geometry = wood[woodStart + 10 + i];
     geometry.computeBoundingBox();
     assert.ok(Math.abs(geometry.boundingBox.min.y - pile.y) < 2e-6, 'emitted pile base is planted, not just the receipt');
     assert.ok(Math.abs(geometry.boundingBox.max.y - (p.deckY + 0.045)) < 2e-6, 'each pile actually meets the deck');
@@ -179,8 +189,8 @@ function checkSaltwindSite(field, site, wood, supportReceipts, index) {
     }
   }
   const dx = Math.cos(p.angle), dz = Math.sin(p.angle);
-  for (let k = 0; k < 10; k++) {
-    const geometry = wood[index * LANDING_WOOD + 32 + k];
+  for (let k = 0; k < spans; k++) {
+    const geometry = wood[woodStart + 10 + piles + k];
     geometry.computeBoundingBox();
     assert.ok(Math.abs(geometry.boundingBox.min.y - (p.deckY - 0.045)) < 2e-6);
     assert.ok(Math.abs(geometry.boundingBox.max.y - (p.deckY + 0.045)) < 2e-6);
@@ -193,7 +203,7 @@ function checkSaltwindSite(field, site, wood, supportReceipts, index) {
       minAlong = Math.min(minAlong, along); maxAlong = Math.max(maxAlong, along);
       minAcross = Math.min(minAcross, across); maxAcross = Math.max(maxAcross, across);
       assert.ok(field._roadDist(x, z) >= 7, 'full emitted deck remains clear of the route');
-      if (k === 9 && along > 19) {
+      if (k === spans - 1 && along > p.length) {
         assert.equal(field.getWaterMaskAt(x, z), 1, 'actual overhanging tip corners reach visible liquid');
         assert.equal(field.getHeightAt(x, z), p.waterLevel);
       }
@@ -213,7 +223,7 @@ function checkSaltwindSite(field, site, wood, supportReceipts, index) {
   // round 58: the shore end stands a metre landward of the wrack band on dry sand, the gangway's foot on dry sand too,
   // the moored hull afloat over the core at its draft
   assert.equal(field.getWaterMaskAt(p.x, p.z), 0, 'shore end on dry sand');
-  const gangway = supportReceipts[index * LANDING_RECEIPTS + 23], moored = supportReceipts[index * LANDING_RECEIPTS + 24];
+  const gangway = supportReceipts[receiptStart + 1 + piles], moored = supportReceipts[receiptStart + 2 + piles];
   assert.equal(gangway.kind, 'jetty-gangway'); assert.equal(field.getWaterMaskAt(gangway.x, gangway.z), 0);
   assert.ok(Math.abs(gangway.y - field.getHeightAt(gangway.x, gangway.z)) < 1e-9 && gangway.baseClearance === -0.01);
   assert.equal(moored.kind, 'moored-boat'); assert.equal(field.getWaterMaskAt(moored.x, moored.z), 1, 'the moored hull floats over the core');
@@ -227,7 +237,7 @@ assert.equal(new Set(saltwind.props.riverLandings.map((site) => `${site.lakeInde
   'occupational sites are distributed along two distinct village-facing shore stations');
 for (const site of saltwind.props.riverLandings) {
   assert.equal(site.shoreReeds, false);
-  assert.equal(site.jettyLength, 19);
+  assert.equal(site.jettyLength, undefined, 'round 67: no authored length — the strand law sizes the pier to the shelf');
 }
 for (const jettyLength of [0, 1.9, 7.5, 8, 20.9, Infinity, NaN, null, '19']) {
   assert.throws(() => planRiverLanding(hf, mangrove.terrain.lakes, { ...anchors[0], jettyLength }),
@@ -255,48 +265,61 @@ for (const seed of [1337, 2025, 7719]) {
   assert.ok(Object.entries(before.buckets).every(([bucket, geometries]) => bucket === 'baked' || geometries.length === 0));
   const result = build(saltwind, field);
   assert.equal(result.receipts.filter((r) => r.kind === 'beached-boat').length, 2);
-  assert.equal(result.receipts.filter((r) => r.kind === 'jetty-pile').length, 44);
+  assert.equal(result.receipts.filter((r) => r.kind === 'jetty-pile').length, 2 * (7 + 1) + 2 * (8 + 1), 'round 67: 16 + 18 piles on the shelf-sized piers');
   const strandWood = result.receipts.filter((r) => r.kind === 'strand-timber').length
     + 6 * result.receipts.filter((r) => r.kind === 'strand-crate').length;
   assert.ok(strandWood > 0, 'the wrack line gathers timber or a broken crate beside the piers');
-  assert.equal(result.buckets.wood.length, 2 * LANDING_WOOD + strandWood,
-    'two landings of 62 wood pieces (boat, piles, decks, gangway, moored hull, bollards and lines), then the wrack line\'s timber and crate planks');
+  // round 67: the landing streams re-keyed on the spans, so whether a hull carries its mast and boom is read off the
+  // wood itself (the mast is the 0.11 × 3.4 × 0.11 box that follows the hull's ten pieces)
+  const isMast = (g) => g?.parameters?.width === 0.11 && g.parameters.height === 3.4 && g.parameters.depth === 0.11;
+  const masts = [];
+  { let at = 0;
+    for (const spans of [7, 8]) { const hullStart = at + 10 + 2 * (spans + 1) + spans + 4; masts.push(isMast(result.buckets.wood[hullStart + 10])); at += landingWood(spans, masts[masts.length - 1]); } }
+  const landingsWood = landingWood(7, masts[0]) + landingWood(8, masts[1]);
+  assert.equal(result.buckets.wood.length, landingsWood + strandWood,
+    'two landings (boat, piles, decks, gangway, moored hull, bollards and lines), then the wrack line\'s timber and crate planks');
   for (const [bucket, geometries] of Object.entries(result.buckets)) {
     if (bucket !== 'wood' && bucket !== 'baked') assert.equal(geometries.length, 0, 'dry landings do not activate a straw or other new bucket');
     for (const geometry of geometries) for (const attribute of Object.values(geometry.attributes)) {
       assert.ok([...attribute.array].every(Number.isFinite));
     }
   }
-  saltwind.props.riverLandings.forEach((site, i) => checkSaltwindSite(field, site, result.buckets.wood, result.receipts, i));
+  { let woodStart = 0, receiptStart = 0;
+    saltwind.props.riverLandings.forEach((site, i) => {
+      checkSaltwindSite(field, site, result.buckets.wood, result.receipts, woodStart, receiptStart);
+      woodStart += landingWood(i === 0 ? 7 : 8, masts[i]); receiptStart += landingReceipts(i === 0 ? 7 : 8);
+    }); }
   // round 56 (2026-09-24): the landings are the first wood pieces; the strand's wrack line that follows them (its
   // timber and crate planks in wood, everything else in baked) is audited by strandWrack.selftest, so the budgets
   // below are the landings' own — round 58: 124 pieces, the two derived landings with their gangways, moored hulls,
-  // bollards and lines
-  const landings = { wood: result.buckets.wood.slice(0, 2 * LANDING_WOOD) };
+  // bollards and lines; round 67: the shelf-sized piers
+  const landings = { wood: result.buckets.wood.slice(0, landingsWood) };
   const metrics = geometryReceipt(landings);
   // round 58 (2026-09-24): 1008 / 70560 / 2016 were the two boats, piles and decks; the gangways, moored hulls, bollards
   // and lines add 480 triangles (seed-independent: the plans and their streams key on the shore ends)
-  assert.equal(metrics.triangles, 1488);
-  assert.equal(metrics.bytes, 104160);
-  assert.equal(metrics.vertices, 2976);
+  // round 67 (2026-09-24): the shelf-sized piers (7 + 8 spans, 34 piles, one mast) — 1488 / 104160 / 2976 → 1284 / 89880 / 2568,
+  // the merged 4464 / 142848 → 3852 / 123264, the draw count 12005 → 11964 and its state re-pinned
+  assert.equal(metrics.triangles, 1284);
+  assert.equal(metrics.bytes, 89880);
+  assert.equal(metrics.vertices, 2568);
   // Same non-indexed merge used by props.ts: incremental bytes in its existing
   // wood batch, not a whole-world draw-count or renderer-memory certification.
   const expanded = landings.wood.map((geometry) => geometry.toNonIndexed());
   const merged = mergeGeometries(expanded, false);
-  assert.equal(merged.attributes.position.count, 4464); // round 58: was 3024
-  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 142848); // round 58: was 96768
+  assert.equal(merged.attributes.position.count, 3852); // round 58: was 3024
+  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 123264); // round 58: was 96768
   for (const geometry of expanded) geometry.dispose();
   merged.dispose();
   const replay = build(saltwind, field);
-  assert.deepEqual(geometryReceipt({ wood: replay.buckets.wood.slice(0, 2 * LANDING_WOOD) }), metrics, 'all emitted landing bytes repeat exactly');
+  assert.deepEqual(geometryReceipt({ wood: replay.buckets.wood.slice(0, landingsWood) }), metrics, 'all emitted landing bytes repeat exactly');
   assert.deepEqual(geometryReceipt(replay.buckets), geometryReceipt(result.buckets), 'the whole shore, landings and wrack line, repeats exactly');
   assert.deepEqual(replay.receipts, result.receipts);
   // 396 / 1264123100 were the landings alone; the wrack line's draws follow them (round 56, 2026-09-24) and do not
   // depend on the field seed
-  assert.equal(result.calls, 12005);
-  assert.equal(result.state, -458513949);
+  assert.equal(result.calls, 11964);
+  assert.equal(result.state, -1509049396);
   assert.equal(replay.state, result.state);
   disposeBuckets(result.buckets);
   disposeBuckets(replay.buckets);
-  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/44 planted piles/2 gangways/2 moored hulls, +1,488 triangles/+142,848 merged bytes, wood only`);
+  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/34 planted piles on the shelf-sized piers/2 gangways/2 moored hulls, +1,284 triangles/+123,264 merged bytes, wood only`);
 }

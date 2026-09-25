@@ -6,7 +6,11 @@ export interface RiverLandingAnchor {
   shoreAngleDeg: number;
   /** Dry working coasts may omit reeds; existing wet-bank sites keep them. */
   shoreReeds?: boolean;
-  /** Four to ten complete 1.9 m spans; omission preserves the 7.6 m kit. */
+  /**
+   * Four to ten complete 1.9 m spans; omission preserves the 7.6 m kit on a river or lake shore. Round 67
+   * (2026-09-24): on a sea strand (a lake with an authored shelf) an omitted length is the strand law's shelf-sized
+   * length instead (shoreJetty.ts: from the shore end over the planar core with room for a hull, within 4–10 spans).
+   */
   jettyLength?: number;
 }
 
@@ -60,8 +64,11 @@ export function planRiverLanding(
   // Round 58 (2026-09-24): a sea lake that authors a shelf (Saltwind Narrows) takes the strand law of shoreJetty.ts —
   // the shore end a metre landward of the wrack band, the deck a constant freeboard over the water surface, the tip
   // over the planar core — instead of 1.02 R of the disc and a deck 0.65 m over the bed, which stood 12 m up the
-  // beach with its outer spans under the 0.72 m sheet. The authored length stays the pier's length.
-  if (lake.shelfM !== undefined) return planStrandLanding(heightField, lakes, lake, angle, Math.round(spans), level);
+  // beach with its outer spans under the 0.72 m sheet. Round 67: an authored length stays the pier's length; without
+  // one the pier is sized to the shelf like the coastal kit's jetties (round 58's open note).
+  if (lake.shelfM !== undefined) {
+    return planStrandLanding(heightField, lakes, lake, angle, anchor.jettyLength === undefined ? undefined : Math.round(spans), level);
+  }
   const radius = shorelineRadiusAt(lake, angle);
   const x = lake.x + Math.cos(angle) * radius * 1.02;
   const z = lake.z + Math.sin(angle) * radius * 1.02;
@@ -104,9 +111,9 @@ export function planRiverLanding(
  * behind the gangway's foot (3.5 m landward of it, 3 m to the side, parallel to the shore), so the high-water mark
  * beside the landing stays free for the wrack line's timber and crate; never in the wet band or the water. */
 function planStrandLanding(
-  heightField: ShoreJettyField, lakes: readonly LandingLake[], lake: LandingLake, angle: number, spans: number, level: number,
+  heightField: ShoreJettyField, lakes: readonly LandingLake[], lake: LandingLake, angle: number, spans: number | undefined, level: number,
 ): RiverLanding | null {
-  const shore = planShoreJetty(heightField, lake, angle, { spans });
+  const shore = planShoreJetty(heightField, lake, angle, spans === undefined ? {} : { spans });
   if (!shore) return null;
   const boatR = shore.shoreR + (shore.gangway?.run ?? 0) + 3.5;
   const boatX = lake.x + Math.cos(angle) * boatR - Math.sin(angle) * 3.0;

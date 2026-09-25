@@ -183,7 +183,7 @@ function verifyHistoricalConfigs(resolve) {
   assert.equal(hash(JSON.stringify(unchangedMaps)),
     // round 40 (2026-09-22): coastal.ts's aperture lost its authored grey (edgeWater.ts colours it from the water profile) and
     // saltwind.ts authored its bay as one contour open to the west — the other-29 config digest moved for those two maps
-    '768f40b32c04d55603e55d0e0f423d5701e310aa50967c2b542d0eb23f1c8ab4', // 2026-09-24 (round 63): steppe.ts terrain block runs the spur to the map edge through the rim cutting (was 0f11f281…: round 57, steppe.ts authors railSpurs; 89a7af50…: round 55, fjord.ts horizon block authors outcrops: 1; e4c7ce4b…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
+    '01a3e2c9255d7e1cb2154b3b674e99e449060e398b9fbb19b3631f6fc0c51437', // 2026-09-24 (round 63): steppe.ts terrain block runs the spur to the map edge through the rim cutting (was 0f11f281…: round 57, steppe.ts authors railSpurs; 89a7af50…: round 55, fjord.ts horizon block authors outcrops: 1; e4c7ce4b…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
     'other29 config digest retains original donor policy and authenticated historical Foundry/Autumn inputs');
   const historical = paletteReceiptInput(historicalShorelineConfig(resolve('mangrove')));
   assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),

@@ -72,8 +72,10 @@ export default {
     riverLandings: [
       // round 40: two stations of the one bay's east shore whose beached boats rest on a shallow bank at every
       // battle seed (the stations between them sit on the basin landform's wet flat)
-      { lakeIndex: 0, shoreAngleDeg: -25, shoreReeds: false, jettyLength: 19 },
-      { lakeIndex: 0, shoreAngleDeg: 45, shoreReeds: false, jettyLength: 19 },
+      // round 67 (2026-09-24): the piers take the strand law's shelf-sized length (riverLandings.ts) instead of the
+      // authored 19 m — from the shore end over the planar core with room for the moored hull, within 4–10 spans
+      { lakeIndex: 0, shoreAngleDeg: -25, shoreReeds: false },
+      { lakeIndex: 0, shoreAngleDeg: 45, shoreReeds: false },
     ],
     plan: ['fishery', 'boatshed', 'marketRow', 'farmhouse', 'bathhouse', 'cottage', 'depot', 'tavern', 'boatshed', 'ruin', 'cornershop', 'market', 'farmhouse', 'woodshed', 'fishery', 'cottage', 'granary', 'ruin'],
     destructibleBuildings: ['fishershack', 'fieldhut', 'guardpost', 'checkpointhut'],

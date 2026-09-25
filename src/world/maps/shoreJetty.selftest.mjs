@@ -83,11 +83,17 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of seaMaps) {
   const spawns = [config.spawns.player, ...config.spawns.enemies];
   const label = `${mapId}/${seed}`;
   if (mapId === 'saltwind') {
+    // round 67 (2026-09-24): Saltwind's piers author no length any more — the strand law sizes them to the shelf
+    // (7 spans at −25°, 8 at 45°, at every seed); an authored length would still be the pier's length
     for (const anchor of config.props.riverLandings) {
       const lake = field._layout.lakes[anchor.lakeIndex];
-      const plan = planShoreJetty(field, lake, anchor.shoreAngleDeg * Math.PI / 180, { spans: anchor.jettyLength / JETTY_SPAN_M });
-      assert.ok(plan, `${label}: the authored pier at ${anchor.shoreAngleDeg}° plans`);
-      assert.equal(plan.length, anchor.jettyLength, "an authored length is the pier's length");
+      assert.equal(anchor.jettyLength, undefined, 'no authored length');
+      const plan = planShoreJetty(field, lake, anchor.shoreAngleDeg * Math.PI / 180, {});
+      assert.ok(plan, `${label}: the pier at ${anchor.shoreAngleDeg}° plans from the shelf`);
+      assert.equal(plan.spans, anchor.shoreAngleDeg === -25 ? 7 : 8, `${label}: the shelf-sized pier`);
+      assert.equal(plan.spans, Math.min(JETTY_MAX_SPANS, Math.max(JETTY_MIN_SPANS, Math.ceil((plan.shoreR - plan.core + 4.6) / JETTY_SPAN_M))), 'sized to the shelf by the strand law');
+      const authored = planShoreJetty(field, lake, anchor.shoreAngleDeg * Math.PI / 180, { spans: 10 });
+      assert.ok(authored && authored.length === 19 && authored.shoreR === plan.shoreR, "an authored length is still the pier's length from the same shore end");
       auditPlan(field, lake, plan, spawns, `${label} ${anchor.shoreAngleDeg}°`);
       assert.ok(plan.gangway && plan.boat, `${label}: Saltwind's flat shelf takes a gangway and moors a hull`);
       plans++; flat++; moored++;
