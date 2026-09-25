@@ -46,6 +46,17 @@ per-ID cost attribution, reusable quality-aware primitives and real cold/warm/
 rapid-switch measurements. That backlog is open; it is not an assertion that
 triangles alone explain the latency or that fleet optimization has passed.
 
+The [Garage switch profile](performance/garage-switch-profile-20260925.md)
+(2026-09-25) closed FSP-01's measurement and the reported stalls:
+`tools/garage-switch-probe.mjs --profile` records long tasks, the runtime's
+`__GARAGE_SWITCH` stage spans, program deltas and frame gaps per selection on
+a production preview. The stall was not triangle count: the first frame with a
+new hero blocked on its deferred shader links (0.25–1.1 s), the core builder
+step is one 50–120 ms task, and revisits rebuilt through a four-entry LRU. The
+pedestal now prepares links before reveal and builds the two adjacent cards in
+the quiet window (desktop residency six); `tools/garage-switch-probe.selftest.mjs`
+gates warm switches in the post group.
+
 ## Build-local procedural plaster relief
 
 The second and third procedural plaster palettes retain independent albedo
