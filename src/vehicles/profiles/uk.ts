@@ -1923,7 +1923,12 @@ const CENTURION_HULL = {
   // while lifting only the concealed over-track shoulder clear of the
   // native return run. The closed top slabs keep this a solid sponson; no
   // visible side armour is deleted or opened.
-  deckCorridor: { x: 0.92, floor: 1.08, z0: -2.45, z1: 2.65 },
+  // FSP-03 2026-09-25: the Centurion carries six return rollers per side (army-guide Centurion: four dual centre
+  // rollers and single front/rear rollers supporting the inside of the track). The concealed over-track shoulder
+  // lifts from 1.08 to 1.21 so a roller-carried run (crest 1.17) clears it; the visible side armour, skirts, belt
+  // line and fender line are unchanged. The end rollers use the shared primitive (inner-half support not modelled).
+  deckCorridor: { x: 0.92, floor: 1.21, z0: -2.45, z1: 2.65 },
+  rollers: [2.41, 1.52, 0.63, -0.26, -1.15, -2.04].map((z) => ({ z, y: 0.996, r: 0.11 })),
   noseRake: [[2.55, 0.53], [3.05, 0.56], [3.30, 0.72], [3.458, 1.08]],
   tailRake: [[-2.30, 0.53], [-3.10, 0.63], [-3.40, 0.78]],
   // Front-view outer columns (ref, r2 re-read): the MAIN skirt plane tops
