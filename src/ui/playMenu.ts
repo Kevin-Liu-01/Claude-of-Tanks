@@ -17,12 +17,12 @@ import {
 import {
   createPrivateRoomConnectionRuntime,
   type PrivateRoomConnection,
+  type PrivateRoomConnectionOptions,
+  type PrivateRoomConnectionRuntime,
 } from '../net/privateRoomConnectionRuntime.ts';
 import { resolveIceConfigUrl, resolveSignalUrl } from '../net/signalEndpoint.ts';
 import { normalizePlayMode, type PlayMode } from '../net/playMode.ts';
 import { isIntentionalRoomCloseReason } from '../net/roomFailure.ts';
-// entry resilience (2026-09-25): room failure codes and ICE degradation are beaconed (never prose or codes of rooms)
-import { getEntryTelemetry } from '../entry/telemetry.ts';
 import { privateRoomFailurePresentation } from './privateRoomFailurePresentation.ts';
 export type { PlayMode } from '../net/playMode.ts';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.ts';
@@ -88,6 +88,8 @@ export interface ActiveRoomAdapter {
   state: SerializedLobby;
   playerId: string;
   role: RoomRole;
+  /** 2 for a Multiplayer v2 room (invite links stamp `v=2`, the admin role follows the room's hostId). */
+  version?: 1 | 2;
   command(command: Record<string, RuntimeValue>): RuntimeValue;
   leave(reason?: string): RuntimeValue;
 }
@@ -111,6 +113,13 @@ export interface PlayMenuOptions {
   isCamoAllowed?(camo: string): boolean;
   getCamoName?(camo: string): string;
   getVehicleName?(specId: string): string;
+  /**
+   * Multiplayer v2 (`?mp=v2`): the room connection the menu drives instead of the v1 signaling
+   * runtime, and the room host the connection settings default to (src/mp/session/endpoint.ts).
+   * Both absent: v1.
+   */
+  createConnectionRuntime?(options: PrivateRoomConnectionOptions): PrivateRoomConnectionRuntime;
+  resolveSignalUrl?(): string;
 }
 
 export interface PlayMenuInvite {
@@ -408,10 +417,11 @@ function rememberRoomUrl(
   roomCode: RuntimeValue,
   mode: RuntimeValue,
   hostName: RuntimeValue = null,
+  version: 1 | 2 = 1,
 ): void {
   if (typeof location === 'undefined' || typeof history === 'undefined') return;
   try {
-    const invite = createRoomInviteUrl({ roomCode, mode, hostName, baseUrl: location.href });
+    const invite = createRoomInviteUrl({ roomCode, mode, hostName, baseUrl: location.href, version });
     history.replaceState(history.state, '', invite);
   } catch { /* URL persistence is a convenience, never a room dependency */ }
 }
@@ -424,6 +434,7 @@ function clearRoomUrl(): void {
     url.searchParams.delete('room');
     url.searchParams.delete('mode');
     url.searchParams.delete('host');
+    url.searchParams.delete('v');
     history.replaceState(history.state, '', url.href);
   } catch { /* cosmetic */ }
 }
@@ -625,6 +636,8 @@ export function createPlayMenu({
   isCamoAllowed = () => true,
   getCamoName = (camo) => camo || t('camoPattern.factory'),
   getVehicleName = (specId) => specId,
+  createConnectionRuntime,
+  resolveSignalUrl: resolveMenuSignalUrl = defaultSignalUrl,
 }: PlayMenuOptions): PlayMenuRuntime {
   ensureFonts();
   ensureStyle(STYLE_ID, CSS);
@@ -954,6 +967,8 @@ export function createPlayMenu({
   let requestGeneration = 0;
   let returnFocus: HTMLElement | null = null;
   let invitedHostName: string | null = null;
+  /** 2 while the room in this menu is a Multiplayer v2 one: invite links stamp `v=2`, the admin role follows hostId. */
+  let connectionVersion: 1 | 2 = 1;
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
 
   // ---- team arrangement (owner 2026-09-15) --------------------------------------------------
@@ -1103,16 +1118,11 @@ export function createPlayMenu({
     session = connection.session;
     role = connection.role;
     roomIce = connection.ice;
-    // A room that fell back to host candidates is visible in the lobby note
-    // (renderLobbyNote) and in the funnel: the degraded reason code, nothing else.
-    if (connection.ice.source === 'host-fallback') {
-      getEntryTelemetry().send({ kind: 'ice_degraded', reason: connection.ice.degradedReason || 'host_fallback',
-        mode: mode === 'lan' ? 'lan' : 'private' });
-    }
+    connectionVersion = connection.inviteVersion === 2 ? 2 : 1;
     clearFailure();
   }
 
-  const privateRoomConnection = createPrivateRoomConnectionRuntime({
+  const connectionOptions: PrivateRoomConnectionOptions = {
     loadIce: iceServers,
     isVehicleAllowed,
     isCamoAllowed,
@@ -1143,7 +1153,11 @@ export function createPlayMenu({
       if (!session && !connecting && !handedOff) showFailure(error);
       else setStatus(privateRoomFailurePresentation(error).title, true);
     },
-  });
+  };
+  // Multiplayer v2 supplies its room connection through the same lifecycle contract; v1 owns the default.
+  const privateRoomConnection: PrivateRoomConnectionRuntime = createConnectionRuntime
+    ? createConnectionRuntime(connectionOptions)
+    : createPrivateRoomConnectionRuntime({ ...connectionOptions });
 
   function hostNameFromRoom(value: RuntimeValue): string {
     if (!isRecord(value)) return '';
@@ -1177,6 +1191,8 @@ export function createPlayMenu({
     metadataUrl.searchParams.set('mode', mode === 'lan' ? 'lan' : 'private');
     if (invitedHostName) metadataUrl.searchParams.set('host', invitedHostName);
     else metadataUrl.searchParams.delete('host');
+    if (connectionVersion === 2) metadataUrl.searchParams.set('v', '2');
+    else metadataUrl.searchParams.delete('v');
     const metadata = privateRoomMetadata(metadataUrl, getLocale());
     if (metadata) applySiteMetadataToDocument(document, metadata);
   }
@@ -1206,11 +1222,7 @@ export function createPlayMenu({
   }
 
   function showFailure(error: RuntimeValue): void {
-    // A 60 s WebRTC timeout in a direct-only room names the missing relay (entry resilience 2026-09-25).
-    const iceDegraded = mode === 'private' && !!roomIce && !roomIce.relayAvailable;
-    const failure = privateRoomFailurePresentation(error, { iceDegraded });
-    getEntryTelemetry().send({ kind: 'room_failure', code: failure.code, mode: mode === 'lan' ? 'lan' : 'private',
-      ...(iceDegraded ? { reason: roomIce?.degradedReason || 'host_fallback' } : {}) });
+    const failure = privateRoomFailurePresentation(error);
     failurePanel.dataset.reason = failure.code;
     failureTitle.textContent = failure.title;
     failureDetail.textContent = failure.detail;
@@ -1243,7 +1255,7 @@ export function createPlayMenu({
       item.classList.toggle('on', item.dataset.mode === mode);
     }
     if (!signalInput.value) {
-      try { signalInput.value = defaultSignalUrl(); } catch { /* failure panel remains usable */ }
+      try { signalInput.value = resolveMenuSignalUrl(); } catch { /* failure panel remains usable */ }
     }
     setConnecting(false);
     showFailure(reason);
@@ -1330,6 +1342,7 @@ export function createPlayMenu({
     });
     session = null;
     roomIce = null;
+    connectionVersion = 1;
     activeRoom = null;
     state = null;
     role = null;
@@ -1384,7 +1397,7 @@ export function createPlayMenu({
   function rememberLiveRoom(next: SerializedLobby): void {
     if (!next.roomCode) return;
     const roomHostName = hostNameFromRoom(next);
-    rememberRoomUrl(next.roomCode, next.mode || mode, roomHostName);
+    rememberRoomUrl(next.roomCode, next.mode || mode, roomHostName, connectionVersion);
     if (role === 'client') presentInvitation(roomHostName, next.roomCode, true);
   }
 
@@ -1542,6 +1555,8 @@ export function createPlayMenu({
 
   function renderLobby(next: SerializedLobby): void {
     state = next;
+    // A v2 room's admin migrates (charter §5): the role that gates the host controls follows the room's hostId.
+    if (connectionVersion === 2 && (session || activeRoom)) role = next.hostId === ownId() ? 'host' : 'client';
     // Every browser carries the live room in its canonical URL. A guest can
     // reattach to the current authority, while a reloaded browser host
     // reconstructs the waiting room and lets guests resubmit their retained
@@ -1672,7 +1687,7 @@ export function createPlayMenu({
     mode = nextMode;
     for (const item of root.querySelectorAll('.mode')) item.classList.toggle('on', item === button);
     room.classList.add('show');
-    try { signalInput.value = defaultSignalUrl(); }
+    try { signalInput.value = resolveMenuSignalUrl(); }
     catch { signalInput.value = ''; }
     setConnecting(false);
     if (!signalInput.value) {
@@ -1724,6 +1739,7 @@ export function createPlayMenu({
       mode,
       hostName: hostNameFromRoom(state),
       baseUrl: location.href,
+      version: connectionVersion,
     });
     try {
       await navigator.clipboard.writeText(inviteUrl);
@@ -1851,6 +1867,7 @@ export function createPlayMenu({
     activeRoom = adapter;
     role = adapter.role;
     mode = adapter.state.mode === 'lan' ? 'lan' : 'private';
+    if (adapter.version === 2) connectionVersion = 2;
     handedOff = false;
     renderLobby(adapter.state);
   }
@@ -1876,6 +1893,7 @@ export function createPlayMenu({
     activeRoom = null;
     session = null;
     roomIce = null;
+    connectionVersion = 1;
     state = null;
     role = null;
     handedOff = false;

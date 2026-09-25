@@ -31,7 +31,7 @@ interface RoomSelection {
   camo: string;
 }
 
-interface RoomInfo {
+export interface RoomInfo {
   roomCode: string;
   peerId: string;
   hostId?: string;
@@ -65,7 +65,7 @@ interface ConnectionAdapters {
   serializeLobby(lobby: LobbyModel): LobbyState;
 }
 
-interface PrivateRoomConnectRequest {
+export interface PrivateRoomConnectRequest {
   kind: 'create' | 'join';
   mode: string;
   signalUrl: string;
@@ -83,6 +83,8 @@ interface PrivateRoomConnectionBase {
   readonly roomInfo: RoomInfo;
   readonly ice: IceConfiguration;
   readonly runtime: RoomStateRuntime;
+  /** Set by the Multiplayer v2 adapter (src/mp/session): invite links carry `v=2`, the start goes to the v2 session owner. */
+  readonly inviteVersion?: 2;
 }
 
 interface PrivateRoomHostConnection extends PrivateRoomConnectionBase {
@@ -97,7 +99,7 @@ interface PrivateRoomClientConnection extends PrivateRoomConnectionBase {
 
 export type PrivateRoomConnection = PrivateRoomHostConnection | PrivateRoomClientConnection;
 
-interface PrivateRoomConnectionOptions {
+export interface PrivateRoomConnectionOptions {
   loadIce(mode: string): Promise<IceConfiguration>;
   isVehicleAllowed(specId: string): boolean;
   isCamoAllowed(camo: string): boolean;
@@ -121,7 +123,7 @@ interface AcquiredRoom {
   ice: IceConfiguration;
 }
 
-interface PrivateRoomConnectionRuntime {
+export interface PrivateRoomConnectionRuntime {
   connect(request: PrivateRoomConnectRequest): Promise<PrivateRoomConnection | null>;
   observe(listener: (state: LobbyState) => void): Unsubscribe;
   close(reason?: string, options?: { transportAlreadyClosed?: boolean }): void;

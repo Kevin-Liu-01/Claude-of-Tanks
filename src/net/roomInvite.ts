@@ -15,6 +15,8 @@ export interface RoomInvite {
   roomCode: string;
   mode: RoomInviteMode;
   hostName: string | null;
+  /** 2 when the link was made by a Multiplayer v2 room (`v=2`); such links open the v2 session owner. */
+  version: 1 | 2;
 }
 
 interface CreateRoomInviteOptions {
@@ -22,11 +24,14 @@ interface CreateRoomInviteOptions {
   mode?: RuntimeValue;
   hostName?: RuntimeValue;
   baseUrl?: RuntimeValue;
+  /** Multiplayer v2 rooms stamp `v=2` so the invited browser opens the v2 flow. */
+  version?: RuntimeValue;
 }
 
 const INVITE_ROOM_PARAM = 'room';
 const INVITE_MODE_PARAM = 'mode';
 const INVITE_HOST_PARAM = 'host';
+const INVITE_VERSION_PARAM = 'v';
 const INVITE_MODES = new Set<RoomInviteMode>(['private', 'lan']);
 
 function isInviteMode(value: RuntimeValue): value is RoomInviteMode {
@@ -54,6 +59,7 @@ export function parseRoomInvite(value: RuntimeValue): RoomInvite | null {
     roomCode,
     mode: isInviteMode(requestedMode) ? requestedMode : 'private',
     hostName,
+    version: url.searchParams.get(INVITE_VERSION_PARAM) === '2' ? 2 : 1,
   };
 }
 
@@ -63,6 +69,7 @@ export function createRoomInviteUrl({
   mode = 'private',
   hostName = null,
   baseUrl,
+  version = 1,
 }: CreateRoomInviteOptions = {}): string {
   const code = normalizeRoomCode(roomCode);
   if (code.length !== 6) throw new TypeError('room invite requires a six-character room code');
@@ -74,6 +81,7 @@ export function createRoomInviteUrl({
   url.searchParams.set(INVITE_ROOM_PARAM, code);
   if (inviteMode !== 'private') url.searchParams.set(INVITE_MODE_PARAM, inviteMode);
   if (inviteHost) url.searchParams.set(INVITE_HOST_PARAM, inviteHost);
+  if (version === 2 || version === '2') url.searchParams.set(INVITE_VERSION_PARAM, '2');
   return url.href;
 }
 
