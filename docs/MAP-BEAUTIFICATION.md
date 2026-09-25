@@ -523,7 +523,8 @@ skyline there; the linear ratio snow/sky must drop below ~0.85 and the pair must
 **Proposal (owner call — a re-grade of two maps' look).** Snowpack tone L 0.62 → ~0.52 (+0.32·l), Winter postExposure
 0.94 → ~0.86 and Whiteout likewise, or raise the sky's horizon cap for overcast presets so the sky is the brightest
 surface as it is in nature. Acceptance: skyline metric 0.80–0.90 on sky-w / sky-s / centre-far, the battlefield snow
-still white by eye, tanks and HUD unchanged.
+still white by eye, tanks and HUD unchanged. (Closed by round 70: the law authored on the sourced snow that renders,
+exposure 0.83; the band under round 68's overcast sky.)
 
 ### Steep-slope layer authoring on Monsoon and Fjord — 2026-09-23 (round 45)
 
@@ -881,7 +882,8 @@ still reads white: bird-view snow box (x 500–1100, y 500–800 of `bird-n`) di
 183, RGB 186/183/177 (neutral). Whiteout takes the re-grade on its ground (snow median 196 → 182) but its skyline
 metric does not move (sky-w 1.01 → 1.01, sky-s 0.92 → 0.91, centre-far 0.95 → 0.94): its skyline in these views is
 the vista ring, not the near rim band, and its horizon line is round-47-pinned — a Whiteout-specific horizon item
-(ring snowHex / haze), not a winter.ts knob.
+(ring snowHex / haze), not a winter.ts knob. (Closed by round 70: the round-48 law graded the procedural fallback only;
+Whiteout's re-grade is authored on the sourced snow.)
 
 **Captures.** `.qa-dev/wall-probe.mjs` views bird-n, bird-w, centre-far, sky-w, sky-s, canyon-in plus three
 gameplay-height views added for this round (village-street, river-crossing, pass-switchback); A on `$SP/main-check`
@@ -1094,7 +1096,7 @@ hillside's gneiss knobs through the turf) — the knob and fragment are in place
 mesh hidden the skyline metric moves 1.005 → 1.009 and the edge row stays at 617/618 — in the sky-w / sky-s views the
 skyline is the TERRAIN-MATERIAL rim band, not the vista ring, and the far ring keeps only ~13 % of its own colour under
 haze + fog + the aerial pass. No ring knob can move this metric; round 44's proposal (snowpack tone / exposure
-re-grade, owner call) stands. Landed on the ring side only what the scoured-crest look needs (`bareRock` 1, rockHex
+re-grade, owner call) stands (closed by round 70). Landed on the ring side only what the scoured-crest look needs (`bareRock` 1, rockHex
 0x9da9b4 → 0x5b6772); the snow-tone and haze moves tried were reverted as unverifiable. Winter untouched.
 
 **Sea-opening headland slab (Saltwind's and Nordhavn's mouths).** `seatHorizonSkirtOnGround` hands the ring over from
@@ -2383,7 +2385,7 @@ the ridges is brighter than the capped Preetham band, so the pale ranges no long
 them. Mars: unchanged (41 → 42; the galaxy). Winter and Whiteout (round 44, not re-graded): winter sky-w 0.89 → 0.85,
 sky-s 0.87 → 0.90 (both inside the 0.80–0.90 acceptance), centre-far 1.03 → 1.05; whiteout 1.00 → 1.01, 0.88 → 0.93,
 0.94 → 0.95 — the real sky radiance did not create the whiteout skyline; the snow stays on the shoulder above it, which
-is the owner's re-grade call.
+is the owner's re-grade call (closed by round 70).
 
 **Performance.** Per frame the model costs one 2D fetch in the dome and one in the aerial pass per ground pixel; the
 tables and the summary run once per preset (≈ 1 ms GPU, a synchronous 128-byte readback) under the loading cover.
@@ -2984,12 +2986,71 @@ badlandsRelief (no map config moved), public-repo-hygiene, attribution, typechec
 public build (the noise worker chunk emitted).
 
 **Open.** The frame-delta perf pairs at this load; whiteout's sky-w skyline 0.92 at the band's edge (it was 1.01; the
-round-44 snow re-grade remains the owner's call) and polders' sky-s 1.01 under its authored low deck; the upper sky band
+round-44 snow re-grade remains the owner's call — closed by round 70) and polders' sky-s 1.01 under its authored low deck; the upper sky band
 on airfield (+24 %) where the nearest puffs stand; the cumulus crinkle is still soft at range and alpine's low-sun puffs
 read warm and smooth; a camera inside or above the slab (the bird pose over a 300 m ceiling) sees the terrain unclouded,
 as with the decks; the gobos draw into every cascade (the same footprint, so no shadow doubles — a cascade policy could
 trim the draws); night clouds are pure black occluders (a faint moonlit edge would read better); the QA hooks
 `gpuTiming` / `benchRepeat` / `frozen` on the layer and `?clouds=off` stay for A/B.
+
+### Round 70 — 2026-09-25: Whiteout's snow re-grade (owner: yes)
+
+**Owner ruling (2026-09-25).** Yes to round 44's proposal for Whiteout: the snowpack tone law and the exposure, tuned so
+the sky-w / sky-s skyline ratios sit inside 0.80–0.90, the battlefield snow still white by eye, the arctic identity (a
+cold, neutral-white overcast, no warm cast) kept, the Garage untouched.
+
+**Finding first: the round-48 law never reached the snow that renders.** `applySourcedTerrain` reads the splat config for
+its palette id and `mudRough` alone, so the `grassTone` law (winter's 0.62 + 0.38·l → 0.52 + 0.32·l of round 48) grades
+the procedural fallback layer, which the sourced Snow010A composite replaces as soon as it loads — the photo snow rendered
+untinted on both winter maps (the desert palette's own comment says the same of its sand). Frosthollow's round-48 skyline
+moved on its exposure step and its redesigned rim, not on the tone law. The re-grade is therefore authored where it
+renders: a new splat field `sourcedTint` (`terrain.ts` SplatConfig, `sourcedTextures.ts` SourcedTerrainSettings) multiplies
+the plan entry's albedo tint per layer on both sourced paths (the synchronous swap and the prepared / worker path), so a
+map inheriting a palette (Whiteout ← winter) grades a composite of its own while the source images and the surface pack
+stay shared and winter's composite is untouched. `whiteout.ts` authors `sourcedTint: { G: [0.88, 0.885, 0.895] }`
+(neutral-cold, −12 % on the sRGB bytes ≈ −25 % linear), steps the fallback law by the same factor (L 0.52 + 0.32·l →
+0.46 + 0.28·l, so the pre-swap frame matches) and takes `postExposure` 0.86 → 0.83 in its own sky block; winter.ts is
+untouched and the Garage carries no Whiteout preset (`garageSkyPresets` and its receipt unchanged).
+
+**Measured (`tools/map-view-probe.mjs`, views sky-w, sky-s, centre-far, bird-w, e-wall-300; `map-metrics skyline`; A =
+origin/main 80450ad53 with round 68's overcast, B = this branch).** sky-w 0.92 → 0.84, sky-s 0.88 → 0.85, centre-far
+0.94 → 0.92, bird-w 0.98 → 0.97, e-wall-300 0.83 → 0.78 — both skyline views inside the 0.80–0.90 band with ±0.04 to
+spare; the metric's own edge bands (sky / ground display luma) sky-w 184.3 / 169.2 → 178.6 / 148.8, sky-s 193.0 / 173.4
+→ 188.3 / 165.5. Trials on the same base: tint 0.86 / exposure 0.80 → 0.82 / 0.85, tint 0.86 / exposure 0.86 → 0.84 /
+0.86, the landed tint 0.88 / exposure 0.83 → 0.84 / 0.85 — the exposure half is worth ~0.02 on the ratio (it lowers sky
+and ground alike), the tint carries the move. On the physical sky alone (1179f1013, before the overcast landed) the
+same re-grade read sky-w 1.01 → 0.96, sky-s 0.95 → 0.91 (edge bands 165.9 / 162.1 → 163.6 / 153.7 and 191.5 / 180.8 →
+185.9 / 170.1; the 0.86 / 0.80 trial 0.93 / 0.93): at the sky-w / sky-s edge the ground band is haze-dominated — a −28 %
+linear albedo step moved it ~5 % net of exposure, an albedo share of ≈ 0.19 of the band's display radiance — and reaching
+0.86 there by tint alone needs ≈ 0.68, grey snow. The other half of round 44's proposal, a sky that is the brightest
+surface, is round 68's overcast; the two together make the skyline. Snow still white: `map-metrics boxes` bird-w ground
+mean 175.3 → 161.6 (p5 134.7 → 122.7), the near wall box rgb 183/177/170 → 175/170/163 at the same 35° hue and 0.07
+saturation (nothing warmed), sky-w ground band 162.1 → 145.4 under a sky band 182.7 → 176.8. Captures and metrics under
+the shared probe mutex, one run at a time.
+
+**Eye check (1280 px reductions, five views, A/B on main with round 68's overcast and on the pre-cloud tree).** sky-w:
+the west snow plain and the berm read a shade cooler and greyer and sit a clear step below the bright neutral ceiling
+(on the physical sky alone the skyline stays faint). sky-s: the station's snow around the halls now sits
+below the sun glow instead of level with it. centre-far: the snow field darkens a little, the far ring still meets the sky
+(a ring item, as rounds 48 and 49 said). bird-w: the field reads pale grey-white instead of paper white and the wind-scour
+grain is more legible; the warm horizon haze at that 380 m pose is the round-65 atmosphere, unchanged. e-wall-300: the
+hillside snow reads cooler with its rock showing through slightly more; firs, rocks, tanks and HUD unchanged; no warm cast
+anywhere.
+
+**Receipts (exit 0).** sourcedTextures (Whiteout composes its own graded snow: the winter composite × the map tint, byte
+by byte, shared dimensions, winter's bytes in place), sourcedTerrainPreparation (apply / prepare parity under a map tint),
+terrainStreaming, frontlineAtmosphere, mapIntegration, shoreDirtMask, trackSurface, iceSurfaceDetail, winterLakeGeometry,
+environmentExpansion, studioEntry, ambientPolicy, ambientPcm, lazyAudio, mapCaptureReadiness, battleAtmosphereRuntime,
+sunShafts, studio-example-scenarios, garageSkyPresets (untouched), terrainMaterialOwnership (untouched: no shader change,
+program key and fetch census as before), map-metrics, map-art-guards, terrainProjection, shotDiagramProjection,
+villageWear and mangroveWaterPalette (every-map config digests re-pinned, dated), badlandsRelief (the byte receipt:
+the round-47 presentation pin of whiteout.ts extended to the new sky-line tail and a round-70 projection,
+`round70SnowRegrade.test-support.mjs`, for the splat block and the file-local clamp01 — the historical text unchanged, no
+digest moved), public-repo-hygiene, attribution, typecheck.
+
+**Open.** The far ring still meets the sky in centre-far (0.92; a vista item, rounds 48 / 49) and bird-w's warm horizon
+haze at the 380 m pose is round 65's atmosphere, untouched. The snow's albedo share at the rim (≈ 0.19) is the fog /
+aerial pass's, not a tone item. Round 68's open note on Whiteout's 0.92 is closed above.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -3101,6 +3162,8 @@ centre skylines, low edge and bird / oblique shore views):
 | 66 | An FFT ocean on every sea, bay and lake sheet (Tessendorf 2001, Horvath 2015): a JONSWAP + TMA directional spectrum per map (`ocean` block on the config: wind, fetch, swell, amplitude, choppiness, foam, breakers, caustics), three cascades in one stacked-tile texture, the inverse FFT as four fragment-shader Stockham passes (radix 16 / 8 per axis) over RGBA32F ping-pong MRT targets — no compute on WebGL2 — writing displacement / derivative / Jacobian-foam maps; the sheet (`shallowWater.ts` v13) displaces its vertices with the long cascade (flattened over the bank, a run-up film at the edge), joins the cascades' slopes to its normal with a footprint fade, whitens by the Jacobian, breaks the crest tops over the bank band and runs the whitewater up the strand (depth-aware from `getWaterDepthAt`'s bed law in the shader), and lights the shelf bed with thin-lens caustics from the finest cascade; the round-46 field composes on top, the terrain material and the marine ring faces untouched; the four approved maps at low amplitude, the flat seas (Saltwind, the polders, Skybridge, Mangrove Reach, the oasis) gain the moving surface; mobile keeps the old sheet, low halves the grid, medium alternates frames | oceanFft.selftest (butterfly vs DFT 1e-14, 8×8 field vs the double sum, spectrum symmetry, pass GLSL, gates, pass sequence, presets, handshake, wiring, eleven sea states); headless GPU read-back vs the CPU reference 2.4·10⁻⁴ m, 215 programs linked, terrain at 16 samplers; map-view-probe 198-pair A/B (far / bird ≤ 2.6 % moved, ≤ 0.7 mean |Δ|), in-water chase A/B (approved maps' water box within ±2 / 255), close-ups with debug channels and term isolation, eye check of 1280 px reductions; transform 0.61–0.77 ms GPU (granular timer, upper bound) / 0.014 ms CPU by the slope method; the receipts in the section |
 | 69 | Contact shadows, ground bounce, sun shafts and lens flare on the desktop tier, each behind its own quality lever (`?fx=off` keeps every pinned capture): a twelve-rung screen-space march toward the sun inside the aerial pass, blended into the shadow term through the CSM visibility the lit materials carry in the opaque scene target's alpha (wide occluders only — the grass blades combed the meadows); an analytic energy-conserved ground bounce in the lit materials (the excess of sunlit ground over the hemisphere's ground pole × the lower-hemisphere view factor); Mittring / Sousa rays from a sky mask blurred toward the sun at quarter resolution, coloured by the atmosphere's sun transmittance and gated per map by the preset's haze and sun height; a four-ghost, halo and streak flare with a 24-tap depth occlusion disc, eased; one quarter-res light target the grade adds before its tonemap | headless smoke on four maps (every program links, `?fx=off` exact), on/off crops and region numbers; map-view-probe A/B on 31 maps × 4 views with 1280 px eye checks on eight maps per effect; the round-59 perf probe new → base at the chase pose; receipts in the section |
 | 68 | Volumetric clouds over every battlefield: a raymarched slab lit by the round-65 atmosphere (`src/engine/volumetricClouds.ts`, `cloudNoise.ts` bakes in a worker, `cloudPresets.ts` derives each map's layer from its authored sky block — small clustered fair-weather cumulus at 1200–1800 m on the good and bland maps, the overcast five a neutral stratus ceiling that restores their white sky and closes the round-65 open note, Monsoon its blue sky with towering cumulus on the horizon), traced at 1/16 of a half-res history in a 4 × 4 Bayer slot cycle with reprojection, composited premultiplied through a depth-tested dome, hazed by the aerial pass's law toward the uncapped sky-view LUT; cloud shadows from per-cascade alpha-tested gobos on the shadow-only layer (no terrain sampler); one post.ts hook; `?clouds=off` keeps the baked decks | map-view-probe A/B on 31 maps × 4 views with map-metrics skylines (winter 0.84 / 0.87 in the band, whiteout 1.01 → 0.92 / 0.85, monsoon 0.55 / 0.54 as the base) and the sky-band rule (the nine good maps' middle bands within ±11 % of the base, lower within ±3 %); eye check of the 1280-px grids of the overcast five, four good and four bland maps; per-slot trace + resolve 0.28–0.52 ms GPU by repetition; the gobos verified in-page (ground luma −6 % under the cores); volumetricClouds receipt (new) and the receipts in the section  — **reverted to opt-in on 2026-09-25 (owner); the baked decks are the default again** |
+| 68 | Volumetric clouds over every battlefield: a raymarched slab lit by the round-65 atmosphere (`src/engine/volumetricClouds.ts`, `cloudNoise.ts` bakes in a worker, `cloudPresets.ts` derives each map's layer from its authored sky block — small clustered fair-weather cumulus at 1200–1800 m on the good and bland maps, the overcast five a neutral stratus ceiling that restores their white sky and closes the round-65 open note, Monsoon its blue sky with towering cumulus on the horizon), traced at 1/16 of a half-res history in a 4 × 4 Bayer slot cycle with reprojection, composited premultiplied through a depth-tested dome, hazed by the aerial pass's law toward the uncapped sky-view LUT; cloud shadows from per-cascade alpha-tested gobos on the shadow-only layer (no terrain sampler); one post.ts hook; `?clouds=off` keeps the baked decks | map-view-probe A/B on 31 maps × 4 views with map-metrics skylines (winter 0.84 / 0.87 in the band, whiteout 1.01 → 0.92 / 0.85, monsoon 0.55 / 0.54 as the base) and the sky-band rule (the nine good maps' middle bands within ±11 % of the base, lower within ±3 %); eye check of the 1280-px grids of the overcast five, four good and four bland maps; per-slot trace + resolve 0.28–0.52 ms GPU by repetition; the gobos verified in-page (ground luma −6 % under the cores); volumetricClouds receipt (new) and the receipts in the section |
+| 70 | Whiteout's snow re-grade (owner: yes, 2026-09-25): round 48's tone law never reached the sourced snow — a per-layer `sourcedTint` on the splat settings now grades the photo albedo that renders on both sourced paths; Whiteout's snow × 0.88 neutral-cold, the fallback law stepped alike (0.46 + 0.28·l), postExposure 0.83; winter and the Garage untouched | map-view-probe five views A/B on main with round 68's overcast (sky-w 0.92 → 0.84, sky-s 0.88 → 0.85, inside 0.80–0.90) and on the pre-cloud tree (1.01 → 0.96, 0.95 → 0.91: the physical sky alone leaves the rim band haze-dominated); snow boxes (bird-w 175 → 162, wall hue / saturation unchanged); 1280 px eye check of the five views; sourcedTextures graded-composite contract, sourcedTerrainPreparation parity under a tint; villageWear / mangroveWaterPalette digests re-pinned, the byte receipt's round-47 pin extended and a round-70 projection added; the receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
@@ -3212,7 +3275,7 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | copper_mesa | good | strata on every cliff; far mesas paler than the sky (5) |
 | airfield | good | flat ring with trees — consistent |
 | oasis | fair | dune bands repeat (8, as desert — round 43: the diagonal streaks are gone, mid-field band share 0.76 → 0.61) |
-| whiteout | fair | round 48: inherits the winter re-grade on its ground (snow 196 → 182) but its skyline is the vista ring, not the near rim — metric unchanged (1.01 / 0.91); a ring snowHex / haze item on its round-47-pinned horizon line (3, 5) |
+| whiteout | fair | round 48: inherits the winter re-grade on its ground (snow 196 → 182) but its skyline is the vista ring, not the near rim — metric unchanged (1.01 / 0.91); a ring snowHex / haze item on its round-47-pinned horizon line (3, 5); round 70: the snow re-grade authored on the sourced snow — sky-w 0.96 / sky-s 0.91 on the physical sky, 0.84 / 0.85 under the round-68 overcast |
 | orchard | good | grey corner rock beside green (15, mild); far ranges blue |
 | longleaf | good | dark corner rock; ranges good |
 | mangrove | good | flat green ring; water and trees continue |
