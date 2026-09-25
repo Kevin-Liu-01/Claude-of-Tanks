@@ -33,9 +33,33 @@ interface BattleEntity {
   visual?: GaragePedestalVisual | null;
 }
 
+interface GarageSwitchStageSpan { beginMs: number; endMs: number }
+
+type GarageSwitchStageName = 'import' | 'paint' | 'build' | 'stage' | 'compile';
+
+/**
+ * FSP-01 (2026-09-25): one bounded stage record per Garage selection. Spans
+ * are elapsed intervals from the selection call (never CPU time); `core` and
+ * `tail` copy the factory's own interval receipts so a switch profile can
+ * attribute construction without changing any construction step.
+ */
+export interface GarageSwitchRecord {
+  id: string;
+  token: number;
+  path: 'cached' | 'procedural' | 'aborted';
+  startedAt: number;
+  revealMs: number | null;
+  stages: Partial<Record<GarageSwitchStageName, GarageSwitchStageSpan>>;
+  build?: { workMs: number; yieldMs: number; checkpointCount: number; maxStepMs: number };
+  core?: Record<string, number>;
+  tail?: Record<string, number>;
+  abortReason?: string;
+}
+
 interface PedestalDebugTarget {
   __SWITCH_TIMINGS?: Array<Record<string, RuntimeValue>>;
   __PED_TRACE?: Array<Record<string, RuntimeValue>>;
+  __GARAGE_SWITCH?: GarageSwitchRecord[];
 }
 
 declare global {
@@ -225,7 +249,64 @@ export function createGaragePedestalRuntime({
   if (debugTarget) {
     debugTarget.__SWITCH_TIMINGS = [];
     debugTarget.__PED_TRACE = [];
+    debugTarget.__GARAGE_SWITCH = [];
   }
+
+  const round1 = (value: number) => Math.round(value * 10) / 10;
+  const openSwitchRecord = (
+    id: string,
+    token: number,
+    startedAt: number,
+    path: GarageSwitchRecord['path'] = 'procedural',
+  ): GarageSwitchRecord => ({ id, token, path, startedAt, revealMs: null, stages: {} });
+  const closeStage = (record: GarageSwitchRecord, name: GarageSwitchStageName, beginAt: number) => {
+    record.stages[name] = {
+      beginMs: round1(beginAt - record.startedAt),
+      endMs: round1(now() - record.startedAt),
+    };
+  };
+  const publishSwitchRecord = (record: GarageSwitchRecord) => {
+    const log = debugTarget?.__GARAGE_SWITCH;
+    if (!log) return;
+    log.push(record);
+    if (log.length > TRACE_LIMIT) log.splice(0, log.length - TRACE_LIMIT);
+  };
+  const abortSwitchRecord = (record: GarageSwitchRecord, reason: string) => {
+    record.path = 'aborted';
+    record.abortReason = reason;
+    publishSwitchRecord(record);
+  };
+  // The factory records elapsed timestamps; publish durations so consumers
+  // never depend on the construction clock origin.
+  const buildTimingDurations = (root: Object3D): Pick<GarageSwitchRecord, 'core' | 'tail'> => {
+    const out: Pick<GarageSwitchRecord, 'core' | 'tail'> = {};
+    const core = root.userData.coreBuildTiming as Record<string, number> | undefined;
+    if (core && Number.isFinite(core.startedAt)) {
+      out.core = {
+        setupMs: round1(core.setupMs),
+        materialsMs: round1(core.materialsFinishedAt - core.materialsStartedAt),
+        authoredMs: round1(core.authoredFinishedAt - core.authoredStartedAt),
+        bindMergeMs: round1(core.bindMergeFinishedAt - core.authoredFinishedAt),
+        assemblyMs: round1(core.finishedAt - core.bindMergeFinishedAt),
+        totalMs: round1(core.finishedAt - core.startedAt),
+      };
+    }
+    const tail = root.userData.tailBuildTiming as Record<string, number> | undefined;
+    if (tail && Number.isFinite(tail.decorStartedAt)) {
+      out.tail = {
+        decorMs: round1(tail.decorFinishedAt - tail.decorStartedAt),
+        decorWorkMs: round1(Number(root.userData.decorBuildMs) || 0),
+        fillsMs: round1(tail.fillsFinishedAt - tail.decorFinishedAt),
+        normalizeMs: round1(tail.normalizeFinishedAt - tail.fillsFinishedAt),
+        batchMs: round1(tail.batchFinishedAt - tail.normalizeFinishedAt),
+        finalizeMs: round1(tail.finalizeFinishedAt - tail.batchFinishedAt),
+        shadowBatchMs: round1(tail.shadowBatchFinishedAt - tail.finalizeFinishedAt),
+        shareMs: round1(tail.shareFinishedAt - tail.shadowBatchFinishedAt),
+        totalMs: round1(tail.shareFinishedAt - tail.decorStartedAt),
+      };
+    }
+    return out;
+  };
 
   const trace = (event: string, data: Record<string, RuntimeValue>) => {
     const log = debugTarget?.__PED_TRACE;
@@ -348,6 +429,7 @@ export function createGaragePedestalRuntime({
     startedAt: number,
     path: 'cached' | 'procedural',
     phases: Record<string, number> | null = null,
+    record: GarageSwitchRecord | null = null,
   ) => {
     if (current) current.__everShown = true;
     shownToken = pollToken;
@@ -362,6 +444,10 @@ export function createGaragePedestalRuntime({
       ...(phases || {}),
     });
     trace('reveal', { id: specId, ms: elapsedMs, path, pv: visualState(current) });
+    if (record) {
+      record.revealMs = elapsedMs;
+      publishSwitchRecord(record);
+    }
     invalidatePresentation();
     if (isBootComplete() && getPhase() === 'garage') preloader.queueNeighbors();
   };
@@ -487,7 +573,8 @@ export function createGaragePedestalRuntime({
         cached.setVisible?.(true);
         cached.root.visible = true;
         retirePrevious();
-        recordSwitch(specId, startedAt, 'cached');
+        recordSwitch(specId, startedAt, 'cached', null,
+          openSwitchRecord(specId, cachedToken, startedAt, 'cached'));
       };
       if (cached.__pedestalCompileP) {
         return cached.__pedestalCompileP.then(revealCached);
@@ -503,23 +590,32 @@ export function createGaragePedestalRuntime({
       buildMs: 0,
       compileMs: 0,
     };
+    const record = openSwitchRecord(specId, buildToken, startedAt);
+    const importStartedAt = phaseAt;
     return Promise.all([
-      ensureTankBuilder(specId),
+      ensureTankBuilder(specId).then((ready) => {
+        closeStage(record, 'import', importStartedAt);
+        return ready;
+      }),
       prebakeSharedTextures(
         getSpec(specId), anisotropy, 'ai', createBudgetYield(6),
-      ).catch(() => undefined),
+      ).catch(() => undefined).then(() => closeStage(record, 'paint', importStartedAt)),
     ]).then(async () => {
       phases.prebakeMs = Math.round(now() - phaseAt);
       if (!canStage() || buildToken !== pollToken) {
         trace('prebake-stale', { id: specId, tok: buildToken });
+        abortSwitchRecord(record, 'prebake-stale');
         return;
       }
 
+      const buildStartedAt = now();
       const incoming = await buildVisual(specId,
         () => canStage() && buildToken === pollToken, phases);
+      closeStage(record, 'build', buildStartedAt);
       if (!incoming || !canStage() || buildToken !== pollToken) {
         incoming?.dispose();
         trace('build-stale', { id: specId, tok: buildToken });
+        abortSwitchRecord(record, 'build-stale');
         return;
       }
       phaseAt = now();
@@ -529,6 +625,7 @@ export function createGaragePedestalRuntime({
       scene.add(incoming.root);
       touch(specId, incoming);
       phases.buildMs += now() - phaseAt;
+      closeStage(record, 'stage', phaseAt);
       phases.decorMs = Math.round(Number(incoming.root.userData.decorBuildMs) || 0);
       incoming.__pedestalCompiling = true;
       phaseAt = now();
@@ -540,9 +637,18 @@ export function createGaragePedestalRuntime({
       });
       await incoming.__pedestalCompileP;
       phases.compileMs = Math.round(now() - phaseAt);
+      closeStage(record, 'compile', phaseAt);
+      record.build = {
+        workMs: round1(phases.buildMs),
+        yieldMs: round1(phases.buildYieldMs),
+        checkpointCount: phases.buildCheckpointCount,
+        maxStepMs: round1(phases.maxBuildStepMs),
+      };
+      Object.assign(record, buildTimingDurations(incoming.root));
       if (!canStage() || buildToken !== pollToken
         || cache.get(specId) !== incoming || !reusable(incoming)) {
         trace('compile-stale', { id: specId, tok: buildToken });
+        abortSwitchRecord(record, 'compile-stale');
         park(incoming);
         return;
       }
@@ -551,7 +657,7 @@ export function createGaragePedestalRuntime({
       incoming.setVisible?.(true);
       incoming.root.visible = true;
       retirePrevious();
-      recordSwitch(specId, startedAt, 'procedural', phases);
+      recordSwitch(specId, startedAt, 'procedural', phases, record);
     });
   };
 

@@ -10062,11 +10062,17 @@ function* createTankOwnedSteps(
     // No earlier yield: all core resources now belong to visual.dispose().
     // The root remains private through decoration and the unchanged finalizers.
     yield;
+    // FSP-01 (2026-09-25): the finisher stages after the core keep their own
+    // elapsed-interval receipts (same contract as coreBuildTiming: bounded
+    // non-await intervals, never CPU time) so a Garage switch profile can
+    // attribute the tail instead of reading one opaque post-core block.
+    const tailDecorStartedAt = performance.now();
     yield* prepareTankDecorationSteps({
       root, hullG, turretG, spec, engineCtx, disposables,
       opts: { proceduralOnly, decor: opts.decor },
       isDestroyed: () => destroyed,
     }, legacyDecoration);
+    const tailDecorFinishedAt = performance.now();
 
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
@@ -10076,6 +10082,7 @@ function* createTankOwnedSteps(
       // Neither may re-cap the recoil-owned aperture that was verified earlier.
       root.userData.physicalMuzzleBoreVerification = verifyPhysicalMuzzleBore(gunG, P.muzzleZ, physicalBore);
     }
+    const tailFillsFinishedAt = performance.now();
 
     // Family builders historically retinted shared/clone track materials after
     // construction. Reassert the working-gear finish after every authored
@@ -10084,6 +10091,7 @@ function* createTankOwnedSteps(
     // scheme wheel paint; camouflage armor, skirts and guards are deliberately
     // outside this normalization.
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
+    const tailNormalizeFinishedAt = performance.now();
 
     if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
       const mobileBatchParents = [hullG, turretG, gunG, recoilG];
@@ -10125,16 +10133,30 @@ function* createTankOwnedSteps(
       }
     }
 
+    const tailBatchFinishedAt = performance.now();
+
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     installCoplanarDepthLayers(root);
     finalizeVehicleNightLighting(root);
+    const tailFinalizeFinishedAt = performance.now();
     // Retain each authored hull/turret/gun proxy and its articulation owner.
     // Only battle builds combine their submissions; no silhouette, cascade
     // cadence or Studio/Gallery selection geometry changes here.
     if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
     if (batchStatic) detachEmptyLodSentinels(root);
+    const tailShadowBatchFinishedAt = performance.now();
     if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
+    root.userData.tailBuildTiming = {
+      decorStartedAt: tailDecorStartedAt,
+      decorFinishedAt: tailDecorFinishedAt,
+      fillsFinishedAt: tailFillsFinishedAt,
+      normalizeFinishedAt: tailNormalizeFinishedAt,
+      batchFinishedAt: tailBatchFinishedAt,
+      finalizeFinishedAt: tailFinalizeFinishedAt,
+      shadowBatchFinishedAt: tailShadowBatchFinishedAt,
+      shareFinishedAt: performance.now(),
+    };
 
     visualCompleted = true;
     return visual;
