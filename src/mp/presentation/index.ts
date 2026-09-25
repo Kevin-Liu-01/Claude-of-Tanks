@@ -4,7 +4,7 @@
  * presentation that drives the existing renderer, HUD, FX and audio.
  */
 export { RecordingPresentation, bindMatchPresentation } from './adapter.ts';
-export type { EventContext, PresentationAdapter, RecordedFrame, RosterContext } from './adapter.ts';
+export type { EventContext, PresentationAdapter, RecordedFrame, RecordedPose, RosterContext } from './adapter.ts';
 export { createBattlePresentation } from './battlePresentation.ts';
 export type {
   BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, MatchShell, PresentationGameState, TankVisual,

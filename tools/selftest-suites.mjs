@@ -748,6 +748,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/prediction.selftest.mjs',
     'src/mp/match/matchClient.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
+    'tools/mp-client-soak.selftest.mjs',
     'src/net/net.selftest.mjs',
     'src/net/signalEndpoint.selftest.mjs',
     'src/net/signalingRoomRoute.selftest.mjs',

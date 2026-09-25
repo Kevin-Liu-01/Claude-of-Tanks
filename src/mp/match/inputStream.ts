@@ -68,8 +68,10 @@ export interface InputStreamStats {
   lastMarginTicks: number;
   ackedInputTick: number;
   lastSampledTick: number;
-  /** lastSampledTick − ackedInputTick at the last acknowledgement (ticks). */
+  /** lastSampledTick − ackedInputTick at the last acknowledgement (ticks): the lead the client chose plus the path. */
   ackLagTicks: number;
+  /** ackLagTicks minus the lead in force: the round trip and the server's buffer, what the link costs. */
+  intrinsicAckLagTicks: number;
   pendingFireEdges: number;
   pendingActionBits: number;
   skippedTicks: number;
@@ -306,6 +308,7 @@ export class InputStream {
       ackedInputTick: this.ackedInputTick,
       lastSampledTick: this.lastSampledTick,
       ackLagTicks: this.ackLagTicks,
+      intrinsicAckLagTicks: Math.max(0, this.ackLagTicks - this.leadTicks),
       pendingFireEdges: (this.fireSeq - this.ackedFireSeq) & 0xffff,
       pendingActionBits: this.pendingActionBits,
       skippedTicks: this.skippedTicks,

@@ -69,11 +69,22 @@ export interface RecordedFrame {
   phase: number;
 }
 
+export interface RecordedPose {
+  entityId: number;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  destroyed: boolean;
+}
+
 /** A headless adapter that remembers what it was shown (soaks, receipts). */
 export class RecordingPresentation implements PresentationAdapter {
   readonly frames: RecordedFrame[] = [];
   readonly events: Array<{ kind: string; own: boolean; feedbackPredicted: boolean }> = [];
   readonly hidden = new Set<number>();
+  /** The newest presented pose of every disclosed entity (what a prediction world may collide with). */
+  readonly poses = new Map<number, RecordedPose>();
   roster: readonly RosterEntry[] = [];
   context: RosterContext | null = null;
   verdict: { verdict: VerdictId; reason: string } | null = null;
@@ -95,6 +106,13 @@ export class RecordingPresentation implements PresentationAdapter {
     });
     if (this.frames.length > this.maxFrames) this.frames.splice(0, this.frames.length - this.maxFrames);
     const present = new Set(frame.entities.map((entity) => entity.entityId));
+    for (const id of this.poses.keys()) if (!present.has(id)) this.poses.delete(id);
+    for (const entity of frame.entities) {
+      let pose = this.poses.get(entity.entityId);
+      if (!pose) { pose = { entityId: entity.entityId, x: 0, y: 0, z: 0, yaw: 0, destroyed: false }; this.poses.set(entity.entityId, pose); }
+      pose.x = entity.x; pose.y = entity.y; pose.z = entity.z; pose.yaw = entity.yaw;
+      pose.destroyed = (entity.flags & 1) !== 0;
+    }
     for (const entry of this.roster) this.setVisibility(entry.entityId, present.has(entry.entityId) || entry.entityId === frame.viewer.entityId);
     if (frame.meta.verdict !== 0 && !this.verdict) this.applyVerdict(frame.meta.verdict, frame.meta.verdictReason);
   }

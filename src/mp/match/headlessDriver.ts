@@ -29,10 +29,13 @@ export interface GateMetrics {
   /** Largest per-frame move of the viewer's presented tank. */
   maxOwnStepM: number;
   ownStepsOver: number;
-  /** Ack-lag samples in ticks (one per accepted snapshot). */
+  /** Raw ack-lag samples in ticks (one per accepted snapshot): the lead the client chose plus the path. */
   ackLagTicks: number[];
   ackLagP50: number;
   ackLagP95: number;
+  /** The same minus the lead in force: what the round trip and the server's input buffer cost. */
+  intrinsicAckLagP50: number;
+  intrinsicAckLagP95: number;
   hardSnaps: number;
   maxCorrectionStepM: number;
   maxCorrectionM: number;
@@ -67,7 +70,6 @@ export class HeadlessMatchClientDriver {
   private readonly lastRemote = new Map<number, { x: number; y: number; z: number; tick: number }>();
   private lastOwn: { x: number; y: number; z: number } | null = null;
   private lastNowMs: number | null = null;
-  private lastAckLag = -1;
   private lastAcceptedSnapshots = 0;
   private lastMissingBaselines = 0;
   private awaitingRecovery = false;
@@ -77,7 +79,7 @@ export class HeadlessMatchClientDriver {
   readonly remoteStepLimitM: number;
   private readonly metrics = {
     maxRemoteStepM: 0, remoteStepsOver: 0, maxOwnStepM: 0, ownStepsOver: 0, ackLagTicks: [] as number[],
-    keyframeRecoveries: 0, eventsDelivered: 0, ownShotsDelivered: 0, predictedShots: 0,
+    intrinsicAckLagTicks: [] as number[], keyframeRecoveries: 0, eventsDelivered: 0, ownShotsDelivered: 0, predictedShots: 0,
   };
   /** Every frame the client produced (kept for callers that need the timeline; cleared by `drain()`). */
   readonly frameLog: Array<{ nowMs: number; tick: number; entities: number; ownX: number | null; ownZ: number | null }> = [];
@@ -125,9 +127,9 @@ export class HeadlessMatchClientDriver {
     const stats = this.client.stats();
     if (stats.snapshotsAccepted > this.lastAcceptedSnapshots) {
       this.lastAcceptedSnapshots = stats.snapshotsAccepted;
-      if (this.client.isSeated && stats.inputAckLagTicks !== this.lastAckLag) {
-        this.lastAckLag = stats.inputAckLagTicks;
-        if (this.frames > this.warmupFrames) this.metrics.ackLagTicks.push(stats.inputAckLagTicks);
+      if (this.client.isSeated && this.frames > this.warmupFrames) {
+        this.metrics.ackLagTicks.push(stats.inputAckLagTicks);
+        this.metrics.intrinsicAckLagTicks.push(stats.inputIntrinsicAckLagTicks);
       }
       if (this.awaitingRecovery && stats.keyframes > 0) {
         this.metrics.keyframeRecoveries++;
@@ -189,6 +191,8 @@ export class HeadlessMatchClientDriver {
       ackLagTicks: this.metrics.ackLagTicks.slice(),
       ackLagP50: percentile(this.metrics.ackLagTicks, 0.5),
       ackLagP95: percentile(this.metrics.ackLagTicks, 0.95),
+      intrinsicAckLagP50: percentile(this.metrics.intrinsicAckLagTicks, 0.5),
+      intrinsicAckLagP95: percentile(this.metrics.intrinsicAckLagTicks, 0.95),
       hardSnaps: stats.prediction?.hardSnaps ?? 0,
       maxCorrectionStepM: stats.prediction?.maxCorrectionStepM ?? 0,
       maxCorrectionM: stats.prediction?.maxPositionErrorM ?? 0,

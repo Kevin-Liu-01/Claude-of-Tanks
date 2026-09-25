@@ -69,6 +69,12 @@ play without importing Three.js rendering or DOM state.
   deterministically fills open team slots with bots
   and releases those same channels to match authority.
 - `browserBattleBridge.ts` is presentation-only and must stay lazy from main.
+- Multiplayer v2 (`docs/MULTIPLAYER-V2.md`) replaces this tree: its client
+  layers — `src/mp/transport`, `src/mp/match` (clock, input stream, snapshots,
+  interpolation, prediction, events, recovery), `src/mp/presentation` — are
+  documented in `src/mp/README.md`; the designs kept from here (prediction
+  envelopes, jitter buffer, clock slew, edge redundancy, reload authority) are
+  re-implemented there, never imported from `src/net`.
 
 ## Patterns and invariants
 

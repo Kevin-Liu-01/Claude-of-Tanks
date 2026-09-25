@@ -134,6 +134,7 @@ export interface MatchClientStats {
   keyframeRequests: number;
   staleSnapshots: number;
   inputAckLagTicks: number;
+  inputIntrinsicAckLagTicks: number;
   inputLeadTicks: number;
   inputMarginTicks: number;
   pendingFireEdges: number;
@@ -303,6 +304,8 @@ export class MatchClient {
   get ownEntityId(): number { return this.welcomeMessage?.entityId ?? NO_ENTITY; }
   /** The presented state of the viewer's tank (null without prediction). */
   get localTank(): TankState | null { return this.predictor?.presented ?? null; }
+  /** The prediction's simulation state at the newest sampled tick (collision framing, diagnostics). */
+  get predictionState(): TankState | null { return this.predictor?.simulationState ?? null; }
   get lastCloseReason(): CloseReasonId | null { return this.closeReason; }
   get lastCloseDetail(): string { return this.closeDetail; }
 
@@ -438,6 +441,7 @@ export class MatchClient {
       keyframeRequests: this.keyframeRequests,
       staleSnapshots: streams.stale,
       inputAckLagTicks: input.ackLagTicks,
+      inputIntrinsicAckLagTicks: input.intrinsicAckLagTicks,
       inputLeadTicks: input.leadTicks,
       inputMarginTicks: input.lastMarginTicks,
       pendingFireEdges: input.pendingFireEdges,

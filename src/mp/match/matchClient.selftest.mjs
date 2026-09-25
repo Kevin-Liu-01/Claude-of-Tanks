@@ -132,8 +132,10 @@ function mulberry(seed) {
     assert.ok(gates.maxOwnStepM <= 0.5, `${label}: own pose steps ≤ 0.5 m (${gates.maxOwnStepM.toFixed(3)})`);
     assert.ok(gates.maxCorrectionStepM <= 0.25, `${label}: correction release ≤ 0.25 m (${gates.maxCorrectionStepM.toFixed(3)})`);
     const rttTicks = Math.ceil(gates.rttMs / TICK_MS);
-    assert.ok(gates.ackLagP50 <= rttTicks + 2, `${label}: input ack lag p50 ${gates.ackLagP50} ≤ RTT (${rttTicks} ticks) + 2`);
-    assert.ok(gates.ackLagP95 <= rttTicks + 4, `${label}: p95 ${gates.ackLagP95}`);
+    // The raw lag includes the lead the client chose (2 ticks here); the intrinsic lag is the link and the server.
+    assert.ok(gates.intrinsicAckLagP50 <= rttTicks + 2, `${label}: input ack lag p50 ${gates.intrinsicAckLagP50} ≤ RTT (${rttTicks} ticks) + 2`);
+    assert.ok(gates.intrinsicAckLagP95 <= rttTicks + 4, `${label}: p95 ${gates.intrinsicAckLagP95}`);
+    assert.ok(gates.ackLagP50 <= gates.intrinsicAckLagP50 + one.client.stats().inputLeadTicks + 1, `${label}: raw ${gates.ackLagP50} = intrinsic + lead`);
     assert.ok(gates.keyframes >= Math.floor(seconds / 2) - 1, `${label}: a keyframe every 2 s (${gates.keyframes})`);
     assert.ok(gates.maxExtrapolatedMs <= 1000 / 30 + 1e-6, `${label}: extrapolation capped at one interval`);
     assert.ok(gates.framesWithSample > seconds * 60 - 40, `${label}: frames rendered`);
