@@ -464,7 +464,7 @@ function roofFurniture(P: TankBuilderPort): void {
   const whipBase=new THREE.LatheGeometry([[0,2.16996],[.0785,2.16996],
     [.0785,2.195],[.0432,2.23],[.0428,2.30],[.0368,2.40],[.024,2.50],
     [.01415,2.55],[.01315,2.59226],[0,2.59226]].map(([r,y])=>new THREE.Vector2(r,y)),24);
-  turretPart(P,'turretDetail',whipBase,.4161,0,-1.22526);
+  turretPart(P,'turretDark',whipBase,.4161,0,-1.22526); // antenna base insulator: dark (FSP-06)
   antennaWhip(P);
   // Small central vertical station is present in the source independent of the whip.
   const pole=new THREE.LatheGeometry([[0,2.16796],[.052,2.16796],[.052,2.33],
