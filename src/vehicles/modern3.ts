@@ -521,15 +521,16 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     // The rubber flap is a backing curtain, not the visible bow face.  A
     // flush canted armor skin and inset lamp aperture restore the oracle's
     // continuous fender shoulder while staying behind the 3.82 m guard lip.
-    const fenderFace = new THREE.PlaneGeometry(0.62, 0.36);
-    const fenderPos = fenderFace.attributes.position;
-    for (let vi = 0; vi < fenderPos.count; vi++) {
-      const lx = fenderPos.getX(vi); const ly = fenderPos.getY(vi);
-      const outer = s * lx > 0;
-      fenderPos.setY(vi, ly > 0 ? (outer ? 0.10 : 0.18) : (outer ? -0.18 : -0.15));
-    }
-    fenderPos.needsUpdate = true; fenderFace.computeVertexNormals();
-    P.add('hull', fenderFace, s * 1.40, 1.075, 3.715);
+    // FSP-05 (2026-09-25): the canted skin was a one-sided plane over an open
+    // pocket (x 1.09..1.64, z 3.46..3.715, below the fender top and outboard of
+    // the +-1.08 nose lip), so the chase views looked through the shoulder into
+    // its back. The same canted face (inner 0.925..1.255, outer 0.895..1.175 at
+    // z 3.715) now fronts a closed wedge whose rear ring at z 3.50 buries its top
+    // edge in the 1.20..1.24 glacis-lip band and meets the shoulder cap; its
+    // bottom stays 0.17 m above the idler wrap, which has left the lane by 3.43.
+    P.add('hull', slab(
+      [s * 1.09, 0.925, 3.715], [s * 1.71, 0.895, 3.715], [s * 1.71, 0.895, 3.50], [s * 1.09, 0.925, 3.50],
+      [s * 1.09, 1.255, 3.715], [s * 1.71, 1.175, 3.715], [s * 1.71, 1.20, 3.50], [s * 1.09, 1.235, 3.50]));
     const fenderBreak = new THREE.PlaneGeometry(0.016, 0.22);
     fenderBreak.rotateZ(s * 0.16);
     P.add('hullDark', fenderBreak, s * 1.56, 1.075, 3.718);
