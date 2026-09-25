@@ -82,13 +82,14 @@ assert.throws(
 );
 assert.throws(
   () => configureTankFactory({
-    // panther_g is one of the three builders still owned by the core (round 46
-    // removed the five that profile packs shadowed, docs/CLEANUP-2026-09-22.md §4.2).
-    canonicalBuilderPacks: [['duplicate', { panther_g() {} }]],
+    // leo2a7 is the one builder still owned by the core (round 46 removed the five
+    // that profile packs shadowed, docs/CLEANUP-2026-09-22.md §4.2; is2 and panther_g
+    // left with their archived hulls on 2026-09-25, §8).
+    canonicalBuilderPacks: [['duplicate', { leo2a7() {} }]],
     profiledBuilders: {},
     fittings: {},
   }),
-  /Duplicate canonical builder panther_g/,
+  /Duplicate canonical builder leo2a7/,
 );
 assert.throws(
   () => configureTankFactory({
