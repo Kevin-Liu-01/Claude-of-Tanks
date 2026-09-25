@@ -81,7 +81,7 @@ export const CLOUD_AERIAL = Object.freeze({
   /** past the ring (3–12 km) the scatter-in ceiling rises toward the sky and the altitude rule fades out */
   farStartM: 3000, farEndM: 12000, farScatterCeiling: 0.92,
 });
-/** Light march toward the sun: sample distances (m) from the point, on the base shape (no detail erosion). */
+/** Light march toward the sun: sample distances (m) from the point, on the base shape (no detail erosion); a stratus sheet takes the first three. */
 export const CLOUD_LIGHT_TAPS = Object.freeze([14, 34, 70, 150, 320] as const);
 
 const f = (x: number): string => { const s = String(x); return s.includes('.') || s.includes('e') ? s : `${s}.0`; };
@@ -231,7 +231,7 @@ float cloudDensity( vec3 p, vec3 w, bool detail, float foot ) {
 float cloudLightDepth( vec3 p, vec3 w ) {
 	float od = 0.0;
 	float prev = 0.0;
-${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? 'if ( od * uDensity < 8.0 ) ' : ''}{
+${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? `if ( od * uDensity < 8.0${k >= 3 ? ' && uStratiform < 0.5' : ''} ) ` : ''}{
 		vec3 lp = p + uSunDir * ${f(dist)};
 		vec3 lw = ${k < 2 ? 'w' : 'cloudWeather( lp.xz )'};
 		od += cloudDensity( lp, lw, false, 0.0 ) * ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))};
@@ -266,7 +266,7 @@ void main() {
 		// the powder term fades toward the sun, where the forward peak lights the thin edges instead
 		float powderK = clamp( cosT * -0.5 + 0.6, 0.0, 1.0 );
 		float span = t1 - t0;
-		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + uStratiform ), ${f(CLOUD_STEP_MAX_M)} );
+		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + 1.5 * uStratiform ), ${f(CLOUD_STEP_MAX_M)} );
 		float t = t0 + ds * jitter;
 		vec3 L = vec3( 0.0 );
 		float T = 1.0;
