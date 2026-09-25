@@ -64,12 +64,14 @@ export const CLOUD_CUT_TURN_RAD = 0.35;
 export const CLOUD_CUT_ZOOM = 1e-3;
 /**
  * The aerial pass's haze law (post.ts AERIAL_* constants, mirrored so a cloud bank converges like the ring):
- * extinction and scatter-in densities (1/m), their ceilings, the desaturation and cool shift, the horizon
- * luminance ceiling of the LUT target and the far-field haze cap.
+ * extinction and scatter-in densities (1/m), their ceilings, the desaturation and cool shift. The target is the
+ * sky-view LUT along the ray itself, without the pass's luminance caps: those keep a lit mountain from blowing
+ * out against the haze, but a cloud bank fades into the sky it stands against, and a capped target left every
+ * far deck a band darker than the sky around it (winter / whiteout skylines rose a tenth).
  */
 export const CLOUD_AERIAL = Object.freeze({
   density: 0.00145, hazeDensity: 0.00092, hazeStart: 85, extCeiling: 0.60, scatterCeiling: 0.55,
-  desat: 0.62, cool: [0.90, 0.97, 1.08] as const, horizonCap: 0.45, hazeLumCap: 0.385,
+  desat: 0.62, cool: [0.90, 0.97, 1.08] as const,
   /** the pass's height-aware atmosphere: the falloff's start over the camera (m), its e-fold height, the shares */
   heightRef: 30, heightScale: 150, heightScatterK: 0.75, heightExtK: 0.35,
 });
@@ -308,9 +310,6 @@ void main() {
 			float fs = min( 1.0 - exp( -hz * hz ), ${f(CLOUD_AERIAL.scatterCeiling)} ) * mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightScatterK)} );
 			vec3 skyDir = normalize( vec3( dir.x, max( dir.y, 0.02 ), dir.z ) );
 			vec3 target = atmoSkyVisible( skyDir );
-			float tl = dot( target, vec3( 0.2126, 0.7152, 0.0722 ) );
-			target *= min( 1.0, ${f(CLOUD_AERIAL.horizonCap)} / max( tl, 1e-4 ) );
-			target *= min( 1.0, ${f(CLOUD_AERIAL.hazeLumCap)} / max( dot( target, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 ) );
 			L = mix( L, target * opacity, fs );
 		}
 		outv = vec4( max( L, vec3( 0.0 ) ), clamp( T, 0.0, 1.0 ) );

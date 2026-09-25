@@ -160,8 +160,10 @@ assert.equal(CLOUD_AERIAL.hazeDensity, postConst('AERIAL_HAZE_DENSITY'));
 assert.equal(CLOUD_AERIAL.extCeiling, postConst('AERIAL_EXT_CEILING'));
 assert.equal(CLOUD_AERIAL.scatterCeiling, postConst('AERIAL_SCATTER_CEILING'));
 assert.equal(CLOUD_AERIAL.desat, postConst('AERIAL_DESAT'));
-assert.equal(CLOUD_AERIAL.hazeLumCap, postConst('AERIAL_HAZE_LUM_CAP'));
-assert.equal(CLOUD_AERIAL.horizonCap, Number(skySource.match(/const HORIZON_LUM_CAP = ([\d.]+);/)[1]));
+// the target is the sky-view LUT itself, uncapped: the pass's caps (AERIAL_HAZE_LUM_CAP, HORIZON_LUM_CAP) are for lit
+// ground against haze; a capped target left every far deck darker than its sky (winter / whiteout skylines)
+assert.ok(!('hazeLumCap' in CLOUD_AERIAL) && !('horizonCap' in CLOUD_AERIAL), 'no luminance cap on the cloud haze target');
+assert.doesNotMatch(layerSource, /hazeLumCap|horizonCap/, 'the trace applies no cap to its sky target');
 assert.equal(CLOUD_AERIAL.heightRef, postConst('AERIAL_HEIGHT_REF'));
 assert.equal(CLOUD_AERIAL.heightScale, postConst('AERIAL_HEIGHT_SCALE'));
 assert.equal(CLOUD_AERIAL.heightScatterK, postConst('AERIAL_HEIGHT_SCATTER_K'));
