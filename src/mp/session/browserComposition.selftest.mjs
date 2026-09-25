@@ -418,9 +418,10 @@ assert.equal(harness.menu.attached, null, 'the lobby stays off the menu while th
 }
 
 // ------------------------------------------------------------ the verdict, the lobby back on the menu, the Garage return with the room kept
-owner.frame(frame({ events: [{ kind: 'shell_fired', payload: {} }], ownShots: [{ event: { kind: 'shell_fired', payload: {} }, feedbackPredicted: true }] }));
+owner.frame(frame({ events: [{ kind: 'shell_fired', payload: { shooterId: 'foe' } }], ownShots: [{ event: { kind: 'shell_fired', payload: { shooterId: 'me' } }, feedbackPredicted: true }] }));
 assert.deepEqual(composition.stats().round.events, { shell_fired: 2 });
 assert.equal(composition.stats().round.ownShots, 1);
+assert.deepEqual(composition.stats().round.shotsBy, { foe: 1, me: 1 }, 'shots are counted by shooter (the browser e2e proves each side saw the other\'s)');
 owner.verdict(VERDICT.ALPHA, 'elimination');
 assert.equal(game.result, 'victory');
 assert.equal(harness.bus.at(-1).type, 'battle:ended');

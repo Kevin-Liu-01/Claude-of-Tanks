@@ -16,6 +16,8 @@ under `src/mp` is imported by the solo boot path.
 | `transport/` | `Transport` contract (`open/send/reconnect/close`, `onFrame/onState`, `bufferedBytes`, typed close reasons), `WebSocketTransport`, `LoopbackTransport` pair. | yes |
 | `match/` | `MatchClient` and its parts: `clock.ts`, `inputStream.ts`, `snapshotStream.ts`, `interpolation.ts`, `prediction.ts` (+ `movementCheckpoint.ts`), `events.ts`, `recovery.ts`, `headlessDriver.ts`; `scriptedServer.test-support.ts` is the fixture server the receipts use. | yes |
 | `presentation/` | `PresentationAdapter` + `bindMatchPresentation`, `RecordingPresentation` (headless), `createBattlePresentation` (the renderer/HUD/FX/audio bridge), `createPredictionWorld` (the collision the prediction integrates against). | adapter + recorder yes; the battle presentation needs the fleet and `three` |
+| `room/` | The room protocol and policy both sides share, `RoomActor` (the room state machine the LAN helper and the Worker run), `RoomClient` (create/join/resume, commands, chat, `match_start`). | yes |
+| `session/` | `MatchSession` (one room's session owner: a `MatchClient` and a presentation per round), `createHeadlessSession` (receipts, `tools/mp-rooms-e2e.mjs`), `createRoomConnectionAdapter` (the Play menu's v2 room connection), `resolveRoomsUrl` (the rooms endpoint policy), `createBrowserComposition` (the browser launch, below). | yes; the browser composition's default presentation factory needs the fleet and `three` |
 
 Dependency direction: `presentation → match → transport`, all three `→ wire`
 and `→ src/sim` (movement only). `src/net` (v1) is never imported; the
@@ -118,3 +120,95 @@ own steps ≤ 0.43 m, release ≤ 0.21 m, misprediction ≤ 1.5 m (hull contacts
 and shell knocks the client cannot see; 0.03–0.3 m otherwise), intrinsic ack
 lag p50 6 / p95 7 ticks against 7–8 ticks of RTT, every own shot predicted and
 confirmed, 0 rejected inputs, 0 dropped snapshots, server tick p95 0.17 ms.
+
+## Browser launch (`?mp=v2`)
+
+`src/app/multiplayerFlag.ts` reads the switch (`?mp=v2` on the URL or
+`localStorage["cot.mp.v2"] = "1"`; `?mp=v1` clears it). Behind it `src/main.ts`
+imports two modules dynamically — nothing under `src/mp` is on the solo boot
+path — and hands them to the Play menu:
+
+- `session/playMenuAdapter.ts` — `createRoomConnectionAdapter` implements v1's
+  `PrivateRoomConnectionRuntime` contract (connect / observe / close / forget)
+  over a `RoomClient`, so `src/ui/playMenu.ts` renders the v1 `SerializedLobby`
+  shape (`roomToLobby`) and sends the same commands. The connection carries
+  `inviteVersion: 2` (invite links stamp `v=2`) and a `session` recognised by
+  `isMultiplayerV2Session`; the room's `match_start` reaches the menu's
+  `onHostStart` for every seat.
+- `session/endpoint.ts` — `resolveRoomsUrl` fills the menu's room-host field:
+  `VITE_ROOMS_URL` (a `wss://` origin) in production, the LAN helper
+  (`npm run server:mp`, port 8792) on local and RFC1918 hosts.
+
+The menu's `onNetworkStart` routes a v2 session to `beginMultiplayerV2Battle`
+(v1 otherwise), which mounts the same synchronous intent cover as v1 and loads
+`session/browserComposition.ts` — the v2 counterpart of
+`src/net/networkBattleComposition.ts`, built from the same app-port object
+(`networkCompositionOptions()` in main: the loader cover, `ensureBattleVisuals`,
+the battle-only modules, `ensureWorld`, the roster labels, the warm owners,
+v1's activation runtime, the Garage return). Per room it owns one
+`MatchSession`; per `match_start` the session asks it for a presentation:
+
+1. cover, reset the round state, show the concrete battlefield of `match_start`
+   with the room's roster; load the modules, the visuals and the world together;
+2. `createBattlePresentation` on the world's collision (paint from the room
+   seats' `camo`); after WELCOME wait for `rosterReady()`, seat the ground
+   sampler, enable prediction with `predictionWorld()`;
+3. on the first frame: the covered warm order v1 proved (atmosphere, night
+   lighting, terrain, wrecks, player panel, program compile, opening effects,
+   shot cards), `activate` (world/HUD/FX reset, phase `battle`, camera
+   ownership, Garage shutdown), the opening ground cover, final shadows, the
+   black watchdog, `primeReveal`, the loader fade;
+4. the verdict reaches the end overlay through the presentation's
+   `battle:ended`; once the result is up (or the player is back in the Garage)
+   the lobby re-attaches to the Play menu (`attachActiveRoom`, version 2) for
+   the rematch, which re-enters through the same `beginRoom`;
+5. the Garage return's network port keeps the room (`disposePresentation`
+   leaves the match, the seat stays) or closes it (`closeMatch`); an explicit
+   leave from the lobby or the battle drops the seat at once.
+
+Failures go to the existing surfaces: a load that fails, the black watchdog
+refusing the frame, the match link exhausted while loading (`lost`) and the
+start timeout (120 s without `match_start`) restore the Garage under the cover
+and settle the entry `false`; `lost` in a live round ends it once as
+`network_disconnect`; the room vanishing (kicked, expired, resume denied,
+transport exhausted) clears input, returns to the Garage and opens the menu's
+room failure panel with the reason. The composition's frame hooks (`pump`,
+`pumpBackground`, `queueConsumable`, `queueAction`, `active`) ride main's
+existing network predicate and pumps beside v1's. Diagnostics builds publish
+it as `window.__MULTIPLAYER_V2` (`stats()`: room, session, round, events by
+kind and shots by shooter, the last failure).
+
+The receipt (`session/browserComposition.selftest.mjs`, core group) drives the
+composition through a scripted session owner and a recorded presentation:
+the start, the covered load, prediction, the warm order, activation, the
+reveal, controls (aim intent from the own actor's aim point, HUD action edges),
+the pumps, the verdict and the lobby back on the menu, the Garage return with
+the room kept, the rematch on the same owner, a lost link, a failing world
+load, the black watchdog, the room closing mid-battle and mid-load, an
+explicit leave mid-load and from the lobby, the start timeout.
+
+### Browser end-to-end
+
+`npm run test:net:v2:browser` (`tools/mp-browser-e2e.mjs`): one in-process room
+host (`server/rooms/serve.ts`, the LAN helper's composition), one Vite dev
+server of the checkout with its own `--cache-dir`, two pristine Puppeteer
+contexts on the real site with `?mp=v2`. A creates a LAN room from the
+Garage's battle menu; the invite link comes from the address bar (`v=2`); B
+opens it, joins and takes A's side; both ready; A starts; both reach the
+battle (first battle frames screenshot); 30 s of driving with one shot per
+side; A closes its tab; B plays on 15 s; the admin migrates to B; B leaves the
+battle to the Garage (room kept), reopens the room and leaves it. Any console
+or page error fails the run; `report.json` and the screenshots land in
+`--out` (default `.qa-dev/mp-browser-e2e`).
+
+Measured 2026-09-25 (headless Chromium, ANGLE; terrain world; 2 humans + 2
+bots): Garage ready 3.5 s (A) / 2.6 s (B, invite link); room created 5.7 s
+after the Garage; load to the revealed battle 14.6 s (A) / 14.1 s (B) with 4
+actors each; in 30 s of play each browser saw the other move 35–36 m across
+30/30 disclosed samples and saw the other's `shell_fired` once (own shot
+predicted and confirmed on both), RTT 10–11 ms, ~1 230 snapshots and ~1 900
+presented frames per browser; after A closed its tab B received 451
+snapshots in 15 s with the link `live` and the battle unresolved, and the
+admin migrated to B 30.3 s after the close (the reconnect grace); B's Garage
+return kept the room, the explicit leave left A's disconnected seat alone in
+a `playing` room; 0 browser errors; 106 s of wall time.

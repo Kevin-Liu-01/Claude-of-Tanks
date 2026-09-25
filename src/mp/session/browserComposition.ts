@@ -37,7 +37,7 @@ import type { ControlSample } from '../match/inputStream.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { Unsubscribe } from '../transport/transport.ts';
 import { ACTION_BITS, VERDICT } from '../wire/index.ts';
-import type { VerdictId, WelcomeMessage } from '../wire/index.ts';
+import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import type { SerializedLobby } from '../../net/lobby.ts';
@@ -287,6 +287,7 @@ export interface BrowserRoundStats {
   actors: number;
   events: Record<string, number>;
   ownShots: number;
+  shotsBy: Record<string, number>;
 }
 
 export interface BrowserCompositionStats {
@@ -417,6 +418,8 @@ interface ActiveRound {
   frames: number;
   ownShots: number;
   events: Record<string, number>;
+  /** shell_fired events by shooter id (the e2e proves each browser saw the other's shot). */
+  shotsBy: Record<string, number>;
   trace: BrowserLoadTrace;
   stageAt: number;
 }
@@ -773,7 +776,7 @@ export function createBrowserComposition({
       spectator: sessionRound.spectator, viewerId, ownSpecId: ownPlayer?.specId || (sessionRound.spectator ? 'spectator' : ''),
       presentation: null, controls: createControlSampler(() => active.presentation?.ownActor ?? null),
       welcome: null, welcomed: false, activating: false, activated: false, revealed: false, failed: false,
-      abort: new AbortController(), frames: 0, ownShots: 0, events: {},
+      abort: new AbortController(), frames: 0, ownShots: 0, events: {}, shotsBy: {},
       trace: { version: 2, mode: modeLabelFor(sessionRound.room.mode, matchStart.round), map: matchStart.mapId, round: matchStart.round, stages: {}, startedAt, status: 'pending' },
       stageAt: startedAt,
     };
@@ -963,13 +966,21 @@ export function createBrowserComposition({
     }
   };
 
+  const countEvent = (active: ActiveRound, event: WireEvent): void => {
+    active.events[event.kind] = (active.events[event.kind] ?? 0) + 1;
+    if (event.kind === 'shell_fired') {
+      const shooter = String(event.payload.shooterId ?? '');
+      active.shotsBy[shooter] = (active.shotsBy[shooter] ?? 0) + 1;
+    }
+  };
+
   const countEvents = (active: ActiveRound, frame: MatchFrame): void => {
     active.frames++;
     for (const shot of frame.ownShots) {
       active.ownShots++;
-      active.events[shot.event.kind] = (active.events[shot.event.kind] ?? 0) + 1;
+      countEvent(active, shot.event);
     }
-    for (const event of frame.events) active.events[event.kind] = (active.events[event.kind] ?? 0) + 1;
+    for (const event of frame.events) countEvent(active, event);
   };
 
   const handleFrame = (frame: MatchFrame): void => {
@@ -1094,7 +1105,7 @@ export function createBrowserComposition({
       round: round ? {
         matchId: round.matchId, round: round.round, mapId: round.mapId, mode: round.mode, spectator: round.spectator,
         welcomed: round.welcomed, activated: round.activated, revealed: round.revealed, frames: round.frames,
-        actors: round.presentation?.actors.size ?? 0, events: { ...round.events }, ownShots: round.ownShots,
+        actors: round.presentation?.actors.size ?? 0, events: { ...round.events }, ownShots: round.ownShots, shotsBy: { ...round.shotsBy },
       } : null,
       rounds: roundsEntered,
       lastFailure,
