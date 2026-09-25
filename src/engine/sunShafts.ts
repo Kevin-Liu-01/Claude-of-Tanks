@@ -9,9 +9,10 @@
  *   1. mask     — sky (device depth at the far plane) × a radial falloff around the sun's screen position, one
  *                 depth fetch per texel (the round-68 cloud lane may multiply a cloud transmittance in here);
  *   2. blur ×2  — twelve taps along the segment from the texel to the sun with exponential decay, the first pass
- *                 spanning the whole segment, the second a twelfth of it (144 effective samples);
- *   3. write    — the blurred mask × the shaft colour × strength into the light target the grade adds to the
- *                 frame before its tonemap (post.ts). The lens flare (lensFlare.ts) adds into the same target.
+ *                 spanning the whole segment, the second a twelfth of it (144 effective samples); the second pass
+ *                 writes the field × the shaft colour × strength straight into the light target the grade adds
+ *                 to the frame before its tonemap (post.ts), held back where the texel itself is open sky. The
+ *                 lens flare (lensFlare.ts) adds into the same target.
  *
  * Colour: the atmosphere's sun transmittance (round 65's summary — warm and dim at a low sun, white at noon) under
  * a slight warm tint; the legacy sun colour when the physical sky is not showing. Strength: the per-map haze law
@@ -129,8 +130,11 @@ void main() {
 
 const BLUR_FRAGMENT = /* glsl */`
 uniform sampler2D tSrc;
+uniform sampler2D tMask;
 uniform vec2 uSun;
 uniform float uSpan;
+uniform float uWrite;
+uniform vec3 uColor;
 varying vec2 vUv;
 void main() {
   vec2 stepUv = ( uSun - vUv ) * ( uSpan / ${SUN_SHAFT_TAPS.toFixed(1)} );
@@ -142,18 +146,11 @@ void main() {
     w *= ${SUN_SHAFT_DECAY.toFixed(3)};
     uv += stepUv;
   }
-  gl_FragColor = vec4( acc / wsum, 0.0, 0.0, 1.0 );
-}`;
-
-const WRITE_FRAGMENT = /* glsl */`
-uniform sampler2D tSrc;
-uniform sampler2D tMask;
-uniform vec3 uColor;
-varying vec2 vUv;
-void main() {
-  // the blurred field, held back where the texel itself is open sky near the sun (the rays are what the
-  // silhouettes carve out of the field; the open sky keeps a share so the field has no hard edge)
-  float rays = texture2D( tSrc, vUv ).r * mix( 1.0, ${SUN_SHAFT_OPEN_SKY.toFixed(3)}, texture2D( tMask, vUv ).r );
+  float field = acc / wsum;
+  if ( uWrite < 0.5 ) { gl_FragColor = vec4( field, 0.0, 0.0, 1.0 ); return; }
+  // the last pass writes the light: the field held back where the texel itself is open sky near the sun (the
+  // rays are what the silhouettes carve out of the field; the open sky keeps a share so it has no hard edge)
+  float rays = field * mix( 1.0, ${SUN_SHAFT_OPEN_SKY.toFixed(3)}, texture2D( tMask, vUv ).r );
   gl_FragColor = vec4( uColor * rays, 1.0 );
 }`;
 
@@ -186,7 +183,6 @@ export class SunShaftsPass extends Pass {
   private readonly ping: THREE.WebGLRenderTarget;
   private readonly maskMaterial: THREE.ShaderMaterial;
   private readonly blurMaterial: THREE.ShaderMaterial;
-  private readonly writeMaterial: THREE.ShaderMaterial;
   private readonly quad: FullScreenQuad;
   private readonly camera: THREE.Camera;
   private readonly scene: THREE.Scene;
@@ -215,11 +211,9 @@ export class SunShaftsPass extends Pass {
       tDepth: { value: depthTexture }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uAspect: { value: 16 / 9 },
     }, 'SunShafts.mask');
     this.blurMaterial = material(BLUR_FRAGMENT, {
-      tSrc: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uSpan: { value: 1 },
+      tSrc: { value: null }, tMask: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uSpan: { value: 1 },
+      uWrite: { value: 0 }, uColor: { value: new THREE.Vector3(1, 1, 1) },
     }, 'SunShafts.blur');
-    this.writeMaterial = material(WRITE_FRAGMENT, {
-      tSrc: { value: null }, tMask: { value: null }, uColor: { value: new THREE.Vector3(1, 1, 1) },
-    }, 'SunShafts.write');
     this.quad = new FullScreenQuad(this.maskMaterial);
   }
 
@@ -277,25 +271,23 @@ export class SunShaftsPass extends Pass {
       this.quad.material = this.maskMaterial;
       renderer.setRenderTarget(this.mask);
       this.quad.render(renderer);
+      // pass 1: mask → ping (the whole segment); pass 2: ping → the light target (a twelfth of it), with the colour
       const bu = this.blurMaterial.uniforms;
       bu.uSun.value.copy(this.sun.uv);
-      let source = this.mask, destination = this.ping;
-      for (const span of SUN_SHAFT_SPANS) {
-        bu.tSrc.value = source.texture;
-        bu.uSpan.value = span;
-        this.quad.material = this.blurMaterial;
-        renderer.setRenderTarget(destination);
-        this.quad.render(renderer);
-        const swap = source; source = destination; destination = swap;
-      }
-      const wu = this.writeMaterial.uniforms;
-      wu.tSrc.value = source.texture;
-      wu.tMask.value = this.mask.texture;
+      bu.tMask.value = this.mask.texture;
       const k = SUN_SHAFT_GAIN * this.strength;
-      wu.uColor.value.set(this.color.r * k, this.color.g * k, this.color.b * k);
-      this.quad.material = this.writeMaterial;
-      renderer.setRenderTarget(this.output);
-      this.quad.render(renderer);
+      bu.uColor.value.set(this.color.r * k, this.color.g * k, this.color.b * k);
+      this.quad.material = this.blurMaterial;
+      const last = SUN_SHAFT_SPANS.length - 1;
+      let source = this.mask;
+      for (let i = 0; i <= last; i++) {
+        bu.tSrc.value = source.texture;
+        bu.uSpan.value = SUN_SHAFT_SPANS[i];
+        bu.uWrite.value = i === last ? 1 : 0;
+        renderer.setRenderTarget(i === last ? this.output : this.ping);
+        this.quad.render(renderer);
+        source = this.ping;
+      }
     } finally {
       renderer.autoClear = oldAutoClear;
       renderer.setRenderTarget(previousTarget);
@@ -307,7 +299,6 @@ export class SunShaftsPass extends Pass {
     this.ping.dispose();
     this.maskMaterial.dispose();
     this.blurMaterial.dispose();
-    this.writeMaterial.dispose();
     this.quad.dispose();
   }
 }

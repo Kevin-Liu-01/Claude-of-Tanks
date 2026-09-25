@@ -2783,7 +2783,60 @@ camera, and under the night dome the moon flares at 12 % of the sun. The flare a
 
 **Chain.** Scene → aerial (+ contact shadows) → GTAO → late FX → TAA → bloom → shafts → flare → grade (+ light target)
 → SMAA → FSR: the order the receipts pin is unchanged, the light target is the only new texture the grade reads, and
-the two quarter-res passes are the only new draws (three for the shafts, two for the flare).
+the two quarter-res passes are the only new draws (three for the shafts — mask, blur, blur-and-write — two for the
+flare — the 1 × 1 visibility and the additive quad — and only the visibility draw while the sun is behind the camera).
+
+**Measured (headless, desktop tier, `?fx=off` against the same tree).** The smoke (`.qa-dev/r69-smoke.mjs`, four maps,
+chase and e-wall-300, the captures deterministic frame to frame): every program links (212–217), no shader or page
+error, the levers resolve (`contact+bounce+shafts+flare` / `off`), the meadows are byte-stable outside the tank's
+band (verdant chase ground region 85.8 → 85.4 luma, monsoon 31.5 → 31.5) where the first cut had combed them (85.8 →
+69.1) and speckled the desert's tufts; the sun-ahead view lifts the ground under the rays and the sky around the sun
+(verdant 65.7 → 71.0 and 153.8 → 157.8; titan 89.2 → 93.6 and 130.0 → 134.0; monsoon sky 148.2 → 150.9; desert 0.3 %
+at strength 0.03). The tank's contact band reads under the hull edge and rear plate at chase range; the urban centre
+view (sky-w, the camera against a brick block) shows a window sill floating on a lit seam in the base frame and
+casting a soft-edged dark band on the bricks in the new one. Map-view-probe A/B on eight maps × four views (verdant,
+desert, titan_gorge, fjord, monsoon, winter, mars, urban; base b9e18f308 vs the branch): the far-field views — sky-w,
+centre-far, bird-w — read 0.04–1.6 mean |Δ| on every map (Mars ≤ 0.05 everywhere: no haze, a dim sun), the sun-ahead
+e-wall-300 view carries the rays (titan +3.5 % luma, verdant +2.7 %, monsoon +2.4 %, urban +1.3 %, desert +0.4 %,
+fjord 0 with its sun 56° outside the frame), and the two larger numbers are not the effects (winter e-wall 13.4 =
+the wind-swayed bare tree at the frame edge; urban sky-w 3.4 = the sill's band). Eye check on the 1280 px reductions
+of the eight maps: the sky is not washed, the rays stay what the silhouettes carve, the flare is a faint halo arc and
+a ghost on the sun-to-centre line, the far ranges unchanged.
+
+**Performance.** The round-59 probe (its copy in `.qa-dev`), new → base in one process at the chase pose, load 11–32
+with two foreign suites running: triangles identical, draw calls +1 (verdant 691 / 690, desert 616 / 615, titan 735 /
+738, winter 768 / 766, fjord 782 / 778), programs +4 / +5 (the shafts' two, the flare's two, the grade variant); its
+wall-clock rows are noise-bound (same-tree repeats 5–7 ms apart on ANGLE's timer) and its per-tree browser session
+wedged after winter's second base repeat (mars and urban timed out on both trees). An in-page paired A/B
+(`.qa-dev/r69-inpage-ab.mjs`: one page, bots frozen, six variants — off, all, and each effect alone — alternated
+every 60 frames for eight rounds at the chase and the sun-ahead pose, titan_gorge and verdant, load 20–85): the
+delivered frame interval is 16.7 ms in every variant at both poses (vsync-locked, no frame lost with everything on),
+the main-thread delta is −0.6 … +0.2 ms for the full set at the four pose × map cells (contact alone +1.5 / −0.1 /
+0.0 / +0.1, bounce +1.2 / +0.4 / −0.1 / +0.2 — inside the rounds' own ±3 ms spread), and the ANGLE Metal timer
+attributes +1–7 ms to the two quarter-resolution passes at the sun-ahead pose while the frame interval and the main
+thread do not move — the command-buffer-granularity reading the round-59 audit documented, not work (a 1 × 1 draw
+cannot cost 7 ms). The ≤ +0.8 ms GPU line therefore stands on the frame interval and the counts, not on that timer;
+a vsync-off run on an idle box or a native capture is the instrument that settles it.
+
+**Receipts (exit 0).** postLightFxPolicy, contactShadows, groundBounce, sunShafts, lensFlare (new, core group);
+postViewportScale, postFrameAccounting, lateFxColorHandoff, lateFxSceneView, temporalAA, sceneSourcePass,
+resolvedDepthCopy, csmShaderRelease, nearVehicleShadowDetail, shadowStability, shadowFitCache, shadowRefresh,
+shadowPrime, shadowGeometryClaims, articulatedShadowBatch, lodShadowFade, deploymentShadowWarm,
+networkShadowPrimeAdapter, deviceEnvRadiance, adaptiveQualityPolicy, quality, temporalAoPolicy, atmosphere,
+skyEnvironmentCache, skyHorizonCache, skyCloudBake, aerialDetail, battleAtmosphereRuntime, battleAtmosphereAccess,
+nightLightingRuntime, nightLightingAccess, nightEmissionMaterial, frameLoopScheduler, renderLayers,
+sceneProgramWarm, deploymentUploadPrograms, programWarm, coveredComposerWarm, garageSkyPresets,
+garageDressingDrawRange, wallSkyLight, terrainMaterialOwnership (untouched: program key and fetch census),
+mapQuality, fx/lazyRuntime, daynight-atmosphere-probe, public-repo-hygiene, attribution, typecheck.
+
+**Open.** The other twenty-three maps' A/B captures (the eight above took nine minutes per tree at load 20–30; the
+full set is a quiet-box job); the GPU line on a finer timer; the two browser receipts (resolved-depth-copy,
+late-fx-matrix) and the render-stability audit were not run in this window; a killcam frame (no probe offers one);
+the contact march uses the unjittered view-projection when temporal AA is on (half a pixel, tolerated); the
+alpha-to-coverage cards receive no contact shadow at all (a leaf card under a hull keeps its own lighting); the bounce
+tone is the rig's constant ground pole — a per-map terrain tone (the palette's grass / sand) would colour it; the
+round-68 cloud transmittance has its hook in the shafts' mask; the contact edge's per-pixel jitter reads as a faint
+static grain without temporal AA.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 

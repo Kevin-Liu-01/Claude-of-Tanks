@@ -80,6 +80,9 @@ assert.deepEqual([...SUN_SHAFT_SPANS], [1, 1 / 12], 'the whole segment, then a t
 assert.ok(SUN_SHAFT_GAIN > 0 && SUN_SHAFT_GAIN < 1);
 assert.match(source, /float sky = step\( 0\.9999999, texture2D\( tDepth, vUv \)\.x \);/, 'the mask uses the aerial pass\'s own sky gate');
 assert.match(source, /for \( int i = 0; i < \$\{SUN_SHAFT_TAPS\}; i\+\+ \)/, 'twelve taps per blur pass');
+assert.match(source, /if \( uWrite < 0\.5 \) \{ gl_FragColor = vec4\( field, 0\.0, 0\.0, 1\.0 \); return; \}/, 'the first pass stores the field');
+assert.match(source, /float rays = field \* mix\( 1\.0, \$\{SUN_SHAFT_OPEN_SKY\.toFixed\(3\)\}, texture2D\( tMask, vUv \)\.r \);/, 'the last pass holds the field back over open sky and writes the light');
+assert.match(source, /renderer\.setRenderTarget\(i === last \? this\.output : this\.ping\);/, 'three draws: mask, blur, blur-and-write');
 assert.match(source, /Math\.round\(width \/ 4\)/, 'quarter resolution');
 assert.match(source, /renderer\.clear\( ?true, false, false ?\)/, 'a zero strength still clears the light target');
 const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
