@@ -595,9 +595,12 @@ export function createShallowWaterSurface(
         // The concentration 1 / (1 + x) has a positive mean over a zero-mean curvature field (it bleached the whole
         // band white); a bounded odd shaping keeps the network — converging bright, diverging dark — energy-neutral.
         float causticFocus = tanh(-4.5 * oceanBed * causticLap);
+        // a real caustic is a bright network over a bed that is barely darker between the lines: the converging half
+        // at full weight, the diverging half at a third (the symmetric term read as dark blotches from the chase camera)
+        causticFocus = causticFocus > 0.0 ? causticFocus : causticFocus * 0.33;
         float causticGain = uOceanLook.z * causticFineW * smoothstep(0.03, 0.14, oceanBed);
         vec3 causticSunColor = directionalLights[0].color / max(max(directionalLights[0].color.r, max(directionalLights[0].color.g, directionalLights[0].color.b)), 1e-3);
-        outgoingLight += causticFocus * causticGain * 0.6 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.35);
+        outgoingLight += causticFocus * causticGain * 0.42 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.35);
         if (uWaterDebug > 4.5) oceanDebug = clamp(0.5 + causticFocus * 0.4, 0.0, 1.0);
       }
       #endif
