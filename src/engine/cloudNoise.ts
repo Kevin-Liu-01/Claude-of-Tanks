@@ -47,7 +47,7 @@ function worley3(N: number, cells: number, seed: number, out: Float32Array, amp:
   const gzs = [0, 0, 0], gys = [0, 0, 0], gxs = [0, 0, 0];
   for (let z = 0; z < N; z++) {
     const pz = (z + 0.5) * s, cz = Math.floor(pz);
-    for (let k = 0; k < 3; k++) { gzs[k] = cz + k - 1; wz[k] = (((gzs[k] % cells) + cells) % cells) * cells; }
+    for (let k = 0; k < 3; k++) { gzs[k] = cz + k - 1; wz[k] = ((gzs[k] % cells) + cells) % cells; }
     for (let y = 0; y < N; y++) {
       const py = (y + 0.5) * s, cy = Math.floor(py);
       for (let k = 0; k < 3; k++) { gys[k] = cy + k - 1; wy[k] = ((gys[k] % cells) + cells) % cells; }
@@ -56,7 +56,7 @@ function worley3(N: number, cells: number, seed: number, out: Float32Array, amp:
         for (let k = 0; k < 3; k++) { gxs[k] = cx + k - 1; wx[k] = ((gxs[k] % cells) + cells) % cells; }
         let best = 1e9;
         for (let oz = 0; oz < 3; oz++) {
-          const rowZ = (wz[oz]) * cells, gz = gzs[oz];
+          const rowZ = wz[oz] * cells, gz = gzs[oz];
           for (let oy = 0; oy < 3; oy++) {
             const rowY = (rowZ + wy[oy]) * cells, gy = gys[oy];
             for (let ox = 0; ox < 3; ox++) {
