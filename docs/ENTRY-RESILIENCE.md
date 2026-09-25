@@ -12,7 +12,7 @@ read it.
 
 | Cause (audit rank) | Fix | Where |
 |---|---|---|
-| 9. No production error signal | An anonymous same-origin beacon: boot stages with timings, boot-ready, the first uncaught errors of a session, capability probe, entry outcomes, slow reveals, room failure codes, ICE degradation. Batched `navigator.sendBeacon` (fetch keepalive fallback), one structured log line per event on the function, a bounded Redis list when KV/Upstash is configured, a report tool. | `api/telemetry.ts`, `src/entry/telemetry.ts`, `tools/telemetry-report.mjs` |
+| 9. No production error signal | An anonymous beacon: one `session` record per page load (the whole boot as a timings map, the capability summary, the outcome, a folded battle entry), `error` records only as errors happen, one small `entry` follow-up — three requests per session at most, one for a clean boot. `navigator.sendBeacon` (fetch keepalive fallback) to a Cloudflare Worker that writes one Workers Analytics Engine data point per record; a Vercel fallback that only logs; a report tool over the SQL API. | `cloudflare/telemetry/`, `server/telemetryRecord.ts`, `src/entry/telemetry.ts`, `api/telemetry.ts`, `tools/telemetry-report.mjs` |
 | 1. No WebGL2 gate | A throwaway WebGL2 context before `createRenderer` reads texture units, texture size, vertex texture units, `EXT_color_buffer_float`, the renderer family, storage and worker availability. Each hard failure is one sentence and one action on the inline boot screen; the boot halts on purpose instead of spending the recovery reloads. Software rasterisers, blocked storage and blocked workers proceed with a one-line notice. | `src/engine/capabilityGate.ts`, `index.html` (`halt()`, `#cot-boot-notice`) |
 | 7. Texture-unit ceiling unverified | Measured, not assumed: the terrain fragment program binds **16** samplers on desktop (10 declared + `envMap` + `dfgLUT` + 4 CSM cascade shadow maps; 15 on the 3-cascade mobile tier), exactly the WebGL2 minimum. A driver reporting fewer stops with "exposes only N texture units; the battlefield needs 16". | `capabilityGate.ts` `TERRAIN_TEXTURE_UNITS_REQUIRED` |
 | 2. Watchdogs fire on healthy work | The 30 s / 60 s document watchdogs are re-armed by every Resource Timing arrival and every module stage, so they fire only after a full window with nothing arriving; a silent minute is confirmed by a same-origin probe before the document is replaced (a dead connection waits for `online` instead). The terminal message names the failed file (from Resource Timing `responseStatus`), the refused driver, or the slow connection. While the module has not claimed the stage line, the splash counts the entry graph's files as they land. | `index.html` chunk recovery r4 |
@@ -24,51 +24,75 @@ read it.
 Causes 5 (the all-or-nothing ready barrier) and 10 (invite overhead) are
 removed by v2's entry runtime, not patched here.
 
-## The beacon
+## The beacon (schema v2, 2026-09-25)
 
-Endpoint: `POST /api/telemetry` (same origin; the ICE endpoint's origin
-allowlist, `COT_ALLOWED_ORIGINS` extends it). Body: JSON up to 4 KB, one of
+The owner's ruling: telemetry stays on by default with the opt-out, but it
+had to become far cheaper and leave Upstash behind. Schema v1 sent twenty
+`boot_stage` events, a capability event and `boot_ready` over three
+`sendBeacon` flushes per clean boot into a Redis list that exhausted its
+monthly quota in a day. Schema v2 sends **one record per page load** and
+stores it in Workers Analytics Engine.
 
-```
-{ "v": 1, "sid": "<session id>", "build": "<application-version>", "events": [ <event>, … ] }   (≤ 25 events)
-{ "v": 1, "sid": "<session id>", "build": "<application-version>", "kind": …, … }              (one event)
-```
+Sink: the Cloudflare Worker `cloudflare/telemetry` (`README.md` there has
+the deploy steps), reached through `VITE_TELEMETRY_URL` = its origin, baked
+into the bundle and into the `cot-telemetry` meta's `data-url` for the
+inline watchdog. Unset, both post to the Vercel fallback `POST
+/api/telemetry` (same origin; the ICE endpoint's origin allowlist,
+`COT_ALLOWED_ORIGINS` extends it), which validates and logs one JSON line
+per record and stores nothing. Bodies are JSON as `text/plain` — a simple
+cross-origin request, no preflight — capped at 2 KB by both sinks (the
+client trims to 1.5 KB). Three routes on the Worker:
 
-An event carries `kind` plus optional bounded fields; everything else is
-dropped, and a body naming a personal field (`ip`, `userAgent`, `name`,
-`playerName`, `email`, `room`, `roomCode`, `host`, `hostName`, `cookie`,
-`token`, …) is refused with `400 pii_field:<name>`.
+| Route | Record | Sent |
+|---|---|---|
+| `POST /v1/session` | `session` | once per page load: at boot-ready, or on the first error, a capability halt, or `pagehide` when boot never got there |
+| `POST /v1/session` | `entry` | one small follow-up when a battle entry resolves after the session record left |
+| `POST /v1/error` | `error` | uncaught errors and unhandled rejections (coalesced for a second, deduplicated by message, three per session), and the inline watchdog's terminal verdicts |
+
+Every record carries `v: 2`, `sid` (a random per-load id, minted by the
+inline watchdog and reused by the module — `window.__COT_TELEMETRY_SID`),
+`build` (the application-version stamp) and `kind`. The rest by kind:
 
 | Field | Values |
 |---|---|
-| `kind` | `boot_stage`, `boot_ready`, `boot_error`, `entry_result`, `capability`, `slow_reveal`, `room_failure`, `ice_degraded`, `hud_mask_failed` (2026-09-25: the damage panel gave up on a tank's top-down masks after its retries — `stage` damagePanel, `code` the mask pipeline's failure code, `reason` the spec id, `error.message` its message) |
-| `stage` | boot stage name (`renderer`, `sky`, …, `ready`), `download` (inline watchdog), `primeReveal`, `paint`; ≤ 32 chars |
-| `phase` | `begin`, `end` (boot stages) |
-| `ms` | integer milliseconds (stage duration, boot-to-ready, wait) |
-| `outcome` | `ok`, `failed`, `cancelled`, `timeout`, `halted`, `notice` |
-| `code`, `reason` | ≤ 48 chars of `[A-Za-z0-9_.:-]` — gate codes (`no_webgl2`, `context_refused`, `texture_units`, `software_rendering`, `storage_blocked`, `worker_blocked`), watchdog classes (`chunk`, `driver`, `script`, `slow`, `offline`, `stalled`, `reload:<class>`), room failure codes, ICE reasons, slow-reveal phases, mask pipeline codes (`top_mask_source_disposed`, `rgba8_readback_timeout`, `mask_build_error`, …) with the tank spec id as `reason` |
+| `outcome` | session: `ready`, `halted`, `error`, `left`; entry: `ok`, `failed`, `cancelled`, `timeout`; error (the watchdog): `halted`, `failed`, `notice` |
+| `stage` | the last boot stage begun (`renderer`, `sky`, …, `ready`), `download` (inline watchdog); ≤ 32 chars |
+| `ms` | session: boot-to-ready, or elapsed when it never got there; entry: the reveal wait; error: elapsed since load |
 | `mode` | `solo`, `private`, `lan`, `studio`, `network`, `unknown` |
-| `error` | `{ message ≤ 200, frames: ≤ 3 × ≤ 160 }`, origin-stripped |
-| `capability` | `webgl2`, `rendererFamily` (nvidia/amd/intel/apple/arm/qualcomm/imagination/software/unknown — never the raw string), `software`, `maxTextureUnits`, `maxTextureSize`, `vertexTextureUnits`, `colorBufferFloat`, `storage`, `worker`, `memoryClass` (low ≤ 2 GB, mid ≤ 4, high), `tier`, `autoTier`, `requiredTextureUnits` |
-| `timings` | ≤ 16 numeric keys (boot stage durations, `budgetMs`) |
+| `t` | session only: the timings map, stage → integer ms, ≤ 24 entries — the twelve named stages first (`imports`, `renderer`, `sky`, `lighting`, `garage`, `vehicle`, `hud`, `ui`, `audio`, `post`, `studio`, `ready`), then the lifecycle's `gap>stage` entries |
+| `cap`, `capOutcome`, `capCode` | session only: the capability summary (`webgl2`, `rendererFamily` — nvidia/amd/intel/apple/arm/qualcomm/imagination/software/unknown, never the raw string — `software`, `maxTextureUnits`, `maxTextureSize`, `vertexTextureUnits`, `colorBufferFloat`, `storage`, `worker`, `memoryClass`, `tier`, `autoTier`, `requiredTextureUnits`), the gate verdict (`ok`, `notice`, `halted`) and its code (`no_webgl2`, `context_refused`, `texture_units`, `software_rendering`, `storage_blocked`, `worker_blocked`) |
+| `entry` | session only: `{ outcome, mode, code, ms }` when a battle entry resolved before the session record left |
+| `error`, `errors` | `{ message ≤ 200, frames ≤ 3 × ≤ 160, stage, code }`, origin-stripped; a session record folds the first error of the boot, an error record carries the first of a burst plus up to two more in `errors` |
+| `code` | ≤ 48 chars of `[A-Za-z0-9_.:-]`: entry codes (`entry_failed`, `entry_failed_<role>`, `slow_<phase>`), error codes (`uncaught`, `unhandled_rejection`, `context_refused`), watchdog classes (`chunk`, `driver`, `script`, `slow`, `offline`, `stalled`, `reload:<class>`; the raw reason rides as `error.code`) |
+| `ready` | error only: whether boot had reached ready |
+| `notes` | ≤ 6 codes folded from what used to be their own events — `slow_reveal:<phase>`, `room_failure:<code>`, `ice_degraded:<reason>` — riding on the next record, never costing a request |
+| `w` | the clean-session sample weight (`VITE_TELEMETRY_SAMPLE` = 0.25 → `w: 4`); absent when every session sends |
 
-The server stamps `at` and answers `204`. Every accepted event is one
-`console.log` line, `{"tag":"cot-telemetry", …}`, in the function's logs.
-When any of `COT_TELEMETRY_REDIS_REST_URL/_TOKEN`,
-`COT_SIGNAL_REDIS_KV_REST_API_URL/_TOKEN`, `UPSTASH_REDIS_REST_URL/_TOKEN` or
-`KV_REST_API_URL/_TOKEN` is set, each event is also `LPUSH`ed to
-`cot:telemetry:v1:events`, trimmed to 5000 rows, with a 30-day expiry (the
-signaling function no longer uses that Redis, so the quota is free). A store
-failure never fails the beacon. Per-client rate limit: a token bucket of 30
-flushes refilling one every four seconds, keyed by a salted hash that lives
-only in process memory — no address is stored or logged.
+Unknown fields are dropped; enumerations must match; a body naming a
+personal field (`ip`, `userAgent`, `name`, `playerName`, `email`, `room`,
+`roomCode`, `host`, `hostName`, `cookie`, `token`, …) anywhere is refused
+with `400 pii_field:<name>`. All of this is one module,
+`server/telemetryRecord.ts`, imported by the Worker, the fallback, the report
+and the client receipt, so the halves cannot drift.
 
-Client rules (`src/entry/telemetry.ts`): one random session id per page load,
-minted by the inline watchdog and reused by the module (`window.__COT_TELEMETRY_SID`);
-events batch into one flush every 400 ms, immediately for errors and
-outcomes, and on `pagehide` / hidden; at most 80 events and 5 error reports
-per session; bodies split to stay under 3.8 KB. The client imports nothing
-from the game.
+**Request budget** (`src/entry/telemetry.ts`): a clean boot is exactly one
+request (the session record, ~1 KB); a boot plus a battle is two; a failing
+session is at most three — the client stops at three whatever happens
+later, and drops the fourth distinct error. Errors wait a second so a burst
+(an uncaught error and the rejection it causes) shares one request; the
+session record leaves at once on boot-ready or a capability halt, and on
+`pagehide` with outcome `left` when boot never got there (a hidden tab only
+sends what was already scheduled — the boot may still finish). The client
+imports nothing at all and is loaded before the renderer. Sampling: with
+`VITE_TELEMETRY_SAMPLE` below 1, a clean session (ready, no error, no failed
+entry) is kept with that probability and its record carries the weight;
+failures always send.
+
+The Worker stores one Analytics Engine data point per record (the column
+layout is in `cloudflare/telemetry/README.md`), rate-limits twenty requests a
+minute per address through the `ratelimits` binding — the address reaches
+nothing else — and refuses any other origin than the site's (plus localhost
+for `wrangler dev`). The fallback keeps a salted in-memory token bucket.
 
 ## Opting out
 
@@ -84,27 +108,40 @@ headless run; nothing re-enables it on a self-hosted build.
 ## Reading the report
 
 ```
-node tools/telemetry-report.mjs                 # the Redis list, using the KV/Upstash env above
-node tools/telemetry-report.mjs --since=24h     # only the last day (90m, 7d)
-node tools/telemetry-report.mjs --file=x.jsonl  # a saved Vercel log export or JSON-lines dump
-node tools/telemetry-report.mjs --json          # the summary as JSON
+CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… node tools/telemetry-report.mjs   # the Analytics Engine SQL API, last 7 days
+node tools/telemetry-report.mjs --since=24h            # the window: 90m, 24h, 7d
+node tools/telemetry-report.mjs --from-json=result.json  # a saved SQL API result (FORMAT JSON or JSONEachRow)
+node tools/telemetry-report.mjs --logs=logs.jsonl      # `vercel logs --json` output / the fallback's log lines (the transition)
+node tools/telemetry-report.mjs --sql                  # print the query and exit
+node tools/telemetry-report.mjs --json                 # the summary as JSON
 ```
 
-The funnel line counts sessions, sessions that reached `boot_ready` (and the
-rate), sessions with a `boot_error`, and sessions that reached an
-`entry_result`; boot-to-ready p50/p90 and per-stage p50/p90 follow. Sessions
-that never reached ready are grouped by the last stage they began —
-`(before renderer)` means the entry graph never evaluated: look at the
-inline watchdog's `boot_error` rows (`stage: download`, code `chunk` /
-`driver` / `slow` / `offline` / `stalled`). Then capability stops, slow
-reveals, room failures and ICE degradation by code, sessions/ready/errored
-per build, and the failure table (kind / stage / code / build → count, one
-sample message). Session ids are aggregated, never listed.
+The token needs *Account Analytics: Read* only; the two names are read from
+the environment and never printed. The funnel line counts sessions, sessions
+that reached ready (and the rate), sessions that entered a battle (and the
+rate), sessions with an error, capability halts and sessions that left
+mid-boot — each weighted by the record's sample weight and Analytics
+Engine's `_sample_interval`, so the numbers stay estimates of the whole
+population when either sampling is on. A session with only an `error`
+record (the entry graph never evaluated, so the watchdog's verdict is all
+there is) counts as one session that did not reach ready. Boot-to-ready
+p50/p90 overall and per build, per-stage p50/p90 (gaps folded into one row),
+entry results by outcome and mode, and sessions that never reached ready by
+the last stage they began follow — `download` means the inline watchdog
+spoke (`chunk` / `driver` / `slow` / `offline` / `stalled`), `(before
+renderer)` that nothing did. Then CAPABILITY: renderer family / tier / auto
+tier, memory class, the flag string (webgl2 / rasteriser / float buffers /
+storage / workers), notices and stops, and the notes (slow reveals, room
+failures, degraded ICE); BUILDS; and the failure table (kind / stage / code
+/ build → count, one sample message). Session ids are aggregated, never
+listed.
 
-To try the whole path locally without Redis: run a build, serve it, open
-`/?telemetry=on` (automation is otherwise opted out) and watch the
-`/api/telemetry` POSTs in the network panel — a clean boot sends about three
-flushes: twenty `boot_stage` rows, one `capability`, one `boot_ready`.
+To try the whole path locally: run a build, serve it (`vite preview`), open
+`/?telemetry=on` (automation is otherwise opted out) and watch the network
+panel — a clean boot is one `POST` (to `/api/telemetry`, or to
+`<VITE_TELEMETRY_URL>/v1/session` when the build was made with it) of about
+1 KB, and nothing more until a battle entry (one small `entry` POST) or an
+error.
 
 ## What the boot screen can say now
 
@@ -122,9 +159,11 @@ English, like the r3 copy they replace, because they run before the catalog.
 
 ## Receipts
 
-`server/telemetry.selftest.mjs`, `src/entry/telemetry.selftest.mjs`,
-`tools/telemetry-report.selftest.mjs`, `src/ui/damagePanelMaskRetry.selftest.mjs`
-(the `hud_mask_failed` beacon through the real validator), `src/engine/capabilityGate.selftest.mjs`,
+`server/telemetryRecord.selftest.mjs` (the v2 schema and the Analytics Engine
+layout), `server/telemetry.selftest.mjs` (the fallback), `src/entry/telemetry.selftest.mjs`
+(the client, every body through the shared validator), `tools/telemetry-report.selftest.mjs`,
+`cloudflare/telemetry/test/telemetry.test.ts` (the Worker, Workers runtime —
+`npm run test:telemetry:cloudflare`), `src/engine/capabilityGate.selftest.mjs`,
 `src/ui/chunkRecovery.selftest.mjs` (r3 cases plus the clocked network
 harness), `src/gallery/chunkRecovery.selftest.mjs` (no cacheable-404 header rule),
 `src/game/battleEntryLifecycle.selftest.mjs`, `src/engine/frameScheduler.selftest.mjs`,
