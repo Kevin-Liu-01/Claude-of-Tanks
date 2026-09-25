@@ -15,6 +15,9 @@
 // and along y/z — a one-voxel fill column stood inside the classic Leclerc's forward-guard shoe overhang while its
 // band box read clean. The band box keeps the INBOARD face: a shoe's inner edge can sit on the hull wall itself
 // (Leclerc classic X right side, 5 mm), and padding it there would leave a column of real hull interior unfilled.
+// Fleet-wide cost of that padding (round 35 fills lane, 2026-09-22, open note): the padded band AABB removes 3,843 L
+// of real interior fleet-wide from the watertight accounting — interior the exclusion neither fills nor reports.
+// Accepted by the owner 2026-09-25 as the ledger's floor: the exclusion stands as written; no receipt re-pin.
 import * as THREE from 'three';
 import { isTrackShoeMesh } from './track-clip-classification.mjs';
 
