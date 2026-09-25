@@ -1745,6 +1745,10 @@ function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildCon
     sprocket: { z: -2.72, y: 0.732, r: 0.31 },
     contactZF: 2.10, contactZR: -2.10,
     trackW: 0.64, topY: 1.28, botY: 0.020, paintedEnds: true,
+    // FSP-03 2026-09-25: the PL-01 demonstrator sits on the CV90120-T chassis, which carries track return
+    // rollers (army-guide CV90120); the count is unpublished, so three evenly stationed rollers are a documented
+    // design decision (audit: docs/tank-generation/return-roller-audit-20260925.md).
+    rollers: [-1.45, 0.0, 1.45].map((z) => ({ z, y: 1.00, r: 0.10 })),
     coveredTop: true, arms: true,
   });
 

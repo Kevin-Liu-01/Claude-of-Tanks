@@ -5,9 +5,10 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 
 const near = (actual, expected, epsilon = 1e-6) => Math.abs(actual - expected) <= epsilon;
+// 2026-09-25 FSP-03: hull digests re-pinned once — three fitted return rollers (CV90120-T chassis) joined the hull rig.
 const driverSeatHullHashes = Object.freeze({
-  pl01: '6d7d86707092b3146ac9c202eb44574287c063191a943a020d85cad207e6ea20',
-  pl01_105: 'cd871cc0deb95ca1ef40372c3898cadfd2b00701ca1a9e3f12775e97bc63c9fa',
+  pl01: '4ee9a578fc9a02380a4e65a7ba19f7127e3cced4a432648df601961e1edf8c27',
+  pl01_105: '6c78b79fc0c612acd4055b22c4bc247d102761bc9515869cd25b4dafa75f82e0',
 });
 
 function geometryHash(group) {
