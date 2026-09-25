@@ -472,6 +472,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/lodShadowFade.selftest.mjs',
     'src/engine/quality.selftest.mjs',
     'src/engine/temporalAA.selftest.mjs',
+    // round 69 (2026-09-24): the desktop light effects — policy, contact shadows, ground bounce, sun shafts, lens flare
+    'src/engine/postLightFxPolicy.selftest.mjs',
+    'src/engine/contactShadows.selftest.mjs',
+    'src/engine/groundBounce.selftest.mjs',
+    'src/engine/sunShafts.selftest.mjs',
+    'src/engine/lensFlare.selftest.mjs',
     'src/engine/adaptiveQualityPolicy.selftest.mjs',
     'src/engine/postViewportScale.selftest.mjs',
     'src/engine/postFrameAccounting.selftest.mjs',
