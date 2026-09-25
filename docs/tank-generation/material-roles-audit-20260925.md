@@ -423,6 +423,11 @@ parentheses) — see the verdict table.
   battleGeometrySharing, runningGearFinish, wheelPaintFloor, t90XCanvasFinish and the Merkava / Leclerc / Ariete /
   K2 / K1A1 X / AMX family receipts (74 receipts, exit codes in the lane log).
 - `npm run typecheck`, `npm run attribution:check`, `tools/public-repo-hygiene.selftest.mjs`,
-  `tools/presentation-centering.mjs --check --ids=<17>` (PASS, 0.00 px residual), `npm run tank:anatomy:check`
-  (geometry unchanged; the update is a proven no-op), `node tools/genIcons.mjs --views angle,top,side --ids=<17>`
-  (rendered views regenerated).
+  `tools/wheel-review.mjs --all --gate` (192 tanks, 0 flagged — the wheels' rubber is untouched).
+- Per-id chain for the 17 re-roled ids: `presentation-centering --update --ids` (no anchor moved) →
+  `gen-combat-anatomy` + `gen-vehicle-marking-seats` (only the Merkava groups changed: the pale kit had been
+  authored on the `hull`/`turret` **armor** buckets, so moving it to canvas takes those tarps and packs out of the
+  hit shell, matching the non-pale siblings that already carried them on `turretCloth`) → `genIcons` (angle / top /
+  side for the 17, every view for the four Merkavas) → `tank:anatomy:check` (combat-anatomy current, marking
+  seats current, combatAnatomy receipt, module-hit 0 FAIL, tank-assets-check re-run after the Merkava views) →
+  `presentation-centering --check --ids` (PASS, 0.00 px residual).
