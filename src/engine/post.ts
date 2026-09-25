@@ -2638,6 +2638,9 @@ export function createPost(
     updateAerialFogColors();
     updateAerialCameraBasis();
     updatePostLightFx();
+    // round 68 (2026-09-24): the volumetric cloud layer marches its slot and resolves its history before the
+    // scene draws (src/engine/volumetricClouds.ts; the sky rig publishes it, null on the mobile tier / ?clouds=off)
+    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height);
     // Only this complete frame transaction can bypass LateFX's input copy.
     // Individual warm/debug renders deliberately keep the original path.
     const passes = composer.passes;

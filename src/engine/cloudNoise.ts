@@ -236,13 +236,24 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
   perlin2(N, 40, seed + 101, turret, 0.6); perlin2(N, 80, seed + 102, turret, 0.4);
   const fine = new Float32Array(count);
   perlin2(N, 24, seed + 111, fine, 0.6); perlin2(N, 48, seed + 112, fine, 0.4);
-  const out = new Uint8Array(count * 4);
+  // coverage: the mesoscale field carries the broad clear / cloudy regions, the cells the cumulus mass;
+  // then equalised to a uniform histogram so a map's coverage c admits exactly the fraction c of the field
+  // (threshold 1 − c on the stored value) whatever the noise's own distribution
+  const coverage = new Float32Array(count);
   for (let i = 0; i < count; i++) {
     const m = clamp01(meso[i] * 0.8 + 0.5); // −0.6..0.6 → 0..1 (rarely clipped)
     const cell = Math.max(cells[i], bigCells[i] * 0.85);
-    // coverage: the mesoscale field carries the broad clear / cloudy regions, the cells the cumulus mass
-    const coverage = clamp01(m * 0.55 + cell * 0.6 - 0.08);
-    out[i * 4] = toByte(coverage);
+    coverage[i] = m * 0.55 + cell * 0.6 + fine[i] * 0.04;
+  }
+  const order = new Uint32Array(count);
+  for (let i = 0; i < count; i++) order[i] = i;
+  order.sort((a, b) => coverage[a] - coverage[b] || a - b);
+  const equalised = new Float32Array(count);
+  for (let rank = 0; rank < count; rank++) equalised[order[rank]] = (rank + 0.5) / count;
+  const out = new Uint8Array(count * 4);
+  for (let i = 0; i < count; i++) {
+    const cell = Math.max(cells[i], bigCells[i] * 0.85);
+    out[i * 4] = toByte(equalised[i]);
     out[i * 4 + 1] = toByte(cell);
     out[i * 4 + 2] = toByte(turret[i] * 0.8 + 0.5);
     out[i * 4 + 3] = toByte(fine[i] * 0.8 + 0.5);

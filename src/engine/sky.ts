@@ -38,6 +38,9 @@ import {
   bakeCumulusPixels,
   type CumulusBakeConfig,
 } from './skyCloudBake.ts';
+import { deriveCloudLayerPreset, type CloudLayerPreset } from './cloudPresets.ts';
+import { VolumetricCloudLayer, type CloudNoiseUpload, type CloudShadowCascades } from './volumetricClouds.ts';
+import { bakeCloudNoise } from './cloudNoise.ts';
 
 type ColorTriple = readonly [number, number, number];
 type VectorPair = readonly [number, number];
@@ -78,6 +81,12 @@ export interface SkyPreset {
    * preset (atmosphere.ts `skyPresetToAtmosphere`); null = the calibrated mapping. Mars authors its thin CO2 sky.
    */
   atmosphere: AtmosphereOverrides | null;
+  /**
+   * Round 68 (2026-09-24): overrides on the volumetric cloud layer the desktop tier derives from this preset
+   * (cloudPresets.ts `deriveCloudLayerPreset`); null = the derived layer. The decks' fields above stay the
+   * authored source of every map's cloud identity.
+   */
+  cloudLayer: Partial<CloudLayerPreset> | null;
 }
 
 interface CloudBakePixels {
@@ -106,6 +115,10 @@ interface SkyRig {
     targetScene: THREE.Scene,
   ): void;
   applyPreset(preset: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void;
+  /** Round 68: the CSM whose cascades carry the volumetric layer's cloud shadows (null when the layer is off). */
+  attachShadowCascades(cascades: CloudShadowCascades): void;
+  /** Round 68: the volumetric layer (probes), null on the mobile tier / `?clouds=off`. */
+  readonly volumetricClouds: VolumetricCloudLayer | null;
 }
 
 function errorMessage(error: RuntimeValue): string {
@@ -469,6 +482,7 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   planetDeg: 0.8,
   planetHex: 0xedf2ff,
   atmosphere: null,
+  cloudLayer: null,
 });
 
 /** How much of the night sky a dome intensity earns: full at the night preset's .08, none from .30 up. */
@@ -622,6 +636,15 @@ function atmosphereEnabledFor(renderer: THREE.WebGLRenderer): boolean {
   try {
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('atmosphere') === 'off') return false;
   } catch { /* no location: keep the model */ }
+  return true;
+}
+
+/** Round 68: the volumetric cloud layer runs wherever the atmosphere does, unless `?clouds=off` (the pinned bake receipts). */
+function volumetricCloudsEnabledFor(renderer: THREE.WebGLRenderer): boolean {
+  if (!atmosphereEnabledFor(renderer)) return false;
+  try {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('clouds') === 'off') return false;
+  } catch { /* no location: keep the layer */ }
   return true;
 }
 
@@ -1093,6 +1116,12 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     summary: atmosphereLuts?.summary ?? null,
   };
   scene.userData.atmosphere = atmosphereState;
+  // Round 68 (2026-09-24): the volumetric cloud layer (volumetricClouds.ts) — created with the atmosphere, fed
+  // its noise bakes from a worker below, keyed per preset in updateCloudDecks, marched by post.ts's hook
+  // (scene.userData.volumetricClouds). Until its noise arrives, or on the mobile tier, the baked decks show.
+  const volumetricClouds = atmosphereLuts && volumetricCloudsEnabledFor(renderer)
+    ? new VolumetricCloudLayer(renderer, scene, atmosphereState, new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF)) : null;
+  scene.userData.volumetricClouds = volumetricClouds;
   /** Round 37's elevation falloff for the current sky (the atmosphere summary's, or the legacy probe's). */
   let atmosphereFalloff = 1;
   let atmosphereKeySuffixLive = '';
@@ -1325,6 +1354,64 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       return deadline.promise;
     })();
 
+  // Round 68: the volumetric layer's noise bakes (cloudNoise.ts) in a second worker, the same contract as the
+  // deck bakes: transferred buffers, a bounded wait, the synchronous bake as the fallback. Each buffer is
+  // uploaded as it arrives; the layer shows once all three are in (updateCloudDecks re-evaluates then).
+  let cloudNoiseSettled = !volumetricClouds;
+  const cloudNoiseUpload: CloudNoiseUpload = {};
+  const installCloudNoise = (): void => {
+    if (!volumetricClouds) return;
+    volumetricClouds.setNoise(cloudNoiseUpload);
+    if (volumetricClouds.noiseReady) updateCloudDecks();
+  };
+  const cloudNoisePromise: Promise<void> | null = !volumetricClouds ? null : typeof Worker === 'undefined'
+    ? null
+    : (() => {
+      let worker: Worker;
+      try {
+        worker = new Worker(new URL('./cloudNoiseWorker.ts', import.meta.url), { type: 'module' });
+      } catch (error) {
+        console.warn('[sky] cloud noise worker unavailable; baking on the main thread:', errorMessage(error));
+        return null;
+      }
+      const deadline = createDeferredDeadline<void>(12000, () => {
+        console.warn('[sky] cloud noise worker timed out; baking the rest on the main thread');
+        worker.terminate();
+        cloudNoiseSettled = true;
+      });
+      worker.onmessage = ({ data }: MessageEvent<{ kind: 'shape' | 'detail' | 'weather'; pixels: Uint8Array }>) => {
+        cloudNoiseUpload[data.kind] = data.pixels;
+        installCloudNoise();
+        if (cloudNoiseUpload.shape && cloudNoiseUpload.detail && cloudNoiseUpload.weather) {
+          if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
+        }
+      };
+      worker.onerror = (error) => {
+        console.warn('[sky] cloud noise worker failed; baking on the main thread:', error.message);
+        if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
+      };
+      try {
+        worker.postMessage({});
+      } catch (error) {
+        console.warn('[sky] cloud noise worker could not start; baking on the main thread:', errorMessage(error));
+        if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
+      }
+      return deadline.promise;
+    })();
+  /** Synchronous fallback: bake whatever the worker did not deliver (idempotent). */
+  const ensureCloudNoise = (): void => {
+    if (!volumetricClouds || volumetricClouds.noiseReady) return;
+    const missing = !cloudNoiseUpload.shape || !cloudNoiseUpload.detail || !cloudNoiseUpload.weather;
+    if (missing) {
+      const bake = bakeCloudNoise();
+      cloudNoiseUpload.shape ??= bake.shape;
+      cloudNoiseUpload.detail ??= bake.detail;
+      cloudNoiseUpload.weather ??= bake.weather;
+    }
+    cloudNoiseSettled = true;
+    installCloudNoise();
+  };
+
   // Per-deck flags keep a mid-flight synchronous activation idempotent.
   let cirrusBaked = false;
   let cumulusBaked = false;
@@ -1355,6 +1442,13 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   /** Await off-main FBM, then install at most one canvas texture per tick. */
   const ensureCloudTexturesChunked = async (tick?: () => Promise<void>): Promise<void> => {
     if (cloudWorkerPromise && !cloudWorkerSettled) await cloudWorkerPromise;
+    // round 68: the volumetric layer's noise, then its programs, all under the caller's cover
+    if (volumetricClouds) {
+      if (cloudNoisePromise && !cloudNoiseSettled) await cloudNoisePromise;
+      if (!volumetricClouds.noiseReady) ensureCloudNoise();
+      if (tick) await tick();
+      volumetricClouds.warm();
+    }
     if (!cirrusBaked) {
       cirrusBaked = true;
       swapCloudTexture(cloudsFar, makeCirrusTexture(cloudWorkerResults?.cirrus ?? null));
@@ -1429,6 +1523,18 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     }
     clouds.material.uniforms.uOpacity.value = preset.cloudOpacity;
     clouds.visible = preset.cloudOpacity > 0.01;
+    // round 68: the volumetric layer takes the low deck's place (the cirrus veil stays); it owns the ground's
+    // cloud shadows where it casts them, so the aerial pass's screen-space patchiness turns off there
+    if (volumetricClouds) {
+      const layerPreset = atmosphereState.active && preset.cloudOpacity > 0.01 ? deriveCloudLayerPreset(preset) : null;
+      volumetricClouds.setPreset(layerPreset);
+      if (volumetricClouds.active) {
+        clouds.visible = false;
+        if (volumetricClouds.currentPreset?.shadow) scene.userData.cloudShadeAmp = 0;
+      } else {
+        volumetricClouds.dome.visible = false;
+      }
+    }
     cloudsFar.material.uniforms.uOpacity.value = preset.cloudOpacity2;
     cloudsFar.visible = preset.cloudOpacity2 > 0.01;
     // Per-map deck decorrelation (terrain_environment r1): with a fixed
@@ -1551,6 +1657,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
      */
     ensureCloudTextures,
     ensureCloudTexturesChunked,
+    attachShadowCascades(cascades: CloudShadowCascades): void {
+      volumetricClouds?.attachShadowCascades(cascades);
+    },
+    volumetricClouds,
 
     /**
      * Bake the procedural sky into a PMREM environment map and install it as

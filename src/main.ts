@@ -441,6 +441,7 @@ const lighting: MainLightingRuntime = await bootStage(
   'lighting',
   () => createLighting(scene, camera, sky.sunDir),
 );
+sky.attachShadowCascades(lighting.csm); // round 68: the cascades carry the volumetric layer's cloud shadows
 // The sealed garage can only see the near/contact shadow bands. Request far
 // dormancy now; lighting deliberately renders every native CSM depth map once
 // before honoring it because all PCF samplers remain active in the shader.
