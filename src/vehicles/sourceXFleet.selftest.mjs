@@ -38,8 +38,9 @@ const original = {
   leo2a7v:'2263d6b0', leo2a6m:'fe9c5f17', leo2a4m:'126b898c', leo2a5:'845f4dc9',
 // 2026-09-23 (owner: "no hidden tanks"): the merkava4 donor record retired with the hidden fleet, so its original
 // pin (faa9ea92) left with it; merkava4_x's combat donor now resolves through the unregistered donorSpecs.ts template.
-  merkava3d:'850ecc05', k2:'36af3795', kf51:'f5de9458',
-  t90a:'3a1ab46f', t90a_vladimir:'d6a32428', t90m:'913aca9b', t90sm:'428187e9', t14:'3aa21a37',
+  merkava3d:'e6c6cabe', k2:'36af3795', kf51:'f5de9458',
+  // 2026-09-25 FSP-03: t90m / t90sm pre-X goldens re-pinned once — the fleet T-72/T-90 hulls carry three fitted return rollers again.
+  t90a:'ed1d8f67', t90a_vladimir:'dbffcd5f', t90m:'b0798d46', t90sm:'b24dd276', t14:'3aa21a37',
 };
 // Owner 2026-09-21 explicitly replaces XK2's turret with the current K1A1.
 // xk2.selftest verifies complete donor geometry and hull/suspension seating;

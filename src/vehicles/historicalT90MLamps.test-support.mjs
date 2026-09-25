@@ -15,12 +15,14 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
 // across NATIONS"); both pins re-derived from the published profile.
 // round 46b (2026-09-23): both pins re-derived again — the roller removal and the T-90A/t90 station and radius edits sit
 // outside the lamp block, so the pre-lamp projection of the published source moved with it
-const BEFORE='a75cf425edba064e6142ee8d420ab9ae80937dee1ad3dc33db57d608c191929f';
+// FSP-03 (2026-09-25, owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return rollers
+// per side again (the 2026-09-23 rollerless reading reversed) — pre-/post-lamp digests re-derived once from the current source.
+const BEFORE='b0c0faf4bb2c8865648e1ff6ceb89ed4eafa98fcb2870cd30257bc5fd8bde5d9';
 // round 40 (2026-09-22): the T-90 family profile source moved with the road-wheel fixes and the one running-gear finish
 // (r40-wheels: t90.ts PT-91M stations, wheel paint through runningGearFinish.ts); post-lamp profile digest repinned from the current source
 // round 46b (2026-09-23, owner: fictional return rollers off the T-72/T-90 family; T-90A stations respread to the 0.80 m pitch,
 // t90/T-90A legacy gear r 0.375): the published profile source moved again; post-lamp digest re-derived from the current source
-const AFTER='041b1491be8dd5971eb3d5de1e67f45c97152dba3bd8daf1cf6bb05149951bf7';
+const AFTER='1a85d0d089986f56da0b83f6497ca0003bf986b2758d03fc0a1d745334d6ff9a';
 const added=`    // These existing discs faced upward. Seat their apertures in the actual
     // canted cassette front, with 5.5 mm of rear stock entering its housing.
     for (const dx of [-0.075, 0.075]) {

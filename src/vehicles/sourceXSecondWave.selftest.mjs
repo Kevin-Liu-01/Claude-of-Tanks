@@ -33,11 +33,12 @@ const original = {
 // resolve through the unregistered donorSpecs.ts templates.
   ariete_c1:'e9af928b', challenger1:'aa084d4d', leclerc:'0d0ed003',
   chieftain5:'af6150d8', chieftain_mk10:'81cf7e9f', leo2a6:'1f08700c',
-  k1a1:'d75c7a71', strv122:'8bc6e141', t62mv1:'35f1a225',
-  t72b3m:'49e0a00e',
-  t72bu:'1557e0dd', t80u:'2b1a556f', type10:'51be775e', type90:'de3a7d14',
-  amx30:'9482f250', amx40:'b94b2314',
-  t90:'0441dc8a', t90a_burlak:'835118d7', t90ms:'149a209a',
+  k1a1:'febc57cf', strv122:'8bc6e141', t62mv1:'35f1a225',
+  // 2026-09-25 FSP-03: the fleet T-72/T-90 pre-X goldens (t72b3m, t72bu, t90, Burlak, T-90MS) re-pinned once — three fitted return rollers per side again.
+  t72b3m:'dbbc46ad',
+  t72bu:'404a5f01', t80u:'2b1a556f', type10:'51be775e', type90:'de3a7d14',
+  amx30:'af643005', amx40:'b94b2314',
+  t90:'accad0d5', t90a_burlak:'8a91a11d', t90ms:'f03c2eb8',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
 for (const [id, expected] of Object.entries(original)) {

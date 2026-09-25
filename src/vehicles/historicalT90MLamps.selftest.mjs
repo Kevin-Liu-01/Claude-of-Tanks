@@ -22,7 +22,8 @@ for(const quality of ['high','low']){
 // values below are repinned from the current build.
 // 2026-09-22 nation wheel standard: the T-90M draws the Russia construction (T-90M X pressed face) instead of its
 // rim/hub/bolt dressing, so the historical-lamp fingerprint moves once more; repinned from the current build.
-    if(quality==='high')assert.equal(old,'913aca9b','Independent pre-X golden is preserved unchanged');
+    // 2026-09-25 FSP-03: the fleet T-90M carries three fitted return rollers again — pre-X golden re-pinned once.
+    if(quality==='high')assert.equal(old,'b0798d46','Independent pre-X golden is preserved unchanged');
     rows.push({quality,current:actual,historical:old,actualLampPositions:assertCurrentT90MLampSeats(current)});
     let lamp;current.root.traverse(m=>{lamp??=vehicleNightLightEmittersFor(m).find(l=>l.kind==='headlight');});
     const direction=lamp.direction;
