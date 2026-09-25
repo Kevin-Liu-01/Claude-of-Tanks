@@ -329,21 +329,23 @@ export function validateJevRequest(input: Unknown): Validation<JevRequestBody> {
   return { ok: true, value: { v: JEV_PROTOCOL_VERSION, sid: input.sid, kind: 'team_orders', state: state.value } };
 }
 
+// Every bot's posture question repeats these criteria, so they are terse: input tokens are the whole bill
+// (measured 2026-09-25: 7 bots = 27 questions; the criteria were most of the request before this trim).
 const POSTURE_CRITERIA: Readonly<Record<JevPosture, string>> = Object.freeze({
-  hold: 'Keep the current position or hull-down spot and fight from there. Right when the tank has cover, the enemy is coming to it, its gun outranges theirs, or it is outnumbered.',
-  push: 'Close the distance on its target or the nearest enemy and bring the gun to bear. Right when the enemy is weak, isolated, reloading or retreating, or our side outnumbers them there.',
-  flank_left: 'Swing round the left side of its target to reach the side or rear armour. Right against a strong front our shells do not penetrate, when the target is busy with a teammate.',
-  flank_right: 'Swing round the right side of its target to reach the side or rear armour. Right against a strong front our shells do not penetrate, when the target is busy with a teammate.',
-  retreat: 'Fall back toward friendly support or away from the threat. Right when hull points are low, the tracks or engine are damaged, or the tank is alone against several enemies.',
-  capture: 'Drive to the objective and take or hold it. Right when a zone, sector, flag or goal decides the battle more than this duel does.',
-  support: 'Move to the teammate that is under the most fire or weakest and fight beside it. Right when a teammate is about to die and this tank can reach it.',
+  hold: 'Fight from the current position or hull-down spot: it has cover, the enemy comes to it, or it is outnumbered.',
+  push: 'Close on its target or the nearest enemy at full throttle: the enemy is weak, isolated, reloading, or outnumbered there.',
+  flank_left: 'Swing round the left of its target to the side or rear armour: a front our shells do not penetrate, a target busy elsewhere.',
+  flank_right: 'Swing round the right of its target to the side or rear armour: a front our shells do not penetrate, a target busy elsewhere.',
+  retreat: 'Fall back to friendly support or away from the threat: low hull points, damaged tracks or engine, alone against several.',
+  capture: 'Drive to the objective and take or hold it: a zone, sector, flag or goal matters more than this duel.',
+  support: 'Move to the weakest or most pressed teammate and fight beside it: a teammate about to die that this tank can reach.',
 });
 
 const THREAT_LEVELS = Object.freeze([
-  'safe: no enemy can reach it and its hull is healthy',
-  'pressured: one enemy can engage it, or it is somewhat damaged',
-  'in danger: several enemies can engage it, or it is badly damaged with an enemy in view',
-  'about to die: low hull points under fire from several enemies with no cover',
+  'safe: no enemy can reach it, hull healthy',
+  'pressured: one enemy can engage it, or somewhat damaged',
+  'in danger: several enemies can engage it, or badly damaged with an enemy in view',
+  'about to die: low hull points, under fire from several enemies, no cover',
 ]);
 
 /** The team-level focus option that means "no objective needs the team now". */
@@ -353,8 +355,7 @@ export const JEV_TARGET_NONE = 'none';
 
 function enemyLine(id: string, enemy: JevEnemyView): string {
   const who = enemy.human_player ? 'the human player' : 'a bot';
-  return `${enemy.vehicle} (${enemy.class}, ${who}), ${enemy.hp} of its hull left, ${enemy.distance_m} m to the ${enemy.bearing} of our team, ${enemy.facing}${enemy.on_objective ? ', on the objective' : ''}`
-    + ` — \`enemies.${id}\``;
+  return `\`enemies.${id}\`: ${enemy.vehicle} (${who}), ${enemy.hp} hull, ${enemy.facing}${enemy.on_objective ? ', on the objective' : ''}`;
 }
 
 /**
@@ -371,7 +372,7 @@ export function buildJevQuestions(state: JevBattleState): Record<string, JevQues
     const path = `our_tanks.${id}`;
     questions[`posture_${id}`] = {
       type: 'choice',
-      instructions: `Our tank \`${path}\` is a ${bot.vehicle} (${bot.class}, ${bot.role} role) with ${bot.hp} of its hull and ${bot.ammo} of its ammunition left. Which posture should it take for the next few seconds, given the whole battle picture in the state?`,
+      instructions: `Which posture should our tank \`${path}\` (a ${bot.vehicle}, ${bot.role} role) take for the next few seconds, given the whole battle picture in the state?`,
       criteria: POSTURE_CRITERIA,
     };
     questions[`threat_${id}`] = {
@@ -384,20 +385,20 @@ export function buildJevQuestions(state: JevBattleState): Record<string, JevQues
     for (const seen of bot.sees) {
       const enemy = state.enemies[seen.id];
       if (!enemy) continue;
-      targets[seen.id] = `${enemyLine(seen.id, enemy)}; ${seen.m} m from this tank`;
+      targets[seen.id] = `${enemyLine(seen.id, enemy)}, ${seen.m} m away`;
     }
     targets[JEV_TARGET_NONE] = 'No enemy is worth engaging right now: keep moving, hold or retreat instead.';
     questions[`target_${id}`] = {
       type: 'choice',
-      instructions: `Which enemy should our tank \`${path}\` engage now? Prefer the enemy that threatens it or the team most, that it can hurt, that stands on the objective, or that a teammate already has under fire when finishing it wins the exchange.`,
+      instructions: `Which enemy should our tank \`${path}\` engage now? Prefer the one that threatens it or the team most, that it can hurt, that stands on the objective, or that a teammate already has under fire when finishing it wins the exchange.`,
       criteria: targets,
     };
     questions[`fire_${id}`] = {
       type: 'noul',
       instructions: `Should our tank \`${path}\` fire on its target as soon as its gun is laid, rather than holding the round?`,
       criteria: {
-        true: 'Fire: the shot is worth a round — the target is exposed, in range, damaged, or the fight is urgent.',
-        false: 'Hold: save the round — the target is retreating out of range, is unlikely to be hit or penetrated, or firing would reveal the tank for no gain.',
+        true: 'Fire: the target is exposed, in range, damaged, or the fight is urgent.',
+        false: 'Hold the round: the target is retreating out of range, unlikely to be hit or penetrated, or firing reveals the tank for no gain.',
       },
     };
   }
@@ -406,7 +407,7 @@ export function buildJevQuestions(state: JevBattleState): Record<string, JevQues
     const focus: Record<string, string> = {};
     for (const id of objectiveIds) {
       const objective = state.objectives[id];
-      focus[id] = `\`objectives.${id}\`: a ${objective.kind} held by ${objective.owner}${objective.contested ? ', contested' : ''}, ${objective.distance_m} m to the ${objective.bearing} of our team`;
+      focus[id] = `\`objectives.${id}\`: a ${objective.kind} held by ${objective.owner}${objective.contested ? ', contested' : ''}, ${objective.distance_m} m ${objective.bearing}`;
     }
     focus[JEV_FOCUS_NONE] = 'No objective needs the team now: fight the enemy force where it stands.';
     questions.focus = {
