@@ -173,7 +173,7 @@ interface KillcamVisual {
   setTrackState?(module: string, destroyed: boolean): void;
   resetEra?(): void;
   stripEra?(plate: string): void;
-  gunDirWorld?(out: THREE.Vector3): THREE.Vector3;
+  gunDirWorld?(out: THREE.Vector3, muzzleIndex?: number, launcher?: boolean): THREE.Vector3;
   gunMuzzleWorld?(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): THREE.Vector3;
   recoilKick?(amount?: number, scale?: number, muzzleIndex?: number, guided?: boolean): void;
   hitFlinch?(normalX: number, normalZ: number, scale: number, yaw: number): void;
@@ -2641,14 +2641,15 @@ export function createKillCam(deps: KillcamDeps) {
     shotDirection: THREE.Vector3 | null,
     actualDirection: THREE.Vector3,
   ): void {
+    const gun = pb.snap.attackerEnt?.spec.gun;
+    const round = gun?.shells?.find(shell => shell.name === pb.snap.ev.shellName);
+    const launcher = usesLauncherMuzzles(gun, round);
+    const index = pb.snap.muzzleIndex >= 0 ? pb.snap.muzzleIndex : undefined;
     if (visual.gunMuzzleWorld) {
-      const gun = pb.snap.attackerEnt?.spec.gun;
-      const round = gun?.shells?.find(shell => shell.name === pb.snap.ev.shellName);
-      const launcher = usesLauncherMuzzles(gun, round);
-      pb.replayMuzzle = visual.gunMuzzleWorld(new THREE.Vector3(), pb.snap.muzzleIndex >= 0 ? pb.snap.muzzleIndex : undefined, launcher).clone();
+      pb.replayMuzzle = visual.gunMuzzleWorld(new THREE.Vector3(), index, launcher).clone();
     }
     if (shotDirection && visual.gunDirWorld) {
-      visual.gunDirWorld(actualDirection);
+      visual.gunDirWorld(actualDirection, index, launcher);
       actualDirection.normalize();
       pb.barrelDot = actualDirection.dot(shotDirection);
     }
@@ -2667,12 +2668,16 @@ export function createKillCam(deps: KillcamDeps) {
     if (vis.setVisible) vis.setVisible(true);
 
     const shot = attackerShotDirection(snap);
+    const round = ent.spec.gun.shells?.find(shell => shell.name === snap.ev.shellName);
+    // A fixed pod need not share the cannon's elevation or azimuth. Preserve
+    // its recorded firing pose instead of rotating the cannon toward it.
+    const cannonShot = usesLauncherMuzzles(ent.spec.gun, round) ? null : shot;
     const actual = new THREE.Vector3();
-    const state = attackerReplayState(snap, ent, shot);
+    const state = attackerReplayState(snap, ent, cannonShot);
     // Two iterations converge imported-rig offsets while keeping the hull at
     // the exact recorded world position. Casemates spill out-of-arc yaw into
     // the hull, just as alignReplayPoseToShot does for the initial solve.
-    refineAttackerBore(state, ent, vis, shot, actual);
+    refineAttackerBore(state, ent, vis, cannonShot, actual);
     vis.syncFromState(state, 0);
     applyReplaySurfaceState(vis, snap.attackerPreModuleStates, snap.attackerPreEraSpent);
     vis.root?.updateMatrixWorld(true);

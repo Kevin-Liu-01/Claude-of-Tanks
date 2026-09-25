@@ -1,4 +1,4 @@
-import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
@@ -169,7 +169,7 @@ interface SoloVisual {
   resetDestroyed?(): void;
   dispose(): void;
   gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): void;
-  gunDirWorld(out: THREE.Vector3): void;
+  gunDirWorld(out: THREE.Vector3, muzzleIndex?: number, launcher?: boolean): void;
   gunPivotWorld(out: THREE.Vector3): void;
   turretTopWorld(out: THREE.Vector3): void;
   recoilKick(amount?: number, scale?: number, muzzleIndex?: number, guided?: boolean): void;
@@ -1770,7 +1770,7 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
   const muzzles = launchers ?? entity.spec.gun.muzzles;
   let muzzleIndex = -1;
   if (launchers) {
-    muzzleIndex = (entity.combat.launcherCursor ?? 0) % launchers.length;
+    muzzleIndex = launcherMuzzleIndex(entity.spec.gun, shell, entity.combat.launcherCursor ?? 0);
     entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
   } else if (Array.isArray(muzzles) && muzzles.length > 1) {
     muzzleIndex = (entity.combat.muzzleCursor || 0) % muzzles.length;
@@ -1778,7 +1778,7 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
   }
   const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;
   visual.gunMuzzleWorld(_muzzle, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
-  visual.gunDirWorld(_dir);
+  visual.gunDirWorld(_dir, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
   return muzzleIndex;
 }
 

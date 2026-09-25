@@ -1,4 +1,4 @@
-import { usesLauncherMuzzles, isUnguidedRocket } from './launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Headless authoritative battle simulation.
@@ -555,12 +555,21 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
     .addScaledVector(_gunDir, barrelM);
   const launchers = usesLauncherMuzzles(entity.spec.gun, shellSpec) ? entity.spec.gun.launcherMuzzles : undefined;
   if (launchers?.length) {
-    const index = (entity.combat.launcherCursor ?? 0) % launchers.length;
+    const index = launcherMuzzleIndex(entity.spec.gun, shellSpec, entity.combat.launcherCursor ?? 0);
     const tip = launchers[index]!;
-    // Rotate the authored tip with the same -X elevation used by rig_gun.
-    _muzzle.set(gunPivot[0] + tip.x,
-      gunPivot[1] + tip.y * cosPitch + tip.z * sinPitch,
-      gunPivot[2] - tip.y * sinPitch + tip.z * cosPitch).applyMatrix4(_turretMatrix);
+    _muzzle.set(tip.x, tip.y, tip.z);
+    const mouthPitch = tip.pitch ?? 0, mouthYaw = tip.yaw ?? 0;
+    _gunDir.set(Math.sin(mouthYaw) * Math.cos(mouthPitch), Math.sin(mouthPitch),
+      Math.cos(mouthYaw) * Math.cos(mouthPitch));
+    if (tip.frame !== 'turret') {
+      _muzzle.set(gunPivot[0] + tip.x, gunPivot[1] + tip.y * cosPitch + tip.z * sinPitch,
+        gunPivot[2] - tip.y * sinPitch + tip.z * cosPitch);
+      const dy = _gunDir.y, dz = _gunDir.z;
+      _gunDir.y = dy * cosPitch + dz * sinPitch;
+      _gunDir.z = -dy * sinPitch + dz * cosPitch;
+    }
+    _muzzle.applyMatrix4(_turretMatrix);
+    _gunDir.transformDirection(_turretMatrix);
   }
   return { muzzle: _muzzle, direction: _gunDir };
 }
@@ -1453,7 +1462,7 @@ export function createAuthoritativeMatch({
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
     shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
     if (usesLauncherMuzzles(entity.spec.gun, shellSpec)) {
-      combat.launcherCursor = (combat.launcherCursor ?? 0) + 1;
+      combat.launcherCursor = launcherMuzzleIndex(entity.spec.gun, shellSpec, combat.launcherCursor ?? 0) + 1;
     }
     // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
     shell.gravityMps2 *= Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1;

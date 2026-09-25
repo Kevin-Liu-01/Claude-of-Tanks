@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { Vector3 } from 'three';
 import * as THREE from 'three';
-import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import { addInternalModuleModel } from '../vehicles/internalAnatomyVisuals.ts';
 
 // Execute the actual private entry points without booting Studio/solo's DOM,
@@ -25,7 +25,7 @@ function privateFunction(file, name, dependencies) {
 }
 
 const muzzle = new Vector3(), direction = new Vector3(), origins = [];
-const prepare = privateFunction('./state.ts', 'prepareMuzzleDirection', { _muzzle: muzzle, _dir: direction, usesLauncherMuzzles });
+const prepare = privateFunction('./state.ts', 'prepareMuzzleDirection', { _muzzle: muzzle, _dir: direction, usesLauncherMuzzles, launcherMuzzleIndex });
 const rack = [{ x: -1 }, { x: 1 }, { x: 2 }];
 const entity = {
   spec: { gun: { launcherMuzzles: rack, muzzles: [{ x: -.2 }, { x: .2 }] } },
@@ -48,9 +48,29 @@ const legacy = { ...entity, spec: { gun: { muzzles: [{}, {}] } }, combat: { muzz
 assert.equal(prepare(legacy, {}), 1, 'ordinary multi-cannon selection remains unchanged');
 assert.equal(legacy.combat.launcherCursor, undefined);
 
+// A cannon and two different missile systems must retain three feeds and
+// select only the tubes for the requested weapon, including a copied round.
+const rounds = [{ name: 'cannon' }, { name: 'Kornet', guided: true, launcherTubes: 2 },
+  { name: 'Bulat', guided: true, launcherTubes: 3 }];
+const banks = { shells: rounds, launcherMuzzles: [
+  ...[0, 1].map(x => ({ x, y: 0, z: 1, shellSlots: [1] })),
+  ...[2, 3, 4].map(x => ({ x, y: 1, z: 0, frame: 'turret', shellSlots: [2] })),
+] };
+const bankCalls = [];
+const mixed = { spec: { gun: banks }, combat: { launcherCursor: 0 }, visual: {
+  gunMuzzleWorld(out, index, launcher) { bankCalls.push(['origin', index, launcher]); out.set(index, 0, 0); },
+  gunDirWorld(out, index, launcher) { bankCalls.push(['axis', index, launcher]); out.set(0, .2, 1).normalize(); },
+} };
+assert.deepEqual([prepare(mixed, rounds[2]), prepare(mixed, rounds[2]), prepare(mixed, rounds[1]),
+  prepare(mixed, rounds[1]), prepare(mixed, { ...rounds[2] })], [2, 3, 0, 1, 2]);
+assert.deepEqual(bankCalls.filter(row => row[0] === 'origin').map(row => row.slice(1)),
+  bankCalls.filter(row => row[0] === 'axis').map(row => row.slice(1)), 'origin and direction use the same tube');
+assert.equal(launcherMuzzleIndex(banks, { guided: true, launcherTubes: 0 }), -1,
+  'a gun-fired missile never inherits an unrelated external rack');
+
 const effects = [], kicks = [], positions = [];
 const fireMoment = privateFunction('./studio.ts', 'fireFiringMoment', {
-  usesLauncherMuzzles, isUnguidedRocket,
+  usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex,
   _v2: new Vector3(), _v3: new Vector3(), fx: { composeFiringMoment: value => effects.push(value) },
 });
 const actor = { spec: { gun: { caliberMm: 30, launcherMuzzles: Array.from({ length: 8 }, () => ({ x: 0, y: 0, z: 1 })), shells: [

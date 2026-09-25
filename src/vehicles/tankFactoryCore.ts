@@ -151,11 +151,20 @@ interface FactoryGunSpec extends FleetGunSpec {
 }
 
 /** Missile mouths follow elevation but never cannon recuperation. */
-function createLauncherTips(parent: THREE.Group, muzzles: FactoryGunSpec['launcherMuzzles']): THREE.Object3D[] {
+function createLauncherTips(gun: THREE.Group, turret: THREE.Group, muzzles: FactoryGunSpec['launcherMuzzles']): THREE.Object3D[] {
   return (muzzles ?? []).map((position, index) => {
     const tip = new THREE.Object3D();
     tip.name = `rig_launcher_tip_${index}`;
     tip.position.set(position.x, position.y, position.z);
+    tip.rotation.set(-(position.pitch ?? 0), position.yaw ?? 0, 0, 'YXZ');
+    const parent = position.frame === 'turret' ? turret : gun;
+    if (position.frame === 'turret') {
+      // Specs publish final metre datums. A legacy compressed turret (Warrior)
+      // still carries a render-parent scale; undo it on this metadata anchor.
+      tip.position.divide(parent.scale);
+      const axis = new THREE.Vector3(0, 0, 1).applyQuaternion(tip.quaternion).divide(parent.scale).normalize();
+      tip.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
+    }
     parent.add(tip);
     return tip;
   });
@@ -1082,7 +1091,7 @@ interface TankVisual {
     detailVisible?: boolean,
   ): void;
   gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): THREE.Vector3;
-  gunDirWorld(out: THREE.Vector3): THREE.Vector3;
+  gunDirWorld(out: THREE.Vector3, muzzleIndex?: number, launcher?: boolean): THREE.Vector3;
   gunPivotWorld(out: THREE.Vector3): THREE.Vector3;
   turretTopWorld(out: THREE.Vector3): THREE.Vector3;
   recoilKick(ageS?: number, impulseScale?: number, muzzleIndex?: number, guided?: boolean): number | null;
@@ -7754,7 +7763,6 @@ function* createTankOwnedSteps(
   const recoilG = new THREE.Group();
   recoilG.name = 'rig_recoil';
   const authoredMuzzles = Array.isArray(spec.gun?.muzzles) ? spec.gun.muzzles : [];
-  const launcherTips = createLauncherTips(gunG, spec.gun.launcherMuzzles);
   let launcherCursor = 0;
   const barrelGs = authoredMuzzles.length > 1
     ? authoredMuzzles.map((_, index) => {
@@ -8794,6 +8802,9 @@ function* createTankOwnedSteps(
   // barrel tip, each measured and seated independently at its own axis.
   // ABSENT => one assembly is still created on the authored/center axis, but
   // it now inherits the physical terminal tube/brake radius and lip plane.
+  // Install final metre datums after donor cleanup and profile scaling. A
+  // builder must never erase these anchors or scale them a second time.
+  const launcherTips = createLauncherTips(gunG, turretG, spec.gun.launcherMuzzles);
   const muzzleDefs = cannonMuzzleDefinitions(spec.gun, authoredMuzzles, launcherTips.length);
   // §5.362 per-barrel fire anchors (twin-plant ids only): one Object3D per
   // authored bore at its own seated tip, parented under its tube group so a
@@ -10030,7 +10041,13 @@ function* createTankOwnedSteps(
     },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space barrel
      *  axis (+Z of the authored recoil group). */
-    gunDirWorld(out) { return muzzle.getWorldDirection(out); },
+    gunDirWorld(out, muzzleIndex, launcher = false) {
+      if ((launcher || spec.gun.fixedLaunchCanisters) && launcherTips.length) {
+        const index = muzzleIndex ?? 0;
+        return launcherTips[((index % launcherTips.length) + launcherTips.length) % launcherTips.length].getWorldDirection(out);
+      }
+      return muzzle.getWorldDirection(out);
+    },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space gun trunnion */
     gunPivotWorld(out) { return gunG.getWorldPosition(out); },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space turret roof anchor */

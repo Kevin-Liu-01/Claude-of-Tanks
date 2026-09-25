@@ -1,4 +1,4 @@
-import { isUnguidedRocket } from './launcherPolicy.ts';
+import { isUnguidedRocket, launcherMuzzleIndex, type LauncherMuzzle } from './launcherPolicy.ts';
 import type { MagazineIndicator } from './magazineIndicator.ts';
 /**
  * damage.ts — complete hit resolution per docs/history/research/armor-penetration.md
@@ -92,7 +92,7 @@ export interface DamageGunSpec {
   reloadS: number;
   /** Guided ammunition is chambered and fired through this main gun/launcher. */
   primaryGuided?: boolean;
-  launcherMuzzles?: readonly { x: number; y: number; z: number }[];
+  launcherMuzzles?: readonly LauncherMuzzle[];
   shells?: DamageShellSpec[];
   autoloader?: {
     magazineSize: number;
@@ -498,7 +498,7 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
     : 0;
   const ammunition = createAmmunitionState(spec.gun.shells || []);
   const gunReload: ReloadState = { t: 0, totalS: spec.gun.reloadS, kind: 'ready' };
-  const launcherReload: ReloadState = { t: 0, totalS: spec.gun.reloadS, kind: 'ready' };
+  const launcherReloads = new Map<number, ReloadState>();
   let groupedReloads: Map<string, ReloadState> | undefined;
   const reloadChannels = (spec.gun.shells || []).map((round) => {
     if (round.reloadGroup) {
@@ -510,9 +510,18 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
       }
       return channel;
     }
-    return round.guided === true && spec.gun.launcherMuzzles?.length
-      ? launcherReload
-      : round.guided === true && spec.gun.primaryGuided !== true
+    const bank = launcherMuzzleIndex(spec.gun, round);
+    if (round.guided === true && bank >= 0) {
+      // Warheads in the same rack share a cycle; distinct physical missile
+      // banks (Kornet/Bulat) can reload independently of each other and gun.
+      let channel = launcherReloads.get(bank);
+      if (!channel) {
+        channel = { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' };
+        launcherReloads.set(bank, channel);
+      }
+      return channel;
+    }
+    return round.guided === true && spec.gun.primaryGuided !== true
         ? { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' as ReloadKind }
         : gunReload;
   });

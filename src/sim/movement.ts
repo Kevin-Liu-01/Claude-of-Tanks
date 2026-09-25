@@ -1,6 +1,6 @@
 import { minimumMechanicalGunPitch } from './gunPitchLimits.ts';
 import type { GunPitchByYawCurve } from './gunPitchLimits.ts';
-import { usesLauncherMuzzles } from './launcherPolicy.ts';
+import { usesLauncherMuzzles, type LauncherMuzzle } from './launcherPolicy.ts';
 /**
  * movement.ts — pure-logic tank movement, attitude, turret/gun kinematics and
  * dispersion bloom. Implements docs/history/research/movement-physics.md §2–§8 and §10
@@ -36,7 +36,7 @@ type HeightSampler = (x: number, z: number) => number;
 
 export interface MovementGunSpec {
   fixedLaunchCanisters?: boolean;
-  launcherMuzzles?: readonly { x: number; y: number; z: number }[];
+  launcherMuzzles?: readonly LauncherMuzzle[];
   aimTimeS: number;
   baseAccuracy: number;
   caliberMm: number;

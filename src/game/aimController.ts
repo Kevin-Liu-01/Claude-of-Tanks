@@ -1,4 +1,4 @@
-import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
 import * as THREE from 'three';
@@ -62,7 +62,7 @@ interface AimArmorInfo {
 
 interface AimVisual {
   gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): void;
-  gunDirWorld(out: THREE.Vector3): void;
+  gunDirWorld(out: THREE.Vector3, muzzleIndex?: number, launcher?: boolean): void;
 }
 
 interface AimTank {
@@ -277,8 +277,9 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     }
     const shell = player.spec.gun.shells[player.combat?.shellSlot ?? 0];
     const launcher = usesLauncherMuzzles(player.spec.gun, shell);
-    player.visual.gunMuzzleWorld(outOrigin, launcher ? player.combat?.launcherCursor ?? 0 : undefined, launcher);
-    player.visual.gunDirWorld(outDir);
+    const index = launcher ? launcherMuzzleIndex(player.spec.gun, shell, player.combat?.launcherCursor ?? 0) : undefined;
+    player.visual.gunMuzzleWorld(outOrigin, index, launcher);
+    player.visual.gunDirWorld(outDir, index, launcher);
     const rangeM = Math.max(outOrigin.distanceTo(aimPoint), 6);
     outTarget.copy(outOrigin).addScaledVector(outDir, rangeM);
     return rangeM;

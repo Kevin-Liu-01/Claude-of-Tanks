@@ -1,5 +1,5 @@
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
-import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
@@ -191,6 +191,7 @@ interface StudioActorPatch extends StudioActorInput {
 }
 
 interface StudioActor extends MovementEntity, StudioPanelActor {
+  launcherCursor?: number;
   uid: string;
   name: string | null;
   specId: string;
@@ -1408,13 +1409,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       (params.slot ?? 0) | 0,
     ));
     const shellSpec = actor.spec.gun.shells[slot];
-    let muzzleIndex = null;
+    const launcher = usesLauncherMuzzles(actor.spec.gun, shellSpec);
+    let muzzleIndex: number | null = launcher
+      ? launcherMuzzleIndex(actor.spec.gun, shellSpec, actor.launcherCursor ?? 0) : null;
+    if (muzzleIndex != null) actor.launcherCursor = muzzleIndex + 1;
     if (params.recoil !== false && actor.visual.recoilKick) {
-      muzzleIndex = actor.visual.recoilKick(0, 1, undefined, usesLauncherMuzzles(actor.spec.gun, shellSpec));
+      muzzleIndex = actor.visual.recoilKick(0, 1, muzzleIndex ?? undefined, launcher);
       actor.visual.syncFromState(actor.state, 0);
     }
     actor.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined, usesLauncherMuzzles(actor.spec.gun, shellSpec));
-    actor.visual.gunDirWorld(_v3);
+    actor.visual.gunDirWorld(_v3, muzzleIndex ?? undefined, launcher);
     const shellId = -(uidSeq * 100000 + shells.length + 1);
     fxBus.emit('shell:fired', {
       shellId,
@@ -1578,12 +1582,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function fireFiringMoment({ actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     const shellSpec = actor.spec.gun.shells[Math.max(0, Math.min(actor.spec.gun.shells.length - 1, (params.slot ?? 0) | 0))];
+    const launcher = usesLauncherMuzzles(actor.spec.gun, shellSpec);
+    const tube = launcher ? launcherMuzzleIndex(actor.spec.gun, shellSpec, actor.launcherCursor ?? 0) : undefined;
+    if (tube != null) actor.launcherCursor = tube + 1;
     const muzzleIndex = actor.visual.recoilKick?.(
-      params.ageS != null ? params.ageS : 0.05, 1, undefined, usesLauncherMuzzles(actor.spec.gun, shellSpec),
+      params.ageS != null ? params.ageS : 0.05, 1, tube, launcher,
     ) ?? null;
     actor.visual.syncFromState(actor.state, 0);
     actor.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined, usesLauncherMuzzles(actor.spec.gun, shellSpec));
-    actor.visual.gunDirWorld(_v3);
+    actor.visual.gunDirWorld(_v3, muzzleIndex ?? undefined, launcher);
     fx.composeFiringMoment({
       muzzlePos: _v2.clone(),
       dir: _v3.clone(),

@@ -15,6 +15,7 @@ import {
 } from './rosterPolicy.ts';
 import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.ts';
 import { applyVehicleTaxonomy } from './taxonomy.ts';
+import { applyFleetLauncherMuzzles } from './fleetLauncherMuzzles.ts';
 import {
   plate as par,
   frontPlate as fr,
@@ -504,6 +505,7 @@ export function finalizeFirstPartyRoster(): void {
     const spec = TANK_SPECS[id];
     if (!spec) continue;
     applyVehicleTaxonomy(spec);
+    applyFleetLauncherMuzzles(spec);
     delete spec.community;
     delete spec.publicVisualFallback;
     const label = tankLabelRecord(spec);

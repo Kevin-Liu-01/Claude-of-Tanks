@@ -1,5 +1,6 @@
 import type { ArmorEnvelope, ShellSpec } from './specHelpers.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { LauncherMuzzle } from '../sim/launcherPolicy.ts';
 
 export interface AimBloom {
   move: number;
@@ -36,8 +37,8 @@ export interface FleetGunSpec extends Record<string, RuntimeValue> {
   muzzleBoreSegments?: number;
   /** Missile canister mouths select a launch origin without a cannon stroke. */
   fixedLaunchCanisters?: boolean;
-  /** Separate, non-recoiling missile mouths in the pitching gun frame. */
-  launcherMuzzles?: Array<{ x: number; y: number; z: number }>;
+  /** Native launch exits; each names its owner frame and optional weapon bank. */
+  launcherMuzzles?: LauncherMuzzle[];
   caliberMm: number;
   reloadS: number;
   baseAccuracy: number;

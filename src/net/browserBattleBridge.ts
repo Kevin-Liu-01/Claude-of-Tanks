@@ -1,4 +1,4 @@
-import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { Vector3, type Object3D } from 'three';
 import { createCombatState, mainWeaponModuleState, type CombatState } from '../sim/damage.ts';
@@ -60,7 +60,7 @@ interface TankVisual {
   dispose(): void;
   recoilKick?(dt: number, scale: number, muzzleIndex?: number, guided?: boolean): number | null;
   gunMuzzleWorld?(target: Vector3, muzzleIndex: number, guided?: boolean): Vector3;
-  gunDirWorld?(target: Vector3): Vector3;
+  gunDirWorld?(target: Vector3, muzzleIndex?: number, launcher?: boolean): Vector3;
   stripEra?(plateName: string): void;
   resetEra?(): void;
   setDestroyed?(options: { pop: boolean }): void;
@@ -948,7 +948,8 @@ export function createBrowserBattleBridge<
     const round = shooter.spec.gun.shells.find(shell => shell.name === event.shellName);
     const index = event.muzzleIndex;
     return count > 0 && usesLauncherMuzzles(shooter.spec.gun, round) && typeof index === 'number'
-      && Number.isInteger(index) && index >= 0 && index < count ? index : null;
+      && Number.isInteger(index) && index >= 0 && index < count
+      && launcherMuzzleIndex(shooter.spec.gun, round, index) === index ? index : null;
   }
 
   function rememberLauncherAuthority(event: BridgeEvent): void {
@@ -1034,10 +1035,11 @@ export function createBrowserBattleBridge<
     const prediction = shotPrediction.predict(context.fireIntentSeq, slot,
       context.nowMs, context.authorityReceivedAtMs);
     if (!prediction) return false;
-    const launcherIndex = usesLauncherMuzzles(own.spec.gun, shell) ? own.combat.launcherCursor ?? 0 : undefined;
+    const launcherIndex = usesLauncherMuzzles(own.spec.gun, shell)
+      ? launcherMuzzleIndex(own.spec.gun, shell, own.combat.launcherCursor ?? 0) : undefined;
     prediction.muzzleIndex = own.visual.recoilKick?.(0, recoilScale(own.spec, shell), launcherIndex, usesLauncherMuzzles(own.spec.gun, shell)) ?? -1;
     own.visual.gunMuzzleWorld(_muzzleTip, prediction.muzzleIndex, usesLauncherMuzzles(own.spec.gun, shell));
-    own.visual.gunDirWorld(_predictedShotDirection);
+    own.visual.gunDirWorld(_predictedShotDirection, prediction.muzzleIndex, usesLauncherMuzzles(own.spec.gun, shell));
     bus.emit('weapon:predicted', {
       fireIntentSeq: prediction.intentSeq, shooterId: id, isPlayer: true,
       shooterSpecId: own.specId, shellType: shell.type, shellName: shell.name,

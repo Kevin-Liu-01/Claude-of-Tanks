@@ -8,6 +8,7 @@ import {
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import { vehicleEraForId } from './taxonomy.ts';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from './suppliedSourceStudyIndex.ts';
+import { applyFleetLauncherMuzzles } from './fleetLauncherMuzzles.ts';
 import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_TURRET_PIVOT, GRIFFIN_TURRET_SCALE as GRIFFIN_T } from './profiles/griffinProportions.ts';
 
 const entries = [
@@ -116,6 +117,10 @@ function applySourceArmament(spec: FleetTankSpec): void {
   }
   if (spec.id === 'bmp3m_dragun125_x') applyDragunAssaultBalance(spec);
   applyGuidedShellLabels(spec);
+  // Balance donors own tuning, not physical launch exits. A cannon-only source
+  // must not inherit its peer's rack when metadata is synchronized again.
+  delete spec.gun.launcherMuzzles;
+  applyFleetLauncherMuzzles(spec);
 }
 
 /** The supplied Epokha turret has four Kornet and eight visible Bulat tubes.

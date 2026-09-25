@@ -24,7 +24,7 @@ export interface BattleVisual {
   turretTopWorld(out: Vector3): Vector3 | void;
   gunPivotWorld(out: Vector3): Vector3 | void;
   gunMuzzleWorld(out: Vector3, muzzleIndex?: number): Vector3 | void;
-  gunDirWorld(out: Vector3): Vector3 | void;
+  gunDirWorld(out: Vector3, muzzleIndex?: number, launcher?: boolean): Vector3 | void;
   setGroundSampler?(sampler: GroundSampler): void;
   syncFromState?(state: object): void;
   setVisible(visible: boolean): void;

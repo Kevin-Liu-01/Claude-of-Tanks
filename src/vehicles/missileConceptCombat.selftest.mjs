@@ -22,7 +22,8 @@ for (const [id, expected] of Object.entries(definitions)) {
   assert.equal(spec.gun.shells[0].guided, true, 'missiles are the actual initial selected weapon');
   assert.equal(spec.gun.launcherMuzzles.length, expected.cells);
   assert.equal(new Set(spec.gun.launcherMuzzles.map(p => JSON.stringify(p))).size, expected.cells);
-  assert(!counterpart.gun.launcherMuzzles, 'service counterpart is unchanged');
+  assert.equal(counterpart.gun.launcherMuzzles?.length ?? 0, id === 'object695_x' ? 12 : 0,
+    'service counterpart retains its own launchers, separate from concept geometry');
   assert.equal(counterpart.gun.caliberMm, id === 'object695_x' ? 57 : 105);
   const layout = internalLayoutFor(id);
   assert.equal(layout.confidence, 'owner-directed');
