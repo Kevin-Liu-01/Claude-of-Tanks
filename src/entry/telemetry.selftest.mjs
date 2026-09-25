@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   createEntryTelemetry, describeError, installEntryErrorTelemetry, randomSessionId,
-  setTelemetryOptOut, TELEMETRY_ENDPOINT, TELEMETRY_OPT_OUT_KEY, telemetryCode,
+  setTelemetryOptOut, TELEMETRY_ENDPOINT, TELEMETRY_OPT_OUT_KEY, telemetryBuild, telemetryCode,
   telemetryDisabledReason, telemetryOptOutStored,
 } from './telemetry.ts';
 import { validateTelemetryBody } from '../../api/telemetry.ts';
@@ -195,6 +195,11 @@ function accepted(body) {
   assert.equal(describeError({ message: 'x'.repeat(400) }).message.length, 200);
   assert.equal(telemetryCode(' stall: vehicle/paint '), 'stall:_vehicle_paint');
   assert.equal(telemetryCode(''), 'unknown');
+  // 2026-09-25 census: the stamp travelled as v1.0.0_g4a24eb4ad because the code alphabet has no '+'
+  assert.equal(telemetryBuild('v1.0.0+gd464a813f.dirty'), 'v1.0.0+gd464a813f.dirty', 'the build stamp keeps its +metadata');
+  assert.equal(telemetryBuild(' v1 dev '), '_v1_dev_');
+  assert.equal(telemetryBuild(''), 'unknown');
+  accepted({ v: 1, sid: 'sess_build_check', build: telemetryBuild('v1.0.0+gd464a813f.dirty'), kind: 'boot_ready' });
   for (let i = 0; i < 20; i++) {
     const id = randomSessionId();
     assert.match(id, /^s[a-z0-9]{13,}$/, 'session ids fit the server alphabet');

@@ -230,6 +230,11 @@ import { createBootScreen } from './ui/bootScreen.ts';
 // ENTRY TELEMETRY (docs/ENTRY-RESILIENCE.md): the anonymous beacon that turns
 // a friend's "it did not load" into a stage, a build and an error message.
 import { getEntryTelemetry, installEntryErrorTelemetry } from './entry/telemetry.ts';
+// CAPABILITY GATE: WebGL2, texture units, renderer family, storage and
+// workers are checked on a throwaway context before the real renderer.
+import {
+  bootCapabilityScreen, browserCapabilityHost, capabilitySummary, haltRefusedRenderer, runBootCapabilityGate,
+} from './engine/capabilityGate.ts';
 import { createBattleLoadScreen } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
@@ -340,7 +345,32 @@ const container = document.getElementById('app');
 if (!container) throw new Error('application root #app is missing');
 boot.begin('renderer');
 entryTelemetry.stage('renderer', 'begin');
-const renderer = createRenderer(container);
+// A hard capability stop (no WebGL2, refused context, too few texture units)
+// leaves its sentence and action on the boot screen and never resolves: the
+// document stays put instead of spending the chunk-recovery reloads on it.
+const bootCapability = await runBootCapabilityGate({
+  translate: t,
+  send: (event) => entryTelemetry.send(event),
+  screen: bootCapabilityScreen(document),
+  host: browserCapabilityHost(),
+  halt: (code, message) => window.__COT_BOOT_RECOVERY?.halt?.(code, message),
+  reload: () => location.reload(),
+});
+const renderer = await (async () => {
+  try {
+    return createRenderer(container);
+  } catch (error) {
+    entryTelemetry.error('renderer', error, 'context_refused');
+    entryTelemetry.send({ kind: 'capability', outcome: 'halted', code: 'context_refused', reason: 'renderer_threw',
+      capability: capabilitySummary(bootCapability.probe) });
+    return haltRefusedRenderer({
+      translate: t,
+      screen: bootCapabilityScreen(document),
+      halt: (code, message) => window.__COT_BOOT_RECOVERY?.halt?.(code, message),
+      reload: () => location.reload(),
+    });
+  }
+})();
 let graphicsContextLost = false;
 let rearmRafAfterContext = () => {}; // installed when the main loop is ready
 // MOBILE r2: GPU self-test + rescue ladder. The owner's iPhone renders every
@@ -353,6 +383,16 @@ let rearmRafAfterContext = () => {}; // installed when the main loop is ready
 installShaderErrorCollector(renderer);
 const _diag = runDeviceDiag(renderer);
 const _diagRescue = applyDiagRescue(renderer, _diag);
+// The capability summary travels once per session, with the tiers the real
+// renderer resolved (a notice code names software rendering or blocked storage).
+entryTelemetry.send({
+  kind: 'capability',
+  outcome: bootCapability.verdict.notices.length ? 'notice' : 'ok',
+  ...(bootCapability.verdict.notices[0] ? { code: bootCapability.verdict.notices[0].code } : {}),
+  capability: capabilitySummary(bootCapability.probe, {
+    tier: resolveDeviceTier(renderer), autoTier: resolveAutoTier(),
+  }),
+});
 const scene = new THREE.Scene();
 // campaign slice 3 (2026-09-12): trench works follow the live ground under each sector.
 const matchModeWorld = createMatchModeWorldPresentation(scene, {
@@ -3258,7 +3298,9 @@ entryTelemetry.send({
   kind: 'boot_ready',
   ms: window.__BOOT_MS,
   mode: STUDIO_BOOT_INTENT ? 'studio' : 'unknown',
-  timings: Object.fromEntries(Object.entries(BOOT_TIMINGS).filter(([key]) => !key.startsWith('gap>'))),
+  // Stage durations only: BOOT_TIMINGS also carries nested per-pass diagnostics.
+  timings: Object.fromEntries(['imports', 'renderer', 'sky', 'lighting', 'garage', 'vehicle', 'hud', 'ui', 'audio', 'post', 'studio', 'ready']
+    .filter((key) => typeof BOOT_TIMINGS[key] === 'number').map((key) => [key, BOOT_TIMINGS[key]])),
 });
 // Direct Studio navigation skips garage-only construction on the critical
 // path. Build the workshop shell while idle; enterGarage() resumes the normal

@@ -606,6 +606,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deploymentShadowWarm.selftest.mjs',
     'src/engine/deploymentUploadPrograms.selftest.mjs',
     'src/engine/bootLifecycle.selftest.mjs',
+    'src/engine/capabilityGate.selftest.mjs',
     'src/engine/garageGpuWarmRuntime.selftest.mjs',
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',

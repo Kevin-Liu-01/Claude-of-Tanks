@@ -173,4 +173,23 @@ assert.match(storageBlockedSecondAttempt.replacedUrl ?? '', /[?&]_bootretry=2-/,
 assert.match(storageBlockedSecondAttempt.replacedUrl ?? '', /[?&]_dplreset=1(?:&|$)/,
   'the deployment reset signal must survive storage-restricted recovery');
 
+// capability gate (2026-09-24): a deliberate stop keeps its sentence on the boot screen; the
+// document watchdogs, a later document error and a stage stall must all leave the page alone.
+const haltedBoot = createHarness(false);
+const haltedStage = { textContent: 'Starting engine' };
+haltedBoot.document.getElementById = (id) => (id === 'cot-boot-stage' ? haltedStage : null);
+haltedBoot.window.__COT_BOOT_RECOVERY.progress('renderer');
+haltedBoot.window.__COT_BOOT_RECOVERY.halt('no_webgl2', 'This browser has no WebGL2');
+assert.equal(haltedBoot.window.__COT_BOOT_HALTED, 'no_webgl2');
+assert.equal(haltedStage.textContent, 'This browser has no WebGL2', 'the gate sentence stays on the stage line');
+for (const { fn } of haltedBoot.timers) fn();
+haltedBoot.listeners.get('error')?.({
+  target: haltedBoot.window, message: 'later document failure', filename: '',
+  error: { message: 'later document failure', stack: '' },
+});
+haltedBoot.listeners.get('unhandledrejection')?.({ reason: new Error('Failed to fetch dynamically imported module') });
+assert.equal(haltedBoot.timers.some(({ ms }) => ms < 1000), false, 'a halted boot never schedules a recovery reload');
+assert.equal(haltedBoot.replacedUrl, null, 'a halted boot never replaces the document');
+assert.equal(haltedStage.textContent, 'This browser has no WebGL2', 'watchdog notices cannot overwrite the gate sentence');
+
 console.log('chunkRecovery.selftest: bounded failures recover without reloading healthy slow stages');

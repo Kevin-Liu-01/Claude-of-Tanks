@@ -414,6 +414,14 @@
     }
     .cot-boot-retry.on { display: block; }
     .cot-boot-retry:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    /* capability gate (2026-09-24): one-line notice under the bar — software rendering, blocked storage */
+    .cot-boot-notice {
+      margin: 8px auto 0; max-width: 420px; min-height: 0;
+      font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
+      font-size: 11px; font-weight: 600; line-height: 1.45; letter-spacing: .04em;
+      color: #9fb0bf; text-align: center; opacity: 0; transition: opacity .2s ease;
+    }
+    .cot-boot-notice.on { opacity: 1; }
     @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
     .cot-boot-foot {
       position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
@@ -461,6 +469,9 @@
       let stageTimer = 0;
       let stageRecoveryTimer = 0;
       let deferredRecoveryReason = '';
+      // Capability gate (2026-09-24): a deliberate stop on the boot screen
+      // (no WebGL2, refused context) must never be "recovered" by a reload.
+      let halted = false;
 
       function retryCountFromUrl() {
         try {
@@ -506,14 +517,14 @@
       }
 
       function showNotice(reason) {
-        if (navigating || window.__GAME_READY) return;
+        if (halted || navigating || window.__GAME_READY) return;
         const stage = document.getElementById('cot-boot-stage');
         if (stage) stage.textContent = reason === 'timeout' || reason.startsWith('stall:')
           ? 'Loading is taking longer than expected'
           : 'A game file did not load';
       }
       function showRetry(reason) {
-        if (navigating) return;
+        if (halted || navigating) return;
         const stage = document.getElementById('cot-boot-stage');
         let retry = document.getElementById('cot-boot-retry');
         if (stage) stage.textContent = reason === 'timeout' || reason.startsWith('stall:')
@@ -541,7 +552,7 @@
       }
 
       function recover(reason) {
-        if (navigating || recoveryScheduled) return;
+        if (halted || navigating || recoveryScheduled) return;
         if (!canAutoRecover()) {
           deferredRecoveryReason = reason;
           showRetry(reason);
@@ -600,6 +611,7 @@
         recover('preload');
       });
       addEventListener('error', (event) => {
+        if (halted) return;
         const node = event.target;
         const moduleScript = node && node.tagName === 'SCRIPT' && node.type === 'module';
         const message = String(event.message || '');
@@ -611,6 +623,7 @@
         }
       }, true);
       addEventListener('unhandledrejection', (event) => {
+        if (halted) return;
         const message = String(event.reason && (event.reason.message || event.reason) || '');
         const bootRuntime = !window.__GAME_READY
           && isSameOriginGameCode(`${message} ${event.reason?.stack || ''}`);
@@ -661,7 +674,18 @@
         else showRetry('timeout');
       }, WATCHDOG_RECOVER_MS);
 
-      window.__COT_BOOT_RECOVERY = { recover, showRetry, progress, state };
+      // The capability gate stops the boot on purpose: keep its sentence on the
+      // stage line, disarm every watchdog and ignore later document errors.
+      function halt(code, message) {
+        halted = true;
+        window.__COT_BOOT_HALTED = String(code || 'halted');
+        if (stageTimer) clearTimeout(stageTimer);
+        if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
+        const stage = document.getElementById('cot-boot-stage');
+        if (stage && message) stage.textContent = String(message);
+      }
+
+      window.__COT_BOOT_RECOVERY = { recover, showRetry, progress, state, halt };
     })();
   </script>
 </head>
@@ -825,6 +849,7 @@
         </div>
         <div class="cot-boot-bar"><div class="cot-boot-fill" id="cot-boot-fill"></div></div>
         <div class="cot-boot-ticks" id="cot-boot-ticks"></div>
+        <div class="cot-boot-notice" id="cot-boot-notice" aria-live="polite"></div>
       </div>
 
       <div class="cot-boot-tip" id="cot-boot-tip"></div>
