@@ -1106,7 +1106,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     // (critic r1: the pitched floating rods read as sail fins).
     for (const s of [-1, 1]) {
       P.add('turretDark', cylY(0.035, 0.045, 0.07, 10), s * 1.30, 0.675, -1.97); // whip base drum
-      P.add('turretDetail', box(0.020, 0.020, 0.60), s * 1.24, 0.657, -1.70, 0.015, s * 0.30, 0); // whip rod lying on the roof
+      P.add('turretDark', box(0.020, 0.020, 0.60), s * 1.24, 0.657, -1.70, 0.015, s * 0.30, 0); // whip rod lying on the roof (dark, FSP-06)
       P.add('turretDetail', box(0.05, 0.028, 0.03), s * 1.16, 0.655, -1.48, 0, s * 0.30, 0); // retaining clip
       P.add('turretDetail', box(0.05, 0.028, 0.03), s * 1.06, 0.655, -1.18, 0, s * 0.30, 0);
     }
@@ -1142,7 +1142,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     const topReel = new THREE.RingGeometry(0.285, 0.355, P.q ? 28 : 18);      // Object_21 left-rear basket reel
     topReel.rotateX(-Math.PI / 2);
     P.add('turretDetail', topReel, -1.098, 0.735, -2.218);
-    P.add('turretDetail', torus(0.320, 0.035, P.q ? 28 : 18), -1.098, 0.700, -2.218); // physical cable depth, top held at datum
+    P.add('turretDark', torus(0.320, 0.035, P.q ? 28 : 18), -1.098, 0.700, -2.218); // physical cable depth, top held at datum (coiled cable: dark, FSP-06)
     P.add('turretDark', cylY(0.045, 0.055, 0.060, 12), -1.098, 0.705, -2.218); // reel axle/hub
     for (const a of [0, Math.PI / 2]) {
       const topSpoke = new THREE.PlaneGeometry(0.62, 0.025);
@@ -1229,7 +1229,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
       const cableReel = new THREE.RingGeometry(reelInner, reelOuter, P.q ? 20 : 14);
       cableReel.rotateY(Math.PI);
       P.add('turretDetail', cableReel, x - s * 0.02, 0.42, z - 0.006);
-      P.add('turretDetail', xform(torus(s < 0 ? 0.112 : 0.054, s < 0 ? 0.022 : 0.014, P.q ? 20 : 14),
+      P.add('turretDark', xform(torus(s < 0 ? 0.112 : 0.054, s < 0 ? 0.022 : 0.014, P.q ? 20 : 14),   // coiled cable (dark, FSP-06)
         0, 0, 0, Math.PI / 2, 0, 0), x - s * 0.02, 0.42, z - 0.020);           // asymmetric physical rear reel depth
       P.add('turretDark', cylZ(s < 0 ? 0.022 : 0.014, 0.060, 10), x - s * 0.02, 0.42, z - 0.028);
       for (const a of [-0.78, 0.78]) {
@@ -1652,11 +1652,11 @@ function buildK1A1Turret(P: Modern3BuilderPort) {
     // −7 dims for +1 curve: the spike budget stays mast-only.
     P.add('turret', cylY(0.050, 0.055, 0.11, 10), 0.40, 0.555, -1.35);         // buried whip pedestal
     P.add('turretDark', cylY(0.032, 0.042, 0.045, 10), 0.40, 0.6325, -1.35);   // whip base drum at the print station
-    P.add('turretDetail', box(0.020, 0.020, 0.52), 0.36, 0.635, -1.20, 0.045, 0.26, 0); // folded whip rod
+    P.add('turretDark', box(0.020, 0.020, 0.52), 0.36, 0.635, -1.20, 0.045, 0.26, 0); // folded whip rod (dark, FSP-06)
     // second mount FOLDED (left rear)
     P.add('turret', cylY(0.050, 0.055, 0.09, 10), -1.10, 0.535, -1.35);        // buried left whip pedestal
     P.add('turretDark', cylY(0.032, 0.042, 0.045, 10), -1.10, 0.5925, -1.35);  // whip base drum, carried by the tapered bustle
-    P.add('turretDetail', box(0.020, 0.020, 0.48), -1.06, 0.595, -1.22, 0.045, -0.26, 0); // folded whip rod
+    P.add('turretDark', box(0.020, 0.020, 0.48), -1.06, 0.595, -1.22, 0.045, -0.26, 0); // folded whip rod (dark, FSP-06)
     const rack = FITTINGS.stowageRack({ mats: P.mats, w: 2.34, d: 0.46, h: 0.32,
       mesh: false, fill: 0.72, seed: 23, rotation: [0, Math.PI, 0] });
     rack.position.set(0, 0.13, -1.86);                                         // bustle basket tied directly into the shortened shell
