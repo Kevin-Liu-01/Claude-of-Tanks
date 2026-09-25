@@ -191,7 +191,39 @@ with 28 bots on the heaviest maps; the target is ≤ 6 ms per 60 Hz tick on one 
 
 ## 6. Entry resilience (R3)
 
-<!-- AUDIT-2: the first-entry audit's ranked failure causes are folded in here when it lands. -->
+### 6.1 Why first entry fails today (audit of 2026-09-24)
+
+Boot is one top-level-await module (`src/main.ts`, 3279 lines) behind an inline splash and an
+inline chunk-recovery watchdog in `index.html`; 2.57 MB of eager JS (0.73 MB brotli) plus 103
+module preloads; the world, fleet builders and combat shaders are paid on the first battle.
+Ranked causes, with the evidence:
+
+1. **No WebGL2 gate.** `engine/renderer.ts:61` constructs the renderer unguarded; three throws
+   out of module evaluation, `index.html:602` spends two silent reloads and ends on "A game file
+   did not load" — the same words as a missing chunk or a merely slow device.
+2. **Boot watchdogs fire on healthy work.** `index.html:654/:658` show a retry at 30 s and force a
+   reload at 60 s, including during the download/parse window where no stage heartbeat can run.
+3. **Assets are not immutable.** `index.html` and `/assets/*.js` both ship
+   `public, max-age=0, must-revalidate` (verified live); 104 blocking revalidations precede boot.
+4. **The reveal budget throws.** `game/battleEntryLifecycle.ts:100-107` (1.5 s + 120 ms per
+   vehicle) and `engine/frameScheduler.ts:68-77` (1000 ms paint) are wall-clock assertions about
+   the user's GPU; on the network path `networkBattlePresentationRuntime.ts:655` turns them into
+   a failed join while the peer keeps waiting.
+5. **The ready barrier is all-or-nothing.** `matchRuntime.ts:981-996` needs every peer welcomed
+   and ready; the waiting client gives up at 60 s with "Another player did not finish loading".
+6. **Solo battle entry fails silently.** `soloBattleEntryRuntime.ts:83-89` logs and returns to
+   the garage with no message.
+7. **Texture-unit ceiling unverified.** The terrain material sits at 16 samplers and nothing
+   reads `MAX_TEXTURE_IMAGE_UNITS`; a link failure on a 16-unit GL is unrecoverable by the
+   black-scene watchdog (to be measured with a device-limit probe, not assumed).
+8. **WebRTC blocked degrades silently.** `iceConfig.ts:56-64` falls back to an empty server list
+   and the join dies 60 s later as a generic timeout.
+9. **No production error signal** — `@vercel/analytics` page views only, injected 3.8 s in.
+10. **Invite overhead.** The invite link pays a middleware shell fetch, the whole boot and the
+    press-any-key gate before `autoJoin` starts; the host is already waiting.
+
+Phase 0 fixes 1, 2, 3, 6, 8 and 9 on the v1 product now and softens 4; v2's entry runtime removes
+5 and 10 by design (the server starts the match; a client joins the room while it loads).
 
 The program's rules, independent of the audit's specifics:
 
