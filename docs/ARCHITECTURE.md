@@ -568,6 +568,12 @@ Exports locked in §2.7. Additional requirements:
   { group, obstacles: AABB[], colliders /* for raycast */, features /* minimap */ }` —
   rocks, ~10-building village, walls/cover, roads are terrain-material features
   (getGroundType returns 'hard' on them).
+- Water: `shallowWater.ts` owns the translucent sea / lake sheet over the admitted wet cells and its apron past
+  the square; `waterRipples.ts` the world-anchored GPU shallow-water field it reads for wakes and splashes; and (round
+  66) `oceanSpectrum.ts` + `oceanFft.ts` the FFT ocean — a per-map spectrum (`ocean` block on the map config) turned
+  into displacement / slope / foam maps by fragment-shader butterfly passes every frame — that the sheet displaces
+  and shades with. The in-square sea colour and the marine ring faces stay the terrain material's; nothing here
+  adds a terrain sampler.
 - Building authoring has two performance contracts. Landmark geometry and its
   connected exterior fixtures merge into existing material buckets before GPU
   upload. Repeated destructible structures keep one intact and one broken

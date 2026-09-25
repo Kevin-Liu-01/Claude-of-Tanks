@@ -2565,6 +2565,152 @@ stands proud of the face; an earth-covered gallery (a fill prism on the roof) wo
 The A/B captures of items 4 and 6 are the receipts, not frames (a 3 cm bob and a re-rolled wrack line under the same
 law are not pictures).
 
+### Round 66 — 2026-09-24: an FFT ocean
+
+Lane r66-fft-ocean from origin/main 5a0c2e679 (the deploy-84 row). Owner 2026-09-24 (with the Tidewater demo and its
+frames): "some of these assets and shaders and skies and graphics are incredible and will help us improve stuff a lot"
+— the water target is a moving multi-scale surface with sky reflection, clear shallows over a visible bed with caustic
+ripples, whitewater only at the shore break, no uniform foam. The reference is WebGPU + WGSL compute on its own engine,
+so nothing drops in; the ocean below is written first-party in GLSL from the papers, with the reference read for
+structure and constants only. No third-party code or assets entered the tree.
+
+**Model.** Tessendorf, *Simulating Ocean Water* (SIGGRAPH course notes, 2001): the surface is the inverse 2-D Fourier
+transform of a field of complex amplitudes h̃(k, t) = h̃0(k) e^{iωt} + h̃0*(−k) e^{−iωt}, ω² = g k tanh(k d); the
+horizontal ("choppy") offsets Dx, Dz = iλ (k/|k|) h̃ and the derivatives dDy/dx, dDy/dz, dDx/dx, dDz/dz, dDx/dz come from
+the same transform, and where the Jacobian of the choppy map drops below one the crest is folding — that is where foam
+is made. h̃0 comes from an empirical directional spectrum (Horvath, *Empirical directional wave spectra for computer
+graphics*, DigiPro 2015): the JONSWAP frequency spectrum of Hasselmann et al. (1973) with its fetch laws for α and ωp,
+the TMA finite-depth factor (Bouws et al. 1985, Kitaigorodskii form), Hasselmann's (1980) cos^{2s} directional
+spreading blended with a plain cos², and the change of variables Ψ(k) dk² = S(ω) D(θ, ω) (dω/dk) / k. A second, long-
+fetch, narrowly spread system is the swell; it carries an authored share of the wind sea's energy.
+
+**Cascades.** Three patches — 400 / 96 / 12 m on the coasts, 200 / 48 / 8 on the lakes, 120–140 / 30–32 / 6 on the
+rivers and marshes — partition the wave-number plane by band: a wave belongs to the smallest patch that still holds
+six of its wavelengths, so the swell, the wind chop and the capillary ripple each get a whole 128² grid. The tiles stack
+in ONE texture (128 × 3·129 texels): every pass touches every cascade at once, and each tile carries one padded row that
+repeats its first, so bilinear sampling wraps inside the tile (x wraps through the sampler, z through the pad). The
+maps carry no mip chain; a cascade finer than a pixel's footprint fades out of the normal instead of aliasing.
+
+**The transform on WebGL2 (no compute).** `src/world/oceanSpectrum.ts` (THREE-free) builds the time-zero spectrum on
+the CPU — h̃0(k) beside h̃0*(−k) in one RGBA32F texel, the Nyquist line and k = 0 empty, seeded Box-Muller phases,
+sliced per cascade between the world builder's yields — and generates the GLSL of every pass. `src/world/oceanFft.ts`
+runs them: a Stockham inverse FFT as fragment-shader passes over RGBA32F ping-pong targets with two colour outputs
+(A = Dx + iDz, Dy + i dDx/dz; B = dDy/dx + i dDy/dz, dDx/dx + i dDz/dz — every field is real in space because each
+spectrum is Hermitian, so two real fields ride in one complex transform), radix 16 then 8 per axis, four passes a
+frame: the first evolves the spectrum to the current time and packs the fields, the middle ones are butterflies, the
+last applies the (−1)^{x+z} sign of the centred k origin, accumulates the Jacobian foam against the previous frame's
+map and writes the two RGBA16F maps the sheet samples — displacement (λDx, Dy, λDz, foam) and derivative (dDy/dx,
+dDy/dz, λ dDx/dx, λ dDz/dz). A per-output Stockham stage needs no shared memory: the output index names its butterfly
+group, its slot in the radix-R DFT and the group's base input; the receipt runs the same index arithmetic in JavaScript
+against a direct DFT (error 1e-14) and a headless read-back of the GPU maps matched the CPU reference to 2.4·10⁻⁴ on
+0.3 m amplitudes (half-float storage precision) on all three cascades. Tiers: the mobile tier and receipts (no
+renderer) keep the sheet untouched; the desktop `low` preset halves the grid and every preset below `high` transforms
+on alternate frames.
+
+**The sheet (`shallowWater.ts`, program key v13).** The long cascade displaces the sheet's own 8 m vertices (it holds
+the ≥ 16 m waves; the shorter cascades live in the normal); the displacement flattens over the bank band and stops at
+the water's edge, where the crest instead lifts a thin film a few centimetres up the strand. In the fragment stage the
+cascades' slopes join the normal beside the normal-map wave and the round-46 reactive field (which composes on top
+unchanged: wakes and splashes still read); the Jacobian foam whitens through the same foam path as the churn, torn by
+the fine wave texture (round 46's lesson: foam that saturates is milk). Depth-aware breakers read `getWaterDepthAt`'s
+bed law in the shader (bed = depthM · w²(3 − 2w) of the mask wetness — the same function, so no bed texture and no
+terrain sampler): where the bed rises into the wave band the slopes steepen (shoaling), the long cascade's crest breaks
+white over the bank band, and past the break the whitewater runs up the strand with the crest and drains back (the
+swash), the water's edge breathing with the swell instead of standing on one mask contour. Caustics on the shelf bed:
+the sun ray refracts at the flat surface and lands `bed` metres down; the finest cascade's curvature at that entry point
+focuses or spreads the light (a thin lens of index 1.333: the one-bounce form of Wallace's photon splatting, its
+concentration 1 / (1 + 0.25·d·∇²h) taken as a bounded odd shaping tanh(−4.5·d·∇²h) — the raw concentration has a
+positive mean over a zero-mean curvature field and bleached the whole band white; the converging half at full weight,
+the diverging half at a third, so the network is bright lines over a bed barely darker between them — and the lens
+constant raised twelvefold because the 12 m / 128 tile resolves ripples of 20 cm and longer, a fraction of the
+curvature real capillary ripples carry) and the sheet adds that gain to the share of the bed the sheet shows (1 − α) — no terrain-material change,
+the terrain material stays at its sixteen texture units and its program key v39, and the round-40 marine ring faces
+are untouched.
+
+**Per-map sea states.** Every map with a water sheet authors an `ocean` block (wind speed and the direction it blows
+toward, fetch, swell share, amplitude, choppiness, foam, breakers, caustics) over the defaults of its water kind; the
+owner's approved maps keep a low amplitude so they read the same from the chase camera.
+
+| Map | kind | wind | fetch | swell | amplitude | λ | patches | Hs (per cascade) | foam | breakers | caustics |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| coastal | coast | 5.2 m/s → 190° | 30 km | 0.35 | 0.7 | 0.9 | 400 / 96 / 12 m | 0.50 m (0.39 / 0.32 / 0.04) | 0.5 | 0.85 | 0.6 |
+| saltwind | coast | 5 m/s → 8° | 24 km | 0.4 | 0.75 | 0.9 | 400 / 96 / 12 m | 0.47 m (0.30 / 0.35 / 0.05) | 0.5 | 0.9 | 0.7 |
+| fjord | coast | 3.2 m/s → 250° | 6 km | 0.1 | 0.45 | 0.7 | 400 / 96 / 12 m | 0.08 m (0.02 / 0.07 / 0.03) | 0.15 | 0.3 | 0.5 |
+| reservoir | lake | 3 m/s → 150° | 3 km | 0 | 0.6 | 0.6 | 200 / 48 / 8 m | 0.06 m (0.00 / 0.06 / 0.03) | 0 | 0.15 | 0.5 |
+| delta | river | 2.4 m/s → 110° | 2 km | 0 | 0.55 | 0.4 | 120 / 30 / 6 m | 0.04 m (0.00 / 0.03 / 0.02) | 0 | 0.05 | 0.35 |
+| monsoon | river | 2.8 m/s → 200° | 2.5 km | 0 | 0.6 | 0.4 | 120 / 30 / 6 m | 0.05 m (0.00 / 0.05 / 0.02) | 0 | 0.05 | 0.25 |
+| autumn | river | 2.6 m/s → 100° | 2 km | 0 | 0.6 | 0.4 | 120 / 30 / 6 m | 0.04 m (0.00 / 0.04 / 0.02) | 0 | 0.05 | 0.35 |
+| polders | marsh | 3.6 m/s → 300° | 5 km | 0 | 0.9 | 0.4 | 140 / 32 / 6 m | 0.15 m (0.04 / 0.14 / 0.03) | 0.05 | 0.2 | 0.3 |
+| skybridge | lake | 3.8 m/s → 40° | 4 km | 0 | 1 | 0.6 | 200 / 48 / 8 m | 0.15 m (0.01 / 0.14 / 0.05) | 0.1 | 0.25 | 0.55 |
+| mangrove | marsh | 2.6 m/s → 80° | 3 km | 0 | 0.8 | 0.4 | 140 / 32 / 6 m | 0.07 m (0.00 / 0.07 / 0.03) | 0 | 0.15 | 0.25 |
+| oasis | lake | 2.8 m/s → 120° | 2 km | 0 | 0.7 | 0.6 | 200 / 48 / 8 m | 0.05 m (0.00 / 0.05 / 0.03) | 0 | 0.1 | 0.9 |
+
+**Verified.** The pixels, measured against the base tree (origin/main 5a0c2e679) with `tools/map-view-probe.mjs` on eighteen
+water views of the eleven maps (far, bird, edge, shore, strand, jetty and bridge views; 198 pairs), the in-water chase
+probe (`.qa-dev/water-chase-probe.mjs`: the hull teleported onto the broadest wet cell, chase / bird / side) and the
+close-up probe (`.qa-dev/ocean-closeup-probe.mjs`: the strand, the bank band straight down and oblique, the shallows,
+with the sheet's debug channels 2–5 — the long cascade's lift, the whitewater, the fine tile's footprint weight, the
+caustic focus — and the caustic / breaker terms zeroed one at a time). Far and bird views (centre-far, bird-w, bird-n)
+moved ≤ 2.6 % of their pixels with a mean |Δ| ≤ 0.7 / 255 on every map against the round-59 3.5 % far-pose floor —
+the footprint fade keeps the cascades out of the distant sheet, so nothing sparkles or aliases from a bird's eye — the
+one exception Saltmere's centre-far (8.6 % / 2.3), whose right half is the open sea, now moving. On the shore views the
+composites show the change where the water is (Saltwind's surf line along the strand, the finer chop and the whiter
+wash around Saltmere's pier, the clear caustic mottle on Highland Reservoir's shelf) and grass or tree sway where it
+is not (the polders' and Delta's edge views, Reservoir's jetty-fjord-low: a tree, a rock and grass, 30–60 % "moved").
+From the chase camera in the water (a 1000 × 530 px water box) the four approved maps read as the same water: mean
+|Δ| 3.8 (Nordhavn), 10.0 (Delta), 8.0 (Monsoon), 5.2 (Reservoir) against a same-tree run-to-run floor of 4.0 / 9.2 /
+5.8 / 4.0 (the base captured twice: the sheet's own drifting wave texture is never at the same phase), and the box's
+mean luma +1.5 / +1.9 / +0.3 / +1.3 of 255 against the floor's ±0.8 — the tolerance rule: mean |Δ| within 2.5 of the
+floor and mean luma within ±2 / 255. The flat seas move on purpose: Saltwind −2.7 luma with mean |Δ| 13.1 (floor 13.6:
+the bay already carried the strongest normal-map wave), the polders +3.0 / 7.7 (floor 2.6), Skybridge +2.2 / 4.3
+(floor 0.6), Mangrove Reach +0.8 / 8.4 (6.0), the oasis +3.2 / 4.3 (1.4), Saltmere +1.7 / 18.7 (20.2). Eye check of the 1280 px reductions: no zebra
+bands, no milk foam (the whitecaps are sparse and torn: the coast maps' Jacobian bias 0.81, the lakes' 0.62–0.66 make
+foam only where a crest folds), no phase-locked corduroy (three cascades at non-integer ratios, Box-Muller phases per
+texel), breakers only over the bank band and the run-up only on the strand. Four tuning rounds on the way: the thin-
+lens gain at the paper's constant read as ±2 % (invisible); the raw concentration then bleached Saltwind's bank band
+white (isolation captures: the band vanished with the caustic term off, stayed with the break off); the symmetric tanh
+read as dark blotches from the chase camera; the shore break as one smooth band until gated to the crest tops.
+
+**Performance.** The transform's own cost by the slope method (`.qa-dev/ocean-cost-probe.mjs`: a timer query around k = 1 and
+k = 8 transforms, the per-transform cost (T₈ − T₁) / 7 cancelling the timer's constant): 0.61–0.77 ms GPU and 0.014 ms
+CPU per frame on Saltwind / Saltmere / Reservoir / Delta / the polders — the GPU figure on ANGLE Metal's command-buffer-
+granular timer, so it carries the fixed cost of four render encoders and is an upper bound; the fragment work of a
+128 × 387 pass is a few hundredths of a millisecond. The sheet's shading (three cascade fetches for the normal, one
+for the displacement, five for the caustic Laplacian, all RGBA16F, on the sheet's pixels only) adds no CPU and could
+not be separated from the noise of a machine at load 20–60 with the gate's suites and their headless browsers on the
+GPU: the in-page on / off deltas swung between −0.8 and +7 ms GPU across runs while the CPU deltas stayed at 0.0–0.5 ms.
+The round-59-style pairs (`.qa-dev/r66-map-perf-probe.mjs`, base → r66 per map, 90 frames a pose): chase-pose CPU
+median Δ 0.0 ms across the eleven maps (−7.9 … +5.8 between pairs at load 8–35), programs +5 on every map (the four
+passes and the reset), triangles identical, draw calls +1 … +6 (the sheet is one draw; the rest is the bots' poses),
+scene textures unchanged. Two knobs stand ready if the integrator's clean measurement lands over the +0.6 ms line:
+`oceanFrameStride` (alternate frames, what the medium preset already does) and `oceanGridSize` (64², the low preset's
+grid), both per preset in `oceanFft.ts`.
+
+**Receipts (exit 0).** `src/world/oceanFft.selftest.mjs` (new, registered in the world group): the Stockham stages against a direct DFT
+at n = 8 … 256, the 8 × 8 field against the double sum, spectrum symmetry / bands / energy, the GLSL of every pass, the
+gates, the pass sequence on a recording renderer, the presets, the sheet handshake, the terrain wiring and the eleven
+authored sea states; `shallowWater` (the terrain call shape and key v13 re-pinned), `waterRipples` (unchanged),
+`terrainMaterialOwnership` (the program key v39 and the fetch census untouched: no terrain change), `horizonResources`,
+`horizonMesaSurface`, `mapQuality`, `environmentExpansion`, `worldBuildCoordinator`, `edgeWater`, `shoreline`,
+`badlandsRelief` (`round66Ocean.test-support.mjs` projects the eleven `ocean` blocks), `playableRelief`,
+`villageWear` and `mangroveWaterPalette` (config digests re-pinned with dated notes), `terrainStreaming` /
+`terrainSplatFields` / `terrainWetLayer` / `sourcedTerrainPreparation` / `wallSkyLight` (the sea block's new
+identifiers sit inside the sandboxed `if (cfg?.splat?.seaLake …)` block), `garageSkyPresets`; the 100-receipt sweep
+of every receipt naming a changed file (`grep -rl <basename>`), `selftest-suites`, `public-repo-hygiene`,
+`attribution:check`, `npm run typecheck` — all exit 0. A headless GPU proof (`.qa-dev/ocean-gpu-probe.mjs`): every
+program of a Saltwind battle links (215 programs, the terrain at 16 samplers, the sheet at 12), and the displacement
+map read back at t = 3 s matches the CPU reference to 2.4·10⁻⁴ m (half-float storage) on all three cascades.
+
+**Open.** The transform's four encoders cost more than their fragments (the stride / grid knobs above); a fourth cascade at
+~3 m would resolve the capillary networks real caustics come from (one more tile, the same passes); the displaced
+surface is presentation only — `getWaterSurfaceHeightAt`, the buoys, the moored hulls, the splashes and the ride keep
+the mean level (the sea maps' swell stays under 0.35 m, below the jetty decks' 0.45 m clearance); the run-up whitens
+the sheet but does not wet the sand (a wet-sand band is the terrain material's, untouched by this round); the foam
+feedback primes once like the ripple field (a GPU-residency suspension would restart it from whatever the restored
+targets hold); the oasis' network at its 0.9 knob is the strongest of the fleet and wants the owner's eye; the mobile
+tier keeps the round-47 sheet. The reference's breakers (a plunging lip as a ribbon mesh, spray particles, an Eulerian
+shore simulation) are not ported: the round's break is the crest's own whitewater and run-up on the sheet.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -2672,6 +2818,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 63 | Tarkhan's railway cutting and the bridge's open arches: a spur authors `cutting: { from }` (`railSpurs.ts`) — a 2.4 % bed from the portal, an 8 m floor between 0.7:1 batter faces, dug last on final queries, the exclusion on floor/cess/faces; the siding runs to the map edge (`bufferStop: 'start'`); past the edge the notch opens into a valley along the radial and the height field publishes an outland seat weight the horizon ring seats its near rows on (every other ring byte-identical) with the ring forest off the right-of-way; Amberford's bridge record split into 31 parts that follow the geometry (deck from the crown line, abutments, piers, four vault bands per arch, parapets) so shells pass the openings and the deck stays the floor; both shards recaptured (steppe byte-identical) | headless A/B of the height field (103 corridor samples, 0 road nodes), the outland and the ring rows; map-view-probe A/B on three new cutting views (station 71.7 %, edge 86.8 %, exit bird 84.5 % of the world band moved; the bridge views frame noise); shell traces through every arch at eight heights A/B and the hull-underpass / support probe; battlePacing full 14/124 (Tarkhan 1/4, Amberford 0/4); receipts in the section |
 | 65 | A physically based atmosphere for every battlefield: Hillaire 2020 transmittance / multiple-scattering / sky-view LUTs as fragment passes with a summary readback (`engine/atmosphere.ts`), the desktop dome sampling the sky-view LUT with the sun disc through its transmittance (the legacy disc energy kept: PMREM folds it into the ground's fill), the round-22 night sky and Mars' galaxy on top, the aerial pass targeting the LUT along each view ray (round 37 per pixel), the hemisphere hue from the sky irradiance, the preset → parameter mapping calibrated against the legacy dome on the twelve good maps; Mars authors its thin CO2 sky; the Preetham path kept for the mobile tier | CPU twin vs GPU summary 0.2 %; map-view-probe A/B on 31 maps × 4 views with sky boxes and the skyline metric (good-map anti-solar bands within 10 % on seven, skylines ±0.05; arid check 5 desert 1.49 → 1.18, skybridge 1.66 → 0.94; winter 0.85 / 0.90, whiteout unchanged); eye check of the 1280 px reductions of the eleven bland and four good maps; perf counts identical (+7 programs); the receipts in the section |
 | 67 | The open notes of rounds 58–63 closed, one commit each: Tarkhan's spur runs on down the valley to a derived tunnel portal (headwall 125 m out on the radial, a 75 m gallery to the ring's first ridge line — rim + 200 m, the same constant in horizon.ts and railSpurs.ts — a dark 45° bore floor hiding the ring face, one `tunnel-portal` record across the floor; the ring's seated rows now exactly on the outland bed inside the corridor); the batter faces seed sparse grass and scrub on their upper two thirds through a `_batterSeedAt` height-field hook (the exclusion keeps trees and props off; a face candidate passes the 474 m rim cull); the bridge's vault bands halved to 0.1375 m (a shell's height error against the arc ≤ 6.9 cm; 31 → 55 parts, Amberford's shard recaptured); the moored hull bobs and sways render-side from the world clock (one mesh per hull, matrices composed under the frozen world); Saltwind's piers sized to the shelf (7 / 8 spans); the wrack line's per-station draw streams (1,186 pieces byte-identical past a moved keep-out); the press ring's land-only fallback bearings (Polders 2's straight-in press); round 64's plate/hero/thumbnail closed as render noise. Pacing 0/124, median 351.4 s. | Tarkhan `cutting-exit-bird` 29.4 % of the world band moved (the portal, the track, the gallery), `cutting-portal-low` 8.8 %, the batter crops seeded, Saltwind `jetty-w-low` 8.2 %; steppe and autumn shards recaptured headless. |
+| 66 | An FFT ocean on every sea, bay and lake sheet (Tessendorf 2001, Horvath 2015): a JONSWAP + TMA directional spectrum per map (`ocean` block on the config: wind, fetch, swell, amplitude, choppiness, foam, breakers, caustics), three cascades in one stacked-tile texture, the inverse FFT as four fragment-shader Stockham passes (radix 16 / 8 per axis) over RGBA32F ping-pong MRT targets — no compute on WebGL2 — writing displacement / derivative / Jacobian-foam maps; the sheet (`shallowWater.ts` v13) displaces its vertices with the long cascade (flattened over the bank, a run-up film at the edge), joins the cascades' slopes to its normal with a footprint fade, whitens by the Jacobian, breaks the crest tops over the bank band and runs the whitewater up the strand (depth-aware from `getWaterDepthAt`'s bed law in the shader), and lights the shelf bed with thin-lens caustics from the finest cascade; the round-46 field composes on top, the terrain material and the marine ring faces untouched; the four approved maps at low amplitude, the flat seas (Saltwind, the polders, Skybridge, Mangrove Reach, the oasis) gain the moving surface; mobile keeps the old sheet, low halves the grid, medium alternates frames | oceanFft.selftest (butterfly vs DFT 1e-14, 8×8 field vs the double sum, spectrum symmetry, pass GLSL, gates, pass sequence, presets, handshake, wiring, eleven sea states); headless GPU read-back vs the CPU reference 2.4·10⁻⁴ m, 215 programs linked, terrain at 16 samplers; map-view-probe 198-pair A/B (far / bird ≤ 2.6 % moved, ≤ 0.7 mean |Δ|), in-water chase A/B (approved maps' water box within ±2 / 255), close-ups with debug channels and term isolation, eye check of 1280 px reductions; transform 0.61–0.77 ms GPU (granular timer, upper bound) / 0.014 ms CPU by the slope method; the receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
