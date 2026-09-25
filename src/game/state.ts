@@ -1740,7 +1740,7 @@ function readyShellForFire(
   bus: EventBus,
 ): DamageShellSpec | null {
   const combat = entity.combat;
-  if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return null;
+  if (!entity.input.fire || combat.destroyed) return null;
   if (mainWeaponModuleState(combat) === 'red') return null;
   const maximumSlot = entity.spec.gun.shells.length - 1;
   const requestedSlot = Math.max(
@@ -1749,10 +1749,12 @@ function readyShellForFire(
   );
   if (requestedSlot !== combat.shellSlot) {
     if (!selectShell(combat, requestedSlot, entity.spec)) return null;
-    if (combat.reload.t > 0) return null;
   }
+  // Check the requested weapon, not the previous one: an auxiliary launcher
+  // can fire while the cannon reloads, including input-driven bot selections.
+  if (combat.reload.t > 0) return null;
   const shell = entity.spec.gun.shells[combat.shellSlot];
-  if (shell.guided !== true && combat.magazine && combat.magazine.rounds <= 0) return null;
+  if (shell.guided !== true && !shell.reloadGroup && combat.magazine && combat.magazine.rounds <= 0) return null;
   if (hasAmmunition(combat, combat.shellSlot)) return shell;
   if (entity.isPlayer) {
     bus.emit('ammo:empty', { id: entity.id, slot: combat.shellSlot });

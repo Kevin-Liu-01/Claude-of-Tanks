@@ -263,11 +263,6 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       });
       return;
     }
-    if (slot === player.combat.shellSlot && player.combat.magazine &&
-        player.spec.gun.shells[slot]?.guided !== true) {
-      bus.emit('ui:magazineReload', {});
-      return;
-    }
     const action = player.specialAction;
     if (action?.kind === 'guided_missile' && slot === action.missileSlot
         && player.combat.shellSlot !== action.missileSlot

@@ -43,10 +43,11 @@ for(const id of ['ztz100_prototype','object695_x']){
   const spec=getSpec(id),c=createCombatState(spec);
   startPostShotReload(c,spec);const progress=c.launcherSalvoShots;
   assert.equal(c.reload.kind,'intraClip');
-  selectShell(c,1,spec);assert.equal(c.reload.t,spec.gun.shells[1].reloadS);
+  const rack=c.reload, remaining=rack.t;
+  selectShell(c,1,spec);assert.equal(c.reload,rack);assert.equal(c.reload.t,remaining);
   selectShell(c,2,spec);startPostShotReload(c,spec);
   assert.equal(c.launcherSalvoShots,progress);
-  tickReload(c,1);selectShell(c,0,spec);assert.equal(c.reload.t,spec.gun.shells[0].reloadS);
+  tickReload(c,1);selectShell(c,0,spec);assert.equal(c.reload,rack);assert.equal(c.reload.t,Math.max(0,remaining-1));
   c.modules.missileRack.state='red';startPostShotReload(c,spec);
   assert(c.reload.t>spec.gun.launcherSalvo.intervalS,'damaged rack slows the firing cycle');
 }

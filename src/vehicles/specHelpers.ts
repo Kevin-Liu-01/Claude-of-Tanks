@@ -66,6 +66,8 @@ export interface ShellSpec extends Record<string, RuntimeValue> {
   velocityMps: number;
   moduleDmg: number;
   reloadS?: number;
+  /** Ammo types in a named secondary weapon share a reload independently of the main gun. */
+  reloadGroup?: string;
   count?: number;
   tracer: string;
   guided?: boolean;

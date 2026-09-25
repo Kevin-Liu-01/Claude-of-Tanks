@@ -89,7 +89,15 @@ for (const spec of Object.values(TANK_SPECS)) {
       `${spec.id} slot ${slot + 1}: combat inventory uses the resolved capacity`);
     const reloadChannel = fresh.reloadChannels[slot];
     assert.ok(reloadChannel, `${spec.id} slot ${slot + 1}: reload channel exists`);
-    if (round.guided === true && (spec.gun.primaryGuided !== true || spec.gun.launcherMuzzles?.length)) {
+    if (round.reloadGroup) {
+      assert.notEqual(reloadChannel, fresh.gunReload,
+        `${spec.id} slot ${slot + 1}: named secondary weapon has its own cycle`);
+      for (let other = 0; other < spec.gun.shells.length; other++) {
+        if (spec.gun.shells[other].reloadGroup !== round.reloadGroup) continue;
+        assert.equal(reloadChannel, fresh.reloadChannels[other],
+          `${spec.id}: all ammunition for ${round.reloadGroup} shares one cycle`);
+      }
+    } else if (round.guided === true && (spec.gun.primaryGuided !== true || spec.gun.launcherMuzzles?.length)) {
       assert.notEqual(reloadChannel, fresh.gunReload,
         `${spec.id} slot ${slot + 1}: external guided launcher has an isolated cycle`);
     } else {
@@ -115,17 +123,11 @@ for (const spec of Object.values(TANK_SPECS)) {
           `${spec.id}: selected replacement slot ${stockedSlot + 1} remains fireable`);
         assert.equal(combat.reload, combat.reloadChannels[stockedSlot],
           `${spec.id}: selection activates slot ${stockedSlot + 1}'s reload channel`);
-        const round = spec.gun.shells[stockedSlot];
-        const expectedReloadS = round.guided === true
-          ? (round.reloadS || spec.gun.reloadS)
-          : spec.gun.autoloader
-            ? (spec.gun.autoloader.fullReloadS || spec.gun.reloadS)
-            : (round.reloadS || spec.gun.reloadS);
-        assert.ok(Math.abs(combat.reload.totalS - expectedReloadS) < 1e-9,
-          `${spec.id}: slot ${stockedSlot + 1} begins its complete authored load cycle`);
-        assert.equal(combat.reload.kind,
-          round.guided === true ? 'shell' : spec.gun.autoloader ? 'magazine' : 'shell',
-          `${spec.id}: slot ${stockedSlot + 1} uses the correct reload mode`);
+        assert.equal(combat.reload.t, 0,
+          `${spec.id}: selecting a stocked type never invents a reload`);
+        assert.equal(combat.reload.kind, 'ready');
+        assert.equal(combat.magazine?.rounds, fresh.magazine?.rounds,
+          `${spec.id}: selection preserves the full ready magazine`);
         depletedChannelTransitions++;
       }
     }
@@ -224,8 +226,8 @@ assert.ok(depletedChannelTransitions > 200,
   assert.equal(selectFirstAvailableShell(combat, spec), 0,
     'depletion fallback selects the first stocked ammunition type');
   assert.equal(combat.shellSlot, 0);
-  assert.equal(combat.reload.t, combat.reload.totalS,
-    'automatic fallback begins a complete reload for its replacement type');
+  assert.equal(combat.reload.t, 0,
+    'automatic fallback preserves the replacement weapon readiness');
 }
 
 let guidedAuthorityLaunches = 0;
@@ -258,18 +260,8 @@ for (const { spec, round, slot } of guidedRounds) {
         ['guided-target', input(0)],
       ]),
     });
-    assert.ok(guidedGunner.combat.reload.t > 0,
-      `${spec.id} slot ${slot + 1}: switching starts a complete reload`);
-    const reloadTicks = Math.ceil(guidedGunner.combat.reload.t / SIM_DT) + 1;
-    for (let tick = 0; tick < reloadTicks; tick++) {
-      guidedMatch.step({
-        dt: SIM_DT,
-        inputs: new Map([
-          ['guided-gunner', input(slot)],
-          ['guided-target', input(0)],
-        ]),
-      });
-    }
+    assert.equal(guidedGunner.combat.reload.t, 0,
+      `${spec.id} slot ${slot + 1}: a stocked launcher is immediately ready after selection`);
   } else {
     guidedGunner.combat.reload.t = 0;
     guidedGunner.combat.reload.kind = 'ready';

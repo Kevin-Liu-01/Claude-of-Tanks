@@ -951,14 +951,19 @@ export function createAuthoritativeMatch({
     if (shellSlot !== entity.combat.shellSlot) {
       if (selectShell(entity.combat, shellSlot, entity.spec)) {
         entity._deniedShellSlot = undefined;
-      } else if (entity._deniedShellSlot !== shellSlot) {
-        emit('ammo_selection_denied', {
-          id: entity.id,
-          slot: shellSlot,
-          reason: 'AMMO_EMPTY',
-          guided: entity.spec.gun.shells[shellSlot]?.guided === true,
-        });
-        entity._deniedShellSlot = shellSlot;
+      } else {
+        // A stale/depleted ammo request must not fire a different, ready
+        // weapon merely because its fallback no longer starts a reload.
+        entity.input.fire = false;
+        if (entity._deniedShellSlot !== shellSlot) {
+          emit('ammo_selection_denied', {
+            id: entity.id,
+            slot: shellSlot,
+            reason: 'AMMO_EMPTY',
+            guided: entity.spec.gun.shells[shellSlot]?.guided === true,
+          });
+          entity._deniedShellSlot = shellSlot;
+        }
       }
     }
     entity.input.shellSlot = entity.combat.shellSlot;
@@ -1363,7 +1368,7 @@ export function createAuthoritativeMatch({
     if (mainWeaponModuleState(combat) === 'red') return null;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
     if (!shellSpec) return null;
-    if (shellSpec.guided !== true && combat.magazine && combat.magazine.rounds <= 0) return null;
+    if (shellSpec.guided !== true && !shellSpec.reloadGroup && combat.magazine && combat.magazine.rounds <= 0) return null;
     if (!hasAmmunition(combat, combat.shellSlot)) {
       if (!entity.bot) emit('ammo_empty', { id: entity.id, slot: combat.shellSlot });
       return null;

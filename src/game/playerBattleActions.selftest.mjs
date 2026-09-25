@@ -168,7 +168,10 @@ assert.ok(events.some(({ event, payload }) =>
 
 player.combat.magazine = { capacity: 3 };
 input.press('shell1');
-assert.equal(localCalls.at(-1), 'reload', 'selecting the live magazine slot reloads');
+assert.equal(localCalls.at(-1), 'shell:0', 'reselecting ammo never requests a magazine reload');
+assert.ok(!events.some(({ event }) => event === 'ui:magazineReloadStarted'));
+input.press('reloadMagazine');
+assert.equal(localCalls.at(-1), 'reload', 'dedicated reload control still reloads');
 assert.ok(events.some(({ event }) => event === 'ui:magazineReloadStarted'));
 player.combat.magazineReason = 'MAGAZINE_RELOADING';
 input.press('reloadMagazine');

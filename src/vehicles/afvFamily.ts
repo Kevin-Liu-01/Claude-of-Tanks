@@ -169,8 +169,8 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       soundProfile: '2a72' },
     shells: [
       ap('3UBR11 APFSDS', 30, [128, 116, 104], 58, 1120, 180, 0.36),
-      heat('9M117M1 Arkan', 100, 750, 470, 240.5, 8, 2.4, 'arkan-launch', 0),
-      he('3UOF19 HE-FRAG', 100, 340, 355, 22, 4.0, 'bmp3-100mm'),
+      { ...heat('9M117M1 Arkan', 100, 750, 470, 240.5, 8, 2.4, 'arkan-launch', 0), reloadGroup: '2a70' },
+      { ...he('3UOF19 HE-FRAG', 100, 340, 355, 22, 4.0, 'bmp3-100mm'), reloadGroup: '2a70' },
     ],
   }),
   ua_m2a3_bradley: variant('ua_m2a3_bradley', 'm2a2_bradley', {
@@ -378,9 +378,9 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       shells: [
         shell('3UBR11 APFSDS-T', 'APFSDS', 30, 112, 102, 55, 1120, { pen2000Mm: 92, reloadS: 0.34, count: 200 }),
         shell('9M117M1 Arkan', 'HEAT', 100, 750, 750, 500, 240.5,
-          { reloadS: 2.4, count: 8, guided: true, soundProfile: 'arkan-launch', launcherTubes: 0 }),
+          { reloadS: 2.4, count: 8, guided: true, soundProfile: 'arkan-launch', launcherTubes: 0, reloadGroup: '2a70' }),
         shell('3UOF19 HE-FRAG', 'HE', 100, 12, 12, 360, 250,
-          { reloadS: 4.0, count: 22, soundProfile: 'bmp3-100mm' }),
+          { reloadS: 4.0, count: 22, soundProfile: 'bmp3-100mm', reloadGroup: '2a70' }),
       ],
     },
     // Published: 7.14 hull; the 2A70 muzzle overhangs the bow ~0.27 in the

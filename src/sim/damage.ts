@@ -69,6 +69,8 @@ export interface DamageShellSpec extends BallisticShellSpec {
   dmg: number;
   moduleDmg?: number;
   reloadS?: number;
+  /** Named secondary weapon: its shell types share a cycle, separate from the main gun. */
+  reloadGroup?: string;
   count?: number | null;
   effectiveOvermatchCaliberMm?: number;
   tandem?: boolean;
@@ -140,7 +142,7 @@ export interface CombatState {
   reload: ReloadState;
   /** Shared cannon/feed channel, even while an auxiliary launcher is selected. */
   gunReload?: ReloadState;
-  /** Conventional shells share one gun cycle; each guided launcher owns one. */
+  /** Ammo types bind to their weapon's cycle; separate launchers reload concurrently. */
   reloadChannels?: ReloadState[];
   magazine: { rounds: number; capacity: number } | null;
   shellSlot: number;
@@ -497,12 +499,23 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
   const ammunition = createAmmunitionState(spec.gun.shells || []);
   const gunReload: ReloadState = { t: 0, totalS: spec.gun.reloadS, kind: 'ready' };
   const launcherReload: ReloadState = { t: 0, totalS: spec.gun.reloadS, kind: 'ready' };
-  const reloadChannels = (spec.gun.shells || []).map((round) =>
-    round.guided === true && spec.gun.launcherMuzzles?.length
+  let groupedReloads: Map<string, ReloadState> | undefined;
+  const reloadChannels = (spec.gun.shells || []).map((round) => {
+    if (round.reloadGroup) {
+      groupedReloads ??= new Map();
+      let channel = groupedReloads.get(round.reloadGroup);
+      if (!channel) {
+        channel = { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' };
+        groupedReloads.set(round.reloadGroup, channel);
+      }
+      return channel;
+    }
+    return round.guided === true && spec.gun.launcherMuzzles?.length
       ? launcherReload
       : round.guided === true && spec.gun.primaryGuided !== true
         ? { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' as ReloadKind }
-        : gunReload);
+        : gunReload;
+  });
   return {
     hp: spec.hp,
     maxHp: spec.hp,
@@ -2114,14 +2127,13 @@ export function repairAllModules(combat: CombatState | null | undefined): string
 }
 
 /**
- * Switch the loaded shell slot. Every actual ammunition-type change begins a
- * complete load cycle for the selected channel, including guided launchers
- * and full autoloader magazines. Empty channels cannot become active.
+ * Select ammunition without starting, resetting, or skipping a weapon's load
+ * cycle. Ammo types in one gun share its timer and magazine; a separate
+ * launcher retains its own progress even while deselected. Only firing or an
+ * explicit magazine-reload command starts a cycle. Empty slots stay inactive.
  * @param {object} combatState CombatState
  * @param {0|1|2} slot shell slot
- * @param {object} [spec] TankSpec — when given, the restart re-derives the
- *   full per-shell/crew/rack/equipment reload for the new slot; legacy
- *   callers without it keep the old same-duration restart.
+ * @param {object} [spec] TankSpec — bounds selection to the authored loadout.
  * @returns whether the requested slot is stocked and selected
  */
 export function selectShell(
@@ -2142,12 +2154,10 @@ export function selectShell(
   combatState.shellSlot = slot;
   const nextReload = combatState.reloadChannels?.[slot];
   if (nextReload) combatState.reload = nextReload;
-  if (spec) startReload(combatState, spec);
-  else combatState.reload.t = combatState.reload.totalS;
   return true;
 }
 
-/** Select the first stocked shell channel and start its full load cycle. */
+/** Select the first stocked shell channel, preserving its current load cycle. */
 export function selectFirstAvailableShell(
   combatState: CombatState,
   spec?: DamageTankSpec,
@@ -2290,6 +2300,10 @@ export function startPostShotReload(combatState: CombatState, spec: DamageTankSp
   }
   const magazine = combatState.magazine;
   const autoloader = spec.gun && spec.gun.autoloader;
+  if (loaded?.reloadGroup) {
+    beginShellReload(combatState, spec, loaded);
+    return;
+  }
   if (!magazine || !autoloader) {
     startReload(combatState, spec);
     return;
@@ -2317,7 +2331,7 @@ export function startPostShotReload(combatState: CombatState, spec: DamageTankSp
  */
 export function startReload(combatState: CombatState, spec: DamageTankSpec): void {
   const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
-  if (combatState.magazine && spec.gun.autoloader && loaded?.guided !== true) {
+  if (combatState.magazine && spec.gun.autoloader && loaded?.guided !== true && !loaded?.reloadGroup) {
     beginMagazineReload(combatState, spec);
     return;
   }

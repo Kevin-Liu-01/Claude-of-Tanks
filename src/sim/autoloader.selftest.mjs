@@ -106,8 +106,9 @@ function makeSpec(overrides = {}) {
   tickReload(combat, 3);
   selectShell(combat, 1, spec);
   assert.equal(combat.shellSlot, 1);
-  assert.equal(combat.magazine.rounds, 0);
-  assert.equal(combat.reload.kind, 'magazine');
+  assert.equal(combat.magazine.rounds, 2, 'switching ammo preserves the partial magazine');
+  assert.equal(combat.reload.kind, 'ready');
+  assert.equal(combat.reload.t, 0);
 }
 
 {
@@ -126,9 +127,9 @@ function makeSpec(overrides = {}) {
   assert.equal(combat.magazine.rounds, 2);
   selectShell(combat, 2, spec);
   const launcher = combat.reload;
-  assert.equal(launcher.t, 2.5);
-  assert.equal(launcher.kind, 'shell',
-    'selecting the ATGM begins its complete launcher reload immediately');
+  assert.equal(launcher.t, 0);
+  assert.equal(launcher.kind, 'ready',
+    'selecting an unfired ATGM keeps its launcher ready');
   tickReload(combat, 2.5);
   startPostShotReload(combat, spec);
   assert.equal(combat.magazine.rounds, 2,
@@ -146,12 +147,12 @@ function makeSpec(overrides = {}) {
 
   selectShell(combat, 0, spec);
   assert.equal(combat.reload, combat.gunReload);
-  assert.equal(combat.reload.t, 21,
-    'switching back to cannon ammunition restarts a complete magazine reload');
+  assert.equal(combat.reload.t, 18.5,
+    'switching back preserves the cannon magazine reload progress');
   tickReload(combat, 4);
   selectShell(combat, 1, spec);
-  assert.equal(combat.reload.t, 21,
-    'changing cannon ammunition discards partial progress and starts the whole reload');
+  assert.equal(combat.reload.t, 14.5,
+    'changing ammo in the same cannon preserves the shared reload progress');
   tickReload(combat, 21);
   assert.equal(combat.magazine.rounds, 3);
   assert.equal(combat.reload.kind, 'ready');
@@ -274,8 +275,8 @@ function makeSpec(overrides = {}) {
   assert.equal(selectShell(legacySelect, 1.9), true,
     'legacy selection without a spec truncates a fractional slot');
   assert.equal(legacySelect.shellSlot, 1);
-  assert.equal(legacySelect.reload.t, legacySelect.reload.totalS,
-    'legacy selection without reload channels restarts the active timer');
+  assert.equal(legacySelect.reload.t, 0,
+    'legacy selection without reload channels preserves the active timer');
 }
 
 {
@@ -305,7 +306,8 @@ function makeSpec(overrides = {}) {
   assert.equal(guided.reload.totalS, 7.2, 'red missile rack slows a guided launcher ×1.8');
 
   selectShell(guided, 0, guidedSpec);
-  startPostShotReload(guided, guidedSpec);
+  guided.magazine.rounds = 2;
+  startMagazineReload(guided, guidedSpec);
   assert.equal(guided.reload.totalS, guidedSpec.gun.autoloader.fullReloadS,
     'missile-rack damage does not slow conventional cannon ammunition');
 }

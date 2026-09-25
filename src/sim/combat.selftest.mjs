@@ -927,7 +927,7 @@ function mkShell(shellSpec, distM = 100) {
   near(cs.reload.t, 9, 1e-9, 'dead loader ⇒ reload ×1.5');
   cs.reload.t = 0;
   selectShell(cs, 2);
-  assert(cs.shellSlot === 2 && cs.reload.t === cs.reload.totalS, 'shell switch restarts the load');
+  assert(cs.shellSlot === 2 && cs.reload.t === 0, 'shell selection preserves the loaded gun');
   selectShell(cs, 2);
   assert(cs.shellSlot === 2, 'same-slot select is a no-op');
 

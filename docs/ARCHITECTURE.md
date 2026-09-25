@@ -318,6 +318,16 @@ CombatState = {            // damage.createCombatState(spec) builds this
   shellSlot: 0|1|2,
 }
 ```
+Ammo selection preserves magazine rounds, salvo position, and every reload timer.
+Types fired through the same gun share its cycle; separate cannon and launcher
+channels advance concurrently, including while deselected. Selecting or reselecting
+an ammo key never reloads a clip. Only a successful shot or the explicit magazine
+reload control starts a cycle. Solo and network firing check the selected weapon's
+timer, and an empty-slot request cannot fire a different fallback weapon.
+Shells with the same explicit `reloadGroup` share a secondary weapon's cycle:
+the BMP-3's 100 mm HE and gun-launched missile use one timer, independent of its
+30 mm autocannon. Secondary weapons do not consume the main gun's magazine.
+
 The reticle's multi-round indicator is never read from `magazine` directly: `sim/magazineIndicator.ts`
 derives it once (the cannon magazine, or — with a guided round loaded on a `gun.launcherSalvo` rack —
 the rounds left in the current salvo group, 0 while the rack runs its own 'shell' reload) for the solo

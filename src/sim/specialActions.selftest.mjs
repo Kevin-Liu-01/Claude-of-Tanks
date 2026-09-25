@@ -52,8 +52,8 @@ assert.equal(missileResult.active, true,
   'E reports the guided ammunition as selected until another slot is chosen');
 assert.equal(ifv.combat.shellSlot, ifv.specialAction.missileSlot);
 assert.equal(ifv.input.shellSlot, ifv.specialAction.missileSlot);
-assert.equal(ifv.combat.reload.t, 2.6,
-  'E starts the selected ATGM channel from a complete reload');
+assert.equal(ifv.combat.reload.t, 0,
+  'E selects the ready ATGM without starting a reload');
 assert.equal(ifv.specialAction.active, false, 'ammunition selection is not a hidden mode');
 startPostShotReload(ifv.combat, ifv.spec);
 assert.equal(ifv.combat.reload.t, 2.6, 'the launcher owns its post-shot cycle');
@@ -92,8 +92,8 @@ m1a3.input.shellSlot = 2;
 const cannonMagazineRounds = m1a3.combat.magazine.rounds;
 assert.equal(activateSpecialAction(m1a3).ok, true);
 assert.equal(m1a3.combat.shellSlot, m1a3MissileSlot);
-assert.equal(m1a3.combat.reload.t, m1a3.spec.gun.shells[m1a3MissileSlot].reloadS,
-  'switching to the external missile launcher starts its entire reload');
+assert.equal(m1a3.combat.reload.t, 0,
+  'switching to the unfired external launcher keeps it ready');
 startPostShotReload(m1a3.combat, m1a3.spec);
 assert.equal(m1a3.combat.magazine.rounds, cannonMagazineRounds,
   'an external guided launcher never consumes the cannon autoloader magazine');
@@ -102,15 +102,15 @@ const restoredM1a3 = activateSpecialAction(m1a3);
 assert.equal(restoredM1a3.active, false);
 assert.equal(restoredM1a3.slot, 2,
   'M1A3 restores the exact conventional round selected before its ATGM');
-assert.equal(m1a3.combat.reload.t, m1a3.spec.gun.autoloader.fullReloadS,
-  'switching back to cannon ammunition starts a complete magazine reload');
-assert.equal(m1a3.combat.magazine.rounds, 0);
+assert.equal(m1a3.combat.reload.t, 0,
+  'switching back to cannon ammunition preserves the loaded magazine');
+assert.equal(m1a3.combat.magazine.rounds, cannonMagazineRounds);
 for (let tick = 0; tick < Math.ceil(2.8 / SIM_DT) + 1; tick++) {
   tickReload(m1a3.combat, SIM_DT);
 }
 selectShell(m1a3.combat, m1a3MissileSlot, m1a3.spec);
-assert.equal(m1a3.combat.reload.t, m1a3.spec.gun.shells[m1a3MissileSlot].reloadS,
-  'reselecting the guided launcher always starts its complete reload');
+assert.ok(m1a3.combat.reload.t > 0 && m1a3.combat.reload.t < .2,
+  'the deselected missile launcher keeps counting down without a restart');
 
 const mbt70 = entityFor('mbt70');
 assert.equal(mbt70.spec.gun.shells.length, 3,
@@ -208,7 +208,7 @@ assert.equal(specialActionKind(getSpec('m1a2')), SPECIAL_ACTION_KINDS.NONE,
   'vehicles without a modeled system do not receive a fake ability');
 
 // The network action remains fully authoritative: E and slot 2 both select
-// the launcher; a later ordinary fire frame launches after the launcher load.
+// the launcher; a later ordinary fire frame launches the already loaded missile.
 const match = createAuthoritativeMatch({
   mapId: 'verdant',
   countdownS: 0,
@@ -237,9 +237,9 @@ match.step({
 });
 const authoritativeIfv = match.entityById.get('ifv');
 assert.equal(authoritativeIfv.combat.shellSlot, authoritativeIfv.specialAction.missileSlot);
-assert.equal(authoritativeIfv.combat.reload.kind, 'shell',
-  'selecting the missile channel starts its complete reload before the first shot');
-assert.ok(authoritativeIfv.combat.reload.t > 0);
+assert.equal(authoritativeIfv.combat.reload.kind, 'ready',
+  'selecting the missile channel preserves its ready state');
+assert.equal(authoritativeIfv.combat.reload.t, 0);
 let snapshot = match.snapshot({ tick: 1, serverTimeMs: 17, viewerId: 'ifv', ackInputSeq: 1 });
 assert.ok(snapshot.events.some((event) => event.type === 'special_action' && event.id === 'ifv'));
 assert.ok(!snapshot.events.some((event) => event.type === 'shell_fired'),

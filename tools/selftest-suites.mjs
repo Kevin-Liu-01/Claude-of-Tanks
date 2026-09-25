@@ -179,6 +179,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/ammunition.selftest.mjs',
     'src/sim/ammunitionFlow.selftest.mjs',
     'src/sim/autoloader.selftest.mjs',
+    'src/sim/weaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioRecording.selftest.mjs',
     'src/game/studioActorSupport.selftest.mjs',
