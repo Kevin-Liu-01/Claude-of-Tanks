@@ -135,6 +135,7 @@ uniform vec3 uSunDir;
 uniform vec3 uSunRadiance;
 uniform vec3 uAmbientTop;
 uniform vec3 uAmbientBottom;
+uniform vec3 uSkyMean;
 uniform float uCoverage;
 uniform float uTowers;
 uniform float uStratiform;
@@ -278,7 +279,10 @@ void main() {
 				// darker bases: their direct light is scattered away by the cloud above
 				float baseShadow = mix( 0.55, 1.0, smoothstep( -0.1, 0.45, hN ) );
 				// ambient: the sky lights the tops, the bases see the horizon; a stratus sheet is diffuser-lit
-				vec3 amb = mix( uAmbientBottom, uAmbientTop, max( smoothstep( 0.0, 0.9, hN ), uStratiform * 0.75 ) ) * ( 1.0 + uStratiform * 1.2 );
+				vec3 amb = mix( uAmbientBottom, uAmbientTop, max( smoothstep( 0.0, 0.9, hN ) , uStratiform * 0.75 ) ) * ( 1.0 + uStratiform * 1.2 );
+				// an overcast sheet is the sky: it is never darker than the mean sky it replaces (a low sun's
+				// physically dim ceiling would otherwise sit as a grey band under the pale winter horizon)
+				amb = mix( amb, max( amb, uSkyMean * 1.15 ), uStratiform );
 				amb *= mix( 0.45, 1.0, 1.0 - dens * 0.5 );
 				vec3 S = ( ( uSunRadiance * sun + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
 				float Tstep = exp( -sig * ds );
@@ -573,6 +577,7 @@ export class VolumetricCloudLayer {
         uSlot: { value: new THREE.Vector2() }, uSubPixel: { value: new THREE.Vector2() }, uFrameNoise: { value: 0 },
         uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uSunRadiance: { value: new THREE.Vector3(8, 8, 8) },
         uAmbientTop: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uAmbientBottom: { value: new THREE.Vector3(0.2, 0.25, 0.3) },
+        uSkyMean: { value: new THREE.Vector3(0.3, 0.35, 0.45) },
         uCoverage: { value: 0.4 }, uTowers: { value: 0 }, uStratiform: { value: 0.1 }, uDensity: { value: 0.07 },
         uTint: { value: new THREE.Vector3(1, 1, 1) }, uWeatherShift: { value: new THREE.Vector2() }, uNoiseShift: { value: new THREE.Vector3() },
         uShapeTile: { value: CLOUD_SHAPE_TILE_M }, uSunGain: { value: 1.5 },
@@ -787,6 +792,11 @@ export class VolumetricCloudLayer {
     (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.65);
     const hz = summary?.horizon ?? irr;
     (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.3);
+    // the mean upper-sky luminance in the zenith's hue (the stratus floor)
+    const zenith = summary?.zenith ?? irr;
+    const zl = Math.max(1e-4, 0.2126 * zenith.r + 0.7152 * zenith.g + 0.0722 * zenith.b);
+    const mean = summary?.meanLuminance ?? zl;
+    (t.uSkyMean.value as THREE.Vector3).set(zenith.r, zenith.g, zenith.b).multiplyScalar(mean / zl);
     this.domeMaterial.uniforms.uSkyIntensity.value = a.skyIntensity;
   }
 
