@@ -125,6 +125,7 @@
     "test:net:host-stall": "node tools/multiplayer-guest-entry.mjs --failure-scenario=host-stall",
     "net:prod:check": "node tools/production-multiplayer-check.mjs",
     "test:net:cloudflare": "npm --prefix cloudflare/signaling test",
+    "test:net:v2:soak": "node tools/mp-soak.mjs",
     "typecheck:cloudflare": "npm --prefix cloudflare/signaling run typecheck",
     "deploy:net:cloudflare": "npm --prefix cloudflare/signaling run deploy",
     "test:telemetry:cloudflare": "npm --prefix cloudflare/telemetry test",

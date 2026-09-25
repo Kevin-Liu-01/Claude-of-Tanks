@@ -822,6 +822,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/matchActor.selftest.mjs',
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
+    'tools/mp-soak.selftest.mjs',
     'server/dedicatedMatchLifecycle.selftest.mjs',
     'server/dedicatedMatch.selftest.mjs',
     'server/ratingStore.selftest.mjs',
