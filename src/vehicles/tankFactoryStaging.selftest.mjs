@@ -63,7 +63,8 @@ const goldenReceipts = [
     "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): strv103 draws the Sweden Strv 122 pressed-recess construction and the fleet arm seated against it; digest repinned from the current build",
     "_repin_2026_09_22_regen": "combined round-38 tree after the fleet presentation regen (2026-09-22): the strv103 rendered anchor moved with the nation wheel (zM -0.3006 -> -0.3013), so the anchor-seated staging digest moved; repinned from staged main",
-    "sha256": "79d7817935af6c69fd4d1b855f5c9626096bd3afd471d6228dc9939afdfb9ae0"
+    "_repin_2026_09_25_rollers": "FSP-03 (owner 2026-09-25): strv103 carries two fitted return rollers per side (the Strv 103A layout); golden re-pinned once from the current build",
+    "sha256": "64e08a5bf68c81cbbfb0f042db5bc33c0369991f1429453f516bd4130f57381a"
   },
   {
     "id": "m1a1",
