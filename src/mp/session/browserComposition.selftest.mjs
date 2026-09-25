@@ -570,6 +570,29 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.deepEqual(leaving.menu.failures, [], 'an explicit leave shows no failure');
 }
 
+// ------------------------------------------------------------ leaving while a round loads: the seat goes, the Garage is restored under the cover, then the entry settles
+{
+  let releaseWorld = null;
+  const mid = createHarness({ loadWorld: () => new Promise((resolve) => { releaseWorld = resolve; }) });
+  const midRoom = makeRoomSession(mid.calls);
+  const midEntry = mid.composition.beginRoom({ role: 'host', session: midRoom, lobbyState: midRoom.lobby });
+  const midOwner = mid.sessions[0];
+  const entering = midOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  await settle();
+  let settled = null;
+  midEntry.then((value) => { settled = value; });
+  mid.composition.leaveRoom('explicit_leave');
+  assert.equal(mid.lifecycle.pending, true, 'the entry stays held until the covered restore is done');
+  await settle(4);
+  assert.equal(settled, false, 'the entry settles false after the restore');
+  assert.deepEqual(mid.calls.filter((call) => ['clearInput', 'client.leave', 'enterGarage', 'uncover', 'load.hide'].includes(call)),
+    ['clearInput', 'client.leave', 'enterGarage', 'uncover', 'load.hide'], 'input off, the seat left, the Garage restored under the cover, the loader faded');
+  assert.equal(mid.composition.room, null);
+  assert.deepEqual(mid.menu.failures, [], 'an explicit leave is not a failure');
+  releaseWorld();
+  await assert.rejects(entering, /superseded/);
+}
+
 // ------------------------------------------------------------ the match-start timeout restores the Garage and keeps the room
 {
   const slow = createHarness({ entryTimeoutMs: 30 });

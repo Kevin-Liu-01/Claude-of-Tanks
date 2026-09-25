@@ -582,7 +582,12 @@ export function createBrowserComposition({
 
   // ------------------------------------------------------------ the room's lifetime
 
-  const releaseRoom = (): void => {
+  /**
+   * Drop the room: the session owner (and with it the round's presentation), the
+   * menu's lobby, the Garage status. A pending entry is settled here unless the
+   * caller still owes it a covered Garage restore.
+   */
+  const releaseRoom = ({ settle = true }: { settle?: boolean } = {}): void => {
     const current = roomSession;
     if (!current) return;
     roomGeneration++;
@@ -594,7 +599,7 @@ export function createBrowserComposition({
     latestLobby = null;
     latestRoom = null;
     owner?.dispose();
-    settleEntry(false);
+    if (settle) settleEntry(false);
     const wasAttached = menuAttached;
     menuAttached = false;
     roomPorts.setGarageStatus(null);
@@ -604,10 +609,10 @@ export function createBrowserComposition({
     }
   };
 
-  const closeRoom = (reason: string): void => {
+  const closeRoom = (reason: string, release: { settle?: boolean } = {}): void => {
     const current = roomSession;
     if (!current) return;
-    releaseRoom();
+    releaseRoom(release);
     const client = current.client;
     void client.leave().catch(() => { /* the socket may already be gone */ }).finally(() => { client.dispose(); void reason; });
   };
@@ -621,6 +626,11 @@ export function createBrowserComposition({
     }).catch((error: RuntimeValue) => reportError('multiplayer v2 failure', error));
   };
 
+  /** The room went away under a loading round: restore the Garage under the cover, then settle the entry. */
+  const restoreAfterLostRoom = (): Promise<void> => stopLoading()
+    .catch((error: RuntimeValue) => reportError('multiplayer v2 room', error))
+    .finally(() => settleEntry(false));
+
   /** The room is gone for this seat (kicked, expired, resume denied, transport exhausted, an explicit leave). */
   const handleRoomClosed = (reason: string): void => {
     const current = roomSession;
@@ -630,10 +640,10 @@ export function createBrowserComposition({
     const loading = !!active && !active.revealed;
     const inBattle = roomPorts.getPhase() === 'battle' && !!active && active.revealed;
     lastFailure = active ? { message: reason, matchId: active.matchId, stage: loading ? 'loading' : 'battle', reason } : lastFailure;
-    releaseRoom();
+    releaseRoom({ settle: !loading });
     current.client.dispose();
     if (loading) {
-      void stopLoading().then(() => presentRoomFailure(reason, mode)).catch((error: RuntimeValue) => reportError('multiplayer v2 room', error));
+      void restoreAfterLostRoom().then(() => presentRoomFailure(reason, mode));
       return;
     }
     if (inBattle) {
@@ -647,10 +657,12 @@ export function createBrowserComposition({
 
   const leaveRoom = (reason = 'left_room'): void => {
     const active = round;
-    const inBattle = roomPorts.getPhase() === 'battle' && !!active;
-    if (inBattle) roomPorts.clearInput();
-    closeRoom(reason);
-    if (inBattle) {
+    const loading = !!active && !active.revealed;
+    const inBattle = roomPorts.getPhase() === 'battle' && !!active && active.revealed;
+    if (loading || inBattle) roomPorts.clearInput();
+    closeRoom(reason, { settle: !loading });
+    if (loading) void restoreAfterLostRoom();
+    else if (inBattle) {
       void Promise.resolve(roomPorts.returnToGarage()).catch((error: RuntimeValue) => reportError('multiplayer v2 leave', error));
     }
   };

@@ -39,7 +39,8 @@ type NetworkBattleCompositionPresentationOptions = Omit<
   presentation: PresentationLifecyclePorts;
 };
 
-interface NetworkBattleCompositionOptions {
+/** The app ports of the browser multiplayer lifecycle; the v2 browser composition (src/mp/session) is built from the same object. */
+export interface NetworkBattleCompositionOptions {
   round: Pick<NetworkRoundLifecycleOptions, 'game' | 'session'>;
   presentation: NetworkBattleCompositionPresentationOptions;
   launcher: Omit<

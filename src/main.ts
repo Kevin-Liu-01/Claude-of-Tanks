@@ -203,6 +203,10 @@ import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionR
 import { createNetworkRoomFailureRuntime } from './net/networkRoomFailureRuntime.ts';
 import { isIntentionalRoomCloseReason } from './net/roomFailure.ts';
 import { createNetworkCompositionAccess } from './net/networkCompositionAccess.ts';
+import { resetNetworkRoundState } from './net/networkRoundState.ts';
+import type { NetworkBattleCompositionOptions } from './net/networkBattleComposition.ts';
+import { readMultiplayerV2Flag } from './app/multiplayerFlag.ts';
+import type { BrowserComposition } from './mp/session/browserComposition.ts';
 import { createNetworkBattleIntentCover } from './net/networkBattleIntentCover.ts';
 import type { PrivateBattleLaunchRequest } from './net/networkBattleLaunchRuntime.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
@@ -1067,6 +1071,37 @@ const networkComposition = createNetworkCompositionAccess(loadNetworkComposition
 const currentNetworkRoom = (): NetworkRoomCoordinator | null => (
   networkComposition.current?.room || null
 );
+// Multiplayer v2 (`?mp=v2`, charter §8): the Play menu drives the v2 room connection and a v2 room's
+// start reaches the v2 browser composition. Both load only behind the switch, so the solo boot path
+// never imports src/mp.
+const multiplayerV2Requested = readMultiplayerV2Flag({ search: location.search, storage: localStorage });
+interface MultiplayerV2MenuModules {
+  createRoomConnectionAdapter: typeof import('./mp/session/playMenuAdapter.ts')['createRoomConnectionAdapter'];
+  isMultiplayerV2Session: typeof import('./mp/session/playMenuAdapter.ts')['isMultiplayerV2Session'];
+  resolveRoomsUrl: typeof import('./mp/session/endpoint.ts')['resolveRoomsUrl'];
+}
+let multiplayerV2Menu: MultiplayerV2MenuModules | null = null;
+const loadMultiplayerV2Menu = (): Promise<MultiplayerV2MenuModules> => Promise.all([
+  import('./mp/session/playMenuAdapter.ts'),
+  import('./mp/session/endpoint.ts'),
+]).then(([adapter, endpoint]) => {
+  multiplayerV2Menu = {
+    createRoomConnectionAdapter: adapter.createRoomConnectionAdapter,
+    isMultiplayerV2Session: adapter.isMultiplayerV2Session,
+    resolveRoomsUrl: endpoint.resolveRoomsUrl,
+  };
+  return multiplayerV2Menu;
+});
+const multiplayerV2 = createNetworkCompositionAccess(loadMultiplayerV2Composition);
+/** A network match owns the battle frame: v1's browser session or a v2 round (loading or live). */
+const networkMatchActive = (): boolean => !!networkSession.match || !!multiplayerV2.current?.active;
+/** The one network pump every phase shares: v1's frame pump and the v2 session owner. */
+const networkPump = {
+  pump(dtSeconds: number, nowMs: number): void {
+    networkSession.pump(dtSeconds, nowMs);
+    multiplayerV2.current?.pump(dtSeconds, nowMs);
+  },
+};
 const {
   loadPlayMenuModule,
   preloadNetworkBattleModules,
@@ -1076,8 +1111,12 @@ const {
 } = createBattleModuleAccess();
 
 const playSurface = createPlaySurfaceRuntime({
-  loadMenuModule: loadPlayMenuModule,
+  loadMenuModule: multiplayerV2Requested
+    ? () => Promise.all([loadPlayMenuModule(), loadMultiplayerV2Menu()]).then(([menu]) => menu)
+    : loadPlayMenuModule,
   createMenuOptions: () => ({
+      // the v2 room connection and the room host the menu's connection settings default to (v1 owns both otherwise)
+      ...(multiplayerV2Menu ? multiplayerV2MenuOptions(multiplayerV2Menu) : {}),
       maps: garageMaps,
       vehicles: VISIBLE_TANK_IDS.map((id) => {
         const spec = getSpec(id);
@@ -1098,7 +1137,9 @@ const playSurface = createPlaySurfaceRuntime({
       getCamoName: (camo: string) => t(`camoPattern.${camo}`) || t('camoPattern.factory'),
       getVehicleName: (specId: string) => getSpec(specId).name,
       onReadyIntent: () => audio.prepare(),
-      onNetworkStart: beginNetworkBattle,
+      onNetworkStart: (request) => (multiplayerV2Menu?.isMultiplayerV2Session(request.session)
+        ? beginMultiplayerV2Battle(request)
+        : beginNetworkBattle(request)),
       onNetworkClose: (reason: string) => {
         if (networkSession.match && !battleEntryLifecycle.pending && !isIntentionalRoomCloseReason(reason)) {
           void networkRoomFailure.fail(reason).catch((error) => {
@@ -1420,7 +1461,7 @@ createCombatFeedbackRuntime({
   rig,
   audio,
   getFx: () => fxRuntimeAccess.current,
-  hasNetworkMatch: () => !!networkSession.match,
+  hasNetworkMatch: networkMatchActive,
   shotRecoilScale,
   setDestroyedEventSink,
   trimGarageTanks: (capacity: number) => pedestal.trim(capacity),
@@ -1762,9 +1803,9 @@ playerBattleActions = createPlayerBattleActions({
   input,
   isSettingsOpen: () => settings.isOpen(),
   network: {
-    isActive: () => !!networkSession.match,
-    queueConsumable: (slot) => networkSession.queueConsumable(slot),
-    queueAction: (action) => networkSession.queueAction(action),
+    isActive: networkMatchActive,
+    queueConsumable: (slot) => { networkSession.queueConsumable(slot); multiplayerV2.current?.queueConsumable(slot); },
+    queueAction: (action) => { networkSession.queueAction(action); multiplayerV2.current?.queueAction(action); },
   },
   rules: {
     selectShell: battleClientAccess.selectShell,
@@ -1796,7 +1837,7 @@ const battlePresentation = createBattlePresentationRuntime({
   battleClient: battleClientAccess,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
-  isNetworkMatchActive: () => !!networkSession.match,
+  isNetworkMatchActive: networkMatchActive,
   getPedestalVisual: () => pedestal.current,
   isCinematicActive: () => rig.cinematicActive,
 });
@@ -2155,14 +2196,100 @@ function beginNetworkBattle(request?: PrivateBattleLaunchRequest): Promise<boole
     });
 }
 
+/**
+ * The v2 counterpart of beginNetworkBattle: the same synchronous cover, then the v2 browser
+ * composition (src/mp/session/browserComposition.ts) enters the room's match.
+ */
+function beginMultiplayerV2Battle(request: PrivateBattleLaunchRequest): Promise<boolean> {
+  const current = multiplayerV2.current;
+  if (current) return current.beginRoom(request);
+  networkBattleIntentCover.show(request);
+  return multiplayerV2.preload()
+    .then((runtime) => runtime.beginRoom(request))
+    .catch(async (error) => {
+      await networkBattleIntentCover.releaseAfterFailure();
+      throw error;
+    });
+}
+
+/** The Play menu options a v2 deployment adds: the room connection over RoomClient and the room host. */
+function multiplayerV2MenuOptions(modules: MultiplayerV2MenuModules) {
+  return {
+    createConnectionRuntime: (options: Parameters<MultiplayerV2MenuModules['createRoomConnectionAdapter']>[0]) =>
+      modules.createRoomConnectionAdapter({ ...options, storage: localStorage, clientBuild: import.meta.env.MODE }),
+    resolveSignalUrl: () => modules.resolveRoomsUrl({
+      configured: import.meta.env.VITE_ROOMS_URL, protocol: location.protocol, hostname: location.hostname,
+    }) ?? '',
+  };
+}
+
+function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
+  return Promise.all([
+    import('./mp/session/browserComposition.ts'),
+    import('./net/networkBattleActivationRuntime.ts'),
+  ]).then(([{ createBrowserComposition }, { createNetworkBattleActivationRuntime }]) => {
+    // The v2 launch runs on the same app ports as v1: the loader, the world, the warm owners, the activation.
+    const options = networkCompositionOptions();
+    const activation = createNetworkBattleActivationRuntime(options.activation);
+    const runtime = createBrowserComposition({
+      clientBuild: import.meta.env.MODE,
+      ports: {
+        lifecycle: battleEntryLifecycle,
+        load: {
+          ...options.presentation.load,
+          loadModules: options.presentation.entry.loadModules,
+          loadWorld: options.presentation.entry.loadWorld,
+          recordTrace: (trace) => { window.__NETWORK_LOAD = trace; },
+          recordEntryFailure: (failure) => { window.__NETWORK_ENTRY_FAILURE = failure; },
+        },
+        roster: options.presentation.roster,
+        scene: {
+          engineCtx,
+          game,
+          bus,
+          getWorldCollision: currentWorld,
+          groundSampler,
+          getFx: requireFxRuntime,
+          resetRoundState: () => resetNetworkRoundState(game),
+          clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
+          onVisualReady: (actor) => nightLighting.appendEntity(actor),
+        },
+        warm: options.presentation.warm,
+        presentation: {
+          activate: activation.activate,
+          setWaitingForPeers: options.presentation.presentation.setWaitingForPeers,
+          setGarageLighting: options.presentation.presentation.setGarageLighting,
+          runBlackWatchdog: options.presentation.presentation.runBlackWatchdog,
+        },
+        room: {
+          getMenu: playSurface.getMenuPromise,
+          setGarageStatus: (status) => garage.setRoomStatus(status),
+          emitRoomState: (payload) => bus.emit('network:roomState', payload),
+          clearInput: () => input.setEnabled(false),
+          enterGarage: () => garageReturn.enter(),
+          returnToGarage: () => garageReturn.leave(),
+          getPhase: () => game.phase,
+          hasResult: () => !!game.result,
+        },
+      },
+    });
+    if (diagnosticsRequested) window.__MULTIPLAYER_V2 = runtime;
+    return runtime;
+  });
+}
+
 function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
   return import('./net/networkBattleComposition.ts').then(({
     createNetworkBattleComposition,
-  }) => {
+  }) => createNetworkBattleComposition(networkCompositionOptions()));
+}
+
+/** The app ports both browser multiplayer compositions are built from (v1 in src/net, v2 in src/mp). */
+function networkCompositionOptions(): NetworkBattleCompositionOptions {
     if (!playerBattleActions) {
       throw new Error('Network composition requires player battle actions.');
     }
-    return createNetworkBattleComposition({
+    return {
       round: {
         game,
         session: networkSession,
@@ -2518,8 +2645,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           stopShowroom: () => showroom.stop(),
         },
       },
-    });
-  });
+    };
 }
 
 bus.on('phase:change', () => currentNetworkRoom()?.syncChatVisibility());
@@ -2619,12 +2745,17 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     resetHudFrame: () => battleHudFrame.reset(),
   },
   network: {
-    shouldPreserveRoom: () => currentNetworkRoom()?.shouldPreserveOnBattleExit() ?? false,
-    disposePresentation: () => networkComposition.current?.round.disposePresentation(),
+    shouldPreserveRoom: () => (currentNetworkRoom()?.shouldPreserveOnBattleExit() ?? false)
+      || (multiplayerV2.current?.shouldPreserveRoom() ?? false),
+    disposePresentation: () => {
+      networkComposition.current?.round.disposePresentation();
+      multiplayerV2.current?.disposePresentation();
+    },
     closeMatch: (reason: string) => {
       const current = networkComposition.current;
       if (current) current.round.close(reason);
       else networkSession.close(reason);
+      multiplayerV2.current?.closeMatch(reason);
     },
   },
   warm: {
@@ -2707,6 +2838,12 @@ const leaveBattleToGarage = (): Promise<void> => {
     // Cancel it before disposal; its launcher owns the one covered restore.
     input.setEnabled(false);
     network.round.close('explicit_leave');
+    return Promise.resolve();
+  }
+  const v2 = multiplayerV2.current;
+  if (v2?.active && battleEntryLifecycle.pending) {
+    // A v2 round still loading: leaving the room ends the entry under its own covered restore.
+    v2.leaveRoom('explicit_leave');
     return Promise.resolve();
   }
   return garageReturn.leave();
@@ -2868,8 +3005,8 @@ const battleFrame = createBattleFrameRuntime({
   killcam,
   input: playerFrameInput,
   network: {
-    isActive: () => !!networkSession.match,
-    pump: (dtSeconds: number, nowMs: number) => networkSession.pump(dtSeconds, nowMs),
+    isActive: networkMatchActive,
+    pump: networkPump.pump,
   },
   countdown: {
     isWarmPending: () => battleWarmPending,
@@ -2925,7 +3062,7 @@ const mainFrame = createMainFrameRuntime({
   post,
   showroom,
   pedestal,
-  networkSession,
+  networkSession: networkPump,
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
@@ -2964,8 +3101,11 @@ const mainFrame = createMainFrameRuntime({
 const frameLoop = createFrameLoopScheduler({
   tick: mainFrame.tick,
   isBootComplete: () => bootComplete,
-  hasBackgroundWork: () => !!networkSession.match,
-  backgroundTick: (nowMs) => networkSession.pumpBackground(nowMs),
+  hasBackgroundWork: networkMatchActive,
+  backgroundTick: (nowMs) => {
+    networkSession.pumpBackground(nowMs);
+    multiplayerV2.current?.pumpBackground(nowMs);
+  },
   // The authoritative simulation is fixed at 60 Hz. Presenting the complete
   // post/shadow pipeline above that rate only doubles GPU work on 120 Hz /
   // ProMotion displays without creating additional simulation states.

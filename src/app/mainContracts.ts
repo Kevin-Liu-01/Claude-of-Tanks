@@ -78,6 +78,8 @@ declare global {
     __GARAGE_ENTRY?: RuntimeValue;
     __GARAGE_IDLE_WORK?: RuntimeValue;
     __MINIMAP_LOAD?: RuntimeValue;
+    /** The Multiplayer v2 browser composition (diagnostics builds): tools/mp-browser-e2e.mjs reads its stats. */
+    __MULTIPLAYER_V2?: RuntimeValue;
     __NETWORK_ENTRY_FAILURE?: RuntimeValue;
     __NETWORK_LOAD?: RuntimeValue;
     __PERF_HUD?: RuntimeValue;

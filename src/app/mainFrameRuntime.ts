@@ -61,7 +61,8 @@ interface MainFrameRuntimeOptions {
   post: PostRuntime;
   showroom: GarageShowroomRuntime;
   pedestal: GaragePedestalRuntime;
-  networkSession: NetworkBrowserSessionRuntime;
+  /** The one network pump every phase shares (v1's frame pump and the v2 session owner behind it). */
+  networkSession: Pick<NetworkBrowserSessionRuntime, 'pump'>;
   garageFramePacer: GarageFramePacer;
   battleFrame: BattleFrameRuntime;
   isBattleLoadCovering(): boolean;
