@@ -27,7 +27,8 @@ const replaceSource = declaration(propsSource, '_mustReplace');
 const hookSource = declaration(propsSource, 'cropAttributeNormal');
 const finalizeSource = declaration(propsSource, 'finalizeCropFields');
 const setupSource = declaration(lightingSource, 'setupShadowMaterial', true);
-const createSetup = new Function('csm', 'buildCoverageMipmaps',
+// round 69 (2026-09-25): the method also binds the ground-bounce rig; the sandbox injects inert stubs for it.
+const createSetup = new Function('csm', 'buildCoverageMipmaps', 'attachGroundBounceUniforms', 'groundBounceUniforms',
   `${stripTypeScriptTypes(`const owner = { ${setupSource} };`)}\nreturn owner.setupShadowMaterial;`);
 function cropApi(group, engineCtx, finalize = finalizeSource, three = THREE) {
   return new Function('THREE', 'mergeGeometries', 'group', 'engineCtx',
@@ -69,7 +70,7 @@ function fixture(finalize = finalizeSource) {
         'actual setup wrapper must run CSM before the crop hook');
       compile(shader, renderer);
     };
-  } }, (map, cutoff) => mipCalls.push([map, cutoff]));
+  } }, (map, cutoff) => mipCalls.push([map, cutoff]), () => {}, {});
   const api = cropApi(group, { setupShadowMaterial: setup }, finalize);
   api.finalizeCropFields(texture, rows);
   const mesh = group.children[0];
