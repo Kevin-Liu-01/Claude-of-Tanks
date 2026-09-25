@@ -53,7 +53,16 @@ export interface GarageSwitchRecord {
   build?: { workMs: number; yieldMs: number; checkpointCount: number; maxStepMs: number };
   core?: Record<string, number>;
   tail?: Record<string, number>;
+  /** Program link wait before reveal: preparation status, frames waited, and the warm owner's receipts. */
+  link?: { status: string; reason?: string; pending: number | null; slices: number; waitMs: number;
+    timing: Record<string, number> };
   abortReason?: string;
+}
+
+interface ProgramPreparationOutcome {
+  status: 'complete' | 'incomplete';
+  pending?: number | null;
+  reason?: string;
 }
 
 interface PedestalDebugTarget {
@@ -106,6 +115,15 @@ interface GaragePedestalRuntimeOptions {
   discardSharedTextures(specId: string): void;
   createBudgetYield(budgetMs: number): BudgetYield;
   compilePrograms(root: Object3D): void;
+  /**
+   * Optional strict first-use preparation of the hero's forward programs:
+   * submission, KHR_parallel_shader_compile readiness polling in bounded
+   * slices and uniform reflection. The runtime awaits one frame per yield.
+   */
+  prepareProgramSteps?(
+    root: Object3D,
+    timing: Record<string, number>,
+  ): Generator<void, ProgramPreparationOutcome | void, void>;
   nextFrame(): Promise<RuntimeValue>;
   getDeviceTier(): string;
   getPhase(): string;
@@ -172,6 +190,7 @@ export function createGaragePedestalRuntime({
   discardSharedTextures,
   createBudgetYield,
   compilePrograms,
+  prepareProgramSteps,
   nextFrame,
   getDeviceTier,
   getPhase,
@@ -515,14 +534,53 @@ export function createGaragePedestalRuntime({
     }
   };
 
-  const warmPrograms = async (visual: GaragePedestalVisual) => {
+  const warmPrograms = async (
+    visual: GaragePedestalVisual,
+    stillCurrent: () => boolean = () => true,
+    record: GarageSwitchRecord | null = null,
+  ) => {
     if (getDeviceTier() === 'mobile') return;
     try {
-      // Submit without compileAsync completion polling: ANGLE can block on
-      // KHR_parallel_shader_compile status reads for hundreds of milliseconds.
-      compilePrograms(visual.root);
-      await nextFrame();
-      await nextFrame();
+      if (!prepareProgramSteps) {
+        // Submit-only fallback: two frames give the linker a head start and
+        // the first visible render resolves any link still pending.
+        compilePrograms(visual.root);
+        await nextFrame();
+        await nextFrame();
+        return;
+      }
+      // FSP-01 (2026-09-25): a freshly submitted program's first draw blocks
+      // on its deferred KHR_parallel_shader_compile link (three's onFirstUse
+      // link-status read measured 0.5–0.9 s for 7–8 programs on ANGLE Metal
+      // in the first frame after reveal). Submit, then poll readiness one
+      // bounded slice per frame while the outgoing hero stays visible, and
+      // reflect uniforms before the incoming hero is shown. A stale selection
+      // stops waiting; the preparation owner keeps its own deadline.
+      const timing: Record<string, number> = {};
+      const startedAt = now();
+      const steps = prepareProgramSteps(visual.root, timing);
+      let slices = 0;
+      let result: ProgramPreparationOutcome | undefined;
+      try {
+        for (;;) {
+          if (!stillCurrent()) break;
+          const step = steps.next();
+          if (step.done) {
+            result = step.value ?? undefined;
+            break;
+          }
+          slices += 1;
+          await nextFrame();
+        }
+      } finally {
+        steps.return(undefined);
+      }
+      if (record) {
+        record.link = {
+          status: result?.status ?? 'stale', reason: result?.reason, pending: result?.pending ?? null,
+          slices, waitMs: round1(now() - startedAt), timing,
+        };
+      }
     } catch (_) {
       // The first visible render remains the compatibility fallback.
     }
@@ -629,7 +687,9 @@ export function createGaragePedestalRuntime({
       phases.decorMs = Math.round(Number(incoming.root.userData.decorBuildMs) || 0);
       incoming.__pedestalCompiling = true;
       phaseAt = now();
-      const compileWork = isBootComplete() ? warmPrograms(incoming) : Promise.resolve();
+      const compileWork = isBootComplete()
+        ? warmPrograms(incoming, () => canStage() && buildToken === pollToken, record)
+        : Promise.resolve();
       incoming.__pedestalCompileP = compileWork.finally(() => {
         incoming.__pedestalCompiling = false;
         incoming.__pedestalCompileP = null;

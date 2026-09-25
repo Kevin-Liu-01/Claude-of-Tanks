@@ -9,7 +9,8 @@ function deferred() {
 }
 
 function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayedFrames = [],
-  delayedBuilds = [], buildCheckpoints = 0, failBudget = false } = {}) {
+  delayedBuilds = [], buildCheckpoints = 0, failBudget = false, programSlices = 0,
+  programOutcome = null } = {}) {
   const scene = new THREE.Scene();
   const garagePosition = new THREE.Vector3(10, 5, -12);
   const debugTarget = {};
@@ -33,6 +34,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   let presentationInvalidations = 0;
   let buildYields = 0;
   let buildClosures = 0;
+  let programPrepared = 0;
+  let programClosures = 0;
 
   const makeVisual = (specId, options) => {
     visualOptions.push(options);
@@ -79,6 +82,25 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
       assert.ok(root);
       compileCalls += 1;
     },
+    ...(programSlices ? {
+      // FSP-01: strict first-use preparation port — each yield is one frame
+      // the runtime must wait; IteratorClose is the stale-selection contract.
+      *prepareProgramSteps(root, timing) {
+        assert.ok(root);
+        assert.deepEqual(timing, {});
+        programPrepared += 1;
+        try {
+          for (let slice = 0; slice < programSlices; slice++) {
+            timing.queryCount = (timing.queryCount || 0) + 1;
+            nowMs += 5;
+            yield;
+          }
+          return programOutcome;
+        } finally {
+          programClosures += 1;
+        }
+      },
+    } : {}),
     garagePosition,
     podiumTopY: 0.36,
     trackAxisYawRad: Math.PI / 3,
@@ -159,6 +181,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     get presentationInvalidations() { return presentationInvalidations; },
     get buildYields() { return buildYields; },
     get buildClosures() { return buildClosures; },
+    get programPrepared() { return programPrepared; },
+    get programClosures() { return programClosures; },
     get watchdog() { return watchdog; },
     get cancelledWatchdog() { return cancelledWatchdog; },
     setPlayer(value) { player = value; },
@@ -614,4 +638,56 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   h.runtime.dispose();
 }
 
-console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, detached warm LRU, resource preservation and battle handoff passed');
+{
+  // FSP-01: program links are prepared before reveal, one frame per slice,
+  // and the switch record carries the link receipt.
+  const h = createHarness({ programSlices: 3, programOutcome: { status: 'complete', pending: 0 } });
+  await h.runtime.set('alpha');
+  assert.equal(h.programPrepared, 0, 'covered boot keeps its synchronous path');
+  h.setBootComplete(true);
+  const framesBefore = h.frameCalls;
+  await h.runtime.set('bravo');
+  assert.equal(h.compileCalls, 0, 'strict preparation replaces the submit-only fallback');
+  assert.equal(h.programPrepared, 1);
+  assert.equal(h.programClosures, 1);
+  assert.equal(h.frameCalls - framesBefore, 3, 'one frame per preparation yield');
+  assert.equal(h.runtime.current?.specId, 'bravo');
+  const record = h.debugTarget.__GARAGE_SWITCH.at(-1);
+  assert.equal(record.id, 'bravo');
+  assert.equal(record.path, 'procedural');
+  assert.deepEqual(record.link, { status: 'complete', reason: undefined, pending: 0, slices: 3, waitMs: 15,
+    timing: { queryCount: 3 } });
+  assert.ok(record.stages.compile.endMs >= record.stages.build.endMs);
+  h.runtime.dispose();
+}
+{
+  // A newer selection during the link wait stops waiting, closes the
+  // preparation iterator and parks the stale hero without revealing it.
+  const gate = deferred();
+  const h = createHarness({ programSlices: 2, programOutcome: { status: 'complete', pending: 0 },
+    delayedFrames: [gate], residentLimit: 3 });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  const bravo = h.runtime.set('bravo');
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(h.programPrepared, 1, 'bravo is waiting on its first link slice');
+  const charlie = h.runtime.set('charlie');
+  await charlie;
+  assert.equal(h.runtime.current?.specId, 'charlie');
+  gate.resolve();
+  await bravo;
+  assert.equal(h.runtime.current?.specId, 'charlie', 'the stale link wait cannot replace the newer hero');
+  assert.equal(h.programPrepared, 2);
+  assert.equal(h.programClosures, 2, 'both preparations are closed exactly once');
+  const stale = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'bravo');
+  assert.equal(stale.path, 'aborted');
+  assert.equal(stale.abortReason, 'compile-stale');
+  assert.equal(stale.link.status, 'stale');
+  assert.ok(stale.link.slices >= 1);
+  const shown = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'charlie');
+  assert.equal(shown.link.status, 'complete');
+  assert.deepEqual(h.disposed, [], 'the parked stale hero stays cached');
+  h.runtime.dispose();
+}
+
+console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, program link preparation, detached warm LRU, resource preservation and battle handoff passed');

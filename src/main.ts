@@ -913,6 +913,12 @@ const pedestal = createGaragePedestalRuntime({
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
   compilePrograms: (root) => forwardProgramWarm.compile(root),
+  // FSP-01: strict first-use preparation (submission, readiness polling,
+  // uniform reflection) of the parked hero's forward programs against the
+  // real scene target, so the reveal frame never blocks on a pending link.
+  prepareProgramSteps: (root, timing) => forwardProgramWarm.prepareSceneSteps({
+    visibleRoot: root, strict: true, sliceMs: 4, timing,
+  }),
   nextFrame,
   getDeviceTier,
   getPhase: () => game.phase,
