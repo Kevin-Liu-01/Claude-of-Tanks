@@ -155,10 +155,18 @@ oracle unavailable"), `k2` has no comparison registration any more, and the
 remaining rows were below the 90 floor before this round (t64bv1 89.5, t14
 59.9, amx30 83.8, amx30b2 82.8, marder1a3 82.4, m2a2_bradley 53.4, merkava2b
 39.6, merkava2d 34.9, ua_t64bv 24.9, m48 59.6; type74 / m60a1 / m60a3 /
-m3a3_bradley 0). The un-gated release check (`tank:release:check --ids=<22>`:
+m3a3_bradley 0). The un-gated release check over the 22 ids (`tank:release:check --ids=<22>`)
+stops at its standard-check step: 2 of 22 pass the machine-checkable gates
+(`k2`, `m46_patton`); the other 20 miss on the stored gate score (below 90 or
+0), the top-down contiguity cells listed under "Open after this round", or
+the KIT.fittings decoration census (`mg1+0d` on every Merkava, whose decoration
+is hand-authored). The same standard check run on a worktree at `8d1178d09`
+reads the identical gate / clip / contiguity / decoration verdict on every one
+of the 20 (0/20 pass there too, same hole cells and centroids), so none of the
+misses is introduced by this round. The release check therefore runs to
+completion on the two ids the standard check admits (`--ids=k2,m46_patton`:
 standard check, sealed ledger, module-visual-align probe, `npm test`,
-`build:private`) is the release receipt for this round — its result is in the
-lane's final report.
+`build:private`); its result is in the lane's final report.
 
 ## Open after this round
 
