@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { MAP_IDS } from '../world/maps/catalog.ts';
 import { readFile } from 'node:fs/promises';
 
 import { createBattleEntryLifecycle } from './battleEntryLifecycle.ts';
@@ -53,6 +54,12 @@ assert.deepEqual(loadingArgs, [
 assert.deepEqual(order, ['cover', 'load']);
 assert.equal(lifecycle.pending, false);
 assert.equal(lifecycle.renderingCovered, false);
+
+for (const mapId of MAP_IDS) {
+  await runtime.beginSelected({ specId: 'm1a2', mapId, gameMode: 'mars' });
+  assert.deepEqual(loadingArgs, ['m1a2', mapId, { randomRoster: true, gameMode: 'mars' }],
+    `${mapId}: Mars solo entry retains the selected battlefield and rules`);
+}
 
 assert.throws(() => createSoloBattleEntryRuntime({}), /requires every recovery port/);
 
@@ -162,6 +169,9 @@ for (const outcome of ['success', 'import-failure', 'paint-failure']) {
 }
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const soloComposition = mainSource.slice(mainSource.indexOf('async function beginSoloBattle('), mainSource.indexOf('async function debugStartBattle('));
+assert.match(soloComposition, /mapId: operation\?\.mapId \?\? mapId,/,
+  'free Mars sorties preserve the selected map; campaigns retain their authored override');
 const entryComposition = mainSource.slice(mainSource.indexOf('const soloBattleEntry = createSoloBattleEntryRuntime({'));
 assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /nextFrame: nextPaintFrame,/,

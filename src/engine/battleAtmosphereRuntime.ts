@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { isMapId, type MapId } from '../world/maps/catalog.ts';
 import type { MapSkyConfig } from '../world/maps/horizon.ts';
 import { selectBattleWeather, type BattleWeather, type BattleWeatherBiome } from './battleWeatherPolicy.ts';
@@ -19,6 +20,7 @@ export interface BattleAtmosphereRuntimeOptions {
   /** Root owns sky, CSM/hemi and post fog baseline as one covered transaction. */
   applyPreset(preset: MapSkyConfig): void;
   getAuthoredPreset(): MapSkyConfig;
+  getGameMode?(): string;
   getWorldRoot?(): THREE.Object3D | null;
 }
 
@@ -88,6 +90,7 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
   let preparedMap: MapId | null = null;
   let preparedSeed: number | undefined;
   let preparedRoot: THREE.Object3D | null = null;
+  let preparedMars = false;
   const horizonColors = new Map<THREE.MeshBasicMaterial, THREE.Color>();
   let disposed = false;
 
@@ -99,13 +102,17 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
   function prepare(seed: number | undefined, mapId: string): void {
     if (disposed) throw new Error('Battle atmosphere is disposed');
     if (!isMapId(mapId)) throw new RangeError('Battle weather requires a catalog map id');
-    const next = seed === undefined ? null : selectBattleWeather(seed, BATTLE_WEATHER_BIOMES[mapId]);
+    const mars = options.getGameMode?.() === 'mars' || mapId === 'mars';
+    const selected = seed === undefined ? null : selectBattleWeather(seed, BATTLE_WEATHER_BIOMES[mapId]);
+    // Space has an authored cold daylight key under the galaxy dome; terrestrial
+    // random night must not dim it or enable a second, conflicting lighting plan.
+    const next = mars && selected ? { ...selected, timeOfDay: 'day' as const } : selected;
     const root = options.getWorldRoot?.() ?? null;
-    if (preparedMap === mapId && preparedSeed === next?.seed && preparedRoot === root) {
+    if (preparedMap === mapId && preparedSeed === next?.seed && preparedRoot === root && preparedMars === mars) {
       return;
     }
     const nextAuthored = { ...options.getAuthoredPreset() };
-    options.applyPreset(weatherPreset(nextAuthored, next));
+    options.applyPreset(mars ? { ...MARS_SKY_PRESET } : weatherPreset(nextAuthored, next));
     setVehicleReadabilityScale(next?.timeOfDay === 'night' ? .34 : 1); // 2026-09-14: was .24, night readability lifted with the moon
     restoreHorizon();
     if (next?.timeOfDay === 'night') dimHorizon(root, horizonColors);
@@ -114,6 +121,7 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
     preparedMap = mapId;
     preparedSeed = next?.seed;
     preparedRoot = root;
+    preparedMars = mars;
   }
   function reset(): void {
     setVehicleReadabilityScale(1);
@@ -124,6 +132,7 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
     preparedMap = null;
     preparedSeed = undefined;
     preparedRoot = null;
+    preparedMars = false;
     if (restore) options.applyPreset(restore);
   }
   function dispose(): void {

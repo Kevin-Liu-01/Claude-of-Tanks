@@ -18,11 +18,11 @@ function seeded(seed = 0x51a7c7) {
 
 const ids = STRUCTURE_CATALOG.map(({ id }) => id);
 // Mars bases (round 23, 2026-09-18): six station pieces join the destructible registry
-assert.equal(ids.length, 41, 'forty-one building types are registered');
+assert.equal(ids.length, 45, 'forty-five building types are registered');
 assert.equal(new Set(ids).size, ids.length, 'new building ids are unique');
 assert.equal(Object.keys(STRUCTURE_BUILDERS).length, 15, 'fifteen heavyweight merged buildings');
-assert.equal(Object.keys(DESTRUCTIBLE_BUILDING_TYPES).length, 26,
-  'twenty light buildings have destruction states');
+assert.equal(Object.keys(DESTRUCTIBLE_BUILDING_TYPES).length, 30,
+  'thirty light buildings have destruction states');
 
 const HIGH_RISE_IDS = [
   'megatower', 'arcology', 'needletower', 'broadcasttower', 'terracetower',
@@ -227,6 +227,6 @@ for (const mapId of MAP_IDS) {
   }
 }
 assert.deepEqual([...used].sort(), [...ids].sort(),
-  'all thirty-five new structure types are deliberately assigned to maps');
+  'all registered structure types are deliberately assigned to maps');
 
-console.log('structureKit.selftest: 35 new types; 20 destructible; all maps covered');
+console.log('structureKit.selftest: 45 types; 30 destructible; all maps covered');

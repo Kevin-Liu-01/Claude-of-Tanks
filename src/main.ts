@@ -1362,6 +1362,7 @@ sky.applyFog(scene);
 let baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
 let battleWatchdogRadianceScale = 1;
 const battleAtmosphere = createBattleAtmosphereAccess(() => ({
+  getGameMode: () => game.gameMode,
   getWorldRoot: () => currentWorld()?.group ?? null,
   getAuthoredPreset: () => currentWorld()?.config.sky ?? {},
   applyPreset: (preset) => {
@@ -2441,8 +2442,8 @@ async function beginSoloBattle({
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
   const operation = campaignOperationById(pendingCampaignOperationId);
   return soloBattleEntry.beginSelected({
-    // Mars mode (2026-09-18) always fights over Olympus Basin, whatever the Garage has selected
-    specId, mapId: operation?.mapId ?? (gameMode === 'mars' ? 'mars' : mapId), randomRoster, gameMode, campaignOperationId: pendingCampaignOperationId,
+    // Mars changes the rules and sky on the selected battlefield.
+    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: pendingCampaignOperationId,
   });
 }
 

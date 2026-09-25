@@ -1,3 +1,5 @@
+import { OLYMPUS_SETTLEMENT } from './marsSettlement.ts';
+import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
 // src/world/maps/mars.ts — Olympus Basin: a rust-red impact basin under a galaxy sky, its research
 // station scattered across the floor (owner 2026-09-18: "add mars map mode (called mars mode), make it have
 // space bases and make it look like a proper galaxy map"). The sky preset forces the night dome's starfield
@@ -9,7 +11,7 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 export default {
   id: 'mars',
   name: 'Olympus Basin',
-  blurb: 'A rust-red impact basin under a galaxy sky, its research station scattered across the floor',
+  blurb: 'A galaxy-lit Mars colony with crew habitats, research greenhouses, rover depots and an ascent landing field',
 
   terrain: {
     hillScale: 0.8,
@@ -84,15 +86,17 @@ export default {
   },
 
   props: {
+    orbitalSettlement: OLYMPUS_SETTLEMENT,
+    yardClutter: false,
     // sourced building tints (sourcedTextures BUILDING plan): the badlands dust set for the station's huts
     sourcedPalette: 'badlands',
     // the research station: station pieces carry the compound; the town plan keeps to yard gantries and
     // container rows so nothing reads as a terrestrial street
     plan: ['gantry', 'containerRow', 'containerRow', 'gantry', 'containerRow', 'gantry'],
     // one placement per id (props.ts destructibleBuildings loop; the structureKit receipt pins
-    // uniqueness): six orbital pieces plus the station's industrial and military support huts.
+    // uniqueness): ten orbital families supplement the authored settlement districts.
     destructibleBuildings: ['habdome', 'habmodule', 'solararray', 'commsmast', 'fueltanks', 'landingpad',
-      'quonsethut', 'transformershed', 'motorpool', 'guardpost'],
+      'missioncontrol', 'greenhouse', 'ascentlander', 'rovergarage'],
     tacticalBeats: [
       { id: 'west-habitat-ring', role: 'brawl', x: -246, z: 58, yawDeg: 14,
         structure: 'habdome', redoubt: true, outcrop: { count: 7, radius: 12, scaleMax: 3.4 }, wreck: true, wreckOffsetX: -16 },
@@ -129,7 +133,7 @@ export default {
       stalls: 0, benches: 0, coreClutter: 6,
       pots: 0,
       troughs: 0, laundry: 0, handcarts: 0, carts: 0,
-      trucks: 3, jeeps: 2, drumClusters: 6, camps: 3,
+      trucks: 0, jeeps: 0, drumClusters: 8, camps: 0,
       modernClutter: { barrier: 6, roadsign: 0, cone: 6, transformer: 3, cablespool: 4 },
     },
   },
@@ -139,21 +143,7 @@ export default {
     rockHex: 0x8a4a34, haze: 0.38, grain: 0.85,
   },
 
-  sky: {
-    // galaxy sky: the dimmed dome carries the night starfield with a wide band, nebula clouds and a planet
-    skyIntensity: 0.06, nightSky: 1, galaxy: 1.9, nebulaHex: 0x9a4c88, planetDeg: 3.4, planetHex: 0xd2e0ff,
-    sunElevationDeg: 24, sunAzimuthDeg: 122,
-    turbidity: 2.2, rayleigh: 0.35, mieCoefficient: 0.0045, mieDirectionalG: 0.78,
-    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): thin dust decks over the galaxy. The decks are not
-    // dimmed with the dome, so they carry a dark rust tint and read as dust bands occluding the stars — a low 700 m
-    // veil of long 4200 m streaks and a thinner high sheet — and the haze they melt into is a shade more rust
-    // (0x3b2a33 -> 0x46302c: the dust band along the horizon); dust casts no shadow (cloudShadowAmp 0.05)
-    fogDensity: 0.00022, fogTintHex: 0x46302c, fogMix: 0.72, envIntensity: 0.34,
-    cloudOpacity: 0.3, cloudOpacity2: 0.15, cloudTintHex: 0x2c1c1e,
-    cloudAltM: 700, cloudHazeK: 0.0002, cloudUvM: 4200, cloudShadowAmp: 0.05,
-    sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36,
-    postExposure: 1.04,
-  },
+  sky: MARS_SKY_PRESET,
 
   minimap: {
     base: [128, 70, 48], hard: [146, 90, 66], soft: [104, 58, 42],

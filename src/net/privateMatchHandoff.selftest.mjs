@@ -472,6 +472,13 @@ for (let matchSeed = 0; matchSeed < 4096; matchSeed++) {
 }
 // Mars mode (2026-09-18): the galaxy-sky basin is reachable by choice and through its mode, never by the
 // random draw — the rotation list is the catalog minus that one map
+for (const mapId of MAP_IDS) {
+  assert.equal(resolvePrivateMatchMap({ ...lobbyState, gameMode: 'mars', mapId }), mapId,
+    `${mapId}: Mars rooms preserve the selected battlefield`);
+}
+assert.equal(resolvePrivateMatchMap({ ...lobbyState, gameMode: 'mars', mapId: 'random' }),
+  resolvePrivateMatchMap({ ...lobbyState, gameMode: 'standard', mapId: 'random' }),
+  'Mars random selection uses the same deterministic rotation');
 assert.deepEqual([...RANDOM_BATTLE_MAP_IDS].sort(), MAP_IDS.filter((id) => id !== 'mars').sort(), 'the random rotation is the catalog without Mars');
 assert.deepEqual(
   [...privateRandomCoverage].sort(),

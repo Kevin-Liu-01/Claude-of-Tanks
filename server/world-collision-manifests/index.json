@@ -215,10 +215,10 @@
       "concealers": 7206
     },
     "mars": {
-      "bytes": 608418,
-      "sha256": "ff99d0cc4180ddbdc59a5eaba9178f8d1f1af83dbb72a8129f9d18538d1eea79",
-      "obstacles": 848,
-      "colliders": 732,
+      "bytes": 519066,
+      "sha256": "83ff556cd25ce11560783588e9269c2172b7196bd3a6a3e0cfe65c876206927f",
+      "obstacles": 768,
+      "colliders": 716,
       "concealers": 0
     }
   }

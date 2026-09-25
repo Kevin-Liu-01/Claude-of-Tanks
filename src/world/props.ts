@@ -2,6 +2,7 @@
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
 
+import type { OrbitalPlacement } from './maps/marsSettlement.ts';
 import * as THREE from 'three';
 import { configureWorldLampMaterial, registerWorldNightLighting } from './worldNightLighting.ts';
 import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightEmissionGeometry.ts';
@@ -303,6 +304,7 @@ interface PropsSettings {
   lampposts: boolean;
   hedgehogs: number;
   destructibleBuildings: string[];
+  orbitalSettlement?: readonly OrbitalPlacement[];
   tacticalBeats: TacticalBeatSettings[];
   streetRows: boolean;
   curbs: boolean;
@@ -3216,13 +3218,15 @@ ${snowCap ? `
   const placedB: PlacedRadius[] = [];
   function collectTacticalReservations(): PlacedRadius[] {
     const result: PlacedRadius[] = [];
-    for (const beat of P.tacticalBeats || []) {
+    for (const beat of [...(P.tacticalBeats || []), ...(P.orbitalSettlement || [])]) {
       if (!beat.structure) continue;
       const meta = DESTRUCTIBLE_BUILDING_TYPES[beat.structure];
       if (!meta) continue;
       result.push({
         x: beat.x, z: beat.z,
-        rr: Math.hypot(meta.hw, meta.hl) * 0.72 + (beat.reservePad ?? 2.5),
+        // Orbital sites precede the scatter pass; reserve enough room for
+        // the largest yard gantry's radius as well as the authored facility.
+        rr: Math.hypot(meta.hw, meta.hl) * 0.72 + ('role' in beat ? beat.reservePad ?? 2.5 : 10),
       });
     }
     return result;
@@ -3588,7 +3592,7 @@ ${snowCap ? `
   // expansion map. Structures and redoubts reuse destructible pools, so the
   // pass adds no new material or draw-call family.
   function* placeTacticalBeats(): Generator<PropsBuildSlice, void, void> {
-    if (!P.tacticalBeats?.length) return;
+    if (!P.tacticalBeats?.length && !P.orbitalSettlement?.length) return;
     type TacticalBeat = NonNullable<typeof P.tacticalBeats>[number];
     const placeTacticalStructure = (beat: TacticalBeat, yaw: number): boolean => {
       if (!beat.structure) return false;
@@ -3620,6 +3624,10 @@ ${snowCap ? `
       scatterDestructibles('ammobox', cx - fwdX * 2.2, cz - fwdZ * 2.2, 2, 0.8, 2.2, 0);
       scatterDestructibles('crate', cx - fwdX * 3.0, cz - fwdZ * 3.0, 1, 0.5, 1.5, 0);
     };
+    for (const site of P.orbitalSettlement || []) {
+      placeTacticalStructure(site, THREE.MathUtils.degToRad(site.yawDeg));
+      yield { fine: true };
+    }
     for (const beat of P.tacticalBeats) {
       const yaw = THREE.MathUtils.degToRad(beat.yawDeg || 0);
       const structurePlaced = placeTacticalStructure(beat, yaw);

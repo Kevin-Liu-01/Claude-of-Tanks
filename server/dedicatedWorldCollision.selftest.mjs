@@ -5,6 +5,7 @@ import {
   createDedicatedWorldCollision,
   dedicatedCollisionManifestStats,
 } from './dedicatedWorldCollision.ts';
+import { OLYMPUS_SETTLEMENT } from '../src/world/maps/marsSettlement.ts';
 import { getMapConfig, MAP_IDS } from '../src/world/maps/index.ts';
 import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
 import {
@@ -109,7 +110,8 @@ const roadCompletionCensus = {
   reservoir: [6519, 6395, 7298],
   // 2026-09-19 Mars (Olympus Basin): first native capture of the new orbital-station
   // map; captured after the rim-road removal, so its removal count is zero.
-  mars: [848, 732, 0],
+  // 2026-09-24: 24 reserved colony sites, orbital support families and reduced Earth clutter; native headless export.
+  mars: [768, 716, 0],
 };
 // Native rim-road repair removes only rooted trees inside the 9 m road margin.
 // Frozen 89784835d comparison proves every other movement/shell/concealment
@@ -180,6 +182,24 @@ for (const [mapId, counts] of Object.entries(expected)) {
     `${mapId} every reachable tree follows the shared destruction behavior`);
   assert.ok(treeObstacles.every((record) => record.crushMin === 0 && record.crushKeep === 1),
     `${mapId} trees topple immediately without becoming invisible speed bumps`);
+}
+
+// Native export must include every authored facility, with paired movement and
+// shell records. A crowded-out site or stale server shard must fail this gate.
+const colony = createDedicatedWorldCollision('mars');
+for (const site of OLYMPUS_SETTLEMENT) {
+  // The origin can sit in an intentional opening between paired fuel tanks;
+  // identify the authored fixture by its kind and native bounds, not filled air.
+  const matches = colony.getObstacles().filter(record => record.kind === site.structure
+    && record.min[0] <= site.x && record.max[0] >= site.x
+    && record.min[2] <= site.z && record.max[2] >= site.z);
+  assert.equal(matches.length, 1, `${site.id}: exactly one native facility at the authored site`);
+  const obstacle = matches[0];
+  assert.ok(obstacle, `${site.id}: authored Olympus facility has server movement collision`);
+  const collider = colony.getColliders().find(record => record.propIdx === obstacle.propIdx);
+  assert.ok(collider && collider.kind === site.structure, `${site.id}: matching shell/LOS cover`);
+  assert.equal(colony.crushObstacle(obstacle), true, `${site.id}: facility participates in destruction`);
+  assert.equal(collider.dead, true, `${site.id}: destruction removes its shell cover`);
 }
 
 const world = createDedicatedWorldCollision('verdant');

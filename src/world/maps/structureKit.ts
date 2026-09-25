@@ -5,6 +5,7 @@
 // instance system in props.ts.
 
 import * as THREE from 'three';
+import { createOrbitalStructures } from './orbitalStructures.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addConnectedExterior } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
@@ -1794,6 +1795,8 @@ function lightMeta(
   };
 }
 
+const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnectedStructure });
+
 export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingType> = {
   fieldhut: lightMeta('fieldhut', 'rural', 2.3, 3.5, 4.1, PAL.timber, makeFieldHut),
   leanto: lightMeta('leanto', 'rural', 2.9, 2.50, 3.1, PAL.paleWood, makeLeanTo),
@@ -1816,6 +1819,10 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal'),
   corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
   // Mars bases (round 23, 2026-09-18) — footprints follow the visible geometry (propPlacement receipt)
+  missioncontrol: lightMeta('missioncontrol', 'orbital', 7.5, 6.2, 12.6, PAL.orbital, orbital.missioncontrol, 'metal'),
+  greenhouse: lightMeta('greenhouse', 'orbital', 4.9, 8.5, 5.9, PAL.orbital, orbital.greenhouse, 'metal'),
+  ascentlander: lightMeta('ascentlander', 'orbital', 6.6, 6.6, 13.0, PAL.orbital, orbital.ascentlander, 'metal'),
+  rovergarage: lightMeta('rovergarage', 'orbital', 6.5, 8.5, 7.1, PAL.orbital, orbital.rovergarage, 'metal'),
   habdome: lightMeta('habdome', 'orbital', 7.0, 8.0, 9.4, PAL.orbital, makeHabDome, 'metal'),
   habmodule: lightMeta('habmodule', 'orbital', 2.75, 4.8, 6.05, PAL.orbital, makeHabModule, 'metal'),
   commsmast: lightMeta('commsmast', 'orbital', 1.8, 1.8, 15.9, PAL.orbital, makeCommsMast, 'metal'),

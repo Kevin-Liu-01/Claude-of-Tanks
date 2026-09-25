@@ -13,7 +13,8 @@ import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 const panes = new Set(['fieldhut', 'fishershack', 'saunahut', 'alpinerefuge', 'stilthouse', 'longhouse',
   'guardpost', 'quonsethut', 'checkpointhut', 'securityoffice', 'servicegarage', 'corneroffice',
   // 2026-09-19 Mars station: the habitat dome and module carry glass panes and door lights, the landing pad a kiosk window
-  'habdome', 'habmodule', 'landingpad']);
+  'habdome', 'habmodule', 'landingpad', 'missioncontrol', 'greenhouse', 'ascentlander']);
+const newOrbital = new Set(['missioncontrol', 'greenhouse', 'ascentlander', 'rovergarage']);
 function assertExposedAperture(geometry, id) {
   const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()); mesh.updateMatrixWorld(true);
   const mask = geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE), position = geometry.getAttribute('position');
@@ -41,7 +42,7 @@ for (const [id, type] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) for (const
     const geometry = type[mode](rng), mask = geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
     assert(mask && mask.array.byteLength === geometry.getAttribute('position').count, 'one byte per unchanged original vertex');
     const kinds = new Set(mask.array);
-    assert.deepEqual(kinds, new Set(mode === 'broken' ? [0] : id === 'relaystation' ? [0, 2] : panes.has(id) ? [0, 1] : [0]),
+    assert.deepEqual(kinds, new Set(mode === 'broken' ? [0] : id === 'missioncontrol' ? [0, 1, 2] : id === 'relaystation' ? [0, 2] : panes.has(id) ? [0, 1] : [0]),
       `${id}/${mode}: true panes/beacon only; tents, vents, paint and debris remain unlit`);
     if (mode === 'build' && panes.has(id)) assertExposedAperture(geometry, id);
     if (id === 'relaystation' && mode === 'build') {
@@ -51,18 +52,21 @@ for (const [id, type] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) for (const
           'only the original relay tip bulb, not antenna legs or cooling louvers');
       }
     }
-    hash.update(JSON.stringify([id, mode, seed]));
-    for (const name of ['position', 'normal', 'uv', 'color']) {
-      const array = geometry.getAttribute(name)?.array;
-      if (array) hash.update(Buffer.from(array.buffer, array.byteOffset, array.byteLength));
+    // Preserve the original 26-family receipt while independently auditing the new kits.
+    if (!newOrbital.has(id)) {
+      hash.update(JSON.stringify([id, mode, seed]));
+      for (const name of ['position', 'normal', 'uv', 'color']) {
+        const array = geometry.getAttribute(name)?.array;
+        if (array) hash.update(Buffer.from(array.buffer, array.byteOffset, array.byteLength));
+      }
+      if (geometry.index) {
+        const array = geometry.index.array; hash.update(Buffer.from(array.buffer, array.byteOffset, array.byteLength));
+      }
+      vertices += geometry.getAttribute('position').count; indices += geometry.index?.count ?? 0;
     }
-    if (geometry.index) {
-      const array = geometry.index.array; hash.update(Buffer.from(array.buffer, array.byteOffset, array.byteLength));
-    }
-    vertices += geometry.getAttribute('position').count; indices += geometry.index?.count ?? 0;
     geometry.dispose();
   }
-  totalCalls += calls; hash.update(JSON.stringify([state, calls]));
+  if (!newOrbital.has(id)) { totalCalls += calls; hash.update(JSON.stringify([state, calls])); }
 }
 assert.equal(hash.digest('hex'), '38ea3ea23fe6a579840c3e17dbb0e387fac5e3d68ff7581614d4c5021a2d7a20' /* 2026-09-19: six orbital families (Mars station) join the 20 */,
   'all 26 intact/debris families × 3 seeds retain exact original positions, normals, UVs, colors, RNG and topology');

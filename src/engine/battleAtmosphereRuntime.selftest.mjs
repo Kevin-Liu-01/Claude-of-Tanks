@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
+import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 import { createBattleAtmosphereRuntime, BATTLE_WEATHER_BIOMES } from './battleAtmosphereRuntime.ts';
 import { getVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
@@ -85,7 +86,7 @@ try {
   for (const mapId of MAP_IDS) {
     runtime.reset();
     runtime.prepare(3, mapId);
-    assert.equal(runtime.weather.timeOfDay, 'night', `${mapId}: shared night selection`);
+    assert.equal(runtime.weather.timeOfDay, mapId === 'mars' ? 'day' : 'night', `${mapId}: fixed space key or terrestrial night selection`);
     assert.equal(runtime.weather.condition, 'clear', `${mapId}: no weather`);
     assert.equal(runtime.weather.precipitationIntensity, 0, `${mapId}: no precipitation`);
     assert.equal(scene.children.length, 0, `${mapId}: no weather resources`);
@@ -93,7 +94,7 @@ try {
     assert.deepEqual(applied.at(-1), base, `${mapId}: Garage restores authored presentation`);
     runtime.prepare(13, mapId);
     assert.equal(runtime.weather.timeOfDay, 'day', `${mapId}: day rematch`);
-    assert.deepEqual(applied.at(-1), base, `${mapId}: unchanged authored day preset`);
+    assert.deepEqual(applied.at(-1), mapId === 'mars' ? MARS_SKY_PRESET : base, `${mapId}: authored day or shared space preset`);
   }
 } finally { runtime.dispose(); }
 const afterDispose = applied.length;
@@ -183,6 +184,27 @@ try {
     fixture.geometry.dispose(); for (const material of fixture.materials) material.dispose();
   }
 }
+// Every playable map gets the exact Olympus atmosphere in Mars mode, including
+// a legacy server with no weather seed. Same-map mode switches invalidate the
+// prepared key and return to the untouched authored preset on reset.
+let gameMode = 'mars';
+const spaceApplied = [];
+const space = createBattleAtmosphereRuntime({ getGameMode: () => gameMode,
+  getAuthoredPreset: () => base, applyPreset: p => spaceApplied.push(p) });
+for (const mapId of MAP_IDS) for (const seed of [undefined, 3, 13]) {
+  gameMode = 'mars';
+  space.prepare(seed, mapId);
+  assert.deepEqual(spaceApplied.at(-1), MARS_SKY_PRESET, `${mapId}: galaxy/cloud/light recipe matches Olympus exactly`);
+  const count = spaceApplied.length;
+  space.prepare(seed, mapId);
+  assert.equal(spaceApplied.length, count, 'same mode/map/seed does not rebake the environment');
+  gameMode = 'standard';
+  space.prepare(seed, mapId);
+  if (mapId !== 'mars') assert.equal(spaceApplied.at(-1).galaxy, undefined, 'same-map mode change releases galaxy');
+  space.reset();
+  assert.deepEqual(spaceApplied.at(-1), base, 'Garage restores original sky after Mars');
+}
+space.dispose();
 const source = readFileSync(new URL('./battleAtmosphereRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(source, /from ['"].*maps\/index|from ['"].*quality|requestAnimationFrame\(|setTimeout\(|performance\.|Math\.random\(/);
 assert.doesNotMatch(source, /from ['"].*(?:battlePrecipitation|battleVehicleLighting)|new THREE\./,
