@@ -212,9 +212,9 @@ assert.deepEqual(table, {
   urban: { regime: 'hazy-altostratus', coverage: 0.6, baseM: 2800, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.35, farBand: 0.35 },
   coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65 },
   autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
-  steppe: { regime: 'cloud-streets', coverage: 0.28, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35 },
+  steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35 },
   railyard: { regime: 'hazy-altostratus', coverage: 0.78, baseM: 2200, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
-  frontier: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35 },
+  frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35 },
   fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6 },
   delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
   badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15 },
@@ -230,7 +230,7 @@ assert.deepEqual(table, {
   copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
   airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
   oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
-  whiteout: { regime: 'low-stratus', coverage: 0.95, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5 },
+  whiteout: { regime: 'low-stratus', coverage: 0.97, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5 },
   orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25 },
   longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25 },
   mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
@@ -253,7 +253,7 @@ assert.deepEqual(table, {
   const monsoon = deriveCloudLayerPreset(skyOf('monsoon'));
   assert.deepEqual([monsoon.clearRadiusM, monsoon.anvil, monsoon.scud > 0, monsoon.towers, monsoon.typeRange], [2500, 1, true, 1, [0.6, 1]]);
   const whiteout = deriveCloudLayerPreset(skyOf('whiteout'));
-  assert.ok(whiteout.stratiform >= CLOUD_LAYER_RULES.sheetStratiform && whiteout.baseM === 300 && whiteout.fieldMix >= 0.8);
+  assert.ok(whiteout.stratiform >= CLOUD_LAYER_RULES.sheetStratiform && whiteout.baseM === 300 && whiteout.fieldMix >= 0.8 && whiteout.scud === 0, 'whiteout: a closed ceiling, no rags at the camera');
   const winter = deriveCloudLayerPreset(skyOf('winter'));
   assert.ok(winter.stratiform < CLOUD_LAYER_RULES.sheetStratiform && winter.typeRange[1] <= 0.45 && winter.coverage >= 0.8, 'winter: a lumpy closed deck, not a flat sheet');
   // the sea maps' wind comes from their authored ocean, the streets follow it

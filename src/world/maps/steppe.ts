@@ -329,7 +329,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'cloud-streets', coverage: 0.28, streets: 0.9, cirrus: 0.2 },
+  clouds: { regime: 'cloud-streets', coverage: 0.34, streets: 0.9, cirrus: 0.2 },
   sky: {
     // high dry-season sun through light dust: warm-white light, hazy skirt.
     // r2: rayleigh up / turbidity + warm casts down — the first render came

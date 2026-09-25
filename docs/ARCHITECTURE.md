@@ -492,6 +492,13 @@ slab (its layer derived by `engine/cloudPresets.ts` from the map's authored sky 
 reprojection, lit by the atmosphere's sun transmittance and sky irradiance, composited premultiplied through a
 depth-tested dome behind the aerial pass's haze law; per-cascade alpha-tested planes on the shadow-only layer carry
 the cloud shadows through the CSM, `post.ts` owns the single per-frame hook, and `?clouds=off` keeps the baked decks.
+Round 71 (2026-09-25, still opt-in behind `?clouds=volumetric`): every map config authors a `clouds` block (a regime
+from `engine/cloudscapes.ts` and any knob; main.ts carries it on the sky preset as `cloudscape`, Mars on its shared
+preset) that `cloudPresets.ts` resolves through the regime rows; the trace reads a multi-scale weather field with a
+type channel and a street / anvil / cirrus companion field in the wind frame, type height profiles, a rigid wind lean,
+curl-warped erosion, the Hillaire multiple-scattering octaves under a dual-lobe phase with Beer–powder toward the sun,
+a far stratocumulus band and a cirrus sheet behind the slab; the shadow gobos discard by the same fields through a
+custom depth material, and the baked cirrus veil hides while the layer shows.
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column

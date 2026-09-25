@@ -1077,7 +1077,8 @@ export class VolumetricCloudLayer {
     const base = slabOnly ? preset.baseM : preset.cirrusAltM, thick = slabOnly ? preset.thicknessM : 200;
     t.uBase.value = base;
     t.uThick.value = thick;
-    t.uSlabLow.value = preset.baseM - (preset.scud > 0 ? CLOUD_SCUD_BAND_M : 0);
+    // the scud band never reaches down past the lower half of the base altitude (a 300 m ceiling's rags stay aloft)
+    t.uSlabLow.value = preset.scud > 0 ? Math.max(preset.baseM * 0.45, preset.baseM - CLOUD_SCUD_BAND_M) : preset.baseM;
     t.uCoverage.value = preset.coverage;
     t.uTowers.value = preset.towers;
     t.uStratiform.value = preset.stratiform;
