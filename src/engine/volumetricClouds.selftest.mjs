@@ -27,7 +27,7 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 assert.deepEqual([CLOUD_SHAPE_SIZE, CLOUD_DETAIL_SIZE, CLOUD_WEATHER_SIZE, CLOUD_NOISE_SEED], [64, 32, 256, 2068], 'the shipped sizes and seed');
 assert.equal(digest(bakeCloudShapeVolume(8)), '1f3ecfdabf968b313ef1bbf4583ed7d0cd8e716204434c14226ad0e63fdeec76', 'shape 8³ bytes');
 assert.equal(digest(bakeCloudDetailVolume(8)), 'f09eaa66c1e1f8261d2f6c5068ce8d6e648d8ca1a8fbd1f7f897acd72f82bfba', 'detail 8³ bytes');
-assert.equal(digest(bakeCloudWeatherMap(16)), '12d3b89bd5ae79229feedef3610cd07dda63919aa92b5d91ffa316e4816684c5', 'weather 16² bytes');
+assert.equal(digest(bakeCloudWeatherMap(16)), 'd91edab30690b2b77705813684172fe3265e8ddec11c53d81c95b418c9bc0981', 'weather 16² bytes');
 const shape = bakeCloudShapeVolume();
 const detail = bakeCloudDetailVolume();
 const weather = bakeCloudWeatherMap();
@@ -36,7 +36,7 @@ assert.equal(detail.length, 32 * 32 * 32 * 4);
 assert.equal(weather.length, 256 * 256 * 4);
 assert.equal(digest(shape), 'ed892103446410c7b4a52d45b06f9bbcf3d812774eb6f94233c0063edc46ce49', 'shape 64³ bytes (2026-09-24)');
 assert.equal(digest(detail), 'e215d7c534e2946014ce0e1cffdf4a3459951b06bbd134049fc98347622804a8', 'detail 32³ bytes (2026-09-24)');
-assert.equal(digest(weather), '5f48f0d7a86e2b96895a19d543bb0156f17f22f0e3e5a83b2ddc321de7b4df1f', 'weather 256² bytes (2026-09-24, the cell-carried cumuliform field and the stratiform field)');
+assert.equal(digest(weather), 'ef04c8afc1d8b672604c9e436eb4dcf6d212b7b869774c05e194120367c60370', 'weather 256² bytes (2026-09-24, the cell-carried cumuliform field, clustered, and the stratiform field)');
 assert.equal(digest(bakeCloudShapeVolume(64, CLOUD_NOISE_SEED)), digest(shape), 'the default seed is the shipped seed');
 assert.notEqual(digest(bakeCloudShapeVolume(8, 7)), digest(bakeCloudShapeVolume(8, 8)), 'the seed changes the volume');
 
@@ -91,16 +91,19 @@ for (const id of MAP_IDS) {
   assert.ok(p.coverage >= CLOUD_LAYER_RULES.coverageMin && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
+  assert.equal(+p.shadowThreshold.toFixed(3), +Math.min(1, 1 - p.coverage + CLOUD_LAYER_RULES.shadowCoreBand).toFixed(3), `${id}: the shadow footprint is the cloud's dense core`);
   assert.ok(p.tint.every((c) => c > 0 && c <= 1), `${id} tint in (0, 1]`);
   if (overcastFive.includes(id) && id !== 'monsoon') {
     assert.equal(p.regime, 'overcast', `${id} is an overcast preset (the round-65 open note)`);
     assert.ok(p.coverage >= CLOUD_LAYER_RULES.overcastCoverageFloor, `${id} takes the stratus ceiling`);
     assert.equal(p.shadow, false, `${id}: a diffuse-lit deck casts no crisp cloud shadow`);
     assert.equal(p.clearRadiusM, 0);
+    assert.equal(p.fieldMix, 1, `${id}: an overcast cuts the broad stratiform field`);
   }
+  if (p.regime === 'scattered') assert.equal(p.fieldMix, 0, `${id}: scattered cumulus cut the cell field`);
   if (id === 'monsoon') {
     // the storm keeps its tropical blue sky (the owner's approved base): towers off toward the horizon, casting
-    assert.deepEqual([p.regime, p.coverage, p.clearRadiusM, p.towers, p.shadow], ['storm', CLOUD_LAYER_RULES.stormCoverage, CLOUD_LAYER_RULES.stormClearRadiusM, 1, true]);
+    assert.deepEqual([p.regime, p.coverage, p.clearRadiusM, p.towers, p.shadow, p.fieldMix], ['storm', CLOUD_LAYER_RULES.stormCoverage, CLOUD_LAYER_RULES.stormClearRadiusM, 1, true, 0.55]);
   } else assert.equal(p.clearRadiusM, 0, `${id}: only a storm clears the sky over the camera`);
   if (['verdant', 'delta', 'alpine', 'reservoir', 'urban', 'frontier', 'orchard', 'longleaf', 'airfield'].includes(id)) {
     // the owner's good maps: small sparse puffs high over the thin baked veil, the sky mostly open

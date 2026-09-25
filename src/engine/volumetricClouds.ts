@@ -51,11 +51,11 @@ export const CLOUD_SLOT_ORDER: readonly (readonly [number, number])[] = Object.f
 }));
 /** World periods of the weather field, the shape volume (cumuliform / stratiform) and the detail volume (m). */
 export const CLOUD_WEATHER_TILE_M = 12000;
-export const CLOUD_SHAPE_TILE_M = 1700;
+export const CLOUD_SHAPE_TILE_M = 1000;
 export const CLOUD_SHAPE_TILE_STRATUS_M = 4200;
-export const CLOUD_DETAIL_TILE_M = 400;
+export const CLOUD_DETAIL_TILE_M = 300;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
-export const CLOUD_MARCH_STEPS = 72;
+export const CLOUD_MARCH_STEPS = 96;
 export const CLOUD_MARCH_MAX_M = 14000;
 export const CLOUD_DOME_RADIUS_M = 3400;
 /** Camera-cut thresholds: a jump (m), a turn (rad) or a zoom (relative tangent) that invalidates the history. */
@@ -147,6 +147,7 @@ uniform float uShapeTile;
 uniform float uSunGain;
 uniform float uClearRadius;
 uniform float uPixelAngle;
+uniform float uFieldMix;
 varying vec2 vUv;
 const float CL_PI = 3.14159265358979;
 float remap( float v, float lo, float hi, float nlo, float nhi ) {
@@ -165,14 +166,15 @@ vec3 cloudWeather( vec2 pxz ) {
 	// the cumuliform field (the cells) or the stratiform one (the broad regions), both equalised so the map's
 	// coverage admits exactly that fraction; inside, the local coverage runs 0..1 (skewed high) and carves the
 	// base shape into lumps — a region is never one solid slab
-	float field = mix( w.r, w.b, uStratiform );
+	float field = mix( w.r, w.b, uFieldMix );
 	float cov = pow( clamp( ( field - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), mix( 0.7, 0.4, uStratiform ) );
 	// a storm keeps the sky over the camera open: its towers stand off toward the horizon
 	if ( uClearRadius > 0.0 ) cov *= smoothstep( uClearRadius * 0.6, uClearRadius * 1.4, length( pxz - uCamPos.xz ) );
 	// cumuliform columns rise where the local coverage is deepest (one dome per mass, not a tower per cell)
-	// with the breakup noise on top; storms add towers at the cells; a stratus ceiling is nearly flat
+	// with the breakup noise on top; a storm's towers rise from the deepest coverage too, never as one spire
+	// per cell; a stratus ceiling is nearly flat
 	float cumTop = clamp( 0.5 + 0.5 * sqrt( cov ) + ( w.a - 0.5 ) * 0.2, 0.3, 1.0 );
-	cumTop = mix( cumTop, 1.0, uTowers * w.g );
+	cumTop = mix( cumTop, 1.0, uTowers * pow( cov, 0.6 ) );
 	float strTop = 0.78 + 0.22 * w.a;
 	return vec3( cov, mix( cumTop, strTop, uStratiform ), w.a );
 }
@@ -195,7 +197,9 @@ float cloudDensity( vec3 p, vec3 w, bool detail, float foot ) {
 	// a stratus sheet is dense across its footprint (with a little mottle); cumulus keeps the shape's billows
 	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 );
 	// the coverage threshold rises with height so a mass is widest at its base and narrows to a dome
-	float covH = w.x * ( 1.0 - 0.45 * hN * ( 1.0 - uStratiform ) );
+	// the coverage threshold rises with height so a mass is widest at its base and narrows to a dome (a
+	// tower to a head)
+	float covH = w.x * ( 1.0 - mix( 0.45, 0.75, uTowers ) * hN * ( 1.0 - uStratiform ) );
 	float d = remap( base, 1.0 - covH, 1.0, 0.0, 1.0 ) * w.x;
 	if ( detail && d > 0.0 && d < 0.95 ) {
 		// two Worley-fbm fetches: the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where
@@ -211,7 +215,7 @@ float cloudDensity( vec3 p, vec3 w, bool detail, float foot ) {
 		// wisps underneath, cauliflower lumps on top; the erosion grows with height in the cloud (a flat dense
 		// base, billowy tops), a storm's base is ragged, a stratus erodes little
 		float erode = mix( hf, 1.0 - hf, clamp( hN * 8.0, 0.0, 1.0 ) );
-		float amount = ( mix( 0.32, 0.62, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.4 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.85 );
+		float amount = ( mix( 0.32, 0.7, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.4 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.85 );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 	}
 	return d;
@@ -255,7 +259,7 @@ void main() {
 		// the powder term fades toward the sun, where the forward peak lights the thin edges instead
 		float powderK = clamp( cosT * -0.5 + 0.6, 0.0, 1.0 );
 		float span = t1 - t0;
-		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( 8.0, uThick / 24.0 ), 90.0 );
+		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( 8.0, uThick / 40.0 ), 90.0 );
 		float t = t0 + ds * jitter;
 		vec3 L = vec3( 0.0 );
 		float T = 1.0;
@@ -596,6 +600,7 @@ export class VolumetricCloudLayer {
         uCoverage: { value: 0.4 }, uTowers: { value: 0 }, uStratiform: { value: 0.1 }, uDensity: { value: 0.07 },
         uTint: { value: new THREE.Vector3(1, 1, 1) }, uWeatherShift: { value: new THREE.Vector2() }, uNoiseShift: { value: new THREE.Vector3() },
         uShapeTile: { value: CLOUD_SHAPE_TILE_M }, uSunGain: { value: 1 }, uClearRadius: { value: 0 }, uPixelAngle: { value: 0.002 },
+        uFieldMix: { value: 0 },
       },
     });
     this.resolveMaterial = new THREE.ShaderMaterial({
@@ -783,6 +788,7 @@ export class VolumetricCloudLayer {
     (t.uTint.value as THREE.Vector3).set(...preset.tint);
     t.uShapeTile.value = THREE.MathUtils.lerp(CLOUD_SHAPE_TILE_M, CLOUD_SHAPE_TILE_STRATUS_M, preset.stratiform);
     t.uClearRadius.value = preset.clearRadiusM;
+    t.uFieldMix.value = preset.fieldMix;
     const r = this.resolveMaterial.uniforms;
     r.uBase.value = preset.baseM;
     r.uThick.value = preset.thicknessM;
@@ -885,10 +891,11 @@ export class VolumetricCloudLayer {
       const w = cam.right - cam.left, h = cam.top - cam.bottom;
       gobo.scale.set(w * 1.02, h * 1.02, 1);
       gobo.updateMatrixWorld(true);
-      // project each corner along the light onto the cloud base and take the weather uv there
+      // project each corner along the light onto the cloud base and take the weather uv there — the same
+      // shift the trace samples with (the wind drift plus the map's decorrelation offset)
       const uvs = gobo.geometry.getAttribute('uv') as THREE.BufferAttribute;
       const positions = gobo.geometry.getAttribute('position') as THREE.BufferAttribute;
-      const shift = this.weatherShift;
+      const shift = this.traceMaterial.uniforms.uWeatherShift.value as THREE.Vector2;
       for (let v = 0; v < 4; v++) {
         this.goboCorner.fromBufferAttribute(positions, v).applyMatrix4(gobo.matrixWorld);
         const s = (preset.baseM - this.goboCorner.y) / dir.y;

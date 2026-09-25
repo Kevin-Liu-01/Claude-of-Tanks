@@ -147,8 +147,9 @@ function cellField2(N: number, cells: number, seed: number, gate: Float32Array, 
           const dx = gx + 0.2 + jx * 0.6 - px, dy = gy + 0.2 + jy * 0.6 - py;
           const d = Math.sqrt(dx * dx + dy * dy);
           const radius = 0.34 + hr * hr * 0.42;
-          // a cell switches on where the mesoscale field exceeds its own hashed threshold (soft edge)
-          const on = Math.min(1, Math.max(0, (meso - (hp - 0.15)) / 0.3));
+          // a cell switches on where the mesoscale field exceeds its own hashed threshold, sharply, so the
+          // cells cluster into groups with clear regions between them (a soft edge on the threshold)
+          const on = Math.min(1, Math.max(0, ((meso - 0.2) * 1.5 - hp + 0.15) / 0.3));
           const v = Math.max(0, 1 - d / radius) * on;
           if (v > best) best = v;
         }

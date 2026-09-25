@@ -27,6 +27,8 @@ export interface CloudLayerPreset {
   towers: number;
   /** 0..1: stratiform (flat, featureless, ambient-lit) against cumuliform (domed, sun-modelled). */
   stratiform: number;
+  /** 0..1: the weather field the coverage cuts — the cell-carried cumuliform one (0) or the broad stratiform one (1). */
+  fieldMix: number;
   /** Extinction coefficient (1/m) of the densest cloud. */
   density: number;
   /** Linear albedo tint (the authored cloudTintHex, perceptually halved). */
@@ -98,7 +100,7 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   /** the shadow caster needs a fair-weather cloud-shadow amplitude (the legacy AUTO is 0.22) and a day sky */
   shadowMinAmp: 0.15,
   shadowMinSkyIntensity: 0.3,
-  shadowCoreBand: 0.12,
+  shadowCoreBand: 0.06,
 });
 
 function hexToLinear(hex: number): [number, number, number] {
@@ -131,6 +133,9 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
   const regime: CloudLayerRegime = storm ? 'storm' : overcast ? 'overcast' : coverage >= R.brokenCoverage ? 'broken' : 'scattered';
   const towers = storm ? 1 : overcast ? 0 : clamp((co - 0.95) * 2, 0, 1) * (turbidity >= 5.5 ? 1 : 0.4);
   const stratiform = storm ? 0.2 : overcast ? 0.85 : regime === 'broken' ? 0.3 : 0.12;
+  // a storm's towers rise from wide bases (half the broad field), a broken sky merges a few cells, an
+  // overcast is the broad field itself
+  const fieldMix = overcast ? 1 : storm ? 0.55 : regime === 'broken' ? 0.15 : 0;
   const authoredAlt = sky.cloudAltM;
   const baseM = overcast ? (authoredAlt ?? CLOUD_LAYER_OVERCAST_BASE_M)
     : authoredAlt != null && authoredAlt <= R.lowDeckAuthoredAltM ? authoredAlt
@@ -147,7 +152,7 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
   const windDirRad = (sky.sunAzimuthDeg + 90) * Math.PI / 180;
   const windSpeed = storm ? 11 : overcast ? 4 : regime === 'broken' ? 8 : 6;
   const derived: CloudLayerPreset = {
-    regime, coverage, baseM, thicknessM, towers, stratiform, density, tint, windDirRad, windSpeed,
+    regime, coverage, baseM, thicknessM, towers, stratiform, fieldMix, density, tint, windDirRad, windSpeed,
     offset: mapOffset(sky.sunAzimuthDeg, sky.sunElevationDeg),
     clearRadiusM: storm ? R.stormClearRadiusM : 0,
     shadow, shadowThreshold: clamp(1 - coverage + R.shadowCoreBand, 0, 1),
@@ -164,6 +169,6 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
 
 /** A stable key of everything the layer's uniforms and shadow caster read (a preset change re-keys the history). */
 export function cloudLayerKey(p: CloudLayerPreset): string {
-  return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.density, ...p.tint,
+  return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
     p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }
