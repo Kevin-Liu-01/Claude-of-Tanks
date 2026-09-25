@@ -197,6 +197,28 @@ assert.ok(busEvents.some((event) => event.type === 'tank:selfRight'),
   'the authoritative recovery edge reaches presentation once');
 snapshot.entities[1].flags = 0;
 
+// battle endings (2026-09-25): every observable lethal shell_hit feeds the killcam's capture hook with the
+// victim entity — ahead of the bus, for any pair the authority's reveal rules let this viewer see — so a
+// verdict can replay the final kill whoever fired it
+{
+  const fed = [];
+  game.killcam = { onShellHit(hit, target) { fed.push({ hit, target }); } };
+  snapshot.tick++;
+  bridge.apply(snapshot, 1 / 60, [{
+    type: 'shell_hit', shellId: 77, shooterId: 'guest', targetId: 'host', kind: 'pen', destroyed: true, damage: 900,
+    localPos: [0, 1, 0], localDir: [0, 0, 1], pos: [142, 2, -73], normal: [0, 0, -1], modulesHit: [], crewHit: [],
+  }]);
+  assert.equal(fed.length, 1, 'the lethal hit reaches the killcam once');
+  assert.equal(fed[0].target?.id, 'host', 'the killcam receives the victim entity');
+  assert.equal(fed[0].hit.attackerId, 'guest', 'the hit names its attacker from the shooter');
+  const busHit = busEvents.filter((event) => event.type === 'shell:hit').at(-1);
+  assert.equal(busHit.payload.attackerId, 'guest', 'the bus event is the same enriched hit');
+  snapshot.tick++;
+  bridge.apply(snapshot, 1 / 60, [{ type: 'shell_hit', shellId: 78, shooterId: 'guest', targetId: 'ghost', kind: 'bounce', damage: 0 }]);
+  assert.equal(fed[1].target, null, 'a hit on an entity the viewer never saw carries no victim entity');
+  game.killcam = null;
+}
+
 snapshot.tick++;
 snapshot.entities[0].x++;
 snapshot.entities[1].z++;
@@ -796,5 +818,30 @@ console.log('browserBattleBridge.selftest: hidden authority-pose reveal and rost
   assert.equal(lastPrediction().muzzleIndex, 0, 'new life resets launcher presentation independently');
   assert.equal(implicitCursor, 0, 'network prediction never consumes the visual-only cursor');
   hybrid.dispose();
+}
+// battle endings (2026-09-25): the mirrored verdict carries the Horde wave milestone for the report, from the
+// mode state the snapshot meta already delivers
+{
+  const ended = [];
+  const hordeGame = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [],
+    timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant' };
+  const hordeBridge = createBrowserBattleBridge({ engineCtx: { scene }, game: hordeGame,
+    bus: { emit(type, payload) { if (type === 'battle:ended') ended.push(payload); } }, viewerId: 'guest',
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {} });
+  await hordeBridge.prepareRoster([
+    { id: 'host', name: 'Host', specId: 'm1a2', camo: 'summer', team: 'alpha' },
+    { id: 'guest', name: 'Guest', specId: 'm1a2', camo: 'winter', team: 'alpha' },
+  ]);
+  const frame = { tick: 3, serverTimeMs: 50, entities: [entity('host', 'alpha', 0, 0), entity('guest', 'alpha', 5, 0)], shells: [],
+    meta: { phase: 'playing', gameMode: 'endless_horde', modeState: { id: 'endless_horde', horde: { wave: 6, alive: 0, total: 8, nextWaveInS: 0, healChance: 0 } } } };
+  hordeBridge.apply(frame);
+  frame.tick++;
+  hordeBridge.apply(frame, 1 / 60, [{ type: 'match_ended', result: 'bravo', reason: 'horde_overrun' }]);
+  assert.equal(ended.length, 1, 'the verdict is mirrored once');
+  assert.equal(ended[0].result, 'defeat');
+  assert.equal(ended[0].reason, 'horde_overrun', 'the authority\'s reason reaches the director unchanged');
+  assert.equal(ended[0].hordeWave, 6, 'the report names the wave the last stand fell on');
+  assert.equal(hordeGame.resultReason, 'horde_overrun');
+  hordeBridge.dispose?.();
 }
 console.log('browserBattleBridge: rejected/mismatched launcher predictions reconcile without duplicate recoil; wrap, cannon and round isolation PASS');

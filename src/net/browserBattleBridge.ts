@@ -183,6 +183,8 @@ interface BrowserGameState<TLegacyEntity, TLegacyShell, TLegacySpotting> {
   mapId?: string;
   gameMode?: RuntimeValue;
   matchModeState?: RuntimeValue;
+  /** Battle endings (2026-09-25): the killcam's capture hook — every observable lethal shell_hit feeds it. */
+  killcam?: { onShellHit(event: RuntimeValue, target: RuntimeValue): void } | null;
 }
 
 interface EventBus {
@@ -1173,8 +1175,16 @@ export function createBrowserBattleBridge<
       network: true,
       // owner 2026-09-21: the report reads the mode's revive rule (deaths as a stat, `dead` = dead at the end)
       gameMode: game.gameMode,
+      hordeWave: hordeWave(),
       roster: resultRoster(),
     });
+  }
+
+  /** battle endings (2026-09-25): the Horde wave the last stand fell on, for the report milestone */
+  function hordeWave(): number | null {
+    const mode = game.matchModeState as { horde?: { wave?: number } | null } | null | undefined;
+    const wave = mode?.horde?.wave;
+    return typeof wave === 'number' && Number.isFinite(wave) ? wave : null;
   }
 
   const localPlayerEventTypes = new Set([
@@ -1194,7 +1204,12 @@ export function createBrowserBattleBridge<
     if (typeof event.type !== 'string') return;
     if (event.type === 'shell_fired') emitShellFired(event);
     else if (event.type === 'shell_hit') {
-      bus.emit('shell:hit', { ...event, attackerId: event.attackerId || event.shooterId });
+      const hit = { ...event, attackerId: event.attackerId || event.shooterId };
+      // battle endings (2026-09-25): the killcam captures the lethal chain for any pair the authority let this
+      // viewer observe (its reveal rules already filtered the event), so a verdict can replay the final kill
+      // whoever fired it — the same hook state.ts calls in solo play
+      game.killcam?.onShellHit(hit, entities.get(String(event.targetId || '')) ?? null);
+      bus.emit('shell:hit', hit);
     } else if (event.type === 'shell_impact') emitShellImpact(event);
     else if (event.type === 'tank_destroyed') emitTankDestroyed(event);
     else if (event.type === 'world_prop_destroyed') emitWorldPropDestroyed(event);
@@ -1465,6 +1480,7 @@ export function createBrowserBattleBridge<
       network: true,
       // owner 2026-09-21: the report reads the mode's revive rule (deaths as a stat, `dead` = dead at the end)
       gameMode: game.gameMode,
+      hordeWave: hordeWave(),
       roster: resultRoster(),
     });
   }
@@ -1483,6 +1499,7 @@ export function createBrowserBattleBridge<
       network: true,
       // owner 2026-09-21: the report reads the mode's revive rule (deaths as a stat, `dead` = dead at the end)
       gameMode: game.gameMode,
+      hordeWave: hordeWave(),
       roster: resultRoster(),
     });
     return true;
