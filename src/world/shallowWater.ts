@@ -578,7 +578,9 @@ export function createShallowWaterSurface(
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
       outgoingLight -= max(vec3(0.0), totalSpecular - vec3(1.15));
       #if NUM_DIR_LIGHTS > 0
-      if (uOceanGrid.w > 0.5 && uOceanLook.z > 0.0 && waterDeep < 0.85) {
+      // the whole body is the shelf: the bed lies the wading depth (≤ 0.8 m) under every fragment, so the network runs
+      // wherever the bed shows through the sheet — its share (1 − α) scales the term — and fades with the fine tile
+      if (uOceanGrid.w > 0.5 && uOceanLook.z > 0.0) {
         vec3 causticSun = normalize(transpose(mat3(viewMatrix)) * directionalLights[0].direction);
         vec3 causticRay = refract(-causticSun, vec3(0.0, 1.0, 0.0), 0.75);
         vec2 causticEntry = vOceanLag - causticRay.xz * (oceanBed / max(-causticRay.y, 0.2));
@@ -593,9 +595,9 @@ export function createShallowWaterSurface(
         // The concentration 1 / (1 + x) has a positive mean over a zero-mean curvature field (it bleached the whole
         // band white); a bounded odd shaping keeps the network — converging bright, diverging dark — energy-neutral.
         float causticFocus = tanh(-4.5 * oceanBed * causticLap);
-        float causticGain = uOceanLook.z * causticFineW * smoothstep(0.03, 0.14, oceanBed) * (1.0 - smoothstep(0.35, 0.85, waterDeep));
+        float causticGain = uOceanLook.z * causticFineW * smoothstep(0.03, 0.14, oceanBed);
         vec3 causticSunColor = directionalLights[0].color / max(max(directionalLights[0].color.r, max(directionalLights[0].color.g, directionalLights[0].color.b)), 1e-3);
-        outgoingLight += causticFocus * causticGain * 0.45 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.35);
+        outgoingLight += causticFocus * causticGain * 0.6 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.35);
         if (uWaterDebug > 4.5) oceanDebug = clamp(0.5 + causticFocus * 0.4, 0.0, 1.0);
       }
       #endif
