@@ -7,6 +7,7 @@
  * actor. Origin allowlist, payload and rate bounds, graceful drain.
  */
 import http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { CLOSE_REASON, CLOSE_REASON_NAMES, MAX_CLIENT_MESSAGE_BYTES, MESSAGE_TYPE } from '../../src/mp/wire/constants.ts';
@@ -16,12 +17,15 @@ import { toUint8Array } from '../../src/mp/wire/bytes.ts';
 import type { ClientLink } from './link.ts';
 import { createLogger, type Logger } from './log.ts';
 import { createMatchActor, type MatchActor, type MatchActorOptions, type MatchActorStats } from './matchActor.ts';
+import { createLocalRoomService, type LocalRoomOptions, type LocalRoomService } from './localRoomService.ts';
 import { verifySeatToken } from './seatToken.ts';
 import { createMatchControl } from './control.ts';
 import type { MatchStartRequest } from './control.ts';
 
 const HELLO_TIMEOUT_MS = 5000;
 const WS_PATH = '/match';
+const MAX_ADMIN_BODY_BYTES = 64 * 1024;
+const ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
 
 export interface MatchServiceOptions {
   host?: string;
@@ -69,6 +73,8 @@ export interface MatchService {
   readonly url: string;
   readonly draining: boolean;
   readonly actors: ReadonlyMap<string, MatchActor>;
+  /** The embedded room side (tokens + actors) the admin API and local tooling use. */
+  readonly rooms: LocalRoomService;
   createActor(options: Omit<MatchActorOptions, 'log' | 'now'> & Partial<Pick<MatchActorOptions, 'log' | 'now'>>): MatchActor;
   removeActor(roomId: string, reason?: CloseReasonId): boolean;
   stats(): MatchServiceStats;
@@ -85,6 +91,93 @@ function parseAllowedOrigins(value: readonly string[] | null | undefined): Set<s
   if (!value) return null;
   const origins = new Set(value.map((origin) => origin.trim()).filter(Boolean));
   return origins.size ? origins : null;
+}
+
+/** Constant-time bearer check against the seat secret (the room service's credential). */
+function bearerMatches(request: http.IncomingMessage, secret: string): boolean {
+  const match = /^Bearer\s+(.+)$/i.exec(String(request.headers.authorization || ''));
+  if (!match) return false;
+  const provided = Buffer.from(match[1]!);
+  const expected = Buffer.from(secret);
+  return provided.length === expected.length && timingSafeEqual(provided, expected);
+}
+
+async function readJsonBody(request: http.IncomingMessage): Promise<Record<string, unknown>> {
+  let size = 0;
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += bytes.length;
+    if (size > MAX_ADMIN_BODY_BYTES) throw Object.assign(new Error('request body is too large'), { status: 413 });
+    chunks.push(bytes);
+  }
+  let parsed: unknown;
+  try { parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch { throw Object.assign(new Error('request body must be JSON'), { status: 400 }); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Object.assign(new Error('request body must be an object'), { status: 400 });
+  return parsed as Record<string, unknown>;
+}
+
+function optionalString(value: unknown, field: string, pattern: RegExp | null = null): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== 'string' || (pattern && !pattern.test(value))) throw Object.assign(new Error(`${field} is invalid`), { status: 400 });
+  return value;
+}
+
+function optionalNumber(value: unknown, field: string, low: number, high: number): number | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < low || value > high) throw Object.assign(new Error(`${field} is invalid`), { status: 400 });
+  return value;
+}
+
+/** Validate a room-creation body before the actor sees it (the actor re-validates the roster). */
+function roomOptionsFromBody(body: Record<string, unknown>): LocalRoomOptions {
+  const mapId = optionalString(body.mapId, 'mapId', ID_RE);
+  if (!mapId) throw Object.assign(new Error('mapId is required'), { status: 400 });
+  const seatsRaw = body.seats;
+  if (!Array.isArray(seatsRaw) || seatsRaw.length > 64) throw Object.assign(new Error('seats must be an array of at most 64'), { status: 400 });
+  const seats: LocalRoomOptions['seats'] = seatsRaw.map((entry, index) => {
+    const seat = entry && typeof entry === 'object' ? entry as Record<string, unknown> : {};
+    const team = seat.team as 'alpha' | 'bravo' | 'spectator';
+    if (team !== 'alpha' && team !== 'bravo' && team !== 'spectator') throw Object.assign(new Error(`seats[${index}].team is invalid`), { status: 400 });
+    return {
+      playerId: optionalString(seat.playerId, `seats[${index}].playerId`, ID_RE) ?? `p${index}`,
+      name: (optionalString(seat.name, `seats[${index}].name`) ?? `Player ${index}`).slice(0, 32),
+      team,
+      specId: optionalString(seat.specId, `seats[${index}].specId`) ?? '',
+      seat: optionalNumber(seat.seat, `seats[${index}].seat`, 0, 63),
+    };
+  });
+  const botsRaw = body.bots ?? [];
+  if (!Array.isArray(botsRaw) || botsRaw.length > 64) throw Object.assign(new Error('bots must be an array of at most 64'), { status: 400 });
+  const bots: NonNullable<LocalRoomOptions['bots']> = botsRaw.map((entry, index) => {
+    const bot = entry && typeof entry === 'object' ? entry as Record<string, unknown> : {};
+    const team = bot.team as 'alpha' | 'bravo';
+    if (team !== 'alpha' && team !== 'bravo') throw Object.assign(new Error(`bots[${index}].team is invalid`), { status: 400 });
+    const difficulty = bot.difficulty as 'easy' | 'normal' | 'hard' | null | undefined;
+    if (difficulty != null && difficulty !== 'easy' && difficulty !== 'normal' && difficulty !== 'hard') throw Object.assign(new Error(`bots[${index}].difficulty is invalid`), { status: 400 });
+    return {
+      playerId: optionalString(bot.playerId, `bots[${index}].playerId`, ID_RE) ?? `bot-${index}`,
+      name: (optionalString(bot.name, `bots[${index}].name`) ?? `Bot ${index}`).slice(0, 32),
+      team,
+      specId: optionalString(bot.specId, `bots[${index}].specId`) ?? '',
+      ...(difficulty ? { difficulty } : {}),
+    };
+  });
+  const world = body.world;
+  if (world != null && world !== 'dedicated' && world !== 'terrain') throw Object.assign(new Error('world is invalid'), { status: 400 });
+  return {
+    roomId: optionalString(body.roomId, 'roomId', ID_RE),
+    mapId,
+    mode: optionalString(body.mode, 'mode', ID_RE),
+    seed: optionalNumber(body.seed, 'seed', 0, 0xffffffff),
+    seats,
+    bots,
+    countdownS: optionalNumber(body.countdownS, 'countdownS', 0, 600),
+    battleLimitS: optionalNumber(body.battleLimitS, 'battleLimitS', 1, 86_400),
+    world: world as LocalRoomOptions['world'],
+    tokenTtlMs: optionalNumber(body.tokenTtlMs, 'tokenTtlMs', 1000, 7 * 86_400_000),
+    endedLingerTicks: optionalNumber(body.endedLingerTicks, 'endedLingerTicks', 0, 36_000),
+  };
 }
 
 function json(response: http.ServerResponse, status: number, body: unknown): void {
@@ -228,15 +321,59 @@ export async function createMatchService({
     },
   });
 
+  let rooms: LocalRoomService;
+
+  /**
+   * The admin surface local tooling and the soak use (bearer = the seat secret, never a player credential):
+   * POST /rooms creates a match and returns its seat tokens; GET /rooms/:id reports its stats;
+   * DELETE /rooms/:id stops it. Room hosts start matches through `/control/*` (control.ts) instead.
+   */
+  async function handleRoomsAdmin(request: http.IncomingMessage, response: http.ServerResponse, method: string, path: string): Promise<void> {
+    if (!bearerMatches(request, seatSecret)) { json(response, 401, { error: 'unauthorized' }); return; }
+    const roomId = path.length > 7 ? decodeURIComponent(path.slice(7)) : '';
+    try {
+      if (method === 'POST' && !roomId) {
+        if (draining) { json(response, 503, { error: 'draining' }); return; }
+        const room = rooms.createRoom(roomOptionsFromBody(await readJsonBody(request)));
+        json(response, 201, {
+          roomId: room.roomId, url: boundUrl(), tokens: Object.fromEntries(room.tokens),
+          seats: room.seats, stats: room.actor.stats(),
+        });
+        return;
+      }
+      if (roomId && !ID_RE.test(roomId)) { json(response, 400, { error: 'invalid_room' }); return; }
+      const actor = roomId ? actors.get(roomId) : undefined;
+      if (method === 'GET' && roomId) {
+        if (!actor) { json(response, 404, { error: 'room_not_found' }); return; }
+        json(response, 200, { stats: actor.stats(), clients: actor.clientStats() });
+        return;
+      }
+      if (method === 'DELETE' && roomId) {
+        json(response, actor ? 200 : 404, actor ? { removed: rooms.closeRoom(roomId) } : { error: 'room_not_found' });
+        return;
+      }
+      json(response, 405, { error: 'method_not_allowed' });
+    } catch (error) {
+      const status = typeof (error as { status?: number }).status === 'number' ? (error as { status: number }).status : 400;
+      json(response, status, { error: 'invalid_request', message: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
   function handleRequest(request: http.IncomingMessage, response: http.ServerResponse): boolean {
-    const path = (request.url || '').split('?', 1)[0];
-    if (request.method === 'GET' && path === '/healthz') {
+    const [path, query = ''] = (request.url || '').split('?', 2) as [string, string?];
+    const method = request.method || 'GET';
+    if (method === 'GET' && path === '/healthz') {
       const body = stats();
       json(response, body.ok ? 200 : 503, body);
       return true;
     }
-    if (request.method === 'GET' && path === '/metrics') {
+    if (method === 'GET' && path === '/metrics') {
+      if (query.includes('gc=1') && bearerMatches(request, seatSecret) && typeof globalThis.gc === 'function') globalThis.gc();
       json(response, 200, { service: stats(), actors: [...actors.values()].map((actor) => actor.stats()) });
+      return true;
+    }
+    if (path === '/rooms' || path.startsWith('/rooms/')) {
+      void handleRoomsAdmin(request, response, method, path);
       return true;
     }
     return control.handle(request, response);
@@ -332,11 +469,12 @@ export async function createMatchService({
     return true;
   }
 
-  return {
+  const service: MatchService = {
     get address() { return boundAddress(); },
     get url() { return boundUrl(); },
     get draining() { return draining; },
     actors,
+    get rooms() { return rooms; },
     createActor,
     removeActor,
     stats,
@@ -359,4 +497,6 @@ export async function createMatchService({
       log.info('match service closed');
     },
   };
+  rooms = createLocalRoomService({ service, seatSecret, log });
+  return service;
 }
