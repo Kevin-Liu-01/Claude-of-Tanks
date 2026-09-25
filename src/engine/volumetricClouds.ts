@@ -51,7 +51,7 @@ export const CLOUD_SLOT_ORDER: readonly (readonly [number, number])[] = Object.f
 }));
 /** World periods of the weather field, the shape volume (cumuliform / stratiform) and the detail volume (m). */
 export const CLOUD_WEATHER_TILE_M = 12000;
-export const CLOUD_SHAPE_TILE_M = 2600;
+export const CLOUD_SHAPE_TILE_M = 3400;
 export const CLOUD_SHAPE_TILE_STRATUS_M = 4200;
 export const CLOUD_DETAIL_TILE_M = 320;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
@@ -171,11 +171,12 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 	float hRel = ( p.y - uBase ) / uThick;
 	float hN = hRel / max( w.y, 0.05 );
 	if ( hN <= 0.0 || hN >= 1.0 || w.x <= 0.0 ) return 0.0;
-	// rounded bottom, eroded top (a stratus keeps its flat sheet almost to its top)
-	float hg = smoothstep( 0.0, 0.12, hN ) * smoothstep( 1.0, mix( 0.62, 0.92, uStratiform ), hN );
+	// rounded bottom, eroded top (a stratus keeps its flat sheet almost to its top); a cumulus narrows
+	// toward its top so its silhouette is a dome over a wide base, not a lens
+	float hg = smoothstep( 0.0, 0.12, hN ) * smoothstep( 1.0, mix( 0.72, 0.92, uStratiform ), hN ) * ( 1.0 - 0.35 * hN * ( 1.0 - uStratiform ) );
 	// the slab is a few hundred metres thick against a kilometres-wide shape period: the volume is sampled
 	// with its vertical axis compressed so the billows read as tall as they are wide
-	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 1.8, 1.0 ) / uShapeTile;
+	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 1.4, 1.0 ) / uShapeTile;
 	vec4 s = texture( tShape, sp );
 	float lowFreq = s.g * 0.625 + s.b * 0.25 + s.a * 0.125;
 	float base = remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) * hg;
@@ -186,10 +187,10 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 		vec3 dp = ( p + uNoiseShift * 1.31 ) * vec3( 1.0, 1.5, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
 		float hf = dn.r * 0.625 + dn.g * 0.25 + dn.b * 0.125;
-		// wisps underneath, cauliflower lumps on top; the erosion grows with height in the cloud (flat dense
-		// bases, billowy tops); a stratus erodes less
+		// wisps underneath, cauliflower lumps on top; the erosion grows with height in the cloud (dense
+		// bodies, billowy tops) and tears the very base into rags; a stratus erodes less
 		float erode = mix( hf, 1.0 - hf, clamp( hN * 8.0, 0.0, 1.0 ) );
-		float amount = 0.42 * mix( 0.3, 1.0, smoothstep( 0.05, 0.6, hN ) ) * ( 1.0 - uStratiform * 0.65 );
+		float amount = 0.42 * ( mix( 0.35, 1.0, smoothstep( 0.05, 0.6, hN ) ) + 0.7 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.65 );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 	}
 	return d;
@@ -245,7 +246,13 @@ void main() {
 			vec3 w = cloudWeather( p.xz );
 			float dens = w.x > 0.0 ? cloudDensity( p, w, true ) : 0.0;
 			if ( dens > 0.003 ) {
-				empty = 0;
+				if ( empty > 0 ) {
+					// back onto the fine lattice where the stride met cloud: a boundary found on the coarse
+					// stride is the same for neighbouring rays and would terrace the cloud wall
+					t -= ds * float( empty ) * 0.5;
+					empty = 0;
+					continue;
+				}
 				float hN = ( p.y - uBase ) / ( uThick * max( w.y, 0.05 ) );
 				float sig = dens * uDensity;
 				float tau = cloudLightDepth( p, w ) + sig * 4.0;
