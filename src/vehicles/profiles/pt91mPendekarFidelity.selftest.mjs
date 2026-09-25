@@ -29,8 +29,12 @@ assert.ok(2 * gear.wheelR <= 0.80 - 0.04, 'road wheels keep a visible gap on the
   assert.ok(clear(gear.sprocket, -1.98) > 0.02, 'raised sprocket clears the first road wheel');
   assert.ok(clear(gear.idler, 2.02) > 0.02, 'raised idler clears the last road wheel');
 }
-assert.ok(!hull.getObjectByName('gearReturnRollerTires'),
-  'no return rollers: the T-72 family carries its upper run on the road-wheel tops');
+// FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72 family carries three return
+// rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless assertion
+// is reversed — the Pendekar's upper run rides three fitted rollers.
+const pendekarRollers = hull.getObjectByName('gearReturnRollerTires');
+assert.ok(pendekarRollers && pendekarRollers.count === 6,
+  'three return rollers per side: the T-72 family carries its upper run on rollers, not the road-wheel tops');
 assert.ok(gear.sprocket.r >= 0.29 && gear.idler.r >= 0.29,
   'visible sprocket and idler are no longer miniature endpoint placeholders');
 assert.equal(gear.sprocket.y, 0.72,

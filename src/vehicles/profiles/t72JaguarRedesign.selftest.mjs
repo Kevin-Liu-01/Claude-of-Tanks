@@ -68,8 +68,12 @@ assert.equal(runningGear.wheelR, 0.375, 'Jaguar road wheels are the T-72 750 mm 
   assert.ok(clear(runningGear.sprocket, zs[0]) > 0.02, 'rear sprocket clears the first road wheel');
   assert.ok(clear(runningGear.idler, zs.at(-1)) > 0.02, 'front idler clears the last road wheel');
 }
-assert.ok(!hull.getObjectByName('gearReturnRollerTires'),
-  'no return rollers: the T-72 family carries its upper run on the road-wheel tops');
+// FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72 family carries three return
+// rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node), so the Jaguar's upper run rides
+// three fitted rollers again; the 2026-09-23 rollerless assertion is reversed.
+const jaguarRollers = hull.getObjectByName('gearReturnRollerTires');
+assert.ok(jaguarRollers && jaguarRollers.count === 6,
+  'three return rollers per side: the T-72 family carries its upper run on rollers, not the road-wheel tops');
 assert.ok(Math.abs(runningGear.botY + runningGear.trackTh / 2 - (runningGear.wheelY - runningGear.wheelR)) < 1e-9,
   'Jaguar loaded track run carries the tire feet (ground-datum seat, 2026-09-17) while the upper course rises');
 assert.equal(runningGear.wheelY, twardyHull.userData.runningGearReceipts[0].wheelY,

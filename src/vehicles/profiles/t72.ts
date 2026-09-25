@@ -2016,9 +2016,11 @@ function buildT72B3M(P: T72BuilderPort): void {
       // flaps. The rear arc bottom now reads 0.25@-3.79 / 0.29@-3.90 (the print's 0.376 / 0.43 were
       // carried by the fade skids, which the wrap now encloses).
       sprocket: { z: -3.76, y: 0.54, r: 0.26 }, idler: { z: 1.38, y: 0.80, r: 0.18 },
-      // owner 2026-09-23: no return rollers — the real T-72/T-90 family carries its upper run on the
-      // road-wheel tops (the three fictional rollers leave, as on the round-40 Polish T-72 hulls).
-      rollers: [],
+      // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
+      // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
+      // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
+      // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
+      rollers: [-2.92, -1.05, 0.55].map((z) => ({ z, y: 0.97, r: 0.10 })),
       // trackW STAYS 0.58 (r10c tried 0.62 for the +-1.63 ground cols: the
       // sprocket/idler assembly spans trackW+0.07 per side — its faces lit the
       // +-0.99 cols at 0.39 and +-1.68 at 0.42, front rows -8. REVERTED.)
@@ -4558,9 +4560,11 @@ function buildT72BU(P: T72BuilderPort): void {
     // both approach/departure runs into one crowded wheel row.
     wheelZs: evenStations(6, 4.43, 0.125),
     sprocket: { z: -2.78, y: 0.84, r: 0.24 }, idler: { z: 3.06, y: 0.70, r: 0.24 },
-    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family — the upper run rides
-    // the road-wheel tops behind the skirt; the three fictional rollers leave.
-    rollers: [],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
+    // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
+    // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
+    // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
+    rollers: [-1.88, 0.19, 1.97].map((z) => ({ z, y: 0.99, r: 0.10 })),
     trackW: 0.54, topY: 0.86, botY: 0.04, paintedEnds: true, coveredTop: true, arms: true,
   });
   // lipX 1.807 RIGHT-only: the ref's RIGHT skirt crosses the gate's outer

@@ -1134,9 +1134,12 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
     // sprocket in/up, idler up (certified print-fade class, partial)
     wheelZs: [-1.81, -1.01, -0.21, 0.59, 1.39, 2.19],
     sprocket: { z: -2.42, y: 0.95, r: 0.22 }, idler: { z: 2.83, y: 0.66, r: 0.25 },
-    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family — the upper run rides
-    // the road-wheel tops behind the skirts (T-90A, Burlak, BMPT-T90 share this gear).
-    rollers: [],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
+    // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
+    // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
+    // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
+    // (T-90A, Burlak, BMPT-T90 share this gear; the Burlak's side sheets clear the shoe edge by 3 cm.)
+    rollers: [-1.62, 0.25, 1.85].map((z) => ({ z, y: 0.94, r: 0.10 })),
     // Source rear contact leaves the ground at the last road wheel and
     // climbs continuously to the raised sprocket.  Pinning the tangent
     // removes the false metre-long flat tail without moving any wheel.
@@ -1903,9 +1906,11 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
     // trapezoid rather than extending the loaded run through either wheel
     // (the same offsets from the outer wheels as before the respread).
     contactZF: 1.38, contactZR: -3.09,
-    // owner 2026-09-23: no return rollers — the T-72/T-90 family carries its upper run on the
-    // road-wheel tops; the four fictional rollers leave.
-    rollers: [],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
+    // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
+    // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
+    // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
+    rollers: [-2.71, -0.84, 0.76].map((z) => ({ z, y: 0.97, r: 0.10 })),
     // rTAIL r13b: xc 1.46 / trackW 0.60 — the ref grounds its track band
     // out to x 1.76-1.79 (front ±1.728/1.77 cols read bot 0.011) while the
     // inner edge must stay at 1.16 (r12's ±1.13 floor law): 1.46±0.30.
@@ -2737,13 +2742,13 @@ function buildPT91MHull(P: T90BuilderPort): void {
   // used"): r 0.395 on a 0.68 pitch overlapped by 11 cm — the six stations were compressed onto
   // 3.4 m of a 6.86 m hull. The T-72M1 hull carries six 750 mm wheels on a ~0.80 m pitch (2R/pitch
   // 0.94, a 5 cm gap over the 4.0 m contact), the raised end wheels move out to clear them, and the
-  // three fictional return rollers leave: the T-72 family carries its upper run on the wheel tops.
+  // three return rollers return (FSP-03 2026-09-25: the T-72 family carries three per side, FAS T-72 entry).
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.375, wheelW: 0.22, wheelY: 0.48, xc: 1.37, dishR: 0.84,
     wheelZs: [-1.98, -1.18, -0.38, 0.42, 1.22, 2.02],
     sprocket: { z: -2.66, y: terminalWheelY, r: 0.30, trackR: 0.285 },
     idler: { z: 2.70, y: terminalWheelY, r: 0.30, trackR: 0.275 },
-    rollers: [],
+    rollers: [-1.79, 0.08, 1.68].map((z) => ({ z, y: 0.935, r: 0.10 })),
     trackW: 0.50, trackTh: 0.085, topY: 0.88, botY: 0.055,
     paintedEnds: true, coveredTop: true, arms: true,
     linkPitchM: 0.155, shoeRadialScale: 0.88,
@@ -4477,8 +4482,12 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
     style: 'rubber', wheelR: 0.385, wheelW: 0.21, wheelY: 0.46, xc: 1.405, dishR: 0.84,
     wheelZs: evenStations(6, 4.05, 0.135),
     sprocket: { z: -2.42, y: 0.90, r: 0.258 }, idler: { z: 2.90, y: 0.78, r: 0.21 },
-    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family.
-    rollers: [],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
+    // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
+    // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
+    // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
+    // (r 0.09 here: the fixture bottom at 1.14 over the lane's outer edge leaves 3.2 cm over the crest, 1.9 cm under.)
+    rollers: [-1.70, 0.20, 1.82].map((z) => ({ z, y: 0.95, r: 0.09 })),
     // T5H contact pins (§B6 ramps to today's ref lines): front ramp reads
     // 0.137@2.618 -> 0.601@3.164 (my default patch ran flat past 2.6, ramp
     // 0.08 low over six cols); rear ramp 0.218@-2.189 -> 0.655@-2.735 (my
@@ -5206,9 +5215,11 @@ function buildT90(P: T90BuilderPort): void {
     // Lift the front idler 30 mm so its axle and the rising bow run share a
     // cleaner tangent while retaining the authored diameter and fore/aft seat.
     sprocket: { z: -2.52, y: 0.90, r: 0.299 }, idler: { z: 2.70, y: 0.71, r: 0.27 },
-    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family — the upper run rides
-    // the road-wheel tops; the rear arc now runs to the rear wheel's crown tangent.
-    rollers: [],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
+    // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
+    // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
+    // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
+    rollers: [-1.76, 0.11, 1.71].map((z) => ({ z, y: 0.95, r: 0.10 })),
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     rearArcSteps: 18, smoothRearTopTangent: true, tautRearSpan: true,
     contactZF: 2.26, contactZR: -2.16,
@@ -6622,8 +6633,11 @@ function buildT90MS(P: T90BuilderPort): void {
     // Tagil uses the same aft/up final-drive correction while preserving
     // its own smaller sprocket, road-wheel cadence and front-idler station.
     sprocket: { z: -2.58, y: 0.95, r: 0.20 }, idler: { z: 2.76, y: 0.69, r: 0.25 },
-    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family.
-    rollers: [],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
+    // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
+    // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
+    // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
+    rollers: [-1.60, 0.25, 1.83].map((z) => ({ z, y: 0.90, r: 0.10 })),
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     contactZF: 2.4125, contactZR: -2.0325,
   });
@@ -7654,9 +7668,11 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     // both the lower glacis and its shoulder skin; +2.54 m leaves the real
     // wheel-to-wheel clearance while keeping a visibly longer T-90 course.
     idler: { z: 2.54, y: 0.69, r: 0.29 },
-    // owner 2026-09-23 (round 46): no return rollers on the T-72/T-90 family — the T-90M's upper run
-    // rides the road-wheel tops under the 0.92 skirt hem; the four fictional rollers leave.
-    rollers: [],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
+    // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
+    // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
+    // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
+    rollers: [-1.48, 0.20, 1.65].map((z) => ({ z, y: 0.86, r: 0.10 })),
     trackW: 0.50, topY: 0.98, botY: 0.05, paintedEnds: false,
     coveredTop: true, arms: false, contactZF: 2.22, contactZR: -2.14,
   });
