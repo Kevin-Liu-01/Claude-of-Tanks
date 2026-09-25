@@ -61,6 +61,9 @@ function harness(load) {
     assert.equal(h.scene.children.length, 0);
     assert.equal(h.access.current.weather.condition, 'clear');
     assert.equal(h.access.current.weather.timeOfDay, 'night');
+    await h.access.prepare(3, 'winter', false);
+    assert.equal(h.access.current.weather.timeOfDay, 'day', 'lazy access forwards the solo preference');
+    assert.deepEqual(h.applied.at(-1), h.authored);
   } finally { h.dispose(); }
 }
 
@@ -233,6 +236,20 @@ assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon'
   'actual network warm uses current acquired map, preserves seed0, and does not randomize a legacy snapshot');
 assert.deepEqual(frontlinePrepares, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon']],
   'the frontline owner is prepared with the same seed and acquired map, after the weather owner');
+
+calls.length = 0;
+frontlinePrepares.length = 0;
+const preferences = { allowNight: false };
+const prepareSolo = mainCallback('prepareAtmosphere', {
+  battleAtmosphere: weather, frontline, battlePreferences: preferences,
+  game: { battleCount: 3, mapId: 'winter' },
+});
+await prepareSolo();
+preferences.allowNight = true;
+await prepareSolo();
+assert.deepEqual(calls, [[3, 'winter', false], [3, 'winter', true]],
+  'actual solo launch reads the current preference for each battle; network keeps its shared seed');
+assert.deepEqual(frontlinePrepares, [[3, 'winter'], [3, 'winter']]);
 
 // Actual Garage activation precedes its setGarageSpots call on return. A late
 // atmosphere reset must not overwrite the newly selected Garage sky/fog.

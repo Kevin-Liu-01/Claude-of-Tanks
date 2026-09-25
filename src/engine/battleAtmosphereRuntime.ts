@@ -26,7 +26,7 @@ export interface BattleAtmosphereRuntimeOptions {
 
 export interface BattleAtmosphereRuntime {
   readonly weather: BattleWeather | null;
-  prepare(seed: number | undefined, mapId: string): void;
+  prepare(seed: number | undefined, mapId: string, allowNight?: boolean): void;
   reset(): void;
   dispose(): void;
 }
@@ -99,16 +99,17 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
     horizonColors.clear();
   }
 
-  function prepare(seed: number | undefined, mapId: string): void {
+  function prepare(seed: number | undefined, mapId: string, allowNight = true): void {
     if (disposed) throw new Error('Battle atmosphere is disposed');
     if (!isMapId(mapId)) throw new RangeError('Battle weather requires a catalog map id');
     const mars = options.getGameMode?.() === 'mars' || mapId === 'mars';
     const selected = seed === undefined ? null : selectBattleWeather(seed, BATTLE_WEATHER_BIOMES[mapId]);
     // Space has an authored cold daylight key under the galaxy dome; terrestrial
     // random night must not dim it or enable a second, conflicting lighting plan.
-    const next = mars && selected ? { ...selected, timeOfDay: 'day' as const } : selected;
+    const next = (mars || !allowNight) && selected ? { ...selected, timeOfDay: 'day' as const } : selected;
     const root = options.getWorldRoot?.() ?? null;
-    if (preparedMap === mapId && preparedSeed === next?.seed && preparedRoot === root && preparedMars === mars) {
+    if (preparedMap === mapId && preparedSeed === next?.seed && preparedRoot === root && preparedMars === mars
+      && currentWeather?.timeOfDay === next?.timeOfDay) {
       return;
     }
     const nextAuthored = { ...options.getAuthoredPreset() };

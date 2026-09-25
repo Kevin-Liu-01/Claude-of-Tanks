@@ -59,8 +59,14 @@ try {
   assert.equal(night.fogDensity, base.fogDensity, 'night retains authored fog density');
   assert.equal(scene.children.length, 0, 'old snow seed allocates no particles or lights');
   const beforeRematch = applied.length;
+  runtime.prepare(3, 'winter', false);
+  assert.equal(runtime.weather.timeOfDay, 'day', 'night opt-out rekeys the same match seed');
+  assert.deepEqual(applied.at(-1), base, 'opt-out restores exact authored daylight');
+  assert.equal(getVehicleReadabilityScale(), 1);
+  runtime.prepare(3, 'winter', true);
+  assert.equal(runtime.weather.timeOfDay, 'night', 're-enabling restores the existing seeded selection');
   runtime.prepare(13, 'winter');
-  assert.equal(applied.length, beforeRematch + 1, 'same map/new seed reapplies atmosphere');
+  assert.equal(applied.length, beforeRematch + 3, 'preference and seed changes each reapply atmosphere');
   assert.equal(runtime.weather.timeOfDay, 'day');
   assert.equal(getVehicleReadabilityScale(), 1, 'day rematch restores exact authored readability');
   assert.deepEqual(applied.at(-1), base, 'day rematch restores the exact authored preset');
@@ -87,6 +93,9 @@ try {
     runtime.reset();
     runtime.prepare(3, mapId);
     assert.equal(runtime.weather.timeOfDay, mapId === 'mars' ? 'day' : 'night', `${mapId}: fixed space key or terrestrial night selection`);
+    runtime.prepare(3, mapId, false);
+    assert.equal(runtime.weather.timeOfDay, 'day', `${mapId}: disabled nights stay daytime`);
+    assert.deepEqual(applied.at(-1), mapId === 'mars' ? MARS_SKY_PRESET : base);
     assert.equal(runtime.weather.condition, 'clear', `${mapId}: no weather`);
     assert.equal(runtime.weather.precipitationIntensity, 0, `${mapId}: no precipitation`);
     assert.equal(scene.children.length, 0, `${mapId}: no weather resources`);
@@ -141,6 +150,9 @@ try {
   horizonRuntime.prepare(13, 'winter');
   colorsRestored(first);
   horizonRuntime.prepare(3, 'winter');
+  horizonRuntime.prepare(3, 'winter', false);
+  colorsRestored(first);
+  horizonRuntime.prepare(3, 'winter', true);
   for (const [material, identity, initial, version] of first.snapshots.slice(0, 2)) {
     assert.strictEqual(material.color, identity);
     assert.deepEqual(material.color.toArray(), [initial.r * .20, initial.g * .20, initial.b * .20],

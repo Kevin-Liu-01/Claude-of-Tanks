@@ -68,6 +68,7 @@ import {
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
+import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
 import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
 import { createMissionBrief } from './ui/missionBrief.ts';
@@ -1733,7 +1734,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
     prepareAtmosphere: async () => {
-      await battleAtmosphere.prepare(game.battleCount, game.mapId);
+      await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.allowNight);
       await frontline.prepare(game.battleCount, game.mapId);
     },
     prepareNightLighting: () => nightLighting.prepare(),

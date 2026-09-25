@@ -54,9 +54,10 @@ import { t, formatNumber, formatDate, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import {
-  BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWaveMode, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readSides, writeMarsSettings, writeSides } from '../game/teamArrangement.ts';
+import { battlePreferences } from '../game/battlePreferences.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import type { PlayMode } from '../net/playMode.ts';
@@ -606,38 +607,48 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-battle" type="button" aria-label="${t('garage.battle.startBots')}">` +
     `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
     `<span class="battle-word">${t('garage.battle')}</span></button>` +
-    `<button class="cot-battle-mode" type="button" aria-haspopup="menu" aria-expanded="false" ` +
+    `<button class="cot-battle-mode" type="button" aria-haspopup="dialog" aria-expanded="false" ` +
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
     `<span>${t('garage.battle.typeBots')}</span></button>` +
-    `<div class="cot-battle-menu" id="cot-battle-menu" role="menu" aria-label="${t('garage.battle.menuAria')}">` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="solo" aria-checked="true">` +
+    `<div class="cot-battle-menu" id="cot-battle-menu" role="dialog" aria-label="${t('garage.battle.menuAria')}">` +
+    `<div class="cot-battle-menu-head"><strong>${t('garage.battle.menuAria')}</strong>` +
+    `<button type="button" data-battle-close aria-label="${t('garage.battle.closeSetup')}">&times;</button></div>` +
+    `<button class="cot-battle-choice cot-battle-regular" type="button" data-mode="solo" aria-pressed="true">` +
     `<span class="choice-icon">${uiIconSVG('battleBots', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.typeBots')}</span><small>${t('garage.battle.soloShort')}</small></button>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="private" aria-checked="false">` +
-    `<span class="choice-icon">${uiIconSVG('battlePrivate', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.typePrivate')}</span><small>${t('garage.battle.privateShort')}</small></button>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="lan" aria-checked="false">` +
-    `<span class="choice-icon">${uiIconSVG('battleLan', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.typeLan')}</span><small>${t('garage.battle.lanShort')}</small></button>` +
-    `<div class="cot-battle-menu-label">${t('garage.battle.soloRules')}</div>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="capture_the_flag" aria-checked="false">` +
+    `<span><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
+    `<span class="choice-description">${t('garage.battle.regularDescription')}</span></span></button>` +
+    `<div class="cot-battle-menu-label" id="cot-special-modes">${t('garage.battle.soloRules')}</div>` +
+    `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-special-modes">` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="capture_the_flag" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeFlag', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeFlag')}</span><small>${t('garage.battle.flagShort')}</small></button>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="zone_control" aria-checked="false">` +
+    `<span class="choice-name">${t('garage.battle.modeFlag')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="zone_control" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeZones')}</span><small>${t('garage.battle.zonesShort')}</small></button>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="turbo_ball" aria-checked="false">` +
+    `<span class="choice-name">${t('garage.battle.modeZones')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="turbo_ball" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeTurbo', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeTurbo')}</span><small>${t('garage.battle.goals')}</small></button>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="endless_horde" aria-checked="false">` +
+    `<span class="choice-name">${t('garage.battle.modeTurbo')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="endless_horde" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeHorde', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeHorde')}</span><small>${t('garage.battle.waves')}</small></button>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="frontline_assault" aria-checked="false">` +
+    `<span class="choice-name">${t('garage.battle.modeHorde')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="frontline_assault" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeFront')}</span><small>${t('garage.battle.sectors')}</small></button>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="mars" aria-checked="false">` +
+    `<span class="choice-name">${t('garage.battle.modeFront')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="mars" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeMars', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeMars')}</span><small>${t('garage.battle.galaxy')}</small></button>` +
+    `<span class="choice-name">${t('garage.battle.modeMars')}</span></button>` +
+    `</div><div class="cot-battle-menu-label" id="cot-multiplayer-modes">${t('garage.battle.multiplayer')}</div>` +
+    `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-multiplayer-modes">` +
+    `<button class="cot-battle-choice" type="button" data-mode="private" aria-pressed="false">` +
+    `<span class="choice-icon">${uiIconSVG('battlePrivate', 17)}</span>` +
+    `<span><span class="choice-name">${t('garage.battle.typePrivate')}</span>` +
+    `<span class="choice-description">${t('garage.battle.privateDescription')}</span></span></button>` +
+    `<button class="cot-battle-choice" type="button" data-mode="lan" aria-pressed="false">` +
+    `<span class="choice-icon">${uiIconSVG('battleLan', 17)}</span>` +
+    `<span><span class="choice-name">${t('garage.battle.typeLan')}</span>` +
+    `<span class="choice-description">${t('garage.battle.lanDescription')}</span></span></button></div>` +
+    `<div class="cot-battle-solo-options" data-solo-options>` +
+    `<div data-team-options>` +
     // sides (owner 2026-09-18): "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
     // enter custom numbers of allies and enemies" — one setting for the symmetric solo modes (game/teamArrangement.ts)
     `<div class="cot-battle-menu-label">${t('garage.battle.sides')}</div>` +
@@ -653,6 +664,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<b class="cot-sides-readout" data-sides-readout></b>` +
     `<small>${t('garage.battle.sidesNote', { max: String(BATTLE_FIELD_LIMIT) })}</small>` +
     `</div>` +
+    `</div><label class="cot-battle-night">` +
+    `<span><strong>${t('garage.battle.allowNight')}</strong><small id="cot-night-hint" data-night-hint></small></span>` +
+    `<input type="checkbox" role="switch" data-allow-night aria-describedby="cot-night-hint">` +
+    `<span class="cot-night-switch" aria-hidden="true"></span></label>` +
     // Mars settings (owner 2026-09-18 "give it a bunch of boosts and settings"): the gravity world and the
     // boost-cache cadence, shown while Mars is the selected rule (game/teamArrangement.ts readMarsSettings)
     `<div class="cot-battle-menu-label" data-mars-label hidden>${t('garage.battle.marsSettings')}</div>` +
@@ -662,7 +677,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<label><span>${t('garage.battle.marsCaches')}</span><select data-mars-field="caches">` +
     MARS_CACHE_IDS.map((id) => `<option value="${id}">${t(`mars.caches.${id}`)}</option>`).join('') + `</select></label>` +
     `<small>${t('garage.battle.marsNote')}</small></div>` +
-    `</div><div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
+    `</div></div><div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
     `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
@@ -2710,7 +2725,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     readonly icon: string;
   }
   const battleModeMeta: Readonly<Record<BattleMode, BattleChoiceMeta>> = {
-    solo: { short: 'BOTS', label: t('garage.battle.soloLabel'), icon: 'battleBots' },
+    solo: { short: t('garage.battle.typeBots'), label: t('garage.battle.soloLabel'), icon: 'battleBots' },
     private: { short: 'CODE', label: t('garage.battle.privateLabel'), icon: 'battlePrivate' },
     lan: { short: 'LAN', label: t('garage.battle.lanLabel'), icon: 'battleLan' },
   };
@@ -2732,7 +2747,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setGaragePanel('');
     battleMenu.classList.add('open');
     battleModeBtn.setAttribute('aria-expanded', 'true');
-    const activeRule = battleGameMode === 'standard' ? null
+    const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
       : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
     (activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode))?.focus();
   }
@@ -2741,7 +2756,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const mode = nextMode as BattleMode;
     const meta = battleModeMeta[mode];
     battleMode = mode;
-    if (mode === 'solo') battleGameMode = 'standard';
+    if (mode === 'solo') {
+      battleGameMode = 'standard';
+      try { localStorage.setItem('cot.game.mode.v1', 'standard'); } catch (_) { /* session-only */ }
+    }
     if (mode !== 'solo' && opts.onPlayModeIntent) {
       try { opts.onPlayModeIntent(mode); } catch (_) { /* optional warm path */ }
     }
@@ -2750,11 +2768,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleModeBtn.setAttribute('aria-label', t('garage.battle.typeAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startBattleAria', { label: meta.label }));
     for (const choice of battleChoices) {
-      choice.setAttribute('aria-checked', String(choice.dataset.mode === mode));
+      choice.setAttribute('aria-pressed', String(choice.dataset.mode === mode));
     }
-    for (const choice of battleRuleChoices) choice.setAttribute('aria-checked', 'false');
+    for (const choice of battleRuleChoices) choice.setAttribute('aria-pressed', 'false');
+    renderBattleOptions();
   }
-  let renderMarsSettings: () => void = () => {};
+  let renderBattleOptions: () => void = () => {};
   function setBattleGameMode(nextMode: RuntimeValue): void {
     const id = normalizeGameMode(nextMode);
     const meta = battleRuleMeta[id];
@@ -2766,13 +2785,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.rulesAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
-    for (const choice of battleChoices) choice.setAttribute('aria-checked', 'false');
+    for (const choice of battleChoices) choice.setAttribute('aria-pressed', 'false');
     for (const choice of battleRuleChoices) {
-      choice.setAttribute('aria-checked', String(choice.dataset.gameMode === id));
+      choice.setAttribute('aria-pressed', String(choice.dataset.gameMode === id));
     }
-    renderMarsSettings();
+    renderBattleOptions();
   }
 
+  requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]').addEventListener('click', () => {
+    closeBattleMenu({ restoreFocus: true });
+  });
+  battleControl.addEventListener('focusout', (event) => {
+    if (event.relatedTarget instanceof Node && !battleControl.contains(event.relatedTarget)) closeBattleMenu();
+  });
   battleBtn.addEventListener('click', battle);
   const signalBattleIntent = () => {
     if (!selectedId) return;
@@ -2804,12 +2829,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   for (const choice of battleChoices) choice.addEventListener('click', () => {
     emit('ui:click', {});
     setBattleMode(choice.dataset.mode);
-    closeBattleMenu({ restoreFocus: true });
   });
   for (const choice of battleRuleChoices) choice.addEventListener('click', () => {
     emit('ui:click', {});
     setBattleGameMode(choice.dataset.gameMode);
-    closeBattleMenu({ restoreFocus: true });
   });
   // sides (owner 2026-09-18): the battle menu's 7v7 / 14v14 / custom switch stores one sides setting for the
   // symmetric modes (game/teamArrangement.ts writeSides, clamped by the ruleset); the menu stays open while the
@@ -2849,8 +2872,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const marsLabel = requiredElement<HTMLElement>(battleMenu, '[data-mars-label]');
   const marsSettings = requiredElement<HTMLElement>(battleMenu, '[data-mars-settings]');
   const marsField = (name: string) => requiredElement<HTMLSelectElement>(marsSettings, `select[data-mars-field="${name}"]`);
-  renderMarsSettings = () => {
-    const shown = battleGameMode === 'mars';
+  const soloOptions = requiredElement<HTMLElement>(battleMenu, '[data-solo-options]');
+  const teamOptions = requiredElement<HTMLElement>(battleMenu, '[data-team-options]');
+  const nightToggle = requiredElement<HTMLInputElement>(battleMenu, '[data-allow-night]');
+  const nightHint = requiredElement<HTMLElement>(battleMenu, '[data-night-hint]');
+  renderBattleOptions = () => {
+    const solo = battleMode === 'solo';
+    const shown = solo && battleGameMode === 'mars';
+    soloOptions.hidden = !solo;
+    teamOptions.hidden = isWaveMode(battleGameMode);
+    nightToggle.checked = battlePreferences.allowNight;
+    nightToggle.disabled = shown;
+    nightHint.textContent = t(shown ? 'garage.battle.nightGalaxy'
+      : nightToggle.checked ? 'garage.battle.nightAllowed' : 'garage.battle.nightDisabled');
     marsLabel.hidden = !shown;
     marsSettings.hidden = !shown;
     const settings = readMarsSettings();
@@ -2860,9 +2894,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   marsSettings.addEventListener('change', () => {
     emit('ui:click', {});
     writeMarsSettings({ gravity: marsField('gravity').value, caches: marsField('caches').value });
-    renderMarsSettings();
+    renderBattleOptions();
   });
-  renderMarsSettings();
+  nightToggle.addEventListener('change', () => {
+    battlePreferences.setAllowNight(nightToggle.checked);
+    renderBattleOptions();
+  });
+  renderBattleOptions();
   // batch 19 (2026-09-14): the Garage and the play menu share the remembered rule set — a mode picked
   // in the play menu (or last session) is what BATTLE launches instead of silently reverting to Standard
   try {
