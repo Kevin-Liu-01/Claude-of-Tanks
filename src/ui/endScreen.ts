@@ -36,6 +36,7 @@ import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { t, formatNumber } from './i18n.ts';
 import type { CampaignDebrief } from '../game/campaignDebrief.ts';
+import { finalBlowLine, type FinalBlow } from './finalBlow.ts';
 import type {
   NetworkRoomPlayer,
   NetworkRoomState,
@@ -104,6 +105,10 @@ export interface EndScreenSummary {
   enemies: EndScreenTeamRow[];
   /** Campaign sortie debrief (Frontline Assault on a ladder map); absent otherwise. */
   campaign?: CampaignDebrief | null;
+  /** battle endings (2026-09-25): the blow that ended the battle (finalBlow.ts), absent when nothing fell. */
+  finalBlow?: FinalBlow | null;
+  /** The Horde wave the last stand fell on. */
+  hordeWave?: number | null;
 }
 
 interface EndScreenRuntime {
@@ -208,6 +213,10 @@ const ES_CSS = `
 .cot-es .es-sub{margin-top:11px;text-align:center;font-size:14.5px;font-weight:650;
   color:${COL.steel};letter-spacing:.04em;}
 .cot-es .es-sub b{color:#ffe4b0;font-weight:800;}
+/* battle endings (2026-09-25): the final blow under the verdict line */
+.cot-es .es-blow{margin-top:8px;text-align:center;font-family:${FONT_COND};font-weight:800;font-size:12.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:#ffd27a;display:flex;align-items:center;justify-content:center;gap:8px;}
+.cot-es .es-blow svg{flex:0 0 auto;color:#ffb54a;}
 .cot-es .es-meta{margin-top:4px;text-align:center;font-family:${FONT_COND};
   font-weight:700;font-size:12px;letter-spacing:.14em;color:#aab7c2;
   text-transform:uppercase;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;gap:18px;}
@@ -809,12 +818,24 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     sub.style.setProperty('--i', nextI());
     sub.innerHTML = `${sum.playerVehicle ? `<b>${sum.playerVehicle}</b> — ` : ''}` +
       outcomeLine(result, sum);
+    if (sum.finalBlow) {
+      const blow = el('div', 'es-blow es-in', hero);
+      blow.style.setProperty('--i', nextI());
+      blow.innerHTML = `${uiIconSVG('skull', 14)}<span>${finalBlowLine(sum.finalBlow)}</span>`;
+      host.dataset.finalBlow = `${sum.finalBlow.cause}:${sum.finalBlow.attacker || ''}>${sum.finalBlow.target}`;
+    } else {
+      delete host.dataset.finalBlow;
+    }
     const meta = el('div', 'es-meta es-in', hero);
     meta.style.setProperty('--i', nextI());
     const bits: string[] = [];
     if (sum.map) bits.push(`<span>${uiIconSVG('map', 14)}<b>${sum.map}</b></span>`);
     if (sum.timeS > 0) {
       bits.push(`<span>${uiIconSVG('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
+    }
+    if (sum.hordeWave != null && Number.isFinite(sum.hordeWave)) {
+      bits.push(`<span>${uiIconSVG('modeHorde', 14)}<b>${t('endScreen.horde.wave', { wave: String(Math.max(1, Math.floor(sum.hordeWave))) })}</b></span>`);
+      host.dataset.hordeWave = String(Math.floor(sum.hordeWave));
     }
     meta.innerHTML = bits.join('');
     if (sum.map) host.dataset.map = sum.map;

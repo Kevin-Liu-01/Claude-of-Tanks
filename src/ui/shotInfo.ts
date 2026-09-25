@@ -49,6 +49,7 @@ import {
 import type { EventBus } from '../game/stateCore.ts';
 import { t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
+import { resolveFinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 
@@ -105,6 +106,7 @@ interface TankDestroyedEvent {
   readonly id: EntityId;
   readonly killerId?: EntityId | null;
   readonly specId: string;
+  readonly cause?: string | null;
 }
 
 interface EndRosterRow {
@@ -131,6 +133,8 @@ interface BattleEndedEvent {
   readonly durationS?: number;
   readonly timeLimitS?: number | null;
   readonly alliesLost?: number;
+  /** battle endings (2026-09-25): the Horde wave the last stand fell on */
+  readonly hordeWave?: number | null;
 }
 
 interface Combatant {
@@ -203,6 +207,7 @@ interface EndInfo {
   readonly map: string | null;
   readonly reason: string | null;
   readonly campaign: CampaignDebrief | null;
+  readonly hordeWave: number | null;
 }
 
 interface SummaryTeamRow extends EndScreenTeamRow {
@@ -958,6 +963,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   const receivedLog: ReceivedEntry[] = [];  // per-battle incoming entries (full battle)
   const stats = newStats();
   let endInfo: EndInfo | null = null;      // battle:ended report header
+  // battle endings (2026-09-25): the final blow — the last lethal shell:hit on any pair and the last
+  // tank:destroyed — resolved into the report's hero line by finalBlow.ts, never recomputed
+  let lastLethalHit: FinalBlowLethal | null = null;
+  let lastDestroyedRow: FinalBlowDestroyed | null = null;
 
   const isTouchBattleLayout = () =>
     document.body.classList.contains('cot-touch-layout');
@@ -1419,6 +1428,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       allies,
       enemies,
       campaign: endInfo?.campaign ?? null,
+      finalBlow: resolveFinalBlow(lastLethalHit, lastDestroyedRow, playerId == null ? null : String(playerId),
+        (id) => combatants.get(id)?.name ?? null),
+      hordeWave: endInfo?.hordeWave ?? null,
     };
   }
 
@@ -1544,6 +1556,16 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   bus.on('shell:hit', (payload) => {
     const ev = eventPayload<ShotHitEvent>(payload);
     recordHitCombatants(ev);
+    if (ev.destroyed && ev.targetId != null) {
+      lastLethalHit = {
+        attackerId: ev.attackerId == null ? null : String(ev.attackerId),
+        attackerName: ev.attackerName || null,
+        targetId: String(ev.targetId),
+        targetName: ev.targetName || null,
+        shellName: shellDisplayName(ev) || null,
+        shellType: ev.shellType || null,
+      };
+    }
     if (playerId == null) return;
     recordSpottingAssist(ev);
     recordOutgoingHit(ev);
@@ -1554,6 +1576,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const p = eventPayload<TankDestroyedEvent>(payload);
     // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
     recordCombatantDestroyed(combatant(p.id, null, p.specId));
+    lastDestroyedRow = { id: String(p.id), killerId: p.killerId == null ? null : String(p.killerId), cause: p.cause ?? null };
     if (p.killerId != null && p.killerId !== p.id) {
       combatant(p.killerId).kills += 1;
       linkOpposed(p.killerId, p.id);
@@ -1666,7 +1689,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // report header data (r3): battle duration is the payload's end-of-battle
     // sim clock (setupBattle zeroes it), map id is an additive state.ts
     // enrichment (docs/SYSTEMS.md) — the header simply omits what is absent
-    endInfo = p ? { timeS: p.timeS, map: p.map || p.mapId || null, reason: p.reason || null, campaign: campaignDebrief(p) } : null;
+    endInfo = p ? {
+      timeS: p.timeS, map: p.map || p.mapId || null, reason: p.reason || null, campaign: campaignDebrief(p),
+      hordeWave: typeof p.hordeWave === 'number' && Number.isFinite(p.hordeWave) ? p.hordeWave : null,
+    } : null;
     if (rulesetRevives(p?.gameMode)) revives = true;
     pendingReport = p ? (p.result || '') : '';
     scheduleReportFlush();
@@ -1726,6 +1752,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       tg.clear();
       endRoster = null;
       endInfo = null;
+      lastLethalHit = null;
+      lastDestroyedRow = null;
       revives = false;
       spotWindow.clear();
       spottedSet.clear();

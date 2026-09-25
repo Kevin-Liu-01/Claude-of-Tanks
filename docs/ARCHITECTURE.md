@@ -1133,8 +1133,9 @@ pull-back, blended orbits, terrain clearance) and end on any key / click. The ru
 `ending:begin` / `ending:done`: `shotInfo.ts` holds the report (the REPORT GATE treats a beat
 like a replay), `hud.ts` flashes the clock and shows the caption, `settings.ts` yields the
 Esc menu. The report's hero line names the final blow (shooter, victim, shell / ram / fire)
-from `shotInfo.ts`'s resolved events (`resolveFinalBlow`), and the Horde report names the
-wave the last stand fell on.
+from `shotInfo.ts`'s resolved events (`src/ui/finalBlow.ts` — the last lethal `shell:hit`
+and the last `tank:destroyed`, never recomputed), and the Horde report names the wave the
+last stand fell on (`hordeWave` on the `battle:ended` payload).
 
 The verdict does not stop the world: `matchRuleset.endingHoldS` (8 s, bounded by
 `ENDING_HOLD_LIMIT_S`) is read by the solo step and the authority alike — wrecks settle,

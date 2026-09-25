@@ -1,5 +1,19 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { damageComparisonPercent, rosterRowDetails, summarizeTeam } from './endScreen.ts';
+
+// battle endings (2026-09-25): the hero names the final blow from the ledger's resolved events (finalBlow.ts,
+// receipted on its own) and the Horde wave the last stand fell on
+{
+  const source = readFileSync(new URL('./endScreen.ts', import.meta.url), 'utf8');
+  assert.match(source, /import \{ finalBlowLine, type FinalBlow \} from '\.\/finalBlow\.ts';/, 'the hero line comes from finalBlow.ts');
+  assert.match(source, /finalBlow\?: FinalBlow \| null;/, 'the summary carries the final blow');
+  assert.match(source, /hordeWave\?: number \| null;/, 'the summary carries the horde wave');
+  assert.match(source, /if \(sum\.finalBlow\) \{\n\s*const blow = el\('div', 'es-blow es-in', hero\);[\s\S]*?finalBlowLine\(sum\.finalBlow\)/,
+    'the final blow renders under the verdict line');
+  assert.match(source, /host\.dataset\.finalBlow = /, 'the rendered final blow is probe-visible');
+  assert.match(source, /t\('endScreen\.horde\.wave', \{ wave: /, 'the horde milestone rides the meta strip');
+}
 
 const summary = summarizeTeam([
   { dead: false, kills: 2, dmg: 1_480 },
