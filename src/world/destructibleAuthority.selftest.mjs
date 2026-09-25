@@ -98,6 +98,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     _mat4: new THREE.Matrix4(), _posv: new THREE.Vector3(), _zeroScale: new THREE.Vector3(),
     // settlement pass 2 (2026-09-12): the runtime reads chimney tops for hearth smoke; none here.
     exteriorChimneyTops: () => [], carryExteriorChimneyTops() {},
+    // round 67 (2026-09-24): the frame update poses the moored hulls the build detached; none in this fixture.
+    mooredHulls: [],
   };
   const runtime = compileFunction(runtimeBody, Object.keys(context),
     { filename: 'props.ts:production-destructible-runtime' })(...Object.values(context));

@@ -6574,6 +6574,10 @@ ${snowCap ? `
     buckets.plaster3.length = 0;
   }
 
+  // --- merge buckets into one mesh per material ---
+  // (Round 67 landing, 2026-09-24: this block sits below the merge comment so the deltaPlasterPalette receipt's
+  // fold slice — the text between the Delta palette comment and the merge comment — stays the fold alone; the
+  // detach still runs before the merge loop below.)
   // Round 67: the animated dressing gets its own mesh (the pivot at the mooring point, the hull's yaw on the mesh, so
   // the frame update rolls and pitches it about its own axes) and leaves the merged wood bucket. One draw call per
   // moored hull. The world freezes every descendant's matrix after the build and makes the root's updateMatrixWorld
@@ -6606,7 +6610,6 @@ ${snowCap ? `
   }
   detachAnimatedDressing();
 
-  // --- merge buckets into one mesh per material ---
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
