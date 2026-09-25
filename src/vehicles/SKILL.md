@@ -271,3 +271,10 @@ tank edit.
 <!-- agent-docs:fill:gotchas -->
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
+Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a
+ring listed rear row first, a wedge whose top sits below its floor and a
+self-intersecting hexahedron all ship inside-out and open the hull to the chase
+camera; bind slabs through `orientedSlab`, hand twisted rings to `convexSlab`,
+and prove the result with `node tools/tank-sealed-check.mjs --ids=<id>
+--ledger=docs/geometry-gate/sealed.json` (0 open views) — the audit and the
+per-family causes are in `docs/tank-generation/chassis-closure-audit-20260925.md`.
