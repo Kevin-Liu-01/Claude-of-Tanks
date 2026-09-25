@@ -74,7 +74,9 @@ generation procedures".
    modules a side (x 1.66–1.99, y 0.80–1.95) with chamfered ends, mudguards, rails and the tow cable, a closed ramp door
    between two stern boxes, three rear roof hatches, the rear-left roof box, driver's hatch, engine plate and louvres,
    the intake drum, bow hood and armoured lamps, smoke banks either side of the ring; seven paired road wheels on
-   `KIT.buildRunningGear` (rear drive, raised front idler, no return rollers behind the modules); the unmanned module
+   `KIT.buildRunningGear` (rear drive, raised front idler; FSP-03 2026-09-25: four return rollers per side fitted behind
+   the modules under the measured return course — the Kurganets-25 carries four, tank-afv bare-chassis photographs — the
+   source omits their meshes, so they are inferred supports, not source measurements); the unmanned module
    as a lower belt, a crowned rear block (±1.05 to 2.96, crown 3.05), a 2.62 m front block drawing to a chamfered nose,
    upper and lower side pods to x 1.50, bustle corner boxes, the 30 mm gun on the centreline (axis 2.81, trunnion
    z −0.45, muzzle z 3.20) beside the housing that carries the fleet pintle machine-gun fitting as the coaxial gun,

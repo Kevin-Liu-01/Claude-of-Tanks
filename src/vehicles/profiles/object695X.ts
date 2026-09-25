@@ -214,7 +214,10 @@ function runningGear(P: TankBuilderPort): void {
     style: 'rubber', wheelR: D.wheelR, wheelW: 0.27, wheelY: D.wheelY, xc: D.trackX,
     wheelZs: [...D.wheelStations],
     sprocket: { ...D.sprocket }, idler: { ...D.idler },
-    // no return rollers: the return run is a straight course between the raised end wraps behind the side modules
+    // FSP-03 2026-09-25: the Kurganets-25 (Object 695) carries four return rollers per side behind the side
+    // modules (tank-afv Kurganets-25: bare-chassis photographs); the source omits their meshes, so four are
+    // fitted under the measured 1.15 return course (axle 1.031 = topY - r - band/2).
+    rollers: [-1.70, -0.74, 0.26, 1.22].map((z) => ({ z, y: 1.031, r: 0.105 })),
     trackW: D.trackW, trackTh: 0.028, topY: 1.15, botY: 0.05,
     trackPattern: 'compact-ifv', linkPitchM: 0.13, shoeWidthScale: 0.99,
     paintedEnds: true, arms: true, coveredTop: true,

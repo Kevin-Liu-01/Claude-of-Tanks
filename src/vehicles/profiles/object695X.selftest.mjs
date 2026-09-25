@@ -19,8 +19,8 @@ import { verifyGunCradleSeats } from '../gunCradleSeats.test-support.mjs';
 // rows) and the fleet arm re-seats against that wheel's back; the payload diff against origin/main 14a3262ec is
 // exactly the two road-wheel geometries, the dropped inset layer and the arm/boss instance matrices. Repinned.
 const hullHashes = {
-  high: 'c1177e74603aee1c26ca6d4c00a13674da7f8e5354d96a9f7f8a2edd93e8c91d',
-  low: '7327aa9deffcb7430e300684851ca520c7e3458beb4cf5a2d6394376f8e31bd4',
+  high: '043bf6933e2cc6a3744a406294a395fa8b7d160e8db315db96f3c8367878a521',
+  low: 'b38d7f9866782dc09c793252663956108368f4e1e9b3f9d3331904bec2738e20',
 };
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
 assert.ok(!profileSource.includes('epokhaTurret'), 'the counterpart turret is not assembled');
@@ -295,7 +295,7 @@ for(const quality of ['high','low']){
     assert.equal(count('driver-hatch'), 1); assert.equal(count('lamp-box'), 2); assert.equal(count('tow-eye'), 4); assert.equal(count('intake-drum'), 1);
     assert.equal(count('smoke-tube'), 10); assert.equal(count('deck-louvre'), 1); assert.equal(count('nose-lip'), 1);
     const payload=hullPayload(tank);
-    assert.equal(payload.length,24);
+    assert.equal(payload.length,26); // 2026-09-25 FSP-03: +2 instanced return-roller layers (tires, discs) — four rollers per side fitted
     assert.equal(sha(JSON.stringify(payload)),hullHashes[quality],'every retained native hull/gear attribute, material, instance and transform is exact');
     console.log('Checking source-independent stock',quality);
     checkLaunchStock(tank);console.log('Launcher stock PASS');checkFixedStock(tank);console.log('Fixed stock PASS');checkCannon(tank);console.log('Cannon PASS');checkNegativeControls(tank);console.log('Negatives PASS');checkArticulation(tank);
@@ -309,7 +309,8 @@ for(const quality of ['high','low']){
     // 2026-09-22 nation wheel standard: the fourteen road wheels draw the BMP-3M Dragun construction (1728/944 tri per
     // wheel instead of the generic 704/480, +14336 HIGH / +6496 LOW); the filled-cost ceiling re-pins to the measured
     // 96482 / 81232 model (nothing else grew; the old ceilings kept their 160 cold-run margin).
-    assert(triangles<=(quality==='high'?(process.argv.includes('--cold')?96322:96482):(process.argv.includes('--cold')?81072:81232)),`new complete model ${triangles}tri (turret ${turretTriangles}) does not exceed its prior filled cost`);
+    assert(triangles<=(quality==='high'?(process.argv.includes('--cold')?96506:96666):(process.argv.includes('--cold')?81072:81232)), // 2026-09-25 FSP-03: +184 HIGH for the four fitted return rollers per side
+    `new complete model ${triangles}tri (turret ${turretTriangles}) does not exceed its prior filled cost`);
     const bounds=new T.Box3().setFromObject(tank.root);
     assert(bounds.min.x>=-2.01&&bounds.max.x<=2.01);assert(bounds.max.z<=3.67);assert(Math.abs(bounds.max.y-3.90)<.002);
     costs.push({quality,triangles,turretTriangles,meshes,bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},filled:tank.root.userData.interiorFillRecordLoaded??!process.argv.includes('--cold')});
