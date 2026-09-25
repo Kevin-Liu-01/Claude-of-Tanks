@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-09-26T01:30:56.382Z",
   "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
-  "passed": 79,
+  "passed": 80,
   "total": 170,
   "rows": [
     {
@@ -1425,15 +1425,15 @@
     },
     {
       "id": "t90a_x",
-      "geoMin": 91.4,
+      "geoMin": 92.6,
       "requiredMinimum": 90,
       "qualityBar": "fleet",
       "gatePassed": true,
       "components": {
-        "hullCurves": 91.9,
+        "hullCurves": 93.4,
         "stations": 96,
         "turretCurves": 92.6,
-        "wholeCurves": 91.4,
+        "wholeCurves": 92.6,
         "dims": 100,
         "floaters": 100
       },
@@ -1454,27 +1454,27 @@
     },
     {
       "id": "t72b3m_x",
-      "geoMin": 91.9,
+      "geoMin": 93.5,
       "requiredMinimum": 92,
       "qualityBar": "exemplar",
-      "gatePassed": false,
+      "gatePassed": true,
       "components": {
-        "wholeCurves": 93.4,
-        "dims": 91.9,
+        "wholeCurves": 93.5,
+        "dims": 93.6,
         "floaters": 100
       },
       "comparisonPurpose": "source-fidelity"
     },
     {
       "id": "t90ms_x",
-      "geoMin": 91.9,
+      "geoMin": 92.2,
       "requiredMinimum": 90,
       "qualityBar": "fleet",
       "gatePassed": true,
       "components": {
-        "hullCurves": 91.9,
+        "hullCurves": 92.2,
         "stations": 94.6,
-        "turretCurves": 96,
+        "turretCurves": 96.3,
         "wholeCurves": 92.3,
         "dims": 100,
         "floaters": 100
@@ -1496,15 +1496,15 @@
     },
     {
       "id": "t90sm_x",
-      "geoMin": 92,
+      "geoMin": 92.2,
       "requiredMinimum": 92,
       "qualityBar": "exemplar",
       "gatePassed": true,
       "components": {
-        "hullCurves": 92,
+        "hullCurves": 92.2,
         "stations": 94.7,
-        "turretCurves": 95,
-        "wholeCurves": 92.8,
+        "turretCurves": 94.4,
+        "wholeCurves": 93,
         "dims": 98.9,
         "floaters": 100
       },
@@ -1846,15 +1846,15 @@
     },
     {
       "id": "t90_x",
-      "geoMin": 93.5,
+      "geoMin": 94.4,
       "requiredMinimum": 92,
       "qualityBar": "exemplar",
       "gatePassed": true,
       "components": {
-        "hullCurves": 93.5,
+        "hullCurves": 94.4,
         "stations": 98.1,
         "turretCurves": 95.1,
-        "wholeCurves": 93.9,
+        "wholeCurves": 94.8,
         "dims": 100,
         "floaters": 100
       },
@@ -1907,12 +1907,12 @@
     },
     {
       "id": "t72b_1987_x",
-      "geoMin": 94,
+      "geoMin": 93.4,
       "requiredMinimum": 92,
       "qualityBar": "exemplar",
       "gatePassed": true,
       "components": {
-        "wholeCurves": 94,
+        "wholeCurves": 93.4,
         "dims": 95.5,
         "floaters": 100
       },
@@ -1959,12 +1959,12 @@
     },
     {
       "id": "t90a_vladimir_x",
-      "geoMin": 94.5,
+      "geoMin": 93.7,
       "requiredMinimum": 92,
       "qualityBar": "exemplar",
       "gatePassed": true,
       "components": {
-        "wholeCurves": 94.5,
+        "wholeCurves": 93.7,
         "dims": 100,
         "floaters": 100
       },
@@ -2115,12 +2115,12 @@
     },
     {
       "id": "t72bu_x",
-      "geoMin": 95.4,
+      "geoMin": 95.5,
       "requiredMinimum": 92,
       "qualityBar": "exemplar",
       "gatePassed": true,
       "components": {
-        "wholeCurves": 95.4,
+        "wholeCurves": 95.5,
         "dims": 100,
         "floaters": 100
       },
@@ -2128,14 +2128,14 @@
     },
     {
       "id": "t72b3_x",
-      "geoMin": 95.6,
+      "geoMin": 95.7,
       "requiredMinimum": 92,
       "qualityBar": "exemplar",
       "gatePassed": true,
       "components": {
-        "hullCurves": 95.6,
+        "hullCurves": 95.7,
         "stations": 99.6,
-        "turretCurves": 97.5,
+        "turretCurves": 97.3,
         "wholeCurves": 95.7,
         "dims": 100,
         "floaters": 100
