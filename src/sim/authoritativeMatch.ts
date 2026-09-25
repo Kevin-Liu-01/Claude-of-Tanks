@@ -247,6 +247,21 @@ export interface AuthoritativeWorldCollision {
   getConcealment?(): ConcealerDisc[];
 }
 
+/**
+ * Lag-compensation seam (Multiplayer v2, server/match). `begin` may move every
+ * entity except the shooter to the pose the shooter was looking at when it
+ * fired; the shell's whole sweep and hit resolution then read those poses;
+ * `end` restores the live poses before the next shell. Nothing inside the
+ * sweep writes pose fields, so the swap is exact. Null keeps live poses.
+ */
+export interface ShellRewindHook {
+  begin(shell: DamageShell): void;
+  end(shell: DamageShell): void;
+}
+
+/** Roster limit: 14v14 plus bots and headroom, bounded by the wire's 64 entity ids. */
+export const MAX_AUTHORITATIVE_PLAYERS = 64;
+
 export interface AuthoritativeMatchOptions {
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
@@ -257,6 +272,7 @@ export interface AuthoritativeMatchOptions {
   /** Rules the match plays by; derived from gameMode when absent (campaign operations pass theirs). */
   ruleset?: MatchRuleset;
   worldCollision?: AuthoritativeWorldCollision | null;
+  shellRewind?: ShellRewindHook | null;
 }
 
 interface AuthoritativeEvent extends Record<string, RuntimeValue> {
@@ -676,9 +692,10 @@ export function createAuthoritativeMatch({
   gameMode = 'standard',
   ruleset: rulesetOption,
   worldCollision = null,
+  shellRewind = null,
 }: AuthoritativeMatchOptions = {}): AuthoritativeMatch {
-  if (!Array.isArray(players) || players.length < 1 || players.length > 14) {
-    throw new TypeError('players must contain 1-14 records');
+  if (!Array.isArray(players) || players.length < 1 || players.length > MAX_AUTHORITATIVE_PLAYERS) {
+    throw new TypeError(`players must contain 1-${MAX_AUTHORITATIVE_PLAYERS} records`);
   }
   const ids = new Set<string>();
   if (worldCollision && worldCollision.mapId && worldCollision.mapId !== mapId) {
@@ -1707,17 +1724,26 @@ export function createAuthoritativeMatch({
       }
       stepShell(shell, dt);
       if (modeController.tryHitBall(shell)) continue;
-      const tankHit = firstTankTrace(shell, entities);
-      const segmentLength = shell.prevPos.distanceTo(shell.pos);
-      const worldHit = traceBlockingWorldShellHit(shell, tankHit, segmentLength);
-      if (worldHit) {
-        resolveWorldShellHit(shell, worldHit);
-        continue;
+      // mp v2 lag compensation: the sweep and its resolution read the poses the shooter saw
+      shellRewind?.begin(shell);
+      try {
+        resolveShellSweep(shell);
+      } finally {
+        shellRewind?.end(shell);
       }
-      if (!tankHit) continue;
-      resolveTankShellHit(shell, tankHit);
     }
     compactLiveShells();
+  }
+
+  function resolveShellSweep(shell: DamageShell): void {
+    const tankHit = firstTankTrace(shell, entities);
+    const segmentLength = shell.prevPos.distanceTo(shell.pos);
+    const worldHit = traceBlockingWorldShellHit(shell, tankHit, segmentLength);
+    if (worldHit) {
+      resolveWorldShellHit(shell, worldHit);
+      return;
+    }
+    if (tankHit) resolveTankShellHit(shell, tankHit);
   }
 
   function updateVisibility(): void {
