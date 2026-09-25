@@ -1,0 +1,28 @@
+// The Workers-runtime test configuration: the real Worker and Room object with the container
+// binding replaced by test/matchContainerStub.ts (a Durable Object that answers the match
+// service's control routes and accepts the /match socket), so the suite needs no Docker.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cot-rooms-test",
+  "main": "test/worker.ts",
+  "compatibility_date": "2026-09-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "ratelimits": [{
+    "name": "ROOM_CONNECT_LIMITER",
+    "namespace_id": "2609055512",
+    "simple": { "limit": 120, "period": 60 }
+  }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://cot.kevinliu.studio",
+    "MATCH_SHIM_URL": "",
+    "MATCH_SEAT_SECRET": "rooms-test-seat-secret-0123456789abcdef",
+    "MATCH_CONTROL_SECRET": "rooms-test-control-secret-0123456789"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "Room" },
+      { "name": "MATCH", "class_name": "MatchContainerStub" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room", "MatchContainerStub"] }]
+}
