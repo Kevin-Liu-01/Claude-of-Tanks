@@ -58,9 +58,10 @@ function runningGear(P:TankBuilderPort):void{
     wheelZsRightM:[-1.74285000563,-.90240001678,-.05049999041,.80055001006,1.65250003338,2.49795007706],
     xc:1.437,trackW:.4876,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     idler:{z:3.14985,y:.87725,r:.26365,trackR:.250},sprocket:{z:-2.49745,y:.8275,r:.3627,trackR:.343},
-    // owner 2026-09-23 (round 46): no return rollers — the real T-72/T-90 family carries its upper run on the
-    // road-wheel tops; the inferred hidden rollers leave and the run drops onto the wheels behind the skirts.
-    rollers:[],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three
+    // return rollers per side (FAS T-72 entry; the source `support wheels` node, docs/references/tanks/t90a_x.md);
+    // the 2026-09-23 rollerless reading is reversed and the source-measured stations return byte-for-byte.
+    rollers:[{z:-1.5043,y:1.07865,r:.12335},{z:.1704,y:1.07865,r:.12335},{z:1.8357,y:1.07865,r:.12335}],rollerR:.12335,
     returnRollerWidthM:.0982,returnRollerInsetM:.103,topY:1.214,botY:.039,arms:true,coveredTop:true,paintedEnds:true,
     sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.138,
     trackShoeDimensions:{padHeight:.036,grouserHeight:.010,webHeight:.018,hornHeight:.040,pinRadius:.009,pinCentreY:0},

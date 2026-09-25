@@ -29,16 +29,18 @@ const BEFORE={
 // values below are repinned from the current build.
   // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: f1a5e7a1…, 710538b0…, 404cc34e…, 4d8e9366…, a86c1642…, 6be94995…, d2f3b206…, e1a6550a…, 9deecdf6…, 059e1473…, 11ae96b8…, c5ae7fae…, 1cac0fb2…, dfc34995…, 9d8f7729…, 51475080…, 33ccf93c…, 678a7053….
   t62mv1_x:['c328da8941a1402193cd431c77721b9f6cb16ff29690750bfa7be30366ab4a24','dcfe0c1c51467e83b67d2ce88516bc7ef97614e1d6a1fae63b9f28e6b8bc0dc8'],
-  t72b_1987_x:['927ab491c60ba29f5bc391cfd81784f81acf892c694ac22b4c36244a1a5bfffd' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'47876a913e2a6fb03870e4b55daa5af100f7768775eb6d5aff293352debad07b'],
+  t72b_1987_x:['fadce555c31a5218ed25e2f0952a1bbcd28e309f87356cae51fe7b7cae399bc4' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,'1400586196b1b54225f4999ccdff7b1b14fa38e9e0b9ab3394572702cc9cee8c'],
   t80u_x:['c8202bf0dfe6b63929aa907746877c082acb83fe422cd2ff05aaef635357a38e','7f11754af18c72420d51da0625a783c913b6918f605e2a1be905194eb78db43f'],
-  t72b3_x:['68fd0d448c16e573bec1120e0a9f11d247472196e2e13aa94aec95d759bc4b8f','557710a9d4bb5a655e73908ccc7427346cea882864c529216ee51b3d93bbc59b'],
+  // 2026-09-25 FSP-03: every T-72/T-90 X digest below re-pinned once — the source-measured return rollers return
+  // (97d05adc0 reversed on the owner's 2026-09-25 ruling; hull, wheel and band stock unchanged).
+  t72b3_x:['6af78eb329de6ca76c6b0dd58adf7d33e731ff4ef87029c6c5dab4cb033fe17f','9da0ed34d4103c111663ea34621cfd6a8821c8fddb4271e2836f1d749913e637'],
   // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
   // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
-  t72b3m_x:['6d6cdb44d9a71292bae3b8dda3809732631da56ac50fb21862582d23faafedcb','fc95a12c4922250000a8ce51a0ce61a49dfb5975ed764d6149a93c8ea5440aab'],
-  t72bu_x:['cbb7ade29ee012e074b17fea08a19eef8a606f1ababcdaca2e1974d05186170b','614b2318751504d1c913233f8dd542a3a74912e2ca65895dcc557b7cebc13845'],
-  t90_x:['dbf8677ccd68164af00485b6eb5e1d1f4cf8c60e7169688034babadd11fcc4c4','436b421f517583ab2c6733cae734c72c9189923b5c8bbe404649f2ab3c9a62db'],
-  t90a_burlak_x:['762898f245f26fc822731f00bd750f59434b3d153c2150206b6fa7ce0c025a28','5f86e78161dfe9cfd7a5ee1513f473681b97a07b50cc5af2069c1f07158dd81d'],
-  t90ms_x:['b2356f1d2ba4090f3d5732688ed2a713b5e82c75b1ffeb736cee6f308a1fb8af','8f12463bc36f5350a52838467aac3a11f455a3bc7430f7c5de1761b1c6b7f5cd'],
+  t72b3m_x:['da7b5c15e22dfb8673a5aceb4c12283c47db6a0d72989e1cae04f9e1acef81c7','a78ee701bab74ea0f2fc0c3fc773fde8eb9c3f9e75e5a0bc7efd38d2fe2228ee'],
+  t72bu_x:['1cd4aee98457816dbfe740504281b9e15396fb7166077d6a071094ddc82389a0','4f01591657de5bf7bdf27c3a6695348283469699e918dc206e9d385de7da506a'],
+  t90_x:['05ec325a346c5a5d4bc024d2fa3b8906774e0c1ba188f0ca9da8b1a96404bc31','4e3059f0be3a4ffa70f09684c9be467069f5bbe4290d51b2fd7b6cf24a205638'],
+  t90a_burlak_x:['9fa37765f430ee57e8bdbbc0317b0ed47a2bc3fd25fc2a2026eb328d6a409432','c9e26857b74c7b1baa7d549222a67e558540d13c29c8b6649bd94449346a0ba2'],
+  t90ms_x:['3c03e0dc8ab55918b072adc5713e128b87ef315f10e282577c18d23238a3e638','85b360d400f085ac217f5e3768a17688829fbb83685faaeb7af88fd66a42f5f9'],
 };
 const EXPECTED_STATS={t62mv1_x:[8,9,9],t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
   t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],

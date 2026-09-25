@@ -55,15 +55,16 @@ function fenders(P:TankBuilderPort,side:number):void {
 
 function runningGear(P:TankBuilderPort):void {
   // Source axle staggering is averaged across sides (maximum11.2mm). All six
-  // wheels and end drums remain the native animated assembly (the inferred return rollers left, owner 2026-09-23).
+  // wheels, end drums and the three inferred return rollers remain the native animated assembly (FSP-03 2026-09-25).
   // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation construction
   // (T-90 donor, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.391766,wheelY:.4728865,wheelW:.45254,
     wheelZs:[-1.822412,-.953673,-.089323,.858392,1.722743,2.591482],xc:1.4713,trackW:.554,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     sprocket:{z:-2.5973,y:.79690,r:.36720,trackR:.327},idler:{z:3.2184,y:.87328,r:.2823,trackR:.270},
-    // owner 2026-09-23 (round 46): no return rollers — the real T-72/T-90 family carries its upper run on the
-    // road-wheel tops; the inferred hidden rollers leave and the run drops onto the wheels behind the skirts.
-    rollers:[],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three
+    // return rollers per side (FAS T-72 entry; the source `support wheels` node, docs/references/tanks/t90a_x.md);
+    // the 2026-09-23 rollerless reading is reversed and the source-measured stations return byte-for-byte.
+    rollers:[{z:-1.78,y:1.16,r:.12},{z:.05,y:1.16,r:.12},{z:1.85,y:1.16,r:.12}],rollerR:.12,
     returnRollerWidthM:.30,returnRollerInsetM:.16,topY:1.325,botY:.055,arms:true,coveredTop:true,paintedEnds:true,
     sprocketDepthScale:.86,idlerDepthScale:.86,linkPitchM:.14,
     trackShoeDimensions:{padHeight:.036,grouserHeight:.011,webHeight:.018,hornHeight:.045,pinRadius:.010,pinCentreY:0},

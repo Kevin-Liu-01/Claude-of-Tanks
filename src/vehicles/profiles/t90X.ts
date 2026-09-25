@@ -1445,9 +1445,10 @@ function buildT90AX(P: TankBuilderPort): void {
     wheelZs:[-1.848,-1.002,-.147,.728,1.590,2.464],wheelY:.401,wheelZScale:1.084,
     xc:1.473,xcLeft:1.45825,xcRight:1.48365,trackW:.56712,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     sprocket:{z:-2.765,y:.748,r:.336,trackR:.280},idler:{z:3.200,y:.801,r:.289,trackR:.260},sprocketDepthScale:.715,idlerDepthScale:.855,
-    // owner 2026-09-23 (round 46): no return rollers — the real T-72/T-90 family carries its upper run on the
-    // road-wheel tops; the inferred hidden rollers leave and the run drops onto the wheels behind the skirts.
-    rollers:[],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three
+    // return rollers per side (FAS T-72 entry; the source `support wheels` node, docs/references/tanks/t90a_x.md);
+    // the 2026-09-23 rollerless reading is reversed and the source-measured stations return byte-for-byte.
+    rollers:[-1.6497,.3703,2.0961].map(z=>({z,y:1.00456,r:.110695})),rollerR:.110695,
     returnRollerWidthM:.1878,returnRollerInsetM:.14,
     topY:1.108,botY:.0535,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.15,
     trackShoeDimensions:{padHeight:.036,grouserHeight:.013,webHeight:.018,hornHeight:.100,pinRadius:.013,pinCentreY:0}});
@@ -1482,9 +1483,10 @@ function buildT90AVladimirX(P: TankBuilderPort): void {
     wheelZs:[-1.828225,-.94808,-.067935,.812205,1.69235,2.572495],wheelY:.439685,wheelZScale:1.03568,
     xc:1.449,trackW:.603,trackTh:.030,
     sprocket:{z:-2.70245,y:.80394,r:.36432,trackR:.290},idler:{z:3.31047,y:.87096,r:.23765,trackR:.223},
-    // owner 2026-09-23 (round 46): no return rollers — the real T-72/T-90 family carries its upper run on the
-    // road-wheel tops; the inferred hidden rollers leave and the run drops onto the wheels behind the skirts.
-    rollers:[],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three
+    // return rollers per side (FAS T-72 entry; the source `support wheels` node, docs/references/tanks/t90a_x.md);
+    // the 2026-09-23 rollerless reading is reversed and the source-measured stations return byte-for-byte.
+    rollers:[-1.55863,.39502,2.39302].map(z=>({z,y:.98969,r:.11452})),rollerR:.11452,
     returnRollerWidthM:.1172,returnRollerInsetM:.0983,
     topY:1.115,botY:.0605,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.155,
     trackShoeDimensions:{padHeight:.036,grouserHeight:.015,webHeight:.018,hornHeight:.125,pinRadius:.018,pinCentreY:-.003}});
@@ -1514,9 +1516,10 @@ function buildT90MX(P: TankBuilderPort): void {
     xc:1.412,trackW:.608,trackTh:.030,sprocket:{z:-2.570,y:.737,r:.3305,trackR:.2605},idler:{z:3.148,y:.767,r:.2512},
     // Hidden support circles are inferred below the independently measured
     // source return-course height; source M omits their separate meshes.
-    // owner 2026-09-23 (round 46): no return rollers — the real T-72/T-90 family carries its upper run on the
-    // road-wheel tops; the inferred hidden rollers leave and the run drops onto the wheels behind the skirts.
-    rollers:[],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three
+    // return rollers per side (FAS T-72 entry; the source `support wheels` node, docs/references/tanks/t90a_x.md);
+    // the 2026-09-23 rollerless reading is reversed and the source-measured stations return byte-for-byte.
+    rollers:[-1.65,.37,2.096].map(z=>({z,y:.9354,r:.101})),rollerR:.101,
     returnRollerWidthM:.188,returnRollerInsetM:.14,
     topY:1.0454,botY:.038,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.157,
     // Owner source: outer shoe0.0334 m; complete central guide0.0871 m.
@@ -1555,9 +1558,10 @@ function buildT90SMX(P: TankBuilderPort): void {
     wheelYs:[.47202,.45513,.45513,.45513,.45513,.51461],roadWheelOutsetM:.015135,
     xc:1.40647,xcLeft:1.40818,xcRight:1.404765,trackW:.48891,trackTh:.030,
     sprocket:{z:-2.695,y:.8472,r:.37294,trackR:.3362,axialScaleLeft:.998011,axialScaleRight:1.026922},idler:{z:3.389,y:.8739,r:.2704,trackR:.2316},
-    // owner 2026-09-23 (round 46): no return rollers — the real T-72/T-90 family carries its upper run on the
-    // road-wheel tops; the inferred hidden rollers leave and the run drops onto the wheels behind the skirts.
-    rollers:[],
+    // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three
+    // return rollers per side (FAS T-72 entry; the source `support wheels` node, docs/references/tanks/t90a_x.md);
+    // the 2026-09-23 rollerless reading is reversed and the source-measured stations return byte-for-byte.
+    rollers:[-1.65,.37,2.096].map(z=>({z,y:1.055,r:.11})),rollerR:.11,
     returnRollerWidthM:.188,returnRollerInsetM:.14,
     sprocketDepthScale:.897,idlerDepthScale:.79,
     suspensionDimensions:{armWidthM:.07720,armHeightM:.161706555,armAxleHeightM:.194965059,

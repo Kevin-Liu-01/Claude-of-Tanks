@@ -30,14 +30,14 @@ const BASELINES = {
   ],
   t90m_x: [
     // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: af34269f…, 233176, df148cfa…, 217048, 267205c2…, 288700, baa4ad47…, 272572, ea948078…, 303370, d1d5ac2a…, 287242.
-    [286680,'f4c82cefba75ffa8471e97a53b717f1d9454bf13897081a8e79ad3ed4cd16c0f'], // 2026-09-23 rollerless (288624 ->)
+    [288624,'e10add83d325ad09efe98b2eb058c32755ff063a1aac4419fe6d53c1b69cf378'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (288624 ->)
     // 2026-09-22 LOW road-wheel tier: LOW baseline moved with the base disc (272496 -> 255792); HIGH byte-identical.
-    [256440,'33a777db0bf745abcde50f7569e3d456699ff5bd80fa4ae599253fd5dce181ce'], // 2026-09-23 rollerless (255792 ->)
+    [255792,'fc49d2d7090027841fbe7203ba6d601efdd6fb98a1180c940579d7f307f3cd1a'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (255792 ->)
   ],
   t90sm_x: [
-    [301902,'1c4f05c93d2e1585e2db2b1d55fcae674b350776515503012c4ecfc7569ba478'], // 2026-09-23 rollerless (303294 ->)
+    [303294,'585834dc6daae7f884baa7926655163802e9fa392d21e589aa95c9eacd4c5d3f'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (303294 ->)
     // 2026-09-22 LOW road-wheel tier: LOW baseline moved with the base disc (287166 -> 270462); HIGH byte-identical.
-    [271662,'4964a9633285efc3ffe1c25577284ddbee37260da5717207a9def238ec861d92'], // 2026-09-23 rollerless (270462 ->)
+    [270462,'dbef6233cb06ee02d198d2490f491ad5052e0c4398ce1205b7870732d62cb6fd'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (270462 ->)
   ],
 };
 
@@ -50,15 +50,15 @@ const BASELINES = {
 // hull, so both LODs of every baseline moved — the roller rotors are gone at HIGH and the rollerless upper run re-samples the
 // shoe course (count and hash repinned from the current build; hull, turret, ERA and gun stock are unchanged).
 const A_NON_GUN_BASELINES=[
-  [277320,'0eff243ddf3f9b42e4f55ad7d408eaa9ae4fc6e55fe7a8ce78eee743cf7fd6bb'], // 2026-09-23 rollerless (278184 ->)
-  [247464,'bc64e680a3ba64dcbfbd84af0d535a57180a853c45d5379434cbba1b52762234'], // 2026-09-23 rollerless (245736 ->)
+  [278184,'bfa6962f7e03fd61b45bb32d913a9e727aef6d03d005ad4ba8753d27f74869dc'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (278184 ->)
+  [245736,'f2b53460a7d15229d1a4d531c37afcb3b66ae3fbd56bc03b8e9f734c7e9667cd'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (245736 ->)
 ];
 // Independently captured before the V repair, subtracting only the exact
 // two old guard solids (72 vertices), with multiplicity; no spatial mask.
 // 2026-09-22 LOW road-wheel tier: the V's LOW vertex baseline moved with its base disc (216972 -> 200268); HIGH is byte-identical.
 const V_NON_GUARD_BASELINES=[
-  [232284,'556d1de6020ae01e974784a81f6e21bc4ffd8b976d45355e7d857f1d34928453'], // 2026-09-23 rollerless (233100 ->)
-  [202044,'91d7a791c378d67ee4adda06a1a10c5cbe9a13575445c502ecd6d4bf24dcf59c'], // 2026-09-23 rollerless (200268 ->)
+  [233100,'6c5c9122ce98d63c1532f02987626eb564aa8141db9d61c805e3b33ce20aaa41'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (233100 ->)
+  [200268,'fe095ad95af7337fc5a92749fe4acc3cd226ab5b085dc1602a8fd1582e679cf1'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (200268 ->)
 ];
 
 function visible(object) {

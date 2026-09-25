@@ -20,7 +20,8 @@ const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byt
 // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 9976ffbe…, 79ca4399….
 // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
 // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
-const donorHashes={high:'0e9e297101693c7b39e01ee6a486635f0c58ed5e7aee74a24d4204f63954a439' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'2f739edf2e98ed98e0b2c826be6aa139bc5522eaea986bfac06fd6fe640ea182'};
+// 2026-09-25 FSP-03: T-90MS X chassis digests re-pinned once — its three source-measured return rollers return.
+const donorHashes={high:'bca2c0fd979785974499c9ddceb4020f6ab7cd9a5d397726898635bfcac331ed' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'2f83bb5b67081a48269b19052a3f953686b45016ffa1f2170aa2192889527a9e'};
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{
