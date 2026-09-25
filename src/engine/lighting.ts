@@ -27,6 +27,12 @@ import {
   cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
 } from './nearVehicleShadowDetail.ts';
 import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
+import {
+  GROUND_BOUNCE_GLSL_PARS, GROUND_BOUNCE_GLSL_TERM, applyGroundBounceRig, attachGroundBounceUniforms,
+  createGroundBounceUniforms,
+} from './groundBounce.ts';
+import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
+import type { PublishedLightRig } from './contactShadows.ts';
 
 interface ShadowDebugOptions {
   noCull?: boolean;
@@ -825,6 +831,7 @@ function patchStableShadowSampling() {
     throw new Error('lighting.ts: shadow-density anchors not found in lights_fragment_begin');
   }
   frag = frag.replace(declAnchor, `${declAnchor}
+#define COT_SUN_VIS_CAPTURED 1
 float cotSunVis = 1.0;
 float cotCascadeVis = 1.0;
 vec3 cotPrev;`);
@@ -851,7 +858,7 @@ vec3 cotPrev;`);
 
 		irradiance *= cotAmbDim;
 		iblIrradiance *= cotAmbDim;
-
+${GROUND_BOUNCE_GLSL_TERM}
 	#endif
 
 	#if defined( RE_IndirectSpecular )
@@ -879,6 +886,28 @@ ${endHead}`);
   }
   THREE.ShaderChunk.shadowmap_pars_fragment = sm.replace(penAnchor,
     'float phi = fract( shadowRadius * 0.754877666 ) * PI2;');
+
+  // Round 69 (2026-09-24): the ground-bounce uniforms every CSM material carries (groundBounce.ts; the values are
+  // attached in setupShadowMaterial), declared once at fragment scope for the term above.
+  THREE.ShaderChunk.lights_pars_begin = `#if defined( USE_CSM ) && defined( CSM_CASCADES )
+${GROUND_BOUNCE_GLSL_PARS}
+#endif
+${THREE.ShaderChunk.lights_pars_begin}`;
+
+  // Round 69: an opaque lit pixel writes its sun visibility (cotSunVis, captured above) into the scene target's
+  // alpha — the canvas is opaque (renderer.ts, alpha false), so the channel is free — and the post aerial pass
+  // reads it to blend the screen-space contact shadows into the shadow term (contactShadows.ts) before
+  // restoring an alpha of one. OPAQUE is Three's own define for non-transparent, normally blended materials, so
+  // glass, water and every blended card keep their real alpha.
+  const opaqueAnchor = 'gl_FragColor = vec4( outgoingLight, diffuseColor.a );';
+  const opaque = THREE.ShaderChunk.opaque_fragment;
+  if (!opaque.includes(opaqueAnchor)) {
+    throw new Error('lighting.ts: alpha anchor not found in opaque_fragment');
+  }
+  THREE.ShaderChunk.opaque_fragment = opaque.replace(opaqueAnchor, `${opaqueAnchor}
+#if defined( COT_SUN_VIS_CAPTURED ) && defined( OPAQUE ) && defined( USE_CSM )
+gl_FragColor.a = cotSunVis;
+#endif`);
 }
 
 /**
@@ -1069,6 +1098,8 @@ export function createLighting(
   // Live quality switching (settings UI → quality.setPresetName)
   onPresetChange((p) => {
     nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(p);
+    lightFx.flags = resolvePostLightFx(p, getDeviceTier(), currentPostLightFxQuery());
+    applyGroundBounce();
     // Desktop presets deliberately share one shadow layout, so ordinary
     // quality switching does not disturb live depth maps. Mobile layout
     // changes remain incremental to avoid a one-frame allocation spike.
@@ -1154,6 +1185,26 @@ export function createLighting(
   const hemi = new THREE.HemisphereLight(
     HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY + hemiFloorFor(HEMI_INTENSITY));
   scene.add(hemi);
+  // Round 69 (2026-09-24): ground bounce (groundBounce.ts) — the shared uniforms every CSM material compiles
+  // against, refreshed from the rig below whenever the sun or the preset changes — and the rig the post chain
+  // reads for its contact shadows (contactShadows.ts): sun, hemisphere poles and the anti-sun fill.
+  const groundBounceUniforms = createGroundBounceUniforms();
+  const lightFx = { flags: resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery()) };
+  const lightRig: PublishedLightRig = {
+    sunIntensity: SUN_INTENSITY, sunColor: new THREE.Color(SUN_COLOR),
+    hemiIntensity: hemi.intensity, hemiSky: hemi.color, hemiGround: hemi.groundColor,
+    fillIntensity: FILL_INTENSITY, fillColor: new THREE.Color(FILL_COLOR), fillDir: new THREE.Vector3(0, 1, 0),
+  };
+  scene.userData.lightRig = lightRig;
+  const sunDirWorld = new THREE.Vector3();
+  function applyGroundBounce(): void {
+    sunDirWorld.copy(csm.lightDirection).negate().normalize();
+    applyGroundBounceRig(groundBounceUniforms, {
+      enabled: lightFx.flags.groundBounce, sunDir: sunDirWorld, sunColor: lightRig.sunColor,
+      sunIntensity: lightRig.sunIntensity, groundTone: hemi.groundColor, hemiGround: hemi.groundColor,
+      hemiIntensity: hemi.intensity,
+    });
+  }
   // Round 65 (2026-09-24): the hemisphere light's sky colour follows the rendered sky. sky.ts publishes the
   // cosine-weighted irradiance of its physically based dome (scene.userData.skyIrradiance, the sky-view LUT's
   // integral); its hue becomes the hemisphere's sky pole at the constant's own luminance, so the authored
@@ -1186,6 +1237,8 @@ export function createLighting(
   fill.target.position.set(0, 0, 0);
   scene.add(fill);
   scene.add(fill.target);
+  lightRig.fillDir.copy(fill.position).normalize();
+  applyGroundBounce();
 
   function setAllCascadeUpdates(needsUpdate: boolean): void {
     for (const light of csm.lights) {
@@ -1409,11 +1462,13 @@ export function createLighting(
       extraHook: MaterialCompileHook | null = null,
     ): T {
       csm.setupMaterial(mat);
-      if (extraHook) {
+      {
+        // Round 69: the ground-bounce uniforms ride on every CSM registration (groundBounce.ts).
         const csmHook = mat.onBeforeCompile;
         mat.onBeforeCompile = (shader, rdr) => {
           csmHook(shader, rdr);
-          extraHook(shader, rdr);
+          attachGroundBounceUniforms(shader, groundBounceUniforms);
+          if (extraHook) extraHook(shader, rdr);
         };
       }
       // Alpha-tested foliage: replace the GPU-averaged mip chain with a
@@ -1536,11 +1591,21 @@ export function createLighting(
       const fx = -dir.x, fz = -dir.z;
       const fl = Math.hypot(fx, fz) || 1;
       fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
+      // round 69: the published rig and the ground bounce follow the preset
+      lightRig.sunIntensity = intensity;
+      lightRig.sunColor.setHex(colorHex);
+      lightRig.hemiIntensity = hemi.intensity;
+      lightRig.fillIntensity = fill.intensity;
+      lightRig.fillDir.copy(fill.position).normalize();
+      applyGroundBounce();
       shadowFitCache.invalidate();
       prepareCurrentCascadeFits(true);
       applyStableCascadePoses(csm, allCascadeMask);
       forceAllCascades(); // sun moved — every cascade must re-render
     },
+
+    /** Round 69: the light effects this rig resolved (groundBounce is the one it owns). */
+    get lightFx() { return lightFx.flags; },
 
     /** Read-only diagnostics; sampled at 4 Hz by the opt-in telemetry HUD. */
     /** Round 28: the hulls casting real armour this frame (probes). */

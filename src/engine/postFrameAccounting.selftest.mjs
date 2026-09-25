@@ -26,6 +26,7 @@ const instantiate = new Function('ports', stripTypeScriptTypes(`
   const dynGovern = () => {}, adaptiveFrameSeconds = dt => dt;
   const updateAerialZoom = () => {}, updateScopeGrade = () => {};
   const updateAerialFogColors = () => {}, updateAerialCameraBasis = () => {};
+  const updatePostLightFx = () => {}; // round 69: the light effects' per-frame state (stubbed like the aerial helpers)
   const CLOUD_SHADE_DEFAULT = 0, lateTarget = null;
   // temporal AA (2026-09-12): the frame boundary jitters the projection when the pass is on; this
   // CPU-only receipt keeps it off and stubs the camera/target ports it would touch

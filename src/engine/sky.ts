@@ -1614,6 +1614,11 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // based sky reports its own falloff from the summary (the post pass samples the LUT per pixel anyway).
       targetScene.userData.skyElevationFalloff = atmosphereState.active
         ? atmosphereFalloff : sampleHorizonElevationFalloff(renderer, sunDir, preset);
+      // round 69 (2026-09-24): the sun-shaft pass gates itself per map on the preset's haze (sunShafts.ts)
+      targetScene.userData.skyHazeInputs = {
+        fogDensity: preset.fogDensity, turbidity: preset.turbidity, mieCoefficient: preset.mieCoefficient,
+        sunElevationDeg: preset.sunElevationDeg, skyIntensity: preset.skyIntensity,
+      };
     },
 
     /** Re-target visible atmosphere state without synchronously rebuilding PMREM. */

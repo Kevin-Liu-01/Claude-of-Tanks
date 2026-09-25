@@ -55,6 +55,7 @@ import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { copyResolvedDepth } from './resolvedDepthCopy.ts';
 import {
   canRecoverAutoTier,
+  getDeviceTier,
   getPreset,
   onPresetChange,
   reportSustainedOverload,
@@ -84,6 +85,14 @@ import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
 import { TemporalAAPass, applyProjectionJitter, taaJitterOffset } from './temporalAA.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
+import {
+  CONTACT_SHADOW_GLSL, CONTACT_SHADOW_RANGE_M, createContactShadowUniforms, updateContactShadowUniforms,
+} from './contactShadows.ts';
+import { SunShaftsPass, createLightFxTarget } from './sunShafts.ts';
+import { LensFlarePass } from './lensFlare.ts';
+import {
+  POST_LIGHT_FX_OFF, currentPostLightFxQuery, resolvePostLightFx, samePostLightFx, type PostLightFxFlags,
+} from './postLightFxPolicy.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 
@@ -161,6 +170,12 @@ export interface PostRuntime {
   setAdaptiveSuspended(suspended: boolean): void;
   resetAdaptiveResolution(): void;
   forcePerfTrim(level: number): void;
+  /** Round 69: the desktop light effects (postLightFxPolicy.ts) — resolved flags and the two quarter-res passes. */
+  readonly lightFx: PostLightFxFlags;
+  sunShafts: SunShaftsPass;
+  lensFlare: LensFlarePass;
+  /** QA hook: override the resolved flags at runtime (null releases to the preset + query policy). */
+  setLightFx(overrides: Partial<PostLightFxFlags> | null): void;
 }
 
 declare global {
@@ -896,6 +911,8 @@ const AerialShader = {
     // the perf probe can measure paired on/off medians on one build.
     uInvSize: { value: new THREE.Vector2(1 / 1024, 1 / 1024) },
     uFirefly: { value: 1 },
+    // round 69 (2026-09-24): screen-space contact shadows (contactShadows.ts) — uContact 0 skips the block
+    ...createContactShadowUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -933,6 +950,7 @@ const AerialShader = {
     uniform vec2 uInvSize;
     uniform float uFirefly;
     varying vec2 vUv;
+    ${CONTACT_SHADOW_GLSL}
     // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
       return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
@@ -1028,6 +1046,12 @@ const AerialShader = {
           hazeCol *= mix( elevAtt, 1.0, sunAmt * 0.5 );
         }
         float rayT = -viewZ / max( dot( ray, uCamFwd ), 0.05 );
+        // round 69: screen-space contact shadows (contactShadows.ts) — the sun share of a pixel whose short
+        // march toward the sun meets an occluder, blended into the CSM visibility the lit materials carry in
+        // the scene target's alpha (lighting.ts); before the haze, which is applied below to the lit colour
+        if ( uContact > 0.5 && -viewZ < ${CONTACT_SHADOW_RANGE_M.toFixed(1)} ) {
+          texel.rgb *= cotContactShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
+        }
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in
         // (and a share of extinction) decays with altitude so mountain walls
@@ -1136,6 +1160,8 @@ const AerialShader = {
           + emOver / ( 1.0 + emOver / ${EM_SHOULDER_RANGE.toFixed(3)} );
         texel.rgb *= emTarget / emL;
       }
+      // round 69: the scene target's alpha carried the CSM sun visibility (consumed above); the chain gets one
+      texel.a = 1.0;
       gl_FragColor = texel;
     }`,
 };
@@ -1335,6 +1361,11 @@ const GradeShader = {
     // definition. 0 at x2 and in arcade; driven from camera.fov in render().
     uSharp: { value: 0 },
     uAspect: { value: 16 / 9 },
+    // round 69 (2026-09-24): the quarter-resolution light target the sun shafts write and the lens flare adds
+    // into (sunShafts.ts, lensFlare.ts), added in linear HDR before the tonemap by the fused output pars
+    // (createOutputGradePass declares the samplers); uLightFx 0 skips the fetch
+    tLightFx: { value: null },
+    uLightFx: { value: 0 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -1526,11 +1557,15 @@ function createOutputGradePass(): OutputGradePass {
   const parsAnchor = 'uniform sampler2D tDiffuse;';
   const outputPars = /* glsl */ `precision highp float;
     uniform sampler2D tDiffuse;
+    uniform sampler2D tLightFx;
+    uniform float uLightFx;
     #include <tonemapping_pars_fragment>
     #include <colorspace_pars_fragment>
 
     vec4 sampleDisplay( vec2 sampleUv ) {
       vec4 outputColor = texture2D( tDiffuse, sampleUv );
+      // round 69: sun shafts + lens flare, linear HDR, before the output transform
+      if ( uLightFx > 0.5 ) outputColor.rgb += texture2D( tLightFx, sampleUv ).rgb;
       #ifdef LINEAR_TONE_MAPPING
         outputColor.rgb = LinearToneMapping( outputColor.rgb );
       #elif defined( REINHARD_TONE_MAPPING )
@@ -2149,6 +2184,28 @@ export function createPost(
   }
   composer.addPass(bloom); // 3. HDR bloom — muzzle flash / fire pop here
 
+  // Round 69 (2026-09-24): the desktop light effects (postLightFxPolicy.ts). Sun shafts and the lens flare render
+  // at quarter resolution into one light target the grade adds before its tonemap; the contact shadows live in
+  // the aerial pass above (uContact); ground bounce in lighting.ts. `?fx=off` keeps every pinned capture exact.
+  const lightFxTarget = createLightFxTarget(size.x, size.y);
+  const sunShafts = new SunShaftsPass(camera, scene, sceneDepth, lightFxTarget, size.x, size.y);
+  const lensFlare = new LensFlarePass(camera, scene, sceneDepth, lightFxTarget);
+  composer.addPass(sunShafts);
+  composer.addPass(lensFlare);
+  let lightFxOverrides: Partial<PostLightFxFlags> | null = null;
+  let lightFx: PostLightFxFlags = POST_LIGHT_FX_OFF;
+  const resolveLightFx = (): void => {
+    const resolved = resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery());
+    const next = lightFxOverrides ? Object.freeze({ ...resolved, ...lightFxOverrides }) : resolved;
+    if (samePostLightFx(next, lightFx)) return;
+    lightFx = next;
+    sunShafts.enabled = next.sunShafts;
+    lensFlare.enabled = next.sunShafts || next.lensFlare; // the flare pass also clears the shared target
+    renderer.domElement.dataset.lightFx = ['contact', 'bounce', 'shafts', 'flare']
+      .filter((_, i) => [next.contactShadows, next.groundBounce, next.sunShafts, next.lensFlare][i]).join('+') || 'off';
+  };
+  resolveLightFx();
+
   // SMAA runs after BOTH the output transform and display grade. Anti-aliasing computed on
   // linear HDR values is defeated by the tone map: a 6.0-vs-0.4 edge blended
   // 50/50 in linear space still tone-maps to ~white against mid-grey, so hot
@@ -2160,6 +2217,7 @@ export function createPost(
   // OutputPass' renderer-driven defines and exact display-space grade math,
   // while removing one full-frame read/write from every battle frame.
   const grade = createOutputGradePass();
+  grade.uniforms.tLightFx.value = lightFxTarget.texture;
   composer.addPass(grade); // 4. ACES + sRGB + display grade/scope treatment
   const smaa = new SMAAPass() as ExtendedSmaaPass;
   // Three's stock pass uses its medium preset (0.10 edge threshold / 8 search
@@ -2559,6 +2617,15 @@ export function createPost(
     if (sunDirection) aerial.uniforms.uSunDir.value.copy(sunDirection).normalize();
   }
 
+  /** Round 69: per-frame state of the light effects (the sun on screen, the rig, the levers). */
+  function updatePostLightFx(): void {
+    updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows);
+    sunShafts.update(lightFx.sunShafts);
+    lensFlare.update(lightFx.lensFlare);
+    lensFlare.clearTarget = !lightFx.sunShafts;
+    grade.uniforms.uLightFx.value = lightFx.sunShafts || lightFx.lensFlare ? 1 : 0;
+  }
+
   /** Complete allocation-free post transaction for one rendered frame. */
   function renderFrame(dt: number, frameWallDtSeconds = dt): void {
     // A governor resize must land before any pass reads resolution uniforms.
@@ -2570,6 +2637,7 @@ export function createPost(
     updateScopeGrade();
     updateAerialFogColors();
     updateAerialCameraBasis();
+    updatePostLightFx();
     // Only this complete frame transaction can bypass LateFX's input copy.
     // Individual warm/debug renders deliberately keep the original path.
     const passes = composer.passes;
@@ -2611,6 +2679,7 @@ export function createPost(
     taa.resetHistory();
     upscaler.temporalAccumulation = taaEnabled;
     publishAAState();
+    resolveLightFx();
     // perf-governor r1: a preset switch is a new baseline — release every
     // session trim (the new tier's own levers take over) and recompute AO.
     resetGovernorState();
@@ -2784,5 +2853,14 @@ export function createPost(
 
     /** QA hook (probes): force a trim rung, bypassing the strike windows. */
     forcePerfTrim(level) { setPerfTrim(level); },
+
+    /** Round 69: the resolved light effects and their passes (probes, A/B runs). */
+    get lightFx() { return lightFx; },
+    sunShafts,
+    lensFlare,
+    setLightFx(overrides) {
+      lightFxOverrides = overrides ? { ...overrides } : null;
+      resolveLightFx();
+    },
   };
 }

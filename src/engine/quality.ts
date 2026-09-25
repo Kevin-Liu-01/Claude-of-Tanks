@@ -58,6 +58,15 @@ export interface QualityPreset {
    * Absent means off (mobile presets, Low).
    */
   readonly taa?: boolean;
+  /**
+   * Round 69 (2026-09-24): the desktop light effects, each its own lever (postLightFxPolicy.ts resolves them with
+   * the device tier and the `?fx=` query): screen-space contact shadows and sun shafts / lens flare in post.ts,
+   * ground bounce in lighting.ts. Absent means off (the mobile presets and Low).
+   */
+  readonly contactShadows?: boolean;
+  readonly groundBounce?: boolean;
+  readonly sunShafts?: boolean;
+  readonly lensFlare?: boolean;
   readonly maxPixelRatio: number;
   readonly adaptiveBasePixelRatio?: number;
   readonly dynMin: number;
@@ -208,6 +217,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // poses (verdant gradient 13.3 with TAA vs 21.7 without, reference 20.8). Drive-mode flicker (production, 110 frames): per-pixel blip rate 2.57 with TAA, 3.29 without — the reference's own foliage shimmer, no shadow flashing (r8).
     // The pass, its RCAS floor and receipts stay in place: set taa: true on a preset to re-enable it.
     taa: false,
+    contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
     maxPixelRatio: 2.0,
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
     // may fall to 1.5 — still the complete High raster, never below it.
@@ -241,6 +251,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     label: 'High',
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
+    contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
@@ -253,6 +264,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     label: 'Medium',
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
+    contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
     maxPixelRatio: 1.0,
     // Medium/Low already shed AA, AO and shadow cost. Do not multiply that
     // fallback by another hidden 0.75 dynamic scale: desktop readability
