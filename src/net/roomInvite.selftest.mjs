@@ -3,20 +3,31 @@ import { createRoomInviteUrl, parseRoomInvite, roomInviteTitle } from './roomInv
 
 assert.deepEqual(
   parseRoomInvite('https://cot.example/?room=ab-cd2e'),
-  { roomCode: 'ABCD2E', mode: 'private', hostName: null },
+  // version 1 unless the link carries v=2 (Multiplayer v2 rooms, 2026-09-25)
+  { roomCode: 'ABCD2E', mode: 'private', hostName: null, version: 1 },
   'private invite links normalize human-readable room codes',
 );
 assert.deepEqual(
   parseRoomInvite('http://192.168.1.4:5173/?mode=lan&room=wx9yz8'),
-  { roomCode: 'WX9YZ8', mode: 'lan', hostName: null },
+  { roomCode: 'WX9YZ8', mode: 'lan', hostName: null, version: 1 },
   'LAN invite links preserve their deployment mode',
 );
 assert.deepEqual(
   parseRoomInvite('https://cot.example/?room=ABC234&host=Commander%20Kevin'),
-  { roomCode: 'ABC234', mode: 'private', hostName: 'Commander Kevin' },
+  { roomCode: 'ABC234', mode: 'private', hostName: 'Commander Kevin', version: 1 },
   'named invite links preserve the normalized host callsign',
 );
 assert.equal(parseRoomInvite('https://cot.example/?room=SHORT'), null);
+assert.deepEqual(
+  parseRoomInvite('https://cot.example/?room=ab-cd2e&v=2'),
+  { roomCode: 'ABCD2E', mode: 'private', hostName: null, version: 2 },
+  'a Multiplayer v2 room stamps v=2 on its invite links',
+);
+assert.equal(
+  createRoomInviteUrl({ roomCode: 'abc234', baseUrl: 'https://cot.example/', version: 2 }),
+  'https://cot.example/?room=ABC234&v=2',
+  'v2 invites carry the version stamp after the room code',
+);
 assert.equal(parseRoomInvite('not a valid URL'), null);
 
 assert.equal(
