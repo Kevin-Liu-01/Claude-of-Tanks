@@ -444,6 +444,9 @@ export function buildStrv103(P: CasemateBuilderPort): void {
     style: 'rubber', dishR: 0.72, wheelR: 0.40, wheelW: 0.22, wheelY: 0.50, xc: 1.30,
     wheelZs: [1.44, 0.48, -0.48, -1.44], trackW: 0.66, trackTh: 0.075,
     sprocket: { z: 2.29, y: 0.88, r: 0.30 }, idler: { z: -2.33, y: 0.90, r: 0.27 },
+    // FSP-03 2026-09-25: the Strv 103 carries two return rollers per side (docs/references/tanks/strv103a.md;
+    // the Strv 103A gear above), one over each wheel pair at the 103A's axle height.
+    rollers: [{ z: 0.85, y: 1.06, r: 0.10 }, { z: -0.85, y: 1.06, r: 0.10 }],
     topY: 1.20, botY: 0.04, arms: true, coveredTop: false, deadSag: 0.030, shadows: false,
   });
   // tail underside wedge from the raised idler to the high stern
