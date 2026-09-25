@@ -57,6 +57,19 @@ The probe rejects a stale/dirty release, selects the real carousel card, inspect
 the final batched hull cable and repeats after a cached tank switch. Keep the
 manual deployment policy above; enabling automatic deploys is not the remedy.
 
+## Cloudflare Workers (edge services)
+
+Edge services deploy by name with the Wrangler CLI from their own directory after their receipts
+are green (`cloudflare/<name>/README.md` has the exact steps); the account is the owner's
+(68c9576ef72404494de8d86348404fad). Each deploy gets a row here. The site table below stays the
+last thing in this file because the landing chain appends its row to the end.
+
+| service | date (PDT) | tree | version | URL | notes |
+|---|---|---|---|---|---|
+| cot-telemetry | 2026-09-25 13:20 | 370d2548a (mp/telemetry-lean, lands with deploy 94) | db6f707c-408f-422d-adc1-6d83e7671aba | https://cot-telemetry.kk23907751.workers.dev | Workers Analytics Engine sink (`cot_telemetry`); first `wrangler deploy` failed until the owner enabled Analytics Engine on the account; `/healthz` 200 and a probe session record 204 from the alias origin; `VITE_TELEMETRY_URL` added to the Vercel production environment the same minute (baked from deploy 94) |
+
+## Site deploys
+
 | # | date (PDT) | head | title | bundle | deployment |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 2026-09-12 17:27 | fc74695d3 | frontline atmosphere owner beside the weather owner | — | — |
