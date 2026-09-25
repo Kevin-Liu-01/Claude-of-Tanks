@@ -729,10 +729,12 @@ function buildMarder1A3(P: AfvBuilderPort): void {
   // the dressing's other content.
   for (const s of [-1, 1]) {
     const m = (x: number): number => s * x;
-    P.add('hull', KIT.slab(
+    // FSP-05 (2026-09-25): same reversed right-hand copy as the shared Bradley
+    // grammar — orientedSlab re-orders it, the left plate stays byte-identical.
+    P.add('hull', orientedSlab(
       [m(1.40), 0.55, 2.80], [m(1.44), 0.55, 2.80], [m(1.44), 0.55, 3.14], [m(1.40), 0.55, 3.14],
       [m(1.40), 1.17, 2.80], [m(1.44), 1.17, 2.80], [m(1.44), 1.02, 3.14], [m(1.40), 1.02, 3.14]));
-    P.add('hull', KIT.slab(
+    P.add('hull', orientedSlab(
       [m(1.06), 0.55, 3.10], [m(1.44), 0.55, 3.10], [m(1.44), 0.55, 3.16], [m(1.06), 0.55, 3.16],
       [m(1.06), 1.00, 3.10], [m(1.44), 1.00, 3.10], [m(1.44), 1.00, 3.16], [m(1.06), 1.00, 3.16]));
   }

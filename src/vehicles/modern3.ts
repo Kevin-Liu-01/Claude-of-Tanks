@@ -3888,7 +3888,11 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
     rearRoofY: 1.03,
     frontRoofY: 1.20,
   });
-  P.add('hull', slab(
+  // FSP-05 (2026-09-25): the ring below is listed rear row first, the inward
+  // handedness for KIT.slab (the T-14 raked-bow lesson), so this buried bow
+  // volume shipped inside-out and the rear view read its front face through
+  // the under-sponson channel. orientedSlab re-orders it; corners unchanged.
+  P.add('hull', orientedSlab(
     [-bowClosure.rearHalfWidthM, bowClosure.rearFloorY, bowClosure.rearZ],
     [bowClosure.rearHalfWidthM, bowClosure.rearFloorY, bowClosure.rearZ],
     [bowClosure.frontHalfWidthM, bowClosure.frontFloorY, bowClosure.frontZ],
@@ -3916,10 +3920,14 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
     // §B9-readable), top chord tucked under the 1.19 mudguard line, flat
     // 0.55 bottom over the wrap taper; the transverse cap (z 3.10..3.16)
     // seals the front edge into the bow corner slabs.
-    P.add('hull', slab(
+    // FSP-05 (2026-09-25): the plan order above is the LEFT-hand ring, so the
+    // RIGHT copies (m = +x) were wound inside-out — the side plate's outer face
+    // culled and the camera read into the bow corner on m2a2/m3a3/ua_m2a3.
+    // orientedSlab re-orders the reversed copy; the left stays byte-identical.
+    P.add('hull', orientedSlab(
       [m(1.40), 0.55, 2.80], [m(1.44), 0.55, 2.80], [m(1.44), 0.55, 3.14], [m(1.40), 0.55, 3.14],
       [m(1.40), 1.17, 2.80], [m(1.44), 1.17, 2.80], [m(1.44), 1.02, 3.14], [m(1.40), 1.02, 3.14]));
-    P.add('hull', slab(
+    P.add('hull', orientedSlab(
       [m(1.06), 0.55, 3.10], [m(1.44), 0.55, 3.10], [m(1.44), 0.55, 3.16], [m(1.06), 0.55, 3.16],
       [m(1.06), 1.00, 3.10], [m(1.44), 1.00, 3.10], [m(1.44), 1.00, 3.16], [m(1.06), 1.00, 3.16]));
   }
