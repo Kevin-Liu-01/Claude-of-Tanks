@@ -147,9 +147,10 @@ function cellField2(N: number, cells: number, seed: number, gate: Float32Array, 
           const dx = gx + 0.2 + jx * 0.6 - px, dy = gy + 0.2 + jy * 0.6 - py;
           const d = Math.sqrt(dx * dx + dy * dy);
           const radius = 0.34 + hr * hr * 0.42;
-          // a cell switches on where the mesoscale field exceeds its own hashed threshold, sharply, so the
-          // cells cluster into groups with clear regions between them (a soft edge on the threshold)
-          const on = Math.min(1, Math.max(0, ((meso - 0.2) * 1.5 - hp + 0.15) / 0.3));
+          // a cell switches on where the mesoscale field exceeds its own hashed threshold — 5 % of the cells
+          // at a field value of 0.4, 30 % at 0.5, 80 % at 0.7 — so the cells cluster into groups with clear
+          // regions between them (a soft edge on the threshold)
+          const on = Math.min(1, Math.max(0, (Math.min(1, Math.max(0, (meso - 0.38) * 2.5)) - hp + 0.08) / 0.16));
           const v = Math.max(0, 1 - d / radius) * on;
           if (v > best) best = v;
         }
@@ -241,8 +242,8 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
   const gate = new Float32Array(count);
   for (let i = 0; i < count; i++) gate[i] = clamp01(meso[i] * 0.8 + 0.5);
   const cells = new Float32Array(count);
-  // cells of 1/24 of the tile (500 m on a 12 km tile: 340–760 m puffs), admitted by the mesoscale field
-  cellField2(N, 24, seed + 91, gate, 0.0, cells);
+  // cells of 1/20 of the tile (600 m on a 12 km tile: 400–900 m puffs), admitted by the mesoscale field
+  cellField2(N, 20, seed + 91, gate, 0.0, cells);
   const bigCells = new Float32Array(count);
   // a few 1 km cells at a stricter gate
   cellField2(N, 12, seed + 92, gate, -0.15, bigCells);

@@ -74,6 +74,8 @@ export const CLOUD_AERIAL = Object.freeze({
   desat: 0.62, cool: [0.90, 0.97, 1.08] as const,
   /** the pass's height-aware atmosphere: the falloff's start over the camera (m), its e-fold height, the shares */
   heightRef: 30, heightScale: 150, heightScatterK: 0.75, heightExtK: 0.35,
+  /** past the ring (3–12 km) the scatter-in ceiling rises toward the sky and the altitude rule fades out */
+  farStartM: 3000, farEndM: 12000, farScatterCeiling: 0.92,
 });
 /** Light march toward the sun: sample distances (m) from the point, on the base shape (no detail erosion). */
 export const CLOUD_LIGHT_TAPS = Object.freeze([14, 34, 70, 140, 280, 560] as const);
@@ -148,6 +150,7 @@ uniform float uSunGain;
 uniform float uClearRadius;
 uniform float uPixelAngle;
 uniform float uFieldMix;
+uniform float uVertScale;
 varying vec2 vUv;
 const float CL_PI = 3.14159265358979;
 float remap( float v, float lo, float hi, float nlo, float nhi ) {
@@ -188,9 +191,9 @@ float cloudDensity( vec3 p, vec3 w, bool detail, float foot ) {
 	// a flat base at the cloud base altitude, a domed eroded top (a stratus keeps its sheet almost to its
 	// top); a cumulus narrows toward its top so its silhouette is a dome over a wide base, not a lens
 	float hg = smoothstep( 0.0, 0.04, hN ) * smoothstep( 1.0, mix( 0.7, 0.92, uStratiform ), hN ) * ( 1.0 - 0.2 * hN * ( 1.0 - uStratiform ) );
-	// the slab is a few hundred metres thick against a kilometres-wide shape period: the volume is sampled
-	// with its vertical axis compressed so the billows read as tall as they are wide
-	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 1.4, 1.0 ) / uShapeTile;
+	// a thin slab against a kilometre-wide shape period is sampled with its vertical axis compressed so the
+	// billows read as tall as they are wide; a tall storm slab is not (compressed cells stack into layers)
+	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, uVertScale, 1.0 ) / uShapeTile;
 	vec4 s = texture( tShape, sp );
 	float lowFreq = s.g * 0.625 + s.b * 0.25 + s.a * 0.125;
 	float base = remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) * hg;
@@ -204,7 +207,7 @@ float cloudDensity( vec3 p, vec3 w, bool detail, float foot ) {
 	if ( detail && d > 0.0 && d < 0.95 ) {
 		// two Worley-fbm fetches: the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where
 		// the pixel footprint resolves it; the octaves lean to the high frequencies so the silhouette crinkles
-		vec3 dp = ( p + uNoiseShift * 1.31 ) * vec3( 1.0, 1.5, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
+		vec3 dp = ( p + uNoiseShift * 1.31 ) * vec3( 1.0, uVertScale * 1.07, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
 		float hf = dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2;
 		float fineW = 1.0 - smoothstep( 8.0, 30.0, foot );
@@ -329,7 +332,12 @@ void main() {
 			vec3 hazy = mix( L, vec3( lum ), ${f(CLOUD_AERIAL.desat)} ) * vec3( ${CLOUD_AERIAL.cool.map(f).join(', ')} );
 			L = mix( L, hazy, fe );
 			float hz = max( dist - ${f(CLOUD_AERIAL.hazeStart)}, 0.0 ) * ${f(CLOUD_AERIAL.hazeDensity)};
-			float fs = min( 1.0 - exp( -hz * hz ), ${f(CLOUD_AERIAL.scatterCeiling)} ) * mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightScatterK)} );
+			// beyond the ring's range the pass's ceiling and altitude rule no longer apply (they hold a lit
+			// mountain against the haze): a bank three to twelve kilometres out melts into the sky it stands
+			// against, so the far field of small cumulus reads as a hazed horizon band, not a carpet of puffs
+			float farW = smoothstep( ${f(CLOUD_AERIAL.farStartM)}, ${f(CLOUD_AERIAL.farEndM)}, dist );
+			float fs = min( 1.0 - exp( -hz * hz ), mix( ${f(CLOUD_AERIAL.scatterCeiling)}, ${f(CLOUD_AERIAL.farScatterCeiling)}, farW ) )
+				* mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightScatterK)} * ( 1.0 - farW ) );
 			vec3 skyDir = normalize( vec3( dir.x, max( dir.y, 0.02 ), dir.z ) );
 			vec3 target = atmoSkyVisible( skyDir );
 			L = mix( L, target * opacity, fs );
@@ -600,7 +608,7 @@ export class VolumetricCloudLayer {
         uCoverage: { value: 0.4 }, uTowers: { value: 0 }, uStratiform: { value: 0.1 }, uDensity: { value: 0.07 },
         uTint: { value: new THREE.Vector3(1, 1, 1) }, uWeatherShift: { value: new THREE.Vector2() }, uNoiseShift: { value: new THREE.Vector3() },
         uShapeTile: { value: CLOUD_SHAPE_TILE_M }, uSunGain: { value: 1 }, uClearRadius: { value: 0 }, uPixelAngle: { value: 0.002 },
-        uFieldMix: { value: 0 },
+        uFieldMix: { value: 0 }, uVertScale: { value: 1.4 },
       },
     });
     this.resolveMaterial = new THREE.ShaderMaterial({
@@ -789,6 +797,7 @@ export class VolumetricCloudLayer {
     t.uShapeTile.value = THREE.MathUtils.lerp(CLOUD_SHAPE_TILE_M, CLOUD_SHAPE_TILE_STRATUS_M, preset.stratiform);
     t.uClearRadius.value = preset.clearRadiusM;
     t.uFieldMix.value = preset.fieldMix;
+    t.uVertScale.value = THREE.MathUtils.clamp(450 / Math.max(1, preset.thicknessM), 0.9, 1.4);
     const r = this.resolveMaterial.uniforms;
     r.uBase.value = preset.baseM;
     r.uThick.value = preset.thicknessM;

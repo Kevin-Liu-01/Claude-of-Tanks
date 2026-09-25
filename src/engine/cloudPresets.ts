@@ -131,11 +131,11 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
   if (overcast) coverage = Math.max(coverage, R.overcastCoverageFloor);
   if (storm) coverage = R.stormCoverage;
   const regime: CloudLayerRegime = storm ? 'storm' : overcast ? 'overcast' : coverage >= R.brokenCoverage ? 'broken' : 'scattered';
-  const towers = storm ? 1 : overcast ? 0 : clamp((co - 0.95) * 2, 0, 1) * (turbidity >= 5.5 ? 1 : 0.4);
+  const towers = storm ? 1 : overcast ? 0 : clamp((co - 0.95) * 1.2, 0, 1) * (turbidity >= 5.5 ? 1 : 0.4);
   const stratiform = storm ? 0.2 : overcast ? 0.85 : regime === 'broken' ? 0.3 : 0.12;
   // a storm's towers rise from wide bases (half the broad field), a broken sky merges a few cells, an
   // overcast is the broad field itself
-  const fieldMix = overcast ? 1 : storm ? 0.55 : regime === 'broken' ? 0.15 : 0;
+  const fieldMix = overcast ? 1 : storm ? 0.85 : regime === 'broken' ? 0.15 : 0;
   const authoredAlt = sky.cloudAltM;
   const baseM = overcast ? (authoredAlt ?? CLOUD_LAYER_OVERCAST_BASE_M)
     : authoredAlt != null && authoredAlt <= R.lowDeckAuthoredAltM ? authoredAlt
