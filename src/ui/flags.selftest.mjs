@@ -26,12 +26,19 @@ const flagsSource = await readFile(join(uiDir, 'flags.ts'), 'utf8');
 assert.doesNotMatch(flagsSource, /<svg|<rect|<polygon|function star/, 'flag UI no longer draws replacement flags');
 
 const garageSource = await readFile(join(uiDir, 'garage.ts'), 'utf8');
+const collectionButtons = garageSource.slice(
+  garageSource.indexOf("for (const id of ['default', ...CAMO_COUNTRY_TAG_IDS] as const)"),
+  garageSource.indexOf("const collectionNav = document.createElement('div')"),
+);
+assert.match(collectionButtons,
+  /const nation = id === 'default' \? null : CAMO_TAG_NATION\[id\];[\s\S]*?button\.innerHTML = flagIconHTML\(nation, 22\);/,
+  'camouflage country collections render official flag-icons assets');
+assert.match(collectionButtons,
+  /const label = nation \? tNation\(nation\)[\s\S]*?button\.setAttribute\('aria-label', label\);/,
+  'flag-only country collections retain a localized accessible nation label');
 assert.match(garageSource,
-  /const tagNation = CAMO_TAG_NATION\[tagId\];[\s\S]*?button\.innerHTML = flagIconHTML\(tagNation, 16\);/,
-  'camouflage nation filters render official flag-icons assets instead of country-code text');
-assert.match(garageSource,
-  /button\.setAttribute\('aria-label', `\$\{t\('garage\.camo\.showTag'\)\} \$\{tagLabel\}`\);/,
-  'flag-only camouflage filters retain an accessible nation label');
+  /button\.setAttribute\('aria-label', t\('garage\.camo\.showTag', \{ tag: tagLabel \}\)\);/,
+  'secondary camouflage filters interpolate their accessible labels');
 
 const srcRoot = join(uiDir, '..');
 for (const relative of ['ui/garage.ts', 'ui/flags.ts', 'ui/flagCodes.ts']) {
