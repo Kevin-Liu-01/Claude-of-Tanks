@@ -17,6 +17,17 @@
  * remaining client (room match_status and the client's own frames); the
  * rematch welcomes every remaining seat; the resumed seat is welcomed by the
  * same match with the same token; no session ends in `lost`.
+ *
+ * 2026-09-25: one `--clients=4` run (45 s battle, creator leaves at 20 s) timed
+ * out on "a verdict at every remaining client" and took 962 s of wall time. It
+ * was started at 06:20:35, the minute mp/match-server was merged into this
+ * branch, beside two foreign gate suites (host load 9). On the merged tip the
+ * same configuration passes 4/4 runs (53 s wall each, drain 20 ms) and the
+ * 20 s / 8 s variant passes too. The wall time came from the drain waiting on
+ * peers that never answered their close handshake: both services now
+ * terminate what is still open after a 1 s grace, the HTTP server closes all
+ * connections, and this run stops waiting for the server after 15 s. Run with
+ * COT_ROOMS_E2E_DEBUG=1 for a status line every 5 s and timed shutdown steps.
  */
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
@@ -67,11 +78,37 @@ export async function runRoomsE2E({
       await sleep(1000 / frameHz);
     }
   })();
+  // COT_ROOMS_E2E_DEBUG=1: a status line every 5 s (every live session's room / session / match phase and
+  // verdict, the actor's phase and tick) and the wall time of every shutdown step.
+  const debug = process.env.COT_ROOMS_E2E_DEBUG === '1';
+  const elapsed = () => `${((performance.now() - startedAt) / 1000).toFixed(1)} s`;
+  const statusLine = () => {
+    const actor = server.matchService.actors.get(sessions[0]?.headless.room.code ?? '');
+    const roomActor = server.roomService.rooms.get(sessions[0]?.headless.room.code ?? '');
+    const seats = sessions.filter((entry) => !entry.disposed).map((entry) => {
+      const stats = entry.headless.session.stats();
+      const verdict = entry.headless.session.verdict;
+      return `${entry.id}[room ${entry.headless.room.phase}/${entry.headless.room.room?.phase ?? '-'} session ${stats.phase}` +
+        ` match ${stats.match?.phase ?? '-'} welcomed ${!!entry.headless.session.match?.welcome} verdict ${verdict ? `${verdict.verdict}:${verdict.reason}` : '-'}]`;
+    });
+    const actorLine = actor ? `actor ${actor.stats().phase} tick ${actor.tick} clients ${actor.stats().clients} ended ${actor.ended} stopped ${actor.stopped}` : 'actor -';
+    const roomLine = roomActor?.snapshot ? `room ${roomActor.snapshot.phase} match ${roomActor.snapshot.match?.status ?? '-'}` : 'room -';
+    return `${elapsed()}: ${actorLine}; ${roomLine}; ${seats.join(' ')}`;
+  };
+  const debugTimer = debug ? setInterval(() => log(statusLine()), 5000) : null;
   const stop = async () => {
     ticking = false;
-    await ticker;
-    for (const entry of sessions) if (!entry.disposed) { entry.disposed = true; entry.headless.dispose(); }
-    await server.close();
+    if (debugTimer) clearInterval(debugTimer);
+    const step = async (label, task) => {
+      const at = performance.now();
+      await task();
+      if (debug) log(`stop: ${label} took ${(performance.now() - at).toFixed(0)} ms`);
+    };
+    await step('ticker', () => ticker);
+    await step('sessions', async () => { for (const entry of sessions) if (!entry.disposed) { entry.disposed = true; entry.headless.dispose(); } });
+    // A close that waits for a peer's close handshake must not hold a failed run open (a 962 s wall was measured
+    // on 2026-09-25): the server terminates lingering sockets itself, and this run stops waiting after 15 s.
+    await step('server', () => Promise.race([server.close(), sleep(15_000).then(() => { failures.push('server close exceeded 15 s'); })]));
   };
   try {
     // ---- create and join

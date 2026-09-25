@@ -96,6 +96,16 @@ export function createInProcessMatchHost({
   };
 }
 
+/** How long a drain waits for graceful close handshakes before terminating what is left. */
+export const ROOM_DRAIN_GRACE_MS = 1000;
+
+/** Resolve once every client socket of `wss` is closed, terminating the ones still open after `graceMs`. */
+export async function terminateAfterGrace(wss: WebSocketServer, graceMs: number): Promise<void> {
+  const deadline = Date.now() + graceMs;
+  while (wss.clients.size > 0 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 20));
+  for (const socket of wss.clients) { try { socket.terminate(); } catch { /* already gone */ } }
+}
+
 function socketText(raw: RawData, isBinary: boolean): string | null {
   const buffer = Array.isArray(raw) ? Buffer.concat(raw) : Buffer.isBuffer(raw) ? raw : Buffer.from(raw as ArrayBuffer);
   if (buffer.length > ROOM_MAX_PAYLOAD_BYTES) return null;
@@ -232,6 +242,10 @@ export function createLocalRoomService({
       for (const socket of sockets.values()) { try { socket.close(1001, 'server_drain'); } catch { /* closed */ } }
       sockets.clear();
       rooms.clear();
+      // `wss.close` resolves only once every client socket is gone; a peer that never answers the close
+      // handshake would hold the drain for ws's own 30 s timer (or a dead process for good), so the
+      // sockets still open after a short grace are terminated.
+      await terminateAfterGrace(wss, ROOM_DRAIN_GRACE_MS);
       await new Promise<void>((resolve) => wss.close(() => resolve()));
     },
   };

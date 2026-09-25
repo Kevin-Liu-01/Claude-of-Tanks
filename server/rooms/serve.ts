@@ -84,6 +84,8 @@ export async function createRoomsServer({
     async close() {
       await roomService.close();
       await matchService.close();
+      // Both services have terminated their sockets; whatever HTTP connection is still open is idle.
+      server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     },
   };

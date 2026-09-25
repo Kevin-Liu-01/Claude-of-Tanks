@@ -340,6 +340,11 @@ export async function createMatchService({
       log.info('draining', { actors: actors.size });
       for (const roomId of [...actors.keys()]) removeActor(roomId, reason);
       for (const client of sockets.clients) client.close(1001, detail);
+      // `sockets.close` resolves only once every client is gone: a peer that never answers the close
+      // handshake would hold the drain for ws's 30 s timer, so what is still open after 1 s is terminated.
+      const deadline = Date.now() + 1000;
+      while (sockets.clients.size > 0 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 20));
+      for (const client of sockets.clients) { try { client.terminate(); } catch { /* already gone */ } }
       await new Promise<void>((resolve) => sockets.close(() => resolve()));
       if (ownsServer) await new Promise<void>((resolve) => server.close(() => resolve()));
       log.info('match service closed');

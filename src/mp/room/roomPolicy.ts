@@ -10,6 +10,7 @@
  */
 import { GAME_MODE_IDS, normalizeGameMode } from '../../sim/matchModes.ts';
 import { normalizeTeamArrangement, type TeamArrangement } from '../../sim/matchRuleset.ts';
+import { resolveMapId } from '../../world/maps/catalog.ts';
 import {
   ROOM_CAMO_RE, ROOM_CAMPAIGN_RE, ROOM_CODE_RE, ROOM_MAP_RE, ROOM_MAX_COOP_PLAYERS, ROOM_MAX_SEATS, ROOM_MAX_SPECTATORS,
   ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanEquipment, cleanId, isRecord,
@@ -540,7 +541,23 @@ export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1
   room.phase = 'starting';
   room.settings.locked = true;
   touch(room, now);
-  return { seats, bots, mapId: room.settings.mapId, gameMode: room.settings.gameMode, seed: seed >>> 0, round: room.round };
+  // `random` (the room default) becomes a concrete battlefield here, from the match seed, so the match
+  // host, every seat's `match_start` and the room's match record name the same map (v1 resolved it the
+  // same way from the lobby's match seed in privateMatchHandoff.ts).
+  const mapId = resolveMapId(room.settings.mapId, seededUnit(seed >>> 0));
+  return { seats, bots, mapId, gameMode: room.settings.gameMode, seed: seed >>> 0, round: room.round };
+}
+
+/** v1's seeded unit generator (privateMatchHandoff.ts), kept bit-identical so a seed picks the same map on both. */
+function seededUnit(seed: number): () => number {
+  let value = seed >>> 0;
+  return () => {
+    value |= 0;
+    value = (value + 0x6D2B79F5) | 0;
+    let out = Math.imul(value ^ (value >>> 15), 1 | value);
+    out = (out + Math.imul(out ^ (out >>> 7), 61 | out)) ^ out;
+    return ((out ^ (out >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 /** The host accepted the start: remember the match handle. */
