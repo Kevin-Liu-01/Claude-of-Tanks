@@ -1,8 +1,8 @@
 {
   "generatedAt": "2026-09-26T01:30:56.382Z",
   "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
-  "passed": 80,
-  "total": 176,
+  "passed": 79,
+  "total": 170,
   "rows": [
     {
       "id": "challenger1",
@@ -203,19 +203,6 @@
         "turretCurves": 12.9,
         "stations": 49.5,
         "dims": 100,
-        "floaters": 100
-      }
-    },
-    {
-      "id": "q_heavy",
-      "geoMin": 0,
-      "gatePassed": false,
-      "components": {
-        "hullCurves": 0,
-        "wholeCurves": 0,
-        "turretCurves": 0,
-        "stations": 0,
-        "dims": 94.1,
         "floaters": 100
       }
     },
@@ -503,19 +490,6 @@
       }
     },
     {
-      "id": "leichttraktor",
-      "geoMin": 15.9,
-      "gatePassed": false,
-      "components": {
-        "hullCurves": 27.5,
-        "wholeCurves": 15.9,
-        "turretCurves": 35.5,
-        "stations": 52.7,
-        "dims": 97.5,
-        "floaters": 100
-      }
-    },
-    {
       "id": "t54",
       "geoMin": 17,
       "gatePassed": false,
@@ -616,19 +590,6 @@
         "turretCurves": 27.1,
         "wholeCurves": 33.9,
         "dims": 66,
-        "floaters": 100
-      }
-    },
-    {
-      "id": "tiger2",
-      "geoMin": 29.2,
-      "gatePassed": false,
-      "components": {
-        "hullCurves": 42.6,
-        "wholeCurves": 47.4,
-        "turretCurves": 29.2,
-        "stations": 60,
-        "dims": 97.8,
         "floaters": 100
       }
     },
@@ -862,19 +823,6 @@
       }
     },
     {
-      "id": "pziii_konserwa",
-      "geoMin": 72,
-      "gatePassed": false,
-      "components": {
-        "hullCurves": 77.4,
-        "wholeCurves": 72,
-        "turretCurves": 77.2,
-        "stations": 83.1,
-        "dims": 100,
-        "floaters": 100
-      }
-    },
-    {
       "id": "type10_x",
       "geoMin": 75.7,
       "requiredMinimum": 92,
@@ -1049,19 +997,6 @@
         "wholeCurves": 84.1,
         "turretCurves": 85.6,
         "stations": 92.5,
-        "dims": 100,
-        "floaters": 100
-      }
-    },
-    {
-      "id": "sherman_jumbo",
-      "geoMin": 85.5,
-      "gatePassed": false,
-      "components": {
-        "hullCurves": 88.7,
-        "wholeCurves": 86.7,
-        "turretCurves": 85.5,
-        "stations": 87.8,
         "dims": 100,
         "floaters": 100
       }
@@ -1350,19 +1285,6 @@
         "dims": 100,
         "floaters": 100
       }
-    },
-    {
-      "id": "isu122s",
-      "geoMin": 90.7,
-      "requiredMinimum": 90,
-      "qualityBar": "fleet",
-      "gatePassed": true,
-      "components": {
-        "wholeCurves": 90.7,
-        "dims": 98.4,
-        "floaters": 100
-      },
-      "comparisonPurpose": "source-fidelity"
     },
     {
       "id": "m45_patton",
