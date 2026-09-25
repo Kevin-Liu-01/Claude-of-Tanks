@@ -40,7 +40,10 @@ import {
   rulesetLoadout, type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { allySpawnPoint, reuseSpawnPad } from '../sim/spawnPads.ts';
 import { campaignEnemyNations, campaignRulesetInput } from './campaignOperations.ts';
-import { enemyNationSpecNations, readTeamArrangement } from './teamArrangement.ts';
+import {
+  DEFAULT_BRAIN_SETTINGS, enemyNationSpecNations, readBrainSettings, readTeamArrangement, type BrainSettings,
+} from './teamArrangement.ts';
+import { createJevCommander, createJevFetchTransport, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -84,7 +87,7 @@ import {
   totalAmmunition,
   totalAmmunitionCapacity,
 } from '../sim/ammunition.ts';
-import { createAI, roleOf } from './ai.ts';
+import { createAI, roleOf, type AiOrder } from './ai.ts';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
 import {
   pushHullFromHull,
@@ -182,6 +185,10 @@ interface SoloAiController {
   notifyShellResult(event: SoloHitEvent): void;
   notifyUnderFire?(shooter: SoloEntity, info?: { selfHit?: boolean; damaging?: boolean; kind?: string }): void;
   notifyPlayerFired?(shooter: SoloEntity, rank?: number): void;
+  /** Jev commander (2026-09-25): the live target and mode the team document reads, and the order it applies. */
+  readonly targetId?: string | null;
+  readonly state?: string;
+  setOrder?(order: AiOrder | null): void;
 }
 
 interface ReloadPresentationEvent {
@@ -209,6 +216,8 @@ type SoloPooledEntity = Omit<RosterEntity,
     aiCtl: SoloAiController | null;
     consumableReadyAt?: number[];
     bot?: boolean;
+    /** Jev commander (2026-09-25): who commands this bot this battle (the HUD roster tags 'jev'). */
+    brain?: 'classic' | 'jev';
     modeActive?: boolean;
     modeSpeedMultiplier?: number;
     modeGravityScale?: number;
@@ -280,6 +289,10 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   mapId: string;
   killcam?: KillcamRecorder | null;
   _nextModeRouteS?: number;
+  /** Jev commander (2026-09-25): the brain setting this battle was set up with and the commander, when Jev's. */
+  brains?: BrainSettings;
+  jev?: JevCommander | null;
+  _jevView?: JevBattleView | null;
   _ramPairT?: Map<string, number>;
 }
 
@@ -345,6 +358,8 @@ interface SetupBattleOptions {
   campaignOperationId?: string | null;
   /** Team arrangement for the co-op modes; undefined reads the player's stored setting, null takes the defaults. */
   arrangement?: TeamArrangement | null;
+  /** Opponent brain; undefined reads the player's stored setting, null takes the classic defaults. */
+  brain?: BrainSettings | null;
   deferCamoRepaint?: boolean;
   deferVisuals?: boolean;
   deferOpeningRoutes?: boolean;
@@ -594,6 +609,11 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.modeEvents.length = 0;
   game.battleCount++;
   game.openingRouteJobs.length = 0;
+  // Jev commander (owner 2026-09-25): the previous battle's commander dies here; this battle's brain setting
+  game.jev?.dispose();
+  game.jev = null;
+  game._jevView = null;
+  game.brains = options.brain === undefined ? readBrainSettings() : options.brain ?? DEFAULT_BRAIN_SETTINGS;
 }
 
 function configureBattleCamo(
@@ -1103,6 +1123,44 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
   }
 }
 
+/** The proxy route: same-origin /api/jev, or VITE_JEV_URL for a dev server without a function runtime (docs/JEV-COMMANDER.md). */
+function jevEndpointUrl(): string {
+  const configured = import.meta.env?.VITE_JEV_URL;
+  return typeof configured === 'string' && configured.trim() ? configured.trim() : '/api/jev';
+}
+
+/** One browser transport per page: the proxy budgets the session, not the battle. */
+let jevTransport: ReturnType<typeof createJevFetchTransport> | null = null;
+
+function createJevBattleView(game: SoloGameState): JevBattleView {
+  return {
+    get timeS() { return game.timeS; },
+    get mode() { return game.gameMode; },
+    get timeLimitS() { return game.ruleset.timeLimitS; },
+    get tanks() { return game.tanks; },
+    get spotting() { return game.spotting; },
+    get modeState() { return game.matchModeState; },
+    objectiveFor: (entity) => game.matchModeController?.botObjective(entity as SoloEntity) ?? null,
+  };
+}
+
+/**
+ * Jev commander (owner 2026-09-25): when the opponent brain is Jev, one commander asks TypeSafe's System One
+ * model for the enemy team's orders every two seconds (and the allied bots' when the setting says so); every
+ * bot it commands is tagged for the HUD roster. With the classic setting nothing here runs and the brain is
+ * byte-identical to before.
+ */
+function attachBattleCommander(game: SoloGameState): void {
+  const brains = game.brains ?? DEFAULT_BRAIN_SETTINGS;
+  const teams: TeamId[] = brains.opponent === 'jev' ? (brains.allies ? ['enemy', 'player'] : ['enemy']) : [];
+  if (teams.length) {
+    jevTransport ??= createJevFetchTransport({ url: jevEndpointUrl() });
+    game.jev = createJevCommander({ transport: jevTransport, teams });
+    game._jevView = createJevBattleView(game);
+  }
+  for (const entity of game.tanks) entity.brain = game.jev?.commands(entity) ? 'jev' : 'classic';
+}
+
 export function setupBattle(
   game: SoloGameState,
   playerSpecId: string,
@@ -1300,6 +1358,7 @@ export function setupBattle(
   });
   game.matchModeState = game.matchModeController.state;
   game._nextModeRouteS = 0;
+  attachBattleCommander(game);
 }
 
 /**
@@ -2610,6 +2669,9 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,
     // battle endings (2026-09-25): the Horde report names the wave the last stand fell on
     hordeWave: game.matchModeState?.horde ? game.matchModeState.horde.wave : null,
+    // Jev commander (2026-09-25): the report names who commanded each side, and the commander's tallies
+    brains: { enemy: (game.brains ?? DEFAULT_BRAIN_SETTINGS).opponent, allies: game.jev?.teams.includes('player') ? 'jev' : 'classic' },
+    jev: game.jev ? game.jev.stats() : null,
     roster: game.tanks.map((entity) => ({
       id: entity.id,
       specId: entity.specId,
@@ -2645,6 +2707,7 @@ function settleBattleResult(
   }
   if (game.result !== null) {
     game.resultTimeS = game.timeS;
+    game.jev?.stop();
     emitBattleEnded(game, bus);
   }
 }
@@ -2676,6 +2739,8 @@ export function simStep(
   game.timeS += SIM_DT;
   stepSpotting(game, bus);
   retargetObjectiveBots(game);
+  // Jev commander (2026-09-25): due requests go out and arrived answers become orders before the controllers step
+  if (game.jev && game._jevView) game.jev.step(game._jevView);
   stepBotControllers(game);
   silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);

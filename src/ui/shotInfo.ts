@@ -135,6 +135,8 @@ interface BattleEndedEvent {
   readonly alliesLost?: number;
   /** battle endings (2026-09-25): the Horde wave the last stand fell on */
   readonly hordeWave?: number | null;
+  /** Jev commander (2026-09-25): who commanded each side's bots */
+  readonly brains?: { readonly enemy?: string; readonly allies?: string } | null;
 }
 
 interface Combatant {
@@ -208,6 +210,7 @@ interface EndInfo {
   readonly reason: string | null;
   readonly campaign: CampaignDebrief | null;
   readonly hordeWave: number | null;
+  readonly brains: { readonly enemy: string; readonly allies: string } | null;
 }
 
 interface SummaryTeamRow extends EndScreenTeamRow {
@@ -1431,6 +1434,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       finalBlow: resolveFinalBlow(lastLethalHit, lastDestroyedRow, playerId == null ? null : String(playerId),
         (id) => combatants.get(id)?.name ?? null),
       hordeWave: endInfo?.hordeWave ?? null,
+      brains: endInfo?.brains ?? null,
     };
   }
 
@@ -1692,6 +1696,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     endInfo = p ? {
       timeS: p.timeS, map: p.map || p.mapId || null, reason: p.reason || null, campaign: campaignDebrief(p),
       hordeWave: typeof p.hordeWave === 'number' && Number.isFinite(p.hordeWave) ? p.hordeWave : null,
+      brains: p.brains && typeof p.brains === 'object'
+        ? { enemy: String(p.brains.enemy || 'classic'), allies: String(p.brains.allies || 'classic') } : null,
     } : null;
     if (rulesetRevives(p?.gameMode)) revives = true;
     pendingReport = p ? (p.result || '') : '';

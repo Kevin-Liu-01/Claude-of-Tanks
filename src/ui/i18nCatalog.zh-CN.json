@@ -3150,5 +3150,17 @@
   "garage.camo.generic.service_ua_m2a3_bradley": "草原数码",
   "camoPattern.sig_dardo": "达尔多林地迷彩",
   "camoPattern.sig_lrmv_lynx": "LRMV 橄榄绿",
-  "camoPattern.sig_borsuk": "獾式林地迷彩"
+  "camoPattern.sig_borsuk": "獾式林地迷彩",
+  "playMenu.brain.heading": "对手大脑",
+  "playMenu.brain.sub": "单人战斗中由谁指挥机器人。所有模式共用。",
+  "playMenu.brain.classic": "经典",
+  "playMenu.brain.jev": "Jev（System One）",
+  "playMenu.brain.allies": "友军也交给 Jev",
+  "playMenu.brain.note": "Jev 是 TypeSafe 的 System One 模型，每隔几秒读取战况，为每辆机器人下达姿态、目标与开火纪律的命令。需要网络；Jev 迟缓或不可用时由经典大脑接管。",
+  "hud.brain.jev": "JEV",
+  "hud.brain.jevTitle": "由 Jev（System One）指挥",
+  "endScreen.brain.enemy": "敌方大脑：{brain}",
+  "endScreen.brain.allies": "友军大脑：{brain}",
+  "brain.classic": "经典",
+  "brain.jev": "Jev（System One）"
 }

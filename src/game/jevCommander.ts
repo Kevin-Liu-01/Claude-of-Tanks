@@ -39,7 +39,7 @@ export interface JevCommanderEntity {
     readonly reload?: { readonly t: number };
     readonly modules?: Partial<Record<string, { readonly state: string } | undefined>>;
   } | null;
-  readonly aiCtl: { readonly targetId: string | null; readonly state: string; setOrder?(order: AiOrder | null): void } | null;
+  readonly aiCtl: { readonly targetId?: string | null; readonly state?: string; setOrder?(order: AiOrder | null): void } | null;
 }
 
 interface JevZoneLike { readonly id?: string; readonly x: number; readonly z: number; readonly owner: string | null; readonly contested: boolean }

@@ -4,6 +4,7 @@ import {
   ENEMY_NATION_OPTIONS, SIDES_MODES, TEAM_ARRANGEMENT_STORAGE_KEY, enemyNationSpecNations, isEnemyNationId,
   readSides, readTeamArrangement, writeSides, writeTeamArrangement,
   readMarsSettings, writeMarsSettings,
+  BRAIN_STORAGE_KEY, DEFAULT_BRAIN_SETTINGS, isBotBrainId, readBrainSettings, writeBrainSettings,
 } from './teamArrangement.ts';
 import { BATTLE_FIELD_LIMIT } from '../sim/matchRuleset.ts';
 import { CAMPAIGN_ENEMY_NATIONS } from './campaignOperations.ts';
@@ -64,4 +65,26 @@ writeSides(null, storage);
 memory.set(TEAM_ARRANGEMENT_STORAGE_KEY, '{bad json');
 assert.equal(readTeamArrangement('frontline_assault', storage), null, 'a corrupt store reads as defaults');
 assert.equal(readTeamArrangement('endless_horde', null), null, 'no storage at all reads as defaults');
+// Opponent brain (owner 2026-09-25): one solo setting for every mode, Classic by default, Jev with an optional
+// allied side; unknown values keep the current choice, null restores the defaults, a corrupt store reads as defaults
+{
+  const brainMemory = new Map();
+  const brainStorage = { getItem: (key) => brainMemory.get(key) ?? null, setItem: (key, value) => brainMemory.set(key, value) };
+  assert.deepEqual(DEFAULT_BRAIN_SETTINGS, { opponent: 'classic', allies: false });
+  assert.deepEqual(readBrainSettings(brainStorage), DEFAULT_BRAIN_SETTINGS, 'nothing stored reads as the classic brain');
+  assert.deepEqual(readBrainSettings(null), DEFAULT_BRAIN_SETTINGS, 'no storage at all reads as the classic brain');
+  assert.ok(isBotBrainId('jev') && isBotBrainId('classic') && !isBotBrainId('gpt') && !isBotBrainId(null));
+  assert.deepEqual(writeBrainSettings({ opponent: 'jev' }, brainStorage), { opponent: 'jev', allies: false });
+  assert.deepEqual(writeBrainSettings({ allies: true }, brainStorage), { opponent: 'jev', allies: true }, 'one field at a time');
+  assert.deepEqual(JSON.parse(brainMemory.get(BRAIN_STORAGE_KEY)), { opponent: 'jev', allies: true });
+  assert.deepEqual(writeBrainSettings({ opponent: 'skynet' }, brainStorage), { opponent: 'jev', allies: true }, 'unknown ids keep the current choice');
+  assert.deepEqual(writeBrainSettings({ opponent: 'classic' }, brainStorage), { opponent: 'classic', allies: false },
+    'the classic brain never commands the allies: the flag reads false while classic is chosen');
+  assert.deepEqual(JSON.parse(brainMemory.get(BRAIN_STORAGE_KEY)), { opponent: 'classic', allies: true }, 'the stored flag survives for the next Jev choice');
+  assert.deepEqual(writeBrainSettings({ opponent: 'jev' }, brainStorage), { opponent: 'jev', allies: true });
+  assert.deepEqual(writeBrainSettings(null, brainStorage), DEFAULT_BRAIN_SETTINGS, 'null restores the defaults');
+  brainMemory.set(BRAIN_STORAGE_KEY, '{bad json');
+  assert.deepEqual(readBrainSettings(brainStorage), DEFAULT_BRAIN_SETTINGS, 'a corrupt store reads as the classic brain');
+  assert.equal(TEAM_ARRANGEMENT_STORAGE_KEY !== BRAIN_STORAGE_KEY, true, 'the brain has its own key');
+}
 console.log(`teamArrangement: ${ENEMY_NATION_OPTIONS.length} nation options cover ${fleetNations.size} fleet nations; per-mode store round-trips clamped values PASS`);

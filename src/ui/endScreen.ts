@@ -109,6 +109,8 @@ export interface EndScreenSummary {
   finalBlow?: FinalBlow | null;
   /** The Horde wave the last stand fell on. */
   hordeWave?: number | null;
+  /** Jev commander (2026-09-25): who commanded each side's bots ('classic' | 'jev'); absent in rooms. */
+  brains?: { readonly enemy: string; readonly allies: string } | null;
 }
 
 interface EndScreenRuntime {
@@ -836,6 +838,17 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (sum.hordeWave != null && Number.isFinite(sum.hordeWave)) {
       bits.push(`<span>${uiIconSVG('modeHorde', 14)}<b>${t('endScreen.horde.wave', { wave: String(Math.max(1, Math.floor(sum.hordeWave))) })}</b></span>`);
       host.dataset.hordeWave = String(Math.floor(sum.hordeWave));
+    }
+    // Jev commander (2026-09-25): the report says who commanded the bots when it was not the classic brain
+    if (sum.brains && (sum.brains.enemy === 'jev' || sum.brains.allies === 'jev')) {
+      const brainName = (id: string): string => t(id === 'jev' ? 'brain.jev' : 'brain.classic');
+      bits.push(`<span>${uiIconSVG('battleBots', 14)}<b>${t('endScreen.brain.enemy', { brain: brainName(sum.brains.enemy) })}</b></span>`);
+      if (sum.brains.allies === 'jev') {
+        bits.push(`<span>${uiIconSVG('battleBots', 14)}<b>${t('endScreen.brain.allies', { brain: brainName('jev') })}</b></span>`);
+      }
+      host.dataset.brains = `${sum.brains.enemy}/${sum.brains.allies}`;
+    } else {
+      delete host.dataset.brains;
     }
     meta.innerHTML = bits.join('');
     if (sum.map) host.dataset.map = sum.map;

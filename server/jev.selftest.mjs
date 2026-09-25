@@ -322,7 +322,7 @@ function fixture(overrides = {}) {
   assert.equal(spent.status, 429);
   assert.equal(spent.body.error, 'session_budget_spent');
   assert.equal(budget.upstream.calls.length, 2, 'a spent budget never reaches upstream');
-  assert.equal(JEV_SESSION_REQUEST_CAP, 2400, 'the production budget covers two teams at one request per two seconds for a 15-minute battle series');
+  assert.equal(JEV_SESSION_REQUEST_CAP, 12_000, 'the production budget covers a long evening of two-team battles at one request per two seconds');
   const global = fixture({ options: { globalPerMinute: 2, sessionBucketCapacity: 50 } });
   assert.equal((await invoke(global.handler, { body: request() })).status, 200);
   assert.equal((await invoke(global.handler, { body: request() })).status, 200);

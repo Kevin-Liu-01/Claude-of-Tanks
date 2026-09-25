@@ -3150,5 +3150,17 @@
   "garage.camo.generic.service_ua_m2a3_bradley": "Steppe Digital",
   "camoPattern.sig_dardo": "Dardo Woodland",
   "camoPattern.sig_lrmv_lynx": "LRMV Olive",
-  "camoPattern.sig_borsuk": "Borsuk Woodland"
+  "camoPattern.sig_borsuk": "Borsuk Woodland",
+  "playMenu.brain.heading": "Opponent brain",
+  "playMenu.brain.sub": "Who commands the bots in your solo battles. Saved for every mode.",
+  "playMenu.brain.classic": "Classic",
+  "playMenu.brain.jev": "Jev (System One)",
+  "playMenu.brain.allies": "Allies too",
+  "playMenu.brain.note": "Jev, TypeSafe's System One model, reads the battle every few seconds and orders each bot's posture, target and fire discipline. It needs the network; the classic brain takes over whenever Jev is slow or unavailable.",
+  "hud.brain.jev": "JEV",
+  "hud.brain.jevTitle": "Commanded by Jev (System One)",
+  "endScreen.brain.enemy": "Enemy brain: {brain}",
+  "endScreen.brain.allies": "Allied brain: {brain}",
+  "brain.classic": "Classic",
+  "brain.jev": "Jev (System One)"
 }

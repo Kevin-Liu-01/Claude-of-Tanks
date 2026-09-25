@@ -2,7 +2,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { CAMPAIGN_OPERATIONS, campaignLadder, campaignOperationById, campaignSummary } from '../game/campaignOperations.ts';
-import { ENEMY_NATION_OPTIONS, SIDES_MODES, readTeamArrangement, writeSides, writeTeamArrangement } from '../game/teamArrangement.ts';
+import {
+  ENEMY_NATION_OPTIONS, SIDES_MODES, readBrainSettings, readTeamArrangement, writeBrainSettings, writeSides, writeTeamArrangement,
+} from '../game/teamArrangement.ts';
 import {
   BATTLE_FIELD_LIMIT, SIDES_PRESETS, TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, isWaveMode, normalizeTeamArrangement,
   rulesetSides, sidesPresetOf, type TeamArrangement,
@@ -220,6 +222,14 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .arrange-readout{margin-left:auto;font:900 12px ${FONT_COND};letter-spacing:.12em;color:#f0d9b0}
 .cot-play .arrange-fields input[type='number']{font:700 12px ${FONT_STACK};color:#f2f6f8;background:#141c22;border:1px solid #3a4852;border-radius:6px;padding:6px 8px;width:100%;box-sizing:border-box}
 .cot-play .arrange-fields input:disabled{opacity:.55}.cot-play .arrange-cap{display:block;margin-top:6px;color:#8a9aa6;font-size:9px}.cot-play .arrange-cap[hidden]{display:none}
+.cot-play .brain{margin:10px 0 4px;padding:10px 12px;border:1px solid rgba(120,190,240,.28);border-radius:10px;background:rgba(120,190,240,.06)}.cot-play .brain[hidden]{display:none}
+.cot-play .brain .arrange-head b{color:#cfe6f7}
+.cot-play .brain-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cot-play .brain-row button{font:800 11px ${FONT_STACK};color:#dce6ed;background:#141c22;border:1px solid #3a4852;border-radius:6px;padding:6px 10px;cursor:pointer}
+.cot-play .brain-row button[aria-pressed='true']{border-color:rgba(120,190,240,.7);background:rgba(90,160,220,.16);color:#bfe3ff}
+.cot-play .brain-allies{display:flex;align-items:center;gap:6px;margin-left:auto;font:700 10px ${FONT_STACK};color:#c9d6e0;cursor:pointer}
+.cot-play .brain-allies input{accent-color:#7fc4f2;width:14px;height:14px;margin:0}.cot-play .brain-allies input:disabled+span{opacity:.5}
+.cot-play .brain-note{display:block;margin-top:6px;color:#8a9aa6;font-size:9px;line-height:1.4}.cot-play .brain-note[hidden]{display:none}
 .cot-play .operation-picker{display:grid;gap:4px;margin-top:8px}.cot-play .operation-picker[hidden]{display:none}
 .cot-play .operation-picker select{font:700 12px ${FONT_STACK};color:#f2f6f8;background:#141c22;border:1px solid #3a4852;border-radius:6px;padding:6px 8px;max-width:100%}
 .cot-play .operation-picker select:disabled{opacity:.55}
@@ -723,6 +733,15 @@ export function createPlayMenu({
       </div>
       <small class="arrange-cap" data-arrange-cap hidden>${t('playMenu.arrange.fieldCap', { max: String(BATTLE_FIELD_LIMIT) })}</small>
     </section>
+    <section class="brain" data-brain aria-label="${t('playMenu.brain.heading')}">
+      <div class="arrange-head"><b>${t('playMenu.brain.heading')}</b><span>${t('playMenu.brain.sub')}</span></div>
+      <div class="brain-row" role="group" aria-label="${t('playMenu.brain.heading')}">
+        <button type="button" data-brain-opponent="classic" aria-pressed="true">${t('playMenu.brain.classic')}</button>
+        <button type="button" data-brain-opponent="jev" aria-pressed="false">${t('playMenu.brain.jev')}</button>
+        <label class="brain-allies"><input type="checkbox" data-brain-allies><span>${t('playMenu.brain.allies')}</span></label>
+      </div>
+      <small class="brain-note" data-brain-note hidden>${t('playMenu.brain.note')}</small>
+    </section>
     <section class="campaign" data-campaign>${campaignMarkup()}</section>
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
@@ -1098,6 +1117,29 @@ export function createPlayMenu({
     applyArrangement(normalizeTeamArrangement(selectedGameMode, { ...SIDES_PRESETS[id], enemyNation: current?.enemyNation ?? null }));
   });
 
+  // ---- opponent brain (owner 2026-09-25): Classic or Jev (System One) for the solo bots ---------------
+  const brainSection = root.querySelector<HTMLElement>('[data-brain]')!;
+  const brainButtons = [...brainSection.querySelectorAll<HTMLButtonElement>('button[data-brain-opponent]')];
+  const brainAllies = brainSection.querySelector<HTMLInputElement>('input[data-brain-allies]')!;
+  const brainNote = brainSection.querySelector<HTMLElement>('[data-brain-note]')!;
+  function renderBrain(fromLobby: boolean): void {
+    // rooms keep the classic brain on the host for now (docs/JEV-COMMANDER.md): the setting is solo-only
+    brainSection.hidden = fromLobby;
+    const settings = readBrainSettings();
+    for (const button of brainButtons) button.setAttribute('aria-pressed', String(button.dataset.brainOpponent === settings.opponent));
+    brainAllies.checked = settings.opponent === 'jev' && settings.allies;
+    brainAllies.disabled = settings.opponent !== 'jev';
+    brainNote.hidden = settings.opponent !== 'jev';
+  }
+  for (const button of brainButtons) button.addEventListener('click', () => {
+    writeBrainSettings({ opponent: button.dataset.brainOpponent });
+    renderBrain(!!state);
+  });
+  brainAllies.addEventListener('change', () => {
+    writeBrainSettings({ allies: brainAllies.checked });
+    renderBrain(!!state);
+  });
+
   function showSelectedGameMode(
     next: RuntimeValue = selectedGameMode,
     { fromLobby = false }: { fromLobby?: boolean } = {},
@@ -1113,6 +1155,7 @@ export function createPlayMenu({
       button.disabled = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
     }
     renderArrangement(selectedGameMode, fromLobby);
+    renderBrain(fromLobby);
   }
   showSelectedGameMode();
 

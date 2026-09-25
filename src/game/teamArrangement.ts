@@ -140,3 +140,58 @@ export function writeMarsSettings(
   }, storage);
   return readMarsSettings(storage);
 }
+
+// ---------------------------------------------------------------------------
+// Opponent brain (owner 2026-09-25: "enable playing with tanks controlled by jev … an option to play jev
+// controlled models"). One solo setting for every mode with bots, campaign included: who commands the enemy
+// bots, and whether the allied bots take the same commander. game/state.ts reads it at setupBattle and
+// builds the Jev commander (game/jevCommander.ts) from it; rooms keep the classic brain for now.
+// ---------------------------------------------------------------------------
+
+export const BRAIN_STORAGE_KEY = 'cot.game.brain.v1';
+export type BotBrainId = 'classic' | 'jev';
+
+export interface BrainSettings {
+  /** Who commands the enemy bots: the classic controller, or Jev (TypeSafe's System One model). */
+  readonly opponent: BotBrainId;
+  /** Jev commands the allied bots as well. */
+  readonly allies: boolean;
+}
+
+export const DEFAULT_BRAIN_SETTINGS: BrainSettings = Object.freeze({ opponent: 'classic', allies: false });
+
+export function isBotBrainId(value: unknown): value is BotBrainId {
+  return value === 'classic' || value === 'jev';
+}
+
+function readBrainRaw(storage: ArrangementStorage | null): Record<string, unknown> {
+  if (!storage) return {};
+  try {
+    const raw = storage.getItem(BRAIN_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch { return {}; }
+}
+
+/** The player's brain setting (defaults when nothing is stored, the store is blocked or corrupt). */
+export function readBrainSettings(storage?: ArrangementStorage | null): BrainSettings {
+  const stored = readBrainRaw(storageOf(storage));
+  const opponent = isBotBrainId(stored.opponent) ? stored.opponent : DEFAULT_BRAIN_SETTINGS.opponent;
+  return Object.freeze({ opponent, allies: opponent === 'jev' && stored.allies === true });
+}
+
+/** Store the brain setting (unknown values keep the current choice; null restores the defaults); returns what applies. */
+export function writeBrainSettings(
+  next: { readonly opponent?: unknown; readonly allies?: unknown } | null,
+  storage?: ArrangementStorage | null,
+): BrainSettings {
+  const target = storageOf(storage);
+  if (!target) return DEFAULT_BRAIN_SETTINGS;
+  const current = readBrainSettings(target);
+  // the stored flag outlives a switch back to Classic (reads mask it), so the next Jev choice keeps the allies
+  const storedAllies = readBrainRaw(target).allies === true;
+  const opponent = next === null ? DEFAULT_BRAIN_SETTINGS.opponent : isBotBrainId(next.opponent) ? next.opponent : current.opponent;
+  const allies = next === null ? DEFAULT_BRAIN_SETTINGS.allies : typeof next.allies === 'boolean' ? next.allies : storedAllies;
+  try { target.setItem(BRAIN_STORAGE_KEY, JSON.stringify({ opponent, allies })); } catch { /* storage full or blocked: the in-memory game keeps playing */ }
+  return readBrainSettings(target);
+}

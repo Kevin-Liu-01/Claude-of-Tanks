@@ -181,6 +181,8 @@ export interface HudTank {
   isPlayer?: boolean;
   modeActive?: boolean;
   displayName?: string;
+  /** Jev commander (2026-09-25): 'jev' tags a bot under Jev's orders in the roster ear. */
+  brain?: string;
   state?: TankState | null;
   combat?: CombatState | null;
   spec?: (FleetTankSpec & SpecialActionSpec) | null;
@@ -1399,6 +1401,10 @@ body.cot-debug-hud .cot-net{display:none!important;}
   font-style:normal;letter-spacing:.04em;min-width:23px;}
 .cot-ear.r .cot-er .n .veh .tier{order:2;text-align:right;}
 .cot-er .n .veh .vn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* Jev commander (2026-09-25): the tag a Jev-commanded bot carries beside its vehicle name */
+.cot-er .n .veh .brain{flex:0 0 auto;font-style:normal;font-weight:800;font-size:7.5px;letter-spacing:.08em;
+  color:#9fdcff;border:1px solid rgba(159,220,255,.5);border-radius:3px;padding:0 3px;line-height:1.3;}
+.cot-er .n .veh .brain[hidden]{display:none;}
 .cot-er.me .n .nick{color:#ffd27a;}
 /* r5-2: per-row HP moved OFF the full-width underline (round critique:
    "thin HP strip under every row is XVM-mod flavor, not stock WoT") onto a
@@ -2854,7 +2860,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const rootEl = el('div', 'cot-er');
     rootEl.innerHTML = `<span class="ic" aria-hidden="true"></span>` +
       `<span class="n"><span class="nick"></span>` +
-      `<span class="veh"><i class="tier"></i><span class="vn"></span></span></span>` +
+      `<span class="veh"><i class="tier"></i><span class="vn"></span><i class="brain" hidden></i></span></span>` +
       `<div class="hpm"><i></i></div>`;
     const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
     maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
@@ -2862,6 +2868,11 @@ export function initHud(bus: EventBus): HudRuntime {
     requireElement<HTMLElement>(rootEl, '.tier').textContent = tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
     requireElement<HTMLElement>(rootEl, '.vn').textContent = spec.name;
+    // Jev commander (2026-09-25): a bot under Jev's orders carries a small tag beside its vehicle
+    const brainEl = requireElement<HTMLElement>(rootEl, '.brain');
+    brainEl.textContent = t('hud.brain.jev');
+    brainEl.title = t('hud.brain.jevTitle');
+    brainEl.hidden = tank.brain !== 'jev';
     (ally ? earL : earR).appendChild(rootEl);
     const row = {
       root: rootEl,

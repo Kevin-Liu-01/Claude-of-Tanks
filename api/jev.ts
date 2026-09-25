@@ -28,8 +28,10 @@ import {
 
 export const JEV_UPSTREAM_URL = 'https://api.typesafe.ai/v1/systemone';
 export const JEV_MAX_BODY_BYTES = 32 * 1024;
-/** Requests one session (one browser tab's battle series) may make before the proxy refuses it. */
-export const JEV_SESSION_REQUEST_CAP = 2400;
+/** Requests one session (one page load's battle series) may make before the proxy refuses it: a 15-minute
+ * battle with both teams on Jev is at most 900 requests, so this covers a long evening; the per-address bucket
+ * and the global ceiling bound the rate underneath it. */
+export const JEV_SESSION_REQUEST_CAP = 12_000;
 /** Requests per minute across every session; TypeSafe publishes 1,200 per minute per key. */
 export const JEV_GLOBAL_PER_MINUTE = 900;
 const JEV_UPSTREAM_TIMEOUT_MS = 2500;
