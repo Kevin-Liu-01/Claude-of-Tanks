@@ -735,6 +735,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/ambientPolicy.selftest.mjs',
     'src/audio/ambientPcm.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',
+    'src/mp/wire/wire.selftest.mjs',
+    'src/mp/wire/wireFuzz.selftest.mjs',
     'src/net/net.selftest.mjs',
     'src/net/signalEndpoint.selftest.mjs',
     'src/net/signalingRoomRoute.selftest.mjs',

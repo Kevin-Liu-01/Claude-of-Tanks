@@ -21,7 +21,7 @@ const isCoreRuntime = (fileName) => {
   if (path === 'src/main.ts' || path === 'middleware.ts' || path === 'vite.config.ts') return true;
   if (path.startsWith('server/') || path.startsWith('api/')) return true;
   if (path.startsWith('src/world/maps/') || path.startsWith('src/vehicles/')) return false;
-  return /^(?:src\/(?:app|audio|dev|engine|fx|game|net|sim|ui|world)\/)/.test(path);
+  return /^(?:src\/(?:app|audio|dev|engine|fx|game|mp|net|sim|ui|world)\/)/.test(path);
 };
 const diagnosticPattern = /^(.*?)\(\d+,\d+\): error TS(6133|6192|6196|6198|6199):.*$/gm;
 const compilerOutput = `${result.stdout || ''}${result.stderr || ''}`;
