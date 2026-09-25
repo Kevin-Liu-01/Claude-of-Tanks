@@ -32,6 +32,12 @@ import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
+/** The telemetry sink origin for the inline watchdog: an http(s) origin without a trailing slash, else empty (the Vercel fallback). */
+function telemetrySinkOrigin(value: string | undefined): string {
+  const url = String(value ?? '').trim().replace(/\/+$/, '');
+  return /^https?:\/\//.test(url) ? url : '';
+}
+
 /**
  * Transitive relative-import closure starting at src/main.ts.
  * Cheap regex scan (static `import ... from '...'`, bare `import '...'`, and
@@ -121,8 +127,11 @@ export default defineConfig({
       transformIndexHtml(html) {
         // entry telemetry (docs/ENTRY-RESILIENCE.md): the inline watchdog's
         // beacon follows the same self-hosted switch as src/analytics.ts.
+        // The sink origin (VITE_TELEMETRY_URL, the Cloudflare telemetry Worker) reaches the
+        // inline watchdog through the meta's data-url; unset means the Vercel fallback.
         return replaceAppVersionTokens(html, appVersion)
-          .replaceAll('{{COT_TELEMETRY}}', process.env.VITE_SELF_HOSTED === '1' ? 'off' : 'on');
+          .replaceAll('{{COT_TELEMETRY}}', process.env.VITE_SELF_HOSTED === '1' ? 'off' : 'on')
+          .replaceAll('{{COT_TELEMETRY_URL}}', telemetrySinkOrigin(process.env.VITE_TELEMETRY_URL));
       },
     },
     {

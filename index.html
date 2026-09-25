@@ -19,7 +19,7 @@
   <meta name="application-name" content="Claude of Tanks" />
   <meta name="application-version" content="{{COT_APP_VERSION}}" />
   <!-- entry telemetry (docs/ENTRY-RESILIENCE.md): the inline watchdog beacons only when this is on; self-hosted builds set off -->
-  <meta name="cot-telemetry" content="{{COT_TELEMETRY}}" />
+  <meta name="cot-telemetry" content="{{COT_TELEMETRY}}" data-url="{{COT_TELEMETRY_URL}}" />
   <link rel="canonical" href="https://cot.kevinliu.studio/" />
   <link rel="describedby" href="/llms.txt" type="text/plain" />
   <link rel="manifest" href="/site.webmanifest" />
@@ -551,16 +551,23 @@
       function bounded(value) {
         return String(value || '').replace(/[^A-Za-z0-9_.:-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 48) || 'unknown';
       }
+      // One v2 `error` record (server/telemetryRecord.ts) per terminal verdict, to the
+      // Cloudflare sink named by the meta's data-url (VITE_TELEMETRY_URL) or the Vercel fallback.
       function beacon(event) {
         if (!telemetryAllowed()) return;
         try {
           const meta = document.querySelector && document.querySelector('meta[name="application-version"]');
           const build = String(meta && meta.getAttribute('content') || 'unknown').replace(/[^A-Za-z0-9+._-]+/g, '_').slice(0, 64) || 'unknown';
-          const body = JSON.stringify(Object.assign({ v: 1, sid: window.__COT_TELEMETRY_SID, build, ms: Date.now() - loadedAt }, event));
+          const sink = document.querySelector && document.querySelector('meta[name="cot-telemetry"]');
+          const base = String(sink && sink.getAttribute('data-url') || '').replace(/\/+$/, '');
+          const endpoint = /^https?:\/\//.test(base) ? base + '/v1/error' : '/api/telemetry';
+          const body = JSON.stringify({ v: 2, sid: window.__COT_TELEMETRY_SID, build, kind: 'error', stage: event.stage,
+            code: event.code, outcome: event.outcome, ready: !!window.__GAME_READY, ms: Date.now() - loadedAt,
+            error: { message: event.message, frames: event.frames, code: event.reason } });
           const nav = globalThis.navigator;
-          if (nav && typeof nav.sendBeacon === 'function' && nav.sendBeacon('/api/telemetry', body)) return;
+          if (nav && typeof nav.sendBeacon === 'function' && nav.sendBeacon(endpoint, body)) return;
           if (typeof fetch === 'function') {
-            fetch('/api/telemetry', { method: 'POST', body, keepalive: true, credentials: 'omit',
+            fetch(endpoint, { method: 'POST', body, keepalive: true, credentials: 'omit', mode: 'no-cors',
               headers: { 'content-type': 'text/plain;charset=UTF-8' } }).catch(() => {});
           }
         } catch (_) { /* the beacon never breaks recovery */ }
@@ -655,9 +662,9 @@
         if (!terminalBeaconSent) {
           terminalBeaconSent = true;
           const exhausted = state().count >= MAX_AUTO_RELOADS || !canAutoRecover() || verdict.kind === 'offline';
-          beacon({ kind: 'boot_error', stage: bounded(lastStage), reason: bounded(reason), code: verdict.kind,
+          beacon({ stage: bounded(lastStage), reason: bounded(reason), code: verdict.kind,
             outcome: exhausted ? 'halted' : 'notice',
-            error: { message: lastErrorText || verdict.text, frames: [failedByStatus, lastFailedFile].filter(Boolean).slice(0, 2) } });
+            message: lastErrorText || verdict.text, frames: [failedByStatus, lastFailedFile].filter(Boolean).slice(0, 2) });
         }
       }
 
@@ -696,8 +703,8 @@
           if (halted || navigating || recoveryScheduled) return;
           recoveryScheduled = true;
           window.__CHUNK_RECOVERY_PENDING = true;
-          beacon({ kind: 'boot_error', stage: bounded(lastStage), reason: bounded(reason), code: 'reload:' + classify(reason),
-            outcome: 'failed', error: { message: lastErrorText || String(reason), frames: [failedByStatus, lastFailedFile].filter(Boolean).slice(0, 2) } });
+          beacon({ stage: bounded(lastStage), reason: bounded(reason), code: 'reload:' + classify(reason),
+            outcome: 'failed', message: lastErrorText || String(reason), frames: [failedByStatus, lastFailedFile].filter(Boolean).slice(0, 2) });
           // Let the failed request unwind before replacing the document.
           setTimeout(() => reload(reason), 150);
         };

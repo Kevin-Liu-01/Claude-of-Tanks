@@ -3329,9 +3329,9 @@ entryTelemetry.send({
   kind: 'boot_ready',
   ms: window.__BOOT_MS,
   mode: STUDIO_BOOT_INTENT ? 'studio' : 'unknown',
-  // Stage durations only: BOOT_TIMINGS also carries nested per-pass diagnostics.
-  timings: Object.fromEntries(['imports', 'renderer', 'sky', 'lighting', 'garage', 'vehicle', 'hud', 'ui', 'audio', 'post', 'studio', 'ready']
-    .filter((key) => typeof BOOT_TIMINGS[key] === 'number').map((key) => [key, BOOT_TIMINGS[key]])),
+  // Stage durations and gaps only (the client keeps 24, named stages first):
+  // BOOT_TIMINGS also carries nested per-pass diagnostics.
+  timings: Object.fromEntries(Object.entries(BOOT_TIMINGS).filter(([, value]) => typeof value === 'number')),
 });
 // Direct Studio navigation skips garage-only construction on the critical
 // path. Build the workshop shell while idle; enterGarage() resumes the normal
