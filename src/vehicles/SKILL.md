@@ -79,9 +79,6 @@ shadow-floor hooks, and destroyed-vehicle burn resources. Preserve its painter
 constants, deterministic RNG order, shader strings, and demand-owned wreck
 atlases; extend its local cache and repaint-role contracts instead of casting
 through an untyped material bag.
-`profiles/ww2.ts` owns the strict original and recovered WWII/inter-war profile
-pack. Preserve its mirror-safe slab winding, family-local builder port, seeded
-fittings, and exact demand-loaded `ww2` registration boundary.
 `profiles/russia.ts` owns both the strict T-44/T-54/T-62/T-64 Russian profile
 pack and the shared Soviet geometry vocabulary consumed by China, Poland,
 T-72, T-80, and Ukraine. Keep its hull, dome, gun, ERA, Shtora, mudguard, and
@@ -229,11 +226,12 @@ Keep the Pershing, Patton, M48, M60, and M60A2 family in
 `profiles/patton.ts`. Preserve its asymmetric cast-loft sections, roof fitting
 inventories, low-profile transformation contract, M60 surface-aligned ERA,
 and explicit invalid-geometry guards behind the narrow Patton builder port.
-Keep Strv 103B and the Jagdtiger, JPz E 100, Sturmtiger, T95, ISU-152, and
-ISU-122S fixed-mount geometry in `profiles/casemate.ts`. Its strict builder,
-loft, corridor, material, and running-gear contracts must preserve the authored
-station order and fixed-hull ownership; Swedish callers depend only on the
-narrow Strv-compatible subset.
+Keep the Strv 103 base build in `profiles/casemate.ts`; its strict builder,
+loft, material, and running-gear contracts must preserve the authored station
+order and fixed-hull ownership, and Swedish callers depend only on that narrow
+Strv-compatible subset. The Jagdtiger, JPz E 100, Sturmtiger, T95, ISU-152 and
+ISU-122S builds and the `profiles/ww2.ts` pack left with their archived hulls
+on 2026-09-25 (owner: no archived WWII / casemate tanks outside production).
 Use `specContracts.ts` for boot-light fleet combat rows. Family packs may add
 identity-specific metadata, but must satisfy the shared mobility, gun, armor,
 dimensions, and visual contract before mutating the legacy registry. Variant

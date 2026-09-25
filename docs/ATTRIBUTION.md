@@ -459,6 +459,17 @@ provenance history; the `leo2a7`, `t72b3`, `merkava4`, `jpz_e100` and
 `t72b_1987` combat rows survive as unregistered donor templates in
 `src/vehicles/donorSpecs.ts` for the live vehicles cloned from them.
 
+Deleted 2026-09-25 (owner: delete the archived WWII / casemate tanks that are
+not in production): the builder code of `jagdtiger`, `jpz_e100`, `sturmtiger`,
+`t95`, `isu152`, `isu122s`, `m4a3e8`, `t34_85`, `is2`, `panther_g`, `tiger1`,
+`tiger2`, `t30`, `sherman_jumbo`, `pziii_konserwa`, `leichttraktor` and
+`q_heavy` left `src/vehicles/profiles/casemate.ts`, `profiles/ww2.ts`
+(removed) and `tankFactoryCore.ts`, together with the retired ids' local-only
+oracle rows in `tools/procedural-fidelity.html` and
+`tools/visual-evaluator-page.html`. No tracked third-party file changed: the
+licence records above stay as provenance history, and the `jpz_e100` donor
+template remains the combat row `jpz_e100_x` is cloned from.
+
 Integration path: `MODEL_SOURCE` community entries in `src/vehicles/specs.ts`
 (parametric class-template armor/stats), generalized GLB ingestion in
 `src/vehicles/modelLoader.js` (fixed-gun casemates, sibling gun nodes,

@@ -202,6 +202,10 @@ fuel-tan), wire-grid texture split from camo-net.
 | k2 | modern | procedural | 10 | 1780 | 7 |
 | isu152 | ww2 | glb (casemate) | 7 | 2026 | 4 |
 
+(tiger1, t34_85, m4a3e8 and isu152 have had no builder since 2026-09-25 —
+owner: delete the archived WWII / casemate tanks outside production; their rows
+stay as the grading record.)
+
 In-game auto-path spot check (real engine ctx, zero opts): garage pedestal
 m1a2 (GLB) 6 decor meshes / 1048 tris; battle roster all dressed incl.
 uncurated defaults — panther_g 984, is2 2654, leo2a7 1834, t90m 930 tris.
@@ -238,12 +242,14 @@ and its painted rim stay masked clean.
 
 ### Asks for the fleet/profile agents (profiles are yours — no edits made)
 
-1. **m60a1 / t34_85 / kv2 low fender shelves** — the placement engine found
+1. **m60a1 / t34_85 / kv2 low fender shelves** (t34_85 and tiger1 deleted
+   2026-09-25; m60a1 / kv2 still open) — the placement engine found
    only roofline-height fenders on tiger1 (its real track guards aren't
    modeled as horizontal shelves), so its tool/bin rows relocated to the bow
    and turret. If a profile ever adds true track-guard shelves, the default
    manifests will use them automatically — no decor change needed.
-2. **isu152 roof anchors** — the recovered GLB's roof never probes flat
+2. **isu152 roof anchors** (closed: the hull was deleted 2026-09-25) — the
+   recovered GLB's roof never probes flat
    (baked clutter), so the DShK/aamg row skips. If the casemate profile
    exposes a flat commander's-ring pad, the manifest row will land. Not
    blocking; its hull kit reads fully dressed.
