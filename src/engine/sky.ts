@@ -485,6 +485,9 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   cloudLayer: null,
 });
 
+/** Round 68: the complete default preset (the receipts merge a map's sky block over it as the rig does). */
+export const DEFAULT_SKY_PRESET: Readonly<SkyPreset> = DEFAULT_PRESET;
+
 /** How much of the night sky a dome intensity earns: full at the night preset's .08, none from .30 up. */
 export function nightAmount(skyIntensity: number): number {
   return THREE.MathUtils.clamp((NIGHT_SKY_FULL_INTENSITY_TOP - skyIntensity) / (NIGHT_SKY_FULL_INTENSITY_TOP - NIGHT_SKY_FULL_INTENSITY), 0, 1);

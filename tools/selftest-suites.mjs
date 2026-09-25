@@ -704,6 +704,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
+    'src/engine/volumetricClouds.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',
     'src/engine/deviceDiag.selftest.mjs',
