@@ -386,7 +386,10 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
     wheelZs: [1.02, 0.24, -0.54, -1.32, -2.10, -2.88],
     sprocket: { z: -3.48, y: 0.62, r: 0.29 },
     idler: { z: 1.85, y: 0.58, r: 0.28 },
-    rollers: [], trackW: 0.58, topY: 0.88, botY: 0.05,
+    // FSP-03 2026-09-25: the Type 80/85/88 lineage carries three return rollers per side (tank-afv Type 85;
+    // Tank Encyclopedia ZTZ96) — one over each wheel pair, r 0.10 under the 1.10 lane ceiling.
+    rollers: [0.63, -0.93, -2.49].map((z) => ({ z, y: 0.87, r: 0.10 })),
+    trackW: 0.58, topY: 0.88, botY: 0.05,
     paintedEnds: true, coveredTop: true, arms: true,
     contactZF: 1.02, contactZR: -2.88,
   });
@@ -663,7 +666,11 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     wheelZs: [2.14, 1.30, 0.46, -0.38, -1.22, -2.06],
     sprocket: { z: -3.05, y: 0.78, r: 0.39 },
     idler: { z: 2.95, y: 0.74, r: 0.36 },
-    rollers: [], trackW: 0.63, topY: 1.24, botY: 0.06,
+    // FSP-03 2026-09-25: the Type 99A carries four return rollers per side (Army Recognition ZTZ-99A);
+    // evenly stationed, r 0.10 under the skirts. The VT-4A1 keeps this certified chassis by owner
+    // decision (its published count is 3 or 4 by source; recorded as unresolved in the FSP-03 audit).
+    rollers: [-1.60, -0.53, 0.53, 1.60].map((z) => ({ z, y: 0.95, r: 0.10 })),
+    trackW: 0.63, topY: 1.24, botY: 0.06,
     paintedEnds: true, coveredTop: true, arms: true,
     contactZF: 2.14, contactZR: -2.06,
   });
