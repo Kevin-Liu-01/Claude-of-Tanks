@@ -95,17 +95,7 @@ load without preloading the game module graph.
 
 ### Asset caching (2026-09-25)
 
-Everything Vite writes under `/assets/` is content-hashed, so `vercel.json`
-serves that prefix with `Cache-Control: public, max-age=31536000, immutable`:
-a warm browser never revalidates the 105-file entry graph before boot, and a
-new deployment changes every hash. Nothing else is immutable — `index.html`
-and the localized documents stay `must-revalidate` so a stale document cannot
-outlive its module graph, and `public/maps`, `public/minimaps` and every other
-unhashed path keep Vercel's default because the tactical-map plates are
-re-baked in place. Verify a header change with `vercel build` (no deploy) and
-read `.vercel/output/config.json`; the run rewrites `package-lock.json`, which
-must not be committed. The entry-resilience program that introduced the rule
-is in [ENTRY-RESILIENCE.md](ENTRY-RESILIENCE.md).
+**Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`, and Vercel serves them with its default `public, max-age=0, must-revalidate` — a cheap 304 per chunk on a return visit. Do NOT add an `immutable` header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and the edge then caches that 404 for the rule's max-age — deploy 89 did this and a transient miss during a deploy became a permanent "A game file failed to download (tankThumbs-….js)" for everyone on that edge node (owner report, 2026-09-25). Mid-session deploys are covered by the project's Vercel skew protection (12 h) and the `__vdpl` pin in `middleware.ts`, not by caching. `tools/vercel-config.selftest.mjs` refuses the rule.
 
 ## Development services
 
