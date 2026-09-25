@@ -115,5 +115,5 @@ export default {
   shot: { pos: [-176, 44, -232], look: [44, 3, 92] },
   // round 66 (2026-09-24, the FFT ocean): the flooded river under the monsoon air — a low ripple, silt hides the bed
   // so the caustics stay faint; the owner's approved look is kept (amplitude 0.6)
-  ocean: { windSpeed: 2.8, windDirDeg: 200, fetchKm: 2.5, amplitude: 0.6, foam: 0, breakers: 0.05, caustics: 0.25 },
+  ocean: { windSpeed: 2.8, windDirDeg: 200, fetchKm: 2.5, amplitude: 0.6, foam: 0, breakers: 0.05, caustics: 0.2 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

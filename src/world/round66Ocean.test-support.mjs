@@ -20,25 +20,25 @@ export const ROUND66_OCEAN_EDITS = {
  ],
  "fjord.ts": [
   [
-   "  // round 66 (2026-09-24, the FFT ocean): a sheltered fjord — a light air down the arms, a faint swell from the mouth;\n  // the owner's approved look is kept (amplitude 0.45: centimetres, read as the same water from the chase camera)\n  ocean: { windSpeed: 3.2, windDirDeg: 250, fetchKm: 6, swell: 0.1, amplitude: 0.45, choppiness: 0.7, foam: 0.15, breakers: 0.3, caustics: 0.5 },\n",
+   "  // round 66 (2026-09-24, the FFT ocean): a sheltered fjord — a light air down the arms, a faint swell from the mouth;\n  // the owner's approved look is kept (amplitude 0.45: centimetres, read as the same water from the chase camera)\n  ocean: { windSpeed: 3.2, windDirDeg: 250, fetchKm: 6, swell: 0.1, amplitude: 0.45, choppiness: 0.7, foam: 0.15, breakers: 0.3, caustics: 0.4 },\n",
    ""
   ]
  ],
  "reservoir.ts": [
   [
-   "  // round 66 (2026-09-24, the FFT ocean): a highland lake under a light breeze — a fine chop, no whitecaps; the\n  // owner's approved look is kept (amplitude 0.6)\n  ocean: { windSpeed: 3.0, windDirDeg: 150, fetchKm: 3, amplitude: 0.6, foam: 0, breakers: 0.15, caustics: 0.5 },\n",
+   "  // round 66 (2026-09-24, the FFT ocean): a highland lake under a light breeze — a fine chop, no whitecaps; the\n  // owner's approved look is kept (amplitude 0.6)\n  ocean: { windSpeed: 3.0, windDirDeg: 150, fetchKm: 3, amplitude: 0.6, foam: 0, breakers: 0.15, caustics: 0.4 },\n",
    ""
   ]
  ],
  "delta.ts": [
   [
-   "  // round 66 (2026-09-24, the FFT ocean): the river carries only the faintest ripple under a 2.4 m/s air; the\n  // owner's approved look is kept (amplitude 0.55)\n  ocean: { windSpeed: 2.4, windDirDeg: 110, fetchKm: 2, amplitude: 0.55, foam: 0, breakers: 0.05, caustics: 0.35 },\n",
+   "  // round 66 (2026-09-24, the FFT ocean): the river carries only the faintest ripple under a 2.4 m/s air; the\n  // owner's approved look is kept (amplitude 0.55)\n  ocean: { windSpeed: 2.4, windDirDeg: 110, fetchKm: 2, amplitude: 0.55, foam: 0, breakers: 0.05, caustics: 0.3 },\n",
    ""
   ]
  ],
  "monsoon.ts": [
   [
-   "  // round 66 (2026-09-24, the FFT ocean): the flooded river under the monsoon air — a low ripple, silt hides the bed\n  // so the caustics stay faint; the owner's approved look is kept (amplitude 0.6)\n  ocean: { windSpeed: 2.8, windDirDeg: 200, fetchKm: 2.5, amplitude: 0.6, foam: 0, breakers: 0.05, caustics: 0.25 },\n",
+   "  // round 66 (2026-09-24, the FFT ocean): the flooded river under the monsoon air — a low ripple, silt hides the bed\n  // so the caustics stay faint; the owner's approved look is kept (amplitude 0.6)\n  ocean: { windSpeed: 2.8, windDirDeg: 200, fetchKm: 2.5, amplitude: 0.6, foam: 0, breakers: 0.05, caustics: 0.2 },\n",
    ""
   ]
  ],

@@ -109,5 +109,5 @@ export default {
   shot: { pos: [248, 43, -274], look: [-34, -2, 72] },
   // round 66 (2026-09-24, the FFT ocean): the river carries only the faintest ripple under a 2.4 m/s air; the
   // owner's approved look is kept (amplitude 0.55)
-  ocean: { windSpeed: 2.4, windDirDeg: 110, fetchKm: 2, amplitude: 0.55, foam: 0, breakers: 0.05, caustics: 0.35 },
+  ocean: { windSpeed: 2.4, windDirDeg: 110, fetchKm: 2, amplitude: 0.55, foam: 0, breakers: 0.05, caustics: 0.3 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

@@ -102,5 +102,5 @@ export default {
   shot: { pos: [-248, 57, -248], look: [108, -1, 74] },
   // round 66 (2026-09-24, the FFT ocean): a highland lake under a light breeze — a fine chop, no whitecaps; the
   // owner's approved look is kept (amplitude 0.6)
-  ocean: { windSpeed: 3.0, windDirDeg: 150, fetchKm: 3, amplitude: 0.6, foam: 0, breakers: 0.15, caustics: 0.5 },
+  ocean: { windSpeed: 3.0, windDirDeg: 150, fetchKm: 3, amplitude: 0.6, foam: 0, breakers: 0.15, caustics: 0.4 },
 } satisfies import('./contracts.ts').MapCompositionConfig;
