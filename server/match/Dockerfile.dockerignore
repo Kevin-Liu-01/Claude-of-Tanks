@@ -1,0 +1,14 @@
+# BuildKit applies this file when building with -f server/match/Dockerfile: the context is
+# only what the image copies (sources, the service, its collision shards, the perf table).
+*
+!package.json
+!package-lock.json
+!src
+!server
+!docs/references/perf
+!LICENSE
+!LICENSE-POLICY.md
+!LICENSES
+!NOTICE.md
+**/node_modules
+**/.DS_Store
