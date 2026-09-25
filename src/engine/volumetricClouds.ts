@@ -51,7 +51,7 @@ export const CLOUD_SLOT_ORDER: readonly (readonly [number, number])[] = Object.f
 }));
 /** World periods of the weather field, the shape volume (cumuliform / stratiform) and the detail volume (m). */
 export const CLOUD_WEATHER_TILE_M = 12000;
-export const CLOUD_SHAPE_TILE_M = 3400;
+export const CLOUD_SHAPE_TILE_M = 1700;
 export const CLOUD_SHAPE_TILE_STRATUS_M = 4200;
 export const CLOUD_DETAIL_TILE_M = 400;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
@@ -145,6 +145,8 @@ uniform vec2 uWeatherShift;
 uniform vec3 uNoiseShift;
 uniform float uShapeTile;
 uniform float uSunGain;
+uniform float uClearRadius;
+uniform float uPixelAngle;
 varying vec2 vUv;
 const float CL_PI = 3.14159265358979;
 float remap( float v, float lo, float hi, float nlo, float nhi ) {
@@ -160,25 +162,30 @@ float ign( vec2 px ) { return fract( 52.9829189 * fract( dot( px, vec2( 0.067110
 vec3 cloudWeather( vec2 pxz ) {
 	vec2 uv = ( pxz + uWeatherShift ) / ${f(CLOUD_WEATHER_TILE_M)};
 	vec4 w = texture2D( tWeather, uv );
-	// the equalised field admits exactly the map's coverage; inside, the local coverage runs 0..1 (skewed
-	// high) and carves the base shape into lumps — a region is never one solid slab
-	float cov = pow( clamp( ( w.r - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), mix( 0.7, 0.4, uStratiform ) );
+	// the cumuliform field (the cells) or the stratiform one (the broad regions), both equalised so the map's
+	// coverage admits exactly that fraction; inside, the local coverage runs 0..1 (skewed high) and carves the
+	// base shape into lumps — a region is never one solid slab
+	float field = mix( w.r, w.b, uStratiform );
+	float cov = pow( clamp( ( field - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), mix( 0.7, 0.4, uStratiform ) );
+	// a storm keeps the sky over the camera open: its towers stand off toward the horizon
+	if ( uClearRadius > 0.0 ) cov *= smoothstep( uClearRadius * 0.6, uClearRadius * 1.4, length( pxz - uCamPos.xz ) );
 	// cumuliform columns rise where the local coverage is deepest (one dome per mass, not a tower per cell)
-	// with the turret noise on top; storms add towers at the cells; a stratus ceiling is nearly flat
-	float cumTop = clamp( 0.5 + 0.5 * sqrt( cov ) + ( w.b - 0.5 ) * 0.2, 0.3, 1.0 );
+	// with the breakup noise on top; storms add towers at the cells; a stratus ceiling is nearly flat
+	float cumTop = clamp( 0.5 + 0.5 * sqrt( cov ) + ( w.a - 0.5 ) * 0.2, 0.3, 1.0 );
 	cumTop = mix( cumTop, 1.0, uTowers * w.g );
-	float strTop = 0.78 + 0.22 * w.b;
+	float strTop = 0.78 + 0.22 * w.a;
 	return vec3( cov, mix( cumTop, strTop, uStratiform ), w.a );
 }
-// density 0..1 at a world point. detail: whether the erosion volume is sampled (the light march skips it)
-float cloudDensity( vec3 p, vec3 w, bool detail ) {
+// density 0..1 at a world point. detail: whether the erosion volumes are sampled (the light march skips them);
+// foot: the pixel footprint (m) at the point, which fades the fine erosion fetch out at range
+float cloudDensity( vec3 p, vec3 w, bool detail, float foot ) {
 	// the base line wanders a little per column (the breakup channel) so no razor-straight edge crosses the sky
-	float hRel = ( p.y - uBase - ( w.z - 0.5 ) * 0.16 * ( 1.0 - 0.6 * uStratiform ) * uThick ) / uThick;
+	float hRel = ( p.y - uBase - ( w.z - 0.5 ) * mix( 0.05, 0.064, uStratiform ) * uThick ) / uThick;
 	float hN = hRel / max( w.y, 0.05 );
 	if ( hN <= 0.0 || hN >= 1.0 || w.x <= 0.0 ) return 0.0;
-	// rounded bottom, eroded top (a stratus keeps its flat sheet almost to its top); a cumulus narrows
-	// toward its top so its silhouette is a dome over a wide base, not a lens
-	float hg = smoothstep( 0.0, 0.06, hN ) * smoothstep( 1.0, mix( 0.72, 0.92, uStratiform ), hN ) * ( 1.0 - 0.2 * hN * ( 1.0 - uStratiform ) );
+	// a flat base at the cloud base altitude, a domed eroded top (a stratus keeps its sheet almost to its
+	// top); a cumulus narrows toward its top so its silhouette is a dome over a wide base, not a lens
+	float hg = smoothstep( 0.0, 0.04, hN ) * smoothstep( 1.0, mix( 0.7, 0.92, uStratiform ), hN ) * ( 1.0 - 0.2 * hN * ( 1.0 - uStratiform ) );
 	// the slab is a few hundred metres thick against a kilometres-wide shape period: the volume is sampled
 	// with its vertical axis compressed so the billows read as tall as they are wide
 	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 1.4, 1.0 ) / uShapeTile;
@@ -191,13 +198,20 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 	float covH = w.x * ( 1.0 - 0.45 * hN * ( 1.0 - uStratiform ) );
 	float d = remap( base, 1.0 - covH, 1.0, 0.0, 1.0 ) * w.x;
 	if ( detail && d > 0.0 && d < 0.95 ) {
+		// two Worley-fbm fetches: the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where
+		// the pixel footprint resolves it; the octaves lean to the high frequencies so the silhouette crinkles
 		vec3 dp = ( p + uNoiseShift * 1.31 ) * vec3( 1.0, 1.5, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
-		float hf = dn.r * 0.625 + dn.g * 0.25 + dn.b * 0.125;
-		// wisps underneath, cauliflower lumps on top; the erosion grows with height in the cloud (dense
-		// bodies, billowy tops) and tears the very base into rags; a stratus erodes less
+		float hf = dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2;
+		float fineW = 1.0 - smoothstep( 8.0, 30.0, foot );
+		if ( fineW > 0.0 ) {
+			vec3 dn2 = texture( tDetail, dp * 3.7 + 0.37 ).rgb;
+			hf = mix( hf, hf * 0.55 + ( dn2.r * 0.5 + dn2.g * 0.3 + dn2.b * 0.2 ) * 0.45, fineW );
+		}
+		// wisps underneath, cauliflower lumps on top; the erosion grows with height in the cloud (a flat dense
+		// base, billowy tops), a storm's base is ragged, a stratus erodes little
 		float erode = mix( hf, 1.0 - hf, clamp( hN * 8.0, 0.0, 1.0 ) );
-		float amount = 0.5 * ( mix( 0.35, 1.0, smoothstep( 0.05, 0.6, hN ) ) + 0.7 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.85 );
+		float amount = ( mix( 0.32, 0.62, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.4 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.85 );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 	}
 	return d;
@@ -209,7 +223,7 @@ float cloudLightDepth( vec3 p, vec3 w ) {
 ${CLOUD_LIGHT_TAPS.map((dist, k) => `	{
 		vec3 lp = p + uSunDir * ${f(dist)};
 		vec3 lw = ${k < 2 ? 'w' : 'cloudWeather( lp.xz )'};
-		od += cloudDensity( lp, lw, false ) * ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))};
+		od += cloudDensity( lp, lw, false, 0.0 ) * ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))};
 	}`).join('\n')}
 	return od * uDensity;
 }
@@ -251,7 +265,7 @@ void main() {
 			if ( t > t1 || T < 0.02 ) break;
 			vec3 p = uCamPos + dir * t;
 			vec3 w = cloudWeather( p.xz );
-			float dens = w.x > 0.0 ? cloudDensity( p, w, true ) : 0.0;
+			float dens = w.x > 0.0 ? cloudDensity( p, w, true, t * uPixelAngle ) : 0.0;
 			if ( dens > 0.003 ) {
 				if ( empty > 0 ) {
 					// back onto the fine lattice where the stride met cloud: a boundary found on the coarse
@@ -267,15 +281,15 @@ void main() {
 				float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
 				// an overcast sheet is lit by the whole sky above it, not by one reddened low sun: its diffused
 				// light is the sun's luminance, neutral
-				vec3 sunDiff = mix( uSunRadiance, vec3( dot( uSunRadiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), uStratiform * 0.85 );
+				vec3 sunDiff = mix( uSunRadiance, vec3( dot( uSunRadiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), uStratiform );
 				// the diffusion regime of a thick non-absorbing cloud: diffuse light is transmitted about
 				// 1 / (1 + 0.75 (1 - g) tau), so the base of an overcast sheet is bright and the shaded side of a
 				// cumulus stays grey, not black; it builds with height in the cloud (the lower parts are darker)
 				float msV = mix( 0.55, 1.0, smoothstep( 0.0, 0.45, hN ) );
-				float diffusion = 0.28 / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
+				float diffusion = 0.2 / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 				// in-scatter probability (powder): light builds up inside the cloud, so thin edges and the
 				// underside read darker when lit from behind the viewer
-				float powder = mix( 1.0, ( 1.0 - exp( -sig * 24.0 ) ) * ( 0.15 + 0.85 * smoothstep( 0.02, 0.25, hN ) ), powderK * 0.7 );
+				float powder = mix( 1.0, ( 1.0 - exp( -sig * 24.0 ) ) * ( 0.15 + 0.85 * smoothstep( 0.02, 0.25, hN ) ), powderK );
 				// darker bases: their direct light is scattered away by the cloud above
 				float baseShadow = mix( 0.55, 1.0, smoothstep( -0.1, 0.45, hN ) );
 				// ambient: the sky lights the tops, the bases see the horizon; a stratus sheet is diffuser-lit
@@ -548,6 +562,7 @@ export class VolumetricCloudLayer {
   private gobos: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>[] = [];
   private readonly goboCorner = new THREE.Vector3();
   private readonly goboUv = new Float32Array(8);
+  private readonly scratch = new THREE.Vector3();
   /** Frames rendered with the layer showing (probes). */
   framesShown = 0;
   /** Camera cuts detected (probes). */
@@ -580,7 +595,7 @@ export class VolumetricCloudLayer {
         uSkyMean: { value: new THREE.Vector3(0.3, 0.35, 0.45) },
         uCoverage: { value: 0.4 }, uTowers: { value: 0 }, uStratiform: { value: 0.1 }, uDensity: { value: 0.07 },
         uTint: { value: new THREE.Vector3(1, 1, 1) }, uWeatherShift: { value: new THREE.Vector2() }, uNoiseShift: { value: new THREE.Vector3() },
-        uShapeTile: { value: CLOUD_SHAPE_TILE_M }, uSunGain: { value: 1.5 },
+        uShapeTile: { value: CLOUD_SHAPE_TILE_M }, uSunGain: { value: 1 }, uClearRadius: { value: 0 }, uPixelAngle: { value: 0.002 },
       },
     });
     this.resolveMaterial = new THREE.ShaderMaterial({
@@ -767,6 +782,7 @@ export class VolumetricCloudLayer {
     t.uDensity.value = preset.density;
     (t.uTint.value as THREE.Vector3).set(...preset.tint);
     t.uShapeTile.value = THREE.MathUtils.lerp(CLOUD_SHAPE_TILE_M, CLOUD_SHAPE_TILE_STRATUS_M, preset.stratiform);
+    t.uClearRadius.value = preset.clearRadiusM;
     const r = this.resolveMaterial.uniforms;
     r.uBase.value = preset.baseM;
     r.uThick.value = preset.thicknessM;
@@ -789,16 +805,23 @@ export class VolumetricCloudLayer {
     // ambient: the cosine-weighted sky irradiance / π (a diffuse top under the whole sky), the base sees the
     // horizon band and the ground
     const irr = summary?.irradiance ?? a.irradiance;
-    (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.65);
+    (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.55);
     const hz = summary?.horizon ?? irr;
-    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.3);
-    // the stratus floor: the horizon band's colour at the brighter of the band's and the mean upper sky's
-    // luminance — the sky a far ceiling replaces at the skyline is the horizon band, the brightest of a hazy sky
+    const stratiform = this.preset?.stratiform ?? 0;
+    // cumulus bases see the horizon band and the ground; an overcast sheet's base is lit through the sheet by
+    // the whole sky, so it takes the sky irradiance's cool hue, never the low sun's warm band
+    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.3)
+      .lerp(this.scratch.set(irr.r, irr.g, irr.b).multiplyScalar(0.42), stratiform);
+    // the stratus floor: the brighter of the horizon band's and the mean upper sky's luminance — the sky a far
+    // ceiling replaces at the skyline is the horizon band, the brightest of a hazy sky — in a hue half way from
+    // the zenith's (cool) to neutral: an arctic white-out ceiling, never the band's tan
     const hl = Math.max(1e-4, 0.2126 * hz.r + 0.7152 * hz.g + 0.0722 * hz.b);
     const mean = summary?.meanLuminance ?? hl;
-    // in a hue half way from the band's (a low sun reddens it) to neutral: a white-out ceiling, not a tan one
     const floorLum = Math.max(hl, mean);
-    (t.uSkyMean.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(floorLum / hl).lerp(new THREE.Vector3(floorLum, floorLum, floorLum), 0.6);
+    const zenith = summary?.zenith ?? irr;
+    const zl = Math.max(1e-4, 0.2126 * zenith.r + 0.7152 * zenith.g + 0.0722 * zenith.b);
+    (t.uSkyMean.value as THREE.Vector3).set(zenith.r, zenith.g, zenith.b).multiplyScalar(floorLum / zl)
+      .lerp(this.scratch.set(floorLum, floorLum, floorLum), 0.5);
     this.domeMaterial.uniforms.uSkyIntensity.value = a.skyIntensity;
   }
 
@@ -922,6 +945,7 @@ export class VolumetricCloudLayer {
     this.hasPrev = true;
     this.setCameraUniforms(this.traceMaterial, C);
     this.setCameraUniforms(this.resolveMaterial, C);
+    t.uPixelAngle.value = (C.tan.y * 2) / Math.max(4, this.history[0].height);
     const r = this.resolveMaterial.uniforms;
     (r.uPrevCamPos.value as THREE.Vector3).copy(P.pos);
     (r.uPrevRight.value as THREE.Vector3).copy(P.right);

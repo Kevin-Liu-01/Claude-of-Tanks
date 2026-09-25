@@ -36,6 +36,8 @@ export interface CloudLayerPreset {
   windSpeed: number;
   /** Per-map weather decorrelation offset in tiles. */
   offset: readonly [number, number];
+  /** A storm keeps the sky over the camera open: its towers stand off beyond this horizontal radius (m, 0 = none). */
+  clearRadiusM: number;
   /** Whether the layer casts real cloud shadows through the CSM (cumulus regimes under a strong sun only). */
   shadow: boolean;
   /** Alpha test on the equalised coverage field for the shadow footprint (the cloud's dense core). */
@@ -54,17 +56,22 @@ export interface CloudLayerSkyInput extends AtmosphereSkyPresetInput {
   cloudLayer?: Partial<CloudLayerPreset> | null;
 }
 
-/** sky.ts's fair-weather deck altitude and the legacy overcast stratus altitude (the decks' AUTO values). */
-export const CLOUD_LAYER_DEFAULT_BASE_M = 620;
+/**
+ * The fair-weather cumulus base (the owner's twelve good maps keep their sky mostly open: small sparse puffs high
+ * over the thin baked veil) and the legacy overcast stratus altitude (the decks' AUTO value).
+ */
+export const CLOUD_LAYER_DEFAULT_BASE_M = 1400;
+export const CLOUD_LAYER_CUMULUS_BASE_MIN_M = 1200;
 export const CLOUD_LAYER_OVERCAST_BASE_M = 340;
 /** Regime thresholds on the derived coverage and the legacy overcast rule's inputs. */
 export const CLOUD_LAYER_RULES = Object.freeze({
   /**
-   * coverage = clamp(0.42 · cloudOpacity^1.3, 0.05, 0.97): the legacy deck at cloudOpacity 1 (the 1049
-   * fair-weather cumulus, its bake ~40 % covered) maps onto 0.42 of the equalised field; fainter authored
-   * decks thin toward wisps (Olympus Basin 0.3 → 0.09), heavier ones (delta 1.16 → 0.51) break the sky
+   * coverage = clamp(0.24 · cloudOpacity^1.3, 0.05, 0.97) of the cell-carried field: the legacy deck at
+   * cloudOpacity 1 maps onto 0.24 (the strongest cell cores as separate puffs — the sky stays mostly open);
+   * fainter authored decks thin toward wisps (Olympus Basin 0.3 → 0.05), heavier ones (delta 1.16 → 0.29,
+   * alpine 1.12 → 0.28) break the sky with larger masses
    */
-  coverageGain: 0.42,
+  coverageGain: 0.24,
   coveragePower: 1.3,
   coverageBias: 0,
   coverageMin: 0.05,
@@ -78,8 +85,16 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   overcastCoverageFloor: 0.94,
   /** a storm is an overcast preset with the thickest fog (Monsoon: 0.00088) */
   stormFogDensity: 0.00086,
+  /**
+   * a storm keeps its tropical blue sky (the owner's approved base) with towering cumulus off toward the
+   * horizon: this coverage of the cell field, and no tower within this radius of the camera
+   */
+  stormCoverage: 0.28,
+  stormClearRadiusM: 2500,
+  /** an authored deck at or below this altitude is a low-deck identity the layer keeps (polders 420 m) */
+  lowDeckAuthoredAltM: 600,
   /** scattered below, broken from here */
-  brokenCoverage: 0.48,
+  brokenCoverage: 0.27,
   /** the shadow caster needs a fair-weather cloud-shadow amplitude (the legacy AUTO is 0.22) and a day sky */
   shadowMinAmp: 0.15,
   shadowMinSkyIntensity: 0.3,
@@ -108,16 +123,20 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
   const turbidity = Math.max(0, sky.turbidity);
   const legacyOvercast = co >= R.overcastOpacity && co2 >= R.overcastOpacity2 && turbidity >= R.overcastTurbidity;
   const authoredLowDeck = sky.cloudAltM != null && sky.cloudAltM <= R.overcastAuthoredAltM && co >= R.overcastOpacity;
-  const overcast = legacyOvercast || authoredLowDeck;
+  const storm = (legacyOvercast || authoredLowDeck) && sky.fogDensity >= R.stormFogDensity;
+  const overcast = !storm && (legacyOvercast || authoredLowDeck);
   let coverage = clamp(R.coverageGain * co ** R.coveragePower + R.coverageBias, R.coverageMin, R.coverageMax);
   if (overcast) coverage = Math.max(coverage, R.overcastCoverageFloor);
-  const storm = overcast && sky.fogDensity >= R.stormFogDensity;
+  if (storm) coverage = R.stormCoverage;
   const regime: CloudLayerRegime = storm ? 'storm' : overcast ? 'overcast' : coverage >= R.brokenCoverage ? 'broken' : 'scattered';
   const towers = storm ? 1 : overcast ? 0 : clamp((co - 0.95) * 2, 0, 1) * (turbidity >= 5.5 ? 1 : 0.4);
-  const stratiform = storm ? 0.55 : overcast ? 0.85 : regime === 'broken' ? 0.35 : 0.12;
-  const baseM = sky.cloudAltM ?? (overcast ? CLOUD_LAYER_OVERCAST_BASE_M : CLOUD_LAYER_DEFAULT_BASE_M);
-  const thicknessM = storm ? 1400 : overcast ? 320 : regime === 'broken' ? 480 + towers * 500 : 360 + towers * 400;
-  const density = storm ? 0.08 : overcast ? 0.035 : regime === 'broken' ? 0.09 : 0.11;
+  const stratiform = storm ? 0.2 : overcast ? 0.85 : regime === 'broken' ? 0.3 : 0.12;
+  const authoredAlt = sky.cloudAltM;
+  const baseM = overcast ? (authoredAlt ?? CLOUD_LAYER_OVERCAST_BASE_M)
+    : authoredAlt != null && authoredAlt <= R.lowDeckAuthoredAltM ? authoredAlt
+      : Math.max(authoredAlt ?? CLOUD_LAYER_DEFAULT_BASE_M, CLOUD_LAYER_CUMULUS_BASE_MIN_M);
+  const thicknessM = storm ? 1600 : overcast ? 320 : regime === 'broken' ? 420 + towers * 400 : 320 + towers * 300;
+  const density = storm ? 0.09 : overcast ? 0.035 : regime === 'broken' ? 0.09 : 0.11;
   // the authored deck tint was composited over a white sky: as an albedo it is perceptually halved, and a
   // stratus ceiling (which IS the sky) takes only a quarter of it so an overcast stays white
   const tintPower = overcast ? 0.25 : 0.5;
@@ -130,6 +149,7 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
   const derived: CloudLayerPreset = {
     regime, coverage, baseM, thicknessM, towers, stratiform, density, tint, windDirRad, windSpeed,
     offset: mapOffset(sky.sunAzimuthDeg, sky.sunElevationDeg),
+    clearRadiusM: storm ? R.stormClearRadiusM : 0,
     shadow, shadowThreshold: clamp(1 - coverage + R.shadowCoreBand, 0, 1),
   };
   const authored = sky.cloudLayer;
@@ -145,5 +165,5 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
 /** A stable key of everything the layer's uniforms and shadow caster read (a preset change re-keys the history). */
 export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.density, ...p.tint,
-    p.windDirRad, p.windSpeed, ...p.offset, p.shadow ? 1 : 0, p.shadowThreshold].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
+    p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }

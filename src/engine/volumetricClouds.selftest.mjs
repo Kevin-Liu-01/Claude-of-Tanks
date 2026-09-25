@@ -27,7 +27,7 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 assert.deepEqual([CLOUD_SHAPE_SIZE, CLOUD_DETAIL_SIZE, CLOUD_WEATHER_SIZE, CLOUD_NOISE_SEED], [64, 32, 256, 2068], 'the shipped sizes and seed');
 assert.equal(digest(bakeCloudShapeVolume(8)), '1f3ecfdabf968b313ef1bbf4583ed7d0cd8e716204434c14226ad0e63fdeec76', 'shape 8³ bytes');
 assert.equal(digest(bakeCloudDetailVolume(8)), 'f09eaa66c1e1f8261d2f6c5068ce8d6e648d8ca1a8fbd1f7f897acd72f82bfba', 'detail 8³ bytes');
-assert.equal(digest(bakeCloudWeatherMap(16)), '05df1114003431847456da03666aa68200e61140fdafdd3a73fc97d76bbfb8ea', 'weather 16² bytes');
+assert.equal(digest(bakeCloudWeatherMap(16)), '12d3b89bd5ae79229feedef3610cd07dda63919aa92b5d91ffa316e4816684c5', 'weather 16² bytes');
 const shape = bakeCloudShapeVolume();
 const detail = bakeCloudDetailVolume();
 const weather = bakeCloudWeatherMap();
@@ -36,7 +36,7 @@ assert.equal(detail.length, 32 * 32 * 32 * 4);
 assert.equal(weather.length, 256 * 256 * 4);
 assert.equal(digest(shape), 'ed892103446410c7b4a52d45b06f9bbcf3d812774eb6f94233c0063edc46ce49', 'shape 64³ bytes (2026-09-24)');
 assert.equal(digest(detail), 'e215d7c534e2946014ce0e1cffdf4a3459951b06bbd134049fc98347622804a8', 'detail 32³ bytes (2026-09-24)');
-assert.equal(digest(weather), '23d4b10c6a50de21afc921a2522885e2119510e0a49938e50b2071730ccfe9f2', 'weather 256² bytes (2026-09-24)');
+assert.equal(digest(weather), '5f48f0d7a86e2b96895a19d543bb0156f17f22f0e3e5a83b2ddc321de7b4df1f', 'weather 256² bytes (2026-09-24, the cell-carried cumuliform field and the stratiform field)');
 assert.equal(digest(bakeCloudShapeVolume(64, CLOUD_NOISE_SEED)), digest(shape), 'the default seed is the shipped seed');
 assert.notEqual(digest(bakeCloudShapeVolume(8, 7)), digest(bakeCloudShapeVolume(8, 8)), 'the seed changes the volume');
 
@@ -64,15 +64,21 @@ function seamRatio(bytes, N, channel) {
 }
 for (const c of [0, 1]) assert.ok(seamRatio(shape, 64, c) < 1.25, `shape channel ${c} tiles across x (ratio ${seamRatio(shape, 64, c)})`);
 assert.ok(seamRatio(detail, 32, 0) < 1.25, 'detail tiles across x');
-// the coverage field is equalised: every sixteenth of its range holds a sixteenth of the texels
-{
+// both coverage fields are equalised: every sixteenth of their range holds a sixteenth of the texels
+for (const [channel, name] of [[0, 'cumuliform'], [2, 'stratiform']]) {
   const bins = new Array(16).fill(0);
   const texels = weather.length / 4;
-  for (let i = 0; i < weather.length; i += 4) bins[weather[i] >> 4]++;
-  for (let b = 1; b < 15; b++) assert.ok(Math.abs(bins[b] / texels - 1 / 16) < 0.003, `weather coverage bin ${b}: ${bins[b] / texels}`);
-  // the cumulus cell profile is sparse (most of the field holds no column centre) but present
+  for (let i = channel; i < weather.length; i += 4) bins[weather[i] >> 4]++;
+  for (let b = 1; b < 15; b++) assert.ok(Math.abs(bins[b] / texels - 1 / 16) < 0.003, `weather ${name} coverage bin ${b}: ${bins[b] / texels}`);
+}
+{
+  // the cumulus cell profile is sparse (most of the field holds no column centre) but present, and the
+  // cumuliform field follows the cells where they are strongest (a low coverage admits cell cores, not haze)
   const cellMean = channelMean(weather, 1);
   assert.ok(cellMean > 0.1 && cellMean < 0.3, `weather cell profile mean ${cellMean}`);
+  let coreTexels = 0, coreAdmitted = 0;
+  for (let i = 0; i < weather.length; i += 4) if (weather[i + 1] > 230) { coreTexels++; if (weather[i] > 255 * (1 - 0.24)) coreAdmitted++; }
+  assert.ok(coreTexels > 100 && coreAdmitted / coreTexels > 0.9, `cell cores admitted at coverage 0.24: ${coreAdmitted}/${coreTexels}`);
 }
 
 // ---- the per-map layer: the identity table of the round, derived from each map's authored sky block
@@ -86,44 +92,55 @@ for (const id of MAP_IDS) {
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
   assert.ok(p.tint.every((c) => c > 0 && c <= 1), `${id} tint in (0, 1]`);
-  if (overcastFive.includes(id)) {
-    assert.ok(p.regime === 'overcast' || p.regime === 'storm', `${id} is an overcast preset (the round-65 open note)`);
+  if (overcastFive.includes(id) && id !== 'monsoon') {
+    assert.equal(p.regime, 'overcast', `${id} is an overcast preset (the round-65 open note)`);
     assert.ok(p.coverage >= CLOUD_LAYER_RULES.overcastCoverageFloor, `${id} takes the stratus ceiling`);
     assert.equal(p.shadow, false, `${id}: a diffuse-lit deck casts no crisp cloud shadow`);
+    assert.equal(p.clearRadiusM, 0);
+  }
+  if (id === 'monsoon') {
+    // the storm keeps its tropical blue sky (the owner's approved base): towers off toward the horizon, casting
+    assert.deepEqual([p.regime, p.coverage, p.clearRadiusM, p.towers, p.shadow], ['storm', CLOUD_LAYER_RULES.stormCoverage, CLOUD_LAYER_RULES.stormClearRadiusM, 1, true]);
+  } else assert.equal(p.clearRadiusM, 0, `${id}: only a storm clears the sky over the camera`);
+  if (['verdant', 'delta', 'alpine', 'reservoir', 'urban', 'frontier', 'orchard', 'longleaf', 'airfield'].includes(id)) {
+    // the owner's good maps: small sparse puffs high over the thin baked veil, the sky mostly open
+    assert.ok(p.coverage >= 0.15 && p.coverage <= 0.3, `${id} coverage ${p.coverage} in 0.15–0.3`);
+    assert.ok(p.baseM >= 1200 && p.baseM <= 1800, `${id} base ${p.baseM} in 1200–1800`);
+    assert.ok(p.regime === 'scattered' || p.regime === 'broken');
   }
 }
 assert.deepEqual(table, {
-  verdant: { regime: 'scattered', coverage: 0.42, baseM: 620, thicknessM: 376, shadow: true },
-  desert: { regime: 'scattered', coverage: 0.304, baseM: 900, thicknessM: 360, shadow: true },
+  verdant: { regime: 'scattered', coverage: 0.24, baseM: 1400, thicknessM: 332, shadow: true },
+  desert: { regime: 'scattered', coverage: 0.174, baseM: 1200, thicknessM: 320, shadow: true },
   winter: { regime: 'overcast', coverage: 0.94, baseM: 320, thicknessM: 320, shadow: false },
-  urban: { regime: 'scattered', coverage: 0.34, baseM: 620, thicknessM: 360, shadow: true },
-  coastal: { regime: 'scattered', coverage: 0.34, baseM: 620, thicknessM: 360, shadow: true },
-  autumn: { regime: 'scattered', coverage: 0.289, baseM: 620, thicknessM: 360, shadow: true },
-  steppe: { regime: 'scattered', coverage: 0.193, baseM: 620, thicknessM: 360, shadow: true },
+  urban: { regime: 'scattered', coverage: 0.194, baseM: 1400, thicknessM: 320, shadow: true },
+  coastal: { regime: 'scattered', coverage: 0.194, baseM: 1400, thicknessM: 320, shadow: true },
+  autumn: { regime: 'scattered', coverage: 0.165, baseM: 1400, thicknessM: 320, shadow: true },
+  steppe: { regime: 'scattered', coverage: 0.11, baseM: 1400, thicknessM: 320, shadow: true },
   railyard: { regime: 'overcast', coverage: 0.94, baseM: 300, thicknessM: 320, shadow: false },
-  frontier: { regime: 'scattered', coverage: 0.42, baseM: 620, thicknessM: 376, shadow: true },
-  fjord: { regime: 'broken', coverage: 0.504, baseM: 620, thicknessM: 560, shadow: true },
-  delta: { regime: 'broken', coverage: 0.509, baseM: 620, thicknessM: 690, shadow: true },
-  badlands: { regime: 'scattered', coverage: 0.226, baseM: 620, thicknessM: 360, shadow: true },
-  monsoon: { regime: 'storm', coverage: 0.94, baseM: 340, thicknessM: 1400, shadow: false },
-  alpine: { regime: 'broken', coverage: 0.487, baseM: 620, thicknessM: 548, shadow: true },
+  frontier: { regime: 'scattered', coverage: 0.24, baseM: 1400, thicknessM: 332, shadow: true },
+  fjord: { regime: 'broken', coverage: 0.288, baseM: 1400, thicknessM: 484, shadow: true },
+  delta: { regime: 'broken', coverage: 0.291, baseM: 1400, thicknessM: 588, shadow: true },
+  badlands: { regime: 'scattered', coverage: 0.129, baseM: 1400, thicknessM: 320, shadow: true },
+  monsoon: { regime: 'storm', coverage: 0.28, baseM: 1400, thicknessM: 1600, shadow: true },
+  alpine: { regime: 'broken', coverage: 0.278, baseM: 1400, thicknessM: 474, shadow: true },
   caldera: { regime: 'overcast', coverage: 0.94, baseM: 360, thicknessM: 320, shadow: false },
   foundry: { regime: 'overcast', coverage: 0.94, baseM: 340, thicknessM: 320, shadow: false },
   ruinspires: { regime: 'overcast', coverage: 0.94, baseM: 360, thicknessM: 320, shadow: false },
   blackglass: { regime: 'overcast', coverage: 0.94, baseM: 330, thicknessM: 320, shadow: false },
-  titan_gorge: { regime: 'scattered', coverage: 0.324, baseM: 860, thicknessM: 360, shadow: true },
+  titan_gorge: { regime: 'scattered', coverage: 0.185, baseM: 1200, thicknessM: 320, shadow: true },
   skybridge: { regime: 'overcast', coverage: 0.94, baseM: 380, thicknessM: 320, shadow: false },
-  polders: { regime: 'scattered', coverage: 0.475, baseM: 420, thicknessM: 408, shadow: true },
-  copper_mesa: { regime: 'scattered', coverage: 0.314, baseM: 880, thicknessM: 360, shadow: true },
-  airfield: { regime: 'scattered', coverage: 0.34, baseM: 620, thicknessM: 360, shadow: true },
-  oasis: { regime: 'scattered', coverage: 0.304, baseM: 820, thicknessM: 360, shadow: true },
+  polders: { regime: 'broken', coverage: 0.272, baseM: 420, thicknessM: 468, shadow: true },
+  copper_mesa: { regime: 'scattered', coverage: 0.18, baseM: 1200, thicknessM: 320, shadow: true },
+  airfield: { regime: 'scattered', coverage: 0.194, baseM: 1400, thicknessM: 320, shadow: true },
+  oasis: { regime: 'scattered', coverage: 0.174, baseM: 1200, thicknessM: 320, shadow: true },
   whiteout: { regime: 'overcast', coverage: 0.94, baseM: 300, thicknessM: 320, shadow: false },
-  orchard: { regime: 'scattered', coverage: 0.393, baseM: 620, thicknessM: 360, shadow: true },
-  longleaf: { regime: 'scattered', coverage: 0.448, baseM: 620, thicknessM: 392, shadow: true },
-  mangrove: { regime: 'scattered', coverage: 0.448, baseM: 620, thicknessM: 440, shadow: true },
-  saltwind: { regime: 'scattered', coverage: 0.345, baseM: 620, thicknessM: 360, shadow: true },
-  reservoir: { regime: 'scattered', coverage: 0.42, baseM: 620, thicknessM: 376, shadow: true },
-  mars: { regime: 'scattered', coverage: 0.088, baseM: 700, thicknessM: 360, shadow: false },
+  orchard: { regime: 'scattered', coverage: 0.225, baseM: 1400, thicknessM: 320, shadow: true },
+  longleaf: { regime: 'scattered', coverage: 0.256, baseM: 1400, thicknessM: 344, shadow: true },
+  mangrove: { regime: 'scattered', coverage: 0.256, baseM: 1400, thicknessM: 380, shadow: true },
+  saltwind: { regime: 'scattered', coverage: 0.197, baseM: 1400, thicknessM: 320, shadow: true },
+  reservoir: { regime: 'scattered', coverage: 0.24, baseM: 1400, thicknessM: 332, shadow: true },
+  mars: { regime: 'scattered', coverage: 0.05, baseM: 1200, thicknessM: 320, shadow: false },
 }, 'the derived layer of every map (round 68 identity table)');
 // the shadow policy: a night sky (the runtime's night preset dims the dome to .08) casts none; an authored override wins
 {
@@ -132,12 +149,14 @@ assert.deepEqual(table, {
   assert.equal(deriveCloudLayerPreset({ ...verdant, skyIntensity: 0.08 }).shadow, false, 'no moon-cast cloud shadows');
   assert.equal(deriveCloudLayerPreset({ ...verdant, cloudShadowAmp: 0.1 }).shadow, false, 'a faint authored patchiness keeps the aerial term');
   const authored = deriveCloudLayerPreset({ ...verdant, cloudLayer: { coverage: 0.7, regime: 'broken', baseM: 900 } });
+  assert.equal(deriveCloudLayerPreset({ ...verdant, cloudAltM: 420 }).baseM, 420, 'an authored low deck keeps its altitude');
+  assert.equal(deriveCloudLayerPreset({ ...verdant, cloudAltM: 900 }).baseM, 1200, 'a mid authored deck lifts to the cumulus floor');
   assert.deepEqual([authored.coverage, authored.regime, authored.baseM], [0.7, 'broken', 900], 'sky.cloudLayer overrides field by field');
   assert.notEqual(cloudLayerKey(authored), cloudLayerKey(deriveCloudLayerPreset(verdant)), 'the key follows every field');
   assert.equal(cloudLayerKey(deriveCloudLayerPreset(verdant)), cloudLayerKey(deriveCloudLayerPreset({ ...verdant })), 'the key is stable');
   const co = (v) => deriveCloudLayerPreset({ ...verdant, cloudOpacity: v }).coverage;
   assert.ok(co(0.3) < co(0.6) && co(0.6) < co(1.0) && co(1.0) < co(1.2), 'coverage rises with the authored deck opacity');
-  assert.equal(+co(1.0).toFixed(3), 0.42, 'the legacy fair-weather deck maps onto 0.42 of the field');
+  assert.equal(+co(1.0).toFixed(3), 0.24, 'the legacy fair-weather deck maps onto 0.24 of the cell field');
 }
 
 // ---- the slot cycle: sixteen distinct Bayer cells, the resolve's closed form agrees with the table

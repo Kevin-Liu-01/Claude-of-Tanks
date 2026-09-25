@@ -159,6 +159,17 @@ function cellField2(N: number, cells: number, seed: number, gate: Float32Array, 
 }
 
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** Rank-equalise a field to a uniform histogram on (0, 1) (ties broken by index, so the result is deterministic). */
+function equalise(field: Float32Array): Float32Array {
+  const count = field.length;
+  const order = new Uint32Array(count);
+  for (let i = 0; i < count; i++) order[i] = i;
+  order.sort((a, b) => field[a] - field[b] || a - b);
+  const out = new Float32Array(count);
+  for (let rank = 0; rank < count; rank++) out[order[rank]] = (rank + 0.5) / count;
+  return out;
+}
 const toByte = (v: number): number => Math.round(clamp01(v) * 255);
 
 /**
@@ -214,11 +225,12 @@ export function bakeCloudDetailVolume(size = CLOUD_DETAIL_SIZE, seed = CLOUD_NOI
 
 /**
  * The weather field: RGBA8, `size`², tileable over one weather tile (CLOUD_WEATHER_TILE_M in the layer).
- *   R  coverage field 0..1 — a smooth mesoscale fbm lifted by the cumulus cell field: the per-map coverage
- *      threshold cuts it (clear-sky maps keep the low values, overcast maps take nearly all of it)
+ *   R  cumuliform coverage 0..1 — carried by the cumulus cells (500 m and 1 km on a 12 km tile), clustered by
+ *      a smooth mesoscale fbm, equalised: a low coverage admits the strongest cell cores as separate puffs, a high
+ *      one merges them (the per-map coverage threshold cuts it: 1 − c admits exactly the fraction c)
  *   G  cumulus cell profile 0..1 — 1 at the centre of a cell, where a column rises highest
- *   B  column-height variation 0..1 (turret noise: uneven tops)
- *   A  fine breakup 0..1 (thin edges tear, shadow footprints stay ragged)
+ *   B  stratiform coverage 0..1 — carried by the mesoscale field (broad clear / cloudy regions), equalised
+ *   A  fine breakup 0..1 (turrets, the base line's wander, thin edges)
  */
 export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
   const N = size, count = N * N;
@@ -228,34 +240,31 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
   const gate = new Float32Array(count);
   for (let i = 0; i < count; i++) gate[i] = clamp01(meso[i] * 0.8 + 0.5);
   const cells = new Float32Array(count);
-  // cells of ~1/14 of the tile (0.85 km on a 12 km tile), admitted by the mesoscale field
-  cellField2(N, 14, seed + 91, gate, 0.0, cells);
+  // cells of 1/24 of the tile (500 m on a 12 km tile: 340–760 m puffs), admitted by the mesoscale field
+  cellField2(N, 24, seed + 91, gate, 0.0, cells);
   const bigCells = new Float32Array(count);
-  cellField2(N, 6, seed + 92, gate, -0.15, bigCells);
-  const turret = new Float32Array(count);
-  perlin2(N, 40, seed + 101, turret, 0.6); perlin2(N, 80, seed + 102, turret, 0.4);
+  // a few 1 km cells at a stricter gate
+  cellField2(N, 12, seed + 92, gate, -0.15, bigCells);
   const fine = new Float32Array(count);
   perlin2(N, 24, seed + 111, fine, 0.6); perlin2(N, 48, seed + 112, fine, 0.4);
-  // coverage: the mesoscale field carries the broad clear / cloudy regions, the cells the cumulus mass;
-  // then equalised to a uniform histogram so a map's coverage c admits exactly the fraction c of the field
-  // (threshold 1 − c on the stored value) whatever the noise's own distribution
-  const coverage = new Float32Array(count);
+  // two coverage fields, each equalised to a uniform histogram so a map's coverage c admits exactly the
+  // fraction c of the field (threshold 1 − c on the stored value) whatever the noise's own distribution:
+  // the cumuliform one carried by the cells (the mesoscale field clusters them), the stratiform one by the
+  // mesoscale field (broad clear / cloudy regions)
+  const cumuliform = new Float32Array(count), stratiform = new Float32Array(count);
   for (let i = 0; i < count; i++) {
-    const m = clamp01(meso[i] * 0.8 + 0.5); // −0.6..0.6 → 0..1 (rarely clipped)
-    const cell = Math.max(cells[i], bigCells[i] * 0.85);
-    coverage[i] = m * 0.55 + cell * 0.6 + fine[i] * 0.04;
+    const m = gate[i];
+    const cell = Math.max(cells[i], bigCells[i] * 0.9);
+    cumuliform[i] = cell * 0.75 + m * 0.2 + fine[i] * 0.05;
+    stratiform[i] = m * 0.8 + cell * 0.15 + fine[i] * 0.05;
   }
-  const order = new Uint32Array(count);
-  for (let i = 0; i < count; i++) order[i] = i;
-  order.sort((a, b) => coverage[a] - coverage[b] || a - b);
-  const equalised = new Float32Array(count);
-  for (let rank = 0; rank < count; rank++) equalised[order[rank]] = (rank + 0.5) / count;
+  const equalisedCumulus = equalise(cumuliform), equalisedStratus = equalise(stratiform);
   const out = new Uint8Array(count * 4);
   for (let i = 0; i < count; i++) {
     const cell = Math.max(cells[i], bigCells[i] * 0.85);
-    out[i * 4] = toByte(equalised[i]);
+    out[i * 4] = toByte(equalisedCumulus[i]);
     out[i * 4 + 1] = toByte(cell);
-    out[i * 4 + 2] = toByte(turret[i] * 0.8 + 0.5);
+    out[i * 4 + 2] = toByte(equalisedStratus[i]);
     out[i * 4 + 3] = toByte(fine[i] * 0.8 + 0.5);
   }
   return out;
