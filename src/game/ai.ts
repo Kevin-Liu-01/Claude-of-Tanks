@@ -122,6 +122,8 @@ interface AiController {
   notifyUnderFire(shooter: AiEntity, info?: HitReactionInfo): void;
   notifyPlayerFired(shooter: AiEntity, rank?: number): void;
   notifyFriendlyBlocked(risk: FriendlyFireRisk): void;
+  /** Take (or clear) a commander's standing order; see AiOrder. */
+  setOrder(order: AiOrder | null): void;
   readonly targetId: string | null;
   debugInfo(): AiControllerDebugInfo;
   state: string;
@@ -163,6 +165,29 @@ interface HitReactionInfo {
 interface AiSupportContext {
   safeToReloadMagazine?: boolean;
   wantsSuspensionAim?: boolean;
+}
+
+/** Postures a commander can order (game/jevCommander.ts; docs/JEV-COMMANDER.md). */
+export type AiOrderPosture = 'hold' | 'push' | 'flank_left' | 'flank_right' | 'retreat' | 'capture' | 'support';
+
+/**
+ * A commander's standing order: what this controller does until `untilS`, after
+ * which the classic brain resumes on its own (the fallback when the commander
+ * is slow, fails or runs out of budget). With no order set the controller is
+ * byte-identical to the classic brain — every use below is gated on it.
+ */
+export interface AiOrder {
+  posture: AiOrderPosture;
+  /** Enemy to engage (entity id); null keeps the classic pick. */
+  targetId: string | null;
+  /** Fire discipline: 'press' fires whenever the lay is ready, 'hold' saves rounds; null keeps the classic gate. */
+  fire: 'press' | 'hold' | null;
+  /** The commander's threat read, 0 (safe) to 3 (about to die): raises cover discipline when high. */
+  threat: number;
+  /** The point a capture or support posture drives to (world metres). */
+  point: { x: number; z: number } | null;
+  /** Sim second the order expires. */
+  untilS: number;
 }
 
 const CRITICAL_REPAIR_MODULES = new Set([
@@ -909,8 +934,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   };
   const angleRad = casemate ? 0 : tune.angle;
   const roleEngageR = () => tier.engageRangeM * tune.engage;
-  const roleHoldR = () =>
-    Math.min(tier.holdRangeM * tune.hold, roleEngageR() - 60);
+  const roleHoldR = () => {
+    const base = Math.min(tier.holdRangeM * tune.hold, roleEngageR() - 60);
+    // a commander's posture widens or shrinks the hold band (order gated: classic value otherwise)
+    if (order === null || nowS >= order.untilS) return base;
+    if (order.posture === 'push') return base * 0.55;
+    if (order.posture === 'hold') return Math.min(base * 1.35, roleEngageR() - 40);
+    return base;
+  };
   const getAllies = selectAllies(deps);
   const getObjective = typeof deps.getObjective === 'function' ? deps.getObjective : null;
   const selfEyeM = spec.dims.heightM * EYE_FRAC;
@@ -1177,14 +1208,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // suspends cover-seeking for STALEMATE_PUSH_S.
   let lastFiredAtS = 0;
   let pressUntilS = -1;
+  // ---- commander orders (game/jevCommander.ts) ----
+  let order: AiOrder | null = null;
+  let ordersTaken = 0;                       // probe-visible count of orders taken
+  const orderActive = (): boolean => order !== null && nowS < order.untilS;
   let dispGateT = 0; // time spent otherwise-ready but dispersion-gated (r5)
   // coverIQ hesitation decays over the battle so late-game bots commit
   // instead of endlessly rolling hull-down/cover searches between shots.
   // BATTLE-AI r7: role-scaled — snipers/flankers duck between shots more
   // (reload discipline), brawlers hold the line they pushed.
-  const effCoverIQ = () => (nowS < pressUntilS
-    ? 0
-    : clamp(tier.coverIQ * tune.cover, 0, 1) * clamp(1.15 - nowS / 240, 0.35, 1));
+  const effCoverIQ = () => {
+    if (nowS < pressUntilS) return 0;
+    const classic = clamp(tier.coverIQ * tune.cover, 0, 1) * clamp(1.15 - nowS / 240, 0.35, 1);
+    if (!orderActive()) return classic;
+    // a holding posture and a high threat read both raise the cover discipline
+    let iq = classic;
+    if (order!.posture === 'hold') iq = Math.min(1, iq * 1.25);
+    if (order!.threat >= 2.5) iq = Math.min(1, iq * 1.3);
+    return iq;
+  };
 
   const scanPhase = rng() * TAU;             // idle turret sweep phase
   // r4: per-controller vantage fan bias — clustered bots hunting the same
@@ -1591,6 +1633,27 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     losBlockedT = Math.max(losBlockedT, 5);
   }
 
+  /** A commander's target order: the named enemy, when it is alive and the team has it spotted, takes the slot. */
+  function tryOrderedTarget(
+    enemies: AiEntity[],
+    timeS: number,
+    eyeX: number,
+    eyeYPosition: number,
+    eyeZ: number,
+  ): boolean {
+    if (!orderActive() || !order!.targetId) return false;
+    let candidate: AiEntity | null = null;
+    for (let index = 0; index < enemies.length; index++) {
+      if (enemies[index].id === order!.targetId) { candidate = enemies[index]; break; }
+    }
+    if (!candidate || !enemyAlive(candidate) || !isVisibleToTeam(candidate)) return false;
+    const position = candidate.state.pos;
+    const clearLine = hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(candidate), position.z);
+    claimTarget(candidate, timeS, clearLine, true);
+    if (!clearLine) losBlockedT = Math.max(losBlockedT, 5); // no line yet: the vantage search moves the hull
+    return true;
+  }
+
   function acquireTarget(timeS: number): void {
     const enemies = aliveEnemies();
     refreshFocusCounts();
@@ -1600,6 +1663,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const eyeZ = position.z;
 
     if (tryLockedPlayer(timeS, eyeX, eyeYPosition, eyeZ)) return;
+    if (tryOrderedTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return;
     if (tryPlayerEngagementBudget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return;
     if (tryAggressor(timeS, eyeX, eyeYPosition, eyeZ)) return;
     if (refreshCurrentTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return;
@@ -1931,7 +1995,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return false;
   }
 
-  function startFlank(timeS: number): void {
+  function startFlank(timeS: number, forcedSide = 0): void {
     if (!target) return;
     const st = entity.state;
     const tp = target.state.pos;
@@ -1944,6 +2008,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const aspectPlus = Math.abs(wrapAngle(baseAng + 0.6 - target.state.yaw));
     const aspectMinus = Math.abs(wrapAngle(baseAng - 0.6 - target.state.yaw));
     if (Math.abs(aspectPlus - aspectMinus) > 0.2) preferred = aspectPlus > aspectMinus ? 1 : -1;
+    // a commander's flank order names the side (+1 = the bot's left while it faces the target)
+    if (forcedSide) preferred = forcedSide;
     // Round 48 pacing (2026-09-24): a flank ring drawn blind put Frosthollow's third point past the border
     // wall (z −525) and the other side's points on the west ridge's flank; the bot drove at them for three
     // 20 s windows and never changed the target's aspect. Score both sides by how many of the three points
@@ -2938,6 +3004,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     hasVantage = false;
     updateEngagementSettle(timeS);
     if (driveToEngagementEnvelope(input, timeS, distToTarget, navX, navZ)) return;
+    if (driveOrderedPosture(input, distToTarget, navX, navZ)) return;
     // round 62 pacing: a lay the rack cannot afford at this range is closed on, not taken (see shouldConserve)
     if (conserving && timeS >= deploymentUntilS && !outnumberedSolo()) {
       chaseToXZ(input, navX, navZ, 0.9);
@@ -2956,6 +3023,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     driveHoldBand(input, distToTarget, navX, navZ);
+  }
+
+  /**
+   * A commander's posture while engaging a visible target beyond the hold band: a push closes on the
+   * target at full throttle (the no-suicide guard yields — the commander read the whole team's picture),
+   * a capture or support drives to the ordered point and fights from there. Returns true when it drove.
+   */
+  function driveOrderedPosture(input: AiInput, distToTarget: number, navX: number, navZ: number): boolean {
+    if (!orderActive() || distToTarget <= roleHoldR()) return false;
+    const posture = order!.posture;
+    if (posture === 'push') {
+      chaseToXZ(input, navX, navZ, 1.0);
+      return true;
+    }
+    const point = order!.point;
+    if ((posture === 'capture' || posture === 'support') && point) {
+      return !driveToXZ(input, point.x, point.z, 1.0); // arrived: the ordinary engagement driving resumes
+    }
+    return false;
   }
 
   /**
@@ -3561,6 +3647,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    */
   function shouldConserve(timeS: number): boolean {
     if (!target || fireGate.blindFire || fireGate.blindLock || emptyRack) return false;
+    if (orderActive() && order!.fire) {
+      // a commander's fire discipline: 'press' takes every ready lay, 'hold' wants a likely hit
+      if (order!.fire === 'press') return false;
+      return hitChance < Math.max(conserveThreshold(), 0.7) + (conserving ? CONSERVE_CLOSE_MARGIN : 0);
+    }
     if (target.isPlayer && !targetPassive(timeS)) return false;
     return hitChance < conserveThreshold() + (conserving ? CONSERVE_CLOSE_MARGIN : 0);
   }
@@ -4862,6 +4953,66 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     lastFriendlyRisk = risk;
   }
 
+  /** The ordered retreat: the low-health fallback's own machinery, started on the commander's word. */
+  function beginOrderedFallback(): void {
+    const support = nearestSupport();
+    if (target && enemyAlive(target)) {
+      if (support) setSupportedFallback(support);
+      else setUnsupportedFallback(target);
+      fallbackUntilS = nowS + FALLBACK_S;
+      fallbackCdS = nowS + FALLBACK_CD_S;
+      burstDamage = 0;
+      hasMoveTarget = false;
+      hasCoverPoint = false;
+      if (mode === 'seekCover' || mode === 'flank') mode = 'engage'; // driveFallback lives in the engage driver
+      return;
+    }
+    if (!support) return;
+    // no target to fall back from: drive to the support as a route
+    setWaypoints([[support.state.pos.x, support.state.pos.z]], { loop: false });
+    mode = 'patrol';
+  }
+
+  /**
+   * Take a commander's order (game/jevCommander.ts). The posture's immediate effects start here; the
+   * gated reads above (hold band, cover discipline, target claim, fire discipline, engage driving)
+   * carry it until `untilS`, when the classic brain resumes by itself.
+   */
+  function setOrder(next: AiOrder | null): void {
+    if (!next || nowS >= next.untilS) {
+      order = null;
+      return;
+    }
+    order = next;
+    ordersTaken++;
+    switch (next.posture) {
+      case 'flank_left':
+      case 'flank_right':
+        if (target && enemyAlive(target) && mode !== 'flank' && !passivePressing) {
+          startFlank(nowS, next.posture === 'flank_left' ? 1 : -1);
+        }
+        break;
+      case 'retreat':
+        if (nowS >= fallbackUntilS) beginOrderedFallback();
+        break;
+      case 'push':
+        pressUntilS = Math.max(pressUntilS, next.untilS);
+        hasMoveTarget = false;
+        hasCoverPoint = false;
+        if (mode === 'seekCover') mode = 'engage';
+        break;
+      case 'capture':
+      case 'support':
+        if (next.point && (!target || !enemyAlive(target) || mode === 'patrol')) {
+          setWaypoints([[next.point.x, next.point.z]], { loop: false });
+          if (mode !== 'patrol' && mode !== 'engage') mode = 'engage';
+        }
+        break;
+      default:
+        break; // hold: the wider band and the cover discipline do the work
+    }
+  }
+
   const controller: AiController = {
     update,
     setWaypoints,
@@ -4869,6 +5020,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     notifyUnderFire,
     notifyPlayerFired,
     notifyFriendlyBlocked,
+    setOrder,
     get targetId() { return target ? target.id : null; },
     /** Headless-probe introspection (controls_gunnery r5): gate snapshot. */
     debugInfo: () => ({
@@ -4919,6 +5071,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // asserts a hardClaim keeps the MUZZLE stamp, never the live position,
       // while the spotting sim hides the shooter.
       lastSeenX: lastSeen.x, lastSeenZ: lastSeen.z, lastSeenAtS,
+      // commander orders (game/jevCommander.ts): the live order and how many were taken
+      orderPosture: orderActive() ? order!.posture : null,
+      orderTarget: orderActive() ? order!.targetId : null,
+      orderFire: orderActive() ? order!.fire : null,
+      ordersTaken,
       targetTrackLagS: +targetTrackLagS.toFixed(3),
       targetLeadScale: +targetLeadScale.toFixed(3),
       ..._dbg,

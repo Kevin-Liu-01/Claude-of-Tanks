@@ -95,6 +95,8 @@ export interface JevBattleState {
     readonly remaining_s: number | null;
     readonly score: { readonly ours: number; readonly theirs: number; readonly target: number } | null;
     readonly alive: { readonly ours: number; readonly theirs: number };
+    /** The human player when it fights on THIS side (it takes no orders; the enemy view lists it under `enemies`). */
+    readonly human_ally: { readonly vehicle: string; readonly hp: number; readonly distance_m: number; readonly bearing: string } | null;
   };
   readonly our_tanks: Readonly<Record<string, JevBotView>>;
   readonly enemies: Readonly<Record<string, JevEnemyView>>;
@@ -290,6 +292,13 @@ export function validateJevState(input: Unknown): Validation<JevBattleState> {
     score = { ours: battle.score.ours, theirs: battle.score.theirs, target: battle.score.target };
   }
   if (!isRecord(battle.alive) || !isMetres(battle.alive.ours) || !isMetres(battle.alive.theirs)) return fail('invalid_state:battle.alive');
+  let humanAlly: JevBattleState['battle']['human_ally'] = null;
+  if (battle.human_ally !== null && battle.human_ally !== undefined) {
+    const ally = battle.human_ally;
+    if (!isRecord(ally) || !isText(ally.vehicle) || !isFraction(ally.hp) || !isMetres(ally.distance_m)
+        || typeof ally.bearing !== 'string' || !BEARINGS.has(ally.bearing)) return fail('invalid_state:battle.human_ally');
+    humanAlly = { vehicle: ally.vehicle, hp: ally.hp, distance_m: ally.distance_m, bearing: ally.bearing };
+  }
   const botIds = new Set(isRecord(input.our_tanks) ? Object.keys(input.our_tanks) : []);
   const enemyIds = new Set(isRecord(input.enemies) ? Object.keys(input.enemies) : []);
   const ourTanks = readLabelled(input.our_tanks, /^b[1-9][0-9]?$/, JEV_LIMITS.bots, 'our_tanks', (item) => readBot(item, enemyIds));
@@ -303,7 +312,7 @@ export function validateJevState(input: Unknown): Validation<JevBattleState> {
     v: JEV_PROTOCOL_VERSION,
     battle: {
       mode: battle.mode, goal: battle.goal, elapsed_s: battle.elapsed_s, remaining_s: battle.remaining_s,
-      score, alive: { ours: battle.alive.ours, theirs: battle.alive.theirs },
+      score, alive: { ours: battle.alive.ours, theirs: battle.alive.theirs }, human_ally: humanAlly,
     },
     our_tanks: ourTanks.value, enemies: enemies.value, objectives: objectives.value,
   } };
@@ -449,15 +458,38 @@ export function parseJevAnswers(raw: Unknown, questions: Readonly<Record<string,
   return answers;
 }
 
-/** Parse the proxy's reply in the browser (the proxy already validated the upstream body). */
+/** One answer of any type, structurally sound (the commander checks its meaning against its own labels). */
+function readAnswer(raw: Unknown): JevAnswer | null {
+  if (!isRecord(raw)) return null;
+  if (raw.type === 'noul') return isFraction(raw.noul) ? { type: 'noul', noul: raw.noul } : null;
+  if (raw.type === 'choice') {
+    const probabilities = readProbabilities(raw.probabilities, null);
+    if (typeof raw.choice !== 'string' || raw.choice.length > 32 || !probabilities || !isFraction(raw.confidence)) return null;
+    return { type: 'choice', choice: raw.choice, probabilities, confidence: raw.confidence };
+  }
+  if (raw.type === 'score') {
+    const probabilities = readProbabilities(raw.probabilities, null);
+    if (typeof raw.score !== 'number' || !Number.isFinite(raw.score) || raw.score < 0 || raw.score > 9 || !probabilities || !isFraction(raw.confidence)) return null;
+    return { type: 'score', score: raw.score, probabilities, confidence: raw.confidence };
+  }
+  return null;
+}
+
+/** Parse the proxy's reply in the browser: the envelope, the usage and every answer's shape; a bad answer is dropped. */
 export function readJevResponse(raw: Unknown): JevResponseBody | null {
   if (!isRecord(raw) || raw.v !== JEV_PROTOCOL_VERSION || !isRecord(raw.answers) || !isRecord(raw.usage)) return null;
   const input = raw.usage.input_tokens, output = raw.usage.output_tokens;
   if (typeof input !== 'number' || typeof output !== 'number') return null;
+  const answers: Record<string, JevAnswer> = {};
+  for (const [id, item] of Object.entries(raw.answers)) {
+    if (!/^[a-z]+(?:_b[1-9][0-9]?)?$/.test(id)) continue;
+    const answer = readAnswer(item);
+    if (answer) answers[id] = answer;
+  }
   return {
     v: JEV_PROTOCOL_VERSION,
-    model: typeof raw.model === 'string' ? raw.model : '',
-    answers: raw.answers as Record<string, JevAnswer>,
+    model: typeof raw.model === 'string' ? raw.model.slice(0, 32) : '',
+    answers,
     usage: { input_tokens: input, output_tokens: output },
     latencyMs: typeof raw.latencyMs === 'number' ? raw.latencyMs : 0,
   };

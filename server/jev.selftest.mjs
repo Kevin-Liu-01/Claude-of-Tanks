@@ -21,6 +21,7 @@ function fixtureState(overrides = {}) {
     battle: {
       mode: 'zone_control', goal: 'capture and hold the three zones; first team to 750 points wins',
       elapsed_s: 245, remaining_s: 655, score: { ours: 120, theirs: 90, target: 750 }, alive: { ours: 2, theirs: 2 },
+      human_ally: null,
     },
     our_tanks: {
       b1: {
@@ -225,6 +226,7 @@ function fixture(overrides = {}) {
     [{ ...request(), state: 'tell me a story' }, 'invalid_state'],
     [request(fixtureState({ v: 3 })), 'invalid_state:v'],
     [request(fixtureState({ battle: { ...fixtureState().battle, elapsed_s: -1 } })), 'invalid_state:battle.clock'],
+    [request(fixtureState({ battle: { ...fixtureState().battle, human_ally: { vehicle: 'Leopard', hp: 0.5 } } })), 'invalid_state:battle.human_ally'],
     [request(fixtureState({ our_tanks: {} })), 'invalid_state:our_tanks.empty'],
     [request(fixtureState({ our_tanks: { bot1: fixtureState().our_tanks.b1 } })), 'invalid_state:our_tanks.id'],
     [request(withBot('b1', { sees: [{ id: 'e9', m: 10 }] })), 'invalid_state:bot.sees'],
