@@ -243,6 +243,58 @@ The program's rules, independent of the audit's specifics:
 5. **The first error is the message.** A global error/unhandled-rejection boundary renders the
    entry error surface with the stage that failed; nothing ever stays a spinner.
 
+### 6.2 Phase 0 — what landed (2026-09-25, branch `mp/entry-resilience`, deploy 89)
+
+Documented in `docs/ENTRY-RESILIENCE.md`; the summary:
+
+- **Telemetry.** `api/telemetry.ts` (POST, same-origin allowlist, 4 KB cap, salted-hash token
+  bucket, bounded schema, PII field names refused, one JSON log line per event, and an LPUSH /
+  LTRIM 5000 / 30-day EXPIRE window on the Upstash REST store when its variables are configured
+  — production has them) and `src/entry/telemetry.ts` (no game imports, batched `sendBeacon`,
+  per-session caps; off with `?telemetry=off`, the Settings › Graphics › Diagnostics toggle,
+  Do-Not-Track / GPC, webdriver and self-hosted builds). Events: 20 boot stages, capability,
+  boot ready, boot error, halted, slow reveal, entry result, ICE degraded, room failure.
+  `tools/telemetry-report.mjs` prints the funnel and the failure table by stage and build.
+- **Capability gate** (`src/engine/capabilityGate.ts`, before the renderer): three stops with a
+  sentence and an action (no WebGL2, refused context, too few texture units) that hold the page
+  instead of spending the silent reloads; notices for software rendering, disabled storage and
+  worker creation. The terrain material's need was measured with a `getActiveUniform` census:
+  16 samplers on desktop (10 declared + envMap + DFG LUT + 4 cascades), 15 on mobile.
+- **Download-aware watchdogs** (`index.html` r4): Resource Timing and stage heartbeats re-arm
+  the 30 / 60 s timers, a connectivity probe precedes any silent-minute reload, terminal messages
+  name the class and the file ("A game file failed to download (i18n-….js)", driver, slow,
+  offline, stalled). Proven at 200 kbps (ready at 84 s, no reload), with an eager-chunk 404 and
+  with the network cut mid-download.
+- **Immutable hashed assets**: `/assets/(.*)` → `public, max-age=31536000, immutable`
+  (837 of 837 files hashed; plates and other public files keep must-revalidate).
+- **Reveal and paint budgets** extend once and then wait or continue, with a `slow_reveal` beacon;
+  the black-frame verdict still fails a truly black scene.
+- **A failed solo entry shows a modal** (en / zh) and beacons an `entry_result`.
+- **ICE degradation is visible**: "Direct connections only — a friend behind a strict network may
+  not connect", an `ice_degraded` beacon, and the 60 s RTC timeout names the degraded state.
+
+Bundle: `main-*.js` +1,938 B brotli plus a 1,823 B shared telemetry chunk. Open: the Redis path is
+fake-store tested only until the first production events arrive; the inline watchdog strings are
+English only.
+
+The program's rules, independent of the audit's specifics:
+
+1. **Telemetry first.** A tiny same-origin beacon (`/api/telemetry`, then a Worker sink) reports
+   boot stages, timings, capability probes and the first error of a session — anonymous, no
+   credentials, rate-limited, opt-out honoured. Without it every friend's failure is a rumour.
+2. **A capability gate with words.** Before the heavy path: WebGL2, required extensions, texture
+   units, memory class, storage availability, worker creation. Each failure maps to one sentence
+   and one action ("Your browser blocks WebGL — enable hardware acceleration" / "Open in Chrome
+   or Safari 17+"). A reduced tier is chosen up front for weak GPUs rather than measured mid-load.
+3. **No client can block a start.** The admin starts the match; each client joins when it is
+   ready (a protected spawn state on arrival, the same as a reconnect); a client whose load fails
+   sees the reason and a retry while the match continues for everyone else.
+4. **Every awaited stage has a timeout and a retry.** Chunk imports, world builds, texture
+   sources, ICE/room requests; a hashed-chunk 404 after a redeploy triggers a one-time reload of
+   the new build instead of a broken screen.
+5. **The first error is the message.** A global error/unhandled-rejection boundary renders the
+   entry error surface with the stage that failed; nothing ever stays a spinner.
+
 ## 7. Hosting and deployment
 
 **Recommended: Cloudflare Containers behind the Room DO,** in the account that already runs the
