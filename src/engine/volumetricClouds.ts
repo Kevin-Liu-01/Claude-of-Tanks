@@ -520,7 +520,7 @@ void main() {
 					// sky it replaces (a sheet takes the floor whole, a stratocumulus deck by its share, the thick lumps a
 					// little darker than the thin parts so the deck keeps its relief)
 					float deckFloor = smoothstep( 0.3, 0.9, uStratiform );
-					amb = mix( amb, max( amb, uSkyMean * 1.25 * exp( -tauUp * 0.04 ) ), deckFloor );
+					amb = mix( amb, max( amb, uSkyMean * 1.25 * exp( -tauUp * 0.08 ) ), deckFloor );
 					amb *= uAmbientScale;
 					vec3 S = ( ( uSunRadiance * sun * ( 1.0 - 0.7 * uStratiform ) + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
 					if ( uDebug == 4.0 ) S = vec3( 0.6 );
@@ -1169,7 +1169,10 @@ export class VolumetricCloudLayer {
     const stratiform = this.preset?.stratiform ?? 0;
     // cumulus bases see the horizon band and the ground; an overcast sheet's base is lit through the sheet by
     // the whole sky, so it takes the sky irradiance's cool hue, never the low sun's warm band
-    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.15)
+    // (71b: half the base term is the sky irradiance's cool hue — under a low sun the warm horizon band alone
+    // painted the shaded bases tan)
+    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.08)
+      .addScaledVector(this.scratch.set(irr.r, irr.g, irr.b), 0.1)
       .lerp(this.scratch.set(irr.r, irr.g, irr.b).multiplyScalar(0.42), stratiform);
     // the stratus floor: the brighter of the horizon band's and the mean upper sky's luminance — the sky a far
     // ceiling replaces at the skyline is the horizon band, the brightest of a hazy sky — in a hue half way from

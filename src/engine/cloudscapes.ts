@@ -93,6 +93,8 @@ export interface CloudscapeConfig {
   type?: readonly [number, number];
   /** 0..1: stratiform (sheet, diffuse-lit) against cumuliform (domed, sun-modelled). */
   stratiform?: number;
+  /** 0..1: the weather field the coverage cuts — the cell-carried cumuliform one (0) or the broad one (1: big masses, few small cells). */
+  fieldMix?: number;
   /** Whether the layer casts real cloud shadows through the CSM. */
   shadow?: boolean;
 }
@@ -128,7 +130,7 @@ const row = (r: CloudscapeRegimeRow): CloudscapeRegimeRow => Object.freeze(r);
 
 /** The regime table: the meteorology of each named sky as the layer's numbers. */
 export const CLOUDSCAPE_REGIMES: Readonly<Record<CloudscapeRegime, CloudscapeRegimeRow>> = Object.freeze({
-  'fair-weather-cumulus': row({ coverage: 0.30, baseM: null, thicknessM: 720, towers: 0.15, anvil: 0, wispiness: 0.35, windSpeed: 6, shear: 0.15, streets: 0.35, cirrus: 0.12, cirrusAltM: 9500, stratiform: 0.08, fieldMix: 0, density: 0.10, farBand: 0.25, scud: 0, type: [0.3, 0.62], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true }),
+  'fair-weather-cumulus': row({ coverage: 0.34, baseM: null, thicknessM: 820, towers: 0.15, anvil: 0, wispiness: 0.35, windSpeed: 6, shear: 0.15, streets: 0.35, cirrus: 0.12, cirrusAltM: 9500, stratiform: 0.08, fieldMix: 0, density: 0.10, farBand: 0.25, scud: 0, type: [0.3, 0.62], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true }),
   'cloud-streets': row({ coverage: 0.40, baseM: null, thicknessM: 660, towers: 0.1, anvil: 0, wispiness: 0.3, windSpeed: 9, shear: 0.2, streets: 0.85, cirrus: 0.15, cirrusAltM: 10000, stratiform: 0.05, fieldMix: 0, density: 0.10, farBand: 0.35, scud: 0, type: [0.3, 0.6], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true }),
   'sea-streets': row({ coverage: 0.32, baseM: 1100, thicknessM: 600, towers: 0.1, anvil: 0, wispiness: 0.35, windSpeed: 8, shear: 0.15, streets: 0.75, cirrus: 0.08, cirrusAltM: 9500, stratiform: 0.08, fieldMix: 0, density: 0.10, farBand: 0.6, scud: 0, type: [0.3, 0.55], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true }),
   'towering-cumulus': row({ coverage: 0.38, baseM: 1200, thicknessM: 1500, towers: 0.6, anvil: 0.15, wispiness: 0.3, windSpeed: 5, shear: 0.3, streets: 0.15, cirrus: 0.1, cirrusAltM: 11000, stratiform: 0.05, fieldMix: 0.45, density: 0.10, farBand: 0.3, scud: 0, type: [0.45, 0.9], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true }),

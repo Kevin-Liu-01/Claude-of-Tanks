@@ -250,7 +250,7 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     coverage, baseM, thicknessM,
     towers: clamp(pick('towers'), 0, 1),
     stratiform,
-    fieldMix: row ? row.fieldMix : legacy.fieldMix,
+    fieldMix: clamp(scape.fieldMix ?? (row ? row.fieldMix : legacy.fieldMix), 0, 1),
     density: Math.max(1e-4, pick('density')),
     tint: scape.tintHex != null ? tintOf(scape.tintHex, sheet) : tintOf(sky.cloudTintHex, sheet),
     windDirRad,

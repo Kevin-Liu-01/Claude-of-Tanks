@@ -140,7 +140,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', streets: 0.45, coverage: 0.30 },
+  clouds: { regime: 'fair-weather-cumulus', streets: 0.45, coverage: 0.36 },
   sky: DEFAULT_GARAGE_SKY,
 
   minimap: {
