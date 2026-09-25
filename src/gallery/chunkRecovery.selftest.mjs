@@ -105,14 +105,14 @@ for (const route of ['/gallery', '/gallery.html']) {
     'private, no-store, max-age=0',
     `${route} HTML must not outlive its hashed module graph`);
 }
-// Entry resilience (2026-09-25, docs/ENTRY-RESILIENCE.md): every file Vite writes under /assets/ is
-// content-hashed, so a warm cache must never revalidate the 105-file entry graph before boot. Only
-// that prefix is immutable; /maps, /minimaps and every other unhashed path keep Vercel's default
-// must-revalidate behaviour because the tactical-map plates are re-baked in place.
-const assets = vercel.headers?.find(({ source }) => source === '/assets/(.*)');
-assert.equal(assets?.headers?.find(({ key }) => key.toLowerCase() === 'cache-control')?.value,
-  'public, max-age=31536000, immutable', 'hashed /assets must be immutable for a year');
-assert.equal(vercel.headers.filter(({ source }) => /immutable/.test(JSON.stringify(source)) || /^\/(?:maps|minimaps)/.test(source)).length, 0,
-  'no unhashed public directory may be declared immutable');
+// Asset caching (2026-09-25, docs/ENTRY-RESILIENCE.md): deploy 89's `/assets/(.*)` immutable rule applied
+// to 404s too and Vercel's edge cached them for a year, so one transient miss during a promotion became a
+// permanent "A game file failed to download" for every player on that edge. No vercel.json rule may name
+// /assets or declare anything immutable; hashed files take Vercel's must-revalidate default (a 304 per file
+// on a warm cache) until the per-file immutable routes land in the build output (only files that exist).
+assert.equal(vercel.headers?.find(({ source }) => /assets/.test(String(source))), undefined,
+  'no vercel.json header rule may name /assets — a header rule applies to 404s and the edge caches them');
+assert.equal(vercel.headers.filter(({ headers }) => headers?.some(({ value }) => /immutable|max-age=[1-9]\d{3,}/.test(String(value)))).length, 0,
+  'no path may be declared immutable or long-lived by vercel.json');
 
-console.log('gallery chunkRecovery.selftest: stale deployment hashes self-heal without clearing cookies');
+console.log('gallery chunkRecovery.selftest: stale deployment hashes self-heal without clearing cookies; no cacheable-404 header rule');
