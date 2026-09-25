@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cot-telemetry",
+  "account_id": "68c9576ef72404494de8d86348404fad",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-05",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
+  // Per-address budget: three records per clean or failing session, so twenty a
+  // minute covers a household behind one address; the key never leaves the limiter.
+  "ratelimits": [{
+    "name": "TELEMETRY_LIMITER",
+    "namespace_id": "2609055512",
+    "simple": { "limit": 20, "period": 60 }
+  }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://cot.kevinliu.studio,https://claudeoftanks.kevinliu.studio,https://claude-of-tanks.vercel.app,https://claude-of-tanks-kl01s-projects.vercel.app"
+  },
+  // Workers Analytics Engine: write-only data points, three-month retention,
+  // read back through the SQL API by tools/telemetry-report.mjs. The dataset is
+  // created on the first write; there is nothing to provision.
+  "analytics_engine_datasets": [{ "binding": "COT_TELEMETRY", "dataset": "cot_telemetry" }]
+}
