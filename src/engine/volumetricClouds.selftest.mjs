@@ -195,7 +195,10 @@ const renderFrame = postSource.slice(postSource.indexOf('  function renderFrame(
 assert.equal(renderFrame.match(/volumetricClouds\?\.beforeSceneRender\(/g)?.length, 1, 'one hook inside the frame transaction');
 assert.equal(postSource.match(/beforeSceneRender\(/g)?.length, 1, 'no other post path marches the clouds');
 assert.ok(renderFrame.indexOf('beforeSceneRender(') < renderFrame.indexOf('const jittered = taa.enabled;'), 'the march reads the unjittered camera');
-assert.match(skySource, /get\('clouds'\) === 'off'/, 'the ?clouds=off fallback keeps the baked decks');
+assert.match(skySource, /get\('clouds'\)/, 'the ?clouds switch is read from the URL');
+assert.match(skySource, /requested === 'volumetric' \|\| requested === 'on'/,
+  'the volumetric layer is opt-in (owner 2026-09-25: the baked decks and the skies before it were fine)');
+assert.match(skySource, /requested === 'off'\) return false/, 'the ?clouds=off fallback keeps the baked decks');
 assert.match(skySource, /scene\.userData\.volumetricClouds = volumetricClouds;/);
 assert.match(mainSource, /sky\.attachShadowCascades\(lighting\.csm\);/, 'the cascades carry the cloud shadows');
 assert.ok(layerSource.includes('${ATMOSPHERE_SKY_GLSL}') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');

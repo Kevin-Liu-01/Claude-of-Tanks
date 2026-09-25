@@ -642,13 +642,21 @@ function atmosphereEnabledFor(renderer: THREE.WebGLRenderer): boolean {
   return true;
 }
 
-/** Round 68: the volumetric cloud layer runs wherever the atmosphere does, unless `?clouds=off` (the pinned bake receipts). */
+/**
+ * Round 68's volumetric cloud layer is OPT-IN (`?clouds=volumetric`): the owner ruled on 2026-09-25 that the
+ * baked decks and the skies before it were fine, so every battlefield keeps the baked decks by default. The
+ * layer stays in the tree for iteration; `?clouds=off` still names the baked decks explicitly (the pinned bake
+ * receipts), and it never runs without the atmosphere.
+ */
 function volumetricCloudsEnabledFor(renderer: THREE.WebGLRenderer): boolean {
   if (!atmosphereEnabledFor(renderer)) return false;
   try {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('clouds') === 'off') return false;
-  } catch { /* no location: keep the layer */ }
-  return true;
+    if (typeof window === 'undefined') return false;
+    const requested = new URLSearchParams(window.location.search).get('clouds');
+    if (requested === 'off') return false;
+    return requested === 'volumetric' || requested === 'on';
+  } catch { /* no location: the baked decks */ }
+  return false;
 }
 
 /** What the rig publishes on scene.userData.atmosphere for the post aerial pass (read every frame, mutated in place). */
