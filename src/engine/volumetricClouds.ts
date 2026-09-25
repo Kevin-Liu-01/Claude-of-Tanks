@@ -589,6 +589,8 @@ export class VolumetricCloudLayer {
   gpuTiming = false;
   /** QA: the last completed timer's result (ms), −1 until one lands. */
   lastTraceGpuMs = -1;
+  /** QA: trace and resolve the frame's slot this many times (a repeat benchmark amortises the frame's noise). */
+  benchRepeat = 1;
   private timerExt: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null | undefined;
   private timerQuery: WebGLQuery | null = null;
   private timerOpen = false;
@@ -1002,6 +1004,7 @@ export class VolumetricCloudLayer {
         r.uMinAlpha.value = Math.max(0.12, 1 / (n + 1));
         r.uRebuildK.value = -1;
         this.traceSlot(this.frame % 16);
+        for (let k = 1; k < this.benchRepeat; k++) this.traceSlot(this.frame % 16);
       }
     }
     this.endTimer();
