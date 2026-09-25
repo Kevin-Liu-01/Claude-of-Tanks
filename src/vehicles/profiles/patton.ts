@@ -941,8 +941,14 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
         const wt = (toeZ - wz) / Math.max(0.001, toeZ - kneeZ);
         const ww = nw + (bhw - nw) * wt;
         const wyt = toeY + (kneeY - toeY) * wt;
+        // FSP-05 (2026-09-25): with a 0.04 drop the wing's clamped bottom (1.26)
+        // sat ABOVE its toe-line top (1.21) on the M46, folding the plate into a
+        // bow-tie whose toe face shipped inside-out (205 open px, both side
+        // rings). The front edge keeps the certified toe-line top and takes its
+        // bottom 2 cm under it; hulls whose wing already clears stay identical.
+        const wbFront = Math.min(wb, wyt - 0.02);
         P.add('hull', slab(
-          [-ww, wb, wz], [ww, wb, wz], [bhw, wy, kneeZ], [-bhw, wy, kneeZ],
+          [-ww, wbFront, wz], [ww, wbFront, wz], [bhw, wy, kneeZ], [-bhw, wy, kneeZ],
           [-ww, wyt, wz], [ww, wyt, wz], [bhw, kneeY, kneeZ], [-bhw, kneeY, kneeZ]));
       }
     } else {
