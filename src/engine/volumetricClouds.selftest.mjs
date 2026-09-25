@@ -216,7 +216,7 @@ assert.deepEqual(table, {
   railyard: { regime: 'hazy-altostratus', coverage: 0.78, baseM: 2200, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
   frontier: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35 },
   fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6 },
-  delta: { regime: 'towering-cumulus', coverage: 0.36, baseM: 1200, thicknessM: 1800, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
+  delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
   badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15 },
   monsoon: { regime: 'cumulonimbus-front', coverage: 0.34, baseM: 1000, thicknessM: 3200, shadow: true, streets: 0.15, cirrus: 0.25, farBand: 0.4 },
   alpine: { regime: 'lenticular', coverage: 0.16, baseM: 2400, thicknessM: 450, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5 },
@@ -233,7 +233,7 @@ assert.deepEqual(table, {
   whiteout: { regime: 'low-stratus', coverage: 0.95, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5 },
   orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25 },
   longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25 },
-  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1800, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
+  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
   saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55 },
   reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
   mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0 },
@@ -262,7 +262,7 @@ assert.deepEqual(table, {
   assert.equal(+(coastal.cirrusAngleRad - coastal.windDirRad).toFixed(5), +CLOUD_LAYER_RULES.cirrusVeerRad.toFixed(5), 'the cirrus veers off the wind by the rule');
   // the towering regimes lean downwind by a share of their thickness; a lenticular cap is stationary and smooth
   const delta = deriveCloudLayerPreset(skyOf('delta'));
-  assert.equal(delta.shearM, 0.25 * 1800);
+  assert.equal(delta.shearM, 0.25 * 1500);
   const alpine = deriveCloudLayerPreset(skyOf('alpine'));
   assert.deepEqual([alpine.windSpeed, alpine.shearM, alpine.wispiness, alpine.fieldMix], [0, 0, 0, 1], 'a lenticular cap is stationary, smooth and cut from the broad field');
 }

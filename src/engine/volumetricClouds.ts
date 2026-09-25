@@ -225,7 +225,8 @@ uniform float uFarBandAlt;
 uniform vec2 uFarBandShift;
 uniform float uStepScale;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
-// 5 = the shape volume sampled unstretched, 6 = the height profile alone (no shape noise), 7 = no column top variation
+// 5 = the shape volume sampled unstretched, 6 = the height profile alone (no shape noise), 7 = no column top variation,
+// 8 = no empty-space striding, 9 = half the stride, 10 = no start jitter
 uniform float uDebug;
 varying vec2 vUv;
 const float CL_PI = 3.14159265358979;
@@ -434,7 +435,8 @@ void main() {
 			// out of the history and read as a block pattern)
 			float lightScale = 0.75 + 0.5 * jitter;
 			float ds0 = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + 1.5 * uStratiform ) * uStepScale, ${f(CLOUD_STEP_MAX_M)} );
-			float t = t0 + ds0 * jitter;
+			if ( uDebug == 9.0 ) ds0 *= 0.5;
+			float t = t0 + ds0 * ( uDebug == 10.0 ? 0.5 : jitter );
 			float tAcc = 0.0, wAcc = 0.0;
 			int empty = 0;
 			for ( int i = 0; i < ${CLOUD_MARCH_STEPS}; i++ ) {
@@ -494,10 +496,16 @@ void main() {
 					wAcc += dT;
 					T *= Tstep;
 					t += ds;
-				} else {
-					// empty space: stride longer until cloud is met again
+				} else if ( w.cov <= 0.0 && uDebug != 8.0 ) {
+					// clear air between masses (the weather admits no column here): stride longer until cloud is met
 					empty = min( empty + 1, 4 );
 					t += ds * ( 1.0 + float( empty ) * 0.5 );
+				} else {
+					// an eroded pocket inside a mass keeps the fine lattice: a stride that grew through a tower's
+					// pockets re-entered on a coarse lattice shared by neighbouring rays and terraced its walls into
+					// stacked discs (round 71's monsoon variants: the discs vanished with the striding off)
+					empty = 0;
+					t += ds;
 				}
 			}
 			if ( wAcc > 1e-4 ) {
