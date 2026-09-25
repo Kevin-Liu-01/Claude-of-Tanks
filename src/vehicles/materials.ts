@@ -2655,6 +2655,16 @@ export function createTankMaterials(
   if (usesSchemeTintedCanvas) {
     paintableRecs.push({ m: canvasCloth, kind: 'canvas' });
   }
+  // FSP-06 (owner 2026-09-25, material roles): pale sand-khaki canvas for desert / IDF soft kit — the
+  // Merkava family's "pale kit" tarps, bustle packs, shelf cloth and rolled loads had ridden the hull camo
+  // because the only cloth in the vocabulary was the OD canvas above (their author's note: "pale sand kit
+  // + strap seams instead"). Fixed tone, never repainted: real IDF kit stays khaki under any scheme. Kept
+  // under the hull's value on Sinai Grey (#6f7566) so it reads as kit, not as a lit hull face.
+  const canvasPale = track(setup(new THREE.MeshStandardMaterial({
+    color: 0x66604a, roughness: 0.97, metalness: 0.0,
+    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
+    side: THREE.DoubleSide,
+  })));
   for (const rec of paintableRecs) shared.paintable.add(rec);
   const wood = track(setup(new THREE.MeshStandardMaterial({
     color: 0x6b543a, roughness: 0.88, metalness: 0.0,
@@ -2800,6 +2810,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(glass, 'opticGlass', 'optic-glass');
   tagVehicleMaterial(barrel, 'armorPaint', 'barrel-paint');
   tagVehicleMaterial(canvasCloth, 'canvas', 'canvas');
+  tagVehicleMaterial(canvasPale, 'canvasPale', 'canvas-pale');
   tagVehicleMaterial(wood, 'wood', 'wood');
   tagVehicleMaterial(burnt, 'burnt', 'burnt');
   tagVehicleMaterial(trackL, 'trackBand', 'track-band-left');
@@ -2825,7 +2836,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
 
   return {
     hull, wheels, wheelsRecessed, rubber, detail, dark, shadow, trackLink, spareTrack, glass, barrel,
-    canvasCloth, wood, burnt,
+    canvasCloth, canvasPale, wood, burnt,
     trackL, trackR, trackTexL, trackTexR,
     trackLinkM: 0.165 * 4, // meters of track per full texture repeat (4 links)
     prepareBurnt,

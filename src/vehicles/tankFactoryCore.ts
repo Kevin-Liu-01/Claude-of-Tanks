@@ -122,6 +122,8 @@ interface TankMaterials {
   glass: THREE.MeshStandardMaterial;
   barrel: THREE.MeshStandardMaterial;
   canvasCloth: THREE.MeshStandardMaterial;
+  /** FSP-06: pale sand-khaki canvas for desert / IDF soft kit (materials.ts). */
+  canvasPale: THREE.MeshStandardMaterial;
   wood: THREE.MeshStandardMaterial;
   burnt: THREE.MeshStandardMaterial;
   trackL: THREE.MeshStandardMaterial;
@@ -1190,7 +1192,7 @@ interface AuthoredRange {
 }
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
-type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'canvasCloth'
+type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'canvasCloth' | 'canvasPale'
   | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
@@ -6922,6 +6924,10 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   hullOpenLattice: ['hullG', 'hull'], hullOpenLatticeDark: ['hullG', 'dark'],
   hullRubber: ['hullG', 'rubber'], hullWood: ['hullG', 'wood'], hullCloth: ['hullG', 'canvasCloth'],
   hullGlass: ['hullG', 'glass'],
+  // FSP-06 material roles (owner 2026-09-25): pale sand canvas for desert / IDF soft kit, and solid scheme
+  // fitting paint for small painted steel accessories (jerry cans) that a projected camouflage tile would
+  // splash at hull scale. Greeble-class like the other cloth buckets.
+  hullCanvasPale: ['hullG', 'canvasPale'], hullFittingPaint: ['hullG', 'detail'],
   turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretHatch: ['turretG', 'hull'],
   turretExternalArmor: ['turretG', 'hull'], turretEquipment: ['turretG', 'hull'],
   turretDetail: ['turretG', 'hull'], turretDark: ['turretG', 'dark'],
@@ -6935,6 +6941,7 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // the flat detail tone read as bare grey primer on every X study.
   turretOpenLattice: ['turretG', 'hull'], turretOpenLatticeDark: ['turretG', 'dark'],
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
+  turretCanvasPale: ['turretG', 'canvasPale'], turretFittingPaint: ['turretG', 'detail'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'], gunMountCloth: ['gunG', 'canvasCloth'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
@@ -7163,6 +7170,7 @@ function createNonRenderingTankMaterials(camoUvScale = CAMO_UV_REPEATS_PER_M): T
     glass: make(0x243e49, { transparent: true, opacity: 0.7 }),
     barrel: make(0x555d49),
     canvasCloth: make(0x41452f),
+    canvasPale: make(0x66604a),
     wood: make(0x5b4732),
     burnt: make(0x171713),
     trackL: make(0x2d302b),
