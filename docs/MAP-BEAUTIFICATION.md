@@ -2791,8 +2791,10 @@ chase and e-wall-300, the captures deterministic frame to frame): every program 
 error, the levers resolve (`contact+bounce+shafts+flare` / `off`), the meadows are byte-stable outside the tank's
 band (verdant chase ground region 85.8 → 85.4 luma, monsoon 31.5 → 31.5) where the first cut had combed them (85.8 →
 69.1) and speckled the desert's tufts; the sun-ahead view lifts the ground under the rays and the sky around the sun
-(verdant 65.7 → 71.0 and 153.8 → 157.8; titan 89.2 → 93.6 and 130.0 → 134.0; monsoon sky 148.2 → 150.9; desert 0.3 %
-at strength 0.03). The tank's contact band reads under the hull edge and rear plate at chase range; the urban centre
+(verdant 64.9 → 68.0 and 153.8 → 158.5; titan 89.2 → 93.9 and 130.1 → 134.5; monsoon's top band 148.1 → 148.0 with
+its sun at the frame's left edge behind the fronds, the glow left of the band; desert 0.3 % at strength 0.03). An
+earlier cut's second blur pass overwrote the mask target, so the hold-back read the blurred field and let more glow
+onto the open sky; the last blur pass now writes the light directly (three draws) and the mask stays the mask. The tank's contact band reads under the hull edge and rear plate at chase range; the urban centre
 view (sky-w, the camera against a brick block) shows a window sill floating on a lit seam in the base frame and
 casting a soft-edged dark band on the bricks in the new one. Map-view-probe A/B on eight maps × four views (verdant,
 desert, titan_gorge, fjord, monsoon, winter, mars, urban; base b9e18f308 vs the branch): the far-field views — sky-w,
