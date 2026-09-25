@@ -18,8 +18,8 @@
  */
 
 export type ReplayResult = 'victory' | 'defeat' | 'draw';
-export type ReplayPlaybackKind = 'death' | 'victory' | 'final';
-export type ReplaySelectionSource =
+type ReplayPlaybackKind = 'death' | 'victory' | 'final';
+type ReplaySelectionSource =
   | 'playerDeath' | 'playerBurnOut' | 'playerKill' | 'finalKill' | 'finalBurnOut';
 
 /** The last destruction the killcam observed (tank:destroyed), whatever the cause. */
@@ -30,7 +30,7 @@ export interface DestroyedRecord {
   killerId: string | null;
 }
 
-export interface ReplaySelectionInput<S> {
+interface ReplaySelectionInput<S> {
   result: ReplayResult;
   /** Current sim time (freshness gates). */
   timeS: number;
@@ -48,7 +48,7 @@ export interface ReplaySelectionInput<S> {
   timeOf(snap: S): number;
 }
 
-export interface ReplaySelection<S> {
+interface ReplaySelection<S> {
   snap: S;
   kind: ReplayPlaybackKind;
   /** No shell chain to fly: the x-ray of the hit that lit the fire. */

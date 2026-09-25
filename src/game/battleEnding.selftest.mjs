@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 import {
-  planBattleEnding, resolveCameraBeat, endingMilestone, createBattleEndingDirector, ENDING_BEAT_S,
+  planBattleEnding, resolveCameraBeat, createBattleEndingDirector, ENDING_BEAT_S,
 } from './battleEnding.ts';
 import { selectResultReplay } from './killcamSelection.ts';
 
@@ -154,9 +154,6 @@ for (const mode of GAME_MODE_IDS) {
   assert.deepEqual(plan.caption, { key: 'ending.lastStand', values: { wave: '7' } });
   assert.deepEqual(resolveCameraBeat(plan, false), { beat: 'wreckOrbit', durationS: 2.5 });
   assert.deepEqual(resolveCameraBeat(plan, true), { beat: 'replay', durationS: 0 });
-  assert.deepEqual(endingMilestone({ mode: 'endless_horde', reason: 'horde_overrun' }, 7), { key: 'endScreen.horde.wave', values: { wave: '7' } });
-  assert.equal(endingMilestone({ mode: 'standard', reason: 'elimination' }, 7), null, 'only the horde carries a wave milestone');
-  assert.equal(endingMilestone({ mode: 'endless_horde', reason: 'horde_overrun' }, null), null);
 }
 
 // frontline: the line's last sector — the final one when held, the active one when the assault fell
@@ -216,4 +213,4 @@ assert.deepEqual(planBattleEnding(verdict({ reason: 'something_new' }), null).ca
   assert.deepEqual(director.facts, { lastFlagTeam: null, lastZone: null, lastGoalTeam: null, lastDestroyed: null, wave: null });
 }
 
-console.log(`battleEnding.selftest: ${rows.length}-row beat matrix (modes × reasons × results × who fired), objective facts, horde milestone, frontline sectors and the beat clock pass`);
+console.log(`battleEnding.selftest: ${rows.length}-row beat matrix (modes × reasons × results × who fired), objective facts, horde last stand, frontline sectors and the beat clock pass`);

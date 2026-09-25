@@ -21,7 +21,7 @@ export interface FinalBlowDestroyed {
   cause: string | null;
 }
 
-export type FinalBlowCause = 'shot' | 'ammorack' | 'ram' | 'fire';
+type FinalBlowCause = 'shot' | 'ammorack' | 'ram' | 'fire';
 
 export interface FinalBlow {
   cause: FinalBlowCause;

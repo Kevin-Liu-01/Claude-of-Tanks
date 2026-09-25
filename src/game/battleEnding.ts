@@ -24,11 +24,11 @@
  */
 import type { ObjectiveStateView } from '../ui/minimapObjectives.ts';
 
-export type BattleEndingResult = 'victory' | 'defeat' | 'draw';
+type BattleEndingResult = 'victory' | 'defeat' | 'draw';
 export type BattleEndingBeat =
   | 'finalKill' | 'lastStand' | 'timesUp' | 'objective' | 'lineOverview' | 'wreckOrbit' | 'pullBack' | 'none';
 type CameraBeat = Exclude<BattleEndingBeat, 'finalKill' | 'lastStand'>;
-export type EndingFocusKind = 'player' | 'objective' | 'sector' | 'wreck';
+type EndingFocusKind = 'player' | 'objective' | 'sector' | 'wreck';
 type ObjectiveTeam = 'alpha' | 'bravo';
 
 export interface EndingFocus {
@@ -42,7 +42,7 @@ export interface EndingFocus {
   id: string | null;
 }
 
-export interface EndingCaption {
+interface EndingCaption {
   key: string;
   values?: Record<string, string>;
 }
@@ -62,7 +62,7 @@ export interface BattleEndingPlan {
   skippable: true;
 }
 
-export interface BattleEndingVerdict {
+interface BattleEndingVerdict {
   result: BattleEndingResult;
   reason: string | null;
   /** Game mode id (matchModes.ts); unknown ids read as Standard. */
@@ -81,7 +81,7 @@ interface DestroyedFact {
 }
 
 /** What the director remembered from the bus (mode events and destructions) before the verdict. */
-export interface EndingFacts {
+interface EndingFacts {
   lastFlagTeam: ObjectiveTeam | null;
   lastZone: { zoneId: string | null; team: ObjectiveTeam | null } | null;
   lastGoalTeam: ObjectiveTeam | null;
@@ -275,12 +275,6 @@ export function resolveCameraBeat(plan: BattleEndingPlan, replayPlayed: boolean)
   if (plan.replay && replayPlayed) return { beat: 'replay', durationS: 0 };
   const beat = plan.replay ? plan.fallback : (plan.beat as CameraBeat);
   return { beat, durationS: beat === 'none' ? 0 : plan.durationS };
-}
-
-/** The report milestone a verdict carries (Horde: the wave the last stand fell on). */
-export function endingMilestone(verdict: Pick<BattleEndingVerdict, 'mode' | 'reason'>, wave: number | null | undefined): EndingCaption | null {
-  if (verdict.mode !== 'endless_horde' || wave == null || !Number.isFinite(wave)) return null;
-  return { key: 'endScreen.horde.wave', values: { wave: String(Math.max(1, Math.floor(wave))) } };
 }
 
 export function createBattleEndingDirector(): BattleEndingDirector {

@@ -183,8 +183,8 @@ interface BrowserGameState<TLegacyEntity, TLegacyShell, TLegacySpotting> {
   mapId?: string;
   gameMode?: RuntimeValue;
   matchModeState?: RuntimeValue;
-  /** Battle endings (2026-09-25): the killcam's capture hook — every observable lethal shell_hit feeds it. */
-  killcam?: { onShellHit(event: RuntimeValue, target: RuntimeValue): void } | null;
+  /** Battle endings (2026-09-25): the killcam facade (typed loosely by main) — every observable lethal shell_hit feeds it. */
+  killcam?: RuntimeValue;
 }
 
 interface EventBus {
@@ -1180,6 +1180,12 @@ export function createBrowserBattleBridge<
     });
   }
 
+  /** battle endings (2026-09-25): the killcam's capture hook, read structurally (main types the facade loosely) */
+  function feedKillcam(hit: Record<string, RuntimeValue>, target: BridgeEntity | null): void {
+    const killcam = game.killcam as { onShellHit?: (event: RuntimeValue, target: RuntimeValue) => void } | null | undefined;
+    if (killcam && typeof killcam.onShellHit === 'function') killcam.onShellHit(hit, target);
+  }
+
   /** battle endings (2026-09-25): the Horde wave the last stand fell on, for the report milestone */
   function hordeWave(): number | null {
     const mode = game.matchModeState as { horde?: { wave?: number } | null } | null | undefined;
@@ -1208,7 +1214,7 @@ export function createBrowserBattleBridge<
       // battle endings (2026-09-25): the killcam captures the lethal chain for any pair the authority let this
       // viewer observe (its reveal rules already filtered the event), so a verdict can replay the final kill
       // whoever fired it — the same hook state.ts calls in solo play
-      game.killcam?.onShellHit(hit, entities.get(String(event.targetId || '')) ?? null);
+      feedKillcam(hit, entities.get(String(event.targetId || '')) ?? null);
       bus.emit('shell:hit', hit);
     } else if (event.type === 'shell_impact') emitShellImpact(event);
     else if (event.type === 'tank_destroyed') emitTankDestroyed(event);

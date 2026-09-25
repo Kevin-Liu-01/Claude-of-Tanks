@@ -22,7 +22,7 @@ interface EndingWindow {
   removeEventListener(type: string, listener: (event: Event) => void, options?: boolean): void;
 }
 
-export interface BattleEndingCameraDeps {
+interface BattleEndingCameraDeps {
   rig: EndingRig;
   camera: { position: THREE.Vector3 };
   getPlayerYaw(): number | null;
@@ -31,7 +31,7 @@ export interface BattleEndingCameraDeps {
   win?: EndingWindow | null;
 }
 
-export interface BattleEndingCamera {
+interface BattleEndingCamera {
   /** Start a beat; false when the plan frames nothing (the caller presents the report at once). */
   begin(plan: BattleEndingPlan, onSkip: () => void): boolean;
   /** Pose the rig for progress u in 0..1 (eased inside). */
