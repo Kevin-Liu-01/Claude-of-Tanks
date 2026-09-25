@@ -1191,5 +1191,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/props-build-profile.selftest.mjs',
     'tools/wreck-build-profile.selftest.mjs',
     'tools/wreck-paint-bench.selftest.mjs',
+    // FSP-01: real Garage, warm switches gated on main-thread blocking and
+    // first painted frame; cold switches reported only.
+    'tools/garage-switch-probe.selftest.mjs',
   ]),
 });

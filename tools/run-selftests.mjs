@@ -35,6 +35,10 @@ export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   // Heap/ArrayBuffer plateau measurements run without concurrent fleet/map
   // constructors. Preserve every GC and memory ceiling in the child.
   'server/dedicatedWorldCollisionMemory.selftest.mjs',
+  // FSP-01: a real headless Garage gates warm switches on 120 ms p95
+  // main-thread blocking and a 250 ms p95 first painted frame. Beside seven
+  // fleet builders it would measure host contention, not the switch path.
+  'tools/garage-switch-probe.selftest.mjs',
 ]);
 
 // This caches compilation, NEVER test results or module instances. Every file

@@ -109,10 +109,17 @@ export function heaviestHullsFromCensus(csvText, { count = 12, exclude = [], ava
     .slice(0, count);
 }
 
+/** Dynamic entries resolved at switch time from the live carousel (garage.getNeighborIds(1)). */
+export const NEXT_CARD = '@next';
+export const PREV_CARD = '@prev';
+export const isDynamicEntry = (id) => id === NEXT_CARD || id === PREV_CARD;
+
 /** Named sequences; `available` (the page's card ids) filters the census. */
 export function resolveProfileSequence(name, { censusText = '', available = null } = {}) {
   if (name === 'garage') return [...GARAGE_FIVE];
   if (name === 'receipt') return [...GARAGE_FIVE, ...RECEIPT_WARM_PASS, ...RECEIPT_WARM_PASS];
+  // Adjacent navigation inside the selected nation: six cards forward, six back.
+  if (name === 'walk') return [...Array(6).fill(NEXT_CARD), ...Array(6).fill(PREV_CARD)];
   if (name === 'fsp01') {
     const heaviest = heaviestHullsFromCensus(censusText, { count: 12, exclude: GARAGE_FIVE, available });
     return [...GARAGE_FIVE, ...heaviest.map((row) => row.id), ...GARAGE_FIVE];
@@ -727,8 +734,8 @@ export async function runProfile(options = {}) {
     }));
     const available = new Set(ready.cards);
     const requested = resolveProfileSequence(sequenceName, { censusText, available: ready.cards });
-    const unavailable = requested.filter((id) => !available.has(id));
-    const sequence = requested.filter((id) => available.has(id));
+    const unavailable = requested.filter((id) => !isDynamicEntry(id) && !available.has(id));
+    const sequence = requested.filter((id) => isDynamicEntry(id) || available.has(id));
     meta = {
       label, tree, serving, url, browser: await browser.version(), nativeLaunch, gpu: ready.gpu,
       viewport, tier, cpuRate, dwellMs, sequenceName, sequence, unavailable, bootMs: ready.bootMs,
@@ -738,7 +745,21 @@ export async function runProfile(options = {}) {
     };
     log(`[garage-switch-probe] ${label}: ${sequence.length} switches, trace ${meta.switchTrace}, gpu ${ready.gpu}`);
 
-    for (const id of sequence) {
+    for (const entry of sequence) {
+      const id = isDynamicEntry(entry)
+        ? await page.evaluate((token) => {
+          const neighbors = window.__DEBUG.garage.getNeighborIds(1);
+          return (token === '@next' ? neighbors[0] : neighbors[1] ?? neighbors[0]) || null;
+        }, entry)
+        : entry;
+      if (!id) {
+        rows.push({ id: entry, entry, path: null, revealMs: -1, paintedMs: -1, presentedMs: -1, maxFrameGapMs: 0,
+          frameCount: 0, longTaskCount: 0, longTaskTotalMs: 0, longTaskMaxMs: 0, longTasks: [],
+          settleLongTaskTotalMs: 0, settleLongTasks: [], programsDelta: 0, geometriesDelta: 0, texturesDelta: 0,
+          heapDeltaMB: null, stages: {}, aborted: [], pedestalCacheIds: [], newPrograms: [] });
+        log(`  ${String(rows.length).padStart(2)} ${entry}: no adjacent card in the selected nation`);
+        continue;
+      }
       const before = await page.evaluate(() => {
         const D = window.__DEBUG;
         const info = D.renderer.info;
@@ -807,7 +828,8 @@ export async function runProfile(options = {}) {
           .filter((record) => record.id === specId);
         const legacy = (window.__SWITCH_TIMINGS || []).slice(beforeCounts.timings)
           .filter((row) => row.id === specId);
-        const record = records.find((entry) => entry.path !== 'aborted') || records.at(-1) || null;
+        const record = records.find((entry) => entry.path === 'cached' || entry.path === 'procedural')
+          || records.at(-1) || null;
         const legacyRow = legacy.at(-1) || null;
         const knownPrograms = new Set(beforeCounts.programKeys || []);
         const newPrograms = info.programs.filter((program) => !knownPrograms.has(program.cacheKey))
@@ -827,7 +849,7 @@ export async function runProfile(options = {}) {
       }, id, timing.t0, timing.revealAt, timing.doneAt, before);
       const path = after.record?.path ?? after.legacyRow?.path ?? null;
       const row = {
-        id, path, revealMs: timing.revealAt >= 0 ? +(timing.revealAt - timing.t0).toFixed(1) : -1,
+        id, entry, path, revealMs: timing.revealAt >= 0 ? +(timing.revealAt - timing.t0).toFixed(1) : -1,
         inPageRevealMs: after.legacyRow?.ms ?? after.record?.revealMs ?? null,
         paintedMs: after.paintedMs, presentedMs: after.presentedMs, maxFrameGapMs: after.maxFrameGapMs,
         frameCount: after.frameCount,
