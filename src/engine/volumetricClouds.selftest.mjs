@@ -264,7 +264,7 @@ assert.deepEqual(table, {
   const delta = deriveCloudLayerPreset(skyOf('delta'));
   assert.equal(delta.shearM, 0.3 * 1500);
   const alpine = deriveCloudLayerPreset(skyOf('alpine'));
-  assert.deepEqual([alpine.windSpeed, alpine.shearM, alpine.towers, alpine.anvil, alpine.fieldMix], [4, 90, 0.3, 0, 0.75], 'alpine: slow mountain cumulus in big masses (mostly the broad field), bulging tops, no anvils');
+  assert.deepEqual([alpine.windSpeed, alpine.shearM, alpine.towers, alpine.anvil, alpine.fieldMix], [4, 90, 0.3, 0, 0.92], 'alpine: slow mountain cumulus in big masses (the broad field, few small cells), bulging tops, no anvils');
   const lenticular = deriveCloudLayerPreset({ ...skyOf('alpine'), cloudscape: { regime: 'lenticular' } });
   assert.deepEqual([lenticular.windSpeed, lenticular.shearM, lenticular.wispiness, lenticular.fieldMix], [0, 0, 0, 1], 'a lenticular cap is stationary, smooth and cut from the broad field');
 }

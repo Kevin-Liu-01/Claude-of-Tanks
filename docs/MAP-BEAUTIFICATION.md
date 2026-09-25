@@ -3087,6 +3087,32 @@ mask at history resolution) for the metrics; `.qa-dev/r71-capture.mjs` shoots ea
 measures, `r71-sheet.mjs` builds the review sheet, `r71-trace-bench.mjs` is round 68's per-slot bench with the opt-in
 query.
 
+**71b — the integrator's eye check (~6 / 10: "real progress on variety but three regimes read as artifacts").**
+Streets read as strings of beads, the front as a picket fence of leaning columns, cumulus as blobby cotton with flat
+lighting. Five fixes, each verified on a six-map smoke before the full pass: (1) the street field is continuous rolls —
+seven Gaussian ridges across the wind per tile (σ 0.2 rows, 1.7 km apart), each wandering along the wind, with an
+amplitude fading and returning over 6–12 km and a lump modulation of moderate depth riding on the roll (cumulus lumps
+on a roll, never a lattice of cells; the first build gated cells onto rows). (2) The picket fence was two things: the
+tall slab sampled the shape volume stretched 2.2 × vertically (`uVertScale` floor 0.45 → 1.0: isotropic on tall slabs),
+and cells mixed into the front's field — the front now cuts the broad field (fieldMix 0.9) into masses 2–5 km across
+with a low continuous base deck (0.2–0.36 of the slab) and towers clustered where the vigour channel peaks, a tower the
+width of a vigour lump (1.5–3 km) and its height comparable, the lean a shear of the top third only
+(`cloudColumnXZ`), the anvil fanning downwind above it. From the ground the front reads as a dark flat-based wall with
+bright cauliflower tops. (3) The cauliflower: a second shape octave at 2.7 × the frequency crinkles the mass at 90–23 m,
+and the inverted Worley cells of both octaves LIFT the column top over each cell centre (× 0.7–1.2) and drop it at the
+borders, so the outline is bulge-on-bulge while the interior stays dense — a multiplicative Worley mask on the upper
+half (the first attempt) thinned the interior and read as pancakes; the density saturates a short way in from the
+outline (`smoothstep(0.03, 0.6)`: crisp edges, no halo). (4) Lighting: the Beer–powder term's sign was inverted in 71a
+(it darkened the thin edges seen toward the sun — the silver lining — instead of the crevices of the face lit from
+behind the viewer); the isotropic multiple-scatter term was at a fifth of a white diffuser's level (0.2 → 0.7 of
+E · albedo / π at the lit skin, decaying into the mass with the diffusion law), which is what turned every cloud grey;
+the bases take the diffusion at 0.35, a base shadow of 0.35, and an ambient of 0.08 × the horizon band + 0.1 × the sky
+irradiance (the horizon band alone painted low-sun bases tan). (5) Perf: the fifth light tap is skipped under slabs
+over 2 km, the ladder stops at an optical depth of 4, and the empty-space pre-pass tests any segment up to 6 km at
+400 m jittered taps before marching (a front's clear radius and the open sky between masses cost a few fetches).
+Alpine is mountain cumulus in big masses (towering-cumulus, fieldMix 0.75 through a new `fieldMix` knob) rather than
+the smooth lens caps, urban's altostratus thinner (0.45), the fair-weather rows bigger (coverage 0.34, 820 m slabs).
+
 **Measured.** Captures on the lane tree (`.qa-dev/r71-capture.mjs`, 31 maps × sky-w / sky-s, desktop tier, seed 1337,
 `?clouds=volumetric` on both trees; before = tip d4afb619e's round-68 layer, after = this round; base = the baked decks
 on the twelve rule maps): the review sheets `$SP/r71/review/contact-sheet.png` (sky-w) and `contact-sheet-sky-s.png`

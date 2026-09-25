@@ -400,9 +400,7 @@ ${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? `if ( od * uDensity < 4.0${k >=
 // optical depth of the cloud above p toward the zenith (two base-shape taps): the underside of a thick lump
 // sees less of the sky than a thin edge does
 float cloudDepthAbove( vec3 p, Weather w ) {
-	float od = cloudDensity( p + vec3( 0.0, 45.0, 0.0 ), w, false, 0.0 ) * 45.0;
-	od += cloudDensity( p + vec3( 0.0, 130.0, 0.0 ), w, false, 0.0 ) * 85.0;
-	return od * uDensity;
+	return cloudDensity( p + vec3( 0.0, 70.0, 0.0 ), w, false, 0.0 ) * 110.0 * uDensity;
 }
 // the aerial pass's law on a layer at its distance: desaturation and a cool shift, then the scatter-in toward
 // the sky-view LUT along the ray under the same ceilings (uncapped: a bank fades into the sky it stands
@@ -445,14 +443,14 @@ void main() {
 	}
 	if ( t1 > t0 && uCoverage > 0.0 ) {
 		float span = t1 - t0;
-		// empty-space skipping: a segment up to six kilometres is tested at weather taps 400 m apart (jittered)
+		// empty-space skipping: a segment up to twelve kilometres is tested at weather taps 450 m apart (jittered)
 		// before any march; a clear column costs a few fetches instead of a hundred steps (a front's clear
-		// radius, the open sky between masses)
+		// radius, the open sky between masses); a closed deck skips the test
 		bool any = true;
-		if ( span < 6000.0 ) {
+		if ( span < 12000.0 && uCoverage < 0.7 ) {
 			any = false;
-			int taps = int( clamp( span / 400.0, 4.0, 16.0 ) );
-			for ( int k = 0; k < 16; k++ ) {
+			int taps = int( clamp( span / 450.0, 4.0, 24.0 ) );
+			for ( int k = 0; k < 24; k++ ) {
 				if ( k >= taps ) break;
 				float tk = t0 + span * ( float( k ) + jitter ) / float( taps );
 				if ( cloudCoverageAt( cloudColumnXZ( uCamPos + dir * tk ) ) > 0.0 ) { any = true; break; }
@@ -468,15 +466,18 @@ void main() {
 			// the ladder scale rotates with the frame like the start offset (a static per-texel scale never averages
 			// out of the history and read as a block pattern)
 			float lightScale = 0.75 + 0.5 * jitter;
-			float ds0 = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + 1.5 * uStratiform ) * uStepScale, ${f(CLOUD_STEP_MAX_M)} );
+			float ds0 = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + 2.5 * uStratiform ) * uStepScale, ${f(CLOUD_STEP_MAX_M)} );
 			if ( uDebug == 9.0 ) ds0 *= 0.5;
 			float t = t0 + ds0 * ( uDebug == 10.0 ? 0.5 : jitter );
 			float tAcc = 0.0, wAcc = 0.0;
 			int empty = 0;
+			float lastLight = -1.0;
+			int lit = 0;
 			for ( int i = 0; i < ${CLOUD_MARCH_STEPS}; i++ ) {
-				if ( t > t1 || T < 0.02 ) break;
-				// the stride grows with the pixel footprint at range (a far bank needs no eight-metre steps)
-				float ds = max( ds0, min( t * uPixelAngle * 1.5, ${f(CLOUD_STEP_MAX_M)} ) );
+				if ( t > t1 || T < 0.03 ) break;
+				// the stride never falls under the trace texel's footprint (four history pixels: a far bank needs
+				// no eight-metre steps — 28 m at 3 km, 83 m at 9 km)
+				float ds = max( ds0, min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
 				vec3 p = uCamPos + dir * t;
 				Weather w = cloudWeather( cloudColumnXZ( p ) );
 				float dens = w.cov > 0.0 ? cloudDensity( p, w, true, t * uPixelAngle ) : 0.0;
@@ -490,7 +491,15 @@ void main() {
 					}
 					float hN = clamp( ( p.y - uBase ) / ( uThick * max( w.top, 0.05 ) ), 0.0, 1.0 );
 					float sig = dens * uDensity;
-					float tau = ( uDebug == 3.0 ? 0.0 : cloudLightDepth( p, w, lightScale ) ) + sig * 2.0;
+					// the light march on every other lit step (its optical depth carries over one fine step: the
+					// history averages the alternation away)
+					// (none once the ray is nearly opaque — the samples behind carry little weight — and none for the
+					// scud under a base, which the deck above shades: a fixed depth of six)
+					bool scudPt = p.y < uBase;
+					if ( scudPt ) lastLight = 6.0;
+					else if ( lastLight < 0.0 || ( ( lit & 1 ) == 0 && T > 0.15 ) ) lastLight = uDebug == 3.0 ? 0.0 : cloudLightDepth( p, w, lightScale );
+					lit++;
+					float tau = lastLight + sig * 2.0;
 					// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
 					float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
 					// an overcast sheet is lit by the whole sky above it, not by one reddened low sun: its diffused
@@ -537,11 +546,11 @@ void main() {
 					empty = min( empty + 1, 4 );
 					t += ds * ( 1.0 + float( empty ) * 0.5 );
 				} else {
-					// an eroded pocket inside a mass keeps the fine lattice: a stride that grew through a tower's
-					// pockets re-entered on a coarse lattice shared by neighbouring rays and terraced its walls into
-					// stacked discs (round 71's monsoon variants: the discs vanished with the striding off)
-					empty = 0;
-					t += ds;
+					// an eroded pocket inside a mass: one and a half strides, re-entering on the fine lattice — a
+					// stride that GREW through a tower's pockets re-entered on a coarse lattice shared by neighbouring
+					// rays and terraced its walls into stacked discs (round 71's monsoon variants)
+					empty = uDebug == 8.0 ? 0 : 1;
+					t += ds * ( uDebug == 8.0 ? 1.0 : 1.5 );
 				}
 			}
 			if ( wAcc > 1e-4 ) {
