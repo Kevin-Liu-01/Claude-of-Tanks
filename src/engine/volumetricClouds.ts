@@ -227,7 +227,7 @@ float cloudDensity( vec3 p, vec3 w, bool detail, float foot ) {
 float cloudLightDepth( vec3 p, vec3 w ) {
 	float od = 0.0;
 	float prev = 0.0;
-${CLOUD_LIGHT_TAPS.map((dist, k) => `	{
+${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? 'if ( od * uDensity < 8.0 ) ' : ''}{
 		vec3 lp = p + uSunDir * ${f(dist)};
 		vec3 lw = ${k < 2 ? 'w' : 'cloudWeather( lp.xz )'};
 		od += cloudDensity( lp, lw, false, 0.0 ) * ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))};
@@ -262,7 +262,7 @@ void main() {
 		// the powder term fades toward the sun, where the forward peak lights the thin edges instead
 		float powderK = clamp( cosT * -0.5 + 0.6, 0.0, 1.0 );
 		float span = t1 - t0;
-		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( 8.0, uThick / 40.0 ), 90.0 );
+		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( 8.0, uThick / 40.0 ) * ( 1.0 + uStratiform ), 90.0 );
 		float t = t0 + ds * jitter;
 		vec3 L = vec3( 0.0 );
 		float T = 1.0;
@@ -303,9 +303,9 @@ void main() {
 				vec3 amb = mix( uAmbientBottom, uAmbientTop, max( smoothstep( 0.0, 0.9, hN ) , uStratiform * 0.75 ) ) * ( 1.0 + uStratiform * 1.2 );
 				// an overcast sheet is the sky: it is never darker than the mean sky it replaces (a low sun's
 				// physically dim ceiling would otherwise sit as a grey band under the pale winter horizon)
-				amb = mix( amb, max( amb, uSkyMean * 1.15 ), uStratiform );
+				amb = mix( amb, max( amb, uSkyMean * 1.25 ), uStratiform );
 				amb *= mix( 0.45, 1.0, 1.0 - dens * 0.5 );
-				vec3 S = ( ( uSunRadiance * sun + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
+				vec3 S = ( ( uSunRadiance * sun * ( 1.0 - 0.7 * uStratiform ) + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
 				float Tstep = exp( -sig * ds );
 				float dT = T * ( 1.0 - Tstep );
 				L += S * dT;
