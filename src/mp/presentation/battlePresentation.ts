@@ -170,6 +170,8 @@ export interface BattlePresentation extends PresentationAdapter {
   readonly roster: MatchActor[];
   /** The prediction world for MatchClient.enablePrediction (null until the viewer's spec and the map are known). */
   predictionWorld(): PredictionWorld | null;
+  /** Resolves once every roster actor announced so far has its builder, textures and visual (the session owner waits here after WELCOME). */
+  rosterReady(): Promise<void>;
   mount(): void;
   unmount(): void;
   /** A terminal network failure: the match resolves as a disconnect once. */
@@ -846,6 +848,7 @@ export function createBattlePresentation({
     applyVerdict,
     setVisibility,
     predictionWorld,
+    rosterReady: () => rosterReady,
     mount,
     unmount,
     endDisconnected,

@@ -7,3 +7,8 @@ export { MatchSession } from './matchSession.ts';
 export type { MatchSessionOptions, MatchSessionStats, SessionPhase, SessionPresentation, SessionRound } from './matchSession.ts';
 export { createHeadlessSession, scriptedControls } from './headlessSession.ts';
 export type { HeadlessSession, HeadlessSessionOptions } from './headlessSession.ts';
+export { createBrowserComposition, createControlSampler } from './browserComposition.ts';
+export type {
+  BrowserComposition, BrowserCompositionFactories, BrowserCompositionOptions, BrowserCompositionPorts, BrowserCompositionStats,
+  BrowserLaunchRequest, ControlSampler, SessionOwner,
+} from './browserComposition.ts';
