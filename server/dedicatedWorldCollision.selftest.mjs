@@ -111,7 +111,10 @@ const roadCompletionCensus = {
   orchard: [4978, 4745, 5206],
   longleaf: [6172, 5959, 6989],
   mangrove: [5323, 5168, 6543],
-  saltwind: [3735, 3539, 4149],
+  // 2026-09-25 integration of round 67: native headless recapture on the combined
+  // tree refreshes the stale Saltwind shard. Pin the current captured census
+  // directly; the old pre-rim-road count no longer describes this layout.
+  saltwind: [3689, 3490, 4136],
   // Refreshed forked roads, assembly hardstand and grounded waterworks.
   reservoir: [6519, 6395, 7298],
   // 2026-09-19 Mars (Olympus Basin): first native capture of the new orbital-station
@@ -151,7 +154,7 @@ const rimRoadRemovals = {
   orchard: 73,
   longleaf: 84,
   mangrove: 41,
-  saltwind: 74,
+  saltwind: 0, // 2026-09-25: current native census pinned directly above
   reservoir: 92,
   mars: 0
 };
