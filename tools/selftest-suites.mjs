@@ -804,6 +804,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/signalingCutover.selftest.mjs',
     'server/githubStars.selftest.mjs',
     'server/ice.selftest.mjs',
+    'server/telemetryRecord.selftest.mjs',
     'server/telemetry.selftest.mjs',
     'server/distributedRoomStore.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
