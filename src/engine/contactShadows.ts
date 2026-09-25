@@ -232,6 +232,7 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
     }
     // colour multiplier: the pixel's sun share removed where the march finds an occluder
     float cotContactShade( vec2 uv, vec3 P, float dist, float sunVis ) {
+      if ( sunVis <= 0.02 ) return 1.0; // already in cascade shadow: nothing to lose, no normal taps
       vec3 N = cotNormalAt( uv, P );
       float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( sunVis, 0.0, 1.0 );
       if ( T <= 1e-3 ) return 1.0;
