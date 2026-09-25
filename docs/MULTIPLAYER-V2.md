@@ -37,8 +37,50 @@ verified to 14 players. Its limits follow from where the authority lives, not fr
   client holds or breaks the start for all. R3 needs a start that no single client can block.
 - **No field telemetry.** Nothing reports why a friend's entry failed; every report is anecdotal.
 
-<!-- AUDIT-1: the code-level audit of the v1 stack (topology, limits, lifecycle, netcode, tests) is
-     folded in here when the audit lands. -->
+### 2.1 What the code says (audit of 2026-09-24)
+
+- **Production topology.** Only solo, private and LAN exist (`src/net/playMode.ts`); "ranked" is
+  remapped to private. Private rooms: browser host authority, WebRTC (`cot-match-v1` reliable,
+  `cot-state-v1` unreliable), TURN from `/api/ice`. Signaling is the Cloudflare Durable Object
+  (`cloudflare/signaling/src/privateRoom.ts`, cut over 2026-09-05); `api/signal.ts` now answers
+  410 `signaling_moved` and the Redis room store is dead code. The dedicated match server
+  (`server/dedicatedMatchServer.ts`: one process, many matches on an 8 ms global interval, ranked
+  HTTP only, no rooms/lobby/spectators/rematch/chat) is not deployed for players.
+- **Caps.** `MAX_PLAYERS = 14` is hardcoded independently in `src/net/protocol.ts:13`,
+  `server/roomStore.ts:330`, `server/distributedRoomStore.ts:615` and
+  `cloudflare/signaling/src/privateRoom.ts:308`; team size 7 in `src/net/lobby.ts`;
+  `MAX_ENTITIES = 32` in the codec — 14v14 has no headroom for bots.
+- **The bandwidth wall.** `snapshotWireCodec.ts` is JSON text, deltas are whole rows (any changed
+  entity ships all 30 columns), entity ids are 32-hex UUIDs, and `destroyedObstacleIndices` is
+  re-sent in full every snapshot: ≈ 200 B per row, ≈ 6.6 KB per snapshot late in a match,
+  × 20 Hz × 27 peers ≈ 28 Mbit/s upstream from one browser tab for 28 players (4–8 Mbit/s even at
+  today's 14). `simulation.snapshot()` is re-captured per viewer every 50 ms and 80 full
+  snapshots are retained per peer.
+- **Netcode.** Prediction/reconciliation (`localTankPrediction.ts`, 250 ms replay horizon,
+  bounded correction envelopes, hard snap above 7 m), an adaptive jitter buffer (85 → 220 ms on
+  private rooms), and RTT-driven clock slew exist and are receipted — keep their design. There is
+  **no lag compensation**: hits resolve in the host's present tick; a shooter's ping is paid as
+  aim lead.
+- **Rooms.** A host Leave or lease expiry deletes the room and broadcasts `host_left`; there is
+  no migration (`lobby.ts` reassigns a lobby `hostId`, but the authority object lives in the
+  departed tab). Seats are durable 24 h in the DO with a 90 s disconnect grace and 180 s idle
+  lease; reconnect goes ICE-restart → signaling epoch rotation → new peer connection, 60 s window.
+- **Failures on record.** Thirteen normalized room failure codes (`src/net/roomFailure.ts`);
+  three scripted guest scenarios (cold entry, host-left, host-stall); one production outage
+  (two players could not create a room — the Redis command quota, which drove the Cloudflare
+  cutover). TURN failure degrades silently to "direct-only", which cannot traverse symmetric NAT.
+  No Safari/iOS-specific handling anywhere in `src/net`.
+- **Telemetry.** `@vercel/analytics` page views only, injected 3.8 s after boot; no `onerror`,
+  no beacon, no custom events. A friend's failed join is rendered on their screen and transmitted
+  nowhere.
+- **Tests.** 59 receipts under `src/net`, 21 under `server`; soaks at 2, 4 and 14 pages; the
+  "28 participants" figure in the docs is two separate 14-player runs. Nothing has ever exercised
+  more than 14 seats in one room.
+- **Keep:** `src/sim/authoritativeMatch.ts` (the renderer-free authority), the controls-only
+  client contract and `protocol.ts` validation style, the per-viewer visibility filter as a
+  security primitive, the prediction and jitter-buffer designs, `lobby.ts` as a pure policy model.
+  **Replace:** the authority location, the codec, the per-viewer re-capture and snapshot history,
+  the four seat caps, the host-tied room. **Add:** server-side rewind, client error reporting.
 
 ## 3. Target architecture
 
