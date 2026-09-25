@@ -56,7 +56,11 @@ export const CLOUD_SHAPE_TILE_STRATUS_M = 4200;
 export const CLOUD_DETAIL_TILE_M = 300;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
 export const CLOUD_MARCH_STEPS = 96;
-export const CLOUD_MARCH_MAX_M = 14000;
+/** The farthest slant distance marched (m): a bank beyond it has melted into the sky (the far scatter ramp). */
+export const CLOUD_MARCH_MAX_M = 9000;
+/** Step bounds (m): the floor scales with the slab, the far stride with the distance. */
+export const CLOUD_STEP_MIN_M = 8;
+export const CLOUD_STEP_MAX_M = 120;
 export const CLOUD_DOME_RADIUS_M = 3400;
 /** Camera-cut thresholds: a jump (m), a turn (rad) or a zoom (relative tangent) that invalidates the history. */
 export const CLOUD_CUT_JUMP_M = 6;
@@ -78,7 +82,7 @@ export const CLOUD_AERIAL = Object.freeze({
   farStartM: 3000, farEndM: 12000, farScatterCeiling: 0.92,
 });
 /** Light march toward the sun: sample distances (m) from the point, on the base shape (no detail erosion). */
-export const CLOUD_LIGHT_TAPS = Object.freeze([14, 34, 70, 140, 280, 560] as const);
+export const CLOUD_LIGHT_TAPS = Object.freeze([14, 34, 70, 150, 320] as const);
 
 const f = (x: number): string => { const s = String(x); return s.includes('.') || s.includes('e') ? s : `${s}.0`; };
 
@@ -210,7 +214,7 @@ float cloudDensity( vec3 p, vec3 w, bool detail, float foot ) {
 		vec3 dp = ( p + uNoiseShift * 1.31 ) * vec3( 1.0, uVertScale * 1.07, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
 		float hf = dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2;
-		float fineW = 1.0 - smoothstep( 8.0, 30.0, foot );
+		float fineW = 1.0 - smoothstep( 6.0, 12.0, foot );
 		if ( fineW > 0.0 ) {
 			vec3 dn2 = texture( tDetail, dp * 3.7 + 0.37 ).rgb;
 			hf = mix( hf, hf * 0.55 + ( dn2.r * 0.5 + dn2.g * 0.3 + dn2.b * 0.2 ) * 0.45, fineW );
@@ -262,7 +266,7 @@ void main() {
 		// the powder term fades toward the sun, where the forward peak lights the thin edges instead
 		float powderK = clamp( cosT * -0.5 + 0.6, 0.0, 1.0 );
 		float span = t1 - t0;
-		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( 8.0, uThick / 40.0 ) * ( 1.0 + uStratiform ), 90.0 );
+		float ds = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + uStratiform ), ${f(CLOUD_STEP_MAX_M)} );
 		float t = t0 + ds * jitter;
 		vec3 L = vec3( 0.0 );
 		float T = 1.0;
@@ -581,6 +585,13 @@ export class VolumetricCloudLayer {
   cuts = 0;
   /** QA: hold the trace and resolve (the composite keeps showing the last history). */
   frozen = false;
+  /** QA: bracket each frame's trace and resolve with a GPU timer query (EXT_disjoint_timer_query_webgl2). */
+  gpuTiming = false;
+  /** QA: the last completed timer's result (ms), −1 until one lands. */
+  lastTraceGpuMs = -1;
+  private timerExt: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null | undefined;
+  private timerQuery: WebGLQuery | null = null;
+  private timerOpen = false;
 
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, atmosphere: AtmospherePublishedState, knee: THREE.Vector3) {
     this.renderer = renderer;
@@ -969,6 +980,7 @@ export class VolumetricCloudLayer {
     (r.uPrevFwd.value as THREE.Vector3).copy(P.fwd);
     (r.uPrevTan.value as THREE.Vector2).copy(P.tan);
 
+    this.beginTimer();
     if (!this.frozen) {
       if (this.rebuild < 16) {
         for (let k = 0; k < CLOUD_REBUILD_SLOTS && this.rebuild < 16; k++) {
@@ -992,10 +1004,40 @@ export class VolumetricCloudLayer {
         this.traceSlot(this.frame % 16);
       }
     }
+    this.endTimer();
     this.frame++;
     this.framesShown++;
     this.dome.visible = true;
     this.updateGobos(preset);
+  }
+
+  /** One timer query in flight: a pending one is read (or dropped when disjoint) before a new one opens. */
+  private beginTimer(): void {
+    if (!this.gpuTiming) return;
+    const gl = this.renderer.getContext() as WebGL2RenderingContext;
+    if (this.timerExt === undefined) this.timerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2') as typeof this.timerExt;
+    const ext = this.timerExt;
+    if (!ext) return;
+    if (this.timerQuery) {
+      const query = this.timerQuery;
+      const disjoint = gl.getParameter(ext.GPU_DISJOINT_EXT) as boolean;
+      const available = gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE) as boolean;
+      if (!available && !disjoint) return;
+      if (available && !disjoint) this.lastTraceGpuMs = (gl.getQueryParameter(query, gl.QUERY_RESULT) as number) / 1e6;
+      gl.deleteQuery(query);
+      this.timerQuery = null;
+    }
+    const query = gl.createQuery();
+    if (!query) return;
+    gl.beginQuery(ext.TIME_ELAPSED_EXT, query);
+    this.timerQuery = query;
+    this.timerOpen = true;
+  }
+
+  private endTimer(): void {
+    if (!this.timerOpen || !this.timerExt) return;
+    (this.renderer.getContext() as WebGL2RenderingContext).endQuery(this.timerExt.TIME_ELAPSED_EXT);
+    this.timerOpen = false;
   }
 
   /** Compile the three programs under a loading cover (a 1 × 1 trace and resolve; the dome compiles with the scene). */
