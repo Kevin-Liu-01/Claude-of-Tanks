@@ -253,7 +253,10 @@ Weather cloudWeather( vec2 pxz ) {
 	Weather o;
 	// the field is equalised: the map's coverage admits exactly that fraction; inside, the local coverage runs
 	// 0..1 (skewed high) and carves the base shape into masses — a region is never one solid slab
-	o.cov = pow( clamp( ( field - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), mix( 0.7, 0.4, uStratiform ) );
+	// (a sheet reaches its full strength within a third of the admitted range: dense across its footprint, thin only
+	// at the breaks — ramped across the whole range a 97 % ceiling was translucent over most of the tile)
+	float ramp = max( uCoverage * mix( 1.0, 0.35, smoothstep( 0.5, 0.85, uStratiform ) ), 0.02 );
+	o.cov = pow( clamp( ( field - ( 1.0 - uCoverage ) ) / ramp, 0.0, 1.0 ), mix( 0.7, 0.4, uStratiform ) );
 	// a front keeps the sky over the camera open: its towers stand off toward the horizon
 	if ( uClearRadius > 0.0 ) o.cov *= smoothstep( uClearRadius * 0.6, uClearRadius * 1.4, length( pxz - uCamPos.xz ) );
 	// the column's type from the vigour channel inside the map's range: 0 stratus, 0.5 cumulus, 1 cumulonimbus
