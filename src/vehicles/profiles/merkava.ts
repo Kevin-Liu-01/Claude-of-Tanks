@@ -18,7 +18,7 @@
 import { merkavaDishedFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { FITTINGS, KIT, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
+import { FITTINGS, KIT, MUDGUARDS, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -435,6 +435,40 @@ function requireTankBuilderPort(value: object): TankBuilderPort {
 // Loft machinery: bands of 8-corner slabs that follow measured polylines.
 // Stations run FRONT (+z) to REAR; each entry {z, yT, yB, wT, wB}.
 // ---------------------------------------------------------------------------
+// FSP-05 (2026-09-25): a loft slab whose rings twist or collapse (the nose
+// clearance wedges where the station top sits below the track-clear floor, the
+// rear undercut wedge whose lifted ring lands behind the door plane) is not a
+// hexahedron orientedSlab can re-order — some faces stay inward whichever ring
+// order is chosen, and the sealed check read into the Mk.1B/2B/2D/3C/4B bow
+// shoulders and the 4B stern. closedSlab keeps orientedSlab's byte-identical
+// result for a proper ring (all six faces outward, or all six inward) and hands
+// a mixed ring to the convex hull of the same eight corners, which is closed and
+// outward by construction and adds no extreme point to any silhouette.
+function closedSlab(
+  ...points: readonly (readonly number[])[]
+): THREE.BufferGeometry {
+  const [b0, b1, b2, b3, t0, t1, t2, t3] = points;
+  const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
+  const cen = [0, 1, 2].map((k) => c8.reduce((sum, point) => sum + point[k], 0) / 8);
+  const sub = (a: readonly number[], b: readonly number[]): Vec3Tuple =>
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple =>
+    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a: Vec3Tuple, b: Vec3Tuple): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  let outward = 0;
+  let inward = 0;
+  for (const f of [[b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
+    [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0]]) {
+    const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
+    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
+    const side = dot(n, sub(fc, cen));
+    if (side > 1e-9) outward++;
+    else if (side < -1e-9) inward++;
+  }
+  if (outward === 6 || inward === 6) return orientedSlab(...points);
+  return convexSlab(...points);
+}
+
 function addFullLoftSlab(
   P: TankBuilderPort,
   bucket: BucketName,
@@ -443,7 +477,7 @@ function addFullLoftSlab(
 ): void {
   const ax = a.x ?? 0;
   const bx = b.x ?? 0;
-  P.add(bucket, orientedSlab(
+  P.add(bucket, closedSlab(
     [ax - a.wB, a.yB, a.z], [ax + a.wB, a.yB, a.z],
     [bx + b.wB, b.yB, b.z], [bx - b.wB, b.yB, b.z],
     [ax - a.wT, a.yT, a.z], [ax + a.wT, a.yT, a.z],
@@ -461,7 +495,7 @@ function addClearanceCenterSlab(
 ): void {
   const ax = a.x ?? 0;
   const bx = b.x ?? 0;
-  P.add(bucket, orientedSlab(
+  P.add(bucket, closedSlab(
     [ax - aHalfWidth, a.yB, a.z], [ax + aHalfWidth, a.yB, a.z],
     [bx + bHalfWidth, b.yB, b.z], [bx - bHalfWidth, b.yB, b.z],
     [ax - aHalfWidth, a.yT, a.z], [ax + aHalfWidth, a.yT, a.z],
@@ -483,20 +517,25 @@ function addClearanceSideSlab(
   const bx = b.x ?? 0;
   const aFloorY = Math.max(a.yB, floorY);
   const bFloorY = Math.max(b.yB, floorY);
+  // FSP-05 (2026-09-25): where a nose station's top sits below the lifted
+  // track-clear floor the outboard band has no height; clamping the top to the
+  // floor lets the wedge taper to its front edge instead of folding inside-out.
+  const aTopY = Math.max(a.yT, aFloorY);
+  const bTopY = Math.max(b.yT, bFloorY);
   const points: Vec3Tuple[] = side > 0
     ? [
       [ax + aHalfWidth, aFloorY, a.z], [ax + a.wB, aFloorY, a.z],
       [bx + b.wB, bFloorY, b.z], [bx + bHalfWidth, bFloorY, b.z],
-      [ax + aHalfWidth, a.yT, a.z], [ax + a.wT, a.yT, a.z],
-      [bx + b.wT, b.yT, b.z], [bx + bHalfWidth, b.yT, b.z],
+      [ax + aHalfWidth, aTopY, a.z], [ax + a.wT, aTopY, a.z],
+      [bx + b.wT, bTopY, b.z], [bx + bHalfWidth, bTopY, b.z],
     ]
     : [
       [ax - a.wB, aFloorY, a.z], [ax - aHalfWidth, aFloorY, a.z],
       [bx - bHalfWidth, bFloorY, b.z], [bx - b.wB, bFloorY, b.z],
-      [ax - a.wT, a.yT, a.z], [ax - aHalfWidth, a.yT, a.z],
-      [bx - bHalfWidth, b.yT, b.z], [bx - b.wT, b.yT, b.z],
+      [ax - a.wT, aTopY, a.z], [ax - aHalfWidth, aTopY, a.z],
+      [bx - bHalfWidth, bTopY, b.z], [bx - b.wT, bTopY, b.z],
     ];
-  P.add(bucket, orientedSlab(...points));
+  P.add(bucket, closedSlab(...points));
 }
 
 function loftBand(
@@ -741,7 +780,11 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   const tail = c.body[c.body.length - 1];
   const wedgeZ = c.tailNotch ? c.body[c.body.length - 2].z : tail.z + 0.05;
   const merkavaChassisHullStage4 = (): void => {
-    P.add('hull', slab(
+    // FSP-05 (2026-09-25): the lifted ring's front edge (tailLowZ - 0.2) lands
+    // at or behind the door plane on the 4B/2D data, so this wedge's side faces
+    // were bow-ties and its stern face shipped inside-out (Mk.4B rear view 116
+    // inverted px). closedSlab hands the twisted ring to the convex hull.
+    P.add('hull', closedSlab(
       [-kihw, k.bellyY, k.tailLowZ], [kihw, k.bellyY, k.tailLowZ],
       [kihw * 0.96, tail.yB, wedgeZ], [-kihw * 0.96, tail.yB, wedgeZ],
       [-kihw, k.bellyY + 0.3, k.tailLowZ - 0.2], [kihw, k.bellyY + 0.3, k.tailLowZ - 0.2],
