@@ -33,7 +33,7 @@ assert.deepEqual([CLOUD_SHAPE_SIZE, CLOUD_DETAIL_SIZE, CLOUD_WEATHER_SIZE, CLOUD
 assert.equal(digest(bakeCloudShapeVolume(8)), '1f3ecfdabf968b313ef1bbf4583ed7d0cd8e716204434c14226ad0e63fdeec76', 'shape 8³ bytes');
 assert.equal(digest(bakeCloudDetailVolume(8)), 'f09eaa66c1e1f8261d2f6c5068ce8d6e648d8ca1a8fbd1f7f897acd72f82bfba', 'detail 8³ bytes');
 assert.equal(digest(bakeCloudWeatherMap(16)), '0a8b9231c3ac86b8b34f877e3a8a42559b7787044223ac77dc83b3a9a10462a3', 'weather 16² bytes (round 71)');
-assert.equal(digest(bakeCloudWeatherStreets(16)), 'dae77e96cf2b06545aa622893fe0e59a51bbe7b8d1fb8b58ef582abf51f9dc86', 'streets 16² bytes (round 71)');
+assert.equal(digest(bakeCloudWeatherStreets(16)), 'afca149cc1686b5baacb18d6a766e0bde36b54957a103d77556e00b93b945581', 'streets 16² bytes (round 71b: continuous rolls)');
 assert.equal(digest(bakeCloudCurlVolume(8)), 'f8b276f0ddf5aa7cad6242419cc0d32e5e5026e9a0d09eb045a51dabc62b882f', 'curl 8³ bytes (round 71)');
 assert.equal(digest(bakeCloudBlueNoise(8)), 'a9c6e9a2f163c54d3016ed87a083691079639edec3e9385ad3fb8f74be5481a3', 'blue 8² bytes (round 71)');
 const shape = bakeCloudShapeVolume();
@@ -51,7 +51,7 @@ assert.equal(blue.length, 32 * 32 * 4);
 assert.equal(digest(shape), 'ed892103446410c7b4a52d45b06f9bbcf3d812774eb6f94233c0063edc46ce49', 'shape 64³ bytes (2026-09-24, unchanged by round 71)');
 assert.equal(digest(detail), 'e215d7c534e2946014ce0e1cffdf4a3459951b06bbd134049fc98347622804a8', 'detail 32³ bytes (2026-09-24, unchanged by round 71)');
 assert.equal(digest(weather), 'adf01163030197213cbff2f7e8b01af28c136c2e8720a922ccd11a8e434b4aed', 'weather 256² bytes (2026-09-25: the multi-scale cumuliform field, the vigour channel, the stratiform field)');
-assert.equal(digest(streets), 'b4cf9b5881065d350a2f2c814da1f1ac728a3a1ee74c3f077d51bcd395253385', 'streets 256² bytes (2026-09-25: streets, the anvil field, cirrus streaks and fibres)');
+assert.equal(digest(streets), '27e6bc2abdb31893e6b2c94cfeae0719f8b7e092f29786572494def387a810b0', 'streets 256² bytes (2026-09-25, 71b: continuous rolls with lumps riding on them, the anvil field, cirrus streaks and fibres)');
 assert.equal(digest(curl), '2e0be330c6f0e076e5e237ad40721bb2f312c2d5be5f5413dc4d57d7578c763c', 'curl 32³ bytes (2026-09-25)');
 assert.equal(digest(blue), '5aba12bc64a97cb08a62c3106374d2a9f451d31580767d2fc97e0e3fd13907cc', 'blue 32² bytes (2026-09-25, void-and-cluster)');
 assert.equal(digest(bakeCloudShapeVolume(64, CLOUD_NOISE_SEED)), digest(shape), 'the default seed is the shipped seed');
@@ -209,17 +209,17 @@ assert.deepEqual(table, {
   verdant: { regime: 'fair-weather-cumulus', coverage: 0.3, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25 },
   desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15 },
   winter: { regime: 'stratocumulus-deck', coverage: 0.86, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6 },
-  urban: { regime: 'hazy-altostratus', coverage: 0.6, baseM: 2800, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.35, farBand: 0.35 },
+  urban: { regime: 'hazy-altostratus', coverage: 0.45, baseM: 2800, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.35, farBand: 0.35 },
   coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65 },
   autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
   steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35 },
   railyard: { regime: 'hazy-altostratus', coverage: 0.78, baseM: 2200, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
   frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35 },
   fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6 },
-  delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
+  delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3 },
   badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15 },
-  monsoon: { regime: 'cumulonimbus-front', coverage: 0.34, baseM: 1000, thicknessM: 3200, shadow: true, streets: 0.15, cirrus: 0.25, farBand: 0.4 },
-  alpine: { regime: 'lenticular', coverage: 0.16, baseM: 2400, thicknessM: 450, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5 },
+  monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4 },
+  alpine: { regime: 'towering-cumulus', coverage: 0.3, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5 },
   caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15 },
   foundry: { regime: 'hazy-altostratus', coverage: 0.72, baseM: 2600, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 720, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
@@ -233,7 +233,7 @@ assert.deepEqual(table, {
   whiteout: { regime: 'low-stratus', coverage: 0.97, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5 },
   orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25 },
   longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25 },
-  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.2, cirrus: 0.1, farBand: 0.3 },
+  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3 },
   saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55 },
   reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 720, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
   mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0 },
@@ -251,7 +251,7 @@ assert.deepEqual(table, {
   // the monsoon front keeps the sky over the camera open (round 68's ruling) with scud and anvils; the
   // white-out ceiling is a sheet at its authored altitude; the winter deck is a lumpy stratocumulus
   const monsoon = deriveCloudLayerPreset(skyOf('monsoon'));
-  assert.deepEqual([monsoon.clearRadiusM, monsoon.anvil, monsoon.scud > 0, monsoon.towers, monsoon.typeRange], [2500, 1, true, 1, [0.6, 1]]);
+  assert.deepEqual([monsoon.clearRadiusM, monsoon.anvil, monsoon.scud > 0, monsoon.towers, monsoon.typeRange, monsoon.fieldMix], [2500, 1, true, 1, [0.65, 1], 0.9], 'the front: wide masses of the broad field, clustered towers, anvils, scud, the sky over the camera open');
   const whiteout = deriveCloudLayerPreset(skyOf('whiteout'));
   assert.ok(whiteout.stratiform >= CLOUD_LAYER_RULES.sheetStratiform && whiteout.baseM === 300 && whiteout.fieldMix >= 0.8 && whiteout.scud === 0, 'whiteout: a closed ceiling, no rags at the camera');
   const winter = deriveCloudLayerPreset(skyOf('winter'));
@@ -262,9 +262,11 @@ assert.deepEqual(table, {
   assert.equal(+(coastal.cirrusAngleRad - coastal.windDirRad).toFixed(5), +CLOUD_LAYER_RULES.cirrusVeerRad.toFixed(5), 'the cirrus veers off the wind by the rule');
   // the towering regimes lean downwind by a share of their thickness; a lenticular cap is stationary and smooth
   const delta = deriveCloudLayerPreset(skyOf('delta'));
-  assert.equal(delta.shearM, 0.25 * 1500);
+  assert.equal(delta.shearM, 0.3 * 1500);
   const alpine = deriveCloudLayerPreset(skyOf('alpine'));
-  assert.deepEqual([alpine.windSpeed, alpine.shearM, alpine.wispiness, alpine.fieldMix], [0, 0, 0, 1], 'a lenticular cap is stationary, smooth and cut from the broad field');
+  assert.deepEqual([alpine.windSpeed, alpine.shearM, alpine.towers, alpine.anvil], [4, 90, 0.3, 0], 'alpine: slow mountain cumulus with bulging tops, no anvils');
+  const lenticular = deriveCloudLayerPreset({ ...skyOf('alpine'), cloudscape: { regime: 'lenticular' } });
+  assert.deepEqual([lenticular.windSpeed, lenticular.shearM, lenticular.wispiness, lenticular.fieldMix], [0, 0, 0, 1], 'a lenticular cap is stationary, smooth and cut from the broad field');
 }
 // the shadow policy: a night sky (the runtime's night preset dims the dome to .08) casts none; an authored override wins;
 // a map without a cloudscape (the Garage's copies) keeps the round-68 derivation

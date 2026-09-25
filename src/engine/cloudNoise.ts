@@ -238,18 +238,25 @@ export function bakeCloudDetailVolume(size = CLOUD_DETAIL_SIZE, seed = CLOUD_NOI
 }
 
 /**
- * Tileable street rows: a periodic band across y (`rows` per tile) whose crests wander along x by a
- * low-frequency gradient noise, so the rows read as cloud streets — lines of cumulus along the wind, spaced
- * by the boundary layer's roll circulation — rather than a ruled grid. 1 on a crest, 0 between.
+ * Tileable street rolls in the wind frame: `rows` Gaussian ridges across y per tile (the boundary layer's roll
+ * circulation), each wandering along x by a low-frequency noise (never a ruled grid), with a slowly varying
+ * amplitude along the roll (one to two cycles per tile: a roll fades and reappears over 6–12 km) and a hashed
+ * strength per row; 1 on a crest, 0 between. Round 71b: a roll is continuous along the wind — the first build
+ * gated cumulus cells onto the rows and read as strings of beads.
  */
-function streetRows(N: number, rows: number, seed: number, out: Float32Array): void {
+function streetRolls(N: number, rows: number, seed: number, out: Float32Array): void {
   const wobble = new Float32Array(N * N);
   perlin2(N, 2, seed, wobble, 0.55, 4); perlin2(N, 4, seed + 1, wobble, 0.25, 8);
+  const amp = new Float32Array(N * N);
+  perlin2(N, 2, seed + 2, amp, 0.6, 3); perlin2(N, 4, seed + 3, amp, 0.3, 6);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const i = y * N + x;
-    const v = (y + 0.5) / N * rows + wobble[i] * 0.9;
-    const c = 0.5 + 0.5 * Math.cos(v * 6.283185307179586);
-    out[i] = c * c;
+    const v = (y + 0.5) / N * rows + wobble[i] * 0.8;
+    const row = Math.round(v);
+    const d = v - row;
+    const strength = 0.7 + 0.3 * hash3(((row % rows) + rows) % rows, 0, 7, seed + 4);
+    const ridge = Math.exp(-(d * d) / (2 * 0.2 * 0.2));
+    out[i] = ridge * strength * clamp01(0.55 + amp[i] * 0.9);
   }
 }
 
@@ -308,8 +315,9 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
 
 /**
  * The companion weather field in the WIND FRAME (the layer rotates its lookup so x runs along the wind):
- *   R  cumuliform coverage in cloud streets — cells along five wandering rows per tile (2.4 km apart on 12 km),
- *      the rows themselves a base where the gate is deep, equalised
+ *   R  cumuliform coverage in cloud streets — seven continuous rolls per tile (1.7 km apart on 12 km) along the
+ *      wind, their amplitude fading and returning over 6–12 km, a lump modulation of moderate depth riding on
+ *      them (cumulus lumps on a roll, never a lattice of separate cells), equalised
  *   G  the anvil / precipitation field — a broad, stretched field (equalised): its top share marks where a
  *      cumulonimbus spreads an anvil
  *   B  cirrus streaks — gradient fbm stretched 6:1 along x (equalised, so a cirrus coverage c admits c)
@@ -317,14 +325,11 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
  */
 export function bakeCloudWeatherStreets(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
   const N = size, count = N * N;
-  const meso = new Float32Array(count);
-  perlin2(N, 3, seed + 131, meso, 0.55); perlin2(N, 6, seed + 132, meso, 0.28); perlin2(N, 12, seed + 133, meso, 0.14);
-  const rows = new Float32Array(count);
-  streetRows(N, 5, seed + 141, rows);
-  const gate = new Float32Array(count);
-  for (let i = 0; i < count; i++) gate[i] = clamp01(rows[i] * 0.62 + (meso[i] * 0.8 + 0.5) * 0.55 - 0.18);
-  const cells = new Float32Array(count);
-  cellField2(N, 24, seed + 151, gate, 0.0, cells);
+  const rolls = new Float32Array(count);
+  streetRolls(N, 7, seed + 141, rolls);
+  // the lumps along a roll: 750 m and 375 m along the wind, a little shorter across
+  const lumps = new Float32Array(count);
+  perlin2(N, 16, seed + 151, lumps, 0.6, 24); perlin2(N, 32, seed + 152, lumps, 0.4, 48);
   const fine = new Float32Array(count);
   perlin2(N, 24, seed + 161, fine, 0.6); perlin2(N, 48, seed + 162, fine, 0.4);
   const anvil = new Float32Array(count);
@@ -334,7 +339,10 @@ export function bakeCloudWeatherStreets(size = CLOUD_WEATHER_SIZE, seed = CLOUD_
   const fibres = new Float32Array(count);
   perlin2(N, 6, seed + 191, fibres, 0.6, 96); perlin2(N, 12, seed + 192, fibres, 0.4, 160);
   const streets = new Float32Array(count);
-  for (let i = 0; i < count; i++) streets[i] = cells[i] * 0.62 + rows[i] * clamp01(meso[i] * 0.8 + 0.5) * 0.3 + fine[i] * 0.08;
+  for (let i = 0; i < count; i++) {
+    const modulation = 1 - 0.45 * clamp01(0.5 - lumps[i] * 0.9);
+    streets[i] = rolls[i] * modulation + fine[i] * 0.04;
+  }
   const eqStreets = equalise(streets), eqAnvil = equalise(anvil), eqStreaks = equalise(streaks);
   const out = new Uint8Array(count * 4);
   for (let i = 0; i < count; i++) {
