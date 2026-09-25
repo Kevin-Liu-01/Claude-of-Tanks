@@ -14,9 +14,31 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.1323907,
+          -1.0236001,
+          0.50075,
+          -1.222905
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "merkava1b",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0049313
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.1337897,
           0.3435445,
-          -0.1613269
+          -0.1441566
         ],
         "quaternion": [
           -0.1193129,
@@ -29,28 +51,6 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": null
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.25,
-        "pos": [
-          -1.0236001,
-          0.442125,
-          -1.0501627
-        ],
-        "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "merkava1b",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
         "maximumSurfaceErrorM": null
       }
     ]
@@ -259,28 +259,6 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          1.1807999,
-          0.39072,
-          -2.2579873
-        ],
-        "quaternion": [
-          0,
-          0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "merkava4b",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.24,
-        "pos": [
           1.7025481,
           0.3380616,
           -1.8754328
@@ -297,6 +275,28 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilityClearSamples": 8,
         "visibilityRatio": 0.8888889,
         "maximumSurfaceErrorM": 0.1868234
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          1.6849731,
+          0.5067816,
+          -2.148686
+        ],
+        "quaternion": [
+          -0.0366796,
+          0.7061548,
+          0.0366796,
+          0.7061548
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "merkava4b",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": null
       }
     ]
   }
