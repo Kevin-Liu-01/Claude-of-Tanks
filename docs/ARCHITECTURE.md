@@ -479,6 +479,13 @@ fog colour, the hemisphere light's hue and the post aerial pass's scatter-in tar
 passes only when the sun or a map's parameters change, plus an 8 × 1 summary readback; `skyPresetToAtmosphere` maps
 every map's authored sky preset onto the model, the Preetham dome remains the mobile tier's path and the fallback,
 and the terrain material never samples a LUT (it holds its sixteen texture units).
+Light effects (round 69, 2026-09-24): on the desktop tier `engine/postLightFxPolicy.ts` resolves four levers per
+preset (`?fx=off` / `?fx=names` for QA) — screen-space contact shadows marched inside the aerial pass against the
+resolved depth and blended into the CSM visibility the opaque lit materials write into the scene target's alpha
+(`engine/contactShadows.ts`), an analytic energy-conserved ground bounce added to the lit materials' indirect diffuse
+through the CSM shader patch (`engine/groundBounce.ts`), and quarter-resolution sun shafts and a lens flare
+(`engine/sunShafts.ts`, `engine/lensFlare.ts`) written into one light target the grade adds before its tonemap; the
+pass order above is unchanged and no full-resolution pass was added.
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column

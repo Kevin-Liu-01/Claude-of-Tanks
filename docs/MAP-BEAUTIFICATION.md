@@ -2710,6 +2710,80 @@ feedback primes once like the ripple field (a GPU-residency suspension would res
 targets hold); the oasis' network at its 0.9 knob is the strongest of the fleet and wants the owner's eye; the mobile
 tier keeps the round-47 sheet. The reference's breakers (a plunging lip as a ribbon mesh, spray particles, an Eulerian
 shore simulation) are not ported: the round's break is the crest's own whitewater and run-up on the sheet.
+### Round 69 — 2026-09-24: contact shadows, ground bounce, sun shafts, lens flare
+
+The second post/lighting round off the tidewater reference (round 65 gave every battlefield its physical sky): the
+four light effects a modern renderer layers on a cascaded-shadow, forward-lit frame, each written first-party from
+its paper with the reference read for structure only — no shader text, no asset entered the tree. Each runs behind
+its own lever on the desktop presets (quality.ts `contactShadows` / `groundBounce` / `sunShafts` / `lensFlare` on
+Ultra, High and Medium; Low and the phones carry none), resolved with the device tier and the page query by
+`engine/postLightFxPolicy.ts`: `?fx=off` boots the frame exactly as before (the pinned captures), `?fx=contact,shafts`
+keeps only the named effects, `post.setLightFx({...})` overrides at runtime for A/B probes, and the canvas publishes
+the resolved set as `dataset.lightFx`.
+
+**Contact shadows (`engine/contactShadows.ts`, inside the aerial pass).** The cascades ground a hull to within their
+texel and receiver bias and the five-tap PCF opens a penumbra across that band, so a lit seam survives at every
+contact line — track links, road wheels, wall bases, crates — and the object floats a little. Bavoil / Sainz's
+screen-space march closes it: from each visible point a twelve-rung march toward the sun (quadratic spacing, dense
+at the contact; 0.55 m at 4 m growing to 1.4 m at 40 m; per-pixel interleaved-gradient jitter; fading 65 → 90 m) tests
+the resolved scene depth, and a sample behind the depth surface by more than a bias and less than a growing thickness
+is an occluder. It runs inside the aerial pass — the one full-resolution pass that already reconstructs every pixel's
+world position from depth — so no pass was added. Two things make it a shadow-term change rather than a darkening on
+top: the lit materials now write their CSM sun visibility (`cotSunVis`, captured since the ambient shadow dim) into the
+opaque scene target's alpha (`lighting.ts` patches `opaque_fragment` under Three's own `OPAQUE` define; the canvas is
+`alpha: false`, so the channel was free; the aerial pass consumes it and restores one), and the pass reconstructs the
+normal from depth (best pair of the four neighbours), so an occluded pixel loses exactly its sun share
+`T / (T + A)` — T the sun term for that normal and visibility, A the ambient the rig gives it (hemisphere poles,
+environment with the disc fill, the anti-sun fill) — and a pixel the cascades already shadow is untouched. First
+capture finding: the meadows came out combed with dark streaks — every grass blade is a depth-buffer occluder and the
+blades never cast in the cascades. An occluder now counts only when the depth five pixels either side of the hit lies
+on the same surface (0.12 m + 0.012 m per metre): blades, wires and far poles drop out, hulls, tracks, wheels, walls
+and rocks pass.
+
+**Ground bounce (`engine/groundBounce.ts`, inside the lit materials).** Sunlit ground is far brighter than the
+hemisphere light's constant ground pole, and it is the dominant indirect light on every face turned toward it — hull
+undersides, wheel arches, flanks, eaves, wall bases. The term is analytic (the terrain material holds its sixteen
+texture units, and every material would need the sampler tidewater bakes): for a receiver normal n, the lower-hemisphere
+view factor (1 − n.y) / 2 × the share of that ground the face sees sunlit (a face turned from a low sun looks at its own
+object's shadow; an underside sees half shaded ground under the object and half lit ground beside it) × a receiver
+factor from its own CSM visibility (a face inside a cast shadow stands on shaded ground) × the irradiance sunlit flat
+ground reflects — sun colour × intensity × sin(elevation) × the rig's ground tone (the hemisphere's own ground colour,
+the light rig's model of the terrain) × gain 0.6 — added to Three's indirect diffuse before RE_IndirectDiffuse so the
+albedo, AO and BRDF apply. Energy conservation: only the EXCESS over the hemisphere's ground pole is added (the upper
+and lower view factors sum to one; the round-42 sky light on steep terrain faces belongs to the upper half), so nothing
+is counted twice, shaded ground adds nothing and never subtracts, and no face receives more from below than sunlit
+ground reflects. The uniforms ride into every CSM material through `setupShadowMaterial` and the term lives in the
+`lights_fragment_end` patch beside the ambient shadow dim; a zero radiance skips the block.
+
+**Sun shafts (`engine/sunShafts.ts`, quarter resolution).** Mittring / Sousa's screen-space rays: a sky-versus-geometry
+mask around the sun's screen position (one depth fetch per quarter-res texel; a squared radial falloff to 0.40 of the
+frame height; the round-68 cloud lane may multiply its transmittance in here), blurred toward the sun in two passes of
+twelve taps (the whole segment, then a twelfth of it — 144 effective samples), written into one quarter-resolution
+light target the grade adds in linear HDR before its tonemap (no full-resolution pass). Colour: the atmosphere's sun
+transmittance (round 65's summary — warm and dim at a low sun) under a slight warm tint. The first capture was a milky
+wash over the sun's quadrant: the blurred sky mask brightens the open sky it came from, so the write holds the field
+back to a quarter where the texel itself is open sky and the rays stay what the silhouettes carve out (gain 0.16).
+Per-map gating by the preset's haze (`sunShaftMapStrength`, the receipt's table over all thirty-one skies): the
+aerosol it asks for (turbidity × mieCoefficient, round 65's mie mapping) or its fog density, whichever is stronger,
+× a low-sun factor (full to 26°, none from 46°) × the day factor (no moon shafts) × the sun-in-frame fade (the sun may
+sit half a frame outside). Monsoon, Caldera, Foundry, Blackglass, Ruinspires, Skybridge 1.0; Badlands 0.90; Oasis
+0.80; Alpine 0.72; Fjord and Whiteout 0.64; Titan Gorge 0.56; Verdant 0.53; Longleaf 0.44; Winter 0.26; Urban 0.22;
+Railyard and Steppe 0.08; Coastal 0.04; Desert 0.03; Mars 0. `sky.ts` publishes the inputs with every fog
+application (`scene.userData.skyHazeInputs`).
+
+**Lens flare (`engine/lensFlare.ts`, quarter resolution).** Hullin et al.'s ghosts simplified to the procedural form:
+four aperture ghosts on the axis from the sun through the image centre (soft bodies, a faint rim, per-channel
+dispersion, vanishing as the sun nears the centre), a dispersive halo about the centre that strengthens toward the
+edge, a thin streak through the sun and a small glow, all × the sun colour × gain 0.05 — restrained. Occlusion: a
+1 × 1 pass samples the resolved depth on a 24-tap golden-angle spiral over a 1.6° disc at the sun and eases the visible
+fraction toward its target at 14 / s (a two-target ping-pong), so a treeline or a turret crossing the sun dims the
+flare without popping; the flare fades over the last tenth before the frame edge, never shows for a sun behind the
+camera, and under the night dome the moon flares at 12 % of the sun. The flare adds into the shafts' light target
+(and clears it when the shafts lever is off).
+
+**Chain.** Scene → aerial (+ contact shadows) → GTAO → late FX → TAA → bloom → shafts → flare → grade (+ light target)
+→ SMAA → FSR: the order the receipts pin is unchanged, the light target is the only new texture the grade reads, and
+the two quarter-res passes are the only new draws (three for the shafts, two for the flare).
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
@@ -2819,6 +2893,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 65 | A physically based atmosphere for every battlefield: Hillaire 2020 transmittance / multiple-scattering / sky-view LUTs as fragment passes with a summary readback (`engine/atmosphere.ts`), the desktop dome sampling the sky-view LUT with the sun disc through its transmittance (the legacy disc energy kept: PMREM folds it into the ground's fill), the round-22 night sky and Mars' galaxy on top, the aerial pass targeting the LUT along each view ray (round 37 per pixel), the hemisphere hue from the sky irradiance, the preset → parameter mapping calibrated against the legacy dome on the twelve good maps; Mars authors its thin CO2 sky; the Preetham path kept for the mobile tier | CPU twin vs GPU summary 0.2 %; map-view-probe A/B on 31 maps × 4 views with sky boxes and the skyline metric (good-map anti-solar bands within 10 % on seven, skylines ±0.05; arid check 5 desert 1.49 → 1.18, skybridge 1.66 → 0.94; winter 0.85 / 0.90, whiteout unchanged); eye check of the 1280 px reductions of the eleven bland and four good maps; perf counts identical (+7 programs); the receipts in the section |
 | 67 | The open notes of rounds 58–63 closed, one commit each: Tarkhan's spur runs on down the valley to a derived tunnel portal (headwall 125 m out on the radial, a 75 m gallery to the ring's first ridge line — rim + 200 m, the same constant in horizon.ts and railSpurs.ts — a dark 45° bore floor hiding the ring face, one `tunnel-portal` record across the floor; the ring's seated rows now exactly on the outland bed inside the corridor); the batter faces seed sparse grass and scrub on their upper two thirds through a `_batterSeedAt` height-field hook (the exclusion keeps trees and props off; a face candidate passes the 474 m rim cull); the bridge's vault bands halved to 0.1375 m (a shell's height error against the arc ≤ 6.9 cm; 31 → 55 parts, Amberford's shard recaptured); the moored hull bobs and sways render-side from the world clock (one mesh per hull, matrices composed under the frozen world); Saltwind's piers sized to the shelf (7 / 8 spans); the wrack line's per-station draw streams (1,186 pieces byte-identical past a moved keep-out); the press ring's land-only fallback bearings (Polders 2's straight-in press); round 64's plate/hero/thumbnail closed as render noise. Pacing 0/124, median 351.4 s. | Tarkhan `cutting-exit-bird` 29.4 % of the world band moved (the portal, the track, the gallery), `cutting-portal-low` 8.8 %, the batter crops seeded, Saltwind `jetty-w-low` 8.2 %; steppe and autumn shards recaptured headless. |
 | 66 | An FFT ocean on every sea, bay and lake sheet (Tessendorf 2001, Horvath 2015): a JONSWAP + TMA directional spectrum per map (`ocean` block on the config: wind, fetch, swell, amplitude, choppiness, foam, breakers, caustics), three cascades in one stacked-tile texture, the inverse FFT as four fragment-shader Stockham passes (radix 16 / 8 per axis) over RGBA32F ping-pong MRT targets — no compute on WebGL2 — writing displacement / derivative / Jacobian-foam maps; the sheet (`shallowWater.ts` v13) displaces its vertices with the long cascade (flattened over the bank, a run-up film at the edge), joins the cascades' slopes to its normal with a footprint fade, whitens by the Jacobian, breaks the crest tops over the bank band and runs the whitewater up the strand (depth-aware from `getWaterDepthAt`'s bed law in the shader), and lights the shelf bed with thin-lens caustics from the finest cascade; the round-46 field composes on top, the terrain material and the marine ring faces untouched; the four approved maps at low amplitude, the flat seas (Saltwind, the polders, Skybridge, Mangrove Reach, the oasis) gain the moving surface; mobile keeps the old sheet, low halves the grid, medium alternates frames | oceanFft.selftest (butterfly vs DFT 1e-14, 8×8 field vs the double sum, spectrum symmetry, pass GLSL, gates, pass sequence, presets, handshake, wiring, eleven sea states); headless GPU read-back vs the CPU reference 2.4·10⁻⁴ m, 215 programs linked, terrain at 16 samplers; map-view-probe 198-pair A/B (far / bird ≤ 2.6 % moved, ≤ 0.7 mean |Δ|), in-water chase A/B (approved maps' water box within ±2 / 255), close-ups with debug channels and term isolation, eye check of 1280 px reductions; transform 0.61–0.77 ms GPU (granular timer, upper bound) / 0.014 ms CPU by the slope method; the receipts in the section |
+| 69 | Contact shadows, ground bounce, sun shafts and lens flare on the desktop tier, each behind its own quality lever (`?fx=off` keeps every pinned capture): a twelve-rung screen-space march toward the sun inside the aerial pass, blended into the shadow term through the CSM visibility the lit materials carry in the opaque scene target's alpha (wide occluders only — the grass blades combed the meadows); an analytic energy-conserved ground bounce in the lit materials (the excess of sunlit ground over the hemisphere's ground pole × the lower-hemisphere view factor); Mittring / Sousa rays from a sky mask blurred toward the sun at quarter resolution, coloured by the atmosphere's sun transmittance and gated per map by the preset's haze and sun height; a four-ghost, halo and streak flare with a 24-tap depth occlusion disc, eased; one quarter-res light target the grade adds before its tonemap | headless smoke on four maps (every program links, `?fx=off` exact), on/off crops and region numbers; map-view-probe A/B on 31 maps × 4 views with 1280 px eye checks on eight maps per effect; the round-59 perf probe new → base at the chase pose; receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
