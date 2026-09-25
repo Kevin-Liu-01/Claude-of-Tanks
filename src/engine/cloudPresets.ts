@@ -68,12 +68,12 @@ export const CLOUD_LAYER_OVERCAST_BASE_M = 340;
 /** Regime thresholds on the derived coverage and the legacy overcast rule's inputs. */
 export const CLOUD_LAYER_RULES = Object.freeze({
   /**
-   * coverage = clamp(0.24 · cloudOpacity^1.3, 0.05, 0.97) of the cell-carried field: the legacy deck at
-   * cloudOpacity 1 maps onto 0.24 (the strongest cell cores as separate puffs — the sky stays mostly open);
-   * fainter authored decks thin toward wisps (Olympus Basin 0.3 → 0.05), heavier ones (delta 1.16 → 0.29,
-   * alpine 1.12 → 0.28) break the sky with larger masses
+   * coverage = clamp(0.22 · cloudOpacity^1.3, 0.05, 0.97) of the cell-carried field: the legacy deck at
+   * cloudOpacity 1 maps onto 0.22 (the strongest cell cores as separate puffs — the sky stays mostly open,
+   * the good maps' sky bands within the round's tolerance of the base); fainter authored decks thin toward
+   * wisps (Olympus Basin 0.3 → 0.05), heavier ones (delta 1.16 → 0.27, alpine 1.12 → 0.25) carry more puffs
    */
-  coverageGain: 0.24,
+  coverageGain: 0.22,
   coveragePower: 1.3,
   coverageBias: 0,
   coverageMin: 0.05,
@@ -95,8 +95,8 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   stormClearRadiusM: 2500,
   /** an authored deck at or below this altitude is a low-deck identity the layer keeps (polders 420 m) */
   lowDeckAuthoredAltM: 600,
-  /** scattered below, broken from here */
-  brokenCoverage: 0.27,
+  /** scattered below, broken from here (no shipped map reaches it: the regime is for authored decks) */
+  brokenCoverage: 0.30,
   /** the shadow caster needs a fair-weather cloud-shadow amplitude (the legacy AUTO is 0.22) and a day sky */
   shadowMinAmp: 0.15,
   shadowMinSkyIntensity: 0.3,
