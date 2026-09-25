@@ -93,6 +93,10 @@ The default local URL is usually http://localhost:5173.
 The home and docs routes are separate Vite entries. They must remain able to
 load without preloading the game module graph.
 
+### Capture-lock wait (2026-09-25)
+
+The selftest runners wait for the shared capture lock (`/tmp/cot-shots.lock`, FIFO tickets in `/tmp/cot-shots.queue`) before their browser receipts; `COT_SHOTS_LOCK_TIMEOUT_MS` sets that wait (default 45 min — chain 94 died at 1/413 behind another session's browser audit, so landing chains export three hours).
+
 ### Asset caching (2026-09-25)
 
 **Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents, `/maps` and `/minimaps` keep that default too. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.

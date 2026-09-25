@@ -158,4 +158,13 @@ const sharedCaptureLock = createCaptureLock();
 
 export const acquireCaptureLock = sharedCaptureLock.acquire;
 export const refreshCaptureLock = sharedCaptureLock.refresh;
+
+/** Selftest runners wait this long for the capture lock before failing with "cot-shots lock timeout" (default 45 min).
+ *  Landing chains that share the machine with other sessions' suites set COT_SHOTS_LOCK_TIMEOUT_MS higher
+ *  (2026-09-25: a chain died at 1/413 after 45 min behind another session's browser audit). */
+export const DEFAULT_SELFTEST_LOCK_TIMEOUT_MS = 45 * 60 * 1000;
+export function selftestLockTimeoutMs(env = process.env) {
+  const value = Number(env.COT_SHOTS_LOCK_TIMEOUT_MS);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_SELFTEST_LOCK_TIMEOUT_MS;
+}
 export const releaseCaptureLock = sharedCaptureLock.release;

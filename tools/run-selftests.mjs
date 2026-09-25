@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { availableParallelism, constants, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createCaptureLock } from './capture-lock.mjs';
+import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { runSelftestCpuPool } from './selftest-cpu-pool.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
@@ -128,9 +128,10 @@ export async function runSelftestSuite(suiteName, suite, {
   }
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_SELFTEST_WORKERS) throw new TypeError(`concurrency must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
   const gate = selftestCacheGate(cache, log);
+  const lockTimeoutMs = selftestLockTimeoutMs();
   if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {
     concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
-    failFast, gate,
+    failFast, gate, lockTimeoutMs,
   });
   let held = false;
   let acquiredAt = 0;
@@ -156,7 +157,7 @@ export async function runSelftestSuite(suiteName, suite, {
       if (ownedLeaseFiles.includes(file)) release();
       else if (!held) {
         const queuedAt = now();
-        await lock.acquire(45 * 60 * 1000);
+        await lock.acquire(lockTimeoutMs);
         queueMs = now() - queuedAt;
         held = true;
         acquiredAt = now();

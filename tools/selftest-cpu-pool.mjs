@@ -2,7 +2,8 @@
 // regressions are barriers: drain CPU children, release, then run alone.
 export async function runSelftestCpuPool(name, files, options) {
   const { concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles = [], refreshMs, maxLeaseBatchMs,
-    now, log, logError, onTiming, failFast = false, gate = { lookup: () => null, record: () => {} } } = options;
+    now, log, logError, onTiming, failFast = false, gate = { lookup: () => null, record: () => {} },
+    lockTimeoutMs = 45 * 60 * 1000 } = options;
   let held = false, acquiredAt = 0, refresher, next = 0, failure;
   let interruptionSeen = false;
   const failures = [];
@@ -64,7 +65,7 @@ export async function runSelftestCpuPool(name, files, options) {
       let queueMs = 0;
       if (!held) {
         const queuedAt = now();
-        await lock.acquire(45 * 60 * 1000);
+        await lock.acquire(lockTimeoutMs);
         queueMs = now() - queuedAt;
         held = true;
         acquiredAt = now();
