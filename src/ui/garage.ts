@@ -2273,6 +2273,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   type GarageInfoLabel = keyof typeof GARAGE_INFO;
   interface StatBarOptions {
     readonly mod?: boolean;
+    readonly stock?: string;
     readonly title?: string;
     readonly icon?: string;
   }
@@ -2292,14 +2293,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     opts: StatBarOptions = {},
   ): string {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
-    // EQUIPMENT SYSTEM: values changed by the mounted loadout render in the
-    // boost tint with the stock value + contributing items in the tooltip.
-    const mod = opts && opts.mod;
+    // Keep the stock value visible; only the arrow and equipped value turn green.
+    const comparison = opts.mod && opts.stock != null;
+    const value = comparison
+      ? `<span>${opts.stock}</span> <span class="eqmod">&gt; ${valueText}</span>`
+      : valueText;
     const title = opts && opts.title ? ` title="${opts.title}"` : '';
     const icon = opts?.icon || 'speed';
     return `<div class="srow"${title}><span class="sicon">${uiIconSVG(icon, 16)}</span>` +
       `<div class="lr"><span>${label}</span>` +
-      `<b${mod ? ' class="eqmod"' : ''}>${valueText}</b></div>` +
+      `<b${comparison ? ' class="stat-comparison"' : ''}>${value}</b></div>` +
       `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
   }
 
@@ -2449,8 +2452,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const grp = statGroupOf(spec);
     // EQUIPMENT SYSTEM: fold the mounted loadout into the displayed stats —
     // the same multipliers/tables the battle sim reads (equipment.ts +
-    // spotting.ts), so the card IS the loadout preview. Modified values tint
-    // green with the stock number in the tooltip.
+    // spotting.ts), so the card IS the loadout preview. Show stock > equipped
+    // inline, keeping only the arrow and improved value green.
     // §5.31b PRINT VIEWER: print cards show STOCK stats — no loadout is
     // read (or ever written) for a view-only 'print:<id>' pseudo-spec.
     const eqIds = loadEquipment(spec.id, spec);
@@ -2462,6 +2465,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const reloadLabel = autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload');
     const magazineSpec = magazineDescription(spec.gun, reloadS, eqM.reload);
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
+    // Small equipment bonuses should not round into a misleading 1.4 > 1.4.
+    const aimPrecision = eqM.aimTime !== 1 ? 2 : 1;
     const vrBase = viewRangeOf(spec);
     const vrMove = vrBase * equipViewMult(eqIds, true);   // always-on items
     const vrStill = vrBase * equipViewMult(eqIds, false); // + binoculars
@@ -2533,17 +2538,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
       statBar(t('garage.dossier.stat.hpt'), `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT), { icon: 'engine' }) +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
-        { icon: 'clock', mod: eqM.reload !== 1, title: eqTitle(`${stockReloadS.toFixed(1)} s`) }) +
-      statBar(t('garage.dossier.stat.aim'), `${aimS.toFixed(1)} s`, statFrac(grp, 'aim', aimS, true),
-        { icon: 'scope', mod: eqM.aimTime !== 1, title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
+        { icon: 'clock', mod: eqM.reload !== 1, stock: stockReloadS.toFixed(1), title: eqTitle(`${stockReloadS.toFixed(1)} s`) }) +
+      statBar(t('garage.dossier.stat.aim'), `${aimS.toFixed(aimPrecision)} s`, statFrac(grp, 'aim', aimS, true),
+        { icon: 'scope', mod: eqM.aimTime !== 1, stock: spec.gun.aimTimeS.toFixed(aimPrecision), title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
       statBar(t('garage.dossier.stat.damage'), `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
       statBar(t('garage.dossier.stat.view'), viewText, statFrac(grp, 'view', vrMove),
-        { icon: 'optics', mod: vrMove > vrBase || vrStill > vrMove + 0.5,
+        { icon: 'optics', mod: vrMove > vrBase || vrStill > vrMove + 0.5, stock: `${Math.round(vrBase)}`,
           title: vrStill > vrMove + 0.5 ? `${t('garage.dossier.view.movingStationary')} &middot; stock ${vrBase} m`
             : eqTitle(`${vrBase} m`) }) +
       statBar(t('garage.dossier.stat.camo'), `${Math.round(camoStill * 100)} / ${Math.round(camoMove * 100)} %`,
         statFrac(grp, 'camo', camoStill),
-        { icon: 'camouflage', mod: camoModded, title: t('garage.dossier.stat.moving') +
+        { icon: 'camouflage', mod: camoModded,
+          stock: `${Math.round(baseCamoOf(spec, false) * 100)} / ${Math.round(baseCamoOf(spec, true) * 100)}`, title: t('garage.dossier.stat.moving') +
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
       specialCard +

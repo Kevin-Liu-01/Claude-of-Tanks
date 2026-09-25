@@ -917,8 +917,12 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   .cot-garage .stats:hover::-webkit-scrollbar-thumb{background:rgba(177,194,207,.46);}
 }
 .cot-garage .stats::-webkit-scrollbar-thumb:active{background:rgba(240,176,74,.62);}
-/* stat values boosted by equipment tint green (base value in the tooltip) */
-.cot-garage .srow .lr b.eqmod{color:#9fd8a0;}
+/* Stock stays neutral; the arrow and equipment-adjusted value are green.
+   Wrap between values in narrow cards without separating the arrow from its value. */
+.cot-garage .srow .lr b.stat-comparison{display:flex;flex-wrap:wrap;gap:1px .35em;
+  white-space:normal;overflow:visible;line-height:1.3;}
+.cot-garage .srow .lr b.stat-comparison>span{white-space:nowrap;}
+.cot-garage .srow .lr b .eqmod{color:#9fd8a0;}
 .cot-garage .eqhead{justify-content:space-between;}
 .cot-garage .cot-stat-title .cot-info-trigger{margin-left:0;}
 .cot-garage .cot-stat-title small{margin-left:0;}
