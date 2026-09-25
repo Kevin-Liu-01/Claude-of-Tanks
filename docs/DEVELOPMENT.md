@@ -123,6 +123,17 @@ The default service uses port 8790. Production requires secure WebSocket and
 HTTP endpoints, explicit origin configuration, persistent rating storage, and
 deployment-specific signaling/TURN configuration.
 
+The Jev commander (the Play menu's "Opponent brain: Jev", `docs/JEV-COMMANDER.md`)
+needs the `/api/jev` function, which the dev server does not run. Start the local
+proxy in a shell that holds the TypeSafe key (`set -a; source …/typesafe.env; set +a`
+— never a file in the repository, never a `VITE_` variable):
+
+    npm run jev:dev
+
+It listens on http://127.0.0.1:8794/api/jev and the dev server forwards the same-origin
+route to it (`COT_JEV_DEV_URL` to point elsewhere, `VITE_JEV_URL` to bypass the
+route). With the proxy down a battle simply plays on the classic brain.
+
 ### Complete self-hosted stack
 
 For a Redis-free backend while retaining the existing Vercel website and TURN

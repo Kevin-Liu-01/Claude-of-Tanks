@@ -118,8 +118,11 @@ An answer set is applied when it arrives (the next sim step), per bot, only if:
 - it is not **stale** (issued more than `staleAfterS` = 6 s of sim time ago → the whole set is discarded);
 - the bot is still **alive** and commanded;
 - the hull did not lose more than 35 % of its hit points since the request (**changed**);
-- the posture is a known one with **confidence ≥ 0.45**; a `capture` with no objective anywhere or a
-  `support` with no living teammate is **unmapped** and keeps the classic decision.
+- the posture is a known one with **confidence ≥ 0.3** (a seven-way choice spreads probability: a live 7 v 7
+  read 0.18–0.48 on most bots); below the bar the posture stays classic, but a confident target still rides a
+  **target-only** order (posture `null`: the target claim and the fire discipline, no band, cover or driving
+  change); a `capture` with no objective anywhere or a `support` with no living teammate is **unmapped**
+  and keeps the classic decision.
 
 The order is `{ posture, targetId, fire, threat, point, untilS }`:
 
@@ -176,6 +179,29 @@ cut it) is 900 requests: **≈ $0.30 for 7 v 7, ≈ $0.64 for 14 v 14**; enemy-o
 per-battle budget caps a team at 450 requests. The end-to-end production path (real `api/jev.ts` handler
 against the live upstream) answered in 126–200 ms with the key nowhere in the reply or the log.
 
+## Played battles (2026-09-25, Verdant Fields, Standard, same seeded roster, idle human in an M1A1 Abrams HC)
+
+Headless real-time battles on the dev proxy (`.qa-dev/jev-battle-probe.mjs`, logs under the lane's
+scratchpad `jev/`), 240 s of sim each unless the battle ended first. The human never moved or fired, so
+"the player's team" is six bots and a stationary Abrams.
+
+| Battle | Result | Shots ally / enemy | Damage ally / enemy | Kills ally / enemy | Distance driven ally / enemy | Proxy |
+| --- | --- | --- | --- | --- | --- | --- |
+| Classic vs classic | defeat at 229 s (elimination) | 111 / 128 | 10.1k / 19.8k | 3 / 6 | 4.2 km / 6.7 km | none |
+| Jev enemies vs classic allies | running at 240 s, 2 v 6 alive | 84 / 153 | 5.8k / 17.0k | 1 / 5 | 3.7 km / 8.8 km | 116 requests, 116 answered, 0 failed |
+| Jev on both sides | victory at 173 s, 7 – 1 | 191 / 58 | 18.8k / 8.7k | 7 / 1 | — | 158 / 158 / 0 |
+
+Jev's enemy team over 240 s: 755 orders applied (187 of them target-only), 196 postures below the bar,
+0 stale / dead / changed discards, mean proxy latency 217 ms (max 492), 792k input tokens ≈ $0.033. Every
+bot kept acting through all of it (no stall; the classic brain filled every gap) and the classic-only
+battle made no proxy call at all. Qualitatively the Jev side reads as a team: it concentrates its target
+choice (at the end all seven bots were ordered onto the last BMPT with `press`), sends the damaged Bradley
+back (`retreat` at threat 1.8) while the healthy Leopards `push`, drives twice as far as the classic
+enemy on the same roster, and loses fewer hulls for the same kills (1 loss for 5 kills by 240 s against
+the classic team's 3 losses for 6). `hold` shows up mid-fight on flankers reloading; `flank_*` and
+`capture`/`support` were rare on this map and mode (no objectives, open fields) — the objective modes and
+the tuning items below are where the next look belongs.
+
 ## Dev path
 
 The Vite dev server has no function runtime. `npm run jev:dev` starts `server/jev/main.ts` on
@@ -196,7 +222,7 @@ budget. The proxy logs counts, never content. Nothing about the battle is retain
 - **Multiplayer v2**: the commander is transport-independent and `JevBattleView` is an interface — the
   authoritative match (`src/sim/authoritativeMatch.ts`, `server/match`) can step one per team with a
   server-side transport that calls TypeSafe directly; rooms keep the classic brain until then.
-- **Tuning**: cadence, thresholds (`minPostureConfidence` 0.45, `minTargetConfidence` 0.4, fire 0.7 / 0.3,
+- **Tuning**: cadence, thresholds (`minPostureConfidence` 0.3, `minTargetConfidence` 0.4, fire 0.7 / 0.3,
   threat 2.5), the hold-band factors and the question rubrics are all first drafts; evaluate them on
   played battles (the order log tells which postures Jev picks and how often they are refused).
 - **Tokens**: the state is now most of the request; a per-bot `sees` of four enemies and 20-bot teams
