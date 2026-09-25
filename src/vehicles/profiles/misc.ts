@@ -24,7 +24,7 @@
 // the whole tank rescales and every mask shifts.
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { KIT, FITTINGS, MUDGUARDS } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, convexSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { buildT80CastTurret, domeBoxPlanSeat, tubeGun } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -3657,9 +3657,15 @@ function buildType74(P: MiscBuilderPort): void {
   // Nose edge (the V ridge where glacis meets chin): center (0, 0.89, 3.37)
   // -> outer (±0.98, 0.91, 3.17), sweep 0.20 (~9°/side — the visible crease).
   for (const s of [-1, 1]) {
+    // FSP-05 (2026-09-25): the crest ring paired the nose-BOTTOM edge with the
+    // crest-FRONT edge and the nose-top edge with the crest-rear edge, so the two
+    // skins crossed mid-plate (a bow-tie section orientedSlab cannot repair —
+    // 2,836 inside-out px, the fleet's largest hull read). Underside now runs
+    // nose-bottom -> crest-rear and the top skin nose-top -> crest-front; the
+    // eight corners and every silhouette are unchanged.
     P.add('hull', slab(                                                        // GLACIS half-plane: nose edge -> crest (29° from horizontal). Crest
       [s * 0.02, 0.87, 3.35], [s * 0.98, 0.89, 3.15], [s * 0.98, 0.93, 3.19], [s * 0.02, 0.91, 3.39],
-      [s * 0.02, 1.385, 2.50], [s * 1.02, 1.385, 2.30], [s * 1.02, 1.385, 2.24], [s * 0.02, 1.385, 2.44]));
+      [s * 0.02, 1.385, 2.44], [s * 1.02, 1.385, 2.24], [s * 1.02, 1.385, 2.30], [s * 0.02, 1.385, 2.50]));
     // outer x ±1.02: the real glacis is the plate BETWEEN the fenders — the
     // full-1.50 wing swept the taper edge through the idler wrap (track-clip
     // front 17/22, §B4) and the fenders carry the outboard bow anyway.
@@ -4010,7 +4016,13 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       [-0.86, 0.38, 2.42], [0.86, 0.38, 2.42], [0.86, 0.86, 3.27], [-0.86, 0.86, 3.27],
       [-0.86, 0.42, 2.44], [0.86, 0.42, 2.44], [0.86, 0.90, 3.285], [-0.86, 0.90, 3.285]));
     for (const s of [-1, 1]) {
-      P.add('hull', slab(                                                        // outer bow nose over the idler lane: bottom clears the 1.145 wrap
+      // FSP-05 (2026-09-25): the authored rings twist (the inner "top" corners
+      // sit below the inner "bottom" ones), so the hexahedron self-intersects and
+      // half its faces shipped inside-out on both sides (sealed check: bow
+      // openings at x +-1.45 from six views). The convex hull of the same eight
+      // corners is the closed wedge the corners describe — outward by
+      // construction, no new extreme point in any view.
+      P.add('hull', convexSlab(                                                  // outer bow nose over the idler lane: bottom clears the 1.145 wrap
         [s * 1.51, 1.20, 3.10], [s * 0.92, 1.20, 3.24], [s * 0.92, 1.30, 3.02], [s * 1.51, 1.30, 2.88],
         [s * 1.51, 1.31, 3.06], [s * 0.92, 1.02, 3.27], [s * 0.92, 1.06, 3.24], [s * 1.51, 1.42, 2.72]));
       P.add('hull', slab(                                                        // casting blend: glacis edge -> sponson corner (over the wraps)
