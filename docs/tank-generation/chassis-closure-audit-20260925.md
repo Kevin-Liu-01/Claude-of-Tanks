@@ -160,6 +160,24 @@ standard check, sealed ledger, module-visual-align probe, `npm test`,
 `build:private`) is the release receipt for this round — its result is in the
 lane's final report.
 
+## Open after this round
+
+- Top-down §B2 contiguity cells the standard check reports on six of the changed
+  ids — `amx30` 5 cells at (x -0.93, z 2.87), `k2b` 8 cells at (x -1.77, z 2.47),
+  `m2a2_bradley` 2 + 1 cells at (x ±1.0, z 2.92), `ua_m2a3_bradley` 2 + 1,
+  `m3a3_bradley` 1, `marder1a3` 1 — are pre-existing: a headless replica of the
+  scan (`.qa-dev/topdown-contig.mjs`, 6 cm grid, 4×4 subsamples, FrontSide by
+  winding, border flood) reproduces the check's clusters on the combined tree and
+  finds the identical clusters on `8d1178d09` (base worktree A/B, same cell counts
+  and centroids; `t64bv1`, `merkava2d`, `k2`, `type74` read 0 on both). They are
+  1–8 enclosed 6 cm cells at the bow corners and the K2B's scaled left guard flare,
+  invisible from the chase ring, and belong to the next chassis round together
+  with the floating-panel candidates above.
+- Turret-owned openings (`carro45t`, `amx40`, `m60a1`, `m60a3`, `t90a`, `t90sm`),
+  the `object695_x` ERA corner, and the `t80u` stern interior-escape reading.
+- `tools/winding-audit.mjs` fleet coverage (31 of 192 reached; the audit was
+  stopped to hand the capture lock back to the release checks).
+
 ## Per-id evidence
 
 Sorted by chase-ring opening pixels on the base tree, then total openings.
