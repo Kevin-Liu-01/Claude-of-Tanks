@@ -83,6 +83,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/appVersion.selftest.mjs',
     'tools/shared-main-preflight.selftest.mjs',
     'tools/vercel-config.selftest.mjs',
+    'tools/vercel-output-immutable.selftest.mjs',
     'tools/typescriptToolchain.selftest.mjs',
     'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',

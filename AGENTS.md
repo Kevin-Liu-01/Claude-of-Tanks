@@ -147,7 +147,8 @@ worktree and never stage generated tank work wholesale.
   (`git.deploymentEnabled` off for `main` and `codex/*`); production changes
   only through the once-per-round prebuilt CLI deploy in `docs/DEPLOYS.md`
   (`vercel pull --yes --environment=production && vercel build --prod &&
-  vercel deploy --prebuilt --prod`, scope `kl01s-projects`) after a green
+  node tools/vercel-output-immutable.mjs && vercel deploy --prebuilt --prod`,
+  scope `kl01s-projects`) after a green
   gate. Do not add a second gate (Ignored Build Step) or a CI deploy.
 
 ## Extending this project's agent system
