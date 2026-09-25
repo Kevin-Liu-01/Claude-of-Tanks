@@ -490,12 +490,10 @@ export function decodeMessage(input: unknown, options: DecodeOptions = {}): Deco
     switch (type) {
       case MESSAGE_TYPE.HELLO: message = readHello(reader); break;
       case MESSAGE_TYPE.INPUT: message = readInput(reader); break;
-      case MESSAGE_TYPE.SNAPSHOT_ACK: {
-        const tick = tickOrNone(reader.u32());
-        if (tick === NO_TICK) throw new WireError('range', 'ack tick is required');
-        message = { type: MESSAGE_TYPE.SNAPSHOT_ACK, tick } satisfies SnapshotAckMessage;
+      case MESSAGE_TYPE.SNAPSHOT_ACK:
+        // NO_TICK is a keyframe request: the viewer holds no baseline
+        message = { type: MESSAGE_TYPE.SNAPSHOT_ACK, tick: tickOrNone(reader.u32()) } satisfies SnapshotAckMessage;
         break;
-      }
       case MESSAGE_TYPE.PING:
         message = { type: MESSAGE_TYPE.PING, clientTimeMs: reader.u32(), snapshotAckTick: tickOrNone(reader.u32()) } satisfies PingMessage;
         break;

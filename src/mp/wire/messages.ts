@@ -51,6 +51,7 @@ export interface InputMessage {
 
 export interface SnapshotAckMessage {
   type: typeof MESSAGE_TYPE.SNAPSHOT_ACK;
+  /** The newest assembled snapshot tick, or NO_TICK to drop the baseline and request a keyframe. */
   tick: number;
 }
 

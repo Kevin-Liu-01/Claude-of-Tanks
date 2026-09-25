@@ -12,6 +12,7 @@ import type { AuthoritativePlayerInput } from '../../src/sim/authoritativeMatch.
 
 const RING = 64;
 const HELD_INPUT_LEASE_TICKS = 30;   // v1: 500 ms without a fresh frame releases the controls
+const ACTION_REPEAT_WINDOW_TICKS = 30; // bits applied at the previous actionSeq within 500 ms are not applied again
 const ADAPT_WINDOW = 60;             // frames per adaptation decision (about one second at 60 Hz)
 const LATE_RATE_GROW = 0.05;
 const MARGIN_SHRINK = 2;
@@ -66,6 +67,8 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
   let lastAppliedTick = -1;
   let lastAppliedFireSeq = -1;
   let lastAppliedActionSeq = -1;
+  let lastActionBits = 0;
+  let lastActionTick = -Infinity;
   let snapshotAckTick = NO_TICK;
   let interpDelayMs = 0;
   let newestStoredTick = -1;
@@ -91,7 +94,7 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
     windowMinMargin = Infinity;
   }
 
-  function fillInput(control: ControlFrame, edges: boolean): AuthoritativePlayerInput {
+  function fillInput(control: ControlFrame, edges: boolean, applyTick: number): AuthoritativePlayerInput {
     output.throttle = dequantizeControlAxis(control.throttle);
     output.steer = dequantizeControlAxis(control.steer);
     output.brake = (control.flags & CONTROL_FLAGS.BRAKE) !== 0;
@@ -100,11 +103,21 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
     output.aimPitch = dequantizeAimPitch(control.aimPitch);
     output.aimDistance = Math.max(0.01, dequantizeAimDistance(control.aimDistance));
     output.shellSlot = control.shellSlot;
-    const firePress = edges && control.fireSeq !== lastAppliedFireSeq;
+    // the first applied control seeds the edge sequences: a reconnect or seat replacement never fires a stray shot
+    const seeding = lastAppliedFireSeq < 0;
+    const firePress = edges && !seeding && control.fireSeq !== lastAppliedFireSeq;
     output.fire = (control.flags & CONTROL_FLAGS.FIRE_HELD) !== 0 || firePress;
     output.fireIntentSeq = output.fire ? control.fireSeq : null;
-    const actionPress = edges && control.actionSeq !== lastAppliedActionSeq;
-    output.actionBits = actionPress ? control.actionBits & ACTION_BIT_MASK : 0;
+    const actionPress = edges && !seeding && control.actionSeq !== lastAppliedActionSeq;
+    let actionBits = 0;
+    if (actionPress) {
+      // a union of un-acknowledged presses: skip what the previous sequence applied within the window
+      const recent = applyTick - lastActionTick <= ACTION_REPEAT_WINDOW_TICKS ? lastActionBits : 0;
+      actionBits = control.actionBits & ACTION_BIT_MASK & ~recent;
+      lastActionBits = control.actionBits & ACTION_BIT_MASK;
+      lastActionTick = applyTick;
+    }
+    output.actionBits = actionBits;
     if (edges) {
       lastAppliedFireSeq = control.fireSeq;
       lastAppliedActionSeq = control.actionSeq;
@@ -175,16 +188,16 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
         lastAppliedTick = applyTick;
         held = control;
         heldTick = serverTick;
-        return fillInput(control, true);
+        return fillInput(control, true, serverTick);
       }
       if (held && serverTick - heldTick <= HELD_INPUT_LEASE_TICKS) {
         stats.held++;
-        return fillInput(held, false);
+        return fillInput(held, false, serverTick);
       }
       stats.dry++;
       if (held) {
         // the lease expired: keep aim and ammunition, release drive and fire (v1)
-        const neutral = fillInput(held, false);
+        const neutral = fillInput(held, false, serverTick);
         neutral.throttle = 0; neutral.steer = 0; neutral.brake = true; neutral.fire = false;
         neutral.fireIntentSeq = null; neutral.aimLocked = true; neutral.actionBits = 0;
         return neutral;
@@ -198,7 +211,7 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
     reset() {
       ticks.fill(-1);
       controls.fill(null);
-      lastAppliedTick = -1; lastAppliedFireSeq = -1; lastAppliedActionSeq = -1;
+      lastAppliedTick = -1; lastAppliedFireSeq = -1; lastAppliedActionSeq = -1; lastActionBits = 0; lastActionTick = -Infinity;
       snapshotAckTick = NO_TICK; newestStoredTick = -1; held = null; heldTick = -1;
       windowFrames = 0; windowLate = 0; windowMinMargin = Infinity; marginTicks = null;
     },

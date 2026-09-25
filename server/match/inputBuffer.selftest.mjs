@@ -57,6 +57,39 @@ const frame = (clientTick, controls, extra = {}) => ({
   console.log('inputBuffer.selftest: stale dropped, far-ahead rejected, late controls applied once');
 }
 
+// The first applied control seeds the edge sequences: a reconnecting client whose counters continue never fires a stray shot.
+{
+  const seat = createSeatInputBuffer();
+  seat.admit(frame(1, [control({ fireSeq: 7, actionSeq: 3, actionBits: 0b10 })]), 0);
+  const first = seat.inputFor(2);
+  assert.equal(first.fire, false, 'the first control after admission is a baseline, not a press');
+  assert.equal(first.actionBits, 0, 'nor an action');
+  assert.equal(seat.lastAppliedFireSeq, 7);
+  assert.equal(seat.lastAppliedActionSeq, 3);
+  seat.admit(frame(2, [control({ fireSeq: 8, actionSeq: 4, actionBits: 0b10 })]), 1);
+  const next = seat.inputFor(3);
+  assert.equal(next.fire, true, 'the next new sequence fires');
+  assert.equal(next.actionBits, 0b10);
+  console.log('inputBuffer.selftest: the first control seeds fire/action sequences without an edge');
+}
+
+// A union of un-acknowledged presses applies each action once: bits the previous sequence applied within 500 ms are skipped.
+{
+  const seat = createSeatInputBuffer();
+  seat.admit(frame(1, [control()]), 0);
+  seat.inputFor(2); // baseline
+  seat.admit(frame(2, [control({ actionSeq: 1, actionBits: 0b01 })]), 1);
+  assert.equal(seat.inputFor(3).actionBits, 0b01, 'press A');
+  seat.admit(frame(6, [control({ actionSeq: 2, actionBits: 0b11 })]), 5); // press B while A is still un-acknowledged
+  assert.equal(seat.inputFor(7).actionBits, 0b10, 'only B is new');
+  seat.admit(frame(10, [control({ actionSeq: 3, actionBits: 0b111 })]), 9); // press C, union still carries A and B
+  assert.equal(seat.inputFor(11).actionBits, 0b100, 'only C is new');
+  for (let tick = 12; tick < 50; tick++) seat.inputFor(tick);
+  seat.admit(frame(50, [control({ actionSeq: 4, actionBits: 0b01 })]), 49); // A again, well after the window
+  assert.equal(seat.inputFor(51).actionBits, 0b01, 'a repeat press after the window applies');
+  console.log('inputBuffer.selftest: overlapping action presses apply each bit once within the 500 ms window');
+}
+
 // Edges: a fire press fires once per fireSeq even when the press tick's frame is lost; held fire sustains; actions apply once.
 {
   const seat = createSeatInputBuffer();

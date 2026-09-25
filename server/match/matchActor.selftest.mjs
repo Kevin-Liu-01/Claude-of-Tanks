@@ -171,6 +171,21 @@ assert.ok(p1.events.some((event) => event.kind === 'roster' && event.payload.pla
 assert.ok(p1.frames.some((frame) => frame.meta.phase === PHASE.COUNTDOWN) && latest.meta.phase === PHASE.PLAYING, 'the phase rides the snapshot meta');
 console.log(`matchActor.selftest: 30 Hz cadence, ${keyframes} keyframes / ${p1.packets.length - keyframes} deltas, acks, margin ${latest.inputMarginTicks}, rewind ${p1Stats.rewindTicks} ticks`);
 
+// ---------------------------------------------------------------- keyframe request: a NO_TICK acknowledgement drops the baseline
+{
+  const packetsBefore = p2.packets.length;
+  p2.send({ type: MESSAGE_TYPE.SNAPSHOT_ACK, tick: NO_TICK });
+  await flush();
+  // p2 keeps acknowledging its held frames in its INPUT stream: the latched request still wins
+  await advanceTicks(actor, 2, driveP1);
+  const fresh = p2.packets.slice(packetsBefore);
+  assert.ok(fresh.length >= 1 && fresh[0].keyframe, 'the next snapshot after a NO_TICK ack is a keyframe');
+  await advanceTicks(actor, 4, driveP1);
+  assert.ok(p2.packets.slice(packetsBefore + 1).every((packet) => !packet.keyframe), 'then deltas resume against the new baseline');
+  assert.equal(p2.missingBaselines, 0);
+  console.log('matchActor.selftest: a NO_TICK acknowledgement requests a keyframe at once');
+}
+
 // ---------------------------------------------------------------- fire: an edge fires once and shells appear on the wire
 fireSeq = 1;
 await advanceTicks(actor, 30, driveP1);

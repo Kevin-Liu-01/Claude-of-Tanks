@@ -356,18 +356,36 @@ missed live and hit rewound.
 | Tick p95, 28 bots, dedicated shards, headless | winter 1.53 · mars 1.82 · alpine 3.99 · badlands 2.03 · delta 3.11 · steppe 2.79 · monsoon 2.68 ms |
 | Tick p95, 28 bots + 28 acknowledging viewers | 3.79 · 2.48 · 3.76 · 3.79 · 3.70 · 2.27 · 4.17 ms (budget 6) |
 | Egress per spectator viewer (all 28 rows, deltas) | 26–29 KB/s |
-| Short soak (4 clients, 40 ± 10 ms, 2 % loss) | ack lag p50 67 / p95 88 ms (RTT p95 97), max pose step 0.34 m, tick p95 0.64 ms, 4.9 KB/s down / 1.8 KB/s up per client, lag comp removed 0.45 m mean reticle mismatch |
+| Short soak (4 clients in-process, 40 ± 10 ms, 2 % loss, 20 s) | ack lag p50 67 / p95 88 ms (RTT p95 96), sampler excess 0.000 m (raw step max 0.56 m from the wire's own motion), tick p95 0.5 ms, 4.9 KB/s down / 1.8 KB/s up per client, lag comp removed 0.45–0.51 m mean reticle mismatch |
+| Full soak (28 clients, server in a child process, winter, 60 ± 20 ms, 3 % loss, 300 s; host load 8–13 with two foreign gate suites running) | 28/28 welcomed; cadence gap p95 1 interval, 0 missing baselines; ack lag p50 95 / p95 122 ms (RTT p95 150); events + chat to every client; 0 dropped snapshots, 0 backpressure closes; server tick p95 2.75 ms (p50 1.05, max 14.6); server RSS 549 → 549 MB after forced GC (0.0 %); 14 departures without a stall; killed creator, match on; tick rate p05 59.7 Hz (2 stalls, late wake max 126 ms under the load); egress 14.6 KB/s down / 2.3 KB/s up per client; lag comp: 588 rewound shots, 1.73 m mean / 3.9 m max reticle mismatch removed, rewind 12 ticks median. Pose-continuity gate: FAIL on this host — sampler excess 1.66 m from 403 deep underruns (frames processed in bursts while the 28-client process and the server child were starved), beside the simulation's own wire motion of up to 1.1 m/tick (69 ram-push frames); the gate needs a quiet host to be read |
 | Container | three stages (`node:24-alpine` deps, pruned sources, plain Alpine + stripped node binary): 291 MB in `docker image ls` (Docker 29 containerd store counts compressed + unpacked), 216 MB unpacked layers, 75 MB compressed content; `/healthz` ready ≈ 3 s after start |
+
+### Landed after the client lane's loopback soak (2026-09-25)
+
+- A `NO_TICK` acknowledgement (INPUT, PING or `SNAPSHOT_ACK`) drops the viewer's baseline and
+  latches a keyframe for the next snapshot when the viewer held one; a viewer that never
+  acknowledged is already on keyframes until it does.
+- The first control applied after admission or a seat replacement seeds `fireSeq` /
+  `actionSeq` without an edge — no stray shot on reconnect.
+- A new `actionSeq` skips bits the previous sequence applied within 500 ms, so a union of two
+  un-acknowledged presses applies each action once.
+- The service's admin API (`POST /rooms`, `GET /rooms/:id`, `DELETE /rooms/:id`, bearer = seat
+  secret) is the hook the Room DO will call; the soak uses it to run the server as a child.
 
 ### Open
 
 - The client lane's real prediction/interpolation against this server (the soak's sampler is a
-  stand-in): the pose-step gate is measured with linear interpolation and one interval of
-  extrapolation, not with `localTankPrediction`.
-- The full 28-client, 5-minute soak (`npm run test:net:v2:soak`, memory drift gate) was run
-  short; the long run is the integrator's certification step.
+  stand-in): the pose-step gate is measured with linear interpolation, an adaptive 2–4 interval
+  delay and one interval of extrapolation, not with `localTankPrediction`; on a loaded host the
+  28-client soak process itself starves and the gate reads its own catch-ups (see the table).
+- The simulation moves a pushed hull up to 1.1 m in one tick (tank–tank separation); the wire
+  carries it faithfully and a client will show it as a jolt — a sim question, not netcode.
+- The full soak's tick-cost child (`npm run test:net:v2:soak` without `--no-tick-cost`) and a
+  quiet-host run of the five-minute soak are the integrator's certification steps.
 - Phase changes reach seated viewers only through snapshot meta (the authority's reveal rule
   hides `match_started` from entities); `roster` / `chat` / `admin` events are server-originated.
+- The client lane measured tick p95 0.17 ms with 4 clients + 4 bots on verdant against this
+  actor; the 28-bot heavy-map figures are the table above.
 - Mode presentation state and events travel as bounded JSON inside the binary frames; a
   fixed-layout mode state can replace it when a mode's HUD contract is final.
 - One additive seam and the roster cap (14 → 64) touched `src/sim/authoritativeMatch.ts`; the

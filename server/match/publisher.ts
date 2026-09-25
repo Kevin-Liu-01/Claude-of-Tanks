@@ -14,11 +14,14 @@ const HISTORY_FRAMES = 64;
 export interface ViewerPublisher {
   readonly ackedTick: number;
   readonly lastKeyframeTick: number;
-  readonly stats: { keyframes: number; deltas: number; bytes: number; missingBaselines: number };
+  readonly stats: { keyframes: number; deltas: number; bytes: number; missingBaselines: number; keyframeRequests: number };
   /**
    * Acknowledge a sent frame. Returns the round trip (ms) measured from the
    * frame's send time the first time that tick is acknowledged, else null —
    * the server's own latency measurement, never a client-reported number.
+   * NO_TICK means "I hold no baseline": the acknowledged baseline is dropped
+   * and the next snapshot is a keyframe (a client recovering from a missing
+   * delta baseline asks this way instead of waiting for the 2 s cadence).
    */
   ack(tick: number, nowMs: number): number | null;
   /** Encode `frame` for this viewer; the frame is retained until acknowledged or aged out. */
@@ -30,15 +33,26 @@ interface HeldFrame { frame: SnapshotFrame; sentAtMs: number; acked: boolean }
 
 export function createViewerPublisher(): ViewerPublisher {
   const history = new Map<number, HeldFrame>();
-  const stats = { keyframes: 0, deltas: 0, bytes: 0, missingBaselines: 0 };
+  const stats = { keyframes: 0, deltas: 0, bytes: 0, missingBaselines: 0, keyframeRequests: 0 };
   let ackedTick = NO_TICK;
   let lastKeyframeTick = -Infinity;
+  // latched so a later acknowledgement of an older baseline cannot cancel the request
+  let keyframeRequested = false;
   return {
     get ackedTick() { return ackedTick; },
     get lastKeyframeTick() { return lastKeyframeTick; },
     stats,
     ack(tick, nowMs) {
-      if (tick === NO_TICK) return null;
+      if (tick === NO_TICK) {
+        // a viewer that never acknowledged anything is already on keyframes until it does;
+        // one that held a baseline drops it and gets a keyframe next, whatever it acknowledges meanwhile
+        if (ackedTick !== NO_TICK) {
+          stats.keyframeRequests++;
+          ackedTick = NO_TICK;
+          keyframeRequested = true;
+        }
+        return null;
+      }
       const held = history.get(tick);
       if (!held) return null;
       let rtt: number | null = null;
@@ -53,7 +67,8 @@ export function createViewerPublisher(): ViewerPublisher {
     publish(frame, nowMs) {
       const baseline = ackedTick === NO_TICK ? null : history.get(ackedTick)?.frame ?? null;
       if (ackedTick !== NO_TICK && !baseline) stats.missingBaselines++;
-      const keyframe = !baseline || frame.tick - lastKeyframeTick >= KEYFRAME_INTERVAL_TICKS;
+      const keyframe = keyframeRequested || !baseline || frame.tick - lastKeyframeTick >= KEYFRAME_INTERVAL_TICKS;
+      keyframeRequested = false;
       const packet = buildSnapshotPacket(frame, keyframe ? null : baseline);
       const bytes = encodeMessage(packet, keyframe ? null : baseline);
       history.set(frame.tick, { frame, sentAtMs: nowMs, acked: false });
@@ -66,6 +81,7 @@ export function createViewerPublisher(): ViewerPublisher {
       history.clear();
       ackedTick = NO_TICK;
       lastKeyframeTick = -Infinity;
+      keyframeRequested = false;
     },
   };
 }

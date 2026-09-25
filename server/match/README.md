@@ -63,7 +63,12 @@ drive and fire are released while aim and ammunition selection are kept
 (v1's rule). Fire and action edges are sequence numbers applied once per new
 value; the snapshot acknowledges `ackedInputTick`, `ackedFireSeq`,
 `ackedActionSeq` and reports `inputMarginTicks` so the client can keep its lead
-in the 1–3 tick band.
+in the 1–3 tick band. The first control applied after admission or a seat
+replacement seeds both sequences without an edge (no stray shot on reconnect),
+and a new `actionSeq` skips bits the previous sequence applied within 500 ms
+(a union of two un-acknowledged presses applies each action once). A
+`snapshotAckTick` of `NO_TICK` — in INPUT, PING or a `SNAPSHOT_ACK` — drops the
+viewer's baseline so the next snapshot is a keyframe.
 
 ## Lag compensation
 
@@ -116,6 +121,19 @@ Budget: p95 ≤ 6 ms. Wire sizes (`src/mp/wire/wire.selftest`): full row 44 B,
 moving delta row 16 B, 28-entity keyframe with the viewer section 1473 B,
 input frame 57 B. A spectator sees all 28 rows; a seated player sees its team
 plus spotted enemies, so its egress is lower.
+
+`tools/mp-soak.mjs` (28 clients, server in a child process, winter, 60 ± 20 ms,
+3 % loss, 300 s, host load 8–13 with two foreign gate suites running): every
+client welcomed, cadence gap p95 one interval with no missing baseline, input
+ack lag p50 95 / p95 122 ms at RTT p95 150 ms, events and chat to every client,
+no dropped snapshot or backpressure close, server tick p95 2.75 ms (p50 1.05),
+server RSS flat at 549 MB after forced GC, 14 departures without a stall, the
+killed creator's match running on, tick rate p05 59.7 Hz, 14.6 KB/s down and
+2.3 KB/s up per client, 588 rewound shots removing a 1.73 m mean reticle
+mismatch. The pose-continuity gate reads the soak process's own catch-ups on a
+loaded host (sampler excess 1.66 m from 403 underruns) beside the simulation's
+own 1.1 m/tick ram pushes; read it on a quiet host. The short in-process run
+(`--short`, the core receipt) passes every gate with 0.000 m sampler excess.
 
 ## Environment
 

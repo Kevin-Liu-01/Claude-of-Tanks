@@ -168,7 +168,7 @@ for (let iteration = 0; iteration < 600; iteration++) {
     interpDelayMs: int(0, 255), controls: Array.from({ length: int(1, 3) }, randomControl),
   };
   assert.deepEqual(roundTrip(input).message, input);
-  const ack = { type: MESSAGE_TYPE.SNAPSHOT_ACK, tick: int(0, 1e9) };
+  const ack = { type: MESSAGE_TYPE.SNAPSHOT_ACK, tick: rng() < 0.2 ? NO_TICK : int(0, 1e9) };
   assert.deepEqual(roundTrip(ack).message, ack);
   const ping = { type: MESSAGE_TYPE.PING, clientTimeMs: int(0, 0xffffffff), snapshotAckTick: int(0, 1e6) };
   assert.deepEqual(roundTrip(ping).message, ping);

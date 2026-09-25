@@ -41,7 +41,7 @@ Client → server
 |---|---|
 | `HELLO` (1) | `u16 protocolVersion`, `u32 capabilities` (`HELLO_CAPABILITY` bits), `string token ≤ 1024`, `string clientBuild ≤ 64` |
 | `INPUT` (2) | `u32 clientTick` (tick of the newest control), `u32 snapshotAckTick` (newest assembled snapshot or `NO_TICK`), `u8 interpDelayMs` (the client's interpolation delay, used for lag compensation), `u8 count` (1..3), then `count` controls oldest first; control `i` is for tick `clientTick − count + 1 + i`. Control: `i8 throttle`, `i8 steer` (±127 = ±1), `u8 flags` (`CONTROL_FLAGS`: FIRE_HELD, BRAKE, AIM_LOCKED), `u16 aimYaw` (turn), `i16 aimPitch` (±32767 = ±π/2), `u16 aimDistance` (5 cm units), `u8 shellSlot` (0..2), `u16 fireSeq`, `u16 actionSeq`, `u8 actionBits` (`ACTION_BITS`). 15 B per control; a full frame is 57 B (3.4 KB/s at 60 frames/s, 1.7 KB/s at 30). |
-| `SNAPSHOT_ACK` (3) | `u32 tick` — for viewers that send no INPUT (spectators). |
+| `SNAPSHOT_ACK` (3) | `u32 tick` — the newest assembled snapshot, or `NO_TICK` to drop the baseline and request a keyframe (for viewers that send no INPUT, and for any client recovering from a missing delta baseline). |
 | `PING` (4) | `u32 clientTimeMs`, `u32 snapshotAckTick` |
 | `CHAT` (5) | `string text ≤ 960 B` (≤ 240 chars after the server's normalization) |
 | `LEAVE` (6) | `u8 reason` (`CLOSE_REASON`) |
@@ -121,8 +121,18 @@ leave the server.
 
 **Baselines.** Deltas are built against the viewer's last acknowledged
 snapshot (`snapshotAckTick` in INPUT/PING/SNAPSHOT_ACK). A keyframe goes every
-2 s and whenever the server has no acked baseline it still holds; after a
-`missing_baseline`, keep sampling the previous frames and wait for it.
+2 s and whenever the server has no acked baseline it still holds. After a
+`missing_baseline`, acknowledge `NO_TICK` (in the next INPUT or PING, or as a
+`SNAPSHOT_ACK`) — the server drops the viewer's baseline and the very next
+snapshot is a keyframe; keep sampling the previous frames until it arrives.
+Acknowledging `NO_TICK` while holding no baseline is harmless, so a client may
+send it until its first keyframe assembles.
+
+**Edge baselines.** The first control the server applies after admission (or
+a seat replacement) seeds `fireSeq` / `actionSeq` without an edge: a reconnect
+never fires a stray shot. A new `actionSeq` skips bits the previous sequence
+already applied within the last 500 ms, so a union of two un-acknowledged
+presses applies each action once.
 
 **Input edges.** `fireSeq` increments once per trigger press and every later
 frame repeats the current value; the server fires once per new value (and
