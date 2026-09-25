@@ -49,6 +49,12 @@ window.__RENDER_BATTLE_VIEW = async (id, distanceM, options = {}) => {
   const state = createTankState(getSpec(id), new THREE.Vector3(), 0);
   visual.syncFromState(state, 0, distanceM);
   scene.add(visual.root);
+  // FSP-06 eye-check: an explicit render size (the 1280 px chase review) resizes the canvas per call.
+  const width = options.width || WIDTH, height = options.height || HEIGHT;
+  if (renderer.domElement.width !== width || renderer.domElement.height !== height) {
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+  }
   camera.position.set(-distanceM * 0.16, Math.min(5.5, 2.8 + distanceM * 0.018), -distanceM);
   if (options.camera) camera.position.fromArray(options.camera);
   target.fromArray(options.target || [0, 1.1, 0]);
@@ -62,7 +68,7 @@ window.__RENDER_BATTLE_VIEW = async (id, distanceM, options = {}) => {
   scene.remove(visual.root);
   visual.dispose();
   renderer.render(scene, camera);
-  return { dataUrl, width: WIDTH, height: HEIGHT };
+  return { dataUrl, width, height };
 };
 window.__BATTLE_VIEW_READY = true;
 </script>

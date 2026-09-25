@@ -34,9 +34,15 @@ const renderOptions = {
   camera: vectorOption('camera'),
   target: vectorOption('target'),
   fov: Number(option('fov', '50')),
+  // FSP-06 eye-check: render size (default 640x360; --width=1280 --height=720 for the 1280 px chase review).
+  width: Number(option('width', '640')),
+  height: Number(option('height', '360')),
 };
 if (!['high', 'low'].includes(renderOptions.geometryQuality)
-    || !(renderOptions.fov > 0 && renderOptions.fov < 180)) throw new Error('Invalid render options');
+    || !(renderOptions.fov > 0 && renderOptions.fov < 180)
+    || !(renderOptions.width >= 64 && renderOptions.width <= 4096 && renderOptions.height >= 64 && renderOptions.height <= 4096)) {
+  throw new Error('Invalid render options');
+}
 const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(6, requestedWorkers)) : 4;
