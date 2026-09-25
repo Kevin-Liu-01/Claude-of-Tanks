@@ -656,7 +656,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // both whip stations (tops nest under the certified 2.25 base-drum column).
     for (const s of [-1, 1]) {
       P.add('turretDark', box(0.05, 0.05, 0.07), s * 0.795, 0.895, L(-0.90));    // tuner feed box inboard of the pot
-      P.add('turretDetail', torus(0.030, 0.008, 8), s * 0.76, 0.856, L(-0.90));  // coiled cable service loop nested under the base-drum column
+      P.add('turretDark', torus(0.030, 0.008, 8), s * 0.76, 0.856, L(-0.90));    // coiled cable service loop (dark, FSP-06) nested under the base-drum column
     }
     // mantlet: protruding central block + backward-raked wedge cheeks + coax
     // (gate ref band 1.55..1.86 over +1.7..+2.12 zW)
@@ -1055,7 +1055,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
           rotation: [0, Math.PI / 2, 0], crown: 0.009, rearCut: 0.035,
         });                                                                        // rear flaps
         if (s > 0) {
-          P.add('hullDetail', box(0.06, 0.03, 1.10), 1.50, 1.545, 2.62);           // crowbar on the bow fender (outside the turret swing circle)
+          P.add('hullDark', box(0.06, 0.03, 1.10), 1.50, 1.545, 2.62);             // crowbar on the bow fender (bare steel, FSP-06; outside the turret swing circle)
           P.add('hullDetail', box(0.09, 0.04, 0.60), 1.52, 1.545, -2.45);          // shovel aft of the swing circle, clear of the st0/st1 windows
           const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.40, seed: 77 });
           links.position.set(1.05, 1.56, -2.45);                                   // spare links aft of the swing, clear of the st windows
