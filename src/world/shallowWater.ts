@@ -589,11 +589,13 @@ export function createShallowWaterSurface(
         float causticLap = (texture2D(uOceanDeriv, cuv + du).x - texture2D(uOceanDeriv, cuv - du).x
           + texture2D(uOceanDeriv, cuv + dv2).y - texture2D(uOceanDeriv, cuv - dv2).y) / (2.0 * causticTexel);
         // the lens constant (1 − 1/n = 0.25) is raised twelvefold: the finest grid resolves ripples of 20 cm and
-        // longer, whose curvature is a fraction of the capillary ripples that focus real shallow-water caustics
-        float causticFocus = clamp(1.0 / max(0.3, 1.0 + 3.0 * oceanBed * causticLap) - 1.0, -0.6, 1.6);
+        // longer, whose curvature is a fraction of the capillary ripples that focus real shallow-water caustics.
+        // The concentration 1 / (1 + x) has a positive mean over a zero-mean curvature field (it bleached the whole
+        // band white); a bounded odd shaping keeps the network — converging bright, diverging dark — energy-neutral.
+        float causticFocus = tanh(-4.5 * oceanBed * causticLap);
         float causticGain = uOceanLook.z * causticFineW * smoothstep(0.03, 0.14, oceanBed) * (1.0 - smoothstep(0.35, 0.85, waterDeep));
         vec3 causticSunColor = directionalLights[0].color / max(max(directionalLights[0].color.r, max(directionalLights[0].color.g, directionalLights[0].color.b)), 1e-3);
-        outgoingLight += causticFocus * causticGain * 0.5 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.25);
+        outgoingLight += causticFocus * causticGain * 0.45 * uWaterShallow * causticSunColor * (1.0 - diffuseColor.a) / max(diffuseColor.a, 0.35);
         if (uWaterDebug > 4.5) oceanDebug = clamp(0.5 + causticFocus * 0.4, 0.0, 1.0);
       }
       #endif
