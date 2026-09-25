@@ -429,6 +429,36 @@ console.log('[14] round 60: a passive target is pressed to a point-blank side as
     'a target that keeps firing is never pressed (no charge at an active player)');
 }
 
+console.log('[22] round 67: both side points on water — the press ring falls back to a land-only bearing, not the glacis');
+{
+  // Tidegate Polders seed 2 under round 62: both side points stood in the polder water and the bot pressed straight
+  // in at the glacis. A map that avoids liquid: water everywhere beyond 55 m either side of the target's axis, so the
+  // two 75° side points (68 m out) and the 90° / 60° / 105° fallbacks stand in it and the 45° one (50 m out) on land.
+  const press = (water) => {
+    const bot = entity('press-bot', 'm1a2', 'player', 0, 0);
+    const still = entity('still', 't90m', 'enemy', 0, 220, Math.PI);
+    const field = water
+      ? { ...hf, navigationWaterPolicy: 'avoid-liquid', getWaterMaskAt: (x) => (Math.abs(x) > 55 ? 1 : 0) }
+      : hf;
+    const ctl = controller(bot, [still], [], 77, 'normal', { heightField: field });
+    tick(ctl, bot, 200);
+    return { info: ctl.debugInfo(), field };
+  };
+  const land = press(false);
+  ok(land.info.passivePress === true && (land.info.passivePressCandidate === 0 || land.info.passivePressCandidate === 1),
+    'with no water the ring takes a side point as before');
+  const wet = press(true);
+  const candidate = wet.info.passivePressCandidate;
+  ok(wet.info.passivePress === true && wet.info.passivePresses >= 1, 'the press still begins beside the water');
+  ok(candidate >= 2 && candidate <= 9, `the chosen bearing is a land-only fallback, not a side point or the glacis (candidate ${candidate})`);
+  ok(candidate === 8, `the first land bearing in the ring's order is 45° off the nose on the near side (candidate ${candidate})`);
+  const px = wet.info.pressPointX, pz = wet.info.pressPointZ;
+  ok(Number.isFinite(px) && Number.isFinite(pz), 'the press point is reported while pressing');
+  ok(wet.field.getWaterMaskAt(px, pz) === 0 && Math.abs(px) > 40, `the press point stands on land beside the water (x ${px.toFixed(1)})`);
+  const bearingFromTarget = Math.atan2(px - 0, pz - 220), offNose = Math.abs(Math.atan2(Math.sin(bearingFromTarget - Math.PI), Math.cos(bearingFromTarget - Math.PI)));
+  ok(offNose > 0.6 && offNose < 1.1, `a 45° aspect, not the glacis (${(offNose * 180 / Math.PI).toFixed(0)}° off the nose)`);
+}
+
 console.log('[15] round 60: a sniper with a solution on a passive target keeps firing from its spot');
 {
   // The receipt's own reload cycle: a shot sets the channel to the spec reload, the fixture decays it.
@@ -641,4 +671,9 @@ console.log('[21] round 62: an empty rack rams when the ram law allows it and re
   ok(wounded.info.ramming === false, 'a hull that would not survive its own ram does not run');
 }
 
+// round 67 (2026-09-24): the failure count is checked at the end too — checks [14]–[22] printed FAIL and still exited 0
+if (failures) {
+  console.error(`ai.selftest: ${failures} failure(s)`);
+  process.exit(1);
+}
 console.log('ai.selftest: all shared-combat checks passed');

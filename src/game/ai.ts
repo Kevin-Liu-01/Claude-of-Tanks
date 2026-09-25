@@ -524,6 +524,14 @@ const PASSIVE_TARGET_SILENT_S = 15;
 const PASSIVE_PRESS_NO_PEN_S = 15;     // this bot's own shells have not penetrated it for this long
 const PASSIVE_PRESS_STANDOFF_M = 70;   // the press point's distance from the target
 const PASSIVE_PRESS_ASPECT_RAD = 1.3;  // ~75° off the target's nose: a side plate, not a glacis
+// Round 67 (2026-09-24): when both side points fail — Tidegate Polders seed 2 under round 62: both stood on the polder
+// water and the bot pressed straight in at the glacis — the ring tries land-only bearings around each side aspect
+// (90°, 60°, 105°, 45° off the nose, alternating sides) before it falls back to the straight approach; a point on
+// water is no press point on a map that avoids liquid (the same corridor test the local brake uses).
+const PASSIVE_PRESS_FALLBACKS: readonly (readonly [number, number])[] = [
+  [1, 0.26], [-1, 0.26], [1, -0.26], [-1, -0.26], [1, 0.52], [-1, 0.52], [1, -0.52], [-1, -0.52],
+];
+const PASSIVE_PRESS_BEARINGS = 2 + PASSIVE_PRESS_FALLBACKS.length + 1; // per ring: the two sides, the fallbacks, straight in
 const PASSIVE_PRESS_REPICK_S = 3;
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
 const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
@@ -1044,7 +1052,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let passivePressRepickS = -1;
   let passivePresses = 0;                    // probe-visible count of press starts
   let passivePressRepicks = 0;               // probe-visible count of masked press points given up
-  let passivePressCandidate = -1;            // probe-visible: ring * 3 + bearing index of the chosen press point
+  let passivePressCandidate = -1;            // probe-visible: ring * 16 + bearing index of the chosen press point
   let passivePressArcT = 0;                  // gun pinned at a pitch stop while standing on the press point
   const pressVeto = { x: 0, z: 0, untilS: -1 }; // a press point whose probe found the hull masked
   // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
@@ -4226,7 +4234,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       && timeS - targetLastShotS >= PASSIVE_TARGET_SILENT_S;
   }
 
-  /** The side-aspect point nearer to where this hull already stands; the far side, then the straight approach. */
+  /** The side-aspect point nearer to where this hull already stands; the far side, then (round 67) land-only
+   * bearings around each side aspect, then the straight approach. */
   function pickPressPoint(): boolean {
     if (!target) return false;
     const st = entity.state;
@@ -4235,15 +4244,23 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const nose = target.state.yaw;
     const nearSide = Math.abs(wrapAngle(nose + PASSIVE_PRESS_ASPECT_RAD - bearing))
       <= Math.abs(wrapAngle(nose - PASSIVE_PRESS_ASPECT_RAD - bearing)) ? 1 : -1;
-    // two rings (the standoff, then closer), three bearings each: near side, far side, straight in
+    // two rings (the standoff, then closer); on each: near side, far side, the fallback bearings, straight in
     for (let ring = 0; ring < 2; ring++) {
       const radius = PASSIVE_PRESS_STANDOFF_M * (ring === 0 ? 1 : 0.65);
-      for (let k = 0; k < 3; k++) {
-        const a = k === 2 ? bearing : nose + nearSide * (k === 0 ? 1 : -1) * PASSIVE_PRESS_ASPECT_RAD;
+      for (let k = 0; k < PASSIVE_PRESS_BEARINGS; k++) {
+        let a: number;
+        if (k < 2) a = nose + nearSide * (k === 0 ? 1 : -1) * PASSIVE_PRESS_ASPECT_RAD;
+        else if (k === PASSIVE_PRESS_BEARINGS - 1) a = bearing;
+        else {
+          const [side, delta] = PASSIVE_PRESS_FALLBACKS[k - 2];
+          a = nose + side * nearSide * (PASSIVE_PRESS_ASPECT_RAD + delta);
+        }
         const x = clamp(tp.x + Math.sin(a) * radius, -470, 470);
         const z = clamp(tp.z + Math.cos(a) * radius, -470, 470);
         if (nowS < pressVeto.untilS && Math.hypot(x - pressVeto.x, z - pressVeto.z) < 12) continue;
         if (!reachableSpot(x, z)) continue;
+        // round 67: a point on water is no press point where the map avoids liquid (the hull faces the target there)
+        if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
         // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
         // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
         const gunY = hf.getHeightAt(x, z) + selfGunM;
@@ -4252,7 +4269,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         if (!hasLos(x, gunY, z, tp.x, hullY, tp.z)) continue;
         pressPoint.x = x;
         pressPoint.z = z;
-        passivePressCandidate = ring * 3 + k;
+        passivePressCandidate = ring * 16 + k; // round 67: 0/1 the sides, 2–9 the fallbacks, 10 straight in
         return true;
       }
     }
@@ -4894,6 +4911,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       conserveHolds, emptyRack, ramming, ramRuns,
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,
+      pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)
+      pressPointZ: passivePressing ? pressPoint.z : NaN,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)
       playerLocked: nowS < playerLockUntilS, // r4 RETURN-FIRE LOCK live
       // camo_spotting r7: chase-intel snapshot for the acquisition selftest —
