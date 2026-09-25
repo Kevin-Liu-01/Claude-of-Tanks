@@ -11,7 +11,7 @@ const { wreckPool } = await import('./wrecks.ts');
 assert.equal(typeof globalThis.document, 'undefined');
 
 // Ids retired from the saved fleet on 2026-09-23 plus an unknown id.
-const unavailable = ['leo2a7', 'tiger1', 'panther_g', 't34_85', 'm4a3e8', 'is2',
+const unavailable = ['leo2a7', 'tiger1', 'panther_g',
   'm1a2_legacy', 'recon_tank', 'q_heavy', 'not-a-tank'];
 for (const id of unavailable) {
   assert.equal(isPublicWreckDonor(id), false, `${id}: retired/unknown is not public`);

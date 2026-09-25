@@ -23,7 +23,7 @@ for (const id of retainedWw2) {
 }
 for (const id of HISTORICAL_COLD_WAR_CANDIDATE_IDS) {
   assert.equal(
-    isRetiredHistoricalTank({ id, era: id === 't95' ? 'ww2' : 'modern' }),
+    isRetiredHistoricalTank({ id, era: 'modern' }),
     !retainedColdWar.has(id),
     `${id} follows the Cold War exception policy`,
   );

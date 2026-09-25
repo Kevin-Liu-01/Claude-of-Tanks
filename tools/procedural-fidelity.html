@@ -169,22 +169,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
     fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2,
   } },
   amx40: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
-  // §5.251: rows repaired after the owner's 952561ea GLB retirement (the
-  // §5.31b flip left these three with no override row — prints restored
-  // locally from git history; GLBs stay untracked/ignored per the owner).
-  sturmtiger: { source:'glb', glb:{ path:'/models/tanks/community/sturmtiger-tomrs.glb', fixedMount:true, yawOffset:-Math.PI/2 } },
-  jpz_e100: { source:'glb', glb:{ path:'/models/tanks/community/jagdpanzer_e100_haphazard.glb', fixedMount:true, paintUntextured:true } },
-  // §5.317 RE-ORACLE (owner drop 2026-08-17): t95_world_of_tanks.glb replaces
-  // the doomturtle print as this id's row oracle (doomturtle retired to
-  // reference-history; the old GLB stays on disk). New print: textured
-  // Sketchfab rip (extraction-suspect class, LOCAL-ONLY gitignored quarantine,
-  // ATTRIBUTION §t95), raw nose +z (no yawOffset), 7-mesh split with the gun
-  // fused-fixed — fixedMount casemate registration. Print stance is fighting-
-  // trim (4.565 raw over the outer tracks) vs the published 3.86 shipping-
-  // width datum: the loader's width prescale puts the ref at ×0.8456 — the
-  // build is authored in that REF FRAME with published dims carried by the
-  // ratified dressing grammar (packet §5.317).
-  t95: { source:'glb', glb:{ path:'/models/community-candidates/t95_world_of_tanks.glb', fixedMount:true, maskFloorOracle:true } },
   // ---- §5.248 batch A (Downloads root, 13 drops — ALL LOCAL-ONLY
   // quarantine; provenance verdicts + SHA receipts in ATTRIBUTION).
   bmp3: { source:'glb', glb:{ path:'/models/community-candidates/bmp3_rok_42manako.glb', turretNode:'^turret\\.?001$', gunNode:'^weapon2\\.?001$', autoPivot:true, yawOffset:-Math.PI/2,
@@ -502,13 +486,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   isu122s: {
     source:'glb',
     glb:{ path:'/models/tanks/community/recovered/isu122s.glb',
-      fixedMount:true, paintUntextured:true },
-  },
-  // isu152 (graduated 2026-08-03): retired userdrops6.js registration —
-  // measurement-only.
-  isu152: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/isu152.glb',
       fixedMount:true, paintUntextured:true },
   },
   // kf51 (graduated 2026-08-03): retired source-model registration —

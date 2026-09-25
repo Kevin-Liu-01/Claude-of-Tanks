@@ -6310,116 +6310,6 @@ export const KIT = {
 // Per-tank builders
 // ===========================================================================
 
-function buildIS2(P: TankBuilderPort): void {
-  const { rng } = P;
-  P.add('hull', box(1.56, 0.65, 5.72), 0, 0.775, 0.05);                         // closed inter-track lower hull
-  // r7 hull rework: the sponson band starts at the FENDER LINE (1.22), not at
-  // the track top — the full-height 1.10-1.80 slab wall read as a German
-  // sponson barn. A dark AO ceiling closes the gap over the track run.
-  // Closed inter-track body plus raised outer shoulders.  The roof and side
-  // silhouette stay full-width; only the concealed track-lane soffits rise.
-  P.add('hull', frustum(0.78, 1.85, -2.85, 0.78, 1.85, -2.85, 1.10, 1.80));
-  for (const s of [-1, 1]) {
-    const xi = s * 0.78, xb = s * 1.545, xt = s * 1.42;
-    P.add('hull', s > 0 ? slab(
-      [xi, 1.31, 1.85], [xb, 1.31, 1.85], [xb, 1.31, -2.85], [xi, 1.31, -2.85],
-      [xi, 1.80, 1.85], [xt, 1.80, 1.85], [xt, 1.80, -2.85], [xi, 1.80, -2.85]) : slab(
-      [xb, 1.31, 1.85], [xi, 1.31, 1.85], [xi, 1.31, -2.85], [xb, 1.31, -2.85],
-      [xt, 1.80, 1.85], [xi, 1.80, 1.85], [xi, 1.80, -2.85], [xt, 1.80, -2.85]));
-  }
-  for (const s of [-1, 1]) {
-    P.add('hullRunningGearDark', new THREE.BoxGeometry(0.62, 0.026, 4.7), s * 1.23, 1.305, -0.5);
-  }
-  // 60° upper glacis with a PLAN TAPER to the prow — the model-1944
-  // "straightened nose" narrows toward the bow instead of running the full
-  // hull width (r7: full-width glacis + slab sides read as a barn).
-  P.add('hull', slab(
-    [-0.76, 0.95, 3.30], [0.76, 0.95, 3.30], [0.78, 0.95, 1.90], [-0.78, 0.95, 1.90],
-    [-0.76, 1.80, 1.83], [0.76, 1.80, 1.83], [0.78, 1.80, 1.86], [-0.78, 1.80, 1.86]));
-  // Raised, closed glacis shoulders preserve the broad straightened-nose
-  // silhouette while keeping their concealed lower faces above the shoes.
-  for (const s of [-1, 1]) {
-    const xi = s * 0.76, xo = s * 1.45, xt = s * 1.42;
-    P.add('hull', s > 0 ? slab(
-      [xi, 1.31, 3.30], [xi, 1.31, 3.30], [xo, 1.31, 1.90], [s * 0.78, 1.31, 1.90],
-      [xi, 1.80, 1.83], [xi, 1.80, 1.83], [xt, 1.80, 1.86], [s * 0.78, 1.80, 1.86]) : slab(
-      [xi, 1.31, 3.30], [xi, 1.31, 3.30], [s * 0.78, 1.31, 1.90], [xo, 1.31, 1.90],
-      [xi, 1.80, 1.83], [xi, 1.80, 1.83], [s * 0.78, 1.80, 1.86], [xt, 1.80, 1.86]));
-  }
-  P.add('hull', slab(                                                            // 30° lower glacis, tapered
-    [-0.72, 0.45, 3.01], [0.72, 0.45, 3.01], [0.78, 0.45, 2.35], [-0.78, 0.45, 2.35],
-    [-0.76, 0.95, 3.30], [0.76, 0.95, 3.30], [0.78, 0.95, 1.95], [-0.78, 0.95, 1.95]));
-  // sloped rear — top-ring zF/zR were swapped (zF -3.38 < zR -3.0 inverted
-  // the slab ring => inside-out since authorship; §5.03 sweep item 1)
-  P.add('hull', frustum(1.4, -2.86, -2.86, 1.4, -3.0, -3.38, 1.31, 1.8));
-  P.addEquipment('hull', box(0.3, 0.12, 0.3), 0, 1.85, 1.6);                    // driver periscope hump
-  // r4 diving-board fix (worst at the IS-2 bow): main fender run pulled back
-  // from the tapered prow, sawtooth tips angle DOWN right off the run's end,
-  // and support brackets tie the shelf to the hull side.
-  fenders(P, 0.9, 1.545, 1.32, -2.95, 2.75, 0.03);
-  for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.35, 0.25, 1.0), s * 1.25, 1.95, -1.6);            // flat fuel tanks
-    P.add('hullDetail', cylY(0.16, 0.16, 0.8, 12), s * 1.3, 1.42, -2.9, 0, 0, s * 0.25); // drums
-    // sawtooth fender tips (front + rear) — Soviet ID detail
-    P.add('hull', box(0.62, 0.03, 0.42), s * 1.20, 1.32, 2.94, -0.26, 0, 0);
-    P.add('hull', box(0.62, 0.03, 0.38), s * 1.20, 1.32, -3.10, 0.26, 0, 0);
-    for (const zb of [-2.5, -1.0, 0.6, 2.1]) {
-      P.add('hullDetail', box(0.34, 0.04, 0.05), s * 1.10, 1.31, zb);           // support brackets
-    }
-  }
-  towCable(P, [[-1.5, 1.75, -2.0], [-1.58, 1.8, 0.2], [-1.5, 1.75, 2.2]]);
-  towCable(P, [[1.5, 1.75, -2.0], [1.58, 1.8, 0.2], [1.5, 1.75, 2.2]]);
-  P.add('hullTrack', box(0.6, 0.05, 0.3), -0.6, 1.35, 3.05, -1.05, 0, 0);       // spare links on glacis
-  // r7 turret rebuild: flattened ELONGATED cast turret — a low wide frustum
-  // skirt flowing into a shallow domed roof, egg-shaped in plan and clearly
-  // longer than tall, with the rear bustle overhanging the ring. The old
-  // hemispherical beach-ball dome failed every IS-2 silhouette check.
-  // tank_models r7 second pass ("turret reads too small and hemispherical"):
-  // cast body widened 0.97 -> 1.09 (2.18 m plan width), stretched to a
-  // longer egg (sz 1.40) and the crown flattened into a broad plateau — the
-  // profile now reads as the low LONG IS-2 casting, not a dome.
-  P.add('turret', xform(lathe([
-    [1.09, 0.0], [1.08, 0.11], [1.04, 0.24], [0.96, 0.36], [0.83, 0.46],
-    [0.67, 0.54], [0.48, 0.60], [0.26, 0.64], [0.0, 0.66],
-  ], P.q ? 32 : 14, 1.40), 0, 0, -0.12));
-  // rear bustle: cast overhang box with a rounded lower chamfer + pistol port
-  // (r7: widened with the bigger casting)
-  P.add('turret', box(1.40, 0.44, 0.66), 0, 0.245, -1.36);
-  P.add('turret', xform(cylX(0.21, 1.32, 12), 0, 0, 0), 0, 0.10, -1.66);
-  P.add('turretDark', cylZ(0.035, 0.06, 8), 0, 0.23, -1.70);                    // pistol port
-  liftEye(P, 'turretDetail', -0.62, 0.58, -0.5);
-  liftEye(P, 'turretDetail', 0.62, 0.58, -0.5);
-  cupola(P, 'turret', -0.4, 0.64, -0.35, 0.24, 0.16, 5);
-  // DShK AA MG on loader ring
-  P.add('turretDetail', torus(0.26, 0.025, P.q ? 22 : 10), 0.42, 0.68, -0.25);
-  pintleMG(P, 0.42, 0.68, -0.25);
-  for (const s of [-1, 1]) {
-    towCable(P, [[s * 0.85, 0.28, 0.4], [s * 0.95, 0.33, -0.2], [s * 0.85, 0.28, -0.6]], 0.016);
-  }
-  // Mantlet group seated ON the (longer) cast face, not buried inside it:
-  // broad cast cradle, rounded rocking roll, and the bulge under the barrel
-  // root that defines the D-25T mount.
-  P.addGunExtra(box(0.74, 0.60, 0.34), 0, 0.02, 0.60);                          // cast cradle
-  P.addGunExtra(xform(cylX(0.30, 0.68, 12), 0, 0, 0), 0, 0.04, 0.78);           // rounded mantlet roll
-  P.addGunExtra(cylX(0.17, 0.46, 10), 0, -0.16, 0.88);                          // bulge under barrel root
-  buildGun(P, { len: 5.85, r: 0.095, brake: 'discs', baseR: 0.2 });
-  // IS running gear architecture (r6): SMALL 0.55 m steel wheels low on the
-  // hull, three return rollers carrying the top run high, and the signature
-  // open gap under the sponson between wheel tops and the raised track.
-  buildRunningGear(P, {
-    style: 'steel', wheelR: 0.275, wheelW: 0.17, xc: 1.22, wheelY: 0.36,
-    wheelZs: [2.3, 1.38, 0.46, -0.46, -1.38, -2.3],
-    sprocket: { z: -2.95, y: 0.44, r: 0.32 }, idler: { z: 2.95, y: 0.40, r: 0.27 },
-    rollers: [1.55, 0.05, -1.55].map((z) => ({ z, y: 1.02, r: 0.09 })),
-    trackW: 0.65, topY: 1.08, arms: true,
-  });
-  headlight(P, -0.6, 1.9, 1.75, -0.5);
-  stowage(P, 'hullDetail', rng, [[1.25, 1.35, 1.4, 0.3, 0.24, 0.9]]);
-  P.decal('turret', 'number', '432', 0.38, [1.02, 0.28, -0.3], Math.PI / 2, 0, 0.20);
-  P.decal('turret', 'number', '432', 0.38, [-1.02, 0.28, -0.3], -Math.PI / 2, 0, -0.20);
-  P.topY = 0.72;
-}
-
 function buildPantherHull(P: TankBuilderPort): void {
   // §5.247 ww2-wave FULL REDESIGN (photo-class, no oracle — FALSE-0 law).
   // Panther Ausf. G, late 1944 (ambush-scheme era, zimmerit discontinued):
@@ -7129,9 +7019,10 @@ function buildLeo2A7(P: TankBuilderPort): void {
 // m1a2_legacy and t90m are built by their profile packs (profiles/ww2.ts,
 // abrams.ts, t90.ts), which registerConfiguredBuilders let override the old
 // core builders at configure time; those five shadowed builders are gone.
-// is2, panther_g and leo2a7 keep their only builders here.
+// is2 left with its archived hull on 2026-09-25 (owner); panther_g and
+// leo2a7 keep their only builders here.
 const BUILDERS: TankBuilderRecord = {
-  is2: buildIS2, panther_g: buildPanther, leo2a7: buildLeo2A7,
+  panther_g: buildPanther, leo2a7: buildLeo2A7,
 };
 const CANONICAL_BUILDERS: TankBuilderRecord = { ...BUILDERS };
 
