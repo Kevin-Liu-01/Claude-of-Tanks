@@ -2158,7 +2158,8 @@ floor (351 s, p10 259 s, no battle under two minutes) — under the 380–440 s 
 in which no round is wasted is simply shorter, on every map. The two levers measured do not lift it: a full rack
 taking one-in-four shots (iteration 4) added 12 s of median for more rounds spent, and the 20 s dwell (iterations 2 and
 5) added 7–9 s and a cap. Lifting it into the band would take an opening the bots spend longer in — the deployment
-window (`DEPLOYMENT_TUNING`, 120–165 s, engagement inside 85–100 m) is the owner's lever, not this round's. Open with
+window (`DEPLOYMENT_TUNING`, 120–165 s, engagement inside 85–100 m) is the owner's lever, not this round's (owner
+2026-09-25: the ~6 min median stands; no change). Open with
 it: the press point's ring has no third bearing once both side points stand on water (Polders 2 pressed straight in;
 closed by round 67 with land-only fallback bearings), and the empty rack's retirement is a draw by design — a resupply
 rule would be the alternative, and there is none.
