@@ -2772,10 +2772,14 @@ function buildT14HullBody(P: Modern2BuilderPort) {
   P.add('hull', slab(
     [-1.06, 1.325, 3.96], [1.06, 1.325, 3.96], [1.06, 1.05, 3.90], [-1.06, 1.05, 3.90],
     [-1.06, 1.665, 2.15], [1.06, 1.665, 2.15], [1.06, 1.605, 2.02], [-1.06, 1.605, 2.02]));
-  P.add('hull', slab(                                                            // right wing (tapered)
+  // FSP-05 (2026-09-25): both wing rings were the inward handedness (the left
+  // was corner-swapped to match the right), so the wing tops faced DOWN and the
+  // chase views read into the bow shoulders at x +-1.5. orientedSlab99 re-orders
+  // each reversed ring; the corners and silhouettes are unchanged.
+  P.add('hull', orientedSlab99(                                                  // right wing (tapered)
     [1.06, 1.325, 3.95], [1.06, 1.275, 3.94], [1.80, 1.435, 2.86], [1.80, 1.489, 2.90],
     [1.06, 1.665, 2.15], [1.06, 1.615, 2.13], [1.80, 1.615, 2.13], [1.80, 1.665, 2.15]));
-  P.add('hull', slab(                                                            // left wing (corner-swapped mirror)
+  P.add('hull', orientedSlab99(                                                  // left wing (corner-swapped mirror)
     [-1.06, 1.275, 3.94], [-1.06, 1.325, 3.95], [-1.80, 1.489, 2.90], [-1.80, 1.435, 2.86],
     [-1.06, 1.615, 2.13], [-1.06, 1.665, 2.15], [-1.80, 1.665, 2.15], [-1.80, 1.615, 2.13]));
   // NOSE WEDGE to the BLUNT ARROW TIP (±0.62 at 4.29 — §B8 order 3) with
