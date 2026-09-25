@@ -121,6 +121,8 @@ export interface PresentationGameState {
   timeS: number;
   preBattleS: number;
   result?: string | null;
+  /** battle endings (2026-09-25): the killcam facade main composes (typed loosely); every observable lethal shell_hit feeds it. */
+  killcam?: RuntimeValue;
   resultReason?: string | null;
   mapId?: string;
   gameMode?: RuntimeValue;
@@ -555,12 +557,27 @@ export function createBattlePresentation({
     }));
   }
 
+  /** battle endings (2026-09-25): the killcam facade (typed loosely by main) — every observable lethal shell_hit feeds it. */
+  function feedKillcam(hit: Record<string, RuntimeValue>, target: RuntimeValue): void {
+    const killcam = game.killcam as { onShellHit?: (event: RuntimeValue, target: RuntimeValue) => void } | null | undefined;
+    if (killcam && typeof killcam.onShellHit === 'function') killcam.onShellHit(hit, target);
+  }
+
+  /** battle endings (2026-09-25): the Horde wave the last stand fell on, for the report milestone */
+  function hordeWave(): number | null {
+    const mode = game.matchModeState as { horde?: { wave?: number } | null } | null | undefined;
+    const wave = mode?.horde?.wave;
+    return typeof wave === 'number' && Number.isFinite(wave) ? wave : null;
+  }
+
   function endMatch(result: string, reason: string): void {
     game.result = result;
     game.resultReason = reason;
+    // The match keeps publishing the field through the ruleset's post-verdict hold (authoritativeMatch endingHoldS),
+    // so the ending director's replay or camera beat plays over a live field, as in solo play.
     bus.emit('battle:ended', {
       result, reason, timeS: game.timeS, map: game.mapId, mapId: game.mapId, durationS: game.timeS, network: true,
-      gameMode: game.gameMode, roster: resultRoster(),
+      gameMode: game.gameMode, roster: resultRoster(), hordeWave: hordeWave(),
     });
   }
 
@@ -703,9 +720,15 @@ export function createBattlePresentation({
         if (eventContext.own && (!own || !mounted || snapshotPhase !== PHASE.PLAYING || game.result || own.combat.destroyed)) return;
         emitShellFired(payload, eventContext.feedbackPredicted);
         return;
-      case 'shell_hit':
-        bus.emit('shell:hit', { type: kind, ...payload, attackerId: payload.attackerId || payload.shooterId });
+      case 'shell_hit': {
+        const hit = { type: kind, ...payload, attackerId: payload.attackerId || payload.shooterId };
+        // battle endings (2026-09-25): the killcam captures the lethal chain for any pair the match let this viewer
+        // observe (the authority's reveal rules already filtered the event), so a verdict can replay the final
+        // kill whoever fired it — the hook state.ts calls in solo play and the v1 bridge calls for its rooms
+        feedKillcam(hit, actors.get(String(payload.targetId ?? '')) ?? null);
+        bus.emit('shell:hit', hit);
         return;
+      }
       case 'shell_impact':
         bus.emit('shell:expired', {
           shellId: payload.shellId, shooterId: payload.shooterId, hitTerrain: payload.kind === 'terrain', hitKind: payload.kind,

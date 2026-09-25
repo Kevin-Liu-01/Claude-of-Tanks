@@ -78,7 +78,7 @@ export interface MatchActorOptions {
   schedule?: (callback: () => void, delayMs: number) => () => void;
   /** Start the loop and the countdown immediately (default true). */
   autoStart?: boolean;
-  /** Ticks the actor keeps publishing after the verdict before it stops (default 5 s). */
+  /** Ticks the actor keeps publishing after the verdict before it stops (default: the ruleset's ending hold + 2 s, at least 5 s). */
   endedLingerTicks?: number;
 }
 
@@ -190,7 +190,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], countdownS = 5, battleLimitS, world = 'dedicated',
     log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
-    endedLingerTicks = TICK_HZ * 5,
+    endedLingerTicks,
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
@@ -497,6 +497,13 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     authority.afterSnapshotBroadcast();
   }
 
+  /** Ticks published past the verdict: the configured linger, else the ruleset's ending hold plus two seconds (never under 5 s). */
+  function lingerTicks(): number {
+    if (endedLingerTicks !== undefined) return endedLingerTicks;
+    const holdS = typeof authority.endingHoldS === 'number' && Number.isFinite(authority.endingHoldS) ? authority.endingHoldS : 0;
+    return Math.max(TICK_HZ * 5, Math.ceil((holdS + 2) * TICK_HZ));
+  }
+
   function settleVerdict(tick: number): void {
     if (verdict || !authority.result) return;
     ended = true;
@@ -518,14 +525,15 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function onTick(tick: number, dt: number): void {
     if (stopped) return;
-    if (!ended) {
-      authority.step({ dt, inputs: collectInputs(tick) });
-      lagComp.record(tick);
-    }
+    // battle endings (2026-09-25): the authority keeps stepping through the ruleset's post-verdict hold
+    // (guns silenced, shells in flight landing, the mode controller settling — authoritativeMatch endingHoldS)
+    // and stands still by itself once the hold expires, so the ending replay or camera beat plays over a live field.
+    authority.step({ dt, inputs: collectInputs(tick) });
+    if (!ended) lagComp.record(tick);
     deliverEvents(tick);
     settleVerdict(tick);
     if (tick % SNAPSHOT_EVERY_TICKS === 0) publishSnapshots(tick);
-    if (ended && tick - verdictTick >= endedLingerTicks) stop(CLOSE_REASON.MATCH_ENDED, verdict?.result ?? '');
+    if (ended && tick - verdictTick >= lingerTicks()) stop(CLOSE_REASON.MATCH_ENDED, verdict?.result ?? '');
   }
 
   const loop = createFixedStepLoop({
