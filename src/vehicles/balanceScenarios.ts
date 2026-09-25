@@ -7,6 +7,15 @@ interface BalanceScenario extends BalanceSeriesOptions {
   maxAScore?: number;
 }
 
+// Physical side-mounted missile exits can change the first struck armor/module
+// and therefore the seeded damage sequence. Preserve the original six seeds,
+// add a fixed arithmetic holdout (chosen independently of outcomes), and check
+// short/medium/long ranges instead of tuning a weapon to twelve duels.
+const GUIDED_PEER_SEEDS = Object.freeze([
+  101, 211, 307, 401, 503, 601,
+  ...Array.from({ length: 36 }, (_, index) => 1009 + index * 997),
+]);
+
 /**
  * Curated peer and family-progression fights. These are intentionally small
  * enough for the normal selftest pass while spanning MBTs, IFVs, conventional
@@ -26,7 +35,9 @@ export const BALANCE_SCENARIOS: readonly BalanceScenario[] = Object.freeze([
   { id: 'proryv-tier10-peer', aId: 't90m_proryv', bId: 'm1a2', purpose: 'Tier X modern MBT peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'merkava-tier7-peer', aId: 'merkava1b', bId: 't62mv1', purpose: 'Tier VII Cold War MBT ceiling', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'puma-tier8-peer', aId: 'spz_puma', bId: 'bmp3_rok', purpose: 'Tier VIII modern IFV peers', minAScore: 0.2, maxAScore: 0.8 },
-  { id: 'puma-s1-tier10-peer', aId: 'spz_puma_s1', bId: 'bmpt_t90', purpose: 'Tier X modern IFV guided-weapon peers', aShellSlot: 1, bShellSlot: 1, minAScore: 0.2, maxAScore: 0.8 },
+  { id: 'puma-s1-tier10-peer', aId: 'spz_puma_s1', bId: 'bmpt_t90', purpose: 'Tier X modern IFV guided-weapon peers', aShellSlot: 1, bShellSlot: 1, distanceM: 120, seeds: GUIDED_PEER_SEEDS, minAScore: 0.2, maxAScore: 0.8 },
+  { id: 'puma-s1-tier10-close-peer', aId: 'spz_puma_s1', bId: 'bmpt_t90', purpose: 'Tier X modern IFV guided-weapon peers', aShellSlot: 1, bShellSlot: 1, distanceM: 90, seeds: GUIDED_PEER_SEEDS, minAScore: 0.2, maxAScore: 0.8 },
+  { id: 'puma-s1-tier10-long-peer', aId: 'spz_puma_s1', bId: 'bmpt_t90', purpose: 'Tier X modern IFV guided-weapon peers', aShellSlot: 1, bShellSlot: 1, distanceM: 220, seeds: GUIDED_PEER_SEEDS, minAScore: 0.2, maxAScore: 0.8 },
   { id: 'leopard-heavy-peer', aId: 'leo2a5_a5nl', bId: 'strv122', purpose: 'Tier X Leopard-family protection packages', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'leopard-tier9-peer', aId: 'leo2a4m', bId: 't90a', purpose: 'Tier IX modern MBT peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'ifv-nextgen-peer', aId: 'type89_light_tiger', bId: 'cv90_mkiv', purpose: 'next-generation IFV anti-armor weapons', aShellSlot: 1, minAScore: 0.2, maxAScore: 0.8 },
