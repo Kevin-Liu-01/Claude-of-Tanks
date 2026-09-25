@@ -959,9 +959,11 @@ function setWorldDormant(on: boolean) {
 function minimapSnapCtx() {
   return {
     renderer, scene,
-    exclude: (game.tanks || []).flatMap((tank) => (
+    // Moving flags, caches and ownership colors belong to the live overlay,
+    // never the retained terrain image.
+    exclude: [matchModeWorld.root, ...(game.tanks || []).flatMap((tank) => (
       tank.visual ? [tank.visual.root] : []
-    )),
+    ))],
   };
 }
 

@@ -21,4 +21,9 @@ assert.match(hud, /return captureMinimapScene\(snap\?\.requireTextured === true,
 assert.match(hud, /exportMinimapBackground\([^]*?if \(requireTextured\) requireSceneMinimap\(mmCaptureReceipt, mmBuildGeneration\)/);
 assert.match(hud, /mmBuildGeneration\+\+;\s*mmCaptureReceipt = null;/,
   'a failed capture cannot export a previous successful frame');
+
+const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(main, /exclude: \[matchModeWorld\.root,/,
+  'live objective markers must not be baked into the static map image');
+
 console.log('minimapCapturePolicy.selftest: strict failures, fallback preservation, fresh scene receipts passed');

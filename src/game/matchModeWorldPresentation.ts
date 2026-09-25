@@ -736,8 +736,7 @@ export function createMatchModeWorldPresentation(
       const mark = zoneMarks[index];
       const material = marker.userData.markerMaterial;
       if (material) {
-        const color = zone.contested ? AMBER
-          : zone.owner ? sideHex(sideOf(zone.owner, state)) : NEUTRAL;
+        const color = mark ? sideHex(mark.side) : NEUTRAL;
         material.color.setHex(color);
         material.opacity = zone.contested ? 0.68 : 0.28 + Math.abs(zone.control) * 0.38;
       }
@@ -766,7 +765,7 @@ export function createMatchModeWorldPresentation(
           fill: sideFill(mark.side), stroke: sideColor(mark.side), label, ringWidth: 9,
           dashed: mark.side === 'contested' || status === 'locked', font: '700 48px system-ui, sans-serif',
         });
-        if (status === 'taken') drawCheck(ctx, c + 30, c + 30, 22, sideColor('own'));
+        if (status === 'taken') drawCheck(ctx, c + 30, c + 30, 22, sideColor(mark.side));
       });
       fadeByViewer(marker);
     }
@@ -802,7 +801,7 @@ export function createMatchModeWorldPresentation(
     const markers = buildPickups();
     let markerIndex = 0;
     for (const pickup of state.pickups) {
-      if (!pickup.active || markerIndex >= markers.length) continue;
+      if (pickup.active === false || markerIndex >= markers.length) continue;
       const marker = markers[markerIndex];
       markerIndex += 1;
       marker.visible = true;
@@ -837,7 +836,9 @@ export function createMatchModeWorldPresentation(
       updateLineWorks(state);
     }
     else if (state.id === 'turbo_ball') updateTurboBall(state, timeS);
-    else updatePickups(state, timeS);
+    // Caches coexist with objectives (Mars has both zones and drops).
+    // Keep their lifecycle independent of the exclusive objective dispatch.
+    if (state.pickups.length || state.id === 'endless_horde') updatePickups(state, timeS);
     updateSpawns(state, marks);
   };
 

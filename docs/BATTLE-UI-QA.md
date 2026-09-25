@@ -58,3 +58,23 @@ The older `mobileLayout.selftest.mjs` currently stops at an unrelated Garage
 source-regex assertion expecting pre-localization literal English markup.
 Do not treat that as a passing full-suite result or remove the assertion to
 make this HUD change appear green. The focused rendered gate is independent.
+
+## Map and battlefield agreement
+
+Pickups are independent of the objective type: Mars renders both capture zones
+and every active repair/ammo cache. Collection removes the cache from the
+authoritative state, world pool and map together. Both map and world derive
+Frontline ownership from `minimapObjectives.ts`, including defender viewpoints.
+Inactive wave reserves have no map contact; reactivation starts fresh spotting
+memory. Live objective geometry is excluded from the baked map background.
+
+The existing `matchModeWorldPresentation`, `minimapObjectives` and
+`minimapCapturePolicy` selftests cover these contracts in `npm test`. For the
+real HUD canvas, start Vite and run (under the shared capture lease):
+
+```sh
+node tools/minimap-contacts.browser.mjs --url=http://127.0.0.1:5189
+```
+
+This checks hidden reserves, activation, deactivation, clean next-wave spotting
+and the distinct last-known marker through pixel comparisons of the real minimap.

@@ -129,4 +129,18 @@ assert.match(worldSource, /from '\.\.\/ui\/objectiveGlyphs\.ts'/, 'world icons a
 const simSource = await readFile(new URL('../sim/matchModes.ts', import.meta.url), 'utf8');
 assert.match(simSource, /spawns: state\.spawns\.map\(\(spawn\) => \(\{ \.\.\.spawn \}\)\)/, 'serialize clones the spawn centres');
 
+
+// The attackers remain alpha even when the observer follows a defender.
+{
+  const state = { ...base, id: 'frontline_assault', perspectiveTeam: 'bravo',
+    line: { index: 1, total: 3, holdS: 0 },
+    zones: [0, 1, 2].map(i => ({ x: i * 50, z: 0, control: i === 0 ? 1 : 0,
+      owner: i === 0 ? 'alpha' : null, contested: false })) };
+  const marks = objectiveMarkers(state);
+  assert.deepEqual(marks.filter(m => m.kind === 'spawn').map(m => [m.x, m.side]), [[-300, 'enemy']]);
+  assert.deepEqual(marks.filter(m => m.kind === 'sector').map(m => m.side), ['enemy', 'neutral', 'own']);
+  state.line.index = 3; state.line.holdS = 10;
+  assert.equal(objectiveMarkers(state).find(m => m.status === 'holding').side, 'enemy');
+}
+
 console.log('minimapObjectives.selftest: sides, zones, flags, sectors, turbo, horde, spawns and wiring passed');

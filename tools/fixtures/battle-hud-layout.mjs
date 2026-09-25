@@ -75,5 +75,5 @@ function state(name) {
   }))});
   return name;
 }
-window.__HUD_LAYOUT = {state, hud, bus, chat, touch, settings, hit};
+window.__HUD_LAYOUT = {state, hud, bus, chat, touch, settings, hit, frame, tanks};
 state('idle');

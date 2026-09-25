@@ -80,7 +80,7 @@ function spawnMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, o
   if (!state.spawns || SPAWN_MARKED_BY_OBJECTIVE.has(id)) return;
   for (const spawn of state.spawns) {
     const side = objectiveSide(spawn.team, perspective);
-    if (side === 'enemy' && OWN_SPAWN_ONLY.has(id)) continue;
+    if (spawn.team !== 'alpha' && OWN_SPAWN_ONLY.has(id)) continue;
     out.push({
       kind: 'spawn', x: spawn.x, z: spawn.z, side,
       status: state.respawns ? 'respawn' : 'spawn', priority: 0,
@@ -134,16 +134,16 @@ function sectorMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, 
     let side: ObjectiveSide;
     if (taken >= total && index === total - 1) {
       status = 'holding';
-      side = zone.contested ? 'contested' : 'own';
+      side = zone.contested ? 'contested' : objectiveSide('alpha', perspective);
     } else if (index < taken) {
       status = 'taken';
-      side = 'own';
+      side = objectiveSide('alpha', perspective);
     } else if (index === taken) {
       status = 'active';
       side = zoneSide(zone, perspective);
     } else {
       status = 'locked';
-      side = 'enemy';
+      side = objectiveSide('bravo', perspective);
     }
     out.push({
       kind: 'sector', x: zone.x, z: zone.z, side, label: String(index + 1), status,

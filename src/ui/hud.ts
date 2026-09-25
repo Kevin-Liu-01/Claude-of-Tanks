@@ -179,6 +179,7 @@ export interface HudTank {
   id: string;
   team?: string;
   isPlayer?: boolean;
+  modeActive?: boolean;
   displayName?: string;
   state?: TankState | null;
   combat?: CombatState | null;
@@ -2747,6 +2748,12 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < tanks.length; i++) {
       const tank = tanks[i];
       if (!tank?.state || tank.isPlayer || tank.team === 'player') continue;
+      // Wave reserves are off the battlefield. Discard their previous wave's
+      // contact so reactivation cannot resurrect a stale map position.
+      if (tank.modeActive === false) {
+        spotById.delete(tank.id);
+        continue;
+      }
       const memory = spotMemoryFor(tank);
       if (tank.combat?.destroyed) {
         // wrecks are permanently known once dead
@@ -5330,7 +5337,7 @@ export function initHud(bus: EventBus): HudRuntime {
           if (progress > 0.01 && progress < 0.995 && marker.progressSide) {
             drawProgressArc(mmCtx, x, y, r + 3.4, progress, sideColor(marker.progressSide), 2);
           }
-          if (taken) drawCheck(mmCtx, x + r * 0.7, y + r * 0.7, 5, OBJECTIVE_PALETTE.own);
+          if (taken) drawCheck(mmCtx, x + r * 0.7, y + r * 0.7, 5, color);
           break;
         }
         case 'goal':
@@ -5402,7 +5409,7 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < tanks.length; i++) {
       const tank = tanks[i];
       const state = tank?.state;
-      if (!tank || !state || tank.isPlayer) continue;
+      if (!tank || !state || tank.isPlayer || tank.modeActive === false) continue;
       if (tank.combat?.destroyed) {
         drawDestroyedMinimapTank(state);
         continue;

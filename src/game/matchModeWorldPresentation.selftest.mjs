@@ -3,6 +3,9 @@ import { DoubleSide, Matrix4, Object3D, Scene, Vector3 } from 'three';
 
 import { createMatchModeWorldPresentation, LINE_WORKS, planLineWorks } from './matchModeWorldPresentation.ts';
 
+import { createMatchModeController } from '../sim/matchModes.ts';
+import { objectiveMarkers } from '../ui/minimapObjectives.ts';
+
 const ALLY = 0x6fe887;
 const ENEMY = 0xf26a62;
 const NEUTRAL = 0xe7edf1;
@@ -574,5 +577,80 @@ assert.equal([...disposedGeometries.values()].every((count) => count === 1), tru
   'shared objective geometries dispose exactly once');
 assert.equal([...disposedMaterials.values()].every((count) => count === 1), true,
   'shared objective materials dispose exactly once');
+
+
+// Exercise the authority-to-map-to-world path, not fabricated pickup-only state.
+// Mars caches must coexist with capture zones; pooled markers must disappear on
+// collection and mode changes, including a freshly serialized network snapshot.
+{
+  const terrain = (x, z) => 12 + x * 0.01 - z * 0.02;
+  const player = { id: 'pilot', team: 'alpha', bot: false,
+    state: { pos: { x: 0, y: 12, z: -150 }, yaw: 0, speed: 0 },
+    combat: { hp: 50, maxHp: 100, destroyed: false, ammo: [0, 0, 0], ammoCapacity: [20, 20, 20] } };
+  const enemy = { ...player, id: 'enemy', team: 'bravo', bot: true,
+    state: { pos: { x: 0, y: 12, z: 150 }, yaw: 0, speed: 0 }, combat: { ...player.combat } };
+  const authority = createMatchModeController({ mode: 'mars', entities: [player, enemy], seed: 42,
+    terrainHeight: terrain, revive() {} });
+  const scene = new Scene();
+  const view = createMatchModeWorldPresentation(scene, { groundHeight: terrain, viewerPosition: () => player.state.pos });
+  authority.step(1 / 60, 12);
+  authority.step(1 / 60, 34);
+  const initial = authority.serialize(player.id);
+  assert.equal(initial.pickups.length, 2);
+  assert.deepEqual(new Set(initial.pickups.map(p => p.kind)), new Set(['ammo', 'heal']));
+  for (const state of [authority.state, initial, JSON.parse(JSON.stringify(initial))]) {
+    view.update(state, 34);
+    const pins = objectiveMarkers(state).filter(m => m.kind === 'pickup');
+    const models = view.root.children.filter(m => m.name.startsWith('horde-pickup-') && m.visible);
+    assert.equal(models.length, pins.length, 'every active cache pin has a world model alongside Mars zones');
+    assert.equal(view.root.getObjectByName('capture-zone-1').visible, true);
+    for (const [i, model] of models.entries()) {
+      assert.equal(model.position.x, pins[i].x);
+      assert.equal(model.position.z, pins[i].z);
+      assert.ok(model.position.y - 2.05 > terrain(pins[i].x, pins[i].z), 'whole pickup clears the terrain');
+      assert.equal(model.userData.heal.visible, pins[i].status === 'heal');
+      assert.equal(model.userData.ammo.visible, pins[i].status === 'ammo');
+    }
+  }
+  for (const cache of initial.pickups) {
+    player.state.pos.x = cache.x; player.state.pos.z = cache.z;
+    authority.step(1 / 60, 35);
+    const state = authority.serialize(player.id);
+    view.update(state, 35);
+    assert.equal(state.pickups.some(p => p.id === cache.id), false, 'collected cache leaves authority snapshot');
+    assert.equal(objectiveMarkers(state).some(m => m.kind === 'pickup' && m.x === cache.x && m.z === cache.z), false);
+    assert.equal(view.root.children.some(m => m.visible && m.name.startsWith('horde-pickup-')
+      && m.position.x === cache.x && m.position.z === cache.z), false, 'collected cache leaves world');
+  }
+  assert.ok(player.combat.hp > 50);
+  assert.ok(player.combat.ammo.some(count => count > 0));
+  view.update(initial, 36);
+  view.update({ ...initial, id: 'zone_control', pickups: [] }, 37);
+  assert.equal(view.root.children.some(m => m.visible && m.name.startsWith('horde-pickup-')), false, 'no caches survive a mode change');
+  view.update(null, 38);
+  assert.equal(view.root.visible, false);
+  view.dispose();
+}
+
+// A locked sector's ring, fill and map glyph all describe the same defender.
+{
+  const view = createMatchModeWorldPresentation(new Scene());
+  const state = { ...base, id: 'frontline_assault', spawns: [],
+    line: { index: 1, total: 3, holdS: 0 },
+    zones: [0, 1, 2].map(i => ({ id: `line-${i}`, x: i * 60, y: 0.12, z: 0,
+      control: i === 0 ? 1 : 0, owner: i === 0 ? 'alpha' : null, contested: false })) };
+  for (const perspectiveTeam of ['alpha', 'bravo']) {
+    state.perspectiveTeam = perspectiveTeam;
+    view.update(state, 1);
+    const marks = objectiveMarkers(state).filter(m => m.kind === 'sector');
+    marks.forEach((mark, i) => {
+      const model = view.root.getObjectByName(`capture-zone-${i + 1}`);
+      const color = mark.side === 'own' ? ALLY : mark.side === 'enemy' ? ENEMY : NEUTRAL;
+      assert.equal(model.userData.markerMaterial.color.getHex(), color);
+      assert.equal(model.userData.discMaterial.color.getHex(), color);
+    });
+  }
+  view.dispose();
+}
 
 console.log('matchModeWorldPresentation.selftest: geometry, retained state, and lifecycle passed');
