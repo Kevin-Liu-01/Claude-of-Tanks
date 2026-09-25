@@ -118,7 +118,10 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
   const baseM = sky.cloudAltM ?? (overcast ? CLOUD_LAYER_OVERCAST_BASE_M : CLOUD_LAYER_DEFAULT_BASE_M);
   const thicknessM = storm ? 1400 : overcast ? 320 : regime === 'broken' ? 480 + towers * 500 : 360 + towers * 400;
   const density = storm ? 0.08 : overcast ? 0.035 : regime === 'broken' ? 0.09 : 0.11;
-  const tint = hexToLinear(sky.cloudTintHex).map((c) => Math.sqrt(clamp(c, 0, 1))) as [number, number, number];
+  // the authored deck tint was composited over a white sky: as an albedo it is perceptually halved, and a
+  // stratus ceiling (which IS the sky) takes only a quarter of it so an overcast stays white
+  const tintPower = overcast ? 0.25 : 0.5;
+  const tint = hexToLinear(sky.cloudTintHex).map((c) => clamp(c, 0, 1) ** tintPower) as [number, number, number];
   const shadowAmp = sky.cloudShadowAmp ?? (overcast ? 0.10 : 0.22);
   const shadow = !overcast && shadowAmp >= R.shadowMinAmp && sky.skyIntensity >= R.shadowMinSkyIntensity;
   // the wind runs across the sun (the cirrus deck's quarter turn): shadows drift sideways through the frame

@@ -159,7 +159,7 @@ vec3 cloudWeather( vec2 pxz ) {
 	vec4 w = texture2D( tWeather, uv );
 	// the equalised field admits exactly the map's coverage; inside, the local coverage runs 0..1 (skewed
 	// high) and carves the base shape into lumps — a region is never one solid slab
-	float cov = pow( clamp( ( w.r - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), 0.7 );
+	float cov = pow( clamp( ( w.r - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), mix( 0.7, 0.4, uStratiform ) );
 	// cumuliform columns rise where the local coverage is deepest (one dome per mass, not a tower per cell)
 	// with the turret noise on top; storms add towers at the cells; a stratus ceiling is nearly flat
 	float cumTop = clamp( 0.5 + 0.5 * sqrt( cov ) + ( w.b - 0.5 ) * 0.2, 0.3, 1.0 );
@@ -170,7 +170,7 @@ vec3 cloudWeather( vec2 pxz ) {
 // density 0..1 at a world point. detail: whether the erosion volume is sampled (the light march skips it)
 float cloudDensity( vec3 p, vec3 w, bool detail ) {
 	// the base line wanders a little per column (the breakup channel) so no razor-straight edge crosses the sky
-	float hRel = ( p.y - uBase - ( w.z - 0.5 ) * 0.16 * uThick ) / uThick;
+	float hRel = ( p.y - uBase - ( w.z - 0.5 ) * 0.16 * ( 1.0 - 0.6 * uStratiform ) * uThick ) / uThick;
 	float hN = hRel / max( w.y, 0.05 );
 	if ( hN <= 0.0 || hN >= 1.0 || w.x <= 0.0 ) return 0.0;
 	// rounded bottom, eroded top (a stratus keeps its flat sheet almost to its top); a cumulus narrows
@@ -183,7 +183,7 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 	float lowFreq = s.g * 0.625 + s.b * 0.25 + s.a * 0.125;
 	float base = remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) * hg;
 	// a stratus sheet is dense across its footprint (with a little mottle); cumulus keeps the shape's billows
-	base = mix( base, base * 0.35 + 0.65 * hg, uStratiform * 0.5 );
+	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 );
 	// the coverage threshold rises with height so a mass is widest at its base and narrows to a dome
 	float covH = w.x * ( 1.0 - 0.45 * hN * ( 1.0 - uStratiform ) );
 	float d = remap( base, 1.0 - covH, 1.0, 0.0, 1.0 ) * w.x;
@@ -194,7 +194,7 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 		// wisps underneath, cauliflower lumps on top; the erosion grows with height in the cloud (dense
 		// bodies, billowy tops) and tears the very base into rags; a stratus erodes less
 		float erode = mix( hf, 1.0 - hf, clamp( hN * 8.0, 0.0, 1.0 ) );
-		float amount = 0.5 * ( mix( 0.35, 1.0, smoothstep( 0.05, 0.6, hN ) ) + 0.7 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.65 );
+		float amount = 0.5 * ( mix( 0.35, 1.0, smoothstep( 0.05, 0.6, hN ) ) + 0.7 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) ) * ( 1.0 - uStratiform * 0.85 );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 	}
 	return d;
@@ -262,10 +262,11 @@ void main() {
 				float tau = cloudLightDepth( p, w ) + sig * 4.0;
 				// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
 				float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
-				// the diffusion regime of a thick non-absorbing cloud keeps the shaded side grey, not black,
-				// and multiply scattered light builds up with height (the lower parts are darker)
-				float msV = mix( 0.35, 1.0, smoothstep( 0.0, 0.45, hN ) );
-				sun += 0.12 / ( 1.0 + 0.12 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
+				// the diffusion regime of a thick non-absorbing cloud: diffuse light is transmitted about
+				// 1 / (1 + 0.75 (1 - g) tau), so the base of an overcast sheet is bright and the shaded side of a
+				// cumulus stays grey, not black; it builds with height in the cloud (the lower parts are darker)
+				float msV = mix( 0.55, 1.0, smoothstep( 0.0, 0.45, hN ) );
+				sun += 0.28 / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 				// in-scatter probability (powder): light builds up inside the cloud, so thin edges and the
 				// underside read darker when lit from behind the viewer
 				float powder = mix( 1.0, ( 1.0 - exp( -sig * 24.0 ) ) * ( 0.15 + 0.85 * smoothstep( 0.02, 0.25, hN ) ), powderK * 0.7 );
