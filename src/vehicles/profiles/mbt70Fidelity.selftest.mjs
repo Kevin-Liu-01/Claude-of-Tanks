@@ -17,12 +17,12 @@ assert.equal(tankTier('mbt70'), 10, 'MBT-70 occupies the German Tier X missile l
 assert.equal(MODEL_SOURCE.mbt70?.source, 'procedural', 'playable never loads the comparison GLB');
 assert.equal(spec.authorship?.runtimeExternalGeometry, false, 'runtime external geometry is prohibited');
 assert.equal(spec.nation, 'Germany', 'garage nation is Germany');
-// Round 32 (owner 2026-09-21: "i want the default camos of our tanks to be what they were before"): Factory is the
-// Bundeswehr service pattern again — the Leopard 2A6M bands (`service_leo2a6m`) — while the nation's plain colour
-// stays its own selectable entry (`national_de`, Bundeswehr bronze green) and the modernized flecktarn is the Signature.
+// Factory now names the existing stock flecktarn. Generic German service
+// bands and bronze green remain independently selectable on any vehicle.
 const factoryVisual = resolveCamoVisual(spec, 'factory');
-assert.equal(factoryVisual.scheme, 'stripes', 'Factory paint is the Bundeswehr service band scheme');
-assert.equal(factoryVisual.base, '#48503f', 'Factory paint carries the Leopard 2A6M service base coat');
+assert.equal(factoryVisual.scheme, 'fleck', 'Factory preserves the MBT-70 stock flecktarn');
+assert.equal(factoryVisual.base, '#4b5142', 'Factory retains its stock base coat');
+assert.equal(factoryVisual.patternSeedId, 'sig_mbt70', 'Factory aliases the reusable MBT-70 stock layout');
 const nationalVisual = resolveCamoVisual(spec, 'national_de');
 assert.equal(nationalVisual.scheme, 'solid', 'the national colour scheme is a plain coat');
 assert.equal(nationalVisual.base, '#3f4a37', 'Bundeswehr bronze green is the German national colour');
