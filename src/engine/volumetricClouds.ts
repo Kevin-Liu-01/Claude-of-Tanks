@@ -161,7 +161,7 @@ vec3 cloudWeather( vec2 pxz ) {
 	// high) and carves the base shape into lumps — a region is never one solid slab
 	float cov = pow( clamp( ( w.r - ( 1.0 - uCoverage ) ) / max( uCoverage, 0.02 ), 0.0, 1.0 ), 0.7 );
 	// cumuliform columns rise with the cell profile and the turret noise; a stratus ceiling is nearly flat
-	float cumTop = clamp( 0.55 + 0.45 * w.g + ( w.b - 0.5 ) * 0.3, 0.3, 1.0 );
+	float cumTop = clamp( 0.6 + 0.35 * w.g + ( w.b - 0.5 ) * 0.25, 0.35, 1.0 );
 	cumTop = mix( cumTop, 1.0, uTowers * w.g );
 	float strTop = 0.78 + 0.22 * w.b;
 	return vec3( cov, mix( cumTop, strTop, uStratiform ), w.a );
@@ -175,20 +175,22 @@ float cloudDensity( vec3 p, vec3 w, bool detail ) {
 	float hg = smoothstep( 0.0, 0.12, hN ) * smoothstep( 1.0, mix( 0.62, 0.92, uStratiform ), hN );
 	// the slab is a few hundred metres thick against a kilometres-wide shape period: the volume is sampled
 	// with its vertical axis compressed so the billows read as tall as they are wide
-	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 2.5, 1.0 ) / uShapeTile;
+	vec3 sp = ( p + uNoiseShift ) * vec3( 1.0, 1.8, 1.0 ) / uShapeTile;
 	vec4 s = texture( tShape, sp );
 	float lowFreq = s.g * 0.625 + s.b * 0.25 + s.a * 0.125;
 	float base = remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) * hg;
-	// a stratus sheet is dense across its footprint; cumulus keeps the shape's billows
-	base = mix( base, base * 0.35 + 0.65 * hg, uStratiform * 0.7 );
+	// a stratus sheet is dense across its footprint (with a little mottle); cumulus keeps the shape's billows
+	base = mix( base, base * 0.35 + 0.65 * hg, uStratiform * 0.5 );
 	float d = remap( base, 1.0 - w.x, 1.0, 0.0, 1.0 ) * w.x;
 	if ( detail && d > 0.0 && d < 0.95 ) {
 		vec3 dp = ( p + uNoiseShift * 1.31 ) * vec3( 1.0, 1.5, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
 		float hf = dn.r * 0.625 + dn.g * 0.25 + dn.b * 0.125;
-		// wisps underneath, cauliflower lumps on top; a stratus erodes less
+		// wisps underneath, cauliflower lumps on top; the erosion grows with height in the cloud (flat dense
+		// bases, billowy tops); a stratus erodes less
 		float erode = mix( hf, 1.0 - hf, clamp( hN * 8.0, 0.0, 1.0 ) );
-		d = remap( d, erode * 0.42 * ( 1.0 - uStratiform * 0.65 ), 1.0, 0.0, 1.0 );
+		float amount = 0.42 * mix( 0.3, 1.0, smoothstep( 0.05, 0.6, hN ) ) * ( 1.0 - uStratiform * 0.65 );
+		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 	}
 	return d;
 }
@@ -255,7 +257,7 @@ void main() {
 				sun += 0.12 / ( 1.0 + 0.12 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 				// in-scatter probability (powder): light builds up inside the cloud, so thin edges and the
 				// underside read darker when lit from behind the viewer
-				float powder = mix( 1.0, ( 1.0 - exp( -sig * 24.0 ) ) * ( 0.15 + 0.85 * smoothstep( 0.02, 0.25, hN ) ), powderK );
+				float powder = mix( 1.0, ( 1.0 - exp( -sig * 24.0 ) ) * ( 0.15 + 0.85 * smoothstep( 0.02, 0.25, hN ) ), powderK * 0.7 );
 				// darker bases: their direct light is scattered away by the cloud above
 				float baseShadow = mix( 0.55, 1.0, smoothstep( -0.1, 0.45, hN ) );
 				// ambient: the sky lights the tops, the bases see the horizon; a stratus sheet is diffuser-lit
@@ -559,7 +561,7 @@ export class VolumetricCloudLayer {
         uAmbientTop: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uAmbientBottom: { value: new THREE.Vector3(0.2, 0.25, 0.3) },
         uCoverage: { value: 0.4 }, uTowers: { value: 0 }, uStratiform: { value: 0.1 }, uDensity: { value: 0.07 },
         uTint: { value: new THREE.Vector3(1, 1, 1) }, uWeatherShift: { value: new THREE.Vector2() }, uNoiseShift: { value: new THREE.Vector3() },
-        uShapeTile: { value: CLOUD_SHAPE_TILE_M }, uSunGain: { value: 1 },
+        uShapeTile: { value: CLOUD_SHAPE_TILE_M }, uSunGain: { value: 1.5 },
       },
     });
     this.resolveMaterial = new THREE.ShaderMaterial({
@@ -768,9 +770,9 @@ export class VolumetricCloudLayer {
     // ambient: the cosine-weighted sky irradiance / π (a diffuse top under the whole sky), the base sees the
     // horizon band and the ground
     const irr = summary?.irradiance ?? a.irradiance;
-    (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.9);
+    (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.65);
     const hz = summary?.horizon ?? irr;
-    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.42);
+    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.3);
     this.domeMaterial.uniforms.uSkyIntensity.value = a.skyIntensity;
   }
 

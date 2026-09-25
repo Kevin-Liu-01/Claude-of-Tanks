@@ -117,7 +117,7 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
   const stratiform = storm ? 0.55 : overcast ? 0.85 : regime === 'broken' ? 0.35 : 0.12;
   const baseM = sky.cloudAltM ?? (overcast ? CLOUD_LAYER_OVERCAST_BASE_M : CLOUD_LAYER_DEFAULT_BASE_M);
   const thicknessM = storm ? 1400 : overcast ? 320 : regime === 'broken' ? 480 + towers * 500 : 360 + towers * 400;
-  const density = storm ? 0.07 : overcast ? 0.035 : regime === 'broken' ? 0.065 : 0.075;
+  const density = storm ? 0.08 : overcast ? 0.035 : regime === 'broken' ? 0.09 : 0.11;
   const tint = hexToLinear(sky.cloudTintHex).map((c) => Math.sqrt(clamp(c, 0, 1))) as [number, number, number];
   const shadowAmp = sky.cloudShadowAmp ?? (overcast ? 0.10 : 0.22);
   const shadow = !overcast && shadowAmp >= R.shadowMinAmp && sky.skyIntensity >= R.shadowMinSkyIntensity;
