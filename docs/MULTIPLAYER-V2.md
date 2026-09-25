@@ -307,6 +307,11 @@ server/match/           main.ts (env, drain) · service.ts (/healthz, /metrics, 
                         entityRows.ts · seatToken.ts · localRoomService.ts · link.ts · chat.ts · log.ts · metrics.ts
                         Dockerfile (+ Dockerfile.dockerignore), README.md
 tools/mp-soak.mjs       the headless wire soak (npm run test:net:v2:soak; --short is the core receipt)
+src/mp/transport/       Transport contract · WebSocketTransport (backoff, resume token, backpressure) · LoopbackTransport pair
+src/mp/match/           MatchClient · clock · inputStream · snapshotStream · interpolation · prediction (+ movementCheckpoint)
+                        events · recovery · headlessDriver · scriptedServer.test-support (README: src/mp/README.md)
+src/mp/presentation/    PresentationAdapter + bindMatchPresentation · RecordingPresentation · createBattlePresentation · createPredictionWorld
+tools/mp-client-soak.mjs  headless MatchClients against the MatchActor on a virtual clock (the client gates; --server=fixture)
 ```
 
 ### Wire schema summary
