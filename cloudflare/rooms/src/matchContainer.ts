@@ -25,6 +25,8 @@ export class MatchContainer extends Container<Env> {
       COT_MATCH_SEAT_SECRET: env.MATCH_SEAT_SECRET,
       COT_MATCH_CONTROL_SECRET: env.MATCH_CONTROL_SECRET || env.MATCH_SEAT_SECRET,
       COT_MATCH_ALLOWED_ORIGINS: env.ALLOWED_ORIGINS,
+      // Local runs only (`wrangler dev --var MATCH_BATTLE_LIMIT_S:20`): a short clock so the e2e reaches a verdict.
+      ...(env.MATCH_BATTLE_LIMIT_S ? { COT_MATCH_BATTLE_LIMIT_S: env.MATCH_BATTLE_LIMIT_S } : {}),
     };
   }
 

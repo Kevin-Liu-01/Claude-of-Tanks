@@ -9,6 +9,9 @@
  *   COT_MATCH_CONTROL_SECRET   bearer secret of the /control/* routes the room host calls (defaults to the seat secret)
  *   COT_MATCH_MAX_ACTORS       rooms this process may host at once (default 1 on Cloudflare, N on a VPS)
  *   COT_MATCH_LOG_LEVEL        debug | info | warn | error (default info)
+ *   COT_MATCH_BATTLE_LIMIT_S   local runs and receipts only: battle limit (10..3600 s) for a match whose
+ *                              start request names none, so a verdict arrives in seconds; unset in production
+ *                              (the ruleset's clock decides)
  *
  * SIGTERM / SIGINT drain: no new admissions, every actor closes its clients
  * with SERVER_DRAIN, the listeners close, the process exits within 10 s.
@@ -40,6 +43,7 @@ export async function startMatchServiceFromEnv(env: NodeJS.ProcessEnv = process.
     seatSecret,
     controlSecret: env.COT_MATCH_CONTROL_SECRET || seatSecret,
     maxActors: integerEnv('COT_MATCH_MAX_ACTORS', 1, 1, 1024),
+    ...(env.COT_MATCH_BATTLE_LIMIT_S ? { defaultBattleLimitS: integerEnv('COT_MATCH_BATTLE_LIMIT_S', 0, 10, 3600) } : {}),
     log,
   });
 }

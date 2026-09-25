@@ -32,6 +32,11 @@ export interface MatchServiceOptions {
   /** Bearer secret of the `/control/*` routes (defaults to the seat secret). */
   controlSecret?: string;
   maxActors?: number;
+  /**
+   * Battle limit (s) for a match whose start request names none: local runs and receipts cap the
+   * ruleset's clock so a verdict arrives in seconds. Unset in production (the ruleset decides).
+   */
+  defaultBattleLimitS?: number;
   log?: Logger;
   now?: () => number;
   /** Wall clock for token expiry (Date.now). */
@@ -140,6 +145,7 @@ export async function createMatchService({
   seatSecret,
   controlSecret = seatSecret,
   maxActors = 64,
+  defaultBattleLimitS,
   log = createLogger(),
   now = () => performance.now(),
   wallClock = () => Date.now(),
@@ -148,6 +154,9 @@ export async function createMatchService({
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
   if (typeof controlSecret !== 'string' || controlSecret.length < 16) throw new TypeError('controlSecret must be at least 16 characters');
   if (!Number.isInteger(maxActors) || maxActors < 1 || maxActors > 1024) throw new TypeError('maxActors must be 1..1024');
+  if (defaultBattleLimitS !== undefined && (!Number.isFinite(defaultBattleLimitS) || defaultBattleLimitS < 10 || defaultBattleLimitS > 3600)) {
+    throw new TypeError('defaultBattleLimitS must be 10..3600 seconds');
+  }
   const origins = parseAllowedOrigins(allowedOrigins);
   const actors = new Map<string, MatchActor>();
   const startedAt = wallClock();
@@ -213,7 +222,7 @@ export async function createMatchService({
       actor: (roomId) => actors.get(roomId),
       createActor: (request: MatchStartRequest) => createActor({
         roomId: request.roomId, mapId: request.mapId, mode: request.mode, seed: request.seed, seats: request.seats, bots: request.bots,
-        countdownS: request.countdownS, battleLimitS: request.battleLimitS,
+        countdownS: request.countdownS, battleLimitS: request.battleLimitS ?? defaultBattleLimitS,
       }),
       removeActor: (roomId, reason) => removeActor(roomId, reason as CloseReasonId | undefined),
     },

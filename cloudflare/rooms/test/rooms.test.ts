@@ -11,7 +11,6 @@ import type { MatchContainerStub, StubState } from './matchContainerStub.ts';
 
 interface Message { type: string; requestId?: string; payload: Record<string, unknown> }
 const origin = 'https://cot.kevinliu.studio';
-const SEAT_SECRET = 'rooms-test-seat-secret-0123456789abcdef';
 const clients: Client[] = [];
 let requestSequence = 0;
 const token = (seed: string): string => seed.repeat(64).slice(0, 64);
@@ -201,7 +200,8 @@ describe('cot-rooms Worker', () => {
     const adminStart = await admin.next((message) => message.type === 'match_start');
     const guestStart = await guest.next((message) => message.type === 'match_start');
     expect(adminStart.payload.matchUrl).toBe('/rooms/ROOM03/match');
-    const verified = verifySeatToken(SEAT_SECRET, guestStart.payload.seatToken, Date.now());
+    // the Worker's own secret: a local `.dev.vars` (the wrangler dev recipe) overrides wrangler.test.jsonc's value here too
+    const verified = verifySeatToken(env.MATCH_SEAT_SECRET, guestStart.payload.seatToken, Date.now());
     expect(verified.ok).toBe(true);
     if (verified.ok) { expect(verified.claims.playerId).toBe('guest'); expect(verified.claims.roomId).toBe('ROOM03'); }
     expect(adminStart.payload.seatToken).not.toBe(guestStart.payload.seatToken);

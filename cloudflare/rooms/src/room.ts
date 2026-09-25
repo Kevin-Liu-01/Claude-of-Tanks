@@ -197,13 +197,16 @@ export class Room extends DurableObject<Env> {
     await this.#applyAlarm();
   }
 
-  async webSocketClose(ws: WebSocket): Promise<void> {
+  async webSocketClose(ws: WebSocket, code = 1000, reason = ''): Promise<void> {
     const socketId = this.#ids.get(ws);
     if (socketId) {
       this.#sockets.delete(socketId);
       this.#ids.delete(ws);
       this.#actor?.handleClose(socketId);
     }
+    // Complete the client's close handshake (the hibernation API leaves it to the object): without the
+    // echo a `ws` client waited 10 s for an abnormal 1006 on every room leave (measured 2026-09-25).
+    try { ws.close(code, reason); } catch { /* already closed, or a code the runtime refuses to echo */ }
     await this.#applyAlarm();
   }
 

@@ -11,5 +11,7 @@ declare global {
     MATCH_SEAT_SECRET: string;
     /** Bearer secret of the match service's control routes (defaults to the seat secret). */
     MATCH_CONTROL_SECRET?: string;
+    /** Local runs only (`wrangler dev --var MATCH_BATTLE_LIMIT_S:20`): the container's COT_MATCH_BATTLE_LIMIT_S. Never set in production. */
+    MATCH_BATTLE_LIMIT_S?: string;
   }
 }
