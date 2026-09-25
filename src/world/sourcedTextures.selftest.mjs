@@ -241,8 +241,23 @@ assert.ok(loadedImageUrls.some((url) => url.includes('Snow010A_1K-JPG_Color.jpg'
   'Whiteout physically loads the snow source, not summer grass');
 const winterLayer = freshLayer();
 await applySourcedTerrain('winter', { G: winterLayer });
-assert.equal(snowLayer.albedo.image, winterLayer.albedo.image,
-  'Whiteout reuses the existing snow composite with identical texture dimensions');
+// round 70 (2026-09-25, the owner-approved Whiteout snow re-grade): Whiteout multiplies the shared Snow010A albedo by
+// its splat.sourcedTint.G into a composite of its own (the source images stay shared, winter's composite untouched);
+// the splat tone laws never reached the photo snow, so this multiplier is the re-grade that renders.
+const whiteoutSnowTint = getMapConfig('whiteout').splat.sourcedTint.G;
+assert.equal(whiteoutSnowTint.length, 3);
+assert.ok(whiteoutSnowTint.every((v) => v > 0.5 && v < 1), 'the re-grade darkens the snow, never brightens or nulls it');
+assert.notEqual(snowLayer.albedo.image, winterLayer.albedo.image, 'Whiteout composes its own graded snow albedo');
+assert.deepEqual([snowLayer.albedo.image.width, snowLayer.albedo.image.height],
+  [winterLayer.albedo.image.width, winterLayer.albedo.image.height], 'the graded snow keeps the shared dimensions');
+const snowRgb = (layer) => [...layer.albedo.image.pixels].filter((_, index) => index % 4 !== 3);
+const winterRgb = snowRgb(winterLayer), gradedRgb = snowRgb(snowLayer);
+assert.ok(winterRgb.some((v) => v > 0), 'the fixture snow composite carries colour to grade');
+for (let i = 0; i < winterRgb.length; i++) {
+  const expected = Math.min(255, winterRgb[i] * whiteoutSnowTint[i % 3]);
+  assert.ok(Math.abs(gradedRgb[i] - expected) <= 1, `graded snow byte ${i}: ${gradedRgb[i]} vs winter ${winterRgb[i]} × ${whiteoutSnowTint[i % 3]}`);
+}
+assert.equal(snowRgb(winterLayer).length, winterRgb.length, 'grading Whiteout leaves the winter composite bytes in place');
 for (const mapId of ['oasis', 'copper_mesa', 'titan_gorge', 'skybridge']) {
   const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
   await applySourcedTerrain(mapId, layers, getMapConfig(mapId).splat);

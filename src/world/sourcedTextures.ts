@@ -295,6 +295,16 @@ export type TerrainPaletteId = keyof typeof TERRAIN_PLAN;
 interface SourcedTerrainSettings {
   mudRough?: number;
   sourcedPalette?: TerrainPaletteId;
+  /** Round 70 (2026-09-25): a map's per-layer multiplier on the plan entry's albedo tint. The splat tone laws grade the
+   * procedural fallback only, so a map inheriting a palette (Whiteout ← winter) grades the photo snow that renders here. */
+  sourcedTint?: Partial<Record<LayerKey, Tint>>;
+}
+
+/** The plan entry's tint under the map's per-layer multiplier (null = the untinted source). */
+function plannedLayerTint(entry: Pick<TerrainPlanOptions, 'tint'>, multiplier: Tint | undefined): Tint | null {
+  const base = entry.tint || null;
+  if (!multiplier) return base;
+  return base ? [base[0] * multiplier[0], base[1] * multiplier[1], base[2] * multiplier[2]] : multiplier;
 }
 
 /** Explicit palette inheritance survives the asynchronous photo-texture swap. */
@@ -665,7 +675,7 @@ export function applySourcedTerrain(
       : planEntry;
     const roughMul = (key === 'M' ? (S.mudRough ?? 1) : 1) * (entry.roughMul ?? 1);
     jobs.push(sourceJob(`terrain ${mapId}/${key}`, entry.set, layer, {
-      roughInAlpha: true, roughMul, tint: entry.tint || null,
+      roughInAlpha: true, roughMul, tint: plannedLayerTint(entry, S.sourcedTint?.[key]),
       desat: entry.desat ?? 0, lift: entry.lift ?? 0,
     }, application));
   }
@@ -726,7 +736,7 @@ export function prepareSourcedTerrain(
       opts: {
         roughInAlpha: true,
         roughMul: (entry.roughMul ?? 1) * (key === 'M' ? settings.mudRough ?? 1 : 1),
-        tint: entry.tint || null, desat: entry.desat ?? 0, lift: entry.lift ?? 0,
+        tint: plannedLayerTint(entry, settings.sourcedTint?.[key]), desat: entry.desat ?? 0, lift: entry.lift ?? 0,
       },
       images: null, composed: null, created: new WeakSet(),
     };

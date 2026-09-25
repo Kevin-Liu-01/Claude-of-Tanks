@@ -254,6 +254,9 @@ interface SplatConfig {
   rockTone?: ToneFunction | null;
   mudTone?: ToneFunction | null;
   mudRough?: number;
+  /** Round 70 (2026-09-25): per-layer multiplier on the SOURCED photo albedo that renders — the tone laws above grade
+   * the procedural fallback only (sourcedTextures TERRAIN_PLAN). Whiteout grades its inherited winter snow with it. */
+  sourcedTint?: Partial<Record<'G' | 'D' | 'R' | 'M', ColorTriple>>;
   sandstone?: boolean;
   iceLake?: boolean;
   seaLake?: boolean;

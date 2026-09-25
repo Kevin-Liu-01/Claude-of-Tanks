@@ -2,6 +2,7 @@
 // staggered snow berms screen a wide service grid and a frozen melt pan.
 import winter from './winter.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 export default {
   id: 'whiteout', name: 'Whiteout Station',
   blurb: 'A remote polar station, frozen melt pans and snow-berm service corridors beneath a pale sky',
@@ -32,7 +33,16 @@ export default {
     { x: -256, z: 382 }, { x: -174, z: 422 }, { x: -90, z: 380 }, { x: -6, z: 424 },
     { x: 78, z: 382 }, { x: 162, z: 422 }, { x: 248, z: 388 },
   ] },
-  splat: { sourcedPalette: 'winter', ...winter.splat, iceDrift: 0.3, tintA: [1.02, 1.04, 1.08], tintB: [0.82, 0.88, 0.96], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
+  // round 70 (owner 2026-09-25: yes to the Whiteout snow re-grade). Round 44's law — the lit snow must leave the tonemap
+  // shoulder below the capped sky — reaches the snow that RENDERS here: winter's round-48 grassTone step grades the
+  // procedural fallback only, the sourced Snow010A rendered untinted on both winter maps (applySourcedTerrain reads the
+  // splat for its palette id and mudRough alone). The photo snow's albedo takes a neutral-cold multiplier, the fallback
+  // law steps by the same factor (L 0.52 + 0.32·l → 0.46 + 0.28·l), postExposure 0.86 → 0.83 in the sky block below.
+  // Skyline metric and the snow boxes in the round-70 section of docs/MAP-BEAUTIFICATION.md.
+  splat: { sourcedPalette: 'winter', ...winter.splat,
+    sourcedTint: { G: [0.88, 0.885, 0.895] },
+    grassTone: (h: number, s: number, l: number) => [0.575, 0.03, clamp01(0.46 + l * 0.28)], // snowpack fallback
+    iceDrift: 0.3, tintA: [1.02, 1.04, 1.08], tintB: [0.82, 0.88, 0.96], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
   vegetation: {
     grassTexTone: winter.vegetation.grassTexTone, tuftTone: winter.vegetation.tuftTone,
     // A few sheltered firs break up the spruce/birch silhouette without
@@ -70,7 +80,8 @@ export default {
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the polar deck authored explicitly instead of
   // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps
   // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)
-  sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58 },
+  sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58,
+    postExposure: 0.83 /* round 70: 0.86 (winter's) → 0.83, the snow re-grade's exposure half */ },
   minimap: { ...winter.minimap, base: [161, 174, 186], hard: [137, 149, 159], soft: [107, 130, 149] },
   shot: { pos: [-256, 49, -262], look: [68, 0, 82] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

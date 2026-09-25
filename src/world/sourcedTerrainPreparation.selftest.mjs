@@ -255,7 +255,8 @@ for (const missing of ['Color', 'NormalGL', 'optional']) await withFixture(async
 });
 
 for (const [mapId, settings, sourceName] of [
-  ['whiteout', { sourcedPalette: 'winter' }, 'Snow010A'],
+  // round 70 (2026-09-25): the inherited palette under Whiteout's own snow multiplier — both paths must grade alike
+  ['whiteout', { sourcedPalette: 'winter', sourcedTint: { G: [0.88, 0.885, 0.895] } }, 'Snow010A'],
   ['unknown-map', {}, 'Grass004'],
   ['caldera', {}, 'Ground071'],
 ]) await withFixture(async f => {
