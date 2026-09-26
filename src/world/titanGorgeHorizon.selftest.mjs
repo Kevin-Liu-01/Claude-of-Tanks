@@ -11,24 +11,24 @@ const seeds = [1337, 2049, 7719];
 // Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const originalOther28 = [
-  '5a79baf5b737e284ae689f928ea8b8280725af345fc0f2c6fc142fc5519beaa3' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
-  '2b582bacc31ffed50b5d7bb79db6b2135cce627a3987f8be73b789b6ae78e23a',
-  '505d970eb2a3ec499163f32dfce9755991fb05bce1568c0cdf92e8d8c0bb8b53',
+  '23cd4c606ac912951172cf1dfcb2f0334e9a8d59d74db14f0f54aa059f6bc905' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
+  'ecdd4b9bf71d42d4da9b6dac3b7d9e29e3c88e2dffd78b84a408d327dd2c3d34',
+  '492d2c2ede38a0970672819d87922c1a960a6b63137a4bffe074d34a597f53fe',
 ];
 // Round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa style authors a nine-row stack
 // (bench, tables, valley, escarpment, saddle, summits, shoulder; 30 uploaded rows) and the far escarpment's cap
 // stands over a real valley with a 1.8:1 front, so Titan's uncapped fixture and its capped geometry are re-pinned here.
 // (round 72: re-pinned with the relieved geometry, see above)
 const originalTitan = [
-  '92cf2229d45ffa7d1c5a57f1082bf6358c036eb77610a24467cc398586eb11b6',
-  '298870cd1e158a1841cccc30996d2d461c7bdb08eac5350560259330a98b0550',
-  'cc9d66e6fda2400d8998d0aae6b8335aff2f967b0f6206c05590d63652cc78eb',
+  '4a838ee779715f47895bf317fa5ef5d02ffa5f007f855e15b9b4573057b967c4',
+  '5501b91ee6d2af1415e0f6c20c409d9a132a76f81f6bd32ea3b424571fcd0249',
+  'a435955dc422dbf2a389c0b2995c1628d4b72e48f212f1186fd08fc092291037',
 ];
 // (round 72: re-pinned with the relieved geometry, see above)
 const currentTitan = [
-  '4c87eef248acb7fd33afba0b1d9dd59a1bb6ab43ecd853d5fcfc5a5cb8521786',
-  '4750150dc5f4faf967f6aa7a3349ff8963cf4255b69d3ffa8ca51f9bef002824',
-  'e52753c5dd4cbb86c15c6a1afa7eb1f757f33158189ec5ae375dd9fc504f85b8',
+  '4e9bf25525c5864bc62cd14b6fce53b2961a95b342d6866f32b3625d2ba7d04a',
+  '9ca0cfc838fa657c709d9c1d45b0e75a89529593161a24bd23f7e738a1c24de5',
+  '1daeaa1cec6871f75743dc3136e420341a1b416ecb421b5d2821668d3181d616',
 ];
 // Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
 // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is

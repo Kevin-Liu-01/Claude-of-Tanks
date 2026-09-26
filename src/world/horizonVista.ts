@@ -363,7 +363,8 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   vec2 gd = (relief.xy * 2.0 - 1.0) * uVReliefGrad * reliefLand;
   vec2 g0 = -n0.xz / max(n0.y, 0.05);
   vec3 nR = normalize(vec3(-(g0.x + gd.x), 1.0, -(g0.z + gd.z)));
-  float ao = 1.0 - (1.0 - relief.z) * uVAoStrength * reliefLand;
+  // round 72b: the occlusion read deeper (a further 1.4 power on top of the bake's 1.6) so the folds read at 1.5 km
+  float ao = 1.0 - (1.0 - pow(relief.z, 1.4)) * uVAoStrength * reliefLand;
   float sunVis = 1.0 - (1.0 - relief.w) * uVShadow * reliefLand;
   // round 72: the volumetric layer's cloud shadow on the sun term (horizonCloudShade.ts; 1 when the layer is off)
 ${HORIZON_CLOUD_SHADE_FRAGMENT}
@@ -411,10 +412,13 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   float knobW = outcropSlope * smoothstep(0.42, 0.64, knobField) * (0.6 + 0.4 * smoothstep(0.06, 0.30, slope));
   rockW = max(rockW, knobW);
   float snowW = 0.0;
+  // round 72b (integrator: "snow / rock boundary crisp"): snow holds to 34° of the RELIEVED slope and is gone by 39°
+  // (a five-degree edge broken by the 12 m grain), so the boundary follows the striations down a face instead of a
+  // 25° ramp; the crest snow keeps a slightly wider hold
+  float snowSlopeEdge = smoothstep(0.17, 0.23, slope + nE * 0.02);
   if (uSnowline < 1.5) {
-    snowW = smoothstep(uSnowline - 0.03, uSnowline + 0.15, hT + nD * 0.07 + nC * 0.05)
-      * (1.0 - smoothstep(0.42, 0.82, slope + nE * 0.10));
-    snowW = max(snowW, smoothstep(0.80, 0.97, hT) * (1.0 - smoothstep(0.55, 0.90, slope)) * step(uSnowline, 1.5));
+    snowW = smoothstep(uSnowline - 0.03, uSnowline + 0.15, hT + nD * 0.07 + nC * 0.05) * (1.0 - snowSlopeEdge);
+    snowW = max(snowW, smoothstep(0.80, 0.97, hT) * (1.0 - smoothstep(0.24, 0.31, slope)) * step(uSnowline, 1.5));
     snowW *= 1.0 - bareRockW * 0.9; // round 49: the scoured ribs and crests stay bare
   }
   float screeW = smoothstep(0.16, 0.40, slope + nD * 0.22 + nE * 0.10) * (1.0 - rockW) * uVScreeAmp
@@ -481,7 +485,11 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   }
   if (snowW > 0.001) {
     vec3 snowMod = mix(vec3(1.0), VTRI(uVSnow, 0.031, vec2(0.61, 0.29)).rgb * 2.0, 0.5 + 0.5 * detailW);
-    col = mix(col, uVSnowColor * snowMod, snowW * (1.0 - rockW * mix(0.45, 0.85, uVBareRock))); // round 49: scoured ribs stay bare
+    // round 72b: wind-scoured crests — the upper fifth of the ranges on their moderate faces darkens toward the rock
+    // (blown clear to ice and grit), so a summit reads as a scoured crest and not one flat white cap
+    float scour = smoothstep(0.78, 0.96, hT + nC * 0.06) * smoothstep(0.06, 0.16, slope) * (0.35 + 0.65 * uVBareRock);
+    vec3 snowCol = mix(uVSnowColor * snowMod, uVRockTint * 1.15 * snowMod, scour * 0.55);
+    col = mix(col, snowCol, snowW * (1.0 - rockW * mix(0.45, 0.85, uVBareRock))); // round 49: scoured ribs stay bare
   }
   // Round 29: the near skirt used to blur into a 12 m-per-feature wall beside a battlefield textured at
   // centimetres (the vista replaced the round-22 near overlay). Two finer world fields and the ground tile at a
@@ -521,7 +529,11 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   // foot of the crests, and the baked sun visibility lays the ridges' shadows across the ranges behind them
   float turned = smoothstep(0.05, -0.35, ndl);
   vec3 skyLight = mix(vec3(1.0), uVSkyTint, 0.55 * turned + 0.25 * (1.0 - sky));
-  vec3 lit = col * (uVAmbient * sky * ao * skyLight + uVSunGain * sunL * sunVis * (0.6 + 0.4 * ao)) * cavity;
+  // round 72b (integrator: "sun-side vs shadow-side ratio >= 1.8 on the near ranges"): a face turned from the sun or in
+  // a ridge's cast shadow takes 70 % of the ambient (the sky it sees is the half away from the sun), so the lit and
+  // shaded sides of a range stand a stop apart before the haze
+  float shadeSide = max(turned, 1.0 - sunVis);
+  vec3 lit = col * (uVAmbient * sky * ao * skyLight * (1.0 - 0.30 * shadeSide) + uVSunGain * sunL * sunVis * (0.6 + 0.4 * ao)) * cavity;
   lit = mix(lit, lit * vec3(0.92, 0.95, 1.06), max(-ndl, 0.0) * 0.2);
   // canopy self-shadow: stands darken on their shaded side a little more than open ground
   lit *= 1.0 - forestW * 0.10 * (1.0 - sunL);

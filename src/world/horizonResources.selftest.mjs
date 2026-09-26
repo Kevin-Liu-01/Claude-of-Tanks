@@ -250,7 +250,9 @@ function assertVistaSurfaceShader(shader, normals, label) {
   assert.match(fragment, /if \(uVCShade > 0\.001\) \{/, `${label}: the cloud-shade fetches are skipped while the layer is off (round 72)`);
   assert.match(fragment, /texture2D\(uVRelief, vec2\(vMapUv\.x \* 0\.1, \(radius - uVReliefR\.x\) \* uVReliefR\.y\)\)/,
     `${label}: the relief atlas is read by the ring's own angle u and the fragment's radius (round 72)`);
-  for (const term of ['vec3 nR = normalize', 'float ao = 1.0 - (1.0 - relief.z)', 'float sunVis = 1.0 - (1.0 - relief.w)', 'vec3 skyLight = mix(vec3(1.0), uVSkyTint', 'float glint =']) {
+  // round 72b: the occlusion is read deeper (pow(relief.z, 1.4)), the snow edge is a five-degree slope threshold, the crests scour
+  for (const term of ['vec3 nR = normalize', 'float ao = 1.0 - (1.0 - pow(relief.z, 1.4))', 'float sunVis = 1.0 - (1.0 - relief.w)', 'vec3 skyLight = mix(vec3(1.0), uVSkyTint', 'float glint =',
+    'float snowSlopeEdge = smoothstep(0.17, 0.23, slope + nE * 0.02);', 'float scour = smoothstep(0.78, 0.96, hT + nC * 0.06)', 'float shadeSide = max(turned, 1.0 - sunVis);']) {
     assert.ok(fragment.includes(term), `${label}: round 72 surface carries ${term}`);
   }
   assert.equal((fragment.match(/VTRI\(/g) ?? []).length, 13,
@@ -310,9 +312,9 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const currentPoldersReceipts = new Map([
-  [1337, '1b3350c9ae81ad12a9c0444ed1d663ad9563b7e792517753de337a9c7ccd4da6' /* 2026-09-19 vista pass */],
-  [2049, '24f5e26b9b2a5df211c44c975f2a3544b6ea80f53c8af83d9d3668bb984e253e'],
-  [7719, '1cd343f4da171dbe265a7186fe281ea9a3d5d1afd270ce2f0ee2dbad4987d4c6'],
+  [1337, '020adf2495ced48b9d3dad527170acb98f99872ac5a65bfcb12551042dbbbe1a' /* 2026-09-19 vista pass */],
+  [2049, '2b4fe6ad89cee8e02475c15aa4c3732b79daf6aaf8cb19e46a2c59ec25bdf374'],
+  [7719, 'c04cd081c9e14e64127c0e06b514a9b129099244c47e22f11b1d560b1afeb7dd'],
 ]);
 function assertCurrentPolders(ring, config, seed) {
   assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
@@ -336,9 +338,9 @@ const unrelatedMutation = createHash('sha256');
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
 // (round 72: re-pinned with the relieved geometry, see above)
 const unchangedReceipts = [
-  'c82ed870628129844bf3055a4ba7fd18f65b8a0f777fd082b1dedf2690b9e875',
-  'c5e0eef7a2f9e28074c05e0c0f75f4303d1ce2bc2d83469d9a37b85bac037b2c',
-  'e49eb8e35a73e00e389c69f937bfbfd46419910a2390567e665bc8e3fc155b69',
+  'e1b0fa8ec5f4767e641e4b7b33bff6265f4237fcc30ff8fd671632d90f6f7eee',
+  'd202e2f7501e98c7de648b7ddff956c1d57a6a09ff17c992476ae85dc87cf29a',
+  '5f9a4eb06ecc63926acf87d3fa90ef190674643a74bf352d803461427308c8ee',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
@@ -410,7 +412,10 @@ try {
 // read once per authored non-skirt vertex and once per interpolated vertex, where it replaces the 260 m ridged term
 // — 66,374 -> 139,527 on the alpine ladder, plus the field's 48 x 48 centring grid and the fine band's 64 x 64
 // normalisation grid at construction (20,480 more); the ring is still built in about 20 ms.
-assert.equal(geometryNoiseCalls, 160007, 'the relief field spends exactly its authored, interpolated and normalisation queries (round 72)');
+// round 72b: the coarse field is a sum of ranges (per range four samples: the ridge, the sub-peak ridge and its
+// along-axis jitter, over the isotropic base's five) read at every authored and interpolated vertex; fjord's four
+// ranges: 160,007 -> 216,431
+assert.equal(geometryNoiseCalls, 216431, 'the ranged relief field spends exactly its authored, interpolated and normalisation queries (round 72b)');
 try {
   geometryNoiseCalls = 0;
   SimplexNoise.prototype.noise = function (...coordinates) {

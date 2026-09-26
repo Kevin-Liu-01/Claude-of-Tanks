@@ -212,8 +212,9 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
       if (top - base > 0.5) { spans++; if (base + 3.2 > maxH * 0.5) highSpans++; }
     }
     assert.equal(highSpans, 0, `no ribbon span on a crest above half the ring (${highSpans} of ${spans})`);
-    // on a boosted alpine ring the resolved skyline is mostly high country, so only the low passes keep a ribbon
-    assert.ok(spans >= 10 && spans < HORIZON_SEGMENTS * 0.5, `the low crests keep their ribbon, the high ones lose it (${spans})`);
+    // on a relieved ring the resolved skyline is mostly high country (round 72b: the ranges' own crests), so at most
+    // the low passes keep a ribbon — never more than half the columns, possibly none
+    assert.ok(spans <= HORIZON_SEGMENTS * 0.5, `at most the low crests keep their ribbon (${spans})`);
     assert.ok(mesh.getObjectByName('horizon-far-range'), 'the far range stands behind the ring');
     // a snow map keeps no range-class trees at all (its faces past the first ridge are pale and washed to the sky)
     const fjord = buildHorizonRing(null, getMapConfig('fjord'), 1337).getObjectByName('horizon-forest');

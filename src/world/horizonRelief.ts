@@ -59,6 +59,10 @@ export interface HorizonReliefSettings {
   /** Height multiplier on the ranges behind the first ridge: the ridge stays the terrain-material foothill the seam
    * laws seat, the ranges behind it — the vista's — stand over it (1 keeps the ladder's authored proportions). */
   rangeBoost: number;
+  /** Round 72b: how many ranges (each with its own axis, azimuth, depth band and height) the coarse field is built from. */
+  rangeCount: number;
+  /** Round 72b: the ridgeline's elongation along its axis (the across wavelength is the character's wavelengthM). */
+  rangeElongation: number;
   /** How much of the fine relief survives at a concave foot (the talus apron). */
   talusFloor: number;
   /** Ambient-occlusion reach (m) and strength (0..1 of the raw occlusion). */
@@ -84,49 +88,49 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
   // broad polar ranges: long warped ridgelines, wind-scoured crests over talus skirts, deep radial gullies
   polar: {
     character: 'polar', lowAmpM: 48, highAmpM: 7, warpM: 150, warpWavelengthM: 760, wavelengthM: 300,
-    crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 5.5, fineElongation: 3.2, rangeBoost: 1.35,
+    crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 5.5, fineElongation: 3.2, rangeBoost: 1.35, rangeCount: 3, rangeElongation: 3.6,
     talusFloor: 0.28, aoReachM: 170, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_POLAR,
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
     character: 'alpine', lowAmpM: 52, highAmpM: 8, warpM: 110, warpWavelengthM: 620, wavelengthM: 260,
-    crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 6, fineElongation: 3.0, rangeBoost: 1.30,
+    crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 6, fineElongation: 3.0, rangeBoost: 1.30, rangeCount: 4, rangeElongation: 3.2,
     talusFloor: 0.30, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
     character: 'rolling', lowAmpM: 22, highAmpM: 5, warpM: 90, warpWavelengthM: 700, wavelengthM: 320,
-    crestSharpness: 0.9, footSharpness: 0.7, billow: 0.45, gullyM: 2.6, gullyWavelengthM: 60, gullyElongation: 4, fineElongation: 2.2, rangeBoost: 1.10,
+    crestSharpness: 0.9, footSharpness: 0.7, billow: 0.45, gullyM: 2.6, gullyWavelengthM: 60, gullyElongation: 4, fineElongation: 2.2, rangeBoost: 1.10, rangeCount: 3, rangeElongation: 2.8,
     talusFloor: 0.5, aoReachM: 140, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_ROLLING,
   },
   // tablelands: the caps stay flat (small coarse share), the cliffs carry ledges and talus, dry washes below
   mesa: {
-    character: 'mesa', lowAmpM: 9, highAmpM: 6, warpM: 40, warpWavelengthM: 520, wavelengthM: 220,
-    crestSharpness: 1.1, footSharpness: 0.8, billow: 0.30, gullyM: 3.8, gullyWavelengthM: 34, gullyElongation: 7, fineElongation: 0.5, rangeBoost: 1.0,
+    character: 'mesa', lowAmpM: 5, highAmpM: 6, warpM: 40, warpWavelengthM: 520, wavelengthM: 220,
+    crestSharpness: 1.1, footSharpness: 0.8, billow: 0.30, gullyM: 3.8, gullyWavelengthM: 34, gullyElongation: 7, fineElongation: 0.5, rangeBoost: 1.0, rangeCount: 0, rangeElongation: 3.4, // tables are not ridges: the isotropic field alone
     talusFloor: 0.35, aoReachM: 120, aoStrength: 0.7, shadowSoft: 0.05, far: FAR_MESA,
   },
   // volcanic country: smooth-sided cones cut by radial barrancos, lava benches
   volcanic: {
     character: 'volcanic', lowAmpM: 18, highAmpM: 6, warpM: 60, warpWavelengthM: 560, wavelengthM: 240,
-    crestSharpness: 1.0, footSharpness: 0.75, billow: 0.35, gullyM: 5.5, gullyWavelengthM: 30, gullyElongation: 9, fineElongation: 3.5, rangeBoost: 1.15,
+    crestSharpness: 1.0, footSharpness: 0.75, billow: 0.35, gullyM: 5.5, gullyWavelengthM: 30, gullyElongation: 9, fineElongation: 3.5, rangeBoost: 1.15, rangeCount: 3, rangeElongation: 2.6,
     talusFloor: 0.40, aoReachM: 130, aoStrength: 0.7, shadowSoft: 0.06, far: FAR_VOLCANIC,
   },
   // headlands and cliffs into the sea: rounded uplands, cliffed fronts
   coastal: {
     character: 'coastal', lowAmpM: 20, highAmpM: 5, warpM: 80, warpWavelengthM: 640, wavelengthM: 300,
-    crestSharpness: 0.95, footSharpness: 0.7, billow: 0.40, gullyM: 2.8, gullyWavelengthM: 52, gullyElongation: 4.5, fineElongation: 2.0, rangeBoost: 1.08,
+    crestSharpness: 0.95, footSharpness: 0.7, billow: 0.40, gullyM: 2.8, gullyWavelengthM: 52, gullyElongation: 4.5, fineElongation: 2.0, rangeBoost: 1.08, rangeCount: 3, rangeElongation: 3.0,
     talusFloor: 0.5, aoReachM: 130, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_COASTAL,
   },
   // Olympus-scale shield slopes: very long wavelengths, low relief, lobate flows
   martian: {
     character: 'martian', lowAmpM: 16, highAmpM: 4, warpM: 120, warpWavelengthM: 900, wavelengthM: 420,
-    crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 6, fineElongation: 1.6, rangeBoost: 1.15,
+    crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 6, fineElongation: 1.6, rangeBoost: 1.15, rangeCount: 2, rangeElongation: 4.2,
     talusFloor: 0.6, aoReachM: 160, aoStrength: 0.55, shadowSoft: 0.07, far: FAR_MARTIAN,
   },
   // jungle karst: steep isolated towers, rounded tops, sharp bases
   karst: {
     character: 'karst', lowAmpM: 30, highAmpM: 6, warpM: 70, warpWavelengthM: 480, wavelengthM: 200,
-    crestSharpness: 1.4, footSharpness: 1.2, billow: 0.25, gullyM: 3.0, gullyWavelengthM: 36, gullyElongation: 5, fineElongation: 2.4, rangeBoost: 1.25,
+    crestSharpness: 1.4, footSharpness: 1.2, billow: 0.25, gullyM: 3.0, gullyWavelengthM: 36, gullyElongation: 5, fineElongation: 2.4, rangeBoost: 1.25, rangeCount: 4, rangeElongation: 2.4,
     talusFloor: 0.35, aoReachM: 120, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_KARST,
   },
 };
@@ -244,18 +248,75 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     for (let o = 0; o < LOW_OCTAVES; o++) sum += octave(o, sharp) * amp[o];
     return sum / lowNorm;
   };
-  // Centre the coarse field on zero and set its RMS to half the amplitude (peaks about ±lowAmpM) over three warp
-  // tiles, so the authored rows keep their mean height and the relief actually spends the metres the character
-  // asks for — a multifractal's raw sum has a mean near 0.4 and a spread of a few hundredths, which put the first
-  // cut's "34 m" at ±6 m on the crests
+  // Round 72b (integrator: "rows of symmetric cones ... real ranges are asymmetric massifs with several summits,
+  // serrated crests, shoulders and saddles, and long ridgelines running obliquely to the viewer"): the coarse field is
+  // the sum of RANGES. Each range has its own azimuth window on the ring, its depth band (near / mid / far, so the
+  // ranges layer front to back), an AXIS at 20–50° to the ring's tangent (the ridgeline runs obliquely to a viewer at
+  // the centre) and its own height; along the axis the ridged field is stretched by the character's elongation (long
+  // crest lines), across it one flank is compressed (a steep face and a gentle shoulder, never a symmetric cone), and a
+  // second ridged octave at a third of the spacing, phase-jittered along the axis, hangs sub-peaks and shoulders on the
+  // crest (multifractally: only where the main ridge already stands). Between the windows a weak isotropic base keeps
+  // saddles and passes instead of flat gaps.
+  interface ReliefRange {
+    theta: number; halfSpan: number; phi: number; cx: number; cz: number; rIn: number; rOut: number;
+    height: number; steepSide: number; steepness: number; sub: number; lambdaAlong: number; lambdaAcross: number;
+    o1: number; o2: number; o3: number; o4: number; jitterPhase: number;
+  }
+  const rangeRng = mulberry32((seed ^ 0x5A17) >>> 0);
+  const ranges: ReliefRange[] = [];
+  const depthBands: ReadonlyArray<readonly [number, number]> = [[620, 980], [820, 1250], [1000, 1560]];
+  for (let k = 0; k < s.rangeCount; k++) {
+    const slot = (2 * Math.PI) / s.rangeCount;
+    const theta = k * slot + (rangeRng() - 0.5) * slot * 0.5;
+    const [rIn, rOut] = depthBands[(k + Math.floor(rangeRng() * 2)) % depthBands.length];
+    const oblique = (rangeRng() < 0.5 ? -1 : 1) * (0.35 + rangeRng() * 0.5);
+    const rMid = (rIn + rOut) * 0.5;
+    ranges.push({
+      theta, halfSpan: (Math.PI / s.rangeCount) * (1.05 + rangeRng() * 0.45), phi: theta + Math.PI / 2 + oblique,
+      cx: Math.cos(theta) * rMid, cz: Math.sin(theta) * rMid, rIn, rOut,
+      height: 0.75 + rangeRng() * 0.55, steepSide: rangeRng() < 0.5 ? -1 : 1, steepness: 1.6 + rangeRng() * 0.6,
+      sub: 0.28 + rangeRng() * 0.12,
+      lambdaAlong: s.wavelengthM * s.rangeElongation * (0.9 + rangeRng() * 0.3), lambdaAcross: s.wavelengthM * (0.85 + rangeRng() * 0.3),
+      o1: rangeRng() * 100, o2: rangeRng() * 100, o3: rangeRng() * 100, o4: rangeRng() * 100, jitterPhase: rangeRng() * 100,
+    });
+  }
+  const TAU = Math.PI * 2;
+  const rangeField = (x: number, z: number, sharp: number): number => {
+    const ang = Math.atan2(z, x), r = Math.hypot(x, z);
+    let sum = 0;
+    for (const g of ranges) {
+      let d = ang - g.theta; d -= Math.round(d / TAU) * TAU;
+      const wTheta = 1 - smoothstep(g.halfSpan * 0.55, g.halfSpan, Math.abs(d));
+      if (wTheta < 1e-3) continue;
+      const wR = smoothstep(g.rIn - 140, g.rIn, r) * (1 - smoothstep(g.rOut, g.rOut + 140, r));
+      const w = wTheta * wR;
+      if (w < 1e-3) continue;
+      const cp = Math.cos(g.phi), sp = Math.sin(g.phi);
+      const dx = x - g.cx, dz = z - g.cz;
+      const along = dx * cp + dz * sp;
+      let across = -dx * sp + dz * cp;
+      if (across * g.steepSide < 0) across *= g.steepness; // the steep flank
+      const n1 = noise.noise(along / g.lambdaAlong + g.o1, across / g.lambdaAcross + g.o2);
+      const r1 = Math.pow(1 - Math.abs(n1), sharp);
+      const w1 = clamp(r1 * 2, 0, 1);
+      const jitter = noise.noise(along / (g.lambdaAlong * 0.6) + g.jitterPhase, 7.7) * g.lambdaAlong * 0.15;
+      const n2 = noise.noise((along + jitter) / (g.lambdaAlong / 3) + g.o3, across / (g.lambdaAcross / 2) + g.o4);
+      const r2 = Math.pow(1 - Math.abs(n2), sharp) * w1;
+      sum += w * g.height * (r1 * (1 - g.sub) + r2 * g.sub);
+    }
+    return ranges.length ? sum + lowRaw(x, z, sharp) * 0.35 : lowRaw(x, z, sharp);
+  };
+  // Centre the coarse field on zero and set its RMS to half the amplitude (peaks about ±lowAmpM) over the ring's own
+  // annulus (the ranges are placed on it), so the authored rows keep their mean height and the relief spends the
+  // metres the character asks for — a multifractal's raw sum has a mean near 0.4 and a spread of a few hundredths
   const midSharp = (s.crestSharpness + s.footSharpness) * 0.5;
   let lowMean = 0, lowStd = 1;
   {
     const N = 48, samples = new Float64Array(N * N);
     let sum = 0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const x = (i / N - 0.5) * s.warpWavelengthM * 3, z = (j / N - 0.5) * s.warpWavelengthM * 3;
-      const v = lowRaw(x + 1300, z - 700, midSharp);
+      const theta = (i / N) * TAU, r = 640 + (j / N) * 900;
+      const v = rangeField(Math.cos(theta) * r, Math.sin(theta) * r, midSharp);
       samples[j * N + i] = v; sum += v;
     }
     lowMean = sum / (N * N);
@@ -299,7 +360,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
   return {
     settings: s,
     low(x, z) {
-      return (lowRaw(x, z, midSharp) - lowMean) * lowScale;
+      return (rangeField(x, z, midSharp) - lowMean) * lowScale;
     },
     prepare(x, z, sharp, out) {
       warpTo(x, z);
@@ -361,7 +422,7 @@ export interface HorizonReliefBake {
 
 export const HORIZON_RELIEF_BAKE_R0 = 410;
 export const HORIZON_RELIEF_BAKE_R1 = 1560;
-export const HORIZON_RELIEF_GRAD_SCALE = 1.5;
+export const HORIZON_RELIEF_GRAD_SCALE = 4.0; // round 72b: the steep-face striations reach a gradient of 2.8 (was 1.5, which saturated them)
 const AO_DIRECTIONS = 8;
 const AO_STEPS_M = [5, 10, 20, 40, 80, 160];
 const SUN_STEPS_M = [4, 8, 14, 22, 34, 50, 72, 100, 140, 190, 260, 340, 440, 560];
@@ -470,7 +531,12 @@ export function* bakeHorizonReliefSteps(
       const gr = (macro[Math.min(H - 1, j + 1) * W + i] - macro[Math.max(0, j - 1) * W + i]) / (2 * dr);
       const steep = smoothstep(0.22, 0.65, Math.hypot(gθ, gr));
       const theta = (i / W) * TAU;
-      const land = 1 - marine[idx];
+      // the seam (round 29 / 35 laws): the fine relief is nil at the square's edge and full 90 m out, so the seam row
+      // continues the terrain's own edge and the terrain-material bands read the same atlas from there (round 72b)
+      const seamW = smoothstep(0, 90, Math.max(Math.abs(Math.cos(theta) * r), Math.abs(Math.sin(theta) * r)) - 511.5);
+      // round 72b (integrator: "faces read as one flat tone"): the striations and gully shading run at three times
+      // their amplitude on the steep faces, so they survive the aerial pass at range
+      const land = (1 - marine[idx]) * seamW * (1 + 2.2 * steep);
       const v = land > 0.001
         ? field.finish(stageAt(stageDx, i, j), stageAt(stageDz, i, j), stageAt(stageW, i, j), sharpAt(h / Math.max(1, maxHeight)), concavity, steep, r, theta) * land
         : 0;
@@ -552,9 +618,12 @@ export function* bakeHorizonReliefSteps(
         const bl = (total[jj * W + ii] - h0) / dist - tanEl;
         if (bl > block) block = bl;
       }
-      const land = 1 - marine[idx];
+      const theta0 = ((i + 0.5) / W) * TAU;
+      const seamW0 = smoothstep(0, 90, Math.max(Math.abs(Math.cos(theta0) * r), Math.abs(Math.sin(theta0) * r)) - 511.5);
+      const land = (1 - marine[idx]) * seamW0;
       const sunVis = 1 - smoothstep(-s.shadowSoft, s.shadowSoft, block) * land;
-      const aoOut = 1 - (1 - ao) * land;
+      // round 72b: the occlusion deepened (a 1.6 power) so the folds read at 1.5 km through the haze
+      const aoOut = 1 - (1 - Math.pow(ao, 1.6)) * land;
       aoGrid[jh * Wh + ih] = aoOut; sunGrid[jh * Wh + ih] = sunVis;
       aoSum += aoOut; shSum += sunVis;
     }

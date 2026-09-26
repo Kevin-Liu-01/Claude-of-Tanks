@@ -318,6 +318,7 @@ function softenHorizonRing(
   amp: number,
   passes = 8,
   stepScale = 1,
+  maxStepM = 0,
 ): void {
   const scratch = new Float32Array(count);
   for (let pass = 0; pass < passes; pass++) {
@@ -330,8 +331,10 @@ function softenHorizonRing(
   }
   // Round 72: the step clamp (about 18° along the row at the alpine rows' 15 m of arc) was the dome-maker — with
   // the relief field on, a character's crest sharpness opens it (polar 2.2 x, alpine 2.7 x: faces to 37–45°) and the
-  // blur drops to three passes so the 75–150 m spurs survive; the silhouette sampler keeps the classic values
-  const maxStep = (1.35 + row.amp * amp * 0.035) * stepScale;
+  // blur drops to three passes so the 75–150 m spurs survive; the silhouette sampler keeps the classic values.
+  // Round 72b: a relieved row passes an explicit world-unit step (0.8 of the row's arc — the cone rule: a peak's base
+  // is at least 2.5 x its height over the saddle), on every style
+  const maxStep = maxStepM > 0 ? maxStepM : (1.35 + row.amp * amp * 0.035) * stepScale;
   for (let pass = 0; pass < 3; pass++) {
     for (let k = 0; k < count; k++) {
       const km = (k - 1 + count) % count;
@@ -924,6 +927,10 @@ interface HorizonRingGeometry {
   positions: Float32Array;
   heights: Float32Array;
   maxHeight: number;
+  /** Round 72b: the authored rows' heights before the relief field, for the interpolated rows to build on. */
+  profileHeights?: Float32Array;
+  /** Round 72b: the relief weight per authored row (0 skirt, 0.6 first ridge, 1 beyond) times the map's relief scale. */
+  reliefWeights?: Float32Array;
 }
 
 interface HorizonGradients {
@@ -1106,6 +1113,8 @@ function buildInitialHorizonGeometry(
 ): HorizonRingGeometry {
   const positions = new Float32Array(HORIZON_SEGMENTS * rows.length * 3);
   const heights = new Float32Array(HORIZON_SEGMENTS * rows.length);
+  const profileHeights = new Float32Array(HORIZON_SEGMENTS * rows.length);
+  const reliefWeights = new Float32Array(rows.length);
   const margins = horizonRowMargins(rows.length, style);
   let maxHeight = 1;
   // Round 72: the map's amplitude scales the coarse relief with the ranges it stands on (Polders' 0.18 stays a low
@@ -1138,11 +1147,17 @@ function buildInitialHorizonGeometry(
       // ranges behind it (Whiteout's grey wall was that foothill); the skirt rows and the first ridge keep their heights
       const boost = row.skirt ? 1 : rangeBoostAt(authoredRank);
       let height = sampleRingRowHeight(row, angle, noise, profile) * amp * boost;
+      const profileHeight = height;
       // Round 72 (owner 2026-09-25, "the mountains look so flat"): the coarse relief field (horizonRelief.ts, a
       // ridged multifractal over a warped world plane) displaces every authored range — peaks, spurs and saddles
       // along each row that also vary with the radius, since the field is one plane — the first ridge at 60 % so the
       // seated foothill behind the rim keeps its hillside grade, the ranges beyond in full; the skirt rows are untouched
-      if (relief && !row.skirt) height += relief.low(cos * radius, sin * radius) * (authoredRank === 0 ? 0.6 : 1) * reliefScale;
+      // round 72b: the mesa stack's capped tables (authored ranks 1 and 3) keep flat tops — a quarter of the relief there,
+      // so the round-47 cap law (broad attached table tops, low passes) holds with the field on
+      const tableRow = style === 'mesa' && rows.length === 9 && (authoredRank === 1 || authoredRank === 3);
+      const reliefWeight = relief && !row.skirt ? (authoredRank === 0 ? 0.6 : tableRow ? 0.25 : 1) * reliefScale : 0;
+      reliefWeights[rowIndex] = reliefWeight;
+      if (reliefWeight > 0) height += relief!.low(cos * radius, sin * radius) * reliefWeight;
       // Retain the old 3% range meander while bounding it against folds at
       // square corners. This preserves the 1049 composition without letting
       // a newer map seed invert an annular strip.
@@ -1161,21 +1176,26 @@ function buildInitialHorizonGeometry(
       }
       const index = rowIndex * HORIZON_SEGMENTS + segment;
       heights[index] = height;
-      if (!row.skirt && height > maxHeight) maxHeight = height;
+      profileHeights[index] = profileHeight + (height - profileHeight) * 0; // the clamp below may move `height`; the profile stays
       positions[index * 3] = Math.cos(angle) * jitteredRadius;
       positions[index * 3 + 1] = height;
       positions[index * 3 + 2] = Math.sin(angle) * jitteredRadius;
     }
-    if (style === 'alpine' && !row.skirt) {
-      const offset = rowIndex * HORIZON_SEGMENTS;
+    const offset = rowIndex * HORIZON_SEGMENTS;
+    if (relief && !row.skirt && relief.settings.rangeCount > 0) {
+      // round 72b: the cone rule on every row of a ranged character (alpine keeps its three blur passes first); the
+      // mesa tables keep their authored cliff edges (a 56 m column step at a cap rim is the crenellation, not a cone)
       softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp * rangeBoostAt(authoredRank),
-        relief ? 3 : 8, relief ? 1 + relief.settings.crestSharpness * 0.9 : 1);
-      for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
-        positions[(offset + segment) * 3 + 1] = heights[offset + segment];
-      }
+        style === 'alpine' ? 3 : 0, 1, 0.8 * (2 * Math.PI * row.r / HORIZON_SEGMENTS));
+    } else if (style === 'alpine' && !row.skirt) {
+      softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp * rangeBoostAt(authoredRank), 8, 1);
+    }
+    for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
+      positions[(offset + segment) * 3 + 1] = heights[offset + segment];
+      if (!row.skirt && heights[offset + segment] > maxHeight) maxHeight = heights[offset + segment];
     }
   }
-  return { rows, positions, heights, maxHeight };
+  return { rows, positions, heights, maxHeight, profileHeights, reliefWeights };
 }
 
 function appendSourceRingRow(
@@ -1266,11 +1286,17 @@ function appendInterpolatedRingRow(
     // Round 72: the coarse relief field (the same plane the authored rows carry, horizonRelief.ts) takes the 260 m
     // term's place, so the spurs and gullies between two rows continue the ranges' own ridgelines instead of a
     // separate field; the 90 m and 30 m knobs stay
-    const e1 = relief ? clamp(relief.low(x, z) / Math.max(1, relief.settings.lowAmpM), -0.6, 0.6)
-      : ridged(noise.noise(x * 0.0038 + 17.1, z * 0.0038 - 11.3)) - 0.5;
+    // Round 72b (integrator: "rows of symmetric cones"): with a relief field the interpolated row is the PROFILE
+    // interpolated between the anchors plus the full field at its own point — a ridgeline running obliquely across
+    // the rows is then continuous (the first cut attenuated the field between rows to a crag envelope, so every peak
+    // was a radial cone standing on one row); the 90 m and 30 m knobs stay. The ledger's own laws are enforced
+    // below: the row stays inside the anchors' band plus 12 % of the span, and its climb from the row before it
+    // stays under the ledger's cliff bound.
+    const useField = !!relief && !!source.profileHeights && !!source.reliefWeights;
+    const e1 = useField ? 0 : ridged(noise.noise(x * 0.0038 + 17.1, z * 0.0038 - 11.3)) - 0.5;
     const e2 = ridged(noise.noise(x * 0.011 - 41, z * 0.011 + 23)) - 0.5;
     const e3 = noise.noise(x * 0.031 + 7.3, z * 0.031 - 3.9);
-    const crag = e1 * 0.62 + e2 * 0.38 + e3 * 0.22;
+    const crag = useField ? e2 * 0.38 + e3 * 0.22 : e1 * 0.62 + e2 * 0.38 + e3 * 0.22;
     const styleRelief = style === 'alpine' ? 11 : style === 'mesa' ? 4 : 7;
     let envelope = Math.min(radialSpan * 0.11, Math.abs(outerHeight - innerHeight) * 0.20 + styleRelief);
     // Round 72: on a span already climbing past 1.5:1 (the mesa stack's back cliffs, which the relieved authored rows
@@ -1279,15 +1305,39 @@ function appendInterpolatedRingRow(
     if (Math.abs(outerHeight - innerHeight) / Math.max(1, radialSpan) > 1.5) envelope = Math.min(envelope, 0.12 * radialSpan / divisions);
     const displacement = crag * envelope * shoulder;
     const t = (radius - innerRadius) / radialSpan;
-    let height = innerHeight + (outerHeight - innerHeight) * t;
+    const baseInner = useField ? source.profileHeights![inner] : innerHeight;
+    const baseOuter = useField ? source.profileHeights![outer] : outerHeight;
+    let height = baseInner + (baseOuter - baseInner) * t;
     if (style === 'alpine') {
       const t2 = t * t, t3 = t2 * t;
       const left = horizonAnchorSlope(source, rowIndex, segment, cos, sin);
       const right = horizonAnchorSlope(source, rowIndex + 1, segment, cos, sin);
-      height = innerHeight + (outerHeight - innerHeight) * (3 * t2 - 2 * t3)
+      height = baseInner + (baseOuter - baseInner) * (3 * t2 - 2 * t3)
         + radialSpan * (left * (t3 - 2 * t2 + t) + right * (t3 - t2));
     }
     height += displacement;
+    if (useField) {
+      const wIn = source.reliefWeights![rowIndex], wOut = source.reliefWeights![rowIndex + 1];
+      height += relief!.low(x, z) * (wIn + (wOut - wIn) * t);
+      // the ledger's bounds: inside the anchors' band plus 12 % of the span (the alpine law) or within 12 % of the
+      // chord (the other styles), and never climbing past the cliff bound from the row before
+      const lo = Math.min(innerHeight, outerHeight), hi = Math.max(innerHeight, outerHeight), slack = radialSpan * 0.115;
+      if (style === 'alpine') height = clamp(height, lo - slack, hi + slack);
+      else { const chord = innerHeight + (outerHeight - innerHeight) * t; height = clamp(height, chord - slack, chord + slack); }
+      const prevIndex = heights.length - HORIZON_SEGMENTS;
+      const authoredSlope = Math.abs(outerHeight - innerHeight) / Math.max(1, radialSpan);
+      const bound = (style === 'alpine' ? Math.max(3.0, authoredSlope * 2 + 0.3) : Math.max(1.9, authoredSlope + 0.3)) - 0.05;
+      if (prevIndex >= 0) {
+        const prevH = heights[prevIndex], prevR = Math.hypot(positions[prevIndex * 3], positions[prevIndex * 3 + 2]);
+        const gap = Math.max(1, radius - prevR);
+        height = clamp(height, prevH - bound * gap, prevH + bound * gap);
+      }
+      // and the last row of the span against the outer anchor that follows it (its height is fixed)
+      if (subdivision === divisions - 1) {
+        const gapOut = Math.max(1, outerRadius - radius);
+        height = clamp(height, outerHeight - bound * gapOut, outerHeight + bound * gapOut);
+      }
+    }
     positions.push(x, height, z);
     heights.push(height);
   }
@@ -1317,11 +1367,15 @@ function subdivideHorizonGeometry(
         divisions, style, relief);
     }
   }
+  const subdivided = new Float32Array(heights);
+  let maxHeight = source.maxHeight;
+  // round 72b: the field's summits between two rows may stand over the anchors (within the ledger's slack)
+  for (let i = HORIZON_SEGMENTS * 2; i < subdivided.length; i++) if (subdivided[i] > maxHeight) maxHeight = subdivided[i];
   return {
     rows,
     positions: new Float32Array(positions),
-    heights: new Float32Array(heights),
-    maxHeight: source.maxHeight,
+    heights: subdivided,
+    maxHeight,
   };
 }
 
@@ -1530,6 +1584,39 @@ function seatHorizonSkirtOnGround(
   }
 }
 
+/**
+ * Round 72b: the ledger's cliff law, enforced after every pass that moves rows (the cap reshape re-spaces the
+ * approach and back rows over the relieved field): between two consecutive anchor rows — the authored rows, and on
+ * the tableland maps the two cap fronts — no row climbs from the row before it faster than max(1.9, anchor slope + 0.3)
+ * (alpine: max(3, 2 x anchor slope + 0.3)). Forward then backward per column, so both anchors hold. A no-op where the
+ * rows already obey it (every ring without the relief field is byte-identical).
+ */
+function enforceLedgerSlopes(ring: HorizonRingGeometry, style: HorizonStyle, capFronts: readonly number[] = []): void {
+  const n = HORIZON_SEGMENTS, { rows, positions: p, heights: h } = ring;
+  const anchors = rows.map((row, i) => (!row.skirt && !row.interpolated ? i : -1)).filter((i) => i >= 0);
+  const anchorSet = new Set([...anchors, ...capFronts].filter((i) => i >= 1));
+  const sorted = [...anchorSet].sort((a, b) => a - b);
+  const radiusAt = (i: number): number => Math.hypot(p[i * 3], p[i * 3 + 2]);
+  for (let s = 1; s < sorted.length; s++) {
+    const a = sorted[s - 1], b = sorted[s];
+    if (b - a < 2) continue;
+    for (let c = 0; c < n; c++) {
+      const ia = a * n + c, ib = b * n + c;
+      const authored = Math.abs(h[ib] - h[ia]) / Math.max(1, radiusAt(ib) - radiusAt(ia));
+      const bound = (style === 'alpine' ? Math.max(3.0, authored * 2 + 0.3) : Math.max(1.9, authored + 0.3)) - 0.02;
+      for (let row = a + 1; row < b; row++) {
+        const i = row * n + c, j = i - n, gap = Math.max(1, radiusAt(i) - radiusAt(j));
+        h[i] = clamp(h[i], h[j] - bound * gap, h[j] + bound * gap);
+      }
+      for (let row = b - 1; row > a; row--) {
+        const i = row * n + c, j = i + n, gap = Math.max(1, radiusAt(j) - radiusAt(i));
+        h[i] = clamp(h[i], h[j] - bound * gap, h[j] + bound * gap);
+      }
+      for (let row = a + 1; row < b; row++) p[(row * n + c) * 3 + 1] = h[row * n + c];
+    }
+  }
+}
+
 function usesFiniteTableCaps(horizon: HorizonConfig, mapId: string, style: HorizonStyle): boolean {
   return style === 'mesa' && horizon.finiteTableCaps !== false
     && (mapId === 'skybridge' || mapId === 'copper_mesa' || mapId === 'titan_gorge');
@@ -1569,8 +1656,16 @@ export function sampleHorizonGeometry(
     // 160 m inside the crest (700 -> 860): an unbounded cap put the final edge at 1.30:1 on Skybridge.
     reshapeFiniteTableCaps(ring, horizon.amp ?? 1, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
+  if (relief) enforceLedgerSlopes(ring, style, capFrontRows(ring, horizon, mapId, style));
   openHorizonToSea(ring, openings, ground);
   return ring;
+}
+
+/** The cap-front rows (the row before each capped crest) on the tableland maps — anchors of the cliff law there. */
+function capFrontRows(ring: HorizonRingGeometry, horizon: HorizonConfig, mapId: string, style: HorizonStyle): number[] {
+  if (!usesFiniteTableCaps(horizon, mapId, style)) return [];
+  const authored = ring.rows.map((row, i) => (!row.skirt && !row.interpolated ? i : -1)).filter((i) => i >= 0);
+  return [authored[1] - 1, authored[3] - 1].filter((i) => i > 0);
 }
 
 function buildHorizonUvs(
@@ -2883,6 +2978,7 @@ export function* buildHorizonRingSteps(
   if (usesFiniteTableCaps(H, mapId, style)) {
     reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
+  if (reliefField) enforceLedgerSlopes(ring, style, capFrontRows(ring, H, mapId, style));
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);
