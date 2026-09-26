@@ -183,11 +183,11 @@ function verifyHistoricalConfigs(resolve) {
   assert.equal(hash(JSON.stringify(unchangedMaps)),
     // round 40 (2026-09-22): coastal.ts's aperture lost its authored grey (edgeWater.ts colours it from the water profile) and
     // saltwind.ts authored its bay as one contour open to the west — the other-29 config digest moved for those two maps
-    'fda7b27ede91693025d1f72c31539350dabc8e6bdb85cc8fc291308d5678748a', // 2026-09-25 (round 70): whiteout.ts authors sourcedTint, a snowpack fallback law and postExposure 0.83 — the owner-approved snow re-grade (was d95c13b7…: round 66, the eleven sea-sheet maps author an `ocean` block; 2bac4c86…: round 57, steppe.ts terrain block authors railSpurs; 89a7af50…: round 55, fjord.ts horizon block authors outcrops: 1; e4c7ce4b…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
+    'b4ba3f0d94e92cf6d7006dd5bd2d0394049e6f710a5793b889782357e854c879', // 2026-09-25 (round 70): whiteout.ts authors sourcedTint, a snowpack fallback law and postExposure 0.83 — the owner-approved snow re-grade (was d95c13b7…: round 66, the eleven sea-sheet maps author an `ocean` block; 2bac4c86…: round 57, steppe.ts terrain block authors railSpurs; 89a7af50…: round 55, fjord.ts horizon block authors outcrops: 1; e4c7ce4b…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
     'other29 config digest retains original donor policy and authenticated historical Foundry/Autumn inputs');
   const historical = paletteReceiptInput(historicalShorelineConfig(resolve('mangrove')));
   assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),
-    '9778e8233888e57e0ba5e8128c059aea24c68a37ba982999dfa62ee4b848571d', 'original non-palette Mangrove digest (2026-09-13 lighting: mangrove key 3.7 -> 4.0, repinned; 2026-09-24 round 66: mangrove.ts authors its `ocean` block, was 66f31f32…)');
+    'a8ce6bce896ab53be33e1b9754aa5c1b551fbc6af4c9995d0ad256dafc524870', 'original non-palette Mangrove digest (2026-09-13 lighting: mangrove key 3.7 -> 4.0, repinned; 2026-09-24 round 66: mangrove.ts authors its `ocean` block, was 66f31f32…)');
 }
 verifyHistoricalConfigs(getMapConfig);
 for (const id of ['frontier', 'alpine']) {
