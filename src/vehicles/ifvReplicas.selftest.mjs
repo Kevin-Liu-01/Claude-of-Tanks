@@ -5,6 +5,7 @@ import { createTank } from './tankFactory.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from './specs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import { censusEquipment } from '../../tools/source-equipment-policy.mjs';
+import { verifyCv9040CTrunnions } from './cv9040CTrunnions.test-support.mjs';
 
 const pairs=[['spz_puma_s1','spz_puma_s1_x',30,2],['cv90','cv90_x',40,0],['type89_light_tiger','type89_x',35,2]];
 const originals=new Map([...pairs.map(([id])=>id),'cv90_mkiv','cv90_mkiv_x'].map(id=>[id,structuredClone(getSpec(id))]));
@@ -51,6 +52,17 @@ for(const [original,id,caliber,tubes] of pairs){
       const muzzle0=new Vector3(),muzzle1=new Vector3();tank.gunMuzzleWorld(muzzle0);
       gun.rotation.x=-.25;tank.root.updateMatrixWorld(true);tank.gunMuzzleWorld(muzzle1);
       assert(muzzle1.distanceTo(muzzle0)>.25,'gun actually articulates');
+      if(id==='cv90_x') {
+        for(const pitch of [-s.gunDepressionDeg,0,s.gunElevationDeg]) {
+          gun.rotation.x=-pitch*Math.PI/180;
+          verifyCv9040CTrunnions(tank.root);
+        }
+        const seatedZ=gun.position.z;
+        try {
+          gun.position.z+=.5;
+          assert.throws(()=>verifyCv9040CTrunnions(tank.root),/native turret support/,'detached gun is rejected');
+        } finally {gun.position.z=seatedZ;}
+      }
       assert.equal(s.armor.crew.length,3,'three vehicle crew, no invented loader');
       assert.equal(s.armor.crew.some(c=>c.turretLocal),id!=='spz_puma_s1_x','correct remote or manned turret layout');
     }finally{tank.dispose();}

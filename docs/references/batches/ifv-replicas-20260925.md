@@ -109,3 +109,25 @@ and source registrations did not change for this correction.
 The corrected native muzzle probe passes all ten IFVs plus M1A2, BMP-2 and
 KV-2 controls (13/13). All sampled centers read 16.9 luminance; thresholds and
 physical ray checks remain unchanged. Evidence: `muzzle-caliber-final.log`.
+
+## Integrated gun-seat correction — 2026-09-26
+
+The full regression suite identified a real CV9040C X connection gap behind its
+rocking shield. Two fixed armored trunnion ears now connect the main turret
+shell to the actual pitching axis. They are part of the existing turret mesh
+and hit geometry; the central throat remains open for elevation.
+
+Native closed-stock ray tests prove finite supports, continuous shell joins
+and shield contact at full depression, neutral and full elevation in HIGH and
+LOW. A deliberately detached gun fails the same test. Fresh actual Garage and
+Gallery captures show the corrected assembly at −8°, 0° and +37°; evidence is
+in `cv9040c-visual-r8.log` and the associated `r8` images. These are local build
+captures, not deployment evidence.
+
+The complete anatomy update/check passed for all 198 vehicles and 594 technical
+cards. CV9040C images and records were refreshed; only that vehicle's generated
+changes are retained. Its existing seam-fill record was regenerated unchanged
+using `--min-fine=1`. The other nine edited vehicles retain their prior physical
+qualification. The final integrated release run includes the complete test
+suite, with expanded launcher coverage and production plus bounded-catalog
+roster-rotation checks; no performance or geometric threshold was relaxed.

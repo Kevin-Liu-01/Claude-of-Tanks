@@ -38,11 +38,10 @@ assert.deepEqual([...memory.previous].sort(), ['k2', 'm1a2', 'type10'], 'only th
 memory = rememberBattleBots(memory.previous, ['challenger_3']);
 assert.deepEqual([...memory.recent].sort(), ['challenger_3', 'k2', 'm1a2', 'type10'], 'the battle before last has dropped out of the memory');
 
-// (3) diversity r2 (2026-09-18) against the real production catalog: a next-generation player has eighteen other
-// hulls of its era, so with two battles of memory the fresh contemporaries (modern) must fill the seats before any
-// vehicle repeats — battle 1 all own era, battle 2 the five fresh own-era hulls then modern, battle 3 all modern, and
-// battle 4 the own-era hulls of battle 1 again (out of the memory); no far era ever enters. A modern player (92 hulls)
-// never needs a contemporary.
+// (3) Real-catalog diversity: fresh own-era hulls lead each draw, then fresh
+// modern contemporaries fill the remaining seats before a recent hull repeats.
+// The expanded IFV roster now fills two complete next-generation battles.
+// Battle 4 can reuse battle 1 after it leaves the two-battle memory.
 const game = createGameState();
 spawnTanks(game, {});
 const shared = (a, b) => a.filter((id) => b.includes(id)).length;
@@ -58,19 +57,45 @@ const play = (playerId, battles) => {
   }
   return rosters;
 };
-const ownEra = game.allTanks.filter((entity) => entity.specId !== 'm1a3' && eraOf(entity.specId) === 'next-generation').length;
-assert.ok(ownEra >= 14 && ownEra < 26, `the next-generation catalog is short of two rosters (${ownEra} other hulls)`);
+const productionFleet = game.allTanks;
+const ownEraIds = new Set(productionFleet
+  .filter((entity) => entity.specId !== 'm1a3' && eraOf(entity.specId) === 'next-generation')
+  .map((entity) => entity.specId));
+assert.ok(ownEraIds.size >= 13, 'the production next-generation catalog fills a complete first roster');
 const ng = play('m1a3', 4);
-assert.equal(ng[0].length, 13, 'thirteen non-player seats');
-assert.ok(ng[0].every((id) => eraOf(id) === 'next-generation'), 'battle 1: the own-era catalog fills every seat');
-assert.equal(shared(ng[0], ng[1]), 0, 'battle 2 repeats no vehicle of battle 1');
-assert.equal(ng[1].filter((id) => eraOf(id) === 'next-generation').length, ownEra - 13, 'battle 2: every fresh own-era hull leads the roster');
-assert.ok(ng[1].some((id) => eraOf(id) === 'modern'), 'battle 2: fresh modern contemporaries fill the remaining seats');
-assert.equal(shared(ng[1], ng[2]), 0, 'battle 3 repeats no vehicle of battle 2');
-assert.ok(ng[2].every((id) => eraOf(id) === 'modern'), 'battle 3: both battles of own-era hulls are recent, so fresh contemporaries take every seat');
-assert.ok(ng[3].every((id) => eraOf(id) === 'next-generation') && shared(ng[3], ng[0]) === 13, 'battle 4: the own-era hulls of battle 1 have left the two-battle memory and return');
-assert.ok(ng.flat().every((id) => ['next-generation', 'modern'].includes(eraOf(id))), 'no far era enters a next-generation battle');
-assert.ok(new Set(ng.flat()).size >= 36, `four battles field far more than the eighteen own-era hulls (${new Set(ng.flat()).size} distinct)`);
+for (const [index, roster] of ng.entries()) {
+  const recent = new Set(ng.slice(Math.max(0, index - 2), index).flat());
+  const freshOwnEra = [...ownEraIds].filter((id) => !recent.has(id)).length;
+  const expectedOwnEra = Math.min(13, freshOwnEra);
+  assert.equal(roster.length, 13, 'thirteen non-player seats');
+  assert.equal(roster.filter((id) => eraOf(id) === 'next-generation').length, expectedOwnEra,
+    `production battle ${index + 1}: fresh own-era hulls lead the draw`);
+  assert.equal(roster.filter((id) => eraOf(id) === 'modern').length, 13 - expectedOwnEra,
+    `production battle ${index + 1}: modern contemporaries fill only exhausted own-era seats`);
+  assert.ok(roster.every((id) => !recent.has(id)), 'no vehicle repeats either of the previous two battles');
+}
+assert.ok(new Set(ng.flat()).size >= 39, 'four production battles include three complete distinct rosters');
+
+// Keep a real-vehicle subcatalog that always exhausts within two battles.
+// This exercises contemporary fallback even as the full production fleet grows.
+const boundedOwnEra = new Set([...ownEraIds].slice(0, 18));
+try {
+  game.allTanks = productionFleet.filter((entity) => entity.specId === 'm1a3'
+    || eraOf(entity.specId) !== 'next-generation' || boundedOwnEra.has(entity.specId));
+  const bounded = play('m1a3', 4);
+  assert.ok(bounded[0].every((id) => eraOf(id) === 'next-generation'), 'bounded battle 1 uses only its own era');
+  assert.equal(bounded[1].filter((id) => eraOf(id) === 'next-generation').length, boundedOwnEra.size - 13,
+    'bounded battle 2 uses the remaining fresh own-era hulls');
+  assert.equal(bounded[1].filter((id) => eraOf(id) === 'modern').length, 26 - boundedOwnEra.size,
+    'bounded battle 2 fills its remaining seats with fresh contemporaries');
+  assert.ok(bounded[2].every((id) => eraOf(id) === 'modern'), 'bounded battle 3 exhausts its own era and uses fresh contemporaries');
+  assert.equal(shared(bounded[0], bounded[1]) + shared(bounded[0], bounded[2]) + shared(bounded[1], bounded[2]), 0,
+    'bounded first three battles share no hulls');
+  assert.ok(bounded[3].every((id) => eraOf(id) === 'next-generation') && shared(bounded[3], bounded[0]) === 13,
+    'bounded battle 4 can reuse battle 1 after it leaves the two-battle memory');
+} finally {
+  game.allTanks = productionFleet;
+}
 const modern = play('m1a2', 3);
 assert.ok(modern.flat().every((id) => eraOf(id) === 'modern'), 'a modern player never needs a contemporary');
 assert.equal(shared(modern[0], modern[1]) + shared(modern[1], modern[2]), 0, 'consecutive modern rosters share nothing');
