@@ -26,8 +26,8 @@ const BEFORE={
 // pressed face and leclerc_classic_x the Leclerc XLR stepped plate (nationWheelConstructions.ts); repinned from the
 // current build (amx30_x now compares the plain model under the tint inverse, leclerc_classic_x after its gear inverse).
  // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 30aa82a9…, eca09834…, ce25b11c…, 5cf7c632…, e7726256…, a0fb4201…, 27509e55…, 97ce7d68…, 69197b36…, 495de4a8…, 3a9f7bca…, 9388e4c4…, 015d5a86…, 45a022cf….
- 'k1a1_x/high':'d47d1178c38ef3f0c6de85610f6a0bc263ea22e3ef2ba6370244a52de1c391c2',
- 'k1a1_x/low':'cd82b27062d81232cf381419058ea4e8599c54dd93395d96cdfc5554519dbb1f',
+ 'k1a1_x/high':'56d1089692dbf53c20a99f90d9425246ecfc285f8f57282ce796a7ef824d722c',
+ 'k1a1_x/low':'09c4cf226e7cf9e306eaa3ff33f20969f72a7bc95ae794a4dd4a057d057ff269',
  // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
  // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
  'amx30_x/high':'f8e4252eebac1df91cbbbbfd057cddf4ff8530c886b5d071818a1eecda9c7d1e',
