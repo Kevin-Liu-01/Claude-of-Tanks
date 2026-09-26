@@ -56,6 +56,10 @@ is the renderer-free planner of the yard dressing around industrial structures
 (apron band, clearance from roads, water, berth, solids and envelopes, a
 per-map budget, its own seeded stream, no collision record) and
 `maps/yardClutterKit.ts` its instance-ready geometry per family.
+`rockDressing.ts` (round 75 item 6) owns the boulders' fracture law (the
+legacy displacement's projected hull stays the collision proxy: every cut
+moves a vertex inward), the per-map moss / dust / soil dressing, the triplanar
+rock tile and the hook layered on the grime hook.
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

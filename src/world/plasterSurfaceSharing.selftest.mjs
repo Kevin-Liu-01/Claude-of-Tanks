@@ -14,6 +14,7 @@ import {
 } from '../engine/resourceLifetime.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels } from './proceduralTexture.ts';
 import { resolveStructureWindowStyle } from './structureInstanceAppearance.ts';
+import { applyRockShaderHook, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 
 // Independent control frozen before sharing at 465a68f7c43cd9ed1cc23ce62853ab9d1c6e0b43.
 // Keep the painter, tone, normal, packed-surface and CanvasTexture formulas
@@ -212,15 +213,15 @@ const materialStage = section(source, '  const windowStyle = resolveStructureWin
 const roof = new Function('THREE', `${stripTypeScriptTypes(section(source,
   'function makeRoofMaterial(', 'function buildStoneCourseEdges('))}\nreturn makeRoofMaterial;`)(THREE);
 // round 75 (2026-09-26): the 'steel' atlas family joins the material stage (propsSteelAtlas.ts)
-const remaining = ['roofT', 'stone', 'wood', 'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint', 'steel'];
+const remaining = ['roofT', 'stone', 'wood', 'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
 const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
-  'registerRetainedObject3DResources', '_mustReplace', `${stripTypeScriptTypes(`
+  'registerRetainedObject3DResources', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook', `${stripTypeScriptTypes(`
   function* materialSteps(group, engineCtx, mapId, atlases, grimeTex) {
     const { ${[...families, ...remaining].join(', ')} } = atlases, P = {};
     ${materialStage}
     return { mats, retainedSurfaceMaterials };
   }`)}\nreturn materialSteps;`)(THREE, resolveStructureWindowStyle, roof, registerRetainedObject3DResources,
-  (text, anchor, replacement) => { assert.ok(text.includes(anchor)); return text.replace(anchor, replacement); });
+  (text, anchor, replacement) => { assert.ok(text.includes(anchor)); return text.replace(anchor, replacement); }, rockDressingFor, applyRockShaderHook);
 function materialFixture(palette, mapId = 'verdant', attached = false) {
   const group = new THREE.Group(), scene = new THREE.Scene(); scene.add(group);
   const dummy = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1);

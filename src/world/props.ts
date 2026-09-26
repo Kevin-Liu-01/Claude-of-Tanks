@@ -40,6 +40,7 @@ import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // co
 import { makeSteelAtlas } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardPlacement, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery } from './maps/yardClutterKit.ts'; // round 75
+import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
@@ -328,6 +329,8 @@ interface PropsSettings {
   industrialCladding?: 'brick' | 'steel';
   /** Round 75: the yard dressing budget (pieces) around the industrial structures; default 4.5 a structure, at most 140. */
   yardDressing?: number;
+  /** Round 75 item 6: derived at build from the map's splat dirt tone — the boulders' soil skirt (never authored). */
+  rockSoilTone?: ToneFunction | null;
   inhabit?: InhabitSettings;
   wallStyle?: string;
   sandbagLines?: number;
@@ -2706,6 +2709,8 @@ function* propsBuildSteps(
     streetRows: false, curbs: false, monument: false, townCraters: false,
     ...((cfg && cfg.props) || {}),
   };
+  // round 75 item 6: the boulders' soil skirt follows the map's dirt tone (a splat law, never authored on props)
+  P.rockSoilTone = (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
   const mapId = cfg ? cfg.id : 'verdant';
   const rng = mulberry32(seed);
   const detailUvRng = () => 0.5;
@@ -2768,6 +2773,8 @@ function* propsBuildSteps(
   const grimeTex = yield* makeGrimeTexture(noi, aniso);
   // Round 75: the container / tank sheet-steel atlas (propsSteelAtlas.ts), sixteen rows per checkpoint.
   const steel = yield* makeSteelAtlas(noi, aniso);
+  // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint.
+  const rockDetail = yield* makeRockDetail(noi, aniso);
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -2811,7 +2818,12 @@ function* propsBuildSteps(
       emissiveIntensity: windowStyle.curtainEmissiveIntensity }),
     straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal,
       roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
-    rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
+    // round 75 item 6: the tile rides the map slots so the library owns it; the rock hook samples it triplanar
+    // (a displaced sphere has no UVs), the vertex tone stays the stone's colour
+    rock: new THREE.MeshStandardMaterial({
+      map: rockDetail.albedo, normalMap: rockDetail.normal, roughnessMap: rockDetail.surface, aoMap: rockDetail.surface,
+      vertexColors: true, roughness: 0.95, metalness: 0,
+    }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
     // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
     // the rust mask the weathering hook below mixes toward rust.
@@ -2939,10 +2951,13 @@ ${snowCap ? `
   }` : ''}
 }`);
   };
+  // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere)
+  const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null);
+  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
-        materialKind === 'dark' || materialKind === 'glass' ? null : grimeHook);
+        materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook : grimeHook);
       material.customProgramCacheKey = () =>
         'world-props-' + materialKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -4783,10 +4798,13 @@ ${snowCap ? `
       col[i * 3] = _col.r; col[i * 3 + 1] = _col.g; col[i * 3 + 2] = _col.b;
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    rockGeos.push(g);
     const projected: Array<[number, number]> = [];
     for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
-    rockHulls.push(convexHull2(projected));
+    rockHulls.push(convexHull2(projected)); // the collision proxy: the legacy hull, unchanged (the shards carry it)
+    // Round 75 item 6: the visual rock is the legacy displacement cut by fracture planes with a ridged detail
+    // octave, every vertex moved inward, its normals split at the cleavage angle — inside the hull above.
+    rockGeos.push(fractureRockGeometry(g, vi, noi, mulberry32(seed + 60 + vi)));
+    g.dispose();
   }
   }
   buildRockVariants();
@@ -4906,12 +4924,20 @@ ${snowCap ? `
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
+    // round 75 item 6: the ground height under every instance, for the soil skirt and dust laws
+    const ground = new Float32Array(rockPlacements[vi].length);
+    for (let i = 0; i < ground.length; i++) {
+      const e = rockPlacements[vi][i].elements;
+      ground[i] = heightField.getHeightAt(e[12], e[14]);
+    }
+    rockGeos[vi].setAttribute('aRockGround', new THREE.InstancedBufferAttribute(ground, 1));
     const im = new THREE.InstancedMesh(rockGeos[vi], mats.rock, rockPlacements[vi].length);
     for (let i = 0; i < rockPlacements[vi].length; i++) im.setMatrixAt(i, rockPlacements[vi][i]);
     im.castShadow = true;
     im.receiveShadow = true;
     im.matrixAutoUpdate = false;
     im.computeBoundingSphere();
+    im.name = 'rock-variant-' + vi; // round 75: the probes and captures find the boulders by name
     group.add(im);
   }
   }
