@@ -38,6 +38,8 @@ import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
 import { makeSteelAtlas } from './propsSteelAtlas.ts'; // round 75
+import { planYardDressing, yardStructureKinds, type YardFamily, type YardPlacement, type YardStructure } from './yardDressing.ts'; // round 75
+import { buildYardFamily, yardInstanceLivery } from './maps/yardClutterKit.ts'; // round 75
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
@@ -322,6 +324,10 @@ interface PropsSettings {
   blockFill?: boolean;
   destructibleBuildingLat?: readonly [number, number];
   yardClutter?: boolean;
+  /** Round 75: the industrial halls' cladding — the brick / stone default or corrugated sheet (Whiteout's station). */
+  industrialCladding?: 'brick' | 'steel';
+  /** Round 75: the yard dressing budget (pieces) around the industrial structures; default 4.5 a structure, at most 140. */
+  yardDressing?: number;
   inhabit?: InhabitSettings;
   wallStyle?: string;
   sandbagLines?: number;
@@ -344,6 +350,8 @@ interface PlacedBuilding {
   w: number;
   d: number;
   rot: number;
+  /** Round 75: the plan id of a planned building (the yard dressing reads it); other placements carry none. */
+  kind?: string;
 }
 
 interface TacticalBeatFeature {
@@ -3326,7 +3334,7 @@ ${snowCap ? `
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
-    buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
+    buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
     if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
       wharfFishery = { buckets: tmp, source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
@@ -6867,6 +6875,58 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
+  // -------------------------------------------------------------------------
+  // Round 75: YARD DRESSING — pallets, crates, drums, cable drums, tyre stacks, fuel tanks and skips in the apron
+  // band around the industrial structures (world/yardDressing.ts plans, maps/yardClutterKit.ts builds), one
+  // InstancedMesh per family on the wood / steel / baked materials. Dressing, not obstacles: no collision or
+  // destructible record, its own seeded stream, and every solid the map already placed is kept clear.
+  // -------------------------------------------------------------------------
+  function* placeYardDressing(): Generator<PropsBuildSlice, void, void> {
+    const kinds = new Set(yardStructureKinds());
+    const structures: YardStructure[] = [];
+    for (const b of buildingFeatures) {
+      if (b.kind && kinds.has(b.kind)) structures.push({ kind: b.kind, x: b.x, z: b.z, w: b.w, d: b.d, rot: b.rot });
+    }
+    const budget = P.yardDressing ?? Math.min(140, Math.round(structures.length * 4.5));
+    if (!structures.length || !(budget > 0)) return;
+    const palette = mapId === 'mars' ? 'martian' : snowCap || mapId === 'whiteout' ? 'polar' : 'brownfield';
+    const plan = planYardDressing(structures, heightField, obstacles, seed, { budget, palette });
+    const byFamily = new Map<YardFamily, YardPlacement[]>();
+    for (const p of plan.placements) {
+      let list = byFamily.get(p.family);
+      if (!list) byFamily.set(p.family, list = []);
+      list.push(p);
+    }
+    const pos = new THREE.Vector3(), scl = new THREE.Vector3(), q = new THREE.Quaternion(), m = new THREE.Matrix4();
+    const tint = new THREE.Color();
+    let triangles = 0;
+    for (const [family, list] of byFamily) {
+      const built = buildYardFamily(family);
+      const im = new THREE.InstancedMesh(built.geometry, mats[built.material], list.length);
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        q.setFromAxisAngle(_upAxis, p.yaw);
+        m.compose(pos.set(p.x, p.y - 0.02, p.z), q, scl.set(p.scale, p.scale, p.scale));
+        im.setMatrixAt(i, m);
+        const livery = yardInstanceLivery(family, p.variant, palette);
+        if (livery !== null) im.setColorAt(i, tint.set(livery));
+      }
+      if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      im.castShadow = true;
+      im.receiveShadow = true;
+      im.matrixAutoUpdate = false;
+      im.computeBoundingSphere();
+      im.name = 'yard-' + family;
+      group.add(im);
+      triangles += built.triangles * list.length;
+      yield { fine: true, stage: 'yard-' + family };
+    }
+    group.userData.yardDressing = {
+      structures: structures.length, budget, placed: plan.placements.length, families: byFamily.size,
+      attempts: plan.attempts, triangles,
+    };
+  }
+  yield* placeYardDressing();
   // Construction-only spans are now sealed into matrices/support/colliders;
   // runtime destruction closures must not retain the placement graph.
   wallSpans.clear();
