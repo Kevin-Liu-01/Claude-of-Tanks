@@ -183,7 +183,7 @@ export interface HorizonReliefField {
    * `finish` runs the fine octaves, the talus and the gullies from a prepared point. `high` = prepare + finish.
    */
   prepare(x: number, z: number, sharp: number, out: { dx: number; dz: number; weight: number }): void;
-  finish(x: number, z: number, dx: number, dz: number, weight: number, sharp: number, concavity: number, steep: number, r: number, theta: number): number;
+  finish(dx: number, dz: number, weight: number, sharp: number, concavity: number, steep: number, r: number, theta: number): number;
   /** The character in force. */
   settings: HorizonReliefSettings;
 }
@@ -307,7 +307,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       for (let o = 0; o < LOW_OCTAVES; o++) octave(o, sharp);
       out.dx = scratch.wx - x; out.dz = scratch.wz - z; out.weight = scratch.weight;
     },
-    finish(x, z, dx, dz, weight, sharp, concavity, steep, r, theta) {
+    finish(dx, dz, weight, sharp, concavity, steep, r, theta) {
       scratch.weight = weight;
       // the fine octaves run in the ring's own (arc, radius) frame, stretched downslope by the character's elongation
       // (a face's spurs and chutes run down it; a mesa's ledges run along it), the warp offsets carried over as arc
@@ -329,7 +329,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     high(x, z, hT, concavity, steep, rIn, thetaIn) {
       const sharp = s.footSharpness + (s.crestSharpness - s.footSharpness) * clamp(hT, 0, 1);
       this.prepare(x, z, sharp, stage);
-      return this.finish(x, z, stage.dx, stage.dz, stage.weight, sharp, concavity, steep, rIn ?? Math.hypot(x, z), thetaIn ?? Math.atan2(z, x));
+      return this.finish(stage.dx, stage.dz, stage.weight, sharp, concavity, steep, rIn ?? Math.hypot(x, z), thetaIn ?? Math.atan2(z, x));
     },
   };
 }
@@ -470,10 +470,9 @@ export function* bakeHorizonReliefSteps(
       const gr = (macro[Math.min(H - 1, j + 1) * W + i] - macro[Math.max(0, j - 1) * W + i]) / (2 * dr);
       const steep = smoothstep(0.22, 0.65, Math.hypot(gθ, gr));
       const theta = (i / W) * TAU;
-      const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
       const land = 1 - marine[idx];
       const v = land > 0.001
-        ? field.finish(x, z, stageAt(stageDx, i, j), stageAt(stageDz, i, j), stageAt(stageW, i, j), sharpAt(h / Math.max(1, maxHeight)), concavity, steep, r, theta) * land
+        ? field.finish(stageAt(stageDx, i, j), stageAt(stageDz, i, j), stageAt(stageW, i, j), sharpAt(h / Math.max(1, maxHeight)), concavity, steep, r, theta) * land
         : 0;
       fine[idx] = v;
       if (v < fineMin) fineMin = v; if (v > fineMax) fineMax = v;
