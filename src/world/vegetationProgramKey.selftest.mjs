@@ -59,7 +59,8 @@ function library(species, fade, environment) {
     grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
   const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
   const { group } = vegetation;
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v15'));
+  // round 77 (2026-09-26): v16 — the wind law, the per-cluster cascade sample and the leaf translucency
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v16'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const foliageMats = Object.fromEntries(species.map((sp, index) => [sp, foliage[index]]));
   const foliageTex = Object.fromEntries(species.map(sp => [sp, foliageMats[sp].map]));
@@ -147,6 +148,30 @@ function checkNegativeControls(world, rows, environment, species) {
   }), /Expected values to be strictly equal/);
 }
 
+// Round 77 (2026-09-26): the vegetation round's mechanisms on the expanded near-card program — the wind law (the
+// map wind and the lean / flutter uniforms, the height-squared cantilever), the per-cluster cascade sample (aCard,
+// the CSM light read in the vertex stage, the sample pushed toward the sun), the leaf-shadow floor on every
+// directional shadow site, the sky under a shaded cluster, and the leaf translucency of canopyLighting.ts.
+function checkRound77Mechanisms(parameters) {
+  const vertex = parameters.vertexShader, fragment = parameters.fragmentShader;
+  for (const name of ['uWindDir', 'uWind', 'uWindTime']) {
+    assert.ok(parameters.uniforms[name], `${name} rides on the foliage program`);
+    assert.match(vertex, new RegExp(`uniform \\S+ ${name};`), `${name} declared in the vertex stage`);
+  }
+  assert.match(vertex, /transformed\.xz \+= leanDir \* \(lean \* hn \* hn\);/, 'the trunk leans by the square of its height');
+  assert.match(vertex, /float fl = aFlex \* uWind\.z \* \(0\.45 \+ 0\.55 \* gust\);/, 'the canopy flutters by its authored flex');
+  assert.match(vertex, /attribute vec4 aCard;/, 'the cards carry their centre and the crown radius');
+  assert.match(vertex, /uniform DirectionalLight directionalLights\[ NUM_DIR_LIGHTS \];/, 'the CSM light is read in the vertex stage');
+  assert.match(vertex, /worldPosition = vec4\( cotCardW\.xyz \+ cotSunW \* \( cotReach \* 0\.9 \), 1\.0 \);/, 'the cascade sample sits at the cluster, pushed toward the sun');
+  assert.ok(vertex.indexOf('worldPosition = vec4( cotCardW.xyz') < vertex.indexOf('#include <shadowmap_vertex>'), 'before the shadow coordinates are taken');
+  assert.equal((fragment.match(/cotLeafShadow\( getShadow\( directionalShadowMap\[ i \]/g) || []).length, 3, 'every directional shadow site takes the leaf floor');
+  assert.match(fragment, /float cotLeafShadow\( float s \) \{ return mix\( 0\.22, 1\.0, s \); \}/, 'a shaded cluster keeps 22 % of the direct term');
+  assert.match(fragment, /float cotLeafSky = mix\( 0\.50, 1\.0, saturate\( \( cotSunVis - 0\.22 \) \/ 0\.78 \) \);/, 'the sky under a shaded cluster falls to 50 %');
+  assert.match(fragment, /float canopyBack = pow\( saturate\( dot\( -geometryViewDir, directLight\.direction \) \), 3\.0 \);/, 'leaf translucency against the sun');
+  assert.match(fragment, /canopyBack \* 0\.45 \* directLight\.color/, 'at 45 % on the near cards');
+  assert.doesNotMatch(vertex, /amp \* \(sin\(uWindTime \* 1\.15 \+ ph\)/, 'the pre-round sway is gone');
+}
+
 function checkIndependentEviction(world, other, species) {
   const disposed = new Map();
   for (const library of [world, other]) for (const resource of [library.detail,
@@ -196,6 +221,7 @@ try {
     assert.equal(other.uWindTime.value, 0); assert.equal(other.uScopeHard.value, 0);
     assert.equal(rows[1].parameters.uniforms.CSM_cascades.value[0].x, 0);
     checkNegativeControls(world, rows, environment, species);
+    checkRound77Mechanisms(rows[0].parameters);
     checkIndependentEviction(world, other, species);
   }
 } finally {

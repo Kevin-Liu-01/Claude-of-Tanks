@@ -1083,6 +1083,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/palmStemDirection.selftest.mjs',
     'src/world/bushOverlappingSprays.selftest.mjs',
     'src/world/shrubGrowthPlacement.selftest.mjs',
+    // round 77 (2026-09-26): the vegetation round — the tree climate (wind, moss) and the understorey
+    'src/world/treeClimate.selftest.mjs',
+    'src/world/understorey.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',

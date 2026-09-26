@@ -171,6 +171,9 @@ function negatives() {
     const g = a.geometry.clone(); try { mutate(g); assert.throws(() => contract(g), pattern); } finally { g.dispose(); }
   };
   try {
+    // round 77 (2026-09-26): the legacy sheets come through the current foliageCard, which now carries aCard (the
+    // cards' cascade sample); drop it so the negative exercises the shape rejections, not the attribute set
+    b.geometry.deleteAttribute('aCard');
     assert.throws(() => contract(b.geometry), /positive-up|corner UVs|folded corners|fold|grounded/, 'legacy bowed sheets rejected');
     reject(g => g.attributes.normal.array.fill(0), /unit authored normals/);
     reject(g => g.attributes.position.setXYZ(1, ...point(g, 0).toArray()), /shared triangle|nonzero triangle/);

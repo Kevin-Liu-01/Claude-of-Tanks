@@ -215,8 +215,10 @@ try {
     assert.equal(kit.foliageMaterial.map.image.height, 256);
     // Tree bases 2026-09-12: the fluted root collar (fifteen sides, five
     // rings) and four swept surface roots (35 vertices each) replace the
-    // cone-era pedestal at 1356 trunk vertices.
-    assert.equal(kit.trunk.getAttribute('position').count, 1356);
+    // cone-era pedestal at 1356 trunk vertices. Round 77 (2026-09-26): six
+    // branch whorls of three open three-sided limbs (18 vertices each) under
+    // the needle tiers add 324 — 1680.
+    assert.equal(kit.trunk.getAttribute('position').count, 1680);
     assert.equal(kit.foliage.getAttribute('position').count, 300,
       'the lighting repair does not add foliage cards or vertices');
     kit.dispose();

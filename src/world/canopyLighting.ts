@@ -21,6 +21,11 @@ export function applyCanopyDiffuseWrap(
   shader: MaterialShader,
   wrap: number,
   matteCanopy = false,
+  // Round 77 (2026-09-26): leaf translucency for the battlefield's crowns — the share of the (shadowed) direct light
+  // a back-lit cluster transmits toward the viewer, raised to the third power of the view-against-sun cosine so it
+  // reads as the glowing rim of a crown between the camera and the sun and nowhere else. 0 (the horizon ring's far
+  // crowns, solid bark) leaves the expression byte-identical.
+  thin = 0,
 ): void {
   if (wrap <= 0) return;
   const reciprocal = (1 / (1 + wrap)).toFixed(6);
@@ -36,7 +41,10 @@ export function applyCanopyDiffuseWrap(
   wrappedPhysical = mustReplace(
     wrappedPhysical,
     'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution );',
-    `float canopyDiffuseNL = saturate( ( canopyRawNL + ${wrap.toFixed(2)} ) * ${reciprocal} ) * ${reciprocal};\n\t${matteCanopy ? 'canopyDiffuseNL = canopyDiffuseNL * 0.70 + 0.075;\n\t' : ''}reflectedLight.directDiffuse += canopyDiffuseNL * directLight.color * BRDF_Lambert( material.diffuseContribution );`,
+    `float canopyDiffuseNL = saturate( ( canopyRawNL + ${wrap.toFixed(2)} ) * ${reciprocal} ) * ${reciprocal};\n\t${matteCanopy ? 'canopyDiffuseNL = canopyDiffuseNL * 0.70 + 0.075;\n\t' : ''}reflectedLight.directDiffuse += canopyDiffuseNL * directLight.color * BRDF_Lambert( material.diffuseContribution );${
+      thin > 0
+        ? `\n\tfloat canopyBack = pow( saturate( dot( -geometryViewDir, directLight.direction ) ), 3.0 );\n\treflectedLight.directDiffuse += canopyBack * ${thin.toFixed(2)} * directLight.color * BRDF_Lambert( material.diffuseContribution );`
+        : ''}`,
   );
   if (matteCanopy) {
     // A spray represents many differently oriented leaves. Mix 30% of an

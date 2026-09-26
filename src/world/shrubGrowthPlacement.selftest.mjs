@@ -152,9 +152,11 @@ function attribute(a, omitContents = false) {
     normalized: a.normalized, usage: a.usage, meshPerAttribute: a.meshPerAttribute ?? null,
     hash: omitContents ? 'changed-bush-shape' : sha(Buffer.from(a.array.buffer, a.array.byteOffset, a.array.byteLength)) };
 }
-function geometry(g, bush) {
+function geometry(g, bush, understorey = false) {
+  // round 77: the understorey shrub's five streams all come from the swapped writer (its flex too)
+  const omitted = understorey ? ['position', 'normal', 'color', 'uv', 'aFlex'] : ['position', 'normal', 'color', 'uv'];
   return { attributes: Object.fromEntries(Object.entries(g.attributes).map(([key, a]) =>
-    [key, attribute(a, bush && ['position', 'normal', 'color', 'uv'].includes(key))])), index: attribute(g.index),
+    [key, attribute(a, bush && omitted.includes(key))])), index: attribute(g.index),
   groups: g.groups, drawRange: g.drawRange, box: bush ? null : g.boundingBox, sphere: bush ? null : g.boundingSphere };
 }
 const ref = (map, object) => { if (!object) return null; if (!map.has(object)) map.set(object, map.size); return map.get(object); };
@@ -166,7 +168,10 @@ function material(m, textures) {
 }
 function snapshot(world, bushes) {
   const ids = new Map(), mats = new Map(), textures = new Map(), geometries = [], meshes = [];
-  visitOwnedObject3DGeometries(world.group, g => { ref(ids, g); geometries.push(geometry(g, bushes.includes(g))); });
+  // round 77 (2026-09-26): the understorey shrub (vegetation.ts buildUnderstoreyCards) is written by the same spray
+  // writer the predecessor swap replaces, so its contents follow the two bush shapes out of the exact comparison;
+  // understorey.selftest.mjs pins its shape and its placement on its own
+  visitOwnedObject3DGeometries(world.group, g => { ref(ids, g); geometries.push(geometry(g, bushes.includes(g) || g.userData.understorey === true, g.userData.understorey === true)); });
   world.group.traverse(m => {
     if (!m.isMesh) return;
     assert.ok(!Array.isArray(m.material), 'actual vegetation uses one material per mesh');

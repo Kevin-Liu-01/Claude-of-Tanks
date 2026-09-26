@@ -114,7 +114,8 @@ function exact(a,b,positions=true) {
   for(const [name,p]of Object.entries(a.attributes)) {
     const q=b.attributes[name];assert.deepEqual([q.count,q.itemSize,q.normalized,q.array.byteLength],[p.count,p.itemSize,p.normalized,p.array.byteLength]);
     assert.ok(q.array.every(Number.isFinite),'finite geometry');
-    if(positions||!['position','normal'].includes(name))assert.deepEqual(q.array,p.array,`exact ${name}`);
+    // round 77 (2026-09-26): aCard carries each card's centre (its cascade sample), a position-like stream
+    if(positions||!['position','normal','aCard'].includes(name))assert.deepEqual(q.array,p.array,`exact ${name}`);
   }
   assert.deepEqual(b.index?.array,a.index?.array);assert.deepEqual(b.groups,a.groups);
 }
