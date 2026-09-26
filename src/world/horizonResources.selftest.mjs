@@ -310,9 +310,9 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const currentPoldersReceipts = new Map([
-  [1337, '8b5be1010b944b583b8046e58f5c87d638123fda626846baa9cabd1b56fba37d' /* 2026-09-19 vista pass */],
-  [2049, 'b9d84d1057f626497515258b78c7c243bc9362af85a381a189076a957d896d24'],
-  [7719, 'd7a47587b4bd9fe0eed435305cd9df69e55919e796ccdff73ca73dcba49d0fb3'],
+  [1337, '433a61a07b01d225cc0a13e986e37313beab093720eec5fc6efcd7471015ec3b' /* 2026-09-19 vista pass */],
+  [2049, '2d9fa457e1f2a96dc681c5d31524ce4d79be09a670bdfb1f066e5b34149ea1e5'],
+  [7719, '297cecfbe651988ff60c7df81f44c85ca8d58d98521eb791f38280ffb419a383'],
 ]);
 function assertCurrentPolders(ring, config, seed) {
   assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
@@ -336,9 +336,9 @@ const unrelatedMutation = createHash('sha256');
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
 // (round 72: re-pinned with the relieved geometry, see above)
 const unchangedReceipts = [
-  '8da6f6549e00a66dfeaa5df571bf90ff2b1b45f5944bdf14346e99576d2e83d4',
-  '2a8aad3ed0f98696bbaddcc7df3dad40ad0e9a2b4e1321fcbd4eb1e3d2dc6a4c',
-  '7a5dfa850d87ccebd46f2d523c8ccbea0587110d34a1480f8e22d01b1b738d34',
+  'f995a4bc15227d5e86138d2eb1e28bcc2360bf3b791b7a4e93c4c9382bc6fb7c',
+  '2cb9f633b81a69e36c246f20b0d6396a18563bc9d7474f268f8b8b19e27913e9',
+  '922219b8ef965fc23c97b81803d0a72b4c903c06927c67249adfd51a80a75f78',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
@@ -408,8 +408,9 @@ try {
 // + 24*3 subdivision) queries. Setbacks and rounded slopes reuse that budget.
 // Round 72 (2026-09-25): the coarse relief field (horizonRelief.ts: two warp samples and three ridged octaves) is
 // read once per authored non-skirt vertex and once per interpolated vertex, where it replaces the 260 m ridged term
-// — 66,374 -> 139,527 on the alpine ladder; the ring is still built in about 20 ms.
-assert.equal(geometryNoiseCalls, 139527, 'the relief field spends exactly its authored and interpolated queries (round 72)');
+// — 66,374 -> 139,527 on the alpine ladder, plus the field's 48 x 48 centring grid and the fine band's 64 x 64
+// normalisation grid at construction (20,480 more); the ring is still built in about 20 ms.
+assert.equal(geometryNoiseCalls, 160007, 'the relief field spends exactly its authored, interpolated and normalisation queries (round 72)');
 try {
   geometryNoiseCalls = 0;
   SimplexNoise.prototype.noise = function (...coordinates) {
@@ -421,8 +422,8 @@ try {
   SimplexNoise.prototype.noise = originalNoise;
 }
 // round 47: 431 * (2 skirt * 2 + 7 authored * (1 radial + 6 profile)) + 21 interpolated rows * 431 * 4 = 59047 (was 34480)
-// round 72: + 431 * (7 authored + 21 interpolated) * 5 relief-field queries = 121,856 (see the fjord budget above)
-assert.equal(geometryNoiseCalls, 121856,
+// round 72: + 431 * (7 authored + 21 interpolated) * 5 relief-field queries + the 20,480 normalisation queries = 142,336
+assert.equal(geometryNoiseCalls, 142336,
   'the mesa stack spends exactly its nine authored rows and 21 subdivision rows of noise queries (round 72: with the relief field)');
 
 // Rasterization is deliberately outside this headless lifetime test. The

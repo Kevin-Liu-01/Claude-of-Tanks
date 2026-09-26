@@ -80,49 +80,49 @@ const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.6
 const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>> = {
   // broad polar ranges: long warped ridgelines, wind-scoured crests over talus skirts, deep radial gullies
   polar: {
-    character: 'polar', lowAmpM: 34, highAmpM: 11, warpM: 150, warpWavelengthM: 760, wavelengthM: 300,
+    character: 'polar', lowAmpM: 34, highAmpM: 7, warpM: 150, warpWavelengthM: 760, wavelengthM: 300,
     crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 5.5, fineElongation: 3.2,
     talusFloor: 0.28, aoReachM: 170, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_POLAR,
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
-    character: 'alpine', lowAmpM: 38, highAmpM: 13, warpM: 110, warpWavelengthM: 620, wavelengthM: 260,
+    character: 'alpine', lowAmpM: 38, highAmpM: 8, warpM: 110, warpWavelengthM: 620, wavelengthM: 260,
     crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 6, fineElongation: 3.0,
     talusFloor: 0.30, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
-    character: 'rolling', lowAmpM: 22, highAmpM: 7, warpM: 90, warpWavelengthM: 700, wavelengthM: 320,
+    character: 'rolling', lowAmpM: 22, highAmpM: 5, warpM: 90, warpWavelengthM: 700, wavelengthM: 320,
     crestSharpness: 0.9, footSharpness: 0.7, billow: 0.45, gullyM: 2.6, gullyWavelengthM: 60, gullyElongation: 4, fineElongation: 2.2,
     talusFloor: 0.5, aoReachM: 140, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_ROLLING,
   },
   // tablelands: the caps stay flat (small coarse share), the cliffs carry ledges and talus, dry washes below
   mesa: {
-    character: 'mesa', lowAmpM: 9, highAmpM: 9, warpM: 40, warpWavelengthM: 520, wavelengthM: 220,
+    character: 'mesa', lowAmpM: 9, highAmpM: 6, warpM: 40, warpWavelengthM: 520, wavelengthM: 220,
     crestSharpness: 1.1, footSharpness: 0.8, billow: 0.30, gullyM: 3.8, gullyWavelengthM: 34, gullyElongation: 7, fineElongation: 0.5,
     talusFloor: 0.35, aoReachM: 120, aoStrength: 0.7, shadowSoft: 0.05, far: FAR_MESA,
   },
   // volcanic country: smooth-sided cones cut by radial barrancos, lava benches
   volcanic: {
-    character: 'volcanic', lowAmpM: 18, highAmpM: 8, warpM: 60, warpWavelengthM: 560, wavelengthM: 240,
+    character: 'volcanic', lowAmpM: 18, highAmpM: 6, warpM: 60, warpWavelengthM: 560, wavelengthM: 240,
     crestSharpness: 1.0, footSharpness: 0.75, billow: 0.35, gullyM: 5.5, gullyWavelengthM: 30, gullyElongation: 9, fineElongation: 3.5,
     talusFloor: 0.40, aoReachM: 130, aoStrength: 0.7, shadowSoft: 0.06, far: FAR_VOLCANIC,
   },
   // headlands and cliffs into the sea: rounded uplands, cliffed fronts
   coastal: {
-    character: 'coastal', lowAmpM: 20, highAmpM: 7, warpM: 80, warpWavelengthM: 640, wavelengthM: 300,
+    character: 'coastal', lowAmpM: 20, highAmpM: 5, warpM: 80, warpWavelengthM: 640, wavelengthM: 300,
     crestSharpness: 0.95, footSharpness: 0.7, billow: 0.40, gullyM: 2.8, gullyWavelengthM: 52, gullyElongation: 4.5, fineElongation: 2.0,
     talusFloor: 0.5, aoReachM: 130, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_COASTAL,
   },
   // Olympus-scale shield slopes: very long wavelengths, low relief, lobate flows
   martian: {
-    character: 'martian', lowAmpM: 16, highAmpM: 6, warpM: 120, warpWavelengthM: 900, wavelengthM: 420,
+    character: 'martian', lowAmpM: 16, highAmpM: 4, warpM: 120, warpWavelengthM: 900, wavelengthM: 420,
     crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 6, fineElongation: 1.6,
     talusFloor: 0.6, aoReachM: 160, aoStrength: 0.55, shadowSoft: 0.07, far: FAR_MARTIAN,
   },
   // jungle karst: steep isolated towers, rounded tops, sharp bases
   karst: {
-    character: 'karst', lowAmpM: 30, highAmpM: 9, warpM: 70, warpWavelengthM: 480, wavelengthM: 200,
+    character: 'karst', lowAmpM: 30, highAmpM: 6, warpM: 70, warpWavelengthM: 480, wavelengthM: 200,
     crestSharpness: 1.4, footSharpness: 1.2, billow: 0.25, gullyM: 3.0, gullyWavelengthM: 36, gullyElongation: 5, fineElongation: 2.4,
     talusFloor: 0.35, aoReachM: 120, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_KARST,
   },
@@ -241,22 +241,62 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     for (let o = 0; o < LOW_OCTAVES; o++) sum += octave(o, sharp) * amp[o];
     return sum / lowNorm;
   };
-  // centre the coarse field on zero over one warp tile so the authored rows keep their mean height
-  let lowMean = 0;
+  // Centre the coarse field on zero and set its RMS to half the amplitude (peaks about ±lowAmpM) over three warp
+  // tiles, so the authored rows keep their mean height and the relief actually spends the metres the character
+  // asks for — a multifractal's raw sum has a mean near 0.4 and a spread of a few hundredths, which put the first
+  // cut's "34 m" at ±6 m on the crests
+  const midSharp = (s.crestSharpness + s.footSharpness) * 0.5;
+  let lowMean = 0, lowStd = 1;
   {
-    const N = 48;
+    const N = 48, samples = new Float64Array(N * N);
+    let sum = 0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const x = (i / N - 0.5) * s.warpWavelengthM * 3, z = (j / N - 0.5) * s.warpWavelengthM * 3;
-      lowMean += lowRaw(x + 1300, z - 700, (s.crestSharpness + s.footSharpness) * 0.5);
+      const v = lowRaw(x + 1300, z - 700, midSharp);
+      samples[j * N + i] = v; sum += v;
     }
-    lowMean /= N * N;
+    lowMean = sum / (N * N);
+    let sq = 0;
+    for (let k = 0; k < samples.length; k++) sq += (samples[k] - lowMean) * (samples[k] - lowMean);
+    lowStd = Math.max(1e-4, Math.sqrt(sq / samples.length));
   }
-  const midSharp = (s.crestSharpness + s.footSharpness) * 0.5;
+  const lowScale = 0.5 * s.lowAmpM / lowStd;
   const stage = { dx: 0, dz: 0, weight: 1 };
+  // the fine band's own centring and scale (RMS = 0.45 of its amplitude), sampled in the ring frame at 1 km
+  let fineMean = 0.42, fineScale = 1;
+  const fineRaw = (aFine: number, rFine: number, weight: number, sharp: number): number => {
+    let w = weight, sum = 0;
+    for (let o = 0; o < HIGH_OCTAVES; o++) {
+      const fq = freq[HIGH_FIRST + o], k = 1000 * fq;
+      const n = noise.noise3d(Math.cos(aFine) * k + hox[o], Math.sin(aFine) * k + hoz[o], rFine * fq + hoz[o] * 0.37);
+      const an = Math.abs(n);
+      let rr = (1 - an) + (an - (1 - an)) * s.billow;
+      rr = Math.pow(clamp(rr, 0, 1), sharp) * w;
+      w = clamp(rr * 2.0, 0, 1);
+      sum += rr * highAmp[o];
+    }
+    return sum / highNorm;
+  };
+  {
+    const N = 64, samples = new Float64Array(N * N);
+    let sum = 0;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const theta = (i / N) * Math.PI * 2, r = 700 + (j / N) * 700;
+      const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
+      warpTo(x, z); scratch.weight = 1;
+      for (let o = 0; o < LOW_OCTAVES; o++) octave(o, midSharp);
+      const v = fineRaw(theta, r / s.fineElongation, scratch.weight, midSharp);
+      samples[j * N + i] = v; sum += v;
+    }
+    fineMean = sum / (N * N);
+    let sq = 0;
+    for (let k = 0; k < samples.length; k++) sq += (samples[k] - fineMean) * (samples[k] - fineMean);
+    fineScale = 0.45 * s.highAmpM / Math.max(1e-4, Math.sqrt(sq / samples.length));
+  }
   return {
     settings: s,
     low(x, z) {
-      return (lowRaw(x, z, midSharp) - lowMean) * s.lowAmpM;
+      return (lowRaw(x, z, midSharp) - lowMean) * lowScale;
     },
     prepare(x, z, sharp, out) {
       warpTo(x, z);
@@ -273,19 +313,10 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const dArc = -st * dx + ct * dz, dR = ct * dx + st * dz;
       const aFine = theta + dArc / Math.max(1, r);
       const rFine = (r + dR) / s.fineElongation;
-      let sum = 0;
-      for (let o = 0; o < HIGH_OCTAVES; o++) {
-        const fq = freq[HIGH_FIRST + o], k = 1000 * fq;
-        const n = noise.noise3d(Math.cos(aFine) * k + hox[o], Math.sin(aFine) * k + hoz[o], rFine * fq + hoz[o] * 0.37);
-        const an = Math.abs(n);
-        let rr = (1 - an) + (an - (1 - an)) * s.billow;
-        rr = Math.pow(clamp(rr, 0, 1), sharp) * scratch.weight;
-        scratch.weight = clamp(rr * 2.0, 0, 1);
-        sum += rr * highAmp[o];
-      }
+      const raw = fineRaw(aFine, rFine, weight, sharp);
       // the talus apron: at a concave foot the fine relief settles into a smooth fan
       const talus = smoothstep(0.08, 0.45, concavity);
-      const fine = (sum / highNorm - 0.42) * s.highAmpM * (1 - talus * (1 - s.talusFloor));
+      const fine = (raw - fineMean) * fineScale * (1 - talus * (1 - s.talusFloor));
       // gullies: ridged noise elongated downslope (radial on the ring), carved into the steeper faces only; the
       // across-slope coordinate runs around a circle in noise space so the pattern closes on itself at every angle
       const g = noise.noise3d(Math.cos(theta) * gullyK + 7.7, Math.sin(theta) * gullyK - 3.3, r * gullyFr + 5.1);

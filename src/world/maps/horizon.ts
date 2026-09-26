@@ -1261,8 +1261,12 @@ function appendInterpolatedRingRow(
     const e3 = noise.noise(x * 0.031 + 7.3, z * 0.031 - 3.9);
     const crag = e1 * 0.62 + e2 * 0.38 + e3 * 0.22;
     const styleRelief = style === 'alpine' ? 11 : style === 'mesa' ? 4 : 7;
-    const displacement = crag * Math.min(radialSpan * 0.11,
-      Math.abs(outerHeight - innerHeight) * 0.20 + styleRelief) * shoulder;
+    let envelope = Math.min(radialSpan * 0.11, Math.abs(outerHeight - innerHeight) * 0.20 + styleRelief);
+    // Round 72: on a span already climbing past 1.5:1 (the mesa stack's back cliffs, which the relieved authored rows
+    // reach more often) the crag may not add more than a quarter-slope between consecutive rows, so the ledger's
+    // "no near-vertical cliffs between authored ridges" bound (authored + 0.3) holds with the relief on
+    if (Math.abs(outerHeight - innerHeight) / Math.max(1, radialSpan) > 1.5) envelope = Math.min(envelope, 0.12 * radialSpan / divisions);
+    const displacement = crag * envelope * shoulder;
     const t = (radius - innerRadius) / radialSpan;
     let height = innerHeight + (outerHeight - innerHeight) * t;
     if (style === 'alpine') {
@@ -1373,7 +1377,10 @@ function reshapeFiniteTableCaps(
         const scale = newR / oldR;
         p[im * 3] *= scale;
         p[im * 3 + 2] *= scale;
-        const hm = h[low] + (frontHeight - h[low]) * f + clamp(h[im] - oldLinear, -3, 3);
+        // round 72: the crag kept through the re-spacing is bounded by 3 m or a tenth of the new chord, whichever is
+        // smaller — a relieved low row can shorten the chord to 25 m, where 3 m is the ledger's whole relief allowance
+        const keep = Math.min(3, 0.1 * (frontRadius - lowRadius));
+        const hm = h[low] + (frontHeight - h[low]) * f + clamp(h[im] - oldLinear, -keep, keep);
         h[im] = clamp(hm, frontHeight - (frontRadius - newR) * capSlopeLimit, h[low] + (newR - lowRadius) * capSlopeLimit);
         p[im * 3 + 1] = h[im];
       }
@@ -1406,7 +1413,8 @@ function reshapeFiniteTableCaps(
           const rm = Math.hypot(p[im * 3], p[im * 3 + 2]);
           const bf = (rm - topRadius) / (valleyRadius - topRadius);
           const oldBack = oldTopHeight + (h[valley] - oldTopHeight) * bf;
-          h[im] = topHeight + (h[valley] - topHeight) * bf + clamp(h[im] - oldBack, -3, 3);
+          const keepBack = Math.min(3, 0.1 * (valleyRadius - topRadius));
+          h[im] = topHeight + (h[valley] - topHeight) * bf + clamp(h[im] - oldBack, -keepBack, keepBack);
           p[im * 3 + 1] = h[im];
         }
       }

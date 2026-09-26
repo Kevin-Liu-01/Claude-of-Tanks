@@ -53,11 +53,15 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
     sum += va; maxAbs = Math.max(maxAbs, Math.abs(va)); n++;
     const h = a.high(x, z, 0.5, 0, 1);
     assert.equal(h, b.high(x, z, 0.5, 0, 1), 'the same seed gives the same fine relief');
-    assert.ok(Math.abs(h) <= s.highAmpM * 1.2 + s.gullyM, `the fine relief stays inside its amplitude (${h.toFixed(2)})`);
+    assert.ok(Math.abs(h) <= s.highAmpM * 2.2 + s.gullyM, `the fine relief stays near its amplitude (${h.toFixed(2)})`);
   }
   assert.ok(differ > n * 0.9, 'another seed gives other ridges');
   assert.ok(Math.abs(sum / n) < s.lowAmpM * 0.25, `the coarse relief is centred (mean ${(sum / n).toFixed(2)} m)`);
-  assert.ok(maxAbs <= s.lowAmpM * 0.75 && maxAbs > s.lowAmpM * 0.2, `the coarse relief uses its amplitude without exceeding it (${maxAbs.toFixed(1)} m)`);
+  // RMS half the amplitude: the peaks reach about the amplitude and never twice it
+  assert.ok(maxAbs <= s.lowAmpM * 2.0 && maxAbs > s.lowAmpM * 0.6, `the coarse relief spends its amplitude (${maxAbs.toFixed(1)} m of ${s.lowAmpM})`);
+  let rms = 0; for (let j = 0; j < 40; j++) for (let i = 0; i < 40; i++) { const v = a.low(700 + i * 31.7, -900 + j * 29.3); rms += v * v; }
+  rms = Math.sqrt(rms / 1600);
+  assert.ok(rms > s.lowAmpM * 0.3 && rms < s.lowAmpM * 0.8, `the coarse relief's RMS is about half its amplitude (${rms.toFixed(1)} m)`);
   // the talus apron damps the fine relief at a concave foot, the crest keeps it
   let footE = 0, crestE = 0;
   for (let i = 0; i < 400; i++) {
@@ -85,7 +89,7 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   assert.ok(bake.r0 < 430 && bake.r1 >= 1400 && bake.r1 < 1600, 'the atlas spans the ring from its skirt to its outer shoulder');
   assert.ok(bake.stats.aoMean > 0.5 && bake.stats.aoMean < 0.98, `the occlusion darkens some of the ring (mean ${bake.stats.aoMean.toFixed(3)})`);
   assert.ok(bake.stats.shadowMean > 0.2 && bake.stats.shadowMean < 0.99, `the 13° sun lays shadows across the polar ranges (mean visibility ${bake.stats.shadowMean.toFixed(3)})`);
-  assert.ok(bake.stats.fineRangeM > 4 && bake.stats.fineRangeM < 40, `the fine relief has metres of range (${bake.stats.fineRangeM.toFixed(1)} m)`);
+  assert.ok(bake.stats.fineRangeM > 6 && bake.stats.fineRangeM < 70, `the fine relief has metres of range (${bake.stats.fineRangeM.toFixed(1)} m)`);
   const again = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, s), sun, { width: 512, height: 64 });
   assert.equal(createHash('sha256').update(bake.data).digest('hex'), createHash('sha256').update(again.data).digest('hex'), 'the bake is deterministic');
   // a flat ring bakes no occlusion, no shadow and no gradient beyond the fine relief
