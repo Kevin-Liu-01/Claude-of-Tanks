@@ -3496,7 +3496,20 @@ lower slopes (treeline 0.22, the rim mix's own species) — under the low stratu
 
 **Measured.** __METRICS__
 
-**Performance.** __PERF__
+**Performance.** The ring's cost by repetition (`.qa-dev/r72-ring-bench.mjs`: the frame's GPU and CPU medians with the
+ring drawn once against forty-one times — forty clones of the ring and its children at the same transform, drawn after
+it — alternated three times at the sky-w and centre-far views; Δ / 40 is the ring's own cost, the far range and the
+atlas fetch included; the base tree and this one measured back to back on a machine at load 100–120, so the pairs are
+comparable and the absolute figures are upper bounds): __BENCH__. Draw calls: the far range is one unlit draw (the
+ring's material pair, the forest's up to eight instanced meshes, the rockfield and the treeline stay), +1 on every map
+that carries a far range; no per-frame allocation (the cloud-shade binder writes four numbers into existing uniform
+objects and rebinds textures by reference; the far range and the atlas are built at activation). Construction: the
+atlas bake is a sliced generator at world activation (the terrain build's own pattern) — in Node at load 40–120 the
+three passes measured 40–520 ms (the macro height), 340–2,900 ms (the field: four noise samples a texel over 524k
+texels) and 170–2,000 ms (the occlusion and the sun on the half grid, the gradient at full), 0.6–1.0 s on a quiet
+machine for a 2048 x 256 atlas (`.qa-dev/r72-bake-probe.mjs`, the numbers in `$SP/r72/bake-stats.txt`); the ring
+geometry itself builds in 10–60 ms (the relief field's 5 samples a vertex; noise budgets 139,527 + 20,480 on the
+alpine ladder). Mobile pays none of it.
 
 **Receipts.** `horizonRelief.selftest` (new: the eight characters' bounds, the per-map keys, the field's determinism,
 centring and amplitude, the talus damping, the gully field's continuity across the angle seam, the bake's sizes,
