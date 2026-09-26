@@ -3124,7 +3124,7 @@ under the terrain, no slope block, no crew or module break. Mars / mars ruleset,
 landings (34 damaging, 2413 hp, worst 289 hp at 17 m/s, one hull killed by a fall), 28 crashes (19 damaging,
 1035 hp, worst 367 hp at 17.9 m/s), one ram (563 hp at 10.4 m/s), 9 crew shocked, 4 modules broken, a hull chaining
 up to 18 hops over the ridges, 432 slope-blocked ticks, no stuck, none under the terrain; the 30 m drop lands at
-14.9 m/s and rebounds at exactly half to a 7.6 m apex. `server/battlePacing` full 124 under the new physics: median 335.2 s, p10 260.8 s, no sub-two-minute battle, 0 timeouts / 124 (every band held; the bots' pushes, slides and landings never strand a hull).
+14.9 m/s and rebounds at exactly half to a 7.6 m apex. Verdant / Turbo Ball, 3 min: 170 landings (5 damaging, 217 hp, worst 177 hp at a 22 m/s landing — the 15 m/s threshold keeps the arcade jumps free), 38 crashes (11 damaging, 125 hp, worst 50 hp at 20.5 m/s), 6 rams (1166 hp), no crew or module break (the mode's critical-damage switch holds for impacts), 14-hop chains, none stuck or tunnelled. `server/battlePacing` full 124 under the new physics: median 335.2 s, p10 260.8 s, no sub-two-minute battle, 0 timeouts / 124 (every band held; the bots' pushes, slides and landings never strand a hull).
 
 **Open.** No HUD damage number for a crash or a landing (the HP bar and the impact sound carry it; the kill feed
 and the report name a fatal one) — the ram has none either. Roof landings on another hull keep
