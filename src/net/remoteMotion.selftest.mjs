@@ -29,7 +29,11 @@ function modelFrames(steerAt = () => 0.4, { throttle = 1, heightField = flat } =
     tank.input.steer = steerAt(tick / 60);
     updateTank(tank, heightField, SIM_DT);
   }
-  return { snapshots, poses };
+  // the model's own steady angular rate after five seconds (impact physics, 2026-09-25: the yaw rate at speed is
+  // bounded by lateral grip, so the receipt's cadence band follows the shared model instead of a pinned 0.249 rad/s)
+  const steadyFrom = 5 * 60;
+  const steadyRate = Math.abs(angleDelta(poses[steadyFrom].yaw, poses.at(-1).yaw)) / ((poses.length - 1 - steadyFrom) / 60);
+  return { snapshots, poses, steadyRate };
 }
 
 function truthAngle(poses, timeMs, key = 'yaw') {
@@ -75,10 +79,10 @@ test('20 Hz real shared-model turns retain angular cadence across late/lost snap
   for (const hz of [60, 120, 144]) {
     for (const scenario of [{ oneWayMs: 20 }, { oneWayMs: 50 }, { oneWayMs: 20, lossEvery: 20 }]) {
       const receipt = measure(steady, { hz, ...scenario });
-      console.log(JSON.stringify({ fixture: 'steady-turn', hz, ...scenario, ...receipt }));
+      console.log(JSON.stringify({ fixture: 'steady-turn', hz, ...scenario, steadyRate: steady.steadyRate, ...receipt }));
       assert.equal(receipt.stoppedFrames, 0, 'a moving hull cannot freeze while its position extrapolates');
-      assert.ok(receipt.maxAngularSpeed < 0.30, 'packet recovery cannot multiply a steady 0.249 rad/s turn');
-      assert.ok(receipt.minAngularSpeed > 0.20, 'ordinary late delivery cannot create a slow/fast turn cycle');
+      assert.ok(receipt.maxAngularSpeed < steady.steadyRate * 1.2, `packet recovery cannot multiply a steady ${steady.steadyRate.toFixed(3)} rad/s turn`);
+      assert.ok(receipt.minAngularSpeed > steady.steadyRate * 0.8, 'ordinary late delivery cannot create a slow/fast turn cycle');
       assert.ok(receipt.maxErrorRad < 0.0005, 'continuation follows shared-model truth, not just smoothed step metrics');
     }
   }
@@ -115,7 +119,7 @@ test('variable display frames retain a steady remote turn through snapshot loss'
   const receipt = measure(steady, { lossEvery: 20, variable: true });
   console.log(JSON.stringify({ fixture: 'variable-display', ...receipt }));
   assert.equal(receipt.stoppedFrames, 0);
-  assert.ok(receipt.maxAngularSpeed < 0.30 && receipt.minAngularSpeed > 0.20);
+  assert.ok(receipt.maxAngularSpeed < steady.steadyRate * 1.2 && receipt.minAngularSpeed > steady.steadyRate * 0.8);
   assert.ok(receipt.maxErrorRad < 0.0005);
 });
 

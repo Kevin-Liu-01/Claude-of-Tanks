@@ -3053,6 +3053,86 @@ digest moved), public-repo-hygiene, attribution, typecheck.
 haze at the 380 m pose is round 65's atmosphere, untouched. The snow's albedo share at the rim (≈ 0.19) is the fog /
 aerial pass's, not a tone item. Round 68's open note on Whiteout's 0.92 is closed above.
 
+### Round 71 — 2026-09-25: impact physics — speed-based damage, falls and rebounds
+
+**Owner (2026-09-25).** "Add more speed based damage — running into something hard super fast like a rock or
+building or other tank, fall damage, etc. — and also make bouncing properly work in the lower gravity modes, and
+make the physics more proper on regular modes."
+
+**The model (`sim/impact.ts`, one function for the solo step and the authority).** Every law is energy based: the
+hull's kinetic energy above a threshold speed, ½ · m · (v − v_min)² in kilojoules, becomes hit points through the
+mode's hp-per-kJ rate, so a heavier hull takes more from the same speed and the onset is smooth. A crash prices the
+closing speed the tracks lost against a hard surface (the map edge, a solid primitive, a terrain wall — a push by
+another hull is the ram resolution's, a crushable prop is crushed); the face that struck weighs it (glacis 0.7,
+stern 0.85, broadside 1); modules follow the shape of the crash — the near track 80 % of the hull damage and the far
+30 % (both 60 % head-on), the engine 35 % on a frontal crash — and above 16 m/s one draw (40 %) may knock the driver
+out. A landing prices the vertical closing speed the swept ride contact recorded, ×1.6 nose-first, ×1.3 tilted, ×1.5
+on the roof; both tracks take half the hull damage and the engine 15 %; crew shock above 14 m/s. A crash the
+movement spreads over two ticks (the partial first slice, then the rest) is priced once, on its accumulated closing
+speed; a tick that loses under 0.5 m/s is the drive pressing, not a blow. Rams keep `damage.ts ramDamage`'s pool,
+now split by mass, by how much of the closing speed each hull brought (a 35 % discount at full aggression — a
+deliberate ram on a parked hull reproduces the classic numbers, a head-on meeting discounts both a little) and by
+the face each took it on; every horizontal contact exchanges momentum (`exchangeRamMomentum`: both leave at the
+centre-of-mass velocity ± the mode's ram restitution × closing, split by mass — the pushed hull moves, the rammer
+keeps its share, the T-boned hull slides on the recoil translation; momentum conserved, energy never grows). Every
+number a mode bends is the ruleset's `physics` block (`matchRuleset.ts`): Standard restitution 15 % / rebound floor
+1.2 m/s / falls from 6 m/s at 0.25 hp/kJ / crashes from 4 m/s at 0.16 hp/kJ; Turbo Ball 45 % / 1.5 / 15 (a single
+13 m/s jump lands free) / 0.12 / 9 / 0.05; Mars 50 % / 1.2 / 10.5 (a single 9.5 m/s rocket jump lands free) / 0.16
+/ 5 / 0.12. The 60 t table under Standard: a wall at 22 km/h 19 hp, 36 km/h 173 hp (121 on the glacis, the near
+track yellow), 60 km/h 774 hp; a 5 m drop 120 hp, 11.5 m 607 hp, 20 m 1470 hp. The cards say `landings rebound
+45 %` / `fall damage above 15 m/s`; the kill feed says CRASHED / FELL, the report's final-blow line "{target} crashed
+into something hard" / "fell too hard", the wire `tank_impact` and `tank_destroyed` cause `impact` / `fall`, both
+catalogs.
+
+**The movement (`sim/movement.ts`).** The airborne ride's contact with the droop line is swept inside the step (the
+crossing fraction gives the true closing speed and the remainder of the step integrates after the contact), so a
+40 m/s fall never ends a step under the terrain or a structure top and the rebound is the same at 60 or 120 steps/s;
+the closing speed comes back at the mode's restitution, a rebound under the floor settles onto the suspension; the
+landing torque turns the hull toward the ground plane it struck, so a nose-first landing pitches even while it
+rebounds. A face steeper than the tracks hold (≈ 42° on medium ground, under the 52° cliff grade) is a slide: no
+drive, no brake, `g·sin θ` against `μ·g·cos θ`, the reverse-gear cap lifted to the top-speed cap, `slopeBlocked`
+for the bots. The yaw rate at speed is bounded by lateral grip (`v·ω ≤ 7 m/s² × g-scale × hard/resistance`, never
+under 30 % of the standing rate — unchanged below ~30 km/h on hard ground, a 46 m circle at 60 km/h, wider on soft
+ground and under low gravity). A stopped hull with no throttle holds its grade when the holding decel matches the
+pull. The terrain fit's two-point settle is measured against the pure least-squares pitch and applied at half its
+clamp: on the base tree a "parked" hull on a 15° grade crept down it at 4.2 cm/s and chattered ±0.4° of pitch and
+5 mm of height at ~1 Hz for good (the settle read its own previous correction as a residual and corrected the other
+way); now it stands to 1e-16. `_terr.fitPitch` is sim state, so both movement checkpoints go to version 2 (45
+values).
+
+**Receipts (exit 0).** `impact.selftest` (the blocks, the table, zones, modules, crew shock with a stable RNG order,
+the fall curve, the ram split, the exchange), `impactPhysics.selftest` (Mars 9.5 → landings 9.4 / 4.6 / 2.3 m/s then
+settle, Turbo rebounds, 1 g barely hops, no tunnelling at 40 m/s onto terrain / a roof / into a wall / a cliff, the
+48° slide at gravity minus friction while 30° climbs, the 15° hold exact, the brake holds 30°, the 60 km/h yaw rate
+is the cap, wreck momentum, the nose-first torque, step-size independence), `impactParity.selftest` (both sims
+share the functions and attribution, the mode stamp, an authoritative 100 m run into a wall — 648 hp at 17.2 m/s
+on the glacis, both tracks and the engine, nothing more for holding the drive against it — a 12 m drop's fall event,
+a wreck landing free, a bit-for-bit 600-step replay); movement (218), rollover, tankBodyContacts, structureSupport,
+combat (541), authoritativeMatch, matchRuleset (the Turbo card gains `bounce` / `fallDamage`), matchModes, i18n,
+finalBlow, endScreen, specialActions, killcamPresentation, ai, authoritativeBotControls, authoritativeBots (mobile
+6/6 on reservoir and mars, worst stuck 2 s), the mp match / wire / presentation receipts, movementCheckpoint and
+movementPredictionState (version 2), remoteMotion (the cadence band follows the model's own steady rate),
+movementDisplayCadence (the unreconciled wave drift fell 0.087 → 0.026 m at 120 Hz and 0.129 → 0.009 m on the
+variable cadence — the old settle chatter was itself step-size dependent — while the reconciled residuals moved
+±20 % in the millimetre range; three ratio / bound pins re-anchored with the reasons recorded), server/match
+(matchActor reads the shared version), typecheck, core-unused-check, unused-exports.
+
+**Prove in play (`.qa-dev/physics/battle-probe.mjs`, the authority on the dedicated shard, 14 hulls, idle host).**
+Verdant / Standard, 5 min: 37 crash events (23 damaging, 631 hp in all, worst 101 hp at 11.6 m/s, mean damaging
+27 hp), 16 landings (3 damaging, worst 69 hp at 8.4 m/s), no ram, 6 killed by shot, no hull stuck for 5 s, none
+under the terrain, no slope block, no crew or module break. Mars / mars ruleset, 3.8 min to a score verdict: 163
+landings (34 damaging, 2413 hp, worst 289 hp at 17 m/s, one hull killed by a fall), 28 crashes (19 damaging,
+1035 hp, worst 367 hp at 17.9 m/s), one ram (563 hp at 10.4 m/s), 9 crew shocked, 4 modules broken, a hull chaining
+up to 18 hops over the ridges, 432 slope-blocked ticks, no stuck, none under the terrain; the 30 m drop lands at
+14.9 m/s and rebounds at exactly half to a 7.6 m apex. `server/battlePacing` full 124: see the row.
+
+**Open.** No HUD damage number for a crash or a landing (the HP bar and the impact sound carry it; the kill feed
+and the report name a fatal one) — the ram has none either. Roof landings on another hull keep
+`tankBodyContacts`' fixed 7 % restitution rather than the mode's. Bots do not use the rocket jump, so Mars
+landings in play come from ridges, not boosts. `src/net/networkBattleLaunchRuntime.selftest` and
+`src/game/battleEndingHold.selftest` fail on the round-95 base tree before this lane (the Jev `stop()` line inside
+the ending-hold pattern) — not touched here.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
