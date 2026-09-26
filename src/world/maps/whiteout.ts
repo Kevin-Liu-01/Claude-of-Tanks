@@ -77,9 +77,11 @@ export default {
   // side: wind-scoured crests only (bareRock, rockHex 0x9da9b4 -> 0x5b6772: the pale rock read as more snow). Winter
   // is untouched.
   // round 72 (2026-09-25, owner: "the mountains look so flat and untextured and boring"): the polar character on the alpine
-  // ladder — peaks to the stratus, snow on the broad faces with rock on the steep ones, the scoured ribs at a third
-  // (at 1 they greyed every upper slope to heath), spruce and birch stands on the lower slopes
-  horizon: { baseHex: 0xa3b1be, amp: 1.45, style: 'alpine', relief: 'polar', treeline: 0.22, snowline: 0.30, forestHex: 0x536371, rockHex: 0x5b6772, bareRock: 0.35, haze: 0.92, grain: 0.60 },
+  // ladder — the foothill kept low (amp 1.15: at 1.45 the first ridge, a terrain-material face, walled off the ranges)
+  // and the polar character's boost standing the ranges behind it to the stratus, snow on the broad faces with rock on
+  // the steep ones, the scoured ribs at a third (at 1 they greyed every upper slope to heath), spruce and birch stands
+  // on the lower slopes
+  horizon: { baseHex: 0xa3b1be, amp: 1.15, style: 'alpine', relief: 'polar', treeline: 0.22, snowline: 0.30, forestHex: 0x536371, rockHex: 0x5b6772, bareRock: 0.35, haze: 0.92, grain: 0.60 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the polar deck authored explicitly instead of
   // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps
   // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)

@@ -56,6 +56,9 @@ export interface HorizonReliefSettings {
   gullyElongation: number;
   /** Downslope stretch of the fine octaves (x): spurs and chutes run down a face instead of blobs (< 1 stretches along the strike). */
   fineElongation: number;
+  /** Height multiplier on the ranges behind the first ridge: the ridge stays the terrain-material foothill the seam
+   * laws seat, the ranges behind it — the vista's — stand over it (1 keeps the ladder's authored proportions). */
+  rangeBoost: number;
   /** How much of the fine relief survives at a concave foot (the talus apron). */
   talusFloor: number;
   /** Ambient-occlusion reach (m) and strength (0..1 of the raw occlusion). */
@@ -81,49 +84,49 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
   // broad polar ranges: long warped ridgelines, wind-scoured crests over talus skirts, deep radial gullies
   polar: {
     character: 'polar', lowAmpM: 34, highAmpM: 7, warpM: 150, warpWavelengthM: 760, wavelengthM: 300,
-    crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 5.5, fineElongation: 3.2,
+    crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 5.5, fineElongation: 3.2, rangeBoost: 1.35,
     talusFloor: 0.28, aoReachM: 170, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_POLAR,
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
     character: 'alpine', lowAmpM: 38, highAmpM: 8, warpM: 110, warpWavelengthM: 620, wavelengthM: 260,
-    crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 6, fineElongation: 3.0,
+    crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 6, fineElongation: 3.0, rangeBoost: 1.30,
     talusFloor: 0.30, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
     character: 'rolling', lowAmpM: 22, highAmpM: 5, warpM: 90, warpWavelengthM: 700, wavelengthM: 320,
-    crestSharpness: 0.9, footSharpness: 0.7, billow: 0.45, gullyM: 2.6, gullyWavelengthM: 60, gullyElongation: 4, fineElongation: 2.2,
+    crestSharpness: 0.9, footSharpness: 0.7, billow: 0.45, gullyM: 2.6, gullyWavelengthM: 60, gullyElongation: 4, fineElongation: 2.2, rangeBoost: 1.10,
     talusFloor: 0.5, aoReachM: 140, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_ROLLING,
   },
   // tablelands: the caps stay flat (small coarse share), the cliffs carry ledges and talus, dry washes below
   mesa: {
     character: 'mesa', lowAmpM: 9, highAmpM: 6, warpM: 40, warpWavelengthM: 520, wavelengthM: 220,
-    crestSharpness: 1.1, footSharpness: 0.8, billow: 0.30, gullyM: 3.8, gullyWavelengthM: 34, gullyElongation: 7, fineElongation: 0.5,
+    crestSharpness: 1.1, footSharpness: 0.8, billow: 0.30, gullyM: 3.8, gullyWavelengthM: 34, gullyElongation: 7, fineElongation: 0.5, rangeBoost: 1.0,
     talusFloor: 0.35, aoReachM: 120, aoStrength: 0.7, shadowSoft: 0.05, far: FAR_MESA,
   },
   // volcanic country: smooth-sided cones cut by radial barrancos, lava benches
   volcanic: {
     character: 'volcanic', lowAmpM: 18, highAmpM: 6, warpM: 60, warpWavelengthM: 560, wavelengthM: 240,
-    crestSharpness: 1.0, footSharpness: 0.75, billow: 0.35, gullyM: 5.5, gullyWavelengthM: 30, gullyElongation: 9, fineElongation: 3.5,
+    crestSharpness: 1.0, footSharpness: 0.75, billow: 0.35, gullyM: 5.5, gullyWavelengthM: 30, gullyElongation: 9, fineElongation: 3.5, rangeBoost: 1.15,
     talusFloor: 0.40, aoReachM: 130, aoStrength: 0.7, shadowSoft: 0.06, far: FAR_VOLCANIC,
   },
   // headlands and cliffs into the sea: rounded uplands, cliffed fronts
   coastal: {
     character: 'coastal', lowAmpM: 20, highAmpM: 5, warpM: 80, warpWavelengthM: 640, wavelengthM: 300,
-    crestSharpness: 0.95, footSharpness: 0.7, billow: 0.40, gullyM: 2.8, gullyWavelengthM: 52, gullyElongation: 4.5, fineElongation: 2.0,
+    crestSharpness: 0.95, footSharpness: 0.7, billow: 0.40, gullyM: 2.8, gullyWavelengthM: 52, gullyElongation: 4.5, fineElongation: 2.0, rangeBoost: 1.08,
     talusFloor: 0.5, aoReachM: 130, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_COASTAL,
   },
   // Olympus-scale shield slopes: very long wavelengths, low relief, lobate flows
   martian: {
     character: 'martian', lowAmpM: 16, highAmpM: 4, warpM: 120, warpWavelengthM: 900, wavelengthM: 420,
-    crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 6, fineElongation: 1.6,
+    crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 6, fineElongation: 1.6, rangeBoost: 1.15,
     talusFloor: 0.6, aoReachM: 160, aoStrength: 0.55, shadowSoft: 0.07, far: FAR_MARTIAN,
   },
   // jungle karst: steep isolated towers, rounded tops, sharp bases
   karst: {
     character: 'karst', lowAmpM: 30, highAmpM: 6, warpM: 70, warpWavelengthM: 480, wavelengthM: 200,
-    crestSharpness: 1.4, footSharpness: 1.2, billow: 0.25, gullyM: 3.0, gullyWavelengthM: 36, gullyElongation: 5, fineElongation: 2.4,
+    crestSharpness: 1.4, footSharpness: 1.2, billow: 0.25, gullyM: 3.0, gullyWavelengthM: 36, gullyElongation: 5, fineElongation: 2.4, rangeBoost: 1.25,
     talusFloor: 0.35, aoReachM: 120, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_KARST,
   },
 };

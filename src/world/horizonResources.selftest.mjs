@@ -310,9 +310,9 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const currentPoldersReceipts = new Map([
-  [1337, '433a61a07b01d225cc0a13e986e37313beab093720eec5fc6efcd7471015ec3b' /* 2026-09-19 vista pass */],
-  [2049, '2d9fa457e1f2a96dc681c5d31524ce4d79be09a670bdfb1f066e5b34149ea1e5'],
-  [7719, '297cecfbe651988ff60c7df81f44c85ca8d58d98521eb791f38280ffb419a383'],
+  [1337, '1b3350c9ae81ad12a9c0444ed1d663ad9563b7e792517753de337a9c7ccd4da6' /* 2026-09-19 vista pass */],
+  [2049, '24f5e26b9b2a5df211c44c975f2a3544b6ea80f53c8af83d9d3668bb984e253e'],
+  [7719, '1cd343f4da171dbe265a7186fe281ea9a3d5d1afd270ce2f0ee2dbad4987d4c6'],
 ]);
 function assertCurrentPolders(ring, config, seed) {
   assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
@@ -336,9 +336,9 @@ const unrelatedMutation = createHash('sha256');
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
 // (round 72: re-pinned with the relieved geometry, see above)
 const unchangedReceipts = [
-  'f995a4bc15227d5e86138d2eb1e28bcc2360bf3b791b7a4e93c4c9382bc6fb7c',
-  '2cb9f633b81a69e36c246f20b0d6396a18563bc9d7474f268f8b8b19e27913e9',
-  '922219b8ef965fc23c97b81803d0a72b4c903c06927c67249adfd51a80a75f78',
+  'dc2b290de727f8604a62eb7b1d5fd5fd946015ffd1ff54540f006d9856c68bef',
+  '8a2c11348457cd2498d1e45ba0b67fe98011d1e035ae1f45924490c749886a20',
+  'e6e68d689c1d977cfa37306e5f07bbaefdad90c4ccfead35d38552ca298180f3',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);

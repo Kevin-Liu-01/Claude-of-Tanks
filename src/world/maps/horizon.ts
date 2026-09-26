@@ -1108,8 +1108,15 @@ function buildInitialHorizonGeometry(
   const heights = new Float32Array(HORIZON_SEGMENTS * rows.length);
   const margins = horizonRowMargins(rows.length, style);
   let maxHeight = 1;
-  // Round 72: the map's amplitude scales the coarse relief with the ranges it stands on
-  const reliefScale = clamp(amp, 0.5, 1.6);
+  // Round 72: the map's amplitude scales the coarse relief with the ranges it stands on (Polders' 0.18 stays a low
+  // ridge), and the character's range boost ramps in over the authored ranks (half on the second range, full
+  // beyond) and with the amplitude, so a tight corner gap between the first two ranges never becomes a cliff
+  const reliefScale = clamp(amp, 0.15, 1.6);
+  const rangeBoostAt = (rank: number): number => {
+    if (!relief || rank < 1) return 1;
+    const full = 1 + (relief.settings.rangeBoost - 1) * clamp(amp, 0, 1);
+    return rank === 1 ? 1 + (full - 1) * 0.5 : full;
+  };
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
     const row = rows[rowIndex];
     const authoredRank = rows.slice(0, rowIndex).filter((r) => !r.skirt).length;
@@ -1126,7 +1133,11 @@ function buildInitialHorizonGeometry(
         cos * 4 + rowIndex * 13,
         sin * 4 - rowIndex * 7,
       );
-      let height = sampleRingRowHeight(row, angle, noise, profile) * amp;
+      // Round 72: the ranges behind the first ridge stand taller by the character's boost — the first ridge is the
+      // terrain-material foothill the seam laws seat (rows to 700 m), and at the old proportions it hid the vista's
+      // ranges behind it (Whiteout's grey wall was that foothill); the skirt rows and the first ridge keep their heights
+      const boost = row.skirt ? 1 : rangeBoostAt(authoredRank);
+      let height = sampleRingRowHeight(row, angle, noise, profile) * amp * boost;
       // Round 72 (owner 2026-09-25, "the mountains look so flat"): the coarse relief field (horizonRelief.ts, a
       // ridged multifractal over a warped world plane) displaces every authored range — peaks, spurs and saddles
       // along each row that also vary with the radius, since the field is one plane — the first ridge at 60 % so the
@@ -1157,7 +1168,7 @@ function buildInitialHorizonGeometry(
     }
     if (style === 'alpine' && !row.skirt) {
       const offset = rowIndex * HORIZON_SEGMENTS;
-      softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp,
+      softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp * rangeBoostAt(authoredRank),
         relief ? 3 : 8, relief ? 1 + relief.settings.crestSharpness * 0.9 : 1);
       for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
         positions[(offset + segment) * 3 + 1] = heights[offset + segment];
