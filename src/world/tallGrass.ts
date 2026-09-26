@@ -109,11 +109,16 @@ export const TALL_GRASS = Object.freeze({
   far: Object.freeze({
     cellM: 24,
     ring: 6,          // 13 × 13 cells: covers 120 m
-    perM2: 0.30,      // single wide blades per square metre
+    perM2: 0.24,      // single wide blades per square metre (0.30 on the first sheet massed into a dark carpet at 30–120 m)
     fade: Object.freeze([34, 46, 104, 120] as const),
     cap: 20000,
-    programKey: 'world-tall-grass-far-v1',
+    programKey: 'world-tall-grass-far-v2',
   }),
+  /** Blade width multiplier of the far ring (one strip carries the read) and the root-to-tip gradient exponents:
+   * the near clump keeps a dark root, the far blade — seen from above, mostly root in screen space — takes its tip
+   * colour early so the mid-distance sward stays as light as the meadow it stands in. */
+  farWidth: 1.7,
+  bladeGamma: Object.freeze({ near: 0.75, far: 0.35 } as const),
   cacheCells: 480,
   // a 12 m column of near cells (~4.7 k candidates at density 1) refills in ~40 frames at this budget — ahead of a
   // hull at road speed — for a fraction of the frame's CPU; a cold ring (the first frames) takes the larger one
@@ -221,7 +226,7 @@ interface SharedUniforms {
 }
 
 /** The blade shader: every dimension from the instance attribute, the press from the field, the shadow at the root. */
-function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, number, number], bendRad: number): TallGrassMaterialHook {
+function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, number, number], bendRad: number, bladeGamma: number = TALL_GRASS.bladeGamma.near): TallGrassMaterialHook {
   return (shader) => {
     shader.uniforms.uWindTime = shared.uWindTime;
     shader.uniforms.uCamPos = shared.uCamPos;
@@ -234,6 +239,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
     shader.uniforms.uGrassTip = shared.uGrassTip;
     shader.uniforms.uGrassFade = { value: new THREE.Vector4(fade[0], fade[1], fade[2], fade[3]) };
     shader.uniforms.uBend = { value: bendRad };
+    shader.uniforms.uBladeGamma = { value: bladeGamma };
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <common>', /* glsl */`#include <common>
 uniform float uWindTime; uniform vec3 uCamPos; uniform vec3 uCamFwd; uniform float uSniperFade;
 uniform vec2 uWindDir; uniform sampler2D uPress; uniform vec4 uPressParams; uniform vec4 uGrassFade; uniform float uBend;
@@ -301,12 +307,12 @@ varying float vBladeT; varying float vBladeCrush;`);
       #endif
       #include <shadowmap_vertex>`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; varying float vBladeT; varying float vBladeCrush;');
+      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform float uBladeGamma; varying float vBladeT; varying float vBladeCrush;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>',
-      '#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, 0.75)) * (1.0 - 0.22 * vBladeCrush);');
+      '#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * (1.0 - 0.22 * vBladeCrush);');
   };
 }
 
@@ -379,9 +385,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   const pressure = biome && tier !== 'mobile' ? createGroundPressureField(options.renderer, { tier }) : null;
   if (pressure) { shared.uPress = pressure.stateUniform; shared.uPressParams.value = pressure.params; }
   const materials: THREE.MeshLambertMaterial[] = [];
-  function makeMaterial(fade: readonly [number, number, number, number], programKey: string): THREE.MeshLambertMaterial {
+  function makeMaterial(fade: readonly [number, number, number, number], programKey: string, bladeGamma: number): THREE.MeshLambertMaterial {
     const material = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-    const hook = tallGrassHook(shared, fade, TALL_GRASS.bendRad);
+    const hook = tallGrassHook(shared, fade, TALL_GRASS.bendRad, bladeGamma);
     if (options.setupMaterial) options.setupMaterial(material, hook);
     else material.onBeforeCompile = hook as unknown as THREE.MeshLambertMaterial['onBeforeCompile'];
     material.customProgramCacheKey = () => programKey;
@@ -390,7 +396,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   }
   const geometries = [buildTallGrassClumpGeometry(), buildTallGrassFarGeometry()];
   function makeRing(spec: typeof TALL_GRASS.near | typeof TALL_GRASS.far, geometry: THREE.BufferGeometry, far: boolean, salt: number): Ring {
-    const material = makeMaterial(spec.fade, spec.programKey);
+    const material = makeMaterial(spec.fade, spec.programKey, far ? TALL_GRASS.bladeGamma.far : TALL_GRASS.bladeGamma.near);
     const mesh = new THREE.InstancedMesh(geometry, material, spec.cap);
     mesh.name = far ? 'tall-grass-far' : 'tall-grass-near';
     mesh.castShadow = false;
@@ -476,7 +482,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const y = heightAt(x, z);
     const heightM = Math.min(1.9, b.heightM * heightScale * (1 + b.heightVar * (2 * hR - 1)));
     if (blocked && blocked(x, y, z, heightM, 0.12)) return;
-    const widthM = b.widthM * (ring.far ? 2.2 : 1) * (0.8 + 0.4 * wR);
+    const widthM = b.widthM * (ring.far ? TALL_GRASS.farWidth : 1) * (0.8 + 0.4 * wR);
     // the tint: a per-clump luminance jitter, straw on the terrain's dry patches, deeper green in the hollows
     const dry = splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0;
     const lum = 0.82 + 0.36 * tintR;

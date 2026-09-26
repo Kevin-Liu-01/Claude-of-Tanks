@@ -3992,7 +3992,9 @@ void splatCompute() {
   float wetSand = 0.0;
   if (uSea > 0.5 && uReduxSwash.z > 0.001) {
     float strand = smoothstep(0.02, uSeaRamp.x, fM) * (1.0 - fMs);
-    float strandD = clamp((uSeaRamp.x - fM) / uReduxSwash.y, 0.0, 1.0);
+    // the band's width is a fraction of the map's own apron ramp (uSeaRamp.x differs per map: 0.16 on Saltwind, 0.30
+    // on Saltmere), so one profile value reads the same on every shore; the probe on Saltwind sized it
+    float strandD = clamp((uSeaRamp.x - fM) / (uReduxSwash.y * max(uSeaRamp.x, 0.02)), 0.0, 1.0);
     float swashPh = uGroundTime * uReduxSwash.x + n1 * 6.0 + n1h * 1.5;
     float reach = uReduxSwash.x > 0.0 ? 0.55 + 0.45 * sin(swashPh) : 0.6;
     float film = 1.0 - smoothstep(reach * 0.85, min(1.0, reach + 0.12), strandD);

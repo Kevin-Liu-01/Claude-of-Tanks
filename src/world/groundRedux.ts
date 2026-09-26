@@ -44,8 +44,9 @@ export interface GroundReduxProfile {
   foldMoist: number;
   foldAO: number;
   foldCrest: number;
-  /** Shoreline: the swash period (s; 0 = a steady damp band, lakes and rivers), the band's width in mask units and its
-   * strength (0 = no wet sand). */
+  /** Shoreline: the swash period (s; 0 = a steady damp band, lakes and rivers), the band's width as a multiple of the
+   * map's apron ramp (splat.seaRamp[0]; the Saltwind probe sized 1.9 — the film and damp zones reach the apron's
+   * landward fade) and its strength (0 = no wet sand; 1.3 darkens the film 52 %, the damp band 29 %). */
   swashPeriodS: number;
   swashWidth: number;
   swashStrength: number;
@@ -88,22 +89,24 @@ const reed = (density: number, heightM = 1.7, waterBand = 1.0, everywhere = 0): 
   // a river map keeps a thin meadow on its banks through `everywhere` (the reed density off the water)
   ...(everywhere ? { density: everywhere } : {}),
 });
-const tundra = (density: number, heightM = 0.45): TallGrassBiome => ({
-  kind: 'tundra', density, heightM, heightVar: 0.40, widthM: 0.035, base: [0.15, 0.13, 0.08], tip: [0.46, 0.40, 0.24],
-  dry: [0.50, 0.42, 0.24], waterBand: 0, windDir: [0.95, 0.3],
+// dead sedge through the snow: dark straw, thin and short — the first sheet's pale 0.46 tips lit white under the
+// snow maps' fill and read as frost spikes
+const tundra = (density: number, heightM = 0.36): TallGrassBiome => ({
+  kind: 'tundra', density, heightM, heightVar: 0.40, widthM: 0.024, base: [0.09, 0.075, 0.045], tip: [0.27, 0.22, 0.12],
+  dry: [0.30, 0.24, 0.13], waterBand: 0, windDir: [0.95, 0.3],
 });
 const verge = (density: number, heightM = 0.55): TallGrassBiome => ({
   kind: 'verge', density, heightM, heightVar: 0.35, widthM: 0.045, base: [0.08, 0.10, 0.04], tip: [0.28, 0.34, 0.13],
   dry: [0.42, 0.38, 0.18], waterBand: 0, windDir: [0.7, 0.7],
 });
 const dune = (density: number, heightM = 0.8): TallGrassBiome => ({
-  kind: 'dune', density, heightM, heightVar: 0.40, widthM: 0.04, base: [0.11, 0.13, 0.05], tip: [0.44, 0.46, 0.22],
-  dry: [0.56, 0.50, 0.26], waterBand: 0, windDir: [-0.9, 0.44],
+  kind: 'dune', density, heightM, heightVar: 0.40, widthM: 0.04, base: [0.10, 0.12, 0.045], tip: [0.36, 0.42, 0.18],
+  dry: [0.52, 0.48, 0.24], waterBand: 0, windDir: [-0.9, 0.44],
 });
 
 const TEMPERATE: Omit<GroundReduxProfile, 'grass'> = {
   heightBlend: 0.6, midDetail: 1.0, scree: 0, glint: 0, snowRipple: 0, snowMacro: 0,
-  foldMoist: 0.7, foldAO: 0.5, foldCrest: 0.5, swashPeriodS: 0, swashWidth: 0.12, swashStrength: 0,
+  foldMoist: 0.7, foldAO: 0.5, foldCrest: 0.5, swashPeriodS: 0, swashWidth: 1.9, swashStrength: 0,
 };
 const ARID: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, heightBlend: 0.45, foldMoist: 0.35, foldAO: 0.55, foldCrest: 0.35,
@@ -112,10 +115,10 @@ const SNOW: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.16, snowMacro: 0.6, foldMoist: 0.22, foldAO: 0.6, foldCrest: 0.3,
 };
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
-  ...TEMPERATE, swashPeriodS: 8.5, swashWidth: 0.12, swashStrength: 1.0,
+  ...TEMPERATE, swashPeriodS: 8.5, swashWidth: 1.9, swashStrength: 1.3,
 };
 const STILL_WATER: Omit<GroundReduxProfile, 'grass'> = {
-  ...TEMPERATE, swashPeriodS: 0, swashWidth: 0.09, swashStrength: 0.6,
+  ...TEMPERATE, swashPeriodS: 0, swashWidth: 1.6, swashStrength: 0.6,
 };
 
 /** Every battlefield's row (an unknown id runs TEMPERATE with no sward). */
@@ -129,25 +132,25 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   steppe: { ...TEMPERATE, foldMoist: 0.5, grass: steppe(1.2) },
   railyard: { ...TEMPERATE, grass: verge(0.35) },
   frontier: { ...TEMPERATE, foldMoist: 0.55, grass: savanna(0.85) },
-  fjord: { ...COAST, swashPeriodS: 9.5, swashStrength: 0.8, scree: 0.4, grass: dune(0.5) },
+  fjord: { ...COAST, swashPeriodS: 9.5, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, grass: reed(0.75, 1.7, 1.0, 0.45) },
   badlands: { ...ARID, grass: null },
-  monsoon: { ...STILL_WATER, swashStrength: 0.5, grass: meadow(0.9, 1.0, { base: [0.05, 0.10, 0.03], tip: [0.22, 0.40, 0.10], dry: [0.36, 0.40, 0.14] }) },
+  monsoon: { ...STILL_WATER, swashStrength: 0.5, grass: meadow(0.9, 1.0, { base: [0.055, 0.11, 0.035], tip: [0.27, 0.44, 0.13], dry: [0.38, 0.42, 0.15] }) },
   alpine: { ...SNOW, scree: 0.6, grass: tundra(0.3) },
   caldera: { ...ARID, grass: null },
   foundry: { ...TEMPERATE, grass: verge(0.3) },
   ruinspires: { ...TEMPERATE, grass: verge(0.4) },
   blackglass: { ...TEMPERATE, grass: verge(0.25) },
   titan_gorge: { ...ARID, grass: null },
-  skybridge: { ...ARID, swashPeriodS: 0, swashWidth: 0.08, swashStrength: 0.4, grass: null },
+  skybridge: { ...ARID, swashPeriodS: 0, swashWidth: 1.4, swashStrength: 0.4, grass: null },
   polders: { ...STILL_WATER, grass: reed(0.7, 1.6, 1.0, 0.6) },
   copper_mesa: { ...ARID, grass: null },
   airfield: { ...TEMPERATE, grass: verge(0.6, 0.45) },
-  oasis: { ...ARID, swashPeriodS: 0, swashWidth: 0.08, swashStrength: 0.5, grass: reed(0.5, 1.5, 1.0) },
+  oasis: { ...ARID, swashPeriodS: 0, swashWidth: 1.4, swashStrength: 0.5, grass: reed(0.5, 1.5, 1.0) },
   whiteout: { ...SNOW, scree: 0.3, grass: tundra(0.3, 0.4) },
   orchard: { ...TEMPERATE, grass: meadow(0.9, 0.8) },
   longleaf: { ...TEMPERATE, grass: savanna(0.7, 0.75) },
-  mangrove: { ...COAST, swashPeriodS: 6.5, swashStrength: 0.7, grass: reed(0.7, 1.6, 1.0, 0.35) },
+  mangrove: { ...COAST, swashPeriodS: 6.5, swashStrength: 0.9, grass: reed(0.7, 1.6, 1.0, 0.35) },
   saltwind: { ...COAST, swashPeriodS: 7.5, grass: dune(0.6) },
   reservoir: { ...STILL_WATER, grass: meadow(0.8) },
   mars: { ...ARID, foldMoist: 0, grass: null },
@@ -177,7 +180,7 @@ export function groundReduxUniformValues(profile: GroundReduxProfile): {
     reduxFold: [clamp01(profile.foldMoist), clamp01(profile.foldAO), clamp01(profile.foldCrest), 0],
     reduxSwash: [
       profile.swashPeriodS > 0 ? (2 * Math.PI) / profile.swashPeriodS : 0,
-      Math.min(0.3, Math.max(0.02, profile.swashWidth)),
+      Math.min(4, Math.max(0.2, Number.isFinite(profile.swashWidth) ? profile.swashWidth : 1.9)),
       clamp01(profile.swashStrength), 0,
     ],
     reduxSnow: [clamp01(profile.snowMacro), clamp01(profile.snowRipple), 0],

@@ -137,7 +137,7 @@ nearBlades.forEach(([yaw, h, w, r], i) => {
 assert.ok(hollowHeight / hollowN > openHeight / openN * 1.1, 'blades stand taller in the hollow');
 const colors = grass.near.instanceColor.array;
 for (let i = 0; i < grass.near.count * 3; i++) assert.ok(colors[i] > 0.4 && colors[i] <= 1.6, 'tints jitter inside their band');
-assert.ok(blades(grass.far).every(([, , w]) => w > 0.06), 'far blades are wider (one strip carries the read)');
+assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.farWidth * 0.8 - 1e-9), 'far blades are wider (one strip carries the read)');
 
 // 4. Determinism and seeds; the quality knob halves the sward.
 {
@@ -208,7 +208,7 @@ assert.ok(blades(grass.far).every(([, , w]) => w > 0.06), 'far blades are wider 
     'float hgt = aBlade.y * fade;', 'float taper = 1.0 - 0.72 * t;',
   ]) assert.ok(vertexShader.includes(term), `vertex: ${term}`);
   assert.ok(vertexShader.indexOf('float cotYaw = aBlade.x + position.z;') < vertexShader.indexOf('vec3 transformed;'), 'the yaw is set with the normal, before the strip');
-  assert.ok(fragmentShader.includes('diffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, 0.75)) * (1.0 - 0.22 * vBladeCrush);'), 'dark roots, lit tips, bruised where crushed');
+  assert.ok(fragmentShader.includes('diffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * (1.0 - 0.22 * vBladeCrush);'), 'dark roots, lit tips (per-ring gradient), bruised where crushed');
   assert.ok(fragmentShader.includes('normal = normalize( vNormal );'), 'both faces of a strip light the same way');
   assert.ok(!vertexShader.includes('uv.'), 'no uv attribute: the height fraction is position.y');
 }
@@ -227,6 +227,9 @@ assert.ok(blades(grass.far).every(([, , w]) => w > 0.06), 'far blades are wider 
   const farShader = freshShader();
   calls[1].hook(farShader);
   assert.deepEqual(farShader.uniforms.uGrassFade.value.toArray(), [...TALL_GRASS.far.fade], 'the far ring fades in at 34–46 m and out at 104–120 m');
+  assert.equal(shader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.near, 'the near clump keeps a dark root');
+  assert.equal(farShader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.far, 'the far blade takes its tip colour early (seen from above it is mostly root)');
+  assert.ok(TALL_GRASS.bladeGamma.far < TALL_GRASS.bladeGamma.near && TALL_GRASS.farWidth > 1 && TALL_GRASS.farWidth < 2.5);
   assert.equal(shader.uniforms.uWindTime, farShader.uniforms.uWindTime, 'one clock, one camera, one press field for both rings');
   csm.setSniperFade(1, true); assert.equal(shader.uniforms.uSniperFade.value, 1);
   csm.setSniperFade(0); csm.update(1, cam); assert.ok(shader.uniforms.uSniperFade.value < 0.01, 'the fade eases out');
