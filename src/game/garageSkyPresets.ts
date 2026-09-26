@@ -47,7 +47,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
   railyard: Object.freeze({
     sunElevationDeg: 42, sunAzimuthDeg: 115,
     turbidity: 9, rayleigh: 2.4, mieCoefficient: 0.0025, mieDirectionalG: 0.72,
-    fogDensity: 0.00080, fogTintHex: 0x9aa0a6, fogMix: 0.9, envIntensity: 0.30,
+    fogDensity: 0.00060, fogTintHex: 0x9aa0a6, fogMix: 0.72, envIntensity: 0.30, // round 76 (2026-09-26): mirrors railyard.sky
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xa39f98,
     cloudAltM: 300, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.35, sunColorHex: 0xd9dad6, hemiIntensity: 0.85,
@@ -78,8 +78,9 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
   }),
   foundry: Object.freeze({
     sunElevationDeg: 25, sunAzimuthDeg: 128,
-    turbidity: 7.8, rayleigh: 1.35, mieCoefficient: 0.012, mieDirectionalG: 0.88,
-    fogDensity: 0.00074, fogTintHex: 0x788286, fogMix: 0.64, envIntensity: 0.22,
+    turbidity: 7.8, rayleigh: 1.35, mieCoefficient: 0.006, mieDirectionalG: 0.88, // round 76 (2026-09-26): mirrors foundry.sky (the deck pass re-grade)
+    fogDensity: 0.00052, fogTintHex: 0x858384, fogMix: 0.45, envIntensity: 0.22,
+    atmosphere: { mieTintHex: 0xd2b28c },
     cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
     sunIntensity: 4.2, sunColorHex: 0xfde3c4, hemiIntensity: 0.36, // lighting 2026-09-13: mirrors foundry.sky
     postExposure: 0.96,

@@ -175,7 +175,9 @@ export default {
     // + layer2 0.95 + turbidity 9): weak high sun, dirty stratus, lifted fill
     sunElevationDeg: 42, sunAzimuthDeg: 115,
     turbidity: 9, rayleigh: 2.4, mieCoefficient: 0.0025, mieDirectionalG: 0.72,
-    fogDensity: 0.00080, fogTintHex: 0x9aa0a6, fogMix: 0.9, envIntensity: 0.30,
+    // round 76 (2026-09-26, the deck pass): the flat overcast is the deck's now — the fog (the fleet's heaviest) a
+    // quarter thinner and mixed less toward its grey, so the far yard keeps its contrast under the closed deck
+    fogDensity: 0.00060, fogTintHex: 0x9aa0a6, fogMix: 0.72, envIntensity: 0.30,
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xa39f98,
     cloudAltM: 300, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.35, sunColorHex: 0xd9dad6, hemiIntensity: 0.85,

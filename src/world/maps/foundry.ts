@@ -120,8 +120,13 @@ export default {
   clouds: { regime: 'industrial-stratocumulus', coverage: 0.88, tintHex: 0xd8cec0 },
   sky: {
     sunElevationDeg: 25, sunAzimuthDeg: 128, turbidity: 7.8, rayleigh: 1.35,
-    mieCoefficient: 0.012, mieDirectionalG: 0.88, fogDensity: 0.00074,
-    fogTintHex: 0x788286, fogMix: 0.64, envIntensity: 0.22,
+    // round 76 (2026-09-26, the deck pass): the industrial haze comes off the whole frame and onto the deck's base and
+    // the horizon band — the aerosol at half (mie 0.012 -> 0.006: the sun's transmittance rises, the ground's fill with
+    // it), the fog a third thinner and neutral, the smog as the aerosol's warm absorption (mieTintHex: soot and dust
+    // scatter blue least), the bird view no longer a grey wash
+    mieCoefficient: 0.006, mieDirectionalG: 0.88, fogDensity: 0.00052,
+    fogTintHex: 0x858384, fogMix: 0.45, envIntensity: 0.22,
+    atmosphere: { mieTintHex: 0xd2b28c },
     cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
     // shadow-audit r2: the 24° key was too weak after haze/ACES on the
     // mobile-low path (3.95 changed-pixel luma against the 4.0 contract), so
