@@ -72,6 +72,15 @@ export interface CloudLayerPreset {
   farBandAltM: number;
   /** Round 71: 0..1 ragged low fragments under the base. */
   scud: number;
+  /** Round 76 (the deck pass): the cellular structure of a deck (0..1) and its cell diameter (m). */
+  cells: number;
+  cellM: number;
+  /** Round 76: 0..1 the underside lit by the column's transmitted light (the diffusion law) instead of the sky-mean floor. */
+  deckLight: number;
+  /** Round 76: 0..1 undulatus bands across a deck's thickness from the wind-frame rolls. */
+  undulatus: number;
+  /** Round 76: 0..1 the interior density octave inside cumuliform masses (a detailed first light tap). */
+  interior: number;
 }
 
 /** The sky preset fields the derivation reads (a subset of sky.ts's SkyPreset). */
@@ -201,6 +210,8 @@ function deriveLegacy(sky: CloudLayerSkyInput): CloudLayerPreset {
     typeRange: storm ? [0.6, 1] : overcast ? [0, 0.2] : [0.3, 0.6], anvil: storm ? 0.5 : 0, wispiness: 0.3, shearM: 0, streets: 0,
     cirrus: 0, cirrusAngleRad: windDirRad + R.cirrusVeerRad, cirrusAltM: 10000, cirrusDensity: R.cirrusDensity,
     sunGain: 1, ambientScale: 1, farBand: 0, farBandAltM: Math.min(R.farBandMaxAltM, baseM + thicknessM * 0.5), scud: 0,
+    // round 76 fields at their neutral values: no deck cells, the round-71 floor lighting, no undulatus, no interior octave
+    cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0,
   };
 }
 
@@ -234,6 +245,11 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     sunGain: row?.sunGain ?? legacy.sunGain,
     ambientScale: row?.ambientScale ?? legacy.ambientScale,
     clearRadiusM: row?.clearRadiusM ?? legacy.clearRadiusM,
+    cells: row?.cells ?? legacy.cells,
+    cellM: row?.cellM ?? legacy.cellM,
+    deckLight: row?.deckLight ?? legacy.deckLight,
+    undulatus: row?.undulatus ?? legacy.undulatus,
+    interior: row?.interior ?? legacy.interior,
   };
   const coverage = clamp(pick('coverage'), 0, R.coverageMax);
   const thicknessM = Math.max(50, pick('thicknessM'));
@@ -273,6 +289,11 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     farBand: clamp(pick('farBand'), 0, 1),
     farBandAltM: Math.min(R.farBandMaxAltM, baseM + thicknessM * 0.5),
     scud: clamp(pick('scud'), 0, 1),
+    cells: clamp(pick('cells'), 0, 1),
+    cellM: Math.max(100, pick('cellM')),
+    deckLight: clamp(pick('deckLight'), 0, 1),
+    undulatus: clamp(pick('undulatus'), 0, 1),
+    interior: clamp(pick('interior'), 0, 1),
   };
 }
 
@@ -295,5 +316,5 @@ export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
     p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
-    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
+    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }

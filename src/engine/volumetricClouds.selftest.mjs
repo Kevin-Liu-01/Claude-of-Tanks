@@ -209,11 +209,11 @@ assert.deepEqual(table, {
   verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25 },
   desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15 },
   winter: { regime: 'stratocumulus-deck', coverage: 0.86, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6 },
-  urban: { regime: 'hazy-altostratus', coverage: 0.45, baseM: 2800, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.35, farBand: 0.35 },
+  urban: { regime: 'altocumulus', coverage: 0.55, baseM: 2800, thicknessM: 380, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
   coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65 },
   autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
   steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35 },
-  railyard: { regime: 'hazy-altostratus', coverage: 0.78, baseM: 2200, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
+  railyard: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55 },
   frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35 },
   fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6 },
   delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3 },
@@ -221,12 +221,12 @@ assert.deepEqual(table, {
   monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4 },
   alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5 },
   caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15 },
-  foundry: { regime: 'hazy-altostratus', coverage: 0.72, baseM: 2600, thicknessM: 500, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
+  foundry: { regime: 'industrial-stratocumulus', coverage: 0.88, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55 },
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
   blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4 },
   titan_gorge: { regime: 'dense-overcast', coverage: 0.96, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6 },
   skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5 },
-  polders: { regime: 'broken-stratocumulus', coverage: 0.66, baseM: 420, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5 },
+  polders: { regime: 'broken-stratocumulus', coverage: 0.72, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5 },
   copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
   airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
   oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
@@ -237,17 +237,31 @@ assert.deepEqual(table, {
   saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55 },
   reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
   mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0 },
-}, 'the cloudscape of every map (round 71 identity table)');
+}, 'the cloudscape of every map (round 71 identity table; round 76: foundry and railyard on the industrial stratocumulus, urban on the altocumulus)');
 {
   // the regime rows are complete and sane; every regime name resolves
-  assert.equal(CLOUDSCAPE_REGIME_NAMES.length, 18);
+  assert.equal(CLOUDSCAPE_REGIME_NAMES.length, 20, 'eighteen round-71 regimes and the two of round 76 (industrial-stratocumulus, altocumulus)');
   for (const name of CLOUDSCAPE_REGIME_NAMES) {
     const row = CLOUDSCAPE_REGIMES[name];
     assert.ok(row.coverage >= 0 && row.coverage <= 0.97 && row.thicknessM > 0 && row.density > 0, `${name} row`);
     assert.ok(row.type[0] <= row.type[1], `${name} type range`);
-    for (const k of ['towers', 'anvil', 'wispiness', 'shear', 'streets', 'cirrus', 'stratiform', 'fieldMix', 'farBand', 'scud']) assert.ok(row[k] >= 0 && row[k] <= 2, `${name}.${k}`);
+    for (const k of ['towers', 'anvil', 'wispiness', 'shear', 'streets', 'cirrus', 'stratiform', 'fieldMix', 'farBand', 'scud', 'cells', 'deckLight', 'undulatus', 'interior']) assert.ok(row[k] >= 0 && row[k] <= 2, `${name}.${k}`);
+    assert.ok(row.cellM >= 100, `${name}.cellM`);
   }
   assert.ok(!isCloudscapeRegime('puffs'));
+  // round 76 (the deck pass): the deck knobs are gated in the trace (mix( S, Sd, uDeckLight ), cloudCellK's early
+  // return, exact 1.0 factors at zero), so the regimes the integrator rated — every cumuliform row and whiteout's
+  // low stratus — keep the round-71 numbers byte for byte; the deck rows carry cells and the transmitted lighting
+  for (const name of ['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'towering-cumulus', 'cumulonimbus-front', 'storm-front', 'cumulus-humilis', 'lenticular', 'low-stratus', 'high-cirrus', 'thin-ice-clouds']) {
+    const row = CLOUDSCAPE_REGIMES[name];
+    assert.deepEqual([row.cells, row.deckLight, row.undulatus, row.interior], [0, 0, 0, 0], `${name}: the round-71 layer untouched by the deck pass`);
+  }
+  for (const name of ['stratocumulus-deck', 'industrial-stratocumulus', 'dense-overcast', 'overcast-stratus', 'hazy-altostratus', 'ice-fog-stratus']) {
+    const row = CLOUDSCAPE_REGIMES[name];
+    assert.ok(row.cells > 0 && row.deckLight === 1 && row.undulatus > 0, `${name}: a cellular deck lit by what its columns transmit`);
+  }
+  assert.ok(CLOUDSCAPE_REGIMES['broken-stratocumulus'].deckLight > 0.5 && CLOUDSCAPE_REGIMES['broken-stratocumulus'].interior > 0, 'a broken stratocumulus blends the deck lighting with the cumuliform model and takes the interior octave');
+  assert.ok(CLOUDSCAPE_REGIMES.altocumulus.cellM < 700 && CLOUDSCAPE_REGIMES.altocumulus.baseM >= 2500 && CLOUDSCAPE_REGIMES.altocumulus.stratiform < 0.5, 'altocumulus: small elements high, cumuliform enough to keep lit borders');
   // the monsoon front keeps the sky over the camera open (round 68's ruling) with scud and anvils; the
   // white-out ceiling is a sheet at its authored altitude; the winter deck is a lumpy stratocumulus
   const monsoon = deriveCloudLayerPreset(skyOf('monsoon'));
@@ -256,6 +270,20 @@ assert.deepEqual(table, {
   assert.ok(whiteout.stratiform >= CLOUD_LAYER_RULES.sheetStratiform && whiteout.baseM === 300 && whiteout.fieldMix >= 0.8 && whiteout.scud === 0, 'whiteout: a closed ceiling, no rags at the camera');
   const winter = deriveCloudLayerPreset(skyOf('winter'));
   assert.ok(winter.stratiform < CLOUD_LAYER_RULES.sheetStratiform && winter.typeRange[1] <= 0.45 && winter.coverage >= 0.8, 'winter: a lumpy closed deck, not a flat sheet');
+  // round 76: the deck identities — winter's cells and transmitted lighting, foundry's and railyard's industrial
+  // stratocumulus low under a smoggy horizon with a warm / dirty base tint, urban's altocumulus; whiteout keeps
+  // round 71's ceiling exactly (the integrator rated it)
+  assert.deepEqual([winter.cells, winter.deckLight, winter.cellM, winter.ambientScale], [0.85, 1, 1100, 2], 'winter: a cellular deck lit through');
+  assert.deepEqual([whiteout.cells, whiteout.deckLight, whiteout.undulatus, whiteout.interior], [0, 0, 0, 0], 'whiteout: untouched by the deck pass');
+  const foundry = deriveCloudLayerPreset(skyOf('foundry'));
+  assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
+  assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
+  const railyard = deriveCloudLayerPreset(skyOf('railyard'));
+  assert.ok(railyard.regime === 'industrial-stratocumulus' && railyard.coverage === 0.92 && railyard.cells === 0.9 && railyard.cellM === 1300 && railyard.density === 0.16 && railyard.sunGain === 0.7 && railyard.undulatus === 0.35, 'railyard: a closed dirty deck with subdued wide cells and undulatus bands');
+  assert.ok(railyard.tint.every((c) => c < foundry.tint[1]) && railyard.tint[0] - railyard.tint[2] < foundry.tint[0] - foundry.tint[2], 'railyard: a dirtier, less warm base than foundry\'s');
+  const urban = deriveCloudLayerPreset(skyOf('urban'));
+  assert.ok(urban.regime === 'altocumulus' && urban.cellM === 340 && urban.interior === 0.4 && urban.deckLight === 0.8, 'urban: an altocumulus layer of small elements');
+  assert.notEqual(cloudLayerKey(winter), cloudLayerKey({ ...winter, cells: 0 }), 'the key follows the deck knobs');
   // the sea maps' wind comes from their authored ocean, the streets follow it
   const coastal = deriveCloudLayerPreset(skyOf('coastal'));
   assert.equal(+(coastal.windDirRad * 180 / Math.PI).toFixed(3), 190);

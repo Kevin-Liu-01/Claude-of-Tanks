@@ -75,6 +75,18 @@ const CLOUD_CURL_TILE_M = 900;
 const CLOUD_CURL_M = 60;
 /** The scud band under the base (m) where a regime asks for ragged fragments. */
 const CLOUD_SCUD_BAND_M = 380;
+/** Round 76: a deck's cell cores hang under the base by this share of the slab thickness (× the cells knob). */
+export const CLOUD_DECK_HANG_K = 0.12;
+/** Round 76: the cell field's world period is this many cells (the shape volume's first Worley octave per period). */
+export const CLOUD_CELLS_PER_TILE = 4;
+/**
+ * Round 76: the share of the sun's irradiance on a deck's top that the underside's transmitted light takes. The
+ * physical share (1) put a base — a third to a half of a lit top's radiance under the diffusion law — into the
+ * tonemap's clipped shoulder (the flat-density calibration at 0.6 displays as the same white as a sheet at 1.2),
+ * because the battlefield skies are exposed for the ground with the horizon band near white; a third keeps the
+ * cores in the mid-tones under the clear sky's level, the thin borders and the lit walls white.
+ */
+export const CLOUD_DECK_SUN_SHARE = 0.35;
 /** The far band shows beyond this horizontal distance (m), fading in over the next three kilometres. */
 const CLOUD_FARBAND_START_M = 8000;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
@@ -224,6 +236,16 @@ uniform float uFarBand;
 uniform float uFarBandAlt;
 uniform vec2 uFarBandShift;
 uniform float uStepScale;
+// round 76 (the deck pass): the deck cells (their strength and the cell field's world period), the deck lighting
+// share, the undulatus bands, the interior octave, the sky's irradiance on a horizontal diffuser (E / π) and the
+// hang of the cell cores under the base (m)
+uniform float uCells;
+uniform float uCellTile;
+uniform float uDeckLight;
+uniform float uUndulatus;
+uniform float uInterior;
+uniform vec3 uSkyIrradiance;
+uniform float uHang;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
 // 5 = the shape volume sampled unstretched, 6 = the height profile alone (no shape noise), 7 = no column top variation,
 // 8 = no empty-space striding, 9 = half the stride, 10 = no start jitter
@@ -244,22 +266,27 @@ float phaseDual( float c, float g ) { return mix( phaseHG( c, g ), phaseHG( c, -
 float blueNoise( vec2 px ) { return texelFetch( tBlue, ivec2( mod( px, ${f(CLOUD_BLUE_SIZE)} ) ), 0 ).r; }
 float luma( vec3 c ) { return dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ); }
 // the weather at a world xz
-struct Weather { float cov; float top; float breakup; float type; float anvil; };
+struct Weather { float cov; float top; float breakup; float type; float anvil; float roll; };
 Weather cloudWeather( vec2 pxz ) {
 	vec4 w, st;
 	float field = cloudField( pxz, w, st );
+	Weather o;
+	// round 76: the wind-frame rolls band a deck's thickness (undulatus); the fetch is the street field's own
+	o.roll = st.r;
 	// the street share fades past four kilometres: the far field reads as scattered cumulus, not as rolls
 	// converging on the horizon (71c)
 	float farK = smoothstep( 4000.0, 11000.0, length( pxz - uCamPos.xz ) );
 	field = mix( field, mix( w.r, w.b, uFieldMix ), uStreets * 0.55 * farK );
 	float anvilField = st.g;
-	Weather o;
 	// the field is equalised: the map's coverage admits exactly that fraction; inside, the local coverage runs
 	// 0..1 (skewed high) and carves the base shape into masses — a region is never one solid slab
 	// (a sheet reaches its full strength within a third of the admitted range: dense across its footprint, thin only
 	// at the breaks — ramped across the whole range a 97 % ceiling was translucent over most of the tile)
-	float ramp = max( uCoverage * mix( 1.0, 0.35, smoothstep( 0.5, 0.85, uStratiform ) ), 0.02 );
-	o.cov = pow( clamp( ( field - ( 1.0 - uCoverage ) ) / ramp, 0.0, 1.0 ), mix( 0.7, 0.4, uStratiform ) );
+	// (round 76: a cellular deck compresses the ramp like a sheet — its structure comes from the cells, and a broken
+	// stratocumulus at 0.66 ramped across the whole range covered a tenth of the sky as one soft mass)
+	float sheetK = max( smoothstep( 0.5, 0.85, uStratiform ), uCells * 0.85 );
+	float ramp = max( uCoverage * mix( 1.0, 0.35, sheetK ), 0.02 );
+	o.cov = pow( clamp( ( field - ( 1.0 - uCoverage ) ) / ramp, 0.0, 1.0 ), mix( 0.7, 0.4, max( uStratiform, uCells * 0.7 ) ) );
 	// a front keeps the sky over the camera open: its towers stand off toward the horizon
 	if ( uClearRadius > 0.0 ) o.cov *= smoothstep( uClearRadius * 0.6, uClearRadius * 1.4, length( pxz - uCamPos.xz ) );
 	// the column's type from the vigour channel inside the map's range: 0 stratus, 0.5 cumulus, 1 cumulonimbus
@@ -297,12 +324,27 @@ float cloudCoverageAt( vec2 pxz ) {
 	float field = cloudField( pxz, w, st );
 	return max( field - ( 1.0 - uCoverage ), 0.0 );
 }
+// round 76: a deck's cell factor at a column — the inverted-Worley cells of the shape volume (two octaves) read in
+// a slice at the slab's mid altitude at the deck's own period: 1 at a cell's core, near 0 on its borders. The
+// column's thickness follows it (a stratocumulus deck is thick cells with thin borders), its base hangs under the
+// cores, and the borders open where the coverage is marginal. 1 when the regime has no cells (round 71's sheet).
+float cloudCellK( vec2 cxz ) {
+	if ( uCells <= 0.0 ) return 1.0;
+	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
+	vec4 c = texture( tShape, cp );
+	return mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
+}
 // density 0..1 at a world point. detail: whether the erosion volumes are sampled (the light march skips them);
-// foot: the pixel footprint (m) at the point, which fades the fine erosion fetch out at range
-float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
+// foot: the pixel footprint (m) at the point, which fades the fine erosion fetch out at range; cellK: the column's
+// deck cell factor (cloudCellK; 1 without cells)
+float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	if ( w.cov <= 0.0 ) return 0.0;
-	// the base line wanders a little per column (the breakup channel) so no razor-straight edge crosses the sky
-	float hRel = ( p.y - uBase - ( w.breakup - 0.5 ) * mix( 0.05, 0.064, uStratiform ) * uThick ) / uThick;
+	// round 76: the column's thickness factor — the cell (thin borders at two fifths of the core's height) banded by
+	// the wind-frame rolls (undulatus); exactly 1 without the knobs
+	float thickK = mix( 0.4, 1.0, cellK ) * min( 1.0, mix( 1.0, 0.6 + 0.8 * w.roll, uUndulatus ) );
+	// the base line wanders a little per column (the breakup channel) so no razor-straight edge crosses the sky;
+	// a deck's cell cores hang under it (round 76)
+	float hRel = ( p.y - uBase - ( w.breakup - 0.5 ) * mix( 0.05, 0.064, uStratiform ) * uThick + uHang * cellK ) / uThick;
 	if ( hRel < 0.0 ) {
 		// scud: ragged fragments in the band under the base (a front's tatters, a low stratus' rags)
 		if ( uScud <= 0.0 ) return 0.0;
@@ -318,7 +360,7 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 		}
 		return n * uScud * 0.5;
 	}
-	float hN = hRel / max( w.top, 0.05 );
+	float hN = hRel / max( w.top * thickK, 0.05 );
 	if ( hN >= 1.25 ) return 0.0;
 	float t = w.type;
 	float riseEnd = mix( 0.05, 0.14, t );
@@ -356,12 +398,17 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 		base = remap( base, ( 1.0 - bill2 ) * 0.22 * ( 0.5 + topW ), 1.0, 0.0, 1.0 );
 	}
 	// a stratus sheet is dense across its footprint (with a little mottle); cumulus keeps the shape's billows
-	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 );
+	// (round 76: a cellular deck keeps more of the mottle inside its cells)
+	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 * ( 1.0 - 0.3 * uCells ) );
 	// the coverage threshold rises with height so a mass is widest at its base and narrows to a dome (a tower
 	// to a head); a cumulonimbus narrows less, and the anvil lowers the threshold again
 	float narrow = mix( 0.45, 0.75, uTowers ) * ( 1.0 - uStratiform ) * ( 1.0 - 0.6 * smoothstep( 0.6, 1.0, t ) );
 	float covH = min( 1.0, w.cov * ( 1.0 - narrow * hN ) + anv * 0.55 );
+	// round 76: a deck's thin cell borders open where the coverage is marginal (the breaks follow the cell borders)
+	covH *= mix( 1.0, 0.55 + 0.45 * cellK, uCells * 0.5 );
 	float d = remap( base, 1.0 - covH, 1.0, 0.0, 1.0 ) * w.cov;
+	// round 76: the cell cores are the dense columns, the borders thin (the optical depth the underside is lit through)
+	d *= mix( 0.55, 1.0, cellK );
 	if ( detail && d > 0.0 && d < 0.95 && uDebug != 2.0 ) {
 		// two Worley-fbm fetches on a lattice the curl field advects (more with height: turbulent tops, calm
 		// bases): the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where the pixel
@@ -370,6 +417,7 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 		vec3 dp = ( ps + uNoiseShift * 1.31 + curl * ( ${f(CLOUD_CURL_M)} * ( 0.35 + 0.65 * hN ) ) ) * vec3( 1.0, uVertScale * 1.07, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
 		float hf = dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2;
+		float hfCoarse = hf;
 		float fineW = 1.0 - smoothstep( 6.0, 12.0, foot );
 		if ( fineW > 0.0 ) {
 			vec3 dn2 = texture( tDetail, dp * 3.7 + 0.37 ).rgb;
@@ -381,13 +429,20 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 		float wispy = clamp( mix( hN * 1.4 - 0.15, 1.0, uWispiness ), 0.0, 1.0 );
 		float erode = mix( hf, 1.0 - hf, wispy );
 		float amount = ( mix( 0.3, 0.72, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
-			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) );
+			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) )
+			* mix( 1.0, 1.25, uCells );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
 		// semi-transparent halo around every mass)
 		d = smoothstep( 0.03, 0.6, d );
+		// round 76: the interior octave — the coarse detail lumps (25–100 m) modulate the density inside the mass
+		// instead of vanishing in the remap, so the light march shades the lit face bulge by bulge
+		if ( uInterior > 0.0 ) d *= mix( 1.0, 0.5 + 0.5 * hfCoarse, uInterior );
 	}
 	return d;
+}
+float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
+	return cloudDensityK( p, w, detail, foot, cloudCellK( cloudColumnXZ( p ) ) );
 }
 // light optical depth toward the sun from p (the weather column of p for the near taps); the tap ladder is
 // scaled per texel by the blue noise so the banding of a fixed ladder decorrelates between neighbouring rays
@@ -396,9 +451,19 @@ float cloudLightDepth( vec3 p, Weather w, float scale, bool short_ ) {
 ${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? `if ( !short_ && od * uDensity < 4.0${k >= 3 ? ' && uStratiform < 0.5' : ''}${k >= 4 ? ' && uThick < 2000.0' : ''} ) ` : ''}{
 		vec3 lp = p + uSunDir * ( ${f(dist)} * scale );
 		Weather lw = ${k < 2 ? 'w' : 'cloudWeather( cloudColumnXZ( lp ) )'};
-		od += cloudDensity( lp, lw, false, 0.0 ) * ( ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))} * scale );
+		od += cloudDensity( lp, lw, ${k === 0 ? 'uInterior > 0.0' : 'false'}, 0.0 ) * ( ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))} * scale );
 	}`).join('\n')}
 	return od * uDensity;
+}
+// round 76: the optical depth of the column above p to its top — three base-shape taps spread over the remaining
+// height (the ladder scaled per texel like the light march's): a deck's underside is lit by what its column
+// transmits, so the thick cores read dark and the thin borders bright
+float cloudColumnDepthAbove( vec3 p, Weather w, float scale, float cellK ) {
+	float rem = max( uBase + uThick * max( w.top, 0.05 ) - p.y, 20.0 );
+	float od = cloudDensityK( p + vec3( 0.0, rem * 0.15 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.3
+		+ cloudDensityK( p + vec3( 0.0, rem * 0.45 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.3
+		+ cloudDensityK( p + vec3( 0.0, rem * 0.8 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.4;
+	return od * rem * uDensity;
 }
 // optical depth of the cloud above p toward the zenith (two base-shape taps): the underside of a thick lump
 // sees less of the sky than a thin edge does
@@ -482,8 +547,10 @@ void main() {
 				// no eight-metre steps — 28 m at 3 km, 83 m at 9 km)
 				float ds = max( ds0 * ( 1.0 + smoothstep( 3000.0, 9000.0, t ) * ( uThick > 2000.0 ? 1.0 : 0.4 ) ), min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
 				vec3 p = uCamPos + dir * t;
-				Weather w = cloudWeather( cloudColumnXZ( p ) );
-				float dens = w.cov > 0.0 ? cloudDensity( p, w, true, t * uPixelAngle ) : 0.0;
+				vec2 cxz = cloudColumnXZ( p );
+				Weather w = cloudWeather( cxz );
+				float cellK = w.cov > 0.0 ? cloudCellK( cxz ) : 1.0;
+				float dens = w.cov > 0.0 ? cloudDensityK( p, w, true, t * uPixelAngle, cellK ) : 0.0;
 				if ( dens > 0.003 ) {
 					if ( empty > 0 ) {
 						// back onto the fine lattice where the stride met cloud: a boundary found on the coarse
@@ -498,7 +565,7 @@ void main() {
 					// history averages the alternation away)
 					// (none once the ray is nearly opaque — the samples behind carry little weight — and none for the
 					// scud under a base, which the deck above shades: a fixed depth of six)
-					bool scudPt = p.y < uBase;
+					bool scudPt = p.y < uBase - uHang;
 					// inside a front's base deck (a tall slab, the lower third) the two near taps suffice: the deck
 					// is dark under its towers whatever the far taps read
 					bool shortLadder = uThick > 2000.0 && hN < 0.34;
@@ -508,6 +575,11 @@ void main() {
 					float tau = lastLight + sig * 2.0;
 					// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
 					float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
+					// Beer–powder: light builds up inside the mass, so the sunlit face's crevices and thin edges
+					// read darker than its body
+					float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK );
+					vec3 S = vec3( 0.0 );
+					if ( uDeckLight < 1.0 ) {
 					// an overcast sheet is lit by the whole sky above it, not by one reddened low sun: its diffused
 					// light is the sun's luminance, neutral
 					// (71c: half way to neutral on a cumulus too — the light diffused to a base has crossed the whole
@@ -520,9 +592,6 @@ void main() {
 					// (71b: 0.2 read as a grey cloud — a lit face is a near-white diffuser under the sun's irradiance,
 					// E · albedo / π at its skin, decaying into the mass with the diffusion law)
 					float diffusion = mix( 0.7, 0.45, uStratiform ) / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
-					// Beer–powder: light builds up inside the mass, so the sunlit face's crevices and thin edges
-					// read darker than its body
-					float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK );
 					// darker bases: their direct light is scattered away by the cloud above
 					float baseShadow = mix( 0.35, 1.0, smoothstep( -0.1, 0.45, hN ) );
 					// ambient: the sky's irradiance lights the tops, the bases see the horizon band and the ground; a
@@ -551,7 +620,38 @@ void main() {
 					float floorDecay = mix( 0.04, 0.08, deckFloor );
 					amb = max( amb, uSkyMean * floorK * ( 0.5 + 0.5 * exp( -tauUp * floorDecay ) ) );
 					amb *= uAmbientScale;
-					vec3 S = ( ( uSunRadiance * sun * ( 1.0 - 0.7 * uStratiform ) + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
+					S = ( ( uSunRadiance * sun * ( 1.0 - 0.7 * uStratiform ) + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
+					}
+					if ( uDeckLight > 0.0 ) {
+						// round 76: the deck lighting. A deck's underside is lit by what the column above it transmits:
+						// the sun's irradiance on the top (its colour half way to neutral — the light diffused to the
+						// base has mixed with the sky's) plus the sky's, through the diffusion law of a thick
+						// non-absorbing cloud, T = 1 / (1 + 0.75 (1 − g) τ) with g 0.85 on the column's optical depth
+						// above the point — so the thick cores read dark and the thin borders bright, and the whole
+						// deck sits under the clear sky's level instead of on the sky-mean floor that made every sheet
+						// a flat white. The sun's own forward glow comes through the slant depth (the disc through a
+						// thin sheet as through ground glass; the near taps of the light march keep the lit walls at
+						// the breaks). From below, the lower sky and the ground bounce (the map's ambient scale: snow
+						// lifts a deck) and, near a column's top, the sky itself.
+						float tauAbove = cloudColumnDepthAbove( p, w, lightScale, cellK );
+						float Tdiff = 1.0 / ( 1.0 + 0.1125 * tauAbove );
+						// (the transmitted sun at a third of its physical share: the battlefield skies are exposed for the
+						// ground with the horizon band near white, and a physically lit base — a third to a half of a lit
+						// top — landed in the tonemap's clipped shoulder as the same white sheet; the sky's share whole)
+						vec3 sunTop = mix( uSunRadiance, vec3( luma( uSunRadiance ) ), 0.5 ) * max( uSunDir.y, 0.03 ) * uSunGain;
+						vec3 Etop = sunTop * ${f(CLOUD_DECK_SUN_SHARE)} / CL_PI + uSkyIrradiance;
+						vec3 Lbase = Etop * Tdiff;
+						// the directional term keeps the light march's depth (a lump's flank lit from the side), extended
+						// to the plane-parallel slant depth only where the near taps are already inside cloud (a sheet's
+						// glow toward the sun follows the whole slant, not the seventy metres the ladder reaches)
+						float tauSun = tau + max( tauAbove / max( uSunDir.y, 0.25 ) - lastLight, 0.0 ) * smoothstep( 0.3, 1.5, lastLight );
+						float sunD = phase.x * exp( -tauSun ) + phase.y * 0.5 * exp( -tauSun * 0.5 ) + phase.z * 0.25 * exp( -tauSun * 0.25 );
+						// the ground bounce: the ground under the deck reflects the transmitted light back up (a grey
+						// ground at a quarter, scaled by the map's ambient scale — snow lifts a deck), plus the lower sky
+						vec3 ambD = uAmbientBottom * 0.4 * uAmbientScale + Etop * 0.3 * 0.25 * uAmbientScale + uAmbientTop * 0.5 * exp( -tauAbove * 0.7 );
+						vec3 Sd = ( uSunRadiance * sunD * powder * uSunGain + Lbase + ambD ) * uTint;
+						S = mix( S, Sd, uDeckLight );
+					}
 					if ( uDebug == 4.0 ) S = vec3( 0.6 );
 					// energy-conserving step integration: the in-scatter over the step's own transmittance
 					float Tstep = exp( -sig * ds );
@@ -953,6 +1053,8 @@ export class VolumetricCloudLayer {
         uCirrus: { value: 0 }, uCirrusDir: { value: new THREE.Vector2(1, 0) }, uCirrusAlt: { value: 10000 }, uCirrusShift: { value: new THREE.Vector2() }, uCirrusDensity: { value: 0.7 },
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
+        uCells: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 },
+        uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
       },
     });
     this.resolveMaterial = new THREE.ShaderMaterial({
@@ -1142,14 +1244,23 @@ export class VolumetricCloudLayer {
     const base = slabOnly ? preset.baseM : preset.cirrusAltM, thick = slabOnly ? preset.thicknessM : 200;
     t.uBase.value = base;
     t.uThick.value = thick;
+    // round 76: a deck's cell cores hang under the base by this much (the march starts at the hang)
+    const hang = CLOUD_DECK_HANG_K * preset.thicknessM * preset.cells;
+    t.uHang.value = hang;
+    t.uCells.value = preset.cells;
+    t.uCellTile.value = preset.cellM * CLOUD_CELLS_PER_TILE;
+    t.uDeckLight.value = preset.deckLight;
+    t.uUndulatus.value = preset.undulatus;
+    t.uInterior.value = preset.interior;
     // the scud band never reaches down past the lower half of the base altitude (a 300 m ceiling's rags stay aloft)
-    t.uSlabLow.value = preset.scud > 0 ? Math.max(preset.baseM * 0.45, preset.baseM - CLOUD_SCUD_BAND_M) : preset.baseM;
+    t.uSlabLow.value = Math.min(preset.baseM - hang, preset.scud > 0 ? Math.max(preset.baseM * 0.45, preset.baseM - CLOUD_SCUD_BAND_M) : preset.baseM);
     t.uCoverage.value = preset.coverage;
     t.uTowers.value = preset.towers;
     t.uStratiform.value = preset.stratiform;
     t.uDensity.value = preset.density;
     (t.uTint.value as THREE.Vector3).set(...preset.tint);
-    t.uShapeTile.value = THREE.MathUtils.lerp(CLOUD_SHAPE_TILE_M, CLOUD_SHAPE_TILE_STRATUS_M, preset.stratiform);
+    // (round 76: a cellular deck's billows follow its cells' scale — the shape period tends to the cell period)
+    t.uShapeTile.value = THREE.MathUtils.lerp(THREE.MathUtils.lerp(CLOUD_SHAPE_TILE_M, CLOUD_SHAPE_TILE_STRATUS_M, preset.stratiform), preset.cellM * CLOUD_CELLS_PER_TILE, preset.cells);
     t.uClearRadius.value = preset.clearRadiusM;
     t.uFieldMix.value = preset.fieldMix;
     // a thin slab compresses the shape's vertical axis (billows as tall as wide); a tall slab stretches it (a
@@ -1194,6 +1305,8 @@ export class VolumetricCloudLayer {
     // horizon band and the ground
     const irr = summary?.irradiance ?? a.irradiance;
     (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.55);
+    // round 76: the deck lighting takes the sky's irradiance on a horizontal diffuser whole (the summary's E / π)
+    (t.uSkyIrradiance.value as THREE.Vector3).set(irr.r, irr.g, irr.b);
     const hz = summary?.horizon ?? irr;
     const stratiform = this.preset?.stratiform ?? 0;
     // cumulus bases see the horizon band and the ground; an overcast sheet's base is lit through the sheet by

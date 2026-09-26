@@ -169,7 +169,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'hazy-altostratus', coverage: 0.78, baseM: 2200 },
+  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 0.9, cellM: 1300, undulatus: 0.35, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac },
   sky: {
     // FLAT OVERCAST (trips the sky.ts overcast deck auto-detect: opacity 1.0
     // + layer2 0.95 + turbidity 9): weak high sun, dirty stratus, lifted fill
