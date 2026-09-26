@@ -2987,7 +2987,7 @@ void splatCompute() {
     vec4 ringRel = textureLod(uRingRelief, vec2(atan(wp.z, wp.x) * 0.15915494309, (length(wp.xz) - uRingReliefR.x) * uRingReliefR.y), 0.0);
     gRingGrad = (ringRel.xy * 2.0 - 1.0) * uRingReliefGrad * ringW;
     vec2 ringG0 = -wn.xz / max(wn.y, 0.05);
-    wn = normalize(vec3(-(ringG0.x + gRingGrad.x), 1.0, -(ringG0.z + gRingGrad.y)));
+    wn = normalize(vec3(-(ringG0.x + gRingGrad.x), 1.0, -(ringG0.y + gRingGrad.y)));
     gRingAo = 1.0 - (1.0 - pow(ringRel.z, 1.4)) * 0.8 * ringW;
     gRingSun = 1.0 - (1.0 - ringRel.w) * 0.85 * ringW;
   }
@@ -4054,7 +4054,7 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // round 72b: the ring bands' lighting normal carries the atlas gradient the splat slope already read
   if (dot(gRingGrad, gRingGrad) > 0.0) {
     vec2 ringG0 = -gN.xz / max(gN.y, 0.05);
-    gN = normalize(vec3(-(ringG0.x + gRingGrad.x), 1.0, -(ringG0.z + gRingGrad.y)));
+    gN = normalize(vec3(-(ringG0.x + gRingGrad.x), 1.0, -(ringG0.y + gRingGrad.y)));
   }
   // r5: detail-normal strength falls off with distance (0.9 -> ~0.30 by the
   // far band). Past ~300 m per-texel normal shading cannot resolve — on

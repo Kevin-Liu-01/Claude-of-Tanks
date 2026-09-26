@@ -362,7 +362,7 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   float reliefLand = (1.0 - floorW) * (1.0 - horizonMarine) * uVReliefAmp;
   vec2 gd = (relief.xy * 2.0 - 1.0) * uVReliefGrad * reliefLand;
   vec2 g0 = -n0.xz / max(n0.y, 0.05);
-  vec3 nR = normalize(vec3(-(g0.x + gd.x), 1.0, -(g0.z + gd.z)));
+  vec3 nR = normalize(vec3(-(g0.x + gd.x), 1.0, -(g0.y + gd.y)));
   // round 72b: the occlusion read deeper (a further 1.4 power on top of the bake's 1.6) so the folds read at 1.5 km
   float ao = 1.0 - (1.0 - pow(relief.z, 1.4)) * uVAoStrength * reliefLand;
   float sunVis = 1.0 - (1.0 - relief.w) * uVShadow * reliefLand;

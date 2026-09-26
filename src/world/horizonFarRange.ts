@@ -87,6 +87,41 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
   const n = HORIZON_FAR_SEGMENTS, rows = HORIZON_FAR_ROWS;
   const noise = new SimplexNoise({ random: mulberry32(seed >>> 0) });
   const ampM = resolveFarRangeAmp(s, options.deckBaseM);
+  // Round 72b (integrator: "rows of symmetric cones"): the far silhouette is built from three RANGES with oblique
+  // axes, like the ring's (horizonRelief.ts) — an anisotropic ridged field stretched along each axis with one flank
+  // compressed and phase-jittered sub-peaks, inside an azimuth window; isotropic ridged noise along a row is a row
+  // of symmetric cones by construction
+  const rangeRng = mulberry32((seed ^ 0x3F41) >>> 0);
+  const farRanges = Array.from({ length: 3 }, (_, k) => {
+    const slot = TAU / 3, theta = k * slot + (rangeRng() - 0.5) * slot * 0.5;
+    const oblique = (rangeRng() < 0.5 ? -1 : 1) * (0.35 + rangeRng() * 0.5);
+    return {
+      theta, halfSpan: (Math.PI / 3) * (1.1 + rangeRng() * 0.4), phi: theta + Math.PI / 2 + oblique,
+      cx: Math.cos(theta) * 2600, cz: Math.sin(theta) * 2600, height: 0.7 + rangeRng() * 0.6,
+      steepSide: rangeRng() < 0.5 ? -1 : 1, steepness: 1.5 + rangeRng() * 0.6,
+      lambdaAlong: 2400 + rangeRng() * 800, lambdaAcross: 560 + rangeRng() * 200,
+      o1: rangeRng() * 100, o2: rangeRng() * 100, o3: rangeRng() * 100, o4: rangeRng() * 100, jitterPhase: rangeRng() * 100,
+    };
+  });
+  const rangeReliefAt = (x: number, z: number, a: number): number => {
+    let sum = 0;
+    for (const g of farRanges) {
+      let d = a - g.theta; d -= Math.round(d / TAU) * TAU;
+      const w = 1 - smoothstep(g.halfSpan * 0.5, g.halfSpan, Math.abs(d));
+      if (w < 1e-3) continue;
+      const cp = Math.cos(g.phi), sp = Math.sin(g.phi), dx = x - g.cx, dz = z - g.cz;
+      const along = dx * cp + dz * sp;
+      let across = -dx * sp + dz * cp;
+      if (across * g.steepSide < 0) across *= g.steepness;
+      const n1 = noise.noise(along / g.lambdaAlong + g.o1, across / g.lambdaAcross + g.o2);
+      const r1 = Math.pow(1 - Math.abs(n1), s.sharpness);
+      const jitter = noise.noise(along / (g.lambdaAlong * 0.6) + g.jitterPhase, 3.3) * g.lambdaAlong * 0.15;
+      const n2 = noise.noise((along + jitter) / (g.lambdaAlong / 3) + g.o3, across / (g.lambdaAcross / 2) + g.o4);
+      const r2 = Math.pow(1 - Math.abs(n2), s.sharpness) * clamp(r1 * 2, 0, 1);
+      sum += w * g.height * (r1 * 0.68 + r2 * 0.32 + 0.25);
+    }
+    return sum;
+  };
   const positions = new Float32Array(n * rows.length * 3);
   const heights = new Float32Array(n * rows.length);
   const marine = new Float32Array(n * rows.length);
@@ -104,15 +139,10 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       // ridged crests along the row, warped by a broad world field so the massifs are two-dimensional
       const wx = x + noise.noise(x * 0.0009 + 3.7, z * 0.0009 - 8.1) * 260;
       const wz = z + noise.noise(x * 0.0009 - 5.9, z * 0.0009 + 2.3) * 260;
-      // ridged multifractal: each octave's ridge weighted by the one below it, so the peaks carry the shoulders and
-      // the saddles stay smooth (three octaves from 590 m to 105 m; a finer one would alias on the 61 m columns)
+      // the ranged silhouette (above) over a weak isotropic base that keeps the gaps from going flat
       const ridged = (v: number): number => Math.pow(1 - Math.abs(v), s.sharpness);
-      const r1 = ridged(noise.noise(wx * 0.0017 + 41, wz * 0.0017 - 17));
-      const w1 = clamp(r1 * 2, 0, 1);
-      const r2 = ridged(noise.noise(wx * 0.0041 - 23, wz * 0.0041 + 31)) * w1;
-      const w2 = clamp(r2 * 2, 0, 1);
-      const r3 = ridged(noise.noise(wx * 0.0095 + 9, wz * 0.0095 + 5)) * w2;
-      let relief = r1 * 0.58 + r2 * 0.28 + r3 * 0.14;
+      const base = ridged(noise.noise(wx * 0.0017 + 41, wz * 0.0017 - 17)) * 0.6 + ridged(noise.noise(wx * 0.0041 - 23, wz * 0.0041 + 31)) * 0.4;
+      let relief = rangeReliefAt(x, z, a) * 0.85 + base * 0.2;
       relief = clamp(relief, 0, 1);
       // the crest row carries the peaks; the rows before it rise toward them, the rows behind fall away
       let h = HORIZON_FAR_FOOT_M + ampM * env * (0.18 + 0.82 * relief) * lift;

@@ -216,6 +216,14 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
     // the low passes keep a ribbon — never more than half the columns, possibly none
     assert.ok(spans <= HORIZON_SEGMENTS * 0.5, `at most the low crests keep their ribbon (${spans})`);
     assert.ok(mesh.getObjectByName('horizon-far-range'), 'the far range stands behind the ring');
+    // round 72b: the relieved normal composes two vec2 world-xz gradients — a `.z` on either is a compile error the game
+    // never reports (renderer.debug.checkShaderErrors is off), and it left the vista program uncompiled for a whole
+    // round while the ring drew with a stale program; the capture tool now checks shader errors, this pins the text
+    const vistaShader = { uniforms: {}, vertexShader: '#include <common>\n#include <begin_vertex>', fragmentShader: '#include <map_fragment>\n#include <color_fragment>' };
+    (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material).onBeforeCompile(vistaShader, null);
+    assert.match(vistaShader.fragmentShader, /vec2 g0 = -n0\.xz \/ max\(n0\.y, 0\.05\);\s*vec3 nR = normalize\(vec3\(-\(g0\.x \+ gd\.x\), 1\.0, -\(g0\.y \+ gd\.y\)\)\);/,
+      'the relieved normal reads the vec2 gradients\' .y (a .z there is a silent compile failure)');
+    assert.doesNotMatch(vistaShader.fragmentShader, /\b(g0|gd|ringG0|gRingGrad)\.z\b/, 'no .z on a vec2 gradient in the vista program');
     // a snow map keeps no range-class trees at all (its faces past the first ridge are pale and washed to the sky)
     const fjord = buildHorizonRing(null, getMapConfig('fjord'), 1337).getObjectByName('horizon-forest');
     assert.ok(fjord && fjord.userData.horizonForest.range === 0 && fjord.userData.horizonForest.band > 400,
