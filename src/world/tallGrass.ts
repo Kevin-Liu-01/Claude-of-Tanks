@@ -101,7 +101,8 @@ export const TALL_GRASS = Object.freeze({
   near: Object.freeze({
     cellM: 12,
     ring: 5,          // 11 × 11 cells: the ring always covers 48 m from the camera wherever it sits in its cell
-    perM2: 3.0,       // clumps per square metre at density 1 (three blades each)
+    perM2: 2.6,       // clumps per square metre at density 1 (three blades each; 3.0 on the first sheets — the vertex work
+                      // of Tarkhan's 44 k clumps sat over the tier's 1 ms budget on the toggle bench)
     fade: Object.freeze([-1, 0, 38, 46] as const), // (in0, in1, out0, out1) m — a strict in-ramp (smoothstep needs edge0 < edge1)
     cap: 56000,       // Tarkhan's 1.2 × steppe filled 40 000 and dropped its ring's far cells (the first sheets)
     programKey: 'world-tall-grass-near-v1',
@@ -129,7 +130,9 @@ export const TALL_GRASS = Object.freeze({
   candidatesPerUpdate: 120,
   coldCandidatesPerUpdate: 2400,
   progressiveCells: 12,
-  bladeSegments: 3,
+  /** Quads up a blade before the tip triangle: two (five vertices, three triangles) — a third segment cost 40 % more
+   * triangles for a bend no 1–4 px strip can show. */
+  bladeSegments: 2,
   bladesPerClump: 3,
   /** Full press bends a blade this far from vertical (rad). */
   bendRad: 1.35,

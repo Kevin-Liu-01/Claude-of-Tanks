@@ -3804,8 +3804,9 @@ metric of round 40 measures water against water and does not move.
 
 **Tall grass under the tracks (`src/world/tallGrass.ts`, `groundPressure.ts`).** The meadows carried a knee-high
 tuft carpet of alpha cards that nothing in the battle ever touched. The tier grows blades — opaque, textureless,
-vertex-shaded strips in clumps of three (seven vertices, five triangles each) on a camera-centred ring of 12 m cells to
-46 m (3 clumps / m² at density 1, cap 56 000), and single wider blades (1.7 ×, 0.20 / m², cap 28 000) on a ring of
+vertex-shaded strips in clumps of three (five vertices, three triangles each; a third segment cost 40 % more
+triangles for a bend no 1–4 px strip can show) on a camera-centred ring of 12 m cells to 46 m (2.6 clumps / m² at
+density 1, cap 56 000; 3.0 on the first sheets), and single wider blades (1.7 ×, 0.20 / m², cap 28 000) on a ring of
 24 m cells to 120 m (fading in over 34–46 m where the clumps fade out) — two `InstancedMesh`es, translation-only
 matrices with a packed blade attribute (yaw, height, width, random), the strip built in the vertex shader in world
 units: a gust front travelling down the map's wind over the meadow plus a per-blade flutter, a per-blade lean, dark
