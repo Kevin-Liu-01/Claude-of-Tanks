@@ -115,7 +115,9 @@ export const TALL_GRASS = Object.freeze({
     programKey: 'world-tall-grass-far-v1',
   }),
   cacheCells: 480,
-  candidatesPerUpdate: 220,
+  // a 12 m column of near cells (~4.7 k candidates at density 1) refills in ~40 frames at this budget — ahead of a
+  // hull at road speed — for a fraction of the frame's CPU; a cold ring (the first frames) takes the larger one
+  candidatesPerUpdate: 120,
   coldCandidatesPerUpdate: 2400,
   progressiveCells: 12,
   bladeSegments: 3,
