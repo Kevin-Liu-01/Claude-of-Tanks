@@ -4,6 +4,7 @@ import { historicalRound47PresentationSource } from './round47MapPresentation.te
 import { historicalRound66OceanSource } from './round66Ocean.test-support.mjs';
 import { historicalRound70SnowRegradeSource } from './round70SnowRegrade.test-support.mjs';
 import { historicalRound71CloudsSource } from './round71Clouds.test-support.mjs';
+import { historicalRound72ReliefSource } from './round72Relief.test-support.mjs';
 import { originalExitConfig, historicalAuthoredExitSource } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -228,7 +229,7 @@ function historicalVistaGroundSource(source, file) {
 for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts' && file !== 'steppe.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
+    historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(historicalRound72ReliefSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file), file, assert), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 
