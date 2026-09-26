@@ -93,6 +93,8 @@ const CLOUD_FARBAND_START_M = 8000;
 export const CLOUD_MARCH_STEPS = 96;
 /** The farthest slant distance marched (m): a bank beyond it has melted into the sky (the far scatter ramp). */
 export const CLOUD_MARCH_MAX_M = 20000;
+/** Round 76: a cellular deck's slab is marched to here (m); the far band fades in over 8–11 km and owns the horizon beyond. */
+export const CLOUD_DECK_MARCH_MAX_M = 10000;
 /** Step bounds (m): the floor scales with the slab, the far stride with the distance. */
 export const CLOUD_STEP_MIN_M = 8;
 export const CLOUD_STEP_MAX_M = 260;
@@ -510,6 +512,9 @@ void main() {
 		t0 = max( min( ta, tb ), 0.0 );
 		t1 = min( max( ta, tb ), ${f(CLOUD_MARCH_MAX_M)} );
 	}
+	// round 76: a cellular deck's march ends where the far band (8–11 km) and the haze ramp own the horizon — a low
+	// deck's grazing rays otherwise marched it for the whole twenty kilometres (polders at 600 m: 2.3 ms a slot)
+	if ( uCells > 0.0 ) t1 = min( t1, ${f(CLOUD_DECK_MARCH_MAX_M)} );
 	if ( t1 > t0 && uCoverage > 0.0 ) {
 		float span = t1 - t0;
 		// empty-space skipping: a segment up to twelve kilometres is tested at weather taps 450 m apart (jittered)
