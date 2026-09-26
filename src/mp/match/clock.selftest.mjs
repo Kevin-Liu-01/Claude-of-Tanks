@@ -86,4 +86,22 @@ import { ServerClock, TickClock, TimeUnwrapper, filteredOffsetMs } from './clock
   assert.equal(unwrap.unwrap(7), 7);
 }
 
+// ---- stall-immune reads: the window minimum, median and spread survive a pong the busy main thread delayed
+{
+  const clock = new ServerClock();
+  let sent = 1000;
+  for (const rtt of [100, 120, 110, 900, 105, 115, 108]) { clock.observePong(sent, sent + rtt, sent + rtt / 2 + 5000); sent += 1000; }
+  assert.equal(clock.minRttMs, 100);
+  assert.equal(clock.medianRttMs, 110);
+  assert.equal(clock.rttSpreadMs, 5, 'the median absolute deviation ignores the 900 ms stall sample');
+  assert.ok(clock.rttMs > 150, `the smoothed RTT is still inflated by the stall three samples later (${clock.rttMs})`);
+  assert.ok(clock.rttJitterMs > 100, `the jitter EMA is inflated by the stall (${clock.rttJitterMs})`);
+  const before = clock.medianRttMs;
+  assert.equal(clock.medianRttMs, before, 'reads are stable and allocation-free (a reused scratch)');
+  const empty = new ServerClock();
+  assert.equal(empty.minRttMs, null);
+  assert.equal(empty.medianRttMs, null);
+  assert.equal(empty.rttSpreadMs, 0);
+}
+
 console.log('mp clock: median-of-16 with outlier rejection, 50 ms/s slew with a 250 ms window, hard resync, tick mapping, u32 unwrap pass');

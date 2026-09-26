@@ -104,6 +104,8 @@ const P = {
   eraColdWar: '<circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 12 18.8 7.4M12 3.4v3M20.6 12h-3M12 20.6v-3M3.4 12h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>',
   eraModern: '<path d="M4 8V4h4m8 0h4v4M4 16v4h4m8 0h4v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5.5 14.5h13l1.1 3.2H4.4Zm3-4.6h7l1.4 4.6H7.1Z" fill="currentColor"/><path d="M11 9.9V7h4.7" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/>',
   eraNextGeneration: '<path d="m12 2.5 7.8 4.7v9.6L12 21.5l-7.8-4.7V7.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="6.2" r="1.2" fill="currentColor"/><circle cx="17" cy="14.9" r="1.2" fill="currentColor"/><circle cx="7" cy="14.9" r="1.2" fill="currentColor"/><path d="M12 10V7.4m1.9 5.7 2.1 1.2m-5.9-1.2L8 14.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  // Network health: three ascending bars the status strip dims from the top down as the link degrades.
+  signal: '<rect class="b1" x="4" y="14" width="4" height="6" rx="1" fill="currentColor"/><rect class="b2" x="10" y="9" width="4" height="11" rx="1" fill="currentColor"/><rect class="b3" x="16" y="4" width="4" height="16" rx="1" fill="currentColor"/>',
 } as const satisfies Readonly<Record<string, string>>;
 
 export type UiIconId = keyof typeof P;

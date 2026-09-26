@@ -26,6 +26,8 @@
  */
 import { MatchSession } from './matchSession.ts';
 import type { MatchSessionOptions, MatchSessionStats, SessionPhase, SessionPresentation, SessionRound } from './matchSession.ts';
+import { NetworkStatusModel } from './networkStatus.ts';
+import type { NetworkBanner, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
 import { isMultiplayerV2Session } from './playMenuAdapter.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
@@ -223,6 +225,21 @@ export interface BrowserRoomPorts {
   hasResult(): boolean;
 }
 
+/** The in-battle network status surface (src/ui/multiplayerStatus.ts) as the composition drives it. */
+export interface BrowserStatusSurface {
+  set(snapshot: Readonly<NetworkStatusSnapshot>, banner: NetworkBanner, nowMs: number): void;
+  togglePanel(open?: boolean): void;
+  pressLeave(): 'armed' | 'left' | 'ignored';
+  dispose(): void;
+}
+
+export interface BrowserStatusPorts {
+  /** Mount the strip for a live round (lazy: the surface module loads with the round). */
+  mount(): MaybePromise<BrowserStatusSurface>;
+  /** The link's summary when a round ends (telemetry: a few bytes, never per tick). */
+  report?(summary: NetworkStatusSummary, reason: string): void;
+}
+
 export interface BrowserCompositionPorts {
   lifecycle: BrowserEntryLifecycle;
   load: BrowserLoadPorts;
@@ -231,12 +248,15 @@ export interface BrowserCompositionPorts {
   warm?: BrowserWarmPorts;
   presentation: BrowserPresentationPorts;
   room: BrowserRoomPorts;
+  status?: BrowserStatusPorts;
 }
 
 /** The session owner as the composition drives it (MatchSession, or the receipt's scripted one). */
 export interface SessionOwner {
   readonly phase: SessionPhase;
   readonly round: SessionRound | null;
+  /** The live match client (the network status model attaches to it on the `match` phase). */
+  readonly match?: NetworkStatusMatchSource | null;
   start(): void;
   onPhase(listener: (change: { phase: SessionPhase; detail: string }) => void): Unsubscribe;
   onVerdict(listener: (change: { verdict: VerdictId; reason: string; matchId: string }) => void): Unsubscribe;
@@ -299,6 +319,7 @@ export interface BrowserCompositionStats {
   round: BrowserRoundStats | null;
   rounds: number;
   lastFailure: BrowserEntryFailure | null;
+  network: { health: string; reason: string; rttMs: number | null; reconnects: number; roomReconnects: number; surface: boolean };
 }
 
 export interface BrowserComposition {
@@ -324,6 +345,12 @@ export interface BrowserComposition {
   closeMatch(reason?: string): void;
   /** An explicit leave from the lobby or the battle: the seat goes and the admin migrates at once. */
   leaveRoom(reason?: string): void;
+  /** The network status model's snapshot (the HUD's ping cell, diagnostics); written in place, never copied. */
+  readonly networkStatus: Readonly<NetworkStatusSnapshot>;
+  /** The network-details action: expand or collapse the strip's panel. */
+  toggleStatusPanel(open?: boolean): void;
+  /** The leave action: the surface arms on the first press and leaves on a second inside the window. */
+  pressLeave(): 'armed' | 'left' | 'ignored';
   stats(): BrowserCompositionStats;
   dispose(): void;
 }
@@ -522,6 +549,35 @@ export function createBrowserComposition({
   const subscriptions: Unsubscribe[] = [];
   const entryWaiters: Array<Deferred<boolean>> = [];
 
+  // The network status model lives with the composition: the room attaches when adopted, the match
+  // client on every `match` phase; the strip mounts once a round is activated and paints at the
+  // model's cadence from the pumps.
+  const status = new NetworkStatusModel({ clock });
+  let statusSurface: BrowserStatusSurface | null = null;
+  let statusMountGeneration = 0;
+
+  const unmountStatus = (): void => {
+    statusMountGeneration++;
+    statusSurface?.dispose();
+    statusSurface = null;
+  };
+
+  const mountStatus = (active: ActiveRound): void => {
+    const statusPorts = ports.status;
+    if (!statusPorts || statusSurface) return;
+    const generation = ++statusMountGeneration;
+    void Promise.resolve(statusPorts.mount()).then((surface) => {
+      if (generation !== statusMountGeneration || round !== active || disposed) { surface.dispose(); return; }
+      statusSurface = surface;
+      const nowMs = clock();
+      surface.set(status.snapshot, status.banner(nowMs), nowMs);
+    }).catch((error: RuntimeValue) => reportError('multiplayer v2 status', error));
+  };
+
+  const paintStatus = (nowMs: number): void => {
+    if (status.update(nowMs) && statusSurface) statusSurface.set(status.snapshot, status.banner(nowMs), nowMs);
+  };
+
   const settleEntry = (entered: boolean): void => {
     for (const waiter of entryWaiters.splice(0)) waiter.resolve(entered);
   };
@@ -601,6 +657,9 @@ export function createBrowserComposition({
     roomSession = null;
     latestLobby = null;
     latestRoom = null;
+    unmountStatus();
+    status.detachMatch();
+    status.detachRoom();
     owner?.dispose();
     if (settle) settleEntry(false);
     const wasAttached = menuAttached;
@@ -676,6 +735,7 @@ export function createBrowserComposition({
     latestLobby = next.lobby;
     latestRoom = next.client.room;
     menuAttached = false;
+    status.attachRoom(next.client);
     subscriptions.push(next.onLobby(handleLobby));
     subscriptions.push(next.onClosed(handleRoomClosed));
     const owner = createSession({
@@ -853,6 +913,7 @@ export function createBrowserComposition({
         },
         onVerdict: (verdict, reason) => { if (verdict !== VERDICT.NONE) battlePresentation.applyVerdict(verdict, reason); },
         dispose: () => {
+          unmountStatus();
           battlePresentation.dispose();
           if (round === active) round = null;
           if (!active.revealed) settleEntry(false);
@@ -926,6 +987,7 @@ export function createBrowserComposition({
       });
       active.activated = true;
       activation.setWaitingForPeers(false);
+      mountStatus(active);
       markStage(active, 'activation');
       await warm.presentation?.(signal);
       check('openingGroundCover');
@@ -994,6 +1056,12 @@ export function createBrowserComposition({
   };
 
   const handlePhase = ({ phase, detail }: { phase: SessionPhase; detail: string }): void => {
+    if (phase === 'match') {
+      const client = session?.match;
+      if (client) status.attachMatch(client);
+    } else if (phase === 'lobby') {
+      status.detachMatch();
+    }
     if (phase !== 'lost') return;
     const active = round;
     if (!active) return;
@@ -1055,12 +1123,14 @@ export function createBrowserComposition({
   const pump = (dtSeconds: number, nowMs: number): void => {
     lastPumpMs = nowMs;
     session?.update(nowMs, Math.max(0, Math.min(0.25, dtSeconds)));
+    paintStatus(nowMs);
   };
 
   const pumpBackground = (nowMs: number): void => {
     const elapsedS = lastPumpMs === null ? 0 : Math.max(0, Math.min(0.25, (nowMs - lastPumpMs) / 1000));
     lastPumpMs = nowMs;
     session?.update(nowMs, elapsedS);
+    paintStatus(nowMs);
   };
 
   const disposePresentation = (): void => {
@@ -1089,6 +1159,9 @@ export function createBrowserComposition({
     disposePresentation,
     closeMatch: (reason = 'network_match_closed') => { closeRoom(reason); },
     leaveRoom,
+    get networkStatus() { return status.snapshot; },
+    toggleStatusPanel: (open) => { statusSurface?.togglePanel(open); },
+    pressLeave: () => statusSurface?.pressLeave() ?? 'ignored',
     stats: () => ({
       version: 2,
       active: round !== null,
@@ -1109,11 +1182,16 @@ export function createBrowserComposition({
       } : null,
       rounds: roundsEntered,
       lastFailure,
+      network: {
+        health: status.snapshot.health, reason: status.snapshot.healthReason, rttMs: status.snapshot.rttMs,
+        reconnects: status.snapshot.reconnects, roomReconnects: status.snapshot.roomReconnects, surface: statusSurface !== null,
+      },
     }),
     dispose() {
       if (disposed) return;
       disposed = true;
       closeRoom('dispose');
+      status.dispose();
     },
   };
 }

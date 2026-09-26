@@ -35,6 +35,8 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   hitboxOverlay: { id: 'armorFlashlight' },
   shotLog: { id: 'battleRecord', tone: 'cyan' },
   perfHud: { id: 'performance', tone: 'green' },
+  networkPanel: { id: 'signal', tone: 'cyan' },
+  leaveBattle: { id: 'garage', tone: 'red' },
   settingsMenu: { id: 'settings' },
 } satisfies Readonly<Record<ActionId, SettingsIconSpec>>);
 

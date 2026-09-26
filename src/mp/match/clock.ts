@@ -89,6 +89,48 @@ export class ServerClock {
   get rttMs(): number | null { return this.smoothedRttMs; }
   get rttJitterMs(): number { return this.jitterMs; }
   get hardResyncs(): number { return this.resyncs; }
+  /**
+   * Stall-immune round-trip reads for the status model: a busy main thread
+   * delays the receipt of a pong and can only inflate a sample, so the window
+   * minimum is the path's truthful floor, the median its typical value, and
+   * the median absolute deviation around the median its spread. All three
+   * walk the sample window without allocating (a reusable scratch array).
+   */
+  get minRttMs(): number | null {
+    if (this.samples.length === 0) return null;
+    let min = Infinity;
+    for (const sample of this.samples) if (sample.rttMs < min) min = sample.rttMs;
+    return min;
+  }
+
+  get medianRttMs(): number | null {
+    const count = this.samples.length;
+    if (count === 0) return null;
+    return this.sortedScratch(count, (sample) => sample.rttMs)[count >> 1]!;
+  }
+
+  get rttSpreadMs(): number {
+    const count = this.samples.length;
+    if (count < 2) return 0;
+    const median = this.medianRttMs!;
+    const sorted = this.sortedScratch(count, (sample) => Math.abs(sample.rttMs - median));
+    return sorted[count >> 1]!;
+  }
+
+  private readonly scratch: number[] = [];
+
+  /** The window's values in ascending order (insertion sort on the reused scratch; the window holds 16). */
+  private sortedScratch(count: number, read: (sample: ClockSample) => number): number[] {
+    const scratch = this.scratch;
+    scratch.length = count;
+    for (let index = 0; index < count; index++) {
+      const value = read(this.samples[index]!);
+      let slot = index;
+      while (slot > 0 && scratch[slot - 1]! > value) { scratch[slot] = scratch[slot - 1]!; slot--; }
+      scratch[slot] = value;
+    }
+    return scratch;
+  }
 
   /** WELCOME: one-way biased, corrected by the first pongs. */
   seed(serverTimeMs: number, localNowMs: number): void {

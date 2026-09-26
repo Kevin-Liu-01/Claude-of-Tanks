@@ -1909,6 +1909,15 @@ input.onAction('perfHud', () => {
   input.setSetting('showDebugHud', next);
   perfHud.setVisible(next);
 });
+// Multiplayer v2 status surface (src/ui/multiplayerStatus.ts): F3 expands the network strip; F4 arms the
+// leave and a second press confirms it. Outside a v2 battle the leave key opens the settings overlay,
+// whose LEAVE BATTLE row is the same exit for every other battle.
+input.onAction('networkPanel', () => { multiplayerV2.current?.toggleStatusPanel(); });
+input.onAction('leaveBattle', () => {
+  const v2 = multiplayerV2.current;
+  if (v2?.inMatch && v2.pressLeave() !== 'ignored') return;
+  if (battlePhase.canLeaveBattle()) settings.open();
+});
 
 // ---------------------------------------------------------------------------
 // Game flow
@@ -2279,6 +2288,14 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           returnToGarage: () => garageReturn.leave(),
           getPhase: () => game.phase,
           hasResult: () => !!game.result,
+        },
+        status: {
+          // The strip, its panel and its banner (src/ui/multiplayerStatus.ts) load with the first activated v2 round.
+          mount: () => import('./ui/multiplayerStatus.ts').then(({ createMultiplayerStatusSurface }) => createMultiplayerStatusSurface({
+            host: 'battle',
+            storage: localStorage,
+            onLeave: () => { void leaveBattleToGarage().catch((error) => console.error('[multiplayer v2] leave failed', error)); },
+          })),
         },
       },
     });
@@ -2941,6 +2958,8 @@ const battleHudFrame = createBattleHudFrameRuntime({
   muzzleScratch: _rayO,
   getHud: currentHud,
   getDamagePanel: currentDamagePanel,
+  // A v2 round's measured round trip feeds the HUD's ping cell from the status model (no per-frame copy).
+  pingMs: () => { const v2 = multiplayerV2.current; return v2?.active ? v2.networkStatus.rttMs : null; },
 });
 const frameInfo = battleHudFrame.frameInfo;
 const refreshSpotFrame = battleHudFrame.refreshSpotting;

@@ -31,11 +31,20 @@ function makeRoomSession(calls, initial = snapshot()) {
   const lobbyListeners = new Set();
   const closedListeners = new Set();
   let room = initial;
+  const phaseListeners = new Set();
   const client = {
     playerId: 'me',
     phase: 'joined',
     get room() { return room; },
     matchStart: null,
+    // the network status model's room source (a real RoomClient carries these)
+    seat: 0,
+    region: 'lan',
+    rttMs: 18,
+    onPhase(listener) { phaseListeners.add(listener); return () => phaseListeners.delete(listener); },
+    onState(listener) { lobbyListeners.add((lobby, next) => listener(next)); return () => {}; },
+    onClosed() { return () => {}; },
+    emitPhase(change) { client.phase = change.phase; for (const listener of [...phaseListeners]) listener(change); },
     async leave() { calls.push('client.leave'); },
     dispose() { calls.push('client.dispose'); client.phase = 'closed'; },
   };
@@ -250,6 +259,7 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
   };
   const garageStatus = [];
   const roomStates = [];
+  const statusSurfaces = [];
   const worldCollision = { heightField: { getHeightAt: () => 0 }, getObstacles: () => [] };
   const ports = {
     lifecycle,
@@ -311,6 +321,20 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
       getPhase: () => game.phase,
       hasResult: () => !!game.result,
     },
+    status: {
+      mount() {
+        const surface = {
+          sets: [], toggles: [], presses: 0, disposed: false,
+          set(snapshot, banner, nowMs) { surface.sets.push([snapshot.health, snapshot.room, banner?.kind ?? null, nowMs]); },
+          togglePanel(open) { surface.toggles.push(open); },
+          pressLeave() { surface.presses++; return 'armed'; },
+          dispose() { surface.disposed = true; calls.push('status.dispose'); },
+        };
+        statusSurfaces.push(surface);
+        calls.push('status.mount');
+        return surface;
+      },
+    },
   };
   const composition = createBrowserComposition({
     ports,
@@ -324,7 +348,7 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
     schedule: (callback) => setTimeout(callback, 0),
     reportError: (scope, error) => calls.push(`error:${scope}:${error instanceof Error ? error.message : String(error)}`),
   });
-  return { calls, bus, game, sessions, presentations, menu, battleLoad, lifecycle, garageStatus, roomStates, ports, composition };
+  return { calls, bus, game, sessions, presentations, menu, battleLoad, lifecycle, garageStatus, roomStates, statusSurfaces, ports, composition };
 }
 
 // ------------------------------------------------------------ port validation and session guard
@@ -391,6 +415,20 @@ harness.ports.activation.bridge.setPerspective('foe');
 assert.ok(calls.includes('perspective:2'), 'a spectator perspective maps the player id to the entity id');
 assert.equal(harness.menu.attached, null, 'the lobby stays off the menu while the battle is live');
 
+// ------------------------------------------------------------ the network status strip: mounted with the activation, painted from the pumps
+await settle();
+assert.equal(harness.statusSurfaces.length, 1, 'the strip mounts once the round is activated');
+assert.ok(calls.indexOf('status.mount') > calls.indexOf('activate:me:m1a2:alpine:false'), 'the strip mounts after activation');
+const statusSurface = harness.statusSurfaces[0];
+assert.equal(statusSurface.sets.length, 1, 'the mounted strip paints the current snapshot at once');
+assert.deepEqual(statusSurface.sets[0].slice(0, 3), ['good', 'joined', null], 'a joined room (the scripted owner carries no match link) reads good with no banner');
+assert.equal(composition.networkStatus.seat, 0);
+assert.equal(composition.networkStatus.roomRegion, 'lan');
+assert.equal(composition.networkStatus.rosterCount, 2);
+assert.equal(composition.networkStatus.roomRttMs, 18);
+assert.equal(composition.stats().network.surface, true);
+assert.equal(composition.stats().network.health, 'good');
+
 // ------------------------------------------------------------ controls and the frame hooks
 {
   const own = recorded.ownActor;
@@ -413,6 +451,12 @@ assert.equal(harness.menu.attached, null, 'the lobby stays off the menu while th
   composition.pumpBackground(6000);
   const updates = calls.slice(before).filter((call) => Array.isArray(call) && call[0] === 'update');
   assert.deepEqual(updates, [['update', 5000, 1 / 60], ['update', 6000, 0.25]], 'the frame and background pumps drive the session owner (background elapsed clamped)');
+  assert.equal(statusSurface.sets.length, 3, 'each pump samples the status model at its cadence and paints the strip');
+  assert.equal(statusSurface.sets.at(-1)[3], 6000);
+  assert.equal(composition.pressLeave(), 'armed', 'the leave action reaches the mounted strip');
+  assert.equal(statusSurface.presses, 1);
+  composition.toggleStatusPanel(true);
+  assert.deepEqual(statusSurface.toggles, [true], 'the network-details action reaches the mounted strip');
   const sampler = createControlSampler(() => null);
   assert.equal(sampler.sample(1), null);
 }
@@ -437,6 +481,9 @@ await harness.menu.attached.command({ type: 'set_ready', ready: true });
 assert.ok(calls.includes('command:set_ready'), 'lobby commands go through the room session');
 assert.equal(composition.shouldPreserveRoom(), true, 'the room survives the Garage return');
 composition.disposePresentation();
+assert.equal(statusSurface.disposed, true, 'the Garage return unmounts the strip');
+assert.equal(composition.stats().network.surface, false);
+assert.equal(composition.pressLeave(), 'ignored', 'no strip, no leave action');
 assert.equal(composition.active, false);
 assert.ok(calls.includes('leaveMatch:returned_to_garage') && calls.includes('presentation.dispose'), 'the seat leaves the match, the presentation is released');
 assert.equal(harness.sessions.length, 1, 'the session owner survives for the rematch');

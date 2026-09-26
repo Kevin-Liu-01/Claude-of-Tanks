@@ -77,6 +77,9 @@ const ACTION_DEFS = [
   { id: 'minimapZoom', label: 'action.minimapZoom', group: 'settings.group.interface' },
   { id: 'shotLog', label: 'action.shotLog', group: 'settings.group.interface' }, // SHOT-INFO (shotInfo.ts)
   { id: 'perfHud', label: 'action.perfHud', group: 'settings.group.interface' }, // FEEL r12 (perfHud.ts)
+  // Multiplayer v2 status surface (multiplayerStatus.ts): the network panel and the two-press leave
+  { id: 'networkPanel', label: 'action.networkPanel', group: 'settings.group.interface' },
+  { id: 'leaveBattle', label: 'action.leaveBattle', group: 'settings.group.interface' },
   { id: 'settingsMenu', label: 'action.settingsMenu', group: 'settings.group.interface' },
 ] as const;
 
@@ -210,6 +213,8 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   minimapZoom: 'KeyM',
   shotLog: 'KeyL', // SHOT-INFO: toggle the shot-info / received-damage log
   perfHud: 'F8', // FEEL r12: fps / frame-time / stall overlay
+  networkPanel: 'F3', // multiplayer v2: expand the network strip (v1's diagnostics key)
+  leaveBattle: 'F4', // multiplayer v2: arm, then confirm with a second press
   settingsMenu: 'Escape',
 };
 

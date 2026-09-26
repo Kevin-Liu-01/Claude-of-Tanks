@@ -418,6 +418,7 @@ const semanticSurfaceFiles = [
   './playMenu.ts',
   './roomChat.ts',
   './networkStatus.ts',
+  './multiplayerStatus.ts',
   './perfHud.ts',
   './settings.ts',
   './shotInfo.ts',

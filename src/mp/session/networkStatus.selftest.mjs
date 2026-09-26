@@ -205,13 +205,23 @@ const player = (id, team, seat) => ({ id, name: id, team, seat, specId: 'm1a2', 
   assert.deepEqual([s.health, s.healthReason], ['good', 'live']);
   assert.deepEqual(model.banner(), null);
 
-  // ---- a stale authority: the socket is open but nothing arrives
-  nowMs += 300; model.update(nowMs);
+  // ---- the client's own stall: a 600 ms gap between updates is not the link's fault (no verdict from age or cadence)
+  nowMs += 600; model.update(nowMs);
+  assert.equal(s.localStallMs, 600);
+  assert.equal(s.snapshotAgeMs, 600);
+  assert.deepEqual([s.health, s.healthReason], ['good', 'live'], 'a self-stalled window judges neither freshness nor cadence');
+  advance(2000);
+  assert.equal(s.localStallMs, 50, 'the next clean window carries only the ordinary 50 ms update gap');
+  assert.deepEqual([s.health, s.healthReason], ['good', 'live']);
+
+  // ---- a stale authority: the socket is open, the client keeps updating, nothing arrives
+  const idle = (ms) => { for (let elapsed = 0; elapsed < ms; elapsed += 50) { nowMs += 50; model.update(nowMs); } };
+  idle(300);
   assert.deepEqual([s.health, s.healthReason], ['degraded', 'stale']);
   assert.deepEqual(model.banner(), { kind: 'degraded', reason: 'stale' });
-  nowMs += 800; model.update(nowMs);
+  idle(800);
   assert.deepEqual([s.health, s.healthReason], ['bad', 'stale']);
-  assert.equal(s.snapshotAgeMs, 1100);
+  assert.ok(s.snapshotAgeMs >= 1000 && s.snapshotAgeMs <= 1100, `age at the last 250 ms sample (${s.snapshotAgeMs})`);
   // The recovery declares a stall (5 s): the verdict names it and the banner says the authority stopped answering.
   match.emitPhase('stalled', 'authority_stalled');
   assert.deepEqual([s.health, s.healthReason], ['bad', 'stalled']);
@@ -367,8 +377,10 @@ function mulberry(seed) {
   seconds(8);
   assert.equal(client.phase, 'live');
   assert.deepEqual([s.attached, s.transport, s.link, s.welcomed], [true, 'open', 'live', true]);
-  assert.ok(s.rttMs > 90 && s.rttMs < 160, `RTT ${s.rttMs}`);
-  assert.ok(s.rttJitterMs < NETWORK_HEALTH_THRESHOLDS.degraded.jitterMs, `jitter ${s.rttJitterMs}`);
+  assert.ok(s.rttMs > 60 && s.rttMs < 130, `window-minimum RTT ${s.rttMs} on a 100 ± 30 ms link`);
+  assert.ok(s.rttMedianMs > s.rttMs && s.rttMedianMs < 160, `median RTT ${s.rttMedianMs}`);
+  assert.ok(s.rttJitterMs < NETWORK_HEALTH_THRESHOLDS.degraded.jitterMs, `spread ${s.rttJitterMs}`);
+  assert.equal(s.localStallMs, 0);
   assert.ok(s.snapshotHz > 26 && s.snapshotHz <= 31, `cadence ${s.snapshotHz} Hz at 3 % loss`);
   assert.ok(s.lossRate >= 0 && s.lossRate < 0.06, `loss ${s.lossRate}`);
   assert.ok(client.snapshots.estimatedMissingCount > 0, 'the impaired link did lose snapshots');

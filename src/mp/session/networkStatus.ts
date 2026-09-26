@@ -29,9 +29,9 @@ export type NetworkHealthReason =
   | 'reconnecting' | 'stalled' | 'failed' | 'dropped' | 'closed' | 'left';
 
 export interface NetworkHealthLimits {
-  /** Smoothed round trip at or above this. */
+  /** The window-minimum round trip at or above this (a busy client can only inflate a sample, never shrink one). */
   rttMs: number;
-  /** Round-trip jitter (mean absolute variation) at or above this. */
+  /** The round-trip spread (median absolute deviation over the sample window) at or above this. */
   jitterMs: number;
   /** Snapshot sequence gaps over the snapshots of the loss window, at or above this. */
   lossRate: number;
@@ -66,7 +66,14 @@ export interface NetworkStatusMatchSource {
   };
   readonly phase: ConnectionPhase;
   readonly welcome: unknown;
-  readonly serverClock: { readonly rttMs: number | null; readonly rttJitterMs: number };
+  readonly serverClock: {
+    readonly rttMs: number | null;
+    readonly rttJitterMs: number;
+    /** Stall-immune reads (ServerClock); a scripted source may omit them and the smoothed values stand in. */
+    readonly minRttMs?: number | null;
+    readonly medianRttMs?: number | null;
+    readonly rttSpreadMs?: number;
+  };
   readonly interpolator: { readonly delay: number; readonly bufferedFrames: number };
   readonly snapshots: { readonly acceptedCount: number; readonly estimatedMissingCount: number };
   readonly lastAuthorityReceivedAtMs: number | null;
@@ -108,8 +115,14 @@ export interface NetworkStatusSnapshot {
   /** The recovery phase of the match link. */
   link: ConnectionPhase;
   welcomed: boolean;
+  /** The window-minimum round trip: the path's floor, immune to the client's own stalls. */
   rttMs: number | null;
+  /** The window-median round trip (the panel shows it beside the floor). */
+  rttMedianMs: number | null;
+  /** The round-trip spread: median absolute deviation over the sample window. */
   rttJitterMs: number;
+  /** The largest gap between two of the client's own updates inside the current window (a self-stall). */
+  localStallMs: number;
   /** Snapshots per second measured over the last window; the authority's rate before the first window. */
   snapshotHz: number;
   expectedSnapshotHz: number;
@@ -184,12 +197,15 @@ export interface NetworkStatusModelOptions {
 
 const HEALTH_RANK: Readonly<Record<NetworkHealth, number>> = Object.freeze({ unknown: 0, good: 1, degraded: 2, bad: 3, offline: 4 });
 
+/** A window in which the client itself stalled longer than this cannot judge the link's cadence or freshness. */
+const SELF_STALL_MS = 250;
+
 const METRIC_ORDER: ReadonlyArray<{ reason: NetworkHealthReason; over(s: NetworkStatusSnapshot, limits: NetworkHealthLimits): boolean }> = Object.freeze([
-  { reason: 'stale', over: (s, l) => s.snapshotAgeMs >= l.snapshotAgeMs },
+  { reason: 'stale', over: (s, l) => s.localStallMs < SELF_STALL_MS && s.snapshotAgeMs >= l.snapshotAgeMs },
   { reason: 'loss', over: (s, l) => s.lossRate >= l.lossRate },
   { reason: 'rtt', over: (s, l) => s.rttMs !== null && s.rttMs >= l.rttMs },
   { reason: 'jitter', over: (s, l) => s.rttJitterMs >= l.jitterMs },
-  { reason: 'cadence', over: (s, l) => s.snapshotHz < s.expectedSnapshotHz * l.cadenceRatio },
+  { reason: 'cadence', over: (s, l) => s.localStallMs < SELF_STALL_MS && s.snapshotHz < s.expectedSnapshotHz * l.cadenceRatio },
   { reason: 'corrections', over: (s, l) => s.correctionsPerS >= l.correctionsPerS },
 ]);
 
@@ -254,8 +270,8 @@ export function closeReasonName(reason: CloseReasonId | null): string | null {
 function createSnapshot(expectedSnapshotHz: number, rosterCapacity: number): NetworkStatusSnapshot {
   return {
     sampledAtMs: 0, attached: false, transport: 'idle', transportReason: null, transportDetail: '', reconnectAttempt: 0,
-    retryAtMs: null, nextRetryMs: 0, reconnects: 0, link: 'idle', welcomed: false, rttMs: null, rttJitterMs: 0,
-    snapshotHz: expectedSnapshotHz, expectedSnapshotHz, snapshotAgeMs: 0, interpolationDelayMs: 0, bufferedFrames: 0,
+    retryAtMs: null, nextRetryMs: 0, reconnects: 0, link: 'idle', welcomed: false, rttMs: null, rttMedianMs: null, rttJitterMs: 0,
+    localStallMs: 0, snapshotHz: expectedSnapshotHz, expectedSnapshotHz, snapshotAgeMs: 0, interpolationDelayMs: 0, bufferedFrames: 0,
     lossRate: 0, correctionsPerS: 0, bytesInPerS: 0, bytesOutPerS: 0, closeReason: null, seatDropped: false,
     room: 'idle', roomReconnectAttempt: 0, roomRetryAtMs: null, roomReconnects: 0, roomRttMs: null, roomRegion: null, seat: null,
     rosterCount: 0, rosterCapacity, roomPhase: null, matchStatus: null, health: 'unknown', healthReason: 'idle',
@@ -276,6 +292,8 @@ export class NetworkStatusModel {
   private readonly matchSubscriptions: Unsubscribe[] = [];
   private readonly roomSubscriptions: Unsubscribe[] = [];
   private lastSampleMs = -Infinity;
+  private lastUpdateMs: number | null = null;
+  private windowStallMs = 0;
   private windowStartMs: number | null = null;
   private windowSnapshots = 0;
   private windowCorrections = 0;
@@ -418,6 +436,13 @@ export class NetworkStatusModel {
 
   /** One display frame: samples at the cadence; returns true when a sample was taken. */
   update(nowMs: number = this.clock()): boolean {
+    // The gap between two of the client's own updates is a self-stall (a shader compile, a GC pause): a
+    // window that holds one cannot judge cadence or freshness, so the largest gap rides the snapshot.
+    if (this.lastUpdateMs !== null) {
+      const gap = nowMs - this.lastUpdateMs;
+      if (gap > this.windowStallMs) this.windowStallMs = gap;
+    }
+    this.lastUpdateMs = nowMs;
     if (nowMs - this.lastSampleMs < this.sampleIntervalMs) return false;
     this.sample(nowMs, false);
     return true;
@@ -452,8 +477,11 @@ export class NetworkStatusModel {
       s.transport = match.transport.state;
       s.link = match.phase;
       s.welcomed = match.welcome !== null && match.welcome !== undefined;
-      s.rttMs = match.serverClock.rttMs;
-      s.rttJitterMs = match.serverClock.rttJitterMs;
+      const clock = match.serverClock;
+      s.rttMs = clock.minRttMs ?? clock.rttMs;
+      s.rttMedianMs = clock.medianRttMs ?? clock.rttMs;
+      s.rttJitterMs = clock.rttSpreadMs ?? clock.rttJitterMs;
+      s.localStallMs = this.windowStallMs;
       s.interpolationDelayMs = match.interpolator.delay;
       s.bufferedFrames = match.interpolator.bufferedFrames;
       const accepted = match.snapshots.acceptedCount;
@@ -480,15 +508,18 @@ export class NetworkStatusModel {
         this.windowStartMs = nowMs;
         this.windowSnapshots = accepted;
         this.windowCorrections = corrections;
+        this.windowStallMs = 0;
         s.snapshotHz = s.expectedSnapshotHz;
         s.correctionsPerS = 0;
       } else if (nowMs - this.windowStartMs >= this.windowMs) {
         const seconds = (nowMs - this.windowStartMs) / 1000;
         s.snapshotHz = (accepted - this.windowSnapshots) / seconds;
         s.correctionsPerS = (corrections - this.windowCorrections) / seconds;
+        s.localStallMs = this.windowStallMs;
         this.windowStartMs = nowMs;
         this.windowSnapshots = accepted;
         this.windowCorrections = corrections;
+        this.windowStallMs = 0;
       }
     }
     s.nextRetryMs = s.retryAtMs === null ? 0 : Math.max(0, s.retryAtMs - nowMs);

@@ -65,7 +65,7 @@ const elapsedMs = () => Math.round(performance.now() - startedAt);
 
 const report = {
   pass: false, failures: [], errors: [], steps: [], screenshots: [], playS, keepS, world, wallMs: 0,
-  room: null, load: {}, play: {}, afterHostLeft: {}, leave: {},
+  room: null, load: {}, play: {}, afterHostLeft: {}, leave: {}, status: null,
 };
 const failures = report.failures;
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
@@ -282,6 +282,41 @@ try {
     if ((load.round?.actors ?? 0) < 2) failures.push(`${label} presents ${load.round?.actors ?? 0} actors`);
   }
 
+  // ---- the network status strip is on screen in both battles; F3 expands it to the panel; the model reads a live link
+  const stripOf = (page) => page.evaluate(() => {
+    const strip = document.querySelector('.cot-mp-strip');
+    const panel = document.querySelector('.cot-mp-panel');
+    const banner = document.querySelector('.cot-mp-banner');
+    const network = window.__MULTIPLAYER_V2?.stats?.().network ?? null;
+    const visible = (node) => !!node && !node.hidden && getComputedStyle(node).display !== 'none' && node.getClientRects().length > 0;
+    return {
+      present: !!strip, visible: visible(strip), text: strip?.textContent?.replace(/\s+/g, ' ').trim() ?? null, className: strip?.className ?? null,
+      aria: strip?.getAttribute('aria-label') ?? null, expanded: strip?.getAttribute('aria-expanded') ?? null,
+      panelVisible: visible(panel), panelRows: panel ? [...panel.querySelectorAll('.row')].filter((row) => !row.hidden).map((row) => row.textContent.replace(/\s+/g, ' ').trim()) : [],
+      bannerVisible: visible(banner), bannerText: banner?.textContent?.trim() ?? null, network,
+    };
+  });
+  await waitFor(pageA, () => !!document.querySelector('.cot-mp-strip') && /\d/.test(document.querySelector('.cot-mp-strip .ping b')?.textContent ?? ''), 'A network strip shows a ping', 15_000);
+  await waitFor(pageB, () => !!document.querySelector('.cot-mp-strip') && /\d/.test(document.querySelector('.cot-mp-strip .ping b')?.textContent ?? ''), 'B network strip shows a ping', 15_000);
+  report.status = { a: await stripOf(pageA), b: await stripOf(pageB) };
+  await pageA.keyboard.press('F3');
+  await waitFor(pageA, () => document.querySelector('.cot-mp-strip')?.getAttribute('aria-expanded') === 'true', 'A network panel expanded by F3', 5_000);
+  await sleep(600);
+  report.status.aPanel = await stripOf(pageA);
+  await screenshot(pageA, 'a-network-panel.png');
+  await pageA.keyboard.press('F3');
+  await waitFor(pageA, () => document.querySelector('.cot-mp-strip')?.getAttribute('aria-expanded') === 'false', 'A network panel collapsed by F3', 5_000);
+  step('network-status', { a: report.status.a, b: report.status.b, panelRows: report.status.aPanel.panelRows });
+  for (const [label, strip] of [['A', report.status.a], ['B', report.status.b]]) {
+    if (!strip.visible) failures.push(`${label} network strip is not visible: ${JSON.stringify(strip)}`);
+    if (!/good|degraded/.test(strip.className ?? '')) failures.push(`${label} network strip health ${strip.className}`);
+    if (!/SEAT \d/.test(strip.text ?? '')) failures.push(`${label} network strip names no seat: ${strip.text}`);
+    if (!/\d+\/28/.test(strip.text ?? '')) failures.push(`${label} network strip names no roster: ${strip.text}`);
+    if (strip.bannerVisible) failures.push(`${label} shows a banner on a healthy link: ${strip.bannerText}`);
+    if (strip.network?.health !== 'good') failures.push(`${label} network health ${JSON.stringify(strip.network)}`);
+  }
+  if (!report.status.aPanel.panelVisible || report.status.aPanel.panelRows.length < 13) failures.push(`A network panel did not expand: ${JSON.stringify(report.status.aPanel)}`);
+
   // ---- play: both drive, each shoots once, each sees the other move and the other's shot
   const samplesA = [];
   const samplesB = [];
@@ -382,7 +417,9 @@ else {
   console.log(`mp browser e2e: room ${report.room?.code ?? '-'} (invite v=${report.room?.inviteVersion ?? '-'}), load A ${report.load.a?.trace?.totalMs ?? '-'} ms / B ${report.load.b?.trace?.totalMs ?? '-'} ms, ` +
     `play ${playS} s: A saw B move ${report.play.a?.otherMovedM?.toFixed(1) ?? '-'} m and fire ${report.play.a?.otherShots ?? '-'}×; B saw A move ${report.play.b?.otherMovedM?.toFixed(1) ?? '-'} m and fire ${report.play.b?.otherShots ?? '-'}×; ` +
     `after A left: +${(report.afterHostLeft.snapshotsAfter ?? 0) - (report.afterHostLeft.snapshotsBefore ?? 0)} snapshots in ${keepS} s, admin → B after ${report.afterHostLeft.adminMigratedAfterMs ?? '-'} ms; ` +
-    `B left cleanly: ${report.leave.serverPlayersAfter ? JSON.stringify(report.leave.serverPlayersAfter) : '-'}; ${report.errors.length} browser errors; ${report.wallMs} ms wall`);
+    `B left cleanly: ${report.leave.serverPlayersAfter ? JSON.stringify(report.leave.serverPlayersAfter) : '-'}; ` +
+    `network strip A "${report.status?.a?.text ?? '-'}" (${report.status?.a?.network?.health ?? '-'}), B "${report.status?.b?.text ?? '-'}" (${report.status?.b?.network?.health ?? '-'}), panel rows ${report.status?.aPanel?.panelRows?.length ?? '-'}; ` +
+    `${report.errors.length} browser errors; ${report.wallMs} ms wall`);
   for (const failure of failures) console.log(`  FAIL: ${failure}`);
   console.log(`  screenshots: ${report.screenshots.join(', ')}`);
   console.log(report.pass ? 'mp browser e2e: PASS' : 'mp browser e2e: FAIL');

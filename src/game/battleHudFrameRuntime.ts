@@ -117,6 +117,8 @@ interface BattleHudFrameRuntimeOptions<TEntity extends HudTankEntity> {
   getHud(): HudUpdateRuntime | null;
   getDamagePanel(): DamagePanelRuntime | null;
   now?: () => number;
+  /** A measured round trip from another owner (the v2 status model); null falls back to the v1 client stats. */
+  pingMs?: () => number | null;
 }
 
 export interface BattleHudFrameRuntime<TEntity extends HudTankEntity = HudTankEntity> {
@@ -146,6 +148,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   getHud,
   getDamagePanel,
   now = () => performance.now(),
+  pingMs = () => null,
 }: BattleHudFrameRuntimeOptions<TEntity>): BattleHudFrameRuntime<TEntity> {
   const required = [aimController?.update, armorAimOverlay?.update,
     armorAimOverlay?.hide, killcam?.isActive, getHud, getDamagePanel, now];
@@ -251,7 +254,8 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     bridge: NetworkBridgeView | null,
   ): void => {
     frameInfo.timeS = game.timeS;
-    const rttMs = networkSession.match?.client?.getStats?.()?.rttMs;
+    const external = pingMs();
+    const rttMs = external ?? networkSession.match?.client?.getStats?.()?.rttMs;
     frameInfo.pingMs = Number.isFinite(Number(rttMs)) ? Number(rttMs) : 0;
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
     frameInfo.player = focus;

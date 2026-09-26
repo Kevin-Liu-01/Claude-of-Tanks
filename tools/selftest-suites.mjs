@@ -778,6 +778,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/roomFailure.selftest.mjs',
     'src/net/networkRoomFailureRuntime.selftest.mjs',
     'src/ui/networkStatus.selftest.mjs',
+    'src/ui/multiplayerStatus.selftest.mjs',
     'src/ui/privateRoomFailurePresentation.selftest.mjs',
     'src/ui/playMenu.selftest.mjs',
     'src/net/networkFramePump.selftest.mjs',
