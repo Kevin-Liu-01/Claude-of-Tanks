@@ -91,6 +91,14 @@ the rule-card lines (`rules.line.marsCaches` / `marsCachesOff`).
   `src/sim/movement.ts` scales top/reverse speed, the airborne hull and the slope
   pull by them. The prediction state (`src/net/predictionAuthorityState.ts`,
   `localTankPrediction.ts`) mirrors both to the client.
+- **Physics** (2026-09-25) — the controller stamps `modePhysics` (the ruleset's
+  `physics` block) beside the gravity scale; `src/sim/movement.ts` reads its
+  restitution and rebound floor at every landing, and the integrations
+  (`resolveTankImpacts` in `src/game/state.ts`, `resolveEntityImpacts` in
+  `src/sim/authoritativeMatch.ts`) price crashes, falls and rams through
+  `src/sim/impact.ts` with its thresholds, rates and ram restitution. The mp
+  prediction world derives the same block from the room's mode
+  (`createPredictionWorld({ mode })`).
 - **Ballistics** — a fired shell's `gravityMps2` is multiplied by the shooter's
   gravity scale (solo fire site and authority fire site); under unlimited rounds
   the fired channel refills immediately (`refillUnlimitedAmmunition`).

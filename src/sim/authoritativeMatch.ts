@@ -1945,7 +1945,8 @@ export function createAuthoritativeMatch({
     for (const hit of result.modulesHit) {
       emit('module_state', { id: entity.id, module: hit.module, state: hit.newState, source: 'impact' });
     }
-    if (result.destroyed) emit('tank_destroyed', { id: entity.id, killerId: null, cause: kind });
+    // self-inflicted, as a burn-out is: the hull is its own killer (no kill is credited)
+    if (result.destroyed) emit('tank_destroyed', { id: entity.id, killerId: entity.id, cause: kind });
   }
 
   /**

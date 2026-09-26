@@ -2380,7 +2380,8 @@ function publishHullImpact(
   for (const hit of result.modulesHit) {
     bus.emit('module:state', { id: entity.id, module: hit.module, state: hit.newState, source: 'impact' });
   }
-  if (result.destroyed && !entity._destroyedAnnounced) announceDestroyed(bus, entity, null, kind);
+  // a fatal crash or fall is self-inflicted: the hull is its own killer, as a burn-out is
+  if (result.destroyed && !entity._destroyedAnnounced) announceDestroyed(bus, entity, entity.id, kind);
 }
 
 /**

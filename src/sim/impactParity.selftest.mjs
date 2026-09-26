@@ -42,8 +42,8 @@ assert.match(solo, /exchangeRamMomentum\(contact\.a\.state, contact\.b\.state, c
 assert.match(authority, /exchangeRamMomentum\(contact\.a\.state, contact\.b\.state, contact\.nx, contact\.nz,\s*contact\.a\.spec\.weightTons, contact\.b\.spec\.weightTons, contact\.vAn, contact\.vBn, ruleset\.physics\.ramRestitution\)/,
   'the authority exchanges momentum with the ruleset restitution');
 assert.match(modes, /entity\.modePhysics = ruleset\.physics;/, 'the mode controller stamps the physics block on every entity');
-assert.match(solo, /announceDestroyed\(bus, entity, null, kind\)/, 'a self-inflicted destruction names its cause (impact / fall) in solo');
-assert.match(authority, /emit\('tank_destroyed', \{ id: entity\.id, killerId: null, cause: kind \}\)/, 'and on the wire');
+assert.match(solo, /announceDestroyed\(bus, entity, entity\.id, kind\)/, 'a self-inflicted destruction names its cause (impact / fall) and its own hull as the killer in solo, as a burn-out does');
+assert.match(authority, /emit\('tank_destroyed', \{ id: entity\.id, killerId: entity\.id, cause: kind \}\)/, 'and on the wire');
 
 // ---- the authority crashes into a wall: hit points, event, modules ---------------------------------------------
 const wall = { min: [-12, 0, -36], max: [12, 6, -34], shape2: { kind: 'obb', cx: 0, cz: -35, hw: 12, hl: 1, yaw: 0 } };

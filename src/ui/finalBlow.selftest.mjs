@@ -35,6 +35,14 @@ assert.deepEqual(stale, { cause: 'shot', attacker: 'T-90M', target: 'Challenger 
 assert.equal(finalBlowLine(stale), 'Final blow — you destroyed Challenger 3 with enemy fire'.replace('enemy fire', 'enemy fire'),
   'an unknown shell falls back to the killcam\'s generic fire label');
 
+// impact physics (2026-09-25): a crash or a fall is self-inflicted — the hull is its own killer, the line names it alone
+const crash = resolveFinalBlow(lethal(), { id: 'e1', killerId: 'e1', cause: 'impact' }, 'me', nameOf);
+assert.deepEqual(crash, { cause: 'impact', attacker: 'M1A2', target: 'M1A2', shell: null, attackerIsPlayer: false, targetIsPlayer: false });
+assert.equal(finalBlowLine(crash), 'Final blow — M1A2 crashed into something hard');
+const fell = resolveFinalBlow(lethal(), { id: 'me', killerId: 'me', cause: 'fall' }, 'me', nameOf);
+assert.equal(fell.targetIsPlayer, true);
+assert.equal(finalBlowLine(fell), 'Final blow — T-90M fell too hard');
+
 // a ram: no shell, the destruction's killer is the rammer
 const ram = resolveFinalBlow(lethal(), { id: 'e1', killerId: 'a2', cause: 'ram' }, 'me', nameOf);
 assert.deepEqual(ram, { cause: 'ram', attacker: 'Leopard 2A7', target: 'M1A2', shell: null, attackerIsPlayer: false, targetIsPlayer: false });
