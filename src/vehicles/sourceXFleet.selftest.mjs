@@ -38,7 +38,7 @@ const original = {
   leo2a7v:'2263d6b0', leo2a6m:'fe9c5f17', leo2a4m:'126b898c', leo2a5:'845f4dc9',
 // 2026-09-23 (owner: "no hidden tanks"): the merkava4 donor record retired with the hidden fleet, so its original
 // pin (faa9ea92) left with it; merkava4_x's combat donor now resolves through the unregistered donorSpecs.ts template.
-  merkava3d:'e6c6cabe', k2:'36af3795', kf51:'f5de9458',
+  merkava3d:'850ecc05', k2:'36af3795', kf51:'f5de9458',
   t90a:'3a1ab46f', t90a_vladimir:'d6a32428', t90m:'913aca9b', t90sm:'428187e9', t14:'3aa21a37',
 };
 // Owner 2026-09-21 explicitly replaces XK2's turret with the current K1A1.
@@ -50,7 +50,7 @@ const original = {
 // Owner 2026-09-24 narrows the Improved's hull by 10% across the front.
 // leopardImprovedHull.selftest separately verifies that exact hull-only change,
 // round wheels, live suspension, unchanged turret and independent 2A7V study.
-const ownerRebuilds = { k2: '98d535e0', leo2a7v: 'b6555130' }; // K1A1-turret assembly was 15a3e8d2.
+const ownerRebuilds = { k2: 'aa421950', leo2a7v: 'b6555130' }; // K1A1-turret assembly was 15a3e8d2.
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {
   const tank = createTank(id, null, options);
