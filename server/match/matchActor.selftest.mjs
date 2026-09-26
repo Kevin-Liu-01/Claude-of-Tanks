@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { MOVEMENT_CHECKPOINT_VERSION } from '../../src/mp/match/movementCheckpoint.ts';
 import {
   CLOSE_REASON, CONTROL_FLAGS, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PHASE, PROTOCOL_VERSION, TEAM, VERDICT,
 } from '../../src/mp/wire/constants.ts';
@@ -148,7 +149,7 @@ assert.equal(p2.packets.filter((packet) => packet.keyframe).length, 2, 'an immed
 const latest = p1.frames.at(-1);
 assert.ok(latest.ackedInputTick !== NO_TICK && latest.ackedInputTick >= actor.tick - 4, `input acknowledged (${latest.ackedInputTick} vs ${actor.tick})`);
 assert.ok(latest.inputMarginTicks >= 0 && latest.inputMarginTicks <= 3, `input margin reported (${latest.inputMarginTicks})`);
-assert.ok(latest.viewer && latest.viewer.entityId === 1 && latest.viewer.movementVersion === 1, 'the seated viewer gets its prediction section');
+assert.ok(latest.viewer && latest.viewer.entityId === 1 && latest.viewer.movementVersion === MOVEMENT_CHECKPOINT_VERSION, 'the seated viewer gets its prediction section');
 assert.equal(s1.frames.at(-1).viewer, null, 'a spectator gets none');
 assert.equal(latest.meta.phase, PHASE.PLAYING);
 const ownRow = latest.entities.find((row) => row.entityId === 1);
