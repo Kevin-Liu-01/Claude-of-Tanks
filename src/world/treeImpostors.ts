@@ -13,6 +13,12 @@
 // angle, the second far variant mirrored for variety), lit by the standard pipeline: two triangles per tree instead
 // of a lobe cloud, one draw per species and far variant instead of two.
 //
+// Round 77c: the atlas gains an elevated ring — one row per species (its first near variant) from the same eight
+// azimuths at 45° — where that keeps the row cap and the tile the ground ring alone takes (every 3-species map); the
+// program dissolves the tile toward it over 20°–45° of view elevation and tilts the card back to face the view. The
+// horizon ring's forest (horizonForestImpostors.ts) draws from the same atlas through `applyProgram`, and the bake
+// joins the covered warm through vegetation.ts `warmImpostors()`.
+//
 // The bake runs where a renderer exists (vegetation.ts calls ensureBaked from its per-frame update, outside any
 // render pass — never inside one) and again after a GPU suspension disposes the atlas; without a renderer (the
 // receipts, Node) the library still resolves its layout, budget and digest, and the material, quads and rows are

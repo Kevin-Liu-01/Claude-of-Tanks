@@ -53,6 +53,16 @@ generates the per-class tiling leaf-cluster tile (normal + a break mask normalis
 material carries as its normal map, with the tangent frame rebuilt after `useAttributeNormal`; the rim-forest
 blocks are discs (`_rimBlocks`) the understorey feathers through the stands' law. `treeImpostors.selftest.mjs` and
 `leafDetail.selftest.mjs` pin them.
+Round 77c: the horizon ring's forest beyond the red line is bound to the same atlas — `horizonForestImpostors.ts`
+redraws `buildHorizonForest`'s placements (packed byte-identically on the group's `userData.horizonForest`) as one
+quad per tree through the far tier's program text (`library.applyProgram`), its wrap / translucency / sky fill and
+the ring's haze law, the species by class from the map's rim mix at the rim trees' mean stature
+(`vegetation._rimTreeHeightM`); the near class's lobes stay as shadow-only casters; `map.ts` binds after the
+vegetation builds, the mobile tier and the receipts keep the lobes. The atlas carries an elevated 45° row per
+species where that keeps the row cap and the ground tile (every 3-species map); the view elevation dissolves the
+tile toward it and tilts the card. The bake runs under cover through `world.warmImpostors()` (the solo loading
+runtime, the activation runtime's precompile). `horizonForestImpostors.selftest.mjs` and the `vegetationFarSeams`
+law section pin the seam.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
