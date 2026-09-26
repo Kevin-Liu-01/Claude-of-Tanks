@@ -70,14 +70,14 @@ export interface HorizonReliefSettings {
   far: HorizonFarRangeSettings | null;
 }
 
-const FAR_ALPINE: HorizonFarRangeSettings = { ampM: 820, floor: 0.34, hazeIn: 0.58, hazeOut: 0.80, snowline: 0.55, sharpness: 1.7 };
-const FAR_POLAR: HorizonFarRangeSettings = { ampM: 640, floor: 0.30, hazeIn: 0.56, hazeOut: 0.80, snowline: 0.18, sharpness: 1.4 };
-const FAR_ROLLING: HorizonFarRangeSettings = { ampM: 360, floor: 0.40, hazeIn: 0.62, hazeOut: 0.82, snowline: 2, sharpness: 0.85 };
-const FAR_MESA: HorizonFarRangeSettings = { ampM: 470, floor: 0.45, hazeIn: 0.60, hazeOut: 0.82, snowline: 2, sharpness: 0.75 };
-const FAR_VOLCANIC: HorizonFarRangeSettings = { ampM: 560, floor: 0.28, hazeIn: 0.60, hazeOut: 0.82, snowline: 2, sharpness: 1.05 };
-const FAR_COASTAL: HorizonFarRangeSettings = { ampM: 300, floor: 0.35, hazeIn: 0.64, hazeOut: 0.84, snowline: 2, sharpness: 0.9 };
-const FAR_MARTIAN: HorizonFarRangeSettings = { ampM: 1050, floor: 0.50, hazeIn: 0.50, hazeOut: 0.74, snowline: 2, sharpness: 0.6 };
-const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.62, hazeOut: 0.84, snowline: 2, sharpness: 1.5 };
+const FAR_ALPINE: HorizonFarRangeSettings = { ampM: 820, floor: 0.34, hazeIn: 0.46, hazeOut: 0.68, snowline: 0.55, sharpness: 1.7 };
+const FAR_POLAR: HorizonFarRangeSettings = { ampM: 640, floor: 0.30, hazeIn: 0.44, hazeOut: 0.68, snowline: 0.18, sharpness: 1.4 };
+const FAR_ROLLING: HorizonFarRangeSettings = { ampM: 360, floor: 0.40, hazeIn: 0.50, hazeOut: 0.70, snowline: 2, sharpness: 0.85 };
+const FAR_MESA: HorizonFarRangeSettings = { ampM: 470, floor: 0.45, hazeIn: 0.48, hazeOut: 0.70, snowline: 2, sharpness: 0.75 };
+const FAR_VOLCANIC: HorizonFarRangeSettings = { ampM: 560, floor: 0.28, hazeIn: 0.48, hazeOut: 0.70, snowline: 2, sharpness: 1.05 };
+const FAR_COASTAL: HorizonFarRangeSettings = { ampM: 300, floor: 0.35, hazeIn: 0.52, hazeOut: 0.72, snowline: 2, sharpness: 0.9 };
+const FAR_MARTIAN: HorizonFarRangeSettings = { ampM: 1050, floor: 0.50, hazeIn: 0.38, hazeOut: 0.62, snowline: 2, sharpness: 0.6 };
+const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.50, hazeOut: 0.72, snowline: 2, sharpness: 1.5 };
 
 /** The characters: the vocabulary of each mountain country, from the field guides rather than from one another. */
 const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>> = {
