@@ -3544,9 +3544,13 @@ next step for the near mountains; under an overcast the ring's snow is the sky's
 near skyline step against the sky measures under 2 luma — round 44's finding, unchanged) and only the polar rock law's
 dark faces make the ranges read; the near skyline's step now measures the ring's crest against the far range behind it
 (15 luma against 36 for the ring against the sky before), a layering the metric cannot tell from softness — the
-far range's haze was lowered 0.12 at both rows for the separation and the full sheets were re-shot; the skyline comb
-ribbons stand pale above the boosted crests where the crest is white (they did on the domes; a crown-mass ribbon that
-takes the crest's own tone is a lane of its own).
+far range's haze was lowered 0.12 at both rows for the separation and the full sheets were re-shot; the boosted outer
+rows of the near ring stand above the nearer hills now and the post pass's far ceilings (round 39: extinction 0.60,
+scatter 0.55 at 1.3 km, on top of the material's 0.34) wash them to faint sky-toned silhouettes — the lever for ranges
+that read as ranges at that distance is the aerial pass's far ceiling, not the ring (the ring's own haze was already
+lowered here); the skyline ribbons on those crests keep the authored haze ramp (0.63 on the outer rows) and the vista's
+light, so they fade with the crest they stand on — a crown-mass ribbon that takes the crest's own rendered tone is a
+lane of its own.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
