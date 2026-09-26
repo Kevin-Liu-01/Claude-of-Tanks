@@ -40,14 +40,39 @@ export interface GeometryBuckets {
   dark: THREE.BufferGeometry[];
   glass?: THREE.BufferGeometry[];
   baked?: THREE.BufferGeometry[];
+  /** Round 75: the painted corrugated-steel atlas (propsSteelAtlas.ts) — containers, tanks, drums; vertex-coloured livery. */
+  steel?: THREE.BufferGeometry[];
   [name: string]: THREE.BufferGeometry[] | undefined;
   [EXTERIOR_RECEIPTS]?: ExteriorReceipt[];
+  [STRUCTURE_CONTEXT]?: StructureBuildContext;
 }
 
 export interface StructureDimensions {
   w: number;
   d: number;
   h: number;
+}
+
+/**
+ * Round 75: what a plan builder may read about the battlefield it stands on. Builders draw the seeded stream of
+ * every later placement, so the context varies only what a draw already selects (a livery set, a cladding), never
+ * how many draws a builder makes. It rides the bucket set under a non-enumerable symbol (the exterior receipts'
+ * precedent): builders such as the bathhouse and the rowhouse already own a fourth positional argument.
+ */
+export interface StructureBuildContext {
+  mapId: string;
+  snowCap: boolean;
+  seed: number;
+}
+
+const STRUCTURE_CONTEXT = Symbol('structure-build-context');
+
+export function attachStructureBuildContext(buckets: GeometryBuckets, context: StructureBuildContext): void {
+  Object.defineProperty(buckets, STRUCTURE_CONTEXT, { value: context, enumerable: false, configurable: true });
+}
+
+export function structureBuildContext(buckets: GeometryBuckets): StructureBuildContext | undefined {
+  return buckets[STRUCTURE_CONTEXT];
 }
 
 export type StructureBuilder = (

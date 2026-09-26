@@ -191,7 +191,7 @@ function recordMeshes(props) {
     const key = mesh.material.customProgramCacheKey(); mats.add(key);
     vertices += mesh.geometry.attributes.position.count;
     attributeBytes += Object.values(mesh.geometry.attributes).reduce((n, a) => n + a.array.byteLength, 0);
-    if (['world-props-stone-v6', 'world-props-wood-v6', 'world-props-dark-v6'].includes(key)) return;
+    if (['world-props-stone-v7', 'world-props-wood-v7', 'world-props-dark-v7'].includes(key)) return;
     rows.push({ name: mesh.name, material: key, count: mesh.count, geometry: geometryHash(mesh.geometry),
       matrix: mesh.matrix.elements, instances: mesh.instanceMatrix && hash(bytes(mesh.instanceMatrix.array)),
       colors: mesh.instanceColor && hash(bytes(mesh.instanceColor.array)) });

@@ -43,11 +43,12 @@ const STRUCTURE_OVERHEAD_IDS = Object.freeze(new Set([
 
 const MOVEMENT_BUCKETS = Object.freeze([
   'plaster', 'plaster2', 'plaster3', 'stone', 'wood', 'dark', 'baked',
+  'steel', 'structureMetal', // round 75: container shells and corrugated cladding are walls
 ]);
 const RAY_BUCKETS = Object.freeze([
   ...MOVEMENT_BUCKETS,
   'roof', 'glass', 'curtain', 'straw',
-  'structureWood', 'structureCanvas', 'structureMetal',
+  'structureWood', 'structureCanvas',
 ]);
 const MIN_STRUCTURAL_HEIGHT = 0.52;
 const MIN_FOOTPRINT_EDGE = 0.09;

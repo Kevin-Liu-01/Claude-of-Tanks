@@ -69,11 +69,12 @@ const seed = Number(process.argv.find(a => a.startsWith('--seed='))?.slice(7));
 // exterior pass, so the three V29 byte hashes and the connected count moved again.
 const v29Stable = {
   // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
-  1337: '9ad0ac0638cf54490c49f01b869f5af6a41baef172859199473667ee442a61b1',
-  // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
-  2025: 'cb9a6658ecebe007cb8be64c83de5a240fd5483a9aa61356075f2f996342f148',
-  // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
-  7719: '0bd8af3b4b6182d61ca969f772dee6e210cea668c8cb2bc3cd74092c81b26907',
+  // round 75 (2026-09-26): the digest folds every bucket KEY in; the 'steel' and 'structureMetal' buckets joined the
+  // planned-building set (both empty on the wharf) — every geometry byte stayed exact (proved with the two keys
+  // skipped against the previous pins), so the three digests are re-pinned for the key set alone.
+  1337: '46d6208bb6b55f29dcb82752bd7de469da849aaa937773963d75902e35f516e1',
+  2025: '8409bd554e3cfbc9de3ece15ea4d9b03ea169736fd55003a17cb315ede36dfef',
+  7719: 'ff0821bdff04eb3339d623ed256bbc01d4da8bb637a7c627ae8ed8b878fd5035',
 };
 if (!seed) {
   for (const value of [1337, 2025, 7719]) {

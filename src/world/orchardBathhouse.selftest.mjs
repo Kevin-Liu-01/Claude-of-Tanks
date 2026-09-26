@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeBathhouse, makeTimberBathhouse } from './maps/structureKit.ts';
-import { addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops } from './maps/exteriorDetailKit.ts';
+import { addCatalogExterior, addConnectedExterior, attachStructureBuildContext, carryExteriorChimneyTops } from './maps/exteriorDetailKit.ts';
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { jitterUV } from './propGeometry.ts';
 import { mulberry32 } from './props.ts';
@@ -433,7 +433,9 @@ const dependencies = {
   // settlement pass 2 (2026-09-12): mergeInto carries chimney tops through the exterior kit helper.
   carryExteriorChimneyTops, THREE, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeTimberBathhouse,
   addCatalogExterior, jitterUV, mulberry32, sampleObbGround, deriveRuntimeStructureCollisionProfile,
-  appendStructureCollisionBand };
+  appendStructureCollisionBand,
+  attachStructureBuildContext, // round 75: the placement stage hands every builder its battlefield context
+};
 const makePlacement = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* build(config, heightField, seed) {
   const P = { maxSpread: 1.7, ...config.props, plan: ['bathhouse'] };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;

@@ -398,8 +398,9 @@ try {
     // NOT a whole-source lock. No runtime Git or external receipt dependency.
     // settlement passes 2026-09-12: the shared window joinery, then door lanterns
     // and corner quoins, changed every planned building's merged geometry (plans
-    // keep their poses/dimensions); re-pinned after each pass.
-    if (historical) assert.equal(hash(JSON.stringify(state.plans)),'a23c9ebc4c5fe68b884f1482ae1e96361a91b7bd6a675838562e15dfb0e9e32a',
+    // keep their poses/dimensions); re-pinned after each pass. Round 75 (2026-09-26): the container rows'
+    // bodies moved to the steel atlas bucket with door assemblies (8 -> 144 parts a row); poses unchanged.
+    if (historical) assert.equal(hash(JSON.stringify(state.plans)),'36448c2de23ce214a4fc2d2f19089a07a3253c1efb5b4879b86ee236602f22bc',
       'all42 planned-building admissions, original poses/dimensions/storage preserved');
     state.rng=globalThis.__courtRng.map(r=>({seed:r.seed,count:r.count,tail:[r.next(),r.next()]}));
     state.inventory=sceneInventory(currentProps.group);

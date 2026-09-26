@@ -29,6 +29,7 @@ interface StructureParts extends GeometryBuckets {
   curtain: THREE.BufferGeometry[];
   straw: THREE.BufferGeometry[];
   baked: THREE.BufferGeometry[];
+  steel: THREE.BufferGeometry[];
 }
 
 type FacadeFace = 'front' | 'back' | 'right' | 'left';
@@ -275,7 +276,7 @@ function finish(buckets: GeometryBuckets, parts: StructureParts): void {
 function parts(): StructureParts {
   return {
     plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [],
-    dark: [], glass: [], curtain: [], straw: [], baked: [],
+    dark: [], glass: [], curtain: [], straw: [], baked: [], steel: [],
   };
 }
 

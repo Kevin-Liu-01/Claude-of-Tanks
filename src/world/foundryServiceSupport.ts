@@ -64,7 +64,8 @@ function matchesBand(box: Box3, bottom: number, top: number): boolean {
 
 function supportRole(kind: string, bucket: string, geometry: BufferGeometry, box: Box3): string | null {
   if (geometry.userData.structureSupport?.part === 'entry-threshold') return 'threshold';
-  if (kind === 'containerRow') return bucket === 'baked' && matchesBand(box, 0, 2.6) ? 'container' : null;
+  // round 75: the bodies moved from the vertex-painted 'baked' bucket to the 'steel' atlas bucket; same band
+  if (kind === 'containerRow') return (bucket === 'baked' || bucket === 'steel') && matchesBand(box, 0, 2.6) ? 'container' : null;
   if (bucket !== 'stone') return null;
   switch (kind) {
     case 'factory': return matchesBand(box, -0.7, 0.5) ? 'plinth' : null;

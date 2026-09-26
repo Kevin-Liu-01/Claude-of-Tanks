@@ -37,6 +37,7 @@ import { applySourcedBuildings, type BuildingPaletteId, type SourcedTextureAppli
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
+import { makeSteelAtlas } from './propsSteelAtlas.ts'; // round 75
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
@@ -109,7 +110,7 @@ import {
 import type { CollisionRecord } from './collision.ts';
 import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
-import type { GeometryBuckets, StructureDimensions } from './maps/exteriorDetailKit.ts';
+import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
@@ -148,6 +149,8 @@ interface CompletePropsBuckets extends GeometryBuckets {
   curtain: THREE.BufferGeometry[];
   straw: THREE.BufferGeometry[];
   baked: THREE.BufferGeometry[];
+  steel: THREE.BufferGeometry[];
+  structureMetal: THREE.BufferGeometry[];
   [name: string]: THREE.BufferGeometry[];
 }
 type PropsStructureBuilder = (
@@ -2736,6 +2739,8 @@ function* propsBuildSteps(
   // row checkpoints must not suspend those not-yet-registered owners.
   // World-space grime breaks up every tiled hard-surface texture below.
   const grimeTex = yield* makeGrimeTexture(noi, aniso);
+  // Round 75: the container / tank sheet-steel atlas (propsSteelAtlas.ts), sixteen rows per checkpoint.
+  const steel = yield* makeSteelAtlas(noi, aniso);
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -2781,6 +2786,13 @@ function* propsBuildSteps(
       roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
     rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
+    // the rust mask the weathering hook below mixes toward rust.
+    steel: new THREE.MeshStandardMaterial({
+      map: steel.albedo, normalMap: steel.normal,
+      roughnessMap: steel.surface, aoMap: steel.surface,
+      vertexColors: true, roughness: 1, metalness: 0.06,
+    }),
     vehicle: new THREE.MeshStandardMaterial({
       map: vehiclePaint.albedo,
       normalMap: vehiclePaint.normal,
@@ -2807,9 +2819,10 @@ function* propsBuildSteps(
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
-      'straw', 'structureWood', 'structureCanvas', 'structureMetal']) {
+      'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel']) {
       mats[key].aoMapIntensity = 0.82;
     }
+    mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
     mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
     mats.vehicle.envMapIntensity = 0.58;
@@ -2870,6 +2883,25 @@ function* propsBuildSteps(
   diffuseColor.rgb = mix(diffuseColor.rgb,
     diffuseColor.rgb * (gC > 0.5 ? vec3(1.05, 1.0, 0.93) : vec3(0.95, 0.99, 1.06)),
     abs(gC - 0.5) * 1.1);
+  // Round 75 weathering law (v7), shared by every props surface:
+  //  - sun fade: upward faces bleach and desaturate a little (roofs, container tops, drum lids)
+  //  - rust: an ORM blue-channel mask (the steel atlas paints one; every other atlas carries zero) mixed toward
+  //    rust with a world-space break-up so two identical panels never rust alike, with runs pulled down the face
+  {
+    float fadeUp = smoothstep(0.55, 0.92, vGrimeN.y) * 0.11;
+    float luma = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(luma) * 1.06 + diffuseColor.rgb * 0.06, fadeUp);
+    #ifdef USE_ROUGHNESSMAP
+    float rustMask = texture2D(roughnessMap, vRoughnessMapUv).b;
+    if (rustMask > 0.002) {
+      float runs = texture2D(uGrime, vec2((vGrimeW.x + vGrimeW.z) * 0.9, vGrimeW.y * 0.06)).g;
+      float breakup = 0.55 + 0.45 * texture2D(uGrime, vGrimeW.xz * 0.37 + vGrimeW.y * 0.21).r;
+      float rust = clamp(rustMask * breakup * (0.7 + 0.6 * runs) * (1.0 - 0.5 * max(0.0, vGrimeN.y)), 0.0, 1.0);
+      vec3 rustColor = mix(vec3(0.26, 0.10, 0.04), vec3(0.46, 0.20, 0.07), breakup);
+      diffuseColor.rgb = mix(diffuseColor.rgb, rustColor, rust);
+    }
+    #endif
+  }
 ${snowCap ? `
   // winter: slope-masked snow load on upward faces (clumpy, wind-tailed)
   {
@@ -2885,14 +2917,14 @@ ${snowCap ? `
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : grimeHook);
       material.customProgramCacheKey = () =>
-        'world-props-' + materialKind + '-v6' + (snowCap ? 's' : '');
+        'world-props-' + materialKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
   }
   installSurfaceShaderHooks();
 
   const buckets: CompletePropsBuckets = {
     plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-    glass: [], curtain: [], straw: [], baked: [],
+    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
   };
   const obstacles: PropsCollisionRecord[] = [];
   const colliders: CollisionRecord[] = [];
@@ -3242,16 +3274,26 @@ ${snowCap ? `
   function jitterBuildingUvs(tmp: PropsBuckets): void {
     for (const bucketName of Object.keys(tmp)) {
       for (const geometry of tmp[bucketName]) {
-        jitterUV(geometry, geometry.userData?.detailUv ? detailUvRng : rng);
+        // Round 75: atlas-mapped parts (propsSteelAtlas.ts) keep their UVs. A part that stood in the seeded stream
+        // before the atlas (a container body) still takes its four draws so every later placement keeps its seat;
+        // parts new to the stream take none.
+        const source = geometry.userData?.detailUv ? detailUvRng : rng;
+        const atlas = geometry.userData?.uvJitter;
+        if (atlas === 'consume') { source(); source(); source(); source(); continue; }
+        if (atlas === 'none' || geometry.userData?.atlasUv) continue;
+        jitterUV(geometry, source);
       }
     }
   }
+  // Round 75: what a plan builder may read about this battlefield (maps/exteriorDetailKit.ts StructureBuildContext).
+  const structureContext: StructureBuildContext = { mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed };
   function placePlannedBuilding(px: number, pz: number, rot: number): boolean {
     const tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-      glass: [], curtain: [], straw: [], baked: [],
+      glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
     };
     const structureId = P.plan[bi] || 'cottage';
+    attachStructureBuildContext(tmp, structureContext);
     const info = builders[bi](rng, tmp, pickWall(rng));
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
@@ -3453,7 +3495,7 @@ ${snowCap ? `
       const ruined = roll < (P.ruinChance ?? 0.24);
       const tmp: PropsBuckets = {
         plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-        glass: [], curtain: [], straw: [], baked: [],
+        glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
       };
       const info = ruined
         ? makeRuin(rng, tmp)
@@ -6618,6 +6660,7 @@ ${snowCap ? `
       // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
       const merged = yield* mergePropsMaterialGeometrySteps(buckets[key], key);
       const mesh = new THREE.Mesh(merged, mats[key]);
+      mesh.name = 'props-bucket-' + key; // round 75: the perf inventories attribute the merged buckets by name
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;

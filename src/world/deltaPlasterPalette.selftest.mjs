@@ -58,7 +58,7 @@ function recordProps(props) {
     materials.add(object.material);
     for (const value of Object.values(object.material)) if (value?.isTexture) textures.add(value);
   });
-  const facadeKeys = ['world-props-plaster2-v6', 'world-props-plaster3-v6'];
+  const facadeKeys = ['world-props-plaster2-v7', 'world-props-plaster3-v7'];
   const facades = facadeKeys.flatMap(key => meshes.filter(mesh => mesh.material.customProgramCacheKey() === key));
   assert.ok(facades.length && facades.every(mesh => mesh.geometry.index === null));
   const facadeAttributes = Object.fromEntries(Object.keys(facades[0].geometry.attributes).map(key =>
@@ -135,8 +135,8 @@ if (process.argv[2] === '--fixture') {
     return JSON.parse(child.stdout);
   };
   const control = build('control'), folded = build('folded');
-  assert.deepEqual(control.facadeKeys, ['world-props-plaster2-v6', 'world-props-plaster3-v6']);
-  assert.deepEqual(folded.facadeKeys, ['world-props-plaster2-v6'], 'Delta uses its two original plaster families');
+  assert.deepEqual(control.facadeKeys, ['world-props-plaster2-v7', 'world-props-plaster3-v7']);
+  assert.deepEqual(folded.facadeKeys, ['world-props-plaster2-v7'], 'Delta uses its two original plaster families');
   assert.deepEqual(control.facadeVertexColors, [false, false]);
   assert.deepEqual(folded.facadeVertexColors, [false], 'no new color attribute or shader variant');
   assert.deepEqual(folded.facadeAttributes, control.facadeAttributes,

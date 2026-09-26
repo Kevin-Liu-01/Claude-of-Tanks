@@ -25,8 +25,9 @@ const end = source.indexOf('  const buckets: CompletePropsBuckets =', start);
 assert.ok(start > 0 && end > start, 'the production props material stage is covered');
 assert.match(source, /import \{ registerRetainedObject3DResources \} from '\.\.\/engine\/resourceLifetime\.ts'/,
   'production props imports the same ownership implementation exercised here');
+// Round 75 (2026-09-26): the 'steel' atlas family (propsSteelAtlas.ts) joins the library — 17 materials, 37 textures.
 const families = ['plaster', 'plaster2', 'plaster3', 'roofT', 'stone', 'wood',
-  'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint'];
+  'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint', 'steel'];
 const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', 'makeGrimeTexture', '_mustReplace',
   `return ${stripTypeScriptTypes(`function* testSurfaceSteps(group, engineCtx, mapId, P, atlases) {
@@ -85,9 +86,9 @@ function makeFixture(mapId = 'verdant') {
     disposals.set(resource, 0);
     resource.addEventListener('dispose', () => disposals.set(resource, disposals.get(resource) + 1));
   }
-  assert.equal(materials.length, 16, 'ownership adds no new surface materials');
-  assert.equal(textures.length, 34, 'ownership adds no new atlas or grime textures');
-  assert.equal(csm.shaders.size, 16, 'every bucket has a real CSM registration, including unused ones');
+  assert.equal(materials.length, 17, 'ownership adds no new surface materials');
+  assert.equal(textures.length, 37, 'ownership adds no new atlas or grime textures');
+  assert.equal(csm.shaders.size, 17, 'every bucket has a real CSM registration, including unused ones');
   assert.equal(group.children.length, 0, 'empty buckets cannot rely on attached mesh discovery');
   return { group, parent, csm, mats, materials, textures, grimeTex, disposals, retainedSurfaceMaterials };
 }
@@ -122,16 +123,16 @@ for (const mapId of ['verdant', 'winter', 'foundry']) {
   compileSurfaces(fixture);
   for (let cycle = 0; cycle < 3; cycle++) {
     const suspended = releaseObject3DGpuResources(fixture.group);
-    assert.deepEqual(suspended, { objects: 2, geometries: 1, materials: 16, textures: 34 },
+    assert.deepEqual(suspended, { objects: 2, geometries: 1, materials: 17, textures: 37 },
       'attached and declared references are deduplicated during GPU suspension');
     assert.equal(fixture.group.parent, fixture.parent, 'GPU suspension preserves the scene graph');
-    assert.equal(fixture.csm.shaders.size, 16, 'suspension preserves shadow registration for resume');
+    assert.equal(fixture.csm.shaders.size, 17, 'suspension preserves shadow registration for resume');
     fixture.textures.forEach((texture, index) => assert.equal(texture.image, images[index],
       'texture backing and sourced in-place replacement identity survive suspension'));
     fixture.materials.forEach((material, index) => assert.equal(material.onBeforeCompile, hooks[index]));
     compileSurfaces(fixture);
   }
-  assert.deepEqual(evict(fixture), { objects: 2, geometries: 1, materials: 16, textures: 34 });
+  assert.deepEqual(evict(fixture), { objects: 2, geometries: 1, materials: 17, textures: 37 });
   assert.equal(fixture.group.parent, null);
   assert.equal(fixture.csm.shaders.size, 0, 'final eviction clears used AND unused CSM material roots');
   for (const count of fixture.disposals.values()) assert.equal(count, 4,
@@ -139,7 +140,7 @@ for (const mapId of ['verdant', 'winter', 'foundry']) {
 }
 
 const empty = makeFixture();
-assert.deepEqual(evict(empty), { objects: 1, geometries: 0, materials: 16, textures: 34 },
+assert.deepEqual(evict(empty), { objects: 1, geometries: 0, materials: 17, textures: 37 },
   'an entirely unused props surface library is still fully released');
 assert.equal(empty.csm.shaders.size, 0);
 
@@ -153,7 +154,7 @@ CSM.prototype.setupMaterial.call(withLamp.csm, lamp);
 withLamp.retainedSurfaceMaterials.push(lamp);
 let lampDisposals = 0;
 lamp.addEventListener('dispose', () => lampDisposals++);
-assert.deepEqual(evict(withLamp), { objects: 1, geometries: 0, materials: 17, textures: 34 });
+assert.deepEqual(evict(withLamp), { objects: 1, geometries: 0, materials: 18, textures: 37 });
 assert.equal(withLamp.csm.shaders.size, 0, 'late lamp keeps all earlier CSM owners and grime cleanup');
 assert.equal(lampDisposals, 1);
 
@@ -163,7 +164,7 @@ registerRetainedObject3DResources(survivor, {
   materials: [shared.mats.plaster], textures: [shared.grimeTex],
 });
 assert.deepEqual(evict(shared, [survivor]),
-  { objects: 1, geometries: 0, materials: 15, textures: 30 },
+  { objects: 1, geometries: 0, materials: 16, textures: 33 },
   'resources declared by a live owner remain resident when another world is evicted');
 assert.equal(shared.csm.shaders.size, 1);
 assert.equal(shared.disposals.get(shared.grimeTex), 0);
@@ -174,4 +175,4 @@ assert.deepEqual(disposeObject3DResources(survivor, {
 assert.equal(shared.csm.shaders.size, 0);
 for (const count of shared.disposals.values()) assert.equal(count, 1);
 
-console.log('propsResources self-test passed: fixed 16-material/34-texture ownership, empty buckets, CSM eviction, suspend/resume and shared roots');
+console.log('propsResources self-test passed: fixed 17-material/37-texture ownership, empty buckets, CSM eviction, suspend/resume and shared roots');
