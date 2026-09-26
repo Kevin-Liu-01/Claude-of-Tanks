@@ -108,10 +108,12 @@ function appendHorizonReceipt(hash, id, ring) {
 // neither this attribution nor the new distant detail may hide terrain drift.
 // Titan's later finite-cap restoration likewise uses its explicit authoring
 // opt-out here; titanGorgeHorizon.selftest owns current Titan byte/shape guards.
+// Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
+// and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const currentPolders = [
-  '9f3181ff1081ae9db1a750f6db1348bb711a254025c33dbec919a72bebd2dd6c' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
-  'f19289db3552c4367d00f45405b5cd2f67dd7d816b53a7affcc3b256da3f81f7',
-  '154ff1d3794bdfefa68019aeffe5476d9651313036a0281e13a58d33068d8360',
+  '8b5be1010b944b583b8046e58f5c87d638123fda626846baa9cabd1b56fba37d' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
+  'b9d84d1057f626497515258b78c7c243bc9362af85a381a189076a957d896d24',
+  'd7a47587b4bd9fe0eed435305cd9df69e55919e796ccdff73ca73dcba49d0fb3',
 ];
 function assertCurrentPolders(ring, index) {
   // Restored 1049e4e rolling rows at amp 0.18 crest between 27 and 33 m.
@@ -124,10 +126,11 @@ function assertCurrentPolders(ring, index) {
 // Pre-restoration 28d5fd378 executable, excluding Copper and restored Verdant.
 // Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
 // Keep the same historical Polders/Titan inputs and already-capped Skybridge.
+// (round 72: re-pinned with the relieved geometry, see above)
 const previous = [
-  '4e8144b11454e1e3b2390cc09ac2c26d380acd4edea39a6a2aab3a94c12d811d' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */,
-  '5ed632cccb95bd6fe2b14679e6860c981d647b5f56abba6be0841b281330b645' /* 2026-09-19 vista pass */,
-  'a5a404fc00e5713d7ae0b6e6c3988af9c48559e56824115046837a2a5358b76a',
+  '9a76d0c673cb2eaf6fa65dbcd5586a78c77ab4d725924884e5ca783cd242071f' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */,
+  'c6af2da7c19168bcf432e47d934aa5f5f0d9dc904cbfd614c0180a478888e79a' /* 2026-09-19 vista pass */,
+  'd4e5c9038c35b7e6d1e1b5b6137cfa51d7fecaa587bf3ab4e0c59d3cd432d35a',
 ];
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');

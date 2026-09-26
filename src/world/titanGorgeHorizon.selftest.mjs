@@ -8,23 +8,27 @@ import { HORIZON_SEGMENTS, sampleHorizonGeometry } from './maps/horizon.ts';
 const seeds = [1337, 2049, 7719];
 // Pre-restoration 28d5fd378 executable, excluding restored Verdant.
 // Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
+// Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
+// and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const originalOther28 = [
-  '7e4fa12713814389f5cd8f7659c1b83cd819f96cf57fb97e8cf49f23619ef94c' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
-  '91ad45084c3843d7876a7e8e864a8505024cdd9d606b44ec4b4de7ae4f74d25d',
-  'eb228c019abc54f56d94a08929192e1631f1c82700d12a2791ce138c8b2b3ffb',
+  '8d4319692821c01403946daf525adf8a04f2223e584c68bc03741120bf1ad78e' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
+  'e22a7f7fd36bf3b4df66dee1e4dccd5d45704ccc5df082f5e90973aae73780c9',
+  'c9f6b9e3ce1ed9c665f54851571d7f812b19b477f0ef9d1ef4e1a5c3b3cbd90d',
 ];
 // Round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa style authors a nine-row stack
 // (bench, tables, valley, escarpment, saddle, summits, shoulder; 30 uploaded rows) and the far escarpment's cap
 // stands over a real valley with a 1.8:1 front, so Titan's uncapped fixture and its capped geometry are re-pinned here.
+// (round 72: re-pinned with the relieved geometry, see above)
 const originalTitan = [
-  '8b22bd26d18e209714f7a34521aa16002a724f70d0f8286a4f48d734545fe88f',
-  '324e358a7efde04e4e88c2a0de9a0ef455b4371d65c210e2e7c6745b9f02bc41',
-  '8af6b2326aaab2bb60640b80d0d2467c40cf20db693776356241ff4ea1b5a5a6',
+  '67ba5ddfbbcb54f26f01c97fdf0bae265dfa0e815d5dcc296cc2d03f061f25f7',
+  '2c9c86a09b810383057d7400272d97215a65c2649866aeb95d10f07868b48f77',
+  '9c75cc8cc4b7622288c91d4c3ce708b45353d31f80ec8750323b089f252ce977',
 ];
+// (round 72: re-pinned with the relieved geometry, see above)
 const currentTitan = [
-  '07d02cba7a788fdfdea1eb79cec75a5954a9b94d334cfdc2ba0dec042d2a7196',
-  'c2c820c5dd1895a9d92303a1a98eca9f6e2112d71bd0be2a3ddc69ff65494fe1',
-  '0d01f25caed8fa88bbe24abb078e2f32b6f6a269e51e09d345e4bbcaec9836e9',
+  '8cdeb839a73398309023ec5993a1207d1fb00b7c9d57e446fba545234c407680',
+  'ce8fc7df2b1d2befe567dc186f148064e9a04f7260ea5e2718ff5e8878025d37',
+  '45a66b43fe75ef68680cea3e380ba80c6732124950ea58e624d7d9d99672590e',
 ];
 // Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
 // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is

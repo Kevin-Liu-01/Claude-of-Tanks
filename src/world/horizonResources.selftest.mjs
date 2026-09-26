@@ -307,6 +307,8 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // historical hashes, and independently freeze every current Polders byte.
 // Titan's subsequent finite-cap restoration has an explicit false authoring
 // override; titanGorgeHorizon.selftest guards its current shape and every byte.
+// Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
+// and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const currentPoldersReceipts = new Map([
   [1337, '8b5be1010b944b583b8046e58f5c87d638123fda626846baa9cabd1b56fba37d' /* 2026-09-19 vista pass */],
   [2049, 'b9d84d1057f626497515258b78c7c243bc9362af85a381a189076a957d896d24'],
@@ -332,6 +334,7 @@ const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHa
 const unrelatedMutation = createHash('sha256');
 // 2026-09-19 vista pass: 431 columns, the denser row ladder (18 / 36 rows), the seated skirt and the ridged
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
+// (round 72: re-pinned with the relieved geometry, see above)
 const unchangedReceipts = [
   '58bb7c6f6388cb896316fe3321397c89887275367bc479d9cf66eea339e851a9',
   '4b78b045747ddd52c0d58c3a6735504258e53a2c09f751f97ce4c833b5a5b44d',

@@ -16,10 +16,12 @@ const columns = HORIZON_SEGMENTS, config = getMapConfig('badlands');
 const seeds = [1337, 2049, 7719];
 // Exact source/build-independent pre-canyon Badlands geometry, captured before
 // modifying the horizon. Never refresh these to make an unrelated change pass.
+// Round 72 (2026-09-25): with the canyon opted out the relief field applies to Badlands like every other map, so the
+// historical opt-out digests were re-pinned once against the relieved geometry (the canyon's own rows are byte-identical).
 const historicalHashes = [
-  '19026d41308208b13946053dec93c46a95c869a144352f46f4d03f682d532c8b' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
-  '549ee367af04b7ff9d59693fc74da41494335768b2bd9fd710438853d8564415' /* 2026-09-19 vista pass */,
-  '9aaa2bea6c6a682460575d88c3595d87bb5b7737f5e2e9d43055cc61268c4b59',
+  'dd57a3ef5e4a57c50db0609ad3e6f551a5a8a8d1f69b9cd4387ee28b54e74567' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
+  'ef098c5f3667a9d8f66a059270a86622096cdf6138f13549fb7147b48df70fb5' /* 2026-09-19 vista pass */,
+  '401e10662cabe8cc1e903f005744174c777a2ffc4b4fd80457c7582dc14b3652',
 ];
 function digest(ring) {
   return createHash('sha256').update(new Uint8Array(ring.positions.buffer))

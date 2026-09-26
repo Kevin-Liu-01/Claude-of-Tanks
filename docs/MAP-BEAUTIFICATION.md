@@ -3402,6 +3402,100 @@ landings in play come from ridges, not boosts. `src/net/networkBattleLaunchRunti
 `src/game/battleEndingHold.selftest` fail on the round-95 base tree before this lane (the Jev `stop()` line inside
 the ending-hold pattern) — not touched here.
 
+### Round 72 — 2026-09-25: mountains and horizons to the clouds' level
+
+**Owner (2026-09-25, looking at Whiteout under the round-71 clouds):** "wow our clouds look amazing. we need skyboxes,
+mountains and horizons and maps that look just as good as those... look at this whiteout map — the mountains look so
+flat and untextured and boring, while the clouds look so good. lets lock in! and also make sure performance is still
+really good."
+
+**Why Whiteout read as flat.** Its ring was the rolling style at amplitude 0.72 — soft billows 138 m tall at 1.3 km,
+subtending six degrees under a 300 m stratus — with no relief the mesh could carry (the interpolated rows' ridged term
+was bounded at 7–11 m on 60–250 m spans), a screen-derivative bump from twelve-metre noise as its only shading
+structure, an ambient term that was a constant, no occlusion, no cast shadows, and nothing behind the outer shoulder
+but sky. Every map shared the shape of that problem: the ranges were painted, never modelled.
+
+**The relief field (`src/world/horizonRelief.ts`).** A ridged multifractal over a warped world plane (after Musgrave:
+each octave's ridge is weighted by the one below it, so crests sharpen where the coarse ridge already stands and the
+valleys between stay smooth; two low-frequency noises bend the plane so ridgelines wander instead of running straight),
+with an erosion vocabulary: gullies as ridged noise elongated downslope (radial on the ring; the across-slope coordinate
+runs around a circle in noise space so the pattern closes on itself), a talus apron where the macro relief is concave
+(the fine relief settles into a smooth fan), rounded shoulders low on a face and sharper crests high on it. The field
+is split by wavelength: three octaves from 300 m down displace the AUTHORED rows (every range gains peaks, spurs and
+saddles that vary with the radius too, the first ridge at 60 % so the seated foothill keeps its hillside grade, the
+skirt rows untouched) and take the 260 m term's place in the interpolated rows (the 90 m and 30 m knobs stay); three
+octaves from 37 m down go into the bake. Eight CHARACTERS carry the vocabulary of each mountain country — polar
+(Whiteout, Frosthollow: long warped ridgelines, wind-scoured crests over talus skirts, deep radial gullies), alpine
+(Glacier Pass, Nordhavn, Orchard, Reservoir: sharp multifractal crests, chutes), rolling (the wooded hills: billows
+with spurs, shallow drainage), mesa (the tablelands: flat caps, ledged cliffs, dry washes), volcanic (Caldera,
+Blackglass: smooth cones cut by radial barrancos), coastal (Saltmere, Saltwind, Polders: rounded uplands, cliffed
+fronts), martian (Olympus Basin: very long wavelengths, lobate flows), karst (Monsoon, Mangrove: steep towers) —
+resolved from the map identity, then the style, overridable by `horizon.relief`. Redrock's outland stays the analytic
+canyon (its rows are overwritten) and keeps its bytes.
+
+**The surface bake.** An (angle x radius) RGBA8 atlas of 2048 x 256 texels over the annulus (410–1560 m: about 3 m of
+arc at 1 km and 4.5 m radially), built once per map at world activation in slices like the terrain build: R/G the fine
+relief's world-xz gradient (the detail normal), B a horizon-based ambient occlusion of the whole height field (eight
+directions, six steps to 160 m, on a half grid), A the sun's visibility across the ranges at the map's fixed sun
+(fourteen steps to 560 m toward the sun — the ridges' own cast shadows, which under Whiteout's 13° sun cover almost
+half the ring). The macro height at any texel is the ring's own rows interpolated (per column the rows are monotone in
+radius); the warp and the coarse octaves run on a half grid and are interpolated to each texel, so the field costs four
+noise samples a texel instead of nine. The vista program reads the atlas by the ring's own u (the angle, ten repeats
+across the seam column) and the fragment's radius — no new vertex attribute — and combines the gradient with the
+geometric slope in the height-field frame (both are world-xz gradients, so the sum is exact): the material's slope is
+the RELIEVED slope, so rock breaks through on the fine faces, the metre-scale bump rides on the relieved normal, the
+ambient carries the occlusion, the sun carries the visibility. A face turned from the sun takes the sky's own chroma
+(the fog tint normalised to unit luminance and pushed: blue-grey under a clear sky, warm grey under an overcast) instead
+of a grey; sun glitter on the snowfields is a sparse world-anchored hash (a 3 m facet, one in sixty) lit in the sun's
+mirror direction, gone by 1.5 km. Mobile keeps today's ring (no bake, no atlas, no far range).
+
+**Cloud shadows on the ranges (`src/world/horizonCloudShade.ts`).** The volumetric layer casts its shadows through the
+cascades' gobo planes, which discard by the weather field; the ring stands beyond the cascades and took none. Each
+frame the ring's onBeforeRender points its cloud-shade uniforms at the layer's live gobo fields (by reference — the
+wind reaches the ring with no copies beyond four numbers), the fragment projects itself up the sun's ray to the cloud
+base, reads the same weather and street fields on the layer's 12 km tile and darkens the sun term where the field
+stands over the shadow threshold, softened over ±0.05 (a hard discard at three kilometres reads as a stencil). Off
+whenever the layer is off, has no shadow regime, has no cascades attached or does not expose its gobo uniforms (the
+cloud lane owns that module; the binding is defensive).
+
+**The far range (`src/world/horizonFarRange.ts`).** Beyond the outer shoulder (1.24–1.38 km) there was sky. A second
+annulus of ranges now stands 1.86–3.32 km out — inside the cloud domes (3.4 km) and the camera's far plane (4 km), so
+the clouds still pass behind the peaks and the peaks behind the ring's crests — 288 columns on six rows, the crest row
+at 2.82 km, broad massifs with ridged crests from the character's own far table, coming and going around the horizon
+(a slow envelope between a floor and the full height) so some sectors open onto a distant plain, warped in plan and
+smoothed along the row (no one-column needles at three kilometres). One unlit vertex-shaded draw: albedo by altitude
+and slope (forest low where the map has a treeline, rock on the steep faces and crests, snow above the far snowline),
+the vista program's own sky and Lambert sun, then its own aerial perspective toward the fog tint by row (0.56–0.84);
+the scene fog is OFF on it (at three kilometres the exponential fog would erase it) and the post aerial pass adds its
+ceiling on top; the night runtime dims it with the ring. A map with a low cloud deck keeps its far peaks under the deck
+(82 % of the base, never under 120 m): Whiteout's 300 m stratus allows 246 m, so its far peaks show only through the
+passes; a sea sector lowers the far ring to the water.
+
+**Whiteout.** The polar character on the alpine ladder (36 rows, seven authored ranges) at amplitude 1.30 — peaks to
+241 m, wind-scoured crests (`bareRock`), snow above 30 % with rock on the steep faces, spruce and birch stands on the
+lower slopes (treeline 0.22, the rim mix's own species) — under the low stratus.
+
+**Measured.** __METRICS__
+
+**Performance.** __PERF__
+
+**Receipts.** `horizonRelief.selftest` (new: the eight characters' bounds, the per-map keys, the field's determinism,
+centring and amplitude, the talus damping, the gully field's continuity across the angle seam, the bake's sizes,
+ranges, determinism, flat-ring and sea controls, the far range's rows, deck cap, determinism, envelope, needle bound
+and sea sector, every map's ranges bent along their crests at three seeds), `horizonCloudShade.selftest` (new: the
+tile equal to the layer's, the ten uniforms declared and reaching the vista program, the fetches inside the layer's
+branch, the binder by reference and its four off-conditions), `horizonResources` (re-pinned with dated notes: the
+three aggregate digests and Polders' three, the two noise budgets — 66,374 → 139,527 on the alpine ladder and 59,047 →
+121,856 on the mesa stack, the six fetch sites, the round-72 uniforms and terms, nine retained textures, the far range
+as the bare backdrop's one child and its material, forest maps' three children), `titanGorgeHorizon`,
+`redrockCanyonHorizon` (the historical opt-out digest: with the canyon off the relief applies) and
+`copperQuarrySurface` (digests re-pinned), `mapQuality`, `horizonMesaSurface`, `horizonNoiseSampling`,
+`horizonAutumnGround`, `horizonDetailAtlas`, `horizonMesaTexture`, `horizonRockfield`, `railCutting`,
+`autumnHorizonSeam`, `battleAtmosphereRuntime` (the far range in the night dim's name list) green; `npm run typecheck`
+(the native tsc and the core unused-symbol check).
+
+**Open.** __OPEN__
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
