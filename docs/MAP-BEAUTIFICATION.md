@@ -3494,13 +3494,194 @@ passes; a sea sector lowers the far ring to the water.
 241 m, wind-scoured crests (`bareRock`), snow above 30 % with rock on the steep faces, spruce and birch stands on the
 lower slopes (treeline 0.22, the rim mix's own species) — under the low stratus.
 
-**Measured.** __METRICS__
+**Per-map characters** (the character, the ring style and amplitude, the coarse / fine relief the character carries, the
+lower of the map's two cloud decks and the far peaks that fit under it):
+
+| Map | Character | Style / amp | Coarse / fine relief (m) | Deck (m) | Far peaks (m) |
+|---|---|---|---|---|---|
+| Verdant Fields (`verdant`) | rolling | rolling / 1 | 22 / 7 | 1400 | 360 |
+| Sirocco Wadi (`desert`) | mesa | mesa / 1.15 | 9 / 9 | 900 | 470 |
+| Frosthollow (`winter`) | polar | alpine / 1.04 | 34 / 11 | 320 | 262 |
+| Steinburg (`urban`) | rolling | escarpment / 0.85 | 22 / 7 | 2800 | 360 |
+| Saltmere Bay (`coastal`) | coastal | rolling / 0.75 | 20 / 7 | 1400 | 300 |
+| Amberford (`autumn`) | rolling | rolling / 1 | 22 / 7 | 1400 | 360 |
+| Tarkhan Steppe (`steppe`) | rolling | rolling / 0.65 | 22 / 7 | 1400 | 360 |
+| Cinder Junction (`railyard`) | rolling | escarpment / 0.8 | 22 / 7 | 300 | 246 |
+| Frontier Basin (`frontier`) | rolling | rolling / 1.18 | 22 / 7 | 1400 | 360 |
+| Nordhavn Fjord (`fjord`) | alpine | alpine / 1.34 | 38 / 13 | 1400 | 820 |
+| Jade River Delta (`delta`) | rolling | rolling / 0.9 | 22 / 7 | 1400 | 360 |
+| Redrock Divide (`badlands`) | mesa | mesa / 1.36 | 9 / 9 | 1400 | 470 |
+| Monsoon Ridge (`monsoon`) | karst | alpine / 1.08 | 30 / 9 | 1400 | 520 |
+| Glacier Pass (`alpine`) | alpine | alpine / 1.42 | 38 / 13 | 1900 | 820 |
+| Obsidian Caldera (`caldera`) | volcanic | mesa / 1.52 | 18 / 8 | 360 | 295 |
+| Ironworks (`foundry`) | rolling | rolling / 0.72 | 22 / 7 | 1400 | 360 |
+| Ruinspires (`ruinspires`) | rolling | escarpment / 0.92 | 22 / 7 | 360 | 295 |
+| Blackglass District (`blackglass`) | volcanic | escarpment / 1.05 | 18 / 8 | 330 | 271 |
+| Titan Gorge (`titan_gorge`) | mesa | mesa / 2.15 | 9 / 9 | 860 | 470 |
+| Skybridge Chasm (`skybridge`) | mesa | mesa / 2 | 9 / 9 | 380 | 312 |
+| Tidegate Polders (`polders`) | coastal | rolling / 0.18 | 20 / 7 | 420 | 300 |
+| Copper Mesa Mine (`copper_mesa`) | mesa | mesa / 1.5 | 9 / 9 | 880 | 470 |
+| Kestrel Airfield (`airfield`) | rolling | rolling / 0.65 | 22 / 7 | 1400 | 360 |
+| Sunscar Oasis (`oasis`) | rolling | rolling / 0.9 | 22 / 7 | 820 | 360 |
+| Whiteout Station (`whiteout`) | polar | alpine / 1.3 | 34 / 11 | 300 | 246 |
+| Orchard Valley (`orchard`) | alpine | alpine / 1.05 | 38 / 13 | 1400 | 820 |
+| Longleaf Crossing (`longleaf`) | rolling | rolling / 1 | 22 / 7 | 1400 | 360 |
+| Mangrove Reach (`mangrove`) | karst | rolling / 0.46 | 30 / 9 | 1400 | 520 |
+| Saltwind Narrows (`saltwind`) | coastal | rolling / 0.9 | 20 / 7 | 1400 | 300 |
+| Highland Reservoir (`reservoir`) | alpine | alpine / 1.25 | 38 / 13 | 1400 | 820 |
+| Olympus Basin (`mars`) | martian | mesa / 1.2 | 16 / 6 | 700 | 574 |
+
+**Measured.** Fixed captures on the sky-w, sky-s and centre-far views of every map at seed 1337 (`.qa-dev/r72-capture.mjs`,
+the volumetric cloudscape on), before (the round-71 tip, tag `base`) and after (this lane's tip), with the ring's own
+screen mask from a magenta-material pass (a differential on the magenta axis, so a hazed far row still counts and a
+moving cloud edge does not) — the full ring for the OUTER skyline (the far range included) and the ring without its far
+range for the NEAR skyline. Metrics (`.qa-dev/r72-metrics.mjs`, `r72-compare.mjs`): the ridgeline contrast (the mean
+luma step across the mask's top edge) and its crisp share (steps over 24), the surface detail energy (the standard
+deviation of the luma high-pass inside the mask — the flat Whiteout ring was the baseline to beat), the lit / shadowed
+ratio (p85 / p15 of the mask's luma), the snow share, the mask's cover and mean height, and the round-44 skyline ratio.
+Summary over the 93 views: outer ridge contrast: median before 35.8 → after 9.2, median ratio 0.27x, up on 3 of 93 views outer crisp share: median before 83.9 → after 7.3, median ratio 0.13x, up on 4 of 93 views near ridge contrast: median before 35.8 → after 7.2, median ratio 0.23x, up on 1 of 93 views near crisp share: median before 83.9 → after 5.9, median ratio 0.11x, up on 5 of 93 views detail energy: median before 11.6 → after 13.0, median ratio 1.12x, up on 63 of 93 views lit / shadow: median before 1.4 → after 1.4, median ratio 1.09x, up on 68 of 92 views ring height px: median before 55.2 → after 71.7, median ratio 1.28x, up on 82 of 93 views
+
+The per-map table (before → after; the outer skyline softens by design where a hazed far range now stands behind the
+ring's crests, the near skyline is the ring's own edge): 
+
+| Map | View | Cover % | Height px | Outer ridge | Outer crisp % | Near ridge | Near crisp % | Detail | Lit / shadow | Snow % | Skyline |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Verdant Fields | sky-w | 5.8 → 7.2 | 44 → 55 | 40.7 → 10.2 | 95 → 13 | 40.7 → 10.5 | 95 → 13 | 12.5 → 16.4 | 1.24 → 1.41 | 13 → 61 | 0.74 → 0.72 |
+| Verdant Fields | sky-s | 5.2 → 6.0 | 60 → 63 | 42.3 → 21.7 | 89 → 35 | 42.3 → 21.2 | 89 → 32 | 12.8 → 20.7 | 1.39 → 1.67 | 7 → 36 | 0.71 → 0.77 |
+| Verdant Fields | centre-far | 9.7 → 11.0 | 68 → 77 | 33.1 → 8.9 | 84 → 13 | 33.1 → 7.1 | 84 → 6 | 9.7 → 12.1 | 1.26 → 1.37 | 14 → 34 | 0.96 → 0.97 |
+| Sirocco Wadi | sky-w | 10.2 → 10.2 | 115 → 115 | 34.9 → 5.8 | 95 → 0 | 34.9 → 5.8 | 95 → 0 | 4.6 → 5.8 | 1.06 → 1.24 | 3 → 13 | 1.27 → 1.13 |
+| Sirocco Wadi | sky-s | 7.0 → 6.9 | 94 → 103 | 18.8 → 8.0 | 14 → 3 | 18.8 → 8.0 | 14 → 3 | 14.6 → 13.5 | 1.10 → 1.16 | 64 → 40 | 0.99 → 0.99 |
+| Sirocco Wadi | centre-far | 14.3 → 14.3 | 100 → 100 | 27.2 → 6.0 | 65 → 3 | 27.2 → 6.0 | 65 → 3 | 8.3 → 8.6 | 1.09 → 1.21 | 61 → 31 | 1.01 → 1.01 |
+| Frosthollow | sky-w | 9.3 → 16.1 | 65 → 113 | 10.6 → 10.2 | 3 → 5 | 10.6 → 10.2 | 3 → 5 | 10.9 → 7.8 | 1.18 → 1.06 | 93 → 98 | 0.88 → 0.90 |
+| Frosthollow | sky-s | 7.9 → 14.1 | 57 → 100 | 16.2 → 5.8 | 21 → 5 | 16.2 → 5.7 | 21 → 4 | 18.4 → 13.5 | 1.29 → 1.10 | 86 → 92 | 0.88 → 0.92 |
+| Frosthollow | centre-far | 12.7 → 19.4 | 89 → 136 | 8.5 → 2.2 | 1 → 0 | 8.5 → 2.2 | 1 → 0 | 10.0 → 7.6 | 1.43 → 1.35 | 74 → 81 | 1.10 → 1.06 |
+| Steinburg | sky-w | 0.0 → 0.0 | 0 → 0 | 0.0 → 0.0 | 0 → 0 | 0.0 → 0.0 | 0 → 0 | 0.0 → 0.0 | - | - | 0.91 → 0.91 |
+| Steinburg | sky-s | 0.5 → 0.8 | 15 → 23 | 58.2 → 24.3 | 88 → 49 | 58.2 → 29.3 | 88 → 43 | 22.2 → 22.9 | 1.69 → 2.15 | 30 → 55 | 0.21 → 0.20 |
+| Steinburg | centre-far | 6.5 → 10.3 | 46 → 72 | 35.4 → 23.0 | 98 → 67 | 35.4 → 5.3 | 98 → 4 | 11.2 → 11.1 | 1.26 → 1.25 | 49 → 76 | 1.12 → 1.12 |
+| Saltmere Bay | sky-w | 1.8 → 4.3 | 19 → 34 | 40.3 → 42.9 | 61 → 67 | 40.3 → 41.6 | 61 → 63 | 17.5 → 21.6 | 2.28 → 2.60 | 6 → 4 | 0.91 → 0.81 |
+| Saltmere Bay | sky-s | 1.0 → 1.0 | 17 → 15 | 35.4 → 46.9 | 52 → 63 | 35.4 → 34.3 | 52 → 55 | 23.3 → 26.5 | 3.64 → 2.55 | 35 → 47 | 0.54 → 0.62 |
+| Saltmere Bay | centre-far | 4.5 → 6.5 | 31 → 45 | 39.6 → 17.8 | 84 → 9 | 39.6 → 20.2 | 84 → 23 | 13.4 → 15.1 | 1.27 → 1.37 | 73 → 81 | 0.82 → 0.85 |
+| Amberford | sky-w | 6.9 → 8.9 | 51 → 62 | 28.1 → 5.5 | 56 → 6 | 28.1 → 5.7 | 56 → 6 | 13.8 → 14.7 | 1.18 → 1.28 | 75 → 77 | 0.88 → 0.79 |
+| Amberford | sky-s | 9.4 → 11.8 | 65 → 78 | 32.6 → 13.5 | 59 → 16 | 32.6 → 12.6 | 59 → 12 | 16.9 → 18.9 | 1.51 → 1.83 | 45 → 52 | 0.72 → 0.63 |
+| Amberford | centre-far | 9.8 → 11.1 | 69 → 78 | 25.0 → 5.2 | 39 → 4 | 25.0 → 5.2 | 39 → 4 | 12.4 → 14.2 | 1.25 → 1.38 | 71 → 72 | 0.86 → 0.85 |
+| Tarkhan Steppe | sky-w | 4.7 → 5.2 | 33 → 37 | 23.2 → 5.5 | 32 → 3 | 23.2 → 4.3 | 32 → 4 | 18.0 → 17.9 | 1.31 → 1.38 | 57 → 71 | 0.88 → 0.85 |
+| Tarkhan Steppe | sky-s | 0.9 → 3.2 | 15 → 25 | 24.8 → 11.1 | 31 → 4 | 24.8 → 9.4 | 31 → 11 | 16.7 → 11.7 | 1.22 → 1.04 | 77 → 87 | 0.87 → 0.87 |
+| Tarkhan Steppe | centre-far | 6.0 → 7.8 | 42 → 55 | 19.8 → 7.8 | 26 → 5 | 19.8 → 6.1 | 26 → 7 | 13.8 → 15.1 | 1.26 → 1.28 | 75 → 77 | 0.95 → 0.96 |
+| Cinder Junction | sky-w | 5.5 → 6.2 | 39 → 43 | 36.8 → 8.6 | 85 → 21 | 36.8 → 6.4 | 85 → 11 | 12.8 → 16.2 | 1.56 → 1.77 | 43 → 64 | 0.67 → 0.60 |
+| Cinder Junction | sky-s | 7.6 → 8.1 | 54 → 57 | 52.2 → 11.3 | 100 → 18 | 52.2 → 11.4 | 100 → 18 | 10.9 → 22.3 | 1.40 → 1.90 | 38 → 66 | 0.71 → 0.66 |
+| Cinder Junction | centre-far | 8.0 → 9.0 | 56 → 63 | 35.6 → 2.5 | 99 → 3 | 35.6 → 2.5 | 99 → 3 | 9.3 → 13.0 | 1.45 → 1.73 | 55 → 63 | 0.82 → 0.76 |
+| Frontier Basin | sky-w | 9.3 → 10.2 | 65 → 72 | 48.6 → 10.0 | 99 → 14 | 48.6 → 10.0 | 99 → 14 | 10.1 → 18.3 | 1.35 → 1.57 | 18 → 74 | 0.75 → 0.71 |
+| Frontier Basin | sky-s | 10.7 → 12.4 | 75 → 87 | 55.6 → 4.1 | 99 → 1 | 55.6 → 4.1 | 99 → 1 | 14.3 → 19.4 | 1.38 → 1.84 | 4 → 57 | 0.69 → 0.63 |
+| Frontier Basin | centre-far | 12.2 → 13.4 | 85 → 94 | 38.4 → 6.1 | 89 → 3 | 38.4 → 6.1 | 89 → 3 | 11.3 → 13.9 | 1.30 → 1.52 | 14 → 57 | 0.93 → 0.93 |
+| Nordhavn Fjord | sky-w | 14.4 → 22.4 | 101 → 157 | 57.3 → 6.6 | 94 → 9 | 57.3 → 6.6 | 94 → 9 | 9.1 → 8.3 | 1.28 → 1.67 | 2 → 42 | 0.70 → 0.66 |
+| Nordhavn Fjord | sky-s | 16.4 → 24.7 | 115 → 173 | 53.9 → 3.5 | 99 → 2 | 53.9 → 3.5 | 99 → 2 | 11.2 → 9.3 | 1.80 → 2.33 | 7 → 54 | 0.62 → 0.51 |
+| Nordhavn Fjord | centre-far | 14.8 → 21.1 | 104 → 147 | 66.9 → 6.8 | 100 → 7 | 66.9 → 6.8 | 100 → 7 | 8.6 → 8.8 | 1.33 → 1.70 | 8 → 38 | 0.69 → 0.72 |
+| Jade River Delta | sky-w | 6.9 → 7.5 | 48 → 53 | 40.3 → 8.4 | 88 → 10 | 40.3 → 8.4 | 88 → 10 | 11.7 → 15.2 | 1.23 → 1.36 | 33 → 81 | 0.81 → 0.79 |
+| Jade River Delta | sky-s | 7.9 → 8.6 | 55 → 60 | 40.7 → 11.3 | 86 → 12 | 40.7 → 11.2 | 86 → 12 | 13.1 → 17.3 | 1.30 → 1.40 | 19 → 79 | 0.74 → 0.79 |
+| Jade River Delta | centre-far | 9.2 → 10.3 | 64 → 72 | 32.5 → 11.8 | 85 → 17 | 32.5 → 9.1 | 85 → 12 | 11.8 → 13.2 | 1.28 → 1.42 | 56 → 78 | 0.87 → 0.85 |
+| Redrock Divide | sky-w | 0.3 → 0.8 | 20 → 28 | 46.9 → 22.2 | 58 → 24 | 46.9 → 34.8 | 58 → 53 | 14.8 → 10.9 | 2.10 → 1.18 | 2 → 24 | 1.03 → 1.03 |
+| Redrock Divide | sky-s | 9.8 → 14.7 | 70 → 105 | 35.8 → 24.6 | 77 → 40 | 35.8 → 9.0 | 77 → 10 | 10.2 → 8.2 | 1.26 → 1.14 | 1 → 47 | 0.81 → 0.87 |
+| Redrock Divide | centre-far | 9.5 → 14.5 | 66 → 101 | 19.6 → 14.1 | 20 → 19 | 19.6 → 4.2 | 20 → 2 | 7.8 → 7.1 | 1.23 → 1.18 | 1 → 48 | 0.93 → 0.93 |
+| Monsoon Ridge | sky-w | 4.9 → 8.7 | 36 → 61 | 76.4 → 19.2 | 97 → 24 | 76.4 → 19.1 | 97 → 24 | 12.2 → 19.6 | 1.29 → 1.98 | 1 → 48 | 0.57 → 0.60 |
+| Monsoon Ridge | sky-s | 9.2 → 13.5 | 65 → 95 | 68.9 → 4.4 | 97 → 3 | 68.9 → 4.4 | 97 → 3 | 11.8 → 16.0 | 1.69 → 2.31 | 3 → 64 | 0.55 → 0.47 |
+| Monsoon Ridge | centre-far | 9.2 → 14.0 | 65 → 98 | 58.7 → 6.4 | 100 → 6 | 58.7 → 6.3 | 100 → 6 | 8.8 → 12.5 | 1.26 → 1.79 | 2 → 59 | 0.67 → 0.63 |
+| Glacier Pass | sky-w | 7.4 → 14.0 | 52 → 98 | 24.1 → 6.4 | 39 → 4 | 24.1 → 6.3 | 39 → 4 | 26.7 → 16.2 | 1.91 → 1.17 | 56 → 84 | 1.08 → 0.96 |
+| Glacier Pass | sky-s | 11.3 → 20.0 | 79 → 140 | 30.9 → 8.3 | 49 → 7 | 30.9 → 7.2 | 49 → 4 | 20.0 → 12.7 | 1.67 → 1.33 | 29 → 84 | 0.91 → 0.70 |
+| Glacier Pass | centre-far | 14.1 → 23.2 | 99 → 163 | 19.6 → 8.2 | 41 → 10 | 19.6 → 6.2 | 41 → 4 | 19.5 → 14.7 | 1.66 → 1.20 | 68 → 80 | 1.49 → 1.41 |
+| Obsidian Caldera | sky-w | 17.6 → 21.3 | 123 → 149 | 46.8 → 4.0 | 88 → 2 | 46.8 → 4.0 | 88 → 2 | 6.2 → 9.9 | 1.67 → 2.24 | 0 → 4 | 0.61 → 0.46 |
+| Obsidian Caldera | sky-s | 16.9 → 20.4 | 119 → 143 | 52.4 → 3.9 | 78 → 1 | 52.4 → 3.9 | 78 → 1 | 7.0 → 14.5 | 2.06 → 3.32 | 0 → 30 | 0.47 → 0.31 |
+| Obsidian Caldera | centre-far | 21.0 → 24.9 | 149 → 174 | 39.4 → 3.4 | 67 → 0 | 39.4 → 3.4 | 67 → 0 | 7.0 → 10.9 | 1.79 → 2.49 | 0 → 9 | 0.64 → 0.44 |
+| Ironworks | sky-w | 4.0 → 5.3 | 29 → 37 | 73.0 → 35.2 | 100 → 68 | 73.0 → 25.5 | 100 → 42 | 13.4 → 15.7 | 1.55 → 1.73 | 4 → 43 | 0.60 → 0.63 |
+| Ironworks | sky-s | 4.9 → 6.5 | 35 → 46 | 70.0 → 30.8 | 100 → 62 | 70.0 → 15.7 | 100 → 24 | 13.2 → 18.5 | 1.51 → 2.07 | 6 → 49 | 0.59 → 0.61 |
+| Ironworks | centre-far | 5.6 → 7.8 | 39 → 55 | 54.1 → 31.8 | 100 → 65 | 54.1 → 11.1 | 100 → 18 | 10.4 → 11.4 | 1.50 → 1.62 | 6 → 43 | 0.67 → 0.66 |
+| Ruinspires | sky-w | 1.0 → 1.5 | 27 → 29 | 36.1 → 11.3 | 68 → 9 | 36.1 → 11.3 | 68 → 9 | 9.2 → 12.2 | 1.20 → 1.16 | 70 → 82 | 0.96 → 0.97 |
+| Ruinspires | sky-s | 3.8 → 5.1 | 39 → 43 | 43.5 → 10.5 | 99 → 8 | 43.5 → 11.4 | 99 → 10 | 10.6 → 12.4 | 1.22 → 1.25 | 16 → 67 | 0.60 → 0.42 |
+| Ruinspires | centre-far | 5.4 → 6.8 | 38 → 48 | 25.8 → 11.9 | 41 → 24 | 25.8 → 7.2 | 41 → 5 | 7.2 → 7.9 | 1.31 → 1.43 | 49 → 75 | 0.98 → 0.94 |
+| Blackglass District | sky-w | 1.8 → 1.8 | 17 → 55 | 33.3 → 16.4 | 54 → 5 | 33.3 → 16.4 | 54 → 5 | 12.6 → 15.4 | 2.59 → 1.85 | 1 → 81 | 0.53 → 0.12 |
+| Blackglass District | sky-s | 7.4 → 9.5 | 52 → 66 | 66.2 → 9.7 | 100 → 9 | 66.2 → 9.7 | 100 → 9 | 9.6 → 12.6 | 1.41 → 2.41 | 1 → 69 | 0.62 → 0.40 |
+| Blackglass District | centre-far | 3.6 → 4.7 | 54 → 64 | 48.3 → 11.0 | 98 → 8 | 48.3 → 11.0 | 98 → 8 | 6.7 → 11.1 | 1.30 → 1.57 | 3 → 69 | 0.68 → 0.60 |
+| Titan Gorge | sky-w | 14.9 → 14.8 | 116 → 116 | 27.4 → 0.9 | 41 → 0 | 27.4 → 0.9 | 41 → 0 | 7.1 → 7.4 | 1.33 → 1.38 | 14 → 69 | 0.92 → 0.90 |
+| Titan Gorge | sky-s | 4.6 → 4.4 | 66 → 63 | 55.9 → 0.6 | 100 → 0 | 55.9 → 0.6 | 100 → 0 | 10.2 → 12.0 | 1.61 → 1.67 | 16 → 67 | 0.79 → 0.63 |
+| Titan Gorge | centre-far | 30.9 → 30.7 | 217 → 215 | 34.4 → 4.1 | 73 → 5 | 34.4 → 4.1 | 73 → 5 | 7.4 → 7.1 | 1.42 → 1.54 | 12 → 44 | 1.03 → 0.98 |
+| Skybridge Chasm | sky-w | 22.6 → 22.1 | 158 → 155 | 27.0 → 3.7 | 55 → 1 | 27.0 → 3.7 | 55 → 1 | 8.0 → 7.4 | 2.13 → 2.15 | 10 → 9 | 0.63 → 0.60 |
+| Skybridge Chasm | sky-s | 3.1 → 3.0 | 52 → 56 | 32.8 → 14.4 | 58 → 12 | 32.8 → 14.4 | 58 → 12 | 10.5 → 10.6 | 2.41 → 3.15 | 1 → 26 | 0.28 → 0.27 |
+| Skybridge Chasm | centre-far | 27.4 → 27.1 | 192 → 190 | 20.6 → 6.1 | 25 → 3 | 20.6 → 6.1 | 25 → 3 | 6.5 → 7.3 | 1.56 → 1.67 | 12 → 20 | 0.81 → 0.76 |
+| Tidegate Polders | sky-w | 0.8 → 4.4 | 9 → 32 | 65.2 → 22.2 | 96 → 22 | 65.2 → 62.1 | 96 → 96 | 16.9 → 10.1 | 1.25 → 1.09 | 7 → 86 | 0.82 → 0.83 |
+| Tidegate Polders | sky-s | 0.6 → 4.5 | 9 → 34 | 57.7 → 17.1 | 80 → 10 | 57.7 → 56.9 | 80 → 83 | 20.6 → 15.2 | 1.53 → 1.35 | 3 → 80 | 1.03 → 0.91 |
+| Tidegate Polders | centre-far | 1.1 → 6.8 | 9 → 48 | 62.3 → 20.4 | 97 → 14 | 62.3 → 49.5 | 97 → 94 | 12.8 → 6.8 | 1.29 → 1.15 | 32 → 89 | 0.73 → 0.73 |
+| Copper Mesa Mine | sky-w | 20.0 → 20.1 | 140 → 140 | 26.0 → 13.2 | 33 → 9 | 26.0 → 13.2 | 33 → 9 | 4.6 → 4.7 | 1.06 → 1.09 | 14 → 15 | 0.99 → 0.99 |
+| Copper Mesa Mine | sky-s | 19.4 → 19.3 | 136 → 135 | 22.5 → 6.8 | 36 → 5 | 22.5 → 6.8 | 36 → 5 | 7.3 → 8.1 | 1.43 → 1.41 | 25 → 13 | 0.64 → 0.78 |
+| Copper Mesa Mine | centre-far | 22.6 → 22.6 | 158 → 158 | 19.3 → 5.7 | 41 → 3 | 19.3 → 5.7 | 41 → 3 | 7.2 → 7.2 | 1.30 → 1.29 | 32 → 24 | 0.54 → 0.56 |
+| Kestrel Airfield | sky-w | 4.4 → 7.4 | 31 → 52 | 42.0 → 15.4 | 93 → 15 | 42.0 → 12.3 | 93 → 17 | 13.7 → 16.9 | 1.53 → 1.60 | 35 → 74 | 0.71 → 0.70 |
+| Kestrel Airfield | sky-s | 5.8 → 9.2 | 41 → 64 | 33.4 → 13.9 | 94 → 0 | 33.4 → 4.3 | 94 → 3 | 18.7 → 18.9 | 1.86 → 1.74 | 52 → 70 | 0.64 → 0.55 |
+| Kestrel Airfield | centre-far | 5.9 → 8.9 | 41 → 63 | 30.5 → 11.2 | 69 → 0 | 30.5 → 5.7 | 69 → 5 | 11.1 → 11.4 | 1.37 → 1.41 | 62 → 76 | 0.84 → 0.82 |
+| Sunscar Oasis | sky-w | 4.0 → 5.5 | 31 → 40 | 16.6 → 15.1 | 15 → 13 | 16.6 → 13.0 | 15 → 13 | 12.9 → 12.9 | 1.08 → 1.08 | 52 → 67 | 0.92 → 0.94 |
+| Sunscar Oasis | sky-s | 6.3 → 7.4 | 44 → 52 | 15.9 → 4.8 | 11 → 0 | 15.9 → 5.2 | 11 → 0 | 15.9 → 14.3 | 1.15 → 1.20 | 60 → 51 | 0.65 → 0.61 |
+| Sunscar Oasis | centre-far | 8.1 → 10.2 | 57 → 71 | 8.6 → 10.4 | 0 → 7 | 8.6 → 4.8 | 0 → 1 | 7.7 → 7.3 | 1.13 → 1.13 | 59 → 63 | 1.00 → 1.00 |
+| Whiteout Station | sky-w | 4.1 → 15.3 | 29 → 107 | 5.9 → 0.6 | 2 → 0 | 5.9 → 0.6 | 2 → 0 | 8.8 → 14.6 | 1.09 → 1.22 | 98 → 87 | 0.92 → 0.90 |
+| Whiteout Station | sky-s | 4.7 → 18.5 | 34 → 130 | 16.2 → 0.6 | 12 → 0 | 16.2 → 0.6 | 12 → 0 | 17.8 → 13.6 | 1.20 → 1.50 | 84 → 64 | 0.90 → 0.72 |
+| Whiteout Station | centre-far | 6.0 → 17.9 | 42 → 125 | 3.4 → 0.6 | 0 → 0 | 3.4 → 0.6 | 0 → 0 | 8.6 → 11.7 | 1.07 → 1.24 | 97 → 87 | 0.94 → 0.94 |
+| Orchard Valley | sky-w | 6.7 → 13.2 | 54 → 95 | 40.5 → 16.5 | 88 → 23 | 40.5 → 10.6 | 88 → 10 | 11.6 → 14.2 | 1.33 → 1.34 | 39 → 68 | 0.77 → 0.76 |
+| Orchard Valley | sky-s | 9.0 → 15.8 | 64 → 110 | 61.2 → 16.3 | 98 → 18 | 61.2 → 16.9 | 98 → 22 | 14.8 → 17.4 | 1.53 → 1.86 | 10 → 44 | 0.59 → 0.65 |
+| Orchard Valley | centre-far | 12.9 → 19.1 | 90 → 134 | 33.6 → 6.6 | 89 → 4 | 33.6 → 5.7 | 89 → 1 | 11.4 → 11.8 | 1.28 → 1.40 | 36 → 62 | 0.91 → 0.97 |
+| Longleaf Crossing | sky-w | 3.4 → 4.7 | 31 → 38 | 47.4 → 17.0 | 92 → 13 | 47.4 → 15.1 | 92 → 15 | 14.3 → 21.1 | 1.47 → 1.76 | 31 → 69 | 0.56 → 0.49 |
+| Longleaf Crossing | sky-s | 6.2 → 6.9 | 46 → 50 | 50.1 → 23.2 | 97 → 22 | 50.1 → 24.8 | 97 → 26 | 16.9 → 24.4 | 1.76 → 2.36 | 16 → 50 | 0.58 → 0.41 |
+| Longleaf Crossing | centre-far | 9.7 → 10.8 | 68 → 76 | 31.6 → 5.9 | 68 → 3 | 31.6 → 5.6 | 68 → 3 | 10.6 → 15.8 | 1.54 → 1.79 | 35 → 60 | 0.78 → 0.67 |
+| Mangrove Reach | sky-w | 2.7 → 4.6 | 21 → 32 | 45.2 → 19.5 | 98 → 16 | 45.2 → 16.3 | 98 → 26 | 11.8 → 12.2 | 1.31 → 1.39 | 50 → 74 | 0.70 → 0.74 |
+| Mangrove Reach | sky-s | 2.8 → 7.9 | 23 → 57 | 40.8 → 18.8 | 92 → 14 | 40.8 → 15.6 | 92 → 25 | 18.9 → 14.3 | 1.46 → 1.30 | 44 → 82 | 0.65 → 0.73 |
+| Mangrove Reach | centre-far | 3.7 → 10.0 | 26 → 70 | 31.7 → 14.2 | 60 → 2 | 31.7 → 10.5 | 60 → 16 | 14.8 → 10.2 | 1.42 → 1.20 | 64 → 86 | 0.75 → 0.76 |
+| Saltwind Narrows | sky-w | 1.6 → 1.8 | 16 → 18 | 27.8 → 22.2 | 76 → 52 | 27.8 → 20.5 | 76 → 52 | 12.5 → 12.8 | 1.19 → 1.20 | 89 → 91 | 1.03 → 1.03 |
+| Saltwind Narrows | sky-s | 8.3 → 9.7 | 58 → 68 | 28.5 → 1.9 | 69 → 0 | 28.5 → 1.8 | 69 → 0 | 17.5 → 21.2 | 1.57 → 1.89 | 59 → 59 | 0.79 → 0.64 |
+| Saltwind Narrows | centre-far | 7.5 → 8.9 | 52 → 62 | 22.5 → 3.4 | 36 → 1 | 22.5 → 2.5 | 36 → 1 | 11.4 → 14.9 | 1.28 → 1.43 | 76 → 77 | 0.85 → 0.84 |
+| Highland Reservoir | sky-w | 10.5 → 17.4 | 74 → 122 | 49.6 → 9.2 | 100 → 11 | 49.6 → 8.9 | 100 → 10 | 14.8 → 13.6 | 1.35 → 1.41 | 22 → 50 | 0.80 → 0.83 |
+| Highland Reservoir | sky-s | 14.4 → 22.7 | 101 → 159 | 56.7 → 2.7 | 100 → 2 | 56.7 → 2.7 | 100 → 2 | 11.2 → 13.5 | 1.39 → 1.81 | 17 → 63 | 0.75 → 0.57 |
+| Highland Reservoir | centre-far | 9.4 → 15.5 | 66 → 108 | 39.2 → 6.0 | 98 → 3 | 39.2 → 6.3 | 98 → 4 | 11.6 → 11.2 | 1.26 → 1.38 | 35 → 63 | 0.72 → 0.74 |
+| Olympus Basin | sky-w | 12.8 → 15.4 | 98 → 108 | 131.2 → 7.2 | 99 → 5 | 131.2 → 7.7 | 99 → 6 | 10.6 → 12.3 | 1.45 → 10.80 | 0 → 0 | 0.94 → 0.86 |
+| Olympus Basin | sky-s | 9.2 → 12.3 | 79 → 101 | 56.4 → 8.7 | 92 → 8 | 56.4 → 8.7 | 92 → 8 | 12.7 → 12.7 | 2.15 → 2.86 | 0 → 0 | 0.61 → 0.56 |
+| Olympus Basin | centre-far | 15.5 → 19.0 | 109 → 133 | 73.8 → 13.0 | 85 → 16 | 73.8 → 11.8 | 85 → 13 | 10.5 → 13.5 | 1.96 → 3.68 | 0 → 1 | 0.84 → 0.77 |
+
+Review sheets: `$SP/r72/review/contact-sheet.png` (sky-w), `contact-sheet-sky-s.png`, `contact-sheet-centre-far.png`
+(31 maps, before left, after right), and the per-map pairs `$SP/r72/review/<map>-{before,after}.png`; Whiteout first.
+**Eye check (the lane's own, on the crops of the final captures).** Whiteout: the grey dome is gone; the ring is a
+polar range with a snow-and-rock face, the boosted second and third ranges standing behind the first ridge, the far
+range's 246 m peaks showing through the passes under the stratus, spruce and birch on the lower slopes and the
+scoured ribs on the crests — under the overcast the snow is still the sky's white (round 44), and the dark faces are
+what makes it read. Frosthollow centre-far: a sharp peak with a flank in shadow, layered ranges and the far range
+behind. Glacier Pass and Nordhavn: near dark ridge, pale mid ranges, far peaks, the ribbons and range trees gone from
+the washed crests. The desert and mesa rings are the same tables with ledged cliffs in the bake and stay pale under
+their haze. The outer-skyline numbers below FALL on most views: the outermost silhouette used to be the low first
+ridge (dark against the sky, 36 luma of step); it is now a hazed distant range (the boosted outer rows and the far
+range, 7–9 luma) with the same first ridge still crisp in front of it — the layering the brief asks for, which a
+top-edge metric reads as softness; the lever for ranges that read at 1.1–1.4 km is the aerial pass's far ceilings
+(open, below).
 
 **Performance.** The ring's cost by repetition (`.qa-dev/r72-ring-bench.mjs`: the frame's GPU and CPU medians with the
 ring drawn once against forty-one times — forty clones of the ring and its children at the same transform, drawn after
 it — alternated three times at the sky-w and centre-far views; Δ / 40 is the ring's own cost, the far range and the
 atlas fetch included; the base tree and this one measured back to back on a machine at load 100–120, so the pairs are
-comparable and the absolute figures are upper bounds): __BENCH__. Draw calls: the far range is one unlit draw (the
+comparable and the absolute figures are upper bounds; measured at tip 93bb9a628 — the later commits of the round only
+remove ribbons and range trees and change vertex colours and uniform values):
+
+| Map | View | Ring GPU ms before → after | Δ GPU | Ring CPU ms before → after | Ring draws |
+|---|---|---|---|---|---|
+| whiteout | centre-far | 1.14 → 1.52 | +0.38 | 0.15 → 0.17 | 20 → 24 |
+| whiteout | sky-w | 0.62 → 1.38 | +0.76 | 0.07 → 0.16 | 20 → 24 |
+| alpine | centre-far | 2.35 → 1.73 | −0.62 | 0.17 → 0.16 | 13 → 14 |
+| alpine | sky-w | 1.66 → 1.41 | −0.25 | 0.15 → 0.15 | 13 → 14 |
+| verdant | centre-far | 1.96 → 1.59 | −0.38 | 0.18 → 0.20 | 23 → 24 |
+| verdant | sky-w | 1.67 → 1.62 | −0.04 | 0.18 → 0.18 | 23 → 24 |
+| desert | centre-far | 1.52 → 0.89 | −0.63 | 0.18 → 0.15 | 20 → 21 |
+| desert | sky-w | 1.84 → 0.70 | −1.14 | 0.16 → 0.10 | 20 → 21 |
+| mars | centre-far | 1.97 → 0.88 | −1.09 | 0.20 → 0.15 | 20 → 21 |
+| mars | sky-w | 1.79 → 1.08 | −0.71 | 0.17 → 0.14 | 20 → 21 |
+
+Whiteout is the one map that pays: its ring went from a rolling ladder (18 rows) to the alpine one (36 rows, the ring's
+forest on its lower slopes, four more draws — the forest's instanced meshes it had none of before), +0.4 / +0.8 ms at
+load 100; the other four are within the noise or lower (the atlas fetch is one texture read against the twenty-seven
+tile fetches already there; the medians move with the machine's load between the two runs, which is why the pairs are
+read against each other and not against the budget line alone). Whiteout's sky-w pair is over the +0.6 ms line at
+this load; the same views at load 30 are the check the integrator should run before landing (the bench takes the
+`--maps=whiteout --views=sky-w` form). Draw calls: the far range is one unlit draw (the
 ring's material pair, the forest's up to eight instanced meshes, the rockfield and the treeline stay), +1 on every map
 that carries a far range; no per-frame allocation (the cloud-shade binder writes four numbers into existing uniform
 objects and rebinds textures by reference; the far range and the atlas are built at activation). Construction: the
@@ -3669,6 +3850,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 68 | Volumetric clouds over every battlefield: a raymarched slab lit by the round-65 atmosphere (`src/engine/volumetricClouds.ts`, `cloudNoise.ts` bakes in a worker, `cloudPresets.ts` derives each map's layer from its authored sky block — small clustered fair-weather cumulus at 1200–1800 m on the good and bland maps, the overcast five a neutral stratus ceiling that restores their white sky and closes the round-65 open note, Monsoon its blue sky with towering cumulus on the horizon), traced at 1/16 of a half-res history in a 4 × 4 Bayer slot cycle with reprojection, composited premultiplied through a depth-tested dome, hazed by the aerial pass's law toward the uncapped sky-view LUT; cloud shadows from per-cascade alpha-tested gobos on the shadow-only layer (no terrain sampler); one post.ts hook; `?clouds=off` keeps the baked decks | map-view-probe A/B on 31 maps × 4 views with map-metrics skylines (winter 0.84 / 0.87 in the band, whiteout 1.01 → 0.92 / 0.85, monsoon 0.55 / 0.54 as the base) and the sky-band rule (the nine good maps' middle bands within ±11 % of the base, lower within ±3 %); eye check of the 1280-px grids of the overcast five, four good and four bland maps; per-slot trace + resolve 0.28–0.52 ms GPU by repetition; the gobos verified in-page (ground luma −6 % under the cores); volumetricClouds receipt (new) and the receipts in the section |
 | 70 | Whiteout's snow re-grade (owner: yes, 2026-09-25): round 48's tone law never reached the sourced snow — a per-layer `sourcedTint` on the splat settings now grades the photo albedo that renders on both sourced paths; Whiteout's snow × 0.88 neutral-cold, the fallback law stepped alike (0.46 + 0.28·l), postExposure 0.83; winter and the Garage untouched | map-view-probe five views A/B on main with round 68's overcast (sky-w 0.92 → 0.84, sky-s 0.88 → 0.85, inside 0.80–0.90) and on the pre-cloud tree (1.01 → 0.96, 0.95 → 0.91: the physical sky alone leaves the rim band haze-dominated); snow boxes (bird-w 175 → 162, wall hue / saturation unchanged); 1280 px eye check of the five views; sourcedTextures graded-composite contract, sourcedTerrainPreparation parity under a tint; villageWear / mangroveWaterPalette digests re-pinned, the byte receipt's round-47 pin extended and a round-70 projection added; the receipts in the section |
 | 71 | The cloudscape pass on the opt-in volumetric layer (owner: round 68 was "just puffs", 5 / 10): a `clouds` block on every map config resolved through eighteen regime rows (`engine/cloudscapes.ts`: fair-weather cumulus, cloud streets, sea streets, towering cumulus, cumulonimbus front, cumulus humilis, lenticular, broken / closed stratocumulus, overcast and low stratus, ice fog, hazy altostratus, dense overcast, ash veil, cirrus, thin ice clouds), a multi-scale weather field with a type channel and a street / anvil / cirrus field in the wind frame, a curl volume and a blue-noise tile (`cloudNoise.ts`), type height profiles, a rigid wind lean, anvils, scud, curl-warped erosion with a per-map wispiness, the Hillaire octaves under a dual-lobe phase with Beer–powder toward the sun, the ambient split with the depth above and a deck floor, a far stratocumulus band and a wind-sheared cirrus sheet with the 22° halo, weather-gated empty-space striding, gobos that discard by the same fields; 71b after the integrator's eye check: streets as continuous rolls with lumps riding on them, wide flat-based cumulonimbus with clustered towers and a sheared top third, the cauliflower (a second shape octave lifting the column top bulge on bulge, a sharper density threshold), the lighting (the powder sign, a white lit face, dark bases, the silver lining), the perf levers (footprint strides, an alternating light march, a 12 km pre-pass); 71c: luminous blue-grey bases (the bottom ambient undimmed by the depth above, a cool sky-mean floor, the diffused sun toward neutral; a cumulonimbus deck exempt), streets as chains of aligned lumps on rolls of varying width fading past 4 km, plateau cells of 540–960 m soft-unioned (the far field's tiny puffs), a two-tap ladder in a front's base deck and far strides; the baked decks stay the default and byte-identical | 31-map before / after review sheets (`$SP/r71/review/contact-sheet*.png`) with the structure / lighting / edge metrics on the history masks (streets one roll per view 38–89 %, the front 79 / 95 %, decks one structure, fair-weather sizes spread two orders, contrast 2.2–3.5 on the masses), the sky-band rule (all nine good maps within ±8 % middle / ±3 % lower except urban sky-s +14 / +6), skylines (winter 0.88 / 0.91, whiteout 0.92 / 0.87, monsoon 0.54 / 0.55); base chroma neutral-to-cool on every cumulus map (alpine 133 / 137 / 146 from 110 / 103 / 98); per-slot by repetition: verdant 0.35–0.59, winter 0.88–0.99, frontier 0.14–0.50, desert ≈ 0, monsoon 1.21–1.54 ms GPU (load 50–300); volumetricClouds receipt (rewritten) and the receipts in the section |
+| 72 | Mountains and horizons to the clouds' level (owner, Whiteout under the round-71 clouds: "the mountains look so flat and untextured and boring, while the clouds look so good"): a ridged multifractal relief field over a warped plane with an erosion vocabulary (downslope gullies, talus aprons, rounded shoulders and sharp crests) in eight map characters (polar, alpine, rolling, mesa, volcanic, coastal, martian, karst) displacing the authored and interpolated ring rows; an (angle x radius) surface atlas baked per map at world activation in slices (the fine relief's gradient, a horizon occlusion, the sun's visibility) read by the vista program as a relieved normal and slope, occlusion, cast shadows, sky-coloured shaded faces and sun glitter on snow; the volumetric layer's cloud shadows on the ranges from the gobo fields bound by reference; the far range 1.9–3.3 km out (one unlit draw, its own aerial perspective, capped under a low deck); Whiteout on the polar alpine ladder; mobile on today's ring | 31-map before / after sheets (`$SP/r72/review/contact-sheet{,-sky-s,-centre-far}.png`, per-map pairs) with the ring-mask metrics (`$SP/r72/compare-after.{txt,md}`: detail energy up on 63 of 93 views (median 11.6 → 13.0), lit / shadow up on 68 of 92, the ring's screen height up on 82 of 93 (median 55 → 72 px); the outer-skyline step down on most views — the outermost silhouette is now a hazed distant range in front of which the old first ridge stays crisp); the ring's cost by repetition (whiteout +0.4 / +0.8 ms GPU at load 100 — the rolling → alpine ladder and its forest, the one map that pays; alpine, verdant, desert, mars −0.04 to −1.1 ms; +1 draw for the far range); the bake in Node 0.6–1.0 s quiet / 1–7 s at load 100; receipts horizonRelief (new), horizonCloudShade (new), horizonResources (re-pinned), titanGorgeHorizon / redrockCanyonHorizon / copperQuarrySurface (re-pinned), badlandsRelief (round72Relief projection), the horizon and terrain receipts in the section green; `npm run typecheck` |
 | 74 | Impact physics (owner 2026-09-25): energy-based crash and fall damage through one function in both sims (`sim/impact.ts`: ½·m·(v − v_min)² kJ × the ruleset's hp/kJ, glacis 0.7 / stern 0.85 / broadside 1, tracks first, the engine on a frontal crash or a hard landing, crew shock above 16 / 14 m/s, a two-tick crash priced once), a `physics` block per ruleset (restitution, rebound floor, fall and crash thresholds and rates, ram scale and restitution — Turbo Ball and Mars bounce, a single jump lands free), the ram split by mass / aggression / face with a momentum-conserving exchange, the swept landing contact with restitution (several decaying hops at low gravity, no tunnelling at 40 m/s), the landing torque toward the ground plane, a slide law on faces the tracks cannot hold, a lateral-grip cap on the yaw rate at speed, a static hold at rest, the settle chatter fixed (a parked hull on a grade crept 4 cm/s and chattered ±0.4° on the base tree), movement checkpoints v2, CRASHED / FELL on the kill feed and the final-blow line, `tank_impact` on the wire | impact / impactPhysics / impactParity receipts (new), movement 218, combat 541, authoritativeMatch, matchRuleset, ai, authoritativeBots (mobile 6/6), the mp / net / server-match receipts with their re-anchored pins, typecheck; headless Verdant 5 min (37 crashes, 631 hp, none stuck or tunnelled) and Mars 3.8 min (163 landings, 2413 hp, one fall death, 18-hop chains, none stuck or tunnelled), the 30 m Mars drop (14.9 m/s → 7.4 m/s rebound); `server/battlePacing` full 124: median 335.2 s, p10 260.8 s, 0 sub-120, 0 timeouts |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
