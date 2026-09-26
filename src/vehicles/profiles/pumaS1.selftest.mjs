@@ -78,8 +78,8 @@ try {
     'Puma full equipment height is exactly ten percent smaller');
   assert.deepEqual(hull.userData.pumaS1Receipt, {
     independentFromLegacyPuma: true,
-    hullConstruction: 'planar-roof-puma-glacis-monocoque-v6',
-    turretConstruction: 'planar-faceted-rct30-citadel-v4',
+    hullConstruction: 'puma-high-shoulder-troop-cell-v7',
+    turretConstruction: 'asymmetric-rct30-spine-bustle-v5',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,

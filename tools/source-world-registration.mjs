@@ -5,6 +5,10 @@ import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSour
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
 export const SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSourceFrames({
+  spz_puma_s1_x: {sha256:'340e00fa8053680d2adbeabc10293264d07f743c9e5680462da8e081635cf4c0',
+    fused:true,turret:[.434794,1.947494,-1.319322],gun:[.019503,2.513110,-.791446]},
+  type89_x: {sha256:'8ab1bbbcbde2e6c008a80557cb54409211301df21b86d865b27b4d1adb027566',
+    fused:true,turret:[.08,1.80,-.82],gun:[.08,2.095,.38]},
   // Mk3D: independent 2026-09-05 source-axis measurements, already baked
   // to metres and ground zero. Mixed bone/material owners remain fused.
   merkava3d_x: {

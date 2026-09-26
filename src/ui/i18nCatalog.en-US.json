@@ -3130,5 +3130,8 @@
   "garage.camo.generic.service_bmp3_rok": "Peninsula Digital",
   "garage.camo.generic.service_strv122": "Nordic Splinter",
   "garage.camo.generic.service_merkava2d": "Sinai Enamel",
-  "garage.camo.generic.service_ua_m2a3_bradley": "Steppe Digital"
+  "garage.camo.generic.service_ua_m2a3_bradley": "Steppe Digital",
+  "camoPattern.sig_dardo": "Dardo Woodland",
+  "camoPattern.sig_lrmv_lynx": "LRMV Olive",
+  "camoPattern.sig_borsuk": "Borsuk Woodland"
 }

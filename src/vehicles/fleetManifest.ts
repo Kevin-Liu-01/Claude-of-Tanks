@@ -2,6 +2,12 @@
 // It is deliberately plain data so asking which chunk owns a tank never
 // downloads or evaluates that chunk.
 export const FLEET_GROUP_IDS = Object.freeze({
+  dardo: Object.freeze(['dardo']),
+  lrmvLynx: Object.freeze(['lrmv_lynx']),
+  borsuk: Object.freeze(['borsuk']),
+  pumaS1SourceX: Object.freeze(['spz_puma_s1_x']),
+  cv9040CSourceX: Object.freeze(['cv90_x']),
+  type89SourceX: Object.freeze(['type89_x']),
   griffinViper: Object.freeze(['griffin_viper']),
   tos1aTagil: Object.freeze(['tos1a_tagil']),
   aresApcX: Object.freeze(['ares_apc_x']),

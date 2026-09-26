@@ -131,6 +131,32 @@
           0.2097
         ]
       }
+    },
+    "spz_puma_s1_x": {
+      "id": "spz_puma_s1_x",
+      "source": {
+        "path": "public/models/community-candidates/spz_puma_s1_x_source.glb",
+        "sha256": "340e00fa8053680d2adbeabc10293264d07f743c9e5680462da8e081635cf4c0"
+      },
+      "roofMachineGuns": 0,
+      "ownerDecision": {
+        "date": "2026-09-25",
+        "record": "docs/references/batches/ifv-replicas-20260925.md",
+        "target": "Separate X replica with real weapons and equipment; preserve upgraded original."
+      }
+    },
+    "type89_x": {
+      "id": "type89_x",
+      "source": {
+        "path": "public/models/community-candidates/type89_x_source.glb",
+        "sha256": "8ab1bbbcbde2e6c008a80557cb54409211301df21b86d865b27b4d1adb027566"
+      },
+      "roofMachineGuns": 0,
+      "ownerDecision": {
+        "date": "2026-09-25",
+        "record": "docs/references/batches/ifv-replicas-20260925.md",
+        "target": "Separate X replica with real weapons and equipment; preserve upgraded original."
+      }
     }
   }
 }

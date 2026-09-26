@@ -274,11 +274,27 @@ const catalogContract = {
   defaultCustom: normalizeCustomCamo(),
 };
 // The new signature appends one network ID; every preceding catalog byte stays fixed.
-assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'sig_tos1a_tagil'); // round 31: the base list ends here; national colours and generated paints follow
+assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'sig_borsuk'); // new photo IFV finishes extend the base catalog; round 31: the base list ends here; national colours and generated paints follow
 assert.equal(defaultCamoPatternId('tos1a_tagil'), 'factory');
 assert.equal(stockCamoPatternIdFor('tos1a_tagil'), 'sig_tos1a_tagil');
 assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
 const precedingCatalog = structuredClone(catalogContract);
+// The photographic fleet appends three stock finishes. Removing precisely
+// those additions must reproduce both historical catalog hashes unchanged.
+const photoFinishes=['sig_dardo','sig_lrmv_lynx','sig_borsuk'];
+assert.deepEqual(CAMO_PATTERN_IDS.slice(CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil')+1,CAMO_PATTERN_IDS.indexOf('national_usa')),photoFinishes);
+for(const pattern of photoFinishes){
+  const owner=pattern.slice(4);
+  assert.equal(networkCamoId(pattern),pattern);
+  assert.equal(stockCamoPatternIdFor(owner),pattern);
+  assert.equal(sharedCamoPreset(pattern).sourceTankId,owner);
+  precedingCatalog.patterns=precedingCatalog.patterns.filter(id=>id!==pattern);
+  precedingCatalog.catalog=precedingCatalog.catalog.filter(id=>id!==pattern);
+  delete precedingCatalog.patternLabels[pattern];
+  precedingCatalog.presets=precedingCatalog.presets.filter(row=>row.id!==pattern);
+  precedingCatalog.signatures=precedingCatalog.signatures.filter(id=>id!==owner);
+  precedingCatalog.tagsByPatternAndNation=precedingCatalog.tagsByPatternAndNation.filter(([id])=>id!==pattern);
+}
 // The owner renamed this vehicle without changing its saved paint ID or recipe.
 assert.equal(CAMO_PATTERN_LABEL.service_strv122, 'Strv 121 Splinter');
 precedingCatalog.patternLabels.service_strv122 = 'Strv 122 Splinter';
@@ -314,7 +330,7 @@ const addedPaints = ['mono', 'carbon', 'prism', 'sig_sabra_mk2_x'];
 // close the BASE list (the TOS-1A signature now follows them there) rather than the whole one
 const basePreceding = precedingCatalog.patterns.filter((id) => !id.startsWith('national_') && !id.startsWith('paint_'));
 assert.deepEqual(basePreceding.slice(-4), addedPaints);
-assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil') + 1], 'national_usa', 'the national colours follow the base catalog');
+assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_borsuk') + 1], 'national_usa', 'the national colours follow the base catalog');
 assert.ok(CAMO_PATTERN_IDS.at(-1).startsWith('paint_'), 'the generated authored paints close the catalog');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);

@@ -1,3 +1,4 @@
+import { armorLoft } from './europeSourcePrimitives.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // Independent first-party procedural SPz Puma S1.
 //
@@ -7,7 +8,7 @@ import { weaponAssembly } from './weaponStock.ts';
 // below is authored from repository primitives.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleTipDot } from './kit.ts';
 import {
   applyAdvancedIfvScale,
   type AdvancedIfvScalePort,
@@ -178,7 +179,7 @@ function addOpenTrapezoidGunCradle(
 }
 
 function addHullShell(P: PumaS1BuilderPort): void {
-  const { box, frustum, polyMultiLoft } = KIT;
+  const { box, frustum } = KIT;
   // The widened lower tub reaches the inner shoe faces and provides a real
   // structural seat for the fender bridge instead of leaving a daylight slot.
   P.add('hull', box(2.22, 0.66, 7.18), 0, 0.73, 0);
@@ -191,15 +192,15 @@ function addHullShell(P: PumaS1BuilderPort): void {
     [-1.05, 1.56, 3.55], [1.05, 1.56, 3.55], [1.56, 1.82, 1.60], [-1.56, 1.82, 1.60],
     [-1.12, 1.72, 3.55], [1.12, 1.72, 3.55], [1.56, 1.98, 1.60], [-1.56, 1.98, 1.60],
   ));
-  const monocoquePlan: [number, number][] = [
-    [-1.56, 1.68], [1.56, 1.68], [1.66, 1.42], [1.66, -3.28],
-    [1.49, -3.65], [-1.49, -3.65], [-1.66, -3.28], [-1.66, 1.42],
-  ];
-  P.add('hull', polyMultiLoft(monocoquePlan, [
-    { height: 0.00, inset: 1.00 },
-    { height: 0.36, inset: 0.96 },
-    { height: 0.70, inset: 0.89 },
-  ]), 0, 1.34, 0);
+  // Puma protection wraps a high troop cell. Its broad upper shoulders
+  // have a short outward knee, unlike the Swedish narrow roof bevel.
+  P.add('hull', armorLoft([
+    [-3.65, 1.40, 1.49, 1.37, 1.28, 1.78, 2.04],
+    [-3.26, 1.51, 1.66, 1.48, 1.28, 1.80, 2.04],
+    [ .88, 1.51, 1.66, 1.48, 1.28, 1.80, 2.04],
+    [1.44, 1.48, 1.66, 1.47, 1.28, 1.80, 2.08],
+    [1.72, 1.42, 1.56, 1.43, 1.28, 1.79, 1.98],
+  ]));
   P.add('hull', box(2.12, 0.54, 0.16), 0, 1.02, 3.72, -0.08, 0, 0);
   P.add('hullDark', box(2.64, 0.035, 2.44), 0, 2.045, -1.52);
   for (let index = 0; index < 12; index++) {
@@ -313,13 +314,17 @@ function addRunningGear(P: PumaS1BuilderPort): void {
       const panelTopY = frontPanel ? 1.77 : 1.88;
       const panelBottomY = frontPanel ? 0.82 : 0.74;
       const panelHeight = panelTopY - panelBottomY;
-      // One broad armored cassette and one shallow applique lid per station:
-      // the large facets and restrained seams match the Revolution jacket
-      // grammar without creating a toy-like ERA checkerboard.
-      P.addExternalArmor('hull', KIT.box(0.18, panelHeight, panelLength - 0.028),
-        side * 1.91, (panelTopY + panelBottomY) * 0.5, z);
-      P.addExternalArmor('hull', KIT.box(0.035, panelHeight - 0.12, panelLength - 0.10),
-        side * 2.0175, (panelTopY + panelBottomY) * 0.5, z);
+      // Thick removable Puma modules have a bevel at both edges, with
+      // the broad center face proud of the carrier and a folded top return.
+      const half = (panelLength - .028) / 2;
+      P.addExternalArmor('hull', convexSlab(
+        [side*1.82,panelBottomY,z-half], [side*1.82,panelBottomY,z+half],
+        [side*2.01,panelBottomY+.13,z+half], [side*2.01,panelBottomY+.13,z-half],
+        [side*1.82,panelTopY,z-half], [side*1.82,panelTopY,z+half],
+        [side*2.01,panelTopY-.13,z+half], [side*2.01,panelTopY-.13,z-half],
+      ));
+      P.addExternalArmor('hull', KIT.box(.025,panelHeight-.28,panelLength-.10),
+        side*2.020,(panelTopY+panelBottomY)*.5,z);
       if (index > 0) {
         P.add('hullDark', KIT.box(0.024, panelHeight - 0.14, 0.020),
           side * 2.038, (panelTopY + panelBottomY) * 0.5,
@@ -356,21 +361,28 @@ function addRunningGear(P: PumaS1BuilderPort): void {
 }
 
 function addTurret(P: PumaS1BuilderPort): void {
-  const { box, cylY, cylZ, polyMultiLoft, polyTurret, buildGun } = KIT;
-  // The unmanned RCT shell uses a narrow gun nose, hard shoulder breaks and a
-  // crown that rises aft. Ten deliberate facets keep the silhouette angular
-  // without turning the module into a rounded or box-backed generic turret.
-  const plan = [
-    [-0.40, 1.62], [0.34, 1.62], [0.76, 1.32], [0.98, 0.70],
-    [1.00, -1.15], [0.72, -1.58], [-0.78, -1.56], [-1.00, -1.12],
-    [-1.02, 0.58], [-0.78, 1.30],
-  ];
-  P.add('turretDark', polyTurret(plan, 0.12, 1.04, 1.00), 0, -0.065, -0.02);
-  P.add('turret', polyMultiLoft(plan, [
-    { height: 0.02, inset: 1.00 },
-    { height: 0.36, inset: 0.96 },
-    { height: 0.72, inset: 0.82 },
-  ]));
+  const { box, cylY, cylZ, buildGun } = KIT;
+  // Low unmanned RCT body: square service bustle, asymmetric forward
+  // cheeks and a spine rising behind the gun. The sensor-side shoulder is
+  // wider than the MELLS side, matching its separate equipment functions.
+  P.add('turretDark', cylY(.89, .97, .12, 32), 0, -.02, -.15);
+  const rct = armorLoft([
+    [-1.58, .64, .78, .70, .03, .40, .69],
+    [-1.20, .87, 1.00, .90, .02, .42, .74],
+    [ -.15, .91, 1.02, .88, .02, .40, .74],
+    [ .58, .85, .98, .75, .03, .30, .70],
+    [1.07, .46, .72, .49, .04, .22, .54],
+    [1.43, .24, .35, .27, .06, .15, .35],
+  ]);
+  // Only the forward right cheek broadens; no global scale changes the bore
+  // or the launcher seats. The body remains a closed section solid.
+  const vertices = rct.getAttribute('position');
+  for (let i = 0; i < vertices.count; i++) {
+    if (vertices.getX(i) > 0 && vertices.getZ(i) > .10)
+      vertices.setX(i, vertices.getX(i) + .10 * Math.min(1, (vertices.getZ(i) - .10) / .48));
+  }
+  rct.computeVertexNormals(); rct.computeBoundingBox();
+  P.add('turret', rct);
   for (const side of [-1, 1]) {
     P.add('turret', orientedSlab(
       [side * 0.28, 0.04, 1.46], [side * 1.03, 0.08, 0.62],
@@ -586,8 +598,8 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
   if (P.geometryReceipt) {
     P.hullG.userData.pumaS1Receipt = Object.freeze({
       independentFromLegacyPuma: true,
-      hullConstruction: 'planar-roof-puma-glacis-monocoque-v6',
-      turretConstruction: 'planar-faceted-rct30-citadel-v4',
+      hullConstruction: 'puma-high-shoulder-troop-cell-v7',
+      turretConstruction: 'asymmetric-rct30-spine-bustle-v5',
       roadWheelsPerSide: 6,
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,

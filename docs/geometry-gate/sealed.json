@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-21T10:53:35.801Z",
+ "generatedAt": "2026-09-26T00:22:22.537Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -1387,6 +1387,54 @@
    "insideOutPx": 4917,
    "seeThroughPx": 0,
    "tris": 97514
+  },
+  "spz_puma_s1_x": {
+   "sealed": true,
+   "openPx": 38,
+   "openViews": 0,
+   "insideOutPx": 163,
+   "seeThroughPx": 0,
+   "tris": 72568
+  },
+  "cv90_x": {
+   "sealed": true,
+   "openPx": 16,
+   "openViews": 0,
+   "insideOutPx": 307,
+   "seeThroughPx": 9,
+   "tris": 47940
+  },
+  "type89_x": {
+   "sealed": true,
+   "openPx": 15,
+   "openViews": 0,
+   "insideOutPx": 558,
+   "seeThroughPx": 0,
+   "tris": 59104
+  },
+  "dardo": {
+   "sealed": true,
+   "openPx": 8,
+   "openViews": 0,
+   "insideOutPx": 528,
+   "seeThroughPx": 0,
+   "tris": 55408
+  },
+  "lrmv_lynx": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 250,
+   "seeThroughPx": 0,
+   "tris": 59256
+  },
+  "borsuk": {
+   "sealed": true,
+   "openPx": 16,
+   "openViews": 0,
+   "insideOutPx": 625,
+   "seeThroughPx": 0,
+   "tris": 50580
   }
  }
 }

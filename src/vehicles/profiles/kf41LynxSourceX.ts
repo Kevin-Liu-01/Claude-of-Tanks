@@ -127,7 +127,7 @@ function buildLynxRunningGear(P: TankBuilderPort): void {
   const wheels = kf41LynxWheelStock(Boolean(P.q));
   P.gear=KIT.buildRunningGear(P,{
     trackShoeBuilder:buildFleetTrackShoe,
-    style:'rubber',wheelPattern:'plain-dish-twelve',trackPattern:'nato-double-pin',
+    style:'rubber',trackPattern:'nato-double-pin',
     wheelR:.3675,wheelW:.4297,wheelY:.4705,
     wheelTireBands:[{centerM:-.1246,widthM:.1805,innerRadiusM:.307},{centerM:.1246,widthM:.1805,innerRadiusM:.307}],
     wheelCoreGeometry:{disc:wheels.core},
@@ -234,6 +234,12 @@ function buildLynxCannon(P: TankBuilderPort): void {
   P.physicalMuzzleBore={outerRadiusM:.044,innerRadiusM:.0175,depthM:.11};
 }
 
+/** Shared only by explicitly KF41-derived vehicles; no turret is constructed. */
+export function buildKf41Chassis(P: TankBuilderPort): void {
+  buildLynxHull(P);
+  buildLynxRunningGear(P);
+}
+
 export function buildKf41LynxX(P: TankBuilderPort): void {
   // Measured fixed armor extends the shadow silhouette; omit small fittings.
   P.additionalShadowSources = {
@@ -243,8 +249,7 @@ export function buildKf41LynxX(P: TankBuilderPort): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(0, 2.29, -.15);
   P.gunG.position.set(-.01164, .31336, .85);
-  buildLynxHull(P);
-  buildLynxRunningGear(P);
+  buildKf41Chassis(P);
   const py=P.turretG.position.y,pz=P.turretG.position.z;
   buildLynxTurretArmor(P,py,pz);
   buildLynxRoofSensor(P);

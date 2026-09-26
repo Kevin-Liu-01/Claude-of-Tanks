@@ -1,3 +1,4 @@
+import { armorLoft } from './europeSourcePrimitives.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // Two independent first-party procedural Swedish IFVs.
 //
@@ -79,7 +80,7 @@ function panelGeometry(corners: [Vec3, Vec3, Vec3, Vec3], thickness: number): TH
 // Tier IX CV90 — independent low Swedish monocoque and compact crew turret.
 
 function buildCv90Hull(P: CvBuilderPort): void {
-  const { box, cylX, cylY, polyMultiLoft } = KIT;
+  const { box, cylX, cylY } = KIT;
   // The belly now rises into the upper cell instead of ending below it. Its
   // sides stop just inboard of the shoe faces, closing the former transverse
   // daylight slot without intersecting the animated track course.
@@ -97,15 +98,15 @@ function buildCv90Hull(P: CvBuilderPort): void {
     [-0.96, 1.00, 3.28], [0.96, 1.00, 3.28], [1.49, 1.66, 1.82], [-1.49, 1.66, 1.82],
     [-1.02, 1.12, 3.28], [1.02, 1.12, 3.28], [1.49, 1.79, 1.82], [-1.49, 1.79, 1.82],
   ));
-  const upperPlan: [number, number][] = [
-    [-1.49, 1.76], [1.49, 1.76], [1.52, 1.50], [1.52, -3.12],
-    [1.34, -3.45], [-1.34, -3.45], [-1.52, -3.12], [-1.52, 1.56],
-  ];
-  P.add('hull', polyMultiLoft(upperPlan, [
-    { height: 0.00, inset: 1.00 },
-    { height: 0.22, inset: 0.96 },
-    { height: 0.46, inset: 0.89 },
-  ]), 0, 1.28, 0);
+  // Swedish low roof: long level troop deck, clipped stern and a short,
+  // steep shoulder break. Independent longitudinal sections retain the roof
+  // length instead of shrinking every horizontal contour toward its center.
+  P.add('hull', armorLoft([
+    [-3.45, 1.25, 1.34, 1.21, 1.24, 1.47, 1.67],
+    [-3.10, 1.43, 1.52, 1.37, 1.24, 1.49, 1.74],
+    [ 1.48, 1.43, 1.52, 1.37, 1.24, 1.49, 1.74],
+    [ 1.83, 1.39, 1.49, 1.36, 1.24, 1.50, 1.79],
+  ]));
 
   P.add('hullDark', box(1.92, 1.00, 0.045), 0, 1.09, -3.48);
   P.add('hull', box(1.72, 0.84, 0.050), 0, 1.09, -3.51);
@@ -232,24 +233,27 @@ function addCv90ScaffoldedCradle(P: CvBuilderPort): void {
 }
 
 function buildCv90Turret(P: CvBuilderPort): void {
-  const { box, cylY, cylZ, polyMultiLoft } = KIT;
-  // Compact Swedish arrow-wedge. The narrow gun channel opens into two hard
-  // cheek breaks, then a nearly parallel crew cell and clipped bustle. This
-  // is a new CV9040 shell, not a scaled mission-module or donor-family mesh.
-  const lowerPlan: [number, number][] = [
-    [-0.27, 1.52], [0.27, 1.52], [0.80, 1.12], [1.14, 0.44],
-    [1.10, -0.92], [0.90, -1.56], [0.64, -1.72], [-0.64, -1.72],
-    [-0.90, -1.56], [-1.10, -0.92], [-1.14, 0.44], [-0.80, 1.12],
-  ];
+  const { box, cylY, cylZ } = KIT;
+  // Compact two-man CV9040 fighting compartment: upright crew walls,
+  // a raked broad face and short squared bustle. It is not the Mk IV's
+  // wide low shoulder shelf or a uniformly inset twelve-sided pyramid.
   P.add('turretDark', cylY(1.01, 1.08, 0.12, 24), 0, -0.05, -0.30);
-  P.add('turret', polyMultiLoft(lowerPlan, [
-    { height: 0.00, inset: 1.00 },
-    { height: 0.25, inset: 0.96 },
-    { height: 0.72, inset: 0.72 },
+  P.add('turret', armorLoft([
+    [-1.64, .75, .89, .80, .04, .42, .65],
+    [-1.34, 1.01, 1.10, 1.00, .00, .44, .72],
+    [ .24, 1.03, 1.14, .97, .00, .44, .72],
+    [ .94, .84, .98, .83, .00, .30, .68],
+    [1.17, .70, .83, .72, .02, .22, .54],
   ]));
+  // Cheeks flank an actual central gun throat; the trunnion mask closes it.
+  for (const side of [-1, 1]) P.add('turret', convexSlab(
+    [side*.33,.02,1.14], [side*.88,.02,1.09],
+    [side*.76,.05,1.42], [side*.33,.05,1.42],
+    [side*.33,.65,.89], [side*.86,.65,.89],
+    [side*.72,.48,1.29], [side*.33,.48,1.29],
+  ));
   for (const side of [-1, 1]) {
-    // The arrow nose, two cheek breaks and roof are now one continuous
-    // monotonic shell. Only the aft side belt remains an applique layer.
+    // A separate aft armor belt protects the crew cell and bustle.
     P.addExternalArmor('turret', orientedSlab(
       [side * 1.08, 0.13, -0.22], [side * 1.11, 0.15, -1.30],
       [side * 0.90, 0.16, -1.55], [side * 0.86, 0.13, -0.34],
@@ -310,12 +314,12 @@ function buildCv90Turret(P: CvBuilderPort): void {
     P.turretG.userData.cv90IndependentTurretReceipt = Object.freeze({
       sharedStructuralBuilder: false, identityFamily: 'cv90-native',
       foreignFamilyGeometryReused: false,
-      turretConstruction: 'cv9040-integrated-arrow-wedge-crew-citadel-v6',
+      turretConstruction: 'cv9040-upright-crew-raked-face-v7',
       gunAssembly: 'rooted-hollow-40mm-diagonal-truss-cradle-v3',
       remoteMachineGunTower: 'k2b-style-complete-open-yoke-rws', allAroundOptics: true,
       planarRoofCrown: true, monotonicArmorInset: true, concaveSurfaceCount: 0,
       integratedRearBustle: true, structuralChevronCoursesPerSide: 2,
-      frontArmorShell: 'single-monotonic-arrow-shell', equipmentReseatedForShell: true,
+      frontArmorShell: 'raked-cheeks-open-gun-throat', equipmentReseatedForShell: true,
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
       host: 'cv90', architecture: 'rooted-hollow-trapezoid-40mm-diagonal-truss-v3',
@@ -344,7 +348,7 @@ function buildCv90(P: CvBuilderPort): void {
     P.hullG.userData.cv90IndependentHullReceipt = Object.freeze({
       id: 'cv90', firstPartyProceduralOnly: true, externalGeometryLoaded: false,
       sharedStructuralBuilder: false, designLineage: 'independent-tier9-cv9040-v2',
-      hullConstruction: 'cv9040-fused-belly-glacis-monocoque-v5', roadWheelsPerSide: 7,
+      hullConstruction: 'cv9040-long-roof-clipped-stern-v7', roadWheelsPerSide: 7,
       canonicalTrackCourses: 1, duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel', sideArmorStationsPerSide: 9,
       planarRoofCell: true, upperGlacisConstruction: 'overlapped-planar-wedge',
@@ -364,7 +368,7 @@ function buildCv90(P: CvBuilderPort): void {
 // Tier X CV90 Mk IV — independently authored heavy hull and mission turret.
 
 function buildCv90MkivHull(P: CvBuilderPort): void {
-  const { box, cylX, cylY, polyMultiLoft } = KIT;
+  const { box, cylX, cylY } = KIT;
   // Raise and widen the armored belly into the mission cell while retaining
   // a narrow mechanical clearance to the inner track faces.
   P.add('hull', box(2.24, 1.10, 6.78), 0, 0.75, -0.12);
@@ -378,16 +382,15 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
     [-1.02, 1.07, 3.49], [1.02, 1.07, 3.49], [1.61, 1.78, 1.77], [-1.61, 1.78, 1.77],
     [-1.09, 1.20, 3.49], [1.09, 1.20, 3.49], [1.61, 1.93, 1.77], [-1.61, 1.93, 1.77],
   ));
-  const armoredCellPlan: [number, number][] = [
-    [-1.61, 1.72], [1.61, 1.72], [1.65, 1.46], [1.65, -2.76],
-    [1.50, -3.55], [1.02, -3.66], [-1.02, -3.66], [-1.50, -3.55],
-    [-1.65, -2.76], [-1.65, 1.50],
-  ];
-  P.add('hull', polyMultiLoft(armoredCellPlan, [
-    { height: 0.00, inset: 1.00 },
-    { height: 0.28, inset: 0.96 },
-    { height: 0.58, inset: 0.89 },
-  ]), 0, 1.30, 0);
+  // Mk IV keeps the Swedish shallow prow, but a raised aft troop roof and
+  // broad beveled shoulders distinguish its heavier protection package.
+  P.add('hull', armorLoft([
+    [-3.66, 1.28, 1.50, 1.33, 1.25, 1.57, 1.82],
+    [-2.82, 1.54, 1.65, 1.50, 1.25, 1.59, 1.89],
+    [-.46, 1.54, 1.65, 1.50, 1.25, 1.59, 1.89],
+    [1.47, 1.54, 1.65, 1.46, 1.25, 1.58, 1.88],
+    [1.78, 1.48, 1.61, 1.44, 1.25, 1.60, 1.93],
+  ]));
   P.add('hullDark', box(2.12, 1.09, 0.050), 0, 1.14, -3.69);
   P.add('hull', box(1.92, 0.91, 0.055), 0, 1.14, -3.725);
   for (const x of [-0.74, -0.25, 0.25, 0.74]) P.add('hullDark', cylX(0.052, 0.16, 12), x, 1.66, -3.76);
@@ -464,9 +467,14 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
     P.add('hull', KIT.box(0.27, 0.24, 6.06), side * 1.49, 1.63, -0.64);
     for (let index = 0; index < 8; index++) {
       const z = 2.02 - index * 0.80;
-      P.addExternalArmor('hull', KIT.box(0.18, 0.86, 0.81),
-        side * 1.97, 1.30, z, 0, 0, side * (index % 2 ? 0.012 : -0.012));
-      P.add('hull', KIT.box(0.026, 0.75, 0.72), side * 2.075, 1.30, z);
+      // Chamfered add-on modules, distinct from the base CV90's thin doors.
+      P.addExternalArmor('hull', convexSlab(
+        [side*1.86,.87,z-.405], [side*1.86,.87,z+.405],
+        [side*2.06,.99,z+.405], [side*2.06,.99,z-.405],
+        [side*1.86,1.73,z-.405], [side*1.86,1.73,z+.405],
+        [side*2.06,1.60,z+.405], [side*2.06,1.60,z-.405],
+      ));
+      P.add('hull', KIT.box(.026,.59,.72), side*2.073,1.30,z);
       for (const y of [1.08, 1.52]) P.add('hullDetail', KIT.cylX(0.019, 0.20, 8), side * 2.09, y, z);
     }
     P.add('hull', KIT.box(0.15, 0.18, 6.20), side * 1.89, 1.87, -0.70);
@@ -492,29 +500,32 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
 }
 
 function buildCv90MkivTurret(P: CvBuilderPort): void {
-  const { box, cylY, cylZ, polyMultiLoft } = KIT;
+  const { box, cylY, cylZ } = KIT;
   // Seat the complete moving cannon farther inside the mission module. Moving
   // the articulated rig preserves the authored shroud/barrel/bore relationship
   // and shifts the recoil and muzzle anchors with it.
   const gunTrunnionRecessM = 0.18 * ADVANCED_IFV_SCALE;
   P.gunG.position.z -= gunTrunnionRecessM;
-  // Mk IV uses its own broad low-profile mission module. A split arrow nose,
-  // shoulder cells and long clipped bustle make the Tier X silhouette more
-  // assertive without scaling the crew turret used by the Tier IX vehicle.
-  const citadelPlan: [number, number][] = [
-    [-0.28, 1.82], [0.28, 1.82], [0.90, 1.27], [1.46, 0.46],
-    [1.42, -1.18], [1.16, -1.82], [0.72, -2.08], [-0.72, -2.08],
-    [-1.16, -1.82], [-1.42, -1.18], [-1.46, 0.46], [-0.90, 1.27],
-  ];
+  // D-series-inspired protection: low broad shoulder modules carry a
+  // narrower crew citadel and a long ammunition bustle. Width and roof height
+  // change independently at the cheek, trunnion, crew and bustle stations.
   P.add('turretDark', cylY(1.24, 1.32, 0.13, 28), 0, -0.055, -0.34);
-  P.add('turret', polyMultiLoft(citadelPlan, [
-    { height: 0.00, inset: 1.00 },
-    { height: 0.30, inset: 0.94 },
-    { height: 0.86, inset: 0.62 },
+  P.add('turret', armorLoft([
+    [-2.06, 1.00, 1.16, .96, .08, .32, .73],
+    [-1.71, 1.29, 1.42, 1.10, .03, .33, .86],
+    [-.35, 1.29, 1.46, 1.08, .00, .34, .86],
+    [ .62, 1.21, 1.39, .99, .00, .34, .86],
+    [1.05, .98, 1.20, .76, .03, .29, .67],
+    [1.22, .70, .91, .60, .06, .22, .47],
   ]));
+  for (const side of [-1, 1]) P.addExternalArmor('turret', convexSlab(
+    [side*.40,.04,1.12], [side*1.22,.04,.58],
+    [side*.99,.05,1.22], [side*.40,.05,1.67],
+    [side*.40,.66,.99], [side*1.10,.73,.48],
+    [side*.89,.54,1.03], [side*.40,.40,1.51],
+  ));
   for (const side of [-1, 1]) {
-    // The highly sloped arrow nose and roof are one shell. Removing the old
-    // overlay cheeks eliminates the clipped/concave-looking front surfaces.
+    // Independent side modules bridge the shoulder shelf into the bustle.
     P.addExternalArmor('turret', orientedSlab(
       [side * 1.39, 0.14, -0.28], [side * 1.43, 0.16, -1.40],
       [side * 1.16, 0.17, -1.80], [side * 1.08, 0.14, -0.42],
@@ -605,13 +616,13 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
     P.turretG.userData.cv90MkivIndependentTurretReceipt = Object.freeze({
       sharedStructuralBuilder: false, identityFamily: 'cv90-native',
       foreignFamilyGeometryReused: false,
-      turretConstruction: 'cv90-mkiv-integrated-steep-arrow-mission-module-v6',
+      turretConstruction: 'cv90-mkiv-shoulder-citadel-bustle-v7',
       gunAssembly: 'massive-faceted-50mm-trunnion-shroud-v1',
       remoteMachineGunTower: 'k2b-style-complete-open-yoke-rws',
       spikeLauncherTubes: 2, launcherTubes: 2, apsRadarFaces: 4,
       planarRoofCrown: true, monotonicArmorInset: true, concaveSurfaceCount: 0,
       integratedRearBustle: true, structuralChevronCoursesPerSide: 2,
-      frontArmorShell: 'single-extreme-slope-arrow-shell',
+      frontArmorShell: 'split-shoulders-open-gun-throat',
       sideEquipmentSeat: 'rolled-plinth-on-armor-normal-v1',
       equipmentReseatedForShell: true,
     });
@@ -642,7 +653,7 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
     P.hullG.userData.cv90MkivIndependentHullReceipt = Object.freeze({
       id: 'cv90_mkiv', firstPartyProceduralOnly: true, externalGeometryLoaded: false,
       sharedStructuralBuilder: false, designLineage: 'independent-tier10-cv90-mkiv-v2',
-      hullConstruction: 'cv90-mkiv-fused-belly-glacis-side-cell-v5', roadWheelsPerSide: 7,
+      hullConstruction: 'cv90-mkiv-raised-troop-roof-v7', roadWheelsPerSide: 7,
       canonicalTrackCourses: 1, duplicateTrackMeshes: 0,
       suspensionPlacement: 'inboard-behind-road-wheel', sideArmorStationsPerSide: 9,
       sideArmorLayers: 3, planarRoofCell: true,

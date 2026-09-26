@@ -103,18 +103,18 @@ assert.deepEqual(
 const nationalShowcaseCases = [
   {
     nation: 'Japan', filler: 'type90a',
-    expected: ['type10_x', 'type10b', 'type89_light_tiger', 'type90_x'],
+    expected: ['type10_x', 'type10b', 'type89_light_tiger', 'type89_x', 'type90_x'],
   },
   {
-    nation: 'Sweden', filler: 'cv90',
-    expected: ['strv122_x', 'cv90_mkiv_x', 'strv103', 'strv122', 'cv90_mkiv'],
+    nation: 'Sweden', filler: 'strv81',
+    expected: ['strv122_x', 'cv90_mkiv_x', 'strv103', 'strv122', 'cv90_mkiv', 'cv90', 'cv90_x'],
   },
   {
     nation: 'Germany', filler: 'leo2a6',
     // owner 2026-09-16: Panther, 2A7V, Revolution, 2A6M, 2A6, 2A5M, 2A5, KF51 EVO, KF51-U, Puma S1, MBT-70, then the rest
     expected: [
       'kf51_x', 'leo2a7v_x', 'leo2_revolution', 'leo2a6m_x', 'leo2a6_x', 'leo2a4m_x', 'leo2a5_x',
-      'kf41_lynx_x', 'kf51', 'kf51b', 'spz_puma_s1', 'mbt70', 'leo2a7v',
+      'kf41_lynx_x', 'kf51', 'kf51b', 'spz_puma_s1', 'spz_puma_s1_x', 'mbt70', 'leo2a7v',
     ],
   },
   {

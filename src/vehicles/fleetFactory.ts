@@ -56,6 +56,8 @@ import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
+import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
+import './europePhotoIfvSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -97,6 +99,7 @@ synchronizeSuppliedSourceCombatMetadata();
 synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
 synchronizeXk2CombatMetadata();
+synchronizeIfvReplicaCombatMetadata();
 finalizeFirstPartyRoster();
 applyNativeFamilyOrderToCatalogs();
 
@@ -172,6 +175,12 @@ const GROUP_LOADERS = Object.freeze({
   k21X: () => import('./profiles/k21X.ts').then(mod => registerProfiles({ k21_x: { build: mod.buildK21X } })),
   type96bX: () => import('./profiles/type96bX.ts').then(mod => registerProfiles({ type96b_x: { build: mod.buildType96bX } })),
   kf41LynxSourceX: () => import('./profiles/kf41LynxSourceX.ts').then(mod => registerProfiles({ kf41_lynx_x: { build: mod.buildKf41LynxX } })),
+  dardo: () => import('./profiles/dardo.ts').then(mod => registerProfiles({ dardo: { build: mod.buildDardo } })),
+  lrmvLynx: () => import('./profiles/lrmvLynx.ts').then(mod => registerProfiles({ lrmv_lynx: { build: mod.buildLrmvLynx } })),
+  borsuk: () => import('./profiles/borsuk.ts').then(mod => registerProfiles({ borsuk: { build: mod.buildBorsuk } })),
+  pumaS1SourceX: () => import('./profiles/pumaS1SourceX.ts').then(mod => registerProfiles({ spz_puma_s1_x: { build: mod.buildPumaS1X } })),
+  cv9040CSourceX: () => import('./profiles/cv9040CSourceX.ts').then(mod => registerProfiles({ cv90_x: { build: mod.buildCv9040CX } })),
+  type89SourceX: () => import('./profiles/type89SourceX.ts').then(mod => registerProfiles({ type89_x: { build: mod.buildType89X } })),
   cv90MkivSourceX: () => import('./profiles/cv90MkivSourceX.ts').then(mod => registerProfiles({ cv90_mkiv_x: { build: mod.buildCv90MkivX } })),
   cv90105TmlSourceX: () => import('./profiles/cv90105TmlSourceX.ts').then(mod => registerProfiles({ cv90105_tml_x: { build: mod.buildCv90105TmlX } })),
   sabraMk2SourceX: () => import('./profiles/sabraMk2SourceX.ts').then(mod => registerProfiles({ sabra_mk2_x: { build: mod.buildSabraMk2X } })),

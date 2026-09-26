@@ -1,3 +1,9 @@
+import { buildDardo } from './profiles/dardo.ts';
+import { buildLrmvLynx } from './profiles/lrmvLynx.ts';
+import { buildBorsuk } from './profiles/borsuk.ts';
+import { buildPumaS1X } from './profiles/pumaS1SourceX.ts';
+import { buildCv9040CX } from './profiles/cv9040CSourceX.ts';
+import { buildType89X } from './profiles/type89SourceX.ts';
 import { XK2_PROFILES } from './profiles/xk2.ts';
 import { GRIFFIN_VIPER_PROFILES } from './profiles/griffinViper.ts';
 import { TOS1A_TAGIL_PROFILES } from './profiles/tos1aTagil.ts';
@@ -162,6 +168,13 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...OBJECT695_X_PROFILES,
   ...SWEDEN_PROFILES,
   ...CV90_PROFILES,
+  spz_puma_s1_x: { build: buildPumaS1X },
+  dardo: { build: buildDardo },
+  lrmv_lynx: { build: buildLrmvLynx },
+  borsuk: { build: buildBorsuk },
+  cv90_x: { build: buildCv9040CX },
+  type89_x: { build: buildType89X },
+
   ...POLAND_PROFILES,
   ...KOREA_PROFILES,
   ...JAPAN_PROFILES,

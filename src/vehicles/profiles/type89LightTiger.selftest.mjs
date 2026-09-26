@@ -74,8 +74,8 @@ try {
   assert.deepEqual(hull.userData.type89LightTigerReceipt, {
     independentFromLegacyType89: true,
     referenceUsage: 'measurement-and-silhouette-only',
-    hullConstruction: 'planar-roof-light-tiger-glacis-shell-v6',
-    turretConstruction: 'flat-front-deep-bustle-equipment-citadel-v6',
+    hullConstruction: 'clipped-troop-cell-light-tiger-v7',
+    turretConstruction: 'blunt-front-independent-crew-box-v7',
     roadWheelsPerSide: 6,
     canonicalTrackCourses: 1,
     duplicateTrackMeshes: 0,

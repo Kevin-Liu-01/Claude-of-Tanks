@@ -98,6 +98,7 @@ const BASE_CAMO_PATTERN_IDS = Object.freeze([
   'sig_t84', 'sig_ua_challenger2', 'sig_ua_t64bv', 'sig_ua_t80bv',
   'sig_ua_t80u_kursk', 'sig_ua_t84_oplot_m', 'sig_ua_m1a1', 'sig_leo2a6_ua',
   'mono', 'carbon', 'prism', 'sig_sabra_mk2_x', 'sig_tos1a_tagil',
+  'sig_dardo', 'sig_lrmv_lynx', 'sig_borsuk',
 ] as const);
 
 /**
@@ -186,6 +187,9 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_amx56: 'Leclerc S1', // the legacy hull is the S1 since 2026-09-16
   sig_leclerc: 'Leclerc S2',
   sig_ariete_c2: 'Ariete C2',
+  sig_dardo: 'Dardo Woodland',
+  sig_lrmv_lynx: 'LRMV Olive',
+  sig_borsuk: 'Borsuk Woodland',
   sig_type10b: 'Type 10B',
   sig_type90: 'Type 90 Kyū-maru',
   sig_type90a: 'Type 90A',
@@ -438,6 +442,12 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'nato', base: '#35483a', weather: '#405544', patches: ['#1e2521', '#5f4b37'], camoScale: 0.45 }),
   preset('sig_leclerc', 'leclerc', signatureTags('fr', 'woodland', 'organic'),
     { scheme: 'nato', base: '#394936', weather: '#4b5940', patches: ['#614d39', '#20231f'], camoScale: 0.38 }),
+  preset('sig_dardo', 'dardo', signatureTags('it', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#4d5538', weather: '#797762', patches: ['#494235', '#252c26'] }),
+  preset('sig_lrmv_lynx', 'lrmv_lynx', signatureTags('it', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#535d42', weather: '#797762', patches: ['#555f46', '#505940'] }),
+  preset('sig_borsuk', 'borsuk', signatureTags('pl', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#4b553b', weather: '#797762', patches: ['#494235', '#252c26'] }),
   preset('sig_ariete_c2', 'ariete_c2', signatureTags('it', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#3f4d3b', weather: '#4b5945', patches: ['#2e3b2d', '#5b5140'], camoScale: 0.5 }),
   preset('sig_type10b', 'type10b', signatureTags('jp', 'woodland', 'stripes'),
@@ -670,7 +680,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // France
   'amx56', 'leclerc',
   // Italy
-  'ariete_c2',
+  'ariete_c2', 'dardo', 'lrmv_lynx',
   // Japan
   'type10b', 'type90', 'type90a',
   // China — the full current lineup has intentionally distinct service paint.
@@ -678,7 +688,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // Russia — the Object 695 owns its own digital service paint.
   'object695_x',
   // Poland — PL-01 itself owns the national Factory reference.
-  'pt91m', 't72m1_jaguar', 'pt91_twardy', 'pl01_105', 'bwp1', 'upior',
+  'borsuk', 'pt91m', 't72m1_jaguar', 'pt91_twardy', 'pl01_105', 'bwp1', 'upior',
   // South Korea — BMP-3 ROK itself owns the national Factory reference.
   'k2', 'k1a1', 'k2b',
   // Israel — distinct authored defaults alongside the shared Factory coat.

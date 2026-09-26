@@ -62,6 +62,12 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',
     searchAliases: ['CV90 Mk IV', 'CV90 Mark IV', 'CV90 MkIV', 'CV90 D-series'],
   },
+  spz_puma_s1_x: {displayName:'Puma S1 X',shortName:'Puma S1 X',searchAliases:['SPz Puma S1 X','RCT30 MELLS']},
+  dardo: {displayName:'Dardo',shortName:'Dardo',searchAliases:['VCC Dardo','HITFIST 25']},
+  lrmv_lynx: {displayName:'LRMV Lynx',shortName:'LRMV Lynx',searchAliases:['Italian Lynx KF41','A2CS IFV','Lance 30']},
+  borsuk: {displayName:'Borsuk',shortName:'Borsuk',searchAliases:['BWP Borsuk','ZSSW-30']},
+  cv90_x: {displayName:'CV9040C X',shortName:'CV9040C X',searchAliases:['CV90 X','Stridsfordon 9040C']},
+  type89_x: {displayName:'Type 89 X',shortName:'Type 89 X',searchAliases:['Japanese Type 89 IFV X']},
   cv90_mkiv_x: {
     displayName: 'CV90 Mk 4 X', shortName: 'CV90 Mk 4 X',
     searchAliases: ['CV90 Mk IV X', 'CV90 MkIV X', 'CV90 Mark 4 X'],

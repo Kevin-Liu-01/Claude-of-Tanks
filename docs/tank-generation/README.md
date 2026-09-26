@@ -33,6 +33,7 @@ These are open issues, not completed fleet-wide fixes.
 | Request | Route and required distinction |
 | --- | --- |
 | “New tank from this GLB/OBJ/ZIP/folder; name it X” | Independent source study, new exact ID, old production model preserved; metadata reuse is not visual proof. |
+| “Add this photographed vehicle” | Freeze the exact photographed configuration and primary published dimensions. Explicit photographic targets retain all physical gates and report numerical 3D comparison as unverified; never substitute another vehicle's oracle. |
 | “Do the whole family” | One validated base plus an explicit per-variant delta/source matrix. Do not certify all variants against one configuration's oracle. |
 | “Keep this as Proto; make a proper one” | Preserve the historical model separately; source fidelity and historical preservation are different comparisons. |
 | “Make Mk10 based on Mk5 X” | Explicit first-party recipe reuse, adapted to Mk10 datums; no complete duplicate donor assembly under a second shell. |
@@ -98,3 +99,20 @@ Run `node docs/tank-generation/check.mjs --selftest` and
 documentation links and required handoff fields, not tank geometry or release
 readiness. Run the repo's agent-docs doctor after instruction changes; keep
 unrelated scaffold stubs out of a scoped handbook update.
+
+## Photographic qualification
+
+The scoped [IFV photographic packet](../references/photos/ifvs-20260925.json)
+records the owner's approved CV9040C route and the three supplied photographic
+additions. `tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
+configuration and dimension receipts. `tools/photo-reference-policy.mjs`
+limits that route to the declared IDs. `tank-standard-check` consumes those
+receipts while retaining strict track sweep, continuity, equipment and all
+release steps. Numerical 3D fidelity remains **unverified**. This is not a
+fallback for a missing or failed registered model; adding a registered 3D
+reference requires resolving its qualification route explicitly.
+
+Published body dimensions and inferred antenna/weapon envelopes must be
+identified separately in the packet. Native physical tests are not proof that
+hidden photographic surfaces are exact, and a photo recipe cannot authorize
+unexplained gaps, invented equipment or a false numerical score.

@@ -3130,5 +3130,8 @@
   "garage.camo.generic.service_bmp3_rok": "半岛数码",
   "garage.camo.generic.service_strv122": "北欧碎片",
   "garage.camo.generic.service_merkava2d": "西奈灰绿",
-  "garage.camo.generic.service_ua_m2a3_bradley": "草原数码"
+  "garage.camo.generic.service_ua_m2a3_bradley": "草原数码",
+  "camoPattern.sig_dardo": "达尔多林地迷彩",
+  "camoPattern.sig_lrmv_lynx": "LRMV 橄榄绿",
+  "camoPattern.sig_borsuk": "獾式林地迷彩"
 }

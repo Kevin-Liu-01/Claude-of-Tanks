@@ -1,3 +1,5 @@
+import {isPhotoReference,photoReceiptPassed} from './photo-reference-policy.mjs';
+import {readPhotoReference} from './photo-reference-record.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {readConceptDesign} from './first-party-concept-record.mjs';
 import {firstPartyConcept,partitionConceptIds,validateSelectedIds,conceptReceiptPassed} from './first-party-concept-policy.mjs';
@@ -40,6 +42,7 @@ const { configurations } = JSON.parse(readFileSync(new URL('../docs/references/b
 const sourceReceipts = new Map();
 const openingReports = new Map();
 const conceptReports = new Map();
+const photoReports = new Map();
 
 const idArg = process.argv.find((a) => a.startsWith('--ids='));
 const wantFixture = process.argv.includes('--fixture');
@@ -82,6 +85,22 @@ if(conceptIds.length) {
     const report=JSON.parse(readFileSync(path.join(out,`${id}.json`),'utf8'));
     if(!conceptReceiptPassed(id,report,conceptStartedAt,conceptDesignHashes.get(id)))throw new Error(`${id}: missing/stale concept proof`);
     conceptReports.set(id,report);
+  }
+}
+
+// Photographic approval changes only numerical 3D comparison. It still needs
+// fresh dimensions/configuration and every unchanged downstream physical gate.
+const photoStartedAt=Date.now();
+const photoIds=ids.filter(isPhotoReference);
+const photoDocuments=new Map(photoIds.map(id=>[id,readPhotoReference(id)]));
+if(photoIds.length){
+  const out=path.join(reportRoot,'photos');
+  await runCapturedCommand(process.execPath,['tools/photo-reference-check.mjs',`--ids=${photoIds.join(',')}`,`--out=${out}`]);
+  for(const id of photoIds){
+    const doc=photoDocuments.get(id),report=JSON.parse(readFileSync(path.join(out,`${id}.json`),'utf8'));
+    if(!photoReceiptPassed(id,report,doc.packet,doc.packetSha256,photoStartedAt))throw new Error(`${id}: missing/stale photo physical proof`);
+    photoReports.set(id,report);
+    configurations[id]={id,comparisonPurpose:'photographic-reference',roofMachineGuns:doc.target.roofMachineGuns,packetSha256:doc.packetSha256};
   }
 }
 
@@ -155,7 +174,9 @@ if ((ids.length && !noRender) || wantFixture) {
     });
     for (const id of ids) {
       const configuration = configurations[id];
-      const sourceReceipt = configuration ? verifyConfigurationSource(id, configuration) : null;
+      const photo=photoDocuments.get(id);
+      const sourceReceipt = photo ? {id,verified:true,path:photo.packetPath,sha256:photo.packetSha256}
+        : configuration ? verifyConfigurationSource(id, configuration) : null;
       sourceReceipts.set(id, sourceReceipt);
       const result = standard.get(id);
       if (!result || result.error || !result.holes) continue;
@@ -169,6 +190,7 @@ if ((ids.length && !noRender) || wantFixture) {
         id,recordedAt:new Date().toISOString(),standard:result,
         sourceReceipt,configuration:configuration??null,
         concept:conceptReports.get(id)??null,
+        photographicReference:photoReports.get(id)??null,
         equipment:roofEquipmentVerdict(id,result.census,configuration,sourceReceipt),
         continuity:openingReports.get(id),
       },null,2)+'\n');
@@ -208,7 +230,7 @@ for (const id of ids) {
   let gateApplicable = false;
   let exactGatePassed = false;
   const concept=firstPartyConcept(id);
-  if(!concept)try {
+  if(!concept&&!isPhotoReference(id))try {
     const p = `docs/geometry-gate/${id}.json`;
     const j = JSON.parse(readFileSync(p, 'utf8'));
     const packetMtime = statSync(p).mtimeMs;
@@ -225,10 +247,14 @@ for (const id of ids) {
   const cl = clip.get(id);
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
   const clipOk = strictTrackClipPassed(cl);
-  const gateOk = concept
+  const photo=photoDocuments.get(id);
+  const gateOk = photo
+    ? photoReceiptPassed(id,photoReports.get(id),photo.packet,photo.packetSha256,photoStartedAt)
+    : concept
     ? conceptReceiptPassed(id,conceptReports.get(id),conceptStartedAt,conceptDesignHashes.get(id))
     : forceGate ? gateApplicable && exactGatePassed : !gateApplicable || exactGatePassed;
   if(concept){row='concept: comparison N/A';gateRequired='N/A';}
+  if(photo){row='photo; 3D score UNVERIFIED';gateRequired='—';}
 
   const st = standard.get(id);
   let contigStr = 'SKIP', decorStr = 'SKIP', contigOk = true, decorOk = true;

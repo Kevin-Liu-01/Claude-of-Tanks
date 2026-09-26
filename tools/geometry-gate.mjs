@@ -1,3 +1,4 @@
+import {isPhotoReference} from './photo-reference-policy.mjs';
 import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // tools/geometry-gate.mjs — THE authoritative geometric gate.
 //
@@ -36,6 +37,8 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
     return resolved.startsWith(`${publicRoot}${path.sep}`) ? resolved : null;
   };
   const registered = new Set(referenceIds);
+  for(const id of requested??[])if(isPhotoReference(id)&&registered.has(id))
+    throw new Error(`${id}: photographic qualification cannot override a registered 3D target`);
   const available = new Set(referenceIds.filter((id) => {
     const localPath = localAssetPath(referenceSources[id]);
     return localPath && fs.existsSync(localPath);

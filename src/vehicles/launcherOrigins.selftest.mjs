@@ -129,7 +129,7 @@ for (const id of ids) {
     } finally { for (const mesh of stock) mesh.geometry.dispose(); tank.dispose(); }
   }
 }
-assert.equal(ids.length, 32, 'review every missile/rocket vehicle when the roster changes');
+assert.equal(ids.length, 35, 'review every missile/rocket vehicle when the roster changes');
 assert.equal(throughGun, 7, 'gun-launched exceptions remain explicit');
 assert(external >= 25 && stockProbes >= 100 && launches >= 200);
 probeMaterial.dispose();

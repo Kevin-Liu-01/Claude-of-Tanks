@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-24T10:34:23.009Z",
+ "generatedAt": "2026-09-26T01:30:56.382Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 79,
- "total": 179,
+ "passed": 81,
+ "total": 181,
  "rows": [
   {
    "id": "challenger1",
@@ -1953,6 +1953,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "spz_puma_s1_x",
+   "geoMin": 93.5,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.5,
+    "dims": 98.1,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "leo2a6m_x",
    "geoMin": 93.5,
    "requiredMinimum": 92,
@@ -1977,6 +1990,19 @@
     "turretCurves": 95.1,
     "wholeCurves": 93.9,
     "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "type89_x",
+   "geoMin": 93.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.7,
+    "dims": 99.6,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

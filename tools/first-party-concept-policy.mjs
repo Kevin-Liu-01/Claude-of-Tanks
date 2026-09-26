@@ -1,5 +1,10 @@
 // Explicit owner-authored designs. This is not a fallback for failed sources.
 const CONCEPT_DOCUMENTS = Object.freeze({
+  spz_puma_s1:'docs/references/concepts/ifv-upgrades-20260925.json',
+  cv90:'docs/references/concepts/ifv-upgrades-20260925.json',
+  cv90_mkiv:'docs/references/concepts/ifv-upgrades-20260925.json',
+  type89_light_tiger:'docs/references/concepts/ifv-upgrades-20260925.json',
+
   k2:'docs/references/concepts/xk2-k1a1-20260921.json',
   griffin_viper:'docs/references/concepts/griffin-viper-20260921.json',
   ariete_c2_x:'docs/references/concepts/ariete-c2-20260921.json',
@@ -9,6 +14,11 @@ const CONCEPT_DOCUMENTS = Object.freeze({
   type100:'docs/references/concepts/type100-ifv-20260919.json',
 });
 export const FIRST_PARTY_CONCEPTS = Object.freeze({
+  spz_puma_s1: Object.freeze({"id":"spz_puma_s1","test":"src/vehicles/profiles/pumaS1.selftest.mjs","ring":[0.28800000000000003,1.7369999999999999,-0.9900000000000001],"gunLocal":[-0.12600000000000003,0.378,1.197],"barrelLengthM":2.025,"barrelRadiusM":0.0405,"pitchDeg":[-10,45],"mainCaliberMm":30,"roofMachineGuns":2,"hullLengthM":6.924962759017944,"hullWidthM":3.7151997089385986,"widthM":3.7151997089385986,"overallLengthM":6.924962759017944,"tallestM":3.3561144955158233,"silhouette":"High German troop cell with chamfered side cassettes and an asymmetric low remote turret; original game equipment retained","specDimensions":{"hullLengthM":6.84,"widthM":3.51,"overallLengthM":6.84},"cells":2}),
+  cv90: Object.freeze({"id":"cv90","test":"src/vehicles/profiles/cv90.selftest.mjs","ring":[0,1.521,-0.432],"gunLocal":[0,0.35100000000000003,1.035],"barrelLengthM":2.8080000000000003,"barrelRadiusM":0.057600000000000005,"pitchDeg":[-8,37],"mainCaliberMm":40,"roofMachineGuns":1,"hullLengthM":7.0042679295852786,"hullWidthM":3.4739999771118164,"widthM":3.4739999771118164,"overallLengthM":7.0042679295852786,"tallestM":3.0771144955158234,"silhouette":"Long Swedish troop roof with clipped stern and a compact upright two-man turret; original game equipment retained","specDimensions":{"hullLengthM":5.904,"widthM":3.258,"overallLengthM":6.57},"weaponSystem":"conventional-cannon"}),
+  cv90_mkiv: Object.freeze({"id":"cv90_mkiv","test":"src/vehicles/profiles/cv90.selftest.mjs","ring":[0,1.62,-0.396],"gunLocal":[0,0.405,1.2060000000000002],"barrelLengthM":3.384,"barrelRadiusM":0.0738,"pitchDeg":[-10,45],"mainCaliberMm":50,"roofMachineGuns":1,"hullLengthM":7.850483981800825,"hullWidthM":3.942000150680542,"widthM":3.942000150680542,"overallLengthM":7.850483981800825,"tallestM":3.365001085281372,"silhouette":"Raised Swedish troop roof and a broad low-shouldered turret with a narrower roof citadel; original game equipment retained","specDimensions":{"hullLengthM":6.282,"widthM":3.636,"overallLengthM":7.596},"cells":2}),
+  type89_light_tiger: Object.freeze({"id":"type89_light_tiger","test":"src/vehicles/profiles/type89LightTiger.selftest.mjs","ring":[0,1.7369999999999999,-0.45],"gunLocal":[0,0.333,1.071],"barrelLengthM":2.358,"barrelRadiusM":0.045000000000000005,"pitchDeg":[-11,45],"mainCaliberMm":35,"roofMachineGuns":2,"hullLengthM":6.567444095572084,"hullWidthM":3.5207998752593994,"widthM":3.5207998752593994,"overallLengthM":6.567444095572084,"tallestM":3.374082130908966,"silhouette":"Japanese-inspired clipped troop cell and blunt front compact remote turret; original Light Tiger game equipment retained","specDimensions":{"hullLengthM":6.12,"widthM":3.33,"overallLengthM":6.705},"cells":4}),
+
   k2: Object.freeze({
     id:'k2', test:'src/vehicles/profiles/xk2.selftest.mjs',
     ring:[0,1.70,-.30], gunLocal:[.0352,1.81797-1.49566,1.57716-.42564],

@@ -18,7 +18,9 @@ const newIds=new Set(SECOND_WAVE_X_IDS);
 // its original 151 records.
 const laterAbramsIds=new Set(['m1a2_x','m1a2_tusk_x',
   'm1a2_sepv2_x','m1a2_sepv3_x','ua_m1a1_x']);
-const laterIds=new Set([...laterAbramsIds,'type100','ztz100_x','ztz100_prototype','object695_x','ares_apc_x','merkava4_trophy','merkava4_barak','namer_ifv','tos1a_tagil','ariete_c2_x','griffin_viper',...SUPPLIED_SOURCE_IDS]);
+const laterIds=new Set([...laterAbramsIds,'type100','ztz100_x','ztz100_prototype','object695_x','ares_apc_x','merkava4_trophy','merkava4_barak','namer_ifv','tos1a_tagil','ariete_c2_x','griffin_viper',
+  // 2026-09-25 IFV identity batch: three X replicas and three photographic additions with their own anchors.
+  'spz_puma_s1_x','cv90_x','type89_x','dardo','lrmv_lynx','borsuk',...SUPPLIED_SOURCE_IDS]);
 assert.equal(newIds.size,23,'the C2 addition does not change the original second-wave batch');
 assert.equal(newIds.has('ariete_c2_x'),false);
 assert.deepEqual(VEHICLE_MARKING_ANCHORS.ariete_c2_x,{

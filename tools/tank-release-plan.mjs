@@ -1,10 +1,11 @@
+import {isPhotoReference} from './photo-reference-policy.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
 /** Declarative release composition, tested without launching browser children. */
 export function tankReleaseSteps(ids, gate, node = process.execPath) {
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
   const selectedIds=validateSelectedIds(ids.split(','),Object.keys(FLEET_GROUP_BY_ID));
-  const {comparisons}=partitionConceptIds(selectedIds);
+  const comparisons=partitionConceptIds(selectedIds).comparisons.filter(id=>!isPhotoReference(id));
   const selected=`--ids=${ids}`;
   // Fleet construction and builds share the resource queue with rendering.
   // Only children that already queue their own phases bypass this wrapper.

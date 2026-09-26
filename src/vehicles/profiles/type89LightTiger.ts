@@ -1,3 +1,4 @@
+import { armorLoft } from './europeSourcePrimitives.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // Independent first-party procedural Type 89 Light Tiger.
 //
@@ -37,7 +38,7 @@ interface LightTigerBuilderPort extends AdvancedIfvScalePort {
 }
 
 function addHull(P: LightTigerBuilderPort): void {
-  const { box, frustum, polyMultiLoft } = KIT;
+  const { box, frustum } = KIT;
 
   // Compact six-wheel Japanese IFV tub. The four connected bow planes retain
   // the Type 89's high shoulder and clipped nose while the deeper belly,
@@ -52,18 +53,16 @@ function addHull(P: LightTigerBuilderPort): void {
     [-1.02, 1.19, 3.25], [1.02, 1.19, 3.25], [1.46, 1.75, 1.60], [-1.46, 1.75, 1.60],
     [-1.10, 1.32, 3.25], [1.10, 1.32, 3.25], [1.46, 1.91, 1.60], [-1.46, 1.91, 1.60],
   ));
-  // The Japanese hull keeps its compact footprint but replaces the vertical
-  // troop box with a stepped shoulder loft. The bow, side shoulders and roof
-  // rise at different rates, giving the Light Tiger its own sharp silhouette.
-  const troopCellPlan: [number, number][] = [
-    [-1.46, 1.68], [1.46, 1.68], [1.54, 1.42], [1.54, -3.12],
-    [1.38, -3.38], [-1.38, -3.38], [-1.54, -3.12], [-1.54, 1.42],
-  ];
-  P.add('hull', polyMultiLoft(troopCellPlan, [
-    { height: 0.00, inset: 1.00 },
-    { height: 0.34, inset: 0.96 },
-    { height: 0.64, inset: 0.88 },
-  ]), 0, 1.34, -0.02);
+  // Japanese lineage: a narrow high troop compartment, clipped upper
+  // shoulders and a pronounced long bow. Stern and front roof stations have
+  // different widths instead of sharing the Swedish hull's inset prism.
+  P.add('hull', armorLoft([
+    [-3.40, 1.24, 1.38, 1.19, 1.28, 1.63, 1.92],
+    [-3.08, 1.37, 1.54, 1.31, 1.28, 1.67, 1.98],
+    [-.42, 1.37, 1.54, 1.31, 1.28, 1.67, 1.98],
+    [1.40, 1.33, 1.54, 1.31, 1.28, 1.60, 1.98],
+    [1.68, 1.27, 1.46, 1.25, 1.28, 1.59, 1.91],
+  ]));
 
   // Low-observable roof panels, engine louvers and recessed driver station.
   P.add('hullDark', box(1.36, 0.030, 1.74), -0.74, 1.955, 1.18);
@@ -213,28 +212,19 @@ function addRunningGear(P: LightTigerBuilderPort): void {
 }
 
 function addTurret(P: LightTigerBuilderPort): void {
-  const { box, cylY, cylZ, polyMultiLoft, polyTurret, buildGun } = KIT;
-  // Compact Type 89-derived fighting box: a broad, genuinely flat front,
-  // short chamfered shoulders and a square bustle replace the former pointed
-  // wedge. The upper ring stays slightly inset, preserving crisp welded
-  // planes without creating a concave crown.
-  const plan = [
-    [-0.82, 1.34], [0.82, 1.34], [1.12, 1.02], [1.18, 0.54],
-    [1.18, -1.18], [1.12, -1.72], [0.96, -2.06], [-0.96, -2.06],
-    [-1.12, -1.72], [-1.18, -1.18], [-1.18, 0.54], [-1.12, 1.02],
-  ];
-  // Fine-segment machined bearing skirt: a real structural transition at the
-  // unmanned module's yaw ring, not a coarse decorative puck. It remains
-  // tucked under the faceted shell while retaining a clean circular seat in
-  // close Gallery views and the vehicle's bounded authored shadow source.
+  const { box, cylY, cylZ, buildGun } = KIT;
+  // Type 89-derived crew turret: blunt gun shield, chamfered frontal
+  // corners, nearly vertical crew sides and an undercut short bustle.
+  // The box's rake is authored into its volume, not laid over a pyramid.
   P.add('turret', cylY(0.92, 0.98, 0.07, 64), 0, -0.02, -0.02);
-  P.add('turretDark', polyTurret(plan, 0.10, 0.96, 1.00), 0, -0.055, -0.02);
-  P.add('turret', polyMultiLoft(plan, [
-    { height: 0.02, inset: 1.00 },
-    { height: 0.38, inset: 0.98 },
-    { height: 0.72, inset: 0.90 },
+  P.add('turret', armorLoft([
+    [-2.06, .70, .94, .85, .18, .44, .67],
+    [-1.63, .93, 1.15, 1.06, .02, .46, .72],
+    [ .26, 1.02, 1.18, 1.08, .02, .45, .72],
+    [ .86, 1.00, 1.16, .99, .02, .35, .69],
+    [1.16, .77, .88, .76, .03, .28, .61],
+    [1.34, .73, .81, .71, .04, .20, .45],
   ]));
-  P.add('turret', box(1.62, 0.62, 0.18), 0, 0.36, 1.29);
   for (const side of [-1, 1]) {
     P.add('turret', orientedSlab(
       [side * 0.80, 0.05, 1.33], [side * 1.19, 0.08, 1.02],
@@ -416,8 +406,8 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
     P.hullG.userData.type89LightTigerReceipt = Object.freeze({
       independentFromLegacyType89: true,
       referenceUsage: 'measurement-and-silhouette-only',
-      hullConstruction: 'planar-roof-light-tiger-glacis-shell-v6',
-      turretConstruction: 'flat-front-deep-bustle-equipment-citadel-v6',
+      hullConstruction: 'clipped-troop-cell-light-tiger-v7',
+      turretConstruction: 'blunt-front-independent-crew-box-v7',
       roadWheelsPerSide: 6,
       canonicalTrackCourses: 1,
       duplicateTrackMeshes: 0,

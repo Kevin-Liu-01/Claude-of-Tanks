@@ -199,6 +199,9 @@ const missileVelocityByVehicle = new Map([
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
   ['kurganets25_x', 240], ['fv510_milan_x', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
   ['object695_x', 380], ['griffin_viper', 400], ['ztz100_prototype', 320], // owner-authored missile concepts
+  // 2026-09-25 IFV identity batch: MELLS and the Type 79 replica racks keep their originals' speeds; the
+  // Borsuk's Spike LR is authored at 180 m/s in europePhotoIfvSpecs.ts.
+  ['spz_puma_s1_x', 240], ['type89_x', 210], ['borsuk', 180],
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([

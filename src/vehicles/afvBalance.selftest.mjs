@@ -38,10 +38,19 @@ const EXPECTED = Object.freeze({
   griffin_viper:    { hp: 2050, speed: 68, reverse: 30, traverse: 46, damage: 140, pen: [650, 650, 650], reload: 1, sound: 'konkurs-launch', missile: [140, 'konkurs-launch'] },
   namer_ifv:           { hp: 2650, speed: 54, reverse: 20, traverse: 34, damage: 70, pen: [180, 164, 148], reload: 0.35, sound: 'mk30-2', missile: null },
   ares_apc_x:          { hp: 1800, speed: 70, reverse: 30, traverse: 45, damage: 24, pen: [34, 24, 17], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
+  // 2026-09-25 IFV identity batch: the three X replicas inherit their kept originals' combat tuning
+  // (docs/references/batches/ifv-replicas-20260925.md); the CV9040C carries no missile rack. The three
+  // photographic additions are authored in europePhotoIfvSpecs.ts (docs/references/batches/europe-ifvs-20260925.md).
+  spz_puma_s1_x:       { hp: 2750, speed: 70, reverse: 30, traverse: 50, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
+  cv90_x:              { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
+  type89_x:            { hp: 2700, speed: 78, reverse: 32, traverse: 54, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
+  dardo:               { hp: 2150, speed: 70, reverse: 25, traverse: 46, damage: 68, pen: [185, 167, 149], reload: 0.42, sound: 'm242-bushmaster', missile: null },
+  lrmv_lynx:           { hp: 2900, speed: 70, reverse: 30, traverse: 40, damage: 90, pen: [225, 207, 189], reload: 0.38, sound: 'kde-35', missile: null },
+  borsuk:              { hp: 2650, speed: 65, reverse: 30, traverse: 46, damage: 84, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [650, 'spike-launch'] },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 31, 'complete selectable IFV fleet');
+assert.equal(ifvIds.length, 37, 'complete selectable IFV fleet'); // 31 + the six 2026-09-25 IFV identity additions
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

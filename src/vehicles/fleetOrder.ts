@@ -54,7 +54,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'stb1', 'type74', 'type90', 'type90a', 'type10', 'type10b',
   ]),
   italy: Object.freeze([
-    'carro45t', 'ariete', 'ariete_c1', 'ariete_c2', 'ariete_c1_x', 'ariete_c2_x',
+    'dardo', 'lrmv_lynx', 'carro45t', 'ariete', 'ariete_c1', 'ariete_c2', 'ariete_c1_x', 'ariete_c2_x',
   ]),
   ukraine: Object.freeze([
     'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1', 'leo2a6_ua',
@@ -63,12 +63,12 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'type59', 'ztz85_iii', 'type99a', 'type96b_x', 'aft10_x', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type100', 'ztz100_x', 'ztz100_prototype',
   ]),
   sweden: Object.freeze([
-    'strv81', 'udes03', 'strv103a', 'strv103', 'cv90', 'cv90105_tml_x', 'strv122', 'cv90_mkiv', 'cv90_mkiv_x',
+    'strv81', 'udes03', 'strv103a', 'strv103', 'cv90', 'cv90_x', 'cv90105_tml_x', 'strv122', 'cv90_mkiv', 'cv90_mkiv_x',
   ]),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'fv510_milan_x', 'ajax_x', 'ares_apc_x']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125_x', 'kurganets25_x', 'tos1a_tagil']),
   poland: Object.freeze([
-    't72m1_jaguar', 'pt91_twardy', 'pl01',
+    't72m1_jaguar', 'pt91_twardy', 'pl01', 'borsuk',
   ]),
 } as const);
 

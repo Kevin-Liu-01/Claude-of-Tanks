@@ -46,6 +46,8 @@ import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
+import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
+import './europePhotoIfvSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -62,6 +64,7 @@ synchronizeSuppliedSourceCombatMetadata();
 synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
 synchronizeXk2CombatMetadata();
+synchronizeIfvReplicaCombatMetadata();
 finalizeFirstPartyRoster();
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);

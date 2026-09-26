@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "cv90_x": {
+      "name": "CV9040C X",
+      "authority": "Owner explicitly approved official photographs and all physical checks on 2026-09-25; numerical 3D comparison remains unverified.",
+      "sources": ["https://www.forsvarsmakten.se/siteassets/3-aktuellt/forsvarets-forum/2014/forsvarets-forum-nr4-2014-2.pdf", "https://www.fmv.se/globalassets/bilder/nyheter/2023/stridsfordon-cv-90-foto-mats-carlsson-fm.jpg"],
+      "widthM": 3.38, "overallLengthM": 7.0, "tallestM": 4.17,
+      "envelopeBasis": "Swedish Armed Forces publication, including tall equipment rather than just the turret roof.",
+      "caliberMm": 40, "launcherTubes": 0, "roofMachineGuns": 0,
+      "crew": 3, "unmannedTurret": false,
+      "test": "src/vehicles/ifvReplicas.selftest.mjs"
+    },
+    "dardo": {
+      "name": "Dardo",
+      "authority": "Owner requested this vehicle from the attached production Dardo photograph on 2026-09-25.",
+      "sources": ["https://www.iveco-otomelara.com/wp-content/uploads/2024/10/Dardo-AIFV-ATGM.pdf", "https://www.esercito.difesa.it/equipaggiamenti/veicoli-blindati-e-corazzati-da-combattimento/veicoli-da-combattimento/vcc-dardo/81621.html"],
+      "widthM": 3.10, "overallLengthM": 6.71, "tallestM": 4.14,
+      "envelopeBasis": "CIO published body dimensions; 4.14 m is the photo-estimated antenna envelope, not a published vehicle-height claim. Published turret height is 2.61 m.",
+      "caliberMm": 25, "launcherTubes": 0, "roofMachineGuns": 0,
+      "crew": 3, "unmannedTurret": false,
+      "test": "src/vehicles/europePhotoIfvs.selftest.mjs"
+    },
+    "lrmv_lynx": {
+      "name": "LRMV Lynx",
+      "authority": "Owner requested Italian LRMV from the attached KF41 photograph on 2026-09-25; early Italian Lance 30 configuration corroborated by manufacturer delivery statement.",
+      "sources": ["https://www.rheinmetall.com/Rheinmetall%20Group/Presse/News/Documents/2026/01/2026-01-27-leonardo-and-rheinmetall-hand-over-first-lynx-infantry-fighting-vehicles-to-italy.pdf"],
+      "widthM": 3.60334, "overallLengthM": 8.10, "tallestM": 5.50,
+      "envelopeBasis": "Existing measured KF41 chassis frame; 8.10 m weapon envelope and 5.50 m antenna envelope are photographic reconstruction estimates. No exact Italian 3D reference is claimed.",
+      "caliberMm": 30, "launcherTubes": 0, "roofMachineGuns": 0,
+      "crew": 3, "unmannedTurret": false,
+      "test": "src/vehicles/europePhotoIfvs.selftest.mjs"
+    },
+    "borsuk": {
+      "name": "Borsuk",
+      "authority": "Owner requested Polish Borsuk from the attached ZSSW-30 photograph on 2026-09-25.",
+      "sources": ["https://www.hsw.pl/produkty/nowy-bojowy-plywajacy-woz-piechoty-borsuk/", "https://www.hsw.pl/en/news/huta-stalowa-wola-s-a-at-mspo-2019-summary/", "https://www.polska-zbrojna.pl/home/articleshow/39148?t=Borsuk-idzie-do-linii"],
+      "widthM": 3.40, "overallLengthM": 7.60, "tallestM": 4.35,
+      "envelopeBasis": "Published 7.6 m body length and 3.4 m width; 4.35 m is the photo-estimated antenna envelope, not a published roof-height claim.",
+      "caliberMm": 30, "launcherTubes": 2, "roofMachineGuns": 0,
+      "crew": 3, "unmannedTurret": true,
+      "test": "src/vehicles/europePhotoIfvs.selftest.mjs"
+    }
+  }
+}

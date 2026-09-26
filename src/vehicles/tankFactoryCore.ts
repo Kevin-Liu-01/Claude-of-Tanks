@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { shareBattleGeometry } from './battleGeometrySharing.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
 import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
+import { seatStaggeredTrackGround } from './staggeredTrackGround.ts';
 import {carrierWidthAt,splitCarrierSections,validateCarrierSections,type TrackCarrierWidthStation} from './trackCarrierSections.ts';
 import { continuousShoeFloor, shoeConformanceAlpha, assertShoeFloorFrame } from './continuousShoeFloor.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -450,6 +451,9 @@ export interface RunningGearConfig {
   /** Fit finite lower spans to the live wheel rims while retaining welded
    * carrier cross-sections. Opt-in; other families remain unchanged. */
   fitLoadedRun?: boolean;
+  /** Move flat-course stations with the measured side axles when baking end
+   * wraps. Required when a large torsion-bar stagger can reverse a ground cell. */
+  fitStaggeredGroundRun?: boolean;
   topY: number;
   botY?: number;
   paintedEnds?: boolean;
@@ -5264,6 +5268,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       if (layRelay(relay, arr, bandBasePos, wheel.z, relay.wheelRestY)) baked = true;
     });
     if (!baked) continue;
+    if (cfg.fitStaggeredGroundRun && sideStations[side]) {
+      seatStaggeredTrackGround(arr, bandBasePos, pts, wheelZs, sideStations[side], botY);
+    }
     bandBase[side] = Float32Array.from(arr);
     attr.needsUpdate = true;
     recomputeTrackNormals(geo);

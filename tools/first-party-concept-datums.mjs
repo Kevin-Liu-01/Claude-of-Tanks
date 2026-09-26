@@ -9,9 +9,12 @@ export function assertConceptDatums(spec,design) {
   assert.deepEqual(spec.armor.gunPivot,design.gunLocal,'declared local gun trunnion');
   assert.equal(spec.armor.gunBarrel.lengthM,design.barrelLengthM);
   assert.equal(spec.armor.gunBarrel.radiusM,design.barrelRadiusM);
-  assert.equal(spec.dims.hullLengthM,design.hullLengthM,'declared hull length');
-  assert.equal(spec.dims.widthM,design.widthM,'declared complete width');
-  assert.equal(spec.dims.overallLengthM,design.overallLengthM,'declared complete length');
+  // Some retained designs publish hull/body dimensions separately from the
+  // complete equipment envelope. Both declarations remain pinned exactly.
+  const dims=design.specDimensions??design;
+  assert.equal(spec.dims.hullLengthM,dims.hullLengthM,'declared hull length');
+  assert.equal(spec.dims.widthM,dims.widthM,'declared complete width');
+  assert.equal(spec.dims.overallLengthM,dims.overallLengthM,'declared complete length');
   assert.equal(spec.gunElevationDeg,design.pitchDeg[1]);
   assert.equal(spec.gunDepressionDeg,-design.pitchDeg[0]);
   assertConceptWeapons(spec.gun.shells,design);

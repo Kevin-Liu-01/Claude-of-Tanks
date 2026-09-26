@@ -1,3 +1,4 @@
+import {isPhotoReference,photoEquipmentVerdict} from './photo-reference-policy.mjs';
 import {firstPartyConcept,conceptEquipmentVerdict} from './first-party-concept-policy.mjs';
 import {canonicalConfigurationPath} from './source-configuration-path.mjs';
 import { Matrix4, Vector3 } from 'three';
@@ -9,6 +10,7 @@ export function roofEquipmentVerdict(id, census, configuration, sourceReceipt = 
       || !Number.isInteger(census.invalidWeaponMarkers) || census.invalidWeaponMarkers !== 0) {
     return { passed: false, reason: 'Missing census or nonphysical roof-weapon marker' };
   }
+  if (isPhotoReference(id)) return photoEquipmentVerdict(id,census,configuration,sourceReceipt);
   if (firstPartyConcept(id)) {
     if (configuration) return {passed:false,reason:'Retired source equipment configuration cannot authorize a concept'};
     return conceptEquipmentVerdict(id,census);

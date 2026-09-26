@@ -73,7 +73,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a2', 't72b3m', 'pt91m', 't84', 't90', 't90a',
     't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv',
     'strv122', 'challenger2', 'challenger2e', 'ua_challenger2', 'k2', 'k1a1', 'type10',
-    'spz_puma', 'spz_puma_s1', 'ariete', 'ariete_c1', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a5_a5nl',
+    'dardo', 'spz_puma_s1_x', 'cv90_x', 'spz_puma', 'spz_puma_s1', 'ariete', 'ariete_c1', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a5_a5nl',
     'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2_revolution_proto', 'leo2_revolution', 'leo2a7v', 'leclerc', 'leclerc_xlr',
     'amx56', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'm1a2_tusk', 'm1a2_sepv2',
     'm1a2_sepv3', 'merkava3c', 'merkava3d', 'merkava4b', 't72m1_jaguar',
@@ -87,7 +87,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'kurganets25_x', 'griffin50_x', 'kf41_lynx_x', 'cv90_mkiv_x', 'bmp3m_dragun125_x',
     'kf51_x', 't14_x',
     'challenger_3', 'challenger_3x', 'type10b', 'ariete_c2', 't14', 'kf51', 'kf51b', 'm1a3', 'abramsx',
-    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger', 'cv90_mkiv', 'type100', 'ztz100_x', 'ztz100_prototype',
+    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger', 'type89_x', 'lrmv_lynx', 'borsuk', 'cv90_mkiv', 'type100', 'ztz100_x', 'ztz100_prototype',
     'object695_x',
   ]),
 });
