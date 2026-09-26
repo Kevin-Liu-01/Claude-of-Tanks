@@ -150,6 +150,6 @@ if (process.argv[2] === '--fixture') {
   // third pigment removes only its albedo; the shared normal/surface stay live.
   assert.deepEqual(control.facadeTextures, { map: 2, normalMap: 1, roughnessMap: 1 });
   assert.deepEqual(folded.facadeTextures, { map: 1, normalMap: 1, roughnessMap: 1 });
-  assert.equal(control.textures, 33); assert.equal(folded.textures, 32);
+  assert.equal(control.textures, 36 /* round 75 item 6 (2026-09-26): the rock tile joins the library (+3) */); assert.equal(folded.textures, 35);
   console.log('deltaPlasterPalette.selftest: actual production arrays/physics/RNG preserved; Delta reuses two plaster families; other29 maps unchanged');
 }
