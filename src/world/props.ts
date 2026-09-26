@@ -6912,7 +6912,9 @@ ${snowCap ? `
         if (livery !== null) im.setColorAt(i, tint.set(livery));
       }
       if (im.instanceColor) im.instanceColor.needsUpdate = true;
-      im.castShadow = true;
+      // only the tall families cast: every casting family is drawn again by each shadow cascade (the round's
+      // draw budget), and a pallet's or drum's shadow is a smudge the contact term already gives
+      im.castShadow = family === 'fuelTank' || family === 'skip' || family === 'palletsTall' || family === 'cableDrum';
       im.receiveShadow = true;
       im.matrixAutoUpdate = false;
       im.computeBoundingSphere();

@@ -47,6 +47,20 @@ without creating per-building materials.
 `propsModelStore.ts` owns the bounds-checked packed runtime representation of
 the attributed `props-models.json` authoring source; regenerate it with
 `npm run world:props:pack` after intentional source changes.
+`propsSteelAtlas.ts` (round 75) paints the props `steel` bucket's generated
+corrugated painted-steel atlas (marked container side strips, a plain strip,
+a door strip; u-repeat only, every face mapped into its strip with
+`mapBoxFaceUv` / `mapSheetUv`) and the ORM blue channel carries the rust mask
+the shared weathering hook in `props.ts` mixes toward rust. `yardDressing.ts`
+is the renderer-free planner of the yard dressing around industrial structures
+(apron band, clearance from roads, water, berth, solids and envelopes, a
+per-map budget, its own seeded stream, no collision record) and
+`maps/yardClutterKit.ts` its instance-ready geometry per family.
+A plan builder reads its battlefield through `structureBuildContext(buckets)`
+(`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
+builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that
+stood in the stream before an atlas took its UVs `'consume'`, so every later
+placement keeps its seat.
 `structureCollision.ts` keeps projection/key caches construction-local. Any
 optimization must retain exact polygon order and runtime/authoring output;
 numeric inputs outside the certified raster-bounds domain use the original

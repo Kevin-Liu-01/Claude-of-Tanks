@@ -4565,6 +4565,106 @@ centre skylines, low edge and bird / oblique shore views):
 - **Detail tiling (check 8).** Ground layers use a rotation-blend mask, not hex tiling; anisotropic filtering and mip
   bias are per-layer knobs without a measured policy.
 
+### Round 75 — 2026-09-26: structures and props to the skies' and mountains' level (containers, halls, yards)
+
+**Brief (integrator, on the deploy-98 census frames):** Railyard's containers were flat vertex-painted cubes on a
+bare brick box's flat grey yard; Whiteout's yard the same cubes; Urban's facades and Coastal's farms were the bar.
+Lane `world/props-r75` from f21114ddf (deploy 98). Every mechanism is first-party generated geometry and generated
+texture; no image, model or third-party asset is loaded.
+
+**1. Containers on a painted-steel atlas (`src/world/propsSteelAtlas.ts`, `maps/railKit.ts`).** A new props bucket
+and material, `steel` (MeshStandardMaterial, vertex colours, a 512 px generated atlas in four 128 px strips — two
+marked side strips with corner posts, top and bottom rails, fork pockets, an ISO-style stencilled code block, a
+faded operator band with a wordmark and chevrons, patched panels; a plain strip for roofs, tanks and drums; a door
+strip with the two leaves, the centre gap, gasket lines, the bar shadows, the code and a CSC plate, and the blank
+end). The atlas repeats in u only — a container side is exactly one atlas width (6.1 m at 84 px/m), each face is
+mapped into its strip (`mapBoxFaceUv`), so no face ever reads a neighbouring strip. The albedo is a near-white
+luminance so the vertex colour is the paint (an operator livery per box from the battlefield's set — brownfield,
+polar, martian), the markings are dark stencils (a canvas alpha channel is premultiplied on upload, so there is no
+light-on-dark mask; every livery is light enough to carry black lettering), the normal map stands the trapezoid
+ribs at ~25°, and the ORM blue channel is a rust mask. Each box: the body with its door face dropped from the
+index (the solid's hull is still the whole 2.44 × 6.1 m rectangle), a recessed door leaf, four reveal strips, four
+locking bars, two handles and two hinges — 176 triangles, every door part strictly inside the body's footprint.
+Draw discipline: the builder makes exactly the draws the cubes made on the shared seeded stream (count, livery,
+yaw, offset, the 24 paint values, the stack roll, the stacked box's draws, the gap) and takes the cubes' four
+`jitterUV` draws as consume-only; every new decision comes from a local stream forked off an existing draw
+(`userData.uvJitter = 'consume' | 'none'`, props.ts `jitterBuildingUvs`). Result: every later placement and every
+dedicated collision shard byte-identical on the container maps (headless probe `.qa-dev/r75-world-probe.mjs`:
+railyard buildings / obstacles / colliders / destructibles digests equal to the base; Mars identical).
+
+**2. Freight warehouses and the quonset hut (`maps/railKit.ts` makeWarehouse, `maps/structureKit.ts`).** The
+warehouse gains roller shutters between guide posts under a shutter box (the timber leaves' draws kept, the leaves
+re-bucketed to the sheet material), a skillion dock canopy on two posts, rubber dock bumpers, 6 cm ridge skylights
+on both roof planes (a 0.14 m glazing box on a 0.95 m width biased the pitch audit's regressed slope past its 0.004
+rad gate), eave gutters and a painted sign board on the street gable; a map that authors `props.industrialCladding:
+'steel'` (Whiteout) clads the walls and gables in corrugated sheet with corner trims and a girt line — the plinth
+and dock stay stone so the Foundry court's support census holds. The light kit's sheet steel (`structureMetal`) is
+now a 256 px trapezoid corrugation with panel seams (a three-texel ramp: the surface receipt keeps every normal
+within 32° of the wall plane), rivet lines, scratches and a rust mask; the quonset hut runs its ribs across the
+length like bent sheets and gains a framed wicket door, rear apertures, a base skirt, a threshold plate and a
+stovepipe, its new parts painting from a stream forked off the shell's first vertex value (the first cut drew from
+the kit's stream and moved 38 wall modules by a millimetre through their terrain-fitted jitter).
+
+**3. Yard dressing (`src/world/yardDressing.ts`, `maps/yardClutterKit.ts`).** A renderer-free planner lays pallet
+stacks, crate clusters, drums, drum ranks, cable drums, tyre stacks, saddle-mounted fuel tanks and lipped skips in
+the apron band 0.6–2.6 m outside each industrial structure's envelope (container rows, warehouses, sheds, gantries,
+factories, depots, offices, fire stations, water towers), each kind with its own family mix and count under a
+per-map budget (`props.yardDressing`, default 4.5 a structure, at most 140; Whiteout 60; polar 0.7 ×; no timber on
+Mars), refusing roads (4.5 m + radius), water, ground under normal.y 0.9, the rail berth, every solid the map
+already placed, every other structure's envelope and its own pieces' spacing; ranks, tanks and skips align with
+the structure they serve. Its stream is its own (seed + 7501): no placement moves, no collision or destructible
+record is published — dressing, not obstacles. One InstancedMesh per family on the wood / steel / baked materials
+(white steel paint takes an instance livery): railyard 119 pieces in 9 draws and 23.1 k triangles, foundry 138 /
+9 / 25.1 k, Whiteout 30 / 8 / 6.4 k. Planned buildings carry their plan kind on the placed-building feature.
+
+**4. The weathering law (world-props-*-v7, every props surface).** In the shared grime hook: upward faces
+sun-fade a little (bleach and desaturate by the world normal), and the ORM blue-channel rust mask is mixed toward
+rust with a world-space break-up and runs pulled down the face (the steel atlas and the sheet tile paint the mask;
+every other atlas carries zero). Base dirt is painted into the container strips and the sheet laps; a per-vertex
+height-above-base attribute for the whole props library (a byte a vertex) stays open (below). Edge wear is in the
+tiles: chipped crests, lighter ribs, darker troughs.
+
+**5. Cost.** Base vs lane, headless props builds (every map): geometry +2.05 MB on railyard, +1.45 foundry, +0.6
+steppe, +0.3 Whiteout, ≤ +0.1 elsewhere (the containers 24 KB a box merged, the warehouses' parts, the yard
+instances); textures +4.75 MB on every map that renders the steel material (the three 512 px atlas maps with mips);
++1 material (17) and +3 textures (37) in the props library; meshes +9–12 a map (the steel and sheet bucket meshes,
+the yard families); programs +3 to +5. The box was never idle (load 68–103 throughout), so the round measured its
+own cost by hiding and restoring its meshes at a pose (`.qa-dev/r75-hide-probe.mjs`, 120-frame medians, bots
+frozen): railyard chase shown 750 → hidden 686 → restored 725 calls, 4.84 → 4.64 → 4.80 M triangles, CPU 8.7 / 7.7
+/ 7.5 ms; centre-far 490 → 416 → 476 calls, 3.83 → 3.62 → 3.81 M — this round's twelve meshes are ~60 draws (+9–15 %
+at these poses: the yard families and the two new buckets, each drawn again by every shadow cascade) and ~200 k
+triangles (+4–6 %), the frame-time delta inside the noise. That is over the +5 % draw-call brief; the small yard
+families (pallets, crates, drums, ranks, tyres) no longer cast shadows after this measurement (the four tall ones
+do), which takes ~20 of those draws back. Tree-to-tree wall-clock (`.qa-dev/r75-perf.mjs`, lane → base → lane, 8 s
+settle, 120 frames) is supporting evidence only at this load: chase-pose call medians wandered by 100 between two
+lane runs and Urban moved +23 % triangles on byte-identical geometry in a capture snapshot (the streaming state at
+the instant of the shot), so counts decide and hide/restore attributes.
+
+**6. Shards.** The warehouse parts stand outside the old polygons, so sixteen maps' collision records moved with
+their counts unchanged (Whiteout 600 → 598 colliders: two shell bands merged under the sheet cladding): winter,
+steppe, railyard, fjord, badlands, caldera, foundry, ruinspires, blackglass, titan_gorge, skybridge, copper_mesa,
+airfield, whiteout, longleaf, reservoir — recaptured headless on the lane tree
+(`tools/capture-world-collision-manifests.mjs --headless`); the other fifteen are byte-identical. The recapture
+also surfaced three shards that were already stale against main before this round: winter (5944 / 5794 / 4911 →
+5929 / 5786 / 4919), fjord (6669 / 6630 / 6876 → 7152 / 7101 / 7388) and badlands (+2 / +2 / 0) — the deploy-98 base
+export recaptures to exactly those counts with no lane change (`$SP/r75/recapture-base.log`), a vegetation planting
+drift, while Whiteout's base recapture is byte-identical to its committed shard, so its −2 is the round's. The census
+receipt (`server/dedicatedWorldCollision.selftest.mjs`) carries the four dated re-pins. The integrator recaptures on
+the combined tree as the DEVELOPMENT rule says.
+
+**Sheets:** `$SP/r75/review/sheet-yards.png` (railyard yard-low / yard-doors / yard-oblique / warehouse-low,
+Whiteout yard-low / station-oblique, foundry yard-low / court-oblique — before = the deploy-98 base, after = the
+lane) and `sheet-centre-far.png` (the six named maps); captures under `$SP/r75/caps/`, the census-98 frames the
+brief pointed at under `$SP/r75/census-live-98/`.
+
+**What still looks weak.** The Garage's container ranks (`src/ui/garageEnvironmentKit.ts` has no `steel` bucket:
+they fall to the vertex-coloured `baked` material — livery boxes with door geometry, no corrugation); base dirt as
+a shared per-vertex law; the yard pieces are dressing a hull drives through (they keep to the apron band, but a
+tank hugging a container wall will clip a pallet); the plain brick warehouse still reads as one box from 300 m
+(the signage band and shutters are street-face only); no LOD or impostor for the far ring of props (the merged
+buckets have none — the added geometry is small enough that none was built); the steel atlas is painted on every
+map's props build (140–260 ms) whether or not the map places steel; Foundry's grey wash is the skies lane's.
+
 #### Rounds
 
 | Round | Scope | Verified by |
@@ -4616,6 +4716,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 73 | The ground redux on the playable ground (owner: "improve ground, ground transitions, shorelines... add tall grass that interacts with tanks" and "make sure performance is still really good"): a per-map profile table (`world/groundRedux.ts`) driving four uniform vectors on the terrain material (`world-terrain-splat-v40`, still ten declared samplers) — height-and-noise layer transitions from the albedo's relief against its deep-mip tile mean (grass through a dirt border, rock tops clearing the snow, seams buried; a scree band on the 12°–30° slopes where authored; gated on the strength so the far field keeps the plain mask), a baked fold term per vertex (8 m / 24 m Laplacians of the height field → an Int8 attribute: hollow moisture and greening, crest dryness, indirect-only fold AO), snow scour / powder macro, sastrugi and drift waves on the per-cell wind, a sparse near-level glint, a mid-distance normal octave in the 26–150 m band, and the wet strand (an analytic swash on a ground clock: film, damp band and wrack line inside a width set in multiples of the map's apron ramp, albedo −40 % · wet, roughness to 0.30); tall grass that the hulls press (`world/tallGrass.ts`, `world/groundPressure.ts`): two instanced rings of vertex-built blades — clumps of three two-segment strips to 46 m at 2.6 / m², single wide blades 34–120 m — root-anchored cascade shadows (the round-13 rule), a gust field and flutter, a per-map biome (meadow / steppe / savanna / reed / tundra / verge / dune, densities, heights, tints), admission off roads and shoulders, water (reeds in the wet band), soft ground, village ground, sealed footprints, dirt patches and crests, thicker and taller in the hollows; a world-anchored RGBA16F press field (96 m / 256², e-fold 20 s, a 45 s crush memory, the push direction along the travel with the flanks rolled outward) stamped by every hull and read at the root (bend 1.35 rad, the crushed tint); a sniper-corridor clear and a lens clear; the quality knob (`tallGrass` ultra / high 1.0, medium 0.5, low 0.25, mobile none); `?ground=legacy` as the same-build A/B; nothing in `src/sim` | 31-map before / after review sheets (`$SP/r73/review/sheet-all-{chase,ground-mid}.png`, the six first maps in four views, the strand sheet) on one build and seed, `?ground=legacy` as the before; tiling peak at lags ≥ 24 px on `ground-mid` legacy → terrain-only → final Whiteout 0.075 → 0.074 → 0.185, Verdant 0.085 → 0.088 → 0.129, Saltwind 0.080 → 0.083 → 0.073, Steppe 0.119 → 0.123 → 0.112, Monsoon 0.027 → 0.074 → 0.207, Desert 0.170 → 0.158 → 0.156 (the terrain's own repeat flat or falling on every map; the rises are blades in the crop); mid-ground detail Whiteout 26.0 → 27.6 → 28.3, Verdant 43.4 → 43.5 → 44.3, Saltwind 44.4 → 43.5 → 43.5, Steppe 44.5 → 45.6 → 46.1, Monsoon 31.4 → 31.6 → 31.7, Desert 25.6 → 25.6 → 25.7; chase hard-edge share terrain-only vs legacy Whiteout 0.046 → 0.052, Verdant 0.201 → 0.211, Saltwind 0.238 → 0.240, Monsoon 0.069 → 0.076, Desert 0.220 → 0.220; the Saltwind strand contrast 0.314 → 0.316; sward coverage of the near band (final vs terrain-only, chase) Whiteout 6 %, Verdant 49 %, Saltwind 54 %, Steppe 44 %, Monsoon 49 % against a 29 % no-sward control; the trail after a five-second drive (bird view vs the field cleared) Steppe 9 % / 11 % / 10 %, Monsoon 16 % / 22 % / 21 %; GPU by repetition on the final build (each target drawn eleven times inside the frame's own passes, one timer bracket round the frame, the lower quartile of 60 frames; medians of ten rounds over two runs at load 20 and 150, under other lanes' headless renders): the sward's geometry pass under 0.3 ms per copy on every map (Whiteout −0.14, Verdant +0.02, Saltwind −0.12, Steppe −0.06, Monsoon +0.25), the redux terms on the terrain material Whiteout 0.57 / Verdant 0.25 / Saltwind 0.62 / Steppe 0.29 / Monsoon 0.36 / Desert 0.50 ms per copy (budget 0.8), the press step 0.0–0.6; the sward toggled at ×1 Verdant +0.85 and Monsoon +1.07 ms (rounds spanning ±3–5 ms), the dry maps inside the noise; the toggle on the first build (3.0 clumps / m², three segments) Whiteout 0.83 / Verdant 1.08 / Saltwind 0.75 / Steppe 1.87 ms, which drove the cut; world update +0.0 ms; draw calls +3 (two instanced rings, one press quad); the terrain material still declares ten samplers; receipts: groundRedux / groundPressure / tallGrass selftests, the fetch census +7, the uniform list and v40 with its negative control, the fold attribute, the sandboxed material steps — 76 / 78 terrain-reading receipts green (the two reds are the round-71 map-config digests, re-pinned upstream); typecheck green |
 | 73b | The second pass on the ground (the integrator's eye-check of round 73: the terrain terms invisible at the ground-mid view, the strand invisible at the strand view, Whiteout's sedge as sticks): the borders themselves in albedo (a torn, damp lip at the worn patches' edges, a lichen / moss / dust / hoar rim on the outcrops by climate, a gravelled dusty verge on the road shoulders), the 20–190 m octave in albedo beside its normal, the folds reaching further and reading stronger, a scree skirt on the meadow and hill maps; the snow drifts a sawtooth with a shaded lee edge and a per-cell wavelength swing, the scoured crust with a satin sheen; the strand in METRES on a second vertex byte (`shore`: metres landward of the waterline from the map's own shoreline contours, inverted so the ring bands read far) — round 73 sized its band in the mask's wetness ramp, two metres wide on a real beach — with a dark, cool, glossy film to the run-up's breathing reach, a sharp ragged swash line, a damp band to the high-water mark, a foam line, a wrack line with pebbles and shell, muddy margins on the lakes; reeds as a waterline fringe (dense at mask 0.04–0.10, gone by 0.40, taller at the water, the banks' meadow thinner) and reed margins on the Monsoon and Reservoir meadows; the tundra sedge in the hollows and the lee sides in clumps, darker; the Monsoon press cost found to be the frame bracket's noise (the step's minimum 0.01–0.05 ms on every map); two more packed vectors, still ten samplers, `world-terrain-splat-v43` | three-column sheets (legacy / round 73 on its own base tree / 73b) in four views plus the strand sheet with Mangrove and Monsoon (`$SP/r73b/review`); the strand's sand-band contrast Saltwind 0.319 → 0.254 → 0.414, Saltmere 0.241 → 0.271 → 0.505, Nordhavn 0.419 → 0.447 → 0.498, Mangrove 0.393 → 0.495; the 40–120 m band's |Laplacian| flat on the meadows (the uniform-isolation probe: the 73b terms change 32 % of the band's pixels by > 10 luma with no change in edge count), Whiteout +13 % terrain-only, Monsoon +7 %; softness within 0.02 of round 73; the isolated press-step probe (minima 0.011–0.021 ms per copy on Verdant / Monsoon / Steppe); perf: the repetition bench at load 70–100 (five rounds spanning ±1.5–4 ms per copy) reads the redux terms whiteout 1.40 / verdant 0.33 / saltwind −0.03 / steppe 0.37 / monsoon 1.22 / desert 1.04 ms per copy by the median and the 73b terms alone 0.47 / 0.25 / 0.11 / 0.12 / −0.26 / 0.56, a new per-frame paired bench (300 pairs) ±2.2–3.1 ms MAD — the terrain budget question stays open for a quiet window (six gated taps and ~40 ALU ops were added, no pass, no sampler); the sward and the press step at zero ±0.3–0.5; receipts: groundRedux / tallGrass extended (the new knobs, the six-vector packing, the v43 contract, the shore byte, the reed margin, the tundra clumps), the program key and uniform list re-pinned in terrainMaterialOwnership / terrainWornDirt / wallSkyLight, the fetch census +6, terrainStreaming's chunk attributes; the 80 terrain-reading receipts of round 73 green; typecheck |
 | 74 | Impact physics (owner 2026-09-25): energy-based crash and fall damage through one function in both sims (`sim/impact.ts`: ½·m·(v − v_min)² kJ × the ruleset's hp/kJ, glacis 0.7 / stern 0.85 / broadside 1, tracks first, the engine on a frontal crash or a hard landing, crew shock above 16 / 14 m/s, a two-tick crash priced once), a `physics` block per ruleset (restitution, rebound floor, fall and crash thresholds and rates, ram scale and restitution — Turbo Ball and Mars bounce, a single jump lands free), the ram split by mass / aggression / face with a momentum-conserving exchange, the swept landing contact with restitution (several decaying hops at low gravity, no tunnelling at 40 m/s), the landing torque toward the ground plane, a slide law on faces the tracks cannot hold, a lateral-grip cap on the yaw rate at speed, a static hold at rest, the settle chatter fixed (a parked hull on a grade crept 4 cm/s and chattered ±0.4° on the base tree), movement checkpoints v2, CRASHED / FELL on the kill feed and the final-blow line, `tank_impact` on the wire | impact / impactPhysics / impactParity receipts (new), movement 218, combat 541, authoritativeMatch, matchRuleset, ai, authoritativeBots (mobile 6/6), the mp / net / server-match receipts with their re-anchored pins, typecheck; headless Verdant 5 min (37 crashes, 631 hp, none stuck or tunnelled) and Mars 3.8 min (163 landings, 2413 hp, one fall death, 18-hop chains, none stuck or tunnelled), the 30 m Mars drop (14.9 m/s → 7.4 m/s rebound); `server/battlePacing` full 124: median 335.2 s, p10 260.8 s, 0 sub-120, 0 timeouts |
+| 75 | Structures and props to the skies' and mountains' level: shipping containers as corrugated painted steel on a generated four-strip atlas (`propsSteelAtlas.ts`, the `steel` bucket; operator liveries by battlefield, stencilled codes, an operator band, recessed doors with bars and hinges strictly inside the body's footprint; the builder's shared-stream draws and the bodies' dimensions unchanged, so every later placement and the container maps' shards are byte-identical); freight warehouses with roller shutters, a dock canopy, bumpers, ridge skylights, gutters and a sign board, corrugated cladding on Whiteout (`industrialCladding`); the light kit's 256 px sheet tile and the quonset hut's ribs, wicket door, skirt, threshold and stovepipe; a yard-dressing planner and instanced kit (pallets, crates, drums, cable drums, tyres, fuel tanks, skips) under a per-map budget with no record published; the weathering law v7 (sun fade, rust mask mixed with runs) | headless props probe on every map (placements / destructibles byte-identical fleet-wide; sixteen warehouse maps' records moved with counts unchanged but Whiteout 600 → 598, shards recaptured headless); before / after sheets (`$SP/r75/review/`); 90-frame medians on railyard / Whiteout / foundry (frame time within noise at load ~95, draws +40–124 a pose, triangles ≤ +5 % except the chase pose under streaming); receipts: yardDressing (new), propsResources (17 / 37), plasterSurfaceSharing, orchardBathhouse, foundryServiceCourt, mangroveFisheryWharf (key set), structureSurface (256 px), worldNightFixtureInstances, deltaPlasterPalette / reservoirWaterworks (v7), the collision census re-pinned for Whiteout; `npm run typecheck` |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts

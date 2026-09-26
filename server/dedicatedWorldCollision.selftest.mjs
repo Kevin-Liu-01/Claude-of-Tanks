@@ -44,7 +44,9 @@ const roadCompletionCensus = {
   // 2026-09-23 Frosthollow redesign (owner ruling): the shard was recaptured on the new valley layout (puppeteer
   // capture, .qa-dev/collision-capture.mjs, same pack script); no pre-repair capture exists for it, so its census IS
   // the captured shard and its rim-road removal count below is zero.
-  winter: [5944, 5794, 4911],
+  // 2026-09-26 round 75: the committed shard had gone stale against main's own vegetation before the round (the
+  // deploy-98 base recaptures to these same counts, −15 / −8 / +8); recaptured headless with the warehouse parts.
+  winter: [5929, 5786, 4919],
   urban: [4055, 9303, 3685],
   coastal: [4196, 3999, 4310],
   // round 48 (2026-09-24): Amberford redesigned (river-ford market town) — the shard was recaptured headless on the
@@ -80,11 +82,15 @@ const roadCompletionCensus = {
   // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
   // unchanged seeded rejection rules alter accepted trees/props, not tolerances.
   frontier: [8006, 7743, 8385],
-  fjord: [6787, 6748, 6994],
+  // 2026-09-26 round 75: stale against main before the round (the base recaptures to the same +483 / +471 / +512 —
+  // a vegetation planting drift, not this lane's); recaptured headless with the warehouse parts. Expected = census + 118.
+  fjord: [7270, 7219, 7506],
   delta: [7920, 7613, 9827],
   // redrock-derived-refresh-r1.p545nm: native canyon recapture. Unchanged
   // terrain-aware placement rules reject different props/trees on steep walls.
-  badlands: [2968, 2866, 1883],
+  // 2026-09-26 round 75: stale against main before the round (the base recaptures to the same +2 / +2 / 0);
+  // recaptured headless with the warehouse parts. Expected = census + 6.
+  badlands: [2970, 2868, 1883],
   monsoon: [9604, 9342, 12149],
   alpine: [9238, 9163, 8127],
   caldera: [5048, 5155, 3856],
@@ -107,7 +113,9 @@ const roadCompletionCensus = {
   // Native19e03d36b: the authored spring contour changes terrain-aware
   // vegetation/prop acceptance; this is the exact captured census.
   oasis: [2759, 2558, 2057],
-  whiteout: [1661, 1478, 889],
+  // 2026-09-26 round 75: the sheet-clad warehouses' corner trims merge two shell bands (colliders 1464 → 1462); the
+  // base recaptures byte-identical to the previous shard, so this one is the round's. Expected = census + 14.
+  whiteout: [1661, 1476, 889],
   orchard: [4978, 4745, 5206],
   longleaf: [6172, 5959, 6989],
   mangrove: [5323, 5168, 6543],
