@@ -12,6 +12,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
+// acquire() lengthens its wait to COT_SHOTS_LOCK_TIMEOUT_MS inside a landing chain; this receipt pins the lock's own semantics.
+process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
 const root = mkdtempSync(join(tmpdir(), 'cot-capture-lock-'));
 const lockDir = join(root, 'capture.lock');
