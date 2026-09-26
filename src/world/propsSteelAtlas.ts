@@ -16,15 +16,28 @@
 import * as THREE from 'three';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
+import { yardStructureKinds } from './yardDressing.ts';
 
 export const STEEL_ATLAS_SIZE = 512;
 /** Metres of sheet one atlas width covers (a 20' container side) and one strip covers up (its height). */
 export const STEEL_ATLAS_SPAN_M = 6.1;
 export const STEEL_ATLAS_STRIP_M = 2.6;
 export const STEEL_ATLAS_STRIP_COUNT = 4;
-/** Rows kept clear at every strip edge so bilinear filtering never reads the neighbouring strip. */
+/** Rows kept clear at every strip edge (at the 512 px reference) so bilinear filtering never reads the neighbouring strip. */
 const STRIP_GUARD_PX = 3;
 const STRIP_PX = STEEL_ATLAS_SIZE / STEEL_ATLAS_STRIP_COUNT;
+/** The mobile tier paints the atlas at half size: a quarter of the paint time and texture bytes, ribs still readable. */
+export const STEEL_ATLAS_SIZE_MOBILE = STEEL_ATLAS_SIZE / 2;
+
+/**
+ * Whether a battlefield's props build will draw the steel material at all: a container row, any yard structure
+ * kind (every yard profile places a steel family) or corrugated cladding. A map without pays nothing for the atlas.
+ */
+export function steelAtlasNeeded(plan: readonly string[] | undefined, cladding: string | undefined): boolean {
+  if (cladding === 'steel') return true;
+  const yard = new Set(yardStructureKinds());
+  return (plan ?? []).some((kind) => kind === 'containerRow' || yard.has(kind));
+}
 /** ISO container side corrugation: 209 mm pitch, trapezoidal, ~36 mm deep. */
 const CORRUGATION_PITCH_M = 0.209;
 /** Corner posts, rails and fork pockets in strip fractions (t runs 0 at the top rail to 1 at the bottom rail). */
@@ -132,8 +145,9 @@ interface Texel {
 /** The layers laid down before the per-texel pass: dark stencil ink and the faded operator band. */
 function markLayers(size: number): { mark: Float32Array; band: Float32Array } {
   const mark = new Float32Array(size * size), band = new Float32Array(size * size);
+  const stripPx = size / STEEL_ATLAS_STRIP_COUNT;
   const px = (u: number) => Math.round(u * size);
-  const row = (strip: number, t: number) => Math.round((strip + t) * STRIP_PX);
+  const row = (strip: number, t: number) => Math.round((strip + t) * stripPx);
   // strip 0: the owner code and serial, the size/type code beneath (ISO 6346 layout, 7 px glyph rows = 0.18 m)
   stencil(mark, size, 'COTU 417208 3', px(0.66), row(0, 0.15), 1, 1);
   stencil(mark, size, '22G1', px(0.66), row(0, 0.26), 1, 1);
@@ -249,14 +263,16 @@ function paintTexel(noi: SimplexNoise, strip: number, u: number, t: number, out:
 export function* makeSteelAtlas(
   noi: SimplexNoise,
   anisotropy: number,
+  size: number = STEEL_ATLAS_SIZE,
 ): Generator<SteelAtlasSlice, SteelAtlasTextures, void> {
-  const s = STEEL_ATLAS_SIZE;
+  const s = size;
+  const stripPx = s / STEEL_ATLAS_STRIP_COUNT;
   const px = new Uint8ClampedArray(s * s * 4), orm = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const { mark, band } = markLayers(s);
   const texel: Texel = { lum: 0, rough: 0, ao: 0, rust: 0, height: 0 };
   for (let y = 0; y < s; y++) {
-    const strip = Math.min(STEEL_ATLAS_STRIP_COUNT - 1, Math.floor(y / STRIP_PX));
-    const t = (y - strip * STRIP_PX + 0.5) / STRIP_PX;
+    const strip = Math.min(STEEL_ATLAS_STRIP_COUNT - 1, Math.floor(y / stripPx));
+    const t = (y - strip * stripPx + 0.5) / stripPx;
     for (let x = 0; x < s; x++) {
       const i = y * s + x, j = i * 4;
       paintTexel(noi, strip, (x + 0.5) / s, t, texel);

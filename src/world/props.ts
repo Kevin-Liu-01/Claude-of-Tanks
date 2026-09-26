@@ -37,7 +37,7 @@ import { applySourcedBuildings, type BuildingPaletteId, type SourcedTextureAppli
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
-import { makeSteelAtlas } from './propsSteelAtlas.ts'; // round 75
+import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardPlacement, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
@@ -2771,8 +2771,28 @@ function* propsBuildSteps(
   // row checkpoints must not suspend those not-yet-registered owners.
   // World-space grime breaks up every tiled hard-surface texture below.
   const grimeTex = yield* makeGrimeTexture(noi, aniso);
-  // Round 75: the container / tank sheet-steel atlas (propsSteelAtlas.ts), sixteen rows per checkpoint.
-  const steel = yield* makeSteelAtlas(noi, aniso);
+  // Round 75: the container / tank sheet-steel atlas (propsSteelAtlas.ts), sixteen rows per checkpoint — painted only
+  // where the plan will draw the steel material (a container row, a yard kind, corrugated cladding); the mobile tier
+  // paints it at half size (a quarter of the paint time and texture bytes). The timing record on the group is the
+  // build-timing probe's evidence; a steel part on an unpredicted map falls back to a synchronous paint below.
+  const steelAtlasSize = getDeviceTier() === 'mobile' ? STEEL_ATLAS_SIZE_MOBILE : STEEL_ATLAS_SIZE;
+  const steelAtlas = { needed: steelAtlasNeeded(P.plan, P.industrialCladding), painted: false, fallback: '', ms: 0, size: 0 };
+  let steel: SteelAtlasTextures | null = null;
+  if (steelAtlas.needed) {
+    const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
+    let rowStart = performance.now();
+    let step = painter.next();
+    while (!step.done) {
+      steelAtlas.ms += performance.now() - rowStart; // synchronous paint time only, not the awaited ticks between rows
+      yield step.value;
+      rowStart = performance.now();
+      step = painter.next();
+    }
+    steelAtlas.ms += performance.now() - rowStart;
+    steel = step.value;
+    steelAtlas.painted = true;
+    steelAtlas.size = steelAtlasSize;
+  }
   // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint.
   const rockDetail = yield* makeRockDetail(noi, aniso);
 
@@ -2828,8 +2848,7 @@ function* propsBuildSteps(
     // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
     // the rust mask the weathering hook below mixes toward rust.
     steel: new THREE.MeshStandardMaterial({
-      map: steel.albedo, normalMap: steel.normal,
-      roughnessMap: steel.surface, aoMap: steel.surface,
+      ...(steel ? { map: steel.albedo, normalMap: steel.normal, roughnessMap: steel.surface, aoMap: steel.surface } : {}),
       vertexColors: true, roughness: 1, metalness: 0.06,
     }),
     vehicle: new THREE.MeshStandardMaterial({
@@ -2968,6 +2987,25 @@ ${snowCap ? `
     plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
   };
+  group.userData.steelAtlas = steelAtlas;
+  /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
+  function ensureSteelAtlas(reason: string): void {
+    if (steel) return;
+    const started = performance.now();
+    const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
+    let step = painter.next();
+    while (!step.done) step = painter.next();
+    steel = step.value;
+    steelAtlas.painted = true;
+    steelAtlas.fallback = reason;
+    steelAtlas.ms = performance.now() - started;
+    steelAtlas.size = steelAtlasSize;
+    mats.steel.map = steel.albedo;
+    mats.steel.normalMap = steel.normal;
+    mats.steel.roughnessMap = steel.surface;
+    mats.steel.aoMap = steel.surface;
+    mats.steel.needsUpdate = true;
+  }
   const obstacles: PropsCollisionRecord[] = [];
   const colliders: CollisionRecord[] = [];
   // crushables — the main.ts hull-radius contact loop (effects_combat r1).
@@ -3339,6 +3377,7 @@ ${snowCap ? `
     const structureId = P.plan[bi] || 'cottage';
     attachStructureBuildContext(tmp, structureContext);
     const info = builders[bi](rng, tmp, pickWall(rng));
+    if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     const fit = groundFit(px, pz, info.w, info.d, rot);
@@ -6928,6 +6967,7 @@ ${snowCap ? `
     let triangles = 0;
     for (const [family, list] of byFamily) {
       const built = buildYardFamily(family);
+      if (built.material === 'steel') ensureSteelAtlas('yard:' + family);
       const im = new THREE.InstancedMesh(built.geometry, mats[built.material], list.length);
       for (let i = 0; i < list.length; i++) {
         const p = list[i];
