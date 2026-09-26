@@ -4785,6 +4785,7 @@ map's props build (140–260 ms) whether or not the map places steel; Foundry's 
 | 73b | The second pass on the ground (the integrator's eye-check of round 73: the terrain terms invisible at the ground-mid view, the strand invisible at the strand view, Whiteout's sedge as sticks): the borders themselves in albedo (a torn, damp lip at the worn patches' edges, a lichen / moss / dust / hoar rim on the outcrops by climate, a gravelled dusty verge on the road shoulders), the 20–190 m octave in albedo beside its normal, the folds reaching further and reading stronger, a scree skirt on the meadow and hill maps; the snow drifts a sawtooth with a shaded lee edge and a per-cell wavelength swing, the scoured crust with a satin sheen; the strand in METRES on a second vertex byte (`shore`: metres landward of the waterline from the map's own shoreline contours, inverted so the ring bands read far) — round 73 sized its band in the mask's wetness ramp, two metres wide on a real beach — with a dark, cool, glossy film to the run-up's breathing reach, a sharp ragged swash line, a damp band to the high-water mark, a foam line, a wrack line with pebbles and shell, muddy margins on the lakes; reeds as a waterline fringe (dense at mask 0.04–0.10, gone by 0.40, taller at the water, the banks' meadow thinner) and reed margins on the Monsoon and Reservoir meadows; the tundra sedge in the hollows and the lee sides in clumps, darker; the Monsoon press cost found to be the frame bracket's noise (the step's minimum 0.01–0.05 ms on every map); two more packed vectors, still ten samplers, `world-terrain-splat-v43` | three-column sheets (legacy / round 73 on its own base tree / 73b) in four views plus the strand sheet with Mangrove and Monsoon (`$SP/r73b/review`); the strand's sand-band contrast Saltwind 0.319 → 0.254 → 0.414, Saltmere 0.241 → 0.271 → 0.505, Nordhavn 0.419 → 0.447 → 0.498, Mangrove 0.393 → 0.495; the 40–120 m band's |Laplacian| flat on the meadows (the uniform-isolation probe: the 73b terms change 32 % of the band's pixels by > 10 luma with no change in edge count), Whiteout +13 % terrain-only, Monsoon +7 %; softness within 0.02 of round 73; the isolated press-step probe (minima 0.011–0.021 ms per copy on Verdant / Monsoon / Steppe); perf: the repetition bench at load 70–100 (five rounds spanning ±1.5–4 ms per copy) reads the redux terms whiteout 1.40 / verdant 0.33 / saltwind −0.03 / steppe 0.37 / monsoon 1.22 / desert 1.04 ms per copy by the median and the 73b terms alone 0.47 / 0.25 / 0.11 / 0.12 / −0.26 / 0.56, a new per-frame paired bench (300 pairs) ±2.2–3.1 ms MAD — the terrain budget question stays open for a quiet window (six gated taps and ~40 ALU ops were added, no pass, no sampler); the sward and the press step at zero ±0.3–0.5; receipts: groundRedux / tallGrass extended (the new knobs, the six-vector packing, the v43 contract, the shore byte, the reed margin, the tundra clumps), the program key and uniform list re-pinned in terrainMaterialOwnership / terrainWornDirt / wallSkyLight, the fetch census +6, terrainStreaming's chunk attributes; the 80 terrain-reading receipts of round 73 green; typecheck |
 | 74 | Impact physics (owner 2026-09-25): energy-based crash and fall damage through one function in both sims (`sim/impact.ts`: ½·m·(v − v_min)² kJ × the ruleset's hp/kJ, glacis 0.7 / stern 0.85 / broadside 1, tracks first, the engine on a frontal crash or a hard landing, crew shock above 16 / 14 m/s, a two-tick crash priced once), a `physics` block per ruleset (restitution, rebound floor, fall and crash thresholds and rates, ram scale and restitution — Turbo Ball and Mars bounce, a single jump lands free), the ram split by mass / aggression / face with a momentum-conserving exchange, the swept landing contact with restitution (several decaying hops at low gravity, no tunnelling at 40 m/s), the landing torque toward the ground plane, a slide law on faces the tracks cannot hold, a lateral-grip cap on the yaw rate at speed, a static hold at rest, the settle chatter fixed (a parked hull on a grade crept 4 cm/s and chattered ±0.4° on the base tree), movement checkpoints v2, CRASHED / FELL on the kill feed and the final-blow line, `tank_impact` on the wire | impact / impactPhysics / impactParity receipts (new), movement 218, combat 541, authoritativeMatch, matchRuleset, ai, authoritativeBots (mobile 6/6), the mp / net / server-match receipts with their re-anchored pins, typecheck; headless Verdant 5 min (37 crashes, 631 hp, none stuck or tunnelled) and Mars 3.8 min (163 landings, 2413 hp, one fall death, 18-hop chains, none stuck or tunnelled), the 30 m Mars drop (14.9 m/s → 7.4 m/s rebound); `server/battlePacing` full 124: median 335.2 s, p10 260.8 s, 0 sub-120, 0 timeouts |
 | 75 | Structures and props to the skies' and mountains' level: shipping containers as corrugated painted steel on a generated four-strip atlas (`propsSteelAtlas.ts`, the `steel` bucket; operator liveries by battlefield, stencilled codes, an operator band, recessed doors with bars and hinges strictly inside the body's footprint; the builder's shared-stream draws and the bodies' dimensions unchanged, so every later placement and the container maps' shards are byte-identical); freight warehouses with roller shutters, a dock canopy, bumpers, ridge skylights, gutters and a sign board, corrugated cladding on Whiteout (`industrialCladding`); the light kit's 256 px sheet tile and the quonset hut's ribs, wicket door, skirt, threshold and stovepipe; a yard-dressing planner and kit (pallets, crates, drums, cable drums, tyres, fuel tanks, skips) under a per-map budget with no record published, folded into the wood / steel / baked buckets (no draw of its own; follow-up 2), the steel atlas painted on demand at plan time and half size on mobile (follow-up 1), the industrial cladding law reaching the foundry office and fire station, Whiteout's sheet halls frosted pale grey with oxide trims and eave snow ledges (follow-up 3); the weathering law v7 (sun fade, rust mask mixed with runs); the boulders fractured (inward plane cuts, a ridged octave, cleavage-split normals, the legacy hull kept as the collision proxy) on a triplanar detail tile with per-map moss, dust and soil laws (integrator's item 6) | headless props probe on every map (placements / destructibles byte-identical fleet-wide; sixteen warehouse maps' records moved with counts unchanged but Whiteout 600 → 598, shards recaptured headless); before / after sheets (`$SP/r75/review/`); 90-frame medians on railyard / Whiteout / foundry (frame time within noise at load ~95, draws +40–124 a pose, triangles ≤ +5 % except the chase pose under streaming); receipts: yardDressing (new), propsResources (17 / 37), plasterSurfaceSharing, orchardBathhouse, foundryServiceCourt, mangroveFisheryWharf (key set), structureSurface (256 px), worldNightFixtureInstances, deltaPlasterPalette / reservoirWaterworks (v7), the collision census re-pinned for Whiteout; `npm run typecheck` |
+| 76 | The deck pass (owner: skies "that look just as good" as Whiteout's; the integrator's census: the overcast and stratocumulus presets read as flat white sheets, a marshmallow, cotton): five gated deck knobs on the cloudscape — cells / cellM (inverted-Worley cells at the deck's period set each column's thickness, hang the cores, open the borders, compress the coverage ramp), deckLight (the underside lit by the column's transmitted light through the diffusion law, the sun's share at a third of physical because the skies are exposed for the ground, the sky's whole, a ground bounce by the map's ambient scale, the light-march term kept for the lit walls), undulatus (the wind-frame rolls band the thickness), interior (the coarse detail octave survives the remap, a detailed first light tap); the round-71 flat white diagnosed (the sky-mean floor is the HORIZON band's luminance at 1.25 × on a sheet; the ramp compressed only for sheets); denser deck rows; two regimes (industrial-stratocumulus for Foundry and Railyard, altocumulus for Urban); Foundry's aerosol halved with the smog on the deck's base and the horizon band's warm absorption, Railyard's fog thinner; Saltmere Bay's shore palm dropped; every term gated so the rated regimes and whiteout keep round 71 byte for byte | 31-map before / after sheets on this machine (`$SP/r76/review/sheet-sky-w.png`, `sheet-sky-s.png`, `sheet-bird-n.png`; before = the deploy-100 tree eeecca19e) with the deck metrics on the history masks (`.qa-dev/r76-deck-metrics.mjs`: p80 / p20 of the dense pixels foundry 1.02 / 1.05 → 1.30 / 1.14, railyard 1.01 / 1.02 → 1.18 / 1.14, winter 1.08 / 1.05 → 1.17 / 1.17, polders 1.08 / 1.06 → 1.18 / 1.19; the deck medians at or under the clear sky instead of 1.2–1.7 × above it), the round-71 metrics on every map, the rated maps' metrics within the wind-drift noise (every number of alpine, coastal, steppe, frontier, verdant, delta, monsoon, whiteout, desert, saltwind, mangrove and mars identical to ±1, whiteout byte-identical); the per-slot bench by repetition (load 68–103, noise floor ±0.5–0.7 ms: foundry 0.20, railyard −0.49, winter 0.85, urban 0.10, fjord 0.67 / 1.45, monsoon 1.30, verdant 0.79 inside the 1.2 ms slot within it; polders 1.76 (1.62–2.23) the one slot over the line by this bench); receipts volumetricClouds (20 regimes, the table, the gated zero rows, the deck identities), villageWear / mangroveWaterPalette re-pinned, badlandsRelief (the round-76 projection), playableRelief, redrockMaterial, garageSkyPresets, skyCloudBake, atmosphere, battleAtmosphereRuntime, the vegetation receipts; `npm run typecheck` |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
@@ -4905,6 +4906,154 @@ Faults are listed against the checklist numbers. "Ring" = the terrain-material r
 | mars | fair | ring beds print as high-contrast zebra stripes on every ridge (8); dark side of ridges black (4 — round 42 measured ±1 luma: the near ridges' dark sides read 46 luma under a 2-luma night sky; the black is the far vista ring's night side, a vista item) |
 
 Cross-cutting: (a) every temperate map's in-map corner cliff is a pale grey or white rock beside saturated turf — the rock albedo tint is a per-map knob and reads chalky on eight maps (15); (b) shaded slopes go black on the dark-soil maps (caldera, skybridge, mars) because the ambient term is a constant hemisphere with no sky colour — round 37/39; (c) desert-family dune ripples are a single-frequency band (8) — round 38; (d) far ranges paler than the sky on the mesa maps (5) — round 37.
+
+### Round 76 — 2026-09-26: the deck pass (cellular stratocumulus lit by what its columns transmit)
+
+**Owner (2026-09-25, on the round-71 Winter sheet): "wow our clouds look amazing" — and skyboxes and maps "that look
+just as good". The integrator's census of deploy 100: the tuned regimes hold (alpine, coastal, steppe, frontier,
+verdant, delta, monsoon, whiteout) while the overcast and stratocumulus presets do not** — Foundry one flat white sheet
+with blobby edges over a grey wash, Railyard a pale low-contrast wash, Polders a marshmallow with no cauliflower and
+no shading, Winter's deck a smooth white mass, Urban dense cotton puffs; round 71's own record: twenty-four maps'
+sheets were 71b captures.
+
+**Why the sheets were flat white.** Two things, both measured on the lane tree with the layer's uniforms dumped from
+the page (`.qa-dev/r76-probe.mjs`). (1) The stratiform floor: `amb = max(amb, uSkyMean × floorK)` with floorK 1.25 on
+a sheet — and `uSkyMean` is the BRIGHTER of the horizon band and the mean upper sky, in the zenith's hue: on Railyard
+the horizon band's luminance is 0.80 against a mean sky of 0.33 and a zenith of 0.15, so every sheet base sat at
+1.0 above the brightest sky and the max() erased whatever shading the diffusion and depth-above terms had produced
+(the base metric read 203 / 199 / 195 sRGB against a clear sky of 154). (2) The coverage ramp compressed only for a
+sheet (stratiform ≥ 0.5), so a broken stratocumulus at 0.66 (Polders, stratiform 0.45) ramped across the whole admitted
+range and covered a tenth of the sky as one soft mass. And the display: the flat-density calibration (`uDebug 4`,
+S = 0.6 everywhere) displays as 211 — the same white as the sheet at 1.2 — because the battlefield skies are exposed
+for the ground with the horizon band near white, so anything above ~0.5 linear is the clipped shoulder; the first
+frame where Railyard's deck read as a grey cellular overcast was the variant with no sun in the transmitted term
+(median 136 against a sky of 176).
+
+**The deck model (`volumetricClouds.ts`, five knobs on the cloudscape in `cloudscapes.ts` / `cloudPresets.ts`).**
+Every term is gated so the rated regimes and whiteout keep round 71's numbers byte for byte: `mix( S, Sd, uDeckLight )`
+with the old block skipped at 1 and the new at 0, `cloudCellK` returning exactly 1 without cells, `mix( 0.4, 1.0, 1.0 )`
+= 1.0 and `mix( 1.0, x, 0.0 )` = 1.0 on the thickness and border factors, `max( uStratiform, 0 )` on the ramp and the
+stride floor (the receipt pins the zero rows of every cumuliform regime, low-stratus, high-cirrus and thin-ice-clouds).
+- `cells` / `cellM`: the inverted-Worley cells of the shape volume (its G and B octaves) read in a slice at the slab's
+  mid altitude at the deck's own period (cellM × 4) give each column a cell factor, 1 at a core and near 0 on the
+  borders. The column's thickness follows it (the borders at two fifths of the core's height and four fifths of its
+  density), the cores hang under the base (`CLOUD_DECK_HANG_K` 0.12 × the slab × cells; the march starts at the
+  hang), the borders open where the coverage is marginal and — open (cellK < 0.08) — stride like clear air, the
+  coverage ramp compresses like a sheet's (the structure is the cells', not the ramp's), the shape period tends to the
+  cell period, the deck keeps more of its mottle (the sheet flattening × (1 − 0.3 cells)) with a quarter more erosion
+  under the base, takes a sheet's stride floor and a tall slab's far strides, and its slab march ends at 10 km
+  (`CLOUD_DECK_MARCH_MAX_M`) where the far band (8–11 km) and the haze ramp own the horizon.
+- `deckLight`: the underside is lit by what the column above it transmits — two base-shape taps of the optical depth
+  above the point over the remaining column (0.22 / 0.66 of it, the ladder scaled per texel by the blue noise like the
+  light march's) through the diffusion law of a thick non-absorbing cloud, T = 1 / (1 + 0.75 (1 − g) τ) with g 0.85:
+  the thick cores dark, the thin borders bright. The top's irradiance is the sun's on the horizontal (its colour half
+  way to neutral) at a THIRD of its physical share (`CLOUD_DECK_SUN_SHARE`, the display finding above) plus the sky's
+  whole (the summary's E / π), the ground bounce a quarter of the top's irradiance at a mean transmission of 0.3 times
+  the map's ambient scale (winter's 2.0 is the snow), the lower sky at 0.4, and the sky itself near a column's top. The
+  light-march directional term stays (a lump's flank lit from the side, the walls at the breaks; its two near taps
+  share the point's column and cell factor) and is extended to the plane-parallel slant depth only where the near
+  taps are already inside cloud (`smoothstep( 0.3, 1.5, lastLight )`): a sheet's glow toward the sun follows the whole
+  slant, a flank keeps its light. A blended deckLight paid both lighting paths (polders 1.7 ms), so the deck rows take
+  it whole.
+- `undulatus`: the wind-frame street rolls band the thickness (0.6 + 0.8 × the roll, capped at 1).
+- `interior`: the coarse detail octave (25–100 m) modulates the density inside a mass (0.5..1) instead of vanishing in
+  the remap, and the first light tap is detailed (the fine octave skipped), so a lit face shades bulge by bulge
+  (broken stratocumulus, altocumulus, the ash veil; the fair-weather rows can take it at the owner's call with a sheet).
+Denser deck rows (τ 15–40 in the cores: stratocumulus-deck 0.06 → 0.11, broken 0.07 → 0.12, overcast 0.035 → 0.06,
+dense 0.05 → 0.09, hazy 0.03 → 0.05, ice fog 0.03 → 0.05, ash 0.05 → 0.07). Two regimes: `industrial-stratocumulus`
+(a low closed cellular deck under a smoggy horizon — Foundry at 850 m with a warm-grey base 0xd8cec0, coverage 0.88;
+Railyard closed at 0.92 / 800 m, density 0.16, cells 0.9 at 1300 m, undulatus 0.35, a weaker sun 0.7 and a dirtier
+neutral base 0xbab5ac) and `altocumulus` (Urban: a broad field cut into 340 m elements at 2800 m, stratiform 0.4,
+coverage 0.55, interior 0.4, shaded bases and lit borders with blue between). Polders' deck a step higher (420 →
+600 m) with 750 m cells at 0.8 and coverage 0.68 (the pre-pass admitted); the broken-stratocumulus row at stratiform
+0.5; winter's ambient scale 2.0 (the snow bounce keeps the deck bright under its cells).
+
+**Foundry and Railyard re-graded.** Round 65's open note (an overcast is a cloud layer, not a heavy aerosol) closed:
+Foundry's aerosol halved (mie 0.012 → 0.006: the sun's transmittance and the ground's fill rise, never fall), its fog
+a third thinner (0.00074 → 0.00052) and neutral (0x858384, mix 0.45), the smog as the aerosol's warm absorption
+(`atmosphere.mieTintHex` 0xd2b28c: soot and dust scatter blue least — the horizon band is the one place a warm haze
+survives the aerial pass's blue-grey guard) and on the deck's base; Railyard's fog (the fleet's heaviest) a quarter
+thinner (0.0008 → 0.0006, mix 0.9 → 0.72). Measured on the bird-n view (bands of the 1600 × 900 capture): Foundry's
+sky-top band 174 / 183 / 180 → 154 / 156 / 156 (the grey cellular deck where the white haze was), the ridge 164 /
+172 / 170 → 177 / 180 / 174, the far ground 150 / 160 / 159 → 161 / 166 / 161 at the same local contrast (3.0 →
+2.9). Honest limit: the far ground under a kilometre is hazed by the aerial pass's map-independent law
+(AERIAL_HAZE_DENSITY at its 0.55 scatter ceiling toward `mix( skyT, fogTint, fogMix )` under the blue-grey guard), so
+the bird view's far field keeps most of its wash whatever the sky block authors — what moved is the wash's target (a
+warm horizon, a neutral fog) and the sky above it; the centre-far view reads as a cellular overcast over the
+ironworks. The mobile tier's baked decks keep their overcast rule (turbidity 7.8 / 9 with the opaque decks) and the
+Garage mirrors follow (`garageSkyPresets` green); the byte receipt projects the sky lines back through
+`round76DeckRegrade.test-support.mjs` (innermost, before the round-72 projection).
+
+**Coastal's palm.** Saltmere Bay's lone mix planted a palm (0.20) among maritime pines, cedars and salt-pruned oaks on
+a temperate shore: the species list and the lone mix drop it (pine 0.38, cedar 0.31, oak 0.31 — one rng draw per lone
+tree whatever the mix, so the placements stay), its palette with it; the byte receipt projects the two blocks back.
+
+**Measured (code tip 709ff1d5c; `.qa-dev/r76-deck-metrics.mjs` on the history masks: the p80 / p20 display luma of the
+dense pixels (α ≥ 0.6), the mottle (mean |Δluma| at 24 px over the mean dense luma), the deck / clear-sky ratio; sky-w /
+sky-s; before = the deploy-100 tree eeecca19e captured on this machine, `$SP/r76/before`, after `$SP/r76/after`; the
+sheets `$SP/r76/review/sheet-sky-w.png`, `sheet-sky-s.png`, `sheet-bird-n.png`, the numbers in
+`$SP/r76/metrics-{before,after}-deck.txt`, `metrics-{before,after}.txt`, `controls.txt`).**
+
+| Map | p80 / p20 before → after | mottle before → after | deck / sky before → after | deck median (display) |
+|---|---|---|---|---|
+| foundry | 1.02 / 1.05 → 1.30 / 1.14 | 0.029 / 0.036 → 0.050 / 0.037 | 1.73 / 1.22 → 1.33 / 1.65 (the sky between the cells darker: the aerosol halved) | 207 / 210 → 140 / 151 |
+| railyard | 1.01 / 1.02 → 1.18 / 1.14 | 0.026 / 0.030 → 0.041 / 0.036 | 1.28 / 1.01 → 0.93 / 1.09 | 215 / 216 → 157 / 166 |
+| winter | 1.08 / 1.05 → 1.17 / 1.17 | 0.045 / 0.036 → 0.054 / 0.049 | 1.26 / 1.11 → 0.98 / 0.87 | 187 / 191 → 151 / 153 |
+| polders | 1.08 / 1.06 → 1.18 / 1.19 | 0.019 / 0.007 → 0.035 / 0.031 | 1.80 / 1.47 → 1.54 / 1.34 | 208 / 209 → 173 / 186 |
+| urban | 2.38 / 3.70 → 2.56 / 3.69 | 0.170 / 0.204 → 0.175 / 0.281 | 1.03 / 1.17 → 0.96 / 1.00 | 181 / 211 → 175 / 185 |
+| fjord | 1.62 / 2.20 → 1.36 / 1.86 | 0.046 / 0.082 → 0.069 / 0.098 | 1.72 / 1.00 → 1.21 / 0.85 | 190 / 136 → 137 / 133 |
+| titan_gorge | 1.41 / 2.19 → 1.18 / 1.77 | 0.053 / 0.060 → 0.066 / 0.075 | 1.20 / – → 0.78 / – | 207 / 207 → 155 / 151 |
+| blackglass | 18.9 / 1.38 → 12.6 / 1.41 | 0.273 / 0.065 → 0.296 / 0.092 | 1.85 / 1.33 → 1.46 / 0.91 | 57 / 171 → 47 / 105 |
+| whiteout (control) | 1.06 / 1.04 → 1.06 / 1.04 | 0.042 / 0.030 → 0.042 / 0.030 | 1.71 / 3.02 → 1.71 / 3.05 | 186 / 190 → 186 / 190 |
+
+The closed decks' p80 / p20 sits at 1.14–1.30 — the tonemap's shoulder compresses what the cells' transmission
+spreads (the same cells read at 1.2–2.4 in the cellContrast column) — but the flat sheet is gone on every one: the
+mottle doubled on foundry and polders and rose 20–35 % on railyard and winter, and every deck median dropped 40–60
+display levels to sit at or under the clear sky where it stood 1.2–1.8 × above it. Eye check of the sheets: foundry
+and railyard read as grey cellular overcasts with lit borders and blue breaks, winter as a lumpy grey deck over the
+range (greyer than 71b's white mass: the snow bounce at 2.0 keeps it from going dull), polders as a lumpy deck with
+grey undersides and lit tops, fjord as lumpier, greyer masses, urban as a layer of small elements with shaded bases,
+titan as a heavy dark overcast, blackglass's ash lumps darker. **Controls** (`controls.txt`, the round-71 metrics
+before → after): alpine, coastal, steppe, frontier, verdant, delta, monsoon, whiteout, desert, saltwind, mangrove and
+mars hold every number — coverage, largest component, light ratio, contrast, base sRGB and the sky bands — to ±1
+(the deterministic boot makes the two runs frame-comparable; whiteout is identical); the exceptions are autumn's
+sky-s light ratio 1.09 → 1.34 on an 8 % cloud view with few dense runs (its sky-w identical), mangrove's sky-s largest
+component 93 → 70 % (a split at the α threshold, every other number identical) and coastal's lower band +4 (the
+trees, not the sky).
+
+**Performance (`.qa-dev/r71-trace-bench.mjs`, the ×1 against ×11 repetition, Δ / 10, 90 frames × 3 rounds at the
+chase pose; medians of the rounds with the rounds' span; the machine at load 68–103 from other sessions).** Final
+tree: foundry 0.20 ms (−0.57..0.27), railyard −0.49 (−0.96..−0.13), winter 0.85 (0.78..0.92), urban 0.10
+(−0.23..1.29), fjord 0.67 (0.48..0.81) and 1.45 (1.21..1.53) on two runs of the same build, monsoon 1.30
+(1.19..3.02; untouched: 71c read 1.05–1.54), verdant 0.79 (0.00..1.09; 71c 0.35–0.59), polders 1.76 (1.62..2.23; before
+the cost levers 2.31–2.35, the first bench 1.5–1.8). The noise floor at this load is ±0.5–0.7 ms a run — the same
+winter build read 0.03 / 0.38 / 1.10 / 0.85 across four runs — so foundry, railyard, urban, winter, fjord and verdant
+sit inside the 1.2 ms slot within it; polders is the one slot over the line by this bench (the low deck at 600 m over
+a flat map: the chase pose's grazing rays cross it for the whole march; the 10 km cap, the border striding and the
+single lighting path each moved it inside the noise). CPU per slot within ±0.2 ms of zero. No new texture: the cell
+field is the shape volume read in a slice; the mobile tier never creates the layer.
+
+**Receipts (exit 0, the sweep on the final tree).** volumetricClouds (20 regimes, the 31-map table, the gated zero
+rows, the deck identities, the key following the knobs), atmosphere, skyCloudBake (the baked decks' bytes unchanged),
+skyHorizonCache, skyEnvironmentCache, garageSkyPresets, battleAtmosphereRuntime, battleAtmosphereAccess,
+badlandsRelief (the round-76 projection innermost), playableRelief, redrockMaterial, villageWear and
+mangroveWaterPalette (re-pinned four times: the clouds blocks, the haze re-grade, the palm, polders' retune),
+environmentSurfaceColor, mapQuality, worldActivationRuntime, horizonCloudShade, horizonResources, wallSkyLight,
+sourcedTerrainPreparation, terrainMaterialOwnership, worldBuildCoordinator, vegetationResources,
+vegetationProgramKey, vegetationClearance, vegetationLighting, vegetationFarSeams, sunShafts, contactShadows,
+temporalAA, deviceEnvRadiance, postLightFxPolicy, shadowGeometryClaims, adaptiveQualityPolicy, quality,
+horizonRelief, roadContinuity, shoreline, groundRedux, postFrameAccounting, lateFxColorHandoff, sceneSourcePass,
+frameLoopScheduler, renderLayers (44 green); `npm run typecheck`.
+
+**Open.** Polders' slot at 1.6–1.8 ms by this bench (the next lever is its base or a deck-only coarser stride at
+grazing angles); the closed decks' p80 / p20 under 1.6 (the display's shoulder — a tone-mapping change is the owner's
+call); mammatus (pouches under an anvil or a thick deck: a cell-driven base sag with a directional term on the lobe
+sides) not built; the far-ground wash of the bird views is the aerial pass's global law; the fair-weather rows do not
+take the interior octave (the rated maps stay byte-identical — the owner can opt them in with a sheet); the top /
+base ratio ≥ 1.6 is a cumulus-mass number and does not measure a deck seen from below — the p80 / p20 and mottle are
+the deck's numbers here; Titan and Blackglass took the deck rows' lighting through the shared rows and were
+eye-checked on the sheet only; the round-68 / 71 items not closed here (the inside-the-slab camera, the cascade policy
+for the gobos, a moonlit edge at night).
 
 ## Acceptance is visual and measured
 
