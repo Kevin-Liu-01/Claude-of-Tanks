@@ -316,9 +316,11 @@ function softenHorizonRing(
   count: number,
   row: HorizonProfileRow,
   amp: number,
+  passes = 8,
+  stepScale = 1,
 ): void {
   const scratch = new Float32Array(count);
-  for (let pass = 0; pass < 8; pass++) {
+  for (let pass = 0; pass < passes; pass++) {
     for (let k = 0; k < count; k++) {
       const km = (k - 1 + count) % count, kp = (k + 1) % count;
       scratch[k] = heights[offset + km] * 0.24
@@ -326,7 +328,10 @@ function softenHorizonRing(
     }
     for (let k = 0; k < count; k++) heights[offset + k] = scratch[k];
   }
-  const maxStep = 1.35 + row.amp * amp * 0.035;
+  // Round 72: the step clamp (about 18° along the row at the alpine rows' 15 m of arc) was the dome-maker — with
+  // the relief field on, a character's crest sharpness opens it (polar 2.2 x, alpine 2.7 x: faces to 37–45°) and the
+  // blur drops to three passes so the 75–150 m spurs survive; the silhouette sampler keeps the classic values
+  const maxStep = (1.35 + row.amp * amp * 0.035) * stepScale;
   for (let pass = 0; pass < 3; pass++) {
     for (let k = 0; k < count; k++) {
       const km = (k - 1 + count) % count;
@@ -1152,7 +1157,8 @@ function buildInitialHorizonGeometry(
     }
     if (style === 'alpine' && !row.skirt) {
       const offset = rowIndex * HORIZON_SEGMENTS;
-      softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp);
+      softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp,
+        relief ? 3 : 8, relief ? 1 + relief.settings.crestSharpness * 0.9 : 1);
       for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
         positions[(offset + segment) * 3 + 1] = heights[offset + segment];
       }
