@@ -3848,56 +3848,66 @@ width), the second the near ring's cap, the toggle bench the cut to 2.6 clumps /
 legacy A/B the height-mix gate; the numbers below are the final build (the `legacy` and terrain-only frames re-shot
 on it).
 
-- *Tiling* — the strongest autocorrelation peak of the detrended far-ground crop at lags ≥ 24 px (the earlier
-  lag-6 "peaks" were the ground's own smoothness), `ground-mid` legacy → terrain-only → final: Whiteout 0.075 → 0.074 → 0.185, Verdant 0.085 → 0.088 → 0.129, Saltwind 0.080 → 0.083 → 0.073, Steppe 0.119 → 0.123 → 0.112, Monsoon 0.027 → 0.074 → 0.207, Desert 0.170 → 0.158 → 0.156; `ground-far`: Whiteout 0.228 → 0.204 → 0.171, Verdant 0.127 → 0.126 → 0.120, Saltwind 0.085 → 0.085 → 0.086, Steppe 0.086 → 0.081 → 0.084, Monsoon 0.069 → 0.065 → 0.047, Desert 0.110 → 0.117 → 0.123. The terrain's own repeat stays flat or falls; where the final value
-  rises it is the sward's blades in the crop, not a tile.
-- *Mid-ground detail energy* (mean |Laplacian|, rows 42–62 %): Whiteout 26.0 → 27.6 → 28.3, Verdant 43.4 → 43.5 → 44.3, Saltwind 44.4 → 43.5 → 43.5, Steppe 44.5 → 45.6 → 46.1, Monsoon 31.4 → 31.6 → 31.7, Desert 25.6 → 25.6 → 25.7 — within the bound; the mid octave adds relief without energy the crop can count.
-- *Transition softness* (`chase`, terrain-only against legacy; hard-edge share / p90 gradient): Whiteout 0.046 / 13.9 → 0.052 / 15.5, Verdant 0.201 / 34.8 → 0.211 / 36.4, Saltwind 0.238 / 35.8 → 0.240 / 36.9, Monsoon 0.069 / 20.4 → 0.076 / 21.2, Desert 0.220 / 36.0 → 0.220 / 35.4 (the arid blend runs at 0.3, the conservative strength on sand — the owner's black-contour history there; the
-  desert's share does not move); Steppe 0.312 / 39.3 → 0.138 / 27.5 carries a dust plume in its legacy frame and does not compare. The height
-  transitions move the p90 a few percent — ragged borders with a little more contrast, not stepped ones.
-- *The wet strand* (Saltwind strand view, the darkest contiguous run per column against the dry-sand median):
-  contrast 0.314 → 0.314 → 0.316, width p90 112 → 100 → 96 px; Nordhavn 0.153 → 0.173, Fjord 0.315 → 0.345; the probe frames (`$SP/r73/swash`) are the eye's
-  reference: `w030s15` reads as wet sand near the water with a dry backshore, `off` as one pale strip.
+- *Tiling* — the strongest autocorrelation peak of the detrended far-ground crop at lags ≥ 24 px (the earlier lag-6
+  "peaks" were the ground's own smoothness), `ground-mid` legacy → terrain-only → final: Whiteout 0.075 → 0.074 →
+  0.185, Verdant 0.085 → 0.088 → 0.129, Saltwind 0.080 → 0.083 → 0.073, Steppe 0.119 → 0.123 → 0.112, Monsoon 0.027 →
+  0.074 → 0.207, Desert 0.170 → 0.158 → 0.156; `ground-far`: Whiteout 0.228 → 0.204 → 0.171, Verdant 0.127 → 0.126 →
+  0.120, Saltwind 0.085 → 0.085 → 0.086, Steppe 0.086 → 0.081 → 0.084, Monsoon 0.069 → 0.065 → 0.047, Desert 0.110 →
+  0.117 → 0.123. The terrain's own repeat stays flat or falls; where the final value rises it is the sward's blades in
+  the crop, not a tile.
+- *Mid-ground detail energy* (mean |Laplacian|, rows 42–62 %): Whiteout 26.0 → 27.6 → 28.3, Verdant 43.4 → 43.5 →
+  44.3, Saltwind 44.4 → 43.5 → 43.5, Steppe 44.5 → 45.6 → 46.1, Monsoon 31.4 → 31.6 → 31.7, Desert 25.6 → 25.6 → 25.7
+  — within the bound; the mid octave adds relief without energy the crop can count.
+- *Transition softness* (`chase`, terrain-only against legacy; hard-edge share / p90 gradient): Whiteout 0.046 / 13.9
+  → 0.052 / 15.5, Verdant 0.201 / 34.8 → 0.211 / 36.4, Saltwind 0.238 / 35.8 → 0.240 / 36.9, Monsoon 0.069 / 20.4 →
+  0.076 / 21.2, Desert 0.220 / 36.0 → 0.220 / 35.4 (the arid blend runs at 0.3, the conservative strength on sand —
+  the owner's black-contour history there; the desert's share does not move); Steppe 0.312 / 39.3 → 0.138 / 27.5
+  carries a dust plume in its legacy frame and does not compare. The height transitions move the p90 a few percent —
+  ragged borders with a little more contrast, not stepped ones.
+- *The wet strand* (Saltwind strand view, the darkest contiguous run per column against the dry-sand median): contrast
+  0.314 → 0.314 → 0.316, width p90 112 → 100 → 96 px; Nordhavn 0.149 → 0.173, Fjord 0.305 → 0.345; the probe frames
+  (`$SP/r73/swash`) are the eye's reference: `w030s15` reads as wet sand near the water with a dry backshore, `off` as
+  one pale strip.
 - *Sward coverage* (final against terrain-only, the share of the near band changed by more than 10 luma; `chase` /
-  `ground-low`): Whiteout 6 % / 53 %, Verdant 49 % / 29 %, Saltwind 54 % / 68 %, Steppe 44 % / 49 %, Monsoon 49 % / 61 %; the Desert control (no sward) 29 % / 8 % is the bots' and dust plumes' motion between two battle boots, so a
-  map's own coverage is its number less the control's. Instances at the chase pose: Whiteout 9.4 k clumps + 3.3 k
-  far blades, Verdant 27.9 k + 11.8 k, Saltwind 7.8 k + 2.8 k, Steppe 37.8 k + 16.4 k (the cap of the first sheets
-  had truncated it at 40 k), Monsoon 26.3 k + 8.2 k.
-- *The trail* (the hull driven five seconds — Tarkhan 45 m, Monsoon 53 m — then the bird view against the same
-  frame with the press field cleared; the share of each band changed by more than 10 luma, near / mid / far):
-  Steppe 9 % / 11 % / 10 %, Monsoon 16 % / 22 % / 21 %; the Steppe crop of the chase view behind the hull shows the
-  blades lying along the travel with the ground between them, two lanes wide.
+  `ground-low`): Whiteout 6 % / 53 %, Verdant 49 % / 29 %, Saltwind 54 % / 68 %, Steppe 44 % / 49 %, Monsoon 49 % / 61
+  %; the Desert control (no sward) 29 % / 8 % is the bots' and dust plumes' motion between two battle boots, so a
+  map's own coverage is its number less the control's. Instances at the chase pose: Whiteout 9.4 k clumps + 3.3 k far
+  blades, Verdant 27.9 k + 11.8 k, Saltwind 7.8 k + 2.8 k, Steppe 37.8 k + 16.4 k (the cap of the first sheets had
+  truncated it at 40 k), Monsoon 26.3 k + 8.2 k.
+- *The trail* (the hull driven five seconds — Tarkhan 45 m, Monsoon 53 m — then the bird view against the same frame
+  with the press field cleared; the share of each band changed by more than 10 luma, near / mid / far): Steppe 9 % /
+  11 % / 10 %, Monsoon 16 % / 22 % / 21 %; the Steppe crop of the chase view behind the hull shows the blades lying
+  along the travel with the ground between them, two lanes wide.
 - *Performance* (`.qa-dev/r73-bench2.mjs` toggle, `r73-bench5.mjs` repetition; the chase pose, 1600 × 900, the bots
   frozen, GPU time from one `EXT_disjoint_timer_query_webgl2` bracket round the whole frame). Two findings shape the
-  method: a bracket per draw (`r73-bench3`) is not a draw's cost on ANGLE's Metal backend — every query boundary splits
-  the render pass and stores / loads the attachments, ~4 ms a bracket (64 terrain brackets read 266 ms a frame) — so
-  the only clean bracket is the frame; and the machine ran another lane's headless renders throughout (load 20–110,
-  a foreign renderer at 260–1250 % CPU), which only ever add to a frame's elapsed time, so the repetition bench takes
-  the lower quartile of each side. Toggle (the sward hidden / shown, medians of four rounds, the first build with
-  3.0 clumps / m² and three-segment blades): Whiteout 0.83, Verdant 1.08, Saltwind 0.75, Steppe 1.87, Monsoon
-  unresolved (−1.3 / +1.7 between two runs) ms — Steppe over the tier's 1 ms budget, which drove the cut to 2.6
-  clumps / m² and two segments (−40 % triangles a clump, −13 % clumps). Repetition (each sward draw issued eleven
+  method: a bracket per draw (`r73-bench3`) is not a draw's cost on ANGLE's Metal backend — every query boundary
+  splits the render pass and stores / loads the attachments, ~4 ms a bracket (64 terrain brackets read 266 ms a frame)
+  — so the only clean bracket is the frame; and the machine ran another lane's headless renders throughout (load
+  20–110, a foreign renderer at 260–1250 % CPU), which only ever add to a frame's elapsed time, so the repetition
+  bench takes the lower quartile of each side. Toggle (the sward hidden / shown, medians of four rounds, the first
+  build with 3.0 clumps / m² and three-segment blades): Whiteout 0.83, Verdant 1.08, Saltwind 0.75, Steppe 1.87,
+  Monsoon unresolved (−1.3 / +1.7 between two runs) ms — Steppe over the tier's 1 ms budget, which drove the cut to
+  2.6 clumps / m² and two segments (−40 % triangles a clump, −13 % clumps). Repetition (each sward draw issued eleven
   times inside the frame's own passes through `renderBufferDirect`, per copy = Δ / 10; the same for the terrain chunks
-  with the redux vectors on / zeroed, per copy = Δ / 11; the press step run eleven times): the sward Whiteout 0.01, Verdant −0.08, Saltwind −0.08,
-  Steppe −0.11, Monsoon 0.01 ms per copy at 9.4–37.8 k clumps — inside the method's ±0.3 ms floor, so the sward's
-  geometry pass (a repeated opaque copy adds vertex and raster work only; its fragments are one layer under the
-  tile GPU's hidden-surface removal) costs under 0.3 ms on every map; the press step −0.16 / −0.33 / 0.23 / −0.08 /
-  0.52 (a 256² RGBA16F quad, under 0.5 at the floor); the toggle re-run on the cut build (±1.5 ms between rounds)
-  Whiteout 0.29, Verdant 0.90, Saltwind −0.16, Steppe −0.77, Monsoon 1.62. The
-  redux terms on the terrain material (the same program, the four vectors zeroed — the snow, strand and glint blocks
-  and the height-mix taps are branch-gated on their uniforms, the fold and mid octave are arithmetic and one gated
-  tap): Whiteout 0.41, Verdant 0.41, Saltwind 0.66, Steppe 0.25, Monsoon −0.09, Desert 0.27 ms
-  per copy (lower-quartile, ±0.5 between rounds) — within the 0.8 ms budget on every map; the strand alone
-  (`uReduxSwash` zeroed) Saltwind 0.37 by the quartile and −0.07 by the median, the other maps within ±0.3 of zero:
-  a number the noise owns, not one the 0.2 ms budget can be held to, and the block runs only on the sea ramp's
-  pixels. World update CPU (the sward's cooperative cells, the press stamps, the clock): +0.0 ms on every map (the `update` wrap, medians), the frame's CPU
-  within ±0.3 ms of the sward-off frame. Draw
-  calls: two instanced draws (neither ring casts a shadow) and the press field's one quad, +3 of the budget's 6; the
-  terrain's draw count is unchanged (the fold is an attribute, the transitions are uniforms). Sampler budget: the
-  terrain material still declares ten (`uAlb*`/`uNrm*` × 4, `uMask`, `uNoise`); the sward's material one (`uPress`).
+  with the redux vectors on / zeroed, per copy = Δ / 11; the press step run eleven times): the sward Whiteout 0.01,
+  Verdant −0.08, Saltwind −0.08, Steppe −0.11, Monsoon 0.01 ms per copy at 9.4–37.8 k clumps — inside the method's
+  ±0.3 ms floor, so the sward's geometry pass (a repeated opaque copy adds vertex and raster work only; its fragments
+  are one layer under the tile GPU's hidden-surface removal) costs under 0.3 ms on every map; the press step −0.16 /
+  −0.33 / 0.23 / −0.08 / 0.52 (a 256² RGBA16F quad, under 0.5 at the floor); the toggle re-run on the cut build (±1.5
+  ms between rounds) Whiteout 0.29, Verdant 0.90, Saltwind −0.16, Steppe −0.77, Monsoon 1.62. The redux terms on the
+  terrain material (the same program, the four vectors zeroed — the snow, strand and glint blocks and the height-mix
+  taps are branch-gated on their uniforms, the fold and mid octave are arithmetic and one gated tap): Whiteout 0.41,
+  Verdant 0.41, Saltwind 0.66, Steppe 0.25, Monsoon −0.09, Desert 0.27 ms per copy (lower-quartile, ±0.5 between
+  rounds) — within the 0.8 ms budget on every map; the strand alone (`uReduxSwash` zeroed) Saltwind 0.37 by the
+  quartile and −0.07 by the median, the other maps within ±0.3 of zero: a number the noise owns, not one the 0.2 ms
+  budget can be held to, and the block runs only on the sea ramp's pixels. World update CPU (the sward's cooperative
+  cells, the press stamps, the clock): +0.0 ms on every map (the `update` wrap, medians), the frame's CPU within ±0.3
+  ms of the sward-off frame. Draw calls: two instanced draws (neither ring casts a shadow) and the press field's one
+  quad, +3 of the budget's 6; the terrain's draw count is unchanged (the fold is an attribute, the transitions are
+  uniforms). Sampler budget: the terrain material still declares ten (`uAlb*`/`uNrm*` × 4, `uMask`, `uNoise`); the
+  sward's material one (`uPress`).
 - *Monsoon's hillside* looked to mass dark under the far ring on the first sheets; its mean over the hill box reads
   45.4 (legacy) / 46.0 (terrain-only) / 48.1 (final) — the authored dark laterite slope, unchanged.
-
 **Receipts.** `groundRedux.selftest` (every map's row and bands, the biomes where they belong, the packing, the quality
 knob, the material's contract — ten samplers, v40, the transitions, the folds, the strand, the clock), `groundPressure`
 (gates, targets, the step shader, the packing, the stepping, the CPU twin, the wiring), `tallGrass` (the geometry,
