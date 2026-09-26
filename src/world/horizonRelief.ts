@@ -172,6 +172,13 @@ export interface HorizonReliefField {
    * `steep` (0..1) admits the downslope gullies.
    */
   high(x: number, z: number, hT: number, concavity: number, steep: number, r?: number, theta?: number): number;
+  /**
+   * The bake's two-stage form of `high`: `prepare` runs the warp and the coarse octaves at a point (their offsets and
+   * the multifractal weight they leave, smooth enough to interpolate between the bake's half-resolution texels),
+   * `finish` runs the fine octaves, the talus and the gullies from a prepared point. `high` = prepare + finish.
+   */
+  prepare(x: number, z: number, sharp: number, out: { dx: number; dz: number; weight: number }): void;
+  finish(x: number, z: number, dx: number, dz: number, weight: number, sharp: number, concavity: number, steep: number, r: number, theta: number): number;
   /** The character in force. */
   settings: HorizonReliefSettings;
 }
@@ -236,16 +243,20 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     lowMean /= N * N;
   }
   const midSharp = (s.crestSharpness + s.footSharpness) * 0.5;
+  const stage = { dx: 0, dz: 0, weight: 1 };
   return {
     settings: s,
     low(x, z) {
       return (lowRaw(x, z, midSharp) - lowMean) * s.lowAmpM;
     },
-    high(x, z, hT, concavity, steep, rIn, thetaIn) {
-      const sharp = s.footSharpness + (s.crestSharpness - s.footSharpness) * clamp(hT, 0, 1);
+    prepare(x, z, sharp, out) {
       warpTo(x, z);
       scratch.weight = 1;
       for (let o = 0; o < LOW_OCTAVES; o++) octave(o, sharp);
+      out.dx = scratch.wx - x; out.dz = scratch.wz - z; out.weight = scratch.weight;
+    },
+    finish(x, z, dx, dz, weight, sharp, concavity, steep, r, theta) {
+      scratch.wx = x + dx; scratch.wz = z + dz; scratch.weight = weight;
       let sum = 0;
       for (let o = LOW_OCTAVES; o < octaves; o++) sum += octave(o, sharp) * amp[o];
       // the talus apron: at a concave foot the fine relief settles into a smooth fan
@@ -253,10 +264,14 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const fine = (sum / highNorm - 0.42) * s.highAmpM * (1 - talus * (1 - s.talusFloor));
       // gullies: ridged noise elongated downslope (radial on the ring), carved into the steeper faces only; the
       // across-slope coordinate runs around a circle in noise space so the pattern closes on itself at every angle
-      const r = rIn ?? Math.hypot(x, z), theta = thetaIn ?? Math.atan2(z, x);
       const g = noise.noise3d(Math.cos(theta) * gullyK + 7.7, Math.sin(theta) * gullyK - 3.3, r * gullyFr + 5.1);
       const gully = -Math.pow(1 - Math.abs(g), 3) * s.gullyM * steep * (1 - talus * 0.6);
       return fine + gully;
+    },
+    high(x, z, hT, concavity, steep, rIn, thetaIn) {
+      const sharp = s.footSharpness + (s.crestSharpness - s.footSharpness) * clamp(hT, 0, 1);
+      this.prepare(x, z, sharp, stage);
+      return this.finish(x, z, stage.dx, stage.dz, stage.weight, sharp, concavity, steep, rIn ?? Math.hypot(x, z), thetaIn ?? Math.atan2(z, x));
     },
   };
 }
@@ -283,7 +298,7 @@ export interface HorizonReliefBake {
   r0: number;
   r1: number;
   gradScale: number;
-  stats: { aoMean: number; shadowMean: number; gradP95: number; fineRangeM: number };
+  stats: { aoMean: number; shadowMean: number; gradP95: number; fineRangeM: number; passMs: [number, number, number] };
 }
 
 export const HORIZON_RELIEF_BAKE_R0 = 410;
@@ -335,6 +350,8 @@ export function* bakeHorizonReliefSteps(
   const mA = new Float32Array(1), mB = new Float32Array(1);
   const macro = new Float32Array(W * H), marine = new Float32Array(W * H);
   const TAU = Math.PI * 2;
+  const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const t0 = now();
   // pass 1: the macro height
   for (let j = 0; j < H; j++) {
     const r = r0 + (j + 0.5) * dr;
@@ -347,10 +364,40 @@ export function* bakeHorizonReliefSteps(
     }
     if ((j & 15) === 15) yield;
   }
-  // pass 2: the fine relief over the macro (concavity and steepness from the macro's radial second and first differences)
+  const t1 = now();
+  // pass 2: the fine relief over the macro (concavity and steepness from the macro's radial second and first
+  // differences). The warp and the coarse octaves — smooth terms — run on a half-resolution grid and are interpolated
+  // to each texel (their offsets and the multifractal weight they leave); only the fine octaves and the gullies run
+  // per texel, so the field costs four noise samples a texel instead of nine.
   const fine = new Float32Array(W * H);
   const dj = Math.max(2, Math.round(40 / dr));
   const arcAt = (r: number): number => r * TAU / W;
+  const Wq = W >> 1, Hq = H >> 1;
+  const stageDx = new Float32Array(Wq * Hq), stageDz = new Float32Array(Wq * Hq), stageW = new Float32Array(Wq * Hq);
+  const stage = { dx: 0, dz: 0, weight: 1 };
+  const sharpAt = (hT: number): number => s.footSharpness + (s.crestSharpness - s.footSharpness) * clamp(hT, 0, 1);
+  for (let jq = 0; jq < Hq; jq++) {
+    const r = r0 + (jq * 2 + 1) * dr;
+    for (let iq = 0; iq < Wq; iq++) {
+      const theta = ((iq * 2 + 0.5) / W) * TAU;
+      const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
+      const h = macro[(jq * 2) * W + iq * 2];
+      field.prepare(x, z, sharpAt(h / Math.max(1, maxHeight)), stage);
+      const q = jq * Wq + iq;
+      stageDx[q] = stage.dx; stageDz[q] = stage.dz; stageW[q] = stage.weight;
+    }
+    if ((jq & 7) === 7) yield;
+  }
+  const stageAt = (grid: Float32Array, i: number, j: number): number => {
+    const fx = (i - 0.5) * 0.5, fy = (j - 0.5) * 0.5;
+    let x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const tx = fx - x0, ty = fy - y0;
+    x0 = ((x0 % Wq) + Wq) % Wq; const x1 = (x0 + 1) % Wq;
+    y0 = y0 < 0 ? 0 : y0 >= Hq ? Hq - 1 : y0; const y1 = y0 + 1 >= Hq ? Hq - 1 : y0 + 1;
+    const top = grid[y0 * Wq + x0] + (grid[y0 * Wq + x1] - grid[y0 * Wq + x0]) * tx;
+    const bottom = grid[y1 * Wq + x0] + (grid[y1 * Wq + x1] - grid[y1 * Wq + x0]) * tx;
+    return top + (bottom - top) * ty;
+  };
   let fineMin = Infinity, fineMax = -Infinity;
   for (let j = 0; j < H; j++) {
     const r = r0 + (j + 0.5) * dr;
@@ -367,16 +414,20 @@ export function* bakeHorizonReliefSteps(
       const theta = (i / W) * TAU;
       const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
       const land = 1 - marine[idx];
-      const v = land > 0.001 ? field.high(x, z, h / Math.max(1, maxHeight), concavity, steep, r, theta) * land : 0;
+      const v = land > 0.001
+        ? field.finish(x, z, stageAt(stageDx, i, j), stageAt(stageDz, i, j), stageAt(stageW, i, j), sharpAt(h / Math.max(1, maxHeight)), concavity, steep, r, theta) * land
+        : 0;
       fine[idx] = v;
       if (v < fineMin) fineMin = v; if (v > fineMax) fineMax = v;
     }
     if ((j & 7) === 7) yield;
   }
   // pass 3: the combined height, its fine gradient in world xz, the occlusion and the sun visibility. The horizon
-  // searches walk the (angle x radius) grid itself: the eight occlusion directions are grid-aligned (their metre
-  // lengths taken from the row's arc and the radial step), so a row's texel offsets are computed once, and the sun's
-  // grid direction is fixed per column (it turns with the angle), so no trigonometry runs per sample.
+  // searches walk the (angle x radius) grid itself at HALF resolution (occlusion and shadow are smooth terms with a
+  // reach of a hundred metres; the gradient stays at full resolution): the eight occlusion directions are grid-aligned
+  // (their metre lengths taken from the row's arc and the radial step), so a row's texel offsets are computed once,
+  // and the sun's grid direction is fixed per column (it turns with the angle), so no trigonometry runs per sample.
+  const t2 = now();
   const total = new Float32Array(W * H);
   for (let idx = 0; idx < W * H; idx++) total[idx] = macro[idx] + fine[idx];
   const data = new Uint8Array(W * H * 4);
@@ -385,10 +436,11 @@ export function* bakeHorizonReliefSteps(
   const sx = sun[0] / Math.max(1e-6, sunHoriz), sz = sun[2] / Math.max(1e-6, sunHoriz);
   const gradScale = HORIZON_RELIEF_GRAD_SCALE;
   const grads: number[] = [];
-  let aoSum = 0, shSum = 0;
-  const cosCol = new Float32Array(W), sinCol = new Float32Array(W), sunA = new Float32Array(W), sunB = new Float32Array(W);
-  for (let i = 0; i < W; i++) {
-    const theta = (i / W) * TAU;
+  const Wh = W >> 1, Hh = H >> 1;
+  const aoGrid = new Float32Array(Wh * Hh), sunGrid = new Float32Array(Wh * Hh);
+  const cosCol = new Float32Array(Wh), sinCol = new Float32Array(Wh), sunA = new Float32Array(Wh), sunB = new Float32Array(Wh);
+  for (let i = 0; i < Wh; i++) {
+    const theta = ((i + 0.5) / Wh) * TAU;
     cosCol[i] = Math.cos(theta); sinCol[i] = Math.sin(theta);
     // the sun's world direction in grid units per metre: angle texels (times 1 / r) and radial texels
     sunA[i] = (-sinCol[i] * sx + cosCol[i] * sz) * W / TAU;
@@ -398,10 +450,12 @@ export function* bakeHorizonReliefSteps(
   const aoSteps = AO_STEPS_M.filter((d) => d <= s.aoReachM);
   const aoDi = new Int32Array(AO_DIRECTIONS * aoSteps.length), aoDj = new Int32Array(AO_DIRECTIONS * aoSteps.length);
   const aoDist = new Float32Array(AO_DIRECTIONS * aoSteps.length);
-  for (let j = 0; j < H; j++) {
-    const r = r0 + (j + 0.5) * dr;
+  let aoSum = 0, shSum = 0;
+  for (let jh = 0; jh < Hh; jh++) {
+    const j = jh * 2;
+    const r = r0 + (j + 1) * dr;
     const arc = arcAt(r);
-    // this row's occlusion offsets: a grid direction (di, dj) per unit, scaled so the metre length matches the step
+    // this row's occlusion offsets (full-resolution texels): a grid direction scaled so the metre length matches the step
     for (let d = 0; d < AO_DIRECTIONS; d++) {
       const [ui, uj] = aoDirs[d];
       const unitM = Math.hypot(ui * arc, uj * dr);
@@ -411,17 +465,9 @@ export function* bakeHorizonReliefSteps(
         aoDist[d * aoSteps.length + step] = k * unitM;
       }
     }
-    for (let i = 0; i < W; i++) {
+    for (let ih = 0; ih < Wh; ih++) {
+      const i = ih * 2;
       const idx = j * W + i;
-      const ct = cosCol[i], st = sinCol[i];
-      // fine gradient (world): dh/dx = dh/dr cos - dh/dθ sin / r ; dh/dz = dh/dr sin + dh/dθ cos / r
-      const im = i === 0 ? W - 1 : i - 1, ip = i === W - 1 ? 0 : i + 1;
-      const fθ = (fine[j * W + ip] - fine[j * W + im]) / (2 * arc);
-      const fr = (fine[Math.min(H - 1, j + 1) * W + i] - fine[Math.max(0, j - 1) * W + i]) / (2 * dr);
-      const gx = fr * ct - fθ * st, gz = fr * st + fθ * ct;
-      if ((idx & 1023) === 0) grads.push(Math.hypot(gx, gz));
-      data[idx * 4] = clamp(Math.round((gx / gradScale * 0.5 + 0.5) * 255), 0, 255);
-      data[idx * 4 + 1] = clamp(Math.round((gz / gradScale * 0.5 + 0.5) * 255), 0, 255);
       const h0 = total[idx];
       // ambient occlusion: the horizon in eight grid directions, up to the reach
       let occ = 0;
@@ -439,7 +485,7 @@ export function* bakeHorizonReliefSteps(
       }
       const ao = 1 - occ / AO_DIRECTIONS;
       // sun visibility: march toward the sun; a higher ridge along the way at a slope above the sun's blocks it
-      const a = sunA[i] / r, b = sunB[i];
+      const a = sunA[ih] / r, b = sunB[ih];
       let block = -1;
       for (let step = 0; step < SUN_STEPS_M.length; step++) {
         const dist = SUN_STEPS_M[step];
@@ -452,19 +498,52 @@ export function* bakeHorizonReliefSteps(
       const land = 1 - marine[idx];
       const sunVis = 1 - smoothstep(-s.shadowSoft, s.shadowSoft, block) * land;
       const aoOut = 1 - (1 - ao) * land;
-      data[idx * 4 + 2] = clamp(Math.round(aoOut * 255), 0, 255);
-      data[idx * 4 + 3] = clamp(Math.round(sunVis * 255), 0, 255);
+      aoGrid[jh * Wh + ih] = aoOut; sunGrid[jh * Wh + ih] = sunVis;
       aoSum += aoOut; shSum += sunVis;
     }
-    if ((j & 7) === 7) yield;
+    if ((jh & 7) === 7) yield;
   }
+  // the fine gradient at full resolution, the occlusion and the sun bilinear from the half grid
+  const half = (grid: Float32Array, i: number, j: number): number => {
+    const fx = (i - 0.5) * 0.5, fy = (j - 0.5) * 0.5;
+    let x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const tx = fx - x0, ty = fy - y0;
+    x0 = ((x0 % Wh) + Wh) % Wh; const x1 = (x0 + 1) % Wh;
+    y0 = y0 < 0 ? 0 : y0 >= Hh ? Hh - 1 : y0; const y1 = y0 + 1 >= Hh ? Hh - 1 : y0 + 1;
+    const top = grid[y0 * Wh + x0] + (grid[y0 * Wh + x1] - grid[y0 * Wh + x0]) * tx;
+    const bottom = grid[y1 * Wh + x0] + (grid[y1 * Wh + x1] - grid[y1 * Wh + x0]) * tx;
+    return top + (bottom - top) * ty;
+  };
+  for (let j = 0; j < H; j++) {
+    const r = r0 + (j + 0.5) * dr;
+    const arc = arcAt(r);
+    for (let i = 0; i < W; i++) {
+      const idx = j * W + i;
+      const theta = (i / W) * TAU;
+      const ct = Math.cos(theta), st = Math.sin(theta);
+      // fine gradient (world): dh/dx = dh/dr cos - dh/dθ sin / r ; dh/dz = dh/dr sin + dh/dθ cos / r
+      const im = i === 0 ? W - 1 : i - 1, ip = i === W - 1 ? 0 : i + 1;
+      const fθ = (fine[j * W + ip] - fine[j * W + im]) / (2 * arc);
+      const fr = (fine[Math.min(H - 1, j + 1) * W + i] - fine[Math.max(0, j - 1) * W + i]) / (2 * dr);
+      const gx = fr * ct - fθ * st, gz = fr * st + fθ * ct;
+      if ((idx & 1023) === 0) grads.push(Math.hypot(gx, gz));
+      data[idx * 4] = clamp(Math.round((gx / gradScale * 0.5 + 0.5) * 255), 0, 255);
+      data[idx * 4 + 1] = clamp(Math.round((gz / gradScale * 0.5 + 0.5) * 255), 0, 255);
+      data[idx * 4 + 2] = clamp(Math.round(half(aoGrid, i, j) * 255), 0, 255);
+      data[idx * 4 + 3] = clamp(Math.round(half(sunGrid, i, j) * 255), 0, 255);
+    }
+    if ((j & 15) === 15) yield;
+  }
+  aoSum /= Wh * Hh; shSum /= Wh * Hh;
+  const t3 = now();
   grads.sort((a, b) => a - b);
   return {
     width: W, height: H, data, r0, r1, gradScale,
     stats: {
-      aoMean: aoSum / (W * H), shadowMean: shSum / (W * H),
+      aoMean: aoSum, shadowMean: shSum,
       gradP95: grads.length ? grads[Math.min(grads.length - 1, Math.floor(grads.length * 0.95))] : 0,
       fineRangeM: fineMax - fineMin,
+      passMs: [t1 - t0, t2 - t1, t3 - t2],
     },
   };
 }

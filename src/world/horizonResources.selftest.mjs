@@ -243,9 +243,11 @@ function assertVistaSurfaceShader(shader, normals, label) {
     `${label}: the legacy oblique overlay, wall repair and altitude stripes are gone from the vista program`);
   assert.equal((fragment.match(/#include <map_fragment>/g) ?? []).length, 1,
     `${label}: one biome lookup remains`);
-  // round 72 (2026-09-25): the baked surface atlas (horizonRelief.ts) is the one fetch outside the projection macro
-  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 4,
-    `${label}: the world projection macro's three plane fetches plus the relief atlas fetch are the only fetch sites`);
+  // round 72 (2026-09-25): the baked surface atlas (horizonRelief.ts) and the volumetric layer's two cloud-shade
+  // fields (horizonCloudShade.ts, inside a branch the layer opens) are the fetches outside the projection macro
+  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 6,
+    `${label}: the world projection macro's three plane fetches, the relief atlas fetch and the two cloud-shade fetches are the only fetch sites`);
+  assert.match(fragment, /if \(uVCShade > 0\.001\) \{/, `${label}: the cloud-shade fetches are skipped while the layer is off (round 72)`);
   assert.match(fragment, /texture2D\(uVRelief, vec2\(vMapUv\.x \* 0\.1, \(radius - uVReliefR\.x\) \* uVReliefR\.y\)\)/,
     `${label}: the relief atlas is read by the ring's own angle u and the fragment's radius (round 72)`);
   for (const term of ['vec3 nR = normalize', 'float ao = 1.0 - (1.0 - relief.z)', 'float sunVis = 1.0 - (1.0 - relief.w)', 'vec3 skyLight = mix(vec3(1.0), uVSkyTint', 'float glint =']) {

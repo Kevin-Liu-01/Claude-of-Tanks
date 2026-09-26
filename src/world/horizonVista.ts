@@ -15,6 +15,7 @@
 //     ranges instead of stopping at a flat green wall.
 import * as THREE from 'three';
 import { applyCanopyDiffuseWrap } from './canopyLighting.ts'; // round 55: a leaf import — vegetation.ts must not join the horizon chain (tidalMangrove hook)
+import { HORIZON_CLOUD_SHADE_FRAGMENT, HORIZON_CLOUD_SHADE_UNIFORM_DECLARATIONS } from './horizonCloudShade.ts'; // round 72: the layer's cloud shadows on the ranges
 
 // ---------------------------------------------------------------------------
 // tiles
@@ -324,7 +325,7 @@ uniform float uVOutcrop;  // round 55: gneiss knobs and scree through the turf o
 // (r0, 1 / span) and gradient scale, the sky's chroma for the shaded faces and the snow glint amplitude
 uniform sampler2D uVRelief; uniform vec2 uVReliefR; uniform float uVReliefGrad; uniform float uVReliefAmp;
 uniform float uVAoStrength; uniform float uVShadow; uniform vec3 uVSkyTint; uniform float uVSparkle;
-`;
+${HORIZON_CLOUD_SHADE_UNIFORM_DECLARATIONS}`;
 
 /**
  * Replaces `#include <map_fragment>` on the vista ring. Requires the ring's varyings (vHNrm, vHPos, vHDist), the
@@ -363,6 +364,9 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   vec3 nR = normalize(vec3(-(g0.x + gd.x), 1.0, -(g0.z + gd.z)));
   float ao = 1.0 - (1.0 - relief.z) * uVAoStrength * reliefLand;
   float sunVis = 1.0 - (1.0 - relief.w) * uVShadow * reliefLand;
+  // round 72: the volumetric layer's cloud shadow on the sun term (horizonCloudShade.ts; 1 when the layer is off)
+${HORIZON_CLOUD_SHADE_FRAGMENT}
+  sunVis *= cloudLit;
   vec3 aw = abs(n0);
   aw /= (aw.x + aw.y + aw.z);
   #define VTRI(tex, s, o) (texture2D(tex, P.xz * (s) + (o)) * aw.y \

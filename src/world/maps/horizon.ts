@@ -42,6 +42,7 @@ import {
   bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
+import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { type SeaOpening, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorBlend } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -2165,6 +2166,8 @@ function* buildHorizonMaterialSteps({
       uVShadow: { value: 0.85 },
       uVSkyTint: { value: skyTint },
       uVSparkle: { value: snowline <= 1 ? 0.6 : 0 },
+      // round 72: the layer's cloud shadow fields, bound per frame by the ring's onBeforeRender (off until bound)
+      ...createHorizonCloudShadeUniforms(),
       // round 29: arid rings sample the sand tile as their ground layer
       uVMeadow: { value: ground === 'sand' ? tiles.sand : tiles.meadow }, uVCanopy: { value: tiles.canopy }, uVRock: { value: tiles.rock },
       uVScree: { value: tiles.scree }, uVSnow: { value: tiles.snow },
@@ -2887,6 +2890,18 @@ export function* buildHorizonRingSteps(
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   mesh.matrixAutoUpdate = false;
+  // Round 72: the volumetric layer's cloud shadows reach the ranges — each frame the ring points its cloud-shade
+  // uniforms at the layer's live weather fields (by reference: no per-frame copies beyond four numbers; off when the
+  // layer is off, has no shadow regime or is not the scene's). The battlefield takes the same clouds' shadows
+  // through the cascades' gobos; the ring stands beyond the cascades and reads the fields the gobos read.
+  {
+    const cloudUniforms = (mat.userData.horizonVista as { uniforms?: Record<string, THREE.IUniform> } | undefined)?.uniforms;
+    if (cloudUniforms && cloudUniforms.uVCShade) {
+      mesh.onBeforeRender = (_renderer, scene) => {
+        bindHorizonCloudShade(cloudUniforms, scene.userData.volumetricClouds as HorizonCloudShadeSource | undefined);
+      };
+    }
+  }
   // GTAO's depth-edge pass draws dark halo slashes along distant ridge
   // silhouettes — exclude the backdrop like the other flat-lit world layers
   mesh.userData.aoExclude = true;
