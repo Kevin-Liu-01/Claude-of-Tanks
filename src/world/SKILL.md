@@ -24,7 +24,10 @@ allocation-free chase-camera occlusion focus passed to an active world,
 `collision.ts` owns strict allocation-free broad phase and narrow-phase shape
 contracts, `maps/` owns layouts, `shallowWater.ts` owns the lake/sea sheet and `waterRipples.ts` the world-anchored GPU
 shallow-water field it reads for wakes, churn and splashes (null on the mobile tier and in receipts), and vegetation,
-props and toppling own their visual/runtime layers; `wrecks.ts` owns typed,
+props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free) holds every map's ground profile
+(the terrain material's transition / fold / snow / strand knobs and the tall-grass biome — never a map-config edit),
+`tallGrass.ts` the instanced blade rings the hulls press flat through `groundPressure.ts` (a world-anchored GPU field,
+null on mobile and in receipts); `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.
