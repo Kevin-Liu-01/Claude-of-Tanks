@@ -3418,36 +3418,55 @@ but sky. Every map shared the shape of that problem: the ranges were painted, ne
 **The relief field (`src/world/horizonRelief.ts`).** A ridged multifractal over a warped world plane (after Musgrave:
 each octave's ridge is weighted by the one below it, so crests sharpen where the coarse ridge already stands and the
 valleys between stay smooth; two low-frequency noises bend the plane so ridgelines wander instead of running straight),
-with an erosion vocabulary: gullies as ridged noise elongated downslope (radial on the ring; the across-slope coordinate
-runs around a circle in noise space so the pattern closes on itself), a talus apron where the macro relief is concave
-(the fine relief settles into a smooth fan), rounded shoulders low on a face and sharper crests high on it. The field
-is split by wavelength: three octaves from 300 m down displace the AUTHORED rows (every range gains peaks, spurs and
-saddles that vary with the radius too, the first ridge at 60 % so the seated foothill keeps its hillside grade, the
-skirt rows untouched) and take the 260 m term's place in the interpolated rows (the 90 m and 30 m knobs stay); three
-octaves from 37 m down go into the bake. Eight CHARACTERS carry the vocabulary of each mountain country — polar
-(Whiteout, Frosthollow: long warped ridgelines, wind-scoured crests over talus skirts, deep radial gullies), alpine
-(Glacier Pass, Nordhavn, Orchard, Reservoir: sharp multifractal crests, chutes), rolling (the wooded hills: billows
-with spurs, shallow drainage), mesa (the tablelands: flat caps, ledged cliffs, dry washes), volcanic (Caldera,
-Blackglass: smooth cones cut by radial barrancos), coastal (Saltmere, Saltwind, Polders: rounded uplands, cliffed
-fronts), martian (Olympus Basin: very long wavelengths, lobate flows), karst (Monsoon, Mangrove: steep towers) —
-resolved from the map identity, then the style, overridable by `horizon.relief`. Redrock's outland stays the analytic
-canyon (its rows are overwritten) and keeps its bytes.
+normalised to its amplitude (the raw multifractal sum has a mean near 0.4 and a spread of a few hundredths — the first
+cut's "34 m" put ±6 m on the crests; the field is centred and its RMS set to half the amplitude over three warp tiles,
+so the peaks reach about the amplitude), with an erosion vocabulary: gullies as ridged noise elongated downslope
+(radial on the ring; the across-slope coordinate runs around a circle in noise space so the pattern closes on itself),
+a talus apron where the macro relief is concave (the fine relief settles into a smooth fan), rounded shoulders low on a
+face and sharper crests high on it. The field is split by wavelength: three octaves from 300 m down displace the
+AUTHORED rows — every range gains peaks, spurs and saddles that vary with the radius too, the first ridge at 60 % so
+the seated foothill keeps its hillside grade, the skirt rows untouched — and take the 260 m term's place in the
+interpolated rows (the 90 m and 30 m knobs stay); a fine band of three octaves from 75 m down (the row ladder cannot
+carry the 75 m octave, the bake can), run in the ring's own (arc, radius) frame and stretched downslope by the
+character's elongation (a face's spurs and chutes run down it, a mesa's ledges along it), goes into the bake. On the
+alpine ladder the step clamp that made the domes (about 18° along the row at 15 m of arc) opens by the character's
+crest sharpness (polar 2.2 x, alpine 2.7 x: faces to 37–45°) and the blur drops to three passes; the silhouette sampler
+the needle receipt reads keeps the classic values. The ranges behind the first ridge stand taller by the character's
+boost (half on the second range, full beyond, scaled by the map's amplitude): the first ridge is the terrain-material
+foothill the seam laws seat (rows to 700 m), and at the old proportions it walled off the vista's ranges — Whiteout's
+grey dome was that foothill, rendered by the battlefield's own material. Eight CHARACTERS carry the vocabulary of each
+mountain country — polar (Whiteout, Frosthollow: long warped ridgelines, wind-scoured crests over talus skirts, deep
+radial gullies), alpine (Glacier Pass, Nordhavn, Orchard, Reservoir: sharp multifractal crests, chutes), rolling (the
+wooded hills: billows with spurs, shallow drainage), mesa (the tablelands: flat caps, ledged cliffs, dry washes),
+volcanic (Caldera, Blackglass: smooth cones cut by radial barrancos), coastal (Saltmere, Saltwind, Polders: rounded
+uplands, cliffed fronts), martian (Olympus Basin: very long wavelengths, lobate flows), karst (Monsoon, Mangrove: steep
+towers) — resolved from the map identity, then the style, overridable by `horizon.relief`; each also tunes the style's
+rock law (a polar range keeps its summits under snow with the scoured ribs alone baring rock, volcanic cones and karst
+walls are barer). Redrock's outland stays the analytic canyon (its rows are overwritten) and keeps its bytes; Polders
+stays under its 40 m ceiling (the relief scales with the map amplitude, 0.18 there); the ledger's own laws hold with the
+relief on (the crag is capped on spans already past 1.5:1, and the crag a cap re-spacing keeps is bounded by a tenth of
+the new chord).
 
 **The surface bake.** An (angle x radius) RGBA8 atlas of 2048 x 256 texels over the annulus (410–1560 m: about 3 m of
 arc at 1 km and 4.5 m radially), built once per map at world activation in slices like the terrain build: R/G the fine
 relief's world-xz gradient (the detail normal), B a horizon-based ambient occlusion of the whole height field (eight
-directions, six steps to 160 m, on a half grid), A the sun's visibility across the ranges at the map's fixed sun
-(fourteen steps to 560 m toward the sun — the ridges' own cast shadows, which under Whiteout's 13° sun cover almost
+grid-aligned directions, six steps to 160 m, on a half grid), A the sun's visibility across the ranges at the map's
+fixed sun (fourteen steps to 560 m toward the sun — the ridges' own cast shadows, which under Whiteout's 13° sun cover
 half the ring). The macro height at any texel is the ring's own rows interpolated (per column the rows are monotone in
 radius); the warp and the coarse octaves run on a half grid and are interpolated to each texel, so the field costs four
-noise samples a texel instead of nine. The vista program reads the atlas by the ring's own u (the angle, ten repeats
-across the seam column) and the fragment's radius — no new vertex attribute — and combines the gradient with the
-geometric slope in the height-field frame (both are world-xz gradients, so the sum is exact): the material's slope is
-the RELIEVED slope, so rock breaks through on the fine faces, the metre-scale bump rides on the relieved normal, the
-ambient carries the occlusion, the sun carries the visibility. A face turned from the sun takes the sky's own chroma
-(the fog tint normalised to unit luminance and pushed: blue-grey under a clear sky, warm grey under an overcast) instead
-of a grey; sun glitter on the snowfields is a sparse world-anchored hash (a 3 m facet, one in sixty) lit in the sun's
-mirror direction, gone by 1.5 km. Mobile keeps today's ring (no bake, no atlas, no far range).
+noise samples a texel. The vista program reads the atlas by the ring's own u (the angle, ten repeats across the seam
+column) and the fragment's radius — no new vertex attribute — and combines the gradient with the geometric slope in
+the height-field frame (both are world-xz gradients, so the sum is exact): the material's slope is the RELIEVED slope,
+so rock breaks through on the fine faces, the metre-scale bump rides on the relieved normal, the ambient carries the
+occlusion, the sun carries the visibility. The ambient, sun and cast-shadow gains follow the map's own lighting (the
+sky preset's hemisphere plus the engine's bounce floor, its sun, compressed; the baked shadows fade under a closed deck):
+the vista's constants were the sunny default's, and Whiteout's ring — lit by a 0.73 hemisphere under a 13° sun — read
+grey beside its white fields. A face turned from the sun takes the sky's own chroma (the fog tint normalised to unit
+luminance and pushed a little, hue only — a saturated blue fog washed the ranges pale at the first cut): blue-grey under
+a clear sky, warm grey under an overcast; sun glitter on the snowfields is a sparse world-anchored hash (a 3 m facet,
+one in sixty) lit in the sun's mirror direction, gone by 1.5 km. Mobile keeps today's ring (no bake, no atlas, no far
+range). A QA channel (`uVDebug`, set from the capture tool) paints the atlas's gradient, occlusion, sun visibility,
+the relieved normal, the cloud shade or the material weights.
 
 **Cloud shadows on the ranges (`src/world/horizonCloudShade.ts`).** The volumetric layer casts its shadows through the
 cascades' gobo planes, which discard by the weather field; the ring stands beyond the cascades and took none. Each
