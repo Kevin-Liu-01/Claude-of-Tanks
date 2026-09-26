@@ -3180,13 +3180,6 @@ void splatCompute() {
   if (uSea > 0.5) {
     fMs = smoothstep(uSeaRamp.x, uSeaRamp.y, fM);
     seaSand = smoothstep(0.02, uSeaRamp.x, fM) * (1.0 - fMs);
-    // round 73b: the swash band's substrate — the sand / mud layer runs under the film and the damp band to the
-    // high-water mark (metres from the waterline, the baked shore distance), so the wet strand is wet SAND
-    if (uReduxSwash.z > 0.001) {
-      float strandSub = (1.0 - smoothstep(uReduxSwash.y * 1.3 + 0.8, uReduxSwash.y * 1.3 + 3.0, vShore))
-        * (1.0 - fMs) * (1.0 - smoothstep(0.20, 0.42, slope));
-      seaSand = max(seaSand, strandSub * 0.85);
-    }
   }
   // <<< maps r1 ---------------------------------------------------------------
   // r6 terrain_environment LANDFORM ROCK GATE (rockGate, decoded above): with
@@ -3810,7 +3803,7 @@ void splatCompute() {
   // variant at 90 m; between them the ground shaded on the base tile alone. One re-projection of the ground normal at
   // ~1.1 m carries the 26–150 m band (open ground, off the carriageway), fading out before the far band's own relief.
   {
-    float dMidN = smoothstep(26.0, 50.0, camDist) * (1.0 - smoothstep(95.0, 150.0, camDist)) * uReduxA.y;
+    float dMidN = smoothstep(20.0, 40.0, camDist) * (1.0 - smoothstep(110.0, 190.0, camDist)) * uReduxA.y; // round 73b: 26–150 → 20–190 m
     if (dMidN > 0.003) {
       vec3 dnM = texture2D(uNrmG, uv * 0.93).xyz * 2.0 - 1.0;
       n.xy += dnM.xy * 0.42 * dMidN * meadowG * (1.0 - fR) * (1.0 - roadCore);
@@ -3820,7 +3813,7 @@ void splatCompute() {
       if (midA > 0.003) {
         float gmL = dot(texture2D(uAlbG, uv * 0.93).rgb, vec3(0.36, 0.42, 0.22));
         float gmM = dot(texture2D(uAlbG, uv * 0.93, 6.0).rgb, vec3(0.36, 0.42, 0.22));
-        a.rgb *= 1.0 + clamp((gmL - gmM) * 1.6, -0.22, 0.26) * midA;
+        a.rgb *= 1.0 + clamp((gmL - gmM) * 2.4, -0.30, 0.34) * midA;
       }
     }
   }
@@ -4070,21 +4063,22 @@ void splatCompute() {
     float reachM = uReduxSwash.y;
     float swashPh = uGroundTime * uReduxSwash.x + n1 * 6.0 + n1h * 1.5;
     if (uReduxSwash.x > 0.0) reachM *= 0.55 + 0.45 * sin(swashPh);
-    float edgeM = vShore + (n1h - 0.5) * 1.6 + (n1 - 0.5) * 1.0;
-    float film = 1.0 - smoothstep(reachM - 0.6, reachM + 0.5, edgeM);
+    float edgeM = vShore + (n1h - 0.5) * 1.2 + (n1 - 0.5) * 0.6;
+    float film = 1.0 - smoothstep(reachM - 0.25, reachM + 0.25, edgeM); // the last wave's line: sharp, ragged
     float markM = uReduxSwash.y * 1.3 + 0.8;
-    float damp = 1.0 - smoothstep(markM - 1.2, markM + 0.8, edgeM);
+    float damp = 1.0 - smoothstep(markM - 1.0, markM + 0.5, edgeM);
     wetSand = strand * uReduxSwash.z * max(film, damp * 0.55);
     // the foam the last run-up left at its reach and the wrack at the mark: ragged lines a chase camera reads
-    gStrandFoam = exp(-pow((edgeM - reachM) / 0.32, 2.0)) * smoothstep(0.42, 0.72, n1h * 0.55 + n2 * 0.45) * strand * uReduxSwash.w
+    float foamM = vShore + (n1h - 0.5) * 0.7; // the foam line wanders less than the film's edge
+    gStrandFoam = exp(-pow((foamM - reachM) / 0.30, 2.0)) * smoothstep(0.50, 0.78, n1h * 0.55 + n2 * 0.45) * strand * uReduxSwash.w
       * step(0.001, uReduxSwash.x);
     float wrack = exp(-pow((edgeM - markM) / 0.7, 2.0)) * smoothstep(0.30, 0.70, n1h * 0.5 + n1 * 0.5) * strand * uReduxSwash.w;
-    a.rgb *= 1.0 - 0.42 * wetSand;
+    a.rgb *= 1.0 - 0.50 * wetSand;
     float wl = dot(a.rgb, vec3(0.36, 0.42, 0.22));
-    a.rgb = max(wl + (a.rgb - wl) * (1.0 + 0.45 * min(wetSand, 1.0)), 0.0); // wet sand is darker AND more saturated
-    a.rgb = mix(a.rgb, a.rgb * vec3(0.96, 0.98, 1.0), wetSand * 0.5);
+    a.rgb = max(wl + (a.rgb - wl) * (1.0 + 0.15 * min(wetSand, 1.0)), 0.0); // wet sand is darker and a shade more saturated
+    a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.95, 1.0), min(wetSand, 1.0) * 0.6); // the water film's cool cast
     if (uReduxSwash.x == 0.0) a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.72, 0.58), min(wetSand, 1.0) * 0.6); // a still bank is mud
-    a.rgb = mix(a.rgb, vec3(0.78, 0.80, 0.80), gStrandFoam * 0.55);
+    a.rgb = mix(a.rgb, vec3(0.78, 0.80, 0.80), gStrandFoam * 0.40);
     a.rgb *= 1.0 - 0.38 * wrack;
     float pebW = (min(wetSand, 1.0) * 0.45 + wrack * 0.7) * (1.0 - smoothstep(30.0, 90.0, camDist));
     if (pebW > 0.01) {
@@ -4242,7 +4236,7 @@ void splatCompute() {
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
   // glints light per square metre and move with the camera; gone by 42 m, where a glint would be a shimmer.
-  gSplatRough = mix(gSplatRough, 0.22, min(wetSand, 1.0) * 0.95); // round 73b: 0.30 → 0.22, the film mirrors the sun
+  gSplatRough = mix(gSplatRough, 0.30, min(wetSand, 1.0) * 0.95); // round 73b: the film's sheen (0.22 mirrored the whole sky at the strand view's grazing angle and lifted the band pale)
   gSplatRough = mix(gSplatRough, 0.92, gStrandFoam); // round 73b: the foam line is matte
   gSplatRough = mix(gSplatRough, 0.62, gScour * 0.55); // round 73b: the wind-scoured crust takes a satin sheen
   gSplatRough = mix(gSplatRough, gSplatRough * 0.93, hollow * uReduxFold.x * (1.0 - fMs));

@@ -517,8 +517,10 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const g = (b.tip[1] * (1 - dry) + b.dry[1] * dry) / b.tip[1];
     const bl = (b.tip[2] * (1 - dry) + b.dry[2] * dry) / b.tip[2];
     const moist = 1 - 0.12 * hollow;
-    // round 73b: a reed on a meadow's margin is olive, not the meadow's green
-    const rr = reedTint ? 0.95 : 1, rg = reedTint ? 0.86 : 1, rb = reedTint ? 0.55 : 1;
+    // round 73b: a reed on a meadow's margin is olive, not the meadow's green; the far ring's tundra blade keeps the
+    // sedge's own darkness (the far ring lifts its tips a third — on the snow that lit them white as frost spikes)
+    const farDim = ring.far && b.kind === 'tundra' ? 0.5 : 1;
+    const rr = (reedTint ? 0.95 : 1) * farDim, rg = (reedTint ? 0.86 : 1) * farDim, rb = (reedTint ? 0.55 : 1) * farDim;
     list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM * (reedTint ? 1.25 : 1), rnd,
       Math.min(1.6, r * lum * moist * rr), Math.min(1.6, g * lum * rg), Math.min(1.6, bl * lum * moist * rb));
   }

@@ -40,7 +40,7 @@ for (const id of MAP_IDS) {
   for (const c of p.rimTint) assert.ok(c >= 0.3 && c <= 1.5, `${id}: the rim tint is a multiplier near one`);
   if (SNOW.includes(id)) assert.ok(p.driftEdge > 0, `${id}: the drifts carry a lee edge`);
   else assert.equal(p.driftEdge, 0, `${id}: no drift edge off the snow maps`);
-  if (COAST.includes(id)) assert.ok(p.swashLines >= 0.9 && p.swashReachM >= 4, `${id}: a foam line and a reach of metres on a sea beach`);
+  if (COAST.includes(id)) assert.ok(p.swashLines >= 0.9 && p.swashReachM >= 3, `${id}: a foam line and a reach of metres on a sea beach`);
   if (ARID.includes(id)) assert.equal(p.grass, null, `${id}: no sward on the arid ground`);
   else assert.ok(p.grass, `${id}: a sward`);
   if (SNOW.includes(id)) {
@@ -91,7 +91,7 @@ assert.equal(resolveGroundReduxProfile('mars').foldMoist, 0, 'no moisture in the
 const u = groundReduxUniformValues(resolveGroundReduxProfile('coastal'));
 assert.equal(u.reduxA.length, 4); assert.equal(u.reduxFold.length, 4); assert.equal(u.reduxSwash.length, 4); assert.equal(u.reduxSnow.length, 3);
 assert.ok(Math.abs(u.reduxSwash[0] - (2 * Math.PI) / 8.5) < 1e-12, 'the swash rate is 2π over the map\'s swell period');
-assert.equal(u.reduxSwash[1], 7, 'round 73b: the reach in metres (Saltmere 7 m), read off the baked shore byte — the mask apron is two metres on a real beach'); assert.equal(u.reduxSwash[2], 1.5, 'the Saltwind probe (2026-09-26): strength 1.5 read as wet sand');
+assert.equal(u.reduxSwash[1], 6, 'round 73b: the reach in metres (Saltmere 6 m), read off the baked shore byte — the mask apron is two metres on a real beach'); assert.equal(u.reduxSwash[2], 1.5, 'the Saltwind probe (2026-09-26): strength 1.5 read as wet sand');
 assert.equal(u.reduxSwash[3], 1, 'the foam and wrack lines at full on a sea beach');
 assert.equal(u.reduxB.length, 4); assert.equal(u.reduxC.length, 4);
 assert.deepEqual(u.reduxB, [0.8, 0.8, 0.7, 1.0], 'round 73b: lip, verge, rim, mid albedo on a temperate coast');
@@ -131,17 +131,17 @@ for (const term of [
   'float midA = uReduxB.w * dMidN * meadowG * (1.0 - fR) * (1.0 - roadCore);',
   'float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;', 'a.rgb *= 1.0 - lee * 0.13 * sw * uReduxC.w',
   'gScour = scour * uReduxSnow.x;', 'float reachM = uReduxSwash.y;', 'if (uReduxSwash.x > 0.0) reachM *= 0.55 + 0.45 * sin(swashPh);',
-  'float edgeM = vShore + (n1h - 0.5) * 1.6 + (n1 - 0.5) * 1.0;', 'float markM = uReduxSwash.y * 1.3 + 0.8;',
-  'gStrandFoam = exp(-pow((edgeM - reachM) / 0.32, 2.0))', 'if (uReduxSwash.x == 0.0) a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.72, 0.58), min(wetSand, 1.0) * 0.6); // a still bank is mud',
-  'seaSand = max(seaSand, strandSub * 0.85);', 'gSplatRough = mix(gSplatRough, 0.92, gStrandFoam);', 'gSplatRough = mix(gSplatRough, 0.62, gScour * 0.55);',
+  'float edgeM = vShore + (n1h - 0.5) * 1.2 + (n1 - 0.5) * 0.6;', 'float markM = uReduxSwash.y * 1.3 + 0.8;',
+  'gStrandFoam = exp(-pow((foamM - reachM) / 0.30, 2.0))', 'if (uReduxSwash.x == 0.0) a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.72, 0.58), min(wetSand, 1.0) * 0.6); // a still bank is mud',
+  'float film = 1.0 - smoothstep(reachM - 0.25, reachM + 0.25, edgeM); // the last wave\'s line: sharp, ragged', 'gSplatRough = mix(gSplatRough, 0.92, gStrandFoam);', 'gSplatRough = mix(gSplatRough, 0.62, gScour * 0.55);',
   'float reduxHeightMix(float f, float hBase, float hLayer, float k) {',
   'fD = reduxHeightMix(fD, hBase, hD, hK);', 'fR = reduxHeightMix(fR, hBase, hR, hK * 0.8);',
   'float scree = uReduxA.z * smoothstep(0.10, 0.20, slopeR + (n1h - 0.5) * 0.10) * (1.0 - smoothstep(0.32, 0.46, slopeR))',
   'if (uReduxSnow.x > 0.001) {', 'if (uReduxSnow.y > 0.001) {',
   'float hollow = smoothstep(0.06, 0.50, vFold);', 'gFoldAO = 1.0 - uReduxFold.y * 0.35 * hollow * (1.0 - fMs);',
-  'float dMidN = smoothstep(26.0, 50.0, camDist) * (1.0 - smoothstep(95.0, 150.0, camDist)) * uReduxA.y;',
+  'float dMidN = smoothstep(20.0, 40.0, camDist) * (1.0 - smoothstep(110.0, 190.0, camDist)) * uReduxA.y;',
   'if (uSea > 0.5 && uReduxSwash.z > 0.001) {', 'float swashPh = uGroundTime * uReduxSwash.x + n1 * 6.0 + n1h * 1.5;',
-  'gSplatRough = mix(gSplatRough, 0.22, min(wetSand, 1.0) * 0.95);', 'gSplatRough = mix(gSplatRough, 0.14, glint);',
+  'gSplatRough = mix(gSplatRough, 0.30, min(wetSand, 1.0) * 0.95);', 'gSplatRough = mix(gSplatRough, 0.14, glint);',
 ]) assert.ok(material.includes(term), `the material carries: ${term}`);
 assert.ok(/float x = f \+ \(hLayer - hBase\) \* k \* 4\.0 \* f \* \(1\.0 - f\);/.test(material),
   'the height transition vanishes at full and zero coverage (a road stays a road)');

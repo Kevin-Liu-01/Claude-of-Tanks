@@ -27,7 +27,9 @@ shallow-water field it reads for wakes, churn and splashes (null on the mobile t
 props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free) holds every map's ground profile
 (the terrain material's transition / fold / snow / strand knobs and the tall-grass biome — never a map-config edit),
 `tallGrass.ts` the instanced blade rings the hulls press flat through `groundPressure.ts` (a world-anchored GPU field,
-null on mobile and in receipts); `wrecks.ts` owns typed,
+null on mobile and in receipts); every terrain chunk vertex carries a `fold` byte (the relief's curvature) and, on the
+sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry
+without it reads as far) that the material's strand runs up (round 73b); `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.

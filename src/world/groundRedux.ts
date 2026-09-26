@@ -151,7 +151,7 @@ const SNOW: Omit<GroundReduxProfile, 'grass'> = {
   lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0,
 };
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
-  ...TEMPERATE, swashPeriodS: 8.5, swashReachM: 6, swashStrength: 1.5, swashLines: 1.0,
+  ...TEMPERATE, swashPeriodS: 8.5, swashReachM: 4.5, swashStrength: 1.5, swashLines: 1.0,
 };
 const STILL_WATER: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.6, swashLines: 0.4,
@@ -163,12 +163,12 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   desert: { ...ARID, grass: null },
   winter: { ...SNOW, scree: 0.35, grass: tundra(0.35) },
   urban: { ...TEMPERATE, scree: 0.15, grass: verge(0.3) },
-  coastal: { ...COAST, swashReachM: 7, scree: 0.2, grass: dune(0.55) },
+  coastal: { ...COAST, swashReachM: 6, scree: 0.2, grass: dune(0.55) },
   autumn: { ...TEMPERATE, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.13, 0.11, 0.04], tip: [0.50, 0.42, 0.16], dry: [0.58, 0.44, 0.16] }) },
   steppe: { ...TEMPERATE, foldMoist: 0.5, scree: 0.2, grass: steppe(1.2) },
   railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.35) },
   frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: savanna(0.85) },
-  fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 5, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
+  fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 4, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
   badlands: { ...ARID, grass: null },
   monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS,
@@ -187,8 +187,8 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   whiteout: { ...SNOW, scree: 0.3, grass: tundra(0.3, 0.4) },
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },
   longleaf: { ...TEMPERATE, scree: 0.2, grass: savanna(0.7, 0.75) },
-  mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 4, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },
-  saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 6, scree: 0.2, grass: dune(0.6) },
+  mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 3, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },
+  saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 4.5, swashStrength: 1.6, scree: 0.2, grass: dune(0.6) },
   reservoir: { ...STILL_WATER, scree: 0.3, grass: meadow(0.8, 0.85, { reedMargin: 0.5 }) },
   mars: { ...ARID, foldMoist: 0, grass: null },
 });
