@@ -17,7 +17,7 @@ under `src/mp` is imported by the solo boot path.
 | `match/` | `MatchClient` and its parts: `clock.ts`, `inputStream.ts`, `snapshotStream.ts`, `interpolation.ts`, `prediction.ts` (+ `movementCheckpoint.ts`), `events.ts`, `recovery.ts`, `headlessDriver.ts`; `scriptedServer.test-support.ts` is the fixture server the receipts use. | yes |
 | `presentation/` | `PresentationAdapter` + `bindMatchPresentation`, `RecordingPresentation` (headless), `createBattlePresentation` (the renderer/HUD/FX/audio bridge), `createPredictionWorld` (the collision the prediction integrates against). | adapter + recorder yes; the battle presentation needs the fleet and `three` |
 | `room/` | The room protocol and policy both sides share, `RoomActor` (the room state machine the LAN helper and the Worker run), `RoomClient` (create/join/resume, commands, chat, `match_start`). | yes |
-| `session/` | `MatchSession` (one room's session owner: a `MatchClient` and a presentation per round), `createHeadlessSession` (receipts, `tools/mp-rooms-e2e.mjs`), `createRoomConnectionAdapter` (the Play menu's v2 room connection), `resolveRoomsUrl` (the rooms endpoint policy), `createBrowserComposition` (the browser launch, below). | yes; the browser composition's default presentation factory needs the fleet and `three` |
+| `session/` | `MatchSession` (one room's session owner: a `MatchClient` and a presentation per round), `createHeadlessSession` (receipts, `tools/mp-rooms-e2e.mjs`, `tools/mp-exit-e2e.mjs`), `createRoomConnectionAdapter` (the Play menu's v2 room connection), `resolveRoomsUrl` (the rooms endpoint policy), `NetworkStatusModel` (`networkStatus.ts`: the link's status snapshot, threshold table, banner facts and telemetry summary — below), `createBrowserComposition` (the browser launch, below). | yes; the browser composition's default presentation factory needs the fleet and `three` |
 
 Dependency direction: `presentation → match → transport`, all three `→ wire`
 and `→ src/sim` (movement only). `src/net` (v1) is never imported; the
@@ -85,6 +85,36 @@ predictor's state object directly, effects are the authority's events.
 | Own shot feedback | flash on a fire edge only when authority ≤ 250 ms old says the slot is ready, once per ready epoch; the `shell_fired` carrying that `fireIntentSeq` confirms | v1's `shotFeedbackVersion 1` rule |
 | Events | released once the presented tick reaches theirs, ≤ 3 per frame, a heavy one (shot, hit, impact, destruction, prop) ends the flush; own shots bypass | v1's volley budget |
 | Recovery | stalled after 5 s without accepted authority (one reconnect request), live only after a snapshot on the socket, failed 60 s after the loss, explicit leave | v1's watchdog and grace; WELCOME alone never ends an outage |
+| Status verdict | `good` / `degraded` / `bad` / `offline` from one table (round-trip floor 160 / 300 ms, spread 40 / 100 ms, 4 s loss 6 / 15 %, snapshot age 250 / 1000 ms, cadence 80 / 50 % of 30 Hz, visible corrections 2 / 6 per s) after the transport and link states; sampled at 4 Hz | `docs/MULTIPLAYER-V2.md` §12; the round trip is the 16-sample window minimum (a busy main thread can only inflate a pong), a window with a ≥ 250 ms self-stall judges neither cadence nor freshness |
+
+## Network status and the exit flow
+
+`session/networkStatus.ts` owns one in-place snapshot of the link (transport
+state with the reconnect attempt and the delay before the next try, the
+recovery phase, the round-trip floor / median / spread, cadence against the
+authority's 30 Hz, snapshot age, buffer depth, windowed loss, visible
+corrections per second, byte rates, the wire close reason and whether it ended
+the seat, the room's phase / round trip / region / seat / seated count) and
+the verdict table above; `networkBannerFor` turns a snapshot into the banner
+fact, `summary()` into what telemetry keeps. The browser composition owns the
+model (the room attaches on adoption, the match client on every `match`
+phase), mounts `src/ui/multiplayerStatus.ts` — the strip, the F3 panel, the
+banner, the Leave battle control — after activation and paints it from the
+pumps at the model's cadence.
+
+Leave battle (F4 armed then confirmed, the panel, the banner once the link is
+bad, the settings row) is the lifecycle owner's Garage return: the wire
+`LEAVE`, the socket closed, the presentation released, the session back in
+the lobby, no timer or listener left (`exitFlow.selftest.mjs` asserts the
+order); the room seat and its `match_start` stay, so the lobby offers *Rejoin
+battle* while the room's match runs and `beginRoom` re-enters through
+`MatchSession.enterMatch` (same token, same entity). A server-side seat drop
+(a wire `CLOSE` with a seat-drop reason) paints the banner with the reason and
+takes the same clean return after a 3 s notice; a lost link keeps the
+`network_disconnect` result; a room kick tears the match link down through
+the same leave. Telemetry keeps one note per played round (`mp_exit`) plus
+counted reconnects and drops. `docs/MULTIPLAYER-V2.md` §12 has the tables,
+the copy and the measured runs.
 
 ## Receipts and soaks
 
@@ -92,7 +122,9 @@ Every module has a receipt in the core group (`tools/selftest-suites.mjs`):
 `src/mp/transport/transport.selftest.mjs`, `src/mp/match/{clock,inputStream,
 snapshotStream,interpolation,events,recovery,movementCheckpoint,prediction,
 matchClient}.selftest.mjs`, `src/mp/presentation/battlePresentation.selftest.mjs`,
-`tools/mp-client-soak.selftest.mjs`. Run any of them with `node <file>`.
+`src/mp/session/{networkStatus,exitFlow,browserComposition}.selftest.mjs`,
+`tools/mp-client-soak.selftest.mjs`, `tools/mp-rooms-e2e.selftest.mjs`,
+`tools/mp-exit-e2e.selftest.mjs`. Run any of them with `node <file>`.
 
 `matchClient.selftest.mjs` is the loopback receipt against the scripted server
 fixture (100 ms RTT ± 30 ms, 3 % loss): no hard snaps, remote and own pose
@@ -163,8 +195,11 @@ v1's activation runtime, the Garage return). Per room it owns one
    the lobby re-attaches to the Play menu (`attachActiveRoom`, version 2) for
    the rematch, which re-enters through the same `beginRoom`;
 5. the Garage return's network port keeps the room (`disposePresentation`
-   leaves the match, the seat stays) or closes it (`closeMatch`); an explicit
-   leave from the lobby or the battle drops the seat at once.
+   leaves the match with the wire `LEAVE`, the seat stays with its
+   `match_start`: the lobby's *Rejoin battle* re-enters the running match) or
+   closes it (`closeMatch`); an explicit leave from the lobby drops the seat
+   at once; Leave battle in the HUD (F4, the network panel, the banner, the
+   settings row) is the Garage return with the room kept.
 
 Failures go to the existing surfaces: a load that fails, the black watchdog
 refusing the frame, the match link exhausted while loading (`lost`) and the
@@ -195,9 +230,11 @@ server of the checkout with its own `--cache-dir`, two pristine Puppeteer
 contexts on the real site with `?mp=v2`. A creates a LAN room from the
 Garage's battle menu; the invite link comes from the address bar (`v=2`); B
 opens it, joins and takes A's side; both ready; A starts; both reach the
-battle (first battle frames screenshot); 30 s of driving with one shot per
+battle (first battle frames screenshot); the network strip shows a ping on
+both and F3 expands A's panel (screenshot); 30 s of driving with one shot per
 side; A closes its tab; B plays on 15 s; the admin migrates to B; B leaves the
-battle to the Garage (room kept), reopens the room and leaves it. Any console
+battle to the Garage (room kept), reopens the room, rejoins the running match
+from the lobby (screenshot), leaves again and leaves the room. Any console
 or page error fails the run; `report.json` and the screenshots land in
 `--out` (default `.qa-dev/mp-browser-e2e`).
 

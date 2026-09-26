@@ -97,6 +97,7 @@ worktree and never stage generated tank work wholesale.
 ## Environment variables (names only)
 <!-- agent-docs:auto:env start -->
 - `VITE_COT_DEV_FLEET_KEY`
+- `VITE_ROOMS_URL`
 <!-- agent-docs:auto:env end -->
 
 ## Conventions & invariants

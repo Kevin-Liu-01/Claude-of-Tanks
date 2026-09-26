@@ -446,6 +446,181 @@ missed live and hit rewound.
   in the closure); the legacy Docker builder ignores `Dockerfile.dockerignore`, so the Dockerfile
   prunes in a `sources` stage instead.
 
+## 12. Network status surface and the exit flow (2026-09-26, lane `mp/v2-status-surface`)
+
+What the player sees of the link in a v2 battle, how a battle is left, and what the record keeps.
+Everything below is measured by a receipt named in §12.6.
+
+### 12.1 The status model (`src/mp/session/networkStatus.ts`)
+
+One mutable snapshot, written in place (never copied) at a 4 Hz cadence from three sources through
+their existing hooks — the match transport's `onState` (state, close reason, reconnect attempt and
+the delay before the next attempt, which both transports now name on every `reconnecting` change),
+the match client's clock / snapshot stream / predictor / byte rates (allocation-free getters added
+for the purpose), and the room client's phase, snapshot, seat, region and round trip. The room
+client measures its round trip on the admission request and on every keepalive pong; the host
+names its region in the admission reply (`region`, optional, ≤ 32 chars: the actor fills it from a
+host port; the local service says `lan`, the Worker does not name one yet).
+
+| Field | Source | Note |
+|---|---|---|
+| `transport`, `transportReason`, `reconnectAttempt`, `retryAtMs` / `nextRetryMs`, `reconnects` | transport state changes | the banner's "attempt 2 · next try in 3 s" |
+| `link` | the recovery phase (`connecting` → `handshaking` → `live` → `stalled` → `reconnecting` → `failed` / `closed` / `left`) | |
+| `rttMs`, `rttMedianMs`, `rttJitterMs` | `ServerClock.minRttMs` / `medianRttMs` / `rttSpreadMs` (the 16-sample window) | **stall-immune**: a busy main thread timestamps a pong late and can only inflate a sample, so the window minimum is the path's floor, the median its typical value, the median absolute deviation its spread; the smoothed EMA and the jitter EMA stay for the netcode and the F3 panel of v1 |
+| `snapshotHz` vs `expectedSnapshotHz` (30) | accepted snapshots over a 1 s window | |
+| `snapshotAgeMs` | now − the last accepted snapshot | 0 before the first |
+| `interpolationDelayMs`, `bufferedFrames` | the interpolator | |
+| `lossRate` | sequence gaps over a 4 s window (a lost snapshot in a 1 s window is already 3 %) | 0 before the first window closes |
+| `correctionsPerS` | predictor reconciliations that staged more than one frame of release (`maxHorizontalStepM`, 0.2 m) — the corrections a player can see | a new `visibleCorrections` counter |
+| `localStallMs` | the largest gap between two of the client's own `update()` calls in the window | a self-stalled window (≥ 250 ms: a shader compile, a GC pause) judges neither cadence nor freshness |
+| `closeReason`, `seatDropped` | the wire CLOSE the server sent | `seatDropped` for the reasons that end a seat (replaced, idle timeout, drain, capacity, bad/expired token, rate limit, protocol…), never `match_ended` or `client_leave` |
+| `room`, `roomReconnectAttempt`, `roomRttMs`, `roomRegion`, `seat`, `rosterCount` / `rosterCapacity` (28), `roomPhase`, `matchStatus` | the room client | seated commanders exclude spectators |
+| `health`, `healthReason` | the table below | |
+
+**The verdict** (`resolveNetworkHealth`, pure, one table): the transport and link states decide
+first — `left` / `closed` / `failed` → `offline` (reason `left`, `dropped` or `closed`, `failed`);
+`reconnecting` (transport or link) → `bad · reconnecting`; `stalled` → `bad · stalled`; anything
+before `live` → `unknown · connecting` (the strip says "Connecting", no banner). Live, the metrics
+are tried against the `bad` limits in this order, then against the `degraded` limits: stale, loss,
+rtt, jitter, cadence, corrections; a room link reconnecting under a live match reads `degraded`.
+Without a match the room decides: joined → `good · room` (a room round trip above the bad limit
+reads degraded), reconnecting → `bad`, closed → `offline`.
+
+| Limit | degraded | bad | Why |
+|---|---|---|---|
+| round trip (window minimum) | ≥ 160 ms | ≥ 300 ms | the HUD's ping colours turn at 80 / 160 ms; 300 ms is beyond the lag-compensation rewind cap (250 ms) |
+| spread (MAD) | ≥ 40 ms | ≥ 100 ms | the interpolation buffer adds 2 × arrival jitter; 100 ms of spread is a full buffer of doubt |
+| loss (4 s window) | ≥ 6 % | ≥ 15 % | the soak certifies 3 % as playable; degraded starts at twice that |
+| snapshot age | ≥ 250 ms | ≥ 1000 ms | the buffer is 67–133 ms and extrapolates one interval: past 250 ms the world is invented; the stall watchdog fires at 5 s |
+| cadence | < 80 % of 30 Hz | < 50 % | 24 Hz is where the buffer stops absorbing the gaps |
+| visible corrections | ≥ 2 / s | ≥ 6 / s | one correction a second is the wire's own motion; six is a fight with the authority |
+
+The banner fact (`networkBannerFor`, pure): `reconnecting` (scope, attempt, seconds to the next
+attempt), `stalled`, `dropped` (the wire reason), `failed`, `degraded` (the reason) or nothing.
+Events for telemetry: `reconnect` / `recovered` (match or room), `dropped` (the reason), `health`
+(every change). `summary()` is what leaves at exit: health, the worst health seen, reconnects,
+room reconnects, drops, the last drop, the milliseconds spent below `good`.
+
+### 12.2 The surface (`src/ui/multiplayerStatus.ts`)
+
+- **The strip** (health glyph · ping · `SEAT n` · seated/28) mounts with every activated v2 round,
+  top-right under the fps/ping plate, and follows the touch lanes `.cot-net` uses through the
+  responsive body attributes (no width media queries; `body.cot-touch-layout` gives it a 44 px
+  target). Its ping is the window-minimum round trip; the HUD's own ping cell reads the same number
+  through a new HUD-frame port.
+- **The panel** opens on a tap of the strip or the new rebindable `networkPanel` action (F3, v1's
+  diagnostics key): link, round trip (floor, median, spread), updates (measured of 30 Hz), last
+  update, buffer, loss, corrections, traffic, reconnects, room (phase and round trip), region,
+  seat, seated. Its open state is remembered (`cot.mp.netpanel`).
+- **The banner** (top-centre, `role=status`, pointer-transparent) names the fact: "Reconnecting ·
+  attempt 2 · next try in 3 s", "Room link lost · reconnecting (…)", "Server not responding ·
+  waiting for updates", "Removed from the battle · idle too long", "Connection lost · the battle
+  continues without you", "Unstable connection · high latency". Once the link is bad or offline
+  the banner carries the Leave battle control.
+- **The lobby**: the same surface has a `lobby` host (inline, no leave) for the Play menu; the
+  room-only model reads the room link, seat, seated count and region while the room waits for its
+  match. The menu slot for it is open work (§12.7).
+- Every string is a catalog key in both locales (`mpStatus.*`, `action.networkPanel`,
+  `action.leaveBattle`, `playMenu.rejoin`); the typed `signal` glyph joined `uiIcons.ts`.
+
+### 12.3 Leave battle
+
+The control lives in the panel, in the banner once the link is bad, in the settings overlay's
+LEAVE BATTLE row (Esc), and behind the new rebindable `leaveBattle` action (F4): the first press
+arms the banner ("Leave the battle? Press again to confirm"), a second inside 2.5 s leaves;
+outside a v2 battle the key opens the settings overlay, whose row is the same exit. Leaving is the
+existing lifecycle owner's Garage return (`garageReturn.leave` → the network port's
+`disposePresentation`), which is, in order and receipted: the wire `LEAVE` (the actor detaches the
+client at once — `onPeerLeave` brakes the hull, the others get a `roster` event), the match socket
+closed (`client`, never reconnected), the presentation released, the session back in the lobby, no
+timer or listener left behind. **The room seat stays** with its `match_start`, so the player is
+back in the Garage with the lobby attached to the Play menu and may:
+
+- **rejoin the running match**: the lobby shows *Rejoin battle* while the room's match runs and
+  this seat holds a `match_start`; it hands the composition-held room session back through
+  `onNetworkStart`, and `beginRoom` re-enters through `MatchSession.enterMatch` — a fresh socket,
+  the same token, the same entity (the actor welcomes the seat again); the room protocol needs no
+  new message for this (the seat was never released from the room);
+- **leave the room** (the lobby's control, `room_leave`): the seat goes, the admin migrates at
+  once, the capability is forgotten. A fresh join by code into a room whose match plays answers
+  `room_locked` (the roster is frozen for the round — the existing policy); after the verdict the
+  room unlocks and the same player joins again as a new seat and is welcomed by the rematch.
+
+### 12.4 The reverse: the server ends the seat
+
+- A wire `CLOSE` with a seat-drop reason (the actor's `REPLACED` when a second tab takes the seat,
+  an idle timeout, a drain, capacity, a bad or expired token…) reaches the session as `lost` with
+  the reason readable while the client is still attached; the composition clears input, paints
+  the banner with the reason at once ("Removed from the battle · your seat reconnected from
+  elsewhere"), keeps it readable for 3 s (`dropNoticeMs`) and then takes the same clean return to
+  the Garage with the room kept (the room, not the match, decides the seat).
+- A lost link (the transport's 60 s window exhausted) keeps the v1 rule: the round ends once as a
+  `network_disconnect` result (the end overlay offers the Garage).
+- A room-level kick (`room_closed kicked`) tears the match link down through the same leave, clears
+  input, returns to the Garage and opens the menu's room failure panel, as before.
+
+### 12.5 Telemetry (`src/entry/telemetry.ts`)
+
+Three kinds, folded, never per tick: `mp_reconnect` (`reason` `match` | `room`) and `mp_drop`
+(`code` the wire reason) only count; `mp_exit` (`code` `left` | `verdict` | `dropped` | `lost` |
+`failed`, `reason` the health, `link` the summary) folds a played round into one note —
+`mp:<exit>:<health>:r<reconnects>:d<drops>:<lastDrop>:i<impaired s>` (≈ 30 bytes) — and, once the
+session record has left, posts one `entry` follow-up (`code` `mp_<exit>`, `failed` for a drop or a
+lost link) inside the session's three-request budget. The composition reports each played round
+once when its presentation goes; the reveal's `entry_result` now says `network` for a v2 round.
+
+### 12.6 Receipts and proofs
+
+- `src/mp/session/networkStatus.selftest.mjs` — the model over scripted sources (every limit
+  crossed both ways, the reconnect countdown, self-stalls, drops, the leave, the summary) and over
+  a real `MatchClient` on the 100 ± 30 ms / 3 % loopback against the scripted server: live → good
+  (floor 60–130 ms, 26–31 Hz), a frozen server → reconnecting, the recovery → good, `REPLACED` →
+  dropped.
+- `src/ui/multiplayerStatus.selftest.mjs` — the strip cells, every banner sentence, the panel
+  rows, the two-press arming, the style contract (no breakpoints, the touch lanes, 44 px, a
+  pointer-transparent root) and the real surface driven on a stub document.
+- `src/mp/match/clock.selftest.mjs` — the window minimum, median and spread survive a 900 ms
+  stall sample that inflates the EMA.
+- `src/mp/session/exitFlow.selftest.mjs` — the dispose order on stub sockets and injected timers,
+  re-entry with the retained `match_start` and token, the room leave forgetting the capability,
+  the `REPLACED` drop, the kick.
+- `src/mp/session/browserComposition.selftest.mjs` — the status port (mount after activation,
+  paint per pump, the actions, unmount on the Garage return), the drop's banner-then-return, the
+  re-entry through `beginRoom`, no re-entry once the room says the match ended, one link summary
+  per played round; `src/ui/playMenu.selftest.mjs` pins the Rejoin control and the v2 handoff
+  guard; `src/entry/telemetry.selftest.mjs` the kinds, the note, the follow-up and the budget.
+- `tools/mp-exit-e2e.mjs` (+ its core receipt, ~20 s wall): four headless sessions against the
+  local rooms server — leave (the actor drops to 3 clients, the hull moved 0 m in 2 s, the seat and
+  its `match_start` kept), re-entry (same token, same entity, live), a second tab (`replaced`),
+  `room_locked` for a fresh join mid-match, the kick (room and match together), the verdict, the
+  fresh join after it and the rematch welcoming it.
+- `tools/mp-browser-e2e.mjs` — the strip on both battles, the F3 panel with its 13 rows
+  (screenshot `a-network-panel.png`), and B's *Rejoin battle* from the lobby into the match the
+  room still runs (screenshot `b-rejoined.png`). Measured 2026-09-26 (headless Chromium, 2 humans
+  + 2 bots, 89 s wall, 0 browser errors): both strips `good` — `1 MS · SEAT 0 · 2/28` and
+  `1 MS · SEAT 1 · 2/28`, no banner; A's panel: Live · 1 ms (median 3) ± 2 · 30.3 of 30 Hz · last
+  update 11 ms ago · buffer 85 ms / 16 frames · loss 0.0 % · corrections 0.0 per s · 7.3 KB/s
+  down / 2.4 KB/s up · 0 reconnects · room Joined · In battle · 7 ms · region `lan` · seat 0 ·
+  2 / 28; after A closed its tab and B returned to the Garage, B rejoined the same match
+  (`m1-914447ea`, the room's) live and revealed in its second round with the strip back at
+  `1 MS · SEAT 1 · 2/28`, then left; the explicit room leave left A's disconnected seat alone in a
+  `playing` room.
+
+The first browser run had read B's link as `bad · rtt · 385 ms` right after the reveal: the
+smoothed RTT and the 1 s cadence window were inflated by B's own warm-up stalls (pongs are
+timestamped when the busy page finally processes them). The stall-immune estimators and the
+self-stall rule above are the fix; the run above followed.
+
+### 12.7 Open
+
+- The lobby slot for the room-only strip in the Play menu (the surface's `lobby` host exists and
+  is receipted; the menu needs a mount point fed by the connection's `RoomClient`).
+- The rooms Worker does not name its region; `request.cf.colo` names the edge, not the object's
+  location — the field waits for a truthful source.
+- The lost-link ending (a `network_disconnect` result after 60 s) could take the drop's
+  banner-then-return path instead; the owner's call.
+- F3 in a v1 battle still toggles v1's diagnostics; the two surfaces never coexist.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** Run the match containers in the existing Cloudflare account (Workers
