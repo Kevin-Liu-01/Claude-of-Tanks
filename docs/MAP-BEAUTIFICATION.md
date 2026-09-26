@@ -3536,7 +3536,17 @@ reaches it, the atlas and the far range do not); the bake's cost was measured on
 chain and three lanes), so its figures are upper bounds; the cloud-shade binding reads the layer's gobo uniforms
 through a loose interface (the cloud lane owns that module — a rename there turns the shade off, never breaks the
 ring); the desert and mesa rings stay pale under their haze (the character's ledges are in the bake, the haze owns
-the look); __OPEN_MORE__
+the look); the first ridge is the terrain material's (the seam laws seat the rows to 700 m on the battlefield's own splat
+material) and from the map's floor it is the biggest mountain in the frame — the vista's relief, occlusion, cast
+shadows and sky light stop at its crest, so the foothill face reads with the terrain's rules (its steep-face rock, its
+cascades' shadows) and none of this round's; teaching the terrain material to read the atlas on the ring bands is the
+next step for the near mountains; under an overcast the ring's snow is the sky's own white (Whiteout, Frosthollow: the
+near skyline step against the sky measures under 2 luma — round 44's finding, unchanged) and only the polar rock law's
+dark faces make the ranges read; the near skyline's step now measures the ring's crest against the far range behind it
+(15 luma against 36 for the ring against the sky before), a layering the metric cannot tell from softness — the
+far range's haze was lowered 0.12 at both rows for the separation and the full sheets were re-shot; the skyline comb
+ribbons stand pale above the boosted crests where the crest is white (they did on the domes; a crown-mass ribbon that
+takes the crest's own tone is a lane of its own).
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
