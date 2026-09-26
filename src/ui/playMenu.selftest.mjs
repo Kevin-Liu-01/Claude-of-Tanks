@@ -34,6 +34,20 @@ assert.match(detach, /privateRoomConnection\.close\('room_connection_closed', \{
 assert.match(detach, /unsubscribeState = null;[\s\S]*roomIce = null/);
 assert.match(detach, /clearRoomUrl\(\);\s*resetInvitation\(\)/,
   'retired room cleanup removes its durable invite only after the ownership guards pass');
+// Multiplayer v2 exit flow (2026-09-26): a seat back in the Garage with the room kept may rejoin the match the room still
+// runs; a fresh v2 joiner never auto-hands off into a running match without its own match_start.
+assert.match(source, /<button class="action" data-action="rejoin" type="button" hidden>\$\{t\('playMenu\.rejoin'\)\}<\/button>/,
+  'the lobby carries a Rejoin battle control, hidden until a running match can be re-entered');
+assert.match(source, /function canRejoinBattle\(next: SerializedLobby\): boolean \{\s*return connectionVersion === 2 && !handedOff && \(next\.phase === 'starting' \|\| next\.phase === 'playing'\) && hasMatchStart\(activeRoom\?\.session \?\? session\);/,
+  'rejoin needs a v2 room in a match and a match_start for this seat');
+assert.match(source, /rejoinBtn\.hidden = !canRejoinBattle\(next\);/, 'the control follows every lobby render');
+assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(state && canRejoinBattle\(state\)\) beginNetworkHandoff\(state, role\);/,
+  'rejoin hands the room back through the same network start');
+assert.match(source, /const activeSession = session \?\? \(activeRoom\?\.session as RoomSession \| undefined\) \?\? null;/,
+  'a composition-held room hands its own session back for the rejoin');
+assert.match(source, /if \(activeSession === session\) handedOff = true;/, 'the handoff flag guards the menu\'s own session only');
+assert.match(source, /return connectionVersion !== 2 \|\| hasMatchStart\(session\);/,
+  'a v2 client auto-hands off into a running match only with its own match_start');
 assert.match(source, /room\.setAttribute\('aria-busy', String\(next\)\)/);
 assert.match(source, /invalidInput\?\.setAttribute\('aria-describedby', 'cot-room-failure-detail'\)/);
 assert.match(source, /\.room-failure button\.action\{min-height:44px/);

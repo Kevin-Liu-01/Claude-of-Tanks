@@ -3192,6 +3192,7 @@
   "garage.camo.generic.service_ua_m2a3_bradley": "Steppe Digital",
   "action.networkPanel": "Network Details",
   "action.leaveBattle": "Leave Battle",
+  "playMenu.rejoin": "Rejoin battle",
   "mpStatus.aria": "Network status",
   "mpStatus.panelAria": "Network details",
   "mpStatus.toggleAria.show": "Show network details",

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { createBrowserComposition, createControlSampler } from './browserComposition.ts';
 import { MULTIPLAYER_V2_SESSION } from './playMenuAdapter.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
-import { ACTION_BITS, TEAM, VERDICT } from '../wire/index.ts';
+import { ACTION_BITS, CLOSE_REASON, TEAM, VERDICT } from '../wire/index.ts';
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 const settle = async (times = 6) => { for (let index = 0; index < times; index++) await tick(); };
@@ -108,6 +108,13 @@ function createScriptedSession(options, record) {
     onVerdict(listener) { listeners.verdict.add(listener); return () => listeners.verdict.delete(listener); },
     onFrame(listener) { listeners.frame.add(listener); return () => listeners.frame.delete(listener); },
     update(nowMs, elapsedS) { record.push(['update', nowMs, elapsedS]); return null; },
+    /** The match client as the status model and the drop path read it (a stub: no transport, no frames). */
+    match: null,
+    /** A Garage return kept the room: re-enter the match the seat still holds a match_start for. */
+    async enterMatch(payload) {
+      record.push(`enterMatch:${payload.matchId}`);
+      return session.enter({ matchStart: payload, room: options.room.room, spectator: false, playerId: 'me' });
+    },
     async leaveMatch(reason = 'leave') {
       record.push(`leaveMatch:${reason}`);
       const presentation = session.presentation;
@@ -124,6 +131,17 @@ function createScriptedSession(options, record) {
       if (session.phase === phase) return;
       session.phase = phase;
       for (const listener of listeners.phase) listener({ phase, detail });
+    },
+    /** The server closed the seat: the client (still attached) names the wire reason, then the session reads lost. */
+    dropSeat(reason, detail = '') {
+      session.match = {
+        lastCloseReason: reason, lastCloseDetail: detail, phase: 'closed', welcome: {}, lastAuthorityReceivedAtMs: null, predictorStats: null,
+        bytesInPerSecond: 0, bytesOutPerSecond: 0,
+        transport: { state: 'closed', stats: { reconnects: 0 }, onState: () => () => {} },
+        serverClock: { rttMs: 40, rttJitterMs: 2 }, interpolator: { delay: 100, bufferedFrames: 2 }, snapshots: { acceptedCount: 0, estimatedMissingCount: 0 },
+        onPhase: () => () => {},
+      };
+      session.setPhase('lost', detail);
     },
     async enter(round) {
       session.round = round;
@@ -260,6 +278,7 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
   const garageStatus = [];
   const roomStates = [];
   const statusSurfaces = [];
+  const timers = [];
   const worldCollision = { heightField: { getHeightAt: () => 0 }, getObstacles: () => [] };
   const ports = {
     lifecycle,
@@ -346,9 +365,11 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
     clientBuild: 'receipt',
     entryTimeoutMs,
     schedule: (callback) => setTimeout(callback, 0),
+    setTimer: (callback, delayMs) => { const handle = { callback, delayMs, fired: false, fire() { handle.fired = true; callback(); } }; timers.push(handle); return handle; },
+    clearTimer: (handle) => { handle.cleared = true; },
     reportError: (scope, error) => calls.push(`error:${scope}:${error instanceof Error ? error.message : String(error)}`),
   });
-  return { calls, bus, game, sessions, presentations, menu, battleLoad, lifecycle, garageStatus, roomStates, statusSurfaces, ports, composition };
+  return { calls, bus, game, sessions, presentations, menu, battleLoad, lifecycle, garageStatus, roomStates, statusSurfaces, timers, ports, composition };
 }
 
 // ------------------------------------------------------------ port validation and session guard
@@ -521,6 +542,74 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(composition.stats().lastFailure.reason, 'match_lost');
   await owner.leaveMatch('result screen');
   game.phase = 'garage';
+  game.result = null;
+}
+
+// ------------------------------------------------------------ the server drops the seat in a live round: the banner names it, then the same clean return
+{
+  const before = harness.statusSurfaces.length;
+  const rejoin = composition.beginRoom({ role: 'host', session: roomSession, lobbyState: roomSession.lobby });
+  const round3 = { matchStart: matchStart(3, 'verdant'), room: snapshot({ phase: 'playing', round: 3 }), spectator: false, playerId: 'me' };
+  await owner.enter(round3);
+  await owner.welcome();
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(await rejoin, true);
+  assert.equal(harness.statusSurfaces.length, before + 1, 'the strip mounts for the round');
+  const surface = harness.statusSurfaces.at(-1);
+  const paintsBefore = surface.sets.length;
+  harness.timers.length = 0;
+  owner.dropSeat(CLOSE_REASON.IDLE_TIMEOUT, 'idle');
+  assert.equal(calls.at(-1), 'clearInput', 'input is cleared at once');
+  assert.ok(surface.sets.length > paintsBefore, 'the strip is painted at once so the banner reads');
+  assert.deepEqual(surface.sets.at(-1).slice(0, 3), ['good', 'joined', null], 'the scripted owner\'s stub is not attached to the model (no transport events), so the paint carries the room verdict');
+  assert.equal(harness.timers.length, 1, 'the return waits for the notice to be read');
+  assert.equal(harness.timers[0].delayMs, 3000);
+  assert.ok(!calls.includes('endDisconnected') || calls.lastIndexOf('endDisconnected') < calls.lastIndexOf('activate:me:m1a2:verdant:false'), 'a seat drop is not presented as a disconnect result');
+  assert.equal(composition.stats().lastFailure.reason, 'seat_idle_timeout');
+  harness.timers[0].fire();
+  await settle();
+  assert.equal(calls.at(-1), 'returnToGarage', 'the same clean return as Leave battle');
+  assert.equal(game.phase, 'garage');
+  composition.disposePresentation();
+  await settle();
+  assert.equal(surface.disposed, true);
+  owner.match = null;
+  roomSession.publish(snapshot({ phase: 'playing', round: 3 }));
+  await settle();
+}
+
+// ------------------------------------------------------------ re-entry: a Garage return kept the room, the seat still holds the match_start, the room still runs the match
+{
+  roomSession.client.matchStart = matchStart(3, 'verdant');
+  const running = snapshot({ phase: 'playing', round: 3 });
+  running.match = { id: 'match-3', round: 3, status: 'playing', mapId: 'verdant', seed: 7, startedAt: 1, endedAt: null, verdict: null };
+  roomSession.publish(running);
+  await settle();
+  const reentry = composition.beginRoom({ role: 'host', session: roomSession, lobbyState: roomSession.lobby });
+  await settle();
+  assert.ok(calls.includes('enterMatch:match-3'), 'beginRoom re-enters the running match through the session owner instead of waiting for a start');
+  assert.equal(harness.sessions.length, 1, 'the same session owner');
+  await owner.welcome();
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(await reentry, true, 'the re-entered round reveals');
+  assert.equal(composition.stats().round.matchId, 'match-3');
+  composition.disposePresentation();
+  await settle();
+  roomSession.client.matchStart = null;
+  const ended = snapshot({ phase: 'waiting', round: 3, lastResult: { round: 3, result: 'draw', reason: 'time_limit' } });
+  roomSession.publish(ended);
+  await settle();
+  const idle = composition.beginRoom({ role: 'host', session: roomSession, lobbyState: roomSession.lobby });
+  await settle();
+  assert.equal(calls.filter((call) => call === 'enterMatch:match-3').length, 1, 'no match to re-enter once the room says it ended: the entry waits for a start');
+  const round4 = { matchStart: matchStart(4, 'alpine'), room: snapshot({ phase: 'starting', round: 4 }), spectator: false, playerId: 'me' };
+  await owner.enter(round4);
+  await owner.welcome();
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(await idle, true);
   game.result = null;
 }
 

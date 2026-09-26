@@ -65,7 +65,7 @@ const elapsedMs = () => Math.round(performance.now() - startedAt);
 
 const report = {
   pass: false, failures: [], errors: [], steps: [], screenshots: [], playS, keepS, world, wallMs: 0,
-  room: null, load: {}, play: {}, afterHostLeft: {}, leave: {}, status: null,
+  room: null, load: {}, play: {}, afterHostLeft: {}, leave: {}, status: null, rejoin: null,
 };
 const failures = report.failures;
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
@@ -388,6 +388,28 @@ try {
   await pageB.click('.cot-battle');
   await waitFor(pageB, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B reopened the room', 30_000);
   await screenshot(pageB, 'b-room-after-battle.png');
+
+  // ---- B rejoins the match the room still runs (the seat kept its match_start): the lobby's Rejoin battle control
+  await waitFor(pageB, () => { const button = document.querySelector('.cot-play [data-action="rejoin"]'); return !!button && !button.hidden; }, 'B sees Rejoin battle', 15_000);
+  const matchBefore = (await stats(pageB))?.session?.matchId ?? null;
+  await pageB.click('.cot-play [data-action="rejoin"]');
+  await waitFor(pageB, inBattle, 'B rejoined the battle', 240_000);
+  await waitFor(pageB, () => !!document.querySelector('.cot-mp-strip') && /\d/.test(document.querySelector('.cot-mp-strip .ping b')?.textContent ?? ''), 'B network strip after the rejoin', 15_000);
+  const rejoined = await stats(pageB);
+  report.rejoin = {
+    matchIdBefore: matchBefore, matchId: rejoined?.round?.matchId ?? null, roomMatchId: rooms.roomService.rooms.get(roomCode)?.snapshot.match?.id ?? null,
+    welcomed: rejoined?.round?.welcomed ?? null, revealed: rejoined?.round?.revealed ?? null, matchPhase: rejoined?.session?.match?.phase ?? null,
+    rounds: rejoined?.rounds ?? null, network: rejoined?.network ?? null, strip: await stripOf(pageB),
+  };
+  step('b-rejoined', report.rejoin);
+  await screenshot(pageB, 'b-rejoined.png');
+  if (report.rejoin.matchId !== report.rejoin.roomMatchId) failures.push(`B rejoined ${report.rejoin.matchId}, the room runs ${report.rejoin.roomMatchId}`);
+  if (report.rejoin.matchPhase !== 'live' || !report.rejoin.revealed) failures.push(`B's rejoin is ${report.rejoin.matchPhase} / revealed ${report.rejoin.revealed}`);
+  if (!report.rejoin.strip?.visible) failures.push('B has no network strip after the rejoin');
+  await pageB.evaluate(() => window.__DEBUG.leaveBattleToGarage());
+  await waitFor(pageB, () => window.__DEBUG?.game?.phase === 'garage' && window.__MULTIPLAYER_V2?.stats?.().active === false, 'B back in the Garage after the rejoin', 60_000);
+  await pageB.click('.cot-battle');
+  await waitFor(pageB, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B reopened the room again', 30_000);
   await pageB.click('.cot-play [data-action="leave"]');
   await waitFor(pageB, () => window.__MULTIPLAYER_V2?.stats?.().room === null && !document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B left the room', 30_000);
   const roomOnServer = rooms.roomService.rooms.get(roomCode)?.snapshot ?? null;
@@ -419,6 +441,7 @@ else {
     `after A left: +${(report.afterHostLeft.snapshotsAfter ?? 0) - (report.afterHostLeft.snapshotsBefore ?? 0)} snapshots in ${keepS} s, admin → B after ${report.afterHostLeft.adminMigratedAfterMs ?? '-'} ms; ` +
     `B left cleanly: ${report.leave.serverPlayersAfter ? JSON.stringify(report.leave.serverPlayersAfter) : '-'}; ` +
     `network strip A "${report.status?.a?.text ?? '-'}" (${report.status?.a?.network?.health ?? '-'}), B "${report.status?.b?.text ?? '-'}" (${report.status?.b?.network?.health ?? '-'}), panel rows ${report.status?.aPanel?.panelRows?.length ?? '-'}; ` +
+    `B rejoined ${report.rejoin?.matchId ?? '-'} (${report.rejoin?.matchPhase ?? '-'}, round ${report.rejoin?.rounds ?? '-'}); ` +
     `${report.errors.length} browser errors; ${report.wallMs} ms wall`);
   for (const failure of failures) console.log(`  FAIL: ${failure}`);
   console.log(`  screenshots: ${report.screenshots.join(', ')}`);

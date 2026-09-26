@@ -94,6 +94,8 @@ export interface ActiveRoomAdapter {
   role: RoomRole;
   /** 2 for a Multiplayer v2 room (invite links stamp `v=2`, the admin role follows the room's hostId). */
   version?: 1 | 2;
+  /** A v2 room's session (the object `onNetworkStart` routes on): Rejoin battle hands it back while its match runs. */
+  session?: RuntimeValue;
   command(command: Record<string, RuntimeValue>): RuntimeValue;
   leave(reason?: string): RuntimeValue;
 }
@@ -833,6 +835,7 @@ export function createPlayMenu({
               </div></div></div></div>
         <div class="control-actions"><button class="action alt leave-room" data-action="leave" type="button">${t('playMenu.leave')}</button>
           <button class="action alt" data-action="ready" type="button">${t('playMenu.ready.iAmReady')}</button>
+          <button class="action" data-action="rejoin" type="button" hidden>${t('playMenu.rejoin')}</button>
           <button class="action" data-action="start" type="button">${t("playMenu.start")}</button></div>
       </div><div class="note"></div>
     </div></section></div>`;
@@ -958,6 +961,7 @@ export function createPlayMenu({
   const codeEl = requiredElement<HTMLElement>(root, '.code');
   const readyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="ready"]');
   const startBtn = requiredElement<HTMLButtonElement>(root, '[data-action="start"]');
+  const rejoinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="rejoin"]');
   const leaveBtn = requiredElement<HTMLButtonElement>(root, '[data-action="leave"]');
   const createBtn = requiredElement<HTMLButtonElement>(root, '[data-action="create"]');
   const joinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="join"]');
@@ -1418,12 +1422,14 @@ export function createPlayMenu({
     nextRole: RoomRole | null = role,
   ): boolean {
     if (handedOff) return false;
-    const activeSession = session;
+    // A composition-held v2 room (the seat kept across a Garage return) hands its own session back for a rejoin.
+    const activeSession = session ?? (activeRoom?.session as RoomSession | undefined) ?? null;
     if (!activeSession || !nextRole) {
       setStatus(t('playMenu.status.sessionUnavailable'), true);
       return false;
     }
-    handedOff = true;
+    // The battle owner already owns an attached room's session: the handoff flag guards the menu's own only.
+    if (activeSession === session) handedOff = true;
     let start;
     try {
       // The callback's synchronous prefix mounts the opaque battle cover.
@@ -1441,7 +1447,10 @@ export function createPlayMenu({
     }
     notifyLobbyChange(null);
     hide(false);
-    start.catch((error: RuntimeValue) => {
+    start.then((entered) => {
+      // A rejoin that could not present (the match ended meanwhile) shows the room again with its status.
+      if (entered === false && activeRoom && activeSession !== session) show();
+    }, (error: RuntimeValue) => {
       handedOff = false;
       show();
       setStatus(errorMessage(error), true);
@@ -1456,9 +1465,19 @@ export function createPlayMenu({
     if (role === 'client') presentInvitation(roomHostName, next.roomCode, true);
   }
 
+  /** A v2 seat may enter a running match only with the `match_start` the room sent it (a fresh joiner waits for the next round). */
+  function hasMatchStart(candidate: RuntimeValue): boolean {
+    return !!candidate && typeof candidate === 'object' && 'lastMatchStart' in candidate && !!(candidate as { lastMatchStart?: RuntimeValue }).lastMatchStart;
+  }
+
   function shouldBeginClientHandoff(next: SerializedLobby): boolean {
-    return (next.phase === 'starting' || next.phase === 'playing') &&
-      role === 'client' && !handedOff && !activeRoom;
+    if (!(next.phase === 'starting' || next.phase === 'playing') || role !== 'client' || handedOff || activeRoom) return false;
+    return connectionVersion !== 2 || hasMatchStart(session);
+  }
+
+  /** Multiplayer v2 (charter §5): a seat back in the Garage with the room kept may rejoin the match the room still runs. */
+  function canRejoinBattle(next: SerializedLobby): boolean {
+    return connectionVersion === 2 && !handedOff && (next.phase === 'starting' || next.phase === 'playing') && hasMatchStart(activeRoom?.session ?? session);
   }
 
   function renderLobbyBattlefield(next: SerializedLobby): void {
@@ -1520,6 +1539,7 @@ export function createPlayMenu({
       || (next.gameMode === 'frontline_assault' && !!campaignOperationById(next.campaignOperationId));
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     startBtn.style.display = role === 'host' ? '' : 'none';
+    rejoinBtn.hidden = !canRejoinBattle(next);
     const activePlayers = next.players.filter((candidate) => candidate.team !== 'spectator');
     const everyoneReady = activePlayers.length > 0 &&
       activePlayers.every((candidate) => candidate.ready && candidate.specId);
@@ -1827,6 +1847,9 @@ export function createPlayMenu({
   leaveBtn.addEventListener('click', () => {
     closeCurrentSession('left_room');
     hide(false);
+  });
+  rejoinBtn.addEventListener('click', () => {
+    if (state && canRejoinBattle(state)) beginNetworkHandoff(state, role);
   });
   startBtn.addEventListener('click', () => {
     const words = new Uint32Array(1);

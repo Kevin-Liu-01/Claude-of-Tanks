@@ -26,7 +26,7 @@
  */
 import { MatchSession } from './matchSession.ts';
 import type { MatchSessionOptions, MatchSessionStats, SessionPhase, SessionPresentation, SessionRound } from './matchSession.ts';
-import { NetworkStatusModel } from './networkStatus.ts';
+import { NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName } from './networkStatus.ts';
 import type { NetworkBanner, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
 import { isMultiplayerV2Session } from './playMenuAdapter.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
@@ -40,7 +40,7 @@ import type { MatchFrame } from '../match/matchClient.ts';
 import type { Unsubscribe } from '../transport/transport.ts';
 import { ACTION_BITS, VERDICT } from '../wire/index.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
-import type { RoomSnapshot } from '../room/protocol.ts';
+import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import type { SerializedLobby } from '../../net/lobby.ts';
 
@@ -192,6 +192,8 @@ export interface BrowserActiveRoomAdapter {
   playerId: string;
   role: 'host' | 'client';
   version: 2;
+  /** The room session (`isMultiplayerV2Session`): the menu's Rejoin battle hands it back through `onNetworkStart`. */
+  session: RuntimeValue;
   command(command: Record<string, RuntimeValue>): RuntimeValue;
   leave(reason?: string): RuntimeValue;
 }
@@ -257,6 +259,8 @@ export interface SessionOwner {
   readonly round: SessionRound | null;
   /** The live match client (the network status model attaches to it on the `match` phase). */
   readonly match?: NetworkStatusMatchSource | null;
+  /** Re-enter a match this seat still holds a `match_start` for (a Garage return kept the room). */
+  enterMatch?(payload: RoomMatchStartPayload): Promise<unknown>;
   start(): void;
   onPhase(listener: (change: { phase: SessionPhase; detail: string }) => void): Unsubscribe;
   onVerdict(listener: (change: { verdict: VerdictId; reason: string; matchId: string }) => void): Unsubscribe;
@@ -290,7 +294,11 @@ export interface BrowserCompositionOptions {
   clientBuild?: string;
   /** How long `beginRoom` waits for the room's match_start before restoring the Garage (charter §6.4). */
   entryTimeoutMs?: number;
+  /** How long the banner naming a server-side seat drop stays readable before the Garage return. */
+  dropNoticeMs?: number;
   schedule?: (callback: () => void) => void;
+  setTimer?: (callback: () => void, delayMs: number) => unknown;
+  clearTimer?: (handle: unknown) => void;
   reportError?: (scope: string, error: RuntimeValue) => void;
 }
 
@@ -525,7 +533,10 @@ export function createBrowserComposition({
   clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
   clientBuild = 'dev',
   entryTimeoutMs = 120_000,
+  dropNoticeMs = 3000,
   schedule = (callback) => queueMicrotask(callback),
+  setTimer = (callback, delayMs) => setTimeout(callback, delayMs),
+  clearTimer = (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
   reportError = (scope, error) => console.error(`[${scope}]`, error),
 }: BrowserCompositionOptions): BrowserComposition {
   validatePorts(ports);
@@ -578,6 +589,11 @@ export function createBrowserComposition({
     if (status.update(nowMs) && statusSurface) statusSurface.set(status.snapshot, status.banner(nowMs), nowMs);
   };
 
+  let dropTimer: unknown = null;
+  const cancelDropNotice = (): void => {
+    if (dropTimer !== null) { clearTimer(dropTimer); dropTimer = null; }
+  };
+
   const settleEntry = (entered: boolean): void => {
     for (const waiter of entryWaiters.splice(0)) waiter.resolve(entered);
   };
@@ -624,6 +640,7 @@ export function createBrowserComposition({
         playerId: playerId(),
         role: roleOf(),
         version: 2,
+        session: current,
         command: (command) => (roomSession === current ? current.command(command) : false),
         leave: (reason) => { if (roomSession === current) leaveRoom(reason || 'left_room'); },
       });
@@ -657,6 +674,7 @@ export function createBrowserComposition({
     roomSession = null;
     latestLobby = null;
     latestRoom = null;
+    cancelDropNotice();
     unmountStatus();
     status.detachMatch();
     status.detachRoom();
@@ -1065,6 +1083,28 @@ export function createBrowserComposition({
     if (phase !== 'lost') return;
     const active = round;
     if (!active) return;
+    const closeReason = session?.match?.lastCloseReason ?? null;
+    const dropped = closeReason !== null && SEAT_DROP_REASONS.has(closeReason);
+    if (active.revealed && dropped) {
+      // The server ended this seat (a kick, an idle timeout, a replacement): the strip's banner names the wire
+      // reason for `dropNoticeMs`, then the round takes the same clean return as Leave battle — the Garage, the
+      // room kept (the room decides the seat; a room-level kick reaches handleRoomClosed instead).
+      const reason = closeReasonName(closeReason) ?? 'dropped';
+      lastFailure = { message: detail || reason, matchId: active.matchId, stage: 'battle', reason: `seat_${reason}` };
+      roomPorts.clearInput();
+      const nowMs = clock();
+      status.update(nowMs);
+      statusSurface?.set(status.snapshot, status.banner(nowMs), nowMs);
+      cancelDropNotice();
+      const returnNow = (): void => {
+        dropTimer = null;
+        if (round !== active || disposed) return;
+        void Promise.resolve(roomPorts.returnToGarage()).catch((error: RuntimeValue) => reportError('multiplayer v2 drop', error));
+      };
+      if (dropNoticeMs > 0) dropTimer = setTimer(returnNow, dropNoticeMs);
+      else returnNow();
+      return;
+    }
     if (active.revealed) {
       // A live round whose match link is exhausted ends as a disconnect once (the end overlay offers the Garage; the room stays).
       lastFailure = { message: detail || 'match_lost', matchId: active.matchId, stage: 'battle', reason: 'match_lost' };
@@ -1096,6 +1136,15 @@ export function createBrowserComposition({
       showRoundLoad(viewerId, players, own, requestedMap === 'random' ? null : requestedMap, String(lobby?.mode || candidate.roomInfo.mode), Number(lobby?.round) || 0, 'Random battlefield');
       load.battleLoad.progress(0.01, 'Opening battle channel');
       if (!roomSession) adoptRoom(candidate);
+      else if (!round && session?.enterMatch) {
+        // A Garage return kept the room and the seat still holds a match_start for the match the room says is
+        // running (charter §5: players come and go freely): re-enter it instead of waiting for a start that will not come.
+        const pending = candidate.client.matchStart;
+        const current = latestRoom?.match ?? null;
+        if (pending && current && current.id === pending.matchId && (current.status === 'starting' || current.status === 'playing')) {
+          void session.enterMatch(pending).catch((error: RuntimeValue) => reportError('multiplayer v2 re-entry', error));
+        }
+      }
       if (round?.revealed) return true;
       const waiter = deferred<boolean>();
       entryWaiters.push(waiter);
@@ -1136,6 +1185,7 @@ export function createBrowserComposition({
   const disposePresentation = (): void => {
     const active = round;
     round = null;
+    cancelDropNotice();
     if (active) {
       active.abort.abort('returned_to_garage');
       if (!active.revealed) settleEntry(false);
