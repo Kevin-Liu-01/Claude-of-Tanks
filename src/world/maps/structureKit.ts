@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { createOrbitalStructures } from './orbitalStructures.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { addConnectedExterior } from './exteriorDetailKit.ts';
+import { INDUSTRIAL_CLADDING, addConnectedExterior, structureBuildContext } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { ensureWorldNightEmissionMask, markWorldAperture, markWorldBeacon, markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 import {
@@ -30,6 +30,7 @@ interface StructureParts extends GeometryBuckets {
   straw: THREE.BufferGeometry[];
   baked: THREE.BufferGeometry[];
   steel: THREE.BufferGeometry[];
+  structureMetal: THREE.BufferGeometry[];
 }
 
 type FacadeFace = 'front' | 'back' | 'right' | 'left';
@@ -276,8 +277,45 @@ function finish(buckets: GeometryBuckets, parts: StructureParts): void {
 function parts(): StructureParts {
   return {
     plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [],
-    dark: [], glass: [], curtain: [], straw: [], baked: [], steel: [],
+    dark: [], glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
   };
+}
+
+/**
+ * Round 75 follow-up 3: on a map that authors industrialCladding 'steel' (StructureBuildContext.cladding), an
+ * industrial hall's walls are the light kit's corrugated sheet (structureMetal) under a vertex livery — frosted pale
+ * grey with oxide trims on a snow map, weathered grey-green with dark trims elsewhere (INDUSTRIAL_CLADDING) — the
+ * way the rail kit's warehouse is clad. The moved walls keep their four seeded UV draws (consume) and every new part
+ * takes none, so the plan's later placements keep their seats; the livery paints from a stream forked off the map
+ * seed and the hall's place in the bucket. Returns false (walls pushed to wallBucket) on a brick map.
+ */
+function cladIndustrialWalls(
+  buckets: GeometryBuckets, out: StructureParts, walls: THREE.BufferGeometry[], wallBucket: string,
+  w: number, d: number, wallH: number,
+): boolean {
+  const context = structureBuildContext(buckets);
+  if (context?.cladding !== 'steel' || !buckets.structureMetal) {
+    for (const wall of walls) out[wallBucket].push(wall);
+    return false;
+  }
+  const snow = context.snowCap;
+  const local = forkedRng(((context.seed % 1009) / 1009 + buckets.structureMetal.length * 0.0137 + w * 0.011) % 1);
+  for (const wall of walls) {
+    paint(wall, snow ? INDUSTRIAL_CLADDING.sheetSnow : INDUSTRIAL_CLADDING.sheet, local, 0.03);
+    wall.userData.uvJitter = 'consume';
+    out.structureMetal.push(wall);
+  }
+  // corner trims and a girt line read the sheet hall as a framed building
+  const trim = (geo: THREE.BufferGeometry): void => {
+    geo.userData.uvJitter = 'none';
+    if (snow) out.baked.push(paint(geo, INDUSTRIAL_CLADDING.trimSnow, local, 0.04));
+    else out.dark.push(geo);
+  };
+  for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    trim(box(0.12, wallH - 0.1, 0.12, 1.0).translate(cx * (w / 2 - 0.01), wallH / 2, cz * (d / 2 - 0.01)));
+  }
+  for (const side of [-1, 1]) trim(box(0.06, 0.08, d - 0.2, 1.0).translate(side * (w / 2 + 0.02), wallH * 0.52, 0));
+  return true;
 }
 
 function tagRuinedConcretePart<T extends THREE.BufferGeometry>(
@@ -524,7 +562,7 @@ export function makeSchoolhouse(rng: Rng, buckets: GeometryBuckets, wallBucket =
 
 export function makeFireStation(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 11.4, d = 15.0, wallH = 5.4;
-  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  cladIndustrialWalls(buckets, out, [box(w, wallH, d).translate(0, wallH / 2, 0)], wallBucket, w, d, wallH);
   out.roof.push(slab(w + 0.5, 0.28, d + 0.5).translate(0, wallH + 0.12, 0));
   // Twin deep appliance doors with lintels and a square hose-drying tower.
   for (const x of [-3.0, 1.1]) {
@@ -689,7 +727,7 @@ export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket 
 
 export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 13.0, d = 14.0, wallH = 5.8, roofRise = 1.65;
-  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  const walls: THREE.BufferGeometry[] = [box(w, wallH, d).translate(0, wallH / 2, 0)];
   // Three connected one-way bays replace the former gable/no-op rotation and
   // oversized cross-pitched sheet. Every sheet now drains along the bay run,
   // lands on its triangular end walls, and terminates at a framed clerestory.
@@ -698,8 +736,7 @@ export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket
   const roofSlope = Math.hypot(bayDepth + 0.10, roofRise);
   for (let i = 0; i < 3; i++) {
     const z = -d / 2 + (i + 0.5) * bayDepth;
-    out[wallBucket].push(sawtoothBay(w, roofRise, bayDepth - 0.04)
-      .translate(0, wallH, z));
+    walls.push(sawtoothBay(w, roofRise, bayDepth - 0.04).translate(0, wallH, z));
     out.roof.push(pitchRoofPlane(
       slab(w + 0.50, 0.14, roofSlope + 0.10), 'z', -1, roofAngle, 'sawtooth',
     ).translate(0, wallH + roofRise / 2 + 0.07, z));
@@ -714,6 +751,9 @@ export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket
         .translate(x, wallH + roofRise / 2, clerestoryZ));
     }
   }
+  // the walls and the three bays: the wall bucket, or corrugated sheet on a map that authors steel cladding
+  // (follow-up 3) — pushed here, after the roof and clerestory parts, in the order the wall bucket had them
+  cladIndustrialWalls(buckets, out, walls, wallBucket, w, d, wallH);
   for (const x of [-3.7, -1.2, 1.3, 3.8]) addWindow(out, x, 2.9, d / 2 + 0.05, 'z', 1.25, 1.8);
   out.dark.push(box(3.2, 3.5, 0.12).translate(0, 1.75, -d / 2 - 0.05));
   out.stone.push(box(1.0, 4.5, 1.0).translate(4.6, wallH + 1.7, -4.0));

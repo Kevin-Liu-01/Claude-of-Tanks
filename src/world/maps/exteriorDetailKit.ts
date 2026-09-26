@@ -67,6 +67,19 @@ export interface StructureBuildContext {
   cladding: 'brick' | 'steel';
 }
 
+/**
+ * Round 75 follow-up 3: the industrial cladding liveries. The light kit's sheet tile is bright (albedo 0.9–0.98 sRGB)
+ * under a vertex livery, so the livery is the wall's tone: on a snow map the sheet is frosted pale grey — the
+ * containers' polar brightness class, a stop below the snow the weathering hook loads on upward faces — with the
+ * plant's oxide-red trims; elsewhere a weathered grey-green with dark trims.
+ */
+export const INDUSTRIAL_CLADDING = Object.freeze({
+  sheet: 0x9aa39c,
+  sheetSnow: 0xcfd4d2,
+  trimSnow: 0x8b5a3c,
+  snow: 0xe9edf1,
+});
+
 const STRUCTURE_CONTEXT = Symbol('structure-build-context');
 
 export function attachStructureBuildContext(buckets: GeometryBuckets, context: StructureBuildContext): void {

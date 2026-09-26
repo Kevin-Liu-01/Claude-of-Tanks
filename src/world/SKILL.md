@@ -58,6 +58,15 @@ per-map budget, its own seeded stream, no collision record) and
 `maps/yardClutterKit.ts` its geometry per family; the producer folds every
 piece into the map's wood / steel / baked bucket before the bucket merge (no
 draw of its own), and paints the steel atlas only when the plan needs it.
+The industrial cladding law: on a map that authors `industrialCladding:
+'steel'` the warehouse (`maps/railKit.ts`), the foundry office and the fire
+station (`maps/structureKit.ts cladIndustrialWalls`) are the light kit's sheet
+tile (`structureMetal`) under the liveries of `exteriorDetailKit.ts
+INDUSTRIAL_CLADDING` — frosted pale grey with oxide trims on a snow map
+(`StructureBuildContext.snowCap`), grey-green with dark trims elsewhere; a
+vertex livery under a bright tile, so a dark hex is a dark hall. Moved walls
+consume their seeded UV draws, new parts take none, and a sheet hall takes no
+catalog façade pass (the masonry buckets carry the centred wall envelope).
 `rockDressing.ts` (round 75 item 6) owns the boulders' fracture law (the
 legacy displacement's projected hull stays the collision proxy: every cut
 moves a vertex inward), the per-map moss / dust / soil dressing, the triplanar

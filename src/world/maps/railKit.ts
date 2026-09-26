@@ -13,6 +13,7 @@ import {
   box, gablePrism as createGablePrism, jitterUV, pitchRoofPlane, scaleUV,
 } from '../propGeometry.ts';
 import {
+  INDUSTRIAL_CLADDING,
   structureBuildContext,
   type GeometryBuckets,
   type StructureBuildContext,
@@ -66,7 +67,12 @@ function dressing<T extends THREE.BufferGeometry>(geo: T): T {
   return geo;
 }
 
-const WAREHOUSE_CLADDING_HEX = 0x9aa39c;   // pale weathered sheet (a polar station's halls)
+// follow-up 3 (2026-09-26): the cladding liveries are shared with the other industrial halls (exteriorDetailKit
+// INDUSTRIAL_CLADDING) — on a snow map the sheet is frosted pale grey with oxide trims and eave snow ledges
+const WAREHOUSE_CLADDING_HEX = INDUSTRIAL_CLADDING.sheet;
+const WAREHOUSE_CLADDING_HEX_SNOW = INDUSTRIAL_CLADDING.sheetSnow;
+const WAREHOUSE_TRIM_HEX_SNOW = INDUSTRIAL_CLADDING.trimSnow;
+const WAREHOUSE_SNOW_HEX = INDUSTRIAL_CLADDING.snow;
 const WAREHOUSE_DOOR_HEX = 0x5f6d6a;       // roller shutters, grey-green
 const WAREHOUSE_DOOR_HEX_STEEL = 0x8b5a3c; // on a sheet hall the shutters are the oxide red of the plant
 const WAREHOUSE_TRIM_HEX = 0x3a3f42;
@@ -85,6 +91,7 @@ export function makeWarehouse(
 ): StructureDimensions {
   const context = structureBuildContext(buckets);
   const steelClad = context?.cladding === 'steel' && !!buckets.structureMetal;
+  const snowClad = steelClad && !!context?.snowCap;
   const parts: GeometryBuckets = {
     plaster: [], plaster2: [], stone: [], roof: [], wood: [], dark: [], baked: [], structureMetal: [],
   };
@@ -98,7 +105,7 @@ export function makeWarehouse(
   const gableA = gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16);
   const gableB = gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16);
   for (const shell of [wall, gableA, gableB]) {
-    if (steelClad) { paintHex(shell, local, WAREHOUSE_CLADDING_HEX, 1, 0.03); shell.userData.uvJitter = 'consume'; }
+    if (steelClad) { paintHex(shell, local, snowClad ? WAREHOUSE_CLADDING_HEX_SNOW : WAREHOUSE_CLADDING_HEX, 1, 0.03); shell.userData.uvJitter = 'consume'; }
     wallBucket.push(shell);
   }
   const slope = Math.hypot(w / 2 + 0.4, roofH + 0.1);
@@ -177,12 +184,26 @@ export function makeWarehouse(
   // pass, four cascades) for a dozen boards on the maps that had no plaster2 wall of their own
   parts.plaster.push(sign);
   if (steelClad) {
-    // corner trims and a girt line read the sheet hall as a framed building
+    // corner trims and a girt line read the sheet hall as a framed building; on a snow map they are the plant's
+    // oxide red on the frosted sheet (the baked bucket takes a vertex colour, the dark one does not)
+    const trim = (geo: THREE.BufferGeometry): void => {
+      if (snowClad) parts.baked!.push(paintHex(dressing(geo), local, WAREHOUSE_TRIM_HEX_SNOW, 1, 0.04));
+      else parts.dark.push(dressing(geo));
+    };
     for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-      parts.dark.push(dressing(box(0.12, wallH - 0.1, 0.12, 1.0)).translate(cx * (w / 2 - 0.01), wallH / 2, cz * (d / 2 - 0.01)));
+      trim(box(0.12, wallH - 0.1, 0.12, 1.0).translate(cx * (w / 2 - 0.01), wallH / 2, cz * (d / 2 - 0.01)));
     }
     for (const side of [-1, 1]) {
-      parts.dark.push(dressing(box(0.06, 0.08, d - 0.2, 1.0)).translate(side * (w / 2 + 0.02), wallH * 0.52, 0));
+      trim(box(0.06, 0.08, d - 0.2, 1.0).translate(side * (w / 2 + 0.02), wallH * 0.52, 0));
+    }
+  }
+  if (snowClad) {
+    // snow ledges on both eaves: the weathering hook loads every upward face with snow, but the eave's edge and the
+    // gutter line are vertical faces — a white ledge over the gutter gives the roof its snow-capped edge
+    for (const side of [-1, 1]) {
+      const ledge = paintHex(dressing(box(0.34, 0.15, d + 0.62, 0.5)), local, WAREHOUSE_SNOW_HEX, 1, 0.02);
+      ledge.translate(side * (w / 2 + 0.30), wallH + 0.10, 0);
+      parts.baked!.push(ledge);
     }
   }
   for (const key of Object.keys(parts)) {
