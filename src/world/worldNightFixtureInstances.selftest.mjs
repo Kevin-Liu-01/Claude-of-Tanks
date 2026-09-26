@@ -68,9 +68,12 @@ for (const [id, type] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) for (const
   }
   if (!newOrbital.has(id)) { totalCalls += calls; hash.update(JSON.stringify([state, calls])); }
 }
-assert.equal(hash.digest('hex'), '38ea3ea23fe6a579840c3e17dbb0e387fac5e3d68ff7581614d4c5021a2d7a20' /* 2026-09-19: six orbital families (Mars station) join the 20 */,
+// 2026-09-19: six orbital families (Mars station) join the 20. Round 75 (2026-09-26): the quonset hut's sheet ribs run
+// across its length and it gains a framed wicket door, rear apertures, a skirt, a threshold and a stovepipe (its new parts
+// paint from a forked stream, so every other family's draws are the same); digest re-pinned.
+assert.equal(hash.digest('hex'), 'bbc405ab06e49351bc1018b8e8834107cbd79d0b1921379419d3d0b65dd8f152',
   'all 26 intact/debris families × 3 seeds retain exact original positions, normals, UVs, colors, RNG and topology');
-assert.deepEqual({ vertices, indices, totalCalls }, { vertices: 139428, indices: 0, totalCalls: 87495 } /* 2026-09-19: +6 orbital families */);
+assert.deepEqual({ vertices, indices, totalCalls }, { vertices: 140976 /* round 75: the quonset hut's new parts */, indices: 0, totalCalls: 87495 } /* 2026-09-19: +6 orbital families */);
 const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 assert.match(propsSource, /rec\.state = 1;\s*setWorldNightFixtureActive\(pool\.imI, rec\.slot, false\)/,
   'all authored destruction routes switch off the original instance at the state transition');

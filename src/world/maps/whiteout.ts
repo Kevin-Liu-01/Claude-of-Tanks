@@ -63,6 +63,7 @@ export default {
       { id: 'north-fuel-shelter', role: 'support', x: 12, z: 266, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
     ],
     tones: makeRealisticCityBuildingTones({ value: 1.04, saturation: 1.02, soot: 0.01, roofValue: 0.94 }),
+    industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,
     wallRuns: [[-148, -76, -148, -16, 2], [-148, 20, -148, 84, 3], [-66, -58, -4, -58, 2], [-66, 52, -4, 52, 3], [-26, 296, 56, 296, 2], [316, 0, 316, 74, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: true,

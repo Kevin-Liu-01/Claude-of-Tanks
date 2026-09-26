@@ -165,6 +165,7 @@ interface EngineContext {
 }
 
 interface SurfaceTextureOptions {
+  rust?: Float32Array | null;
   roughMin?: number;
   roughMax?: number;
   aoMin?: number;
@@ -644,15 +645,16 @@ function smoothstep(a: number, b: number, x: number): number {
 // roughness reads green. Packing them together adds real PBR response without
 // doubling the building texture/upload budget.
 function surfaceFromHeight(h: Float32Array, s: number, anisotropy: number, {
-  roughMin = 0.72, roughMax = 0.98, aoMin = 0.76,
+  roughMin = 0.72, roughMax = 0.98, aoMin = 0.76, rust = null,
 }: SurfaceTextureOptions = {}): THREE.CanvasTexture {
   const px = new Uint8ClampedArray(s * s * 4);
   for (let i = 0; i < h.length; i++) {
     const height = clamp(h[i], 0, 1);
     const j = i * 4;
+    const mask = rust ? rust[i] : 0;
     px[j] = (aoMin + height * (1 - aoMin)) * 255;
-    px[j + 1] = (roughMin + (1 - height) * (roughMax - roughMin)) * 255;
-    px[j + 2] = 0;
+    px[j + 1] = Math.min(255, (roughMin + (1 - height) * (roughMax - roughMin)) * 255 + mask * 60);
+    px[j + 2] = mask * 255; // round 75: a rust mask (steel only) for the weathering hook; zero elsewhere
     px[j + 3] = 255;
   }
   return toTexture(px, s, { anisotropy });
@@ -909,11 +911,23 @@ function sampleStructureDetail(
     sample[0] = warp * 0.45 + weft * 0.45 + grain * 0.10;
     sample[1] = 0.88 + sample[0] * 0.10;
   } else {
-    const corrugation = Math.sin(x * Math.PI / 5) * 0.5 + 0.5;
+    // Round 75: the light kit's sheet steel is a trapezoidal corrugation (the 256 px tile is 1.82 m of sheet at the
+    // kit's 0.55 uv/m, so a 27 px period is the 0.19 m pitch of profiled cladding) with a panel seam every 0.91 m,
+    // a rivet line under each seam, scratches, and a rust mask in sample[2] along the seams and the bottom lap.
+    const p = ((x / 27) % 1 + 1) % 1;
+    const corrugation = p < 0.34 ? 1 : p < 0.5 ? 1 - (p - 0.34) / 0.16 : p < 0.84 ? 0 : (p - 0.84) / 0.16;
+    // a three-texel seam ramp: the surface receipt keeps every normal within 32 degrees of the wall plane
+    const seamStep = x % 128;
+    const seam = seamStep < 3 ? 1 - seamStep / 3 : 0;
+    const rivet = !seam && seamStep >= 4 && seamStep < 8 && ((y + 6) % 24) < 5 ? 1 : 0;
     const scratch = smoothstep(0.72, 0.94,
       noi.noise(x * 0.09 + 91, y * 0.31 - 17) * 0.5 + 0.5);
-    sample[0] = corrugation * 0.80 + grain * 0.20;
-    sample[1] = 0.86 + corrugation * 0.12 - scratch * 0.10;
+    const lap = ((y % 128) < 3) ? 1 : 0;
+    const rust = smoothstep(0.55, 0.9, noi.noise(x * 0.05 + 3, y * 0.05 - 41) * 0.5 + 0.5) * (seam || lap ? 0.9 : 0.25)
+      + ((noi.noise(x * 0.4 + 17, y * 0.4 + 9) * 0.5 + 0.5) > 0.86 ? 0.7 : 0);
+    sample[0] = corrugation * 0.72 + grain * 0.10 + 0.12 - seam * 0.30 - lap * 0.22 - rivet * 0.12;
+    sample[1] = 0.92 + corrugation * 0.06 - scratch * 0.08 - seam * 0.25 - lap * 0.12 + rivet * 0.05;
+    sample[2] = clamp(rust, 0, 1);
   }
 }
 
@@ -922,26 +936,31 @@ export function makeStructureDetail(
   anisotropy: number,
   kind: 'wood' | 'canvas' | 'steel',
 ): GeneratedSurfaceTextures {
-  const s = 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
-  const sample = new Float32Array(2);
+  const s = kind === 'steel' ? 256 : 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  const rust = kind === 'steel' ? new Float32Array(s * s) : null;
+  const sample = new Float32Array(3);
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const i = y * s + x, j = i * 4;
+    sample[2] = 0;
     sampleStructureDetail(noi, kind, x, y, sample);
     const v = clamp(sample[1], 0.55, 1) * 255;
     px[j] = v; px[j + 1] = v; px[j + 2] = v; px[j + 3] = 255;
     hgt[i] = sample[0];
+    if (rust) rust[i] = sample[2];
   }
+  // the rust mask rides the ORM blue channel the weathering hook reads (steel atlas convention, round 75)
+  const surface = rust
+    ? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.50, roughMax: 0.86, aoMin: 0.76, rust })
+    : surfaceFromHeight(hgt, s, anisotropy, kind === 'canvas'
+      ? { roughMin: 0.90, roughMax: 1.0, aoMin: 0.84 }
+      : { roughMin: 0.68, roughMax: 0.95, aoMin: 0.74 });
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
     // The Sobel derivative already sums four neighboring height samples.
     // The former 1.45 gain bent shallow timber grain/corrugation almost
     // sideways, creating black-white stripes on otherwise flat walls.
-    normal: normalFromHeight(hgt, s, kind === 'wood' ? 0.16 : kind === 'steel' ? 0.14 : 0.09, anisotropy),
-    surface: surfaceFromHeight(hgt, s, anisotropy, kind === 'steel'
-      ? { roughMin: 0.52, roughMax: 0.84, aoMin: 0.76 }
-      : kind === 'canvas'
-        ? { roughMin: 0.90, roughMax: 1.0, aoMin: 0.84 }
-        : { roughMin: 0.68, roughMax: 0.95, aoMin: 0.74 }),
+    normal: normalFromHeight(hgt, s, kind === 'wood' ? 0.16 : kind === 'steel' ? 0.30 : 0.09, anisotropy),
+    surface,
   };
 }
 
@@ -3286,7 +3305,9 @@ ${snowCap ? `
     }
   }
   // Round 75: what a plan builder may read about this battlefield (maps/exteriorDetailKit.ts StructureBuildContext).
-  const structureContext: StructureBuildContext = { mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed };
+  const structureContext: StructureBuildContext = {
+    mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
+  };
   function placePlannedBuilding(px: number, pz: number, rot: number): boolean {
     const tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],

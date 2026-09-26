@@ -22,11 +22,14 @@ try {
   for (const seed of [1337, 2001, 2002]) {
     for (const kind of ['wood', 'steel', 'canvas']) {
       const detail = makeStructureDetail(new SimplexNoise({ random: mulberry32(seed) }), 4, kind);
+      const size = kind === 'steel' ? 256 : 128;
       assert.deepEqual(Object.keys(detail).sort(), ['albedo', 'normal', 'surface']);
       for (const texture of Object.values(detail)) {
-        assert.equal(texture.image.width, 128);
-        assert.equal(texture.image.height, 128);
-        assert.equal(texture.image.pixels.byteLength, 128 * 128 * 4);
+        // round 75 (2026-09-26): the sheet-steel tile is 256 px (a trapezoid corrugation, seams, rivets, a rust
+        // mask in the ORM blue channel); wood and canvas keep their 128 px tiles
+        assert.equal(texture.image.width, size);
+        assert.equal(texture.image.height, size);
+        assert.equal(texture.image.pixels.byteLength, size * size * 4);
       }
       assert.equal(detail.albedo.colorSpace, SRGBColorSpace);
       assert.equal(detail.normal.colorSpace, NoColorSpace);
@@ -43,7 +46,7 @@ try {
         maxTilt = Math.max(maxTilt, Math.hypot(x, y));
       }
       assert.ok(minZ > 0.85, `${kind}: grain must not bend the surface into a side-facing cliff`);
-      assert.ok(sumZ / (128 * 128) > 0.97, `${kind}: average diffuse response stays close to its wall plane`);
+      assert.ok(sumZ / (size * size) > 0.97, `${kind}: average diffuse response stays close to its wall plane`);
       assert.ok(maxTilt > 0.08, `${kind}: readable surface detail remains, not a flat replacement`);
       for (const texture of Object.values(detail)) texture.dispose();
     }

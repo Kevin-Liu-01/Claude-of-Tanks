@@ -63,6 +63,8 @@ export interface StructureBuildContext {
   mapId: string;
   snowCap: boolean;
   seed: number;
+  /** The map's industrial wall cladding (props.industrialCladding): brick / stone halls or corrugated sheet. */
+  cladding: 'brick' | 'steel';
 }
 
 const STRUCTURE_CONTEXT = Symbol('structure-build-context');

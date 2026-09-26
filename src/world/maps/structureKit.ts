@@ -1199,6 +1199,17 @@ const PAL = {
   orbital: [0xd4d9de, 0xeef1f3, 0x4c545b],
 } as const satisfies Record<string, Palette>;
 
+/** A stream forked from one already-drawn value (round 75): new parts paint from it, the kit's stream keeps its seat. */
+function forkedRng(u: number): Rng {
+  let a = (u * 4294967296) | 0;
+  return () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
 function colored<T extends THREE.BufferGeometry>(
   partsOut: THREE.BufferGeometry[],
   geo: T,
@@ -1535,15 +1546,43 @@ function makeMotorPool(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('motorpool', out);
 }
 
+/** An arch shell whose side-wall UVs run the sheet's ribs across the hut's length (the caps keep theirs vertical). */
+function archShellSheet(w: number, h: number, d: number): THREE.ExtrudeGeometry {
+  const geo = archShell(w, h, d);
+  const sides = geo.groups.find((group) => group.materialIndex === 1);
+  const uv = geo.attributes.uv;
+  if (sides) {
+    for (let i = sides.start; i < sides.start + sides.count; i++) uv.setXY(i, uv.getY(i), uv.getX(i));
+  }
+  geo.clearGroups();
+  return geo;
+}
+
 function makeQuonsetHut(rng: Rng): THREE.BufferGeometry {
+  // Round 75: the ribs cross the length like bent sheets, a framed personnel door, a stovepipe through the
+  // shell, a base skirt, a threshold plate and rear windows — the same footprint and reserve as before.
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 6.8, d = 11.5, h = 3.8;
-  colored(out, archShell(w, h, d), p[0], rng, 0.10);
+  const shell = colored(out, archShellSheet(w, h, d), p[0], rng, 0.10);
   for (let z = -d / 2 + 0.8; z < d / 2; z += 1.15) {
     const rib = archShell(w + 0.12, h + 0.08, 0.08); rib.translate(0, 0, z); colored(out, rib, p[1], rng, 0.04);
   }
   colored(out, box(3.5, 3.0, 0.10).translate(0, 1.5, d / 2 + 0.06), p[2], rng);
   for (const x of [-2.2, 2.2]) colored(out, markWorldAperture(box(0.65, 0.9, 0.08), [0, 0, 1])
     .translate(x, 1.9, d / 2 + 0.12), 0x6f8790, rng);
+  // The parts below are new to the kit's stream: their paint draws come from a stream forked off the shell's first
+  // vertex value, so every later pool (the wall modules' terrain-fitted jitter among them) keeps its draws.
+  const local = forkedRng(shell.attributes.color.getX(0));
+  for (const x of [-1.85, 1.85]) colored(out, box(0.16, 3.15, 0.14).translate(x, 1.575, d / 2 + 0.09), p[2], local, 0.03);
+  colored(out, box(3.9, 0.16, 0.14).translate(0, 3.12, d / 2 + 0.09), p[2], local, 0.03);
+  colored(out, box(1.0, 2.1, 0.06).translate(-0.6, 1.05, d / 2 + 0.14), 0x4a5054, local, 0.03); // the wicket door
+  for (const x of [-1.6, 1.6]) colored(out, markWorldAperture(box(0.65, 0.7, 0.08), [0, 0, -1])
+    .translate(x, 2.0, -d / 2 - 0.10), 0x6f8790, local);
+  for (const side of [-1, 1]) colored(out, box(0.08, 0.34, d - 0.1).translate(side * (w / 2 - 0.02), 0.17, 0), p[2], local, 0.03);
+  colored(out, slab(3.6, 0.10, 0.9).translate(0, 0.05, d / 2 + 0.5), 0x6f7275, local, 0.03); // threshold plate
+  const flueX = 1.5, flueZ = -d * 0.28;
+  const shellY = Math.sin(Math.acos(flueX / (w / 2))) * (h - 0.12);
+  colored(out, cylinder(0.09, 0.09, 0.8, 8).translate(flueX, shellY + 0.2, flueZ), p[2], local, 0.03); // stovepipe, top under the meta height
+  colored(out, cylinder(0.16, 0.16, 0.12, 8).translate(flueX, shellY + 0.64, flueZ), p[2], local, 0.03);
   return mergeConnectedStructure('quonsethut', out);
 }
 

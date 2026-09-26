@@ -53,25 +53,54 @@ function paintGeo(
 // RAIL YARD BUILDERS
 // =============================================================================
 
+/** Sheet-steel paint for the light kit's corrugated tile (props.ts structureMetal): vertex colour, box UVs at the kit's 0.55 uv/m. */
+function sheetPart(geo: THREE.BufferGeometry, local: () => number, hex: number, scale = 1): THREE.BufferGeometry {
+  paintHex(geo, local, hex, scale, 0.05);
+  geo.userData.uvJitter = 'none';
+  return geo;
+}
+
+/** A part new to the builder's stream: it takes no draws from the shared stream (props.ts jitterBuildingUvs). */
+function dressing<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.userData.uvJitter = 'none';
+  return geo;
+}
+
+const WAREHOUSE_CLADDING_HEX = 0x9aa39c;   // pale weathered sheet (a polar station's halls)
+const WAREHOUSE_DOOR_HEX = 0x5f6d6a;       // roller shutters, grey-green
+const WAREHOUSE_DOOR_HEX_STEEL = 0x8b5a3c; // on a sheet hall the shutters are the oxide red of the plant
+const WAREHOUSE_TRIM_HEX = 0x3a3f42;
+
 /**
- * Brick freight warehouse: long hall, shallow gable in grey sheeting, big
- * timber sliding doors on the street face, clerestory window band, roof
- * ridge vents. The rail yard's bread-and-butter block.
+ * Freight warehouse: long hall, shallow gable in grey sheeting, roller shutters on the street face over a loading
+ * dock, clerestory window band, roof ridge vents. The rail yard's bread-and-butter block. Round 75: the dock gets
+ * a skillion canopy on two posts, rubber bumpers and shutter guide posts; the roof gets ridge skylights and eave
+ * gutters; the street gable a painted sign board; and on a map that authors industrialCladding 'steel' the walls
+ * and gables are corrugated sheet (structureMetal) instead of brick — the plinth, dock and the seeded draws are
+ * the same as before (new parts take none; re-bucketed parts keep theirs), so the plan keeps every later placement.
  */
 export function makeWarehouse(
   rng: () => number,
   buckets: GeometryBuckets,
 ): StructureDimensions {
+  const context = structureBuildContext(buckets);
+  const steelClad = context?.cladding === 'steel' && !!buckets.structureMetal;
   const parts: GeometryBuckets = {
-    plaster: [], stone: [], roof: [], wood: [], dark: [], baked: [],
+    plaster: [], plaster2: [], stone: [], roof: [], wood: [], dark: [], baked: [], structureMetal: [],
   };
   if (buckets.glass) parts.glass = [];
   const pane = parts.glass || parts.dark;
   const w = 13.5 + rng() * 3, d = 21 + rng() * 5, wallH = 5.4 + rng() * 0.8, roofH = 1.9;
+  const local = forkRng((w - 13.5) / 3 * 0.61 + (d - 21) / 5 * 0.29 + (wallH - 5.4) / 0.8 * 0.07);
   parts.stone.push(box(w + 0.4, 1.1, d + 0.4).translate(0, -0.1, 0));
-  parts.stone.push(box(w, wallH, d, 0.55).translate(0, wallH / 2, 0));
-  parts.stone.push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
-  parts.stone.push(gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16));
+  const wallBucket = steelClad ? parts.structureMetal! : parts.stone;
+  const wall = box(w, wallH, d, 0.55).translate(0, wallH / 2, 0);
+  const gableA = gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16);
+  const gableB = gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16);
+  for (const shell of [wall, gableA, gableB]) {
+    if (steelClad) { paintHex(shell, local, WAREHOUSE_CLADDING_HEX, 1, 0.03); shell.userData.uvJitter = 'consume'; }
+    wallBucket.push(shell);
+  }
   const slope = Math.hypot(w / 2 + 0.4, roofH + 0.1);
   const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
   for (const side of [-1, 1]) {
@@ -79,16 +108,35 @@ export function makeWarehouse(
     pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * (w / 4 + 0.2), wallH + roofH / 2 + 0.06, 0);
     parts.roof.push(slab);
+    // ridge skylights: two glazed strips a metre down each roof plane
+    for (const sz of [-d * 0.22, d * 0.2]) {
+      // 6 cm glazing: the pitch audit regresses a slab's centre plane through its corners, and a thick narrow box
+      // biases that slope (0.14 m on 0.95 m read 0.005 rad off the receipt)
+      const light = dressing(box(0.95, 0.06, 2.6, 0.5));
+      pitchRoofPlane(light, 'x', -side as -1 | 1, ang, 'gable');
+      light.translate(-side * 1.15, wallH + roofH - 1.15 * Math.tan(ang) + 0.12, sz);
+      pane.push(light);
+    }
+    // eave gutter on the long wall
+    const gutter = dressing(new THREE.CylinderGeometry(0.065, 0.065, d + 0.5, 7, 1).rotateX(Math.PI / 2));
+    gutter.translate(side * (w / 2 + 0.46), wallH - 0.04, 0);
+    parts.dark.push(gutter);
   }
   // ridge vents (dark monitor boxes along the ridge line)
   for (let k = 0; k < 3; k++) {
     const vz = -d / 3 + k * (d / 3);
     parts.dark.push(box(0.8, 0.55, 2.6).translate(0, wallH + roofH + 0.22, vz));
   }
-  // sliding freight doors (street face +z): timber leaves on a dark rail
+  // roller shutters on the street face (+z), each between two guide posts under the old rail
   for (const dx of [-w * 0.22, w * 0.22]) {
-    parts.wood.push(box(3.1, 3.6, 0.14, 0.8).translate(dx, 1.8, d / 2 + 0.09));
+    const shutter = box(3.1, 3.6, 0.14, 0.8).translate(dx, 1.8, d / 2 + 0.09);
+    paintHex(shutter, local, steelClad ? WAREHOUSE_DOOR_HEX_STEEL : WAREHOUSE_DOOR_HEX, 1, 0.03);
+    shutter.userData.uvJitter = 'consume'; // the timber leaf's four draws, kept
+    parts.structureMetal!.push(shutter);
     parts.dark.push(box(3.5, 0.16, 0.10).translate(dx, 3.85, d / 2 + 0.12));
+    for (const px of [-1.62, 1.62]) parts.dark.push(dressing(box(0.12, 3.7, 0.12, 1.0)).translate(dx + px, 1.85, d / 2 + 0.08));
+    // the shutter box above the opening
+    parts.dark.push(dressing(box(3.4, 0.36, 0.30, 1.0)).translate(dx, 3.95 + 0.18, d / 2 + 0.15));
   }
   // clerestory band both long walls
   for (let k = 0; k < 5; k++) {
@@ -109,6 +157,31 @@ export function makeWarehouse(
     crate.rotateY(rng() * Math.PI * 0.5);
     crate.translate((rng() - 0.5) * w * 0.6, 0.7 + cs / 2, d / 2 + 1.0 + rng() * 0.8);
     parts.wood.push(jitterUV(crate, rng));
+  }
+  // round 75: dock bumpers, a skillion canopy on two posts over the dock, the painted sign board on the gable
+  for (const bx of [-w * 0.25, 0, w * 0.25]) {
+    parts.dark.push(dressing(box(0.28, 0.32, 0.16, 1.0)).translate(bx, 0.42, d / 2 + 2.35 + 0.08));
+  }
+  const canopyY = Math.min(wallH - 0.9, 4.3);
+  const canopy = dressing(box(w * 0.74, 0.1, 2.7, 0.35));
+  pitchRoofPlane(canopy, 'z', 1, 0.12, 'skillion');
+  canopy.translate(0, canopyY, d / 2 + 1.45);
+  parts.roof.push(canopy);
+  for (const px of [-w * 0.33, w * 0.33]) {
+    const postH = canopyY - 0.16 - 0.7;
+    parts.dark.push(dressing(box(0.14, postH, 0.14, 1.0)).translate(px, 0.7 + postH / 2, d / 2 + 2.15));
+  }
+  const sign = dressing(box(w * 0.42, 1.0, 0.07, 0.8));
+  sign.translate(0, wallH - 0.62, d / 2 + 0.05);
+  parts.plaster2!.push(sign);
+  if (steelClad) {
+    // corner trims and a girt line read the sheet hall as a framed building
+    for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+      parts.dark.push(dressing(box(0.12, wallH - 0.1, 0.12, 1.0)).translate(cx * (w / 2 - 0.01), wallH / 2, cz * (d / 2 - 0.01)));
+    }
+    for (const side of [-1, 1]) {
+      parts.dark.push(dressing(box(0.06, 0.08, d - 0.2, 1.0)).translate(side * (w / 2 + 0.02), wallH * 0.52, 0));
+    }
   }
   for (const key of Object.keys(parts)) {
     const source = parts[key];
