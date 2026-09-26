@@ -87,6 +87,7 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
   const n = HORIZON_FAR_SEGMENTS, rows = HORIZON_FAR_ROWS;
   const noise = new SimplexNoise({ random: mulberry32(seed >>> 0) });
   const ampM = resolveFarRangeAmp(s, options.deckBaseM);
+  const TAU = Math.PI * 2;
   // Round 72b (integrator: "rows of symmetric cones"): the far silhouette is built from three RANGES with oblique
   // axes, like the ring's (horizonRelief.ts) — an anisotropic ridged field stretched along each axis with one flank
   // compressed and phase-jittered sub-peaks, inside an azimuth window; isotropic ridged noise along a row is a row
@@ -125,7 +126,6 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
   const positions = new Float32Array(n * rows.length * 3);
   const heights = new Float32Array(n * rows.length);
   const marine = new Float32Array(n * rows.length);
-  const TAU = Math.PI * 2;
   for (let row = 0; row < rows.length; row++) {
     const { r: rowR, lift } = rows[row];
     for (let k = 0; k < n; k++) {
