@@ -901,6 +901,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         // that the aerial pass washes a boosted range's face toward the sky while a dark crown keeps a third of its
         // green, so the crowns floated over pale slopes as dots in the sky (Glacier Pass, Nordhavn, Verdant)
         if (!band && (y > maxHeight * 0.5 || Math.hypot(x, z) > 880)) continue;
+        if (band && y > maxHeight * 0.5) continue; // and no band tree on a foothill crest that climbs past half the ring
         if (options.clearAt && options.clearAt(x, z) > 0.5) continue; // round 63: the cutting's right-of-way
         const stand = standWeightAt(x, y, z, slope, band);
         if (rng() > (band ? stand * 1.2 : stand * stand * 1.6)) continue;
@@ -951,6 +952,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     shader.uniforms.uVfCanopyMean = { value: canopyMean };
     shader.uniforms.uVfFog = { value: fog.clone() };
     shader.uniforms.uVfHaze = { value: hazeStrength };
+    shader.uniforms.uVfMaxH = { value: Math.max(1, maxHeight) };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vVfWorld;')
       .replace('#include <project_vertex>', /* glsl */`{
@@ -963,7 +965,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
       }
       #include <project_vertex>`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uVfCanopy;\nuniform vec3 uVfCanopyMean;\nuniform vec3 uVfFog;\nuniform float uVfHaze;\nvarying vec3 vVfWorld;')
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uVfCanopy;\nuniform vec3 uVfCanopyMean;\nuniform vec3 uVfFog;\nuniform float uVfHaze;\nuniform float uVfMaxH;\nvarying vec3 vVfWorld;')
       .replace('#include <map_fragment>', /* glsl */`#include <map_fragment>
       {
         // metre-scale clump mottle from the canopy tile plus rim darkening, so the crowns read as foliage volumes.
@@ -976,14 +978,17 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         float vfNdv = abs(dot(normalize(vNormal), normalize(vViewPosition)));
         float vfRim = 1.0 - vfNdv;
         diffuseColor.rgb *= 1.0 - vfRim * vfRim * 0.32;
-        // aerial perspective by ring radius, the same curve the ring's own fragments use
+        // aerial perspective by ring radius, the same curve the ring's own fragments use; round 72: and by height on
+        // the ring — a crown high on a range face takes the fog the face takes there (the aerial pass washes a
+        // distant face toward the sky while a crown kept a third of its green: dots in the sky over pale slopes)
         float vfHz = smoothstep(430.0, 1330.0, length(vVfWorld.xz));
-        diffuseColor.rgb = mix(diffuseColor.rgb, uVfFog, clamp((0.04 + vfHz * vfHz * 0.72) * uVfHaze, 0.0, 0.9));
+        float vfHigh = smoothstep(0.22, 0.50, vVfWorld.y / uVfMaxH) * smoothstep(560.0, 760.0, length(vVfWorld.xz));
+        diffuseColor.rgb = mix(diffuseColor.rgb, uVfFog, clamp((0.04 + vfHz * vfHz * 0.72) * uVfHaze + vfHigh * 0.55, 0.0, 0.9));
       }`);
     applyCanopyDiffuseWrap(shader, 0.38, true); // round 55: the battlefield's matte far-canopy response
   };
   material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'horizon-forest-canopy-v3'; // round 55: mean-centred mottle
+  material.customProgramCacheKey = () => 'horizon-forest-canopy-v4'; // round 55: mean-centred mottle; round 72: the height haze
   group.userData.horizonForestHook = hook;
   const species: Array<{ name: string; tree: TreeGeometry; own: ForestPlacement[]; shadow: boolean }> = [];
   for (const conifer of [true, false]) {
