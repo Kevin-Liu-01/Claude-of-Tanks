@@ -3736,6 +3736,109 @@ and on a snow map every face past the first ridge is that pale; the outland rock
 rule — Frosthollow's boosted faces carried them as specks in the sky; the low near crests keep their forest edge, lit
 like the vista surface, the crowns that remain take the fog by height like the face under them, and the rim band keeps
 its rich near class and its near boulders on every map) — a crown-mass ribbon that takes the crest's own rendered tone is a lane of its own.
+### Round 73 — 2026-09-25: the ground redux (transitions, folds, the wet strand, tall grass under the tracks)
+
+**Owner (2026-09-25 evening, after rating the round-71 clouds "amazing"):** "improve ground, ground transitions,
+shorelines... add tall grass that interacts with tanks... so many opportunities for a triple AAA redux!" and "make
+sure performance is still really good". The clouds set the bar; this round brings the playable ground up to it, on
+the same build, measured against `?ground=legacy` (every new term at zero, the sward off) so the before / after pairs
+share the camera, the seed, the tier and the bundle. Branch `world/ground-redux-r73` on the cloud branch; the far
+ring (`horizonVista.ts`, `horizon*.ts`, `farTreeBase.ts`) belongs to the round-72 lane and is untouched here.
+
+**One table, no map-config edits (`src/world/groundRedux.ts`).** Every battlefield has a row — the height-blend
+strength, the mid-distance octave, the scree band, the snow drift / scour / glint, the fold moisture / occlusion /
+crest, the swash period / width / strength, and the tall-grass biome — resolved by map id inside the material steps
+and the tier, so the map configs stay byte-identical (their history receipts project every byte of `maps/*.ts`) and
+the material call keeps the shape the sandboxed receipts regex. A knob at zero is inert; an unknown id runs the
+temperate defaults with no sward. The material packs the knobs into four vectors and a clock — no sampler: the
+terrain material declares ten samplers and sits at the GPU's sixteen with the engine's cascades, environment and fog
+(`GROUND_REDUX_BUDGET.terrainDeclaredSamplers`, pinned).
+
+**Transitions (`terrain.ts`, `reduxHeightMix`).** The dirt and rock borders used to be one smoothstep of a
+noise-broken coverage — a soft feather with the same profile everywhere. Each layer's local relief is now read as its
+albedo's luminance against the tile's own mean (a deep-mip tap: the painters bake cavity shade into the colour and the
+sourced sets carry their ambient occlusion, so no packed height channel and no sampler), and the incoming layer wins
+where its relief stands high over the base's: grass pokes through a dirt patch at the border, a rock's top clears the
+snow while its seams stay buried. `x = f + (h_layer − h_base) · k · 4 f (1 − f)` then `smoothstep(0, 1, x)` — the
+modulation vanishes at full and zero coverage (a road stays a road, the water ramp is untouched) and the strength
+fades with the far variant and off the wall projections, so nothing shimmers at range. A scree band joins the D
+layer on the 12°–30° slopes under the rock take-over where a map authors it (Glacier Pass 0.6, Frosthollow 0.35,
+Nordhavn 0.4, Whiteout 0.3): a snowfield or a meadow meets its cliffs through a talus apron, not on one line.
+
+**The folds (a vertex attribute, `buildChunkGeometrySteps`).** The relief's own curvature is baked once per world
+in `terrainBuildSteps` — an 8 m grid of the map's heights over ±536 m (17.7 k samples, sliced), the 8 m and 24 m
+Laplacians (hollows positive) — and every chunk vertex carries it as one normalised byte (`fold`, +0.6 MB per world at
+every LOD; the skirt continues its top vertex). The material reads it as `vFold`: a hollow holds moisture (16 %
+darker, a shade greener on turf, a step less rough) and takes less sky (`gFoldAO`, joined at Three's own
+`aomap_fragment` stage so it darkens the indirect light only, as an aoMap would); a crest dries and lightens 6 %. Low
+frequency, so no distance fade and no tiling. The height field publishes the same sampler as `_foldAt` for the sward.
+
+**Snow (`uReduxSnow`).** A snowfield was one white sheet. On the three snow maps the wind scours it to a harder,
+cooler crust on the exposed patches (the warped worn field, −7 % luma, toward blue) and leaves powder in the lees
+(+3.5 %); it combs the surface into ~1.8 m sastrugi inside 120 m and ~15 m drift waves out to 420 m on the map's own
+wind, swung per ~400 m cell (the round-43 rule, so no two trains share a heading) — a separate block from the sand
+ripples, which keep their gates and receipts. Sparkle: inside 42 m a sparse near-level noise (read at −6 mip bias —
+the mip chain averages the peaks away at the pixel footprint) drops the roughness of a few texels per square metre to
+0.14, so the sun's lobe glints on them and the glints twinkle with the camera; gone by 42 m, where a glint would be a
+shimmer.
+
+**The mid-distance octave.** The near passes end by 48 m and the coarse turf relief begins with the far variant at
+90 m; between them the ground shaded on the base tile alone. One re-projection of the ground normal at ~1.1 m carries
+the 26–150 m band on open ground (off the carriageway), fading before the far band's own relief.
+
+**The wet strand (`uReduxSwash`, round 66's open note).** The run-up whitened the sheet but never wet the sand. The
+terrain cannot read the sheet's run-up field (sixteen samplers), so the band is analytic on the same clock the
+sheet's swash runs on (`mat.userData.groundClock`, advanced with `water.update`, frozen with `setWaterTime`): below
+the sheet's waterline the sand apron is dark (−40 %) and glossy (roughness 0.92 → 0.30) where the swash just ran — a
+film whose reach breathes with the map's swell period (Saltmere 8.5 s, Saltwind 7.5, Nordhavn 9.5, Mangrove Reach 6.5)
+at a different phase along the beach (the warped noise fields), damp to the high-water mark (55 %), dry above it —
+with a ragged wrack line at the mark (−35 %, torn by the same fields) under the round-56 wrack pieces; the ripples the
+water ran over smooth. A lake or a river (no period: Jade River Delta, the polders, Highland Reservoir, Monsoon
+Ridge, Sunscar Oasis, Skybridge's flat sea) keeps a steady damp mud bank at 40–60 % strength. Only the sand apron
+between the waterline and the backshore takes it, inside the square and along the round-47 contour past the edge —
+the seam metric of round 40 measures water against water and does not move.
+
+**Tall grass under the tracks (`src/world/tallGrass.ts`, `groundPressure.ts`).** The meadows carried a knee-high
+tuft carpet of alpha cards that nothing in the battle ever touched. The tier grows blades — opaque, textureless,
+vertex-shaded strips in clumps of three (seven vertices, five triangles each) on a camera-centred ring of 12 m cells to
+46 m, and single wider blades on a ring of 24 m cells to 120 m (fading in over 34–46 m where the clumps fade out) —
+two `InstancedMesh`es, translation-only matrices with a packed blade attribute (yaw, height, width, random), the strip
+built in the vertex shader in world units: a gust front travelling down the map's wind over the meadow plus a
+per-blade flutter, a per-blade lean, dark roots and lit tips (`mix(base, tip, t^0.75)`), the cascade shadow read at
+the root (the round-13 rule), the same scope corridor the tufts clear, a lens clear inside 2.2 m. Every hull's
+footprint is published each battle frame (`main.ts` → `world.setGroundDisturbances`, eight slots, in water or not)
+into a world-anchored RGBA16F field over 96 m / 256 texels around the chase focus, torus-mapped like the round-46
+water: R the press, GB the push direction — along the travel of a moving hull, outward from the belly of a standing
+one, the flanks rolled outward so a trail reads as two lanes — and A a slower bruise. A stamp only ever raises the
+press, so the lane behind the tracks stays flat and stands up again with an e-fold of 20 s (5 % after a minute); the
+blade bends 77° toward the push at full press and its tip lays a further third of its height along it; crushed
+blades stay 22 % darker for about a minute. Concealment is what the blades occlude on screen — nothing in `src/sim`
+changed, spotting is authoritative and unchanged. Candidates keep off the carriageway and thin over its shoulder,
+off water (reeds stand in the shallows, 0.04–0.6 of the mask), off soft and trodden village ground, off faces over
+37°, off worked ground and out of every sealed footprint (buildings, fortifications, props — the litter's clearance);
+the terrain's own dirt fields thin the sward as they thin the tufts, straw patches tint it, hollows thicken and lift
+it (+30 % / +25 %), crests thin it. Biomes: meadow (Verdant, Orchard, Highland Reservoir, Monsoon's lusher 1 m),
+steppe (Tarkhan at 1.2 × and 1.05 m, golden), savanna (Frontier Basin, Longleaf wiregrass), reeds (Jade River Delta,
+the polders, Mangrove Reach, Sunscar Oasis's lake), tundra sedge through the snow (Frosthollow, Whiteout, Glacier
+Pass, sparse and 0.4–0.45 m), marram on the backshore of the three sea maps (dense on the strand's own wetness ramp,
+sparse inland), trodden verges in the towns and yards (a quarter to a third), none on the arid maps and Mars. The
+quality preset carries the knob (`tallGrass`: Low ¼, Medium ½, High / Ultra full, the mobile presets none — the
+mobile tier keeps today's ground) and the tier reads it live (a change re-seeds the rings); `?tallgrass=off` and
+`?ground=legacy` keep it off. Cells stream cooperatively (220 candidates per update, 2 400 while a ring is cold, the
+ring publishing progressively nearest-first), the buffers are rewritten from the cached cells on a crossing, the
+field steps once per frame.
+
+**Measured.** Filled from the pipeline's captures and benches (`$SP/r73/review`, `$SP/r73/metrics-*.txt`, the
+bench log): the six first maps' tiling / detail / softness / band / coverage numbers before and after, the trail
+masks, the per-copy GPU costs by repetition and the world update's CPU with the sward on and off — see the
+rounds row and the report.
+
+**Receipts.** `groundRedux.selftest` (every map's row and bands, the biomes where they belong, the packing, the quality
+knob, the material's contract — ten samplers, v40, the transitions, the folds, the strand, the clock), `groundPressure`
+(gates, targets, the step shader, the packing, the stepping, the CPU twin, the wiring), `tallGrass` (the geometry,
+gates, a settled ring's exclusions and hollows, determinism, the knob, streaming, reeds, the shader, the engine hooks,
+the wiring); the fetch census +7 with the note, the uniform list, `world-terrain-splat-v40` and its negative control,
+the fold attribute in `terrainStreaming`, the sandboxed material steps in `terrainSplatFields` / `terrainWetLayer`.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 

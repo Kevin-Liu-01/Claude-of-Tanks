@@ -4154,7 +4154,9 @@ void splatCompute() {
   gSplatRough = mix(gSplatRough, 0.30, wetSand * 0.9);
   gSplatRough = mix(gSplatRough, gSplatRough * 0.93, hollow * uReduxFold.x * (1.0 - fMs));
   if (uReduxA.w > 0.001) {
-    float gs = texture2D(uNoise, uv * 2.9 + vec2(0.13, 0.77)).r;
+    // read near the finest level: the mip chain averages the peaks away at the 1–3 cm pixel footprint, and a glint
+    // that twinkles with the camera's motion is the look (sparse, and gone by 42 m)
+    float gs = texture2D(uNoise, uv * 2.9 + vec2(0.13, 0.77), -6.0).r;
     float glint = pow(smoothstep(0.60, 1.0, gs), 4.0) * uReduxA.w * (1.0 - smoothstep(14.0, 42.0, camDist))
       * (1.0 - fD) * (1.0 - fR) * (1.0 - fMs) * (1.0 - roadCore);
     gSplatRough = mix(gSplatRough, 0.14, glint);
