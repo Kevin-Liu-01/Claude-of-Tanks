@@ -3761,7 +3761,9 @@ sourced sets carry their ambient occlusion, so no packed height channel and no s
 where its relief stands high over the base's: grass pokes through a dirt patch at the border, a rock's top clears the
 snow while its seams stay buried. `x = f + (h_layer − h_base) · k · 4 f (1 − f)` then `smoothstep(0, 1, x)` — the
 modulation vanishes at full and zero coverage (a road stays a road, the water ramp is untouched) and the strength
-fades with the far variant and off the wall projections, so nothing shimmers at range. A scree band joins the D
+fades with the far variant and off the wall projections, so nothing shimmers at range; the relief taps and the
+mixes run only where the strength is above zero, so the far field and the `?ground=legacy` A/B keep the plain mask
+(with k = 0 the curve would still S-shape it). A scree band joins the D
 layer on the 12°–30° slopes under the rock take-over where a map authors it (Glacier Pass 0.6, Frosthollow 0.35,
 Nordhavn 0.4, Whiteout 0.3): a snowfield or a meadow meets its cliffs through a talus apron, not on one line.
 

@@ -112,6 +112,10 @@ for (const term of [
 assert.ok(/float x = f \+ \(hLayer - hBase\) \* k \* 4\.0 \* f \* \(1\.0 - f\);/.test(material),
   'the height transition vanishes at full and zero coverage (a road stays a road)');
 assert.ok(material.includes('float hK = uReduxA.x * 2.5 * (1.0 - farM) * (1.0 - projW);'), 'and fades with the far variant, off the wall projections');
+// 2026-09-26: the relief taps and both mixes run only where the transition does — the far field and the zeroed
+// `?ground=legacy` A/B keep the plain mask (reduxHeightMix with k = 0 would still S-curve it)
+assert.ok(material.includes('if (hK > 0.001) hBase = reduxLuma(a.rgb) - reduxLuma(texture2D(uAlbG, uv * 0.240, 7.0).rgb);'), 'the base relief is gated on the transition strength');
+assert.equal((material.match(/if \(hK > 0\.001\) \{/g) || []).length, 2, 'the dirt and rock height mixes are gated on it');
 assert.ok(material.includes('(1.0 - smoothstep(14.0, 42.0, camDist))'), 'glints live inside 42 m — no shimmer at range');
 // the wiring: profile from the map id inside the material steps (the call site keeps its shape), the fold
 // attribute on the vertices, the AO hook on Three's own stage, the clock shared with the sheet, the key

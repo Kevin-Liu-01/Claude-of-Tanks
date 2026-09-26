@@ -3272,9 +3272,9 @@ void splatCompute() {
   }
   // round 73: the base layer's relief against its tile mean (a deep mip), and the transition strength — full inside
   // the near variant, gone with the far one, off the wall projections whose UVs are not the planar tiles'
-  float meanG = reduxLuma(texture2D(uAlbG, uv * 0.240, 7.0).rgb);
-  float hBase = reduxLuma(a.rgb) - meanG;
   float hK = uReduxA.x * 2.5 * (1.0 - farM) * (1.0 - projW);
+  float hBase = 0.0;
+  if (hK > 0.001) hBase = reduxLuma(a.rgb) - reduxLuma(texture2D(uAlbG, uv * 0.240, 7.0).rgb);
   // dirt patches are an XZ-projected field — on slopes they compressed into
   // downslope smears ("dirt/grime streaks" critique); steep faces run clean.
   // Round 47 (2026-09-23, owner: Sirocco/Sunscar "ground patterns too black"): the 30 % residue left on steep faces
@@ -3292,9 +3292,13 @@ void splatCompute() {
     float scree = uReduxA.z * smoothstep(0.10, 0.20, slopeR + (n1h - 0.5) * 0.10) * (1.0 - smoothstep(0.32, 0.46, slopeR))
       * (1.0 - mkB * 0.85) * rockGate;
     fD = max(fD, scree * (0.55 + 0.45 * n1hs));
-    float hD = reduxLuma(texture2D(uAlbD, uv * 0.210, mipB).rgb) - reduxLuma(texture2D(uAlbD, uv * 0.210, 7.0).rgb);
-    fD = reduxHeightMix(fD, hBase, hD, hK);
-    hBase = mix(hBase, hD, fD);
+    // the relief taps and the mix only where the transition runs (the far field and the ?ground=legacy A/B keep
+    // the plain mask: with k = 0 reduxHeightMix would still S-curve it)
+    if (hK > 0.001) {
+      float hD = reduxLuma(texture2D(uAlbD, uv * 0.210, mipB).rgb) - reduxLuma(texture2D(uAlbD, uv * 0.210, 7.0).rgb);
+      fD = reduxHeightMix(fD, hBase, hD, hK);
+      hBase = mix(hBase, hD, fD);
+    }
   }
   a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), fD); n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
@@ -3313,7 +3317,7 @@ void splatCompute() {
     }
     // round 73: the rock border is a height transition too — the outcrop's high faces clear the turf or the snow,
     // its seams stay buried
-    {
+    if (hK > 0.001) {
       float hR = reduxLuma(aR.rgb) - reduxLuma(texture2D(uAlbR, uv * 0.155, 7.0).rgb);
       fR = reduxHeightMix(fR, hBase, hR, hK * 0.8);
       hBase = mix(hBase, hR, fR);
