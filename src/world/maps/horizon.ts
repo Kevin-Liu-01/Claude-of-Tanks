@@ -2432,6 +2432,8 @@ interface HorizonTreelineContext {
   faceBelts: boolean;
   /** Round 72: the vista's haze multiplier (uVHaze), so the skyline ribbons haze like the surface under them. */
   hazeAmp?: number;
+  /** Round 72: true when the ring renders the vista program (the bake is tone only). */
+  vista?: boolean;
 }
 
 export const HORIZON_TREELINE_MAX_BELTS = 20;
@@ -2472,7 +2474,7 @@ export function selectHorizonFaceBeltRows(rows: readonly HorizonRingRow[]): numb
 function addHorizonTreeline({
   mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
   maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, style, sun, forestCover, seaOpenings, sea,
-  base, forest, faceBelts, hazeAmp = 0.9,
+  base, forest, faceBelts, hazeAmp = 0.9, vista = false,
 }: HorizonTreelineContext): void {
   const N = HORIZON_SEGMENTS;
   // round 47: no canopy on a marine vertex whichever rule made it marine (bay contour or sector)
@@ -2558,7 +2560,10 @@ function addHorizonTreeline({
         const hazeRow = Math.min(1, Math.max(0, (row.r - 430) / 900));
         const hazeS = hazeRow * hazeRow * (3 - 2 * hazeRow);
         const hz = Math.min(0.94, (0.05 + hazeS * hazeS * 0.34) * hazeAmp + 0.10 + layer * 0.11);
-        const light = 1.7 - layer * 0.08;
+        // Round 72: on a vista ring the bake is tone only (the fragment lights the surface), so the ribbon takes
+        // the vista's own sky-plus-sun term (about 0.9 of the albedo) over the atlas's 0.22 mean — at the old 1.7 the
+        // ribbons stood dark over the boosted, hazed crests, floating bands with nothing under them
+        const light = (vista ? 3.0 : 1.7) - layer * 0.08;
         let cr = Math.min(1.9, col[i * 3] * light);
         let cg = Math.min(1.9, col[i * 3 + 1] * light);
         let cb = Math.min(1.9, col[i * 3 + 2] * light);
@@ -3100,6 +3105,7 @@ export function* buildHorizonRingSteps(
     base, forest: forestC,
     faceBelts: H.faceBelts === true,
     hazeAmp: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
+    vista,
   });
   return mesh;
 }
