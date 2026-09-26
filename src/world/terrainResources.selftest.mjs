@@ -4,14 +4,15 @@ import { buildTerrainMeshes, createLayout } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { disposeObject3DResources, releaseObject3DGpuResources } from '../engine/resourceLifetime.ts';
 
-// round 72b (2026-09-25): the horizon ring's surface atlas binding (a 1 x 1 neutral texel until the ring binds its bake)
-const textureUniformNames = ['uAlbG', 'uAlbD', 'uAlbR', 'uAlbM', 'uNrmG', 'uNrmD', 'uNrmR', 'uNrmM', 'uMask', 'uNoise', 'uRingRelief'];
+// round 72b (2026-09-25): the horizon ring's surface atlas adds NO binding — the program is at the 16-unit limit; the ring bands' draw
+// swaps the atlas into uNrmM's unit and back (horizonAutumnGround.ts), so the material owns the same ten textures as before
+const textureUniformNames = ['uAlbG', 'uAlbD', 'uAlbR', 'uAlbM', 'uNrmG', 'uNrmD', 'uNrmR', 'uNrmM', 'uMask', 'uNoise'];
 function ownedTextureBindings(uniforms) {
   const bindings = Object.entries(uniforms).filter(([, uniform]) => uniform.value?.isTexture);
   assert.deepEqual(bindings.map(([name]) => name).sort(), [...textureUniformNames].sort(),
-    'exactly eight surface maps + mask + noise + the ring atlas (round 72b), with no missing or extra texture binding');
+    'exactly eight surface maps + mask + noise, with no missing or extra texture binding (round 72b: the ring atlas is not a binding)');
   const textures = textureUniformNames.map(name => uniforms[name].value);
-  assert.equal(new Set(textures).size, 11, 'all eleven hidden texture bindings have distinct identities (round 72b: the ring atlas)');
+  assert.equal(new Set(textures).size, 10, 'all ten hidden texture bindings have distinct identities');
   return textures;
 }
 

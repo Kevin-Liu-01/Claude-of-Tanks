@@ -119,6 +119,6 @@ assertTerrainFetchExpressionCensus(source);
 assert.deepEqual(source.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
 assert.match(source, /uniform float [^;]*\buWornDirtStrength\b[^;]*;/, 'exactly one new scalar uniform, not a sampler');
 assert.equal((source.match(/shader\.uniforms\.uWornDirtStrength\s*=/g) ?? []).length, 1);
-assert.match(source, /world-terrain-splat-v40/, 'material-owned detail advances the fragment program key'); // relief pass 2 (2026-09-12); round 49 (2026-09-23): v38 jointed strata; round 55 (2026-09-24): v39 analytic wall crag on the bedded maps
+assert.match(source, /world-terrain-splat-v41/, 'material-owned detail advances the fragment program key'); // relief pass 2 (2026-09-12); round 49 (2026-09-23): v38 jointed strata; round 55 (2026-09-24): v39 analytic wall crag on the bedded maps
 assert.deepEqual(MAP_IDS.map(id => stringify(getMapConfig(id))), before, 'projections and controls never mutate live authoring');
 console.log('terrainWornDirt: coastal-only authored blend, 810 scalar combinations, legacy dry response, protected coverage and mutation/resource gates PASS');

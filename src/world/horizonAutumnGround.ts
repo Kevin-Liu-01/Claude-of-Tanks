@@ -1,4 +1,4 @@
-import { Color, type Material, type Mesh, type MeshStandardMaterial, type Texture, type Vector3 } from 'three';
+import { Color, type Material, type Mesh, type MeshStandardMaterial, type Texture, type Vector3, type WebGLRenderer } from 'three';
 
 const RETAINED = new WeakMap<Mesh, Texture[]>();
 /** Keep the existing live ownership array, including the original detail atlas. */
@@ -51,7 +51,7 @@ export function bindAutumnHorizonGround(
   for (const texture of textures) if (!retained.includes(texture)) retained.push(texture);
   RETAINED.delete(mesh);
   refreshHorizonGroundTone(mesh, textures[0], textures[4]);
-  bindRingReliefAtlas(vistaMaterial, material);
+  bindRingReliefAtlas(mesh, vistaMaterial, material);
 }
 
 /**
@@ -59,19 +59,38 @@ export function bindAutumnHorizonGround(
  * material as uVRelief) — the same texture object, radius window and gradient scale, so the first ridge and the ranges
  * behind it carry one relief; the uniform objects were created with the material, so a bind after its compile reaches
  * the program. A ring without a bake (the mobile tier) leaves the amplitude at 0.
+ *
+ * The terrain program has no sampler unit to spare (it sits at MAX_TEXTURE_IMAGE_UNITS = 16), so the atlas takes the
+ * M (marsh/ice) normal's unit for the bands' draw only: the ring's onBeforeRender points that uniform at the atlas and
+ * raises uRingDraw, onAfterRender puts the marsh normal back. three re-uploads a material's uniforms only when the
+ * program or material changes between draws — the bands draw right after the square's chunks with the same material —
+ * so both hooks drop the bound program (renderer.state.useProgram(null)) to force the upload for the bands' draw and
+ * for whatever the same material draws next. Two forced refreshes per pass; no allocation.
  */
-function bindRingReliefAtlas(vistaMaterial: Material, terrainMaterial: Material): void {
+function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMaterial: Material): void {
   const vista = vistaMaterial.userData.horizonVista as VistaMaterialData | undefined;
   const ring = terrainMaterial.userData.ringReliefUniforms as Record<string, { value: unknown }> | undefined;
   if (!vista || !ring) return;
   const amp = vista.uniforms.uVReliefAmp?.value as number | undefined;
   const texture = vista.uniforms.uVRelief?.value as Texture | undefined;
   if (!amp || !texture) return;
-  ring.uRingRelief.value = texture;
   const window = vista.uniforms.uVReliefR?.value as { x: number; y: number } | undefined;
   if (window) (ring.uRingReliefR.value as { set(x: number, y: number): void }).set(window.x, window.y);
   ring.uRingReliefGrad.value = vista.uniforms.uVReliefGrad?.value ?? 1;
   ring.uRingReliefAmp.value = amp;
+  const swap = ring.uNrmM, draw = ring.uRingDraw, marshNormal = swap.value;
+  const before = mesh.onBeforeRender;
+  mesh.onBeforeRender = function (this: Mesh, renderer, scene, camera, geometry, material, group) {
+    before.call(this, renderer, scene, camera, geometry, material, group);
+    if (material !== terrainMaterial) return;
+    swap.value = texture; draw.value = 1;
+    (renderer as WebGLRenderer).state.useProgram(null as unknown as WebGLProgram);
+  };
+  mesh.onAfterRender = (renderer, _scene, _camera, _geometry, material) => {
+    if (material !== terrainMaterial) return;
+    swap.value = marshNormal; draw.value = 0;
+    (renderer as WebGLRenderer).state.useProgram(null as unknown as WebGLProgram);
+  };
 }
 
 interface VistaMaterialData { uniforms: Record<string, { value: unknown }>; base: Color }

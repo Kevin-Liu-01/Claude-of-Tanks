@@ -30,7 +30,7 @@ assert.ok(gain >= 4 && gain <= 10, `the default gain sits in the measured band (
 assert.ok(source.includes('shader.uniforms.uWallSkyLift = { value: S.wallSkyLift ?? WALL_SKY_LIFT };'),
   'a map may author its own gain through splat.wallSkyLift');
 assert.ok(/wallSkyLift\?: number;/.test(source), 'SplatConfig declares wallSkyLift');
-assert.ok(source.includes("mat.customProgramCacheKey = () => 'world-terrain-splat-v40';"), // round 55 (2026-09-24): v39
+assert.ok(source.includes("mat.customProgramCacheKey = () => 'world-terrain-splat-v41';"), // round 55 (2026-09-24): v39
   'the program cache key moved with the fragment change');
 
 // 4. The sun direction matches the vista ring's formula (horizon.ts): azimuth from +z toward +x, elevation up.
