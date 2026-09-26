@@ -320,6 +320,10 @@ uniform float uVDayDiffuse;
 uniform vec2 uVRockSlope;
 uniform float uVBareRock; // round 49: bare upper slopes above the treeline (heath, outcrop ribs, scree)
 uniform float uVOutcrop;  // round 55: gneiss knobs and scree through the turf on the steeper faces below the treeline
+// round 72: the baked surface atlas (angle x radius: fine gradient, occlusion, sun visibility), its radius window
+// (r0, 1 / span) and gradient scale, the sky's chroma for the shaded faces and the snow glint amplitude
+uniform sampler2D uVRelief; uniform vec2 uVReliefR; uniform float uVReliefGrad; uniform float uVReliefAmp;
+uniform float uVAoStrength; uniform float uVShadow; uniform vec3 uVSkyTint; uniform float uVSparkle;
 `;
 
 /**
@@ -346,6 +350,19 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   // outland, the sand pans) resolves the 12 m fields, the 12 m ground tile and the screen-derivative bump into a
   // regular moiré carpet the battlefield never shows. A flat far floor keeps only the broad fields and its tone.
   float floorW = smoothstep(0.90, 0.98, n0.y) * smoothstep(120.0, 420.0, vHDist);
+  // Round 72 (owner 2026-09-25, "the mountains look so flat and untextured"): the surface atlas baked over the
+  // finished ring (horizonRelief.ts) — read by the ring's own u (the angle, ten repeats across the seam column)
+  // and the fragment's radius. Its gradient is the fine relief the mesh cannot carry, added to the geometric slope
+  // in the height-field frame (both are world-xz gradients, so the sum is exact); its occlusion darkens the
+  // valleys and the foot of the crests; its sun visibility lays the ridges' shadows over the ranges behind them.
+  vec4 relief = vec4(0.5, 0.5, 1.0, 1.0);
+  if (uVReliefAmp > 0.001) relief = texture2D(uVRelief, vec2(vMapUv.x * 0.1, (radius - uVReliefR.x) * uVReliefR.y));
+  float reliefLand = (1.0 - floorW) * (1.0 - horizonMarine) * uVReliefAmp;
+  vec2 gd = (relief.xy * 2.0 - 1.0) * uVReliefGrad * reliefLand;
+  vec2 g0 = -n0.xz / max(n0.y, 0.05);
+  vec3 nR = normalize(vec3(-(g0.x + gd.x), 1.0, -(g0.z + gd.z)));
+  float ao = 1.0 - (1.0 - relief.z) * uVAoStrength * reliefLand;
+  float sunVis = 1.0 - (1.0 - relief.w) * uVShadow * reliefLand;
   vec3 aw = abs(n0);
   aw /= (aw.x + aw.y + aw.z);
   #define VTRI(tex, s, o) (texture2D(tex, P.xz * (s) + (o)) * aw.y \
@@ -356,7 +373,8 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   float nC = VTRI(uDetail2, 0.0071, vec2(0.29, 0.53)).r - 0.5;
   float nD = (VTRI(uDetail2, 0.0230, vec2(0.71, 0.19)).r - 0.5) * (1.0 - floorW);
   float nE = (VTRI(uDetail2, 0.0850, vec2(0.11, 0.83)).r - 0.5) * (1.0 - floorW);
-  float slope = 1.0 - clamp(n0.y, 0.0, 1.0);
+  // round 72: the material reads the slope of the relieved surface, so rock breaks through on the fine faces too
+  float slope = 1.0 - clamp(mix(n0.y, nR.y, 0.75), 0.0, 1.0);
   // Round 29: a wall is a genuinely steep face — iron staining, desert varnish and gullies belong to walls.
   float wall = smoothstep(0.30, 0.62, slope + nD * 0.06);
   // Round 35 (owner 2026-09-21, "the sides of mountains … look so so bare"): a moderate rock slope is a ledge slope —
@@ -486,16 +504,30 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   vec3 r1 = cross(dpy, n0), r2 = cross(n0, dpx);
   float det = dot(dpx, r1);
   vec3 surfGrad = sign(det) * (dhx * r1 + dhy * r2);
-  vec3 n = normalize(abs(det) * n0 - surfGrad * uVBump * 22.0 * (1.0 - floorW));
+  // round 72: the metre-scale bump rides on the relieved normal (the baked fine relief over the geometric slope)
+  vec3 n = normalize(abs(det) * nR - surfGrad * uVBump * 22.0 * (1.0 - floorW));
   float ndl = dot(n, uSunDirW);
   float sunL = max(ndl, 0.0);
   float sky = 0.55 + 0.45 * clamp(n.y, 0.0, 1.0);
   // cavity: seams, gullies and the shaded side of talus blocks read darker than the open face
   float cavity = 1.0 - (gully * 0.35 + seam * 0.22) * rockW * macroFade - talusW * 0.10 * clamp(0.5 - nD, 0.0, 1.0) * fineW;
-  vec3 lit = col * (uVAmbient * sky + uVSunGain * sunL) * cavity;
-  lit = mix(lit, lit * vec3(0.90, 0.94, 1.08), max(-ndl, 0.0) * 0.35);
+  // Round 72: a face turned from the sun takes the sky's own colour (uVSkyTint, the fog tint's chroma) instead of
+  // a grey — blue-grey under a clear sky, warm grey under an overcast — the occlusion darkens the valleys and the
+  // foot of the crests, and the baked sun visibility lays the ridges' shadows across the ranges behind them
+  float turned = smoothstep(0.05, -0.35, ndl);
+  vec3 skyLight = mix(vec3(1.0), uVSkyTint, 0.55 * turned + 0.25 * (1.0 - sky));
+  vec3 lit = col * (uVAmbient * sky * ao * skyLight + uVSunGain * sunL * sunVis * (0.6 + 0.4 * ao)) * cavity;
+  lit = mix(lit, lit * vec3(0.92, 0.95, 1.06), max(-ndl, 0.0) * 0.2);
   // canopy self-shadow: stands darken on their shaded side a little more than open ground
   lit *= 1.0 - forestW * 0.10 * (1.0 - sunL);
+  // round 72: snow glints at a grazing sun — a sparse world-anchored hash picks the crystals, the sun's mirror
+  // direction against the eye lights them, only where the fine fields still resolve (fineW) and the sun reaches
+  if (uVSparkle > 0.001 && snowW > 0.05 && fineW > 0.01) {
+    vec3 viewDir = normalize(cameraPosition - P);
+    float glintH = fract(sin(dot(floor(P.xz * 2.5) + floor(P.y * 2.5), vec2(12.9898, 78.233))) * 43758.5453);
+    float glint = step(0.972, glintH) * pow(max(dot(reflect(-uSunDirW, n), viewDir), 0.0), 40.0);
+    lit += uVSnowColor * glint * snowW * uVSparkle * fineW * sunVis * 2.5;
+  }
   // Round 29 (2026-09-20): the tints above are ABSOLUTE linear colours (the map's own ground albedo mean, rock,
   // forest and snow colours), so the baked biome tone and the vertex colour — both base-hued — are divided back
   // out here (color_fragment multiplies vColor again) and only the vertex bake's altitude shade is kept. Until

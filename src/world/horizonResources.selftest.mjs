@@ -243,8 +243,14 @@ function assertVistaSurfaceShader(shader, normals, label) {
     `${label}: the legacy oblique overlay, wall repair and altitude stripes are gone from the vista program`);
   assert.equal((fragment.match(/#include <map_fragment>/g) ?? []).length, 1,
     `${label}: one biome lookup remains`);
-  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 3,
-    `${label}: the world projection macro is the only fetch site (three plane fetches)`);
+  // round 72 (2026-09-25): the baked surface atlas (horizonRelief.ts) is the one fetch outside the projection macro
+  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 4,
+    `${label}: the world projection macro's three plane fetches plus the relief atlas fetch are the only fetch sites`);
+  assert.match(fragment, /texture2D\(uVRelief, vec2\(vMapUv\.x \* 0\.1, \(radius - uVReliefR\.x\) \* uVReliefR\.y\)\)/,
+    `${label}: the relief atlas is read by the ring's own angle u and the fragment's radius (round 72)`);
+  for (const term of ['vec3 nR = normalize', 'float ao = 1.0 - (1.0 - relief.z)', 'float sunVis = 1.0 - (1.0 - relief.w)', 'vec3 skyLight = mix(vec3(1.0), uVSkyTint', 'float glint =']) {
+    assert.ok(fragment.includes(term), `${label}: round 72 surface carries ${term}`);
+  }
   assert.equal((fragment.match(/VTRI\(/g) ?? []).length, 13,
     `${label}: four noise scales and five material tiles share the one macro (twenty-seven fetches per fragment), plus the round-29 near fields and near ground fetch inside the 380 m branch`);
   assert.match(fragment, /float wall = smoothstep\(0\.30, 0\.62, slope \+ nD \* 0\.06\);/, `${label}: staining, varnish and gullies are gated to genuinely steep faces (round 29)`);
@@ -256,7 +262,8 @@ function assertVistaSurfaceShader(shader, normals, label) {
   }
   assert.match(fragment, /if \(nearW > 0\.002\) \{/, `${label}: the near fields are skipped past 380 m`);
   for (const uniform of ['uVMeadow', 'uVCanopy', 'uVRock', 'uVScree', 'uVSnow', 'uVMeadowTint', 'uVRockTint', 'uVScreeTint',
-    'uVRockSlope', 'uVBanding', 'uVHaze', 'uVFogTint', 'uVAmbient', 'uVSunGain']) {
+    'uVRockSlope', 'uVBanding', 'uVHaze', 'uVFogTint', 'uVAmbient', 'uVSunGain',
+    'uVRelief', 'uVReliefR', 'uVReliefGrad', 'uVReliefAmp', 'uVAoStrength', 'uVShadow', 'uVSkyTint', 'uVSparkle']) { // round 72
     assert.match(fragment, new RegExp(`uniform [a-zA-Z0-9]+ ${uniform};`), `${label}: ${uniform} is declared`);
   }
   assert.match(fragment, /dFdx\(hb\)/, `${label}: relief shading takes a screen-derivative bump from the fine fields`);
@@ -299,9 +306,9 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // Titan's subsequent finite-cap restoration has an explicit false authoring
 // override; titanGorgeHorizon.selftest guards its current shape and every byte.
 const currentPoldersReceipts = new Map([
-  [1337, '9f3181ff1081ae9db1a750f6db1348bb711a254025c33dbec919a72bebd2dd6c' /* 2026-09-19 vista pass */],
-  [2049, 'f19289db3552c4367d00f45405b5cd2f67dd7d816b53a7affcc3b256da3f81f7'],
-  [7719, '154ff1d3794bdfefa68019aeffe5476d9651313036a0281e13a58d33068d8360'],
+  [1337, '8b5be1010b944b583b8046e58f5c87d638123fda626846baa9cabd1b56fba37d' /* 2026-09-19 vista pass */],
+  [2049, 'b9d84d1057f626497515258b78c7c243bc9362af85a381a189076a957d896d24'],
+  [7719, 'd7a47587b4bd9fe0eed435305cd9df69e55919e796ccdff73ca73dcba49d0fb3'],
 ]);
 function assertCurrentPolders(ring, config, seed) {
   assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
@@ -324,9 +331,9 @@ const unrelatedMutation = createHash('sha256');
 // 2026-09-19 vista pass: 431 columns, the denser row ladder (18 / 36 rows), the seated skirt and the ridged
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
 const unchangedReceipts = [
-  'ce6efe2d96b72c5c822f1281f094d65930bd1926506715336c320ac6df925b64',
-  '5a8e22881aff29d369e5d622cf82686736826838855e9d5d37f59958edaeac12',
-  'a41fb956e3f768d671087537eb4aaac045d1cba3bf87f94974133094d188b908',
+  '58bb7c6f6388cb896316fe3321397c89887275367bc479d9cf66eea339e851a9',
+  '4b78b045747ddd52c0d58c3a6735504258e53a2c09f751f97ce4c833b5a5b44d',
+  '473f97cf62b61da381c0f0b585a06fcc2d5ba83c38a10f61b1bc71c732ef712f',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
@@ -394,7 +401,10 @@ try {
 }
 // The previous mesh spent 287 * (9 radial + 2 skirt + 7*5 profile
 // + 24*3 subdivision) queries. Setbacks and rounded slopes reuse that budget.
-assert.equal(geometryNoiseCalls, 66374, 'the landform correction adds no geometry noise calls');
+// Round 72 (2026-09-25): the coarse relief field (horizonRelief.ts: two warp samples and three ridged octaves) is
+// read once per authored non-skirt vertex and once per interpolated vertex, where it replaces the 260 m ridged term
+// — 66,374 -> 139,527 on the alpine ladder; the ring is still built in about 20 ms.
+assert.equal(geometryNoiseCalls, 139527, 'the relief field spends exactly its authored and interpolated queries (round 72)');
 try {
   geometryNoiseCalls = 0;
   SimplexNoise.prototype.noise = function (...coordinates) {
@@ -406,8 +416,9 @@ try {
   SimplexNoise.prototype.noise = originalNoise;
 }
 // round 47: 431 * (2 skirt * 2 + 7 authored * (1 radial + 6 profile)) + 21 interpolated rows * 431 * 4 = 59047 (was 34480)
-assert.equal(geometryNoiseCalls, 59047,
-  'the mesa stack spends exactly its nine authored rows and 21 subdivision rows of noise queries');
+// round 72: + 431 * (7 authored + 21 interpolated) * 5 relief-field queries = 121,856 (see the fjord budget above)
+assert.equal(geometryNoiseCalls, 121856,
+  'the mesa stack spends exactly its nine authored rows and 21 subdivision rows of noise queries (round 72: with the relief field)');
 
 // Rasterization is deliberately outside this headless lifetime test. The
 // backdrop's real pixel bake still executes against a minimal canvas surface.
@@ -520,8 +531,9 @@ try {
     detail.addEventListener('dispose', () => { releases++; });
 
     const suspended = releaseObject3DGpuResources(mesh, { releaseMaterials: false });
-    assert.equal(suspended.textures, 2 + VISTA_TILES,
-      `${style}: suspension finds the map, the hidden detail texture and the six vista tiles (round 29 adds the sand tile)`);
+    // round 72: the baked relief atlas (horizonRelief.ts) is the ring's ninth retained texture
+    assert.equal(suspended.textures, 3 + VISTA_TILES,
+      `${style}: suspension finds the map, the hidden detail texture, the six vista tiles (round 29 adds the sand tile) and the relief atlas (round 72)`);
     assert.equal(suspended.materials, 0,
       `${style}: GPU suspension preserves compiled materials for a covered return`);
     assert.equal(releases, 1, `${style}: the shader-only detail texture releases its GPU backing`);
@@ -531,10 +543,12 @@ try {
       `${style}: suspension does not replace the shader's texture reference`);
 
     const disposed = disposeObject3DResources(mesh);
-    assert.equal(disposed.textures, 2 + VISTA_TILES, `${style}: eviction owns the baked textures and the vista tiles`);
-    assert.equal(disposed.materials, 1, `${style}: eviction owns one material`);
+    assert.equal(disposed.textures, 3 + VISTA_TILES, `${style}: eviction owns the baked textures, the vista tiles and the relief atlas (round 72)`);
+    assert.equal(disposed.materials, 2, `${style}: eviction owns the ring's material and the far range's (round 72)`);
     assert.equal(releases, 2, `${style}: final eviction reaches the shader-only texture`);
-    assert.equal(mesh.children.length, 0, `${style}: bare backdrops add no draw calls`);
+    // round 72: the far range (horizonFarRange.ts) is the one child of a bare backdrop — one unlit draw
+    assert.equal(mesh.children.length, 1, `${style}: a bare backdrop carries only its far range`);
+    assert.equal(mesh.children[0].name, 'horizon-far-range', `${style}: the child is the far range`);
   }
 
   const coastal = buildHorizonRing(null, {
@@ -616,7 +630,7 @@ try {
     assert.ok(forest.userData.horizonForest.near > 100, `${mapId}: the rim band carries the rich near species (${forest.userData.horizonForest.near})`);
     assert.ok(forest.children.some((child) => child.castShadow) && forest.children.every((child) => !child.receiveShadow),
       `${mapId}: near band casts, no crown receives`);
-    assert.equal(mesh.children.length, 2, `${mapId}: the treeline ranks and the ring forest are the only children`);
+    assert.equal(mesh.children.length, 3, `${mapId}: the far range, the treeline ranks and the ring forest are the only children (round 72)`);
     const layers = config.horizon.treelineLayers ?? 1;
     const position = treeline.geometry.attributes.position;
     const indices = treeline.geometry.index;
@@ -657,8 +671,8 @@ try {
     assert.ok(connected > (columns - 1) * layers * 0.75 && longestRun >= 12,
       `${mapId}: same-ridge crowns remain continuous forest clusters, not isolated trees`);
     const disposed = disposeObject3DResources(mesh);
-    assert.equal(disposed.textures, 3 + VISTA_TILES, `${mapId}: the mountain textures, the vista tiles and the one treeline atlas dispose`);
-    assert.equal(disposed.materials, 3, `${mapId}: mountain, treeline and ring-forest materials dispose together`);
+    assert.equal(disposed.textures, 4 + VISTA_TILES, `${mapId}: the mountain textures, the vista tiles, the relief atlas and the one treeline atlas dispose`);
+    assert.equal(disposed.materials, 4, `${mapId}: mountain, far-range, treeline and ring-forest materials dispose together (round 72)`);
   }
 
   // Round 29 (owner 2026-09-20, Redrock Divide: "see where the texture just stops"): the first exposed row is seated

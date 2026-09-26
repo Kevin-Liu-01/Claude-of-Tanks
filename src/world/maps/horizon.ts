@@ -37,6 +37,11 @@ import { registerRetainedObject3DResources } from '../../engine/resourceLifetime
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
+import {
+  type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefField, type HorizonReliefSettings,
+  bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
+} from '../horizonRelief.ts';
+import { buildHorizonFarRange } from '../horizonFarRange.ts';
 import { type SeaOpening, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorBlend } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -75,6 +80,11 @@ interface HorizonConfig {
   /** Round 55: 0..1 — below the treeline, gneiss knobs and slabs stand through the turf on the steeper faces (the
    * 25–45° ridge fronts of the softened domes) inside a halo of scree (Fjord). Default 0: the ring is untouched. */
   outcrops?: number;
+  /** Round 72: the mountain character of the ring's relief and its far range (horizonRelief.ts); resolved from the
+   * map identity and the style when unset. */
+  relief?: HorizonReliefCharacter;
+  /** Round 72: false keeps the far range (the peaks behind the ring, 1.9–3.3 km out) off this map. */
+  farRange?: boolean;
   seaOpening?: HorizonSeaOpening;
   /**
    * Terrain-following canopy belts across the visible mountain faces. Off by
@@ -1086,13 +1096,17 @@ function buildInitialHorizonGeometry(
   profile: HorizonProfile,
   noise: SimplexNoise,
   amp: number,
+  relief: HorizonReliefField | null = null,
 ): HorizonRingGeometry {
   const positions = new Float32Array(HORIZON_SEGMENTS * rows.length * 3);
   const heights = new Float32Array(HORIZON_SEGMENTS * rows.length);
   const margins = horizonRowMargins(rows.length, style);
   let maxHeight = 1;
+  // Round 72: the map's amplitude scales the coarse relief with the ranges it stands on
+  const reliefScale = clamp(amp, 0.5, 1.6);
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
     const row = rows[rowIndex];
+    const authoredRank = rows.slice(0, rowIndex).filter((r) => !r.skirt).length;
     for (let segment = 0; segment < HORIZON_SEGMENTS; segment++) {
       const angle = (segment / HORIZON_SEGMENTS) * Math.PI * 2;
       const rim = HORIZON_RIM_HALF_WIDTH
@@ -1107,6 +1121,11 @@ function buildInitialHorizonGeometry(
         sin * 4 - rowIndex * 7,
       );
       let height = sampleRingRowHeight(row, angle, noise, profile) * amp;
+      // Round 72 (owner 2026-09-25, "the mountains look so flat"): the coarse relief field (horizonRelief.ts, a
+      // ridged multifractal over a warped world plane) displaces every authored range — peaks, spurs and saddles
+      // along each row that also vary with the radius, since the field is one plane — the first ridge at 60 % so the
+      // seated foothill behind the rim keeps its hillside grade, the ranges beyond in full; the skirt rows are untouched
+      if (relief && !row.skirt) height += relief.low(cos * radius, sin * radius) * (authoredRank === 0 ? 0.6 : 1) * reliefScale;
       // Retain the old 3% range meander while bounding it against folds at
       // square corners. This preserves the 1049 composition without letting
       // a newer map seed invert an annular strip.
@@ -1199,6 +1218,7 @@ function appendInterpolatedRingRow(
   subdivision: number,
   divisions: number,
   style: HorizonStyle,
+  relief: HorizonReliefField | null = null,
 ): void {
   const fraction = subdivision / divisions;
   const shoulder = Math.sin(fraction * Math.PI);
@@ -1225,7 +1245,11 @@ function appendInterpolatedRingRow(
     // Vista pass (2026-09-19): ridged fBm instead of two smooth octaves — spurs and gullies run down the faces
     // (about 260 m and 90 m apart) with 30 m knobs between them, at amplitudes the denser row ladder can carry.
     const ridged = (n: number): number => 1 - Math.abs(n);
-    const e1 = ridged(noise.noise(x * 0.0038 + 17.1, z * 0.0038 - 11.3)) - 0.5;
+    // Round 72: the coarse relief field (the same plane the authored rows carry, horizonRelief.ts) takes the 260 m
+    // term's place, so the spurs and gullies between two rows continue the ranges' own ridgelines instead of a
+    // separate field; the 90 m and 30 m knobs stay
+    const e1 = relief ? clamp(relief.low(x, z) / Math.max(1, relief.settings.lowAmpM), -0.6, 0.6)
+      : ridged(noise.noise(x * 0.0038 + 17.1, z * 0.0038 - 11.3)) - 0.5;
     const e2 = ridged(noise.noise(x * 0.011 - 41, z * 0.011 + 23)) - 0.5;
     const e3 = noise.noise(x * 0.031 + 7.3, z * 0.031 - 3.9);
     const crag = e1 * 0.62 + e2 * 0.38 + e3 * 0.22;
@@ -1251,6 +1275,7 @@ function subdivideHorizonGeometry(
   source: HorizonRingGeometry,
   style: HorizonStyle,
   noise: SimplexNoise,
+  relief: HorizonReliefField | null = null,
 ): HorizonRingGeometry {
   const rows: HorizonRingRow[] = [];
   const positions: number[] = [];
@@ -1267,7 +1292,7 @@ function subdivideHorizonGeometry(
     for (let subdivision = 1; subdivision < divisions; subdivision++) {
       rows.push(interpolatedHorizonRow(source.rows[rowIndex], next, subdivision / divisions));
       appendInterpolatedRingRow(positions, heights, source, noise, rowIndex, subdivision,
-        divisions, style);
+        divisions, style, relief);
     }
   }
   return {
@@ -1484,6 +1509,15 @@ function usesFiniteTableCaps(horizon: HorizonConfig, mapId: string, style: Horiz
     && (mapId === 'skybridge' || mapId === 'copper_mesa' || mapId === 'titan_gorge');
 }
 
+/**
+ * Round 72: the map's relief field for the ring geometry — null on Redrock, whose outland is the analytic canyon
+ * (horizonRedrock.ts overwrites every row) and stays byte-identical; the bake still reads a field there.
+ */
+function resolveHorizonReliefFieldFor(horizon: HorizonConfig, mapId: string, seed: number): HorizonReliefField | null {
+  if (mapId === 'badlands' && horizon.redrockCanyon !== false) return null;
+  return createHorizonReliefField(((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0, resolveHorizonRelief(resolveHorizonReliefCharacter(horizon, mapId)));
+}
+
 /** Actual geometry without texture baking, for full-angle headless audits. */
 export function sampleHorizonGeometry(
   cfg: HorizonMapConfig | null | undefined, seed: number, ground?: CanyonGround,
@@ -1492,11 +1526,12 @@ export function sampleHorizonGeometry(
   const mapId = cfg?.id ?? 'verdant';
   const style = resolveHorizonStyle(horizon, mapId);
   const noise = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
+  const relief = resolveHorizonReliefFieldFor(horizon, mapId, seed);
   const source = buildInitialHorizonGeometry(
     horizonRows(style, mapId),
-    style, PROFILES[style], noise, horizon.amp ?? 1,
+    style, PROFILES[style], noise, horizon.amp ?? 1, relief,
   );
-  const ring = subdivideHorizonGeometry(source, style, noise);
+  const ring = subdivideHorizonGeometry(source, style, noise, relief);
   const openings = resolveSeaOpenings(horizon.seaOpening, ground, mapId);
   if (mapId === 'badlands' && horizon.redrockCanyon !== false) shapeRedrockOutland(ring, ground);
   else if (mapId === 'autumn' && ground) seatHorizonTerrainSeam(ring, ground);
@@ -1904,6 +1939,23 @@ interface HorizonMaterialContext {
   bareRock: number;
   /** Round 55: knobs and scree through the turf on the steeper faces below the treeline, 0..1. */
   outcrops: number;
+  /** Round 72: the baked surface atlas (null on the mobile tier) and the map's relief character. */
+  relief: { bake: HorizonReliefBake | null; settings: HorizonReliefSettings };
+}
+
+/** Round 72: the surface atlas as a GPU texture — linear data, angle repeats, radius clamps, mips for the far rows. */
+function makeReliefTexture(bake: HorizonReliefBake): THREE.DataTexture {
+  const texture = new THREE.DataTexture(bake.data, bake.width, bake.height, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  texture.anisotropy = 4;
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.name = 'horizon-relief';
+  texture.needsUpdate = true;
+  return texture;
 }
 
 // Round 22 near-field surface (see buildHorizonMaterialSteps): runs after the style's map fragment on
@@ -1992,7 +2044,7 @@ float horizonWaterVariation = 0.0;
 
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
-  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops,
+  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops, relief,
 }: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
@@ -2095,7 +2147,24 @@ function* buildHorizonMaterialSteps({
       THREE.MathUtils.clamp(colour.b / Math.max(base.b, 1e-3), lo, hi));
     // Round 29: the vista tints are absolute linear colours (the fragment divides the base-hued bake back out)
     const rockTint = new THREE.Vector3(rock.r, rock.g, rock.b);
+    // Round 72: the baked surface atlas and the sky's chroma for the faces turned from the sun (the fog tint is the
+    // rendered sky's horizon average — blue-grey under a clear sky, warm grey under an overcast — normalised to unit
+    // luminance and pushed a little, since the tint is pale and a shaded face should still read as sky-lit)
+    const reliefTexture = tiles && relief.bake ? makeReliefTexture(relief.bake) : null;
+    if (reliefTexture) retainedTextures.push(reliefTexture);
+    const fogLuma = Math.max(1e-3, fog.r * 0.2126 + fog.g * 0.7152 + fog.b * 0.0722);
+    const skyTint = new THREE.Vector3(
+      1 + (fog.r / fogLuma - 1) * 1.8, 1 + (fog.g / fogLuma - 1) * 1.8, 1 + (fog.b / fogLuma - 1) * 1.8);
     const vistaUniforms: Record<string, THREE.IUniform> = tiles ? {
+      // round 72: the surface atlas (angle x radius), its radius window and gradient scale; 0 amplitude without a bake
+      uVRelief: { value: reliefTexture ?? new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1) },
+      uVReliefR: { value: new THREE.Vector2(relief.bake?.r0 ?? 0, 1 / Math.max(1, (relief.bake?.r1 ?? 1) - (relief.bake?.r0 ?? 0))) },
+      uVReliefGrad: { value: relief.bake?.gradScale ?? 1 },
+      uVReliefAmp: { value: reliefTexture ? 1 : 0 },
+      uVAoStrength: { value: relief.settings.aoStrength },
+      uVShadow: { value: 0.85 },
+      uVSkyTint: { value: skyTint },
+      uVSparkle: { value: snowline <= 1 ? 0.6 : 0 },
       // round 29: arid rings sample the sand tile as their ground layer
       uVMeadow: { value: ground === 'sand' ? tiles.sand : tiles.meadow }, uVCanopy: { value: tiles.canopy }, uVRock: { value: tiles.rock },
       uVScree: { value: tiles.scree }, uVSnow: { value: tiles.snow },
@@ -2127,6 +2196,7 @@ function* buildHorizonMaterialSteps({
       uVDayDiffuse: { value: mat.color.r },
     } : {};
     mat.userData.horizonDetailNoise = detailNoise;
+    mat.userData.horizonDetail2 = detail2; // round 72: the far range's mottle reads the same tile
     if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone(), canopyMean: tiles.canopyMean };
     mat.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, vistaUniforms);
@@ -2704,14 +2774,19 @@ export function* buildHorizonRingSteps(
   // distinct forested ridgelines instead of one continuous slope. Authored
   // mesa cliffs keep their terrace language; alpine massifs need foothills.
   const rows0 = horizonRows(style, mapId);
-  const initialRing = buildInitialHorizonGeometry(rows0, style, profile, noi, amp);
+  // Round 72: the map's mountain character — its coarse relief displaces the rows here, its fine relief, occlusion
+  // and sun shadows are baked into the surface atlas below, and its far range stands behind the ring
+  const reliefCharacter = resolveHorizonReliefCharacter(H, mapId);
+  const reliefSettings = resolveHorizonRelief(reliefCharacter);
+  const reliefField = resolveHorizonReliefFieldFor(H, mapId, seed);
+  const initialRing = buildInitialHorizonGeometry(rows0, style, profile, noi, amp, reliefField);
   yield;
 
   // Authored crests keep their silhouette; inserted shoulders and gullies
   // break the huge planar faces. Rebalancing angular/radial resolution makes
   // room for this relief within the previous vertex AND triangle ceilings.
   // Coastal apertures then lower the same annulus into a sea-level apron.
-  const ring = subdivideHorizonGeometry(initialRing, style, noi);
+  const ring = subdivideHorizonGeometry(initialRing, style, noi, reliefField);
   // Round 40: the authored aperture plus every opening the square's flattened water derives at its edge
   // (round 49: resolved before the seating, whose headland hand-over reads the openings)
   const seaOpenings = resolveSeaOpenings(H.seaOpening, ground, mapId);
@@ -2725,9 +2800,6 @@ export function* buildHorizonRingSteps(
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);
   yield;
-  // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
-  // strata/snow features in the texture land at constant world height
-  // --- vertex shading -------------------------------------------------------
   // Baked, unlit: sun-facing ridge flanks lighter (real azimuth from cfg.sky),
   // steep faces expose rock, snow above the snowline on gentler slopes, forest
   // tint below the treeline, sandstone strata on mesa cliffs, fine albedo
@@ -2740,6 +2812,16 @@ export function* buildHorizonRingSteps(
   const lx = Math.sin(sunAz) * Math.cos(sunEl);
   const ly = Math.sin(sunEl);
   const lz = Math.cos(sunAz) * Math.cos(sunEl);
+  // Round 72: the surface atlas over the finished ring (desktop tier, where the vista program reads it) — the fine
+  // relief's gradient, the occlusion and the sun's visibility across the ranges, in slices like the terrain build
+  const vista = getDeviceTier() !== 'mobile';
+  const bakeField = reliefField ?? createHorizonReliefField(((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0, reliefSettings);
+  const reliefBake: HorizonReliefBake | null = vista ? yield* bakeHorizonReliefSteps({
+    columns: HORIZON_SEGMENTS, rowCount: rows.length, positions: pos, heights: hs, maxHeight: maxH, marine: sea.weight,
+  }, bakeField, [lx, ly, lz]) : null;
+  // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
+  // strata/snow features in the texture land at constant world height
+  // --- vertex shading -------------------------------------------------------
   // SMOOTHED height series for the shading derivatives only (silhouette keeps
   // its sharp vertices): raw per-vertex differences bake into alternating
   // light/dark column striping on the ridge faces.
@@ -2751,7 +2833,6 @@ export function* buildHorizonRingSteps(
   // bakes into exact full-height vertical stripes — the r3 critique's
   // "vertical texture smearing" on the desert canyon walls was these vertex
   // color columns, not the detail texture.
-  const vista = getDeviceTier() !== 'mobile';
   const forestCover = new Float32Array(hs.length);
   const col = buildHorizonColors({
     style, rows, heights: hs, maxHeight: maxH, forestCover, vista,
@@ -2799,6 +2880,7 @@ export function* buildHorizonRingSteps(
     mapId,
     sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
     base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista, ground: vistaGround, bareRock, outcrops,
+    relief: { bake: reliefBake, settings: reliefSettings },
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -2811,7 +2893,23 @@ export function* buildHorizonRingSteps(
   registerRetainedObject3DResources(mesh, { textures: retainedTextures, geometries: retainedRockGeometries });
   // Vista pass: real trees on the near ring faces where the baked stands are dense (desktop tier)
   const ridgeRow = rows.findIndex((row) => !row.skirt && !row.interpolated);
-  mesh.userData.horizonRing = { columns: HORIZON_SEGMENTS, ridgeRow };
+  mesh.userData.horizonRing = {
+    columns: HORIZON_SEGMENTS, ridgeRow,
+    // round 72: the character and the bake's measurements, for the probes and the receipts
+    relief: reliefCharacter, reliefBake: reliefBake ? { width: reliefBake.width, height: reliefBake.height, ...reliefBake.stats } : null,
+  };
+  // Round 72: the far range — the peaks behind the ring (1.9–3.3 km, inside the cloud dome and the camera's far
+  // plane), one unlit vertex-shaded draw with its own aerial perspective; capped under a map's low cloud deck
+  if (vista && H.farRange !== false && reliefSettings.far) {
+    const deckBaseM = (cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM ?? cfg?.sky?.cloudAltM ?? 1400;
+    const farRange = buildHorizonFarRange({
+      seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
+      deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC,
+      treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
+      detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
+    });
+    if (farRange) mesh.add(farRange);
+  }
   // The species mix and crown palettes follow the map's own rim forest (vegetation.ts rimMix / palettes), so the
   // trees over the edge are the same trees as the ones inside it.
   const vegetation = (cfg as {
