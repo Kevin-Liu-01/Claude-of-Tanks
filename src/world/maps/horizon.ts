@@ -2542,7 +2542,11 @@ function addHorizonTreeline({
           Math.sin(a) * 5.3 - ri * 5 - layer * 4.1) * 0.5 + 0.5;
         const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1 - layer * 5.3,
           Math.sin(a) * 19.7 + ri * 11.9 + layer * 8.9) * 0.5 + 0.5;
-        const span = (9 + hn * 7) * (0.94 + Math.min(row.r, 1400) / 7000) * fade *
+        // Round 72: no ribbon on the far crests (aer past 0.3 — the outer rows): the post pass washes those crests to
+        // faint silhouettes and a canopy ribbon there stood over nothing as a floating band; the near and middle
+        // crests, which still read, keep their forest edge
+        const farFade = 1 - smoothstep(0.30, 0.58, row.aer);
+        const span = (9 + hn * 7) * (0.94 + Math.min(row.r, 1400) / 7000) * fade * farFade *
           (0.88 + hn2 * 0.24) * (1 - layer * 0.045) * (1 - seaAt(ri * N + kk, a));
         // All ranks sit just behind the resolved crest. Putting the ribbon on
         // its inner slope lets the ridge's own triangles depth-occlude the
