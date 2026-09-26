@@ -17,6 +17,7 @@ const IDS = ['t64bv1', 't80u', 't80bv', 't90m', 'ua_m1a1_x', 'merkava1b'];
 const ROOT_EXCLUSIONS = new Set([
   'eraVisualBindingReceipt', // The one intentionally omitted diagnostic payload.
   'coreBuildTiming', 'decorBuildMs', 'decorYieldMs', // Measured elapsed time only.
+  'tailBuildTiming', // FSP-01 (2026-09-25): the finisher stage timestamps — measured time only, never structure.
 ]);
 // Three.js allocation identity, event listeners and upload counters are not
 // visual content. These exclusions apply ONLY to resource objects, not metadata
