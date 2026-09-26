@@ -183,10 +183,10 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
     return canvas;
   } };
   try {
-    const mesh = buildHorizonRing(null, getMapConfig('fjord'), 1337);
-    const maxH = mesh.userData.horizonRing.reliefBake ? sampleHorizonGeometry(getMapConfig('fjord'), 1337).maxHeight : 1;
+    const mesh = buildHorizonRing(null, getMapConfig('longleaf'), 1337);
+    const maxH = mesh.userData.horizonRing.reliefBake ? sampleHorizonGeometry(getMapConfig('longleaf'), 1337).maxHeight : 1;
     const forest = mesh.getObjectByName('horizon-forest');
-    assert.ok(forest, 'fjord stands its ring forest');
+    assert.ok(forest, 'longleaf stands its ring forest');
     const m = new Matrix4(), v = new Vector3();
     let range = 0;
     for (const child of forest.children) {
@@ -197,7 +197,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
         assert.ok(v.y + 0.4 <= maxH * 0.5 + 0.01, `range tree below half the ring (${v.y.toFixed(0)} of ${maxH.toFixed(0)})`);
       }
     }
-    assert.ok(range > 50, `the near ranges still carry range-class trees (${range})`);
+    assert.ok(range > 50, `a green map's near ranges still carry range-class trees (${range})`);
     const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <project_vertex>', fragmentShader: '#include <common>\n#include <lights_physical_pars_fragment>\n#include <map_fragment>' };
     forest.userData.horizonForestHook(shader);
     assert.match(shader.fragmentShader, /uniform float uVfMaxH;/, 'the crowns know the ring height');
@@ -215,6 +215,10 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
     // on a boosted alpine ring the resolved skyline is mostly high country, so only the low passes keep a ribbon
     assert.ok(spans >= 10 && spans < HORIZON_SEGMENTS * 0.5, `the low crests keep their ribbon, the high ones lose it (${spans})`);
     assert.ok(mesh.getObjectByName('horizon-far-range'), 'the far range stands behind the ring');
+    // a snow map keeps no range-class trees at all (its faces past the first ridge are pale and washed to the sky)
+    const fjord = buildHorizonRing(null, getMapConfig('fjord'), 1337).getObjectByName('horizon-forest');
+    assert.ok(fjord && fjord.userData.horizonForest.range === 0 && fjord.userData.horizonForest.band > 400,
+      `a snow map's ring forest is its rim band alone (${fjord?.userData.horizonForest.band} band / ${fjord?.userData.horizonForest.range} range)`);
   } finally {
     if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
   }

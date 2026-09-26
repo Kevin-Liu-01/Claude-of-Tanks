@@ -897,10 +897,11 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         const z = positions[i00 * 3 + 2] + (positions[i01 * 3 + 2] - positions[i00 * 3 + 2]) * u + dz * w;
         const y = heights[i00] + (heights[i01] - heights[i00]) * u + (heights[i10] - heights[i00]) * w;
         if (y < 1.0) continue; // the sea aperture
-        // round 72: range-class trees only on the near ranges (inside 880 m) and below half the ring's height — past
-        // that the aerial pass washes a boosted range's face toward the sky while a dark crown keeps a third of its
-        // green, so the crowns floated over pale slopes as dots in the sky (Glacier Pass, Nordhavn, Verdant)
-        if (!band && (y > maxHeight * 0.5 || Math.hypot(x, z) > 880)) continue;
+        // round 72: range-class trees only on the near ranges (inside 880 m), below half the ring's height and never on
+        // a snow map — past that the aerial pass washes a boosted range's face toward the sky while a dark crown keeps
+        // a third of its green, so the crowns floated over pale slopes as dots in the sky (Glacier Pass, Nordhavn,
+        // Verdant); on a snow map every face past the first ridge is that pale, so only the rim band keeps its trees
+        if (!band && (y > maxHeight * 0.5 || Math.hypot(x, z) > 880 || snowline <= 1)) continue;
         if (band && y > maxHeight * 0.5) continue; // and no band tree on a foothill crest that climbs past half the ring
         if (options.clearAt && options.clearAt(x, z) > 0.5) continue; // round 63: the cutting's right-of-way
         const stand = standWeightAt(x, y, z, slope, band);
