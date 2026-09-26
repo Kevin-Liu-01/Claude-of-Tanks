@@ -3551,9 +3551,10 @@ that read as ranges at that distance is the aerial pass's far ceiling, not the r
 lowered here); the skyline ribbons and the ring forest's range-class trees no longer stand on those faces (no ribbon past an
 aerial rank of 0.3 or on a crest above half the ring's height; no range tree past 880 m, above half the ring, or on a
 snow map at all — a canopy ribbon or a dark crown on a washed summit stood over nothing as a floating band or dot,
-and on a snow map every face past the first ridge is that pale; the low near crests keep their forest edge, lit like
-the vista surface, the crowns that remain take the fog by height like the face under them, and the rim band keeps its
-rich near class on every map) — a crown-mass ribbon that takes the crest's own rendered tone is a lane of its own.
+and on a snow map every face past the first ridge is that pale; the outland rockfield's range boulders take the same
+rule — Frosthollow's boosted faces carried them as specks in the sky; the low near crests keep their forest edge, lit
+like the vista surface, the crowns that remain take the fog by height like the face under them, and the rim band keeps
+its rich near class and its near boulders on every map) — a crown-mass ribbon that takes the crest's own rendered tone is a lane of its own.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
