@@ -31,13 +31,18 @@ const original = {
 // 2026-09-23 (owner: "no hidden tanks"): the t72b_1987 (e7d8bce1), t72b3 (a6d86dc3) and jpz_e100 (9c2fc966) donor
 // records retired with the hidden fleet, so their original pins left with them; the three studies' combat donors now
 // resolve through the unregistered donorSpecs.ts templates.
+// 2026-09-25 round 96 (FSP-03 + FSP-05 combined tree on the FSP-06 base): ariete_c1 (e9c14604 → e9af928b), leclerc
+// (900d83c3 → 0d0ed003) and k1a1 (febc57cf → d75c7a71) already read their new fingerprints on the base tree 3db7849c1
+// (FSP-06 0e63f54d6 Italian cable loops, 2afd13e62 Leclerc canvas boot / jerricans, e69803182 K1A1 whip rods — landed
+// without re-pinning this receipt); amx30 (af643005 → c37d8ffd) is FSP-05's closed outer bow nose (misc.ts). All four
+// re-pinned once from the current build.
   ariete_c1:'e9af928b', challenger1:'aa084d4d', leclerc:'0d0ed003',
   chieftain5:'af6150d8', chieftain_mk10:'81cf7e9f', leo2a6:'1f08700c',
-  k1a1:'febc57cf', strv122:'8bc6e141', t62mv1:'35f1a225',
+  k1a1:'d75c7a71', strv122:'8bc6e141', t62mv1:'35f1a225',
   // 2026-09-25 FSP-03: the fleet T-72/T-90 pre-X goldens (t72b3m, t72bu, t90, Burlak, T-90MS) re-pinned once — three fitted return rollers per side again.
   t72b3m:'dbbc46ad',
   t72bu:'404a5f01', t80u:'2b1a556f', type10:'51be775e', type90:'de3a7d14',
-  amx30:'af643005', amx40:'b94b2314',
+  amx30:'c37d8ffd', amx40:'b94b2314',
   t90:'accad0d5', t90a_burlak:'8a91a11d', t90ms:'f03c2eb8',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};

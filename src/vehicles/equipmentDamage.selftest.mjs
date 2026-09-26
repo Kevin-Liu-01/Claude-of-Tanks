@@ -298,7 +298,12 @@ const T90M_REST_REVISIONS = Object.freeze({
   // forwardLampSeat row below stays as the superseded revision, never as an active claim. On the combined
   // round-38 tree (nation wheels, then the flat-ring mouth) that superseded revision is the nation-wheel
   // repin 004121cb…; c711ef48… was the pre-round-38 value.
-  flatRingMouth: 'bec57df3667fe0635565b666398ec61a76e0962b1c23ecf836520242942c89f2',
+  // FSP-03 (2026-09-25, round 96 combined tree; owner: rollers wherever the real vehicle has them): the
+  // T-90M carries three fitted return rollers per side again, so the intact rest digest moved once
+  // (bec57df3… → f09dc473…) and the roller-carried run lifts the calibrated track band 1.3 mm
+  // (combat anatomy tracks.max.y 1.1986 → 1.1999), which moves the t90m armor digest below once
+  // (052be10e… → 1e0c31fe…); getSpec('t90m').armor before calibration is byte-identical on the base tree.
+  flatRingMouth: 'f09dc473d73c3b77cf48560fe8836c7507bb5aff67ed195270a29c2f519c7d33',
   forwardLampSeat: '004121cb269d4d160c8715176b1473a9a40ceadcbd7c1a69b3fce797013888e0',
 });
 
@@ -314,7 +319,7 @@ for (const [id, rest, armor] of [
   ['leo2a6', 'a52d1cd60dc6b84c093cb70779e182d08aafcd2713c711ceb8a91f16ecd29499',
     '6d541732a941a35f75175fedb623632b2f73ebf3cc5484dcd76c3bd049367854'],
   ['t90m', T90M_REST_REVISIONS.flatRingMouth,
-    '052be10e0ef79d40889789efbde81207f9ffd3f380bdf7e7fe38f550e054489b'],
+    '1e0c31fe3b1ab45ff0f313593cb9e6264b0133ef913fec7f270e702f66702256'],
   // 2026-09-13 wheel review + interior fills: m1a2 draws the hollow paired road wheel, lost the
   // inter-wheel void blocks and carries generated interior fills; intact digest repinned.
   // 2026-09-23 owner-directed 50 mm M1A1 HC turret lift and circular bearing:

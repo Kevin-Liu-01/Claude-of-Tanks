@@ -38,9 +38,12 @@ const original = {
   leo2a7v:'2263d6b0', leo2a6m:'fe9c5f17', leo2a4m:'126b898c', leo2a5:'845f4dc9',
 // 2026-09-23 (owner: "no hidden tanks"): the merkava4 donor record retired with the hidden fleet, so its original
 // pin (faa9ea92) left with it; merkava4_x's combat donor now resolves through the unregistered donorSpecs.ts template.
-  merkava3d:'e6c6cabe', k2:'36af3795', kf51:'f5de9458',
+  // 2026-09-25 round 96 (FSP-05 chassis closure, combined tree): merkava3d's Mk.3D loft closes through closedSlab and the
+  // T-14's glacis wings bind through orientedSlab99, so their original-model pins and the k2 owner-rebuild pin (fender
+  // shoulder wedge) moved once — re-pinned from the current build (e6c6cabe → 7a134568, 3aa21a37 → b0853adc, 98d535e0 → 0991f12c).
+  merkava3d:'7a134568', k2:'36af3795', kf51:'f5de9458',
   // 2026-09-25 FSP-03: t90m / t90sm pre-X goldens re-pinned once — the fleet T-72/T-90 hulls carry three fitted return rollers again.
-  t90a:'ed1d8f67', t90a_vladimir:'dbffcd5f', t90m:'b0798d46', t90sm:'b24dd276', t14:'3aa21a37',
+  t90a:'ed1d8f67', t90a_vladimir:'dbffcd5f', t90m:'b0798d46', t90sm:'b24dd276', t14:'b0853adc',
 };
 // Owner 2026-09-21 explicitly replaces XK2's turret with the current K1A1.
 // xk2.selftest verifies complete donor geometry and hull/suspension seating;
@@ -51,7 +54,7 @@ const original = {
 // Owner 2026-09-24 narrows the Improved's hull by 10% across the front.
 // leopardImprovedHull.selftest separately verifies that exact hull-only change,
 // round wheels, live suspension, unchanged turret and independent 2A7V study.
-const ownerRebuilds = { k2: 'aa421950', leo2a7v: 'b6555130' }; // K1A1-turret assembly was 15a3e8d2.
+const ownerRebuilds = { k2: '0991f12c', leo2a7v: 'b6555130' }; // K1A1-turret assembly was 15a3e8d2.
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {
   const tank = createTank(id, null, options);

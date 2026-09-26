@@ -26,6 +26,9 @@ const BEFORE={
 // pressed face and leclerc_classic_x the Leclerc XLR stepped plate (nationWheelConstructions.ts); repinned from the
 // current build (amx30_x now compares the plain model under the tint inverse, leclerc_classic_x after its gear inverse).
  // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 30aa82a9…, eca09834…, ce25b11c…, 5cf7c632…, e7726256…, a0fb4201…, 27509e55…, 97ce7d68…, 69197b36…, 495de4a8…, 3a9f7bca…, 9388e4c4…, 015d5a86…, 45a022cf….
+ // 2026-09-25 round 96 (FSP-03 + FSP-05 combined tree on the FSP-06 base): the k1a1_x fingerprints read 56d10896… / 09c4cf22…
+ // on the base tree 3db7849c1 itself (FSP-06 c6f306294 made the K1A1 X antenna base insulator dark and e69803182 its folded
+ // whip rods, without re-pinning this receipt) — re-pinned once from the current build; neither fleet lane touches k1a1_x.
  'k1a1_x/high':'56d1089692dbf53c20a99f90d9425246ecfc285f8f57282ce796a7ef824d722c',
  'k1a1_x/low':'09c4cf226e7cf9e306eaa3ff33f20969f72a7bc95ae794a4dd4a057d057ff269',
  // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the

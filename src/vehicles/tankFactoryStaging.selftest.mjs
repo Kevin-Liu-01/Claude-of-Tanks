@@ -109,7 +109,8 @@ const goldenReceipts = [
     "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): merkava1b draws the Israel Merkava Mk 4B dished-face construction; digest repinned from the current build",
     "_repin_2026_09_22_regen": "combined round-38 tree after the fleet presentation regen (2026-09-22): the merkava1b rendered anchor moved (zM -0.7139 -> -0.714, envelope 5.4299 -> 5.43); repinned from staged main",
     "_repin_2026_09_25_fsp06": "FSP-06 material roles (owner 2026-09-25): merkava1b's pale-kit soft goods ride the new canvasPale material and its jerry cans the fitting paint (merkava.ts, materials.ts) — the material-inclusive digest moves; vertex geometry and order unchanged (presentation-centering --check 0.00 px), the anatomy groups regenerated because the pale kit left the armor buckets; repinned from the current build",
-    "sha256": "d5c9cd252a28e9e04165d5dd9c6e42a85d8e9fefd0e71226886535f4defa4677"
+    "_repin_2026_09_25_r96_fsp05": "round 96 combined tree (FSP-05 chassis closure landed over FSP-06's pale kit, 2026-09-25): merkava1b's Mk.1B loft rings close through closedSlab and its clearance wedges clamp to the floor (merkava.ts), so the material-inclusive digest moved once more — repinned from the current build (d5c9cd25 -> 0b7f5e39)",
+    "sha256": "0b7f5e39973c5ddacf22144e71ac43730c9569c5cdeaecb6969b757cec41452c"
   },
   {
     "id": "m1a1",
