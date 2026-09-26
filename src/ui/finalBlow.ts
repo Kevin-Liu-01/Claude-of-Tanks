@@ -21,7 +21,8 @@ export interface FinalBlowDestroyed {
   cause: string | null;
 }
 
-type FinalBlowCause = 'shot' | 'ammorack' | 'ram' | 'fire';
+/** impact / fall (impact physics, 2026-09-25): a hull that crashed into something hard or landed too hard. */
+type FinalBlowCause = 'shot' | 'ammorack' | 'ram' | 'fire' | 'impact' | 'fall';
 
 export interface FinalBlow {
   cause: FinalBlowCause;
@@ -34,7 +35,7 @@ export interface FinalBlow {
 }
 
 const asCause = (value: string | null | undefined): FinalBlowCause =>
-  (value === 'ammorack' || value === 'ram' || value === 'fire' ? value : 'shot');
+  (value === 'ammorack' || value === 'ram' || value === 'fire' || value === 'impact' || value === 'fall' ? value : 'shot');
 
 /**
  * @param lethal the last lethal shell hit on any pair (null when the battle saw none)
@@ -75,6 +76,8 @@ export function finalBlowLine(blow: FinalBlow): string {
   const attacker = blow.attacker || t('killcam.enemy');
   if (blow.cause === 'ram') return t('endScreen.finalBlow.ram', { attacker, target: blow.target });
   if (blow.cause === 'fire') return t('endScreen.finalBlow.fire', { target: blow.target });
+  if (blow.cause === 'impact') return t('endScreen.finalBlow.impact', { target: blow.target });
+  if (blow.cause === 'fall') return t('endScreen.finalBlow.fall', { target: blow.target });
   const shell = blow.shell || t('killcam.enemyFire');
   if (blow.attackerIsPlayer) return t('endScreen.finalBlow.byYou', { target: blow.target, shell });
   if (blow.targetIsPlayer) return t('endScreen.finalBlow.onYou', { attacker, shell });

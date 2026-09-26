@@ -129,10 +129,55 @@ export const TEAM_ARRANGEMENT_LIMITS: {
   waveSize: range(2, 12),
 });
 
+/**
+ * Impact physics (owner 2026-09-25: "add more speed based damage — running into something hard super fast like
+ * a rock or building or other tank, fall damage — and make bouncing properly work in the lower gravity modes").
+ * The laws live in sim/impact.ts (damage) and sim/movement.ts (landing rebound); this block holds every number a
+ * mode bends, so the solo step, the authority and the client prediction read one table. Energies are the hull's
+ * kinetic energy in kilojoules above the threshold speed (½ · m · (v − v_min)²), so a heavier hull takes more from
+ * the same speed and the onset is smooth.
+ */
+export interface RulesetPhysics {
+  /** Rebound share of the closing speed when a hull lands on terrain or a structure (v_out = restitution · v_in). */
+  readonly restitution: number;
+  /** A rebound slower than this settles onto the ground instead of bouncing (m/s). */
+  readonly bounceMinMps: number;
+  /** Landing speed against the ground where fall damage begins (m/s; 6 m/s is a 1.8 m drop at 1 g). */
+  readonly fallMinMps: number;
+  /** Hull hit points per kilojoule of landing energy above the threshold. */
+  readonly fallHpPerKj: number;
+  /** Closing speed against a hard obstacle (rock, wall, structure, map edge) where impact damage begins (m/s). */
+  readonly impactMinMps: number;
+  /** Hull hit points per kilojoule of impact energy above the threshold. */
+  readonly impactHpPerKj: number;
+  /** Multiplies the tank-on-tank ram pool (damage.ts ramDamage). */
+  readonly ramScale: number;
+  /** Rebound share of a tank-on-tank contact's closing speed in the momentum exchange (0 = they stick). */
+  readonly ramRestitution: number;
+}
+
+/** The whole-game impact physics: a tracked hull barely rebounds, a 1.8 m drop is free, walls hurt from 4 m/s. */
+export const STANDARD_PHYSICS: RulesetPhysics = Object.freeze({
+  restitution: 0.15, bounceMinMps: 1.2, fallMinMps: 6, fallHpPerKj: 0.25,
+  impactMinMps: 4, impactHpPerKj: 0.16, ramScale: 1, ramRestitution: 0.2,
+});
+/** Turbo Ball: arcade rebounds at 0.6 g, a single 13 m/s jump lands free, walls at 1.85× speed cost less per kJ. */
+const TURBO_PHYSICS: RulesetPhysics = Object.freeze({
+  restitution: 0.45, bounceMinMps: 1.5, fallMinMps: 15, fallHpPerKj: 0.12,
+  impactMinMps: 9, impactHpPerKj: 0.05, ramScale: 1, ramRestitution: 0.5,
+});
+/** Mars: half the closing speed comes back on every landing, a plain 9.5 m/s rocket jump lands free. */
+const MARS_PHYSICS: RulesetPhysics = Object.freeze({
+  restitution: 0.5, bounceMinMps: 1.2, fallMinMps: 10.5, fallHpPerKj: 0.16,
+  impactMinMps: 5, impactHpPerKj: 0.12, ramScale: 1, ramRestitution: 0.35,
+});
+
 export interface MatchRuleset {
   readonly mode: GameModeId;
   /** Multiplies 9.81 m/s² for hulls in the air, shells in flight and the ball. */
   readonly gravityScale: number;
+  /** Impact, fall, rebound and ram-exchange laws (sim/impact.ts, sim/movement.ts). */
+  readonly physics: RulesetPhysics;
   /** Multiplies top and reverse speed (the controller may raise it per wave / lower it for a flag carrier). */
   readonly speedMultiplier: number;
   /** Multiplies hull hit points at spawn and revive. */
@@ -198,7 +243,7 @@ export const ENDING_HOLD_LIMIT_S = 12;
 const ENDING_HOLD_S = 8;
 
 const STANDARD: MatchRuleset = Object.freeze({
-  mode: 'standard', gravityScale: 1, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
+  mode: 'standard', gravityScale: 1, physics: STANDARD_PHYSICS, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
@@ -214,7 +259,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // damage, quick reloads, HE only with unlimited rounds, no equipment or consumables, 3 s
   // respawns, a ten-minute clock.
   turbo_ball: Object.freeze({
-    ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, speedMultiplier: 1.85, hpScale: 1.5,
+    ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, physics: TURBO_PHYSICS, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
   }),
@@ -238,7 +283,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns and a
   // twelve-minute clock; the boost caches are the mode controller's.
   mars: Object.freeze({
-    ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
+    ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
     reloadScale: 0.9, jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
   }),
 });
@@ -410,6 +455,11 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
     else line('marsCachesOff');
   }
   if (ruleset.shellKnockScale !== 0.3) line('shellKnock', { value: `×${Math.round(ruleset.shellKnockScale * 10) / 10}` });
+  // impact physics (2026-09-25): a mode that rebounds harder than the whole game or forgives harder landings says so
+  if (ruleset.physics.restitution !== STANDARD_PHYSICS.restitution) {
+    line('bounce', { value: `${Math.round(ruleset.physics.restitution * 100)} %` });
+  }
+  if (ruleset.physics.fallMinMps !== STANDARD_PHYSICS.fallMinMps) line('fallDamage', { value: String(ruleset.physics.fallMinMps) });
   if (ruleset.respawnS != null) line('respawn', { value: String(ruleset.respawnS) });
   else if (ruleset.mode !== 'standard') line('noRespawn');
   if (ruleset.timeLimitS == null) line('noClock');

@@ -295,7 +295,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   killerId?: string;
   name?: string;
   vehicle?: string;
-  cause?: 'shot' | 'fire' | 'ammorack' | 'ram';
+  cause?: 'shot' | 'fire' | 'ammorack' | 'ram' | 'impact' | 'fall';
   timeS?: number;
   on?: boolean;
   shells?: string[];
@@ -1061,6 +1061,9 @@ function causeLabel(key: string): string {
   if (key === 'fire') return t('hud.fire');
   if (key === 'ammorack') return t('hud.ammorack');
   if (key === 'ram') return t('hud.rammed');
+  // impact physics (2026-09-25): a crash into something hard, or a landing that broke the hull
+  if (key === 'impact') return t('hud.impact');
+  if (key === 'fall') return t('hud.fall');
   return '';
 }
 

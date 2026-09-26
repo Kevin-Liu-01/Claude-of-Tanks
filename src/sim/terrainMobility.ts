@@ -89,6 +89,17 @@ function trackGripCoefficient(
   );
 }
 
+/**
+ * Sliding friction coefficient of the tracks on this ground (the same grip coefficient the margins use): on a face
+ * steeper than the tracks hold, the hull slides under g·sin θ against μ·g·cos θ (movement.ts applySlopeForces).
+ */
+export function trackSlideCoefficient(
+  spec: TerrainMobilitySpec | null | undefined,
+  groundType = 'medium',
+): number {
+  return trackGripCoefficient(spec, groundType);
+}
+
 function forceMargin(available: number, required: number): number {
   if (!(available > 0)) return 0;
   return clamp((available - required) / available, 0, 1);

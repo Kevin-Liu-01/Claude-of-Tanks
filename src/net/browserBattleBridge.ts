@@ -1240,6 +1240,21 @@ export function createBrowserBattleBridge<
         bIsPlayer: event.bId === id,
         pos: [event.x, event.y, event.z],
       });
+    } else if (event.type === 'tank_impact') {
+      // impact physics (2026-09-25): a crash or a hard landing the authority priced — the solo bus shape
+      bus.emit('tank:impact', {
+        id: event.id,
+        specId: entities.get(String(event.id || ''))?.specId,
+        isPlayer: event.id === id,
+        speedMps: Number(event.closingMps) || 0,
+        cause: event.cause,
+        hard: true,
+        damage: Number(event.damage) || 0,
+        destroyed: event.destroyed === true,
+        modulesHit: Array.isArray(event.modulesHit) ? event.modulesHit : [],
+        crewHit: Array.isArray(event.crewHit) ? event.crewHit : [],
+        pos: [event.x, event.y, event.z],
+      });
     } else if (event.type === 'match_ended') emitMatchEnded(event);
     else if (event.type.startsWith('mode_')) {
       bus.emit(event.type.replace(/^mode_/, 'mode:'), event);

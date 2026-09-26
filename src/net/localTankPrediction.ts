@@ -9,6 +9,7 @@ import type {
   MovementSpec,
   TankState,
 } from '../sim/movement.ts';
+import type { RulesetPhysics } from '../sim/matchRuleset.ts';
 import { isSequenceNewer } from './protocol.ts';
 import { decodeAimIntent } from './aimIntent.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.ts';
@@ -82,6 +83,7 @@ interface PredictionEntity {
   rigidGear?: boolean;
   modeSpeedMultiplier?: number;
   modeGravityScale?: number;
+  modePhysics?: RulesetPhysics | null;
 }
 
 export interface PredictionSimEntity extends PredictionEntity {
@@ -464,6 +466,7 @@ export class LocalTankPredictor {
       rigidGear: !!entity.rigidGear,
       modeSpeedMultiplier: entity.modeSpeedMultiplier,
       modeGravityScale: entity.modeGravityScale,
+      modePhysics: entity.modePhysics ?? null,
       input: {
         throttle: 0,
         steer: 0,
@@ -656,6 +659,7 @@ export class LocalTankPredictor {
     // bridge. Do not infer special-action activation from local action bits.
     this.simEntity.modeSpeedMultiplier = this.entity.modeSpeedMultiplier;
     this.simEntity.modeGravityScale = this.entity.modeGravityScale;
+    this.simEntity.modePhysics = this.entity.modePhysics ?? null;
     this.simEntity.state.suspensionAim = this.entity.state.suspensionAim;
   }
 

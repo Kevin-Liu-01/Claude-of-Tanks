@@ -772,6 +772,19 @@ export function createBattlePresentation({
           aIsPlayer: payload.aId === own?.id, bIsPlayer: payload.bId === own?.id, pos: [payload.x, payload.y, payload.z],
         });
         return;
+      case 'tank_impact': {
+        // impact physics (2026-09-25): a crash or a hard landing the authority priced — the solo bus shape
+        const impactId = String(payload.id ?? '');
+        bus.emit('tank:impact', {
+          id: impactId, specId: actors.get(impactId)?.specId, isPlayer: impactId === own?.id,
+          speedMps: Number(payload.closingMps) || 0, cause: payload.cause, hard: true,
+          damage: Number(payload.damage) || 0, destroyed: payload.destroyed === true,
+          modulesHit: Array.isArray(payload.modulesHit) ? payload.modulesHit : [],
+          crewHit: Array.isArray(payload.crewHit) ? payload.crewHit : [],
+          pos: [payload.x, payload.y, payload.z],
+        });
+        return;
+      }
       case 'match_ended': {
         const result = payload.result;
         const verdict = result === 'alpha' ? VERDICT.ALPHA : result === 'bravo' ? VERDICT.BRAVO : result === 'draw' ? VERDICT.DRAW : VERDICT.NONE;
@@ -838,6 +851,7 @@ export function createBattlePresentation({
       ownSpec: own.spec,
       ownState: () => own.state,
       others: () => collidableActors(own),
+      mode: typeof game.gameMode === 'string' ? game.gameMode : null,
     });
     return predictionWorldCache;
   }

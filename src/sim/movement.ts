@@ -27,9 +27,11 @@ import { CLIFF_GRADE,
   GRAVITY_MPS2 as GRAVITY,
   TERRAIN_MARGIN_EPS,
   trackGripMargin,
+  trackSlideCoefficient,
   uphillDriveMargin,
 } from './terrainMobility.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
+import { STANDARD_PHYSICS, type RulesetPhysics } from './matchRuleset.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
@@ -146,6 +148,8 @@ interface RideState {
   groundV: number;
   grounded: boolean;
   airTime: number;
+  /** Rebounds since the hull last left the ground (telemetry for the bounce receipts and probes). */
+  bounces: number;
 }
 
 interface RigidBodyState {
@@ -244,6 +248,11 @@ interface DriveStep {
   reverseSpeed: number;
   speedMultiplier: number;
   gravityScale: number;
+  /** Ruleset landing rebound (matchRuleset.ts physics.restitution / bounceMinMps). */
+  restitution: number;
+  bounceMin: number;
+  /** The face under the tracks is steeper than they hold: no drive, no brake, the hull slides. */
+  gripLost: boolean;
   traverseMax: number;
   gunArc: number;
   acceleration: number;
@@ -280,6 +289,12 @@ export interface TankState {
   suspensionAim: boolean;
   suspensionAimPitch: number;
   impactMps: number;
+  /** What absorbed impactMps this tick: IMPACT_SOURCE_NONE / _CLIFF (the terrain wall probe) / _COLLIDER (the
+   * integration's pushback — the integration knows whether that was a hard obstacle or another hull). */
+  impactSource: number;
+  /** Unit world-XZ direction the blocking contact pushed the hull (zero when nothing pushed). */
+  impactNx: number;
+  impactNz: number;
   _spring: AttitudeSpringState;
   _prevSpeed: number;
   _spool: number;
@@ -317,6 +332,8 @@ export interface MovementEntity {
   modeSpeedMultiplier?: number;
   /** Ruleset gravity scale (sim/matchRuleset.ts): airborne hulls and the slope pull scale by it. */
   modeGravityScale?: number;
+  /** Ruleset impact physics (sim/matchRuleset.ts): the landing rebound; absent = the whole-game block. */
+  modePhysics?: RulesetPhysics | null;
   rigidGear?: boolean;
 }
 
@@ -596,6 +613,22 @@ const AIR_ANGULAR_SPEED_MAX = 1.15; // rad/s; ordinary launch-rate bound
 const TUMBLE_ANGULAR_SPEED_MAX = 2.8; // collisions/rollovers may rotate faster
 /** Round 30: the longest obstacle push one fixed step applies (60 steps/s → a 7 m intrusion resolves in ~120 ms). */
 const OBSTACLE_PUSH_MAX_M_PER_STEP = 1.0;
+/** state.impactSource values: what absorbed this tick's blocked closing speed. */
+export const IMPACT_SOURCE_NONE = 0;
+export const IMPACT_SOURCE_CLIFF = 1;
+export const IMPACT_SOURCE_COLLIDER = 2;
+// Impact physics (owner 2026-09-25, "make the physics more proper on regular modes"):
+// Lateral grip. A hull turning at speed needs v·ω of lateral acceleration from its tracks; past what the ground
+// supplies it would pirouette (the old law kept 80 % of the standing traverse rate at top speed — a 60 km/h
+// Abrams turned inside 27 m). The yaw rate is capped so v·ω ≤ LATERAL_GRIP_MPS2 × g-scale × (hard / resistance):
+// unchanged below ~30 km/h on hard ground, a 46 m radius at 60 km/h, wider on soft ground and under low gravity.
+// The cap never takes more than TRAVERSE_FLOOR_FRAC of the standing rate so steering always answers.
+const LATERAL_GRIP_MPS2 = 7;
+const TRAVERSE_FLOOR_FRAC = 0.3;
+// Static hold. Coasting or braking on a grade, the tracks hold the hull once it has stopped when the grade's pull
+// is within the holding decel (coast ≈ 3.5 m/s² ≈ 21°, brake up to 7.5 m/s²); the old integration re-added one
+// tick of gravity after every approach() and every parked hull crept down its slope at a few cm/s.
+const STATIC_HOLD_EPS_MPS = 0.05;
 /**
  * Round 30 (owner 2026-09-20: hulls "going up walls, or sides of steep hills at high speeds"): ground rising
  * steeper than this grade (tan 52°) right ahead of the tracks is a wall, not a climb. The hull stops against it
@@ -862,6 +895,9 @@ const _driveStep: DriveStep = {
   reverseSpeed: 0,
   speedMultiplier: 1,
   gravityScale: 1,
+  restitution: STANDARD_PHYSICS.restitution,
+  bounceMin: STANDARD_PHYSICS.bounceMinMps,
+  gripLost: false,
   traverseMax: 0,
   gunArc: Infinity,
   acceleration: 0,
@@ -1095,6 +1131,9 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     // pushback absorbed this tick (0 = no blocked contact). state.ts reads it
     // right after updateTank to emit ONE 'tank:impact' bus event per hit.
     impactMps: 0,
+    impactSource: IMPACT_SOURCE_NONE,
+    impactNx: 0,
+    impactNz: 0,
     _spring: {
       pitch: 0, roll: 0, pitchV: 0, rollV: 0, // attitude spring state
       recoilVX: 0, recoilVZ: 0,               // decaying hull translation impulse
@@ -1110,7 +1149,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _ride: { // sprung vertical chassis motion + deterministic airborne phase
-      y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0,
+      y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0,
     },
     _body: { // rigid attitude/contact state; dormant during ordinary driving
       tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false,
@@ -1160,6 +1199,7 @@ export function resetTankVerticalState(
   ride.groundV = 0;
   ride.grounded = state.grounded;
   ride.airTime = 0;
+  ride.bounces = 0;
   state._sup.x = NaN;
   state._body.landingBlendS = 0;
   state._body.dynamicSupport = false;
@@ -1196,22 +1236,51 @@ function updateRideSupportVelocity(ride: RideState, supportY: number, dt: number
   ride.supportY = supportY;
 }
 
+/**
+ * Ballistic flight and the landing. The contact is SWEPT inside the step: the fraction of the step at which the
+ * ride crossed the contact line gives the true closing speed (not the post-step value a 40 m/s fall would read
+ * 0.67 m past the ground), and the remainder of the step is integrated after the contact — so a rebound is the
+ * same at any step size and the ride never ends a step below the contact line. Impact physics (2026-09-25): the
+ * closing speed rebounds by the ruleset's restitution; a rebound under bounceMin settles and the loaded
+ * suspension takes over (the old contact killed every landing's vertical speed on touch, so nothing ever bounced,
+ * not even at 0.17 g).
+ */
 function advanceAirborneRide(
   state: TankState,
   ride: RideState,
   dt: number,
   contactY: number,
   floorY: number,
-  gravityScale = 1,
+  gravityScale: number,
+  restitution: number,
+  bounceMin: number,
 ): boolean {
-  ride.v -= GRAVITY * gravityScale * dt;
+  const gravity = GRAVITY * gravityScale;
+  const yBefore = ride.y;
+  const vBefore = ride.v;
+  ride.v -= gravity * dt;
   ride.y += ride.v * dt;
   ride.airTime = (ride.airTime || 0) + dt;
   // A rising hull must not be grabbed back out of flight by a ramp below it.
   if (ride.y > contactY || ride.v > ride.groundV + RIDE_DETACH_REL_V_MPS) return false;
-  state.landingImpactMps = Math.max(0, ride.groundV - ride.v);
-  ride.y = Math.max(contactY, floorY);
+  const span = yBefore - ride.y;
+  const fraction = span > 1e-9 ? clamp((yBefore - contactY) / span, 0, 1) : 1;
+  const vAtContact = vBefore - gravity * fraction * dt;
+  const closing = Math.max(0, ride.groundV - vAtContact);
+  state.landingImpactMps = closing;
+  const seat = Math.max(contactY, floorY);
+  const rebound = closing * restitution;
+  if (rebound > bounceMin) {
+    const rest = (1 - fraction) * dt;
+    const vOut = ride.groundV + rebound;
+    ride.v = vOut - gravity * rest;
+    ride.y = Math.max(seat, seat + vOut * rest - 0.5 * gravity * rest * rest);
+    ride.bounces = (ride.bounces || 0) + 1;
+    return false;
+  }
+  ride.y = seat;
   ride.airTime = 0;
+  ride.bounces = 0;
   return true;
 }
 
@@ -1245,7 +1314,7 @@ function constrainLoadedRide(
   return true;
 }
 
-function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: number, gravityScale = 1): void {
+function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: number, drive: DriveStep): void {
   const supportY = state._sup.y;
   const floorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : supportY;
   const ride = initializeRideState(state, supportY);
@@ -1253,7 +1322,8 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   const contactY = supportY + RIDE_DROOP_M;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, supportY, contactY, floorY, dt)
-    : advanceAirborneRide(state, ride, dt, contactY, floorY, gravityScale);
+    : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin);
+  if (grounded) ride.bounces = 0;
   state.grounded = grounded;
   ride.grounded = grounded;
   state.verticalSpeed = ride.v;
@@ -1534,10 +1604,20 @@ function integrateHorizontalMotion(
 ): void {
   const spring = state._spring;
   let cliffImpact = 0;
+  state.impactSource = IMPACT_SOURCE_NONE;
+  state.impactNx = 0;
+  state.impactNz = 0;
   if (cliffAhead(heightField, state, spec.dims.hullLengthM * 0.5, forwardX, forwardZ)) {
     cliffImpact = Math.abs(state.speed);
+    const dir = state.speed > 0 ? 1 : -1;
     state.speed = 0;
     if (cliffImpact > 1.5) state._spool = 0;
+    if (cliffImpact > 0) {
+      // the wall pushes straight back against the motion
+      state.impactSource = IMPACT_SOURCE_CLIFF;
+      state.impactNx = -forwardX * dir;
+      state.impactNz = -forwardZ * dir;
+    }
   }
   state.impactMps = cliffImpact;
   state.pos.x += (forwardX * state.speed + spring.recoilVX) * dt;
@@ -1562,6 +1642,13 @@ function integrateHorizontalMotion(
   const blockedFraction = clamp(Math.abs(pushForward) / travel, 0, 1);
   const lostSpeed = Math.abs(state.speed) * blockedFraction;
   state.speed *= 1 - blockedFraction;
+  if (lostSpeed >= cliffImpact && pushLen > 1e-9) {
+    // impact physics: the integration reads the source and the push direction to price a hard contact
+    state.impactSource = IMPACT_SOURCE_COLLIDER;
+    const pushNow = Math.hypot(_push.x, _push.z);
+    state.impactNx = _push.x / pushNow;
+    state.impactNz = _push.z / pushNow;
+  }
   state.impactMps = Math.max(cliffImpact, lostSpeed);
   if (lostSpeed > 1.5) state._spool = 0;
 }
@@ -1768,12 +1855,16 @@ function updateHullAttitude(
   landingImpact: number,
   upYAtStart: number,
   dt: number,
+  contactPitch: number,
+  contactRoll: number,
 ): void {
+  // the landing torque always turns the hull toward the ground plane it struck — a rebounding hull (airborne
+  // again at the start of this tick) would otherwise read its own attitude as the target and take no torque
   applyLandingAttitudeImpulse(
     state,
     body,
-    targetPitch,
-    targetRoll,
+    contactPitch,
+    contactRoll,
     landingImpact,
     upYAtStart,
   );
@@ -2327,6 +2418,11 @@ function prepareDriveStep(
     0.1,
     3,
   );
+  const physics = entity.modePhysics ?? STANDARD_PHYSICS;
+  drive.restitution = clamp(Number.isFinite(physics.restitution) ? physics.restitution : STANDARD_PHYSICS.restitution, 0, 0.95);
+  drive.bounceMin = Number.isFinite(physics.bounceMinMps) && physics.bounceMinMps > 0
+    ? physics.bounceMinMps : STANDARD_PHYSICS.bounceMinMps;
+  drive.gripLost = false;
   drive.topSpeed = spec.topSpeedKmh / 3.6 * drive.speedMultiplier;
   drive.reverseSpeed = spec.reverseSpeedKmh / 3.6 * drive.speedMultiplier;
   drive.traverseMax = 0;
@@ -2403,6 +2499,12 @@ function updateHullTraverse(
   );
   drive.traverseMax = healthyMax * debuff.powerMult * debuff.traverseMult *
     (1 - TRAVERSE_SPEED_SCALE * speedFraction * speedFraction);
+  if (drive.grounded) {
+    // lateral grip (impact physics): v·ω is bounded by what the tracks hold sideways on this ground under this gravity
+    const lateralCap = LATERAL_GRIP_MPS2 * drive.gravityScale * (drive.hardResistance / drive.resistance) /
+      Math.max(Math.abs(state.speed), 1);
+    drive.traverseMax = Math.max(Math.min(drive.traverseMax, lateralCap), healthyMax * TRAVERSE_FLOOR_FRAC);
+  }
   const reverseSteer = state.speed < -PIVOT_SPEED_EPS ? -1 : 1;
   let steerCommand = drive.steer * reverseSteer;
   steerCommand = casemateSteerCommand(entity, debuff, drive, steerCommand);
@@ -2434,6 +2536,9 @@ function prepareTargetSpeed(
     debuff.accelMult * Math.sqrt(drive.speedMultiplier);
   const driveSign = drive.throttle !== 0 ? Math.sign(drive.throttle) : Math.sign(state.speed);
   const pitchAlong = drive.terrainPitch * (driveSign || 1);
+  // a face steeper than the tracks hold in either direction: the drivetrain has no purchase (applySlopeForces slides)
+  drive.gripLost = drive.grounded &&
+    trackGripMargin(spec, drive.ground, Math.abs(drive.terrainPitch)) <= TERRAIN_MARGIN_EPS;
   drive.speedLimit = drive.throttle >= 0 ? drive.topSpeed : drive.reverseSpeed;
   drive.speedLimit *= slopeSpeedFactor(
     spec,
@@ -2475,6 +2580,12 @@ function selectDriveRate(
   // updateDriveSpool zeroes the rate in the air, so a launched wreck keeps its ballistic trajectory.
   if (debuff.wreck) {
     drive.rate = WRECK_SKID_DECEL_MPS2;
+    return;
+  }
+  if (drive.gripLost) {
+    // tracks without purchase neither drive nor brake; the engine still spools against them
+    drive.rate = 0;
+    drive.spoolTarget = drive.throttle !== 0 ? 1 : 0;
     return;
   }
   if (drive.braking || debuff.immobile || drive.targetSpeed * state.speed < 0) {
@@ -2537,6 +2648,7 @@ function applySlopeForces(
   entity: MovementEntity,
   debuff: MovementDebuffs,
   drive: DriveStep,
+  speedBeforeSlope: number,
   dt: number,
 ): void {
   const { spec, state } = entity;
@@ -2552,16 +2664,36 @@ function applySlopeForces(
   const motionPitch = drive.terrainPitch * Math.sign(state.speed || drive.throttle || 1);
   const gripBlocked = drive.grounded && motionPitch > 0 &&
     trackGripMargin(spec, drive.ground, motionPitch) <= TERRAIN_MARGIN_EPS;
-  if (driveBlocked || gripBlocked) state.slopeBlocked = true;
+  if (driveBlocked || gripBlocked || drive.gripLost) state.slopeBlocked = true;
+  // residual uphill speed never crosses a grade the tracks cannot hold (ARCHITECTURE §3.4)
   if (gripBlocked && state.speed * drive.terrainPitch > 0) state.speed = 0;
-  if (!drive.grounded || debuff.immobile) return;
+  if (!drive.grounded) return;
+  const gravity = GRAVITY * drive.gravityScale;
+  if (drive.gripLost) {
+    // Impact physics (owner 2026-09-25: hulls "climbing walls"): a face steeper than the tracks hold is a slide,
+    // not a hover — the full slope pull against sliding friction μ·g·cos θ, which opposes the motion and never
+    // reverses it; there is no drive and no brake to hang on with, an immobilised hull slides the same.
+    const pull = -gravity * Math.sin(drive.terrainPitch) * dt;
+    const friction = trackSlideCoefficient(spec, drive.ground) * gravity * Math.abs(Math.cos(drive.terrainPitch)) * dt;
+    let speed = state.speed + pull;
+    speed = speed > 0 ? Math.max(0, speed - friction) : Math.min(0, speed + friction);
+    state.speed = speed;
+    return;
+  }
+  if (debuff.immobile) return;
   const slow = drive.throttle !== 0
     ? (1 - clamp((Math.abs(state.speed) - 1) / 2, 0, 1)) * (1 - (state._spool || 0))
     : 0;
   const gravityShare = gripBlocked
     ? 1
     : (drive.throttle !== 0 ? 0.3 + 0.7 * slow : 1);
-  state.speed += -GRAVITY * drive.gravityScale * Math.sin(drive.terrainPitch) * dt * gravityShare;
+  const pull = gravity * Math.sin(drive.terrainPitch);
+  state.speed += -pull * dt * gravityShare;
+  // static hold: a stopped hull with no throttle stays put when the holding decel (coast, brake or a wreck's
+  // locked tracks) matches the grade's pull — no creep, no jitter at rest
+  if (drive.throttle === 0 && Math.abs(speedBeforeSlope) < STATIC_HOLD_EPS_MPS && Math.abs(pull) <= drive.rate + 1e-9) {
+    state.speed = 0;
+  }
 }
 
 function applyClimbCreep(
@@ -2572,7 +2704,7 @@ function applyClimbCreep(
   dt: number,
 ): void {
   const { spec, state } = entity;
-  if (!drive.grounded || drive.throttle === 0 || drive.braking || debuff.immobile ||
+  if (!drive.grounded || drive.gripLost || drive.throttle === 0 || drive.braking || debuff.immobile ||
       drive.targetSpeed * drive.throttle <= 0) return;
   const drivable = slopeSpeedFactor(
     spec,
@@ -2604,7 +2736,7 @@ function updateLongitudinalSpeed(
   const speedBeforeAcceleration = state.speed;
   state.speed = approach(state.speed, drive.targetSpeed, drive.rate * dt);
   applyTurnSpeedBleed(state, drive, dt);
-  applySlopeForces(entity, debuff, drive, dt);
+  applySlopeForces(entity, debuff, drive, state.speed, dt);
   applyClimbCreep(entity, debuff, drive, speedBeforeAcceleration, dt);
   state.speed = clamp(
     state.speed,
@@ -2745,6 +2877,8 @@ export function updateTank(
     landingImpactAtStart,
     upYAtStart,
     dt,
+    state._terr.pitch + suspensionAimPitch,
+    state._terr.roll,
   );
   const upYAfterAttitude = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
 
@@ -2785,7 +2919,7 @@ export function updateTank(
 
   // Loaded suspension follows the support envelope; once the droop limit is
   // exceeded, the chassis uses an independent ballistic phase until landing.
-  updateVerticalContact(state, groundedAtStart, dt, drive.gravityScale);
+  updateVerticalContact(state, groundedAtStart, dt, drive);
 
   updateGunLay(entity, debuff, hAt, drive.gunArc, drive.steer, dt);
   updateTrackScrollAndBloom(spec, state, debuff, dt);

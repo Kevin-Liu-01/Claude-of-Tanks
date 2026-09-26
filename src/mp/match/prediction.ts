@@ -18,6 +18,7 @@ import type {
   MovementCollisionResolver, MovementCombatState, MovementContactGeometry, MovementHeightField, MovementSpec,
   TankState,
 } from '../../sim/movement.ts';
+import type { RulesetPhysics } from '../../sim/matchRuleset.ts';
 import {
   ENTITY_FLAGS, MODULE_STATE_NAMES, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES, dequantizeAngle,
   dequantizeMultiplier, dequantizePosition, dequantizeVelocity, wrapAngle,
@@ -34,6 +35,8 @@ export interface PredictionWorld {
   collide?: MovementCollisionResolver | null;
   /** Keep null: authority uses the spec-derived contact footprint, not the visual's measured one. */
   contactGeom?: MovementContactGeometry | null;
+  /** The room's ruleset impact physics (landing rebound); absent = the whole-game block. */
+  physics?: RulesetPhysics | null;
 }
 
 export interface PredictionAuthority {
@@ -237,7 +240,7 @@ export class LocalPredictor {
   private readonly collide: MovementCollisionResolver | null;
   private readonly sim: {
     spec: MovementSpec; state: TankState; combat: MovementCombatState; contactGeom: MovementContactGeometry | null;
-    modeSpeedMultiplier: number; modeGravityScale: number; rigidGear: boolean;
+    modeSpeedMultiplier: number; modeGravityScale: number; modePhysics: RulesetPhysics | null; rigidGear: boolean;
     input: { throttle: number; steer: number; brake: boolean; aimLocked: boolean; aimPoint: Vector3 };
   };
   private readonly correction: Correction = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };
@@ -280,7 +283,7 @@ export class LocalPredictor {
     const state = createTankState(spec, origin, 0);
     this.sim = {
       spec, state, combat: { destroyed: false, modules: {}, crew: {}, equipMults: {} },
-      contactGeom: world.contactGeom ?? null, modeSpeedMultiplier: 1, modeGravityScale: 1, rigidGear: false,
+      contactGeom: world.contactGeom ?? null, modeSpeedMultiplier: 1, modeGravityScale: 1, modePhysics: world.physics ?? null, rigidGear: false,
       input: { throttle: 0, steer: 0, brake: false, aimLocked: false, aimPoint: state.aimPoint.clone() },
     };
     for (const name of VIEWER_MODULES) this.sim.combat.modules![name] = { state: 'ok' };

@@ -14,6 +14,8 @@ import { tankContactRect } from '../../sim/tankContactShape.ts';
 import { pushHullInsidePlayableBounds } from '../../world/battlefieldBounds.ts';
 import { hullPassesObstacleTop, pushHullFromHull, pushHullFromObstacle } from '../../world/collision.ts';
 import type { CollisionRecord } from '../../world/collision.ts';
+import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { normalizeGameMode } from '../../sim/matchModes.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
 
 export interface PredictionObstacle extends CollisionRecord {
@@ -44,6 +46,8 @@ export interface PredictionWorldOptions {
   ownState: () => TankState | null;
   /** Every other actor; only `collidable` ones (disclosed, or wrecks) push. */
   others: () => Iterable<CollidableTank>;
+  /** The room's game mode: its ruleset's impact physics (landing rebound) rides the prediction. */
+  mode?: string | null;
 }
 
 interface ContactFrame {
@@ -77,9 +81,11 @@ function contactFrame(spec: Parameters<typeof tankContactRect>[0], x: number, z:
 }
 
 /** Build the prediction world; returns null when the map has no height field yet. */
-export function createPredictionWorld({ worldCollision, ownSpec, ownState, others }: PredictionWorldOptions): PredictionWorld | null {
+export function createPredictionWorld({ worldCollision, ownSpec, ownState, others, mode = null }: PredictionWorldOptions): PredictionWorld | null {
   const heightField = worldCollision.heightField;
   if (!heightField || typeof heightField.getHeightAt !== 'function') return null;
+  // impact physics: the mode's rebound law is a pure function of the mode, so the prediction bounces like the authority
+  const physics = matchRulesetFor(normalizeGameMode(mode || 'standard')).physics;
   const frame: ContactFrame = { centerX: 0, centerZ: 0, halfLength: 0, halfWidth: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, broadRadius: 0 };
   const otherFrame: ContactFrame = { ...frame };
   const nearby: PredictionObstacle[] = [];
@@ -130,5 +136,5 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
     return outPush.x !== 0 || outPush.z !== 0;
   };
 
-  return { heightField, collide, contactGeom: null };
+  return { heightField, collide, contactGeom: null, physics };
 }

@@ -26,8 +26,14 @@ import {
   applyShellKnock,
   shellKnockMps,
   updateTank,
+  IMPACT_SOURCE_CLIFF,
+  IMPACT_SOURCE_COLLIDER,
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
+import {
+  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
+  type HullImpactKind, type HullImpactResult,
+} from './impact.ts';
 import { createStructureSupportField } from './structureSupport.ts';
 import {
   prefersVerticalTankContact,
@@ -44,7 +50,6 @@ import type { ArmorIntersection } from './armor.ts';
 import {
   createCombatState,
   isHeClass,
-  ramDamage,
   repairAllModules,
   resolveHeBurst,
   resolveShellHit,
@@ -105,6 +110,7 @@ import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetLoadout, type MatchRuleset,
+  type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius } from './matchPlacement.ts';
 import type {
@@ -206,9 +212,14 @@ export interface AuthoritativeEntity {
   modeJumpMps?: number | null;
   modeRecoilLaunchScale?: number;
   modeShellKnockScale?: number;
+  /** Ruleset impact physics block (matchRuleset.ts) the movement reads for the landing rebound. */
+  modePhysics?: RulesetPhysics | null;
   _modeTargetX?: number;
   _modeTargetZ?: number;
   _deniedShellSlot?: number;
+  /** Impact physics: closing speed already priced in the crash still resolving, and when it last grew. */
+  _impactAccumMps?: number;
+  _impactAccumT?: number;
 }
 
 export interface AuthoritativeObstacle extends CollisionRecord {
@@ -350,6 +361,14 @@ interface PendingRam {
   a: AuthoritativeEntity;
   b: AuthoritativeEntity;
   closing: number;
+  /** Contact normal from b to a (the push on a); zero for a roof landing. */
+  nx: number;
+  nz: number;
+  /** Each hull's velocity along the normal at detection (impact physics). */
+  vAn: number;
+  vBn: number;
+  /** A roof landing (tankBodyContacts): the vertical module owns its impulse; no horizontal exchange. */
+  vertical: boolean;
 }
 
 const BATTLE_LIMIT_S = 15 * 60;
@@ -1050,9 +1069,10 @@ export function createAuthoritativeMatch({
     halfL: number,
     halfW: number,
     outPush: Vector3,
-  ): void {
+  ): boolean {
     const broadRadius = Math.hypot(halfL, halfW) + 0.01;
     const spanTop = pos.y + tankBodyTopM(entity.spec);
+    let hard = false;
     for (const obstacle of obstacleCandidates(centerX, centerZ, broadRadius)) {
       if (obstacle.crushed || hullPassesObstacleTop(pos.y, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
@@ -1065,20 +1085,21 @@ export function createAuthoritativeMatch({
       const pushed = pushHullFromObstacle(
         _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush, pos.y, spanTop,
       );
-      if (!pushed || !obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) continue;
+      if (!pushed) continue;
+      if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
+        hard = true; // a solid primitive (or a trunk too slow to fell) is a hard surface
+        continue;
+      }
       outPush.x = beforeX;
       outPush.z = beforeZ;
       queueCrushedObstacle(entity, obstacle);
     }
+    return hard;
   }
 
   function queueRamFromPush(
     entity: AuthoritativeEntity,
     other: AuthoritativeEntity,
-    fx: number,
-    fz: number,
-    ofx: number,
-    ofz: number,
     pushX: number,
     pushZ: number,
   ): void {
@@ -1086,10 +1107,11 @@ export function createAuthoritativeMatch({
     if (pushLength <= 1e-6) return;
     const nx = pushX / pushLength;
     const nz = pushZ / pushLength;
-    const relativeX = fx * entity.state.speed - ofx * other.state.speed;
-    const relativeZ = fz * entity.state.speed - ofz * other.state.speed;
-    const closing = -(relativeX * nx + relativeZ * nz);
-    if (closing > 0) pendingRams.push({ a: entity, b: other, closing });
+    // impact physics: the same pre-contact normal velocities the solo step records (game/state.ts queueRamFromPush)
+    const vAn = hullVelocityAlong(entity.state, nx, nz);
+    const vBn = hullVelocityAlong(other.state, nx, nz);
+    const closing = vBn - vAn;
+    if (closing > 0) pendingRams.push({ a: entity, b: other, closing, nx, nz, vAn, vBn, vertical: false });
   }
 
   function collideWithEntities(
@@ -1133,7 +1155,7 @@ export function createAuthoritativeMatch({
       );
       if (!pushed) continue;
       queueRamFromPush(
-        entity, other, fx, fz, ofx, ofz,
+        entity, other,
         outPush.x - beforeX, outPush.z - beforeZ,
       );
     }
@@ -1157,15 +1179,17 @@ export function createAuthoritativeMatch({
     const centerX = pos.x + rx * contactRect.centerX + fx * contactRect.centerZ;
     const centerZ = pos.z + rz * contactRect.centerX + fz * contactRect.centerZ;
     _contactCenter.set(centerX, pos.y, centerZ);
-    pushHullInsidePlayableBounds(
+    const boundsPushed = pushHullInsidePlayableBounds(
       centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
     );
-    collideWithObstacles(
+    const obstaclesPushed = collideWithObstacles(
       entity, pos, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
     );
     collideWithEntities(
       entity, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
     );
+    // impact physics: the movement step's blocked closing speed is priced as a crash only against a hard surface
+    hardContact = boundsPushed || obstaclesPushed;
     return outPush.x !== 0 || outPush.z !== 0;
   }
 
@@ -1264,7 +1288,15 @@ export function createAuthoritativeMatch({
   function resolveRamPair(key: string, contact: PendingRam): void {
     if (!ramPairCanDamage(key, contact)) return;
     const { a, b } = contact;
-    const damage = ramDamage(a.spec.weightTons, b.spec.weightTons, contact.closing);
+    // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
+    const afx = Math.sin(a.state.yaw), afz = Math.cos(a.state.yaw);
+    const bfx = Math.sin(b.state.yaw), bfz = Math.cos(b.state.yaw);
+    const damage = ramShares(
+      ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
+      ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
+      contact.vertical ? 0 : -(contact.nx * afx + contact.nz * afz),
+      contact.vertical ? 0 : contact.nx * bfx + contact.nz * bfz,
+    );
     if (damage.total <= 0) return;
     ramPairTime.set(key, timeS);
     const bWasDestroyed = b.combat.destroyed;
@@ -1291,6 +1323,12 @@ export function createAuthoritativeMatch({
     if (!pendingRams.length) return;
     collectBestRamPairs();
     for (const [key, contact] of bestRamPairs) {
+      // impact physics: every horizontal contact exchanges momentum — teammates and cooled-down pairs included,
+      // the damage gate is separate; a roof landing already had its vertical impulse
+      if (!contact.vertical) {
+        exchangeRamMomentum(contact.a.state, contact.b.state, contact.nx, contact.nz,
+          contact.a.spec.weightTons, contact.b.spec.weightTons, contact.vAn, contact.vBn, ruleset.physics.ramRestitution);
+      }
       resolveRamPair(key, contact);
     }
   }
@@ -1873,8 +1911,79 @@ export function createAuthoritativeMatch({
   }
 
   let movingEntity: AuthoritativeEntity | null = null;
+  /** Impact physics: the last collideFor() was pushed by the map edge or a solid obstacle. */
+  let hardContact = false;
   function collideMovingEntity(pos: Vector3, radius: number, out: Vector3): boolean {
+    hardContact = false;
     return movingEntity ? collideFor(movingEntity, pos, radius, out) : false;
+  }
+
+  /** A crash is priced on the closing speed its contact ticks lose within this window of its first tick. */
+  const IMPACT_CRASH_WINDOW_S = 0.3;
+  /** A tick that loses less than this is the drive pressing against the surface, not a blow. */
+  const IMPACT_TICK_MIN_MPS = 0.5;
+  /** Landings slower than this are not worth an event. */
+  const LANDING_EVENT_MIN_MPS = 3;
+
+  function publishEntityImpact(
+    entity: AuthoritativeEntity,
+    kind: HullImpactKind,
+    closingMps: number,
+    result: HullImpactResult | null,
+  ): void {
+    emit('tank_impact', {
+      id: entity.id,
+      cause: kind,
+      closingMps,
+      damage: result?.damage ?? 0,
+      destroyed: !!result?.destroyed,
+      modulesHit: result?.modulesHit ?? [],
+      crewHit: result?.crewHit ?? [],
+      x: entity.state.pos.x, y: entity.state.pos.y, z: entity.state.pos.z,
+    });
+    if (!result) return;
+    for (const hit of result.modulesHit) {
+      emit('module_state', { id: entity.id, module: hit.module, state: hit.newState, source: 'impact' });
+    }
+    if (result.destroyed) emit('tank_destroyed', { id: entity.id, killerId: null, cause: kind });
+  }
+
+  /**
+   * Impact physics (owner 2026-09-25): the same pricing the solo step applies (game/state.ts resolveTankImpacts)
+   * — a blocked drive against a hard surface is a crash on the accumulated closing speed, a landing is a fall on
+   * the vertical closing speed; tank-on-tank pushes are the ram resolution's.
+   */
+  function resolveEntityImpacts(entity: AuthoritativeEntity): void {
+    const state = entity.state;
+    const physics = ruleset.physics;
+    const impact = state.impactMps;
+    const hard = impact >= IMPACT_TICK_MIN_MPS && (state.impactSource === IMPACT_SOURCE_CLIFF ||
+      (state.impactSource === IMPACT_SOURCE_COLLIDER && hardContact));
+    if (hard) {
+      const fresh = timeS - (entity._impactAccumT ?? -1e9) > IMPACT_CRASH_WINDOW_S;
+      const prior = fresh ? 0 : (entity._impactAccumMps ?? 0);
+      const closing = prior + impact;
+      entity._impactAccumMps = closing;
+      if (fresh) entity._impactAccumT = timeS;
+      const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+      const faceForward = -(state.impactNx * fx + state.impactNz * fz);
+      const sideSign = Math.sign(-(state.impactNx * fz - state.impactNz * fx));
+      const result = resolveHullImpact({
+        combat: entity.combat, massTons: entity.spec.weightTons, physics, kind: 'impact',
+        closingMps: closing, priorClosingMps: prior, faceForward, sideSign, attitudeFactor: 1, rng,
+      });
+      if (result || (impact > 1.5 && fresh)) publishEntityImpact(entity, 'impact', closing, result);
+    }
+    const landing = state.landingImpactMps;
+    if (landing > 0) {
+      const upY = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
+      const attitudeFactor = fallAttitudeFactor(state.visualPitch - state._terr.pitch, state.visualRoll - state._terr.roll, upY);
+      const result = resolveHullImpact({
+        combat: entity.combat, massTons: entity.spec.weightTons, physics, kind: 'fall',
+        closingMps: landing, priorClosingMps: 0, faceForward: 0, sideSign: 0, attitudeFactor, rng,
+      });
+      if (result || landing >= LANDING_EVENT_MIN_MPS) publishEntityImpact(entity, 'fall', landing, result);
+    }
   }
 
   // round 30: hulls stand on the primitives they are above (structureSupport.ts), the same field the solo sim rides
@@ -1892,6 +2001,7 @@ export function createAuthoritativeMatch({
       // the authority has no rendered contact geometry: the hull origin is its belly line (movement's default)
       structureSupport.beginHull(entity.state.pos.x, entity.state.pos.z, entity.state.pos.y);
       updateTank(entity, structureSupport, dt, collideMovingEntity);
+      resolveEntityImpacts(entity);
     }
     movingEntity = null;
   }
@@ -1901,7 +2011,8 @@ export function createAuthoritativeMatch({
     lower: AuthoritativeEntity,
     closing: number,
   ): void {
-    pendingRams.push({ a: upper, b: lower, closing });
+    // the upper hull is the aggressor of a vertical closing speed; the vertical module exchanged the impulse
+    pendingRams.push({ a: upper, b: lower, closing, nx: 0, nz: 0, vAn: -closing, vBn: 0, vertical: true });
   }
 
   function advanceTankContacts(dt: number): void {

@@ -37,7 +37,7 @@ import type {
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
   applyRulesetToCombat, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap,
-  rulesetLoadout, type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { allySpawnPoint, reuseSpawnPad } from '../sim/spawnPads.ts';
 import { campaignEnemyNations, campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -55,8 +55,12 @@ import { getSpec } from '../vehicles/specs.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
-  applyShellKnock, shellKnockMps, type RecoilLaunch,
+  applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
 } from '../sim/movement.ts';
+import {
+  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
+  type HullImpactKind, type HullImpactResult,
+} from '../sim/impact.ts';
 import {
   prefersVerticalTankContact,
   tanksVerticallyClear,
@@ -70,7 +74,7 @@ import {
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
-  selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
+  selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass,
   repairAllModules, startMagazineReload, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
@@ -224,10 +228,14 @@ type SoloPooledEntity = Omit<RosterEntity,
     modeJumpMps?: number | null;
     modeRecoilLaunchScale?: number;
     modeShellKnockScale?: number;
+    modePhysics?: RulesetPhysics | null;
     equip?: string[];
     _glbContactStampedVisual?: SoloVisual | null;
     _openingRoute?: Waypoint[] | null;
     _lastImpactT?: number;
+    /** Impact physics: closing speed already priced in the crash that is still resolving, and when it last grew. */
+    _impactAccumMps?: number;
+    _impactAccumT?: number;
     _modeTargetX?: number;
     _modeTargetZ?: number;
     _reloadEvent?: ReloadPresentationEvent;
@@ -374,8 +382,14 @@ interface RamContact {
   a: SoloEntity;
   b: SoloEntity;
   closing: number;
+  /** Contact normal from b to a (the push on a). */
   nx: number;
   nz: number;
+  /** Each hull's velocity along the normal at detection (impact physics: the momentum exchange and aggression). */
+  vAn: number;
+  vBn: number;
+  /** A roof landing (tankBodyContacts): the vertical module owns its impulse; no horizontal exchange. */
+  vertical: boolean;
 }
 
 interface RamModuleHit {
@@ -447,6 +461,8 @@ interface CollisionBundle {
   pendingCrush: CrushContact[];
   pendingRams: RamContact[];
   ramBestByPair: Map<string, RamContact>;
+  /** Impact physics: the last collide() call was pushed by a hard surface (the map edge or a solid obstacle). */
+  hardContact: boolean;
 }
 
 interface ShellFiredEvent {
@@ -865,6 +881,8 @@ function initializeBattleEntity(
   entity._destroyedAnnounced = false;
   entity._openingRoute = null;
   entity._lastImpactT = -1;
+  entity._impactAccumMps = 0;
+  entity._impactAccumT = -1e9;
   entity.ai = null;
   entity.visual?.resetDestroyed?.();
   if (isPlayer) {
@@ -1490,10 +1508,6 @@ const CRUSH_PRESS_GAP_S = 0.2;   // press bookkeeping resets after this gap
 function queueRamFromPush(
   self: SoloEntity,
   other: SoloEntity,
-  forwardX: number,
-  forwardZ: number,
-  otherForwardX: number,
-  otherForwardZ: number,
   pushX: number,
   pushZ: number,
   pendingRams: RamContact[],
@@ -1502,11 +1516,13 @@ function queueRamFromPush(
   if (pushLength <= 1e-6) return;
   const normalX = pushX / pushLength;
   const normalZ = pushZ / pushLength;
-  const relativeX = forwardX * self.state.speed - otherForwardX * other.state.speed;
-  const relativeZ = forwardZ * self.state.speed - otherForwardZ * other.state.speed;
-  const closing = -(relativeX * normalX + relativeZ * normalZ);
+  // impact physics: each hull's velocity along the normal (drive plus the decaying shove) BEFORE the contact —
+  // the momentum exchange and the aggression split read these, not the speeds the blocked-drive bleed leaves
+  const vAn = hullVelocityAlong(self.state, normalX, normalZ);
+  const vBn = hullVelocityAlong(other.state, normalX, normalZ);
+  const closing = vBn - vAn;
   if (closing > 0) {
-    pendingRams.push({ a: self, b: other, closing, nx: normalX, nz: normalZ });
+    pendingRams.push({ a: self, b: other, closing, nx: normalX, nz: normalZ, vAn, vBn, vertical: false });
   }
 }
 
@@ -1556,10 +1572,6 @@ function resolveTankCollisions(
     queueRamFromPush(
       self,
       other,
-      forwardX,
-      forwardZ,
-      otherForwardX,
-      otherForwardZ,
       outPush.x - beforeX,
       outPush.z - beforeZ,
       pendingRams,
@@ -1673,8 +1685,22 @@ function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
   // already zeroed and see every head-on ram as a 0 m/s kiss.
   const pendingRams: RamContact[] = [];
   const ramBestByPair = new Map<string, RamContact>();
+  const bundle: CollisionBundle = {
+    collide,
+    setSelf(e: SoloEntity) { self = e; },
+    queueRam(a: SoloEntity, b: SoloEntity, closing: number, nx = 0, nz = 0) {
+      // roof landings (tankBodyContacts): the vertical module already exchanged the impulse; the upper hull is
+      // the aggressor of a vertical closing speed
+      if (closing > 0) pendingRams.push({ a, b, closing, nx, nz, vAn: -closing, vBn: 0, vertical: true });
+    },
+    pendingCrush,
+    pendingRams,
+    ramBestByPair,
+    hardContact: false,
+  };
   function collide(pos: THREE.Vector3, radiusM: number, outPush: THREE.Vector3): boolean {
     outPush.set(0, 0, 0);
+    bundle.hardContact = false;
     const spec = self ? self.spec : null;
     const contactRect = spec ? tankContactRect(spec) : null;
     const halfL = contactRect ? contactRect.halfLength : radiusM * 0.6;
@@ -1695,18 +1721,11 @@ function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
       game, world, self, pos.y, centerX, centerZ, fx, fz, rx, rz,
       halfL, halfW, obstacles, nearby, pendingCrush, outPush,
     );
+    // crushable props never push (they are queued for crushing instead), so an obstacle push is a hard surface
+    bundle.hardContact = boundsPushed || obstaclesPushed;
     return boundsPushed || tanksPushed || obstaclesPushed;
   }
-  return {
-    collide,
-    setSelf(e: SoloEntity) { self = e; },
-    queueRam(a: SoloEntity, b: SoloEntity, closing: number, nx = 0, nz = 0) {
-      if (closing > 0) pendingRams.push({ a, b, closing, nx, nz });
-    },
-    pendingCrush,
-    pendingRams,
-    ramBestByPair,
-  };
+  return bundle;
 }
 
 function enrichHitEvent(
@@ -1781,7 +1800,7 @@ function announceDestroyed(
   bus: EventBus,
   ent: SoloEntity,
   killerId: string | null,
-  cause: 'ammorack' | 'shot' | 'ram' | 'fire',
+  cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
 ): void {
   ent._destroyedAnnounced = true;
   // turret toss is RESERVED for ammo-rack detonations (WoT spectacle);
@@ -2323,23 +2342,105 @@ function applyBotSupportActions(game: SoloGameState, bus: EventBus): void {
   }
 }
 
-function emitTankImpact(
+/** A crash is priced on the closing speed its contact ticks lose within this window of its first tick. */
+const IMPACT_CRASH_WINDOW_S = 0.3;
+/** A tick that loses less than this is the drive pressing against the surface, not a blow — it carries no energy. */
+const IMPACT_TICK_MIN_MPS = 0.5;
+/** Landings slower than this are not worth a thud event. */
+const LANDING_EVENT_MIN_MPS = 3;
+
+/** Publish one priced hull impact or landing: the bus event, module states, the wreck announcement, the shake. */
+function publishHullImpact(
   game: SoloGameState,
   entity: SoloEntity,
   bus: EventBus,
   rig: CameraRig | null,
+  kind: HullImpactKind,
+  closingMps: number,
+  result: HullImpactResult | null,
 ): void {
-  const impact = entity.state.impactMps;
-  if (impact <= 1.5 || game.timeS - (entity._lastImpactT || -1) <= 0.3) return;
-  entity._lastImpactT = game.timeS;
-  if (entity.isPlayer && rig) rig.addTrauma(Math.min(0.5, 0.10 + impact * 0.030));
+  const damage = result?.damage ?? 0;
+  if (entity.isPlayer && rig) rig.addTrauma(Math.min(0.55, 0.10 + closingMps * 0.030 + damage * 0.0006));
   bus.emit('tank:impact', {
     id: entity.id,
     specId: entity.specId,
     isPlayer: entity.isPlayer,
-    speedMps: impact,
+    speedMps: closingMps,
     pos: [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z],
+    // impact physics (2026-09-25): what the blow was and what it cost, for the HUD, the audio and the report
+    cause: kind,
+    hard: true,
+    damage,
+    destroyed: !!result?.destroyed,
+    modulesHit: result?.modulesHit ?? [],
+    crewHit: result?.crewHit ?? [],
+    timeS: game.timeS,
   });
+  if (!result) return;
+  for (const hit of result.modulesHit) {
+    bus.emit('module:state', { id: entity.id, module: hit.module, state: hit.newState, source: 'impact' });
+  }
+  if (result.destroyed && !entity._destroyedAnnounced) announceDestroyed(bus, entity, null, kind);
+}
+
+/**
+ * Impact physics (owner 2026-09-25): price the hard contacts the movement step absorbed this tick. A blocked
+ * drive against the map edge, a solid obstacle or a terrain wall is an `impact` on the closing speed the tracks
+ * lost (a crash spread over consecutive ticks is priced once, on its accumulated closing speed); a landing is a
+ * `fall` on the vertical closing speed the ride recorded, harder nose-first or on the roof. Tank-on-tank pushes
+ * are left to the ram resolution (it prices both hulls together). Every event still plays the impact sound.
+ */
+function resolveTankImpacts(
+  game: SoloGameState,
+  entity: SoloEntity,
+  bus: EventBus,
+  rig: CameraRig | null,
+  collider: CollisionBundle,
+): void {
+  const state = entity.state;
+  const physics = game.ruleset.physics;
+  const impact = state.impactMps;
+  const hard = impact >= IMPACT_TICK_MIN_MPS && (state.impactSource === IMPACT_SOURCE_CLIFF ||
+    (state.impactSource === IMPACT_SOURCE_COLLIDER && collider.hardContact));
+  if (hard) {
+    // the crash: this tick's lost closing speed joins the crash that began within the window, and only the new
+    // energy is priced (a crash the movement spreads over two ticks costs exactly what one blow would)
+    const fresh = game.timeS - (entity._impactAccumT ?? -1e9) > IMPACT_CRASH_WINDOW_S;
+    const prior = fresh ? 0 : (entity._impactAccumMps ?? 0);
+    const closing = prior + impact;
+    entity._impactAccumMps = closing;
+    if (fresh) entity._impactAccumT = game.timeS;
+    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+    // the struck face looks into the obstacle: opposite the push
+    const faceForward = -(state.impactNx * fx + state.impactNz * fz);
+    const sideSign = Math.sign(-(state.impactNx * fz - state.impactNz * fx));
+    const result = resolveHullImpact({
+      combat: entity.combat, massTons: entity.spec.weightTons, physics, kind: 'impact',
+      closingMps: closing, priorClosingMps: prior, faceForward, sideSign, attitudeFactor: 1, rng: game.combatRng,
+    });
+    if (result || (impact > 1.5 && game.timeS - (entity._lastImpactT || -1) > IMPACT_CRASH_WINDOW_S)) {
+      entity._lastImpactT = game.timeS;
+      publishHullImpact(game, entity, bus, rig, 'impact', closing, result);
+    }
+  } else if (impact > 1.5 && game.timeS - (entity._lastImpactT || -1) > IMPACT_CRASH_WINDOW_S) {
+    // a soft contact (another hull): the thud and the shake, the ram resolution prices it
+    entity._lastImpactT = game.timeS;
+    if (entity.isPlayer && rig) rig.addTrauma(Math.min(0.5, 0.10 + impact * 0.030));
+    bus.emit('tank:impact', {
+      id: entity.id, specId: entity.specId, isPlayer: entity.isPlayer, speedMps: impact,
+      pos: [state.pos.x, state.pos.y, state.pos.z], cause: 'contact', hard: false, damage: 0,
+    });
+  }
+  const landing = state.landingImpactMps;
+  if (landing > 0) {
+    const upY = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
+    const attitudeFactor = fallAttitudeFactor(state.visualPitch - state._terr.pitch, state.visualRoll - state._terr.roll, upY);
+    const result = resolveHullImpact({
+      combat: entity.combat, massTons: entity.spec.weightTons, physics, kind: 'fall',
+      closingMps: landing, priorClosingMps: 0, faceForward: 0, sideSign: 0, attitudeFactor, rng: game.combatRng,
+    });
+    if (result || landing >= LANDING_EVENT_MIN_MPS) publishHullImpact(game, entity, bus, rig, 'fall', landing, result);
+  }
 }
 
 const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
@@ -2373,7 +2474,7 @@ function stepTankMovement(
     support.beginHull(entity.state.pos.x, entity.state.pos.z,
       entity.state.pos.y + (entity.contactGeom?.bottomYM ?? 0));
     updateTank(entity, support, SIM_DT, collider.collide);
-    emitTankImpact(game, entity, bus, rig);
+    resolveTankImpacts(game, entity, bus, rig, collider);
   }
 }
 
@@ -2449,7 +2550,16 @@ function resolveRamDamage(
       game.timeS - previousContactS < RAM_PAIR_COOLDOWN_S) return null;
   const { a, b } = contact;
   if (a.combat.destroyed) return null;
-  const damage = ramDamage(a.spec.weightTons, b.spec.weightTons, contact.closing);
+  normalizeRamContact(contact);
+  // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
+  const afx = Math.sin(a.state.yaw), afz = Math.cos(a.state.yaw);
+  const bfx = Math.sin(b.state.yaw), bfz = Math.cos(b.state.yaw);
+  const damage = ramShares(
+    game.ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
+    ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
+    contact.vertical ? 0 : -(contact.nx * afx + contact.nz * afz),
+    contact.vertical ? 0 : contact.nx * bfx + contact.nz * bfz,
+  );
   if (damage.total <= 0) return null;
   cooldowns.set(key, game.timeS);
   const bWasWreck = b.combat.destroyed;
@@ -2459,7 +2569,6 @@ function resolveRamDamage(
   if (!bWasWreck) b.combat.hp = Math.max(0, b.combat.hp - damageB);
   a.combat.destroyed ||= a.combat.hp <= 0;
   if (!bWasWreck) b.combat.destroyed ||= b.combat.hp <= 0;
-  normalizeRamContact(contact);
   const aModulesHit = a.combat.destroyed
     ? applyLethalRamModuleDamage(a, contact.nx, contact.nz) : [];
   const bModulesHit = b.combat.destroyed && !bWasWreck
@@ -2534,6 +2643,13 @@ function resolveRamContacts(
     if (!previous || contact.closing > previous.closing) best.set(key, contact);
   }
   for (const [key, contact] of best) {
+    // impact physics: every horizontal contact exchanges momentum (the pushed hull moves, the rammer keeps its
+    // share) whether or not the pair is inside the damage cooldown; a roof landing already had its impulse
+    if (!contact.vertical) {
+      normalizeRamContact(contact);
+      exchangeRamMomentum(contact.a.state, contact.b.state, contact.nx, contact.nz,
+        contact.a.spec.weightTons, contact.b.spec.weightTons, contact.vAn, contact.vBn, game.ruleset.physics.ramRestitution);
+    }
     const resolution = resolveRamDamage(game, cooldowns, key, contact);
     if (resolution) publishRamDamage(game, bus, rig, resolution);
   }

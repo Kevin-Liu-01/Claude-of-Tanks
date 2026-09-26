@@ -14,7 +14,7 @@ import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 import {
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset, hordeWaveSize,
-  MARS_DEFAULT_RULES,
+  MARS_DEFAULT_RULES, type RulesetPhysics,
 } from './matchRuleset.ts';
 
 export const GAME_MODE_IDS = Object.freeze([
@@ -126,6 +126,8 @@ export interface MatchModeEntity {
   modeJumpMps?: number | null;
   modeRecoilLaunchScale?: number;
   modeShellKnockScale?: number;
+  /** Ruleset impact physics block (matchRuleset.ts) the movement reads for the landing rebound. */
+  modePhysics?: RulesetPhysics | null;
 }
 
 export interface MatchModeSpawn {
@@ -336,6 +338,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     entity.modeJumpMps = ruleset.jumpMps;
     entity.modeRecoilLaunchScale = ruleset.recoilLaunchScale;
     entity.modeShellKnockScale = ruleset.shellKnockScale;
+    entity.modePhysics = ruleset.physics;
   };
   const rng = seededRandom(seed ^ 0x4d4f4445);
   const spawns = new Map<string, MatchModeSpawn>();
