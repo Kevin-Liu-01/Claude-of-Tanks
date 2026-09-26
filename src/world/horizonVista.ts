@@ -566,7 +566,11 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   // is now the smallest of the three layers — 0.52 at the far cascade and never more than 0.62 — and the post pass
   // (extinction ceiling 0.60, scatter ceiling 0.55) owns the rest, so a range keeps at least a third of its own
   // colour and shading at any distance.
-  vistaHaze = clamp((0.05 + hazeR * hazeR * 0.52) * uVHaze + (1.0 - hT) * 0.05 * hazeR, 0.0, 0.62) * (1.0 - horizonMarine);
+  // Round 72: the ranges behind the first ridge now stand above it (the character's boost), and at the round-39
+  // curve their outer rows — half fog tint here, then the post pass's ceiling — vanished into the sky while their
+  // skyline ribbons and range trees stayed, floating over nothing. The material's share drops to 0.34 at the far
+  // cascade (ceiling 0.45): a range keeps well over half its own colour, the post pass still owns the far grading.
+  vistaHaze = clamp((0.05 + hazeR * hazeR * 0.34) * uVHaze + (1.0 - hT) * 0.05 * hazeR, 0.0, 0.45) * (1.0 - horizonMarine);
 }`;
 
 /** After `#include <color_fragment>`: haze toward the fog tint (the vertex bake no longer carries it). */

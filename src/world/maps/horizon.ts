@@ -2430,6 +2430,8 @@ interface HorizonTreelineContext {
   forest: THREE.Color;
   /** Authored opt-in for terrain-following face belts (default off). */
   faceBelts: boolean;
+  /** Round 72: the vista's haze multiplier (uVHaze), so the skyline ribbons haze like the surface under them. */
+  hazeAmp?: number;
 }
 
 export const HORIZON_TREELINE_MAX_BELTS = 20;
@@ -2470,7 +2472,7 @@ export function selectHorizonFaceBeltRows(rows: readonly HorizonRingRow[]): numb
 function addHorizonTreeline({
   mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
   maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, style, sun, forestCover, seaOpenings, sea,
-  base, forest, faceBelts,
+  base, forest, faceBelts, hazeAmp = 0.9,
 }: HorizonTreelineContext): void {
   const N = HORIZON_SEGMENTS;
   // round 47: no canopy on a marine vertex whichever rule made it marine (bay contour or sector)
@@ -2550,7 +2552,12 @@ function addHorizonTreeline({
           x * radialScale, hh - drop + span, z * radialScale);
         // Additional aerial perspective is the main depth cue at these
         // distances and prevents dark, high-contrast cardboard silhouettes.
-        const hz = Math.min(0.94, row.aer * 0.66 + 0.16 + layer * 0.11);
+        // Round 72: the ribbon's haze follows the vista surface's own curve at its row (0.05 + hazeR² · 0.34 of
+        // the map's haze, the outer rows about 0.35) instead of the old authored ramp, so a ribbon never reads
+        // paler or greener than the crest it stands on
+        const hazeRow = Math.min(1, Math.max(0, (row.r - 430) / 900));
+        const hazeS = hazeRow * hazeRow * (3 - 2 * hazeRow);
+        const hz = Math.min(0.94, (0.05 + hazeS * hazeS * 0.34) * hazeAmp + 0.10 + layer * 0.11);
         const light = 1.7 - layer * 0.08;
         let cr = Math.min(1.9, col[i * 3] * light);
         let cg = Math.min(1.9, col[i * 3 + 1] * light);
@@ -3092,6 +3099,7 @@ export function* buildHorizonRingSteps(
     style, sun: [lx, ly, lz], forestCover, seaOpenings, sea,
     base, forest: forestC,
     faceBelts: H.faceBelts === true,
+    hazeAmp: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
   });
   return mesh;
 }
