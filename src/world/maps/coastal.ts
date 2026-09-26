@@ -110,9 +110,10 @@ export default {
   },
 
   vegetation: {
-    species: ['pine', 'cedar', 'oak', 'palm'],
+    // round 76 (2026-09-26): no palm beside the maritime pines and cedars — a species mismatch on a temperate shore
+    species: ['pine', 'cedar', 'oak'],
     clusterMix: [['pine', 0.48], ['cedar', 0.32], ['oak', 0.20]],
-    loneMix: [['pine', 0.30], ['cedar', 0.25], ['oak', 0.25], ['palm', 0.20]],
+    loneMix: [['pine', 0.38], ['cedar', 0.31], ['oak', 0.31]],
     rimMix: [['cedar', 0.48], ['pine', 0.37], ['oak', 0.15]],
     // map pass 2026-09-12: the pasture between the strand and the crofts read
     // as an empty lawn from the establishing shot; gorse/marram scrub, more
@@ -130,14 +131,6 @@ export default {
       pine: {
         texTone: (h: number, s: number, l: number) => [clamp01(h * 1.04), clamp01(s * 0.9), clamp01(l * 0.98)],
         canopy: { hue: 0.34, sat: 0.22, l0: 0.16, l1: 0.30 },
-      },
-      // shore palms: real green (the desert palette's dusty olive would read
-      // dead against the bay), still desaturated enough to sit in the grade
-      palm: {
-        texTone: (h: number, s: number, l: number) => [clamp01(h), clamp01(s * 0.85), clamp01(l * 0.95)],
-        cardHue: 0.25, cardSat: 0.30,
-        frond: { hue: 0.25, sat: 0.30, l: 0.36 },
-        canopy: { hue: 0.26, sat: 0.28, l0: 0.28, l1: 0.44 },
       },
       oak: { // salt-pruned coastal scrub
         texTone: (h: number, s: number, l: number) => [clamp01(h * 0.92), clamp01(s * 0.72), clamp01(l * 1.0 + 0.05)],

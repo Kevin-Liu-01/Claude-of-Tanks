@@ -19,6 +19,18 @@ export const ROUND76_DECK_REGRADE_EDITS = {
       '    fogDensity: 0.00080, fogTintHex: 0x9aa0a6, fogMix: 0.9, envIntensity: 0.30,\n',
     ],
   ],
+  // the brief's vegetation note: Saltmere Bay's shore palms stood beside maritime pines and cedars — the species list
+  // and the lone mix drop the palm (one rng draw per lone tree whatever the mix: the placements stay), its palette with it
+  'coastal.ts': [
+    [
+      "    // round 76 (2026-09-26): no palm beside the maritime pines and cedars — a species mismatch on a temperate shore\n    species: ['pine', 'cedar', 'oak'],\n    clusterMix: [['pine', 0.48], ['cedar', 0.32], ['oak', 0.20]],\n    loneMix: [['pine', 0.38], ['cedar', 0.31], ['oak', 0.31]],\n",
+      "    species: ['pine', 'cedar', 'oak', 'palm'],\n    clusterMix: [['pine', 0.48], ['cedar', 0.32], ['oak', 0.20]],\n    loneMix: [['pine', 0.30], ['cedar', 0.25], ['oak', 0.25], ['palm', 0.20]],\n",
+    ],
+    [
+      '      oak: { // salt-pruned coastal scrub\n',
+      "      // shore palms: real green (the desert palette's dusty olive would read\n      // dead against the bay), still desaturated enough to sit in the grade\n      palm: {\n        texTone: (h: number, s: number, l: number) => [clamp01(h), clamp01(s * 0.85), clamp01(l * 0.95)],\n        cardHue: 0.25, cardSat: 0.30,\n        frond: { hue: 0.25, sat: 0.30, l: 0.36 },\n        canopy: { hue: 0.26, sat: 0.28, l0: 0.28, l1: 0.44 },\n      },\n      oak: { // salt-pruned coastal scrub\n",
+    ],
+  ],
 };
 
 export function historicalRound76DeckRegradeSource(source, file) {
