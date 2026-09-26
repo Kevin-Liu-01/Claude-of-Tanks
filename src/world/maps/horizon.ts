@@ -2554,12 +2554,10 @@ function addHorizonTreeline({
           x * radialScale, hh - drop + span, z * radialScale);
         // Additional aerial perspective is the main depth cue at these
         // distances and prevents dark, high-contrast cardboard silhouettes.
-        // Round 72: the ribbon's haze follows the vista surface's own curve at its row (0.05 + hazeR² · 0.34 of
-        // the map's haze, the outer rows about 0.35) instead of the old authored ramp, so a ribbon never reads
-        // paler or greener than the crest it stands on
-        const hazeRow = Math.min(1, Math.max(0, (row.r - 430) / 900));
-        const hazeS = hazeRow * hazeRow * (3 - 2 * hazeRow);
-        const hz = Math.min(0.94, (0.05 + hazeS * hazeS * 0.34) * hazeAmp + 0.10 + layer * 0.11);
+        // Round 72: the authored ramp stands (0.24 on the first ridge, 0.63 on the outer rows): it tracks the SUM of
+        // the material haze and the post pass's far ceilings, which wash the outer rows to a faint silhouette, so a
+        // ribbon on a boosted outer crest fades with the crest instead of standing over it as a floating band
+        const hz = Math.min(0.94, row.aer * 0.66 + 0.16 + layer * 0.11) * (0.6 + 0.4 * Math.min(1.2, hazeAmp));
         // Round 72: on a vista ring the bake is tone only (the fragment lights the surface), so the ribbon takes
         // the vista's own sky-plus-sun term (about 0.9 of the albedo) over the atlas's 0.22 mean — at the old 1.7 the
         // ribbons stood dark over the boosted, hazed crests, floating bands with nothing under them
