@@ -38,8 +38,8 @@ import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
-import { planYardDressing, yardStructureKinds, type YardFamily, type YardPlacement, type YardStructure } from './yardDressing.ts'; // round 75
-import { buildYardFamily, yardInstanceLivery } from './maps/yardClutterKit.ts'; // round 75
+import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
+import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
@@ -6746,6 +6746,82 @@ ${snowCap ? `
   }
   detachAnimatedDressing();
 
+  // -------------------------------------------------------------------------
+  // Round 75: YARD DRESSING — pallets, crates, drums, cable drums, tyre stacks, fuel tanks and skips in the apron
+  // band around the industrial structures (world/yardDressing.ts plans, maps/yardClutterKit.ts builds). Dressing,
+  // not obstacles: no collision or destructible record, its own seeded stream, and every solid the map already
+  // placed is kept clear. Follow-up 2 (2026-09-26): the yard adds no draw of its own — every piece is a transformed
+  // copy of its family geometry with the livery baked into its vertex colours, pushed into the map's wood / steel /
+  // baked bucket and merged with the structures into that bucket's one static mesh. Nine instanced families cost
+  // nine draws a pass (each drawn again by every shadow cascade); folded into the buckets the yard costs triangles
+  // only, so it runs after every solid is placed and just before the bucket merge.
+  // -------------------------------------------------------------------------
+  const YARD_BUCKET: Readonly<Record<YardMaterial, 'wood' | 'steel' | 'baked'>> = { wood: 'wood', steel: 'steel', baked: 'baked' };
+  /** mergeGeometries wants one attribute set per bucket: shape the piece after the bucket's first part. */
+  function conformYardPiece(piece: THREE.BufferGeometry, bucket: readonly THREE.BufferGeometry[]): void {
+    const model = bucket[0];
+    if (!model) return;
+    for (const name of Object.keys(piece.attributes)) if (!model.attributes[name]) piece.deleteAttribute(name);
+    const n = piece.getAttribute('position').count;
+    for (const name of Object.keys(model.attributes)) {
+      if (piece.attributes[name]) continue;
+      const itemSize = model.attributes[name].itemSize;
+      if (name === 'normal') piece.computeVertexNormals();
+      else piece.setAttribute(name, new THREE.BufferAttribute(new Float32Array(n * itemSize).fill(name === 'color' ? 1 : 0), itemSize));
+    }
+  }
+  function* placeYardDressing(): Generator<PropsBuildSlice, void, void> {
+    const kinds = new Set(yardStructureKinds());
+    const structures: YardStructure[] = [];
+    for (const b of buildingFeatures) {
+      if (b.kind && kinds.has(b.kind)) structures.push({ kind: b.kind, x: b.x, z: b.z, w: b.w, d: b.d, rot: b.rot });
+    }
+    const budget = P.yardDressing ?? Math.min(140, Math.round(structures.length * 4.5));
+    if (!structures.length || !(budget > 0)) return;
+    const palette = mapId === 'mars' ? 'martian' : snowCap || mapId === 'whiteout' ? 'polar' : 'brownfield';
+    const plan = planYardDressing(structures, heightField, obstacles, seed, { budget, palette });
+    const families = new Map<YardFamily, ReturnType<typeof buildYardFamily>>();
+    const perMaterial: Record<string, { bucket: string; pieces: number; families: string[]; vertices: number }> = {};
+    const pos = new THREE.Vector3(), scl = new THREE.Vector3(), q = new THREE.Quaternion(), m = new THREE.Matrix4();
+    const tint = new THREE.Color();
+    let triangles = 0, count = 0;
+    for (const p of plan.placements) {
+      let built = families.get(p.family);
+      if (!built) {
+        built = buildYardFamily(p.family);
+        if (built.material === 'steel') ensureSteelAtlas('yard:' + p.family);
+        families.set(p.family, built);
+      }
+      const piece = built.geometry.clone();
+      q.setFromAxisAngle(_upAxis, p.yaw);
+      m.compose(pos.set(p.x, p.y - 0.02, p.z), q, scl.set(p.scale, p.scale, p.scale));
+      piece.applyMatrix4(m);
+      const livery = yardInstanceLivery(p.family, p.variant, palette);
+      const color = piece.getAttribute('color');
+      if (livery !== null && color) {
+        tint.set(livery);
+        for (let i = 0; i < color.count; i++) color.setXYZ(i, color.getX(i) * tint.r, color.getY(i) * tint.g, color.getZ(i) * tint.b);
+      }
+      const bucket = YARD_BUCKET[built.material];
+      conformYardPiece(piece, buckets[bucket]);
+      buckets[bucket].push(piece);
+      let row = perMaterial[built.material];
+      if (!row) row = perMaterial[built.material] = { bucket, pieces: 0, families: [], vertices: 0 };
+      row.pieces++;
+      if (!row.families.includes(p.family)) row.families.push(p.family);
+      row.vertices += piece.index ? piece.index.count : piece.getAttribute('position').count; // as merged (non-indexed)
+      triangles += built.triangles;
+      if (++count % 24 === 0) yield { fine: true, progress: false, stage: 'yard' };
+    }
+    for (const built of families.values()) built.geometry.dispose();
+    for (const row of Object.values(perMaterial)) row.families.sort();
+    group.userData.yardDressing = {
+      structures: structures.length, budget, placed: plan.placements.length, families: families.size,
+      attempts: plan.attempts, triangles, draws: 0, perMaterial,
+    };
+  }
+  yield* placeYardDressing();
+
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
@@ -6940,61 +7016,6 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
-  // -------------------------------------------------------------------------
-  // Round 75: YARD DRESSING — pallets, crates, drums, cable drums, tyre stacks, fuel tanks and skips in the apron
-  // band around the industrial structures (world/yardDressing.ts plans, maps/yardClutterKit.ts builds), one
-  // InstancedMesh per family on the wood / steel / baked materials. Dressing, not obstacles: no collision or
-  // destructible record, its own seeded stream, and every solid the map already placed is kept clear.
-  // -------------------------------------------------------------------------
-  function* placeYardDressing(): Generator<PropsBuildSlice, void, void> {
-    const kinds = new Set(yardStructureKinds());
-    const structures: YardStructure[] = [];
-    for (const b of buildingFeatures) {
-      if (b.kind && kinds.has(b.kind)) structures.push({ kind: b.kind, x: b.x, z: b.z, w: b.w, d: b.d, rot: b.rot });
-    }
-    const budget = P.yardDressing ?? Math.min(140, Math.round(structures.length * 4.5));
-    if (!structures.length || !(budget > 0)) return;
-    const palette = mapId === 'mars' ? 'martian' : snowCap || mapId === 'whiteout' ? 'polar' : 'brownfield';
-    const plan = planYardDressing(structures, heightField, obstacles, seed, { budget, palette });
-    const byFamily = new Map<YardFamily, YardPlacement[]>();
-    for (const p of plan.placements) {
-      let list = byFamily.get(p.family);
-      if (!list) byFamily.set(p.family, list = []);
-      list.push(p);
-    }
-    const pos = new THREE.Vector3(), scl = new THREE.Vector3(), q = new THREE.Quaternion(), m = new THREE.Matrix4();
-    const tint = new THREE.Color();
-    let triangles = 0;
-    for (const [family, list] of byFamily) {
-      const built = buildYardFamily(family);
-      if (built.material === 'steel') ensureSteelAtlas('yard:' + family);
-      const im = new THREE.InstancedMesh(built.geometry, mats[built.material], list.length);
-      for (let i = 0; i < list.length; i++) {
-        const p = list[i];
-        q.setFromAxisAngle(_upAxis, p.yaw);
-        m.compose(pos.set(p.x, p.y - 0.02, p.z), q, scl.set(p.scale, p.scale, p.scale));
-        im.setMatrixAt(i, m);
-        const livery = yardInstanceLivery(family, p.variant, palette);
-        if (livery !== null) im.setColorAt(i, tint.set(livery));
-      }
-      if (im.instanceColor) im.instanceColor.needsUpdate = true;
-      // only the tall families cast: every casting family is drawn again by each shadow cascade (the round's
-      // draw budget), and a pallet's or drum's shadow is a smudge the contact term already gives
-      im.castShadow = family === 'fuelTank' || family === 'skip' || family === 'palletsTall' || family === 'cableDrum';
-      im.receiveShadow = true;
-      im.matrixAutoUpdate = false;
-      im.computeBoundingSphere();
-      im.name = 'yard-' + family;
-      group.add(im);
-      triangles += built.triangles * list.length;
-      yield { fine: true, stage: 'yard-' + family };
-    }
-    group.userData.yardDressing = {
-      structures: structures.length, budget, placed: plan.placements.length, families: byFamily.size,
-      attempts: plan.attempts, triangles,
-    };
-  }
-  yield* placeYardDressing();
   // Construction-only spans are now sealed into matrices/support/colliders;
   // runtime destruction closures must not retain the placement graph.
   wallSpans.clear();

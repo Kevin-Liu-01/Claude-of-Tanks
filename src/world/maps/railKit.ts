@@ -173,7 +173,9 @@ export function makeWarehouse(
   }
   const sign = dressing(box(w * 0.42, 1.0, 0.07, 0.8));
   sign.translate(0, wallH - 0.62, d / 2 + 0.05);
-  parts.plaster2!.push(sign);
+  // follow-up 2 (2026-09-26): the board rides the map's plaster bucket — plaster2 was a whole extra mesh (one draw a
+  // pass, four cascades) for a dozen boards on the maps that had no plaster2 wall of their own
+  parts.plaster.push(sign);
   if (steelClad) {
     // corner trims and a girt line read the sheet hall as a framed building
     for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {

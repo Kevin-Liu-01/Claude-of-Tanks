@@ -405,22 +405,30 @@ try {
       'all42 planned-building admissions, original poses/dimensions/storage preserved');
     state.rng=globalThis.__courtRng.map(r=>({seed:r.seed,count:r.count,tail:[r.next(),r.next()]}));
     state.inventory=sceneInventory(currentProps.group);
+    state.yard=currentProps.group.userData.yardDressing??null;
     delete state.foundationGeometry;delete state.mergedMeshes;
     state.disposal=disposeObject3DResources(currentProps.group);currentProps=null;
     currentVegetation.dispose();disposeObject3DResources(currentVegetation.group);currentVegetation=null;
     results.push(state);
   }
   for(const property of ['plans','planGeometry','beforeComposition','rng','totalBudget','donorBudget','inventory','disposal']) {
-    // round 75 (2026-09-26): the yard dressing (one InstancedMesh a family, world/yardDressing.ts) is laid around
-    // the placed structures, so it follows the six donors the court moves; those meshes exist in both runs with the
-    // same families and counts, and every other mesh keeps the exact contract.
-    const rows=(state)=>property==='inventory'?state.inventory.filter(row=>!row.name.startsWith('yard-')):state[property];
+    // round 75 (2026-09-26): the yard dressing (world/yardDressing.ts) is laid around the placed structures, so it
+    // follows the six donors the court moves; follow-up 2 folds its pieces into the wood / steel / baked buckets
+    // (no mesh of its own), so those three rows are compared net of the yard's vertices (the structures' share is
+    // exact) and every other row keeps the exact contract.
+    const yardOf=(state,row)=>Object.values(state.yard?.perMaterial??{}).find(y=>'props-bucket-'+y.bucket===row.name)??null;
+    const rows=(state)=>property==='inventory'?state.inventory.map(row=>{const y=yardOf(state,row);if(!y)return row;
+      assert.ok(row.budget.vertices>y.vertices&&y.vertices>0,`${row.name} carries the yard's ${y.vertices} vertices`);
+      return {...row,budget:{parts:row.budget.parts,vertices:row.budget.vertices-y.vertices,indices:row.budget.indices}};}):state[property];
     assert.deepEqual(rows(results[1]),rows(results[0]),`${property}: exact enabled/opt-out full producer contract`);
     if(property==='inventory') {
       // the court moves six donors, so a few pieces near their old and new envelopes are refused or admitted
       // differently: the yard is present and bounded in both runs, its exact counts are the planner receipt's
-      const yard=(state)=>state.inventory.filter(row=>row.name.startsWith('yard-'));
-      for(const state of results) assert.ok(yard(state).length>=6&&yard(state).every(row=>row.count>0&&row.count<=140),'the foundry yard is dressed and bounded');
+      for(const state of results) {
+        assert.ok(state.yard&&state.yard.draws===0&&state.yard.placed>0&&state.yard.placed<=140,'the foundry yard is dressed, bounded and draw-free');
+        assert.deepEqual(Object.keys(state.yard.perMaterial).sort(),['baked','steel','wood'],'three buckets carry it');
+        assert.equal(state.inventory.some(row=>row.name.startsWith('yard-')),false,'no yard mesh of its own');
+      }
     }
   }
   }

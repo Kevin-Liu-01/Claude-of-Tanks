@@ -55,7 +55,9 @@ the shared weathering hook in `props.ts` mixes toward rust. `yardDressing.ts`
 is the renderer-free planner of the yard dressing around industrial structures
 (apron band, clearance from roads, water, berth, solids and envelopes, a
 per-map budget, its own seeded stream, no collision record) and
-`maps/yardClutterKit.ts` its instance-ready geometry per family.
+`maps/yardClutterKit.ts` its geometry per family; the producer folds every
+piece into the map's wood / steel / baked bucket before the bucket merge (no
+draw of its own), and paints the steel atlas only when the plan needs it.
 `rockDressing.ts` (round 75 item 6) owns the boulders' fracture law (the
 legacy displacement's projected hull stays the collision proxy: every cut
 moves a vertex inward), the per-map moss / dust / soil dressing, the triplanar

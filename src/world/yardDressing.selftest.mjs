@@ -106,13 +106,22 @@ for (const palette of Object.keys(YARD_LIVERIES)) {
   }
 }
 
-// --- the producer wires the pass after the pools, adds no record, and names its instanced meshes
+// --- the producer wires the pass before the bucket merge, adds no record and no mesh of its own
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const pass = source.slice(source.indexOf('  function* placeYardDressing('), source.indexOf('  yield* placeYardDressing();'));
 assert.ok(pass.length > 200, 'the yard pass exists');
-assert.ok(source.indexOf('  yield* finalizeDestructiblePools();') < source.indexOf('  yield* placeYardDressing();'), 'after the pools');
+assert.ok(source.indexOf('  yield* finalizeDestructiblePools();') > source.indexOf('  yield* placeYardDressing();'), 'the pools finalize after the yard');
+assert.ok(source.indexOf('  yield* placeYardDressing();') < source.indexOf('  yield* mergeMaterialBuckets();'), 'before the bucket merge');
 assert.match(pass, /planYardDressing\(structures, heightField, obstacles, seed/);
-assert.match(pass, /im\.name = 'yard-' \+ family/);
+// follow-up 2 (2026-09-26): no draw of its own — every piece is pushed into the map's wood / steel / baked bucket and
+// merged with the structures, the livery baked into its vertex colours first
+assert.match(pass, /buckets\[bucket\]\.push\(piece\)/, 'the pieces join the material buckets');
+assert.match(pass, /conformYardPiece\(piece, buckets\[bucket\]\)/, 'one attribute set per bucket');
+assert.equal(pass.includes('InstancedMesh'), false, 'no instanced draw per family');
+assert.equal(pass.includes('new THREE.Mesh('), false, 'no mesh of its own');
+assert.equal(pass.includes('group.add('), false, 'nothing added to the group but the record');
+assert.match(pass, /draws: 0/, 'the record says so');
+assert.match(pass, /color\.setXYZ\(i, color\.getX\(i\) \* tint\.r/, 'the livery is baked into the vertex colours');
 for (const forbidden of ['addDestructible(', 'obstacles.push', 'colliders.push', 'crushables.push']) {
   assert.equal(pass.includes(forbidden), false, `the yard pass never publishes a record (${forbidden})`);
 }
