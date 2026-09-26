@@ -507,7 +507,10 @@ room reconnects, drops, the last drop, the milliseconds spent below `good`.
   top-right under the fps/ping plate, and follows the touch lanes `.cot-net` uses through the
   responsive body attributes (no width media queries; `body.cot-touch-layout` gives it a 44 px
   target). Its ping is the window-minimum round trip; the HUD's own ping cell reads the same number
-  through a new HUD-frame port.
+  through a new HUD-frame port. The strip lives outside the HUD root and asks the HUD's measured
+  lanes (`battleHudLayout.ts`) for a relayout when it mounts: while it sits in the right roster's
+  column the enemies roster takes the lane below it (`--hud-roster-top-right`) and the side lane
+  under the roster follows — no fixed offset was added to either component.
 - **The panel** opens on a tap of the strip or the new rebindable `networkPanel` action (F3, v1's
   diagnostics key): link, round trip (floor, median, spread), updates (measured of 30 Hz), last
   update, buffer, loss, corrections, traffic, reconnects, room (phase and round trip), region,

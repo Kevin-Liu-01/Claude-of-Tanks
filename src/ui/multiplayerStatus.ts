@@ -87,7 +87,7 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:38px;
   font:800 11px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;cursor:pointer;pointer-events:auto}
 .cot-mp-leave:hover{color:#ffd0c5;border-color:rgba(239,110,82,.9)}
 .cot-mp-leave:focus-visible{outline:2px solid #fff;outline-offset:3px}
-.cot-mp-panel{width:268px;max-width:calc(100vw - 20px);box-sizing:border-box;padding:8px 10px 10px;border:1px solid rgba(174,193,207,.22);
+.cot-mp-panel{width:300px;max-width:calc(100vw - 20px);box-sizing:border-box;padding:8px 10px 10px;border:1px solid rgba(174,193,207,.22);
   background:rgba(7,11,15,.92);box-shadow:0 12px 36px rgba(0,0,0,.45);color:#cbeaff;font-size:10.5px;font-weight:700;letter-spacing:.04em;pointer-events:auto}
 .cot-mp-panel[hidden]{display:none}
 .cot-mp-panel .head{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(171,190,204,.2);font-size:11px;color:#dce6ed}
@@ -358,6 +358,12 @@ export function createMultiplayerStatusSurface({
   let remembered = false;
   try { remembered = storage?.getItem(MP_STATUS_PANEL_STORAGE_KEY) === '1'; } catch { remembered = false; }
   if (remembered) togglePanel(true);
+  // The HUD's measured lanes (battleHudLayout.ts) take the strip into account once told it is there.
+  const relayout = (): void => {
+    if (typeof window === 'undefined' || typeof CustomEvent !== 'function') return;
+    window.dispatchEvent(new CustomEvent('cot-hud-relayout'));
+  };
+  if (host === 'battle') relayout();
 
   return {
     root,
@@ -370,6 +376,7 @@ export function createMultiplayerStatusSurface({
       disposed = true;
       banner.remove();
       root.remove();
+      if (host === 'battle') relayout();
     },
   };
 }

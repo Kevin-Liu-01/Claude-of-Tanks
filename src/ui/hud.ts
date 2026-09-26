@@ -1358,7 +1358,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
 }
 .cot-ear{position:absolute;z-index:var(--hud-layer-status);top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
-.cot-ear.r{right:0;}
+.cot-ear.r{right:0;top:var(--hud-roster-top-right,52px);}
 .cot-ear .hd{font-size:9px;font-weight:800;letter-spacing:.22em;color:#95a4af;
   font-family:${FONT_COND};
   text-transform:uppercase;padding:4px 10px;display:flex;justify-content:space-between;

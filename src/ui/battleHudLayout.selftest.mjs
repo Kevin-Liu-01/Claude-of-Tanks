@@ -24,7 +24,7 @@ try {
   const node=(attrs={})=>({
     attrs:{...attrs},dataset:{},childElementCount:0,visible:true,
     classList:{contains:()=>false},
-    style:{getPropertyValue:key=>properties.get(key)||'',setProperty:(key,value)=>{writes++;properties.set(key,value);}},
+    style:{getPropertyValue:key=>properties.get(key)||'',setProperty:(key,value)=>{writes++;properties.set(key,value);},removeProperty:key=>{writes++;properties.delete(key);}},
     getAttribute(key){return this.attrs[key]??null;},
     hasAttribute(key){return this.getAttribute(key)!==null;},
     toggleAttribute(key,on){if(on)this.attrs[key]='';else delete this.attrs[key];},
@@ -98,15 +98,35 @@ try {
   listeners.get('transitionend')({target:special});
   assert.equal(frames.size,1,'settled panel transforms update lane position');flush();
   listeners.get('transitioncancel')({target:special});assert.equal(frames.size,1);flush();
+  // The multiplayer v2 network strip mounts outside the HUD root and asks for a relayout: while it sits in the
+  // right roster's column the roster takes the lane below it, and the side lane below the roster follows.
+  const rect=(top,bottom,left,right)=>({top,bottom,left,right});
+  const earRight=node({class:'cot-ear r'});earRight.getBoundingClientRect=()=>rect(52,120,900,1094);
+  const strip=node({class:'cot-mp-status battle'});strip.getBoundingClientRect=()=>rect(38,66,860,1014);
+  let stripMounted=true;
+  globalThis.document.querySelector=selector=>selector==='.cot-ear.r'?earRight:selector==='.cot-mp-status.battle'&&stripMounted?strip:null;
+  assert.equal(properties.has('--hud-roster-top-right'),false,'no strip, no roster lane variable');
+  listeners.get('cot-hud-relayout')();assert.equal(frames.size,1,'the strip\'s relayout request schedules one measurement');flush();
+  assert.equal(properties.get('--hud-roster-top-right'),'72px','the roster takes the lane 6 px below the strip');
+  assert.equal(properties.get('--hud-right-top'),'148px','the side lane below the roster follows the moved roster (72 + 68 + 8)');
+  strip.getBoundingClientRect=()=>rect(140,168,20,180);
+  listeners.get('cot-hud-relayout')();flush();
+  assert.equal(properties.has('--hud-roster-top-right'),false,'a strip on the left lane (touch portrait) leaves the right roster alone');
+  assert.equal(properties.get('--hud-right-top'),'128px','the roster\'s own bottom decides again (120 + 8)');
+  stripMounted=false;
+  listeners.get('cot-hud-relayout')();flush();
+  assert.equal(properties.has('--hud-roster-top-right'),false,'the strip\'s dispose removes the variable');
 } finally {
   for(const [key,descriptor] of originals){
     if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
   }
 }
 const layout=readFileSync(new URL('./battleHudLayout.ts',import.meta.url),'utf8');
+const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
 assert.match(layout,/new ResizeObserver\(schedule\)/,'map zoom and roster size changes relayout the lanes');
 assert.match(layout,/visualViewport\?\.addEventListener\('resize'/,'virtual keyboard/visual viewport changes reflow');
-const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
+assert.match(layout,/window\.addEventListener\('cot-hud-relayout', schedule\)/,'the network strip can request a relayout from outside the root');
+assert.match(hud,/\.cot-ear\.r\{right:0;top:var\(--hud-roster-top-right,52px\);\}/,'the right roster reads its lane from the layout, with its own lane as the fallback');
 assert.match(hud,/installBattleHudLayout\(root\)/);
 const shot=readFileSync(new URL('./shotInfo.ts',import.meta.url),'utf8');
 assert.doesNotMatch(shot,/t\('shotInfo\.(yourShots|yourShotsLast|damageReceived)'/,'log headings use existing GT catalog entries');

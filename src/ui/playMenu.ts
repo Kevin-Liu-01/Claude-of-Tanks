@@ -1471,8 +1471,9 @@ export function createPlayMenu({
   }
 
   function shouldBeginClientHandoff(next: SerializedLobby): boolean {
-    if (!(next.phase === 'starting' || next.phase === 'playing') || role !== 'client' || handedOff || activeRoom) return false;
-    return connectionVersion !== 2 || hasMatchStart(session);
+    return (next.phase === 'starting' || next.phase === 'playing') &&
+      role === 'client' && !handedOff && !activeRoom &&
+      (connectionVersion !== 2 || hasMatchStart(session));
   }
 
   /** Multiplayer v2 (charter §5): a seat back in the Garage with the room kept may rejoin the match the room still runs. */

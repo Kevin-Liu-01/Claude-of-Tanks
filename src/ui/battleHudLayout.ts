@@ -81,6 +81,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (!visible) return;
     observe('.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-special,.cot-spec,.cot-top,.cot-touch .joy,.cot-touch .fire.alt');
     observe('.cot-si-toasthost,.cot-room-chat', true);
+    // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
+    // asks for a relayout when it mounts, and the right roster takes the lane below it.
+    observe('.cot-mp-status.battle');
     const height = window.visualViewport?.height || window.innerHeight;
     const width = window.visualViewport?.width || window.innerWidth;
     const touch = document.body.classList.contains('cot-touch-layout');
@@ -91,7 +94,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const leftTop = Math.max(top, read('.cot-ear.l')?.bottom || 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
     const leftBottom = leftFloor(height, touch);
-    const rightTop = Math.max(top, read('.cot-ear.r')?.bottom || 0) + 8;
+    const earRight = read('.cot-ear.r');
+    const strip = read('.cot-mp-status.battle');
+    // A strip in the right roster's column pushes the roster below it (the roster's own top is otherwise its CSS lane).
+    const rosterTopRight = strip && earRight && strip.right > earRight.left && strip.bottom > earRight.top - 8 ? Math.ceil(strip.bottom) + 6 : null;
+    const rosterBottomRight = earRight ? (rosterTopRight ?? earRight.top) + (earRight.bottom - earRight.top) : 0;
+    const rightTop = Math.max(top, rosterBottomRight) + 8;
     const rightBottom = rightFloor(height, width, map);
     const chat = !!read('.cot-room-chat:not([hidden])');
     const toastCount = root.querySelector('.cot-si-toasthost')?.childElementCount || 0;
@@ -109,6 +117,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
         document.body.style.setProperty(property, pixels);
       }
     }
+    const rosterProperty = '--hud-roster-top-right';
+    const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
+    if (document.body.style.getPropertyValue(rosterProperty) !== rosterPixels) {
+      if (rosterPixels) document.body.style.setProperty(rosterProperty, rosterPixels);
+      else document.body.style.removeProperty(rosterProperty);
+    }
     const toastRows = String(stack.toastRows);
     if (root.dataset.toastRows !== toastRows) root.dataset.toastRows = toastRows;
   }
@@ -118,6 +132,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   watchAttributes(document.body, ['class'], true);
   watchAttributes(root, ['style'], true);
   window.addEventListener('resize', schedule, { passive: true });
+  window.addEventListener('cot-hud-relayout', schedule);
   window.visualViewport?.addEventListener('resize', schedule, { passive: true });
   window.addEventListener('cot:layoutchange', schedule);
   // Transforms (notably the spectator tray's entrance) do not resize the

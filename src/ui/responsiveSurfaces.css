@@ -24,6 +24,7 @@ body[data-cot-width='laptop'] .cot-ear{width:clamp(172px,14vw,194px)}
 body[data-cot-width='laptop'] .cot-killfeed{left:clamp(184px,15vw,210px)}
 body[data-cot-width='tablet'] .cot-top{width:min(326px,calc(100vw - 120px))}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear{top:58px;width:160px}
+body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear.r{top:var(--hud-roster-top-right,58px)}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er{padding-inline:6px;font-size:9px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .ic{width:25px;height:13px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .n .nick{font-size:9px}

@@ -46,7 +46,7 @@ assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(st
 assert.match(source, /const activeSession = session \?\? \(activeRoom\?\.session as RoomSession \| undefined\) \?\? null;/,
   'a composition-held room hands its own session back for the rejoin');
 assert.match(source, /if \(activeSession === session\) handedOff = true;/, 'the handoff flag guards the menu\'s own session only');
-assert.match(source, /return connectionVersion !== 2 \|\| hasMatchStart\(session\);/,
+assert.match(source, /!handedOff && !activeRoom &&\s*\(connectionVersion !== 2 \|\| hasMatchStart\(session\)\);/,
   'a v2 client auto-hands off into a running match only with its own match_start');
 assert.match(source, /room\.setAttribute\('aria-busy', String\(next\)\)/);
 assert.match(source, /invalidInput\?\.setAttribute\('aria-describedby', 'cot-room-failure-detail'\)/);
