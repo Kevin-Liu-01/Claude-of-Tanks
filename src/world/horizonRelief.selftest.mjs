@@ -198,7 +198,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
       }
     }
     assert.ok(range > 50, `the near ranges still carry range-class trees (${range})`);
-    const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <project_vertex>', fragmentShader: '#include <common>\n#include <map_fragment>' };
+    const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <project_vertex>', fragmentShader: '#include <common>\n#include <lights_physical_pars_fragment>\n#include <map_fragment>' };
     forest.userData.horizonForestHook(shader);
     assert.match(shader.fragmentShader, /uniform float uVfMaxH;/, 'the crowns know the ring height');
     assert.match(shader.fragmentShader, /vfHigh \* 0\.55/, 'a crown high on a distant face takes the fog the face takes');
@@ -212,7 +212,8 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
       if (top - base > 0.5) { spans++; if (base + 3.2 > maxH * 0.5) highSpans++; }
     }
     assert.equal(highSpans, 0, `no ribbon span on a crest above half the ring (${highSpans} of ${spans})`);
-    assert.ok(spans > 40, `the low crests keep their ribbon (${spans})`);
+    // on a boosted alpine ring the resolved skyline is mostly high country, so only the low passes keep a ribbon
+    assert.ok(spans >= 10 && spans < HORIZON_SEGMENTS * 0.5, `the low crests keep their ribbon, the high ones lose it (${spans})`);
     assert.ok(mesh.getObjectByName('horizon-far-range'), 'the far range stands behind the ring');
   } finally {
     if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
