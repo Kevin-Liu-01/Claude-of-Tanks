@@ -3232,8 +3232,14 @@ export function* buildHorizonRingSteps(
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
     coniferShare: rimTotal > 0 ? rimConifers / rimTotal : style === 'alpine' ? 0.95 : style === 'mesa' ? 0.8 : 0.62,
-    maxInstances: vista ? 8000 : 0, maxRadius: 1050, nearDepth: 300, ridgeRow,
+    // round 72c (perf, the clone bench with the forest hidden: Whiteout's ring is 0.27 ms without its trees and 1.5 ms
+    // with them — the round-72 polar forest of 6000 band spruces was the whole +0.9 ms over the treeless rolling ring
+    // it replaced; 3000 still measured +0.65-0.85): the polar character keeps 1600 instances, clumped by the relief
+    // (horizonVista.ts)
+    maxInstances: vista ? (reliefCharacter === 'polar' ? 1600 : 8000) : 0, maxRadius: 1050, nearDepth: 300, ridgeRow,
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
+    // round 72c: the stands follow the coarse relief (clumps in the hollows, gaps on the crests, a wandering treeline)
+    ...(reliefField ? { reliefAt: (x: number, z: number) => reliefField.low(x, z) / Math.max(1, reliefField.settings.lowAmpM) } : {}),
     forestAmp: treeline > 0 && treeline < 1.5 ? 1 : 0,
     bareRock, // round 49: the JS twin of the fragment's outcrop ribs keeps crowns off them
     outcrops, // round 55: and off the knobs below the treeline

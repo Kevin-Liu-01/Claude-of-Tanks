@@ -326,7 +326,21 @@ uniform float uVOutcrop;  // round 55: gneiss knobs and scree through the turf o
 uniform sampler2D uVRelief; uniform vec2 uVReliefR; uniform float uVReliefGrad; uniform float uVReliefAmp;
 uniform float uVAoStrength; uniform float uVShadow; uniform vec3 uVSkyTint; uniform float uVSparkle;
 uniform float uVDebug; // QA: 1 the relief gradient, 2 the occlusion, 3 the sun visibility, 4 the relieved normal's y, 5 the cloud shade, 6 the material weights
-${HORIZON_CLOUD_SHADE_UNIFORM_DECLARATIONS}`;
+${HORIZON_CLOUD_SHADE_UNIFORM_DECLARATIONS}
+// round 72c (perf, integrator: Whiteout's ring over the +0.6 ms line — 4.4 x the pixels of the rolling ring it replaced):
+// the tiles' far LOD. Inside 880 m of the camera every tile is the world triplanar projection (three fetches); past
+// 1 km it collapses to two — the horizontal plane at the same weight and, for the vertical share, ONE cylindrical plane
+// in the ring's own frame (the arc as an integer tile count around the ring, so the seam column closes, by the world
+// height) — with a 120 m blend between. The two finest noise fields (45 m knobs, 12 m grain: under a pixel at 1 km)
+// are dropped past it as well. Twenty-seven fetches become fifteen on the far rows.
+float gLodFar = 0.0; vec3 gP = vec3(0.0); vec3 gAw = vec3(0.0); float gCylU = 0.0;
+vec4 vTile(sampler2D tex, float s, vec2 o, float cyl) {
+  vec4 flatTap = texture2D(tex, gP.xz * s + o);
+  if (gLodFar > 0.999) return flatTap * gAw.y + texture2D(tex, vec2(gCylU * cyl, gP.y * s) + o + vec2(0.37, 0.11)) * (1.0 - gAw.y);
+  vec4 tri = flatTap * gAw.y + texture2D(tex, gP.zy * s + o + vec2(0.37, 0.11)) * gAw.x + texture2D(tex, gP.xy * s + o + vec2(0.71, 0.53)) * gAw.z;
+  if (gLodFar < 0.001) return tri;
+  return mix(tri, flatTap * gAw.y + texture2D(tex, vec2(gCylU * cyl, gP.y * s) + o + vec2(0.37, 0.11)) * (1.0 - gAw.y), gLodFar);
+}`;
 
 /**
  * Replaces `#include <map_fragment>` on the vista ring. Requires the ring's varyings (vHNrm, vHPos, vHDist), the
@@ -371,14 +385,18 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   sunVis *= cloudLit;
   vec3 aw = abs(n0);
   aw /= (aw.x + aw.y + aw.z);
-  #define VTRI(tex, s, o) (texture2D(tex, P.xz * (s) + (o)) * aw.y \
-    + texture2D(tex, P.zy * (s) + (o) + vec2(0.37, 0.11)) * aw.x \
-    + texture2D(tex, P.xy * (s) + (o) + vec2(0.71, 0.53)) * aw.z)
+  // round 72c: the tiles through the far-LOD function (declarations above); the fourth argument is the tile count
+  // around the ring for the cylindrical plane (2 pi x 1 km x the scale, rounded)
+  gLodFar = smoothstep(880.0, 1000.0, vHDist); gP = P; gAw = aw; gCylU = vMapUv.x * 0.1;
+  #define VTRI(tex, s, o, cyl) vTile(tex, s, o, cyl)
   // world-anchored noise fields: stands (600 m), patches (140 m), knobs (45 m), grain (12 m)
-  float nB = VTRI(uDetail2, 0.0016, vec2(0.0)).r - 0.5;
-  float nC = VTRI(uDetail2, 0.0071, vec2(0.29, 0.53)).r - 0.5;
-  float nD = (VTRI(uDetail2, 0.0230, vec2(0.71, 0.19)).r - 0.5) * (1.0 - floorW);
-  float nE = (VTRI(uDetail2, 0.0850, vec2(0.11, 0.83)).r - 0.5) * (1.0 - floorW);
+  float nB = VTRI(uDetail2, 0.0016, vec2(0.0), 10.0).r - 0.5;
+  float nC = VTRI(uDetail2, 0.0071, vec2(0.29, 0.53), 45.0).r - 0.5;
+  float nD = 0.0, nE = 0.0;
+  if (gLodFar < 0.999) {
+    nD = (VTRI(uDetail2, 0.0230, vec2(0.71, 0.19), 145.0).r - 0.5) * (1.0 - floorW) * (1.0 - gLodFar);
+    nE = (VTRI(uDetail2, 0.0850, vec2(0.11, 0.83), 534.0).r - 0.5) * (1.0 - floorW) * (1.0 - gLodFar);
+  }
   // round 72: the material reads the slope of the relieved surface, so rock breaks through on the fine faces too
   float slope = 1.0 - clamp(mix(n0.y, nR.y, 0.75), 0.0, 1.0);
   // Round 29: a wall is a genuinely steep face — iron staining, desert varnish and gullies belong to walls.
@@ -445,17 +463,17 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   float gully = smoothstep(0.55, 0.90, 0.5 - nC * 1.2 - nD * 0.6) * wall;
   float varnish = smoothstep(0.55, 0.85, nC + 0.5) * wall;         // dark desert varnish streaks
   // --- material colours: tint (ratio to the map base) x tile modulation ---------
-  vec3 meadowMod = mix(vec3(1.0), VTRI(uVMeadow, 0.083, vec2(0.0)).rgb * 2.0, (0.35 + 0.65 * detailW) * (1.0 - floorW * 0.85));
+  vec3 meadowMod = mix(vec3(1.0), VTRI(uVMeadow, 0.083, vec2(0.0), 522.0).rgb * 2.0, (0.35 + 0.65 * detailW) * (1.0 - floorW * 0.85));
   vec3 col = uVMeadowTint * meadowMod;
   col = mix(col, mix(col, uVScreeTint * 0.72, 0.5), bareUp * 0.6); // round 49: heath above the treeline
   if (uVForestAmp > 0.001) {
-    vec3 canopyMod = VTRI(uVCanopy, 0.042, vec2(0.13, 0.57)).rgb * 2.0;
+    vec3 canopyMod = VTRI(uVCanopy, 0.042, vec2(0.13, 0.57), 264.0).rgb * 2.0;
     canopyMod = mix(vec3(1.0), canopyMod, 0.45 + 0.55 * detailW);
     vec3 forestCol = uVForestColor * canopyMod * (0.92 + nD * 0.24);
     col = mix(col, forestCol, forestW);
   }
   if (uVScreeAmp > 0.001) {
-    vec3 screeMod = mix(vec3(1.0), VTRI(uVScree, 0.10, vec2(0.41, 0.09)).rgb * 2.0, 0.4 + 0.6 * detailW);
+    vec3 screeMod = mix(vec3(1.0), VTRI(uVScree, 0.10, vec2(0.41, 0.09), 628.0).rgb * 2.0, 0.4 + 0.6 * detailW);
     col = mix(col, uVScreeTint * screeMod, screeW * (1.0 - forestW * 0.7));
     // talus apron: scree colour with boulder speckle — dark varnished blocks and pale fresh faces
     float speckDark = smoothstep(0.60, 0.72, nE + 0.5) * fineW;
@@ -465,7 +483,7 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   }
   if (uVRockAmp > 0.001 || uVPeakRock > 0.001) {
     // beds read along world height on the walls; the horizontal plane of the same fetch keeps caps granular
-    vec3 rockMod = mix(vec3(1.0), VTRI(uVRock, 0.055, vec2(0.23, 0.77)).rgb * 2.0, 0.45 + 0.55 * detailW);
+    vec3 rockMod = mix(vec3(1.0), VTRI(uVRock, 0.055, vec2(0.23, 0.77), 346.0).rgb * 2.0, 0.45 + 0.55 * detailW);
     vec3 rockCol = uVRockTint * rockMod * (1.0 + bed * bedW) * (1.0 - seam * 0.55);
     // laminae: fine light/dark banding within each bed on the walls
     rockCol *= 1.0 + lamina * 0.06 * bedW * fineW;
@@ -484,7 +502,7 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
     col = mix(col, rockCol, rockW);
   }
   if (snowW > 0.001) {
-    vec3 snowMod = mix(vec3(1.0), VTRI(uVSnow, 0.031, vec2(0.61, 0.29)).rgb * 2.0, 0.5 + 0.5 * detailW);
+    vec3 snowMod = mix(vec3(1.0), VTRI(uVSnow, 0.031, vec2(0.61, 0.29), 195.0).rgb * 2.0, 0.5 + 0.5 * detailW);
     // round 72b: wind-scoured crests — the upper fifth of the ranges on their moderate faces darkens toward the rock
     // (blown clear to ice and grit), so a summit reads as a scoured crest and not one flat white cap
     float scour = smoothstep(0.78, 0.96, hT + nC * 0.06) * smoothstep(0.06, 0.16, slope) * (0.35 + 0.65 * uVBareRock);
@@ -497,9 +515,9 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   float nearW = (1.0 - smoothstep(60.0, 380.0, vHDist)) * (1.0 - horizonMarine);
   float nF = 0.0, nG = 0.0;
   if (nearW > 0.002) {
-    nF = VTRI(uDetail2, 0.27, vec2(0.57, 0.23)).r - 0.5;
-    nG = VTRI(uDetail2, 0.85, vec2(0.19, 0.67)).r - 0.5;
-    vec3 nearMod = VTRI(uVMeadow, 0.42, vec2(0.33, 0.81)).rgb * 2.0;
+    nF = VTRI(uDetail2, 0.27, vec2(0.57, 0.23), 1696.0).r - 0.5;
+    nG = VTRI(uDetail2, 0.85, vec2(0.19, 0.67), 5341.0).r - 0.5;
+    vec3 nearMod = VTRI(uVMeadow, 0.42, vec2(0.33, 0.81), 2639.0).rgb * 2.0;
     col *= 1.0 + (nF * 0.22 + nG * 0.14) * nearW * (0.5 + 0.5 * rockW);
     col = mix(col, col * nearMod, nearW * 0.45 * (1.0 - rockW * 0.7) * (1.0 - snowW));
   }
@@ -637,6 +655,10 @@ interface HorizonForestOptions {
   palettes?: { conifer?: Partial<HorizonForestSpeciesPalette>; broadleaf?: Partial<HorizonForestSpeciesPalette> };
   /** Radial depth beyond the rim that carries the rich near species and casts shadows (default 300 m). */
   nearDepth?: number;
+  /** Round 72c: the coarse relief at a world point, in units of the character's amplitude (about -1..1: a crest is
+   * positive, a hollow negative) — the stands clump in the hollows and thin on the crests, and on a snow map the band's
+   * treeline wanders by it instead of ending in a straight belt at the first ridge. */
+  reliefAt?: (x: number, z: number) => number;
   /** Strength of the per-fragment aerial haze toward the fog tint (the ring's own uVHaze). */
   haze?: number;
   /** Textures created here join the ring's retained list. */
@@ -917,7 +939,26 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         if (band && y > maxHeight * 0.5) continue; // and no band tree on a foothill crest that climbs past half the ring
         if (options.clearAt && options.clearAt(x, z) > 0.5) continue; // round 63: the cutting's right-of-way
         const stand = standWeightAt(x, y, z, slope, band);
-        if (rng() > (band ? stand * 1.2 : stand * stand * 1.6)) continue;
+        // round 72c (integrator: a straight treeline belt on the apron of Whiteout / Frosthollow): the stands follow the
+        // relief — clumps in the gullies and hollows, gaps on the scoured crests and shoulders — and on a snow map,
+        // where no range trees continue past the first ridge, the band's outer edge is a wandering treeline (the
+        // hollows carry it out to the ridge row, the crests pull it back 100 m) thinning over its last 90 m
+        let clump = 1;
+        if (options.reliefAt) {
+          const rel = Math.max(-1, Math.min(1, options.reliefAt(x, z)));
+          clump = band ? Math.max(0.12, 1 - rel * 0.85) : Math.max(0.25, 1 - rel * 0.6);
+          if (band && snowline <= 1) {
+            const rTree = rowRadius(ridgeRow, column) - 30 - rel * 70;
+            clump *= 1 - 0.9 * smoothstep(rTree - 90, rTree + 10, Math.hypot(x, z));
+            // the bank at the rim stands where the ranges' field is still fading in (their depth bands start at 620 m),
+            // so the stands there clump by the 140 m and 600 m fields instead — a belt along the seam row was the tell
+            if (noise) {
+              const cB = noise(x * 0.0016 + 0.37, z * 0.0016 + 0.83) - 0.5, cC = noise(x * 0.0071 + 0.61, z * 0.0071 + 0.19) - 0.5;
+              clump *= 0.15 + 0.85 * smoothstep(0.30, 0.72, 0.5 + cC * 1.3 + cB * 0.7);
+            }
+          }
+        }
+        if (rng() > (band ? stand * 1.2 : stand * stand * 1.6) * clump) continue;
         const snowFade = snowline <= 1 ? 1 - Math.min(1, Math.max(0, (y / maxHeight - (snowline - 0.06)) / 0.08)) : 1;
         if (rng() > snowFade) continue;
         const placement: ForestPlacement = {

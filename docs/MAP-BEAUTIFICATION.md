@@ -3945,6 +3945,121 @@ would not need them. The perf bench ran on a machine at load 60–90 (another la
 chain that stopped red at 23:50 — the "chain 94 done" quiet window never came), so its figures are upper bounds and the
 base / after pairs are what to read.
 
+### Round 72c — 2026-09-26: the far range as mountains, the forest as the cost, the grain and the apron
+
+**Integrator (2026-09-26, on the round-72b sheets):** "this is the pass that reads" — Whiteout 7.5, Alpine 8, Fjord 7.5,
+Winter 7; one more pass on the same branch: the far range's meringue domes, Whiteout's ring over the +0.6 ms line, the
+faint radial grain on the alpine faces, the flat apron with its straight treeline belt, and `checkShaderErrors` armed
+in every capture tool from now on (it is: the capture tool, the sampler probe and the ring bench).
+
+**1. The far range as mountains (`horizonFarRange.ts`).** The far annulus's shading moved from the vertex to the
+fragment: the vertex keeps the geometric normal and four scalars (the altitude fraction, the row's haze, the rib
+term, the sea weight) in two attributes, and the fragment carries the near ring's slope-and-altitude law on a
+per-fragment normal — three taps of the detail tile with their contrast stretched (its values sit near the middle):
+the masses (110 m), the grain (30 m) and a striation field read in the ring's own frame (the arc as an integer tile
+count around, so the seam column closes; the world height stretched five times: 12 m across, 60 m down a face). The
+six-row mesh carries a face at a slope of 0.10–0.16 (1 − n.y) where the near ring's faces stand at 0.2–0.4, so the
+striations, not the geometry, make the faces: they tilt the normal about the face's horizontal tangent (every rib has
+a lit flank and a shadowed one), rock stands on the tilted slope past the snow-hold angle and on the ribs (|striation|
+on the faces, weighted up the mountain), snow above the snowline on the gentler tilted slope, the upper fifth of the
+crests wind-scoured toward rock, the sun and the hemispherical sky light the tilted normal, and the row's haze pulls
+toward a bluer, lighter fog (× (0.94, 0.98, 1.06)) by distance — never gone. Three taps, no relief atlas, still one
+draw. The first version (the fields at the tile's own contrast, the rock law at the near ring's thresholds) drew the
+same white domes: the tile's values barely leave 0.5 and a far face never reaches the near ring's slope — the crop
+said so before the numbers did.
+
+**2. Perf — the forest was the cost.** The trims the eye-check listed were done — the vista tiles' far LOD
+(`horizonVista.ts` `vTile`: inside 880 m of the camera every tile is the three-plane world projection; past 1 km it
+is two fetches, the horizontal plane at its weight and, for the vertical share, one cylindrical plane in the ring's
+frame — the arc as an integer tile count around so the seam closes — with a 120 m blend; the two finest noise fields,
+45 m knobs and 12 m grain, are dropped past it: twenty-seven fetches become fifteen on the far rows) and the cheaper
+far-range shading (three taps, above) — and the working-tree bench moved by nothing (1.534 / 1.885 ms against 1.516 /
+1.919). The clone bench with `--hide=horizon-forest` (new) found the cost: Whiteout's ring is 0.27 ms at sky-w without
+its trees and 1.5 ms with them — 6000 band spruces, 534 k triangles, the polar forest round 72 gave a map whose rolling
+ring had NO ring forest (the base's twenty draws are the rockfield's proxies; its forest instance count is 0). The
+vista fragment was never the problem; the round-72 ring without its forest is at parity with the base ring (0.27 against
+0.33–0.54 at the same load — the noise floor of this bench at load 50–90 is ±0.2 ms). The trim, then, is the forest:
+the polar character keeps 3000 instances (was 8000), clumped by the relief and, on the bank at the rim where the
+ranges' field is still fading in, by the 140 m and 600 m fields (a belt along the seam row was the tell).
+
+**3. Grain (`horizonRelief.ts`).** A second warp octave at a third of the warp wavelength whose features run 35° off
+the radial — the angle is sheared by the radius (θ + r · tan 35° / 1 km) on the circle embedding, so the field closes
+around the ring and its bands lie oblique to the downslope stretch; the fine crests are bent across it and the comb
+breaks into chevrons. Alpine's fine elongation 1.7 → 1.4. Checked in the 4 × crop of Alpine centre-far and its atlas
+gradient channel: the gradient bands run oblique now, at changing angles, where round 72b's ran down the face in
+parallel.
+
+**4. Apron and treeline.** The polar character's bake carries wind drifts on the gentle faces (`driftM` 0.9 m: sastrugi
+ridges along one world wind so they align at every azimuth, 26 m apart across it and 120 m long, a sharp lee crest over
+a long stoss slope, undamped by the talus fan — a drift is what a snow apron carries — gone on the steep faces), read
+through the atlas normal by the terrain bands. The ring forest's stands follow the coarse relief (`reliefAt`: clumps
+in the gullies and hollows, gaps on the scoured crests and shoulders) and on a snow map the band's treeline wanders by
+it (the hollows carry it out to the ridge row, the crests pull it back 100 m) thinning over its last 90 m; the bank at
+the rim clumps by the detail fields (above).
+
+**5. Rebase.** `sky/cloudscape-r71` is still `81092cc5f` (its reflog shows only the amends that made it); the branch's
+base is unchanged, so there was nothing to rebase onto.
+
+**Perf, attributed (round 72c; the clone bench, working tree, load 48–90 — the pairs within a run are comparable,
+the run-to-run noise is ±0.2 ms).** Whiteout, ring GPU ms per ring (Δ / 40 of the ×41 clone frame):
+
+| Configuration | sky-w | centre-far | Forest instances / triangles |
+|---|---|---|---|
+| Round-71 base (rolling ring, no ring forest) | 0.543 (0.333 two minutes later) | 1.136 | 0 / 0 |
+| Round-72b tip 539408e98 (polar ladder + 6000-spruce forest) | 1.516 | 1.919 | 6000 / 534 k |
+| + vista far LOD + far-range fragment (no forest change) | 1.534 | 1.885 | 6000 / 534 k |
+| the same with `--hide=horizon-forest` | **0.268** | **1.382** | hidden |
+| polar forest 3000, relief-clumped | 1.170 | 1.797 | 2250 / 219 k |
+| polar forest 1600, relief- and field-clumped (this tip) | **0.931** | **1.480** | 1200 / 117 k |
+
+Against the base: **+0.39 (or +0.60 against the base's lower reading) at sky-w, +0.34 at centre-far** — under the line
+at both views on this machine at load 58; the quiet-window numbers (base and this tip back to back, the chain done and
+the load under the CPU count) are in the table below. What the attribution says: the ring's own vista and terrain
+bands are at parity with the base (0.27 against 0.33–0.54 at sky-w); everything over the line was the forest, and the
+forest is the polar map's own richness — 1200 clumped spruces at the rim instead of 6000 in a belt is the trade this
+pass makes for the +0.6 ms. CPU per ring 0.12–0.16 ms (the two forced uniform uploads of the M-normal swap are in
+that; the base is 0.04–0.08); draws 16 (base 20 — the trimmed forest has fewer species meshes).
+
+**Measured (round 72c; the four named maps, sky-w / centre-far, round-72b tip → this tip, the same fixed views and
+masks).** The ring metrics barely move — the pass changed the far range's colour, the forest's count and the bake's
+fine relief, none of which the ridge or cover metrics read — and that is the point: the silhouettes and the ranges are
+round 72b's, what changed is inside them. Whiteout sky-w: cover 17.9 → 17.9 %, ridge contrast 24.3 → 23.0, crisp 44 →
+45 %, detail 12.5 → 12.0; centre-far 17.5 → 17.8 / 28 → 32 % / 10.4 → 9.7. Glacier Pass sky-w: 30.4 → 26.3 (near 41.4 →
+37.0), crisp 60 → 48 %, detail 13.5 → 13.6; centre-far 19.0 → 19.5 / 32 → 34 % / 12.6 → 12.5. Nordhavn sky-w 62.9 → 62.7,
+centre-far 77.8 → 78.3. Frosthollow sky-w 28.3 → 30.1 / 43 → 45 % / 14.2 → 14.5; centre-far 38.1 → 38.5 / 59 → 56 % /
+13.4 → 13.3. Glacier Pass's outer ridge contrast falls 4 points because the far range behind its crests is no longer
+one white tone (the outer skyline is the far range's edge against the sky where it stands above the ring).
+
+**Eye check (round 72c, `$SP/r72/review/crops/`).** Alpine sky-w, the far range: the massifs carry striations with lit
+and shadowed flanks, rock ribs through the snow on their faces and scoured crests — mountains behind mountains, bluer
+and lighter than the ring's ranges; the domes are gone. Whiteout sky-w: the spruce belt along the bank is clumps with
+gaps, the ridge faces as in 72b. Frosthollow: the massif's face and the far range read the same way. Nordhavn: the far
+range is a hazed grey-green ridge line behind the spires (a forest map: rock on the faces, no snow). The 4 × grain crop
+of Alpine centre-far: the striations run oblique and cross, the atlas gradient's bands lie at changing angles where
+round 72b's ran parallel down the face.
+
+**Receipts (round 72c).** `horizonRelief` (the far range's ranged model, the composed normal's vec2 law, every map's
+authored rows bent at three seeds — the second warp octave and the drifts are bake-side, the geometry budget is
+unchanged), `horizonResources` (re-pinned with the dated note: the vista's fetch sites 6 → 8 for the far-LOD function,
+its distance key and its two-fetch far form pinned; the VTRI call count stays 13), `titanGorgeHorizon`,
+`redrockCanyonHorizon`, `copperQuarrySurface` (unchanged — no geometry moved), `terrainMaterialOwnership`,
+`terrainResources`, `wallSkyLight`, `terrainWornDirt`, the sandbox receipts, `badlandsRelief`, `horizonCloudShade`,
+`volumetricClouds`, `horizonAutumnGround`, `autumnHorizonSeam`, `mapQuality`, `horizonMesaSurface`,
+`horizonNoiseSampling`, `horizonDetailAtlas`, `horizonMesaTexture`, `horizonRockfield`, `railCutting`,
+`battleAtmosphereRuntime`, `playableRelief`, `redrockMaterial`, `mapCatalog`, `edgeWater`, `skyHorizonCache` green;
+`npm run typecheck`. Tools: the ring bench gained `--hide=<name>` and the forest instance / triangle count, and the
+shader-error check is armed in the capture tool, the sampler probe and the bench.
+
+**Honest weak list (round 72c).** The far range's ribs and striations come from one detail tile stretched down the
+faces — plausible at 2–3 km, a pattern up close (it is never seen up close); its geometry is still six rows, so its
+silhouettes are the massifs' and their serrations, not peaks. The polar forest is 1200 spruces where round 72 had
+6000: the rim on Whiteout and Frosthollow is sparser than it was for a day (the bench said the trees were the whole
+perf item; the belt they made was the eye-check's). The drifts on the polar apron are in the atlas at 0.9 m and read
+at the band's foot from the sky-w views only where the bank does not hide the apron (from the map's floor the apron
+is mostly behind its own bank). The alpine faces keep a faint oblique grain at elongation 1.4 (crossed now, not
+radial). The quiet-window perf numbers are the ones to trust; the working-tree bench at load 48–90 has a ±0.2 ms
+floor. Mobile keeps today's ring.
+
 #### What "AAA / World of Tanks level" means here
 
 World of Tanks surrounds every 1 km playable square with a 32 × 32 km "Outland": the same heightfield, the same eight
@@ -4044,6 +4159,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 71 | The cloudscape pass on the opt-in volumetric layer (owner: round 68 was "just puffs", 5 / 10): a `clouds` block on every map config resolved through eighteen regime rows (`engine/cloudscapes.ts`: fair-weather cumulus, cloud streets, sea streets, towering cumulus, cumulonimbus front, cumulus humilis, lenticular, broken / closed stratocumulus, overcast and low stratus, ice fog, hazy altostratus, dense overcast, ash veil, cirrus, thin ice clouds), a multi-scale weather field with a type channel and a street / anvil / cirrus field in the wind frame, a curl volume and a blue-noise tile (`cloudNoise.ts`), type height profiles, a rigid wind lean, anvils, scud, curl-warped erosion with a per-map wispiness, the Hillaire octaves under a dual-lobe phase with Beer–powder toward the sun, the ambient split with the depth above and a deck floor, a far stratocumulus band and a wind-sheared cirrus sheet with the 22° halo, weather-gated empty-space striding, gobos that discard by the same fields; 71b after the integrator's eye check: streets as continuous rolls with lumps riding on them, wide flat-based cumulonimbus with clustered towers and a sheared top third, the cauliflower (a second shape octave lifting the column top bulge on bulge, a sharper density threshold), the lighting (the powder sign, a white lit face, dark bases, the silver lining), the perf levers (footprint strides, an alternating light march, a 12 km pre-pass); 71c: luminous blue-grey bases (the bottom ambient undimmed by the depth above, a cool sky-mean floor, the diffused sun toward neutral; a cumulonimbus deck exempt), streets as chains of aligned lumps on rolls of varying width fading past 4 km, plateau cells of 540–960 m soft-unioned (the far field's tiny puffs), a two-tap ladder in a front's base deck and far strides; the baked decks stay the default and byte-identical | 31-map before / after review sheets (`$SP/r71/review/contact-sheet*.png`) with the structure / lighting / edge metrics on the history masks (streets one roll per view 38–89 %, the front 79 / 95 %, decks one structure, fair-weather sizes spread two orders, contrast 2.2–3.5 on the masses), the sky-band rule (all nine good maps within ±8 % middle / ±3 % lower except urban sky-s +14 / +6), skylines (winter 0.88 / 0.91, whiteout 0.92 / 0.87, monsoon 0.54 / 0.55); base chroma neutral-to-cool on every cumulus map (alpine 133 / 137 / 146 from 110 / 103 / 98); per-slot by repetition: verdant 0.35–0.59, winter 0.88–0.99, frontier 0.14–0.50, desert ≈ 0, monsoon 1.21–1.54 ms GPU (load 50–300); volumetricClouds receipt (rewritten) and the receipts in the section |
 | 72 | Mountains and horizons to the clouds' level (owner, Whiteout under the round-71 clouds: "the mountains look so flat and untextured and boring, while the clouds look so good"): a ridged multifractal relief field over a warped plane with an erosion vocabulary (downslope gullies, talus aprons, rounded shoulders and sharp crests) in eight map characters (polar, alpine, rolling, mesa, volcanic, coastal, martian, karst) displacing the authored and interpolated ring rows; an (angle x radius) surface atlas baked per map at world activation in slices (the fine relief's gradient, a horizon occlusion, the sun's visibility) read by the vista program as a relieved normal and slope, occlusion, cast shadows, sky-coloured shaded faces and sun glitter on snow; the volumetric layer's cloud shadows on the ranges from the gobo fields bound by reference; the far range 1.9–3.3 km out (one unlit draw, its own aerial perspective, capped under a low deck); Whiteout on the polar alpine ladder; mobile on today's ring | 31-map before / after sheets (`$SP/r72/review/contact-sheet{,-sky-s,-centre-far}.png`, per-map pairs) with the ring-mask metrics (`$SP/r72/compare-after.{txt,md}`: detail energy up on 63 of 93 views (median 11.6 → 13.0), lit / shadow up on 68 of 92, the ring's screen height up on 82 of 93 (median 55 → 72 px); the outer-skyline step down on most views — the outermost silhouette is now a hazed distant range in front of which the old first ridge stays crisp); the ring's cost by repetition (whiteout +0.4 / +0.8 ms GPU at load 100 — the rolling → alpine ladder and its forest, the one map that pays; alpine, verdant, desert, mars −0.04 to −1.1 ms; +1 draw for the far range); the bake in Node 0.6–1.0 s quiet / 1–7 s at load 100; receipts horizonRelief (new), horizonCloudShade (new), horizonResources (re-pinned), titanGorgeHorizon / redrockCanyonHorizon / copperQuarrySurface (re-pinned), badlandsRelief (round72Relief projection), the horizon and terrain receipts in the section green; `npm run typecheck` |
 | 72b | The integrator's eye-check answered (~6 / 10: symmetric cones, flat faces, washed far ranges, a first ridge without the relief, Whiteout over the perf line): two compile failures found first — the relieved normal read `.z` on vec2 gradients (a silent GLSL error: the ring drew with a stale program all round) and the terrain program's seventeenth sampler failed to link at MAX_TEXTURE_IMAGE_UNITS = 16 (the battlefield drew with no program) — fixed by the vec2 law (pinned) and by the ring atlas riding in the M normal's unit for the bands' draw (uRingDraw, onBefore/AfterRender, forced uniform refresh, program key v41); then the silhouettes (the first ridge at full relief weight with lifted crests, every profile slope break wandering ±38 m per column, leaning crests, cone clamp 0.7, the far range as rounded massifs with one serration octave and a rib/couloir cavity term), the surface (fine relief elongation 3 → 1.7–1.9, meandering depth-varied gullies, seam fade 60 m), the wash (the far range's own haze cut to a fifth–a third under the post pass's ring law) and the near ridge (the terrain bands read the atlas: relieved normal, occlusion, sun visibility) | 31-map sheets (`$SP/r72/review/contact-sheet{,-sky-s,-centre-far}.png`, per-map pairs, crops of the four named maps under `review/crops/`); metrics over 93 views: outer ridge contrast median 35.8 → 43.5 (up on 64), ring height 55 → 82 px (up on 79), Whiteout sky-w ridge contrast 5.9 → 24.3 / crisp 2 → 44 %, Frosthollow centre-far 8.5 → 38.1 / 1 → 59 %; the bench at load 94–112: Whiteout +0.94 / +0.78 ms GPU (4.4 × the pixels), Glacier Pass −0.14 / +0.34, CPU ≤ +0.10, draws +2 / 0; receipts: horizonRelief (vec2 law, far-range model), horizonResources (budget 235,239, digests), titanGorgeHorizon / redrockCanyonHorizon / copperQuarrySurface (re-pinned), terrainMaterialOwnership (v41, ten-sampler budget), terrainResources (ten textures), wallSkyLight / terrainWornDirt (v41), the sandbox receipts, badlandsRelief, horizonCloudShade, volumetricClouds and the rest of the section green; `npm run typecheck` |
+| 72c | The integrator's second eye-check (7.5 / 8 / 7.5 / 7 — "this is the pass that reads"): the far range shaded per fragment with the near ring's slope-and-altitude law on a striation-tilted normal (rock ribs through the snow, scoured crests, bluer and lighter by distance) — the meringue domes gone; perf attributed by a `--hide=horizon-forest` bench: the vista fragment was never the cost (0.27 ms without the trees against the base's 0.33–0.54), the round-72 polar forest of 6000 spruces was the whole +0.9 ms — the polar forest is 1600 instances clumped by the relief and the detail fields (a belt along the bank was the eye-check's other tell); the vista tiles' far LOD (two fetches past 1 km, the finest fields dropped) and the cheaper far-range shading done as asked; a second warp octave at 35° off the radial (sheared angle on the circle embedding) and alpine elongation 1.4 break the radial grain into crossed chevrons; the polar bake carries wind drifts (sastrugi along one world wind) on the gentle faces; the ring forest's stands follow the relief and the snow maps' treeline wanders | the four named maps recaptured (sky-w / centre-far) with far-range, apron, grain (4 ×) crops under `$SP/r72/review/crops/`; Whiteout working-tree bench at load 58: 0.931 / 1.480 ms against the base's 0.33–0.54 / 1.136 (+0.39–0.60 / +0.34); the quiet-window pair in the section; receipts as round 72b plus horizonResources re-pinned (fetch sites 6 → 8, the far-LOD form pinned); `npm run typecheck` |
 | 74 | Impact physics (owner 2026-09-25): energy-based crash and fall damage through one function in both sims (`sim/impact.ts`: ½·m·(v − v_min)² kJ × the ruleset's hp/kJ, glacis 0.7 / stern 0.85 / broadside 1, tracks first, the engine on a frontal crash or a hard landing, crew shock above 16 / 14 m/s, a two-tick crash priced once), a `physics` block per ruleset (restitution, rebound floor, fall and crash thresholds and rates, ram scale and restitution — Turbo Ball and Mars bounce, a single jump lands free), the ram split by mass / aggression / face with a momentum-conserving exchange, the swept landing contact with restitution (several decaying hops at low gravity, no tunnelling at 40 m/s), the landing torque toward the ground plane, a slide law on faces the tracks cannot hold, a lateral-grip cap on the yaw rate at speed, a static hold at rest, the settle chatter fixed (a parked hull on a grade crept 4 cm/s and chattered ±0.4° on the base tree), movement checkpoints v2, CRASHED / FELL on the kill feed and the final-blow line, `tank_impact` on the wire | impact / impactPhysics / impactParity receipts (new), movement 218, combat 541, authoritativeMatch, matchRuleset, ai, authoritativeBots (mobile 6/6), the mp / net / server-match receipts with their re-anchored pins, typecheck; headless Verdant 5 min (37 crashes, 631 hp, none stuck or tunnelled) and Mars 3.8 min (163 landings, 2413 hp, one fall death, 18-hop chains, none stuck or tunnelled), the 30 m Mars drop (14.9 m/s → 7.4 m/s rebound); `server/battlePacing` full 124: median 335.2 s, p10 260.8 s, 0 sub-120, 0 timeouts |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 

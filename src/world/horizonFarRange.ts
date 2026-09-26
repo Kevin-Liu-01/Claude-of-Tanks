@@ -211,11 +211,14 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
   const { columns: n, rowCount, positions, heights, ampM, marine } = geometry;
   if (ampM + HORIZON_FAR_FOOT_M < options.nearMaxHeight * 0.55) return null;
   const s = options.settings;
-  const [lx, ly, lz] = options.sun;
   const colors = new Float32Array(n * rowCount * 3);
+  // round 72c: the shading moved into the fragment (a per-fragment normal and slope, so the far faces carry
+  // striations, rock breaks and a snow line instead of one vertex-shaded tone per 60 x 300 m facet); the vertex
+  // keeps the geometric normal and four scalars — the altitude fraction, the row's aerial haze, the rib term and the
+  // sea weight — and the albedo law reads them per fragment
+  const normals = new Float32Array(n * rowCount * 3), params = new Float32Array(n * rowCount * 4);
   const fog = options.fog;
   const forestOn = options.treeline > 0;
-  const shadeTint = new THREE.Color(0.90, 0.94, 1.08), seaColor = fog.clone().multiplyScalar(0.9), scratch = new THREE.Color();
   for (let row = 0; row < rowCount; row++) {
     const { aer } = HORIZON_FAR_ROWS[row];
     for (let k = 0; k < n; k++) {
@@ -230,44 +233,35 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
       const nl = Math.hypot(nx, ny, nz) || 1;
       nx /= nl; ny /= nl; nz /= nl;
       const hT = clamp((heights[i] - HORIZON_FAR_FOOT_M) / Math.max(1, ampM), 0, 1);
-      const slope = 1 - ny;
-      // albedo: the base tone low, forest below the treeline where the map has one, rock on the steep faces and the
-      // crests, snow above the snowline on the gentler faces
+      // the base albedo: the base tone low, forest below the treeline where the map has one; rock and snow are the
+      // fragment's (they follow the per-fragment slope)
       _c.copy(options.base).multiplyScalar(0.86 + hT * 0.28);
       if (forestOn) _c.lerp(options.forest, (1 - smoothstep(options.treeline * 0.7, options.treeline * 1.05, hT)) * 0.7);
-      const rockW = Math.max(smoothstep(0.22, 0.55, slope), smoothstep(0.55, 0.9, hT) * 0.6);
-      _c.lerp(options.rock, rockW);
-      if (s.snowline <= 1) {
-        const snowW = smoothstep(s.snowline - 0.05, s.snowline + 0.14, hT) * (1 - smoothstep(0.40, 0.75, slope));
-        _c.lerp(options.snow, snowW);
-      }
-      // the vista program's own lighting law: a hemispherical sky term and a Lambert sun (SUN / pi)
-      const ndl = nx * lx + ny * ly + nz * lz;
-      const sky = 0.55 + 0.45 * ny;
-      const shade = options.gains.ambient * sky + options.gains.sunGain * Math.max(ndl, 0);
+      colors[i * 3] = _c.r; colors[i * 3 + 1] = _c.g; colors[i * 3 + 2] = _c.b;
+      normals[i * 3] = nx; normals[i * 3 + 1] = ny; normals[i * 3 + 2] = nz;
       // round 72b (crops: the far faces were one flat white): a cavity term from the crest's own profile — a vertex
       // above its neighbours three columns either side is a rib (lit), one below them a couloir (shaded), ±14 %
       let near = 0;
       for (let d = -3; d <= 3; d++) if (d !== 0) near += heights[row * n + (k + d + n) % n];
       const rib = clamp((heights[i] - near / 6) / Math.max(1, ampM * 0.08), -1, 1);
-      _c.multiplyScalar(shade * (1 + rib * 0.14));
-      if (ndl < 0) _c.lerp(scratch.copy(_c).multiply(shadeTint), Math.min(1, -ndl) * 0.35);
-      // the sea sectors are the low sky, like the ring's far apron
-      if (marine[i] > 0) _c.lerp(seaColor, marine[i]);
       // aerial perspective by row toward the fog tint (the scene fog is off on this material)
-      const haze = s.hazeIn + (s.hazeOut - s.hazeIn) * aer;
-      _c.lerp(fog, haze + (1 - hT) * 0.04);
-      colors[i * 3] = _c.r; colors[i * 3 + 1] = _c.g; colors[i * 3 + 2] = _c.b;
+      const haze = s.hazeIn + (s.hazeOut - s.hazeIn) * aer + (1 - hT) * 0.04;
+      params[i * 4] = hT; params[i * 4 + 1] = haze; params[i * 4 + 2] = rib; params[i * 4 + 3] = marine[i];
     }
   }
   // close the seam: a copy of column 0 at the end of every row
   const stride = n + 1;
   const closedPos = new Float32Array(stride * rowCount * 3), closedCol = new Float32Array(stride * rowCount * 3);
+  const closedNrm = new Float32Array(stride * rowCount * 3), closedPar = new Float32Array(stride * rowCount * 4);
   for (let row = 0; row < rowCount; row++) {
     closedPos.set(positions.subarray(row * n * 3, (row + 1) * n * 3), row * stride * 3);
     closedPos.set(positions.subarray(row * n * 3, row * n * 3 + 3), (row * stride + n) * 3);
     closedCol.set(colors.subarray(row * n * 3, (row + 1) * n * 3), row * stride * 3);
     closedCol.set(colors.subarray(row * n * 3, row * n * 3 + 3), (row * stride + n) * 3);
+    closedNrm.set(normals.subarray(row * n * 3, (row + 1) * n * 3), row * stride * 3);
+    closedNrm.set(normals.subarray(row * n * 3, row * n * 3 + 3), (row * stride + n) * 3);
+    closedPar.set(params.subarray(row * n * 4, (row + 1) * n * 4), row * stride * 4);
+    closedPar.set(params.subarray(row * n * 4, row * n * 4 + 4), (row * stride + n) * 4);
   }
   const indices: number[] = [];
   for (let row = 0; row < rowCount - 1; row++) {
@@ -279,26 +273,84 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(closedPos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(closedCol, 3));
+  geo.setAttribute('aFarNormal', new THREE.BufferAttribute(closedNrm, 3));
+  geo.setAttribute('aFarParam', new THREE.BufferAttribute(closedPar, 4));
   geo.setIndex(indices);
   const material = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide });
   const detail = options.detailTexture ?? null;
-  if (detail) {
-    material.onBeforeCompile = (shader) => {
-      shader.uniforms.uFDetail = { value: detail };
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vFPos;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFPos = position;');
-      shader.fragmentShader = 'uniform sampler2D uFDetail;\nvarying vec3 vFPos;\n' + shader.fragmentShader
-        .replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
-        {
-          // round 72: two world-anchored fields (about 110 m and 30 m) break the far faces into masses and grain
-          float fA = texture2D(uFDetail, vFPos.xz * 0.0036 + vec2(0.17, 0.61)).r - 0.5;
-          float fB = texture2D(uFDetail, vec2(vFPos.x + vFPos.z * 0.6, vFPos.y * 1.7) * 0.013 + vec2(0.43, 0.09)).r - 0.5;
-          diffuseColor.rgb *= 1.0 + fA * 0.16 + fB * 0.10;
-        }`);
-    };
-    material.customProgramCacheKey = () => 'horizon-far-range-r72';
-  }
+  const [lx, ly, lz] = options.sun;
+  // round 72c (integrator: "the smooth white domes behind Alpine / Whiteout ... meringue"): the far annulus takes the
+  // near ring's slope-and-altitude law per fragment — a striation octave (a world field stretched down the faces)
+  // tilts the geometric normal, rock stands on the faces steeper than the snow-hold angle, snow above the snowline on
+  // the gentler ones, the upper fifth of the crests is wind-scoured toward rock, the sun and sky light the tilted
+  // normal (so every striation has a lit and a shadowed side) and the row's haze pulls toward a bluer, lighter fog
+  // by distance. Three taps, no relief atlas: the far range stays one cheap draw.
+  const shading = {
+    uFDetail: { value: detail }, uFSun: { value: new THREE.Vector3(lx, ly, lz) },
+    uFGains: { value: new THREE.Vector2(options.gains.ambient, options.gains.sunGain) },
+    uFRock: { value: options.rock.clone() }, uFSnow: { value: options.snow.clone() }, uFFog: { value: fog.clone() },
+    uFSnowline: { value: s.snowline <= 1 ? s.snowline : 2 }, uFDetailOn: { value: detail ? 1 : 0 },
+  };
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, shading);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec3 aFarNormal; attribute vec4 aFarParam;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFPos = position; vFNrm = aFarNormal; vFPar = aFarParam;');
+    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar;\n' + shader.fragmentShader
+      .replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
+      {
+        float hT = vFPar.x, haze = vFPar.y, rib = vFPar.z, marine = vFPar.w;
+        vec3 n0 = normalize(vFNrm);
+        // three fields, the detail tile's contrast stretched (its values sit near the middle): masses (110 m), grain
+        // (60 m) and the striations — read in the ring's own frame (the arc as an integer tile count around, so the
+        // seam column closes; the world height stretched 5 x) at 12 m across and 60 m down the face, bent by the masses
+        float fA = 0.0, fB = 0.0, fS = 0.0;
+        if (uFDetailOn > 0.5) {
+          fA = (texture2D(uFDetail, vFPos.xz * 0.0036 + vec2(0.17, 0.61)).r - 0.5) * 2.5;
+          fB = (texture2D(uFDetail, vec2(vFPos.x + vFPos.z * 0.6, vFPos.y * 1.7) * 0.0065 + vec2(0.43, 0.09)).r - 0.5) * 2.5;
+          // 454 tiles around at 2.6 km = 36 m across a striation, 150 m down it: at 2.5-4 m per pixel a 12 m field
+          // minified into a dotted grey (the first try)
+          float ang = atan(vFPos.z, vFPos.x) * 0.15915494309;
+          fS = (texture2D(uFDetail, vec2(ang * 454.0 + fA * 0.35, vFPos.y * 0.0067) + vec2(0.61, 0.27)).r - 0.5) * 3.0;
+        }
+        // the six-row mesh carries a face's slope at 0.10-0.16 (1 - n.y) where the near ring's stands at 0.2-0.4, so the
+        // striations, not the geometry, make the faces: they tilt the normal about the face's horizontal tangent (a
+        // rib has a lit flank and a shadowed one) and the rock law reads the tilted slope with the ribs added
+        vec3 tan0 = normalize(cross(vec3(0.0, 1.0, 0.0), n0) + vec3(1e-4, 0.0, 0.0));
+        float steepF = 1.0 - n0.y;
+        float faceW = smoothstep(0.04, 0.16, steepF);
+        vec3 n = normalize(n0 + tan0 * fS * 0.9 * faceW + vec3(0.0, 1.0, 0.0) * fB * 0.25);
+        float slope = 1.0 - clamp(n.y, 0.0, 1.0);
+        // rock on the faces steeper than the snow-hold angle and on the ribs and crests; the striations and the grain
+        // move the boundary so it is a broken line, never a contour — the same law as the near ring, at the far mesh's
+        // own slope scale
+        float ribs = smoothstep(0.10, 0.45, abs(fS) * faceW + fB * 0.15);
+        float rockW = max(smoothstep(0.13, 0.30, slope + fB * 0.05), smoothstep(0.55, 0.9, hT + fA * 0.15) * 0.6);
+        rockW = max(rockW, ribs * faceW * (0.7 + 0.3 * hT));
+        vec3 col = mix(diffuseColor.rgb, uFRock, rockW);
+        if (uFSnowline < 1.5) {
+          float snowW = smoothstep(uFSnowline - 0.05, uFSnowline + 0.14, hT + fA * 0.10) * (1.0 - smoothstep(0.14, 0.32, slope + fS * 0.08));
+          // wind-scoured crests: the upper fifth of the ranges on their moderate faces darkens toward the rock
+          float scour = smoothstep(0.78, 0.96, hT + fA * 0.06) * smoothstep(0.04, 0.14, slope) * 0.55;
+          vec3 snowCol = mix(uFSnow, uFRock * 1.15, scour);
+          col = mix(col, snowCol, snowW * (1.0 - rockW)); // the ribs stay bare rock through the snow
+        }
+        col *= 1.0 + fA * 0.10 + fB * 0.06;
+        // the vista program's own lighting law: a hemispherical sky term and a Lambert sun on the tilted normal, the
+        // rib / couloir cavity, the cool tint on the faces turned from the sun
+        float ndl = dot(n, uFSun);
+        float sky = 0.55 + 0.45 * n.y;
+        float shade = uFGains.x * sky + uFGains.y * max(ndl, 0.0);
+        col *= shade * (1.0 + rib * 0.14);
+        col = mix(col, col * vec3(0.90, 0.94, 1.08), clamp(-ndl, 0.0, 1.0) * 0.35);
+        // the sea sectors are the low sky, like the ring's far apron
+        col = mix(col, uFFog * 0.9, marine);
+        // aerial perspective by row: bluer and lighter with distance, never gone
+        col = mix(col, uFFog * vec3(0.94, 0.98, 1.06), haze);
+        diffuseColor.rgb = col;
+      }`);
+  };
+  material.customProgramCacheKey = () => 'horizon-far-range-r72c';
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = 'horizon-far-range';
   mesh.castShadow = false;

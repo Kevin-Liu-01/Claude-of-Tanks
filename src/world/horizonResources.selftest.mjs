@@ -245,8 +245,13 @@ function assertVistaSurfaceShader(shader, normals, label) {
     `${label}: one biome lookup remains`);
   // round 72 (2026-09-25): the baked surface atlas (horizonRelief.ts) and the volumetric layer's two cloud-shade
   // fields (horizonCloudShade.ts, inside a branch the layer opens) are the fetches outside the projection macro
-  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 6,
-    `${label}: the world projection macro's three plane fetches, the relief atlas fetch and the two cloud-shade fetches are the only fetch sites`);
+  // round 72c (2026-09-26, perf): the projection macro became the far-LOD function vTile — five fetch sites (the
+  // horizontal plane, the two vertical planes of the near triplanar, the cylindrical plane of the far pair, and the
+  // same pair inside the 120 m blend); the relief atlas and the two cloud-shade fetches stay: 6 -> 8
+  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 8,
+    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch and the two cloud-shade fetches are the only fetch sites (round 72c)`);
+  assert.match(fragment, /gLodFar = smoothstep\(880\.0, 1000\.0, vHDist\);/, `${label}: the tiles' far LOD keys on the camera distance past the first ridge (round 72c)`);
+  assert.match(fragment, /if \(gLodFar > 0\.999\) return flatTap \* gAw\.y \+ texture2D\(tex, vec2\(gCylU \* cyl, gP\.y \* s\)/, `${label}: past 1 km a tile is two fetches — the horizontal plane and one cylindrical plane (round 72c)`);
   assert.match(fragment, /if \(uVCShade > 0\.001\) \{/, `${label}: the cloud-shade fetches are skipped while the layer is off (round 72)`);
   assert.match(fragment, /texture2D\(uVRelief, vec2\(vMapUv\.x \* 0\.1, \(radius - uVReliefR\.x\) \* uVReliefR\.y\)\)/,
     `${label}: the relief atlas is read by the ring's own angle u and the fragment's radius (round 72)`);
@@ -256,7 +261,7 @@ function assertVistaSurfaceShader(shader, normals, label) {
     assert.ok(fragment.includes(term), `${label}: round 72 surface carries ${term}`);
   }
   assert.equal((fragment.match(/VTRI\(/g) ?? []).length, 13,
-    `${label}: four noise scales and five material tiles share the one macro (twenty-seven fetches per fragment), plus the round-29 near fields and near ground fetch inside the 380 m branch`);
+    `${label}: four noise scales and five material tiles share the one macro (twenty-seven fetches per fragment inside 880 m, fifteen past 1 km — round 72c), plus the round-29 near fields and near ground fetch inside the 380 m branch`);
   assert.match(fragment, /float wall = smoothstep\(0\.30, 0\.62, slope \+ nD \* 0\.06\);/, `${label}: staining, varnish and gullies are gated to genuinely steep faces (round 29)`);
   // round 35 (owner 2026-09-21, "the sides of mountains … look so so bare"): beds and their relief also run across moderate
   // ROCK slopes at half weight; a gentle sand or grass slope (rockW 0) still carries no stripe
