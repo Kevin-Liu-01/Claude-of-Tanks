@@ -58,8 +58,8 @@ near(impactZoneFactor(0.5), 0.85, 1e-12, 'linear between broadside and glacis');
 // the table (a 60 t hull, Standard, broadside): 4 m/s free, 6 → 19 hp, 10 → 173 hp, 60 km/h → 774 hp
 const table = [[4, 0], [6, 19.2], [10, 172.8], [16.7, 0.5 * 60 * 12.7 * 12.7 * 0.16], [20, 0.5 * 60 * 256 * 0.16]];
 for (const [speed, hp] of table) near(hardImpactDamage(standard, 60, speed, 0), hp, 1e-9, `impact table at ${speed} m/s`);
-assert.ok(hardImpactDamage(standard, 60, 12, 0) === 4 * hardImpactDamage(standard, 60, 8, 0), 'quadratic in the excess: twice the excess, four times the damage');
-assert.ok(hardImpactDamage(standard, 90, 10, 0) === 1.5 * hardImpactDamage(standard, 60, 10, 0), 'proportional to mass');
+near(hardImpactDamage(standard, 60, 12, 0), 4 * hardImpactDamage(standard, 60, 8, 0), 1e-9, 'quadratic in the excess: twice the excess, four times the damage');
+near(hardImpactDamage(standard, 90, 10, 0), 1.5 * hardImpactDamage(standard, 60, 10, 0), 1e-9, 'proportional to mass');
 near(hardImpactDamage(standard, 60, 10, 1), 172.8 * 0.7, 1e-9, 'a frontal crash costs 70 % of a broadside');
 near(hardImpactDamage(standard, 60, 10, -1), 172.8 * 0.85, 1e-9, 'a stern crash 85 %');
 assert.ok(hardImpactDamage(turbo, 60, 12, 0) < hardImpactDamage(standard, 60, 12, 0), 'Turbo Ball forgives the same speed');
@@ -73,7 +73,7 @@ assert.equal(fallDamage(standard, 60, 6), 0, 'a 1.8 m drop (6 m/s at 1 g) is fre
 near(fallDamage(standard, 60, 10), 120, 1e-9, 'a 5 m drop (10 m/s) costs a 60 t hull 120 hp');
 near(fallDamage(standard, 60, 15), 607.5, 1e-9, 'an 11.5 m drop 607 hp');
 near(fallDamage(standard, 60, 20), 1470, 1e-9, 'a 20 m drop 1470 hp');
-assert.equal(fallDamage(standard, 60, 8) * 4, fallDamage(standard, 60, 10), 'the fall curve rises with the square of the excess');
+near(fallDamage(standard, 60, 8) * 4, fallDamage(standard, 60, 10), 1e-9, 'the fall curve rises with the square of the excess');
 assert.equal(fallAttitudeFactor(0, 0, 1), 1, 'a flat landing on the tracks');
 near(fallAttitudeFactor(0.35, 0, 1), 1.6, 1e-12, 'a nose-first landing (20° off the ground plane) costs +60 %');
 near(fallAttitudeFactor(-0.7, 0, 1), 1.6, 1e-12, 'saturates past 20°, either way');
@@ -280,9 +280,10 @@ near(hullVelocityAlong(body(Math.PI / 2, 10), 1, 0), 10, 1e-12);
   exchangeRamMomentum(a, b, 0, -1, 45, 45, -10, 0, 0);
   near(a.speed, 5, 1e-9, 'no restitution: both leave at the centre-of-mass velocity');
   near(b.speed, -5, 1e-9);
-  const c = body(0, 3), d = body(Math.PI, 0);
-  assert.equal(exchangeRamMomentum(c, d, 0, -1, 45, 45, 0, 3, 0.2), false, 'a separating pair exchanges nothing');
-  assert.equal(c.speed, 3);
+  // A backing away from B along +n (n from B to A): vAn = +3, closing = vBn − vAn = −3
+  const c = body(0, -3), d = body(Math.PI, 0);
+  assert.equal(exchangeRamMomentum(c, d, 0, -1, 45, 45, 3, 0, 0.2), false, 'a separating pair exchanges nothing');
+  assert.equal(c.speed, -3);
 }
 
 console.log('impact.selftest: ruleset blocks, energy table, zones, modules, crew shock, fall curve, ram split and momentum exchange pass');

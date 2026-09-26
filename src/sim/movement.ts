@@ -298,7 +298,9 @@ export interface TankState {
   _spring: AttitudeSpringState;
   _prevSpeed: number;
   _spool: number;
-  _terr: { pitch: number; roll: number };
+  /** Terrain plane fit: pitch/roll drive the attitude spring (pitch includes the two-point settle); fitPitch is the
+   * pure least-squares slope the next tick's settle residuals are measured against. */
+  _terr: { pitch: number; roll: number; fitPitch: number };
   _fanYield: number;
   _perch: number;
   _gunLimitHoldS: number;
@@ -1140,7 +1142,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     },
     _prevSpeed: 0,
     _spool: 0,                     // engine torque spool 0..1 (SPOOL_S ramp)
-    _terr: { pitch: 0, roll: 0 },  // last terrain plane fit (spring target source)
+    _terr: { pitch: 0, roll: 0, fitPitch: 0 },  // last terrain plane fit (spring target source)
     _fanYield: 0,                  // slew-limited wheel-line yield (support solve)
     _perch: 0,                     // 0..1 single-end perch factor (spring boost)
     _gunLimitHoldS: 0,             // continuous-pin dwell for the GUN LIMIT label
@@ -1973,8 +1975,12 @@ function resetSupportSamples(
   samples.sinRoll = Math.sin(roll);
   samples.sinPitch = Math.sin(pitch);
   samples.cosPitch = Math.cos(pitch);
-  samples.fitSinPitch = Math.sin(state._terr.pitch);
-  samples.fitCosPitch = Math.cos(state._terr.pitch);
+  // Impact physics (2026-09-25, "bodies stop cleanly"): the settle residuals are measured against the pure
+  // least-squares fit, not against last tick's pitch WITH its settle correction — measured against the latter, a
+  // hull parked on a plane read its own previous correction as a residual trend, corrected the other way, and the
+  // attitude spring chased a target that flipped ±0.4° at ~1 Hz for good (5 mm of height chatter on a 15° grade).
+  samples.fitSinPitch = Math.sin(state._terr.fitPitch);
+  samples.fitCosPitch = Math.cos(state._terr.fitPitch);
   samples.fitSinRoll = Math.sin(state._terr.roll);
   samples.fitCosRoll = Math.cos(state._terr.roll);
   samples.worldX = state.pos.x;
@@ -2232,7 +2238,9 @@ function updateTerrainFitAndPerch(
   halfWidth: number,
   groundedAtStart: boolean,
 ): void {
-  state._terr.pitch = Math.atan2(samples.sumHeightZ, samples.sumZZ);
+  const fitPitch = Math.atan2(samples.sumHeightZ, samples.sumZZ);
+  state._terr.fitPitch = fitPitch;
+  state._terr.pitch = fitPitch;
   state._terr.roll = Math.atan2(
     (samples.sumRight - samples.sumLeft) / (samples.sideCount / 2),
     2 * halfWidth,
@@ -2245,7 +2253,10 @@ function updateTerrainFitAndPerch(
     tip = (samples.settleOuterMax - samples.frontMax) /
       (samples.deepestZ - samples.frontZ);
   }
-  state._terr.pitch += clamp(tip, -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
+  // Half the clamped settle: measured against the previous pitch-with-settle, the old residual trend alternated
+  // between the full slope and zero on successive ticks, so the tuned r3/r5 authority (the levitation and perch
+  // receipts) was the average — half — with the chatter on top; the perch still reads the raw request.
+  state._terr.pitch += 0.5 * clamp(tip, -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
   const requestedPerch = clamp(Math.abs(tip) / SETTLE_CLAMP_RAD - 1, 0, 1);
   if (groundedAtStart && requestedPerch > state._perch) state._perch = requestedPerch;
 }
@@ -2738,9 +2749,11 @@ function updateLongitudinalSpeed(
   applyTurnSpeedBleed(state, drive, dt);
   applySlopeForces(entity, debuff, drive, state.speed, dt);
   applyClimbCreep(entity, debuff, drive, speedBeforeAcceleration, dt);
+  // a slide is not geared: a hull sliding backwards down a face is bounded by the top-speed cap, not the reverse gear
+  const reverseCap = drive.gripLost ? drive.topSpeed : drive.reverseSpeed;
   state.speed = clamp(
     state.speed,
-    -drive.reverseSpeed * OVERSPEED_CAP,
+    -reverseCap * OVERSPEED_CAP,
     drive.topSpeed * OVERSPEED_CAP,
   );
 }

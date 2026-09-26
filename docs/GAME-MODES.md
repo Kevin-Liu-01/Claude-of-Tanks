@@ -236,6 +236,41 @@ eight times the ×0.3 baseline. The
 HUD shows a rocket · JUMP · F keycap only in rulesets with a jump; the touch layer shows a rocket button there,
 which also flips an overturned hull.
 
+### Speed-based damage, falls and rebounds (owner 2026-09-25)
+
+"Add more speed based damage — running into something hard super fast like a rock or building or other tank,
+fall damage — make bouncing properly work in the lower gravity modes, and make the physics more proper on
+regular modes." Every law is energy based (`sim/impact.ts`): the hull's kinetic energy above a threshold speed,
+½ · m · (v − v_min)² in kilojoules, becomes hit points through the mode's hp-per-kJ rate, so a heavier hull takes
+more from the same speed and the onset is smooth. The face that struck matters — a glacis takes 70 % of a
+broadside, a stern 85 % — and modules follow the shape of the crash: tracks and suspension first, the engine on a
+frontal crash or a hard landing, crew shock above 16 m/s (a crash) / 14 m/s (a landing). Tank-on-tank rams keep
+the kinetic pool above, now split by mass, by how much of the closing speed each hull brought (the rammer's
+discount) and by the face each took it on, and every contact exchanges momentum — the pushed hull moves, the
+rammer keeps its share, they part at the mode's ram restitution. Landings rebound: the closing speed comes back
+at the mode's restitution, a rebound slower than the floor settles onto the suspension.
+
+Each ruleset carries a `physics` block:
+
+| Mode | restitution | bounce floor | fall from | fall hp/kJ | crash from | crash hp/kJ |
+|---|---|---|---|---|---|---|
+| Standard (and every mode not below) | 15 % | 1.2 m/s | 6 m/s (a 1.8 m drop) | 0.25 | 4 m/s | 0.16 |
+| Turbo Ball | 45 % | 1.5 m/s | 15 m/s (a single 13 m/s jump lands free) | 0.12 | 9 m/s | 0.05 |
+| Mars | 50 % | 1.2 m/s | 10.5 m/s (a single 9.5 m/s rocket jump lands free) | 0.16 | 5 m/s | 0.12 |
+
+The table for a 60 t hull under Standard: a wall at 22 km/h costs 19 hp, at 36 km/h 173 hp (121 on the glacis,
+the near track yellow), at 60 km/h 774 hp; a 5 m drop 120 hp, an 11.5 m drop 607 hp, a 20 m drop 1470 hp, a
+nose-first landing 60 % more. A 12 m/s landing at 1 g hops 16 cm once; on Mars a rocket jump lands at 9.4 m/s,
+rebounds 4.7 m/s (a 2.9 m hop), then 2.3 m/s, then settles. The mode cards say `landings rebound 45 %` and
+`fall damage above 15 m/s` where a mode differs from Standard. A crash or a fatal fall names its cause on the kill
+feed (CRASHED / FELL), in the report's final-blow line and on the wire (`tank_impact`, `tank_destroyed`
+cause `impact` / `fall`); the whole thing rides one function in both the solo step and the authority.
+
+Regular-mode physics tightened with it (`sim/movement.ts`): a face steeper than the tracks hold slides under
+gravity against sliding friction instead of hovering on a zeroed drive; the yaw rate at speed is bounded by
+lateral grip (a ~46 m circle at 60 km/h, wider on soft ground and under low gravity); a parked hull holds its
+grade without the old few-cm/s creep; the landing contact is swept inside the step so nothing tunnels at 40 m/s.
+
 ## State machine
 
 `game.phase` is `garage` → `battle` → (`ended` / `shot`) → `garage`. Battle entry:

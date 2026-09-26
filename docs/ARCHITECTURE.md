@@ -743,6 +743,29 @@ support is suspension-limited while grounded, then releases into deterministic
 gravity flight after full droop. Grades at or above the rated climb angle are
 contact constraints and cannot be crossed by residual uphill speed.
 
+**Impact physics (2026-09-25, owner: speed-based damage, falls, rebounds at low gravity, proper physics).**
+- *Landing.* The airborne ride's contact with the droop line is SWEPT inside the step: the crossing
+  fraction gives the true closing speed (`state.landingImpactMps`, relative to the support's own vertical
+  rate) and the remainder of the step integrates after the contact, so a 40 m/s fall never ends a step
+  under the terrain or under a structure top and the rebound is the same at 60 or 120 steps/s. The
+  closing speed rebounds by the ruleset's `physics.restitution` (`entity.modePhysics`, default
+  `STANDARD_PHYSICS`); a rebound under `bounceMinMps` settles onto the loaded suspension.
+  `state._ride.bounces` counts the hops of one flight. The landing torque turns the hull toward the
+  ground plane it struck (`_terr`), so a nose-first landing pitches even while it rebounds.
+- *Blocked drive.* `state.impactMps` is the closing speed the tracks lost this step; `impactSource` says
+  what absorbed it (`IMPACT_SOURCE_CLIFF` — the terrain wall probe — or `IMPACT_SOURCE_COLLIDER` — the
+  integration's pushback, whose bundle knows whether that was a hard surface or another hull) and
+  `impactNx/impactNz` is the unit push direction, so the integration prices the crash on the face that
+  struck (`sim/impact.ts`).
+- *Slope.* A face steeper than the tracks hold in either direction (`trackGripMargin` ≤ ε, ≈ 42° on
+  medium ground, under the 52° cliff grade) is a slide: no drive, no brake, the full pull `g·sin θ`
+  against sliding friction `μ·g·cos θ` (`trackSlideCoefficient`), the reverse-gear cap lifted to the
+  top-speed cap, `slopeBlocked` raised for the bots' recovery. Milder grades keep the climb law.
+- *Lateral grip.* The yaw rate is capped so `v·ω ≤ 7 m/s² × g-scale × hard/resistance` (never under 30 %
+  of the standing rate): unchanged below ~30 km/h on hard ground, a ~46 m circle at 60 km/h.
+- *Rest.* A stopped hull with no throttle holds its grade when the holding decel (coast, brake, a
+  wreck's locked tracks) matches the pull — no creep, no jitter.
+
 ### 3.5 combat — `src/sim/` (pure logic)
 
 #### 3.5.1 `ballistics.ts`
@@ -836,6 +859,39 @@ angles from plate normal):
 8. Module: penetrating ray through engine box with rng forcing save-fail ⇒ engine hp
    −moduleDmg and fire roll consumed. RNG consumption order fixed: pen, dmg, then
    per-intersection (save, moduleDmg, fire).
+
+#### 3.5.5 `impact.ts` — speed-based collision damage (2026-09-25)
+```js
+export function excessEnergyKj(massTons, closingMps, minMps) => number  // ½·m·(v − v_min)², 0 under v_min
+export function impactZoneFactor(faceForward) => number   // +1 glacis 0.7, −1 stern 0.85, 0 broadside 1
+export function hardImpactDamage(physics, massTons, closingMps, faceForward) => hp  // kJ × impactHpPerKj × zone
+export function fallDamage(physics, massTons, landingMps, attitudeFactor = 1) => hp   // kJ × fallHpPerKj × factor
+export function fallAttitudeFactor(pitchErrRad, rollErrRad, upY) => number  // 1 + 0.6·nose + 0.3·tilt + 0.5·inverted
+export function resolveHullImpact({ combat, massTons, physics, kind: 'impact'|'fall', closingMps,
+  priorClosingMps?, faceForward, sideSign, attitudeFactor, rng }) => HullImpactResult | null
+// hull hit points through hullDamageTaken (the ruleset damage scale); modules when the ruleset breaks
+// them — tracks first (near 80 % / far 30 %, both 60 % head-on; a fall 50 % each), the engine on a
+// frontal crash (35 %) or a landing (15 %); crew shock above CREW_SHOCK_IMPACT_MPS 16 / _FALL_MPS 14
+// (one draw, 40 %, the driver first). A wreck takes nothing. priorClosingMps prices a crash the movement
+// spread over two ticks once, on its accumulated closing speed.
+export function ramShares(physics, massA, massB, closingMps, aggressionA, aggressionB, faceA, faceB)
+  => { total, toA, toB }   // damage.ts ramDamage pool × ramScale, split by mass, each share discounted
+                           // 35 % × its aggression (its share of the closing speed) × its face's zone factor
+export function ramAggression(closingMps, ownApproachMps) => 0..1
+export function hullVelocityAlong(state, nx, nz) => number      // drive along the heading + the decaying shove
+export function exchangeRamMomentum(a, b, nx, nz, massA, massB, vAn, vBn, restitution) => boolean
+// n from b to a, vAn / vBn the pre-contact normal velocities: both leave at the centre-of-mass velocity
+// ± restitution × closing split by mass (momentum conserved, energy never grows); the along-heading part
+// joins `speed`, the lateral part rides the recoil translation.
+```
+Every number a mode bends lives in `matchRuleset.ts` `RulesetPhysics` (`restitution`, `bounceMinMps`,
+`fallMinMps`, `fallHpPerKj`, `impactMinMps`, `impactHpPerKj`, `ramScale`, `ramRestitution`); the mode
+controller stamps it on every entity as `modePhysics`. Both integrations (`game/state.ts`
+`resolveTankImpacts`, `authoritativeMatch.ts` `resolveEntityImpacts`) price a hard contact only when the
+collider reports a hard surface (the map edge, a solid primitive) or the movement reports a cliff — a push by
+another hull is the ram resolution's; a contact tick under 0.5 m/s is the drive pressing, and a crash's ticks
+within 0.3 s of its first are one blow. Receipts: `impact.selftest.mjs` (the laws), `impactPhysics.selftest.mjs`
+(the movement side), `impactParity.selftest.mjs` (both sims, the authority's crash and fall, a bit-for-bit replay).
 
 ### 3.6 ai — `src/game/ai.ts` (pure logic; may import sim modules + specs)
 ```js
