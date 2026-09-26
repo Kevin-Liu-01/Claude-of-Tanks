@@ -3494,7 +3494,17 @@ as the bare backdrop's one child and its material, forest maps' three children),
 `autumnHorizonSeam`, `battleAtmosphereRuntime` (the far range in the night dim's name list) green; `npm run typecheck`
 (the native tsc and the core unused-symbol check).
 
-**Open.** __OPEN__
+**Open.** `tools/horizon-construction-bench.mjs` validates a `horizon-detail` child that no ring has carried since the
+vista pass, so its cold-construction comparison fails on the base tree and on this one alike (the bake's cost is
+measured in Node instead, above); the skyline comb (the alpha-tested canopy ribbon on the resolved crest) reads as a
+pale green ribbon along the relieved alpine crests — it did on the domes too, and a crown-mass ribbon that follows the
+new relief is a lane of its own; the far range stands under a low deck's ceiling on Whiteout, Frosthollow, Blackglass
+and Polders (246–300 m) and shows only through the passes there; mobile keeps today's ring (the geometry relief
+reaches it, the atlas and the far range do not); the bake's cost was measured on a machine at load 40–175 (a release
+chain and three lanes), so its figures are upper bounds; the cloud-shade binding reads the layer's gobo uniforms
+through a loose interface (the cloud lane owns that module — a rename there turns the shade off, never breaks the
+ring); the desert and mesa rings stay pale under their haze (the character's ledges are in the bake, the haze owns
+the look); __OPEN_MORE__
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
