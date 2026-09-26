@@ -2188,9 +2188,14 @@ function* buildHorizonMaterialSteps({
       uVSnowColor: { value: new THREE.Vector3(snow.r, snow.g, snow.b) },
       uVRockTint: { value: rockTint },
       uVScreeTint: { value: rockTint.clone().multiplyScalar(1.18) },
-      uVRockAmp: { value: style === 'alpine' ? 1.0 : style === 'mesa' ? 1.0 : style === 'escarpment' ? 0.85 : 0.55 },
-      uVPeakRock: { value: style === 'alpine' ? 0.9 : style === 'mesa' ? 0.5 : style === 'escarpment' ? 0.35 : 0.15 },
-      uVScreeAmp: { value: style === 'alpine' ? 0.8 : style === 'mesa' ? 0.7 : style === 'escarpment' ? 0.5 : 0.3 },
+      // round 72: the relief character tunes the style's rock law — a polar range keeps its summits under snow with
+      // the scoured ribs alone baring rock (the alpine style's 0.9 peak rock greyed Whiteout's crests), volcanic
+      // country bares more of its cones, karst towers stand as limestone walls
+      uVRockAmp: { value: relief.settings.character === 'volcanic' || relief.settings.character === 'karst' ? 1.0
+        : style === 'alpine' ? 1.0 : style === 'mesa' ? 1.0 : style === 'escarpment' ? 0.85 : 0.55 },
+      uVPeakRock: { value: relief.settings.character === 'polar' ? 0.3 : relief.settings.character === 'volcanic' ? 0.6 : relief.settings.character === 'karst' ? 0.5
+        : style === 'alpine' ? 0.9 : style === 'mesa' ? 0.5 : style === 'escarpment' ? 0.35 : 0.15 },
+      uVScreeAmp: { value: relief.settings.character === 'polar' ? 0.5 : style === 'alpine' ? 0.8 : style === 'mesa' ? 0.7 : style === 'escarpment' ? 0.5 : 0.3 },
       uVForestAmp: { value: treeline > 0 && treeline < 1.5 ? 1.0 : 0.0 },
       uVBump: { value: style === 'alpine' || style === 'mesa' ? 0.9 : style === 'escarpment' ? 0.7 : 0.55 },
       uVHaze: { value: haze * (style === 'alpine' ? 0.78 : 0.92) },
