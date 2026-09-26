@@ -8,7 +8,8 @@ import {
   bakeHorizonRelief, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from './horizonRelief.ts';
 import { HORIZON_FAR_FOOT_M, HORIZON_FAR_ROWS, HORIZON_FAR_SEGMENTS, resolveFarRangeAmp, sampleHorizonFarRange } from './horizonFarRange.ts';
-import { HORIZON_SEGMENTS, resolveHorizonLightingGains, sampleHorizonGeometry } from './maps/horizon.ts';
+import { Matrix4, Vector3 } from 'three';
+import { HORIZON_SEGMENTS, buildHorizonRing, resolveHorizonLightingGains, sampleHorizonGeometry } from './maps/horizon.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
 // --- the characters ---------------------------------------------------------------------------------------------
@@ -168,4 +169,53 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
     assert.ok(ridged > n / 15 * (authored.length - 1) * 0.25, `${mapId}/${seed}: the ranges carry relief along their crests (${ridged} bent triples)`);
   }
 }
-console.log('horizonRelief.selftest: characters, field, bake, far range and ring relief PASS');
+// --- the round-72 dressing rules on a built ring: no range tree past 880 m or above half the ring, no ribbon on a far
+// or high crest, the far range present, the crowns' height haze in the program ------------------------------------
+{
+  const previousDocument = globalThis.document;
+  globalThis.document = { createElement(tag) {
+    assert.equal(tag, 'canvas');
+    const canvas = { width: 0, height: 0, getContext() { return {
+      createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), getImageData: (_x, _y, w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+      putImageData(image) { canvas.pixels = image.data; }, clearRect() {}, save() {}, restore() {}, beginPath() {}, closePath() {},
+      rect() {}, clip() {}, moveTo() {}, lineTo() {}, fill() {}, createLinearGradient: () => ({ addColorStop() {} }),
+    }; } };
+    return canvas;
+  } };
+  try {
+    const mesh = buildHorizonRing(null, getMapConfig('fjord'), 1337);
+    const maxH = mesh.userData.horizonRing.reliefBake ? sampleHorizonGeometry(getMapConfig('fjord'), 1337).maxHeight : 1;
+    const forest = mesh.getObjectByName('horizon-forest');
+    assert.ok(forest, 'fjord stands its ring forest');
+    const m = new Matrix4(), v = new Vector3();
+    let range = 0;
+    for (const child of forest.children) {
+      if (!child.name.endsWith('-range')) continue;
+      for (let i = 0; i < child.count; i++) {
+        child.getMatrixAt(i, m); v.setFromMatrixPosition(m); range++;
+        assert.ok(Math.hypot(v.x, v.z) <= 880 + 0.01, `range tree inside 880 m (${Math.hypot(v.x, v.z).toFixed(0)})`);
+        assert.ok(v.y + 0.4 <= maxH * 0.5 + 0.01, `range tree below half the ring (${v.y.toFixed(0)} of ${maxH.toFixed(0)})`);
+      }
+    }
+    assert.ok(range > 50, `the near ranges still carry range-class trees (${range})`);
+    const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <project_vertex>', fragmentShader: '#include <common>\n#include <map_fragment>' };
+    forest.userData.horizonForestHook(shader);
+    assert.match(shader.fragmentShader, /uniform float uVfMaxH;/, 'the crowns know the ring height');
+    assert.match(shader.fragmentShader, /vfHigh \* 0\.55/, 'a crown high on a distant face takes the fog the face takes');
+    assert.equal(shader.uniforms.uVfMaxH.value, Math.max(1, maxH));
+    const comb = mesh.getObjectByName('horizon-treeline');
+    assert.ok(comb, 'the skyline ribbon');
+    const cp = comb.geometry.attributes.position;
+    let highSpans = 0, spans = 0;
+    for (let k = 0; k < HORIZON_SEGMENTS; k++) {
+      const base = cp.getY(k * 2), top = cp.getY(k * 2 + 1);
+      if (top - base > 0.5) { spans++; if (base + 3.2 > maxH * 0.5) highSpans++; }
+    }
+    assert.equal(highSpans, 0, `no ribbon span on a crest above half the ring (${highSpans} of ${spans})`);
+    assert.ok(spans > 40, `the low crests keep their ribbon (${spans})`);
+    assert.ok(mesh.getObjectByName('horizon-far-range'), 'the far range stands behind the ring');
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+  }
+}
+console.log('horizonRelief.selftest: characters, field, bake, far range, ring relief and the dressing rules PASS');
