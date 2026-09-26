@@ -2159,9 +2159,12 @@ function* buildHorizonMaterialSteps({
     // luminance and pushed a little, since the tint is pale and a shaded face should still read as sky-lit)
     const reliefTexture = tiles && relief.bake ? makeReliefTexture(relief.bake) : null;
     if (reliefTexture) retainedTextures.push(reliefTexture);
+    // (the tint is re-normalised to unit luminance after the push, so a shaded face changes hue, never brightness —
+    // a saturated blue fog pushed a face's blue to 1.8 x and washed the ranges pale)
     const fogLuma = Math.max(1e-3, fog.r * 0.2126 + fog.g * 0.7152 + fog.b * 0.0722);
     const skyTint = new THREE.Vector3(
-      1 + (fog.r / fogLuma - 1) * 1.8, 1 + (fog.g / fogLuma - 1) * 1.8, 1 + (fog.b / fogLuma - 1) * 1.8);
+      Math.max(0.4, 1 + (fog.r / fogLuma - 1) * 1.25), Math.max(0.4, 1 + (fog.g / fogLuma - 1) * 1.25), Math.max(0.4, 1 + (fog.b / fogLuma - 1) * 1.25));
+    skyTint.divideScalar(Math.max(1e-3, skyTint.x * 0.2126 + skyTint.y * 0.7152 + skyTint.z * 0.0722));
     const vistaUniforms: Record<string, THREE.IUniform> = tiles ? {
       // round 72: the surface atlas (angle x radius), its radius window and gradient scale; 0 amplitude without a bake
       uVRelief: { value: reliefTexture ?? new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1) },
