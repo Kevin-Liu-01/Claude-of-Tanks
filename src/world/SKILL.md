@@ -43,6 +43,16 @@ shaded trunk bases grow (from the ground profile's climate tint); `vegetation.ts
 tree materials' uniforms. The vertex wind law, the per-cluster cascade sample (`aCard`), the leaf-shadow floor, the
 translucency (`canopyLighting.ts`), the conifer whorls, the understorey shrubs and the stand shade all live in
 `vegetation.ts`; `understorey.selftest.mjs` and `treeClimate.selftest.mjs` pin them beside the vegetation receipts.
+Round 77b: `treeImpostors.ts` bakes the far tier — one atlas per world of every species' three near variants from
+eight azimuths (linear albedo + coverage, capture-space normal; the tile from the 6 MB budget) from the real trunks,
+cards and leaf atlases, lazily in `vegetation.ts`'s `update()` (never inside a render pass, again after a GPU
+suspension), and the far pools draw one camera-facing quad per tree through the far canopy's hook; it exists only
+where the engine context carries a `renderer` (production desktop) — the receipts and the mobile tier keep the
+opaque lobe tier, and `vegetationFarSeams` keeps proving the lobe builders. `leafDetail.ts` (CPU, no canvas)
+generates the per-class tiling leaf-cluster tile (normal + a break mask normalised to a mean of one half) the near
+material carries as its normal map, with the tangent frame rebuilt after `useAttributeNormal`; the rim-forest
+blocks are discs (`_rimBlocks`) the understorey feathers through the stands' law. `treeImpostors.selftest.mjs` and
+`leafDetail.selftest.mjs` pin them.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,

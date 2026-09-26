@@ -4787,6 +4787,7 @@ map's props build (140–260 ms) whether or not the map places steel; Foundry's 
 | 75 | Structures and props to the skies' and mountains' level: shipping containers as corrugated painted steel on a generated four-strip atlas (`propsSteelAtlas.ts`, the `steel` bucket; operator liveries by battlefield, stencilled codes, an operator band, recessed doors with bars and hinges strictly inside the body's footprint; the builder's shared-stream draws and the bodies' dimensions unchanged, so every later placement and the container maps' shards are byte-identical); freight warehouses with roller shutters, a dock canopy, bumpers, ridge skylights, gutters and a sign board, corrugated cladding on Whiteout (`industrialCladding`); the light kit's 256 px sheet tile and the quonset hut's ribs, wicket door, skirt, threshold and stovepipe; a yard-dressing planner and kit (pallets, crates, drums, cable drums, tyres, fuel tanks, skips) under a per-map budget with no record published, folded into the wood / steel / baked buckets (no draw of its own; follow-up 2), the steel atlas painted on demand at plan time and half size on mobile (follow-up 1), the industrial cladding law reaching the foundry office and fire station, Whiteout's sheet halls frosted pale grey with oxide trims and eave snow ledges (follow-up 3); the weathering law v7 (sun fade, rust mask mixed with runs); the boulders fractured (inward plane cuts, a ridged octave, cleavage-split normals, the legacy hull kept as the collision proxy) on a triplanar detail tile with per-map moss, dust and soil laws (integrator's item 6) | headless props probe on every map (placements / destructibles byte-identical fleet-wide; sixteen warehouse maps' records moved with counts unchanged but Whiteout 600 → 598, shards recaptured headless); before / after sheets (`$SP/r75/review/`); 90-frame medians on railyard / Whiteout / foundry (frame time within noise at load ~95, draws +40–124 a pose, triangles ≤ +5 % except the chase pose under streaming); receipts: yardDressing (new), propsResources (17 / 37), plasterSurfaceSharing, orchardBathhouse, foundryServiceCourt, mangroveFisheryWharf (key set), structureSurface (256 px), worldNightFixtureInstances, deltaPlasterPalette / reservoirWaterworks (v7), the collision census re-pinned for Whiteout; `npm run typecheck` |
 | 76 | The deck pass (owner: skies "that look just as good" as Whiteout's; the integrator's census: the overcast and stratocumulus presets read as flat white sheets, a marshmallow, cotton): five gated deck knobs on the cloudscape — cells / cellM (inverted-Worley cells at the deck's period set each column's thickness, hang the cores, open the borders, compress the coverage ramp), deckLight (the underside lit by the column's transmitted light through the diffusion law, the sun's share at a third of physical because the skies are exposed for the ground, the sky's whole, a ground bounce by the map's ambient scale, the light-march term kept for the lit walls), undulatus (the wind-frame rolls band the thickness), interior (the coarse detail octave survives the remap, a detailed first light tap); the round-71 flat white diagnosed (the sky-mean floor is the HORIZON band's luminance at 1.25 × on a sheet; the ramp compressed only for sheets); denser deck rows; two regimes (industrial-stratocumulus for Foundry and Railyard, altocumulus for Urban); Foundry's aerosol halved with the smog on the deck's base and the horizon band's warm absorption, Railyard's fog thinner; Saltmere Bay's shore palm dropped; every term gated so the rated regimes and whiteout keep round 71 byte for byte | 31-map before / after sheets on this machine (`$SP/r76/review/sheet-sky-w.png`, `sheet-sky-s.png`, `sheet-bird-n.png`; before = the deploy-100 tree eeecca19e) with the deck metrics on the history masks (`.qa-dev/r76-deck-metrics.mjs`: p80 / p20 of the dense pixels foundry 1.02 / 1.05 → 1.30 / 1.14, railyard 1.01 / 1.02 → 1.18 / 1.14, winter 1.08 / 1.05 → 1.17 / 1.17, polders 1.08 / 1.06 → 1.18 / 1.19; the deck medians at or under the clear sky instead of 1.2–1.7 × above it), the round-71 metrics on every map, the rated maps' metrics within the wind-drift noise (every number of alpine, coastal, steppe, frontier, verdant, delta, monsoon, whiteout, desert, saltwind, mangrove and mars identical to ±1, whiteout byte-identical); the per-slot bench by repetition (load 68–103, noise floor ±0.5–0.7 ms: foundry 0.20, railyard −0.49, winter 0.85, urban 0.10, fjord 0.67 / 1.45, monsoon 1.30, verdant 0.79 inside the 1.2 ms slot within it; polders 1.76 (1.62–2.23) the one slot over the line by this bench); receipts volumetricClouds (20 regimes, the table, the gated zero rows, the deck identities), villageWear / mangroveWaterPalette re-pinned, badlandsRelief (the round-76 projection), playableRelief, redrockMaterial, garageSkyPresets, skyCloudBake, atmosphere, battleAtmosphereRuntime, the vegetation receipts; `npm run typecheck` |
 | 77 | The vegetation (owner: maps "just as good as those… a triple AAA redux", "make sure performance is still rlly good"; the integrator's verdict on deploys 98–101: blob canopies, unlit foliage, cylinder trunks, stacked cones, hard identical edges, a green band for the far forests, nothing moving): the map wind (`treeClimate.ts` — the cloud wind or the sward's prevailing wind, the regime's speed as strength) as a gust front every tree leans into by the square of its height with the canopy fluttering by its authored flex; per-vertex sphere normals on the cards with a hashed tilt; the near cards receiving the cascades once per leaf cluster (`aCard`, the sample pushed toward the sun by the crown radius — a self-shadowed crown, one state per card), a 22 % leaf-shadow floor on the CSM's directional sites, the sky under a shaded cluster at 50 %, leaf translucency against the sun (45 % near / 18 % far); the bushes and the new understorey shrubs receiving the same one-sample shadow; conifer branch whorls (18 three-sided limbs, no RNG draw); moss in the bark's fissures on the shaded base by the map's climate; the far lobes' sphere-normal bias halved and their sky fill 1.08 → 0.80; the understorey (young shrubs in every stand's edge annulus, own geometry and RNG, no cover disc, no trunk record, desktop only); the stand shade (up to −24 % on the interior trees of dense stands, every LOD). Every placement, trunk record and cover disc byte-identical; keys foliage v16 / canopyfar v16 / bark v10 | six-map before / after sheets in seven views (`$SP/r77/review/sheet-*.png`) and the still-frame wind pair with |Δ| (`sheet-wind-pair.png`); the deterministic vegetation-triangle census per view (the whorls: fjord +8–9 % at chase, the other maps +1–7 %; the understorey ≤ +1 %); the repetition bench (near / far / bush ×9, the receive-shadow toggle ×9, the wind toggle ×9, the whole vegetation ×1) on six maps at chase and centre-far at load 75–110 — the shade and wind layers isolated in-page, the near / far deltas inside the ±1–2 ms per-copy floor; the wind pair moves 7–24 % of the tree band's pixels by > 12 luma on the wooded maps; receipts treeClimate (new), understorey (new), vegetationProgramKey (v16 + the GLSL mechanisms), vegetationLighting (1680), birchCrownForm / bushOverlappingSprays / shrubGrowthPlacement extended, the rest of the vegetation, placement, grass and horizon receipts green; typecheck |
+| 77b | The second vegetation pass (round 77's weak list; the owner's bar unchanged): the far tier as IMPOSTORS of the near trees (`treeImpostors.ts` — one atlas per world of every species' three near variants from eight azimuths at 10°, baked from the real trunks, cards and leaf atlases into linear albedo + coverage and capture-space normal render targets, lazily from `update()` outside any render pass and again after a GPU suspension; the tile from the 6 MB budget — 96 px on every authored map, 4.2–5.6 MB with mips; one camera-facing quad per far tree through the far canopy's wind / dissolve / matte-wrap hook, the two nearest azimuths dissolved by the view angle, the second far variant mirrored, the baked normal lit in the capture frame, the cards' mip give-back; two draws per species instead of four, two triangles per far tree instead of a lobe cloud; desktop with a renderer only — the receipts and the mobile tier keep the lobes); the leaf-scale crown detail (`leafDetail.ts` — a CPU-generated 256 px tiling leaf-cluster tile per class, broadleaf / conifer / autumn / palm, RG normal + a break mask offset to a mean of one half, the near material's normal map at repeat 3 with the tangent frame rebuilt after `useAttributeNormal`, a mean-neutral alpha break and leaf-gap shade before the alpha test; foliage key v17); the rim-forest understorey (the blocks as discs through the stands' law at the rim trees' scale and bound; Verdant 780 → 1781 shrubs). Placements, trunk records, cover discs and the stands' understorey byte-identical; the round-8 atlases untouched | six-map before / after sheets in four views incl. the new 8 m `crown` close-up (`$SP/r77b/review/sheet-*.png`, the zoomed `crop*-*.png` pairs); the census (the far tier −99.2 % triangles on every row, the whole vegetation −38 to −80 %; −2 draws per species; the near foliage counts identical); the crown high-pass metric (+6–19 % leaf-scale energy at the same mean luma); the tree-pixel luma across the rim unchanged (±4); the repetition bench at load 68–94 (the far tier 2–5 ms per copy → ≈ 0; the near tier 6.3 → 6.3 / 6.1 → 5.9 at chase — the detail layer ≈ 0 ± 0.3 by comparison, the in-page toggle inside ±1; no quiet window — the whorls' 108 tris per trunk bound ≤ 0.2 ms per copy, no trim); receipts treeImpostors (new, the bake inputs pinned per map), leafDetail (new, the tiles pinned), vegetationProgramKey (v17 + both programs' GLSL + eviction counts), vegetationResources, vegetationLighting (seven fetches), understorey (rim annuli), treePoolCapacity / autumnLeafSprays fixtures; the rest of the vegetation, placement and grass receipts green; typecheck |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
@@ -5221,6 +5222,194 @@ horizonResources, mangroveFisheryWharf, spawnClearance, terrainFastGrid, terrain
 - The rim-forest blocks get no understorey (they are not clusters); the edge feathering there is the saplings' alone.
 - The bench on this machine at load 90–110 cannot resolve the round's GPU cost below ±1 ms per copy; the
   measurements below are honest about the floor.
+
+### Round 77b — 2026-09-26: the far forests as impostors of the near trees, the leaf-scale crown detail, the rim understorey
+
+**Why.** Round 77's own weak list: the far forests at 300–900 m were still lobe clouds (better lit, not the near
+trees — a forest edge changed character at the 260 / 290 m switch, and every far tree cost its lobes' triangles and
+two draws per species and far variant); the crowns at 5–15 m were flat-lit card clouds (the round-8 atlases are
+hash-pinned, and no leaf-scale normal); the rim-forest blocks had no understorey; the Nordhavn near-LOD cost was
+unmeasured on a quiet machine. The owner's bar stands: World of Tanks / War Thunder-class, "make sure performance
+is still rlly good".
+
+**The rule of the round.** Every tree and shrub placement, trunk record and cover disc stays byte-identical (the
+placement receipts; the stands' understorey draws the same stream in the same order — the rim blocks take the
+stream's continuation). The round-8 leaf atlases are untouched (`broadleafBranchlets` pins them): the detail tile
+is ADDED beside them as the material's normal map. Nothing in `terrain.ts`, the ground modules, the horizon ring, the
+props kits, the sky or `src/sim`; the ring forest beyond 512 m is untouched and `vegetationFarSeams` keeps proving
+the lobe builders (the lobes still build: the near crowns' shadow proxies are their hulls, and the mobile tier and
+the receipts draw them).
+
+**Mechanisms.**
+
+1. *The far tier as impostors* (`src/world/treeImpostors.ts`). One atlas per world of every species' three near
+   variants from eight azimuths at a 10° elevation, one row per species and variant (rows = 3 × species, 9–12 on
+   the authored maps; the tile from the 6 MB budget — 128 / 96 / 64 px per direction, the largest whose albedo plus
+   half-resolution normal atlas with mips fits: 96 px on every authored map, 768 × 864 (Nordhavn, 3 species,
+   4.22 MB) to 768 × 1152 (Verdant / Delta / the 4-species maps, 5.63 MB)), baked from the ACTUAL near-LOD trunks and
+   cards with the species' leaf atlas, the bark sheet and the vertex shade into two render targets: linear albedo
+   with a coverage alpha (the cards cut at the near material's 0.38, the gutters flooded with the leaf atlases'
+   mean opaque tone so the mips never darken toward black) and the capture-space normal (the cards' sphere normals
+   and the bark's, unflipped). The bake is lazy — `ensureBaked()` from the vegetation's per-frame `update()`,
+   outside any render pass, on the first frame that needs the tier, with the previous render target, clear colour,
+   autoClear, shadow-map and XR state restored — and runs again after a GPU suspension disposes the atlas (the
+   textures' dispose listener frees the framebuffers and clears the flag). It exists only where the engine context
+   carries a `renderer` (production desktop); the receipts (no renderer) and the mobile tier keep the lobe tier.
+   The far pools: one InstancedMesh per species and far variant on the impostor material (the second variant
+   MIRRORED — its azimuths run the other way, its baked x flips — for variety at no cost), a quad each, `aImpRow`
+   (the tree's near variant, written with its slot through `writeTreeSlot` / `seedTreePartition`) and a per-vertex
+   `aImpCell` (the species' first row, the mirror flag, the variants baked) picking the row. The vertex stage builds
+   a camera-facing billboard in INSTANCE space (the instance matrix — position, yaw, lean, scale — and the round-77
+   wind law that follows it apply exactly as to the cards: the lean by the unscaled height), the crown's visible
+   width from the instance's xz scale seen from the azimuth, the two nearest azimuths and their blend weight;
+   the fragment stage dissolves the two tiles by the view angle (alpha too, through the alpha-to-coverage
+   smoothstep), gives the coverage back with the mip level (the cards' mip guard, on the tile's own texel
+   derivatives) and lights the blended baked normal in the capture frame (right / up / toward-camera at the 10°
+   elevation) through the far canopy's own hook — the matte wrap, the 18 % translucency, the LOD / occlusion /
+   scope dissolves, fog. Two draws per species instead of four, two triangles per far tree instead of a lobe cloud.
+   The variants baked follow the 16-row cap (`resolveTreeImpostorVariants`: three for every authored map, one on the
+   receipts' 13-species world). Key `world-tree-impostor-v1`.
+2. *The leaf-scale crown detail* (`src/world/leafDetail.ts`, CPU, no canvas). A 256 px tiling height field of
+   stamped leaf shapes per class — broadleaf (110 oval leaves with a midrib), autumn (70, smaller: the dusty and
+   autumn palettes' sparser crowns; resolved from the palette's tone against a reference green, never a map id — the
+   desert acacias take it too), conifer (84 needle bundles), palm (40 ridged leaflets) — wrapped for tiling, a Sobel
+   normal (RG, B), and a break mask (A) OFFSET so its mean over the tile is exactly one half (a short bisection; a
+   needle tile takes a floor in its gaps, a broadleaf tile a ceiling on its bodies). The near material carries the
+   class's tile as its `normalMap` (repeat 3 across a card — 0.37–0.8 m tiles, leaves of 5–12 cm; normalScale 0.75),
+   so every species keeps one program (`vegetationProgramKey`); the hook samples it ONCE (`cotLeafDet`), applies the
+   mean-neutral law before the alpha test — alpha × (0.72 + 0.56 · mask): the card's antialiased edge texels are cut
+   in leaf-cluster bites and its bodies solidified; albedo × (0.90 + 0.20 · mask): the gaps between leaves shade —
+   and perturbs the authored sphere normal in a tangent frame REBUILT after `useAttributeNormal` (three's own frame
+   is built in `normal_fragment_begin` from the double-sided flip and would light every back face from below
+   again; its `normal_fragment_maps` is compiled out where a tile is bound). At the far mips the mask averages to
+   its mean and both laws read ×1: the coverage the mip guard protects and the crown's tone are the round-77 ones.
+   Desktop tiers only (the mobile library returns no tile and the phones keep the flat card program). Key
+   `world-tree-foliage-v17`.
+3. *The rim understorey.* `placeRimForest` records every block that stands (≥ 3 trees) as a disc (its centre, half
+   its width); `placeUnderstorey` plants the interior stands first (the same draws in the same order — byte-identical)
+   and then the rim blocks from the stream's continuation through the same law (the edge annulus 0.82–1.6 R, the
+   bush admission, no cover disc, no trunk record), at the rim trees' scale (× 1.4: the ratio of the rim's 1.35–2.2
+   to the interior stands' 0.95–1.7) and the rim's bound (506 m, past the field bushes' 470). Same mesh, no new
+   draw. Verdant 780 → 1781 shrubs (102 blocks), Amberford 494 → 1386, Nordhavn 694 → 1562.
+
+**Program keys:** `world-tree-foliage-v17`, `world-tree-impostor-v1`; `world-tree-canopyfar-v16` and
+`world-tree-bark-v10` unchanged (the lobe material now draws on the mobile tier and in the receipts only). Textures
+per map: + the class tiles the species use (1–3 × 256 KB + mips) + the two impostor atlases (≤ 5.63 MB with mips on
+every authored map — `treeImpostors.selftest` walks all 31); `vegetationLighting` counts seven fetches.
+
+**Measurements.** Six maps (Verdant, Amberford, Saltmere Bay, Monsoon Ridge, Nordhavn Fjord, Tarkhan Steppe), one
+seed and tier, before = round 77 (aef0d2b85, a `git archive` export) against the round's tree (an rsync snapshot),
+served by vite, one browser at a time under the probe mutex at nice 19 (`.qa-dev/r77b-capture.mjs` — round 77's
+tool plus the `crown` view: 8 m from a real edge tree of the largest interior stand at 2.2 m, looking at its crown
+centre from the concealment discs — `.qa-dev/r77b-crop.mjs`, `.qa-dev/r77b-texture.mjs`, `.qa-dev/r77b-rowluma.mjs`,
+`.qa-dev/r77b-bench.mjs` — round 77's bench plus the `detail` layer; outputs under `$SP/r77b/`). Sheets:
+`$SP/r77b/review/sheet-{centre-far,forest-edge-far,bird-n,crown}.png` (before | after) and the zoomed crop pairs
+`crop*-*.png`. No page error and no console line on any of the twelve boots (the impostor and v17 programs compiled).
+
+*What the eye sees.* The 300–900 m forests are the near trees continued: on Nordhavn the far conifers keep the near
+spruces' dark spiky character straight across the 260 / 290 m switch (`crop2-fjord-forest-edge-far.png`; the before
+shows the pale blue cone-lobe band beyond it), Verdant's far stands read as individual crowns with the stand shade
+between them (`crop2-verdant-centre-far.png`), Monsoon's ridge forest as trees instead of a band. The impostor trees
+are THINNER than the fat lobes they replace (the near silhouettes), so more ground shows between them; the tree-pixel
+luma per row band across the rim is unchanged (Nordhavn rows 500–530: 129.6 / 126.8 / 122.4 → 131.5 / 129.1 /
+126.5; Verdant identical to ±0.4). The crowns at 8 m carry leaf-scale shading and cluster-bitten edges (the crown
+sheet; subtle at sheet scale — the high-pass metric below). The rim blocks stand on an understorey like the stands'.
+
+**The crown close-ups (`r77b-texture.mjs` on the 1000 × 600 crown region: the mean |Δ luma| between horizontally adjacent pixels — leaf-scale energy — before → after, the region's mean luma, and the mean |Δ| between the frames).**
+
+| Map (species at the crown) | high-pass before → after | ratio | mean luma before → after | frame Δ |
+|---|---|---|---|---|
+| verdant (conifer) | 7.64 → 9.05 | 1.185 | 91.6 → 95.2 | 11.6 |
+| autumn (autumn broadleaf) | 8.28 → 9.81 | 1.184 | 93.1 → 95.7 | 8.2 |
+| coastal (pine) | 6.14 → 7.16 | 1.166 | 130.4 → 127.8 | 8.1 |
+| fjord (spruce) | 7.03 → 8.05 | 1.146 | 63.2 → 65.1 | 8.5 |
+| steppe (dry broadleaf) | 11.56 → 12.70 | 1.099 | 82.9 → 83.5 | 11.4 |
+| monsoon (eucalyptus, in shade) | 8.29 → 8.82 | 1.064 | 32.3 → 32.7 | 6.1 |
+
+**The deterministic vegetation census (instances × geometry per class; before → after). The far tier and the whole (the grass and the shadow proxies excluded); the draw calls are the frame's (comparable only where the grass streams and the hulls stood alike: the −8 / −6 rows are the four / three species' two draws each).**
+
+| Map | view | far trees | far-tier triangles (lobes → impostors) | understorey tris | all vegetation tris | frame draws |
+|---|---|---|---|---|---|---|
+| verdant | centre-far | 5412 | 956 k → 7 k (−99.2 %) | 31 k → 71 k | 1854 k → 946 k (−49.0 %) | 602 → 594 (−8) |
+| verdant | forest-edge-far | 5465 | 963 k → 7 k | 31 k → 71 k | 1814 k → 898 k (−50.5 %) | 397 → 389 (−8) |
+| verdant | bird-n | 5425 | 958 k → 7 k | 31 k → 71 k | 1847 k → 936 k (−49.3 %) | 385 → 377 (−8) |
+| autumn | centre-far | 4292 | 674 k → 6 k (−99.2 %) | 20 k → 55 k | 1696 k → 890 k (−47.5 %) | (grass differed) |
+| coastal | centre-far | 3001 | 550 k → 4 k (−99.3 %) | 17 k → 39 k | 1029 k → 505 k (−50.9 %) | (grass differed) |
+| monsoon | centre-far | 7995 | 1325 k → 11 k (−99.2 %) | 42 k → 90 k | 2573 k → 1307 k (−49.2 %) | (grass differed) |
+| monsoon | forest-edge-far | 7437 | 1234 k → 10 k | 42 k → 90 k | 3000 k → 1824 k (−39.2 %) | 328 → 320 (−8) |
+| fjord | centre-far | 6286 | 1084 k → 8 k (−99.2 %) | 28 k → 62 k | 1362 k → 276 k (−79.7 %) | (grass differed) |
+| fjord | forest-edge-far | 5814 | 1005 k → 8 k | 28 k → 62 k | 1605 k → 605 k (−62.3 %) | 405 → 399 (−6) |
+| steppe | centre-far | 1115 | 195 k → 1 k (−99.2 %) | 2 k → 13 k | 377 k → 194 k (−48.5 %) | 368 → 361 (−7) |
+| steppe | forest-edge-far | 1127 | 197 k → 2 k | 2 k → 13 k | 356 k → 172 k (−51.6 %) | 346 → 340 (−6) |
+
+(The near foliage instance counts are identical before and after on every row — the near tier is unchanged; the
+census's trunk split by vertex count put the far birch trunks, with their branch cylinders, on the NEAR side of the
+before tree, so on Amberford and Nordhavn the far reduction is larger than the far column shows.)
+
+**The bench (`r77b-bench.mjs`, per-copy GPU ms by repetition: the lower quartile of 50 frames per side, 9 copies, 4 rounds, sides alternated; before = round 77, after = this round; the rounds' spread in brackets is the noise floor; load 68–94 throughout — no quiet window opened in the session, see below).**
+
+| Map | view | near ×9 per copy (before → after: the whorls + this round's detail layer) | far ×9 per copy (lobes → impostors) | detail (in-page toggle, per copy) | ×1 toggle (whole vegetation, after) |
+|---|---|---|---|---|---|
+| fjord | chase | 6.28 [5.8..6.7] → 6.30 [5.9..6.4] | 2.98 [1.0..3.3] → −0.12 [−0.85..0.0] | +0.60 [−1.18..+0.63] | +1.42 ms GPU [−1.2..6.9], cpu +2.0 |
+| fjord | centre-far | −0.02 [−0.6..0.3] → 0.16 [0.0..0.3] | 4.87 [0.75..6.0] → −0.01 [−0.23..0.04] | −0.23 [−0.29..+0.24] | +0.78 [−5.1..1.9], cpu +1.2 |
+| autumn | chase | 6.09 [3.8..7.1] → 5.87 [2.8..6.3] | 2.86 [1.05..2.9] → 0.05 [−0.24..0.25] | +0.44 [−0.82..+0.82] | +4.14 [−2.2..4.2], cpu +2.4 |
+| autumn | centre-far | 5.03 [0.85..5.2] → 0.87 [−0.25..1.8] | 2.08 [−0.06..3.3] → −0.05 [−0.37..0.24] | +0.53 [−0.43..+1.49] | +1.18 [−0.1..6.0], cpu +1.8 |
+
+*Reading the bench.* The far tier is the round's measurable win: where the lobes cost 2–5 ms per copy at nine
+copies, the impostors cost nothing the floor can see (−0.12 to +0.05, i.e. ≈ 0.02–0.03 ms per copy of quads); at
+×1 the far tier went from ~0.2–0.6 ms to nothing. The near tier reads the same before and after at chase (6.28 →
+6.30 on Nordhavn, 6.09 → 5.87 on Amberford, inside the ±0.5 floor): the detail layer's one fetch and tangent frame
+per near fragment costs ≈ 0 ± 0.3 ms per copy by this comparison; the in-page normal-map toggle (medians +0.4–0.6
+at chase, rounds −1.2..+0.8 alternating with the run order, i.e. the machine's drift) cannot resolve it either way
+below ±1 ms. The ×1 whole-vegetation toggle is unreadable at this load (±5 ms), as in round 77.
+
+*The whorls (round 77's open question).* No quiet window: the load stayed at 61–94 for the round's three hours
+(`uptime` polled between every step). Loaded, the whole near tier at chase is 6.3 ms per copy on Nordhavn and
+5.9 on Amberford (both trees). The whorls are 108 triangles per conifer trunk: 650–1744 near trunks at chase on
+Nordhavn = 70–190 k triangles per copy, ≤ 0.2 ms per copy at these frames' triangle rate — below the +1 ms trim
+threshold on triangle grounds; round 77's +0.5–1.4 ms per copy read was inside its own ±1–2 ms spread. No trim.
+A quiet-window re-bench (`bench-chain.sh` with the tag `quiet`) is the one measurement this round leaves undone.
+
+**Receipts.** `treeImpostors.selftest` (new: the layout law and the budget on 31 maps, the variants under the row
+cap, the row measure, the impostor pools on Verdant / Nordhavn / Delta — two draws per species, quads, aImpRow at the
+species capacity, no lobe pool, the shadow proxies kept — the bake from the first update with the render state
+restored and again after a suspension, every far slot carrying its tree's variant through the partition's moves,
+the bake inputs digested and pinned per map (verdant b492485b, fjord 61cc2fc6, delta b4411f2b — the geometry bytes
+and the real leaf atlases' pixels), the lobes without a renderer and on mobile); `leafDetail.selftest` (new: the
+four tiles pinned by digest, unit unbiased normals, wrapped tiles, the mask's mean at one half, the mean-neutral
+law, the class resolution over 31 maps against the palettes species actually read, the lazy library);
+`vegetationProgramKey` (v17; the round's GLSL: the shared detail sample, the laws, the frame rebuilt after
+`useAttributeNormal`, three's chunk compiled out; the impostor program's billboard before the wind block, the
+mirror, the two-azimuth dissolve, the mip give-back before the alpha test, the baked normal frame, the far
+translucency and matte wrap; the eviction counts + 1 material, + 3 tiles, + 2 atlases, + 1 CSM registration);
+`vegetationResources` (the tiles as the species' normal maps, the live retained collections);
+`vegetationLighting` (seven fetches, the tile sampled once); `understorey` (the rim annuli: Verdant 902 stand-law /
+879 rim-law shrubs, Amberford 534 / 852, Nordhavn 877 / 685; mobile none; deterministic); `treePoolCapacity` and
+`autumnLeafSprays` (fixture identifiers for the lobe path); green with no change: vegetationFarSeams,
+tidalMangrove, authoredTreePlacement, birchCrownForm, bushOverlappingSprays, shrubGrowthPlacement,
+treeTrunkQuality, foliageAtlasPadding, broadleafBranchlets, treeClimate, vegetationClearance, grassChunkWork,
+grassCarpetWork, groundCoverClearance, loggingYardGrass, treeSpecies, treeGrounding, farTreeBase; `npm run
+typecheck`.
+
+**What still looks weak.**
+- The horizon ring's forest beyond 512 m is now the odd tier: on the conifer maps its pale cone lobes stand over
+  the dark, spiky impostor rim (`crop3-fjord-seam.png`; Verdant's join stays soft, `crop3-verdant-seam.png`). Round
+  72c matched the ring to the lobes; the ring is off limits to this round. The fix is the ring's: bake its forest
+  from the same impostor atlas (one more consumer of `treeImpostors.ts`), or tone its sprites to the near trees.
+- The impostor is a cylindrical billboard from one 10° capture ring: a steep bird view sees the side view laid
+  flat. A second, elevated ring (45°) blended by the view's elevation doubles the atlas (the budget allows 96 px
+  rows for ≤ 3 species only).
+- The LOD switch is still round 77's time dissolve (0.35 s in the 260 / 290 m band), not the 40–60 m distance
+  cross-fade the brief named: with the impostor matched to the near tree the switch is invisible in every frame of
+  the round, so the partition machinery (and `treePoolCapacity`'s parity contract) was left alone.
+- The leaf-scale relief is deliberately mild (normalScale 0.75, the needle and leaflet tiles' Sobel at 1.3–1.4 so
+  steep edge normals stay under 5 % of a tile): +6–19 % high-pass energy at 8 m. More relief speckles at 5 m.
+- The far birch (bare twig) impostors carry the twig cards' darkness at range where round 9 had lifted the far birch
+  lobes on purpose; on Nordhavn they read as pale thin trees between the spruces in the round's frames, but the
+  winter and whiteout stands were not captured.
+- The bake runs on the first frame that needs the tier (two render passes of 8 × rows tree copies, a few ms once)
+  and after every GPU suspension; it is not part of the covered activation warm.
+- The quiet-window bench.
 
 ## Acceptance is visual and measured
 
