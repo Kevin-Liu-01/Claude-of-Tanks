@@ -8,7 +8,7 @@ import {
   bakeHorizonRelief, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from './horizonRelief.ts';
 import { HORIZON_FAR_FOOT_M, HORIZON_FAR_ROWS, HORIZON_FAR_SEGMENTS, resolveFarRangeAmp, sampleHorizonFarRange } from './horizonFarRange.ts';
-import { HORIZON_SEGMENTS, sampleHorizonGeometry } from './maps/horizon.ts';
+import { HORIZON_SEGMENTS, resolveHorizonLightingGains, sampleHorizonGeometry } from './maps/horizon.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
 // --- the characters ---------------------------------------------------------------------------------------------
@@ -103,6 +103,18 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   let openSea = 0;
   for (let i = 0; i < marineBake.data.length; i += 4) if (marineBake.data[i + 2] === 255 && marineBake.data[i + 3] === 255 && marineBake.data[i] === 128 && marineBake.data[i + 1] === 128) openSea++;
   assert.equal(openSea, 256 * 32, 'the sea apron bakes to open, lit, flat texels');
+}
+
+// --- the lighting gains: the vista's constants at the engine's references, following each map's sun and sky ------------
+{
+  const ref = resolveHorizonLightingGains({ sun: 4.5, hemi: 0.51, cover: 0 });
+  assert.ok(Math.abs(ref.ambient - 0.5) < 1e-9 && Math.abs(ref.sunGain - 1.3) < 1e-9 && Math.abs(ref.shadow - 0.85) < 1e-9, 'the references give the vista constants');
+  const whiteout = resolveHorizonLightingGains({ sun: 2.75, hemi: 0.73, cover: 0.97 });
+  assert.ok(whiteout.ambient > 0.62 && whiteout.ambient < 0.72, `a bright hemisphere lifts the ambient (${whiteout.ambient.toFixed(3)})`);
+  assert.ok(whiteout.sunGain > 0.85 && whiteout.sunGain < 1.0, `a weaker sun lowers the sun term, compressed (${whiteout.sunGain.toFixed(3)})`);
+  assert.ok(whiteout.shadow > 0.2 && whiteout.shadow < 0.35, `a closed deck fades the baked cast shadows (${whiteout.shadow.toFixed(3)})`);
+  const bright = resolveHorizonLightingGains({ sun: 40, hemi: 5, cover: -1 });
+  assert.ok(bright.sunGain <= 1.3 * Math.pow(1.6, 0.7) + 1e-9 && bright.ambient <= 0.5 * Math.pow(2, 0.8) + 1e-9 && bright.shadow === 0.85, 'the gains are clamped');
 }
 
 // --- the far range --------------------------------------------------------------------------------------------------

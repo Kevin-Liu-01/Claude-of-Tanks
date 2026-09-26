@@ -47,6 +47,8 @@ interface HorizonFarRangeOptions {
   seaOpenings: readonly SeaOpening[];
   /** The ring's own peak height (m): the far foot never rises above the ring's crests. */
   nearMaxHeight: number;
+  /** The vista's ambient and sun gains for this map (maps/horizon.ts resolveHorizonLightingGains). */
+  gains: { ambient: number; sunGain: number };
 }
 
 interface HorizonFarRangeGeometry {
@@ -197,7 +199,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
       // the vista program's own lighting law: a hemispherical sky term and a Lambert sun (SUN / pi)
       const ndl = nx * lx + ny * ly + nz * lz;
       const sky = 0.55 + 0.45 * ny;
-      const shade = 0.46 * sky + 1.30 * Math.max(ndl, 0);
+      const shade = options.gains.ambient * sky + options.gains.sunGain * Math.max(ndl, 0);
       _c.multiplyScalar(shade);
       if (ndl < 0) _c.lerp(scratch.copy(_c).multiply(shadeTint), Math.min(1, -ndl) * 0.35);
       // the sea sectors are the low sky, like the ring's far apron

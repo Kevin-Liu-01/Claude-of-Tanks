@@ -1967,6 +1967,33 @@ interface HorizonMaterialContext {
   outcrops: number;
   /** Round 72: the baked surface atlas (null on the mobile tier) and the map's relief character. */
   relief: { bake: HorizonReliefBake | null; settings: HorizonReliefSettings };
+  /** Round 72: the map's lighting the ring's gains follow (the sky preset's sun and hemisphere, the deck's cover). */
+  lighting: HorizonLighting;
+}
+
+/** Round 72: the vista's sun and sky gains, and the far range's, from the map's own lighting. */
+interface HorizonLighting {
+  /** The sky preset's sunIntensity (engine default 4.5) and hemiIntensity plus the engine's bounce floor (0.36 + 0.15). */
+  sun: number;
+  hemi: number;
+  /** 0..1 cloud cover: the cloudscape's coverage, else the baked deck's opacity. */
+  cover: number;
+}
+
+/** The references the vista's constants were tuned against: the engine's default sun and effective hemisphere. */
+const HORIZON_REF_SUN = 4.5;
+const HORIZON_REF_HEMI = 0.51;
+
+/** The vista's ambient and sun gains for a map: 0.46 / 1.30 at the references, following the map's hemisphere and sun
+ * (compressed, so a 3 x sun does not triple the term), the baked cast shadows fading under a closed deck. */
+export function resolveHorizonLightingGains(lighting: HorizonLighting): { ambient: number; sunGain: number; shadow: number } {
+  const hemiRatio = clamp(lighting.hemi / HORIZON_REF_HEMI, 0.6, 2.0);
+  const sunRatio = clamp(lighting.sun / HORIZON_REF_SUN, 0.3, 1.6);
+  return {
+    ambient: 0.50 * Math.pow(hemiRatio, 0.8),
+    sunGain: 1.30 * Math.pow(sunRatio, 0.7),
+    shadow: 0.85 * (1 - 0.7 * clamp(lighting.cover, 0, 1)),
+  };
 }
 
 /** Round 72: the surface atlas as a GPU texture — linear data, angle repeats, radius clamps, mips for the far rows. */
@@ -2070,7 +2097,7 @@ float horizonWaterVariation = 0.0;
 
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
-  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops, relief,
+  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops, relief, lighting,
 }: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
@@ -2177,6 +2204,7 @@ function* buildHorizonMaterialSteps({
     // rendered sky's horizon average — blue-grey under a clear sky, warm grey under an overcast — normalised to unit
     // luminance and pushed a little, since the tint is pale and a shaded face should still read as sky-lit)
     const reliefTexture = tiles && relief.bake ? makeReliefTexture(relief.bake) : null;
+    const gains = resolveHorizonLightingGains(lighting);
     if (reliefTexture) retainedTextures.push(reliefTexture);
     // (the tint is re-normalised to unit luminance after the push, so a shaded face changes hue, never brightness —
     // a saturated blue fog pushed a face's blue to 1.8 x and washed the ranges pale)
@@ -2191,7 +2219,7 @@ function* buildHorizonMaterialSteps({
       uVReliefGrad: { value: relief.bake?.gradScale ?? 1 },
       uVReliefAmp: { value: reliefTexture ? 1 : 0 },
       uVAoStrength: { value: relief.settings.aoStrength },
-      uVShadow: { value: 0.85 },
+      uVShadow: { value: gains.shadow },
       uVSkyTint: { value: skyTint },
       uVSparkle: { value: snowline <= 1 ? 0.6 : 0 },
       uVDebug: { value: 0 },
@@ -2225,9 +2253,11 @@ function* buildHorizonMaterialSteps({
       uVFogTint: { value: new THREE.Vector3(fog.r, fog.g, fog.b) },
       uVBanding: { value: style === 'mesa' ? Math.max(banding, 0.14) * 1.7 : Math.max(banding, 0.05) },
       uVRockSlope: { value: style === 'mesa' ? new THREE.Vector2(0.16, 0.42) : new THREE.Vector2(0.30, 0.58) },
-      // absolute colours meet the battlefield's lit ground: a sky term plus a Lambert sun term (about SUN / pi)
-      uVAmbient: { value: 0.46 },
-      uVSunGain: { value: 1.30 },
+      // absolute colours meet the battlefield's lit ground: a sky term plus a Lambert sun term (about SUN / pi);
+      // round 72: both follow the map's own hemisphere and sun (Whiteout's ring read grey beside its fields: the
+      // constants were the sunny default's while its snow is lit by a 0.73 hemisphere under a 13° sun)
+      uVAmbient: { value: gains.ambient },
+      uVSunGain: { value: gains.sunGain },
       // round 32: the authored day colour of this material (1.61, alpine 1.26) — the fragment divides the live
       // colour by it so the night runtime's ×0.20 dim reaches the absolute vista colours
       uVDayDiffuse: { value: mat.color.r },
@@ -2849,6 +2879,15 @@ export function* buildHorizonRingSteps(
   const lx = Math.sin(sunAz) * Math.cos(sunEl);
   const ly = Math.sin(sunEl);
   const lz = Math.cos(sunAz) * Math.cos(sunEl);
+  // Round 72: the map's lighting for the ring's gains (the sky preset's sun and hemisphere plus the engine's bounce
+  // floor, the deck's cover from the cloudscape or the baked deck's opacity)
+  const skyCfg = cfg?.sky;
+  const cloudsCfg = (cfg as { clouds?: { coverage?: number } } | null | undefined)?.clouds;
+  const lighting: HorizonLighting = {
+    sun: skyCfg?.sunIntensity ?? HORIZON_REF_SUN,
+    hemi: (skyCfg?.hemiIntensity ?? 0.36) + 0.15,
+    cover: clamp(cloudsCfg?.coverage ?? skyCfg?.cloudOpacity ?? 0.3, 0, 1),
+  };
   // Round 72: the surface atlas over the finished ring (desktop tier, where the vista program reads it) — the fine
   // relief's gradient, the occlusion and the sun's visibility across the ranges, in slices like the terrain build
   const vista = getDeviceTier() !== 'mobile';
@@ -2917,7 +2956,7 @@ export function* buildHorizonRingSteps(
     mapId,
     sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
     base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista, ground: vistaGround, bareRock, outcrops,
-    relief: { bake: reliefBake, settings: reliefSettings },
+    relief: { bake: reliefBake, settings: reliefSettings }, lighting,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -2957,7 +2996,7 @@ export function* buildHorizonRingSteps(
       ...((cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM === undefined && cfg?.sky?.cloudAltM === undefined ? [1400] : []));
     const farRange = buildHorizonFarRange({
       seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
-      deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC,
+      deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(lighting),
       treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
     });
