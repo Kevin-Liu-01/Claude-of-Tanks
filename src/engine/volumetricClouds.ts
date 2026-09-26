@@ -171,11 +171,11 @@ uniform float uStreets;
 uniform float uFieldMix;
 // the equalised field the coverage cuts at a world xz: the cell-carried cumuliform one blended toward the
 // street field in the wind frame (rows along the wind), or the broad stratiform one
-float cloudField( vec2 pxz, out vec4 w ) {
+float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 	w = texture2D( tWeather, ( pxz + uWeatherShift ) / ${f(CLOUD_WEATHER_TILE_M)} );
 	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
-	float street = texture2D( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)} ).r;
-	return mix( mix( w.r, street, uStreets ), w.b, uFieldMix );
+	st = texture2D( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)} );
+	return mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
 }
 `;
 
@@ -246,10 +246,13 @@ float luma( vec3 c ) { return dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ); }
 // the weather at a world xz
 struct Weather { float cov; float top; float breakup; float type; float anvil; };
 Weather cloudWeather( vec2 pxz ) {
-	vec4 w;
-	float field = cloudField( pxz, w );
-	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
-	float anvilField = texture2D( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)} ).g;
+	vec4 w, st;
+	float field = cloudField( pxz, w, st );
+	// the street share fades past four kilometres: the far field reads as scattered cumulus, not as rolls
+	// converging on the horizon (71c)
+	float farK = smoothstep( 4000.0, 11000.0, length( pxz - uCamPos.xz ) );
+	field = mix( field, mix( w.r, w.b, uFieldMix ), uStreets * 0.55 * farK );
+	float anvilField = st.g;
 	Weather o;
 	// the field is equalised: the map's coverage admits exactly that fraction; inside, the local coverage runs
 	// 0..1 (skewed high) and carves the base shape into masses — a region is never one solid slab
@@ -290,8 +293,8 @@ vec2 cloudColumnXZ( vec3 p ) {
 }
 // coverage only (the empty-space test before the march)
 float cloudCoverageAt( vec2 pxz ) {
-	vec4 w;
-	float field = cloudField( pxz, w );
+	vec4 w, st;
+	float field = cloudField( pxz, w, st );
 	return max( field - ( 1.0 - uCoverage ), 0.0 );
 }
 // density 0..1 at a world point. detail: whether the erosion volumes are sampled (the light march skips them);
@@ -388,9 +391,9 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 }
 // light optical depth toward the sun from p (the weather column of p for the near taps); the tap ladder is
 // scaled per texel by the blue noise so the banding of a fixed ladder decorrelates between neighbouring rays
-float cloudLightDepth( vec3 p, Weather w, float scale ) {
+float cloudLightDepth( vec3 p, Weather w, float scale, bool short_ ) {
 	float od = 0.0;
-${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? `if ( od * uDensity < 4.0${k >= 3 ? ' && uStratiform < 0.5' : ''}${k >= 4 ? ' && uThick < 2000.0' : ''} ) ` : ''}{
+${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? `if ( !short_ && od * uDensity < 4.0${k >= 3 ? ' && uStratiform < 0.5' : ''}${k >= 4 ? ' && uThick < 2000.0' : ''} ) ` : ''}{
 		vec3 lp = p + uSunDir * ( ${f(dist)} * scale );
 		Weather lw = ${k < 2 ? 'w' : 'cloudWeather( cloudColumnXZ( lp ) )'};
 		od += cloudDensity( lp, lw, false, 0.0 ) * ( ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))} * scale );
@@ -477,7 +480,7 @@ void main() {
 				if ( t > t1 || T < 0.03 ) break;
 				// the stride never falls under the trace texel's footprint (four history pixels: a far bank needs
 				// no eight-metre steps — 28 m at 3 km, 83 m at 9 km)
-				float ds = max( ds0, min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
+				float ds = max( ds0 * ( 1.0 + smoothstep( 3000.0, 9000.0, t ) * ( uThick > 2000.0 ? 1.0 : 0.4 ) ), min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
 				vec3 p = uCamPos + dir * t;
 				Weather w = cloudWeather( cloudColumnXZ( p ) );
 				float dens = w.cov > 0.0 ? cloudDensity( p, w, true, t * uPixelAngle ) : 0.0;
@@ -496,15 +499,20 @@ void main() {
 					// (none once the ray is nearly opaque — the samples behind carry little weight — and none for the
 					// scud under a base, which the deck above shades: a fixed depth of six)
 					bool scudPt = p.y < uBase;
+					// inside a front's base deck (a tall slab, the lower third) the two near taps suffice: the deck
+					// is dark under its towers whatever the far taps read
+					bool shortLadder = uThick > 2000.0 && hN < 0.34;
 					if ( scudPt ) lastLight = 6.0;
-					else if ( lastLight < 0.0 || ( ( lit & 1 ) == 0 && T > 0.15 ) ) lastLight = uDebug == 3.0 ? 0.0 : cloudLightDepth( p, w, lightScale );
+					else if ( lastLight < 0.0 || ( ( lit & 1 ) == 0 && T > 0.15 ) ) lastLight = uDebug == 3.0 ? 0.0 : cloudLightDepth( p, w, lightScale, shortLadder );
 					lit++;
 					float tau = lastLight + sig * 2.0;
 					// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
 					float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
 					// an overcast sheet is lit by the whole sky above it, not by one reddened low sun: its diffused
 					// light is the sun's luminance, neutral
-					vec3 sunDiff = mix( uSunRadiance, vec3( luma( uSunRadiance ) ), uStratiform );
+					// (71c: half way to neutral on a cumulus too — the light diffused to a base has crossed the whole
+					// lit mass and mixed with the sky's; a low sun's colour painted every base brown)
+					vec3 sunDiff = mix( uSunRadiance, vec3( luma( uSunRadiance ) ), max( uStratiform, 0.6 ) );
 					// the diffusion regime of a thick non-absorbing cloud: diffuse light is transmitted about
 					// 1 / (1 + 0.75 (1 - g) tau), so the base of an overcast sheet is bright and the shaded side of a
 					// cumulus stays grey, not black; it builds with height in the cloud (the lower parts are darker)
@@ -523,13 +531,25 @@ void main() {
 					float up = smoothstep( 0.0, 0.85, hN );
 					float sheet = smoothstep( 0.5, 0.9, uStratiform );
 					float tauUp = uDebug == 1.0 ? 0.0 : cloudDepthAbove( p, w );
-					vec3 amb = mix( uAmbientBottom, uAmbientTop, max( up, uStratiform * 0.75 ) ) * ( 1.0 + sheet * 1.2 );
-					amb *= mix( 0.3, 1.0, 1.0 - dens * 0.7 ) * mix( 0.8, 1.15, up ) * mix( exp( -tauUp * 0.1 ), 1.0, sheet * 0.6 );
-					// a deck or a sheet is lit through by the whole sky: its underside is never much darker than the mean
-					// sky it replaces (a sheet takes the floor whole, a stratocumulus deck by its share, the thick lumps a
-					// little darker than the thin parts so the deck keeps its relief)
+					// the sky's irradiance on the tops decays with the depth above the point; the base's light arrives
+					// from below and the sides (the lower sky, the ground) and does not (71c: attenuating it too left
+					// every base near black under a warm diffused sun — the brown of the alpine and coastal masses)
+					float upW = max( up, uStratiform * 0.75 );
+					// (a cumulonimbus base deck is the exception: its underside is shaded by three kilometres of tower and
+					// stays a dark wall — the bottom term decays with the depth above there)
+					float cb = smoothstep( 0.55, 0.9, w.type ) * ( 1.0 - sheet );
+					vec3 amb = ( uAmbientTop * upW * mix( exp( -tauUp * 0.1 ), 1.0, sheet * 0.6 ) + uAmbientBottom * ( 1.0 - upW ) * mix( 1.0, exp( -tauUp * 0.06 ), cb ) ) * ( 1.0 + sheet * 1.2 );
+					amb *= mix( 0.45, 1.0, 1.0 - dens * 0.7 ) * mix( 0.85, 1.15, up );
+					// a cloud is lit through by the whole sky: its underside is never much darker than the sky it
+					// stands against — a sheet takes the floor whole, a deck or a cumulus by its share, the thick cores
+					// a little darker than the thin parts so the mass keeps its relief; the floor carries the sky's
+					// cool hue (uSkyMean), so a base reads luminous blue-grey
+					// (the cumulus floor sits at a third of the sky mean — 0.85 lifted every base to the lit level and
+					// flattened the masses to white — and a cumulonimbus base deck takes half of that: its wall is dark)
 					float deckFloor = smoothstep( 0.3, 0.9, uStratiform );
-					amb = mix( amb, max( amb, uSkyMean * 1.25 * exp( -tauUp * 0.08 ) ), deckFloor );
+					float floorK = mix( 0.34, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
+					float floorDecay = mix( 0.04, 0.08, deckFloor );
+					amb = max( amb, uSkyMean * floorK * ( 0.5 + 0.5 * exp( -tauUp * floorDecay ) ) );
 					amb *= uAmbientScale;
 					vec3 S = ( ( uSunRadiance * sun * ( 1.0 - 0.7 * uStratiform ) + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
 					if ( uDebug == 4.0 ) S = vec3( 0.6 );
@@ -764,8 +784,8 @@ ${CLOUD_FIELD_GLSL}
 uniform float uThreshold;
 varying vec2 vXZ;
 void main() {
-	vec4 w;
-	if ( cloudField( vXZ, w ) < uThreshold ) discard;
+	vec4 w, st;
+	if ( cloudField( vXZ, w, st ) < uThreshold ) discard;
 	gl_FragColor = vec4( 1.0 );
 }`;
 
@@ -1178,10 +1198,10 @@ export class VolumetricCloudLayer {
     const stratiform = this.preset?.stratiform ?? 0;
     // cumulus bases see the horizon band and the ground; an overcast sheet's base is lit through the sheet by
     // the whole sky, so it takes the sky irradiance's cool hue, never the low sun's warm band
-    // (71b: half the base term is the sky irradiance's cool hue — under a low sun the warm horizon band alone
-    // painted the shaded bases tan)
-    (t.uAmbientBottom.value as THREE.Vector3).set(hz.r, hz.g, hz.b).multiplyScalar(0.08)
-      .addScaledVector(this.scratch.set(irr.r, irr.g, irr.b), 0.1)
+    // (71c: the base term leads with the sky irradiance's cool hue — 0.22 of it — over 0.08 of the horizon band;
+    // under a low sun the band alone painted the shaded bases tan, and a base is lit by the whole lower sky)
+    (t.uAmbientBottom.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.22)
+      .addScaledVector(this.scratch.set(hz.r, hz.g, hz.b), 0.08)
       .lerp(this.scratch.set(irr.r, irr.g, irr.b).multiplyScalar(0.42), stratiform);
     // the stratus floor: the brighter of the horizon band's and the mean upper sky's luminance — the sky a far
     // ceiling replaces at the skyline is the horizon band, the brightest of a hazy sky — in a hue half way from

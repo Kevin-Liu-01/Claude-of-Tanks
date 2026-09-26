@@ -3113,6 +3113,30 @@ over 2 km, the ladder stops at an optical depth of 4, and the empty-space pre-pa
 Alpine is mountain cumulus in big masses (towering-cumulus, fieldMix 0.75 through a new `fieldMix` knob) rather than
 the smooth lens caps, urban's altostratus thinner (0.45), the fair-weather rows bigger (coverage 0.34, 820 m slabs).
 
+**71c — the integrator's second eye check (monsoon 8 / 10, winter 7.5; alpine and coastal's overhead masses a
+brown-grey smoke blob, the streets smeared tubes converging on the horizon, verdant's far field tiny identical
+puffs).** (1) The brown base was the lighting, not a tint: the bottom ambient was attenuated by the depth-above term
+like the top term (near black under a thick mass), leaving the low sun's warm diffused light as the only base light.
+Now the depth above attenuates only the sky's term on the tops; the base term arrives from the lower sky (0.22 × the
+sky irradiance's cool hue + 0.08 × the horizon band, undimmed); the diffused sun is taken at least 60 % toward its
+luminance on a cumulus too (it has crossed the whole lit mass and mixed with the sky's light); and every cloud takes
+a cool floor from the sky mean — a third of it on a cumulus (0.34 × the zenith-hued floor, the thick cores half of
+that), the full 1.25 on a sheet, 0.35 × under a cumulonimbus whose base deck the towers shade (its wall stays dark; the
+cumulonimbus bottom term also decays with the depth above). The first cut at 0.85 lifted every base to the lit level
+and flattened the masses to white (alpine's contrast 1.03); a third gives blue-grey bases under lit tops. A base
+chroma metric (the mean sRGB of the base quarter of every dense column run, its warmth (R − B) / luma, its luma over
+the lit quarter) now reads every map: alpine's bases 110 / 103 / 98 (warmth +0.12) → 133 / 137 / 146 (−0.10), coastal's
+95 / 106 / 91 → 138 / 143 / 138. (2) The streets: the roll (its width now varying along its length) carries a chain of
+rounded lumps — fourteen per tile, 860 m apart, jittered in spacing and radius (0.25–0.7 of the pitch), a fifth of them
+missing, each row's chain phased — at a depth of 0.85 (the roll between lumps keeps 15 %), and the street share fades
+past four kilometres in the trace so the far field reads as scattered cumulus rather than rolls converging on the
+horizon. A street now reads as aligned cumulus with soft gaps (the 40 % rule reads it as several structures, as the
+integrator allowed). (3) The cumuliform cells are plateaus: a minimum radius (0.45–0.8 of the 600 m lattice: 540–960 m
+across), full to 55 % of the radius with a smooth shoulder, neighbouring cells soft-unioned (1 − Π(1 − v)) into
+mid-size masses — a coverage threshold admits most of a cell or none, never the tiny cap of a cone. (4) Perf: a
+two-tap light ladder inside a front's base deck (a tall slab, the lower third), the far strides on a tall slab up to
+2 × past 3–9 km, and one street fetch per weather lookup (the anvil channel rode a second fetch of the same texel).
+
 **71b measured (the same captures, metrics and sheets re-run on tip dab60d45d; the numbers below supersede the 71a
 paragraph that follows, kept for the record).** Structure: the streets now hold one roll per view — frontier 38 / 89 %
 of the cloud area in the largest structure, coastal 59 / 65, steppe 29 / 52, saltwind 34 / 45 (a roll fading between
