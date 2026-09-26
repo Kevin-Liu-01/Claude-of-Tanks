@@ -2172,6 +2172,7 @@ function* buildHorizonMaterialSteps({
       uVShadow: { value: 0.85 },
       uVSkyTint: { value: skyTint },
       uVSparkle: { value: snowline <= 1 ? 0.6 : 0 },
+      uVDebug: { value: 0 },
       // round 72: the layer's cloud shadow fields, bound per frame by the ring's onBeforeRender (off until bound)
       ...createHorizonCloudShadeUniforms(),
       // round 29: arid rings sample the sand tile as their ground layer

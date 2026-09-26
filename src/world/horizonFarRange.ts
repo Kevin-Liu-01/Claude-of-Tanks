@@ -102,10 +102,15 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       // ridged crests along the row, warped by a broad world field so the massifs are two-dimensional
       const wx = x + noise.noise(x * 0.0009 + 3.7, z * 0.0009 - 8.1) * 260;
       const wz = z + noise.noise(x * 0.0009 - 5.9, z * 0.0009 + 2.3) * 260;
+      // ridged multifractal: each octave's ridge weighted by the one below it, so the peaks carry the shoulders and
+      // the saddles stay smooth (three octaves from 590 m to 105 m; a finer one would alias on the 61 m columns)
       const ridged = (v: number): number => Math.pow(1 - Math.abs(v), s.sharpness);
-      let relief = ridged(noise.noise(wx * 0.0017 + 41, wz * 0.0017 - 17)) * 0.62
-        + ridged(noise.noise(wx * 0.0041 - 23, wz * 0.0041 + 31)) * 0.26
-        + (noise.noise(wx * 0.0095 + 9, wz * 0.0095 + 5) * 0.5 + 0.5) * 0.12;
+      const r1 = ridged(noise.noise(wx * 0.0017 + 41, wz * 0.0017 - 17));
+      const w1 = clamp(r1 * 2, 0, 1);
+      const r2 = ridged(noise.noise(wx * 0.0041 - 23, wz * 0.0041 + 31)) * w1;
+      const w2 = clamp(r2 * 2, 0, 1);
+      const r3 = ridged(noise.noise(wx * 0.0095 + 9, wz * 0.0095 + 5)) * w2;
+      let relief = r1 * 0.58 + r2 * 0.28 + r3 * 0.14;
       relief = clamp(relief, 0, 1);
       // the crest row carries the peaks; the rows before it rise toward them, the rows behind fall away
       let h = HORIZON_FAR_FOOT_M + ampM * env * (0.18 + 0.82 * relief) * lift;
@@ -119,17 +124,30 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       marine[i] = sea;
     }
   }
-  // along-row smoothing of the crest rows: no one-column needles at three kilometres (the same law as the alpine ring)
+  // along-row smoothing of the crest rows and a step clamp (the same law as the alpine ring): no one-column needles
+  // at three kilometres — a column-to-column step of at most 0.9 of the row's arc, a 42° flank
   const scratch = new Float32Array(n);
   for (let row = 1; row < rows.length; row++) {
     const off = row * n;
-    for (let pass = 0; pass < 5; pass++) {
+    for (let pass = 0; pass < 3; pass++) {
       for (let k = 0; k < n; k++) {
         const km = (k - 1 + n) % n, kp = (k + 1) % n;
         scratch[k] = heights[off + km] * 0.25 + heights[off + k] * 0.5 + heights[off + kp] * 0.25;
       }
-      for (let k = 0; k < n; k++) { heights[off + k] = scratch[k]; positions[(off + k) * 3 + 1] = scratch[k]; }
+      for (let k = 0; k < n; k++) heights[off + k] = scratch[k];
     }
+    const maxStep = rows[row].r * TAU / n * 0.9;
+    for (let pass = 0; pass < 3; pass++) {
+      for (let k = 0; k < n; k++) {
+        const km = (k - 1 + n) % n;
+        heights[off + k] = clamp(heights[off + k], heights[off + km] - maxStep, heights[off + km] + maxStep);
+      }
+      for (let k = n - 1; k >= 0; k--) {
+        const kp = (k + 1) % n;
+        heights[off + k] = clamp(heights[off + k], heights[off + kp] - maxStep, heights[off + kp] + maxStep);
+      }
+    }
+    for (let k = 0; k < n; k++) positions[(off + k) * 3 + 1] = heights[off + k];
   }
   return { columns: n, rowCount: rows.length, positions, heights, ampM, marine };
 }

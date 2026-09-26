@@ -67,14 +67,14 @@ export interface HorizonReliefSettings {
   far: HorizonFarRangeSettings | null;
 }
 
-const FAR_ALPINE: HorizonFarRangeSettings = { ampM: 820, floor: 0.34, hazeIn: 0.58, hazeOut: 0.80, snowline: 0.55, sharpness: 1.35 };
-const FAR_POLAR: HorizonFarRangeSettings = { ampM: 640, floor: 0.30, hazeIn: 0.56, hazeOut: 0.80, snowline: 0.18, sharpness: 1.15 };
+const FAR_ALPINE: HorizonFarRangeSettings = { ampM: 820, floor: 0.34, hazeIn: 0.58, hazeOut: 0.80, snowline: 0.55, sharpness: 1.7 };
+const FAR_POLAR: HorizonFarRangeSettings = { ampM: 640, floor: 0.30, hazeIn: 0.56, hazeOut: 0.80, snowline: 0.18, sharpness: 1.4 };
 const FAR_ROLLING: HorizonFarRangeSettings = { ampM: 360, floor: 0.40, hazeIn: 0.62, hazeOut: 0.82, snowline: 2, sharpness: 0.85 };
 const FAR_MESA: HorizonFarRangeSettings = { ampM: 470, floor: 0.45, hazeIn: 0.60, hazeOut: 0.82, snowline: 2, sharpness: 0.75 };
 const FAR_VOLCANIC: HorizonFarRangeSettings = { ampM: 560, floor: 0.28, hazeIn: 0.60, hazeOut: 0.82, snowline: 2, sharpness: 1.05 };
 const FAR_COASTAL: HorizonFarRangeSettings = { ampM: 300, floor: 0.35, hazeIn: 0.64, hazeOut: 0.84, snowline: 2, sharpness: 0.9 };
 const FAR_MARTIAN: HorizonFarRangeSettings = { ampM: 1050, floor: 0.50, hazeIn: 0.50, hazeOut: 0.74, snowline: 2, sharpness: 0.6 };
-const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.62, hazeOut: 0.84, snowline: 2, sharpness: 1.2 };
+const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.62, hazeOut: 0.84, snowline: 2, sharpness: 1.5 };
 
 /** The characters: the vocabulary of each mountain country, from the field guides rather than from one another. */
 const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>> = {
@@ -187,8 +187,12 @@ export interface HorizonReliefField {
 
 const LOW_OCTAVES = 3;
 const HIGH_OCTAVES = 3;
+/** The fine band starts one octave back: the row ladder (60–250 m spans) cannot carry the 75 m octave, so the bake does. */
+const HIGH_FIRST = 2;
 const LACUNARITY = 2.05;
 const GAIN = 0.52;
+/** The fine octaves fall off faster than the coarse ones, so their gradient energy sits in the spurs, not in grit. */
+const HIGH_GAIN = 0.42;
 
 /**
  * The relief field of one map. Seeded like the ring's own noise (the caller mixes the map id in), so a map's ridges
@@ -198,7 +202,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
   const s = settings;
   const noise = new SimplexNoise({ random: mulberry32(seed >>> 0) });
   const rng = mulberry32((seed ^ 0x9E37) >>> 0);
-  const octaves = LOW_OCTAVES + HIGH_OCTAVES;
+  const octaves = HIGH_FIRST + HIGH_OCTAVES;
   const freq = new Float64Array(octaves), ox = new Float64Array(octaves), oz = new Float64Array(octaves), amp = new Float64Array(octaves);
   let f = 1 / s.wavelengthM, a = 1;
   for (let o = 0; o < octaves; o++) {
@@ -206,7 +210,10 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     f *= LACUNARITY; a *= GAIN;
   }
   const lowNorm = amp[0] + amp[1] + amp[2];
-  const highNorm = amp[3] + amp[4] + amp[5];
+  // the fine band's own amplitudes and offsets (a different set from the coarse band's at the shared octave)
+  const highAmp = new Float64Array(HIGH_OCTAVES), hox = new Float64Array(HIGH_OCTAVES), hoz = new Float64Array(HIGH_OCTAVES);
+  let ha = 1, highNorm = 0;
+  for (let o = 0; o < HIGH_OCTAVES; o++) { highAmp[o] = ha; highNorm += ha; hox[o] = rng() * 200 - 100; hoz[o] = rng() * 200 - 100; ha *= HIGH_GAIN; }
   const warpF = 1 / s.warpWavelengthM;
   const gullyF = 1 / s.gullyWavelengthM;
   const gullyFr = gullyF / s.gullyElongation;
@@ -267,14 +274,14 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const aFine = theta + dArc / Math.max(1, r);
       const rFine = (r + dR) / s.fineElongation;
       let sum = 0;
-      for (let o = LOW_OCTAVES; o < octaves; o++) {
-        const k = 1000 * freq[o];
-        const n = noise.noise3d(Math.cos(aFine) * k + ox[o], Math.sin(aFine) * k + oz[o], rFine * freq[o] + ox[o] * 0.37);
+      for (let o = 0; o < HIGH_OCTAVES; o++) {
+        const fq = freq[HIGH_FIRST + o], k = 1000 * fq;
+        const n = noise.noise3d(Math.cos(aFine) * k + hox[o], Math.sin(aFine) * k + hoz[o], rFine * fq + hoz[o] * 0.37);
         const an = Math.abs(n);
         let rr = (1 - an) + (an - (1 - an)) * s.billow;
         rr = Math.pow(clamp(rr, 0, 1), sharp) * scratch.weight;
         scratch.weight = clamp(rr * 2.0, 0, 1);
-        sum += rr * amp[o];
+        sum += rr * highAmp[o];
       }
       // the talus apron: at a concave foot the fine relief settles into a smooth fan
       const talus = smoothstep(0.08, 0.45, concavity);

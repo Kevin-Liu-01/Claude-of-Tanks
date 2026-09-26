@@ -325,6 +325,7 @@ uniform float uVOutcrop;  // round 55: gneiss knobs and scree through the turf o
 // (r0, 1 / span) and gradient scale, the sky's chroma for the shaded faces and the snow glint amplitude
 uniform sampler2D uVRelief; uniform vec2 uVReliefR; uniform float uVReliefGrad; uniform float uVReliefAmp;
 uniform float uVAoStrength; uniform float uVShadow; uniform vec3 uVSkyTint; uniform float uVSparkle;
+uniform float uVDebug; // QA: 1 the relief gradient, 2 the occlusion, 3 the sun visibility, 4 the relieved normal's y, 5 the cloud shade, 6 the material weights
 ${HORIZON_CLOUD_SHADE_UNIFORM_DECLARATIONS}`;
 
 /**
@@ -551,6 +552,13 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   // faces keep their baked water colour (edgeWater.ts: the map's own deep water at the seam, the low sky with
   // distance) with only the broad water variation; color_fragment multiplies vColor back in.
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3((1.0 + horizonWaterVariation) * horizonDim), horizonMarine);
+  // QA (round 72): the baked channels and the material weights as colour, for the capture probes
+  if (uVDebug > 0.5) {
+    vec3 dbg = uVDebug < 1.5 ? vec3(relief.xy, 0.5) : uVDebug < 2.5 ? vec3(relief.z) : uVDebug < 3.5 ? vec3(relief.w)
+      : uVDebug < 4.5 ? vec3(nR.y) : uVDebug < 5.5 ? vec3(cloudLit) : vec3(snowW, rockW, forestW);
+    diffuseColor.rgb = dbg * 0.8 / max(vColor.rgb, vec3(0.02));
+    vistaHaze = 0.0;
+  }
   // --- aerial perspective, per fragment (the vertex bake keeps the tone only) ----
   float hazeR = smoothstep(430.0, 1330.0, radius);
   // Round 39 (owner 2026-09-22, "it still seems too disappear-y"): the ranges took up to 94 % of the fog tint on top of
