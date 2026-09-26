@@ -3423,7 +3423,7 @@ void splatCompute() {
     // round 73b: the drift is a sawtooth — a long stoss slope climbing to a sharp lee crest that drops in a fifth of
     // the wavelength — so the drifts carry an EDGE (a shaded lee face under the lit crest line) that reads at range in
     // albedo where the normal has mipped away; round 73's sine was one more soft undulation
-    float dwave = fract(sph * 0.0669 + n1 * 0.64);
+    float dwave = fract(sph * 0.0669 * (0.78 + 0.44 * n2) + n1 * 0.9 + n2w * 0.5); // the wavelength swings ±22 % per ~320 m cell, the phase on two fields
     float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;
     float driftD = 1.0 - smoothstep(120.0, 420.0, effDist);
     float sw = uReduxSnow.y * meadowG * (1.0 - fR) * (1.0 - triW) * (1.0 - roadCore);
