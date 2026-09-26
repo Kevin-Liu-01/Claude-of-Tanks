@@ -2997,11 +2997,11 @@ range and alpine's warm smooth puffs with the per-map cloudscapes, and added the
 perf pairs, the whiteout and polders skylines, the airfield upper band, the inside-the-slab camera, the cascade policy
 and the moonlit edge stay open there.)*
 
-### Round 71 — 2026-09-25: the cloudscape pass (volumetric clouds, still opt-in)
+### Round 71 — 2026-09-25: the cloudscape pass (volumetric clouds; default on from 71c)
 
 **Owner (2026-09-25, rating round 68 five out of ten):** "they just look really bad and just like puffs... if we made them
 look better, I would be ok with them... make the clouds better and a lot more customized." The layer stays OPT-IN
-(`?clouds=volumetric`) until the owner approves the new look on the review sheet; the baked decks remain the default and
+(`?clouds=volumetric`) until the owner approved the new look on the review sheet — which happened on the 71b Winter shot ("wow our clouds look amazing", 2026-09-25 evening): from 71c the layer is the default on every tier that renders it and `?clouds=off` / `?clouds=baked` keep the baked decks; before that the baked decks remained the default and
 their pinned bytes are untouched (`?clouds=off` / no query renders exactly as before).
 
 **Why round 68 read as puffs.** One coverage scale (600 m / 1 km cells gated by one mesoscale field) made same-sized

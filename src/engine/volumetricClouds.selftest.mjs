@@ -7,7 +7,7 @@
 // gate in sky.ts and the cascade attach in main.ts are present exactly once.
 // Round 71 (2026-09-25): the cloudscape pass — the multi-scale weather (a vigour channel), the street / anvil /
 // cirrus companion field in the wind frame, the curl volume and the blue-noise tile; every map's `clouds` block
-// resolves through its regime row (cloudscapes.ts) into the pinned 31-map cloudscape table; the layer stays opt-in.
+// resolves through its regime row (cloudscapes.ts) into the pinned 31-map cloudscape table; the layer is the default from round 71c (owner approval on the review sheet).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -331,8 +331,8 @@ assert.equal(renderFrame.match(/volumetricClouds\?\.beforeSceneRender\(/g)?.leng
 assert.equal(postSource.match(/beforeSceneRender\(/g)?.length, 1, 'no other post path marches the clouds');
 assert.ok(renderFrame.indexOf('beforeSceneRender(') < renderFrame.indexOf('const jittered = taa.enabled;'), 'the march reads the unjittered camera');
 assert.match(skySource, /get\('clouds'\)/, 'the ?clouds switch is read from the URL');
-assert.match(skySource, /requested === 'volumetric' \|\| requested === 'on'/,
-  'the volumetric layer is opt-in (owner 2026-09-25: the baked decks and the skies before it were fine; round 71 keeps it opt-in until the owner approves the cloudscapes)');
+assert.match(skySource, /if \(requested === 'baked'\) return false;\s+return true;/,
+  'the volumetric layer is the default (owner 2026-09-25 on the round-71 sheet: "wow our clouds look amazing"); ?clouds=baked is the explicit opt-out');
 assert.match(skySource, /requested === 'off'\) return false/, 'the ?clouds=off fallback keeps the baked decks');
 assert.match(skySource, /scene\.userData\.volumetricClouds = volumetricClouds;/);
 assert.match(skySource, /CLOUD_NOISE_KINDS\.every\(\(kind\) => cloudNoiseUpload\[kind\]\)/, 'the worker handshake waits for every kind');
