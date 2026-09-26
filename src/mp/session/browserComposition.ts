@@ -27,7 +27,7 @@
 import { MatchSession } from './matchSession.ts';
 import type { MatchSessionOptions, MatchSessionStats, SessionPhase, SessionPresentation, SessionRound } from './matchSession.ts';
 import { NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName } from './networkStatus.ts';
-import type { NetworkBanner, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
+import type { NetworkBanner, NetworkStatusEvent, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
 import { isMultiplayerV2Session } from './playMenuAdapter.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
@@ -235,11 +235,16 @@ export interface BrowserStatusSurface {
   dispose(): void;
 }
 
+/** Why a played round's link ended (the telemetry exit code). */
+export type BrowserLinkExit = 'left' | 'verdict' | 'dropped' | 'lost' | 'failed';
+
 export interface BrowserStatusPorts {
   /** Mount the strip for a live round (lazy: the surface module loads with the round). */
   mount(): MaybePromise<BrowserStatusSurface>;
-  /** The link's summary when a round ends (telemetry: a few bytes, never per tick). */
-  report?(summary: NetworkStatusSummary, reason: string): void;
+  /** A reconnect attempt, a recovery or a seat drop (telemetry counts them; never per tick). */
+  event?(event: NetworkStatusEvent): void;
+  /** The link's summary when a played round ends (telemetry: a few bytes). */
+  report?(summary: NetworkStatusSummary, reason: BrowserLinkExit): void;
 }
 
 export interface BrowserCompositionPorts {
@@ -449,6 +454,8 @@ interface ActiveRound {
   activated: boolean;
   revealed: boolean;
   failed: boolean;
+  /** The link summary left for telemetry. */
+  reported: boolean;
   abort: AbortController;
   frames: number;
   ownShots: number;
@@ -566,6 +573,21 @@ export function createBrowserComposition({
   const status = new NetworkStatusModel({ clock });
   let statusSurface: BrowserStatusSurface | null = null;
   let statusMountGeneration = 0;
+  status.onEvent((event) => {
+    if (event.kind === 'health') return;
+    ports.status?.event?.(event);
+  });
+
+  /** A played round's link summary leaves once, with why it ended, when its presentation goes. */
+  const reportLinkExit = (active: ActiveRound): void => {
+    if (active.reported || !active.revealed || !ports.status?.report) return;
+    active.reported = true;
+    const failure = lastFailure && lastFailure.matchId === active.matchId ? lastFailure : null;
+    const reason: BrowserLinkExit = failure
+      ? failure.reason.startsWith('seat_') ? 'dropped' : failure.reason === 'match_lost' ? 'lost' : 'failed'
+      : roomPorts.hasResult() ? 'verdict' : 'left';
+    ports.status.report(status.summary(), reason);
+  };
 
   const unmountStatus = (): void => {
     statusMountGeneration++;
@@ -853,7 +875,7 @@ export function createBrowserComposition({
       matchId: matchStart.matchId, round: matchStart.round, mapId: matchStart.mapId, mode: matchStart.mode,
       spectator: sessionRound.spectator, viewerId, ownSpecId: ownPlayer?.specId || (sessionRound.spectator ? 'spectator' : ''),
       presentation: null, controls: createControlSampler(() => active.presentation?.ownActor ?? null),
-      welcome: null, welcomed: false, activating: false, activated: false, revealed: false, failed: false,
+      welcome: null, welcomed: false, activating: false, activated: false, revealed: false, failed: false, reported: false,
       abort: new AbortController(), frames: 0, ownShots: 0, events: {}, shotsBy: {},
       trace: { version: 2, mode: modeLabelFor(sessionRound.room.mode, matchStart.round), map: matchStart.mapId, round: matchStart.round, stages: {}, startedAt, status: 'pending' },
       stageAt: startedAt,
@@ -931,6 +953,7 @@ export function createBrowserComposition({
         },
         onVerdict: (verdict, reason) => { if (verdict !== VERDICT.NONE) battlePresentation.applyVerdict(verdict, reason); },
         dispose: () => {
+          reportLinkExit(active);
           unmountStatus();
           battlePresentation.dispose();
           if (round === active) round = null;

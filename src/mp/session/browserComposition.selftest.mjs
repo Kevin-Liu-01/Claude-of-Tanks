@@ -278,6 +278,8 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
   const garageStatus = [];
   const roomStates = [];
   const statusSurfaces = [];
+  const statusEvents = [];
+  const statusReports = [];
   const timers = [];
   const worldCollision = { heightField: { getHeightAt: () => 0 }, getObstacles: () => [] };
   const ports = {
@@ -353,6 +355,8 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
         calls.push('status.mount');
         return surface;
       },
+      event: (event) => { statusEvents.push(event); },
+      report: (summary, reason) => { statusReports.push([reason, summary]); calls.push(`status.report:${reason}`); },
     },
   };
   const composition = createBrowserComposition({
@@ -369,7 +373,7 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
     clearTimer: (handle) => { handle.cleared = true; },
     reportError: (scope, error) => calls.push(`error:${scope}:${error instanceof Error ? error.message : String(error)}`),
   });
-  return { calls, bus, game, sessions, presentations, menu, battleLoad, lifecycle, garageStatus, roomStates, statusSurfaces, timers, ports, composition };
+  return { calls, bus, game, sessions, presentations, menu, battleLoad, lifecycle, garageStatus, roomStates, statusSurfaces, statusEvents, statusReports, timers, ports, composition };
 }
 
 // ------------------------------------------------------------ port validation and session guard
@@ -503,6 +507,9 @@ assert.ok(calls.includes('command:set_ready'), 'lobby commands go through the ro
 assert.equal(composition.shouldPreserveRoom(), true, 'the room survives the Garage return');
 composition.disposePresentation();
 assert.equal(statusSurface.disposed, true, 'the Garage return unmounts the strip');
+assert.deepEqual(harness.statusReports.map(([reason]) => reason), ['verdict'], 'a played round leaves one link summary, with why it ended (the result was up)');
+assert.equal(harness.statusReports[0][1].health, 'good');
+assert.equal(harness.statusEvents.filter((event) => event.kind === 'health').length, 0, 'health changes are not telemetry events');
 assert.equal(composition.stats().network.surface, false);
 assert.equal(composition.pressLeave(), 'ignored', 'no strip, no leave action');
 assert.equal(composition.active, false);
@@ -574,6 +581,7 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   composition.disposePresentation();
   await settle();
   assert.equal(surface.disposed, true);
+  assert.equal(harness.statusReports.at(-1)[0], 'dropped', 'the dropped round leaves its link summary as a drop');
   owner.match = null;
   roomSession.publish(snapshot({ phase: 'playing', round: 3 }));
   await settle();

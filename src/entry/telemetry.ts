@@ -36,9 +36,13 @@ const NAMED_STAGES = new Set([
 ]);
 
 /** `hud_mask_failed` (2026-09-25): the damage panel gave up on a tank's top-down masks —
- *  `reason` the spec id, `code` the mask pipeline's failure code; it folds into one session note. */
+ *  `reason` the spec id, `code` the mask pipeline's failure code; it folds into one session note.
+ *  Multiplayer v2 link kinds (2026-09-26, never per tick): `mp_reconnect` (`reason` `match` | `room`)
+ *  and `mp_drop` (`code` the wire reason) only count; `mp_exit` folds the battle's link into one
+ *  note — `mp:<exit>:<health>:r<reconnects>:d<drops>:<lastDrop>:i<impaired s>` — and, when the
+ *  session record already left, posts one `entry` follow-up carrying it (`code` `mp_<exit>`). */
 export type TelemetryKind = 'boot_stage' | 'boot_ready' | 'boot_error' | 'entry_result' | 'capability'
-  | 'slow_reveal' | 'room_failure' | 'ice_degraded' | 'hud_mask_failed';
+  | 'slow_reveal' | 'room_failure' | 'ice_degraded' | 'hud_mask_failed' | 'mp_reconnect' | 'mp_drop' | 'mp_exit';
 type TelemetryOutcome = 'ok' | 'failed' | 'cancelled' | 'timeout' | 'halted' | 'notice';
 type TelemetryMode = 'solo' | 'private' | 'lan' | 'studio' | 'network' | 'unknown';
 type SessionOutcome = 'ready' | 'halted' | 'error' | 'left';
@@ -61,6 +65,17 @@ interface EntryResult {
   error?: TelemetryErrorSummary;
 }
 
+/** What a multiplayer v2 battle's link left behind (the status model's summary, a few bytes). */
+export interface TelemetryLinkSummary {
+  health: string;
+  worst?: string;
+  reconnects: number;
+  roomReconnects: number;
+  drops: number;
+  lastDrop: string | null;
+  impairedMs: number;
+}
+
 /** What the call sites report; the client folds these into the three wire records (the damage panel types its sink by it). */
 export interface TelemetryEvent {
   kind: TelemetryKind;
@@ -74,6 +89,8 @@ export interface TelemetryEvent {
   error?: TelemetryErrorSummary;
   capability?: Record<string, string | number | boolean>;
   timings?: Record<string, number>;
+  /** `mp_exit`: the battle's link summary (counts the client kept itself stand in when absent). */
+  link?: TelemetryLinkSummary;
 }
 
 interface TelemetryEndpoints {
@@ -288,6 +305,11 @@ export function createEntryTelemetry({
   let errorCount = 0;
   let requests = 0;
   let timer: unknown = null;
+  // Multiplayer v2 link counters: folded, never sent on their own.
+  let linkReconnects = 0;
+  let linkRoomReconnects = 0;
+  let linkDrops = 0;
+  let linkLastDrop: string | null = null;
   // A clean session is kept with probability `sample`; the record carries the weight so counts scale back.
   const sampledOut = sample < 1 && random() >= sample;
   const weight = Math.max(1, Math.round(1 / sample));
@@ -453,6 +475,32 @@ export function createEntryTelemetry({
         // The spec id first so a long pipeline code is what the 48-char bound trims, never the tank.
         note(`hud_mask:${event.reason || 'unknown'}:${event.code || 'unknown'}`);
         return true;
+      case 'mp_reconnect':
+        if (event.reason === 'room') linkRoomReconnects += 1;
+        else linkReconnects += 1;
+        return true;
+      case 'mp_drop':
+        linkDrops += 1;
+        linkLastDrop = telemetryCode(event.code || 'unknown', 24);
+        return true;
+      case 'mp_exit': {
+        // One note for the whole battle; the exit's health verdict is the fact the funnel needs.
+        const link = event.link;
+        const reconnects = link ? link.reconnects + link.roomReconnects : linkReconnects + linkRoomReconnects;
+        const drops = link ? link.drops : linkDrops;
+        const lastDrop = link ? link.lastDrop : linkLastDrop;
+        const impairedS = Math.round((link ? link.impairedMs : 0) / 1000);
+        const exit = telemetryCode(event.code || 'left', 12);
+        const health = telemetryCode(event.reason || link?.health || 'unknown', 10);
+        note(`mp:${exit}:${health}:r${reconnects}:d${drops}:${lastDrop ? telemetryCode(lastDrop, 16) : 'none'}:i${impairedS}`);
+        linkReconnects = 0; linkRoomReconnects = 0; linkDrops = 0; linkLastDrop = null;
+        if (sessionSent) {
+          // The session record has left: the battle's link rides one `entry` follow-up (the session budget still holds).
+          entry = { outcome: exit === 'dropped' || exit === 'lost' ? 'failed' : 'ok', mode: 'network', code: `mp_${exit}`, ...(roundMs(event.ms) !== undefined ? { ms: roundMs(event.ms) } : {}) };
+          sendFollowUps();
+        }
+        return true;
+      }
       default:
         return false;
     }

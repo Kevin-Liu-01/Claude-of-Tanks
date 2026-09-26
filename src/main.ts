@@ -1958,7 +1958,7 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
     // The first presented battle frame is the successful end of every entry path.
     entryTelemetry.send({
-      kind: 'entry_result', mode: networkSession.match ? 'network' : 'solo', outcome: 'ok',
+      kind: 'entry_result', mode: networkSession.match || multiplayerV2.current?.active ? 'network' : 'solo', outcome: 'ok',
       ms: receipt.waitMs, ...(receipt.slow ? { code: `slow_${receipt.slow}` } : {}),
     });
   },
@@ -2296,6 +2296,12 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
             storage: localStorage,
             onLeave: () => { void leaveBattleToGarage().catch((error) => console.error('[multiplayer v2] leave failed', error)); },
           })),
+          // The link folds into the session record: reconnects and drops count, the exit leaves one note (never per tick).
+          event: (event) => {
+            if (event.kind === 'reconnect') entryTelemetry.send({ kind: 'mp_reconnect', reason: event.scope });
+            else if (event.kind === 'dropped') entryTelemetry.send({ kind: 'mp_drop', code: event.reason });
+          },
+          report: (summary, reason) => entryTelemetry.send({ kind: 'mp_exit', mode: 'network', code: reason, reason: summary.health, link: summary }),
         },
       },
     });

@@ -389,4 +389,47 @@ assert.match(source, /VITE_TELEMETRY_SAMPLE/, 'the clean-session sample is a bui
 assert.match(source, /localStorage/, 'the stored opt-out lives beside the other player settings');
 assert.match(source, /'pagehide', \(\) => telemetry\.flush\(\)/, 'pagehide sends the session record when boot never reached ready');
 
+// Multiplayer v2 link kinds (2026-09-26): reconnects and drops only count; the exit folds the battle's link into one
+// note and, once the session record has left, into one `entry` follow-up — a few bytes per battle, never per tick.
+{
+  const f = fixture();
+  f.telemetry.send({ kind: 'boot_ready', ms: 1800, mode: 'network' });
+  assert.equal(f.bodies.length, 1);
+  f.telemetry.send({ kind: 'entry_result', mode: 'network', outcome: 'ok', ms: 9000 });
+  assert.equal(f.bodies.length, 2, 'the battle entry is the second request');
+  assert.equal(f.telemetry.send({ kind: 'mp_reconnect', reason: 'match' }), true);
+  assert.equal(f.telemetry.send({ kind: 'mp_reconnect', reason: 'match' }), true);
+  assert.equal(f.telemetry.send({ kind: 'mp_reconnect', reason: 'room' }), true);
+  assert.equal(f.telemetry.send({ kind: 'mp_drop', code: 'replaced' }), true);
+  assert.equal(f.bodies.length, 2, 'reconnects and drops never cost a request');
+  f.telemetry.send({ kind: 'mp_exit', mode: 'network', code: 'dropped', reason: 'offline', ms: 240_000,
+    link: { health: 'offline', worst: 'offline', reconnects: 2, roomReconnects: 1, drops: 1, lastDrop: 'replaced', impairedMs: 4200 } });
+  assert.equal(f.bodies.length, 3, 'the exit is one entry follow-up (the third and last request)');
+  const exit = accepted(f.bodies[2].body);
+  assert.equal(exit.kind, 'entry');
+  assert.equal(exit.outcome, 'failed', 'a dropped seat is a failed battle');
+  assert.equal(exit.mode, 'network');
+  assert.equal(exit.code, 'mp_dropped');
+  assert.equal(exit.ms, 240_000);
+  assert.deepEqual(exit.notes, ['mp:dropped:offline:r3:d1:replaced:i4'], 'one bounded note: exit, health, reconnects, drops, the last drop, impaired seconds');
+  assert.ok(f.bodies[2].text.length < 220, `the exit follow-up is small (${f.bodies[2].text.length})`);
+  f.telemetry.send({ kind: 'mp_exit', mode: 'network', code: 'left', reason: 'good', link: { health: 'good', reconnects: 0, roomReconnects: 0, drops: 0, lastDrop: null, impairedMs: 0 } });
+  assert.equal(f.bodies.length, 3, 'a fourth battle exit stays inside the three-request budget');
+}
+
+{
+  // The exit before the session record leaves (a reload mid-battle is not this, but a headless probe is): the note rides the session.
+  const f = fixture();
+  f.telemetry.send({ kind: 'mp_reconnect', reason: 'match' });
+  f.telemetry.send({ kind: 'mp_exit', mode: 'network', code: 'left', reason: 'good' });
+  assert.equal(f.bodies.length, 0, 'nothing leaves before the session record');
+  f.telemetry.send({ kind: 'boot_ready', ms: 1200, mode: 'network' });
+  assert.equal(f.bodies.length, 1);
+  const session = accepted(f.bodies[0].body);
+  assert.deepEqual(session.notes, ['mp:left:good:r1:d0:none:i0'], 'the client\'s own counters stand in when the exit carries no summary');
+  assert.equal(f.telemetry.send({ kind: 'mp_exit', code: '<script>bad</script>', reason: 'x'.repeat(40) }), true);
+  const exit = accepted(f.bodies[1].body);
+  assert.deepEqual(exit.notes, ['mp:script_bad_s:xxxxxxxxxx:r0:d0:none:i0'], 'the exit (12) and health (10) codes are bounded to the beacon alphabet and their lengths');
+}
+
 console.log('entry telemetry client: one session record, coalesced errors, follow-ups, the request budget, sampling, opt-outs and server acceptance pass');
