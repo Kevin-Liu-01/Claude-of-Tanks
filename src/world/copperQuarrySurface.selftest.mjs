@@ -128,9 +128,9 @@ function assertCurrentPolders(ring, index) {
 // Keep the same historical Polders/Titan inputs and already-capped Skybridge.
 // (round 72: re-pinned with the relieved geometry, see above)
 const previous = [
-  'a53889b1e58bb84b95e4bc87a2a65b960109ea35bc152838fa0239e8e01676d2' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */,
-  '9672b5fed07b6d01f9e87523b0530d651afcfd3204bc7bddc6b48846c9c64f8a' /* 2026-09-19 vista pass */,
-  '3d9ff7dcb1578289b93abbfc370a5ad4aa8672e60a7f3a86e8303d2cd12f29c7',
+  'ba77f3a49173190d694014cd96d6514b5c1a88a50a59a178a249f22452c57e64' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */,
+  '9b3c678a8b94f3f8d1b6b43cb2c4160e06b78bc717ae261e2b74db5a7ff32365' /* 2026-09-19 vista pass */,
+  '91e54ef0703c94e4e84ffbfe4c7aed60767084840eff0e6fe9bf2191ec816ea3',
 ];
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');

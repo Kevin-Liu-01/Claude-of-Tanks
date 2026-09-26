@@ -17,7 +17,7 @@ assert.deepEqual([...HORIZON_RELIEF_CHARACTERS].sort(), ['alpine', 'coastal', 'k
 for (const character of HORIZON_RELIEF_CHARACTERS) {
   const s = resolveHorizonRelief(character);
   assert.equal(s.character, character);
-  assert.ok(s.lowAmpM >= 5 && s.lowAmpM <= 45, `${character}: the coarse relief stays within the row ladder's reach (${s.lowAmpM} m)`);
+  assert.ok(s.lowAmpM >= 5 && s.lowAmpM <= 60, `${character}: the coarse relief stays within the row ladder's reach (${s.lowAmpM} m)`);
   assert.ok(s.highAmpM >= 3 && s.highAmpM <= 16, `${character}: the fine relief stays a surface term (${s.highAmpM} m)`);
   assert.ok(s.wavelengthM >= 180 && s.wavelengthM <= 480, `${character}: the first octave is a ridge, not a hill or a boulder`);
   assert.ok(s.crestSharpness >= s.footSharpness, `${character}: crests are at least as sharp as the foot`);

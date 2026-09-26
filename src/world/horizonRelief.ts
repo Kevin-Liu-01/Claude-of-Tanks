@@ -83,13 +83,13 @@ const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.6
 const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>> = {
   // broad polar ranges: long warped ridgelines, wind-scoured crests over talus skirts, deep radial gullies
   polar: {
-    character: 'polar', lowAmpM: 34, highAmpM: 7, warpM: 150, warpWavelengthM: 760, wavelengthM: 300,
+    character: 'polar', lowAmpM: 48, highAmpM: 7, warpM: 150, warpWavelengthM: 760, wavelengthM: 300,
     crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 5.5, fineElongation: 3.2, rangeBoost: 1.35,
     talusFloor: 0.28, aoReachM: 170, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_POLAR,
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
-    character: 'alpine', lowAmpM: 38, highAmpM: 8, warpM: 110, warpWavelengthM: 620, wavelengthM: 260,
+    character: 'alpine', lowAmpM: 52, highAmpM: 8, warpM: 110, warpWavelengthM: 620, wavelengthM: 260,
     crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 6, fineElongation: 3.0, rangeBoost: 1.30,
     talusFloor: 0.30, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
   },
