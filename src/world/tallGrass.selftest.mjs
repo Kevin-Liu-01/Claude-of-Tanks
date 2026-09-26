@@ -208,7 +208,8 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
     'float hgt = aBlade.y * fade;', 'float taper = 1.0 - 0.72 * t;',
   ]) assert.ok(vertexShader.includes(term), `vertex: ${term}`);
   assert.ok(vertexShader.indexOf('float cotYaw = aBlade.x + position.z;') < vertexShader.indexOf('vec3 transformed;'), 'the yaw is set with the normal, before the strip');
-  assert.ok(fragmentShader.includes('diffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * (1.0 - 0.22 * vBladeCrush);'), 'dark roots, lit tips (per-ring gradient), bruised where crushed');
+  assert.ok(fragmentShader.includes(`diffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`), 'dark roots, lit tips (per-ring gradient and lift), bruised where crushed');
+  assert.ok(TALL_GRASS.crushDarken >= 0.2 && TALL_GRASS.crushDarken <= 0.4, 'a bruise, not a burn');
   assert.ok(fragmentShader.includes('normal = normalize( vNormal );'), 'both faces of a strip light the same way');
   assert.ok(!vertexShader.includes('uv.'), 'no uv attribute: the height fraction is position.y');
 }
@@ -230,6 +231,9 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
   assert.equal(shader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.near, 'the near clump keeps a dark root');
   assert.equal(farShader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.far, 'the far blade takes its tip colour early (seen from above it is mostly root)');
   assert.ok(TALL_GRASS.bladeGamma.far < TALL_GRASS.bladeGamma.near && TALL_GRASS.farWidth > 1 && TALL_GRASS.farWidth < 2.5);
+  assert.equal(shader.uniforms.uBladeLift.value, TALL_GRASS.bladeLift.near);
+  assert.equal(farShader.uniforms.uBladeLift.value, TALL_GRASS.bladeLift.far, 'the far ring lifts a third so the mid-distance sward stays as light as the meadow');
+  assert.ok(TALL_GRASS.bladeLift.far > 1 && TALL_GRASS.bladeLift.far <= 1.5 && TALL_GRASS.bladeLift.near === 1);
   assert.equal(shader.uniforms.uWindTime, farShader.uniforms.uWindTime, 'one clock, one camera, one press field for both rings');
   csm.setSniperFade(1, true); assert.equal(shader.uniforms.uSniperFade.value, 1);
   csm.setSniperFade(0); csm.update(1, cam); assert.ok(shader.uniforms.uSniperFade.value < 0.01, 'the fade eases out');

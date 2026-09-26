@@ -46,7 +46,8 @@ export interface GroundReduxProfile {
   foldCrest: number;
   /** Shoreline: the swash period (s; 0 = a steady damp band, lakes and rivers), the band's width as a multiple of the
    * map's apron ramp (splat.seaRamp[0]; the Saltwind probe sized 1.9 — the film and damp zones reach the apron's
-   * landward fade) and its strength (0 = no wet sand; 1.3 darkens the film 52 %, the damp band 29 %). */
+   * landward fade) and its strength (0 = no wet sand; 1.5 darkens the film 60 %, the damp band 33 % — the probe's
+   * read of wet sand; 1.3 was faint in the strand view). */
   swashPeriodS: number;
   swashWidth: number;
   swashStrength: number;
@@ -108,14 +109,16 @@ const TEMPERATE: Omit<GroundReduxProfile, 'grass'> = {
   heightBlend: 0.6, midDetail: 1.0, scree: 0, glint: 0, snowRipple: 0, snowMacro: 0,
   foldMoist: 0.7, foldAO: 0.5, foldCrest: 0.5, swashPeriodS: 0, swashWidth: 1.9, swashStrength: 0,
 };
+// the arid maps' worn-sand patches take a gentler transition (the owner's history with black contours on sand): the
+// hard-edge share on Sirocco's chase view went 8 → 22 % at 0.45 with no grass in the frame
 const ARID: Omit<GroundReduxProfile, 'grass'> = {
-  ...TEMPERATE, heightBlend: 0.45, foldMoist: 0.35, foldAO: 0.55, foldCrest: 0.35,
+  ...TEMPERATE, heightBlend: 0.3, foldMoist: 0.35, foldAO: 0.55, foldCrest: 0.35,
 };
 const SNOW: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.16, snowMacro: 0.6, foldMoist: 0.22, foldAO: 0.6, foldCrest: 0.3,
 };
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
-  ...TEMPERATE, swashPeriodS: 8.5, swashWidth: 1.9, swashStrength: 1.3,
+  ...TEMPERATE, swashPeriodS: 8.5, swashWidth: 1.9, swashStrength: 1.5,
 };
 const STILL_WATER: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, swashPeriodS: 0, swashWidth: 1.6, swashStrength: 0.6,
@@ -181,7 +184,8 @@ export function groundReduxUniformValues(profile: GroundReduxProfile): {
     reduxSwash: [
       profile.swashPeriodS > 0 ? (2 * Math.PI) / profile.swashPeriodS : 0,
       Math.min(4, Math.max(0.2, Number.isFinite(profile.swashWidth) ? profile.swashWidth : 1.9)),
-      clamp01(profile.swashStrength), 0,
+      // the strength runs to 1.6 (a film darkened 64 %): the Saltwind probe read 1.5 as wet sand, 1.0 as nothing
+      Number.isFinite(profile.swashStrength) ? Math.min(1.6, Math.max(0, profile.swashStrength)) : 0, 0,
     ],
     reduxSnow: [clamp01(profile.snowMacro), clamp01(profile.snowRipple), 0],
   };

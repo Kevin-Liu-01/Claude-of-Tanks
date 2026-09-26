@@ -28,9 +28,10 @@ const COAST = ['coastal', 'saltwind', 'fjord', 'mangrove'];
 const STILL = ['delta', 'polders', 'reservoir', 'monsoon', 'oasis', 'skybridge'];
 for (const id of MAP_IDS) {
   const p = resolveGroundReduxProfile(id);
-  for (const key of ['heightBlend', 'midDetail', 'scree', 'glint', 'snowRipple', 'snowMacro', 'foldMoist', 'foldAO', 'foldCrest', 'swashStrength']) {
+  for (const key of ['heightBlend', 'midDetail', 'scree', 'glint', 'snowRipple', 'snowMacro', 'foldMoist', 'foldAO', 'foldCrest']) {
     assert.ok(p[key] >= 0 && p[key] <= 1.3, `${id}.${key} inside its band (${p[key]})`);
   }
+  assert.ok(p.swashStrength >= 0 && p.swashStrength <= 1.6, `${id}.swashStrength inside the packer's cap (${p.swashStrength})`);
   assert.ok(p.swashPeriodS >= 0 && p.swashPeriodS <= 20, `${id}: a swell period, not a tide`);
   assert.ok(p.swashWidth >= 0.2 && p.swashWidth <= 4, `${id}: the band is a multiple of the apron ramp inside the packer's clamp`);
   if (ARID.includes(id)) assert.equal(p.grass, null, `${id}: no sward on the arid ground`);
@@ -73,7 +74,8 @@ assert.equal(resolveGroundReduxProfile('mars').foldMoist, 0, 'no moisture in the
 const u = groundReduxUniformValues(resolveGroundReduxProfile('coastal'));
 assert.equal(u.reduxA.length, 4); assert.equal(u.reduxFold.length, 4); assert.equal(u.reduxSwash.length, 4); assert.equal(u.reduxSnow.length, 3);
 assert.ok(Math.abs(u.reduxSwash[0] - (2 * Math.PI) / 8.5) < 1e-12, 'the swash rate is 2π over the map\'s swell period');
-assert.equal(u.reduxSwash[1], 1.9); assert.equal(u.reduxSwash[2], 1.3, 'the Saltwind probe (2026-09-26): width 1.9 ramps, strength 1.3 read as wet sand, not a beach-wide smear');
+assert.equal(u.reduxSwash[1], 1.9); assert.equal(u.reduxSwash[2], 1.5, 'the Saltwind probe (2026-09-26): width 1.9 ramps, strength 1.5 read as wet sand; 1.0 at 0.12 ramps was invisible');
+assert.equal(groundReduxUniformValues({ ...fallback, swashStrength: 3 }).reduxSwash[2], 1.6, 'the strength caps at 1.6');
 assert.equal(groundReduxUniformValues(resolveGroundReduxProfile('delta')).reduxSwash[0], 0, 'a still bank has no rate');
 assert.deepEqual(groundReduxUniformValues(resolveGroundReduxProfile('desert')).reduxSnow, [0, 0, 0]);
 assert.deepEqual(groundReduxUniformValues({ ...fallback, heightBlend: 9, foldMoist: -2, swashWidth: 5, swashPeriodS: 0 }).reduxA[0], 1.3, 'clamped to the band');
