@@ -28,6 +28,10 @@ import {
   resolveTreeWind, resolveTrunkMoss, TREE_WIND_FLUTTER_M, TREE_WIND_LEAN_M, TREE_WIND_MOBILE_SCALE,
   TREE_WIND_NOMINAL_HEIGHT_M, type TreeWindConfig,
 } from './treeClimate.ts';
+// Round 77b (2026-09-26): the leaf-scale crown detail (a tiling normal + alpha-break tile per foliage class) and the
+// far tier as impostors baked from the near trees
+import { createLeafDetailLibrary, LEAF_DETAIL_LAW, LEAF_DETAIL_NORMAL_SCALE } from './leafDetail.ts';
+import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorRenderer } from './treeImpostors.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
@@ -56,6 +60,8 @@ type TreeMesh = THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
 
 interface EngineContext {
   setupShadowMaterial(material: THREE.Material, hook?: MaterialShaderHook | null): void;
+  /** Round 77b: the renderer the far-tier impostor atlas bakes with (production); absent in the receipts. */
+  renderer?: TreeImpostorRenderer | null;
 }
 
 interface ColorTone {
@@ -264,6 +270,11 @@ export interface VegetationRuntime {
   crushTree(record: TreeObstacle, dx: number, dz: number): boolean;
   resetToppled(): void;
   _clusters: VegetationDisc[];
+  /** Round 77b: the rim-forest blocks as discs (their understorey's stands) and the impostor library (null: lobes). */
+  _rimBlocks: VegetationDisc[];
+  _treeImpostors: TreeImpostorLibrary | null;
+  /** Round 77b: the placed tree records, read-only, for the receipts' slot audits. */
+  _trees: ReadonlyArray<Readonly<{ x: number; z: number; species: Species; variant: number; fv: number; near: boolean; slot: number; fslot: number }>>;
   _buildDetail?: VegetationBuildDetail;
 }
 
@@ -320,6 +331,10 @@ const CARPET_PER_CELL = 420;           // filters thin this to a natural sward
 const CARPET_FAR = 48;                 // circular fade hides the square cell edge
 const CARPET_CAP = 14000;              // hard upload/raster ceiling per variant
 const TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290; // hysteresis band (full-detail radius)
+// Round 77b: the rim-forest understorey — the stands' shrub law scaled to the rim trees (1.35–2.2 against the
+// interior 0.95–1.7: the ratio of the two ranges' means) and bounded by the rim's own extent
+const RIM_UNDERSTOREY_SCALE = 1.4;
+const RIM_UNDERSTOREY_BOUND_M = 506;
 
 function clamp(x: number, a: number, b: number): number { return x < a ? a : x > b ? b : x; }
 function smoothstepJs(a: number, b: number, x: number): number {
@@ -2852,6 +2867,9 @@ function* vegetationBuildSteps(
   deferFarGrass: boolean,
 ): Generator<BuildYield, VegetationRuntime, void> {
   const mobileTier = getDeviceTier() === 'mobile';
+  // Round 77b (2026-09-26): the far tier bakes its impostor atlas from the near trees where the engine context
+  // carries a renderer (production); the receipts (no renderer) and the mobile tier keep the opaque lobe tier.
+  const bakeRenderer: TreeImpostorRenderer | null = mobileTier ? null : (engineCtx.renderer ?? null);
   // Phone screens cannot resolve the alpha-card density used by desktop in
   // the midfield; it aliases into crawling grain while spending millions of
   // vertices. Hand off earlier to the terrain meadow and the opaque far-tree
@@ -3782,6 +3800,34 @@ function* vegetationBuildSteps(
             .replace('iblIrradiance *= cotAmbDim;', 'iblIrradiance *= cotAmbDim * cotLeafSky;'));
       }
     }
+    // Round 77b (2026-09-26): the leaf-scale crown detail (leafDetail.ts). The desktop near material carries the
+    // class's detail tile as its normal map, sampled once with the card's own (repeated) UVs: the tile's mask cuts the
+    // card's antialiased edge texels in leaf-cluster bites and shades the gaps between leaves (both mean-neutral, so
+    // the far mips keep the pre-round coverage and tone under the mip guard), and its normal perturbs the authored
+    // sphere normal in a tangent frame rebuilt AFTER useAttributeNormal's override — three's own frame (built in
+    // normal_fragment_begin from the double-sided flip) would light every back face from below again. Compiled out
+    // without a normal map (the mobile tier), so the phones keep their flat card program.
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nvec4 cotLeafDet;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphamap_fragment>', /* glsl */`
+      #include <alphamap_fragment>
+      #ifdef USE_NORMALMAP
+      {
+        cotLeafDet = texture2D( normalMap, vNormalMapUv );
+        diffuseColor.a *= ${LEAF_DETAIL_LAW.alphaFloor.toFixed(2)} + ${LEAF_DETAIL_LAW.alphaSpan.toFixed(2)} * cotLeafDet.a;
+        diffuseColor.rgb *= ${LEAF_DETAIL_LAW.aoFloor.toFixed(2)} + ${LEAF_DETAIL_LAW.aoSpan.toFixed(2)} * cotLeafDet.a;
+      }
+      #endif`);
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <normal_fragment_maps>', /* glsl */`
+      #ifdef USE_NORMALMAP
+      {
+        vec3 cotLeafN = cotLeafDet.xyz * 2.0 - 1.0;
+        cotLeafN.xy *= normalScale;
+        mat3 cotLeafTbn = getTangentFrame( - vViewPosition, normal, vNormalMapUv );
+        normal = normalize( cotLeafTbn * cotLeafN );
+      }
+      #else
+      #include <normal_fragment_maps>
+      #endif`);
   };
   // Bark and smooth snow occupy the existing atlas. Dark trunk tints are
   // calibrated against its measured linear reflectance during geometry prep.
@@ -3882,6 +3928,15 @@ function* vegetationBuildSteps(
   engineCtx.setupShadowMaterial(canopyFarMat, farCanopyHook);
   canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v16'; // round 77: the wind law, translucency
   yield { stage: 'treePrep', fine: true };
+
+  // Round 77b (2026-09-26): the leaf-scale detail tiles (one per foliage class, built on first use; none on the
+  // mobile tier) and the world's retained-resource collections — live arrays, so the impostor library registered
+  // after the species geometry joins the same ownership record (a second registration would replace the first).
+  // Declared here, above the species tables, so the receipts that slice those tables run without them.
+  const leafDetail = createLeafDetailLibrary(seed, !mobileTier);
+  const retainedGeometries: THREE.BufferGeometry[] = grassVariants.flatMap(variant => [variant.geo, variant.geoFar]);
+  const retainedMaterials: THREE.Material[] = [barkMat, canopyFarMat, ...grassVariants.flatMap(variant => [variant.matMid, variant.matNear])];
+  const retainedTextures: THREE.Texture[] = [canopyDetailTex];
 
   // r3 terrain_environment: SILHOUETTE variant tables. Every near/far
   // variant used to run the same builder with a different seed — same
@@ -4055,11 +4110,15 @@ function* vegetationBuildSteps(
         vertexColors: true, roughness: 1.0, metalness: 0.0,
       });
       fm.envMapIntensity = 0.75; // keep ambient on shaded leaves — no black cards (round 77: 0.85 → 0.75, the cascades now shade the crowns)
+      // Round 77b: the class's detail tile as the card's normal map (desktop; the mobile library returns null and the
+      // phones keep the flat card program). The tile is a material property, so every species shares one program.
+      const leafTile = leafDetail.texture(leafDetail.classOf(sp, palOf(sp)));
+      if (leafTile) { fm.normalMap = leafTile; fm.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
       engineCtx.setupShadowMaterial(fm, foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v16'; // round 77: wind, cluster shadows, translucency
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v17'; // round 77b: the leaf-scale detail (round 77: wind, cluster shadows, translucency)
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -4078,11 +4137,12 @@ function* vegetationBuildSteps(
   // Shader-only detail, customDepthMaterial and unselected grass LODs are
   // invisible to ordinary mesh traversal. Keep the existing library owned
   // even when a species/LOD has no instances; disposal deduplicates attachments.
+  retainedMaterials.push(...Object.values(foliageMats), ...Object.values(foliageDepthMats));
+  retainedTextures.push(...leafDetail.textures); // round 77b: the detail tiles the species' materials share
   registerRetainedObject3DResources(group, {
-    geometries: grassVariants.flatMap(variant => [variant.geo, variant.geoFar]),
-    materials: [barkMat, canopyFarMat, ...Object.values(foliageMats), ...Object.values(foliageDepthMats),
-      ...grassVariants.flatMap(variant => [variant.matMid, variant.matNear])],
-    textures: [canopyDetailTex],
+    geometries: retainedGeometries,
+    materials: retainedMaterials,
+    textures: retainedTextures,
   });
 
   // r7: 3 near variants + 2 far variants per species (was 2/1) — "dozens of
@@ -4113,6 +4173,42 @@ function* vegetationBuildSteps(
     }
   }
   yield* createSpeciesGeometry();
+
+  // Round 77b (2026-09-26): the far tier as impostors of the near trees (treeImpostors.ts) — one atlas per world of
+  // every species' three near variants from eight azimuths, baked from the trunks, the cards and the leaf atlases
+  // (lazily, in update(), where the renderer is; re-baked after a GPU suspension), drawn beyond the 260 / 290 m band
+  // as one camera-facing quad per tree through the far canopy's own wind / dissolve / matte-wrap hook. Desktop tiers
+  // with a renderer; the receipts (no renderer) and the mobile tier keep the opaque lobe tier and its two draws per
+  // species and far variant. The atlas gutters flood with the leaf atlases' mean opaque tone, so the mips of a tile
+  // never average toward black.
+  const treeImpostors: TreeImpostorLibrary | null = bakeRenderer ? createTreeImpostorLibrary({
+    rows: speciesList.flatMap(sp => treeGeo[sp].map((pair, variant) => ({
+      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp],
+    }))),
+    bark: barkTex.albedo,
+    flood: (() => {
+      let r = 0, g = 0, b = 0, n = 0;
+      for (const sp of speciesList) {
+        const image = foliageTex[sp].image as { data?: Uint8ClampedArray; width?: number } | null;
+        const data = image?.data;
+        if (!data) continue;
+        for (let i = 0; i < data.length; i += 64) {
+          if (data[i + 3] < 128) continue;
+          r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+        }
+      }
+      return n > 0 ? new THREE.Color().setRGB(r / n / 255, g / n / 255, b / n / 255, THREE.SRGBColorSpace)
+        : new THREE.Color(0.06, 0.077, 0.021);
+    })(),
+    hook: farCanopyWindHook,
+    setupMaterial: (material, hook) => engineCtx.setupShadowMaterial(material, hook),
+    renderer: bakeRenderer,
+  }) : null;
+  if (treeImpostors) {
+    retainedMaterials.push(treeImpostors.material);
+    retainedTextures.push(treeImpostors.albedo.texture, treeImpostors.normal.texture);
+    yield { stage: 'treePrep', fine: true };
+  }
 
   // Keep the authored random admission sequence when road exits are extended.
   // This sampler has no gameplay fast cache and is released after planting.
@@ -4149,6 +4245,9 @@ function* vegetationBuildSteps(
   // authored establishing-shot compositions (foreground framing oaks moved)
   const sapRng = mulberry32((seed ^ 0x5a9) >>> 0);
   const clusters: VegetationDisc[] = [];
+  // Round 77b: the rim-forest blocks as discs (centre, half the block width) — the stands the rim understorey
+  // feathers; recorded from the placement below, no RNG draw of their own
+  const rimBlocks: VegetationDisc[] = [];
   const trees: TreeRecord[] = []; // { x,z,species,variant, mat: Matrix4, tint: Color, near: bool }
   // Rim trees intentionally bypass interior site admission, but a through
   // road still needs the same nine-metre trunk clearance at its exit.
@@ -4438,6 +4537,7 @@ function* vegetationBuildSteps(
         pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.35, 2.2, false);
       }
       for (let i = b0; i < trees.length; i++) trees[i].tint.multiply(_standTint);
+      if (trees.length - b0 >= 3) rimBlocks.push({ x: cx, z: cz, r: bw * 0.5 }); // round 77b: a block that stands
     }
   }
   placeRimForest();
@@ -4725,7 +4825,23 @@ function* vegetationBuildSteps(
         return pool;
       });
       // r7: far LOD is now a 2-variant array (silhouette variety at range)
-      farMeshes[sp] = treeGeoFar[sp].map((g) => {
+      farMeshes[sp] = treeGeoFar[sp].map((g, fv) => {
+        if (treeImpostors) {
+          // Round 77b: one quad pool per species and far variant on the impostor atlas (the second variant mirrored);
+          // aImpRow (the tree's near variant, written with its slot) picks the species' row. No shadow either way:
+          // the far tier casts nothing (the near proxies carry the crowns) and receives nothing, as the lobes did.
+          const quad = makeTreeMesh(treeImpostors.quadGeometry(sp, fv === 1), treeImpostors.material, sp, false, capacity);
+          const rowAttr = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+          rowAttr.setUsage(THREE.DynamicDrawUsage);
+          quad.geometry.setAttribute('aImpRow', rowAttr);
+          quad.castShadow = false;
+          quad.receiveShadow = false;
+          quad.userData.treeLod = 'far';
+          quad.userData.treeImpostor = true;
+          quad.userData.aoExclude = true; // alpha-tested: the GTAO override prepass would composite the quads solid
+          quad.name = `treeImpostor_${sp}_${fv}`;
+          return [quad];
+        }
         const farCanopy = makeTreeMesh(g.canopy, canopyFarMat, sp, false, capacity);
         farCanopy.receiveShadow = false; // CSM self-shadow at range = black crowns
         farCanopy.userData.treeLod = 'far';
@@ -4976,17 +5092,21 @@ function* vegetationBuildSteps(
     const understoreyTints: THREE.Color[] = [];
     function placeUnderstorey(): void {
       if (mobileTier) return;
-      for (const c of clusters) {
+      // The stand law (round 77), shared by the interior stands and — round 77b — the rim-forest blocks: the same
+      // draws in the same order for the stands (their placements stay byte-identical), then the blocks from the
+      // stream's continuation, with the rim trees' own scale (1.35–2.2 × the interior stands' 0.95–1.7) and the
+      // rim's own bound (the blocks stand at 442–506 m, past the field bushes' 470).
+      const plant = (stand: VegetationDisc, scaleMul: number, bound: number): void => {
         const n = Math.round((7 + understoreyRng() * 9) * bushRichness);
         for (let i = 0; i < n; i++) {
           const a = understoreyRng() * Math.PI * 2;
           const rr = 0.82 + understoreyRng() * 0.78;
-          const sc = 0.85 + understoreyRng() * 0.75, yaw = understoreyRng() * Math.PI * 2, hy = 0.9 + understoreyRng() * 0.4;
+          const sc = (0.85 + understoreyRng() * 0.75) * scaleMul, yaw = understoreyRng() * Math.PI * 2, hy = 0.9 + understoreyRng() * 0.4;
           const tj = understoreyRng(), tr = understoreyRng(), tg = understoreyRng(), tb = understoreyRng();
           const keepRoll = understoreyRng();
           if (keepRoll > (1 - smoothstepJs(1.05, 1.6, rr)) * 0.9 + 0.1) continue;
-          const x = c.x + Math.cos(a) * c.r * rr, z = c.z + Math.sin(a) * c.r * rr;
-          if (Math.max(Math.abs(x), Math.abs(z)) > 470 || inAvoid(x, z)) continue;
+          const x = stand.x + Math.cos(a) * stand.r * rr, z = stand.z + Math.sin(a) * stand.r * rr;
+          if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) continue;
           if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) continue;
           if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
           if (admission().getNormalAt(x, z).y < 0.78 || heightField.getNormalAt(x, z).y < 0.78) continue;
@@ -5000,7 +5120,9 @@ function* vegetationBuildSteps(
           const bj = 0.55 + tj * 0.32;
           understoreyTints.push(new THREE.Color(bj * (0.96 + tr * 0.14), bj * (1.0 + tg * 0.14), bj * (0.86 + tb * 0.14)));
         }
-      }
+      };
+      for (const c of clusters) plant(c, 1, 470);
+      for (const b of rimBlocks) plant(b, RIM_UNDERSTOREY_SCALE, RIM_UNDERSTOREY_BOUND_M);
     }
     function createUnderstoreyMesh(): void {
       const n = understoreyPlacements.length;
@@ -5219,6 +5341,8 @@ function* vegetationBuildSteps(
     if (fa) { fa.addUpdateRange(slot, 1); fa.needsUpdate = true; }
     const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
     if (lf) { lf.addUpdateRange(slot, 1); lf.needsUpdate = true; }
+    const ir = m.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b: the impostor row
+    if (ir) { ir.addUpdateRange(slot, 1); ir.needsUpdate = true; }
   }
   /** Write tree t into `slot` of every mesh in the group. Far groups render
    * fade 0 (opaque): occlusion fade only ever applies inside camera range.
@@ -5238,6 +5362,8 @@ function* vegetationBuildSteps(
       if (fa) fa.array[slot] = fade;
       const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
       if (lf) lf.array[slot] = lodF;
+      const ir = m.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
+      if (ir) ir.array[slot] = t.variant;
       markSlotDirty(m, slot);
     }
   }
@@ -5390,6 +5516,8 @@ function* vegetationBuildSteps(
       if (fade) fade.array[tree.fslot] = 0;
       const lodFade = mesh.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
       if (lodFade) lodFade.array[tree.fslot] = 0;
+      const row = mesh.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
+      if (row) row.array[tree.fslot] = tree.variant;
     }
   }
   function uploadNearPartition(species: Species, variant: number): void {
@@ -5425,6 +5553,11 @@ function* vegetationBuildSteps(
       if (lodFade) {
         lodFade.clearUpdateRanges();
         lodFade.needsUpdate = true;
+      }
+      const row = mesh.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
+      if (row) {
+        row.clearUpdateRanges();
+        row.needsUpdate = true;
       }
       mesh.visible = mesh.count > 0;
     }
@@ -5620,6 +5753,9 @@ function* vegetationBuildSteps(
     focusPos: THREE.Vector3 | null = null,
   ): void {
     if (disposed) return;
+    // Round 77b: the impostor atlas bakes here, before this frame's render and outside any render pass (the first
+    // frame, and again after a GPU suspension disposed it); a no-op once baked and without a renderer.
+    treeImpostors?.ensureBaked();
     uWindTime.value += dt;
     if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
     uCamPos.value.copy(camPos);
@@ -5710,5 +5846,5 @@ function* vegetationBuildSteps(
   }
 
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
-    crushTree, resetToppled, _clusters: clusters };
+    crushTree, resetToppled, _clusters: clusters, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees };
 }

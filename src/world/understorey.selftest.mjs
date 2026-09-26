@@ -79,16 +79,25 @@ function produce(id) {
     const shape = shapeContract(mesh.geometry);
     const matrix = new THREE.Matrix4(), spawns = [field._layout.spawns.player, ...field._layout.spawns.enemies];
     const v = field._layout.village;
-    let minR = Infinity, maxR = 0;
+    // round 77b (2026-09-26): the rim-forest blocks feather through the same law, at the rim trees' scale (× 1.4)
+    // and the rim's bound (506 m); every instance stands in a stand's annulus or a rim block's
+    const rimBlocks = world._rimBlocks;
+    const annulus = (discs, x, z) => discs.map(c => Math.hypot(x - c.x, z - c.z) / c.r)
+      .filter(r => r >= 0.82 - 1e-4 && r <= 1.6 + 1e-4).sort((a, b) => a - b)[0];
+    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0;
     for (let i = 0; i < mesh.count; i++) {
       mesh.getMatrixAt(i, matrix); const e = matrix.elements;
       const x = e[12], z = e[14], sc = Math.hypot(e[0], e[2]);
-      assert.ok(sc >= 0.85 - 1e-4 && sc <= 1.6 + 1e-4, `${id}: a young scale (${sc})`); // float32 instance matrices
       // stands may overlap their neighbours' annuli (the separation rule keeps only centres 26 m past a radius), so
-      // the instance must sit in SOME stand's edge annulus, not necessarily its nearest's
-      const ratios = clusters.map(c => Math.hypot(x - c.x, z - c.z) / c.r);
-      const near = ratios.filter(r => r >= 0.82 - 1e-4 && r <= 1.6 + 1e-4).sort((a, b) => a - b)[0];
-      assert.ok(near !== undefined, `${id}: inside a stand's edge annulus (${Math.min(...ratios)})`);
+      // the instance must sit in SOME stand's edge annulus, not necessarily its nearest's; a rim shrub near an
+      // edge stand can satisfy both laws, so each instance is judged by whichever law it satisfies
+      const bound = Math.max(Math.abs(x), Math.abs(z));
+      const standNear = annulus(clusters, x, z), rimNear = annulus(rimBlocks, x, z);
+      const standOk = standNear !== undefined && sc >= 0.85 - 1e-4 && sc <= 1.6 + 1e-4 && bound <= 470 + 1e-6;
+      const rimOk = rimNear !== undefined && sc >= 0.85 * 1.4 - 1e-4 && sc <= 1.6 * 1.4 + 1e-4 && bound <= 506 + 1e-6;
+      assert.ok(standOk || rimOk, `${id}: a stand's or a rim block's shrub (${x}, ${z}, scale ${sc}, bound ${bound})`); // float32 instance matrices
+      const near = standOk ? standNear : rimNear;
+      if (standOk) standCount++; else rimCount++;
       minR = Math.min(minR, near); maxR = Math.max(maxR, near);
       assert.ok(field._roadDist(x, z) >= 6, `${id}: off the roads`);
       assert.notEqual(field.getGroundType(x, z), 'soft', `${id}: off soft ground`);
@@ -99,7 +108,9 @@ function produce(id) {
       assert.ok(!world.concealers.some(d => Math.abs(d.x - x) < 1e-3 && Math.abs(d.z - z) < 1e-3), `${id}: no cover disc of its own`);
       assert.ok(!world.treeObstacles.some(o => Math.abs((o.min[0] + o.max[0]) / 2 - x) < 1e-3 && Math.abs((o.min[2] + o.max[2]) / 2 - z) < 1e-3), `${id}: no trunk record`);
     }
-    return { id, tier, instances: mesh.count, clusters: clusters.length, shape, annulus: [+minR.toFixed(3), +maxR.toFixed(3)],
+    if (rimBlocks.length > 0) assert.ok(rimCount > 0, `${id}: the rim blocks carry an understorey (${rimBlocks.length} blocks)`);
+    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, clusters: clusters.length, rimBlocks: rimBlocks.length,
+      shape, annulus: [+minR.toFixed(3), +maxR.toFixed(3)],
       bushes: bushes.reduce((n, m) => n + m.count, 0), concealers: world.concealers.length, trunks: world.treeObstacles.length };
   } finally { world.dispose(); disposeObject3DResources(world.group); }
 }
@@ -111,7 +122,8 @@ try {
   assert.equal(getDeviceTier(), 'desktop');
   for (const id of ['verdant', 'autumn', 'fjord']) receipts.push(produce(id));
   const verdant = receipts[0];
-  assert.ok(verdant.instances >= 200 && verdant.instances <= 2000, `Verdant plants hundreds, not thousands (${verdant.instances})`);
+  assert.ok(verdant.stand >= 200 && verdant.stand <= 2000, `Verdant's stands plant hundreds, not thousands (${verdant.stand})`);
+  assert.ok(verdant.rim >= 100 && verdant.rim <= 2500, `Verdant's rim blocks plant hundreds (${verdant.rim})`); // round 77b
   assert.ok(verdant.annulus[0] < 0.95 && verdant.annulus[1] > 1.3, 'the annulus is used from the edge outward');
   const repeat = produce('verdant');
   assert.deepEqual(repeat, verdant, 'deterministic');
@@ -123,4 +135,4 @@ try {
   restore();
 }
 console.log(JSON.stringify({ receipts }));
-console.log('understorey.selftest: shape (120 vertices, five streams, grounded), edge-annulus placement off roads / soft ground / slopes / spawns / the village, no cover or trunk records, mobile none, deterministic PASS');
+console.log('understorey.selftest: shape (120 vertices, five streams, grounded), edge-annulus placement off roads / soft ground / slopes / spawns / the village for the stands and (round 77b) the rim blocks, no cover or trunk records, mobile none, deterministic PASS');

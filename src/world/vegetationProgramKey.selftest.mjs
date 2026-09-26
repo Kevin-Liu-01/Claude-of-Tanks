@@ -43,6 +43,22 @@ function installCanvasFixture() {
   };
 }
 
+// Round 77b (2026-09-26): a recording stand-in for the renderer the far-tier impostor atlas bakes with — its presence
+// on the engine context is what creates the impostor material (the bake itself is treeImpostors.selftest's subject).
+function stubRenderer() {
+  const state = { target: null, color: new THREE.Color(), alpha: 1 };
+  return {
+    getRenderTarget: () => state.target,
+    setRenderTarget(target) { state.target = target; },
+    render() {},
+    clear() {},
+    getClearColor: target => target.copy(state.color),
+    getClearAlpha: () => state.alpha,
+    setClearColor(color, alpha = 1) { state.color.set(color); state.alpha = alpha; },
+    autoClear: true, shadowMap: { autoUpdate: true }, xr: { enabled: false },
+  };
+}
+
 function library(species, fade, environment) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, 1.6, .5, 4000);
@@ -51,7 +67,7 @@ function library(species, fade, environment) {
   csm.fade = fade;
   csm.updateFrustums();
   const registered = [];
-  const engine = { setupShadowMaterial(material, hook) {
+  const engine = { renderer: stubRenderer(), setupShadowMaterial(material, hook) {
     registered.push(material);
     return lighting.setupShadowMaterial(material, hook);
   } };
@@ -59,9 +75,13 @@ function library(species, fade, environment) {
     grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
   const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
   const { group } = vegetation;
-  // round 77 (2026-09-26): v16 — the wind law, the per-cluster cascade sample and the leaf translucency
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v16'));
+  // round 77b (2026-09-26): v17 — the leaf-scale detail tile as the cards' normal map (round 77: v16 — the wind
+  // law, the per-cluster cascade sample and the leaf translucency); and the far tier's one impostor material
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v17'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
+  const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v1');
+  assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
+  assert.strictEqual(vegetation._treeImpostors?.material, impostor[0]);
   const foliageMats = Object.fromEntries(species.map((sp, index) => [sp, foliage[index]]));
   const foliageTex = Object.fromEntries(species.map(sp => [sp, foliageMats[sp].map]));
   const depthByMaterial = new Map();
@@ -74,7 +94,8 @@ function library(species, fade, environment) {
     return [sp, depth];
   }));
   const first = environment.expand(foliage[0]).parameters.uniforms;
-  return { group, csm, foliageMats, foliageTex, foliageDepthMats,
+  return { group, csm, foliageMats, foliageTex, foliageDepthMats, impostor: impostor[0], impostors: vegetation._treeImpostors,
+    leafTiles: [...new Set(Object.values(foliageMats).map(material => material.normalMap))],
     detail: first.uCanopyDet.value, uWindTime: first.uWindTime, uScopeHard: first.uScopeHard };
 }
 
@@ -172,11 +193,62 @@ function checkRound77Mechanisms(parameters) {
   assert.doesNotMatch(vertex, /amp \* \(sin\(uWindTime \* 1\.15 \+ ph\)/, 'the pre-round sway is gone');
 }
 
+// Round 77b (2026-09-26): the second pass's mechanisms — the leaf-scale detail on the near-card program (the class
+// tile as the normal map, its sample shared by the mean-neutral alpha break and leaf-gap shade before the alpha
+// test, the tangent frame rebuilt on the authored normal after useAttributeNormal, three's double-sided frame
+// compiled out) and the far-tier impostor program (the billboard built in instance space before the wind block, the
+// mirrored variant, the two-azimuth dissolve, the mip coverage give-back before the alpha test, the baked normal in
+// the capture frame, the far translucency and the same uniforms the lobes carried).
+function checkRound77bMechanisms(parameters, world, environment) {
+  const vertex = parameters.vertexShader, fragment = parameters.fragmentShader;
+  assert.equal(parameters.normalMap, true, 'every species material carries a detail tile as its normal map');
+  assert.match(fragment, /vec4 cotLeafDet;/, 'one detail sample shared by the alpha break and the normal');
+  assert.match(fragment, /cotLeafDet = texture2D\( normalMap, vNormalMapUv \);/);
+  assert.match(fragment, /diffuseColor\.a \*= 0\.72 \+ 0\.56 \* cotLeafDet\.a;/, 'the mean-neutral alpha break');
+  assert.match(fragment, /diffuseColor\.rgb \*= 0\.90 \+ 0\.20 \* cotLeafDet\.a;/, 'the mean-neutral leaf-gap shade');
+  assert.ok(fragment.indexOf('cotLeafDet = texture2D') < fragment.indexOf('#include <alphatest_fragment>'), 'the break precedes the alpha test');
+  assert.match(fragment, /mat3 cotLeafTbn = getTangentFrame\( - vViewPosition, normal, vNormalMapUv \);/, 'the frame is rebuilt on the authored normal');
+  assert.ok(fragment.indexOf('normal = normalize( vNormal );\nnonPerturbedNormal = normal;') < fragment.indexOf('mat3 cotLeafTbn'), 'after useAttributeNormal');
+  assert.doesNotMatch(fragment, /#include <normal_fragment_maps>\n\s*#endif\n\s*#ifdef USE_NORMALMAP/, 'no duplicate chunk');
+  assert.match(fragment, /#else\n\s*#include <normal_fragment_maps>\n\s*#endif/, "three's own perturbation only where no tile is bound");
+  assert.match(vertex, /attribute vec4 aCard;/, 'the round-77 cluster sample stays');
+  for (const [sp, material] of Object.entries(world.foliageMats)) {
+    assert.ok(material.normalMap?.isDataTexture && material.normalMap.name.startsWith('leafDetail:'), `${sp}: a leaf-detail tile`);
+    assert.equal(material.normalScale.x, 0.75);
+    assert.equal(material.normalMap.repeat.x, 3);
+  }
+  const impostor = environment.expand(world.impostor).parameters;
+  const iv = impostor.vertexShader, ifr = impostor.fragmentShader;
+  for (const name of ['uImpNormal', 'uImpRows', 'uImpAtlas', 'uWindDir', 'uWind', 'uWindTime', 'uFocusPos', 'uScopeDist']) {
+    assert.ok(impostor.uniforms[name], `${name} rides on the impostor program`);
+  }
+  assert.equal(impostor.uniforms.uImpRows.value.length, 16);
+  assert.match(iv, /attribute float aImpRow;/); assert.match(iv, /attribute vec3 aImpCell;/);
+  assert.match(iv, /uniform vec4 uImpRows\[ 16 \];/);
+  assert.match(iv, /float impRow = aImpCell\.x \+ mod\( aImpRow, aImpCell\.z \);/, 'the row from the species base and the variant under the baked count');
+  // thirteen species share the sixteen rows: one variant each here; every authored map (≤ 5 species) bakes three
+  assert.equal(world.impostors.variants, 1); assert.equal(world.impostors.rows.length, 13);
+  assert.match(iv, /transformed = \( transpose\( impRot \) \* impOff \) \/ impS;/, 'the quad is built in instance space');
+  assert.ok(iv.indexOf('transformed = ( transpose( impRot )') < iv.indexOf('float ph = fract(sin(tiw.x'), 'before the wind block');
+  assert.match(iv, /impAz = mix\( impAz, -impAz, impMir \);/, 'the mirrored variant orbits the other way');
+  assert.match(iv, /float impWidth = impR\.x \* sqrt\( impS\.x \* impS\.x \* impObj\.z \* impObj\.z \+ impS\.z \* impS\.z \* impObj\.x \* impObj\.x \) \/ impXZ;/, 'the crown width seen from the azimuth');
+  assert.match(ifr, /diffuseColor \*= mix\( impA, impB, vImpW \);/, 'two azimuths dissolved by the view angle');
+  assert.match(ifr, /normal = normalize\( vImpR \* impN\.x \+ vImpU \* impN\.y \+ vImpF \* impN\.z \);/, 'the baked normal in the capture frame');
+  assert.ok(ifr.indexOf('min( impMip, 3.5 ) * 0.25') < ifr.indexOf('#include <alphatest_fragment>'), 'the mip coverage give-back precedes the alpha test');
+  assert.match(ifr, /canopyBack \* 0\.18 \* directLight\.color/, 'the far translucency, as the lobes had');
+  assert.match(ifr, /canopyDiffuseNL = canopyDiffuseNL \* 0\.70 \+ 0\.075;/, 'the matte wrap, as the lobes had');
+  assert.equal(world.impostor.alphaTest, 0.5); assert.equal(world.impostor.alphaToCoverage, true);
+  assert.strictEqual(world.impostor.map, world.impostors.albedo.texture);
+  assert.strictEqual(impostor.uniforms.uImpNormal.value, world.impostors.normal.texture);
+}
+
 function checkIndependentEviction(world, other, species) {
   const disposed = new Map();
-  for (const library of [world, other]) for (const resource of [library.detail,
-    ...Object.values(library.foliageMats), ...Object.values(library.foliageDepthMats),
-    ...Object.values(library.foliageTex)]) {
+  // round 77b: the impostor material and its two atlases, and the leaf-detail tiles, are owned like the rest
+  const owned = library => [library.detail, library.impostor, library.impostors.albedo.texture, library.impostors.normal.texture,
+    ...library.leafTiles, ...Object.values(library.foliageMats), ...Object.values(library.foliageDepthMats),
+    ...Object.values(library.foliageTex)];
+  for (const library of [world, other]) for (const resource of owned(library)) {
     disposed.set(resource, 0);
     resource.addEventListener('dispose', () => disposed.set(resource, disposed.get(resource) + 1));
   }
@@ -189,11 +261,14 @@ function checkIndependentEviction(world, other, species) {
   // textures plus the bark albedo/normal pair to the former foliage-only seam;
   // the 2026-09-12 shadow redesign adds the one shared crown shadow-proxy
   // material (shadow-only layer, never compiled for color).
-  assert.equal(result.materials, 7 + species.length * 2);
-  assert.equal(result.textures, 5 + species.length);
+  // Round 77b (2026-09-26): + the one impostor material with its albedo and normal atlases, + one leaf-detail
+  // tile per foliage class the species use (broadleaf / conifer / palm here: no autumn palette in this config).
+  assert.equal(world.leafTiles.length, 3, 'the thirteen species share three detail tiles');
+  assert.equal(result.materials, 7 + species.length * 2 + 1);
+  assert.equal(result.textures, 5 + species.length + world.leafTiles.length + 2);
   assert.equal(world.csm.shaders.size, 0);
-  assert.equal(other.csm.shaders.size, 6 + species.length);
-  for (const resource of [...Object.values(other.foliageMats), ...Object.values(other.foliageTex), other.detail]) {
+  assert.equal(other.csm.shaders.size, 6 + species.length + 1);
+  for (const resource of owned(other)) {
     assert.equal(disposed.get(resource), 0, 'evicting one world does not dispose the other');
   }
   release(other);
@@ -222,10 +297,11 @@ try {
     assert.equal(rows[1].parameters.uniforms.CSM_cascades.value[0].x, 0);
     checkNegativeControls(world, rows, environment, species);
     checkRound77Mechanisms(rows[0].parameters);
+    checkRound77bMechanisms(rows[0].parameters, world, environment);
     checkIndependentEviction(world, other, species);
   }
 } finally {
   environment.dispose();
   restoreCanvas();
 }
-console.log(`vegetationProgramKey self-test passed: ${species.length} authored species, actual hook-expanded GLSL/CSM defines, installed Three complete keys, feature negatives and independent eviction`);
+console.log(`vegetationProgramKey self-test passed: ${species.length} authored species, actual hook-expanded GLSL/CSM defines, installed Three complete keys, feature negatives, the round-77b leaf detail and impostor programs, and independent eviction`);

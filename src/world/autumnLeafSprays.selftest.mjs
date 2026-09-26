@@ -37,6 +37,9 @@ const observed = source.replace(rngSource, rngSource.replace('function mulberry3
     function materials() {
       const foliageTex = {}, foliageMats = {}, foliageDepthMats = {}, foliageWindHook = () => {};
       const engineCtx = {setupShadowMaterial() {}};
+      // round 77b (2026-09-26): the leaf-detail library the stage reads (a null tile keeps the flat card program, as on
+      // the mobile tier); the tiles themselves are leafDetail.selftest's subject
+      const leafDetail = {texture: () => null, classOf: () => 'broadleaf'};
       ${fn('createFoliageMaterials')}
       for (const step of createFoliageMaterials()) void step;
       return {foliageTex, foliageMats, foliageDepthMats};

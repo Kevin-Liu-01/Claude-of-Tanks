@@ -239,9 +239,11 @@ assert.ok(colors.every((color) => color.g > Math.max(color.r, color.b) * 1.6),
 
 const source = await readFile(new URL('./vegetation.ts', import.meta.url), 'utf8');
 // vista pass (2026-09-19): the far canopy hook fetches the canopy detail tile twice more (metre-scale clump mottle
-// lC / lD); the near foliage cards keep their four.
-assert.equal((source.match(/texture2D\(/g) || []).length, 6,
-  'foliage detail stays within the six texture-fetch expressions (four near-card, two far-canopy mottle)');
+// lC / lD); the near foliage cards keep their four. Round 77b (2026-09-26): the near cards fetch their class's
+// leaf-detail tile once (the normal and the alpha-break mask in one RGBA sample, shared by both uses) — seven.
+assert.equal((source.match(/texture2D\(/g) || []).length, 7,
+  'foliage detail stays within the seven texture-fetch expressions (four near-card, one leaf-detail tile, two far-canopy mottle)');
+assert.equal((source.match(/texture2D\( normalMap, vNormalMapUv \)/g) || []).length, 1, 'the detail tile is sampled once');
 assert.equal((source.match(/new THREE\.(?:CanvasTexture|DataTexture|Texture)\(/g) || []).length, 6,
   'no extra texture source is introduced by the lighting repair');
 assert.doesNotMatch(source, /diffuseColor\.rgb \+= diffuseColor\.rgb \* rim/,

@@ -61,6 +61,9 @@ function compile(legacy) {
       ${section('  // weighted species pick', '  // Each LOD is a trunk mesh')}
       if (overrideTrees) { trees.length = 0; trees.push(...overrideTrees); }
       const _whiteScratch = new THREE.Color(1, 1, 1);
+      // round 77b (2026-09-26): this fixture takes the lobe path (no renderer, as the receipts and the mobile tier
+      // do); the impostor pools on the production build are treeImpostors.selftest's subject
+      const treeImpostors = null;
       ${pools}
       const uCamFwd = { value: new THREE.Vector3(0,0,1) };
       const attribute = (geo, name) => geo.getAttribute(name);

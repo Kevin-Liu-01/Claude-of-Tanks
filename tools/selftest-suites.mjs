@@ -1086,6 +1086,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // round 77 (2026-09-26): the vegetation round — the tree climate (wind, moss) and the understorey
     'src/world/treeClimate.selftest.mjs',
     'src/world/understorey.selftest.mjs',
+    // round 77b (2026-09-26): the far-tier impostors baked from the near trees and the leaf-scale crown detail
+    'src/world/treeImpostors.selftest.mjs',
+    'src/world/leafDetail.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
