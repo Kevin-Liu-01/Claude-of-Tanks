@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { muzzleSeatAxialFit, physicalMuzzleRimSample } from './muzzle-seat-policy.mjs';
+import { muzzleSeatAxialFit, physicalMuzzleRimSample, muzzleBoreLuminance } from './muzzle-seat-policy.mjs';
 const legacy = {revision:'terminal-surface-fit-r2',lipAdvanceM:-.009,lipFrontM:.0009,
   markerGapM:0,annulusForwardM:.0006,discForwardM:.0003};
 assert.ok(muzzleSeatAxialFit(legacy));
@@ -41,3 +41,33 @@ for (const change of [{radiusM:.0175},{radiusM:.0445},{zM:.002},{zM:-.002},{gunO
 }
 assert.ok(!physicalMuzzleRimSample({...flush,measuredProjectionM:.003},{radiusM:.0365,zM:0,gunOwned:true}),
   'a flush declaration cannot hide measured projecting stock');
+
+// A 30 mm aperture inside a wide brake remains black; the brake's painted face
+// must not contaminate the center average. A covered or missing aperture still
+// fails the unchanged dark-center contract.
+const pixels = new Uint8ClampedArray(256 * 256 * 4);
+const paintAperture = (centerLuma) => {
+  for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
+    const level = Math.hypot(x - 127.5, y - 127.5) <= 15 ? centerLuma : 110;
+    pixels.set([level, level, level, 255], (y * 256 + x) * 4);
+  }
+};
+const aperture = {revision:'physical-recess-r1',physicalInnerRadiusM:.015,outerRadiusM:.067};
+const darkCenter = (reading) => reading.innerLuma < 80
+  && reading.surroundLuma - reading.innerLuma > 15;
+paintAperture(17);
+const actual = muzzleBoreLuminance(pixels, 256, 256, 82, aperture);
+assert.ok(darkCenter(actual), 'measured autocannon aperture reads recessed');
+assert.ok(actual.innerPixelCount > 300, 'the aperture has substantial pixel coverage');
+assert.ok(!darkCenter(muzzleBoreLuminance(pixels, 256, 256, 82)),
+  'the old nominal-radius window reproduces the false rejection');
+for (const level of [90, 110, 255]) {
+  paintAperture(level);
+  assert.ok(!darkCenter(muzzleBoreLuminance(pixels, 256, 256, 82, aperture)),
+    `blocked, flat or missing aperture cannot pass (${level})`);
+}
+for (const inner of [0, -.01, NaN, .067, .08]) {
+  assert.throws(() => muzzleBoreLuminance(pixels, 256, 256, 82,
+    {...aperture,physicalInnerRadiusM:inner}), /valid measured aperture/);
+}
+console.log('muzzle-seat-policy: physical-aperture luminance and occlusion controls passed');

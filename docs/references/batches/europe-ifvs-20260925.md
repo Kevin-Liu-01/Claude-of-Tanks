@@ -74,3 +74,13 @@ IFVs have positive clearance; the lowest measured clearance is 5.27 mm.
 The Borsuk's final strict animated track audit reports zero band and shoe
 intersections, including the full sweep.
 The final anatomy update regenerated 198 records and 594 technical cards. The revised Puma, Type 89 and Borsuk assets were regenerated and synchronized with their measured presentation anchors. Full release checks apply to the integrated commit before publication.
+
+## Final physical review
+
+Dardo, LRMV Lynx and Borsuk pass the final combined 10/10 standard check,
+33-view closure, calibrated module alignment, asset freshness, duplicate-track
+and barrel-circularity checks. The handoff's Borsuk closure and regenerated-asset
+work is complete. Actual Garage selection and the finite HIGH/LOW running-gear
+proofs are recorded above. Numerical 3D comparison remains unverified, as
+required by their photographic qualification. The integrated release gate
+remains the publication prerequisite, not a claim that production was deployed.

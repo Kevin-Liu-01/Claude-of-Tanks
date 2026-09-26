@@ -36,3 +36,32 @@ export function physicalMuzzleRimSample(receipt, sample) {
     && radiusM > inner && radiusM <= outer*1.001
     && zM >= -.001 && zM <= projection+.001;
 }
+
+/** Read the aperture, not the surrounding brake face, on small-caliber guns.
+ * Physical recesses already supply a ray-verified inner radius. Retain the
+ * legacy sampling window for other mouths and the same luminance thresholds. */
+export function muzzleBoreLuminance(data, width, height, radiusPx, receipt = null) {
+  let innerRatio = .38;
+  if (receipt?.revision === 'physical-recess-r1') {
+    const inner = receipt.physicalInnerRadiusM, outer = receipt.outerRadiusM;
+    if (![inner, outer].every(Number.isFinite) || inner <= 0 || outer <= inner) {
+      throw new Error('Physical bore luminance requires a valid measured aperture');
+    }
+    innerRatio = Math.min(innerRatio, .6 * inner / outer);
+  }
+  const innerRadiusPx = radiusPx * innerRatio;
+  let inner = 0, innerN = 0, surround = 0, surroundN = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const d = Math.hypot(x - (width - 1) / 2, y - (height - 1) / 2) / radiusPx;
+      if (d > 1.65) continue;
+      const i = (y * width + x) * 4;
+      const luma = data[i] * .2126 + data[i + 1] * .7152 + data[i + 2] * .0722;
+      if (d <= innerRatio) { inner += luma; innerN++; }
+      else if (d >= 1.15) { surround += luma; surroundN++; }
+    }
+  }
+  return { innerLuma: innerN ? inner / innerN : 255,
+    surroundLuma: surroundN ? surround / surroundN : 0, radiusPx,
+    innerRadiusPx, innerPixelCount: innerN, surroundPixelCount: surroundN };
+}

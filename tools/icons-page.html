@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
-import { physicalMuzzleRimSample } from '/tools/muzzle-seat-policy.mjs';
+import { physicalMuzzleRimSample, muzzleBoreLuminance } from '/tools/muzzle-seat-policy.mjs';
 import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from '/src/vehicles/specs.ts';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, geometryFingerprint, metadataFingerprint,
@@ -955,22 +955,11 @@ function boreRingSampleResult(hit, muzzle, fallback, pattern, allowPhysicalRim) 
   };
 }
 
-function boreLuminance(canvas, radius, distance, fov) {
+function boreLuminance(canvas, radius, distance, fov, physicalReceipt) {
   const pixelsPerM = 256 / (2 * distance * Math.tan((fov / 2) * Math.PI / 180));
   const radiusPx = Math.max(4, radius * pixelsPerM);
   const data = canvas.getContext('2d').getImageData(0, 0, 256, 256).data;
-  let inner = 0, innerN = 0, surround = 0, surroundN = 0;
-  for (let y = 0; y < 256; y++) {
-    for (let x = 0; x < 256; x++) {
-      const d = Math.hypot(x - 127.5, y - 127.5) / radiusPx;
-      if (d > 1.65) continue;
-      const i = (y * 256 + x) * 4;
-      const luma = data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722;
-      if (d <= 0.38) { inner += luma; innerN++; }
-      else if (d >= 1.15) { surround += luma; surroundN++; }
-    }
-  }
-  return { innerLuma: innerN ? inner / innerN : 255, surroundLuma: surroundN ? surround / surroundN : 0, radiusPx };
+  return muzzleBoreLuminance(data, 256, 256, radiusPx, physicalReceipt);
 }
 
 function boreShotOne(id) {
@@ -1060,12 +1049,10 @@ function boreShotOne(id) {
     const canvas = capture(cam, 256, 256);
     renderer.setClearColor(oldColor, oldAlpha);
 
-    const { innerLuma, surroundLuma, radiusPx } = boreLuminance(canvas, radius, distance, fov);
+    const luminance = boreLuminance(canvas, radius, distance, fov, physicalReceipt);
     return {
       image: canvas.toDataURL('image/png'),
-      innerLuma,
-      surroundLuma,
-      radiusPx,
+      ...luminance,
       muzzleBore: muzzleBoreCensus(root),
       boreDebug: {
         fallbackZ: fallback?.position.z ?? null,

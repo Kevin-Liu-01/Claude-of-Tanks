@@ -163,6 +163,8 @@ try {
       surroundLuma: Number(shot.surroundLuma.toFixed(2)),
       contrast: Number(contrast.toFixed(2)),
       radiusPx: Number(shot.radiusPx.toFixed(2)),
+      luminanceSampling: { innerRadiusPx: shot.innerRadiusPx,
+        innerPixelCount: shot.innerPixelCount, surroundPixelCount: shot.surroundPixelCount },
       muzzleBore: shot.muzzleBore,
       boreDebug: shot.boreDebug,
     };

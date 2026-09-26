@@ -31,11 +31,11 @@ The existing first-party Mk IV X reconstruction is unchanged. No reference is fi
 - [JGSDF vehicle catalogue](https://www.mod.go.jp/gsdf/equipment/ve/): Type 89 IFV with 35 mm cannon and guided-missile launchers.
 - [Supplied Mk IV publisher configuration](https://armoredwarfare.com/en/news/general/development-cv90-mkiv): 50 mm cannon and twin Spike-LR.
 
-## Required closure
+## Scope and release requirements
 
-The three new replicas need source/photo view comparison, native HIGH/LOW articulation and stock checks, launcher-origin verification, actual Garage/carousel inspection, geometry/performance comparison, regenerated anatomy/marking/asset records, and the complete required release checks. CV9040C has no registered local 3D oracle; photo evidence must not be represented as a numerical 3D comparison pass. Existing certified reference receipts cannot certify these new builds.
+The three new replicas have source/photo view comparison, native HIGH/LOW articulation and stock checks, launcher-origin verification, actual Garage/carousel inspection, and regenerated anatomy/marking/asset records. The complete integrated release check is the final publication prerequisite. CV9040C has no registered local 3D oracle; photo evidence must not be represented as a numerical 3D comparison pass. Existing certified reference receipts cannot certify these new builds.
 
-The camo/picker and fleet missile-origin changes remain on a separate publication branch while these replicas are authored. No shared dirty checkout is touched.
+The camo/picker and fleet missile-origin batch landed on main as `ed4ab2204`; this IFV continuation adds to that commit. No shared dirty checkout is touched.
 
 ## Implementation review, first pass
 
@@ -64,11 +64,10 @@ its fresh component minimum reached 93.7/92, with dimensions at 99.6. Before
 the merged Puma follow-up, both source replicas passed the silhouette gate
 (Puma 94.5, Type 89 95.1); those results do not certify subsequent edits.
 
-Eight unchanged targets passed the complete standard check: the four retained
-originals, CV9040C X, Dardo, LRMV and Borsuk. Borsuk's subsequent bore-wall repair
-still needs a fresh final standard receipt. All 22 wheel builds (ten changed
+All ten targets passed the complete final standard check, including the merged
+Puma S1 X shape and Borsuk's repaired bore wall. All 22 wheel builds (ten changed
 IDs plus the existing KF41 control, HIGH and LOW) passed their construction and
-finish audit. The full release and regenerated Puma/Type 89 assets are checked on the final
+finish audit. Puma and Type 89 assets are regenerated; full release checks apply to the final
 integrated commit before publication. Evidence is local under
 `.qa-dev/ifv-identity`; the failed runs remain alongside their replacements.
 
@@ -92,3 +91,21 @@ captures are in the `r7b` set. Those captures identify the local dirty candidate
 they do not assert a production deployment. Final anatomy generation refreshed 198 records and 594 technical cards; Puma
 and Type 89 icons were regenerated and aligned. Release checks remain a
 requirement on the integrated commit before publication.
+
+## Final physical review
+
+The per-ID regeneration, strict track/skirt checks, fresh source geometry packets,
+photo-reference records, 1280 px or larger native views, module alignment and
+asset freshness requested in the handoff are complete. The final standard check
+passed 10/10; the closure check passed all ten IDs across 33 views each.
+
+The final muzzle probe exposed a sampling error for small-caliber weapons inside
+wide brakes: it averaged the painted brake face into the dark aperture. The
+probe now uses the same measured physical inner radius as its ray checks;
+luminance thresholds, physical clearance and occlusion checks are unchanged.
+Regression controls reject blocked, flat and missing apertures. Vehicle geometry
+and source registrations did not change for this correction.
+
+The corrected native muzzle probe passes all ten IFVs plus M1A2, BMP-2 and
+KV-2 controls (13/13). All sampled centers read 16.9 luminance; thresholds and
+physical ray checks remain unchanged. Evidence: `muzzle-caliber-final.log`.
