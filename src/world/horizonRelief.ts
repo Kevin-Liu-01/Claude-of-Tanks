@@ -55,6 +55,7 @@ export interface HorizonReliefSettings {
   gullyWavelengthM: number;
   gullyElongation: number;
   /** Downslope stretch of the fine octaves (x): spurs and chutes run down a face instead of blobs (< 1 stretches along the strike). */
+  /** Round 72b: 1.3–2.0 (was 1.6–3.5 — at three the fine crests were a radial comb on every face, "corrugated cardboard"). */
   fineElongation: number;
   /** Height multiplier on the ranges behind the first ridge: the ridge stays the terrain-material foothill the seam
    * laws seat, the ranges behind it — the vista's — stand over it (1 keeps the ladder's authored proportions). */
@@ -74,33 +75,36 @@ export interface HorizonReliefSettings {
   far: HorizonFarRangeSettings | null;
 }
 
-const FAR_ALPINE: HorizonFarRangeSettings = { ampM: 820, floor: 0.34, hazeIn: 0.46, hazeOut: 0.68, snowline: 0.55, sharpness: 1.7 };
-const FAR_POLAR: HorizonFarRangeSettings = { ampM: 640, floor: 0.30, hazeIn: 0.44, hazeOut: 0.68, snowline: 0.18, sharpness: 1.4 };
-const FAR_ROLLING: HorizonFarRangeSettings = { ampM: 360, floor: 0.40, hazeIn: 0.50, hazeOut: 0.70, snowline: 2, sharpness: 0.85 };
-const FAR_MESA: HorizonFarRangeSettings = { ampM: 470, floor: 0.45, hazeIn: 0.48, hazeOut: 0.70, snowline: 2, sharpness: 0.75 };
-const FAR_VOLCANIC: HorizonFarRangeSettings = { ampM: 560, floor: 0.28, hazeIn: 0.48, hazeOut: 0.70, snowline: 2, sharpness: 1.05 };
-const FAR_COASTAL: HorizonFarRangeSettings = { ampM: 300, floor: 0.35, hazeIn: 0.52, hazeOut: 0.72, snowline: 2, sharpness: 0.9 };
-const FAR_MARTIAN: HorizonFarRangeSettings = { ampM: 1050, floor: 0.50, hazeIn: 0.38, hazeOut: 0.62, snowline: 2, sharpness: 0.6 };
-const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.50, hazeOut: 0.72, snowline: 2, sharpness: 1.5 };
+// round 72b: the far range's own haze is a fifth to a third (was half to two thirds) — the post pass's ring distance law
+// (post.ts AERIAL_RING_*) hazes it again on top, and the two together left the ranges at a fifth of the near contrast at
+// 2 km against the ring's 40 % law
+const FAR_ALPINE: HorizonFarRangeSettings = { ampM: 820, floor: 0.34, hazeIn: 0.20, hazeOut: 0.34, snowline: 0.55, sharpness: 1.7 };
+const FAR_POLAR: HorizonFarRangeSettings = { ampM: 640, floor: 0.30, hazeIn: 0.19, hazeOut: 0.34, snowline: 0.18, sharpness: 1.4 };
+const FAR_ROLLING: HorizonFarRangeSettings = { ampM: 360, floor: 0.40, hazeIn: 0.22, hazeOut: 0.35, snowline: 2, sharpness: 0.85 };
+const FAR_MESA: HorizonFarRangeSettings = { ampM: 470, floor: 0.45, hazeIn: 0.21, hazeOut: 0.35, snowline: 2, sharpness: 0.75 };
+const FAR_VOLCANIC: HorizonFarRangeSettings = { ampM: 560, floor: 0.28, hazeIn: 0.21, hazeOut: 0.35, snowline: 2, sharpness: 1.05 };
+const FAR_COASTAL: HorizonFarRangeSettings = { ampM: 300, floor: 0.35, hazeIn: 0.23, hazeOut: 0.36, snowline: 2, sharpness: 0.9 };
+const FAR_MARTIAN: HorizonFarRangeSettings = { ampM: 1050, floor: 0.50, hazeIn: 0.17, hazeOut: 0.31, snowline: 2, sharpness: 0.6 };
+const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.22, hazeOut: 0.36, snowline: 2, sharpness: 1.5 };
 
 /** The characters: the vocabulary of each mountain country, from the field guides rather than from one another. */
 const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>> = {
   // broad polar ranges: long warped ridgelines, wind-scoured crests over talus skirts, deep radial gullies
   polar: {
     character: 'polar', lowAmpM: 48, highAmpM: 7, warpM: 150, warpWavelengthM: 760, wavelengthM: 300,
-    crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 5.5, fineElongation: 3.2, rangeBoost: 1.35, rangeCount: 3, rangeElongation: 3.6,
+    crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 4, fineElongation: 1.9, rangeBoost: 1.35, rangeCount: 3, rangeElongation: 3.6,
     talusFloor: 0.28, aoReachM: 170, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_POLAR,
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
     character: 'alpine', lowAmpM: 52, highAmpM: 8, warpM: 110, warpWavelengthM: 620, wavelengthM: 260,
-    crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 6, fineElongation: 3.0, rangeBoost: 1.30, rangeCount: 4, rangeElongation: 3.2,
+    crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 4, fineElongation: 1.7, rangeBoost: 1.30, rangeCount: 4, rangeElongation: 3.2,
     talusFloor: 0.30, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
     character: 'rolling', lowAmpM: 22, highAmpM: 5, warpM: 90, warpWavelengthM: 700, wavelengthM: 320,
-    crestSharpness: 0.9, footSharpness: 0.7, billow: 0.45, gullyM: 2.6, gullyWavelengthM: 60, gullyElongation: 4, fineElongation: 2.2, rangeBoost: 1.10, rangeCount: 3, rangeElongation: 2.8,
+    crestSharpness: 0.9, footSharpness: 0.7, billow: 0.45, gullyM: 2.6, gullyWavelengthM: 60, gullyElongation: 4, fineElongation: 1.5, rangeBoost: 1.10, rangeCount: 3, rangeElongation: 2.8,
     talusFloor: 0.5, aoReachM: 140, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_ROLLING,
   },
   // tablelands: the caps stay flat (small coarse share), the cliffs carry ledges and talus, dry washes below
@@ -112,25 +116,25 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
   // volcanic country: smooth-sided cones cut by radial barrancos, lava benches
   volcanic: {
     character: 'volcanic', lowAmpM: 18, highAmpM: 6, warpM: 60, warpWavelengthM: 560, wavelengthM: 240,
-    crestSharpness: 1.0, footSharpness: 0.75, billow: 0.35, gullyM: 5.5, gullyWavelengthM: 30, gullyElongation: 9, fineElongation: 3.5, rangeBoost: 1.15, rangeCount: 3, rangeElongation: 2.6,
+    crestSharpness: 1.0, footSharpness: 0.75, billow: 0.35, gullyM: 5.5, gullyWavelengthM: 30, gullyElongation: 6, fineElongation: 2.0, rangeBoost: 1.15, rangeCount: 3, rangeElongation: 2.6,
     talusFloor: 0.40, aoReachM: 130, aoStrength: 0.7, shadowSoft: 0.06, far: FAR_VOLCANIC,
   },
   // headlands and cliffs into the sea: rounded uplands, cliffed fronts
   coastal: {
     character: 'coastal', lowAmpM: 20, highAmpM: 5, warpM: 80, warpWavelengthM: 640, wavelengthM: 300,
-    crestSharpness: 0.95, footSharpness: 0.7, billow: 0.40, gullyM: 2.8, gullyWavelengthM: 52, gullyElongation: 4.5, fineElongation: 2.0, rangeBoost: 1.08, rangeCount: 3, rangeElongation: 3.0,
+    crestSharpness: 0.95, footSharpness: 0.7, billow: 0.40, gullyM: 2.8, gullyWavelengthM: 52, gullyElongation: 4.5, fineElongation: 1.4, rangeBoost: 1.08, rangeCount: 3, rangeElongation: 3.0,
     talusFloor: 0.5, aoReachM: 130, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_COASTAL,
   },
   // Olympus-scale shield slopes: very long wavelengths, low relief, lobate flows
   martian: {
     character: 'martian', lowAmpM: 16, highAmpM: 4, warpM: 120, warpWavelengthM: 900, wavelengthM: 420,
-    crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 6, fineElongation: 1.6, rangeBoost: 1.15, rangeCount: 2, rangeElongation: 4.2,
+    crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 4.5, fineElongation: 1.3, rangeBoost: 1.15, rangeCount: 2, rangeElongation: 4.2,
     talusFloor: 0.6, aoReachM: 160, aoStrength: 0.55, shadowSoft: 0.07, far: FAR_MARTIAN,
   },
   // jungle karst: steep isolated towers, rounded tops, sharp bases
   karst: {
     character: 'karst', lowAmpM: 30, highAmpM: 6, warpM: 70, warpWavelengthM: 480, wavelengthM: 200,
-    crestSharpness: 1.4, footSharpness: 1.2, billow: 0.25, gullyM: 3.0, gullyWavelengthM: 36, gullyElongation: 5, fineElongation: 2.4, rangeBoost: 1.25, rangeCount: 4, rangeElongation: 2.4,
+    crestSharpness: 1.4, footSharpness: 1.2, billow: 0.25, gullyM: 3.0, gullyWavelengthM: 36, gullyElongation: 5, fineElongation: 1.6, rangeBoost: 1.25, rangeCount: 4, rangeElongation: 2.4,
     talusFloor: 0.35, aoReachM: 120, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_KARST,
   },
 };
@@ -385,8 +389,15 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const fine = (raw - fineMean) * fineScale * (1 - talus * (1 - s.talusFloor));
       // gullies: ridged noise elongated downslope (radial on the ring), carved into the steeper faces only; the
       // across-slope coordinate runs around a circle in noise space so the pattern closes on itself at every angle
-      const g = noise.noise3d(Math.cos(theta) * gullyK + 7.7, Math.sin(theta) * gullyK - 3.3, r * gullyFr + 5.1);
-      const gully = -Math.pow(1 - Math.abs(g), 3) * s.gullyM * (0.25 + 0.75 * steep) * (1 - talus * 0.6);
+      // round 72b (crops: the gullies read as corrugated cardboard — one angular frequency around the whole ring): the
+      // groove lookup meanders by a slow field of the arc and the radius (the chutes bend and fork down the face) and
+      // their depth varies along the arc, so no two faces carry the same comb
+      const mAng = noise.noise3d(ct * 2.3 + 31.7, st * 2.3 - 12.9, r * 0.0031 + 8.2)
+        + 0.5 * noise.noise3d(ct * 5.7 - 14.2, st * 5.7 + 27.1, r * 0.0068 + 1.9);
+      const mAmp = noise.noise3d(ct * 3.1 - 6.1, st * 3.1 + 19.3, r * 0.0022 - 2.7);
+      const thetaG = theta + mAng * 0.22;
+      const g = noise.noise3d(Math.cos(thetaG) * gullyK + 7.7, Math.sin(thetaG) * gullyK - 3.3, r * gullyFr + 5.1);
+      const gully = -Math.pow(1 - Math.abs(g), 3) * s.gullyM * (0.25 + 0.75 * steep) * (1 - talus * 0.6) * (0.65 + 0.55 * mAmp);
       return fine + gully;
     },
     high(x, z, hT, concavity, steep, rIn, thetaIn) {
@@ -535,7 +546,7 @@ export function* bakeHorizonReliefSteps(
       const theta = (i / W) * TAU;
       // the seam (round 29 / 35 laws): the fine relief is nil at the square's edge and full 90 m out, so the seam row
       // continues the terrain's own edge and the terrain-material bands read the same atlas from there (round 72b)
-      const seamW = smoothstep(0, 90, Math.max(Math.abs(Math.cos(theta) * r), Math.abs(Math.sin(theta) * r)) - 511.5);
+      const seamW = smoothstep(0, 60, Math.max(Math.abs(Math.cos(theta) * r), Math.abs(Math.sin(theta) * r)) - 511.5); // round 72b: 60 m (a 90 m fade read as a smooth belt under the first ridge)
       // round 72b (integrator: "faces read as one flat tone"): the striations and gully shading run at three times
       // their amplitude on the steep faces, so they survive the aerial pass at range
       const land = (1 - marine[idx]) * seamW * (1 + 2.2 * steep);
@@ -621,7 +632,7 @@ export function* bakeHorizonReliefSteps(
         if (bl > block) block = bl;
       }
       const theta0 = ((i + 0.5) / W) * TAU;
-      const seamW0 = smoothstep(0, 90, Math.max(Math.abs(Math.cos(theta0) * r), Math.abs(Math.sin(theta0) * r)) - 511.5);
+      const seamW0 = smoothstep(0, 60, Math.max(Math.abs(Math.cos(theta0) * r), Math.abs(Math.sin(theta0) * r)) - 511.5);
       const land = (1 - marine[idx]) * seamW0;
       const sunVis = 1 - smoothstep(-s.shadowSoft, s.shadowSoft, block) * land;
       // round 72b: the occlusion deepened (a 1.6 power) so the folds read at 1.5 km through the haze

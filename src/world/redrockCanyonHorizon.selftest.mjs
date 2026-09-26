@@ -19,9 +19,9 @@ const seeds = [1337, 2049, 7719];
 // Round 72 (2026-09-25): with the canyon opted out the relief field applies to Badlands like every other map, so the
 // historical opt-out digests were re-pinned once against the relieved geometry (the canyon's own rows are byte-identical).
 const historicalHashes = [
-  '20669f801348944db675ce90a9060189cb4b3b2001f9bce4d0221eed943d0a20' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
-  'fd002c3017990f378c8b7552dfc19db8c2e77ea4f2a40c229bb8a00538e662a8' /* 2026-09-19 vista pass */,
-  '73f3cbc63184ec3b77886127caf10bbb8bc61a004e3c804211e4676abb4990ab',
+  '3981f5983dce63823eb300c775911a9f64bdc1811f1a7951177eaf763fd6502c' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
+  'dc0f993f777d389913b7bcf3910326ee6be81380a297f0f007d73d7a2f6bb283' /* 2026-09-19 vista pass */,
+  'bd17c7de5e40d64d7c3ca25a2b88d8e4b7b7caf7d08f663ee7649d354a08f905',
 ];
 function digest(ring) {
   return createHash('sha256').update(new Uint8Array(ring.positions.buffer))

@@ -100,7 +100,11 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       theta, halfSpan: (Math.PI / 3) * (1.1 + rangeRng() * 0.4), phi: theta + Math.PI / 2 + oblique,
       cx: Math.cos(theta) * 2600, cz: Math.sin(theta) * 2600, height: 0.7 + rangeRng() * 0.6,
       steepSide: rangeRng() < 0.5 ? -1 : 1, steepness: 1.5 + rangeRng() * 0.6,
-      lambdaAlong: 2400 + rangeRng() * 800, lambdaAcross: 560 + rangeRng() * 200,
+      // round 72b (crops: Alpine's far range was two smooth white domes, then — with short crests at full weight — a
+      // row of cones the step clamp had cut to straight flanks): massifs 1.6–2.2 km along the axis (was 2.4–3.2 km,
+      // six crests around the whole horizon) carrying two octaves of serration whose amplitude falls with their
+      // wavelength (a 1/f^0.8 spectrum: 0.5 / 0.2 / 0.08), so the flanks stay under the clamp at 25–30°
+      lambdaAlong: 1600 + rangeRng() * 600, lambdaAcross: 720 + rangeRng() * 240,
       o1: rangeRng() * 100, o2: rangeRng() * 100, o3: rangeRng() * 100, o4: rangeRng() * 100, jitterPhase: rangeRng() * 100,
     };
   });
@@ -115,14 +119,32 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       let across = -dx * sp + dz * cp;
       if (across * g.steepSide < 0) across *= g.steepness;
       const n1 = noise.noise(along / g.lambdaAlong + g.o1, across / g.lambdaAcross + g.o2);
-      const r1 = Math.pow(1 - Math.abs(n1), s.sharpness);
+      // the massif itself is rounded (a ridged cusp across a 700 m range at the character's sharpness was a cone
+      // seen from the side); the character's sharpness belongs to the serrations on it
+      const r1 = Math.pow(1 - Math.abs(n1), 0.75);
       const jitter = noise.noise(along / (g.lambdaAlong * 0.6) + g.jitterPhase, 3.3) * g.lambdaAlong * 0.15;
-      const n2 = noise.noise((along + jitter) / (g.lambdaAlong / 3) + g.o3, across / (g.lambdaAcross / 2) + g.o4);
-      const r2 = Math.pow(1 - Math.abs(n2), s.sharpness) * clamp(r1 * 2, 0, 1);
-      sum += w * g.height * (r1 * 0.68 + r2 * 0.32 + 0.25);
+      // the serrations: one octave at a third of the massif (460–630 m: eight to ten of the 288 columns at the crest
+      // row — a finer octave sampled at two to four columns aliased into one-column needles that the step clamp cut
+      // into symmetric cones, the very look the integrator sent back), at the character's sharpness, halved
+      const n2 = noise.noise((along + jitter) / (g.lambdaAlong / 3.5) + g.o3, across / (g.lambdaAcross / 2) + g.o4);
+      const r2 = Math.pow(1 - Math.abs(n2), s.sharpness * 0.5 + 0.35) * clamp(r1 * 2, 0, 1);
+      sum += w * g.height * (r1 * 0.5 + r2 * 0.24 + 0.25);
     }
     return sum;
   };
+  // round 72b (crops: Alpine's far range was two smooth domes even with shorter crests): the ranged sum ran past 1
+  // over most of a range and the clamp left only the smooth envelope. Normalise it over the annulus (RMS 0.5) and
+  // compress the tops through a soft knee instead of a clamp, so the crests keep their pinnacles
+  let rangeScale = 1;
+  {
+    const N = 96, R = 6; let sq = 0;
+    for (let j = 0; j < R; j++) for (let i = 0; i < N; i++) {
+      const a = (i / N) * TAU, rr = rows[0].r + (rows[rows.length - 1].r - rows[0].r) * (j + 0.5) / R;
+      const v = rangeReliefAt(Math.cos(a) * rr, Math.sin(a) * rr, a); sq += v * v;
+    }
+    rangeScale = 0.5 / Math.max(1e-4, Math.sqrt(sq / (N * R)));
+  }
+  const knee = (v: number): number => (v < 0.8 ? v : 0.8 + 0.2 * Math.tanh((v - 0.8) / 0.2));
   const positions = new Float32Array(n * rows.length * 3);
   const heights = new Float32Array(n * rows.length);
   const marine = new Float32Array(n * rows.length);
@@ -142,8 +164,8 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       // the ranged silhouette (above) over a weak isotropic base that keeps the gaps from going flat
       const ridged = (v: number): number => Math.pow(1 - Math.abs(v), s.sharpness);
       const base = ridged(noise.noise(wx * 0.0017 + 41, wz * 0.0017 - 17)) * 0.6 + ridged(noise.noise(wx * 0.0041 - 23, wz * 0.0041 + 31)) * 0.4;
-      let relief = rangeReliefAt(x, z, a) * 0.85 + base * 0.2;
-      relief = clamp(relief, 0, 1);
+      let relief = rangeReliefAt(x, z, a) * rangeScale + base * 0.2;
+      relief = knee(Math.max(0, relief));
       // the crest row carries the peaks; the rows before it rise toward them, the rows behind fall away
       let h = HORIZON_FAR_FOOT_M + ampM * env * (0.18 + 0.82 * relief) * lift;
       // sea sectors: the far ring is open water there (a little under the level, the apron carries the surface)
@@ -156,18 +178,11 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       marine[i] = sea;
     }
   }
-  // along-row smoothing of the crest rows and a step clamp (the same law as the alpine ring): no one-column needles
-  // at three kilometres — a column-to-column step of at most 0.9 of the row's arc, a 42° flank
-  const scratch = new Float32Array(n);
+  // a step clamp along each row (the same law as the alpine ring): no one-column needles at three kilometres — a
+  // column-to-column step of at most 0.9 of the row's arc, a 42° flank
   for (let row = 1; row < rows.length; row++) {
     const off = row * n;
-    for (let pass = 0; pass < 3; pass++) {
-      for (let k = 0; k < n; k++) {
-        const km = (k - 1 + n) % n, kp = (k + 1) % n;
-        scratch[k] = heights[off + km] * 0.25 + heights[off + k] * 0.5 + heights[off + kp] * 0.25;
-      }
-      for (let k = 0; k < n; k++) heights[off + k] = scratch[k];
-    }
+    // no smoothing pass (round 72b: three rounded every crest into a dome); the step clamp below keeps the needles out
     const maxStep = rows[row].r * TAU / n * 0.9;
     for (let pass = 0; pass < 3; pass++) {
       for (let k = 0; k < n; k++) {
@@ -230,7 +245,12 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
       const ndl = nx * lx + ny * ly + nz * lz;
       const sky = 0.55 + 0.45 * ny;
       const shade = options.gains.ambient * sky + options.gains.sunGain * Math.max(ndl, 0);
-      _c.multiplyScalar(shade);
+      // round 72b (crops: the far faces were one flat white): a cavity term from the crest's own profile — a vertex
+      // above its neighbours three columns either side is a rib (lit), one below them a couloir (shaded), ±14 %
+      let near = 0;
+      for (let d = -3; d <= 3; d++) if (d !== 0) near += heights[row * n + (k + d + n) % n];
+      const rib = clamp((heights[i] - near / 6) / Math.max(1, ampM * 0.08), -1, 1);
+      _c.multiplyScalar(shade * (1 + rib * 0.14));
       if (ndl < 0) _c.lerp(scratch.copy(_c).multiply(shadeTint), Math.min(1, -ndl) * 0.35);
       // the sea sectors are the low sky, like the ring's far apron
       if (marine[i] > 0) _c.lerp(seaColor, marine[i]);
