@@ -37,6 +37,12 @@ shell traffic, break FX, prop destruction events, and cached map handlers.
 conductor instance slots, and caller-buffer catenary sampling.
 `topple.ts` and `treeGrounding.ts` own typed terrain-contact fall math and
 bounded root decals without bringing Three.js into either policy.
+`treeClimate.ts` (THREE-free, round 77) resolves the wind every tree of a battlefield sways in (direction from the
+map's cloud wind or the ground profile's prevailing wind, strength from the cloud regime's speed) and the moss its
+shaded trunk bases grow (from the ground profile's climate tint); `vegetation.ts` reads it once per world into the
+tree materials' uniforms. The vertex wind law, the per-cluster cascade sample (`aCard`), the leaf-shadow floor, the
+translucency (`canopyLighting.ts`), the conifer whorls, the understorey shrubs and the stand shade all live in
+`vegetation.ts`; `understorey.selftest.mjs` and `treeClimate.selftest.mjs` pin them beside the vegetation receipts.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
