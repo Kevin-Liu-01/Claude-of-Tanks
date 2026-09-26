@@ -5,7 +5,8 @@ import {
   presentCapabilityVerdict, probeCapabilities, runBootCapabilityGate, TERRAIN_SAMPLERS_BUILTIN_DESKTOP,
   TERRAIN_SAMPLERS_DECLARED, TERRAIN_TEXTURE_UNITS_REQUIRED,
 } from './capabilityGate.ts';
-import { validateTelemetryBody } from '../../api/telemetry.ts';
+import { createEntryTelemetry } from '../entry/telemetry.ts';
+import { validateTelemetryRecord } from '../../server/telemetryRecord.ts';
 
 // The gate is exercised with a fake canvas/context host: every verdict
 // (no WebGL2, refused context, too few texture units, software rasteriser,
@@ -151,10 +152,18 @@ assert.deepEqual([classifyMemory(undefined), classifyMemory(1), classifyMemory(4
     tier: 'desktop', autoTier: 'high', requiredTextureUnits: 16,
   }, 'the beacon summary carries families, limits and classes only');
   assert.equal('renderer' in summary, false, 'the raw renderer string never reaches the beacon');
-  const validation = validateTelemetryBody({ v: 1, sid: 'sess_capability', build: 'dev', kind: 'capability', capability: summary },
-    'now');
-  assert.equal(validation.ok, true);
-  assert.deepEqual(validation.events[0].capability, summary, 'the server keeps every summary field');
+  // Telemetry v2 (2026-09-25): the capability summary rides inside the one session record; the shared validator keeps it whole.
+  const bodies = [];
+  const client = createEntryTelemetry({
+    build: 'dev', sessionId: 'sess_capability', now: () => 10_000,
+    endpoints: { session: '/api/telemetry', error: '/api/telemetry' },
+    transport: (endpoint, body) => { bodies.push(JSON.parse(body)); return true; }, schedule: () => 1, cancel: () => {},
+  });
+  assert.equal(client.send({ kind: 'capability', outcome: 'ok', capability: summary }), true);
+  client.flush();
+  const validation = validateTelemetryRecord(bodies[0]);
+  assert.equal(validation.ok, true, `the shared validator accepts the session record: ${JSON.stringify(validation)}`);
+  assert.deepEqual(validation.record.cap, summary, 'the server keeps every summary field');
 }
 
 {

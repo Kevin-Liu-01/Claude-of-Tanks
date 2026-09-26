@@ -293,7 +293,8 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   assert.deepEqual(h.retry.classes, ['on']);
   assert.equal(h.beacons.length, 1, 'the first retry surface beacons once');
   assert.equal(h.beacons[0].endpoint, '/api/telemetry');
-  assert.equal(h.beacons[0].body.kind, 'boot_error');
+  assert.equal(h.beacons[0].body.v, 2, 'telemetry v2 (2026-09-25): the inline watchdog posts one error record');
+  assert.equal(h.beacons[0].body.kind, 'error');
   assert.equal(h.beacons[0].body.sid, h.window.__COT_TELEMETRY_SID, 'the inline beacon uses the shared session id');
   assert.equal(h.beacons[0].body.build, 'v1.0.0+gabc1234');
   assert.equal(h.beacons[0].body.stage, 'download');

@@ -4,6 +4,8 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runSelftestSuite, runSelftestFile, selftestWorkerCount, SELFTEST_EXCLUSIVE_CPU_FILES } from './run-selftests.mjs';
+// The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
+process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 assert.equal(selftestWorkerCount({}), Math.min(8, availableParallelism()), 'bounded pool is the CLI default');

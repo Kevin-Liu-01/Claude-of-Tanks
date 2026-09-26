@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, SELFTEST_OWNED_LEASE_FILES } from './run-selftests.mjs';
+// The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
+process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
 function fixture({ failAt, errorAt, acquireError } = {}) {
   const events = [], errors = [];
