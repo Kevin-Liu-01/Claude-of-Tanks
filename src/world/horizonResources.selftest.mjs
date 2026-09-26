@@ -336,9 +336,9 @@ const unrelatedMutation = createHash('sha256');
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
 // (round 72: re-pinned with the relieved geometry, see above)
 const unchangedReceipts = [
-  'dc2b290de727f8604a62eb7b1d5fd5fd946015ffd1ff54540f006d9856c68bef',
-  '8a2c11348457cd2498d1e45ba0b67fe98011d1e035ae1f45924490c749886a20',
-  'e6e68d689c1d977cfa37306e5f07bbaefdad90c4ccfead35d38552ca298180f3',
+  '3e61700037dfacbb816890ecb92c3cdefd08fc5d3f4d2bf1dd82156cc4371d11',
+  '9c55e94557b849bfde6bdf2ae3d874c644386aed440282f6d75b61d7ace870a5',
+  '5c07a38d7100fde57199ce80a5f78f58dc08c59787ff302ea401289a48a47b5c',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);

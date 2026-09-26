@@ -11,9 +11,9 @@ const seeds = [1337, 2049, 7719];
 // Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const originalOther28 = [
-  '3b209dea4aa1c596ded10a13d967dd89c56b8a13052234930520654ad8bbb205' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
-  '54367ccfd235a342c26b9c981b09fdc16a48fa183ec3390c2f07f8b7de02f344',
-  '3df594d38b00b28324ce2dc367fa487ea57579d2a790219b4e6715e73857d6a3',
+  '20345d788df19a46d0956289564ca10aeb90bea2e972a6df3c4b5124d62693fa' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
+  'd1dc784616141f88d96a32b9c4cbefa12373a09c747a439ae0e4ab2e31a34165',
+  '5436e9621e0b00e6e1e4b05829b16fa19f7a8d5bc69969cfdd88f5e320321027',
 ];
 // Round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa style authors a nine-row stack
 // (bench, tables, valley, escarpment, saddle, summits, shoulder; 30 uploaded rows) and the far escarpment's cap

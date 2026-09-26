@@ -2240,7 +2240,7 @@ function* buildHorizonMaterialSteps({
       // country bares more of its cones, karst towers stand as limestone walls
       uVRockAmp: { value: relief.settings.character === 'volcanic' || relief.settings.character === 'karst' ? 1.0
         : style === 'alpine' ? 1.0 : style === 'mesa' ? 1.0 : style === 'escarpment' ? 0.85 : 0.55 },
-      uVPeakRock: { value: relief.settings.character === 'polar' ? 0.3 : relief.settings.character === 'volcanic' ? 0.6 : relief.settings.character === 'karst' ? 0.5
+      uVPeakRock: { value: relief.settings.character === 'polar' ? 0.45 : relief.settings.character === 'volcanic' ? 0.6 : relief.settings.character === 'karst' ? 0.5
         : style === 'alpine' ? 0.9 : style === 'mesa' ? 0.5 : style === 'escarpment' ? 0.35 : 0.15 },
       uVScreeAmp: { value: relief.settings.character === 'polar' ? 0.5 : style === 'alpine' ? 0.8 : style === 'mesa' ? 0.7 : style === 'escarpment' ? 0.5 : 0.3 },
       uVForestAmp: { value: treeline > 0 && treeline < 1.5 ? 1.0 : 0.0 },
@@ -2252,7 +2252,9 @@ function* buildHorizonMaterialSteps({
       uVOutcrop: { value: outcrops },
       uVFogTint: { value: new THREE.Vector3(fog.r, fog.g, fog.b) },
       uVBanding: { value: style === 'mesa' ? Math.max(banding, 0.14) * 1.7 : Math.max(banding, 0.05) },
-      uVRockSlope: { value: style === 'mesa' ? new THREE.Vector2(0.16, 0.42) : new THREE.Vector2(0.30, 0.58) },
+      // round 72: a polar range bares rock from 37° (wind-scoured faces) — under an overcast its snow reads as the sky's
+      // own white, and the dark faces are what makes the range read at all
+      uVRockSlope: { value: style === 'mesa' ? new THREE.Vector2(0.16, 0.42) : relief.settings.character === 'polar' ? new THREE.Vector2(0.20, 0.44) : new THREE.Vector2(0.30, 0.58) },
       // absolute colours meet the battlefield's lit ground: a sky term plus a Lambert sun term (about SUN / pi);
       // round 72: both follow the map's own hemisphere and sun (Whiteout's ring read grey beside its fields: the
       // constants were the sunny default's while its snow is lit by a 0.73 hemisphere under a 13° sun)
