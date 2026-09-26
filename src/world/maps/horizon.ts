@@ -1213,7 +1213,7 @@ function buildInitialHorizonGeometry(
       // round 72b: the cone rule on every row of a ranged character (alpine keeps its three blur passes first); the
       // mesa tables keep their authored cliff edges (a 56 m column step at a cap rim is the crenellation, not a cone)
       softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp * rangeBoostAt(authoredRank),
-        style === 'alpine' ? 3 : 0, 1, 0.8 * (2 * Math.PI * row.r / HORIZON_SEGMENTS));
+        style === 'alpine' ? 3 : 0, 1, 0.7 * (2 * Math.PI * row.r / HORIZON_SEGMENTS)); // round 72b: 0.7 (a clamped peak's base is 2.9 x its rise; at 0.8 every clamped spire was a 2.5 x cone)
     } else if (style === 'alpine' && !row.skirt) {
       softenHorizonRing(heights, offset, HORIZON_SEGMENTS, row, amp * rangeBoostAt(authoredRank), 8, 1);
     }

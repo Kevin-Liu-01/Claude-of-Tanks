@@ -312,9 +312,9 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const currentPoldersReceipts = new Map([
-  [1337, 'bfaf5a27c68473aa3e7facfe4cc5af9801dbbdefee52f519782419775d1d0bd0' /* 2026-09-19 vista pass */],
-  [2049, '4b5f08a5d3d46925dd3b1fd0c2b69209e2939b3e4da40f50ab4801316e8def63'],
-  [7719, 'd33f34ab64e3554562c63fc5862f35f9307923140249e6bfb7d66c721d9c9bbd'],
+  [1337, 'ebe16e04b40c96e61c8110b2a0616ba99e4cf7abcab15eb90abf360abc237fa2' /* 2026-09-19 vista pass */],
+  [2049, '47f8797eda8816c8ac9386e7b16cb6abcf4c54270d38870dfd8f86e4028a061e'],
+  [7719, '716637c6876d1f436ab482c42657c11da2cc11d64ede39a7c7d038c3501ba490'],
 ]);
 function assertCurrentPolders(ring, config, seed) {
   assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
@@ -338,9 +338,9 @@ const unrelatedMutation = createHash('sha256');
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
 // (round 72: re-pinned with the relieved geometry, see above)
 const unchangedReceipts = [
-  'aa0da016c567b0bc1e6cf2b63a783726f5d7496f0fb1dbe74cb2e474d6b0723f',
-  'de6f733184d9cac6199632b83ba09686ba38cd617d46c678a2e28f336b15fec9',
-  'a635a6e778b4b42563518de498c3cb91fd1f0f8fbb23605d6156fb65503b8dae',
+  'd94a9a999e5e058314e3046f0c2f98f0e7ea24c75c052bf8ce925ff25f8c09b5',
+  '93c322c933391c0afb1553b637426e54148db5a3ed547bb340dd52d36cf2fdf6',
+  '815af5023672bbf9bfaadb98e0035a5efb010f881b2678fe01531b75c9072d9c',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
@@ -415,7 +415,9 @@ try {
 // round 72b: the coarse field is a sum of ranges (per range four samples: the ridge, the sub-peak ridge and its
 // along-axis jitter, over the isotropic base's five) read at every authored and interpolated vertex; fjord's four
 // ranges: 160,007 -> 216,431
-assert.equal(geometryNoiseCalls, 216431, 'the ranged relief field spends exactly its authored, interpolated and normalisation queries (round 72b)');
+// round 72b (2026-09-26, the integrator's crops: rows of symmetric spires): every range sample reads one more field —
+// the along-axis lean that skews each crest (a ridged cusp is symmetric by construction) — five per range: 216,431 -> 235,239
+assert.equal(geometryNoiseCalls, 235239, 'the ranged relief field spends exactly its authored, interpolated and normalisation queries (round 72b)');
 try {
   geometryNoiseCalls = 0;
   SimplexNoise.prototype.noise = function (...coordinates) {

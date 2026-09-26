@@ -98,7 +98,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
     character: 'alpine', lowAmpM: 52, highAmpM: 8, warpM: 110, warpWavelengthM: 620, wavelengthM: 260,
-    crestSharpness: 1.9, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 4, fineElongation: 1.7, rangeBoost: 1.30, rangeCount: 4, rangeElongation: 3.2,
+    crestSharpness: 1.5, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 4, fineElongation: 1.7, rangeBoost: 1.30, rangeCount: 4, rangeElongation: 3.2,
     talusFloor: 0.30, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
   },
   // wooded hills: rounded billows with spurs, shallow drainage
@@ -300,11 +300,16 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const along = dx * cp + dz * sp;
       let across = -dx * sp + dz * cp;
       if (across * g.steepSide < 0) across *= g.steepness; // the steep flank
-      const n1 = noise.noise(along / g.lambdaAlong + g.o1, across / g.lambdaAcross + g.o2);
+      // round 72b (integrator, Fjord's centre-far: a row of symmetric spires): the crests lean — the along-axis
+      // coordinate is warped by a field a wavelength and a half long, so one flank of every crest is the steeper and
+      // the summits sit off-centre on their bases; a ridged cusp is symmetric by construction without it
+      const lean = noise.noise(along / (g.lambdaAlong * 1.7) + g.o1 * 0.37 + 53.1, across / (g.lambdaAcross * 2) + g.o2 * 0.61 - 17.4) * g.lambdaAlong * 0.28;
+      const alongL = along + lean;
+      const n1 = noise.noise(alongL / g.lambdaAlong + g.o1, across / g.lambdaAcross + g.o2);
       const r1 = Math.pow(1 - Math.abs(n1), sharp);
       const w1 = clamp(r1 * 2, 0, 1);
-      const jitter = noise.noise(along / (g.lambdaAlong * 0.6) + g.jitterPhase, 7.7) * g.lambdaAlong * 0.15;
-      const n2 = noise.noise((along + jitter) / (g.lambdaAlong / 3) + g.o3, across / (g.lambdaAcross / 2) + g.o4);
+      const jitter = noise.noise(alongL / (g.lambdaAlong * 0.6) + g.jitterPhase, 7.7) * g.lambdaAlong * 0.15;
+      const n2 = noise.noise((alongL + jitter) / (g.lambdaAlong / 3) + g.o3, across / (g.lambdaAcross / 2) + g.o4);
       const r2 = Math.pow(1 - Math.abs(n2), sharp) * w1;
       // the range's own lift: inside its window the ground stands 0.35 higher whatever the ridges do, so the ranges
       // rise from the gaps between them and the far range shows through the passes
