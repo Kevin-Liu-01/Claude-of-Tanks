@@ -118,6 +118,11 @@ export function createCaptureLock({
   let held = false;
 
   async function acquire(timeoutMs = 10 * 60 * 1000) {
+    // A landing chain exports COT_SHOTS_LOCK_TIMEOUT_MS (three hours) so every waiter it spawns — the suite runner and
+    // the browser receipts that take the lock themselves — outlasts other sessions' captures (2026-09-25: a probe receipt
+    // died at its own 45-minute wait while the runner would have waited three hours).
+    const chainWait = Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS);
+    if (Number.isFinite(chainWait) && chainWait > timeoutMs) timeoutMs = chainWait;
     mkdirSync(queueDir, { recursive: true });
     const ownTicket = reserveTicket(queueDir);
     const startedAt = Date.now();
