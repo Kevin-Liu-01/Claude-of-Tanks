@@ -50,6 +50,8 @@ export interface TransportStateChange {
   detail?: string;
   /** 1-based attempt counter while reconnecting; the attempt that reached `open`. */
   attempt?: number;
+  /** `reconnecting`: milliseconds until the next attempt (the status surface counts it down). */
+  retryDelayMs?: number;
   /** `open` after a successful reconnect (the owner must re-run its handshake). */
   resumed?: boolean;
   /** Raw close code from the underlying socket when there is one. */

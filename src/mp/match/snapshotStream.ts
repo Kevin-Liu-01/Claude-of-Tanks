@@ -54,6 +54,9 @@ export class SnapshotStream {
   }
 
   get latest(): SnapshotFrame | null { return this.latestFrame; }
+  /** Accepted snapshots and the sequence gaps beside them (allocation-free reads for the status model). */
+  get acceptedCount(): number { return this.received; }
+  get estimatedMissingCount(): number { return this.estimatedMissing; }
   get isAwaitingKeyframe(): boolean { return this.awaitingKeyframe; }
   /** The tick to acknowledge: the newest assembled frame, or NO_TICK to ask for a keyframe. */
   get ackTick(): number { return this.awaitingKeyframe || !this.latestFrame ? NO_TICK : this.latestFrame.tick; }

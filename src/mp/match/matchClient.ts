@@ -308,6 +308,12 @@ export class MatchClient {
   get predictionState(): TankState | null { return this.predictor?.simulationState ?? null; }
   get lastCloseReason(): CloseReasonId | null { return this.closeReason; }
   get lastCloseDetail(): string { return this.closeDetail; }
+  /** Allocation-free reads for the network status model (stats() copies; these do not). */
+  get lastAuthorityReceivedAtMs(): number | null { return this.lastAuthorityAtMs; }
+  get snapshotsAcceptedCount(): number { return this.snapshotsAccepted; }
+  get predictorStats(): Readonly<PredictionStats> | null { return this.predictor?.liveStats ?? null; }
+  get bytesInPerSecond(): number { return this.bytesInPerS; }
+  get bytesOutPerSecond(): number { return this.bytesOutPerS; }
 
   connect(): void {
     if (this.disposed) throw new Error('match client disposed');

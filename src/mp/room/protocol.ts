@@ -43,6 +43,8 @@ export const ROOM_RATE_MAX_MESSAGES = 120;
 export const ROOM_MAX_PAYLOAD_BYTES = 32 * 1024;
 export const ROOM_MAX_NAME_CHARS = 24;
 export const ROOM_MAX_EQUIPMENT = 3;
+/** `region` in the admission reply (`room_created` / `room_joined`): where the host says it runs, for the status surface. */
+export const ROOM_MAX_REGION_CHARS = 32;
 
 export const ROOM_CODE_RE = /^[A-Z0-9]{6}$/;
 export const ROOM_ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
@@ -168,7 +170,11 @@ export const ROOM_CLIENT_MESSAGE = Object.freeze({
   PING: 'room_ping',
 } as const);
 
-/** Room → client message types. */
+/**
+ * Room → client message types. `room_created` / `room_joined` reply with
+ * `{ room, playerId, seat, chat, region? }` — `region` (≤ ROOM_MAX_REGION_CHARS) is
+ * optional and names where the host runs (`lan` for the local helper).
+ */
 export const ROOM_SERVER_MESSAGE = Object.freeze({
   CREATED: 'room_created',
   JOINED: 'room_joined',

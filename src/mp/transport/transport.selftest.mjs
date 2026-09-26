@@ -131,6 +131,7 @@ assert.equal(resumeUrl('wss://h/x?room=1', 'a b', 1), 'wss://h/x?room=1&resume=a
   assert.equal(reconnecting.reason, TRANSPORT_CLOSE.NETWORK);
   assert.equal(reconnecting.attempt, 1);
   assert.equal(reconnecting.code, 1006);
+  assert.equal(reconnecting.retryDelayMs, 250, 'the change names the delay before the attempt (the status surface counts it down)');
   assert.equal(sockets[0].listenerCount, 0, 'the dead socket keeps no listeners');
   assert.equal(transport.send(frame), false, 'sends are refused while reconnecting');
   time.advance(249);

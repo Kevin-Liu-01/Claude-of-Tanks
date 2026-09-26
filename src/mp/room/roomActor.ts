@@ -16,7 +16,7 @@
  */
 import type { SeatClaims } from '../../../server/match/seatToken.ts';
 import {
-  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_IDLE_TTL_MS, ROOM_MATCH_LOST_AFTER_POLLS,
+  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_IDLE_TTL_MS, ROOM_MATCH_LOST_AFTER_POLLS, ROOM_MAX_REGION_CHARS,
   ROOM_MATCH_POLL_MS, ROOM_RATE_MAX_MESSAGES, ROOM_RATE_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_TOKEN_TTL_MS,
   ROOM_SERVER_MESSAGE, ROOM_UNAUTHENTICATED_TIMEOUT_MS, RoomError, cleanId, isRecord, isRoomTeam, normalizeRoomChat,
   parseRoomEnvelope, publicRoomError,
@@ -77,6 +77,8 @@ export interface RoomActorPorts {
   /** Called after every durable mutation. */
   persist(): void;
   guards?: Partial<RoomPolicyGuards>;
+  /** Named in every admission reply (`region`) when the host knows where it runs. */
+  region?: string;
   log?(level: 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>): void;
 }
 
@@ -419,7 +421,10 @@ export class RoomActor {
     const type = kind === 'create' ? ROOM_SERVER_MESSAGE.CREATED : ROOM_SERVER_MESSAGE.JOINED;
     this.send(socket.id, {
       type, ...(message.requestId ? { requestId: message.requestId } : {}),
-      payload: { room: serializeRoom(room), playerId, seat: existing.seat, chat: this.chat.slice(-ROOM_CHAT_HISTORY) },
+      payload: {
+        room: serializeRoom(room), playerId, seat: existing.seat, chat: this.chat.slice(-ROOM_CHAT_HISTORY),
+        ...(this.ports.region ? { region: this.ports.region.slice(0, ROOM_MAX_REGION_CHARS) } : {}),
+      },
     });
     const issued = this.matchTokens.get(playerId);
     if (issued && room.match && issued.matchId === room.match.id && (room.match.status === 'starting' || room.match.status === 'playing')) {

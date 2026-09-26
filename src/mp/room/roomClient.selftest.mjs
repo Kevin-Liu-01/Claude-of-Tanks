@@ -44,6 +44,10 @@ try {
   assert.match(room.roomCode, /^[A-Z0-9]{6}$/);
   assert.equal(a.isAdmin, true);
   assert.equal(a.phase, 'joined');
+  assert.equal(a.seat, 0, 'the creator holds seat 0');
+  assert.equal(a.region, 'lan', 'the local host names its region in the admission reply');
+  assert.ok(Number.isFinite(a.rttMs) && a.rttMs >= 0 && a.rttMs < 5000, `the admission round trip is the first RTT sample (${a.rttMs})`);
+  assert.equal(a.stats().region, 'lan');
   assert.ok(a.hasResumeCapability(room.roomCode), 'the capability is stored');
   const bStorage = memory();
   const b = client('bob', bStorage);

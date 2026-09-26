@@ -304,7 +304,7 @@ export class WebSocketTransport implements Transport {
     this.attempt++;
     this.stats.reconnects++;
     const delayMs = reconnectDelayMs(this.reconnectPolicy, this.attempt, this.random());
-    this.transition('reconnecting', { reason, detail, attempt: this.attempt, code });
+    this.transition('reconnecting', { reason, detail, attempt: this.attempt, code, retryDelayMs: delayMs });
     this.retryTimer = this.setTimer(() => {
       this.retryTimer = null;
       if (this.currentState !== 'reconnecting') return;

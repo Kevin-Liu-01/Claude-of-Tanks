@@ -98,6 +98,8 @@ export interface PredictionStats {
   /** Current and largest staged correction magnitude (metres). */
   correctionM: number;
   maxCorrectionM: number;
+  /** Reconciliations that staged more than one frame of release (`maxHorizontalStepM`): the corrections a player can see. */
+  visibleCorrections: number;
 }
 
 /** A hull/turret pose plus the suspension layers the renderer composes on top of it. */
@@ -268,7 +270,7 @@ export class LocalPredictor {
     heldTicks: 0, checkpointsApplied: 0, checkpointsMissing: 0, checkpointsRejected: 0, contactReconciliations: 0,
     restingHolds: 0, lastPositionErrorM: 0, maxPositionErrorM: 0, maxFreePositionErrorM: 0,
     maxContactPositionErrorM: 0, tickJumps: 0, maxCorrectionStepM: 0, maxVerticalCorrectionStepM: 0, correctionM: 0,
-    maxCorrectionM: 0,
+    maxCorrectionM: 0, visibleCorrections: 0,
   };
 
   constructor(spec: MovementSpec, world: PredictionWorld, policy: Partial<CorrectionPolicy> = {}) {
@@ -397,6 +399,7 @@ export class LocalPredictor {
     const correctionM = Math.hypot(c.x, c.y, c.z);
     this.stats.correctionM = correctionM;
     this.stats.maxCorrectionM = Math.max(this.stats.maxCorrectionM, correctionM);
+    if (correctionM > this.policy.maxHorizontalStepM) this.stats.visibleCorrections++;
     if (correctionM > this.policy.hardSnapM) {
       this.clearCorrection();
       this.holdingRest = false;
@@ -636,6 +639,8 @@ export class LocalPredictor {
 
   /** Diagnostics snapshot (no allocation beyond the copy). */
   getStats(): PredictionStats { return { ...this.stats }; }
+  /** The live counters without a copy (the status model samples them at its cadence). */
+  get liveStats(): Readonly<PredictionStats> { return this.stats; }
 
   /** A new socket or round: the next authority row seeds everything again. */
   reset(): void {

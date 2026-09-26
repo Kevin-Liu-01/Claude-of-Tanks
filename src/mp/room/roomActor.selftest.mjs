@@ -14,7 +14,7 @@ import { signSeatToken, verifySeatToken } from '../../../server/match/seatToken.
 const SECRET = 'room-actor-receipt-secret-0123456789';
 const T0 = 1_700_000_000_000;
 
-function createHarness({ code = 'ROOM01', host = null } = {}) {
+function createHarness({ code = 'ROOM01', host = null, region = undefined } = {}) {
   let now = T0;
   const sent = new Map();          // socketId -> envelopes
   const closed = new Map();        // socketId -> reason
@@ -37,6 +37,7 @@ function createHarness({ code = 'ROOM01', host = null } = {}) {
     closeSocket(socketId, reason) { closed.set(socketId, reason); },
     schedule(atMs) { scheduledAt = atMs; },
     persist() { persists++; },
+    ...(region ? { region } : {}),
   };
   const actor = new RoomActor(code, ports);
   const drain = (socketId) => { const list = sent.get(socketId) ?? []; sent.set(socketId, []); return list; };
@@ -60,6 +61,7 @@ const identity = (id, resume = token('a'), next = token('b')) => ({ roomCode: 'R
   assert.equal(created.requestId, 'q1');
   assert.equal(created.payload.room.adminId, 'admin');
   assert.equal(created.payload.seat, 0);
+  assert.equal(created.payload.region, undefined, 'a host without a region names none');
   const state = h.actor.exportState();
   assert.equal(state.resumeHashes.admin, createHash('sha256').update(token('b')).digest('hex'), 'the NEXT capability is what resumes; only its hash is kept');
   assert.ok(!JSON.stringify(state).includes(token('a')) && !JSON.stringify(state).includes(token('b')), 'raw capabilities never persist');
@@ -288,6 +290,18 @@ const identity = (id, resume = token('a'), next = token('b')) => ({ roomCode: 'R
   // a malformed frame and an oversized one are refused without effect
   await h.actor.handleMessage('a2', '{not json');
   assert.equal(h.last('a2', 'error').payload.code, 'invalid_payload');
+}
+
+// ---- a host that knows its region names it in every admission reply (the status surface shows it)
+{
+  const h = createHarness({ region: 'iad' });
+  h.actor.handleOpen('s1');
+  await h.send('s1', 'room_create', { ...identity('admin'), mode: 'private' }, 'q1');
+  assert.equal(h.last('s1', 'room_created').payload.region, 'iad');
+  h.actor.handleOpen('s2');
+  await h.send('s2', 'room_join', identity('guest', token('c'), token('d')), 'q2');
+  assert.equal(h.last('s2', 'room_joined').payload.region, 'iad');
+  assert.equal(h.last('s1', 'room_state').payload.room.region, undefined, 'the region is the reply\'s, never part of the room snapshot');
 }
 
 console.log('roomActor: PASS');

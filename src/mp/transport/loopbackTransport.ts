@@ -314,7 +314,7 @@ export function createLoopbackPair({
     dropConnection(reason, detail, attempt) {
       upLink.flush();
       downLink.flush();
-      client.transition('reconnecting', { reason, detail, attempt });
+      client.transition('reconnecting', { reason, detail, attempt, retryDelayMs: reconnectDelayMs });
       if (server.state === 'open') server.transition('reconnecting', { reason, detail, attempt });
     },
     peerClosed(role, detail) {

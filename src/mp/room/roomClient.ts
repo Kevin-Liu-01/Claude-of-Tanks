@@ -12,7 +12,7 @@ import type { WebSocketTransportOptions } from '../transport/webSocketTransport.
 import { Listeners } from '../transport/transport.ts';
 import type { Transport, TransportStateChange, Unsubscribe } from '../transport/transport.ts';
 import {
-  ROOM_CLIENT_MESSAGE, ROOM_MAX_PAYLOAD_BYTES, ROOM_RESUME_TOKEN_RE, ROOM_SERVER_MESSAGE, RoomError, isRecord,
+  ROOM_CLIENT_MESSAGE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE, ROOM_SERVER_MESSAGE, RoomError, isRecord,
   isRoomChatEntry, isRoomErrorCode, isRoomMatchStartPayload, isRoomMatchStatusPayload, normalizeRoomCode, parseRoomEnvelope,
   randomRoomCode, readRoomSnapshot, roomSocketPath,
 } from './protocol.ts';
@@ -22,6 +22,14 @@ import type {
 } from './protocol.ts';
 
 export type RoomClientPhase = 'idle' | 'connecting' | 'joined' | 'reconnecting' | 'closed';
+
+/** A phase change; `reconnecting` repeats per attempt with the attempt ordinal and the delay before it. */
+export interface RoomClientPhaseChange {
+  phase: RoomClientPhase;
+  detail: string;
+  attempt?: number;
+  retryDelayMs?: number;
+}
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -116,10 +124,13 @@ export class RoomClient {
   private readonly chatListeners = new Listeners<RoomChatEntry>();
   private readonly matchStartListeners = new Listeners<RoomMatchStartPayload>();
   private readonly matchStatusListeners = new Listeners<RoomMatchStatusPayload>();
-  private readonly phaseListeners = new Listeners<{ phase: RoomClientPhase; detail: string }>();
+  private readonly phaseListeners = new Listeners<RoomClientPhaseChange>();
   private readonly closedListeners = new Listeners<{ reason: string }>();
   private readonly pending = new Map<string, PendingRequest>();
   private transport: Transport | null = null;
+  private roomRegion: string | null = null;
+  private roomRttMs: number | null = null;
+  private pingSentAtMs: number | null = null;
   private unsubscribeTransport: Unsubscribe[] = [];
   private currentPhase: RoomClientPhase = 'idle';
   private roomCode = '';
@@ -176,12 +187,18 @@ export class RoomClient {
   /** The newest `match_start` this seat received (re-sent by the host after a resume). */
   get matchStart(): RoomMatchStartPayload | null { return this.lastMatchStart; }
   get lastClosedReason(): string | null { return this.closedReason; }
+  /** The seat ordinal this player holds (null before admission). */
+  get seat(): number | null { return this.me?.seat ?? null; }
+  /** Where the room host says it runs (`region` in the admission reply), else null. */
+  get region(): string | null { return this.roomRegion; }
+  /** The newest room round trip: the admission request, then each keepalive ping. */
+  get rttMs(): number | null { return this.roomRttMs; }
 
   onState(listener: (room: RoomSnapshot) => void): Unsubscribe { return this.stateListeners.add(listener); }
   onChat(listener: (entry: RoomChatEntry) => void): Unsubscribe { return this.chatListeners.add(listener); }
   onMatchStart(listener: (payload: RoomMatchStartPayload) => void): Unsubscribe { return this.matchStartListeners.add(listener); }
   onMatchStatus(listener: (payload: RoomMatchStatusPayload) => void): Unsubscribe { return this.matchStatusListeners.add(listener); }
-  onPhase(listener: (change: { phase: RoomClientPhase; detail: string }) => void): Unsubscribe { return this.phaseListeners.add(listener); }
+  onPhase(listener: (change: RoomClientPhaseChange) => void): Unsubscribe { return this.phaseListeners.add(listener); }
   /** The room is gone for this client: kicked, expired, resume denied, transport exhausted, left. */
   onClosed(listener: (change: { reason: string }) => void): Unsubscribe { return this.closedListeners.add(listener); }
 
@@ -219,10 +236,11 @@ export class RoomClient {
 
   // ------------------------------------------------------------ lifecycle
 
-  private setPhase(phase: RoomClientPhase, detail = ''): void {
-    if (this.currentPhase === phase) return;
+  private setPhase(phase: RoomClientPhase, detail = '', extra: Pick<RoomClientPhaseChange, 'attempt' | 'retryDelayMs'> = {}): void {
+    // Each reconnect attempt is its own change (the status surface shows the attempt and its countdown).
+    if (this.currentPhase === phase && phase !== 'reconnecting') return;
     this.currentPhase = phase;
-    this.phaseListeners.emit({ phase, detail });
+    this.phaseListeners.emit({ phase, detail, ...extra });
   }
 
   private openTransport(code: string): void {
@@ -255,7 +273,7 @@ export class RoomClient {
     } else if (change.state === 'reconnecting') {
       this.failPending(new RoomError('internal', 'connection lost'));
       this.stopPings();
-      this.setPhase('reconnecting', change.detail ?? '');
+      this.setPhase('reconnecting', change.detail ?? '', { attempt: change.attempt, retryDelayMs: change.retryDelayMs });
     } else if (change.state === 'closed') {
       this.failPending(new RoomError('internal', `connection closed (${change.reason ?? 'unknown'})`));
       this.stopPings();
@@ -278,7 +296,7 @@ export class RoomClient {
     const tick = () => {
       this.pingTimer = null;
       if (this.currentPhase !== 'joined') return;
-      this.sendEnvelope({ type: ROOM_CLIENT_MESSAGE.PING, payload: {} });
+      if (this.sendEnvelope({ type: ROOM_CLIENT_MESSAGE.PING, payload: {} })) this.pingSentAtMs = this.clock();
       this.pingTimer = this.setTimer(tick, this.pingIntervalMs);
     };
     this.pingTimer = this.setTimer(tick, this.pingIntervalMs);
@@ -287,6 +305,7 @@ export class RoomClient {
   private stopPings(): void {
     if (this.pingTimer !== null) this.clearTimer(this.pingTimer);
     this.pingTimer = null;
+    this.pingSentAtMs = null;
   }
 
   // ------------------------------------------------------------ wire
@@ -370,6 +389,12 @@ export class RoomClient {
           this.matchStatusListeners.emit(payload);
         }
         break;
+      case ROOM_SERVER_MESSAGE.PONG:
+        if (this.pingSentAtMs !== null) {
+          this.roomRttMs = Math.max(0, this.clock() - this.pingSentAtMs);
+          this.pingSentAtMs = null;
+        }
+        break;
       case ROOM_SERVER_MESSAGE.CLOSED:
         this.closedReason = typeof payload.reason === 'string' ? payload.reason : 'room_closed';
         this.writeResume(this.roomCode, null);
@@ -404,7 +429,10 @@ export class RoomClient {
     const resume = this.readResume(code);
     this.writeResume(code, resume);
     const type = kind === 'create' ? ROOM_CLIENT_MESSAGE.CREATE : ROOM_CLIENT_MESSAGE.JOIN;
+    const requestedAtMs = this.clock();
     const response = await this.request(type, { ...payload, resumeToken: resume.token, nextResumeToken: resume.next });
+    this.roomRttMs = Math.max(0, this.clock() - requestedAtMs);
+    this.roomRegion = typeof response.region === 'string' && response.region ? response.region.slice(0, ROOM_MAX_REGION_CHARS) : null;
     // Rotate: the host now holds the hash of `next`; a leaked older token is useless.
     this.writeResume(code, { token: resume.next, next: this.randomHex() });
     this.admission = { kind, payload };
@@ -525,10 +553,11 @@ export class RoomClient {
   }
 
   /** Diagnostics for the F3 panel and the receipts. */
-  stats(): { phase: RoomClientPhase; roomCode: string; revision: number; players: number; transport: string; pending: number } {
+  stats(): { phase: RoomClientPhase; roomCode: string; revision: number; players: number; transport: string; pending: number; rttMs: number | null; region: string | null } {
     return {
       phase: this.currentPhase, roomCode: this.roomCode, revision: this.roomSnapshot?.revision ?? -1,
       players: this.roomSnapshot?.players.length ?? 0, transport: this.transport?.state ?? 'none', pending: this.pending.size,
+      rttMs: this.roomRttMs, region: this.roomRegion,
     };
   }
 }

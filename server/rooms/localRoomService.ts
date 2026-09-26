@@ -39,6 +39,8 @@ export interface LocalRoomServiceOptions {
   log?: Logger;
   wallClock?: () => number;
   random?: () => number;
+  /** Named in admission replies; the LAN helper and the receipts run on `lan`. */
+  region?: string;
 }
 
 export interface LocalRoomService {
@@ -125,6 +127,7 @@ export function createLocalRoomService({
   log = silentLogger,
   wallClock = () => Date.now(),
   random = Math.random,
+  region = 'lan',
 }: LocalRoomServiceOptions): LocalRoomService {
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
   const origins = allowedOrigins && allowedOrigins.length ? new Set(allowedOrigins.map((origin) => origin.trim())) : null;
@@ -148,6 +151,7 @@ export function createLocalRoomService({
       sha256Hex,
       signSeatToken: (claims) => signSeatToken(seatSecret, claims),
       matchHost,
+      region,
       send(socketId, message: RoomEnvelope) {
         const socket = sockets.get(socketId);
         if (!socket || socket.readyState !== socket.OPEN) return;
