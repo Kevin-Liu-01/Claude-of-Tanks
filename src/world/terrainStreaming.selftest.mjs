@@ -222,7 +222,11 @@ function validateGeometry(geometry, segs) {
   assert.ok(positions instanceof Float32Array);
   assert.ok(normals instanceof Float32Array);
   assert.ok(geometry.index.array instanceof Uint16Array);
-  assert.deepEqual(Object.keys(geometry.attributes), ['position', 'normal']);
+  // round 73 (2026-09-25, the ground redux): every chunk carries its baked fold term — one normalised byte per
+  // vertex (−1 crest .. +1 hollow); the digests below stay on positions / normals / index / bounds
+  assert.deepEqual(Object.keys(geometry.attributes), ['position', 'normal', 'fold']);
+  assert.ok(geometry.attributes.fold.array instanceof Int8Array && geometry.attributes.fold.normalized === true
+    && geometry.attributes.fold.count === vcount && geometry.attributes.fold.itemSize === 1, 'the fold byte rides every vertex');
   assert.deepEqual(geometry.groups, []);
   assert.deepEqual(geometry.drawRange, { start: 0, count: Infinity });
   assert.equal(geometry.boundingBox, null, 'chunk emitter retains sphere-only bounds');

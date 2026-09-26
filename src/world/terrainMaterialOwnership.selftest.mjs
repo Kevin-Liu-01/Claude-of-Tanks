@@ -117,6 +117,9 @@ function checkSourceContract(text) {
     // failed to link and the terrain drew with no program for a round); the atlas rides in uNrmM's unit during the bands' draw, flagged
     // by uRingDraw, with its radius window, gradient scale and amplitude
     'uRingDraw', 'uRingReliefR', 'uRingReliefGrad', 'uRingReliefAmp',
+    // round 73 (2026-09-25, the ground redux): four packed vectors (transitions / folds / the wet strand / snow) and
+    // the world clock the swash breathes on — no sampler, the material stays at the 16-unit budget
+    'uReduxA', 'uReduxFold', 'uReduxSwash', 'uReduxSnow', 'uGroundTime',
   ].sort();
   assert.deepEqual(uniforms, expected, 'no new shader uniform or sampler');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -129,8 +132,9 @@ function checkSourceContract(text) {
   // round 42 (2026-09-23): the program cache key moved with the sky-light fragment (was v31, relief pass 2 of 2026-09-12)
   // round 49 (2026-09-23): v38 — jointed marker-bed strata and the per-map ring rock band
   // round 55 (2026-09-24): v39 — the bedded sandstone maps' analytic wall crag replaces the tile's coarse wall tap
-  // round 72b (2026-09-25): v40 — the ring bands read the horizon's surface atlas; v41 — through the M normal's unit (no seventeenth sampler)
-  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v41';/);
+  // round 72b (2026-09-25): v40 — the ring bands read the horizon's surface atlas; v41 — through the M normal's unit (no seventeenth sampler);
+  // round 73 (2026-09-26 rebase over 72b): v42 — the ground redux (height transitions, scree, snow drifts, folds, the wet strand, glint, the mid octave)
+  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v42';/);
   // the sampler budget: every sampler2D the fragment declares, no more than the ten layer samplers (four cascades, the environment
   // map and the DFG LUT fill the other six units)
   const samplers = [...text.matchAll(/uniform sampler2D ([^;]+);/g)].flatMap((m) => m[1].split(',').map((n) => n.trim()));
@@ -161,6 +165,6 @@ await rejects(replaceOnce(source, nearAlbedo(source), nearAlbedo(source).replace
 await rejects(replaceOnce(source, normalTerm(source, 'gnF'), 'gnF.xy * farM * 0.24'), 'far normal bypass');
 await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('farG *', 'farM *')), 'far albedo bypass');
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
-assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v41', 'world-terrain-splat-v40')));
+assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v42', 'world-terrain-splat-v41')));
 assert.throws(() => checkSourceContract(source.replace('uniform sampler2D uMask, uNoise;', 'uniform sampler2D uMask, uNoise, uRingRelief;')), 'a seventeenth sampler is refused');
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');

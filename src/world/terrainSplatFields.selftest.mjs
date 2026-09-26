@@ -6,6 +6,9 @@ import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { tileableTorusNoise } from './proceduralTexture.ts';
+// round 73 (2026-09-25): the material resolves its ground-redux profile from the map id (groundRedux.ts, THREE-free);
+// the sandboxed material steps take the real functions
+import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 
 // Frozen before pacing, b1c6629a30132381a120cf4961aa10cfa5a46109. Never derive
 // the comparator from the candidate generator or refresh this hash for pacing.
@@ -95,7 +98,7 @@ function fixture({ original = false, closeThrows = false } = {}) {
     ...['buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
   const compile = new Function('THREE', 'SimplexNoise', 'torusNoise', 'canvasToTexture',
-    'layer', 'own', 'state', 'closeThrows', stripTypeScriptTypes(`
+    'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', stripTypeScriptTypes(`
     const SPLAT_FIELD_S = 256, CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512;
     const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '';
     let _splatFields = null;
@@ -135,7 +138,7 @@ function fixture({ original = false, closeThrows = false } = {}) {
     texture.image = { pixels: pixels.slice(), width: size, height: size };
     state.uploads.push({ pixels: texture.image.pixels, size, options });
     return texture;
-  }, layer, own, state, closeThrows);
+  }, layer, own, state, closeThrows, groundReduxUniformValues, resolveGroundReduxProfile);
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };
   const height = { _layout: { spawns: { player: { x: 0, z: 0 } }, terrain: {} } };
   return { api, state, engine, height, dispose(group) {

@@ -12,7 +12,11 @@ import {
   createHeightFieldAsync,
   buildTerrainMeshes,
   buildTerrainMeshesAsync,
+  sampleSplatNoise,
 } from './terrain.ts';
+// Round 73 (2026-09-25): the tall-grass tier and the pressure field its blades bend to
+import { createTallGrass, type TallGrass } from './tallGrass.ts';
+import type { GroundDisturbance } from './groundPressure.ts';
 import type { HeightField, TerrainMapConfig } from './terrain.ts';
 import {
   createVegetation,
@@ -183,6 +187,8 @@ export interface WorldRuntime {
   setWindTime(timeSeconds: number): void;
   /** Water pass 6/7: the vehicles in the water this frame (footprint, heading, speed -> wake). No-op on maps without water. */
   setWaterDisturbances(sources: readonly WaterDisturbance[]): void;
+  /** Round 73: every hull this frame (footprint, heading, speed) — the tall grass lies down under it. */
+  setGroundDisturbances?(sources: readonly GroundDisturbance[]): void;
   setSniperFade(
     fraction: number,
     immediate?: boolean,
@@ -191,6 +197,8 @@ export interface WorldRuntime {
   ): void;
   group: THREE.Group;
   _buildDetail?: { vegetation: RuntimeValue; terrain: RuntimeValue; props: RuntimeValue };
+  /** Round 73: the tall-grass tier (diagnostics and the round's probes). */
+  _tallGrass?: TallGrass;
 }
 
 const _pt = new THREE.Vector3();
@@ -374,6 +382,19 @@ function assembleWorld(
     releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
   });
   group.add(litter.group);
+  // Round 73 (2026-09-25, the ground redux): the tall-grass tier — blades in a camera-centred ring, bent by the
+  // world-anchored pressure field every hull stamps (groundPressure.ts), kept out of the same sealed footprints;
+  // null field on the mobile tier and without a renderer (receipts), where the sward is absent or stands still
+  const tallGrass = createTallGrass(heightField, {
+    seed: 2006,
+    mapId: config.id,
+    blocked: createGroundCoverClearance(queryObstacles),
+    renderer: (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer ?? null,
+    splatNoise: sampleSplatNoise,
+    setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
+    releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+  });
+  group.add(tallGrass.group);
   const rayCandidates: CollisionRecord[] = [];
 
   const sp = layout.spawns;
@@ -499,6 +520,7 @@ function assembleWorld(
       unregisterDestructibles();
       vegetation.dispose();
       litter.dispose();
+      tallGrass.dispose(); // round 73: the sward, its materials and the pressure field's targets
       terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
     },
     config,
@@ -506,6 +528,8 @@ function assembleWorld(
     minimapTextureState,
     // Checkpoint-only diagnostics; never force streaming or alter readiness.
     getGrassWorkState: () => vegetation.getGrassWorkState(),
+    /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
+    _tallGrass: tallGrass,
     raycast,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,
@@ -612,6 +636,7 @@ function assembleWorld(
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
       litter.update(cameraPos);
+      tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
     },
     /**
@@ -623,8 +648,10 @@ function assembleWorld(
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
-    setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); },
+    setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
+    /** Round 73: the hulls' footprints this frame press the tall grass (main.ts publishes every vehicle). */
+    setGroundDisturbances(sources) { tallGrass.setDisturbances(sources); },
     /**
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).
      * @param {number} f target fade 0..1
@@ -641,6 +668,7 @@ function assembleWorld(
       aimDistM: number | null = null,
     ) {
       vegetation.setSniperFade(f, immediate, fovDeg, aimDistM);
+      tallGrass.setSniperFade(f, immediate); // round 73: the blades clear the scope corridor with the tufts
     },
     group,
   };

@@ -10,6 +10,9 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { createOpaqueLoadingYielder } from '../engine/frameScheduler.ts';
 import { resolveDeviceTier, texSize } from '../engine/quality.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
+// round 73 (2026-09-25): the material resolves its ground-redux profile from the map id (groundRedux.ts, THREE-free);
+// the sandboxed material steps take the real functions
+import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 
 // Frozen synchronous painter from 465a68f7c, independent of candidate steps.
 // Native Canvas2D is mandatory. No upload-only stub or rasterizer skip is used.
@@ -89,7 +92,7 @@ function fixture({ text = source, observe = null } = {}) {
   // consumer run together. Unrelated horizon/geometry/source I/O is peripheral;
   // real Three objects retain the material/texture identity boundary.
   const create = new Function('THREE', 'SimplexNoise', 'texSize', 'torusNoise',
-    'canvasToTexture', 'normalFromHeight', 'layer', 'own', 'state', stripTypeScriptTypes(`
+    'canvasToTexture', 'normalFromHeight', 'layer', 'own', 'state', 'groundReduxUniformValues', 'resolveGroundReduxProfile', stripTypeScriptTypes(`
     const _col = new THREE.Color(), _toneCol = new THREE.Color();
     const _toneHsl = { h: 0, s: 0, l: 0 };
     const CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512, LOD_SEGS = [96,48,24];
@@ -122,7 +125,7 @@ function fixture({ text = source, observe = null } = {}) {
   }, (...args) => own(textureFromRgbaPixels(...args)), (height, ...args) => {
     state.heights.push(height.slice());
     return own(normalTextureFromHeight(height, ...args));
-  }, layer, own, state);
+  }, layer, own, state, groundReduxUniformValues, resolveGroundReduxProfile);
   const sourcePreparation = { tryCreateLayer: layer, apply: () => Promise.resolve([]),
     cancel() { state.sourceCancels++; } };
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };

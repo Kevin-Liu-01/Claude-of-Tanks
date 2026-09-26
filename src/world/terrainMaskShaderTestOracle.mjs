@@ -77,6 +77,10 @@ export function assertTerrainFetchExpressionCensus(source) {
   // round 55 (2026-09-24): +2 — the bedded sandstone maps' analytic wall crag takes one slow phase fetch per wall
   // plane inside the uBeddedR branch (the tile's two coarse wall taps stay in the other branch), so a fragment
   // never pays more than before; the photo-rock maps are unchanged.
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
-    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps; lexical census only');
+  // round 73 (2026-09-25, the ground redux): +7 — the layers' tile means for the height transitions (three deep-mip
+  // taps: G, D, R) and the D layer's own near tap (a cache hit on the consumer's texel), the mid-distance normal
+  // octave (26–150 m band only), the snow drifts' wind swing (snow maps only) and the glint noise (inside 42 m, snow
+  // maps only); no new sampler — the material stays at the 16-unit budget.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps; lexical census only');
 }

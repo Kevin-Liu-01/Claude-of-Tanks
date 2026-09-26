@@ -67,6 +67,11 @@ export interface QualityPreset {
   readonly groundBounce?: boolean;
   readonly sunShafts?: boolean;
   readonly lensFlare?: boolean;
+  /**
+   * Round 73 (2026-09-25): the tall-grass tier's density scale (world/tallGrass.ts) — 1 the full sward, Low a
+   * quarter, Medium half; absent means no tier (the mobile presets keep today's ground). Read live per cell build.
+   */
+  readonly tallGrass?: number;
   readonly maxPixelRatio: number;
   readonly adaptiveBasePixelRatio?: number;
   readonly dynMin: number;
@@ -218,6 +223,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // The pass, its RCAS floor and receipts stay in place: set taa: true on a preset to re-enable it.
     taa: false,
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
+    tallGrass: 1.0, // round 73 (2026-09-25): the full sward
     maxPixelRatio: 2.0,
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
     // may fall to 1.5 — still the complete High raster, never below it.
@@ -252,6 +258,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
+    tallGrass: 1.0, // round 73 (2026-09-25): the full sward
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
@@ -265,6 +272,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
+    tallGrass: 0.5, // round 73 (2026-09-25): half the sward
     maxPixelRatio: 1.0,
     // Medium/Low already shed AA, AO and shadow cost. Do not multiply that
     // fallback by another hidden 0.75 dynamic scale: desktop readability
@@ -278,6 +286,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   low: {
     label: 'Low',
     msaaSamples: 0,
+    tallGrass: 0.25, // round 73 (2026-09-25): a quarter of the sward
     maxPixelRatio: 1.0,
     dynMin: 1.0,
     aoScale: 0,

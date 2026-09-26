@@ -108,6 +108,7 @@ import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts'
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import type { WaterDisturbance } from './world/shallowWater.ts';
+import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
@@ -2962,6 +2963,8 @@ const baseWorldFramePresentation = createWorldFramePresentationRuntime({
 // The frontline ticks with the world presentation: live battle frames only,
 // never the Garage, a paused battle, or a dormant world.
 const wakeSources: WaterDisturbance[] = [];
+// Round 73 (2026-09-25): every hull's footprint this frame, in water or not — the tall grass lies down under it
+const groundSources: GroundDisturbance[] = [];
 const worldFramePresentation = {
   update(dtSeconds: number, inBattle: boolean, killcamActive: boolean): void {
     baseWorldFramePresentation.update(dtSeconds, inBattle, killcamActive);
@@ -2972,28 +2975,35 @@ const worldFramePresentation = {
       if (wakeWorld) {
         const field = wakeWorld.heightField as { getWaterMaskAt?: (x: number, z: number) => number };
         wakeSources.length = 0;
-        if (field.getWaterMaskAt) {
-          const entities = networkSession.bridge ? game.tankById.values() : game.tanks;
-          for (const ent of entities) {
-            const st = ent?.state; const p = st?.pos;
-            if (!p || wakeSources.length >= 8) continue;
-            const mask = field.getWaterMaskAt(p.x, p.z);
-            if (!(mask > 0.05)) continue;
-            const speed = st.speed ?? 0;
-            // Water pass 7 (2026-09-20): the hull's footprint, heading and direction of travel
-            // shape the wake. A standing hull still laps the water around it (0.6); a moving
-            // one throws a full wake; a reversing one trails it ahead of the bow.
-            const rect = ent.spec ? tankContactRect(ent.spec) : null;
-            const travel = speed < -0.05 ? -1 : 1;
-            const fx = Math.sin(st.yaw ?? 0), fz = Math.cos(st.yaw ?? 0);
-            wakeSources.push({
-              x: p.x, z: p.z, strength: Math.min(1, mask * (0.6 + Math.abs(speed) / 6)),
-              dirX: fx * travel, dirZ: fz * travel, speed: Math.abs(speed),
+        groundSources.length = 0;
+        const entities = networkSession.bridge ? game.tankById.values() : game.tanks;
+        for (const ent of entities) {
+          const st = ent?.state; const p = st?.pos;
+          if (!p) continue;
+          const speed = st.speed ?? 0;
+          const rect = ent.spec ? tankContactRect(ent.spec) : null;
+          const travel = speed < -0.05 ? -1 : 1;
+          const fx = Math.sin(st.yaw ?? 0), fz = Math.cos(st.yaw ?? 0);
+          if (groundSources.length < 8) {
+            groundSources.push({
+              x: p.x, z: p.z, dirX: fx * travel, dirZ: fz * travel, speed: Math.abs(speed),
               halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
             });
           }
+          if (!field.getWaterMaskAt || wakeSources.length >= 8) continue;
+          const mask = field.getWaterMaskAt(p.x, p.z);
+          if (!(mask > 0.05)) continue;
+          // Water pass 7 (2026-09-20): the hull's footprint, heading and direction of travel
+          // shape the wake. A standing hull still laps the water around it (0.6); a moving
+          // one throws a full wake; a reversing one trails it ahead of the bow.
+          wakeSources.push({
+            x: p.x, z: p.z, strength: Math.min(1, mask * (0.6 + Math.abs(speed) / 6)),
+            dirX: fx * travel, dirZ: fz * travel, speed: Math.abs(speed),
+            halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
+          });
         }
         wakeWorld.setWaterDisturbances(wakeSources);
+        wakeWorld.setGroundDisturbances?.(groundSources);
       }
       // Frontline Assault brings the front closer with every sector taken.
       const line = game.matchModeState?.line;
