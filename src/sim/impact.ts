@@ -20,7 +20,7 @@ import type { RulesetPhysics } from './matchRuleset.ts';
 
 export type HullImpactKind = 'impact' | 'fall';
 
-export interface ImpactModuleHit {
+interface ImpactModuleHit {
   module: ModuleId;
   newState: ModuleStateName;
   dmg: number;
@@ -36,9 +36,9 @@ export interface HullImpactResult {
 }
 
 /** The slice of a combat state an impact writes (damage.ts CombatState and the authority's state both satisfy it). */
-export type ImpactCombatState = Pick<CombatState, 'hp' | 'maxHp' | 'destroyed' | 'modules' | 'crew' | 'modeDamageTakenScale' | 'modeCriticalDamage'>;
+type ImpactCombatState = Pick<CombatState, 'hp' | 'maxHp' | 'destroyed' | 'modules' | 'crew' | 'modeDamageTakenScale' | 'modeCriticalDamage'>;
 
-export interface HullImpactInput {
+interface HullImpactInput {
   combat: ImpactCombatState;
   massTons: number;
   physics: RulesetPhysics;
@@ -244,7 +244,7 @@ export function resolveHullImpact(input: HullImpactInput): HullImpactResult | nu
 // ---- tank on tank -----------------------------------------------------------------------------------------
 
 /** The slice of a movement state a ram reads and shoves. */
-export interface RamBodyState {
+interface RamBodyState {
   yaw: number;
   speed: number;
   _spring: { recoilVX: number; recoilVZ: number };
