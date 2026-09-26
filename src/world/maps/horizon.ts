@@ -2916,7 +2916,11 @@ export function* buildHorizonRingSteps(
   // Round 72: the far range — the peaks behind the ring (1.9–3.3 km, inside the cloud dome and the camera's far
   // plane), one unlit vertex-shaded draw with its own aerial perspective; capped under a map's low cloud deck
   if (vista && H.farRange !== false && reliefSettings.far) {
-    const deckBaseM = (cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM ?? cfg?.sky?.cloudAltM ?? 1400;
+    // the lower of the baked deck's altitude and the volumetric cloudscape's authored base (whichever layer is on, the
+    // peaks stay under it); a map that authors neither takes the default deck
+    const deckBaseM = Math.min(
+      (cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM ?? Infinity, cfg?.sky?.cloudAltM ?? Infinity,
+      ...((cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM === undefined && cfg?.sky?.cloudAltM === undefined ? [1400] : []));
     const farRange = buildHorizonFarRange({
       seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
       deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC,
