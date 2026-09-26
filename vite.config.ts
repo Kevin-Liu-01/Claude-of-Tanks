@@ -119,7 +119,9 @@ function forceNotFoundStatus(res: ServerResponse): void {
 
 export default defineConfig({
   // Static wreck workers retain the same on-demand fleet-family imports.
-  worker: { format: 'es' },
+  // The worker build is a separate bundle: its chunks (the fleet family modules the wreck workers import) take the
+  // same base36 hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
+  worker: { format: 'es', rollupOptions: { output: { hashCharacters: 'base36' } } },
   plugins: [
     {
       name: 'cot-app-version',
@@ -211,6 +213,12 @@ export default defineConfig({
         docsInterface: resolve(process.cwd(), 'docs-interface.html'),
         docsStudio: resolve(process.cwd(), 'docs-studio.html'),
         gallery: resolve(process.cwd(), 'gallery.html'),
+      },
+      output: {
+        // 2026-09-25: hashes encode as base36 — every /assets URL changed once so no edge node keeps serving
+        // the 404s it cached for deploy-93 chunks under the deploy-89 immutable rule (docs/DEVELOPMENT.md
+        // "Asset caching"); the eight-character width and the [name]-[hash] shape stay the same.
+        hashCharacters: 'base36',
       },
     },
   },
