@@ -407,8 +407,9 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	// round 76: a deck's thin cell borders open where the coverage is marginal (the breaks follow the cell borders)
 	covH *= mix( 1.0, 0.55 + 0.45 * cellK, uCells * 0.5 );
 	float d = remap( base, 1.0 - covH, 1.0, 0.0, 1.0 ) * w.cov;
-	// round 76: the cell cores are the dense columns, the borders thin (the optical depth the underside is lit through)
-	d *= mix( 0.55, 1.0, cellK );
+	// round 76: the cell cores are the dense columns, the borders a little thinner (their height carries most of the
+	// optical depth the underside is lit through; a thin border at half density took twenty lit steps to go opaque)
+	d *= mix( 0.8, 1.0, cellK );
 	if ( detail && d > 0.0 && d < 0.95 && uDebug != 2.0 ) {
 		// two Worley-fbm fetches on a lattice the curl field advects (more with height: turbulent tops, calm
 		// bases): the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where the pixel
@@ -446,23 +447,23 @@ float cloudDensity( vec3 p, Weather w, bool detail, float foot ) {
 }
 // light optical depth toward the sun from p (the weather column of p for the near taps); the tap ladder is
 // scaled per texel by the blue noise so the banding of a fixed ladder decorrelates between neighbouring rays
-float cloudLightDepth( vec3 p, Weather w, float scale, bool short_ ) {
+// (round 76: the two near taps share the point's column and its cell factor — no second cell fetch — and the
+// detailed first tap of the interior octave skips the fine erosion octave, a footprint past its fade)
+float cloudLightDepth( vec3 p, Weather w, float scale, bool short_, float cellK ) {
 	float od = 0.0;
 ${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? `if ( !short_ && od * uDensity < 4.0${k >= 3 ? ' && uStratiform < 0.5' : ''}${k >= 4 ? ' && uThick < 2000.0' : ''} ) ` : ''}{
 		vec3 lp = p + uSunDir * ( ${f(dist)} * scale );
-		Weather lw = ${k < 2 ? 'w' : 'cloudWeather( cloudColumnXZ( lp ) )'};
-		od += cloudDensity( lp, lw, ${k === 0 ? 'uInterior > 0.0' : 'false'}, 0.0 ) * ( ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))} * scale );
+		${k < 2 ? `od += cloudDensityK( lp, w, ${k === 0 ? 'uInterior > 0.0' : 'false'}, ${k === 0 ? '100.0' : '0.0'}, cellK )` : 'od += cloudDensity( lp, cloudWeather( cloudColumnXZ( lp ) ), false, 0.0 )'} * ( ${f(dist - (k === 0 ? 0 : CLOUD_LIGHT_TAPS[k - 1]))} * scale );
 	}`).join('\n')}
 	return od * uDensity;
 }
-// round 76: the optical depth of the column above p to its top — three base-shape taps spread over the remaining
+// round 76: the optical depth of the column above p to its top — two base-shape taps spread over the remaining
 // height (the ladder scaled per texel like the light march's): a deck's underside is lit by what its column
 // transmits, so the thick cores read dark and the thin borders bright
 float cloudColumnDepthAbove( vec3 p, Weather w, float scale, float cellK ) {
 	float rem = max( uBase + uThick * max( w.top, 0.05 ) - p.y, 20.0 );
-	float od = cloudDensityK( p + vec3( 0.0, rem * 0.15 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.3
-		+ cloudDensityK( p + vec3( 0.0, rem * 0.45 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.3
-		+ cloudDensityK( p + vec3( 0.0, rem * 0.8 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.4;
+	float od = cloudDensityK( p + vec3( 0.0, rem * 0.22 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.45
+		+ cloudDensityK( p + vec3( 0.0, rem * 0.66 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.55;
 	return od * rem * uDensity;
 }
 // optical depth of the cloud above p toward the zenith (two base-shape taps): the underside of a thick lump
@@ -534,7 +535,8 @@ void main() {
 			// the ladder scale rotates with the frame like the start offset (a static per-texel scale never averages
 			// out of the history and read as a block pattern)
 			float lightScale = 0.75 + 0.5 * jitter;
-			float ds0 = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + 2.5 * uStratiform ) * uStepScale, ${f(CLOUD_STEP_MAX_M)} );
+			// (round 76: a cellular deck takes a sheet's stride floor — its structure is the cells', hundreds of metres across)
+			float ds0 = clamp( span / ${f(CLOUD_MARCH_STEPS)}, max( ${f(CLOUD_STEP_MIN_M)}, uThick / 40.0 ) * ( 1.0 + 2.5 * max( uStratiform, uCells * 0.8 ) ) * uStepScale, ${f(CLOUD_STEP_MAX_M)} );
 			if ( uDebug == 9.0 ) ds0 *= 0.5;
 			float t = t0 + ds0 * ( uDebug == 10.0 ? 0.5 : jitter );
 			float tAcc = 0.0, wAcc = 0.0;
@@ -545,7 +547,8 @@ void main() {
 				if ( t > t1 || T < 0.03 ) break;
 				// the stride never falls under the trace texel's footprint (four history pixels: a far bank needs
 				// no eight-metre steps — 28 m at 3 km, 83 m at 9 km)
-				float ds = max( ds0 * ( 1.0 + smoothstep( 3000.0, 9000.0, t ) * ( uThick > 2000.0 ? 1.0 : 0.4 ) ), min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
+				// (round 76: a deck's grazing far rays stride like a tall slab's — the cells are hundreds of metres across)
+				float ds = max( ds0 * ( 1.0 + smoothstep( 3000.0, 9000.0, t ) * ( uThick > 2000.0 || uCells > 0.0 ? 1.0 : 0.4 ) ), min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
 				vec3 p = uCamPos + dir * t;
 				vec2 cxz = cloudColumnXZ( p );
 				Weather w = cloudWeather( cxz );
@@ -570,7 +573,7 @@ void main() {
 					// is dark under its towers whatever the far taps read
 					bool shortLadder = uThick > 2000.0 && hN < 0.34;
 					if ( scudPt ) lastLight = 6.0;
-					else if ( lastLight < 0.0 || ( ( lit & 1 ) == 0 && T > 0.15 ) ) lastLight = uDebug == 3.0 ? 0.0 : cloudLightDepth( p, w, lightScale, shortLadder );
+					else if ( lastLight < 0.0 || ( ( lit & 1 ) == 0 && T > 0.15 ) ) lastLight = uDebug == 3.0 ? 0.0 : cloudLightDepth( p, w, lightScale, shortLadder, cellK );
 					lit++;
 					float tau = lastLight + sig * 2.0;
 					// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
@@ -661,8 +664,9 @@ void main() {
 					wAcc += dT;
 					T *= Tstep;
 					t += ds;
-				} else if ( w.cov <= 0.0 && uDebug != 8.0 ) {
-					// clear air between masses (the weather admits no column here): stride longer until cloud is met
+				} else if ( ( w.cov <= 0.0 || cellK < 0.08 ) && uDebug != 8.0 ) {
+					// clear air between masses (the weather admits no column here, or — round 76 — a deck's open cell
+					// border): stride longer until cloud is met
 					empty = min( empty + 1, 4 );
 					t += ds * ( 1.0 + float( empty ) * 0.5 );
 				} else {

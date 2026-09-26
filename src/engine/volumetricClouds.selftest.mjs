@@ -226,7 +226,7 @@ assert.deepEqual(table, {
   blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4 },
   titan_gorge: { regime: 'dense-overcast', coverage: 0.96, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6 },
   skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5 },
-  polders: { regime: 'broken-stratocumulus', coverage: 0.72, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5 },
+  polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5 },
   copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
   airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
   oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
@@ -260,7 +260,7 @@ assert.deepEqual(table, {
     const row = CLOUDSCAPE_REGIMES[name];
     assert.ok(row.cells > 0 && row.deckLight === 1 && row.undulatus > 0, `${name}: a cellular deck lit by what its columns transmit`);
   }
-  assert.ok(CLOUDSCAPE_REGIMES['broken-stratocumulus'].deckLight > 0.5 && CLOUDSCAPE_REGIMES['broken-stratocumulus'].interior > 0, 'a broken stratocumulus blends the deck lighting with the cumuliform model and takes the interior octave');
+  assert.ok(CLOUDSCAPE_REGIMES['broken-stratocumulus'].deckLight === 1 && CLOUDSCAPE_REGIMES['broken-stratocumulus'].interior > 0, 'a broken stratocumulus takes the deck lighting whole (the blend paid both lighting paths: polders 1.7 ms) and the interior octave');
   assert.ok(CLOUDSCAPE_REGIMES.altocumulus.cellM < 700 && CLOUDSCAPE_REGIMES.altocumulus.baseM >= 2500 && CLOUDSCAPE_REGIMES.altocumulus.stratiform < 0.5, 'altocumulus: small elements high, cumuliform enough to keep lit borders');
   // the monsoon front keeps the sky over the camera open (round 68's ruling) with scud and anvils; the
   // white-out ceiling is a sheet at its authored altitude; the winter deck is a lumpy stratocumulus
@@ -282,7 +282,7 @@ assert.deepEqual(table, {
   assert.ok(railyard.regime === 'industrial-stratocumulus' && railyard.coverage === 0.92 && railyard.cells === 0.9 && railyard.cellM === 1300 && railyard.density === 0.16 && railyard.sunGain === 0.7 && railyard.undulatus === 0.35, 'railyard: a closed dirty deck with subdued wide cells and undulatus bands');
   assert.ok(railyard.tint.every((c) => c < foundry.tint[1]) && railyard.tint[0] - railyard.tint[2] < foundry.tint[0] - foundry.tint[2], 'railyard: a dirtier, less warm base than foundry\'s');
   const urban = deriveCloudLayerPreset(skyOf('urban'));
-  assert.ok(urban.regime === 'altocumulus' && urban.cellM === 340 && urban.interior === 0.4 && urban.deckLight === 0.8, 'urban: an altocumulus layer of small elements');
+  assert.ok(urban.regime === 'altocumulus' && urban.cellM === 340 && urban.interior === 0.4 && urban.deckLight === 1, 'urban: an altocumulus layer of small elements');
   assert.notEqual(cloudLayerKey(winter), cloudLayerKey({ ...winter, cells: 0 }), 'the key follows the deck knobs');
   // the sea maps' wind comes from their authored ocean, the streets follow it
   const coastal = deriveCloudLayerPreset(skyOf('coastal'));
