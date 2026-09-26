@@ -2824,6 +2824,16 @@ uniform vec4 uReduxFold;
 uniform vec4 uReduxSwash;
 uniform vec3 uReduxSnow;
 uniform float uGroundTime;   // round 73: the world clock the swash breathes on (the water sheet's own time)
+// Round 73b (2026-09-26, the second pass — the integrator's eye-check: the terrain terms and the strand were invisible
+// at the ground-mid and strand views): two more packed vectors, still no sampler. uReduxB = (border lip, road verge,
+// outcrop rim, mid albedo octave); uReduxC = (the outcrop rim's climate tint rgb, the snow drifts' lee edge).
+// uReduxSwash.y is now the swash's mean reach in METRES (the band is read off the baked shore distance, not the mask's
+// two-metre apron) and uReduxSwash.w the foam / wrack line strength.
+uniform vec4 uReduxB;
+uniform vec4 uReduxC;
+varying float vShore;        // round 73b: metres landward of the sheet's waterline, baked per vertex (32 = no shore near)
+float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen in the roughness stage)
+float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
 float gFoldAO = 1.0;         // round 73: indirect occlusion in the folds, read by the aomap hook
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
@@ -3170,6 +3180,13 @@ void splatCompute() {
   if (uSea > 0.5) {
     fMs = smoothstep(uSeaRamp.x, uSeaRamp.y, fM);
     seaSand = smoothstep(0.02, uSeaRamp.x, fM) * (1.0 - fMs);
+    // round 73b: the swash band's substrate — the sand / mud layer runs under the film and the damp band to the
+    // high-water mark (metres from the waterline, the baked shore distance), so the wet strand is wet SAND
+    if (uReduxSwash.z > 0.001) {
+      float strandSub = (1.0 - smoothstep(uReduxSwash.y * 1.3 + 0.8, uReduxSwash.y * 1.3 + 3.0, vShore))
+        * (1.0 - fMs) * (1.0 - smoothstep(0.20, 0.42, slope));
+      seaSand = max(seaSand, strandSub * 0.85);
+    }
   }
   // <<< maps r1 ---------------------------------------------------------------
   // r6 terrain_environment LANDFORM ROCK GATE (rockGate, decoded above): with
@@ -3366,6 +3383,35 @@ void splatCompute() {
   a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.17 + 0.09 * n1) * meadowG);
   a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * (0.21 + 0.16 * n1) * meadowG);
   a.rgb *= mix(0.93 + meadowC * 0.14, 1.0, projW);
+  // Round 73b (2026-09-26): the borders themselves. Round 73 broke the transition's LINE (a height-and-noise mix) but
+  // left both sides their own tone, so at 40–120 m — where the normals have mipped flat — a dirt patch met its turf
+  // with nothing to see. A worn patch's edge is where the sod is torn and the soil lies open, darker and damper than
+  // the patch's dusty middle; an outcrop's edge carries a rim of lichen or moss (by climate) where its high faces
+  // stand out of the turf; a road's shoulder is trodden and gravelled. All three are albedo (they survive the mip
+  // fade), all three vanish at full and zero coverage (a road stays a road, a field a field) and off the walls.
+  {
+    float lipG = uReduxB.x * (1.0 - projW) * (1.0 - farM * 0.7) * (1.0 - roadCore) * (1.0 - fMs);
+    if (lipG > 0.002) {
+      float lip = 4.0 * fD * (1.0 - fD) * (0.40 + 0.60 * n1h) * lipG;
+      a.rgb *= 1.0 - 0.15 * lip;
+      a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.90, 0.85), lip * 0.5);
+    }
+    float rimG = uReduxB.z * (1.0 - fMs) * (1.0 - farM * 0.5) * (1.0 - roadCore);
+    if (rimG > 0.002) {
+      float rim = 4.0 * fR * (1.0 - fR) * smoothstep(0.25, 0.70, n1h * 0.55 + n2 * 0.45) * rimG;
+      a.rgb = mix(a.rgb, a.rgb * uReduxC.rgb, rim * 0.85);
+    }
+    float vergeW = uReduxB.y * shoulder * fD * (1.0 - roadCore) * (1.0 - projW) * (1.0 - fMs)
+      * (1.0 - smoothstep(90.0, 160.0, camDist)) * (1.0 - uRoadTex * 0.5);
+    if (vergeW > 0.003) {
+      // the road's own grit (the carriageway's clamped zero-mean rock grain) and a dusty, paler tone on the trodden verge
+      float vgL = dot(texture2D(uAlbR, uv * 0.83).rgb, vec3(0.34, 0.45, 0.21));
+      float vgM = dot(texture2D(uAlbR, uv * 0.83, 6.0).rgb, vec3(0.34, 0.45, 0.21));
+      a.rgb *= 1.0 + clamp((vgL - vgM) * 1.3, -0.16, 0.20) * vergeW;
+      a.rgb = mix(a.rgb, a.rgb * vec3(1.09, 1.06, 0.99), vergeW * 0.45 * (0.6 + 0.4 * n1hs));
+      a.a = mix(a.a, max(a.a, 0.95), vergeW);
+    }
+  }
   // Round 73 (2026-09-25, the ground redux): snow. A snowfield is not one white sheet — the wind scours it to a
   // harder, cooler crust on the exposed patches and leaves powder in the lees (the macro), and combs it into sastrugi
   // and drift waves (the normal), both on the snow maps' own wind (a per-cell swing so no two trains share a heading,
@@ -3375,26 +3421,36 @@ void splatCompute() {
     float powder = smoothstep(0.60, 0.92, meadowC) * meadowG * (1.0 - fR);
     a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.93, 0.98), scour * 0.55 * uReduxSnow.x);
     a.rgb *= 1.0 + powder * 0.035 * uReduxSnow.x;
+    gScour = scour * uReduxSnow.x; // round 73b: the crust is hard and takes a satin sheen
   }
   if (uReduxSnow.y > 0.001) {
     vec2 swind = normalize(vec2(0.62, 0.78) + (texture2D(uNoise, uv * 0.0025 + vec2(0.37, 0.91)).rg - 0.5) * 0.9);
     float sph = dot(uv, swind);
     float sast = sin(sph * 3.4 + n1h * 5.0) * (1.0 - smoothstep(30.0, 120.0, camDist));
-    float drift = sin(sph * 0.42 + n1 * 4.0) * (1.0 - smoothstep(120.0, 420.0, effDist));
+    // round 73b: the drift is a sawtooth — a long stoss slope climbing to a sharp lee crest that drops in a fifth of
+    // the wavelength — so the drifts carry an EDGE (a shaded lee face under the lit crest line) that reads at range in
+    // albedo where the normal has mipped away; round 73's sine was one more soft undulation
+    float dwave = fract(sph * 0.0669 + n1 * 0.64);
+    float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;
+    float driftD = 1.0 - smoothstep(120.0, 420.0, effDist);
     float sw = uReduxSnow.y * meadowG * (1.0 - fR) * (1.0 - triW) * (1.0 - roadCore);
-    n.xy += swind * clamp(sast * 0.5 + drift * 0.9, -0.3, 0.3) * sw;
-    a.rgb *= 1.0 + drift * 0.05 * sw * smoothstep(40.0, 120.0, effDist);
+    n.xy += swind * clamp(sast * 0.5 + drift * driftD * 0.9, -0.3, 0.3) * sw;
+    float lee = smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave));
+    a.rgb *= 1.0 + drift * 0.05 * sw * smoothstep(40.0, 120.0, effDist) * driftD;
+    a.rgb *= 1.0 - lee * 0.13 * sw * uReduxC.w * smoothstep(15.0, 50.0, effDist) * (0.6 + 0.4 * n1hs);
   }
   // Round 73: the folds. The chunk vertices carry the relief's own curvature (an 8 m and a 24 m Laplacian baked
   // at build, terrainBuildSteps): a hollow holds moisture — darker, a shade greener on turf, less rough — and takes
   // less of the sky (gFoldAO, the indirect hook); a crest dries and lightens. Low frequency, so no distance fade.
-  float hollow = smoothstep(0.10, 0.60, vFold);
-  float crest = smoothstep(0.10, 0.60, -vFold);
+  // round 73b: the thresholds reach further down the curvature (a gentle map's folds sit under 0.4) and the
+  // drainage darkening / crest bleaching read stronger — macro variation the ground-mid view can see
+  float hollow = smoothstep(0.06, 0.50, vFold);
+  float crest = smoothstep(0.06, 0.50, -vFold);
   {
     float moist = hollow * uReduxFold.x * (1.0 - projW) * (1.0 - fMs) * (1.0 - roadCore);
-    a.rgb *= 1.0 - 0.16 * moist;
+    a.rgb *= 1.0 - 0.22 * moist;
     a.rgb = mix(a.rgb, a.rgb * vec3(0.94, 1.0, 0.92), moist * 0.5 * meadowG);
-    a.rgb *= 1.0 + 0.06 * crest * uReduxFold.z * (1.0 - projW) * (1.0 - fMs);
+    a.rgb *= 1.0 + 0.09 * crest * uReduxFold.z * (1.0 - projW) * (1.0 - fMs);
     gFoldAO = 1.0 - uReduxFold.y * 0.35 * hollow * (1.0 - fMs);
   }
   // mid-frequency relief + mottle (25-450 m): stroke-free bump from the
@@ -3758,6 +3814,14 @@ void splatCompute() {
     if (dMidN > 0.003) {
       vec3 dnM = texture2D(uNrmG, uv * 0.93).xyz * 2.0 - 1.0;
       n.xy += dnM.xy * 0.42 * dMidN * meadowG * (1.0 - fR) * (1.0 - roadCore);
+      // round 73b: the same octave in albedo — the tussocks and clods of the 26–150 m band read by tone where the
+      // normal's shading has mipped flat (a zero-mean high-pass of the tile against its deep mip, exposure-neutral)
+      float midA = uReduxB.w * dMidN * meadowG * (1.0 - fR) * (1.0 - roadCore);
+      if (midA > 0.003) {
+        float gmL = dot(texture2D(uAlbG, uv * 0.93).rgb, vec3(0.36, 0.42, 0.22));
+        float gmM = dot(texture2D(uAlbG, uv * 0.93, 6.0).rgb, vec3(0.36, 0.42, 0.22));
+        a.rgb *= 1.0 + clamp((gmL - gmM) * 1.6, -0.22, 0.26) * midA;
+      }
     }
   }
   {
@@ -3993,22 +4057,43 @@ void splatCompute() {
   // the beach), damp up to the high-water mark and dry above it, with a ragged wrack line at the mark; a lake or a
   // river (no period) keeps a steady damp mud band. The terrain cannot read the sheet's run-up field (16 samplers),
   // so the band is analytic on the same clock the sheet's own run-up runs on.
+  // Round 73b (2026-09-26): the strand in METRES. Round 73 read its band off the mask's wetness ramp, and on a real
+  // beach that ramp is two or three metres wide (Saltwind: a 20 m shelf on a 165 m local radius leaves a 13 m ramp
+  // whose 0.02–0.16 apron is two metres), so the wet sand was a line under the surf whatever width the profile asked
+  // for. Every vertex now carries its distance landward of the waterline (the shore byte, baked from the map's own shoreline
+  // contours) and the swash runs up the beach by metres: a dark, saturated, glossy film to the run-up's breathing
+  // reach, a damp band to the high-water mark, a foam line left at the reach, a wrack line of debris at the mark and
+  // pebbles in the wet sand; a lake or a river (no period) keeps a steady muddy margin.
   float wetSand = 0.0;
   if (uSea > 0.5 && uReduxSwash.z > 0.001) {
-    float strand = smoothstep(0.02, uSeaRamp.x, fM) * (1.0 - fMs);
-    // the band's width is a fraction of the map's own apron ramp (uSeaRamp.x differs per map: 0.16 on Saltwind, 0.30
-    // on Saltmere), so one profile value reads the same on every shore; the probe on Saltwind sized it
-    float strandD = clamp((uSeaRamp.x - fM) / (uReduxSwash.y * max(uSeaRamp.x, 0.02)), 0.0, 1.0);
+    float strand = (1.0 - fMs) * (1.0 - steepW) * (1.0 - roadCore) * (1.0 - smoothstep(24.0, 31.0, vShore));
+    float reachM = uReduxSwash.y;
     float swashPh = uGroundTime * uReduxSwash.x + n1 * 6.0 + n1h * 1.5;
-    float reach = uReduxSwash.x > 0.0 ? 0.55 + 0.45 * sin(swashPh) : 0.6;
-    float film = 1.0 - smoothstep(reach * 0.85, min(1.0, reach + 0.12), strandD);
-    float damp = 1.0 - smoothstep(0.70, 1.05, strandD + (n1h - 0.5) * 0.12);
+    if (uReduxSwash.x > 0.0) reachM *= 0.55 + 0.45 * sin(swashPh);
+    float edgeM = vShore + (n1h - 0.5) * 1.6 + (n1 - 0.5) * 1.0;
+    float film = 1.0 - smoothstep(reachM - 0.6, reachM + 0.5, edgeM);
+    float markM = uReduxSwash.y * 1.3 + 0.8;
+    float damp = 1.0 - smoothstep(markM - 1.2, markM + 0.8, edgeM);
     wetSand = strand * uReduxSwash.z * max(film, damp * 0.55);
-    float wrack = exp(-pow((strandD - 0.96) / 0.055, 2.0)) * smoothstep(0.30, 0.70, n1h * 0.5 + n1 * 0.5) * strand * uReduxSwash.z;
-    a.rgb *= 1.0 - 0.40 * wetSand;
+    // the foam the last run-up left at its reach and the wrack at the mark: ragged lines a chase camera reads
+    gStrandFoam = exp(-pow((edgeM - reachM) / 0.32, 2.0)) * smoothstep(0.42, 0.72, n1h * 0.55 + n2 * 0.45) * strand * uReduxSwash.w
+      * step(0.001, uReduxSwash.x);
+    float wrack = exp(-pow((edgeM - markM) / 0.7, 2.0)) * smoothstep(0.30, 0.70, n1h * 0.5 + n1 * 0.5) * strand * uReduxSwash.w;
+    a.rgb *= 1.0 - 0.42 * wetSand;
+    float wl = dot(a.rgb, vec3(0.36, 0.42, 0.22));
+    a.rgb = max(wl + (a.rgb - wl) * (1.0 + 0.45 * min(wetSand, 1.0)), 0.0); // wet sand is darker AND more saturated
     a.rgb = mix(a.rgb, a.rgb * vec3(0.96, 0.98, 1.0), wetSand * 0.5);
-    a.rgb *= 1.0 - 0.35 * wrack;
-    n.xy = mix(n.xy, vec2(0.5), wetSand * 0.5); // the water smooths the ripples it ran over
+    if (uReduxSwash.x == 0.0) a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.72, 0.58), min(wetSand, 1.0) * 0.6); // a still bank is mud
+    a.rgb = mix(a.rgb, vec3(0.78, 0.80, 0.80), gStrandFoam * 0.55);
+    a.rgb *= 1.0 - 0.38 * wrack;
+    float pebW = (min(wetSand, 1.0) * 0.45 + wrack * 0.7) * (1.0 - smoothstep(30.0, 90.0, camDist));
+    if (pebW > 0.01) {
+      // pebbles and shell in the wet sand and along the wrack line: the rock tile's clamped zero-mean grain
+      float pbL = dot(texture2D(uAlbR, uv * 1.3).rgb, vec3(0.34, 0.45, 0.21));
+      float pbM = dot(texture2D(uAlbR, uv * 1.3, 6.0).rgb, vec3(0.34, 0.45, 0.21));
+      a.rgb *= 1.0 + clamp((pbL - pbM) * 1.8, -0.30, 0.34) * pebW;
+    }
+    n.xy = mix(n.xy, vec2(0.5), film * strand * 0.7); // the water smooths the ripples it ran over
   }
   // >>> terrain_environment r2: agrarian field patchwork + far turf relief. --
   // The 150-800 m band used to collapse into one smooth green wash (the bald
@@ -4157,7 +4242,9 @@ void splatCompute() {
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
   // glints light per square metre and move with the camera; gone by 42 m, where a glint would be a shimmer.
-  gSplatRough = mix(gSplatRough, 0.30, wetSand * 0.9);
+  gSplatRough = mix(gSplatRough, 0.22, min(wetSand, 1.0) * 0.95); // round 73b: 0.30 → 0.22, the film mirrors the sun
+  gSplatRough = mix(gSplatRough, 0.92, gStrandFoam); // round 73b: the foam line is matte
+  gSplatRough = mix(gSplatRough, 0.62, gScour * 0.55); // round 73b: the wind-scoured crust takes a satin sheen
   gSplatRough = mix(gSplatRough, gSplatRough * 0.93, hollow * uReduxFold.x * (1.0 - fMs));
   if (uReduxA.w > 0.001) {
     // read near the finest level: the mip chain averages the peaks away at the 1–3 cm pixel footprint, and a glint
@@ -4304,6 +4391,7 @@ function* createSplatMaterialSteps(
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
     redux.reduxA.fill(0); redux.reduxFold.fill(0); redux.reduxSwash.fill(0); redux.reduxSnow.fill(0);
+    redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
   }
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
@@ -4312,6 +4400,8 @@ function* createSplatMaterialSteps(
     uReduxFold: { value: new THREE.Vector4(...redux.reduxFold) },
     uReduxSwash: { value: new THREE.Vector4(...redux.reduxSwash) },
     uReduxSnow: { value: new THREE.Vector3(...redux.reduxSnow) },
+    uReduxB: { value: new THREE.Vector4(...redux.reduxB) }, // round 73b: lip / verge / rim / mid albedo
+    uReduxC: { value: new THREE.Vector4(...redux.reduxC) }, // round 73b: rim tint rgb, drift edge
   };
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
@@ -4449,6 +4539,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uReduxFold = reduxUniforms.uReduxFold;
     shader.uniforms.uReduxSwash = reduxUniforms.uReduxSwash;
     shader.uniforms.uReduxSnow = reduxUniforms.uReduxSnow;
+    shader.uniforms.uReduxB = reduxUniforms.uReduxB; // round 73b
+    shader.uniforms.uReduxC = reduxUniforms.uReduxC; // round 73b
     shader.uniforms.uGroundTime = groundClock;
   }
   const splatHook: MaterialShaderHook = (shader) => {
@@ -4457,9 +4549,9 @@ function* createSplatMaterialSteps(
     assignSplatBiomeUniforms(shader);
     // round 73: the baked fold attribute rides the chunk vertices (the horizon ring's faces carry none and read 0)
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;');
+      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
-      '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;');
+      '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\n' + SPLAT_COMMON_FRAG);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>',
@@ -4481,7 +4573,7 @@ function* createSplatMaterialSteps(
       '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= gFoldAO;');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v42'; // round 73 over 72b (2026-09-26 rebase): the ground redux — height transitions, scree, snow drifts, folds, the wet strand, glint, the mid octave // // round 72b: the ring bands read the horizon's surface atlas (v39: analytic wall crag on the bedded maps) // round 55: noise wall crag on the bedded sandstone R (v38: jointed marker-bed strata and the per-map ring rock band, v37: sea sector, v36: coast contour, v33: dune wind field, v32: sky light)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v43'; // round 73b (2026-09-26): the borders (lip, rim, verge), the mid albedo octave, the strand in metres with its foam and wrack lines, the drifts' lee edge, the scoured crust's sheen // round 73 over 72b (2026-09-26 rebase): the ground redux — height transitions, scree, snow drifts, folds, the wet strand, glint, the mid octave // // round 72b: the ring bands read the horizon's surface atlas (v39: analytic wall crag on the bedded maps) // round 55: noise wall crag on the bedded sandstone R (v38: jointed marker-bed strata and the per-map ring rock band, v37: sea sector, v36: coast contour, v33: dune wind field, v32: sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.groundClock = groundClock; // round 73: advanced with the water sheet's clock (terrainBuildSteps)
   mat.userData.reduxUniforms = reduxUniforms; // round 73: the probes' term isolation (zero a vector, recapture)
@@ -4640,6 +4732,7 @@ function* buildChunkGeometrySteps(
   indexPool: TerrainIndexPool | null = null,
   rowsPerSlice = 8,
   foldAt: ((x: number, z: number) => number) | null = null,
+  shoreAt: ((x: number, z: number) => number) | null = null,
 ): Generator<TerrainBuildProgress, THREE.BufferGeometry, void> {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
@@ -4654,6 +4747,10 @@ function* buildChunkGeometrySteps(
   // material's hollow moisture, fold occlusion and crest dryness read it as `fold`; a build without the sampler
   // (receipt sandboxes) writes zeros
   const fold = new Int8Array(vcount);
+  // Round 73b (2026-09-26): the shore distance — metres landward of the sheet's waterline, one byte per vertex,
+  // INVERTED (255 = at the waterline, 0 = 32 m or more / no shore) so a geometry without the attribute (the horizon
+  // ring's bands share this material) reads as far from any shore; the wet strand runs up the beach by it
+  const shore = new Uint8Array(vcount);
   const inv2e = 1 / (2 * stepF);
   function writeSurfaceRow(gz: number, startIndex: number): number {
     let vi = startIndex;
@@ -4665,6 +4762,10 @@ function* buildChunkGeometrySteps(
       if (foldAt) {
         const f = foldAt(wx, wz);
         fold[vi] = Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
+      }
+      if (shoreAt) {
+        const m = shoreAt(wx, wz);
+        shore[vi] = m >= 32 ? 0 : 255 - Math.round(Math.max(0, m) * (255 / 32));
       }
       const hl = hgrid ? hgrid[fi - 1] : hf.getHeightAt(wx - stepF, wz);
       const hr = hgrid ? hgrid[fi + 1] : hf.getHeightAt(wx + stepF, wz);
@@ -4713,11 +4814,13 @@ function* buildChunkGeometrySteps(
     const oy = -0.55, oil = 1 / Math.hypot(ox, oy, oz);
     nrm[dst * 3] = ox * oil; nrm[dst * 3 + 1] = oy * oil; nrm[dst * 3 + 2] = oz * oil;
     fold[dst] = fold[src]; // round 73: a skirt continues its top vertex's fold
+    shore[dst] = shore[src]; // round 73b: and its shore distance
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
   geo.setAttribute('fold', new THREE.BufferAttribute(fold, 1, true)); // round 73: one normalised byte per vertex
+  geo.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true)); // round 73b: the inverted shore byte
   geo.setIndex(acquireTerrainChunkIndex(indexPool || new Map(), segs));
   geo.computeBoundingSphere();
   return geo;
@@ -4894,6 +4997,39 @@ function* terrainBuildSteps(
     };
     heightField._foldAt = foldAt;
   }
+  // Round 73b (2026-09-26): the shore distance the strand reads — metres landward of the sheet's waterline from the
+  // map's own shoreline contours (the discs the mask bake and the sheet share; the waterline is where the contour's
+  // wetness ramp crosses the map's sea ramp). The mask's ramp is two or three metres wide on a real beach, so the
+  // band could never be sized in it; an exact per-vertex evaluation (bounded early-outs per disc) costs the build
+  // nothing it can measure. Sea and lake maps only; a frozen map or a dry one bakes nothing.
+  let shoreAt: ((x: number, z: number) => number) | null = null;
+  if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
+    const rampStart = cfg.splat.seaRamp?.[0] ?? 0.40;
+    // the contour fraction t at which the wetness ramp 1 − t²(3 − 2t) crosses the sea ramp's start (bisection)
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2; if (1 - m * m * (3 - 2 * m) > rampStart) lo = m; else hi = m; }
+    const tLine = (lo + hi) / 2;
+    const discs = [
+      ...(heightField._layout.lakes ?? []).map((d) => ({ d, lake: true })),
+      ...(heightField._layout.marshes ?? []).map((d) => ({ d, lake: false })),
+    ];
+    if (discs.length) {
+      shoreAt = (x: number, z: number): number => {
+        let best = 32;
+        for (let i = 0; i < discs.length; i++) {
+          const { d, lake } = discs[i];
+          const dist = shorelineDistance(d, x, z, 1.32);
+          if (!Number.isFinite(dist)) continue;
+          const radius = shorelineRadiusAt(d, Math.atan2(z - d.z, x - d.x));
+          const shelf = (d as { shelfM?: number }).shelfM;
+          const start = lake ? (shelf !== undefined ? Math.min(0.94, 1 - shelf / Math.max(1, radius)) : 0.80) : 0.45;
+          const m = (dist - (start + tLine * ((lake ? 0.96 : 1) - start))) * radius;
+          if (m < best) best = m;
+        }
+        return best < 0 ? 0 : best;
+      };
+    }
+  }
   // Alternative LOD geometries are retained in `chunks` even when another
   // level is mounted on the mesh. Register the complete live set so world
   // eviction releases uploaded dormant buffers as well as the visible tree.
@@ -4929,7 +5065,7 @@ function* terrainBuildSteps(
       const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
       for (const level of initialLevels) {
         const geometry = yield* buildChunkGeometrySteps(
-          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt,
+          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt,
         );
         lods[level] = geometry;
         retainedLodGeometries.add(geometry);
@@ -5050,7 +5186,7 @@ function* terrainBuildSteps(
       c.fine = yield* buildFineGridSteps(heightField, c.cx0, c.cz0, null, 1);
     }
     const geometry = yield* buildChunkGeometrySteps(
-      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1, foldAt,
+      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine, null, terrainIndexPool, 1, foldAt, shoreAt,
     );
     // Publish only a complete geometry. Skirts, topology and bounds stay exact;
     // a camera move while rows were being built cannot mount an obsolete LOD.

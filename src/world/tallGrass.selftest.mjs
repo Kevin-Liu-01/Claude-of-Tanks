@@ -189,21 +189,57 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
   assert.ok(grass.getState().near.cached <= TALL_GRASS.cacheCells, 'the cell cache is bounded');
 }
 
-// 7. Reeds grow in the shallows and nowhere on open water; the still bank keeps the meadow off.
+// 7. Reeds are a MARGIN (round 73b): densest at the waterline, gone by the open water, the bank's meadow thinner than
+//    the margin; a meadow with a reed margin (Monsoon's) grows tall olive reeds along its lake; a plain meadow keeps
+//    off the water. The fixture's water mask ramps from 0 at z = 0 to 1 at z = −40 (the waterline class 0.04–0.12 at
+//    z −1.6..−4, the open-water cut 0.4 at z = −16).
 {
-  const wetField = { ...field, getWaterMaskAt: (x, z) => (z < -20 ? 1 : z < 0 ? 0.3 : 0), getGroundType: () => 'medium' };
+  const wetField = { ...field, getWaterMaskAt: (x, z) => (z < -40 ? 1 : z < 0 ? -z / 40 : 0), getGroundType: () => 'medium', _villageMask: () => 0 };
+  const band = (list, z0, z1, x0 = -60, x1 = 60) => list.filter(([x, , z]) => z >= z0 && z < z1 && x >= x0 && x < x1 && Math.abs(x - 5) >= 12).length / ((z1 - z0) * (x1 - x0 - 24));
   const reeds = createTallGrass(wetField, { seed: 3, tier: 'desktop', biome: resolveGroundReduxProfile('delta').grass, blocked, qualityScale: () => 1 });
   settle(reeds, cam);
   const rr = roots(reeds.near);
-  assert.ok(rr.some(([, , z]) => z < 0 && z >= -20), 'reeds stand in the shallows');
-  assert.ok(rr.every(([, , z]) => z >= -20), 'and never on open water');
-  const shallow = rr.filter(([, , z]) => z < 0).length / 20, bank = rr.filter(([, , z]) => z >= 0 && z < 20).length / 20;
-  assert.ok(shallow > bank, `reeds are densest in the water band (${shallow.toFixed(0)} vs ${bank.toFixed(0)} per band row)`);
+  assert.ok(rr.some(([, , z]) => z < -2 && z >= -7), 'reeds stand along the waterline');
+  assert.ok(rr.every(([, , z]) => z > -16.5), 'and never past the open-water cut (mask 0.4)');
+  const marginD = band(rr, -7, -2), midD = band(rr, -15, -10), bankD = band(rr, 2, 14);
+  assert.ok(marginD > midD * 2.5, `the margin is dense at the waterline and thins toward the open water (${marginD.toFixed(2)} vs ${midD.toFixed(2)} per m²)`);
+  assert.ok(bankD > 0 && bankD < marginD * 0.9, `the bank's meadow is thinner than the margin (${bankD.toFixed(2)} vs ${marginD.toFixed(2)} per m²)`);
+  const rb = blades(reeds.near);
+  const tall = (list, roots_, z0, z1) => { let s = 0, n = 0; list.forEach(([, h], i) => { const z = roots_[i][2]; if (z >= z0 && z < z1) { s += h; n++; } }); return s / n; };
+  assert.ok(tall(rb, rr, -7, -2) > tall(rb, rr, 2, 14) * 1.1, 'reeds at the waterline stand taller than the bank meadow');
   reeds.dispose();
+  const monsoon = createTallGrass(wetField, { seed: 3, tier: 'desktop', biome: resolveGroundReduxProfile('monsoon').grass, blocked, qualityScale: () => 1 });
+  settle(monsoon, cam);
+  const mr = roots(monsoon.near), mb = blades(monsoon.near), mc = monsoon.near.instanceColor.array;
+  assert.ok(band(mr, -7, -2) > 0.3 && band(mr, -7, -2) < band(mr, 2, 14), 'a meadow with a reed margin grows reeds along its lake, sparser than the meadow');
+  assert.ok(mr.every(([, , z]) => z > -16.5), 'and none on the open water');
+  assert.ok(tall(mb, mr, -7, -2) > 1.5, `margin reeds are tall (${tall(mb, mr, -7, -2).toFixed(2)} m)`);
+  let olive = 0, green = 0, on = 0, off = 0;
+  mr.forEach(([, , z], i) => { const ratio = mc[i * 3 + 2] / mc[i * 3 + 1]; if (z < -2 && z >= -7) { olive += ratio; on++; } else if (z >= 2) { green += ratio; off++; } });
+  assert.ok(olive / on < green / off * 0.7, 'margin reeds are olive (less blue in the tint than the meadow)');
+  monsoon.dispose();
   const dry = createTallGrass(wetField, { seed: 3, tier: 'desktop', biome: meadow, blocked, qualityScale: () => 1 });
   settle(dry, cam);
-  assert.ok(roots(dry.near).every(([, , z]) => z >= 0), 'a meadow keeps off the water band');
+  assert.ok(roots(dry.near).every(([, , z]) => z > -1.3), 'a meadow without a reed margin keeps off the water band (the mask under 0.03 is dry ground)');
   dry.dispose();
+}
+
+// 7b. Tundra sedge keeps to the hollows and the lee sides in clumps (round 73b): the open windward snowfield is
+//     nearly bare, the hollow carries the clumps; the whole ring is sparse beside a meadow's.
+{
+  const wind = resolveGroundReduxProfile('whiteout').grass.windDir; // [0.95, 0.3]
+  // the lee slope (its downhill direction along the wind) south of z −20, the windward slope north of z 20, flat between
+  const snowField = { ...field, getNormalAt: (x, z) => (z > 20 ? { x: -wind[0] * 0.3, y: 0.95, z: -wind[1] * 0.3 } : z < -20 ? { x: wind[0] * 0.3, y: 0.95, z: wind[1] * 0.3 } : { x: 0, y: 1, z: 0 }),
+    getWaterMaskAt: () => 0, _villageMask: () => 0, _foldAt: (x, z) => (Math.hypot(x + 8, z - 8) < 7 ? 0.9 : 0) };
+  const sedge = createTallGrass(snowField, { seed: 9, tier: 'desktop', biome: resolveGroundReduxProfile('whiteout').grass, blocked, qualityScale: () => 1 });
+  settle(sedge, cam);
+  const sr = roots(sedge.near);
+  const hollowD = perM2(sr, -8, 8, 6), openD = perM2(sr, 12, -20, 8);
+  const windwardD = sr.filter(([x, , z]) => z > 24 && z < 44 && x > -30).length, leeD = sr.filter(([x, , z]) => z < -24 && z > -44 && x > -30).length;
+  assert.ok(hollowD > openD * 6, `the sedge clumps in the hollow (${hollowD.toFixed(2)} vs ${openD.toFixed(3)} per m² on open flat snow)`);
+  assert.ok(leeD > windwardD * 1.6, `and favours the lee slope (${leeD} lee vs ${windwardD} windward)`);
+  assert.ok(sedge.near.count < state.near.count * 0.25, `the whole ring is sparse beside a meadow's (${sedge.near.count} vs ${state.near.count})`);
+  sedge.dispose();
 }
 
 // 8. The shader: every dimension from the instance attribute, the press from the field, the shadow at the root,
@@ -272,4 +308,4 @@ assert.ok(map.includes('setupMaterial: (material, hook) => engineCtx.setupShadow
 assert.equal(PRESETS.high.tallGrass, 1); assert.equal(PRESETS.ultra.tallGrass, 1); assert.equal(PRESETS.medium.tallGrass, 0.5); assert.equal(PRESETS.low.tallGrass, 0.25);
 assert.equal(PRESETS.mobile.tallGrass, undefined, 'the mobile tier keeps today\'s ground');
 
-console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), determinism, the quality knob, streaming, reeds, the shader, the engine hooks and the world wiring passed');
+console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), determinism, the quality knob, streaming, the reed margin, the tundra clumps, the shader, the engine hooks and the world wiring passed');

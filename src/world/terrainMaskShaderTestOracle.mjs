@@ -81,6 +81,9 @@ export function assertTerrainFetchExpressionCensus(source) {
   // taps: G, D, R) and the D layer's own near tap (a cache hit on the consumer's texel), the mid-distance normal
   // octave (26–150 m band only), the snow drifts' wind swing (snow maps only) and the glint noise (inside 42 m, snow
   // maps only); no new sampler — the material stays at the 16-unit budget.
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
-    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps; lexical census only');
+  // round 73b (2026-09-26, the second pass): +6 — the road verge's grit (two rock luminance taps inside the shoulder
+  // band, inside 160 m), the mid albedo octave (two ground taps, the 26–150 m band only) and the strand's pebbles (two
+  // rock taps on the wet band and the wrack line, inside 90 m); no new sampler.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps; lexical census only');
 }

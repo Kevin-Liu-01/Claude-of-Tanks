@@ -460,12 +460,21 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (ground === 'hard') return;
     const water = field.getWaterMaskAt ? field.getWaterMaskAt(x, z) : 0;
     let heightScale = 1;
+    let reedTint = 0;
+    // round 73b: reeds are a MARGIN — densest at the waterline (mask 0.04–0.10), thinning to nothing by 0.40, so a lake
+    // wears a fringe of tall reeds and not a carpet out to the open water; a biome that is not reeds (Monsoon's
+    // meadow) grows the same fringe at `reedMargin` of its own density, taller and olive
+    const margin = water > 0.04 ? 1 - smoothstep(0.10, 0.40, water) : 0;
     if (b.kind === 'reed') {
-      if (water > 0.6) return;
-      if (water > 0.04) { keep *= b.waterBand; heightScale = 1.15; }
-      else if (ground === 'soft') { keep *= 0.5; }
+      if (water > 0.4) return;
+      if (water > 0.04) { keep *= b.waterBand * margin; heightScale = 1.0 + 0.3 * margin; }
+      else { keep *= b.bank; if (ground === 'soft') keep *= 0.6; }
+    } else if (water > 0.03) {
+      if (!(b.reedMargin > 0) || water > 0.4) return;
+      keep *= b.reedMargin * margin;
+      heightScale = Math.min(1.9, 1.9 * (0.75 + 0.25 * margin)) / b.heightM;
+      reedTint = 1;
     } else {
-      if (water > 0.03) return;
       if (ground === 'soft') keep *= 0.35;
       // marram: dense on the backshore (the strand's own wetness ramp, above the waterline), sparse inland
       if (b.kind === 'dune' && field._waterWetnessAt) keep *= 0.4 + 1.6 * smoothstep(0.03, 0.30, field._waterWetnessAt(x, z));
@@ -484,11 +493,19 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       keep *= (1 + 0.3 * hollow) * (1 - 0.3 * crest);
       heightScale *= (1 + 0.25 * hollow) * (1 - 0.15 * crest);
     }
-    if (roll > keep) return;
-    if (field.getNormalAt) {
-      const n = field.getNormalAt(x, z);
-      if (n.y < TALL_GRASS.minSlopeY) return;
+    const n = field.getNormalAt ? field.getNormalAt(x, z) : null;
+    if (b.kind === 'tundra') {
+      // round 73b: dead sedge keeps to the hollows and the lee sides, in clumps (the ~10–20 m patches of the terrain's
+      // own n1 field) — a carpet of scattered sticks in the snow was the round-73 read; on open, windward ground a
+      // clump is rare (6 % of the density), in a lee hollow it stands at the density's full
+      const wl = Math.hypot(b.windDir[0], b.windDir[1]) || 1;
+      const lee = n ? smoothstep(-0.02, 0.06, (n.x * b.windDir[0] + n.z * b.windDir[1]) / wl) : 0.5;
+      const cluster = splatNoise ? smoothstep(0.45, 0.72, _splat.n1) : 1;
+      keep *= (0.06 + 1.6 * hollow) * (0.35 + 0.65 * lee) * (0.15 + 0.85 * cluster);
+      heightScale *= 0.85 + 0.45 * hollow;
     }
+    if (roll > keep) return;
+    if (n && n.y < TALL_GRASS.minSlopeY) return;
     const y = heightAt(x, z);
     const heightM = Math.min(1.9, b.heightM * heightScale * (1 + b.heightVar * (2 * hR - 1)));
     if (blocked && blocked(x, y, z, heightM, 0.12)) return;
@@ -500,8 +517,10 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const g = (b.tip[1] * (1 - dry) + b.dry[1] * dry) / b.tip[1];
     const bl = (b.tip[2] * (1 - dry) + b.dry[2] * dry) / b.tip[2];
     const moist = 1 - 0.12 * hollow;
-    list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM, rnd,
-      Math.min(1.6, r * lum * moist), Math.min(1.6, g * lum), Math.min(1.6, bl * lum * moist));
+    // round 73b: a reed on a meadow's margin is olive, not the meadow's green
+    const rr = reedTint ? 0.95 : 1, rg = reedTint ? 0.86 : 1, rb = reedTint ? 0.55 : 1;
+    list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM * (reedTint ? 1.25 : 1), rnd,
+      Math.min(1.6, r * lum * moist * rr), Math.min(1.6, g * lum * rg), Math.min(1.6, bl * lum * moist * rb));
   }
 
   function beginCell(ring: Ring, ix: number, iz: number, density: number): void {
