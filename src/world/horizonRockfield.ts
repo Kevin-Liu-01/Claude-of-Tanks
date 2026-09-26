@@ -28,6 +28,12 @@ interface HorizonRockfieldOptions {
   nearDepth?: number;
   /** First authored ridge row; rows below it are the terrain-material rim bands. */
   ridgeRow?: number;
+  /** Round 72: the range class (rows past the first ridge) stays inside this radius and under this share of the ring's
+   * peak height (0 = no range boulders): past that the aerial pass washes a boosted face toward the sky while a dark
+   * boulder keeps its tone, so the boulders read as specks in the sky (Frosthollow's ranges). Default 900 / 1. */
+  rangeRadius?: number;
+  rangeHeightShare?: number;
+  maxHeight?: number;
   /** The ring's detail noise (0..1) — patches the field so no sector is a uniform gravel carpet. */
   detailNoise?: (u: number, v: number) => number;
   retainedGeometries?: THREE.BufferGeometry[];
@@ -102,6 +108,8 @@ export function buildHorizonRockfield(options: HorizonRockfieldOptions): THREE.G
   const maxRadius = options.maxRadius ?? 900;
   const nearDepth = options.nearDepth ?? HORIZON_ROCK_NEAR_DEPTH_M;
   const ridgeRow = options.ridgeRow ?? Math.max(1, rows.findIndex((row) => !row.skirt && !row.interpolated));
+  const rangeRadius = options.rangeRadius ?? 900;
+  const rangeHeightCap = (options.maxHeight ?? Infinity) * (options.rangeHeightShare ?? 1);
   const noise = options.detailNoise;
   const beyondRim = (x: number, z: number): number => {
     const square = Math.max(Math.abs(x), Math.abs(z));
@@ -148,6 +156,7 @@ export function buildHorizonRockfield(options: HorizonRockfieldOptions): THREE.G
         const z = positions[i00 * 3 + 2] + (positions[i01 * 3 + 2] - positions[i00 * 3 + 2]) * u + dz * w;
         const y = heights[i00] + (heights[i01] - heights[i00]) * u + (heights[i10] - heights[i00]) * w;
         if (y < 1.0) continue; // the sea aperture
+        if (!band && (Math.hypot(x, z) > rangeRadius || y > rangeHeightCap)) continue; // round 72: no specks in the sky
         // patchy field: gravel fans and bare pans instead of one even carpet
         const field = noise ? noise(x * 0.0035 + 0.17, z * 0.0035 + 0.61) : 0.6;
         if (rng() > smoothstep(0.28, 0.72, field) * 1.4) continue;

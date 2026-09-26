@@ -3080,6 +3080,8 @@ export function* buildHorizonRingSteps(
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, seed: ((seed ^ 0x2C0C) ^ idHash(mapId)) >>> 0,
     rock: rockC, fog: fogC, haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     density: rockDensity, maxInstances: 3000, maxRadius: 900, nearDepth: 300, ridgeRow,
+    // round 72: range boulders only on the near ranges under half the ring, none on a snow map (the trees' rule)
+    rangeRadius: snowline <= 1 ? 0 : 880, rangeHeightShare: 0.5, maxHeight: maxH,
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     retainedGeometries: retainedRockGeometries,
   }) : null;
