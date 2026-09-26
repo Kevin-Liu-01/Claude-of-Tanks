@@ -46,7 +46,7 @@ test('fixed checkpoint is detached, JSON safe, and restores every admitted scala
   const source = entity();
   for (let tick = 0; tick < 90; tick++) updateTank(source, field, SIM_DT);
   const checkpoint = captureMovementPredictionState(source.state);
-  assert.equal(checkpoint.values.length, 44); // round 32: + _autoTraverse (fixed-mount hull traverse latch)
+  assert.equal(checkpoint.values.length, 45); // round 32: + _autoTraverse; impact physics (2026-09-25): + _terr.fitPitch
   assert.deepEqual(JSON.parse(JSON.stringify(checkpoint)), checkpoint);
   const target = entity().state;
   const ride = target._ride;
@@ -84,7 +84,7 @@ test('malformed checkpoints are rejected atomically, including sparse or oversiz
   const sparse = good.values.slice();
   delete sparse[8];
   const badNumbers = [NaN, Infinity, -Infinity, 1_000_001, '1', null, undefined];
-  const bad = [null, [], 1, {}, { ...good, version: 2 },
+  const bad = [null, [], 1, {}, { ...good, version: 3 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
     { ...good, values: sparse }, ...[-1, 1024, 1.5, NaN].map(flags => ({ ...good, flags })),
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];
@@ -306,8 +306,10 @@ test('real quantized capture/wire/buffer path greatly reduces, but does not eras
     const current = wireTrajectory(true, delayTicks);
     assert.ok(current.yM < legacy.yM * 0.1);
     assert.ok(current.verticalStepM < legacy.verticalStepM * 0.1);
-    assert.ok(current.pitchRad < legacy.pitchRad * 0.1);
-    assert.ok(current.rollRad < legacy.rollRad * 0.2);
+    // impact physics (2026-09-25): the legacy path's pitch error fell 0.0117 → 0.0011 rad (the terrain fit's settle
+    // no longer alternates), so the tenfold claim gives way to an absolute floor where legacy is already tight
+    assert.ok(current.pitchRad < Math.max(legacy.pitchRad * 0.1, 0.0015));
+    assert.ok(current.rollRad < Math.max(legacy.rollRad * 0.2, 0.00016));
     assert.ok(current.yM < 0.012 && current.verticalStepM < 0.006);
     assert.ok(current.pitchRad < 0.002 && current.rollRad < 0.0002);
     assert.ok(current.yM > 0, 'public pose quantization is not claimed to be exact solo parity');

@@ -25,8 +25,8 @@ function drive(ticks) {
   return state;
 }
 
-assert.equal(MOVEMENT_CHECKPOINT_VERSION, 1);
-assert.equal(MOVEMENT_CHECKPOINT_VALUES, 44);
+assert.equal(MOVEMENT_CHECKPOINT_VERSION, 2, 'impact physics (2026-09-25): the terrain fit carries its pure least-squares pitch');
+assert.equal(MOVEMENT_CHECKPOINT_VALUES, 45);
 
 const driven = drive(180);
 const ours = captureMovementCheckpoint(driven);
@@ -60,10 +60,10 @@ assert.ok(Math.abs(f32._ride.y - driven._ride.y) < 1e-4);
 // Rejections leave the state untouched.
 const untouched = createTankState(SPEC, new Vector3(), 0);
 const before = JSON.stringify(captureMovementCheckpoint(untouched));
-assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values, flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 1, values: ours.values.slice(1), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 1, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 1, values: ours.values, flags: 4096 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values, flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values.slice(1), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values, flags: 4096 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
 
-console.log('mp movement checkpoint: 44-value version-1 layout identical to v1, identity after apply, f32 tolerant, typed rejections pass');
+console.log('mp movement checkpoint: 45-value version-2 layout identical to the legacy v2, identity after apply, f32 tolerant, typed rejections pass');

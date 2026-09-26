@@ -4,20 +4,22 @@
  * the dynamic state a pose alone cannot reconstruct — springs, ride, spool,
  * retained support — before the unacknowledged ticks are replayed, so the
  * replay forces the suspension exactly as the authority did. The layout is
- * version 1 of the checkpoint `src/net/movementPredictionState.ts`
+ * version 2 of the checkpoint `src/net/movementPredictionState.ts`
  * established (the server captures with either; the receipt proves parity),
  * with the same field order so a sim change moves both sides together.
+ * Version 2 (impact physics, 2026-09-25) adds the terrain fit's pure
+ * least-squares pitch, which the two-point settle now measures against.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 
-export const MOVEMENT_CHECKPOINT_VERSION = 1;
+export const MOVEMENT_CHECKPOINT_VERSION = 2;
 
 const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   '_prevSpeed', '_spool', '_fanYield', '_perch', '_gunLimitHoldS', '_swayEst',
   'landingImpactMps', '_autoTraverse'] as const;
 const SPRING = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
 const ROCK = ['p', 'r', 'pv', 'rv'] as const;
-const TERRAIN = ['pitch', 'roll'] as const;
+const TERRAIN = ['pitch', 'roll', 'fitPitch'] as const;
 const RIDE = ['y', 'v', 'groundV', 'airTime'] as const;
 const TRACK = ['l', 'r'] as const;
 const SUPPORT = ['yaw', 'pitch', 'roll', 'y', 'floorY'] as const;
@@ -75,7 +77,7 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
   return { version: MOVEMENT_CHECKPOINT_VERSION, values, flags };
 }
 
-/** Restore a checkpoint onto a state; false (and no change) when the layout is not version 1 or a value is unsafe. */
+/** Restore a checkpoint onto a state; false (and no change) when the layout is not the current version or a value is unsafe. */
 export function applyMovementCheckpoint(
   state: TankState, checkpoint: MovementCheckpoint, contact: MovementContactGeometry | null = null,
 ): boolean {

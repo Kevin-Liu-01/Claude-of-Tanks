@@ -149,9 +149,14 @@ test('synchronized 60 Hz displays remain exact with 20 Hz checkpoints and 0/100 
 });
 
 test('120 Hz and variable display checkpoints bound remaining height and total-hull residuals', () => {
+  // impact physics (2026-09-25): the terrain fit's two-point settle no longer alternates tick to tick (it was
+  // itself display-timestep dependent — the unreconciled 120 Hz wave drift fell 0.087 → 0.026 m), and the
+  // reconciled height residual on the waves moved 5.6 → 6.4 mm; the bound follows it
+  // (measured 2026-09-25 on the impact-physics tree: 120 Hz waves Y 6.4 mm / hull pitch 4.1 mrad / hull roll 4.5
+  // mrad, variable waves Y 26 mm / hull pitch 13.3 mrad / hull roll 9.2 mrad; the bounds carry ~15 % headroom)
   for (const [name, heightBound, stepBound, pitchBound, pitchStepBound, rollBound] of [
-    ['120Hz', 0.006, 0.0016, 0.004, 0.0038, 0.0045],
-    ['variable', 0.033, 0.011, 0.012, 0.010, 0.011],
+    ['120Hz', 0.0075, 0.0016, 0.0048, 0.0038, 0.0055],
+    ['variable', 0.033, 0.011, 0.016, 0.010, 0.011],
   ]) {
     for (const waves of [false, true]) {
       const control = measure(DISPLAY_PATTERNS[name], waves, false);
@@ -166,7 +171,10 @@ test('120 Hz and variable display checkpoints bound remaining height and total-h
         assert.ok(metrics.maxPitchStepErrorRad < pitchStepBound);
         assert.ok(metrics.maxTotalHullRollErrorRad < rollBound);
         assert.ok(metrics.maxRollStepErrorRad < 0.0025);
-        if (waves) assert.ok(metrics.maxYErrorM < control.metrics.maxYErrorM / 3,
+        // impact physics (2026-09-25): the unreconciled wave drift is now millimetres (0.129 → 0.009 m on the
+        // variable cadence), so the reduction claim holds where there is drift to reduce; otherwise the residual
+        // is bounded absolutely
+        if (waves) assert.ok(metrics.maxYErrorM < Math.max(control.metrics.maxYErrorM / 3, 0.03),
           'checkpoints reduce accumulated display-timestep drift; no claim that residual error is zero');
         console.log(JSON.stringify({ fixture: 'movement-display-cadence', name, waves, delay,
           echo: metrics, noReconcile: control.metrics, comparison: compareControl(echo, control) }));
@@ -185,12 +193,15 @@ test('authority-before-upload phase is measured separately from fractional displ
     const echo = measure(pattern, true, true, true, delay);
     checkReceipt(echo);
     assert.ok(control.metrics.maxYErrorM < 1e-9);
-    assert.ok(echo.metrics.maxYErrorM < 0.027);
-    assert.ok(echo.metrics.maxVerticalStepErrorM < 0.006);
-    assert.ok(echo.metrics.maxTotalHullPitchErrorRad < 0.012);
+    // impact physics (2026-09-25): with the terrain fit's settle no longer alternating tick to tick the residuals
+    // moved Y 25.7 → 31.2 mm, vertical step 5.4 → 6.0 mm, hull pitch 11.2 → 11.8 mrad, hull roll 10.7 → 11.4 mrad,
+    // roll step 1.04 → 1.12 mrad; the bounds carry ~15 % headroom over the measured values
+    assert.ok(echo.metrics.maxYErrorM < 0.036);
+    assert.ok(echo.metrics.maxVerticalStepErrorM < 0.007);
+    assert.ok(echo.metrics.maxTotalHullPitchErrorRad < 0.014);
     assert.ok(echo.metrics.maxPitchStepErrorRad < 0.0085);
-    assert.ok(echo.metrics.maxTotalHullRollErrorRad < 0.011);
-    assert.ok(echo.metrics.maxRollStepErrorRad < 0.0011);
+    assert.ok(echo.metrics.maxTotalHullRollErrorRad < 0.013);
+    assert.ok(echo.metrics.maxRollStepErrorRad < 0.0014);
     console.log(JSON.stringify({ fixture: 'authority-before-upload', delay,
       echo: echo.metrics, comparison: compareControl(echo, control) }));
   }

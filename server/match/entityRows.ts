@@ -15,6 +15,7 @@ import {
   clampU16, clampU8, quantizeAngle, quantizeMultiplier, quantizePosition, quantizeReloadS, quantizeShellVelocity, quantizeVelocity,
 } from '../../src/mp/wire/quantize.ts';
 import { shellTypeIndex } from '../../src/mp/wire/codec.ts';
+import { MOVEMENT_CHECKPOINT_VERSION } from '../../src/mp/match/movementCheckpoint.ts';
 import { eraPlateIndices } from '../../src/mp/wire/era.ts';
 
 const indicatorScratch: MagazineIndicator = { rounds: 0, capacity: 0, launcher: false };
@@ -145,12 +146,12 @@ export function captureViewerState(entityId: number, meta: unknown): ViewerState
   const equipment = VIEWER_EQUIPMENT.map((key) => quantizeMultiplier(prediction.equipment?.[key] ?? 1));
   const movement = prediction.movement;
   const values = Array.isArray(movement?.values) ? movement.values.filter((value) => Number.isFinite(value)) : [];
-  const valid = movement && movement.version === 1 && Array.isArray(movement.values) && values.length === movement.values.length && values.length <= 64;
+  const valid = movement && movement.version === MOVEMENT_CHECKPOINT_VERSION && Array.isArray(movement.values) && values.length === movement.values.length && values.length <= 64;
   return {
     entityId, modules, crewBits, equipment,
     modeSpeedMultiplier: quantizeMultiplier(prediction.modeSpeedMultiplier ?? 1),
     modeGravityScale: quantizeMultiplier(prediction.modeGravityScale ?? 1),
-    movementVersion: valid ? 1 : 0,
+    movementVersion: valid ? MOVEMENT_CHECKPOINT_VERSION : 0,
     movementFlags: valid ? Math.max(0, Math.min(65535, (movement.flags ?? 0) | 0)) : 0,
     movementValues: valid ? values : [],
   };
