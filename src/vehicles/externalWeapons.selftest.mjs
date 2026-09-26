@@ -8,7 +8,8 @@ import { createCombatState, resolveShellHit, startMagazineReload, startReload } 
 import { createShell } from '../sim/ballistics.ts';
 
 const ids=PRODUCTION_TANK_IDS.filter(id=>getSpec(id).gun.shells.some(w=>w.launcherTubes>0));
-assert.equal(ids.length,25,'external-launcher fleet census must be reviewed when the roster changes');
+// Puma S1 X, Type 89 X and Borsuk add three physical launcher installations.
+assert.equal(ids.length,28,'external-launcher fleet census must be reviewed when the roster changes');
 for(const id of PRODUCTION_TANK_IDS.filter(id=>!ids.includes(id))) {
   assert.equal(getSpec(id).armor.externalWeapons,undefined,
     `${id}: conventional vehicles do not gain launcher metadata or inherited donor hitboxes`);
@@ -81,5 +82,5 @@ assert(Math.abs(tc.reload.totalS-86.4)<1e-8,'TOS damaged rack lengthens the 48-s
 const viper=getSpec('griffin_viper'),vc=createCombatState(viper);
 vc.modules.missileRack.state='red';startReload(vc,viper);
 assert(vc.reload.totalS>=1.8,'Viper missile cadence is penalized by rack damage');
-assert(damageChecks>=25,'fleet checks exercise real damage, not just collision labels');
+assert(damageChecks>=28,'fleet checks exercise real damage, not just collision labels');
 console.log(`externalWeapons.selftest: ${ids.length} vehicles, ${probes} native stock/pose probes, ${damageChecks} actual damage checks`);
