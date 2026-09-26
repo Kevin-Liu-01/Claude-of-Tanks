@@ -3548,9 +3548,9 @@ far range's haze was lowered 0.12 at both rows for the separation and the full s
 rows of the near ring stand above the nearer hills now and the post pass's far ceilings (round 39: extinction 0.60,
 scatter 0.55 at 1.3 km, on top of the material's 0.34) wash them to faint sky-toned silhouettes — the lever for ranges
 that read as ranges at that distance is the aerial pass's far ceiling, not the ring (the ring's own haze was already
-lowered here); the skyline ribbons no longer stand on those crests (none past an aerial rank of 0.3: a canopy ribbon on a
-washed crest stood over nothing as a floating band; the near and middle crests keep their forest edge, lit like the
-vista surface) — a crown-mass ribbon that takes the crest's own rendered tone is a lane of its own.
+lowered here); the skyline ribbons no longer stand on those crests (none past an aerial rank of 0.3 and none on a crest
+above 55 % of the ring's height: a canopy ribbon on a washed or pale summit stood over nothing as a floating band; the
+low near crests keep their forest edge, lit like the vista surface) — a crown-mass ribbon that takes the crest's own rendered tone is a lane of its own.
 
 ### AAA map program — 2026-09-21 (round 35 onward)
 
