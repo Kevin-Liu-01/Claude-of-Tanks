@@ -76,6 +76,8 @@ assert.deepEqual(SELFTEST_EXCLUSIVE_CPU_FILES, [
   'tools/production-room-abandonment.selftest.mjs',
   'server/dedicatedWorldCollisionMemory.selftest.mjs',
   'tools/garage-switch-probe.selftest.mjs',
+  'server/match/tickCost.selftest.mjs',
+  'tools/mp-soak.selftest.mjs',
 ]);
 for(const file of SELFTEST_EXCLUSIVE_CPU_FILES)for(const concurrency of [2,4,8])for(const status of [0,7]){
   const isolated=fixture(concurrency);

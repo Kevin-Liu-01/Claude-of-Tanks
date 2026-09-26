@@ -39,6 +39,10 @@ export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   // main-thread blocking and a 250 ms p95 first painted frame. Beside seven
   // fleet builders it would measure host contention, not the switch path.
   'tools/garage-switch-probe.selftest.mjs',
+  // Multiplayer v2 (2026-09-26): the match tick-cost budget (p95 under 6 ms with 28 viewers) and the in-process soak
+  // (tick rate, stalls) measure host time; beside seven other children they flaked in a landing chain and pass alone.
+  'server/match/tickCost.selftest.mjs',
+  'tools/mp-soak.selftest.mjs',
 ]);
 
 // This caches compilation, NEVER test results or module instances. Every file
