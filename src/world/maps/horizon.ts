@@ -2546,10 +2546,10 @@ function addHorizonTreeline({
         // faint silhouettes and a canopy ribbon there stood over nothing as a floating band; the near and middle
         // crests, which still read, keep their forest edge
         const farFade = 1 - smoothstep(0.30, 0.58, row.aer);
-        // Round 72: and none on a crest above 55 % of the ring's height — the boosted ranges' crests are the ring's
+        // Round 72: and none on a crest above half the ring's height — the boosted ranges' crests are the ring's
         // high country (the vista's own stands and the instanced ring forest dress their faces); a ribbon there read as
         // a dark band over a pale, hazed summit whatever the authored treeline said
-        const crestFade = 1 - smoothstep(0.45, 0.62, height01);
+        const crestFade = 1 - smoothstep(0.32, 0.48, height01);
         const span = (9 + hn * 7) * (0.94 + Math.min(row.r, 1400) / 7000) * fade * farFade * crestFade *
           (0.88 + hn2 * 0.24) * (1 - layer * 0.045) * (1 - seaAt(ri * N + kk, a));
         // All ranks sit just behind the resolved crest. Putting the ribbon on

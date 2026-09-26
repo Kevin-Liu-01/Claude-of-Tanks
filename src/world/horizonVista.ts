@@ -897,6 +897,9 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         const z = positions[i00 * 3 + 2] + (positions[i01 * 3 + 2] - positions[i00 * 3 + 2]) * u + dz * w;
         const y = heights[i00] + (heights[i01] - heights[i00]) * u + (heights[i10] - heights[i00]) * w;
         if (y < 1.0) continue; // the sea aperture
+        // round 72: no range-class trees above half the ring's height — the boosted ranges' upper faces are washed
+        // toward the sky by the aerial pass at that distance and a dark crown there floated over a pale slope
+        if (!band && y > maxHeight * 0.5) continue;
         if (options.clearAt && options.clearAt(x, z) > 0.5) continue; // round 63: the cutting's right-of-way
         const stand = standWeightAt(x, y, z, slope, band);
         if (rng() > (band ? stand * 1.2 : stand * stand * 1.6)) continue;
