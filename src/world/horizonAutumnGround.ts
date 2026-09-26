@@ -45,11 +45,33 @@ export function bindAutumnHorizonGround(
   const terrainCount = terrainFaces.length;
   geometry.addGroup(0, terrainCount, 1);
   geometry.addGroup(terrainCount, faces.count - terrainCount, 0);
+  const vistaMaterial = mesh.material;
   mesh.material = [mesh.material, material];
   mesh.receiveShadow = true;
   for (const texture of textures) if (!retained.includes(texture)) retained.push(texture);
   RETAINED.delete(mesh);
   refreshHorizonGroundTone(mesh, textures[0], textures[4]);
+  bindRingReliefAtlas(vistaMaterial, material);
+}
+
+/**
+ * Round 72b: the terrain material's ring bands read the ring's own surface atlas (horizonRelief.ts, bound on the vista
+ * material as uVRelief) — the same texture object, radius window and gradient scale, so the first ridge and the ranges
+ * behind it carry one relief; the uniform objects were created with the material, so a bind after its compile reaches
+ * the program. A ring without a bake (the mobile tier) leaves the amplitude at 0.
+ */
+function bindRingReliefAtlas(vistaMaterial: Material, terrainMaterial: Material): void {
+  const vista = vistaMaterial.userData.horizonVista as VistaMaterialData | undefined;
+  const ring = terrainMaterial.userData.ringReliefUniforms as Record<string, { value: unknown }> | undefined;
+  if (!vista || !ring) return;
+  const amp = vista.uniforms.uVReliefAmp?.value as number | undefined;
+  const texture = vista.uniforms.uVRelief?.value as Texture | undefined;
+  if (!amp || !texture) return;
+  ring.uRingRelief.value = texture;
+  const window = vista.uniforms.uVReliefR?.value as { x: number; y: number } | undefined;
+  if (window) (ring.uRingReliefR.value as { set(x: number, y: number): void }).set(window.x, window.y);
+  ring.uRingReliefGrad.value = vista.uniforms.uVReliefGrad?.value ?? 1;
+  ring.uRingReliefAmp.value = amp;
 }
 
 interface VistaMaterialData { uniforms: Record<string, { value: unknown }>; base: Color }

@@ -2788,6 +2788,11 @@ uniform float uBeddedR;        // round 55: 1 when the R layer is the procedural
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
 float gWallSky = 0.0;     // round 42: steep × turned-from-the-sun weight, read by the indirect-light hook
+// round 72b: the horizon ring's baked surface atlas (horizonRelief.ts: the fine relief's gradient, its occlusion and the
+// sun's visibility over the annulus), read by the ring's terrain-material bands past the square so the first ridge
+// carries the same striations, rock breaks, snow line, folds and cast shadows as the vista ranges behind it
+uniform sampler2D uRingRelief; uniform vec2 uRingReliefR; uniform float uRingReliefGrad; uniform float uRingReliefAmp;
+float gRingAo = 1.0; float gRingSun = 1.0; vec2 gRingGrad = vec2(0.0);
 uniform float uRockGate;  // r6: 1 = slope-rock takeover keyed to the mask-B landform weight (desert mesas)
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
@@ -2974,6 +2979,18 @@ void splatCompute() {
   // fade those channels to open ground there (the landform/marsh channel keeps its edge value)
   float edgeOut = max(abs(wp.x), abs(wp.z)) - 512.0;
   float outsideW = smoothstep(0.0, 36.0, edgeOut);
+  // round 72b: past the square the ring's atlas relieves the slope the splat reads (rock breaks and the snow line
+  // follow the striations), darkens the folds and lays the ridges' cast shadows; the atlas is neutral within 90 m of
+  // the seam (the bake fades it there), so the seam row stays the terrain's own
+  if (uRingReliefAmp > 0.001 && edgeOut > 0.0) {
+    float ringW = smoothstep(0.0, 40.0, edgeOut) * uRingReliefAmp;
+    vec4 ringRel = textureLod(uRingRelief, vec2(atan(wp.z, wp.x) * 0.15915494309, (length(wp.xz) - uRingReliefR.x) * uRingReliefR.y), 0.0);
+    gRingGrad = (ringRel.xy * 2.0 - 1.0) * uRingReliefGrad * ringW;
+    vec2 ringG0 = -wn.xz / max(wn.y, 0.05);
+    wn = normalize(vec3(-(ringG0.x + gRingGrad.x), 1.0, -(ringG0.z + gRingGrad.y)));
+    gRingAo = 1.0 - (1.0 - pow(ringRel.z, 1.4)) * 0.8 * ringW;
+    gRingSun = 1.0 - (1.0 - ringRel.w) * 0.85 * ringW;
+  }
   // Round 29 (owner 2026-09-20, "see where the texture just stops"): a road that reaches the playable edge runs on
   // into the ring on its clamped edge texels — a straight continuation of the carriageway and its shoulder — and
   // fades out between 24 and 96 m instead of ending dead on the seam; wear still fades with the 36 m ramp.
@@ -4034,6 +4051,11 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 {
   vec3 dN = gSplatNrm;
   vec3 gN = normalize(vWNormal);
+  // round 72b: the ring bands' lighting normal carries the atlas gradient the splat slope already read
+  if (dot(gRingGrad, gRingGrad) > 0.0) {
+    vec2 ringG0 = -gN.xz / max(gN.y, 0.05);
+    gN = normalize(vec3(-(ringG0.x + gRingGrad.x), 1.0, -(ringG0.z + gRingGrad.y)));
+  }
   // r5: detail-normal strength falls off with distance (0.9 -> ~0.30 by the
   // far band). Past ~300 m per-texel normal shading cannot resolve — on
   // steep faces under a low sun it rendered as high-contrast bright/dark
@@ -4142,6 +4164,16 @@ function* createSplatMaterialSteps(
   const roadTint = S.roadTint || [1.08, 1.04, 0.96];
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
+  // round 72b: the ring's surface atlas uniforms — neutral (a 1 x 1 texel: gradient 0, occlusion 1, sun 1) until the ring
+  // binds its bake (horizonAutumnGround.bindAutumnHorizonGround). Built inline: the streaming receipts re-evaluate these
+  // steps in a sandbox where a module-level helper is a ReferenceError (the round-42 trap).
+  const ringReliefNeutral = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
+  ringReliefNeutral.needsUpdate = true;
+  const ringReliefUniforms: Record<string, THREE.IUniform> = {
+    uRingRelief: { value: ringReliefNeutral }, uRingReliefR: { value: new THREE.Vector2(0, 1) },
+    uRingReliefGrad: { value: 1 }, uRingReliefAmp: { value: 0 },
+  };
+  mat.userData.ringReliefUniforms = ringReliefUniforms;
   // r3: DoubleSide — at chunk borders where LOD levels disagree on a steep
   // cliff edge, the higher chunk's skirt ribbon can face AWAY from a camera
   // looking across the boundary; the culled backface opened a fog-bright
@@ -4254,6 +4286,12 @@ function* createSplatMaterialSteps(
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
     shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
     shader.uniforms.uWallSkyLift = { value: S.wallSkyLift ?? WALL_SKY_LIFT };
+    // round 72b: the ring's surface atlas — neutral until horizonAutumnGround.bindAutumnHorizonGround points these at the
+    // ring's own bake (the same uniform objects, so a bind after the compile still reaches the program)
+    shader.uniforms.uRingRelief = ringReliefUniforms.uRingRelief;
+    shader.uniforms.uRingReliefR = ringReliefUniforms.uRingReliefR;
+    shader.uniforms.uRingReliefGrad = ringReliefUniforms.uRingReliefGrad;
+    shader.uniforms.uRingReliefAmp = ringReliefUniforms.uRingReliefAmp;
   }
   const splatHook: MaterialShaderHook = (shader) => {
     assignSplatTextureUniforms(shader);
@@ -4276,10 +4314,12 @@ function* createSplatMaterialSteps(
     // shaded walls; a dim night sky, next to nothing — and the material's own albedo keeps a basalt wall dark and a
     // limestone wall pale. Faces the sun lights are untouched (gWallSky is 0 there).
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <lights_fragment_end>',
-      '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif');
+      '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif'
+      // round 72b: the ring bands' baked cast shadows on the sun's light and their occlusion on the sky's
+      + '\nreflectedLight.directDiffuse *= gRingSun; reflectedLight.directSpecular *= gRingSun; reflectedLight.indirectDiffuse *= gRingAo;');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v39'; // round 55: noise wall crag on the bedded sandstone R (v38: jointed marker-bed strata and the per-map ring rock band, v37: sea sector, v36: coast contour, v33: dune wind field, v32: sky light)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v40'; // round 72b: the ring bands read the horizon's surface atlas (v39: analytic wall crag on the bedded maps) // round 55: noise wall crag on the bedded sandstone R (v38: jointed marker-bed strata and the per-map ring rock band, v37: sea sector, v36: coast contour, v33: dune wind field, v32: sky light)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

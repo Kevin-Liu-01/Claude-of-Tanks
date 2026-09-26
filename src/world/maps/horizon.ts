@@ -931,6 +931,8 @@ interface HorizonRingGeometry {
   profileHeights?: Float32Array;
   /** Round 72b: the relief weight per authored row (0 skirt, 0.6 first ridge, 1 beyond) times the map's relief scale. */
   reliefWeights?: Float32Array;
+  /** Round 72b: each authored row's base height (row.base x amp x boost) — the floor the relief carves above. */
+  rowBases?: Float32Array;
 }
 
 interface HorizonGradients {
@@ -1103,6 +1105,22 @@ function sampleRingRowHeight(
     + (noise.noise(Math.cos(angle) * row.f0, Math.sin(angle) * row.f0) * 0.5 + 0.5) * row.amp;
 }
 
+/**
+ * Round 72b: the relief carves the profile instead of denting it. The profile's height over the row's base is the
+ * ENVELOPE (which ranges stand where — the authored composition); a ranged character's field modulates that envelope
+ * by up to ±90 % (its ridges are the zero-crossing lines of the noise, so the crests are long connected lines with
+ * sub-peaks and saddles, and the low passes stay low), plus a small additive share so the valleys keep some texture.
+ * The first cut added the field to the envelope, which left the smooth massifs of the profile as the silhouette with
+ * the field as dents on them — rows of symmetric cones. A character without ranges (mesa) keeps the additive form.
+ */
+function relievedHeight(relief: HorizonReliefField, x: number, z: number, profileHeight: number, rowBase: number, weight: number): number {
+  const rel = relief.low(x, z);
+  if (relief.settings.rangeCount === 0) return profileHeight + rel * weight;
+  const above = Math.max(0, profileHeight - rowBase);
+  const carve = clamp(rel / Math.max(1, relief.settings.lowAmpM), -0.9, 0.9) * weight;
+  return rowBase + above * (1 + carve * 0.9) + rel * 0.3 * weight;
+}
+
 function buildInitialHorizonGeometry(
   rows: HorizonRingRow[],
   style: HorizonStyle,
@@ -1115,6 +1133,7 @@ function buildInitialHorizonGeometry(
   const heights = new Float32Array(HORIZON_SEGMENTS * rows.length);
   const profileHeights = new Float32Array(HORIZON_SEGMENTS * rows.length);
   const reliefWeights = new Float32Array(rows.length);
+  const rowBases = new Float32Array(rows.length);
   const margins = horizonRowMargins(rows.length, style);
   let maxHeight = 1;
   // Round 72: the map's amplitude scales the coarse relief with the ranges it stands on (Polders' 0.18 stays a low
@@ -1148,6 +1167,7 @@ function buildInitialHorizonGeometry(
       const boost = row.skirt ? 1 : rangeBoostAt(authoredRank);
       let height = sampleRingRowHeight(row, angle, noise, profile) * amp * boost;
       const profileHeight = height;
+      rowBases[rowIndex] = row.base * amp * boost;
       // Round 72 (owner 2026-09-25, "the mountains look so flat"): the coarse relief field (horizonRelief.ts, a
       // ridged multifractal over a warped world plane) displaces every authored range — peaks, spurs and saddles
       // along each row that also vary with the radius, since the field is one plane — the first ridge at 60 % so the
@@ -1157,7 +1177,7 @@ function buildInitialHorizonGeometry(
       const tableRow = style === 'mesa' && rows.length === 9 && (authoredRank === 1 || authoredRank === 3);
       const reliefWeight = relief && !row.skirt ? (authoredRank === 0 ? 0.6 : tableRow ? 0.25 : 1) * reliefScale : 0;
       reliefWeights[rowIndex] = reliefWeight;
-      if (reliefWeight > 0) height += relief!.low(cos * radius, sin * radius) * reliefWeight;
+      if (reliefWeight > 0) height = relievedHeight(relief!, cos * radius, sin * radius, height, row.base * amp * boost, reliefWeight);
       // Retain the old 3% range meander while bounding it against folds at
       // square corners. This preserves the 1049 composition without letting
       // a newer map seed invert an annular strip.
@@ -1195,7 +1215,7 @@ function buildInitialHorizonGeometry(
       if (!row.skirt && heights[offset + segment] > maxHeight) maxHeight = heights[offset + segment];
     }
   }
-  return { rows, positions, heights, maxHeight, profileHeights, reliefWeights };
+  return { rows, positions, heights, maxHeight, profileHeights, reliefWeights, rowBases };
 }
 
 function appendSourceRingRow(
@@ -1292,7 +1312,7 @@ function appendInterpolatedRingRow(
     // was a radial cone standing on one row); the 90 m and 30 m knobs stay. The ledger's own laws are enforced
     // below: the row stays inside the anchors' band plus 12 % of the span, and its climb from the row before it
     // stays under the ledger's cliff bound.
-    const useField = !!relief && !!source.profileHeights && !!source.reliefWeights;
+    const useField = !!relief && !!source.profileHeights && !!source.reliefWeights && !!source.rowBases;
     const e1 = useField ? 0 : ridged(noise.noise(x * 0.0038 + 17.1, z * 0.0038 - 11.3)) - 0.5;
     const e2 = ridged(noise.noise(x * 0.011 - 41, z * 0.011 + 23)) - 0.5;
     const e3 = noise.noise(x * 0.031 + 7.3, z * 0.031 - 3.9);
@@ -1318,7 +1338,8 @@ function appendInterpolatedRingRow(
     height += displacement;
     if (useField) {
       const wIn = source.reliefWeights![rowIndex], wOut = source.reliefWeights![rowIndex + 1];
-      height += relief!.low(x, z) * (wIn + (wOut - wIn) * t);
+      const rowBase = source.rowBases![rowIndex] + (source.rowBases![rowIndex + 1] - source.rowBases![rowIndex]) * t;
+      height = relievedHeight(relief!, x, z, height, rowBase, wIn + (wOut - wIn) * t);
       // the ledger's bounds: inside the anchors' band plus 12 % of the span (the alpine law) or within 12 % of the
       // chord (the other styles), and never climbing past the cliff bound from the row before
       const lo = Math.min(innerHeight, outerHeight), hi = Math.max(innerHeight, outerHeight), slack = radialSpan * 0.115;

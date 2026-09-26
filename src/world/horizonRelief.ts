@@ -302,7 +302,9 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const jitter = noise.noise(along / (g.lambdaAlong * 0.6) + g.jitterPhase, 7.7) * g.lambdaAlong * 0.15;
       const n2 = noise.noise((along + jitter) / (g.lambdaAlong / 3) + g.o3, across / (g.lambdaAcross / 2) + g.o4);
       const r2 = Math.pow(1 - Math.abs(n2), sharp) * w1;
-      sum += w * g.height * (r1 * (1 - g.sub) + r2 * g.sub);
+      // the range's own lift: inside its window the ground stands 0.35 higher whatever the ridges do, so the ranges
+      // rise from the gaps between them and the far range shows through the passes
+      sum += w * g.height * (r1 * (1 - g.sub) + r2 * g.sub + 0.35);
     }
     return ranges.length ? sum + lowRaw(x, z, sharp) * 0.35 : lowRaw(x, z, sharp);
   };

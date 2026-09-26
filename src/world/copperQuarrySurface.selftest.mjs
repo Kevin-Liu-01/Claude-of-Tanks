@@ -111,9 +111,9 @@ function appendHorizonReceipt(hash, id, ring) {
 // Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 const currentPolders = [
-  '020adf2495ced48b9d3dad527170acb98f99872ac5a65bfcb12551042dbbbe1a' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
-  '2b4fe6ad89cee8e02475c15aa4c3732b79daf6aaf8cb19e46a2c59ec25bdf374',
-  'c04cd081c9e14e64127c0e06b514a9b129099244c47e22f11b1d560b1afeb7dd',
+  '78a172333f8544d7a44c42ec732ccf25ca6463babe2932d25aa143021d0119b6' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
+  '5f78632b822d95baafe444ed472bbf30bcf78f96df32726aa2a9bf90ec18a696',
+  '70b4bd30fa34d4927d0e954d933d7018d9437b15775b1afecd30ebbb23ce224e',
 ];
 function assertCurrentPolders(ring, index) {
   // Restored 1049e4e rolling rows at amp 0.18 crest between 27 and 33 m.
@@ -128,9 +128,9 @@ function assertCurrentPolders(ring, index) {
 // Keep the same historical Polders/Titan inputs and already-capped Skybridge.
 // (round 72: re-pinned with the relieved geometry, see above)
 const previous = [
-  '273a81575e0a2d35f89a3ccfc989fb7744351886c9a22e1139c65b4b92d2d1b0' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */,
-  '0bf6924321d9634db79b9e377160f8ebdf6db270d85bae4859e7417718c3677b' /* 2026-09-19 vista pass */,
-  'ec3a9b8f7b17120f8d261b5cc3665bbed868dc340ddbee6f3113fd2ffe879524',
+  '6f84927f83a5a101d2006c56fa6133ed0403e3ea5dae38a796265144a0655b37' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */,
+  '280ee4e500b37fe99f82aeba44a7a62b26e34bd65cd8b6a906bc3e1fe2cf23ea' /* 2026-09-19 vista pass */,
+  'c8f3851d69a9442ea235d76efad3529e49528dda0333d1044af9f45ce9c94c3f',
 ];
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');

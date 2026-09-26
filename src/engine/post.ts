@@ -344,6 +344,19 @@ const AERIAL_HAZE_DENSITY = 0.00092; // 1/m, slower second curve for scatter-in
 // (r6 de-milk, r2 black-point guard) is untouched.
 const AERIAL_EXT_CEILING = 0.60;
 const AERIAL_SCATTER_CEILING = 0.55;
+// Round 72b (integrator: "the boosted outer rows are washed toward the sky by the post aerial ceilings ... give the
+// ring its own distance law"): beyond the playable square the two ceilings ease with the distance past the square's
+// edge — continuous with the square's law at the seam (round 29 / 35), lower across the ring's ranges (edgeOut 260 m
+// out) so a range keeps half its own colour and contrast, and rising again toward the far range (900–2600 m out) so
+// the far peaks stay bluer and lighter, never gone: with the ring's own material haze the ridge contrast holds about
+// half the near value at 2 km and a fifth at 3.3 km. The playable terrain keeps round 39's ceilings untouched.
+const AERIAL_RING_EXT_NEAR = 0.50;
+const AERIAL_RING_EXT_FAR = 0.64;
+const AERIAL_RING_SCATTER_NEAR = 0.44;
+const AERIAL_RING_SCATTER_FAR = 0.58;
+const AERIAL_RING_EDGE_IN_M = 260;
+const AERIAL_RING_FAR_START_M = 900;
+const AERIAL_RING_FAR_END_M = 2600;
 // Directional in-scatter tints, applied to the live fog color (which is
 // sampled from the sky dome): pixels whose view ray points near the sun
 // azimuth scatter WARM, rays away from the sun scatter COOL BLUE — the
@@ -1066,7 +1079,14 @@ const AerialShader = {
         // 1.0 by 1.5 km — the far ranges lost every trace of their own colour and read as one veil. Ceilings on the
         // extinction (${AERIAL_EXT_CEILING.toFixed(2)}) and the scatter-in (${AERIAL_SCATTER_CEILING.toFixed(2)}) leave
         // every range at least a third of its own colour and shading; both bite only past ~650 m, the midfield law is unchanged
-        f = min( f, ${AERIAL_EXT_CEILING.toFixed(2)} );
+        // round 72b: the ring's own distance law past the square (see the AERIAL_RING_* const block)
+        vec3 wpRing = uCamPos + ray * rayT;
+        float edgeOutRing = max( abs( wpRing.x ), abs( wpRing.z ) ) - 512.0;
+        float ringIn = smoothstep( 0.0, ${AERIAL_RING_EDGE_IN_M.toFixed(1)}, edgeOutRing );
+        float ringFar = smoothstep( ${AERIAL_RING_FAR_START_M.toFixed(1)}, ${AERIAL_RING_FAR_END_M.toFixed(1)}, edgeOutRing );
+        float extCeil = mix( ${AERIAL_EXT_CEILING.toFixed(2)}, mix( ${AERIAL_RING_EXT_NEAR.toFixed(2)}, ${AERIAL_RING_EXT_FAR.toFixed(2)}, ringFar ), ringIn );
+        float scatCeil = mix( ${AERIAL_SCATTER_CEILING.toFixed(2)}, mix( ${AERIAL_RING_SCATTER_NEAR.toFixed(2)}, ${AERIAL_RING_SCATTER_FAR.toFixed(2)}, ringFar ), ringIn );
+        f = min( f, extCeil );
         float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
         vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
         texel.rgb = mix( texel.rgb, hazy, f );
@@ -1097,7 +1117,7 @@ const AerialShader = {
         float f2 = 1.0 - exp( -x2 * x2 );
         f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
         f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
-        f2 = min( f2, ${AERIAL_SCATTER_CEILING.toFixed(2)} );
+        f2 = min( f2, scatCeil );
         texel.rgb = mix( texel.rgb, hazeCol, f2 );
         // large-scale cloud shadows / light patchiness (see CLOUD_SHADE
         // const block): world-anchored soft patches multiply the ground —

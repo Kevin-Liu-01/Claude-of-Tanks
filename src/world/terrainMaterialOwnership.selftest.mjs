@@ -112,6 +112,9 @@ function checkSourceContract(text) {
     'uSlopeGrassHold', // round 45 (2026-09-23): tropical hills hold turf to steeper slopes (scalar, no sampler)
     'uRingRock', // round 49 (2026-09-23): per-map slope band over which a ring face past the square becomes landform rock (vec2, no sampler)
     'uBeddedR', // round 55 (2026-09-24): 1 on the maps whose R layer is the procedural bedded sandstone tile — their wall crag is analytic (scalar, no sampler)
+    // round 72b (2026-09-25): the horizon ring's surface atlas read by the terrain-material ring bands past the square — one sampler (the
+    // sixteenth unit: ten layer samplers, four cascades, the environment) and its radius window, gradient scale and amplitude
+    'uRingRelief', 'uRingReliefR', 'uRingReliefGrad', 'uRingReliefAmp',
   ].sort();
   assert.deepEqual(uniforms, expected, 'no new shader uniform or sampler');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -124,7 +127,8 @@ function checkSourceContract(text) {
   // round 42 (2026-09-23): the program cache key moved with the sky-light fragment (was v31, relief pass 2 of 2026-09-12)
   // round 49 (2026-09-23): v38 — jointed marker-bed strata and the per-map ring rock band
   // round 55 (2026-09-24): v39 — the bedded sandstone maps' analytic wall crag replaces the tile's coarse wall tap
-  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v39';/);
+  // round 72b (2026-09-25): v40 — the ring bands read the horizon's surface atlas
+  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v40';/);
 }
 function replaceOnce(text, from, to) {
   assert.equal(text.split(from).length, 2, `unique mutation seam: ${from}`);
@@ -148,5 +152,5 @@ await rejects(replaceOnce(source, nearAlbedo(source), nearAlbedo(source).replace
 await rejects(replaceOnce(source, normalTerm(source, 'gnF'), 'gnF.xy * farM * 0.24'), 'far normal bypass');
 await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('farG *', 'farM *')), 'far albedo bypass');
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
-assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v39', 'world-terrain-splat-v38')));
+assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v40', 'world-terrain-splat-v39')));
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');
