@@ -30,7 +30,7 @@ export const HORIZON_FAR_ROWS: readonly { r: number; lift: number; aer: number }
 /** The far ring's foot: the plain the ranges rise from (m), a little under the ring's own outer shoulders. */
 export const HORIZON_FAR_FOOT_M = 40;
 
-export interface HorizonFarRangeOptions {
+interface HorizonFarRangeOptions {
   seed: number;
   settings: HorizonFarRangeSettings;
   character: HorizonReliefCharacter;
@@ -49,7 +49,7 @@ export interface HorizonFarRangeOptions {
   nearMaxHeight: number;
 }
 
-export interface HorizonFarRangeGeometry {
+interface HorizonFarRangeGeometry {
   columns: number;
   rowCount: number;
   positions: Float32Array;

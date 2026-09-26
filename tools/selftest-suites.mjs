@@ -1079,6 +1079,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/cropBiomeIdentity.selftest.mjs',
     'src/world/horizonResources.selftest.mjs',
     'src/world/horizonRelief.selftest.mjs',
+    'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',
     'src/world/edgeWater.selftest.mjs',

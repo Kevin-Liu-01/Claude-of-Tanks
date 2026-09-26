@@ -279,7 +279,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
 // ---------------------------------------------------------------------------
 // the surface bake
 // ---------------------------------------------------------------------------
-export interface HorizonReliefBakeInput {
+interface HorizonReliefBakeInput {
   columns: number;
   rowCount: number;
   positions: Float32Array;

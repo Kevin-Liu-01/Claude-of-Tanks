@@ -524,13 +524,14 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   lit = mix(lit, lit * vec3(0.92, 0.95, 1.06), max(-ndl, 0.0) * 0.2);
   // canopy self-shadow: stands darken on their shaded side a little more than open ground
   lit *= 1.0 - forestW * 0.10 * (1.0 - sunL);
-  // round 72: snow glints at a grazing sun — a sparse world-anchored hash picks the crystals, the sun's mirror
-  // direction against the eye lights them, only where the fine fields still resolve (fineW) and the sun reaches
-  if (uVSparkle > 0.001 && snowW > 0.05 && fineW > 0.01) {
+  // round 72: sun glitter on the snowfields at a grazing sun — a sparse world-anchored hash picks the facets (a
+  // 3 m cell, one in sixty), the sun's mirror direction against the eye lights them, only where the detail fields
+  // still resolve (detailW, gone by 1.5 km) and the sun reaches; a shimmer of pale points, never a speckle field
+  if (uVSparkle > 0.001 && snowW > 0.05 && detailW > 0.01) {
     vec3 viewDir = normalize(cameraPosition - P);
-    float glintH = fract(sin(dot(floor(P.xz * 2.5) + floor(P.y * 2.5), vec2(12.9898, 78.233))) * 43758.5453);
-    float glint = step(0.972, glintH) * pow(max(dot(reflect(-uSunDirW, n), viewDir), 0.0), 40.0);
-    lit += uVSnowColor * glint * snowW * uVSparkle * fineW * sunVis * 2.5;
+    float glintH = fract(sin(dot(floor(P.xz * 0.33) + floor(P.y * 0.33), vec2(12.9898, 78.233))) * 43758.5453);
+    float glint = step(0.984, glintH) * pow(max(dot(reflect(-uSunDirW, n), viewDir), 0.0), 32.0);
+    lit += uVSnowColor * glint * snowW * uVSparkle * detailW * sunVis * 1.6;
   }
   // Round 29 (2026-09-20): the tints above are ABSOLUTE linear colours (the map's own ground albedo mean, rock,
   // forest and snow colours), so the baked biome tone and the vertex colour — both base-hued — are divided back
