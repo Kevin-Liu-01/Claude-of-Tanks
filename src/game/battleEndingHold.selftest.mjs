@@ -15,7 +15,8 @@ assert.match(core, /resultTimeS: number \| null;/, 'the session shell carries th
 assert.match(core, /result: null,\n\s*resultReason: null,\n\s*resultTimeS: null,/, 'a fresh session has no verdict time');
 assert.match(state, /game\.result = null;\n\s*game\.resultReason = null;\n\s*game\.resultTimeS = null;/,
   'a new battle clears the verdict time with the result');
-assert.match(state, /if \(game\.result !== null\) \{\n\s*game\.resultTimeS = game\.timeS;\n\s*emitBattleEnded\(game, bus\);\n\s*\}/,
+// (the Jev commander, 2026-09-25, stops its request loop between the stamp and the event)
+assert.match(state, /if \(game\.result !== null\) \{\n\s*game\.resultTimeS = game\.timeS;\n(?:\s*game\.jev\?\.stop\(\);\n)?\s*emitBattleEnded\(game, bus\);\n\s*\}/,
   'the verdict stamps its sim time before battle:ended is emitted');
 
 // the step: the hold guard is the first statement, the guns fall silent right after the AI writes its input

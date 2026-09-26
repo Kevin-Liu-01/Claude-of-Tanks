@@ -454,7 +454,9 @@ for (const entryKind of ['private', 'rematch']) {
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const returnCallbackSource = mainSource.split('const leaveBattleToGarage = ')[1]
   .split('\nconst soloBattleEntry =')[0];
-const createReturnCallback = new Function('networkComposition', 'input', 'garageReturn',
+// Multiplayer v2 (2026-09-25): the callback also reads the v2 composition access and the entry lifecycle;
+// the v1 seam under test hands it an idle v2 access so the v1 branches run unchanged.
+const createReturnCallback = new Function('networkComposition', 'input', 'garageReturn', 'multiplayerV2', 'battleEntryLifecycle',
   `return ${returnCallbackSource.replace('(): Promise<void> =>', '() =>')}`);
 
 function createEntryGarage(game, lifecycle, round, getMatch, calls) {
@@ -527,7 +529,7 @@ for (const entryKind of ['private', 'rematch']) {
       session: { roomInfo: { peerId: 'host' }, takeMatchChannels: () => [] } });
   assert.equal(launcher.pending, true);
   const returnToGarage = createReturnCallback({ current: { launcher, round } },
-    { setEnabled: (value) => entry.calls.push(['input', value]) }, garage);
+    { setEnabled: (value) => entry.calls.push(['input', value]) }, garage, { current: null }, { pending: false });
   await returnToGarage();
   assert.equal(launcher.pending, true, 'cancellation retains entry ownership until cleanup finishes');
   assert.equal(entry.calls.filter(([name]) => name === 'garage').length, 0,
