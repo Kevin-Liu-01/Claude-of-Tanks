@@ -3137,6 +3137,28 @@ mid-size masses — a coverage threshold admits most of a cell or none, never th
 two-tap light ladder inside a front's base deck (a tall slab, the lower third), the far strides on a tall slab up to
 2 × past 3–9 km, and one street fetch per weather lookup (the anvil channel rode a second fetch of the same texel).
 
+**71c measured (tip ac0f882b6; the seven maps the fixes changed most re-captured — alpine, coastal, steppe,
+frontier, verdant, monsoon, delta — the other twenty-four keep their 71b captures in the sheets; the owner asked every
+lane to wrap up, and the probe mutex was held by another lane for the wider re-capture).** Bases: alpine 133 / 137 /
+146 sRGB (warmth −0.10, base over lit quarter 1.06 / 0.69) from 110 / 103 / 98 (+0.12), coastal 138 / 143 / 138 (0.00)
+from 95 / 106 / 91, verdant 165 / 170 / 180 (−0.09), frontier 157 / 173 / 193 (−0.21), steppe 167 / 171 / 178 (−0.07),
+delta 122 / 139 / 157 (−0.26): every cumulus base neutral-to-cool; monsoon's wall 184 / 180 / 171 (+0.07) — lighter
+than 71b's 161 / 156 / 144 (its contrast 1.15 / 1.20 against 1.42 / 1.31): the front is still one flat-based mass with
+cauliflower tops, but a second darkening of its deck (floor 0.35 → 0.2, the bottom term halved) is committed nowhere —
+it could not be verified before the wrap-up and stays open. Streets: steppe 23 / 25 % and frontier 21 / 26 % in the
+largest structure (chains of separate aligned lumps by design; 71b's tubes read 29 / 52 and 38 / 89), p50 components
+1738 / 623 and 236 / 320 mask pixels. Verdant's tiny puffs: 2 / 7 components under 60 mask pixels (71b: 2 / 14; the
+71a carpet 9–18 % of the area in small components → 8 / 6 %), the p50 466 / 206. Contrast on the masses: verdant 2.8 /
+2.6, coastal 3.2 / 1.1, delta 2.7 / 2.6, alpine 1.2 / 1.3 (its masses fill the view: little lit top to compare),
+steppe / frontier 1.1–1.3 (lit lumps over lightly shaded bases). Sky bands (middle / lower vs the baked base): verdant
+−3 / 0 and +2 / +2, delta −2 / 0 and +2 / +2, alpine +4 / 0 and −2 / +1, reservoir −3 / −1 and 0 / +1, urban +1 / +1
+and +14 / +6, frontier +3 / +3 and +12 / +4, orchard −4 / −1 and −4 / 0, longleaf −2 / −1 and −2 / −1, airfield +1 / 0
+and −1 / 0 — all nine inside ±15 / ±10; monsoon +8 / +2 and +7 / +8. Skylines: winter 0.88 / 0.91, whiteout 0.92 / 0.87,
+monsoon 0.54 / 0.55 (base 0.56 / 0.54), alpine 1.03 / 0.91 (base 1.03 / 0.90), verdant 0.74 / 0.72, steppe 0.88 / 0.85,
+frontier 0.76 / 0.69. Perf by repetition at load 200–300 (the chain at full tilt; medians of three rounds, GPU):
+verdant 0.35 ms, winter 0.88, monsoon 1.21 (rounds 1.05 / 1.54 / 1.21 — at the 1.2 budget line, ± 0.3 of noise),
+frontier 0.14, desert 0.14.
+
 **71b measured (the same captures, metrics and sheets re-run on tip dab60d45d; the numbers below supersede the 71a
 paragraph that follows, kept for the record).** Structure: the streets now hold one roll per view — frontier 38 / 89 %
 of the cloud area in the largest structure, coastal 59 / 65, steppe 29 / 52, saltwind 34 / 45 (a roll fading between
@@ -3217,7 +3239,7 @@ same bench at load 110–160 read verdant 0.26, winter 1.11, frontier 0.85, dese
 move by ±40 % with the machine and are upper bounds at load. The composite, the far band and the cirrus sheet add no
 pass; the six bakes run in the worker under the loading cover.
 
-**Receipts (exit 0, tip dab60d45d).** volumetricClouds (rewritten: six bake digests — the street bake re-pinned in 71b — tiling on both axes, the equalised
+**Receipts (exit 0, tip ac0f882b6).** volumetricClouds (rewritten: six bake digests — the street bake re-pinned in 71b — tiling on both axes, the equalised
 fields, the street and cirrus anisotropy, the synoptic clustering of the cumuliform field, the blue-noise ranks, the 31-map cloudscape table, the
 eighteen regime rows, the monsoon / whiteout / winter / coastal / delta / alpine identities, the shadow and override
 policies, the slot cycle, the far ramp, the stride scale, the haze mirror, the hooks and the gobo material), atmosphere,
@@ -3232,14 +3254,14 @@ adaptiveQualityPolicy, quality, wallSkyLight, sourcedTerrainPreparation, terrain
 worldBuildCoordinator, daynight-atmosphere-probe, postLightFxPolicy; `npm run typecheck` (the native tsc and the
 core unused-symbol check).
 
-**Open (after 71b).** Monsoon's slot at 1.5 ms (a third over budget; a coarser light ladder inside the anvil level, or
-fewer steps through the base deck); the top / base ratio under 1.6 where the camera looks up at bases (a ground-bounce
-term that darkens with the base's depth); a street roll fading between its lumps still splits into two structures on
-the wide view (steppe / frontier sky-w 29–38 %); the towers' cauliflower reads at the outline only — the lit body is
-still smooth between bulges (a third shape octave, or the detail erosion carried into the mass at the tops); whiteout's
-sky-w skyline 0.92 at the band's edge (round 44's re-grade call stands) and polders' sky-s 1.03 under its authored deck;
-the `?clouds=volumetric` default stays with the owner — the sheets are the review; the round-68 open items not closed
-here (the inside-the-slab camera, the cascade policy for the gobos, a moonlit edge at night).
+**Open (after 71c).** Monsoon's wall a step lighter than the 8 / 10 version (the second darkening of its base deck is
+unverified and not committed); the twenty-four maps not re-captured in 71c carry 71b captures in the sheets (the same
+code path lights them — a full re-capture is the first thing for the next pass); monsoon's slot at the 1.2 ms line
+(1.05–1.54 by round at load 200–300); the top / base ratio still under 1.6 where the camera looks up at bases; the
+cauliflower reads at the outline only; whiteout's sky-w skyline 0.92 at the band's edge (round 44's re-grade call
+stands) and polders' sky-s 1.03 under its authored deck; the `?clouds=volumetric` default stays with the owner — the
+sheets are the review; the round-68 open items not closed here (the inside-the-slab camera, the cascade policy for the
+gobos, a moonlit edge at night).
 
 ### Round 70 — 2026-09-25: Whiteout's snow re-grade (owner: yes)
 
@@ -3496,6 +3518,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 71 | {{ROW}} |
 | 71 | The cloudscape pass on the opt-in volumetric layer (owner: round 68 was "just puffs", 5 / 10): a `clouds` block on every map config resolved through eighteen regime rows (`engine/cloudscapes.ts`: fair-weather cumulus, cloud streets, sea streets, towering cumulus, cumulonimbus front, cumulus humilis, lenticular, broken / closed stratocumulus, overcast and low stratus, ice fog, hazy altostratus, dense overcast, ash veil, cirrus, thin ice clouds), a multi-scale weather field with a type channel and a street / anvil / cirrus field in the wind frame, a curl volume and a blue-noise tile (`cloudNoise.ts`), type height profiles, a rigid wind lean, anvils, scud, curl-warped erosion with a per-map wispiness, the Hillaire octaves under a dual-lobe phase with Beer–powder toward the sun, the ambient split with the depth above and a deck floor, a far stratocumulus band and a wind-sheared cirrus sheet with the 22° halo, weather-gated empty-space striding, gobos that discard by the same fields; the baked decks stay the default and byte-identical | 31-map before / after review sheets (`$SP/r71/review/contact-sheet*.png`) with the structure / lighting / edge metrics on the history masks (decks one structure, fair-weather sizes spread an order of magnitude, contrast 2.6–3.5 on the masses), the sky-band rule (eight of nine good maps within ±8 % middle / ±5 % lower; urban sky-s +18 %), skylines (winter 0.89 / 0.89, whiteout 0.91 / 0.86, monsoon 0.62 / 0.59); per-slot 0.22–1.54 ms GPU by repetition at load 100–150; volumetricClouds receipt (rewritten) and the receipts in the section |
 | 71 | The cloudscape pass on the opt-in volumetric layer (owner: round 68 was "just puffs", 5 / 10): a `clouds` block on every map config resolved through eighteen regime rows (`engine/cloudscapes.ts`: fair-weather cumulus, cloud streets, sea streets, towering cumulus, cumulonimbus front, cumulus humilis, lenticular, broken / closed stratocumulus, overcast and low stratus, ice fog, hazy altostratus, dense overcast, ash veil, cirrus, thin ice clouds), a multi-scale weather field with a type channel and a street / anvil / cirrus field in the wind frame, a curl volume and a blue-noise tile (`cloudNoise.ts`), type height profiles, a rigid wind lean, anvils, scud, curl-warped erosion with a per-map wispiness, the Hillaire octaves under a dual-lobe phase with Beer–powder toward the sun, the ambient split with the depth above and a deck floor, a far stratocumulus band and a wind-sheared cirrus sheet with the 22° halo, weather-gated empty-space striding, gobos that discard by the same fields; 71b after the integrator's eye check: streets as continuous rolls with lumps riding on them, wide flat-based cumulonimbus with clustered towers and a sheared top third, the cauliflower (a second shape octave lifting the column top bulge on bulge, a sharper density threshold), the lighting (the powder sign, a white lit face, dark bases, the silver lining), the perf levers (footprint strides, an alternating light march, a 12 km pre-pass); the baked decks stay the default and byte-identical | 31-map before / after review sheets (`$SP/r71/review/contact-sheet*.png`) with the structure / lighting / edge metrics on the history masks (streets one roll per view 38–89 %, the front 79 / 95 %, decks one structure, fair-weather sizes spread two orders, contrast 2.2–3.5 on the masses), the sky-band rule (all nine good maps within ±8 % middle / ±3 % lower except urban sky-s +14 / +6), skylines (winter 0.88 / 0.91, whiteout 0.92 / 0.87, monsoon 0.58 / 0.54); per-slot by repetition at load 53–80: verdant 0.59, winter 0.99, frontier 0.50, desert ≈ 0, monsoon 1.54 ms GPU; volumetricClouds receipt (rewritten) and the receipts in the section |
+| 71 | The cloudscape pass on the opt-in volumetric layer (owner: round 68 was "just puffs", 5 / 10): a `clouds` block on every map config resolved through eighteen regime rows (`engine/cloudscapes.ts`: fair-weather cumulus, cloud streets, sea streets, towering cumulus, cumulonimbus front, cumulus humilis, lenticular, broken / closed stratocumulus, overcast and low stratus, ice fog, hazy altostratus, dense overcast, ash veil, cirrus, thin ice clouds), a multi-scale weather field with a type channel and a street / anvil / cirrus field in the wind frame, a curl volume and a blue-noise tile (`cloudNoise.ts`), type height profiles, a rigid wind lean, anvils, scud, curl-warped erosion with a per-map wispiness, the Hillaire octaves under a dual-lobe phase with Beer–powder toward the sun, the ambient split with the depth above and a deck floor, a far stratocumulus band and a wind-sheared cirrus sheet with the 22° halo, weather-gated empty-space striding, gobos that discard by the same fields; 71b after the integrator's eye check: streets as continuous rolls with lumps riding on them, wide flat-based cumulonimbus with clustered towers and a sheared top third, the cauliflower (a second shape octave lifting the column top bulge on bulge, a sharper density threshold), the lighting (the powder sign, a white lit face, dark bases, the silver lining), the perf levers (footprint strides, an alternating light march, a 12 km pre-pass); 71c: luminous blue-grey bases (the bottom ambient undimmed by the depth above, a cool sky-mean floor, the diffused sun toward neutral; a cumulonimbus deck exempt), streets as chains of aligned lumps on rolls of varying width fading past 4 km, plateau cells of 540–960 m soft-unioned (the far field's tiny puffs), a two-tap ladder in a front's base deck and far strides; the baked decks stay the default and byte-identical | 31-map before / after review sheets (`$SP/r71/review/contact-sheet*.png`) with the structure / lighting / edge metrics on the history masks (streets one roll per view 38–89 %, the front 79 / 95 %, decks one structure, fair-weather sizes spread two orders, contrast 2.2–3.5 on the masses), the sky-band rule (all nine good maps within ±8 % middle / ±3 % lower except urban sky-s +14 / +6), skylines (winter 0.88 / 0.91, whiteout 0.92 / 0.87, monsoon 0.54 / 0.55); base chroma neutral-to-cool on every cumulus map (alpine 133 / 137 / 146 from 110 / 103 / 98); per-slot by repetition: verdant 0.35–0.59, winter 0.88–0.99, frontier 0.14–0.50, desert ≈ 0, monsoon 1.21–1.54 ms GPU (load 50–300); volumetricClouds receipt (rewritten) and the receipts in the section |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
