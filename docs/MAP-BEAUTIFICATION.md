@@ -3916,6 +3916,247 @@ gates, a settled ring's exclusions and hollows, determinism, the knob, streaming
 the wiring); the fetch census +7 with the note, the uniform list, `world-terrain-splat-v40` and its negative control,
 the fold attribute in `terrainStreaming`, the sandboxed material steps in `terrainSplatFields` / `terrainWetLayer`.
 
+### Round 73b — 2026-09-26: the second pass on the ground — the borders read, the strand runs up the beach, the sedge keeps to the hollows
+
+**Integrator (2026-09-26, on the round-73 sheets):** the tall grass is the visible win (Steppe's wheat at the ground-low
+view, the Saltwind / Verdant / Monsoon swards, the press trails), but the terrain-material terms — the height-blended
+transitions, the scree, the folds, the mid octave — are invisible at the ground-mid and ground-far views, the wet strand
+is invisible even at the strand view (Saltwind 0.31 → 0.32), and Whiteout's tundra sedge reads as scattered dark sticks
+in the snow. Same branch base (round 73 rebased over the mountains and the clouds), the same `?ground=legacy` A/B, the
+horizon / vista modules untouched, nothing in `src/sim`. Every mechanism below is a knob in the profile table, inert at
+zero.
+
+**Why round 73's terms could not read (two findings that shape the pass).** (1) The transitions were a LINE. The
+height-and-noise mix broke the border's shape, but both sides kept their own tone, and at 40–120 m — where the
+normals have mipped flat — a dirt patch met its turf with nothing to see. What a border needs at range is a third
+tone along it (a torn, damp lip; a lichen rim; a gravelled verge), in albedo, so it survives the mip fade. (2) The
+strand was sized in the wrong unit. Round 73 read its band off the mask's wetness ramp (`fM`), and on a real beach that
+ramp is two metres wide: Saltwind's sea disc carries a 20 m shelf on a 165 m local radius at the strand view, so the
+contour's 0.80 → 0.96 wetness ramp is 13 m long and the 0.02–0.16 apron the material calls "sand" is 0.16 of it — two
+metres. Whatever width the profile asked for (0.12 or 1.9 ramps), the film lived inside those two metres under the surf
+line, and the `strand` gate ramped it to nothing across them. A swash runs up a beach by METRES; the band needed a
+metric distance from the waterline, which no channel of the mask carries.
+
+**The borders (`terrain.ts` v43, `uReduxB`; no sampler — two more packed vectors, `uReduxB` and `uReduxC`).** After the
+layer mixes: a *lip* at the worn patches' edges (`4 fD (1 − fD)`, broken by the near noise: −15 % luma and a damp
+brown shift — the sod torn, the soil open), a *rim* on the outcrops at their turf border (`4 fR (1 − fR)`, the rock
+tinted by climate through `uReduxC.rgb`: lichen grey-green-yellow on the temperate maps, moss on the wet and tropical
+ones, a dust bloom on the arid, hoar on the snow), and a *verge* on the road shoulders where the shoulder's own dirt
+shows (the carriageway's clamped zero-mean rock grain as grit, a dusty paler tone, matte; inside 160 m). All three
+vanish at full and zero coverage (a road stays a road, a field a field) and off the wall projections; the arid row keeps
+the lip at 0.25 (the owner's black-contour history on sand). The 26–150 m octave gained an albedo term beside its normal
+(the same 1.1 m re-projection as a zero-mean high-pass against the tile's deep mip, ±0.30, band 20–190 m): the
+tussocks and clods of the mid band read by tone where the normal's shading has mipped flat. The folds reach further
+down the curvature (thresholds 0.10–0.60 → 0.06–0.50: a gentle map's folds sit under 0.4) and read stronger
+(moisture −16 % → −22 %, crest +6 % → +9 %). A scree skirt (the round-73 band, 26°–47° under the rock take-over)
+is now authored on the meadow and hill maps too (Verdant 0.25, Autumn 0.3, Frontier 0.3, Monsoon 0.3, the towns
+0.15–0.2); the arid maps keep none.
+
+**Snow.** The drift wave is a sawtooth, not a sine — a long stoss slope climbing to a sharp lee crest that drops in a
+fifth of the 15 m wavelength — so the drifts carry an EDGE: the normal tilts as before and a shaded lee face under the
+lit crest line (`uReduxC.w`, −13 %, inside the 15–50 m ramp) survives in albedo where the normal has mipped away. The
+wind-scoured crust (round 73's cooler, darker macro) publishes itself to the roughness stage and takes a satin sheen
+(0.92 → 0.62 at full scour), so the exposed patches catch the low sun where the powder stays matte.
+
+**The strand in metres (`shore`, a second vertex byte).** Every terrain chunk vertex now carries its distance landward
+of the sheet's waterline, baked at build from the map's own shoreline contours (the lake and marsh discs the mask bake
+and the sheet share; the waterline is where the contour's wetness ramp crosses the map's sea ramp — a bisection once
+per map) as one normalised byte over 0–32 m, INVERTED (255 at the waterline, 0 at 32 m and beyond) so a geometry
+without the attribute — the horizon ring's bands share this material — reads as far from any shore; the skirt
+continues its top vertex, a frozen or dry map bakes nothing. The material's strand block runs on it: below the run-up's
+breathing reach (`swashReachM` × (0.55 + 0.45 sin) on the water sheet's clock, per map: Saltwind 4.5 m, Saltmere 6,
+Nordhavn 4, Mangrove Reach 3) the ground is a film — darkened 50 % × strength (75 % at Saltwind's 1.6), a shade more
+saturated, cast cool by the water (× (0.90, 0.95, 1.0)), roughness 0.30 with the ripples smoothed under it (0.22
+mirrored the whole sky at the strand view's grazing angle and lifted the band pale — the probe frames say so); a
+sharp, ragged swash line at the reach (a 0.5 m smoothstep with the near noise); a damp band above it to the
+high-water mark (1.3 × reach + 0.8 m) at 55 % of the film; a *foam line* the last run-up left at the reach (a 0.3 m
+Gaussian, broken by the noise fields, 40 % toward a pale grey, matte — sea maps only); a *wrack line* at the mark
+(−38 %) with pebbles and shell — the rock tile's clamped zero-mean grain on the wet sand and along the wrack, inside
+90 m. A lake or a river (no period) keeps a steady muddy margin (the film tinted toward mud, no foam). The band wets
+whatever the beach is — the authored sand near the water, the marram's edge above it; a first cut that extended the
+sand layer to the high-water mark laid an orange band over Saltwind's turf and was removed. `uReduxSwash.y` is the
+reach in metres, `.w` the lines' strength; the round-73 `swashWidth` (ramp multiples) is gone.
+
+**Reeds as a margin (`tallGrass.ts`).** A reed biome is a waterline fringe: dense at mask 0.04–0.10 (`waterBand`
+0.85), thinning to nothing by 0.40, taller at the water (+30 %, to the 1.9 m cap), the banks' own meadow at `bank`
+(0.2–0.7) of the reed density — round 73 grew reeds at 1.0 over the whole 0.04–0.6 band and overrode the density with
+the bank's, so the margin was no denser than the bank. A meadow with `reedMargin` (Monsoon 0.55, Highland Reservoir
+0.5) grows the same fringe along its lake — tall (1.9 m), a quarter wider, olive (the tint's blue at 0.55).
+
+**Tundra sedge.** The sedge keeps to the hollows and the lee sides in clumps: the admission multiplies by
+`(0.06 + 1.6 hollow) × (0.35 + 0.65 lee) × (0.15 + 0.85 cluster)` — the baked fold's hollow, the slope's downhill
+direction against the map's wind (a lee slope's downhill runs with the wind), the terrain's ~10–20 m `n1` patches —
+so open windward snow carries 6 % of the density and a lee hollow the whole of it, taller (+45 %) in the hollow; the
+straw is darker (tip 0.17 / 0.14 / 0.075, was 0.27 / 0.22 / 0.12) and the far ring's tundra blades keep half their
+tint (the far ring lifts its tips a third, which lit them white on the snow). The pale crossed cards in the Whiteout
+frames are the vegetation tier's winter tuft carpet (`vegetation.ts`, authored per map), not the sedge — noted below.
+
+
+**Measured (`.qa-dev/r73b-capture.mjs`, `r73b-metrics.mjs`, `r73b-sheet.mjs`; the sheets in `$SP/r73b/review`, the
+crops in `review/crops`, the tables in `$SP/r73b/metrics-tables.md`).** Three columns on the same seed and views as
+round 73: `legacy` (`?ground=legacy` on this build), `round 73` (the base commit 4c90efe48 in its own detached
+worktree beside this one — its exact code, the same node_modules) and `73b` (this build), plus `73b terrain-only`
+(`?tallgrass=off` on this build) where the sward would confound the read; the strand sheet carries Mangrove Reach and
+Monsoon Ridge on a `strand-auto` view (the camera 4 m over the ground a few metres landward of the waterline nearest a
+seed point, found by a scan of the wetness field, looking along the shore) — round 73 had no strand view for either.
+Sheets: `sheet-six-{chase,ground-low,ground-mid,ground-far}.png` (legacy | round 73 | 73b), `sheet-strand.png`
+(Saltwind, Saltmere, Nordhavn, Mangrove, Monsoon).
+
+#### Six maps — ground-mid: the 40–120 m band (rows 55–75 %: 43–105 m at 14 m up) detail |Laplacian| and tiling peak; the round-73 crop (rows 42–62 %: 73 m to the horizon) beside it; legacy → round 73 → 73b (→ 73b terrain-only)
+| map | detail 40–120 m | tiling 40–120 m | detail (round-73 crop) | tiling (round-73 crop) |
+|---|---|---|---|---|
+| whiteout | 24.4 → 26.2 → 27.0 → 27.6 | 0.117 → 0.198 → 0.240 → 0.199 | 27.6 → 28.5 → 28.9 → 28.9 | 0.081 → 0.159 → 0.160 → 0.094 |
+| verdant | 43.6 → 42.9 → 42.3 → 43.1 | 0.057 → 0.061 → 0.066 → 0.068 | 44.0 → 43.0 → 42.6 → 43.4 | 0.088 → 0.118 → 0.111 → 0.084 |
+| saltwind | 47.4 → 45.1 → 45.3 → 44.4 | 0.100 → 0.147 → 0.155 → 0.119 | 44.5 → 43.4 → 43.2 → 43.0 | 0.044 → 0.088 → 0.108 → 0.079 |
+| steppe | 42.4 → 42.3 → 42.0 → 43.7 | 0.079 → 0.086 → 0.080 → 0.072 | 45.5 → 46.8 → 46.6 → 46.0 | 0.097 → 0.092 → 0.090 → 0.088 |
+| monsoon | 33.5 → 34.4 → 35.8 → 31.3 | 0.051 → 0.108 → 0.125 → 0.052 | 31.0 → 31.0 → 31.5 → 30.3 | 0.033 → 0.092 → 0.121 → 0.029 |
+| desert | 25.7 → 26.0 → 27.0 → 26.8 | 0.131 → 0.131 → 0.117 → 0.112 | 25.7 → 25.8 → 26.0 → 26.1 | 0.168 → 0.195 → 0.178 → 0.161 |
+
+#### Six maps — ground-far detail / tiling (round-73 crop), legacy → round 73 → 73b
+| map | detail | tiling |
+|---|---|---|
+| whiteout | 22.5 → 22.4 → 22.7 | 0.184 → 0.193 → 0.195 |
+| verdant | 35.3 → 34.5 → 34.4 | 0.127 → 0.113 → 0.117 |
+| saltwind | 27.3 → 26.8 → 26.7 | 0.099 → 0.082 → 0.084 |
+| steppe | 34.5 → 30.0 → 31.4 | 0.092 → 0.126 → 0.129 |
+| monsoon | 28.0 → 27.8 → 29.3 | 0.070 → 0.057 → 0.094 |
+| desert | 27.4 → 27.8 → 27.6 | 0.166 → 0.174 → 0.159 |
+
+#### Six maps — transition softness (chase / ground-low; hard-edge share and p90 gradient), legacy → round 73 → 73b (→ 73b terrain-only)
+| map | chase hard share | chase p90 | ground-low hard share | ground-low p90 |
+|---|---|---|---|---|
+| whiteout | 0.037 → 0.056 → 0.047 → 0.043 | 14.6 → 16.7 → 15.9 → 15.5 | 0.045 → 0.062 → 0.038 → 0.052 | 18.1 → 17.7 → 14.5 → 18.9 |
+| verdant | 0.203 → 0.249 → 0.255 → 0.221 | 35.0 → 41.0 → 42.0 → 37.6 | 0.166 → 0.179 → 0.180 → 0.168 | 32.0 → 33.7 → 33.9 → 32.3 |
+| saltwind | 0.211 → 0.253 → 0.255 → 0.203 | 33.6 → 38.5 → 39.0 → 34.6 | 0.241 → 0.241 → 0.236 → 0.238 | 34.5 → 35.3 → 34.8 → 34.2 |
+| steppe | 0.106 → 0.367 → 0.376 → 0.153 | 24.6 → 43.6 → 44.3 → 28.8 | 0.088 → 0.240 → 0.240 → 0.093 | 22.7 → 37.5 → 37.0 → 23.3 |
+| monsoon | 0.045 → 0.129 → 0.132 → 0.048 | 16.2 → 27.4 → 27.6 → 16.9 | 0.100 → 0.133 → 0.139 → 0.101 | 24.0 → 27.7 → 28.3 → 24.1 |
+| desert | 0.082 → 0.084 → 0.220 → 0.085 | 21.9 → 22.2 → 35.3 → 22.4 | 0.051 → 0.051 → 0.103 → 0.050 | 16.4 → 16.3 → 24.5 → 16.4 |
+
+#### The strand (strand view): the sand-band metric (sand-hued pixels only — contrast 1 − p05 / median, higher = a stronger band; the wet share under 0.72 × median) and the round-73 column metric (the darkest run per column against the median: the sea fills its columns), legacy → round 73 → 73b
+| map | sand contrast | wet share | sand median luma | r73 column contrast | r73 width p90 px |
+|---|---|---|---|---|---|
+| saltwind | 0.319 → 0.254 → 0.414 | 0.067 → 0.041 → 0.174 | 176 → 156 → 129 | 0.320 → 0.330 → 0.346 | 110 → 76 → 43 |
+| coastal | 0.241 → 0.271 → 0.505 | 0.037 → 0.047 → 0.248 | 197 → 168 → 170 | 0.152 → 0.173 → 0.218 | 123 → 44 → 35 |
+| fjord | 0.419 → 0.447 → 0.498 | 0.192 → 0.123 → 0.166 | 72 → 77 → 82 | 0.312 → 0.355 → 0.356 | 83 → 94 → 108 |
+| mangrove | 0.324 → – → 0.495 | 0.096 → – → 0.270 | 57 → – → 66 | 0.147 → – → 0.179 | 62 → – → 75 |
+| monsoon | 0.324 → – → 0.355 | 0.096 → – → 0.162 | 57 → – → 51 | 0.295 → – → 0.248 | 34 → – → 43 |
+
+
+What the tables say. *The strand:* the sand-band contrast on Saltwind 0.319 (legacy) → 0.254 (round 73) → 0.414 (73b)
+and its wet share 0.07 → 0.04 → 0.17; Saltmere 0.241 → 0.271 → 0.505 (wet share 0.04 → 0.05 → 0.25); Nordhavn 0.419 →
+0.447 → 0.498; Mangrove 0.393 → 0.495, Monsoon's lake margin 0.324 → 0.355 (the muddy banks were dark already). The
+breathing reach moves a single frame's number by ±0.05 (the Saltwind probe read 0.41–0.51 across its cases at one
+strength), so the target of 0.45 is met on Saltmere, Nordhavn and Mangrove by the frame and on Saltwind by the band
+(0.41–0.44 across four frames) — the eye's reference is the sheet's third column: a dark, cool film with a ragged
+swash line and a foam line, the damp band, the dry sand, the wrack. The round-73 column metric (the darkest run per
+column, sea included) moves 0.320 → 0.346 on Saltwind and 0.152 → 0.218 on Saltmere for what it is worth. *The
+ground-mid band:* the 40–120 m |Laplacian| does not move on the meadow maps (Verdant 43.6 → 42.9 → 42.3, terrain-only
+43.1; Steppe 42.4 → 42.3 → 42.0, terrain-only 43.7) and rises on the snow (Whiteout 24.4 → 26.2 → 26.6, terrain-only
+27.6: +13 % over legacy) and on Monsoon (33.5 → 34.4 → 35.8: +7 %); the round-73 crop is flat everywhere within ±2 %.
+The uniform-isolation probe (the method findings above) is the reason: the 73b terms change a third of the band's
+pixels by more than 10 luma with no change in the edge count. *Tiling:* the 40–120 m peak on Whiteout rose with the
+sawtooth drifts on the first final frame (0.198 → 0.278) — the wavelength swing was added for it and the row below is
+the re-capture; Saltwind 0.147 → 0.155, Monsoon 0.108 → 0.125 (the sward's blades in the crop, as round 73 found:
+terrain-only 0.119 / 0.052), Verdant, Steppe and the desert flat. *Softness:* the chase hard-edge share and p90 stay
+round 73's on every map (Verdant 0.249 → 0.255, Saltwind 0.253 → 0.255, Steppe 0.367 → 0.376, Monsoon 0.129 → 0.132)
+and the terrain-only column reads within 0.02 of legacy — the borders are tonal, not stepped; the desert's 0.084 →
+0.220 in the `73b` column is the bots' dust in that frame (terrain-only 0.085, legacy 0.082), not a term.
+
+
+**Performance (`.qa-dev/r73b-bench.mjs` = round 73's repetition bench plus a `r73b` layer — the terrain drawn eleven
+times with `uReduxB` / `uReduxC` and the strand's lines zeroed against the full profile; `redux` still zeroes every
+vector, so redux − r73b is round 73's share on this build; `r73b-bench-paired.mjs`, new — the two sides of a layer
+alternate every frame inside one window, with the paired-delta median and the low-quantile side deltas). The machine
+ran other lanes' headless renders throughout (load 70–100, foreign renderers on the GPU), and that sets the floor:
+the eleven-times terrain frame ran 130–240 ms here against round 73's ~60–100, and the per-copy deltas of five rounds
+spanned ±1.5–4 ms — the round-73 method cannot hold a 0.8 ms budget at this load, and the paired medians carry the same
+per-frame jitter (whiteout redux MAD ±2.9 ms per copy at 120 pairs), because the noise is per frame and scales with
+the frame. What can be read: the medians of the repetition rounds (`$SP/r73b/logs/bench-a.log`, five rounds, the
+chase pose, 1600 × 900, the bots frozen) and the low quantiles of the interleaved sides (`bench-paired-b.log`, 300
+pairs at ×5 on the terrain layers; a foreign GPU pass only ever adds to a frame, so the cleanest frames of two sides
+sampled within the same seconds carry the least of it):
+
+Repetition bench (per copy, ms; the median of five rounds with the rounds in brackets):
+
+| map | redux terms (round 73 + 73b, per copy) | 73b terms alone (per copy) | strand alone (per copy) | sward geometry (per copy) | press step (per copy) | sward toggle ×1 (in-frame) | 11× frame p25 | rounds |
+|---|---|---|---|---|---|---|---|---|
+| whiteout | 1.40 (-3.88 1.75 0.07 4.61 1.40) | 0.47 (0.47 0.75 -0.73 -1.13 0.88) | -1.97 (0.26 -2.49 -3.10 -1.97 0.33) | -0.26 (-0.21 -0.62 -0.44 -0.13 -0.26) | -0.23 (0.03 -0.30 -0.23 -0.34 0.01) | -2.06 (2.16 2.69 -2.06 -2.06 -2.53) | 142 | 5 |
+| verdant | 0.33 (-1.18 1.43 0.33 1.43 0.19) | 0.25 (2.54 0.20 0.58 0.25 0.17) | -0.51 (-1.00 0.39 0.29 -0.51 -1.07) | 0.08 (0.11 0.35 -0.24 0.08 -0.25) | -0.23 (-0.23 -0.12 -0.52 -0.17 -0.74) | -2.70 (-4.53 -2.70 -4.49 -0.66 2.42) | 143 | 5 |
+| saltwind | -0.03 (-0.03 0.95 -0.06 0.49 -0.38) | 0.11 (-0.75 0.60 1.07 -0.31 0.11) | -0.08 (-0.09 -0.05 -0.28 0.94 -0.08) | -0.00 (-0.06 0.56 0.04 -0.36 -0.00) | 0.64 (0.37 0.39 0.74 0.88 0.64) | -1.25 (-1.64 -3.59 -0.76 -1.25 0.72) | 142 | 5 |
+| steppe | 0.37 (0.26 1.27 -0.57 0.93 0.37) | 0.12 (-0.36 0.12 -0.36 0.26 0.95) | 0.18 (-1.15 0.18 0.25 -0.37 0.20) | -0.32 (-0.32 0.17 -0.39 -0.51 0.28) | -0.15 (-0.23 -0.15 -0.20 -0.05 0.37) | -1.73 (0.79 -0.91 -1.73 -1.94 -5.66) | 93 | 5 |
+| monsoon | 1.22 (1.38 1.22 0.15 1.69 -0.50) | -0.26 (-0.26 0.73 0.44 -0.57 -0.76) | -0.56 (-0.58 -0.11 -0.63 0.33 -0.56) | -0.04 (0.14 -0.04 0.04 -0.21 -0.10) | 0.34 (0.81 0.47 0.24 0.34 0.03) | 1.20 (3.66 3.40 1.20 -2.56 -1.05) | 149 | 5 |
+| desert | 1.04 (3.19 1.04 -0.73 1.32 -0.02) | 0.56 (0.10 1.16 1.07 0.56 -0.78) | 0.01 (0.01 -0.96 0.01 1.72 -0.01) | n/a | n/a | n/a | 126 | 5 |
+
+The interleaved-side low-quantile deltas follow when the paired run lands (a second commit).
+
+The sward's geometry and the press step read as round 73 found them (within ±0.3 and ±0.25 ms of zero on every map —
+the press step's own cost is the isolated probe's 0.01–0.05 ms, above). Draw calls are unchanged from round 73 (the
+borders are arithmetic on the same program, the shore is a vertex attribute, no new pass); the terrain material
+still declares ten samplers (pinned) and the fetch census moved +6, every tap inside a gated band (the verge inside
+160 m on the shoulder's dirt, the mid albedo in its 20–190 m band, the pebbles on the wet band inside 90 m). Mobile
+keeps today's ground.
+**Monsoon's press cost (round 73: 0.6 ms per copy where the other maps read ~0.1).** Not a cost. The round-73 number
+came from the frame bracket (one `TIME_ELAPSED` query round the whole frame, the press step run eleven times inside
+it), and on Monsoon the two sides of that bracket differed by ±2.3 M triangles and ±86–110 draw calls between samples
+(`$SP/r73/bench5a.log`: `tris Δ −2329385 calls Δ −86` in one round, `+2332785 / +110` in the next — the jungle's
+vegetation streaming) on a frame whose lower quartile sat at 14.6 ms with a 9–11 ms minimum and a 17 ms median; the
+step's rounds were 0.35 / 0.82 / 0.02 / 0.62 / 0.52 — a bimodal frame, not a pass. The isolated probe of this round
+(`.qa-dev/r73b-press-probe.mjs`: one query round `pressure.step` alone, ×1 and ×10) found the step's own cost by its
+minimum — the only statistic a tiny pass keeps on ANGLE's Metal backend, where a query spans the command buffer it
+lands in, so the median of an isolated bracket carries whatever else that buffer holds (Verdant's ×1 median read
+5.0 ms for a 256² quad, Monsoon's 0.11, Steppe's 4.2; the minima 0.046 / 0.017 / 0.046 ms; per copy at ×10 the minima
+0.014 / 0.011 / 0.021 ms). The press step costs 0.01–0.05 ms on every map, Monsoon's included; the step shader was
+not changed. What the pass did fix on Monsoon is the reason the frame is heavy: nothing — it is the jungle, and it
+was heavy before the sward.
+
+**Method findings.** (1) The round-73 "mid-ground detail" crop (rows 42–62 % of the ground-mid view) runs from 73 m
+to the horizon at that camera (14 m up, 55°, aimed 160 m out: row 62 % looks 73 m out, row 42 % at the skyline), so
+its upper half is the far field and no 26–150 m term can move it; the 40–120 m band is rows 55–75 % (43–105 m), which
+`r73b-metrics.mjs` adds as `detailMid` / `tilingMid`, and the strand's `band` metric took the darkest run of every
+column of the middle half against the column median — on the strand views the sea fills those columns, so it measured
+the sea (Saltwind 0.314 → 0.316 across round 73); the `sand` metric restricts itself to the sand-hued pixels (r > g >
+b, warm) and reports 1 − p05 / median. (2) A mean |Laplacian| does not see a 1–5 m tonal term at 50–100 m (2–10 px
+blobs after the mip chain): the uniform-isolation probe of the ground-mid view (`r73b-mid-probe.mjs`, the sward off)
+found the 73b terms changing 32 % of the band's pixels by more than 10 luma (mean |Δ| 17) between `uReduxB` on and
+off, and the mid albedo octave alone 34 %, while `detailMid` moved 42.9 ↔ 43.1 and even every redux term zeroed read
+43.5 — the metric is geometry edges (trees, bushes, the road) and pixel-scale grain; the terms the eye reads at that
+range are tonal, and the pair metric (the share of the band changed) is the number that sees them. The far ring's
+blades, averaged with the ground, LOWER it (Verdant legacy 43.5 → 73b 42.9 with the sward, 43.1 without). (3) On
+ANGLE's Metal backend an isolated timer bracket is clean only in its minimum (above). (4) The strand view is a
+grazing-angle view of the beach: a film at roughness 0.22 mirrored the sky and read PALER than the dry sand.
+
+
+**Receipts (round 73b).** `groundRedux` (the new knobs and their bands, the reed `bank` / `reedMargin`, the scree on the
+meadow maps and none on the arid, the six-vector packing with the reach in metres and its clamps, the tint clamp, the
+v43 contract — the borders, the mid albedo, the sawtooth drifts, the crust and foam globals, the strand in metres, the
+shore byte's vertex hook / attribute / bake / inversion, no new sampler), `tallGrass` (the reed margin: dense at the
+waterline, gone by the open-water cut, the bank thinner, the fringe taller; a meadow's reed margin tall and olive; the
+tundra clumps in the hollow and on the lee slope, the ring sparse beside a meadow's), `groundPressure` (unchanged),
+`terrainMaterialOwnership` (the uniform list +2, the key v43 with its negative control, ten samplers),
+`terrainWornDirt` / `wallSkyLight` (v43), the fetch census +6 with its note (`terrainMaskShaderTestOracle`),
+`terrainStreaming` (the `shore` attribute beside the fold), and the round-73 list of 80 terrain-reading receipts green
+twice (before and after the drift swing); `npm run typecheck`. No map config moved, so `villageWear` and
+`mangroveWaterPalette` kept their digests. Tools (untracked, `.qa-dev/`): `r73b-capture.mjs` (strand-auto),
+`r73b-metrics.mjs` (the 40–120 m band, the sand-band strand metric), `r73b-sheet.mjs` (three columns),
+`r73b-strand-probe.mjs`, `r73b-mid-probe.mjs`, `r73b-press-probe.mjs`, `r73b-bench.mjs`, `r73b-bench-paired.mjs`,
+`r73b-crop.mjs`.
+
+**Honest weak list (round 73b).** The ground-mid |Laplacian| does not move (above): what the eye reads at 40–120 m
+on the meadow maps is the sward and the tonal borders, and a metric that counts pixel edges cannot be moved +10 % by
+a tonal term without adding the pixel-scale grain the r5 shimmer rules forbid; the terrain-only pair metric is the
+number that sees the pass. The lip and rim are subtle by design on the arid maps (0.25 / 0.5) — the desert reads much
+as it did. The wet strand at the strand view sits at 0.41–0.44 on Saltwind by the sand-band metric (the breathing
+reach moves it ±0.05 between frames) and reads as a dark cool band with a swash line, but at the grazing strand
+camera the film's sheen still lifts it toward the sky where the sun is behind the camera; from the chase camera it
+reads darker. Whiteout's pale crossed cards in the snow are the vegetation tier's winter tuft carpet (authored per
+map in `vegetation.ts`), not the sedge — they are what the eye takes for "sticks" once the sedge is in the hollows,
+and a map-config change was out of this lane's scope (the history receipts pin every byte of `maps/*.ts`). The
+drift trains on Whiteout are periodic by nature (a 15 m sawtooth); the per-cell wavelength swing and the two-field
+phase are what round 43 gave the dunes, and the ground-mid tiling peak is the number to watch on the next capture.
+The shore byte is 8 bits over 32 m (12.5 cm) on chunk vertices 2.7 m apart at LOD 0 — the band's edge is piecewise
+linear between vertices, hidden by the noise break-up up close and by distance further out; a coarser LOD carries
+it further apart, so a strand seen from 200 m+ is the coarse mesh's. Mobile keeps today's ground.
+
 ### AAA map program — 2026-09-21 (round 35 onward)
 
 Owner (2026-09-21, with two Redrock Divide screenshots): "the sides of mountains in stuff like redrock divide esp in
@@ -4352,6 +4593,7 @@ centre skylines, low edge and bird / oblique shore views):
 | 72b | The integrator's eye-check answered (~6 / 10: symmetric cones, flat faces, washed far ranges, a first ridge without the relief, Whiteout over the perf line): two compile failures found first — the relieved normal read `.z` on vec2 gradients (a silent GLSL error: the ring drew with a stale program all round) and the terrain program's seventeenth sampler failed to link at MAX_TEXTURE_IMAGE_UNITS = 16 (the battlefield drew with no program) — fixed by the vec2 law (pinned) and by the ring atlas riding in the M normal's unit for the bands' draw (uRingDraw, onBefore/AfterRender, forced uniform refresh, program key v41); then the silhouettes (the first ridge at full relief weight with lifted crests, every profile slope break wandering ±38 m per column, leaning crests, cone clamp 0.7, the far range as rounded massifs with one serration octave and a rib/couloir cavity term), the surface (fine relief elongation 3 → 1.7–1.9, meandering depth-varied gullies, seam fade 60 m), the wash (the far range's own haze cut to a fifth–a third under the post pass's ring law) and the near ridge (the terrain bands read the atlas: relieved normal, occlusion, sun visibility) | 31-map sheets (`$SP/r72/review/contact-sheet{,-sky-s,-centre-far}.png`, per-map pairs, crops of the four named maps under `review/crops/`); metrics over 93 views: outer ridge contrast median 35.8 → 43.5 (up on 64), ring height 55 → 82 px (up on 79), Whiteout sky-w ridge contrast 5.9 → 24.3 / crisp 2 → 44 %, Frosthollow centre-far 8.5 → 38.1 / 1 → 59 %; the bench at load 94–112: Whiteout +0.94 / +0.78 ms GPU (4.4 × the pixels), Glacier Pass −0.14 / +0.34, CPU ≤ +0.10, draws +2 / 0; receipts: horizonRelief (vec2 law, far-range model), horizonResources (budget 235,239, digests), titanGorgeHorizon / redrockCanyonHorizon / copperQuarrySurface (re-pinned), terrainMaterialOwnership (v41, ten-sampler budget), terrainResources (ten textures), wallSkyLight / terrainWornDirt (v41), the sandbox receipts, badlandsRelief, horizonCloudShade, volumetricClouds and the rest of the section green; `npm run typecheck` |
 | 72c | The integrator's second eye-check (7.5 / 8 / 7.5 / 7 — "this is the pass that reads"): the far range shaded per fragment with the near ring's slope-and-altitude law on a striation-tilted normal (rock ribs through the snow, scoured crests, bluer and lighter by distance) — the meringue domes gone; perf attributed by a `--hide=horizon-forest` bench: the vista fragment was never the cost (0.27 ms without the trees against the base's 0.33–0.54), the round-72 polar forest of 6000 spruces was the whole +0.9 ms — the polar forest is 1600 instances clumped by the relief and the detail fields (a belt along the bank was the eye-check's other tell); the vista tiles' far LOD (two fetches past 1 km, the finest fields dropped) and the cheaper far-range shading done as asked; a second warp octave at 35° off the radial (sheared angle on the circle embedding) and alpine elongation 1.4 break the radial grain into crossed chevrons; the polar bake carries wind drifts (sastrugi along one world wind) on the gentle faces; the ring forest's stands follow the relief and the snow maps' treeline wanders | the four named maps recaptured (sky-w / centre-far) with far-range, apron, grain (4 ×) crops under `$SP/r72/review/crops/`; Whiteout working-tree bench at load 58: 0.931 / 1.480 ms against the base's 0.33–0.54 / 1.136 (+0.39–0.60 / +0.34); the post-chain pair (load 40–76, two passes of four rounds): +0.52 sky-w / +0.46 centre-far on the pair means; receipts as round 72b plus horizonResources re-pinned (fetch sites 6 → 8, the far-LOD form pinned); `npm run typecheck` |
 | 73 | The ground redux on the playable ground (owner: "improve ground, ground transitions, shorelines... add tall grass that interacts with tanks" and "make sure performance is still really good"): a per-map profile table (`world/groundRedux.ts`) driving four uniform vectors on the terrain material (`world-terrain-splat-v40`, still ten declared samplers) — height-and-noise layer transitions from the albedo's relief against its deep-mip tile mean (grass through a dirt border, rock tops clearing the snow, seams buried; a scree band on the 12°–30° slopes where authored; gated on the strength so the far field keeps the plain mask), a baked fold term per vertex (8 m / 24 m Laplacians of the height field → an Int8 attribute: hollow moisture and greening, crest dryness, indirect-only fold AO), snow scour / powder macro, sastrugi and drift waves on the per-cell wind, a sparse near-level glint, a mid-distance normal octave in the 26–150 m band, and the wet strand (an analytic swash on a ground clock: film, damp band and wrack line inside a width set in multiples of the map's apron ramp, albedo −40 % · wet, roughness to 0.30); tall grass that the hulls press (`world/tallGrass.ts`, `world/groundPressure.ts`): two instanced rings of vertex-built blades — clumps of three two-segment strips to 46 m at 2.6 / m², single wide blades 34–120 m — root-anchored cascade shadows (the round-13 rule), a gust field and flutter, a per-map biome (meadow / steppe / savanna / reed / tundra / verge / dune, densities, heights, tints), admission off roads and shoulders, water (reeds in the wet band), soft ground, village ground, sealed footprints, dirt patches and crests, thicker and taller in the hollows; a world-anchored RGBA16F press field (96 m / 256², e-fold 20 s, a 45 s crush memory, the push direction along the travel with the flanks rolled outward) stamped by every hull and read at the root (bend 1.35 rad, the crushed tint); a sniper-corridor clear and a lens clear; the quality knob (`tallGrass` ultra / high 1.0, medium 0.5, low 0.25, mobile none); `?ground=legacy` as the same-build A/B; nothing in `src/sim` | 31-map before / after review sheets (`$SP/r73/review/sheet-all-{chase,ground-mid}.png`, the six first maps in four views, the strand sheet) on one build and seed, `?ground=legacy` as the before; tiling peak at lags ≥ 24 px on `ground-mid` legacy → terrain-only → final Whiteout 0.075 → 0.074 → 0.185, Verdant 0.085 → 0.088 → 0.129, Saltwind 0.080 → 0.083 → 0.073, Steppe 0.119 → 0.123 → 0.112, Monsoon 0.027 → 0.074 → 0.207, Desert 0.170 → 0.158 → 0.156 (the terrain's own repeat flat or falling on every map; the rises are blades in the crop); mid-ground detail Whiteout 26.0 → 27.6 → 28.3, Verdant 43.4 → 43.5 → 44.3, Saltwind 44.4 → 43.5 → 43.5, Steppe 44.5 → 45.6 → 46.1, Monsoon 31.4 → 31.6 → 31.7, Desert 25.6 → 25.6 → 25.7; chase hard-edge share terrain-only vs legacy Whiteout 0.046 → 0.052, Verdant 0.201 → 0.211, Saltwind 0.238 → 0.240, Monsoon 0.069 → 0.076, Desert 0.220 → 0.220; the Saltwind strand contrast 0.314 → 0.316; sward coverage of the near band (final vs terrain-only, chase) Whiteout 6 %, Verdant 49 %, Saltwind 54 %, Steppe 44 %, Monsoon 49 % against a 29 % no-sward control; the trail after a five-second drive (bird view vs the field cleared) Steppe 9 % / 11 % / 10 %, Monsoon 16 % / 22 % / 21 %; GPU by repetition on the final build (each target drawn eleven times inside the frame's own passes, one timer bracket round the frame, the lower quartile of 60 frames; medians of ten rounds over two runs at load 20 and 150, under other lanes' headless renders): the sward's geometry pass under 0.3 ms per copy on every map (Whiteout −0.14, Verdant +0.02, Saltwind −0.12, Steppe −0.06, Monsoon +0.25), the redux terms on the terrain material Whiteout 0.57 / Verdant 0.25 / Saltwind 0.62 / Steppe 0.29 / Monsoon 0.36 / Desert 0.50 ms per copy (budget 0.8), the press step 0.0–0.6; the sward toggled at ×1 Verdant +0.85 and Monsoon +1.07 ms (rounds spanning ±3–5 ms), the dry maps inside the noise; the toggle on the first build (3.0 clumps / m², three segments) Whiteout 0.83 / Verdant 1.08 / Saltwind 0.75 / Steppe 1.87 ms, which drove the cut; world update +0.0 ms; draw calls +3 (two instanced rings, one press quad); the terrain material still declares ten samplers; receipts: groundRedux / groundPressure / tallGrass selftests, the fetch census +7, the uniform list and v40 with its negative control, the fold attribute, the sandboxed material steps — 76 / 78 terrain-reading receipts green (the two reds are the round-71 map-config digests, re-pinned upstream); typecheck green |
+| 73b | The second pass on the ground (the integrator's eye-check of round 73: the terrain terms invisible at the ground-mid view, the strand invisible at the strand view, Whiteout's sedge as sticks): the borders themselves in albedo (a torn, damp lip at the worn patches' edges, a lichen / moss / dust / hoar rim on the outcrops by climate, a gravelled dusty verge on the road shoulders), the 20–190 m octave in albedo beside its normal, the folds reaching further and reading stronger, a scree skirt on the meadow and hill maps; the snow drifts a sawtooth with a shaded lee edge and a per-cell wavelength swing, the scoured crust with a satin sheen; the strand in METRES on a second vertex byte (`shore`: metres landward of the waterline from the map's own shoreline contours, inverted so the ring bands read far) — round 73 sized its band in the mask's wetness ramp, two metres wide on a real beach — with a dark, cool, glossy film to the run-up's breathing reach, a sharp ragged swash line, a damp band to the high-water mark, a foam line, a wrack line with pebbles and shell, muddy margins on the lakes; reeds as a waterline fringe (dense at mask 0.04–0.10, gone by 0.40, taller at the water, the banks' meadow thinner) and reed margins on the Monsoon and Reservoir meadows; the tundra sedge in the hollows and the lee sides in clumps, darker; the Monsoon press cost found to be the frame bracket's noise (the step's minimum 0.01–0.05 ms on every map); two more packed vectors, still ten samplers, `world-terrain-splat-v43` | three-column sheets (legacy / round 73 on its own base tree / 73b) in four views plus the strand sheet with Mangrove and Monsoon (`$SP/r73b/review`); the strand's sand-band contrast Saltwind 0.319 → 0.254 → 0.414, Saltmere 0.241 → 0.271 → 0.505, Nordhavn 0.419 → 0.447 → 0.498, Mangrove 0.393 → 0.495; the 40–120 m band's |Laplacian| flat on the meadows (the uniform-isolation probe: the 73b terms change 32 % of the band's pixels by > 10 luma with no change in edge count), Whiteout +13 % terrain-only, Monsoon +7 %; softness within 0.02 of round 73; the isolated press-step probe (minima 0.011–0.021 ms per copy on Verdant / Monsoon / Steppe); the repetition bench at load 70–100 (five rounds, ±1.5–4 ms per copy): redux terms whiteout 1.40 / verdant 0.33 / saltwind −0.03 / steppe 0.37 / monsoon 1.22 / desert 1.04 ms per copy by the median, the 73b terms alone 0.47 / 0.25 / 0.11 / 0.12 / −0.26 / 0.56 — the noise floor owns the budget question at this load, the paired low-quantile run follows; receipts: groundRedux / tallGrass extended (the new knobs, the six-vector packing, the v43 contract, the shore byte, the reed margin, the tundra clumps), the program key and uniform list re-pinned in terrainMaterialOwnership / terrainWornDirt / wallSkyLight, the fetch census +6, terrainStreaming's chunk attributes; the 80 terrain-reading receipts of round 73 green; typecheck |
 | 74 | Impact physics (owner 2026-09-25): energy-based crash and fall damage through one function in both sims (`sim/impact.ts`: ½·m·(v − v_min)² kJ × the ruleset's hp/kJ, glacis 0.7 / stern 0.85 / broadside 1, tracks first, the engine on a frontal crash or a hard landing, crew shock above 16 / 14 m/s, a two-tick crash priced once), a `physics` block per ruleset (restitution, rebound floor, fall and crash thresholds and rates, ram scale and restitution — Turbo Ball and Mars bounce, a single jump lands free), the ram split by mass / aggression / face with a momentum-conserving exchange, the swept landing contact with restitution (several decaying hops at low gravity, no tunnelling at 40 m/s), the landing torque toward the ground plane, a slide law on faces the tracks cannot hold, a lateral-grip cap on the yaw rate at speed, a static hold at rest, the settle chatter fixed (a parked hull on a grade crept 4 cm/s and chattered ±0.4° on the base tree), movement checkpoints v2, CRASHED / FELL on the kill feed and the final-blow line, `tank_impact` on the wire | impact / impactPhysics / impactParity receipts (new), movement 218, combat 541, authoritativeMatch, matchRuleset, ai, authoritativeBots (mobile 6/6), the mp / net / server-match receipts with their re-anchored pins, typecheck; headless Verdant 5 min (37 crashes, 631 hp, none stuck or tunnelled) and Mars 3.8 min (163 landings, 2413 hp, one fall death, 18-hop chains, none stuck or tunnelled), the 30 m Mars drop (14.9 m/s → 7.4 m/s rebound); `server/battlePacing` full 124: median 335.2 s, p10 260.8 s, 0 sub-120, 0 timeouts |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
