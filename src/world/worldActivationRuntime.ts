@@ -26,6 +26,8 @@ interface ActiveWorld<SkyConfig extends object = object> {
   terrainVariant?: 'assault-trenches' | null;
   group: THREE.Object3D;
   config: { sky?: SkyConfig };
+  /** Round 77c: bakes the vegetation's impostor atlas under cover (map.ts). */
+  warmImpostors?(): boolean;
   raycast(
     origin: THREE.Vector3,
     direction: THREE.Vector3,
@@ -410,6 +412,8 @@ export function createWorldActivationRuntime<
 
     if (precompile || activationOptions?.compilePrograms === true) {
       await compileWorldPrograms(world.group);
+      // Round 77c: the far-tree impostor atlas bakes with the programs, before any presented frame needs it
+      try { world.warmImpostors?.(); } catch { /* the first update bakes lazily */ }
     }
     mark('compile');
     if (precompile) await options.nextFrame();

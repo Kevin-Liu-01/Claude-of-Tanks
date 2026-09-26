@@ -23,6 +23,7 @@ import {
   createVegetationAsync,
 } from './vegetation.ts';
 import type { TreeObstacle } from './vegetation.ts';
+import { bindHorizonForestImpostors } from './horizonForestImpostors.ts';
 import {
   createProps,
   createPropsAsync,
@@ -184,6 +185,8 @@ export interface WorldRuntime {
     focusPosition?: THREE.Vector3 | null,
   ): void;
   warmTerrainLookahead(cameraPosition: THREE.Vector3, maxJobs?: number): number;
+  /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
+  warmImpostors(): boolean;
   setWindTime(timeSeconds: number): void;
   /** Water pass 6/7: the vehicles in the water this frame (footprint, heading, speed -> wake). No-op on maps without water. */
   setWaterDisturbances(sources: readonly WaterDisturbance[]): void;
@@ -335,6 +338,17 @@ function assembleWorld(
   group.name = 'world-' + config.id;
   group.add(terrain, vegetation.group, props.group);
   engineCtx.scene.add(group);
+  // Round 77c: where the world baked an impostor atlas (desktop, a renderer) the horizon ring's forest over the red
+  // line draws from it — the same trees under the same law at the rim's stature (horizonForestImpostors.ts); the
+  // mobile tier and the receipts keep the ring's lobes.
+  const ringForest = terrain.getObjectByName('horizon-forest');
+  if (ringForest && vegetation._treeImpostors) {
+    bindHorizonForestImpostors(ringForest, {
+      library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
+      releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+    });
+  }
   // perf-governor r1 (discoverthreejs "matrixAutoUpdate = false for static
   // objects"): every world dynamic goes through instanceMatrix writes or
   // shader uniforms — no object-level transform under this group ever changes
@@ -647,6 +661,7 @@ function assembleWorld(
     warmTerrainLookahead(cameraPos: THREE.Vector3, maxJobs = 1) {
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
     },
+    warmImpostors: () => vegetation.warmImpostors(),
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },

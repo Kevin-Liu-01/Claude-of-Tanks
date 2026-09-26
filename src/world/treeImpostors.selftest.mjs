@@ -13,8 +13,8 @@ import { createHeightField } from './terrain.ts';
 import { createVegetation, createGarageTreeKit } from './vegetation.ts';
 import {
   TREE_IMPOSTOR_BUDGET_BYTES, TREE_IMPOSTOR_DIRECTIONS, TREE_IMPOSTOR_ELEVATION_RAD, TREE_IMPOSTOR_MARGIN,
-  TREE_IMPOSTOR_MAX_ROWS, TREE_IMPOSTOR_PROGRAM_KEY, TREE_IMPOSTOR_VARIANTS, measureTreeImpostorRow,
-  resolveTreeImpostorTile, resolveTreeImpostorVariants, treeImpostorAtlasBytes,
+  TREE_IMPOSTOR_MAX_ROWS, TREE_IMPOSTOR_PROGRAM_KEY, TREE_IMPOSTOR_VARIANTS, TREE_IMPOSTOR_ELEVATED_RAD, measureTreeImpostorRow,
+  resolveTreeImpostorElevated, resolveTreeImpostorTile, resolveTreeImpostorVariants, treeImpostorAtlasBytes,
 } from './treeImpostors.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { TREE_ARCHETYPES } from './treeSpecies.ts';
@@ -22,7 +22,9 @@ import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 
 // The pinned bake-input digests (seed 2001, the real leaf atlases): a changed builder or atlas moves them — re-pin deliberately.
-const PINS = { verdant: 'b492485b', fjord: '61cc2fc6', delta: 'b4411f2b' };
+// Round 77c (2026-09-26): re-pinned for the elevated ring — the layout text carries the ring's elevation ('flat' where the
+// atlas has none) and every row its capture elevation; Nordhavn's atlas gains its three 45° rows.
+const PINS = { verdant: '33ca4146', fjord: 'a9c982e2', delta: 'a43cefd0' };
 
 // --- the layout law -------------------------------------------------------------------------------------------
 assert.equal(resolveTreeImpostorTile(6), 128, 'two species fit 128 px tiles');
@@ -34,14 +36,21 @@ assert.ok(treeImpostorAtlasBytes(128, 9) > TREE_IMPOSTOR_BUDGET_BYTES, 'the next
 assert.equal(resolveTreeImpostorVariants(3), 3); assert.equal(resolveTreeImpostorVariants(5), 3);
 assert.equal(resolveTreeImpostorVariants(6), 2); assert.equal(resolveTreeImpostorVariants(13), 1);
 assert.throws(() => resolveTreeImpostorVariants(0), /at least one/);
+// round 77c: the elevated ring joins only where it keeps the row cap and the ground ring's tile — every 3-species map
+// (12 rows at 96 px, 5.63 MB), never a 4-species map (16 rows would drop the ground ring to 64 px)
+assert.equal(resolveTreeImpostorElevated(3), true); assert.equal(resolveTreeImpostorElevated(4), false);
+assert.equal(resolveTreeImpostorElevated(13), false, 'the receipts\' 13-species world stays under the row cap without it');
 const budgetRows = [];
 for (const id of MAP_IDS) {
   const speciesCount = getMapConfig(id).vegetation.species.length;
   assert.equal(resolveTreeImpostorVariants(speciesCount), TREE_IMPOSTOR_VARIANTS, `${id}: every authored map bakes its three near variants`);
-  const rows = speciesCount * TREE_IMPOSTOR_VARIANTS;
+  const elevated = resolveTreeImpostorElevated(speciesCount);
+  assert.equal(elevated, speciesCount === 3, `${id}: the elevated ring on the 3-species maps only`);
+  const rows = speciesCount * TREE_IMPOSTOR_VARIANTS + (elevated ? speciesCount : 0);
   const tile = resolveTreeImpostorTile(rows), bytes = treeImpostorAtlasBytes(tile, rows);
+  assert.equal(tile, resolveTreeImpostorTile(speciesCount * TREE_IMPOSTOR_VARIANTS), `${id}: the ground ring keeps its tile`);
   assert.ok(rows <= TREE_IMPOSTOR_MAX_ROWS && bytes <= TREE_IMPOSTOR_BUDGET_BYTES, `${id}: ${rows} rows, ${bytes} bytes`);
-  budgetRows.push({ id, rows, tile, mb: +(bytes / 1048576).toFixed(2) });
+  budgetRows.push({ id, rows, tile, elevated, mb: +(bytes / 1048576).toFixed(2) });
 }
 // the row measure: a 2 m radius, 8 m tall box projects at the capture elevation into a tile with gutters
 {
@@ -51,7 +60,10 @@ for (const id of MAP_IDS) {
   const span = Math.max(2 * r, (8 * ce + r * se) - (0 - r * se));
   assert.ok(Math.abs(row.cellM - span / (1 - 2 * TREE_IMPOSTOR_MARGIN)) < 1e-9, 'the cell is the projected span plus the gutters');
   assert.ok(row.baseV > 0 && row.baseV < 0.2, `the base sits just above the tile bottom (${row.baseV})`);
-  assert.equal(row.radiusM, r); assert.equal(row.heightM, 8);
+  assert.equal(row.radiusM, r); assert.equal(row.heightM, 8); assert.equal(row.elevation, TREE_IMPOSTOR_ELEVATION_RAD);
+  // round 77c: the same box at the elevated ring's 45° needs the taller projected cell
+  const high = measureTreeImpostorRow({ species: 'box', variant: 0, trunk: box, cards: box }, TREE_IMPOSTOR_ELEVATED_RAD);
+  assert.ok(high.cellM > row.cellM && high.elevation === TREE_IMPOSTOR_ELEVATED_RAD, 'the elevated row measures at its own elevation');
   assert.throws(() => measureTreeImpostorRow({ species: 'none', variant: 0, trunk: new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3)), cards: new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3)) }), /no measurable/);
   box.dispose();
 }
@@ -127,10 +139,13 @@ try {
     const species = cfg.vegetation.species;
     const library = world._treeImpostors;
     assert.ok(library, `${id}: the impostor library exists where the engine context carries a renderer`);
-    // the layout
+    // the layout (round 77c: the elevated rows, one per species at 45°, after the ground rows where the ring fits)
     assert.equal(library.variants, TREE_IMPOSTOR_VARIANTS, `${id}: the three near variants`);
-    assert.equal(library.rows.length, species.length * TREE_IMPOSTOR_VARIANTS);
-    assert.deepEqual(library.rows.map(r => `${r.species}/${r.variant}`), species.flatMap(sp => [0, 1, 2].map(k => `${sp}/${k}`)), `${id}: species × near variants in order`);
+    assert.equal(library.elevated, resolveTreeImpostorElevated(species.length), `${id}: the elevated ring by the law`);
+    assert.equal(library.groundRows, species.length * TREE_IMPOSTOR_VARIANTS);
+    assert.equal(library.rows.length, library.groundRows + (library.elevated ? species.length : 0));
+    assert.deepEqual(library.rows.map(r => `${r.species}/${r.variant}@${Math.round(r.elevation * 180 / Math.PI)}`),
+      [...species.flatMap(sp => [0, 1, 2].map(k => `${sp}/${k}@10`)), ...(library.elevated ? species.map(sp => `${sp}/0@45`) : [])], `${id}: species × near variants in order, then the elevated rows`);
     assert.equal(library.tile, resolveTreeImpostorTile(library.rows.length));
     assert.equal(library.width, library.tile * TREE_IMPOSTOR_DIRECTIONS); assert.equal(library.height, library.tile * library.rows.length);
     assert.equal(library.albedo.width, library.width); assert.equal(library.albedo.height, library.height);
@@ -154,8 +169,10 @@ try {
       assert.equal(mesh.castShadow, false); assert.equal(mesh.receiveShadow, false);
       assert.equal(mesh.userData.aoExclude, true); assert.equal(mesh.userData.treeLod, 'far'); assert.equal(mesh.frustumCulled, false);
       const cell = mesh.geometry.getAttribute('aImpCell');
+      assert.equal(cell.itemSize, 4, 'round 77c: the cell carries the elevated row');
       for (let v = 0; v < 4; v++) {
         assert.equal(cell.getX(v), library.rowBase(sp)); assert.equal(cell.getY(v), fv === '1' ? 1 : 0); assert.equal(cell.getZ(v), library.variants);
+        assert.equal(cell.getW(v), library.elevated ? library.groundRows + species.indexOf(sp) : -1, `${id}: the species' elevated row (or none)`);
       }
       const flex = [...mesh.geometry.getAttribute('aFlex').array];
       assert.ok(flex[0] === 0 && flex[1] === 0 && Math.abs(flex[2] - 0.3) < 1e-6 && Math.abs(flex[3] - 0.3) < 1e-6, 'the quad top flutters like a lobe crown');
@@ -171,12 +188,16 @@ try {
     assert.equal(library.baked, true); assert.equal(library.bakes, 1, `${id}: baked once`);
     const calls = renderer.calls;
     const renders = calls.filter(c => c[0] === 'render');
-    assert.deepEqual(renders.map(c => c[1]), ['treeImpostorAlbedo', 'treeImpostorNormal'], `${id}: the albedo pass then the normal pass`);
-    for (const render of renders) {
-      assert.equal(render[2], library.rows.length * TREE_IMPOSTOR_DIRECTIONS, 'one copy per row and azimuth');
+    // round 77c: each pass renders the ground ring's scene and, where the atlas has one, the elevated ring's scene,
+    // each seen by its own tilted camera over its rows
+    const ringsPerPass = library.elevated ? 2 : 1;
+    assert.deepEqual(renders.map(c => c[1]), [...Array(ringsPerPass).fill('treeImpostorAlbedo'), ...Array(ringsPerPass).fill('treeImpostorNormal')], `${id}: the albedo pass then the normal pass`);
+    renders.forEach((render, index) => {
+      const elevatedRing = index % ringsPerPass === 1;
+      assert.equal(render[2], (elevatedRing ? library.rows.length - library.groundRows : library.groundRows) * TREE_IMPOSTOR_DIRECTIONS, 'one copy per row and azimuth');
       assert.equal(render[3], 'OrthographicCamera');
-      assert.deepEqual(render[4], [0, TREE_IMPOSTOR_DIRECTIONS, library.rows.length, 0], 'the frustum is the atlas grid');
-    }
+      assert.deepEqual(render[4], elevatedRing ? [0, TREE_IMPOSTOR_DIRECTIONS, library.rows.length, library.groundRows] : [0, TREE_IMPOSTOR_DIRECTIONS, library.groundRows, 0], 'the frustum is the ring\'s rows of the atlas grid');
+    });
     assert.deepEqual(calls.filter(c => c[0] === 'clear').map(c => c.slice(1)), [['treeImpostorAlbedo', true, true, false], ['treeImpostorNormal', true, true, false]]);
     const targets = calls.filter(c => c[0] === 'target').map(c => c[1]);
     assert.deepEqual(targets, ['treeImpostorAlbedo', 'treeImpostorNormal', null], `${id}: the previous target is restored`);
@@ -207,7 +228,7 @@ try {
     again.world.dispose(); disposeObject3DResources(again.world.group);
     // the far tier's cost
     const farTrianglesLobes = world._trees.reduce((n, t) => n + lobeTriangles[TREE_ARCHETYPES[t.species].family], 0);
-    receipts.push({ id, tile: library.tile, rows: library.rows.length, atlas: `${library.width}x${library.height}`, mb: +(library.bytes / 1048576).toFixed(2),
+    receipts.push({ id, tile: library.tile, rows: library.rows.length, elevated: library.elevated, atlas: `${library.width}x${library.height}`, mb: +(library.bytes / 1048576).toFixed(2),
       farDraws: impostorMeshes.length, lobeDraws: species.length * 4, trees: world._trees.length,
       farTrianglesAllTrees: { impostor: world._trees.length * 2, lobes: farTrianglesLobes }, digest });
     assert.equal(digest, PINS[id], `${id}: the pinned bake-input digest (${digest})`);

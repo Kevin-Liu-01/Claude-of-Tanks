@@ -79,7 +79,7 @@ function library(species, fade, environment) {
   // law, the per-cluster cascade sample and the leaf translucency); and the far tier's one impostor material
   const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v17'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
-  const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v1');
+  const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v2'); // round 77c: the elevated ring
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
   assert.strictEqual(vegetation._treeImpostors?.material, impostor[0]);
   const foliageMats = Object.fromEntries(species.map((sp, index) => [sp, foliage[index]]));
@@ -223,7 +223,7 @@ function checkRound77bMechanisms(parameters, world, environment) {
     assert.ok(impostor.uniforms[name], `${name} rides on the impostor program`);
   }
   assert.equal(impostor.uniforms.uImpRows.value.length, 16);
-  assert.match(iv, /attribute float aImpRow;/); assert.match(iv, /attribute vec3 aImpCell;/);
+  assert.match(iv, /attribute float aImpRow;/); assert.match(iv, /attribute vec4 aImpCell;/); // round 77c: .w = the species' elevated row
   assert.match(iv, /uniform vec4 uImpRows\[ 16 \];/);
   assert.match(iv, /float impRow = aImpCell\.x \+ mod\( aImpRow, aImpCell\.z \);/, 'the row from the species base and the variant under the baked count');
   // thirteen species share the sixteen rows: one variant each here; every authored map (≤ 5 species) bakes three
@@ -231,9 +231,16 @@ function checkRound77bMechanisms(parameters, world, environment) {
   assert.match(iv, /transformed = \( transpose\( impRot \) \* impOff \) \/ impS;/, 'the quad is built in instance space');
   assert.ok(iv.indexOf('transformed = ( transpose( impRot )') < iv.indexOf('float ph = fract(sin(tiw.x'), 'before the wind block');
   assert.match(iv, /impAz = mix\( impAz, -impAz, impMir \);/, 'the mirrored variant orbits the other way');
-  assert.match(iv, /float impWidth = impR\.x \* sqrt\( impS\.x \* impS\.x \* impObj\.z \* impObj\.z \+ impS\.z \* impS\.z \* impObj\.x \* impObj\.x \) \/ impXZ;/, 'the crown width seen from the azimuth');
-  assert.match(ifr, /diffuseColor \*= mix\( impA, impB, vImpW \);/, 'two azimuths dissolved by the view angle');
-  assert.match(ifr, /normal = normalize\( vImpR \* impN\.x \+ vImpU \* impN\.y \+ vImpF \* impN\.z \);/, 'the baked normal in the capture frame');
+  assert.match(iv, /float impWidth = impCell \* sqrt\( impS\.x \* impS\.x \* impObj\.z \* impObj\.z \+ impS\.z \* impS\.z \* impObj\.x \* impObj\.x \) \/ impXZ;/, 'the crown width seen from the azimuth');
+  // round 77c: the elevated ring — the view elevation blends the tile toward the 45° row and tilts the card back
+  assert.match(iv, /float impElev = atan\( impRel\.y, max\( impHL, 1e-3 \) \);/, 'the view elevation from the tree base');
+  assert.match(iv, /float impWE = impElRow < 0\.0 \? 0\.0 : smoothstep\( 0\.349066, 0\.785398, impElev \);/, 'the 20°–45° blend, none without an elevated row');
+  assert.match(iv, /vec3 impUp = vec3\( -impFwd\.x \* sin\( impTilt \), cos\( impTilt \), -impFwd\.z \* sin\( impTilt \) \);/, 'the card tilts back to face the elevated view');
+  assert.match(ifr, /vec4 impC = mix\( impA, impB, vImpW \);/, 'two azimuths dissolved by the view angle');
+  assert.match(ifr, /if \( vImpWE > 0\.001 \) impC = mix\( impC, mix\( texture2D\( map, vImpUvE0 \), texture2D\( map, vImpUvE1 \), vImpW \), vImpWE \);/, 'the elevated tiles only where the view climbs');
+  assert.match(ifr, /vec3 impNw = vImpR \* impN\.x \+ vImpU \* impN\.y \+ vImpF \* impN\.z;/, 'the baked normal in the capture frame');
+  assert.match(ifr, /impNw = mix\( impNw, vImpR \* impNE\.x \+ vImpUE \* impNE\.y \+ vImpFE \* impNE\.z, vImpWE \);/, 'the elevated normal in its own frame');
+  assert.equal(world.impostors.elevated, false, 'the 13-species world takes no elevated ring (the row cap)');
   assert.ok(ifr.indexOf('min( impMip, 3.5 ) * 0.25') < ifr.indexOf('#include <alphatest_fragment>'), 'the mip coverage give-back precedes the alpha test');
   assert.match(ifr, /canopyBack \* 0\.18 \* directLight\.color/, 'the far translucency, as the lobes had');
   assert.match(ifr, /canopyDiffuseNL = canopyDiffuseNL \* 0\.70 \+ 0\.075;/, 'the matte wrap, as the lobes had');

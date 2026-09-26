@@ -10,6 +10,7 @@ import ts from 'typescript-compiler-api';
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, TREE_SPECIES } from './treeSpecies.ts';
 import { bendMangroveRoot, shapeMangroveFarStem } from './tidalMangrove.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { HORIZON_FOREST_IMPOSTOR_SKY_FILL, HORIZON_FOREST_IMPOSTOR_THIN, HORIZON_FOREST_IMPOSTOR_WRAP } from './horizonForestImpostors.ts';
 
 // Original jitter remains at 0823acd74e7bcf573e717f96f28ef5f1551dbef7.
 // Literal also authenticated by the earlier R12 seam control; no Git needed.
@@ -282,6 +283,18 @@ for (const name of Object.keys(cards.attributes)) {
   assert.throws(() => exact(cards, bad, name), /exact bytes/); bad.dispose();
 }
 cards.dispose(); indexed.dispose();
-console.log(JSON.stringify({ protocol: 'vegetation-far-seams-v1', primitives, near, far, bushes, tornGaps,
+// Round 77c (2026-09-26): the seam beyond the red line. The far tier's quads (treeImpostors.ts) and the horizon ring's
+// forest (horizonForestImpostors.ts, bound to the same atlas) must light through ONE law: the far canopy hook's matte
+// wrap and translucency and the far material's sky fill are the ring material's constants — a change to either side
+// without the other re-opens the round-77b seam (the ring a paler, softer forest over the dark impostor rim).
+const farHookMatch = text.match(/const farCanopyWindHook = makeTreeWindHook\(2\.5, 8\.0, ([0-9.]+), true, true, ([0-9.]+)\);/);
+assert.ok(farHookMatch, 'the far canopy hook (wrap, matte, thin) is where the receipt expects it');
+assert.equal(Number(farHookMatch[1]), HORIZON_FOREST_IMPOSTOR_WRAP, 'the ring forest wraps like the far tier');
+assert.equal(Number(farHookMatch[2]), HORIZON_FOREST_IMPOSTOR_THIN, 'the ring forest transmits like the far tier');
+const impostorText = readFileSync(new URL('./treeImpostors.ts', import.meta.url), 'utf8');
+const skyFill = impostorText.match(/material\.envMapIntensity = ([0-9.]+); \/\/ the far canopy's sky fill/);
+assert.ok(skyFill && Number(skyFill[1]) === HORIZON_FOREST_IMPOSTOR_SKY_FILL, 'the ring forest takes the far tier\'s sky fill');
+const ringImpostorLaw = { wrap: HORIZON_FOREST_IMPOSTOR_WRAP, thin: HORIZON_FOREST_IMPOSTOR_THIN, skyFill: HORIZON_FOREST_IMPOSTOR_SKY_FILL };
+console.log(JSON.stringify({ protocol: 'vegetation-far-seams-v1', primitives, near, far, bushes, tornGaps, ringImpostorLaw,
   baselineSource: baselinePath ?? 'literal original jitter/merge with current authored builders' }));
 console.log('Far seams: near storage/geometry/transforms exact, far topology/RNG/budgets preserved, historical tears/near-palm/index/attribute mutations rejected. No native art or cost acceptance.');

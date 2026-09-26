@@ -825,6 +825,10 @@ function buildRingBroadleaf(rng: TileRng, pal: HorizonForestSpeciesPalette, deta
 
 type ForestCompileHook = (shader: THREE.WebGLProgramParametersWithUniforms) => void; // round 55: three's own hook type (the canopy wrap reads it)
 
+/** Round 77c: the packed placement record `buildHorizonForest` leaves on its group — x, y, z, scale, yaw, conifer,
+ * variant, tone, key, detail — read by horizonForestImpostors.ts. */
+export const HORIZON_FOREST_PLACEMENT_STRIDE = 10;
+
 interface ForestPlacement {
   x: number; y: number; z: number; scale: number; yaw: number; conifer: boolean;
   /** true on the rim band rows (below the first ridge). */
@@ -1065,6 +1069,12 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     if (entry.own.length === 0) { entry.tree.geometry.dispose(); continue; }
     const mesh = new THREE.InstancedMesh(entry.tree.geometry, material, entry.own.length);
     mesh.name = entry.name;
+    // round 77c: the class this pool draws and its lobe tree's height, for horizonForestImpostors.ts (the near
+    // class keeps casting its lobe hull's shadow once the visible trees are impostors)
+    mesh.userData.horizonForestPool = {
+      conifer: entry.name.includes('conifer'), detail: entry.shadow ? 2 : entry.name.endsWith('-band') ? 1 : 0,
+      variant: entry.shadow ? Number(entry.name.slice(-1)) : -1, treeHeight: entry.tree.height,
+    };
     // the near band casts real shadows onto the rim slopes like the battlefield's own trees; crowns never receive
     // (cascade self-shadow at range reads as black crowns — the in-map far LOD rule)
     mesh.castShadow = entry.shadow;
@@ -1086,6 +1096,15 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     group.add(mesh);
   }
+  // Round 77c: the placements, packed, and the tone terms the lobe material lit them with — horizonForestImpostors.ts
+  // redraws the same trees from the vegetation's impostor atlas where a world bakes one (the placements are the
+  // ring's; nothing here moves)
+  const packed = new Float32Array(placements.length * HORIZON_FOREST_PLACEMENT_STRIDE);
+  placements.forEach((p, i) => {
+    const o = i * HORIZON_FOREST_PLACEMENT_STRIDE;
+    packed[o] = p.x; packed[o + 1] = p.y; packed[o + 2] = p.z; packed[o + 3] = p.scale; packed[o + 4] = p.yaw;
+    packed[o + 5] = p.conifer ? 1 : 0; packed[o + 6] = p.variant; packed[o + 7] = p.tone; packed[o + 8] = p.key; packed[o + 9] = p.detail;
+  });
   group.userData.horizonForest = {
     instances: placements.length,
     conifers: placements.filter((p) => p.conifer).length,
@@ -1093,6 +1112,8 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     band: bandKept.length,
     range: rangeKept.length,
     candidates: candidates.length,
+    placements: packed,
+    tone: { fog: [fog.r, fog.g, fog.b], haze: hazeStrength, maxHeight: Math.max(1, maxHeight) },
   };
   return group;
 }

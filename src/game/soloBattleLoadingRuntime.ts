@@ -45,6 +45,8 @@ interface BattleLoadTrace {
   fxTextureUpload?: TextureUploadTrace;
   world?: object | null;
   worldTextureUpload?: TextureUploadTrace;
+  /** Round 77c: the far-tree impostor atlas baked behind the veil (ms; baked false without a library). */
+  impostorBake?: { baked: boolean; ms: number };
   totalMs?: number;
   loadingElapsedMs?: number;
   visiblePreBattleS?: number;
@@ -458,6 +460,11 @@ export function createSoloBattleLoadingRuntime(
         getWorld().group,
         loadYield,
       );
+      // Round 77c: the far tier's impostor atlas bakes here, behind the veil — two small render passes that the first
+      // presented frame used to pay for (vegetation.ts update() bakes lazily on the first frame that needs the tier)
+      const impostorBakeStartedAt = now();
+      const impostorBaked = getWorld().warmImpostors?.() ?? false;
+      trace.impostorBake = { baked: impostorBaked, ms: Math.round(now() - impostorBakeStartedAt) };
       mark('world');
       battleLoad.progress(0.555, 'Battlefield ready');
       await nextFrame();

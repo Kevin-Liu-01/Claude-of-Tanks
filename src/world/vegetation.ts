@@ -273,6 +273,14 @@ export interface VegetationRuntime {
   /** Round 77b: the rim-forest blocks as discs (their understorey's stands) and the impostor library (null: lobes). */
   _rimBlocks: VegetationDisc[];
   _treeImpostors: TreeImpostorLibrary | null;
+  /** Round 77c: the map's rim species mix and the rim trees' mean height (instance height scale × the near
+   * geometry's height, metres; 0 without an impostor library) — the ring forest's impostors take both
+   * (horizonForestImpostors.ts). */
+  _rimMix: SpeciesMix;
+  _rimTreeHeightM: number;
+  /** Round 77c: bake the far tier's impostor atlas now (the covered activation warm), so no presented frame pays
+   * for it; true when an atlas is baked after the call, false without a library (mobile, the receipts). */
+  warmImpostors(): boolean;
   /** Round 77b: the placed tree records, read-only, for the receipts' slot audits. */
   _trees: ReadonlyArray<Readonly<{ x: number; z: number; species: Species; variant: number; fv: number; near: boolean; slot: number; fslot: number }>>;
   _buildDetail?: VegetationBuildDetail;
@@ -4504,6 +4512,8 @@ function* vegetationBuildSteps(
   // emergent scatter fills the saddles so gaps read as thin forest, not
   // clean breaks between identical tufts.
   const _standTint = new THREE.Color();
+  // Round 77c: the rim's trees, for their mean stature (the ring forest's impostors take it, horizonForestImpostors.ts)
+  const rimTrees: TreeRecord[] = [];
   yield { stage: 'treeLoneAndBelts' };
   function placeRimForest(): void {
     for (let c = 0; c < veg.rimCount; c++) {
@@ -4535,6 +4545,7 @@ function* vegetationBuildSteps(
         // (which sits ~12 m behind the spawn) and keeps the stand in view.
         if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
         pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.35, 2.2, false);
+        rimTrees.push(trees[trees.length - 1]);
       }
       for (let i = b0; i < trees.length; i++) trees[i].tint.multiply(_standTint);
       if (trees.length - b0 >= 3) rimBlocks.push({ x: cx, z: cz, r: bw * 0.5 }); // round 77b: a block that stands
@@ -4552,6 +4563,7 @@ function* vegetationBuildSteps(
       if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
       if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
       pushTree(x, z, pickSpecies(veg.rimMix, rng()), 1.2, 1.9, false);
+      rimTrees.push(trees[trees.length - 1]);
     }
   }
   placeSaddleTrees();
@@ -5845,6 +5857,22 @@ function* vegetationBuildSteps(
       carpet: carpetWork.getState(), disposed };
   }
 
+  // Round 77c: the rim trees' mean stature — the instance height scale × the near geometry's height of the rows the
+  // impostor atlas bakes — so the ring forest's impostors over the red line stand as tall as the trees at it
+  // (horizonForestImpostors.ts); 0 where no atlas exists (the receipts, the mobile tier: the ring keeps its lobes).
+  let rimTreeHeightM = 0;
+  if (treeImpostors && rimTrees.length > 0) {
+    let sum = 0;
+    for (const tree of rimTrees) {
+      const row = treeImpostors.rows[treeImpostors.rowBase(tree.species) + tree.variant % treeImpostors.variants];
+      const e = tree.mat.elements;
+      sum += Math.hypot(e[4], e[5], e[6]) * row.heightM;
+    }
+    rimTreeHeightM = sum / rimTrees.length;
+  }
+  rimTrees.length = 0;
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
-    crushTree, resetToppled, _clusters: clusters, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees };
+    crushTree, resetToppled, _clusters: clusters, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM,
+    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
 }

@@ -34,7 +34,13 @@ export const TREE_IMPOSTOR_MARGIN = 0.06;
 export const TREE_IMPOSTOR_BUDGET_BYTES = 6 * 1024 * 1024;
 export const TREE_IMPOSTOR_TILES = Object.freeze([128, 96, 64] as const);
 export const TREE_IMPOSTOR_MAX_ROWS = 16;
-export const TREE_IMPOSTOR_PROGRAM_KEY = 'world-tree-impostor-v1';
+export const TREE_IMPOSTOR_PROGRAM_KEY = 'world-tree-impostor-v2'; // round 77c: the elevated ring
+/** Round 77c: the elevated capture ring — one row per species (its first near variant) from eight azimuths at 45°,
+ * added where the atlas keeps its ground tile and the row cap; above ~20° of view elevation the tile dissolves
+ * toward it and the card tilts back to face the view, so a bird view no longer sees the side view laid flat. */
+export const TREE_IMPOSTOR_ELEVATED_RAD = 45 * Math.PI / 180;
+/** The view elevation band over which the ground ring dissolves into the elevated ring. */
+const TREE_IMPOSTOR_ELEVATED_BLEND_RAD = Object.freeze([20 * Math.PI / 180, 45 * Math.PI / 180] as const);
 /** The bake's alpha cut on the cards (the near material's own) and the impostor's own. */
 export const TREE_IMPOSTOR_BAKE_ALPHA_TEST = 0.38;
 export const TREE_IMPOSTOR_ALPHA_TEST = 0.5;
@@ -59,6 +65,8 @@ export interface TreeImpostorRow {
   baseV: number;
   radiusM: number;
   heightM: number;
+  /** The capture elevation of the row (the ground ring's or the elevated ring's). */
+  elevation: number;
 }
 
 /** The renderer surface the bake needs; the receipts hand a recording stub, production the WebGLRenderer. */
@@ -93,6 +101,10 @@ export interface TreeImpostorLibrary {
   readonly rows: readonly TreeImpostorRow[];
   /** Near variants baked per species: three where the row cap allows (every authored map), fewer on many-species worlds. */
   readonly variants: number;
+  /** Round 77c: the ground rows (species × variants); the elevated rows, one per species, follow them. */
+  readonly groundRows: number;
+  /** Round 77c: true where the elevated ring fits (the row cap and the ground tile kept: every 3-species map). */
+  readonly elevated: boolean;
   readonly tile: number;
   readonly width: number;
   readonly height: number;
@@ -103,6 +115,10 @@ export interface TreeImpostorLibrary {
   readonly normal: THREE.WebGLRenderTarget;
   readonly baked: boolean;
   readonly bakes: number;
+  /** Round 77c: the wall-clock milliseconds the last bake took (0 until baked) — the activation warm's measure. */
+  readonly bakeMs: number;
+  /** Round 77c: the impostor program on another material that samples this atlas (the horizon ring's forest). */
+  applyProgram(shader: MaterialShader): void;
   /** The first atlas row of a species. */
   rowBase(species: string): number;
   /** A fresh quad for one species pool (its own instanced attributes are attached by the pool). */
@@ -130,6 +146,13 @@ export function resolveTreeImpostorTile(rows: number, budgetBytes = TREE_IMPOSTO
 export function resolveTreeImpostorVariants(speciesCount: number, maxRows = TREE_IMPOSTOR_MAX_ROWS): number {
   if (!(speciesCount > 0)) throw new Error('world/treeImpostors: at least one species');
   return Math.max(1, Math.min(TREE_IMPOSTOR_VARIANTS, Math.floor(maxRows / speciesCount)));
+}
+
+/** Round 77c: whether the elevated ring joins the atlas — only where the extra rows keep the row cap and the tile
+ * the ground ring alone would take (the ground views' resolution is never traded for the bird views'). */
+export function resolveTreeImpostorElevated(speciesCount: number, variants = resolveTreeImpostorVariants(speciesCount)): boolean {
+  const ground = speciesCount * variants, rows = ground + speciesCount;
+  return rows <= TREE_IMPOSTOR_MAX_ROWS && resolveTreeImpostorTile(rows) === resolveTreeImpostorTile(ground);
 }
 
 function mustReplace(src: string, anchor: string, replacement: string): string {
@@ -179,7 +202,7 @@ export function measureTreeImpostorRow(
   const span = Math.max(2 * radius, vMax - vMin);
   const cellM = span / (1 - 2 * margin);
   const baseV = (margin * cellM - vMin) / cellM;
-  return { species: source.species, variant: source.variant, cellM, baseV, radiusM: radius, heightM: yMax };
+  return { species: source.species, variant: source.variant, cellM, baseV, radiusM: radius, heightM: yMax, elevation };
 }
 
 const BAKE_VERTEX = /* glsl */`
@@ -225,6 +248,140 @@ function makeAtlasTarget(width: number, height: number, anisotropy: number, name
   return target;
 }
 
+/** The uniforms one impostor program reads: the normal atlas, the row measures and the atlas layout. */
+interface TreeImpostorProgramBinding {
+  normal: THREE.Texture;
+  rows: readonly THREE.Vector4[];
+  atlas: THREE.Vector4;
+}
+
+/**
+ * Round 77c: the impostor program on any MeshStandardMaterial that samples the atlas as its `map` — the camera-facing
+ * billboard in instance space (before any wind block a caller installed after `begin_vertex`), the two nearest
+ * azimuths cross-dissolved by the view angle, the mip coverage give-back before the alpha test and the baked normal
+ * lit in the capture frame. The vegetation's far tier and the horizon ring's forest (horizonForestImpostors.ts)
+ * share it, so a tree beyond the red line is lit and shaped by the same law as a tree inside it.
+ */
+function applyTreeImpostorProgram(shader: MaterialShader, binding: TreeImpostorProgramBinding): void {
+  shader.uniforms.uImpNormal = { value: binding.normal };
+  shader.uniforms.uImpRows = { value: binding.rows };
+  shader.uniforms.uImpAtlas = { value: binding.atlas };
+  shader.vertexShader = mustReplace(shader.vertexShader, '#include <common>', `#include <common>
+uniform vec4 uImpRows[ ${TREE_IMPOSTOR_MAX_ROWS} ];
+uniform vec4 uImpAtlas;
+attribute float aImpRow;
+attribute vec4 aImpCell;
+varying vec2 vImpUv0;
+varying vec2 vImpUv1;
+varying vec2 vImpUvE0;
+varying vec2 vImpUvE1;
+varying float vImpW;
+varying float vImpWE;
+varying vec3 vImpR;
+varying vec3 vImpU;
+varying vec3 vImpF;
+varying vec3 vImpUE;
+varying vec3 vImpFE;`);
+  // Before the wind block (the hook installed its block after the include; this one lands between them): the quad
+  // becomes a camera-facing billboard in INSTANCE space, so the instance matrix (position, yaw, lean, scale) and the
+  // wind law that follows (its lean by the unscaled height) apply exactly as they do to the cards.
+  shader.vertexShader = mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`#include <begin_vertex>
+    {
+      float impRow = aImpCell.x + mod( aImpRow, aImpCell.z );
+      vec4 impR = uImpRows[ int( impRow + 0.5 ) ];
+      vec3 impS = vec3( length( instanceMatrix[ 0 ].xyz ), length( instanceMatrix[ 1 ].xyz ), length( instanceMatrix[ 2 ].xyz ) );
+      mat3 impRot = mat3( instanceMatrix[ 0 ].xyz / impS.x, instanceMatrix[ 1 ].xyz / impS.y, instanceMatrix[ 2 ].xyz / impS.z );
+      vec3 impBase = ( modelMatrix * ( instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ) ).xyz;
+      vec3 impRel = cameraPosition - impBase;
+      vec2 impH = impRel.xz;
+      float impHL = length( impH );
+      impH = impHL > 1e-4 ? impH / impHL : vec2( 0.0, 1.0 );
+      vec3 impFwd = vec3( impH.x, 0.0, impH.y );
+      vec3 impRight = vec3( impH.y, 0.0, -impH.x );
+      // round 77c: the elevated ring — over the blend band of view elevation the tile dissolves toward the 45°
+      // capture and the card tilts back to face it (its base stays on the ground); aImpCell.w < 0 = no elevated row
+      float impElRow = aImpCell.w;
+      float impElev = atan( impRel.y, max( impHL, 1e-3 ) );
+      float impWE = impElRow < 0.0 ? 0.0 : smoothstep( ${TREE_IMPOSTOR_ELEVATED_BLEND_RAD[0].toFixed(6)}, ${TREE_IMPOSTOR_ELEVATED_BLEND_RAD[1].toFixed(6)}, impElev );
+      vec4 impRE = uImpRows[ int( max( impElRow, 0.0 ) + 0.5 ) ];
+      float impCell = mix( impR.x, impRE.x, impWE );
+      float impBaseV = mix( impR.y, impRE.y, impWE );
+      float impTilt = impWE * ${TREE_IMPOSTOR_ELEVATED_RAD.toFixed(6)};
+      vec3 impUp = vec3( -impFwd.x * sin( impTilt ), cos( impTilt ), -impFwd.z * sin( impTilt ) );
+      vec3 impObj = transpose( impRot ) * impFwd;
+      float impMir = aImpCell.y;
+      float impAz = atan( impObj.x, impObj.z );
+      impAz = mix( impAz, -impAz, impMir );
+      float impDir = impAz * ${(TREE_IMPOSTOR_DIRECTIONS / (Math.PI * 2)).toFixed(8)};
+      impDir -= ${TREE_IMPOSTOR_DIRECTIONS.toFixed(1)} * floor( impDir / ${TREE_IMPOSTOR_DIRECTIONS.toFixed(1)} );
+      float impD0 = floor( impDir );
+      float impW = impDir - impD0;
+      float impD1 = impD0 + 1.0;
+      impD1 -= ${TREE_IMPOSTOR_DIRECTIONS.toFixed(1)} * step( ${(TREE_IMPOSTOR_DIRECTIONS - 0.5).toFixed(1)}, impD1 );
+      float impXZ = max( length( impObj.xz ), 1e-4 );
+      float impWidth = impCell * sqrt( impS.x * impS.x * impObj.z * impObj.z + impS.z * impS.z * impObj.x * impObj.x ) / impXZ;
+      float impHeight = impCell * impS.y;
+      vec3 impOff = impRight * ( position.x * impWidth ) + impUp * ( ( position.y - impBaseV ) * impHeight );
+      transformed = ( transpose( impRot ) * impOff ) / impS;
+      float impU = mix( uv.x, 1.0 - uv.x, impMir );
+      vImpUv0 = vec2( ( impD0 + impU ) * uImpAtlas.x, ( impRow + uv.y ) * uImpAtlas.y );
+      vImpUv1 = vec2( ( impD1 + impU ) * uImpAtlas.x, ( impRow + uv.y ) * uImpAtlas.y );
+      vImpUvE0 = vec2( ( impD0 + impU ) * uImpAtlas.x, ( max( impElRow, 0.0 ) + uv.y ) * uImpAtlas.y );
+      vImpUvE1 = vec2( ( impD1 + impU ) * uImpAtlas.x, ( max( impElRow, 0.0 ) + uv.y ) * uImpAtlas.y );
+      vImpW = impW;
+      vImpWE = impWE;
+      float impCe = cos( uImpAtlas.w ), impSe = sin( uImpAtlas.w );
+      mat3 impView = mat3( viewMatrix );
+      vImpR = impView * ( impRight * mix( 1.0, -1.0, impMir ) );
+      vImpU = impView * vec3( -impFwd.x * impSe, impCe, -impFwd.z * impSe );
+      vImpF = impView * vec3( impFwd.x * impCe, impSe, impFwd.z * impCe );
+      vImpUE = impView * vec3( -impFwd.x * ${Math.sin(TREE_IMPOSTOR_ELEVATED_RAD).toFixed(6)}, ${Math.cos(TREE_IMPOSTOR_ELEVATED_RAD).toFixed(6)}, -impFwd.z * ${Math.sin(TREE_IMPOSTOR_ELEVATED_RAD).toFixed(6)} );
+      vImpFE = impView * vec3( impFwd.x * ${Math.cos(TREE_IMPOSTOR_ELEVATED_RAD).toFixed(6)}, ${Math.sin(TREE_IMPOSTOR_ELEVATED_RAD).toFixed(6)}, impFwd.z * ${Math.cos(TREE_IMPOSTOR_ELEVATED_RAD).toFixed(6)} );
+    }`);
+  shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>', `#include <common>
+uniform sampler2D uImpNormal;
+varying vec2 vImpUv0;
+varying vec2 vImpUv1;
+varying vec2 vImpUvE0;
+varying vec2 vImpUvE1;
+varying float vImpW;
+varying float vImpWE;
+varying vec3 vImpR;
+varying vec3 vImpU;
+varying vec3 vImpF;
+varying vec3 vImpUE;
+varying vec3 vImpFE;`);
+  shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`
+    {
+      vec4 impA = texture2D( map, vImpUv0 ), impB = texture2D( map, vImpUv1 );
+      vec4 impC = mix( impA, impB, vImpW );
+      if ( vImpWE > 0.001 ) impC = mix( impC, mix( texture2D( map, vImpUvE0 ), texture2D( map, vImpUvE1 ), vImpW ), vImpWE );
+      diffuseColor *= impC;
+    }`);
+  // the coverage give-back of the cards' mip guard, on the tile's own texel derivatives
+  shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
+    {
+      vec2 impTs = vec2( textureSize( map, 0 ) );
+      vec2 impDx = dFdx( vImpUv0 * impTs ), impDy = dFdy( vImpUv0 * impTs );
+      float impMip = 0.5 * log2( max( max( dot( impDx, impDx ), dot( impDy, impDy ) ), 1.0 ) );
+      diffuseColor.a *= 1.0 + min( impMip, 3.5 ) * 0.25;
+    }
+    #include <alphatest_fragment>`);
+  shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>', /* glsl */`#include <normal_fragment_begin>
+    {
+      vec3 impN0 = texture2D( uImpNormal, vImpUv0 ).xyz * 2.0 - 1.0;
+      vec3 impN1 = texture2D( uImpNormal, vImpUv1 ).xyz * 2.0 - 1.0;
+      vec3 impN = mix( impN0, impN1, vImpW );
+      vec3 impNw = vImpR * impN.x + vImpU * impN.y + vImpF * impN.z;
+      if ( vImpWE > 0.001 ) {
+        vec3 impNE = mix( texture2D( uImpNormal, vImpUvE0 ).xyz, texture2D( uImpNormal, vImpUvE1 ).xyz, vImpW ) * 2.0 - 1.0;
+        impNw = mix( impNw, vImpR * impNE.x + vImpUE * impNE.y + vImpFE * impNE.z, vImpWE );
+      }
+      normal = normalize( impNw );
+      nonPerturbedNormal = normal;
+    }`);
+}
+
 export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImpostorLibrary {
   // The rows: every species in its order, its first `variants` near variants (three on every authored map).
   const speciesOrder: string[] = [];
@@ -241,7 +398,12 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
       sources.push(source);
     }
   }
-  const rows = sources.map(source => measureTreeImpostorRow(source));
+  const groundRows = sources.length;
+  // round 77c: the elevated ring — one row per species (its first near variant) at 45°, after the ground rows,
+  // where the row cap and the ground tile hold
+  const elevated = resolveTreeImpostorElevated(speciesOrder.length, variants);
+  if (elevated) for (const species of speciesOrder) sources.push(sources.find(source => source.species === species && source.variant === 0)!);
+  const rows = sources.map((source, index) => measureTreeImpostorRow(source, index < groundRows ? TREE_IMPOSTOR_ELEVATION_RAD : TREE_IMPOSTOR_ELEVATED_RAD));
   const tile = resolveTreeImpostorTile(rows.length);
   const width = tile * TREE_IMPOSTOR_DIRECTIONS, height = tile * rows.length;
   const bytes = treeImpostorAtlasBytes(tile, rows.length);
@@ -250,6 +412,8 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
   const normal = makeAtlasTarget(width / 2, height / 2, anisotropy, 'treeImpostorNormal');
   const rowBaseOf = new Map<string, number>();
   rows.forEach((row, index) => { if (!rowBaseOf.has(row.species)) rowBaseOf.set(row.species, index); });
+  const elevatedRowOf = new Map<string, number>();
+  if (elevated) speciesOrder.forEach((species, index) => elevatedRowOf.set(species, groundRows + index));
   const rowVectors: THREE.Vector4[] = [];
   for (let i = 0; i < TREE_IMPOSTOR_MAX_ROWS; i++) {
     const row = rows[i];
@@ -257,94 +421,13 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
   }
   const atlasVector = new THREE.Vector4(1 / TREE_IMPOSTOR_DIRECTIONS, 1 / rows.length, rows.length, TREE_IMPOSTOR_ELEVATION_RAD);
 
+  const binding: TreeImpostorProgramBinding = { normal: normal.texture, rows: rowVectors, atlas: atlasVector };
   // The impostor material: the far canopy's hook first (wind lean, LOD / occlusion / scope dissolve, the matte wrap
-  // and the far translucency), then the billboard, the direction blend, the mip coverage and the baked normal.
+  // and the far translucency), then the shared impostor program (the billboard lands between the include and the
+  // wind block, so the instance matrix and the wind law apply to the quad exactly as to the cards).
   const impostorHook = (shader: MaterialShader): void => {
     options.hook(shader);
-    shader.uniforms.uImpNormal = { value: normal.texture };
-    shader.uniforms.uImpRows = { value: rowVectors };
-    shader.uniforms.uImpAtlas = { value: atlasVector };
-    shader.vertexShader = mustReplace(shader.vertexShader, '#include <common>', `#include <common>
-uniform vec4 uImpRows[ ${TREE_IMPOSTOR_MAX_ROWS} ];
-uniform vec4 uImpAtlas;
-attribute float aImpRow;
-attribute vec3 aImpCell;
-varying vec2 vImpUv0;
-varying vec2 vImpUv1;
-varying float vImpW;
-varying vec3 vImpR;
-varying vec3 vImpU;
-varying vec3 vImpF;`);
-    // Before the wind block (the hook installed its block after the include; this one lands between them): the quad
-    // becomes a camera-facing billboard in INSTANCE space, so the instance matrix (position, yaw, lean, scale) and the
-    // wind law that follows (its lean by the unscaled height) apply exactly as they do to the cards.
-    shader.vertexShader = mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`#include <begin_vertex>
-      {
-        float impRow = aImpCell.x + mod( aImpRow, aImpCell.z );
-        vec4 impR = uImpRows[ int( impRow + 0.5 ) ];
-        vec3 impS = vec3( length( instanceMatrix[ 0 ].xyz ), length( instanceMatrix[ 1 ].xyz ), length( instanceMatrix[ 2 ].xyz ) );
-        mat3 impRot = mat3( instanceMatrix[ 0 ].xyz / impS.x, instanceMatrix[ 1 ].xyz / impS.y, instanceMatrix[ 2 ].xyz / impS.z );
-        vec3 impBase = ( modelMatrix * ( instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ) ).xyz;
-        vec2 impH = ( cameraPosition - impBase ).xz;
-        float impHL = length( impH );
-        impH = impHL > 1e-4 ? impH / impHL : vec2( 0.0, 1.0 );
-        vec3 impFwd = vec3( impH.x, 0.0, impH.y );
-        vec3 impRight = vec3( impH.y, 0.0, -impH.x );
-        vec3 impObj = transpose( impRot ) * impFwd;
-        float impMir = aImpCell.y;
-        float impAz = atan( impObj.x, impObj.z );
-        impAz = mix( impAz, -impAz, impMir );
-        float impDir = impAz * ${(TREE_IMPOSTOR_DIRECTIONS / (Math.PI * 2)).toFixed(8)};
-        impDir -= ${TREE_IMPOSTOR_DIRECTIONS.toFixed(1)} * floor( impDir / ${TREE_IMPOSTOR_DIRECTIONS.toFixed(1)} );
-        float impD0 = floor( impDir );
-        float impW = impDir - impD0;
-        float impD1 = impD0 + 1.0;
-        impD1 -= ${TREE_IMPOSTOR_DIRECTIONS.toFixed(1)} * step( ${(TREE_IMPOSTOR_DIRECTIONS - 0.5).toFixed(1)}, impD1 );
-        float impXZ = max( length( impObj.xz ), 1e-4 );
-        float impWidth = impR.x * sqrt( impS.x * impS.x * impObj.z * impObj.z + impS.z * impS.z * impObj.x * impObj.x ) / impXZ;
-        float impHeight = impR.x * impS.y;
-        vec3 impOff = impRight * ( position.x * impWidth ) + vec3( 0.0, ( position.y - impR.y ) * impHeight, 0.0 );
-        transformed = ( transpose( impRot ) * impOff ) / impS;
-        float impU = mix( uv.x, 1.0 - uv.x, impMir );
-        vImpUv0 = vec2( ( impD0 + impU ) * uImpAtlas.x, ( impRow + uv.y ) * uImpAtlas.y );
-        vImpUv1 = vec2( ( impD1 + impU ) * uImpAtlas.x, ( impRow + uv.y ) * uImpAtlas.y );
-        vImpW = impW;
-        float impCe = cos( uImpAtlas.w ), impSe = sin( uImpAtlas.w );
-        mat3 impView = mat3( viewMatrix );
-        vImpR = impView * ( impRight * mix( 1.0, -1.0, impMir ) );
-        vImpU = impView * vec3( -impFwd.x * impSe, impCe, -impFwd.z * impSe );
-        vImpF = impView * vec3( impFwd.x * impCe, impSe, impFwd.z * impCe );
-      }`);
-    shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>', `#include <common>
-uniform sampler2D uImpNormal;
-varying vec2 vImpUv0;
-varying vec2 vImpUv1;
-varying float vImpW;
-varying vec3 vImpR;
-varying vec3 vImpU;
-varying vec3 vImpF;`);
-    shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`
-      {
-        vec4 impA = texture2D( map, vImpUv0 ), impB = texture2D( map, vImpUv1 );
-        diffuseColor *= mix( impA, impB, vImpW );
-      }`);
-    // the coverage give-back of the cards' mip guard, on the tile's own texel derivatives
-    shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
-      {
-        vec2 impTs = vec2( textureSize( map, 0 ) );
-        vec2 impDx = dFdx( vImpUv0 * impTs ), impDy = dFdy( vImpUv0 * impTs );
-        float impMip = 0.5 * log2( max( max( dot( impDx, impDx ), dot( impDy, impDy ) ), 1.0 ) );
-        diffuseColor.a *= 1.0 + min( impMip, 3.5 ) * 0.25;
-      }
-      #include <alphatest_fragment>`);
-    shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>', /* glsl */`#include <normal_fragment_begin>
-      {
-        vec3 impN0 = texture2D( uImpNormal, vImpUv0 ).xyz * 2.0 - 1.0;
-        vec3 impN1 = texture2D( uImpNormal, vImpUv1 ).xyz * 2.0 - 1.0;
-        vec3 impN = mix( impN0, impN1, vImpW );
-        normal = normalize( vImpR * impN.x + vImpU * impN.y + vImpF * impN.z );
-        nonPerturbedNormal = normal;
-      }`);
+    applyTreeImpostorProgram(shader, binding);
   };
   const material = new THREE.MeshStandardMaterial({
     map: albedo.texture, vertexColors: true, alphaTest: TREE_IMPOSTOR_ALPHA_TEST, alphaToCoverage: true,
@@ -354,7 +437,7 @@ varying vec3 vImpF;`);
   material.customProgramCacheKey = () => TREE_IMPOSTOR_PROGRAM_KEY;
   options.setupMaterial(material, impostorHook);
 
-  let baked = false, bakes = 0;
+  let baked = false, bakes = 0, bakeMs = 0;
   // A GPU suspension (resourceLifetime) disposes the atlas textures: free the framebuffers with them and bake
   // again on the next frame that needs the tier.
   for (const target of [albedo, normal]) {
@@ -362,37 +445,45 @@ varying vec3 vImpF;`);
   }
 
   function bake(renderer: TreeImpostorRenderer): void {
-    const ce = Math.cos(TREE_IMPOSTOR_ELEVATION_RAD), se = Math.sin(TREE_IMPOSTOR_ELEVATION_RAD);
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(0, TREE_IMPOSTOR_DIRECTIONS, rows.length, 0, -50, 50);
-    camera.position.set(0, 20 * se, 20 * ce);
-    camera.up.set(0, ce, -se);
-    camera.lookAt(0, 0, 0);
-    camera.updateMatrixWorld(true);
+    // one scene per capture ring, each seen by its own tilted orthographic camera over its rows of the atlas
     const barkMaterial = makeBakeMaterial(options.bark, 0, THREE.FrontSide);
     const foliageMaterials = new Map<THREE.Texture, THREE.ShaderMaterial>();
     const materials: THREE.ShaderMaterial[] = [barkMaterial];
-    rows.forEach((row, index) => {
-      const source = sources[index];
-      let foliageMaterial = foliageMaterials.get(source.foliage);
-      if (!foliageMaterial) {
-        foliageMaterial = makeBakeMaterial(source.foliage, TREE_IMPOSTOR_BAKE_ALPHA_TEST, THREE.DoubleSide);
-        foliageMaterials.set(source.foliage, foliageMaterial);
-        materials.push(foliageMaterial);
+    const rings: Array<{ scene: THREE.Scene; camera: THREE.OrthographicCamera }> = [];
+    const ringOf = (elevation: number, first: number, last: number): void => {
+      if (last <= first) return;
+      const ce = Math.cos(elevation), se = Math.sin(elevation);
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(0, TREE_IMPOSTOR_DIRECTIONS, last, first, -50, 50);
+      camera.position.set(0, 20 * se, 20 * ce);
+      camera.up.set(0, ce, -se);
+      camera.lookAt(0, 0, 0);
+      camera.updateMatrixWorld(true);
+      for (let index = first; index < last; index++) {
+        const row = rows[index], source = sources[index];
+        let foliageMaterial = foliageMaterials.get(source.foliage);
+        if (!foliageMaterial) {
+          foliageMaterial = makeBakeMaterial(source.foliage, TREE_IMPOSTOR_BAKE_ALPHA_TEST, THREE.DoubleSide);
+          foliageMaterials.set(source.foliage, foliageMaterial);
+          materials.push(foliageMaterial);
+        }
+        for (let d = 0; d < TREE_IMPOSTOR_DIRECTIONS; d++) {
+          const copy = new THREE.Group();
+          copy.position.set(d + 0.5, (index + row.baseV) / ce, 0);
+          copy.rotation.y = -(d / TREE_IMPOSTOR_DIRECTIONS) * Math.PI * 2;
+          copy.scale.setScalar(1 / row.cellM);
+          const trunk = new THREE.Mesh(source.trunk, barkMaterial);
+          const cards = new THREE.Mesh(source.cards, foliageMaterial);
+          trunk.frustumCulled = false; cards.frustumCulled = false;
+          copy.add(trunk, cards);
+          scene.add(copy);
+        }
       }
-      for (let d = 0; d < TREE_IMPOSTOR_DIRECTIONS; d++) {
-        const copy = new THREE.Group();
-        copy.position.set(d + 0.5, (index + row.baseV) / ce, 0);
-        copy.rotation.y = -(d / TREE_IMPOSTOR_DIRECTIONS) * Math.PI * 2;
-        copy.scale.setScalar(1 / row.cellM);
-        const trunk = new THREE.Mesh(source.trunk, barkMaterial);
-        const cards = new THREE.Mesh(source.cards, foliageMaterial);
-        trunk.frustumCulled = false; cards.frustumCulled = false;
-        copy.add(trunk, cards);
-        scene.add(copy);
-      }
-    });
-    scene.updateMatrixWorld(true);
+      scene.updateMatrixWorld(true);
+      rings.push({ scene, camera });
+    };
+    ringOf(TREE_IMPOSTOR_ELEVATION_RAD, 0, groundRows);
+    ringOf(TREE_IMPOSTOR_ELEVATED_RAD, groundRows, rows.length);
     const previousTarget = renderer.getRenderTarget();
     const previousColor = renderer.getClearColor(new THREE.Color());
     const previousAlpha = renderer.getClearAlpha();
@@ -412,7 +503,7 @@ varying vec3 vImpF;`);
         renderer.setRenderTarget(pass.target);
         renderer.setClearColor(pass.clear, 0);
         renderer.clear(true, true, false);
-        renderer.render(scene, camera);
+        for (const ring of rings) renderer.render(ring.scene, ring.camera);
       }
     } finally {
       renderer.setRenderTarget(previousTarget);
@@ -421,14 +512,16 @@ varying vec3 vImpF;`);
       renderer.shadowMap.autoUpdate = previousShadowUpdate;
       if (renderer.xr && previousXr !== undefined) renderer.xr.enabled = previousXr;
       for (const bakeMaterial of materials) bakeMaterial.dispose();
-      scene.clear();
+      for (const ring of rings) ring.scene.clear();
     }
   }
 
   return {
-    rows, variants, tile, width, height, bytes, material, albedo, normal,
+    rows, variants, groundRows, elevated, tile, width, height, bytes, material, albedo, normal,
     get baked() { return baked; },
     get bakes() { return bakes; },
+    get bakeMs() { return bakeMs; },
+    applyProgram(shader) { applyTreeImpostorProgram(shader, binding); },
     rowBase(species) {
       const base = rowBaseOf.get(species);
       if (base === undefined) throw new Error(`world/treeImpostors: no rows for ${species}`);
@@ -443,29 +536,34 @@ varying vec3 vImpF;`);
       geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(12).fill(1), 3));
       geometry.setAttribute('aFlex', new THREE.BufferAttribute(new Float32Array([0, 0, TREE_IMPOSTOR_TOP_FLEX, TREE_IMPOSTOR_TOP_FLEX]), 1));
       const m = mirror ? 1 : 0;
-      // per vertex, constant over the quad: the species' first row, the mirror flag, the variants baked
-      geometry.setAttribute('aImpCell', new THREE.BufferAttribute(new Float32Array([base, m, variants, base, m, variants, base, m, variants, base, m, variants]), 3));
+      // per vertex, constant over the quad: the species' first row, the mirror flag, the variants baked, the
+      // species' elevated row (round 77c; -1 without the elevated ring)
+      const e = elevatedRowOf.get(species) ?? -1;
+      const cell = [base, m, variants, e];
+      geometry.setAttribute('aImpCell', new THREE.BufferAttribute(new Float32Array([...cell, ...cell, ...cell, ...cell]), 4));
       geometry.setIndex([0, 1, 2, 0, 2, 3]);
       geometry.computeBoundingSphere();
-      geometry.userData.treeImpostor = { species, base, mirror, variants };
+      geometry.userData.treeImpostor = { species, base, mirror, variants, elevatedRow: e };
       return geometry;
     },
     ensureBaked() {
       if (baked) return true;
       const renderer = options.renderer;
       if (!renderer || typeof renderer.setRenderTarget !== 'function' || typeof renderer.render !== 'function') return false;
+      const started = performance.now();
       bake(renderer);
+      bakeMs = performance.now() - started;
       baked = true;
       bakes++;
       return true;
     },
     digest() {
       let h = 0x811c9dc5;
-      h = fnvText(h, `impostor:${TREE_IMPOSTOR_DIRECTIONS}:${TREE_IMPOSTOR_ELEVATION_RAD.toFixed(6)}:${tile}:${width}x${height}:${TREE_IMPOSTOR_MARGIN}:${variants}`);
+      h = fnvText(h, `impostor:${TREE_IMPOSTOR_DIRECTIONS}:${TREE_IMPOSTOR_ELEVATION_RAD.toFixed(6)}:${tile}:${width}x${height}:${TREE_IMPOSTOR_MARGIN}:${variants}:${elevated ? TREE_IMPOSTOR_ELEVATED_RAD.toFixed(6) : 'flat'}`);
       const hashed = new Set<THREE.Texture>();
       rows.forEach((row, index) => {
         const source = sources[index];
-        h = fnvText(h, `${row.species}/${row.variant}:${row.cellM.toFixed(5)}:${row.baseV.toFixed(5)}`);
+        h = fnvText(h, `${row.species}/${row.variant}:${row.cellM.toFixed(5)}:${row.baseV.toFixed(5)}:${row.elevation.toFixed(4)}`);
         for (const geometry of [source.trunk, source.cards]) {
           for (const name of ['position', 'normal', 'uv', 'color']) {
             const attribute = geometry.getAttribute(name);
