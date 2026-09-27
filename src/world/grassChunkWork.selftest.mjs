@@ -242,12 +242,15 @@ const activeState = { stage: 'write', candidatesDone: 20, candidatesTotal: 20,
   accepted: 12, variant: 0, variantsTotal: 2, instancesDone: 5, instancesTotal: 9 };
 const active = { ix: 2, iz: 3, job: { getState() { stateReads++; return activeState; } } };
 const carpetSnapshot = { cold: true, pending: true, stage: 'candidates' };
+// round 77c (2026-09-26): the slice up to the factory's return now carries the rim trees' mean-stature block, which reads the
+// impostor library and the rim-tree rows (treePoolCapacity's stub: no library on this receipt — the ring keeps its lobes)
 const checkpoints = new Function('grassChunks', 'grassFadeEnd', 'grassAheadDistance', 'grassBuildJob', 'disposed', 'carpetWork',
+  'treeImpostors', 'rimTrees',
   `${stateFunction}; return getGrassWorkState;`)([
     { built: true, cameraDist: 0 }, { built: false, cameraDist: 20 },
     { built: false, cameraDist: 99 }, { built: false, cameraDist: 100 },
     { built: false, cameraDist: 150 }, { built: false }, { built: true },
-  ], 100, 150, active, false, { getState: () => carpetSnapshot });
+  ], 100, 150, active, false, { getState: () => carpetSnapshot }, null, []);
 assert.deepEqual(checkpoints(), { total: 7, built: 2, pendingVisible: 2, pendingAhead: 1,
   cameraUnknown: 2, active: { ...activeState, chunkX: 2, chunkZ: 3 }, carpet: carpetSnapshot, disposed: false });
 assert.equal(stateReads, 1);
