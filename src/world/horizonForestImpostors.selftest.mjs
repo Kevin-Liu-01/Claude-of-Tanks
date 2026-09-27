@@ -61,8 +61,9 @@ try {
     const library = world._treeImpostors;
     assert.ok(library && world._rimTreeHeightM > 5 && world._rimTreeHeightM < 30, `${id}: the rim stature (${world._rimTreeHeightM})`);
     const released = [];
+    assert.ok(world._rimTreeTint.every(c => c > 0.3 && c < 1.0), `${id}: the rim tint is a real darkening (${world._rimTreeTint.map(c => c.toFixed(3))})`);
     const receipt = bindHorizonForestImpostors(forest, {
-      library, rimMix: world._rimMix, rimTreeHeightM: world._rimTreeHeightM,
+      library, rimMix: world._rimMix, rimTreeHeightM: world._rimTreeHeightM, rimTreeTint: world._rimTreeTint,
       setupMaterial: (material, hook) => hooks.set(material, hook), releaseMaterial: material => released.push(material),
     });
     assert.ok(receipt, `${id}: bound`);
@@ -120,6 +121,8 @@ try {
         const expectedScale = (packed[o + 3] / ringScaleMean) * ringLobeHeightM * receipt.stature.ratio / row.heightM;
         assert.ok(Math.abs(scale.y - expectedScale) < 1e-4 && Math.abs(scale.x - scale.y) < 1e-6, `${id}: the stature scale`);
         assert.ok(Math.abs(position.y - packed[o + 1]) < 1e-4, `${id}: the ring's own height`);
+        const c = mesh.instanceColor;
+        for (let k = 0; k < 3; k++) assert.ok(Math.abs(c.array[j * 3 + k] - packed[o + 7] * world._rimTreeTint[k]) < 1e-4, `${id}: the quad's colour is its ring tone × the rim tint`);
         heightSum += scale.y * row.heightM;
         classCounts[conifer ? 1 : 0][species] = (classCounts[conifer ? 1 : 0][species] ?? 0) + 1;
       }
@@ -172,7 +175,7 @@ try {
     assert.equal(bindHorizonForestImpostors(forest, { library, rimMix: world._rimMix, rimTreeHeightM: world._rimTreeHeightM, setupMaterial() {} }), null);
     assert.equal(forest.children.length, proxies.length + impostorMeshes.length);
     receipts.push({ id, instances: receipt.instances, draws: receipt.draws, shadowProxies: receipt.shadowProxies, species: receipt.species,
-      elevated: library.elevated, stature: { rim: +receipt.stature.rimTreeHeightM.toFixed(2), ringLobes: +receipt.stature.ringLobeHeightM.toFixed(2), ratio: +receipt.stature.ratio.toFixed(3) } });
+      elevated: library.elevated, tint: receipt.tint.map(c => +c.toFixed(3)), stature: { rim: +receipt.stature.rimTreeHeightM.toFixed(2), ringLobes: +receipt.stature.ringLobeHeightM.toFixed(2), ratio: +receipt.stature.ratio.toFixed(3) } });
     world.dispose(); disposeObject3DResources(world.group); disposeObject3DResources(ring);
   }
   // a ring without packed placements (an older group, a treeless map) is left alone

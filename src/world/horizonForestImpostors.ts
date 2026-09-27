@@ -35,6 +35,9 @@ interface HorizonForestImpostorOptions {
   /** The mean height of the battlefield's rim trees in metres (vegetation.ts `_rimTreeHeightM`): the ring's trees
    * take the same mean stature, keeping the ring's own relative size spread. 0 leaves the lobes' stature law. */
   rimTreeHeightM: number;
+  /** The rim trees' mean instance tint (vegetation.ts `_rimTreeTint`): every ring quad's colour is its own ring tone
+   * × this, so the ring's forest carries the battlefield's value jitter and stand shade on average. */
+  rimTreeTint?: readonly [number, number, number];
   setupMaterial(material: THREE.Material, hook: MaterialShaderHook): void;
   releaseMaterial?(material: THREE.Material): void;
 }
@@ -47,6 +50,8 @@ interface HorizonForestImpostorReceipt {
   shadowProxies: number;
   species: Record<string, number>;
   stature: { rimTreeHeightM: number; ringLobeHeightM: number; ratio: number };
+  /** The rim tint every quad's tone was multiplied by. */
+  tint: [number, number, number];
 }
 
 interface ForestRecord {
@@ -189,6 +194,7 @@ export function bindHorizonForestImpostors(
   // the quads: one pool per species and mirror, the row per instance
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3(), position = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0), color = new THREE.Color();
+  const rimTint = new THREE.Color(...(options.rimTreeTint ?? [1, 1, 1]));
   const speciesCounts: Record<string, number> = {};
   let draws = 0;
   for (const [key, bucket] of buckets) {
@@ -211,7 +217,7 @@ export function bindHorizonForestImpostors(
       position.set(packed[o], packed[o + 1], packed[o + 2]);
       matrix.compose(position, quaternion, scale);
       mesh.setMatrixAt(j, matrix);
-      color.setScalar(packed[o + 7]);
+      color.setScalar(packed[o + 7]).multiply(rimTint);
       mesh.setColorAt(j, color);
       rows.array[j] = variantOf[i];
     }
@@ -260,6 +266,7 @@ export function bindHorizonForestImpostors(
   const receipt: HorizonForestImpostorReceipt = {
     instances: count, draws, shadowProxies, species: speciesCounts,
     stature: { rimTreeHeightM: options.rimTreeHeightM, ringLobeHeightM, ratio },
+    tint: [rimTint.r, rimTint.g, rimTint.b],
   };
   forest.userData.horizonForestImpostors = receipt;
   forest.userData.horizonForestImpostorMaterial = material;

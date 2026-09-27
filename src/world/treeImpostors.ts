@@ -451,7 +451,9 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
   }
 
   function bake(renderer: TreeImpostorRenderer): void {
-    // one scene per capture ring, each seen by its own tilted orthographic camera over its rows of the atlas
+    // one scene per capture ring, each seen by its own tilted orthographic camera over the WHOLE atlas grid (the
+    // target is the whole atlas, so every camera must map the full row range — a per-ring frustum would stretch its
+    // rows over the target); a ring's copies sit at their own rows, the other ring's scene is not in view
     const barkMaterial = makeBakeMaterial(options.bark, 0, THREE.FrontSide);
     const foliageMaterials = new Map<THREE.Texture, THREE.ShaderMaterial>();
     const materials: THREE.ShaderMaterial[] = [barkMaterial];
@@ -460,7 +462,7 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
       if (last <= first) return;
       const ce = Math.cos(elevation), se = Math.sin(elevation);
       const scene = new THREE.Scene();
-      const camera = new THREE.OrthographicCamera(0, TREE_IMPOSTOR_DIRECTIONS, last, first, -50, 50);
+      const camera = new THREE.OrthographicCamera(0, TREE_IMPOSTOR_DIRECTIONS, rows.length, 0, -50, 50);
       camera.position.set(0, 20 * se, 20 * ce);
       camera.up.set(0, ce, -se);
       camera.lookAt(0, 0, 0);

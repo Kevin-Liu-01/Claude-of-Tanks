@@ -345,6 +345,7 @@ function assembleWorld(
   if (ringForest && vegetation._treeImpostors) {
     bindHorizonForestImpostors(ringForest, {
       library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
     });

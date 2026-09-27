@@ -196,7 +196,7 @@ try {
       const elevatedRing = index % ringsPerPass === 1;
       assert.equal(render[2], (elevatedRing ? library.rows.length - library.groundRows : library.groundRows) * TREE_IMPOSTOR_DIRECTIONS, 'one copy per row and azimuth');
       assert.equal(render[3], 'OrthographicCamera');
-      assert.deepEqual(render[4], elevatedRing ? [0, TREE_IMPOSTOR_DIRECTIONS, library.rows.length, library.groundRows] : [0, TREE_IMPOSTOR_DIRECTIONS, library.groundRows, 0], 'the frustum is the ring\'s rows of the atlas grid');
+      assert.deepEqual(render[4], [0, TREE_IMPOSTOR_DIRECTIONS, library.rows.length, 0], 'every ring camera maps the whole atlas grid onto the whole target (a per-ring frustum stretched the ground rows)');
     });
     assert.deepEqual(calls.filter(c => c[0] === 'clear').map(c => c.slice(1)), [['treeImpostorAlbedo', true, true, false], ['treeImpostorNormal', true, true, false]]);
     const targets = calls.filter(c => c[0] === 'target').map(c => c[1]);

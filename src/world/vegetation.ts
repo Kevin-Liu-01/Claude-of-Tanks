@@ -278,6 +278,10 @@ export interface VegetationRuntime {
    * (horizonForestImpostors.ts). */
   _rimMix: SpeciesMix;
   _rimTreeHeightM: number;
+  /** Round 77c: the rim trees' mean instance tint (linear r, g, b) — the ring's impostors take it, so the forest over
+   * the red line is as dark as the rim (the ring's own tones average 0.99; the battlefield's value jitter and stand
+   * shade average well under 1). */
+  _rimTreeTint: readonly [number, number, number];
   /** Round 77c: bake the far tier's impostor atlas now (the covered activation warm), so no presented frame pays
    * for it; true when an atlas is baked after the call, false without a library (mobile, the receipts). */
   warmImpostors(): boolean;
@@ -5861,18 +5865,21 @@ function* vegetationBuildSteps(
   // impostor atlas bakes — so the ring forest's impostors over the red line stand as tall as the trees at it
   // (horizonForestImpostors.ts); 0 where no atlas exists (the receipts, the mobile tier: the ring keeps its lobes).
   let rimTreeHeightM = 0;
+  const rimTreeTint: [number, number, number] = [1, 1, 1];
   if (treeImpostors && rimTrees.length > 0) {
-    let sum = 0;
+    let sum = 0, r = 0, g = 0, b = 0;
     for (const tree of rimTrees) {
       const row = treeImpostors.rows[treeImpostors.rowBase(tree.species) + tree.variant % treeImpostors.variants];
       const e = tree.mat.elements;
       sum += Math.hypot(e[4], e[5], e[6]) * row.heightM;
+      r += tree.tint.r; g += tree.tint.g; b += tree.tint.b;
     }
     rimTreeHeightM = sum / rimTrees.length;
+    rimTreeTint[0] = r / rimTrees.length; rimTreeTint[1] = g / rimTrees.length; rimTreeTint[2] = b / rimTrees.length;
   }
   rimTrees.length = 0;
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
-    _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM,
+    _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
 }
