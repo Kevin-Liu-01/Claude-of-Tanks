@@ -4788,6 +4788,7 @@ map's props build (140–260 ms) whether or not the map places steel; Foundry's 
 | 76 | The deck pass (owner: skies "that look just as good" as Whiteout's; the integrator's census: the overcast and stratocumulus presets read as flat white sheets, a marshmallow, cotton): five gated deck knobs on the cloudscape — cells / cellM (inverted-Worley cells at the deck's period set each column's thickness, hang the cores, open the borders, compress the coverage ramp), deckLight (the underside lit by the column's transmitted light through the diffusion law, the sun's share at a third of physical because the skies are exposed for the ground, the sky's whole, a ground bounce by the map's ambient scale, the light-march term kept for the lit walls), undulatus (the wind-frame rolls band the thickness), interior (the coarse detail octave survives the remap, a detailed first light tap); the round-71 flat white diagnosed (the sky-mean floor is the HORIZON band's luminance at 1.25 × on a sheet; the ramp compressed only for sheets); denser deck rows; two regimes (industrial-stratocumulus for Foundry and Railyard, altocumulus for Urban); Foundry's aerosol halved with the smog on the deck's base and the horizon band's warm absorption, Railyard's fog thinner; Saltmere Bay's shore palm dropped; every term gated so the rated regimes and whiteout keep round 71 byte for byte | 31-map before / after sheets on this machine (`$SP/r76/review/sheet-sky-w.png`, `sheet-sky-s.png`, `sheet-bird-n.png`; before = the deploy-100 tree eeecca19e) with the deck metrics on the history masks (`.qa-dev/r76-deck-metrics.mjs`: p80 / p20 of the dense pixels foundry 1.02 / 1.05 → 1.30 / 1.14, railyard 1.01 / 1.02 → 1.18 / 1.14, winter 1.08 / 1.05 → 1.17 / 1.17, polders 1.08 / 1.06 → 1.18 / 1.19; the deck medians at or under the clear sky instead of 1.2–1.7 × above it), the round-71 metrics on every map, the rated maps' metrics within the wind-drift noise (every number of alpine, coastal, steppe, frontier, verdant, delta, monsoon, whiteout, desert, saltwind, mangrove and mars identical to ±1, whiteout byte-identical); the per-slot bench by repetition (load 68–103, noise floor ±0.5–0.7 ms: foundry 0.20, railyard −0.49, winter 0.85, urban 0.10, fjord 0.67 / 1.45, monsoon 1.30, verdant 0.79 inside the 1.2 ms slot within it; polders 1.76 (1.62–2.23) the one slot over the line by this bench); receipts volumetricClouds (20 regimes, the table, the gated zero rows, the deck identities), villageWear / mangroveWaterPalette re-pinned, badlandsRelief (the round-76 projection), playableRelief, redrockMaterial, garageSkyPresets, skyCloudBake, atmosphere, battleAtmosphereRuntime, the vegetation receipts; `npm run typecheck` |
 | 77 | The vegetation (owner: maps "just as good as those… a triple AAA redux", "make sure performance is still rlly good"; the integrator's verdict on deploys 98–101: blob canopies, unlit foliage, cylinder trunks, stacked cones, hard identical edges, a green band for the far forests, nothing moving): the map wind (`treeClimate.ts` — the cloud wind or the sward's prevailing wind, the regime's speed as strength) as a gust front every tree leans into by the square of its height with the canopy fluttering by its authored flex; per-vertex sphere normals on the cards with a hashed tilt; the near cards receiving the cascades once per leaf cluster (`aCard`, the sample pushed toward the sun by the crown radius — a self-shadowed crown, one state per card), a 22 % leaf-shadow floor on the CSM's directional sites, the sky under a shaded cluster at 50 %, leaf translucency against the sun (45 % near / 18 % far); the bushes and the new understorey shrubs receiving the same one-sample shadow; conifer branch whorls (18 three-sided limbs, no RNG draw); moss in the bark's fissures on the shaded base by the map's climate; the far lobes' sphere-normal bias halved and their sky fill 1.08 → 0.80; the understorey (young shrubs in every stand's edge annulus, own geometry and RNG, no cover disc, no trunk record, desktop only); the stand shade (up to −24 % on the interior trees of dense stands, every LOD). Every placement, trunk record and cover disc byte-identical; keys foliage v16 / canopyfar v16 / bark v10 | six-map before / after sheets in seven views (`$SP/r77/review/sheet-*.png`) and the still-frame wind pair with |Δ| (`sheet-wind-pair.png`); the deterministic vegetation-triangle census per view (the whorls: fjord +8–9 % at chase, the other maps +1–7 %; the understorey ≤ +1 %); the repetition bench (near / far / bush ×9, the receive-shadow toggle ×9, the wind toggle ×9, the whole vegetation ×1) on six maps at chase and centre-far at load 75–110 — the shade and wind layers isolated in-page, the near / far deltas inside the ±1–2 ms per-copy floor; the wind pair moves 7–24 % of the tree band's pixels by > 12 luma on the wooded maps; receipts treeClimate (new), understorey (new), vegetationProgramKey (v16 + the GLSL mechanisms), vegetationLighting (1680), birchCrownForm / bushOverlappingSprays / shrubGrowthPlacement extended, the rest of the vegetation, placement, grass and horizon receipts green; typecheck |
 | 77b | The second vegetation pass (round 77's weak list; the owner's bar unchanged): the far tier as IMPOSTORS of the near trees (`treeImpostors.ts` — one atlas per world of every species' three near variants from eight azimuths at 10°, baked from the real trunks, cards and leaf atlases into linear albedo + coverage and capture-space normal render targets, lazily from `update()` outside any render pass and again after a GPU suspension; the tile from the 6 MB budget — 96 px on every authored map, 4.2–5.6 MB with mips; one camera-facing quad per far tree through the far canopy's wind / dissolve / matte-wrap hook, the two nearest azimuths dissolved by the view angle, the second far variant mirrored, the baked normal lit in the capture frame, the cards' mip give-back; two draws per species instead of four, two triangles per far tree instead of a lobe cloud; desktop with a renderer only — the receipts and the mobile tier keep the lobes); the leaf-scale crown detail (`leafDetail.ts` — a CPU-generated 256 px tiling leaf-cluster tile per class, broadleaf / conifer / autumn / palm, RG normal + a break mask offset to a mean of one half, the near material's normal map at repeat 3 with the tangent frame rebuilt after `useAttributeNormal`, a mean-neutral alpha break and leaf-gap shade before the alpha test; foliage key v17); the rim-forest understorey (the blocks as discs through the stands' law at the rim trees' scale and bound; Verdant 780 → 1781 shrubs). Placements, trunk records, cover discs and the stands' understorey byte-identical; the round-8 atlases untouched | six-map before / after sheets in four views incl. the new 8 m `crown` close-up (`$SP/r77b/review/sheet-*.png`, the zoomed `crop*-*.png` pairs); the census (the far tier −99.2 % triangles on every row, the whole vegetation −38 to −80 %; −2 draws per species; the near foliage counts identical); the crown high-pass metric (+6–19 % leaf-scale energy at the same mean luma); the tree-pixel luma across the rim unchanged (±4); the repetition bench at load 68–94 (the far tier 2–5 ms per copy → ≈ 0; the near tier 6.3 → 6.3 / 6.1 → 5.9 at chase — the detail layer ≈ 0 ± 0.3 by comparison, the in-page toggle inside ±1; no quiet window — the whorls' 108 tris per trunk bound ≤ 0.2 ms per copy, no trim); receipts treeImpostors (new, the bake inputs pinned per map), leafDetail (new, the tiles pinned), vegetationProgramKey (v17 + both programs' GLSL + eviction counts), vegetationResources, vegetationLighting (seven fetches), understorey (rim annuli), treePoolCapacity / autumnLeafSprays fixtures; the rest of the vegetation, placement and grass receipts green; typecheck |
+| 77c | The seam with the ring forest, the covered bake, the elevated ring, the drives (77b's weak list): the horizon ring's forest beyond 512 m bound to the far tier's impostor atlas (`horizonForestImpostors.ts` — round 72's placements byte-identical and packed on the group, redrawn as one quad per tree through the far tier's program text, its wrap / translucency / sky fill and the ring's haze law, the species by class from the rim mix, the variant from the tone, the mirror from the ring's variant, the stature that of the rim trees; the near class's lobes as shadow-only casters, the band and range lobes disposed; the ring's colour triangles −97 to −98 %); the bake in the covered warm (`world.warmImpostors()` from the solo loading runtime and the activation precompile); the elevated 45° capture ring where it keeps the row cap and the ground tile (every 3-species map, 12 rows at 96 px inside the 6 MB), the view elevation dissolving the tile and tilting the card over 20°–45°; Winter and Whiteout captured (the far bare birches carry the hoar-frost palette — no lift; Whiteout's polar ring band frosted spruces instead of summer lobes); three captured drives of the 260 / 290 m switch (move-then-hold, wind pinned, dissolve against the hard snap) instead of a distance cross-fade. Every placement byte-identical; no map-config edit; mobile and the receipts keep the lobes | six-map before / after sheets in three views (`$SP/r77c/review/sheet-*-a3.png`), the ×4 seam crops and ×3 bird crops; the render-mask seam metric (the seam step Nordhavn +14 → +9, Verdant +23 → +17, Saltmere +18 → +19; the rim's own step 9–18); the first-frame probe (the bake 5–6 ms in a presented battle frame → 30 ms behind the veil, two runs each); the ring census (colour triangles −97 to −98 %, draws −2 to +4 per map, shadow pass unchanged); the vegetation census identical on every row; the drives (crossing steps inside the quiet spread on Nordhavn and Verdant in both modes; the hard snap's pop 4.0 against 0.9 held luma on one row); receipts horizonForestImpostors (new), vegetationFarSeams (the one law), treeImpostors / vegetationProgramKey re-pinned (v2, the elevated ring, the frusta), soloBattleLoadingRuntime, worldActivationRuntime; typecheck |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
@@ -5410,6 +5411,224 @@ typecheck`.
 - The bake runs on the first frame that needs the tier (two render passes of 8 × rows tree copies, a few ms once)
   and after every GPU suspension; it is not part of the covered activation warm.
 - The quiet-window bench.
+
+### Round 77c — 2026-09-26: the seam with the ring forest, the covered bake, the elevated ring, the drives
+
+**Why.** Round 77b's own weak list: the horizon ring's forest beyond 512 m was the odd tier — round 72's pale, soft
+cone-lobe trees standing over the dark, spiky impostor rim on every conifer map (`$SP/r77c/crop3-fjord-seam.png`);
+the impostor was a single 10° capture ring, so a steep bird view saw the side view laid flat; the LOD switch was still
+the 0.35 s time dissolve, not the distance cross-fade the 77b brief named; the winter and whiteout stands were never
+captured; the bake ran on the first frame that needed the tier, outside the covered warm.
+
+**The rule of the round.** The ring's GEOMETRY and its relief stay round 72's; its forest PLACEMENTS stay byte-identical
+(`buildHorizonForest` scatters them exactly as before and packs them on its group — the new receipt compares the bytes
+before and after the binding); every vegetation placement, trunk record and cover disc stays byte-identical (the
+placement receipts); the round-8 leaf atlases are untouched; nothing in the terrain, the ground modules, the props kits,
+the sky or `src/sim`; no map-config edit. The mobile tier and the receipts (no renderer) keep the ring's lobes and the
+far lobes exactly as round 77b left them.
+
+**Mechanisms.**
+
+1. *The seam — the ring forest drawn from the impostor atlas* (`src/world/horizonForestImpostors.ts`, bound by
+   `map.ts` after the vegetation builds). Where a world bakes an impostor atlas (desktop, a renderer), every ring
+   placement is redrawn as one camera-facing quad on that atlas: the species by CLASS from the map's rim mix — a
+   conifer placement draws the rim's conifers in their mix proportions, a broadleaf placement its broadleaves (the
+   pick from a hash of the placement's position: the ring thins its candidates by their smallest keys, so the packed
+   key is not uniform over the kept trees and the last species of a mix would never be drawn from it) — the near
+   variant from the placement's tone, the mirror from the ring's own variant flag, the row per instance (`aImpRow`)
+   and the cell per pool (`aImpCell`) exactly as the far tier's quads carry them. The stature is the rim's:
+   `vegetation._rimTreeHeightM` (the mean of instance height scale × the near geometry's height over the rim blocks
+   and saddle trees) over the ring's mean lobe height gives one ratio (Nordhavn 13.6 m / 8.5 m = 1.59, Verdant 12.1 /
+   7.8 = 1.55) that scales every ring tree while the ring's own size spread is kept, so the forest does not shrink at
+   the red line. The material samples the far tier's albedo and normal atlases through the SAME program text
+   (`treeImpostors.ts` `applyProgram` — the billboard, the azimuth dissolve, the mip coverage, the baked normal in
+   the capture frame), lights through the far tier's law (the 0.38 matte wrap, the 18 % translucency, the 0.80 sky
+   fill — `vegetationFarSeams` now pins those three constants on both sides of the seam) and keeps the ring's own
+   aerial haze by radius and height (round 72's law, after the mip give-back and before the alpha test). The near
+   class's lobe hulls stay as shadow-only casters at the impostors' stature (round 72's shadows on the rim slopes,
+   the shadow pass unchanged in draws and triangles); the band and range lobe pools and the lobe material are
+   disposed. Key `horizon-forest-impostor-v1`; two colour draws per rim species (Nordhavn 6 → 6, Saltmere 8 → 6,
+   Verdant 8 → 8, Amberford 4 → 8), the ring's colour triangles −97 to −98 % (Nordhavn 469 k → 11 k, Saltmere
+   580 k → 16 k, Verdant 734 k → 16 k, Amberford 897 k → 16 k, Whiteout 117 k → 2 k; Winter has no ring forest).
+   The other approach the brief named — tone the impostor rim toward the ring by distance — was not built: it can
+   match the luma term by construction and nothing else (the seam metric below reads coverage and chroma beside the
+   luma; the lobes' silhouettes, density and species stay a different forest), and it would have moved the seam
+   inward to the 260 / 290 m switch, where the near cards are dark.
+2. *The bake in the covered warm.* `world.warmImpostors()` (map.ts → vegetation.ts → `ensureBaked`) runs behind the
+   veil from the solo loading runtime right after the battlefield's texture uploads (`__BATTLE_LOAD.impostorBake`:
+   baked, ms) and from the activation runtime's precompile path after the world's programs compile; the lazy bake in
+   `update()` stays as the fallback and the re-bake after a GPU suspension. The library reports `bakeMs`.
+3. *The elevated capture ring* (`treeImpostors.ts`). One 45° row per species (its first near variant) from the same
+   eight azimuths, appended after the ground rows where that keeps the row cap and the tile the ground ring alone
+   takes — every 3-species map (12 rows at 96 px, 5.63 MB); the 4-species maps (Verdant, Amberford, Winter, Delta,
+   Monsoon, Badlands, Frontier) keep their single ring (16 rows would drop the ground ring to 64 px: the ground
+   views' resolution is never traded for the bird views'). The program takes the view elevation from the tree base,
+   dissolves the tile toward the elevated row over 20°–45° and tilts the card back to face the view by the same
+   weight (its base stays on the ground; the elevated row's own cell and base height blend in), lights the elevated
+   normal in its own 45° frame, and fetches the elevated tiles only where the weight is positive. The bake renders two
+   scenes per pass, each seen by its own tilted camera over its rows. `aImpCell` is a vec4 (the elevated row or −1).
+   Key `world-tree-impostor-v2`; the ring's quads take the same rows.
+4. *Winter and Whiteout captured* (`$SP/r77c/review/crop-farband-winter-zoom-a2.png`, `crop-farband-whiteout-zoom-a3.png`,
+   ×6 of the 300–500 m band). The far bare-birch impostors do NOT read too dark against the snow: the winter palette
+   already lifts the twig cards themselves (round r3/r4's hoar-frost `texTone`, `cardL0` 0.46, the branch-riding snow
+   lobes merged into the trunk part the bake renders), so the far birches stand as pale frosted stems between the
+   snow-laden spruces on both maps — no lift was added and round 9's far-lobe lift stays where it was (the lobe tier
+   the receipts and the mobile tier draw). Whiteout's polar ring band was the odd tier there too: round 72's
+   lobes stood as summer-green cones over the snow beyond the frosted rim; bound to the atlas they are the same
+   frosted spruces. Winter authors no ring forest (its horizon has no treeline), so nothing changes beyond its rim.
+5. *The drives (the LOD switch).* Three captured drives (`.qa-dev/r77c-drive.mjs`) measure the 260 / 290 m switch
+   instead of replacing it: the camera parks 8 m up with a stand's near edge ~235 m away, backs off 60 m in 2 m steps
+   (the stand's trees cross 290 m: near → far) and returns (they re-cross 260 m), and after EVERY step holds still for
+   three more frames ~150 ms apart with the wind clock pinned, so the only change between held frames is the
+   transition itself. Two modes on the same path: `dissolve` (the live 0.35 s time dissolve) and `snap`
+   (`world.update(0)` after every pose — the shot-mode snap that completes the switch in one frame: the hard pop the
+   dissolve exists to hide). The metric: the mean |Δ luma| over the tree-coloured pixels of a 1400 × 520 clip between
+   the held frames (the switch settling), and between the last held frame and the first frame after a move (motion
+   plus the switch), at the crossing steps (the far / near pool counts change) against the quiet steps. The table is
+   under Measurements; the verdict: on Nordhavn the held-frame change at the crossing steps is 1.5 (out) / 3.4 (in)
+   luma with the dissolve and 4.0 / 1.0 with the hard snap, against a quiet-step baseline of 0.6–1.6; the move
+   frames show no switch signal above the 2 m motion baseline in either mode (23.1 vs 23.6). With the impostor baked
+   from the tree's own cards, even the hard switch moves a few percent of the tree pixels by more than 12 luma (the
+   temporal AA reconverging), and the dissolve halves that. A 40–60 m distance cross-fade would hold every band tree
+   in both pools (the partition counts the receipts pin) to hide a switch that is already under the frame-to-frame
+   noise of a 2 m step; it is not built. Saltmere's numbers carry the bay: its animated water is inside the tree
+   mask (sea-green), so its quiet baseline is 6–8 and its moved share 20–30 % in both modes.
+
+**Program keys:** `world-tree-impostor-v2`, `horizon-forest-impostor-v1`; foliage v17, canopyfar v16, bark v10
+unchanged. Textures per map: the two impostor atlases unchanged in size (5.63 MB on every 3-species map now, the
+elevated rows inside the same budget; the 4-species maps as in 77b); the ring forest adds no texture.
+
+**Measurements.** Six maps (Nordhavn Fjord, Saltmere Bay, Verdant, Amberford, Winter, Whiteout), one seed and tier,
+before = a9ec70634 (an rsync snapshot, `$SP/r77c-base`) against the round's tree (`$SP/r77c-snap-c`), served by vite,
+one browser at a time under the probe mutex at nice 19 (the perf-audit lane held it for most of the round — the
+round's jobs ran as one chain at 17:01–17:30 at load 25–45). Tools: `.qa-dev/r77b-capture.mjs` (77b's, the census),
+`.qa-dev/r77c-seamcap.mjs` + `r77c-seam2.mjs` (the seam pairs: a frame and the same frame with the far tier's pools and
+the ring forest's colour meshes hidden — the pixels that differ are the far and ring trees, so the per-band luma is
+the trees' and not the meadow's; the first tool, `r77c-seam.mjs`, read every green pixel and counted the ring's
+sunlit turf and missed the hazed teal spruces — its numbers were the same before and after and are not used),
+`.qa-dev/r77c-firstframe.mjs` (the bake's frame), `.qa-dev/r77c-drive.mjs` (the drives), `.qa-dev/r77c-ring-census.mjs`
+(the ring's deterministic census), the 77b crop / sheet tools. Sheets: `$SP/r77c/review/sheet-{centre-far,forest-edge-far,bird-n}-a3.png`
+(before | after; Winter's after is its a2 frame — no ring forest, no elevated ring, nothing changed there), the ×4
+seam crops `crop-seam-<map>-a3.png`, the ×3 bird crops `crop-bird2-{fjord,coastal}-a3.png`, the far-band crops
+above. No page error and no console line on any boot.
+
+*What the eye sees.* Nordhavn (`crop-seam-fjord-a3.png`): the pale, soft cone-lobe band over the dark spiky rim is
+gone — the slope beyond the red line is the same dark spiky spruce forest as the rim, denser and taller than the
+lobes were (the rim's stature), hazing into the range. Saltmere: the ring's pines and cedars are the rim's trees on
+the far ridge, bluer with distance. Verdant: the ring's crowns are the rim's oaks, poplars and willows — big soft
+crowns going blue-white into the haze; they read as the same forest continued, and as the round's palest tier (the
+haze law and the scene fog at 600–1000 m, not the tone: the ring's quads carry the rim's mean tint). Whiteout: the
+polar ring band's summer-green lobes are frosted spruces now. The bird view (`crop-bird2-fjord-a3.png`, ~40° over
+the far tier): the before's thin side-view cut-outs carry a visible crown top and flank now (the 45° row); the
+change is real and modest at this scale.
+
+*The first frame (Verdant, `.qa-dev/r77c-firstframe.mjs`: the renderer's `setRenderTarget` wrapped on the live page, an rAF timeline with the game phase, two runs per side).*
+
+| Side | run | the bake | phase | before the first presented battle frame | bake ms | the frame it fell in (rAF dt) | first 12 presented battle frames (max / mean dt) |
+|---|---|---|---|---|---|---|---|
+| before (a9ec70634) | 0 | 336 ms after the first battle frame | battle | no | 5.8 | 33.7 ms | 55.8 / 30.4 |
+| before | 1 | 363 ms after | battle | no | 5.3 | 34.3 ms | 46.5 / 25.4 |
+| after | 0 | 755 ms before (the loading phase, `__BATTLE_LOAD.impostorBake` 30 ms) | garage (loading) | yes | 29.6 | covered | 252.8 / 46.9 (a 252 ms longtask 1 s after the reveal, unrelated: the deferred warm) |
+| after | 1 | 746 ms before | garage (loading) | yes | 29.3 | covered | 46.7 / 28.1 |
+
+The bake costs 5–6 ms when it lands in a warm presented frame and ~30 ms behind the veil (the bake materials' first
+compile and the atlas allocation are in that number now; nothing of it reaches a presented frame).
+
+*The ring forest's deterministic census (`.qa-dev/r77c-ring-census.mjs`; instances × triangles; before = the lobe pools, after = the bound quads; the shadow pass keeps the near class's hulls).*
+
+| Map | ring trees | colour draws lobes → quads | colour triangles lobes → quads | shadow-pass draws → | shadow-pass triangles → | atlas |
+|---|---|---|---|---|---|---|
+| fjord | 5340 | 6 → 6 | 469 k → 11 k (−97.7 %) | 4 → 4 | 275 k → 275 k | 768 × 1152, 96 px, 12 rows (+ the elevated ring), 5.63 MB |
+| coastal | 8000 | 8 → 6 | 580 k → 16 k (−97.2 %) | 4 → 4 | 280 k → 280 k | 768 × 1152, 96 px, 12 rows (+ elevated), 5.63 MB |
+| verdant | 8000 | 8 → 8 | 734 k → 16 k (−97.8 %) | 4 → 4 | 266 k → 266 k | 768 × 1152, 96 px, 12 rows, 5.63 MB |
+| autumn | 8000 | 4 → 8 | 897 k → 16 k (−98.2 %) | 2 → 2 | 245 k → 245 k | 768 × 1152, 96 px, 12 rows, 5.63 MB |
+| whiteout | 1200 | 6 → 6 | 117 k → 2 k (−97.9 %) | 4 → 4 | 68 k → 68 k | 768 × 1152, 96 px, 12 rows (+ elevated), 5.63 MB |
+| winter | — | no ring forest (no treeline) | | | | 768 × 1152, 96 px, 12 rows, 5.63 MB |
+
+The vegetation's own census is unchanged on every row of every map (the far impostor counts and the vegetation
+triangles are identical before and after; the frame-level draw calls move by −103 to +104 with the grass streams
+and the hulls, as in rounds 77 and 77b). Textures: no atlas grew (the elevated rows fit inside the 3-species maps'
+existing 12-row, 96 px budget); the ring forest adds no texture.
+
+*The drives (`.qa-dev/r77c-drive.mjs`, tag a3; mean |Δ luma| over the tree-coloured pixels of the clip; "hold" = between the three held frames after a step with the camera still, "move" = across the 2 m step; "quiet" = steps where no tree changed tier, "crossing" = steps where some did).*
+
+| Map (stand) | mode | leg | steps (crossing) | trees crossed | move Δ quiet / crossing | hold Δ quiet / crossing (median) | hold Δ max quiet / crossing | pixels moved > 12 luma, max quiet / crossing |
+|---|---|---|---|---|---|---|---|---|
+| fjord (r 37 m, the near edge 272 → 332 m) | dissolve | out | 31 (5) | 46 | 23.6 / 23.1 | 1.6 / 1.5 | 4.8 / 1.6 | 7.2 % / 1.8 % |
+| fjord | dissolve | in | 31 (5) | 46 | 23.2 / 23.7 | 1.3 / 3.4 | 4.3 / 3.9 | 3.6 % / 3.0 % |
+| fjord | snap | out | 31 (5) | 46 | 11.2 / 11.6 | 0.9 / 4.0 | 9.3 / 7.5 | 9.6 % / 6.6 % |
+| fjord | snap | in | 31 (5) | 46 | 10.6 / 12.4 | 0.6 / 1.0 | 2.1 / 2.9 | 1.9 % / 2.6 % |
+| verdant (r 42 m, 277 → 337 m) | dissolve | out | 31 (6) | 32 | 31.0 / 31.1 | 3.3 / 2.7 | 6.7 / 5.6 | 10.8 % / 5.1 % |
+| verdant | dissolve | in | 31 (5) | 35 | 31.1 / 30.4 | 2.6 / 2.7 | 3.7 / 3.4 | 5.0 % / 3.2 % |
+| verdant | snap | out | 31 (5) | 31 | 31.0 / 31.0 | 1.7 / 1.7 | 6.7 / 2.4 | 5.7 % / 2.4 % |
+| verdant | snap | in | 31 (5) | 35 | 31.0 / 30.3 | 1.3 / 1.5 | 2.9 / 2.5 | 2.3 % / 1.8 % |
+| coastal (r 39 m, 274 → 334 m; the bay's water in the mask) | dissolve | out | 31 (10) | 75 | 51.0 / 53.0 | 8.0 / 11.5 | 20.8 / 16.8 | 21 % / 19 % |
+| coastal | dissolve | in | 31 (5) | 57 | 51.7 / 38.2 | 7.1 / 2.6 | 23.6 / 8.1 | 31 % / 7 % |
+| coastal | snap | out | 31 (5) | 57 | 49.8 / 53.2 | 5.9 / 11.5 | 25.6 / 25.0 | 27 % / 23 % |
+| coastal | snap | in | 31 (5) | 57 | 51.0 / 34.7 | 6.9 / 4.6 | 20.4 / 11.5 | 19 % / 5 % |
+
+Reading: on Nordhavn and Verdant the crossing steps are inside the quiet steps' spread in both modes — the held
+frames change by 1–4 luma over the tree pixels whether trees switch tier or not, and the move frames carry no switch
+signal over the 2 m motion baseline (Verdant: 31.0 against 31.1). The one row where the crossing steps stand out is
+Nordhavn's hard snap on the way out (a hold of 4.0 against 0.9 quiet, 6.6 % of the tree pixels moving over 12 luma:
+the pop's temporal-AA reconvergence), and the dissolve on the same path reads 1.5 against 1.6 — the dissolve does
+what it was built for, and even the pop it hides is a few percent of the tree pixels. Saltmere's water is inside
+the green mask (a quiet baseline of 6–8 and 20–30 % moved pixels in every row) and says nothing either way.
+
+*The seam (render-mask metric, centre-far, x 300–1300, rows 440–600 in 10 px bands, the tree pixels from the masked pair; near → far the luma must not step or reverse by more than 4).*
+
+| Map | rows (near → far) | before: tree luma per band | after: tree luma per band | the ring / rim step (the band where the ring begins → the rim band under it) | the rim's own largest step (unchanged rows) |
+|---|---|---|---|---|---|
+| fjord | 590 → 460 | 62, 62, 57, 59, 67, 81, 95, 100, 110, 115, 121, 131, 130, 142 | 62, 62, 57, 59, 66, 75, 85, 88, 95, 98, 101, 106, 106, 106 | 540–550 → 530–540: 80.9 → 95.0 (+14.1) before, 75.4 → 84.7 (+9.3) after; the ring rows 106 against the lobes' 130–142 | 550–560 → 540–550: +14.2 before, +9.8 after |
+| verdant | 590 → 480 | 60, 66, 64, 72, 76, 82, 92, 115, 132, 142, 144, 138 | 54, 65, 64, 72, 76, 82, 91, 108, 123, 133, 146, 155 | 530–540 → 520–530: 91.9 → 114.5 (+22.6) before, 90.7 → 107.7 (+17.0) after | 540–550 → 530–540: +10.4 before, +9.2 after |
+| coastal | 590 → 490 | 84, 80, 73, 70, 80, 86, 96, 111, 130, 143, 172 | 64, 64, 65, 69, 80, 86, 93, 111, 130, 128, 133 | 520–530 → 510–520: 111 → 130 (+18.2) before, 111 → 130 (+18.7) after; the rows beyond it 143–172 → 128–133 | 530–540 → 520–530: +15.1 before, +17.9 after |
+
+Reading: a 10 px band at these rows spans 50–100 m of ground, and the aerial perspective alone brightens the
+UNCHANGED rim tier by 5–15 per band there (the rim's own largest step, right-hand column), so a ±4 monotonic
+criterion is not met by any tier at this resolution — before or after, ring or rim. What moved is the seam
+itself: on Nordhavn the step where the ring's trees begin fell from +14.1 to +9.3 and is now smaller than the rim's
+own step one band nearer (+9.8 — the ring is no brighter relative to the rim than the rim is to itself), and the
+ring rows sit at 106 against the lobes' 130–142; on Verdant the seam step fell from +22.6 to +17.0 (the ring's
+crowns are the rim's tint, but its band climbs, and round 72's height haze — a crown on a range face past 560 m
+takes the face's fog — brightens them on purpose; the terrain under them takes the same fog); on Saltmere the step
+stayed at +18 (its ring is the far shore of the bay, 800 m out and hazed; the rows beyond the seam fell from 143–172
+to 128–133). No band reverses by more than 4.8 on any map after (before: Saltmere 7.5).
+
+**Receipts.** `horizonForestImpostors.selftest` (new, registered: on Nordhavn, Verdant and Saltmere — the packed
+placements byte-identical after binding, one quad per placement with the species by class from the rim mix in its
+proportions (±5 %), the variant from the tone, the mirror from the ring's variant, the stature scale and the ring's
+mean tree height equal to the rim's (±2 %), the near pools as shadow-only casters on their placements, the band and
+range pools gone, the lobe material released and disposed, the material on the far tier's albedo with the far
+tier's normal atlas and row uniforms, the same billboard / sample / normal text as the far tier's program, the
+matte wrap and translucency, the ring's haze law between the mip give-back and the alpha test, no wind uniforms,
+idempotent, a ring without packed placements left alone); `vegetationFarSeams` (extended: the far canopy hook's wrap
+and translucency and the far material's sky fill equal the ring constants — one law across the seam);
+`treeImpostors` (re-pinned: the elevated ring's law on 31 maps — every 3-species map, never a 4-species map, the
+ground tile kept; the rows' elevations; the vec4 cell; two scenes per pass with their frusta; the digests verdant
+33ca4146, fjord a9c982e2, delta a43cefd0 — the layout text carries the elevation); `vegetationProgramKey` (the v2
+key, the elevation blend, the tilt, the elevated fetches and normal frame, the 13-species world without the ring);
+`soloBattleLoadingRuntime` and `worldActivationRuntime` (green with the warm call); `horizonResources`,
+`vegetationResources`, `treePoolCapacity`, `understorey` green; `npm run typecheck`.
+
+**What still looks weak.**
+- The ring's forest is now dense and tall where round 72's placements were scaled for 6–8 m lobe trees: at the rim's
+  stature (× 1.55–1.6) the band on Nordhavn reads as a thick dark wall of spruces from centre-far (right beside the
+  rim it is exactly what the rim is; further up the slopes the stands are denser than the rim's clumped blocks). The
+  placements are round 72's and byte-identical by the round's rule; thinning the band by a share tied to the stature
+  ratio (fewer, taller trees over the same area) is the next lever, in the ring's builder.
+- The seam metric's ±4 per band is not a criterion any tier meets near the horizon (the haze gradient alone is
+  5–15 per 10 px band there); the honest measure is the seam step against the rim's own — met on Nordhavn, not on
+  Verdant (+17 against +9, round 72's height haze on the climbing band) or Saltmere (+18 against +18 on the far shore).
+- The 4-species maps (Verdant, Amberford, Winter, Delta, Monsoon, Badlands, Frontier) keep the single 10° ring: a
+  steep bird view there still sees the side view laid flat. The brief's fallback — a dissolve to the lobe tier above
+  35° — was not built: it would keep every far tree in the lobe pools beside the quads (the triangles and the four
+  draws per species round 77b removed, back on every frame) or add a third partition for the bird views alone.
+- The elevated ring is one 45° row per species from its first near variant only: the other two variants' trees
+  dissolve toward that silhouette from above (they keep their own below 20°).
+- The bake's 30 ms behind the veil is the whole cost of the atlas now; the receipts still cannot render it (no GPU),
+  so the tiles' content is proven by the captures and the digest only.
+- The drives measure at 1600 × 900 with 2 m steps; a 4K monitor and a slower drive would resolve the pop's few
+  percent of pixels better than this machine's headless runs at load 25–120.
 
 ## Acceptance is visual and measured
 
