@@ -4789,6 +4789,7 @@ map's props build (140–260 ms) whether or not the map places steel; Foundry's 
 | 77 | The vegetation (owner: maps "just as good as those… a triple AAA redux", "make sure performance is still rlly good"; the integrator's verdict on deploys 98–101: blob canopies, unlit foliage, cylinder trunks, stacked cones, hard identical edges, a green band for the far forests, nothing moving): the map wind (`treeClimate.ts` — the cloud wind or the sward's prevailing wind, the regime's speed as strength) as a gust front every tree leans into by the square of its height with the canopy fluttering by its authored flex; per-vertex sphere normals on the cards with a hashed tilt; the near cards receiving the cascades once per leaf cluster (`aCard`, the sample pushed toward the sun by the crown radius — a self-shadowed crown, one state per card), a 22 % leaf-shadow floor on the CSM's directional sites, the sky under a shaded cluster at 50 %, leaf translucency against the sun (45 % near / 18 % far); the bushes and the new understorey shrubs receiving the same one-sample shadow; conifer branch whorls (18 three-sided limbs, no RNG draw); moss in the bark's fissures on the shaded base by the map's climate; the far lobes' sphere-normal bias halved and their sky fill 1.08 → 0.80; the understorey (young shrubs in every stand's edge annulus, own geometry and RNG, no cover disc, no trunk record, desktop only); the stand shade (up to −24 % on the interior trees of dense stands, every LOD). Every placement, trunk record and cover disc byte-identical; keys foliage v16 / canopyfar v16 / bark v10 | six-map before / after sheets in seven views (`$SP/r77/review/sheet-*.png`) and the still-frame wind pair with |Δ| (`sheet-wind-pair.png`); the deterministic vegetation-triangle census per view (the whorls: fjord +8–9 % at chase, the other maps +1–7 %; the understorey ≤ +1 %); the repetition bench (near / far / bush ×9, the receive-shadow toggle ×9, the wind toggle ×9, the whole vegetation ×1) on six maps at chase and centre-far at load 75–110 — the shade and wind layers isolated in-page, the near / far deltas inside the ±1–2 ms per-copy floor; the wind pair moves 7–24 % of the tree band's pixels by > 12 luma on the wooded maps; receipts treeClimate (new), understorey (new), vegetationProgramKey (v16 + the GLSL mechanisms), vegetationLighting (1680), birchCrownForm / bushOverlappingSprays / shrubGrowthPlacement extended, the rest of the vegetation, placement, grass and horizon receipts green; typecheck |
 | 77b | The second vegetation pass (round 77's weak list; the owner's bar unchanged): the far tier as IMPOSTORS of the near trees (`treeImpostors.ts` — one atlas per world of every species' three near variants from eight azimuths at 10°, baked from the real trunks, cards and leaf atlases into linear albedo + coverage and capture-space normal render targets, lazily from `update()` outside any render pass and again after a GPU suspension; the tile from the 6 MB budget — 96 px on every authored map, 4.2–5.6 MB with mips; one camera-facing quad per far tree through the far canopy's wind / dissolve / matte-wrap hook, the two nearest azimuths dissolved by the view angle, the second far variant mirrored, the baked normal lit in the capture frame, the cards' mip give-back; two draws per species instead of four, two triangles per far tree instead of a lobe cloud; desktop with a renderer only — the receipts and the mobile tier keep the lobes); the leaf-scale crown detail (`leafDetail.ts` — a CPU-generated 256 px tiling leaf-cluster tile per class, broadleaf / conifer / autumn / palm, RG normal + a break mask offset to a mean of one half, the near material's normal map at repeat 3 with the tangent frame rebuilt after `useAttributeNormal`, a mean-neutral alpha break and leaf-gap shade before the alpha test; foliage key v17); the rim-forest understorey (the blocks as discs through the stands' law at the rim trees' scale and bound; Verdant 780 → 1781 shrubs). Placements, trunk records, cover discs and the stands' understorey byte-identical; the round-8 atlases untouched | six-map before / after sheets in four views incl. the new 8 m `crown` close-up (`$SP/r77b/review/sheet-*.png`, the zoomed `crop*-*.png` pairs); the census (the far tier −99.2 % triangles on every row, the whole vegetation −38 to −80 %; −2 draws per species; the near foliage counts identical); the crown high-pass metric (+6–19 % leaf-scale energy at the same mean luma); the tree-pixel luma across the rim unchanged (±4); the repetition bench at load 68–94 (the far tier 2–5 ms per copy → ≈ 0; the near tier 6.3 → 6.3 / 6.1 → 5.9 at chase — the detail layer ≈ 0 ± 0.3 by comparison, the in-page toggle inside ±1; no quiet window — the whorls' 108 tris per trunk bound ≤ 0.2 ms per copy, no trim); receipts treeImpostors (new, the bake inputs pinned per map), leafDetail (new, the tiles pinned), vegetationProgramKey (v17 + both programs' GLSL + eviction counts), vegetationResources, vegetationLighting (seven fetches), understorey (rim annuli), treePoolCapacity / autumnLeafSprays fixtures; the rest of the vegetation, placement and grass receipts green; typecheck |
 | 77c | The seam with the ring forest, the covered bake, the elevated ring, the drives (77b's weak list): the horizon ring's forest beyond 512 m bound to the far tier's impostor atlas (`horizonForestImpostors.ts` — round 72's placements byte-identical and packed on the group, redrawn as one quad per tree through the far tier's program text, its wrap / translucency / sky fill and the ring's haze law, the species by class from the rim mix, the variant from the tone, the mirror from the ring's variant, the stature that of the rim trees; the near class's lobes as shadow-only casters, the band and range lobes disposed; the ring's colour triangles −97 to −98 %); the bake in the covered warm (`world.warmImpostors()` from the solo loading runtime and the activation precompile); the elevated 45° capture ring where it keeps the row cap and the ground tile (every 3-species map, 12 rows at 96 px inside the 6 MB), the view elevation dissolving the tile and tilting the card over 20°–45°; Winter and Whiteout captured (the far bare birches carry the hoar-frost palette — no lift; Whiteout's polar ring band frosted spruces instead of summer lobes); three captured drives of the 260 / 290 m switch (move-then-hold, wind pinned, dissolve against the hard snap) instead of a distance cross-fade. Every placement byte-identical; no map-config edit; mobile and the receipts keep the lobes | six-map before / after sheets in three views (`$SP/r77c/review/sheet-*-a3.png`), the ×4 seam crops and ×3 bird crops; the render-mask seam metric (the seam step Nordhavn +14 → +9, Verdant +23 → +17, Saltmere +18 → +19; the rim's own step 9–18); the first-frame probe (the bake 5–6 ms in a presented battle frame → 30 ms behind the veil, two runs each); the ring census (colour triangles −97 to −98 %, draws −2 to +4 per map, shadow pass unchanged); the vegetation census identical on every row; the drives (crossing steps inside the quiet spread on Nordhavn and Verdant in both modes; the hard snap's pop 4.0 against 0.9 held luma on one row); receipts horizonForestImpostors (new), vegetationFarSeams (the one law), treeImpostors / vegetationProgramKey re-pinned (v2, the elevated ring, the frusta), soloBattleLoadingRuntime, worldActivationRuntime; typecheck |
+| 78 | Performance — the round-71–77 audit's cost recovered knob by knob (owner: "make sure performance is still rlly good"): the cloud shadow gobos render into their own cascade only through a per-cascade caster mask in the shadow router (`renderLayers.setShadowCasterCascades`; 16 → 4 field-shader draws on the cumulus maps); a zero-count InstancedMesh returns before three's program / uniform setup (`routeZeroCountDraws`: the r8 proxies and proxied owners sat out cascades through count 0 and still paid the setup); the bushes cast into the three near cascades, the understorey into two, the horizon ring's near forest into the last only (`SHADOW_CASTER_LAST_CASCADE`, resolved per light set); the low stratus decks under 400 m take the cellular decks' 10 km march cap and far strides (`cloudDeckMarch`; reaches exactly whiteout); the near tree tier ends at 200 m (was 260; `?treeNear=` as the same-build A/B); the mobile tier paints no steel atlas | ABBA pairs of 1d0236f33 against rsync snapshots under the shared probe mutex (`$SP/r78/`): draws −11…−13 on every cumulus map at both views (exact), after the trim −15…−20 on the gobo maps and −4 / −5 on Winter (six maps, base vs after, chase / centre-far), shadow-pass triangles −0.06…−0.45 M, the CPU frame median −0.3…−0.7 ms on the four maps whose pairs were GPU-quiet (desert, steppe, verdant, winter) and noise on monsoon / whiteout under foreign GPU 900–1300 %, the before / after sheets without a visible shadow change; triangles verdant 6.95 → 6.06 M at chase (under the 7 M gate), fjord 9.39 → 8.03 M, each 100 m of near radius 0.8–1.2 M, the 3 × strips at 260 / 200 indistinguishable; the round-76 deck metrics identical on whiteout / winter / foundry / railyard / polders; the trace bench at whiteout's centre-far 0.15 → −0.07 ms per slot (the march was never the cost there — the composite is, left open); mobile whiteout against deploy 95 draws +11 / +8 (the round-75 bucket meshes; the atlas's 1.0 MB gone), GPU p25 per pair +0.05 / +0.41 with ±3 ms spans (six pairs) — within noise, as before the gate; receipts renderLayers (the masks, the last-cascade flag, the zero-count early-out), volumetricClouds (gobo i on cascade i, the deck-march law over 31 maps), steelAtlasDemand (the mobile gate), the nineteen vegetation receipts, the horizon / shadow / props / sky receipts (67 green); `npm run typecheck` |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
@@ -5629,6 +5630,247 @@ key, the elevation blend, the tilt, the elevated fetches and normal frame, the 1
   so the tiles' content is proven by the captures and the digest only.
 - The drives measure at 1600 × 900 with 2 m steps; a 4K monitor and a slower drive would resolve the pop's few
   percent of pixels better than this machine's headless runs at load 25–120.
+### Round 78 — 2026-09-26: performance — the audit's cost recovered knob by knob
+
+**Why.** The cumulative audit of rounds 71–77 (deploy 95 → 105, `$SP/perf/`, the memory note
+`claude-of-tanks-perf-audit-r71-77-20260926`) found the desktop tier inside its documented budget but carrying about
++1.0 ms of main-thread time per frame on every map (draw calls +15…+36 at the chase view: the volumetric layer's
+shadow gobos +16–17 on the cumulus maps, the shadow passes +9…+23 from new casters, programs +11…+16), a real +2.6 ms
+GPU at Whiteout's centre-far view (verified in a GPU-quiet window: the 300 m stratus deck marched over the polar
+range), the forest maps over the triangle ratchet (verdant 7.8 M, fjord 10.15 M against the 7 M gate), and the mobile
+tier's Whiteout +11 draws / +2.9 MB / +1–2 ms. Owner's rule: "make sure performance is still rlly good". This round
+recovers the cost with knob-sized, receipted changes that do not change how the maps read.
+
+**Method.** The audit's probe (`.qa-dev/perf-audit-probe.mjs`: one headless browser, one private vite server per
+tree, the desktop preset pinned to High through localStorage, bots frozen, the render governor pinned, 300 frames per
+pose, GPU by `EXT_disjoint_timer_query_webgl2` p25, draw calls and triangles from `renderer.info`) run as ABBA pairs
+of the branch base 1d0236f33 (deploy 106) against an rsync snapshot of this tree (`$SP/r78/snap-*`), two repeats
+(four pairs) per map, under the shared probe mutex (`$SP/r78/run.sh`: no claim while `/tmp/cot-shots.queue` holds a
+live ticket, 90 s gaps). Draw calls and triangles are exact; GPU and CPU medians carry the machine's noise floor (the
+p25 spread of the label's records), and every record stamps the 1-minute load and the foreign headless-GPU CPU share
+before and after it — a pair is "GPU-quiet" only under load < 40 with foreign GPU processes under 100 %.
+
+**1. The cloud shadow gobos render into their own cascade only (`src/engine/renderLayers.ts`
+`setShadowCasterCascades`, `src/engine/volumetricClouds.ts`).** Three rasterises every shadow caster into every
+cascade's map, so the layer's four gobo planes — one sized to each cascade's shadow box, `frustumCulled` off — cost
+sixteen field-shader draws a frame on the cumulus maps (the audit's "+16–17 draws from the cloud layer"; the
+round-68 / 71 / 76 open item "the cascade policy for the gobos"). The shadow router gains a per-cascade caster mask:
+it already renders the CSM lights one at a time under the near-vehicle cascade policy, and now does so whenever a mask
+is registered too, hiding the masked casters around every other cascade's pass and restoring them before the forward
+render (allocation-free — the list is rebuilt on registration only — weakly held, exceptions restore, a single light
+is never split). The layer registers gobo i on cascade i and forgets the mask on detach. Cloud shadows still read on
+the ground at the chase and centre-far views (the before / after shots in `$SP/r78/g1/`).
+
+| Map (chase / centre-far) | draws base → after | GPU p25 base → after (noise) | CPU frame med base → after | pairs |
+|---|---|---|---|---|
+| desert | 639 → 627 (−12) / 509 → 497 (−12) | 24.3 → 25.3 (±0.4 / ±1.8) / 20.2 → 20.7 (±0.6 / ±1.3) | 4.9 → 4.8 / 4.2 → 4.0 | 4, load 6–10, foreign GPU 24–60 % |
+| monsoon | 808 → 797 (−11) / 485 → 476 (−9) | 18.5 → 18.8 (±1.3 / ±1.3) / 18.6 → 18.3 (±0.4 / ±0.5) | 6.4 → 6.9 / 5.5 → 5.7 | 4, load 6–23, one pair under foreign GPU 400–1060 % |
+| steppe | 701 → 690 (−11) / 434 → 421 (−13) | 19.4 → 19.0 (±0.4 / ±0.3) / 21.8 → 22.0 (±1.6 / ±1.3) | 5.1 → 5.4 / 5.6 → 5.2 | 4, load 6–10 |
+| verdant | 762 → 750 (−12) / 588 → 576 (−12) | 23.4 → 23.3 (±4.1 / ±2.6) / 22.0 → 21.5 (±0.4 / ±1.3) | 6.0 → 6.4 / 5.0 → 5.0 | 4, load 7–15, one pair under foreign GPU 660–1035 % |
+| whiteout (a deck: no gobos) | 679 → 679 / 419 → 419 | 25.4 → 24.9 / 23.1 → 24.1 (±0.7–1.6) | 6.7 → 6.5 / 5.5 → 5.5 | 4, foreign GPU 400–1300 % throughout |
+
+The draw-call recovery is exact (16 → 4 gobo draws; monsoon's centre-far −9 and steppe's −13 are the far cascade's
+half-rate refresh landing on different frames); the GPU timer cannot resolve the gobo fragment work at these floors,
+and the CPU frame medians move within ±0.5 ms both ways (the machine's, not the change's — the update / render
+split is identical).
+
+**3. The shadow-caster trim (`renderLayers.ts` `routeZeroCountDraws` and `SHADOW_CASTER_LAST_CASCADE`,
+`vegetation.ts`, `horizonVista.ts`).** A shadow census (`.qa-dev/r78-shadow-census.mjs`: every `renderBufferDirect`
+call billed to its cascade by the shadow camera, at the chase pose) found the shadow passes at 65 % of a frame's
+submissions on Monsoon Ridge (814 a frame against 445 forward) and two habits worth breaking. (a) An r8 cascade
+caster proxy — and every proxied owner outside its own cascade — sits out a pass by setting its instance count to
+zero in `onBeforeShadow`; three still runs the whole program / uniform / binding-state setup in `renderBufferDirect`
+before `renderInstances` returns on `primcount 0`, and the draw-call counter never sees it. The router now returns
+before that setup (installed with the shadow-only router at renderer creation; the deployment shadow warm's
+own-property observer restores over it). (b) Casters drawn into cascades whose texels cannot carry them: the bushes
+(1.5–2.5 m) cast into the three near cascades only (to 320 m on the High preset, where a bush is six pixels
+tall), the understorey (young growth under 1.6 m, pure dressing) into the two nearest (to 184 m), and the horizon
+ring's near forest — 440 m and more from the battlefield, where only the far map reaches, yet drawn (`frustumCulled`
+off) into every cascade and compacted into every near proxy — into the last cascade only, through a mask flag the
+router resolves against the light set at render time (three cascades on the phones, four on the desktop). The field
+trees, the tanks, the structures and the props are unchanged.
+
+**2. The low stratus decks march under the deck laws (`volumetricClouds.ts` `CLOUD_LOW_DECK_BASE_M`,
+`cloudDeckMarch`).** Round 76 ended a cellular deck's slab march at 10 km, where the far band and the haze ramp own
+the horizon; a stratus deck with no cells — Whiteout's 300 m low-stratus ceiling — still marched its grazing rays for
+the full twenty kilometres and took the thin slab's shorter far strides. `cloudDeckMarch(preset)` is 1 for a cellular
+deck (every round-76 deck keeps its bytes) and for a stratiform sheet (≥ 0.5) whose base sits under 400 m; the trace
+reads it as `uDeckMarch` at the two sites that read `uCells > 0.0` before (the t1 cap, the far stride growth). Among
+the shipped maps the law reaches exactly Whiteout (the receipt walks the 31 cloudscapes); every cumuliform regime and
+high sheet stays on the full march.
+
+The round-76 deck metrics (`.qa-dev/r76-deck-metrics.mjs` on the history masks of `.qa-dev/r71-capture.mjs`,
+sky-w / sky-s, before = 1d0236f33, after = this tree; the sheets `$SP/r78/review/deck-sheet-sky-w.png` and
+`deck-sheet-sky-s.png`):
+
+| Map | p80 / p20 before → after | mottle before → after | deck median (display) before → after |
+|---|---|---|---|
+| whiteout | 1.06 / 1.04 → 1.06 / 1.04 | 0.042 / 0.030 → 0.042 / 0.030 | 186.4 / 189.9 → 186.4 / 189.9 |
+| winter | 1.17 / 1.17 → 1.17 / 1.17 | 0.054 / 0.049 → 0.054 / 0.050 | 150.7 / 153.3 → 150.7 / 153.3 |
+| foundry | 1.30 / 1.14 → 1.30 / 1.14 | 0.050 / 0.037 → 0.050 / 0.037 | 140.1 / 151.1 → 140.1 / 151.1 |
+| railyard | 1.18 / 1.14 → 1.18 / 1.14 | 0.042 / 0.037 → 0.042 / 0.036 | 157.2 / 165.8 → 157.2 / 165.9 |
+| polders | 1.18 / 1.19 → 1.18 / 1.19 | 0.035 / 0.031 → 0.034 / 0.031 | 173.2 / 185.4 → 173.3 / 185.5 |
+
+Identical to the rounding on every deck (the cellular decks by construction — their bytes did not change; whiteout
+because the capped march lies beyond the far band's 8–11 km, where the sky views see the haze ramp and the band).
+
+**5. The mobile tier paints no steel atlas (`src/world/props.ts`).** The audit read Whiteout on the mobile tier at
++11 draws, +2.9 MB of textures and +5 programs against deploy 95; this round's mobile ABBA (deploy 95 vs deploy 106,
+four pairs) put its GPU inside the ±1 ms floor at both views with the exact parts: +12 / +8 draws (the round-75
+`steel` and `structureMetal` bucket meshes in the forward pass and every cascade), +2.9 MB, +5 programs, +50 k
+triangles (the polar ring's 36-row ladder +16 k, the props +3 k, the conifer whorls +5 k). Round 75's follow-up let
+the phones paint the container / tank atlas at half size; they now paint none — the `steel` material carries the
+livery in the vertex colours alone, the path the six maps without steel already take — and the on-demand painter
+returns on the phones too (the record says `fallback: 'mobile'`). The bucket meshes stay: a fold into the baked
+bucket is not knob-sized (the buckets carry different attribute sets), and the ring ladder's sixteen thousand
+triangles on one draw are under every pair's floor — the knob for them (a `mobileLadder` field on the horizon
+block read by the subdivision on the mobile tier) is described here and not built, because nothing measured asks
+for it.
+
+**4. The near tier's radius (`vegetation.ts` `TREE_NEAR_IN` / `TREE_NEAR_OUT` 260 / 290 → 200 / 230 m;
+`?treeNear=<m>` as the same-build A/B).** The near tier — trunks, cards, whorls, crown shadow proxies — is the
+whole triangle budget of a forest map (the audit's attribution: veg-near +5.96 M of Verdant's 7.8 M at chase), and
+since round 77b the far tier is the near tree's own bake, so the switch is the same crown at a smaller size. The
+same-build A/B (`$SP/r78/t1`, one snapshot served with the query, pattern ABCCBA, load 8–18):
+
+| Map | view | 260 m | 200 m | 160 m | near trees at chase |
+|---|---|---|---|---|---|
+| verdant | chase | 6.95 M | 6.06 M (−12.8 %) | 5.36 M (−22.9 %) | 1748 → 1068 → 548 |
+| verdant | centre-far | 6.58 M | 5.64 M | 4.93 M | |
+| fjord | chase | 9.39 M | 8.03 M (−14.5 %) | 7.10 M (−24.4 %) | 356 → 0 → 0 (the stand is inside 200 m) |
+| fjord | centre-far | 3.53 M | 3.29 M | 3.29 M | |
+
+Each 100 m of radius is 0.8–1.2 M triangles at the chase pose; draw calls do not move (the pools draw whatever
+their count). The eye (`$SP/r78/review/strip-verdant-chase-village3x.png`, `strip-fjord-chase-stand.png`,
+`strip-*-chase-mid.png`): at 3 × magnification the trees behind Verdant's village 150–250 m out read identically at
+260 and 200 m; at 160 m the crowns just behind the barn are a touch flatter under magnification; Nordhavn's stand
+behind the near trunks reads the same at all three. 200 / 230 m is the point (the mobile tier already stood at
+200 / 225): Verdant under the 7 M gate at chase, Nordhavn 9.4 → 8.0 M (toward the gate, not under it — its near
+stand is the cost, and the next lever there is the whorl tier or a lower card count per crown, both visible). What
+moves between 260 and 200 m besides the crowns' triangles: the crown shadow proxies belong to the near pool, so a
+lone tree 200–260 m out casts no crown shadow now (a 14-pixel patch at 230 m where the sun lays it toward the camera;
+none of the round's frames shows the difference — the stands are in their own shade).
+
+**Tooling.** `.qa-dev/r78-shadow-census.mjs` (the per-object, per-cascade shadow census with the zero-count setups
+counted, desktop or mobile tier), `.qa-dev/r78-tri-strip.mjs` (the stacked crop strips of the same view across
+labels), `.qa-dev/r71-trace-bench.mjs --view=<name>` (the repetition bench at a table view), the audit's probe and
+table as copied. `$SP/r78/`: `g1` (items 1 + 2, base vs snap-a), `t1` (item 4's same-build A/B), `m1` (mobile,
+deploy 95 vs deploy 106), `deck` + `deck-metrics-*.txt` (item 2's decks), `census/` (the shadow censuses),
+`g2` / `c2` (item 2's proof against deploy 95 and the same-build clouds A/B), `trace/` (the trace bench), `g3`
+(items 3 + 6, base vs snap-c on six maps), `m2` (item 5, deploy 95 vs snap-d), `g4` (item 4, base vs snap-e),
+`review/` (the sheets and strips), the chain scripts, and `run.sh` / `mutex.sh` (the mutex rules).
+
+**Traps met.** A chain waiter written as `zsh -c "while pgrep -f 'chain-1.sh' …"` matches its own command line and
+never fires — sequence chains from a file script instead. The shadow census hung four runs for ten minutes each:
+a page function that throws inside a `requestAnimationFrame` callback never resolves its promise, `page.evaluate`
+waits until puppeteer's protocol timeout, and the error surfaces only as a page error (three's CSM `breaks` are
+plain numbers; the tool read them as vectors) — guard a page function's resolve with try / catch and keep the
+protocol timeout short. A cold vite optimizer cache does answer a first page's late-discovered dependency with 504
+"Outdated Optimize Dep" (the console lines), but the page recovers; the tool keeps one cache per served tree and
+primes it anyway. A killed mutex wrapper leaves `probe.lock` behind — remove only your own (the timestamp is the
+wrapper's "held" line). An item's hunks sharing a file with another item's are split by
+content for their own commits (`git apply --cached` of a filtered patch, the receipt's mixed hunk re-cut from
+HEAD, the staged tree exported with `git checkout-index` and its receipts run there).
+
+*Item 2 measured — and what it found.* The trace bench (`.qa-dev/r71-trace-bench.mjs --view=centre-far`, the slot
+traced + resolved once against eleven times, Δ / 10, 90 frames × 4 rounds, whiteout, load 18–33) reads the march at
+**0.15 ms per slot on the base and −0.07 on this tree — both at the bench's floor** (rounds −0.12..+0.51 and
+−0.42..+0.20): Whiteout's stratus was never marched expensively at these views (the closed deck's rays go opaque
+within a few steps of entering it), so the cap and the strides have a ceiling of ~0.15 ms and change nothing the
+timer can see. The audit's +1.05 ms (quiet, `?clouds=off` against the volumetric layer at centre-far) is therefore
+the layer's OTHER passes on a sky that fills half the frame at that view — the resolve and the dome composite (the
+Catmull-Rom history filter, the far band and the haze per sky pixel) — not the march; the same-build A/B on this
+tree reads the whole layer at +1.76 ms p25 at centre-far [+1.09..+1.88, four pairs] and +0.2 at chase, under foreign
+GPU 30–1460 % (the audit's quiet +1.05 / −0.7 are the numbers to trust). Against deploy 95 (`$SP/r78/g2`, six
+pairs, foreign GPU 1000–1330 % throughout — no quiet pair opened in the round's five hours): chase +3.1 ms p25
+[+0.7..+3.5], centre-far +3.9 [+1.2..+5.8], draws +21 / +16 (the ring forest, the steel buckets, the understorey,
+the layer's three passes), which the audit already read as contention at chase (its quiet chase pair was 0). The
+brief's "< +1 ms at centre-far in a quiet pair" is not met and, by the bench, not reachable from the march: the
+composite is the lever (a closed low deck could take a bilinear history filter and skip the far band where the
+history is opaque), and it needs a sheet — left open. The law stays: it is correct, receipted, byte-neutral on every
+other deck, and costs nothing.
+
+*Items 3 and 6 measured (`$SP/r78/g3`: base 1d0236f33 vs the tree with items 1 + 3, six maps, four pairs each, chase /
+centre-far; the sheets `$SP/r78/review/trim-sheet-chase.png` and `trim-sheet-centre-far.png`).*
+
+| Map | draws base → after (chase / centre-far) | shadow-pass triangles Δ | CPU frame Δ per pair, chase (median [span]) | CPU Δ centre-far | GPU p25 Δ chase / centre-far | pairs' foreign GPU |
+|---|---|---|---|---|---|---|
+| desert | 639 → 623 (−16) / 509 → 493 (−16) | −0.12 M | −0.30 [−0.5..−0.2] | +0.00 [−0.3..+0.5] | −0.9 [−3.8..−0.3] / +2.6 [−0.1..+2.8] | 20–24 % (quiet) |
+| monsoon | 809 → 789 (−20) / 486 → 468 (−18) | −0.41 M | +0.60 [−0.2..+3.0] (the +3.0 pair under 939 %) | +0.50 [−0.7..+1.4] | −0.1 [−2.4..+0.6] / −0.3 [−1.1..+0.5] | 24–1337 % |
+| steppe | 701 → 681 (−20) / 433 → 414 (−19) | −0.06 M | −0.40 [−0.6..−0.1] | −0.40 [−0.5..−0.2] | +0.2 [−1.0..+1.5] / +1.4 [−0.7..+2.6] | 20–27 % (quiet) |
+| verdant | 762 → 742 (−20) / 588 → 568 (−20) | −0.23 M | −0.70 [−1.5..−0.6] | −0.10 [−0.8..0.0] | +1.4 [−2.2..+4.0] / +0.6 [−2.0..+1.5] | 25–1250 % |
+| whiteout | 678 → 663 (−15) / 420 → 405 (−15) | −0.08 M | +0.60 [+0.1..+0.7] | +0.10 [−1.1..+0.7] | +2.5 [0.0..+2.8] / −0.8 [−1.5..+2.4] | 206–1286 % (loaded) |
+| winter | 781 → 776 (−5) / 485 → 481 (−4) | −0.09 M | −0.70 [−1.4..−0.3] | −0.30 [−0.9..0.0] | +0.1 [−1.1..+0.2] / −0.6 [−2.2..+2.9] | 22–1265 % |
+
+The draws are exact: the twelve gobo draws plus the shrub and rim-forest passes on the cumulus maps (−15…−20),
+the shrub passes alone on Winter (a deck: no gobos; no ring forest). What the census cannot show and the frame does:
+the zero-count early-out removes hundreds of `setProgram` setups a frame (the census on this tree, with the
+zero-count column: Monsoon Ridge 359 GL shadow draws and 333 zero-count submissions a frame at chase, Whiteout
+Station 390 and 203 — every one of those submissions ran three's program / uniform / binding setup before; the
+desktop cascades read 0–89 / 89–184 / 184–320 / 320–700 m on High), which is where the CPU moves: on the four maps whose pairs were GPU-quiet the CPU frame median
+fell 0.3–0.7 ms (desert −0.3, steppe −0.4, verdant −0.7, winter −0.7); Monsoon's median is one loaded pair
+(+3.0 under 939 % foreign GPU; its other three pairs −0.2 / +0.2 / +0.6) and Whiteout's +0.6 came under 200–1300 %
+throughout. Against the audit's +1.0 ms on every map, the round recovers roughly half of it where it could be read
+and cannot read the rest at this floor. The GPU p25 pair deltas span ±2–4 ms in either direction even in quiet
+pairs (300 frames at ~25 ms: the timer's granularity on ANGLE Metal) and carry no signal here. The shadows at
+chase: the sheets show no change (the shrubs' shadows under the near cascades are the same; a bush 300 m out and a
+rim spruce 450 m out never had a readable one).
+
+**What still costs (honest list).**
+- The shadow passes are still 60 % of a frame's submissions: the props' bucket meshes (45–70 draws per cascade, plain
+  merged meshes drawn into all four maps whatever their size), the near-vehicle detail parts (90 draws in cascade 0
+  at chase, the round-28 policy), the near trunks and crown proxies (the r8 proxies per near cascade). A per-cascade
+  mask for the small structure buckets (the yard clutter's wood / baked pieces cannot read past cascade 1) is the
+  next knob; the structures themselves must cast everywhere.
+- Whiteout's centre-far: the volumetric layer's composite (+1.05 ms quiet by the audit's A/B) — the march is 0.15 ms
+  per slot on both trees; a closed-deck composite path (bilinear history, the far band skipped where the history is
+  opaque) needs a sheet. Whiteout against deploy 95 still carries the ring forest, the ladder, the steel buckets and
+  the understorey (+15 draws after this round's −15).
+- The GPU timer on this machine: pair deltas of ±2–4 ms in either direction at 300 frames even when the load is under
+  10 and the foreign GPU under 30 %; the round's GPU claims are draw-call and triangle claims, and the CPU frame
+  medians on quiet pairs. No GPU-quiet window longer than a few minutes opened in five hours.
+- Nordhavn Fjord at chase is 8.0 M triangles after the band change (the near stand within 200 m); under the 7 M gate
+  needs the whorl tier or a lower card count per crown — both visible, both the owner's call.
+- The mobile ring ladder (whiteout, +16 k triangles on one draw) and the mobile steel bucket meshes (+8 draws) stay:
+  the first is under every pair's floor and its knob is a map-config field, the second is not knob-sized.
+
+*Item 5 measured (`$SP/r78/m1`: deploy 95 vs deploy 106 on the mobile tier, four pairs; `$SP/r78/m2`: deploy 95 vs
+this tree with the atlas gated, six pairs; whiteout, `?tier=mobile`, chase / centre-far).* Before the gate: draws
+440 → 452 / 295 → 303, textures 47.7 → 50.6 MB, programs 198 → 203, GPU p25 17.2 → 16.7 / 16.4 → 16.7, CPU
+4.5 → 4.6 / 3.8 → 4.7 (one loaded base record). After the gate: draws 441 → 452 (+11) / 295 → 303 (+8) — the two
+bucket meshes in the forward pass and three cascades — textures 47.7 → 49.6 MB (the atlas's 1.0 MB gone; the
+round-75 sheet tile and the rest of rounds 71–77 keep +1.9), programs 198 → 201, GPU p25 per pair +0.05
+[−2.5..+2.95] at chase and +0.41 [−0.79..+3.09] at centre-far (medians +0.6 / +0.3), CPU +0.1 / +0.5, triangles
++0.05 M (the ring ladder's 16 k, the props' 3 k, the whorls' 5 k): within the pairs' floor at both views, under
+foreign GPU 1150–1340 % throughout (the mobile tier's frame is 60 % terrain material on this map, and the numbers
+above are the counters' — the GPU timer carries no signal here either way).
+
+*Item 4 measured on the whole tree (`$SP/r78/g4`: base 1d0236f33 vs this tree with every item, verdant and fjord,
+four pairs each, load 3–11, foreign GPU 20–40 % on most pairs).*
+
+| Map | view | triangles base → after | draws base → after | CPU frame Δ per pair (median [span]) | GPU p25 Δ (median [span]) |
+|---|---|---|---|---|---|
+| verdant | chase | 6.95 → 5.83 M (−1.13 M) | 762 → 742 (−20) | −0.10 [−0.4..−0.1] | +1.1 [−1.4..+2.0] |
+| verdant | centre-far | 6.58 → 5.33 M (−1.26 M) | 588 → 568 (−20) | −0.30 [−0.4..+0.7] | −0.3 [−5.1..+0.8] |
+| fjord | chase | 9.39 → 7.71 M (−1.68 M) | 737 → 709 (−28) | −0.40 [−0.7..0.0] | +0.6 [−1.7..+1.0] |
+| fjord | centre-far | 3.53 → 3.01 M (−0.53 M) | 393 → 333 (−60) | −0.50 [−0.7..−0.4] | −0.1 [−1.7..+0.2] |
+
+Verdant sits under the 7 M gate at both views (5.8 / 5.3 M); Nordhavn's chase is 7.7 M (the band's −1.36 M plus the
+shadow trims' −0.3 M), its centre-far −60 draws (the rim forest's near class, `frustumCulled` off, was drawn into
+every cascade there). The CPU frame medians move −0.1…−0.5 ms across the eight quiet pairs; the GPU p25 pair deltas
+span ±2 ms again and carry no signal.
+
+*Whiteout against deploy 95 on the finished tree (`$SP/r78/g5`, four pairs, the last two GPU-quiet at foreign GPU
+20–24 % and load 5–8).* Draws 658 → 662 at chase (+4, from +21 before this round) and 403 → 398 at centre-far (−5,
+from +16), triangles 3.67 → 3.00 M and 2.71 → 2.30 M; CPU +0.3 / +0.3; GPU p25 per pair at chase −0.1 / +1.5
+(loaded) and **+2.9 / +4.6 (quiet)**, at centre-far +1.4 / +2.3 (loaded) and **+1.5 / +3.8 (quiet)**, the frame
+medians 26.0 → 28.1 and 24.7 → 25.4 with the presentation interval at 16.8 ms on both. So Whiteout's GPU cost
+against deploy 95 is real at BOTH views — the audit's one quiet window read 0 at chase and +2.6 at centre-far, and
+its floor was this one's — and nothing in this round touches it: the layer's composite on a sky that fills the
+frame (~1 ms by the audit's A/B), the polar ring's relief atlas, far range and 1200 spruces (~0.5 ms by round 72c's
+bench), the steel and cladding buckets, and a remainder no bracketed breakdown can attribute at a ±3 ms floor. A
+per-system GPU breakdown in a quiet window (the probe's interleaved mode with more rounds, one system at a time)
+is the next measurement; the composite path for a closed low deck is the first lever it would test.
 
 ## Acceptance is visual and measured
 
