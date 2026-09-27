@@ -40,7 +40,7 @@ import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
-import { markShadowOnly } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
@@ -347,6 +347,12 @@ const TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290; // hysteresis band (full-detail r
 // interior 0.95–1.7: the ratio of the two ranges' means) and bounded by the rim's own extent
 const RIM_UNDERSTOREY_SCALE = 1.4;
 const RIM_UNDERSTOREY_BOUND_M = 506;
+// Round 78 (the performance lane): the shrubs cast into the cascades whose texels can carry them and no further —
+// the bushes (1.5–2.5 m) into the three near cascades (to ~300 m on the desktop presets, where a bush is six pixels
+// tall), the understorey (young growth under 1.6 m, pure dressing) into the two nearest (to ~180 m). Every other
+// cascade pass skips them entirely (renderLayers.setShadowCasterCascades); the field trees are unchanged.
+const BUSH_SHADOW_CASCADES = 0b0111;
+const UNDERSTOREY_SHADOW_CASCADES = 0b0011;
 
 function clamp(x: number, a: number, b: number): number { return x < a ? a : x > b ? b : x; }
 function smoothstepJs(a: number, b: number, x: number): number {
@@ -5087,6 +5093,7 @@ function* vegetationBuildSteps(
         }
         m.count=kept;
         m.castShadow = true;
+        setShadowCasterCascades(m, BUSH_SHADOW_CASCADES); // round 78: the near cascades only
         // round 77: the cascades on the shrubs too — sampled once per shrub 0.9 m over its base and 1.6 × its scale
         // toward the sun (foliageWindHook), so a bush under a crown sits in the crown's shadow, one state per shrub
         m.receiveShadow = canopyShadowReceive;
@@ -5156,6 +5163,7 @@ function* vegetationBuildSteps(
         bushFadeReg.push({ attr: fadeAttr, slot: i, x: e[12], z: e[14], fade: 0 });
       }
       m.castShadow = true;
+      setShadowCasterCascades(m, UNDERSTOREY_SHADOW_CASCADES); // round 78: the two nearest cascades only
       m.receiveShadow = canopyShadowReceive;
       m.matrixAutoUpdate = false;
       m.customDepthMaterial = foliageDepthMats[bushSpecies];

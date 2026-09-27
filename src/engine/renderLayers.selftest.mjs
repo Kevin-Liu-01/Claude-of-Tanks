@@ -10,6 +10,8 @@ import {
   setShadowCasterCascades,
   shadowCasterCascadesOf,
   shadowCascadeIndexOfCamera,
+  routeZeroCountDraws,
+  SHADOW_CASTER_LAST_CASCADE,
 } from './renderLayers.ts';
 
 const proxy = markShadowOnly(new THREE.Mesh(
@@ -234,4 +236,46 @@ console.log('renderLayers.selftest: shadow routing and scoped warm suppression/r
   renderer.shadowMap.render(lights, scene, camera);
   assert.equal(calls.length, 1, 'no masks left: three\'s single call again');
 }
-console.log('renderLayers.selftest: the shadow-only layer, the warm scope and the round-78 per-cascade caster masks pinned');
+// Round 78: the "last cascade only" flag is resolved against the light set at render time (three lights on the
+// phones, four on the desktop), so a world that cannot know the tier's cascade count still names the far map.
+{
+  setShadowCascadePolicy(null);
+  const rim = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  const scene = new THREE.Scene(); scene.add(rim);
+  const camera = new THREE.PerspectiveCamera();
+  setShadowCasterCascades(rim, SHADOW_CASTER_LAST_CASCADE);
+  assert.equal(shadowCasterCascadesOf(rim), SHADOW_CASTER_LAST_CASCADE);
+  for (const count of [3, 4]) {
+    const lights = Array.from({ length: count }, () => new THREE.DirectionalLight());
+    lights.forEach((light, i) => registerShadowCascadeCamera(light.shadow.camera, i));
+    const seen = [];
+    const renderer = { shadowMap: { render() { seen.push(rim.visible); } } };
+    routeShadowOnlyLayer(renderer);
+    renderer.shadowMap.render(lights, scene, camera);
+    assert.deepEqual(seen, Array.from({ length: count }, (_, i) => i === count - 1), `${count} cascades: the rim casts into the last one only`);
+    assert.equal(rim.visible, true);
+  }
+  setShadowCasterCascades(rim, null);
+}
+// Round 78: a zero-count InstancedMesh never reaches three's renderBufferDirect (whose program / uniform / binding
+// setup runs before renderInstances returns on primcount 0); every other draw passes through unchanged.
+{
+  const calls = [];
+  const renderer = {
+    shadowMap: { render() {} },
+    renderBufferDirect(camera, scene, geometry, material, object, group) { calls.push([object.name, this === renderer, group]); },
+  };
+  routeShadowOnlyLayer(renderer);
+  const routed = renderer.renderBufferDirect;
+  routeZeroCountDraws(renderer);
+  assert.equal(renderer.renderBufferDirect, routed, 'routed once per renderer');
+  const geometry = new THREE.BoxGeometry(1, 1, 1), material = new THREE.MeshBasicMaterial();
+  const empty = new THREE.InstancedMesh(geometry, material, 4); empty.count = 0; empty.name = 'empty';
+  const some = new THREE.InstancedMesh(geometry, material, 4); some.count = 2; some.name = 'some';
+  const plain = new THREE.Mesh(geometry, material); plain.name = 'plain';
+  const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene();
+  for (const object of [empty, some, plain]) renderer.renderBufferDirect(camera, scene, geometry, material, object, null);
+  assert.deepEqual(calls, [['some', true, null], ['plain', true, null]], 'the zero-count draw is skipped before the setup; the rest pass through with their receiver');
+  assert.doesNotThrow(() => routeZeroCountDraws({ shadowMap: { render() {} } }), 'a renderer without the method is left alone');
+}
+console.log('renderLayers.selftest: the shadow-only layer, the warm scope, the round-78 per-cascade caster masks (with the last-cascade flag) and the zero-count early-out pinned');

@@ -68,6 +68,13 @@ const shadowCasterCascadeMask = new WeakMap<Object3D, number>();
 let shadowCasterCascadeRefs: WeakRef<Object3D>[] = [];
 const hiddenForCascade: Object3D[] = [];
 
+/**
+ * A mask bit meaning "the LAST cascade only" — resolved against the light set at render time, so a world that
+ * cannot know the tier's cascade count (three on the phones, four on the desktop) can still say "the far map":
+ * the horizon ring's near forest stands 440 m and more from the battlefield, where only the far cascade reaches.
+ */
+export const SHADOW_CASTER_LAST_CASCADE = 1 << 30;
+
 /** Register (or with `null` forget) the cascades `object` casts into, as a bit mask of cascade indices. */
 export function setShadowCasterCascades(object: Object3D, mask: number | null): void {
   if (mask === null) {
@@ -89,10 +96,10 @@ export function shadowCascadeIndexOfCamera(shadowCamera: Camera): number {
   return cascadeIndexByShadowCamera.get(shadowCamera) ?? -1;
 }
 
-/** Hide every masked caster that does not cast into `cascadeIndex`; dead references are pruned as met. */
-function hideCastersOutsideCascade(cascadeIndex: number): void {
+/** Hide every masked caster that does not cast into `cascadeIndex` (of `cascadeCount`); dead references are pruned as met. */
+function hideCastersOutsideCascade(cascadeIndex: number, cascadeCount: number): void {
   if (cascadeIndex < 0 || shadowCasterCascadeRefs.length === 0) return;
-  const bit = 1 << cascadeIndex;
+  const bit = (1 << cascadeIndex) | (cascadeIndex === cascadeCount - 1 ? SHADOW_CASTER_LAST_CASCADE : 0);
   let write = 0;
   for (let i = 0; i < shadowCasterCascadeRefs.length; i++) {
     const ref = shadowCasterCascadeRefs[i];
@@ -144,7 +151,7 @@ function renderShadowLights(
     const cascadeIndex = shadowCascadeIndexOf(light);
     single[0] = light;
     policy?.beforeLight(light, cascadeIndex);
-    hideCastersOutsideCascade(cascadeIndex);
+    hideCastersOutsideCascade(cascadeIndex, lights.length);
     try {
       render(single, scene, camera);
     } finally {
@@ -184,6 +191,27 @@ export function renderShadowOnlyWarm(
   }
 }
 
+const zeroCountRouted = new WeakSet<WebGLRenderer>();
+
+/**
+ * Round 78 (2026-09-26, the performance lane): an InstancedMesh whose count is zero when it reaches
+ * `renderBufferDirect` costs three the whole program / uniform / binding-state setup before
+ * `renderInstances` returns on `primcount === 0`. The r8 cascade caster proxies (lighting.ts) and every
+ * proxied owner rely on count zero to sit out the cascades that are not theirs — hundreds of such setups a
+ * frame on a forest map by the round-78 shadow census — so the router returns before the setup. Three would
+ * have drawn nothing; the draw-call counter never counted these.
+ */
+export function routeZeroCountDraws(renderer: WebGLRenderer): void {
+  if (zeroCountRouted.has(renderer) || typeof renderer.renderBufferDirect !== 'function') return;
+  const direct = renderer.renderBufferDirect;
+  const routed: WebGLRenderer['renderBufferDirect'] = function (this: WebGLRenderer, camera, scene, geometry, material, object, group) {
+    if ((object as { isInstancedMesh?: boolean; count?: number }).isInstancedMesh && (object as { count?: number }).count === 0) return;
+    return direct.call(this, camera, scene, geometry, material, object, group);
+  };
+  renderer.renderBufferDirect = routed;
+  zeroCountRouted.add(renderer);
+}
+
 /**
  * Three filters shadow casters against the presentation camera's layers, not
  * the light's internal shadow camera. Temporarily expose the proxy layer only
@@ -191,6 +219,7 @@ export function renderShadowOnlyWarm(
  * renderer sees the scene.
  */
 export function routeShadowOnlyLayer(renderer: WebGLRenderer): void {
+  routeZeroCountDraws(renderer);
   const shadowMap = renderer.shadowMap as ShadowMapRouter;
   if (shadowMap.__cotShadowOnlyRouted) return;
   const render = shadowMap.render.bind(shadowMap);
