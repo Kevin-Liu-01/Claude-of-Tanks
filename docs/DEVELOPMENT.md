@@ -97,6 +97,16 @@ load without preloading the game module graph.
 
 The selftest runners wait for the shared capture lock (`/tmp/cot-shots.lock`, FIFO tickets in `/tmp/cot-shots.queue`) before their browser receipts; `COT_SHOTS_LOCK_TIMEOUT_MS` sets that wait (default 45 min — chain 94 died at 1/413 behind another session's browser audit, so landing chains export three hours).
 
+### Self-leasing browser receipts (2026-09-26)
+
+`tools/run-selftests.mjs` holds the capture lease around every browser receipt and refreshes it every 30 s. A receipt that
+takes the lock ITSELF (`createCaptureLock().acquire()` in the receipt — the Garage switch probe's part 2, the `*.browser.selftest`
+files that own their lease) must be listed in `SELFTEST_OWNED_LEASE_FILES`, or the runner keeps the lease while the child queues
+on the same lock: a deadlock that only ends at the 3 h chain timeout (chains 96 and 106 lost 76 and 80 minutes to it — the tell
+is a receipt at 0 % CPU with one ticket in `/tmp/cot-shots.queue` and the lock directory's mtime ticking every 30 s). The list is
+pinned in `tools/run-selftests.selftest.mjs` (the `actual-registry` count and the barrier loop). A load gate read before a lock
+wait is stale by the time the lock arrives — re-read it after `acquire()` and skip the same way, releasing the lock.
+
 ### Asset caching (2026-09-25)
 
 **Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents, `/maps` and `/minimaps` keep that default too. Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
