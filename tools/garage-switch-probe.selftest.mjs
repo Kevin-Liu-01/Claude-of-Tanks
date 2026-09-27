@@ -120,6 +120,15 @@ if (loadPerCpu > 1.5) {
 }
 const lock = createCaptureLock();
 await lock.acquire(45 * 60 * 1000);
+// 2026-09-26: the gate above is read BEFORE the lock wait — a receipt that queued on a quiet machine can be handed the
+// lock an hour later under load 100+ (a perf lane's runs re-claiming it between polls) and then profile into its own
+// watchdog. Re-read the load once the lock is held; skip the same way, releasing the lock for the next claimant.
+const loadPerCpuAfterWait = os.loadavg()[0] / Math.max(1, os.cpus().length);
+if (loadPerCpuAfterWait > 1.5) {
+  console.log(`garage-switch-probe.selftest: load ${os.loadavg()[0].toFixed(1)} on ${os.cpus().length} CPUs after the lock wait — part 2 (the browser profile) skipped; part 1 passed`);
+  lock.release();
+  process.exit(0);
+}
 const refresh = setInterval(() => lock.refresh(), 30000);
 refresh.unref();
 process.once('exit', () => lock.release());
