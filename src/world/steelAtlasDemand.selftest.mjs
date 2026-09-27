@@ -46,11 +46,15 @@ try {
 
 // --- the producer: gated paint, the timing record, both fallback sites
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-assert.match(source, /const steelAtlas = \{ needed: steelAtlasNeeded\(P\.plan, P\.industrialCladding\), painted: false, fallback: '', ms: 0, size: 0 \};/);
+// round 78 (the performance lane): the mobile tier paints no atlas at all — the record says `fallback: 'mobile'` and
+// needed false, the on-demand painter returns on the phones too, the livery stays in the vertex colours
+assert.match(source, /const mobileProps = getDeviceTier\(\) === 'mobile';/, 'the tier is read once for the props build');
+assert.match(source, /const steelAtlas = \{ needed: steelAtlasNeeded\(P\.plan, P\.industrialCladding\) && !mobileProps, painted: false, fallback: mobileProps \? 'mobile' : '', ms: 0, size: 0 \};/);
 assert.match(source, /if \(steelAtlas\.needed\) \{\n\s*const painter = makeSteelAtlas\(noi, aniso, steelAtlasSize\);/, 'the atlas paints only when needed');
-assert.match(source, /getDeviceTier\(\) === 'mobile' \? STEEL_ATLAS_SIZE_MOBILE : STEEL_ATLAS_SIZE/, 'half size on the mobile tier');
+assert.match(source, /mobileProps \? STEEL_ATLAS_SIZE_MOBILE : STEEL_ATLAS_SIZE/, 'the half size stays the record\'s size where a phone build ever painted');
+assert.match(source, /if \(steel \|\| mobileProps\) return; \/\/ round 78/, 'the on-demand painter never paints on the mobile tier');
 assert.match(source, /group\.userData\.steelAtlas = steelAtlas;/, 'the timing record for the build probe');
 assert.match(source, /if \(tmp\.steel\?\.length\) ensureSteelAtlas\('plan:' \+ structureId\);/, 'a planned steel part falls back');
 assert.match(source, /ensureSteelAtlas\('yard:'/, 'a yard steel family falls back');
 assert.match(source, /\.\.\.\(steel \? \{ map: steel\.albedo, normalMap: steel\.normal, roughnessMap: steel\.surface, aoMap: steel\.surface \} : \{\}\)/, 'the material takes the maps only when painted');
-console.log(`steelAtlasDemand self-test passed: ${MAP_IDS.length - without.length} maps paint the atlas, ${without.length} do not; half-size paint checked`);
+console.log(`steelAtlasDemand self-test passed: ${MAP_IDS.length - without.length} maps paint the atlas, ${without.length} do not; half-size paint checked; the mobile tier paints none (round 78)`);
