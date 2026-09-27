@@ -1,13 +1,14 @@
 /** Match-scoped presentation only. Never advances the simulation RNG, changes
  * spotting/traction, or schedules frames. Select once from the authoritative
- * battle seed. Only day/night varies; authored map atmosphere stays intact.
+ * battle seed. Only time of day varies; authored map atmosphere stays intact.
  * Biome is an explicit shared map-authoring input, not inferred from its name.
  */
-export const BATTLE_WEATHER_VERSION = 2;
+export const BATTLE_WEATHER_VERSION = 3;
 
 export type BattleWeatherBiome = 'temperate' | 'arid' | 'tropical' | 'cold' | 'coastal';
 type BattleWeatherCondition = 'clear';
-type BattleTimeOfDay = 'day' | 'night';
+export const BATTLE_TIMES = Object.freeze(['day', 'sunset', 'night'] as const);
+export type BattleTimeOfDay = typeof BATTLE_TIMES[number];
 
 export interface BattleWeather {
   readonly version: typeof BATTLE_WEATHER_VERSION;
@@ -40,16 +41,26 @@ function weatherHash(seed: number, salt: number): number {
  * preset and native validation. Apply under covered world activation, never
  * call sky/PMREM rebuilds from a frame loop. Version belongs in replay receipts.
  */
-export function selectBattleWeather(seed: number, biome: BattleWeatherBiome): BattleWeather {
+export function selectBattleWeather(
+  seed: number, biome: BattleWeatherBiome, enabled: readonly BattleTimeOfDay[] = BATTLE_TIMES,
+): BattleWeather {
   if (!Number.isSafeInteger(seed)) throw new RangeError('Battle weather requires a safe integer seed');
   if (!Object.hasOwn(BIOMES, biome)) throw new RangeError('Unknown battle weather biome');
+  if (!enabled.length || enabled.some(time => !BATTLE_TIMES.includes(time))) {
+    throw new RangeError('At least one valid time of day is required');
+  }
   const canonicalSeed = seed >>> 0;
+  const roll = weatherHash(canonicalSeed, 0x85ebca6b) % 100;
+  // Keep the shipped night domain. Sunset takes 20% of the former day domain.
+  const rolled: BattleTimeOfDay = roll < 20 ? 'night' : roll >= 40 && roll < 60 ? 'sunset' : 'day';
+  const choices = BATTLE_TIMES.filter(time => enabled.includes(time));
+  const timeOfDay = choices.includes(rolled) ? rolled : choices[weatherHash(canonicalSeed, 0xc2b2ae35) % choices.length];
   return Object.freeze({
     version: BATTLE_WEATHER_VERSION,
     seed: canonicalSeed,
     biome,
     condition: 'clear',
-    timeOfDay: weatherHash(canonicalSeed, 0x85ebca6b) % 100 < 20 ? 'night' : 'day',
+    timeOfDay,
     precipitationIntensity: 0,
     cloudOpacityMultiplier: 1,
     fogDensityMultiplier: 1,

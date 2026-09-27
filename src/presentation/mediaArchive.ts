@@ -7,6 +7,7 @@ import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 const MANIFEST_URL = '/media/showcase-r1/manifest.json';
 interface PresentationShot {
   src: string;
+  previewSrc?: string;
   alt: string;
   feature: string;
   map: string;
@@ -31,10 +32,17 @@ let manifestPromise: Promise<PresentationManifest> | undefined;
 
 function loadPresentationManifest(): Promise<PresentationManifest> {
   if (!manifestPromise) {
-    manifestPromise = fetch(MANIFEST_URL).then((response) => {
+    const archive = fetch(MANIFEST_URL).then((response) => {
       if (!response.ok) throw new Error(`Presentation archive unavailable (${response.status})`);
       return response.json() as Promise<PresentationManifest>;
     });
+    // Capture files are optional; the bundled archive remains available on its own.
+    const production = fetch('/media/production-r1/manifest.json').then((response) =>
+      response.ok ? response.json() as Promise<PresentationManifest> : null,
+    ).catch(() => null);
+    manifestPromise = Promise.all([archive, production]).then(([base, fresh]) => ({
+      shots: [...(fresh?.shots ?? []), ...base.shots],
+    }));
   }
   return manifestPromise;
 }
@@ -76,7 +84,7 @@ function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): 
   button.className = 'media-archive-card-open';
   button.setAttribute('aria-label', t('mediaArchive.card.openAria', { title: shot.title }));
   const image = document.createElement('img');
-  image.src = shot.src;
+  image.src = shot.previewSrc || shot.src;
   image.alt = shot.alt;
   image.loading = index < 3 ? 'eager' : 'lazy';
   image.decoding = 'async';

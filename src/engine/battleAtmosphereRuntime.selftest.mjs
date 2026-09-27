@@ -73,6 +73,12 @@ try {
   runtime.prepare(16, 'winter');
   assert.equal(runtime.weather.condition, 'clear', 'old fog seed cannot amplify map fog');
   assert.equal(applied.at(-1).fogDensity, base.fogDensity);
+  runtime.prepare(3, 'winter', ['sunset']);
+  assert.equal(runtime.weather.timeOfDay, 'sunset');
+  assert.equal(applied.at(-1).sunElevationDeg, 7);
+  assert.equal(applied.at(-1).sunColorHex, 0xffbf80);
+  assert.equal(applied.at(-1).fogDensity, base.fogDensity);
+  assert.equal(getVehicleReadabilityScale(), 1);
   runtime.prepare(0, 'verdant');
   assert.equal(runtime.weather.condition, 'clear'); assert.equal(scene.children.length, 0);
   const beforeInvalid = applied.length;

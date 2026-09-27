@@ -12,7 +12,7 @@
 // dome-drawn clouds). Desktop tier only; no per-frame work.
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { type SeaOpening, dominantSeaOpening, seaOpeningWeight } from './edgeWater.ts';
+import { type SeaOpening, dominantSeaOpening, seaOpeningWeight, seaHeadlandWeight } from './edgeWater.ts';
 import type { HorizonFarRangeSettings, HorizonReliefCharacter } from './horizonRelief.ts';
 
 export const HORIZON_FAR_SEGMENTS = 288;
@@ -171,7 +171,14 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       // sea sectors: the far ring is open water there (a little under the level, the apron carries the surface)
       const opening = dominantSeaOpening(a, options.seaOpenings);
       const sea = opening ? seaOpeningWeight(a, opening) : 0;
-      if (sea > 0) h += ((opening?.level ?? 0) - 1 - h) * sea;
+      // The distant backdrop must sit below the continued coast as well as the
+      // open sea. A partial sector weight left its 40 m foot and mountain walls
+      // crossing the actual beach, visible as large grey polygons from the bay.
+      const coastClearance = seaHeadlandWeight(a, options.seaOpenings, 0.35);
+      if (coastClearance > 0) {
+        const seaFloor = Math.min(...options.seaOpenings.map(value => value.level)) - 24;
+        h += (seaFloor - h) * smoothstep(0, 0.65, coastClearance);
+      }
       const i = row * n + k;
       positions[i * 3] = x; positions[i * 3 + 1] = h; positions[i * 3 + 2] = z;
       heights[i] = h;

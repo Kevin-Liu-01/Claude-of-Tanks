@@ -9,10 +9,18 @@ let recipesPromise: Promise<CaptureRecipeCatalog> | undefined;
 
 export function loadCaptureRecipes(): Promise<CaptureRecipeCatalog> {
   if (!recipesPromise) {
-    recipesPromise = fetch(RECIPES_URL).then((response) => {
+    const archive = fetch(RECIPES_URL).then((response) => {
       if (!response.ok) throw new Error(`Capture recipes unavailable (${response.status})`);
       return response.json() as Promise<CaptureRecipeCatalog>;
     });
+    // A production batch can remain unpublished without disabling existing recipes.
+    const production = fetch('/media/production-r1/manifest.json').then((response) =>
+      response.ok ? response.json() as Promise<CaptureRecipeCatalog> : null,
+    ).catch(() => null);
+    recipesPromise = Promise.all([archive, production]).then(([base, fresh]) => ({
+      media: { ...base.media, ...fresh?.media },
+      recipes: { ...base.recipes, ...fresh?.recipes },
+    }));
   }
   return recipesPromise;
 }

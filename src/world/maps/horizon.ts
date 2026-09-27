@@ -43,7 +43,7 @@ import {
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
-import { type SeaOpening, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorBlend } from '../edgeWater.ts';
+import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
   type VistaGround,
@@ -982,8 +982,8 @@ function ringSeaWeight(
   x: number, z: number, angle: number, openings: readonly HorizonSeaOpening[], ground: CanyonGround | undefined,
 ): { weight: number; level: number } {
   const opening = dominantSeaOpening(angle, openings);
-  const sector = opening ? seaOpeningWeight(angle, opening) : 0;
-  if (!ground?.getOutlandWaterAt) return { weight: sector, level: opening?.level ?? 0 };
+  if (!ground?.getOutlandWaterAt) return { weight: opening ? seaOpeningWeight(angle, opening) : 0, level: opening?.level ?? 0 };
+  const sector = opening ? seaSectorWeightAt(x, z, opening) : 0;
   // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): a radial sector cut
   // every bay off on two straight lines at the red line. The map's own shoreline contour now rules as far as it
   // reaches past the square, the sector carries the open sea beyond that reach, and the two blend by distance.
@@ -997,17 +997,33 @@ function ringSeaWeight(
   return { weight: sectorWeight, level: opening?.level ?? coast?.level ?? 0 };
 }
 
-/** Round 47: along a ring column, the radius where the bay contour's wetness crosses 0.5 between two radii (bisection). */
-function coastWaterlineRadius(
-  ground: CanyonGround, angle: number, innerR: number, outerR: number,
-): number {
-  const wetAt = (r: number): number => ground.getOutlandWaterAt?.(Math.cos(angle) * r, Math.sin(angle) * r)?.wetness ?? 0;
-  let lo = innerR, hi = outerR;
-  for (let step = 0; step < 10; step++) {
-    const mid = (lo + hi) * 0.5;
-    if (wetAt(mid) >= 0.5) lo = mid; else hi = mid;
+/** Resolve narrow shore bands before lowering the sea. The ordinary ridge mesh
+ * has 40–100 m radial spans, wider than a beach. Eight metre samples follow
+ * the bank without stretching the mask or inserting a separate overlapping mesh.
+ * Dry maps and the authored mountain rows keep their original topology. */
+function refineCoastRows(ring: HorizonRingGeometry, openings: readonly HorizonSeaOpening[], ground?: CanyonGround): void {
+  if (!openings.length || !ground?.getOutlandWaterAt || !ground.getOutlandHeightAt) return;
+  const n = HORIZON_SEGMENTS, rows: HorizonRingRow[] = [], positions: number[] = [], heights: number[] = [];
+  for (let row = 0; row < ring.rows.length; row++) {
+    let divisions = 1;
+    if (row < ring.rows.length - 1) for (let k = 0; k < n; k++) {
+      const i = row * n + k, j = i + n;
+      const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
+      if (seaHeadlandWeight(Math.atan2(z, x), openings, HEADLAND_BAND_RAD) <= 0) continue;
+      const gap = Math.hypot(ring.positions[j * 3] - x, ring.positions[j * 3 + 2] - z);
+      divisions = Math.max(divisions, Math.ceil(gap / 8));
+    }
+    for (let part = 0; part < divisions; part++) {
+      const t = part / divisions;
+      rows.push(part === 0 ? ring.rows[row] : interpolatedHorizonRow(ring.rows[row], ring.rows[row + 1], t));
+      for (let k = 0; k < n; k++) {
+        const i = row * n + k, j = Math.min(i + n, ring.heights.length - 1);
+        for (let axis = 0; axis < 3; axis++) positions.push(ring.positions[i * 3 + axis] + (ring.positions[j * 3 + axis] - ring.positions[i * 3 + axis]) * t);
+        heights.push(ring.heights[i] + (ring.heights[j] - ring.heights[i]) * t);
+      }
+    }
   }
-  return (lo + hi) * 0.5;
+  ring.rows = rows; ring.positions = new Float32Array(positions); ring.heights = new Float32Array(heights);
 }
 
 function openHorizonToSea(
@@ -1022,56 +1038,51 @@ function openHorizonToSea(
   const sea: HorizonSea = { weight: new Float32Array(ring.heights.length), level: new Float32Array(ring.heights.length) };
   if (!openings.length) return sea;
   const n = HORIZON_SEGMENTS;
+  const outerRadii = new Float32Array(n);
+  const outerStart = ring.heights.length - n;
+  for (let k = 0; k < n; k++) outerRadii[k] = Math.hypot(
+    ring.positions[(outerStart + k) * 3], ring.positions[(outerStart + k) * 3 + 2]);
   for (let index = 0; index < ring.heights.length; index++) {
     const angle = ((index % n) / n) * Math.PI * 2;
+    // Extend the whole headland, then evaluate the water in its final world coordinates.
+    // Moving only submerged vertices after sampling stretches beaches into wedges.
     let x = ring.positions[index * 3], z = ring.positions[index * 3 + 2];
-    let { weight, level } = ringSeaWeight(x, z, angle, openings, ground);
-    // Round 47 (2026-09-23): the ring's rows sit 60–120 m apart, the bay's bank band is ~27 m wide, so a vertex caught
-    // in the band lowered by its partial wetness made the face before it climb out of the water 20 m early — a dark
-    // "sea" ramp along every coast. A vertex in the band now moves radially onto the true waterline (bisection on the
-    // contour between its neighbouring rows) and sits on the sea floor; the bank rises from there to the next row.
-    const row = Math.floor(index / n);
-    if (ground?.getOutlandWaterAt && row > 0 && row < ring.rows.length - 1) {
-      const coast = ground.getOutlandWaterAt(x, z);
-      const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
-      // the column's last wet vertex before a dry row (the coast weight ruling, not the far sector) moves onto the
-      // waterline; every column gets the same treatment so adjacent columns stay continuous
-      if (coast && coast.wetness >= 0.5 && Math.abs(coast.wetness - weight) < 1e-6 && edgeOut > -8) {
-        const next = (row + 1) * n + (index % n);
-        const nx = ring.positions[next * 3], nz = ring.positions[next * 3 + 2];
-        const wetNext = ground.getOutlandWaterAt(nx, nz)?.wetness ?? 0;
-        if (wetNext < 0.5) {
-          const r = Math.hypot(x, z), rNext = Math.hypot(nx, nz);
-          const waterline = coastWaterlineRadius(ground, angle, r, Math.min(rNext - 3, r + 0.7 * (rNext - r)));
-          x = Math.cos(angle) * waterline; z = Math.sin(angle) * waterline;
-          ring.positions[index * 3] = x; ring.positions[index * 3 + 2] = z;
-          weight = 1; level = coast.level;
-        }
-      } else if (coast && coast.wetness < 0.5 && coast.wetness > 0.03 && Math.abs(coast.wetness - weight) < 1e-6 && edgeOut > -8) {
-        // a vertex on the dry side of the band whose previous row is wet: the waterline lies between them — pull it
-        // back onto the waterline as well so the bank starts exactly there
-        const prev = (row - 1) * n + (index % n);
-        const px = ring.positions[prev * 3], pz = ring.positions[prev * 3 + 2];
-        const wetPrev = ground.getOutlandWaterAt(px, pz)?.wetness ?? 0;
-        if (wetPrev >= 0.5) {
-          const r = Math.hypot(x, z), rPrev = Math.hypot(px, pz);
-          const waterline = coastWaterlineRadius(ground, angle, Math.max(rPrev + 3, r - 0.7 * (r - rPrev)), r);
-          x = Math.cos(angle) * waterline; z = Math.sin(angle) * waterline;
-          ring.positions[index * 3] = x; ring.positions[index * 3 + 2] = z;
-          weight = 1; level = coast.level;
-        }
-      }
+    const radius = Math.hypot(x, z), outerRadius = outerRadii[index % n];
+    const rimRadius = 512 / Math.max(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)));
+    // Every coastal column reaches beyond the water apron, including diagonals.
+    // A square-distance multiplier left the diagonal banks ending at 2.5 km
+    // while their water carried on to 4 km, exposing the sky beneath the sheet.
+    const extension = Math.max(0, (SEA_APRON_OUTER_RADIUS_M + 256) / outerRadius - 1);
+    const reach = 1 + seaHeadlandWeight(angle, openings, HEADLAND_BAND_RAD)
+      * smoothstep(rimRadius + 300, outerRadius, radius) * extension;
+    x *= reach; z *= reach;
+    ring.positions[index * 3] = x; ring.positions[index * 3 + 2] = z;
+    const { weight, level } = ringSeaWeight(x, z, angle, openings, ground);
+    // Keep the coast in world space. Pulling each row onto a different waterline and
+    // stretching it radially left wedges at the square and moved banks off the
+    // water mask. The near apron now follows the same continuous geology as the
+    // playable shore. No vertex moves after the shoreline is sampled.
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+    if (ground?.getOutlandHeightAt && edgeOut > -32 && edgeOut < 360) {
+      const coastShare = seaHeadlandWeight(angle, openings, HEADLAND_BAND_RAD)
+        * (1 - smoothstep(140, 360, edgeOut));
+      const edgeScale = 512 / Math.max(Math.abs(x), Math.abs(z));
+      const ex = x * edgeScale, ez = z * edgeScale;
+      const edgeDelta = ground.getHeightAt(ex, ez) - ground.getOutlandHeightAt(ex, ez);
+      const continued = edgeOut < 0 ? ground.getHeightAt(x, z) - 0.025
+        : ground.getOutlandHeightAt(x, z) + edgeDelta * (1 - smoothstep(0, 64, edgeOut));
+      ring.heights[index] += (continued - ring.heights[index]) * coastShare;
     }
     sea.weight[index] = weight;
     sea.level[index] = level;
+    ring.positions[index * 3 + 1] = ring.heights[index];
     if (weight <= 0) continue;
-    const height = ring.heights[index] + (level - 0.04 - ring.heights[index]) * weight;
+    // Finish the seabed before the first visible water-mask ramp (Saltwind
+    // starts at 0.16). A 0.35 shoulder left tall ridge vertices inside visible
+    // shallows, clipping the sheet into repeated steps along Fjord's banks.
+    const height = ring.heights[index] + Math.min(0, level - 0.04 - ring.heights[index]) * smoothstep(0, 0.12, weight);
     ring.heights[index] = height;
     ring.positions[index * 3 + 1] = height;
-    const radialFraction = Math.floor(index / HORIZON_SEGMENTS) / (ring.rows.length - 1);
-    const seaReach = 1 + weight * radialFraction * radialFraction * 1.6;
-    ring.positions[index * 3] *= seaReach;
-    ring.positions[index * 3 + 2] *= seaReach;
   }
   return sea;
 }
@@ -1749,6 +1760,7 @@ export function sampleHorizonGeometry(
   }
   if (relief) wanderProfileBreaks(ring, relief, style, seed);
   if (relief) enforceLedgerSlopes(ring, style, capFrontRows(ring, horizon, mapId, style));
+  refineCoastRows(ring, openings, ground);
   openHorizonToSea(ring, openings, ground);
   return ring;
 }
@@ -3072,6 +3084,7 @@ export function* buildHorizonRingSteps(
   }
   if (reliefField) wanderProfileBreaks(ring, reliefField, style, seed);
   if (reliefField) enforceLedgerSlopes(ring, style, capFrontRows(ring, H, mapId, style));
+  refineCoastRows(ring, seaOpenings, ground);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);
@@ -3246,7 +3259,9 @@ export function* buildHorizonRingSteps(
     canopyMean: horizonVista?.canopyMean, // round 55: the crown mottle centred on the canopy tile's mean
     canopyDetail: vistaUniforms?.uVCanopy?.value as THREE.Texture | undefined,
     // round 63: no ring trees on a railway cutting's outland corridor (the line's right-of-way through the mouth)
-    ...(ground?.getOutlandSeatWeightAt ? { clearAt: ground.getOutlandSeatWeightAt.bind(ground) } : {}),
+    ...(ground?.getOutlandSeatWeightAt || seaOpenings.length ? { clearAt: (x: number, z: number): number =>
+      Math.max(ground?.getOutlandSeatWeightAt?.(x, z) ?? 0,
+        seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.03 ? 1 : 0) } : {}),
     haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     palettes: {
       conifer: rimConiferLead ? vegetation?.palettes?.[rimConiferLead]?.canopy : undefined,

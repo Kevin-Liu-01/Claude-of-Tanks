@@ -1476,7 +1476,7 @@ sky.applyFog(scene);
 let baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
 let battleWatchdogRadianceScale = 1;
 const battleAtmosphere = createBattleAtmosphereAccess(() => ({
-  getGameMode: () => game.gameMode,
+  getGameMode: () => game.phase === 'studio' ? 'standard' : game.gameMode,
   getWorldRoot: () => currentWorld()?.group ?? null,
   getAuthoredPreset: () => {
     const config: MapCompositionConfig | undefined = currentWorld()?.config;
@@ -1878,7 +1878,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
     prepareAtmosphere: async () => {
-      await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.allowNight);
+      await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
       await frontline.prepare(game.battleCount, game.mapId);
     },
     prepareNightLighting: () => nightLighting.prepare(),
@@ -3349,6 +3349,9 @@ const studioAccess = createStudioAccess({
     }),
     setWorldDormant,
     setGarageSpots, setGarageSunTrim, enterGarage,
+    prepareStudioAtmosphere: async (time: import('./engine/battleWeatherPolicy.ts').BattleTimeOfDay) => {
+      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    },
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.

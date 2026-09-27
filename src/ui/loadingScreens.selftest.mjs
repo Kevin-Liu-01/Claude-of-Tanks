@@ -153,25 +153,11 @@ for (const mapId of Object.keys(MAP_THUMBS)) {
   assert.ok(shot.maps.includes(mapId), `no map-specific loading capture for ${mapId}`);
   assert.deepEqual(featuredShotForMap(` ${mapId.toUpperCase()} `), shot,
     `${mapId}: repeated room restaging must keep the same loading art`);
-  if (!TRANSITION_SHOTS.some((entry) => entry.maps?.includes(mapId))) {
-    assert.equal(shot.img, MAP_HEROES[mapId],
-      `${mapId}: without a curated action still use its exact native 4K overview`);
-    assert.equal(shot.capKey, 'garage.featuredShot.battlefieldOverview');
-    assert.deepEqual(shot.capVars, { name: getLocalizedMapName(mapId) });
-    assert.deepEqual(shot.maps, [mapId], 'an overview only depicts its own battlefield');
-  }
+  assert.equal(shot.img, MAP_HEROES[mapId], `${mapId}: use the current native 4K overview`);
+  assert.equal(shot.capKey, 'garage.featuredShot.battlefieldOverview');
+  assert.deepEqual(shot.capVars, { name: getLocalizedMapName(mapId) });
+  assert.deepEqual(shot.maps, [mapId], 'an overview only depicts its own battlefield');
 }
-
-assert.equal(
-  featuredShotForMap('fjord').img,
-  '/media/featured/f9_studio_fjord_firefight.webp',
-  'the handmade Fjord firefight should headline Glacier Fjord',
-);
-assert.equal(
-  featuredShotForMap('urban').img,
-  '/media/featured/f6_studio_strv_steinburg_duel.webp',
-  'the handmade Strv duel should headline Steinburg',
-);
 
 const cycleSize = TRANSITION_SHOTS.length;
 const rotation = Array.from({ length: cycleSize * 2 }, () => nextFeaturedShot().img);

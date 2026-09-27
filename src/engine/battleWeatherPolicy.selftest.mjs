@@ -1,23 +1,23 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { BATTLE_WEATHER_VERSION, selectBattleWeather } from './battleWeatherPolicy.ts';
+import { BATTLE_TIMES, BATTLE_WEATHER_VERSION, selectBattleWeather } from './battleWeatherPolicy.ts';
 
 const biomes = ['temperate', 'arid', 'tropical', 'cold', 'coastal'];
-assert.equal(BATTLE_WEATHER_VERSION, 2);
+assert.equal(BATTLE_WEATHER_VERSION, 3);
 
 // These are protocol fixtures, not expectations produced by a second copy of
-// the implementation. Version 2 removes conditions but preserves every existing
-// day/night result, seed normalization and legacy descriptor field name.
+// the implementation. Version 3 adds sunset while preserving the shipped night domain
+// and these day/night fixtures, seed normalization and legacy descriptor field name.
 const fixtures = [
-  [0, 'temperate', { version: 2, seed: 0, biome: 'temperate', condition: 'clear',
+  [0, 'temperate', { version: 3, seed: 0, biome: 'temperate', condition: 'clear',
     timeOfDay: 'day', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-  [1337, 'tropical', { version: 2, seed: 1337, biome: 'tropical', condition: 'clear',
+  [1337, 'tropical', { version: 3, seed: 1337, biome: 'tropical', condition: 'clear',
     timeOfDay: 'day', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-  [3, 'cold', { version: 2, seed: 3, biome: 'cold', condition: 'clear',
+  [3, 'cold', { version: 3, seed: 3, biome: 'cold', condition: 'clear',
     timeOfDay: 'night', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-  [16, 'cold', { version: 2, seed: 16, biome: 'cold', condition: 'clear',
+  [16, 'cold', { version: 3, seed: 16, biome: 'cold', condition: 'clear',
     timeOfDay: 'night', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-  [2002, 'arid', { version: 2, seed: 2002, biome: 'arid', condition: 'clear',
+  [2002, 'arid', { version: 3, seed: 2002, biome: 'arid', condition: 'clear',
     timeOfDay: 'night', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
 ];
 for (const [seed, biome, expected] of fixtures) {
@@ -30,9 +30,9 @@ function checkSelection(seed, biome) {
   assert.equal(value.seed, seed >>> 0);
   assert.equal(value.biome, biome);
   assert.equal(Object.isFrozen(value), true, 'a consumer cannot mutate the match descriptor');
-  assert.equal(value.version, 2);
+  assert.equal(value.version, 3);
   assert.equal(value.condition, 'clear');
-  assert.ok(['day', 'night'].includes(value.timeOfDay));
+  assert.ok(['day', 'sunset', 'night'].includes(value.timeOfDay));
   assert.equal(value.cloudOpacityMultiplier, 1);
   assert.equal(value.fogDensityMultiplier, 1);
   assert.equal(value.precipitationIntensity, 0);
@@ -77,7 +77,17 @@ const source = readFileSync(new URL('./battleWeatherPolicy.ts', import.meta.url)
 assert.doesNotMatch(source, /^import\s/m, 'pure policy must not import renderer, quality, map or fleet owners');
 assert.doesNotMatch(source, /Math\.random\(|Date\.|performance\.|setTimeout\(|requestAnimationFrame\(/,
   'no time, scheduler or global random dependency');
-assert.match(source, /weatherHash\(canonicalSeed, 0x85ebca6b\) % 100 < 20/,
-  'the shipped day/night salt and threshold must not change with weather cancellation');
+for (let mask = 1; mask < 8; mask++) {
+  const enabled = BATTLE_TIMES.filter((_, i) => mask & (1 << i));
+  for (let seed = 0; seed < 256; seed++) {
+    const actual = selectBattleWeather(seed, 'temperate', enabled);
+    assert.ok(enabled.includes(actual.timeOfDay));
+    assert.deepEqual(actual, selectBattleWeather(seed, 'temperate', [...enabled].reverse()), 'UI order cannot re-key weather');
+  }
+}
+assert.throws(() => selectBattleWeather(0, 'temperate', []), /At least one/);
+assert.throws(() => selectBattleWeather(0, 'temperate', ['dawn']), /valid time/);
+const sunsetCount = Array.from({length:2048}, (_,seed) => selectBattleWeather(seed,'temperate')).filter(x=>x.timeOfDay==='sunset').length;
+assert.ok(sunsetCount > 300 && sunsetCount < 500, 'sunset is a real seeded possibility');
 assert.doesNotMatch(source, /battleWeatherParticleBudget|selectCondition/);
-console.log('battleWeatherPolicy self-test: clear-only v2, exact seeded day/night fixtures and no resource/clock ownership PASS');
+console.log('battleWeatherPolicy self-test: clear-only v3, exact seeded day/night fixtures and no resource/clock ownership PASS');

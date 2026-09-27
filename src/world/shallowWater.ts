@@ -1,4 +1,6 @@
+import { fadeDistantCoastShadows } from './coastShadow.ts';
 import * as THREE from 'three';
+import { SEA_APRON_OUTER_RADIUS_M, seaOpeningUniforms, type SeaOpening } from './edgeWater.ts';
 import type { HeightField } from './terrain.ts';
 import type { OceanField } from './oceanFft.ts';
 import { waterContactProfile } from './waterContact.ts';
@@ -167,6 +169,26 @@ type ShallowWaterShader = Parameters<NonNullable<THREE.MeshStandardMaterial['onB
 type ShallowWaterMaterialSetup =
   (material: THREE.MeshStandardMaterial, hook: (shader: ShallowWaterShader) => void) => void;
 
+const OUTLAND_SECTOR_GLSL = `
+  uniform vec4 uOutlandOpenings[4];
+  uniform float uOutlandOpeningCount;
+  float outlandSectorWet(vec2 world, float distanceM) {
+    if (uOutlandOpeningCount < 0.5) return smoothstep(uOutlandSeaBlend.x, uOutlandSeaBlend.y, distanceM);
+    float wet = 0.0;
+    for (int i = 0; i < 4; i++) {
+      if (float(i) >= uOutlandOpeningCount) break;
+      vec4 o = uOutlandOpenings[i];
+      vec2 direction = vec2(cos(o.x), sin(o.x));
+      vec2 fromMouth = world - direction * (uWaterSize * 0.5 / max(abs(direction.x), abs(direction.y)));
+      float angle = atan(fromMouth.y, fromMouth.x);
+      float delta = abs(atan(sin(angle - o.x), cos(angle - o.x)));
+      float sector = 1.0 - smoothstep(o.y * o.z, o.y, delta);
+      wet = max(wet, sector * smoothstep(o.w * 0.5, o.w * 0.85 + 20.0, distanceM));
+    }
+    return wet;
+  }
+`;
+
 export function createShallowWaterSurface(
   geometry: THREE.BufferGeometry,
   mask: THREE.Texture,
@@ -176,7 +198,7 @@ export function createShallowWaterSurface(
   ramp: readonly [number, number],
   setup: ShallowWaterMaterialSetup | null = null,
   ripples: WaterRippleField | null = null,
-  outlandWater: { texture: THREE.Texture; sizeM: number; sectorBlend?: readonly [number, number] } | null = null,
+  outlandWater: { texture: THREE.Texture; sizeM: number; sectorBlend?: readonly [number, number]; openings?: readonly SeaOpening[] } | null = null,
   ocean: OceanField | null = null,
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
@@ -223,6 +245,8 @@ export function createShallowWaterSurface(
       // Round 47: the terrain's baked bay-contour mask (the same texture the ring faces read), 0 size = absent
       uOutlandWater: { value: outlandWater?.texture ?? null },
       uOutlandWaterSize: { value: outlandWater?.sizeM ?? 0 },
+      uOutlandOpenings: { value: seaOpeningUniforms(outlandWater?.openings ?? []) },
+      uOutlandOpeningCount: { value: Math.min(4, outlandWater?.openings?.length ?? 0) },
       uOutlandSeaBlend: { value: new THREE.Vector2(...(outlandWater?.sectorBlend ?? [120, 360])) },
       // Round 66 (2026-09-24): the FFT ocean (oceanFft.ts). The two map samplers share the field's own value objects
       // (its map sets alternate for the foam feedback); grid.w is 0 without a field and every ocean term is skipped.
@@ -243,6 +267,7 @@ export function createShallowWaterSurface(
       uniform sampler2D uOutlandWater;
       uniform float uOutlandWaterSize;
       uniform vec2 uOutlandSeaBlend;
+      ${OUTLAND_SECTOR_GLSL}
       /** The sheet's wetness at a vertex — the fragment rule (the square's mask ramp, the apron's contour past the edge). */
       float oceanVertexWet(vec2 xz) {
         vec2 uv = (xz + uWaterSize * 0.5) / uWaterSize;
@@ -251,7 +276,7 @@ export function createShallowWaterSurface(
         float wet = mix(edgeWet, 1.0, smoothstep(0.0, 320.0, pastEdgeM));
         if (uOutlandWaterSize > 0.5 && pastEdgeM > 0.0) {
           float coast = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uOutlandWater, xz / uOutlandWaterSize + 0.5).r);
-          wet = max(coast, smoothstep(uOutlandSeaBlend.x, uOutlandSeaBlend.y, pastEdgeM));
+          wet = max(coast, smoothstep(uWaterRamp.x, uWaterRamp.y, outlandSectorWet(xz, pastEdgeM)));
         }
         return wet;
       }`);
@@ -295,7 +320,8 @@ export function createShallowWaterSurface(
       uniform vec2 uWaterRippleTexel;
       uniform sampler2D uOutlandWater;   // round 47: the map's bay contours baked past the square (R = wetness)
       uniform float uOutlandWaterSize;   // 0 = no contour (frozen fields, receipts): the round-40 ramp alone
-      uniform vec2 uOutlandSeaBlend;     // round 47: metres past the edge where the open-sea sector fades in / is open
+      uniform vec2 uOutlandSeaBlend;
+      ${OUTLAND_SECTOR_GLSL}     // round 47: metres past the edge where the open-sea sector fades in / is open
       /** Water pass 8: 1 inside the reactive field's window around the camera focus, 0 past its fade band. */
       float waterRippleWindow(vec2 world) {
         if (uWaterRippleParams.w < 0.5) return 0.0;
@@ -336,7 +362,7 @@ export function createShallowWaterSurface(
       if (uOutlandWaterSize > 0.5 && pastEdgeM > 0.0) {
         // the same authored ramp the square applies to its mask: the apron ends where the sheet inside would, not up the bank
         float coast = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uOutlandWater, vWaterWorld.xz / uOutlandWaterSize + 0.5).r);
-        wet = max(coast, smoothstep(uOutlandSeaBlend.x, uOutlandSeaBlend.y, pastEdgeM));
+        wet = max(coast, smoothstep(uWaterRamp.x, uWaterRamp.y, outlandSectorWet(vWaterWorld.xz, pastEdgeM)));
       }
       // Round 66: the run-up. Where the bank band meets the strand the long cascade's crest pushes the water's edge a
       // little way up the sand and the trough draws it back (the swash of a breaking wave), so the edge breathes with
@@ -344,7 +370,7 @@ export function createShallowWaterSurface(
       oceanBed = uOceanDepth * wet * wet * (3.0 - 2.0 * wet);
       if (uOceanGrid.w > 0.5 && wet < 0.22) {
         float swashCrest = clamp(texture2D(uOceanDisp, oceanUv(vOceanLag, 0.0)).y / max(uOceanLook.w, 0.02) * 1.4, 0.0, 1.0);
-        wet = max(wet, mix(wet, 0.09, swashCrest * uOceanLook.y * (1.0 - smoothstep(0.0, 0.22, wet))));
+        wet = max(wet, mix(wet, 0.09, swashCrest * uOceanLook.y * smoothstep(0.003, 0.025, wet) * (1.0 - smoothstep(0.0, 0.22, wet))));
       }
       if (wet < 0.015) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
@@ -363,7 +389,10 @@ export function createShallowWaterSurface(
       // body colour when looked into — instead of one saturated sheet.
       diffuseColor.rgb *= mix(0.90, 0.58, waterDeep);
       diffuseColor.rgb *= 1.0 - 0.35 * grazing;
-      diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(opacity, 0.86, grazing);
+      diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(mix(opacity, 0.86, grazing), 1.0, smoothstep(900.0, 1600.0, pastEdgeM));
+      // Blend the last ocean cells into their continuous ground receiver. The
+      // finite carrier must never reveal its stair-stepped outer grid edge.
+      if (uOutlandOpeningCount > 0.5) diffuseColor.a *= 1.0 - smoothstep(${SEA_APRON_OUTER_RADIUS_M - 192}.0, ${SEA_APRON_OUTER_RADIUS_M}.0, length(vWaterWorld.xz));
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', `
       vec2 waveUV = vWaterWorld.xz * uWaterWaveScale;
@@ -473,15 +502,20 @@ export function createShallowWaterSurface(
         float mov0 = smoothstep(0.04, 0.35, spd);
         float calm = (1.0 - mov0) * (0.3 + 0.7 * proc);
         float mov = mov0 * proc;
-        // rounded hull footprint: 0 under the hull, metres outside it
-        vec2 q = vec2(abs(along) - hl, abs(across) - hw);
-        float hullDist = length(max(q, 0.0));
+        // Rounded, signed contact distance. A zero distance across the entire rectangular
+        // footprint made the old lapping/foam term draw a permanent luminous box.
+        float corner = min(0.65, hw * 0.45);
+        vec2 q = abs(vec2(along, across)) - vec2(hl, hw) + corner;
+        float hullDist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner;
+        float outside = max(hullDist, 0.0);
         vec2 radial = rel / max(length(rel), 1e-3);
-        // standing: short damped ripples lapping out from the skirt, and a thin contact line
-        float lap = sin(hullDist * 5.5 - uWaterTime * 3.4 + phase) * exp(-hullDist * 0.9);
-        wave += radial * lap * 0.9 * calm * str;
-        // a thin bright line where the water meets the skirt, never a whitened slab under the footprint
-        wakeFoam += exp(-hullDist * 3.0) * smoothstep(0.0, 0.3, hullDist) * 0.42 * str;
+        float lap = sin(outside * 5.5 - uWaterTime * 3.4 + phase) * exp(-outside * 0.9);
+        wave += radial * lap * 0.45 * calm * str * proc * smoothstep(-0.1, 0.25, hullDist);
+        // Small glints at the actual contact, torn by moving water. At rest there
+        // is no continuous white frame; the field's own slope carries displacement.
+        float contactBreak = smoothstep(0.42, 0.78, waveFine.x * 0.65 + waveNear.y * 0.35);
+        float contactBand = exp(-pow((hullDist - 0.12) * 3.2, 2.0)) * smoothstep(-0.15, 0.12, hullDist);
+        wakeFoam += contactBand * contactBreak * (0.015 + 0.10 * mov0) * str;
         // bow wave: a mound pushed ahead of the bow, its slope facing forward on the front face
         float bowCentre = hl + 0.6 + 1.3 * spd;
         float bowAcross = exp(-pow(across / (hw + 1.0), 2.0));
@@ -606,10 +640,11 @@ export function createShallowWaterSurface(
       #endif
       if (uWaterDebug > 0.5) { outgoingLight = uWaterDebug > 1.5 ? vec3(oceanDebug) : vec3(waterTurbidity); diffuseColor.a = 1.0; }
       #include <opaque_fragment>`);
+    if (outlandWater?.openings?.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWaterWorld');
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'shallow-water-v13'; // round 66: the FFT ocean (v12: the round-47 coast contour, v11: the reactive field)
+  material.customProgramCacheKey = () => `shallow-water-v18-${outlandWater?.openings?.length ? 'coast' : 'land'}`; // round 66: the FFT ocean (v12: the round-47 coast contour, v11: the reactive field)
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.userData.ocean = ocean; // round 66: probes read the field's maps and spectrum through the sheet

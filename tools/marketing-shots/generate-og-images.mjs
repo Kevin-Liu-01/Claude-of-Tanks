@@ -24,7 +24,7 @@ export const OG_IMAGE_CARDS = [
   ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/showcase-r1/118_foreground_verdant_meadow_duel.webp', '50% 50%'],
   ['docs-rendering', 'RENDERING & LIGHTING', 'public/media/showcase-r1/101_foreground_urban_street_duel.webp', '50% 48%'],
   ['docs-performance', 'PERFORMANCE ENGINEERING', 'public/media/showcase-r2/18_live_spectator.webp', '50% 46%'],
-  ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/media/showcase-r1/110_foreground_desert_wadi_gauntlet.webp', '50% 48%'],
+  ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/maps/fjord.webp', '50% 48%'],
   ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp', '50% 50%'],
   ['docs-multiplayer', 'MULTIPLAYER ARCHITECTURE', 'public/media/multiplayer-r1/dual-perspective.webp', '50% 50%'],
   ['docs-audio', 'AUDIO & BATTLEFIELD FX', 'public/media/showcase-r1/86_action_coastal_harbor_kill.webp', '50% 48%'],

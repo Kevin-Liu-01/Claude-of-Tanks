@@ -28,16 +28,27 @@ try {
  // terrain material, near band or far range, so the sea keeps one shader past the edge; land faces beyond the bands stay vista.
  {const coastal=buildHorizonRing(null,getMapConfig('coastal'),1337),cg=coastal.geometry,cold=cg.index.array.slice();
   const cBands=coastal.userData.horizonRing.ridgeRow,cNear=cBands*HORIZON_SEGMENTS*6,cuv=cg.attributes.uv;
-  const marine=(i)=>Math.min(cuv.getY(cold[i]),cuv.getY(cold[i+1]),cuv.getY(cold[i+2]))<-0.5;
+  const marine=(i)=>Math.min(cuv.getY(cold[i]),cuv.getY(cold[i+1]),cuv.getY(cold[i+2]))<-0.001;
   let farMarine=0;for(let i=cNear;i<cold.length;i+=3)if(marine(i))farMarine++;
   assert.ok(farMarine>0,'the aperture reaches past the near bands');
   bindAutumnHorizonGround(coastal,new MeshStandardMaterial(),[new Texture(),new Texture()],{columns:HORIZON_SEGMENTS,bands:cBands});
   assert.deepEqual(cg.groups.map(gr=>gr.materialIndex),[1,0]);
   assert.equal(cg.groups[0].count,cNear+farMarine*3,'terrain group = the near bands plus every far marine face');
   assert.equal(cg.groups[0].count+cg.groups[1].count,cold.length);
+  for(let i=0;i<cg.groups[0].count;i+=3){
+    const p=cg.attributes.position,a=cg.index.getX(i),b=cg.index.getX(i+1),c=cg.index.getX(i+2);
+    assert.ok((p.getZ(b)-p.getZ(a))*(p.getX(c)-p.getX(a))-(p.getX(b)-p.getX(a))*(p.getZ(c)-p.getZ(a))>0,'marine ground faces receive light from above');
+  }
   const vistaStart=cg.groups[1].start;
-  for(let i=vistaStart;i<cold.length;i+=3)assert.ok(Math.min(cuv.getY(cg.index.getX(i)),cuv.getY(cg.index.getX(i+1)),cuv.getY(cg.index.getX(i+2)))>=-0.5,'no marine face is left to the vista material');
+  for(let i=vistaStart;i<cold.length;i+=3)assert.ok(Math.min(cuv.getY(cg.index.getX(i)),cuv.getY(cg.index.getX(i+1)),cuv.getY(cg.index.getX(i+2)))>=-0.001,'no marine face is left to the vista material');
   disposeObject3DResources(coastal);}
+ {const coast=buildHorizonRing(null,getMapConfig('coastal'),1337),g=coast.geometry;
+  bindAutumnHorizonGround(coast,new MeshStandardMaterial(),[],{columns:HORIZON_SEGMENTS,bands:coast.userData.horizonRing.ridgeRow,continuousCoast:true});
+  assert.equal(g.groups[0].count,g.index.count,'the whole continued coast shares the ground shader');
+  assert.equal(g.groups[1].count,0,'no vista-material strip can cross the beach');
+  for(let i=0;i<g.index.count;i+=3){const p=g.attributes.position,a=g.index.getX(i),b=g.index.getX(i+1),c=g.index.getX(i+2);
+   assert.ok((p.getZ(b)-p.getZ(a))*(p.getX(c)-p.getX(a))-(p.getX(b)-p.getX(a))*(p.getZ(c)-p.getZ(a))>0,'every continued coast face winds upward');}
+  disposeObject3DResources(coast);}
  const steppe=buildHorizonRing(null,getMapConfig('steppe'),1337);assert.equal(steppe.geometry.groups.length,0);assert.ok(!Array.isArray(steppe.material));disposeObject3DResources(steppe);
 }finally{globalThis.document=previousDocument;}
 console.log('Autumn actual terrain material: exact geometric triangles/outer indices, upward winding, source identity, lifetime and other-map isolation PASS');

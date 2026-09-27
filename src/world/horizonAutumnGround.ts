@@ -13,7 +13,7 @@ export function bindAutumnHorizonGround(
   mesh: Mesh,
   material: MeshStandardMaterial,
   textures: Texture[],
-  { columns = 287, bands = 2 }: { columns?: number; bands?: number } = {},
+  { columns = 287, bands = 2, continuousCoast = false }: { columns?: number; bands?: number; continuousCoast?: boolean } = {},
 ): void {
   const retained = RETAINED.get(mesh), geometry = mesh.geometry, index = geometry.index;
   if (!retained || !index || Array.isArray(mesh.material) || geometry.groups.length)
@@ -27,16 +27,22 @@ export function bindAutumnHorizonGround(
   // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): every ring face
   // inside a sea aperture — near band or far range — renders with the terrain material, which paints it as the
   // square's own open water (terrain.ts outlandSeaWeight), so the sea keeps one shader from the battlefield to the
-  // horizon. Near-band land faces keep their winding reversal; marine faces keep the winding they were built with
-  // (both materials are double-sided). The marine mask is the ring's UV V channel (V < 0).
-  const uv = geometry.attributes.uv, faces = index;
-  const marineFace = (i: number): boolean => !!uv
-    && Math.min(uv.getY(faces.getX(i)), uv.getY(faces.getX(i + 1)), uv.getY(faces.getX(i + 2))) < -0.5;
+  // horizon. Shore shelves and the 32 m strand belong to that same material: switching at 50% wetness
+  // cut a long triangular strip through the beach. All terrain faces face upward so the shared lit material
+  // receives the sun on the same side as the interior ground. UV V < 0 carries marine coverage.
+  const uv = geometry.attributes.uv, shore = geometry.attributes.shore, faces = index;
+  const marineFace = (i: number): boolean => {
+    for (let j = 0; j < 3; j++) {
+      const vertex = faces.getX(i + j);
+      if ((uv && uv.getY(vertex) < -0.001) || (shore && shore.getX(vertex) > 0)) return true;
+    }
+    return false;
+  };
   const terrainFaces: number[] = [], vistaFaces: number[] = [];
   for (let i = 0; i < faces.count; i += 3) {
     const a = faces.getX(i), b = faces.getX(i + 1), c = faces.getX(i + 2);
-    if (i < nearCount) terrainFaces.push(a, c, b); // reverse the old downward-facing skirt winding
-    else if (marineFace(i)) terrainFaces.push(a, b, c);
+    if (continuousCoast || i < nearCount) terrainFaces.push(a, c, b); // reverse the old downward-facing skirt winding
+    else if (marineFace(i)) terrainFaces.push(a, c, b);
     else vistaFaces.push(a, b, c);
   }
   const reordered = new (faces.array.constructor as new (n: number) => typeof faces.array)(faces.count);

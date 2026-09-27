@@ -183,7 +183,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.worlds.label'),
     title: t('docs.topic.worlds.title'),
     lede: t('docs.topic.worlds.lede'),
-    hero: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
+    hero: '/maps/fjord.webp',
     icon: 'worlds',
     sectionIcons: ['battlefields', 'navigation', 'construction', 'damage', 'quality'],
     sections: [
@@ -194,8 +194,8 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.worlds.s5.t'), t('docs.topic.worlds.s5.p1'), t('docs.topic.worlds.s5.p2')],
     ],
     media: [
-      ['/media/presentation-r1/24_autumn_orchard_stand.webp', t('docs.topic.worlds.media1')],
-      ['/media/showcase-r1/116_foreground_coastal_harbor_kill.webp', t('docs.topic.worlds.media2')],
+      ['/maps/autumn.webp', t('docs.topic.worlds.media1')],
+      ['/maps/coastal.webp', t('docs.topic.worlds.media2')],
     ],
   },
   multiplayer: {
@@ -214,7 +214,7 @@ export const topics: Record<string, TopicDefinition> = {
     ],
     media: [
       ['/media/presentation-r1/ui_spectator_switcher.webp', t('docs.topic.multiplayer.media1')],
-      ['/media/presentation-r1/ui_roster.webp', t('docs.topic.multiplayer.media2')],
+      ['/media/home/ui_roster.webp', t('docs.topic.multiplayer.media2')],
     ],
   },
   interface: {
@@ -283,8 +283,8 @@ function renderTopicPage(): void {
   const root = document.querySelector<HTMLElement>('#topicRoot');
   if (!root) throw new Error('technical manual topic root is unavailable');
   const heroAlt = t('docs.topic.heroAlt', { label: topic.label });
-  const heroMarkup = topic.hero.endsWith('.webm')
-    ? `<video autoplay muted loop playsinline preload="metadata" poster="${topic.hero.replace(/\.webm$/, '.jpg')}" aria-label="${heroAlt}"><source src="${topic.hero}" type="video/webm"></video>`
+  const heroMarkup = /\.(webm|mp4)$/.test(topic.hero)
+    ? `<video autoplay muted loop playsinline preload="metadata" poster="${topic.hero.replace(/\.(webm|mp4)$/, '.jpg')}" aria-label="${heroAlt}"><source src="${topic.hero}" type="${topic.hero.endsWith('.mp4') ? 'video/mp4' : 'video/webm'}"></video>`
     : `<img src="${topic.hero}" alt="${heroAlt}">`;
   const sectionMap = topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"><span data-doc-icon="${topic.sectionIcons[index] || topic.icon}"></span><b>${String(index + 1).padStart(2, '0')}</b><strong>${title}</strong></a>`).join('');
   root.innerHTML = `

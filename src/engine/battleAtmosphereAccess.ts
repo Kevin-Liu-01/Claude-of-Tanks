@@ -1,3 +1,4 @@
+import { BATTLE_TIMES, type BattleTimeOfDay } from './battleWeatherPolicy.ts';
 import { createLazyRuntimeOwner } from '../app/lazyRuntimeOwner.ts';
 import type { BattleAtmosphereRuntime, BattleAtmosphereRuntimeOptions } from './battleAtmosphereRuntime.ts';
 
@@ -14,11 +15,11 @@ export function createBattleAtmosphereAccess(
   let generation = 0;
   return {
     get current(): BattleAtmosphereRuntime | null { return owner.current; },
-    async prepare(seed: number | undefined, mapId: string, allowNight = true): Promise<void> {
+    async prepare(seed: number | undefined, mapId: string, times: readonly BattleTimeOfDay[] | boolean = BATTLE_TIMES): Promise<void> {
       const requested = ++generation;
       const runtime = await owner.preload();
       if (requested !== generation) return;
-      runtime.prepare(seed, mapId, allowNight);
+      runtime.prepare(seed, mapId, times);
     },
     reset(): void { generation++; owner.current?.reset(); },
   };

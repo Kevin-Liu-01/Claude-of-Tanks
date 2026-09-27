@@ -222,7 +222,7 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
 <table>
 <tr>
 <td width="50%"><img src="public/media/showcase-r2/19_live_sniper.webp" alt="Current Leclerc XLR precision sight rendered through the production post-processing path"><br><sub><b>Presentation:</b> high-resolution scope, stable shadowing, post AA, bounded depth copies, and readable combat overlays.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_battlefield_foundry.webp" alt="Ironworks battlefield overview rendered by the current game"><br><sub><b>World rendering:</b> authored layouts and detailed environments use adaptive quality, instancing, culling, and streaming.</sub></td>
+<td width="50%"><img src="public/maps/foundry.webp" alt="Ironworks battlefield overview rendered by the current game"><br><sub><b>World rendering:</b> authored layouts and detailed environments use adaptive quality, instancing, culling, and streaming.</sub></td>
 </tr>
 </table>
 

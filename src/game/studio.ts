@@ -1,5 +1,9 @@
+import { t } from '../ui/i18n.ts';
+import { tankContactRect } from '../sim/tankContactShape.ts';
+import type { WaterDisturbance } from '../world/shallowWater.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
+import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
@@ -154,6 +158,7 @@ interface StudioContext {
   getWorld(): WorldRuntime | null;
   ensureWorld(mapId: string, onProgress?: ProgressListener): Promise<WorldRuntime>;
   setWorldDormant(dormant: boolean): void;
+  prepareStudioAtmosphere?(time: BattleTimeOfDay): Promise<void>;
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
   enterGarage(): Promise<void> | void;
@@ -368,6 +373,7 @@ interface RecordingSession {
 
 interface StudioSceneInput {
   map?: string;
+  timeOfDay?: BattleTimeOfDay;
   seed?: number;
   actors?: readonly StudioActorInput[];
   effects?: readonly StudioEffectInput[];
@@ -483,11 +489,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let entering: Promise<void> | null = null; // in-flight enter() promise (shared latch)
   let loading = false;         // load() in flight (blocks re-entrant loads)
   let mapChange: Promise<string> | null = null; // serialized map switch
+  let timeOfDay: BattleTimeOfDay = 'day';
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
   let uidSeq = 1;
   let effectUidSeq = 1;
   const actors: StudioActor[] = []; // see addActor()
+  const waterSlots: { -readonly [K in keyof WaterDisturbance]: WaterDisturbance[K] }[] = Array.from({ length: 8 }, () => ({ x: 0, z: 0, strength: 0 }));
+  const waterSources: WaterDisturbance[] = [];
   const actorRoots: THREE.Object3D[] = []; // raycast roots, maintained with actors
   const actorByRoot = new WeakMap<THREE.Object3D, StudioActor>();
   const pickHits: THREE.Intersection[] = []; // Raycaster optionalTarget scratch
@@ -1873,12 +1882,35 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * the way, then hold. Used by load() and the panel's STEP buttons.
    * @param {number} ms milliseconds of fx time
    */
+  function advanceWater(dt: number): void {
+    const world = getWorld();
+    if (!world) return;
+    waterSources.length = 0;
+    for (const actor of actors) {
+      if (waterSources.length === waterSlots.length) break;
+      const st = actor.state;
+      const wet = world.heightField.getWaterMaskAt(st.pos.x, st.pos.z);
+      if (wet <= .05) continue;
+      const slot = waterSlots[waterSources.length];
+      const rect = tankContactRect(actor.spec);
+      const speed = st.speed ?? 0, travel = speed < -.05 ? -1 : 1;
+      slot.x = st.pos.x; slot.z = st.pos.z;
+      slot.dirX = Math.sin(st.yaw) * travel; slot.dirZ = Math.cos(st.yaw) * travel;
+      slot.speed = Math.abs(speed); slot.strength = Math.min(1, wet * (.6 + Math.abs(speed) / 6));
+      slot.halfLength = rect.halfLength; slot.halfWidth = rect.halfWidth;
+      waterSources.push(slot);
+    }
+    world.setWaterDisturbances(waterSources);
+    world.advanceWater(dt, actors[0]?.state.pos.x ?? camera.position.x, actors[0]?.state.pos.z ?? camera.position.z);
+  }
+
   function advanceFx(ms: number): void {
     let remainingS = Math.max(0, ms / 1000);
     while (remainingS > 1e-7) {
       const dt = Math.min(FX_STEP_S, remainingS);
       applyStoryboardActors(clockMs + dt * 1000, dt);
       stepFx(dt);
+      advanceWater(dt);
       for (const a of actors) a.visual.syncFromState(a.state, dt);
       remainingS -= dt;
     }
@@ -1895,7 +1927,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     clockMs = 0;
     activeEffectIds.clear();
     const w = getWorld();
-    if (w) w.setWindTime(0.35);
+    if (w) { w.resetWater(); w.setWindTime(0.35); }
   }
 
   function restoreAuthoredActor(a: StudioActor): void {
@@ -1985,6 +2017,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     advanceFx(Math.max(0, target - clockMs));
     clockMs = target;
+    getWorld()?.setWindTime(0.35 + clockMs / 1000);
     applyStoryboardFrame(target, 0);
     if (clockMs >= storyboard.durationMs) timeScale = 0;
     return Math.round(clockMs);
@@ -2605,13 +2638,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     let H = Math.round(opts.height || W / aspect);
     H = Math.max(180, Math.min(maxTex, H));
     let dataURL = '';
+    const savedRail = rail.group.visible, savedMarker = marker.group.visible;
     try {
+      rail.group.visible = false; marker.group.visible = false;
       renderer.setPixelRatio(1);
       renderer.setSize(W, H, false);
       camera.aspect = W / H;
       camera.updateProjectionMatrix();
       post.setSize(W, H);
       lighting.updateFrustums();
+      camera.updateMatrixWorld(true);
       lighting.update(true); // every cascade fresh — deterministic capture
       stepFx(0);             // rebuild tracer ribbons/lights for this camera
       post.render(0);
@@ -2624,6 +2660,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       post.setSize(prevW, prevH);
       lighting.updateFrustums();
       lighting.update(true);
+      rail.group.visible = savedRail; marker.group.visible = savedMarker;
       post.render(0); // repaint the live view immediately (no stale stretch)
     }
     if (opts.download) {
@@ -2823,6 +2860,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const w = getWorld();
     return {
       map: w ? w.mapId : 'verdant',
+      timeOfDay,
       seed: sceneMeta.seed || 5000,
       actors: actors.map((a) => ({
         id: a.specId,
@@ -2930,12 +2968,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     json: StudioSceneInput = {},
     _opts: Readonly<Record<string, RuntimeValue>> = {},
   ): Promise<ReturnType<typeof stateJson>> {
+    if (json.timeOfDay !== undefined && !BATTLE_TIMES.includes(json.timeOfDay)) throw new RangeError('Unknown time of day');
     if (recording) throw new Error('Stop recording before loading a scene');
     if (loading) throw new Error('studio.load already in flight');
     loading = true;
     try {
       const yieldForFrameBudget = createFrameBudgetYielder(10);
       await ensureLoadMap(json);
+      await setTimeOfDay(json.timeOfDay ?? 'day');
       await replaceLoadActors(json, yieldForFrameBudget);
       storyboard = loadedStoryboard(json);
       bindStoryboardTracks();
@@ -2956,6 +2996,21 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
   }
 
+  async function setTimeOfDay(time: BattleTimeOfDay): Promise<BattleTimeOfDay> {
+    if (!BATTLE_TIMES.includes(time)) throw new RangeError('Unknown time of day');
+    if (recording) throw new Error('Stop recording before changing the light');
+    if (time === timeOfDay) return time;
+    await transition.run(async () => {
+      await ctx.prepareStudioAtmosphere?.(time);
+      timeOfDay = time;
+      lighting.updateFrustums();
+      lighting.update(true);
+      panel.refreshMap();
+      invalidate();
+    }, { title: t('studio.settingLight') });
+    return time;
+  }
+
   async function setMap(mapId: string): Promise<string> {
     const id = resolveMapId(mapId, () => 0.01);
     const current = getWorld();
@@ -2973,6 +3028,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         progress(0.03 + f * 0.86, label);
       });
       setWorldDormant(false);
+      await ctx.prepareStudioAtmosphere?.(timeOfDay);
       setCamoBiome(id);
       // Only Studio actors can be seen. Repainting every cached garage/battle
       // texture on a biome change turned a map pick into seconds of unrelated
@@ -3082,6 +3138,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       ]);
       mark('worldAndFx');
       setWorldDormant(false);
+      await ctx.prepareStudioAtmosphere?.(timeOfDay);
       // Cold /studio and first-use F8 have no battlefield preset until the
       // awaited acquisition has activated its world. Never borrow the Garage
       // (or previous map's) sun while the requested map is still loading.
@@ -3218,7 +3275,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       return;
     }
     const w = getWorld();
-    const wdt = animating ? dt : 0;
+    const wdt = 0; // Water uses the fixed Studio timeline; camera/LOD maintenance stays render-driven.
     camera.getWorldDirection(_fwd);
     if (w) w.update(wdt, camera.position, _fwd, null);
     if (animating) {
@@ -3343,6 +3400,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // session control
     enter: (opts: EnterOptions = {}) => enter(opts),
     exit,
+    /** Offline export: monotonic fixed steps, no wall clock or MediaRecorder frame drops. */
+    advanceFrame(ms: number) {
+      if (recording || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
+      timeScale = 0;
+      advanceTimeline(ms);
+      getWorld()?.setWindTime(0.35 + clockMs / 1000);
+      camera.updateMatrixWorld(true);
+      lighting.updateFrustums(); lighting.update(true);
+      return clockMs;
+    },
+    get timeOfDay() { return timeOfDay; },
+    setTimeOfDay,
     setMap: (id: string) => recording
       ? Promise.reject(new Error('Stop recording before changing battlefield'))
       : setMap(id),

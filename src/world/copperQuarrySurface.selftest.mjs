@@ -127,10 +127,12 @@ function assertCurrentPolders(ring, index) {
 // Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
 // Keep the same historical Polders/Titan inputs and already-capped Skybridge.
 // (round 72: re-pinned with the relieved geometry, see above)
+// 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
+// preserves all original inland positions at the same three seeds.
 const previous = [
-  '08ee0f503b98ca159158640b185b4c9d4c2be066e06682d844cd2b0e215aaf0a' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */,
-  '57e02864f1f3faa947d35f9371f91c27fd888b119b83284cb34b4451d711a163' /* 2026-09-19 vista pass */,
-  'ccd1ec5d71a234127b792fa97e35499907d42b356e3d57554f508f0b96fc9b80',
+  'd27a2a9e47adf5a88ef8e02d80ad82f6a1684d8ac6cfe57338191c4f049113a5',
+  'a5b320eefeae0911aeb64ae4ff3508660c8dbe7df818b9c3f7ff9f9f0a41b41c',
+  'ee2cda0b99a3d683edf0693b945b80c7c182f2757ac10e39371e8c8f6af41832',
 ];
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');

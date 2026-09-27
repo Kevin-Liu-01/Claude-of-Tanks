@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { isMapId, type MapId } from '../world/maps/catalog.ts';
 import type { MapSkyConfig } from '../world/maps/horizon.ts';
-import { selectBattleWeather, type BattleWeather, type BattleWeatherBiome } from './battleWeatherPolicy.ts';
+import { selectBattleWeather, type BattleWeather, type BattleWeatherBiome, type BattleTimeOfDay, BATTLE_TIMES } from './battleWeatherPolicy.ts';
 import { setVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
 
 export const BATTLE_WEATHER_BIOMES = Object.freeze({
@@ -26,7 +26,7 @@ export interface BattleAtmosphereRuntimeOptions {
 
 export interface BattleAtmosphereRuntime {
   readonly weather: BattleWeather | null;
-  prepare(seed: number | undefined, mapId: string, allowNight?: boolean): void;
+  prepare(seed: number | undefined, mapId: string, times?: readonly BattleTimeOfDay[] | boolean): void;
   reset(): void;
   dispose(): void;
 }
@@ -34,6 +34,13 @@ export interface BattleAtmosphereRuntime {
 function weatherPreset(authored: MapSkyConfig, weather: BattleWeather | null): MapSkyConfig {
   const preset = { ...authored };
   if (!weather) return preset;
+  if (weather.timeOfDay === 'sunset') {
+    Object.assign(preset, {
+      sunElevationDeg: 7, skyIntensity: .72, sunIntensity: 2.8,
+      sunColorHex: 0xffbf80, hemiIntensity: .58, fillIntensity: .38, envIntensity: .8,
+      cloudTintHex: 0xeab492, fogTintHex: 0xba8c83, fogMix: .38,
+    });
+  }
   if (weather.timeOfDay === 'night') {
     Object.assign(preset, {
       // Moonlit, not pitch black: preserve plate/ground readability away from
@@ -99,14 +106,15 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
     horizonColors.clear();
   }
 
-  function prepare(seed: number | undefined, mapId: string, allowNight = true): void {
+  function prepare(seed: number | undefined, mapId: string, times: readonly BattleTimeOfDay[] | boolean = BATTLE_TIMES): void {
     if (disposed) throw new Error('Battle atmosphere is disposed');
     if (!isMapId(mapId)) throw new RangeError('Battle weather requires a catalog map id');
     const mars = options.getGameMode?.() === 'mars' || mapId === 'mars';
-    const selected = seed === undefined ? null : selectBattleWeather(seed, BATTLE_WEATHER_BIOMES[mapId]);
+    const selected = seed === undefined ? null : selectBattleWeather(seed, BATTLE_WEATHER_BIOMES[mapId],
+      typeof times === 'boolean' ? (times ? BATTLE_TIMES : ['day']) : times);
     // Space has an authored cold daylight key under the galaxy dome; terrestrial
     // random night must not dim it or enable a second, conflicting lighting plan.
-    const next = (mars || !allowNight) && selected ? { ...selected, timeOfDay: 'day' as const } : selected;
+    const next = mars && selected ? { ...selected, timeOfDay: 'day' as const } : selected;
     const root = options.getWorldRoot?.() ?? null;
     if (preparedMap === mapId && preparedSeed === next?.seed && preparedRoot === root && preparedMars === mars
       && currentWeather?.timeOfDay === next?.timeOfDay) {

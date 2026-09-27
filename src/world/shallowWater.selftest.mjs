@@ -144,7 +144,7 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
   routed.mesh.material.dispose();
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
   // round 66 (2026-09-24): the call gained the FFT ocean as its last argument (was `: null);`)
-  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples,\s*\/\/[^\n]*\n\s*seaOpenings\.length \? \{ \.\.\.materialStep\.value\.outlandWater, sectorBlend: seaOpeningsSectorBlend \} : null,\s*ocean\);/,
+  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples,\s*\/\/[^\n]*\n\s*seaOpenings\.length \? \{ \.\.\.materialStep\.value\.outlandWater, sectorBlend: seaOpeningsSectorBlend, openings: seaOpenings \} : null,\s*ocean\);/,
     'the terrain builder routes the sheet through the engine hook and hands it the reactive field and the ocean');
   assert.match(terrain, /const ripples = createWaterRippleField\(engineCtx\.renderer, \{/,
     'water pass 8: the field is built from the engine renderer inside the sea/lake block (null in receipts)');
@@ -160,10 +160,10 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
     'the procedural bow foam bar is off inside the window too (it was the last thing that followed the hull)');
   assert.match(probe.fragmentShader, /wave\.x \* uWaterWaveStrength - rippleGrad\.x \* 1\.6/, 'the field slope tilts the normal');
   assert.match(probe.fragmentShader, /rippleGrad \*= \(min\(gl, 0\.45\) \/ max\(gl, 1e-4\)\) \* rippleW;/, 'the slope is capped at a breaking face');
-  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v13', 'the program key moved with the fragment (v13: round 66, the FFT ocean)');
+  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v18-land', 'the program key moved with the fragment (v13: round 66, the FFT ocean)');
   // round 47: without a baked bay contour the apron keeps the round-40 ramp; with one, the coast fades past the edge
   assert.equal(probe.uniforms.uOutlandWaterSize.value, 0, 'no contour: size 0 keeps the round-40 ramp');
-  assert.match(probe.fragmentShader, /if \(uOutlandWaterSize > 0\.5 && pastEdgeM > 0\.0\) \{[^}]*float coast = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r\);\s*wet = max\(coast, smoothstep\(uOutlandSeaBlend\.x, uOutlandSeaBlend\.y, pastEdgeM\)\);/,
+  assert.match(probe.fragmentShader, /if \(uOutlandWaterSize > 0\.5 && pastEdgeM > 0\.0\) \{[^}]*float coast = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r\);\s*wet = max\(coast, smoothstep\(uWaterRamp\.x, uWaterRamp\.y, outlandSectorWet\(vWaterWorld\.xz, pastEdgeM\)\)\);/,
     'past the edge the wetness is the bay contour, blended to open sea over the bay reach');
   assert.match(probe.fragmentShader, /float coast = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, texture2D\(uOutlandWater,/, 'the apron ramps the contour like the square ramps its mask (no translucent band up the bank)');
 }
@@ -176,7 +176,7 @@ water.mesh.material.onBeforeCompile(shader);
 assert.equal(shader.uniforms.uWaterMask.value, mask);
 assert.equal(shader.uniforms.uWaterWave.value, waves, 'shares already-owned terrain textures');
 assert.match(shader.fragmentShader, /if \(wet < 0\.015\) discard/);
-assert.match(shader.fragmentShader, /smoothstep\(0\.0, 0\.55, wet\) \* mix\(opacity, 0\.86, grazing\)/,
+assert.match(shader.fragmentShader, /smoothstep\(0\.0, 0\.55, wet\) \* mix\(mix\(opacity, 0\.86, grazing\), 1\.0, smoothstep\(900\.0, 1600\.0, pastEdgeM\)\)/,
   'shallows reach full body quickly instead of showing bright sand through a pale cyan film');
 // Water pass 4 (2026-09-13): the glint keeps most of its energy (F90 0.9, clamp
 // 1.15) and the sky reflection is weighted by the water's own grazing term —
@@ -222,13 +222,13 @@ assert.match(shader.fragmentShader, /if \(i >= uWaterWakeCount\) break;/, 'only 
 assert.match(shader.fragmentShader, /if \(dot\(rel, rel\) > reach \* reach\) continue;/, 'a fragment beyond a slot\'s reach skips that slot');
 assert.doesNotMatch(shader.fragmentShader, /uWaterRipples|sin\(d \* 4\.2 - uWaterTime \* 6\.5/, 'the pass-6 concentric rings are gone');
 assert.match(shader.fragmentShader, /float along = dot\(rel, fwd\);\n\s*float across = dot\(rel, side\);/, 'the wake is built in the hull frame');
-assert.match(shader.fragmentShader, /wave \+= radial \* lap \* 0\.9 \* calm \* str;/, 'a standing hull only laps the water at its skirt');
+assert.match(shader.fragmentShader, /wave \+= radial \* lap \* 0\.45 \* calm \* str \* proc \* smoothstep/, 'a standing hull only laps the water at its skirt');
 assert.match(shader.fragmentShader, /float bowCentre = hl \+ 0\.6 \+ 1\.3 \* spd;/, 'the bow mound runs ahead of the bow with speed');
 assert.match(shader.fragmentShader, /float armLine = hw \+ behindBow \* 0\.42;/, 'two arms diverge from the bow corners at about 23 degrees');
 assert.match(shader.fragmentShader, /sin\(behindStern \* \(1\.25 \/ \(0\.4 \+ spd\)\) \+ uWaterTime \* 0\.8\)/, 'transverse waves lengthen with speed');
 assert.match(shader.fragmentShader, /float trailLen = hl \+ 4\.0 \+ spd \* 22\.0;/, 'the wash lane fades over a speed-scaled trail');
 assert.match(shader.fragmentShader, /wave \+= \(waveFine\.xy \* 2\.0 - 1\.0\) \* wash \* 1\.2;/, 'the wash lane churns the existing fine layer instead of a new fetch');
-assert.match(shader.fragmentShader, /exp\(-hullDist \* 3\.0\) \* smoothstep\(0\.0, 0\.3, hullDist\)/, 'the skirt line is a fringe outside the footprint, never a slab under it');
+assert.match(shader.fragmentShader, /contactBand \* contactBreak \* \(0\.015 \+ 0\.10 \* mov0\)/, 'broken speed-dependent contact foam replaces the constant rectangular outline');
 assert.match(shader.fragmentShader, /clamp\(wakeWash, 0\.0, 1\.0\) \* 0\.35 \* waterDeep/, 'the wash lane stirs bed sediment into the body colour');
 assert.match(shader.fragmentShader, /clamp\(wakeFoam, 0\.0, 0\.85\) \* 0\.85/, 'churn whitens the surface');
 assert.equal(shader.uniforms.uWaterWakeCount.value, 0, 'no vehicles published: no slots evaluated');

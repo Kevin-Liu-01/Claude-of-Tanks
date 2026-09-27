@@ -12,11 +12,15 @@ function unique(source, pattern, label) {
 
 function compileConsumer(source) {
   const code = active(source);
-  unique(code, /vec2\s+mUV\s*=\s*\(wp\.xz\s*\+\s*512\.0\)\s*\*\s*\(1\.0\s*\/\s*1024\.0\)\s*;/g, 'canonical world mask coordinates');
+  unique(code, /vec2\s+mUV\s*=\s*wp\.xz\s*\/\s*uMaskSize\s*\+\s*0\.5\s*;/g, 'world mask coordinates include the extended coastal atlas');
+  const size = unique(code, /shader\.uniforms\.uMaskSize\s*=\s*\{\s*value:\s*([^}]+)\}/g, 'mask atlas extent')[1];
   unique(code, /vec4\s+mk\s*=\s*texture2D\(uMask,\s*mUV\)\s*;/g, 'RGBA mask sampler');
   const binding = unique(code, /shader\.uniforms\.uMask\s*=\s*\{\s*value:\s*([^}]+)\}/g, 'mask uniform')[1];
   const mask = {}, noiseTex = {};
-  assert.equal(new Function('mask', 'noiseTex', `return ${binding};`)(mask, noiseTex), mask);
+  assert.equal(new Function('groundMask', 'noiseTex', `return ${binding};`)(mask, noiseTex), mask);
+  const atlasSize = new Function('groundMask','mask','MAP_SIZE','OUTLAND_WATER_MASK_SIZE_M',`return ${size};`);
+  assert.equal(atlasSize(mask,mask,1024,3072),1024,'inland mask retains its extent');
+  assert.equal(atlasSize({},mask,1024,3072),3072,'coastal mask includes the extended shore');
   const expression = unique(code, /float\s+fD\s*=\s*([^;]+);/g, 'worked-soil coverage')[1];
   // map pass 2026-09-12: the shoulder term carries an authored scale (uShoulderDirt, default 1).
   const coverage = new Function('mk', 'uTownWear', 'n1', 'worn', 'shoulder', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max', `return ${expression};`);
@@ -51,7 +55,8 @@ export function assertTerrainMaskShaderContract(source) {
   for (const [from, to] of [
     ['mk.a * uTownWear', 'mk.g * uTownWear'],
     ['mk.a * uTownWear', '0.0 * uTownWear'],
-    ['shader.uniforms.uMask = { value: mask }', 'shader.uniforms.uMask = { value: noiseTex }'],
+    ['shader.uniforms.uMask = { value: groundMask }', 'shader.uniforms.uMask = { value: noiseTex }'],
+    ['groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M', 'MAP_SIZE'],
     ['vec4 mk = texture2D(uMask, mUV);', 'vec4 mk = texture2D(uNoise, mUV);'],
     ['n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);', 'n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), 0.0);'],
   ]) {

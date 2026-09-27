@@ -1,0 +1,116 @@
+import { resolveSeaOpenings, seaSectorWeightAt, seaSectorBlend, SEA_APRON_OUTER_RADIUS_M } from '../../src/world/edgeWater.ts';
+
+/** Capture plans use the live authored world. Saved absolute cameras are the review/reproduction contract. */
+export function mapScene(world, timeOfDay = 'day') {
+  const { pos, look } = world.config.shot;
+  const seat = ([x, y, z]) => [x, world.heightField.getHeightAt(x, z) + y, z];
+  return { map: world.mapId, timeOfDay, seed: 5000, actors: [], effects: [], fxTime: 2000, timeScale: 0,
+    camera: { pos: seat([pos[0],pos[1]+24,pos[2]]), lookAt: seat(look), fov: 55 } };
+}
+
+/** Read the rendered ring, whose distant ridges differ from the playable height field. */
+function surveyHeight(world) {
+  const hf = world.heightField, half = hf.size / 2;
+  let ring;
+  world.group?.traverse(object => { if (object.userData.horizonRing) ring = object; });
+  const p = ring?.geometry.attributes.position, columns = ring?.userData.horizonRing.columns;
+  const rows = p ? p.count / (columns + 1) : 0;
+  return (x, z) => {
+    if (Math.max(Math.abs(x), Math.abs(z)) <= half) return hf.getHeightAt(x,z);
+    if (p) {
+      const sector = ((Math.atan2(z,x) / (2*Math.PI) + 1) % 1) * columns;
+      const column = Math.floor(sector), mix = sector - column, radius = Math.hypot(x,z);
+      const value = (row, height) => {
+        const a = row * (columns+1) + column, b = a + 1;
+        const va = height ? p.getY(a) : Math.hypot(p.getX(a),p.getZ(a));
+        const vb = height ? p.getY(b) : Math.hypot(p.getX(b),p.getZ(b));
+        return va + (vb-va)*mix;
+      };
+      if (radius >= value(0,false) && radius <= value(rows-1,false)) {
+        let lo=0, hi=rows-1;
+        while(hi-lo>1) {const mid=(lo+hi)>>1;if(value(mid,false)<radius)lo=mid;else hi=mid;}
+        const t=(radius-value(lo,false))/(value(hi,false)-value(lo,false));
+        return value(lo,true)+(value(hi,true)-value(lo,true))*t;
+      }
+    }
+    return hf.getOutlandHeightAt?.(x,z) ?? hf.getHeightAt(Math.max(-half,Math.min(half,x)),Math.max(-half,Math.min(half,z)));
+  };
+}
+
+/** Cover every sampled waterline, including the continued contours beyond the battle boundary.
+ * The receipt distinguishes sample coverage from visual acceptance; it never calls a screenshot a pass. */
+export function shorelineSurvey(world, { gridM = 8, radiusM = 68 } = {}) {
+  const hf = world.heightField, half = hf.size / 2;
+  let extent = half;
+  if (!world.config.splat?.seaLake || hf._layout?.terrain.frozenMarshes) return {gridM,radiusM,extentM:extent,samples:0,maxUncoveredM:0,views:[]};
+  const openings = world.config.splat?.seaLake ? resolveSeaOpenings(world.config.horizon?.seaOpening, hf, world.mapId) : [];
+  if (openings.length) extent = SEA_APRON_OUTER_RADIUS_M - 48;
+  const ramp = world.config.splat?.seaRamp ?? [.4,.78];
+  const smooth = (a,b,x) => { const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t); };
+  const outside = (x, z) => Math.max(Math.abs(x), Math.abs(z)) > half;
+  const wet = (x, z) => {
+    if (!outside(x,z)) return hf.getWaterMaskAt(x,z);
+    if (!openings.length) return 0;
+    let value=smooth(...ramp,hf.getOutlandWaterAt?.(x,z)?.wetness??0);
+    const distance=Math.max(Math.abs(x),Math.abs(z))-half;
+    for(const opening of openings) value=Math.max(value,smooth(...ramp,seaSectorWeightAt(x,z,opening,half)*smooth(...seaSectorBlend(opening.coastReachM),distance)));
+    return value;
+  };
+  const height = surveyHeight(world);
+  const points = [];
+  for (let z = -extent; z <= extent; z += gridM) for (let x = -extent; x <= extent; x += gridM) {
+    if (Math.hypot(x,z) > extent-gridM) continue;
+    const w = wet(x,z) - .2;
+    for (const [dx,dz] of [[gridM,0],[0,gridM]]) {
+      const next = wet(x+dx,z+dz) - .2;
+      if ((w >= 0) === (next >= 0)) continue;
+      // Exclude false contour at the map border where outland water is not authored.
+      if (outside(x,z) !== outside(x+dx,z+dz) && !hf.getOutlandWaterAt?.(x+dx,z+dz)) continue;
+      const t = w/(w-next);
+      points.push([x+dx*t,z+dz*t]);
+    }
+  }
+  const views = [];
+  for (const [x,z] of points) {
+    if (views.some(view => Math.hypot(view.target[0]-x, view.target[2]-z) <= radiusM)) continue;
+    let nx = wet(x-4,z)-wet(x+4,z), nz = wet(x,z-4)-wet(x,z+4);
+    const n = Math.hypot(nx,nz);
+    if (n > .001) { nx /= n; nz /= n; } else { nx = .707; nz = .707; }
+    const y = height(x,z), cx = x + nx*70, cz = z + nz*70;
+    // A raised bank camera shows a ~170 m patch and its approach; sampled 68 m discs overlap.
+    let cy = Math.max(y+64,height(cx,cz)+38);
+    for (let k=1;k<10;k++) {
+      const t=k/10, h=height(cx+(x-cx)*t,cz+(z-cz)*t);
+      cy=Math.max(cy,(h+8-y*t)/(1-t));
+    }
+    views.push({id:`shore-${String(views.length+1).padStart(3,'0')}`,kind:outside(x,z)?'extension':'shore',
+      camera:{pos:[cx,cy,cz],lookAt:[x,y+.4,z],fov:72},target:[x,y,z]});
+  }
+  const maxUncoveredM = points.reduce((max,[x,z]) => Math.max(max,
+    Math.min(...views.map(view=>Math.hypot(view.target[0]-x,view.target[2]-z)))),0);
+  // Wide views cover the final sea apron and its handoff to the distant haze.
+  for(const [index,opening] of openings.entries()) {
+    const a=(90-opening.azimuthDeg)*Math.PI/180,dx=Math.cos(a),dz=Math.sin(a);
+    const edge=half/Math.max(Math.abs(dx),Math.abs(dz));
+    const x=dx*(edge-60),z=dz*(edge-60),y=height(x,z)+160;
+    views.push({id:`mouth-${index+1}`,kind:'sea-mouth',camera:{pos:[x,y,z],lookAt:[dx*1050,opening.level,dz*1050],fov:85},target:[dx*1050,opening.level,dz*1050]});
+  }
+  return {gridM,radiusM,extentM:extent,samples:points.length,maxUncoveredM,views};
+}
+
+export function waterScene(timeOfDay = 'sunset') {
+  return {map:'reservoir',timeOfDay,seed:5000,actors:[{id:'t90m_x',name:'lead',pos:[92,-26],facingDeg:90}],
+    effects:[],fxTime:0,timeScale:0,storyboard:{durationMs:6000,
+      shots:[{id:'start',tMs:0,pos:[103,-.5,-13],lookAt:[92,-5.8,-26],fov:48,transition:'linear'},
+        {id:'end',tMs:6000,pos:[139,0,-13],lookAt:[128,-5.8,-26],fov:45}],
+      actorTracks:[{actor:'lead',keys:[{id:'a',tMs:0,pos:[92,-26],facingDeg:90,transition:'drive'},
+        {id:'b',tMs:6000,pos:[128,-26],facingDeg:90}]}]}};
+}
+
+/** Reframe the actual 3D camera for each aspect ratio; never crop a barrel off a landscape master. */
+export function frameScene(scene, format) {
+  const result=structuredClone(scene), scale=format==='portrait'?2:format==='square'?1.25:1;
+  const camera=shot=>{if(shot?.pos&&shot.lookAt)shot.pos=shot.pos.map((v,i)=>shot.lookAt[i]+(v-shot.lookAt[i])*scale);};
+  camera(result.camera);for(const shot of result.storyboard?.shots??[])camera(shot);
+  return result;
+}

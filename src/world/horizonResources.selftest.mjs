@@ -338,18 +338,23 @@ function assertCurrentPolders(ring, config, seed) {
 // visual direction, 2026-09-11). Verdant now shares the classic rolling path.
 // Historical Polders/Titan/Badlands inputs remain declared for this aggregate.
 const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
+const inlandGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
 const unrelatedMutation = createHash('sha256');
 // 2026-09-19 vista pass: 431 columns, the denser row ladder (18 / 36 rows), the seated skirt and the ridged
 // relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
-// (round 72: re-pinned with the relieved geometry, see above)
+// The coastal extension now reaches beyond the water apron. All other maps
+// retain their exact pre-change positions, independently frozen below.
+// 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
+// preserves all original inland positions at the same three seeds.
 const unchangedReceipts = [
-  'd94a9a999e5e058314e3046f0c2f98f0e7ea24c75c052bf8ce925ff25f8c09b5',
-  '93c322c933391c0afb1553b637426e54148db5a3ed547bb340dd52d36cf2fdf6',
-  '815af5023672bbf9bfaadb98e0035a5efb010f881b2678fe01531b75c9072d9c',
+  'b8944462a63ab720454aa8fd07e7427aa55dd26be64a09c1d9fc4b11251dd639',
+  'a0646bf18e1030a9d58a1965b39cf97ced3b31dc3379f3fbe36d75b51f23a250',
+  'e2e472856c56510aa6ec5f3415f3c55cc030e8a79695c7ccc87882b2e99ebe6e',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
   const p = ring.positions, n = HORIZON_SEGMENTS, label = `${mapId}/${seed}`;
+  if (!config.horizon?.seaOpening) inlandGeometry.get(seed).update(mapId).update(new Uint8Array(p.buffer));
   assert.equal(ring.rows.length, uploadedRows(config, mapId));
   for (let column = 0; column < n; column++) {
     assert.ok(Math.max(Math.abs(p[column * 3]), Math.abs(p[column * 3 + 2])) < 512,
@@ -396,7 +401,12 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   }
 }
 assert.deepEqual(Array.from(unchangedGeometry.values(), hash => hash.digest('hex')), unchangedReceipts,
-  'restored classic receipts remain exact with only declared historical Polders/Titan/Badlands inputs');
+  'reviewed coastal extension and declared historical Polders/Titan/Badlands inputs remain exact');
+assert.deepEqual(Array.from(inlandGeometry.values(), hash => hash.digest('hex')), [
+  '1656d78af870ded739c83406a431fb84dcee7f3860e3659071df619a6abc1689',
+  '7fed6d53a65c811c7a8cf3d56134cb4c1d40467e59cf772c6b221e6e747267c2',
+  '432da45563a3b93d73261e4711d23685c8143c50ac8738e327c8c9fc3dc223ba',
+], 'coastal work preserves all original inland positions at three seeds');
 assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), unchangedReceipts[0]),
   { code: 'ERR_ASSERTION' }, 'Historical-input attribution does not hide unrelated map geometry changes');
 
@@ -589,8 +599,8 @@ try {
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
     if (x > 0 && Math.abs(z / x) < 0.1) {
-      assert.ok(Math.abs(y + 4.04) < 0.00001,
-        'eastward sea aperture replaces the enclosing wall with an opaque sea-level apron');
+      assert.ok(y <= -4.04 + 0.00001,
+        'eastward sea aperture lowers every face beneath the water and preserves buried seam anchors');
       assert.equal(coastalUv.getY(i), -1,
         'the planar sea explicitly bypasses the one-dimensional forest texture row');
       const sample = { radius: Math.hypot(x, z), channels: [coastalColors.getX(i), coastalColors.getY(i), coastalColors.getZ(i)] };

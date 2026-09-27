@@ -10,6 +10,7 @@ import {
 import { HORIZON_FAR_FOOT_M, HORIZON_FAR_ROWS, HORIZON_FAR_SEGMENTS, resolveFarRangeAmp, sampleHorizonFarRange } from './horizonFarRange.ts';
 import { Matrix4, Vector3 } from 'three';
 import { HORIZON_SEGMENTS, buildHorizonRing, resolveHorizonLightingGains, sampleHorizonGeometry } from './maps/horizon.ts';
+import { seaOpeningWeight } from './edgeWater.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
 // --- the characters ---------------------------------------------------------------------------------------------
@@ -147,6 +148,8 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   const sea = sampleHorizonFarRange({ seed: 77, settings: far, deckBaseM: 2000, seaOpenings: [{ azimuthDeg: 90, widthDeg: 60, level: -4 }] });
   const east = crest * n; // column 0 is +x, the ring's east (azimuth 90°)
   assert.ok(sea.heights[east] < 0 && sea.marine[east] > 0.99, 'the far range opens onto the sea in a sea sector');
+  for(let i=0;i<sea.heights.length;i++) if(seaOpeningWeight((i%n)/n*Math.PI*2,{azimuthDeg:90,widthDeg:60,level:-4})>.05)
+    assert.ok(sea.heights[i]<-4,'the background range cannot intersect the shore or water at partial sector coverage');
 }
 
 // --- the ring geometry with the relief: every map, three seeds, the receipts' own laws -----------------------------

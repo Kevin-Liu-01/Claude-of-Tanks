@@ -14,6 +14,10 @@ normalization and sampling), and `src/ui/studioPanel.ts` (panel interface).
 `main.ts` supplies integration ports and retains only the Studio `tick()`
 composition branch.
 
+The **Time of day** control switches between Day, Sunset and Night and is saved
+with scene JSON. For repeatable 4K map masters, fixed-frame MP4s, vertical/square
+promos and a shoreline review workflow, see [Media production](MEDIA-PRODUCTION.md).
+
 ## Entering / leaving
 
 | Path | How |

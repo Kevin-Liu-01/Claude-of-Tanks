@@ -20,7 +20,7 @@ visit(source);
 assert.equal(functions.length, 3);
 
 const noop = () => {};
-async function scenario({ directBoot, priorWorld = null, fail = false }) {
+async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day' }) {
   let world = priorWorld;
   const calls = [];
   let releaseWorld;
@@ -46,6 +46,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false }) {
   });
   const camera = new THREE.PerspectiveCamera();
   const ports = {
+    timeOfDay: time,
+    ctx: { prepareStudioAtmosphere: async (selected) => calls.push(['atmosphere', selected]) },
     window: { __GAME_READY: !directBoot }, game, camera,
     resolveMapId: (id) => id, urlParam: () => null, getMapConfig: (id) => ({ name: id }),
     post: { resetAdaptiveResolution: noop, render: () => calls.push('covered-frame') },
@@ -93,7 +95,9 @@ async function scenario({ directBoot, priorWorld = null, fail = false }) {
   const sunIndex = calls.findIndex((entry) => Array.isArray(entry) && entry[0] === 'sun');
   assert.ok(calls.indexOf('world-activated') < sunIndex);
   assert.strictEqual(calls[sunIndex][1], world.skyConfig, 'untrim restores the actual newly activated world');
-  assert.deepEqual(calls[sunIndex - 1], ['dormant', false]);
+  assert.deepEqual(calls[sunIndex - 2], ['dormant', false]);
+  assert.deepEqual(calls[sunIndex - 1], ['atmosphere', time],
+    'the selected atmosphere is prepared after world activation and before restoring its sun');
   assert.equal(calls.includes('covered-frame'), directBoot);
   await studio.doExit();
   assert.equal(game.phase, 'garage');
@@ -106,5 +110,6 @@ async function scenario({ directBoot, priorWorld = null, fail = false }) {
 await scenario({ directBoot: true });
 await scenario({ directBoot: false });
 await scenario({ directBoot: false, priorWorld: { mapId: 'desert', skyConfig: { sunIntensity: 5 } } });
+await scenario({ directBoot: false, time: 'sunset' });
 await scenario({ directBoot: true, fail: true });
 console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition and Garage return ordering pass');

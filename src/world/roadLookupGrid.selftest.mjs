@@ -157,6 +157,16 @@ function historicalHeightFieldSource(text) {
       const wetness = shorelineWetness(_LAKES[li], x, z, true);
       if (wetness > best) { best = wetness; level = lakeLevels[li]; }
     }
+    // Shore shelves and river mouths are authored as liquid marshes too. The
+    // former lake-only query dropped these contributions exactly at the edge.
+    if (liquidSurfaces) for (let mi = 0; mi < _MARSHES.length; mi++) {
+      const wetness = shorelineWetness(_MARSHES[mi], x, z, false);
+      if (wetness > best) {
+        best = wetness;
+        const offset = mi * LIQUID_MARSH_STRIDE;
+        level = liquidSurfaces[offset] + liquidSurfaces[offset + 1] * x + liquidSurfaces[offset + 2] * z;
+      }
+    }
     return best > 0 ? { wetness: best, level } : null;
   }
 

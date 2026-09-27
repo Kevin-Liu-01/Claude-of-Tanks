@@ -32,6 +32,9 @@ for (const id of TOPIC_ORDER) {
     assert.ok(Object.hasOwn(DOCS_ICON_SPECS, icon), `${id} section icon ${icon} is registered`);
   }
   assert.equal(topic.media.length, 2, `${id} has two current visual evidence anchors`);
+  for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
+    assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
+  }
   assert.ok(existsSync(join(ROOT, `docs-${id}.html`)), `${id} has an independently indexed HTML entry`);
   assert.match(landing, new RegExp(`href="/docs/${id}"`), `${id} is discoverable from the manual index`);
 }

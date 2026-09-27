@@ -416,18 +416,16 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-battle-menu-label{padding:8px 9px 5px;color:#6f818f;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.18em;
   text-transform:uppercase;border-top:1px solid rgba(146,164,180,.14)}
 .cot-battle-menu .cot-battle-menu-label{padding:10px 4px 5px;font-size:9px;color:#91a2af;}
-.cot-battle-night{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;
-  min-height:60px;padding:8px 10px;box-sizing:border-box;background:rgba(25,32,39,.6);cursor:pointer;
-  color:#dce6ed;font:700 11px 'ABC Monument Grotesk','Inter','Segoe UI',Arial,sans-serif;}
-.cot-battle-night small{display:block;margin-top:5px;color:#92a3b1;font-size:10px;font-weight:500;line-height:1.4;}
-.cot-battle-night input{position:absolute;right:6px;width:44px;height:44px;opacity:0;cursor:pointer;}
-.cot-night-switch{flex:none;width:34px;height:20px;box-sizing:border-box;border:1px solid #667885;border-radius:12px;background:#202b34;}
-.cot-night-switch::before{content:'';display:block;width:12px;height:12px;margin:3px;border-radius:50%;background:#a5b3be;transition:transform .12s;}
-.cot-battle-night input:checked + .cot-night-switch{border-color:#e5a347;background:#5d411d;}
-.cot-battle-night input:checked + .cot-night-switch::before{transform:translateX(14px);background:#ffca78;}
-.cot-battle-night input:focus-visible + .cot-night-switch{outline:2px solid #ffca78;outline-offset:3px;}
-.cot-battle-night:has(input:disabled){opacity:.55;cursor:default;}
-.cot-battle-night input:disabled{cursor:default;}
+.cot-battle-times{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0;padding:8px;border:1px solid #394853;}
+.cot-battle-times legend{color:#b8c7d1;font-size:11px;padding:0 5px;}
+.cot-time-choice{position:relative;flex:1;min-width:64px;cursor:pointer;}
+.cot-time-choice input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
+.cot-time-choice span{display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #526371;
+  background:#18212a;color:#a6b5c0;font-size:11px;}
+.cot-time-choice input:checked + span{background:#4b361f;border-color:#dca24f;color:#ffcd86;}
+.cot-time-choice input:focus-visible + span{outline:2px solid #ffcd86;outline-offset:2px;}
+.cot-time-choice input:disabled{cursor:default;}
+.cot-battle-times small{flex-basis:100%;color:#91a2af;font-size:10px;line-height:1.4;}
 .cot-garage .stats{position:absolute;right:22px;top:var(--cot-garage-sidebar-top);bottom:var(--cot-garage-sidebar-bottom);
   width:var(--cot-garage-sidebar-width);padding:0;pointer-events:auto;
   background:transparent;border:0;box-shadow:none;}

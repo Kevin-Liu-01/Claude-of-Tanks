@@ -57,6 +57,7 @@ uniform float uGravity;
 uniform float uDepth;
 uniform float uDamping;
 uniform float uFoamDecay;
+uniform float uTime;
 uniform vec4 uHullA[8];
 uniform vec4 uHullB[8];
 uniform int uHullCount;
@@ -83,8 +84,9 @@ float hullDistance(vec2 w, vec4 a, vec4 b) {
   vec2 rel = w - a.xy;
   vec2 fwd = a.zw;
   vec2 side = vec2(-fwd.y, fwd.x);
-  vec2 q = vec2(abs(dot(rel, fwd)) - b.x, abs(dot(rel, side)) - b.y);
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+  float corner = min(0.65, b.y * 0.45);
+  vec2 q = abs(vec2(dot(rel, fwd), dot(rel, side))) - b.xy + corner;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner;
 }
 // Hull pressure in metres of surface: the draft over the footprint, feathered 0.8 m past the skirt.
 float hullPressure(vec2 w) {
@@ -95,12 +97,13 @@ float hullPressure(vec2 w) {
   }
   return p;
 }
-float rippleHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 // Track churn: two strips under the tracks of a moving hull, strongest at the stern where the wash leaves it,
 // broken into world-anchored clots (a hash per 0.7 m cell) so the lane never reads as two painted lines.
 float trackChurn(vec2 w) {
   float c = 0.0;
-  float clots = 0.45 + 1.1 * rippleHash(floor(w * 1.45));
+  // Smooth advected turbulence avoids square 0.7 m hash cells near the tracks.
+  float clots = 0.65 + 0.22 * sin(w.x * 3.7 + w.y * 2.9 - uTime * 4.1)
+    + 0.18 * sin(w.x * 7.1 - w.y * 4.3 + uTime * 6.3);
   for (int i = 0; i < 8; i++) {
     if (i >= uHullCount) break;
     vec4 a = uHullA[i];
@@ -153,7 +156,7 @@ void main() {
     h -= imp.w * g;
     foam += uImpulseFoam[i] * g;
   }
-  foam += trackChurn(w) * uDt * 0.8;
+  foam += trackChurn(w) * uDt * 1.25 * wet;
   foam += smoothstep(0.70, 1.60, length(vel)) * uDt * 0.35;
   foam = clamp(foam, 0.0, 1.0);
   // the window: the state fades to rest toward the far edge, where the torus seam sits
@@ -239,6 +242,7 @@ export function createWaterRippleField(
     uDepth: { value: options.depthM ?? WATER_RIPPLE_DEPTH_M },
     uDamping: { value: WATER_RIPPLE_DAMPING_PER_S },
     uFoamDecay: { value: WATER_RIPPLE_FOAM_DECAY_PER_S },
+    uTime: { value: 0 },
     uHullA: { value: hullA },
     uHullB: { value: hullB },
     uHullCount: { value: 0 },
@@ -318,6 +322,7 @@ export function createWaterRippleField(
       try {
         if (!primed) resetTargets();
         for (let i = 0; i < n; i++) {
+          uniforms.uTime.value += WATER_RIPPLE_FIXED_DT;
           uniforms.tState.value = read.texture;
           uniforms.uImpulseCount.value = i === 0 ? impulseCount : 0; // a splash lands once
           gl.setRenderTarget(write);
@@ -339,6 +344,7 @@ export function createWaterRippleField(
       gl.autoClear = false;
       try { resetTargets(); } finally { gl.setRenderTarget(previousTarget); gl.autoClear = previousAutoClear; }
       accum = 0;
+      uniforms.uTime.value = 0;
       impulseCount = 0;
       params.w = 0;
       stateUniform.value = null;

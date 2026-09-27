@@ -239,15 +239,15 @@ assert.deepEqual(frontlinePrepares, [[0, 'winter'], [1337, 'monsoon'], [undefine
 
 calls.length = 0;
 frontlinePrepares.length = 0;
-const preferences = { allowNight: false };
+const preferences = { times: ['sunset'] };
 const prepareSolo = mainCallback('prepareAtmosphere', {
   battleAtmosphere: weather, frontline, battlePreferences: preferences,
   game: { battleCount: 3, mapId: 'winter' },
 });
 await prepareSolo();
-preferences.allowNight = true;
+preferences.times = ['day', 'sunset', 'night'];
 await prepareSolo();
-assert.deepEqual(calls, [[3, 'winter', false], [3, 'winter', true]],
+assert.deepEqual(calls, [[3, 'winter', ['sunset']], [3, 'winter', ['day', 'sunset', 'night']]],
   'actual solo launch reads the current preference for each battle; network keeps its shared seed');
 assert.deepEqual(frontlinePrepares, [[3, 'winter'], [3, 'winter']]);
 

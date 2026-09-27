@@ -10,10 +10,12 @@ const seeds = [1337, 2049, 7719];
 // Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
 // Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
+// 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
+// preserves all original inland positions at the same three seeds.
 const originalOther28 = [
-  '2363c8fcd36c5dc523ca5827a8dcad9c0c1409e74174bc7385f4772974f923a3' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
-  '5f79353aec508690efea9979d81484001c7c888982ed05ea39fe0c3e3f48284f',
-  '2b6f2edff8f2a13aa11af0f38cddd7186d44de363e32d2a5205854aea8258c3a',
+  '25e1544c163d836666a6bf69f697480d00ad9544d26ba0c066ea599ab1cbb2c6',
+  '9f33aea1b48e58cf917e538b631cd1790b6debf3b2f6e85c5ec3ca5ea782e07e',
+  '006d8614052d4c2098f4a7248dd520b175711dd30f7a0dcf6b0e1a09eda72cf0',
 ];
 // Round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa style authors a nine-row stack
 // (bench, tables, valley, escarpment, saddle, summits, shoulder; 30 uploaded rows) and the far escarpment's cap

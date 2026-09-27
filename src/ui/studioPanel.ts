@@ -1,3 +1,4 @@
+import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * studioPanel.ts — SCENE STUDIO control panel (src/game/studio.ts's UI).
@@ -144,6 +145,8 @@ export interface StudioPanelApi {
   readonly CAMO_PATTERN_IDS: readonly string[];
   readonly ACTOR_STATES: readonly string[];
   readonly mapId: string | null;
+  readonly timeOfDay: BattleTimeOfDay;
+  setTimeOfDay(time: BattleTimeOfDay): Promise<RuntimeValue>;
   readonly timeScale: number;
   readonly fxTimeMs: number;
   readonly durationMs: number;
@@ -622,6 +625,23 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapPop.append(mapPopHead, mapGrid);
   mapPick.append(mapBtn, mapPop);
   secScene.appendChild(mapPick);
+  const timeLabel = el('label', 'row');
+  timeLabel.appendChild(el('span', '', t('studioPanel.timeOfDay')));
+  const timeSelect = el('select');
+  timeSelect.setAttribute('aria-label', t('studioPanel.timeOfDay'));
+  for (const time of BATTLE_TIMES) {
+    const option = el('option', '', t(`atmosphere.${time}`));
+    option.value = time;
+    timeSelect.appendChild(option);
+  }
+  timeSelect.addEventListener('change', () => {
+    timeSelect.disabled = true;
+    S.setTimeOfDay(timeSelect.value as BattleTimeOfDay)
+      .catch((error: RuntimeValue) => flashBusy(errorMessage(error)))
+      .finally(() => { timeSelect.disabled = false; api.refreshMap(); });
+  });
+  timeLabel.appendChild(timeSelect);
+  secScene.appendChild(timeLabel);
   battlefieldGroup.body.appendChild(secScene);
 
   let mapPreviewsHydrated = false;
@@ -1648,10 +1668,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       clearTrackBtn.disabled = isRecording || !S._internal.selected;
       duelBtn.disabled = isRecording || S._internal.actors.length < 2;
       railBtn.disabled = isRecording;
+      timeSelect.disabled = isRecording;
       rebuildStoryboard();
       api.refreshTime();
     },
     refreshMap() {
+      timeSelect.value = S.timeOfDay;
       const id = S.mapId;
       badgeMap.textContent = id ? id.toUpperCase() : '';
       if (!id) return;

@@ -6,7 +6,7 @@
 // over each opening so the sheet's own shader (fresnel, glitter, wakes) reads past the edge instead of ending in a
 // straight line. Pure functions over the height field; the ring and the terrain both read them.
 import * as THREE from 'three';
-import { waterContactProfile } from './waterContact.ts';
+import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 
 /** A sea-level aperture in the horizon ring. Azimuth 90° is +x (east), 0° is +z (north). */
 export interface SeaOpening {
@@ -41,7 +41,7 @@ const DEFAULT_SHOULDER = 0.58;
 const EDGE_SHOULDER = 0.6;
 /** The apron's outer radius: well past the first authored ridge row, under the far haze, where the ring's own
  * sea colour has taken on the low sky (m). */
-export const SEA_APRON_OUTER_RADIUS_M = 1400;
+export const SEA_APRON_OUTER_RADIUS_M = 4096;
 /** The apron reaches this far back inside the square so no uncovered floor strip can show at the seam (m). */
 export const SEA_APRON_OVERLAP_M = 12;
 
@@ -70,6 +70,16 @@ export function seaOpeningWeight(angle: number, openings: readonly SeaOpening[] 
   let weight = 0;
   for (const opening of asList(openings)) weight = Math.max(weight, openingWeight(angle, opening));
   return weight;
+}
+
+/** Grow open water from its mouth on the battlefield edge. A sector centred
+ * on the map origin became fully wet across one square-distance contour,
+ * cutting both headlands off on the same straight line in a sea-mouth view. */
+export function seaSectorWeightAt(x: number, z: number, opening: SeaOpening, halfSize = 512): number {
+  const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
+  const dx = Math.cos(direction), dz = Math.sin(direction);
+  const edge = halfSize / Math.max(Math.abs(dx), Math.abs(dz));
+  return openingWeight(Math.atan2(z - dz * edge, x - dx * edge), opening);
 }
 
 /** Round 49 (2026-09-23): 1 inside a sea opening (its taper included) and for the first third of `bandRad` beyond its
@@ -255,20 +265,19 @@ export function buildOutlandWaterGeometry(
   waterAt: OutlandWaterQuery | null | undefined,
   halfSize = 512,
   outerRadius = SEA_APRON_OUTER_RADIUS_M,
-  { cellM = 16, depthM = 0, wetThreshold = 0.02 }: { cellM?: number; depthM?: number; wetThreshold?: number } = {},
+  { cellM = 16, depthM = 0, wetThreshold = 0.02, ramp }: { cellM?: number; depthM?: number; wetThreshold?: number; ramp?: readonly [number, number] } = {},
 ): THREE.BufferGeometry | null {
   if (!waterAt) return buildSeaApronGeometry(openings, halfSize, outerRadius, { depthM });
   if (!openings.length) return null;
-  const cells = Math.ceil(outerRadius / cellM);
   const positions: number[] = [], normals: number[] = [], indices: number[] = [];
   const slots = new Map<string, number>();
   // The cells are carriers: the sheet shader fades the apron along the baked bay contour (uOutlandWater), so a
   // cell is admitted as soon as any corner touches the coast or the open-sea sector, and the shoreline itself is
   // the smooth mask, never the 16 m cell edge.
-  const levelAt = (x: number, z: number): number | null => {
+  const levelAt = (x: number, z: number, sampleM = cellM): number | null => {
     let level: number | null = null, best = 0;
     for (const [dx, dz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5], [0, 0]] as const) {
-      const coast = waterAt(x + dx * cellM, z + dz * cellM);
+      const coast = waterAt(x + dx * sampleM, z + dz * sampleM);
       if (coast && coast.wetness >= wetThreshold && coast.wetness > best) { best = coast.wetness; level = coast.level; }
     }
     if (level !== null) return level;
@@ -277,8 +286,8 @@ export function buildOutlandWaterGeometry(
     const opening = dominantSeaOpening(angle, openings);
     if (!opening) return null;
     const [from, to] = seaSectorBlend(opening.coastReachM);
-    const far = smoothstep(from - cellM, to, edgeOut + cellM);
-    return far > 0 && seaOpeningWeight(angle, opening) * far >= 0.35 ? opening.level : null;
+    const far = smoothstep(from - sampleM, to, edgeOut + sampleM);
+    return far > 0 && seaSectorWeightAt(x, z, opening, halfSize) * far >= 0.015 ? opening.level : null;
   };
   const vertex = (ix: number, iz: number, level: number): number => {
     const key = `${ix},${iz}`;
@@ -286,22 +295,46 @@ export function buildOutlandWaterGeometry(
     if (known !== undefined) return known;
     const index = positions.length / 3;
     slots.set(key, index);
-    positions.push(ix * cellM, level + depthM, iz * cellM);
+    const x = ix * cellM, z = iz * cellM;
+    let depth = depthM;
+    if (ramp) {
+      const coast = waterAt(x, z);
+      const opening = dominantSeaOpening(Math.atan2(z, x), openings);
+      const [from, to] = seaSectorBlend(opening?.coastReachM);
+      const sector = opening ? seaSectorWeightAt(x, z, opening, halfSize)
+        * smoothstep(from, to, Math.max(Math.abs(x), Math.abs(z)) - halfSize) : 0;
+      depth = shallowWaterDepth(smoothstep(ramp[0], ramp[1], Math.max(coast?.wetness ?? 0, sector)), depthM);
+    }
+    positions.push(x, level + depth, z);
     normals.push(0, 1, 0);
     return index;
   };
-  for (let iz = -cells; iz < cells; iz++) {
-    for (let ix = -cells; ix < cells; ix++) {
-      const cx = (ix + 0.5) * cellM, cz = (iz + 0.5) * cellM;
-      // only the outland, from the red line itself: the sheet reaches the edge (its grid ends on ±halfSize) and a
-      // shared strip would render the transparent water twice as a dark band along the border
-      if (Math.max(Math.abs(cx), Math.abs(cz)) < halfSize) continue;
+  // Keep eight-metre shore carriers, then use a coarser ocean grid under the
+  // distant haze. The boundary cells include every fine edge vertex: no cracks,
+  // overlapping transparent strips, or four-kilometre high-resolution plane.
+  const near = Math.min(Math.ceil(1024 / (cellM * 4)) * 4, Math.ceil(outerRadius / cellM));
+  const far = Math.ceil(outerRadius / (cellM * 4)) * 4;
+  const patches = far > near ? [[1, 0, near], [4, near, far]] : [[1, 0, near]];
+  for (const [stride, inner, outer] of patches) {
+    for (let iz = -outer; iz < outer; iz += stride) for (let ix = -outer; ix < outer; ix += stride) {
+      const cx = (ix + stride * 0.5) * cellM, cz = (iz + stride * 0.5) * cellM;
+      if (Math.max(Math.abs(cx), Math.abs(cz)) < Math.max(halfSize, inner * cellM)) continue;
       if (Math.hypot(cx, cz) > outerRadius) continue;
-      const level = levelAt(cx, cz);
+      const level = levelAt(cx, cz, stride * cellM);
       if (level === null) continue;
-      const a = vertex(ix, iz, level), b = vertex(ix + 1, iz, level), c = vertex(ix, iz + 1, level), d = vertex(ix + 1, iz + 1, level);
-      // counter-clockwise seen from above (+y), like the sheet's own quads
-      indices.push(a, c, b, b, c, d);
+      const corners = [[ix, iz], [ix, iz + stride], [ix + stride, iz + stride], [ix + stride, iz]];
+      const border: number[] = [];
+      for (let edge = 0; edge < 4; edge++) {
+        const a = corners[edge], b = corners[(edge + 1) % 4];
+        const seam = stride > 1 && Math.max(Math.abs((a[0] + b[0]) / 2), Math.abs((a[1] + b[1]) / 2)) === inner;
+        const steps = seam ? stride : 1;
+        for (let j = 0; j < steps; j++) border.push(vertex(a[0] + (b[0] - a[0]) * j / steps, a[1] + (b[1] - a[1]) * j / steps, level));
+      }
+      if (border.length === 4) indices.push(border[0], border[1], border[3], border[3], border[1], border[2]);
+      else {
+        const center = vertex(ix + stride / 2, iz + stride / 2, level);
+        for (let i = 0; i < border.length; i++) indices.push(center, border[i], border[(i + 1) % border.length]);
+      }
     }
   }
   if (!indices.length) return null;

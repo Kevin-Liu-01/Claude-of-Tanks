@@ -87,6 +87,7 @@ interface TerrainUserData {
   updateLOD(cameraPosition: THREE.Vector3): void;
   updateWater?(deltaSeconds: number, anchorX?: number, anchorZ?: number): void;
   disposeWater?(): void;
+  resetWater?(): void;
   setWaterTime?(timeSeconds: number): void;
   setWaterDisturbances?(sources: readonly WaterDisturbance[]): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
@@ -190,6 +191,8 @@ export interface WorldRuntime {
   setWindTime(timeSeconds: number): void;
   /** Water pass 6/7: the vehicles in the water this frame (footprint, heading, speed -> wake). No-op on maps without water. */
   setWaterDisturbances(sources: readonly WaterDisturbance[]): void;
+  resetWater(): void;
+  advanceWater(dt: number, anchorX: number, anchorZ: number): void;
   /** Round 73: every hull this frame (footprint, heading, speed) — the tall grass lies down under it. */
   setGroundDisturbances?(sources: readonly GroundDisturbance[]): void;
   setSniperFade(
@@ -666,6 +669,8 @@ function assembleWorld(
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
+    resetWater() { terrain.userData.resetWater?.(); },
+    advanceWater(dt, x, z) { terrain.userData.updateWater?.(dt, x, z); },
     /** Round 73: the hulls' footprints this frame press the tall grass (main.ts publishes every vehicle). */
     setGroundDisturbances(sources) { tallGrass.setDisturbances(sources); },
     /**

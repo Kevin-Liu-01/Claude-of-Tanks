@@ -149,18 +149,14 @@ export function randomFeaturedShot(): FeaturedShot {
 }
 
 /**
- * Best action still for a battlefield. The first match is intentional and
+ * Current overview for a battlefield. The first match is intentional and
  * stable so a loading screen does not change art when network setup restages
  * the same operation.
  * @param {string} mapId
  */
 export function featuredShotForMap(mapId: string): FeaturedShot {
   const key = String(mapId || '').trim().toLowerCase();
-  const curated = TRANSITION_SHOTS.find((shot) => shot.maps?.includes(key));
-  if (curated) return curated;
-  // New battlefields already have native 4K overview captures. Use their
-  // exact map art until an action still is curated; never mislabel a random
-  // battle scene or change the owner's separate featured-gallery rotation.
+  // Reuse the packaged map art; publishing a new capture updates every surface.
   if (isMapId(key)) {
     return {
       img: MAP_HEROES[key], capKey: 'garage.featuredShot.battlefieldOverview',

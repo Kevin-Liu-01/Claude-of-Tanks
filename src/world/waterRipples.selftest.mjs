@@ -66,10 +66,10 @@ assert.ok(glsl.includes('vel *= 1.0 - uDamping * uDt;'), 'damping');
 assert.ok(glsl.includes('h = mix(h, (l.r + r.r + u.r + d.r) * 0.25, 0.04);'), 'odd-even decoupling control');
 assert.ok(glsl.includes('float window = 1.0 - smoothstep(0.40, 0.47, max(off.x, off.y));')
   && glsl.includes('gl_FragColor = vec4(h, vel, foam) * window;'), 'the state fades to rest toward the seam every step');
-assert.ok(glsl.includes('return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);'), 'rounded-rectangle hull footprint');
+assert.ok(glsl.includes('return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - corner;'), 'rounded-rectangle hull footprint');
 assert.ok(glsl.includes('p += uHullB[i].z * (1.0 - smoothstep(-0.2, 0.6, hullDistance(w, uHullA[i], uHullB[i])));'),
   'the draft over the footprint, feathered past the skirt');
-assert.ok(glsl.includes('foam += trackChurn(w) * uDt * 0.8;') && glsl.includes('float foam = mix(c.a, (l.a + r.a + u.a + d.a) * 0.25, 0.05) * exp(-uFoamDecay * uDt);'),
+assert.ok(glsl.includes('foam += trackChurn(w) * uDt * 1.25 * wet;') && glsl.includes('float foam = mix(c.a, (l.a + r.a + u.a + d.a) * 0.25, 0.05) * exp(-uFoamDecay * uDt);'),
   'track churn feeds a decaying, spreading foam field that stays where it was churned');
 assert.ok(glsl.includes('h -= imp.w * g;') && glsl.includes('if (i >= uImpulseCount) break;'), 'splash impulses are craters');
 

@@ -1,18 +1,23 @@
 import assert from 'node:assert/strict';
 import {
-  scanEdgeWater, resolveSeaOpenings, seaOpeningWeight, dominantSeaOpening, buildSeaApronGeometry,
+  scanEdgeWater, resolveSeaOpenings, seaOpeningWeight, seaSectorWeightAt, dominantSeaOpening, buildSeaApronGeometry,
   ringAngleToAzimuthDeg, SEA_APRON_OUTER_RADIUS_M, SEA_APRON_OVERLAP_M,
 } from './edgeWater.ts';
 import { buildOutlandWaterGeometry, seaSectorBlend, coastReachAlong } from './edgeWater.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { waterContactProfile } from './waterContact.ts';
+import { sampleHorizonGeometry, HORIZON_SEGMENTS } from './maps/horizon.ts';
 
 // Round 40 (2026-09-22, AAA map program check 13 "water at the edge: same level and shader beyond").
 // --- pure geometry -------------------------------------------------------------------------------------------------
 assert.equal(ringAngleToAzimuthDeg(0), 90, '+x is east');
 assert.equal(ringAngleToAzimuthDeg(Math.PI / 2), 0, '+z is north');
 assert.equal(ringAngleToAzimuthDeg(Math.PI), 270, '-x is west');
+const eastMouth = {azimuthDeg:90,widthDeg:60,level:-4};
+assert.equal(seaSectorWeightAt(650,300,eastMouth),0,'a nearby headland is not cut off by a sector centred on the map');
+assert.equal(seaSectorWeightAt(1500,250,eastMouth),1,'the sea opens gradually from its mouth');
+assert.equal(seaSectorWeightAt(-1500,250,{...eastMouth,azimuthDeg:270}),1,'the same mouth rule applies on the west');
 
 // a synthetic square: water where a predicate says, surface = floor + depth
 const synthetic = (wet, { size = 1024, floor = -5.2, depth = 0.7 } = {}) => ({
@@ -105,6 +110,36 @@ assert.ok(west.widthDeg > 40 && west.widthDeg < 150, `the bay spans a good part 
 // Verdant has no water at its edge: no opening, no apron, ring unchanged.
 const verdant = createHeightField(1337, getMapConfig('verdant'));
 assert.deepEqual(resolveSeaOpenings(getMapConfig('verdant').horizon?.seaOpening, verdant, 'verdant'), []);
+// The complete shoreline, including diagonal columns, has a ground receiver
+// underneath it through the end of the four-kilometre water apron.
+for (const id of ['coastal', 'saltwind', 'fjord']) {
+  const config=getMapConfig(id), field=id==='coastal'?coastal:id==='saltwind'?saltwind:createHeightField(1337,config);
+  const openings=resolveSeaOpenings(config.horizon?.seaOpening,field,id);
+  const ring=sampleHorizonGeometry(config,1337,field),p=ring.positions,n=HORIZON_SEGMENTS;
+  const start=p.length/3-n;
+  let shores=0;
+  for(let c=0;c<n;c++) {
+    const i=(start+c)*3,x=p[i],z=p[i+2],wet=seaOpeningWeight(Math.atan2(z,x),openings);
+    if(wet<=0)continue;
+    assert.ok(Math.hypot(x,z)>=SEA_APRON_OUTER_RADIUS_M+250,`${id}/${c}: ground extends beyond water, including diagonal banks`);
+    shores++;
+  }
+  assert.ok(shores>20,`${id}: checks the actual sea-opening columns`);
+  let shallowVertices=0;
+  for(let i=0;i<p.length;i+=3) {
+    const x=p[i],z=p[i+2],distance=Math.max(Math.abs(x),Math.abs(z))-512;
+    if(distance<400)continue;
+    for(const opening of openings) {
+      const [from,to]=seaSectorBlend(opening.coastReachM);
+      const t=Math.max(0,Math.min(1,(distance-from)/(to-from)));
+      const wet=seaSectorWeightAt(x,z,opening)*t*t*(3-2*t);
+      if(wet<config.splat.seaRamp[0]||wet>.6)continue;
+      assert.ok(p[i+1]<=opening.level-.039,`${id}: visible shallows have submerged ground, not ridge vertices clipping the sheet`);
+      shallowVertices++;
+    }
+  }
+  assert.ok(shallowVertices>20,`${id}: checks the actual shallow bank band`);
+}
 // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): the apron is a grid over the
 // outland whose cells follow the map's own bay contour near the square and the derived sector only 120–360 m out.
 {
@@ -132,6 +167,21 @@ assert.deepEqual(resolveSeaOpenings(getMapConfig('verdant').horizon?.seaOpening,
     const vx = position.getX(c) - position.getX(a), vz = position.getZ(c) - position.getZ(a);
     assert.ok(uz * vx - ux * vz > 0, `triangle ${tri / 3} winds counter-clockwise seen from above`);
   }
+  // Every fine/coarse boundary edge inside open water has two incident faces.
+  // A T-junction here opens a moving crack when FFT waves displace the grid.
+  const edges = new Map();
+  for(let i=0;i<index.count;i+=3) for(let k=0;k<3;k++) {
+    const a=index.getX(i+k),b=index.getX(i+(k+1)%3),key=a<b?`${a},${b}`:`${b},${a}`;
+    edges.set(key,(edges.get(key)??0)+1);
+  }
+  let stitched=0;
+  for(const [key,count] of edges) {
+    const [a,b]=key.split(',').map(Number);
+    if(position.getX(a)===1024&&position.getX(b)===1024&&Math.abs(position.getZ(a))<150&&Math.abs(position.getZ(b))<150) {
+      assert.equal(count,2,'the ocean grid meets every near-shore edge');stitched++;
+    }
+  }
+  assert.ok(stitched>10,'checks the actual resolution handoff');
   // without a contour query the fan is the fallback
   const fan = buildOutlandWaterGeometry(east, null, 512, 1400, { depthM: 0.72 });
   assert.ok(fan && fan.getAttribute('position').count < position.count, 'no contour: the sector fan');
