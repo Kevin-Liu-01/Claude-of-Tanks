@@ -97,6 +97,19 @@ export const CLOUD_MARCH_STEPS = 96;
 export const CLOUD_MARCH_MAX_M = 20000;
 /** Round 76: a cellular deck's slab is marched to here (m); the far band fades in over 8–11 km and owns the horizon beyond. */
 export const CLOUD_DECK_MARCH_MAX_M = 10000;
+/**
+ * Round 78 (the performance lane): a deck whose base sits under this altitude takes the cellular decks' march laws —
+ * the 10 km cap and the tall slab's far strides — whatever its cells: a grazing ray under whiteout's 300 m stratus
+ * otherwise marched twenty kilometres of sheet the far band and the haze ramp already own (+1.1–1.8 ms GPU at the
+ * centre-far view in the round-71–77 audit). The cellular decks are unchanged (`cloudDeckMarch` is 1 for them
+ * already); every cumuliform regime and the high sheets stay at 0.
+ */
+export const CLOUD_LOW_DECK_BASE_M = 400;
+
+/** Whether a preset's slab marches under the deck laws (the 10 km cap, the far strides): the cellular decks and the low stratus decks. */
+export function cloudDeckMarch(preset: { readonly cells: number; readonly stratiform: number; readonly baseM: number }): 0 | 1 {
+  return preset.cells > 0 || (preset.stratiform >= 0.5 && preset.baseM < CLOUD_LOW_DECK_BASE_M) ? 1 : 0;
+}
 /** Step bounds (m): the floor scales with the slab, the far stride with the distance. */
 export const CLOUD_STEP_MIN_M = 8;
 export const CLOUD_STEP_MAX_M = 260;
@@ -244,6 +257,8 @@ uniform float uStepScale;
 // share, the undulatus bands, the interior octave, the sky's irradiance on a horizontal diffuser (E / π) and the
 // hang of the cell cores under the base (m)
 uniform float uCells;
+// round 78: 1 where the slab marches under the deck laws (a cellular deck or a low stratus deck, cloudDeckMarch)
+uniform float uDeckMarch;
 uniform float uCellTile;
 uniform float uDeckLight;
 uniform float uUndulatus;
@@ -516,7 +531,8 @@ void main() {
 	}
 	// round 76: a cellular deck's march ends where the far band (8–11 km) and the haze ramp own the horizon — a low
 	// deck's grazing rays otherwise marched it for the whole twenty kilometres (polders at 600 m: 2.3 ms a slot)
-	if ( uCells > 0.0 ) t1 = min( t1, ${f(CLOUD_DECK_MARCH_MAX_M)} );
+	// (round 78: a low stratus deck too — whiteout's 300 m ceiling took the full march; cloudDeckMarch)
+	if ( uDeckMarch > 0.0 ) t1 = min( t1, ${f(CLOUD_DECK_MARCH_MAX_M)} );
 	if ( t1 > t0 && uCoverage > 0.0 ) {
 		float span = t1 - t0;
 		// empty-space skipping: a segment up to twelve kilometres is tested at weather taps 450 m apart (jittered)
@@ -555,7 +571,7 @@ void main() {
 				// the stride never falls under the trace texel's footprint (four history pixels: a far bank needs
 				// no eight-metre steps — 28 m at 3 km, 83 m at 9 km)
 				// (round 76: a deck's grazing far rays stride like a tall slab's — the cells are hundreds of metres across)
-				float ds = max( ds0 * ( 1.0 + smoothstep( 3000.0, 9000.0, t ) * ( uThick > 2000.0 || uCells > 0.0 ? 1.0 : 0.4 ) ), min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
+				float ds = max( ds0 * ( 1.0 + smoothstep( 3000.0, 9000.0, t ) * ( uThick > 2000.0 || uDeckMarch > 0.0 ? 1.0 : 0.4 ) ), min( t * uPixelAngle * 4.0, ${f(CLOUD_STEP_MAX_M)} ) );
 				vec3 p = uCamPos + dir * t;
 				vec2 cxz = cloudColumnXZ( p );
 				Weather w = cloudWeather( cxz );
@@ -1109,7 +1125,7 @@ export class VolumetricCloudLayer {
         uCirrus: { value: 0 }, uCirrusDir: { value: new THREE.Vector2(1, 0) }, uCirrusAlt: { value: 10000 }, uCirrusShift: { value: new THREE.Vector2() }, uCirrusDensity: { value: 0.7 },
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
-        uCells: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 },
+        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
       },
     });
@@ -1311,6 +1327,7 @@ export class VolumetricCloudLayer {
     const hang = CLOUD_DECK_HANG_K * preset.thicknessM * preset.cells;
     t.uHang.value = hang;
     t.uCells.value = preset.cells;
+    t.uDeckMarch.value = cloudDeckMarch(preset);
     t.uCellTile.value = preset.cellM * CLOUD_CELLS_PER_TILE;
     t.uDeckLight.value = preset.deckLight;
     t.uUndulatus.value = preset.undulatus;
