@@ -182,6 +182,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/battle-geometry-sharing.browser.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs',
   'tools/sourced-building-source.browser.selftest.mjs',
+  'tools/garage-switch-probe.selftest.mjs', // 2026-09-26: self-leasing part 2
 ]);
 for (const file of SELFTEST_OWNED_LEASE_FILES) {
   assert.equal(Object.values(SELFTEST_SUITES).flat().filter((entry) => entry === file).length, 1);
@@ -202,7 +203,7 @@ function actualRegistryFixture(ownedLeaseFiles = SELFTEST_OWNED_LEASE_FILES) {
 }
 const registered = actualRegistryFixture();
 assert.equal(await runSelftestSuite('actual-registry', ['cpu', ...SELFTEST_OWNED_LEASE_FILES, cpuBrowserGuard], registered.options), 0);
-assert.deepEqual(registered.events, ['[selftests] actual-registry: 9 files', 'acquire', 'cpu', 'release',
+assert.deepEqual(registered.events, ['[selftests] actual-registry: 10 files', 'acquire', 'cpu', 'release', // 2026-09-26: + the Garage switch probe
   ...SELFTEST_OWNED_LEASE_FILES, 'acquire', cpuBrowserGuard, '[selftests] PASS actual-registry', 'release']);
 const oldRegistry = actualRegistryFixture(['tools/source-dimension-frame.browser.selftest.mjs']);
 await assert.rejects(runSelftestSuite('old-nested-registry', ['cpu', 'tools/resolved-depth-copy.browser.selftest.mjs'], oldRegistry.options),
@@ -213,6 +214,7 @@ for (const concurrency of [1, 2, 3, 4, 5, 6, 7, 8]) for (const lateFx of [
   'tools/battle-geometry-sharing.browser.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs',
   'tools/sourced-building-source.browser.selftest.mjs',
+  'tools/garage-switch-probe.selftest.mjs',
 ]) {
   const current = actualRegistryFixture();
   assert.equal(await runSelftestSuite('late-fx-barrier', ['cpu', lateFx, cpuBrowserGuard],

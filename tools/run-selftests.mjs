@@ -18,6 +18,10 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/battle-geometry-sharing.browser.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs',
   'tools/sourced-building-source.browser.selftest.mjs',
+  // 2026-09-26: part 2 of the Garage switch probe takes the capture lock itself (createCaptureLock in the receipt) —
+  // under the runner's lease it deadlocked for 80 min (the runner refreshing its lease every 30 s while the child queued
+  // on the same lock); it stays an exclusive-CPU file as well.
+  'tools/garage-switch-probe.selftest.mjs',
 ]);
 
 // This full-fleet child has a 240s no-progress functional-test watchdog. Do
