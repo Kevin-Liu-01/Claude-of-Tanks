@@ -29,14 +29,16 @@
  * horizon-flattened dome mesh in the scene's transparent queue (depth-tested by the terrain and the ring, never
  * writing depth), premultiplied over the physically based dome, sampling the history with a Catmull-Rom filter.
  * Cloud shadows come from a per-cascade plane on the shadow-only layer whose custom depth material discards
- * outside the cloud cores of the same two weather fields (the CSM carries them at no shading cost); post.ts owns
- * one hook: `scene.userData.volumetricClouds.beforeSceneRender(...)` at the top of its frame transaction.
+ * outside the cloud cores of the same two weather fields (the CSM carries them at no shading cost); each plane
+ * renders into ITS OWN cascade only (round 78: `setShadowCasterCascades` — three would rasterise every plane
+ * into every map, sixteen field-shader draws for four); post.ts owns one hook:
+ * `scene.userData.volumetricClouds.beforeSceneRender(...)` at the top of its frame transaction.
  */
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
-import { markShadowOnly } from './renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades } from './renderLayers.ts';
 import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
 import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
@@ -1219,6 +1221,9 @@ export class VolumetricCloudLayer {
       gobo.customDepthMaterial = this.goboMaterial;
       bindCloudShadowCascade(gobo, cascades.lights[i].shadow.camera, cascades.lights[i].shadow.mapSize);
       markShadowOnly(gobo);
+      // round 78: the plane is sized to cascade i's shadow box and carries the field only there — the router
+      // hides it around every other cascade's pass (one field-shader draw per cascade instead of one per pair)
+      setShadowCasterCascades(gobo, 1 << i);
       this.scene.add(gobo);
       this.gobos.push(gobo);
     }
@@ -1227,6 +1232,7 @@ export class VolumetricCloudLayer {
 
   private detachShadowCascades(): void {
     for (const gobo of this.gobos) {
+      setShadowCasterCascades(gobo, null);
       gobo.removeFromParent();
       gobo.geometry.dispose();
       gobo.material.dispose();

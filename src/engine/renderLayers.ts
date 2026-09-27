@@ -45,7 +45,8 @@ const shadowWarmScopes = new WeakMap<Camera, ShadowWarmScope>();
  * each cascade (near hulls cast their real armour into the cascade that covers
  * them, the convex proxies everywhere else). Without a policy — and for a
  * single light, which is what the deployment shadow warm renders — the call
- * stays exactly the one three makes.
+ * stays exactly the one three makes. Round 78: the per-cascade caster masks (`setShadowCasterCascades`) split the
+ * lights the same way, with or without a policy.
  */
 export interface ShadowCascadePolicy {
   beforeLight(light: Object3D, cascadeIndex: number): void;
@@ -54,6 +55,62 @@ export interface ShadowCascadePolicy {
 
 const cascadeIndexByShadowCamera = new WeakMap<Camera, number>();
 let shadowCascadePolicy: ShadowCascadePolicy | null = null;
+
+/**
+ * Round 78 (2026-09-26, the performance lane): casters that render into a SUBSET of the cascades. Three draws every
+ * caster into every cascade's map; a caster sized to one cascade (the cloud layer's shadow gobos: one plane per
+ * cascade, so four planes cost sixteen draws — each plane rasterised into every map) or one whose shadow cannot
+ * read past the near cascades registers a bit mask of cascade indices here and the router hides it around every
+ * other cascade's pass. Held weakly: a discarded world's owners fall out of the list as they are met. The list is
+ * rebuilt on registration only, so the per-frame walk allocates nothing.
+ */
+const shadowCasterCascadeMask = new WeakMap<Object3D, number>();
+let shadowCasterCascadeRefs: WeakRef<Object3D>[] = [];
+const hiddenForCascade: Object3D[] = [];
+
+/** Register (or with `null` forget) the cascades `object` casts into, as a bit mask of cascade indices. */
+export function setShadowCasterCascades(object: Object3D, mask: number | null): void {
+  if (mask === null) {
+    shadowCasterCascadeMask.delete(object);
+    shadowCasterCascadeRefs = shadowCasterCascadeRefs.filter((ref) => { const o = ref.deref(); return o !== undefined && o !== object; });
+    return;
+  }
+  if (!shadowCasterCascadeMask.has(object)) shadowCasterCascadeRefs.push(new WeakRef(object));
+  shadowCasterCascadeMask.set(object, mask);
+}
+
+/** The registered cascade mask of a caster, or null when it casts into every cascade. */
+export function shadowCasterCascadesOf(object: Object3D): number | null {
+  return shadowCasterCascadeMask.get(object) ?? null;
+}
+
+/** The registered cascade index of a shadow camera (the argument three hands `onBeforeShadow`), or -1. */
+export function shadowCascadeIndexOfCamera(shadowCamera: Camera): number {
+  return cascadeIndexByShadowCamera.get(shadowCamera) ?? -1;
+}
+
+/** Hide every masked caster that does not cast into `cascadeIndex`; dead references are pruned as met. */
+function hideCastersOutsideCascade(cascadeIndex: number): void {
+  if (cascadeIndex < 0 || shadowCasterCascadeRefs.length === 0) return;
+  const bit = 1 << cascadeIndex;
+  let write = 0;
+  for (let i = 0; i < shadowCasterCascadeRefs.length; i++) {
+    const ref = shadowCasterCascadeRefs[i];
+    const object = ref.deref();
+    if (object === undefined) continue;
+    shadowCasterCascadeRefs[write++] = ref;
+    const mask = shadowCasterCascadeMask.get(object);
+    if (mask === undefined || (mask & bit) !== 0 || !object.visible) continue;
+    object.visible = false;
+    hiddenForCascade.push(object);
+  }
+  shadowCasterCascadeRefs.length = write;
+}
+
+function restoreHiddenCasters(): void {
+  for (let i = hiddenForCascade.length - 1; i >= 0; i--) hiddenForCascade[i].visible = true;
+  hiddenForCascade.length = 0;
+}
 
 /** Tell the router which cascade a light's shadow camera renders (lighting.ts registers the CSM lights). */
 export function registerShadowCascadeCamera(shadowCamera: Camera, cascadeIndex: number): void {
@@ -78,7 +135,7 @@ function renderShadowLights(
   render: ShadowMapRouter['render'], lights: Object3D[], scene: Scene, camera: Camera,
 ): void {
   const policy = shadowCascadePolicy;
-  if (!policy || lights.length < 2) {
+  if ((!policy && shadowCasterCascadeRefs.length === 0) || lights.length < 2) {
     render(lights, scene, camera);
     return;
   }
@@ -86,11 +143,13 @@ function renderShadowLights(
   for (const light of lights) {
     const cascadeIndex = shadowCascadeIndexOf(light);
     single[0] = light;
-    policy.beforeLight(light, cascadeIndex);
+    policy?.beforeLight(light, cascadeIndex);
+    hideCastersOutsideCascade(cascadeIndex);
     try {
       render(single, scene, camera);
     } finally {
-      policy.afterLight(light, cascadeIndex);
+      restoreHiddenCasters();
+      policy?.afterLight(light, cascadeIndex);
     }
   }
 }

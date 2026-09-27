@@ -391,6 +391,11 @@ assert.match(mainSource, /cloudscape: config\.clouds/, 'the map\'s clouds block 
 assert.ok(layerSource.includes('${ATMOSPHERE_SKY_GLSL}') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');
 assert.ok(layerSource.includes('markShadowOnly(gobo)'), 'the gobos live on the shadow-only layer');
 assert.ok(layerSource.includes('gobo.customDepthMaterial = this.goboMaterial'), 'the gobos discard by the same two weather fields the trace reads');
+// round 78 (the performance lane): each gobo renders into its own cascade only — three rasterised every plane into
+// every cascade's map (sixteen field-shader draws for four planes on the cumulus maps); the mask is forgotten on detach
+assert.ok(layerSource.includes('setShadowCasterCascades(gobo, 1 << i);'), 'gobo i casts into cascade i only (renderLayers.setShadowCasterCascades)');
+assert.equal(layerSource.match(/setShadowCasterCascades\(gobo, null\);/g)?.length, 1, 'the detach forgets the mask');
+assert.ok(layerSource.indexOf('setShadowCasterCascades(gobo, 1 << i);') < layerSource.indexOf('this.scene.add(gobo);'), 'registered before the plane joins the scene');
 assert.match(layerSource, /t\.uStepScale\.value = CLOUD_STEP_SCALE_BY_PRESET\[resolvePresetName\(\)\]/, 'the stride scale follows the quality preset every frame');
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');
 assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDetail;[\s\S]*uniform sampler3D tCurl;/, 'the volumes are 3D textures');
