@@ -4791,12 +4791,32 @@ function* vegetationBuildSteps(
   // The proxy material is never compiled for color: proxies sit on the
   // shadow-only layer and only the cascade depth passes rasterize them.
   const canopyShadowProxyMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
-  function canopyShadowProxyGeometry(canopy: THREE.BufferGeometry): THREE.BufferGeometry {
-    // A private copy of the far-LOD lobe hull: instance attributes must stay
-    // per pool, and the shadow pass needs positions only.
+  /** The flat (non-indexed) positions of a geometry as a private copy; the shadow pass needs positions only. */
+  function shadowPositionsOf(source: THREE.BufferGeometry): Float32Array {
+    const flat = source.index ? source.toNonIndexed() : source;
+    const array = (flat.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    return flat === source ? array.slice() : array;
+  }
+  // Round 79 (2026-09-28, the performance lane): the proxy carries the near tree's WHOLE shadow — the far-LOD lobe
+  // hull and the near trunk in one position-only geometry — so a pool costs one shadow-only instanced draw per
+  // cascade instead of two (the trunk mesh and the crown proxy held identical instance sets, the same LOD-fade
+  // depth program and the same FrontSide-as-BackSide depth pass, and each grew its own three r8 cascade proxies:
+  // on Monsoon Ridge 15.8 trunk draws and 15.8 crown draws per near cascade at the chase pose, and 7.5 + 7.5 in the
+  // last). The trunk mesh itself no longer casts on the tiers that build proxies; the mobile tier keeps trunk-only
+  // shadows from the trunk mesh as before. Same triangles, same depth values (a depth map is order-independent).
+  function canopyShadowProxyGeometry(canopy: THREE.BufferGeometry, trunk: THREE.BufferGeometry | null = null): THREE.BufferGeometry {
+    // A private copy: instance attributes must stay per pool.
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', (canopy.getAttribute('position') as THREE.BufferAttribute).clone());
-    if (canopy.index) geometry.setIndex(canopy.index.clone());
+    const crown = shadowPositionsOf(canopy);
+    if (trunk) {
+      const bark = shadowPositionsOf(trunk);
+      const merged = new Float32Array(crown.length + bark.length);
+      merged.set(crown, 0);
+      merged.set(bark, crown.length);
+      geometry.setAttribute('position', new THREE.BufferAttribute(merged, 3));
+    } else {
+      geometry.setAttribute('position', new THREE.BufferAttribute(crown, 3));
+    }
     geometry.computeBoundingSphere();
     return geometry;
   }
@@ -4852,8 +4872,11 @@ function* vegetationBuildSteps(
         foliage.userData.treeLod = 'near';
         const pool: TreeMesh[] = [trunk, foliage];
         if (canopyShadowProxies) {
+          // Round 79: the crown proxy carries the trunk's shadow too (canopyShadowProxyGeometry); the trunk mesh
+          // stops casting so the pool submits one shadow draw per cascade, not two
+          trunk.castShadow = false;
           pool.push(makeCanopyShadowProxy(
-            canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy),
+            canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy, g.trunk),
             sp, capacity, `treeCanopyShadow_${sp}_${variant}`));
         }
         return pool;

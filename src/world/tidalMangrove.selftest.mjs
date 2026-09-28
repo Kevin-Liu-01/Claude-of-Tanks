@@ -401,12 +401,17 @@ function checkWholePools(before, after) {
   const afterPools = pools(after.group), beforePools = pools(before.group);
   assert.equal(afterPools.length, beforePools.length);
   const tidalPoolRows = [];
+  // Round 79 (2026-09-28): the crown shadow proxy carries the near trunk's positions (one shadow draw per pool per
+  // cascade), so the three willow proxies differ from the control by the same 594 expanded vertices as the trunks.
+  const tidalProxy = m => m.userData.treeCanopyShadowProxy === true && m.name.startsWith('treeCanopyShadow_willow_');
   afterPools.forEach((m, i) => {
-    if (!tidalTrunkGeometry.has(m.geometry)) return;
+    const trunkPool = tidalTrunkGeometry.has(m.geometry);
+    if (!trunkPool && !tidalProxy(m)) return;
     tidalPoolRows.push(i);
-    assert.equal(m.geometry.attributes.position.count - beforePools[i].geometry.attributes.position.count, -594, 'stilt trunk pool against the swept-root control');
+    assert.equal(m.geometry.attributes.position.count - beforePools[i].geometry.attributes.position.count, -594,
+      trunkPool ? 'stilt trunk pool against the swept-root control' : 'the crown shadow proxy carries the stilt trunk against the swept-root control');
   });
-  assert.equal(tidalPoolRows.length, 3, 'exactly the three near willow trunk pools differ');
+  assert.equal(tidalPoolRows.length, 6, 'exactly the three near willow trunk pools and their three crown shadow proxies differ');
   assert.deepEqual(rows(after.group).filter((_, i) => !tidalPoolRows.includes(i)),
     rows(before.group).filter((_, i) => !tidalPoolRows.includes(i)), 'all actual tree, grass and bush pool allocations are unchanged');
   assert.deepEqual(rows(after.group).map(r => ({ ...r, geometry: null })), rows(before.group).map(r => ({ ...r, geometry: null })),
