@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.ts';
-import { ALL_TANK_IDS, getSpec } from './specs.ts';
+import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from './specs.ts';
+import { Group } from 'three';
+import { createMachineGunAttachmentAudit } from './profiles/machineGunAttachment.test-support.mjs';
 import {
   WHEEL_PATTERN_DEFINITIONS,
   WHEEL_PATTERN_IDS,
@@ -11,35 +13,52 @@ import { auditTankWheelQuality } from './wheelQuality.ts';
 const patternUse = new Map();
 const geometrySignatures = new Map();
 
-for (const id of ALL_TANK_IDS) {
-  const resolvedA = wheelPatternFor(getSpec(id));
-  const resolvedB = wheelPatternFor(getSpec(id));
-  assert.deepEqual(resolvedA, resolvedB, `${id}: deterministic wheel pattern`);
-  assert(WHEEL_PATTERN_DEFINITIONS[resolvedA.id], `${id}: registered wheel pattern`);
-
-  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
-  await Promise.resolve();
-  const audit = auditTankWheelQuality(tank.root);
-  assert.deepEqual(audit.issues, [], `${id}: ${JSON.stringify(audit.issues)}`);
-  assert(audit.patterns.length >= 1, `${id}: runtime wheel pattern receipt`);
-  assert(audit.patterns.includes(resolvedA.id),
-    `${id}: the family policy must agree with the authored running gear`);
-
-  for (const pattern of audit.patterns) {
-    patternUse.set(pattern, (patternUse.get(pattern) || 0) + 1);
-  }
-  tank.root.traverse((object) => {
-    if (object.name !== 'gearRoadWheelDiscs') return;
-    const pattern = object.userData.wheelPattern;
-    const positionCount = object.geometry?.getAttribute?.('position')?.count || 0;
-    const indexCount = object.geometry?.index?.count || 0;
-    const signature = `${positionCount}:${indexCount}`;
-    const signatures = geometrySignatures.get(pattern) || new Set();
-    signatures.add(signature);
-    geometrySignatures.set(pattern, signatures);
-  });
-  tank.dispose();
+// Both contracts read the same HIGH model; neither mutates it. Keep both
+// rosters when they diverge, and retain the mount audit's authored seed.
+const wheelIds = new Set(ALL_TANK_IDS), mountIds = new Set(DEVELOPMENT_TANK_IDS);
+const mounts = createMachineGunAttachmentAudit();
+const ids = [...new Set([...wheelIds, ...mountIds])];
+{
+  const root = new Group(), fitting = new Group();
+  fitting.userData = { fittingRoot: true, fitting: 'pintleMG' };
+  root.add(fitting);
+  assert.throws(() => createMachineGunAttachmentAudit().check('detached-fixture', { root }), /attached to a vehicle rig/,
+    'the shared inspection still rejects a mounted weapon outside every tank rig');
 }
+for (const id of ids) {
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+  try {
+    if (mountIds.has(id)) mounts.check(id, tank);
+    if (!wheelIds.has(id)) continue;
+    const resolvedA = wheelPatternFor(getSpec(id));
+    const resolvedB = wheelPatternFor(getSpec(id));
+    assert.deepEqual(resolvedA, resolvedB, `${id}: deterministic wheel pattern`);
+    assert(WHEEL_PATTERN_DEFINITIONS[resolvedA.id], `${id}: registered wheel pattern`);
+
+    await Promise.resolve();
+    const audit = auditTankWheelQuality(tank.root);
+    assert.deepEqual(audit.issues, [], `${id}: ${JSON.stringify(audit.issues)}`);
+    assert(audit.patterns.length >= 1, `${id}: runtime wheel pattern receipt`);
+    assert(audit.patterns.includes(resolvedA.id),
+      `${id}: the family policy must agree with the authored running gear`);
+
+    for (const pattern of audit.patterns) {
+      patternUse.set(pattern, (patternUse.get(pattern) || 0) + 1);
+    }
+    tank.root.traverse((object) => {
+      if (object.name !== 'gearRoadWheelDiscs') return;
+      const pattern = object.userData.wheelPattern;
+      const positionCount = object.geometry?.getAttribute?.('position')?.count || 0;
+      const indexCount = object.geometry?.index?.count || 0;
+      const signature = `${positionCount}:${indexCount}`;
+      const signatures = geometrySignatures.get(pattern) || new Set();
+      signatures.add(signature);
+      geometrySignatures.set(pattern, signatures);
+    });
+  } finally { tank.dispose(); }
+}
+const mountCounts = mounts.finish();
+console.log(`fleet mounts: ${mountCounts.fittingCount} fittings on ${mountCounts.tankCount} tanks; ${ids.length} shared builds`);
 
 // solid-bogie-six lost its last playable hull (t95) when the hidden fleet retired
 // (2026-09-23); the definition stays because the builders switch on its motif.

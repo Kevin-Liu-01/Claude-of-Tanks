@@ -21,23 +21,19 @@ assert.deepEqual(nestedSelftests(`import './static.selftest.mjs';\nawait import(
   ['./static.selftest.mjs', './dynamic.selftest.mjs']);
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-const expectedScripts = {
-  pre: 'node tools/run-selftests.mjs pre',
-  core: 'node tools/run-selftests.mjs core',
-  post: 'node tools/run-selftests.mjs post',
-};
-assert.equal(packageJson.scripts.pretest, expectedScripts.pre);
-assert.equal(packageJson.scripts.test, expectedScripts.core);
-assert.equal(packageJson.scripts.posttest, expectedScripts.post);
+assert.equal(packageJson.scripts.test, 'node tools/run-selftests.mjs all');
+assert.equal(packageJson.scripts['test:all'], 'node tools/run-selftests.mjs all --all');
+assert.equal(packageJson.scripts['test:plan'], 'node tools/run-selftests.mjs all --plan');
+assert.equal(packageJson.scripts.pretest, undefined, 'one invocation owns the complete gate');
+assert.equal(packageJson.scripts.posttest, undefined, 'npm --all must apply to every group');
 
 // These independent whole-fleet CPU scans are long enough to exhaust the
 // runner's 45-second admission window. Keep them together, within their
 // existing lifecycle, so four workers do useful work before draining.
-assert.deepEqual(SELFTEST_SUITES.pre.slice(0,5),[
+assert.deepEqual(SELFTEST_SUITES.pre.slice(0,4),[
   'src/vehicles/fleetLazy.selftest.mjs',
   'src/vehicles/wheelQuality.selftest.mjs',
   'tools/wheel-axial-extents.selftest.mjs',
-  'src/vehicles/profiles/machineGunAttachment.selftest.mjs',
   'src/vehicles/eraGameplayRegistration.selftest.mjs',
 ]);
 assert.deepEqual(SELFTEST_SUITES.core.slice(0,6),[

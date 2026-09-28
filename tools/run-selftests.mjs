@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { availableParallelism, constants, tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
@@ -48,6 +49,13 @@ export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   // (tick rate, stalls) measure host time; beside seven other children they flaked in a landing chain and pass alone.
   'server/match/tickCost.selftest.mjs',
   'tools/mp-soak.selftest.mjs',
+]);
+
+// A functional fleet sweep may reuse a source proof. Real frame/clock/heap
+// measurements and browser state must be observed on this run's environment.
+export const SELFTEST_FRESH_FILES = Object.freeze([
+  ...SELFTEST_OWNED_LEASE_FILES,
+  ...SELFTEST_EXCLUSIVE_CPU_FILES.filter(file => file !== 'src/vehicles/fleetLazy.selftest.mjs'),
 ]);
 
 // This caches compilation, NEVER test results or module instances. Every file
@@ -113,7 +121,7 @@ export function selftestCacheGate(cache, log) {
       log(`[selftests] SKIP ${file}: ${hit.inputs} inputs unchanged since PASS at ${hit.passedAt}`);
       return { skip: true, key: hit.key };
     },
-    record(file, key, status) { if (status === 0 && key) cache.recordPass(file, key); },
+    record(file, key, status, runMs) { if (status === 0 && key) cache.recordPass(file, key, { runMs }); },
   };
 }
 
@@ -190,7 +198,7 @@ export async function runSelftestSuite(suiteName, suite, {
         if (failFast || result.status === null || result.status >= 128) return failure;
         continue;
       }
-      gate.record(file, cached?.key, result.status);
+      gate.record(file, cached?.key, result.status, now() - startedAt);
     }
     if (failure !== null) return failure;
     log('[selftests] PASS ' + suiteName);
@@ -201,33 +209,79 @@ export async function runSelftestSuite(suiteName, suite, {
   }
 }
 
+export function selftestCommand(args) {
+  const name = args[0] && !args[0].startsWith('--') ? args.shift() : 'all';
+  const files = name === 'all' ? Object.values(SELFTEST_SUITES).flat() : SELFTEST_SUITES[name];
+  if (!files) throw new Error(`Unknown self-test suite "${name}". Expected: all, ${Object.keys(SELFTEST_SUITES).join(', ')}`);
+  const options = { name, files, plan: false, report: null, changed: null };
+  for (const arg of args) {
+    if (arg === '--plan') options.plan = true;
+    else if (arg === '--all') continue; // handled by the cache; applies to every selected group
+    else if (arg.startsWith('--report=')) options.report = resolve(arg.slice(9));
+    else if (arg.startsWith('--changed=')) options.changed = arg.slice(10).split(',').filter(Boolean);
+    else throw new Error(`Unknown self-test option: ${arg}`);
+  }
+  if (options.changed && !options.plan) throw new Error('--changed explains impact with --plan; it never skips required checks');
+  return options;
+}
+
+export function selftestPlan(files, cache, changed = null, root = process.cwd()) {
+  return files.map(file => {
+    const proof = cache.lookup(file);
+    const inputs = changed ? [...cache.closureOf(resolve(root, file))] : [];
+    const affected = changed?.filter(path => inputs.some(input => {
+      const absolute = resolve(root, path);
+      return input === absolute || absolute.startsWith(input + '/');
+    }));
+    return { file, action: proof.skip ? 'reuse' : 'run', reason: proof.reason,
+      inputs: proof.inputs, ...(affected ? { affectedBy: affected } : {}) };
+  });
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const suiteName = process.argv[2];
-  const suite = SELFTEST_SUITES[suiteName];
-  if (!suite) {
-    console.error('Unknown self-test suite "' + (suiteName || '') + '". Expected: ' + Object.keys(SELFTEST_SUITES).join(', '));
-    process.exitCode = 2;
-  } else {
-    let completed = 0, executionMs = 0, queueMs = 0, skipped = 0;
-    const failures = [];
-    const suiteStarted = performance.now();
-    const concurrency = selftestWorkerCount();
-    const cache = createSelftestCache();
-    process.exitCode = await runSelftestSuite(suiteName, suite, {
-      concurrency,
-      failFast: selftestFailFast(),
-      cache,
-      onTiming(row) {
-        completed++; executionMs += row.runMs; queueMs += row.queueMs;
-        if (row.skipped) { skipped++; return; }
-        const state = row.status === 0 && !row.error ? 'PASS' : 'FAIL';
-        if (state === 'FAIL') failures.push(row.file);
-        console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO`);
-      },
-    });
-    cache.persist();
-    if (skipped) console.log(`[selftests] ${suiteName}: ${skipped} of ${suite.length} receipts skipped (inputs unchanged since their last PASS; --all or COT_SELFTEST_CACHE=0 runs everything)${cache.enabled ? '' : ' [cache disabled]'}`);
-    if (failures.length) console.error(`[selftests] ${suiteName}: ${failures.length} FAILED\n  ${failures.join('\n  ')}`);
-    console.log(`[selftests] ${suiteName}: ${(performance.now() - suiteStarted).toFixed(0)}ms elapsed, ${executionMs.toFixed(0)}ms summed child across ${concurrency} CPU workers, ${queueMs.toFixed(0)}ms runner FIFO; browser children remain exclusive`);
+  let command;
+  try { command = selftestCommand(process.argv.slice(2)); }
+  catch (error) { console.error(error.message); process.exitCode = 2; }
+  if (command) {
+    const { name: suiteName, files: suite } = command;
+    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, env: selftestChildEnv() });
+    if (command.plan) {
+      const checks = selftestPlan(suite, cache, command.changed);
+      console.log(JSON.stringify({ checks: checks.length,
+        run: checks.filter(row => row.action === 'run').length,
+        reuse: checks.filter(row => row.action === 'reuse').length,
+        ...(command.changed ? { affected: checks.filter(row => row.affectedBy.length).length } : {}),
+        rows: checks }, null, 2));
+      cache.persist();
+    } else {
+      let completed = 0, executionMs = 0, queueMs = 0, skipped = 0;
+      const failures = [], rows = [];
+      const suiteStarted = performance.now();
+      const concurrency = selftestWorkerCount();
+      const startedAt = new Date().toISOString();
+      process.exitCode = await runSelftestSuite(suiteName, suite, {
+        concurrency,
+        failFast: selftestFailFast(),
+        cache,
+        onTiming(row) {
+          rows.push({ ...row, error: row.error?.message });
+          completed++; executionMs += row.runMs; queueMs += row.queueMs;
+          if (row.skipped) { skipped++; return; }
+          const state = row.status === 0 && !row.error ? 'PASS' : 'FAIL';
+          if (state === 'FAIL') failures.push(row.file);
+          console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO`);
+        },
+      });
+      cache.persist();
+      if (skipped) console.log(`[selftests] ${suiteName}: ${skipped} of ${suite.length} receipts skipped (inputs unchanged since their last PASS; --all or COT_SELFTEST_CACHE=0 runs everything)${cache.enabled ? '' : ' [cache disabled]'}`);
+      if (failures.length) console.error(`[selftests] ${suiteName}: ${failures.length} FAILED\n  ${failures.join('\n  ')}`);
+      console.log(`[selftests] ${suiteName}: ${(performance.now() - suiteStarted).toFixed(0)}ms elapsed, ${executionMs.toFixed(0)}ms summed child across ${concurrency} CPU workers, ${queueMs.toFixed(0)}ms runner FIFO; browser children remain exclusive`);
+      const reportPath = command.report ?? resolve('node_modules/.cache/cot-selftests/latest-run.json');
+      mkdirSync(dirname(reportPath), { recursive: true });
+      writeFileSync(reportPath, JSON.stringify({ startedAt, finishedAt: new Date().toISOString(),
+        status: process.exitCode, selected: suite.length, completed, executed: completed - skipped,
+        reused: skipped, elapsedMs: performance.now() - suiteStarted, executionMs, queueMs, rows }, null, 2) + '\n');
+      console.log(`[selftests] report: ${reportPath}`);
+    }
   }
 }

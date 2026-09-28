@@ -1,4 +1,4 @@
-/** Ordered regression suites used by npm's pretest/test/posttest lifecycle. */
+/** Ordered regression groups; npm test runs all of them in one invocation. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
     // Group independent full-fleet builders to fill the four CPU slots before
@@ -6,7 +6,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetLazy.selftest.mjs',
     'src/vehicles/wheelQuality.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
-    'src/vehicles/profiles/machineGunAttachment.selftest.mjs',
     'src/vehicles/eraGameplayRegistration.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',
     'src/vehicles/suppliedSourceWeapons.selftest.mjs',

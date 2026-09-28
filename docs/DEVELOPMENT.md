@@ -281,36 +281,66 @@ The ordered inventory lives in `tools/selftest-suites.mjs`; package scripts
 invoke the small `tools/run-selftests.mjs` runner instead of embedding hundreds
 of shell commands.
 
-### Fast checks (2026-09-15)
+### Test gate and result reuse (2026-09-28)
 
-A full run of the 1,024 receipts costs about 100 minutes of child CPU (the fleet
-sweeps each rebuild all 181 tanks), and the release check used to stop at the
-first failing receipt, so one broken pin cost a 40-minute re-run. Three things
-changed, none of which relaxes an assertion:
+`npm test` considers every registered check in one invocation. `npm run test:all`
+(or `npm test -- --all`) bypasses result reuse for **every** group. The former
+pretest/test/posttest lifecycle applied extra npm arguments only to the middle
+group. Individual groups remain available as `node tools/run-selftests.mjs pre`
+(or `core` / `post`).
 
-- **Result cache.** `tools/selftest-cache.mjs` derives every input a receipt can
-  observe — its import graph (static, re-exports, `import('…')`, template dynamic
-  imports pull in their directory), the files it names (`new URL(…,
-  import.meta.url)`, `join(here, '..', 'x')`, repo-rooted and dev-server paths,
-  paths listed inside JSON contracts it reads), the directories it lists, and,
-  for receipts that spawn children, list directories or drive the app in a
-  browser, the whole `src/ tools/ server/ public/ docs/` trees — plus node's
-  version, `package-lock.json` and the runner itself. When every input is
-  byte-identical to the receipt's last PASS the runner prints `SKIP <file>: N
-  inputs unchanged since PASS at <time>` instead of running it. The record lives
-  under `node_modules/.cache/cot-selftests/` (per worktree, never committed).
-  `COT_SELFTEST_CACHE=0 npm test` runs everything (`--all` does the same for a
-  single `node tools/run-selftests.mjs <group> --all`; npm hands extra arguments
-  only to the `test` script, not to `pretest`/`posttest`); delete the directory to
-  forget every pass.
-- **Every failure in one run.** A failing receipt no longer stops its group; the
-  runner keeps going, names each failed file, and exits with the earliest one's
-  status. `COT_SELFTEST_FAIL_FAST=1` restores stop-at-first-failure. A child that
-  dies to a signal still ends the suite.
-- **Staged release check.** `tank:release:check` runs the load-sensitive scoring
-  (standard → sealed → fidelity) serially, then the fleet probes, the receipt
-  suite and the production build concurrently (four at a time; GPU children still
-  serialise through the capture queue).
+`npm run test:plan` lists which checks must run, which can reuse a PASS, and why.
+Use `npm run test:plan -- --changed=src/engine/quality.ts,docs/DEPLOYS.md` to inspect
+input impact; this is an explanation, never permission to omit an unproven check.
+Every completed invocation writes counts, individual execution times, queue wait,
+failures and reused results to `node_modules/.cache/cot-selftests/latest-run.json`.
+`--report=/absolute/path.json` chooses another output. Queue time is reported
+separately from test execution time so resource contention is not mistaken for
+slow game code.
+
+Result reuse is based on source syntax and file contents:
+
+- Runtime imports, exports and dynamic import directories are followed,
+  including dependencies outside those directories. Query suffixes resolve to
+  the real file. Type-only imports remain the typecheck's responsibility.
+- Source text read for an assertion is a data input; its imports are not
+  executed. JSON-listed files, static paths and templated asset directories are
+  tracked. Opaque process/listing operations retain conservative directory inputs.
+- Files and directory members are content hashed. Timestamp-only checkout changes
+  preserve a proof; different bytes with the same size and timestamp invalidate it.
+  A missing named input becoming present also invalidates the proof.
+- Observed environment variables, Node version, platform, dependency lock and
+  dependency-parser implementation participate in the key. Unresolved computed
+  imports/environment, browser state, Git state, and the registered timing/heap
+  checks require fresh execution. A source-only cached result cannot certify GPU
+  output or current timing.
+- Content-addressed PASS records are shared between this repository's worktrees
+  and clean release clones on the same machine, in the user's temporary cache.
+  `COT_SELFTEST_CACHE_DIR` can isolate them. `COT_SELFTEST_CACHE=0` disables reuse.
+  Version-1 records are not trusted after the dependency bugs found in this audit.
+  Suite registration/order is not a global reason to rebuild unrelated vehicles.
+
+The 2026-09-28 audit found a comment mentioning Puppeteer that falsely expanded
+input handling's dependency scope to the whole repository, missing query-suffixed
+imports (including the graphics-quality contract), timestamp-based directory keys,
+and missed imports outside dynamically loaded directories. Negative fixtures now
+exercise each case. The impact plan reduces deployment-note invalidation from
+roughly 500 checks to 161 on this revision; fresh environmental checks are additional.
+This is a dependency count, not a claim about elapsed time on a busy host.
+
+The wheel-quality and machine-gun attachment inspections now share one HIGH tank
+build per roster member. Their 37 original assertions remain, with a detached-mount
+negative control. Their distinct rosters are both retained; the ERA depletion test
+keeps its independent LOW build because it mutates geometry. Source-shape guards,
+functional simulation tests and real visual checks still make different claims:
+a source regex does not prove a rendered result. The full gate inventory is not a
+substitute for the map/contact, shadow-motion and real Garage/battle review.
+
+The runner retains bounded CPU workers, fresh child processes, fair capture-queue
+batches and exclusive browser/timing checks. It reports every ordinary failure in
+one run; `COT_SELFTEST_FAIL_FAST=1` opts into stopping early. No assertion threshold
+was loosened to gain speed. A first run after changing the proof format is cold;
+later runs reuse only matching successful evidence.
 
 Build the public artifact:
 

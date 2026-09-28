@@ -36,7 +36,7 @@ export async function runSelftestCpuPool(name, files, options) {
       interruptionSeen ||= Boolean(interrupted(result));
       failures.push(row);
       if (!failure || index < failure.index) failure = row;
-    } else gate.record(file, keys.get(file), result.status);
+    } else gate.record(file, keys.get(file), result.status, runMs);
   };
   const admit = async () => {
     while (!halted() && next < files.length && active.size < concurrency) {

@@ -1,263 +1,226 @@
-// Receipt result cache (fast checks, 2026-09-15). A receipt is a pure function of the
-// files it can observe; when every one of those files is byte-identical to the last run
-// that PASSED, running it again proves nothing. The runner therefore skips it and says so.
-//
-// What a receipt can observe is derived statically, and deliberately over-approximated:
-//   - its ESM import graph (static imports, re-exports, side-effect imports and dynamic
-//     `import('…')` with a literal specifier), followed recursively through the repo;
-//   - files it names: `new URL('…', import.meta.url)`, relative `'./x'` / `'../x'` literals
-//     and repo-rooted literals (`'src/…'`, `'tools/…'`, `'docs/…'`, `'public/…'`, `'server/…'`,
-//     …), including the ones listed inside JSON it depends on (ledgers, preservation
-//     contracts) — a path that resolves to a DIRECTORY pulls in every file below it;
-//   - a dynamic `import(`…${…}`)` with a static directory prefix pulls in that directory;
-//   - global salts: node's version, package-lock.json, the runner, the suite registry and
-//     this module. `node_modules/<pkg>/…` literals are hashed as files when they exist.
-// Anything the analysis cannot see (network, clock, GPU driver) is not an input a receipt
-// may depend on for a pass/fail verdict; a receipt that does is flaky, not cacheable, and
-// belongs in the exclusive list of the runner. `COT_SELFTEST_CACHE=0` or `--all` runs
-// everything; the cache lives under node_modules/.cache (per worktree, never committed).
+// Reuse a PASS only for identical observed inputs. Syntax and file contents
+// are the proof; comments, mtimes, checkout paths and suite order are not.
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, readSync, readdirSync, readFileSync, readlinkSync,
+  realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectSelftestInputs } from './selftest-inputs.mjs';
 
-export const SELFTEST_CACHE_VERSION = 1;
-const HERE = dirname(fileURLToPath(import.meta.url));
-export const REPO_ROOT = resolve(HERE, '..');
-const ROOT_DIRS = new Set(['src', 'tools', 'docs', 'public', 'server', 'scripts', 'shots', 'tests', 'node_modules']);
-const SOURCE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.json', '.tsx', '.jsx']);
+export const SELFTEST_CACHE_VERSION = 2;
+export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT_DIRS = new Set(['src', 'tools', 'docs', 'public', 'server', 'scripts', 'shots', 'tests', 'cloudflare', 'node_modules']);
+const SOURCE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.json', '.tsx', '.jsx', '.html']);
+const MODULE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.tsx', '.jsx']);
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', '.vercel', '.qa-dev', '.qa-map-environment']);
-const GLOBAL_SALT_FILES = ['package-lock.json', 'tools/run-selftests.mjs', 'tools/selftest-cpu-pool.mjs',
-  'tools/selftest-suites.mjs', 'tools/selftest-cache.mjs'];
-
-const SPECIFIER_PATTERNS = [
-  /\bfrom\s*['"]([^'"\n]+)['"]/g,                    // import … from '…'; export … from '…'
-  /\bimport\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g,         // import('…')
-  /\bimport\s+['"]([^'"\n]+)['"]/g,                   // import '…'
-  /new URL\(\s*['"]([^'"\n]+)['"]\s*,\s*import\.meta\.url/g,
-];
-const PATH_LITERAL = /['"`]((?:\.{1,2}\/|\/?(?:src|tools|docs|public|server|scripts|shots|tests|node_modules)\/)[^'"`\s${}()?#]*)['"`]/g;
-// dev-server URLs inside template strings: `http://127.0.0.1:${port}/tools/page.html`
-const URL_PATH = /\/(?:src|tools|public|docs)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
-// repo-root files named directly: 'index.html', 'docs.html', 'package.json', 'vercel.json'
-const ROOT_FILE_LITERAL = /['"`]([A-Za-z0-9_.-]+\.(?:html|json|css|md|txt|webp|png|svg|xml|ts|mjs|js))['"`]/g;
-const TEMPLATE_IMPORT = /\bimport\s*\(\s*`([^`$]*)\$\{/g;
-// join(here, '..', 'main.ts') / resolve(ROOT, 'docs.html'): the literal segments form a path
-const JOINED_PATH = /\b(?:join|resolve)\(([^()]*)\)/g;
-const QUOTED = /['"`]([^'"`\n]+)['"`]/g;
-// lockfiles and anything under node_modules are leaves: hashed when named, never parsed for paths
+const GLOBAL_SALT_FILES = ['package-lock.json', 'tools/selftest-cache.mjs', 'tools/selftest-inputs.mjs'];
 const LEAF_FILE = /(?:^|\/)(?:package-lock\.json|\.package-lock\.json|[^/]+\.lock)$|\/node_modules\//;
-// A receipt that lists directories, spawns children (tsc, git, a nested node) or drives the
-// real app in a browser observes more than its import graph shows; it re-runs whenever any
-// source, tool, asset or document changes.
-const BROAD_OBSERVER = /child_process|execFileSync|execSync|spawnSync|readdirSync|readdir\(|ls-files|glob\(|globSync|puppeteer|createServer\(/;
-const BROAD_DIRS = ['src', 'tools', 'server', 'public', 'docs', 'scripts'];
+const BROAD_DIRS = ['src', 'tools', 'server', 'public', 'docs', 'scripts', 'cloudflare'];
+export const sha1 = text => createHash('sha1').update(text).digest('hex');
+const parserHash = sha1(readFileSync(new URL('./selftest-inputs.mjs', import.meta.url)));
+const isDir = path => { try { return statSync(path).isDirectory(); } catch { return false; } };
+const isFile = path => { try { return statSync(path).isFile(); } catch { return false; } };
+const inside = (root, path) => path === root || path.startsWith(root + sep);
 
-export function sha1(text) {
-  return createHash('sha1').update(text).digest('hex');
+export function defaultSelftestCacheDir(root, env = process.env) {
+  if (env.COT_SELFTEST_CACHE_DIR) return resolve(env.COT_SELFTEST_CACHE_DIR);
+  let identity = root;
+  try {
+    let gitDir = join(root, '.git');
+    if (!isDir(gitDir)) gitDir = resolve(root, readFileSync(gitDir, 'utf8').match(/^gitdir: (.+)/m)[1]);
+    try { gitDir = resolve(gitDir, readFileSync(join(gitDir, 'commondir'), 'utf8').trim()); } catch {}
+    const config = readFileSync(join(gitDir, 'config'), 'utf8');
+    identity = /\[remote "origin"\][^[]*?\burl\s*=\s*([^\r\n]+)/.exec(config)?.[1].trim() ?? gitDir;
+  } catch {}
+  // Content-addressed proofs are portable to a clean release clone of the
+  // same repository. Different machines still establish their own receipts.
+  return join(tmpdir(), `cot-selftests-v${SELFTEST_CACHE_VERSION}-${process.getuid?.() ?? 'user'}`, sha1(identity));
 }
 
-export function createSelftestCache({
-  root = REPO_ROOT,
-  cacheDir = join(root, 'node_modules', '.cache', 'cot-selftests'),
-  env = process.env,
-  argv = process.argv,
-  nodeVersion = process.version,
-} = {}) {
+export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.env,
+  argv = process.argv, nodeVersion = process.version, alwaysRun = [] } = {}) {
+  cacheDir ??= defaultSelftestCacheDir(root, env);
   const enabled = env.COT_SELFTEST_CACHE !== '0' && !argv.includes('--all');
-  const fileHashes = new Map();   // absolute path -> sha1 of bytes (or null when unreadable)
-  const dirFingerprints = new Map(); // absolute dir -> sha1 over (relpath, size, mtime)
-  const edges = new Map();        // absolute file -> resolved absolute dependencies (files or dirs)
-  const closures = new Map();     // absolute file -> Set of absolute files/dirs
-  // Edge extraction is the expensive part (several regex passes over every source file); the
-  // resolved edges are remembered on disk by content hash, so an unchanged file costs one hash.
+  const freshFiles = new Set(alwaysRun);
+  const fileHashes = new Map(), dirFingerprints = new Map(), edges = new Map(), closures = new Map();
+  const executableEdges = new Map();
+  const metadata = new Map();
+  const unresolvedImports = new Set();
   const edgeStorePath = join(cacheDir, 'edges.json');
-  let edgeStore = {};
-  try { edgeStore = JSON.parse(readFileSync(edgeStorePath, 'utf8')); } catch { edgeStore = {}; }
-  if (edgeStore.version !== SELFTEST_CACHE_VERSION) edgeStore = { version: SELFTEST_CACHE_VERSION, byHash: {} };
+  let edgeStore;
+  try { edgeStore = JSON.parse(readFileSync(edgeStorePath, 'utf8')); } catch {}
+  if (edgeStore?.version !== SELFTEST_CACHE_VERSION || edgeStore?.parserHash !== parserHash) {
+    edgeStore = { version: SELFTEST_CACHE_VERSION, parserHash, byHash: {} };
+  }
   let edgeStoreDirty = false;
-
-  const hashFile = (file) => {
+  const buffer = Buffer.allocUnsafe(256 * 1024);
+  const hashFile = file => {
     if (fileHashes.has(file)) return fileHashes.get(file);
-    let digest = null;
-    try { digest = createHash('sha1').update(readFileSync(file)).digest('hex'); } catch { digest = null; }
+    let fd, digest = 'missing';
+    try {
+      fd = openSync(file, 'r');
+      const hash = createHash('sha256');
+      for (;;) { const count = readSync(fd, buffer, 0, buffer.length, null); if (!count) break; hash.update(buffer.subarray(0, count)); }
+      digest = hash.digest('hex');
+    } catch (error) { if (!['ENOENT', 'ENOTDIR'].includes(error.code)) throw error; }
+    finally { if (fd !== undefined) closeSync(fd); }
     fileHashes.set(file, digest);
     return digest;
   };
-
-  const isDir = (path) => { try { return statSync(path).isDirectory(); } catch { return false; } };
-  const isNodeModulesDir = (path) => isDir(path) && (path.includes(`${sep}node_modules${sep}`) || path.endsWith(`${sep}node_modules`));
-  const isFile = (path) => { try { return statSync(path).isFile(); } catch { return false; } };
-
-  const walk = (dir, out) => {
-    let entries;
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  const walk = (dir, out, seen = new Set()) => {
+    let canonical, entries;
+    try { canonical = realpathSync(dir); entries = readdirSync(dir, { withFileTypes: true }); }
+    catch (error) { if (['ENOENT', 'ENOTDIR'].includes(error.code)) return; throw error; }
+    if (seen.has(canonical)) return;
+    seen.add(canonical);
     for (const entry of entries) {
       if (SKIP_DIRS.has(entry.name)) continue;
       const full = join(dir, entry.name);
-      if (entry.isDirectory()) walk(full, out);
-      else if (entry.isFile()) out.push(full);
+      out.push(full); // include empty directories and symlink identities
+      if (entry.isDirectory() || (entry.isSymbolicLink() && isDir(full))) walk(full, out, seen);
     }
   };
-
-  // Directories are fingerprinted by listing, size and mtime (a full byte hash of public/
-  // would cost more than many receipts); a spurious invalidation only costs a re-run.
-  const fingerprintDir = (dir) => {
+  const fingerprintDir = dir => {
     if (dirFingerprints.has(dir)) return dirFingerprints.get(dir);
-    const files = [];
-    walk(dir, files);
-    files.sort();
-    const hash = createHash('sha1');
+    const files = []; walk(dir, files); files.sort();
+    const hash = createHash('sha256');
     for (const file of files) {
-      let stat;
-      try { stat = statSync(file); } catch { continue; }
-      hash.update(`${relative(root, file)}\0${stat.size}\0${Math.round(stat.mtimeMs)}\n`);
+      let link = '';
+      try { link = readlinkSync(file); } catch {}
+      hash.update(`${relative(root, file)}\0${link}\0${isDir(file) ? 'directory' : hashFile(file)}\n`);
     }
-    const digest = hash.digest('hex');
-    dirFingerprints.set(dir, digest);
-    return digest;
+    const digest = hash.digest('hex'); dirFingerprints.set(dir, digest); return digest;
   };
-
-  const resolveSpecifier = (fromFile, specifier) => {
-    if (!specifier || specifier.startsWith('node:') || specifier.startsWith('http')) return null;
-    let base;
-    if (specifier.startsWith('./') || specifier.startsWith('../')) base = resolve(dirname(fromFile), specifier);
+  const resolveSpecifier = (from, value, required = false) => {
+    if (!value || value.startsWith('node:') || value.startsWith('http') || value.includes('\n')) return null;
+    // Node/Vite query suffixes make a fresh module instance, not another file.
+    const specifier = value.split(/[?#]/, 1)[0];
+    let path;
+    if (specifier.startsWith('./') || specifier.startsWith('../')) path = resolve(dirname(from), specifier);
     else if (specifier.startsWith('/')) {
-      // '/tools/page.html' is a dev-server URL rooted at the repo; other absolute paths are machine paths
-      const head = specifier.split('/')[1];
-      if (!ROOT_DIRS.has(head)) return null;
-      base = resolve(root, specifier.slice(1));
-    } else {
-      const head = specifier.split('/')[0];
-      if (!ROOT_DIRS.has(head)) {
-        // a repo-root file named directly ('index.html', 'package.json')
-        if (!specifier.includes('/') && isFile(resolve(root, specifier))) return resolve(root, specifier);
-        return null;                                 // bare package specifier ('three', 'puppeteer')
-      }
-      base = resolve(root, specifier);
+      if (!ROOT_DIRS.has(specifier.split('/')[1])) return null;
+      path = resolve(root, specifier.slice(1));
+    } else if (ROOT_DIRS.has(specifier.split('/')[0])
+      || (!specifier.includes('/') && extname(specifier))) path = resolve(root, specifier);
+    else return null;
+    if (!inside(root, path) || path === root) return null;
+    if (isFile(path) || isDir(path)) return path;
+    if (!extname(path)) for (const candidate of [`${path}.ts`, `${path}.mjs`, `${path}.js`, join(path, 'index.ts'), join(path, 'index.mjs')]) {
+      if (isFile(candidate)) return candidate;
     }
-    if (!base.startsWith(root + sep) && base !== root) return null;
-    if (isFile(base)) return base;
-    if (isDir(base)) return base;
-    if (!extname(base)) {
-      for (const candidate of [`${base}.ts`, `${base}.mjs`, `${base}.js`, join(base, 'index.ts'), join(base, 'index.mjs')]) {
-        if (isFile(candidate)) return candidate;
-      }
-    }
-    return null;
+    // Remember a missing named file too: adding it must invalidate a PASS.
+    return required || extname(path) ? path : null;
   };
-
-  const dependenciesOf = (file) => {
+  const inspect = file => {
+    if (metadata.has(file)) return metadata.get(file);
+    const digest = hashFile(file), id = `${relative(root, file)}:${digest}`;
+    let value = edgeStore.byHash[id];
+    if (!value) {
+      value = collectSelftestInputs(readFileSync(file, 'utf8'), file);
+      edgeStore.byHash[id] = value; edgeStoreDirty = true;
+    }
+    metadata.set(file, value); return value;
+  };
+  const dependenciesOf = file => {
     if (edges.has(file)) return edges.get(file);
-    const found = new Set();
-    edges.set(file, found);
-    if (!SOURCE_EXTENSIONS.has(extname(file)) && !file.endsWith('.html')) return found;
-    if (LEAF_FILE.test(file)) return found;
-    const digest = hashFile(file);
-    const remembered = digest && edgeStore.byHash[`${relative(root, file)}:${digest}`];
-    if (remembered) {
-      for (const rel of remembered) found.add(resolve(root, rel));
-      return found;
+    const found = new Set(), modules = new Set(); edges.set(file, found); executableEdges.set(file, modules);
+    if (!SOURCE_EXTENSIONS.has(extname(file)) || LEAF_FILE.test(file) || !isFile(file)) return found;
+    const info = inspect(file);
+    for (const specifier of info.imports) {
+      const target = resolveSpecifier(file, specifier, true);
+      if (target && target !== file) { found.add(target); modules.add(target); }
     }
-    let text;
-    try { text = readFileSync(file, 'utf8'); } catch { return found; }
-    const specifiers = new Set();
-    for (const pattern of SPECIFIER_PATTERNS) {
-      pattern.lastIndex = 0;
-      for (const match of text.matchAll(pattern)) specifiers.add(match[1]);
-    }
-    PATH_LITERAL.lastIndex = 0;
-    for (const match of text.matchAll(PATH_LITERAL)) specifiers.add(match[1]);
-    URL_PATH.lastIndex = 0;
-    for (const match of text.matchAll(URL_PATH)) specifiers.add(match[0]);
-    ROOT_FILE_LITERAL.lastIndex = 0;
-    for (const match of text.matchAll(ROOT_FILE_LITERAL)) specifiers.add(match[1]);
-    if (BROAD_OBSERVER.test(text)) for (const dir of BROAD_DIRS) if (isDir(resolve(root, dir))) found.add(resolve(root, dir));
-    TEMPLATE_IMPORT.lastIndex = 0;
-    for (const match of text.matchAll(TEMPLATE_IMPORT)) {
-      const prefix = match[1];
-      const slash = prefix.lastIndexOf('/');
-      if (slash > 0) specifiers.add(prefix.slice(0, slash + 1));
-    }
-    for (const specifier of specifiers) {
+    for (const specifier of info.specifiers) {
       const target = resolveSpecifier(file, specifier);
-      if (target && target !== file && !isNodeModulesDir(target)) found.add(target);
+      if (target && target !== file && !(isDir(target) && target.includes(`${sep}node_modules`))) found.add(target);
     }
-    JOINED_PATH.lastIndex = 0;
-    for (const call of text.matchAll(JOINED_PATH)) {
-      const segments = [...call[1].matchAll(QUOTED)].map((m) => m[1]).filter((s) => !s.includes('${'));
-      if (!segments.length) continue;
-      for (const base of [dirname(file), root]) {
-        const candidate = resolve(base, ...segments);
-        if (!candidate.startsWith(root + sep) || candidate === file) continue;
-        if (isFile(candidate) || (isDir(candidate) && !isNodeModulesDir(candidate))) found.add(candidate);
+    if (info.broad) for (const dir of BROAD_DIRS) if (isDir(join(root, dir))) found.add(join(root, dir));
+    for (const segments of info.joined) for (const base of [dirname(file), root]) {
+      const target = resolve(base, ...segments);
+      if (inside(root, target) && target !== root && target !== file && (isFile(target) || isDir(target))) found.add(target);
+    }
+    for (const { prefix, suffix, execute } of info.dynamic) {
+      if (/[?#]/.test(prefix)) { const target = resolveSpecifier(file, prefix, true); if (target) { found.add(target); if (execute) modules.add(target); } continue; }
+      const slash = prefix.lastIndexOf('/');
+      const dir = slash >= 0 ? resolveSpecifier(file, prefix.slice(0, slash + 1)) : null;
+      if (!dir || !isDir(dir)) {
+        if (execute) unresolvedImports.add(file);
+        for (const name of BROAD_DIRS) if (isDir(join(root, name))) found.add(join(root, name));
+        continue;
       }
-    }
-    if (digest) {
-      edgeStore.byHash[`${relative(root, file)}:${digest}`] = [...found].map((p) => relative(root, p)).sort();
-      edgeStoreDirty = true;
+      found.add(dir);
+      if (!execute) continue;
+      const members = []; walk(dir, members);
+      const tail = suffix.split(/[?#]/, 1)[0], start = prefix.slice(slash + 1);
+      // Follow each possible module's imports as well as directory membership.
+      // Hashing just the directory missed helpers imported from outside it.
+      for (const member of members) if (isFile(member) && MODULE_EXTENSIONS.has(extname(member))
+        && relative(dir, member).startsWith(start) && member.endsWith(tail)) { found.add(member); modules.add(member); }
     }
     return found;
   };
-
-  /** Write the remembered edges (call once per runner process; a no-op when nothing was learned). */
-  const persist = () => {
-    if (!edgeStoreDirty) return;
-    mkdirSync(cacheDir, { recursive: true });
-    writeFileSync(edgeStorePath, JSON.stringify(edgeStore));
-    edgeStoreDirty = false;
-  };
-
-  const closureOf = (file) => {
+  const closureOf = file => {
     if (closures.has(file)) return closures.get(file);
-    const seen = new Set();
-    const stack = [file];
+    const seen = new Set(), expanded = new Set(), stack = [[file, true]];
     while (stack.length) {
-      const current = stack.pop();
-      if (seen.has(current)) continue;
-      seen.add(current);
-      if (isDir(current)) continue; // a directory contributes its fingerprint, not its imports
-      for (const dependency of dependenciesOf(current)) if (!seen.has(dependency)) stack.push(dependency);
+      const [current, execute] = stack.pop(); seen.add(current);
+      if (isDir(current) || expanded.has(current) || (!execute && extname(current) !== '.json')) continue;
+      expanded.add(current);
+      for (const dependency of dependenciesOf(current)) stack.push([dependency, executableEdges.get(current)?.has(dependency)]);
     }
-    closures.set(file, seen);
-    return seen;
+    closures.set(file, seen); return seen;
   };
-
-  const inputKey = (receipt) => {
-    const file = resolve(root, receipt);
-    const closure = closureOf(file);
-    const rows = [];
-    for (const entry of closure) {
-      const rel = relative(root, entry);
-      rows.push(isDir(entry) ? `dir:${rel}:${fingerprintDir(entry)}` : `file:${rel}:${hashFile(entry) ?? 'missing'}`);
-    }
-    rows.sort();
-    const hash = createHash('sha1');
-    hash.update(`v${SELFTEST_CACHE_VERSION}\0node:${nodeVersion}\0`);
-    for (const salt of GLOBAL_SALT_FILES) hash.update(`salt:${salt}:${hashFile(resolve(root, salt)) ?? 'missing'}\n`);
-    for (const row of rows) hash.update(row + '\n');
+  const inputKey = receipt => {
+    const closure = closureOf(resolve(root, receipt));
+    const rows = [...closure].map(file => `${isDir(file) ? 'dir' : 'file'}:${relative(root, file)}:${isDir(file) ? fingerprintDir(file) : hashFile(file)}`).sort();
+    const hash = createHash('sha256');
+    hash.update(`v${SELFTEST_CACHE_VERSION}\0node:${nodeVersion}\0platform:${process.platform}/${process.arch}\0options:${env.NODE_OPTIONS ?? ''}\0`);
+    const environment = new Set([...closure].flatMap(file => metadata.get(file)?.environment ?? []));
+    for (const name of [...environment].sort()) hash.update(`env:${name}:${env[name] ?? '<unset>'}\n`);
+    for (const salt of GLOBAL_SALT_FILES) hash.update(`salt:${salt}:${hashFile(join(root, salt))}\n`);
+    rows.forEach(row => hash.update(row + '\n'));
     return { key: hash.digest('hex'), inputs: rows.length };
   };
-
-  const entryPath = (receipt) => join(cacheDir, `${sha1(receipt)}.json`);
-
-  const lookup = (receipt) => {
-    if (!enabled) return { skip: false, reason: 'disabled' };
-    const { key, inputs } = inputKey(receipt);
-    let record = null;
-    try { record = JSON.parse(readFileSync(entryPath(receipt), 'utf8')); } catch { record = null; }
-    if (record && record.key === key && record.file === receipt) {
-      return { skip: true, key, inputs, passedAt: record.passedAt };
-    }
-    return { skip: false, key, inputs };
-  };
-
-  const recordPass = (receipt, key) => {
-    if (!enabled || !key) return;
+  const atomicJson = (path, value) => {
     mkdirSync(cacheDir, { recursive: true });
-    writeFileSync(entryPath(receipt), JSON.stringify({ file: receipt, key, passedAt: new Date().toISOString(),
-      version: SELFTEST_CACHE_VERSION }) + '\n');
+    const temporary = `${path}.${process.pid}.tmp`;
+    writeFileSync(temporary, JSON.stringify(value) + '\n'); renameSync(temporary, path);
   };
-
+  const entryPath = (file, key) => join(cacheDir, `${sha1(file)}-${key}.json`);
+  const lookup = receipt => {
+    if (!enabled) return { skip: false, reason: 'cache disabled' };
+    if (freshFiles.has(receipt)) return { skip: false, reason: 'fresh environment/timing check' };
+    const closure = closureOf(resolve(root, receipt));
+    if ([...closure].some(file => metadata.get(file)?.browser || metadata.get(file)?.git)) {
+      return { skip: false, reason: 'browser or Git state must be checked live' };
+    }
+    if ([...closure].some(file => metadata.get(file)?.opaqueImport || metadata.get(file)?.opaqueEnvironment || unresolvedImports.has(file))) {
+      return { skip: false, reason: 'computed import/environment needs a fresh run' };
+    }
+    const { key, inputs } = inputKey(receipt);
+    let record;
+    try { record = JSON.parse(readFileSync(entryPath(receipt, key), 'utf8')); } catch {}
+    if (record?.version === SELFTEST_CACHE_VERSION && record.key === key && record.file === receipt) {
+      return { skip: true, key, inputs, passedAt: record.passedAt, reason: 'identical inputs passed' };
+    }
+    return { skip: false, key, inputs, reason: 'no PASS for these inputs' };
+  };
+  const recordPass = (receipt, key, { runMs } = {}) => {
+    if (enabled && key) atomicJson(entryPath(receipt, key), { file: receipt, key,
+      passedAt: new Date().toISOString(), version: SELFTEST_CACHE_VERSION,
+      ...(Number.isFinite(runMs) ? { runMs } : {}) });
+  };
+  const persist = () => {
+    if (!edgeStoreDirty) return;
+    // Concurrent runners may add metadata. Losing a racing edge only costs a
+    // parse; proof records are separate, immutable keys and never overwrite.
+    let previous;
+    try { previous = JSON.parse(readFileSync(edgeStorePath, 'utf8')); } catch {}
+    if (previous?.version === SELFTEST_CACHE_VERSION && previous?.parserHash === parserHash) {
+      edgeStore.byHash = { ...previous.byHash, ...edgeStore.byHash };
+    }
+    atomicJson(edgeStorePath, edgeStore); edgeStoreDirty = false;
+  };
   return { enabled, cacheDir, lookup, recordPass, inputKey, closureOf, dependenciesOf, persist };
 }

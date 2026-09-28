@@ -5,9 +5,26 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, SELFTEST_OWNED_LEASE_FILES } from './run-selftests.mjs';
+import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
+  SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
+
+assert.deepEqual(selftestCommand(['all', '--all']).files, Object.values(SELFTEST_SUITES).flat(),
+  'one cache-bypass command runs every group, including former npm lifecycle hooks');
+assert.deepEqual(selftestCommand([]).files, Object.values(SELFTEST_SUITES).flat());
+assert.equal(selftestCommand(['core', '--plan']).plan, true);
+assert.throws(() => selftestCommand(['all', '--typo']), /Unknown self-test option/);
+assert.throws(() => selftestCommand(['all', '--changed=src/main.ts']), /never skips required checks/);
+assert.ok(SELFTEST_FRESH_FILES.includes('server/match/tickCost.selftest.mjs'));
+assert.ok(!SELFTEST_FRESH_FILES.includes('src/vehicles/fleetLazy.selftest.mjs'),
+  'functional source proofs are separate from environmental timing assertions');
+assert.deepEqual(selftestPlan(['a'], {
+  lookup: () => ({ skip: false, reason: 'new input', inputs: 2 }),
+  closureOf: () => new Set(['/fixture/src', '/fixture/tools/a.mjs']),
+}, ['src/main.ts', 'docs/readme.md'], '/fixture'), [
+  { file: 'a', action: 'run', reason: 'new input', inputs: 2, affectedBy: ['src/main.ts'] },
+], 'impact planning is explanatory and includes directory inputs');
 
 function fixture({ failAt, errorAt, acquireError } = {}) {
   const events = [], errors = [];
