@@ -624,10 +624,97 @@ self-stall rule above are the fix; the run above followed.
   banner-then-return path instead; the owner's call.
 - F3 in a v1 battle still toggles v1's diagnostics; the two surfaces never coexist.
 
+## 13. Re-scope 2026-09-28 — peer-to-peer over WebRTC (owner decision)
+
+**The decision.** Cloudflare Containers are sold only on the Workers Paid plan; the account is on Free, and the owner's
+answer to that was the question the program had left open since section 2: "can't our game just be peer to peer? …
+this can be done with WebRTC" — then "completely do this then and make it properly done." So the authority moves back
+into a player's browser, where v1 has run it since the beginning, and the Room Durable Object — which deploys on Free —
+carries everything peer-to-peer cannot: rooms that outlive their host, one WebSocket for entry, signaling, host
+election and host migration. The match container stays in the tree as an optional `MatchHost` backend for anyone who
+ever pays for a dedicated server; it leaves `wrangler.jsonc`. The client, prediction, snapshot stream, status model,
+exit flow and presentation of v2 carry over unchanged: they speak the same wire over a different transport.
+
+### 13.1 Architecture
+
+| Piece | Where it runs | What it does |
+|---|---|---|
+| Room Durable Object (`cloudflare/rooms`, Free plan) | Cloudflare | seats, roster, settings, chat, phase, seat tokens, resume leases (as today); **plus** the WebRTC signaling relay, host election and host migration, keyframe bookkeeping |
+| Local room service (`server/rooms`) | the LAN helper / tests | the same actor with the same relay — LAN rooms and every headless proof |
+| Host authority (`server/match/matchActor.ts`) | the host commander's browser, in a Worker thread | the v2 authority unchanged: 60 Hz sim, viewer-specific snapshots, seat tokens verified with the room's secret handed to the host at `match_start` |
+| Host's own client | the host browser | `loopbackTransport` into the actor (the host plays on its own authority, as in v1) |
+| Peers | every other browser | `webRtcTransport` (RTCDataChannel) into the host's actor through an `rtcClientLink` |
+| ICE | `api/ice.ts` (Vercel) | STUN + TURN credentials as v1 uses them; a strict NAT relays through TURN |
+| Match container (`cloudflare/rooms/src/matchContainer.ts`, `server/match/main.ts`) | parked | an optional `MatchHost` implementation for a paid account; not deployed |
+
+The Room DO never carries game traffic: on the Free plan every WebSocket message is billed as a request and 28 clients
+at 20 Hz would exhaust a day's allowance in minutes. It relays a few dozen signaling messages per join and nothing else.
+
+### 13.2 The contract (in `src/mp/room/protocol.ts`, landed with this section)
+
+- `RoomSnapshot.host: RoomHostInfo { transport: 'p2p' | 'service'; hostId; generation; since }` — optional in this
+  commit, required once the rooms lane lands. `generation` increments on every election.
+- `match_start` for a p2p match: `matchUrl = "rtc://<roomId>/<generation>"`, `hostId` = the hosting seat. The host
+  receives its own id and boots the authority; peers open a data channel to `hostId`.
+- `room_signal` (client → room): `{ to, generation, kind: offer | answer | candidate, sdp?, candidate? }`, ≤ 8 KB
+  (`ROOM_SIGNAL_MAX_BYTES`); relayed verbatim as `room_signal` with `from`. The room checks: both seats are in the
+  room, one of them is the current host, the match is starting or playing, the generation is current, the rate window
+  holds. The room never parses SDP.
+- `host_changed` (room → all): `{ hostId, generation, resumeTick, reason: left | timeout | declined | start }`.
+- Election: the admin hosts by default; if the admin declines (mobile tier, or the settings' "never host" switch) the
+  room picks the lowest `joinedAt` connected commander that has not declined. When the host's room socket is absent
+  for `ROOM_HOST_DISCONNECT_GRACE_MS` (8 s) the room elects the next host and broadcasts `host_changed`.
+- Keyframes: the authority emits a keyframe at least every `ROOM_MATCH_KEYFRAME_INTERVAL_MS` (2 s); every peer keeps
+  the last keyframe and the deltas since it. The elected host boots the actor from that state (`resumeTick`), the
+  peers reconnect their channels, the entities hold still for the migration window, the match continues. The old host
+  returning joins as a peer. A match that loses every commander ends as `lost`, as today.
+- The wire (`src/mp/wire`) is unchanged: HELLO / INPUT / SNAPSHOT_ACK / PING / CHAT / LEAVE up, WELCOME / SNAPSHOT /
+  EVENT / PONG / CLOSE / ERROR down, one reliable ordered data channel `match` first; an unreliable unordered channel for
+  snapshots is a measured follow-up, never the default until it beats the reliable one on the soak.
+
+### 13.3 Host capacity — the honest limit
+
+One browser serves N−1 viewer-specific snapshot streams at 20 Hz. The soak measures bytes per viewer per second
+(`tickCost.selftest` already prints egress per viewer); the host's status model shows its uplink. Rules: 7v7 is the
+default room size; 14v14 is allowed and the room shows "host uplink: X of Y Mbit/s" from the first minute; the
+authority lowers the snapshot rate of far entities by interest tier (20 → 15 → 10 Hz) before it ever drops a peer;
+the mobile tier never hosts unless it is the only commander. The host is the authority and is, as in v1, a player:
+non-host peers are never authoritative for hits, damage, reloads or the result (the invariant in AGENTS.md).
+
+### 13.4 Phases and lanes
+
+1. **P1 rooms (lane `mp/p2p-rooms`)**: the relay, election, migration and keyframe bookkeeping in `roomActor.ts`
+   (shared by the DO and the local service); the `p2p` `MatchHost` implementation (`start()` names the host and the
+   `rtc://` URL, `status()` reads the host's presence and its `match_status` reports, `stop()` clears the election);
+   `wrangler.jsonc` loses the `containers` block and the `MATCH` namespace; receipts for every rule above; the Worker
+   typecheck stays DOM-free; the integrator deploys the Worker on the Free plan and sets `VITE_ROOMS_URL`.
+2. **P2 client (lane `mp/p2p-client`)**: `src/mp/transport/webRtcTransport.ts` (the `Transport` interface over an
+   RTCDataChannel, ICE from `api/ice.ts`, signaling through the room client, reconnect = a new offer to the current
+   host), `src/mp/match/rtcClientLink.ts` (the actor's `ClientLink` over a data channel), the host composition
+   (boot the actor in a Worker thread with the host's own world collision, loopback client for the host, `match_start`
+   with `hostId === me`), migration on both sides (keyframe retention, resume, reconnect), the status model's p2p
+   fields (role, candidate pair type, TURN, uplink), the surface (host badge, "hosting for N", migration banner),
+   `?mp=v2` unchanged as the opt-in; proofs: two- and three-browser headless matches over WebRTC through the local room
+   service (join, play, host leaves, migration, the old host returns as a peer).
+3. **P3 certify (after P1 + P2 merge)**: a 28-client soak over WebRTC (Node peers on `node-datachannel` in `tools/`
+   only, or headless peers at nice 19, whichever the machine can carry), host egress at 14v14 with the interest tiers,
+   entry soak through TURN, `net:prod:check --v2` against the deployed room Worker.
+4. **P4 cutover**: `?mp=v2` becomes the default with v1 behind `?mp=v1` for two green weeks, then `src/net`'s
+   browser-host stack and the Vercel signaling functions retire; LAN moves to the local room service.
+
+### 13.5 Receipts that guard the re-scope
+
+`roomActor.selftest` (relay rules, election, migration timing, generations), `roomWorkerProgram.selftest` (the
+Worker's program stays DOM-free), a `webRtcTransport.selftest` on a scripted data-channel double, an
+`rtcClientLink.selftest`, `matchClient` migration cases (keyframe retention, resume tick), the browser proofs above,
+and the tickCost egress table extended with the per-viewer bytes the host-capacity rule reads.
+
 ## 10. Decisions for the owner
 
-1. **Hosting account.** Run the match containers in the existing Cloudflare account (Workers
-   Paid; cost as above)? The alternative is a small VPS the owner provisions.
-2. **Retire browser-host P2P.** v2 has no browser authority; LAN moves to the local helper.
+1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
+   Paid)?~~ Decided 2026-09-28: no paid plan — the match runs peer-to-peer in the host's browser (section 13); the
+   container is parked.
+2. **Retire browser-host P2P.** ~~v2 has no browser authority.~~ Reversed 2026-09-28: v2's authority runs in the host's
+   browser over WebRTC, with the Room DO for rooms, signaling and host migration; v1's stack retires after the cutover.
 3. **One location per room** near its creator (friends across continents accept one RTT).
 4. **Telemetry.** Anonymous boot/error beacons on by default with an opt-out in settings.
