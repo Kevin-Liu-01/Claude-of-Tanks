@@ -27,6 +27,11 @@ export interface RtcClientLink extends ClientLink {
   readonly framesRejected: number;
   /** The wire reason this link closed with (null while open or when the channel closed by itself). */
   readonly closeReason: CloseReasonId | null;
+  /**
+   * Close the channel without a wire CLOSE: the peer sees a lost link and waits for the room's election instead of
+   * a closed match (a host that leaves or migrates away; a host whose tab dies looks the same).
+   */
+  abandon(): void;
 }
 
 function frameBytes(data: unknown): Uint8Array | null {
@@ -88,6 +93,11 @@ export function createRtcClientLink(channel: RtcDataChannelLike, label: string, 
       if (channel.readyState === 'open') {
         try { channel.send(encodeMessage({ type: MESSAGE_TYPE.CLOSE, reason, detail: detail.slice(0, 200) })); } catch { /* the channel is going */ }
       }
+      finish();
+      try { channel.close(); } catch { /* already closed */ }
+    },
+    abandon() {
+      if (closed) return;
       finish();
       try { channel.close(); } catch { /* already closed */ }
     },
@@ -155,7 +165,8 @@ export interface RtcHostAcceptor {
   stats(): RtcHostAcceptorStats;
   /** Drop one peer (its link closes with `reason`). */
   drop(playerId: string, reason?: CloseReasonId, detail?: string): void;
-  close(reason?: CloseReasonId, detail?: string): void;
+  /** End every link: with a wire CLOSE (`reason`), or silently (`null`: the host is leaving, the peers wait for the election). */
+  close(reason?: CloseReasonId | null, detail?: string): void;
 }
 
 const NO_ICE: RtcIceConfig = Object.freeze({ iceServers: [], relayOnly: false });
@@ -199,8 +210,8 @@ export function createRtcHostAcceptor({
     onPeerState(peer);
   };
 
-  /** Retire a peer's connection; its link (if open) closes with `reason`. */
-  const retire = (peer: RtcHostPeer, reason: CloseReasonId | null, detail = ''): void => {
+  /** Retire a peer's connection; its link (if open) closes with `reason`, or silently when `reason` is null. */
+  const retire = (peer: RtcHostPeer, reason: CloseReasonId | null, detail = '', abandon = false): void => {
     const internal = internals.get(peer);
     if (!internal || internal.retired) return;
     internal.retired = true;
@@ -213,7 +224,10 @@ export function createRtcHostAcceptor({
       // The link's bytes stay in the uplink total whether the owner closed it (the actor's detach) or the acceptor does.
       counters.bytesSent += link.bytesSent;
       counters.bytesReceived += link.bytesReceived;
-      if (!link.closed && reason !== null) link.close(reason, detail);
+      if (!link.closed) {
+        if (reason !== null) link.close(reason, detail);
+        else if (abandon) link.abandon();
+      }
     }
     try { pc.close(); } catch { /* already closed */ }
     setState(peer, 'closed');
@@ -333,7 +347,7 @@ export function createRtcHostAcceptor({
       if (closed) return;
       closed = true;
       unsubscribe();
-      for (const peer of [...peers.values()]) retire(peer, reason, detail);
+      for (const peer of [...peers.values()]) retire(peer, reason, detail, reason === null);
     },
   };
 }

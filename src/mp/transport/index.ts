@@ -13,3 +13,4 @@ export type {
   RtcPeerConnectionFactory, RtcPeerConnectionLike, RtcRelayedSignal, RtcSessionDescriptionLike, RtcSignalPayload, RtcSignalTarget,
   RtcStatsLike, RtcStatsReportLike, Signaler, WebRtcTransportOptions,
 } from './webRtcTransport.ts';
+export { MigratingTransport } from './migratingTransport.ts';

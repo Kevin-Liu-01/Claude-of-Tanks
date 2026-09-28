@@ -30,3 +30,6 @@ export { HeadlessMatchClientDriver } from './headlessDriver.ts';
 export type { GateMetrics, HeadlessDriverOptions } from './headlessDriver.ts';
 export { createRtcClientLink, createRtcHostAcceptor } from './rtcClientLink.ts';
 export type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorOptions, RtcHostAcceptorStats, RtcHostPeer, RtcHostPeerState } from './rtcClientLink.ts';
+export { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS, MigrationStore, isMigrationEventKind } from './migrationStore.ts';
+export type { MigrationChunkPayload, RetainedBlob } from './migrationStore.ts';
+export type { RetainedMigrationState } from './matchClient.ts';
