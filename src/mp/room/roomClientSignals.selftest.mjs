@@ -5,7 +5,7 @@
 // match's end clears the election; the report and decline commands are room commands.
 import assert from 'node:assert/strict';
 import { RoomClient } from './roomClient.ts';
-import { ROOM_SIGNAL_MAX_BYTES, formatRtcMatchUrl } from './protocol.ts';
+import { ROOM_SIGNAL_MAX_BYTES, p2pMatchUrl } from './protocol.ts';
 import { createRoom, serializeRoom, joinRoom } from './roomPolicy.ts';
 import { Listeners } from '../transport/transport.ts';
 
@@ -61,14 +61,15 @@ assert.equal(client.hostId, null, 'no host before a match (the room record has n
 // ---- sendSignal: the room's own checks applied client-side
 assert.equal(client.sendSignal({ to: 'alice', generation: 1, kind: 'offer', sdp: 'v=0 offer' }), true);
 assert.equal(client.sendSignal({ to: 'alice', generation: 1, kind: 'candidate', candidate: { candidate: 'candidate:1 1 udp 1 127.0.0.1 5000 typ host', sdpMid: '0', sdpMLineIndex: 0 } }), true);
-assert.equal(client.sendSignal({ to: 'alice', generation: 1, kind: 'offer' }), false, 'an offer without sdp is malformed');
+assert.equal(client.sendSignal({ to: 'alice', generation: 1, kind: 'offer' }), true, 'the room never parses SDP: an offer without sdp is a valid payload (P1)');
 assert.equal(client.sendSignal({ to: 'not a valid id!', generation: 1, kind: 'offer', sdp: 'x' }), false, 'an invalid target id is malformed');
+assert.equal(client.sendSignal({ to: 'alice', generation: 1, kind: 'candidate', candidate: { candidate: 'c', sdpMid: 5, sdpMLineIndex: 0 } }), false, 'a malformed candidate record');
 assert.equal(client.sendSignal({ to: 'alice', generation: 1, kind: 'offer', sdp: 'x'.repeat(ROOM_SIGNAL_MAX_BYTES) }), false, 'an oversized signal never leaves');
 const sent = transport.outbound.filter((envelope) => envelope.type === 'room_signal');
-assert.equal(sent.length, 2, 'two signals left as room_signal envelopes');
+assert.equal(sent.length, 3, 'three signals left as room_signal envelopes');
 assert.equal(sent[0].requestId, undefined, 'signals are fire-and-forget (no request id)');
 assert.deepEqual(sent[0].payload, { to: 'alice', generation: 1, kind: 'offer', sdp: 'v=0 offer' });
-assert.equal(client.stats().signalsSent, 2);
+assert.equal(client.stats().signalsSent, 3);
 assert.equal(client.stats().signalsRefused, 4, 'the pre-admission refusal and the three malformed ones are counted');
 
 // ---- inbound relay: addressed to me → delivered with from; addressed elsewhere or malformed → ignored
@@ -87,7 +88,7 @@ const starts = [];
 client.onMatchStart((payload) => starts.push(payload));
 transport.deliver({ type: 'match_start', payload: {
   matchId: 'm1-0001', round: 1, mapId: 'verdant', mode: 'standard', seed: 7, seat: 1, team: 'bravo', seatToken: 'tok.sig',
-  matchUrl: formatRtcMatchUrl('ABC123', 3), hostId: 'alice', expiresAt: 9_999_999,
+  matchUrl: p2pMatchUrl('ABC123', 3), hostId: 'alice', expiresAt: 9_999_999,
 } });
 assert.equal(starts.length, 1);
 assert.equal(client.hostId, 'alice');
@@ -105,7 +106,12 @@ assert.equal(client.generation, 4);
 assert.equal(client.isHost, true);
 transport.deliver({ type: 'host_changed', payload: { hostId: 'bob', generation: 'four', resumeTick: 1, reason: 'left' } });
 transport.deliver({ type: 'host_changed', payload: { hostId: 'bob', generation: 5, resumeTick: 1, reason: 'because' } });
-assert.equal(elections.length, 1, 'malformed elections are ignored');
+transport.deliver({ type: 'host_changed', payload: { hostId: 'alice', generation: 3, resumeTick: 1, reason: 'timeout' } });
+assert.equal(elections.length, 1, 'malformed and stale-generation elections are ignored');
+assert.equal(client.hostId, 'bob', 'the stale election did not move the host');
+transport.deliver({ type: 'room_signal', payload: { to: 'bob', from: 'alice', generation: 3, kind: 'candidate', candidate: { candidate: 'c', sdpMid: null, sdpMLineIndex: null } } });
+assert.equal(signals.length, 2, 'a signal for an older generation is dropped');
+assert.equal(client.sendSignal({ to: 'alice', generation: 3, kind: 'offer', sdp: 'v=0' }), false, 'and never sent');
 
 // ---- the report and the decline are room commands (acknowledged by the scripted room)
 const reporting = client.reportMatch({ matchId: 'm1-0001', generation: 4, tick: 1300, phase: 'playing' });
@@ -128,7 +134,7 @@ assert.equal(client.matchStart, null);
 assert.equal(client.hostId, null);
 transport.deliver({ type: 'match_start', payload: {
   matchId: 'm2-0002', round: 2, mapId: 'verdant', mode: 'standard', seed: 8, seat: 1, team: 'bravo', seatToken: 'tok2.sig',
-  matchUrl: formatRtcMatchUrl('ABC123', 6), hostId: 'alice', expiresAt: 9_999_999,
+  matchUrl: p2pMatchUrl('ABC123', 6), hostId: 'alice', expiresAt: 9_999_999,
 } });
 assert.equal(client.generation, 6);
 assert.equal(client.hostId, 'alice');

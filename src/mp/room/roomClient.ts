@@ -13,13 +13,16 @@ import { Listeners } from '../transport/transport.ts';
 import type { Transport, TransportStateChange, Unsubscribe } from '../transport/transport.ts';
 import {
   ROOM_CLIENT_MESSAGE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, RoomError, isRecord,
-  isRoomChatEntry, isRoomErrorCode, isRoomHostChangedPayload, isRoomMatchStartPayload, isRoomMatchStatusPayload, isRoomRelayedSignal,
-  isRoomSignalPayload, normalizeRoomCode, parseRoomEnvelope, parseRtcMatchUrl, randomRoomCode, readRoomSnapshot, roomSignalBytes, roomSocketPath,
+  isRelayedRoomSignal, isRoomChatEntry, isRoomErrorCode, isRoomHostChangedPayload, isRoomMatchStartPayload, isRoomMatchStatusPayload, normalizeRoomCode,
+  parseP2pMatchUrl, parseRoomEnvelope, randomRoomCode, readRoomSignalPayload, readRoomSnapshot, roomSocketPath, utf8ByteLength,
 } from './protocol.ts';
 import type {
-  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedMessage, RoomHostDeclineCommand, RoomHostInfo, RoomMatchReportCommand,
-  RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode, RoomPlayer, RoomRelayedSignal, RoomSelection, RoomSignalPayload, RoomSnapshot, RoomTeam,
+  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedPayload, RoomHostDeclineCommand, RoomHostInfo, RoomMatchReportCommand,
+  RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode, RoomPlayer, RoomSelection, RoomSignalPayload, RoomSnapshot, RoomTeam,
 } from './protocol.ts';
+
+/** A relayed `room_signal` as this seat receives it (P1's validated fields plus `from`). */
+export type RoomRelayedSignal = RoomSignalPayload & { from: string };
 
 export type RoomClientPhase = 'idle' | 'connecting' | 'joined' | 'reconnecting' | 'closed';
 
@@ -128,8 +131,8 @@ export class RoomClient {
   private readonly closedListeners = new Listeners<{ reason: string }>();
   // P2 client lane (2026-09-28): the peer-to-peer signaling relay and the host elections ride the room socket.
   private readonly signalListeners = new Listeners<RoomRelayedSignal>();
-  private readonly hostChangedListeners = new Listeners<RoomHostChangedMessage>();
-  private lastHostChange: RoomHostChangedMessage | null = null;
+  private readonly hostChangedListeners = new Listeners<RoomHostChangedPayload>();
+  private lastHostChange: RoomHostChangedPayload | null = null;
   private signalsSent = 0;
   private signalsReceived = 0;
   private signalsRefused = 0;
@@ -215,12 +218,12 @@ export class RoomClient {
   /** The host generation the signals must carry: the newest election, else the rtc:// URL's, else the room's record. */
   get generation(): number {
     if (this.lastHostChange) return this.lastHostChange.generation;
-    const parsed = parseRtcMatchUrl(this.lastMatchStart?.matchUrl);
+    const parsed = parseP2pMatchUrl(this.lastMatchStart?.matchUrl);
     if (parsed) return parsed.generation;
     return this.roomSnapshot?.host?.generation ?? 0;
   }
   /** The newest election this seat heard (cleared by a new match_start or the match's end). */
-  get lastHostChanged(): RoomHostChangedMessage | null { return this.lastHostChange; }
+  get lastHostChanged(): RoomHostChangedPayload | null { return this.lastHostChange; }
   /** This seat hosts the current match. */
   get isHost(): boolean { return this.hostId !== null && this.hostId === this.playerId; }
 
@@ -234,18 +237,22 @@ export class RoomClient {
   /** A WebRTC signal another seat addressed to this one (already validated; the room added `from`). */
   onSignal(listener: (signal: RoomRelayedSignal) => void): Unsubscribe { return this.signalListeners.add(listener); }
   /** The room elected a new match host. */
-  onHostChanged(listener: (change: RoomHostChangedMessage) => void): Unsubscribe { return this.hostChangedListeners.add(listener); }
+  onHostChanged(listener: (change: RoomHostChangedPayload) => void): Unsubscribe { return this.hostChangedListeners.add(listener); }
 
   /**
-   * Relay one WebRTC signal to `payload.to` through the room (fire-and-forget: the room answers nothing on success and an
-   * `error` envelope without a request id on refusal). False when not joined, malformed or over ROOM_SIGNAL_MAX_BYTES.
+   * Relay one WebRTC signal to `payload.to` through the room (fire-and-forget: no request id, so the room answers nothing
+   * on success and an `error` envelope on refusal). False when not joined, malformed, for a generation older than the
+   * current one, or over ROOM_SIGNAL_MAX_BYTES as the room measures it (the relayed JSON with `from`).
    */
   sendSignal(payload: RoomSignalPayload): boolean {
-    if (this.currentPhase !== 'joined' || !isRoomSignalPayload(payload) || roomSignalBytes(payload) > ROOM_SIGNAL_MAX_BYTES) {
+    let clean: RoomSignalPayload;
+    try { clean = readRoomSignalPayload(payload); } catch { this.signalsRefused++; return false; }
+    if (this.currentPhase !== 'joined' || clean.generation < this.generation ||
+        utf8ByteLength(JSON.stringify({ ...clean, from: this.playerId })) > ROOM_SIGNAL_MAX_BYTES) {
       this.signalsRefused++;
       return false;
     }
-    const sent = this.sendEnvelope({ type: ROOM_CLIENT_MESSAGE.SIGNAL, payload: { ...payload } });
+    const sent = this.sendEnvelope({ type: ROOM_CLIENT_MESSAGE.SIGNAL, payload: { ...clean } });
     if (sent) this.signalsSent++;
     else this.signalsRefused++;
     return sent;
@@ -452,13 +459,15 @@ export class RoomClient {
         }
         break;
       case ROOM_SERVER_MESSAGE.SIGNAL:
-        if (isRoomRelayedSignal(payload) && payload.to === this.playerId) {
+        // A signal for a generation older than the one this seat runs is the old host talking: dropped here as well.
+        if (isRelayedRoomSignal(payload) && payload.to === this.playerId && payload.generation >= this.generation) {
           this.signalsReceived++;
           this.signalListeners.emit(payload);
         }
         break;
       case ROOM_SERVER_MESSAGE.HOST_CHANGED:
-        if (isRoomHostChangedPayload(payload)) {
+        // Generations only move forward: an election older than the one this seat knows is ignored (the reason never decides).
+        if (isRoomHostChangedPayload(payload) && payload.generation >= this.generation) {
           this.lastHostChange = payload;
           this.hostChangedListeners.emit(payload);
         }
