@@ -248,7 +248,7 @@ function createRecordedPresentation(options, record) {
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000 } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -295,6 +295,7 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
       setAdaptiveSuspended: (value) => calls.push(`adaptive:${value}`),
       recordTrace: (trace) => { ports.trace = trace; },
       recordEntryFailure: (failure) => { ports.failure = failure; },
+      recordSlowEntry: (beacon) => { calls.push(`slowEntry:${beacon.stage}:${beacon.code}:${beacon.pending}`); (ports.slowEntries ??= []).push(beacon); },
     },
     roster: {
       getMap: (mapId) => ({ name: `Map ${mapId}`, thumb: `${mapId}.jpg`, biome: mapId }),
@@ -320,7 +321,7 @@ function createHarness({ loadWorld, blackWatchdog, entryTimeoutMs = 120_000 } = 
       terrain: async (view) => calls.push(`warm.terrain:${view.entities.size}`),
       wrecks: async (view) => calls.push(`warm.wrecks:${view.entities.size}`),
       playerPanel: async (view, viewerId) => calls.push(`warm.panel:${view.entities.get(viewerId)?.specId}`),
-      compile: async () => { calls.push('warm.compile'); return { preparation: { status: 'complete', pending: 0 } }; },
+      compile: compile ?? (async () => { calls.push('warm.compile'); return { preparation: { status: 'complete', pending: 0 } }; }),
       openingEffects: async (fx, view) => calls.push(`warm.fx:${typeof fx.resetAll}:${view.entities.size}`),
       shotCards: (specIds) => calls.push(`warm.shotCards:${specIds.join(',')}`),
       presentation: async () => calls.push('warm.presentation'),
@@ -753,6 +754,69 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(await slow.composition.beginRoom({ session: slowRoom }), false, 'a disposed composition launches nothing');
 }
 
+// ------------------------------------------------------------ entry resilience: a shader preparation past its wall-clock budget runs once more with a fresh deadline, then the entry proceeds
+{
+  const attempts = [];
+  const slowGpu = createHarness({ compile: async () => {
+    attempts.push(attempts.length + 1);
+    return attempts.length === 1 ? { preparation: { status: 'incomplete', pending: 7, reason: 'budget' } } : { preparation: { status: 'complete', pending: 0 } };
+  } });
+  const slowRoom = makeRoomSession(slowGpu.calls);
+  const slowEntry = slowGpu.composition.beginRoom({ role: 'host', session: slowRoom, lobbyState: slowRoom.lobby });
+  const slowOwner = slowGpu.sessions[0];
+  await slowOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  await slowOwner.welcome();
+  slowOwner.frame(frame());
+  assert.equal(await slowEntry, true, 'the entry proceeds once the second preparation completes');
+  assert.deepEqual(attempts, [1, 2], 'the compile ran exactly twice');
+  assert.equal(slowGpu.ports.trace.status, 'complete');
+  assert.ok(slowGpu.ports.trace.stages.compile >= 0 && slowGpu.ports.trace.stages.compileRetry >= 0, `the trace carries both attempts (${JSON.stringify(slowGpu.ports.trace.stages)})`);
+  assert.equal(slowGpu.ports.slowEntries.length, 1, 'one beacon for the extension');
+  assert.deepEqual({ ...slowGpu.ports.slowEntries[0], ms: 0 }, { stage: 'compile', code: 'extended', ms: 0, pending: 7 });
+  assert.ok(Number.isFinite(slowGpu.ports.slowEntries[0].ms) && slowGpu.ports.slowEntries[0].ms >= 0);
+  assert.equal(slowGpu.ports.failure ?? null, null, 'no entry failure');
+  assert.ok(slowGpu.calls.includes('slowEntry:compile:extended:7'));
+  const progress = slowGpu.battleLoad.progressLabels.map(([, label]) => label);
+  assert.ok(progress.includes('Compiling combat shaders (still preparing)'), 'the loader says the compile is still preparing');
+  slowGpu.composition.dispose();
+}
+
+// ------------------------------------------------------------ twice past the budget: the hard failure with the same message, no third attempt
+{
+  const attempts = [];
+  const starved = createHarness({ compile: async () => { attempts.push(1); return { preparation: { status: 'incomplete', pending: 7, reason: 'budget' } }; } });
+  const starvedRoom = makeRoomSession(starved.calls);
+  const starvedEntry = starved.composition.beginRoom({ role: 'host', session: starvedRoom, lobbyState: starvedRoom.lobby });
+  const starvedOwner = starved.sessions[0];
+  await starvedOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  await starvedOwner.welcome();
+  starvedOwner.frame(frame());
+  assert.equal(await starvedEntry, false, 'the second verdict is final');
+  assert.equal(attempts.length, 2, 'no third attempt');
+  assert.match(starved.ports.failure.message, /Battle shaders could not finish preparing\. Please retry from the Garage\./);
+  assert.equal(starved.ports.trace.status, 'failed');
+  assert.equal(starved.ports.slowEntries.length, 1, 'the extension was beaconed once; the failure is the entry result');
+  assert.ok(starved.calls.includes('enterGarage') && starved.calls.includes('load.hide'), 'the covered Garage restore runs');
+  starved.composition.dispose();
+}
+
+// ------------------------------------------------------------ an incomplete preparation for any other reason never retries
+{
+  const attempts = [];
+  const lost = createHarness({ compile: async () => { attempts.push(1); return { preparation: { status: 'incomplete', pending: null, reason: 'invalidated' } }; } });
+  const lostRoom = makeRoomSession(lost.calls);
+  const lostEntry = lost.composition.beginRoom({ role: 'host', session: lostRoom, lobbyState: lostRoom.lobby });
+  const lostOwner = lost.sessions[0];
+  await lostOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  await lostOwner.welcome();
+  lostOwner.frame(frame());
+  assert.equal(await lostEntry, false);
+  assert.equal(attempts.length, 1, 'an invalidated preparation fails at once');
+  assert.match(lost.ports.failure.message, /could not finish preparing/);
+  assert.equal(lost.ports.slowEntries, undefined, 'no beacon');
+  lost.composition.dispose();
+}
+
 composition.dispose();
 assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the seat');
-console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, and routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces');
+console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, and runs a shader preparation past its budget once more before failing');

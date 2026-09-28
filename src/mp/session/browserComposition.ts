@@ -104,6 +104,16 @@ export interface BrowserEntryFailure {
   reason: string;
 }
 
+/** A budget the entry extended once (the same beacon kind the reveal and paint budgets report). */
+export interface BrowserSlowEntry {
+  stage: 'compile';
+  code: 'extended';
+  /** The first attempt's duration. */
+  ms: number;
+  /** Programs still unprepared when the first attempt ran out. */
+  pending: number | null;
+}
+
 export interface BrowserLoadPorts {
   battleLoad: BrowserLoadScreen;
   audio: { resume(): RuntimeValue; loadingOn(active: boolean): RuntimeValue; ambientOn(active: boolean): RuntimeValue };
@@ -117,6 +127,7 @@ export interface BrowserLoadPorts {
   now?(): number;
   recordTrace?(trace: BrowserLoadTrace): void;
   recordEntryFailure?(failure: BrowserEntryFailure | null): void;
+  recordSlowEntry?(beacon: BrowserSlowEntry): void;
 }
 
 export interface BrowserRosterPorts {
@@ -149,12 +160,25 @@ export interface BrowserWarmPorts {
   terrain?(view: BrowserWarmView): MaybePromise<RuntimeValue>;
   wrecks?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   playerPanel?(view: BrowserWarmView, viewerId: string): MaybePromise<RuntimeValue>;
-  compile?(signal?: AbortSignal): MaybePromise<{ preparation?: { status?: string; pending?: number | null } | null } | null | undefined>;
+  compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation } | null | undefined>;
   openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
   presentation?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   finalShadows?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
+}
+
+/** The strict program preparation's verdict (src/engine/programWarm.ts ProgramPreparationResult, structurally). */
+export type BrowserWarmPreparation = { status?: string; pending?: number | null; reason?: string } | null | undefined;
+
+/** Exhausting the cooperative generator is not proof the programs are ready: only a complete result with nothing pending is. */
+function preparationIncomplete(preparation: BrowserWarmPreparation): boolean {
+  return !!preparation && (preparation.status !== 'complete' || (preparation.pending ?? 0) !== 0);
+}
+
+/** The preparation itself was sound but its wall-clock deadline passed first (a starved GPU process, a cold shader cache). */
+function preparationOutOfBudget(preparation: BrowserWarmPreparation): boolean {
+  return !!preparation && preparation.status === 'incomplete' && preparation.reason === 'budget';
 }
 
 export interface BrowserScenePorts {
@@ -1021,13 +1045,29 @@ export function createBrowserComposition({
       load.battleLoad.progress(0.87, 'Compiling combat shaders');
       await load.nextFrame();
       check('compile');
-      const compiled = await warm.compile?.(signal);
+      let compiled = await warm.compile?.(signal);
       check('compile');
-      const preparation = compiled?.preparation;
-      if (preparation && (preparation.status !== 'complete' || (preparation.pending ?? 0) !== 0)) {
-        throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
+      let preparation = compiled?.preparation;
+      if (preparationOutOfBudget(preparation)) {
+        // Entry resilience (2026-09-28): the strict preparation is a bounded wall-clock operation (programWarm.ts) and a
+        // starved GPU process — other tabs rendering, a cold shader cache — can outrun it once. Like the reveal budget
+        // (extends once, then waits) the compile runs once more with a fresh deadline before the entry fails; the
+        // extension is a beacon, the second verdict is final.
+        const firstAttemptMs = Math.round(now() - active.stageAt);
+        markStage(active, 'compile');
+        load.recordSlowEntry?.({ stage: 'compile', code: 'extended', ms: firstAttemptMs, pending: preparation?.pending ?? null });
+        load.battleLoad.progress(0.87, 'Compiling combat shaders (still preparing)');
+        await load.nextFrame();
+        check('compileRetry');
+        compiled = await warm.compile?.(signal);
+        check('compileRetry');
+        preparation = compiled?.preparation;
+        if (preparationIncomplete(preparation)) throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
+        markStage(active, 'compileRetry');
+      } else {
+        if (preparationIncomplete(preparation)) throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
+        markStage(active, 'compile');
       }
-      markStage(active, 'compile');
       load.battleLoad.progress(0.88, 'Priming combat effects');
       const fx = scene.getFx();
       await warm.openingEffects?.(fx, view, signal);

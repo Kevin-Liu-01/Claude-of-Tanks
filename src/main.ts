@@ -2256,6 +2256,11 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           loadWorld: options.presentation.entry.loadWorld,
           recordTrace: (trace) => { window.__NETWORK_LOAD = trace; },
           recordEntryFailure: (failure) => { window.__NETWORK_ENTRY_FAILURE = failure; },
+          // Entry resilience: a strict shader preparation that outran its budget once is a beacon, not a failed entry
+          // (the compile ran again with a fresh deadline) — the kind the reveal and paint budgets report.
+          recordSlowEntry: ({ stage, code, ms, pending }) => entryTelemetry.send({
+            kind: 'slow_reveal', stage, code: `${stage}_${code}`, ms, mode: 'network', ...(pending !== null ? { timings: { pending } } : {}),
+          }),
         },
         roster: options.presentation.roster,
         scene: {
