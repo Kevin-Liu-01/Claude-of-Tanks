@@ -13,6 +13,8 @@
  *   COT_MATCH_SEAT_SECRET       HMAC secret for seat tokens (generated per run when unset: LAN only)
  *   COT_MATCH_CONTROL_SECRET    bearer secret of the control routes (defaults to the seat secret)
  *   COT_MATCH_WORLD             'dedicated' (collision shards, default) | 'terrain'
+ *   COT_ROOMS_MATCH_TRANSPORT   'service' (the match runs in this process, default) | 'p2p' (in the host's browser,
+ *                               as the Cloudflare rooms do — docs/MULTIPLAYER-V2.md §13)
  *   COT_MATCH_LOG_LEVEL         debug | info | warn | error
  */
 import { randomBytes } from 'node:crypto';
@@ -40,6 +42,8 @@ export async function startRoomsServerFromEnv(env: NodeJS.ProcessEnv = process.e
     ? env.COT_ROOMS_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
     : null;
   const world = env.COT_MATCH_WORLD === 'terrain' ? 'terrain' : 'dedicated';
+  const transport = env.COT_ROOMS_MATCH_TRANSPORT ?? 'service';
+  if (transport !== 'service' && transport !== 'p2p') throw new TypeError("COT_ROOMS_MATCH_TRANSPORT must be 'service' or 'p2p'");
   return createRoomsServer({
     host: env.COT_ROOMS_HOST || '0.0.0.0',
     port: integerEnv('COT_ROOMS_PORT', 8792, 1, 65535),
@@ -47,6 +51,7 @@ export async function startRoomsServerFromEnv(env: NodeJS.ProcessEnv = process.e
     controlSecret: env.COT_MATCH_CONTROL_SECRET || seatSecret,
     allowedOrigins,
     world,
+    matchTransport: transport,
     log,
   });
 }
