@@ -32,6 +32,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
+import './battleTimeChoices.css';
 import {
   SETTINGS_ACTION_ICONS,
   SETTINGS_OPTION_ICONS,
@@ -943,6 +945,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     for (const x of diffBtns) x.classList.toggle('sel', x.dataset.tier === input.getSettings().aiDifficulty);
     const diffNote = el('div', 'cot-set-note', battle);
     diffNote.textContent = t('settings.difficulty.note');
+
+    const times = el('fieldset', 'cot-battle-times', battle);
+    times.innerHTML = battleTimeChoicesMarkup('cot-settings-time-hint', 'settings.battle.timeHint');
+    bindBattleTimeChoices(times, () => emit('ui:click', {}));
 
     const iface = groupCard(body, t('settings.interface.title'));
     onOffRow(

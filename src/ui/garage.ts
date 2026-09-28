@@ -59,8 +59,8 @@ import {
   isWaveMode, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readSides, writeMarsSettings, writeSides } from '../game/teamArrangement.ts';
-import { BATTLE_TIMES } from '../engine/battleWeatherPolicy.ts';
-import { battlePreferences } from '../game/battlePreferences.ts';
+import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
+import './battleTimeChoices.css';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import type { PlayMode } from '../net/playMode.ts';
@@ -668,10 +668,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<small>${t('garage.battle.sidesNote', { max: String(BATTLE_FIELD_LIMIT) })}</small>` +
     `</div>` +
     `</div><fieldset class="cot-battle-times" aria-describedby="cot-time-hint">` +
-    `<legend>${t('garage.battle.timeOfDay')}</legend>` +
-    BATTLE_TIMES.map(time => `<label class="cot-time-choice"><input type="checkbox" data-battle-time="${time}">` +
-      `<span>${t(`atmosphere.${time}`)}</span></label>`).join('') +
-    `<small id="cot-time-hint" data-time-hint></small></fieldset>` +
+    battleTimeChoicesMarkup('cot-time-hint') + `</fieldset>` +
     // Mars settings (owner 2026-09-18 "give it a bunch of boosts and settings"): the gravity world and the
     // boost-cache cadence, shown while Mars is the selected rule (game/teamArrangement.ts readMarsSettings)
     `<div class="cot-battle-menu-label" data-mars-label hidden>${t('garage.battle.marsSettings')}</div>` +
@@ -2858,6 +2855,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function openBattleMenu() {
     closeMobileNavigation();
     setGaragePanel('');
+    renderBattleOptions();
     battleMenu.classList.add('open');
     battleModeBtn.setAttribute('aria-expanded', 'true');
     const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
@@ -2987,20 +2985,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const marsField = (name: string) => requiredElement<HTMLSelectElement>(marsSettings, `select[data-mars-field="${name}"]`);
   const soloOptions = requiredElement<HTMLElement>(battleMenu, '[data-solo-options]');
   const teamOptions = requiredElement<HTMLElement>(battleMenu, '[data-team-options]');
-  const timeToggles = BATTLE_TIMES.map(time => ({ time,
-    input: requiredElement<HTMLInputElement>(battleMenu, `[data-battle-time="${time}"]`),
-  }));
+  const refreshBattleTimes = bindBattleTimeChoices(battleMenu, () => emit('ui:click', {}));
   const timeHint = requiredElement<HTMLElement>(battleMenu, '[data-time-hint]');
   renderBattleOptions = () => {
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';
     soloOptions.hidden = !solo;
     teamOptions.hidden = isWaveMode(battleGameMode);
-    const times = battlePreferences.times;
-    for (const { time, input } of timeToggles) {
-      input.checked = times.includes(time);
-      input.disabled = shown || (input.checked && times.length === 1);
-    }
+    refreshBattleTimes(shown);
     timeHint.textContent = t(shown ? 'garage.battle.nightGalaxy' : 'garage.battle.timeHint');
     marsLabel.hidden = !shown;
     marsSettings.hidden = !shown;
@@ -3011,10 +3003,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   marsSettings.addEventListener('change', () => {
     emit('ui:click', {});
     writeMarsSettings({ gravity: marsField('gravity').value, caches: marsField('caches').value });
-    renderBattleOptions();
-  });
-  for (const { time, input } of timeToggles) input.addEventListener('change', () => {
-    battlePreferences.setEnabled(time, input.checked);
     renderBattleOptions();
   });
   renderBattleOptions();

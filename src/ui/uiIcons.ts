@@ -3,6 +3,9 @@
 // controls and combat reports read as one authored set at 12-34px.
 
 const P = {
+  timeDay: '<circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  timeSunset: '<path d="M7 15a5 5 0 1 1 10 0M2 16h20M5 20h14M12 2v3M3 7l2 2m14 0 2-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 10v3m-2-1 2 2 2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  tick: '<path d="m5 12 4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>',
   regionWoodland: '<path d="m9 3-6 8h3l-4 6h14l-4-6h3Z" fill="currentColor"/><path d="M9 17v4m8-16 4 6h-2l3 5h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
   regionDesert: '<circle cx="17" cy="6" r="3" fill="currentColor"/><path d="M2 17c4-8 9-8 14-1m-7 4c4-7 8-9 13-6M2 22h20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   regionWinter: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 3 3-3M9 20l3-3 3 3M4 10l4-1-1-4m10 14-1-4 4-1M4 14l4 1-1 4M17 5l-1 4 4 1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',

@@ -3283,6 +3283,7 @@
   "atmosphere.night": "夜晚",
   "garage.battle.timeOfDay": "时段",
   "garage.battle.timeHint": "每场战斗从已启用的时段中选择。请至少保留一项。",
+  "settings.battle.timeHint": "对下一场单人战斗生效。只选一个时段即可固定使用，选择多个则会轮换。请至少保留一项。火星使用星河天空，多人战斗使用统一光照。",
   "studio.settingLight": "正在设置光照",
   "studioPanel.timeOfDay": "时段"
 }
