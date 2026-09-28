@@ -28,3 +28,5 @@ export { ConnectionRecovery } from './recovery.ts';
 export type { ConnectionPhase, RecoveryInput, RecoveryOptions, RecoveryStep } from './recovery.ts';
 export { HeadlessMatchClientDriver } from './headlessDriver.ts';
 export type { GateMetrics, HeadlessDriverOptions } from './headlessDriver.ts';
+export { createRtcClientLink, createRtcHostAcceptor } from './rtcClientLink.ts';
+export type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorOptions, RtcHostAcceptorStats, RtcHostPeer, RtcHostPeerState } from './rtcClientLink.ts';

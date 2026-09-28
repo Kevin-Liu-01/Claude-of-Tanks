@@ -65,14 +65,17 @@ export class FakeDataChannel implements RtcDataChannelLike {
     this.onopen?.({ type: 'open' });
   }
 
+  /** A graceful close: what was sent before it still reaches the mirror (SCTP flushes), then the mirror closes. */
   close(): void {
     if (this.readyState === 'closed' || this.readyState === 'closing') return;
     this.readyState = 'closed';
-    this.inFlight.length = 0;
-    this.bufferedAmount = 0;
     const mirror = this.mirror;
     this.onclose?.({ type: 'close' });
-    if (mirror && mirror.readyState !== 'closed') this.world.queue(() => mirror.close());
+    this.world.queue(() => {
+      this.congested = false;
+      this.drain();
+      if (mirror && mirror.readyState !== 'closed') mirror.close();
+    });
   }
 
   /** The network dropped this channel (no graceful close reaches the mirror until its own timers say so). */
@@ -90,7 +93,7 @@ export class FakePeerConnection implements RtcPeerConnectionLike {
   connectionState = 'new';
   onicecandidate: ((event: { candidate: RtcIceCandidateLike | null }) => void) | null = null;
   onconnectionstatechange: ((event: unknown) => void) | null = null;
-  ondatachannel: ((event: { channel: FakeDataChannel }) => void) | null = null;
+  ondatachannel: ((event: { channel: RtcDataChannelLike }) => void) | null = null;
   readonly channels: FakeDataChannel[] = [];
   localDescription: RtcSessionDescriptionLike | null = null;
   remoteDescription: RtcSessionDescriptionLike | null = null;
