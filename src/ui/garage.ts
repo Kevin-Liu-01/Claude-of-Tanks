@@ -32,6 +32,7 @@ import type { EquipmentItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
 import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
@@ -1405,6 +1406,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       nm.className = 'mname';
       nm.textContent = m.name;
       card.append(thumb, nm);
+      const regions = mapRegionTags(m.id);
+      if (regions.length) {
+        const tags = document.createElement('div');
+        tags.className = 'cot-map-regions';
+        for (const region of regions) {
+          const tag = document.createElement('span');
+          tag.className = 'cot-map-region';
+          tag.dataset.region = region;
+          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 12);
+          const label = document.createElement('span');
+          label.textContent = t(`camoTag.${region}`);
+          tag.appendChild(label);
+          tags.appendChild(tag);
+        }
+        card.appendChild(tags);
+      }
       card.addEventListener('click', () => {
         emit('ui:click', {});
         api.setSelectedMap(m.id);
@@ -1482,7 +1499,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const pattern = stockCamoPatternIdFor(spec.id, spec.nation, spec.era);
     if (pattern) stockSources.set(pattern, [...(stockSources.get(pattern) || []), spec]);
   }
-  let camoCollectionCaption: HTMLElement | null = null;
   let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
   function initializeCamoPicker(): void {
     if (!camoOpts?.patterns?.length) return;
@@ -1494,7 +1510,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     titleActions.appendChild(createInfoButton({
       label: t('garage.camo.about'),
       title: t('garage.camo.aboutTitle'),
-      text: t('garage.camo.aboutText'),
+      text: () => {
+        return activeCamoCollection === 'default'
+          ? t('garage.camo.defaultDescription')
+          : t('garage.camo.countryDescription', { country: tNation(CAMO_TAG_NATION[activeCamoCollection] || '') });
+      },
       images: () => {
         const selected = specById.get(selectedId);
         if (!selected) return [];
@@ -1516,7 +1536,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         }];
       },
       sections: [
-        { icon: 'camouflage', title: t('garage.info.matchingBiomeTitle'), text: t('garage.info.matchingBiomeText') },
+        { icon: 'camouflage', title: t('garage.info.matchingBiomeTitle'), text: t('garage.camo.aboutText') },
         { icon: 'brush', title: t('garage.info.localStudioTitle'), text: t('garage.info.localStudioText') },
       ],
     }));
@@ -1587,10 +1607,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // changes width so offscreen countries never get stuck behind disabled arrows.
     if (typeof ResizeObserver === 'function') new ResizeObserver(updateCollectionScroll).observe(collections);
     requestAnimationFrame(updateCollectionScroll);
-    camoCollectionCaption = document.createElement('div');
-    camoCollectionCaption.className = 'cot-camo-collection-caption';
-    camoCollectionCaption.setAttribute('aria-live', 'polite');
-    camosEl.appendChild(camoCollectionCaption);
     const tagBar = document.createElement('div');
     tagBar.className = 'cot-camo-tags';
     tagBar.setAttribute('role', 'toolbar');
@@ -1604,13 +1620,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       button.className = 'cot-camo-tag';
       button.dataset.camoTag = tagId;
       const tagLabel = t(`camoTag.${tagId}`) || CAMO_TAG_LABEL[tagId];
-      const tagNation = CAMO_TAG_NATION[tagId];
-      if (tagNation) {
-        button.classList.add('is-nation');
-        button.innerHTML = flagIconHTML(tagNation, 16);
-      } else {
-        button.textContent = tagLabel;
-      }
+      const regionIcon = regionTagIcon(tagId);
+      if (regionIcon) button.innerHTML = uiIconSVG(regionIcon, 13);
+      const label = document.createElement('span');
+      label.textContent = tagLabel;
+      button.appendChild(label);
       button.title = t('garage.camo.showTag', { tag: tagLabel });
       button.setAttribute('aria-label', t('garage.camo.showTag', { tag: tagLabel }));
       button.setAttribute('aria-pressed', String(tagId === activeCamoTag));
@@ -2079,11 +2093,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     for (const [id, button] of camoCollectionButtons) {
       button.setAttribute('aria-pressed', String(id === activeCamoCollection));
-    }
-    if (camoCollectionCaption) {
-      camoCollectionCaption.textContent = activeCamoCollection === 'default'
-        ? t('garage.camo.defaultDescription')
-        : t('garage.camo.countryDescription', { country: tNation(CAMO_TAG_NATION[activeCamoCollection] || '') });
     }
     if (!available.has(activeCamoTag)) activeCamoTag = 'all';
     for (const [tagId, button] of camoTagButtonById) {

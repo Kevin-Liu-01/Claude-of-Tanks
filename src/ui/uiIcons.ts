@@ -3,6 +3,13 @@
 // controls and combat reports read as one authored set at 12-34px.
 
 const P = {
+  regionWoodland: '<path d="m9 3-6 8h3l-4 6h14l-4-6h3Z" fill="currentColor"/><path d="M9 17v4m8-16 4 6h-2l3 5h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  regionDesert: '<circle cx="17" cy="6" r="3" fill="currentColor"/><path d="M2 17c4-8 9-8 14-1m-7 4c4-7 8-9 13-6M2 22h20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  regionWinter: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 3 3-3M9 20l3-3 3 3M4 10l4-1-1-4m10 14-1-4 4-1M4 14l4 1-1 4M17 5l-1 4 4 1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  regionUrban: '<path d="M3 21V9h7V3h8v9h3v9ZM10 9v12M18 12v9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M5 12h2v2H5Zm0 5h2v2H5Zm8-11h2v2h-2Zm0 5h2v2h-2Zm0 5h2v2h-2Z" fill="currentColor"/>',
+  regionTropical: '<path d="M10 21c3-5 4-9 3-13M3 21h17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M13 8C9 2 5 3 2 8c4-1 6-1 11 0Zm0 0c0-6 4-8 8-5-3 1-5 3-8 5Zm0 0c5-4 9-1 9 4-3-2-5-3-9-4Zm0 0c-5-1-8 3-6 7 1-4 3-6 6-7Z" fill="currentColor"/>',
+  regionMaritime: '<path d="M2 7c3 0 3-3 5-3s3 3 5 3 3-3 5-3 3 3 5 3M2 13c3 0 3-3 5-3s3 3 5 3 3-3 5-3 3 3 5 3M2 19c3 0 3-3 5-3s3 3 5 3 3-3 5-3 3 3 5 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  regionNight: '<path d="M14 3a9 9 0 1 0 7 13A9 9 0 0 1 14 3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m19 2 .9 2.7L23 6l-3.1 1.1L19 10l-.9-2.9L15 6l3.1-1.3Z" fill="currentColor"/>',
   garage: '<image href="/brand/nav/garage.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
   studio: '<image href="/brand/nav/studio.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
   home: '<image href="/brand/nav/home.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',

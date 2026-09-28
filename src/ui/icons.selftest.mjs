@@ -5,6 +5,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { EQUIPMENT_CATALOG } from '../game/equipment.ts';
 import { equipIconIds, equipIconSVG } from './equipIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
+import { mapRegionTags, regionTagIcon } from './regionTags.ts';
+import { MAP_IDS } from '../world/maps/catalog.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
 import {
   TANK_PORTRAIT_FRAME_POLICY,
@@ -37,6 +39,26 @@ for (const id of uiIconIds()) {
     throw new Error(`invalid UI icon: ${id}`);
   }
 }
+
+const regionIcons = new Set();
+for (const region of ['woodland', 'desert', 'winter', 'urban', 'tropical', 'maritime', 'night']) {
+  const icon = regionTagIcon(region);
+  assert.ok(uiIconIds().includes(icon), `${region}: shared region icon exists`);
+  regionIcons.add(uiIconSVG(icon));
+}
+assert.equal(regionIcons.size, 7, 'region glyphs remain visually distinct');
+assert.equal(regionTagIcon('digital'), undefined, 'pattern styles are not landscape regions');
+for (const map of MAP_IDS) {
+  const regions = mapRegionTags(map);
+  assert.ok(regions.length > 0, `${map}: explicit landscape classification`);
+  assert.equal(new Set(regions).size, regions.length, `${map}: no duplicate region badges`);
+  for (const region of regions) assert.ok(regionTagIcon(region), `${map}: shares the camo filter icon`);
+}
+assert.deepEqual(mapRegionTags('random'), [], 'random maps cannot promise one region');
+assert.deepEqual(mapRegionTags('missing'), [], 'unknown maps cannot inherit a misleading region');
+assert.ok(mapRegionTags('coastal').includes('maritime'));
+assert.ok(mapRegionTags('alpine').includes('winter'));
+assert.ok(mapRegionTags('monsoon').includes('tropical'));
 
 for (const id of ['battleBots', 'battlePrivate', 'battleLan', 'battleRanked', 'battleRecord']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing garage battle icon: ${id}`);
