@@ -12,13 +12,13 @@ import type { WebSocketTransportOptions } from '../transport/webSocketTransport.
 import { Listeners } from '../transport/transport.ts';
 import type { Transport, TransportStateChange, Unsubscribe } from '../transport/transport.ts';
 import {
-  ROOM_CLIENT_MESSAGE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE, ROOM_SERVER_MESSAGE, RoomError, isRecord,
-  isRoomChatEntry, isRoomErrorCode, isRoomMatchStartPayload, isRoomMatchStatusPayload, normalizeRoomCode, parseRoomEnvelope,
-  randomRoomCode, readRoomSnapshot, roomSocketPath,
+  ROOM_CLIENT_MESSAGE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, RoomError, isRecord,
+  isRoomChatEntry, isRoomErrorCode, isRoomHostChangedPayload, isRoomMatchStartPayload, isRoomMatchStatusPayload, isRoomRelayedSignal,
+  isRoomSignalPayload, normalizeRoomCode, parseRoomEnvelope, parseRtcMatchUrl, randomRoomCode, readRoomSnapshot, roomSignalBytes, roomSocketPath,
 } from './protocol.ts';
 import type {
-  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode, RoomPlayer,
-  RoomSelection, RoomSnapshot, RoomTeam,
+  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedMessage, RoomHostDeclineCommand, RoomHostInfo, RoomMatchReportCommand,
+  RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode, RoomPlayer, RoomRelayedSignal, RoomSelection, RoomSignalPayload, RoomSnapshot, RoomTeam,
 } from './protocol.ts';
 
 export type RoomClientPhase = 'idle' | 'connecting' | 'joined' | 'reconnecting' | 'closed';
@@ -126,6 +126,13 @@ export class RoomClient {
   private readonly matchStatusListeners = new Listeners<RoomMatchStatusPayload>();
   private readonly phaseListeners = new Listeners<RoomClientPhaseChange>();
   private readonly closedListeners = new Listeners<{ reason: string }>();
+  // P2 client lane (2026-09-28): the peer-to-peer signaling relay and the host elections ride the room socket.
+  private readonly signalListeners = new Listeners<RoomRelayedSignal>();
+  private readonly hostChangedListeners = new Listeners<RoomHostChangedMessage>();
+  private lastHostChange: RoomHostChangedMessage | null = null;
+  private signalsSent = 0;
+  private signalsReceived = 0;
+  private signalsRefused = 0;
   private readonly pending = new Map<string, PendingRequest>();
   private transport: Transport | null = null;
   private roomRegion: string | null = null;
@@ -193,6 +200,29 @@ export class RoomClient {
   get region(): string | null { return this.roomRegion; }
   /** The newest room round trip: the admission request, then each keepalive ping. */
   get rttMs(): number | null { return this.roomRttMs; }
+  /** The room's host record (peer-to-peer: the hosting seat; service: no host id), null before the room says. */
+  get hostInfo(): RoomHostInfo | null { return this.roomSnapshot?.host ?? null; }
+  /**
+   * The match host this seat should reach: the newest `host_changed`, else the `match_start`'s `hostId`, else the room's
+   * host record; null for a service-hosted match or before a match.
+   */
+  get hostId(): string | null {
+    if (this.lastHostChange) return this.lastHostChange.hostId;
+    const start = this.lastMatchStart;
+    if (start && typeof start.hostId === 'string' && start.hostId) return start.hostId;
+    return this.roomSnapshot?.host?.hostId ?? null;
+  }
+  /** The host generation the signals must carry: the newest election, else the rtc:// URL's, else the room's record. */
+  get generation(): number {
+    if (this.lastHostChange) return this.lastHostChange.generation;
+    const parsed = parseRtcMatchUrl(this.lastMatchStart?.matchUrl);
+    if (parsed) return parsed.generation;
+    return this.roomSnapshot?.host?.generation ?? 0;
+  }
+  /** The newest election this seat heard (cleared by a new match_start or the match's end). */
+  get lastHostChanged(): RoomHostChangedMessage | null { return this.lastHostChange; }
+  /** This seat hosts the current match. */
+  get isHost(): boolean { return this.hostId !== null && this.hostId === this.playerId; }
 
   onState(listener: (room: RoomSnapshot) => void): Unsubscribe { return this.stateListeners.add(listener); }
   onChat(listener: (entry: RoomChatEntry) => void): Unsubscribe { return this.chatListeners.add(listener); }
@@ -201,6 +231,36 @@ export class RoomClient {
   onPhase(listener: (change: RoomClientPhaseChange) => void): Unsubscribe { return this.phaseListeners.add(listener); }
   /** The room is gone for this client: kicked, expired, resume denied, transport exhausted, left. */
   onClosed(listener: (change: { reason: string }) => void): Unsubscribe { return this.closedListeners.add(listener); }
+  /** A WebRTC signal another seat addressed to this one (already validated; the room added `from`). */
+  onSignal(listener: (signal: RoomRelayedSignal) => void): Unsubscribe { return this.signalListeners.add(listener); }
+  /** The room elected a new match host. */
+  onHostChanged(listener: (change: RoomHostChangedMessage) => void): Unsubscribe { return this.hostChangedListeners.add(listener); }
+
+  /**
+   * Relay one WebRTC signal to `payload.to` through the room (fire-and-forget: the room answers nothing on success and an
+   * `error` envelope without a request id on refusal). False when not joined, malformed or over ROOM_SIGNAL_MAX_BYTES.
+   */
+  sendSignal(payload: RoomSignalPayload): boolean {
+    if (this.currentPhase !== 'joined' || !isRoomSignalPayload(payload) || roomSignalBytes(payload) > ROOM_SIGNAL_MAX_BYTES) {
+      this.signalsRefused++;
+      return false;
+    }
+    const sent = this.sendEnvelope({ type: ROOM_CLIENT_MESSAGE.SIGNAL, payload: { ...payload } });
+    if (sent) this.signalsSent++;
+    else this.signalsRefused++;
+    return sent;
+  }
+
+  /** The host's match report (every ROOM_MATCH_POLL_MS and on every phase change). */
+  reportMatch(report: Omit<RoomMatchReportCommand, 'type'>): Promise<Record<string, unknown>> {
+    return this.command({ type: 'match_report', ...report });
+  }
+
+  /** This seat declines (or accepts again) to host peer-to-peer matches. */
+  declineHost(declined: boolean): Promise<Record<string, unknown>> {
+    const command: RoomHostDeclineCommand = { type: 'host_decline', declined };
+    return this.command({ ...command });
+  }
 
   /** Absolute URL for a host-relative match path. */
   resolveUrl(url: string): string { return resolveRoomRelativeUrl(this.endpoint, url); }
@@ -379,14 +439,28 @@ export class RoomClient {
         break;
       case ROOM_SERVER_MESSAGE.MATCH_START:
         if (isRoomMatchStartPayload(payload)) {
+          // A new match (or the same one re-sent after a resume): the URL's generation is current until an election says otherwise.
+          if (this.lastMatchStart?.matchId !== payload.matchId) this.lastHostChange = null;
           this.lastMatchStart = payload;
           this.matchStartListeners.emit(payload);
         }
         break;
       case ROOM_SERVER_MESSAGE.MATCH_STATUS:
         if (isRoomMatchStatusPayload(payload)) {
-          if (payload.status === 'ended' || payload.status === 'lost') this.lastMatchStart = null;
+          if (payload.status === 'ended' || payload.status === 'lost') { this.lastMatchStart = null; this.lastHostChange = null; }
           this.matchStatusListeners.emit(payload);
+        }
+        break;
+      case ROOM_SERVER_MESSAGE.SIGNAL:
+        if (isRoomRelayedSignal(payload) && payload.to === this.playerId) {
+          this.signalsReceived++;
+          this.signalListeners.emit(payload);
+        }
+        break;
+      case ROOM_SERVER_MESSAGE.HOST_CHANGED:
+        if (isRoomHostChangedPayload(payload)) {
+          this.lastHostChange = payload;
+          this.hostChangedListeners.emit(payload);
         }
         break;
       case ROOM_SERVER_MESSAGE.PONG:
@@ -550,14 +624,20 @@ export class RoomClient {
     this.matchStatusListeners.clear();
     this.phaseListeners.clear();
     this.closedListeners.clear();
+    this.signalListeners.clear();
+    this.hostChangedListeners.clear();
   }
 
   /** Diagnostics for the F3 panel and the receipts. */
-  stats(): { phase: RoomClientPhase; roomCode: string; revision: number; players: number; transport: string; pending: number; rttMs: number | null; region: string | null } {
+  stats(): {
+    phase: RoomClientPhase; roomCode: string; revision: number; players: number; transport: string; pending: number; rttMs: number | null;
+    region: string | null; hostId: string | null; generation: number; signalsSent: number; signalsReceived: number; signalsRefused: number;
+  } {
     return {
       phase: this.currentPhase, roomCode: this.roomCode, revision: this.roomSnapshot?.revision ?? -1,
       players: this.roomSnapshot?.players.length ?? 0, transport: this.transport?.state ?? 'none', pending: this.pending.size,
-      rttMs: this.roomRttMs, region: this.roomRegion,
+      rttMs: this.roomRttMs, region: this.roomRegion, hostId: this.hostId, generation: this.generation,
+      signalsSent: this.signalsSent, signalsReceived: this.signalsReceived, signalsRefused: this.signalsRefused,
     };
   }
 }
