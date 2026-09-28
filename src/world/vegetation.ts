@@ -40,7 +40,7 @@ import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
-import { markShadowOnly, setShadowCasterCascades } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
@@ -4791,12 +4791,32 @@ function* vegetationBuildSteps(
   // The proxy material is never compiled for color: proxies sit on the
   // shadow-only layer and only the cascade depth passes rasterize them.
   const canopyShadowProxyMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
-  function canopyShadowProxyGeometry(canopy: THREE.BufferGeometry): THREE.BufferGeometry {
-    // A private copy of the far-LOD lobe hull: instance attributes must stay
-    // per pool, and the shadow pass needs positions only.
+  /** The flat (non-indexed) positions of a geometry as a private copy; the shadow pass needs positions only. */
+  function shadowPositionsOf(source: THREE.BufferGeometry): Float32Array {
+    const flat = source.index ? source.toNonIndexed() : source;
+    const array = (flat.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    return flat === source ? array.slice() : array;
+  }
+  // Round 79 (2026-09-28, the performance lane): the proxy carries the near tree's WHOLE shadow — the far-LOD lobe
+  // hull and the near trunk in one position-only geometry — so a pool costs one shadow-only instanced draw per
+  // cascade instead of two (the trunk mesh and the crown proxy held identical instance sets, the same LOD-fade
+  // depth program and the same FrontSide-as-BackSide depth pass, and each grew its own three r8 cascade proxies:
+  // on Monsoon Ridge 15.8 trunk draws and 15.8 crown draws per near cascade at the chase pose, and 7.5 + 7.5 in the
+  // last). The trunk mesh itself no longer casts on the tiers that build proxies; the mobile tier keeps trunk-only
+  // shadows from the trunk mesh as before. Same triangles, same depth values (a depth map is order-independent).
+  function canopyShadowProxyGeometry(canopy: THREE.BufferGeometry, trunk: THREE.BufferGeometry | null = null): THREE.BufferGeometry {
+    // A private copy: instance attributes must stay per pool.
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', (canopy.getAttribute('position') as THREE.BufferAttribute).clone());
-    if (canopy.index) geometry.setIndex(canopy.index.clone());
+    const crown = shadowPositionsOf(canopy);
+    if (trunk) {
+      const bark = shadowPositionsOf(trunk);
+      const merged = new Float32Array(crown.length + bark.length);
+      merged.set(crown, 0);
+      merged.set(bark, crown.length);
+      geometry.setAttribute('position', new THREE.BufferAttribute(merged, 3));
+    } else {
+      geometry.setAttribute('position', new THREE.BufferAttribute(crown, 3));
+    }
     geometry.computeBoundingSphere();
     return geometry;
   }
@@ -4814,6 +4834,17 @@ function* vegetationBuildSteps(
   // Round 77: the near cards receive the cascades on the desktop tiers (one sample per leaf cluster, foliageWindHook);
   // the mobile tier keeps its unshadowed cards and pays no PCF on its foliage overdraw.
   const canopyShadowReceive = !mobileTier;
+  // Round 79 (2026-09-28, the performance lane): the near tier's shadow casters share one caster profile for the
+  // cascade router (engine/shadowCasterProfiles.ts): the farthest planar camera distance any near-slot tree stands
+  // at this frame (scope promotion included) and the tallest near tree — update() refreshes both — so a cascade
+  // whose sampled range starts beyond their shadows' reach skips them (the last cascade at most sun elevations:
+  // its map spans the field, and the near owners drew all their instances into it every other frame).
+  const nearTierShadowProfile: ShadowCasterProfile = { heightM: 0, reachM: 0 };
+  const speciesHeightM = {} as Record<Species, number>;
+  function geometryTopM(geometry: THREE.BufferGeometry): number {
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    return geometry.boundingBox ? geometry.boundingBox.max.y : 0;
+  }
   function createTreeMeshPools(): void {
     // Species never changes during promotion, cross-fade, toppling or reset.
     // Each LOD can therefore hold at most this species' final population,
@@ -4828,6 +4859,9 @@ function* vegetationBuildSteps(
       // one inert color slot for the same vertex-color shader setup; count=0.
       // A completely empty population retains the original zero-byte pools.
       const capacity = Math.min(trees.length, Math.max(1, speciesCounts.get(sp) ?? 0));
+      speciesHeightM[sp] = Math.max(
+        ...treeGeo[sp].map((g) => Math.max(geometryTopM(g.trunk), geometryTopM(g.cards))),
+        ...treeGeoFar[sp].map((g) => Math.max(geometryTopM(g.trunk), geometryTopM(g.canopy))));
       nearMeshes[sp] = treeGeo[sp].map((g, variant) => {
         const trunk = makeTreeMesh(g.trunk, barkMat, sp, false, capacity);
         // shadow-stability r2: The opaque canopy proxy is deliberately coarse
@@ -4852,10 +4886,15 @@ function* vegetationBuildSteps(
         foliage.userData.treeLod = 'near';
         const pool: TreeMesh[] = [trunk, foliage];
         if (canopyShadowProxies) {
+          // Round 79: the crown proxy carries the trunk's shadow too (canopyShadowProxyGeometry); the trunk mesh
+          // stops casting so the pool submits one shadow draw per cascade, not two
+          trunk.castShadow = false;
           pool.push(makeCanopyShadowProxy(
-            canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy),
+            canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy, g.trunk),
             sp, capacity, `treeCanopyShadow_${sp}_${variant}`));
         }
+        // the pool's one shadow caster (the proxy, or the trunk on the tiers without proxies) reports the near tier's reach
+        setShadowCasterProfile(pool[pool.length - 1].castShadow ? pool[pool.length - 1] : trunk, nearTierShadowProfile);
         return pool;
       });
       // r7: far LOD is now a 2-variant array (silhouette variety at range)
@@ -5796,6 +5835,7 @@ function* vegetationBuildSteps(
     if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
     uCamPos.value.copy(camPos);
     if (camFwd) uCamFwd.value.copy(camFwd);
+    updateNearTierShadowReach(camPos);
     uSniperFade.value += (sniperFadeTarget - uSniperFade.value) *
       (1 - Math.exp(-(dt || 0) / 0.08));
     // Do not spend the opening/countdown frames filling an invisible outer
@@ -5820,6 +5860,26 @@ function* vegetationBuildSteps(
     updatePartitionCaches(camPos);
     tickLodTransitions(dt); // aa-r1: advance LOD cross-fades (dt 0 snaps)
     updateOcclusionFade(dt, camPos, focusPos);
+  }
+
+  /** Round 79: the near tier's shadow reach this frame — the farthest near-slot tree (planar) and the tallest one. */
+  function updateNearTierShadowReach(camPos: THREE.Vector3): void {
+    let reach2 = 0, height = 0;
+    for (const sp of speciesList) {
+      const speciesHeight = speciesHeightM[sp] ?? 0;
+      for (const slots of nearSlots[sp]) {
+        for (const t of slots) {
+          const dx = t.x - camPos.x, dz = t.z - camPos.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 > reach2) reach2 = d2;
+          const e = t.mat.elements;
+          const h = speciesHeight * Math.hypot(e[4], e[5], e[6]);
+          if (h > height) height = h;
+        }
+      }
+    }
+    nearTierShadowProfile.reachM = Math.sqrt(reach2);
+    nearTierShadowProfile.heightM = height;
   }
 
   function setWindTime(t: number): void { uWindTime.value = t; }

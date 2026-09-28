@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps, PROPS_CONVERSION_BATCH_LIMIT,
   PROPS_CONVERSION_BUDGET_MS } from './propsMaterialGeometry.ts';
+import { setShadowCasterProfile, shadowCasterProfileOf } from '../engine/renderLayers.ts';
 
 const owned = new Set();
 const own = geometry => { owned.add(geometry); return geometry; };
@@ -129,15 +130,24 @@ const mergeStart = propsSource.indexOf('  function* mergeMaterialBuckets(');
 const mergeEnd = propsSource.indexOf('\n  yield* mergeMaterialBuckets();', mergeStart);
 assert.ok(mergeStart > 0 && mergeEnd > mergeStart, 'execute the actual material publication boundary');
 const mergeCode = stripTypeScriptTypes(propsSource.slice(mergeStart, mergeEnd));
+// Round 79 (2026-09-28): the merge registers each bucket's caster profile (the pieces' cells, before the merge owns
+// them) — the production helper, sliced from props.ts, and the real registry.
+const profileStart = propsSource.indexOf('const PROPS_SHADOW_CELL_M = ');
+const profileEnd = propsSource.indexOf('/** The profile of a merged shadow-only mesh', profileStart);
+assert.ok(profileStart > 0 && profileEnd > profileStart, 'the production bucket profile helper is covered');
+const bucketShadowProfile = new Function('THREE',
+  `${stripTypeScriptTypes(propsSource.slice(profileStart, profileEnd))}\nreturn bucketShadowProfile;`)(THREE);
 function materialFixture(buckets, events = []) {
   const group = new THREE.Group(), material = new THREE.MeshBasicMaterial();
   const mats = Object.fromEntries(Object.keys(buckets).map(key => [key, material]));
   const prepare = new Function('buckets', 'mats', 'group', 'THREE', 'ensureWorldNightEmissionMask',
-    'prepareWorldStaticNightFixture', 'mergePropsMaterialGeometrySteps', `${mergeCode}\nreturn mergeMaterialBuckets;`)(
+    'prepareWorldStaticNightFixture', 'mergePropsMaterialGeometrySteps', 'bucketShadowProfile', 'setShadowCasterProfile',
+    `${mergeCode}\nreturn mergeMaterialBuckets;`)(
     buckets, mats, group, THREE,
     geometry => { events.push(['curtain', geometry]); },
     geometries => { events.push(['glass', geometries]); },
-    (sources, key) => mergePropsMaterialGeometrySteps(sources, key, () => 0));
+    (sources, key) => mergePropsMaterialGeometrySteps(sources, key, () => 0),
+    bucketShadowProfile, setShadowCasterProfile);
   return { group, material, prepare };
 }
 const wrapperStart = propsSource.indexOf('export async function createPropsAsync(');
@@ -151,8 +161,33 @@ function composeAsync(materials) {
     () => assert.fail('no worker in the Node fixture'));
 }
 
+// Round 79: every merged bucket registers a profile — one sphere per 96 m cell of piece centres bounding those
+// pieces, the tallest piece's height — computed from the pieces before the merge consumes them.
+function profileCase() {
+  const near = new THREE.BoxGeometry(2, 3, 2).translate(10, 1.5, 10), far = new THREE.BoxGeometry(2, 1, 2).translate(500, 0.5, -500);
+  const twin = new THREE.BoxGeometry(4, 6, 4).translate(14, 3, 14);
+  const buckets = { stone: [near, far, twin], wood: [far.clone()] };
+  const f = materialFixture(buckets);
+  const it = f.prepare(); while (!it.next().done) { /* drain */ }
+  const [stone, wood] = f.group.children;
+  assert.equal(stone.name, 'props-bucket-stone'); assert.equal(wood.name, 'props-bucket-wood');
+  const p = shadowCasterProfileOf(stone);
+  assert.ok(p && p.spheres instanceof Float32Array, 'the merged bucket carries a profile');
+  assert.equal(p.spheres.length, 2 * 4, 'near and twin share a cell, far has its own');
+  assert.equal(p.heightM, 6, 'the tallest piece');
+  const cells = [0, 1].map(i => Array.from(p.spheres.subarray(i * 4, i * 4 + 4)));
+  const nearCell = cells.find(c => Math.abs(c[0] - 12.5) < 1e-3 && Math.abs(c[2] - 12.5) < 1e-3), farCell = cells.find(c => Math.abs(c[0] - 500) < 1e-3);
+  assert.ok(nearCell && farCell, 'one sphere per occupied cell, centred on the pieces it holds');
+  assert.ok(nearCell[3] > 3 && nearCell[3] < 6, 'the near cell bounds both boxes');
+  const q = shadowCasterProfileOf(wood);
+  assert.equal(q.spheres.length, 4); assert.equal(q.heightM, 1);
+  for (const mesh of f.group.children) setShadowCasterProfile(mesh, null);
+  for (const g of [near, far, twin, ...buckets.wood]) g.dispose();
+  for (const mesh of f.group.children) mesh.geometry.dispose();
+  f.material.dispose();
+}
 try {
-  parityCase(); boundedCase(); cleanupCase();
+  parityCase(); boundedCase(); cleanupCase(); profileCase();
   for (const values of [[], [fixture(2, false)], [fixture(2), fixture(4)]]) {
     const before = values.map(receipt);
     if (!values.length) {

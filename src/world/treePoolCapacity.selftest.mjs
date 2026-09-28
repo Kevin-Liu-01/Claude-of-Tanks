@@ -15,7 +15,7 @@ import { relocateTidalMangroves } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { getMapConfig } from './maps/index.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
-import { markShadowOnly } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
 
 // Actual seeded tree placement, allocation, full/incremental partition and LOD
 // transition code. Tiny immutable geometry avoids unrelated atlas/mesh baking.
@@ -32,7 +32,7 @@ assert.equal(poolCode.split(capacityLine).length, 2, 'one construction-only spec
 const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation, excludeVegetation,
   redistributeAuthoredTrees, relocateTidalMangroves, DESTRUCTIBLE_BUILDING_TYPES, applyLodShadowFadeDepth,
-  markShadowOnly, treeRichness };
+  markShadowOnly, treeRichness, setShadowCasterProfile };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;
@@ -183,6 +183,36 @@ for (const mapId of mapIds) {
       assert.throws(() => after.makeTreeMesh(geo, mat, config.vegetation.species[0], false, 0), /valid capacity/);
       geo.dispose(); mat.dispose();
       drive(before, after);
+      // Round 79 (2026-09-28, the performance lane): one shadow caster per near pool — on the tiers that build crown
+      // shadow proxies the proxy carries the far-LOD lobe hull AND the near trunk in one position-only geometry
+      // (the trunk's positions byte-exact at its tail) and the trunk mesh stops casting; the mobile tier builds
+      // no proxies and keeps its trunk-only shadow from the trunk mesh.
+      for (const sp of Object.keys(after.nearMeshes)) {
+        after.nearMeshes[sp].forEach((pool, variant) => {
+          const [trunk, foliage, proxy] = pool;
+          assert.equal(trunk.userData.treeTrunk, true, `${sp}/${variant}: the pool leads with its trunk`);
+          assert.equal(foliage.castShadow, false, `${sp}/${variant}: cards never cast`);
+          if (mobile) {
+            assert.equal(pool.length, 2, `${sp}/${variant}: no crown proxy on the mobile tier`);
+            assert.equal(trunk.castShadow, true, `${sp}/${variant}: mobile keeps the trunk-only shadow`);
+            return;
+          }
+          assert.equal(pool.length, 3, `${sp}/${variant}: trunk, cards and the crown shadow proxy`);
+          assert.equal(trunk.castShadow, false, `${sp}/${variant}: the trunk casts through the proxy`);
+          assert.equal(proxy.userData.treeCanopyShadowProxy, true);
+          assert.equal(proxy.castShadow, true);
+          assert.equal(trunk.geometry.index, null, 'the near trunk is a flat merge');
+          const farCanopy = after.farMeshes[sp][variant % after.farMeshes[sp].length][1];
+          const crownCount = farCanopy.geometry.index ? farCanopy.geometry.index.count : farCanopy.geometry.attributes.position.count;
+          const trunkPositions = trunk.geometry.attributes.position;
+          assert.equal(proxy.geometry.attributes.position.count, crownCount + trunkPositions.count,
+            `${sp}/${variant}: the proxy holds the lobe hull and the trunk`);
+          assert.deepEqual(Object.keys(proxy.geometry.attributes).sort(), ['aFadeI', 'aLodF', 'position'],
+            'positions and the pool instance streams only');
+          assert.deepEqual(proxy.geometry.attributes.position.array.subarray(crownCount * 3), trunkPositions.array,
+            `${sp}/${variant}: the trunk positions ride byte-exact at the proxy tail`);
+        });
+      }
       console.log(JSON.stringify({ map: mapId, tier: mobile ? 'mobile' : 'desktop', seed: 1337,
         trees: after.trees.length, before: a, after: b, savedBytes: a.bytes - b.bytes, sourceHash }));
     } finally { before.dispose(); after.dispose(); }

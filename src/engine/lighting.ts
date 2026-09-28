@@ -23,6 +23,7 @@ import {
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { markShadowOnly, registerShadowCascadeCamera, setShadowCascadePolicy } from './renderLayers.ts';
+import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
   cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
 } from './nearVehicleShadowDetail.ts';
@@ -1341,6 +1342,38 @@ export function createLighting(
     applyFarCascadeDormancy();
     updateCasterProxies(csm.lights, scene, false);
     nearVehiclePolicy.update();
+    evaluateCasterProfiles(false);
+  }
+
+  // Round 79 (2026-09-28, the performance lane): the caster profiles (renderLayers.setShadowCasterProfile) are
+  // evaluated against this frame's cascades — the frusta of the cascades that render, each map's texel size and the
+  // view depth its map is sampled from under three's CSM fade — and the sun's elevation (engine/shadowCasterProfiles.ts).
+  // Desktop tiers only: the phones keep their three cascades exactly as they draw today.
+  const profileCascades: ShadowCascadeSample[] = [];
+  function evaluateCasterProfiles(all: boolean): void {
+    if (mobileTier) return;
+    const far = Math.min(camera.far, csm.maxFar);
+    const lights = csm.lights;
+    for (let i = 0; i < lights.length; i++) {
+      const light = lights[i];
+      const shadow = light.shadow;
+      const shadowCam = shadow.camera;
+      let sample = profileCascades[i];
+      if (!sample) { sample = { scheduled: false, frustum: null, texelM: 0, sampledFromM: 0 }; profileCascades[i] = sample; }
+      sample.scheduled = all || shadow.needsUpdate;
+      if (sample.scheduled) {
+        light.updateMatrixWorld();
+        light.target.updateMatrixWorld();
+        shadow.updateMatrices(light);
+        sample.frustum = shadow.getFrustum();
+      } else sample.frustum = null;
+      sample.texelM = (shadowCam.right - shadowCam.left) / Math.max(1, shadow.mapSize.x);
+      sample.sampledFromM = csmSampledFromM(i === 0 ? 0 : csm.breaks[i - 1], camera.near, far, csm.fade);
+    }
+    profileCascades.length = lights.length;
+    // csm.lightDirection points FROM the sun: its -y is the sine of the sun's elevation
+    const sunElevationRad = Math.asin(Math.max(-1, Math.min(1, -csm.lightDirection.y)));
+    evaluateShadowCasterProfiles({ cascades: profileCascades, sunElevationRad });
   }
 
   return {
@@ -1415,6 +1448,7 @@ export function createLighting(
       const shadowMap = renderer2.shadowMap;
       const gl = renderer2.getContext();
       updateCasterProxies(csm.lights, scene2, true); // the primed maps must see the same caster sets
+      evaluateCasterProfiles(true);
       const timings = await primeShadowCascades({
         renderer: renderer2, scene: scene2, camera: camera2,
         lights: csm.lights, count: primeCount, yieldBeforeCascade, signal, isCurrent, casterWarmup,

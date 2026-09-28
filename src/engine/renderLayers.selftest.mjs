@@ -12,6 +12,12 @@ import {
   shadowCascadeIndexOfCamera,
   routeZeroCountDraws,
   SHADOW_CASTER_LAST_CASCADE,
+  SHADOW_CASTER_ALL_CASCADES,
+  setShadowCasterProfile,
+  shadowCasterProfileOf,
+  forEachShadowCasterProfile,
+  setShadowCasterDynamicMask,
+  shadowCasterDynamicMaskOf,
 } from './renderLayers.ts';
 
 const proxy = markShadowOnly(new THREE.Mesh(
@@ -273,9 +279,96 @@ console.log('renderLayers.selftest: shadow routing and scoped warm suppression/r
   const empty = new THREE.InstancedMesh(geometry, material, 4); empty.count = 0; empty.name = 'empty';
   const some = new THREE.InstancedMesh(geometry, material, 4); some.count = 2; some.name = 'some';
   const plain = new THREE.Mesh(geometry, material); plain.name = 'plain';
-  const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene();
-  for (const object of [empty, some, plain]) renderer.renderBufferDirect(camera, scene, geometry, material, object, null);
-  assert.deepEqual(calls, [['some', true, null], ['plain', true, null]], 'the zero-count draw is skipped before the setup; the rest pass through with their receiver');
+  // Round 79: a BatchedMesh whose per-object culling left an empty multi-draw list is skipped the same way
+  const scene = new THREE.Scene();
+  const emptyBatch = new THREE.BatchedMesh(2, 24, 36, material); emptyBatch.name = 'emptyBatch';
+  const fullBatch = new THREE.BatchedMesh(2, 24, 36, material); fullBatch.name = 'fullBatch';
+  const batchGeometry = fullBatch.addGeometry(geometry); fullBatch.addInstance(batchGeometry);
+  fullBatch.onBeforeRender({ getRenderTarget: () => null }, scene, new THREE.PerspectiveCamera(), geometry, material, null);
+  assert.equal(emptyBatch._multiDrawCount, 0, 'a batch that was never culled holds no draws');
+  assert.equal(fullBatch._multiDrawCount, 1, 'three\'s own hook fills the multi-draw list');
+  const camera = new THREE.PerspectiveCamera(), scene2 = new THREE.Scene();
+  for (const object of [empty, some, plain, emptyBatch, fullBatch]) renderer.renderBufferDirect(camera, scene2, geometry, material, object, null);
+  assert.deepEqual(calls, [['some', true, null], ['plain', true, null], ['fullBatch', true, null]], 'the zero-count draw and the empty batch are skipped before the setup; the rest pass through with their receiver');
+  emptyBatch.dispose(); fullBatch.dispose();
   assert.doesNotThrow(() => routeZeroCountDraws({ shadowMap: { render() {} } }), 'a renderer without the method is left alone');
 }
-console.log('renderLayers.selftest: the shadow-only layer, the warm scope, the round-78 per-cascade caster masks (with the last-cascade flag) and the zero-count early-out pinned');
+
+// Round 79 (2026-09-28, the performance lane): caster profiles and dynamic masks. A profile is retained by
+// reference and walked by the evaluator; the evaluator's dynamic mask hides a caster like a static mask does, and
+// the two compose (a cascade is drawn only when both admit it); a profile awaiting its first evaluation is never
+// touched; forgetting the last of a caster's mask, dynamic mask and profile unlists it and the router returns to
+// three's single call.
+{
+  setShadowCascadePolicy(null);
+  const lights = [0, 1, 2, 3].map(() => new THREE.DirectionalLight());
+  lights.forEach((light, i) => registerShadowCascadeCamera(light.shadow.camera, i));
+  const scene = new THREE.Scene();
+  const bucket = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  const both = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  const pending = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  scene.add(bucket, both, pending);
+  const camera = new THREE.PerspectiveCamera();
+  const calls = [];
+  const renderer = { shadowMap: { render(actualLights) { calls.push([bucket.visible, both.visible, pending.visible]); } } };
+  routeShadowOnlyLayer(renderer);
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.equal(calls.length, 1, 'nothing registered: the single call');
+  assert.equal(SHADOW_CASTER_ALL_CASCADES & 0b1111, 0b1111);
+  const profile = { heightM: 1.5, spheres: new Float32Array([0, 0, 0, 3]), reachM: 40 };
+  setShadowCasterProfile(bucket, profile);
+  setShadowCasterProfile(pending, { heightM: 2 });
+  assert.equal(shadowCasterProfileOf(bucket), profile, 'the profile object is retained by reference');
+  assert.equal(shadowCasterDynamicMaskOf(bucket), null, 'no dynamic mask before an evaluation');
+  const walked = [];
+  forEachShadowCasterProfile((object, p) => walked.push([object, p]));
+  assert.deepEqual(walked, [[bucket, profile], [pending, shadowCasterProfileOf(pending)]], 'the walk visits every profile once, in registration order');
+  calls.length = 0;
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.equal(calls.length, 4, 'a registered profile splits the lights');
+  assert.ok(calls.every((c) => c[0] && c[2]), 'profiles awaiting their first evaluation are never hidden');
+  // the evaluator's answer: the bucket draws into cascades 1 and 2 only this frame
+  setShadowCasterDynamicMask(bucket, 0b0110);
+  assert.equal(shadowCasterDynamicMaskOf(bucket), 0b0110);
+  // a caster with a static mask (near cascades) AND a dynamic mask (content in the far ones) draws where both admit
+  setShadowCasterCascades(both, 0b0011);
+  setShadowCasterDynamicMask(both, 0b1010);
+  calls.length = 0;
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.deepEqual(calls.map((c) => c[0]), [false, true, true, false], 'the dynamic mask hides the bucket around cascades 0 and 3');
+  assert.deepEqual(calls.map((c) => c[1]), [false, true, false, false], 'static AND dynamic: cascade 1 alone');
+  assert.deepEqual(calls.map((c) => c[2]), [true, true, true, true], 'the pending profile draws everywhere');
+  assert.ok(bucket.visible && both.visible && pending.visible, 'every flag restored after the pass');
+  // the last cascade flag and a dynamic mask compose the same way
+  setShadowCasterCascades(both, SHADOW_CASTER_LAST_CASCADE);
+  calls.length = 0;
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.deepEqual(calls.map((c) => c[1]), [false, false, false, true], 'last-cascade flag with a dynamic mask admitting bit 3');
+  setShadowCasterDynamicMask(both, 0b0111);
+  calls.length = 0;
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.deepEqual(calls.map((c) => c[1]), [false, false, false, false], 'last-cascade flag with a dynamic mask excluding bit 3: never drawn');
+  // forgetting: the profile goes with its dynamic mask; a bare caster is unlisted; the router returns to one call
+  setShadowCasterProfile(bucket, null);
+  assert.equal(shadowCasterProfileOf(bucket), null);
+  assert.equal(shadowCasterDynamicMaskOf(bucket), null, 'forgetting the profile clears its dynamic mask');
+  setShadowCasterProfile(pending, null);
+  setShadowCasterCascades(both, null);
+  calls.length = 0;
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.equal(calls.length, 4, 'a dynamic mask alone still splits the lights');
+  setShadowCasterDynamicMask(both, null);
+  calls.length = 0;
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.equal(calls.length, 1, 'nothing left registered: three\'s single call again');
+  // re-registering after a full forget lists the caster once
+  setShadowCasterProfile(bucket, profile);
+  setShadowCasterDynamicMask(bucket, 0b0001);
+  setShadowCasterCascades(bucket, 0b0011);
+  const seen = [];
+  forEachShadowCasterProfile((object) => seen.push(object));
+  assert.deepEqual(seen, [bucket], 'one listing per caster whatever the registration order');
+  setShadowCasterProfile(bucket, null);
+  setShadowCasterCascades(bucket, null);
+}
+console.log('renderLayers.selftest: the shadow-only layer, the warm scope, the round-78 per-cascade caster masks (with the last-cascade flag), the zero-count early-out (instanced and batched) and the round-79 caster profiles / dynamic masks pinned');
