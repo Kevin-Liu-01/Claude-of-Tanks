@@ -3,6 +3,7 @@ import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from './specs.ts';
 import { Group } from 'three';
 import { createMachineGunAttachmentAudit } from './profiles/machineGunAttachment.test-support.mjs';
+import { createTrackEndWrapAudit } from './trackEndWrap.test-support.mjs';
 import {
   WHEEL_PATTERN_DEFINITIONS,
   WHEEL_PATTERN_IDS,
@@ -13,10 +14,12 @@ import { auditTankWheelQuality } from './wheelQuality.ts';
 const patternUse = new Map();
 const geometrySignatures = new Map();
 
-// Both contracts read the same HIGH model; neither mutates it. Keep both
-// rosters when they diverge, and retain the mount audit's authored seed.
+// All three contracts read the same unbatched HIGH model without changing it.
+// Keep both rosters when they diverge, and retain the mount audit's authored
+// seed. Camo seeds do not move the running gear (tankFactoryCore's invariant).
 const wheelIds = new Set(ALL_TANK_IDS), mountIds = new Set(DEVELOPMENT_TANK_IDS);
 const mounts = createMachineGunAttachmentAudit();
+const wraps = createTrackEndWrapAudit();
 const ids = [...new Set([...wheelIds, ...mountIds])];
 {
   const root = new Group(), fitting = new Group();
@@ -26,10 +29,11 @@ const ids = [...new Set([...wheelIds, ...mountIds])];
     'the shared inspection still rejects a mounted weapon outside every tank rig');
 }
 for (const id of ids) {
-  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false });
   try {
     if (mountIds.has(id)) mounts.check(id, tank);
     if (!wheelIds.has(id)) continue;
+    wraps.check(id, tank);
     const resolvedA = wheelPatternFor(getSpec(id));
     const resolvedB = wheelPatternFor(getSpec(id));
     assert.deepEqual(resolvedA, resolvedB, `${id}: deterministic wheel pattern`);
@@ -58,7 +62,9 @@ for (const id of ids) {
   } finally { tank.dispose(); }
 }
 const mountCounts = mounts.finish();
+const wrapCounts = wraps.finish();
 console.log(`fleet mounts: ${mountCounts.fittingCount} fittings on ${mountCounts.tankCount} tanks; ${ids.length} shared builds`);
+console.log(`fleet track wraps: ${JSON.stringify(wrapCounts)}`);
 
 // solid-bogie-six lost its last playable hull (t95) when the hidden fleet retired
 // (2026-09-23); the definition stays because the builders switch on its motif.

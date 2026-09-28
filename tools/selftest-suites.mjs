@@ -241,7 +241,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/ares-apc-x-reference.selftest.mjs',
     'src/vehicles/trackGlitchSimulation.selftest.mjs',
     'src/vehicles/trackEndRamp.selftest.mjs',
-    'src/vehicles/trackEndWrap.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
     'src/vehicles/ifvReplicas.selftest.mjs',

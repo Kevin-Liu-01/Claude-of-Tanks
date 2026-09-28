@@ -328,9 +328,12 @@ exercise each case. The impact plan reduces deployment-note invalidation from
 roughly 500 checks to 161 on this revision; fresh environmental checks are additional.
 This is a dependency count, not a claim about elapsed time on a busy host.
 
-The wheel-quality and machine-gun attachment inspections now share one HIGH tank
-build per roster member. Their 37 original assertions remain, with a detached-mount
-negative control. Their distinct rosters are both retained; the ERA depletion test
+The wheel-quality, machine-gun attachment and track end-wrap inspections share one
+unbatched HIGH tank build per roster member: 594 constructions become 198 on this
+fleet. Their 41 original assertions remain, with a detached-mount negative control
+and the end-wrap audit's original broken-station controls and 3/5 mm limits. Both
+rosters are retained; the mount inspection keeps its authored camo seed, which
+does not move the running gear. The ERA depletion test
 keeps its independent LOW build because it mutates geometry. Source-shape guards,
 functional simulation tests and real visual checks still make different claims:
 a source regex does not prove a rendered result. The full gate inventory is not a

@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
-import { createTank } from './tankFactory.ts';
-import { ALL_TANK_IDS } from './specs.ts';
-import { endWrapRows, endWrapFlags, measureEndWrap, bandCentrelineCells, runningGearBands,
-  END_WRAP_CUT_LIMIT_MM, END_WRAP_DEVIATION_LIMIT_MM } from '../../tools/track-end-wrap.mjs';
+import { endWrapRows, endWrapFlags, measureEndWrap, bandCentrelineCells, runningGearBands } from '../../tools/track-end-wrap.mjs';
 
 // Fleet end-wrap receipt (owner 2026-09-21: the TOS-1A "tracks have the improper wrapping issue around the front road
 // wheel and back road wheel. research why this happens then have a check for this for all tanks").
@@ -14,13 +11,11 @@ import { endWrapRows, endWrapFlags, measureEndWrap, bandCentrelineCells, running
 // Dead-track ends whose drive / idler wrap crosses the ground run ('ground-level') carry no wheel wrap and are exempt.
 const STAGGERED = ['tos1a_tagil', 't90ms_x', 'cv90105_tml_x', 'cv90_mkiv_x', 'ztz100_x'];
 const EXEMPT_STATUSES = new Set(['ok', 'ground-level']);
-const started = Date.now();
-const statuses = {};
-const failures = [];
-let measured = 0, worstCut = 0, worstDeviation = 0, staggeredEnds = 0;
-for (const id of ALL_TANK_IDS) {
-  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, batchStatic: false });
-  try {
+export function createTrackEndWrapAudit() {
+  const statuses = {};
+  const failures = [];
+  let measured = 0, worstCut = 0, worstDeviation = 0, staggeredEnds = 0;
+  function check(id, tank) {
     const rows = endWrapRows(tank.root);
     assert.ok(rows.length >= 4, `${id}: both sides of a running-gear unit were measured (${rows.length} rows)`);
     for (const row of rows) {
@@ -55,9 +50,12 @@ for (const id of ALL_TANK_IDS) {
         }
       }
     }
-  } finally { tank.dispose?.(); }
+  }
+  function finish() {
+    assert.ok(measured >= 700, `the fleet exposes its end wraps (${measured} measured ends)`);
+    assert.ok(staggeredEnds >= 12, `the staggered-station rigs took part with their own stations (${staggeredEnds} ends offset ≥ 30 mm)`);
+    assert.deepEqual(failures, [], `end-wrap failures:\n  ${failures.join('\n  ')}`);
+    return { measured, worstCut, worstDeviation, staggeredEnds, statuses };
+  }
+  return { check, finish };
 }
-assert.ok(measured >= 700, `the fleet exposes its end wraps (${measured} measured ends)`);
-assert.ok(staggeredEnds >= 12, `the staggered-station rigs took part with their own stations (${staggeredEnds} ends offset ≥ 30 mm)`);
-assert.deepEqual(failures, [], `end-wrap failures:\n  ${failures.join('\n  ')}`);
-console.log(`trackEndWrap.selftest: ${ALL_TANK_IDS.length} tanks, ${measured} tangent end wraps within ${END_WRAP_CUT_LIMIT_MM} mm cut / ${END_WRAP_DEVIATION_LIMIT_MM} mm deviation (worst cut ${worstCut} mm, worst deviation ${worstDeviation} mm, ${staggeredEnds} staggered-station ends), statuses ${JSON.stringify(statuses)}, ${((Date.now() - started) / 1000).toFixed(0)} s`);
