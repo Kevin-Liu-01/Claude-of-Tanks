@@ -326,6 +326,7 @@ try {
             const instance = new THREE.Matrix4();
             const world = new THREE.Matrix4();
             const position = new THREE.Vector3();
+            const contactCorner = new THREE.Vector3();
             const quaternion = new THREE.Quaternion();
             const scale = new THREE.Vector3();
             const bandA = new THREE.Vector3();
@@ -432,7 +433,18 @@ try {
                     maxShoeBandGapError = Math.max(maxShoeBandGapError, courseError);
                   }
                 }
-                const clearance = box.min.y - heightAt(center.x, center.z);
+                // Compare each rotated sole corner at its own X/Z. Pairing
+                // a world AABB's downhill Y with its centre's uphill terrain
+                // invents penetration on an otherwise parallel cross-slope.
+                let clearance = Infinity;
+                const bounds = pads.geometry.boundingBox;
+                for (const x of [bounds.min.x, bounds.max.x]) {
+                  for (const z of [bounds.min.z, bounds.max.z]) {
+                    contactCorner.set(x, bounds.min.y, z).applyMatrix4(world);
+                    clearance = Math.min(clearance,
+                      contactCorner.y - heightAt(contactCorner.x, contactCorner.z));
+                  }
+                }
                 minClearance = Math.min(minClearance, clearance);
                 // A loaded run must be within six centimetres of the actual
                 // triangles. The former 16 cm allowance hid visible hovering.
