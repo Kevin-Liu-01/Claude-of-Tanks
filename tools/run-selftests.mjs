@@ -49,6 +49,9 @@ export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   // (tick rate, stalls) measure host time; beside seven other children they flaked in a landing chain and pass alone.
   'server/match/tickCost.selftest.mjs',
   'tools/mp-soak.selftest.mjs',
+  // This short wall-clock cadence assertion must observe current scheduling,
+  // without complete fleet constructors delaying its 250 ms timer sample.
+  'server/match/loop.selftest.mjs',
 ]);
 
 // A functional fleet sweep may reuse a source proof. Real frame/clock/heap
@@ -56,6 +59,8 @@ export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
 export const SELFTEST_FRESH_FILES = Object.freeze([
   ...SELFTEST_OWNED_LEASE_FILES,
   ...SELFTEST_EXCLUSIVE_CPU_FILES.filter(file => file !== 'src/vehicles/fleetLazy.selftest.mjs'),
+  // The functional fuzz corpus also gates measured decode time.
+  'src/mp/wire/wireFuzz.selftest.mjs',
 ]);
 
 // This caches compilation, NEVER test results or module instances. Every file

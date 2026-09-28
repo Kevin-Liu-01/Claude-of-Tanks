@@ -17,6 +17,8 @@ assert.equal(selftestCommand(['core', '--plan']).plan, true);
 assert.throws(() => selftestCommand(['all', '--typo']), /Unknown self-test option/);
 assert.throws(() => selftestCommand(['all', '--changed=src/main.ts']), /never skips required checks/);
 assert.ok(SELFTEST_FRESH_FILES.includes('server/match/tickCost.selftest.mjs'));
+assert.ok(SELFTEST_FRESH_FILES.includes('server/match/loop.selftest.mjs'));
+assert.ok(SELFTEST_FRESH_FILES.includes('src/mp/wire/wireFuzz.selftest.mjs'));
 assert.ok(!SELFTEST_FRESH_FILES.includes('src/vehicles/fleetLazy.selftest.mjs'),
   'functional source proofs are separate from environmental timing assertions');
 assert.deepEqual(selftestPlan(['a'], {
