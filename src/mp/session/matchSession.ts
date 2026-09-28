@@ -131,8 +131,11 @@ export interface MatchSessionOptions {
 
 export interface MatchSessionStats {
   phase: SessionPhase;
+  /** This seat's room player id (the proofs match hosts and hulls by it). */
+  playerId: string;
   round: number;
   matchId: string | null;
+  matchUrl: string | null;
   spectator: boolean;
   match: ReturnType<MatchClient['stats']> | null;
   rounds: number;
@@ -670,8 +673,10 @@ export class MatchSession {
   stats(): MatchSessionStats {
     return {
       phase: this.currentPhase,
+      playerId: this.room.playerId,
       round: this.currentRound?.matchStart.round ?? 0,
       matchId: this.currentRound?.matchStart.matchId ?? null,
+      matchUrl: this.currentRound?.matchStart.matchUrl ?? null,
       spectator: this.spectator,
       match: this.matchClient?.stats() ?? null,
       rounds: this.roundsEntered,

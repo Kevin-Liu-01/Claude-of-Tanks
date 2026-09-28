@@ -16,6 +16,12 @@
  *
  *   node tools/mp-p2p-e2e.mjs                     # out: .qa-dev/mp-p2p-e2e (gitignored), ~3 min wall
  *   node tools/mp-p2p-e2e.mjs --grace=8000 --play=20 --json
+ *   node tools/mp-p2p-e2e.mjs --rooms=wss://<the rooms Worker>   # the real room service: no double, so the gates that read
+ *                                                                # its log (the election record, the host's reports) take the pages' facts
+ *
+ * During A's return the two tabs still rendering (B hosting, C playing) draw at 320×200: two full battle frames starve the
+ * shared headless GPU process while A2 compiles its programs, and the strict preparation is wall-clock bounded (the entry
+ * extends it once — src/mp/session/browserComposition.ts — but the proof keeps the load honest rather than leaning on it).
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
@@ -38,6 +44,8 @@ const outputDir = resolve(argValue('out', join(root, '.qa-dev', 'mp-p2p-e2e')));
 const cacheDir = resolve(argValue('cache-dir', join(outputDir, 'vite-cache')));
 const playS = Number(argValue('play', 12));
 const graceMs = Number(argValue('grace', 3000));
+const roomsUrl = argValue('rooms', '');
+const live = roomsUrl !== '';
 const requestedVitePort = Number(argValue('port', 0));
 
 function freePort() {
@@ -134,9 +142,15 @@ const pages = { a: null, b: null, c: null, a2: null };
 let contextA = null;
 try {
   await mkdir(outputDir, { recursive: true });
-  rooms = await createP2pRoomDouble({ host: '127.0.0.1', port: 0, seatSecret: randomBytes(24).toString('hex'), hostGraceMs: graceMs, onEvent: (event) => report.roomEvents.push({ atMs: elapsedMs(), ...event }) });
-  process.env.VITE_ROOMS_URL = rooms.url;
-  step('rooms-double', { url: rooms.url, graceMs });
+  if (live) {
+    // The real room service: the pages reach it through VITE_ROOMS_URL; its events are not observed here.
+    process.env.VITE_ROOMS_URL = roomsUrl;
+    step('rooms-live', { url: roomsUrl, graceMs });
+  } else {
+    rooms = await createP2pRoomDouble({ host: '127.0.0.1', port: 0, seatSecret: randomBytes(24).toString('hex'), hostGraceMs: graceMs, onEvent: (event) => report.roomEvents.push({ atMs: elapsedMs(), ...event }) });
+    process.env.VITE_ROOMS_URL = rooms.url;
+    step('rooms-double', { url: rooms.url, graceMs });
+  }
   const vitePort = requestedVitePort > 0 ? requestedVitePort : await freePort();
   vite = await createViteServer({ root, cacheDir, logLevel: 'error', server: { host: '127.0.0.1', port: vitePort, strictPort: true, hmr: false } });
   await vite.listen();
@@ -184,14 +198,28 @@ try {
   await joinAsAlly(pages.c, 'C', invite);
   step('c-joined');
   await waitFor(pages.a, () => document.querySelector('.cot-play .lobby.show .players')?.children.length === 3, 'A sees three seats', 30_000);
-  const allAlpha = () => rooms.room(roomCode)?.room?.players.every((player) => player.team === 'alpha') === true;
-  for (let waited = 0; !allAlpha() && waited < 10_000; waited += 100) await sleep(100);
-  if (!allAlpha()) throw new Error(`not every seat is on alpha: ${JSON.stringify(rooms.room(roomCode)?.room?.players.map((player) => [player.id, player.team]))}`);
-  // The seats' ids from the room itself (the v2 composition — and its stats — exists only once a battle begins): A created, B and C joined in that order.
-  const seated = [...(rooms.room(roomCode)?.room?.players ?? [])].sort((x, y) => x.joinedAt - y.joinedAt);
-  const ids = { a: seated[0]?.id ?? null, b: seated[1]?.id ?? null, c: seated[2]?.id ?? null };
-  if (seated.length !== 3 || !ids.a || !ids.b || !ids.c || rooms.room(roomCode)?.room?.adminId !== ids.a) throw new Error(`the lobby seats read ${JSON.stringify(seated.map((player) => [player.id, player.joinedAt]))}`);
-  step('lobby-ready', ids);
+  const ids = { a: null, b: null, c: null };
+  if (live) {
+    // Without the double the teams are read from the lobby controls; the seats' ids come from their sessions once the battle begins.
+    const teamOf = (page) => page.evaluate(() => document.querySelector('.cot-play [data-control="team"]')?.value ?? null);
+    let teams = [];
+    for (let waited = 0; waited <= 10_000; waited += 100) {
+      teams = await Promise.all([pages.a, pages.b, pages.c].map(teamOf));
+      if (teams.every((team) => team === 'alpha')) break;
+      await sleep(100);
+    }
+    if (!teams.every((team) => team === 'alpha')) throw new Error(`not every seat is on alpha: ${JSON.stringify(teams)}`);
+    step('lobby-ready', { teams });
+  } else {
+    const allAlpha = () => rooms.room(roomCode)?.room?.players.every((player) => player.team === 'alpha') === true;
+    for (let waited = 0; !allAlpha() && waited < 10_000; waited += 100) await sleep(100);
+    if (!allAlpha()) throw new Error(`not every seat is on alpha: ${JSON.stringify(rooms.room(roomCode)?.room?.players.map((player) => [player.id, player.team]))}`);
+    // The seats' ids from the room itself (the v2 composition — and its stats — exists only once a battle begins): A created, B and C joined in that order.
+    const seated = [...(rooms.room(roomCode)?.room?.players ?? [])].sort((x, y) => x.joinedAt - y.joinedAt);
+    Object.assign(ids, { a: seated[0]?.id ?? null, b: seated[1]?.id ?? null, c: seated[2]?.id ?? null });
+    if (seated.length !== 3 || !ids.a || !ids.b || !ids.c || rooms.room(roomCode)?.room?.adminId !== ids.a) throw new Error(`the lobby seats read ${JSON.stringify(seated.map((player) => [player.id, player.joinedAt]))}`);
+    step('lobby-ready', ids);
+  }
   await pages.c.click('.cot-play [data-action="ready"]');
   await pages.b.click('.cot-play [data-action="ready"]');
   await pages.a.click('.cot-play [data-action="ready"]');
@@ -205,9 +233,17 @@ try {
     waitFor(pages.b, inBattle, 'B battle revealed', 240_000, { entryOf: 'B' }),
     waitFor(pages.c, inBattle, 'C battle revealed', 240_000, { entryOf: 'C' }),
   ]);
-  const startOf = async (page) => { const s = await stats(page); return { matchUrl: s?.session?.matchId ? rooms.room(roomCode)?.matchUrl : null, role: s?.session?.p2p?.role ?? null, hostId: s?.session?.p2p?.hostId ?? null, generation: s?.session?.p2p?.generation ?? null, peers: s?.session?.p2p?.peersConnected ?? null, transport: s?.session?.match?.transportState ?? null, candidate: s?.session?.p2p?.candidateType ?? null, viaTurn: s?.session?.p2p?.viaTurn ?? null, snapshots: s?.session?.match?.snapshotsAccepted ?? 0, actors: s?.round?.actors ?? 0, welcomed: s?.session?.match?.welcomed ?? false }; };
+  if (live) {
+    const ownId = (page) => page.evaluate(() => window.__MULTIPLAYER_V2?.stats?.().session?.playerId ?? null);
+    Object.assign(ids, { a: await ownId(pages.a), b: await ownId(pages.b), c: await ownId(pages.c) });
+    if (!ids.a || !ids.b || !ids.c || new Set(Object.values(ids)).size !== 3) throw new Error(`the seats' ids read ${JSON.stringify(ids)}`);
+    step('seats', ids);
+  }
+  const startOf = async (page) => { const s = await stats(page); return { matchUrl: s?.session?.matchUrl ?? null, role: s?.session?.p2p?.role ?? null, hostId: s?.session?.p2p?.hostId ?? null, generation: s?.session?.p2p?.generation ?? null, peers: s?.session?.p2p?.peersConnected ?? null, transport: s?.session?.match?.transportState ?? null, candidate: s?.session?.p2p?.candidateType ?? null, viaTurn: s?.session?.p2p?.viaTurn ?? null, snapshots: s?.session?.match?.snapshotsAccepted ?? 0, actors: s?.round?.actors ?? 0, welcomed: s?.session?.match?.welcomed ?? false }; };
   await waitFor(pages.a, (count) => (window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.peersConnected ?? 0) >= count, 'A serves two peers', 60_000, { args: [2] });
-  report.start = { a: await startOf(pages.a), b: await startOf(pages.b), c: await startOf(pages.c), matchUrl: rooms.room(roomCode)?.matchUrl ?? null };
+  report.start = { a: await startOf(pages.a), b: await startOf(pages.b), c: await startOf(pages.c), matchUrl: live ? null : rooms.room(roomCode)?.matchUrl ?? null };
+  if (live) report.start.matchUrl = report.start.a.matchUrl;
+  else if (report.start.a.matchUrl !== report.start.matchUrl) failures.push(`A runs ${report.start.a.matchUrl}, the room started ${report.start.matchUrl}`);
   const stripA = await pages.a.evaluate(() => ({ text: document.querySelector('.cot-mp-strip')?.textContent?.replace(/\s+/g, ' ').trim() ?? null, host: document.querySelector('.cot-mp-strip .unit.host')?.hidden === false }));
   report.start.stripA = stripA;
   step('battle-revealed', report.start);
@@ -237,7 +273,7 @@ try {
 
   // ---- A closes its tab: after the grace the room elects B; B resumes from its keyframe, C follows; no reset
   const lastSeenByC = await sample(pages.c, ids.b);
-  const hostTickBefore = report.roomEvents.filter((event) => event.kind === 'match_report').at(-1)?.tick ?? 0;
+  const hostTickBefore = live ? null : report.roomEvents.filter((event) => event.kind === 'match_report').at(-1)?.tick ?? 0;
   const closedAt = performance.now();
   await pages.a.close();
   pages.a = null;
@@ -250,12 +286,16 @@ try {
   await sleep(4000);
   const cAfter = await sample(pages.c, ids.b);
   const jumpM = lastSeenByC.other && firstSeenByC.other ? Math.hypot(firstSeenByC.other.x - lastSeenByC.other.x, firstSeenByC.other.z - lastSeenByC.other.z) : null;
-  const election = report.roomEvents.find((event) => event.kind === 'host_changed' && event.generation === 2);
-  const reportsFromB = report.roomEvents.filter((event) => event.kind === 'match_report' && event.from === ids.b).length;
+  const bAfter = await p2pOf(pages.b);
+  // The election as the double logged it; against the real service the elected seat's own facts (host, generation) stand in.
+  const election = live
+    ? (bAfter ? { hostId: bAfter.hostId, generation: bAfter.generation, reason: 'unobserved', resumeTick: null } : null)
+    : report.roomEvents.find((event) => event.kind === 'host_changed' && event.generation === 2);
+  const reportsFromB = live ? null : report.roomEvents.filter((event) => event.kind === 'match_report' && event.from === ids.b).length;
   const stripB = await pages.b.evaluate(() => ({ host: document.querySelector('.cot-mp-strip .unit.host')?.hidden === false, banner: document.querySelector('.cot-mp-banner')?.hidden === false ? document.querySelector('.cot-mp-banner .text')?.textContent : null }));
   report.migration = {
     electedAfterMs, election: election ? { hostId: election.hostId, generation: election.generation, reason: election.reason, resumeTick: election.resumeTick } : null, hostTickBefore,
-    b: await p2pOf(pages.b), c: await p2pOf(pages.c), cMatchPhase: cAfter.matchPhase, cSnapshotsAfterMigration: cAfter.snapshots - cBefore, cMigrations: cAfter.migrations, bMigrations: (await stats(pages.b))?.session?.migrations ?? null,
+    b: bAfter, c: await p2pOf(pages.c), cMatchPhase: cAfter.matchPhase, cSnapshotsAfterMigration: cAfter.snapshots - cBefore, cMigrations: cAfter.migrations, bMigrations: (await stats(pages.b))?.session?.migrations ?? null,
     bHullJumpAsCSaw: jumpM, cPhase: cAfter.phase, cResult: cAfter.result, reportsFromB, stripB,
   };
   step('migrated', report.migration);
@@ -266,11 +306,15 @@ try {
   if (report.migration.cSnapshotsAfterMigration < 40) failures.push(`C received ${report.migration.cSnapshotsAfterMigration} snapshots in 4 s on the new host`);
   if (jumpM === null || jumpM > 8) failures.push(`B's hull as C saw it moved ${jumpM} m across the migration (a reset would be a spawn away)`);
   if (cAfter.phase !== 'battle' || cAfter.result) failures.push(`C's battle ended in the migration (${cAfter.phase}, ${cAfter.result})`);
-  if (reportsFromB < 1) failures.push('the room heard no report from B');
+  if (!live && reportsFromB < 1) failures.push('the room heard no report from B');
   if (!stripB.host) failures.push("B's strip shows no HOST badge after the election");
   await Promise.all([screenshot(pages.b, 'b-hosting-after-migration.png'), screenshot(pages.c, 'c-after-migration.png')]);
 
-  // ---- A returns: a fresh page in its context (the resume capability in localStorage), the running match as a peer of B
+  // ---- A returns: a fresh page in its context (the resume capability in localStorage), the running match as a peer of B.
+  // B (hosting) and C draw at 320×200 meanwhile: two full battle frames starve the shared headless GPU process while A2
+  // compiles its programs against a wall-clock budget; they get their size back once A2 plays.
+  await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ width: 320, height: 200, deviceScaleFactor: 1 })));
+  step('b-c-shrunk', { viewport: '320x200' });
   pages.a2 = await contextA.newPage();
   await pages.a2.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 });
   observe(pages.a2, 'A2');
@@ -281,6 +325,8 @@ try {
   await pages.a2.click('.cot-play [data-action="rejoin"]');
   await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000, { entryOf: 'A2' });
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
+  await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 })));
+  step('b-c-restored', { viewport: '1024x640', a2Entry: await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null })) });
   report.rejoin = { a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null };
   step('a-rejoined', report.rejoin);
   if (report.rejoin.p2p?.role !== 'peer' || report.rejoin.p2p?.hostId !== ids.b) failures.push(`A2 ${JSON.stringify(report.rejoin.p2p)}`);
@@ -304,7 +350,7 @@ try {
 
 if (json) console.log(JSON.stringify(report, null, 2));
 else {
-  console.log(`mp p2p e2e: room ${report.room?.code ?? '-'} started ${report.start?.matchUrl ?? '-'} (A ${report.start?.a?.role ?? '-'} serving ${report.start?.a?.peers ?? '-'}, B/C ${report.start?.b?.role ?? '-'}/${report.start?.c?.role ?? '-'} on ${report.start?.b?.candidate ?? '-'} candidates); ` +
+  console.log(`mp p2p e2e${live ? ' (live rooms)' : ''}: room ${report.room?.code ?? '-'} started ${report.start?.matchUrl ?? '-'} (A ${report.start?.a?.role ?? '-'} serving ${report.start?.a?.peers ?? '-'}, B/C ${report.start?.b?.role ?? '-'}/${report.start?.c?.role ?? '-'} on ${report.start?.b?.candidate ?? '-'} candidates); ` +
     `play ${playS} s: C saw B move ${report.play?.movedBAsCSaw?.toFixed?.(1) ?? '-'} m, ${report.play?.snapshotsC ?? '-'} snapshots; ` +
     `A closed → B hosted after ${report.migration?.electedAfterMs ?? '-'} ms (generation ${report.migration?.election?.generation ?? '-'}), C live on B with +${report.migration?.cSnapshotsAfterMigration ?? '-'} snapshots in 4 s, B's hull ${report.migration?.bHullJumpAsCSaw?.toFixed?.(2) ?? '-'} m from where C saw it, ${report.migration?.reportsFromB ?? '-'} reports from B; ` +
     `A rejoined as ${report.rejoin?.p2p?.role ?? '-'} of ${report.rejoin?.p2p?.hostId ?? '-'} (B serving ${report.rejoin?.peersOnB ?? '-'}); ${report.errors.length} browser errors; ${report.wallMs} ms wall`);
