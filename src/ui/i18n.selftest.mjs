@@ -194,11 +194,12 @@ assert.doesNotMatch(studioSource, /STUDIO_(?:GROUP|SECTION)_INFO\[title\]/,
 // The map roster changes independently of the Garage. Keep every registered
 // battlefield name localized so newly merged maps cannot display raw map.*
 // identifiers in the selector.
-const mapCatalogSource = fs.readFileSync(path.join(REPO, 'src/world/maps/catalog.ts'), 'utf8');
+// 2026-09-28: the identity slice (MAP_IDS and the names) lives in maps/mapIds.ts; catalog.ts re-exports it
+const mapCatalogSource = fs.readFileSync(path.join(REPO, 'src/world/maps/mapIds.ts'), 'utf8');
 const mapIdsBlock = mapCatalogSource.match(/export const MAP_IDS = Object\.freeze\(\[([\s\S]*?)\]\s+as const\);/);
-assert.ok(mapIdsBlock, 'src/world/maps/catalog.ts: unable to read MAP_IDS');
+assert.ok(mapIdsBlock, 'src/world/maps/mapIds.ts: unable to read MAP_IDS');
 const mapIds = [...mapIdsBlock[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
-assert.ok(mapIds.length > 0, 'src/world/maps/catalog.ts: MAP_IDS is empty');
+assert.ok(mapIds.length > 0, 'src/world/maps/mapIds.ts: MAP_IDS is empty');
 for (const id of mapIds) {
   assert.ok(en.has(`map.${id}`), `en-US missing registered battlefield map.${id}`);
   assert.ok(zh.has(`map.${id}`), `zh-CN missing registered battlefield map.${id}`);

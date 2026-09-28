@@ -10,7 +10,7 @@
  */
 import { GAME_MODE_IDS, normalizeGameMode } from '../../sim/matchModes.ts';
 import { normalizeTeamArrangement, type TeamArrangement } from '../../sim/matchRuleset.ts';
-import { resolveMapId } from '../../world/maps/catalog.ts';
+import { resolveMapId } from '../../world/maps/mapIds.ts';
 import {
   ROOM_CAMO_RE, ROOM_CAMPAIGN_RE, ROOM_CODE_RE, ROOM_MAP_RE, ROOM_MAX_COOP_PLAYERS, ROOM_MAX_SEATS, ROOM_MAX_SPECTATORS,
   ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanEquipment, cleanId, isRecord,
