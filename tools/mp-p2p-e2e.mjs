@@ -173,7 +173,10 @@ try {
   const allAlpha = () => rooms.room(roomCode)?.room?.players.every((player) => player.team === 'alpha') === true;
   for (let waited = 0; !allAlpha() && waited < 10_000; waited += 100) await sleep(100);
   if (!allAlpha()) throw new Error(`not every seat is on alpha: ${JSON.stringify(rooms.room(roomCode)?.room?.players.map((player) => [player.id, player.team]))}`);
-  const ids = Object.fromEntries((await Promise.all([pages.a, pages.b, pages.c].map((page) => stats(page)))).map((entry, index) => [['a', 'b', 'c'][index], entry?.room?.playerId ?? null]));
+  // The seats' ids from the room itself (the v2 composition — and its stats — exists only once a battle begins): A created, B and C joined in that order.
+  const seated = [...(rooms.room(roomCode)?.room?.players ?? [])].sort((x, y) => x.joinedAt - y.joinedAt);
+  const ids = { a: seated[0]?.id ?? null, b: seated[1]?.id ?? null, c: seated[2]?.id ?? null };
+  if (seated.length !== 3 || !ids.a || !ids.b || !ids.c || rooms.room(roomCode)?.room?.adminId !== ids.a) throw new Error(`the lobby seats read ${JSON.stringify(seated.map((player) => [player.id, player.joinedAt]))}`);
   step('lobby-ready', ids);
   await pages.c.click('.cot-play [data-action="ready"]');
   await pages.b.click('.cot-play [data-action="ready"]');
