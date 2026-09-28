@@ -200,9 +200,36 @@ function fullRoom({ teamSize = 14 } = {}) {
   const room = fullRoom({ teamSize: 14 });
   const serialized = serializeRoom(room);
   assert.notEqual(serialized.players, room.players);
+  assert.notEqual(serialized.host, room.host, 'the host record is copied, never shared');
+  assert.deepEqual(serialized.host, { transport: 'p2p', hostId: null, generation: 0, since: T0 }, 'a new room: p2p by default, no election yet');
+  assert.ok(room.players.every((p) => p.hostDeclined === false), 'nobody has declined hosting');
   const parsed = readRoomSnapshot(JSON.parse(JSON.stringify(serialized)));
   assert.equal(parsed.players.length, 28);
   assert.ok(!JSON.stringify(serialized).includes('resume'), 'no capability field in the snapshot');
+  // P1 rooms lane (2026-09-28): a snapshot from a host that predates `host` / `hostDeclined` reads as no election, nobody declined
+  const legacy = JSON.parse(JSON.stringify(serialized));
+  delete legacy.host;
+  for (const player of legacy.players) delete player.hostDeclined;
+  const normalized = readRoomSnapshot(legacy);
+  assert.deepEqual(normalized.host, { transport: 'p2p', hostId: null, generation: 0, since: T0 });
+  assert.ok(normalized.players.every((p) => p.hostDeclined === false));
+  assert.throws(() => readRoomSnapshot({ ...serialized, host: { transport: 'p2p', hostId: 'ghost', generation: 1, since: T0 } }), /host/, 'the host must be a seat');
+  assert.throws(() => readRoomSnapshot({ ...serialized, host: { transport: 'lan', hostId: null, generation: 0, since: T0 } }), /fields/, 'an unknown transport');
+  // the service transport is the option the dedicated backends pass
+  const service = createRoom({ roomCode: 'ROOM11', mode: 'lan', creator: { id: 'admin', name: 'Admin' }, hostTransport: 'service', now: T0 });
+  assert.equal(service.host.transport, 'service');
+  // host_decline: any seat, any phase, a boolean only
+  applyRoomCommand(room, 'p2', { type: 'host_decline', declined: true }, T0 + 30);
+  assert.equal(room.players.find((p) => p.id === 'p2').hostDeclined, true);
+  reject(() => applyRoomCommand(room, 'p2', { type: 'host_decline', declined: 'yes' }, T0 + 31), 'invalid_command');
+  const playing = createRoom({ roomCode: 'ROOM12', mode: 'private', creator: { id: 'p1', name: 'One' }, selection: { specId: 'm1a2' }, settings: { teamSize: 1 }, now: T0 });
+  applyRoomCommand(playing, 'p1', { type: 'set_ready', ready: true }, T0 + 1);
+  planStart(playing, { seed: 1, now: T0 + 1 });
+  assert.equal(playing.phase, 'starting');
+  applyRoomCommand(playing, 'p1', { type: 'host_decline', declined: true }, T0 + 2);
+  assert.equal(playing.players.find((p) => p.id === 'p1').hostDeclined, true, 'a decline is accepted while the match runs');
+  applyRoomCommand(playing, 'p1', { type: 'host_decline', declined: false }, T0 + 3);
+  assert.equal(playing.players.find((p) => p.id === 'p1').hostDeclined, false);
   const lobby = roomToLobby(room);
   assert.equal(lobby.hostId, 'p1');
   assert.equal(lobby.maxPlayers, 28);

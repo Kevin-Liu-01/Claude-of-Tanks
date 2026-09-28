@@ -11,6 +11,10 @@ export {
 } from './roomPolicy.ts';
 export type { CreateRoomOptions, JoinRoomOptions, RoomCommand, RoomPolicyGuards, RoomStartPlan } from './roomPolicy.ts';
 export { RoomActor } from './roomActor.ts';
-export type { MatchHost, MatchHostStartConfig, MatchHostStatus, RoomActorPorts, RoomActorState, RoomSocketRecord } from './roomActor.ts';
+export type {
+  MatchHost, MatchHostBase, MatchHostStartConfig, MatchHostStatus, RoomActorPorts, RoomActorState, RoomSocketRecord, ServiceMatchHost,
+} from './roomActor.ts';
+export { createP2pMatchHost, electHost, hostCandidates, p2pHostHealth } from './p2pMatchHost.ts';
+export type { P2pHostHealth, P2pHostReport, P2pMatchHost, P2pRoomView } from './p2pMatchHost.ts';
 export { RoomClient, resolveRoomRelativeUrl } from './roomClient.ts';
 export type { RoomClientOptions, RoomClientPhase, RoomCreateRequest, RoomJoinRequest, StorageLike } from './roomClient.ts';

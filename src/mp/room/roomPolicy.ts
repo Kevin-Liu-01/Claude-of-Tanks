@@ -14,10 +14,11 @@ import { resolveMapId } from '../../world/maps/mapIds.ts';
 import {
   ROOM_CAMO_RE, ROOM_CAMPAIGN_RE, ROOM_CODE_RE, ROOM_MAP_RE, ROOM_MAX_COOP_PLAYERS, ROOM_MAX_SEATS, ROOM_MAX_SPECTATORS,
   ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanEquipment, cleanId, isRecord,
-  isRoomTeam, normalizePlayerName,
+  isRoomTeam, noElection, normalizePlayerName,
 } from './protocol.ts';
 import type {
-  RoomCreateSettings, RoomLastResult, RoomMatchInfo, RoomMode, RoomPlayer, RoomResult, RoomSelection, RoomSettings, RoomSnapshot, RoomTeam,
+  RoomCreateSettings, RoomHostInfo, RoomLastResult, RoomMatchInfo, RoomMode, RoomPlayer, RoomResult, RoomSelection, RoomSettings,
+  RoomSnapshot, RoomTeam,
 } from './protocol.ts';
 
 const GAME_MODE_SET: ReadonlySet<string> = new Set(GAME_MODE_IDS);
@@ -45,6 +46,8 @@ export interface CreateRoomOptions {
   creator: { id: string; name: string };
   selection?: Partial<RoomSelection> | null;
   settings?: RoomCreateSettings | null;
+  /** Where this room's matches run (the host's `MatchHost.transport`); peer-to-peer by default. */
+  hostTransport?: RoomHostInfo['transport'];
   now: number;
 }
 
@@ -215,6 +218,7 @@ function createPlayer(room: RoomSnapshot, {
     connected: true,
     isAdmin,
     joinedAt: nextJoinOrdinal(room),
+    hostDeclined: false,
   };
 }
 
@@ -237,8 +241,8 @@ export function defaultRoomSettings(settings: RoomCreateSettings | null | undefi
   };
 }
 
-/** A new room: the creator is the admin and the first (Alpha) seat. */
-export function createRoom({ roomCode, mode, creator, selection, settings, now }: CreateRoomOptions): RoomSnapshot {
+/** A new room: the creator is the admin and the first (Alpha) seat; no host is elected before the first start. */
+export function createRoom({ roomCode, mode, creator, selection, settings, hostTransport = 'p2p', now }: CreateRoomOptions): RoomSnapshot {
   if (!ROOM_CODE_RE.test(roomCode)) throw new RoomError('invalid_room_code');
   if (mode !== 'private' && mode !== 'lan') throw new RoomError('invalid_payload', 'mode');
   const id = cleanId(creator.id);
@@ -254,6 +258,7 @@ export function createRoom({ roomCode, mode, creator, selection, settings, now }
     players: [],
     match: null,
     lastResult: null,
+    host: noElection(now, hostTransport),
     createdAt: now,
     touchedAt: now,
   };
@@ -363,11 +368,16 @@ export function applyRoomCommand(
   const id = cleanId(playerId);
   const player = requirePlayer(room, id);
   const type = String(command.type ?? '');
-  // A finished match returns the room to `waiting`; only `start` is refused while one runs.
-  if (type !== 'set_name' && type !== 'kick') assertWaiting(room);
+  // A finished match returns the room to `waiting`; only `start` is refused while one runs. A host preference may
+  // change at any time (the actor migrates a running p2p host that declines).
+  if (type !== 'set_name' && type !== 'kick' && type !== 'host_decline') assertWaiting(room);
   switch (type) {
     case 'set_name':
       player.name = uniqueName(room, cleanName(command.name), id);
+      break;
+    case 'host_decline':
+      if (typeof command.declined !== 'boolean') throw new RoomError('invalid_command');
+      player.hostDeclined = command.declined;
       break;
     case 'select_vehicle': {
       assertEditable(player);
@@ -616,6 +626,7 @@ export function serializeRoom(room: RoomSnapshot): RoomSnapshot {
     players: room.players.map((player) => ({ ...player, equipment: player.equipment.slice() })),
     match: room.match ? { ...room.match, verdict: room.match.verdict ? { ...room.match.verdict } : null } : null,
     lastResult: room.lastResult ? { ...room.lastResult } : null,
+    host: { ...room.host },
   };
 }
 
