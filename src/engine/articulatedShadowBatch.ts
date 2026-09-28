@@ -6,9 +6,25 @@ import {
 import { markShadowOnly, SHADOW_ONLY_LAYER } from './renderLayers.ts';
 
 const sourceOwners = new WeakMap<Mesh, BatchedMesh>();
-const beforeShadow = Object3D.prototype.onBeforeShadow;
-const afterShadow = Object3D.prototype.onAfterShadow;
 const beforeCompile = Material.prototype.onBeforeCompile;
+
+/**
+ * A source must inherit its shadow hooks from the Mesh prototype: an own-property hook is a per-mesh caster policy
+ * the batch cannot mirror, so that mesh keeps its original draw. Round 79 (2026-09-28, the performance lane): the
+ * round-28 check compared the hooks with three's `Object3D.prototype` ones, captured at import — but the game's
+ * lighting replaces `Mesh.prototype.onBeforeShadow` / `onAfterShadow` (the RGBA depth-packing flip and the r8
+ * cascade-proxy hooks, lighting.ts) at boot, before any battle hull is built, so every battle hull's proxies failed
+ * the check and the batch never installed in a battle (the round-79 shadow census: `procShadow_*` rows on every
+ * map, never an `articulatedShadowBatch` row — three proxy draws per hull per cascade instead of one). Inheriting
+ * the patched prototype hook is what every plain Mesh does; the batch's own override runs three's BatchedMesh hook
+ * and neither patched behaviour applies to it (its depth material is RGBA-packed by construction; the r8 hooks act
+ * on InstancedMesh only). Evaluated at install time, so the order of the lighting patch and this module's import
+ * does not matter.
+ */
+function inheritsShadowHooks(source: Mesh): boolean {
+  return !Object.hasOwn(source, 'onBeforeShadow') && !Object.hasOwn(source, 'onAfterShadow')
+    && source.onBeforeShadow === Mesh.prototype.onBeforeShadow && source.onAfterShadow === Mesh.prototype.onAfterShadow;
+}
 
 interface SourceRecord {
   readonly source: Mesh;
@@ -55,7 +71,7 @@ function supportedSource(source: Mesh, first: Mesh): boolean {
     || source.userData.authoredShadowProxy !== true) return false;
   if (Array.isArray(source.material) || source.material !== first.material
     || source.customDepthMaterial !== first.customDepthMaterial || source.customDistanceMaterial) return false;
-  if (source.onBeforeShadow !== beforeShadow || source.onAfterShadow !== afterShadow) return false;
+  if (!inheritsShadowHooks(source)) return false;
   return isFullStaticGeometry(source.geometry) && sameAttributeLayout(first.geometry, source.geometry);
 }
 

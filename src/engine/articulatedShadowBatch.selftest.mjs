@@ -503,4 +503,36 @@ for (const reflected of ['source', 'owner']) {
   batch.dispose(); suppliedDepth.dispose(); disposeFixture(f);
 }
 
+
+// Round 79 (2026-09-28, the performance lane): the game's lighting replaces Mesh.prototype.onBeforeShadow /
+// onAfterShadow at boot (the RGBA depth-packing flip, the r8 cascade-proxy hooks), before any battle hull is built.
+// The round-28 admissibility compared a source's hooks with three's Object3D prototype ones captured at import, so
+// every battle proxy was refused and no battle ever drew the batch. A source that INHERITS the patched prototype
+// hooks is admissible; a source with its own hook (a per-mesh policy) still is not; the batch's own hook runs three's
+// BatchedMesh path whatever the Mesh prototype says.
+{
+  const nativeBefore = THREE.Mesh.prototype.onBeforeShadow, nativeAfter = THREE.Mesh.prototype.onAfterShadow;
+  let patchedCalls = 0;
+  THREE.Mesh.prototype.onBeforeShadow = function (...args) { patchedCalls++; return nativeBefore.apply(this, args); };
+  THREE.Mesh.prototype.onAfterShadow = function (...args) { patchedCalls++; return nativeAfter.apply(this, args); };
+  try {
+    assert.notEqual(THREE.Mesh.prototype.onBeforeShadow, THREE.Object3D.prototype.onBeforeShadow, 'the fixture patches the Mesh prototype the way lighting.ts does');
+    const f = fixture();
+    const batch = installArticulatedShadowBatch(f.root, f.sources);
+    assert.ok(batch?.isBatchedMesh, 'sources inheriting the patched Mesh prototype hooks are admissible');
+    assert.equal(batch.instanceCount, 3);
+    assert.ok(f.sources.every(source => !source.castShadow), 'the admitted sources stop casting on their own');
+    assert.notEqual(batch.onBeforeShadow, THREE.Mesh.prototype.onBeforeShadow, 'the batch hook is not the patched Mesh prototype hook');
+    batch.dispose();
+    disposeFixture(f);
+    const g = fixture();
+    g.sources[1].onBeforeShadow = function (...args) { return nativeBefore.apply(this, args); };
+    assert.equal(installArticulatedShadowBatch(g.root, g.sources), null, 'an own-property hook still keeps the original draw under the patched prototype');
+    disposeFixture(g);
+    assert.equal(patchedCalls, 0, 'admission never invokes the hooks');
+  } finally {
+    THREE.Mesh.prototype.onBeforeShadow = nativeBefore;
+    THREE.Mesh.prototype.onAfterShadow = nativeAfter;
+  }
+}
 console.log('articulatedShadowBatch.selftest: authored data, articulated poses, four-cascade culling, mirrored native fallback, atomic admission and disposal passed');
