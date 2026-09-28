@@ -141,6 +141,7 @@ try {
         debug.flags.godMode = true;
         debug.flags.freezeBots = true;
         await debug.beginSoloBattle({ specId: tankId, mapId: battlefield, randomRoster: false });
+        await debug.battleAtmosphere.prepare(1, battlefield, ['day']);
       }, { tankId: id, battlefield: mapId });
       await battlePage.waitForFunction(
         (tankId) => window.__DEBUG.game.phase === 'battle'
@@ -442,7 +443,9 @@ try {
                 const bounds = pads.geometry.boundingBox;
                 for (const x of [bounds.min.x, bounds.max.x]) {
                   for (const z of [bounds.min.z, bounds.max.z]) {
-                    contactCorner.set(x, bounds.min.y, z).applyMatrix4(world);
+                    // Shoe-local +Y is OUTWARD from the course: it points
+                    // down on the loaded run. -Y is the internal guide horn.
+                    contactCorner.set(x, bounds.max.y, z).applyMatrix4(world);
                     clearance = Math.min(clearance,
                       contactCorner.y - heightAt(contactCorner.x, contactCorner.z));
                   }
