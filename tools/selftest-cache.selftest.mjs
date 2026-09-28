@@ -112,6 +112,13 @@ assert.notEqual(make({ env: { MODE: 'one' } }).inputKey('src/environment.selftes
   make({ env: { MODE: 'two' } }).inputKey('src/environment.selftest.mjs').key, 'observed environment values change the proof');
 write('src/opaque.selftest.mjs', 'await import(process.env.MODULE);');
 assert.equal(make().lookup('src/opaque.selftest.mjs').key, undefined, 'unresolved imports do not receive reusable proofs');
+write('src/environment-destructured.selftest.mjs', 'const { MODE: value } = process.env; console.log(value);');
+assert.notEqual(make({ env: { MODE: 'one' } }).inputKey('src/environment-destructured.selftest.mjs').key,
+  make({ env: { MODE: 'two' } }).inputKey('src/environment-destructured.selftest.mjs').key,
+  'destructured environment reads are tracked too');
+write('src/environment-object.selftest.mjs', 'configure(process.env);');
+assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined,
+  'passing the whole environment is conservatively checked fresh');
 
 // lookup / record round trip, and the two ways to run everything
 {

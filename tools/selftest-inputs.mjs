@@ -78,6 +78,18 @@ export function collectSelftestInputs(text, filename) {
         if (name == null) opaqueEnvironment = true;
         else environment.add(name);
       }
+      if (isEnvironment(node)) {
+        const parent = node.parent;
+        if (ts.isVariableDeclaration(parent) && ts.isObjectBindingPattern(parent.name)) {
+          for (const element of parent.name.elements) {
+            const key = element.propertyName ?? element.name;
+            if (element.dotDotDotToken || !(ts.isIdentifier(key) || ts.isStringLiteralLike(key))) opaqueEnvironment = true;
+            else environment.add(key.text);
+          }
+        } else if (!((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === node)) {
+          opaqueEnvironment = true; // passing/spreading the whole environment cannot be scoped safely
+        }
+      }
       if (ts.isStringLiteralLike(node)) addLiteral(node.text);
       // A URL whose port is interpolated still names a concrete fixture page.
       if (ts.isTemplateExpression(node)) {
