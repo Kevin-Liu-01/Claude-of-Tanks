@@ -8,7 +8,9 @@
  */
 import '../../src/vehicles/tankFactory.ts';
 import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
-import type { AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord } from '../../src/sim/authoritativeMatch.ts';
+import type {
+  AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
+} from '../../src/sim/authoritativeMatch.ts';
 import { matchRulesetFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
@@ -60,6 +62,22 @@ export interface MatchVerdict {
   entities: { entityId: number; playerId: string; bot: boolean; team: SeatTeam; kills: number; damage: number; destroyed: boolean }[];
 }
 
+/** A ready collision world the caller built (the browser host: the fetched manifest through createHeadlessCollisionWorld). */
+export interface ActorWorldCollision extends AuthoritativeWorldCollision {
+  release?(): void;
+}
+
+/**
+ * Peer-to-peer host migration (P2 client lane, 2026-09-28): the elected host boots the actor at the authority tick the
+ * match reached (the tick timeline stays continuous with the old host's, so every client's server clock and input lead
+ * still fit) with the battle clock already at `battleTimeMs`; the countdown is skipped, the entities are restored by
+ * the host runtime from the retained keyframe before the loop starts.
+ */
+export interface MatchActorResume {
+  tick: number;
+  battleTimeMs: number;
+}
+
 export interface MatchActorOptions {
   roomId: string;
   mapId: string;
@@ -70,8 +88,12 @@ export interface MatchActorOptions {
   ruleset?: MatchRuleset;
   countdownS?: number;
   battleLimitS?: number;
-  /** 'dedicated' loads the map's collision shard (production); 'terrain' uses the bare height field (fast receipts). */
-  world?: 'dedicated' | 'terrain';
+  /**
+   * 'dedicated' loads the map's collision shard (production, Node); 'terrain' uses the bare height field (fast
+   * receipts); an object is a ready world (the browser host builds it from the fetched manifest).
+   */
+  world?: 'dedicated' | 'terrain' | ActorWorldCollision;
+  resume?: MatchActorResume | null;
   log?: Logger;
   onVerdict?: (verdict: MatchVerdict) => void;
   now?: () => number;
@@ -134,6 +156,12 @@ export interface MatchActor {
   readonly lagComp: LagCompensation;
   /** Admit a link whose HELLO carried verified seat claims for this room. */
   attach(link: ClientLink, hello: HelloMessage, claims: SeatClaims): boolean;
+  /** The authority entity behind a wire entity id (1..64), null for an unknown id. */
+  entityForWireId(entityId: number): AuthoritativeEntity | null;
+  /** The wire entity id of a player or bot id, null for an unknown one. */
+  wireIdOf(playerId: string): number | null;
+  /** Battle time the actor resumed at (0 for a fresh match): every published battle clock adds it. */
+  readonly resumedBattleTimeMs: number;
   /** Inject a server-side reliable event to every viewer (roster/admin changes from the room service). */
   broadcastEvent(event: WireEvent): void;
   advance(nowMs?: number): number;
@@ -188,14 +216,23 @@ function clampI16(value: number): number {
 
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
-    roomId, mapId, seed, seats, bots = [], countdownS = 5, battleLimitS, world = 'dedicated',
+    roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated',
     log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
-    endedLingerTicks,
+    endedLingerTicks, resume = null,
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
+  if (resume && (!Number.isInteger(resume.tick) || resume.tick < 0 || !(resume.battleTimeMs >= 0) || !Number.isFinite(resume.battleTimeMs))) {
+    throw new TypeError('resume needs an integer tick >= 0 and a finite battleTimeMs >= 0');
+  }
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
   const ruleset = options.ruleset && options.ruleset.mode === mode ? options.ruleset : matchRulesetFor(mode);
   const actorLog = log.child({ room: roomId, map: mapId });
+  // A resumed match skips the countdown and its clock limit counts from where the old host left it.
+  const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
+  const countdownS = resume ? 0 : options.countdownS ?? 5;
+  const rulesetLimitS = typeof ruleset.timeLimitS === 'number' && Number.isFinite(ruleset.timeLimitS) ? ruleset.timeLimitS : null;
+  const effectiveBattleLimitS = battleLimitS != null ? Math.max(1, battleLimitS - resumedBattleTimeMs / 1000)
+    : resume && rulesetLimitS !== null ? Math.max(1, rulesetLimitS - resumedBattleTimeMs / 1000) : undefined;
 
   // ---- roster: seats first (entity ids in seat order), then bots
   const players: AuthoritativePlayerRecord[] = [];
@@ -227,15 +264,16 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   if (players.length < 1 || players.length > MAX_ENTITIES) throw new TypeError(`rooms field 1..${MAX_ENTITIES} entities`);
 
   // ---- authority and world
-  const collision = world === 'dedicated' ? createDedicatedWorldCollision(mapId, { retain: true }) : null;
-  const releaseWorld = () => collision?.release();
+  const collision: ActorWorldCollision | null = typeof world === 'object' && world !== null ? world
+    : world === 'dedicated' ? createDedicatedWorldCollision(mapId, { retain: true }) : null;
+  const releaseWorld = () => { if (collision && typeof collision.release === 'function') collision.release(); };
   let authority: AuthoritativeMatch;
   let lagComp: LagCompensation;
   try {
     const bound: { hook: LagCompensation | null } = { hook: null };
     authority = createAuthoritativeMatch({
       players, mapId, seed, countdownS, gameMode: mode, ruleset,
-      ...(battleLimitS != null ? { battleLimitS } : {}),
+      ...(effectiveBattleLimitS != null ? { battleLimitS: effectiveBattleLimitS } : {}),
       worldCollision: collision,
       shellRewind: { begin: (shell) => bound.hook?.begin(shell), end: (shell) => bound.hook?.end(shell) },
     });
@@ -269,6 +307,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const inputs = new Map<string, AuthoritativePlayerInput | null>();
 
   function serverTimeMs(tick: number): number { return Math.round(tick * TICK_MS); }
+
+  /** The battle clock as the clients read it: the authority's, plus what the old host had already played. */
+  function metaWithResumedClock(meta: Record<string, unknown> | null): Record<string, unknown> | null {
+    if (!resumedBattleTimeMs || !meta) return meta;
+    return { ...meta, battleTimeMs: (Number(meta.battleTimeMs) || 0) + resumedBattleTimeMs };
+  }
 
   function send(client: ActorClient, bytes: Uint8Array): boolean {
     if (client.closing || client.link.closed) return false;
@@ -458,7 +502,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       ackedFireSeq: Math.max(0, client.input.lastAppliedFireSeq),
       ackedActionSeq: Math.max(0, client.input.lastAppliedActionSeq),
       inputMarginTicks: margin == null ? INPUT_MARGIN_UNKNOWN : Math.max(-128, Math.min(126, margin)),
-      meta: captureMeta(meta, ended),
+      meta: captureMeta(metaWithResumedClock(meta), ended),
       destroyed: destroyedList(meta),
       entities,
       shells,
@@ -513,7 +557,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       result: authority.result,
       reason: authority.resultReason ?? '',
       tick,
-      battleTimeMs: Math.round(authority.timeS * 1000),
+      battleTimeMs: Math.round(authority.timeS * 1000) + resumedBattleTimeMs,
       entities: authority.entities.map((entity) => ({
         entityId: entityIdOf.get(entity.id)!, playerId: entity.id, bot: entity.bot, team: teamOf(entity),
         kills: entity.kills, damage: Math.round(entity.damage), destroyed: entity.combat.destroyed,
@@ -540,6 +584,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     tickMs: TICK_MS,
     now,
     ...(schedule ? { schedule } : {}),
+    startTick: resume ? resume.tick : 0,
     onTick,
     onError: (error) => actorLog.error('tick failed', { tick: loop.tick, error: error instanceof Error ? error.stack ?? error.message : String(error) }),
   });
@@ -639,6 +684,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     loop,
     lagComp,
     attach,
+    entityForWireId: (entityId) => entityByWireId.get(entityId) ?? null,
+    wireIdOf: (playerId) => entityIdOf.get(playerId) ?? null,
+    resumedBattleTimeMs,
     broadcastEvent,
     advance: (nowMs) => loop.advance(nowMs),
     start,

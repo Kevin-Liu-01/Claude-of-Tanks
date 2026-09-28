@@ -15,6 +15,8 @@ export interface FixedStepLoopOptions {
   measure?: () => number;
   /** Timer seam for tests (defaults to setTimeout). Returns a cancel function. */
   schedule?: (callback: () => void, delayMs: number) => () => void;
+  /** The tick the loop resumes from (a migrated match continues the old host's tick timeline); 0 for a fresh match. */
+  startTick?: number;
   onTick: (tick: number, dtS: number) => void;
   onError?: (error: unknown) => void;
 }
@@ -40,17 +42,19 @@ export function createFixedStepLoop({
     const timer = setTimeout(callback, delayMs);
     return () => clearTimeout(timer);
   },
+  startTick = 0,
   onTick,
   onError,
 }: FixedStepLoopOptions): FixedStepLoop {
   if (!(tickMs > 0) || !Number.isFinite(tickMs)) throw new TypeError('tickMs must be positive');
+  if (!Number.isInteger(startTick) || startTick < 0) throw new TypeError('startTick must be a non-negative integer');
   if (!Number.isInteger(maxCatchUpTicks) || maxCatchUpTicks < 1 || maxCatchUpTicks > 60) {
     throw new TypeError('maxCatchUpTicks must be 1..60');
   }
   const dtS = tickMs / 1000;
   const tickCost = createHistogram(2048);
   const stats = { droppedTicks: 0, stalls: 0, wakeups: 0, lateWakeupMaxMs: 0 };
-  let tick = 0;
+  let tick = startTick;
   let running = false;
   let originMs = 0;
   let cancel: (() => void) | null = null;
