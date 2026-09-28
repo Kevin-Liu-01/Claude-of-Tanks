@@ -772,6 +772,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/browserComposition.selftest.mjs',
     'src/mp/session/networkStatus.selftest.mjs',
     'src/mp/session/exitFlow.selftest.mjs',
+    'src/mp/session/matchSessionP2p.selftest.mjs',
     'src/net/net.selftest.mjs',
     'src/net/signalEndpoint.selftest.mjs',
     'src/net/signalingRoomRoute.selftest.mjs',
