@@ -741,6 +741,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     'src/mp/transport/transport.selftest.mjs',
+    'src/mp/transport/webRtcTransport.selftest.mjs',
     'src/mp/match/clock.selftest.mjs',
     'src/mp/match/inputStream.selftest.mjs',
     'src/mp/match/snapshotStream.selftest.mjs',
