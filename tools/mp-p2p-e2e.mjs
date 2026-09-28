@@ -62,10 +62,22 @@ function observe(page, label) {
 }
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1&mp=v2';
 
+/** The entry pipeline's own failure on a page (it returns the player to the Garage): the wait ends at once, with its reason. */
+const entryFailureOf = (label, since) => errors.slice(since).find((entry) => entry.page === label && /\[multiplayer v2 entry\]/.test(entry.text)) ?? null;
+
 async function waitFor(page, predicate, label, timeoutMs, options = {}) {
+  const abort = new AbortController();
+  const errorsBefore = errors.length;
+  let watch = null;
+  let entryFailure = null;
   try {
-    await page.waitForFunction(predicate, { timeout: timeoutMs, polling: options.polling ?? 100 }, ...(options.args ?? []));
+    const waiting = page.waitForFunction(predicate, { timeout: timeoutMs, polling: options.polling ?? 100, signal: abort.signal }, ...(options.args ?? []));
+    if (options.entryOf) {
+      watch = setInterval(() => { entryFailure = entryFailureOf(options.entryOf, errorsBefore); if (entryFailure) abort.abort(); }, 250);
+    }
+    await waiting;
   } catch (error) {
+    if (entryFailure) throw new Error(`${label}: the entry pipeline failed on ${options.entryOf}: ${entryFailure.text}`);
     const diagnostics = await page.evaluate(() => ({
       url: location.href, phase: window.__DEBUG?.game?.phase ?? null,
       lobbyVisible: document.querySelector('.cot-play .lobby')?.classList.contains('show') ?? false,
@@ -75,6 +87,8 @@ async function waitFor(page, predicate, label, timeoutMs, options = {}) {
       v2: window.__MULTIPLAYER_V2?.stats?.() ?? null, entryFailure: window.__NETWORK_ENTRY_FAILURE ?? null,
     })).catch(() => null);
     throw new Error(`${label}: ${error.message}; diagnostics ${JSON.stringify(diagnostics)}`);
+  } finally {
+    if (watch !== null) clearInterval(watch);
   }
 }
 const stats = (page) => page.evaluate(() => window.__MULTIPLAYER_V2?.stats?.() ?? null);
@@ -187,9 +201,9 @@ try {
 
   // ---- every seat reaches the battle over WebRTC: A hosts, B and C are its peers
   await Promise.all([
-    waitFor(pages.a, inBattle, 'A battle revealed', 240_000),
-    waitFor(pages.b, inBattle, 'B battle revealed', 240_000),
-    waitFor(pages.c, inBattle, 'C battle revealed', 240_000),
+    waitFor(pages.a, inBattle, 'A battle revealed', 240_000, { entryOf: 'A' }),
+    waitFor(pages.b, inBattle, 'B battle revealed', 240_000, { entryOf: 'B' }),
+    waitFor(pages.c, inBattle, 'C battle revealed', 240_000, { entryOf: 'C' }),
   ]);
   const startOf = async (page) => { const s = await stats(page); return { matchUrl: s?.session?.matchId ? rooms.room(roomCode)?.matchUrl : null, role: s?.session?.p2p?.role ?? null, hostId: s?.session?.p2p?.hostId ?? null, generation: s?.session?.p2p?.generation ?? null, peers: s?.session?.p2p?.peersConnected ?? null, transport: s?.session?.match?.transportState ?? null, candidate: s?.session?.p2p?.candidateType ?? null, viaTurn: s?.session?.p2p?.viaTurn ?? null, snapshots: s?.session?.match?.snapshotsAccepted ?? 0, actors: s?.round?.actors ?? 0, welcomed: s?.session?.match?.welcomed ?? false }; };
   await waitFor(pages.a, (count) => (window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.peersConnected ?? 0) >= count, 'A serves two peers', 60_000, { args: [2] });
@@ -265,7 +279,7 @@ try {
   await waitFor(pages.a2, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'A2 back in the room', 60_000);
   await waitFor(pages.a2, () => { const button = document.querySelector('.cot-play [data-action="rejoin"]'); return !!button && !button.hidden; }, 'A2 sees Rejoin battle', 30_000);
   await pages.a2.click('.cot-play [data-action="rejoin"]');
-  await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000);
+  await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000, { entryOf: 'A2' });
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
   report.rejoin = { a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null };
   step('a-rejoined', report.rejoin);

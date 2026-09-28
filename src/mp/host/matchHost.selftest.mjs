@@ -227,4 +227,31 @@ assert.ok(cores[1].actor.tick > oldTick, 'the timeline moved on past the old hos
 host2.stop();
 await settle(4);
 for (const client of clients) client.dispose();
-console.log(`matchHost.selftest: boot, loopback seat, WebRTC peer, bad token, reports (${reports.length}), sealed keyframes, migration to a second host at tick ${resumeTick} (own hull jump ${jumpM.toFixed(2)} m) verified`);
+
+// ---- a match that ends: exactly one 'ended' report (with the verdict) closes it in the room — the cadence, the linger and
+// the stop send nothing after it (the room answers invalid_command to anything past the end)
+relay.elect('host');
+const reports3 = [];
+const host3 = createMatchHost({
+  playerId: 'host', generation: () => relay.generation, createPort, createPeerConnection: world.createPeerConnection,
+  room: { signaler: relay.signalerFor('host'), reportMatch: async (report) => { reports3.push(report); } },
+  clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer,
+});
+hosts.push(host3);
+const starting3 = host3.start({ ...config, matchId: 'm1-000c10ck', generation: relay.generation, battleLimitS: 1 });
+await settle(12);
+await starting3;
+assert.equal(host3.state, 'live');
+await advance(1500);
+assert.ok(cores[2].actor.ended, 'the clock ended the match');
+const endedReports = reports3.filter((report) => report.phase === 'ended');
+assert.equal(endedReports.length, 1, `one ended report (${reports3.map((report) => report.phase).join(',')})`);
+assert.ok(endedReports[0].verdict && typeof endedReports[0].verdict.result === 'string', 'it carries the verdict');
+assert.equal(reports3.at(-1).phase, 'ended', 'nothing is reported after the end');
+const reportsAtEnd = reports3.length;
+await advance(4500);
+assert.ok(cores[2].actor.stopped, 'the actor stopped after its linger');
+host3.stop();
+await settle(4);
+assert.equal(reports3.length, reportsAtEnd, `the interval and the stop report nothing after the end (${reports3.length} = ${reportsAtEnd})`);
+console.log(`matchHost.selftest: boot, loopback seat, WebRTC peer, bad token, reports (${reports.length}), sealed keyframes, migration to a second host at tick ${resumeTick} (own hull jump ${jumpM.toFixed(2)} m), one ended report then silence verified`);

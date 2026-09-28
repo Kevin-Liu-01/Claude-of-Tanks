@@ -107,6 +107,9 @@ export function createMatchHostCore({
   let migrationKeyframes = 0;
   let sealing = false;
   let verdictReported = false;
+  // One 'ended' report closes the match in the room (P1 records the verdict and the room is back to waiting): every report
+  // after it is invalid_command there, so the cadence and the stop report end with it.
+  let endedReported = false;
   const era: EraIndexer = createEraIndexer();
 
   const post = (message: WorkerToHostMessage, transfer?: ArrayBuffer[]): void => { if (!disposed) port.post(message, transfer); };
@@ -214,7 +217,7 @@ export function createMatchHostCore({
   }
 
   function report(live: MatchActor, nowMs: number): void {
-    if (!config) return;
+    if (!config || endedReported) return;
     const phase = currentPhase(live);
     const result = live.authority.result;
     const payload: HostMatchReport = {
@@ -225,6 +228,7 @@ export function createMatchHostCore({
     lastReportMs = nowMs;
     lastReportPhase = phase;
     if (result) verdictReported = true;
+    if (phase === 'ended') endedReported = true;
   }
 
   function buildKeyframe(live: MatchActor): MigrationKeyframe {
@@ -327,6 +331,7 @@ export function createMatchHostCore({
     }
     actor = created;
     booted = true;
+    endedReported = false;
     // The room hears 'loading' as soon as the actor exists (P1's cadence), then every phase change and every interval.
     report(created, now());
     created.start();
