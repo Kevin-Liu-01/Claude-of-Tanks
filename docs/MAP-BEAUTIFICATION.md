@@ -6064,6 +6064,25 @@ cur on seven maps, both poses), `census-summary.mjs`, `tank-attribution.txt`, `s
 snapshots), `mutex.sh` / `run.sh` / `census-*.sh` / `receipts-*.sh` (the launchers and receipt runners), the probe
 pairs and the review sheets.
 
+**Winter chase, unresolved (2026-09-28).** *Winter chase, the follow-up (integrator, before deploy 111).* The g1 run's four winter chase pairs read GPU p25 +4.56 /
++1.31 / +1.79 / +0.25 with −129 calls and −0.83 M triangles — four positive pairs, which is a sign, not the timer.
+Read strictly by the audit's window rule (1-minute load < 40 AND foreign headless GPU under 100 %), two of the four
+were quiet (+4.56 under 61–92 % foreign GPU, +0.25 under 57–55 %) and two were not (+1.31 under 106–149 %, +1.79
+under 101–90 %). The re-pair asked for — six ABBA pairs, only under load < 30 and foreign GPU < 100 % — was armed as
+`$SP/r79/winter-quiet.sh` (polls both every 30 s, gives up after 45 min) with the attribution chained behind it
+(`winter-chain.sh`: if ≥ 4 of 6 pairs stay positive, ONE interleaved seven-root run — base | +batch aa3bcb341 |
++tree merge f03ebf8d3 | +profiles 060daa42d | +empty-batch skip dde3a0928 | dde3a0928 with the near tree pools'
+profile registration removed | dde3a0928 with the proxy batch refused — pattern ABCDEFGGFEDCBA × 2, every root four
+times, every comparison adjacent in time, `multi-deltas.mjs` for the per-label deltas against the nearest base
+record; the snapshots are `git archive` trees plus the two throwaway variants, never committed).
+NO WINDOW: from 12:21 to 13:06 the gate polled 90 times and never met the rule — the 1-minute load ran 32–111 and
+the foreign headless GPU helpers 414–1339 % (another session's Playwright `chrome-headless-shell` processes working in
+a different project's scratchpad; not this lane's, not touched). Nothing was measured; the sign on winter chase is
+neither confirmed nor refuted, and the g1 reading stands as written: +1.8 ms median over four pairs, two of them
+quiet, against −129 draws and −0.83 M triangles. Ready to run in the next quiet window without changes:
+`zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
+(the attribution, only if ≥ 4 of 6 stay positive).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
