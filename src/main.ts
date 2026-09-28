@@ -128,6 +128,7 @@ import {
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/garage.css';
+import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';
 import { battleOrdinalBase, installBattleRecords } from './game/profile.ts';
 import { installCampaignProgress } from './game/campaignProgress.ts';

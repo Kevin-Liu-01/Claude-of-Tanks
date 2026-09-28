@@ -60,7 +60,6 @@ import {
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readSides, writeMarsSettings, writeSides } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
-import './battleTimeChoices.css';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import type { PlayMode } from '../net/playMode.ts';

@@ -33,7 +33,6 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
-import './battleTimeChoices.css';
 import {
   SETTINGS_ACTION_ICONS,
   SETTINGS_OPTION_ICONS,
