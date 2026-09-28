@@ -12,8 +12,16 @@ import { collisionManifestEntry, readCollisionManifestIndex, validateCollisionMa
 import { decodeCollisionManifest } from '../../../server/collisionManifestCodec.ts';
 import type { ActorWorldCollision } from '../../../server/match/matchActor.ts';
 
-/** The static route the build serves the manifests under (vite.config.ts copies `server/world-collision-manifests` there). */
+/**
+ * The static route the build serves the manifests under (vite.config.ts emits `server/world-collision-manifests` there:
+ * `index.json`, then every map content-addressed as `<map>.<sha256[0..12]>.json` so a cached file is always the indexed one).
+ */
 export const COLLISION_MANIFEST_ROUTE = '/mp-collision';
+
+/** The file name of a map's manifest under the route, from its index entry. */
+export function collisionManifestFileName(mapId: string, sha256: string): string {
+  return `${mapId}.${sha256.slice(0, 12)}.json`;
+}
 
 type FetchLike = (url: string, init?: { cache?: string; signal?: AbortSignal }) => Promise<{ ok: boolean; status: number; arrayBuffer(): Promise<ArrayBuffer>; json(): Promise<unknown> }>;
 
@@ -44,7 +52,7 @@ export async function loadCollisionWorld(mapId: string, base: string, { fetchImp
   if (!indexResponse.ok) throw new Error(`collision manifest index: HTTP ${indexResponse.status}`);
   const index = readCollisionManifestIndex(await indexResponse.json());
   const entry = collisionManifestEntry(index, mapId);
-  const response = await run(`${root}/${mapId}.json`, { cache: 'force-cache', signal });
+  const response = await run(`${root}/${collisionManifestFileName(mapId, entry.sha256)}`, { cache: 'force-cache', signal });
   if (!response.ok) throw new Error(`collision manifest ${mapId}: HTTP ${response.status}`);
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength !== entry.bytes) throw new Error(`collision manifest size mismatch: ${mapId}`);

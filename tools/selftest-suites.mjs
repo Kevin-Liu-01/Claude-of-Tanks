@@ -756,6 +756,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/hostPlan.selftest.mjs',
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
+    'src/mp/host/worldCollision.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
