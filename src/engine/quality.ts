@@ -228,15 +228,10 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
     // may fall to 1.5 — still the complete High raster, never below it.
     dynMin: 0.75,
-    // 2026-09-12 shadow redesign: the flat 2K/520 m table left towns
-    // shadowless past mid-range and every crevice unshaded. Ultra runs 4K hero
-    // cascades (the two far cascades stay 2K: their texels are already
-    // sub-pixel at range) to 700 m with full-res GTAO; High 2K cascades to
-    // 700 m with half-res GTAO; Medium the shared 2K/1K layout to 520 m; Low
-    // keeps its near-field 380 m range. The outermost cascade renders on
-    // alternate frames (shadowRefresh.ts) and tree crowns cast through the
-    // shadow-only layer (vegetation.ts), which is where the budget went.
-    aoScale: 1.0,
+    // Owner preference (2026-09-28): the clean AO-free presentation on every
+    // tier. Cascaded sun shadows and screen-space contact shadows retain
+    // grounding without the speckled GTAO crevice wash or its frame cost.
+    aoScale: 0,
     bloomScale: 1.0,
     shadowMapSizes: [4096, 4096, 4096, 2048], // 2026-09-12: the 1049e4e 4K mid cascade is back (2K read soft at 100-330 m)
     shadowMaxFar: 700,
@@ -244,8 +239,8 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // High now starts at the full 1.5 ratio on Retina panels. Fine geometry
   // reaches SMAA before the smaller native-canvas upscale instead of being
   // rasterized at 1.25 (or the old 1.125 floor) and enlarged into watercolor.
-  // AO is the first overload lever; only persistent pressure may lower raster
-  // density, with 0.9 keeping the effective floor at 1.35.
+  // Only persistent pressure may lower raster density, with 0.9 keeping the
+  // effective floor at 1.35. AO stays off even when the governor recovers.
   // perf-120 r2: default High no longer pays for scene MSAA before its
   // already-enabled high-preset display-space SMAA + FSR reconstruction.
   // The real 14-tank player-entry probe isolated 2x scene MSAA as a 40 FPS
@@ -262,7 +257,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
-    aoScale: 0.5,
+    aoScale: 0,
     bloomScale: 0.6,
     shadowMapSizes: [2048, 2048, 2048, 1024],
     shadowMaxFar: 700,
@@ -278,7 +273,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // fallback by another hidden 0.75 dynamic scale: desktop readability
     // remains at least one internal sample per CSS pixel.
     dynMin: 1.0,
-    aoScale: 0.5,
+    aoScale: 0,
     bloomScale: 0.5,
     shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
     shadowMaxFar: 520, // 2026-09-12: reference texel density; 600 m spread the same 2K/1K maps thinner
