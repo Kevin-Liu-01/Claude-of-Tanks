@@ -1,4 +1,6 @@
-import { Color, type Material, type Mesh, type MeshStandardMaterial, type Texture, type Vector3, type WebGLRenderer } from 'three';
+import { BufferAttribute, Color, type Material, type Mesh, type MeshStandardMaterial, type Texture, type Vector3, type WebGLRenderer } from 'three';
+import { refineHorizonGroundSeam } from './horizonSeam.ts';
+import type { CanyonGround } from './horizonRedrock.ts';
 
 const RETAINED = new WeakMap<Mesh, Texture[]>();
 /** Keep the existing live ownership array, including the original detail atlas. */
@@ -6,14 +8,16 @@ export function prepareAutumnHorizonGround(mesh: Mesh, retained: Texture[]): voi
   RETAINED.set(mesh, retained);
 }
 
-/** Private construction only: use the actual terrain shading on the two near
- * bands. All geometric triangles/positions and the outer index suffix survive;
+/** Private construction only: share actual terrain shading across the landscape.
+ * All geometric triangles/positions survive;
  * reverse the old downward-facing skirt winding for the shared front-side mat. */
 export function bindAutumnHorizonGround(
   mesh: Mesh,
   material: MeshStandardMaterial,
   textures: Texture[],
-  { columns = 287, bands = 2, continuousCoast = false }: { columns?: number; bands?: number; continuousCoast?: boolean } = {},
+  { columns = 287, bands = 2, continuousGround = false, ground }: {
+    columns?: number; bands?: number; continuousGround?: boolean; ground?: CanyonGround;
+  } = {},
 ): void {
   const retained = RETAINED.get(mesh), geometry = mesh.geometry, index = geometry.index;
   if (!retained || !index || Array.isArray(mesh.material) || geometry.groups.length)
@@ -24,13 +28,14 @@ export function bindAutumnHorizonGround(
   const nearCount = bands * columns * 6;
   if (!Number.isInteger(rows) || rows < bands + 1 || index.count !== (rows - 1) * columns * 6)
     throw new Error('Expected the ring topology of ' + columns + ' columns');
+  if (continuousGround && ground?.getOutlandHeightAt) refineHorizonGroundSeam(geometry, columns, ground);
   // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): every ring face
   // inside a sea aperture — near band or far range — renders with the terrain material, which paints it as the
   // square's own open water (terrain.ts outlandSeaWeight), so the sea keeps one shader from the battlefield to the
   // horizon. Shore shelves and the 32 m strand belong to that same material: switching at 50% wetness
   // cut a long triangular strip through the beach. All terrain faces face upward so the shared lit material
   // receives the sun on the same side as the interior ground. UV V < 0 carries marine coverage.
-  const uv = geometry.attributes.uv, shore = geometry.attributes.shore, faces = index;
+  const uv = geometry.attributes.uv, shore = geometry.attributes.shore, faces = geometry.index!;
   const marineFace = (i: number): boolean => {
     for (let j = 0; j < 3; j++) {
       const vertex = faces.getX(i + j);
@@ -41,7 +46,7 @@ export function bindAutumnHorizonGround(
   const terrainFaces: number[] = [], vistaFaces: number[] = [];
   for (let i = 0; i < faces.count; i += 3) {
     const a = faces.getX(i), b = faces.getX(i + 1), c = faces.getX(i + 2);
-    if (continuousCoast || i < nearCount) terrainFaces.push(a, c, b); // reverse the old downward-facing skirt winding
+    if (continuousGround || i < nearCount) terrainFaces.push(a, c, b); // reverse the old downward-facing skirt winding
     else if (marineFace(i)) terrainFaces.push(a, c, b);
     else vistaFaces.push(a, b, c);
   }
@@ -58,6 +63,27 @@ export function bindAutumnHorizonGround(
   RETAINED.delete(mesh);
   refreshHorizonGroundTone(mesh, textures[0], textures[4]);
   bindRingReliefAtlas(mesh, vistaMaterial, material);
+  if (continuousGround) bindDistantGround(mesh, material);
+}
+
+/** The connected distant apron uses the same world-space layers and live
+ * lighting. Atmospheric depth and mip footprints provide the gradual loss
+ * of detail; a second unlit palette must not expose a ring-shaped boundary. */
+function bindDistantGround(ring: Mesh, terrain: MeshStandardMaterial): void {
+  const far = ring.getObjectByName('horizon-far-range') as Mesh | undefined;
+  if (!far || Array.isArray(far.material)) return;
+  const geometry = far.geometry, index = geometry.index;
+  if (!index) return;
+  for (let i = 0; i < index.count; i += 3) {
+    const b = index.getX(i + 1);
+    index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, b);
+  }
+  index.needsUpdate = true;
+  geometry.setAttribute('normal', geometry.getAttribute('aFarNormal'));
+  geometry.setAttribute('shore', new BufferAttribute(new Uint8Array(geometry.attributes.position.count), 1, true));
+  geometry.addGroup(0, index.count, 1);
+  far.material = [far.material, terrain];
+  far.receiveShadow = true;
 }
 
 /**
@@ -83,7 +109,10 @@ function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMateria
   const window = vista.uniforms.uVReliefR?.value as { x: number; y: number } | undefined;
   if (window) (ring.uRingReliefR.value as { set(x: number, y: number): void }).set(window.x, window.y);
   ring.uRingReliefGrad.value = vista.uniforms.uVReliefGrad?.value ?? 1;
-  ring.uRingReliefAmp.value = amp;
+  // The terrain already carries geometric slopes, detail normals and live
+  // shadows. Full vista relief double-counted those slopes and turned the
+  // exterior into dark, inflated folds. Keep it as subordinate fine relief.
+  ring.uRingReliefAmp.value = amp * 0.18;
   const swap = ring.uNrmM, draw = ring.uRingDraw, marshNormal = swap.value;
   const before = mesh.onBeforeRender;
   mesh.onBeforeRender = function (this: Mesh, renderer, scene, camera, geometry, material, group) {

@@ -40,7 +40,7 @@ function instancesOf(group) {
     for (let i = 0; i < object.count; i++) {
       object.getMatrixAt(i, matrix);
       matrix.decompose(position, quaternion, scale);
-      out.push({ mesh: object.name, x: position.x, y: position.y, z: position.z, scale: scale.x, cast: object.castShadow });
+      out.push({ mesh: object.name, x: position.x, y: position.y, z: position.z, scale: scale.x, scaleY: scale.y, cast: object.castShadow });
     }
   });
   return out;
@@ -107,6 +107,45 @@ try {
   const walled = buildHorizonRockfield({ ...base, heights: wallHeights });
   const wallRocks = walled ? instancesOf(walled).filter((r) => { const rr = Math.hypot(r.x, r.z); return rr > radii[1] && rr < radii[2]; }) : [];
   assert.equal(wallRocks.length, 0, 'the wall face between rows 1 and 2 stays bare');
+
+  // A warped quad's fourth corner is not on its first triangle. Independently
+  // raycast the actual rendered triangles: parents AND satellites must sit on
+  // the hit surface and must reject slopes in either direction.
+  const warped = heights.map((h, i) => h + 9 + 5 * Math.sin((i % columns) * 1.9 + Math.floor(i / columns) * .8));
+  const warpedRocks = buildHorizonRockfield({ ...base, heights: warped });
+  const ray = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), hit = new THREE.Vector3(), normal = new THREE.Vector3();
+  function vertex(v, i) { return v.set(positions[i*3], warped[i], positions[i*3+2]); }
+  for (const placed of instancesOf(warpedRocks)) {
+    ray.origin.set(placed.x, 1000, placed.z);
+    let seat = null, slope = 0;
+    for (let row=1; row<rows.length-1; row++) for (let k=0; k<columns; k++) {
+      const a0=row*columns+k, a1=row*columns+(k+1)%columns, b0=a0+columns, b1=a1+columns;
+      for (const face of [[a0,b0,a1],[a1,b0,b1]]) {
+        vertex(a,face[0]);vertex(b,face[1]);vertex(c,face[2]);
+        if (!ray.intersectTriangle(a,b,c,false,hit)) continue;
+        seat=hit.y;THREE.Triangle.getNormal(a,b,c,normal);slope=Math.hypot(normal.x,normal.z)/Math.abs(normal.y);
+      }
+    }
+    assert.notEqual(seat,null,'every parent and satellite remains inside an actual ground triangle');
+    assert.ok(Math.abs(placed.y + .22 * placed.scaleY - seat)<.002,'rock seat matches independently raycast ground');
+    assert.ok(slope<=HORIZON_ROCK_MAX_SLOPE+.0001,'lateral cliffs reject boulders as well as radial cliffs');
+  }
+  assert.equal(warpedRocks.children[0].material.fog,true,'outland rocks use camera-distance scene fog');
+
+  const plane = (x,z) => 12 + .04*x + .02*z;
+  const seated = buildHorizonRing(null,getMapConfig('badlands'),1337,{getHeightAt:plane,getOutlandHeightAt:plane});
+  const normals=seated.geometry.getAttribute('normal'), positionsSeated=seated.geometry.getAttribute('position');
+  const expectedNormal=new THREE.Vector3(-.04,1,-.02).normalize();
+  let seamNormals=0;
+  for(let i=0;i<positionsSeated.count;i++) if(Math.abs(Math.max(Math.abs(positionsSeated.getX(i)),Math.abs(positionsSeated.getZ(i)))-511.5)<.001) {
+    normal.fromBufferAttribute(normals,i);
+    assert.ok(normal.dot(expectedNormal)>.99999,'continued ground preserves the playable fine-grid normal at every seam station');
+    seamNormals++;
+  }
+  assert.ok(seamNormals>400,'all seam normals were checked');
+  assert.equal(seated.getObjectByName('horizon-treeline'),undefined,'live-lit ground omits the obsolete baked canopy ribbon');
+  disposeObject3DResources(seated);
 
   // --- the real rings: Redrock's mesa outland carries rocks, the wooded Verdant keeps its ring forest instead
   const badlands = buildHorizonRing(null, getMapConfig('badlands'), 1337);

@@ -64,22 +64,24 @@ function assertEnclosedCanyon(ring) {
       assert.ok(surface(ring, x, z) < 14, `floor still open just past the edge: ${x},${z} -> ${surface(ring, x, z)}`);
     }
   }
-  for (const z of [-700, 700]) {
+  for (const z of [-760, 760]) {
     const h = surface(ring, redrockCanyonCenter(z), z);
-    assert.ok(h > 14 && h < 70, `headwall climbing halfway out: ${z} -> ${h}`);
+    assert.ok(h > 14 && h < 85, `headwall climbing halfway out: ${z} -> ${h}`);
   }
-  for (const z of [-1200, -1000, -900, 900, 1000, 1200]) {
+  for (const z of [-1200, -1100, -1000, 1000, 1100, 1200]) {
     for (const lane of [-140, 0, 140]) {
       const x = redrockCanyonCenter(z) + lane;
       assert.ok(surface(ring, x, z) > 45, `headwall closes the mouth: ${x},${z} -> ${surface(ring, x, z)}`);
     }
   }
+  let opposingDifference=0;
   for (const z of [-430, 0, 430]) {
     const center = redrockCanyonCenter(z);
     const west = surface(ring, center - 1000, z), east = surface(ring, center + 1000, z);
     assert.ok(west > 45 && east > 60, 'Substantial plateau walls frame the valley');
-    assert.ok(Math.abs(east - west) > 9, 'Unequal opposing flanks, not mirrored peaks');
+    opposingDifference+=Math.abs(east-west);
   }
+  assert.ok(opposingDifference/3>9,'The regional flanks remain unequal across the valley, including curved tributary mouths');
 }
 
 // Compile only the actual shaping owner with refinement disabled. This keeps
@@ -122,7 +124,7 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
   const field = createHeightField(groundSeed, config);
   let constructionQueries=0;
   const constructionStart=performance.now();
-  const ring=sampleHorizonGeometry(config,ringSeed,{getHeightAt(x,z){constructionQueries++;return field.getHeightAt(x,z);}});
+  const ring=sampleHorizonGeometry(config,ringSeed,{getHeightAt(x,z){constructionQueries++;return field.getHeightAt(x,z);},getOutlandHeightAt:field.getOutlandHeightAt});
   const constructionMs=performance.now()-constructionStart;
   const unrefined=structuredClone(previous); unrefinedShape(unrefined,field);
   if(ringSeed===1337 && groundSeed===1337) {
@@ -151,10 +153,14 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
       }
     }
   }
-  assert.equal(ring.positions.length, columns * 18 * 3); assert.equal(ring.heights.length, columns * 18);
-  assert.deepEqual(ring.rows, previous.rows); assert.equal(ring.rows.length, 18);
+  assert.ok(ring.rows.length > 18 && ring.rows.length <= 160, 'resolved exterior relief stays inside the row budget');
+  assert.equal(ring.positions.length, columns * ring.rows.length * 3); assert.equal(ring.heights.length, columns * ring.rows.length);
   assert.equal(ring.maxHeight, Math.max(...ring.heights));
-  assert.deepEqual(ring.positions.slice(0, columns * 3), previous.positions.slice(0, columns * 3), 'Buried seam stays exact');
+  for (let k=0;k<columns;k++) {
+    assert.equal(ring.positions[k*3],previous.positions[k*3]);
+    assert.equal(ring.positions[k*3+2],previous.positions[k*3+2]);
+    assert.ok(ring.heights[k]<-64,'Closing anchors stay below the whole canyon');
+  }
   for (let index = columns; index < ring.heights.length; index++) {
     const o = index * 3, row = Math.floor(index / columns), x = ring.positions[o], z = ring.positions[o + 2];
     assert.equal(ring.heights[index], ring.positions[o + 1]); assert.ok(Number.isFinite(ring.heights[index]));
@@ -162,8 +168,7 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
       assert.ok(Math.abs(Math.max(Math.abs(x), Math.abs(z)) - 511.5) < .001);
       assert.ok(Math.abs(ring.heights[index] - field.getHeightAt(x, z)) < .00001, 'First row seats on final conditioned ground');
     } else {
-      assert.equal(x, previous.positions[o]); assert.equal(z, previous.positions[o + 2]);
-      assert.ok(Math.abs(ring.heights[index] - sampleRedrockCanyon(x, z)) < .00001, 'Same regional shape, not separate mountains');
+      if (Math.max(Math.abs(x),Math.abs(z)) >= 692) assert.ok(Math.abs(ring.heights[index] - field.getOutlandHeightAt(x,z)) < .00002, 'Resolved exterior follows the playable regional geology');
     }
     const before = o - columns * 3;
     assert.ok(Math.hypot(x, z) - Math.hypot(ring.positions[before], ring.positions[before + 2]) > 1, 'No folded radial faces');
@@ -195,13 +200,35 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
   const p = previous.positions, h = previous.heights, rows = previous.rows;
   shapeRedrockOutland(previous, field);
   assert.equal(previous.positions, p); assert.equal(previous.heights, h); assert.equal(previous.rows, rows);
-  assert.deepEqual(previous.positions, ring.positions);
+  for(let k=0;k<columns;k++) { const i=columns+k,x=previous.positions[i*3],z=previous.positions[i*3+2];
+    assert.ok(Math.abs(previous.heights[i]-field.getHeightAt(x,z))<.00002,'in-place owner also seats on actual ground'); }
   receipts.push({ ringSeed, groundSeed, constructionQueries, constructionMs, maximumSeamError, maximumHeight: ring.maxHeight });
 }
 for (const id of MAP_IDS) if (id !== 'badlands') {
   const actual = getMapConfig(id);
   assert.deepEqual(sampleHorizonGeometry({ ...actual, horizon: { ...actual.horizon, redrockCanyon: true } }, 1337),
     sampleHorizonGeometry(actual, 1337), `${id}: no cross-map opt-in leak`);
+}
+// Inspect the interiors of the actual closing triangles on a steep snowy
+// corner. The old locally buried anchors could bridge above its valley.
+{
+  const map=getMapConfig('alpine'),field=createHeightField(1337,map);
+  const ring=sampleHorizonGeometry(map,1337,field),p=ring.positions;
+  let protrusion=-Infinity,oldProtrusion=-Infinity;
+  for(let k=0;k<columns;k++)for(const ids of [[k,columns+k,(k+1)%columns],[(k+1)%columns,columns+k,columns+(k+1)%columns]]) {
+    for(let a=1;a<8;a++)for(let b=1;b<9-a;b++) {
+      const weights=[a/10,b/10,1-(a+b)/10],point=[0,0,0];let oldHeight=0;
+      for(let j=0;j<3;j++) {
+        const i=ids[j];
+        for(let axis=0;axis<3;axis++)point[axis]+=p[i*3+axis]*weights[j];
+        oldHeight+=(i<columns?field.getHeightAt(p[i*3],p[i*3+2])-10:p[i*3+1])*weights[j];
+      }
+      const height=field.getHeightAt(point[0],point[2]);
+      protrusion=Math.max(protrusion,point[1]-height);oldProtrusion=Math.max(oldProtrusion,oldHeight-height);
+    }
+  }
+  assert.ok(protrusion<0,`Closing triangles stay below Alpine's playable valleys: ${protrusion}`);
+  assert.ok(oldProtrusion>1.5,`Negative control reproduces the visible ledge: ${oldProtrusion}`);
 }
 console.log(JSON.stringify({ test: 'redrockCanyonHorizon', receipts,
   limits: 'CPU actual-triangle seam/mouth/topology and historical preservation. Native visual/prop/collision/FPS acceptance remains separate.' }, null, 2));

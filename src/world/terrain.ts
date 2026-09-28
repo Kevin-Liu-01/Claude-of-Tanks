@@ -1,5 +1,6 @@
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
+import { continueHorizonFold } from './horizonSeam.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
@@ -50,7 +51,7 @@ import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
 import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpectrumTexels } from './oceanSpectrum.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
-import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaSectorBlend, type SeaOpening } from './edgeWater.ts';
+import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import {
@@ -2819,6 +2820,7 @@ uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 =
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
 uniform vec4 uSeaOpenings[4]; // round 40: sea openings past the square (direction angle, half-width, shoulder, 0)
+uniform vec4 uSeaBanks[4];
 uniform float uSeaOpeningCount;
 // Round 73 (2026-09-25, the ground redux — groundRedux.ts): four packed vectors and a clock, no sampler (the material
 // sits at the 16-unit budget). uReduxA = (height-blend strength, mid-detail octave, scree band, snow glint);
@@ -2966,17 +2968,15 @@ vec2 wallCragTilt(vec2 q, float ph) {
 // faces inside a sea opening (edgeWater.ts) render with this material as the square's own open water — the same
 // mask-driven path, deep tint, fresnel and whitecaps — so the sea does not change shader one metre past the edge.
 // round 47: each opening's .w is the bay contour's reach past the edge (m); the sector opens beyond that reach
+${SEA_COAST_GLSL}
 float outlandSeaWeight(vec2 xz, float edgeOut) {
   float weight = 0.0;
   for (int i = 0; i < 4; i++) {
     if (float(i) >= uSeaOpeningCount) break;
     vec4 o = uSeaOpenings[i];
-    vec2 direction = vec2(cos(o.x), sin(o.x));
-    vec2 fromMouth = xz - direction * (512.0 / max(abs(direction.x), abs(direction.y)));
-    float angle = atan(fromMouth.y, fromMouth.x);
-    float d = abs(atan(sin(angle - o.x), cos(angle - o.x)));
-    float far = smoothstep(o.w * 0.5, o.w * 0.85 + 20.0, edgeOut); // edgeWater.ts seaSectorBlend: open before the contour's far arc
-    weight = max(weight, (1.0 - smoothstep(o.y * o.z, o.y, d)) * far);
+    vec4 profile = uSeaBanks[i];
+    float far = profile.y > profile.x + 1.0 ? smoothstep(0.0, 24.0, edgeOut) : smoothstep(o.w * 0.12, o.w * 0.5 + 8.0, edgeOut);
+    weight = max(weight, seaCoastWeight(xz, o, profile, 512.0) * far);
   }
   return weight;
 }
@@ -3023,7 +3023,7 @@ void splatCompute() {
   }
   // round 47: on a sea map the ring's wetness past the edge IS the contour/sector — a land face beyond a wet edge
   // texel used to inherit the clamped mask's water and render as a dark wet slab (the coast's banks and headlands)
-  if (uSea > 0.5 && uSeaOpeningCount > 0.5 && edgeOut > 0.0) mk.b = max(mk.b, outlandSea);
+  if (uSea > 0.5 && uSeaOpeningCount > 0.5 && edgeOut > 0.0) mk.b += outlandSea * (1.0 - mk.b);
   else mk.b = max(mk.b, outlandSea * mix(mk.b, 1.0, smoothstep(0.0, 320.0, edgeOut)));
   // r6 terrain_environment: on landform-gated maps (desert) the mask B
   // channel carries the MESA/RIM weight instead of marsh/ice — decode it and
@@ -3062,18 +3062,8 @@ void splatCompute() {
   // colour that never follows the rendered sky (Caldera's inner east wall measured 3 % of the sky's brightness).
   // Weight the faces that qualify here; the indirect-light hook below adds the sky's own colour to them.
   gWallSky = smoothstep(0.12, 0.50, 1.0 - clamp(wn.y, 0.0, 1.0)) * (1.0 - smoothstep(-0.08, 0.30, dot(wn, uSunDirW)));
-  // Round 32 (owner 2026-09-21, "quality loss beyond the map borders"): the rim bands past the playable square are
-  // long flat faces seen at grazing angles, where the near detail tiles resolve into a regular moiré carpet that the
-  // relief-rich battlefield never shows. Treat the outland as far ground from 40 m past the edge: the far variant's
-  // macro variation and the mip bias take over, as they do at 330 m inside the map.
-  // Round 35 (owner 2026-09-21, "the sides of mountains … look so so bare … the layers and texturing was good"):
-  // that rule flattened the ring WALLS too — a wall is seen face-on, never at the grazing angle that made the moiré,
-  // yet it lost its detail albedo, normals and strata grain from 40 m past the edge. The far-ground treatment now
-  // reaches only the near-flat outland floors (faces under ~23°); a face steeper than ~39° keeps the battlefield's
-  // own near variant until the ordinary 90–330 m distance fade.
-  float outlandFloor = smoothstep(0.78, 0.92, wn.y);
-  // round 40: the sea apron is water at its true distance, not a far floor — the flattened far variant paled it
-  farM = max(farM, smoothstep(40.0, 200.0, edgeOut) * outlandFloor * (1.0 - outlandSea));
+  // Resolve detail by screen footprint and distance everywhere. Forcing the
+  // far variant on exterior floors exposed the square as a quality boundary.
   // detail fade: positive mip bias at range kills the single-frequency
   // speckle shimmer that anisotropic filtering keeps resolving
   float mipB = farM * 2.0;
@@ -3144,7 +3134,10 @@ void splatCompute() {
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
   // and read as icy walls — anything steeper than ~10 deg is snow bank
-  fM *= 1.0 - smoothstep(0.03, 0.08, slope);
+  // Liquid water follows its authored contour even when a cliff's smooth
+  // vertex normals lean across the submerged bed. The legacy slope gate
+  // otherwise paints triangular grass patches through the transparent sea.
+  fM *= mix(1.0 - smoothstep(0.03, 0.08, slope), 1.0, uSea);
   // >>> maps r1 (ADDITIVE, uSea-gated — uSea is 0 on every pre-existing map,
   // so fMs == fM and everything below is bit-identical there). Open-water
   // mode splits fM's wide shore ramp into: a bare sand/mud apron (seaSand,
@@ -4474,6 +4467,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSea = { value: S.seaLake ? 1 : 0 };
     // round 40: the sea openings past the square (edgeWater.ts) — the ring's faces inside them render as open water
     shader.uniforms.uSeaOpenings = { value: seaOpeningUniforms(seaOpenings) };
+    shader.uniforms.uSeaBanks = { value: seaBankUniforms(seaOpenings) };
     shader.uniforms.uSeaOpeningCount = { value: Math.min(4, seaOpenings.length) };
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
@@ -4545,7 +4539,7 @@ function* createSplatMaterialSteps(
     if (seaOpenings.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWPos');
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => `world-terrain-splat-v48-${seaOpenings.length ? 'coast' : 'land'}`; // round 73b (2026-09-26): the borders (lip, rim, verge), the mid albedo octave, the strand in metres with its foam and wrack lines, the drifts' lee edge, the scoured crust's sheen // round 73 over 72b (2026-09-26 rebase): the ground redux — height transitions, scree, snow drifts, folds, the wet strand, glint, the mid octave // // round 72b: the ring bands read the horizon's surface atlas (v39: analytic wall crag on the bedded maps) // round 55: noise wall crag on the bedded sandstone R (v38: jointed marker-bed strata and the per-map ring rock band, v37: sea sector, v36: coast contour, v33: dune wind field, v32: sky light)
+  mat.customProgramCacheKey = () => `world-terrain-splat-v52-${seaOpenings.length ? 'coast' : 'land'}`;
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.groundClock = groundClock; // round 73: advanced with the water sheet's clock (terrainBuildSteps)
   mat.userData.reduxUniforms = reduxUniforms; // round 73: the probes' term isolation (zero a vector, recapture)
@@ -5000,9 +4994,8 @@ function* terrainBuildSteps(
     }
     geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));
   }
-  // Vista pass (2026-09-19): every map renders its rim bands up to the first ridge crest with the terrain
-  // material (Autumn led the way), and the vista's meadow takes the ground albedo's tone — again once the sourced
-  // textures replace the procedural layers in place.
+  // All surrounding ground shares the live terrain material. Its distant
+  // detail is controlled by screen footprint, not a map-boundary switch.
   {
     const horizonMesh = horizonStep.value;
     const ringInfo = horizonMesh.userData.horizonRing as { columns?: number; ridgeRow?: number } | undefined;
@@ -5010,8 +5003,11 @@ function* terrainBuildSteps(
     if (ringInfo) {
       bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
         columns: ringInfo.columns ?? HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
-        continuousCoast: seaOpenings.length > 0,
+        continuousGround: true, ground: heightField,
       });
+      // Curvature also controls turf moisture and ambient light. A missing
+      // attribute reset both at the map edge even with identical materials.
+      if (foldAt) continueHorizonFold(horizonMesh.geometry, foldAt);
       // ground albedo mean → meadow tint (round 29); rock albedo mean → rock and scree tints (round 35)
       void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
     }

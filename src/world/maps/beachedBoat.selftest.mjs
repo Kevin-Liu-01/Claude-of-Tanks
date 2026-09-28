@@ -1,4 +1,5 @@
 import { historicalRoadHeightField } from '../roadHistoryTestOracle.mjs';
+import { beforeShorelineContinuity, loadShorelineHistory } from '../shorelineContinuity.test-support.mjs';
 import { originalExitConfig } from '../../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -17,6 +18,7 @@ const hook = registerHooks({ load(url, context, next) {
 } });
 const { dressMapExtras, beachedBoat } = await import(kitUrl);
 hook.deregister();
+const { dressMapExtras: historicalDress } = await loadShorelineHistory(new URL('./mapKits.ts', import.meta.url));
 const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
   'dark', 'glass', 'curtain', 'straw', 'baked'];
 const consumers = ['coastal', 'fjord', 'mangrove', 'saltwind'];
@@ -65,11 +67,11 @@ function inventory(built) {
 }
 
 function build(mapId, seed, historical = false) {
-  const config = historical ? originalExitConfig(getMapConfig(mapId)) : getMapConfig(mapId);
+  const config = historical ? originalExitConfig(beforeShorelineContinuity(getMapConfig(mapId))) : getMapConfig(mapId);
   const field = (historical ? historicalRoadHeightField : createHeightField)(seed, config);
   const built = capture(), random = mulberry32(seed ^ 0x5a17);
   let calls = 0;
-  dressMapExtras({ mapId, extraKits: config.props.extraKits,
+  (historical ? historicalDress : dressMapExtras)({ mapId, extraKits: config.props.extraKits,
     riverLandings: config.props.riverLandings, L: field._layout, heightField: field,
     rng: () => { calls++; return random(); }, buckets: built.buckets, groundingReceipts: built.receipts });
   return { ...built, field, calls, next: random() };

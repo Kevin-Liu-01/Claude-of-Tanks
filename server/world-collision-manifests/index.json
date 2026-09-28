@@ -33,11 +33,11 @@
       "concealers": 3530
     },
     "coastal": {
-      "bytes": 1232336,
-      "sha256": "1e519dfeeb51dd7c1b66a3495d808313f2769660cd3bb458ed7ae876b0af5525",
-      "obstacles": 4160,
-      "colliders": 3963,
-      "concealers": 4274
+      "bytes": 1238215,
+      "sha256": "bc6487c682640e4e1f8093ab151d51d21c4827753ba42ec6b5a92c87d46bbcba",
+      "obstacles": 4163,
+      "colliders": 3964,
+      "concealers": 4249
     },
     "autumn": {
       "bytes": 1830655,
@@ -68,11 +68,11 @@
       "concealers": 8284
     },
     "fjord": {
-      "bytes": 1885659,
-      "sha256": "0887db3f94a5cdc916ba7760b5e2eb57ae2fd35571ad3909c57c4f3d904a0c89",
-      "obstacles": 7152,
-      "colliders": 7101,
-      "concealers": 7388
+      "bytes": 1915476,
+      "sha256": "1caff0cf2a6a764e3dbb79f634d5f8fd1c7fad7c1e5fb05922e7b23fb026ea75",
+      "obstacles": 7352,
+      "colliders": 7301,
+      "concealers": 7679
     },
     "delta": {
       "bytes": 1954834,
@@ -82,11 +82,11 @@
       "concealers": 9644
     },
     "badlands": {
-      "bytes": 1317241,
-      "sha256": "e5c885e138db6b4e7b11b3d9e7adc841425cca9e59cd8ee451af364e8c190722",
-      "obstacles": 2964,
-      "colliders": 2862,
-      "concealers": 1877
+      "bytes": 1330138,
+      "sha256": "5c324d8323dd351c7eb97beec4484bdfc90cc418e4b41cd00042f0ee1d40f50d",
+      "obstacles": 3017,
+      "colliders": 2917,
+      "concealers": 1920
     },
     "monsoon": {
       "bytes": 2233169,
@@ -145,11 +145,11 @@
       "concealers": 2079
     },
     "polders": {
-      "bytes": 1381715,
-      "sha256": "591e54b792d2945a04dd61cb796e610768cc6d72c227f276f17fa6a44b636496",
-      "obstacles": 4413,
-      "colliders": 4185,
-      "concealers": 3745
+      "bytes": 1361220,
+      "sha256": "f1a663b15e8cf94f7b2a4384ea0d4eff3b83f1a9877d543621f213bd236c1c98",
+      "obstacles": 4260,
+      "colliders": 4032,
+      "concealers": 3605
     },
     "copper_mesa": {
       "bytes": 941761,
@@ -166,11 +166,11 @@
       "concealers": 3173
     },
     "oasis": {
-      "bytes": 1087372,
-      "sha256": "1f66d14f056a3f83168e20184f2459c1d2c0ac1ce5428c84d58844acf5fc3373",
-      "obstacles": 2728,
+      "bytes": 1088211,
+      "sha256": "ef8c62b3b6646561ef2be8794d7fc6f937a2ffc9b0e95915665403bca4c8d30a",
+      "obstacles": 2729,
       "colliders": 2527,
-      "concealers": 2026
+      "concealers": 2029
     },
     "whiteout": {
       "bytes": 826256,
@@ -201,11 +201,11 @@
       "concealers": 6502
     },
     "saltwind": {
-      "bytes": 1346747,
-      "sha256": "a74ecab5aa16827418359af6785682a2cd378addb3c1647bf8274ebd31a9052c",
-      "obstacles": 3689,
-      "colliders": 3490,
-      "concealers": 4136
+      "bytes": 1359390,
+      "sha256": "e9cc9f825d66627db2f1ce977d6b818180833be0b1078b56f251bf9bcd3ab424",
+      "obstacles": 3753,
+      "colliders": 3554,
+      "concealers": 4217
     },
     "reservoir": {
       "bytes": 1612780,

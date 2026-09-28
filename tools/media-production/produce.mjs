@@ -7,9 +7,9 @@ import { execFileSync } from 'node:child_process';
 import { createCaptureLock } from '../capture-lock.mjs';
 import { MAP_IDS } from '../../src/world/maps/catalog.ts';
 import { waterScene, frameScene } from './recipes.mjs';
-import { digest, sourceDigest, verifyFile, contactSheet, writeReviewPage, promoCard } from './pipeline.mjs';
+import { digest, sourceDigest, verifyFile, contactSheet, writeReviewPage, promoCard, saveReviewCapture } from './pipeline.mjs';
 
-const help = 'npm run media:capture -- --task=all|maps|shore|video --maps=id,id --times=day,sunset,night --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json --fps=24|30|60 --frames=180 --width=1920';
+const help = 'npm run media:capture -- --task=all|maps|shore|landscape|video --maps=id,id --times=day,sunset,night --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json --fps=24|30|60 --frames=180 --width=1920';
 if (process.argv.includes('--help')) { console.log(help); process.exit(0); }
 const args = Object.fromEntries(process.argv.slice(2).map(arg => {
   const match = /^--([a-z-]+)=(.+)$/.exec(arg);
@@ -25,7 +25,7 @@ const formats = args.formats?.split(',') ?? ['landscape'];
 const out = resolve(args.out ?? 'shots/production-current');
 const fps = Number(args.fps ?? 30), width = Number(args.width ?? 1920), frames = Number(args.frames ?? 6 * fps);
 const validList = (list, allowed) => list.length && new Set(list).size === list.length && list.every(id => allowed.includes(id));
-if (!['all','maps','shore','video'].includes(task) || !validList(maps, MAP_IDS) || !validList(times,['day','sunset','night'])
+if (!['all','maps','shore','landscape','video'].includes(task) || !validList(maps, MAP_IDS) || !validList(times,['day','sunset','night'])
     || !validList(formats,['landscape','portrait','square'])) throw Error('Invalid or duplicate capture selection');
 if (![24,30,60].includes(fps) || !Number.isInteger(width) || width < 640 || width > 3840 || width % 32
     || !Number.isInteger(frames) || frames < 1 || frames > 20 * fps) throw Error('Invalid dimensions, frame rate or frame count');
@@ -57,6 +57,17 @@ function savePng(path, cap) {
 const settle = page => page.evaluate(() => new Promise(resolve => {
   let n=0; const tick=()=>++n<4 ? requestAnimationFrame(tick) : resolve(); requestAnimationFrame(tick);
 }));
+// Paused Studio cameras do not drive ordinary world streaming. Warm the exact
+// camera's terrain before judging its shoreline or saving a production still.
+const prepareView = (page,camera) => page.evaluate(async camera => {
+  if (camera) window.__STUDIO.setCamera(camera);
+  const D=window.__DEBUG;
+  for(let jobs=0;jobs<192;jobs++) {
+    if(!D.world.warmTerrainLookahead(D.camera.position,1)) break;
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+  }
+  D.world.update(0,D.camera.position);
+},camera);
 const capture = (page,width,height) => page.evaluate(size => {
   const result=window.__STUDIO.capture(size), errors=window.__GL_DIAG?.errors??[];
   if(errors.length)throw Error(errors.slice(0,2).join('\n'));
@@ -70,6 +81,9 @@ async function films(page, row) {
     const stem = `${row.map}-${time}${format === 'landscape' ? '' : `-${format}`}`;
     const dir = join(out,'films',stem), [w,h] = dimensions(format);
     mkdirSync(dir,{recursive:true});
+    // Keep the live and encoded sizes equal so each movie frame retains its
+    // temporal history; larger posters still restore this viewport afterward.
+    await page.setViewport({width:w,height:h,deviceScaleFactor:1});
     await page.evaluate(scene => window.__STUDIO.load(scene),{...scene,fxTime:filmRequested?0:posterFrame/fps*1000}); await settle(page);
     writeFileSync(join(dir,'scene.json'), JSON.stringify(scene,null,2)+'\n');
     const samples=[];
@@ -136,21 +150,34 @@ try {
         window.__DEBUG.post.resetPerfTrims(); window.__DEBUG.post.setAdaptiveSuspended(true);
       });
       row.renderer=await page.evaluate(()=>{const r=window.__DEBUG.renderer,gl=r.getContext(),e=gl.getExtension('WEBGL_debug_renderer_info');return {gpu:e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),maxTextureSize:r.capabilities.maxTextureSize};});
-      if (task==='maps'||task==='all') for (const time of times) {
+      if (task==='maps'||task==='all'||task==='landscape') for (const time of times) {
         const scene=await page.evaluate(async time=>{const {mapScene}=await import('/tools/media-production/recipes.mjs');return mapScene(window.__DEBUG.world,time);},time);
-        await page.evaluate(scene=>window.__STUDIO.load(scene),scene); await settle(page);
+        await page.evaluate(scene=>window.__STUDIO.load(scene),scene); await prepareView(page); await settle(page);
         const name=map==='verdant'?'battlefield':`battlefield_${map}`,suffix=time==='day'?'':`-${time}`;
         const file=savePng(join(out,'maps',`${name}${suffix}.png`),await capture(page,3840,2160));
         Object.assign(file,{scene,timeOfDay:time,label:`${map} · ${time}`}); row.stills.push(file);
         writeFileSync(join(out,'maps',`${name}${suffix}.json`),JSON.stringify(scene,null,2)+'\n');
         console.log(`[media] ${map} ${time}: native 3840×2160`); save();
       }
+      if (task==='landscape'||task==='all') {
+        row.landscape = await page.evaluate(async()=>{
+          const {landscapeSurvey}=await import('/tools/media-production/recipes.mjs');
+          return landscapeSurvey(window.__DEBUG.world);
+        });
+        for (const view of row.landscape.views) {
+          await prepareView(page,view.camera); await settle(page);
+          const file=await saveReviewCapture(join(out,'landscape',map,`${view.id}.webp`),await capture(page,1280,720));
+          Object.assign(file,{label:`${map} · ${view.id}`,camera:view.camera}); row.stills.push(file);
+        }
+        for(let i=1;i<row.stills.length;i+=6) await contactSheet(row.stills.slice(i,i+6),join(out,'landscape',map,`sheet-${1+(i-1)/6}.jpg`),`${map} · landscape review ${1+(i-1)/6}`);
+        console.log(`[media] ${map}: ${row.landscape.views.length} boundary and landscape views`); save();
+      }
       if (task==='shore'||task==='all') {
         const plan=await page.evaluate(async()=>{const {shorelineSurvey}=await import('/tools/media-production/recipes.mjs');return shorelineSurvey(window.__DEBUG.world);}); row.survey=plan;
         await page.evaluate(map=>window.__STUDIO.load({map,timeOfDay:'day',actors:[],fxTime:2000,timeScale:0}),map);
         for (const view of plan.views) {
-          await page.evaluate(camera=>window.__STUDIO.setCamera(camera),view.camera); await settle(page);
-          const file=savePng(join(out,'shore',map,`${view.id}.png`),await capture(page,1280,720));
+          await prepareView(page,view.camera); await settle(page);
+          const file=await saveReviewCapture(join(out,'shore',map,`${view.id}.webp`),await capture(page,1280,720));
           file.label=`${view.id} · ${view.kind} · ${view.target[0].toFixed(0)}, ${view.target[2].toFixed(0)}`; row.shore.push(file);
         }
         for(let i=0;i<row.shore.length;i+=12) await contactSheet(row.shore.slice(i,i+12),join(out,'shore',map,`sheet-${1+i/12}.jpg`),`${map} · shoreline review ${1+i/12}`);

@@ -64,16 +64,24 @@ for (const id of MAP_IDS.filter(id => id !== 'polders')) {
   }
 }
 assert.ok(legacyChecks > 10000);
-for (const disc of ['polders', 'oasis'].flatMap(id => getMapConfig(id).terrain.lakes)) {
+for (const disc of ['polders', 'oasis', 'saltwind', 'fjord'].flatMap(id => getMapConfig(id).terrain.lakes)) {
   assert.equal(disc.radii.length, 16);
   for (let i = 0; i < 16; i++) {
     const a = i * Math.PI / 8;
     assert.ok(Math.abs(shorelineRadiusAt(disc, a) - disc.r * disc.radii[i]) < 1e-12);
-    assert.ok(Math.abs(shorelineRadiusAt(disc, a + Math.PI / 16)
-      - disc.r * (disc.radii[i] + disc.radii[(i + 1) & 15]) * 0.5) < 1e-12);
+    const lower=disc.r*Math.min(disc.radii[i],disc.radii[(i+1)&15]);
+    const upper=disc.r*Math.max(disc.radii[i],disc.radii[(i+1)&15]);
+    for(let part=0;part<=32;part++) {
+      const radius=shorelineRadiusAt(disc,a+part/32*Math.PI/8);
+      assert.ok(radius>=lower-1e-9 && radius<=upper+1e-9,'smooth curves cannot overshoot authored channel bounds');
+    }
+    const epsilon=1e-6, center=shorelineRadiusAt(disc,a);
+    const left=(center-shorelineRadiusAt(disc,a-epsilon))/epsilon;
+    const right=(shorelineRadiusAt(disc,a+epsilon)-center)/epsilon;
+    assert.ok(Math.abs(left-right)<disc.r*.0001,'bank tangent is continuous at every authored station');
   }
 }
-console.log(`shoreline: ${legacyChecks} exact legacy contour comparisons; authored knots and interpolation PASS`);
+console.log(`shoreline: ${legacyChecks} exact procedural contour comparisons; bounded smooth authored banks PASS`);
 
 const lake = { x: 195, z: -120, r: 88 };
 const beach = { x: 195, z: -120, r: 110 };

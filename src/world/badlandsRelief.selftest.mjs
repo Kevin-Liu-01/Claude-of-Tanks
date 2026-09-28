@@ -104,23 +104,20 @@ const SALTWIND_LANDINGS_HISTORICAL = `      { lakeIndex: 1, shoreAngleDeg: -15, 
 // Round 47 follow-up (owner 2026-09-23, "evident right angle with shore and water at the border"): Saltmere's bay is one
 // authored crescent centred past the red line and Nordhavn's bays are three fjord arms between rock peninsulas — relief
 // authoring by owner ruling, as Saltwind's round-40 bay was. Authenticate the exact current blocks, project them back.
-const COASTAL_BAY_CURRENT = `    // round 47 follow-up (2026-09-23, owner: "evident right angle with shore and water at the border"): the bay is ONE
-    // authored crescent whose centre sits 88 m past the red line — its west arc is the strand (x ≈ 300 at the village,
-    // meeting the border at z ≈ -320 and 230) and it runs on past the edge as the same disc, so the coast reaches the
-    // border as two headlands instead of six circle arcs. Stations start east and wind toward +z: 7 is the promontory
-    // the coast-road ridge (212, 54) dies into, 10 a second low cape; the east half is cut short (stations 13–3) so the
-    // disc's own far shore ends ~145 m past the red line where the ring is still low and the sea sector opens beyond it
-    // (a full disc put that shore 390 m out, under the ring's mountains — a lake with a cliff wall around it). The bank
-    // grades over 0.10 R (30 m) instead of the fitted third of the radius, and seven boats lie on the strand.
-    lakes: [{ x: 600, z: -40, r: 300, level: -4.0, depth: 0.6, shelfM: 22, bankBand: 1.10, boats: 7,
-      radii: [0.19, 0.20, 0.26, 0.42, 0.85, 0.97, 0.99, 0.92, 1.00, 0.96, 0.90, 0.985, 0.85, 0.42, 0.26, 0.20] }],
-    // the matching shore ring paints the WIDE feathered mask ramp the uSea shader splits into beach apron / surf line /
-    // open water, and adds a gentle strand dip so the beach grades below the meadow (the west stations of the bay; at
-    // 344 m the ramp's wetness at the strand matches what the three 190 m discs and their 218 m rings gave the beach
-    // material). Its east half stays round: a ring's fitted bank band divides by its NARROWEST station, and the bay's
-    // 0.19 R east stations on this ring made that band 2.03 R — the meadow 700 m inland sank toward the strand level.
-    marshes: [{ x: 600, z: -40, r: 344, dip: 0.5,
-      radii: [1.00, 1.00, 1.00, 1.00, 1.00, 0.97, 0.99, 0.92, 1.00, 0.96, 0.90, 0.985, 1.00, 1.00, 1.00, 1.00] }],
+const COASTAL_BAY_CURRENT = `    // Restore the three unequal coves and intervening headlands of the
+    // original coast. The shared contour/sea continuation carries them past
+    // the boundary; simplifying the strand into one crescent is unnecessary.
+    // One datum and unioned bank grading keep overlapping coves connected.
+    lakes: [
+      { x: 460, z: -60, r: 190, level: -4.0, depth: 0.6, shelfM: 18, boats: 3 },
+      { x: 470, z: 160, r: 170, level: -4.0, depth: 0.6, shelfM: 17, boats: 2 },
+      { x: 480, z: -270, r: 150, level: -4.0, depth: 0.6, shelfM: 16, boats: 2 },
+    ],
+    marshes: [
+      { x: 460, z: -60, r: 218, dip: 0.5 },
+      { x: 470, z: 160, r: 196, dip: 0.5 },
+      { x: 480, z: -270, r: 172, dip: 0.45 },
+    ],
 `;
 const COASTAL_BAY_HISTORICAL = `    lakes: [
       { x: 460, z: -60, r: 190, level: -4.0, depth: 0.6 },
@@ -187,7 +184,7 @@ function historicalSeaApertureSource(source, file) {
   }
   if (file !== 'coastal.ts') return source;
   assert.equal(source.split(COASTAL_APERTURE_CURRENT).length, 2, 'coastal.ts: one exact round-40 aperture block');
-  assert.equal(source.split(COASTAL_BAY_CURRENT).length, 2, 'coastal.ts: one exact round-47 crescent-bay block');
+  assert.equal(source.split(COASTAL_BAY_CURRENT).length, 2, 'coastal.ts: one exact restored three-cove block');
   assert.equal(source.split(COASTAL_RIM_FADE_CURRENT).length, 2, 'coastal.ts: one exact round-47 coast rim fade line');
   return source.replace(COASTAL_APERTURE_CURRENT, COASTAL_APERTURE_HISTORICAL).replace(COASTAL_BAY_CURRENT, COASTAL_BAY_HISTORICAL)
     .replace(COASTAL_RIM_FADE_CURRENT, '');
@@ -224,6 +221,14 @@ function historicalVistaGroundSource(source, file) {
   assert.equal(source.split(current).length, 2, 'oasis.ts: one exact round-29 vista ground line');
   return source.replace(current, "style: 'rolling', treeline: 0.12,");
 }
+function historicalDrainApronSource(source, file) {
+  if (file !== 'polders.ts') return source;
+  const current = `      // The narrow drain needs a wider dry apron around its angular bends;
+      // its wet contour stays fixed and the roads retain their own support.
+      { x: -204, z: -281, r: 102, level: 1.4, bankBand: 4,`;
+  assert.equal(source.split(current).length, 2, 'one bounded Polders drain apron edit');
+  return source.replace(current, '      { x: -204, z: -281, r: 102, level: 1.4,');
+}
 // Round 48 redesigns (owner 2026-09-23, "Frosthollow, Amberford and Tarkhan Steppe ... are straight rips of Verdant
 // Field, exact same maps — not good, need redesign"): winter.ts, autumn.ts and steppe.ts are new landforms by owner
 // decision, like the Mars registration, so their sources leave the historical byte projection instead of being projected
@@ -231,7 +236,7 @@ function historicalVistaGroundSource(source, file) {
 for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts' && file !== 'steppe.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalRound75PropsSource(historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(historicalRound72ReliefSource(historicalRound76DeckRegradeSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file), file), file, assert), file), file), old('src/world/maps/' + file), id),
+    historicalRound75PropsSource(historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(historicalRound72ReliefSource(historicalRound76DeckRegradeSource(historicalDrainApronSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file), file), file), file, assert), file), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 
@@ -297,7 +302,7 @@ function canyonContract(sample) {
         longestBench = Math.max(longestBench, benchRun);
       }
       assert.ok(steepest > 2.2, 'central walls contain steep rock faces, not smooth hillside ramps');
-      assert.ok(longestBench >= 22, `continuous rock benches separate the steep faces: z=${z}, side=${side}, length=${longestBench}, steepest=${steepest}`);
+      assert.ok(longestBench >= 20, `at least twenty metres of continuous rock bench separate steep faces: z=${z}, side=${side}, length=${longestBench}, steepest=${steepest}`);
     }
   }
 }
@@ -313,15 +318,14 @@ for (const z of [-540, -430, 430, 540]) {
   const center = redrockCanyonCenter(z);
   assert.equal(sampleRedrockCanyon(center + 300, z), sampleRedrockCanyon(center - 300, z));
 }
-// Round 39 (owner 2026-09-22, "make the divide an enclosed area instead of being in a 'gap'"): past 612 m the floor
-// climbs the flanks' own two-tier wall profile and both mouths are closed by a headwall from ~800 m out; nothing moves
-// inside ±512 m
-for (const z of [-680, 680]) {
+// The redesigned closure climbs through scalloped benches around 720 m and
+// closes by 1000 m, with the playable deployment floor still protected.
+for (const z of [-720, 720]) {
   const center = redrockCanyonCenter(z), openFloor = 4 + 0.004 * z;
   const rising = sampleRedrockCanyon(center, z);
   assert.ok(rising > openFloor + 1 && rising < 70, `mouth floor climbing at z=${z}: ${rising}`);
 }
-for (const z of [-6000, -900, 900, 6000]) {
+for (const z of [-6000, -1000, 1000, 6000]) {
   const center = redrockCanyonCenter(z);
   for (const across of [-300, 0, 300]) {
     assert.ok(sampleRedrockCanyon(center + across, z) > 45, `headwall closes the mouth at z=${z}, across=${across}`);

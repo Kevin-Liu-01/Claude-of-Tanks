@@ -1,11 +1,54 @@
 import assert from 'node:assert/strict';
 import { createCanvas } from '@napi-rs/canvas';
-import { MeshStandardMaterial, Texture, Group, Mesh, PlaneGeometry } from 'three';
+import { MeshStandardMaterial, Texture, Group, Mesh, PlaneGeometry, BufferGeometry, BufferAttribute } from 'three';
 import { bindAutumnHorizonGround } from './horizonAutumnGround.ts';
-import { HORIZON_SEGMENTS, buildHorizonRing } from './maps/horizon.ts';
+import { HORIZON_SEGMENTS, buildHorizonRing, sampleHorizonGeometry } from './maps/horizon.ts';
+import { continueHorizonFold, refineHorizonGroundSeam } from './horizonSeam.ts';
+import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { registerRetainedObject3DResources, releaseObject3DGpuResources, disposeObject3DResources } from '../engine/resourceLifetime.ts';
 const previousDocument=globalThis.document;
+{
+ const g=new BufferGeometry();
+ g.setAttribute('position',new BufferAttribute(new Float32Array([511.5,0,0,512,0,0,512.5,0,0,552,0,0,592,0,0]),3));
+ continueHorizonFold(g,()=>.8);
+ const f=g.getAttribute('fold');
+ assert.ok(f.normalized&&f.array instanceof Int8Array);
+ assert.ok(Math.abs(f.getX(0)-.8)<1/127,'exterior moisture matches the playable boundary');
+ assert.equal(f.getX(0),f.getX(2),'no moisture or ambient-light step across the map edge');
+ assert.ok(f.getX(3)>0&&f.getX(3)<f.getX(0),'the continued field fades gradually');
+ assert.equal(f.getX(4),0,'no clamped edge-curvature stripes in the distant ground');
+ g.dispose();
+}
+// Delta's southwestern shoulder exposed the interior of a coarse chord as a
+// raised grass lip. Measure its actual drawn edge, not just seated vertices.
+{
+ const ground=createHeightField(5000,getMapConfig('delta'));
+ const ring=sampleHorizonGeometry(getMapConfig('delta'),1337,ground),n=HORIZON_SEGMENTS,stride=n+1;
+ const g=new BufferGeometry(),p=new Float32Array(ring.rows.length*stride*3),normals=new Float32Array(p.length),indices=[];
+ for(let row=0;row<ring.rows.length;row++)for(let col=0;col<=n;col++) {
+  const source=(row*n+col%n)*3,target=(row*stride+col)*3;
+  p.set(ring.positions.subarray(source,source+3),target);normals[target+1]=1;
+  if(row<ring.rows.length-1&&col<n){const a=row*stride+col;indices.push(a,a+stride,a+1,a+1,a+stride,a+stride+1);}
+ }
+ g.setAttribute('position',new BufferAttribute(p,3));g.setAttribute('normal',new BufferAttribute(normals,3));g.setIndex(indices);
+ const error=()=>{let worst=0,count=0;const pos=g.attributes.position,ix=g.index;
+  for(let i=0;i<ix.count;i+=3)for(let j=0;j<3;j++){
+   const a=ix.getX(i+j),b=ix.getX(i+(j+1)%3);
+   if(pos.getZ(a)!==-511.5||pos.getZ(b)!==-511.5)continue;
+   const x=(pos.getX(a)+pos.getX(b))/2;if(x<-510||x>-480)continue;
+   worst=Math.max(worst,Math.abs((pos.getY(a)+pos.getY(b))/2-ground.getHeightAt(x,-511.5)));count++;
+  }assert.ok(count>0);return worst;
+ };
+ const before=error(),oldCount=p.length/3;
+ assert.ok(before>.3,`negative control retains the visible raised lip: ${before}`);
+ refineHorizonGroundSeam(g,n,ground);
+ assert.ok(error()<.08,`subdivided seam follows the dip within eight centimetres: ${error()}`);
+ assert.ok(g.attributes.position.count-oldCount<40000,'detail is confined to a narrow boundary strip');
+ for(const value of g.attributes.position.array)assert.ok(Number.isFinite(value));
+ for(let i=0;i<g.index.count;i++)assert.ok(g.index.getX(i)<g.attributes.position.count);
+ g.dispose();
+}
 globalThis.document={createElement(tag){assert.equal(tag,'canvas');return createCanvas(1,1);}};
 try {
  const horizon=buildHorizonRing(null,getMapConfig('autumn'),1337),g=horizon.geometry,old=g.index.array.slice(),oldPositions=g.attributes.position.array.slice(),oldNormals=g.attributes.normal.array.slice(),far=horizon.material;
@@ -43,9 +86,16 @@ try {
   for(let i=vistaStart;i<cold.length;i+=3)assert.ok(Math.min(cuv.getY(cg.index.getX(i)),cuv.getY(cg.index.getX(i+1)),cuv.getY(cg.index.getX(i+2)))>=-0.001,'no marine face is left to the vista material');
   disposeObject3DResources(coastal);}
  {const coast=buildHorizonRing(null,getMapConfig('coastal'),1337),g=coast.geometry;
-  bindAutumnHorizonGround(coast,new MeshStandardMaterial(),[],{columns:HORIZON_SEGMENTS,bands:coast.userData.horizonRing.ridgeRow,continuousCoast:true});
+  bindAutumnHorizonGround(coast,new MeshStandardMaterial(),[],{columns:HORIZON_SEGMENTS,bands:coast.userData.horizonRing.ridgeRow,continuousGround:true});
   assert.equal(g.groups[0].count,g.index.count,'the whole continued coast shares the ground shader');
   assert.equal(g.groups[1].count,0,'no vista-material strip can cross the beach');
+  const distant=coast.getObjectByName('horizon-far-range');
+  assert.ok(distant,'the production coast includes the distant apron');
+  assert.equal(distant.material[1],coast.material[1],'distant ground shares the live terrain material');
+  assert.equal(distant.geometry.getAttribute('normal'),distant.geometry.getAttribute('aFarNormal'),
+    'the terrain shader receives real upward normals, preventing a black unlit far range');
+  assert.deepEqual(distant.geometry.groups,[{start:0,count:distant.geometry.index.count,materialIndex:1}]);
+  assert.equal(distant.geometry.getAttribute('shore').count,distant.geometry.getAttribute('position').count);
   for(let i=0;i<g.index.count;i+=3){const p=g.attributes.position,a=g.index.getX(i),b=g.index.getX(i+1),c=g.index.getX(i+2);
    assert.ok((p.getZ(b)-p.getZ(a))*(p.getX(c)-p.getX(a))-(p.getX(b)-p.getX(a))*(p.getZ(c)-p.getZ(a))>0,'every continued coast face winds upward');}
   disposeObject3DResources(coast);}

@@ -1,3 +1,4 @@
+import { beforeShorelineContinuity } from './shorelineContinuity.test-support.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -400,7 +401,7 @@ async function testAllMapBytes() {
   assert.equal(MAP_IDS.length, 31);
   assert.deepEqual(Object.keys(GEOMETRY_GOLDENS), [...MAP_IDS]);
   for (const mapId of MAP_IDS) {
-    const config = historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(getMapConfig(mapId))));
+    const config = historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(beforeShorelineContinuity(getMapConfig(mapId)))));
     const hf = historicalRoadHeightField(1337, config);
     const hash = createHash('sha256');
     const corrupt = mapId === 'polders' ? createHash('sha256') : null;

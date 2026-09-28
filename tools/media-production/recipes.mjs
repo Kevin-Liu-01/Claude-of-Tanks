@@ -37,6 +37,27 @@ function surveyHeight(world) {
   };
 }
 
+/** Paired driving-height and raised views around all four edges and corners.
+ * Whole-landscape views expose simplified water footprints and distant gaps
+ * that a close, downward-facing shoreline survey cannot reveal. */
+export function landscapeSurvey(world) {
+  const height = surveyHeight(world), views = [];
+  for (let station = 0; station < 8; station++) {
+    const angle = station * Math.PI / 4, x = Math.cos(angle), z = Math.sin(angle);
+    const rim = 512 / Math.max(Math.abs(x), Math.abs(z));
+    const px = x * (rim - 34), pz = z * (rim - 34);
+    const tx = x * (rim + 170) - z * 80, tz = z * (rim + 170) + x * 80;
+    for (const [label, lift] of [['drive', 5], ['raised', 72]]) {
+      views.push({id:`edge-${station}-${label}`,camera:{pos:[px,height(px,pz)+lift,pz],
+        lookAt:[tx,height(tx,tz)+3,tz],fov:65}});
+    }
+  }
+  for (const [id,pos,lookAt] of [
+    ['whole-north',[0,680,-650],[0,0,280]], ['whole-south',[0,680,650],[0,0,-280]],
+  ]) views.push({id,camera:{pos,lookAt,fov:70}});
+  return {stations:8,views};
+}
+
 /** Cover every sampled waterline, including the continued contours beyond the battle boundary.
  * The receipt distinguishes sample coverage from visual acceptance; it never calls a screenshot a pass. */
 export function shorelineSurvey(world, { gridM = 8, radiusM = 68 } = {}) {
@@ -51,10 +72,11 @@ export function shorelineSurvey(world, { gridM = 8, radiusM = 68 } = {}) {
   const wet = (x, z) => {
     if (!outside(x,z)) return hf.getWaterMaskAt(x,z);
     if (!openings.length) return 0;
-    let value=smooth(...ramp,hf.getOutlandWaterAt?.(x,z)?.wetness??0);
+    const coast=hf.getOutlandWaterAt?.(x,z)?.wetness??0;
+    let sector=0;
     const distance=Math.max(Math.abs(x),Math.abs(z))-half;
-    for(const opening of openings) value=Math.max(value,smooth(...ramp,seaSectorWeightAt(x,z,opening,half)*smooth(...seaSectorBlend(opening.coastReachM),distance)));
-    return value;
+    for(const opening of openings) sector=Math.max(sector,seaSectorWeightAt(x,z,opening,half)*smooth(...seaSectorBlend(opening.coastReachM,opening.bankProfile),distance));
+    return smooth(...ramp,coast+sector-coast*sector);
   };
   const height = surveyHeight(world);
   const points = [];

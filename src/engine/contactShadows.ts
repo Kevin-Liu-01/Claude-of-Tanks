@@ -83,6 +83,12 @@ export function contactShadowOcclusion(hit: number): number {
   return 1 - THREE.MathUtils.smoothstep(hit, CONTACT_SHADOW_TAIL_FADE, 1);
 }
 
+/** Reject shallow folds of one smooth surface, while retaining corners and raised objects. */
+export function contactShadowSurfaceSupport(normalDot: number, planeHeight: number): number {
+  return Math.max(1 - THREE.MathUtils.smoothstep(normalDot, 0.35, 0.65),
+    THREE.MathUtils.smoothstep(planeHeight, 0.3, 0.5));
+}
+
 export interface ContactShadowAmbient {
   /** Hemisphere sky pole irradiance luminance (intensity × colour luma). */
   sky: number;
@@ -193,12 +199,14 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
     float cotDepthToDist( float d ) {
       return ( uNear * uFar ) / ( uFar - ( uFar - uNear ) * d );
     }
-    vec3 cotWorldAt( vec2 uv ) {
-      float dist = cotDepthToDist( texture2D( tDepth, uv ).x );
+    vec3 cotWorldAtDepth( vec2 uv, float dist ) {
       vec3 r = normalize( uCamFwd
         + uCamRight * ( uv.x * 2.0 - 1.0 ) * uTan.x
         + uCamUp * ( uv.y * 2.0 - 1.0 ) * uTan.y );
       return uCamPos + r * ( dist / max( dot( r, uCamFwd ), 0.05 ) );
+    }
+    vec3 cotWorldAt( vec2 uv ) {
+      return cotWorldAtDepth( uv, cotDepthToDist( texture2D( tDepth, uv ).x ) );
     }
     // the scene target's alpha: 2 + the CSM sun visibility of an opaque lit surface, below 1.5 anything else
     float cotSunVisOf( float a ) {
@@ -220,6 +228,7 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
       vec3 start = P + N * ( 0.012 + dist * 0.0025 );
       float jitter = fract( 52.9829189 * fract( dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
       float hit = 2.0;
+      float support = 0.0;
       for ( int i = 0; i < ${CONTACT_SHADOW_STEPS}; i++ ) {
         float s = ( float( i ) + jitter ) / ${f(CONTACT_SHADOW_STEPS)};
         float u = s * ( 0.3 + 0.7 * s );
@@ -239,10 +248,21 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
           vec2 side = vec2( uInvSize.x * ${f(CONTACT_SHADOW_WIDTH_PX)}, 0.0 );
           float dl = cotDepthToDist( texture2D( tDepth, quv - side ).x );
           float dr = cotDepthToDist( texture2D( tDepth, quv + side ).x );
-          if ( abs( dl - occ ) < wide && abs( dr - occ ) < wide ) { hit = u; break; }
+          if ( abs( dl - occ ) < wide && abs( dr - occ ) < wide ) {
+            // Smooth terrain is tessellated into flat depth triangles. Letting
+            // neighbouring shallow faces cast at full strength exposed their
+            // diagonal edges as false ledges. A contact needs a distinct corner
+            // or an object raised above the receiver plane. Only confirmed wide
+            // hits pay for these four normal taps; the ordinary march is unchanged.
+            vec3 Q = cotWorldAtDepth( quv, occ );
+            vec3 QN = cotNormalAt( quv, Q );
+            float contrast = max( 1.0 - smoothstep( 0.35, 0.65, dot( N, QN ) ),
+              smoothstep( 0.3, 0.5, dot( Q - P, N ) ) );
+            if ( contrast > 0.01 ) { hit = u; support = contrast; break; }
+          }
         }
       }
-      return hit <= 1.0 ? 1.0 - smoothstep( ${f(CONTACT_SHADOW_TAIL_FADE)}, 1.0, hit ) : 0.0;
+      return hit <= 1.0 ? support * ( 1.0 - smoothstep( ${f(CONTACT_SHADOW_TAIL_FADE)}, 1.0, hit ) ) : 0.0;
     }
     // colour multiplier: the pixel's sun share removed where the march finds an occluder
     float cotContactShade( vec2 uv, vec3 P, float dist, float alpha ) {

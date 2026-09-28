@@ -92,4 +92,53 @@ for(const stage of ['constructor','start','render','requestFrame']) {
   recorder.emit('stop');const result=await promise;
   assert.equal(result.durationMs,15000);assert.equal(result.leadInMs,800);
 }
-console.log('studioRecording.selftest: cold startup, recorded wall clock, failure, retry, timeout, late events, ownership and cancellation pass');
+// Resize invalidates a temporal renderer even when the authored scene is paused.
+// Exercise the actual still-capture transaction, including failure cleanup.
+const captureBegin=source.indexOf('  function renderCaptureFrame(');
+const captureEnd=source.indexOf('  function videoMimeType(',captureBegin);
+assert.ok(captureBegin>0 && captureEnd>captureBegin);
+const captureFunctions=stripTypeScriptTypes(source.slice(captureBegin,captureEnd));
+function captureFixture({fail=false,pixelRatio=2}={}) {
+  let width=1280,height=720,ratio=pixelRatio,target='1280x720',pending=0,clock=2500,draws=0;
+  const rail={group:{visible:true}},marker={group:{visible:false}};
+  const camera={aspect:width/height,updateProjectionMatrix(){},updateMatrixWorld(){}};
+  const renderer={
+    getSize(v){v.x=width;v.y=height;},getPixelRatio:()=>ratio,
+    setPixelRatio(v){ratio=v;},setSize(w,h){width=w;height=h;},
+    capabilities:{maxTextureSize:4096},
+    domElement:{toDataURL(){
+      assert.equal(pending,0,'capture cannot read partially rebuilt history');
+      assert.equal(rail.group.visible,false);assert.equal(marker.group.visible,false);
+      if(fail)throw Error('readback failed');
+      return 'data:image/png;base64,capture';
+    }},
+  };
+  const post={
+    setSize(w,h){const next=w+'x'+h;if(next!==target){pending=4;target=next;}},
+    render(dt){clock+=dt*1000;draws++;pending=Math.max(0,pending-1);},
+  };
+  const scene={userData:{volumetricClouds:{settleForCapture(){
+    const changed=pending>0;pending=0;return changed;
+  }}}};
+  const capture=new Function('ports',`
+    const {renderer,camera,post,scene,rail,marker}=ports;
+    const _size={},CAPTURE_MAX_W=4096,CAPTURE_MIN_W=1920;
+    const lighting={updateFrustums(){},update(){}},stepFx=()=>{};
+    ${captureFunctions}
+    return capture;
+  `)({renderer,camera,post,scene,rail,marker});
+  return {capture,cut(){pending=4;},state:()=>({width,height,ratio,pending,clock,draws,aspect:camera.aspect,rail:rail.group.visible,marker:marker.group.visible})};
+}
+for(const fail of [false,true]) {
+  const f=captureFixture({fail});
+  if(fail)assert.throws(()=>f.capture({width:3840,height:2160}),/readback failed/);
+  else assert.deepEqual(f.capture({width:3840,height:2160}),{dataURL:'data:image/png;base64,capture',width:3840,height:2160});
+  assert.deepEqual(f.state(),{width:1280,height:720,ratio:2,pending:0,clock:2500,draws:4,aspect:1280/720,rail:true,marker:false});
+}
+{
+  const f=captureFixture({pixelRatio:1});
+  f.capture({width:1280,height:720});assert.equal(f.state().draws,2,'same-size video frames retain their history');
+  f.cut();f.capture({width:1280,height:720});
+  assert.equal(f.state().pending,0);assert.equal(f.state().clock,2500);
+}
+console.log('studioRecording.selftest: recording lifecycle and settled, clock-preserving capture/resize/failure recovery pass');

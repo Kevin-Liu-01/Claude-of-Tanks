@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   scanEdgeWater, resolveSeaOpenings, seaOpeningWeight, seaSectorWeightAt, dominantSeaOpening, buildSeaApronGeometry,
-  ringAngleToAzimuthDeg, SEA_APRON_OUTER_RADIUS_M, SEA_APRON_OVERLAP_M,
+  ringAngleToAzimuthDeg, seaCoastDistanceAt, mergeSeaWetness, SEA_APRON_OUTER_RADIUS_M, SEA_APRON_OVERLAP_M,
 } from './edgeWater.ts';
 import { buildOutlandWaterGeometry, seaSectorBlend, coastReachAlong } from './edgeWater.ts';
 import { createHeightField } from './terrain.ts';
@@ -18,6 +19,16 @@ const eastMouth = {azimuthDeg:90,widthDeg:60,level:-4};
 assert.equal(seaSectorWeightAt(650,300,eastMouth),0,'a nearby headland is not cut off by a sector centred on the map');
 assert.equal(seaSectorWeightAt(1500,250,eastMouth),1,'the sea opens gradually from its mouth');
 assert.equal(seaSectorWeightAt(-1500,250,{...eastMouth,azimuthDeg:270}),1,'the same mouth rule applies on the west');
+for (const azimuthDeg of [0, 35, 90, 135, 180, 225, 270, 315]) {
+  const angle = Math.PI / 2 - azimuthDeg * Math.PI / 180;
+  const dx = Math.cos(angle), dz = Math.sin(angle);
+  for (const range of [640, 1000, 2000, 4000]) {
+    assert.equal(seaSectorWeightAt(-dx * range, -dz * range, {...eastMouth, azimuthDeg}), 0,
+      `${azimuthDeg}/${range}: no mirrored inland sea behind the opening`);
+    assert.equal(seaSectorWeightAt(dx * (range + 512), dz * (range + 512), {...eastMouth, azimuthDeg}), 1,
+      `${azimuthDeg}/${range}: offshore centre stays open without return-arc islands`);
+  }
+}
 
 // a synthetic square: water where a predicate says, surface = floor + depth
 const synthetic = (wet, { size = 1024, floor = -5.2, depth = 0.7 } = {}) => ({
@@ -115,6 +126,19 @@ assert.deepEqual(resolveSeaOpenings(getMapConfig('verdant').horizon?.seaOpening,
 for (const id of ['coastal', 'saltwind', 'fjord']) {
   const config=getMapConfig(id), field=id==='coastal'?coastal:id==='saltwind'?saltwind:createHeightField(1337,config);
   const openings=resolveSeaOpenings(config.horizon?.seaOpening,field,id);
+  for(const o of openings.filter(o=>o.bankProfile)) {
+    const a=Math.PI/2-o.azimuthDeg*Math.PI/180,dx=Math.cos(a),dz=Math.sin(a),edge=512/Math.max(Math.abs(dx),Math.abs(dz));
+    const point=(along,across)=>[dx*(edge+along)-dz*across,dz*(edge+along)+dx*across];
+    for(const side of [0,1]) {
+      const bank=o.bankProfile[side],tangent=o.bankProfile[side+2];
+      const at=point(0,bank);
+      assert.ok(Math.abs((field.getOutlandWaterAt(...at)?.wetness??0)-.5)<.002,`${id}: opening starts at the native waterline`);
+      const step=point(.1,bank+tangent*.1);
+      assert.ok(Math.abs(seaCoastDistanceAt(...step,o))<.001,`${id}: bank leaves the mouth along its native tangent`);
+      const old=seaCoastDistanceAt(...step,{...o,bankProfile:undefined});
+      assert.ok(Math.abs(old)>.1,`${id}: the old sector would fail this mouth-continuity check`);
+    }
+  }
   const ring=sampleHorizonGeometry(config,1337,field),p=ring.positions,n=HORIZON_SEGMENTS;
   const start=p.length/3-n;
   let shores=0;
@@ -125,20 +149,71 @@ for (const id of ['coastal', 'saltwind', 'fjord']) {
     shores++;
   }
   assert.ok(shores>20,`${id}: checks the actual sea-opening columns`);
-  let shallowVertices=0;
+  let shallowVertices=0;const bankSides=new Set();
   for(let i=0;i<p.length;i+=3) {
     const x=p[i],z=p[i+2],distance=Math.max(Math.abs(x),Math.abs(z))-512;
     if(distance<400)continue;
     for(const opening of openings) {
-      const [from,to]=seaSectorBlend(opening.coastReachM);
+      const [from,to]=seaSectorBlend(opening.coastReachM, opening.bankProfile);
       const t=Math.max(0,Math.min(1,(distance-from)/(to-from)));
       const wet=seaSectorWeightAt(x,z,opening)*t*t*(3-2*t);
       if(wet<config.splat.seaRamp[0]||wet>.6)continue;
       assert.ok(p[i+1]<=opening.level-.039,`${id}: visible shallows have submerged ground, not ridge vertices clipping the sheet`);
+      const direction=Math.PI/2-opening.azimuthDeg*Math.PI/180;
+      bankSides.add(Math.sign(-x*Math.sin(direction)+z*Math.cos(direction)));
       shallowVertices++;
     }
   }
-  assert.ok(shallowVertices>20,`${id}: checks the actual shallow bank band`);
+  assert.ok(shallowVertices>0,`${id}: checks actual shallow bank vertices`);
+  assert.deepEqual([...bankSides].sort(),[-1,1],`${id}: checks both offshore banks, without counting a false inland sea`);
+  let shallowFaces=0;
+  for(let row=1;row<ring.rows.length-1;row++)for(let col=0;col<n;col++) {
+    const a=row*n+col,b=row*n+(col+1)%n,c=a+n,d=b+n;
+    for(const tri of [[a,b,c],[b,d,c]])for(const weights of [[1/3,1/3,1/3],[.1,.45,.45],[.45,.1,.45],[.45,.45,.1],[.7,.15,.15],[.15,.7,.15],[.15,.15,.7]]) {
+      const q=[0,0,0];for(let k=0;k<3;k++)for(let axis=0;axis<3;axis++)q[axis]+=p[tri[k]*3+axis]*weights[k];
+      if(Math.max(Math.abs(q[0]),Math.abs(q[2]))<536||Math.hypot(q[0],q[2])>3900)continue;
+      for(const o of openings){
+        const distance=Math.max(Math.abs(q[0]),Math.abs(q[2]))-512;
+        const [from,to]=seaSectorBlend(o.coastReachM,o.bankProfile);
+        const t=Math.max(0,Math.min(1,(distance-from)/(to-from)));
+        const wet=mergeSeaWetness(field.getOutlandWaterAt(q[0],q[2])?.wetness??0,seaSectorWeightAt(q[0],q[2],o)*t*t*(3-2*t));
+        if(wet<config.splat.seaRamp[0]+.04||wet>.8)continue;
+        assert.ok(q[1]<=o.level-.025,`${id}: the interpolated shoreline face stays below water at ${q[0].toFixed(1)},${q[2].toFixed(1)} (${q[1]})`);
+        shallowFaces++;
+      }
+    }
+  }
+  assert.ok(shallowFaces>30,`${id}: checks interiors of triangles, not only already-submerged vertices`);
+}
+
+// The transparent surface must cover every partially wet offshore cell. The
+// old centre-only admission left a sawtooth fringe on both Coastal banks.
+{
+  const opening=coastalResolved[0];
+  const grid=buildOutlandWaterGeometry([opening],()=>null,512,4096,{cellM:8,depthM:.72,ramp:[.4,.78]});
+  const p=grid.attributes.position,idx=grid.index,bins=new Map();
+  const key=(x,z)=>`${Math.floor(x/64)},${Math.floor(z/64)}`;
+  for(let i=0;i<idx.count;i+=3){
+    const tri=[idx.getX(i),idx.getX(i+1),idx.getX(i+2)],xs=tri.map(j=>p.getX(j)),zs=tri.map(j=>p.getZ(j));
+    for(let x=Math.floor(Math.min(...xs)/64);x<=Math.floor(Math.max(...xs)/64);x++)
+      for(let z=Math.floor(Math.min(...zs)/64);z<=Math.floor(Math.max(...zs)/64);z++){
+        const k=`${x},${z}`;if(!bins.has(k))bins.set(k,[]);bins.get(k).push(tri);
+      }
+  }
+  const covers=(x,z)=>(bins.get(key(x,z))??[]).some(([a,b,c])=>{
+    const ax=p.getX(a),az=p.getZ(a),bx=p.getX(b)-ax,bz=p.getZ(b)-az,cx=p.getX(c)-ax,cz=p.getZ(c)-az;
+    const det=bx*cz-bz*cx,u=((x-ax)*cz-(z-az)*cx)/det,v=(bx*(z-az)-bz*(x-ax))/det;
+    return u>=-1e-7&&v>=-1e-7&&u+v<=1+1e-7;
+  });
+  let checked=0;
+  for(let x=1080;x<2980;x+=37)for(const side of [-1,1])for(const wet of [.43,.6,.8]){
+    let lo=0,hi=4000;
+    for(let step=0;step<35;step++){const mid=(lo+hi)/2;if(seaSectorWeightAt(x,side*mid,opening)>wet)lo=mid;else hi=mid;}
+    const z=side*(lo+hi)/2;if(Math.hypot(x,z)>3900)continue;
+    assert.ok(covers(x,z),`water mesh covers ${wet} wet offshore bank at ${x},${z.toFixed(1)}`);checked++;
+  }
+  assert.ok(checked>250,'both coarse-grid banks have actual indexed triangles throughout the transparent fringe');
+  grid.dispose();
 }
 // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): the apron is a grid over the
 // outland whose cells follow the map's own bay contour near the square and the derived sector only 120–360 m out.
@@ -147,8 +222,8 @@ for (const id of ['coastal', 'saltwind', 'fjord']) {
   const bay = (x, z) => { const d = Math.hypot(x - 560, z - 40) / 190; return d < 1 ? { wetness: 1 - Math.max(0, (d - 0.8) / 0.16), level: -4 } : null; };
   const reach = coastReachAlong({ azimuthDeg: 90, widthDeg: 60, level: -4 }, bay, 512);
   assert.ok(reach > 180 && reach < 240, `the bay contour reaches ${reach} m past the east edge (disc to x 750, waterline at 0.88 r)`);
-  assert.deepEqual(seaSectorBlend(0), [0, 20], 'no contour: the sector opens within 20 m');
-  assert.deepEqual(seaSectorBlend(200), [100, 190], 'a 200 m bay reach: the sector fades in from 100 m and is fully open at 190 m, before the contour\'s far arc at 200 m');
+  assert.deepEqual(seaSectorBlend(0), [0, 8], 'no contour: the sea opens across its first carrier cell');
+  assert.deepEqual(seaSectorBlend(200), [24, 108], 'the full-width mouth opens before a disc return arc can leave offshore sand fragments');
   const east = [{ azimuthDeg: 90, widthDeg: 60, level: -4, shoulder: 0.58, source: 'authored', coastReachM: reach }];
   const grid = buildOutlandWaterGeometry(east, bay, 512, 1400, { cellM: 16, depthM: 0.72 });
   assert.ok(grid, 'an outland grid');
@@ -190,3 +265,14 @@ for (const id of ['coastal', 'saltwind', 'fjord']) {
 }
 
 console.log(`edgeWater.selftest: synthetic scans, authored precedence, apron fan, Coastal ${coastalResolved.length} opening (authored), Saltwind west ${west.azimuthDeg}°/${west.widthDeg}° at ${west.level} m, Verdant none PASS`);
+
+// Evaluate the actual bed-mask expression: smooth normals next to a cliff
+// must not expose grass through liquid water. Frozen/marsh banks retain their
+// original slope rejection. Removing the liquid branch fails the steep cases.
+{
+  const source=readFileSync(new URL('./terrain.ts',import.meta.url),'utf8');
+  const expression=source.match(/fM \*= ([^;]+);/)[1];
+  const sample=new Function('slope','uSea',`const mix=(a,b,t)=>a+(b-a)*t; const smoothstep=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};return ${expression};`);
+  for(const slope of [0,.02,.05,.08,.2,.5,1])assert.equal(sample(slope,1),1,'liquid coverage survives every interpolated bank normal');
+  assert.equal(sample(0,0),1);assert.equal(sample(.2,0),0);assert.ok(sample(.05,0)>0&&sample(.05,0)<1);
+}

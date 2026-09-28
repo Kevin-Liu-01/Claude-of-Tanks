@@ -134,7 +134,8 @@ assert.ok(field.getOutlandHeightAt(...radial(108, fanHalf + 40)) > 14, 'the plat
 for (let x = 520; x <= 690; x += 10) near(field.getOutlandHeightAt(x, -181), portalY + RAIL_CUTTING_GRADE * (72 + (x - 512) * tarkhan.fx), 1e-9, `the straight-ahead line from the mouth lies on the valley floor (x ${x})`);
 assert.equal(field.getOutlandHeightAt(300, -181), uncut.getOutlandHeightAt(300, -181), 'the outland sampler is the composition it was elsewhere');
 assert.equal(field.getOutlandHeightAt(600, 200), uncut.getOutlandHeightAt(600, 200));
-// the ring: near rows seat in the notch, every authored ridge row keeps its height to the bit, no other column moves
+// The continuous ring follows the actual fan, including its widening outside
+// the square. The gallery closes against a covered ridge beyond the portal.
 const ring = sampleHorizonGeometry(cfg, 1337, field), ringUncut = sampleHorizonGeometry(cfg, 1337, uncut);
 const n = HORIZON_SEGMENTS, ridgeRow = ring.rows.findIndex((row) => !row.skirt && !row.interpolated);
 assert.equal(ring.heights.length, ringUncut.heights.length);
@@ -143,11 +144,14 @@ const axisAngle = Math.atan2(-181, 512);
 for (let i = 0; i < ring.heights.length; i++) {
   if (ring.heights[i] === ringUncut.heights[i]) continue;
   ringMoved++;
-  const row = Math.floor(i / n), k = i % n;
-  let a = (k / n) * Math.PI * 2; if (a > Math.PI) a -= Math.PI * 2;
-  if (row >= ridgeRow || Math.abs(a - axisAngle) > 0.15) ringOutside++; // the buried anchors and the seated rows inside the mouth
+  const row = Math.floor(i / n), x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
+  if (row === 0) {
+    assert.ok(ring.heights[i] <= -64 && ringUncut.heights[i] <= -64, 'both closing rows remain buried');
+    continue;
+  }
+  if (field.getOutlandSeatWeightAt(x, z) === 0) ringOutside++;
 }
-assert.equal(ringOutside, 0, 'only the seated rows inside the notch move; the authored ridges never');
+assert.equal(ringOutside, 0, 'the cutting only changes ground inside its actual widening corridor');
 assert.ok(ringMoved >= 8, `the ring carries the notch (${ringMoved} vertices)`);
 const axisColumn = [...Array(n).keys()].sort((p, q) => Math.abs(((p / n) * Math.PI * 2 - Math.PI * 2) - axisAngle) - Math.abs(((q / n) * Math.PI * 2 - Math.PI * 2) - axisAngle))[0];
 // round 67: every seated row before the first authored ridge lies ON the bed (the hand-over share stands down with
@@ -155,8 +159,9 @@ const axisColumn = [...Array(n).keys()].sort((p, q) => Math.abs(((p / n) * Math.
 const runOf = (x, z) => (x - tarkhan.ex) * tarkhan.fx + (z - tarkhan.ez) * tarkhan.fz;
 for (let row = 1; row < ridgeRow; row++) for (const column of [axisColumn - 1, axisColumn, axisColumn + 1]) {
   const i = row * n + column, x = ring.positions[i * 3], z = ring.positions[i * 3 + 2], run = runOf(x, z);
+  if (run > RAIL_TUNNEL_RUN_M) continue; // the covered gallery rises into its containing ridge
   near(ring.heights[i], field.getOutlandHeightAt(x, z), 1e-3, `ring row ${row} (${run.toFixed(0)} m out) lies on the outland it seats on`);
-  if (column === axisColumn) near(ring.heights[i], portalY + RAIL_CUTTING_GRADE * (72 + run), 1e-3, `on the axis that is the bed (row ${row})`);
+  if (column === axisColumn && run >= 0) near(ring.heights[i], portalY + RAIL_CUTTING_GRADE * (72 + run), 1e-3, `on the axis that is the bed (row ${row})`);
   assert.ok(ringUncut.heights[i] > 14, 'where the plateau stood');
 }
 { const i = ridgeRow * n + axisColumn, run = runOf(ring.positions[i * 3], ring.positions[i * 3 + 2]);

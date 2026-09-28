@@ -38,6 +38,9 @@ const coalCensus = { railyard: 6, caldera: 7, foundry: 7, skybridge: 5 };
 // saturated (steppe keeps its 30 lone trees: 40 planted a grove on the
 // establishing-shot pose). Exact census, no tolerance.
 // 2026-09-19 hitbox pass: shards recaptured with per-part vertical extents (0.5 m clipped shell bands)
+// 2026-09-28 shoreline redesign: recaptured Coastal, Fjord, Saltwind, Oasis,
+// Polders and Red Rock after bank/ground edits changed safe prop placement.
+// These six entries pin the current native census directly (removals = 0).
 const roadCompletionCensus = {
   verdant: [7011, 6712, 7541],
   desert: [2840, 2762, 3292],
@@ -48,7 +51,7 @@ const roadCompletionCensus = {
   // deploy-98 base recaptures to these same counts, −15 / −8 / +8); recaptured headless with the warehouse parts.
   winter: [5929, 5786, 4919],
   urban: [4055, 9303, 3685],
-  coastal: [4196, 3999, 4310],
+  coastal: [4163, 3964, 4249],
   // round 48 (2026-09-24): Amberford redesigned (river-ford market town) — the shard was recaptured headless on the
   // combined round-48 tree (.qa-dev/collision-capture.mjs, same pack script); the redesign lane had left the round-1
   // shard in place, so the dedicated bots fought the old village on the new terrain (battlePacing: two Amberford
@@ -84,13 +87,13 @@ const roadCompletionCensus = {
   frontier: [8006, 7743, 8385],
   // 2026-09-26 round 75: stale against main before the round (the base recaptures to the same +483 / +471 / +512 —
   // a vegetation planting drift, not this lane's); recaptured headless with the warehouse parts. Expected = census + 118.
-  fjord: [7270, 7219, 7506],
+  fjord: [7352, 7301, 7679],
   delta: [7920, 7613, 9827],
   // redrock-derived-refresh-r1.p545nm: native canyon recapture. Unchanged
   // terrain-aware placement rules reject different props/trees on steep walls.
   // 2026-09-26 round 75: stale against main before the round (the base recaptures to the same +2 / +2 / 0);
   // recaptured headless with the warehouse parts. Expected = census + 6.
-  badlands: [2970, 2868, 1883],
+  badlands: [3017, 2917, 1920],
   monsoon: [9604, 9342, 12149],
   alpine: [9238, 9163, 8127],
   caldera: [5048, 5155, 3856],
@@ -101,7 +104,7 @@ const roadCompletionCensus = {
   skybridge: [3518, 3726, 2080],
   // Native 3c06d3352 capture: authored drainage contours change seeded
   // vegetation/prop acceptance. Keep the exact census, not a tolerance.
-  polders: [4478, 4250, 3810],
+  polders: [4260, 4032, 3605],
   // V23 native receipt (9fdbc49b): quarry-only producer A/B reproduces
   // every captured record. Existing slope/RNG rules yield +2 surface-rock
   // cover, -5 outcrop cover and -1 slope-rejected sapling; named prop counts
@@ -112,7 +115,7 @@ const roadCompletionCensus = {
   airfield: [3734, 3713, 3234],
   // Native19e03d36b: the authored spring contour changes terrain-aware
   // vegetation/prop acceptance; this is the exact captured census.
-  oasis: [2759, 2558, 2057],
+  oasis: [2729, 2527, 2029],
   // 2026-09-26 round 75: the sheet-clad warehouses' corner trims merge two shell bands (colliders 1464 → 1462); the
   // base recaptures byte-identical to the previous shard, so this one is the round's. Expected = census + 14.
   whiteout: [1661, 1476, 889],
@@ -122,7 +125,7 @@ const roadCompletionCensus = {
   // 2026-09-25 integration of round 67: native headless recapture on the combined
   // tree refreshes the stale Saltwind shard. Pin the current captured census
   // directly; the old pre-rim-road count no longer describes this layout.
-  saltwind: [3689, 3490, 4136],
+  saltwind: [3753, 3554, 4217],
   // Refreshed forked roads, assembly hardstand and grounded waterworks.
   reservoir: [6519, 6395, 7298],
   // 2026-09-19 Mars (Olympus Basin): first native capture of the new orbital-station
@@ -138,14 +141,14 @@ const rimRoadRemovals = {
   desert: 1,
   winter: 0, // 2026-09-23: redesigned layout, census pinned directly (see above)
   urban: 155,
-  coastal: 36,
+  coastal: 0,
   autumn: 0, // 2026-09-24: redesigned layout, census pinned directly (see above; round 61 recaptured on the bridge tree)
   steppe: 12,
   railyard: 152,
   frontier: 101,
-  fjord: 118,
+  fjord: 0,
   delta: 183,
-  badlands: 6,
+  badlands: 0,
   monsoon: 127,
   alpine: 118,
   caldera: 46,
@@ -154,10 +157,10 @@ const rimRoadRemovals = {
   blackglass: 70,
   titan_gorge: 10,
   skybridge: 1,
-  polders: 65,
+  polders: 0,
   copper_mesa: 67,
   airfield: 61,
-  oasis: 31,
+  oasis: 0,
   whiteout: 14,
   orchard: 73,
   longleaf: 84,

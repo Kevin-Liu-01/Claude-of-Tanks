@@ -2615,10 +2615,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   const r2 = (v: number): number => Math.round(v * 100) / 100;
 
   // --- capture -----------------------------------------------------------------
+  function renderCaptureFrame(): void {
+    // A resize or camera cut invalidates the interleaved cloud history. Complete
+    // its remaining slots at the same authored instant before reading the canvas.
+    post.render(0);
+    if (scene.userData.volumetricClouds?.settleForCapture(camera)) post.render(0);
+  }
+
   /**
    * Hi-res still of the current studio frame. Temporarily re-sizes the
    * renderer + full post chain to the target resolution at pixelRatio 1,
-   * forces every shadow cascade, renders once (dt=0 — no sim, no governor),
+   * forces every shadow cascade, settles temporal clouds (dt=0 — no sim),
    * reads the canvas back, then restores the live viewport.
    * @param {{width?:number, height?:number, scale?:number, download?:boolean,
    *   name?:string, type?:string, quality?:number}} [opts]
@@ -2650,7 +2657,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       camera.updateMatrixWorld(true);
       lighting.update(true); // every cascade fresh — deterministic capture
       stepFx(0);             // rebuild tracer ribbons/lights for this camera
-      post.render(0);
+      renderCaptureFrame();
       dataURL = renderer.domElement.toDataURL(opts.type || 'image/png', opts.quality);
     } finally {
       renderer.setPixelRatio(prevPR);
@@ -2661,7 +2668,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       lighting.updateFrustums();
       lighting.update(true);
       rail.group.visible = savedRail; marker.group.visible = savedMarker;
-      post.render(0); // repaint the live view immediately (no stale stretch)
+      renderCaptureFrame(); // restore a complete live view after the size change
     }
     if (opts.download) {
       const link = document.createElement('a');

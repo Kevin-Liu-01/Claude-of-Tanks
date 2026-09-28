@@ -3,12 +3,9 @@ const REDROCK_CANYON = Object.freeze({
   centerX: 8, axisSlope: 0.16, floorHalfWidth: 210, mouthHalfWidth: 330,
   flareStart: 230, flareEnd: 430, floorY: 4, floorGrade: 0.004,
   westHeight: 64, eastHeight: 86,
-  // Round 39 (owner 2026-09-22, "in the redrock divide you can literally still see the cutoff - make the divide an
-  // enclosed area instead of being in a 'gap'"): past the playable square a headwall with the flanks' own two-tier
-  // profile rises from this distance (bench by ~690 m, plateau by ~800 m), so both former mouths are closed and the
-  // divide is a basin. The ring's rows past the seam sit at 585, 628 and 674 m: the line lies beyond the first of
-  // them (plus the wall's 27 m meander) so the floor stays flat across the seam and the first raised row is the third.
-  closureStart: 612,
+  // A recessed amphitheatre closes each drainage beyond the deployment areas.
+  // Its broken escarpment belongs to the regional geology, away from the rim.
+  closureStart: 740,
 });
 
 function ramp(low: number, high: number, value: number): number {
@@ -37,18 +34,22 @@ function sideRavineWeight(across: number, z: number): number {
 
 function canyonWall(across: number, z: number, toeDistance: number): number {
   const west = across < 0;
-  // Steep bedrock faces and broad benches frame the central battlefield.
-  // Recesses only cut away from the protected valley floor, never intrude into
-  // a road. Broader weathered shoulders at the mouths fit the coarser outland.
-  const sculpt = 1 - ramp(180, 300, Math.abs(z));
-  const recess = sculpt > 0 ? sculpt * (18
+  // Unequal buttresses, talus shelves and side washes continue through the
+  // whole region. Fading this sculpture out at |z|=300 made the boundary
+  // flanks become smooth ramps. Recesses only cut away from the valley floor.
+  const sculpt = 0.94 + 0.06 * Math.sin(z * 0.007 + (west ? 0.5 : 2.4));
+  const mouthApron = ramp(330, 430, Math.abs(z)) * (1 - ramp(560, 720, Math.abs(z)));
+  const recess = 32 * mouthApron + sculpt * (24
     + 12 * Math.sin(z * 0.029 + (west ? 0.8 : 2.5))
-    + 6 * Math.sin(z * 0.071 + (west ? 2.1 : 0.3))) : 0;
+    + 6 * Math.sin(z * 0.071 + (west ? 2.1 : 0.3)));
   const depth = toeDistance - recess;
-  const lower = west ? ramp(0, 72 - 50 * sculpt, depth) * 0.28
-    : ramp(0, 55 - 37 * sculpt, depth) * 0.36;
-  const upper = west ? ramp(105 - 43 * sculpt, 180 - 90 * sculpt, depth) * 0.72
-    : ramp(88 - 33 * sculpt, 175 - 91 * sculpt, depth) * 0.64;
+  const apron = ramp(220, 330, Math.abs(z));
+  const lower = west ? ramp(0, 72 - 50 * sculpt + 10 * apron, depth) * 0.28
+    : ramp(0, 55 - 37 * sculpt + 21 * apron, depth) * 0.36;
+  // Broad upper talus keeps road approaches below the existing shoulder
+  // grade ceiling while retaining the unequal, stepped canyon silhouettes.
+  const upper = west ? ramp(105 - 43 * sculpt, 180 - 90 * sculpt + 22 * apron, depth) * 0.72
+    : ramp(88 - 33 * sculpt, 175 - 91 * sculpt + 25 * apron, depth) * 0.64;
   const height = west
     ? REDROCK_CANYON.westHeight + 6 * ramp(-380, -40, z) - 12 * ramp(170, 360, z)
     : REDROCK_CANYON.eastHeight - 2 * ramp(-280, -40, z) + 6 * ramp(100, 380, z);
@@ -58,21 +59,27 @@ function canyonWall(across: number, z: number, toeDistance: number): number {
 
 /** Absolute regional datum and unequal eroded flanks; no noise, allocation, or mutable cache. */
 export function sampleRedrockCanyon(x: number, z: number): number {
+  // The authored combat lanes stay fixed. Beyond them, tributaries bend into
+  // the surrounding plateau instead of extending as ruler-straight trenches.
+  const regional = ramp(560, 1050, Math.max(Math.abs(x), Math.abs(z)));
+  const wx = x + regional * (65 * Math.sin(z * 0.008) + 24 * Math.sin(z * 0.019 + 2));
+  const wz = z + regional * (70 * Math.sin(x * 0.007 + 1) + 24 * Math.sin(x * 0.018));
+  const upland = regional * (9 * Math.sin(x * 0.008) * Math.sin(z * 0.006)
+    + 2 * Math.sin(x * 0.023 + z * 0.011));
+  x = wx; z = wz;
   const floor = REDROCK_CANYON.floorY + REDROCK_CANYON.floorGrade * Math.max(-600, Math.min(600, z));
   const across = x - redrockCanyonCenter(z);
   const halfWidth = redrockCanyonFloorHalfWidth(z);
   const toeDistance = Math.abs(across) - halfWidth;
   const open = toeDistance <= 0 ? floor : floor + canyonWall(across, z, toeDistance);
-  if (Math.abs(z) <= REDROCK_CANYON.closureStart) return open;
-  // The headwall stands across the mouth with the SAME two-tier profile as the flanks (a low bench, then the steep
-  // upper face — so the terrain material reads it as bedded rock, not a sand ramp): its "toe" is the distance past
-  // the closure line, meandering ±27 m along the wall so it is not a straight dam, and the west and east flank
-  // profiles are blended across the canyon's width so the wall is one surface. The wall only ever raises the open
-  // shape; inside ±512 m it is exactly zero, so the playable ground and the seam are untouched.
-  const meander = 18 * Math.sin(x * 0.021 + 0.4) + 9 * Math.sin(x * 0.053 + 1.1);
+  if (Math.abs(z) <= REDROCK_CANYON.closureStart - 132) return open + upland;
+  // Broad alcoves and offset promontories break up the former straight dam.
+  // Both walls remain outside the playable floor and carry the same bedding.
+  const meander = 100 * Math.sin(x * 0.008 + (z > 0 ? 0.4 : 2.1))
+    + 32 * Math.sin(x * 0.029 + 1.1);
   const headToe = Math.abs(z) - REDROCK_CANYON.closureStart + meander;
-  if (headToe <= 0) return open;
+  if (headToe <= 0) return open + upland;
   const blend = ramp(-halfWidth, halfWidth, across);
   const head = floor + canyonWall(-1, z, headToe) * (1 - blend) + canyonWall(1, z, headToe) * blend;
-  return Math.max(open, head);
+  return Math.max(open, head) + upland;
 }

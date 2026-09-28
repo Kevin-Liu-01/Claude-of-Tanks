@@ -23,6 +23,19 @@ export function sourceDigest(root = process.cwd()) {
 export function verifyFile(file) {
   if (!existsSync(file.path) || digest(readFileSync(file.path)) !== file.sha256) throw Error(`Capture changed or missing: ${file.path}`);
 }
+/** Full-size review frames are compact WebP; publication masters stay PNG.
+ * Preserve both hashes so the receipt identifies the raw render and the
+ * exact reviewed file without retaining hundreds of redundant PNGs. */
+export async function saveReviewCapture(path, capture) {
+  const raw=Buffer.from(capture.dataURL.split(',')[1],'base64');
+  const source=await loadImage(raw);
+  if(source.width!==capture.width||source.height!==capture.height)throw Error('Capture dimensions mismatch');
+  const canvas=createCanvas(source.width,source.height);
+  canvas.getContext('2d').drawImage(source,0,0);
+  const bytes=canvas.toBuffer('image/webp',92);
+  mkdirSync(dirname(path),{recursive:true});writeFileSync(path,bytes);
+  return {path,width:source.width,height:source.height,bytes:bytes.length,sha256:digest(bytes),renderSha256:digest(raw),format:'webp',quality:92};
+}
 export function requireReview(receipt, review) {
   if (receipt.errors.length || !receipt.finished || receipt.maps.some(row=>!row.complete)) throw Error('Capture batch is incomplete');
   if (review.sourceDigest !== receipt.sourceDigest) throw Error('Review is for a different source state');

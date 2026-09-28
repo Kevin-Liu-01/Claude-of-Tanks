@@ -470,6 +470,10 @@ export function dressStrandWrack(ctx: StrandContext): StrandWrackCensus {
   const census: StrandWrackCensus = { lakes: 0, stations: 0, mats: 0, sticks: 0, pebbles: 0, shells: 0, landingPieces: 0 };
   const extent = ctx.extent ?? EXTENT_M;
   const { heightField: field } = ctx;
+  // Several restored coves share one dressing budget. Spread samples evenly
+  // around every shore instead of exhausting the budget on the first lake.
+  const stationM = STATION_M * Math.max(1,
+    ctx.lakes.reduce((sum, lake) => sum + (isStrandLake(lake) ? lake.r : 0), 0) / 340);
   ctx.lakes.forEach((lake, lakeIndex) => {
     if (!isStrandLake(lake)) return;
     census.lakes++;
@@ -483,8 +487,8 @@ export function dressStrandWrack(ctx: StrandContext): StrandWrackCensus {
       const here = angle;
       const radius = shorelineRadiusAt(lake, here);
       const cos = Math.cos(here), sin = Math.sin(here);
-      angle += STATION_M / radius;
-      s += STATION_M;
+      angle += stationM / radius;
+      s += stationM;
       station++;
       if (Math.max(Math.abs(lake.x + cos * radius), Math.abs(lake.z + sin * radius)) > extent + 12) continue;
       const band = bandAt(table, here);

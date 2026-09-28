@@ -123,12 +123,13 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of strandMaps) {
 }
 console.log(`strandWrack.selftest: ${pieces} wrack pieces, ${logs} strand logs and ${landingPieces} landing pieces audited over 9 builds`);
 
-// The band law on Saltmere's crescent: the water's edge lies inside the sand's end, the band starts a metre up the
+// The band law on Saltmere's three coves: the water's edge lies inside the sand's end, the band starts a metre up the
 // beach and is never narrower than 2.2 m; an azimuth with no water at 0.8 R has no strand.
 {
-  const config = getMapConfig('coastal'), field = createHeightField(1337, config), lake = field._layout.lakes[0];
+  const config = getMapConfig('coastal'), field = createHeightField(1337, config);
   let bands = 0;
-  for (let deg = 110; deg <= 250; deg += 10) {
+  const exposed = [[140, 230], [110, 220], [150, 250]];
+  for (const [index, lake] of field._layout.lakes.entries()) for (let deg = exposed[index][0]; deg <= exposed[index][1]; deg += 10) {
     const band = strandBandAt(field, lake, deg * Math.PI / 180);
     assert.ok(band, `Saltmere strand at ${deg}°`);
     assert.ok(band.edge < band.sandEnd, 'the sand ends beyond the water');
@@ -139,9 +140,9 @@ console.log(`strandWrack.selftest: ${pieces} wrack pieces, ${logs} strand logs a
     assert.equal(field.getWaterMaskAt(lake.x + Math.cos(deg * Math.PI / 180) * start, lake.z + Math.sin(deg * Math.PI / 180) * start), 0);
     bands++;
   }
-  assert.equal(bands, 15);
+  assert.equal(bands, 33);
   // east of the red line the disc's own far arc: the square's field has no water at 0.8 R there
-  assert.equal(strandBandAt({ getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: () => 100 }, lake, 0), null,
+  assert.equal(strandBandAt({ getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: () => 100 }, field._layout.lakes[0], 0), null,
     'no water, no strand');
 }
 

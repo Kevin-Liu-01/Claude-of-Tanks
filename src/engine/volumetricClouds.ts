@@ -879,22 +879,37 @@ void main() {
 	gl_FragColor = vec4( rgb, alpha );
 }`;
 
-/** The shadow gobo's depth material: the plane's uv carries the world xz its corners project to on the cloud base. */
+/** Cover the current shadow camera directly. A world-space plane placed at
+ * its previous near clip can cut across the next cascade during camera motion. */
 const GOBO_VERTEX = /* glsl */`
 varying vec2 vXZ;
+uniform mat4 uShadowWorld;
+uniform vec4 uShadowBounds;
+uniform float uCloudBase;
 void main() {
-	vXZ = uv;
-	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+	vec2 q = position.xy + 0.5;
+	vec3 p = (uShadowWorld * vec4(mix(uShadowBounds.x, uShadowBounds.y, q.x),
+		mix(uShadowBounds.z, uShadowBounds.w, q.y), -1.5, 1.0)).xyz;
+	vec3 direction = -uShadowWorld[2].xyz;
+	vXZ = p.xz + direction.xz * ((uCloudBase - p.y) / direction.y);
+	gl_Position = vec4(position.xy * 2.0, -0.999999, 1.0);
 }`;
 
 const GOBO_FRAGMENT = /* glsl */`
 precision highp float;
 ${CLOUD_FIELD_GLSL}
 uniform float uThreshold;
+uniform vec2 uShadowCellOrigin;
 varying vec2 vXZ;
 void main() {
 	vec4 w, st;
-	if ( cloudField( vXZ, w, st ) < uThreshold ) discard;
+	// A binary weather cutoff stamped polygonal shadows onto open beaches.
+	// World-anchored coverage gives PCF a soft, translucent cloud edge. A
+	// screen-space pattern changes phase whenever a cascade moves.
+	float shade = 0.62 * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( vXZ, w, st ) );
+	vec2 cell = mod( floor( gl_FragCoord.xy ) + uShadowCellOrigin, 256.0 );
+	float dither = fract( 52.9829189 * fract( dot( cell, vec2( 0.06711056, 0.00583715 ) ) ) );
+	if ( dither >= shade ) discard;
 	gl_FragColor = vec4( 1.0 );
 }`;
 
@@ -912,7 +927,39 @@ export type CloudNoiseUpload = Partial<Record<CloudNoiseKind, Uint8Array>>;
 
 interface CascadeLightLike {
   position: THREE.Vector3;
-  shadow: { camera: THREE.OrthographicCamera };
+  shadow: { camera: THREE.OrthographicCamera; mapSize: THREE.Vector2 };
+}
+
+/** Each coverage mask belongs to one shadow map. Overlapping masks from
+ * other cascades would multiply the translucent cloud's occlusion. */
+export function cloudShadowCellOrigin(min: number, inverseTranslation: number, span: number, pixels: number): number {
+  return ((Math.round((min - inverseTranslation) * pixels / span) % 256) + 256) % 256;
+}
+
+export function bindCloudShadowCascade(gobo: THREE.Mesh, shadowCamera: THREE.OrthographicCamera, mapSize: THREE.Vector2): void {
+  const before = gobo.onBeforeShadow, after = gobo.onAfterShadow;
+  gobo.onBeforeShadow = function (renderer, object, camera, current, geometry, material, group) {
+    before.call(this, renderer, object, camera, current, geometry, material, group);
+    geometry.setDrawRange(0, current === shadowCamera ? 6 : 0);
+    const depth = material as THREE.ShaderMaterial;
+    const origin = depth.uniforms?.uShadowCellOrigin?.value as THREE.Vector2 | undefined;
+    if (current === shadowCamera && origin) {
+      // The shadow renderer has just updated this camera. Anchor coverage to
+      // its absolute integer light-space cells, including during raw renders
+      // that do not advance the cloud layer or its gobo transforms.
+      const m = shadowCamera.matrixWorldInverse.elements;
+      origin.set(cloudShadowCellOrigin(shadowCamera.left, m[12], shadowCamera.right - shadowCamera.left, mapSize.x),
+        cloudShadowCellOrigin(shadowCamera.bottom, m[13], shadowCamera.top - shadowCamera.bottom, mapSize.y));
+      (depth.uniforms.uShadowWorld.value as THREE.Matrix4).copy(shadowCamera.matrixWorld);
+      (depth.uniforms.uShadowBounds.value as THREE.Vector4).set(shadowCamera.left, shadowCamera.right,
+        shadowCamera.bottom, shadowCamera.top);
+      depth.uniformsNeedUpdate = true;
+    }
+  };
+  gobo.onAfterShadow = function (renderer, object, camera, current, geometry, material, group) {
+    geometry.setDrawRange(0, Infinity);
+    after.call(this, renderer, object, camera, current, geometry, material, group);
+  };
 }
 
 /** What the layer needs of the CSM: its lights (per cascade) and the from-sun direction. */
@@ -1005,8 +1052,6 @@ export class VolumetricCloudLayer {
   private rendererInfo: THREE.WebGLRenderer['info'] | null = null;
   private cascades: CloudShadowCascades | null = null;
   private gobos: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>[] = [];
-  private readonly goboCorner = new THREE.Vector3();
-  private readonly goboUv = new Float32Array(8);
   private readonly scratch = new THREE.Vector3();
   /** Frames rendered with the layer showing (probes). */
   framesShown = 0;
@@ -1078,7 +1123,8 @@ export class VolumetricCloudLayer {
     });
     this.goboMaterial = new THREE.ShaderMaterial({
       name: 'VolumetricCloudGobo', vertexShader: GOBO_VERTEX, fragmentShader: GOBO_FRAGMENT, side: THREE.DoubleSide,
-      uniforms: { ...field(), uThreshold: { value: 0.5 } },
+      uniforms: { ...field(), uThreshold: { value: 0.5 }, uShadowCellOrigin: { value: new THREE.Vector2() },
+        uShadowWorld: { value: new THREE.Matrix4() }, uShadowBounds: { value: new THREE.Vector4() }, uCloudBase: { value: 1400 } },
     });
     this.quad = new FullScreenQuad(this.traceMaterial);
     this.domeMaterial = new THREE.ShaderMaterial({
@@ -1171,6 +1217,7 @@ export class VolumetricCloudLayer {
       gobo.visible = false;
       // the shadow pass renders the plane with the field material: the same two weather fields the trace reads
       gobo.customDepthMaterial = this.goboMaterial;
+      bindCloudShadowCascade(gobo, cascades.lights[i].shadow.camera, cascades.lights[i].shadow.mapSize);
       markShadowOnly(gobo);
       this.scene.add(gobo);
       this.gobos.push(gobo);
@@ -1192,6 +1239,7 @@ export class VolumetricCloudLayer {
     const preset = this.preset;
     const g = this.goboMaterial.uniforms;
     g.uThreshold.value = preset ? preset.shadowThreshold : 0.5;
+    g.uCloudBase.value = preset?.baseM ?? 1400;
     g.uStreets.value = preset ? preset.streets : 0;
     g.uFieldMix.value = preset ? preset.fieldMix : 0;
   }
@@ -1381,8 +1429,9 @@ export class VolumetricCloudLayer {
     (u.uCamTan.value as THREE.Vector2).copy(cam.tan);
   }
 
-  /** Move the gobos with their cascades: at the light, facing it, sized to the shadow box, uv = the world xz on the cloud base. */
-  private updateGobos(preset: CloudLayerPreset): void {
+  /** The draw hook supplies the current shadow projection, including when
+   * the scene is rendered directly without advancing the cloud animation. */
+  private updateGobos(_preset: CloudLayerPreset): void {
     const cascades = this.cascades;
     const show = this.shadowsActive;
     if (!cascades) return;
@@ -1391,25 +1440,7 @@ export class VolumetricCloudLayer {
       const gobo = this.gobos[i];
       const light = cascades.lights[i];
       if (!light || !show || Math.abs(dir.y) < 0.02) { gobo.visible = false; continue; }
-      const cam = light.shadow.camera;
       gobo.visible = true;
-      gobo.position.copy(light.position).addScaledVector(dir, 1.5);
-      gobo.lookAt(this.goboCorner.copy(gobo.position).sub(dir));
-      const w = cam.right - cam.left, h = cam.top - cam.bottom;
-      gobo.scale.set(w * 1.02, h * 1.02, 1);
-      gobo.updateMatrixWorld(true);
-      // project each corner along the light onto the cloud base: the field material samples the same two
-      // weather fields at that world xz with the trace's own shifts (the wind drift plus the map's offset)
-      const uvs = gobo.geometry.getAttribute('uv') as THREE.BufferAttribute;
-      const positions = gobo.geometry.getAttribute('position') as THREE.BufferAttribute;
-      for (let v = 0; v < 4; v++) {
-        this.goboCorner.fromBufferAttribute(positions, v).applyMatrix4(gobo.matrixWorld);
-        const s = (preset.baseM - this.goboCorner.y) / dir.y;
-        this.goboUv[v * 2] = this.goboCorner.x + dir.x * s;
-        this.goboUv[v * 2 + 1] = this.goboCorner.z + dir.z * s;
-      }
-      uvs.set(this.goboUv);
-      uvs.needsUpdate = true;
     }
   }
 
@@ -1541,6 +1572,23 @@ export class VolumetricCloudLayer {
     if (!this.timerOpen || !this.timerExt) return;
     (this.renderer.getContext() as WebGL2RenderingContext).endQuery(this.timerExt.TIME_ELAPSED_EXT);
     this.timerOpen = false;
+  }
+
+  /** Complete interleaved history plus four averaging cycles for a still.
+   * Trace only the cloud targets; do not redraw the complete world 68 times. */
+  settleForCapture(camera: THREE.PerspectiveCamera): boolean {
+    if (!this.targetWidth || !this.targetHeight) return false;
+    const remaining = this.captureFramesRemaining;
+    for (let i = 0; i < remaining; i++) {
+      this.beforeSceneRender(this.renderer, camera, 0, this.targetWidth, this.targetHeight);
+    }
+    return remaining > 0;
+  }
+
+  /** Cold captures must average the first noisy Bayer samples as well as fill every slot. */
+  get captureFramesRemaining(): number {
+    if (!this.active || !this.preset || this.frozen) return 0;
+    return Math.ceil((16 - this.rebuild) / CLOUD_REBUILD_SLOTS) + Math.max(0, 64 - this.since);
   }
 
   /**

@@ -20,7 +20,9 @@ export default {
     // sixteen authored stations / the existing 64-sample canonical contour.
     lakes: [
       // Narrow north/south field drain; unequal ends avoid a capsule outline.
-      { x: -204, z: -281, r: 102, level: 1.4,
+      // The narrow drain needs a wider dry apron around its angular bends;
+      // its wet contour stays fixed and the roads retain their own support.
+      { x: -204, z: -281, r: 102, level: 1.4, bankBand: 4,
         radii: [0.20, 0.23, 0.30, 0.49, 1.00, 0.44, 0.26, 0.21,
           0.24, 0.26, 0.34, 0.48, 0.78, 0.42, 0.31, 0.24] },
       // Broad retention bay with a sheltered southwest inlet.

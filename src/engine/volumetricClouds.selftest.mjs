@@ -9,6 +9,7 @@
 // cirrus companion field in the wind frame, the curl volume and the blue-noise tile; every map's `clouds` block
 // resolves through its regime row (cloudscapes.ts) into the pinned 31-map cloudscape table; the layer is the default from round 71c (owner approval on the review sheet).
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
@@ -18,7 +19,7 @@ import {
 import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
 import {
-  CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR,
+  VolumetricCloudLayer, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -27,6 +28,27 @@ import { getMapConfig } from '../world/maps/index.ts';
 
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
+
+// A capture rebuilds missing slots and converges their noisy first samples.
+// The real method may touch only its own cloud targets and must keep time fixed.
+{
+  const layer=Object.create(VolumetricCloudLayer.prototype);
+  Object.assign(layer,{targetWidth:3840,targetHeight:2160,preset:{},frozen:false,rebuild:4,since:0,renderer:{},
+    atmosphere:{active:true},noise:{shape:{},detail:{},curl:{},weather:{},streets:{},blue:{}}});
+  let traces=0;
+  const camera={};
+  layer.beforeSceneRender=(renderer,view,dt,w,h)=>{
+    assert.equal(renderer,layer.renderer);assert.equal(view,camera);assert.equal(dt,0);
+    assert.equal(w,3840);assert.equal(h,2160);traces++;
+    if(layer.rebuild<16)layer.rebuild=Math.min(16,layer.rebuild+CLOUD_REBUILD_SLOTS);
+    else layer.since++;
+  };
+  assert.equal(layer.settleForCapture(camera),true);
+  assert.equal(traces,67);assert.equal(layer.captureFramesRemaining,0);
+  assert.equal(layer.settleForCapture(camera),false,'settled movie frames do no extra traces');
+  layer.rebuild=0;layer.since=0;layer.frozen=true;
+  assert.equal(layer.settleForCapture(camera),false,'capture respects an intentionally frozen layer');
+}
 
 // ---- the noise bakes: deterministic bytes at the shipped sizes and at small sizes, tileable, well distributed
 assert.deepEqual([CLOUD_SHAPE_SIZE, CLOUD_DETAIL_SIZE, CLOUD_WEATHER_SIZE, CLOUD_CURL_SIZE, CLOUD_BLUE_SIZE, CLOUD_NOISE_SEED], [64, 32, 256, 32, 32, 2068], 'the shipped sizes and seed');
@@ -377,3 +399,28 @@ for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powde
 }
 assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudGobo'"));
 console.log('volumetricClouds.selftest: noise digests (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
+
+// A translucent cloud mask is drawn once per cascade, not repeatedly through
+// the other cascades' overlapping planes. Preserve the shared caster hooks.
+{
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial());
+  const own=new THREE.OrthographicCamera(),other=new THREE.OrthographicCamera();
+  let before=0,after=0;
+  mesh.onBeforeShadow=()=>before++;mesh.onAfterShadow=()=>after++;
+  bindCloudShadowCascade(mesh,own,new THREE.Vector2(2048,2048));
+  for(const camera of [own,other,own]) {
+    const args=[null,mesh,null,camera,mesh.geometry,mesh.material,null];
+    mesh.onBeforeShadow(...args);
+    assert.equal(mesh.geometry.drawRange.count,camera===own?6:0);
+    mesh.onAfterShadow(...args);
+    assert.equal(mesh.geometry.drawRange.count,Infinity,'next cascade is not left with a disabled plane');
+  }
+  assert.deepEqual([before,after],[3,3]);mesh.geometry.dispose();mesh.material.dispose();
+  assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
+  assert.match(layerSource,/floor\( gl_FragCoord\.xy \) \+ uShadowCellOrigin/,'coverage follows absolute light-space cells');
+  for(const pixels of [1024,2048,4096])for(const span of [300,660,1200,2500])for(const shift of [-17,-1,0,1,17,257]) {
+    const step=span/pixels,base=cloudShadowCellOrigin(-span/2,-731,span,pixels);
+    const moved=cloudShadowCellOrigin(-span/2,-731-shift*step,span,pixels);
+    assert.equal((moved-shift+512)%256,base,'an integer cascade shift preserves every absolute dither cell');
+  }
+}

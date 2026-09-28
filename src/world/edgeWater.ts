@@ -22,6 +22,9 @@ export interface SeaOpening {
   /** Round 47: how far past the square edge the map's own bay contour still reaches along this opening (m); the
    * derived sector takes over from there. 0 when the terrain hands no contour. */
   coastReachM?: number;
+  /** Measured mouth banks and their offshore tangents: low, high, low slope,
+   * high slope in the opening's transverse coordinates. */
+  bankProfile?: readonly [number, number, number, number];
 }
 
 export interface EdgeWaterField {
@@ -33,6 +36,9 @@ export interface EdgeWaterField {
 
 const TAU = Math.PI * 2;
 const DEFAULT_SHOULDER = 0.58;
+/** Smooth union, bounded by [0,1], with no derivative switch where a bay
+ * meets the offshore band. It preserves exactly dry and fully wet regions. */
+export const mergeSeaWetness = (coast: number, sector: number): number => coast + sector - coast * sector;
 /** Derived openings keep their measured run fully open and taper beyond it. Round 47 follow-up (2026-09-23): the taper
  * was 28 % of the run's half-width (0.78) — at Saltwind's mouth the ring's far rows fell from +50 m to the sea floor
  * across two or three columns, a sheared 30° face that read as two dark slabs from above; near the square the bay's
@@ -72,15 +78,80 @@ export function seaOpeningWeight(angle: number, openings: readonly SeaOpening[] 
   return weight;
 }
 
-/** Grow open water from its mouth on the battlefield edge. A sector centred
- * on the map origin became fully wet across one square-distance contour,
- * cutting both headlands off on the same straight line in a sea-mouth view. */
+/** A bay has width at its mouth. A point-origin fan pinched every opening
+ * into a triangular spit before widening again. Carry the measured width
+ * offshore, with long bends and small bank recesses in world metres. */
 export function seaSectorWeightAt(x: number, z: number, opening: SeaOpening, halfSize = 512): number {
   const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
   const dx = Math.cos(direction), dz = Math.sin(direction);
-  const edge = halfSize / Math.max(Math.abs(dx), Math.abs(dz));
-  return openingWeight(Math.atan2(z - dz * edge, x - dx * edge), opening);
+  const along = x * dx + z * dz - halfSize / Math.max(Math.abs(dx), Math.abs(dz));
+  const length = Math.max(240, Math.min(480, (opening.coastReachM ?? 0) * 1.5 + 80));
+  const mouth = opening.bankProfile ? 1 - smoothstep(0, length, along) : 0;
+  // The measured contour is the native 50% waterline. Start with its narrow
+  // strand, then widen the beach offshore without a step at the bay mouth.
+  const scale = 1 - mouth * 0.75;
+  return 1 - smoothstep(-18 * scale, 22 * scale,
+    seaCoastDistanceAt(x, z, opening, halfSize) + 2 * scale * mouth);
 }
+
+/** Signed metres across the offshore bank; also grades its dry headland. */
+export function seaCoastDistanceAt(x: number, z: number, opening: SeaOpening, halfSize = 512): number {
+  const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
+  const dx = Math.cos(direction), dz = Math.sin(direction);
+  const edge = halfSize / Math.max(Math.abs(dx), Math.abs(dz));
+  const px = x - dx * edge, pz = z - dz * edge;
+  const along = px * dx + pz * dz, across = -px * dz + pz * dx;
+  const angle = Math.min(175, Math.max(10, opening.widthDeg)) * Math.PI / 360;
+  const banks = (at: number): readonly [number, number] => {
+    const width = halfSize * Math.tan(angle * (opening.shoulder ?? DEFAULT_SHOULDER)) + Math.max(0, at) * Math.tan(angle * 0.72);
+    const grow = smoothstep(0, 160, at);
+    const bend = Math.sin(at * 0.004 + direction * 3) * Math.min(90, width * 0.12) * grow;
+    const recess = (Math.sin(at * 0.012 + direction) * 0.7 + Math.sin(at * 0.031 - direction) * 0.3)
+      * Math.min(28, width * 0.05) * grow;
+    return [bend - width - recess, bend + width + recess];
+  };
+  let [low, high] = banks(along);
+  const profile = opening.bankProfile, length = Math.max(240, Math.min(480, (opening.coastReachM ?? 0) * 1.5 + 80));
+  if (profile && along < length) {
+    const end = banks(length), before = banks(length - 1), after = banks(length + 1);
+    const t = Math.max(0, along) / length, t2 = t * t, t3 = t2 * t;
+    const curve = (side: number): number => (2 * t3 - 3 * t2 + 1) * profile[side]
+      + (t3 - 2 * t2 + t) * length * profile[side + 2]
+      + (-2 * t3 + 3 * t2) * end[side] + (t3 - t2) * length * (after[side] - before[side]) * 0.5;
+    low = curve(0); high = curve(1);
+  }
+  // The continued sea begins in front of its mouth. Without this half-plane
+  // the same width also opened a second, inland sea behind the battlefield.
+  return Math.max(low - across, across - high, -along);
+}
+
+/** Shared by the ground and the transparent water; CPU twin above. */
+export const SEA_COAST_GLSL = `
+vec2 seaBanks(float along, vec4 o, float halfSize) {
+  float width = halfSize * tan(o.y * o.z) + max(0.0, along) * tan(o.y * 0.72);
+  float grow = smoothstep(0.0, 160.0, along);
+  float bend = sin(along * 0.004 + o.x * 3.0) * min(90.0, width * 0.12) * grow;
+  float recess = (sin(along * 0.012 + o.x) * 0.7 + sin(along * 0.031 - o.x) * 0.3) * min(28.0, width * 0.05) * grow;
+  return vec2(bend - width - recess, bend + width + recess);
+}
+float seaCoastWeight(vec2 world, vec4 o, vec4 profile, float halfSize) {
+  vec2 direction = vec2(cos(o.x), sin(o.x));
+  vec2 p = world - direction * (halfSize / max(abs(direction.x), abs(direction.y)));
+  float along = dot(p, direction), across = dot(p, vec2(-direction.y, direction.x));
+  vec2 banks = seaBanks(along, o, halfSize);
+  float length = clamp(o.w * 1.5 + 80.0, 240.0, 480.0);
+  if (profile.y > profile.x + 1.0 && along < length) {
+    float t = max(0.0, along) / length, t2 = t * t, t3 = t2 * t;
+    vec2 tangent = (seaBanks(length + 1.0, o, halfSize) - seaBanks(length - 1.0, o, halfSize)) * 0.5;
+    banks = (2.0 * t3 - 3.0 * t2 + 1.0) * profile.xy + (t3 - 2.0 * t2 + t) * length * profile.zw
+      + (-2.0 * t3 + 3.0 * t2) * seaBanks(length, o, halfSize) + (t3 - t2) * length * tangent;
+  }
+  float mouth = profile.y > profile.x + 1.0 ? 1.0 - smoothstep(0.0, length, along) : 0.0;
+  float scale = 1.0 - mouth * 0.75;
+  return 1.0 - smoothstep(-18.0 * scale, 22.0 * scale,
+    max(max(banks.x - across, across - banks.y), -along) + 2.0 * scale * mouth);
+}
+`;
 
 /** Round 49 (2026-09-23): 1 inside a sea opening (its taper included) and for the first third of `bandRad` beyond its
  * outer edge, easing to 0 at `bandRad` — the columns where a headland meets the water (a fjord peninsula sits 4–8°
@@ -193,6 +264,31 @@ export function seaOpeningUniforms(openings: readonly SeaOpening[]): THREE.Vecto
   return slots;
 }
 
+export function seaBankUniforms(openings: readonly SeaOpening[]): THREE.Vector4[] {
+  return Array.from({ length: 4 }, (_, i) => new THREE.Vector4(...(openings[i]?.bankProfile ?? [0, 0, 0, 0])));
+}
+
+/** Continue the bay's actual bank position and tangent. Joining two unrelated
+ * masks with max() left a pointed spit at each bay/sea intersection. */
+function measureMouthBanks(opening: SeaOpening, waterAt: OutlandWaterQuery, halfSize: number): SeaOpening['bankProfile'] {
+  const angle = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180, dx = Math.cos(angle), dz = Math.sin(angle);
+  const edge = halfSize / Math.max(Math.abs(dx), Math.abs(dz));
+  const banksAt = (along: number): readonly [number, number] | null => {
+    const wet = (across: number): boolean => (waterAt(dx * (edge + along) - dz * across, dz * (edge + along) + dx * across)?.wetness ?? 0) >= 0.5;
+    if (!wet(0)) return null;
+    const bank = (side: number): number => {
+      let inside = 0, outside = 4;
+      while (outside < halfSize * 2 && wet(outside * side)) { inside = outside; outside += 4; }
+      for (let i = 0; i < 12; i++) { const mid = (inside + outside) / 2; if (wet(mid * side)) inside = mid; else outside = mid; }
+      return (inside + outside) * 0.5 * side;
+    };
+    return [bank(-1), bank(1)];
+  };
+  const at = banksAt(0), before = banksAt(-4), after = banksAt(4);
+  if (!at || !before || !after) return undefined;
+  return [at[0], at[1], Math.max(-1, Math.min(1, (after[0] - before[0]) / 8)), Math.max(-1, Math.min(1, (after[1] - before[1]) / 8))];
+}
+
 function azimuthDistanceDeg(a: number, b: number): number {
   const d = Math.abs(((a - b) % 360 + 540) % 360 - 180);
   return d;
@@ -221,20 +317,22 @@ export function resolveSeaOpenings(
   // round 47: how far the bay's own contour runs past the edge along each opening (the sector opens beyond it)
   const waterAt = field && typeof field.getOutlandWaterAt === 'function' ? field.getOutlandWaterAt : null;
   const halfSize = field && Number.isFinite(field.size) ? (field.size as number) / 2 : 512;
-  for (const opening of openings) opening.coastReachM = coastReachAlong(opening, waterAt, halfSize);
+  for (const opening of openings) {
+    opening.coastReachM = coastReachAlong(opening, waterAt, halfSize);
+    if (opening.source === 'edge' && waterAt) opening.bankProfile = measureMouthBanks(opening, waterAt, halfSize);
+  }
   return openings;
 }
 
 /** Round 47 (2026-09-23): a bay's own contour evaluated past the square (terrain.ts outlandWaterAt). */
 export type OutlandWaterQuery = (x: number, z: number) => { wetness: number; level: number } | null;
-/** The open-sea sector fades in over the second half of the bay contour's reach past the edge and is fully open
- * BEFORE the contour's own far shore (0.85 of the reach + 20 m), so a bay mouth opens straight into the sea and the
- * disc's far arc — a modelling artifact, never geography — is under water by the time the ring reaches it. The
- * round-47 law ([0.7, 1.1 + 40]) left ~60 % of the ring's height standing on that arc: a dark bank across every sea
- * horizon, and a cliff wall when the arc lay under the ring's mountains. With no contour (reach 0) it opens within 20 m. */
-export function seaSectorBlend(coastReachM: number | undefined): readonly [number, number] {
+/** Open the full-width mouth early enough to submerge the return arcs of
+ * neighbouring coves. A late, point-width fan left detached sand fragments
+ * offshore. The ramp spans one carrier cell when no contour is supplied. */
+export function seaSectorBlend(coastReachM: number | undefined, bankProfile?: SeaOpening['bankProfile']): readonly [number, number] {
+  if (bankProfile) return [0, 24];
   const reach = Math.max(0, coastReachM ?? 0);
-  return [reach * 0.5, reach * 0.85 + 20];
+  return [reach * 0.12, reach * 0.5 + 8];
 }
 /** March the bay contour outward from the square edge along an opening's azimuth: the last wet metre. */
 export function coastReachAlong(opening: SeaOpening, waterAt: OutlandWaterQuery | null | undefined, halfSize = 512): number {
@@ -271,23 +369,32 @@ export function buildOutlandWaterGeometry(
   if (!openings.length) return null;
   const positions: number[] = [], normals: number[] = [], indices: number[] = [];
   const slots = new Map<string, number>();
+  const surfaceAt = (x: number, z: number): { wetness: number; level: number } | null => {
+    const surface = waterAt(x, z);
+    if ((surface?.wetness ?? 0) >= 1) return surface;
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - halfSize;
+    let sector = 0, level = surface?.level ?? openings[0].level;
+    for (const opening of openings) {
+      const [from, to] = seaSectorBlend(opening.coastReachM, opening.bankProfile);
+      const wetness = seaSectorWeightAt(x, z, opening, halfSize) * smoothstep(from, to, edgeOut);
+      if (wetness > sector) { sector = wetness; if (wetness > (surface?.wetness ?? 0)) level = opening.level; }
+    }
+    const wetness = mergeSeaWetness(surface?.wetness ?? 0, sector);
+    return wetness > 0 ? { wetness, level } : null;
+  };
   // The cells are carriers: the sheet shader fades the apron along the baked bay contour (uOutlandWater), so a
   // cell is admitted as soon as any corner touches the coast or the open-sea sector, and the shoreline itself is
   // the smooth mask, never the 16 m cell edge.
   const levelAt = (x: number, z: number, sampleM = cellM): number | null => {
     let level: number | null = null, best = 0;
     for (const [dx, dz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5], [0, 0]] as const) {
-      const coast = waterAt(x + dx * sampleM, z + dz * sampleM);
+      const coast = surfaceAt(x + dx * sampleM, z + dz * sampleM);
       if (coast && coast.wetness >= wetThreshold && coast.wetness > best) { best = coast.wetness; level = coast.level; }
     }
-    if (level !== null) return level;
-    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - halfSize;
-    const angle = Math.atan2(z, x);
-    const opening = dominantSeaOpening(angle, openings);
-    if (!opening) return null;
-    const [from, to] = seaSectorBlend(opening.coastReachM);
-    const far = smoothstep(from - sampleM, to, edgeOut + sampleM);
-    return far > 0 && seaSectorWeightAt(x, z, opening, halfSize) * far >= 0.015 ? opening.level : null;
+    // Sample the complete continuous sea at the corners too. A centre-only
+    // offshore test omitted partially wet coarse cells, exposing grid-shaped
+    // strips of the dark seabed along every distant bank.
+    return level;
   };
   const vertex = (ix: number, iz: number, level: number): number => {
     const key = `${ix},${iz}`;
@@ -298,12 +405,7 @@ export function buildOutlandWaterGeometry(
     const x = ix * cellM, z = iz * cellM;
     let depth = depthM;
     if (ramp) {
-      const coast = waterAt(x, z);
-      const opening = dominantSeaOpening(Math.atan2(z, x), openings);
-      const [from, to] = seaSectorBlend(opening?.coastReachM);
-      const sector = opening ? seaSectorWeightAt(x, z, opening, halfSize)
-        * smoothstep(from, to, Math.max(Math.abs(x), Math.abs(z)) - halfSize) : 0;
-      depth = shallowWaterDepth(smoothstep(ramp[0], ramp[1], Math.max(coast?.wetness ?? 0, sector)), depthM);
+      depth = shallowWaterDepth(smoothstep(ramp[0], ramp[1], surfaceAt(x, z)?.wetness ?? 0), depthM);
     }
     positions.push(x, level + depth, z);
     normals.push(0, 1, 0);

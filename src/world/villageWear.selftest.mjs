@@ -1,3 +1,4 @@
+import { beforeShorelineContinuity } from './shorelineContinuity.test-support.mjs';
 import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
@@ -137,7 +138,7 @@ function checkScope(resolve) {
   assert.equal(foundry.splat.townWear, 1.6, 'Foundry authored soil keeps its bounded material strength');
   assert.deepEqual(foundry.terrain.workedGround, foundryPatches, 'the three accepted Foundry footprints remain exact');
   // Mars mode (2026-09-18): Olympus Basin postdates the frozen parent inputs — the catalog receipts guard it
-  assert.equal(hash(stringify(MAP_IDS.filter(id => id !== 'mars').map(id => historicalAutumnPaletteInput(originalConfig(originalExitConfig(resolve(id))))))), FROZEN.configs,
+  assert.equal(hash(stringify(MAP_IDS.filter(id => id !== 'mars').map(id => historicalAutumnPaletteInput(originalConfig(originalExitConfig(beforeShorelineContinuity(resolve(id)))))))), FROZEN.configs,
     'only the two visual terrain properties differ from the exact parent inputs');
 }
 
@@ -250,7 +251,7 @@ function checkPilot(id, seed) {
       if (pilots.includes(id)) {
         // The archived mask predates authored road grading. Keep its exact
         // constructor/config while all behavioral comparisons above stay live.
-        const historical = bake(originalExitConfig(baseline), seed, historicalRoadHeightField);
+        const historical = bake(originalExitConfig(beforeShorelineContinuity(baseline)), seed, historicalRoadHeightField);
         try { assert.equal(hash(historical.pixels), FROZEN.pilotMasks[id][current.size],
           'original coverage reproduces the authenticated parent mask'); }
         finally { historical.texture.dispose(); }
@@ -276,7 +277,7 @@ function checkOtherMaps(tier) {
   for (const id of MAP_IDS) {
     // Mars mode (2026-09-18): Olympus Basin postdates the all28 parent receipt
     if (pilots.includes(id) || id === 'mars') continue;
-    const built = bake(historicalBadlandsInput(historicalFoundryServiceInput(originalExitConfig(getMapConfig(id)))), 1337, historicalRoadHeightField);
+    const built = bake(historicalBadlandsInput(historicalFoundryServiceInput(originalExitConfig(beforeShorelineContinuity(getMapConfig(id))))), 1337, historicalRoadHeightField);
     assert.equal(built.size, tier === 'desktop' ? 512 : 256, 'actual tier-scaled raster, not a relabeled desktop bake');
     results.push([id, hash(built.pixels)]); built.texture.dispose();
   }

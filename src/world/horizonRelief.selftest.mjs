@@ -12,6 +12,7 @@ import { Matrix4, Vector3 } from 'three';
 import { HORIZON_SEGMENTS, buildHorizonRing, resolveHorizonLightingGains, sampleHorizonGeometry } from './maps/horizon.ts';
 import { seaOpeningWeight } from './edgeWater.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { createHeightField } from './terrain.ts';
 
 // --- the characters ---------------------------------------------------------------------------------------------
 assert.deepEqual([...HORIZON_RELIEF_CHARACTERS].sort(), ['alpine', 'coastal', 'karst', 'martian', 'mesa', 'polar', 'rolling', 'volcanic'],
@@ -150,6 +151,23 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   assert.ok(sea.heights[east] < 0 && sea.marine[east] > 0.99, 'the far range opens onto the sea in a sea sector');
   for(let i=0;i<sea.heights.length;i++) if(seaOpeningWeight((i%n)/n*Math.PI*2,{azimuthDeg:90,widthDeg:60,level:-4})>.05)
     assert.ok(sea.heights[i]<-4,'the background range cannot intersect the shore or water at partial sector coverage');
+  // Use an uneven, differently sampled near edge; a fixed 1860 m foot left
+  // sky-visible holes between the two landscape meshes.
+  const columns=431,positions=new Float32Array(columns*3),heights=new Float32Array(columns);
+  for(let k=0;k<columns;k++) {
+    const angle=k/columns*Math.PI*2,r=1310+80*Math.sin(angle*3);
+    positions[k*3]=Math.cos(angle)*r;positions[k*3+2]=Math.sin(angle)*r;
+    positions[k*3+1]=heights[k]=35+18*Math.sin(angle*5);
+  }
+  for (const seaOpenings of [[], [{azimuthDeg:90,widthDeg:60,level:-4}]]) {
+    const joined=sampleHorizonFarRange({seed:77,settings:far,deckBaseM:2000,seaOpenings,nearEdge:{columns,positions,heights}});
+    assert.equal(joined.columns,columns,'the distant apron matches every near-edge station');
+    for(let k=0;k<columns;k++) {
+      const x=positions[k*3],z=positions[k*3+2];
+      assert.ok(Math.abs(Math.hypot(x,z)-Math.hypot(joined.positions[k*3],joined.positions[k*3+2])-2)<.001,'far foot overlaps the near edge even beside coastal headlands');
+      assert.ok(Math.abs(joined.heights[k]-(heights[k]-.02))<.00001,'far foot seats on the matching near-edge height');
+    }
+  }
 }
 
 // --- the ring geometry with the relief: every map, three seeds, the receipts' own laws -----------------------------
@@ -172,6 +190,25 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
     assert.ok(ridged > n / 15 * (authored.length - 1) * 0.25, `${mapId}/${seed}: the ranges carry relief along their crests (${ridged} bent triples)`);
   }
 }
+// The production path seats and refines every landscape against actual ground.
+// Check all maps, including the square corners, independently of legacy hashes.
+for(const id of MAP_IDS) {
+  const config=getMapConfig(id),ground=createHeightField(5000,config);
+  const ring=sampleHorizonGeometry(config,1337,ground),p=ring.positions,n=HORIZON_SEGMENTS;
+  assert.ok(ring.heights.length<=75000,`${id}: continued-ground vertex budget`);
+  for(let column=0;column<n;column++) {
+    assert.ok(ring.heights[column] <= -64,
+      `${id}: coastal grading cannot lift the buried closing row through a corner cliff`);
+    const i=(n+column)*3;
+    assert.ok(Math.abs(p[i+1]-ground.getHeightAt(p[i],p[i+2]))<.2,`${id}: seated terrain seam, including wet bank vertices`);
+    for(let row=1;row<ring.rows.length;row++) {
+      const next=(row*n+column)*3,before=next-n*3;
+      assert.ok(Number.isFinite(p[next+1]),`${id}: finite continued geology`);
+      assert.ok(Math.hypot(p[next],p[next+2])>Math.hypot(p[before],p[before+2]),`${id}: no folded radial faces`);
+    }
+  }
+}
+
 // --- the round-72 dressing rules on a built ring: no range tree past 880 m or above half the ring, no ribbon on a far
 // or high crest, the far range present, the crowns' height haze in the program ------------------------------------
 {
@@ -203,9 +240,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
     assert.ok(range > 50, `a green map's near ranges still carry range-class trees (${range})`);
     const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <project_vertex>', fragmentShader: '#include <common>\n#include <lights_physical_pars_fragment>\n#include <map_fragment>' };
     forest.userData.horizonForestHook(shader);
-    assert.match(shader.fragmentShader, /uniform float uVfMaxH;/, 'the crowns know the ring height');
-    assert.match(shader.fragmentShader, /vfHigh \* 0\.55/, 'a crown high on a distant face takes the fog the face takes');
-    assert.equal(shader.uniforms.uVfMaxH.value, Math.max(1, maxH));
+    assert.ok(!shader.fragmentShader.includes('vfHigh') && !shader.fragmentShader.includes('uVfFog'), 'fallback crowns use camera-distance scene fog without a second map-radius wash');
     const comb = mesh.getObjectByName('horizon-treeline');
     assert.ok(comb, 'the skyline ribbon');
     const cp = comb.geometry.attributes.position;

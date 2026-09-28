@@ -25,7 +25,16 @@ function authoredRadiusAt(radii: ShorelineRadii, angle: number): number {
   const sample = (turns - Math.floor(turns)) * 16;
   const station = Math.floor(sample), fraction = sample - station;
   const a = radii[station & 15], b = radii[(station + 1) & 15];
-  return a + (b - a) * fraction;
+  // Periodic monotone Hermite interpolation: the old straight chords made
+  // sixteen visible corners in every authored bay. Harmonic tangents keep
+  // coves smooth without overshooting a protected channel or narrow bank.
+  const before = a - radii[(station + 15) & 15];
+  const delta = b - a, after = radii[(station + 2) & 15] - b;
+  const m0 = before * delta > 0 ? 2 * before * delta / (before + delta) : 0;
+  const m1 = delta * after > 0 ? 2 * delta * after / (delta + after) : 0;
+  const t = fraction, t2 = t * t, t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * a + (t3 - 2 * t2 + t) * m0
+    + (-2 * t3 + 3 * t2) * b + (t3 - t2) * m1;
 }
 
 /** Construction-only bank grading must use the narrowest authored cove. */

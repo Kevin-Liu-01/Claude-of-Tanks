@@ -115,7 +115,8 @@ export function shapeRedrockOutland(ring: CanyonRing, ground?: CanyonGround): vo
       ring.positions[offset + 2] *= scale;
     }
     const x = ring.positions[offset], z = ring.positions[offset + 2];
-    const height = seam && ground ? ground.getHeightAt(x, z) : sampleRedrockCanyon(x, z);
+    const height = seam && ground ? ground.getHeightAt(x, z)
+      : ground?.getOutlandHeightAt?.(x, z) ?? sampleRedrockCanyon(x, z);
     ring.heights[index] = height;
     ring.positions[offset + 1] = height;
     ring.maxHeight = Math.max(ring.maxHeight, ring.heights[index]);

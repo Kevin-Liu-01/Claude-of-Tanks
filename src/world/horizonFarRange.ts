@@ -49,6 +49,9 @@ interface HorizonFarRangeOptions {
   nearMaxHeight: number;
   /** The vista's ambient and sun gains for this map (maps/horizon.ts resolveHorizonLightingGains). */
   gains: { ambient: number; sunGain: number };
+  /** Actual outer edge of the near landscape. The distant apron starts here
+   * instead of leaving a sky-visible annular gap before its old 1860 m foot. */
+  nearEdge?: { columns: number; positions: Float32Array; heights: Float32Array };
 }
 
 interface HorizonFarRangeGeometry {
@@ -82,9 +85,9 @@ export function resolveFarRangeAmp(settings: HorizonFarRangeSettings, deckBaseM:
 }
 
 /** Pure geometry (world xz, heights), for the mesh and the receipts. */
-export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings'>): HorizonFarRangeGeometry {
+export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge'>): HorizonFarRangeGeometry {
   const { settings: s, seed } = options;
-  const n = HORIZON_FAR_SEGMENTS, rows = HORIZON_FAR_ROWS;
+  const n = options.nearEdge?.columns ?? HORIZON_FAR_SEGMENTS, rows = HORIZON_FAR_ROWS;
   const noise = new SimplexNoise({ random: mulberry32(seed >>> 0) });
   const ampM = resolveFarRangeAmp(s, options.deckBaseM);
   const TAU = Math.PI * 2;
@@ -157,7 +160,7 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       const env = s.floor + (1 - s.floor) * smoothstep(0.12, 0.88, noise.noise(ca * 1.7 + 11.3, sa * 1.7 - 4.1) * 0.5 + 0.5);
       // a rigid radius meander per row so the crest lines bend in plan
       const radius = rowR * (1 + 0.035 * noise.noise(ca * 3.1 + row * 7.3, sa * 3.1 - row * 2.9));
-      const x = ca * radius, z = sa * radius;
+      let x = ca * radius, z = sa * radius;
       // ridged crests along the row, warped by a broad world field so the massifs are two-dimensional
       const wx = x + noise.noise(x * 0.0009 + 3.7, z * 0.0009 - 8.1) * 260;
       const wz = z + noise.noise(x * 0.0009 - 5.9, z * 0.0009 + 2.3) * 260;
@@ -178,6 +181,24 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       if (coastClearance > 0) {
         const seaFloor = Math.min(...options.seaOpenings.map(value => value.level)) - 24;
         h += (seaFloor - h) * smoothstep(0, 0.65, coastClearance);
+      }
+      if (row === 0 && options.nearEdge) {
+        const edge = options.nearEdge, station = k / n * edge.columns;
+        const column = Math.floor(station), t = station - column;
+        const start = edge.heights.length - edge.columns;
+        const i0 = start + column, i1 = start + (column + 1) % edge.columns;
+        const px = edge.positions[i0 * 3] + (edge.positions[i1 * 3] - edge.positions[i0 * 3]) * t;
+        const pz = edge.positions[i0 * 3 + 2] + (edge.positions[i1 * 3 + 2] - edge.positions[i0 * 3 + 2]) * t;
+        // Match every edge station, including partial coastal sectors. The
+        // old sector test left sky-visible holes beside the headlands. Where
+        // the sea apron already extends beyond this foot it covers the join;
+        // pulling the foot past the next row there would fold the mesh.
+        const nearRadius = Math.hypot(px, pz);
+        if (nearRadius <= radius) {
+          const overlap = 1 - 2 / Math.max(1, nearRadius);
+          x = px * overlap; z = pz * overlap;
+          h = edge.heights[i0] + (edge.heights[i1] - edge.heights[i0]) * t - 0.02;
+        }
       }
       const i = row * n + k;
       positions[i * 3] = x; positions[i * 3 + 1] = h; positions[i * 3 + 2] = z;

@@ -345,7 +345,7 @@ const unrelatedMutation = createHash('sha256');
 // The coastal extension now reaches beyond the water apron. All other maps
 // retain their exact pre-change positions, independently frozen below.
 // 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
-// preserves all original inland positions at the same three seeds.
+// preserves original inland positions with the declared Redrock regional redesign.
 const unchangedReceipts = [
   'b8944462a63ab720454aa8fd07e7427aa55dd26be64a09c1d9fc4b11251dd639',
   'a0646bf18e1030a9d58a1965b39cf97ced3b31dc3379f3fbe36d75b51f23a250',
@@ -403,10 +403,10 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
 assert.deepEqual(Array.from(unchangedGeometry.values(), hash => hash.digest('hex')), unchangedReceipts,
   'reviewed coastal extension and declared historical Polders/Titan/Badlands inputs remain exact');
 assert.deepEqual(Array.from(inlandGeometry.values(), hash => hash.digest('hex')), [
-  '1656d78af870ded739c83406a431fb84dcee7f3860e3659071df619a6abc1689',
-  '7fed6d53a65c811c7a8cf3d56134cb4c1d40467e59cf772c6b221e6e747267c2',
-  '432da45563a3b93d73261e4711d23685c8143c50ac8738e327c8c9fc3dc223ba',
-], 'coastal work preserves all original inland positions at three seeds');
+  'a61bc5d100b94383aefd7351d68921b9ec0521706445cb32b7fa7abe90da0a4a',
+  '0fd9a9c430291108aa00da580a6de8468dfe6550c6a480ba3a8016bd063df0e9',
+  '2f793f94a114fc0f8916ca3b05defe5229a3e33068dffff2a17722c167745e04',
+], 'reviewed Redrock regional canyon and unchanged other inland positions at three seeds');
 assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), unchangedReceipts[0]),
   { code: 'ERR_ASSERTION' }, 'Historical-input attribution does not hide unrelated map geometry changes');
 
@@ -601,6 +601,10 @@ try {
     if (x > 0 && Math.abs(z / x) < 0.1) {
       assert.ok(y <= -4.04 + 0.00001,
         'eastward sea aperture lowers every face beneath the water and preserves buried seam anchors');
+      if (i < columns) {
+        assert.equal(coastalUv.getY(i), 0, 'buried closing anchors retain land UVs below the sea floor');
+        continue;
+      }
       assert.equal(coastalUv.getY(i), -1,
         'the planar sea explicitly bypasses the one-dimensional forest texture row');
       const sample = { radius: Math.hypot(x, z), channels: [coastalColors.getX(i), coastalColors.getY(i), coastalColors.getZ(i)] };
@@ -707,8 +711,10 @@ try {
   // on the playable edge and row 0 is the buried closing anchor (up to 110 m under Redrock's plateau). Its radial
   // gradient used to be the two-sided difference across that anchor, which tilted the seam normals (~36° on flat
   // ground) and made the terrain material paint a band of streaked rock on the first strip past every edge. The seam
-  // row now takes a one-sided gradient, so it is never steeper than the strip behind it.
-  for (const [mapId, ceiling] of [['badlands', 0.7], ['copper_mesa', 0.9], ['alpine', 0.9], ['verdant', 0.4], ['urban', 0.35]]) {
+  // row now takes a one-sided gradient. Redrock's actual regional field and
+  // square-edge triangles are covered by redrockCanyonHorizon.selftest; its
+  // asymmetric mouth no longer follows this classic annular slope profile.
+  for (const [mapId, ceiling] of [['copper_mesa', 0.9], ['alpine', 0.9], ['verdant', 0.4], ['urban', 0.35]]) {
     const config = getMapConfig(mapId);
     const mesh = buildHorizonRing(null, { ...config, horizon: { ...config.horizon, treeline: 0 } }, 1337);
     const normal = mesh.geometry.attributes.normal;

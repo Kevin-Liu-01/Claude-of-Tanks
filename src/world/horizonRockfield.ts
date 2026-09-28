@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { sampleHorizonFace } from './horizonSurface.ts';
 
 /**
  * Round 32 (owner 2026-09-21, "redrock still has the noticeable texture/shadow/quality loss beyond the map
@@ -44,8 +45,6 @@ interface RockPlacement {
   scale: number; squash: number; yaw: number; tilt: number; roll: number;
   variant: number; tone: number; band: boolean; beyond: number; key: number; detail: number;
 }
-
-type RockCompileHook = (shader: { uniforms: Record<string, THREE.IUniform>; vertexShader: string; fragmentShader: string }) => void;
 
 export const HORIZON_ROCK_VARIANTS = 3;
 export const HORIZON_ROCK_MAX_SLOPE = 0.95; // rise/run — boulders rest below ~43°, the walls above keep their strata
@@ -101,7 +100,7 @@ export function buildHorizonBoulder(variant: number, seed: number, rock: THREE.C
 }
 
 export function buildHorizonRockfield(options: HorizonRockfieldOptions): THREE.Group | null {
-  const { columns: n, rows, positions, heights, seed, fog } = options;
+  const { columns: n, rows, positions, heights, seed } = options;
   const density = Math.min(1, Math.max(0, options.density));
   if (density <= 0 || options.maxInstances <= 0) return null;
   const rng = tileRng((seed ^ 0x2C0C) >>> 0);
@@ -128,6 +127,7 @@ export function buildHorizonRockfield(options: HorizonRockfieldOptions): THREE.G
       variant: Math.floor(rng() * HORIZON_ROCK_VARIANTS), tone: 0.82 + rng() * 0.30, band, beyond, key: rng(), detail: 1,
     });
   };
+  const surface = { x: 0, y: 0, z: 0, slope: 0 };
   for (let row = 1; row < rows.length - 1; row++) {
     if (rows[row].skirt && rows[row + 1].skirt) continue;
     const band = row < ridgeRow;
@@ -152,9 +152,9 @@ export function buildHorizonRockfield(options: HorizonRockfieldOptions): THREE.G
       count = Math.floor(count) + (rng() < count - Math.floor(count) ? 1 : 0);
       for (let t = 0; t < count; t++) {
         const u = rng(), w = rng();
-        const x = positions[i00 * 3] + (positions[i01 * 3] - positions[i00 * 3]) * u + dx * w;
-        const z = positions[i00 * 3 + 2] + (positions[i01 * 3 + 2] - positions[i00 * 3 + 2]) * u + dz * w;
-        const y = heights[i00] + (heights[i01] - heights[i00]) * u + (heights[i10] - heights[i00]) * w;
+        sampleHorizonFace(positions, heights, i00, i01, i10, i11, u, w, surface);
+        const { x, y, z } = surface;
+        if (surface.slope > HORIZON_ROCK_MAX_SLOPE) continue;
         if (y < 1.0) continue; // the sea aperture
         if (!band && (Math.hypot(x, z) > rangeRadius || y > rangeHeightCap)) continue; // round 72: no specks in the sky
         // patchy field: gravel fans and bare pans instead of one even carpet
@@ -168,7 +168,14 @@ export function buildHorizonRockfield(options: HorizonRockfieldOptions): THREE.G
           const satellites = 2 + Math.floor(rng() * 3);
           for (let s = 0; s < satellites; s++) {
             const a = rng() * Math.PI * 2, d = scale * (0.9 + rng() * 1.6);
-            push(x + Math.cos(a) * d, y + (rng() - 0.5) * 0.2 * scale, z + Math.sin(a) * d, scale * (0.3 + rng() * 0.45), band);
+            // Keep the cluster on this quad and sample each satellite's own
+            // triangle. Reusing the parent's height floats downhill stones.
+            const su = Math.max(.01, Math.min(.99, u + Math.cos(a) * d / Math.max(1, arc)));
+            const sw = Math.max(.01, Math.min(.99, w + Math.sin(a) * d / Math.max(1, radialSpan)));
+            sampleHorizonFace(positions, heights, i00, i01, i10, i11, su, sw, surface);
+            const smallScale = scale * (0.3 + rng() * 0.45);
+            if (surface.y >= 1 && surface.slope <= HORIZON_ROCK_MAX_SLOPE)
+              push(surface.x, surface.y, surface.z, smallScale, band);
           }
         }
       }
@@ -190,33 +197,9 @@ export function buildHorizonRockfield(options: HorizonRockfieldOptions): THREE.G
   group.name = 'horizon-rocks';
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 });
   material.envMapIntensity = 0.9;
-  const hazeStrength = options.haze ?? 0.9;
-  const hook: RockCompileHook = (shader) => {
-    shader.uniforms.uVrFog = { value: fog.clone() };
-    shader.uniforms.uVrHaze = { value: hazeStrength };
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vVrWorld;')
-      .replace('#include <project_vertex>', /* glsl */`{
-        #ifdef USE_INSTANCING
-          vec4 vrw = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
-        #else
-          vec4 vrw = modelMatrix * vec4(transformed, 1.0);
-        #endif
-        vVrWorld = vrw.xyz;
-      }
-      #include <project_vertex>`);
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uVrFog;\nuniform float uVrHaze;\nvarying vec3 vVrWorld;')
-      .replace('#include <map_fragment>', /* glsl */`#include <map_fragment>
-      {
-        // aerial perspective by ring radius — the same curve the ring's own fragments and the ring forest use
-        float vrHz = smoothstep(430.0, 1330.0, length(vVrWorld.xz));
-        diffuseColor.rgb = mix(diffuseColor.rgb, uVrFog, clamp((0.04 + vrHz * vrHz * 0.72) * uVrHaze, 0.0, 0.9));
-      }`);
-  };
-  material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'horizon-rockfield-v1';
-  group.userData.horizonRockfieldHook = hook;
+  // Standard scene fog measures distance from the camera. Additional haze
+  // by map radius made nearby outland rocks abruptly pale at the boundary.
+  material.customProgramCacheKey = () => 'horizon-rockfield-v2';
 
   const geometries: THREE.BufferGeometry[] = [];
   for (let variant = 0; variant < HORIZON_ROCK_VARIANTS; variant++) {

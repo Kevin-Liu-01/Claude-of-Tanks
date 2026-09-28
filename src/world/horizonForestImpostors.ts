@@ -9,7 +9,7 @@
 // mix, the near variant and the mirror from the placement's own fields, the stature that of the battlefield's rim
 // trees — through the shared impostor program (treeImpostors.ts applyProgram: the billboard, the azimuth dissolve,
 // the mip coverage, the baked normal), the far tier's matte wrap and translucency, the far tier's sky fill and the
-// ring's own aerial haze law. The near class's lobe hulls stay as shadow-only casters (their shadows on the rim slopes
+// same camera-distance fog as the playable forest. The near class's lobe hulls stay as shadow-only casters (their shadows on the rim slopes
 // are round 72's) at the impostors' stature; the band and range lobes are disposed. Without a library (the mobile
 // tier, the receipts) the ring keeps its lobes.
 import * as THREE from 'three';
@@ -22,7 +22,7 @@ import { TREE_ARCHETYPES, type TreeSpecies } from './treeSpecies.ts';
 type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
 type MaterialShaderHook = (shader: MaterialShader) => void;
 
-export const HORIZON_FOREST_IMPOSTOR_PROGRAM_KEY = 'horizon-forest-impostor-v1';
+export const HORIZON_FOREST_IMPOSTOR_PROGRAM_KEY = 'horizon-forest-impostor-v2';
 /** The far tier's law the ring's impostors share: the matte diffuse wrap, its translucency and its sky fill. */
 export const HORIZON_FOREST_IMPOSTOR_WRAP = 0.38;
 export const HORIZON_FOREST_IMPOSTOR_THIN = 0.18;
@@ -61,12 +61,6 @@ interface ForestRecord {
 }
 
 interface PoolTag { conifer: boolean; detail: number; variant: number; treeHeight: number }
-
-function mustReplace(src: string, anchor: string, replacement: string): string {
-  const out = src.replace(anchor, replacement);
-  if (out === src) throw new Error(`world/horizonForestImpostors: shader anchor missing: ${anchor}`);
-  return out;
-}
 
 function isConiferSpecies(species: string): boolean {
   return TREE_ARCHETYPES[species as TreeSpecies]?.family === 'conifer';
@@ -161,8 +155,7 @@ export function bindHorizonForestImpostors(
     if (!bucket) { bucket = []; buckets.set(key, bucket); }
     bucket.push(i);
   }
-  // the material: the shared impostor program, the far tier's wrap / translucency / sky fill, the ring's haze law
-  const fogColor = new THREE.Color(record.tone.fog[0], record.tone.fog[1], record.tone.fog[2]);
+  // The same lighting and distance-based scene fog as the playable forest.
   const material = new THREE.MeshStandardMaterial({
     map: library.albedo.texture, vertexColors: true, alphaTest: TREE_IMPOSTOR_ALPHA_TEST, alphaToCoverage: true,
     side: THREE.DoubleSide, roughness: 1.0, metalness: 0.0,
@@ -171,23 +164,6 @@ export function bindHorizonForestImpostors(
   material.customProgramCacheKey = () => HORIZON_FOREST_IMPOSTOR_PROGRAM_KEY;
   const hook: MaterialShaderHook = (shader) => {
     library.applyProgram(shader);
-    shader.uniforms.uVfFog = { value: fogColor };
-    shader.uniforms.uVfHaze = { value: record.tone.haze };
-    shader.uniforms.uVfMaxH = { value: record.tone.maxHeight };
-    shader.vertexShader = mustReplace(shader.vertexShader, '#include <common>', '#include <common>\nvarying vec3 vVfWorld;');
-    shader.vertexShader = mustReplace(shader.vertexShader, '#include <project_vertex>',
-      'vVfWorld = ( modelMatrix * ( instanceMatrix * vec4( transformed, 1.0 ) ) ).xyz;\n#include <project_vertex>');
-    shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform vec3 uVfFog;\nuniform float uVfHaze;\nuniform float uVfMaxH;\nvarying vec3 vVfWorld;');
-    // the ring's aerial perspective by radius and by height (horizonVista.ts, the lobe material's law) — after the
-    // impostor program's mip give-back, before the alpha test
-    shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
-      {
-        float vfHz = smoothstep( 430.0, 1330.0, length( vVfWorld.xz ) );
-        float vfHigh = smoothstep( 0.22, 0.50, vVfWorld.y / uVfMaxH ) * smoothstep( 560.0, 760.0, length( vVfWorld.xz ) );
-        diffuseColor.rgb = mix( diffuseColor.rgb, uVfFog, clamp( ( 0.04 + vfHz * vfHz * 0.72 ) * uVfHaze + vfHigh * 0.55, 0.0, 0.9 ) );
-      }
-      #include <alphatest_fragment>`);
     applyCanopyDiffuseWrap(shader, HORIZON_FOREST_IMPOSTOR_WRAP, true, HORIZON_FOREST_IMPOSTOR_THIN);
   };
   options.setupMaterial(material, hook);

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { beforeShorelineContinuity, loadShorelineHistory } from './shorelineContinuity.test-support.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
@@ -14,6 +15,7 @@ import { historicalShorelineConfig, historicalReservoirConfig, historicalBadland
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
 
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
+const { createHeightField: historicalShoreField } = await loadShorelineHistory(new URL('./terrain.ts', import.meta.url));
 
 // Copper Mesa's quarry is selected by id inside the actual heightfield. Do
 // not erase it to recover old roads. This private import substitutes only
@@ -47,7 +49,7 @@ const ORIGINAL_GRID_LAST = {
   railyard: { xs: 512, zs: 512 }, foundry: { xs: 512, zs: 512 },
   ruinspires: { xs: 512, zs: 512 },
 };
-function originalRoadField(cfg) {
+function originalRoadField(cfg, historical = true) {
   let control = cfg.id === 'alpine' ? originalExitConfig(cfg) : cfg;
   const grid = control.terrain.roads?.grid;
   if (grid) {
@@ -64,7 +66,7 @@ function originalRoadField(cfg) {
       grid: { ...grid, xs: oldAxis('xs'), zs: oldAxis('zs') } } } };
   }
   return cfg.id === 'copper_mesa' ? originalCopperHeightField(1337, control)
-    : createHeightField(1337, { ...control, id: undefined });
+    : (historical ? historicalShoreField : createHeightField)(1337, { ...control, id: undefined });
 }
 
 // Captured BEFORE adding the shore pass, from normal production imports:
@@ -288,17 +290,17 @@ function verifyOasisChannels(before, after) {
     if (i % 4 !== 2) assert.equal(after[i], before[i], 'Oasis road/rut/village-soil bytes stay exact');
     else if (before[i] !== after[i]) waterChanges++;
   }
-  assert.equal(waterChanges, 2663, 'only the authored Oasis water footprint changes');
+  assert.equal(waterChanges, 2647, 'only the authored Oasis water footprint changes');
 }
 
 function checkOasis() {
   const cfg = getMapConfig('oasis'), historical = historicalOasis(cfg);
   const original = bake(originalRoadField(historical), historical);
-  const current = bake(originalRoadField(cfg), cfg);
+  const current = bake(originalRoadField(cfg, false), cfg);
   try {
     checkTexture(current, 512);
     assert.equal(hash(bytes(original)), ORIGINAL.oasis, 'preserve the original three-cell RGBA oracle');
-    assert.equal(hash(bytes(current)), 'eb79944edf401cc18052d161578f887aa65ff700f682d76ff161f94d477633fb',
+    assert.equal(hash(bytes(current)), 'e1f0df1baba31e4709d9fe734362150a302139aedfdea3aa2782d4c73823a7e2',
       'reviewed authored asymmetric Oasis contour, not a replacement historical baseline');
     verifyOasisChannels(bytes(original), bytes(current));
     const roadMutation = bytes(current).slice(); roadMutation[0] ^= 1;
@@ -341,7 +343,7 @@ for (const step of [2, 4]) {
 assert.deepEqual(Object.keys(ORIGINAL).sort(), [...MAP_IDS].sort());
 for (const id of MAP_IDS) {
   if (id === 'mangrove') continue;
-  const cfg = getMapConfig(id);
+  const cfg = beforeShorelineContinuity(getMapConfig(id));
   assert.equal(!!cfg.splat?.shoreDirt, id === 'polders', `${id}: only the published Polders opt-in joins Mangrove`);
   // Harvest/activity wear has its own current controls. Keep this pre-bank
   // baseline byte-exact with later stamps off and original village paint on.

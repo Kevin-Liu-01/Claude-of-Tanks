@@ -167,9 +167,8 @@ try {
     assert.equal(block(ringShader.fragmentShader, 'vec3 impN0 = texture2D', 'nonPerturbedNormal = normal;'), block(farShader.fragmentShader, 'vec3 impN0 = texture2D', 'nonPerturbedNormal = normal;'));
     const wrap = `( canopyRawNL + ${HORIZON_FOREST_IMPOSTOR_WRAP.toFixed(2)} )`, thin = `canopyBack * ${HORIZON_FOREST_IMPOSTOR_THIN.toFixed(2)}`;
     for (const source of [ringShader.fragmentShader, farShader.fragmentShader]) { assert.ok(source.includes(wrap) && source.includes(thin) && source.includes('canopyDiffuseNL * 0.70 + 0.075'), `${id}: the matte wrap and translucency`); }
-    assert.ok(ringShader.fragmentShader.includes('smoothstep( 430.0, 1330.0, length( vVfWorld.xz ) )') && ringShader.fragmentShader.includes('vfHigh * 0.55'), `${id}: the ring's haze law`);
-    assert.ok(ringShader.fragmentShader.indexOf('min( impMip, 3.5 ) * 0.25') < ringShader.fragmentShader.indexOf('float vfHz') && ringShader.fragmentShader.indexOf('float vfHz') < ringShader.fragmentShader.indexOf('#include <alphatest_fragment>'), `${id}: the haze after the mip give-back, before the alpha test`);
-    assert.equal(ringShader.uniforms.uVfHaze.value, record.tone.haze);
+    assert.equal(material.fog, true, `${id}: ordinary camera-distance scene fog remains enabled`);
+    assert.ok(!ringShader.fragmentShader.includes('vfHz') && !ringShader.fragmentShader.includes('uVfFog'), `${id}: no map-radius haze can bleach nearby exterior trees`);
     assert.ok(!ringShader.vertexShader.includes('uWindTime'), `${id}: no wind on the ring (it has no wind uniforms)`);
     // idempotent
     assert.equal(bindHorizonForestImpostors(forest, { library, rimMix: world._rimMix, rimTreeHeightM: world._rimTreeHeightM, setupMaterial() {} }), null);

@@ -166,7 +166,7 @@ assert.ok(terrain.includes("'#include <aomap_fragment>\\nreflectedLight.indirect
 assert.ok(terrain.includes('heightField._foldAt = foldAt;'), 'the tall grass reads the same folds');
 assert.ok(terrain.includes('if (groundClock && Number.isFinite(dt) && dt > 0) groundClock.value += dt;')
   && terrain.includes('if (groundClock) groundClock.value = t;'), 'the swash breathes on the water sheet\'s clock and freezes with it');
-assert.ok(terrain.includes("world-terrain-splat-v48-"), 'the program key moved with the fragment (round 73b: v43)');
+assert.ok(terrain.includes("world-terrain-splat-v52-"), 'the program key moved with the fragment (round 73b: v43)');
 assert.ok(!/uniform sampler2D uPress|uniform sampler2D uRedux/.test(material), 'no new sampler');
 
 // 6. The budgets the perf bench compares against (docs/MAP-BEAUTIFICATION.md round 73).

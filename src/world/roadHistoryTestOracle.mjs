@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { registerHooks } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { beforeRoadCompletionConstructor } from '../../tools/road-constructor-history-fixture.mjs';
+import { loadShorelineHistory } from './shorelineContinuity.test-support.mjs';
 
 // Preserve the authenticated pre-completion constructor and layout only.
 // Current terrain imports retain the shipping road approaches and support.
@@ -17,12 +18,7 @@ for (const [name, entry] of Object.entries(fixture.functions)) {
   assert.equal(createHash('sha256').update(entry.source).digest('hex'), entry.sha256);
   referenceSource = referenceSource.replace(declarations.get(name), entry.source);
 }
-const url = new URL('./terrain.ts?original-road-placement', import.meta.url).href;
-const hooks = registerHooks({ load(request, context, next) {
-  return request === url ? {format:'module-typescript', source:referenceSource, shortCircuit:true} : next(request,context);
-} });
-let original;
-try { original = await import(url); } finally { hooks.deregister(); }
+const original = await loadShorelineHistory(new URL('./terrain.ts', import.meta.url), referenceSource);
 // Round 47 follow-up (2026-09-23): the pre-completion constructor above is the authenticated HISTORICAL text — its rim
 // line predates the water gate (round 47) and the coast rim fade (follow-up), which are relief laws, not road
 // completion. The placement sampler (roadPlacementAdmission) reproduces the CURRENT pre-completion field, so it is

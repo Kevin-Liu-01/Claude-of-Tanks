@@ -1,4 +1,5 @@
 import { historicalRoadHeightField } from '../roadHistoryTestOracle.mjs';
+import { beforeShorelineContinuity, loadShorelineHistory } from '../shorelineContinuity.test-support.mjs';
 import { originalExitConfig } from '../../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -6,6 +7,7 @@ import { createHeightField, mulberry32 } from '../terrain.ts';
 import { MAP_IDS, getMapConfig } from './index.ts';
 import { dressMapExtras } from './mapKits.ts';
 import { historicalBadlandsInput, historicalPlayableReliefInput } from '../shorelineHistoryTestOracle.mjs';
+const { dressMapExtras: historicalDress } = await loadShorelineHistory(new URL('./mapKits.ts', import.meta.url));
 
 const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
   'dark', 'glass', 'curtain', 'straw', 'baked'];
@@ -115,13 +117,13 @@ const otherHashes = {
 
 function build(mapId, seed, historical = true) {
   const current = getMapConfig(mapId);
-  const config = historical ? historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(current))) : current;
+  const config = historical ? historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(beforeShorelineContinuity(current)))) : current;
   const field = (historical ? historicalRoadHeightField : createHeightField)(seed, config);
   const props = winterMaps.includes(mapId) ? config.props : nonWinterInputs[mapId] || {};
   const buckets = Object.fromEntries(names.map(name => [name, []]));
   const random = mulberry32(seed ^ 0x5a17);
   let calls = 0;
-  dressMapExtras({ mapId, extraKits: props.extraKits,
+  (historical ? historicalDress : dressMapExtras)({ mapId, extraKits: props.extraKits,
     riverLandings: props.riverLandings, L: field._layout, heightField: field,
     rng: () => { calls++; return random(); }, buckets });
   return { field, buckets, calls, next: random() };

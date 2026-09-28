@@ -1,6 +1,6 @@
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import * as THREE from 'three';
-import { SEA_APRON_OUTER_RADIUS_M, seaOpeningUniforms, type SeaOpening } from './edgeWater.ts';
+import { SEA_APRON_OUTER_RADIUS_M, SEA_COAST_GLSL, seaOpeningUniforms, seaBankUniforms, type SeaOpening } from './edgeWater.ts';
 import type { HeightField } from './terrain.ts';
 import type { OceanField } from './oceanFft.ts';
 import { waterContactProfile } from './waterContact.ts';
@@ -170,7 +170,9 @@ type ShallowWaterMaterialSetup =
   (material: THREE.MeshStandardMaterial, hook: (shader: ShallowWaterShader) => void) => void;
 
 const OUTLAND_SECTOR_GLSL = `
+  ${SEA_COAST_GLSL}
   uniform vec4 uOutlandOpenings[4];
+  uniform vec4 uOutlandBanks[4];
   uniform float uOutlandOpeningCount;
   float outlandSectorWet(vec2 world, float distanceM) {
     if (uOutlandOpeningCount < 0.5) return smoothstep(uOutlandSeaBlend.x, uOutlandSeaBlend.y, distanceM);
@@ -178,12 +180,10 @@ const OUTLAND_SECTOR_GLSL = `
     for (int i = 0; i < 4; i++) {
       if (float(i) >= uOutlandOpeningCount) break;
       vec4 o = uOutlandOpenings[i];
-      vec2 direction = vec2(cos(o.x), sin(o.x));
-      vec2 fromMouth = world - direction * (uWaterSize * 0.5 / max(abs(direction.x), abs(direction.y)));
-      float angle = atan(fromMouth.y, fromMouth.x);
-      float delta = abs(atan(sin(angle - o.x), cos(angle - o.x)));
-      float sector = 1.0 - smoothstep(o.y * o.z, o.y, delta);
-      wet = max(wet, sector * smoothstep(o.w * 0.5, o.w * 0.85 + 20.0, distanceM));
+      vec4 profile = uOutlandBanks[i];
+      float sector = seaCoastWeight(world, o, profile, uWaterSize * 0.5);
+      float far = profile.y > profile.x + 1.0 ? smoothstep(0.0, 24.0, distanceM) : smoothstep(o.w * 0.12, o.w * 0.5 + 8.0, distanceM);
+      wet = max(wet, sector * far);
     }
     return wet;
   }
@@ -246,6 +246,7 @@ export function createShallowWaterSurface(
       uOutlandWater: { value: outlandWater?.texture ?? null },
       uOutlandWaterSize: { value: outlandWater?.sizeM ?? 0 },
       uOutlandOpenings: { value: seaOpeningUniforms(outlandWater?.openings ?? []) },
+      uOutlandBanks: { value: seaBankUniforms(outlandWater?.openings ?? []) },
       uOutlandOpeningCount: { value: Math.min(4, outlandWater?.openings?.length ?? 0) },
       uOutlandSeaBlend: { value: new THREE.Vector2(...(outlandWater?.sectorBlend ?? [120, 360])) },
       // Round 66 (2026-09-24): the FFT ocean (oceanFft.ts). The two map samplers share the field's own value objects
@@ -275,8 +276,9 @@ export function createShallowWaterSurface(
         float edgeWet = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uWaterMask, clamp(uv, 0.0, 1.0)).b);
         float wet = mix(edgeWet, 1.0, smoothstep(0.0, 320.0, pastEdgeM));
         if (uOutlandWaterSize > 0.5 && pastEdgeM > 0.0) {
-          float coast = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uOutlandWater, xz / uOutlandWaterSize + 0.5).r);
-          wet = max(coast, smoothstep(uWaterRamp.x, uWaterRamp.y, outlandSectorWet(xz, pastEdgeM)));
+          float coast = texture2D(uOutlandWater, xz / uOutlandWaterSize + 0.5).r;
+          float sector = outlandSectorWet(xz, pastEdgeM);
+          wet = smoothstep(uWaterRamp.x, uWaterRamp.y, coast + sector - coast * sector);
         }
         return wet;
       }`);
@@ -361,8 +363,9 @@ export function createShallowWaterSurface(
       float wet = mix(edgeWet, 1.0, smoothstep(0.0, 320.0, pastEdgeM));
       if (uOutlandWaterSize > 0.5 && pastEdgeM > 0.0) {
         // the same authored ramp the square applies to its mask: the apron ends where the sheet inside would, not up the bank
-        float coast = smoothstep(uWaterRamp.x, uWaterRamp.y, texture2D(uOutlandWater, vWaterWorld.xz / uOutlandWaterSize + 0.5).r);
-        wet = max(coast, smoothstep(uWaterRamp.x, uWaterRamp.y, outlandSectorWet(vWaterWorld.xz, pastEdgeM)));
+        float coast = texture2D(uOutlandWater, vWaterWorld.xz / uOutlandWaterSize + 0.5).r;
+        float sector = outlandSectorWet(vWaterWorld.xz, pastEdgeM);
+        wet = smoothstep(uWaterRamp.x, uWaterRamp.y, coast + sector - coast * sector);
       }
       // Round 66: the run-up. Where the bank band meets the strand the long cascade's crest pushes the water's edge a
       // little way up the sand and the trough draws it back (the swash of a breaking wave), so the edge breathes with
@@ -644,7 +647,7 @@ export function createShallowWaterSurface(
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => `shallow-water-v18-${outlandWater?.openings?.length ? 'coast' : 'land'}`; // round 66: the FFT ocean (v12: the round-47 coast contour, v11: the reactive field)
+  material.customProgramCacheKey = () => `shallow-water-v21-${outlandWater?.openings?.length ? 'coast' : 'land'}`;
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.userData.ocean = ocean; // round 66: probes read the field's maps and spectrum through the sheet

@@ -43,7 +43,8 @@ import {
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
-import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend } from '../edgeWater.ts';
+import { continuedGroundAt } from '../horizonSurface.ts';
+import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
   type VistaGround,
@@ -988,30 +989,31 @@ function ringSeaWeight(
   // every bay off on two straight lines at the red line. The map's own shoreline contour now rules as far as it
   // reaches past the square, the sector carries the open sea beyond that reach, and the two blend by distance.
   const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
-  const [from, to] = seaSectorBlend(opening?.coastReachM);
+  const [from, to] = seaSectorBlend(opening?.coastReachM, opening?.bankProfile);
   const far = smoothstep(from, to, edgeOut);
   const coast = edgeOut > -64 ? ground.getOutlandWaterAt(x, z) : null;
   const coastWeight = coast?.wetness ?? 0;
   const sectorWeight = sector * far;
-  if (coastWeight >= sectorWeight) return { weight: coastWeight, level: coast?.level ?? opening?.level ?? 0 };
-  return { weight: sectorWeight, level: opening?.level ?? coast?.level ?? 0 };
+  return { weight: mergeSeaWetness(coastWeight, sectorWeight),
+    level: coastWeight >= sectorWeight ? coast?.level ?? opening?.level ?? 0 : opening?.level ?? coast?.level ?? 0 };
 }
 
-/** Resolve narrow shore bands before lowering the sea. The ordinary ridge mesh
- * has 40–100 m radial spans, wider than a beach. Eight metre samples follow
- * the bank without stretching the mask or inserting a separate overlapping mesh.
- * Dry maps and the authored mountain rows keep their original topology. */
+/** Resolve near geology at 8–10 metre spacing, gradually coarsening the
+ * distant rows. This keeps shore bands and canyon relief from becoming long
+ * flat triangles beyond the playable terrain. No additional mesh/pass. */
 function refineCoastRows(ring: HorizonRingGeometry, openings: readonly HorizonSeaOpening[], ground?: CanyonGround): void {
-  if (!openings.length || !ground?.getOutlandWaterAt || !ground.getOutlandHeightAt) return;
+  if (!ground?.getOutlandHeightAt) return;
   const n = HORIZON_SEGMENTS, rows: HorizonRingRow[] = [], positions: number[] = [], heights: number[] = [];
   for (let row = 0; row < ring.rows.length; row++) {
     let divisions = 1;
-    if (row < ring.rows.length - 1) for (let k = 0; k < n; k++) {
+    if (row > 0 && row < ring.rows.length - 1) for (let k = 0; k < n; k++) {
       const i = row * n + k, j = i + n;
       const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
-      if (seaHeadlandWeight(Math.atan2(z, x), openings, HEADLAND_BAND_RAD) <= 0) continue;
+      const coast = seaHeadlandWeight(Math.atan2(z, x), openings, HEADLAND_BAND_RAD) > 0;
+      const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+      const spacing = coast ? 8 : edgeOut < 240 ? 10 : edgeOut < 600 ? 20 : 40;
       const gap = Math.hypot(ring.positions[j * 3] - x, ring.positions[j * 3 + 2] - z);
-      divisions = Math.max(divisions, Math.ceil(gap / 8));
+      divisions = Math.max(divisions, Math.ceil(gap / spacing));
     }
     for (let part = 0; part < divisions; part++) {
       const t = part / divisions;
@@ -1024,6 +1026,57 @@ function refineCoastRows(ring: HorizonRingGeometry, openings: readonly HorizonSe
     }
   }
   ring.rows = rows; ring.positions = new Float32Array(positions); ring.heights = new Float32Array(heights);
+}
+
+/** Continue the actual geology through the boundary before the distant
+ * ridges take over. The edge residual carries roads and conditioned ground
+ * into the exterior without a step. Redrock uses one regional canyon field. */
+function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround | undefined, canyon: boolean): void {
+  if (!ground?.getOutlandHeightAt) return;
+  // A closing anchor only ten metres below its own point can still bridge
+  // above a deep valley between it and the square corner. Keep the entire
+  // hidden row below the landscape, so its long triangles cannot protrude
+  // through the playable chunks as a straight ledge.
+  let buriedHeight = -64;
+  for (const height of ring.heights) buriedHeight = Math.min(buriedHeight, height - 64);
+  for (let i = 0; i < HORIZON_SEGMENTS; i++) {
+    ring.heights[i] = buriedHeight;
+    ring.positions[i * 3 + 1] = buriedHeight;
+  }
+  for (let i = HORIZON_SEGMENTS; i < ring.heights.length; i++) {
+    const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+    let weight = canyon ? 1 : 1 - smoothstep(140, 460, edgeOut);
+    // A rail valley closes over its existing tunnel gallery. Keep the
+    // approach on the real bed, then let the authored ridge cover the bore.
+    const seat = ground.getOutlandSeatWeightAt?.(x, z) ?? 0;
+    const radialRun = edgeOut * Math.hypot(x, z) / Math.max(Math.abs(x), Math.abs(z));
+    weight *= 1 - seat * smoothstep(125, 200, radialRun);
+    if (weight <= 0) continue;
+    let height = continuedGroundAt(ground, x, z);
+    // The square-clamped residual can sample the cutting's side bank. Its
+    // supported approach follows the radial bed, including between rows.
+    if (seat > 0 && edgeOut > 0) height += (ground.getOutlandHeightAt(x, z) - height) * seat;
+    ring.heights[i] += (height - ring.heights[i]) * weight;
+    ring.positions[i * 3 + 1] = ring.heights[i];
+  }
+  ring.maxHeight = 1;
+  for (const height of ring.heights) ring.maxHeight = Math.max(ring.maxHeight, height);
+}
+
+/** Grade the dry side as well as the submerged floor. Cutting a high ridge
+ * using only the narrow water mask made kilometre-long sawtooth cliffs. */
+function coastalBankHeight(x: number, z: number, height: number, openings: readonly HorizonSeaOpening[], supportM = 0): number {
+  const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+  if (edgeOut <= 0) return height;
+  for (const opening of openings) {
+    const distance = seaCoastDistanceAt(x, z, opening);
+    if (distance > 380 + supportM) continue;
+    const weight = smoothstep(0, 24, edgeOut) * (1 - smoothstep(160 + supportM, 380 + supportM, distance));
+    const bank = opening.level - 0.04 + Math.max(0, distance - 22 - supportM) * 0.24;
+    height += Math.min(0, bank - height) * weight;
+  }
+  return height;
 }
 
 function openHorizonToSea(
@@ -1057,12 +1110,35 @@ function openHorizonToSea(
       * smoothstep(rimRadius + 300, outerRadius, radius) * extension;
     x *= reach; z *= reach;
     ring.positions[index * 3] = x; ring.positions[index * 3 + 2] = z;
+  }
+  // Seat complete triangles beneath the wet mask, not just their wet vertices.
+  // At the outer coast, one angular cell can span sixty metres: interpolating
+  // a dry, raised corner through the sea used to expose triangular black banks.
+  // The support follows actual neighbour spacing, without adding geometry.
+  for (let index = 0; index < ring.heights.length; index++) {
+    const angle = ((index % n) / n) * Math.PI * 2;
+    const x = ring.positions[index * 3], z = ring.positions[index * 3 + 2];
+    // The closing row is deliberately buried. At square corners its radial
+    // inset is less than 32 m; the coastal continuation below used to lift
+    // it back through the playable cliff as an exposed triangular grass flap.
+    if (index < n) continue;
+    let supportM = 0;
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+    if (ground?.getOutlandHeightAt && edgeOut > 0) {
+      const row = Math.floor(index / n), col = index % n;
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        const rr = row + dr;
+        if (rr < 1 || rr >= ring.rows.length) continue;
+        const j = rr * n + (col + dc + n) % n;
+        supportM = Math.max(supportM, Math.hypot(ring.positions[j * 3] - x, ring.positions[j * 3 + 2] - z));
+      }
+      supportM *= 1.5 * smoothstep(0, 24, edgeOut);
+    }
     const { weight, level } = ringSeaWeight(x, z, angle, openings, ground);
     // Keep the coast in world space. Pulling each row onto a different waterline and
     // stretching it radially left wedges at the square and moved banks off the
     // water mask. The near apron now follows the same continuous geology as the
     // playable shore. No vertex moves after the shoreline is sampled.
-    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
     if (ground?.getOutlandHeightAt && edgeOut > -32 && edgeOut < 360) {
       const coastShare = seaHeadlandWeight(angle, openings, HEADLAND_BAND_RAD)
         * (1 - smoothstep(140, 360, edgeOut));
@@ -1073,6 +1149,7 @@ function openHorizonToSea(
         : ground.getOutlandHeightAt(x, z) + edgeDelta * (1 - smoothstep(0, 64, edgeOut));
       ring.heights[index] += (continued - ring.heights[index]) * coastShare;
     }
+    ring.heights[index] = coastalBankHeight(x, z, ring.heights[index], openings, supportM);
     sea.weight[index] = weight;
     sea.level[index] = level;
     ring.positions[index * 3 + 1] = ring.heights[index];
@@ -1083,6 +1160,34 @@ function openHorizonToSea(
     const height = ring.heights[index] + Math.min(0, level - 0.04 - ring.heights[index]) * smoothstep(0, 0.12, weight);
     ring.heights[index] = height;
     ring.positions[index * 3 + 1] = height;
+  }
+  // A narrow native cove can cross a triangle whose dry corner still stands
+  // above the sheet. Carry its bed through that complete face. This keeps
+  // the authored water contour, instead of exposing a green triangular wedge.
+  if (ground?.getOutlandWaterAt) {
+    const p = ring.positions;
+    const seatFace = (a: number, b: number, c: number): void => {
+      const x = (p[a * 3] + p[b * 3] + p[c * 3]) / 3;
+      const z = (p[a * 3 + 2] + p[b * 3 + 2] + p[c * 3 + 2]) / 3;
+      const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+      if (edgeOut < 12 || edgeOut > 400) return;
+      let floor = Infinity;
+      for (const [u, v, w] of [[1 / 3, 1 / 3, 1 / 3], [0.6, 0.2, 0.2], [0.2, 0.6, 0.2], [0.2, 0.2, 0.6]]) {
+        const sx = p[a * 3] * u + p[b * 3] * v + p[c * 3] * w;
+        const sz = p[a * 3 + 2] * u + p[b * 3 + 2] * v + p[c * 3 + 2] * w;
+        const water = ringSeaWeight(sx, sz, Math.atan2(sz, sx), openings, ground);
+        if (water.weight > 0.08) floor = Math.min(floor, water.level - 0.04);
+      }
+      if (!Number.isFinite(floor)) return;
+      for (const i of [a, b, c]) {
+        ring.heights[i] = Math.min(ring.heights[i], floor);
+        p[i * 3 + 1] = ring.heights[i];
+      }
+    };
+    for (let row = 1; row < ring.rows.length - 1; row++) for (let col = 0; col < n; col++) {
+      const a = row * n + col, b = row * n + (col + 1) % n;
+      seatFace(a, b, a + n); seatFace(b, b + n, a + n);
+    }
   }
   return sea;
 }
@@ -1760,7 +1865,9 @@ export function sampleHorizonGeometry(
   }
   if (relief) wanderProfileBreaks(ring, relief, style, seed);
   if (relief) enforceLedgerSlopes(ring, style, capFrontRows(ring, horizon, mapId, style));
+  if (ground) seatHorizonTerrainSeam(ring, ground);
   refineCoastRows(ring, openings, ground);
+  continueHorizonGround(ring, ground, mapId === 'badlands' && horizon.redrockCanyon !== false);
   openHorizonToSea(ring, openings, ground);
   return ring;
 }
@@ -2093,6 +2200,29 @@ function applyAnalyticHorizonNormals(
     }
   }
   geometry.setAttribute('normal', normals);
+}
+
+/** The playable mesh takes its normals from 1.33 m central differences.
+ * Continue that same shading across the seam; heavily smoothed ring gradients
+ * otherwise turn a single cliff into two visibly different materials. */
+function matchHorizonGroundNormals(geometry: THREE.BufferGeometry, ground?: CanyonGround): void {
+  if (!ground?.getOutlandHeightAt) return;
+  const positions = geometry.getAttribute('position'), normals = geometry.getAttribute('normal');
+  const e = 128 / 96, stride = HORIZON_SEGMENTS + 1;
+  for (let i = stride; i < positions.count; i++) {
+    const x = positions.getX(i), z = positions.getZ(i);
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+    const weight = 1 - smoothstep(40, 140, edgeOut);
+    if (weight <= 0) continue;
+    const nx = continuedGroundAt(ground, x - e, z) - continuedGroundAt(ground, x + e, z);
+    const nz = continuedGroundAt(ground, x, z - e) - continuedGroundAt(ground, x, z + e);
+    const il = 1 / Math.hypot(nx, 2 * e, nz);
+    const bx = normals.getX(i) * (1 - weight) + nx * il * weight;
+    const by = normals.getY(i) * (1 - weight) + 2 * e * il * weight;
+    const bz = normals.getZ(i) * (1 - weight) + nz * il * weight;
+    const length = Math.hypot(bx, by, bz);
+    normals.setXYZ(i, bx / length, by / length, bz / length);
+  }
 }
 
 function closeHorizonAttribute(data: Float32Array, itemSize: number, rows: number): Float32Array {
@@ -3084,7 +3214,9 @@ export function* buildHorizonRingSteps(
   }
   if (reliefField) wanderProfileBreaks(ring, reliefField, style, seed);
   if (reliefField) enforceLedgerSlopes(ring, style, capFrontRows(ring, H, mapId, style));
+  if (ground) seatHorizonTerrainSeam(ring, ground);
   refineCoastRows(ring, seaOpenings, ground);
+  continueHorizonGround(ring, ground, mapId === 'badlands' && H.redrockCanyon !== false);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);
@@ -3146,6 +3278,7 @@ export function* buildHorizonRingSteps(
     .__HORIZON_DEBUG;
   if (horizonDebug) applyHorizonDebugColors(col, rows.length);
   const geo = buildHorizonGeometry(ring, col, uvA, gradients);
+  matchHorizonGroundNormals(geo, ground);
   yield;
   // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
   // establishing cameras — with default FrontSide it backface-culls and the
@@ -3220,6 +3353,7 @@ export function* buildHorizonRingSteps(
       seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
       deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(lighting),
       treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
+      nearEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
     });
     if (farRange) mesh.add(farRange);
@@ -3316,7 +3450,9 @@ export function* buildHorizonRingSteps(
   // inherits the same baked color/haze grading.
   // Values below 0.14 fade every crown to zero; skip the texture, geometry,
   // and draw call entirely on the intentionally bare desert/canyon maps.
-  addHorizonTreeline({
+  // The old baked-colour canopy ribbon draws a pale strip over live-lit
+  // hills. Continued landscapes already carry the real forest impostors.
+  if (!ground?.getOutlandHeightAt) addHorizonTreeline({
     mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
     maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
     style, sun: [lx, ly, lz], forestCover, seaOpenings, sea,

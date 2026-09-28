@@ -9,7 +9,7 @@ import {
   CONTACT_SHADOW_RANGE_M,
   CONTACT_SHADOW_STEPS, CONTACT_SHADOW_STRENGTH, CONTACT_SHADOW_TAIL_FADE, CONTACT_SHADOW_WIDTH_M,
   CONTACT_SHADOW_WIDTH_PER_M, CONTACT_SHADOW_WIDTH_PX, contactShadowMarchLength,
-  contactShadowOcclusion, contactShadowRangeFade, contactShadowStepParameter, contactShadowStepTable,
+  contactShadowOcclusion, contactShadowRangeFade, contactShadowStepParameter, contactShadowStepTable, contactShadowSurfaceSupport,
   contactShadowSunShare, contactShadowSunVisibility, createContactShadowUniforms, updateContactShadowUniforms,
 } from './contactShadows.ts';
 
@@ -53,6 +53,18 @@ assert.equal(contactShadowOcclusion(0.2), 1);
 assert.equal(contactShadowOcclusion(CONTACT_SHADOW_TAIL_FADE), 1);
 assert.equal(contactShadowOcclusion(1), 0);
 assert.ok(contactShadowOcclusion(0.8) > 0 && contactShadowOcclusion(0.8) < 1);
+
+// A shallow triangulated valley must not acquire hard diagonal shadows. Real
+// contacts still work: vertical hull/wall faces, undersides and an elevated roof.
+for (const degrees of [0, 10, 20, 35, 45]) {
+  assert.equal(contactShadowSurfaceSupport(Math.cos(degrees * Math.PI / 180), 0.08), 0,
+    `a ${degrees}-degree fold of the same surface is not a contact`);
+}
+assert.equal(contactShadowSurfaceSupport(0, 0.02), 1, 'a wall at the ground keeps its contact');
+assert.equal(contactShadowSurfaceSupport(-1, 0.04), 1, 'a hull underside keeps its contact');
+assert.equal(contactShadowSurfaceSupport(1, 0.6), 1, 'a raised horizontal object can shadow the ground');
+assert.ok(contactShadowSurfaceSupport(0.5, 0.08) > 0 && contactShadowSurfaceSupport(0.5, 0.08) < 1,
+  'the corner transition is continuous');
 
 // 5. the sun share: the fraction of the pixel's light that is sun — what an occluded pixel loses
 const amb = { sky: 0.4, ground: 0.25, env: 0.3, fill: 0.5 };
@@ -110,7 +122,7 @@ assert.ok(CONTACT_SHADOW_GLSL.includes(`${(CONTACT_SHADOW_RANGE_M - CONTACT_SHAD
 assert.ok(CONTACT_SHADOW_GLSL.includes(`occ * share * ${CONTACT_SHADOW_STRENGTH.toFixed(4)}`), 'the strength');
 assert.match(CONTACT_SHADOW_GLSL, /float share = T \/ \( T \+ amb \);/, 'T / (T + A)');
 assert.match(CONTACT_SHADOW_GLSL, /if \( diff > bias && diff < thick && texture2D\( tDiffuse, quv \)\.a >= /, 'bias below, thickness above, an opaque lit occluder');
-assert.match(CONTACT_SHADOW_GLSL, /if \( abs\( dl - occ \) < wide && abs\( dr - occ \) < wide \) \{ hit = u; break; \}/,
+assert.match(CONTACT_SHADOW_GLSL, /if \( abs\( dl - occ \) < wide && abs\( dr - occ \) < wide \) \{/,
   'only a wide occluder counts (grass blades and wires, a few pixels wide, never cast in the cascades)');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`uInvSize.x * ${CONTACT_SHADOW_WIDTH_PX.toFixed(4)}`), 'the width test spans five pixels either side');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`${CONTACT_SHADOW_WIDTH_M.toFixed(4)} + occ * ${CONTACT_SHADOW_WIDTH_PER_M.toFixed(4)}`), 'the same-surface tolerance grows with distance');

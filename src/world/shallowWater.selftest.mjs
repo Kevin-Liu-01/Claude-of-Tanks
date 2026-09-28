@@ -160,12 +160,13 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
     'the procedural bow foam bar is off inside the window too (it was the last thing that followed the hull)');
   assert.match(probe.fragmentShader, /wave\.x \* uWaterWaveStrength - rippleGrad\.x \* 1\.6/, 'the field slope tilts the normal');
   assert.match(probe.fragmentShader, /rippleGrad \*= \(min\(gl, 0\.45\) \/ max\(gl, 1e-4\)\) \* rippleW;/, 'the slope is capped at a breaking face');
-  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v18-land', 'the program key moved with the fragment (v13: round 66, the FFT ocean)');
+  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v21-land', 'the program key moved with the fragment (v13: round 66, the FFT ocean)');
   // round 47: without a baked bay contour the apron keeps the round-40 ramp; with one, the coast fades past the edge
   assert.equal(probe.uniforms.uOutlandWaterSize.value, 0, 'no contour: size 0 keeps the round-40 ramp');
-  assert.match(probe.fragmentShader, /if \(uOutlandWaterSize > 0\.5 && pastEdgeM > 0\.0\) \{[^}]*float coast = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r\);\s*wet = max\(coast, smoothstep\(uWaterRamp\.x, uWaterRamp\.y, outlandSectorWet\(vWaterWorld\.xz, pastEdgeM\)\)\);/,
-    'past the edge the wetness is the bay contour, blended to open sea over the bay reach');
-  assert.match(probe.fragmentShader, /float coast = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, texture2D\(uOutlandWater,/, 'the apron ramps the contour like the square ramps its mask (no translucent band up the bank)');
+  assert.match(probe.fragmentShader, /float coast = texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r;/,
+    'the apron reads the same raw bay coverage as the ground');
+  assert.match(probe.fragmentShader, /wet = smoothstep\(uWaterRamp\.x, uWaterRamp\.y, coast \+ sector - coast \* sector\);/,
+    'bay and offshore coverage join smoothly before the shared shore ramp');
 }
 assert.equal(water.mesh.material.transparent, true);
 assert.equal(water.mesh.material.depthWrite, false);

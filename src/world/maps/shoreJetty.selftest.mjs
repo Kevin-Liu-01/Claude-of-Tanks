@@ -124,9 +124,12 @@ console.log(`shoreJetty.selftest: ${plans} plans audited over nine fields — ${
   const coastal = getMapConfig('coastal'), field = createHeightField(1337, coastal), lake = field._layout.lakes[0];
   const plan = planShoreJetty(field, lake, Math.PI);
   assert.ok(plan.gangway, 'Saltmere: the deck stands over the flat strand at the level, so a gangway climbs to it');
-  near(plan.gangway.groundY, lake.level, 0.05, 'Saltmere: the sand at the level');
+  near(plan.gangway.groundY,
+    field.getHeightAt(plan.x - Math.cos(plan.angle) * plan.gangway.run,
+      plan.z - Math.sin(plan.angle) * plan.gangway.run), 1e-9,
+    'Saltmere: the gangway foot follows the restored cove bank');
   near(plan.shoreR, plan.edge + 9.5, 0.3, 'Saltmere: the shore end a metre landward of the 8.5 m wrack band');
-  assert.equal(plan.spans, 9, 'Saltmere: nine spans cross the 22 m shelf and the shallows with a hull alongside');
+  assert.equal(plan.spans, 9, 'Saltmere: nine spans cross the restored 18 m shelf with a hull alongside');
   assert.equal(planShoreJetty(field, lake, Math.PI, { spans: 10 }).spans, 10, 'an authored length is honoured');
   assert.equal(planShoreJetty(field, lake, Math.PI, { spans: 4 }), null, 'a 7.6 m deck cannot reach the core from the dry strand');
   const fjord = getMapConfig('fjord'), ffield = createHeightField(1337, fjord), north = ffield._layout.lakes[2];
@@ -136,7 +139,7 @@ console.log(`shoreJetty.selftest: ${plans} plans audited over nine fields — ${
   const ground = ffield.getHeightAt(onBank.x, onBank.z);
   assert.ok(ground <= underside - JETTY_BANK_LANDING_M && ground >= underside - 0.6, `the bank meets the deck at the shore end (${(underside - ground).toFixed(2)} m under it)`);
   assert.ok(onBank.shoreR < onBank.edge + 4, 'the shore end stands within the strand on a bank shore');
-  assert.ok(onBank.spans < plan.spans, 'a 10 m shelf takes fewer spans than a 22 m one');
+  assert.ok(onBank.spans < plan.spans, 'a 10 m shelf takes fewer spans than an 18 m one');
 }
 
 // ------------------------------------------------------------------ refusals
@@ -170,7 +173,7 @@ console.log(`shoreJetty.selftest: ${plans} plans audited over nine fields — ${
       L: field._layout, heightField: field, rng: mulberry32(1337 ^ 0x5a17), buckets, groundingReceipts: receipts });
     const piles = receipts.filter(r => r.kind === 'jetty-pile'), hulls = receipts.filter(r => r.kind === 'moored-boat');
     const gangways = receipts.filter(r => r.kind === 'jetty-gangway');
-    const jetties = mapId === 'coastal' ? 1 : mapId === 'saltwind' ? 2 : 3;
+    const jetties = mapId === 'saltwind' ? 2 : 3;
     assert.ok(hulls.length === jetties, `${mapId}: every jetty moors a hull (${hulls.length} of ${jetties})`);
     assert.ok(piles.length >= jetties * 2 * (JETTY_MIN_SPANS + 1), `${mapId}: planted piles on every jetty`);
     for (const pile of piles) near(pile.y, field.getHeightAt(pile.x, pile.z) - 0.10, 1e-9, `${mapId}: a pile planted into its bed`);
@@ -183,7 +186,7 @@ console.log(`shoreJetty.selftest: ${plans} plans audited over nine fields — ${
       assert.equal(field.getWaterMaskAt(g.x, g.z), 0, `${mapId}: gangway foot on dry sand`);
       assert.equal(g.baseClearance, -0.01);
     }
-    if (mapId === 'coastal') assert.equal(gangways.length, 1, 'Saltmere: one gangway on the flat strand');
+    if (mapId === 'coastal') assert.equal(gangways.length, 3, 'Saltmere: a gangway on each restored cove');
     if (mapId === 'saltwind') assert.equal(gangways.length, 2, 'Saltwind: a gangway on each pier');
     // every pile's top meets the deck (the emitted geometry, not only the receipt): the wood pieces whose top is a
     // deck top are at least the piles

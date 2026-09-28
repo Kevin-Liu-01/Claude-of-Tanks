@@ -104,7 +104,7 @@ function checkSourceContract(text) {
     'uWornDirtStrength','uIceDrift','uMidRelief','uFieldPatch','uRipple','uSandMacro','uIceSky',
     // round 40 (2026-09-22): the sea openings past the square (edgeWater.ts) that the ring's marine faces render as open water
     'uMidFar','uMaskSize', // The extended coast reuses uMask; no extra sampler.
-    'uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaRamp',
+    'uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaBanks','uSeaRamp',
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
     'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
     // round 42 (2026-09-23, AAA checks 4/11): the sun the vista ring shades with and the sky-light weight for steep faces turned from it
@@ -138,7 +138,7 @@ function checkSourceContract(text) {
   // round 72b (2026-09-25): v40 — the ring bands read the horizon's surface atlas; v41 — through the M normal's unit (no seventeenth sampler);
   // round 73 (2026-09-26 rebase over 72b): v42 — the ground redux (height transitions, scree, snow drifts, folds, the wet strand, glint, the mid octave)
   // round 73b (2026-09-26): v43 — the borders (lip, rim, verge), the mid albedo octave, the strand in metres with its foam and wrack lines
-  assert.ok(text.includes("world-terrain-splat-v48-${seaOpenings.length ? 'coast' : 'land'}"), 'coast and land shader variants have distinct keys');
+  assert.ok(text.includes("world-terrain-splat-v52-${seaOpenings.length ? 'coast' : 'land'}"), 'coast and land shader variants have distinct keys');
   // the sampler budget: every sampler2D the fragment declares, no more than the ten layer samplers (four cascades, the environment
   // map and the DFG LUT fill the other six units)
   const samplers = [...text.matchAll(/uniform sampler2D ([^;]+);/g)].flatMap((m) => m[1].split(',').map((n) => n.trim()));
@@ -169,6 +169,6 @@ await rejects(replaceOnce(source, nearAlbedo(source), nearAlbedo(source).replace
 await rejects(replaceOnce(source, normalTerm(source, 'gnF'), 'gnF.xy * farM * 0.24'), 'far normal bypass');
 await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('farG *', 'farM *')), 'far albedo bypass');
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
-assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v48', 'world-terrain-splat-v42')));
+assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v52', 'world-terrain-splat-v42')));
 assert.throws(() => checkSourceContract(source.replace('uniform sampler2D uMask, uNoise;', 'uniform sampler2D uMask, uNoise, uRingRelief;')), 'a seventeenth sampler is refused');
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');
