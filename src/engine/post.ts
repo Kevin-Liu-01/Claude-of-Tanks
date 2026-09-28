@@ -39,6 +39,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { packAmbientOcclusionShader, AMBIENT_OCCLUSION_DENOISE_SHADER } from './ambientOcclusionFilter.ts';
 import {
   TEMPORAL_AO_BRIGHT_RETENTION_SLACK,
   TEMPORAL_AO_CURRENT_WEIGHT,
@@ -281,13 +282,9 @@ const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // Halve the thickness heuristic — walls/hulls/trunks are real volumes and
 // keep their grounding; only the phantom depth of foliage cards thins out.
 const GTAO_PARAMS = { radius: 2.3, distanceExponent: 2, thickness: 1.0, scale: 3.3, samples: 16 };
-// ao-boil r1: denoiser retuned for temporal stability on foliage. depthPhi
-// 2 → 6 (weight = 1 - depthDiff/phi, so a LOW phi refuses to smooth across
-// depth edges — and leaf speckle is nothing but depth edges: the denoiser
-// was preserving the boil as "detail"); radius 8 → 10 and rings 2 → 3
-// spread each pixel's estimate over more of the half-res AO buffer, cutting
-// frame-to-frame variance of blob shapes.
-const GTAO_PD_PARAMS = { lumaPhi: 10, depthPhi: 6, normalPhi: 3, radius: 10, rings: 3, samples: 16 };
+// The dense spatial filter keeps the established surface rejection weights.
+// Its fixed neighbourhood does not rotate into sparse noisy spokes per pixel.
+const GTAO_PD_PARAMS = { lumaPhi: 10, depthPhi: 6, normalPhi: 3 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Depth-driven aerial perspective (r3: "distant hills correctly shift
@@ -1910,7 +1907,7 @@ export function createPost(
   const applyAoSampling = (p: QualityPreset): void => {
     const samples = p.aoScale >= 0.99 ? 16 : 8;
     gtao.updateGtaoMaterial({ ...GTAO_PARAMS, samples });
-    gtao.updatePdMaterial({ ...GTAO_PD_PARAMS, samples });
+    gtao.updatePdMaterial(GTAO_PD_PARAMS);
     renderer.domElement.dataset.aoSamples = String(samples);
   };
   applyAoSampling(preset);
@@ -1970,8 +1967,11 @@ export function createPost(
     gtao.gtaoMaterial.fragmentShader = patched;
     gtao.gtaoMaterial.needsUpdate = true;
   }
+  gtao.gtaoMaterial.fragmentShader = packAmbientOcclusionShader(gtao.gtaoMaterial.fragmentShader);
+  gtao.pdMaterial.fragmentShader = AMBIENT_OCCLUSION_DENOISE_SHADER;
+  gtao.gtaoMaterial.needsUpdate = gtao.pdMaterial.needsUpdate = true;
   // Quality: run the whole GTAO stack (scene depth/normal prepass, 16-tap AO,
-  // Poisson denoise) at `aoScale` x composer resolution. Its internal targets
+  // packed-surface denoise) at `aoScale` x composer resolution. Its internal targets
   // are LinearFilter, so the final multiply-blend bilinearly upsamples the AO
   // buffer — the standard half-res-AO scheme. aoScale 1 (ultra) is unchanged
   // full-res; aoScale 0 disables the pass entirely.

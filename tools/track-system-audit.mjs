@@ -157,8 +157,10 @@ try {
         let best = null;
         for (let z = -420.31; z < 421; z += 31.173) for (let x = -420.13; x < 421; x += 29.371) {
           if (hf.getWaterMaskAt(x, z) > .02 || hf.getNormalAt(x, z).y < .93) continue;
-          if (obstacles.some(o => !o.crushable && x > o.min[0] - 7 && x < o.max[0] + 7
-            && z > o.min[2] - 7 && z < o.max[2] + 7)) continue;
+          // Keep the inspection camera and both track runs clear of foliage,
+          // too: a crushable tree is still an opaque visual obstruction.
+          if (obstacles.some(o => x > o.min[0] - 12 && x < o.max[0] + 12
+            && z > o.min[2] - 12 && z < o.max[2] + 12)) continue;
           const score = hf.getHeightAtFast(x, z) - hf.getContactHeightAt(x, z);
           if (!best || score > best.score) best = { x, z, score };
         }
