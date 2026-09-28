@@ -381,6 +381,18 @@ for (const preset of presets) {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
 
+    // The volumetric sky owns a separate render clock from shot simulation.
+    // Settle and freeze it too; otherwise this assertion measures animated
+    // cloud history, even on Low with every AO pass disabled.
+    const frozenClouds = D.scene.userData.volumetricClouds;
+    const savedCloudPreset = frozenClouds?.currentPreset;
+    const savedCloudFrozen = frozenClouds?.frozen;
+    if (frozenClouds && savedCloudPreset) {
+      frozenClouds.setPreset({ ...savedCloudPreset, windSpeed: 0 });
+      frozenClouds.settleForCapture(camera);
+      frozenClouds.frozen = true;
+      for (let frame = 0; frame < 8; frame++) D.post.render(0);
+    }
     // A frozen contract view must present byte-identical frames. This catches
     // shadow shimmer, Z-fighting, unstable shader noise, and stray animated
     // state without trying to infer any one artifact from a screenshot.
@@ -408,6 +420,10 @@ for (const preset of presets) {
         if (changed > temporalChangedSamples) temporalChangedSamples = changed;
       }
       previousFrame = pixels;
+    }
+    if (frozenClouds && savedCloudPreset) {
+      frozenClouds.frozen = savedCloudFrozen;
+      frozenClouds.setPreset(savedCloudPreset);
     }
 
     let lods = 0;
@@ -558,7 +574,11 @@ for (const preset of presets) {
   const cascadeCount = result.cascades.length;
   const allCascadeMask = (2 ** cascadeCount) - 1;
   const nearCascadeMask = (2 ** Math.min(2, cascadeCount)) - 1;
-  const farCascadeMask = allCascadeMask & ~nearCascadeMask;
+  // shadowRefresh.ts deliberately holds only the outermost cascade on
+  // alternate frames, preserving its matching projection. Raw moving pixels
+  // above still have to match force-all, so this does not waive stability.
+  const outerCascadeMask = cascadeCount >= 4 ? 1 << (cascadeCount - 1) : 0;
+  const requiredFarMask = allCascadeMask & ~nearCascadeMask & ~outerCascadeMask;
   const missingNearFrame = result.motionSchedule.find((frame) =>
     (frame.scheduledMask & nearCascadeMask) !== nearCascadeMask);
   if (missingNearFrame) {
@@ -567,13 +587,11 @@ for (const preset of presets) {
       + `(mask ${missingNearFrame.scheduledMask.toString(2)})`,
     );
   }
-  const splitFarFrame = result.motionSchedule.find((frame) => {
-    const scheduledFar = frame.scheduledMask & farCascadeMask;
-    return scheduledFar !== 0 && scheduledFar !== farCascadeMask;
-  });
+  const splitFarFrame = result.motionSchedule.find((frame) =>
+    (frame.scheduledMask & requiredFarMask) !== requiredFarMask);
   if (splitFarFrame) {
     reasons.push(
-      `far cascades split across frames at offset ${splitFarFrame.offset} `
+      `a per-frame far cascade was withheld at offset ${splitFarFrame.offset} `
       + `(mask ${splitFarFrame.scheduledMask.toString(2)})`,
     );
   }
