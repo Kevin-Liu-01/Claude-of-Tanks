@@ -294,7 +294,15 @@ export function routeZeroCountDraws(renderer: WebGLRenderer): void {
   if (zeroCountRouted.has(renderer) || typeof renderer.renderBufferDirect !== 'function') return;
   const direct = renderer.renderBufferDirect;
   const routed: WebGLRenderer['renderBufferDirect'] = function (this: WebGLRenderer, camera, scene, geometry, material, object, group) {
-    if ((object as { isInstancedMesh?: boolean; count?: number }).isInstancedMesh && (object as { count?: number }).count === 0) return;
+    const drawn = object as { isInstancedMesh?: boolean; count?: number; isBatchedMesh?: boolean; _multiDrawCount?: number };
+    if (drawn.isInstancedMesh && drawn.count === 0) return;
+    // Round 79: a BatchedMesh whose per-object culling (its onBeforeShadow / onBeforeRender, run before this call)
+    // left nothing in its multi-draw list — three's renderMultiDraw returns on a zero draw count after the same
+    // setup. The articulated proxy batch is one always-submitted object per hull (frustumCulled off, its entries
+    // culled per cascade inside the hook), so every hull outside a cascade's box, and every near hull whose
+    // proxies the detail policy hid, reached here with an empty list: 28 such submissions a frame at Monsoon
+    // Ridge's centre-far pose, where the three separate proxies used to be culled before submission.
+    if (drawn.isBatchedMesh && drawn._multiDrawCount === 0) return;
     return direct.call(this, camera, scene, geometry, material, object, group);
   };
   renderer.renderBufferDirect = routed;

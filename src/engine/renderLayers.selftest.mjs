@@ -279,9 +279,18 @@ console.log('renderLayers.selftest: shadow routing and scoped warm suppression/r
   const empty = new THREE.InstancedMesh(geometry, material, 4); empty.count = 0; empty.name = 'empty';
   const some = new THREE.InstancedMesh(geometry, material, 4); some.count = 2; some.name = 'some';
   const plain = new THREE.Mesh(geometry, material); plain.name = 'plain';
-  const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene();
-  for (const object of [empty, some, plain]) renderer.renderBufferDirect(camera, scene, geometry, material, object, null);
-  assert.deepEqual(calls, [['some', true, null], ['plain', true, null]], 'the zero-count draw is skipped before the setup; the rest pass through with their receiver');
+  // Round 79: a BatchedMesh whose per-object culling left an empty multi-draw list is skipped the same way
+  const scene = new THREE.Scene();
+  const emptyBatch = new THREE.BatchedMesh(2, 24, 36, material); emptyBatch.name = 'emptyBatch';
+  const fullBatch = new THREE.BatchedMesh(2, 24, 36, material); fullBatch.name = 'fullBatch';
+  const batchGeometry = fullBatch.addGeometry(geometry); fullBatch.addInstance(batchGeometry);
+  fullBatch.onBeforeRender({ getRenderTarget: () => null }, scene, new THREE.PerspectiveCamera(), geometry, material, null);
+  assert.equal(emptyBatch._multiDrawCount, 0, 'a batch that was never culled holds no draws');
+  assert.equal(fullBatch._multiDrawCount, 1, 'three\'s own hook fills the multi-draw list');
+  const camera = new THREE.PerspectiveCamera(), scene2 = new THREE.Scene();
+  for (const object of [empty, some, plain, emptyBatch, fullBatch]) renderer.renderBufferDirect(camera, scene2, geometry, material, object, null);
+  assert.deepEqual(calls, [['some', true, null], ['plain', true, null], ['fullBatch', true, null]], 'the zero-count draw and the empty batch are skipped before the setup; the rest pass through with their receiver');
+  emptyBatch.dispose(); fullBatch.dispose();
   assert.doesNotThrow(() => routeZeroCountDraws({ shadowMap: { render() {} } }), 'a renderer without the method is left alone');
 }
 
@@ -362,4 +371,4 @@ console.log('renderLayers.selftest: shadow routing and scoped warm suppression/r
   setShadowCasterProfile(bucket, null);
   setShadowCasterCascades(bucket, null);
 }
-console.log('renderLayers.selftest: the shadow-only layer, the warm scope, the round-78 per-cascade caster masks (with the last-cascade flag), the zero-count early-out and the round-79 caster profiles / dynamic masks pinned');
+console.log('renderLayers.selftest: the shadow-only layer, the warm scope, the round-78 per-cascade caster masks (with the last-cascade flag), the zero-count early-out (instanced and batched) and the round-79 caster profiles / dynamic masks pinned');
