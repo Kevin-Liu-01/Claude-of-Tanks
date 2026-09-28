@@ -252,6 +252,9 @@ interface DriveStep {
   /** Ruleset landing rebound (matchRuleset.ts physics.restitution / bounceMinMps). */
   restitution: number;
   bounceMin: number;
+  bounceMaxHeight: number;
+  airAngularDrag: number;
+  airAngularSpeedMax: number;
   /** The face under the tracks is steeper than they hold: no drive, no brake, the hull slides. */
   gripLost: boolean;
   traverseMax: number;
@@ -343,6 +346,7 @@ export interface MovementEntity {
 export interface MovementHeightField {
   getHeightAt: HeightSampler;
   getHeightAtFast?: HeightSampler;
+  getContactHeightAt?: HeightSampler;
   getGroundType(x: number, z: number): string;
   getDriveGroundType?(x: number, z: number): string;
 }
@@ -901,6 +905,9 @@ const _driveStep: DriveStep = {
   gravityScale: 1,
   restitution: STANDARD_PHYSICS.restitution,
   bounceMin: STANDARD_PHYSICS.bounceMinMps,
+  bounceMaxHeight: Infinity,
+  airAngularDrag: AIR_ANGULAR_DRAG_S,
+  airAngularSpeedMax: Infinity,
   gripLost: false,
   traverseMax: 0,
   gunArc: Infinity,
@@ -1258,6 +1265,7 @@ function advanceAirborneRide(
   gravityScale: number,
   restitution: number,
   bounceMin: number,
+  bounceMaxHeight: number,
 ): boolean {
   const gravity = GRAVITY * gravityScale;
   const yBefore = ride.y;
@@ -1273,7 +1281,7 @@ function advanceAirborneRide(
   const closing = Math.max(0, ride.groundV - vAtContact);
   state.landingImpactMps = closing;
   const seat = Math.max(contactY, floorY);
-  const rebound = closing * restitution;
+  const rebound = Math.min(closing * restitution, Math.sqrt(2 * gravity * bounceMaxHeight));
   if (rebound > bounceMin) {
     const rest = (1 - fraction) * dt;
     const vOut = ride.groundV + rebound;
@@ -1322,11 +1330,19 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   const supportY = state._sup.y;
   const floorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : supportY;
   const ride = initializeRideState(state, supportY);
-  updateRideSupportVelocity(ride, supportY, dt);
+  if (groundedAtStart || !Number.isFinite(drive.bounceMaxHeight)) updateRideSupportVelocity(ride, supportY, dt);
+  else {
+    // The support envelope changes when an airborne hull rotates. That is
+    // geometry, not a moving floor. The bounded low-gravity rules must not
+    // feed that motion back into the next bounce. Standard suspension keeps
+    // its existing support-following response over ordinary rolling terrain.
+    ride.supportY = supportY;
+    ride.groundV = 0;
+  }
   const contactY = supportY + RIDE_DROOP_M;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, supportY, contactY, floorY, dt)
-    : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin);
+    : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin, drive.bounceMaxHeight);
   if (grounded) ride.bounces = 0;
   state.grounded = grounded;
   ride.grounded = grounded;
@@ -1586,7 +1602,7 @@ export function cliffAhead(
   const dir = state.speed > 0 ? 1 : -1;
   const edgeX = state.pos.x + forwardX * dir * halfLength;
   const edgeZ = state.pos.z + forwardZ * dir * halfLength;
-  const sample = heightField.getHeightAtFast ?? heightField.getHeightAt;
+  const sample = heightField.getContactHeightAt ?? heightField.getHeightAtFast ?? heightField.getHeightAt;
   const here = sample(edgeX, edgeZ);
   const ahead = sample(edgeX + forwardX * dir * CLIFF_PROBE_M, edgeZ + forwardZ * dir * CLIFF_PROBE_M);
   if (ahead <= state.pos.y + HULL_STEP_UP_M) return false;
@@ -1780,6 +1796,7 @@ function updateRigidAttitude(
   groundedAtStart: boolean,
   landingImpact: number,
   dt: number,
+  drive: DriveStep,
 ): void {
   const spring = state._spring;
   if (groundedAtStart) {
@@ -1798,12 +1815,13 @@ function updateRigidAttitude(
       spring.rollV *= contactDrag;
     }
   } else {
-    const airDrag = Math.exp(-AIR_ANGULAR_DRAG_S * dt);
+    const airDrag = Math.exp(-drive.airAngularDrag * dt);
     spring.pitchV *= airDrag;
     spring.rollV *= airDrag;
   }
 
-  const angularCap = body.tumbling ? TUMBLE_ANGULAR_SPEED_MAX : AIR_ANGULAR_SPEED_MAX;
+  const angularCap = Math.min(body.tumbling ? TUMBLE_ANGULAR_SPEED_MAX : AIR_ANGULAR_SPEED_MAX,
+    groundedAtStart ? Infinity : drive.airAngularSpeedMax);
   spring.pitchV = clamp(spring.pitchV, -angularCap, angularCap);
   spring.rollV = clamp(spring.rollV, -angularCap, angularCap);
   spring.pitch = wrapAngle(spring.pitch + spring.pitchV * dt);
@@ -1861,6 +1879,7 @@ function updateHullAttitude(
   dt: number,
   contactPitch: number,
   contactRoll: number,
+  drive: DriveStep,
 ): void {
   // the landing torque always turns the hull toward the ground plane it struck — a rebounding hull (airborne
   // again at the start of this tick) would otherwise read its own attitude as the target and take no torque
@@ -1873,7 +1892,7 @@ function updateHullAttitude(
     upYAtStart,
   );
   if (!groundedAtStart || body.tumbling) {
-    updateRigidAttitude(state, body, groundedAtStart, landingImpact, dt);
+    updateRigidAttitude(state, body, groundedAtStart, landingImpact, dt, drive);
   } else {
     updateSupportedAttitude(state, body, targetPitch, targetRoll, perch, dt);
   }
@@ -2395,6 +2414,18 @@ function solveSupportHeight(
   );
 }
 
+function prepareImpactPhysics(drive: DriveStep, physics: RulesetPhysics): void {
+  drive.restitution = clamp(Number.isFinite(physics.restitution) ? physics.restitution : STANDARD_PHYSICS.restitution, 0, 0.95);
+  drive.bounceMin = Number.isFinite(physics.bounceMinMps) && physics.bounceMinMps > 0
+    ? physics.bounceMinMps : STANDARD_PHYSICS.bounceMinMps;
+  drive.bounceMaxHeight = Number.isFinite(physics.bounceMaxHeightM) && physics.bounceMaxHeightM! > 0
+    ? physics.bounceMaxHeightM! : Infinity;
+  drive.airAngularDrag = Number.isFinite(physics.airAngularDrag) && physics.airAngularDrag! >= 0
+    ? physics.airAngularDrag! : AIR_ANGULAR_DRAG_S;
+  drive.airAngularSpeedMax = Number.isFinite(physics.airAngularSpeedMax) && physics.airAngularSpeedMax! > 0
+    ? physics.airAngularSpeedMax! : Infinity;
+}
+
 function prepareDriveStep(
   entity: MovementEntity,
   heightField: MovementHeightField,
@@ -2431,10 +2462,7 @@ function prepareDriveStep(
     0.1,
     3,
   );
-  const physics = entity.modePhysics ?? STANDARD_PHYSICS;
-  drive.restitution = clamp(Number.isFinite(physics.restitution) ? physics.restitution : STANDARD_PHYSICS.restitution, 0, 0.95);
-  drive.bounceMin = Number.isFinite(physics.bounceMinMps) && physics.bounceMinMps > 0
-    ? physics.bounceMinMps : STANDARD_PHYSICS.bounceMinMps;
+  prepareImpactPhysics(drive, entity.modePhysics ?? STANDARD_PHYSICS);
   drive.gripLost = false;
   drive.topSpeed = spec.topSpeedKmh / 3.6 * drive.speedMultiplier;
   drive.reverseSpeed = spec.reverseSpeedKmh / 3.6 * drive.speedMultiplier;
@@ -2791,7 +2819,7 @@ export function updateTank(
   // and headless worlds. Selecting the method reference directly avoids one
   // short-lived closure per tank per 60 Hz tick (and matches map/headless
   // collision callers).
-  const hAt = heightField.getHeightAtFast || heightField.getHeightAt;
+  const hAt = heightField.getContactHeightAt ?? heightField.getHeightAtFast ?? heightField.getHeightAt;
   if (!(dt > 0)) return;
   const spec = entity.spec;
   const state = entity.state;
@@ -2894,6 +2922,7 @@ export function updateTank(
     dt,
     state._terr.pitch + suspensionAimPitch,
     state._terr.roll,
+    drive,
   );
   const upYAfterAttitude = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
 

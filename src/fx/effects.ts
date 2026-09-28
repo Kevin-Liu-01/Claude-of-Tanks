@@ -12,6 +12,7 @@
  */
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
+import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts';
@@ -5105,10 +5106,8 @@ function* createFxSteps(
      */
     dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void {
       if (intensity <= 0.02) return;
-      const waterMask = heightField?.getWaterMaskAt?.(pos.x, pos.z) ?? 0;
-      // round 61: a track that rides a bridge deck (or any floor) more than 0.6 m over the water surface under it
-      // is not in that water — the mask reports the river the deck spans, the contact point's height says which
-      if (waterMask > 0.02 && pos.y < groundY(pos.x, pos.z) + (heightField?.getWaterDepthAt?.(pos.x, pos.z) ?? 0) + 0.6) {
+      const waterMask = waterContactMaskAt(heightField, pos.x, pos.y, pos.z);
+      if (waterMask > 0.02) {
         emitWetTrackDust(pos, dir, intensity, waterMask);
         return;
       }

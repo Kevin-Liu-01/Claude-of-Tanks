@@ -8,6 +8,7 @@ import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // Contract: docs/ARCHITECTURE.md §2.7, §3.2; visuals per docs/research/graphics-aaa.md §6–7.
 
 import * as THREE from 'three';
+import { createTerrainContactSampler } from './terrainContactSurface.ts';
 import {
   chooseTerrainLodBuild,
   initialTerrainLods,
@@ -347,6 +348,8 @@ export interface HeightField {
    * the rim's interior gradient would carry the notch's faces across it); absent on a map without cuttings. */
   getOutlandSeatWeightAt?(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
+  /** Near-mesh triangle surface shared by movement and visible suspension. */
+  getContactHeightAt?(x: number, z: number): number;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
@@ -1668,6 +1671,8 @@ function* heightFieldBuildSteps(
   if (placementOnly) return {getHeightAt,getNormalAt,getGroundType,
     _roadDist:(x,z)=>gridSample(gRoadDist,x,z)};
 
+  const getContactHeightAt = createTerrainContactSampler(getHeightAt);
+
   // perf-r3b (CPU profile): every height query runs the full 9-octave simplex
   // stack — a live battle makes ~3.9 k queries per FRAME (LOS ray marches, AI
   // terrain probes), ~2.4 ms of every frame on the probe box. Hot NON-GEOMETRY
@@ -1948,7 +1953,7 @@ function* heightFieldBuildSteps(
   const mesaWeight = createMesaWeightSampler();
 
   return {
-    getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
+    getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
     // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch
     getOutlandHeightAt: railCuttings !== null
       ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z))

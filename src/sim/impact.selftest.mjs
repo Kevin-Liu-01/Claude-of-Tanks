@@ -40,7 +40,7 @@ assert.equal(fallDamage(mars, 60, matchRulesetFor('mars').jumpMps), 0, 'a single
 assert.ok(fallDamage(mars, 60, matchRulesetFor('mars').jumpMps * 1.8) > 0, 'a double boost lands hard on Mars');
 const turboKeys = rulesetLines(matchRulesetFor('turbo_ball')).map((line) => line.key);
 assert.ok(turboKeys.includes('bounce') && turboKeys.includes('fallDamage'), 'the Turbo Ball card names its rebound and its fall threshold');
-assert.equal(rulesetLines(matchRulesetFor('turbo_ball')).find((line) => line.key === 'bounce').values.value, '45 %');
+assert.equal(rulesetLines(matchRulesetFor('turbo_ball')).find((line) => line.key === 'bounce').values.value, '28 %');
 assert.ok(!rulesetLines(matchRulesetFor('standard')).some((line) => line.key === 'bounce' || line.key === 'fallDamage'), 'Standard is the baseline');
 
 // ---- energy and the damage table -------------------------------------------------------------------------

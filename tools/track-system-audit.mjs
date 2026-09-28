@@ -23,6 +23,7 @@ const outputArg = process.argv.find((arg) => arg.startsWith('--output='));
 const roundShotsArg = process.argv.find((arg) => arg.startsWith('--round-shots='));
 const battleShotsArg = process.argv.find((arg) => arg.startsWith('--battle-shots='));
 const runTurning = process.argv.includes('--turning');
+const roughGround = process.argv.includes('--rough-ground');
 const runBattle = process.argv.includes('--battle') || runTurning;
 const runRound = process.argv.includes('--round');
 const skipStatic = process.argv.includes('--skip-static');
@@ -126,7 +127,7 @@ try {
     for (const [index, id] of ids.entries()) {
       const mapId = maps[index % maps.length];
       pageError = null;
-      await battlePage.evaluate(({ tankId, battlefield }) => {
+      await battlePage.evaluate(async ({ tankId, battlefield }) => {
         const debug = window.__DEBUG;
         debug.rig.release();
         // Keep a valid 4v4 control roster around the audited player. A forced
@@ -137,7 +138,9 @@ try {
           .filter((specId) => specId !== tankId)
           .slice(0, 7);
         debug.flags.rosterExact = true;
-        debug.startBattle(tankId, battlefield);
+        debug.flags.godMode = true;
+        debug.flags.freezeBots = true;
+        await debug.beginSoloBattle({ specId: tankId, mapId: battlefield, randomRoster: false });
       }, { tankId: id, battlefield: mapId });
       await battlePage.waitForFunction(
         (tankId) => window.__DEBUG.game.phase === 'battle'
@@ -146,6 +149,26 @@ try {
         { polling: 50 },
         id,
       );
+      if (roughGround) await battlePage.evaluate(async () => {
+        const T = await import('/node_modules/three/build/three.module.js');
+        const { createTankState } = await import('/src/sim/movement.ts');
+        const d = window.__DEBUG, hf = d.world.heightField, e = d.game.player;
+        const obstacles = d.world.getObstacles();
+        let best = null;
+        for (let z = -420.31; z < 421; z += 31.173) for (let x = -420.13; x < 421; x += 29.371) {
+          if (hf.getWaterMaskAt(x, z) > .02 || hf.getNormalAt(x, z).y < .93) continue;
+          if (obstacles.some(o => !o.crushable && x > o.min[0] - 7 && x < o.max[0] + 7
+            && z > o.min[2] - 7 && z < o.max[2] + 7)) continue;
+          const score = hf.getHeightAtFast(x, z) - hf.getContactHeightAt(x, z);
+          if (!best || score > best.score) best = { x, z, score };
+        }
+        if (!best) throw new Error('no open drivable contact probe');
+        Object.assign(e.state, createTankState(e.spec,
+          new T.Vector3(best.x, hf.getContactHeightAt(best.x, best.z), best.z), .57));
+        const eye = new T.Vector3(-9.5, 1.8, 0).applyAxisAngle(new T.Vector3(0, 1, 0), .57).add(e.state.pos);
+        d.rig.setExternalPose(eye, e.state.pos.clone().add(new T.Vector3(0, .75, 0)), 38);
+        d.game.preBattleS = 0;
+      });
       await battlePage.evaluate(() => new Promise((resolve) => {
         // Let the suspension and map-support solve settle before sampling the
         // shoe-to-heightfield clearance. Eight presentation frames was
@@ -197,7 +220,16 @@ try {
         if (turning && trackScrollDifferentialM < 0.08) {
           failures.push(`turning maneuver produced only ${trackScrollDifferentialM.toFixed(3)} m track differential`);
         }
-        const heightAt = debug.world?.heightField?.getHeightAt?.bind(debug.world.heightField);
+        // Inspect the mesh that is actually on screen, including its current
+        // LOD; an analytic-height check cannot catch collision/mesh gaps.
+        const terrain = debug.world?.group.getObjectByName('terrain');
+        const terrainMeshes = terrain?.children.filter(o => o.isMesh && o.name === '') ?? [];
+        const terrainRay = new THREE.Raycaster();
+        const rayOrigin = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0);
+        const heightAt = terrainMeshes.length ? (x, z) => {
+          terrainRay.set(rayOrigin.set(x, 300, z), down);
+          return terrainRay.intersectObjects(terrainMeshes, false)[0]?.point.y ?? NaN;
+        } : null;
         if (!heightAt) failures.push('battlefield height sampler unavailable');
 
         const analyzeUnit = (unitId) => {
@@ -402,13 +434,9 @@ try {
                 }
                 const clearance = box.min.y - heightAt(center.x, center.z);
                 minClearance = Math.min(minClearance, clearance);
-                // Battle support keeps the rendered hull a small distance
-                // above the sampled heightfield (and the value varies by a
-                // few centimetres while suspension settles on cross-slopes).
-                // Treat shoes inside that support envelope as terrain-seated;
-                // the independent negative-clearance gate below remains the
-                // strict protection against actual terrain penetration.
-                if (clearance < 0.16) {
+                // A loaded run must be within six centimetres of the actual
+                // triangles. The former 16 cm allowance hid visible hovering.
+                if (clearance < 0.06) {
                   nearGroundBySide[sideIndex]++;
                   maxNearClearance = Math.max(maxNearClearance, clearance);
                 }
@@ -481,6 +509,7 @@ try {
         return {
           id: tankId,
           mapId: battlefield,
+          position: { x: state.pos.x, y: state.pos.y, z: state.pos.z },
           turning,
           motion: {
             speedMps: Number((state.speed || 0).toFixed(3)),
@@ -504,7 +533,7 @@ try {
           debug.rig.setExternalPose(eye, target, 38);
         });
         result.screenshot = resolve(battleShotsDir,
-          `${id}-${mapId}${runTurning ? '-turning' : ''}.png`);
+          `${id}-${mapId}${roughGround ? '-rough' : ''}${runTurning ? '-turning' : ''}.png`);
         await battlePage.screenshot({ path: result.screenshot });
       }
       if (runTurning) await battlePage.keyboard.up('KeyA');

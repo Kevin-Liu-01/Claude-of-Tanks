@@ -108,6 +108,7 @@ import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts'
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import type { WaterDisturbance } from './world/shallowWater.ts';
+import { waterContactMaskAt } from './world/waterContactMask.ts';
 import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
@@ -677,19 +678,10 @@ function requireFxRuntime() {
 
 // Per-wheel suspension: give every battle tank the live heightfield so road
 // wheels conform to terrain (garage pedestal tank stays rigid on its disc).
-// perf-r3b (stack-sampled): the per-wheel gear conform is the single hottest
-// terrain consumer (~3.5 k queries/frame across a battle roster, each a
-// 9-octave simplex stack). Live battles read the baked 1 m grid (≤ ~1 cm from
-// analytic — tighter than the rendered mesh's own 2.7 m discretization);
-// capture contexts (shotMode) and the pre-world boot keep the exact analytic
-// path so the frozen screenshot/metrology contracts are byte-identical. The
-// garage pedestal never conforms at all (rigid on its disc).
-const groundSampler = (x: number, z: number) => {
-  const world = currentWorld();
-  return world && !shotMode && world.heightField.getHeightAtFast
-    ? world.heightField.getHeightAtFast(x, z)
-    : hfProxy.getHeightAt(x, z);
-};
+// Movement and wheels read the same cached triangles as the near terrain.
+// An analytic/bilinear approximation can sit above the visible ground at a
+// ridge or rut, leaving daylight below otherwise correctly conformed tracks.
+const groundSampler = (x: number, z: number) => hfProxy.getContactHeightAt(x, z);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -2999,7 +2991,7 @@ const worldFramePresentation = {
       // wake rings and churn into the surface — the water reacts to the battle.
       const wakeWorld = currentWorld();
       if (wakeWorld) {
-        const field = wakeWorld.heightField as { getWaterMaskAt?: (x: number, z: number) => number };
+        const field = wakeWorld.heightField;
         wakeSources.length = 0;
         groundSources.length = 0;
         const entities = networkSession.bridge ? game.tankById.values() : game.tanks;
@@ -3010,14 +3002,14 @@ const worldFramePresentation = {
           const rect = ent.spec ? tankContactRect(ent.spec) : null;
           const travel = speed < -0.05 ? -1 : 1;
           const fx = Math.sin(st.yaw ?? 0), fz = Math.cos(st.yaw ?? 0);
-          if (groundSources.length < 8) {
+          if (st.grounded !== false && groundSources.length < 8) {
             groundSources.push({
               x: p.x, z: p.z, dirX: fx * travel, dirZ: fz * travel, speed: Math.abs(speed),
               halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
             });
           }
           if (!field.getWaterMaskAt || wakeSources.length >= 8) continue;
-          const mask = field.getWaterMaskAt(p.x, p.z);
+          const mask = waterContactMaskAt(field, p.x, p.y + (ent.contactGeom?.bottomYM ?? 0), p.z);
           if (!(mask > 0.05)) continue;
           // Water pass 7 (2026-09-20): the hull's footprint, heading and direction of travel
           // shape the wake. A standing hull still laps the water around it (0.6); a moving

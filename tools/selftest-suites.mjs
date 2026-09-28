@@ -976,6 +976,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mapIntegration.selftest.mjs',
     'src/world/mapQuality.selftest.mjs',
     'src/world/waterMobility.selftest.mjs',
+    'src/world/terrainContactSurface.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
     'tools/environment-shot-camera.selftest.mjs',
     'tools/water-shore-camera.selftest.mjs',

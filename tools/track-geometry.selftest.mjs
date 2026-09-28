@@ -200,6 +200,25 @@ for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
     `individual shoes rotate onto the locally bent run (${maxLoadedPitch.toFixed(3)} rad)`);
   assert.equal(collapsedShoes, 0,
     'covered return runs keep every shoe in the closed physical chain');
+
+  // A hull already parallel to a planar slope needs no extra wheel lift.
+  // Compare the actual wheel instance matrices, including combined tilt/yaw.
+  P.gear.resetPose();
+  const tires = P.hullG.getObjectByName('gearRoadWheelTires');
+  const restWheelMatrices = tires.instanceMatrix.array.slice();
+  for (const yaw of [0, .73, 1.8]) for (const pitch of [-.4, 0, .4]) for (const roll of [-.45, 0, .45]) {
+    P.gear.resetPose();
+    const normal = new THREE.Vector3(0, 1, 0).applyEuler(new THREE.Euler(-pitch, yaw, roll, 'YXZ'));
+    const floor = P.gear.contactGeom.bottomYM;
+    const plane = (x, z) => (floor - normal.x * x - normal.z * z) / normal.y;
+    const pose = { pos: new THREE.Vector3(), yaw, visualPitch: pitch, visualRoll: roll };
+    for (let i = 0; i < 90; i++) P.gear.conform(pose, plane, pitch, roll, 1 / 60);
+    P.gear.update(0, 0);
+    for (let i = 0; i < tires.count; i++) {
+      const lift = tires.instanceMatrix.array[i * 16 + 13] - restWheelMatrices[i * 16 + 13];
+      assert.ok(Math.abs(lift) < .001, `aligned slope cannot lift tracks: yaw ${yaw}, pitch ${pitch}, roll ${roll}: ${lift} m`);
+    }
+  }
   for (const disposable of P.disposables) disposable.dispose?.();
   for (const material of materials) material.dispose();
 }

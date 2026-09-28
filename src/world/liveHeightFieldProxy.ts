@@ -6,6 +6,7 @@ interface HeightFieldLike<Normal> {
   maxY: number;
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
+  getContactHeightAt?(x: number, z: number): number;
   getNormalAt(x: number, z: number): Normal;
   getGroundType(x: number, z: number): string;
   getDriveGroundType?(x: number, z: number): string;
@@ -21,6 +22,7 @@ interface HeightFieldWorld<Normal> {
 
 interface LiveHeightFieldProxy<Normal> {
   getHeightAt(x: number, z: number): number;
+  getContactHeightAt(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
   getHeightAtExact(x: number, z: number): number;
   getNormalAt(x: number, z: number): Normal;
@@ -63,6 +65,10 @@ export function createLiveHeightFieldProxy<Normal>({
       : heightField.getHeightAt(x, z);
 
   return {
+    getContactHeightAt(x, z) {
+      const heightField = field();
+      return heightField ? (heightField.getContactHeightAt?.(x, z) ?? fastHeight(heightField, x, z)) : 0;
+    },
     getHeightAt(x, z) {
       const heightField = field();
       if (!heightField) return 0;

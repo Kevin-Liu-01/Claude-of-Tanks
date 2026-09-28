@@ -702,18 +702,23 @@ function sampleWheelGroundDeviation(
   const wz = frame.pz - x1 * frame.sb + z2 * frame.cb;
   const halfWheelWidth = 0.5 * frame.wheelW * Math.abs(frame.hsx);
   const halfRadius = 0.55 * wheel.r * Math.abs(frame.hsz);
-  const gxX = frame.cb * frame.cr;
-  const gxZ = -frame.sb * frame.cr;
+  const gxX = frame.cb * frame.cr + frame.sb * frame.sa * frame.sr;
+  const gxY = frame.ca * frame.sr;
+  const gxZ = -frame.sb * frame.cr + frame.cb * frame.sa * frame.sr;
   const gzX = frame.sb * frame.ca;
+  const gzY = -frame.sa;
   const gzZ = frame.cb * frame.ca;
+  // Compare every footprint sample with the height of that same point on
+  // the tilted contact plane. Comparing the uphill edge to the centre's Y
+  // counted hull tilt twice and lifted an already slope-aligned track.
   let ground = sampler(wx, wz);
-  let sample = sampler(wx + gxX * halfWheelWidth, wz + gxZ * halfWheelWidth);
+  let sample = sampler(wx + gxX * halfWheelWidth, wz + gxZ * halfWheelWidth) - gxY * halfWheelWidth;
   if (sample > ground) ground = sample;
-  sample = sampler(wx - gxX * halfWheelWidth, wz - gxZ * halfWheelWidth);
+  sample = sampler(wx - gxX * halfWheelWidth, wz - gxZ * halfWheelWidth) + gxY * halfWheelWidth;
   if (sample > ground) ground = sample;
-  sample = sampler(wx + gzX * halfRadius, wz + gzZ * halfRadius) - 0.17 * wheel.r;
+  sample = sampler(wx + gzX * halfRadius, wz + gzZ * halfRadius) - gzY * halfRadius - 0.17 * wheel.r;
   if (sample > ground) ground = sample;
-  sample = sampler(wx - gzX * halfRadius, wz - gzZ * halfRadius) - 0.17 * wheel.r;
+  sample = sampler(wx - gzX * halfRadius, wz - gzZ * halfRadius) + gzY * halfRadius - 0.17 * wheel.r;
   if (sample > ground) ground = sample;
   return (ground - wy) * frame.invHsy;
 }

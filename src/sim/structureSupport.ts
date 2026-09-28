@@ -25,6 +25,7 @@ const SUPPORT_QUERY_MARGIN_M = 6;
 interface SupportHeightField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
+  getContactHeightAt?(x: number, z: number): number;
   getGroundType(x: number, z: number): string;
   getDriveGroundType?(x: number, z: number): string;
 }
@@ -89,9 +90,11 @@ export function createStructureSupportField(
   };
   const getHeightAt = sample(terrainAt);
   const getHeightAtFast = sample(terrainFast);
+  const getContactHeightAt = sample(terrain.getContactHeightAt?.bind(terrain) ?? terrainFast);
   return {
     getHeightAt,
     getHeightAtFast,
+    getContactHeightAt,
     getGroundType: (x, z) => terrain.getGroundType(x, z),
     getDriveGroundType: (x, z) => driveGroundTypeAt(terrain, x, z),
     beginHull(x, z, bellyY) {

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { mulberry32 } from './particles.ts';
+import { waterContactMaskAt } from '../world/waterContactMask.ts';
 
 const source = readFileSync(new URL('./effects.ts', import.meta.url), 'utf8');
 const tree = ts.createSourceFile('effects.ts', source, ts.ScriptTarget.Latest, true);
@@ -50,13 +51,13 @@ const recipes = functions(['col3', 'drySurfaceMultiplier', 'updateDustCameraCaps
 function recipeFixture(surface, ground, method = body('dust'), freeze = false, water = 0) {
   const emitted = [], marks = [], owners = new Set();
   const context = {
-    THREE, rng: mulberry32(7919), frozen: freeze, groundY: () => -3.25,
-    // 2026-09-24 (round 61): the current dust method routes wet only when the contact rides within 0.6 m of the
-    // water surface (bed + sheet depth) — a bridge deck over the river stays dry. The fixture's contact sits ON the
+    THREE, waterContactMaskAt, rng: mulberry32(7919), frozen: freeze, groundY: () => -3.25,
+    // The current dust method requires contact with the actual water surface.
+    // The fixture's contact sits ON the
     // ground it declares (pos.y = groundY) with a zero sheet depth, so the predecessor and the current method see
     // the same geometry; the parity it protects is dispatch, helper order and the RNG tail, not the deck rule.
     heightField: { getGroundType: () => ground, getWaterMaskAt: () => water, getTrackSurfaceAt: () => surface,
-      getWaterDepthAt: () => 0 },
+      getWaterDepthAt: () => 0, getHeightAt: () => -3.25 },
     engineCtx: { camera: null }, _camV: new THREE.Vector3(), _c0: new THREE.Color(),
     COLUMN_WIND_X: .82, COLUMN_WIND_Z: .28,
     _puffO: { pos: [0, 0, 0], vel: [0, 0, 0], col0: [0, 0, 0], col1: [0, 0, 0] },

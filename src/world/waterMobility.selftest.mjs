@@ -5,6 +5,7 @@ import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 import { createStructureSupportField } from '../sim/structureSupport.ts';
 import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
+import { waterContactMaskAt } from './waterContactMask.ts';
 
 const groundAt = (field, x, z) => (field.getDriveGroundType ?? field.getGroundType)(x, z);
 const saltwind = createHeightField(1337, getMapConfig('saltwind'));
@@ -14,6 +15,18 @@ assert.equal(saltwind.getWaterMaskAt(...dry), 0, 'actual Saltwind strand is dry'
 assert.equal(saltwind.getGroundType(...dry), 'soft', 'retain construction placement exclusions');
 assert.equal(groundAt(saltwind, ...dry), 'medium', 'dry strand releases water mobility resistance');
 assert.equal(groundAt(saltwind, ...wet), 'soft', 'bay still slows the tracks');
+const wetY = saltwind.getHeightAt(...wet) + saltwind.getWaterDepthAt(...wet);
+assert.ok(waterContactMaskAt(saltwind, wet[0], wetY, wet[1]) > .9, 'water contact makes a wake');
+for (const clearance of [.1, .3, 1, 10, 100]) {
+  assert.equal(waterContactMaskAt(saltwind, wet[0], wetY + clearance, wet[1]), 0,
+    'flying above a wet map coordinate cannot disturb the water');
+}
+const meshWater = { getWaterMaskAt: () => 1, getHeightAt: () => 0, getWaterDepthAt: () => .72,
+  getWaterSurfaceHeightAt: () => .3 };
+assert.equal(waterContactMaskAt(meshWater, 0, .5, 0), 0, 'the actual water mesh wins over analytic depth');
+assert.equal(waterContactMaskAt(meshWater, 0, .3, 0), 1, 'landing back in the sheet resumes the wake');
+assert.equal(waterContactMaskAt(meshWater, 0, 5, 0), 0, 'bridge decks stay dry');
+assert.equal(waterContactMaskAt(null, 0, 0, 0), 0, 'missing water data stays dry');
 
 // The dry shoulder used to inherit its lake disc despite the rendered road
 // cutting a dry ford through it. Ice and ordinary bogs retain their policy.

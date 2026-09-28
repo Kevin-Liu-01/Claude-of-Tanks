@@ -205,6 +205,18 @@ function createHarness({
 }
 
 {
+  const flyer = createEntity({ isPlayer: true, speed: 12 });
+  flyer.entity.state.grounded = false;
+  const harness = createHarness({ tanks: [flyer.entity], network: true });
+  for (let frame = 0; frame < 120; frame++) harness.runtime.update(1 / 60);
+  assert.equal(harness.effects.dust.length, 0, 'airborne tracks emit neither spray nor ground dust');
+  assert.ok(harness.effects.exhaust.length > 0, 'airborne engines still emit exhaust');
+  flyer.entity.state.grounded = true;
+  for (let frame = 0; frame < 6; frame++) harness.runtime.update(1 / 60);
+  assert.ok(harness.effects.dust.length > 0, 'track contact FX resume after landing');
+}
+
+{
   const reverse = createEntity({ isPlayer: true, speed: -4 });
   const world = {
     crushables: [{ x: 0, y: 0, z: -20, h: 2, dynamic: false }],

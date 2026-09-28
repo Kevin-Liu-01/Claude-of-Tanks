@@ -14,6 +14,7 @@ interface TankState {
   pos: Vector3;
   yaw: number;
   speed: number;
+  grounded?: boolean;
 }
 
 type PresentedTankState = TankState;
@@ -262,7 +263,7 @@ export function createBattlePresentationRuntime({
     topSpeedMps: number,
     fxTicks: number,
   ): void => {
-    if (speed <= 0.8) {
+    if (speed <= 0.8 || entity.state?.grounded === false) {
       entity._dustTravelAcc = 0;
       return;
     }

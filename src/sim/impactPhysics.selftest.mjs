@@ -98,7 +98,25 @@ function flight(entity, field, jumpMps, { dt = SIM_DT, maxS = 20 } = {}) {
   return { apexes, landings, bounces, minClearance, ticks, timeS: ticks * dt };
 }
 
-// ---- 1. Mars: several decaying bounces, then a settle -------------------------------------------------------
+// Long low-gravity airtime must not amplify one shove into repeated flips.
+for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38, .6, 1]) {
+  const field = makeField(flat);
+  const entity = makeEntity(field, { mode, gravityScale });
+  settle(entity, field);
+  resetTankVerticalState(entity.state, 2000, 0, false);
+  entity.state._body.tumbling = true;
+  entity.state._spring.pitchV = 2.8;
+  entity.state._spring.rollV = -2.8;
+  let rotation = 0;
+  run(entity, field, 600, () => {
+    rotation += Math.hypot(entity.state._spring.pitchV, entity.state._spring.rollV) * SIM_DT;
+  });
+  assert.ok(rotation < Math.PI, `${mode}/${gravityScale}: one shove settles before a complete flip (${rotation})`);
+  assert.ok(Math.hypot(entity.state._spring.pitchV, entity.state._spring.rollV) < .02,
+    `${mode}/${gravityScale}: spin decays during long flight`);
+}
+
+// ---- 1. Mars: a bounded rebound, then a settle -------------------------------------------------------
 {
   const field = makeField(flat);
   const entity = makeEntity(field, { mode: 'mars' });
@@ -106,13 +124,13 @@ function flight(entity, field, jumpMps, { dt = SIM_DT, maxS = 20 } = {}) {
   const y0 = entity.state.pos.y;
   const jump = matchRulesetFor('mars').jumpMps;
   const trace = flight(entity, field, jump);
-  assert.ok(trace.bounces >= 2, `a Mars rocket jump rebounds at least twice (${trace.bounces})`);
-  assert.ok(trace.apexes.length >= 3, `apex per hop: ${trace.apexes.map((a) => a.toFixed(2)).join(' > ')} m`);
+  assert.equal(trace.bounces, 1, 'a Mars rocket jump has one small rebound');
+  assert.equal(trace.apexes.length, 2, 'the jump and one landing hop');
   for (let i = 1; i < trace.apexes.length; i++) {
     assert.ok(trace.apexes[i] < trace.apexes[i - 1] * 0.5, `each hop is under half the last (${trace.apexes[i - 1].toFixed(2)} → ${trace.apexes[i].toFixed(2)})`);
   }
   near(trace.landings[0], jump, 0.4, 'the first landing closes at the launch speed (energy conservation at 0.38 g)');
-  near(trace.landings[1], jump * 0.5, 0.4, 'the second at the ruleset restitution × the first');
+  near(trace.landings[1], jump * 0.3, 0.4, 'the second at the reduced ruleset restitution × the first');
   assert.ok(entity.state.grounded, 'the hull settles');
   near(entity.state.pos.y, y0 + 0.18, 0.03, 'on the droop line (the tracks touch first)');
   run(entity, field, 120);
@@ -133,7 +151,7 @@ function flight(entity, field, jumpMps, { dt = SIM_DT, maxS = 20 } = {}) {
   const turbo = makeEntity(field, { mode: 'turbo_ball' });
   settle(turbo, field);
   const trace = flight(turbo, field, matchRulesetFor('turbo_ball').jumpMps);
-  assert.ok(trace.bounces >= 2, `a Turbo Ball jump rebounds (${trace.bounces})`);
+  assert.equal(trace.bounces, 1, 'a Turbo Ball jump has one small rebound');
   assert.ok(turbo.state.grounded, 'and settles');
 
   const standard = makeEntity(field, { mode: 'standard' });
@@ -147,6 +165,35 @@ function flight(entity, field, jumpMps, { dt = SIM_DT, maxS = 20 } = {}) {
   assert.ok(drop.bounces >= 1 && drop.bounces <= 2, `a 12 m/s landing hops once or twice at 1 g (${drop.bounces})`);
   // the hop is measured from the ground; the hull leaves from the 0.18 m droop line, so 0.15 × 12 = 1.8 m/s rises 0.165 m above it
   near(drop.apexes[1] - 0.18, 1.8 * 1.8 / (2 * 9.81), 0.03, 'the hop above the droop line is the rebound\'s ballistic apex');
+}
+
+// The landing hop stays small at every Mars gravity, even after a boosted
+// jump; takeoff height/velocity remain the original ballistic motion.
+for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38, .6, 1]) {
+  for (const dt of [1 / 60, 1 / 120]) {
+    const field = makeField(flat), entity = makeEntity(field, { mode, gravityScale });
+    settle(entity, field);
+    const seatY = entity.state.pos.y;
+    const trace = flight(entity, field, 18, { dt, maxS: 45 });
+    near(trace.apexes[0] - seatY, 18 * 18 / (2 * 9.81 * gravityScale), .2,
+      `${mode}/${gravityScale}: boosted jump height is preserved`);
+    assert.ok(trace.bounces <= 2 && entity.state.grounded, 'boosted landing settles promptly');
+    for (const apex of trace.apexes.slice(1)) {
+      assert.ok(apex - seatY <= 1.72, `${mode}/${gravityScale}: rebound stays within 1.5 m of contact`);
+    }
+  }
+}
+
+// A rotating support envelope below a flying hull is not a rising platform.
+{
+  const field = makeField(flat), entity = makeEntity(field, { mode: 'mars' });
+  settle(entity, field);
+  resetTankVerticalState(entity.state, 50, -8, false);
+  entity.state._spring.pitchV = 1.1;
+  entity.state._spring.rollV = .9;
+  run(entity, field, 60, () => {
+    assert.equal(entity.state._ride.groundV, 0, 'airborne hull rotation contributes no phantom floor velocity');
+  });
 }
 
 // ---- 3. no tunnelling at 40 m/s: a fall onto terrain, a fall onto a structure top -----------------------------
