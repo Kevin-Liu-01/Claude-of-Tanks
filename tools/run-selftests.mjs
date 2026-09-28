@@ -13,6 +13,7 @@ import { createSelftestCache } from './selftest-cache.mjs';
 export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
+  'tools/cloud-history.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',
   'tools/articulated-shadow-batch.browser.selftest.mjs',
   'tools/battle-geometry-sharing.browser.selftest.mjs',

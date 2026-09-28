@@ -186,9 +186,11 @@ uniform float uFieldMix;
 // the equalised field the coverage cuts at a world xz: the cell-carried cumuliform one blended toward the
 // street field in the wind frame (rows along the wind), or the broad stratiform one
 float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
-	w = texture2D( tWeather, ( pxz + uWeatherShift ) / ${f(CLOUD_WEATHER_TILE_M)} );
+	// March neighbours take different paths: implicit derivatives select unrelated mip levels inside the loop.
+	// Keep the authored volume and shadow coverage at level zero; the distant sheets filter their own footprint.
+	w = textureLod( tWeather, ( pxz + uWeatherShift ) / ${f(CLOUD_WEATHER_TILE_M)}, 0.0 );
 	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
-	st = texture2D( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)} );
+	st = textureLod( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)}, 0.0 );
 	return mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
 }
 `;
@@ -267,6 +269,10 @@ float phaseDual( float c, float g ) { return mix( phaseHG( c, g ), phaseHG( c, -
 // the blue-noise tile at a trace texel (void-and-cluster ranks: neighbouring rays take offsets as far apart as possible)
 float blueNoise( vec2 px ) { return texelFetch( tBlue, ivec2( mod( px, ${f(CLOUD_BLUE_SIZE)} ) ), 0 ).r; }
 float luma( vec3 c ) { return dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ); }
+// Project a ray's screen derivative onto a horizontal sheet. Its footprint grows rapidly at the horizon.
+vec2 cloudSheetGradient( vec3 dir, vec3 rayDerivative, float height ) {
+	return height * ( rayDerivative.xz * dir.y - dir.xz * rayDerivative.y ) / ( dir.y * dir.y );
+}
 // the weather at a world xz
 struct Weather { float cov; float top; float breakup; float type; float anvil; float roll; };
 Weather cloudWeather( vec2 pxz ) {
@@ -495,6 +501,9 @@ void main() {
 	vec2 tp = floor( gl_FragCoord.xy );
 	vec2 px = tp * ${f(CLOUD_TRACE_DIVISOR)} + uSlot + 0.5 + uSubPixel;
 	vec3 dir = cloudViewDir( px / uHistorySize );
+	// Take derivatives before the divergent march. Filter at the trace footprint so all sixteen history slots
+	// see the same distant features, including during camera motion and the first frames after a cut.
+	vec3 rayDx = dFdx( dir ), rayDy = dFdy( dir );
 	float bn = blueNoise( tp );
 	float jitter = fract( bn + uFrameNoise );
 	float cosT = dot( dir, uSunDir );
@@ -695,7 +704,9 @@ void main() {
 		float horiz = tb * length( dir.xz );
 		if ( tb > 0.0 && horiz > ${f(CLOUD_FARBAND_START_M)} ) {
 			vec3 pb = uCamPos + dir * tb;
-			float fb = texture2D( tWeather, ( pb.xz / ${f(CLOUD_FARBAND_PERIOD_K)} + uFarBandShift ) / ${f(CLOUD_WEATHER_TILE_M)} ).b;
+			vec2 gradX = cloudSheetGradient( dir, rayDx, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
+			vec2 gradY = cloudSheetGradient( dir, rayDy, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
+			float fb = textureGrad( tWeather, ( pb.xz / ${f(CLOUD_FARBAND_PERIOD_K)} + uFarBandShift ) / ${f(CLOUD_WEATHER_TILE_M)}, gradX, gradY ).b;
 			float covB = smoothstep( 1.0 - uFarBand, 1.0 - uFarBand + 0.35, fb ) * smoothstep( ${f(CLOUD_FARBAND_START_M)}, ${f(CLOUD_FARBAND_START_M + 3000)}, horiz );
 			if ( covB > 0.0 ) {
 				// slant depth through a thin lumpy deck: opaque at a grazing angle, a veil overhead
@@ -715,10 +726,15 @@ void main() {
 		if ( tc > 0.0 ) {
 			vec3 pc = uCamPos + dir * tc;
 			vec2 q = vec2( dot( pc.xz, uCirrusDir ), dot( pc.xz, vec2( -uCirrusDir.y, uCirrusDir.x ) ) );
-			vec4 c1 = texture2D( tStreets, ( q + uCirrusShift ) / ${f(CLOUD_CIRRUS_TILE_M)} );
+			vec2 gx = cloudSheetGradient( dir, rayDx, uCirrusAlt - uCamPos.y ) / ${f(CLOUD_CIRRUS_TILE_M)};
+			vec2 gy = cloudSheetGradient( dir, rayDy, uCirrusAlt - uCamPos.y ) / ${f(CLOUD_CIRRUS_TILE_M)};
+			vec2 across = vec2( -uCirrusDir.y, uCirrusDir.x );
+			vec2 gradX = vec2( dot( gx, uCirrusDir ), dot( gx, across ) );
+			vec2 gradY = vec2( dot( gy, uCirrusDir ), dot( gy, across ) );
+			vec4 c1 = textureGrad( tStreets, ( q + uCirrusShift ) / ${f(CLOUD_CIRRUS_TILE_M)}, gradX, gradY );
 			// the second octave keeps the streak axis (both axes scaled alike: unequal scales rotate the streaks
 			// into a lattice of crossing lines)
-			vec4 c2 = texture2D( tStreets, ( q * 1.6 + uCirrusShift * 1.7 + vec2( 3100.0, 900.0 ) ) / ${f(CLOUD_CIRRUS_TILE_M)} );
+			vec4 c2 = textureGrad( tStreets, ( q * 1.6 + uCirrusShift * 1.7 + vec2( 3100.0, 900.0 ) ) / ${f(CLOUD_CIRRUS_TILE_M)}, gradX * 1.6, gradY * 1.6 );
 			float streak = c1.b * 0.7 + c2.b * 0.3;
 			float covC = smoothstep( 1.0 - uCirrus, 1.0 - uCirrus + 0.65, streak );
 			if ( covC > 0.0 ) {
@@ -760,6 +776,10 @@ varying vec2 vUv;
 // Catmull-Rom in five bilinear taps (the corner taps dropped)
 vec4 historyCatmullRom( vec2 uv, vec2 size ) {
 	vec2 sp = uv * size;
+	// An unchanged camera reprojects to texel centres, apart from floating-point roundoff. Re-filtering that
+	// value on every frame slowly rounds half-float history down and prints the 4 x 4 refresh grid into the sky.
+	if ( all( lessThan( abs( sp - ( floor( sp ) + 0.5 ) ), vec2( 0.001 ) ) ) )
+		return texelFetch( tHistory, ivec2( floor( sp ) ), 0 );
 	vec2 tp1 = floor( sp - 0.5 ) + 0.5;
 	vec2 fr = sp - tp1;
 	vec2 w0 = fr * ( fr * ( fr * -0.5 + 1.0 ) - 0.5 );
@@ -769,9 +789,13 @@ vec4 historyCatmullRom( vec2 uv, vec2 size ) {
 	vec2 w12 = w1 + w2;
 	vec2 tc0 = ( tp1 - 1.0 ) / size, tc3 = ( tp1 + 2.0 ) / size, tc12 = ( tp1 + w2 / w12 ) / size;
 	float a = w12.x * w0.y, b = w0.x * w12.y, c = w12.x * w12.y, d = w3.x * w12.y, e = w12.x * w3.y;
-	vec4 sum = texture2D( tHistory, vec2( tc12.x, tc0.y ) ) * a + texture2D( tHistory, vec2( tc0.x, tc12.y ) ) * b
-		+ texture2D( tHistory, tc12 ) * c + texture2D( tHistory, vec2( tc3.x, tc12.y ) ) * d + texture2D( tHistory, vec2( tc12.x, tc3.y ) ) * e;
-	return sum / ( a + b + c + d + e );
+	// Accumulate differences so a uniform cloud stays exactly uniform even while the camera moves.
+	vec4 centre = texture2D( tHistory, tc12 );
+	vec4 delta = ( texture2D( tHistory, vec2( tc12.x, tc0.y ) ) - centre ) * a
+		+ ( texture2D( tHistory, vec2( tc0.x, tc12.y ) ) - centre ) * b
+		+ ( texture2D( tHistory, vec2( tc3.x, tc12.y ) ) - centre ) * d
+		+ ( texture2D( tHistory, vec2( tc12.x, tc3.y ) ) - centre ) * e;
+	return centre + delta / ( a + b + c + d + e );
 }
 // this frame's samples, bilinear (they sit at the slot of each block)
 vec4 upsampled( vec2 p ) {
@@ -813,11 +837,11 @@ void main() {
 		float motion = length( ( pr.xy - uv ) * uHistorySize );
 		float a = clamp( motion * 0.1 + uMinAlpha, uMinAlpha, 0.35 );
 		// rebuilding after a cut: a pixel takes its own first sample as is
-		outv = ( valid && uRebuildK < 0.0 ) ? mix( outv, cur, a ) : cur;
+		outv = ( valid && uRebuildK < 0.0 ) ? outv + ( cur - outv ) * a : cur;
 	} else if ( uRebuildK >= 0.0 && valid ) {
 		// rebuilding: pixels without a sample of their own since the cut average the upsampled samples of
 		// every slot traced so far (their refresh rank is the Bayer index)
-		if ( bayerRank( cell ) > uRebuildK ) outv = mix( outv, upsampled( p ), 1.0 / ( uRebuildK + 1.0 ) );
+		if ( bayerRank( cell ) > uRebuildK ) outv += ( upsampled( p ) - outv ) / ( uRebuildK + 1.0 );
 	}
 	gl_FragColor = vec4( max( outv.rgb, vec3( 0.0 ) ), clamp( outv.a, 0.0, 1.0 ) );
 }`;
@@ -1002,10 +1026,10 @@ function makeVolume(bytes: Uint8Array, size: number, name: string): THREE.Data3D
 
 function makeWeather(bytes: Uint8Array, size: number, name: string, filter: THREE.MagnificationTextureFilter = THREE.LinearFilter): THREE.DataTexture {
   const tex = new THREE.DataTexture(bytes, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  tex.minFilter = filter;
+  tex.minFilter = filter === THREE.LinearFilter ? THREE.LinearMipmapLinearFilter : filter;
   tex.magFilter = filter;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.generateMipmaps = false;
+  tex.generateMipmaps = filter === THREE.LinearFilter;
   tex.name = name;
   tex.needsUpdate = true;
   return tex;

@@ -64,6 +64,21 @@ const weather = bakeCloudWeatherMap();
 const streets = bakeCloudWeatherStreets();
 const curl = bakeCloudCurlVolume();
 const blue = bakeCloudBlueNoise();
+// The sheets need a complete mip chain, while the volume/shadow field and
+// blue-noise sampling must retain their authored level-zero distribution.
+{
+  const layer = new VolumetricCloudLayer({}, new THREE.Scene(), {}, new THREE.Vector3(1, 1, 1));
+  layer.setNoise({ weather, streets, blue });
+  for (const field of ['weather', 'streets']) {
+    assert.equal(layer.noise[field].generateMipmaps, true);
+    assert.equal(layer.noise[field].minFilter, THREE.LinearMipmapLinearFilter);
+    assert.equal(layer.noise[field].magFilter, THREE.LinearFilter);
+  }
+  assert.equal(layer.noise.blue.generateMipmaps, false);
+  assert.equal(layer.noise.blue.minFilter, THREE.NearestFilter);
+  assert.equal(layer.noise.blue.magFilter, THREE.NearestFilter);
+  layer.dispose();
+}
 assert.equal(shape.length, 64 * 64 * 64 * 4);
 assert.equal(detail.length, 32 * 32 * 32 * 4);
 assert.equal(weather.length, 256 * 256 * 4);
