@@ -26,6 +26,15 @@ export const ROOM_MAX_SEATS = ROOM_MAX_PLAYERS + ROOM_MAX_SPECTATORS;
 export const ROOM_IDLE_TTL_MS = 24 * 60 * 60 * 1000;
 /** Admin migrates this long after the admin's socket dropped without an explicit leave. */
 export const ROOM_ADMIN_DISCONNECT_GRACE_MS = 30_000;
+/**
+ * Peer-to-peer matches (owner 2026-09-28): the admin's browser hosts the match; when its room socket is absent this
+ * long the room elects the next connected commander as host (shorter than the admin grace: peers are stalled meanwhile).
+ */
+export const ROOM_HOST_DISCONNECT_GRACE_MS = 8_000;
+/** One WebRTC signal (offer / answer / candidate) relayed between two seats: SDP fits comfortably. */
+export const ROOM_SIGNAL_MAX_BYTES = 8 * 1024;
+/** The browser-hosted authority emits a keyframe snapshot at least this often so any peer can become the host. */
+export const ROOM_MATCH_KEYFRAME_INTERVAL_MS = 2_000;
 /** The room polls the match host at this cadence while a match runs. */
 export const ROOM_MATCH_POLL_MS = 10_000;
 /** A match that has not answered two polls in a row is lost. */
@@ -121,8 +130,20 @@ export interface RoomSnapshot {
   players: RoomPlayer[];
   match: RoomMatchInfo | null;
   lastResult: RoomLastResult | null;
+  /** Who runs the authority (peer-to-peer: a seated commander's browser; service: a dedicated match service). */
+  host?: RoomHostInfo;
   createdAt: number;
   touchedAt: number;
+}
+
+/** The match host as every participant sees it — `generation` increments on every election (host migration). */
+export interface RoomHostInfo {
+  transport: 'p2p' | 'service';
+  /** The hosting player's id (p2p) or null (service / no match). */
+  hostId: string | null;
+  generation: number;
+  /** Wall clock of the current election. */
+  since: number;
 }
 
 export interface RoomChatEntry {
@@ -168,6 +189,8 @@ export const ROOM_CLIENT_MESSAGE = Object.freeze({
   CHAT: 'room_chat',
   LEAVE: 'room_leave',
   PING: 'room_ping',
+  /** WebRTC signaling between two seats of a p2p match; the room relays it as `room_signal` with `from` added. */
+  SIGNAL: 'room_signal',
 } as const);
 
 /**
@@ -186,7 +209,34 @@ export const ROOM_SERVER_MESSAGE = Object.freeze({
   ERROR: 'error',
   PONG: 'room_pong',
   CLOSED: 'room_closed',
+  /** A relayed WebRTC signal (`RoomSignalPayload` plus `from`). */
+  SIGNAL: 'room_signal',
+  /** The room elected a new match host (`RoomHostChangedPayload`); peers reconnect to `hostId`. */
+  HOST_CHANGED: 'host_changed',
 } as const);
+
+/**
+ * Peer-to-peer signaling (owner 2026-09-28). A seat sends `room_signal` naming the target seat; the room checks both
+ * seats are in the room, the sender is the host or the target is, the match is starting or playing, and the payload
+ * is under ROOM_SIGNAL_MAX_BYTES, then relays it verbatim with `from`. The room never parses SDP.
+ */
+export interface RoomSignalPayload {
+  to: string;
+  /** The host generation the signal belongs to; a stale generation is dropped. */
+  generation: number;
+  kind: 'offer' | 'answer' | 'candidate';
+  sdp?: string;
+  candidate?: { candidate: string; sdpMid: string | null; sdpMLineIndex: number | null };
+}
+
+/** `host_changed`: the new host boots the authority from its last keyframe; every peer opens a new data channel to it. */
+export interface RoomHostChangedPayload {
+  hostId: string;
+  generation: number;
+  /** The authority tick the new host resumes from (the keyframe it holds), 0 for a fresh match. */
+  resumeTick: number;
+  reason: 'left' | 'timeout' | 'declined' | 'start';
+}
 
 /** The `match_start` payload one seat receives: its own token, never another seat's. */
 export interface RoomMatchStartPayload {
@@ -199,8 +249,13 @@ export interface RoomMatchStartPayload {
   team: RoomTeam;
   /** HMAC seat token for the match service (`server/match/seatToken.ts`). */
   seatToken: string;
-  /** Absolute or endpoint-relative URL of the `/match` WebSocket the client connects to. */
+  /**
+   * Absolute or endpoint-relative URL of the `/match` WebSocket the client connects to — or, for a peer-to-peer
+   * match, `rtc://<roomId>/<generation>`: the client opens a WebRTC data channel to `hostId` through `room_signal`.
+   */
   matchUrl: string;
+  /** Peer-to-peer matches: the hosting seat's player id (the host receives its own id and runs the authority). */
+  hostId?: string;
   /** Wall-clock expiry of the seat token. */
   expiresAt: number;
 }
