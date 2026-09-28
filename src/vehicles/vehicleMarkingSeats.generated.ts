@@ -7,6 +7,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_ABRAMSSOURCEX } from './vehicleMarkingSe
 import { VEHICLE_MARKING_SEATS as SEATS_AFT10X } from './vehicleMarkingSeatGroups/aft10X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_AFV } from './vehicleMarkingSeatGroups/afv.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_AJAXX } from './vehicleMarkingSeatGroups/ajaxX.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_AMX10P } from './vehicleMarkingSeatGroups/amx10p.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_AMX30X } from './vehicleMarkingSeatGroups/amx30X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_AMX40X } from './vehicleMarkingSeatGroups/amx40X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_ARESAPCX } from './vehicleMarkingSeatGroups/aresApcX.generated.ts';
@@ -87,6 +88,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_AFT10X,
   SEATS_AFV,
   SEATS_AJAXX,
+  SEATS_AMX10P,
   SEATS_AMX30X,
   SEATS_AMX40X,
   SEATS_ARESAPCX,

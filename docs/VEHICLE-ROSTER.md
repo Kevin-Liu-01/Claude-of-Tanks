@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **198 saved vehicle records**: **198 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **200 saved vehicle records**: **200 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -206,6 +206,8 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 196 | PROD | `griffin_viper` | Griffin Viper | USA | X | Modern | Production |
 | 197 | PROD | `spz_puma_s1_x` | Puma S1 X | Germany | X | Modern | Production |
 | 198 | PROD | `type89_x` | Type 89 X | Japan | X | Next Generation | Production |
+| 199 | PROD | `amx10p` | AMX-10P | France | IX | Cold War | Production |
+| 200 | PROD | `amx10p_25` | AMX-10P 25 | France | X | Cold War | Production |
 
 ## Policy ownership
 

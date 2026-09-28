@@ -98,7 +98,7 @@ const BASE_CAMO_PATTERN_IDS = Object.freeze([
   'sig_t84', 'sig_ua_challenger2', 'sig_ua_t64bv', 'sig_ua_t80bv',
   'sig_ua_t80u_kursk', 'sig_ua_t84_oplot_m', 'sig_ua_m1a1', 'sig_leo2a6_ua',
   'mono', 'carbon', 'prism', 'sig_sabra_mk2_x', 'sig_tos1a_tagil',
-  'sig_dardo', 'sig_lrmv_lynx', 'sig_borsuk',
+  'sig_dardo', 'sig_lrmv_lynx', 'sig_borsuk', 'sig_amx10p', 'sig_amx10p_25',
 ] as const);
 
 /**
@@ -187,6 +187,8 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_amx56: 'Leclerc S1', // the legacy hull is the S1 since 2026-09-16
   sig_leclerc: 'Leclerc S2',
   sig_ariete_c2: 'Ariete C2',
+  sig_amx10p: 'AMX-10P French Woodland',
+  sig_amx10p_25: 'AMX-10P 25 French Woodland',
   sig_dardo: 'Dardo Woodland',
   sig_lrmv_lynx: 'LRMV Olive',
   sig_borsuk: 'Borsuk Woodland',
@@ -442,6 +444,10 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'nato', base: '#35483a', weather: '#405544', patches: ['#1e2521', '#5f4b37'], camoScale: 0.45 }),
   preset('sig_leclerc', 'leclerc', signatureTags('fr', 'woodland', 'organic'),
     { scheme: 'nato', base: '#394936', weather: '#4b5940', patches: ['#614d39', '#20231f'], camoScale: 0.38 }),
+  preset('sig_amx10p', 'amx10p', signatureTags('fr', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#46543b', weather: '#70725a', patches: ['#624d38', '#222822'] }),
+  preset('sig_amx10p_25', 'amx10p_25', signatureTags('fr', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#46543b', weather: '#70725a', patches: ['#624d38', '#222822'] }),
   preset('sig_dardo', 'dardo', signatureTags('it', 'woodland', 'organic'),
     { scheme: 'nato', base: '#4d5538', weather: '#797762', patches: ['#494235', '#252c26'] }),
   preset('sig_lrmv_lynx', 'lrmv_lynx', signatureTags('it', 'woodland', 'organic'),
@@ -678,7 +684,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // United Kingdom
   'challenger2e', 'challenger_3x', 'ares_apc_x',
   // France
-  'amx56', 'leclerc',
+  'amx56', 'leclerc', 'amx10p', 'amx10p_25',
   // Italy
   'ariete_c2', 'dardo', 'lrmv_lynx',
   // Japan

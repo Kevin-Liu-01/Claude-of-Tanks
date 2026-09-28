@@ -6,6 +6,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ABRAMSSOURCEX } from './com
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AFT10X } from './combatAnatomyGroups/aft10X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AFV } from './combatAnatomyGroups/afv.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AJAXX } from './combatAnatomyGroups/ajaxX.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX10P } from './combatAnatomyGroups/amx10p.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX30X } from './combatAnatomyGroups/amx30X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX40X } from './combatAnatomyGroups/amx40X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ARESAPCX } from './combatAnatomyGroups/aresApcX.generated.ts';
@@ -84,6 +85,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_AFT10X,
   CALIBRATIONS_AFV,
   CALIBRATIONS_AJAXX,
+  CALIBRATIONS_AMX10P,
   CALIBRATIONS_AMX30X,
   CALIBRATIONS_AMX40X,
   CALIBRATIONS_ARESAPCX,

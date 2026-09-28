@@ -37,6 +37,10 @@ type InternalCrewTuple = readonly [
 ];
 
 export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
+  amx10pHandbook: Object.freeze({ title: 'USMC MCIA Qatar and Singapore country handbooks: AMX-10P',
+    url: 'https://info.publicintelligence.net/MCIA-QatarHandbook.pdf', kind: 'military-handbook' }),
+  amx10pDragarStudy: Object.freeze({ title: 'AMX-10P 25 Dragar configuration and original photographic study',
+    url: 'https://kementah.blogspot.com/2020/04/circuit-breaker-day-24-pix-singapore.html', kind: 'original-photography' }),
   ownerViper: Object.freeze({ title: 'Owner-directed modern American missile carrier, 2026-09-21',
     url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/griffin_viper.md',
     kind: 'owner-authored-concept' }),
@@ -323,6 +327,16 @@ function suppliedTurretLauncherLayout(sources: readonly InternalLayoutSourceId[]
 }
 
 const LAYOUTS = Object.freeze({
+  amx10p: { confidence: 'platform-inferred', sources: ['amx10pHandbook'], crew: crew(
+    ['driver','hull','frontLeft'], ['gunner','turret','frontRight'], ['commander','turret','rearLeft'],
+  ), systems: systems({ engine: { placement:'front', form:'frontDieselPowerpack' },
+    transmission: { placement:'front', form:'integratedFinalDrive' },
+    ammoRack: { placement:'mixed', form:'ifvAmmoBoxes' }, feedSystem: { placement:'turret', form:'cannonBeltFeed' } }) },
+  amx10pDragar: { confidence: 'platform-inferred', sources: ['amx10pHandbook','amx10pDragarStudy'], crew: crew(
+    ['driver','hull','frontLeft'], ['gunner','turret','frontLeft'], ['commander','hull','rearLeft'],
+  ), systems: systems({ engine: { placement:'front', form:'frontDieselPowerpack' },
+    transmission: { placement:'front', form:'integratedFinalDrive' },
+    ammoRack: { placement:'mixed', form:'ifvAmmoBoxes' }, feedSystem: { placement:'turret', form:'cannonBeltFeed' } }) },
   conceptRocketBattery: { confidence: 'owner-directed', sources: ['ownerTosTagil'], crew: crew(
     ['driver', 'hull', 'frontCenter'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'protectedReadyBins' },
@@ -501,6 +515,8 @@ const IDS_BY_LAYOUT = Object.freeze({
   abramsX: ['abramsx'],
   m1a3: ['m1a3'],
   bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
+  amx10p: ['amx10p'],
+  amx10pDragar: ['amx10p_25'],
   ifvFrontTwoMan: ['dardo', 'lrmv_lynx', 'cv90_x', 'type89_x', 'ajax_x', 'kf41_lynx_x', 'bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
   namerIfv: ['namer_ifv'],
   aresRemoteApc: ['ares_apc_x'],

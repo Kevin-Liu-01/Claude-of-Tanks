@@ -53,6 +53,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   japan_mbt: Object.freeze([
     'stb1', 'type74', 'type90', 'type90a', 'type10', 'type10b',
   ]),
+  french_ifv: Object.freeze(['amx10p', 'amx10p_25']),
   italy: Object.freeze([
     'dardo', 'lrmv_lynx', 'carro45t', 'ariete', 'ariete_c1', 'ariete_c2', 'ariete_c1_x', 'ariete_c2_x',
   ]),

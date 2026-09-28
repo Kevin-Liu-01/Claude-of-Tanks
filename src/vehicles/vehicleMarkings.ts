@@ -175,6 +175,9 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   type96b_x: anchor('hull', 'left', .52, .58, .20, 1),
   kf41_lynx_x: anchor('hull', 'left', .52, .58, .20, 1),
   spz_puma_s1_x: anchor('hull', 'left', .38, .60, .24, 1),
+  amx10p: anchor('hull', 'left', .42, .64, .17, 1),
+  // Visible outer face of the permanent standoff skirt, below its cargo.
+  amx10p_25: anchor('hull', 'left', .52, .84, .12, 1),
   dardo: anchor('hull', 'left', .42, .58, .20, 1),
   lrmv_lynx: anchor('hull', 'left', .42, .64, .22, 1),
   borsuk: anchor('hull', 'left', .45, .60, .22, 1),
@@ -362,12 +365,12 @@ export function vehicleMarkingAnchor(
   return VEHICLE_MARKING_ANCHORS[id as string] || null;
 }
 
-/** Object's continuous closed side modules are permanent armor, not ERA. */
+/** Continuous side modules may carry markings outside the core hull. */
 export function vehicleMarkingIncludesPermanentHullArmor(
   specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
 ): boolean {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
-  return id === 'object695_x';
+  return id === 'object695_x' || id === 'amx10p_25';
 }
 
 /**

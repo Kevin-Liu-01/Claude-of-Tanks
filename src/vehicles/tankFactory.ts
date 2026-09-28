@@ -48,6 +48,7 @@ import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import './europePhotoIfvSpecs.ts';
+import './amx10pSpecs.ts';
 
 import {
   SAVED_TANK_IDS,

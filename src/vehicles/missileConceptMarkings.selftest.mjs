@@ -8,8 +8,8 @@ import { createTankState } from '../sim/movement.ts';
 
 const ids = ['ztz100_prototype', 'object695_x'];
 const results = [];
-assert.deepEqual(ALL_TANK_IDS.filter(vehicleMarkingIncludesPermanentHullArmor), ['object695_x'],
-  'unrelated vehicles retain their original permanent-surface eligibility');
+assert.deepEqual(ALL_TANK_IDS.filter(vehicleMarkingIncludesPermanentHullArmor).sort(), ['amx10p_25', 'object695_x'],
+  'only explicitly fitted permanent side armor can receive hull markings');
 assert.equal(vehicleMarkingIncludesPermanentHullArmor('unknown'), false);
 assert.equal(vehicleMarkingIncludesPermanentHullArmor(null), false);
 const physical = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });

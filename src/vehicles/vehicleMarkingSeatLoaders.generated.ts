@@ -11,6 +11,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "aft10X": () => import('./vehicleMarkingSeatGroups/aft10X.generated.ts'),
   "afv": () => import('./vehicleMarkingSeatGroups/afv.generated.ts'),
   "ajaxX": () => import('./vehicleMarkingSeatGroups/ajaxX.generated.ts'),
+  "amx10p": () => import('./vehicleMarkingSeatGroups/amx10p.generated.ts'),
   "amx30X": () => import('./vehicleMarkingSeatGroups/amx30X.generated.ts'),
   "amx40X": () => import('./vehicleMarkingSeatGroups/amx40X.generated.ts'),
   "aresApcX": () => import('./vehicleMarkingSeatGroups/aresApcX.generated.ts'),

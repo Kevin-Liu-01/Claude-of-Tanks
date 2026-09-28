@@ -192,9 +192,12 @@ const laterChannelCounts = {
   tos1a_tagil: 1, ariete_c2_x: 3, griffin_viper: 1,
   // 2026-09-25 IFV identity batch: three X replicas beside their kept originals and three photographic additions.
   spz_puma_s1_x: 3, cv90_x: 3, type89_x: 3, dardo: 2, lrmv_lynx: 2, borsuk: 3,
+  amx10p: 2, amx10p_25: 2,
 };
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
+const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;
+assert.equal(frenchIfvChannels, 4, 'the French autocannon IFVs add four conventional ammunition channels');
 const laterIds = new Set([...Object.keys(laterChannelCounts), ...SUPPLIED_SOURCE_IDS]);
 for (const [id, count] of Object.entries(laterChannelCounts)) {
   assert.equal(TANK_SPECS[id].gun.shells.length, count,
@@ -221,7 +224,8 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // 2026-09-22 cleanup: 675 -> 666 for the same three retired ww2 study variants; 2026-09-23: 666 -> 560
 // when the remaining 36 hidden records retired (the same 106 channels as the census above).
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
-assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels, 560,
+// The French IFVs' four channels are also additions to this frozen census.
+assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

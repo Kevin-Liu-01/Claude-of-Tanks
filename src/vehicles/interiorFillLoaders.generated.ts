@@ -11,6 +11,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "aft10X": () => import('./interiorFillGroups/aft10X.generated.ts'),
   "afv": () => import('./interiorFillGroups/afv.generated.ts'),
   "ajaxX": () => import('./interiorFillGroups/ajaxX.generated.ts'),
+  "amx10p": () => import('./interiorFillGroups/amx10p.generated.ts'),
   "amx30X": () => import('./interiorFillGroups/amx30X.generated.ts'),
   "amx40X": () => import('./interiorFillGroups/amx40X.generated.ts'),
   "aresApcX": () => import('./interiorFillGroups/aresApcX.generated.ts'),

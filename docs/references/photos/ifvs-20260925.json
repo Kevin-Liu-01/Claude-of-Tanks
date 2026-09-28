@@ -43,6 +43,46 @@
       "caliberMm": 30, "launcherTubes": 2, "roofMachineGuns": 0,
       "crew": 3, "unmannedTurret": true,
       "test": "src/vehicles/europePhotoIfvs.selftest.mjs"
+    },
+    "amx10p": {
+      "authority": "Owner request 2026-09-28: AMX-10P tier IX and an upgraded French tier X. AMX-10P 25 selected as the real Dragar upgrade. Public photographic reconstruction; no exact comparison GLB supplied.",
+      "envelopeBasis": "Published 5.90 m chassis, 2.83 m width; 5.98 m fitted envelope includes rear hardware. Upright antenna envelope estimated from photographs (4.10 / 4.20 m); not a published antenna measurement. French prototype configuration omits the Singapore rear-deck pintle gun.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/AMX-10P",
+        "https://info.publicintelligence.net/MCIA-QatarHandbook.pdf",
+        "https://info.publicintelligence.net/MCIA-SingaporeHandbook.pdf",
+        "https://imagesdefense.gouv.fr/fr/amx-10-p.html",
+        "https://kementah.blogspot.com/2020/04/circuit-breaker-day-24-pix-singapore.html"
+      ],
+      "widthM": 2.83,
+      "overallLengthM": 5.98,
+      "tallestM": 4.1,
+      "caliberMm": 20,
+      "crew": 3,
+      "launcherTubes": 0,
+      "roofMachineGuns": 0,
+      "unmannedTurret": false,
+      "test": "src/vehicles/amx10p.selftest.mjs"
+    },
+    "amx10p_25": {
+      "authority": "Owner request 2026-09-28: AMX-10P tier IX and an upgraded French tier X. AMX-10P 25 selected as the real Dragar upgrade. Public photographic reconstruction; no exact comparison GLB supplied. Owner additionally requested Warrior MILAN X-style fitted field equipment on 2026-09-28; this is an authored game kit on the Dragar chassis, not historical equipment attribution.",
+      "envelopeBasis": "Published 5.90 m chassis, 2.83 m width; 5.98 m fitted envelope includes rear hardware. Upright antenna envelope estimated from photographs (4.10 / 4.20 m); not a published antenna measurement. French prototype configuration omits the Singapore rear-deck pintle gun. Owner-requested bilateral corrugated standoff skirts and open slat cages use an authored 3.50 m fitted width, while the 2.83 m chassis and running gear remain unchanged.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/AMX-10P",
+        "https://info.publicintelligence.net/MCIA-QatarHandbook.pdf",
+        "https://info.publicintelligence.net/MCIA-SingaporeHandbook.pdf",
+        "https://imagesdefense.gouv.fr/fr/amx-10-p.html",
+        "https://kementah.blogspot.com/2020/04/circuit-breaker-day-24-pix-singapore.html"
+      ],
+      "widthM": 3.5,
+      "overallLengthM": 5.98,
+      "tallestM": 4.2,
+      "caliberMm": 25,
+      "crew": 3,
+      "launcherTubes": 0,
+      "roofMachineGuns": 0,
+      "unmannedTurret": false,
+      "test": "src/vehicles/amx10p.selftest.mjs"
     }
   }
 }

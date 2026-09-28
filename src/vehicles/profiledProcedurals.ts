@@ -1,3 +1,4 @@
+import { buildAmx10p } from './profiles/amx10p.ts';
 import { buildDardo } from './profiles/dardo.ts';
 import { buildLrmvLynx } from './profiles/lrmvLynx.ts';
 import { buildBorsuk } from './profiles/borsuk.ts';
@@ -169,6 +170,8 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...SWEDEN_PROFILES,
   ...CV90_PROFILES,
   spz_puma_s1_x: { build: buildPumaS1X },
+  amx10p: { build: buildAmx10p },
+  amx10p_25: { build: buildAmx10p },
   dardo: { build: buildDardo },
   lrmv_lynx: { build: buildLrmvLynx },
   borsuk: { build: buildBorsuk },

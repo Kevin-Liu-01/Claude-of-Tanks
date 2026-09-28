@@ -11,6 +11,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "aft10X": () => import('./combatAnatomyGroups/aft10X.generated.ts'),
   "afv": () => import('./combatAnatomyGroups/afv.generated.ts'),
   "ajaxX": () => import('./combatAnatomyGroups/ajaxX.generated.ts'),
+  "amx10p": () => import('./combatAnatomyGroups/amx10p.generated.ts'),
   "amx30X": () => import('./combatAnatomyGroups/amx30X.generated.ts'),
   "amx40X": () => import('./combatAnatomyGroups/amx40X.generated.ts'),
   "aresApcX": () => import('./combatAnatomyGroups/aresApcX.generated.ts'),

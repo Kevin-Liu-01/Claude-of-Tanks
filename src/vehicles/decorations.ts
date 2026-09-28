@@ -2416,6 +2416,9 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 
 /** Resolve the manifest rows for one spec (curated table or era default). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
+  // AMX-10P photo-authored turret/coax configurations own their fittings.
+  // Random roof guns and crates would change the real equipment and silhouette.
+  if (spec.id === 'amx10p' || spec.id === 'amx10p_25') return [];
   // The pitching battery and retained Tagil chassis already own their fittings.
   // Turret-roof hatches/whips would be mounted on the moving launcher instead.
   if (spec.id === 'tos1a_tagil') return [];

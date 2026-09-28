@@ -1,6 +1,10 @@
 // Authored body boundaries for fill generation only. Visible fittings remain in
 // the native tank and in every source/continuity/physical-stock check.
 const PRIMARY_BODY_BUCKETS = Object.freeze({
+  // The owner-requested AMX field kit adds strapped packs and open baskets
+  // around closed hull/turret shells. Air behind cargo is outside the vehicle,
+  // so never bridge it with generated interior solids. Native audits keep it.
+  amx10p_25: Object.freeze(['hull', 'turret']),
   // Namer's closed rear roof channel lies beneath a separate raised cover
   // and paired bodies. Those fittings do not make the intervening air part
   // of the turret shell; its closed access-door recess is exterior too.

@@ -5,6 +5,8 @@ import './tankFactory.ts'; // registers the complete modern roster
 import { ALL_TANK_IDS, TANK_SPECS, getSpec } from './specs.ts';
 
 const EXPECTED = Object.freeze({
+  amx10p: { hp: 2000, speed: 65, reverse: 22, traverse: 48, damage: 44, pen: [190, 170, 150], reload: .22, sound: 'rh202', missile: null },
+  amx10p_25: { hp: 2300, speed: 65, reverse: 22, traverse: 48, damage: 70, pen: [225, 205, 185], reload: .30, sound: 'm242-bushmaster', missile: null },
   m2a2_bradley:       { hp: 1650, speed: 61, reverse: 20, traverse: 42, damage: 58, pen: [130, 118, 106], reload: 0.42, sound: 'm242-bushmaster', missile: [540, 'tow-launch'] },
   bmp2:               { hp: 1050, speed: 65, reverse: 12, traverse: 50, damage: 42, pen: [74, 66, 58], reload: 0.28, sound: '2a42', missile: [430, 'konkurs-launch'] },
   spz_puma:           { hp: 2000, speed: 70, reverse: 30, traverse: 46, damage: 64, pen: [165, 150, 135], reload: 0.40, sound: 'mk30-2', missile: [520, 'spike-launch'] },
@@ -50,7 +52,7 @@ const EXPECTED = Object.freeze({
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 37, 'complete selectable IFV fleet'); // 31 + the six 2026-09-25 IFV identity additions
+assert.equal(ifvIds.length, 39, 'complete selectable IFV fleet'); // 31 + the six 2026-09-25 IFV identity additions
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

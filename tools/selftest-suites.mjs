@@ -245,6 +245,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/launcherOrigins.selftest.mjs',
     'src/vehicles/ifvReplicas.selftest.mjs',
     'src/vehicles/europePhotoIfvs.selftest.mjs',
+  'src/vehicles/amx10p.selftest.mjs',
     'src/vehicles/staggeredTrackGround.selftest.mjs',
     'src/vehicles/profiles/leopardRevolutionTurretCenter.selftest.mjs',
     'src/vehicles/profiles/leopardRevolutionGeometry.selftest.mjs',

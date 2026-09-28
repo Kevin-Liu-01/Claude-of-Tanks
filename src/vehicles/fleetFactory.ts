@@ -58,6 +58,7 @@ import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import './europePhotoIfvSpecs.ts';
+import './amx10pSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -175,6 +176,7 @@ const GROUP_LOADERS = Object.freeze({
   k21X: () => import('./profiles/k21X.ts').then(mod => registerProfiles({ k21_x: { build: mod.buildK21X } })),
   type96bX: () => import('./profiles/type96bX.ts').then(mod => registerProfiles({ type96b_x: { build: mod.buildType96bX } })),
   kf41LynxSourceX: () => import('./profiles/kf41LynxSourceX.ts').then(mod => registerProfiles({ kf41_lynx_x: { build: mod.buildKf41LynxX } })),
+  amx10p: () => import('./profiles/amx10p.ts').then(mod => registerProfiles({ amx10p: { build: mod.buildAmx10p }, amx10p_25: { build: mod.buildAmx10p } })),
   dardo: () => import('./profiles/dardo.ts').then(mod => registerProfiles({ dardo: { build: mod.buildDardo } })),
   lrmvLynx: () => import('./profiles/lrmvLynx.ts').then(mod => registerProfiles({ lrmv_lynx: { build: mod.buildLrmvLynx } })),
   borsuk: () => import('./profiles/borsuk.ts').then(mod => registerProfiles({ borsuk: { build: mod.buildBorsuk } })),
