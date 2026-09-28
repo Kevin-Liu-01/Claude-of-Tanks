@@ -42,7 +42,7 @@ export interface ShadowCascadeSample {
   sampledFromM: number;
 }
 
-export interface ShadowCasterEvaluation {
+interface ShadowCasterEvaluation {
   readonly cascades: readonly ShadowCascadeSample[];
   /** The sun's elevation above the horizon, radians. */
   readonly sunElevationRad: number;
