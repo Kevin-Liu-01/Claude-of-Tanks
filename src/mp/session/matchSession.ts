@@ -399,11 +399,13 @@ export class MatchSession {
     const p2p = this.p2pOptions;
     if (!p2p) throw new Error('peer-to-peer matches need the p2p options (ICE, the host thread)');
     const me = this.room.playerId;
-    const hostId = payload.hostId ?? this.room.hostId;
+    // The room's newest election wins over the payload: a seat re-entering after a Garage return holds the match_start it
+    // was sent when it hosted, while the room may have elected another host since (its host_changed is newer).
+    const hostId = this.room.hostId ?? payload.hostId ?? null;
     const secret = (payload as { hostSecret?: unknown }).hostSecret;
     this.hostSecret = typeof secret === 'string' && secret.length >= 16 ? secret : null;
     let inner: Transport;
-    this.runningGeneration = parseP2pMatchUrl(payload.matchUrl)?.generation ?? this.room.generation;
+    this.runningGeneration = Math.max(parseP2pMatchUrl(payload.matchUrl)?.generation ?? 0, this.room.generation);
     if (hostId === me && this.canHost && this.hostSecret) {
       const plan = planHostBoot(round.room, payload, me);
       const config: HostBootConfig = {
