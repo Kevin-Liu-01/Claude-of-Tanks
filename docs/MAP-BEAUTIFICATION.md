@@ -4790,6 +4790,7 @@ map's props build (140–260 ms) whether or not the map places steel; Foundry's 
 | 77b | The second vegetation pass (round 77's weak list; the owner's bar unchanged): the far tier as IMPOSTORS of the near trees (`treeImpostors.ts` — one atlas per world of every species' three near variants from eight azimuths at 10°, baked from the real trunks, cards and leaf atlases into linear albedo + coverage and capture-space normal render targets, lazily from `update()` outside any render pass and again after a GPU suspension; the tile from the 6 MB budget — 96 px on every authored map, 4.2–5.6 MB with mips; one camera-facing quad per far tree through the far canopy's wind / dissolve / matte-wrap hook, the two nearest azimuths dissolved by the view angle, the second far variant mirrored, the baked normal lit in the capture frame, the cards' mip give-back; two draws per species instead of four, two triangles per far tree instead of a lobe cloud; desktop with a renderer only — the receipts and the mobile tier keep the lobes); the leaf-scale crown detail (`leafDetail.ts` — a CPU-generated 256 px tiling leaf-cluster tile per class, broadleaf / conifer / autumn / palm, RG normal + a break mask offset to a mean of one half, the near material's normal map at repeat 3 with the tangent frame rebuilt after `useAttributeNormal`, a mean-neutral alpha break and leaf-gap shade before the alpha test; foliage key v17); the rim-forest understorey (the blocks as discs through the stands' law at the rim trees' scale and bound; Verdant 780 → 1781 shrubs). Placements, trunk records, cover discs and the stands' understorey byte-identical; the round-8 atlases untouched | six-map before / after sheets in four views incl. the new 8 m `crown` close-up (`$SP/r77b/review/sheet-*.png`, the zoomed `crop*-*.png` pairs); the census (the far tier −99.2 % triangles on every row, the whole vegetation −38 to −80 %; −2 draws per species; the near foliage counts identical); the crown high-pass metric (+6–19 % leaf-scale energy at the same mean luma); the tree-pixel luma across the rim unchanged (±4); the repetition bench at load 68–94 (the far tier 2–5 ms per copy → ≈ 0; the near tier 6.3 → 6.3 / 6.1 → 5.9 at chase — the detail layer ≈ 0 ± 0.3 by comparison, the in-page toggle inside ±1; no quiet window — the whorls' 108 tris per trunk bound ≤ 0.2 ms per copy, no trim); receipts treeImpostors (new, the bake inputs pinned per map), leafDetail (new, the tiles pinned), vegetationProgramKey (v17 + both programs' GLSL + eviction counts), vegetationResources, vegetationLighting (seven fetches), understorey (rim annuli), treePoolCapacity / autumnLeafSprays fixtures; the rest of the vegetation, placement and grass receipts green; typecheck |
 | 77c | The seam with the ring forest, the covered bake, the elevated ring, the drives (77b's weak list): the horizon ring's forest beyond 512 m bound to the far tier's impostor atlas (`horizonForestImpostors.ts` — round 72's placements byte-identical and packed on the group, redrawn as one quad per tree through the far tier's program text, its wrap / translucency / sky fill and the ring's haze law, the species by class from the rim mix, the variant from the tone, the mirror from the ring's variant, the stature that of the rim trees; the near class's lobes as shadow-only casters, the band and range lobes disposed; the ring's colour triangles −97 to −98 %); the bake in the covered warm (`world.warmImpostors()` from the solo loading runtime and the activation precompile); the elevated 45° capture ring where it keeps the row cap and the ground tile (every 3-species map, 12 rows at 96 px inside the 6 MB), the view elevation dissolving the tile and tilting the card over 20°–45°; Winter and Whiteout captured (the far bare birches carry the hoar-frost palette — no lift; Whiteout's polar ring band frosted spruces instead of summer lobes); three captured drives of the 260 / 290 m switch (move-then-hold, wind pinned, dissolve against the hard snap) instead of a distance cross-fade. Every placement byte-identical; no map-config edit; mobile and the receipts keep the lobes | six-map before / after sheets in three views (`$SP/r77c/review/sheet-*-a3.png`), the ×4 seam crops and ×3 bird crops; the render-mask seam metric (the seam step Nordhavn +14 → +9, Verdant +23 → +17, Saltmere +18 → +19; the rim's own step 9–18); the first-frame probe (the bake 5–6 ms in a presented battle frame → 30 ms behind the veil, two runs each); the ring census (colour triangles −97 to −98 %, draws −2 to +4 per map, shadow pass unchanged); the vegetation census identical on every row; the drives (crossing steps inside the quiet spread on Nordhavn and Verdant in both modes; the hard snap's pop 4.0 against 0.9 held luma on one row); receipts horizonForestImpostors (new), vegetationFarSeams (the one law), treeImpostors / vegetationProgramKey re-pinned (v2, the elevated ring, the frusta), soloBattleLoadingRuntime, worldActivationRuntime; typecheck |
 | 78 | Performance — the round-71–77 audit's cost recovered knob by knob (owner: "make sure performance is still rlly good"): the cloud shadow gobos render into their own cascade only through a per-cascade caster mask in the shadow router (`renderLayers.setShadowCasterCascades`; 16 → 4 field-shader draws on the cumulus maps); a zero-count InstancedMesh returns before three's program / uniform setup (`routeZeroCountDraws`: the r8 proxies and proxied owners sat out cascades through count 0 and still paid the setup); the bushes cast into the three near cascades, the understorey into two, the horizon ring's near forest into the last only (`SHADOW_CASTER_LAST_CASCADE`, resolved per light set); the low stratus decks under 400 m take the cellular decks' 10 km march cap and far strides (`cloudDeckMarch`; reaches exactly whiteout); the near tree tier ends at 200 m (was 260; `?treeNear=` as the same-build A/B); the mobile tier paints no steel atlas | ABBA pairs of 1d0236f33 against rsync snapshots under the shared probe mutex (`$SP/r78/`): draws −11…−13 on every cumulus map at both views (exact), after the trim −15…−20 on the gobo maps and −4 / −5 on Winter (six maps, base vs after, chase / centre-far), shadow-pass triangles −0.06…−0.45 M, the CPU frame median −0.3…−0.7 ms on the four maps whose pairs were GPU-quiet (desert, steppe, verdant, winter) and noise on monsoon / whiteout under foreign GPU 900–1300 %, the before / after sheets without a visible shadow change; triangles verdant 6.95 → 6.06 M at chase (under the 7 M gate), fjord 9.39 → 8.03 M, each 100 m of near radius 0.8–1.2 M, the 3 × strips at 260 / 200 indistinguishable; the round-76 deck metrics identical on whiteout / winter / foundry / railyard / polders; the trace bench at whiteout's centre-far 0.15 → −0.07 ms per slot (the march was never the cost there — the composite is, left open); mobile whiteout against deploy 95 draws +11 / +8 (the round-75 bucket meshes; the atlas's 1.0 MB gone), GPU p25 per pair +0.05 / +0.41 with ±3 ms spans (six pairs) — within noise, as before the gate; receipts renderLayers (the masks, the last-cascade flag, the zero-count early-out), volumetricClouds (gobo i on cascade i, the deck-march law over 31 maps), steelAtlasDemand (the mobile gate), the nineteen vegetation receipts, the horizon / shadow / props / sky receipts (67 green); `npm run typecheck` |
+| 79 | Performance — the shadow passes and the tank draws (owner: "make sure performance is still rlly good", no visible change): the articulated proxy batch installs on battle hulls at last (`articulatedShadowBatch` compared the proxies' hooks with three's Object3D prototype captured at import while lighting patches `Mesh.prototype` at boot — dormant on every hull since round 28; three proxy draws per hull per cascade → one, and an empty batch never reaches three's draw setup through the round-78 zero-count early-out); one shadow draw per near tree pool (the crown proxy carries the trunk's positions, the trunk mesh stops casting on the proxy tiers); shadow caster profiles (`renderLayers.setShadowCasterProfile`, `engine/shadowCasterProfiles.ts`): the content law (an InstancedMesh's instances / a merged bucket's 96 m cells against each cascade's frustum), the footprint law (a ground shadow under two texels of a map is not drawn into it), the reach law (near-tier content cannot reach a cascade sampled beyond its shadows — three's CSM fade pinned to the shader), evaluated per frame from the lighting update, desktop tiers only; the tank draws attributed (≈ 3.4 hulls in the chase frustum × ~52 forward draws, the four near hulls' ~20 detail casters, the proxies) with the shells and the same-material merges measured and proposed, not applied | Census on seven maps (`.qa-dev/r79-shadow-census.mjs`, base 8fb54bac3 vs dde3a0928, exact per-frame counts): shadow GL draws at chase −24…−31 % (monsoon 407 → 280, whiteout 401 → 304, winter 414 → 300, verdant 432 → 322, railyard 395 → 281, desert 387 → 283, foundry 389 → 281), at centre-far −9…−34 %, zero-count submissions −60…−170, shadow triangles −0.1…−0.7 M; ABBA probe (`$SP/r79/g1`, six maps, four pairs each, all quiet but one desert pair): renderer calls −89…−136 at chase and −34…−127 at centre-far, triangles −0.01…−1.05 M, GPU p25 railyard chase −6.3 ms [−8.9..−4.4] and verdant centre-far −5.9 [−6.5..−1.5] in four quiet pairs each, the rest inside the timer's ±2–4 ms, CPU frame medians without a signal on a GPU-bound headless frame; the blurred pixel diffs of every base / after pair read 0.0–3.7 % of the frame at chase (wind, TAA, a settled bot, the turret glint) and 0.00–0.23 % at centre-far, the sheets `$SP/r79/review/sheet-chase.png` / `sheet-centre-far.png` without a shadow change; mobile (`?tier=mobile`, whiteout / monsoon): the proxy batch alone, 45 fewer submissions, every other row identical; receipts articulatedShadowBatch (+ integration, deploymentShadowWarm, tankFactoryStaging), renderLayers, shadowCasterProfiles (new), nearVehicleShadowDetail, shadowGeometryClaims, treePoolCapacity, tidalMangrove, propsMaterialGeometry, the seventeen vegetation and fourteen props receipts, garageArchitecture; `npm run typecheck` |
 | 49 | Ring textures: marker-bed / joint / varnish strata replace the sine ladder (the walls' fine wavy partings remain — mechanism narrowed to a detail normal, still open), per-map ring rock band (Titan from 34°); `bareRock` vista knob (heath, outcrop ribs, scree, broken summit cap) on Fjord and Whiteout's crests; headland hand-over beside sea openings (rows slope into the sea over 250 m instead of a 25–30 m slab) | Titan 2× wall crops A/B5 + stripe metric; layer-flag / uniform-isolation / layers probes (the layers probe shows Whiteout's sky-w skyline is the rim band: ring hidden 1.005 → 1.009); saltwind / fjord ring-row dumps before/after and bird A/B; receipts in the section |
 
 Every round keeps the standing rules: no performance or memory regression on paired native measurements, receipts
@@ -5871,6 +5872,197 @@ frame (~1 ms by the audit's A/B), the polar ring's relief atlas, far range and 1
 bench), the steel and cladding buckets, and a remainder no bracketed breakdown can attribute at a ±3 ms floor. A
 per-system GPU breakdown in a quiet window (the probe's interleaved mode with more rounds, one system at a time)
 is the next measurement; the composite path for a closed low deck is the first lever it would test.
+
+### Round 79 — 2026-09-28: performance — the shadow passes and the tank draws
+
+**Why.** Round 78 left the shadow passes at about 60 % of a frame's submissions (its census at the chase pose:
+Monsoon Ridge 410 shadow GL draws plus 381 zero-count submissions a frame against 448 forward draws, Whiteout
+Station 402 + 210 against 315) with three named owners — the props' bucket meshes drawn into all four maps whatever
+their size, the near-vehicle detail parts in the first cascade, the near trunks and crown proxies — and the tanks as
+the largest draw bucket of the frame (Monsoon Ridge at chase: tanks ~330 draws of 793 across the passes). Owner's
+rule: "make sure performance is still rlly good", with no visible change. This round takes the four owners one
+receipted knob at a time.
+
+**Method.** The round-78 shadow census extended (`.qa-dev/r79-shadow-census.mjs`: every `renderBufferDirect` call
+billed to its cascade, the zero-count submissions counted, each r8 proxy billed to its owner, and three inventories
+the levers needed — per cascade the live map size / light-space span / texel size, per tank the articulated proxy
+batch and which admissibility predicate refuses it, per props and vegetation caster its instance count, height,
+bounding radius and, against the live cascade frusta, how many of its instances stand inside each cascade's box)
+on seven maps at the chase and centre-far poses, an untouched rsync snapshot of the base (8fb54bac3, deploy 108/109)
+against a snapshot of each step; the audit's ABBA probe (`.qa-dev/perf-audit-probe.mjs`, desktop High pinned, bots
+frozen, governor pinned, 300 frames a pose, GPU p25) for the frame; every browser run under the shared probe mutex
+(`$SP/r79/mutex.sh`, `run.sh`: no claim while `/tmp/cot-shots.queue` holds a live ticket, 90 s gaps). The live High
+preset in the probe's headless Chrome renders 2048 / 2048 / 2048 / 1024 maps over 190 / 394 / 686 / 1517 m spans
+(texels 0.09 / 0.19 / 0.33 / 1.48 m) with the breaks at 89 / 184 / 320 / 700 m — every rule below reads those live
+values, never the preset table.
+
+**1. The articulated proxy batch installs on battle hulls (`src/engine/articulatedShadowBatch.ts`).** Every tank
+casts through three convex proxies (hull / turret / gun) beyond the near-detail range, and since round 28 a
+`BatchedMesh` per hull was meant to draw the three as one multi-draw in battle builds — the census found it dormant
+on every hull of every map: its admissibility compared each proxy's `onBeforeShadow` / `onAfterShadow` with three's
+`Object3D` prototype hooks captured at import, and the game's lighting replaces `Mesh.prototype`'s hooks at boot (the
+RGBA depth-packing flip, the r8 cascade-proxy hooks) before any battle hull is built. A proxy that INHERITS the
+patched prototype hooks is now admissible (an own-property hook still keeps the original draw); the batch's own hook
+runs three's BatchedMesh path and neither patched behaviour applies to it (its depth material is RGBA-packed by
+construction, the r8 hooks act on InstancedMesh only). Three proxy draws per hull per cascade become one.
+
+**2. One shadow draw per near tree pool (`src/world/vegetation.ts` `canopyShadowProxyGeometry`).** Every near pool
+(species × variant) submitted two shadow-only instanced draws per cascade with identical instance sets, the same
+LOD-fade depth program and the same FrontSide-as-BackSide depth pass — the trunk mesh (`castShadow`) and the crown
+shadow proxy (the far-LOD lobe hull) — each with its own three r8 cascade proxies. The proxy's geometry now holds the
+lobe hull and the near trunk's positions in one position-only buffer and the trunk mesh stops casting on the tiers
+that build proxies (the mobile tier builds none and keeps its trunk-only shadow from the trunk mesh). Same triangles
+into the same maps: a depth map is order-independent.
+
+**3. Shadow caster profiles (`src/engine/renderLayers.ts` `setShadowCasterProfile`, `src/engine/shadowCasterProfiles.ts`,
+`lighting.ts`, `props.ts`, `vegetation.ts`).** Three rasterises every caster into every cascade whose light-space box
+its bounding sphere meets, and a merged bucket or an instanced kind spread over the map meets all four whatever the
+box actually holds — at the chase pose on Monsoon Ridge the first cascade's 190 m box held none of the 166 fence
+panels, 128 wall modules, 43 wire coils or 24 poles, each drawn into it every frame. A profile tells the router what
+it cannot see from a mesh — content height, the world spheres of its pieces or instances, and for the near-tier
+casters the farthest camera distance its pieces stand at this frame — and the evaluator (once per frame from the
+lighting update, after the r8 compaction and the near-hull selection) tests three conservative laws against the live
+cascades and writes a dynamic mask the router applies beside the round-78 static masks: CONTENT (no registered sphere
+inside the cascade's frustum; instance spheres from the matrices, refreshed on their version), FOOTPRINT (a ground
+shadow, height / tan(sun elevation), shorter than two texels of the map — the PCF kernel is wider), REACH (near-tier
+content whose reach plus footprint plus 8 m ends before the view depth the cascade's map is sampled from — three's
+CSM fade samples cascade i from its break x less the fade half-margin x²/8 of the range, pinned to `CSMShader.js`).
+Under a sun below ~2° the footprint and reach laws hide nothing. Owners: the destructible pools, the boulders, the
+poles, the baked models, the wreck shadow mesh (one sphere per wreck) and every merged bucket (one sphere per 96 m
+cell of piece centres, computed before the merge consumes the pieces); each near tree pool's caster on one shared
+profile whose reach and height `update()` refreshes every frame from the near slots (scope-promoted trees included).
+Desktop tiers only: the phones keep their three cascades exactly as they draw today. The near-vehicle detail already
+casts into the cascade covering the hull only (≤ 70 m: the first cascade, or the first two astride the 89 m break) —
+nothing to trim there.
+
+**Tank draws (item 3): the attribution and what was applied.** The census reads the "300 tank draws" of the audit
+as two very different halves. FORWARD: at the chase pose only ~3.4 hulls stand in the camera frustum, and each costs
+~52 draws — every material role its own mesh (hull / hullDark / hullDetail / hullExternalArmor / hullRubber / hullGlass
+/ hullInteriorFill …, the same for the turret, gun and mount), up to twelve instanced road-wheel sub-meshes (discs,
+tyres, insets, rims, pressed faces, hubs, bolts, three dish rings, hub caps, dish breaks), ten `decor_*` materials,
+two markings, the impact decals — 176.6 forward draws on Monsoon Ridge. SHADOW: the four nearest hulls' detail
+casters in the first cascade (~20 parts each, 82 draws — the round-28 policy, which already casts detail only into
+the cascade covering the hull and never past the second) plus three convex proxies per hull in every cascade whose
+box holds it (3.4 / 7.9 / 7.9 / 4.4 hulls × 3 = 71 draws a frame) — 152.6 shadow draws. So lever (a) of the brief —
+a convex proxy per hull beyond the near range — has been the design since round 28; what was missing was that the
+three proxies were meant to be ONE multi-draw per hull and never were (item 1 above). Applied: item 1 (three
+proxy draws per hull per cascade → one; fleet bytes untouched). Measured and NOT applied, with the numbers
+(`.qa-dev/r79-tank-attribution.mjs`, the fourteen Monsoon Ridge specs built headlessly with the battle options):
+
+| lever | what the attribution says | why it is proposed, not applied |
+|---|---|---|
+| (a′) near-detail shells: the ~18 static detail parts of a near hull merged per articulation node into one position-only shadow geometry (the five instanced wheel draws stay) | −12…−15 shadow draws per near hull in the first cascade (−48…−60 a frame at chase); the shells cost 1.19–3.49 MB of positions per spec (25.8 MB for the fourteen specs, 753 k triangles) — a per-tank BatchedMesh keeps per-part visibility, a plain merge does not | new retained GPU bytes on every hull (the acceptance list asks for equal-or-lower buffer bytes); `stripEra` removes ERA plates at runtime and `setTrackState` changes the running gear — a merged shell would keep casting them; the shells would have to be built in battle only (never in node) to keep the icon / anatomy digests byte-identical |
+| (b) same-material sub-meshes merged per node at build time | 27.4 draws per hull on average (365 static + 19 instanced of 840 across the fourteen specs; 60 forward draws per hull headless): `hull+hullDetail+hullExternalArmor+hullOpenLattice+hullHatch` share one paint material, `turret+turretDetail+turretExternalArmor+turretCupola` another, `gearRoadWheelTires+gearRoadWheelInsets` one rubber, `gearTrackPads+gearTrackPadsSimplified`; the outliers are the source-X hulls whose small parts are meshes of their own — `ua_m1a1_x` 172 forward draws of which 144 merge, `leo2a5` 97 / 41, `k2b` 75 / 41 | every merge changes the mesh list the icon studio, the anatomy diagrams, the module-visual-align probes and the near-detail vocabulary (`NEAR_SHADOW_DETAIL_NAMES`) walk by name, so the icon / anatomy digests cannot stay byte-identical; ERA plates (`stripEra`), hatches and cupolas toggle at runtime by mesh; the frame cost of a forward draw with the shared paint program is the smallest kind (same program, same textures), so the win is ~90 setups a frame at chase, not a GPU change — worth a round of its own with the digests re-pinned, not a knob |
+
+
+**Measured — the census (base 8fb54bac3 vs the finished tree dde3a0928, seven maps, both poses; draws per frame, far cascade at half rate).**
+
+| Map (view) | shadow GL draws base → after (Δ) | zero-count submissions | shadow triangles | tanks / props / vegetation shadow draws |
+|---|---|---|---|---|
+| desert (centre-far) | 290.3 → 190.3 (-100.0 (-34 %)) | 336.4 → 238.1 | 1533k → 1337k | 73.9 → 24.6 / 139.5 → 121.4 / 59.6 → 27.0 |
+| desert (chase) | 387.0 → 282.5 (-104.5 (-27 %)) | 325.1 → 231.4 | 1647k → 1452k | 158.3 → 111.3 / 140.6 → 119.1 / 70.9 → 34.9 |
+| foundry (centre-far) | 192.8 → 176.1 (-16.6 (-9 %)) | 48.8 → 70.4 | 1692k → 1589k | 0.0 → 0.0 / 175.6 → 159.0 / 7.9 → 7.9 |
+| foundry (chase) | 388.8 → 280.6 (-108.1 (-28 %)) | 262.5 → 133.5 | 2916k → 2616k | 161.6 → 111.3 / 136.9 → 120.8 / 81.0 → 39.4 |
+| monsoon (centre-far) | 268.1 → 198.9 (-69.3 (-26 %)) | 385.5 → 244.8 | 2219k → 1981k | 0.0 → 0.0 / 156.6 → 140.6 / 98.3 → 45.0 |
+| monsoon (chase) | 407.3 → 279.8 (-127.5 (-31 %)) | 381.0 → 210.0 | 4920k → 4233k | 150.4 → 105.6 / 138.6 → 111.4 / 105.0 → 49.5 |
+| railyard (centre-far) | 166.0 → 133.6 (-32.4 (-20 %)) | 54.4 → 61.6 | 1401k → 1185k | 0.0 → 0.0 / 147.6 → 117.0 / 9.1 → 7.9 |
+| railyard (chase) | 394.5 → 281.4 (-113.1 (-29 %)) | 244.1 → 115.1 | 1818k → 1565k | 161.6 → 114.6 / 147.1 → 120.4 / 76.5 → 37.1 |
+| verdant (centre-far) | 358.6 → 236.4 (-122.3 (-34 %)) | 394.5 → 227.3 | 2466k → 2076k | 70.5 → 22.6 / 168.6 → 150.6 / 105.0 → 49.5 |
+| verdant (chase) | 432.3 → 321.6 (-110.6 (-26 %)) | 382.9 → 227.3 | 2541k → 2372k | 159.0 → 114.6 / 157.6 → 143.0 / 102.0 → 49.5 |
+| whiteout (centre-far) | 211.9 → 181.1 (-30.8 (-15 %)) | 165.8 → 114.1 | 1183k → 1143k | 0.0 → 0.0 / 146.6 → 142.1 / 55.5 → 29.3 |
+| whiteout (chase) | 400.8 → 304.4 (-96.4 (-24 %)) | 210.0 → 136.5 | 1717k → 1640k | 160.5 → 112.6 / 151.0 → 139.3 / 78.8 → 42.8 |
+| winter (centre-far) | 275.0 → 207.1 (-67.9 (-25 %)) | 397.1 → 263.8 | 2397k → 2111k | 0.0 → 0.0 / 160.4 → 145.0 / 102.0 → 49.5 |
+| winter (chase) | 413.8 → 299.5 (-114.3 (-28 %)) | 396.0 → 231.0 | 3370k → 2938k | 160.1 → 114.9 / 135.6 → 119.1 / 102.0 → 49.5 |
+
+*ABBA probe — chase (label medians over four records each; the pairs are in the text above).*
+
+| Map | runs (base / cur) | load1 range | quiet | GPU med base → cur (Δ) | GPU p25 base → cur (Δ) | noise (p25 spread base / cur) | CPU frame med base → cur (Δ) | update med | render med | interval med | calls med | tris M med | worst calls |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| desert | 4 / 4 | 5–47 | loaded | 31.8 → 24.8 (-7.0) | 28.4 → 21.7 (-6.7) | ±7.4 / ±13.7 | 7.2 → 5.9 (-1.3) | 0.00 → 0.00 | 5.50 → 4.20 | 16.7 → 16.7 | 623 → 507 (-116) | 3.64 → 3.34 | 623 → 507 |
+| monsoon | 4 / 4 | 11–19 | quiet | 23.9 → 29.1 (+5.1) | 22.4 → 25.2 (+2.7) | ±2.9 / ±6.0 | 9.6 → 8.5 (-1.1) | 0.20 → 0.30 | 6.90 → 6.20 | 16.7 → 16.7 | 793 → 657 (-136) | 8.48 → 7.44 | 793 → 660 |
+| railyard | 4 / 4 | 5–7 | quiet | 31.2 → 24.0 (-7.2) | 27.5 → 21.1 (-6.4) | ±1.3 / ±1.5 | 3.9 → 4.3 (+0.4) | 0.10 → 0.10 | 2.90 → 3.20 | 16.7 → 16.7 | 652 → 526 (-126) | 3.52 → 3.13 | 652 → 527 |
+| verdant | 4 / 4 | 6–9 | quiet | 28.9 → 27.3 (-1.5) | 24.2 → 20.3 (-4.0) | ±3.0 / ±2.4 | 4.6 → 6.9 (+2.3) | 0.10 → 0.20 | 3.30 → 5.00 | 16.7 → 16.7 | 741 → 609 (-132) | 5.21 → 4.73 | 741 → 609 |
+| whiteout | 4 / 4 | 8–19 | quiet | 31.8 → 46.8 (+15.1) | 27.9 → 27.3 (-0.5) | ±2.6 / ±5.9 | 6.2 → 7.0 (+0.8) | 0.10 → 0.10 | 4.40 → 4.00 | 16.7 → 16.7 | 661 → 572 (-89) | 2.99 → 2.98 | 663 → 572 |
+| winter | 4 / 4 | 6–16 | quiet | 26.7 → 29.4 (+2.7) | 21.7 → 24.3 (+2.6) | ±1.0 / ±2.0 | 6.1 → 9.5 (+3.4) | 0.10 → 0.20 | 4.50 → 6.80 | 16.7 → 16.7 | 769 → 640 (-129) | 5.99 → 5.16 | 777 → 645 |
+
+*ABBA probe — centre-far.*
+
+| Map | runs (base / cur) | load1 range | quiet | GPU med base → cur (Δ) | GPU p25 base → cur (Δ) | noise (p25 spread base / cur) | CPU frame med base → cur (Δ) | update med | render med | interval med | calls med | tris M med | worst calls |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| desert | 4 / 4 | 5–47 | loaded | 26.5 → 28.2 (+1.7) | 23.1 → 22.0 (-1.1) | ±0.8 / ±0.4 | 5.3 → 5.7 (+0.4) | 0.00 → 0.10 | 3.60 → 3.30 | 16.7 → 16.7 | 480 → 368 (-112) | 3.32 → 3.01 | 480 → 368 |
+| monsoon | 4 / 4 | 11–19 | quiet | 24.5 → 24.3 (-0.2) | 21.8 → 21.6 (-0.3) | ±0.7 / ±1.4 | 7.3 → 6.8 (-0.5) | 1.60 → 1.70 | 3.30 → 3.20 | 16.7 → 16.7 | 467 → 393 (-74) | 4.25 → 3.89 | 469 → 396 |
+| railyard | 4 / 4 | 5–7 | quiet | 31.3 → 31.6 (+0.3) | 26.3 → 25.9 (-0.3) | ±2.9 / ±3.2 | 2.8 → 2.9 (+0.1) | 0.10 → 0.10 | 1.70 → 1.80 | 16.7 → 16.7 | 341 → 304 (-37) | 2.65 → 2.43 | 341 → 304 |
+| verdant | 4 / 4 | 6–9 | quiet | 27.4 → 21.1 (-6.3) | 24.4 → 18.3 (-6.1) | ±2.8 / ±0.6 | 4.8 → 5.3 (+0.5) | 0.20 → 0.20 | 2.90 → 3.40 | 16.7 → 16.7 | 567 → 440 (-127) | 4.71 → 4.21 | 567 → 440 |
+| whiteout | 4 / 4 | 8–19 | quiet | 31.5 → 29.4 (-2.1) | 27.6 → 25.2 (-2.3) | ±19.1 / ±25.2 | 6.1 → 7.4 (+1.3) | 0.20 → 0.20 | 3.60 → 2.80 | 16.7 → 16.7 | 398 → 363 (-35) | 2.29 → 2.21 | 398 → 363 |
+| winter | 4 / 4 | 6–16 | quiet | 29.7 → 28.8 (-0.9) | 25.6 → 23.9 (-1.7) | ±2.7 / ±1.7 | 6.9 → 5.9 (-1.0) | 0.10 → 0.20 | 4.40 → 3.60 | 16.7 → 16.7 | 481 → 399 (-82) | 4.49 → 3.92 | 481 → 399 |
+
+*The frame probe (`$SP/r79/g1`: base 8fb54bac3 vs dde3a0928, six maps, chase / centre-far, two ABBA repeats = four
+pairs per map, 300 frames a pose, desktop High pinned; every pair GPU-quiet by the audit's rule except desert's
+second repeat under 244–1272 % foreign GPU; `$SP/r79/pair-deltas.txt` for the pairs).* The calls and triangles are
+exact and the same on every pair (renderer.info over the whole frame, shadow passes included): chase −116 / −136 /
+−126 / −132 / −89 / −129 calls on desert / monsoon / railyard / verdant / whiteout / winter (−14…−18 % of the frame's
+draws), centre-far −112 / −74 / −37 / −127 / −35 / −82; triangles −0.30 / −1.05 / −0.39 / −0.48 / −0.01 / −0.83 M at
+chase. GPU p25 per pair: railyard chase −6.3 ms median [−8.9..−4.4] in four quiet pairs and verdant centre-far −5.9
+[−6.5..−1.5] in four quiet pairs are the two readings the timer resolves; verdant chase −3.6 [−10.5..+0.2] (three of
+four negative), winter chase +1.8 [+0.3..+4.6] (the one map leaning the other way — four positive pairs under 55–149 %
+foreign GPU, with −129 calls and −0.83 M triangles; a quiet re-pair is the next measurement), monsoon / whiteout /
+railyard centre-far / winter centre-far inside the timer's ±2–4 ms, desert loaded. The CPU frame medians move
+−1.3…+3.4 ms per map with pair spans of ±2–3 ms on a GPU-bound headless frame (24–32 ms of GPU under a 16.7 ms
+presentation interval: the main thread stalls on the command buffer, so the CPU medians track the GPU's jitter) and
+carry no signal either way; the round's frame claims are the exact draw, submission and triangle counts and the two
+resolved GPU pairs. The inventory's programs fall 245 → 229 on every map (the trunks' depth variants), scene geometry
+36.4 → 34.5 MB (the trunks' r8 proxy instance buffers), GL textures +12–14 (the visible batches' 4 × 4 matrix and
+indirect textures — kilobytes); its "scene texture MB" reads +24.0 on every map with `uniqueTextures` identical, and
+the per-texture inventory (`$SP/r79/tex`, `.qa-dev/r79-texture-inventory.mjs`) names it: no texture was added — the
+player's hull paint had reached its `high` rung (2048² albedo, 1024² wheel data maps: 16 + 8 MB over the `ai` rung)
+by the time the inventory ran on the finished tree and not yet on the base tree — the same end state the asynchronous
+painter always reaches, sooner on frames with fewer draws.
+
+*The sheets (`$SP/r79/review/sheet-chase.png`, `sheet-centre-far.png`: left base, right the finished tree, six maps)
+and the pixel diffs (`.qa-dev/r79-diff.mjs`, `$SP/r79/review/diff*-<map>-<view>.png`).* Two boots at two moments never
+match pixel for pixel — the meadows' wind, the leaves, the TAA phase, a bot settling a hair differently, the turret
+glint — so the diff is read blurred (6 px box, threshold 8: blade speckle averages out, a shadow patch would not):
+
+| Map | chase raw (> 16) / blurred | centre-far raw / blurred | what the blurred residue is |
+|---|---|---|---|
+| monsoon | 10.4 % / 1.12 % | 0.51 % / 0.11 % | the meadow's wind mottling, the turret glint, one bot's nameplate outline |
+| whiteout | 1.6 % / 0.85 % | 0.12 % / 0.015 % | the player's gun edge (a slightly different aim), falling snow |
+| winter | 2.1 % / 1.25 % | 1.9 % / 0.23 % | one bot's outline at the left edge (settled differently), snow |
+| verdant | 7.5 % / 1.21 % | 0.77 % / 0.019 % | the meadow's wind mottling, the turret glint |
+| railyard | 0.8 % / 0.12 % | 0.03 % / 0.000 % | the gun edge |
+| desert | 12.2 % / 3.75 % | 0.13 % / 0.000 % | the scrub and litter swaying, the turret glint |
+
+No diff carries a coherent ground patch of the kind a lost or added shadow leaves; at the centre-far poses, where
+the far cascades and the reach / footprint laws matter most, railyard and desert are pixel-identical after the blur.
+
+**What still costs (honest list).**
+- The near-vehicle detail: four hulls × ~20 casters in the first cascade (82 draws a frame at chase) is the round-28
+  self-shadow policy at work, and the only knob-sized cut (fewer detail parts) is visible; the shells (a′ above) are a
+  memory trade the owner has to want.
+- The forward tank draws: ~52 per visible hull, and 172 for a source-X hull whose small parts are meshes of their
+  own (`ua_m1a1_x`); the same-material merge (b) is a digest re-pin round, not a knob.
+- The props' shadow triangles: the merged buckets are drawn into every cascade whose box holds any of their cells,
+  and on a village or yard map every cascade does — 1.0–1.5 M shadow triangles a frame on every map; only a
+  spatially split bucket (more forward draws) or a shadow-only chunked copy could cut them further.
+- Whiteout's last cascade keeps the near tier: at 13° the trees' footprints (87 m for a 20 m spruce) reach the far
+  map's sampled range; the reach law is exact, not a saving, on the low-sun maps (whiteout, alpine, blackglass).
+- The GPU timer on this machine (round 78's finding stands): pair deltas of ±2–4 ms at 300 frames; the round's
+  frame claims are draw-call, submission and triangle claims, and the CPU frame medians of quiet pairs.
+*The mobile tier (`$SP/r79/census/mob-*`, whiteout and monsoon at chase, `?tier=mobile`, base vs the finished tree).*
+The profiles and the tree-pool merge do not reach the phones (the evaluator is gated to the desktop tiers; the
+mobile tier builds no crown proxies and keeps its trunk-only shadow from the trunk mesh); the proxy batch does,
+because every battle build asks for it (`batchStatic`), so a phone hull's three proxy draws per cascade are one
+there too: shadow GL draws 209.3 → 164.3 on Monsoon Ridge and 223.9 → 178.9 on Whiteout Station (the tanks'
+67.5 → 22.5, every other row, every triangle count and every forward draw identical — 419.6 / 294.8 forward on
+both trees). Same proxies into the same three maps, so the phones' shadows are byte-for-byte the same picture with
+45 fewer submissions a frame.
+
+
+**Tooling.** `.qa-dev/r79-shadow-census.mjs` (the census with the inventories), `.qa-dev/r79-tank-attribution.mjs`
+(the headless per-hull draw attribution), the audit's probe and table as copied; `$SP/r79/`: `census/` (base vs
+cur on seven maps, both poses), `census-summary.mjs`, `tank-attribution.txt`, `snap-base` / `snap-c` (the rsync
+snapshots), `mutex.sh` / `run.sh` / `census-*.sh` / `receipts-*.sh` (the launchers and receipt runners), the probe
+pairs and the review sheets.
 
 ## Acceptance is visual and measured
 
