@@ -92,7 +92,7 @@ predictor's state object directly, effects are the authority's events.
 
 A `match_start` whose URL is `rtc://<room>/<generation>` opens no socket (docs/MULTIPLAYER-V2.md §13). The seat the
 room names as host boots `src/mp/host` — the match actor in a Worker on the map's collision manifest fetched from
-`/mp-collision`, seat tokens verified with the per-match host secret, reports to the room, a sealed keyframe of every
+`/mp-collision`, seat tokens verified with the per-match host secret, reports to the room (one `ended` report closes the match, nothing after it), a sealed keyframe of every
 entity every 2 s — and plays through the host's loopback pair; every other seat opens a `WebRtcTransport` to the host
 through `room_signal`. Both ride a `MigratingTransport`: a `host_changed` with a newer generation makes the elected
 peer open its retained keyframe (only its `host_changed` carries the secret), boot a host at the continued tick and
