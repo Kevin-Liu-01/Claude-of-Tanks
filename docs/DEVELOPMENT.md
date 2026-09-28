@@ -97,6 +97,18 @@ load without preloading the game module graph.
 
 The selftest runners wait for the shared capture lock (`/tmp/cot-shots.lock`, FIFO tickets in `/tmp/cot-shots.queue`) before their browser receipts; `COT_SHOTS_LOCK_TIMEOUT_MS` sets that wait (default 45 min — chain 94 died at 1/413 behind another session's browser audit, so landing chains export three hours).
 
+### The rooms Worker's TypeScript program (2026-09-28)
+
+`cloudflare/rooms/tsconfig.json` compiles the Worker with `lib: ["ES2022"]` and no DOM, and a **type-only** import still joins a
+file to the program. `npm run typecheck:rooms` was red on main for days (445 DOM errors in `src/engine/deviceDiag.ts`) because
+`src/mp/room/roomPolicy.ts` imported `resolveMapId` from `src/world/maps/catalog.ts`, whose `import type` chain runs
+contracts → terrain → maps/horizon → engine/sky → engine/deviceDiag — and the release chains run only the app typecheck. The
+identity slice (ids, names, the random rotation, the resolvers) now lives in `src/world/maps/mapIds.ts`; `catalog.ts` re-exports
+it for the browser. `src/mp/room/roomWorkerProgram.selftest.mjs` walks the Worker's import graph (value and type imports) and
+fails on any renderer-facing module, then runs `npm run typecheck:rooms` when `cloudflare/rooms/node_modules` is installed
+(`npm ci --prefix cloudflare/rooms` — do it in the gate worktree; without it the receipt says so and only the graph check runs).
+A network module that needs something from the world takes a DOM-free slice like `mapIds.ts`, never the catalog.
+
 ### Self-leasing browser receipts (2026-09-26)
 
 `tools/run-selftests.mjs` holds the capture lease around every browser receipt and refreshes it every 30 s. A receipt that
