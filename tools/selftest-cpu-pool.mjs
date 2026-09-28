@@ -38,6 +38,18 @@ export async function runSelftestCpuPool(name, files, options) {
       if (!failure || index < failure.index) failure = row;
     } else gate.record(file, keys.get(file), result.status, runMs);
   };
+  const acquireLease = async () => {
+    if (held && now() - acquiredAt >= maxLeaseBatchMs) release();
+    if (held) return 0;
+    const queuedAt = now();
+    await lock.acquire(lockTimeoutMs);
+    const queueMs = now() - queuedAt;
+    held = true;
+    acquiredAt = now();
+    refresher = setInterval(() => lock.refresh(), refreshMs);
+    refresher.unref();
+    return queueMs;
+  };
   const admit = async () => {
     while (!halted() && next < files.length && active.size < concurrency) {
       const file = files[next];
@@ -56,22 +68,10 @@ export async function runSelftestCpuPool(name, files, options) {
         collect(await launch(file, next++, 0));
         continue;
       }
-      if (held && now() - acquiredAt >= maxLeaseBatchMs) {
-        // A live child always retains its lease. Stop admission at the
-        // deadline, drain this batch, then rejoin the ordinary FIFO.
-        if (active.size) break;
-        release();
-      }
-      let queueMs = 0;
-      if (!held) {
-        const queuedAt = now();
-        await lock.acquire(lockTimeoutMs);
-        queueMs = now() - queuedAt;
-        held = true;
-        acquiredAt = now();
-        refresher = setInterval(() => lock.refresh(), refreshMs);
-        refresher.unref();
-      }
+      // A live child always retains its lease. Drain an expired batch before
+      // acquiring the next lease through the ordinary FIFO.
+      if (held && now() - acquiredAt >= maxLeaseBatchMs && active.size) break;
+      const queueMs = await acquireLease();
       const index = next++;
       active.set(index, launch(file, index, queueMs));
       if (exclusiveCpu) {

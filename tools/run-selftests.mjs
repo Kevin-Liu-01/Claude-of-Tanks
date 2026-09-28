@@ -130,6 +130,13 @@ export function selftestCacheGate(cache, log) {
   };
 }
 
+function validateRunOptions(maxLeaseBatchMs, concurrency) {
+  if (!Number.isFinite(maxLeaseBatchMs) || maxLeaseBatchMs <= 0) {
+    throw new TypeError('maxLeaseBatchMs must be finite and positive');
+  }
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_SELFTEST_WORKERS) throw new TypeError(`concurrency must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
+}
+
 export async function runSelftestSuite(suiteName, suite, {
   runFile = runSelftestFile,
   lock = createCaptureLock(),
@@ -145,10 +152,7 @@ export async function runSelftestSuite(suiteName, suite, {
   failFast = false,
   cache = null,
 } = {}) {
-  if (!Number.isFinite(maxLeaseBatchMs) || maxLeaseBatchMs <= 0) {
-    throw new TypeError('maxLeaseBatchMs must be finite and positive');
-  }
-  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_SELFTEST_WORKERS) throw new TypeError(`concurrency must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
+  validateRunOptions(maxLeaseBatchMs, concurrency);
   const gate = selftestCacheGate(cache, log);
   const lockTimeoutMs = selftestLockTimeoutMs();
   if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {

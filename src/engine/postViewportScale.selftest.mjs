@@ -217,8 +217,9 @@ try {
     traversals(f, 0, 'identical preset shape keeps physical targets');
     assert.equal(f.history(), -1e9, 'preset reset still rejects preceding temporal history');
     f.clear(); f.changePreset({ ...p, aoScale: 0, bloomScale: 0 });
-    traversals(f, 1, 'zero-scale fallback retains existing wrapper semantics');
-    assert.deepEqual(f.dimensions().ao, [1440, 900]);
+    traversals(f, 1, 'disabled AO releases full-resolution targets');
+    assert.deepEqual(f.dimensions().ao, [1, 1]);
+    assert.deepEqual(f.dimensions().history, [1, 1, 1, 1]);
     assert.deepEqual(f.dimensions().bloom, [720, 450]);
     assert.equal(f.gtao.enabled, false);
   }

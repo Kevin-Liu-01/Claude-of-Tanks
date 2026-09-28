@@ -124,11 +124,12 @@ assert.equal(groundPressAt(0, 3.0, { ...hull, dirX: 0, dirZ: 1 }), 1, 'the footp
 assert.equal(groundPressAt(0, 2, { x: 0, z: 0 }), 1, 'defaults: 3.4 × 1.8, facing +Z, full strength');
 assert.ok(groundPressAt(2, 0, { x: 0, z: 0 }) < 0.5, 'two metres abeam of a 1.8 m half width is past the skirt');
 
-// 7. The world wiring: main.ts publishes every hull, the world hands them to the sward.
+// 7. The world wiring publishes grounded hulls, including those in water.
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 assert.ok(main.includes('const groundSources: GroundDisturbance[] = [];') && main.includes('wakeWorld.setGroundDisturbances?.(groundSources);'),
   'main.ts publishes the hulls\' footprints each battle frame');
-assert.ok(main.includes('if (groundSources.length < 8) {'), 'eight slots, every vehicle in water or not');
+assert.match(main, /if \(st\.grounded !== false && groundSources\.length < 8\) \{/,
+  'eight slots for grounded hulls; airborne vehicles cannot press the grass');
 const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 assert.ok(map.includes('setGroundDisturbances(sources) { tallGrass.setDisturbances(sources); },'), 'the world routes them to the tall grass');
 

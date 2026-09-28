@@ -92,19 +92,19 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     }
     const digest = hash.digest('hex'); dirFingerprints.set(dir, digest); return digest;
   };
+  const specifierPath = (from, specifier) => {
+    if (specifier.startsWith('./') || specifier.startsWith('../')) return resolve(dirname(from), specifier);
+    if (specifier.startsWith('/')) {
+      return ROOT_DIRS.has(specifier.split('/')[1]) ? resolve(root, specifier.slice(1)) : null;
+    }
+    return ROOT_DIRS.has(specifier.split('/')[0]) || (!specifier.includes('/') && extname(specifier))
+      ? resolve(root, specifier) : null;
+  };
   const resolveSpecifier = (from, value, required = false) => {
     if (!value || value.startsWith('node:') || value.startsWith('http') || value.includes('\n')) return null;
     // Node/Vite query suffixes make a fresh module instance, not another file.
-    const specifier = value.split(/[?#]/, 1)[0];
-    let path;
-    if (specifier.startsWith('./') || specifier.startsWith('../')) path = resolve(dirname(from), specifier);
-    else if (specifier.startsWith('/')) {
-      if (!ROOT_DIRS.has(specifier.split('/')[1])) return null;
-      path = resolve(root, specifier.slice(1));
-    } else if (ROOT_DIRS.has(specifier.split('/')[0])
-      || (!specifier.includes('/') && extname(specifier))) path = resolve(root, specifier);
-    else return null;
-    if (!inside(root, path) || path === root) return null;
+    const path = specifierPath(from, value.split(/[?#]/, 1)[0]);
+    if (!path || !inside(root, path) || path === root) return null;
     if (isFile(path) || isDir(path)) return path;
     if (!extname(path)) for (const candidate of [`${path}.ts`, `${path}.mjs`, `${path}.js`, join(path, 'index.ts'), join(path, 'index.mjs')]) {
       if (isFile(candidate)) return candidate;
@@ -122,6 +122,37 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     }
     metadata.set(file, value); return value;
   };
+  const addBroadDirectories = found => {
+    for (const name of BROAD_DIRS) if (isDir(join(root, name))) found.add(join(root, name));
+  };
+  const addJoinedInputs = (file, joined, found) => {
+    for (const segments of joined) for (const base of [dirname(file), root]) {
+      const target = resolve(base, ...segments);
+      if (inside(root, target) && target !== root && target !== file && (isFile(target) || isDir(target))) found.add(target);
+    }
+  };
+  const addDynamicInput = (file, { prefix, suffix, execute }, found, modules) => {
+    if (/[?#]/.test(prefix)) {
+      const target = resolveSpecifier(file, prefix, true);
+      if (target) { found.add(target); if (execute) modules.add(target); }
+      return;
+    }
+    const slash = prefix.lastIndexOf('/');
+    const dir = slash >= 0 ? resolveSpecifier(file, prefix.slice(0, slash + 1)) : null;
+    if (!dir || !isDir(dir)) {
+      if (execute) unresolvedImports.add(file);
+      addBroadDirectories(found);
+      return;
+    }
+    found.add(dir);
+    if (!execute) return;
+    const members = []; walk(dir, members);
+    const tail = suffix.split(/[?#]/, 1)[0], start = prefix.slice(slash + 1);
+    // Follow each possible module's imports as well as directory membership.
+    // Hashing just the directory missed helpers imported from outside it.
+    for (const member of members) if (isFile(member) && MODULE_EXTENSIONS.has(extname(member))
+      && relative(dir, member).startsWith(start) && member.endsWith(tail)) { found.add(member); modules.add(member); }
+  };
   const dependenciesOf = file => {
     if (edges.has(file)) return edges.get(file);
     const found = new Set(), modules = new Set(); edges.set(file, found); executableEdges.set(file, modules);
@@ -135,29 +166,9 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
       const target = resolveSpecifier(file, specifier);
       if (target && target !== file && !(isDir(target) && target.includes(`${sep}node_modules`))) found.add(target);
     }
-    if (info.broad) for (const dir of BROAD_DIRS) if (isDir(join(root, dir))) found.add(join(root, dir));
-    for (const segments of info.joined) for (const base of [dirname(file), root]) {
-      const target = resolve(base, ...segments);
-      if (inside(root, target) && target !== root && target !== file && (isFile(target) || isDir(target))) found.add(target);
-    }
-    for (const { prefix, suffix, execute } of info.dynamic) {
-      if (/[?#]/.test(prefix)) { const target = resolveSpecifier(file, prefix, true); if (target) { found.add(target); if (execute) modules.add(target); } continue; }
-      const slash = prefix.lastIndexOf('/');
-      const dir = slash >= 0 ? resolveSpecifier(file, prefix.slice(0, slash + 1)) : null;
-      if (!dir || !isDir(dir)) {
-        if (execute) unresolvedImports.add(file);
-        for (const name of BROAD_DIRS) if (isDir(join(root, name))) found.add(join(root, name));
-        continue;
-      }
-      found.add(dir);
-      if (!execute) continue;
-      const members = []; walk(dir, members);
-      const tail = suffix.split(/[?#]/, 1)[0], start = prefix.slice(slash + 1);
-      // Follow each possible module's imports as well as directory membership.
-      // Hashing just the directory missed helpers imported from outside it.
-      for (const member of members) if (isFile(member) && MODULE_EXTENSIONS.has(extname(member))
-        && relative(dir, member).startsWith(start) && member.endsWith(tail)) { found.add(member); modules.add(member); }
-    }
+    if (info.broad) addBroadDirectories(found);
+    addJoinedInputs(file, info.joined, found);
+    for (const dynamic of info.dynamic) addDynamicInput(file, dynamic, found, modules);
     return found;
   };
   const closureOf = file => {

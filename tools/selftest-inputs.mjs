@@ -47,56 +47,66 @@ export function collectSelftestInputs(text, filename) {
       if (value === 'node:child_process' || value === 'child_process') broad = true;
       if (/^(?:puppeteer|playwright)(?:-core)?(?:\/|$)/.test(value)) { broad = true; browser = true; }
     };
-    const visit = node => {
-      if (ts.isImportDeclaration(node)) {
-        const clause = node.importClause, bindings = clause?.namedBindings;
-        if (clause?.isTypeOnly || (!clause?.name && bindings && ts.isNamedImports(bindings)
-          && bindings.elements.length && bindings.elements.every(item => item.isTypeOnly))) return;
+    const isTypeOnly = node => {
+      if (ts.isExportDeclaration(node)) return node.isTypeOnly;
+      if (!ts.isImportDeclaration(node)) return false;
+      const clause = node.importClause, bindings = clause?.namedBindings;
+      return clause?.isTypeOnly || (!clause?.name && bindings && ts.isNamedImports(bindings)
+        && bindings.elements.length && bindings.elements.every(item => item.isTypeOnly));
+    };
+    const readImportCall = arg => {
+      const value = literal(arg);
+      if (value != null) imported(value);
+      else if (arg && ts.isTemplateExpression(arg)) {
+        dynamic.push({ prefix: arg.head.text, suffix: arg.templateSpans.at(-1).literal.text, execute: true });
+      } else { broad = true; opaqueImport = true; }
+    };
+    const readCall = node => {
+      const name = nameOf(node.expression);
+      if (BROAD_CALLS.has(name)) broad = true;
+      if (['execFileSync', 'execSync', 'spawnSync', 'spawn', 'execFile', 'exec'].includes(name)
+        && /^git(?:\s|$)/.test(literal(node.arguments[0]) ?? '')) git = true;
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) readImportCall(node.arguments[0]);
+      if (name === 'join' || name === 'resolve') {
+        const segments = node.arguments.map(literal).filter(value => value !== null);
+        if (segments.length) joined.push(segments);
       }
-      if (ts.isExportDeclaration(node) && node.isTypeOnly) return;
-      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) imported(literal(node.moduleSpecifier));
-      if (ts.isCallExpression(node)) {
-        const name = nameOf(node.expression);
-        if (BROAD_CALLS.has(name)) broad = true;
-        if (['execFileSync', 'execSync', 'spawnSync', 'spawn', 'execFile', 'exec'].includes(name)
-          && /^git(?:\s|$)/.test(literal(node.arguments[0]) ?? '')) git = true;
-        if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-          const arg = node.arguments[0], value = literal(arg);
-          if (value != null) imported(value);
-          else if (arg && ts.isTemplateExpression(arg)) {
-            dynamic.push({ prefix: arg.head.text, suffix: arg.templateSpans.at(-1).literal.text, execute: true });
-          } else { broad = true; opaqueImport = true; }
-        }
-        if (name === 'join' || name === 'resolve') {
-          const segments = node.arguments.map(literal).filter(value => value !== null);
-          if (segments.length) joined.push(segments);
-        }
+    };
+    const readEnvironmentBinding = pattern => {
+      for (const element of pattern.elements) {
+        const key = element.propertyName ?? element.name;
+        if (element.dotDotDotToken || !(ts.isIdentifier(key) || ts.isStringLiteralLike(key))) opaqueEnvironment = true;
+        else environment.add(key.text);
       }
+    };
+    const readEnvironment = node => {
       if (ts.isPropertyAccessExpression(node) && isEnvironment(node.expression)) environment.add(node.name.text);
       if (ts.isElementAccessExpression(node) && isEnvironment(node.expression)) {
         const name = literal(node.argumentExpression);
         if (name == null) opaqueEnvironment = true;
         else environment.add(name);
       }
-      if (isEnvironment(node)) {
-        const parent = node.parent;
-        if (ts.isVariableDeclaration(parent) && ts.isObjectBindingPattern(parent.name)) {
-          for (const element of parent.name.elements) {
-            const key = element.propertyName ?? element.name;
-            if (element.dotDotDotToken || !(ts.isIdentifier(key) || ts.isStringLiteralLike(key))) opaqueEnvironment = true;
-            else environment.add(key.text);
-          }
-        } else if (!((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === node)) {
-          opaqueEnvironment = true; // passing/spreading the whole environment cannot be scoped safely
-        }
+      if (!isEnvironment(node)) return;
+      const parent = node.parent;
+      if (ts.isVariableDeclaration(parent) && ts.isObjectBindingPattern(parent.name)) {
+        readEnvironmentBinding(parent.name);
+      } else if (!((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === node)) {
+        opaqueEnvironment = true; // passing/spreading the whole environment cannot be scoped safely
       }
-      if (ts.isStringLiteralLike(node)) addLiteral(node.text);
+    };
+    const readTemplate = node => {
       // A URL whose port is interpolated still names a concrete fixture page.
-      if (ts.isTemplateExpression(node)) {
-        if (FILE_LITERAL.test(node.head.text)) dynamic.push({ prefix: node.head.text,
-          suffix: node.templateSpans.at(-1).literal.text, execute: false });
-        for (const span of node.templateSpans) addLiteral(span.literal.text);
-      }
+      if (FILE_LITERAL.test(node.head.text)) dynamic.push({ prefix: node.head.text,
+        suffix: node.templateSpans.at(-1).literal.text, execute: false });
+      for (const span of node.templateSpans) addLiteral(span.literal.text);
+    };
+    const visit = node => {
+      if (isTypeOnly(node)) return;
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) imported(literal(node.moduleSpecifier));
+      if (ts.isCallExpression(node)) readCall(node);
+      readEnvironment(node);
+      if (ts.isStringLiteralLike(node)) addLiteral(node.text);
+      if (ts.isTemplateExpression(node)) readTemplate(node);
       ts.forEachChild(node, visit);
     };
     visit(source);

@@ -68,8 +68,13 @@ if (!globalThis.gc) {
   assert.equal(cache.terrain.idleMaps, 2);
   assert.equal(cache.manifests.idleMaps, 2);
   assert.equal(authoritativeTerrainCacheStats().builds, 0);
-  assert.ok(second.arrayBuffers - imported.arrayBuffers < 12 * 1024 * 1024,
-    'all-map history retains at most two ~5.5 MB heightfields');
+  // Each of the same two resident fields now also owns the near-mesh contact
+  // cache: 769² Float32 heights, a validity bitset, and Float32/Float64 axes.
+  // Keep the previous 12 MiB allowance for everything else; budget only these
+  // declared arrays, not an arbitrary relaxation of the retention ceiling.
+  const contactCacheBytes = 769 * 769 * 4 + Math.ceil(769 * 769 / 8) + 769 * 12;
+  assert.ok(second.arrayBuffers - imported.arrayBuffers < 12 * 1024 * 1024 + 2 * contactCacheBytes,
+    'all-map history retains at most two heightfields including their bounded mesh-contact caches');
   assert.ok(second.arrayBuffers - first.arrayBuffers < 256 * 1024,
     'repeating a full roster sweep reaches an ArrayBuffer plateau');
   assert.ok(second.heapUsed - first.heapUsed < 4 * 1024 * 1024,

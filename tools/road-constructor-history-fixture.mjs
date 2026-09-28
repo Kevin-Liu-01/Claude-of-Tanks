@@ -4,6 +4,21 @@
 // Unknown edits still fail the old hash; do not regenerate to accept a failure.
 import assert from 'node:assert/strict';
 const deltas = [
+  // 2026-09-28: project out only the new contact/traction API when authenticating
+  // historical construction. Current mesh contact and dry-bank mobility have
+  // independent executable coverage; the original constructor hash stays fixed.
+  [
+    "  const getContactHeightAt = createTerrainContactSampler(getHeightAt);\n\n",
+    ""
+  ],
+  [
+    "  function getDriveGroundType(x: number, z: number): GroundType {\n    const ground = getGroundType(x, z);\n    // Lake/marsh placement bands include dry sand, road shoulders and pads.\n    // Release their water resistance at the same liquid boundary as wakes.\n    // Ordinary bogs, ice, roads and bridge decks keep their authored traction.\n    return ground === 'soft' && liquidWater && getWaterMaskAt(x, z) <= 0.02\n      ? 'medium' : ground;\n  }\n\n",
+    ""
+  ],
+  [
+    "    getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,",
+    "    getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,"
+  ],
   [
     "function* heightFieldBuildSteps(\n  seed = 1337,\n  cfg: TerrainMapConfig | null = null,\n  placementOnly = false,\n): Generator<number, HeightField | TerrainPlacementSampler, void> {\n  const layout = createLayout(cfg, !placementOnly && !usesInheritedRoadGrades(cfg?.id));\n  let inheritedRoads = placementOnly ? null : completeInheritedRoadLayout(layout, cfg?.id);\n  const T = layout.terrain;\n  const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;\n  const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);\n",
     "function* heightFieldBuildSteps(\n  seed = 1337,\n  cfg: TerrainMapConfig | null = null,\n): Generator<number, HeightField, void> {\n  const layout = createLayout(cfg);\n  const T = layout.terrain;\n  const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;\n  const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);\n"
@@ -77,7 +92,7 @@ const deltas = [
 ];
 export function beforeRoadCompletionConstructor(text) {
   for (const [current, previous] of deltas) {
-    assert.equal(text.split(current).length, 2, 'exact declared road/admission constructor delta');
+    assert.equal(text.split(current).length, 2, `exact declared road/admission constructor delta: ${current.slice(0, 100)}`);
     text = text.replace(current, previous);
   }
   return text;

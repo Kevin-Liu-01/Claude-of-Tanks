@@ -80,7 +80,7 @@ function impactEvents(match, tick, viewerId, seen, out, id = null) {
   const seen = new Set();
   for (let i = 0; i < 900; i++) {
     match.step({ dt: 1 / 60, inputs: drive });
-    impactEvents(match, i, 'wall-a', seen, events);
+    impactEvents(match, i, 'wall-a', seen, events, 'wall-a');
   }
   assert.ok(hull.state.pos.z < -35 - 3, 'the wall stops the hull on the near side');
   const crash = events.find((event) => event.cause === 'impact' && event.damage > 0);
@@ -94,7 +94,18 @@ function impactEvents(match, tick, viewerId, seen, out, id = null) {
     'a head-on crash loads both tracks');
   assert.ok(crash.modulesHit.some((hit) => hit.module === 'engine'), 'and the engine');
   const totalDamage = events.reduce((sum, event) => sum + event.damage, 0);
-  assert.ok(totalDamage < expected * 1.5, `holding the drive against the wall afterwards costs nothing more (${totalDamage.toFixed(1)} hp total over 15 s)`);
+  // A fractional first penetration can absorb only part of the approach speed.
+  // Price the completed crash, not its first tick; both simulations deliberately
+  // accumulate the remaining closing speed and charge only the new energy.
+  const damaging = events.filter((event) => event.damage > 0);
+  const last = damaging.at(-1);
+  const completedCost = hardImpactDamage(matchRulesetFor('standard').physics,
+    hull.spec.weightTons, last.closingMps, 1);
+  assert.ok(Math.abs(totalDamage - completedCost) < 1,
+    `split contact charges the completed crash once (${totalDamage.toFixed(1)} vs ${completedCost.toFixed(1)} hp)`);
+  assert.ok(damaging.every((event) => event.cause === 'impact'
+    && event.timeS - crash.timeS < 0.3), 'no additional damage while holding the wall after the crash window');
+  assert.ok(Math.abs(hull.state.speed) < 0.01, 'sustained throttle cannot drive through the wall');
 }
 
 // ---- the authority replays the crash bit-for-bit from the same seed ------------------------------------------------
