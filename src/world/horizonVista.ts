@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { sampleHorizonFace } from './horizonSurface.ts';
 import { applyCanopyDiffuseWrap } from './canopyLighting.ts'; // round 55: a leaf import — vegetation.ts must not join the horizon chain (tidalMangrove hook)
 import { HORIZON_CLOUD_SHADE_FRAGMENT, HORIZON_CLOUD_SHADE_UNIFORM_DECLARATIONS } from './horizonCloudShade.ts'; // round 72: the layer's cloud shadows on the ranges
+import { SHADOW_CASTER_LAST_CASCADE, setShadowCasterCascades } from '../engine/renderLayers.ts'; // round 78: the rim forest casts into the far cascade only
 
 // ---------------------------------------------------------------------------
 // tiles
@@ -1073,6 +1074,9 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     // the near band casts real shadows onto the rim slopes like the battlefield's own trees; crowns never receive
     // (cascade self-shadow at range reads as black crowns — the in-map far LOD rule)
     mesh.castShadow = entry.shadow;
+    // round 78 (the performance lane): the rim stands 440 m and more out, where only the far cascade reaches —
+    // the near cascades' passes (and the r8 proxies they would compact) skip these meshes entirely
+    if (entry.shadow) setShadowCasterCascades(mesh, SHADOW_CASTER_LAST_CASCADE);
     mesh.receiveShadow = false;
     mesh.matrixAutoUpdate = false;
     mesh.frustumCulled = false;

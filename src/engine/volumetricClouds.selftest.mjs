@@ -19,7 +19,7 @@ import {
 import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
 import {
-  VolumetricCloudLayer, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR,
+  VolumetricCloudLayer, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -406,6 +406,30 @@ assert.match(mainSource, /cloudscape: config\.clouds/, 'the map\'s clouds block 
 assert.ok(layerSource.includes('${ATMOSPHERE_SKY_GLSL}') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');
 assert.ok(layerSource.includes('markShadowOnly(gobo)'), 'the gobos live on the shadow-only layer');
 assert.ok(layerSource.includes('gobo.customDepthMaterial = this.goboMaterial'), 'the gobos discard by the same two weather fields the trace reads');
+// round 78 (the performance lane): each gobo renders into its own cascade only — three rasterised every plane into
+// every cascade's map (sixteen field-shader draws for four planes on the cumulus maps); the mask is forgotten on detach
+assert.ok(layerSource.includes('setShadowCasterCascades(gobo, 1 << i);'), 'gobo i casts into cascade i only (renderLayers.setShadowCasterCascades)');
+assert.equal(layerSource.match(/setShadowCasterCascades\(gobo, null\);/g)?.length, 1, 'the detach forgets the mask');
+assert.ok(layerSource.indexOf('setShadowCasterCascades(gobo, 1 << i);') < layerSource.indexOf('this.scene.add(gobo);'), 'registered before the plane joins the scene');
+// round 78: the low-deck march law — a stratus deck under 400 m takes the cellular decks' 10 km cap and far strides
+// (whiteout's 300 m ceiling marched twenty kilometres of sheet at the centre-far view); the cellular decks are
+// unchanged, every cumuliform regime and high sheet stays on the full march
+assert.equal(CLOUD_LOW_DECK_BASE_M, 400);
+assert.ok(layerSource.includes('if ( uDeckMarch > 0.0 ) t1 = min( t1, ${f(CLOUD_DECK_MARCH_MAX_M)} );'), 'the cap reads uDeckMarch');
+assert.ok(layerSource.includes('uThick > 2000.0 || uDeckMarch > 0.0 ? 1.0 : 0.4'), 'the far strides read uDeckMarch');
+assert.ok(!layerSource.includes('if ( uCells > 0.0 ) t1 = min('), 'the old cells-only cap is gone');
+assert.ok(layerSource.includes('t.uDeckMarch.value = cloudDeckMarch(preset);'), 'the uniform follows the preset');
+assert.deepEqual([cloudDeckMarch({ cells: 0, stratiform: 0.8, baseM: 300 }), cloudDeckMarch({ cells: 0, stratiform: 0.8, baseM: 400 }), cloudDeckMarch({ cells: 0.5, stratiform: 0, baseM: 2800 }), cloudDeckMarch({ cells: 0, stratiform: 0.3, baseM: 300 }), cloudDeckMarch({ cells: 0, stratiform: 0.08, baseM: 1400 })], [1, 0, 1, 0, 0], 'the deck march law');
+{
+  const deckMarchMaps = [];
+  for (const id of MAP_IDS) {
+    const preset = deriveCloudLayerPreset(skyOf(id));
+    const cells = preset.cells > 0;
+    assert.equal(cloudDeckMarch(preset), cells || (preset.stratiform >= 0.5 && preset.baseM < CLOUD_LOW_DECK_BASE_M) ? 1 : 0, id);
+    if (cloudDeckMarch(preset) && !cells) deckMarchMaps.push(id);
+  }
+  assert.deepEqual(deckMarchMaps, ['whiteout'], 'the low-deck law reaches exactly whiteout among the shipped maps (every other deck under 400 m is already cellular)');
+}
 assert.match(layerSource, /t\.uStepScale\.value = CLOUD_STEP_SCALE_BY_PRESET\[resolvePresetName\(\)\]/, 'the stride scale follows the quality preset every frame');
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');
 assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDetail;[\s\S]*uniform sampler3D tCurl;/, 'the volumes are 3D textures');

@@ -5,6 +5,13 @@ import {
   markShadowOnly,
   routeShadowOnlyLayer,
   renderShadowOnlyWarm,
+  registerShadowCascadeCamera,
+  setShadowCascadePolicy,
+  setShadowCasterCascades,
+  shadowCasterCascadesOf,
+  shadowCascadeIndexOfCamera,
+  routeZeroCountDraws,
+  SHADOW_CASTER_LAST_CASCADE,
 } from './renderLayers.ts';
 
 const proxy = markShadowOnly(new THREE.Mesh(
@@ -169,3 +176,106 @@ for (const ownershipLoss of ['missing', 'method-before', 'method-during', 'map-d
 proxy.geometry.dispose();
 proxy.material.dispose();
 console.log('renderLayers.selftest: shadow routing and scoped warm suppression/restoration passed');
+
+// Round 78 (2026-09-26): per-cascade caster masks — a caster registered with a bit mask renders into those cascades
+// only: the router splits the lights (with or without a policy) and hides the caster around every other cascade's
+// pass, restoring it before the forward render. A caster that is already hidden stays hidden; an unregistered one
+// is never touched; forgetting the mask returns the router to three's single call.
+{
+  setShadowCascadePolicy(null);
+  const lights = [0, 1, 2, 3].map(() => new THREE.DirectionalLight());
+  lights.forEach((light, i) => registerShadowCascadeCamera(light.shadow.camera, i));
+  assert.equal(shadowCascadeIndexOfCamera(lights[2].shadow.camera), 2);
+  assert.equal(shadowCascadeIndexOfCamera(new THREE.OrthographicCamera()), -1, 'an unregistered shadow camera answers -1');
+  const scene = new THREE.Scene();
+  const gobos = [0, 1, 2, 3].map(() => new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial()));
+  const nearOnly = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  const plain = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  const parked = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  parked.visible = false;
+  scene.add(...gobos, nearOnly, plain, parked);
+  const camera = new THREE.PerspectiveCamera();
+  const calls = [];
+  const renderer = { shadowMap: { render(actualLights) {
+    calls.push({ lights: actualLights.slice(), visible: [...gobos.map((g) => g.visible), nearOnly.visible, plain.visible, parked.visible] });
+  } } };
+  routeShadowOnlyLayer(renderer);
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.equal(calls.length, 1, 'no mask and no policy: three\'s single call');
+  gobos.forEach((gobo, i) => setShadowCasterCascades(gobo, 1 << i));
+  setShadowCasterCascades(nearOnly, 0b0011);
+  assert.equal(shadowCasterCascadesOf(gobos[3]), 0b1000);
+  assert.equal(shadowCasterCascadesOf(plain), null);
+  calls.length = 0;
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.equal(calls.length, 4, 'masked casters split the lights without a policy');
+  calls.forEach((call, i) => {
+    assert.deepEqual(call.lights, [lights[i]], `cascade ${i} rendered alone`);
+    assert.deepEqual(call.visible.slice(0, 4), [0, 1, 2, 3].map((g) => g === i), `only gobo ${i} is visible in cascade ${i}`);
+    assert.equal(call.visible[4], i < 2, 'the near-only caster casts into cascades 0 and 1');
+    assert.equal(call.visible[5], true, 'an unregistered caster is never touched');
+    assert.equal(call.visible[6], false, 'a hidden caster stays hidden');
+  });
+  assert.ok(gobos.every((g) => g.visible) && nearOnly.visible && plain.visible && !parked.visible, 'every flag restored after the pass');
+  // the restore holds when three throws inside a cascade
+  gobos[1].visible = true;
+  const throwing = { shadowMap: { render(actualLights) { if (actualLights[0] === lights[1]) throw new Error('cascade 1'); } } };
+  routeShadowOnlyLayer(throwing);
+  assert.throws(() => throwing.shadowMap.render(lights, scene, camera), /cascade 1/);
+  assert.ok(gobos.every((g) => g.visible), 'a throw inside a cascade still restores the hidden casters');
+  // a single light (the deployment shadow warm) is never split
+  calls.length = 0;
+  renderer.shadowMap.render([lights[0]], scene, camera);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].visible.slice(0, 4), [true, true, true, true], 'one light: nothing hidden');
+  // forgetting the masks returns the router to the single call
+  gobos.forEach((gobo) => setShadowCasterCascades(gobo, null));
+  setShadowCasterCascades(nearOnly, null);
+  assert.equal(shadowCasterCascadesOf(gobos[0]), null);
+  calls.length = 0;
+  renderer.shadowMap.render(lights, scene, camera);
+  assert.equal(calls.length, 1, 'no masks left: three\'s single call again');
+}
+// Round 78: the "last cascade only" flag is resolved against the light set at render time (three lights on the
+// phones, four on the desktop), so a world that cannot know the tier's cascade count still names the far map.
+{
+  setShadowCascadePolicy(null);
+  const rim = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  const scene = new THREE.Scene(); scene.add(rim);
+  const camera = new THREE.PerspectiveCamera();
+  setShadowCasterCascades(rim, SHADOW_CASTER_LAST_CASCADE);
+  assert.equal(shadowCasterCascadesOf(rim), SHADOW_CASTER_LAST_CASCADE);
+  for (const count of [3, 4]) {
+    const lights = Array.from({ length: count }, () => new THREE.DirectionalLight());
+    lights.forEach((light, i) => registerShadowCascadeCamera(light.shadow.camera, i));
+    const seen = [];
+    const renderer = { shadowMap: { render() { seen.push(rim.visible); } } };
+    routeShadowOnlyLayer(renderer);
+    renderer.shadowMap.render(lights, scene, camera);
+    assert.deepEqual(seen, Array.from({ length: count }, (_, i) => i === count - 1), `${count} cascades: the rim casts into the last one only`);
+    assert.equal(rim.visible, true);
+  }
+  setShadowCasterCascades(rim, null);
+}
+// Round 78: a zero-count InstancedMesh never reaches three's renderBufferDirect (whose program / uniform / binding
+// setup runs before renderInstances returns on primcount 0); every other draw passes through unchanged.
+{
+  const calls = [];
+  const renderer = {
+    shadowMap: { render() {} },
+    renderBufferDirect(camera, scene, geometry, material, object, group) { calls.push([object.name, this === renderer, group]); },
+  };
+  routeShadowOnlyLayer(renderer);
+  const routed = renderer.renderBufferDirect;
+  routeZeroCountDraws(renderer);
+  assert.equal(renderer.renderBufferDirect, routed, 'routed once per renderer');
+  const geometry = new THREE.BoxGeometry(1, 1, 1), material = new THREE.MeshBasicMaterial();
+  const empty = new THREE.InstancedMesh(geometry, material, 4); empty.count = 0; empty.name = 'empty';
+  const some = new THREE.InstancedMesh(geometry, material, 4); some.count = 2; some.name = 'some';
+  const plain = new THREE.Mesh(geometry, material); plain.name = 'plain';
+  const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene();
+  for (const object of [empty, some, plain]) renderer.renderBufferDirect(camera, scene, geometry, material, object, null);
+  assert.deepEqual(calls, [['some', true, null], ['plain', true, null]], 'the zero-count draw is skipped before the setup; the rest pass through with their receiver');
+  assert.doesNotThrow(() => routeZeroCountDraws({ shadowMap: { render() {} } }), 'a renderer without the method is left alone');
+}
+console.log('renderLayers.selftest: the shadow-only layer, the warm scope, the round-78 per-cascade caster masks (with the last-cascade flag) and the zero-count early-out pinned');

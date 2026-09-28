@@ -40,7 +40,7 @@ import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
-import { markShadowOnly } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
@@ -342,11 +342,23 @@ const CARPET_RING = 3;                 // 49 cached cells, coverage to ±56 m
 const CARPET_PER_CELL = 420;           // filters thin this to a natural sward
 const CARPET_FAR = 48;                 // circular fade hides the square cell edge
 const CARPET_CAP = 14000;              // hard upload/raster ceiling per variant
-const TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290; // hysteresis band (full-detail radius)
+// Round 78 (the performance lane): the full-detail radius 260 / 290 → 200 / 230 m. The far tier is the near tree's
+// own bake since round 77b (`treeImpostors.ts`), so the switch is the same crown at a smaller size: at the chase pose
+// the trees behind a village 150–250 m out read identically at 260 and 200 m under 3 × magnification, 160 m shows
+// flatter crowns; the near tier (trunks, cards, whorls, crown shadow proxies) is the whole triangle budget — verdant
+// 6.95 → 6.06 M at chase (under the 7 M gate), fjord 9.39 → 8.03 M, each 100 m of radius ~0.8–1.2 M. The mobile
+// tier already stood at 200 / 225. `?treeNear=<m>` below is the same-build A/B.
+const TREE_NEAR_IN = 200, TREE_NEAR_OUT = 230; // hysteresis band (full-detail radius)
 // Round 77b: the rim-forest understorey — the stands' shrub law scaled to the rim trees (1.35–2.2 against the
 // interior 0.95–1.7: the ratio of the two ranges' means) and bounded by the rim's own extent
 const RIM_UNDERSTOREY_SCALE = 1.4;
 const RIM_UNDERSTOREY_BOUND_M = 506;
+// Round 78 (the performance lane): the shrubs cast into the cascades whose texels can carry them and no further —
+// the bushes (1.5–2.5 m) into the three near cascades (to ~300 m on the desktop presets, where a bush is six pixels
+// tall), the understorey (young growth under 1.6 m, pure dressing) into the two nearest (to ~180 m). Every other
+// cascade pass skips them entirely (renderLayers.setShadowCasterCascades); the field trees are unchanged.
+const BUSH_SHADOW_CASCADES = 0b0111;
+const UNDERSTOREY_SHADOW_CASCADES = 0b0011;
 
 function clamp(x: number, a: number, b: number): number { return x < a ? a : x > b ? b : x; }
 function smoothstepJs(a: number, b: number, x: number): number {
@@ -2889,8 +2901,14 @@ function* vegetationBuildSteps(
   // so this removes sub-pixel noise without introducing a distance pop.
   const grassFadeEnd = mobileTier ? 132 : GRASS_FADE_END;
   const grassTaperEnd = mobileTier ? 112 : 155;
-  const treeNearIn = mobileTier ? 200 : TREE_NEAR_IN;
-  const treeNearOut = mobileTier ? 225 : TREE_NEAR_OUT;
+  const treeNearIn = mobileTier ? 200 : (() => {
+    // Round 78 (the performance lane): `?treeNear=<m>` (desktop tiers; the probes' same-build A/B of the near-tier
+    // distance) overrides the band's inner radius; the outer keeps the hysteresis width. The shipped band is
+    // TREE_NEAR_IN / TREE_NEAR_OUT; nothing else reads the query (the receipts run without a location).
+    const q = typeof location !== 'undefined' ? Number((/[?&]treeNear=(\d+)(&|$)/.exec(location.search ?? '') ?? [])[1]) : NaN;
+    return q >= 60 && q <= 400 ? q : TREE_NEAR_IN;
+  })();
+  const treeNearOut = mobileTier ? 225 : treeNearIn + (TREE_NEAR_OUT - TREE_NEAR_IN);
   const veg: VegetationConfig = {
     species: ['pine', 'oak'],
     clusterMix: [['pine', 0.55], ['oak', 0.45]],
@@ -5087,6 +5105,7 @@ function* vegetationBuildSteps(
         }
         m.count=kept;
         m.castShadow = true;
+        setShadowCasterCascades(m, BUSH_SHADOW_CASCADES); // round 78: the near cascades only
         // round 77: the cascades on the shrubs too — sampled once per shrub 0.9 m over its base and 1.6 × its scale
         // toward the sun (foliageWindHook), so a bush under a crown sits in the crown's shadow, one state per shrub
         m.receiveShadow = canopyShadowReceive;
@@ -5156,6 +5175,7 @@ function* vegetationBuildSteps(
         bushFadeReg.push({ attr: fadeAttr, slot: i, x: e[12], z: e[14], fade: 0 });
       }
       m.castShadow = true;
+      setShadowCasterCascades(m, UNDERSTOREY_SHADOW_CASCADES); // round 78: the two nearest cascades only
       m.receiveShadow = canopyShadowReceive;
       m.matrixAutoUpdate = false;
       m.customDepthMaterial = foliageDepthMats[bushSpecies];

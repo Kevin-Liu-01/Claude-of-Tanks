@@ -2775,8 +2775,13 @@ function* propsBuildSteps(
   // where the plan will draw the steel material (a container row, a yard kind, corrugated cladding); the mobile tier
   // paints it at half size (a quarter of the paint time and texture bytes). The timing record on the group is the
   // build-timing probe's evidence; a steel part on an unpredicted map falls back to a synchronous paint below.
-  const steelAtlasSize = getDeviceTier() === 'mobile' ? STEEL_ATLAS_SIZE_MOBILE : STEEL_ATLAS_SIZE;
-  const steelAtlas = { needed: steelAtlasNeeded(P.plan, P.industrialCladding), painted: false, fallback: '', ms: 0, size: 0 };
+  // Round 78 (the performance lane): the mobile tier paints no steel atlas at all — its `steel` material carries the
+  // livery in the vertex colours alone (the path the maps without steel already take), which returns the phones'
+  // props to the round-74 texture footprint (the round-71–77 audit read Whiteout on the mobile tier at +2.9 MB of
+  // textures and +5 programs); the record says so (`fallback: 'mobile'`, painted false).
+  const mobileProps = getDeviceTier() === 'mobile';
+  const steelAtlasSize = mobileProps ? STEEL_ATLAS_SIZE_MOBILE : STEEL_ATLAS_SIZE;
+  const steelAtlas = { needed: steelAtlasNeeded(P.plan, P.industrialCladding) && !mobileProps, painted: false, fallback: mobileProps ? 'mobile' : '', ms: 0, size: 0 };
   let steel: SteelAtlasTextures | null = null;
   if (steelAtlas.needed) {
     const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
@@ -2990,7 +2995,7 @@ ${snowCap ? `
   group.userData.steelAtlas = steelAtlas;
   /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
   function ensureSteelAtlas(reason: string): void {
-    if (steel) return;
+    if (steel || mobileProps) return; // round 78: the phones never paint it
     const started = performance.now();
     const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
     let step = painter.next();
