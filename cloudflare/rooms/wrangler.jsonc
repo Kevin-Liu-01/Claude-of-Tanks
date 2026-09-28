@@ -29,5 +29,10 @@
       { "name": "ROOMS", "class_name": "Room" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+  // v1 is the deployed history (Room and the now-parked MatchContainer); v2 deletes the container's class — a Worker version
+  // may not stop exporting a class existing Durable Objects depend on, and the chain must create what it deletes (2026-09-28).
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room", "MatchContainer"] },
+    { "tag": "v2", "deleted_classes": ["MatchContainer"] }
+  ]
 }
