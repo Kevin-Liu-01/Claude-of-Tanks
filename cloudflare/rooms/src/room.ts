@@ -7,9 +7,10 @@
  *
  * Every room message is one text or binary UTF-8 JSON frame; replies go out
  * as binary so the v2 transport carries them. Resume capabilities are never
- * stored raw (the actor keeps SHA-256 hashes), SDP never travels (v2 has no
- * peer connections), and the room outlives every departure: only the 24 h
- * idle expiry closes it, after which the object deallocates its storage.
+ * stored raw (the actor keeps SHA-256 hashes), SDP is relayed between two
+ * seats of a p2p match and never parsed (`room_signal`, §13), and the room
+ * outlives every departure: only the 24 h idle expiry closes it, after which
+ * the object deallocates its storage.
  */
 import { DurableObject } from 'cloudflare:workers';
 import { createHash } from 'node:crypto';
@@ -44,6 +45,8 @@ export class Room extends DurableObject<Env> {
   #schemaReady = false;
   #storageUsed = false;
   #alarmWanted: number | null | undefined = undefined;
+  /** Sockets the actor retired during the current event, closed once the event's storage work is done (see #close). */
+  #pendingCloses: Array<{ ws: WebSocket; reason: string }> = [];
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -89,7 +92,8 @@ export class Room extends DurableObject<Env> {
       now: () => Date.now(),
       random: () => Math.random(),
       sha256Hex: (text) => createHash('sha256').update(text).digest('hex'),
-      signSeatToken: (claims) => signSeatToken(this.env.MATCH_SEAT_SECRET, claims),
+      seatSecret: this.env.MATCH_SEAT_SECRET,
+      signSeatToken,
       matchHost: createMatchHost(this.env, code),
       send: (socketId, message) => this.#send(socketId, message),
       closeSocket: (socketId, reason) => this.#close(socketId, reason),
@@ -106,13 +110,30 @@ export class Room extends DurableObject<Env> {
     try { ws.send(new TextEncoder().encode(JSON.stringify(message))); } catch { /* its close handler detaches */ }
   }
 
+  /**
+   * Retire a socket: detached at once, closed from a zero-delay timer once the current event is over. Inside one
+   * event, sending to the socket that delivered the message, awaiting storage (`setAlarm`) and then closing that
+   * socket crashed the Workers runtime (kj "Promise callback destroyed itself"; bisected 2026-09-28 on the last
+   * commander's `room_leave`: its ack, the lost end re-arming the alarm from 30 s to 24 h, its close — any two of
+   * the three are fine). Closing from a timer keeps the ack ahead of the close and the close out of the event.
+   */
   #close(socketId: string, reason: string): void {
     const ws = this.#sockets.get(socketId);
     this.#sockets.delete(socketId);
     if (ws) {
       this.#ids.delete(ws);
-      try { ws.close(1000, reason); } catch { /* already closed */ }
+      this.#pendingCloses.push({ ws, reason });
     }
+  }
+
+  #flushCloses(): void {
+    if (this.#pendingCloses.length === 0) return;
+    const pending = this.#pendingCloses.splice(0);
+    setTimeout(() => {
+      for (const { ws, reason } of pending) {
+        try { ws.close(1000, reason); } catch { /* already closed */ }
+      }
+    }, 0);
   }
 
   /** The actor's whole durable state as one row; an empty room with no sockets deallocates. */
@@ -175,6 +196,7 @@ export class Room extends DurableObject<Env> {
     actor.handleOpen(socketId);
     this.#attach(ws, socketId);
     await this.#applyAlarm();
+    this.#flushCloses();
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
@@ -182,7 +204,8 @@ export class Room extends DurableObject<Env> {
     const socketId = this.#ids.get(ws);
     const actor = this.#actor;
     if (!socketId || !actor) {
-      ws.close(1008, 'resume_denied');
+      // a socket already retired in this event closes with its own reason
+      if (!this.#pendingCloses.some((pending) => pending.ws === ws)) ws.close(1008, 'resume_denied');
       return;
     }
     const text = frameText(data);
@@ -190,11 +213,13 @@ export class Room extends DurableObject<Env> {
       this.#close(socketId, 'invalid_payload');
       actor.handleClose(socketId);
       await this.#applyAlarm();
+      this.#flushCloses();
       return;
     }
     await actor.handleMessage(socketId, text);
     if (this.#sockets.has(socketId)) this.#attach(ws, socketId);
     await this.#applyAlarm();
+    this.#flushCloses();
   }
 
   async webSocketClose(ws: WebSocket, code = 1000, reason = ''): Promise<void> {
@@ -203,11 +228,14 @@ export class Room extends DurableObject<Env> {
       this.#sockets.delete(socketId);
       this.#ids.delete(ws);
       this.#actor?.handleClose(socketId);
+      // Complete the client's close handshake (the hibernation API leaves it to the object): without the
+      // echo a `ws` client waited 10 s for an abnormal 1006 on every room leave (measured 2026-09-25). A socket
+      // the object closed itself (#close) needs no echo; a close without a status (1005) cannot be echoed and is
+      // left to the runtime (echoing it as 1000 crashed the runtime under vitest, 2026-09-28).
+      try { ws.close(code, reason); } catch { /* already closed, or a code the runtime refuses to echo */ }
     }
-    // Complete the client's close handshake (the hibernation API leaves it to the object): without the
-    // echo a `ws` client waited 10 s for an abnormal 1006 on every room leave (measured 2026-09-25).
-    try { ws.close(code, reason); } catch { /* already closed, or a code the runtime refuses to echo */ }
     await this.#applyAlarm();
+    this.#flushCloses();
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
@@ -218,5 +246,6 @@ export class Room extends DurableObject<Env> {
     this.#nextAlarm = null;
     if (this.#actor) await this.#actor.tick();
     await this.#applyAlarm();
+    this.#flushCloses();
   }
 }

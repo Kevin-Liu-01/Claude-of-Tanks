@@ -1,25 +1,28 @@
 /**
- * cot-rooms: the Multiplayer v2 room Worker.
+ * cot-rooms: the Multiplayer v2 room Worker (Free plan since the peer-to-peer
+ * re-scope, docs/MULTIPLAYER-V2.md §13).
  *
  *   GET /healthz                      shallow health (no room lifecycle proof)
  *   GET /rooms/<CODE>        (ws)     the room socket → the Room Durable Object for that code
- *   GET /rooms/<CODE>/match  (ws)     the match socket → the room's match container (or the shim)
+ *   GET /rooms/<CODE>/match  (ws)     the match socket of the parked service backend (503 with the p2p host)
  *
- * Origins are exact (`ALLOWED_ORIGINS`), upgrades are rate limited per client
- * IP, and the seat token a client presents on the match socket is verified by
- * the match service itself (server/match/service.ts); the Worker only routes.
+ * Origins are exact (`ALLOWED_ORIGINS`) and upgrades are rate limited per client
+ * IP. With the p2p host the Worker carries no game traffic: the Room object
+ * relays a few dozen signaling messages per join and the match runs between
+ * the browsers over WebRTC. `MatchContainer` (`matchContainer.ts`) is not
+ * exported: a container class cannot deploy on the Free plan; a paid account
+ * re-exports it, binds `MATCH` and restores the `containers` block.
  */
 import { parseRoomRoute } from '../../../src/mp/room/protocol.ts';
-import { proxyMatchSocket } from './matchHost.ts';
+import { matchHostKind, proxyMatchSocket } from './matchHost.ts';
 import { allowedOrigin, isWebSocketUpgrade, json } from './util.ts';
 export { Room } from './room.ts';
-export { MatchContainer } from './matchContainer.ts';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/healthz' && !url.search) {
-      return json({ ok: true, service: 'cot-rooms', backend: 'durable-object', matchHost: env.MATCH_SHIM_URL ? 'shim' : 'container' });
+      return json({ ok: true, service: 'cot-rooms', backend: 'durable-object', matchHost: matchHostKind(env) });
     }
     const route = parseRoomRoute(url.pathname);
     if (!route || url.hash) return json({ error: 'invalid_room_route' }, 404);

@@ -1,13 +1,16 @@
 /**
- * Where a room's match runs, seen from the Worker: the container bound as
- * `MATCH` (one `MatchContainer` instance per room code, started with
- * `startAndWaitForPorts`, its control routes and `/match` WebSocket reached
- * through `stub.fetch`), or — when `MATCH_SHIM_URL` names a match service
- * started outside the Worker — that HTTP endpoint (local development without
- * a container runtime, receipts). Both speak `server/match/control.ts`.
+ * Where a room's match runs, seen from the Worker. Since the peer-to-peer
+ * re-scope (owner 2026-09-28, docs/MULTIPLAYER-V2.md §13) the default is the
+ * `p2p` host: the match runs in the host commander's browser and the Room
+ * object elects, signals and migrates (`src/mp/room/p2pMatchHost.ts`). The
+ * dedicated-service backend stays parked in the tree and is selected only
+ * when a `MATCH` container binding exists (`matchContainer.ts`, a paid
+ * account) or `MATCH_SHIM_URL` names a match service started outside the
+ * Worker (local development, receipts). Both speak `server/match/control.ts`.
  */
 import { getContainer } from '@cloudflare/containers';
-import type { MatchHost, MatchHostStartConfig, MatchHostStatus } from '../../../src/mp/room/roomActor.ts';
+import type { MatchHost, MatchHostStartConfig, MatchHostStatus, ServiceMatchHost } from '../../../src/mp/room/roomActor.ts';
+import { createP2pMatchHost } from '../../../src/mp/room/p2pMatchHost.ts';
 import { matchSocketPath } from '../../../src/mp/room/protocol.ts';
 import type { MatchContainer } from './matchContainer.ts';
 
@@ -29,12 +32,18 @@ function shimUrl(env: ControlEnv): string | null {
   return url ? url.replace(/\/+$/, '') : null;
 }
 
+/** Which backend this environment selects: the parked service when a shim or a container binding exists, else p2p. */
+export function matchHostKind(env: ControlEnv): 'p2p' | 'shim' | 'container' {
+  if (shimUrl(env)) return 'shim';
+  return env.MATCH ? 'container' : 'p2p';
+}
+
 /** The fetch that reaches the control routes: the container stub or the shim's origin. */
 function controlFetch(env: ControlEnv, roomCode: string): (path: string, init?: RequestInit) => Promise<Response> {
   const shim = shimUrl(env);
   const headers = { authorization: `Bearer ${controlSecret(env)}`, 'content-type': 'application/json' };
   if (shim) return (path, init) => fetch(`${shim}${path}`, { ...init, headers: { ...headers, ...(init?.headers ?? {}) } });
-  if (!env.MATCH) throw new Error('no match host: bind MATCH or set MATCH_SHIM_URL');
+  if (!env.MATCH) throw new Error('no match service: bind MATCH or set MATCH_SHIM_URL');
   const container = getContainer(env.MATCH, roomCode);
   return (path, init) => container.fetch(new Request(`${CONTROL_ORIGIN}${path}`, { ...init, headers: { ...headers, ...(init?.headers ?? {}) } }));
 }
@@ -50,10 +59,12 @@ async function readStatus(response: Response, roomCode: string): Promise<MatchHo
   return { roomId: roomCode, matchId: typeof body.matchId === 'string' ? body.matchId : null, phase: known ? phase : 'unknown', verdict };
 }
 
-export function createMatchHost(env: ControlEnv, roomCode: string): MatchHost {
+/** The parked dedicated-service backend: the container binding or the HTTP shim, polled by the room's alarm. */
+export function createServiceMatchHost(env: ControlEnv, roomCode: string): ServiceMatchHost {
   const shim = shimUrl(env);
   const call = controlFetch(env, roomCode);
   return {
+    transport: 'service',
     async start(config: MatchHostStartConfig) {
       if (!shim && env.MATCH) {
         // The container boots in seconds; wait for the match service port before posting the start.
@@ -73,7 +84,12 @@ export function createMatchHost(env: ControlEnv, roomCode: string): MatchHost {
   };
 }
 
-/** Proxy a `/rooms/<CODE>/match` WebSocket upgrade to the room's match service at `/match`. */
+/** The room's match host for this environment (see `matchHostKind`). */
+export function createMatchHost(env: ControlEnv, roomCode: string): MatchHost {
+  return matchHostKind(env) === 'p2p' ? createP2pMatchHost() : createServiceMatchHost(env, roomCode);
+}
+
+/** Proxy a `/rooms/<CODE>/match` WebSocket upgrade to the room's match service at `/match` (503 with the p2p host). */
 export function proxyMatchSocket(env: ControlEnv, roomCode: string, request: Request): Promise<Response> {
   const target = new URL(request.url);
   target.pathname = '/match';
