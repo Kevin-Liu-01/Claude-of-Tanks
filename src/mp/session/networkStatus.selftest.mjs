@@ -431,3 +431,50 @@ function mulberry(seed) {
 }
 
 console.log('mp network status: room and match sources, every threshold, stale/stall/reconnect countdown, seat drops, leave, summary; a real client over an impaired loopback — PASS');
+
+// ------------------------------------------------------------ peer-to-peer (P2 client lane): the session's facts, the events, the banner, the summary
+{
+  const { NetworkStatusModel: Model, networkBannerFor } = await import('./networkStatus.ts');
+  let nowMs = 50_000;
+  const model = new Model({ clock: () => nowMs });
+  const events = [];
+  model.onEvent((event) => events.push(event));
+  const listeners = new Set();
+  const facts = { role: 'peer', generation: 1, hostId: 'alice', migrating: false, migrationHostId: null, candidateType: 'srflx', viaTurn: false, peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null };
+  const roomListeners = { phase: new Set(), state: new Set(), closed: new Set() };
+  const roomSource = {
+    phase: 'joined', room: { players: [{ id: 'alice', name: 'Alice' }, { id: 'bob', name: 'Bob' }] }, seat: 1, region: 'lan', rttMs: 12,
+    onPhase: (listener) => { roomListeners.phase.add(listener); return () => roomListeners.phase.delete(listener); },
+    onState: (listener) => { roomListeners.state.add(listener); return () => roomListeners.state.delete(listener); },
+    onClosed: (listener) => { roomListeners.closed.add(listener); return () => roomListeners.closed.delete(listener); },
+  };
+  model.attachRoom(roomSource);
+  model.attachP2p({ get p2p() { return facts; }, onP2p: (listener) => { listeners.add(listener); return () => listeners.delete(listener); } });
+  const s = model.snapshot;
+  assert.deepEqual([s.role, s.generation, s.hostId, s.candidateType, s.viaTurn, s.peersConnected, s.hostUplinkKbps, s.migrating], ['peer', 1, 'alice', 'srflx', false, 0, 0, false], 'the p2p facts ride the snapshot');
+  assert.equal(model.banner(nowMs), null, 'no banner on a settled peer');
+  // an election: the banner names the new host by its room name; the events count the migration
+  facts.migrating = true; facts.migrationHostId = 'bob';
+  for (const listener of listeners) listener({ kind: 'migration', phase: 'begin', hostId: 'bob', generation: 2, role: 'peer', detail: 'timeout' });
+  assert.deepEqual(model.banner(nowMs), { kind: 'migrating', host: 'Bob', self: false });
+  assert.deepEqual(events.filter((event) => event.kind === 'migration'), [{ kind: 'migration', phase: 'begin', role: 'peer', hostId: 'bob', reason: 'timeout' }]);
+  assert.deepEqual(networkBannerFor({ ...s, migrating: true, migrationHostId: 'carol' }, nowMs), { kind: 'migrating', host: 'carol', self: false }, 'an unknown id stands for itself');
+  // this seat becomes the host: the role event, the badge facts, the uplink in kbit/s, TURN from a relayed peer
+  facts.role = 'host'; facts.generation = 2; facts.hostId = 'bob'; facts.peersConnected = 3; facts.relayed = 1; facts.viaTurn = true; facts.uplinkBytesPerS = 12_500;
+  for (const listener of listeners) listener({ kind: 'role', role: 'host', generation: 2 });
+  assert.deepEqual(events.filter((event) => event.kind === 'host'), [{ kind: 'host', role: 'host', migrated: true }], 'a role change while migrating is a migration onto this seat');
+  assert.deepEqual([s.role, s.generation, s.peersConnected, s.viaTurn, s.hostUplinkKbps], ['host', 2, 3, true, 100]);
+  assert.deepEqual(model.banner(nowMs), { kind: 'migrating', host: 'Bob', self: true }, 'the banner says so while the host boots');
+  facts.migrating = false; facts.migrationHostId = null;
+  for (const listener of listeners) listener({ kind: 'migration', phase: 'end', hostId: 'bob', generation: 2, role: 'host', detail: 'welcomed' });
+  assert.equal(model.banner(nowMs), null);
+  const summary = model.summary();
+  assert.equal(summary.hosted, 1);
+  assert.equal(summary.migrations, 1);
+  // detaching clears the facts; the summary keeps its counts
+  model.detachP2p();
+  assert.deepEqual([s.role, s.generation, s.peersConnected, s.migrating], [null, 0, 0, false]);
+  assert.equal(model.summary().hosted, 1);
+  model.dispose();
+  console.log('networkStatus.selftest: the peer-to-peer facts, the migration banner, the host and migration events and the summary counts verified');
+}

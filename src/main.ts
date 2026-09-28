@@ -2238,7 +2238,11 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
   return Promise.all([
     import('./mp/session/browserComposition.ts'),
     import('./net/networkBattleActivationRuntime.ts'),
-  ]).then(([{ createBrowserComposition }, { createNetworkBattleActivationRuntime }]) => {
+    import('./mp/host/browserHostPort.ts'),
+    import('./mp/host/worldCollision.ts'),
+    import('./net/iceConfig.ts'),
+    import('./net/signalEndpoint.ts'),
+  ]).then(([{ createBrowserComposition }, { createNetworkBattleActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { loadIceConfiguration }, { resolveIceConfigUrl }]) => {
     // The v2 launch runs on the same app ports as v1: the loader, the world, the warm owners, the activation.
     const options = networkCompositionOptions();
     const activation = createNetworkBattleActivationRuntime(options.activation);
@@ -2289,12 +2293,27 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
             storage: localStorage,
             onLeave: () => { void leaveBattleToGarage().catch((error) => console.error('[multiplayer v2] leave failed', error)); },
           })),
-          // The link folds into the session record: reconnects and drops count, the exit leaves one note (never per tick).
+          // The link folds into the session record: reconnects, drops, hosting and elections count, the exit leaves one note (never per tick).
           event: (event) => {
             if (event.kind === 'reconnect') entryTelemetry.send({ kind: 'mp_reconnect', reason: event.scope });
             else if (event.kind === 'dropped') entryTelemetry.send({ kind: 'mp_drop', code: event.reason });
+            else if (event.kind === 'host' && event.role === 'host') entryTelemetry.send({ kind: 'mp_host', reason: event.migrated ? 'migrate' : 'start' });
+            else if (event.kind === 'migration' && event.phase === 'begin') entryTelemetry.send({ kind: 'mp_migrate', code: event.role ?? 'peer', reason: event.reason });
           },
           report: (summary, reason) => entryTelemetry.send({ kind: 'mp_exit', mode: 'network', code: reason, reason: summary.health, link: summary }),
+        },
+        // Peer-to-peer (docs/MULTIPLAYER-V2.md §13): the host actor's Worker chunk, the collision manifests the build serves,
+        // ICE from the same credential source v1 uses, the device tier (the mobile tier never hosts).
+        p2p: {
+          createHostPort: createBrowserHostPort,
+          manifestBase: COLLISION_MANIFEST_ROUTE,
+          tier: getDeviceTier(),
+          loadIce: async (mode) => {
+            const configuration = mode === 'lan'
+              ? await loadIceConfiguration({ mode })
+              : await loadIceConfiguration({ mode, endpoint: resolveIceConfigUrl({ configured: import.meta.env.VITE_ICE_CONFIG_URL, protocol: location.protocol }) });
+            return { iceServers: configuration.iceServers, relayOnly: configuration.relayOnly };
+          },
         },
       },
     });

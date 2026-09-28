@@ -42,7 +42,10 @@ const NAMED_STAGES = new Set([
  *  note — `mp:<exit>:<health>:r<reconnects>:d<drops>:<lastDrop>:i<impaired s>` — and, when the
  *  session record already left, posts one `entry` follow-up carrying it (`code` `mp_<exit>`). */
 export type TelemetryKind = 'boot_stage' | 'boot_ready' | 'boot_error' | 'entry_result' | 'capability'
-  | 'slow_reveal' | 'room_failure' | 'ice_degraded' | 'hud_mask_failed' | 'mp_reconnect' | 'mp_drop' | 'mp_exit';
+  | 'slow_reveal' | 'room_failure' | 'ice_degraded' | 'hud_mask_failed' | 'mp_reconnect' | 'mp_drop' | 'mp_exit'
+  /** Peer-to-peer (2026-09-28): `mp_host` (this seat hosted; `reason` `start` | `migrate`) and `mp_migrate` (an election reached this
+   *  seat; `code` its new role, `reason` the room's) only count; the counts ride the `mp_exit` note as `:h<hosted>:m<migrations>` when nonzero. */
+  | 'mp_host' | 'mp_migrate';
 type TelemetryOutcome = 'ok' | 'failed' | 'cancelled' | 'timeout' | 'halted' | 'notice';
 type TelemetryMode = 'solo' | 'private' | 'lan' | 'studio' | 'network' | 'unknown';
 type SessionOutcome = 'ready' | 'halted' | 'error' | 'left';
@@ -74,6 +77,9 @@ export interface TelemetryLinkSummary {
   drops: number;
   lastDrop: string | null;
   impairedMs: number;
+  /** Peer-to-peer: rounds hosted and elections lived through (absent on the WebSocket path). */
+  hosted?: number;
+  migrations?: number;
 }
 
 /** What the call sites report; the client folds these into the three wire records (the damage panel types its sink by it). */
@@ -310,6 +316,8 @@ export function createEntryTelemetry({
   let linkRoomReconnects = 0;
   let linkDrops = 0;
   let linkLastDrop: string | null = null;
+  let linkHosted = 0;
+  let linkMigrations = 0;
   // A clean session is kept with probability `sample`; the record carries the weight so counts scale back.
   const sampledOut = sample < 1 && random() >= sample;
   const weight = Math.max(1, Math.round(1 / sample));
@@ -479,6 +487,12 @@ export function createEntryTelemetry({
         if (event.reason === 'room') linkRoomReconnects += 1;
         else linkReconnects += 1;
         return true;
+      case 'mp_host':
+        linkHosted += 1;
+        return true;
+      case 'mp_migrate':
+        linkMigrations += 1;
+        return true;
       case 'mp_drop':
         linkDrops += 1;
         linkLastDrop = telemetryCode(event.code || 'unknown', 24);
@@ -492,8 +506,11 @@ export function createEntryTelemetry({
         const impairedS = Math.round((link ? link.impairedMs : 0) / 1000);
         const exit = telemetryCode(event.code || 'left', 12);
         const health = telemetryCode(event.reason || link?.health || 'unknown', 10);
-        note(`mp:${exit}:${health}:r${reconnects}:d${drops}:${lastDrop ? telemetryCode(lastDrop, 16) : 'none'}:i${impairedS}`);
-        linkReconnects = 0; linkRoomReconnects = 0; linkDrops = 0; linkLastDrop = null;
+        const hosted = link && typeof link.hosted === 'number' ? link.hosted : linkHosted;
+        const migrations = link && typeof link.migrations === 'number' ? link.migrations : linkMigrations;
+        const p2p = hosted || migrations ? `:h${hosted}:m${migrations}` : '';
+        note(`mp:${exit}:${health}:r${reconnects}:d${drops}:${lastDrop ? telemetryCode(lastDrop, 16) : 'none'}:i${impairedS}${p2p}`);
+        linkReconnects = 0; linkRoomReconnects = 0; linkDrops = 0; linkLastDrop = null; linkHosted = 0; linkMigrations = 0;
         if (sessionSent) {
           // The session record has left: the battle's link rides one `entry` follow-up (the session budget still holds).
           entry = { outcome: exit === 'dropped' || exit === 'lost' ? 'failed' : 'ok', mode: 'network', code: `mp_${exit}`, ...(roundMs(event.ms) !== undefined ? { ms: roundMs(event.ms) } : {}) };

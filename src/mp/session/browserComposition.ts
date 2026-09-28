@@ -25,7 +25,7 @@
  * a scripted session and a recorded presentation).
  */
 import { MatchSession } from './matchSession.ts';
-import type { MatchSessionOptions, MatchSessionStats, SessionPhase, SessionPresentation, SessionRound } from './matchSession.ts';
+import type { MatchSessionOptions, MatchSessionP2pOptions, MatchSessionStats, SessionP2pEvent, SessionP2pStatus, SessionPhase, SessionPresentation, SessionRound } from './matchSession.ts';
 import { NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName } from './networkStatus.ts';
 import type { NetworkBanner, NetworkStatusEvent, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
 import { isMultiplayerV2Session } from './playMenuAdapter.ts';
@@ -247,6 +247,15 @@ export interface BrowserStatusPorts {
   report?(summary: NetworkStatusSummary, reason: BrowserLinkExit): void;
 }
 
+/**
+ * The peer-to-peer surfaces (P2 client lane, 2026-09-28): ICE from v1's credential source per room mode, the host
+ * actor's Worker, where the collision manifests are served, the device tier (the mobile tier never hosts).
+ */
+export interface BrowserP2pPorts extends Omit<MatchSessionP2pOptions, 'ice' | 'onLog'> {
+  /** ICE servers for a room mode (`lan` needs none; `private` asks the credential service). */
+  loadIce?(mode: RoomMode): Promise<MatchSessionP2pOptions['ice'] extends infer T ? Exclude<T, undefined | (() => unknown)> : never>;
+}
+
 export interface BrowserCompositionPorts {
   lifecycle: BrowserEntryLifecycle;
   load: BrowserLoadPorts;
@@ -256,6 +265,7 @@ export interface BrowserCompositionPorts {
   presentation: BrowserPresentationPorts;
   room: BrowserRoomPorts;
   status?: BrowserStatusPorts;
+  p2p?: BrowserP2pPorts;
 }
 
 /** The session owner as the composition drives it (MatchSession, or the receipt's scripted one). */
@@ -264,6 +274,9 @@ export interface SessionOwner {
   readonly round: SessionRound | null;
   /** The live match client (the network status model attaches to it on the `match` phase). */
   readonly match?: NetworkStatusMatchSource | null;
+  /** The peer-to-peer facts and events (the status model attaches with the match). */
+  readonly p2p?: Readonly<SessionP2pStatus> | null;
+  onP2p?(listener: (event: SessionP2pEvent) => void): Unsubscribe;
   /** Re-enter a match this seat still holds a `match_start` for (a Garage return kept the room). */
   enterMatch?(payload: RoomMatchStartPayload): Promise<unknown>;
   start(): void;
@@ -778,11 +791,19 @@ export function createBrowserComposition({
     status.attachRoom(next.client);
     subscriptions.push(next.onLobby(handleLobby));
     subscriptions.push(next.onClosed(handleRoomClosed));
+    const p2pPorts = ports.p2p;
     const owner = createSession({
       room: next.client,
       createPresentation: createRoundPresentation,
       clock,
       clientBuild,
+      ...(p2pPorts ? {
+        p2p: {
+          ...p2pPorts,
+          ice: p2pPorts.loadIce ? () => p2pPorts.loadIce!(roomMode()) : undefined,
+          onLog: (level, message, fields) => { if (level !== 'info') reportError(`multiplayer v2 host ${level}`, fields ? `${message} ${JSON.stringify(fields)}` : message); },
+        },
+      } : {}),
     });
     session = owner;
     subscriptions.push(owner.onPhase(handlePhase));
@@ -1100,8 +1121,11 @@ export function createBrowserComposition({
     if (phase === 'match') {
       const client = session?.match;
       if (client) status.attachMatch(client);
+      const owner = session;
+      if (owner && typeof owner.onP2p === 'function') status.attachP2p({ get p2p() { return owner.p2p ?? null; }, onP2p: (listener) => owner.onP2p!(listener) });
     } else if (phase === 'lobby') {
       status.detachMatch();
+      status.detachP2p();
     }
     if (phase !== 'lost') return;
     const active = round;

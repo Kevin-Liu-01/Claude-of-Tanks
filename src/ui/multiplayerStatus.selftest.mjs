@@ -273,3 +273,44 @@ const live = (patch = {}) => ({
 }
 
 console.log('multiplayerStatus.selftest: strip, banner, panel rows, leave arming, style contract and the stub-document lifecycle PASS');
+
+// ------------------------------------------------------------ peer-to-peer (P2 client lane): the host badge, the rows, the migration banner
+{
+  const peer = live({ role: 'peer', generation: 2, hostId: 'alice', candidateType: 'srflx', viaTurn: false, hostUplinkKbps: 0, peersConnected: 0, migrating: false, migrationHostId: null });
+  const stripPeer = formatStrip(peer);
+  assert.equal(stripPeer.host, '', 'a peer wears no badge');
+  const host = live({ role: 'host', generation: 2, hostId: 'me', candidateType: null, viaTurn: true, hostUplinkKbps: 96.4, peersConnected: 5, migrating: false, migrationHostId: null });
+  const stripHost = formatStrip(host);
+  assert.equal(stripHost.host, 'HOST');
+  assert.match(stripHost.aria, /Hosting the match for 5 peers/);
+  const rowsPeer = formatPanelRows(peer);
+  assert.equal(rowsPeer.length, 13 + 3, 'a peer adds role, path and generation');
+  const valueOf = (rows, label) => rows.find(([name]) => name === label)?.[1];
+  assert.equal(valueOf(rowsPeer, 'Role'), 'Peer');
+  assert.equal(valueOf(rowsPeer, 'Path'), 'direct (NAT)');
+  assert.equal(valueOf(rowsPeer, 'Generation'), '2');
+  const rowsHost = formatPanelRows(host);
+  assert.equal(rowsHost.length, 13 + 4, 'a host adds its uplink too');
+  assert.equal(valueOf(rowsHost, 'Role'), 'Hosting for 5');
+  assert.equal(valueOf(rowsHost, 'Path'), 'this browser · via TURN');
+  assert.equal(valueOf(rowsHost, 'Host uplink'), '96 kbit/s');
+  assert.equal(formatPanelRows(live()).length, 13, 'the WebSocket path keeps its 13 rows');
+  assert.equal(formatBanner({ kind: 'migrating', host: 'Bob', self: false }), 'New host: Bob · resuming…');
+  assert.equal(formatBanner({ kind: 'migrating', host: 'Me', self: true }), 'You are the new host · resuming the match…');
+  // the real surface: the badge cell appears with the role and goes with it; the migration banner is not a leave banner
+  const root = createMultiplayerStatusSurface({ host: 'battle', now: () => 1000, onLeave: () => {} });
+  const badge = root.root.find((node) => node.className === 'unit host');
+  assert.ok(badge && badge.hidden, 'the badge cell exists, hidden');
+  root.set(host, null, 1000);
+  assert.equal(badge.hidden, false);
+  assert.equal(badge.textContent, 'HOST');
+  root.set(peer, { kind: 'migrating', host: 'Carol', self: false }, 1000);
+  assert.equal(badge.hidden, true);
+  const banner = body.find((node) => node.className?.startsWith('cot-mp-banner') && node.className.includes('battle'));
+  assert.ok(banner && !banner.hidden, 'the banner shows');
+  assert.match(banner.className, /migrating/);
+  assert.doesNotMatch(banner.className, /leaving/, 'a migration is not a reason to leave');
+  assert.equal(banner.find((node) => node.className === 'text').textContent, 'New host: Carol · resuming…');
+  root.dispose();
+  console.log('multiplayerStatus.selftest: the host badge, the peer-to-peer rows and the migration banner verified');
+}
