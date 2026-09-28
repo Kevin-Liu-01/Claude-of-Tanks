@@ -82,6 +82,12 @@ export interface MatchSessionP2pOptions {
   maxPeers?: number;
   /** The countdown a fresh match starts with (5 s; the proofs shorten it). */
   countdownS?: number;
+  /**
+   * A seat re-named host for a match already under way (its tab reloaded inside the host grace) holds nothing to resume
+   * from: it declines so a peer resumes from its sealed keyframe, and boots afresh only when no election follows within
+   * this window (the sole commander left). 10 s.
+   */
+  reentryElectionWaitMs?: number;
   onLog?: (level: 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>) => void;
 }
 
@@ -406,7 +412,26 @@ export class MatchSession {
     this.hostSecret = typeof secret === 'string' && secret.length >= 16 ? secret : null;
     let inner: Transport;
     this.runningGeneration = Math.max(parseP2pMatchUrl(payload.matchUrl)?.generation ?? 0, this.room.generation);
-    if (hostId === me && this.canHost && this.hostSecret) {
+    // Named host for a match already playing (a reload inside the host grace): this seat holds no state to resume from,
+    // its peers hold the sealed keyframe. Decline, enter as a peer, let the room elect one of them; boot afresh only when
+    // no election follows (nobody else is left to host).
+    const reentryAsNamedHost = hostId === me && this.canHost && !!this.hostSecret && round.room.match?.status === 'playing';
+    if (reentryAsNamedHost) {
+      this.log('warn', 'named host of a running match without its state: declining so a peer resumes', { matchId: payload.matchId });
+      this.declinedHosting = true;
+      this.p2pListeners.emit({ kind: 'declined' });
+      void this.room.declineHost(true).catch(() => { /* the room may predate the command */ });
+      const timers = this.transportOptions as Partial<WebSocketTransportOptions>;
+      const setTimer = timers.setTimer ?? ((callback, delayMs) => setTimeout(callback, delayMs));
+      const client = this.matchClient;
+      setTimer(() => {
+        if (this.currentRound !== round || this.host || this.room.hostId !== me || !this.migrating) return;
+        // No election came: the room kept this seat (no other commander). Boot fresh through the election path.
+        void this.handleHostChanged({ hostId: me, generation: this.room.generation + 1, resumeTick: 0, reason: 'declined', hostSecret: this.hostSecret ?? undefined });
+        void client;
+      }, this.p2pOptions?.reentryElectionWaitMs ?? 10_000);
+    }
+    if (hostId === me && this.canHost && this.hostSecret && !reentryAsNamedHost) {
       const plan = planHostBoot(round.room, payload, me);
       const config: HostBootConfig = {
         roomId: round.room.roomCode, matchId: payload.matchId, generation: this.room.generation, mapId: payload.mapId, mode: payload.mode, seed: payload.seed,
@@ -422,7 +447,7 @@ export class MatchSession {
       inner = host.transport;
       this.p2pListeners.emit({ kind: 'role', role: 'host', generation: this.room.generation });
     } else {
-      if (hostId === me) {
+      if (hostId === me && !reentryAsNamedHost) {
         // The room named this seat but it cannot host (no thread, the mobile tier, no secret): decline and wait for the election.
         this.log('warn', 'named host cannot host; declining', { canHost: this.canHost, secret: !!this.hostSecret });
         this.declinedHosting = true;

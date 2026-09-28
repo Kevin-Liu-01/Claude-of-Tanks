@@ -156,3 +156,39 @@ async function joinedClient({ tier = 'desktop', playerId = 'me' } = {}) {
 }
 for (const core of cores) core.dispose();
 console.log('matchSessionP2p.selftest: the host boot and its reports, the start election as a no-op, stale elections ignored, host_only step-down, the mobile decline and the ws:// path verified');
+
+// ---- a host re-named for a match already playing (its tab reloaded inside the grace) declines so a peer with the keyframe resumes;
+//      with no election following, it boots afresh through the election path
+{
+  const { transport, session, client } = await joinedClient();
+  const matchId = 'm2-0000beef';
+  const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
+  const token = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a2', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+  room.match = { id: matchId, round: 2, status: 'playing', mapId: 'verdant', seed: 7, startedAt: 1000, endedAt: null, verdict: null };
+  room.phase = 'playing';
+  const quick = new MatchSession({
+    room: client, clock: () => performance.now(),
+    createPresentation: () => { const presentation = new RecordingPresentation(64); return { adapter: presentation, controls: null, prediction: null, dispose: () => presentation.dispose() }; },
+    p2p: { createPeerConnection: world.createPeerConnection, createHostPort: createInProcessHostPort({ world: 'terrain', onCore: (core) => cores.push(core), reportIntervalMs: 500 }), manifestBase: null, tier: 'desktop', countdownS: 1, reentryElectionWaitMs: 300 },
+  });
+  const quickEvents = [];
+  quick.onP2p((event) => quickEvents.push(event));
+  session.dispose();
+  quick.start();
+  transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId: 'me', generation: 3, since: 2000 }) } });
+  transport.deliver({ type: 'match_start', payload: { matchId, round: 2, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken: token, matchUrl: p2pMatchUrl(roomCode, 3), hostId: 'me', hostSecret, expiresAt: Date.now() + 3_600_000 } });
+  await until(() => quick.phase === 'match', 'the re-entry round entered');
+  assert.equal(quick.role, 'peer', 'the re-named host enters as a peer');
+  assert.ok(transport.outbound.some((envelope) => envelope.payload?.command?.type === 'host_decline' && envelope.payload.command.declined === true), 'it declined so a peer with the keyframe resumes');
+  assert.ok(quickEvents.some((event) => event.kind === 'declined'));
+  // nobody else could host: no election comes; after the wait it boots afresh through the election path
+  await until(() => quick.role === 'host', 'the fallback fresh boot', 5000);
+  await until(() => quick.matchHost?.state === 'live', 'the fallback host live', 10_000);
+  assert.ok(quickEvents.some((event) => event.kind === 'migration' && event.phase === 'begin' && event.hostId === 'me'), 'the fallback rode the election path');
+  await quick.leaveMatch('done');
+  quick.dispose(); client.dispose();
+  room.match = null;
+  room.phase = 'waiting';
+}
+for (const core of cores) core.dispose();
+console.log('matchSessionP2p.selftest: the re-entry decline and its fallback boot verified');
