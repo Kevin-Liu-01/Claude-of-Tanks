@@ -30,7 +30,7 @@ export function environmentRichness(): number { return getDeviceTier() === 'mobi
 // A function declaration: roadStations.selftest.mjs extracts and executes the production placement
 // functions from this source, and they read their counts through this helper.
 function richCount(n: number | undefined, fallback = 0): number { return Math.round((n ?? fallback) * environmentRichness()); }
-import { markShadowOnly } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
 import { applySourcedBuildings, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
@@ -1916,6 +1916,70 @@ function makeRowhouse(
 
 const _mat4 = new THREE.Matrix4();
 const _quat = new THREE.Quaternion();
+// Round 79 (2026-09-28, the performance lane): caster PROFILES for the cascade router (engine/shadowCasterProfiles.ts).
+// A merged bucket or an instanced kind spread over the map touches every cascade's light-space box through its
+// bounding sphere, so three drew it into all four maps whatever the box actually held — at the chase pose on
+// Monsoon Ridge the first cascade's box held none of the 166 fence panels, 128 wall modules, 43 wire coils or 24
+// poles, each drawn into it every frame. A profile tells the router where the content stands (an InstancedMesh's
+// instances, a bucket's piece cells) and how tall it is (a shadow shorter than two texels of a map's PCF kernel
+// cannot read there); the router skips the cascades the content cannot touch.
+const PROPS_SHADOW_CELL_M = 96;
+const _profileSphere = new THREE.Sphere();
+/** The content height of a geometry under the largest of `matrices` (metres). */
+function casterHeightM(geometry: THREE.BufferGeometry, matrices: readonly THREE.Matrix4[] | null): number {
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  if (!box || box.isEmpty()) return 0;
+  let scale = 1;
+  if (matrices) {
+    scale = 0;
+    for (const matrix of matrices) scale = Math.max(scale, matrix.getMaxScaleOnAxis());
+  }
+  return (box.max.y - box.min.y) * scale;
+}
+/** The profile of a merged bucket: one world sphere per PROPS_SHADOW_CELL_M cell of piece centres, the tallest piece's height. */
+function bucketShadowProfile(pieces: readonly THREE.BufferGeometry[]): ShadowCasterProfile {
+  const cells = new Map<number, THREE.Box3>();
+  let height = 0;
+  for (const piece of pieces) {
+    if (!piece.boundingBox) piece.computeBoundingBox();
+    const box = piece.boundingBox;
+    if (!box || box.isEmpty()) continue;
+    height = Math.max(height, box.max.y - box.min.y);
+    const cx = Math.floor((box.min.x + box.max.x) * 0.5 / PROPS_SHADOW_CELL_M);
+    const cz = Math.floor((box.min.z + box.max.z) * 0.5 / PROPS_SHADOW_CELL_M);
+    const key = (cx + 4096) * 8192 + (cz + 4096);
+    let cell = cells.get(key);
+    if (!cell) { cell = new THREE.Box3(); cells.set(key, cell); }
+    cell.union(box);
+  }
+  const spheres = new Float32Array(cells.size * 4);
+  let i = 0;
+  for (const cell of cells.values()) {
+    cell.getBoundingSphere(_profileSphere);
+    spheres[i * 4] = _profileSphere.center.x;
+    spheres[i * 4 + 1] = _profileSphere.center.y;
+    spheres[i * 4 + 2] = _profileSphere.center.z;
+    spheres[i * 4 + 3] = _profileSphere.radius;
+    i++;
+  }
+  return { heightM: height, spheres };
+}
+/** The profile of a merged shadow-only mesh whose parts are known: one sphere per part, the tallest part's height. */
+function partsShadowProfile(parts: readonly THREE.BufferGeometry[]): ShadowCasterProfile {
+  const spheres = new Float32Array(parts.length * 4);
+  let height = 0;
+  parts.forEach((part, i) => {
+    if (!part.boundingSphere) part.computeBoundingSphere();
+    if (!part.boundingBox) part.computeBoundingBox();
+    const sphere = part.boundingSphere;
+    if (sphere) { spheres[i * 4] = sphere.center.x; spheres[i * 4 + 1] = sphere.center.y; spheres[i * 4 + 2] = sphere.center.z; spheres[i * 4 + 3] = sphere.radius; }
+    const box = part.boundingBox;
+    if (box && !box.isEmpty()) height = Math.max(height, box.max.y - box.min.y);
+  });
+  return { heightM: height, spheres };
+}
+
 const _upAxis = new THREE.Vector3(0, 1, 0);
 const _one = new THREE.Vector3(1, 1, 1);
 const _posv = new THREE.Vector3();
@@ -4982,6 +5046,7 @@ ${snowCap ? `
     im.matrixAutoUpdate = false;
     im.computeBoundingSphere();
     im.name = 'rock-variant-' + vi; // round 75: the probes and captures find the boulders by name
+    setShadowCasterProfile(im, { heightM: casterHeightM(rockGeos[vi], rockPlacements[vi]), instanced: true }); // round 79
     group.add(im);
   }
   }
@@ -5889,6 +5954,7 @@ ${snowCap ? `
           });
           const sm = new THREE.Mesh(mergeGeometries(wreckShadowGeos, false), shadowMat);
           sm.name = 'tank-wrecks-shadow';
+          setShadowCasterProfile(sm, partsShadowProfile(wreckShadowGeos)); // round 79: one sphere per wreck
           sm.castShadow = true;
           sm.receiveShadow = false;
           sm.matrixAutoUpdate = false;
@@ -6560,6 +6626,7 @@ ${snowCap ? `
       }
       poleFullIM.name = 'baked-pole-full';
       poleDistanceIM.name = 'baked-pole-distance';
+      for (const mesh of [poleFullIM, poleDistanceIM]) setShadowCasterProfile(mesh, { heightM: casterHeightM(mesh.geometry, matrixStore), instanced: true }); // round 79
       poleFullIM.userData.distanceSplitM = 120;
       poleDistanceIM.userData.distanceSplitM = 105;
       poleDistanceIM.count = 0;
@@ -6588,6 +6655,7 @@ ${snowCap ? `
     im.matrixAutoUpdate = false;
     im.computeBoundingSphere();
     im.name = `baked-${name}`;
+    setShadowCasterProfile(im, { heightM: casterHeightM(e.geo, e.list), instanced: true }); // round 79
     group.add(im);
   }
   }
@@ -6833,9 +6901,11 @@ ${snowCap ? `
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
       if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
       // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
+      const profile = bucketShadowProfile(buckets[key]); // round 79: the pieces' cells, before the merge owns them
       const merged = yield* mergePropsMaterialGeometrySteps(buckets[key], key);
       const mesh = new THREE.Mesh(merged, mats[key]);
       mesh.name = 'props-bucket-' + key; // round 75: the perf inventories attribute the merged buckets by name
+      setShadowCasterProfile(mesh, profile);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
@@ -6996,6 +7066,7 @@ ${snowCap ? `
     if (meta.cls === 'topple' || meta.cls === 'toss' || meta.cls === 'physics') imI.frustumCulled = false; // instances animate
     else imI.computeBoundingSphere();
     imI.name = 'destructible-' + kind;
+    if (castsDynamicShadow) setShadowCasterProfile(imI, { heightM: casterHeightM(geoI, pool.mats4), instanced: true }); // round 79
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
@@ -7009,6 +7080,7 @@ ${snowCap ? `
       imB.matrixAutoUpdate = false;
       imB.frustumCulled = false; // slots appended over the battle
       imB.name = 'destructible-' + kind + '-broken';
+      if (castsDynamicShadow) setShadowCasterProfile(imB, { heightM: casterHeightM(geoB, pool.mats4), instanced: true }); // round 79
       if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imB, false);
       group.add(imB);
       pool.imB = imB;

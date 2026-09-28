@@ -69,6 +69,89 @@ let shadowCasterCascadeRefs: WeakRef<Object3D>[] = [];
 const hiddenForCascade: Object3D[] = [];
 
 /**
+ * Round 79 (2026-09-28, the performance lane): caster PROFILES — what the router cannot see from a mesh and three
+ * never asks: how tall its content is, where its pieces or instances stand, and for the near-tier casters how far
+ * from the camera they reach. `engine/shadowCasterProfiles.ts` evaluates every profile once per frame against the
+ * live cascades (their texel size, sampled range and frustum) and writes the answer here as a DYNAMIC mask; the
+ * router hides a caster around a cascade's pass when its static mask (`setShadowCasterCascades`) or its dynamic mask
+ * excludes it. A profile is retained by reference so its owner updates it in place (its reach every frame, its
+ * spheres on a rebuild) without re-registering; everything is held weakly, like the masks.
+ */
+export interface ShadowCasterProfile {
+  /** Content height, metres; 0 or absent never masks by shadow footprint. */
+  heightM?: number;
+  /** World-space content spheres, x y z r per sphere; absent: the object's own bounds decide, as three does. */
+  spheres?: Float32Array | null;
+  /** Derive the spheres from an InstancedMesh's instances (kept in step with its instance matrices). */
+  instanced?: boolean;
+  /** Near-tier content: the farthest planar camera distance its pieces stand at this frame, metres; absent: no reach rule. */
+  reachM?: number;
+}
+/** Every cascade index bit (the dynamic mask of a caster that has not been evaluated yet). */
+export const SHADOW_CASTER_ALL_CASCADES = 0x3fffffff;
+const shadowCasterProfile = new WeakMap<Object3D, ShadowCasterProfile>();
+const shadowCasterDynamicMask = new WeakMap<Object3D, number>();
+const shadowCasterListed = new WeakSet<Object3D>();
+
+function listShadowCaster(object: Object3D): void {
+  if (shadowCasterListed.has(object)) return;
+  shadowCasterListed.add(object);
+  shadowCasterCascadeRefs.push(new WeakRef(object));
+}
+
+/** Drop a caster from the router's list once it carries neither a mask nor a profile. */
+function unlistShadowCasterIfBare(object: Object3D): void {
+  if (shadowCasterCascadeMask.has(object) || shadowCasterDynamicMask.has(object) || shadowCasterProfile.has(object)) return;
+  shadowCasterListed.delete(object);
+  shadowCasterCascadeRefs = shadowCasterCascadeRefs.filter((ref) => { const o = ref.deref(); return o !== undefined && o !== object; });
+}
+
+/** Register (or with `null` forget) a caster's profile; the object is retained by reference and read every frame. */
+export function setShadowCasterProfile(object: Object3D, profile: ShadowCasterProfile | null): void {
+  if (profile === null) {
+    shadowCasterProfile.delete(object);
+    shadowCasterDynamicMask.delete(object);
+    unlistShadowCasterIfBare(object);
+    return;
+  }
+  shadowCasterProfile.set(object, profile);
+  listShadowCaster(object);
+}
+
+export function shadowCasterProfileOf(object: Object3D): ShadowCasterProfile | null {
+  return shadowCasterProfile.get(object) ?? null;
+}
+
+/** Walk the registered profiles (dead references are pruned as met); the callback must not register or forget. */
+export function forEachShadowCasterProfile(visit: (object: Object3D, profile: ShadowCasterProfile) => void): void {
+  let write = 0;
+  for (let i = 0; i < shadowCasterCascadeRefs.length; i++) {
+    const ref = shadowCasterCascadeRefs[i];
+    const object = ref.deref();
+    if (object === undefined) continue;
+    shadowCasterCascadeRefs[write++] = ref;
+    const profile = shadowCasterProfile.get(object);
+    if (profile !== undefined) visit(object, profile);
+  }
+  shadowCasterCascadeRefs.length = write;
+}
+
+/** The evaluator's answer for this frame: the cascade index bits the caster draws into (`null` clears it). */
+export function setShadowCasterDynamicMask(object: Object3D, mask: number | null): void {
+  if (mask === null) {
+    shadowCasterDynamicMask.delete(object);
+    unlistShadowCasterIfBare(object);
+    return;
+  }
+  shadowCasterDynamicMask.set(object, mask);
+  listShadowCaster(object);
+}
+
+export function shadowCasterDynamicMaskOf(object: Object3D): number | null {
+  return shadowCasterDynamicMask.get(object) ?? null;
+}
+
+/**
  * A mask bit meaning "the LAST cascade only" — resolved against the light set at render time, so a world that
  * cannot know the tier's cascade count (three on the phones, four on the desktop) can still say "the far map":
  * the horizon ring's near forest stands 440 m and more from the battlefield, where only the far cascade reaches.
@@ -79,11 +162,11 @@ export const SHADOW_CASTER_LAST_CASCADE = 1 << 30;
 export function setShadowCasterCascades(object: Object3D, mask: number | null): void {
   if (mask === null) {
     shadowCasterCascadeMask.delete(object);
-    shadowCasterCascadeRefs = shadowCasterCascadeRefs.filter((ref) => { const o = ref.deref(); return o !== undefined && o !== object; });
+    unlistShadowCasterIfBare(object);
     return;
   }
-  if (!shadowCasterCascadeMask.has(object)) shadowCasterCascadeRefs.push(new WeakRef(object));
   shadowCasterCascadeMask.set(object, mask);
+  listShadowCaster(object);
 }
 
 /** The registered cascade mask of a caster, or null when it casts into every cascade. */
@@ -96,7 +179,11 @@ export function shadowCascadeIndexOfCamera(shadowCamera: Camera): number {
   return cascadeIndexByShadowCamera.get(shadowCamera) ?? -1;
 }
 
-/** Hide every masked caster that does not cast into `cascadeIndex` (of `cascadeCount`); dead references are pruned as met. */
+/**
+ * Hide every masked caster that does not cast into `cascadeIndex` (of `cascadeCount`); dead references are pruned as
+ * met. A caster is shown when its static mask (or the absence of one) AND its dynamic mask (or the absence of one)
+ * both admit the cascade; a profile awaiting its first evaluation is left alone.
+ */
 function hideCastersOutsideCascade(cascadeIndex: number, cascadeCount: number): void {
   if (cascadeIndex < 0 || shadowCasterCascadeRefs.length === 0) return;
   const bit = (1 << cascadeIndex) | (cascadeIndex === cascadeCount - 1 ? SHADOW_CASTER_LAST_CASCADE : 0);
@@ -106,8 +193,10 @@ function hideCastersOutsideCascade(cascadeIndex: number, cascadeCount: number): 
     const object = ref.deref();
     if (object === undefined) continue;
     shadowCasterCascadeRefs[write++] = ref;
+    if (!object.visible) continue;
     const mask = shadowCasterCascadeMask.get(object);
-    if (mask === undefined || (mask & bit) !== 0 || !object.visible) continue;
+    const dynamic = shadowCasterDynamicMask.get(object);
+    if ((mask === undefined || (mask & bit) !== 0) && (dynamic === undefined || (dynamic & bit) !== 0)) continue;
     object.visible = false;
     hiddenForCascade.push(object);
   }

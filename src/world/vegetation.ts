@@ -40,7 +40,7 @@ import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
-import { markShadowOnly, setShadowCasterCascades } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
@@ -4834,6 +4834,17 @@ function* vegetationBuildSteps(
   // Round 77: the near cards receive the cascades on the desktop tiers (one sample per leaf cluster, foliageWindHook);
   // the mobile tier keeps its unshadowed cards and pays no PCF on its foliage overdraw.
   const canopyShadowReceive = !mobileTier;
+  // Round 79 (2026-09-28, the performance lane): the near tier's shadow casters share one caster profile for the
+  // cascade router (engine/shadowCasterProfiles.ts): the farthest planar camera distance any near-slot tree stands
+  // at this frame (scope promotion included) and the tallest near tree — update() refreshes both — so a cascade
+  // whose sampled range starts beyond their shadows' reach skips them (the last cascade at most sun elevations:
+  // its map spans the field, and the near owners drew all their instances into it every other frame).
+  const nearTierShadowProfile: ShadowCasterProfile = { heightM: 0, reachM: 0 };
+  const speciesHeightM = {} as Record<Species, number>;
+  function geometryTopM(geometry: THREE.BufferGeometry): number {
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    return geometry.boundingBox ? geometry.boundingBox.max.y : 0;
+  }
   function createTreeMeshPools(): void {
     // Species never changes during promotion, cross-fade, toppling or reset.
     // Each LOD can therefore hold at most this species' final population,
@@ -4848,6 +4859,9 @@ function* vegetationBuildSteps(
       // one inert color slot for the same vertex-color shader setup; count=0.
       // A completely empty population retains the original zero-byte pools.
       const capacity = Math.min(trees.length, Math.max(1, speciesCounts.get(sp) ?? 0));
+      speciesHeightM[sp] = Math.max(
+        ...treeGeo[sp].map((g) => Math.max(geometryTopM(g.trunk), geometryTopM(g.cards))),
+        ...treeGeoFar[sp].map((g) => Math.max(geometryTopM(g.trunk), geometryTopM(g.canopy))));
       nearMeshes[sp] = treeGeo[sp].map((g, variant) => {
         const trunk = makeTreeMesh(g.trunk, barkMat, sp, false, capacity);
         // shadow-stability r2: The opaque canopy proxy is deliberately coarse
@@ -4879,6 +4893,8 @@ function* vegetationBuildSteps(
             canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy, g.trunk),
             sp, capacity, `treeCanopyShadow_${sp}_${variant}`));
         }
+        // the pool's one shadow caster (the proxy, or the trunk on the tiers without proxies) reports the near tier's reach
+        setShadowCasterProfile(pool[pool.length - 1].castShadow ? pool[pool.length - 1] : trunk, nearTierShadowProfile);
         return pool;
       });
       // r7: far LOD is now a 2-variant array (silhouette variety at range)
@@ -5819,6 +5835,7 @@ function* vegetationBuildSteps(
     if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
     uCamPos.value.copy(camPos);
     if (camFwd) uCamFwd.value.copy(camFwd);
+    updateNearTierShadowReach(camPos);
     uSniperFade.value += (sniperFadeTarget - uSniperFade.value) *
       (1 - Math.exp(-(dt || 0) / 0.08));
     // Do not spend the opening/countdown frames filling an invisible outer
@@ -5843,6 +5860,26 @@ function* vegetationBuildSteps(
     updatePartitionCaches(camPos);
     tickLodTransitions(dt); // aa-r1: advance LOD cross-fades (dt 0 snaps)
     updateOcclusionFade(dt, camPos, focusPos);
+  }
+
+  /** Round 79: the near tier's shadow reach this frame — the farthest near-slot tree (planar) and the tallest one. */
+  function updateNearTierShadowReach(camPos: THREE.Vector3): void {
+    let reach2 = 0, height = 0;
+    for (const sp of speciesList) {
+      const speciesHeight = speciesHeightM[sp] ?? 0;
+      for (const slots of nearSlots[sp]) {
+        for (const t of slots) {
+          const dx = t.x - camPos.x, dz = t.z - camPos.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 > reach2) reach2 = d2;
+          const e = t.mat.elements;
+          const h = speciesHeight * Math.hypot(e[4], e[5], e[6]);
+          if (h > height) height = h;
+        }
+      }
+    }
+    nearTierShadowProfile.reachM = Math.sqrt(reach2);
+    nearTierShadowProfile.heightM = height;
   }
 
   function setWindTime(t: number): void { uWindTime.value = t; }
