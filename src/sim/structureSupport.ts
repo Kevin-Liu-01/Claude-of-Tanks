@@ -11,6 +11,7 @@
  * those contacts. Pure and allocation-free per tick; solo and authoritative sims share it.
  */
 import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.ts';
+import { driveGroundTypeAt } from './terrainMobility.ts';
 import { HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, pointInsideCollisionRecord } from '../world/collision.ts';
 
 /** A hull stands on a part whose top is at most this far above the hull's current belly line (the same step the
@@ -25,6 +26,7 @@ interface SupportHeightField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getGroundType(x: number, z: number): string;
+  getDriveGroundType?(x: number, z: number): string;
 }
 
 interface SupportObstacleSource {
@@ -91,6 +93,7 @@ export function createStructureSupportField(
     getHeightAt,
     getHeightAtFast,
     getGroundType: (x, z) => terrain.getGroundType(x, z),
+    getDriveGroundType: (x, z) => driveGroundTypeAt(terrain, x, z),
     beginHull(x, z, bellyY) {
       belly = bellyY;
       candidates.length = 0;

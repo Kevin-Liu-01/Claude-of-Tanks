@@ -35,7 +35,7 @@ import {
   mainWeaponModuleState,
   ramDamage,
 } from '../sim/damage.ts';
-import { terrainTravelCostFactor } from '../sim/terrainMobility.ts';
+import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import {
   collisionFootprintContainsPoint,
@@ -280,6 +280,7 @@ interface AiHeightField {
   getHeightAtFast?(x: number, z: number): number;
   getNormalAt?(x: number, z: number): { y: number };
   getGroundType?(x: number, z: number): string;
+  getDriveGroundType?(x: number, z: number): string;
 }
 
 interface AiDependencies {
@@ -2339,9 +2340,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const z = sz + uz * distance;
       const height = hf.getHeightAt(x, z);
       const rise = (height - previousH) / TERRAIN_ROUTE_STEP_M;
-      const ground = typeof hf.getGroundType === 'function'
-        ? hf.getGroundType(x, z)
-        : 'medium';
+      const ground = driveGroundTypeAt(hf, x, z);
       const cost = terrainTravelCostFactor(
         spec, ground, rise, powerMult, accelMult,
       );

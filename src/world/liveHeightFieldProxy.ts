@@ -8,6 +8,7 @@ interface HeightFieldLike<Normal> {
   getHeightAtFast?(x: number, z: number): number;
   getNormalAt(x: number, z: number): Normal;
   getGroundType(x: number, z: number): string;
+  getDriveGroundType?(x: number, z: number): string;
   getWaterMaskAt(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
@@ -24,6 +25,7 @@ interface LiveHeightFieldProxy<Normal> {
   getHeightAtExact(x: number, z: number): number;
   getNormalAt(x: number, z: number): Normal;
   getGroundType(x: number, z: number): string;
+  getDriveGroundType(x: number, z: number): string;
   getWaterMaskAt(x: number, z: number): number;
   getWaterDepthAt(x: number, z: number): number;
   getWaterSurfaceHeightAt(x: number, z: number): number;
@@ -80,6 +82,10 @@ export function createLiveHeightFieldProxy<Normal>({
     },
     getGroundType(x, z) {
       return field()?.getGroundType(x, z) ?? 'hard';
+    },
+    getDriveGroundType(x, z) {
+      const heightField = field();
+      return heightField?.getDriveGroundType?.(x, z) ?? heightField?.getGroundType(x, z) ?? 'hard';
     },
     getWaterMaskAt(x, z) {
       return field()?.getWaterMaskAt(x, z) ?? 0;

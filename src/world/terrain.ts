@@ -350,6 +350,8 @@ export interface HeightField {
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
+  /** Driving traction at the visible waterline; construction keeps its wider ground exclusions. */
+  getDriveGroundType?(x: number, z: number): GroundType;
   getWaterMaskAt(x: number, z: number): number;
   /** Authored shallow depth used to build the sheet. Zero on ice/dry ground. */
   getWaterDepthAt?(x: number, z: number): number;
@@ -1793,6 +1795,15 @@ function* heightFieldBuildSteps(
     return 'medium';
   }
 
+  function getDriveGroundType(x: number, z: number): GroundType {
+    const ground = getGroundType(x, z);
+    // Lake/marsh placement bands include dry sand, road shoulders and pads.
+    // Release their water resistance at the same liquid boundary as wakes.
+    // Ordinary bogs, ice, roads and bridge decks keep their authored traction.
+    return ground === 'soft' && liquidWater && getWaterMaskAt(x, z) <= 0.02
+      ? 'medium' : ground;
+  }
+
   /**
    * Return the authored liquid-water coverage at a world-space point.
    *
@@ -1937,7 +1948,7 @@ function* heightFieldBuildSteps(
   const mesaWeight = createMesaWeightSampler();
 
   return {
-    getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
+    getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
     // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch
     getOutlandHeightAt: railCuttings !== null
       ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z))

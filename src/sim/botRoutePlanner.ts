@@ -5,6 +5,7 @@ import {
 import { createNavigationLiquidSafety } from './navigationLiquidSafety.ts';
 import {
   TERRAIN_MARGIN_EPS,
+  driveGroundTypeAt,
   groundResistanceFor,
   terrainSlopeMargin,
   terrainTravelCostFactor,
@@ -46,6 +47,7 @@ interface NavigationHeightField {
   getWaterMaskAt?(x: number, z: number): number;
   getHeightAt(x: number, z: number): number;
   getGroundType?(x: number, z: number): string;
+  getDriveGroundType?(x: number, z: number): string;
 }
 
 interface NavigationObstacle {
@@ -249,7 +251,7 @@ function sampleNavigationRow<T extends NavigationObstacle>(
       }
     }
     heights[index] = heightField.getHeightAt(x, z);
-    const ground = heightField.getGroundType?.(x, z) ?? 'medium';
+    const ground = driveGroundTypeAt(heightField, x, z);
     groundTypes[index] = encodeGroundType(ground);
     const nearby = queryObstacles
       ? queryObstacles(x - 4.5, z - 4.5, x + 4.5, z + 4.5, candidates)
@@ -724,7 +726,7 @@ function planDryRoute(
     for (let i=1;i<=steps;i++) {
       const x=last[0]+dx*i/steps, z=last[1]+dz*i/steps;
       const h=grid.liquidField!.getHeightAt(x,z);
-      const ground=grid.liquidField!.getGroundType?.(x,z) ?? 'medium';
+      const ground=driveGroundTypeAt(grid.liquidField!,x,z);
       if (!grid.exactConnectorClear!(x,z) || !Number.isFinite(terrainTravelCostFactor(spec,ground as GroundType,(h-previousH)/(distance/steps || 1)))) { clear=false; break; }
       previousH=h;
     }

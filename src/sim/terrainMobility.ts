@@ -36,6 +36,16 @@ export interface TerrainMobilitySpec {
   trackTraction?: RuntimeValue;
 }
 
+export interface DriveGroundField {
+  getGroundType?(x: number, z: number): string;
+  getDriveGroundType?(x: number, z: number): string;
+}
+
+/** Movement and route costs share the water-aware sampler when available. */
+export function driveGroundTypeAt(field: DriveGroundField, x: number, z: number): string {
+  return field.getDriveGroundType?.(x, z) ?? field.getGroundType?.(x, z) ?? 'medium';
+}
+
 function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
 }

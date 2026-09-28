@@ -26,6 +26,7 @@ import { CLIFF_GRADE,
   DRIVE_ACCEL_PER_HPT as K_ACCEL,
   GRAVITY_MPS2 as GRAVITY,
   TERRAIN_MARGIN_EPS,
+  driveGroundTypeAt,
   trackGripMargin,
   trackSlideCoefficient,
   uphillDriveMargin,
@@ -343,6 +344,7 @@ export interface MovementHeightField {
   getHeightAt: HeightSampler;
   getHeightAtFast?: HeightSampler;
   getGroundType(x: number, z: number): string;
+  getDriveGroundType?(x: number, z: number): string;
 }
 
 export type MovementCollisionResolver = (
@@ -2407,7 +2409,7 @@ function prepareDriveStep(
   drive.steer = drivetrainLocked ? 0 : clamp(input.steer || 0, -1, 1);
   drive.braking = !!input.brake;
   drive.ground = drive.grounded
-    ? heightField.getGroundType(state.pos.x, state.pos.z)
+    ? driveGroundTypeAt(heightField, state.pos.x, state.pos.z)
     : state._groundType;
   if (drive.grounded) state._groundType = drive.ground;
   drive.resistance = spec.terrainResistance[drive.ground] || spec.terrainResistance.medium;
