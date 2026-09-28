@@ -754,6 +754,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/roomActor.selftest.mjs',
+    'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'tools/mp-rooms-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',
