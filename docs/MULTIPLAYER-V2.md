@@ -873,6 +873,15 @@ gated). While the old host re-enters, the two tabs still rendering draw at 320×
 shared headless GPU process during its program compile (four runs at host loads 19–40 lost that step to the
 preparation budget before the law below and the shrink; the first entry passes because every tab compiles before any
 renders). The existing `mp-exit-e2e` and `mp-browser-e2e` proofs keep the WebSocket path and stay green.
+Runs 5–10 (2026-09-28 19:55–20:19, a foreign 700 % GPU load on the host, load 33–60): the start, the channels, the play
+and the migration green every time steps A–C ran (B elected 3.4–3.8 s after A's tab closed, generation 2, C +120
+snapshots in 4 s on B, B's hull 0.14–4.27 m from where C saw it, two reports from B, none refused); the old host's
+return re-entered on its own 5.9 s after its page booted (the recorded timeline: runtime at 0.3 s, session `match` at
+5.9 s) and its compile missed both windows — trace `compile` 5010 ms, `compileRetry` 5012 ms — the environment limit
+the law is for, in `report.json`; one run lost even the first entry the same way (`compile` 5006 + `compileRetry`
+5018 ms). Against the real service (`--rooms=wss://cot-rooms.kk23907751.workers.dev`) the Worker answers 403 to a
+`http://127.0.0.1` page: its `ALLOWED_ORIGINS` is the site origin alone (cloudflare/rooms/wrangler.jsonc), so the
+live run waits for a dev-origin allowance from P1 or a run from the site itself.
 
 **Entry resilience (2026-09-28).** The strict shader preparation is a wall-clock-bounded operation
 (`src/engine/programWarm.ts`, 5 s — unchanged). The v2 entry now treats a preparation that ran out of that budget the
@@ -889,7 +898,10 @@ service: `host_only` step-down and the report cadence are exercised only against
 running host is honoured by the double as "elect the next willing seat"; P1 keeps a host without a willing successor,
 the client then simply stays. (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
 stream is the follow-up if the soak shows it matters. (4) The Worker chunk is heavy (10.4 MB raw): the fleet builders
-ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation.
+ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. (5) The
+three-browser proof against the real room service needs the Worker to allow a development origin (`ALLOWED_ORIGINS`)
+or a run from the site origin. (6) The old host's return in the headless proof is at the mercy of the host's GPU: the
+compile budget (5 s, extended once) is a production constant; a green rejoin needs a quiet host.
 (5) The e2e's `--grace` is 3 s (the contract's 8 s makes the proof slower, not different). (6) The unreliable snapshot
 channel of §13.2 stays a measured follow-up.
 
