@@ -41,8 +41,6 @@ const STAGE_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   'Combat effects ready': 'battleLoad.stage.combatEffectsReady',
   'Loading multiplayer runtime': 'battleLoad.stage.loadingMultiplayer',
   'Opening battle channel': 'battleLoad.stage.openingBattleChannel',
-  'Preparing the next round': 'battleLoad.stage.preparingNextRound',
-  'Opening dedicated channel': 'battleLoad.stage.openingDedicatedChannel',
   'Securing match channel': 'battleLoad.stage.securingMatchChannel',
   'Synchronizing authority': 'battleLoad.stage.synchronizingAuthority',
   'Priming wreck variants': 'battleLoad.stage.primingWreckVariants',

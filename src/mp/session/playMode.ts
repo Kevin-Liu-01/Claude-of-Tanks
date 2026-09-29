@@ -1,6 +1,6 @@
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
-/** Public entry modes; legacy dedicated/ranked protocols remain internal. */
+/** The entry modes; a persisted `ranked` (the first multiplayer's mode) reopens Private. */
 export type PlayMode = 'solo' | 'private' | 'lan';
 
 /** Old saved Ranked selections reopen Private rooms without loading a queue. */

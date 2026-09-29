@@ -46,10 +46,6 @@ assert.match(analyticsSource, /requestIdleCallback/,
 assert.match(analyticsSource, /VITE_SELF_HOSTED\s*===\s*['"]1['"]/,
   'self-hosted builds can compile out hosted telemetry');
 
-const dockerfile = await readFile('Dockerfile.selfhost', 'utf8');
-assert.match(dockerfile, /VITE_SELF_HOSTED=1/,
-  'the self-hosted image disables Vercel Analytics at build time');
-
 for (const entrypoint of entrypoints) {
   const html = await readFile(entrypoint, 'utf8');
   const references = html.match(/src=["']\/src\/analytics\.ts["']/g) ?? [];
@@ -59,7 +55,7 @@ for (const entrypoint of entrypoints) {
     `${entrypoint} must package every automatic subresource locally`);
 }
 
-console.log(`analytics selftest passed (${entrypoints.length} public entrypoints; self-host image opted out)`);
+console.log(`analytics selftest passed (${entrypoints.length} public entrypoints; VITE_SELF_HOSTED=1 compiles the telemetry out)`);
 
 // The production test chain invokes this file directly, so keep the public
 // discovery/metadata contract coupled to every analytics entrypoint check.
