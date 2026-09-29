@@ -11,7 +11,7 @@
 //
 // Pure Node (no browser, no mutex); one battle takes 3-8 s. A subset run of the receipt (COT_PACING_MAPS) uses other
 // seeds — this tool reproduces the FULL receipt's seed for the named map.
-import { buildPrivateMatchPlayers } from '../src/net/privateMatchHandoff.ts';
+import { buildPacingRoster } from '../server/pacingRoster.test-support.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
@@ -33,7 +33,7 @@ const lobby = {
   players: [{ id: 'host', name: 'Host', specId: 'm1a2', team: 'alpha' }],
 };
 const match = createAuthoritativeMatch({
-  players: buildPrivateMatchPlayers(lobby), mapId, seed: matchSeed, countdownS: 0,
+  players: buildPacingRoster(lobby), mapId, seed: matchSeed, countdownS: 0,
   worldCollision: createDedicatedWorldCollision(mapId),
 });
 match.onMatchReady();

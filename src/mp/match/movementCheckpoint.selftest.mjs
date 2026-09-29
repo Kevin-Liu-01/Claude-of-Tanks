@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../../sim/movement.ts';
 // The v1 checkpoint is the layout's origin; it is imported here only to prove byte-for-byte parity.
-import { applyMovementPredictionState, captureMovementPredictionState } from '../../net/movementPredictionState.ts';
+import { applyMovementPredictionState, captureMovementPredictionState } from '../../sim/movementPredictionState.ts';
 import {
   MOVEMENT_CHECKPOINT_VALUES, MOVEMENT_CHECKPOINT_VERSION, applyMovementCheckpoint, captureMovementCheckpoint,
 } from './movementCheckpoint.ts';

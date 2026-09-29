@@ -232,7 +232,7 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
   <img src="public/brand/features/multiplayer.svg" width="52" alt="Multiplayer tanks icon" title="Authoritative multiplayer">
 </p>
 
-LAN and browser-hosted private rooms use the shared renderer-free movement and combat rules. No database or dedicated game server is required; Internet room codes need a lightweight signaling endpoint, and restricted networks may need TURN relay. Ranked tooling remains internal rather than a player-facing mode. See [multiplayer hosting](docs/MULTIPLAYER-HOSTING.md).
+LAN and private rooms run their match in the host commander's browser over WebRTC and use the shared renderer-free movement and combat rules. No database or dedicated game server is required; Internet rooms meet through a small rooms Worker (seats, signaling, host migration), and restricted networks may need TURN relay. See [Multiplayer v2](docs/MULTIPLAYER-V2.md).
 Clients send intent, never trusted hits or damage. Snapshot filtering, local prediction/reconciliation, bounded remote
 interpolation, reliable fire edges, reconnectable room state, and separate control/chat delivery keep a moving and firing
 7v7 battle responsive without giving the client authority.
@@ -289,7 +289,6 @@ Regenerate the current public archive:
 ```bash
 npm run shots:battle:generate
 npm run shots:battle:grade -- --root shots/marketing-battles-r3
-node tools/marketing-shots/capture-multiplayer-dual-screen.mjs
 npm run studio:action:render
 npm run showcase:publish
 npm run showcase:check
@@ -360,13 +359,13 @@ src/world/     thirty-one maps, terrain, vegetation, props, collision, destructi
 src/vehicles/  specs, procedural geometry, materials, profiles, asset verification
 src/sim/       DOM-free movement, aiming, ballistics, armor, damage, spotting
 src/game/      local composition, bots, input, profile, killcam, Scene Studio
-src/net/       protocol, rooms, chat, snapshots, prediction, WebRTC/WebSocket
+src/mp/        rooms, the wire, transports, the match client, the browser host, sessions
 src/ui/        garage, battle HUD, reports, settings, diagnostics, touch controls
-server/        signaling, persistent rooms, dedicated authority, ranked service
+server/        the match actor, the LAN room helper, collision manifests, ICE, telemetry
 ```
 
 Start with [Technical overview](docs/TECHNICAL-OVERVIEW.md), [Product features](docs/FEATURES.md),
-[How it works](docs/HOW-IT-WORKS.md), [Multiplayer architecture](docs/MULTIPLAYER-ARCHITECTURE.md),
+[How it works](docs/HOW-IT-WORKS.md), [Multiplayer v2](docs/MULTIPLAYER-V2.md),
 [Performance](docs/PERFORMANCE.md), [Scene Studio](docs/STUDIO.md), and [Tank Gallery](docs/GALLERY.md).
 
 ## Develop and verify
@@ -375,7 +374,7 @@ Start with [Technical overview](docs/TECHNICAL-OVERVIEW.md), [Product features](
 npm install
 npx vite
 npm test
-npm run test:net:browser
+npm run test:net:v2:p2p
 npm run tank:native:check
 npm run build
 npm run build:private

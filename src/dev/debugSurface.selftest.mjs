@@ -52,10 +52,8 @@ const surface = installDebugSurface({
   getDamagePanel: () => ({ visible: true }),
   devTrace: null,
   getNetworkDiagnostics: () => ({ state: networkState }),
-  getNetworkPresentationStats: () => ({ queued: 0 }),
   collectTelemetry: () => ({ fps: 120 }),
   sampleShadowContribution: async () => ({ changed: false }),
-  injectNetworkEvents: () => true,
 }, target);
 
 assert.equal(target.__DEBUG, surface);

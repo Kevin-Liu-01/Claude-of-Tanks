@@ -8,7 +8,6 @@ import { createInput } from '../../src/game/input.ts';
 import { initHud } from '../../src/ui/hud.ts';
 import { createDamagePanel } from '../../src/ui/damagePanel.ts';
 import { createTouchControls } from '../../src/ui/touchControls.ts';
-import { createRoomChat } from '../../src/ui/roomChat.ts';
 import { createSettings } from '../../src/ui/settings.ts';
 import { createEndOverlayRuntime } from '../../src/ui/endOverlayRuntime.ts';
 import { TANK_SPECS } from '../../src/vehicles/specs.ts';
@@ -26,7 +25,6 @@ createEndOverlayRuntime({bus,onReturnToGarage:()=>hud.setMode('hidden')});
 const panel = createDamagePanel();
 const settings = createSettings({input, bus, isBattleActive:()=>true, gearVisible:()=>false});
 const touch = createTouchControls({input, bus, isBattleActive:()=>true, onOpenSettings:()=>settings.open()});
-const chat = createRoomChat({input, isAvailable:()=>true, shouldRelock:()=>false, onSend:()=>true});
 const tanks = Array.from({length:14},(_,i)=>{
   const spec = TANK_SPECS[['leo2a5','m1a2','t90m'][i%3]];
   return {id:`tank-${i}`, isPlayer:i===0, team:i<7?'player':'enemy', displayName:`Commander_Long_Name_${i}`,
@@ -50,7 +48,6 @@ function state(name) {
   delete frame.rosterTanks; frame.tanks=tanks;
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
-  chat.close({relock:false}); chat.clear(); chat.setActive(false);
   const modeId = name.startsWith('mode-') ? name.slice(5) : 'mars';
   frame.matchModeState = {id:modeId, score:{alpha:2,bravo:1}, target:modeId==='capture_the_flag'?3:modeId==='turbo_ball'?5:750, horde:{wave:3,alive:12},line:{index:1,total:3},playerAmmo:24,playerAmmoCapacity:40};
   player.spec = TANK_SPECS[name==='special'?'bwp1':'m1a3'];
@@ -72,9 +69,6 @@ function state(name) {
   }
   if(name==='log'||name==='combined')bus.emit('ui:shotLog',{});
   if(name==='chat'||name==='combined'||name==='spectator'){
-    chat.setActive(true);
-    for(let i=0;i<8;i++)chat.append({id:String(i),senderId:tanks[1].id,senderName:'Commander_Long_Name',team:'alpha',text:'Regroup at the bridge and cover the western approach.'});
-    chat.open();
   }
   if(name==='spectator')hud.stageSpectateBar({specId:'leo2a5',name:'Commander_Long_Name',vehicle:'Leopard 2A5',count:7,index:2});
   if(name==='settings')settings.open();
@@ -99,7 +93,7 @@ function roster(allies, enemies) {
   frame.rosterTanks=entries; frame.tanks=entries;
   hud.update(frame);
 }
-window.__HUD_LAYOUT = {state, roster, hud, bus, chat, touch, settings, hit, frame, tanks};
+window.__HUD_LAYOUT = {state, roster, hud, bus, touch, settings, hit, frame, tanks};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));

@@ -81,10 +81,8 @@ export interface DebugSurfaceDependencies {
   getDamagePanel(): RuntimeValue;
   devTrace: RuntimeValue;
   getNetworkDiagnostics(): RuntimeValue;
-  getNetworkPresentationStats(): RuntimeValue;
   collectTelemetry(): RuntimeValue;
   sampleShadowContribution(): RuntimeValue;
-  injectNetworkEvents(events: RuntimeValue): boolean;
 }
 
 /** Install the full live QA surface on an explicit target. */
@@ -175,10 +173,8 @@ export function installDebugSurface(
     get damagePanel() { return deps.getDamagePanel(); },
     devTrace: deps.devTrace,
     get network() { return deps.getNetworkDiagnostics(); },
-    get networkPresentation() { return deps.getNetworkPresentationStats(); },
     telemetry: deps.collectTelemetry,
     sampleShadowContribution: deps.sampleShadowContribution,
-    injectNetworkEvents: deps.injectNetworkEvents,
   };
   target.__DEBUG = surface;
   return surface;

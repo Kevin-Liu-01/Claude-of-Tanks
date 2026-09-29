@@ -27,15 +27,15 @@ import {
   type RoomConnectionRuntime,
 } from '../mp/session/playMenuAdapter.ts';
 import { resolveRoomsUrl } from '../mp/session/endpoint.ts';
-import { normalizePlayMode, type PlayMode } from '../net/playMode.ts';
-import { isIntentionalRoomCloseReason } from '../net/roomFailure.ts';
+import { normalizePlayMode, type PlayMode } from '../mp/session/playMode.ts';
+import { isIntentionalRoomCloseReason } from '../mp/session/roomFailure.ts';
 // entry resilience (2026-09-25): room failure codes and ICE degradation are beaconed (never prose or codes of rooms)
 import { getEntryTelemetry } from '../entry/telemetry.ts';
-import { privateRoomFailurePresentation } from './privateRoomFailurePresentation.ts';
-export type { PlayMode } from '../net/playMode.ts';
-import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.ts';
+import { roomFailurePresentation } from './roomFailurePresentation.ts';
+export type { PlayMode } from '../mp/session/playMode.ts';
+import { automaticPlayerName, normalizePlayerName } from '../mp/session/playerNames.ts';
 import { normalizeRoomCode } from '../mp/room/protocol.ts';
-import { createRoomInviteUrl } from '../net/roomInvite.ts';
+import { createRoomInviteUrl } from '../mp/session/roomInvite.ts';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -52,9 +52,9 @@ import {
   normalizeGameMode,
   type GameModeId,
 } from '../sim/matchModes.ts';
-import { isCoopGameMode } from '../net/lobby.ts';
+import { isCoopGameMode } from '../mp/room/roomPolicy.ts';
 import { MARS_CACHE_IDS, MARS_GRAVITY_IDS, matchRulesetFor, rulesetLines } from '../sim/matchRuleset.ts';
-import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../net/lobby.ts';
+import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../mp/room/lobbyShape.ts';
 
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
@@ -1066,7 +1066,7 @@ export function createPlayMenu({
   const arrangeInput = (name: string): HTMLInputElement => arrangeSection.querySelector<HTMLInputElement>(`input[data-arrange="${name}"]`)!;
   let sidesCustomOpen = false;
   function renderArrangement(mode: GameModeId, fromLobby: boolean): void {
-    // a room keeps its own team size for the symmetric modes (net/lobby.ts teamSize); the wave modes arrange here
+    // a room keeps its own team size for the symmetric modes (the room's teamSize); the wave modes arrange here
     if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode))) { arrangeSection.hidden = true; arrangementDropdowns.forEach(dropdown => dropdown.close()); return; }
     arrangeSection.hidden = false;
     const wave = isWaveMode(mode);
@@ -1237,7 +1237,7 @@ export function createPlayMenu({
     },
     onError: (error) => {
       if (!session && !connecting && !handedOff) showFailure(error);
-      else setStatus(privateRoomFailurePresentation(error).title, true);
+      else setStatus(roomFailurePresentation(error).title, true);
     },
   };
   const roomConnection: RoomConnectionRuntime = createRoomConnectionAdapter(connectionOptions);
@@ -1303,7 +1303,7 @@ export function createPlayMenu({
   }
 
   function showFailure(error: RuntimeValue): void {
-    const failure = privateRoomFailurePresentation(error);
+    const failure = roomFailurePresentation(error);
     getEntryTelemetry().send({ kind: 'room_failure', code: failure.code, mode: mode === 'lan' ? 'lan' : 'private' });
     failurePanel.dataset.reason = failure.code;
     failureTitle.textContent = failure.title;

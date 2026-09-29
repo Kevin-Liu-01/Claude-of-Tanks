@@ -1,6 +1,5 @@
 /**
- * The Multiplayer v2 browser launch: the v2 counterpart of
- * src/net/networkBattleComposition.ts (charter §3 "presentation/", §6 rule 3:
+ * The multiplayer browser launch (charter §3 "presentation/", §6 rule 3:
  * no client can block a start; a client joins when it is ready).
  *
  * The Play menu hands a v2 room connection here (`beginRoom`, its
@@ -42,7 +41,7 @@ import { ACTION_BITS, VERDICT } from '../wire/index.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
-import type { SerializedLobby } from '../../net/lobby.ts';
+import type { SerializedLobby } from '../room/lobbyShape.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
 type RuntimeValue = {} | null | undefined;

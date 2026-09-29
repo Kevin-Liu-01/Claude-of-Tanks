@@ -1,3 +1,4 @@
+import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 /**
  * Multiplayer v2 wire vocabulary, limits and quantization.
  *
@@ -153,19 +154,9 @@ export const CONTROL_FLAGS = Object.freeze({
 } as const);
 
 /** Edge-triggered actions (identical to v1 PLAYER_ACTION_BITS). */
-export const ACTION_BITS = Object.freeze({
-  REPAIR: 1 << 0,
-  FIRST_AID: 1 << 1,
-  EXTINGUISHER: 1 << 2,
-  RELOAD_MAGAZINE: 1 << 3,
-  SPECIAL_ACTION: 1 << 4,
-  SELF_RIGHT: 1 << 5,
-  SMOKE: 1 << 6,
-  LIGHTS: 1 << 7,
-  ROOF_GUN: 1 << 8,
-  LIGHTS_OFF: 1 << 9,
-} as const);
-export const ACTION_BIT_MASK = 0x3ff;
+/** The simulation's action bits (src/sim/playerActions.ts): one table for the solo step and the wire. */
+export const ACTION_BITS = PLAYER_ACTION_BITS;
+export const ACTION_BIT_MASK = 0x3ff; // ten action bits (auxiliary systems: smoke, lights, roof gun, lights off)
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE'] as const);

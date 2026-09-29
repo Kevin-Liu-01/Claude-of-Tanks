@@ -1,10 +1,10 @@
-// The Workers-runtime test configuration: the real Worker and Room object with the container
-// binding replaced by test/matchContainerStub.ts (a Durable Object that answers the match
-// service's control routes and accepts the /match socket), so the suite needs no Docker.
+// The Workers-runtime test configuration (the deployed shape: Free plan, peer-to-peer matches): the real Worker
+// and Room object; the Room object elects, relays signals for, and migrates the host commander's browser
+// (test/p2p.test.ts) and runs the room lifecycle (test/rooms.test.ts).
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cot-rooms-test",
-  "main": "test/worker.ts",
+  "name": "cot-rooms-p2p-test",
+  "main": "src/index.ts",
   "compatibility_date": "2026-09-05",
   "compatibility_flags": ["nodejs_compat"],
   "ratelimits": [{
@@ -14,15 +14,12 @@
   }],
   "vars": {
     "ALLOWED_ORIGINS": "https://cot.kevinliu.studio",
-    "MATCH_SHIM_URL": "",
-    "MATCH_SEAT_SECRET": "rooms-test-seat-secret-0123456789abcdef",
-    "MATCH_CONTROL_SECRET": "rooms-test-control-secret-0123456789"
+    "MATCH_SEAT_SECRET": "rooms-test-seat-secret-0123456789abcdef"
   },
   "durable_objects": {
     "bindings": [
-      { "name": "ROOMS", "class_name": "Room" },
-      { "name": "MATCH", "class_name": "MatchContainerStub" }
+      { "name": "ROOMS", "class_name": "Room" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room", "MatchContainerStub"] }]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
 }

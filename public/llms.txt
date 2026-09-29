@@ -41,6 +41,6 @@ Use the official pages below as the primary public sources. Current runtime docu
 
 - [README](https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/README.md): Repository-oriented product and engineering overview.
 - [Architecture](https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/ARCHITECTURE.md): Original module contracts and simulation invariants.
-- [Multiplayer architecture](https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/MULTIPLAYER-ARCHITECTURE.md): Authoritative multiplayer design.
+- [Multiplayer v2](https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/MULTIPLAYER-V2.md): The peer-to-peer multiplayer design.
 - [Attribution](https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/ATTRIBUTION.md): First-party authorship and third-party dependency attribution.
 - [License policy](https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/LICENSE-POLICY.md): Repository license scope and reserved-content exceptions.

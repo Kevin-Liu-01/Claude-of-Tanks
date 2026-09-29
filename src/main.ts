@@ -201,13 +201,13 @@ import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
-import { createNetworkCompositionAccess } from './net/networkCompositionAccess.ts';
-import { resetNetworkRoundState } from './net/networkRoundState.ts';
-import type { NetworkBattleActivationOptions } from './net/networkBattleActivationRuntime.ts';
+import { createCompositionAccess } from './mp/session/compositionAccess.ts';
+import { resetRoundState } from './mp/session/roundState.ts';
+import type { ActivationRuntimeOptions } from './mp/session/activationRuntime.ts';
 import type { BrowserComposition, BrowserCompositionPorts, BrowserLaunchRequest } from './mp/session/browserComposition.ts';
 import type { MatchActor } from './mp/presentation/battlePresentation.ts';
 import type { LobbyIntent } from './mp/session/lobbyIntent.ts';
-import { createNetworkBattleIntentCover } from './net/networkBattleIntentCover.ts';
+import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
@@ -1089,7 +1089,7 @@ const loadMultiplayerLobby = (): Promise<LobbyIntent> => import('./mp/session/lo
   });
   return multiplayerLobby;
 });
-const multiplayerV2 = createNetworkCompositionAccess(loadMultiplayerV2Composition);
+const multiplayerV2 = createCompositionAccess(loadMultiplayerV2Composition);
 /** A network match owns the battle frame: a round loading or live. */
 const networkMatchActive = (): boolean => !!multiplayerV2.current?.active;
 /** The one network pump every phase shares. */
@@ -1941,7 +1941,7 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
     mode: multiplayerV2.current?.active ? 'network' : 'solo', timings: { budgetMs },
   }),
 });
-const networkBattleIntentCover = createNetworkBattleIntentCover({
+const networkBattleIntentCover = createIntentCover({
   game,
   battleLoad,
   rosterRows: rosterPresentation.lobbyRows,
@@ -2149,15 +2149,15 @@ function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolea
 function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
   return Promise.all([
     import('./mp/session/browserComposition.ts'),
-    import('./net/networkBattleActivationRuntime.ts'),
+    import('./mp/session/activationRuntime.ts'),
     import('./mp/host/browserHostPort.ts'),
     import('./mp/host/worldCollision.ts'),
-    import('./net/iceConfig.ts'),
-    import('./net/signalEndpoint.ts'),
-  ]).then(([{ createBrowserComposition }, { createNetworkBattleActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { loadIceConfiguration }, { resolveIceConfigUrl }]) => {
+    import('./mp/transport/iceConfig.ts'),
+    import('./mp/session/endpoint.ts'),
+  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { loadIceConfiguration }, { resolveIceConfigUrl }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
-    const activation = createNetworkBattleActivationRuntime(options.activation);
+    const activation = createActivationRuntime(options.activation);
     const runtime = createBrowserComposition({
       clientBuild: import.meta.env.MODE,
       ports: {
@@ -2171,7 +2171,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           getWorldCollision: currentWorld,
           groundSampler,
           getFx: requireFxRuntime,
-          resetRoundState: () => resetNetworkRoundState(game),
+          resetRoundState: () => resetRoundState(game),
           clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
           onVisualReady: (actor) => nightLighting.appendEntity(actor),
         },
@@ -2204,7 +2204,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           report: (summary, reason) => entryTelemetry.send({ kind: 'mp_exit', mode: 'network', code: reason, reason: summary.health, link: summary }),
         },
         // Peer-to-peer (docs/MULTIPLAYER-V2.md §13): the host actor's Worker chunk, the collision manifests the build serves,
-        // ICE from the credential service (api/ice.ts through src/net/iceConfig.ts), the device tier (the mobile tier never hosts).
+        // ICE from the credential service (api/ice.ts through src/mp/transport/iceConfig.ts), the device tier (the mobile tier never hosts).
         p2p: {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,
@@ -2232,7 +2232,7 @@ interface MultiplayerAppPorts {
   roster: BrowserCompositionPorts['roster'];
   warm: NonNullable<BrowserCompositionPorts['warm']>;
   presentation: Omit<BrowserCompositionPorts['presentation'], 'activate'>;
-  activation: NetworkBattleActivationOptions;
+  activation: ActivationRuntimeOptions;
 }
 
 function multiplayerAppPorts(): MultiplayerAppPorts {
@@ -2760,8 +2760,6 @@ const battleHudFrame = createBattleHudFrameRuntime({
   input,
   aimController,
   armorAimOverlay,
-  // The round's presentation carries its own perspective; the HUD frame's v1 session view stays empty.
-  networkSession: { match: null, spectator: false, bridge: null },
   killcam,
   muzzleScratch: _rayO,
   getHud: currentHud,
@@ -3303,11 +3301,8 @@ if (diagnosticsRequested) {
       },
       getDamagePanel: currentDamagePanel,
       getNetworkDiagnostics: () => multiplayerV2.current?.stats() ?? null,
-      getNetworkPresentationStats: () => multiplayerV2.current?.stats().round ?? null,
       collectTelemetry: () => perfHud.collectTelemetry(),
       sampleShadowContribution: () => perfHud.sampleShadowContribution(),
-      // The authority runs in the host's browser or over the wire: no client-side event injection.
-      injectNetworkEvents: () => false,
     } satisfies DebugSurfaceDependencies,
   });
 }

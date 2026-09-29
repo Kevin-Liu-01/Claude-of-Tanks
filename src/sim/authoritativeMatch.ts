@@ -79,13 +79,13 @@ import type {
   SpottingRayHit,
   SpottingVector3,
 } from './spotting.ts';
-import { captureWorldSnapshot } from '../net/snapshot.ts';
-import { capturePredictionAuthorityState } from '../net/predictionAuthorityState.ts';
+import { captureWorldSnapshot } from './worldSnapshot.ts';
+import { capturePredictionAuthorityState } from './predictionAuthorityState.ts';
 import type {
   SnapshotEntitySource,
   SnapshotShellSource,
   WorldSnapshot,
-} from '../net/snapshot.ts';
+} from './worldSnapshot.ts';
 import {
   pushHullFromHull,
   hullPassesObstacleTop, pushHullFromObstacle,
@@ -100,9 +100,9 @@ import type { AiDifficulty } from '../game/ai.ts';
 import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';
-import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
-import { decodeAimIntent } from '../net/aimIntent.ts';
-import type { AimIntentInput } from '../net/aimIntent.ts';
+import { PLAYER_ACTION_BITS } from './playerActions.ts';
+import { decodeAimIntent } from './aimIntent.ts';
+import type { AimIntentInput } from './aimIntent.ts';
 import {
   activateSpecialAction,
   bindSpecialActionState,

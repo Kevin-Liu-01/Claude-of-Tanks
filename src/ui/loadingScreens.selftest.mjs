@@ -180,8 +180,8 @@ const mainFrameSource = await readFile(
   new URL('../app/mainFrameRuntime.ts', import.meta.url), 'utf8');
 const combatWarmCompositionSource = await readFile(
   new URL('../app/combatWarmComposition.ts', import.meta.url), 'utf8');
-const networkBattleLaunchSource = await readFile(
-  new URL('../net/networkBattleLaunchRuntime.ts', import.meta.url), 'utf8');
+const intentCoverSource = await readFile(
+  new URL('../mp/session/intentCover.ts', import.meta.url), 'utf8');
 const battlePresentationSource = await readFile(
   new URL('../game/battlePresentationRuntime.ts', import.meta.url), 'utf8',
 );
@@ -684,14 +684,11 @@ assert.doesNotMatch(battleRolloutSource, /snapArcade/,
 assert.match(soloBattleEntrySource,
   /enterGarage\(\);\s*lifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
-const networkEntryBody = networkBattleLaunchSource.slice(
-  networkBattleLaunchSource.indexOf('async beginPrivate('),
-  networkBattleLaunchSource.indexOf('async beginRematch('),
-);
-assert.match(networkBattleLaunchSource,
-  /const showRoomLoad =[\s\S]*battleLoad\.show\(\{/,
-  'the typed network launch owner must synchronously present the boot-critical veil');
-assert.ok(networkEntryBody.indexOf('showRoomLoad(') >= 0 &&
-  networkEntryBody.indexOf('showRoomLoad(') < networkEntryBody.indexOf('await loadPrivateMatch();'),
-  'network entry must synchronously show its boot-critical veil before its first lazy import');
+// A room start mounts its opaque cover synchronously (the intent cover) before the composition chunk's first await.
+assert.match(intentCoverSource, /coverRendering\(\);\s*resetRoundState\(game\);\s*battleLoad\.show\(\{/,
+  'the intent cover presents the boot-critical veil synchronously');
+const roomStartBody = mainSource.slice(mainSource.indexOf('function beginMultiplayerV2Battle('), mainSource.indexOf('function loadMultiplayerV2Composition('));
+assert.ok(roomStartBody.indexOf('networkBattleIntentCover.show(request);') >= 0 &&
+  roomStartBody.indexOf('networkBattleIntentCover.show(request);') < roomStartBody.indexOf('multiplayerV2.preload()'),
+  'a room start shows its boot-critical veil before its first lazy import');
 console.log('loading screen featured-capture selftest: PASS');

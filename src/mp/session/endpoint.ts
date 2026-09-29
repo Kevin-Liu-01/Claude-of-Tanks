@@ -1,5 +1,5 @@
 /**
- * Where the v2 room host is, mirroring src/net/signalEndpoint.ts: production
+ * Where the room host is: production
  * uses the rooms Worker named by `VITE_ROOMS_URL` (a wss:// origin); local and
  * RFC1918 hosts use the LAN helper (`npm run server:mp`) on port 8792. Pure.
  */
@@ -35,6 +35,23 @@ export function configuredRoomsUrl(configured: unknown): URL | null {
   let url: URL;
   try { url = new URL(explicit); } catch { return null; }
   return url.protocol === 'ws:' || url.protocol === 'wss:' ? url : null;
+}
+
+/**
+ * The ICE credential endpoint (api/ice.ts): TURN credentials stay on the frontend origin unless a deployment names
+ * another http(s) endpoint; a plain http:// page (local development) contacts no credential provider implicitly.
+ */
+export function resolveIceConfigUrl({ configured = '', protocol = 'http:' }: { configured?: unknown; protocol?: string } = {}): string {
+  const explicit = String(configured ?? '').trim();
+  if (explicit) {
+    const url = new URL(explicit, `${protocol}//same-origin.invalid/`);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new TypeError('service URL must use http or https');
+    if (url.username || url.password) throw new TypeError('service URL must not contain credentials');
+    if (explicit.includes('#')) throw new TypeError('service URL must not contain a fragment');
+    if (protocol === 'https:' && url.protocol === 'http:') throw new TypeError('HTTPS pages require secure HTTPS service URLs (mixed content)');
+    return explicit;
+  }
+  return protocol === 'https:' ? '/api/ice' : '';
 }
 
 /** The ws:// or wss:// origin of the room host: the configured one, the official site's Worker, the LAN helper on a

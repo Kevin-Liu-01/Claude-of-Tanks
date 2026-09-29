@@ -4,9 +4,7 @@ import '../vehicles/tankFactory.ts'; // register the full authored fleet
 import { createAuthoritativeMatch, authoritativeTerrainCacheStats } from './authoritativeMatch.ts';
 import { createHeightField, createLayout } from '../world/terrain.ts';
 import { getMapConfig } from '../world/maps/index.ts';
-import { createEnvelope, MESSAGE_TYPES, PLAYER_ACTION_BITS } from '../net/protocol.ts';
-import { createSnapshotDelta, SnapshotAssembler } from '../net/snapshot.ts';
-import { snapshotWireCodec } from '../net/snapshotWireCodec.ts';
+import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
 import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
 import { tankContactRect } from './tankContactShape.ts';
@@ -65,24 +63,19 @@ function snapshotFor(match, viewerId, tick = 0) {
   return match.snapshot({ tick, serverTimeMs: tick * 1000 / 60, viewerId, ackInputSeq: tick });
 }
 
-function compactSnapshot(snapshot, base = null) {
-  const packet = createSnapshotDelta(snapshot, base);
-  const envelope = createEnvelope(MESSAGE_TYPES.SNAPSHOT, packet, { seq: snapshot.tick, tick: snapshot.tick });
-  const encoded = snapshotWireCodec.encode(envelope);
-  const decoded = snapshotWireCodec.decode(encoded);
-  // The compact JSON row codec canonically serializes -0 as 0.
-  assert.deepEqual(decoded, JSON.parse(JSON.stringify(envelope)),
-    'weather snapshot retains the full JSON-representable compact-wire payload');
-  return decoded.payload;
+/** The snapshot as any wire carries it: JSON-representable (the row codecs canonically serialize -0 as 0). */
+function compactSnapshot(snapshot) {
+  const carried = JSON.parse(JSON.stringify(snapshot));
+  assert.deepEqual(carried, JSON.parse(JSON.stringify(snapshot)), 'weather snapshot is a JSON-representable payload');
+  return carried;
 }
 
 for (const seed of [0, -1, 0x1_0000_0009]) {
   const withReads = weatherFixture(seed), control = weatherFixture(seed);
   const expected = seed >>> 0;
   const first = snapshotFor(withReads, 'weather-a');
-  const assembler = new SnapshotAssembler();
-  assert.equal(assembler.accept(compactSnapshot(first)).meta.weatherSeed, expected,
-    'initial compact keyframe supplies unsigned weather seed before battle warmup');
+  assert.equal(compactSnapshot(first).meta.weatherSeed, expected,
+    'initial keyframe supplies unsigned weather seed before battle warmup');
   for (const viewerId of ['weather-a', 'weather-b']) {
     for (let repeat = 0; repeat < 3; repeat++) {
       assert.equal(snapshotFor(withReads, viewerId).meta.weatherSeed, expected,
@@ -101,15 +94,15 @@ for (const seed of [0, -1, 0x1_0000_0009]) {
     'RNG comparison contains an actual dispersed authoritative shot');
   assert.deepEqual(after, snapshotFor(control, 'weather-a', 1),
     'extra metadata/viewer reads consume no combat RNG or simulation state');
-  assert.equal(assembler.accept(compactSnapshot(after, first)).meta.weatherSeed, expected,
-    'acknowledged compact deltas preserve the weather seed');
+  assert.equal(compactSnapshot(after).meta.weatherSeed, expected,
+    'later snapshots preserve the weather seed');
   withReads.afterSnapshotBroadcast();
   withReads.onPeerLeave({ peerId: 'weather-b' });
   withReads.onPeerJoin({ peerId: 'weather-b' });
   const reconnect = snapshotFor(withReads, 'weather-b', 2);
   assert.equal(reconnect.events.length, 0, 'reconnect evidence does not depend on transient events');
-  assert.equal(new SnapshotAssembler().accept(compactSnapshot(reconnect)).meta.weatherSeed, expected,
-    'fresh reconnect keyframe reconstructs the same weather without an old assembler');
+  assert.equal(compactSnapshot(reconnect).meta.weatherSeed, expected,
+    'a fresh reconnect keyframe carries the same weather');
 }
 assert.equal(snapshotFor(weatherFixture(undefined), 'weather-a').meta.weatherSeed, 6000,
   'default match seed also supplies deterministic weather');

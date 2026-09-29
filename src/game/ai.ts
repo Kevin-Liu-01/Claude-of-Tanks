@@ -41,7 +41,7 @@ import {
   ramDamage,
 } from '../sim/damage.ts';
 import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
-import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
+import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import {
   collisionFootprintContainsPoint,
   rayCollisionFootprintEntry2,

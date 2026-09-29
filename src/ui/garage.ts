@@ -67,7 +67,7 @@ import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArra
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
-import type { PlayMode } from '../net/playMode.ts';
+import type { PlayMode } from '../mp/session/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 import type { FleetGunSpec, FleetTankSpec } from '../vehicles/specContracts.ts';

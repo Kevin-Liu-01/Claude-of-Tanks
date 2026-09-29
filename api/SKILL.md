@@ -1,6 +1,6 @@
 ---
 name: api-skill
-description: Maintain deployed signaling, ICE credential, and public GitHub-count HTTP entrypoints.
+description: Maintain the deployed ICE credential, telemetry, Jev proxy and public GitHub-count HTTP entrypoints.
 ---
 
 # claude-of-tanks / api
@@ -8,33 +8,32 @@ description: Maintain deployed signaling, ICE credential, and public GitHub-coun
 ## Purpose
 <!-- agent-docs:fill:purpose -->
 Expose the hosted application's small server-side API surface. Keep deployment
-adapters thin; room/session policy belongs to `server/`, not browser code.
+adapters thin; room policy belongs to `src/mp/room` and `server/`, not browser code.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`signal.ts` configures the shared signaling server and distributed room store.
-`ice.ts` provides validated static, coturn, or Cloudflare TURN configuration.
-`github-stars.ts` proxies the public repository count with bounded upstream
-requests and cache headers. `telemetry.ts` is the entry-telemetry fallback
-sink (`docs/ENTRY-RESILIENCE.md`), used only while `VITE_TELEMETRY_URL` is
-unset: one v2 record per request validated through the shared schema
-`server/telemetryRecord.ts` (personal field names refused), one log line per
-record, no store. The production sink is the Cloudflare Worker
-`cloudflare/telemetry` (Workers Analytics Engine).
-`jev.ts` is the Jev commander proxy (`docs/JEV-COMMANDER.md`): one text-only
-team document per request, validated and bounded, the TypeSafe questions built
-server-side, the server-held `TYPESAFE_API_KEY` never leaving the function,
-upstream 401/422/429/529/timeouts mapped to clean errors with a cool-down,
-per-address and per-session buckets, a session budget and a global ceiling.
-Deployment routes are configured in `vercel.json`.
+`ice.ts` provides validated static, coturn, or Cloudflare TURN configuration:
+the client (`src/mp/transport/iceConfig.ts`) asks `/api/ice` on https pages and
+uses host candidates on LAN. `github-stars.ts` proxies the public repository
+count with bounded upstream requests and cache headers. `telemetry.ts` is the
+entry-telemetry fallback sink (`docs/ENTRY-RESILIENCE.md`), used only while
+`VITE_TELEMETRY_URL` is unset: one v2 record per request validated through the
+shared schema `server/telemetryRecord.ts` (personal field names refused), one
+log line per record, no store. The production sink is the Cloudflare Worker
+`cloudflare/telemetry` (Workers Analytics Engine). `jev.ts` is the Jev commander
+proxy (`docs/JEV-COMMANDER.md`): one text-only team document per request,
+validated and bounded, the TypeSafe questions built server-side, the
+server-held `TYPESAFE_API_KEY` never leaving the function, upstream
+401/422/429/529/timeouts mapped to clean errors with a cool-down, per-address
+and per-session buckets, a session budget and a global ceiling. Deployment
+routes are configured in `vercel.json`. The signaling function of the first
+multiplayer (`api/signal.ts`) left the tree with the cutover of 2026-09-29
+(`docs/MULTIPLAYER-V2.md` §13.10): rooms live in the `cloudflare/rooms` Worker.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
 
-- Read `server/SKILL.md` before changing signaling or room-store behavior.
 - Preserve allowed-origin checks, method/status contracts, and upstream timeouts.
-- Production signaling requires complete distributed Redis configuration;
-  do not silently substitute an instance-local room store.
 - Keep ICE responses private/no-store and credentials server-side. Document
   environment variable names only; never commit secret values or log credentials.
 - Handler factories accept injected fetch, clock, and environment dependencies
@@ -44,8 +43,6 @@ Deployment routes are configured in `vercel.json`.
 <!-- agent-docs:fill:tasks -->
 
 - TURN configuration: inspect `ice.ts` and run `node server/ice.selftest.mjs`.
-- Signaling deployment: trace `signal.ts` into `server/signalingServer.ts` and
-  `server/distributedRoomStore.ts`; start with the corresponding server tests.
 - Star-count responses: run `node server/githubStars.selftest.mjs`; inspect
   `src/ui/githubStars.ts` for the loading/error presentation contract.
 - Telemetry beacon: run `node server/telemetryRecord.selftest.mjs`,
@@ -60,6 +57,5 @@ Deployment routes are configured in `vercel.json`.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
-Importing `signal.ts` constructs the deployed server and validates its environment.
-Do not import it into client bundles or bypass its production checks for tests.
-TURN credentials and a public count have different caching requirements.
+TURN credentials and a public count have different caching requirements. Do not
+import a function module into client bundles.

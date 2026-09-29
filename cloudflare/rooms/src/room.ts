@@ -99,7 +99,7 @@ export class Room extends DurableObject<Env> {
       sha256Hex: (text) => createHash('sha256').update(text).digest('hex'),
       seatSecret: this.env.MATCH_SEAT_SECRET,
       signSeatToken,
-      matchHost: createMatchHost(this.env, code),
+      matchHost: createMatchHost(),
       send: (socketId, message) => this.#send(socketId, message),
       closeSocket: (socketId, reason) => this.#close(socketId, reason),
       schedule: (atMs) => { this.#alarmWanted = atMs; },

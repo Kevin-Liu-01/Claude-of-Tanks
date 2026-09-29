@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { tickModuleRepairs, REPAIR_S } from './damage.ts';
 import { chooseAiSupportActionBits } from '../game/ai.ts';
-import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
+import { PLAYER_ACTION_BITS } from './playerActions.ts';
 
 function moduleState(state = 'red', repairT = 0) {
   return { hp: state === 'red' ? 0 : 100, maxHp: 100, state, repairT };

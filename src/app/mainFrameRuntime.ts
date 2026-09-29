@@ -19,7 +19,6 @@ import type { MatchModeWorldPresentation } from '../game/matchModeWorldPresentat
 import type { CameraFrameInput } from '../game/playerFrameInput.ts';
 import type { SniperFillRuntime } from '../game/sniperFillRuntime.ts';
 import type { MatchModePresentationState } from '../sim/matchModes.ts';
-import type { NetworkBrowserSessionRuntime } from '../net/networkBrowserSessionRuntime.ts';
 import type { WorldFramePresentationRuntime } from '../world/worldFramePresentationRuntime.ts';
 import type {
   MainFxRuntime,
@@ -61,8 +60,8 @@ interface MainFrameRuntimeOptions {
   post: PostRuntime;
   showroom: GarageShowroomRuntime;
   pedestal: GaragePedestalRuntime;
-  /** The one network pump every phase shares (v1's frame pump and the v2 session owner behind it). */
-  networkSession: Pick<NetworkBrowserSessionRuntime, 'pump'>;
+  /** The one network pump every phase shares (the multiplayer composition's session owner). */
+  networkSession: { pump(dtSeconds: number, nowMs: number): void };
   garageFramePacer: GarageFramePacer;
   battleFrame: BattleFrameRuntime;
   isBattleLoadCovering(): boolean;

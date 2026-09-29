@@ -1,6 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
-import { normalizePlayMode } from '../net/playMode.ts';
+import { normalizePlayMode } from '../mp/session/playMode.ts';
 import type {
   PlayMenuInvite,
   PlayMenuOptions,

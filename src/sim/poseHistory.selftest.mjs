@@ -3,7 +3,7 @@ import { Vector3 } from 'three';
 import '../vehicles/tankFactory.ts';
 import { createAuthoritativeMatch, MAX_AUTHORITATIVE_PLAYERS } from './authoritativeMatch.ts';
 import { createPoseHistory, createTankArmorPose } from './poseHistory.ts';
-import { encodeAimIntent } from '../net/aimIntent.ts';
+import { encodeAimIntent } from './aimIntent.ts';
 
 // ------------------------------------------------------------ 1. the ring
 {

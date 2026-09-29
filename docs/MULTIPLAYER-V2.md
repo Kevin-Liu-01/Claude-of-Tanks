@@ -1373,13 +1373,65 @@ the v1 tools and their receipts, the dedicated/container match pieces).
   replaced by the callback it exercised) updated to the v2-only composition; `tools/mp-p2p-e2e.mjs`,
   `mp-browser-e2e.mjs` and `mp-p2p-soak.mjs` boot without `mp=v2`.
 
-**Still in the tree until stage B (unreachable from the client).** `src/net` in full — the modules v2 still imports
-(`playMode`, `roomInvite`, `roomFailure`, `lobby`'s types, `playerNames`, `iceConfig`, `networkCompositionAccess`,
-`networkRoundState`, `networkBattleIntentCover`, `networkBattleActivationRuntime`, `networkLobbyPreloader`,
-`movementPredictionState`) move into `src/mp` there; `api/signal.ts`, `cloudflare/signaling`, `server/signalingServer.ts`,
-the dedicated match server, the v1 tools (`test:net:*` other than `v2`), `docs/MULTIPLAYER-ARCHITECTURE.md` and
-`docs/MULTIPLAYER-HOSTING.md`. The HUD frame runtime keeps its v1 session view (main passes an empty one); the v2
-spectator's observer focus is a follow-up of the removal.
+**Stage B — the v1 stack leaves the tree (branch `mp/v1-removal`, on stage A's tip).**
+
+- *Moved, not deleted* (the modules the game still needs, at their real homes): the simulation's action bits
+  (`src/sim/playerActions.ts`; the wire's `ACTION_BITS` is that table), the aim intent, the prediction authority state
+  and the movement checkpoint (`src/sim/aimIntent.ts`, `predictionAuthorityState.ts`, `movementPredictionState.ts`), the
+  authority's viewer snapshot capture — the spotting boundary before serialization — as `src/sim/worldSnapshot.ts` with
+  its own receipt; the lobby shape the room publishes (`src/mp/room/lobbyShape.ts`, `roomToLobby` returns it); the
+  session helpers `src/mp/session/{playMode, playerNames, roomInvite, roomFailure, compositionAccess, roundState,
+  intentCover, activationRuntime, lobbyPreloader}.ts` and `src/mp/transport/iceConfig.ts`, the ICE credential endpoint
+  beside the room host in `endpoint.ts`; their receipts follow them (`tools/selftest-suites.mjs`). The pacing gate's
+  roster — the era-matched seeded bot fill of the first handoff, over which `server/battlePacing.selftest`'s 5–8 minute
+  bands were measured — is the gate's own fixture, `server/pacingRoster.test-support.ts` (rooms plan their bots in
+  `roomPolicy.ts`).
+- *Deleted*: `src/net` (118 files; the browser-host authority, the v1 protocol, lobby, signaling client, WebRTC peer,
+  frame pump, bridge, prediction, launch/presentation/room runtimes), `src/ui/networkStatus.ts` and `roomChat.ts` (the
+  v1 HUD strip and in-battle chat), `api/signal.ts` (and its `vercel.json` function), `cloudflare/signaling` (the
+  `cot-private-rooms` Worker's source — the deployed Worker is not touched by this branch), `server/{signalingServer,
+  signalingCutover, signalingMembership, roomStore, distributedRoomStore, roomCode, dedicatedMatchServer,
+  dedicatedMatchRegistry, rankedMatchmaker, ratingStore}.ts`, the parked container (`server/match/main.ts`, its
+  Dockerfiles, `cloudflare/rooms/src/matchContainer.ts`, the shim/container branches of `matchHost.ts`, the `service`
+  vitest project and its stub; `MATCH_SHIM_URL` leaves `wrangler.jsonc` — a var, no migration), the self-host stack
+  (`compose.selfhost.yaml`, `compose.multiplayer.yaml`, `deploy/`, `Dockerfile.selfhost`, `Dockerfile.multiplayer`),
+  the v1 tools (`multiplayer-browser-soak`, `multiplayer-four-player-soak`, `multiplayer-live-combat`,
+  `multiplayer-guest-entry`, `private-room-errors-browser`, `production-private-room-ui`, `production-multiplayer-check`,
+  `production-room-webrtc-check`, `production-room-abandonment`, `production-entry-observer`,
+  `lobby-prefetch-before-ready`, `multiplayer-loading-build-probe`, `multiplayer-render-perf`, the CDP observers only
+  they consumed, the dual-screen marketing capture) and their receipts, the `test:net:*` scripts other than `v2`,
+  `server:signal`, `server:match`, `selfhost:config`, `multiplayer:config`, `net:prod:check`, the
+  `quality:coverage:prediction` script; `docs/MULTIPLAYER-ARCHITECTURE.md` and `docs/MULTIPLAYER-HOSTING.md` are
+  two-line pointers here.
+- *Vocabulary*: the room failure codes are the room's (`src/mp/session/roomFailure.ts`: `expired`, `kicked`,
+  `resume_denied`, `room_closed`, `room_full`, `invalid_room_code`, `access_denied`, `room_service_unavailable`,
+  `connection_failed`); the i18n keys of the v1-only failures (host left, host runtime failed, the WebRTC timeouts) left
+  both catalogs and `signalingUnavailable` became `roomServiceUnavailable`.
+- *Kept on purpose*: `tools/multiplayer-frame-trace.mjs` (the Garage battle-actions probe uses it),
+  `server/dedicatedWorldCollisionBrowser.ts` (the manifest loader's receipt compares against it), `server/match/service.ts`
+  + `localRoomService.ts` (the LAN helper's in-process match), `api/ice.ts` and the TURN variables.
+- *Environment names that are now dead for the owner to delete* (never deleted by this lane): `VITE_SIGNAL_URL`,
+  `COT_SIGNAL_BACKEND`, `COT_SIGNAL_REDIS_REDIS_URL`, `COT_SIGNAL_REDIS_KV_URL`, `COT_SIGNAL_REDIS_KV_REST_API_URL`,
+  `COT_SIGNAL_REDIS_KV_REST_API_TOKEN`, `COT_ALLOWED_ORIGINS` (if only `api/signal` read it — `api/ice.ts` keeps its own
+  origin list), `VITE_MATCH_SERVICE`; `VITE_ICE_CONFIG_URL` and every `COT_TURN_*` / `COT_CLOUDFLARE_TURN_*` stay.
+- *Worker*: `cloudflare/rooms` needs no migration (the class chain is unchanged: v1 created `Room` and the container
+  class, v2 deleted the container class); the `@cloudflare/containers` dependency stays in `package.json` until the
+  integrator can run `npm uninstall @cloudflare/containers` in `cloudflare/rooms` (this lane installs nothing).
+
+**Hosting after the cutover (what `docs/MULTIPLAYER-HOSTING.md` said that is still true).**
+
+- Internet rooms: the rooms Worker (`cloudflare/rooms`, Free plan; `cloudflare/rooms/README.md` deploys it), named by
+  `VITE_ROOMS_URL` on the site build or, on the official site, by `src/officialHost.ts`. The room host is resolved by
+  `src/mp/session/endpoint.ts`; there is no connection-settings field.
+- LAN and offline: `npm run server:mp` (`server/rooms/main.ts`, port 8792: rooms plus the match in-process, or the
+  browser-hosted match with `COT_ROOMS_MATCH_TRANSPORT=p2p`); browsers on the network choose LAN in the Play menu.
+- ICE: `api/ice.ts` issues short-lived TURN credentials from server secrets (`COT_TURN_*`, `COT_CLOUDFLARE_TURN_*`,
+  `COT_TURN_ICE_SERVERS_JSON`); the client asks `/api/ice` on https pages (`VITE_ICE_CONFIG_URL` names another
+  endpoint) and uses host candidates on LAN. A strict NAT relays through TURN; nothing contacts a public STUN service
+  implicitly.
+- Verification: `npm test` (the room actor, the p2p host, the client, the composition, the headless p2p flow),
+  `npm run test:net:v2:rooms` (the Worker under the Workers runtime), `npm run test:net:v2:p2p` (three real browsers),
+  `npm run test:net:v2:p2p:soak`, and `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio` against production.
 
 ## 10. Decisions for the owner
 

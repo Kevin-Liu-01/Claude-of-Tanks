@@ -3,7 +3,7 @@
 
 import { Vector3 } from 'three';
 import './tankFactory.ts';
-import { encodeAimIntent } from '../net/aimIntent.ts';
+import { encodeAimIntent } from '../sim/aimIntent.ts';
 import {
   createAuthoritativeMatch,
   type AuthoritativeEntity,

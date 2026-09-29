@@ -18,10 +18,11 @@ controls ──► 60 Hz authority ──► state + reliable events ──► p
 ```
 
 Solo composes the authority directly in the browser. LAN and private rooms put
-one trusted browser in charge and carry inputs/state over WebRTC. Ranked puts
-the authority in the dedicated Node service and uses an authenticated,
-reconnectable WebSocket. All modes share the same movement, armor, damage,
-spotting, bot, destructible, and outcome rules.
+the host commander's browser in charge — a Worker thread runs the same authority
+— and carry inputs and snapshots over WebRTC data channels; the room service
+(a Durable Object, or the LAN helper) seats players, relays the signaling and
+migrates the host when it leaves. All modes share the same movement, armor,
+damage, spotting, bot, destructible, and outcome rules.
 
 ## Boot, garage, and lazy work
 
@@ -195,7 +196,7 @@ roads, foliage, structures, collision, concealment, destructibles, lighting,
 sky, and minimap. Shared structure, wreck, loose-prop, utility-network,
 terrain-attachment, and destruction systems keep the expanded vocabulary
 consistent, while map-specific composition preserves distinct tactical spaces.
-The browser and dedicated server share generated collision manifests so an
+The solo battle and the browser host share generated collision manifests so an
 obstacle is not passable on one authority and solid on another.
 
 Buildings use two bounded authoring paths. Large landmarks add windows,
@@ -213,7 +214,7 @@ floating fixtures and disconnected landmark parts. The same support receipt is
 created before each lightweight building is merged, proving every intact roof,
 porch, ladder, rack, frame, utility fitting, and grounded accessory reaches a
 wall or physical ground contact. Collision is then captured from the final
-seeded worlds into the dedicated-server manifest.
+seeded worlds into the host's collision manifest.
 
 Wall, roof, stone, wood, straw, canvas, and structural-metal materials use
 color, normal, and a packed linear surface texture (red AO, green roughness).
@@ -320,19 +321,19 @@ until the player unreadies. Explicit Leave disconnects from the room.
 
 Invite URLs carry the validated six-character room code and a normalized host
 callsign for human presentation. From the first loading frame the recipient
-sees “Join Name’s Game”; after signaling joins, the service-provided host
+sees “Join Name’s Game”; once the room seats the guest, the room's admin
 identity replaces the URL hint. Room-code-only legacy links remain valid. On
 the same deployed origin, opening the link loads the game and joins after the
 normal boot gate.
 Joined browsers keep that canonical room URL and a stable browser identity.
-Reloading while the host's persistent room is waiting creates a fresh WebRTC
-channel, reattaches the same player identity, and restores the room state;
-vehicle and equipment can then be selected before readying again. An explicit
-Leave clears the room URL. Because private/LAN authority lives in the host's
-browser, reloading the host itself still ends that browser-owned authority;
-host-failover would require migrating authority to another peer or service.
-LAN uses direct Wi-Fi WebRTC and automatic same-origin/local signaling; private
-internet rooms use deployed signaling plus configured ICE/TURN fallback.
+Reloading while the room is waiting resumes the seat with its stored
+capability and restores the room state; vehicle and equipment can then be
+selected before readying again. An explicit Leave clears the room URL. The
+match's authority lives in the host commander's browser; when the host leaves
+mid-match the room elects the next commander, which resumes the match from the
+sealed keyframe every peer kept. LAN rooms use direct Wi-Fi WebRTC through the
+local helper; private internet rooms use the rooms Worker plus configured
+ICE/TURN fallback.
 
 ## Results, replay, and presentation events
 
@@ -379,7 +380,7 @@ build checks in Vite.
 
 ```bash
 npm test
-npm run test:net:browser
+npm run test:net:v2:p2p
 npm run tank:native:check
 npm run build
 npm run build:private
@@ -387,7 +388,7 @@ npm run build:private
 
 For deeper contracts, continue with [FEATURES.md](FEATURES.md),
 [SYSTEMS.md](SYSTEMS.md), [DEVELOPMENT.md](DEVELOPMENT.md),
-[MULTIPLAYER-ARCHITECTURE.md](MULTIPLAYER-ARCHITECTURE.md),
+[MULTIPLAYER-V2.md](MULTIPLAYER-V2.md),
 [PERFORMANCE.md](PERFORMANCE.md), [STUDIO.md](STUDIO.md), and
 [GUNNERY-CAMERA-SPEC.md](GUNNERY-CAMERA-SPEC.md). The original
 [ARCHITECTURE.md](ARCHITECTURE.md) is retained as a historical implementation

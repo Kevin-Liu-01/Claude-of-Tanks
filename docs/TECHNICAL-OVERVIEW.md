@@ -4,7 +4,7 @@ Status: current system reference
 
 Audience: engineers, technical reviewers, tool authors, and contributors
 
-Runtime: browser client, optional browser-hosted authority, and dedicated Node.js services
+Runtime: browser client, the host commander's browser authority, and small Node.js / Worker services
 
 This document defines the current high-level architecture of Claude of Tanks.
 It explains subsystem ownership, authority boundaries, data flow, runtime
@@ -25,7 +25,7 @@ on Three.js. The application includes:
   destruction;
 - generated battlefields with terrain, collision, vegetation, destructibles,
   and concealment;
-- in-page solo play, browser-hosted WebRTC rooms, and dedicated WebSocket
+- in-page solo play and browser-hosted WebRTC rooms
   authority;
 - local prediction, remote interpolation, viewer-filtered snapshots, and
   reliable presentation events;
@@ -51,7 +51,7 @@ accelerate reloads, shell travel, repairs, fires, or vehicles.
 
 ### 2.2 Renderer-free rules
 
-Modules under `src/sim/` and the transport-independent portions of `src/net/`
+Modules under `src/sim/` and the transport-independent portions of `src/mp/`
 remain runnable in Node without a DOM or WebGL context. This permits the same
 rules to run in the browser, in a browser-hosted room authority, or in the
 dedicated service.
@@ -119,7 +119,7 @@ adapter change.
 | Path | Owner | Public contract |
 | --- | --- | --- |
 | `src/sim/` | Deterministic gameplay rules | Node-runnable movement, combat, spotting, routing, and match authority |
-| `src/net/` | Multiplayer protocol and delivery | Validated protocol, rooms, snapshots, prediction, reconciliation, and transport adapters |
+| `src/mp/` | Multiplayer protocol and delivery | The room protocol and policy, the binary wire, transports, the match client (prediction, interpolation, recovery), the browser host and the session owner |
 | `src/vehicles/` | Fleet specification and presentation construction | Stable specs, procedural rigs, labels, ordering, materials, and asset fingerprints |
 | `src/world/` | Battlefield composition | Maps, terrain, vegetation, props, collision, concealment, destructibles, and world manifests |
 | `src/engine/` | Rendering platform | Renderer, camera, lighting, sky, post-processing, quality policy, warmup, and diagnosis |
@@ -127,7 +127,7 @@ adapter change.
 | `src/ui/` | Interactive presentation | Garage, HUD, rooms, settings, touch controls, reports, and presentation panels |
 | `src/fx/` | Effects presentation | Pooled particles, impacts, decals, explosions, and a shared FX clock |
 | `src/audio/` | Audio presentation | Spatial audio, engines, weapons, ambience, mix state, and voices |
-| `server/` | Network services | Signaling, distributed rooms, dedicated matches, matchmaking, ratings, and HTTP surfaces |
+| `server/` | Network services | The match actor, the LAN room helper, collision manifests, ICE and telemetry HTTP surfaces |
 | `tools/` | Reproducible proof | Generators, browser probes, performance tools, geometry gates, captures, and release checks |
 
 `src/main.ts` is the strict TypeScript composition root. It should remain
@@ -405,7 +405,7 @@ flowchart TB
 
 ### 8.1 Protocol
 
-`src/net/protocol.ts` defines strict versioned envelopes and validation. Protocol
+`src/mp/room/protocol.ts` and `src/mp/wire` define strict versioned envelopes and validation. Protocol
 parsing rejects invalid types, bounds, identifiers, and sequencing before
 those values enter match policy.
 
@@ -433,12 +433,12 @@ state around an active match. Signaling coordinates peers but does not become
 combat authority. Ranked services own dedicated match creation, rating, and
 matchmaking.
 
-See [MULTIPLAYER-ARCHITECTURE.md](MULTIPLAYER-ARCHITECTURE.md) for the complete
+See [MULTIPLAYER-V2.md](MULTIPLAYER-V2.md) for the complete
 protocol and service contract.
 
 ## 9. Presentation and performance
 
-`src/net/browserBattleBridge.ts` applies sampled authority state to the
+`src/mp/presentation/battlePresentation.ts` applies sampled authority state to the
 browser model. The main render loop owns final tank synchronization. The
 presentation event queue applies critical transitions immediately and admits
 heavy cosmetic effects within a bounded frame budget.
@@ -501,7 +501,7 @@ Minimum aggregate verification:
 ```bash
 npm run typecheck
 npm test
-npm run test:net:browser
+npm run test:net:v2:p2p
 npm run tank:native:check
 npm run tank:assets:check
 npm run build
@@ -534,7 +534,7 @@ If current documents disagree:
 
 - this document owns the high-level architecture;
 - [SYSTEMS.md](SYSTEMS.md) owns detailed runtime subsystem behavior;
-- [MULTIPLAYER-ARCHITECTURE.md](MULTIPLAYER-ARCHITECTURE.md) owns networking;
+- [MULTIPLAYER-V2.md](MULTIPLAYER-V2.md) owns networking;
 - [PERFORMANCE.md](PERFORMANCE.md) owns performance policy;
 - [BUILD-STANDARD.md](BUILD-STANDARD.md) and
   [GEOMETRY-GATE.md](GEOMETRY-GATE.md) own vehicle-authoring acceptance;

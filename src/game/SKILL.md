@@ -155,10 +155,11 @@ that resets round-scoped presentation, activates the world and roster, and
 publishes the solo battle phase; `soloBattleStartAccess.ts` keeps it out of
 Garage/multiplayer boot until covered solo intent.
 The corresponding multiplayer lifecycle lives in
-`src/net/networkBattlePresentationRuntime.ts`; `main.ts` supplies renderer and
-world adapters but must not reimplement its preparation/readiness/reveal order.
-Keep it behind `src/net/networkBattlePresentationAccess.ts` so Garage and solo
-boot do not evaluate or allocate multiplayer-only presentation policy.
+`src/mp/session/browserComposition.ts`; `main.ts` supplies renderer and world
+adapters (`multiplayerAppPorts()`) but must not reimplement its
+preparation/readiness/reveal order. Keep it behind
+`src/mp/session/compositionAccess.ts` so Garage and solo boot do not evaluate
+or allocate multiplayer-only presentation policy.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

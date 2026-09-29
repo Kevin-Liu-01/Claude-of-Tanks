@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const [
   garageSource, touch, battleLoad, hud, shotInfo, playMenu, settings, publicNav, responsiveSurfaces, input,
-  networkStatus, transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs,
+  transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs,
 ] = await Promise.all([
   readFile(new URL('./garage.ts', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.ts', import.meta.url), 'utf8'),
@@ -16,7 +16,6 @@ const [
   readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8'),
   readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8'),
   readFile(new URL('../game/input.ts', import.meta.url), 'utf8'),
-  readFile(new URL('./networkStatus.ts', import.meta.url), 'utf8'),
   readFile(new URL('./transition.ts', import.meta.url), 'utf8'),
   readFile(new URL('./perfHud.ts', import.meta.url), 'utf8'),
   readFile(new URL('../engine/deviceDiag.ts', import.meta.url), 'utf8'),
@@ -384,7 +383,6 @@ assert.match(docs, /\.docs-toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-
   'Docs feedback toasts must be viewport-bounded');
 
 for (const [source, pattern, label] of [
-  [networkStatus, /\.cot-network-status\{position:fixed/, 'network status'],
   [transition, /\.cot-trans\{position:fixed/, 'state transition'],
   [perfHud, /el\.id = 'cot-perfhud'/, 'performance dashboard'],
   [deviceDiag, /el\.id = 'cot-diag'/, 'compatibility diagnostics'],
@@ -409,8 +407,6 @@ const semanticSurfaceFiles = [
   './garage.css',
   './hud.ts',
   './playMenu.ts',
-  './roomChat.ts',
-  './networkStatus.ts',
   './multiplayerStatus.ts',
   './perfHud.ts',
   './settings.ts',

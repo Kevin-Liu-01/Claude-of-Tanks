@@ -5,7 +5,7 @@ current product contracts, contributor guidance, reproducible source evidence,
 and durable architecture decisions.
 
 If two current documents disagree, SYSTEMS.md owns runtime architecture,
-MULTIPLAYER-ARCHITECTURE.md owns network behavior, and BUILD-STANDARD.md plus
+MULTIPLAYER-V2.md owns network behavior, and BUILD-STANDARD.md plus
 GEOMETRY-GATE.md own vehicle-authoring acceptance.
 
 ## Start here
@@ -40,7 +40,7 @@ complete current environment set.
 
 | Document | Authoritative scope |
 | --- | --- |
-| MULTIPLAYER-ARCHITECTURE.md | Authority arrangements, protocol v5, delivery, prediction, rooms, signaling, ranked services, trust, and verification |
+| MULTIPLAYER-V2.md | The peer-to-peer multiplayer: rooms Worker, wire, host, client, certification, the cutover of 2026-09-29 |
 | ENTRY-RESILIENCE.md | First-visit entry: the anonymous telemetry beacon and its report, the capability gate, download-aware boot watchdogs, immutable assets, reveal budgets, entry failure surfaces |
 | GAME-MODES.md | Shared deterministic objectives, respawns, scores, waves, loot, bot targets, and presentation |
 | JEV-COMMANDER.md | The Jev commander: the `/api/jev` proxy, the team document schema, the question set, orders and their gating, budgets, measured cost, the dev path |
@@ -147,7 +147,7 @@ Historical counts and architecture claims may differ from the current runtime.
 | src/vehicles/ | Fleet registry, specs, procedural geometry, materials, labels, and asset contracts |
 | src/sim/ | Renderer-free movement, aiming, ballistics, armor, damage, spotting, bots, and match authority |
 | src/game/ | Local game composition, input, equipment, consumables, profile, killcam, and Scene Studio |
-| src/net/ | Protocol, transports, rooms, snapshots, prediction, reconnect, and browser bridge |
+| src/mp/ | The room protocol and policy, the binary wire, transports, the match client, the browser host, and sessions |
 | src/ui/ | Garage, battle HUD, lobbies, results, settings, icons, and touch controls |
 | src/fx/ | Particles, impacts, decals, explosions, and presentation clock |
 | src/audio/ | Audio engine and voices |
@@ -160,7 +160,7 @@ Historical counts and architecture claims may differ from the current runtime.
     npx vite
     npm run typecheck
     npm test
-    npm run test:net:browser
+    npm run test:net:v2:p2p
     npm run tank:native:check
     npm run tank:assets:check
     npm run build

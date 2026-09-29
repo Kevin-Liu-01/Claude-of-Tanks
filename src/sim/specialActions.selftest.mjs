@@ -11,8 +11,8 @@ import {
   guideShellToward,
 } from './ballistics.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
-import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
-import { captureEntitySnapshot, SNAPSHOT_FLAGS } from '../net/snapshot.ts';
+import { PLAYER_ACTION_BITS } from './playerActions.ts';
+import { captureEntitySnapshot, SNAPSHOT_FLAGS } from './worldSnapshot.ts';
 import {
   SPECIAL_ACTION_KINDS,
   activateSpecialAction,

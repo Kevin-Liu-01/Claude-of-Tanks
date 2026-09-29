@@ -33,20 +33,6 @@ interface HudSpottingState<TEntity extends HudTankEntity> {
 type HudUpdateRuntime = Pick<HudRuntime, 'update'>;
 type DamagePanelRuntime = Pick<DamagePanelController, 'update'>;
 
-interface NetworkBridgeView {
-  entities: ReadonlyMap<string, RuntimeValue>;
-  roster?: HudTank[];
-  setPerspective?(entityId: string): RuntimeValue;
-}
-
-interface NetworkSessionView {
-  match: {
-    client?: { getStats?(): Record<string, RuntimeValue> | null } | null;
-  } | null;
-  spectator: boolean;
-  bridge: NetworkBridgeView | null;
-}
-
 interface KillcamView {
   isActive(): boolean;
   spectate: { active: boolean; targetId: string | null };
@@ -111,13 +97,12 @@ interface BattleHudFrameRuntimeOptions<TEntity extends HudTankEntity> {
   input: InputView;
   aimController: AimController;
   armorAimOverlay: ArmorAimOverlayRuntime;
-  networkSession: NetworkSessionView;
   killcam: KillcamView;
   muzzleScratch: Vector3;
   getHud(): HudUpdateRuntime | null;
   getDamagePanel(): DamagePanelRuntime | null;
   now?: () => number;
-  /** A measured round trip from another owner (the v2 status model); null falls back to the v1 client stats. */
+  /** A measured round trip from the multiplayer status model (null outside a network round). */
   pingMs?: () => number | null;
 }
 
@@ -142,7 +127,6 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   input,
   aimController,
   armorAimOverlay,
-  networkSession,
   killcam,
   muzzleScratch,
   getHud,
@@ -245,23 +229,20 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.timeLimitS = clockLimitS();
   };
 
-  const observerFocus = (bridge: NetworkBridgeView | null): TEntity | null => {
-    if (!networkSession.spectator || !killcam.spectate.active) return null;
-    return bridgeEntity(bridge?.entities.get(killcam.spectate.targetId || ''));
+  /** A spectator's focus: the entity the killcam follows, from the presentation registry. */
+  const observerFocus = (): TEntity | null => {
+    if (!killcam.spectate.active) return null;
+    return bridgeEntity(game.tankById?.get(killcam.spectate.targetId || ''));
   };
 
-  const writeFrameInfo = (
-    focus: TEntity,
-    bridge: NetworkBridgeView | null,
-  ): void => {
+  const writeFrameInfo = (focus: TEntity): void => {
     frameInfo.timeS = game.timeS;
-    const external = pingMs();
-    const rttMs = external ?? networkSession.match?.client?.getStats?.()?.rttMs;
+    const rttMs = pingMs();
     frameInfo.pingMs = Number.isFinite(Number(rttMs)) ? Number(rttMs) : 0;
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
     frameInfo.player = focus;
     frameInfo.tanks = game.tanks;
-    frameInfo.rosterTanks = bridge?.roster || game.tanks;
+    frameInfo.rosterTanks = game.tanks;
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
     frameInfo.timeLimitS = clockLimitS();
@@ -303,10 +284,8 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   };
 
   const update = (inBattle: boolean, killcamActive: boolean): void => {
-    const bridge = networkSession.bridge;
-    const observer = observerFocus(bridge);
+    const observer = observerFocus();
     const focus = player() || observer;
-    if (observer) bridge?.setPerspective?.(observer.id);
 
     // Use both the frame-top latch and the live state. A replay can begin in
     // the simulation step immediately before this operation.
@@ -315,7 +294,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
       return;
     }
 
-    writeFrameInfo(focus, bridge);
+    writeFrameInfo(focus);
     const localPlayer = player();
     if (localPlayer) aimController.update(frameInfo.aim);
     requireHud().update(frameInfo);

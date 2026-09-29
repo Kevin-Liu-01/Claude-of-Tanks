@@ -1,6 +1,6 @@
 /**
  * Room policy: the pure state machine every room host runs (charter §5).
- * It encodes v1's lobby rules (`src/net/lobby.ts`: auto-balanced teams,
+ * It encodes the first multiplayer's lobby rules (auto-balanced teams,
  * capacity, readiness resets, co-op modes on Alpha, unique names, start
  * gating, bot fill) with the v2 caps — 14 per side, 8 spectators — and with
  * the host binding replaced by an admin role that migrates to the most senior
@@ -9,6 +9,7 @@
  * receipts drive the same code.
  */
 import { GAME_MODE_IDS, normalizeGameMode } from '../../sim/matchModes.ts';
+import type { SerializedLobby } from './lobbyShape.ts';
 import { normalizeTeamArrangement, type TeamArrangement } from '../../sim/matchRuleset.ts';
 import { resolveMapId } from '../../world/maps/mapIds.ts';
 import {
@@ -633,7 +634,7 @@ export function serializeRoom(room: RoomSnapshot): RoomSnapshot {
 }
 
 /** The v1 `SerializedLobby` shape the Play menu renders (hostId = admin, isHost = isAdmin). */
-export function roomToLobby(room: RoomSnapshot): Record<string, unknown> {
+export function roomToLobby(room: RoomSnapshot): SerializedLobby {
   return {
     roomCode: room.roomCode,
     mode: room.mode,

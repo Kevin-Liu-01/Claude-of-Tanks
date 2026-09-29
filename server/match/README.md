@@ -3,15 +3,15 @@
 The server side of Multiplayer v2 (`docs/MULTIPLAYER-V2.md`): one Node process
 hosts N `MatchActor`s, each running the renderer-free authority
 (`src/sim/authoritativeMatch.ts`) at 60 Hz for one room and publishing 30 Hz
-interest-managed binary snapshots over WebSocket. The same process image runs
-in a Cloudflare Container (one actor), on a VPS behind Caddy (N actors) and as
-the LAN helper. Clients speak `src/mp/wire`.
+interest-managed binary snapshots. The same actor runs in the host commander's
+browser (`src/mp/host`, over WebRTC data channels) and in the LAN helper's
+process (`server/rooms`); the container image of the first design left the tree
+with the cutover of 2026-09-29. Clients speak `src/mp/wire`.
 
 ## Layout
 
 | File | Owns |
 |---|---|
-| `main.ts` | CLI entry: env, the service, SIGTERM/SIGINT drain (`node server/match/main.ts`). |
 | `service.ts` | HTTP `/healthz` + `/metrics`, the `/match` WebSocket upgrade (origin allowlist, payload bound, HELLO within 5 s, seat-token verification, routing to the room's actor), the actor registry and drain. |
 | `matchActor.ts` | One room: roster and entity ids, the authority and its world collision lease, the loop, seat admission, input admission, lag compensation, snapshot publishing with backpressure, reliable events, chat, verdict, stop. |
 | `loop.ts` | Drift-corrected fixed-step scheduler (`dt = 1/60`, tick counters; wall clock only decides how many ticks are due; stalls drop the backlog). |
@@ -143,35 +143,6 @@ only; values live in the platform's secret store. TLS is terminated by the
 platform (Caddy / Cloudflare). `GET /healthz` is the readiness probe (503 while
 draining); `GET /metrics` returns JSON (service totals, per-actor tick p50/p95/
 max, clients, bytes, snapshot/keyframe/drop counts, lag-compensation stats).
-
-## Container
-
-`server/match/Dockerfile`: a `node:24-alpine` deps stage (production dependencies
-pruned to `three`'s ESM build plus the four `examples/jsm` directories the
-vehicle and world modules import, and `ws`; the node binary stripped), a
-`sources` stage that drops receipts, docs and the browser-only subsystems, and a
-plain Alpine runtime with the node binary that runs `node server/match/main.ts`
-through Node's native type stripping. Measured 2026-09-25 (Docker 29, colima):
-291 MB in `docker image ls` (the containerd store counts compressed + unpacked),
-216 MB of unpacked layers, 75 MB compressed content; `/healthz` answers about
-3 s after start. `Dockerfile.dockerignore` trims the BuildKit context; the
-legacy builder ignores it, which is why the Dockerfile prunes in stages.
-
-```
-docker build -f server/match/Dockerfile -t cot-match .
-docker image ls cot-match
-docker run --rm -p 8791:8791 -e COT_MATCH_SEAT_SECRET=<secret> cot-match
-```
-
-The in-container closure check (the pruned tree must still load every map,
-vehicle and `three` module the actor needs):
-
-```
-docker run --rm cot-match node --input-type=module -e "import { createMatchActor } from '/app/server/match/matchActor.ts';
-const bots = []; for (let i = 0; i < 28; i++) bots.push({ playerId: 'b' + i, name: 'b', team: i < 14 ? 'alpha' : 'bravo', specId: i % 2 ? 't90m' : 'm1a2' });
-let now = 0; const actor = createMatchActor({ roomId: 'smoke', mapId: 'alpine', seed: 1, seats: [], bots, world: 'dedicated', countdownS: 0, now: () => now, schedule: () => () => {} });
-for (let t = 0; t < 120; t++) { now += 1000 / 60; actor.advance(now); } console.log(actor.tick); actor.stop();"
-```
 
 ## Receipts
 

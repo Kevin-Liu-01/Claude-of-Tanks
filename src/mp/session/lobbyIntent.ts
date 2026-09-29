@@ -9,9 +9,9 @@
  * this through the whole network composition; this is the small owner
  * `src/main.ts` loads with the menu. Node-runnable: every surface is a port.
  */
-import type { SerializedLobby } from '../../net/lobby.ts';
-import { createNetworkLobbyPreloader } from '../../net/networkLobbyPreloader.ts';
-import type { NetworkLobbyPreloaderOptions } from '../../net/networkLobbyPreloader.ts';
+import type { SerializedLobby } from '../room/lobbyShape.ts';
+import { createLobbyPreloader } from './lobbyPreloader.ts';
+import type { LobbyPreloaderOptions } from './lobbyPreloader.ts';
 
 export interface LobbyIntentContext {
   state: SerializedLobby;
@@ -40,7 +40,7 @@ export interface LobbyIntentPorts {
   getMenu(): Promise<LobbyIntentMenu> | null;
   setGarageStatus(status: LobbyRoomStatus | null): void;
   /** The joined-room preparation (world, builders, the battle-only modules) behind explicit room intent. */
-  preloader: Omit<NetworkLobbyPreloaderOptions, 'preloadChat'>;
+  preloader: LobbyPreloaderOptions;
 }
 
 export interface LobbyIntent {
@@ -86,8 +86,7 @@ export function createLobbyIntent({ getMenu, setGarageStatus, preloader }: Lobby
   if (typeof getMenu !== 'function' || typeof setGarageStatus !== 'function' || !preloader) {
     throw new TypeError('lobby intent requires its menu, Garage and preparation ports');
   }
-  // The room chat of v1's battles has no v2 counterpart yet: the preloader's chat transfer is a settled no-op.
-  const preload = createNetworkLobbyPreloader({ ...preloader, preloadChat: () => Promise.resolve(null) });
+  const preload = createLobbyPreloader(preloader);
   let pending: LobbyIntentContext | null = null;
   let owned: LobbyIntentContext | null = null;
   const current = (): LobbyIntentContext | null => owned ?? pending;

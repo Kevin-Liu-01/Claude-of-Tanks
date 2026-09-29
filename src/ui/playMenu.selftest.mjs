@@ -150,7 +150,7 @@ assert.equal((source.match(/revealMenuSelectOption\(list, /g)||[]).length,2,
 // entry resilience (2026-09-25): every failure panel beacons its classified code. The room-level ICE note of v1
 // (a direct-only room) left with the cutover: ICE is negotiated per peer link by the match session, whose status
 // surface reports it (src/ui/multiplayerStatus.ts).
-assert.match(source, /const failure = privateRoomFailurePresentation\(error\);/,
+assert.match(source, /const failure = roomFailurePresentation\(error\);/,
   'the failure panel classifies the room error; the room-level relay note of v1 is gone');
 assert.match(source, /kind: 'room_failure', code: failure\.code/, 'every failure panel beacons its classified code');
 assert.doesNotMatch(source, /kind: 'room_failure'[^\n]*(?:roomCode|hostName|codeInput\.value)/, 'the beacon never carries the room code or host name');

@@ -17,7 +17,7 @@ worktree and never stage generated tank work wholesale.
 - `docs/DEVELOPMENT.md#publishing-to-shared-main` — shared Codex/Claude integration,
   overlap review and preflight; read before integrating or publishing changes.
 - `docs/ARCHITECTURE.md` — original module contracts and simulation invariants.
-- `docs/MULTIPLAYER-ARCHITECTURE.md` — authoritative multiplayer migration.
+- `docs/MULTIPLAYER-V2.md` — the peer-to-peer multiplayer: rooms Worker, wire, host, client, the cutover (§13.10).
 - `docs/tank-generation/README.md` — source/markup intake, measured construction,
   prompts, quality gates and resumable tank-generation handoffs. Read before
   new source-backed tanks, family rebuilds or exact-surface geometry repairs.
@@ -32,7 +32,7 @@ worktree and never stage generated tank work wholesale.
   and deterministic integration RNG.
 - `src/game/state.ts` — battle roster and authoritative simulation integration.
 - `src/sim/` — movement, armor, damage, spotting, and ballistics logic.
-- `src/net/` — transport-independent protocol, lobby, authority, and snapshots.
+- `src/mp/` — rooms, the binary wire, transports, the match client, the browser host and the session owner.
 
 ## Stack
 <!-- agent-docs:auto:stack start -->
@@ -61,8 +61,8 @@ worktree and never stage generated tank work wholesale.
 <!-- agent-docs:auto:dirmap start -->
 | Directory | Skill | Purpose |
 |---|---|---|
-| `api/` | [`api/SKILL.md`](api/SKILL.md) | Maintain deployed signaling, ICE credential, and public GitHub-count HTTP entrypoints. |
-| `server/` | [`server/SKILL.md`](server/SKILL.md) | Implement and operate Claude of Tanks signaling and dedicated authoritative multiplayer servers. |
+| `api/` | [`api/SKILL.md`](api/SKILL.md) | Maintain the deployed ICE credential, telemetry, Jev proxy and public GitHub-count HTTP entrypoints. |
+| `server/` | [`server/SKILL.md`](server/SKILL.md) | Implement and operate the match actor, the LAN room helper, collision manifests, ICE and telemetry services. |
 | `src/` | [`src/SKILL.md`](src/SKILL.md) | Navigate browser boot and shared source contracts while preserving subsystem and bundle boundaries. |
 | `src/app/` | [`src/app/SKILL.md`](src/app/SKILL.md) | Maintain typed application composition, lazy owner access, frame wiring, and combat warm lifecycle. |
 | `src/audio/` | [`src/audio/SKILL.md`](src/audio/SKILL.md) | Work on event-driven spatial audio, radio voices, engines, weapons, ambience, and mix state. |
@@ -72,7 +72,6 @@ worktree and never stage generated tank work wholesale.
 | `src/fx/` | [`src/fx/SKILL.md`](src/fx/SKILL.md) | Work on pooled particles, impacts, destruction effects, decals, and shared FX time. |
 | `src/gallery/` | [`src/gallery/SKILL.md`](src/gallery/SKILL.md) | Build and verify the public Tank Gallery, its technical dossiers, diagnostic overlays, and exact-surface markup review packets. |
 | `src/game/` | [`src/game/SKILL.md`](src/game/SKILL.md) | Work on battle integration, bots, input, garage dressing, progression, replays, and studio state. |
-| `src/net/` | [`src/net/SKILL.md`](src/net/SKILL.md) | Implement the transport-independent multiplayer protocol, lobby, authority, snapshots, and network adapters. |
 | `src/presentation/` | [`src/presentation/SKILL.md`](src/presentation/SKILL.md) | Maintain lightweight public navigation, media loading, archive presentation, and public-site contracts. |
 | `src/sim/` | [`src/sim/SKILL.md`](src/sim/SKILL.md) | Work on deterministic movement, armor, ballistics, damage, and spotting simulation. |
 | `src/ui/` | [`src/ui/SKILL.md`](src/ui/SKILL.md) | Work on garage, HUD, settings, mobile controls, transitions, and battle presentation UI. |

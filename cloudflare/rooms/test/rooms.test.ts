@@ -3,38 +3,10 @@ import { evictDurableObject, reset, runDurableObjectAlarm, runInDurableObject } 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RoomActorState } from '../../../src/mp/room/roomActor.ts';
 import {
-  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_MAX_PLAYERS, ROOM_MAX_SPECTATORS,
+  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MAX_PLAYERS, ROOM_MAX_SPECTATORS,
 } from '../../../src/mp/room/protocol.ts';
 import type { RoomSnapshot } from '../../../src/mp/room/protocol.ts';
-import { verifySeatToken } from '../../../server/match/seatToken.ts';
-import type { MatchContainerStub, StubState } from './matchContainerStub.ts';
 import { closeClients, connect, create, identity, origin, token } from './client.ts';
-
-/** The parked backend's binding: this project (wrangler.test.jsonc) binds the stub as MATCH; the p2p project has none. */
-function matchNamespace(): DurableObjectNamespace {
-  if (!env.MATCH) throw new Error('this suite runs with the MATCH stub bound (wrangler.test.jsonc)');
-  return env.MATCH as unknown as DurableObjectNamespace;
-}
-
-function stubState(code: string): Promise<StubState> {
-  return runInDurableObject(matchNamespace().getByName(code), (instance) => (instance as unknown as MatchContainerStub).state);
-}
-
-function setStub(code: string, patch: Partial<StubState>): Promise<void> {
-  return runInDurableObject(matchNamespace().getByName(code), (instance) => { Object.assign((instance as unknown as MatchContainerStub).state, patch); });
-}
-
-/** Fake time accumulates across polls: each poll schedules the next one on the clock it saw. */
-let clockOffsetMs = 0;
-
-/** Run the room's alarm as its next status poll: the clock moves past the poll deadline first. */
-async function pollAlarm(code: string): Promise<boolean> {
-  clockOffsetMs += ROOM_MATCH_POLL_MS + 1;
-  vi.useFakeTimers();
-  vi.setSystemTime(Date.now() + clockOffsetMs);
-  try { return await runDurableObjectAlarm(env.ROOMS.getByName(code)); }
-  finally { vi.useRealTimers(); }
-}
 
 function storedState(code: string): Promise<RoomActorState> {
   return runInDurableObject(env.ROOMS.getByName(code), (_instance, state) => JSON.parse(state.storage.sql
@@ -44,15 +16,14 @@ function storedState(code: string): Promise<RoomActorState> {
 afterEach(async () => {
   vi.restoreAllMocks();
   vi.useRealTimers();
-  clockOffsetMs = 0;
   closeClients();
   await reset();
 });
 
-describe('cot-rooms Worker (the parked dedicated-service backend: MATCH bound to the container stub)', () => {
+describe('cot-rooms Worker: the room lifecycle (the deployed shape)', () => {
   it('serves health, exact routes and origins, and upgrades only WebSockets', async () => {
     const health = await exports.default.fetch('https://room.test/healthz');
-    expect(await health.json()).toEqual({ ok: true, service: 'cot-rooms', backend: 'durable-object', matchHost: 'container' });
+    expect(await health.json()).toEqual({ ok: true, service: 'cot-rooms', backend: 'durable-object', matchHost: 'p2p' });
     for (const path of ['/rooms', '/rooms/abcdef', '/rooms/ABCDEF/extra', '/rooms/ABCDEF?token=secret']) {
       expect((await exports.default.fetch(`https://room.test${path}`, { headers: { Upgrade: 'websocket', Origin: origin } })).status).toBe(404);
     }
@@ -108,82 +79,6 @@ describe('cot-rooms Worker (the parked dedicated-service backend: MATCH bound to
     expect(state.players.filter((player) => player.team === 'bravo').length).toBe(14);
     expect(state.players.filter((player) => player.team === 'spectator').length).toBe(8);
   }, 40_000);
-
-  it('starts a match through the container: start RPC, control POST with the bearer, per-seat tokens, and the proxied /match socket', async () => {
-    const admin = await create('ROOM03');
-    const guest = await connect('ROOM03');
-    await guest.request('room_join', identity('guest', token('c'), token('d')));
-    await admin.request('room_command', { command: { type: 'set_ready', ready: true } });
-    await guest.request('room_command', { command: { type: 'set_ready', ready: true } });
-    const ack = await admin.request('room_command', { command: { type: 'start' } });
-    expect(ack.type).toBe('room_ack');
-    const stub = await stubState('ROOM03');
-    expect(stub.starts).toBe(1);
-    expect(stub.configs.length).toBe(1);
-    expect(stub.authorizations.at(-1)).toBe('Bearer rooms-test-control-secret-0123456789');
-    const config = stub.configs[0] as { roomId: string; seats: unknown[]; bots: unknown[]; mapId: string };
-    expect(config.roomId).toBe('ROOM03');
-    expect(config.seats.length).toBe(2);
-    expect(config.bots.length).toBe(2);
-    const adminStart = await admin.next((message) => message.type === 'match_start');
-    const guestStart = await guest.next((message) => message.type === 'match_start');
-    expect(adminStart.payload.matchUrl).toBe('/rooms/ROOM03/match');
-    // the Worker's own secret: a local `.dev.vars` (the wrangler dev recipe) overrides wrangler.test.jsonc's value here too
-    const verified = verifySeatToken(env.MATCH_SEAT_SECRET, guestStart.payload.seatToken, Date.now());
-    expect(verified.ok).toBe(true);
-    if (verified.ok) { expect(verified.claims.playerId).toBe('guest'); expect(verified.claims.roomId).toBe('ROOM03'); }
-    expect(adminStart.payload.seatToken).not.toBe(guestStart.payload.seatToken);
-    expect((admin.last('room_state')?.payload.room as RoomSnapshot).phase).toBe('starting');
-    // the match socket route reaches the container's /match through the Worker
-    const proxied = await exports.default.fetch('https://room.test/rooms/ROOM03/match', {
-      headers: { Upgrade: 'websocket', Origin: origin, 'CF-Connecting-IP': 'match' },
-    });
-    expect(proxied.status).toBe(101);
-    const socket = proxied.webSocket!;
-    socket.accept();
-    const echoed = new Promise<string>((resolve) => socket.addEventListener('message', (event) => resolve(String(event.data)), { once: true }));
-    socket.send('hello');
-    expect(await echoed).toBe('echo:hello');
-    socket.close();
-    expect((await stubState('ROOM03')).matchSockets).toBe(1);
-    // the poll alarm moves the room to playing, then records the verdict and unlocks the room
-    await setStub('ROOM03', { phase: 'playing' });
-    expect(await pollAlarm('ROOM03')).toBe(true);
-    expect((await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).phase === 'playing')).type).toBe('room_state');
-    await setStub('ROOM03', { phase: 'ended', verdict: { result: 'alpha', reason: 'elimination' } });
-    await pollAlarm('ROOM03');
-    const status = await guest.next((message) => message.type === 'match_status');
-    expect(status.payload.status).toBe('ended');
-    expect((status.payload.verdict as { result: string }).result).toBe('alpha');
-    const finished = (await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).phase === 'waiting' && (message.payload.room as RoomSnapshot).lastResult !== null)).payload.room as RoomSnapshot;
-    expect(finished.lastResult).toEqual({ round: 1, result: 'alpha', reason: 'elimination' });
-    expect(finished.players.every((player) => !player.ready)).toBe(true);
-    // rematch in the same room: a second start, round 2, fresh tokens
-    await admin.request('room_command', { command: { type: 'set_ready', ready: true } });
-    await guest.request('room_command', { command: { type: 'set_ready', ready: true } });
-    expect((await admin.request('room_command', { command: { type: 'start' } })).type).toBe('room_ack');
-    const second = await guest.next((message) => message.type === 'match_start' && message.payload.round === 2);
-    expect(second.payload.seatToken).not.toBe(guestStart.payload.seatToken);
-    expect((await stubState('ROOM03')).starts).toBe(2);
-  });
-
-  it('reports a lost container after two unanswered polls and a start the host refuses', async () => {
-    const admin = await create('ROOM04', { teamSize: 1 });
-    await admin.request('room_command', { command: { type: 'set_ready', ready: true } });
-    expect((await admin.request('room_command', { command: { type: 'start' } })).type).toBe('room_ack');
-    await setStub('ROOM04', { failWith: 502 });
-    await pollAlarm('ROOM04');
-    expect((await storedState('ROOM04')).room?.match?.status).toBe('starting');
-    await pollAlarm('ROOM04');
-    const lost = await admin.next((message) => message.type === 'match_status' && message.payload.status === 'lost');
-    expect(lost.payload.status).toBe('lost');
-    const state = (await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).phase === 'waiting' && (message.payload.room as RoomSnapshot).lastResult !== null)).payload.room as RoomSnapshot;
-    expect(state.lastResult).toEqual({ round: 1, result: null, reason: 'match_lost' });
-    await admin.request('room_command', { command: { type: 'set_ready', ready: true } });
-    const refused = await admin.request('room_command', { command: { type: 'start' } });
-    expect(refused.payload.code).toBe('match_host_unavailable');
-    expect((await storedState('ROOM04')).room?.round).toBe(1);
-  });
 
   it('migrates admin at once on leave, after the grace on disconnect, and resumes with the rotated capability across hibernation', async () => {
     const admin = await create('ROOM05', { teamSize: 3 });

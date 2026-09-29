@@ -3,7 +3,7 @@
 > Historical document. This was the locked nine-module plan used during the
 > original parallel implementation. It is retained as build provenance, but it
 > is not the current runtime architecture. Use [SYSTEMS.md](SYSTEMS.md) for
-> current ownership and data flow, [MULTIPLAYER-ARCHITECTURE.md](MULTIPLAYER-ARCHITECTURE.md)
+> current ownership and data flow, [MULTIPLAYER-V2.md](MULTIPLAYER-V2.md)
 > for network behavior, and [DEVELOPMENT.md](DEVELOPMENT.md) for verification.
 
 Nine builder agents implement the modules below **in parallel, without talking to each

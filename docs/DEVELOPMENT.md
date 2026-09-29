@@ -125,25 +125,17 @@ wait is stale by the time the lock arrives — re-read it after `acquire()` and 
 
 ## Development services
 
-Start local signaling:
+Private and LAN matches run in the host commander's browser over WebRTC; the room (seats, readiness, signaling relay,
+host election and migration) is a Room Durable Object in production (`cloudflare/rooms`) and, on a LAN or offline, the
+local helper:
 
-    npm run server:signal
+    npm run server:mp
 
-The default endpoint is ws://127.0.0.1:7777/signal.
-
-Private and LAN matches run in the room host's browser. They do not need Redis,
-Supabase, a dedicated game server, or a ratings database. Keep the host tab open
-and foregrounded. See [the multiplayer hosting runbook](MULTIPLAYER-HOSTING.md)
-for LAN access and Internet room-code signaling/TURN setup.
-
-The retained developer-only dedicated match and ranked HTTP service can still
-be exercised independently (Ranked is not a player-facing mode):
-
-    npm run server:match
-
-The default service uses port 8790. Production requires secure WebSocket and
-HTTP endpoints, explicit origin configuration, persistent rating storage, and
-deployment-specific signaling/TURN configuration.
+`server/rooms/main.ts` serves rooms on port 8792 and runs the match in-process by default
+(`COT_ROOMS_MATCH_TRANSPORT=p2p` hosts it in the admin's browser like production). Browsers on the network open the
+game, choose LAN in the Play menu, and `src/mp/session/endpoint.ts` resolves the room host to that port. Nothing
+needs Redis, a dedicated game server or a ratings database; the first multiplayer's signaling function and dedicated
+services left the tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
 
 The Jev commander (the Play menu's "Opponent brain: Jev", `docs/JEV-COMMANDER.md`)
 needs the `/api/jev` function, which the dev server does not run. Start the local
@@ -156,39 +148,11 @@ It listens on http://127.0.0.1:8794/api/jev and the dev server forwards the same
 route to it (`COT_JEV_DEV_URL` to point elsewhere, `VITE_JEV_URL` to bypass the
 route). With the proxy down a battle simply plays on the classic brain.
 
-### Complete self-hosted stack
+### Hosting
 
-For a Redis-free backend while retaining the existing Vercel website and TURN
-credential endpoint, use [the multiplayer hosting runbook](MULTIPLAYER-HOSTING.md)
-and the Cloudflare Worker under `cloudflare/signaling`. The optional
-`compose.multiplayer.yaml` alternative contains only the TLS gateway and
-in-memory signaling; neither moves the frontend or requires a separate database.
-
-The repository also retains an optional legacy all-services deployment that serves the static game,
-same-origin signaling and ICE credentials, authoritative ranked service,
-persistent local rating file, and coturn relay without Cloudflare, Vercel,
-hosted Redis, or another application service. The self-host image disables the
-optional Vercel Analytics client used by the hosted public site. Copy `.env.example`
-to `.env`, then set at minimum:
-
-    COT_PUBLIC_ORIGIN=https://tanks.example.com
-    COT_SITE_ADDRESS=tanks.example.com
-    COT_TURN_HOSTNAME=turn.example.com
-    COT_TURN_EXTERNAL_IP=203.0.113.10
-    COT_TURN_URLS=turn:turn.example.com:3478?transport=udp,turn:turn.example.com:3478?transport=tcp
-    COT_TURN_SHARED_SECRET=replace-with-a-long-random-secret
-
-Start every service:
-
-    docker compose --env-file .env -f compose.selfhost.yaml up --build -d
-
-Open TCP 80/443, TCP/UDP 3478, and UDP 49160–49200. Caddy terminates web TLS
-and routes `/api/signal`, `/api/ice`, `/ranked/*`, and `/match` to the bundled
-services. coturn uses the same REST shared secret as the signaling service, so
-the browser receives only expiring credentials. The single-process signaling
-store requires no Redis; Redis remains an optional horizontal-scaling adapter.
-The local default is `http://localhost:8080`; internet relay verification still
-requires a public TURN address rather than `localhost`.
+Internet rooms use the rooms Worker (`cloudflare/rooms/README.md` deploys it on the Free plan; `VITE_ROOMS_URL` names it
+on a build, the official site resolves it from `src/officialHost.ts`). There is no self-hosted compose stack any more:
+a self-host needs the static site, the rooms Worker (or the LAN helper on a reachable host) and a TURN relay.
 
 Production private rooms automatically request short-lived credentials from
 `/api/ice`. For a fully self-hosted deployment, configure coturn with
@@ -215,23 +179,18 @@ lifetime (clamped to one hour through one day; default eight hours).
 a different endpoint. Long-lived provider secrets must never use the `VITE_`
 prefix or enter the browser bundle.
 
-Before certifying private rooms in production, check both service surfaces:
+Before certifying private rooms in production, check the room Worker and the ICE endpoint:
 
-    curl -fsS https://cot.kevinliu.studio/api/signal
+    curl -fsS https://cot-rooms.kk23907751.workers.dev/healthz
     curl -fsS https://cot.kevinliu.studio/api/ice
 
-Or run the release gate, which validates both responses, then gathers a real
-relay candidate in a pristine browser using relay-only ICE policy:
+Then run the three-browser proof against the deployed site, the only origin the Worker admits:
 
-    npm run net:prod:check
+    node tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio
 
-The signaling response must report a ready command store. The ICE response
+The health must answer `{ ok, backend: durable-object, matchHost: p2p }`. The ICE response
 must be HTTP 200 and include at least one `turn:` or `turns:` URL, and the
-browser must obtain a relay candidate from those credentials. A 503, direct-only
-fallback, or unusable TURN credential cannot reliably connect friends behind
-restrictive NATs. Use `--dependency-only` solely to diagnose endpoints; it is
-not release evidence.
-
+browser must obtain a relay candidate from those credentials.  
 ## Fast validation
 
 Run the complete Node self-test suite:
@@ -394,12 +353,12 @@ the new values can only come from the receipt's own measurement of the current b
 | Movement or tracks | npm test, track geometry self-test, relevant browser probe |
 | Ballistics, armor, damage, spotting | npm test |
 | Vehicle specification or geometry | targeted assets, release check, native check |
-| Network protocol or room lifecycle | npm test, npm run test:net:browser |
-| Network presentation/performance | npm test, test:net:browser, test:net:render |
+| Network protocol or room lifecycle | npm test, npm run test:net:v2:rooms, npm run test:net:v2:p2p |
+| Network presentation/performance | npm test, test:net:v2:p2p, test:net:v2:p2p:soak |
 | Renderer, quality, transitions | npm test, public build, cold/performance probe |
 | Landing page or public docs | public build, desktop and mobile browser inspection |
 | Scene Studio | Studio self-test and affected capture pipeline |
-| Signaling/ranked service | npm test plus service-specific integration test |
+| The rooms Worker | npm test plus `npm run test:net:v2:rooms` |
 
 Risk can require more than the minimum. A build passing does not replace a
 behavioral test, and a screenshot does not replace a simulation invariant.
@@ -408,42 +367,14 @@ behavioral test, and a screenshot does not replace a simulation invariant.
 
 Run:
 
-    npm run test:net:browser
+    npm run test:net:v2:p2p
 
-The rig starts signaling, Vite, and two Chromium peers. It exercises room code
-creation/join, host policy, team and spectator switching, same-vehicle identity
-separation, WebRTC handoff, authoritative movement, adverse delivery, and clean
-departure.
-
-Entry-link verification:
-
-    npm run test:net:entry
-
-Private/LAN room failures and recovery:
-
-    npm run test:net:errors
-    npm run test:net:host-loss
-    npm run test:net:host-stall
-
-The error fixture checks real menu/native signaling on desktop and mobile,
-explicit retries, terminal membership errors and stale acquisition cleanup.
-The full-application entry rig reloads a real guest, then tests host departure
-or a frozen authority with the RTC channel still open. It requires bounded
-Garage restoration, visible error controls, cleared invites, no fabricated
-progression and zero browser errors. The default entry case interrupts a cold
-reload. These local rigs clean up only their own browsers/servers; they do not
-certify a production endpoint or restricted-network relay connectivity.
-
-Network render and destruction-burst performance:
-
-    npm run test:net:render
-
-Use deterministic network impairment during manual QA:
-
-    ?netSim=1&netLatency=120&netJitter=40&netLoss=10&netdiag=1
-
-The latency value is one-way. Replaceable snapshots can be dropped without
-making the ordered control channel unreliable.
+The rig starts one Vite dev server, the room signaling double and three pristine headless Chromes with real WebRTC: A
+creates a LAN room, B and C join through the invite link, everyone readies, A starts and hosts the match in a Worker,
+B and C play over data channels, A closes its tab, the room elects B after the host grace, C follows, A returns as a
+peer (`tools/mp-p2p-e2e.mjs`; `--site=https://cot.kevinliu.studio` runs it against production). `npm run
+test:net:v2:browser` is the two-browser exit-flow rig on the in-process room host; `npm run test:net:v2:p2p:soak` the
+28-seat soak on `wrangler dev`; `npm run test:net:v2:rooms` the Worker under the Workers runtime.
 
 ## Vehicle verification
 
@@ -630,7 +561,7 @@ Before a production release:
 2. Run npm test.
 3. Run the targeted subsystem checks from the matrix.
 4. Run npm run tank:native:check when fleet or build boundaries changed.
-5. Run npm run test:net:browser when networking or room behavior changed.
+5. Run npm run test:net:v2:p2p when networking or room behavior changed.
 6. Run npm run build and npm run build:private.
 7. Inspect the game, home, and docs routes at desktop and mobile widths.
 8. Verify no browser console errors or missing public assets.
@@ -641,7 +572,7 @@ Before a production release:
 
 - FEATURES.md: visible product capabilities
 - SYSTEMS.md: internal runtime ownership
-- MULTIPLAYER-ARCHITECTURE.md: protocol, rooms, services, and trust
+- MULTIPLAYER-V2.md: the rooms Worker, the wire, the host, the client, and trust
 - ENTRY-RESILIENCE.md: first-visit telemetry beacon, capability gate, download-aware boot watchdogs, entry failure surfaces
 - PERFORMANCE.md: render/load/per-frame performance design
 - STUDIO.md: Scene Studio API and determinism
@@ -663,8 +594,8 @@ defaults (`src/mp/session/endpoint.selftest.mjs`, `src/entry/telemetry.selftest.
 `tools/publicBuildEnv.ts` (1043e50f4) makes `vite build` refuse a `VITE_*` value equal to Vercel's redaction marker
 `[SENSITIVE]`, which is what `vercel pull` writes for this project's sensitive variables. The once-per-round CLI deploy
 therefore drops those lines from the pulled `.vercel/.env.production.local` (and `.env.local`) before `vercel build`:
-an unset variable means the served page resolves its Workers from `src/officialHost.ts` and v1 signaling from the same
-origin — the same behaviour a hosted build with the real values would show for the official site. Secrets are never
+an unset variable means the served page resolves its Workers from `src/officialHost.ts` — the same behaviour a hosted
+build with the real values would show for the official site. Secrets are never
 touched by this step; only redacted browser-visible `VITE_*` lines are removed.
 
 ### Landing over another session's red (2026-09-30)

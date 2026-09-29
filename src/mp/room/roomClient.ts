@@ -29,7 +29,7 @@ export type RoomClientPhase = 'idle' | 'connecting' | 'joined' | 'reconnecting' 
 
 /**
  * The room host could not be reached: the socket closed (or timed out) before the room admitted the client. The Play
- * menu classifies it as the room service being unavailable (src/net/roomFailure.ts), retryable; a refusal the room
+ * menu classifies it as the room service being unavailable (src/mp/session/roomFailure.ts), retryable; a refusal the room
  * itself sent is a `RoomError` with the room's code instead.
  */
 export class RoomConnectError extends Error {

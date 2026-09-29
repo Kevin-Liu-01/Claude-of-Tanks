@@ -13,18 +13,15 @@ idle expiry closes one. The same protocol is served by `server/rooms` for LAN
 and receipts, so the browser `RoomClient` cannot tell the two apart.
 
 The dedicated-service backend of the first design (a match container per room)
-stays parked in the tree — `src/matchContainer.ts`, `createServiceMatchHost` in
-`src/matchHost.ts`, the `service` vitest project — and is selected only when a
-`MATCH` container binding exists (a paid account) or `MATCH_SHIM_URL` names a
-match service started outside the Worker. Nothing of it deploys on the Free plan.
+left the tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
 
 ## Routes
 
 | Route | What |
 |---|---|
-| `GET /healthz` | shallow health: `{ ok, service: 'cot-rooms', backend: 'durable-object', matchHost: 'p2p' \| 'shim' \| 'container' }` |
+| `GET /healthz` | shallow health: `{ ok, service: 'cot-rooms', backend: 'durable-object', matchHost: 'p2p' }` |
 | `GET /rooms/<CODE>` (WebSocket) | the room socket → `Room` for that code (exact origin, per-IP upgrade rate limit) |
-| `GET /rooms/<CODE>/match` (WebSocket) | the parked backend's match socket; `503 match_host_unavailable` with the p2p host |
+| `GET /rooms/<CODE>/match` (WebSocket) | `503 match_host_unavailable`: the match runs between the browsers, never here |
 
 Frames are UTF-8 JSON envelopes (`src/mp/room/protocol.ts`), text or binary in,
 binary out. The room protocol, policy and limits (28 players + 8 spectators,
@@ -79,15 +76,15 @@ npm --prefix cloudflare/rooms run typecheck  # src and test tsconfigs
 npm --prefix cloudflare/rooms test           # also: npm run test:net:v2:rooms from the repository root
 ```
 
-- `p2p` (`wrangler.p2p.test.jsonc`, `test/p2p.test.ts`): the deployed shape — no
-  `MATCH` binding, no shim. The election, the rtc:// URL, the per-match secret
-  only on the host's copies, tokens under it, the relay and its refusals, the
-  host's reports, migration after the 8 s grace across an eviction, the old host
-  back as a peer, a decline ladder ending in a lost match, silence past three
-  polls.
-- `service` (`wrangler.test.jsonc`, `test/rooms.test.ts`): the parked backend
-  with `test/matchContainerStub.ts` bound as `MATCH` — the container start,
-  proxy, polls, verdict and rematch stay proven.
+One Workers-runtime project (`wrangler.test.jsonc`, `vitest.config.ts`): the real
+Worker and Room object. `test/rooms.test.ts` is the room lifecycle (routes and
+origins, create / join / auto-balance, 28 + 8 seats, admin migration and the
+rotated capability across hibernation, the 24 h expiry, bounded chat and the
+rate window); `test/p2p.test.ts` the peer-to-peer host: the election, the rtc://
+URL, the per-match secret only on the host's copies, tokens under it, the relay
+and its refusals, the host's reports, migration after the 8 s grace across an
+eviction, the old host back as a peer, a decline ladder ending in a lost match,
+silence past three polls, the keepalive frame and the coalesced broadcasts.
 
 Without a browser, the whole p2p room flow also runs on the in-process service
 (`server/rooms`, `matchTransport: 'p2p'`) from the repository root:
@@ -130,7 +127,7 @@ integrator does, on the Free plan, once.
 cd cloudflare/rooms
 npx wrangler login                                   # the account that runs cot-private-rooms
 npx wrangler secret put MATCH_SEAT_SECRET            # 32+ random bytes, hex; the per-match host secrets derive from it
-npx wrangler deploy --dry-run --outdir /tmp/cot-rooms-dry   # bindings: ROOMS, ROOM_CONNECT_LIMITER, ALLOWED_ORIGINS, MATCH_SHIM_URL
+npx wrangler deploy --dry-run --outdir /tmp/cot-rooms-dry   # bindings: ROOMS, ROOM_CONNECT_LIMITER, ALLOWED_ORIGINS
 npx wrangler deploy
 ```
 
@@ -143,16 +140,13 @@ the v1 Worker (`cot-private-rooms`) serves nothing the client asks for.
 
 Configuration in `wrangler.jsonc`: `nodejs_compat` (the actor hashes and signs
 with `node:crypto`), the `ROOM_CONNECT_LIMITER` rate limit (120 upgrades per IP
-per minute), `ALLOWED_ORIGINS`, the `MATCH_SHIM_URL` var (empty), one Durable
-Object binding (`ROOMS` → `Room`) and one SQLite migration. Secret:
-`MATCH_SEAT_SECRET`. The Worker has never been deployed with the container class,
-so the `v1` migration names `Room` only; a paid account that wants the parked
-backend adds `MatchContainer` in a new migration tag, restores the `containers`
-block (`class_name: MatchContainer`, `image: ../../server/match/Dockerfile`,
-`image_build_context: ../..`, `instance_type: standard-2`, `max_instances: 20`),
-binds `MATCH` and re-exports the class from `src/index.ts` — the local container
-run of 2026-09-25 (dry run, `wrangler dev` with Docker, the buildx prerequisite,
-the emulated-amd64 caveat) is recorded in the git history of this file.
+per minute), `ALLOWED_ORIGINS`, one Durable Object binding (`ROOMS` → `Room`)
+and the migration chain. Secret: `MATCH_SEAT_SECRET`. The migrations are the
+deployed history: `v1` created `Room` and the container class of the first
+design, `v2` deleted that class (a version may not stop exporting a class
+existing objects depend on; a deletion is always a new tag after the tag that
+created the class — never edit an applied tag). `@cloudflare/containers` stays
+in `package.json` until an integrator with the lockfile removes it.
 
 ## Cost
 
@@ -190,12 +184,11 @@ request (the conservative rule) and show the published rule beside it.
 
 | File | Owns |
 |---|---|
-| `src/index.ts` | routes, origin, rate limit, the (parked) match-socket proxy |
+| `src/index.ts` | routes, origin, rate limit; the match socket route answers 503 (the match never runs here) |
 | `src/room.ts` | the `Room` Durable Object: hibernation attachments, SQLite state blob, alarms, deferred socket closes, the actor's ports |
-| `src/matchHost.ts` | `createMatchHost`: the p2p host by default, the parked service host over the container binding or the HTTP shim; `proxyMatchSocket` |
-| `src/matchContainer.ts` | the parked `Container` subclass (port 8791, `sleepAfter` 2 m, env from the secrets) — not exported |
-| `src/util.ts`, `src/env.d.ts` | helpers; the secrets' and the optional `MATCH` binding's types merged into the generated `Env` |
-| `test/p2p.test.ts` | the p2p project: 6 Workers-runtime tests of the deployed shape |
-| `test/rooms.test.ts` | the service project: 8 Workers-runtime tests of the parked backend |
-| `test/client.ts` | the room-socket client both suites drive |
-| `test/matchContainerStub.ts`, `test/worker.ts`, `wrangler.test.jsonc`, `wrangler.p2p.test.jsonc`, `vitest.config.ts` | the two test Workers |
+| `src/matchHost.ts` | `createMatchHost`: the peer-to-peer host |
+| `src/util.ts`, `src/env.d.ts` | helpers; the secret's type merged into the generated `Env` |
+| `test/p2p.test.ts` | 8 Workers-runtime tests of the peer-to-peer host |
+| `test/rooms.test.ts` | 6 Workers-runtime tests of the room lifecycle |
+| `test/client.ts` | the room-socket client both files drive |
+| `wrangler.test.jsonc`, `vitest.config.ts` | the test Worker |

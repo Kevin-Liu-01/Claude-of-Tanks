@@ -11,10 +11,6 @@ import { createTankState, shotRecoilScale, SIM_DT } from './movement.ts';
 import { createShell, stepShell, guideShellToward } from './ballistics.ts';
 import { isUnguidedRocket, usesLauncherMuzzles } from './launcherPolicy.ts';
 import { createGameState, createBus, simStep } from '../game/state.ts';
-import { createBrowserBattleBridge } from '../net/browserBattleBridge.ts';
-import { snapshotWireCodec } from '../net/snapshotWireCodec.ts';
-import { createEnvelope, MESSAGE_TYPES } from '../net/protocol.ts';
-import { createSnapshotDelta } from '../net/snapshot.ts';
 import { autoloaderHudState } from '../ui/hud.ts';
 import { specialActionKind } from './specialActionPolicy.ts';
 import { createFx } from '../fx/effects.ts';
@@ -80,8 +76,7 @@ function authorityRun() {
   assert.equal(entity.combat.ammo[0], 48); assert.equal(entity.combat.magazine.rounds, 0);
   assert.equal(entity.combat.reload.kind, 'magazine'); near(entity.combat.reload.t, 48, 'full rack begins after final rocket');
   const snapshot = match.snapshot({ tick: 346, serverTimeMs: 346 * 1000 / 60, viewerId: 'rocket' });
-  const packet = createEnvelope(MESSAGE_TYPES.SNAPSHOT, createSnapshotDelta(snapshot), { tick: snapshot.tick, seq: snapshot.tick });
-  assert.deepEqual(snapshotWireCodec.decode(snapshotWireCodec.encode(packet)), JSON.parse(JSON.stringify(packet)), '24-round rack traverses unchanged wire codec');
+  assert.equal(snapshot.entities.find((row) => row.id === 'rocket').magazineCapacity, 24, 'the 24-round rack is captured for the wire');
   for (let tick = 0; tick < 2879; tick++) match.step({ dt: SIM_DT, inputs: new Map([['rocket', input]]) });
   assert.equal(entity.combat.ammo[0], 48, 'no 25th rocket before the complete rack reload');
   match.afterSnapshotBroadcast();
@@ -124,30 +119,7 @@ const ordinaryCombat = createCombatState(ordinary); ordinaryCombat.magazine.roun
 ordinaryCombat.modules.missileRack.state = 'red'; startMagazineReload(ordinaryCombat, ordinary);
 near(ordinaryCombat.reload.totalS, 48, 'ordinary HE is not launcher stock');
 
-// Late-join network projectiles reconstruct rocket presentation without new wire fields.
-const netGame = { tanks: [], tankById: new Map(), shells: [], player: null, timeS: 0, result: null };
-const feedback = [], calls = [];
-const bridge = createBrowserBattleBridge({ engineCtx: { scene: { add() {} } }, game: netGame,
-  viewerId: 'viewer', bus: { emit(type, payload) { feedback.push({ type, payload }); } }, prepareVisualTextures: async () => {},
-  createTankVisual: () => ({ root: new Group(), setVisible() {}, syncFromState() {}, dispose() {},
-    recoilKick(age, scale, index, launcher) { calls.push({ index, launcher, scale }); return index; },
-    gunMuzzleWorld(out, index, launcher) { assert.equal(launcher, true); return out.set(index, 3, 2.6); }, gunDirWorld(out) { return out.set(0, 0, 1); } }) });
-const own = { id: 'viewer', specId: 'm1a2', team: 'alpha', x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0,
-  turretYaw: 0, gunPitch: 0, hp: 2000, maxHp: 2000, reloadS: 0, shellSlot: 0,
-  ammo0: 72, ammo1: 0, ammo2: 0, magazineRounds: 24, magazineCapacity: 24, flags: 0 };
-const frame = { tick: 1, serverTimeMs: 0, entities: [own], shells: [], meta: { phase: 'playing', roomRound: 0 } };
-bridge.apply(frame); netGame.player.spec = spec;
-frame.tick++; frame.shells = [{ id: 101, shooterId: 'viewer', type: 'HE', guided: false, x: 0, y: 300, z: 800, vx: 0, vy: 0, vz: 30000 }];
-bridge.apply(frame, 0, [{ type: 'shell_fired', shooterId: 'viewer', shellId: 101, shellName: rocket.name,
-  shellType: 'HE', shellSlot: 0, muzzleIndex: 23, x: 0, y: 0, z: 0, dx: 0, dy: 0, dz: 1, caliberMm: 220, velocityMps: 300 }]);
-assert.equal(netGame.shells[0].rocket, true); assert.equal(netGame.shells[0].spec.guided, false);
-assert.equal(netGame.player.combat.launcherCursor, 0);
-assert.ok(calls.some(c => c.index === 23 && c.launcher === true && c.scale === 0));
-assert.equal(feedback.findLast(e => e.type === 'shell:fired').payload.rocket, true);
-assert.deepEqual(feedback.findLast(e => e.type === 'shell:fired').payload.muzzlePos, [23, 3, 2.6]);
-netGame.player.spec = ordinary; frame.tick++; bridge.apply(frame);
-assert.equal(netGame.shells[0].rocket, false, 'ordinary HE does not acquire rocket visuals');
-bridge.dispose();
+// The late-join rocket presentation over the wire is the multiplayer presentation's receipt (src/mp/presentation).
 
 // Actual fleet armor traces: light hull penetration versus protected MBT armor.
 function directHit(id, y) {

@@ -14,7 +14,7 @@ import type { RoomClientOptions, StorageLike } from '../room/roomClient.ts';
 import { normalizeRoomCode } from '../room/protocol.ts';
 import type { RoomChatEntry, RoomMatchStartPayload, RoomMode, RoomSnapshot } from '../room/protocol.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
-import type { SerializedLobby } from '../../net/lobby.ts';
+import type { SerializedLobby } from '../room/lobbyShape.ts';
 
 type Unsubscribe = () => void;
 type RoomCommand = Record<string, unknown>;
@@ -91,9 +91,9 @@ export function isMultiplayerV2Session(value: unknown): value is V2RoomSession {
   return !!value && typeof value === 'object' && (value as Record<PropertyKey, unknown>)[MULTIPLAYER_V2_SESSION] === true;
 }
 
-/** `roomToLobby` produces the lobby wire shape; the menu renders it without a second validation. */
+/** `roomToLobby` produces the lobby shape; the menu renders it without a second validation. */
 export function lobbyOf(room: RoomSnapshot): SerializedLobby {
-  return roomToLobby(room) as unknown as SerializedLobby;
+  return roomToLobby(room);
 }
 
 function connectFailure(code: string, message: string): Error & { code: string } {

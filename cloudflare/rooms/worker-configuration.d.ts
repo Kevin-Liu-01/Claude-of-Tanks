@@ -4,7 +4,6 @@
 interface __BaseEnv_Env {
 	ROOM_CONNECT_LIMITER: RateLimit;
 	ALLOWED_ORIGINS: string;
-	MATCH_SHIM_URL: string;
 	ROOMS: DurableObjectNamespace<import("./src/index").Room>;
 }
 declare namespace Cloudflare {
@@ -19,7 +18,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ALLOWED_ORIGINS" | "MATCH_SHIM_URL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ALLOWED_ORIGINS">> {}
 }
 
 // Begin runtime types

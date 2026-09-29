@@ -114,7 +114,7 @@ channel, the client copies reload → gunReload after applying the row.
 (`VIEWER_EQUIPMENT`), `u16 modeSpeedMultiplier` ×1000, `u16 modeGravityScale`
 ×1000, `u8 movementVersion` (0 = none) and, when present, `u16 movementFlags`,
 `u8 count`, `count × f32` — the movement integrator checkpoint of
-`src/net/movementPredictionState.ts` (`{ version, values, flags }`) that the
+`src/sim/movementPredictionState.ts` (`{ version, values, flags }`) that the
 prediction replay restores before re-applying unacknowledged inputs.
 
 **Interest management** is the server's: a viewer receives rows for its own

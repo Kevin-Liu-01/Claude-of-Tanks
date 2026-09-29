@@ -5,7 +5,7 @@ game. It replaces the former directory of per-file migration receipts. Those
 receipts described completed work, not alternative designs; Git history keeps
 them available without making contributors read hundreds of obsolete steps.
 
-Current behavior is defined by `SYSTEMS.md`, `MULTIPLAYER-ARCHITECTURE.md`,
+Current behavior is defined by `SYSTEMS.md`, `MULTIPLAYER-V2.md`,
 `PERFORMANCE.md`, `GAME-MODES.md`, and the source code. Add an entry here only
 when future work must preserve a non-obvious choice or deliberately reverse it.
 
@@ -55,7 +55,7 @@ variable-rate presentation. Randomness is seeded or injected, and clients never
 decide hits, damage, reload completion, hidden-enemy disclosure, or match
 results.
 
-Solo, browser-hosted private/LAN rooms, and dedicated matches share the same
+Solo and the browser-hosted private/LAN rooms share the same
 headless combat rules. Player identity is separate from vehicle identity, so
 duplicate tank selections remain valid.
 
@@ -96,7 +96,7 @@ Their circular lifecycle links are assembled only by
 `networkBattleComposition.ts`: round teardown, rematch, lobby preparation,
 presentation activation, and transport closure cannot be rewired independently
 inside `main.ts`.
-The common Bots preload list must contain no bridge, room-chat, signaling, or
+The common Bots preload list must contain no multiplayer composition, battle-client or
 network-presentation work. A failed first acquisition is retryable and must not
 poison later room attempts in the same page session.
 The demand-loaded battle HUD and damage panel are one phase-owned application
@@ -220,7 +220,7 @@ activation effect.
 
 ## Multiplayer connectivity and persistence
 
-Private internet rooms use same-origin durable signaling plus operator-supplied
+Private internet rooms use the rooms Worker (seats, signaling relay, host election) plus operator-supplied
 ICE. TURN credentials are short-lived and issued from server secrets; long-lived
 relay credentials never ship to browsers. An unavailable ICE endpoint falls
 back to browser host candidates rather than silently contacting a public STUN
@@ -233,14 +233,14 @@ round restores the same protocol epoch when authority already welcomed the new
 transport.
 
 Round cleanup and room teardown are separate operations. Rematch cleanup may
-dispose presentation and clear snapshot/input state while retaining signaling
-and match ownership. A full close must abort an in-flight entry, close its
+dispose presentation and clear snapshot/input state while retaining the room
+seat and match ownership. A full close must abort an in-flight entry, close its
 transport, and only then clear the room owner. The previous verdict and clocks
 are reset synchronously before either a first round or rematch can publish a
 new presentation frame.
 
-A cold guest acquires its ICE/TURN configuration before its signaling join
-announces membership to the host. WebSocket connection and ICE discovery may
+A cold guest acquires its ICE/TURN configuration before its data channel
+offers to the host. WebSocket connection and ICE discovery may
 overlap, but the host cannot start sending SDP and candidates until the guest
 can immediately construct its peer session. Room creation remains parallel
 because a new room code is undiscoverable until creation returns.
@@ -273,8 +273,8 @@ disconnect/reload recovery, a complete match, and production TURN verification
 when restrictive-NAT connectivity is claimed.
 
 An opaque battle-entry cover suppresses incomplete or redundant scene renders;
-it never suspends signaling, RTC, authority, or snapshot progress. Private,
-LAN, rematch, and ranked entry acquire that cover synchronously before their
+it never suspends the room socket, RTC, authority, or snapshot progress. Private,
+LAN and rematch entry acquire that cover synchronously before their
 first asynchronous dependency. The cover releases only after one complete
 battle frame has presented from the final world and camera pose. A cold import
 failure releases the cover before the loading veil leaves or Garage resumes.

@@ -73,7 +73,7 @@ its traverse.
 Relevant implementation:
 
 - src/sim/ballistics.ts
-- src/net/aimIntent.ts
+- src/sim/aimIntent.ts
 - src/game/state.ts
 - docs/GUNNERY-CAMERA-SPEC.md
 
@@ -399,7 +399,7 @@ A non-host can reload while the host's room is waiting and reattach with the
 stable browser player identity. Reloading the browser host ends browser-owned
 authority; host migration is not claimed.
 
-See docs/MULTIPLAYER-ARCHITECTURE.md.
+See docs/MULTIPLAYER-V2.md.
 
 ## Results and combat presentation
 
@@ -504,7 +504,7 @@ The repository includes executable checks for the claims above:
 | Claim | Primary verification |
 | --- | --- |
 | Movement, combat, bots, rooms, UI, services | npm test |
-| Real signaling and two-browser WebRTC | npm run test:net:browser |
+| Three real browsers over WebRTC through the room service | npm run test:net:v2:p2p |
 | First-party playable provenance | npm run tank:native:check |
 | Vehicle assets and fingerprints | npm run tank:assets:check |
 | Fleet geometry freeze | npm run tank:freeze:check |

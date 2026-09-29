@@ -37,10 +37,7 @@ import type { EventBus } from '../game/stateCore.ts';
 import { t, formatNumber } from './i18n.ts';
 import type { CampaignDebrief } from '../game/campaignDebrief.ts';
 import { finalBlowLine, type FinalBlow } from './finalBlow.ts';
-import type {
-  NetworkRoomPlayer,
-  NetworkRoomState,
-} from '../net/networkRoomCoordinator.ts';
+import type { LobbyPlayer, SerializedLobby } from '../mp/room/lobbyShape.ts';
 
 export type EndScreenResult = '' | 'victory' | 'defeat' | 'draw';
 
@@ -121,7 +118,7 @@ interface EndScreenRuntime {
 }
 
 interface EndScreenRoomContext {
-  state: NetworkRoomState;
+  state: SerializedLobby;
   playerId: string;
   role?: string;
 }
@@ -457,7 +454,7 @@ function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isRoomPlayer(value: RuntimeValue): value is NetworkRoomPlayer {
+function isRoomPlayer(value: RuntimeValue): value is LobbyPlayer {
   return isRecord(value) && typeof value.id === 'string';
 }
 
@@ -466,7 +463,8 @@ function readRoomContext(value: RuntimeValue): EndScreenRoomContext | null {
       !isRecord(value.state) || !Array.isArray(value.state.players) ||
       !value.state.players.every(isRoomPlayer)) return null;
   return {
-    state: { ...value.state, players: value.state.players },
+    // The room's own lobby shape (the composition's `network:roomState`): the guard above checked the players.
+    state: { ...value.state, players: value.state.players } as unknown as SerializedLobby,
     playerId: value.playerId,
     ...(typeof value.role === 'string' ? { role: value.role } : {}),
   };
@@ -599,7 +597,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   function renderRoomHeading(
     parent: HTMLElement,
-    state: NetworkRoomState,
+    state: SerializedLobby,
     nextRound: number,
   ): void {
     const mode = state.mode === 'lan' ? t('endScreen.lan') : t('endScreen.private');
@@ -614,7 +612,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   function renderRoomPlayer(
     parent: HTMLElement,
-    player: NetworkRoomPlayer,
+    player: LobbyPlayer,
     playerId: string,
   ): void {
     const row = el('div', `es-room-player${player.ready ? ' ready' : ''}`, parent);
@@ -636,7 +634,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   function renderRoomPlayers(
     parent: HTMLElement,
-    state: NetworkRoomState,
+    state: SerializedLobby,
     playerId: string,
   ): void {
     const players = el('div', 'es-room-players', parent);
@@ -657,8 +655,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   function renderReadyButton(
     controls: HTMLElement,
-    state: NetworkRoomState,
-    me: NetworkRoomPlayer | undefined,
+    state: SerializedLobby,
+    me: LobbyPlayer | undefined,
   ): void {
     if (!me || me.team === 'spectator') return;
     const ready = el('button', `cot-es-btn ${me.ready ? 'ready-now' : 'prime needs-ready'}`, controls);
@@ -676,7 +674,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   function renderHostStartButton(
     controls: HTMLElement,
-    state: NetworkRoomState,
+    state: SerializedLobby,
     everyoneReady: boolean,
   ): void {
     const start = el('button', `cot-es-btn ghost${everyoneReady ? ' can-start' : ''}`, controls);
@@ -693,7 +691,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   function renderRoomActions(
     panel: HTMLElement,
     context: EndScreenRoomContext,
-    me: NetworkRoomPlayer | undefined,
+    me: LobbyPlayer | undefined,
     activeCount: number,
     readyCount: number,
     nextRound: number,

@@ -7,7 +7,7 @@ import net from 'node:net';
 import { WebSocket } from 'ws';
 import { createRoomConnectionAdapter, isMultiplayerV2Session } from './playMenuAdapter.ts';
 import { RoomClient, RoomConnectError } from '../room/roomClient.ts';
-import { classifyPrivateRoomFailure } from '../../net/roomFailure.ts';
+import { classifyRoomFailure } from './roomFailure.ts';
 import { createRoomsServer } from '../../../server/rooms/serve.ts';
 
 const server = await createRoomsServer({ seatSecret: 'play-menu-adapter-receipt-secret-0123456789', world: 'terrain', countdownS: 1, battleLimitS: 30 });
@@ -124,7 +124,7 @@ try {
   await assert.rejects(invalid.connect({ kind: 'join', mode: 'private', roomsUrl: server.url, roomCode: 'AB', player: { id: 'dan', name: 'Dan' }, selection, teamSize: 1 }),
     (error) => error.code === 'invalid_room_code');
   await assert.rejects(invalid.connect({ kind: 'create', mode: 'private', roomsUrl: '', player: { id: 'dan', name: 'Dan' }, selection, teamSize: 1 }),
-    (error) => error.code === 'room_unconfigured' && classifyPrivateRoomFailure(error).code === 'signaling_unavailable');
+    (error) => error.code === 'room_unconfigured' && classifyRoomFailure(error).code === 'room_service_unavailable');
   await assert.rejects(invalid.connect({ kind: 'create', mode: 'private', roomsUrl: server.url, player: { id: '', name: 'Dan' }, selection, teamSize: 1 }), TypeError);
   assert.equal(invalid.connecting, false, 'a refused request leaves the menu free');
 
@@ -138,8 +138,8 @@ try {
   const deadPort = await freePort();
   await assert.rejects(nobody.connect({ kind: 'create', mode: 'lan', roomsUrl: `ws://127.0.0.1:${deadPort}`, player: { id: 'erin', name: 'Erin' }, selection, teamSize: 1 }),
     (error) => error instanceof RoomConnectError && error.code === 'room_unreachable');
-  const failure = classifyPrivateRoomFailure(unreachable.find(([name]) => name === 'error') ? { code: 'room_unreachable' } : null);
-  assert.equal(failure.code, 'signaling_unavailable');
+  const failure = classifyRoomFailure(unreachable.find(([name]) => name === 'error') ? { code: 'room_unreachable' } : null);
+  assert.equal(failure.code, 'room_service_unavailable');
   assert.equal(failure.canRetry, true);
   assert.equal(nobody.current, null);
   assert.equal(nobody.connecting, false, 'the menu may retry at once');

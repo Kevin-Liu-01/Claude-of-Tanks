@@ -19,10 +19,10 @@ const soloLoading = fs.readFileSync(path.join(here, 'soloBattleLoadingRuntime.ts
 const soloStartAccess = fs.readFileSync(path.join(here, 'soloBattleStartAccess.ts'), 'utf8');
 const playSurface = fs.readFileSync(path.join(here, 'playSurfaceRuntime.ts'), 'utf8');
 const networkLobbyPreloader = fs.readFileSync(
-  path.join(here, '..', 'net', 'networkLobbyPreloader.ts'), 'utf8',
+  path.join(here, '..', 'mp', 'session', 'lobbyPreloader.ts'), 'utf8',
 );
 const networkCompositionAccess = fs.readFileSync(
-  path.join(here, '..', 'net', 'networkCompositionAccess.ts'), 'utf8',
+  path.join(here, '..', 'mp', 'session', 'compositionAccess.ts'), 'utf8',
 );
 const lobbyIntent = fs.readFileSync(
   path.join(here, '..', 'mp', 'session', 'lobbyIntent.ts'), 'utf8',
@@ -107,7 +107,7 @@ assert.ok(activationPreload >= 0 && activationHandoff > activationPreload,
 // Multiplayer (the cutover of 2026-09-29, docs/MULTIPLAYER-V2.md §13.10): the lobby's Garage presence loads with
 // the Play menu and the browser composition loads behind explicit room intent; the solo boot path evaluates
 // nothing under src/mp.
-assert.match(lobbyIntent, /createNetworkLobbyPreloader\(\{ \.\.\.preloader, preloadChat/,
+assert.match(lobbyIntent, /createLobbyPreloader\(preloader\)/,
   'joined rooms need one typed lobby-intent owner over the room preloader');
 assert.match(networkLobbyPreloader, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,260}missingBuilders\.push\(specId\)[\s\S]{0,280}ensureTankBuilders\(missingBuilders\)/,
   'joined rooms should transfer only missing roster builders');
@@ -117,8 +117,8 @@ assert.match(main, /import\('\.\/mp\/session\/lobbyIntent\.ts'\)/,
   'the lobby owner loads with the menu, never on the boot path');
 assert.match(main, /import\('\.\/mp\/session\/browserComposition\.ts'\)/,
   'the complete multiplayer composition must remain behind explicit network intent');
-assert.doesNotMatch(main, /^import (?!type)[^\n]* from '\.\/mp\//m,
-  'the solo boot path imports nothing under src/mp at module evaluation (types only)');
+assert.doesNotMatch(main, /^import (?!type)[^\n]* from '\.\/mp\/(?!session\/(?:compositionAccess|roundState|intentCover)\.ts')/m,
+  'the solo boot path evaluates only the three small session helpers under src/mp (the lazy access, the round reset, the intent cover)');
 assert.doesNotMatch(main, /import\('\.\/net\/networkBattleComposition\.ts'\)|createNetworkBrowserSessionRuntime|readMultiplayerV2Flag|mp=v2/,
   'the v1 composition, its session runtime and the opt-in switch left main with the cutover');
 assert.match(main, /createPlaySurfaceRuntime\(\{/,
@@ -138,16 +138,9 @@ assert.match(networkPlayPreload, /multiplayerV2\.preload\(\)/,
   'network intent must acquire its isolated orchestration graph');
 assert.match(networkPlayPreload, /preloadBattleClientRuntime\(\)/,
   'network intent should still overlap the shared battle client transfer');
-for (const runtime of [
-  'networkRoundLifecycle',
-  'networkBattlePresentationAccess',
-  'networkBattleLaunchRuntime',
-  'networkLobbyPreloader',
-  'networkRoomCoordinator',
-  'networkBattleActivationRuntime',
-  'networkBattleComposition',
-]) {
-  assert.doesNotMatch(main, new RegExp(`import \\{[^}]*create[^}]*\\} from './net/${runtime}\\.ts'`),
+assert.doesNotMatch(main, /from '\.\/net\//, 'nothing of the first multiplayer stack remains on the composition root');
+for (const runtime of ['lobbyPreloader', 'activationRuntime', 'browserComposition', 'lobbyIntent']) {
+  assert.doesNotMatch(main, new RegExp(`import \\{[^}]*create[^}]*\\} from './mp/session/${runtime}\\.ts'`),
     `${runtime} must stay out of the pristine Garage graph`);
 }
 assert.match(networkCompositionAccess,

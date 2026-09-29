@@ -116,7 +116,7 @@ import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
-import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
+import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import {
   autoCamoIdsForBattle,
   ensureTankVisual,

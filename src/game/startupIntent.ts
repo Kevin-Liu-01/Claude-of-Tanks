@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import type { RoomInvite } from '../net/roomInvite.ts';
+import type { RoomInvite } from '../mp/session/roomInvite.ts';
 import { resolveLocalePath } from '../ui/localeRouting.ts';
 
 interface StartupLocation {
@@ -21,7 +21,7 @@ interface StartupIntent {
 export function createStartupIntent(
   location: StartupLocation,
   loadRoomInvite: () => Promise<RoomInviteModule> =
-    async () => await import('../net/roomInvite.ts'),
+    async () => await import('../mp/session/roomInvite.ts'),
 ): StartupIntent {
   const params = new URLSearchParams(location?.search || '');
   const studioRequested = resolveLocalePath(location?.pathname || '/').pathname === '/studio'

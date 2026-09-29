@@ -24,7 +24,7 @@ const ally = {
 };
 const game = {
   phase: 'battle', timeS: 12, player,
-  tanks: [player, enemy, hiddenEnemy, ally], shells: [{ id: 1 }],
+  tanks: [player, enemy, hiddenEnemy, ally], tankById: new Map(), shells: [{ id: 1 }],
   spotting: {
     isSpotted: (id, team, receiver) => id === 'enemy' && team === 'player' && receiver === player,
     getConcealment: (entity, timeS) => ({ id: entity.id, timeS }),
@@ -38,17 +38,7 @@ const damageFrames = [];
 const overlayFrames = [];
 let overlayHides = 0;
 let aimUpdates = 0;
-let perspective = null;
 let wallMs = 400;
-const networkSession = {
-  match: { client: { getStats: () => ({ rttMs: 73 }) } },
-  spectator: false,
-  bridge: {
-    entities: new Map(),
-    roster: ['server-roster'],
-    setPerspective: (id) => { perspective = id; },
-  },
-};
 const killcam = {
   active: false,
   isActive() { return this.active; },
@@ -73,9 +63,9 @@ const runtime = createBattleHudFrameRuntime({
     update: (frame) => overlayFrames.push(frame),
     hide: () => { overlayHides += 1; },
   },
-  networkSession,
   killcam,
   muzzleScratch: new Vector3(1, 2, 3),
+  pingMs: () => 73,
   getHud: () => ({ update: (frame) => hudFrames.push(frame) }),
   getDamagePanel: () => ({ update: (combat) => damageFrames.push(combat) }),
   now: () => wallMs,
@@ -89,7 +79,7 @@ assert.equal(hudFrames[0].player, player);
 assert.equal(hudFrames[0].mode, 'sniper');
 assert.equal(hudFrames[0].pingMs, 73);
 assert.equal(hudFrames[0].selfRightKeyLabel, 'F');
-assert.deepEqual(hudFrames[0].rosterTanks, ['server-roster']);
+assert.equal(hudFrames[0].rosterTanks, game.tanks);
 assert.deepEqual(hudFrames[0].spotting.player, { id: 'player', timeS: 12 });
 assert.equal(hudFrames[0].spotting.isSpotted('enemy'), true);
 assert.equal(aimUpdates, 1);
@@ -103,12 +93,10 @@ assert.equal(hudFrames.length, 2, 'capture mode can redraw the retained frame');
 
 const observer = { id: 'observer', team: 'alpha', state: {}, combat: { destroyed: false } };
 game.player = null;
-networkSession.spectator = true;
-networkSession.bridge.entities.set('observer', observer);
+game.tankById.set('observer', observer);
 killcam.spectate = { active: true, targetId: 'observer' };
 runtime.update(true, false);
-assert.equal(perspective, 'observer');
-assert.equal(runtime.frameInfo.player, observer);
+assert.equal(runtime.frameInfo.player, observer, 'a spectator follows the killcam target from the presentation registry');
 assert.equal(aimUpdates, 1, 'spectators do not run local gun aim');
 assert.equal(overlayHides, 1, 'spectators cannot reveal plate inspection');
 assert.equal(damageFrames.at(-1), observer.combat);

@@ -1,47 +1,53 @@
 ---
 name: server-skill
-description: Implement and operate Claude of Tanks signaling and dedicated authoritative multiplayer servers.
+description: Implement and operate the match actor, the LAN room helper, collision manifests, ICE and telemetry services.
 ---
 
 # claude-of-tanks / server
 
 ## Purpose
 
-Provide bounded network coordination and dedicated ranked authority.
-The signaling server relays WebRTC descriptions/ICE only and never gameplay.
+Provide the renderer-free match authority (`server/match`), the room service
+the LAN helper and every headless proof run (`server/rooms`), and the small
+HTTP services the site deploys. The signaling server, the Redis room store, the
+dedicated match server and the ranked service of the first multiplayer left the
+tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
 
 ## Mental model and invariants
 
-- `roomStore.ts` owns private-room rendezvous membership.
-- `distributedRoomStore.ts` owns durable Redis membership and signaling mailboxes.
-- `roomCode.ts` keeps room-code generation inside the typed serverless
-  closure; production `.js` entries must not import raw `.ts` source files.
-- `signalingServer.ts` owns HTTP upgrade, origin/rate/payload gates, and relay.
-- `dedicatedMatchRegistry.ts` owns authenticated match lifecycle and reconnects.
-- `dedicatedMatchServer.ts` owns the authoritative WebSocket service boundary.
-- `match/` is the Multiplayer v2 match service (`docs/MULTIPLAYER-V2.md` §11): one
-  process, N `MatchActor`s, the binary wire in `src/mp/wire`, seat tokens from the room
-  service, lag compensation, 30 Hz interest-managed snapshots, `server/match/README.md`.
-- `rankedMatchmaker.ts` owns bounded queues, team balance, and match-ticket handoff;
-  `ratingStore.ts` owns bearer identities, persistent Elo, and idempotent results.
+- `match/` is the Multiplayer v2 match service (`docs/MULTIPLAYER-V2.md` §11 and
+  §13): `MatchActor` (one room: roster, the authority, the loop, seat admission,
+  lag compensation, interest-tiered snapshots), the binary wire in `src/mp/wire`,
+  seat tokens (`seatToken.ts`) the room service signs, `service.ts` +
+  `localRoomService.ts` (the in-process match the LAN helper and the receipts
+  use), `server/match/README.md`. The same actor runs in the host commander's
+  browser (`src/mp/host`).
+- `rooms/` is the LAN / offline helper (`npm run server:mp`, port 8792): the
+  shared room actor (`src/mp/room/roomActor.ts`) over real sockets, the match
+  in-process or in the admin's browser (`COT_ROOMS_MATCH_TRANSPORT`).
 - `dedicatedWorldCollision.ts` inflates match-local state from generated
-  per-map collision shards; do not hand-edit their records or checksum index.
-  Keep idle map retention bounded and release active terrain leases on teardown.
-- A v1 browser-hosted room closes if its host leaves; never silently migrate a
-  ranked authority to a player.
-- Production signaling must run behind TLS with an explicit origin allowlist.
-- TURN credentials come from deployment configuration and are never committed.
-- `jev/main.ts` is the local HTTP wrapper around `api/jev.ts` for the Vite dev
-  server (`npm run jev:dev`, port 8794): the TypeSafe key comes from the
-  environment of that shell only, localhost origins are accepted there and
-  nowhere else (docs/JEV-COMMANDER.md).
+  per-map collision shards (`collisionManifestCodec.ts`, `collisionManifestLoader.ts`,
+  `mapResourceCache.ts`); do not hand-edit their records or checksum index. Keep
+  idle map retention bounded and release active terrain leases on teardown.
+  `dedicatedWorldCollisionBrowser.ts` is the browser-side loader the manifest
+  receipt compares against.
+- `pacingRoster.test-support.ts` is the battle-pacing gate's roster fixture
+  (`battlePacing.selftest.mjs`, `tools/pacing-trace.mjs`): the seeded
+  era-matched bot fill the gate's bands were measured over.
+- `ice.ts` (`api/ice.ts`) issues short-lived TURN credentials from deployment
+  secrets; credentials are never committed.
+- `telemetryRecord.ts` is the shared entry-telemetry schema; `jev/main.ts` is the
+  local HTTP wrapper around `api/jev.ts` for the Vite dev server (`npm run jev:dev`,
+  port 8794; docs/JEV-COMMANDER.md).
+- Never make a client authoritative for hits, damage, reloads or the match
+  result; a room migrates its host, it never hands a client the verdict.
 - Keep payloads, queues, rooms, rates, and lifetimes bounded.
 
 ## Verification
 
-Run `node server/signaling.selftest.mjs` and
-`node server/dedicatedWorldCollision.selftest.mjs`. Ranked changes additionally
-run the rating, matchmaker, HTTP, and real-WebSocket tests. Regenerate world manifests
-with `tools/capture-world-collision-manifests.mjs` after authored map collision
-changes. Any gameplay authority added here must also run the shared `src/net`
-tests, deterministic match tests, abuse cases, and real WebSocket soak/load tests.
+Run `node server/match/matchActor.selftest.mjs`, `node server/match/service.selftest.mjs`,
+`node server/dedicatedWorldCollision.selftest.mjs` and `node server/battlePacing.selftest.mjs`.
+Regenerate world manifests with `tools/capture-world-collision-manifests.mjs` after
+authored map collision changes. Any gameplay authority added here must also run the
+deterministic match tests, abuse cases, and the headless peer-to-peer proofs
+(`npm run test:net:v2:p2p:headless`, `npm run test:net:v2:p2p`).

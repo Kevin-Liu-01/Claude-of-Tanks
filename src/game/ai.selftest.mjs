@@ -6,7 +6,7 @@ import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 import {
   botFriendlyFireRisk, chooseAiSupportActionBits, createAI, mulberry32,
 } from './ai.ts';
-import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
+import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 
 let failures = 0;
 function ok(cond, label) {

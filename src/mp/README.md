@@ -13,7 +13,7 @@ under `src/mp` is imported by the solo boot path.
 | Directory | Owns | Node-runnable |
 |---|---|---|
 | `wire/` (server lane) | The binary schema and codecs both sides share. Import it; never edit it from the client lane. | yes |
-| `transport/` | `Transport` contract (`open/send/reconnect/close`, `onFrame/onState`, `bufferedBytes`, typed close reasons), `WebSocketTransport`, `LoopbackTransport` pair, `WebRtcTransport` (one reliable ordered data channel to the hosting browser through the room's signaling relay; ICE from v1's credential source), `MigratingTransport` (swaps a running client's link across a host migration); `rtcDouble.test-support.ts` is the scripted WebRTC world the receipts run on. | yes |
+| `transport/` | `Transport` contract (`open/send/reconnect/close`, `onFrame/onState`, `bufferedBytes`, typed close reasons), `WebSocketTransport`, `LoopbackTransport` pair, `WebRtcTransport` (one reliable ordered data channel to the hosting browser through the room's signaling relay; ICE from `src/mp/transport/iceConfig.ts` over `api/ice.ts`), `MigratingTransport` (swaps a running client's link across a host migration); `rtcDouble.test-support.ts` is the scripted WebRTC world the receipts run on. | yes |
 | `match/` | `MatchClient` and its parts: `clock.ts`, `inputStream.ts`, `snapshotStream.ts`, `interpolation.ts`, `prediction.ts` (+ `movementCheckpoint.ts`), `events.ts`, `recovery.ts`, `headlessDriver.ts`, `migrationStore.ts` (the sealed keyframes a client keeps for a host migration), `rtcClientLink.ts` (the actor's link over a data channel and the host acceptor); `scriptedServer.test-support.ts` is the fixture server the receipts use. | yes |
 | `host/` | The browser host (docs/MULTIPLAYER-V2.md §13.6): `matchHost` (main thread: the Worker port, the WebRTC acceptor, the loopback seat, the room reports), `matchHostCore` (in the Worker: the unchanged `server/match` actor, the Web Crypto HELLO gate, sealed migration keyframes), `migrationState`, `hostPlan`, `seatTokenWeb`, `worldCollision` (the container's manifest, fetched and verified), `browserHostPort` (the Worker chunk) / `inProcessHost` (Node). | yes (the Worker chunk is browser-only) |
 | `presentation/` | `PresentationAdapter` + `bindMatchPresentation`, `RecordingPresentation` (headless), `createBattlePresentation` (the renderer/HUD/FX/audio bridge), `createPredictionWorld` (the collision the prediction integrates against). | adapter + recorder yes; the battle presentation needs the fleet and `three` |
@@ -21,7 +21,7 @@ under `src/mp` is imported by the solo boot path.
 | `session/` | `MatchSession` (one room's session owner: a `MatchClient` and a presentation per round), `createHeadlessSession` (receipts, `tools/mp-rooms-e2e.mjs`, `tools/mp-exit-e2e.mjs`), `createRoomConnectionAdapter` (the Play menu's v2 room connection), `resolveRoomsUrl` (the rooms endpoint policy), `NetworkStatusModel` (`networkStatus.ts`: the link's status snapshot, threshold table, banner facts and telemetry summary — below), `createBrowserComposition` (the browser launch, below). | yes; the browser composition's default presentation factory needs the fleet and `three` |
 
 Dependency direction: `presentation → match → transport`, all three `→ wire`
-and `→ src/sim` (movement only). `src/net` (v1) is never imported; the
+and `→ src/sim` (movement only). The first multiplayer's `src/net` left the tree with the cutover of 2026-09-29; the
 receipts import it only to prove parity (`movementCheckpoint.selftest.mjs`).
 
 ## Layer contracts

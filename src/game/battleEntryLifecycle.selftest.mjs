@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createFrameLoopScheduler } from '../engine/frameLoopScheduler.ts';
-import { createNetworkBrowserSessionRuntime } from '../net/networkBrowserSessionRuntime.ts';
 import { createBattleEntryLifecycle, revealTimeoutForField } from './battleEntryLifecycle.ts';
 
 function createIdleEntryFixture() {
@@ -15,11 +14,19 @@ function createIdleEntryFixture() {
     meta: { phase: 'loading' }, immediateAuthority: null,
   };
   const client = { closed: false, connected: true };
-  const session = createNetworkBrowserSessionRuntime({
-    getPlayer: () => null, isBattleActive: () => false,
-    shouldPresentDisconnect: () => false,
-    nextFrame: async () => { throw new Error('authority should already be sampled'); },
-  });
+  // A scripted session owner (the composition's pump contract): a published match is sampled by the covered frame
+  // pump and by the background pump, never after it closed; READY is never sent by a pump.
+  let published = null, latestSnapshot = null;
+  const session = {
+    get match() { return published; },
+    get latestSnapshot() { return latestSnapshot; },
+    bridge: null,
+    publishMatch(next) { published = next; },
+    pump() { if (published && !published.client.closed) latestSnapshot = published.update(); },
+    pumpBackground() { session.pump(); },
+    waitForInitialSnapshot: async () => latestSnapshot,
+    close(reason) { published?.close(reason); published = null; },
+  };
   const match = {
     role: 'client', client,
     update() { samples++; return snapshot; },

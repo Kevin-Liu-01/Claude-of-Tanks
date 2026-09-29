@@ -16,7 +16,7 @@ fidelity, smooth low-end performance, and reproducible visual/test evidence.
 are strict TypeScript modules documented in `docs/SYSTEMS.md` and
 `docs/DECISIONS.md`.
 `src/game/state.ts` owns solo integration, `src/sim/` owns gameplay
-truth, `src/net/` owns transport-independent multiplayer, and `tools/` contains
+truth, `src/mp/` owns the peer-to-peer multiplayer, and `tools/` contains
 performance, fleet, screenshot, and release gates. Start with `docs/SYSTEMS.md`
 and the nearest directory `SKILL.md`.
 
@@ -34,7 +34,7 @@ and the nearest directory `SKILL.md`.
 - Runtime flow: trace `src/main.ts` plus `src/game/state.ts` exports.
 - Physics/combat: read `src/sim/SKILL.md`, then its existing selftests.
 - UI: read `src/ui/SKILL.md` and inspect the rendered browser surface.
-- Multiplayer: read `docs/MULTIPLAYER-ARCHITECTURE.md` and `src/net/SKILL.md`.
+- Multiplayer: read `docs/MULTIPLAYER-V2.md` and `src/mp/SKILL.md`.
 - Tank creation/rebuild/markup repair: read `docs/tank-generation/SKILL.md`,
   `src/vehicles/SKILL.md` and the latest per-tank/batch packet; use the handbook's
   source-freeze, gate, prompt and handoff templates.
