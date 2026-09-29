@@ -9,6 +9,7 @@
 // autoReconnect: false → one attempt.
 import assert from 'node:assert/strict';
 import { DEFAULT_RECONNECT, TRANSPORT_CLOSE, WebRtcTransport, selectedCandidateTypes } from './index.ts';
+import { ICE_GATHER_CAP_MS } from './webRtcTransport.ts';
 import { FakeSignalRelay, RtcWorld } from './rtcDouble.test-support.ts';
 
 // ------------------------------------------------------------ virtual time
@@ -328,4 +329,81 @@ function createTransport(time, relay, world, options = {}) {
   assert.deepEqual(world.connections.get(1).config, { iceServers: servers, relayOnly: true }, 'the ICE configuration reaches the factory');
   transport.close();
 }
-console.log('webRtcTransport.selftest: timeouts, the exhausted window, no-host, ICE fallback and configuration verified');
+// ------------------------------------------------------------ ICE is resolved per connection: a renewed credential reaches the next offer (P3, 2026-09-28)
+{
+  const time = createVirtualTime();
+  const world = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  const host = scriptedHost(world, relay, 'host');
+  let generation = 0;
+  const credential = () => ({ iceServers: [{ urls: 'turn:turn.example:3478', username: `${1_700_000_000 + generation}:cot`, credential: `secret-${generation}` }], relayOnly: true });
+  let iceCalls = 0;
+  const { transport } = createTransport(time, relay, world, { ice: async () => { iceCalls++; return credential(); } });
+  transport.open();
+  await settle(world, relay);
+  assert.equal(transport.state, 'open');
+  assert.equal(iceCalls, 1);
+  // the transport's own connections are the relay-only ones (the scripted host answers with host candidates)
+  const offered = () => [...world.connections.values()].filter((pc) => pc.config.relayOnly);
+  assert.equal(offered().at(-1).config.iceServers[0].credential, 'secret-0', 'the first connection carries the first credential');
+  // the credential service issued a new generation (the TTL ran out and the lease refreshed): the next connection carries it
+  generation = 1;
+  world.connections.get(1).channels[0].drop();
+  await settle(world, relay);
+  assert.equal(transport.state, 'reconnecting');
+  time.advance(DEFAULT_RECONNECT.initialDelayMs * 2);
+  await settle(world, relay);
+  assert.equal(iceCalls, 2, 'the reconnect resolved ICE again');
+  assert.equal(offered().length, 2);
+  assert.equal(offered().at(-1).config.iceServers[0].credential, 'secret-1', 'the reconnect offered with the renewed credential');
+  assert.equal(transport.state, 'open');
+  // a host migration re-targets: resolved again, the newest credential again
+  generation = 2;
+  relay.hostId = 'host2';
+  relay.generation = 2;
+  scriptedHost(world, relay, 'host2');
+  transport.retarget('host changed');
+  await settle(world, relay);
+  assert.equal(iceCalls, 3, 'the retarget resolved ICE again');
+  assert.equal(offered().length, 3);
+  assert.equal(offered().at(-1).config.iceServers[0].credential, 'secret-2', 'the re-offer carries the newest credential');
+  assert.equal(transport.state, 'open');
+  transport.close();
+}
+// ------------------------------------------------------------ candidates ride inside the offer's SDP (P3, 2026-09-28): the offer waits for gathering, or for the cap
+{
+  const time = createVirtualTime();
+  const world = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  const host = scriptedHost(world, relay, 'host');
+  const gathering = [];
+  const factory = (config) => { const pc = world.createPeerConnection(config); if (config.relayOnly) { pc.iceGatheringState = 'gathering'; gathering.push(pc); } return pc; };
+  const { transport } = createTransport(time, relay, world, { createPeerConnection: factory, ice: { iceServers: [{ urls: 'turn:turn.example:3478', username: 'u', credential: 'c' }], relayOnly: true } });
+  transport.open();
+  await settle(world, relay);
+  assert.equal(host.offers.length, 0, 'no offer leaves while ICE gathers');
+  gathering[0].emitCandidate({ candidate: 'candidate:early-1', sdpMid: '0', sdpMLineIndex: 0 });
+  await settle(world, relay);
+  assert.equal(transport.signalStats.candidatesSent, 0, 'a candidate gathered before the offer is not trickled: it rides the SDP');
+  gathering[0].completeGathering(['1 1 udp 2130706431 10.0.0.2 51000 typ host', '2 1 udp 41885439 203.0.113.9 3478 typ relay raddr 0.0.0.0 rport 0']);
+  await settle(world, relay);
+  assert.equal(host.offers.length, 1, 'the offer leaves once gathering completes');
+  assert.match(host.offers[0].sdp, /a=candidate:1 1 udp 2130706431 10\.0\.0\.2 51000 typ host\na=candidate:2 1 udp 41885439 203\.0\.113\.9 3478 typ relay/, 'with every gathered candidate inside');
+  assert.equal(transport.state, 'open');
+  gathering[0].emitCandidate({ candidate: 'candidate:late-1', sdpMid: '0', sdpMLineIndex: 0 });
+  await settle(world, relay);
+  assert.equal(transport.signalStats.candidatesSent, 1, 'a candidate gathered after the offer left trickles');
+  // the cap: gathering that never completes (a TURN server that does not answer) still lets the offer out
+  gathering[0].channels[0].drop();
+  await settle(world, relay);
+  assert.equal(transport.state, 'reconnecting');
+  time.advance(DEFAULT_RECONNECT.initialDelayMs * 2);
+  await settle(world, relay);
+  assert.equal(host.offers.length, 1, 'the re-offer waits for gathering');
+  time.advance(ICE_GATHER_CAP_MS);
+  await settle(world, relay);
+  assert.equal(host.offers.length, 2, 'the cap releases the offer with what was gathered');
+  assert.equal(transport.state, 'open');
+  transport.close();
+}
+console.log('webRtcTransport.selftest: timeouts, the exhausted window, no-host, ICE fallback, configuration, per-connection ICE renewal and SDP-embedded candidates verified');

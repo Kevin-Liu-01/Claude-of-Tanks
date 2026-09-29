@@ -133,6 +133,7 @@
     "test:net:v2:browser": "node tools/mp-browser-e2e.mjs",
     "test:net:v2:p2p": "node tools/mp-p2p-e2e.mjs",
     "test:net:v2:p2p:headless": "node tools/mp-p2p-headless.mjs",
+    "test:net:v2:p2p:soak": "node tools/mp-p2p-soak.mjs",
     "typecheck:rooms": "npm --prefix cloudflare/rooms run typecheck",
     "typecheck:cloudflare": "npm --prefix cloudflare/signaling run typecheck",
     "deploy:net:cloudflare": "npm --prefix cloudflare/signaling run deploy",

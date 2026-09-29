@@ -82,6 +82,14 @@ export interface HostCoreStats {
   keyframes: number;
   migrationKeyframes: number;
   tickP95Ms: number;
+  /** The actor loop's tick cost (P3 certification, 2026-09-28): the median, the mean and the worst tick, and the loop's stalls. */
+  tickP50Ms: number;
+  tickMeanMs: number;
+  tickMaxMs: number;
+  tickCount: number;
+  droppedTicks: number;
+  stalls: number;
+  lateWakeupMaxMs: number;
   verdict: string | null;
 }
 

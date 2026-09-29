@@ -233,4 +233,40 @@ bob.transport.close();
   assert.equal(channel.sent.length, 2, 'the CLOSE frame followed the pong');
   assert.throws(() => link.send(new Uint8Array(1)), /link closed/);
 }
-console.log('rtcClientLink.selftest: acceptor offers/answers/candidates, links, CLOSE-before-close, replacement, stale offers, timeouts and closure verified');
+// ---- the acceptor resolves ICE per offer: a renewed credential reaches the next peer connection (P3, 2026-09-28)
+{
+  const renewTime = createVirtualTime();
+  const renewWorld = new RtcWorld();
+  const renewRelay = new FakeSignalRelay('host', 1);
+  let generation = 0;
+  let iceCalls = 0;
+  const renewLinks = [];
+  const renewAcceptor = createRtcHostAcceptor({
+    signaler: renewRelay.signalerFor('host'), hostId: 'host', generation: () => renewRelay.generation,
+    ice: async () => { iceCalls++; return { iceServers: [{ urls: 'turn:turn.example:3478', username: 'u', credential: `secret-${generation}` }], relayOnly: true }; },
+    createPeerConnection: renewWorld.createPeerConnection, onLink: (link) => renewLinks.push(link),
+    clock: renewTime.clock, setTimer: renewTime.setTimer, clearTimer: renewTime.clearTimer,
+  });
+  const offerer = (playerId) => {
+    const transport = new WebRtcTransport({ signaler: renewRelay.signalerFor(playerId), createPeerConnection: renewWorld.createPeerConnection, clock: renewTime.clock, setTimer: renewTime.setTimer, clearTimer: renewTime.clearTimer, random: () => 0.5 });
+    transport.open();
+    return transport;
+  };
+  const first = offerer('alice');
+  await settle(renewWorld, renewRelay);
+  assert.equal(first.state, 'open');
+  assert.equal(iceCalls, 1);
+  const configs = [...renewWorld.connections.values()].filter((pc) => pc.config.relayOnly).map((pc) => pc.config.iceServers[0].credential);
+  assert.deepEqual(configs, ['secret-0'], "the host's first answer used the first credential");
+  generation = 1;
+  const second = offerer('bob');
+  await settle(renewWorld, renewRelay);
+  assert.equal(second.state, 'open');
+  assert.equal(iceCalls, 2, 'the second offer resolved ICE again');
+  assert.deepEqual([...renewWorld.connections.values()].filter((pc) => pc.config.relayOnly).map((pc) => pc.config.iceServers[0].credential), ['secret-0', 'secret-1'], 'the renewed credential reached the next answer');
+  assert.equal(renewLinks.length, 2);
+  first.close();
+  second.close();
+  renewAcceptor.close();
+}
+console.log('rtcClientLink.selftest: acceptor offers/answers/candidates, links, CLOSE-before-close, replacement, stale offers, timeouts, closure and per-offer ICE renewal verified');

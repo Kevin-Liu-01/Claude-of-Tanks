@@ -107,6 +107,16 @@ starved by two full battle frames on the shared headless GPU). The v2 entry itse
 out of its wall-clock budget once (a fresh deadline, a `slow_reveal` beacon `compile_extended`, a `compileRetry` stage)
 before failing — docs/MULTIPLAYER-V2.md §13.6 "Entry resilience".
 
+The certification of the peer-to-peer match (§13.8, P3 lane 2026-09-28) drives N seats as tabs of the peer harness
+`tools/mp-p2p-peer/` (this session composition with no renderer, the browser host, real WebRTC, prediction against the
+manifest world; a serve-only vite middleware at `/mp-p2p-peer/`, never in the build) with `tools/mp-p2p-soak.mjs`
+(`npm run test:net:v2:p2p:soak --seats=28 --rooms=ws://127.0.0.1:8791 --port=5340 --play=6 --migrate-every=3`, the room
+service being `wrangler dev` of `cloudflare/rooms` with the dev origin allowed): host tick cost, uplink, snapshot rate,
+RTT, clock offset, lost frames, memory, the migration measured on every seat (the tab close, or `--migrate-mode=stepdown`
+for the `host_only` step-down), desync, the room's messages by type, each against §13.8's budgets. ICE candidates ride
+inside the offer and answer SDP since that lane (`awaitIceGathering`): a 14v14 start on production ICE costs ≈ 230 room
+messages instead of ≈ 1,350, and the host's room socket never nears the 120-per-10 s window.
+
 ## Network status and the exit flow
 
 `session/networkStatus.ts` owns one in-place snapshot of the link (transport

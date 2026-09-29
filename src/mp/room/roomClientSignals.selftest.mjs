@@ -145,5 +145,30 @@ transport.deliver({ type: 'match_start', payload: {
 } });
 assert.equal(client.hostId, null);
 assert.equal(client.generation, 0);
+
+// ---- the same match re-sent after a socket blip (P3, 2026-09-28): a NEWER generation in its URL supersedes the election this
+// seat holds (it missed the host_changed while away); an older or equal one keeps the election
+transport.deliver({ type: 'match_start', payload: {
+  matchId: 'm4-0004', round: 4, mapId: 'verdant', mode: 'standard', seed: 10, seat: 1, team: 'bravo', seatToken: 'tok4.sig',
+  matchUrl: p2pMatchUrl('ABC123', 7), hostId: 'alice', expiresAt: 9_999_999,
+} });
+transport.deliver({ type: 'host_changed', payload: { hostId: 'bob', generation: 8, resumeTick: 100, reason: 'timeout', hostSecret: 'b'.repeat(64) } });
+assert.equal(client.generation, 8);
+assert.equal(client.isHost, true);
+transport.deliver({ type: 'match_start', payload: {
+  matchId: 'm4-0004', round: 4, mapId: 'verdant', mode: 'standard', seed: 10, seat: 1, team: 'bravo', seatToken: 'tok4.sig',
+  matchUrl: p2pMatchUrl('ABC123', 9), hostId: 'carol', expiresAt: 9_999_999,
+} });
+assert.equal(client.generation, 9, "the re-sent match_start's newer generation is the current one");
+assert.equal(client.hostId, 'carol', 'and its host');
+assert.equal(client.isHost, false, 'this seat was replaced while away');
+assert.equal(client.lastHostChanged, null, 'the stale election is gone');
+transport.deliver({ type: 'host_changed', payload: { hostId: 'bob', generation: 10, resumeTick: 200, reason: 'timeout', hostSecret: 'c'.repeat(64) } });
+transport.deliver({ type: 'match_start', payload: {
+  matchId: 'm4-0004', round: 4, mapId: 'verdant', mode: 'standard', seed: 10, seat: 1, team: 'bravo', seatToken: 'tok4.sig',
+  matchUrl: p2pMatchUrl('ABC123', 10), hostId: 'bob', expiresAt: 9_999_999,
+} });
+assert.equal(client.generation, 10, 'an equal generation keeps the election');
+assert.equal(client.isHost, true);
 client.dispose();
-console.log('roomClientSignals.selftest: signal relay, host elections, generations, report and decline commands verified');
+console.log('roomClientSignals.selftest: signal relay, host elections, generations, a re-sent match_start superseding a stale election, report and decline commands verified');

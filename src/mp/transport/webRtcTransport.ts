@@ -2,7 +2,8 @@
  * WebRTC implementation of the transport contract (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13): one
  * reliable ordered RTCDataChannel named `match` from a peer to the hosting commander's browser. Signaling goes through
  * a `Signaler` the room client fulfils (`room_signal` offer / answer / candidates relayed by the Room Durable Object,
- * addressed to the signaler's CURRENT host with its generation); ICE servers come from the same credential source v1
+ * addressed to the signaler's CURRENT host with its generation; the candidates gathered before the offer ride inside
+ * its SDP — `awaitIceGathering` below — and only a late one trickles); ICE servers come from the same credential source v1
  * uses (`src/net/iceConfig.ts` over `api/ice.ts`), resolved lazily per connection; `bufferedBytes` is the channel's
  * bufferedAmount under the shared backpressure policy; `reconnect()` is a fresh offer to the current host, so a host
  * migration only changes the target (`retarget()` fires the pending attempt at once instead of waiting out the backoff);
@@ -81,7 +82,12 @@ export interface RtcStatsReportLike {
 
 export interface RtcPeerConnectionLike {
   readonly connectionState: string;
+  /** ICE gathering: `new` / `gathering` / `complete`; absent on a double that gathers nothing (the offer goes out at once). */
+  readonly iceGatheringState?: string;
+  /** The local description as it stands — with every candidate gathered so far once gathering ran (`a=candidate` lines). */
+  readonly localDescription?: RtcSessionDescriptionLike | null;
   onicecandidate: ((event: { candidate: RtcIceCandidateLike | null }) => void) | null;
+  onicegatheringstatechange?: ((event: unknown) => void) | null;
   onconnectionstatechange: ((event: unknown) => void) | null;
   ondatachannel: ((event: { channel: RtcDataChannelLike }) => void) | null;
   createDataChannel(label: string, init?: { ordered?: boolean; maxRetransmits?: number }): RtcDataChannelLike;
@@ -161,6 +167,40 @@ export function selectedCandidateTypes(report: RtcStatsReportLike): RtcCandidate
   return { local, remote, viaTurn: local === 'relay' || remote === 'relay', rttMs: typeof rtt === 'number' && Number.isFinite(rtt) ? rtt * 1000 : null };
 }
 
+/**
+ * Candidates ride inside the SDP, not as trickle signals (P3 certification, 2026-09-28): the room bills every
+ * WebSocket message and closes a socket past 120 messages in 10 s, and a 14v14 host answering 27 offers with a dozen
+ * trickled candidates each (STUN + the six TURN transports) would send ~350 signals in a burst — its room socket closed
+ * as `rate_limit`, the match migrated at its own start. Both sides therefore wait for ICE gathering to complete (or for
+ * this cap: TURN over TLS can take a second) before sending the offer or the answer, whose SDP then carries every
+ * candidate gathered (`a=candidate` lines; the room never parses SDP, 8 KB is far above a dozen candidates); only a
+ * candidate gathered after that leaves as a trickle signal. Measured at 14v14 on production ICE: ~12 candidates per
+ * connection, gathered in 0.5–1 s.
+ */
+export const ICE_GATHER_CAP_MS = 2500;
+
+/**
+ * Resolves once the connection's ICE gathering is complete, or after `capMs`; null when there is nothing to wait for (a
+ * runtime that reports no gathering state, or gathering already complete) so the caller sends without an extra turn.
+ */
+export function awaitIceGathering(pc: RtcPeerConnectionLike, capMs: number, setTimer: (callback: () => void, delayMs: number) => unknown, clearTimer: (handle: unknown) => void): Promise<void> | null {
+  const state = pc.iceGatheringState;
+  if (state === undefined || state === 'complete') return null;
+  return new Promise((resolve) => {
+    let done = false;
+    let timer: unknown = null;
+    const finish = (): void => {
+      if (done) return;
+      done = true;
+      if (timer !== null) clearTimer(timer);
+      pc.onicegatheringstatechange = null;
+      resolve();
+    };
+    timer = setTimer(finish, capMs);
+    pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') finish(); };
+  });
+}
+
 /** The candidate a browser hands `onicecandidate`, as the room relays it (its JSON form, never the live object). */
 export function candidateInit(candidate: RtcIceCandidateLike): RtcIceCandidateInitLike {
   const json = typeof candidate.toJSON === 'function' ? candidate.toJSON() : candidate;
@@ -213,6 +253,8 @@ interface ActiveConnection {
   channel: RtcDataChannelLike | null;
   remoteDescribed: boolean;
   pendingCandidates: RtcIceCandidateInitLike[];
+  /** The offer left with the candidates gathered so far; a candidate gathered later trickles. */
+  offered: boolean;
 }
 
 const NO_ICE: RtcIceConfig = Object.freeze({ iceServers: [], relayOnly: false });
@@ -407,11 +449,12 @@ export class WebRtcTransport implements Transport {
       this.failAttempt(TRANSPORT_CLOSE.NETWORK, this.lastErrorDetail);
       return;
     }
-    const connection: ActiveConnection = { link, target, pc, channel: null, remoteDescribed: false, pendingCandidates: [] };
+    const connection: ActiveConnection = { link, target, pc, channel: null, remoteDescribed: false, pendingCandidates: [], offered: false };
     this.connection = connection;
     const guard = <T>(handler: (event: T) => void) => (event: T) => { if (this.connection === connection && this.link === link) handler(event); };
     pc.onicecandidate = guard((event: { candidate: RtcIceCandidateLike | null }) => {
-      if (!event.candidate) return;
+      // gathered before the offer left: inside its SDP; after: a late candidate, trickled
+      if (!event.candidate || !connection.offered) return;
       const init = candidateInit(event.candidate);
       if (!init.candidate) return;
       if (this.signaler.sendSignal({ to: target.hostId, generation: target.generation, kind: 'candidate', candidate: init })) this.candidatesSent++;
@@ -442,13 +485,18 @@ export class WebRtcTransport implements Transport {
     void pc.createOffer().then((offer) => {
       if (this.connection !== connection) return;
       return pc.setLocalDescription(offer).then(() => {
-        if (this.connection !== connection) return;
-        const sdp = offer.sdp ?? '';
-        if (!sdp) throw new Error('the offer carries no sdp');
-        if (!this.signaler.sendSignal({ to: target.hostId, generation: target.generation, kind: 'offer', sdp })) {
-          throw new Error('the room refused the offer');
-        }
-        this.signalsSent++;
+        const send = (): void => {
+          if (this.connection !== connection) return;
+          const sdp = pc.localDescription?.sdp ?? offer.sdp ?? '';
+          if (!sdp) throw new Error('the offer carries no sdp');
+          if (!this.signaler.sendSignal({ to: target.hostId, generation: target.generation, kind: 'offer', sdp })) {
+            throw new Error('the room refused the offer');
+          }
+          connection.offered = true;
+          this.signalsSent++;
+        };
+        const gathering = awaitIceGathering(pc, ICE_GATHER_CAP_MS, this.setTimer, this.clearTimer);
+        return gathering ? gathering.then(send) : send();
       });
     }).catch((error: unknown) => {
       if (this.connection !== connection || this.link !== link) return;

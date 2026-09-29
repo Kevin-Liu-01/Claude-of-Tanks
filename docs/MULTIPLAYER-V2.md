@@ -893,14 +893,17 @@ tab the compile takes 1–2 s; the second window covers a starved GPU process or
 `browserComposition.selftest` proves budget → complete proceeds (two compiles, one beacon, the loader's "still
 preparing"), budget twice fails with the message and no third attempt, invalidated never retries.
 
-**Open.** (1) Two of P1's requests are honoured by design but wait for the merge to be proven against the real
-service: `host_only` step-down and the report cadence are exercised only against the double. (2) A host_decline from a
+**Open.** (1) ~~Two of P1's requests are honoured by design but wait for the merge to be proven against the real
+service: `host_only` step-down and the report cadence are exercised only against the double.~~ P3 (§13.8): the step-down
+is proven on the real actor by `tools/mp-p2p-stepdown.selftest.mjs` — and found the room client reading a stale election
+on a re-sent `match_start`, fixed. (2) ~~A host_decline from a
 running host is honoured by the double as "elect the next willing seat"; P1 keeps a host without a willing successor,
-the client then simply stays. (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
+the client then simply stays.~~ P3: the double now applies P1's rule and `tools/mp-p2p-decline.selftest.mjs` proves the
+client under it on the real actor (the match resumes on the last resort after the 30 s report budget). (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
 stream is the follow-up if the soak shows it matters. (4) The Worker chunk is heavy (10.4 MB raw): the fleet builders
 ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. (5) The
 three-browser proof against the real room service needs the Worker to allow a development origin (`ALLOWED_ORIGINS`)
-or a run from the site origin. (6) The old host's return in the headless proof is at the mercy of the host's GPU: the
+or a run from the site origin — done from the site origin (`--site`, §13.8). (6) The old host's return in the headless proof is at the mercy of the host's GPU: the
 compile budget (5 s, extended once) is a production constant; a green rejoin needs a quiet host.
 (5) The e2e's `--grace` is 3 s (the contract's 8 s makes the proof slower, not different). (6) The unreliable snapshot
 channel of §13.2 stays a measured follow-up.
@@ -909,6 +912,157 @@ channel of §13.2 stays a measured follow-up.
 `VITE_ROOMS_URL`, so the served client resolved no room host; `src/officialHost.ts` now names the Workers for the official
 site (`resolveRoomsUrl` treats an unusable value as unset), and `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio`
 runs the three-browser proof against the deployed site — the only origin the Worker admits.
+
+### 13.8 Certification of the peer-to-peer match (P3, lane `mp/p2p-cert`, 2026-09-28)
+
+**What was measured, and how.** `tools/mp-p2p-peer/` is one seat of a match with no renderer in a real Chrome tab: the
+real `RoomClient` / `MatchSession` / `MatchClient` through `createHeadlessSession`, the browser host runtime with its
+Worker chunk and the `/mp-collision` manifest when the room elects the seat, the browser's own `RTCPeerConnection`
+(real WebRTC; ICE injected by the runner — host candidates for the LAN case, or production's STUN + TURN from
+`https://cot.kevinliu.studio/api/ice` fetched with the site origin, the credential never leaving memory), scripted
+driving, prediction against the manifest world; `window.__peer` exposes the facts. A serve-only vite middleware serves it
+at `/mp-p2p-peer/` — never in the build (`tools/mp-p2p-peer.selftest.mjs`). `tools/mp-p2p-soak.mjs`
+(`npm run test:net:v2:p2p:soak`) opens N+1 such tabs in one headless Chrome on one room of `wrangler dev`
+(`cloudflare/rooms` — the Room Durable Object's own code under miniflare, `ALLOWED_ORIGINS` = the dev origin, the seat
+secret in the gitignored `.dev.vars`), plays, closes the host's tab every `--migrate-every` minutes, measures the migration
+on every seat, re-opens the old host as a peer, and writes `soak-<N>.json` + `soak-<N>.md` with the verdicts below.
+Every run: verdant, standard rules, no bots, every hull driving and firing on the scripted controls, one machine (an
+18-core Mac under other sessions' load 7–15), Chrome at nice 19 under the probe mutex. Reports: the lane's scratchpad
+`p3/soak-*/` (`soak-4.md`, `soak-14.md`, `soak-28.md`).
+
+**Verdicts (host candidates only — the LAN shape; production ICE below).**
+
+| Check (budget) | 2v2 (4 seats, 2 min, 1 migration) | 7v7 (14 seats, 5 min, 2 migrations) | 14v14 (28 seats, 6 min, 1 migration) |
+|---|---|---|---|
+| Entry: start → WELCOME on every seat | 1.17 s (all four) | 1.19–1.21 s | 2.02–2.07 s |
+| Host tick cost, the Worker's actor loop (p95 ≤ 8 ms) | p50 0.2 / p95 0.4 / max 2.1 ms — PASS | p50 0.4 / p95 1.1 / max 50.7 ms (one late wake-up of 39.5 ms) — PASS | p50 1.1 / p95 2.3 (worst sample 3.0) / max 33.4 ms; 0 dropped ticks, 0 stalls — PASS |
+| Snapshot rate per peer (≥ 24 Hz of 30) | 30.0 (min 29.5) — PASS | 30.0 (min 29.6) — PASS | 29.9 (min 29.5) — PASS |
+| Host uplink, getStats bytes per data channel (report; > 4 Mbit/s names P3b) | 239 kbit/s median (max 273) | 1,712 kbit/s median (p95 2,088, max 2,753) | **4,853 kbit/s median (p95 7,113, max 8,758) — over the line: P3b** |
+| Host downlink / peer downlink | 79 / – kbit/s | 342 / – kbit/s | 712 / 181 kbit/s (peer max 303) |
+| RTT (wire pings, median) / candidate pair | 0.7 ms / host | 0.5 ms / host | 0.5–0.9 ms / host |
+| Lost frames (loss rate, stale, missing baselines, backpressure drops, client stalls) | 0 / 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 / 0 |
+| Migration: host loss → first snapshot from the new host on EVERY seat (≤ 12 s) | 9.20 s (host_changed 8.01 s, new host live 9.15 s) — PASS | 9.97 s and 10.18 s (host_changed 8.02 / 8.01 s, new host live 9.93 / 10.14 s) — PASS | **17.29 s on one seat (26 of 27 within 10.71 s; host_changed 8.02 s, new host live 10.66 s) — FAIL** |
+| Migration: tick timeline continuous, every seat live, no reset | PASS (resume tick 4120 ≥ old host's 3603) | PASS | PASS (resume tick ≥ 10900) |
+| Migration: own-hull jump on the presented pose (0.0 m) — allies of the new host / enemies / the new host itself | 3.5 / 28.4 / 4.9 m — FAIL | 5.8 and 4.8 / 28.0 and 6.4 / 0.8 and 0.3 m — FAIL | 5.5 / 5.0 / 0.5 m — FAIL; on the authority rows alone 1.0 / 6.1 / 0.07 m; the prediction's lead at the loss up to 4.0 m |
+| Old host back as a peer of the new one | 709 ms | 763 / 763 ms | 762 ms |
+| Peer desync at the end: the own predicted hull against the authority's newest row for it (≤ 0.5 m) | 0.026 m — PASS (run max free 1.0 m, contact 1.6 m) | 0.013 m — PASS (run max free 3.3 m; 9 of 13 predicting: the harness's `getSpec` lacked `leo2a7v`, fixed for the later runs) | 0.088 m — PASS (27 of 27 predicting; run max free 4.0 m, contact 6.2 m, 51 hard snaps over 6 min) |
+| Peer tab RSS (≤ 150 MB) | 248 MB — FAIL in this harness (JS heap 31–48 MB) | 238 MB (median 185; heap 30–68 MB) — FAIL | 290 MB (median 228; heap ≤ 70 MB); the host's renderer 939 MB — FAIL |
+| Console errors (0) | 1 (the harness page's missing favicon; fixed) | 0 — PASS | 0 — PASS |
+| Room messages per match, client→room + room→client | 106 + 166 (start 21 + 37) | 672 + 1,235 (start 81 + 137) | 1,206 + 3,018 (start 165 + 277) |
+
+**Production ICE (STUN + the six Cloudflare TURN transports from `/api/ice`; the pairs still select host candidates on
+one machine).** 12–16 candidates gather per connection (median 12, relay 8) in 0.5–1 s. 7v7 start: 260 + 316 messages,
+joins 1.15 s, migration 9.71 s, no socket closed. 14v14 start with trickle ICE: **611 + 732 messages in the burst**,
+joins 1.67–1.72 s, one room socket closed by the service during the run (`1008 resume_denied`), migration 10.46 s.
+The host's own socket answering 27 offers with a dozen trickled candidates each rides the room's rate window
+(`ROOM_RATE_MAX_MESSAGES` = 120 per 10 s; past it the socket is closed as `rate_limit`, the host counted absent, the
+match migrated at its own start) — 7v7 crossed it only by the window's phase. **Fix landed in this lane, client-only,
+inside §13's contract:** both sides wait for ICE gathering to complete (`awaitIceGathering`, capped at
+`ICE_GATHER_CAP_MS` = 2.5 s) and send the offer / the answer with every gathered candidate inside its SDP (the room never
+parses SDP; a dozen candidates stay far under the 8 KB signal); only a candidate gathered after that trickles. The same
+14v14 start on production ICE then costs **57 + 169 messages**, joins 1.88–2.73 s (gathering 0.84 s median, 2.64 s max — the cap
+hit thrice), no socket closed, migration 10.73 s, 457 client→room messages for a 2-minute match. Receipts:
+`webRtcTransport.selftest` (the wait, the embedded candidates, the late trickle, the cap), `rtcClientLink.selftest`,
+`matchHost.selftest`, `matchSessionP2p.selftest`, `mp-p2p-headless.selftest`.
+
+**Room-service cost (the Free plan bills each incoming message as a request; 100,000 a day).** With the batched
+candidates a 14v14 match costs ≈ 230 messages to start (57 in, 169 out) and then, per minute of play, 28 seats × 4 keepalive
+pings + 6 host reports ≈ 118 client→room messages (plus the same number of pongs out and a `room_state` to every seat on each
+join / ready / decline / election — 1,728 of the 3,018 outgoing messages of the 6-minute 14v14). A 30-minute 14v14 therefore
+costs ≈ 3,800 incoming messages: **≈ 26 matches a day of headroom counting client→room messages alone, ≈ 9 counting both
+directions** — and the keepalive is 85 % of it. What P1 should add: a longer keepalive while a match plays (60 s: the Durable
+Object's hibernation keeps the socket; the 15 s ping serves only the RTT readout — this alone quadruples the headroom), and
+`room_state` diffs or a coalesced broadcast at the start (28 readies → 28 broadcasts of 28 seats each). Note: if Cloudflare bills
+hibernated-socket messages at its documented 20:1 ratio the headroom is 20× the figures above; the certification counts every
+message as one request as the brief instructed.
+
+**Migration timing (where the 12 s go).** The 8.0 s socket grace, 1.1–2.6 s for the elected seat to boot (the Worker chunk,
+the manifest, the actor restored from the sealed keyframe: 1.1 s at 4 entities, 1.9 s at 14, 2.6 s at 28), and 30–50 ms
+to the first snapshot on every seat. The 17.3 s outlier at 14v14 (seat p3s20, 3 reconnects instead of 2) is one peer whose
+first offer to the new host never opened: the transport's attempt timeout (8 s, the WebSocket policy) then a retry that connected
+at once. P3b: a shorter attempt timeout for the WebRTC re-offer (3–4 s), or a second offer when the peer connection reports
+`failed` before the timeout — the room's election and boot are within budget on every other seat.
+
+**Migration state (why the hull jumps).** The presented own-hull jump decomposes into (a) the authority rows: for the new host
+itself 0.07–0.25 m and for its allies ≤ 1.0 m (the new host overlays its own newest frame — exact for what it could see), for
+enemies and for allies outside the new host's interest range up to a keyframe interval of motion (6–28 m at the scripted
+speeds: the sealed keyframe is up to `ROOM_MATCH_KEYFRAME_INTERVAL_MS` = 2 s old — §13.7's open item (3)); plus (b) the
+client's own prediction lead (the RTT/2 + lead ticks it runs ahead of the row: 0.8–4.0 m at the loss), which the resume
+resets because the client cannot replay 8–10 s of inputs (its replay window is 400 ms). "0.0 m" therefore holds only for a
+hull at rest. P3b options, each a cost: sealed keyframes every 500 ms (4× the sealed traffic: ~1.7 Mbit/s more host uplink at
+14v14), sealed deltas (§13.7 (3)), or each peer offering its own last authority row at the re-offer bounded by the keyframe
+age × the hull's top speed (a client's row for itself, never for others — the AGENTS invariant holds, the bound closes the
+teleport).
+
+**Host capacity (the honest limit, §13.3).** The host's uplink is 180 kbit/s per viewer at 30 Hz (22.5 KB/s: the charter's
+12–18 KB/s for 28 rows plus the sealed keyframe every 2 s and SCTP framing) — 4.9 Mbit/s at 27 viewers, over the 4 Mbit/s
+line. P3b (not built here): the interest tiers §13.3 promises (20 → 15 → 10 Hz by distance — the publisher sends 30 Hz to
+every viewer today), the unreliable channel of §13.2 for snapshots, or per-peer rate adaptation from `bufferedAmount`. The
+host's CPU is not the limit: p95 2.3 ms per tick at 28 entities with 27 links.
+
+**Memory.** The harness runs the dev server's unbundled module graph (source maps, the fleet specs, the manifest world for
+prediction), so its renderers weigh 185–290 MB against the 150 MB budget while their JS heaps stay at 30–70 MB; the host's
+renderer (the actor Worker with the 10 MB chunk and the collision world) 630–950 MB. The budget must be re-measured on the
+built site (P4's cutover gate): the JS heap says the session itself is small.
+
+**Decline rule (P1 ↔ the double).** `tools/mp-p2p-room-double.ts` now imports P1's `electHost` (a declined commander hosts
+only as the last resort), keeps a running host that declines without a willing successor, times a host's silent reports out
+(`reportStaleMs`) and broadcasts the room after a decline. `tools/mp-p2p-decline.selftest.mjs` proves the client under that
+rule on the REAL actor (`server/rooms` with `matchTransport: 'p2p'`, its deadlines on a fake clock) and on the double: the hosting
+admin's Garage return with every other commander declined keeps it as host (no election), the peers wait on a lost link, the
+report budget (`ROOM_MATCH_REPORT_STALE_AFTER_MS` = 30 s) migrates with `timeout` to the last resort, which resumes from its sealed
+keyframe at the continued tick; the other peer follows; the old host re-enters as a peer. The cost of P1's rule is that stall:
+30 s instead of the 8 s grace. What P1 should add: treat a decline from the RUNNING host as `left` (the client only declines
+while hosting when it is leaving the match — its actor is already gone), so the last resort is elected at once.
+
+**Real-service proofs.** `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio --grace=8000` on this lane's tools against
+the deployed site (stamp `de5322e7d`, 2026-09-28 22:48): PASS in 87 s — A hosting two peers on `rtc://`, C saw B move 17.4 m
+over 364 snapshots in 12 s, A closed → B elected after 8,337 ms (generation 2), C live on B with +120 snapshots in 4 s, B's hull
+2.12 m from where C saw it, A back as a peer on the auto path in one attempt (compile 2,572 ms), 0 browser errors. The
+`host_only` step-down and the report cadence: the deployed run's reports are not observable from outside the Worker; the
+cadence is receipted against the real actor's rules (`matchSessionP2p.selftest`: `loading`, every phase, every 10 s; one
+`ended`), and the step-down is proven end to end on the real actor by `tools/mp-p2p-stepdown.selftest.mjs` — which found a
+client bug first: a host whose ROOM socket dropped past the grace (its tab and actor alive) came back to a re-sent
+`match_start` naming the successor at generation 2, but `RoomClient.generation` / `hostId` answered from the stale start
+election it still held, so it offered to itself at generation 1 forever (the soak's `--migrate-mode=stepdown` run: 5
+reconnects, never live). Fixed in this lane: a newer generation in a re-sent `match_start` supersedes the held election,
+and the session's same-match re-entry steps a replaced host down at once (the `host_only` refusal of its next report stays
+the fallback). On the real actor: p2 elected 8,030 ms after the blip, p3 followed, p1 back received `rtc://…/2` with host p2,
+stepped down and was live as a peer of p2 within milliseconds of re-joining, p2 serving both. On the real Worker code
+(`wrangler dev`, the soak's `--migrate-mode=stepdown` at 2v2): host_changed 8.01 s after the blip, the successor live at 9.19 s,
+every seat on it by 9.23 s, and the old host — its actor still running until then — stepped down 7 ms after re-joining
+(`match_start re-sent`) and played on as a peer of the new host.
+
+**TURN entry soak.** `--ice=relay` (`iceTransportPolicy: 'relay'` on every peer connection, both ends, the credentials
+from `https://cot.kevinliu.studio/api/ice` fetched with the site origin — 1 STUN + 6 TURN urls, TTL 28,800 s) at 2v2 for 3
+minutes with two migrations: every candidate pair `relay` (12 relay candidates gathered per connection, 171 ms median; one
+connection hit the 2.5 s gathering cap), joins 1.08–1.09 s (2.95 s for the capped one), wire RTT through Cloudflare's TURN
+18.8 ms min / 21.2 median / 61 p95 (max 324 during a migration), host uplink 228 kbit/s at 3 peers, no lost frames,
+migrations 9.29 s and 10.86 s to the first snapshot on every seat (host_changed 8.01 s, the new host live 9.24 / 9.12 s; one
+relayed re-offer took 1.7 s longer than the others), the old host back as a relay peer in 755 / 763 ms, ICE resolved 26
+times (once per connection — the renewal path `webRtcTransport.selftest` / `rtcClientLink.selftest` receipt: a renewed
+credential reaches the next offer / answer). The credential TTL is 28,800 s on production (`expiresInSeconds`) and the standard ruleset's clock is 900 s
+(`src/sim/matchRuleset.ts` — every mode's clock is at most 15 minutes): **no match can outlive a credential**, so the renewal
+path matters only for re-offers, where it is receipted. The hold: a second relay-only 2v2 played until its own verdict at
+t+453 s (every seat driving and firing; 13,758 snapshots per seat) with every relayed link up the whole way — RTT through
+TURN 19.3 min / 21.5 median / 33 p95 ms, host uplink 231 kbit/s median, 0 lost frames, 0 stale snapshots, 0 reconnects, desync
+0.007 m at the end. The 65-minute run the brief asked for was started and stopped after 6 minutes once the clock cap made it
+moot (a match cannot last 65 minutes); the soak now ends a run on the match's own end and `--fire=0` keeps a hold from
+ending on a verdict.
+
+**Realism run (the real game page as host).** `--host=game`: the game page itself (`?mp=v2`, the Play menu's LAN room,
+the renderer, the HUD, its own client) hosting three harness seats for 2 minutes with one migration away from it: the game
+host entered its battle in 8.07 s and its peers were welcomed 8.5 s after the start (they wait for the host's actor, which
+boots after the page's battle load); host uplink 136 kbit/s at 3 peers; host tick p95 0.3 ms; the game host's tab closed →
+host_changed 8.04 s → a harness seat live 9.25 s → every remaining seat on it within 9.25 s, tick continuous; jumps allies
+1.42 m (rows 0.08 m), enemies 0.45 m, the new host 0.26 m; desync at the end 0.001 m; 0 console errors on the game page;
+room messages 52 in + 94 out.
+
+**Open for P3b / P1 / P4 (each named above):** P3b — the host uplink at 14v14 (interest tiers, the unreliable channel, or
+per-peer rate adaptation), the WebRTC re-offer timeout / retry on `failed`, the migration seed for unseen hulls (a shorter
+sealed keyframe cadence, sealed deltas, or a bounded own-row hint). P1 — the in-match keepalive interval, coalesced
+`room_state` broadcasts, a running host's decline treated as `left`. P4 — the peer tab RSS on the built site, the credential
+TTL (28,800 s on production: no match in this certification crossed it; the per-connection renewal is receipted).
 
 ## 10. Decisions for the owner
 

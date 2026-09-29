@@ -351,7 +351,9 @@ export function createMatchHostCore({
     const summary = live.stats();
     return {
       tick: summary.tick, phase: summary.phase, clients: summary.clients, bytesOut: summary.bytesOut, bytesIn: summary.bytesIn,
-      snapshots: summary.snapshots, keyframes: summary.keyframes, migrationKeyframes, tickP95Ms: summary.tickMs.p95, verdict: summary.verdict,
+      snapshots: summary.snapshots, keyframes: summary.keyframes, migrationKeyframes, tickP95Ms: summary.tickMs.p95,
+      tickP50Ms: summary.tickMs.p50, tickMeanMs: summary.tickMs.mean, tickMaxMs: summary.tickMs.max, tickCount: summary.tickMs.count,
+      droppedTicks: summary.loop.droppedTicks, stalls: summary.loop.stalls, lateWakeupMaxMs: summary.loop.lateWakeupMaxMs, verdict: summary.verdict,
     };
   }
 

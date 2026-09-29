@@ -3,7 +3,8 @@
  * `ClientLink` over a WebRTC data channel, and the acceptor that turns the room's relayed offers into links.
  * `createRtcHostAcceptor` takes every `room_signal` offer addressed to the host for the current generation, builds one
  * peer connection per peer (a re-offer replaces the peer's previous connection: that is a reconnect), answers through
- * the room, applies the peer's candidates and trickles its own, and hands each opened `match` channel to the owner as
+ * the room once its ICE gathering is done (the candidates inside the answer's SDP, a late one trickled — the transport's
+ * rule), applies the peer's candidates, and hands each opened `match` channel to the owner as
  * a `ClientLink` whose label is a peer ordinal, never an identity. The link sends the wire CLOSE before closing the
  * channel, as the WebSocket service's socket link does. WebRTC stays behind the transport's structural shapes and
  * factory, so the receipt runs on the scripted world.
@@ -12,7 +13,7 @@ import type { ClientLink } from '../../../server/match/link.ts';
 import { CLOSE_REASON, MAX_MESSAGE_BYTES, MESSAGE_TYPE } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import { encodeMessage } from '../wire/codec.ts';
-import { RTC_MATCH_CHANNEL_LABEL, candidateInit, selectedCandidateTypes } from '../transport/webRtcTransport.ts';
+import { ICE_GATHER_CAP_MS, RTC_MATCH_CHANNEL_LABEL, awaitIceGathering, candidateInit, selectedCandidateTypes } from '../transport/webRtcTransport.ts';
 import type {
   RtcCandidatePairTypes, RtcDataChannelLike, RtcIceCandidateInitLike, RtcIceConfig, RtcPeerConnectionFactory, RtcPeerConnectionLike,
   RtcRelayedSignal, Signaler,
@@ -198,7 +199,7 @@ export function createRtcHostAcceptor({
   if (typeof onLink !== 'function') throw new TypeError('onLink is required');
   const resolveIce = typeof ice === 'function' ? async () => ice() : async () => ice;
   const peers = new Map<string, RtcHostPeer>();
-  interface Internal { peer: RtcHostPeer; timer: unknown; pending: RtcIceCandidateInitLike[]; described: boolean; retired: boolean }
+  interface Internal { peer: RtcHostPeer; timer: unknown; pending: RtcIceCandidateInitLike[]; described: boolean; answered: boolean; retired: boolean }
   const internals = new Map<RtcHostPeer, Internal>();
   let ordinal = 0;
   let closed = false;
@@ -245,7 +246,7 @@ export function createRtcHostAcceptor({
       playerId: signal.from, label: `peer${++ordinal}`, state: 'answering', generation: current, pc, link: null, candidatePair: null,
       offeredAtMs: clock(), openedAtMs: null,
     };
-    const internal: Internal = { peer, timer: null, pending: [], described: false, retired: false };
+    const internal: Internal = { peer, timer: null, pending: [], described: false, answered: false, retired: false };
     peers.set(peer.playerId, peer);
     internals.set(peer, internal);
     const live = () => internals.get(peer) === internal && !internal.retired;
@@ -256,7 +257,8 @@ export function createRtcHostAcceptor({
       retire(peer, null, 'channel did not open');
     }, connectTimeoutMs);
     pc.onicecandidate = (event) => {
-      if (!live() || !event.candidate) return;
+      // gathered before the answer left: inside its SDP; after: a late candidate, trickled
+      if (!live() || !event.candidate || !internal.answered) return;
       const init = candidateInit(event.candidate);
       if (!init.candidate) return;
       if (signaler.sendSignal({ to: peer.playerId, generation: peer.generation, kind: 'candidate', candidate: init })) counters.candidatesSent++;
@@ -295,11 +297,16 @@ export function createRtcHostAcceptor({
     }).then((answer) => {
       if (!answer || !live()) return;
       return pc.setLocalDescription(answer).then(() => {
-        if (!live()) return;
-        const sdp = answer.sdp ?? '';
-        if (!sdp || !signaler.sendSignal({ to: peer.playerId, generation: peer.generation, kind: 'answer', sdp })) throw new Error('the room refused the answer');
-        counters.answers++;
-        setState(peer, 'connecting');
+        const send = (): void => {
+          if (!live()) return;
+          const sdp = pc.localDescription?.sdp ?? answer.sdp ?? '';
+          if (!sdp || !signaler.sendSignal({ to: peer.playerId, generation: peer.generation, kind: 'answer', sdp })) throw new Error('the room refused the answer');
+          internal.answered = true;
+          counters.answers++;
+          setState(peer, 'connecting');
+        };
+        const gathering = awaitIceGathering(pc, ICE_GATHER_CAP_MS, setTimer, clearTimer);
+        return gathering ? gathering.then(send) : send();
       });
     }).catch(() => {
       if (live()) retire(peer, null, 'negotiation failed');

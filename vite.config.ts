@@ -156,6 +156,30 @@ const collisionManifestPlugin = () => ({
   },
 });
 
+/**
+ * The peer harness of the peer-to-peer certification (docs/MULTIPLAYER-V2.md §13.8, P3 lane 2026-09-28): one seat of a
+ * match with no renderer (`tools/mp-p2p-peer/`), driven by `tools/mp-p2p-soak.mjs` through `window.__peer`. Served
+ * only by the dev server (`apply: 'serve'`, no build hook, not a rollup input) at /mp-p2p-peer/ — the page's module is
+ * the source file under /tools/, transformed like any other dev module. `tools/mp-p2p-peer.selftest.mjs` proves the
+ * build emits nothing for it. Registered before `cot-routes`, whose HTML rewrite would otherwise answer 404.
+ */
+const PEER_HARNESS_ROUTE = '/mp-p2p-peer';
+const PEER_HARNESS_PAGE = resolve(dirname(fileURLToPath(import.meta.url)), 'tools/mp-p2p-peer/index.html');
+
+const peerHarnessPlugin = () => ({
+  name: 'cot-mp-p2p-peer-harness',
+  apply: 'serve' as const,
+  configureServer(server: { middlewares: { use(handler: Connect.NextHandleFunction): void } }) {
+    server.middlewares.use((req, res, next) => {
+      const path = (req.url || '').split('?', 1)[0];
+      if (path !== PEER_HARNESS_ROUTE && path !== `${PEER_HARNESS_ROUTE}/`) { next(); return; }
+      res.setHeader('content-type', 'text/html; charset=utf-8');
+      res.setHeader('cache-control', 'no-store');
+      res.end(readFileSync(PEER_HARNESS_PAGE));
+    });
+  },
+});
+
 /** Keep Vite's static-file layer from replacing an intentional 404 with 200. */
 function forceNotFoundStatus(res: ServerResponse): void {
   res.statusCode = 404;
@@ -207,6 +231,7 @@ export default defineConfig({
         return localizeHtmlDocument(html, route, locale);
       },
     },
+    peerHarnessPlugin(),
     {
       name: 'cot-routes',
       configureServer(server) {

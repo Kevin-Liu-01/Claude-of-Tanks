@@ -53,6 +53,12 @@ natural authority result and proves that every participant retains the same
 waiting room with readiness reset. It uses the existing 60-second simulation
 limit only inside the certification authority; production keeps its 900-second
 safety cap. Use `--only=host` or `--only=client` for targeted diagnosis.
+The peer-to-peer certification (docs/MULTIPLAYER-V2.md §13.8) is `npm run
+test:net:v2:p2p:soak` (`tools/mp-p2p-soak.mjs`): N seats as tabs of the dev-only
+peer harness `tools/mp-p2p-peer/` in one headless Chrome on a `wrangler dev` room
+service (`--rooms=ws://127.0.0.1:<port>` with the dev origin allowed), the
+migration measured on every seat, a JSON report and a Markdown table per size;
+run every Chrome under the probe mutex at nice 19, one at a time.
 `npm run net:prod:check` probes distributed signaling and TURN independently,
 then uses a pristine browser context with relay-only ICE policy to require a
 real relay candidate. URL presence is not allocation proof. Use
