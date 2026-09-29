@@ -402,38 +402,60 @@ assert.doesNotMatch(mainSource, /import \{ createGarageReturnRuntime \}/,
 
 const contextRestoreBody = mainSource.match(/async onRestored\(\) \{([\s\S]*?)\n  \},\n\};/)?.[1];
 assert.ok(contextRestoreBody, 'exercise the actual production context-restored adapter');
-function contextRecoveryFixture(fixture) {
+function contextRecoveryFixture(fixture, body = contextRestoreBody) {
   let lost = false;
   let gpuRestores = 0;
   let rearmed = 0;
   let environmentRebuilt = false;
+  let invalidatedInfo = null;
+  let shadowInvalidations = 0;
   const renderer = { info: {}, getContext: () => ({ isContextLost: () => lost }) };
+  const assertShadows = (stage) => assert.equal(invalidatedInfo, renderer.info,
+    `shadow maps must be invalidated for the current renderer before ${stage}`);
   const adapter = new Function('ports', `
     const {renderer, game, garageReturn, garagePhasePresentation} = ports;
-    const combatWarmComposition = { resetRendererWarmState() {} };
+    const combatWarmComposition = { resetRendererWarmState() { ports.assertShadows('warm-state recovery'); } };
     const getDeviceTier = () => 'desktop';
     const nextFrame = async () => {};
     const viewport = { apply() {} };
-    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, render() { ports.assertEnvironment(); } };
+    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, render() { ports.assertShadows('confirming the restored frame'); ports.assertEnvironment(); } };
     const sky = { bakeEnvironment() { ports.rebuildEnvironment(); } };
-    const applyGraphicsRecovery = () => {};
+    const applyGraphicsRecovery = () => ports.assertShadows('graphics quality recovery');
     const pedestal = { trim() {} };
     const worldRuntime = { enforceCacheBudget() {} };
-    const lighting = { update() {} };
+    const lighting = { invalidateShadowMaps: ports.invalidateShadows, update() { ports.assertShadows('lighting refresh'); } };
     const rearmRafAfterContext = ports.rearm;
     let graphicsContextLost = true;
     let garagePresentationDirty = true;
-    return { async restore() { ${contextRestoreBody} },
+    return { async restore() { ${body} },
       get blocked() { return graphicsContextLost; },
       get dirty() { return garagePresentationDirty; } };
-  `)({ renderer, game: fixture.game, garageReturn: fixture.runtime,
-    garagePhasePresentation: { async restoreGpu() { gpuRestores += 1; } },
-    rearm() { rearmed += 1; },
+  `)({ renderer, game: fixture.game,
+    garageReturn: { recoverAfterContextRestore(...args) {
+      assertShadows('canonical Garage recovery');
+      return fixture.runtime.recoverAfterContextRestore(...args);
+    } },
+    garagePhasePresentation: { async restoreGpu() { assertShadows('GPU presentation restore'); gpuRestores += 1; } },
+    assertShadows,
+    invalidateShadows() { invalidatedInfo = renderer.info; shadowInvalidations += 1; },
+    rearm() { assertShadows('resuming frame ownership'); rearmed += 1; },
     rebuildEnvironment() { environmentRebuilt = true; },
     assertEnvironment() { assert.equal(environmentRebuilt, true, 'rebuild GPU-only reflections before confirming the restored frame'); },
   });
   return { adapter, renderer, loseContext() { lost = true; },
+    get shadowInvalidations() { return shadowInvalidations; },
     get gpuRestores() { return gpuRestores; }, get rearmed() { return rearmed; } };
+}
+
+// A no-op stub would accept the original stale-shadow bug. Exercise both a
+// missing invalidation and one moved behind graphics recovery as negative controls.
+for (const late of [false, true]) {
+  let body = contextRestoreBody.replace('lighting.invalidateShadowMaps();', '');
+  if (late) body = body.replace('applyGraphicsRecovery();',
+    'applyGraphicsRecovery(); lighting.invalidateShadowMaps();');
+  const recovery = contextRecoveryFixture(createFixture(), body);
+  await assert.rejects(recovery.adapter.restore(), /shadow maps must be invalidated/);
+  assert.equal(recovery.rearmed, 0, 'stale shadow readiness cannot resume the frame loop');
 }
 
 for (const preserveRoom of [true, false]) {
@@ -535,6 +557,7 @@ for (const boundary of ['before-retry', 'placement', 'restore']) {
   await recovery.adapter.restore();
   assert.equal(fixture.calls.length, 0, 'ordinary Garage context recovery has no return teardown to replay');
   assert.equal(recovery.gpuRestores, 1, 'ordinary Garage keeps the existing GPU-only restore path');
+  assert.equal(recovery.shadowInvalidations, 1, 'ordinary restoration invalidates the shadow set before its GPU-only warm');
 }
 
 {
@@ -565,6 +588,7 @@ for (const boundary of ['before-retry', 'placement', 'restore']) {
   assert.equal(isCovered(fixture), false);
   assert.equal(recovery.adapter.blocked, false);
   assert.equal(recovery.rearmed, 1, 'only the healthy restoration resumes frame ownership');
+  assert.equal(recovery.shadowInvalidations, 2, 'each restored renderer lifetime invalidates its own shadow set');
 }
 
 for (const boundary of ['context', 'phase']) {

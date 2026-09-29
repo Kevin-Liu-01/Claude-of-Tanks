@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "created": "2026-09-29T20:13:40.477Z",
-  "sourceDigest": "506a7326f4c1f3c1164e1b187efee0b61821d9cc4867b01701b234e2bc22775a",
-  "revision": "f8817244250487e9c726acf253866245ca0c2cf6",
+  "created": "2026-09-29T20:42:55.652Z",
+  "sourceDigest": "b8a018190f37ccb4951f79ee28087c347e7a23b14962ccd8a279ed18b3f234e7",
+  "revision": "fa7fefb47c27d590060ccb9fbbec07aed13324c5",
   "shots": [
     {
       "src": "/maps/verdant.webp",
@@ -7074,375 +7074,375 @@
   "assets": [
     {
       "src": "/maps/verdant.webp",
-      "sha256": "ef48756bd534880ca4047d195cd84d597f9db9d6bf6fb2ac85b096290f1a488e"
+      "sha256": "436ed6f4d2fa089e7a2674e3a83cff0377038bbfa163cbd539e34de875a978ba"
     },
     {
       "src": "/maps/cards/verdant.webp",
-      "sha256": "9ef924f6cce086709d13cbf9ac063b28b2a070c9ca54140b058816cefdd134a0"
+      "sha256": "652ef62f9e23fe3e6cb48aed4fb01bcb38beb1c0bfee4cb86d880235f0221450"
     },
     {
       "src": "/maps/thumbs/verdant.webp",
-      "sha256": "9ddb838b6eba840c86579901711d19ad82c0f5e3c4efc1dd337e885dc48e123b"
+      "sha256": "45d20a2836b83dd9fe24958ffbaba68571c7a9621c790ce5ace63b6fb4a31f48"
     },
     {
       "src": "/maps/desert.webp",
-      "sha256": "5f88f9a0f1b65bd7901c893bfdc173e92348f1ad083399735dedf62a2f337f8c"
+      "sha256": "96e56f64a74d4d869ee767636f7b4527cac64d46ffa67a95db531eb86686aa3e"
     },
     {
       "src": "/maps/cards/desert.webp",
-      "sha256": "012a811a87bb7ca237cf057593d5dd07835aa696d725cbb044715f6d95af96cc"
+      "sha256": "cc0d263634da74fa44d608489161c4c8239418581a69800e7a88781424ccddfa"
     },
     {
       "src": "/maps/thumbs/desert.webp",
-      "sha256": "2cfa2a26e935090e9b377124f50a2b989ed73dbe9d3d592f1716676a333aeaa4"
+      "sha256": "5d2ad4e5f1e48ea1bc9e2467d46ff0d10cb6024e1172dc8109b7639ac34c07df"
     },
     {
       "src": "/maps/winter.webp",
-      "sha256": "537c352e0ed212337976f4a70115fe9215ee2994765cee7a77b1b59e2de2304f"
+      "sha256": "19f00546d4e98a12a187bfa19b9d1db5c96985eb7b31000abb5f9f51e6e355fc"
     },
     {
       "src": "/maps/cards/winter.webp",
-      "sha256": "5d88af2ef4b83f130cb84d48ee3da1719f430a1144d3b57a9cc419f7cb652265"
+      "sha256": "77c56df884fd4e31fa108da130028f2a16c3d49e3e21a049c3d7639f9e315f37"
     },
     {
       "src": "/maps/thumbs/winter.webp",
-      "sha256": "0fa53f9184521d713283563e0aa1f294e0345f0e3aa13283f383e52716917a57"
+      "sha256": "b12c53b83e00d7a2768151429140d34968699095a4d63a1671a27b49bf5f03e1"
     },
     {
       "src": "/maps/urban.webp",
-      "sha256": "feea3705a67f35a07d6cb5b84af79f27462edca2acf72db5c5b14bda72898bd3"
+      "sha256": "03e76454819584f07e872dc2c74d842a4b1152ed669b1b80b0f12b5bc4c2e82c"
     },
     {
       "src": "/maps/cards/urban.webp",
-      "sha256": "0792c118f8e67f8f0133d44075bb54428bfcc050e4fe0ede6cc7269f1771884f"
+      "sha256": "46c342fa57e8d782750ac96f92afb82b7cb3b74e2abdbc6e02e9fdeadd668745"
     },
     {
       "src": "/maps/thumbs/urban.webp",
-      "sha256": "e7efea31dd119ad00146035a2273295dcc472ef60ec5ee3fc459470483d37664"
+      "sha256": "a72743494dcaedcf0ebda765fc709843a329e6b6772ad651cc381130159a1fe9"
     },
     {
       "src": "/maps/coastal.webp",
-      "sha256": "051843158da5574c83436f3cf5ca9bc6acab73625f1e3d6da4ffe9a02dfe0431"
+      "sha256": "36a33541f772b5be694001eba33e4a6be6857996701bb64955ba989c6876a6b3"
     },
     {
       "src": "/maps/cards/coastal.webp",
-      "sha256": "f2900ab04ac90ab51a31288fafdb1d35a4a0cab82e9893beb8da0ca27a131ce4"
+      "sha256": "750cc8702ab63d98c41bac158e92044973ab12e1f045af6dd1be37bc85cf01ea"
     },
     {
       "src": "/maps/thumbs/coastal.webp",
-      "sha256": "449572e2aca1f397fef3f006012ca8c6109d43749cc156f9c42a23da4a4af141"
+      "sha256": "a64ad9f6b5bf2c8ea2641811a8dae4195c774468bd61325897d5e427c1bf8349"
     },
     {
       "src": "/maps/autumn.webp",
-      "sha256": "85358e81fd2428602f41b2e7ba6b2e86cc0f1d2b793d195cd94a0a8d0685d7a4"
+      "sha256": "072ec4e9519d742710f82b5922a2859b59ddaa8b484d9a0de2f60f2a8165e2e8"
     },
     {
       "src": "/maps/cards/autumn.webp",
-      "sha256": "c091a0ea95a9f0d28eda6782fedc09c05db28a7c5a190ad1bcd1e4b1fed61bea"
+      "sha256": "85d24b837b3ce81db08ee5d4149183a50471c13a326a9f8cf52c77fc71efffb4"
     },
     {
       "src": "/maps/thumbs/autumn.webp",
-      "sha256": "5551ce194c59a0d14d2e564d64ed4579c0376dc21cd3ebcc29cb9e84c2603cd3"
+      "sha256": "7e55a6431397fceb652664757ef7976c0e6f268831edf3b0ef4b8ef9426f84e9"
     },
     {
       "src": "/maps/steppe.webp",
-      "sha256": "811c7fbe314ea9801cf568aa18160559853b8a30545035fe746fa23f015d8d53"
+      "sha256": "1be3dcc42e51d09cf8bf12f4e1c06834175ba4a45709f75e63e3aec99a07a3fc"
     },
     {
       "src": "/maps/cards/steppe.webp",
-      "sha256": "75500ae62d842436ec845101c51670ecb3db651c1dff372971a6bf390ed124bb"
+      "sha256": "0fab284ce3b1832fb50adc4af0905ae0ab86545706baa4173657ffafe9b312a5"
     },
     {
       "src": "/maps/thumbs/steppe.webp",
-      "sha256": "ade92e32a580ffded43647c47716f782e4774ad386f895eb94084bf148db32e4"
+      "sha256": "e9cc5fb7d8b1db8c5d1e1f9033f19b7b8c8cb0a986038fe547d179a1405a5e7e"
     },
     {
       "src": "/maps/railyard.webp",
-      "sha256": "495666556222e7081644ebb6399a697478433c3d77b2f98a6b0ee21350476985"
+      "sha256": "747134f07a04e8565bf5a34e0fd8bac58e2949ecbef5969d5ed5e3deddb8a1ac"
     },
     {
       "src": "/maps/cards/railyard.webp",
-      "sha256": "61702ea26a1571614c9d385b73619f08fe49bc8cf759987d456bee60b866c592"
+      "sha256": "6405f783e4a635f32c9ae631e86cf7ee2e53812822b1c8b2ce272e616f01cd8d"
     },
     {
       "src": "/maps/thumbs/railyard.webp",
-      "sha256": "c3ad3d8c23898dfd4edac4939625368fc429dcccbcff3493c84d2975b414fe8d"
+      "sha256": "16c47fdcdcd6a17de7e98f38bb95ed3ef46ed8b43cd4bde0bb3a066fedacf9d2"
     },
     {
       "src": "/maps/frontier.webp",
-      "sha256": "7ac6bc94a30a8df1721b0a6aec242349d14992060fe0a26ceeb45e2e2fc069b3"
+      "sha256": "c07a9f2b0bb2ebfec8453814600db900d1973fd63234529bf3fce1bbcfa308e3"
     },
     {
       "src": "/maps/cards/frontier.webp",
-      "sha256": "29fc4d47ff43e0730c84ba152d285c0874566b5f9d8972fd977d93947dec5bb5"
+      "sha256": "694c7c59c226f257aa264512dbe4763d521b356b5d4c60436dccb2587d5f5550"
     },
     {
       "src": "/maps/thumbs/frontier.webp",
-      "sha256": "46602a5380e5c01613593a3ffad61a67843d42b5f79f890c38309cbbf185c801"
+      "sha256": "7832d1582ba2fe5a31907ca491d62ac2b4e4c093ad8598b2c974554749ae43ef"
     },
     {
       "src": "/maps/fjord.webp",
-      "sha256": "030e927e1c8d03928ae09b664255ce2ce383850e2384e2a1e75d52380dbf135c"
+      "sha256": "9c154d70b141201f480567305e9260831feb1e548c8bd9b89edf97c991a6e400"
     },
     {
       "src": "/maps/cards/fjord.webp",
-      "sha256": "ea16ea88f7679d85990839b4cc4d87264a956c95fc90fd1bb506fead475ccd37"
+      "sha256": "c55f2d10d9fed0372dd546ba015e6e0a6187f5a7a1ea1f8c3654d478cb7b94b5"
     },
     {
       "src": "/maps/thumbs/fjord.webp",
-      "sha256": "d404561eddb5b304ae88727c89b29fe5aa1c6e97a5917d8843b1a71870ec4da0"
+      "sha256": "28144bb2a916010ca705581efe8705e2510793be31dbdef0b93edbbc3e8e7de9"
     },
     {
       "src": "/maps/delta.webp",
-      "sha256": "1b9589210ac8c014995e1ce44ec0f4b7d31ef82bcc9ffcbb3c4a1e476088d185"
+      "sha256": "6b5386627658de5bd4b88518fb8a52859dbce8cc41e83a008750c33cd8da923c"
     },
     {
       "src": "/maps/cards/delta.webp",
-      "sha256": "f9fc6ebcde4f64b9657880bca5ae2c83aa62438b5627aa983be9a3c700d8c46d"
+      "sha256": "cf4e4cb5cb122678ba00da2ed9e2ae3775834dad5b5fa25ed0062c2a18a8e683"
     },
     {
       "src": "/maps/thumbs/delta.webp",
-      "sha256": "864712bcb0a92f5bba86879857fe652f447a20df123c7f8ecf6ca105287c20aa"
+      "sha256": "e5e7911fdb02d288f63c14b45511173bdfa21c9260f8a00148f0f0f6bc537719"
     },
     {
       "src": "/maps/badlands.webp",
-      "sha256": "525ac9a6749de05d29bc4345e495f1875a61ba831355bebeeaad4dcdfec07aae"
+      "sha256": "b21cd372cc13516d1d54defab50305682b1fd70fb23957fe659910d0b2ae03a4"
     },
     {
       "src": "/maps/cards/badlands.webp",
-      "sha256": "84485663435c97de70151f90b7689cddcce0986ead61659c3223dd04bd6c36d3"
+      "sha256": "c35a1ee966e2ddec7d7f19e6c1e035b219d8c68c01415486747e8eb5b18f9bd3"
     },
     {
       "src": "/maps/thumbs/badlands.webp",
-      "sha256": "8260719953201714e1f36570eee02be511c01da807d5a0f0fa4e6b0978eb34fe"
+      "sha256": "64c2708aca037176878aee0f5dd53ad922fa5bc1ee76f9146e3bd9167f669c02"
     },
     {
       "src": "/maps/monsoon.webp",
-      "sha256": "1e2e59defc8f69870520fb16fbc523327239f70a7a4ff736992b6504c6a29498"
+      "sha256": "217faf294e5eaf2b73d80db6f151e69d957135627b226ca2f0c1ef614cb33e6b"
     },
     {
       "src": "/maps/cards/monsoon.webp",
-      "sha256": "0c34bbca8522160d33ed1c246610b3483a038fa2e61289a9577b5e02fe300a6c"
+      "sha256": "fb92dcb9698341c62a5cf953c5a4c13eda474ce0a1d293b35a7d7d19177454aa"
     },
     {
       "src": "/maps/thumbs/monsoon.webp",
-      "sha256": "5e5f575141ffe164775a6c984215339efb675eef0cadbed2d9415836e9cdcb06"
+      "sha256": "b1d3d4d8c1e07cdaa368031769e39ef2afd047b0df3525f29d0c4b72eb1a698a"
     },
     {
       "src": "/maps/alpine.webp",
-      "sha256": "aee03b655670d2553cefd5da14c2813d8fc7831e9ab0a955309b45581964d3a0"
+      "sha256": "febe0262aaf7f108ee595967f804871c92d7086467e8c9ada06a8a8b092189de"
     },
     {
       "src": "/maps/cards/alpine.webp",
-      "sha256": "871de0a97ac88c8d933ce732d04b195930413d8a1359fe9d6cbd1ce12836bba3"
+      "sha256": "c5dd497b0e2867d7e773a0c36e28b7b3a5ed64fb11b2ecd86ab64fc8a070ac8c"
     },
     {
       "src": "/maps/thumbs/alpine.webp",
-      "sha256": "9ea91321b6e16ac613a9588324905247d60f041b2506593ca7497a2c85b96163"
+      "sha256": "f37b65cf9544c5f672f12bed257c087dc4e577ad7263282145d609335112d78b"
     },
     {
       "src": "/maps/caldera.webp",
-      "sha256": "b2abbc32c0b05de5280b3a66452ecf429ced4644f6bc49a597ba788a4b67f0b0"
+      "sha256": "d0c6cb0f96aec29fb7d978c48e975b259fcc1a0fb24b7dc17fe9a945fc3eb9e5"
     },
     {
       "src": "/maps/cards/caldera.webp",
-      "sha256": "19d960ab88f870149a8c0fd04dcc6a3b7f672bda9903cbee6cfe6035216988fe"
+      "sha256": "6ff0722ad946a35fffe89ecc60923afffe946466a93e12ed4ea2e9ca9bfd92a5"
     },
     {
       "src": "/maps/thumbs/caldera.webp",
-      "sha256": "0d1ec4d776dbc2c3d3e9a875d32c8418e7606a2cab4f1e6b23b76d01866e63e7"
+      "sha256": "853703628579ba932da8b0bdbcef801b1a161a22910502b0057ff70a9d1f791f"
     },
     {
       "src": "/maps/foundry.webp",
-      "sha256": "bac90fadbf0402ce61c115a5fc286965cc89038ff633730909d6428d6382a58f"
+      "sha256": "74297947bce7a57afe711256f5e7f4f3a3fec472115949e8c829160fd593a03a"
     },
     {
       "src": "/maps/cards/foundry.webp",
-      "sha256": "a2561e22a04d23a1ae7b127fbb0ddf962872b63fafc7bd0ba260342afe0ce489"
+      "sha256": "38670a268dba7551a33354c641254734ce4555ca2928c7eb54b2e50395af5bfd"
     },
     {
       "src": "/maps/thumbs/foundry.webp",
-      "sha256": "33fa101bb1f9d41c317d2b19bd105680717fa80abd062cb1da01270d0cc941a5"
+      "sha256": "3361825c032ad69773290646e0bbefaf4cc8b817f0e92612e7de956b52e45209"
     },
     {
       "src": "/maps/ruinspires.webp",
-      "sha256": "1c1155b718112be169b1183f71262ac97bfbaa1cc81b0e1b260e5a817f9fa241"
+      "sha256": "1c529b10fb9d9bf7ab248c8187339ae6d3184cea1f75ee1b2909528fdb171d5b"
     },
     {
       "src": "/maps/cards/ruinspires.webp",
-      "sha256": "ac4a7b00c2734982bf7478f44ece82084763584e8471392b776a72f151100126"
+      "sha256": "c93c3e9550aa32fd40deb8944ed29a378f1128e43f300113bc16f49a20245caa"
     },
     {
       "src": "/maps/thumbs/ruinspires.webp",
-      "sha256": "b107fc325bdf64e66ab8cdfd66ccadb819b343363586886e31cd5340a72b9ffd"
+      "sha256": "c5fcf4babe4b76b654034d6deae043c6ff4abdddd13cc4937f7d8bd73d119119"
     },
     {
       "src": "/maps/blackglass.webp",
-      "sha256": "adfd174d5606d787a9a20cde54779a45597c6568c7d058366e2579a31142e61c"
+      "sha256": "3def38d28ee05155b12034f5b2fb45216895c413de7d7e15116d95c4823f333c"
     },
     {
       "src": "/maps/cards/blackglass.webp",
-      "sha256": "329df2d1fa2a0002598b6daf92fba65eba90ef24f88c9ecaaf5213ff5628f680"
+      "sha256": "a6676d7041f5f5bd9ed768b42630261407a5da1a4b6ac23eb4b6ea63f388342f"
     },
     {
       "src": "/maps/thumbs/blackglass.webp",
-      "sha256": "31d89ad365ec9dd1d968ec97cd27f893f5414c5acdddc8f009a136da80167f55"
+      "sha256": "64340d8f77db2aac8ed0d4dcd3819a4ae743314e4226d1e3828b9a428215cb73"
     },
     {
       "src": "/maps/titan_gorge.webp",
-      "sha256": "d32b35ed3adb089b4e0c68951c97cfc16d66eb6efd461cb41d34011e768ec2b6"
+      "sha256": "35b334e46500b3690236dfe35d17fd0684f9b1181fd931d6b2ecab2a22b9e570"
     },
     {
       "src": "/maps/cards/titan_gorge.webp",
-      "sha256": "34ecd93689c79bf662859353f4b29a6cb4388db96743e9c1baac5cff87cbf39f"
+      "sha256": "449fe732e9790ecf07ab90d00b2b40154d86fe77fcce6c2ec68c3b5cbffbf82c"
     },
     {
       "src": "/maps/thumbs/titan_gorge.webp",
-      "sha256": "c374c566487f0b328f264934390417d138c1d132a63f4a07cee2b36e6eb4e3cd"
+      "sha256": "9edd16fc9db09d4e4826fdd053fda9c762f0d2fe6370c9a70880dc296ac1c501"
     },
     {
       "src": "/maps/skybridge.webp",
-      "sha256": "fbb9f0f18d9654d6d001ea353e561214c948af21595e47d9007fecf5fe4b3242"
+      "sha256": "b11f109efe1ca35900cedb5516d214a0de78b19da85a773746713c6fc1647fd5"
     },
     {
       "src": "/maps/cards/skybridge.webp",
-      "sha256": "e71ba2e7dca5c9326cbc72e7edf13e1e092c1665a9aa77b020b3407ad9399640"
+      "sha256": "ed1c5a71053deeb3d547078b01ac0e4fa820bb2696a3f036dbceff45717923b6"
     },
     {
       "src": "/maps/thumbs/skybridge.webp",
-      "sha256": "1a1eb775e46ee9e3888fdcb7a65e76972578c8abce232566e28015dcf1680d35"
+      "sha256": "67e387ceed9723a9248762477309d58b8b696247680e50be40eb5ae8aaba35b4"
     },
     {
       "src": "/maps/polders.webp",
-      "sha256": "3649eacd168d56cf0a6c54bd2ed5e036f100691e7fb4e5471f4105358c5792ea"
+      "sha256": "5ab37bae2af22ac538937be6dd29d70f5b454fa9b5d091ca41e01b128f79d362"
     },
     {
       "src": "/maps/cards/polders.webp",
-      "sha256": "fae03a7ae83e28d978906314f1fdf6ee2909d3dc571e203dd74552982a5ab1ca"
+      "sha256": "2ff03df8842c5fcad1be07ab48391016ba3af78b4712f88c7ae3b7fb2d88eb04"
     },
     {
       "src": "/maps/thumbs/polders.webp",
-      "sha256": "aa14e3313e6ec00f8ea97050c5d121cb3b748fba3d3eaf0b29f6beaca8bfc700"
+      "sha256": "32275f841b1e32a2736f8ece884036517841e75b3eaeccff65390f8e2a42452d"
     },
     {
       "src": "/maps/copper_mesa.webp",
-      "sha256": "6e4af6412b0b1f1f2c08029b7fbb1fb9d65138789e3308969eb8b546f6043a79"
+      "sha256": "124123b45d13c60b9f9ee67cd40244be4a4f3fe837d12f0bf1afbd10af29d8cf"
     },
     {
       "src": "/maps/cards/copper_mesa.webp",
-      "sha256": "3e7990d98f31b5b2369fca865d441d548f751e14106744c8cbf8af61bf006dcb"
+      "sha256": "c916e1bb071283f713c77441ae99c6912716449e6af3098a72abe1b9318661c2"
     },
     {
       "src": "/maps/thumbs/copper_mesa.webp",
-      "sha256": "806c3d160db2ec8616884e703c1cbff0a7141d44d590a720b00a3c13a303972c"
+      "sha256": "d8ed62925c7b03416147cbe6dbcfee6ea8733b1419767bdf5151b41a235ed708"
     },
     {
       "src": "/maps/airfield.webp",
-      "sha256": "3df709ae8d46ae4d68eeedb71687d531dc3350deaa619d44cfe1705a5245c091"
+      "sha256": "24841f5357882a92c0dd0c23b46dead691882c8c206729acf52795cbda7c70b9"
     },
     {
       "src": "/maps/cards/airfield.webp",
-      "sha256": "cf7a0de6597d2bd32b547785bee25d4facf0fcb7a7f8cb3394386ba25b3c473b"
+      "sha256": "11ec3e49b8834410fb0fba01d23c87789bc1a709ba56c78c0ad9d3e218e576c7"
     },
     {
       "src": "/maps/thumbs/airfield.webp",
-      "sha256": "e53ca3aef38e14d2af3b160dbfeaa5f32d1abf1011861bc63c287876cc29362f"
+      "sha256": "9845594121d13dcbaf843c5fd492551c6b9cef95de49c55946b708d9a83a2ea4"
     },
     {
       "src": "/maps/oasis.webp",
-      "sha256": "b3c47705aa6730751cbf8a066ee3a306b9c4ee75254199b58fedda168d62516d"
+      "sha256": "2db410dd9e601eecb2fb38caaf70d00d2a2e55dc2a373bf31307ab258df5148c"
     },
     {
       "src": "/maps/cards/oasis.webp",
-      "sha256": "6bae3134db8e3450c7c6be9a1e04e220f366faf4b71666305859b5d78feb3e4b"
+      "sha256": "bdca48fbeac82c1f69913b9bc537dd552de93aee6397d1c724d720a5513f6e82"
     },
     {
       "src": "/maps/thumbs/oasis.webp",
-      "sha256": "bcdb2d5226bf5518c37a0a992b89684fd98558e51477a4f98dd671559c82bf20"
+      "sha256": "a77c38dd7ca5a3e1b0705974d8bb406028cbec56d2919f2462ec178ebe20cbf6"
     },
     {
       "src": "/maps/whiteout.webp",
-      "sha256": "ec2d060b38fd890993dcc7069bc69e51127a78330a12308d74e35ee7bba8161d"
+      "sha256": "8933218ca13a1e5921b962f5b62dd02abc62b949adc70c7908942dd2c179c2de"
     },
     {
       "src": "/maps/cards/whiteout.webp",
-      "sha256": "964fbf875e572389e635885f34d6db4acf10527fc6ca38228abed4e486e1c68f"
+      "sha256": "24c4aacf210b8e6e9860ebcd14f365ad589bd69e90805367d57446b202d507b6"
     },
     {
       "src": "/maps/thumbs/whiteout.webp",
-      "sha256": "a4a438894c15bd1abb5b2d29e08d809cf95be284840482cd26378fcf7254281c"
+      "sha256": "aaeedf6d26ef88912b0205e2a88989c3e7e209b445750a5a84582ce21b160a81"
     },
     {
       "src": "/maps/orchard.webp",
-      "sha256": "71c0f9c50de4cc65e1462617144b5e5021219c7c68fa52a06d31a0b62f2d476b"
+      "sha256": "d86ce34e7819e532170225c261cce1d4a8963451db3ee1dd09d33c2e4d34433c"
     },
     {
       "src": "/maps/cards/orchard.webp",
-      "sha256": "10aee8063dc8d1736e050ba30c275eeb1dbcdceae3d71a079abfd1757ad2f16e"
+      "sha256": "d18a06a8c2a6c3b57f19b84ce7a437f64305a3c97dbb6482c3755d5fcde732c1"
     },
     {
       "src": "/maps/thumbs/orchard.webp",
-      "sha256": "1efb3c29142f713a22d97aaaa8c76793344761b2791e539f20bc410293ddea9c"
+      "sha256": "380c8779be74ae61268d74fbfe6b1d6a7d265bb71a30f69cbc021e37577336ca"
     },
     {
       "src": "/maps/longleaf.webp",
-      "sha256": "9d83e17590de02ae061bb75b9e1cd63c8c678bde059bac308333be21193cb3b3"
+      "sha256": "3c9da2ee648c784fc73a6b25bfbc22f35878bdc923eb9d36050915e5c2a1b68f"
     },
     {
       "src": "/maps/cards/longleaf.webp",
-      "sha256": "16d99532ebe88a62c16c330ab1e8465f56e20c0d412b846ece4b066e56a79125"
+      "sha256": "5527fdfb408ec290d1f7d4e6fc1e6e3a15a67aa433071db1c2ac69aad767532d"
     },
     {
       "src": "/maps/thumbs/longleaf.webp",
-      "sha256": "d78a56df35ef19a94af428760101281da15c5de4f4a81290e7e4bace00145b69"
+      "sha256": "f60a5ac280ec9bf8d54e084d939bcc20d83bc2756bdc9d312b49060dc64e4a91"
     },
     {
       "src": "/maps/mangrove.webp",
-      "sha256": "399b9a4e1c40bccac5c2cf94e49ff79363d95df96acafcad82ecfa0416d888ba"
+      "sha256": "90fa3e869e44128f257d0c9b5d3348955c1fbdf8e14822b2ed1a50c8eccd79cd"
     },
     {
       "src": "/maps/cards/mangrove.webp",
-      "sha256": "586e7e532165c0a6ac699b11c11df960e9bdf931da86ffc1937d434c7ccc6e74"
+      "sha256": "c1e173f242a6b8ede110336bbb82f10c470ad1f09abcce1f401165cf308e43c8"
     },
     {
       "src": "/maps/thumbs/mangrove.webp",
-      "sha256": "d11622fa0f9b56023de433a5960ea238a22dabeec9d38ef34fc5932c3cb07bcc"
+      "sha256": "54d65da9a8d1eafea1125a052ca83d96da6e0c7bbbf7ca186b3ba9656174e385"
     },
     {
       "src": "/maps/saltwind.webp",
-      "sha256": "b73f3e6fccaefdcd591ee7dd82ae6305d1d5c9b8b1d72bfc3031c23b7bbe0c91"
+      "sha256": "abfcb2ee23ea5ea86c233e7e2739e7d2cbae04577d7d933f8a2ec85fa94b53d4"
     },
     {
       "src": "/maps/cards/saltwind.webp",
-      "sha256": "23f0d0d3829c5c5fa3ffe674935f983463674ee2d71164066c6aae8ca024f61e"
+      "sha256": "bc36bfb045f3f7dfc91f76de7e8555d619dab5a2ad0a80ea0d41bb16197fb6bc"
     },
     {
       "src": "/maps/thumbs/saltwind.webp",
-      "sha256": "8da243f2ac7037d1c80fec096573309de1a26cf4225429003a3bb67fdb9282ec"
+      "sha256": "d6eb39f33294855dbe01aadfe6cde49efb6ee0d3d0f07b5a20da7cc6d687e152"
     },
     {
       "src": "/maps/reservoir.webp",
-      "sha256": "d066c916c0e98bf1d2dce4d291b2c75159d84a762366690407ad445e236931e7"
+      "sha256": "a33841621862074515a454dd4011e40b1f34938ec9dabf120ab8d0a6b7eee82d"
     },
     {
       "src": "/maps/cards/reservoir.webp",
-      "sha256": "53b4c8acbd1176aad49ca67752c3c7c3e6f0af3ab69ff72c06b86cfbd7146136"
+      "sha256": "8cb577c78fa59b613e7bab97c0effa42354d500e944846c0f0fccbc3fa85b68a"
     },
     {
       "src": "/maps/thumbs/reservoir.webp",
-      "sha256": "c700ae5dea233c125d4721dbe3bf477e78deddf42ede91a805ddaefd2723e694"
+      "sha256": "0a1be26120596f365edbe3ed142a07102d5c3422782aced7e97eb905e7671cf2"
     },
     {
       "src": "/maps/mars.webp",
-      "sha256": "d7b0b15d49d614beb4b5c14869d55c37e8f9e25943447b63bd0129bd58fb6924"
+      "sha256": "7e3fcedfd9b3647cb34af682ddd4b21b401151328f0101e5ba2fed04fe3e7a29"
     },
     {
       "src": "/maps/cards/mars.webp",
-      "sha256": "e7bb2c3b9608fe8d75a5c4c5691df81ead3748e4298272a01cbdd27ea02756fe"
+      "sha256": "c9e371802347bf34074adf0e24d67c90f809db249d63692cc1206c3acef81a75"
     },
     {
       "src": "/maps/thumbs/mars.webp",
-      "sha256": "d8e00f4e1e27b7f74cf93896271d550594cbec630812d0e0a116505ab00ab9c2"
+      "sha256": "7ffba7eacba6462062459d25e07cc9154e3e776d9d062bf6d07ee0d5471ff4fd"
     },
     {
       "src": "/media/director-r4/gameplay/battle-live.mp4",
@@ -7707,338 +7707,328 @@
     }
   ],
   "review": {
-    "reviewedAt": "2026-09-29T20:12:54.931156+00:00",
-    "notes": "All 124 final daylight overview and settlement views inspected across 31 maps by root, layout_audit and frontage; native close-ups used where needed. Review covers sampled road/settlement placement and visible terrain transitions. Existing film batches retain their original provenance.",
+    "reviewedAt": "2026-09-29T20:42:53.222113+00:00",
+    "notes": "All124 final daylight overview and settlement views freshly inspected across31maps by root, layout_audit and frontage, with native follow-ups where needed. Scope is sampled road/settlement placement and visible terrain transitions. Existing films retain their original provenance.",
     "maps": {
       "delta": {
         "accepted": true,
         "notes": "Connected causeways and bank-side roads remain clear. Village frontage sits beside the corridors in all four views.",
         "hashes": [
-          "8db13e89dd9de40d79046efa3dc2deb5c6ca745e62000fea6b52aee481d0c000",
-          "164d1782d32c2eb6e3931a5ab25e8a809432a328a04a06adc6a103c6e66b856a",
-          "44eb48107068f9d9ebacd4391b27161c836ed9a99487007fb0d683465d5cbb50",
-          "50a3a7e4e02238187bfb312527e976178ed5cf0722737db57114550c4f29ebaa"
+          "78f51a4c9a94501bbac917f1b5b87a44f4cbd6efe837a3752a9363070dcf3149",
+          "7fe66c84c6e562f187b766450c7cd32a9a0902f72730fbf4d73ffff147ab904c",
+          "6323ed36f63d354944bdf8abb9f2fc3fa4b4876d1b0b1cd53b399341495fa722",
+          "c5d9f686c125ec01264cf660cad2ffe171d4c03170be9c8cb3840052cf640c72"
         ]
       },
       "badlands": {
         "accepted": true,
         "notes": "Workshop frontage follows the hauling routes, with clear junctions and coherent canyon approaches.",
         "hashes": [
-          "916ef4b7ae26ba13cc232e4e46563ed1c816eb53ba916a3a0f311c74e3b178a1",
-          "f5ae34fe5ff2f69bd02f2771d9b3587505de25dad793ed81eb459dc109164702",
-          "932ea0a66df9c707289a30b10944e6f4ab3596c34730cf103dfe0a303b9b62e4",
-          "4db4684835ee33c1badab342d7196e950e60df4bb040805da1dd057819eed898"
+          "1c15b9a6f8cc50077db46226bd8f5d1fc4bd53aee2f15bda2e6350dfd9942295",
+          "9ecb4199e4be32f6756b0e87b6820b296da262c0695743e47c564540568f8d28",
+          "e817a6106cc19e1175f90d6e8523ec1c2c66c4c79c43888cc2a281d6ef190461",
+          "be73814d4cfecd6bc074f39ccce655728120386f3aa10ad74fba32c68aef5a60"
         ]
       },
       "monsoon": {
         "accepted": true,
         "notes": "The dry-bank village and crossing form a connected route; reciprocal views show clear frontage without a new cut wall.",
         "hashes": [
-          "59958e3b68ea6ad0ad97c82033e979a3c8ce721d2c0651d7ac2d1571782a0507",
-          "1b2a325c070753a3b27495eb53f9a539b6e24c8bfcc17e88aced5539514e76dd",
-          "bff03f7d743e14ef6dbee0960e7a2619488f9bdb4fa268ec84de698710e81e41",
-          "faafb7fd3d479984837bf0af795d8547520ff440d56b3e6db6c279e0bf701c4a"
+          "9dbb755557c2c487030952dd804527240f0dcf4bbb25c66f6a710811e9fc828d",
+          "03f7d5a4055d1cf6425b18604c7fecc7fca642c8fbf1209f9dbb4892c0d81df4",
+          "cf7aa730db4f1e6a6cb1b807c6033615d4dea84bfc6def3d49beb9ec3872d9c0",
+          "3cd1ba2faa6683ce34bf210fc0e9c3e175384b7151f02d20f1c32e47d0c5c10c"
         ]
       },
       "airfield": {
         "accepted": true,
         "notes": "Service buildings follow the runway access spine; side roads meet the settlement coherently and visible buildings clear the corridors.",
         "hashes": [
-          "d618df4f12fa1303597bfc72efbaf9fb8b2011c15160c4c030690af07a2398f5",
-          "65136cf7579ba717cfe0f87835824892ae012cee65b499f15a6bafe139d5cb76",
-          "61fa4eafcadc7c8ea5aab580415af6b4c5377cd15d695190a289fae8051b5a71",
-          "6e3bc95d76e085e28b7b28b2fbc9a503fa1070fa04ac61cd0295672374dd1134"
+          "098fe96817d514210c6bf768e252911cb19f5c22ad6f8a99ffc4ca75dd3605f2",
+          "5c20e0e525472aa24fac5cfda2c954e7aa47fcf2b48a756295e643cab7590cee",
+          "d162066888cc02b98002686895542cc7fc0b3d8206aef12b1d3a9bc590d4e008",
+          "690f7f52498cea80d5f30a206faf08e9a9239a6cf6ade01d61a575088eae78b0"
         ]
       },
       "whiteout": {
         "accepted": true,
         "notes": "The revised approach avoids the former triangular detour. Buildings remain beside the compact service crossroads and lake shore.",
         "hashes": [
-          "97c75784d71154c520f50bc47dda520a63aed72fcd739528d7665bc244284c79",
+          "b5015d7f8c880dcab88c7138d41fa0be3433c26799eb08dbdc68d99011193d53",
           "a5900c98fc9b6a5be59adb3fc8924786e9b4920f59aaf5a0a9364c39605b82ba",
-          "899042fc3cb49b533fc6f55ab5fb600e50c71232752a8d7d1c75c14d55ac924a",
-          "7963fabbf21d168521861d6839169726a466435764d13a9a266aed0c96aa4920"
+          "da3b9772bb1dc305eb3eeb033f98b3fc3ce21cf9a6eaac857fb806c8d86a4645",
+          "83d51de7e0e24c8dc21cdea7f4b95cf9d5f972f28320075743f785aacd3b7161"
         ]
       },
       "orchard": {
         "accepted": true,
         "notes": "Curved approaches connect to the village and orchard lanes; reciprocal views show distinct parcels and clear junctions.",
         "hashes": [
-          "3e7154ec3df9b881282fe890a51c420c90a266b37243bde89e14ac7da0c728b1",
-          "32241b759bf95529d86ee0a206d19b1526eff56050881a4cb9ad2a39c1fd32de",
-          "3d3f44c732f2a5186de46c9a4c674d689324d0d4240497c0433d157649ba3076",
-          "1a873d4c9a26b23101fb95453798f147d319c4841140a60b0fb7667812e907e7"
+          "1beaea6e100caf1b3ca145558a285953de6f67b0141f72322dd62a6b92411f1e",
+          "e1192892bde6cac26bd8a04551998cc447da828b3f17b54af8343ceb23d3f1c8",
+          "659ed93082d253edffccfb10333228aa92ab741a6d94af2897d9431fc57b7da6",
+          "dbeddb06e74d76c3928074723a7a098baf349d92fd8d6a70420b92e589bbcc66"
         ]
       },
       "longleaf": {
         "accepted": true,
         "notes": "The logging settlement follows the gentle road bend, with yard buildings set back and visible access preserved.",
         "hashes": [
-          "36f76cf492eda77ab1e994519d8edf0cc4a67d845ffa420b7a6f9ebdd483ef5c",
-          "d176c16972a04d1ee5a8012d190e7adac47653ea506fd25d52ee5d62f3b0cdff",
-          "3bcdb659456d1b243126ee927480f9b94d37e84eb85ee8ac609ab62c5e1fc952",
-          "42b188030f14cfb5d9fcd05e4f816a0c3d25a6e52e934d1918e92cea8d5e447f"
+          "a1cff5c4dc19c146f94f5351606ff05fd5b688171c2e5eb8baf64a74508da7ca",
+          "d4cc45a70511b479a020076644f1b232ff69f3ecc1fb9b8df983a4562e4314b3",
+          "d730d77743ed02fa0caa480ee9d590391d035fdb2e677a6ef0b7ba7ca68e6f2d",
+          "403a9f27fc1f8491effda9831ff866ea9d390efcd238d06bee7081e0ae6d11bb"
         ]
       },
       "mangrove": {
         "accepted": true,
         "notes": "The village routes meet on dry ground, with clear roadside parcels. Lake margins and route connectivity remain coherent.",
         "hashes": [
-          "3e54d614e817159fda936192228d390b928186b69c92a6fe71b40a67ec943e6c",
-          "7bad61fd02bbb48d8231809b38d0d52fb1c56cc6164e966ee1d25cc226589620",
-          "a93c35e3fe17451af25013979db6e75084e74b249ce1d2d70533883a370d1774",
-          "77cfdd6cf9d2b8461c93f28b3e7f0389ed94d037827a8823980705993293f53a"
+          "b88a0ccb9d80c2e5a0fd8ef0e3f466354c0a5af9ec8e95ca95cfc4c6a8ff2057",
+          "eb041fe6d0879a60f781dd7694138b0c583d02016aa50dfced633edfeae76b2d",
+          "edafa1482778ac6a8cd59b3d97c8ab07715bff2d4b49215fe74c62adfc04ef42",
+          "a836bbfad83e4be74845d1dfb61b8097b347fdbadf3b00276204ed96fad07a1b"
         ]
       },
       "saltwind": {
         "accepted": true,
         "notes": "The market T and coastal through-road form a coherent village layout; buildings sit inland and the natural coastline remains continuous.",
         "hashes": [
-          "eae80fd202ab7d3d07d3d1988a684d37a4cce73baffe0849a2af5c8094bfd004",
-          "b53aa948cbfda9755bd861e4bd84b1632e164beb88af727ceb5f3c01a4d9f1bd",
-          "7bd09d11b9d1fd6b87edbd14e127193047a68e077a85949322d7f7b53355ad1c",
-          "1cc317d7c46419f5e5f3fe33c00252356f29f376e832ba59d3f320e05ab25ac7"
+          "037b216a3d76b533f0e2cf239f2ccc2e460cbac4ba3517c96ee972a530043ed0",
+          "369db62340aa974a9b67af0897b2006e5f881bb990385e6b6e93861f5537d0a4",
+          "56f9bb0d78b178bce372f178886ebefe8363a8d7949d4dd1b631a3893fa85130",
+          "dc32a4e19717bec802fef0fd44b8da12639a42901471044ca7703417cd4e5824"
         ]
       },
       "reservoir": {
         "accepted": true,
         "notes": "Village frontage follows the lake-side route and its actual junction; the road remains clear between the buildings and shoreline.",
         "hashes": [
-          "4a373f12f4a9dd6d199be9d983d11e2070c982a92b379fed0dd62269cd9febfd",
-          "aee5dafb831051d77c5f0e546418e6393a095be38edb99f897ae946f6b932a11",
-          "07a1152d13477bdb725e54f032a2f33494770f80eccb6f4c234e82e482af2d25",
-          "6c2ae5576321b50a18c0284b071d22251f6438f4c694abd0caabf217be64264f"
+          "68feb5ec41b93576b64f96b9238b8cd0c1bd9d5b47a908e657a9290deef9a2b8",
+          "af5e7a1efe86b8e90e1587315672ece7ab8815776c4d6d35aae3f5d4d951f96b",
+          "d60313c98be74f354ebdf23e84c170f4eeb7c60f50fe3d3e45cb353ea6973c04",
+          "b58ad6601a125c854f6c9bad4d3e2d9d6205546a3fce11d15a0319bd0f11b60a"
         ]
       },
       "mars": {
         "accepted": true,
         "notes": "Specialist habitat placements retain the authored service crossroads and canyon routes. No new ordinary-building placement intrusion is visible; existing steep canyon cuts remain intentional.",
         "hashes": [
-          "b0eb3a116efc6bc48db19bedb507e6ab2d2ef6ee35acca44e64c84aed790ab5b",
+          "5dde8a0ee384069c9191a626b96681cfee66343ff8847820ad5fa7a0fcb09852",
           "cb31d844e0e365681c3486dc30f89c08f4db2e929bd93f02986f3352b918294e",
-          "f5389cc5d837f48c9b2d0adbcbb1fa80a3af313b9139880d1102622ca23959f4",
-          "5308edd86a656706038520433daae836ec479f7653ce84fe0749a4a57047eb50"
+          "43aeb8d4ee840a39fb85181a3118b4b9e0d14a4a08b78ef4480ee1954c12e37a",
+          "a22e9237e8250a2bf27c4c646f2801a64d517cb2cce1211efe29b99e99f24ee6"
         ]
       },
       "verdant": {
         "accepted": true,
-        "notes": "Overview and plan retain the protected rural crossroads layout with dispersed farm plots and continuous approaches. Reciprocal street views show buildings seated beside the road and no visible road-edge wall or frontage overlap. Windmill partially occludes one near corner, with that parcel also visible in plan.",
+        "notes": "Overview and plan retain the protected rural crossroads layout with dispersed farm plots and continuous approaches. Reciprocal street views show buildings seated beside the road and no visible road-edge wall or frontage overlap. Windmill partially occludes one near corner, with that parcel also visible in plan. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "f5db61c8d96876e23df1d67d92c00f52501b4b5221eb7687b2fcc8343dff9bf2",
+          "cdb7723139ba076fafb1f2a47a511190cf12751cc0d05cab1fe6ed93960d8096",
           "a3862e1c403b85ac530df642c5f3f8b1f913b7361389500efdad5140a64e5f05",
-          "98d45853628d84704ce0dd9a97e384c65f425467cfb3f4daa49660279ca44238",
-          "e34d5202bd844f316faf539a733d13ad0ebf5166531daf54d8860245fff4dd96",
-          "6c63755c6455fe5a43d143763ee25986742b32d74d99be37419f075cb2dc5cfa"
+          "7bfd5005fa1c71c5b2dacb64833a4f7ae4fd552110dfd1f702e39d4a7b924ec4",
+          "da6a3fdb2d3132a135ca3279083aae162787497cf4dc57a0e997ce2780fed91d",
+          "7cbdd168229243e781b7ee3592a110492f684c14472eeb9bbf0eb8d64e4c930c"
         ]
       },
       "desert": {
         "accepted": true,
-        "notes": "Overview and plan confirm the mesa-foot bypass and removal of the previously rejected narrow sawtooth fill walls. New banks merge into surrounding foothills while the central mesa silhouette and stratified natural face remain distinct. Both reciprocal street views show continuous road surfaces through the village, with adobe fronts and courtyard walls grounded; no abrupt raised road terrace visible.",
+        "notes": "Overview and plan confirm the mesa-foot bypass and removal of the previously rejected narrow sawtooth fill walls. New banks merge into surrounding foothills while the central mesa silhouette and stratified natural face remain distinct. Both reciprocal street views show continuous road surfaces through the village, with adobe fronts and courtyard walls grounded; no abrupt raised road terrace visible. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "3ba3341c136506cd394750a4e5b5aebde0aff5f5c41149b9f97108181f024678",
+          "a07f6c5b82af040c5c9de67c5b1af139c14211f8b8ae8fc2d4a9c196a8d796c4",
           "60fdd4b0f710e5bd6f7f633114393d608d1df0b24198612556c2abd8135f2a62",
-          "50ea242dd4553beb8a32569e2d917657888452c88a4bec70b5957120afd9c0c2",
-          "528903850449217b86383313adf3af2dd43f7bdbce1109017bf962aeb69b4d33",
-          "7d75c012c53dfff73c43891b3c514cbd17aceb819f49a71ba915d87da5c6328d"
+          "decdc244c655601a0352853bf0cb9090a626d424c77bf8d3deaed26bdc5b5ebb",
+          "acd27c47a97936a9cf44b9df9ec46c165ac0b4cc42052e78c2a0fab0a10134bb",
+          "e369fe0aeb60edfa5a29aa1d34c132e48f19e22fa71c2cfa8782fb3e071c9299"
         ]
       },
       "winter": {
         "accepted": true,
-        "notes": "Overview and native plan show the main route, service loops and frozen lakes separated cleanly; no road crosses a lake sheet or raised road wall is visible. The existing angular western service alignment remains authored. North view confirms snow-supported building frontage. South view is partially obscured by conifers, so nearby parcels were also checked in the unobscured native plan.",
+        "notes": "Overview and plan (byte-identical to the previously reviewed native r4 plan) show the main route, service loops and frozen lakes separated cleanly; no road crosses a lake sheet or raised road wall is visible. The existing angular western service alignment remains authored. North view confirms snow-supported building frontage. South view is partially obscured by conifers, so nearby parcels were also checked in the unobscured native plan. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "4c3fd15647f43e0356944051dd30f4b2554ca9e13e6fcb8ef219188508cb9096",
+          "5d6ec7f902d0100788d22559203d824be49e05c32231f9dbaee629bab949441a",
           "fb608b94fd0821c1289896f04c9ea84d25f3b4ded315e573940be0d63817b814",
-          "679009ac04651b807bdd0d760ebe559958ad23828a0a8e3ee25ced9d6cdaaa43",
-          "9a93f1a0447f3bc90bfea66cc8461180e5e5ca94e6f9bd6a7c9448649031a727",
-          "5dfe7947fedb9b60ef101ffd760ac011263e7354668008bd39b38dce2a61a802"
+          "1eab6e4b9f6b8fc59919b3cb1e7ea71bf446955cd78e47d51f1b0a0119932f1d",
+          "50adf87e55a649edb5bd24a9832d707738e95b7ee65616a44c8d5222cf2ef695",
+          "34302588ca64a194c22ef6e824939c937bc2a0b4a33fa43fff6a8edbc6a02204"
         ]
       },
       "urban": {
         "accepted": true,
-        "notes": "Overview and plan show coherent orthogonal street blocks, continuous intersections, and building rows set back from the paved carriageways. Reciprocal street views confirm door-facing facades, connected sidewalks and grounded street corners; no building/road overlap or terrain bank discontinuity visible.",
+        "notes": "Overview and plan show coherent orthogonal street blocks, continuous intersections, and building rows set back from the paved carriageways. Reciprocal street views confirm door-facing facades, connected sidewalks and grounded street corners; no building/road overlap or terrain bank discontinuity visible. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "b95fae19b8732ce07971eccc5ce1b205c38a74a5ff8505c5314af892ff92f96b",
+          "022e93fb5b1b969c098fc7fb25b5b7fad6aac8b9574d610d93422d0c2956563c",
           "93ea12bb23920ba670363330d59243cbe0262db5eac9d391f0ff66819c98f255",
-          "e78f2f327f1c77110d261dc3ea3ec6e7400d6ff0fad810461df1d1ef427e7735",
-          "e1aaa54444577678f25e4e4388b0006bf297615324c8cdafb2e8d7319d0bb60e",
-          "7424ebe1c1257c79ee6b91255383985d2117fc5ca7bc76b218e1e3dee670e2c5"
+          "f44138cab1dce982d93ee1e368be5581b5d21e656a1bb87486298d308d3e41b4",
+          "2cae9f445c39355b202104e8ee4a18952ec8afc272b9c37bd20f85a267d6e6fc",
+          "b0f0ecf950c99e4ebeb932349778446d4fbec1df62f1d5ce0b6b8d9704ba700a"
         ]
       },
       "autumn": {
         "accepted": true,
-        "notes": "Overview and plan show a continuous rural crossroads and coherent bridge approach near the river. Church, barns and cottages form readable road frontage with open roadside clearances. Both reciprocal street views show supported building bases and continuous shoulder grades through the village; no isolated elevated road section visible.",
+        "notes": "Overview and plan show a continuous rural crossroads and coherent bridge approach near the river. Church, barns and cottages form readable road frontage with open roadside clearances. Both reciprocal street views show supported building bases and continuous shoulder grades through the village; no isolated elevated road section visible. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "d88ce38abbfd4c35fcb1cdebd7dc9aa8b59c25477209dbabeacc388f0f8deaeb",
-          "a25482424610f56f32c31b794600265e27098adede4bddd491e39c1b4c07be87",
-          "37a27905c501438140fecfa6c4e199c19fc382442d57820542d298ca72fde03a",
-          "c64c58aba116ee4409255bbc59f3698d77b7fbdf7f70e5adc8e88c51c397c2bb",
-          "6e9483ba2a4373e371585d59e982f4234921db24bdb17eb4ffea74cac4bede0f"
+          "a1b9060a8768d029754d40595b4c4edd8050213ddaa1cd59ca1ad928a76caca7",
+          "415f21e8338ecc3111278318a6a860d598fc5f76fe11d629da065580533f39c7",
+          "70a4e1dfb810711bbdc29dcb3652102affa4b85422122a13ea08b1f74233aa1b",
+          "0d75df89589af7027ac65b5c05a85ce188b4089d95967c51875606044505a4c9",
+          "841ff2150317ed5bc7fbf6513b9e476da20bb1c5536c55b8ea779fbf83ef93ce"
         ]
       },
       "coastal": {
         "accepted": true,
-        "notes": "Overview and native plan show the road ending in a sandy turning court before the natural shoreline. The court remains dry and does not extend pavement into the bay. Both street views show the lighthouse and cottages grounded beside continuous pale roads; the shoreward terminal is better resolved in the native plan than from the low camera.",
+        "notes": "Overview and native plan show the road ending in a sandy turning court before the natural shoreline. The court remains dry and does not extend pavement into the bay. Both street views show the lighthouse and cottages grounded beside continuous pale roads; the shoreward terminal is better resolved in the native plan than from the low camera. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "31241f6054bab7edd4378fcd106469955e6fe40884a102b4ff77b7c35e6b7a4b",
-          "7324b8aad5470d8ffa31b1da34fd6a5427582e6049ba762560a346fa78dc6f46",
-          "6ded8c044ce38d7043469c23c7b0cbe15384d5e4e3e0a38b65b1a2a9c5e8cfe1",
-          "e203f12fa78118534097cfff6d8f76ddcc52611644eb3a1457f4bd74b0fc1b0d",
-          "de359bd719fa2aaeb3b079be7a4825e0483ae0908cca376e57e0ac18828be5ed"
+          "60f70460194c4849436e169b6f233f1e4d137ec9eef5f7b918de8a8041229a3b",
+          "3eb1b40ba40d8cda6ccb8e33983943247fc2af43d9d85186cabac4c283c7dea8",
+          "d3ba80817c5e9aec0a69538b0bb09c430d230c4880bdbab983b25faed6a792af",
+          "f39dabfbb298ceaf5643b37b0f7ca415557325daf269a9ec83744603507a9ece",
+          "4889d44dd4a737eaa60e9938d4fad00794eae63f23f648bbed35026a52bb2254"
         ]
       },
       "steppe": {
         "accepted": true,
-        "notes": "Overview and plan show a coherent small railway/service settlement with roads joining the station area and the long rail alignment remaining distinct. Reciprocal views show grounded sheds, service buildings and storage parcels with clear road space. Rail and station structures retain their intentional specialist layout.",
+        "notes": "Overview and plan show a coherent small railway/service settlement with roads joining the station area and the long rail alignment remaining distinct. Reciprocal views show grounded sheds, service buildings and storage parcels with clear road space. Rail and station structures retain their intentional specialist layout. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "091d38e8f42a22f560d59938992d90aac3f63b6955eadc3673fc4df6bb94bf08",
+          "57f7dc4098bfcc9bd6d802551587f0223ce8c19922f99e1c6045226a38ae8d62",
           "7ca41241356177966e2bde26767f0a292e26f617ca3c12444c94aef97248449c",
-          "6e0c0549d2dc4af4a92def4d2f37a3fbf121c9b475f050b1ab10e9d1701ac9f9",
-          "d3d7e1bc36ed9517b518543c866b76b896898d5462e47f4d7088cefc65487acc",
-          "25a75b38fbfe09c778d31ef3fd96fc727452087b7c1b1903706a840a208ea533"
+          "2e9b70378811ef693a54dfa5f99dca627a16eb1cd6543a2af2c1d35df6b8b1a4",
+          "d26328a2fa1458fd496fabf0c1fb3f2f870696dd426097cca8eca48048af5730",
+          "4912a188b71555f7deda26801526649ae6ceddac72d116461f8d5e105b4b47b6"
         ]
       },
       "railyard": {
         "accepted": true,
-        "notes": "Overview and plan show the intentional parallel rail grid and orthogonal service streets with industrial buildings beside them. Reciprocal views show supported warehouses, containers and service roads. Short broken walls across portions of the yard are retained authored battlefield cover; they are not treated as a road-frontage regression.",
+        "notes": "Overview and plan show the intentional parallel rail grid and orthogonal service streets with industrial buildings beside them. Reciprocal views show supported warehouses, containers and service roads. Short broken walls across portions of the yard are retained authored battlefield cover; they are not treated as a road-frontage regression. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "cf3a93ea430bd4a0ecdf87b7d2d861bdcca1470348aed50f580dbe8ba56d5f4d",
+          "b46086d7c62b550c7be295f906ffb1365aaccbe5a2aa264750807e0b8a5a254a",
           "20f3200c8dabe0422c6d253577572f89baeb975e3c00da11e9f57c9bdc384e40",
-          "0aa90bcbfbd081af9043fa794dd7feea6d0dfc2e8be8c67d99ee7c93081c6120",
-          "338911f5998dc188124705826ba6d04e0ba3a09e8cf57115390ef09fdb0c64e2",
-          "d37e759c1a0688bbd886d2b90601a24a04407d8e8144b3a8636829cddff5bb45"
+          "dedee5f29a473c4f01a2252221521afc63b6d5ce976a8d252222513b3ec301e2",
+          "732dc1b94910683864b7748a0249a92bf6b3da3e35c282dc81dfc933f6bb5d99",
+          "69ec8e2079fae685b44e307b6ce93fc308f90dc4f225ccadb781b9f0b7087c07"
         ]
       },
       "frontier": {
         "accepted": true,
-        "notes": "Overview and plan show gently curving country roads meeting at a clear rural crossroads, with dispersed buildings facing accessible frontage. Both reciprocal street views show supported barns/cottages and continuous road shoulders over the visible rolling terrain; no disconnected corner or artificial fill wall visible.",
+        "notes": "Overview and plan show gently curving country roads meeting at a clear rural crossroads, with dispersed buildings facing accessible frontage. Both reciprocal street views show supported barns/cottages and continuous road shoulders over the visible rolling terrain; no disconnected corner or artificial fill wall visible. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "7e6254a94937519bb3ca42b578a1a2c7e4a99dbdbb9571bdb2e7efece98a5133",
-          "1962848e14aae574a85c7c31a80ff44c1c2188ee5e0036b3a423998c71f1df60",
-          "1667c19bba762dd46af43d5f9968c0bd658f9e3fa0c768eba3155f8e87f8477e",
-          "9344e533a6d4b26608d4c89aa7e524890bea2a7ea967325349b62b6087b8c2d9",
-          "b178508250df066c4056b0c4eeac3a95f1e9bc839927bd27ca4f139b338f2ac5"
+          "7fbb952b7f2057067825a60c4c7c5cd623752b6a60c038662b8ead38d3f66a4c",
+          "3413eae9094bc99c9d4d8d4e08af3b84de6f6c0e7fd2f1122ccbfaf300c55776",
+          "f088da1c5b3545324335993096bbb90138a42ee56164477d56aec794ac3d200b",
+          "69e76ef0a724f9bbca98c3608bba8857b28741eccf838679679291ede1d4b813",
+          "8b8b0cd417957cd7866b14e22650e5ff1c306b9e1b7bc1e16ae45f20baf08482"
         ]
       },
       "fjord": {
         "accepted": true,
-        "notes": "Overview and plan show the coastal settlement roads continuing through the hills toward the harbor, with buildings aligned along the main route. Native north street view confirms barn/cabin bases meet the ground and the road through the junction remains continuous. South view confirms supported hillside parcels; its low angle hides some road length, which is visible in plan.",
+        "notes": "Overview and plan show the coastal settlement roads continuing through the hills toward the harbor, with buildings aligned along the main route. Native north street view confirms barn/cabin bases meet the ground and the road through the junction remains continuous. South view confirms supported hillside parcels; its low angle hides some road length, which is visible in plan. Fresh r5 overview, plan and both reciprocal street views accepted; no new road or settlement blocker visible.",
         "hashes": [
-          "5512d4aac56e2dc7c0cfbab671bce056bba34495184718f6aca636118b872591",
-          "731df9d1ea7070c2f98f1c4e1535734be4ea8131f64e105ed43a8ed27ef9ad68",
-          "d44a27d0300edc6a21009c274fd92d63c401f1d10491386544d554432d01e7ea",
-          "0770ba1c2407c3477a3ec0b55d573429c980a31b195892a1c9793bd9a30262f0",
-          "df54c209c357ec11803929cee641c69c29180148d99f762c19efef2a8f47b11d"
+          "5f9cef39107d8f4d34976a29e5785963562fb597158f0cfcc595f60c46ed15ff",
+          "5027092129d66d394b2428897140a48b7e7fcb4accdb93c43945df4a027751fa",
+          "d8374e7342f7d10ce422bb46236bae06d7376aa6f1a386d022b27b22d33ae365",
+          "da3e9c5b765d0b564f5498fd3afb193e2e957b9184fa844bb7b8ab7a5eea279f",
+          "a6b632421291e6d1698f844efb876a0539bdf02ce546471347be09df04c9aa69"
         ]
       },
       "alpine": {
         "accepted": true,
         "notes": "Overview: the cabin row follows the dry road east of the frozen lake; no building visibly overlaps the carriageway. Village plan: the diagonal approach and northern crossing stay continuous across the snowy terrain; roadside houses retain visible verges. Street north: foreground porch is on the roadside plot and the road remains open; the lake occupies most of the opposite side. Street south: the low view confirms a clear shore-side approach, but snow relief hides some distant foundations.",
         "hashes": [
-          "c6ccc31847719d48c4160bb82564b559966a77d808900d0f575df32b72c6ae37",
+          "38db0486f9b7ff67cb16d0d7974a3d70000a3657500c02dac4ffc75db59022cc",
           "6b2ecd3e9c3707cfcc68b709eea0e5f79e624203c672f4c2a41cb7963aa8c0ea",
-          "14ce07f29d006eaec3b1fd0f1d60996ce4721343dde670177ce4354e8cd14180",
-          "7b3f2607351ba5d17f8b89a14dbe0b68b16f1a05f472da203a7c18dc1de616a1"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/alpine-review.jpg"
+          "2dee6ba7f289b80b033e260730c53cbb611be72ae29f67600e2b407a8de6c48d",
+          "127af67d0fd4c3b495dc74ec33cb346d5db473ea9e3f5fea0a673dc4c2088eb3"
+        ]
       },
       "caldera": {
         "accepted": true,
         "notes": "Overview: industrial buildings occupy the rail/road benches with visible circulation space between them. Village plan: the curved road connects both yard areas without a visible building conflict. Street north: the foreground house sits beside the bend rather than in its path; road surface remains continuous. Street south: crossing and factory access remain open. Dark ground limits foundation-detail assessment.",
         "hashes": [
-          "16934ded10f9db07762a995fcd67eeddc182f5ea129322e8ec3b484da22911b6",
-          "526d7dc5843dce54c85a52fc9f7a7b6cec897839e4499dc54a3d5ab536033db1",
-          "ae3a2704380b4f0e5dca298be087d4b711321c1e85d80cdb422e1a5b6c6b4b4c",
-          "5bfb02eb2bbb246c57ce6b5c094bce8ef6115c90e2edc7a1339df5352d21e4cf"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/caldera-review.jpg"
+          "ab9b051ee0eb11618e906539431f09816c724977c078bf6f54b4aeb483ba4e20",
+          "666468ff9d6e83528041b38050889cec831d5698cac51202f6e4a5ad53be6960",
+          "05926fe2c04ad51799751c7736216135c55bbe5a06c79f226409bbbf7e98ba24",
+          "781aa58ef4fadfc5e6571674585fb9cce2a93d35fc0c9a03162118d01089b52c"
+        ]
       },
       "foundry": {
         "accepted": true,
         "notes": "Overview: the main road and connecting factory lanes remain uninterrupted through the industrial complex. Village plan: warehouses and container groups are offset from the crossing; no evident new footprint intrusion. Street north: crossing is visible and clear; factory entrances have access from the adjacent lane. Street south: roadside warehouse fronts the access lane with rail corridors beyond. Existing rail undulation is outside this change.",
         "hashes": [
-          "bf4acbd606c57bfc30ac55ff43d2c856868b59818254e9ffbf4355ecd48518b1",
+          "7737d59cf5e4652eba30d8a1b2652e96abb7fd357c247b2b91dfc9d5c10813e3",
           "4b5de93a4a4ceb70c74cef06655299085c23df58d7b3546ef28544bcf755df00",
-          "8f768dfae24afda0677b496673f2824d218583bfa49beca647afce6ce213935c",
-          "77f4fdf50eb7f0b66b757c2c5159a45f2e1054d3ea5dc71a75fda8565172ab47"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/foundry-review.jpg"
+          "2e2597f3b53daea268ac481d7eaa531c9e1e8b32f9a36bc6f3b98175526de33b",
+          "79ec32ca6004e1f4521550b106ff6a21d465dc3358c7f97724474a73cff1e64d"
+        ]
       },
       "ruinspires": {
         "accepted": true,
         "notes": "Overview: tall landmarks remain separated from the avenue and the rowhouse grid. Village plan: connected rectangular streets remain open at every visible junction. Street north: the close rowhouse has a dark lower-wall/ground opening on its right face; this was also present in the previous baseline and is not evidence of a new placement regression. Street south: lower-rise and tower districts remain connected; open blocks preserve turning space.",
         "hashes": [
-          "04085c1d8f9467290b6a83795558faaf418ded0d833b6b33968d78e645e4bf7c",
-          "49cd06b26ef81413953e7f94f9d736a2015e8e1afb70c5a068eba39684e550d0",
-          "e26c89fe04100dae9fa2858de868bfae83b738d6551e292afe709d9432d8ecd3",
-          "c818a71a197cf79d33771486667b15f6883b8e059c0742b1361d1e244f8606b4"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/ruinspires-review.jpg"
+          "b2dcfd7a1b40e315a0150818b07b00939acfefe5018ed7e86ded1d1eedff5b36",
+          "3f100f4991ed78a60704f326d837232903b4ade9375ba8579c04055b56296fa2",
+          "d8370bf2aac103130c71f699f266b6603db53bd01d6a1753ab3b597bb12531c6",
+          "243bdd221702466328f60c58414ff2a2b6687e686589e31e690ed4173d48c2da"
+        ]
       },
       "blackglass": {
         "accepted": true,
         "notes": "Overview: the tower-lined central avenue remains continuous with diagonal residential feeders. Village plan: angular outer roads connect cleanly to the main axis and keep building footprints beside the road. Street north: the avenue is visibly open between the towers, scaffold frontage and roadside structures. Street south: local terrain rolls beside the building line without an evident new abrupt road shoulder. Backlighting limits base detail.",
         "hashes": [
-          "d16928e267a082b0c1a12f1a12ca756916228c528dbb0a1d632962174fcf94fb",
+          "706b9f22665f5e5d060e0912178bb4c21d94576decd1c79b012ee27044385aee",
           "f58400a1ee8ce76ee11a849ffb8aab1f3a9cebe751d1ed20a77e6911fd444812",
-          "74a27aa2f10f33d01427cc9b39aaa11202b3eeb5423016b6a109e028c08e4376",
-          "a9e04338354ddcc20a5e471c845aec75732a3a629803d5f31cc934b6eb32c556"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/blackglass-review.jpg"
+          "657f83cff62c1857886077baaaf904ab10b6b0207a84d4bd56175ad57eab6738",
+          "74fa81c21109bdfa85d2f00085d3da87ea0f5fcd1dbab491a132149fca6b8724"
+        ]
       },
       "titan_gorge": {
         "accepted": true,
         "notes": "Overview: roads connect the canyon benches and industrial buildings remain on adjoining dry plots. Village plan: the central saddle crossing is connected and clear; factory buildings do not occupy the visible junctions. Street north: the left road climb remains steep-looking but continuous; the compound sits on the separate bench. Street south: the factory entrance faces the open lane. The steep saddle appearance matches the previous capture rather than a new road separation.",
         "hashes": [
-          "ee7a12374ebafa3dd63049d9e9fc51938d745dd2fe8682d28aee9090bb6022b9",
+          "10511385a79ee698ef4a858f0b6045a7a4772ac2a809cd62267de9d9457f4286",
           "34b9e0a6a5b33a51880db494ab3a15c669f76ac091013434679b5492a1e7130b",
-          "d3a72e3b931a15daa9be604711b147c39026d9c62d42341b685496d478977662",
-          "0c19b7c49a738cfcc5b7e8557d057e4d83f1a1d59dd4e0d76def41682a000374"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/titan_gorge-review.jpg"
+          "50ab5ff85fcb5a52ec53e356a36edb8b3fd7f425a980a110477958e596d612c2",
+          "664689f9a9ca3747536670697f56e5b58182837d1cda8266efb7d802f36b7a52"
+        ]
       },
       "skybridge": {
         "accepted": true,
         "notes": "Overview: the straight elevated road spine remains continuous beside the basin. Village plan: tower and industrial footprints leave the spine/crossings open; lake water does not cut the drivable route. Street north: bank-side building groups remain separated from the road and water. Street south: the road continues uphill past the framework structure without an evident building overlap; existing rail styling is not assessed as a new regression.",
         "hashes": [
-          "98cde4259c35e7a980c3c6dc073efa58cd03dc66f807bc6e4758ed05bd3333f8",
-          "2f791a1d4db8172e0c0ada767789da16d72e8b73f8053aa56a9cb696f8070218",
-          "0203414ce9f929edcd1b6cee031312399a218a4dc82df79f7a01405dbe61f7d0",
-          "480d95b8db4b740fd5916b145fae82e0b2f75e8d7c6b0635ba8b2fe3c01c14f3"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/skybridge-review.jpg"
+          "de99bf82b893ed3e418407735e36a7205ce21210e4a5ef5d7e653b37da7e9cfc",
+          "01b1493388f732b0f283288e88c5eb8384353e9f6b9f02cdb5e0679268a255c2",
+          "e0ffd9071f0dec7848b041ff0422ec2742d939d386886769ab44f0e849929b0d",
+          "061ad5a74cb94db4a3c80f41d2cfe2ac4e2af3980f7912fe3fccf9a99beb985e"
+        ]
       },
       "oasis": {
         "accepted": true,
-        "notes": "Overview: the caravan road stays on dry ground beside the oasis, with settlement buildings east of the water. Village plan, also inspected native: rounded bends form a clear central junction. The repositioned ordinary adobe and later ruin occupy distinct plots; neither blocks the visible roads. Authored compound walls remain close to their lanes. Street north, also inspected native: market stalls and roadside buildings leave the curved passage open; fronts and shadows meet the ground without a new obvious separation. Street south: the low village buildings and compound accesses sit beside the gently rolling road. The terrain surface has strong sand patterns, which do not indicate a road geometry gap.",
+        "notes": "Overview: the caravan road stays on dry ground beside the oasis, with settlement buildings east of the water. Village plan, also inspected native: rounded bends form a clear central junction. The repositioned ordinary adobe and later ruin occupy distinct plots; neither blocks the visible roads. Authored compound walls remain close to their lanes. Street north: market stalls and roadside buildings leave the curved passage open; fronts and shadows meet the ground without a new obvious separation. Street south: the low village buildings and compound accesses sit beside the gently rolling road. The terrain surface has strong sand patterns, which do not indicate a road geometry gap.",
         "hashes": [
-          "d9cc4a57141455ddd3315e0e11dea3cc0403c515f1179d5682cd88e7d489ea7f",
-          "01185b1cb2ca951e5382831d692dda61347a61af93f68b3655dc8dfb1146423f",
-          "6e926e1ba557de05662ddb1019adda11f0a57044bc6d9523ba68cd7b43604cf9",
-          "8aaff7da285b178e25a01a680f20ac8d8259bad9a70b943b6d9c5cdc19a012bf"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/oasis-review.jpg"
+          "ad786458bf5773ab409fbf9ac1f60253be9366eb8f979fce1e1e4acbecd5a589",
+          "212000d6164f4671e038b9c8504aed042ca8fb7bb0626fd6f14e26478784dacf",
+          "764cbb520d0fb800ea6bac60d29d9e7101e19ef5859fcb1dab0dfaea6160bd42",
+          "5a39a33aebc52d92d2fd4dd3ce1dec7c385bdb8337018fefee02a351b5349d86"
+        ]
       },
       "polders": {
         "accepted": true,
         "notes": "Overview: the curved village roads stay connected with adjoining house plots and clear crossings. Village plan: both principal junctions remain clear, and shoulders blend into the hillside rather than appearing as isolated slabs. Street north, also inspected native: the close porch and raised granary are off the carriageway; no new building/road overlap is visible. The previously stippled cloud undersides are noticeably smoother. Street south: the approach follows the slope continuously into the village. Distant foundations are partly hidden by relief.",
         "hashes": [
-          "6b7ff7bcec6a485f685b2d44dcc1b7cf91281a4498ed4e8866080fa7fa38ce03",
-          "660f3ff6b77e862467f8edf1590e7490df829e9a521b01a3d2a1318fb0074de2",
-          "818d583e83e7241ea56e9039766cb1cda531db3df7bade12298341b26265f887",
-          "9dab1b00ea988d95aa7cf9122bb40abe9606136ccace092511726a65ea8fbe3f"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/polders-review.jpg"
+          "969b2c592ff3b2ad280744d060eb9b7ae724b3d74db24b0639166a5e1de56893",
+          "128518e40d4fa9bc8069d21112672788006fd3a9bd6a3aa5497fa160cc34bc75",
+          "3c3d353f2ad14d0640a7066acb9eea2cdb2ef531320cae667dc2b738d61c8103",
+          "3ad6abf7ad725fb5550b0f189a6c84044f5fabd6f56e2b95639cf9e487116ef0"
+        ]
       },
       "copper_mesa": {
         "accepted": true,
         "notes": "Overview: the principal S-bend follows the terrain through the industrial village with a continuous driving surface. Village plan: factory plots, container yards and utility structures sit beside connected curved access roads; visible junctions are clear. Street north: yard buildings have clear circulation space between the road and industrial frontage. Street south, also inspected native: workshops and the container structure are outside the road surface, with continuous access into the yard. No new floating foundation or abrupt shoulder break is evident in this view.",
         "hashes": [
-          "3209e5b80df191ac1a6288fe662c1f46d6174cf21ff5150a62316a18397f3649",
-          "f11a9c4ab21cb2ba04cf3e214ae138918db07785fc41eaec8e09f28d0f37d245",
-          "4124322ec1d4e1777f60c6b18404042b555b34fb3b75057481f8970a51372c50",
-          "4e2e6ba5bf35d6d3c90b5ebe34064b9efd7870e68971976c04093df2b90e1ab8"
-        ],
-        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/copper_mesa-review.jpg"
+          "91a7b9d73fa9b758f29ac2ab81274d37e2c9a8b528f2fb0577235427b97ffe19",
+          "1e50ae1ed15f2a13e8a7717d38bbcad5a0b670a6c83583ca58d7ae4cc9359e44",
+          "62e131a53e546fa2ac02fdc1145045b9d9d85e837f71c2cc541f491e1b2df7f2",
+          "055364fde9cdd234aada691d4c1a1289d2580dc3f3ab85b9139096954bfafb89"
+        ]
       }
     }
   },
