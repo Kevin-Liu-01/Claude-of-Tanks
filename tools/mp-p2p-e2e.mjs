@@ -323,18 +323,39 @@ try {
   observe(pages.a2, 'A2');
   await pages.a2.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
+  step('a2-garage-ready');
   // The resumed seat returns one of two ways, both the product's: the room re-delivers match_start to it and the session
   // re-enters the running match on its own (the loader covers the lobby at once), or the lobby is up with Rejoin battle.
   const returnState = () => {
     const v2 = window.__MULTIPLAYER_V2?.stats?.();
-    if (v2?.active === true && v2?.session?.phase === 'match') return 'auto';
     const button = document.querySelector('.cot-play [data-action="rejoin"]');
-    return document.querySelector('.cot-play')?.classList.contains('show') && !!button && !button.hidden ? 'rejoin' : null;
+    const rejoin = (document.querySelector('.cot-play')?.classList.contains('show') ?? false) && !!button && !button.hidden;
+    return {
+      path: v2?.active === true && v2?.session?.phase === 'match' ? 'auto' : rejoin ? 'rejoin' : null,
+      v2: !!v2, active: v2?.active ?? null, sessionPhase: v2?.session?.phase ?? null, roomPhase: v2?.room?.phase ?? null,
+      lobby: document.querySelector('.cot-play .lobby')?.classList.contains('show') ?? false, rejoin,
+      loader: document.querySelector('.cot-bl')?.classList.contains('on') ?? false, failure: window.__NETWORK_ENTRY_FAILURE?.message ?? null,
+    };
   };
-  await waitFor(pages.a2, returnState, 'A2 back in the room (re-entering, or Rejoin battle offered)', 60_000);
-  const returned = await pages.a2.evaluate(returnState);
+  // Sampled rather than a blind wait: the resumed seat's timeline (the runtime appearing, the session entering, the lobby and
+  // its Rejoin) goes into the report whichever way the return goes and however slow the page is under the host's load.
+  const returnTimeline = [];
+  const returnStartedAt = performance.now();
+  let returned = null;
+  let lastState = '';
+  while (performance.now() - returnStartedAt < 180_000) {
+    const state = await pages.a2.evaluate(returnState).catch(() => null);
+    if (state) {
+      const key = JSON.stringify(state);
+      if (key !== lastState) { returnTimeline.push({ atMs: Math.round(performance.now() - returnStartedAt), ...state }); lastState = key; }
+      if (state.path) { returned = state.path; break; }
+    }
+    await sleep(250);
+  }
+  report.rejoin = { path: returned, timeline: returnTimeline };
+  if (!returned) throw new Error(`A2 never returned within 180 s: ${JSON.stringify(returnTimeline.slice(-3))}`);
   if (returned === 'rejoin') await pages.a2.click('.cot-play [data-action="rejoin"]');
-  step('a2-returned', { path: returned });
+  step('a2-returned', { path: returned, timeline: returnTimeline });
   let a2Attempts = 1;
   try {
     await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000, { entryOf: 'A2' });
@@ -352,7 +373,7 @@ try {
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 })));
   const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null }));
   step('b-c-restored', { viewport: '1024x640', a2Entry });
-  report.rejoin = { a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null, path: returned, attempts: a2Attempts, entry: a2Entry };
+  report.rejoin = { ...report.rejoin, a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null, attempts: a2Attempts, entry: a2Entry };
   step('a-rejoined', report.rejoin);
   if (report.rejoin.p2p?.role !== 'peer' || report.rejoin.p2p?.hostId !== ids.b) failures.push(`A2 ${JSON.stringify(report.rejoin.p2p)}`);
   if (report.rejoin.peersOnB !== 2) failures.push(`B serves ${report.rejoin.peersOnB} peers after A's return`);
