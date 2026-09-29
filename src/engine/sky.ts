@@ -1692,6 +1692,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
      * @returns {void}
      */
     bakeEnvironment(): void {
+      // A device restore preserves parameters but clears every GPU-only LUT.
+      // Refresh their renderer lifetime before baking reflections from the dome.
+      refreshAtmosphere();
+      atmosphereKeySuffix = atmosphereKeySuffixLive;
       // Deep-hunt IBL experiment (2026-07): sourced Poly Haven HDRI as
       // scene.environment instead of the procedural-sky bake. Judged worse —
       // the HDRI's baked-in sun cannot track the per-map sun azimuth /

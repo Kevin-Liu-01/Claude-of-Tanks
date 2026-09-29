@@ -131,7 +131,7 @@ visit(file);
 const ownerSource = source.slice(source.indexOf('  let pmrem: '), source.indexOf('  // Sourced-HDRI environment override'));
 function skyFixture() {
   const state = { creates: 0, bakes: 0, validations: 0, generatorDisposals: 0,
-    geometryDisposals: 0, materialDisposals: 0, targets: [], inputs: [], failure: '' };
+    atmosphereInfo: null, atmosphereRefreshes: 0, geometryDisposals: 0, materialDisposals: 0, targets: [], inputs: [], failure: '' };
   const scene = new THREE.Scene(); const originalTarget = new THREE.WebGLCubeRenderTarget(8);
   let bound = [originalTarget, 4, 2];
   const renderer = {
@@ -164,6 +164,7 @@ function skyFixture() {
     dispose() { state.generatorDisposals++; }
     fromScene(envScene) {
       state.bakes++; assert.equal(envScene.children.length, 1);
+      assert.equal(state.atmosphereInfo, renderer.info, 'atmosphere LUTs must refresh for this graphics context before the reflection bake');
       const sky = envScene.children[0]; assert.equal(sky.scale.x, 50);
       const u = sky.material.uniforms;
       state.inputs.push([u.uSkyIntensity.value, u.turbidity.value, u.rayleigh.value,
@@ -177,6 +178,8 @@ function skyFixture() {
     }
   }
   const code = `const { renderer, scene, preset, sunDir } = input;
+    const atmosphereKeySuffixLive = '';
+    const refreshAtmosphere = () => { input.refreshAtmosphere(); return false; };
     const DEFAULT_PRESET = preset, ENV_SKY_SCALE = 50, ENV_INTENSITY_FLOOR = 0.21, HDRI_ENV_URL = null;
     const loadHdriEnvironment = () => { throw new Error('unexpected HDRI'); };
     ${configuredSource}\n${keySource}\n${ownerSource}\nconst rig = { ${bakeMethod} };`;
@@ -189,7 +192,7 @@ function skyFixture() {
       // The real validator restores target without its cube face/mip.
       renderer.setRenderTarget(renderer.getRenderTarget());
       return true;
-    }, { renderer, scene, preset, sunDir });
+    }, { renderer, scene, preset, sunDir, refreshAtmosphere() { state.atmosphereInfo = renderer.info; state.atmosphereRefreshes++; } });
   return { ...result, state, scene, renderer, preset, sunDir,
     assertRestored() { assert.deepEqual(bound, [originalTarget, 4, 2]); assert.equal(renderer.xr.enabled, true);
       assert.equal(renderer.autoClear, true); assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping); } };
