@@ -492,7 +492,8 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   assert.equal(draws.length, 1, 'webdriver keeps its explicit existing opt-out');
   nav.webdriver = false;
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
-  const launchBody = garage.match(/function launchBattle\([\s\S]+?\): void \{([\s\S]+?)\n  \}\n\n  function battle\(/)[1];
+  // 2026-09-29: the body ends at launchBattle's own close — openMultiplayer (8ccc472c2) now sits before battle().
+  const launchBody = garage.match(/function launchBattle\([\s\S]+?\): void \{([\s\S]+?)\n  \}\n\n  function \w+\(/)[1];
   const bus = createBus();
   bus.on('ui:battleStart', h.invalidate);
   const launch = new Function('emit', 'onBattle', `return (specId, mapId) => {

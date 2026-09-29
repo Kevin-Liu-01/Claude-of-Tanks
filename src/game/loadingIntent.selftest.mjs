@@ -49,7 +49,7 @@ assert.ok(
 );
 
 const battleIntent = garage.slice(
-  garage.indexOf('const signalBattleIntent = () =>'),
+  garage.indexOf('const signalBattleIntent = ('), // 2026-09-29: the handler takes the event (8ccc472c2)
   garage.indexOf("roomReminder.addEventListener('click'"),
 );
 assert.match(battleIntent, /battleMode === 'solo'/,
