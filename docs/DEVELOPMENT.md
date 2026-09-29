@@ -657,3 +657,12 @@ Vercel stores this project's environment variables as *sensitive*: `vercel pull`
 served from `cot.kevinliu.studio` resolves its rooms Worker and telemetry sink by name; a configured `VITE_ROOMS_URL`
 / `VITE_TELEMETRY_URL` still overrides them, an unusable value counts as unset, and other hosts keep their local
 defaults (`src/mp/session/endpoint.selftest.mjs`, `src/entry/telemetry.selftest.mjs`). Secrets never take this route.
+
+### Redacted public settings and the CLI deploy (2026-09-29)
+
+`tools/publicBuildEnv.ts` (1043e50f4) makes `vite build` refuse a `VITE_*` value equal to Vercel's redaction marker
+`[SENSITIVE]`, which is what `vercel pull` writes for this project's sensitive variables. The once-per-round CLI deploy
+therefore drops those lines from the pulled `.vercel/.env.production.local` (and `.env.local`) before `vercel build`:
+an unset variable means the served page resolves its Workers from `src/officialHost.ts` and v1 signaling from the same
+origin — the same behaviour a hosted build with the real values would show for the official site. Secrets are never
+touched by this step; only redacted browser-visible `VITE_*` lines are removed.
