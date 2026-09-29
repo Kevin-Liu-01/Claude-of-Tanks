@@ -55,11 +55,14 @@ are documented in `docs/MULTIPLAYER-V2.md` §13.2 and its addendum §13.2.1.
    records `lastResult`, returns the room to `waiting`, clears readiness and the
    election, and broadcasts `match_status ended`.
 5. The host's room socket absent for 8 s (an alarm), its reports silent for 30 s
-   (an alarm), a leave, a kick or a decline with a willing successor: the room
-   elects the next host, `generation + 1`, and broadcasts `host_changed { hostId,
+   (an alarm), a leave, a kick or a decline (P1b: at once, to the next candidate —
+   willing first, a declined commander as the last resort, never a seat that
+   already stepped down by declining while hosting this match): the room elects
+   the next host, `generation + 1`, and broadcasts `host_changed { hostId,
    generation, resumeTick, reason }`, the new host's copy with the secret. The old
-   host coming back is a peer. No commander left: `match_status lost`, the room
-   `waiting` — the admin may start again.
+   host coming back is a peer. No commander left after a drop or a leave:
+   `match_status lost`, the room `waiting` — the admin may start again; after a
+   decline the host keeps hosting.
 
 Alarms carry every deadline (admin lease, host lease, report budget, 24 h expiry);
 the object hibernates between them and restores the host state from its SQLite
@@ -153,6 +156,32 @@ the emulated-amd64 caveat) is recorded in the git history of this file.
 Free plan: Durable Object requests and storage within the daily allowance; the
 Worker relays a few dozen signaling messages per join and one report every 10 s
 per running match, nothing per tick. Game traffic runs between the browsers.
+
+P1b cost pass (2026-09-28, `docs/MULTIPLAYER-V2.md` §13.8 "room cost after P1b"):
+
+- The client's keepalive is the exact text frame `ping`; the `Room` constructor
+  sets `ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'))`,
+  so the runtime answers on every accepted socket without waking the object — the
+  frame is never a handled message, never a request, never duration. The actor's
+  24 h idle expiry reads `getWebSocketAutoResponseTimestamp` through its
+  `keepaliveAt` port, so a room whose seats only keep alive stays open. The
+  `room_ping` envelope (clients deployed before the frame) is still answered by
+  the actor and billed as before.
+- `room_state` broadcasts are throttled to one per `ROOM_STATE_COALESCE_MS`
+  (300 ms) per room: the first change of a burst goes out at once, the rest ride
+  one trailing broadcast carrying the newest revision, on the object's own
+  `setTimeout` (`defer` port — a pending timer keeps the object awake and is not
+  an alarm, so not a request); joins, leaves, disconnects, phase changes and
+  elections broadcast at once. `room_ack { revision }` still names the state a
+  command produced.
+- A running host's `host_decline` is treated as its departure from hosting: the
+  next candidate is elected at once (`reason: 'declined'`), never a seat that
+  already stepped down by declining while hosting this match (`steppedDown` in
+  the stored state); with nobody left the host keeps hosting.
+
+Cloudflare bills outgoing WebSocket messages at nothing and incoming ones at
+20:1; the certification's tables count every handled client→room message as one
+request (the conservative rule) and show the published rule beside it.
 
 ## Files
 

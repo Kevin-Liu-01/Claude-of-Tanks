@@ -701,9 +701,29 @@ with `src/mp/room/p2pMatchHost.ts`, shared by the Durable Object and the local r
   phase sets `RoomPlayer.hostDeclined` (a new required boolean on every player; `room_state` carries it). The election
   (`electHost`): connected commanders only (spectators never host, disconnected seats never host); the admin first
   unless it declined; else the lowest `joinedAt` that has not declined; **declined commanders host only when no other
-  connected commander exists** (the last commander hosts, declined or not — §13.3's mobile rule). A running host that
-  declines migrates at once (`reason: 'declined'`) **only to a willing successor**: with every other commander declined
-  too it keeps hosting.
+  connected commander exists** (the last commander hosts, declined or not — §13.3's mobile rule). **A running host's
+  decline is its departure from hosting (P1b, 2026-09-28)** — the client declines while hosting only when its actor is
+  gone or never came (a Garage return, a re-entry without state, an elected seat that cannot host) — so the room treats
+  it as a leave for the election: the next candidate takes over at once, `reason: 'declined'`, by the same ladder
+  (willing first, a declined commander as the last resort; P1's first rule moved the match only to a WILLING successor
+  and otherwise kept the departed host, which stalled its peers for the 30 s report budget). The one exclusion: a seat
+  that already stepped down by declining while it hosted this match is never handed the match back by a decline
+  (`RoomActorState.steppedDown`, durable, cleared at every start and end — two seats that cannot host would otherwise
+  elect each other without end); a drop or a leave still elects by the full ladder. With no candidate left the host
+  keeps hosting (its seat is still in the room, unlike a leave) and its own client boots afresh when no election
+  follows.
+- **The keepalive frame and the coalesced broadcasts (P1b, 2026-09-28).** The room socket's keepalive is one exact
+  TEXT frame each way — `ROOM_KEEPALIVE_REQUEST` = `ping`, `ROOM_KEEPALIVE_RESPONSE` = `pong`, never an envelope. The
+  Durable Object sets `setWebSocketAutoResponse(ping → pong)` in its constructor, so the runtime answers on every
+  accepted socket without waking the object: the frame is never a handled message, never a billed request, never
+  duration. The LAN service and the proofs' double answer the frame outside the actor; the actor's 24 h idle expiry
+  reads the host's record of the newest frame per socket (`keepaliveAt` — the Worker's
+  `getWebSocketAutoResponseTimestamp`), so a room whose seats only keep alive stays open as before. The `room_ping` /
+  `room_pong` envelope stays accepted (and billed) for clients deployed before the frame. `room_state` broadcasts are
+  throttled to one per `ROOM_STATE_COALESCE_MS` (300 ms) per room: the first change of a burst goes out at once, the
+  rest ride one trailing broadcast carrying the newest revision (the host's own timer — the `defer` port — never the
+  alarm); joins, leaves, disconnects, phase changes and elections broadcast at once. `room_ack { revision }` still names
+  the state a command produced and every seat converges to the newest revision within the window.
 - **The relay (`room_signal`)**, checked in this order, each with its own code: a seated sender (`not_in_room`); a
   well-formed payload — `to` (a seat id), `generation` (an unsigned integer), `kind` in `offer | answer | candidate`, an
   optional `sdp` string, an optional `candidate` record `{ candidate, sdpMid: string | null, sdpMLineIndex: number |
@@ -815,6 +835,26 @@ optional on restore; a later schema bump can make them required once no pre-lane
 (5) The LAN helper's default transport stays `service`; flipping it to `p2p` is a one-line decision for the owner once
 the browser host (P2) lands.
 
+**P1b — the cost pass (lane `mp/p2p-rooms-cost`, 2026-09-28, on the P3 certification tip).** Three changes, each
+receipted, the contract in §13.2.1 and the measurements in §13.8 "room cost after P1b": (1) **the keepalive is not
+billed** — the client's keepalive is the exact text frame `ping`, answered by the Durable Object's hibernation
+auto-response (`setWebSocketAutoResponse` in the `Room` constructor) without waking the object; the actor's 24 h idle
+expiry reads the runtime's per-socket timestamp through the new `keepaliveAt` port; the transport contract gained the
+optional `sendKeepalive` / `onKeepalive` path (the configured response is the only text a transport ever surfaces) and
+`RoomClient` keeps the `room_ping` envelope for a transport without it — the clients deployed on 114 / 115 / 121 keep
+pinging envelopes every 15 s and are answered and billed exactly as before; (2) **coalesced `room_state`** — one fan-out
+per `ROOM_STATE_COALESCE_MS` (300 ms) per room with a trailing broadcast on the host's own timer (the `defer` port),
+joins / leaves / disconnects / phase changes / elections at once; (3) **a running host's decline is a departure** —
+the next candidate at once with `reason: 'declined'`, a per-match `steppedDown` set so two seats that cannot host never
+elect each other in a loop, the host kept only when nobody is left. Receipts: the Workers-runtime suite (the
+auto-response answered in order and recorded by the runtime with the actor untouched, 130 raw pings under the rate
+window while envelope pings still close the socket, the coalesced burst, the decline ladder), `roomActor.selftest`
+(keepalive-driven expiry, the throttle on a captured timer, the re-arm after an instant broadcast, the stepped-down
+round trip), `transport.selftest`, `roomClient.selftest` (the frame against the LAN service, the envelope fallback),
+`tools/mp-p2p-decline.selftest` (p2 elected 1 ms after p1's Garage return on the real actor and on the double, against
+P1's 30 s), the stepdown / session / headless / e2e receipts, `roomWorkerProgram` (DOM-free). The LAN service and
+`tools/mp-p2p-room-double.ts` mirror all three (the double stays equivalent to the Worker). Never deployed by this lane.
+
 ### 13.7 The client (P2, lane `mp/p2p-client`, 2026-09-28) — what landed
 
 Built against §13.2 and P1's §13.2.1 shapes (P1's `protocol.ts` and `roomPolicy.ts` adopted verbatim: the client
@@ -899,7 +939,8 @@ is proven on the real actor by `tools/mp-p2p-stepdown.selftest.mjs` — and foun
 on a re-sent `match_start`, fixed. (2) ~~A host_decline from a
 running host is honoured by the double as "elect the next willing seat"; P1 keeps a host without a willing successor,
 the client then simply stays.~~ P3: the double now applies P1's rule and `tools/mp-p2p-decline.selftest.mjs` proves the
-client under it on the real actor (the match resumes on the last resort after the 30 s report budget). (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
+client under it on the real actor (the match resumes on the last resort after the 30 s report budget). P1b (2026-09-28):
+the room now elects at once on the decline (§13.2.1) and the same receipt measures 1 ms. (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
 stream is the follow-up if the soak shows it matters. (4) The Worker chunk is heavy (10.4 MB raw): the fleet builders
 ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. (5) The
 three-browser proof against the real room service needs the Worker to allow a development origin (`ALLOWED_ORIGINS`)
@@ -974,7 +1015,9 @@ directions** — and the keepalive is 85 % of it. What P1 should add: a longer k
 Object's hibernation keeps the socket; the 15 s ping serves only the RTT readout — this alone quadruples the headroom), and
 `room_state` diffs or a coalesced broadcast at the start (28 readies → 28 broadcasts of 28 seats each). Note: if Cloudflare bills
 hibernated-socket messages at its documented 20:1 ratio the headroom is 20× the figures above; the certification counts every
-message as one request as the brief instructed.
+message as one request as the brief instructed. **Done in P1b (2026-09-28):** the keepalive stays at 15 s but is the room's
+text frame, answered by the Durable Object's auto-response without waking it (not a handled message at all), and `room_state`
+is coalesced — the measurements are in "Room cost after P1b" below.
 
 **Migration timing (where the 12 s go).** The 8.0 s socket grace, 1.1–2.6 s for the elected seat to boot (the Worker chunk,
 the manifest, the actor restored from the sealed keyframe: 1.1 s at 4 entities, 1.9 s at 14, 2.6 s at 28), and 30–50 ms
@@ -1013,7 +1056,9 @@ admin's Garage return with every other commander declined keeps it as host (no e
 report budget (`ROOM_MATCH_REPORT_STALE_AFTER_MS` = 30 s) migrates with `timeout` to the last resort, which resumes from its sealed
 keyframe at the continued tick; the other peer follows; the old host re-enters as a peer. The cost of P1's rule is that stall:
 30 s instead of the 8 s grace. What P1 should add: treat a decline from the RUNNING host as `left` (the client only declines
-while hosting when it is leaving the match — its actor is already gone), so the last resort is elected at once.
+while hosting when it is leaving the match — its actor is already gone), so the last resort is elected at once. **Done in
+P1b (2026-09-28, §13.2.1):** the same receipt now measures the election 1 ms after the decline on the real actor and on the
+double, the successor live 53 ms after it, with the stepped-down guard keeping two unable seats from electing each other.
 
 **Real-service proofs.** `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio --grace=8000` on this lane's tools against
 the deployed site (stamp `de5322e7d`, 2026-09-28 22:48): PASS in 87 s — A hosting two peers on `rtc://`, C saw B move 17.4 m
