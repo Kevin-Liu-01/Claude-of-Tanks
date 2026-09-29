@@ -1,6 +1,6 @@
 // The browser host's collision world: the manifests fetched from the route the build serves (index.json, then the
 // content-addressed map file), verified against the index's byte count and SHA-256 with Web Crypto, decoded by the
-// server's codec and built into the same headless world the match container builds from disk — the same obstacles,
+// server's codec and built into the same headless world the Node loader builds from disk — the same obstacles,
 // colliders and concealers, the same height at the same points; a wrong checksum, a wrong size and a missing file
 // are refused. The fetch double reads the source directory the way the Vite plugin serves it.
 import assert from 'node:assert/strict';

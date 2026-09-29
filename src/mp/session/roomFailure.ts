@@ -8,7 +8,7 @@ export type RoomFailureCode =
   | 'room_full' | 'invalid_room_code' | 'access_denied'
   | 'room_service_unavailable' | 'connection_failed';
 
-export interface RoomFailure {
+interface RoomFailure {
   readonly code: RoomFailureCode;
   /** Explicit user retry is permitted; this never authorizes an automatic retry. */
   readonly canRetry: boolean;

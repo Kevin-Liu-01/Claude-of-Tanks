@@ -97,7 +97,7 @@ export interface ActivationRuntimeOptions {
   arcadePitchRad?: number;
 }
 
-export interface ActivationRequest {
+interface ActivationRequest {
   viewerId: string;
   own: NetworkPlayerSelection;
   spectator: boolean;
@@ -106,7 +106,7 @@ export interface ActivationRequest {
   fx: NetworkFxPort;
 }
 
-export interface ActivationRuntime {
+interface ActivationRuntime {
   activate(request: ActivationRequest): void;
 }
 

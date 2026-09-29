@@ -17,7 +17,7 @@ function urlHost(hostname: string): string {
   return hostname.includes(':') && !hostname.startsWith('[') ? `[${hostname}]` : hostname;
 }
 
-export function isLocalNetworkHost(hostname: string): boolean {
+function isLocalNetworkHost(hostname: string): boolean {
   const host = String(hostname || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
   if (host === 'localhost' || host === '::1' || host.endsWith('.local')) return true;
   if (/^127(?:\.\d{1,3}){3}$/.test(host)) return true;

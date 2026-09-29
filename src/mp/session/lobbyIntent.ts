@@ -13,14 +13,14 @@ import type { SerializedLobby } from '../room/lobbyShape.ts';
 import { createLobbyPreloader } from './lobbyPreloader.ts';
 import type { LobbyPreloaderOptions } from './lobbyPreloader.ts';
 
-export interface LobbyIntentContext {
+interface LobbyIntentContext {
   state: SerializedLobby;
   playerId: string;
   role: 'host' | 'client';
 }
 
 /** The Garage strip's view of the room (src/ui/garage.ts setRoomStatus). */
-export interface LobbyRoomStatus {
+interface LobbyRoomStatus {
   roomCode: string;
   mode: string;
   ready: boolean;
@@ -30,13 +30,13 @@ export interface LobbyRoomStatus {
 }
 
 /** The Play menu as the strip drives it: it holds the seat's commands for both a pending and an owned room. */
-export interface LobbyIntentMenu {
+interface LobbyIntentMenu {
   setReady(ready: boolean): boolean;
   syncGarageSelection(): boolean;
   startRound(): boolean;
 }
 
-export interface LobbyIntentPorts {
+interface LobbyIntentPorts {
   getMenu(): Promise<LobbyIntentMenu> | null;
   setGarageStatus(status: LobbyRoomStatus | null): void;
   /** The joined-room preparation (world, builders, the battle-only modules) behind explicit room intent. */

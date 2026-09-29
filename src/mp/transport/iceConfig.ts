@@ -2,7 +2,7 @@ import type { RuntimeValue } from '../../runtimeTypes.ts';
 
 type IceServerConfig = RTCIceServer;
 
-export interface IceConfiguration {
+interface IceConfiguration {
   iceServers: RTCIceServer[];
   relayOnly: boolean;
   relayAvailable: boolean;

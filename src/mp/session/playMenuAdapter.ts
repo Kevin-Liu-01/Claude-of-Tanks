@@ -53,7 +53,7 @@ export interface RoomConnection {
   readonly runtime: { onState(listener: (state: SerializedLobby) => void): Unsubscribe };
 }
 
-export interface RoomConnectRequest {
+interface RoomConnectRequest {
   kind: 'create' | 'join';
   mode: 'private' | 'lan';
   /** The room host's ws:// or wss:// origin (src/mp/session/endpoint.ts). */
@@ -92,7 +92,7 @@ export function isMultiplayerV2Session(value: unknown): value is V2RoomSession {
 }
 
 /** `roomToLobby` produces the lobby shape; the menu renders it without a second validation. */
-export function lobbyOf(room: RoomSnapshot): SerializedLobby {
+function lobbyOf(room: RoomSnapshot): SerializedLobby {
   return roomToLobby(room);
 }
 

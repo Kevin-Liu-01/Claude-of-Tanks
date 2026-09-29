@@ -12,7 +12,7 @@ export interface LobbyPreloaderOptions {
   prefetchWorld(mapId: string, options?: { intent?: boolean }): RuntimeValue;
 }
 
-export interface LobbyPreloader {
+interface LobbyPreloader {
   preload(state: SerializedLobby | null | undefined): boolean;
   readonly pendingCount: number;
   readonly preparedBuilderCount: number;

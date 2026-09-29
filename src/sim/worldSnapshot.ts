@@ -87,7 +87,7 @@ export interface SnapshotShellSource {
 }
 
 /** One captured tank as the wire carries it (quantized; `eraSpent` only when plates are gone). */
-export interface QuantizedEntitySnapshot {
+interface QuantizedEntitySnapshot {
   id: string;
   specId: string;
   team: string;
@@ -120,7 +120,7 @@ export interface QuantizedEntitySnapshot {
   eraSpent?: string[];
 }
 
-export interface QuantizedShellSnapshot {
+interface QuantizedShellSnapshot {
   id: number;
   shooterId: string;
   x: number;

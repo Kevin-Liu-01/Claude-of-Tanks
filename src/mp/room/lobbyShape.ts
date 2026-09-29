@@ -5,7 +5,7 @@
 import type { TeamArrangement } from '../../sim/matchRuleset.ts';
 
 export type LobbyTeam = 'alpha' | 'bravo' | 'spectator';
-export type LobbyPhase = 'waiting' | 'starting' | 'playing';
+type LobbyPhase = 'waiting' | 'starting' | 'playing';
 
 export interface LobbyPlayer {
   id: string;
@@ -21,7 +21,7 @@ export interface LobbyPlayer {
   rating: number | null;
 }
 
-export interface LobbyRoundResult {
+interface LobbyRoundResult {
   round: number;
   result: string | null;
   reason: string | null;
