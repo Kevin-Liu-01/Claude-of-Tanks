@@ -8,11 +8,12 @@ class ElementFixture {
     this.isConnected = true; this.focuses = 0;
     this.classList = { add: (name) => this.classes.add(name), remove: (name) => this.classes.delete(name) };
   }
-  append(...nodes) { this.children.push(...nodes); }
+  append(...nodes) { this.children.push(...nodes); for (const node of nodes) node.parentElement = this; }
   appendChild(node) { this.append(node); }
   setAttribute(name, value) { this.attributes.set(name, value); }
   getAttribute(name) { return this.attributes.get(name) ?? null; }
   addEventListener() {}
+  closest(selector) { return selector === 'dialog[open]' ? this.ownerDialog ?? null : null; }
   querySelector() { return null; }
   querySelectorAll() { return []; }
   remove() { this.isConnected = false; }
@@ -64,8 +65,20 @@ try {
   other.close({ immediate: true });
   assert.equal(document.activeElement, trigger, 'ordinary immediate close still restores trigger focus');
 
+  const archive = new ElementFixture('dialog');
+  const archiveTrigger = new ElementFixture('button'); archiveTrigger.ownerDialog = archive;
+  modal.open({ trigger: archiveTrigger }); flushFrames();
+  assert.equal(modal.root.parentElement, archive, 'help stays in the native dialog top layer');
+  assert.equal(document.activeElement, modal.closeButton);
+  modal.close({ immediate: true });
+  assert.equal(document.activeElement, archiveTrigger, 'close returns focus to the archive recipe');
+  modal.open({ trigger }); flushFrames();
+  assert.equal(modal.root.parentElement, body, 'reopening outside an archive restores the ordinary host');
+  modal.close({ immediate: true });
+  const focusCountBeforeDispose = modal.closeButton.focuses;
+
   modal.open({ trigger }); modal.dispose(); flushFrames();
-  assert.equal(modal.closeButton.focuses, 1, 'disposed pending open never focuses');
+  assert.equal(modal.closeButton.focuses, focusCountBeforeDispose, 'disposed pending open never focuses');
   assert.equal(body.style.overflow, 'auto');
 } finally {
   for (const modal of modals) modal.dispose();

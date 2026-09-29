@@ -230,6 +230,10 @@ export function createModal({
       if (activeModal && activeModal !== controller) activeModal.close({ restoreFocus: false, immediate: true });
       trigger = nextTrigger || (document.activeElement instanceof HTMLElement
         ? document.activeElement : null);
+      // Native dialogs make nodes outside their top layer inert. Keep contextual
+      // help inside the trigger's open dialog so it remains visible and focusable.
+      const host = trigger?.closest('dialog[open]') || document.body;
+      if (root.parentElement !== host) host.appendChild(root);
       body.scrollTop = 0;
       root.hidden = false;
       activeModal = controller;
