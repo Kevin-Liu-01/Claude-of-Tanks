@@ -55,7 +55,7 @@ try {
     return checkCloudHistory();
   }), 60_000, 'cloud pixel regression');
   assert.equal(sourceHash(), report.sourceHash, 'source changed during acquisition');
-  assert.equal(report.fixture.cases.length, 3);
+  assert.equal(report.fixture.cases.length, 4);
 } catch (error) {
   report.errors.push(String(error));
 } finally {

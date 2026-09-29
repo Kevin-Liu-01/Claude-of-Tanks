@@ -19,7 +19,7 @@ import {
 import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
 import {
-  VolumetricCloudLayer, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -28,6 +28,24 @@ import { getMapConfig } from '../world/maps/index.ts';
 
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
+
+// Full-strength firing at the game's normal and sniper FOVs keeps detailed
+// history through both the punch and its decay. Real cuts still invalidate it.
+for (const base of [60, 30, 15, 7.5, 3.75, 2.4]) {
+  const tan = deg => Math.tan(deg * Math.PI / 360);
+  let previous = tan(base);
+  for (let frame = 0; frame < 60; frame++) {
+    const kick = Math.exp(-frame / 60 / .08);
+    const current = tan(base * (1 + .075 * kick));
+    assert.equal(cloudCameraCut(.03, .055, previous, current), false,
+      `recoil frame ${frame} at ${base} degrees must reproject, not rebuild`);
+    previous = current;
+  }
+  assert.equal(cloudCameraCut(0, 0, tan(base), tan(base / 2)), true, 'scope jump rebuilds');
+  assert.equal(cloudCameraCut(0, 0, tan(base / 2), tan(base)), true, 'scope exit rebuilds');
+}
+assert.equal(cloudCameraCut(7, 0, 1, 1), true, 'teleport rebuilds');
+assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
 
 // A capture rebuilds missing slots and converges their noisy first samples.
 // The real method may touch only its own cloud targets and must keep time fixed.

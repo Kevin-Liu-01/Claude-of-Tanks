@@ -117,7 +117,16 @@ export const CLOUD_DOME_RADIUS_M = 3400;
 /** Camera-cut thresholds: a jump (m), a turn (rad) or a zoom (relative tangent) that invalidates the history. */
 export const CLOUD_CUT_JUMP_M = 6;
 export const CLOUD_CUT_TURN_RAD = 0.35;
-export const CLOUD_CUT_ZOOM = 1e-3;
+// Reprojection already accounts for both cameras' field of view. The gun's
+// 7.5% FOV punch must keep that history: resetting for each easing step left
+// the sky permanently in its coarse four-slot rebuild during a shot.
+export const CLOUD_CUT_ZOOM = 0.20;
+
+export function cloudCameraCut(movedM: number, turnedRad: number, previousTan: number, currentTan: number): boolean {
+  const zoomRatio = Math.max(previousTan, currentTan) / Math.min(previousTan, currentTan);
+  return movedM > CLOUD_CUT_JUMP_M || turnedRad > CLOUD_CUT_TURN_RAD
+    || !Number.isFinite(zoomRatio) || zoomRatio > 1 + CLOUD_CUT_ZOOM;
+}
 /**
  * The aerial pass's haze law (post.ts AERIAL_* constants, mirrored so a cloud bank converges like the ring):
  * extinction and scatter-in densities (1/m), their ceilings, the desaturation and cool shift. The target is the
@@ -1544,8 +1553,7 @@ export class VolumetricCloudLayer {
     if (this.hasPrev) {
       const moved = C.pos.distanceTo(P.pos);
       const turned = C.fwd.angleTo(P.fwd);
-      const zoomed = Math.abs(C.tan.y - P.tan.y) > CLOUD_CUT_ZOOM * C.tan.y;
-      if (moved > CLOUD_CUT_JUMP_M || turned > CLOUD_CUT_TURN_RAD || zoomed) { this.resetHistory(); this.cuts++; }
+      if (cloudCameraCut(moved, turned, P.tan.y, C.tan.y)) { this.resetHistory(); this.cuts++; }
     } else {
       this.resetHistory();
     }

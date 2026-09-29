@@ -18,6 +18,8 @@ function runUniformCase(layer, renderer, seed, mode) {
     u.uPrevRight.value.applyQuaternion(turn);
     u.uPrevFwd.value.applyQuaternion(turn);
   }
+  u.uPrevTan.value.copy(layer.cam.tan);
+  if (mode === 'zooming') u.uPrevTan.value.multiplyScalar(1.1);
   let index = 0;
   for (let frame = 0; frame < 512; frame++) {
     u.uHistoryValid.value = mode === 'cut' && frame === 0 ? 0 : 1;
@@ -70,7 +72,7 @@ export function checkCloudHistory() {
     u.uPrevUp.value.copy(layer.cam.up);
     u.uPrevTan.value.copy(layer.cam.tan);
     u.uMinAlpha.value = .12;
-    for (const mode of ['stationary', 'moving', 'cut']) cases.push(runUniformCase(layer, renderer, seed, mode));
+    for (const mode of ['stationary', 'moving', 'zooming', 'cut']) cases.push(runUniformCase(layer, renderer, seed, mode));
     return { backend, cases };
   } finally {
     seed.dispose(); layer.dispose(); renderer.dispose(); renderer.forceContextLoss();
