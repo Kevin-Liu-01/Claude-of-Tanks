@@ -453,3 +453,14 @@ The service list must contain only signal and gateway. Configuration and
 native local tests do not prove public DNS/TLS, TURN allocation, or production
 gameplay. Any service tests must use their own ports/project/volumes and clean
 up only resources they own.
+
+### Local production builds and redacted public settings
+
+Vercel can return `[SENSITIVE]` for sensitive environment entries in a local pull.
+Never bake that marker into a `VITE_*` value: it disables room endpoint resolution
+and can also break telemetry. The Vite production-build guard rejects these
+markers before emitting an artifact. For prebuilt releases, supply the verified
+public Worker URLs from the deployment records to the local build environment;
+keep server credentials managed by the deployment. Alternatively, use a hosted
+build where the deployment supplies its actual environment. Verify the compiled
+room endpoint and native room entry before publishing.

@@ -29,6 +29,7 @@ import { renderProductStats } from './src/productStats.ts';
 import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
 import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
+import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
@@ -171,6 +172,7 @@ export default defineConfig({
   // same base36 hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
   worker: { format: 'es', rollupOptions: { output: { hashCharacters: 'base36' } } },
   plugins: [
+    { name: 'cot-public-build-env', apply: 'build', configResolved(config) { assertPublicBuildEnv(config.env); } },
     {
       name: 'cot-app-version',
       enforce: 'pre',
