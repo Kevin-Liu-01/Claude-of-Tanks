@@ -101,7 +101,11 @@ swap its link onto it; the other peers re-offer to the new host; a replaced host
 the generation, the candidate path (TURN), the host uplink and the migration banner. Receipts: `transport/webRtcTransport`,
 `match/rtcClientLink`, `host/*`, `room/roomClientSignals`, the extended session / status / surface / telemetry ones,
 and the headless three-seat proof `tools/mp-p2p-headless.mjs` (core group) on `tools/mp-p2p-room-double.ts`;
-`npm run test:net:v2:p2p` runs the same flow in three headless Chromes with real WebRTC.
+`npm run test:net:v2:p2p` runs the same flow in three headless Chromes with real WebRTC (`--rooms=wss://…` for the real
+room service; the two tabs still rendering draw at 320×200 while the old host re-enters, so its program compile is not
+starved by two full battle frames on the shared headless GPU). The v2 entry itself extends a shader preparation that ran
+out of its wall-clock budget once (a fresh deadline, a `slow_reveal` beacon `compile_extended`, a `compileRetry` stage)
+before failing — docs/MULTIPLAYER-V2.md §13.6 "Entry resilience".
 
 ## Network status and the exit flow
 

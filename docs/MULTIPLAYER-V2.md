@@ -867,8 +867,22 @@ against `tools/mp-p2p-room-double.ts` (P1's relay order, election, secrets) — 
 the relay, motion on every seat, sealed keyframes retained, the host's tab closing → the election after the grace →
 the elected peer resumes at the continued tick (an ally's hull 0.38 m from where it was last seen, one tick of driving)
 and the other peer follows, the old host back as a peer. `tools/mp-p2p-e2e.mjs` (`npm run test:net:v2:p2p`) is the
-same flow in three headless Chromes with real WebRTC on localhost; `--rooms` can point it at the real room service
-once P1 is merged. The existing `mp-exit-e2e` and `mp-browser-e2e` proofs keep the WebSocket path and stay green.
+same flow in three headless Chromes with real WebRTC on localhost; `--rooms=wss://…` points it at the real room
+service (no double: the election and the seats' ids come from the sessions' own facts, the host's reports are not
+gated). While the old host re-enters, the two tabs still rendering draw at 320×200: two full battle frames starve the
+shared headless GPU process during its program compile (four runs at host loads 19–40 lost that step to the
+preparation budget before the law below and the shrink; the first entry passes because every tab compiles before any
+renders). The existing `mp-exit-e2e` and `mp-browser-e2e` proofs keep the WebSocket path and stay green.
+
+**Entry resilience (2026-09-28).** The strict shader preparation is a wall-clock-bounded operation
+(`src/engine/programWarm.ts`, 5 s — unchanged). The v2 entry now treats a preparation that ran out of that budget the
+way the reveal and paint budgets are treated (the 2026-09-25 law: extend once, then wait): `warm.compile` runs once
+more with a fresh deadline before the entry fails with the same message; any other incomplete reason fails at once;
+the extension is a `slow_reveal` beacon (`stage: compile`, `code: compile_extended`, the first attempt's ms, the
+programs still pending — `src/main.ts` sends it) and a `compileRetry` stage in the load trace. On a real GPU with one
+tab the compile takes 1–2 s; the second window covers a starved GPU process or a cold shader cache.
+`browserComposition.selftest` proves budget → complete proceeds (two compiles, one beacon, the loader's "still
+preparing"), budget twice fails with the message and no third attempt, invalidated never retries.
 
 **Open.** (1) Two of P1's requests are honoured by design but wait for the merge to be proven against the real
 service: `host_only` step-down and the report cadence are exercised only against the double. (2) A host_decline from a
