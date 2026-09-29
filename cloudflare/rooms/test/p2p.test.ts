@@ -301,6 +301,12 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     expect(stamps.some((stamp) => stamp !== null && Math.abs(stamp - Date.now()) < 5_000)).toBe(true);
     expect((await storedState('ROOM17')).room?.touchedAt).toBe(before.room?.touchedAt);
     expect(await runInDurableObject(env.ROOMS.getByName('ROOM17'), (_instance, state) => state.getWebSocketAutoResponse()?.request)).toBe(ROOM_KEEPALIVE_REQUEST);
+    // the record lives with the socket in the runtime, not with the object: it survives an eviction (the 24 h expiry reads it after any number of restarts)
+    await evictDurableObject(env.ROOMS.getByName('ROOM17'));
+    const afterEviction = await runInDurableObject(env.ROOMS.getByName('ROOM17'), (_instance, state) =>
+      state.getWebSockets().map((ws) => state.getWebSocketAutoResponseTimestamp(ws)?.getTime() ?? null));
+    expect(afterEviction.filter((stamp) => stamp !== null)).toEqual(stamps.filter((stamp) => stamp !== null));
+    expect(await runInDurableObject(env.ROOMS.getByName('ROOM17'), (_instance, state) => state.getWebSocketAutoResponse()?.response)).toBe(ROOM_KEEPALIVE_RESPONSE);
     // the frame is a keepalive, not a message: more of them than the rate window allows leave the socket open and every
     // one answered (the envelope ping, still accepted for older clients, closes the socket as rate_limit past the window)
     for (let index = 0; index < ROOM_RATE_MAX_MESSAGES + 10; index++) guest.socket.send(ROOM_KEEPALIVE_REQUEST);
