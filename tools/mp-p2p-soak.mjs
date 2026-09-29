@@ -20,7 +20,10 @@
  *                                                                              # /api/ice hands out (fetched with the site
  *                                                                              # Origin; the credential never leaves memory)
  *
- * --rooms is required (the harness pages run on http://127.0.0.1:<port>: the room service must allow that origin —
+ * --host=game (the "realism" run): seat 1 is the real game page (`?mp=v2`, the Play menu's LAN room, its size), the
+ * harness seats join its room by code; the game host plays through the game's own client and the HUD, the migration
+ * closes its tab and a harness seat takes over. --rooms is required (the harness pages run on http://127.0.0.1:<port>:
+ * the room service must allow that origin —
  * `wrangler dev --var ALLOWED_ORIGINS:http://127.0.0.1:<port>`). --hosts=K marks the first K seats as able to host (the
  * creator and its successors); the rest decline on join like the mobile tier. --ice=none (host candidates, the LAN
  * case) | all (STUN + TURN, whichever ICE picks) | relay (TURN only, both ends). --ice-renew-at=<minutes> re-fetches the
@@ -69,6 +72,8 @@ const requestedVitePort = Number(argValue('port', 0));
 const json = flag('--json');
 const strict = flag('--strict');
 const headful = flag('--headful');
+const gameHost = argValue('host', 'harness') === 'game';
+const GAME_BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1&mp=v2';
 // The harness's prediction reads `getSpec` from the saved registry (src/vehicles/specs.ts without the fleet's lazy
 // finalization): these ids exist there and in the host's fleet alike.
 const SPEC_IDS = ['m1a2', 't90m', 'strv103', 'kv2', 't90m_proryv'];
@@ -143,7 +148,25 @@ function peerUrl(origin, peer) {
   return `${origin}/mp-p2p-peer/?${params}`;
 }
 
+async function waitFor(page, predicate, labelText, timeoutMs, args = []) {
+  try { await page.waitForFunction(predicate, { timeout: timeoutMs, polling: 100 }, ...args); }
+  catch (error) { throw new Error(`${labelText}: ${error.message}`); }
+}
+
+/** The real game page as the creator: the Garage's battle menu → LAN → create; the room code from the address bar. */
+async function openGamePage(origin, peer) {
+  const page = await peer.context.newPage();
+  await page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 });
+  observe(page, peer.id);
+  await page.goto(`${origin}/?${GAME_BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+  await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${peer.id} garage ready`, 240_000);
+  peer.page = page;
+  peer.opens++;
+  return page;
+}
+
 async function openPage(origin, peer) {
+  if (peer.game) return openGamePage(origin, peer);
   const page = await peer.context.newPage();
   await page.setViewport({ width: 320, height: 200, deviceScaleFactor: 1 });
   if (iceConfig) await page.evaluateOnNewDocument((config) => { window.__peerIce = config; }, iceConfig);
@@ -156,8 +179,30 @@ async function openPage(origin, peer) {
   peer.opens++;
   return page;
 }
-const statusOf = (peer) => peer.page.evaluate(() => window.__peer.status());
-const timelineOf = (peer, since = 0) => peer.page.evaluate((from) => window.__peer.timeline(from), since);
+/** The game page's facts in the harness's shape (window.__MULTIPLAYER_V2 is up under puppeteer: navigator.webdriver). */
+const gameStatus = () => {
+  const v2 = window.__MULTIPLAYER_V2?.stats?.() ?? null;
+  const session = v2?.session ?? null;
+  const match = session?.match ?? null;
+  const p2p = session?.p2p ?? null;
+  const game = window.__DEBUG?.game ?? null;
+  const own = game?.player?.state?.pos ?? null;
+  return {
+    playerId: v2?.room?.playerId ?? session?.playerId ?? null, playerName: 'game', canHost: true, iceMode: 'game', predict: '1', stepHz: 0, uptimeMs: Math.round(performance.now()), nowMs: Math.round(performance.now()), wall: Date.now(),
+    room: v2?.room ? { phase: v2.room.phase, roomCode: v2.room.roomCode, players: v2.room.players, hostId: p2p?.hostId ?? null, generation: p2p?.generation ?? 0, isHost: p2p?.role === 'host', adminId: v2.room.adminId ?? null, matchStatus: null, seat: null, me: null, rttMs: v2.network?.rttMs ?? null, signalsSent: null, signalsReceived: null, signalsRefused: null } : null,
+    session: session ? { phase: session.phase, role: p2p?.role ?? null, migrations: session.migrations ?? 0, rounds: session.rounds ?? 0, matchUrl: session.matchUrl ?? null, p2p: p2p ? { ...p2p } : null } : null,
+    host: p2p?.role === 'host' ? { state: p2p.hostState, generation: p2p.generation, peersConnected: p2p.peersConnected, relayed: p2p.relayed, uplinkBytesPerS: p2p.uplinkBytesPerS, tick: null, phase: null, reports: null, core: null } : null,
+    match: match ? { ...match, framesDropped: match.transport?.framesDropped ?? null, prediction: match.prediction ?? null } : null,
+    own: own ? { tick: match?.snapshotsAccepted ?? 0, x: own.x, z: own.z, atMs: performance.now(), predicted: true } : null,
+    lastSnapshotTick: null, framesSeen: null, welcomes: match?.welcomed ? 1 : 0, predictionReady: !!match?.prediction, predictionError: null, mapId: null, iceResolves: null,
+    rtc: { connections: 0, samples: [], retired: { bytesSent: 0, bytesReceived: 0, messagesSent: 0, messagesReceived: 0, connections: 0 }, totals: { bytesSent: null, bytesReceived: null, messagesSent: null, messagesReceived: null } },
+    roomMessages: { out: {}, in: {}, bytesOut: 0, bytesIn: 0, sockets: 0 },
+    memory: { jsHeapUsed: performance.memory?.usedJSHeapSize ?? null, jsHeapTotal: performance.memory?.totalJSHeapSize ?? null },
+    errors: [], timelineLength: 0,
+  };
+};
+const statusOf = (peer) => (peer.game ? peer.page.evaluate(gameStatus) : peer.page.evaluate(() => window.__peer.status()));
+const timelineOf = (peer, since = 0) => (peer.game ? Promise.resolve([]) : peer.page.evaluate((from) => window.__peer.timeline(from), since));
 const live = () => peers.filter((peer) => peer.page && !peer.page.isClosed());
 
 async function waitUntil(predicate, labelText, timeoutMs, pollMs = 250) {
@@ -234,7 +279,7 @@ try {
 
   for (let index = 0; index < seats; index++) {
     const id = `p3s${String(index + 1).padStart(2, '0')}`;
-    peers.push({ index, id, name: `Seat ${index + 1}`, context: await browser.createBrowserContext(), page: null, canHost: index < hosts, team: index % 2 === 0 ? 'alpha' : 'bravo', specId: SPEC_IDS[index % SPEC_IDS.length], opens: 0, closedWall: null, hostedGenerations: [] });
+    peers.push({ index, id, name: `Seat ${index + 1}`, context: await browser.createBrowserContext(), page: null, canHost: index < hosts, team: index % 2 === 0 ? 'alpha' : 'bravo', specId: SPEC_IDS[index % SPEC_IDS.length], opens: 0, closedWall: null, hostedGenerations: [], game: gameHost && index === 0 });
   }
   // The pages open in small waves: the first transform of the harness module warms the dev server for the rest.
   await openPage(origin, peers[0]);
@@ -242,21 +287,45 @@ try {
   step('pages', { count: peers.length });
 
   // ---- the room: the creator on alpha, the seats alternating sides, everyone ready, the creator starts
-  const created = await peers[0].page.evaluate((options) => window.__peer.create(options), { mode, specId: peers[0].specId, settings: { teamSize, mapId, gameMode, botsFill: false }, team: 'alpha' });
-  roomCode = created.code;
-  report.room = { code: roomCode, mode, teamSize, mapId, gameMode };
-  step('room-created', report.room);
+  if (gameHost) {
+    // the game page creates the LAN room through its Play menu (the menu's size; bots fill by the menu's rule); the code rides the URL
+    const page = peers[0].page;
+    await page.click('.cot-battle-mode');
+    await page.click('.cot-battle-choice[data-mode="lan"]');
+    await page.click('.cot-battle');
+    await waitFor(page, () => document.querySelector('.cot-play')?.classList.contains('show'), 'game host play menu', 30_000);
+    await page.evaluate(() => { const name = document.querySelector('.cot-play [data-field="name"]'); if (name) name.value = 'Game Host'; });
+    await page.click('.cot-play [data-action="create"]');
+    await waitFor(page, () => document.querySelector('.cot-play .lobby')?.classList.contains('show') && /[?&]room=[A-Z0-9]{6}/.test(location.search), 'game host room created', 30_000);
+    roomCode = new URL(await page.evaluate(() => location.href)).searchParams.get('room');
+    report.room = { code: roomCode, mode: 'lan', teamSize: null, mapId: null, gameMode: null, creator: 'game page' };
+    step('room-created', report.room);
+    peers[0].id = await page.evaluate(() => window.__MULTIPLAYER_V2?.stats?.().room?.playerId ?? null) ?? peers[0].id;
+  } else {
+    const created = await peers[0].page.evaluate((options) => window.__peer.create(options), { mode, specId: peers[0].specId, settings: { teamSize, mapId, gameMode, botsFill: false }, team: 'alpha' });
+    roomCode = created.code;
+    report.room = { code: roomCode, mode, teamSize, mapId, gameMode };
+    step('room-created', report.room);
+  }
   for (const peer of peers.slice(1)) {
     const joined = await peer.page.evaluate((options) => window.__peer.join(options), { code: roomCode, specId: peer.specId, team: peer.team });
     peer.team = joined.team ?? peer.team;
   }
   step('joined', { players: peers.length });
-  await waitUntil(async () => (await statusOf(peers[0])).room.players === seats, 'every seat in the room', 30_000);
-  for (const peer of peers) await peer.page.evaluate(() => window.__peer.setReady(true));
-  await waitUntil(async () => { const status = await statusOf(peers[0]); return status.room.players === seats; }, 'ready', 30_000);
+  await waitUntil(async () => (await statusOf(peers[gameHost ? 1 : 0])).room.players === seats, 'every seat in the room', 30_000);
+  for (const peer of peers) {
+    if (peer.game) await peer.page.click('.cot-play [data-action="ready"]');
+    else await peer.page.evaluate(() => window.__peer.setReady(true));
+  }
+  await waitUntil(async () => { const status = await statusOf(peers[gameHost ? 1 : 0]); return status.room.players === seats; }, 'ready', 30_000);
   const messagesBeforeStart = await Promise.all(peers.map(async (peer) => (await statusOf(peer)).roomMessages));
   const startWall = Date.now();
-  await peers[0].page.evaluate(() => window.__peer.start());
+  if (gameHost) {
+    await waitFor(peers[0].page, () => !document.querySelector('.cot-play [data-action="start"]')?.disabled, 'game host start enabled', 30_000);
+    await peers[0].page.click('.cot-play [data-action="start"]');
+  } else {
+    await peers[0].page.evaluate(() => window.__peer.start());
+  }
   step('started', { wall: new Date(startWall).toISOString() });
 
   // ---- entry: every seat welcomed, the host serving N-1 peers
@@ -273,6 +342,12 @@ try {
   hostPeer.hostedGenerations.push(generation);
   const entryTimelines = await Promise.all(peers.map((peer) => timelineOf(peer)));
   const joinMs = peers.map((peer, index) => { const welcome = entryTimelines[index].find((entry) => entry.kind === 'welcome'); return welcome ? welcome.wall - startWall : null; });
+  if (gameHost) {
+    // the game host's entry: its load trace (the battle revealed) — puppeteer's clock, not a timeline
+    const trace = await peers[0].page.evaluate(() => ({ totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null, stages: window.__NETWORK_LOAD?.stages ?? null }));
+    report.gameHostEntry = trace;
+    joinMs[0] = trace.totalMs;
+  }
   const messagesAtEntry = entryStatuses.map((status) => status.roomMessages);
   const sumMessages = (list, direction) => list.reduce((sum, entry) => sum + Object.values(entry[direction]).reduce((a, b) => a + b, 0), 0);
   const startBurst = { out: sumMessages(messagesAtEntry, 'out') - sumMessages(messagesBeforeStart, 'out'), in: sumMessages(messagesAtEntry, 'in') - sumMessages(messagesBeforeStart, 'in') };
@@ -284,7 +359,7 @@ try {
     candidateTypes: entryStatuses.filter((status) => status.session?.role === 'peer').map((status) => status.session.p2p.candidateType),
     viaTurn: entryStatuses.filter((status) => status.session?.role === 'peer').map((status) => status.session.p2p.viaTurn),
     iceGather: { connections: gather.length, candidatesMedian: median(gather.map((entry) => entry.candidates)), candidatesMax: max(gather.map((entry) => entry.candidates)), relayMedian: median(gather.map((entry) => entry.relay)), gatherMsMedian: median(gather.map((entry) => entry.ms)), gatherMsMax: max(gather.map((entry) => entry.ms)) },
-    roomMessagesStartBurst: startBurst, roomSocketCloses: entryTimelines.flatMap((timeline) => timeline.filter((entry) => entry.kind === 'room-socket:close')).map((entry) => `${entry.code}:${entry.reason}`),
+    roomMessagesStartBurst: startBurst, roomSocketCloses: entryTimelines.flatMap((timeline, index) => timeline.filter((entry) => entry.kind === 'room-socket:close').map((entry) => `${peers[index].id}@${Math.round(entry.wall - startWall)}ms:${entry.code}:${entry.reason}`)),
     predictionReady: entryStatuses.filter((status) => status.predictionReady).length, predictionErrors: entryStatuses.map((status) => status.predictionError).filter(Boolean),
   };
   step('entered', { host: hostPeer.id, joinMs: report.entry.joinMs, burst: startBurst, gather: report.entry.iceGather, candidates: [...new Set(report.entry.candidateTypes)] });
@@ -417,6 +492,9 @@ async function migrate() {
         welcomeAfterMs: welcome ? welcome.wall - closedWall : null, firstFrameAfterMs: first ? first.wall - closedWall : null,
         jumpM: first?.jumpM ?? null, rowJumpM: first?.rowJumpM ?? null, leadAtLossM: first?.leadAtLossM ?? null, beforeTick: first?.beforeTick ?? null, afterTick: first?.tick ?? null, tickContinuous: first?.tickContinuous ?? null, resumeTick: changed?.resumeTick ?? null,
         hostChangedReason: changed?.reason ?? null, reconnects: null,
+        // the seat's own timeline through the window (ms after the host's tab closed): the link, the election, the host boot, the welcome, the first frame
+        events: after.filter((entry) => /^(?:transport:|link:|welcome|host_changed|frame:first|host:|p2p:|pc:state|room-socket:close|ice:)/.test(entry.kind)).slice(0, 80)
+          .map((entry) => ({ ms: entry.wall - closedWall, kind: entry.kind, ...(entry.state ? { state: entry.state } : {}), ...(entry.phase ? { phase: entry.phase } : {}), ...(entry.previous ? { previous: entry.previous } : {}), ...(entry.reconnects !== undefined ? { reconnects: entry.reconnects } : {}), ...(entry.generation !== undefined ? { generation: entry.generation } : {}), ...(entry.detail ? { detail: entry.detail } : {}) })),
       });
     });
     if (pending === 0 || performance.now() > deadline) break;
@@ -437,7 +515,7 @@ async function migrate() {
   };
   report.migrations.push(migration);
   step(`migration-${k}`, { newHost: newHost.id, generation: newGeneration, hostChangedAfterMs: migration.hostChangedAfterMs, newHostLiveAfterMs: migration.newHostLiveAfterMs, firstFrame: migration.firstFrame, hullJump: migration.hullJump, tickContinuous: migration.tickContinuous });
-  if (rejoin) {
+  if (rejoin && !oldHost.game) {
     const rejoinStartedWall = Date.now();
     try {
       await openPage(origin, oldHost);

@@ -91,6 +91,9 @@ export class FakePeerConnection implements RtcPeerConnectionLike {
   readonly id: number;
   readonly config: RtcIceConfig;
   connectionState = 'new';
+  /** 'complete' by default (an offer leaves at once); a test sets 'gathering' and calls `completeGathering` to model the wait. */
+  iceGatheringState = 'complete';
+  onicegatheringstatechange: ((event: unknown) => void) | null = null;
   onicecandidate: ((event: { candidate: RtcIceCandidateLike | null }) => void) | null = null;
   onconnectionstatechange: ((event: unknown) => void) | null = null;
   ondatachannel: ((event: { channel: RtcDataChannelLike }) => void) | null = null;
@@ -137,7 +140,7 @@ export class FakePeerConnection implements RtcPeerConnectionLike {
   setRemoteDescription(description: RtcSessionDescriptionLike): Promise<void> {
     if (this.failNextDescription) { const error = this.failNextDescription; this.failNextDescription = null; return Promise.reject(error); }
     this.remoteDescription = description;
-    const match = /pc(\d+)$/.exec(description.sdp ?? '');
+    const match = /\bpc(\d+)\b/.exec(description.sdp ?? '');
     const other = match ? this.world.connections.get(Number(match[1])) ?? null : null;
     if (other && description.type === 'answer') this.world.link(this, other);
     return Promise.resolve();
@@ -169,6 +172,13 @@ export class FakePeerConnection implements RtcPeerConnectionLike {
   /** A gathered candidate (the test scripts trickle ICE). */
   emitCandidate(init: RtcIceCandidateInitLike | null): void {
     this.onicecandidate?.({ candidate: init ? { ...init, toJSON: () => init } : null });
+  }
+
+  /** Gathering ends: the candidates join the local description's SDP (as a browser's does) and the state change fires. */
+  completeGathering(candidates: string[] = []): void {
+    if (this.localDescription) this.localDescription = { ...this.localDescription, sdp: `${this.localDescription.sdp ?? ''}${candidates.map((candidate) => `\na=candidate:${candidate}`).join('')}` };
+    this.iceGatheringState = 'complete';
+    this.onicegatheringstatechange?.({ type: 'icegatheringstatechange' });
   }
 
   /** The ICE agent gave up. */

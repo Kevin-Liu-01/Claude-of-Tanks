@@ -9,6 +9,7 @@
 // autoReconnect: false → one attempt.
 import assert from 'node:assert/strict';
 import { DEFAULT_RECONNECT, TRANSPORT_CLOSE, WebRtcTransport, selectedCandidateTypes } from './index.ts';
+import { ICE_GATHER_CAP_MS } from './webRtcTransport.ts';
 import { FakeSignalRelay, RtcWorld } from './rtcDouble.test-support.ts';
 
 // ------------------------------------------------------------ virtual time
@@ -369,4 +370,40 @@ function createTransport(time, relay, world, options = {}) {
   assert.equal(transport.state, 'open');
   transport.close();
 }
-console.log('webRtcTransport.selftest: timeouts, the exhausted window, no-host, ICE fallback, configuration and per-connection ICE renewal verified');
+// ------------------------------------------------------------ candidates ride inside the offer's SDP (P3, 2026-09-28): the offer waits for gathering, or for the cap
+{
+  const time = createVirtualTime();
+  const world = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  const host = scriptedHost(world, relay, 'host');
+  const gathering = [];
+  const factory = (config) => { const pc = world.createPeerConnection(config); if (config.relayOnly) { pc.iceGatheringState = 'gathering'; gathering.push(pc); } return pc; };
+  const { transport } = createTransport(time, relay, world, { createPeerConnection: factory, ice: { iceServers: [{ urls: 'turn:turn.example:3478', username: 'u', credential: 'c' }], relayOnly: true } });
+  transport.open();
+  await settle(world, relay);
+  assert.equal(host.offers.length, 0, 'no offer leaves while ICE gathers');
+  gathering[0].emitCandidate({ candidate: 'candidate:early-1', sdpMid: '0', sdpMLineIndex: 0 });
+  await settle(world, relay);
+  assert.equal(transport.signalStats.candidatesSent, 0, 'a candidate gathered before the offer is not trickled: it rides the SDP');
+  gathering[0].completeGathering(['1 1 udp 2130706431 10.0.0.2 51000 typ host', '2 1 udp 41885439 203.0.113.9 3478 typ relay raddr 0.0.0.0 rport 0']);
+  await settle(world, relay);
+  assert.equal(host.offers.length, 1, 'the offer leaves once gathering completes');
+  assert.match(host.offers[0].sdp, /a=candidate:1 1 udp 2130706431 10\.0\.0\.2 51000 typ host\na=candidate:2 1 udp 41885439 203\.0\.113\.9 3478 typ relay/, 'with every gathered candidate inside');
+  assert.equal(transport.state, 'open');
+  gathering[0].emitCandidate({ candidate: 'candidate:late-1', sdpMid: '0', sdpMLineIndex: 0 });
+  await settle(world, relay);
+  assert.equal(transport.signalStats.candidatesSent, 1, 'a candidate gathered after the offer left trickles');
+  // the cap: gathering that never completes (a TURN server that does not answer) still lets the offer out
+  gathering[0].channels[0].drop();
+  await settle(world, relay);
+  assert.equal(transport.state, 'reconnecting');
+  time.advance(DEFAULT_RECONNECT.initialDelayMs * 2);
+  await settle(world, relay);
+  assert.equal(host.offers.length, 1, 'the re-offer waits for gathering');
+  time.advance(ICE_GATHER_CAP_MS);
+  await settle(world, relay);
+  assert.equal(host.offers.length, 2, 'the cap releases the offer with what was gathered');
+  assert.equal(transport.state, 'open');
+  transport.close();
+}
+console.log('webRtcTransport.selftest: timeouts, the exhausted window, no-host, ICE fallback, configuration, per-connection ICE renewal and SDP-embedded candidates verified');
