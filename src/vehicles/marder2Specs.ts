@@ -1,4 +1,5 @@
 // Independent photographic Marder 2; the preserved SPz Wotan is not a donor.
+import { MARDER2_TURRET_SCALE as T } from './marder2Frame.ts';
 import {TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS} from './specs.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs} from './fleetSpecRegistry.ts';
 import {modernArmor,crewBox,shell} from './specHelpers.ts';
@@ -10,7 +11,7 @@ delete s.label;delete s.roster;delete s.publicVisualFallback;delete s.variantOf;
 Object.assign(s, { name: 'Marder 2', hp: 2750, weightTons: 44.3, enginePowerHp: 1000,
   topSpeedKmh: 60, reverseSpeedKmh: 27, hullTraverseDegS: 42,
   turretTraverseDegS: 48, gunPitchDegS: 40, gunElevationDeg: 45, gunDepressionDeg: 10 });
-s.dims = { hullLengthM: 7.31, overallLengthM: 9.13, widthM: 3.84, heightM: 3.05 };
+s.dims = { hullLengthM: 7.31, overallLengthM: 3.655 - .48 + (1.12 + 4.835) * T, widthM: 3.84, heightM: 2.02 + (3.05 - 2.02) * T };
 // The 50 mm Rh 503 configuration; penetration/damage are game balance.
 s.gun = { ...s.gun, caliberMm: 50, reloadS: .55, baseAccuracy: .26, aimTimeS: 1.25,
   soundProfile: 'xm913-50', muzzleBoreSegments: 20, shells: [
@@ -28,6 +29,18 @@ s.armor = modernArmor({hl:3.655,hw:1.92,inW:1.12,floor:.44,trkTop:1.25,roofY:2.0
 s.armor.crew = [crewBox('driver',[.28,.65,1.33],[.98,1.80,2.33]),
   crewBox('gunner',[-.87,-.02,-.54],[-.19,.74,.45],true),
   crewBox('commander',[.19,-.02,-.54],[.87,.74,.45],true)];
+// Scale every turret-owned datum from the same native frame exactly once.
+s.armor.gunPivot = [0, .54 * T, 1.12 * T];
+s.armor.gunBarrel.lengthM *= T;
+s.armor.gunBarrel.radiusM *= T;
+for (const plate of s.armor.turretPlates) {
+  plate.verts = plate.verts.map(([x, y, z]) => [x * T, y * T, z * T]);
+}
+for (const box of [...s.armor.modules, ...s.armor.crew]) {
+  if (!box.turretLocal) continue;
+  box.min = [box.min[0] * T, box.min[1] * T, box.min[2] * T];
+  box.max = [box.max[0] * T, box.max[1] * T, box.max[2] * T];
+}
 s.visual = {...s.visual,scheme:'nato',base:'#48533f',weather:'#73705b',patches:['#302e27','#242c24'],number:'Y-811479',trackWidthM:.52};
 delete s.balancePeerOf;
 registerFleetSpecs(registry,['marder2'],{marder2:s});

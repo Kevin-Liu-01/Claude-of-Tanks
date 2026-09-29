@@ -1,6 +1,7 @@
 // Photo-led Marder 2 VT 001 / TS503. No Puma donor geometry is used.
 // Dimensions of individual fittings are photographic estimates; see reference packet.
 import { KIT } from './kit.ts';
+import { MARDER2_TURRET_SCALE as T } from '../marder2Frame.ts';
 import { armorLoft, optic, antenna, openTube, smokeBank } from './europeSourcePrimitives.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { mirrorX } from '../runningGearPrimitives.ts';
@@ -8,13 +9,19 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 const {box,cylY,cylX,cylZ}=KIT;
 
 export function buildMarder2(P: TankBuilderPort): void {
-  P.add('hull',armorLoft([
-    [-3.655,1.10,1.66,1.53,.44,1.25,2.01],
-    [-3.32,1.12,1.72,1.57,.44,1.29,2.01],
-    [1.16,1.12,1.72,1.54,.44,1.30,2.01],
-    [2.22,1.10,1.70,1.48,.47,1.25,1.82],
-    [3.655,.92,1.48,1.35,.78,1.04,1.09],
-  ]));
+  // The narrow lower tub rises vertically inside the belt. The broad upper
+  // shoulders start above the complete shoe envelope, leaving a real track tunnel.
+  P.add('hull',sectionSolid([
+    [-3.655,1.10,1.66,1.53,.44,1.38,2.01],
+    [-3.32,1.12,1.72,1.57,.44,1.38,2.01],
+    [1.16,1.12,1.72,1.54,.44,1.38,2.01],
+    [2.22,1.10,1.70,1.48,.47,1.38,1.82],
+    [3.10,1.02,1.17,1.16,.67,1.30,1.38],
+    [3.655,.92,1.16,1.14,.78,1.02,1.09],
+  ].map(([z,belly,shoulder,roofHalf,floor,knee,roof])=>({z,ring:[
+    [-belly,floor],[belly,floor],[belly,knee],[shoulder,knee],
+    [roofHalf,roof],[-roofHalf,roof],[-shoulder,knee],[-belly,knee],
+  ]}))));
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',dishR:.72,wheelR:.385,wheelW:.25,wheelY:.49,xc:1.47,
     wheelZs:[2.32,1.52,.72,-.08,-.88,-1.68,-2.48],
@@ -25,7 +32,7 @@ export function buildMarder2(P: TankBuilderPort): void {
   });
   for(const side of [-1,1]) {
     // Single plain skirt course with real hinge seams, not modern Puma AMAP blocks.
-    P.add('hull',box(.30,.13,6.91),side*1.755,1.345,-.08);
+    P.add('hull',box(.30,.13,7.25),side*1.755,1.435,-.08);
     for(let i=0;i<7;i++) {
       const z=-3.20+i*.98;
       P.addExternalArmor('hull',box(.065,.57,.954),side*1.8875,1.08,z);
@@ -43,16 +50,16 @@ export function buildMarder2(P: TankBuilderPort): void {
       P.addEquipment('hullDetail',box(.024,.50,.84),side*1.696,1.62,z,0,0,-side*.19);
       for(const dz of [-.33,.33]) P.addEquipment('hullDetail',cylX(.022,.024,10),side*1.72,1.85,z+dz);
     }
-    P.addEquipment('hullRubber',box(.49,.30,.034),side*1.47,.94,-3.46);
-    P.addEquipment('hullDetail',box(.33,.19,.23),side*1.22,1.22,3.32);
-    P.addEquipment('hullGlass',cylZ(.059,.012,16),side*1.22,1.24,3.442);
-    KIT.liftEye(P,'hullDetail',side*1.03,1.13,3.30);
+    P.addEquipment('hullRubber',box(.49,.55,.034),side*1.47,1.105,-3.69);
+    P.addEquipment('hullDetail',box(.33,.19,.23),side*1.02,1.22,3.32);
+    P.addEquipment('hullGlass',cylZ(.059,.012,16),side*1.02,1.24,3.442);
+    KIT.liftEye(P,'hullDetail',side*.78,1.13,3.30);
     KIT.liftEye(P,'hullDetail',side*1.28,2.035,-3.05);
     for(const z of [-2.88,-2.45,-2.02]) KIT.periscope(P,'hullDetail',side*.90,2.03,z);
     // Mirrors attach through a short steel stalk to the glacis shoulder.
-    P.addEquipment('hullDark',cylY(.014,.016,.42,8),side*1.43,1.54,2.82);
-    P.addEquipment('hullDark',box(.12,.28,.033),side*1.43,1.83,2.82);
-    P.addEquipment('hullGlass',box(.09,.24,.009),side*1.43,1.83,2.80);
+    P.addEquipment('hullDark',cylY(.014,.016,.42,8),side*1.25,1.54,2.82);
+    P.addEquipment('hullDark',box(.12,.28,.033),side*1.25,1.83,2.82);
+    P.addEquipment('hullGlass',box(.09,.24,.009),side*1.25,1.83,2.80);
   }
   P.addHatch('hull',box(.64,.045,.63),.64,2.03,1.01);
   for(const dx of [-.20,0,.20]) KIT.periscope(P,'hullDetail',.64+dx,2.06,1.36);
@@ -105,9 +112,16 @@ export function buildMarder2(P: TankBuilderPort): void {
   P.addGunExtraDark(cylX(.105,.055,20),-.31,.015,0);
   P.addGunExtraDark(cylX(.105,.055,20),.31,.015,0);
   P.add('gun',cylZ(.115,.40,24),0,0,.22);
-  openTube(P,.055,.34,4.835,.025);
+  openTube(P,.055,.34,4.835,.025 / T);
   P.add('gun',cylZ(.071,.13,24),0,0,4.56);
   P.addGunExtraDark(cylZ(.022,.46,12),.25,-.13,.36);
-  P.topY=3.90-py;
+  // Bake around the unchanged bearing; the gun pivot is already installed
+  // at 90% by the spec. Keep the physical 50 mm bore and all owner rigs at scale 1.
+  P.scaleBuckets(['turret', 'turretHatch', 'turretDetail', 'turretDark',
+    'turretGlass', 'gun', 'gunDark', 'gunMount', 'gunMountDark',
+    'gunMountCanvasSkin'], T, T, T);
+  P.muzzleZ *= T;
+  P.physicalMuzzleBore = { outerRadiusM: .055 * T, innerRadiusM: .025, depthM: .20 * T };
+  P.topY=(3.90-py)*T;
   P.additionalShadowSources={hull:['hullExternalArmor','hullHatch'],turret:['turretHatch']};
 }

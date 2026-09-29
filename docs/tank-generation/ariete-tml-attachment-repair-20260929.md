@@ -63,6 +63,10 @@ Both remain ignored local comparison inputs. Existing comparison registrations,
 thresholds, credits and historical failures are preserved. Passing attachment
 tests is not a numerical source-qualification claim.
 
+## Scoped publication authority
+
+On 2026-09-29 Kevin explicitly approved: “Publish the attachment repair; retain the failed comparison status.” This applies to the shared Ariete prototype attachment correction only. It does not qualify their full reference shapes or waive any other vehicle’s checks.
+
 ## Validation and publication
 
 Final command receipts and publication status are recorded below after the

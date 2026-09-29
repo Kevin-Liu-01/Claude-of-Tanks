@@ -39,6 +39,15 @@ retains its previous model, weapons, tuning and saved identifier; Marder has
 independent stats, so no donor-conversion mechanism is necessary. See the Marder reference page and photographic
 packet for the explicit unverified numerical 3D comparison status.
 
+## Marder turret follow-up
+
+On 2026-09-29 Kevin requested the Marder 2 turret 10% smaller. The complete
+upper assembly is baked at 0.90 around the unchanged bearing, including optics,
+hatches, antennas, mask and gun. The gun pivot, collision barrel, turret armor,
+modules and crew seats use the same frame. The hull, tracks and 50 mm bore stay
+at their existing dimensions. The photo packet retains the original dimensions
+and records the requested turret factor and independently computed new envelope.
+
 ## Regression coverage
 
 - Whole-vehicle HIGH/LOW bounds, canonical rig scale, launcher poses and repeat
@@ -63,5 +72,15 @@ claim a new watertight PASS. The original baseline has a 20.09 L diagnostic
 voxel leak; the scaled copy reports 14.41 L at the same fixed voxel size.
 Fixed-grid voxel counts are not scale invariant. Actual sealed-view, barrel,
 stock and source-configuration tests remain separate gates.
+
+## Retained Challenger source failure
+
+The original `f88172442` Challenger 1 Mk3 receipt already failed the fixed-source
+comparison: minimum 0, whole shape 84.6, body-height difference 19.4175% and
+physical-height difference 14.4559%. The requested uniform 1.10 transform
+retains these relative discrepancies; the measured whole shape is 84.8 and
+the dimension minimum remains 0. The source packet documents four loose
+exported panels below track ground. Neither source pieces nor thresholds were
+changed to claim success. On 2026-09-29 Kevin explicitly approved: “Publish the resize; retain the failed comparison status.” This exception applies only to the requested Challenger 1 Mk3 uniform resize, not a new shape qualification or any other vehicle.
 
 Final validation and publication receipts are appended after the checks finish.

@@ -20,3 +20,7 @@ Penetration, damage, health and reload are game balance. Marder uses independent
 `profiles/marder2.selftest.mjs` checks actual HIGH/LOW geometry, seven wheel
 stations, crew, gun ownership and muzzle articulation, absence of missile racks,
 and derivative independence across repeated registration.
+
+Owner follow-up, 2026-09-29: the complete turret assembly is 10% smaller about
+its existing bearing. Hull and bore caliber are unchanged. The photo packet
+retains the original envelope alongside the explicitly adjusted game target.

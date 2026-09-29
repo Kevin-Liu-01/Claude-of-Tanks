@@ -130,21 +130,27 @@
     },
     "marder2": {
       "name": "Marder 2",
-      "authority": "Owner selected Marder 2 as a separate addition on 2026-09-29; SPz Wotan retains the old Puma upgrade.",
+      "authority": "Owner selected Marder 2 as a separate addition on 2026-09-29; SPz Wotan retains the old Puma upgrade. Owner explicitly requested the turret assembly 10% smaller on 2026-09-29; the hull and bearing stay unchanged.",
       "sources": [
         "https://commons.wikimedia.org/wiki/File:Marder_2_Prototype.jpg",
         "https://commons.wikimedia.org/wiki/File:Marder_2_(Frontansicht).jpg"
       ],
       "widthM": 3.84,
-      "overallLengthM": 9.13,
-      "tallestM": 3.9,
-      "envelopeBasis": "Photo-led game authoring target: 7.31 m body, 3.84 m outer skirts, 3.05 m roof; forward barrel and whip envelope estimated from museum photographs. Individual fitting dimensions are inferred, not measured-source or numerical 3D qualification.",
+      "overallLengthM": 8.5345,
+      "tallestM": 3.712,
+      "envelopeBasis": "Photo-led game authoring target: 7.31 m body, 3.84 m outer skirts, 3.05 m roof; forward barrel and whip envelope estimated from museum photographs. Individual fitting dimensions are inferred, not measured-source or numerical 3D qualification. Owner-adjusted length is 3.655 - 0.48 + 0.90 \u00d7 (1.12 + 4.835) = 8.5345 m; whip height is 2.02 + 0.90 \u00d7 (3.90 - 2.02) = 3.712 m. These datums retain the original authored bearing and gun stations; caliber remains 50 mm.",
       "caliberMm": 50,
       "launcherTubes": 0,
       "roofMachineGuns": 0,
       "crew": 3,
       "unmannedTurret": false,
-      "test": "src/vehicles/profiles/marder2.selftest.mjs"
+      "test": "src/vehicles/profiles/marder2.selftest.mjs",
+      "sourceDimensions": {
+        "widthM": 3.84,
+        "overallLengthM": 9.13,
+        "tallestM": 3.9
+      },
+      "ownerTurretSizeFactor": 0.9
     }
   }
 }
