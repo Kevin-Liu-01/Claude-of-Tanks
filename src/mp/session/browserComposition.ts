@@ -1062,8 +1062,8 @@ export function createBrowserComposition({
         compiled = await warm.compile?.(signal);
         check('compileRetry');
         preparation = compiled?.preparation;
+        markStage(active, 'compileRetry'); // the trace keeps the second attempt's duration whichever way it ends
         if (preparationIncomplete(preparation)) throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
-        markStage(active, 'compileRetry');
       } else {
         if (preparationIncomplete(preparation)) throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
         markStage(active, 'compile');

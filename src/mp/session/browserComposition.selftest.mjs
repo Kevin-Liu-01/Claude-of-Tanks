@@ -795,6 +795,7 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(attempts.length, 2, 'no third attempt');
   assert.match(starved.ports.failure.message, /Battle shaders could not finish preparing\. Please retry from the Garage\./);
   assert.equal(starved.ports.trace.status, 'failed');
+  assert.ok(starved.ports.trace.stages.compile >= 0 && starved.ports.trace.stages.compileRetry >= 0, `the failed trace records both attempts (${JSON.stringify(starved.ports.trace.stages)})`);
   assert.equal(starved.ports.slowEntries.length, 1, 'the extension was beaconed once; the failure is the entry result');
   assert.ok(starved.calls.includes('enterGarage') && starved.calls.includes('load.hide'), 'the covered Garage restore runs');
   starved.composition.dispose();
