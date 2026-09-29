@@ -42,28 +42,22 @@ uses `ALL_TANK_IDS`; donor/retired spec rows are not part of the playable gate.
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Read the tool's CLI/help and its current evidence doc, run a baseline, then
-compare the same scenario after changes. Multiplayer release checks include the
-two-player persistent-room soak, human 2v2 (`npm run test:net:four`), and full
-human 7v7 capacity (`npm run test:net:seven`) browser paths. Visual combat
-certification is the separate `npm run test:net:seven:live` gate: two real 7v7
-matches render the host and an impaired remote client while all fourteen tanks
-move, fire, deal damage, and report transport/prediction/frame/shadow health.
-`npm run test:net:seven:full` continues both pristine-context battles through a
-natural authority result and proves that every participant retains the same
-waiting room with readiness reset. It uses the existing 60-second simulation
-limit only inside the certification authority; production keeps its 900-second
-safety cap. Use `--only=host` or `--only=client` for targeted diagnosis.
-The peer-to-peer certification (docs/MULTIPLAYER-V2.md §13.8) is `npm run
-test:net:v2:p2p:soak` (`tools/mp-p2p-soak.mjs`): N seats as tabs of the dev-only
-peer harness `tools/mp-p2p-peer/` in one headless Chrome on a `wrangler dev` room
-service (`--rooms=ws://127.0.0.1:<port>` with the dev origin allowed), the
-migration measured on every seat, a JSON report and a Markdown table per size;
-run every Chrome under the probe mutex at nice 19, one at a time.
-`npm run net:prod:check` probes distributed signaling and TURN independently,
-then uses a pristine browser context with relay-only ICE policy to require a
-real relay candidate. URL presence is not allocation proof. Use
-`--dependency-only` only to diagnose endpoint health; failure output must
-retain both dependency results so one outage cannot mask the other.
+compare the same scenario after changes. The multiplayer release checks are the
+peer-to-peer ones (docs/MULTIPLAYER-V2.md §13.8, cutover §13.10): `npm run
+test:net:v2:p2p` (`tools/mp-p2p-e2e.mjs`) is the three-browser proof — a room on
+the in-process room host, one seat hosting the match in its browser, two peers
+over WebRTC, moving and firing, the host leaving and the match migrating to the
+next seat — with a JSON report (`--json --out=<dir>`) and `--site` for the
+deployed site; `npm run test:net:v2:browser` (`tools/mp-browser-e2e.mjs`) is the
+two-browser exit-flow rig; `npm run test:net:v2:p2p:soak` (`tools/mp-p2p-soak.mjs`)
+seats N tabs of the dev-only peer harness `tools/mp-p2p-peer/` in one headless
+Chrome on a `wrangler dev` room service (`--rooms=ws://127.0.0.1:<port>` with the
+dev origin allowed), the migration measured on every seat, a JSON report and a
+Markdown table per size; `npm run test:net:v2:p2p:headless` (`tools/mp-p2p-headless.mjs`)
+and `npm run test:net:v2:soak` run the client and host without a browser; `npm run
+test:net:v2:rooms` runs the Worker under the Workers runtime. Run every Chrome
+under the probe mutex at nice 19, one at a time. Production health is the Worker's
+`/healthz` plus `npm run test:net:v2:p2p -- --site` (docs/DEVELOPMENT.md).
 Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
 cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.
