@@ -6,7 +6,8 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { replaySourceAssembly, prepareRegisteredSourceAssembly } from './source-assembly-replay.mjs';
 import { SUPPLIED_SOURCE_ASSEMBLIES, withAssembledSourceFrames, assembledSourcePath } from './supplied-source-assemblies.mjs';
-import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
+import { withOwnerSizeTargets } from './owner-size-targets.ts';
+import { SOURCE_WORLD_FRAMES, AUTHORING_SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
 import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from './supplied-source-reference-overrides.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 
@@ -144,7 +145,10 @@ try {
     await assert.rejects(replaySourceAssembly(wrong, { root: temp }), expected);
   }
   const legacyIds = ["aft10_x", "ajax_x", "amx30_x", "amx40_x", "ariete_c1_x", "challenger1_x", "chieftain5_x", "chieftain_mk10_x", "cv90105_tml_x", "cv90_mkiv_x", "jpz_e100_x", "k1a1_x", "kf41_lynx_x", "kf51_x", "leclerc_classic_x", "leclerc_x", "leo2a5_x", "leo2a6_x", "m1a2_sepv2_x", "sabra_mk2_x", "strv122_x", "t62mv1_x", "t72b3_x", "t72b3m_x", "t72b_1987_x", "t72bu_x", "t80u_x", "t90_x", "t90a_burlak_x", "t90a_x", "t90m_x", "t90ms_x", "t90sm_x", "type10_x", "type90_x", "type96b_x", "ztz100_x"];
-  const legacy = Object.fromEntries(legacyIds.map(id => [id, SOURCE_WORLD_FRAMES[id]]));
+  // Raw assembly/hash evidence is immutable; the explicit owner size target
+  // is a separate frame layer, independently asserted against every entry.
+  const legacy = Object.fromEntries(legacyIds.map(id => [id, AUTHORING_SOURCE_WORLD_FRAMES[id]]));
+  assert.deepEqual(SOURCE_WORLD_FRAMES, withOwnerSizeTargets(AUTHORING_SOURCE_WORLD_FRAMES));
   checkArieteRegistrationRecipe();
   assert.equal(sha(Buffer.from(JSON.stringify(restoreArieteRegistration(legacy)))), "55524fedcd0cc405dce90f47795ce6753c9bcd5dd1e6245473d1f2a45f2f0f7e", 'all historical certificates remain exact after reversing only the authenticated C1 enlargement');
   for (const mutate of [frame => { frame.sha256 = originalArieteFrame.sha256; },
@@ -157,7 +161,7 @@ try {
     'the new C2 concept must not inherit a whole-model C1 source certificate');
   for (const [id, assembly] of Object.entries(SUPPLIED_SOURCE_ASSEMBLIES)) {
     const assembledFrame={ ...assembly.originalFrame, sha256: assembly.sha256 };
-    const currentFrame=id==='griffin50_x'?GRIFFIN_PROPORTION_REFERENCE.frame:assembledFrame;
+    const currentFrame=withOwnerSizeTargets({[id]:id==='griffin50_x'?GRIFFIN_PROPORTION_REFERENCE.frame:assembledFrame})[id];
     assert.deepEqual(SOURCE_WORLD_FRAMES[id], currentFrame, 'only approved source transformations');
     const reference = SUPPLIED_SOURCE_REFERENCE_OVERRIDES[id];
     assert.equal(reference.glb.path, id==='griffin50_x'?GRIFFIN_PROPORTION_REFERENCE.path:assembly.path);

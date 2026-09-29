@@ -26,6 +26,12 @@ interface TankLabelOverride {
 }
 
 const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.freeze({
+  griffin50_x: { displayName: 'Griffin 50 mm', searchAliases: ['Griffin 50 mm X'] },
+  ajax_x: { displayName: 'Ajax', searchAliases: ['Ajax X'] },
+  sabra_mk2_x: { displayName: 'Sabra Mk 2', searchAliases: ['Sabra Mk 2 X'] },
+  cv90105_tml_x: { displayName: 'CV90105 TML', searchAliases: ['CV90105 TML X'] },
+  kf41_lynx_x: { displayName: 'KF41 Lynx', searchAliases: ['KF41 Lynx X'] },
+  k21_x: { displayName: 'K21', searchAliases: ['K21 X'] },
   m551_sheridan: {
     displayName: 'M551 Sheridan', shortName: 'M551',
     searchAliases: ['Sheridan', 'M551 Shillelagh', 'US airborne light tank'],
@@ -62,16 +68,16 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',
     searchAliases: ['CV90 Mk IV', 'CV90 Mark IV', 'CV90 MkIV', 'CV90 D-series'],
   },
-  spz_puma_s1_x: {displayName:'Puma S1 X',shortName:'Puma S1 X',searchAliases:['SPz Puma S1 X','RCT30 MELLS']},
+  spz_puma_s1_x: {displayName:'Puma S1',shortName:'Puma S1',searchAliases:['SPz Puma S1 X','RCT30 MELLS']},
   amx10p: {displayName:'AMX-10P',shortName:'AMX-10P',searchAliases:['AMX 10 P','Toucan II']},
   amx10p_25: {displayName:'AMX-10P 25',shortName:'AMX-10P 25',searchAliases:['AMX 10 P 25','Dragar']},
   dardo: {displayName:'Dardo',shortName:'Dardo',searchAliases:['VCC Dardo','HITFIST 25']},
   lrmv_lynx: {displayName:'LRMV Lynx',shortName:'LRMV Lynx',searchAliases:['Italian Lynx KF41','A2CS IFV','Lance 30']},
   borsuk: {displayName:'Borsuk',shortName:'Borsuk',searchAliases:['BWP Borsuk','ZSSW-30']},
-  cv90_x: {displayName:'CV9040C X',shortName:'CV9040C X',searchAliases:['CV90 X','Stridsfordon 9040C']},
+  cv90_x: {displayName:'CV9040C',shortName:'CV9040C',searchAliases:['CV90 X','Stridsfordon 9040C']},
   type89_x: {displayName:'Type 89 X',shortName:'Type 89 X',searchAliases:['Japanese Type 89 IFV X']},
   cv90_mkiv_x: {
-    displayName: 'CV90 Mk 4 X', shortName: 'CV90 Mk 4 X',
+    displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',
     searchAliases: ['CV90 Mk IV X', 'CV90 MkIV X', 'CV90 Mark 4 X'],
   },
   t72m1_jaguar: {
@@ -190,9 +196,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Schützenpanzer Puma', shortName: 'Puma',
     searchAliases: ['SPz Puma', 'Puma IFV'],
   },
+  marder2: {displayName:'Marder 2',shortName:'Marder 2',searchAliases:['Marder 2 VT 001','TS503']},
   spz_puma_s1: {
-    displayName: 'Schützenpanzer Puma S1', shortName: 'Puma S1',
-    searchAliases: ['SPz Puma S1', 'Puma S1 IFV', 'Puma S1 MELLS'],
+    displayName: 'SPz Wotan', shortName: 'SPz Wotan',
+    searchAliases: ['SPz Puma S1', 'Former Puma S1 upgrade'],
   },
   type89_light_tiger: {
     displayName: 'Type 89 Light Tiger', shortName: 'Light Tiger',

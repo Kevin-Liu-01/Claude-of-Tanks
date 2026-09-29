@@ -1,10 +1,11 @@
+import { withOwnerSizeTargets } from './owner-size-targets.ts';
 import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
 // QA-only certificates for independently normalized local comparison files.
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
-export const SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSourceFrames({
+export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSourceFrames({
   spz_puma_s1_x: {sha256:'340e00fa8053680d2adbeabc10293264d07f743c9e5680462da8e081635cf4c0',
     fused:true,turret:[.434794,1.947494,-1.319322],gun:[.019503,2.513110,-.791446]},
   type89_x: {sha256:'8ab1bbbcbde2e6c008a80557cb54409211301df21b86d865b27b4d1adb027566',
@@ -172,6 +173,7 @@ export const SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSourceFrames({
     fused:true, turret:[0,2.21,-1.27], gun:[-.004,2.917,-.68],
   },
 }), griffin50_x: GRIFFIN_PROPORTION_REFERENCE.frame});
+export const SOURCE_WORLD_FRAMES = Object.freeze(withOwnerSizeTargets(AUTHORING_SOURCE_WORLD_FRAMES));
 
 const IDENTITY = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);

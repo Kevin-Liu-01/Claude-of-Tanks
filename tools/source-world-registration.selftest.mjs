@@ -125,5 +125,6 @@ assert.equal(griffin.hullLengthScale,1.1);assert.equal(griffin.turretScale,.9);
 assert.equal(griffin.removedTriangles,0);assert.equal(griffin.candidateGeometryUsed,false);
 assert.equal(griffin.meshes.length,25);
 assert.equal(SOURCE_WORLD_FRAMES.griffin50_x.sha256,griffin.outputSha256);
-assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50_x.turret,[0,2.07,-.396]);
-assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50_x.gun,[0,2.547,.594]);
+assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50_x.turret,[0,2.07,-.396].map(v=>v*.90));
+assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50_x.gun,[0,2.547,.594].map(v=>v*.90));
+assert.equal(SOURCE_WORLD_FRAMES.griffin50_x.ownerSizeFactor,.90,'later whole-vehicle shrink retains earlier body/turret proportions');

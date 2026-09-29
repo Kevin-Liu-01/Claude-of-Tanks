@@ -36,7 +36,7 @@ export const BRITISH_US_SOURCE_STUDIES: readonly SourceStudyRecord[] = Object.fr
     sourceFile: 'fv510_warrior_milan_war_thunder.glb',
   },
   {
-    id: 'griffin50_x', name: 'Griffin 50 mm X', donor: 'spz_puma',
+    id: 'griffin50_x', name: 'Griffin 50 mm', donor: 'spz_puma',
     nation: 'USA', role: 'ifv', tier: 10,
     dimensions: {
       hullLengthM: 6.6054, overallLengthM: 6.77934, widthM: 3.8106, heightM: 3.75,
@@ -50,7 +50,7 @@ export const BRITISH_US_SOURCE_STUDIES: readonly SourceStudyRecord[] = Object.fr
     sourceFile: 'griffin_50mm_armored_warfare.glb',
   },
   {
-    id: 'ajax_x', name: 'Ajax X', donor: 'cv90', nation: 'UK', role: 'ifv', tier: 9,
+    id: 'ajax_x', name: 'Ajax', donor: 'cv90', nation: 'UK', role: 'ifv', tier: 9,
     dimensions: {
       hullLengthM: 8.1036, overallLengthM: 8.1036, widthM: 4.1426, heightM: 3.60,
       silhouetteHullLengthM: 8.1036, silhouetteOverallLengthM: 8.1036,

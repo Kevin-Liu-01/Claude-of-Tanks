@@ -7,7 +7,7 @@ import { tankTier } from '../tier.ts';
 
 const spec = getSpec('spz_puma_s1');
 assert.ok(spec, 'SPz Puma S1 is registered');
-assert.equal(spec.name, 'Schützenpanzer Puma S1');
+assert.equal(spec.name, 'SPz Wotan');
 assert.equal(tankTier(spec.id), 10, 'Puma S1 is Tier X');
 assert.equal(spec.role, 'ifv');
 assert.equal(spec.weightTons, 43);

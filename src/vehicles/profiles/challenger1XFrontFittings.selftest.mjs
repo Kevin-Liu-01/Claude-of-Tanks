@@ -1,3 +1,5 @@
+// Source-space regression: undo only the owner-directed 1.10 uniform size.
+// Installed metre bounds/unit rigs are checked by vehicleSize.selftest.
 // 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
 // inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
 import assert from 'node:assert/strict';
@@ -22,14 +24,16 @@ function createTank(...args) {
 
 // These are pre-change native buffers, not a source metrology claim. They
 // protect the load-bearing armor, gun and exact populated track courses.
+// Owner resize 2026-09-29: merged buffers below include the explicit 1.10 bake.
+// Original source geometry and native ray tolerances are unchanged.
 const UNCHANGED = {
  gearTrackPads:'a3c255814c82fe731d4e324df713202c052d1ec0f9042488200444ea5aadb5d8',
  gearTrackPadsSimplified:'4a3cb577950ef7b5908387712819b2e31563121c635a02a3391197443bc984f9',
- hull:'d8ac30a08a648d9189cec9632ca2a00b0f1a08836396a6677789c99eee2654ba',
- gun:'52a3d1742d34dc071eea7b1e934cac5956ae7138dcc27fa1374a366dade5b813',
- gunDark:'83839050dccabbfffa939a1e91202abcce452bba69ebc309e08272f33764990b',
- gunMount:'896afdff62d963006a8295fc71b00f4350c3b137db1f2f29ad66e3954623b238',
- turret:'23eda0efc94c8afb01d6597337272ded2393a82473469710b06689e781d9c26d',
+ hull:'59f7d87fc631c42140bdf3657149f595492135a38ab679ae513c88b3a01f91f4',
+ gun:'39719e2fd51ae58f2dfc42a209a8b4589ba0e11562e4be11e631350378cb0b37',
+ gunDark:'f9ddcab95ba2e0fedbad48f76e67c51c3ee85189294c0577b959cc757ac02f69',
+ gunMount:'05b8b0274d057e3002dd206415a20295a41fce8c664c7d05cd08c765b5c770fa',
+ turret:'2ab99f2cc6f4ce8468ead60652af8da447bfb39104e14562d460e2bdaace2cdb',
 };
 function fingerprint(m) {
  const h=crypto.createHash('sha256');
@@ -42,7 +46,7 @@ const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,`${labe
 for(const quality of ['high','low']) {
  const tank=createTank('challenger1_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true});
  try {
-  tank.root.updateMatrixWorld(true);const meshes=[];
+  tank.root.scale.setScalar(1 / 1.10); tank.root.updateMatrixWorld(true);const meshes=[];
   tank.root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)meshes.push(m);});
   const cast=(p,d,far=10,parts=meshes)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(parts,false)[0];
   const hull=meshes.filter(m=>m.name==='hull');

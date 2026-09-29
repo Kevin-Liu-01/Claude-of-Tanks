@@ -1,3 +1,4 @@
+import { OWNER_SIZE_TARGETS } from './owner-size-targets.ts';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { validatedPreservationOracle, verifyPreservationBytes } from './preservation-oracle.ts';
@@ -486,6 +487,17 @@ export async function loadReferenceGlb(
   // and texture-preserving (the floor ADDS; maps stay visible) — so every
   // authored surface clears the threshold. Opt-in per registration; do not
   // combine with brightenOracle (its emissive×map product would re-darken).
+  const ownerSize = OWNER_SIZE_TARGETS[specId as keyof typeof OWNER_SIZE_TARGETS];
+  if (ownerSize) {
+    // The retained hash still validates the complete original source bytes.
+    // Apply only the owner's fixed uniform delta inside a unit-scale root.
+    for (const child of rig.root.children) {
+      child.position.multiplyScalar(ownerSize);
+      child.scale.multiplyScalar(ownerSize);
+    }
+    rig.root.userData.ownerSizeTarget = ownerSize;
+  }
+
   applyOracleMaterialPolicy(rig.root, cfg);
 
   // A few legacy source sheets bake almost all illumination into a very dark

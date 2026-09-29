@@ -30,14 +30,7 @@ export const FIRST_PARTY_CONCEPTS = Object.freeze({
     overallLengthM:5.9091399-.42564-.30+3.769, tallestM:4.07025-1.49566+1.70,
     silhouette:'Existing XK2 six-wheel hull with the complete current K1A1 turret, gun and roof equipment seated on a shallow collar',
   }),
-  griffin_viper: Object.freeze({
-    id:'griffin_viper', test:'src/vehicles/profiles/griffinViper.selftest.mjs',
-    ring:[0,2.07,-.396], gunLocal:[0,1.08,0], barrelLengthM:1.188, barrelRadiusM:.07,
-    pitchDeg:[-6,25], cells:16, mainCaliberMm:140, weaponSystem:'guided-missile-carrier',
-    guidedAmmoTotal:64, reloadS:1, roofMachineGuns:0,
-    hullLengthM:7.26594, hullWidthM:3.8106, widthM:3.8106, overallLengthM:7.26594, tallestM:3.456,
-    silhouette:'Modern Griffin tracked hull, low central armored pedestal, two separated eight-cell open launch pods and central thermal sight',
-  }),
+  griffin_viper: Object.freeze({"id":"griffin_viper","test":"src/vehicles/profiles/griffinViper.selftest.mjs","ring":[0,1.863,-0.35640000000000005],"gunLocal":[0,0.9720000000000001,0],"barrelLengthM":1.0692,"barrelRadiusM":0.06300000000000001,"pitchDeg":[-6,25],"cells":16,"mainCaliberMm":140,"weaponSystem":"guided-missile-carrier","guidedAmmoTotal":64,"reloadS":1,"roofMachineGuns":0,"hullLengthM":6.539346,"hullWidthM":3.4295400000000003,"widthM":3.4295400000000003,"overallLengthM":6.539346,"tallestM":3.1104,"silhouette":"Modern Griffin tracked hull, low central armored pedestal, two separated eight-cell open launch pods and central thermal sight"}),
   ariete_c2_x: Object.freeze({
     id:'ariete_c2_x', test:'src/vehicles/profiles/arieteC2X.selftest.mjs',
     ring:[0.0, 1.6092726791680003, 0.40413158632000007], gunLocal:[0.0, 0.42537434631999993, 1.2486628184800002],
@@ -71,13 +64,7 @@ export const FIRST_PARTY_CONCEPTS = Object.freeze({
     hullLengthM:7.08, hullWidthM:3.985, widthM:3.985, overallLengthM:7.23, tallestM:3.90,
     silhouette:'Tall narrow pedestal with two separated six-cell pods and a short backup cannon',
   }),
-  type100: Object.freeze({
-    id:'type100', test:'src/vehicles/profiles/type100.selftest.mjs',
-    ring:[0,2.02,-.15], gunLocal:[0,.53,.65], barrelLengthM:2.35, barrelRadiusM:.045,
-    pitchDeg:[-10,45], cells:4, guidedAmmoTotal:8, mainCaliberMm:30, roofMachineGuns:0,
-    hullLengthM:7.13, hullWidthM:3.66, widthM:3.70, overallLengthM:7.30, tallestM:3.56,
-    silhouette:'Broad straight-shouldered Chinese heavy IFV, shallow prow, rear troop compartment and compact chamfered autocannon turret with four low guided cells',
-  }),
+  type100: Object.freeze({"id":"type100","test":"src/vehicles/profiles/type100.selftest.mjs","ring":[0,1.818,-0.135],"gunLocal":[0,0.47700000000000004,0.5850000000000001],"barrelLengthM":2.115,"barrelRadiusM":0.0405,"pitchDeg":[-10,45],"cells":4,"guidedAmmoTotal":8,"mainCaliberMm":30,"roofMachineGuns":0,"hullLengthM":6.417,"hullWidthM":3.294,"widthM":3.33,"overallLengthM":6.57,"tallestM":3.204,"silhouette":"Broad straight-shouldered Chinese heavy IFV, shallow prow, rear troop compartment and compact chamfered autocannon turret with four low guided cells"}),
 });
 export function firstPartyConcept(id) {
   return Object.hasOwn(FIRST_PARTY_CONCEPTS,id) ? FIRST_PARTY_CONCEPTS[id] : null;

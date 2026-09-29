@@ -2598,7 +2598,15 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
         ? strvRoofRoutes(-0.25, -0.85) : aftRoutes(side, 0.02) }],
     },
   ];
-  return [...cargo, ...base];
+  const manifest = [...cargo, ...base];
+  if (spec.id === 'ares_apc_x') {
+    // The tiny remote station is not a turret-bustle cargo shelf. The three
+    // procedural soft packs read as sandbags perched on its weapon housing.
+    return manifest.filter(row => row.kit !== 'packs' && row.kit !== 'sandbags'
+      && !(row.kit === 'cargo' && softStowage.includes(row.v?.v as typeof softStowage[number]))
+      && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0].startsWith('turret')));
+  }
+  return manifest;
 }
 
 // ---------------------------------------------------------------------------

@@ -63,3 +63,13 @@ track-clip band/shoe/strict 0/0/0, §B2 contiguity 0, decor census mg1+5d,
 §B5 candidates identical to HEAD baseline (zero delta), npm test green,
 donor `ariete` byte-held 43e126e8. Before/after pairs:
 shots/ariete-slopes/{before,after}-c2/.
+
+
+## 2026-09-29 — owner attachment repair
+
+The marked shoulder bins, roof cover/stack and left fairing are turret-owned.
+The historical hull-mask furniture notes above do not authorize fixing those
+parts to the chassis. The cover lid must remain visible above the crown.
+Implementation, physical regression coverage and final validation are in the
+[attachment repair packet](../../tank-generation/ariete-tml-attachment-repair-20260929.md). Existing source qualification remains
+separate from these attachment checks.

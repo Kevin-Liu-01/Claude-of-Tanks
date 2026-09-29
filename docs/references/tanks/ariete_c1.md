@@ -153,3 +153,13 @@ the rod (base 2.28, tip 3.55) already matches the print's rod exactly; the
 residual whip-column errors are partial-column trace class, present in both
 states. Before/after pairs (14 views ×2 ids ×2 trees, all byte-distinct):
 shots/ariete-slopes/{before,after}-{c1,c2}/.
+
+
+## 2026-09-29 — owner attachment repair
+
+The marked shoulder bins, roof cover/stack and left fairing are turret-owned.
+The historical hull-mask furniture notes above do not authorize fixing those
+parts to the chassis. The cover lid must remain visible above the crown.
+Implementation, physical regression coverage and final validation are in the
+[attachment repair packet](../../tank-generation/ariete-tml-attachment-repair-20260929.md). Existing source qualification remains
+separate from these attachment checks.

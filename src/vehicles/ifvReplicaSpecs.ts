@@ -12,8 +12,8 @@ export const IFV_REPLICA_IDS = ['spz_puma_s1_x','cv90_x','type89_x'] as const;
 // sit in the same matchmaking/balance bracket (balancePeerOf only substitutes a
 // vote inside one era/tier/role group).
 const entries = [
-  ['spz_puma_s1_x','spz_puma_s1','Puma S1 X','Germany',30,'modern'],
-  ['cv90_x','cv90','CV9040C X','Sweden',40,'modern'],
+  ['spz_puma_s1_x','spz_puma_s1','Puma S1','Germany',30,'modern'],
+  ['cv90_x','cv90','CV9040C','Sweden',40,'modern'],
   ['type89_x','type89_light_tiger','Type 89 X','Japan',35,'next-generation'],
 ] as const;
 const registries=bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS);

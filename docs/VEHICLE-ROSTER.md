@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **200 saved vehicle records**: **200 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **201 saved vehicle records**: **201 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -39,11 +39,11 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 29 | PROD | `strv103a` | Stridsvagn 103A | Sweden | IX | Cold War | Production |
 | 30 | PROD | `strv103` | Stridsvagn 103B | Sweden | X | Cold War | Production |
 | 31 | PROD | `cv90` | CV90 | Sweden | IX | Modern | Production |
-| 32 | PROD | `cv90_x` | CV9040C X | Sweden | IX | Modern | Production |
-| 33 | PROD | `cv90105_tml_x` | CV90105 TML X | Sweden | IX | Modern | Production |
+| 32 | PROD | `cv90_x` | CV9040C | Sweden | IX | Modern | Production |
+| 33 | PROD | `cv90105_tml_x` | CV90105 TML | Sweden | IX | Modern | Production |
 | 34 | PROD | `strv122` | Stridsvagn 121 | Sweden | X | Modern | Production |
 | 35 | PROD | `cv90_mkiv` | CV90 Mk 4 | Sweden | X | Next Generation | Production |
-| 36 | PROD | `cv90_mkiv_x` | CV90 Mk 4 X | Sweden | X | Next Generation | Production |
+| 36 | PROD | `cv90_mkiv_x` | CV90 Mk 4 | Sweden | X | Next Generation | Production |
 | 37 | PROD | `kv2` | KV-2 | USSR | VII | World War II | Production |
 | 38 | PROD | `chieftain5` | Chieftain Mk 3 | UK | VII | Cold War | Production |
 | 39 | PROD | `chieftain_mk10` | Chieftain Mk 9 | UK | VIII | Cold War | Production |
@@ -65,7 +65,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 55 | PROD | `m2a2_bradley` | M2A2 Bradley | USA | VIII | Cold War | Production |
 | 56 | PROD | `bmp2` | BMP-2 | USSR | VII | Cold War | Production |
 | 57 | PROD | `spz_puma` | Schützenpanzer Puma | Germany | IX | Modern | Production |
-| 58 | PROD | `spz_puma_s1` | Schützenpanzer Puma S1 | Germany | X | Modern | Production |
+| 58 | PROD | `spz_puma_s1` | SPz Wotan | Germany | X | Modern | Production |
 | 59 | PROD | `type89_light_tiger` | Type 89 Light Tiger | Japan | X | Next Generation | Production |
 | 60 | PROD | `type89` | Type 89 IFV | Japan | VII | Cold War | Production |
 | 61 | PROD | `dardo` | Dardo | Italy | IX | Modern | Production |
@@ -110,13 +110,13 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 100 | PROD | `fv510` | FV510 Warrior | UK | VII | Cold War | Production |
 | 101 | PROD | `fv510_milan` | FV510 Warrior MILAN | UK | IX | Cold War | Production |
 | 102 | PROD | `fv510_milan_x` | Warrior MILAN X | UK | IX | Cold War | Production |
-| 103 | PROD | `ajax_x` | Ajax X | UK | X | Modern | Production |
+| 103 | PROD | `ajax_x` | Ajax | UK | X | Modern | Production |
 | 104 | PROD | `ares_apc_x` | Ares APC | UK | VII | Modern | Production |
 | 105 | PROD | `m60a1` | M60A1 Patton | USA | VIII | Cold War | Production |
 | 106 | PROD | `merkava1b` | Merkava Mk 1B | Israel | VII | Cold War | Production |
 | 107 | PROD | `merkava2b` | Merkava Mk 2B | Israel | VIII | Cold War | Production |
 | 108 | PROD | `merkava2d` | Merkava Mk 2D | Israel | VIII | Cold War | Production |
-| 109 | PROD | `sabra_mk2_x` | Sabra Mk 2 X | Israel | IX | Modern | Production |
+| 109 | PROD | `sabra_mk2_x` | Sabra Mk 2 | Israel | IX | Modern | Production |
 | 110 | PROD | `merkava3c` | Merkava Mk 3C | Israel | IX | Modern | Production |
 | 111 | PROD | `merkava3d` | Merkava Mk 3 Baz | Israel | IX | Modern | Production |
 | 112 | PROD | `merkava3d_x` | Merkava Mk 3D | Israel | IX | Modern | Production |
@@ -173,9 +173,9 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 163 | PROD | `t90m_x` | T-90M | Russia | X | Modern | Production |
 | 164 | PROD | `t90sm_x` | T-90SM | Russia | X | Modern | Production |
 | 165 | PROD | `t14_x` | T-14 Armata | Russia | X | Next Generation | Production |
-| 166 | PROD | `griffin50_x` | Griffin 50 mm X | USA | X | Next Generation | Production |
-| 167 | PROD | `kf41_lynx_x` | KF41 Lynx X | Germany | X | Next Generation | Production |
-| 168 | PROD | `k21_x` | K21 X | South Korea | IX | Modern | Production |
+| 166 | PROD | `griffin50_x` | Griffin 50 mm | USA | X | Next Generation | Production |
+| 167 | PROD | `kf41_lynx_x` | KF41 Lynx | Germany | X | Next Generation | Production |
+| 168 | PROD | `k21_x` | K21 | South Korea | IX | Modern | Production |
 | 169 | PROD | `leo2a6_x` | Leopard 2A6 | Germany | X | Modern | Production |
 | 170 | PROD | `k1a1_x` | K1A1 | South Korea | X | Modern | Production |
 | 171 | PROD | `amx30_x` | AMX-30B | France | VII | Cold War | Production |
@@ -204,10 +204,11 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 194 | PROD | `m1a2_sepv3_x` | M1A2 Abrams SEPv3 | USA | X | Modern | Production |
 | 195 | PROD | `ua_m1a1_x` | M1A2 Abrams UA | Ukraine | IX | Modern | Production |
 | 196 | PROD | `griffin_viper` | Griffin Viper | USA | X | Modern | Production |
-| 197 | PROD | `spz_puma_s1_x` | Puma S1 X | Germany | X | Modern | Production |
+| 197 | PROD | `spz_puma_s1_x` | Puma S1 | Germany | X | Modern | Production |
 | 198 | PROD | `type89_x` | Type 89 X | Japan | X | Next Generation | Production |
 | 199 | PROD | `amx10p` | AMX-10P | France | IX | Cold War | Production |
 | 200 | PROD | `amx10p_25` | AMX-10P 25 | France | X | Cold War | Production |
+| 201 | PROD | `marder2` | Marder 2 | Germany | X | Modern | Production |
 
 ## Policy ownership
 

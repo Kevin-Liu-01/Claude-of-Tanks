@@ -3,7 +3,42 @@
   "ownerDecision": {
     "date": "2026-09-19",
     "request": "Completely redesign Type 100 as an original Chinese infantry fighting vehicle.",
-    "scope": "Replace the prior composite tank-like design with a coherent first-party IFV. The photograph guides visual hierarchy, not dimensions or exact hardware identification."
+    "scope": "Replace the prior composite tank-like design with a coherent first-party IFV. The photograph guides visual hierarchy, not dimensions or exact hardware identification.",
+    "wholeVehicleResize": {
+      "date": "2026-09-29",
+      "factor": 0.9,
+      "request": "Make this entire vehicle 10% smaller.",
+      "originalDesign": {
+        "id": "type100",
+        "test": "src/vehicles/profiles/type100.selftest.mjs",
+        "ring": [
+          0,
+          2.02,
+          -0.15
+        ],
+        "gunLocal": [
+          0,
+          0.53,
+          0.65
+        ],
+        "barrelLengthM": 2.35,
+        "barrelRadiusM": 0.045,
+        "pitchDeg": [
+          -10,
+          45
+        ],
+        "cells": 4,
+        "guidedAmmoTotal": 8,
+        "mainCaliberMm": 30,
+        "roofMachineGuns": 0,
+        "hullLengthM": 7.13,
+        "hullWidthM": 3.66,
+        "widthM": 3.7,
+        "overallLengthM": 7.3,
+        "tallestM": 3.56,
+        "silhouette": "Broad straight-shouldered Chinese heavy IFV, shallow prow, rear troop compartment and compact chamfered autocannon turret with four low guided cells"
+      }
+    }
   },
   "comparisonPurpose": "owner-authored-concept",
   "comparisonApplicable": false,
@@ -14,16 +49,16 @@
       "test": "src/vehicles/profiles/type100.selftest.mjs",
       "ring": [
         0,
-        2.02,
-        -0.15
+        1.818,
+        -0.135
       ],
       "gunLocal": [
         0,
-        0.53,
-        0.65
+        0.47700000000000004,
+        0.5850000000000001
       ],
-      "barrelLengthM": 2.35,
-      "barrelRadiusM": 0.045,
+      "barrelLengthM": 2.115,
+      "barrelRadiusM": 0.0405,
       "pitchDeg": [
         -10,
         45
@@ -32,11 +67,11 @@
       "guidedAmmoTotal": 8,
       "mainCaliberMm": 30,
       "roofMachineGuns": 0,
-      "hullLengthM": 7.13,
-      "hullWidthM": 3.66,
-      "widthM": 3.7,
-      "overallLengthM": 7.3,
-      "tallestM": 3.56,
+      "hullLengthM": 6.417,
+      "hullWidthM": 3.294,
+      "widthM": 3.33,
+      "overallLengthM": 6.57,
+      "tallestM": 3.204,
       "silhouette": "Broad straight-shouldered Chinese heavy IFV, shallow prow, rear troop compartment and compact chamfered autocannon turret with four low guided cells"
     }
   },

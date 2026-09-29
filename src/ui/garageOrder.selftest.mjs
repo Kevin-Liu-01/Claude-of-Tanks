@@ -114,7 +114,7 @@ const nationalShowcaseCases = [
     // owner 2026-09-16: Panther, 2A7V, Revolution, 2A6M, 2A6, 2A5M, 2A5, KF51 EVO, KF51-U, Puma S1, MBT-70, then the rest
     expected: [
       'kf51_x', 'leo2a7v_x', 'leo2_revolution', 'leo2a6m_x', 'leo2a6_x', 'leo2a4m_x', 'leo2a5_x',
-      'kf41_lynx_x', 'kf51', 'kf51b', 'spz_puma_s1', 'spz_puma_s1_x', 'mbt70', 'leo2a7v',
+      'kf41_lynx_x', 'kf51', 'kf51b', 'spz_puma_s1_x', 'spz_puma_s1', 'marder2', 'mbt70', 'leo2a7v',
     ],
   },
   {

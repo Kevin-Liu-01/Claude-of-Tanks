@@ -1,3 +1,5 @@
+// Measure historical source witnesses in their original metre frame.
+// Installed 0.90 size and unit-scale rigs are checked by vehicleSize.selftest.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -53,7 +55,7 @@ for(const filled of [false,true]){
   for(const quality of ['high','low']){
     const tank=createTank('griffin50_x',null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
     try{
-      const root=tank.root;root.updateMatrixWorld(true);
+      const root=tank.root;root.scale.setScalar(1 / .90);root.updateMatrixWorld(true);
       // 2026-09-22 nation wheel standard: the Sheridan construction's tire is a 26-sided lathe whose vertices miss one
       // axis by r·(1−cos(π/26)) ≈ 2.4 mm a side (4.7 mm on the diameter), so roundness is judged against that polygon
       // error; the 5 % chassis lengthening this receipt guards against would stretch the wheel by 32 mm.

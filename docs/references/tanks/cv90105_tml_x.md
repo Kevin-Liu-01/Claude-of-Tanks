@@ -236,3 +236,13 @@ front powerpack/transmission, hull driver and three-person manually loaded
 separate gameplay clip. Lazy finalization is tested for physically forward
 engine/transmission volumes. Details and source:
 [final weapon/layout review](../../history/research/supplied-fleet-weapon-layout-review-20260918.md).
+
+
+## 2026-09-29 — owner attachment repair
+
+The barrel boot now extends back into the receiving shell at gun-local
+z=−0.06 m. The former start at +0.28 m left a visible gap despite overlapping
+whole-mount bounds. Barrel, muzzle and optical receiver stations are unchanged.
+Implementation, physical regression coverage and final validation are in the
+[attachment repair packet](../../tank-generation/ariete-tml-attachment-repair-20260929.md). Existing source qualification remains
+separate from these attachment checks.

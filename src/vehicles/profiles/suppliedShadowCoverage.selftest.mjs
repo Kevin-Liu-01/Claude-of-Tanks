@@ -25,6 +25,8 @@ const cases = {
   k21_x: [['hull', 'max', 'x', 1.684]],
   type96b_x: [['hull', 'max', 'z', 3.51476]],
 };
+// Owner-directed whole-vehicle scale; the caster still uses a physical 50 mm inset.
+const resized={griffin50_x:.9,ajax_x:.9,kf41_lynx_x:.9,k21_x:.9};
 const legacy = {
   leclerc: {
     hull: '1c52c8bbb62ffe889e5b14d31656418347c10304085c80b440f643c9cef9b1cd',
@@ -90,7 +92,8 @@ for (const quality of ['high', 'low']) for (const id of ids) {
     assert.ok(total <= 320, `${id}/${quality}: total shadow triangles ${total} <= 320`);
     for (const [part, end, axis, expected] of cases[id] ?? []) {
       const actual = root.getObjectByName(`procShadow_${part}`).geometry.boundingBox[end][axis];
-      assert.ok(Math.abs(actual - expected) < .0005, `${id}/${quality}: ${part} ${end}.${axis} ${actual} covers measured stock with 50 mm inset (${expected})`);
+      const factor=resized[id]??1, target=expected*factor+(end==='max'?1:-1)*.05*(factor-1);
+      assert.ok(Math.abs(actual - target) < .0005, `${id}/${quality}: ${part} ${end}.${axis} ${actual} covers measured stock with 50 mm inset (${expected})`);
     }
     if (id === 'fv510_milan_x') {
       const armor = root.getObjectByName('hullExternalArmor').geometry;
@@ -118,7 +121,7 @@ for (const quality of ['high', 'low']) for (const id of ids) {
       // authenticated extension is now 194.167 mm, not the old 365.635 mm.
       // See docs/history/research/stale-qa-witness-repair-20260918.md. The inset
       // must retain that real lower-side silhouette without extending past it.
-      const measuredExtension = id === 'ajax_x' ? .421735 : .194166655;
+      const measuredExtension = (id === 'ajax_x' ? .421735 : .194166655) * .90;
       assert.ok(Math.abs(armor - original - measuredExtension) < .001, `${id}: original source-stock witness stays fixed`);
       assert.ok(actual > original + measuredExtension - .10, `${id}: lower side armor participates in the shadow`);
       assert.ok(actual < armor, `${id}: caster remains inside the measured side armor`);

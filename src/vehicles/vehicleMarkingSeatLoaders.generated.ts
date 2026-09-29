@@ -47,6 +47,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "leopardA6X": () => import('./vehicleMarkingSeatGroups/leopardA6X.generated.ts'),
   "leopardX": () => import('./vehicleMarkingSeatGroups/leopardX.generated.ts'),
   "lrmvLynx": () => import('./vehicleMarkingSeatGroups/lrmvLynx.generated.ts'),
+  "marder2": () => import('./vehicleMarkingSeatGroups/marder2.generated.ts'),
   "merkava": () => import('./vehicleMarkingSeatGroups/merkava.generated.ts'),
   "merkavaX": () => import('./vehicleMarkingSeatGroups/merkavaX.generated.ts'),
   "misc": () => import('./vehicleMarkingSeatGroups/misc.generated.ts'),

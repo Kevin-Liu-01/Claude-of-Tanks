@@ -166,10 +166,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   // then raise the armored body on its suspension before applying the final
   // uniform owner scale; this preserves the corrected body/course relation.
   const BODY_RIDE_LIFT = 0.10;
-  // Establish the articulation frame before adding the C2's marked shoulder
-  // modules.  They used to be authored into hull buckets, so their boxes
-  // stayed behind when the turret yawed.  L() and localY() preserve their
-  // exact zero-yaw world seats while transferring ownership to rig_turret.
+  // Convert the source's assembly-space fittings into the turret frame before
+  // the body lift and family scale. Both prototypes share this ownership;
+  // merging them into the hull leaves equipment behind during turret yaw.
   const buildArieteMkAssemblyStage1 = (): void => {
     P.turretG.position.set(0, 1.30 + BODY_RIDE_LIFT, -0.10);
   };
@@ -247,43 +246,36 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     }
     for (const s of [-1, 1]) P.add('hullDetail', box(0.78, 0.04, 0.05), s * 0.39, 1.34, 2.30, -0.055, s * 0.42, 0); // V splash rail riding the raked plane (crest ~1.36, the print's furniture line)
     towCable(P, [[-1.06, 1.30, 2.50], [0, 1.355, 2.05], [1.06, 1.30, 2.50]]);     // drape re-seated on the §5.299 slope (was fully buried under the flat plate)
-    // ---- amidships superstructure (gate-true: the print's tall mid content is
-    // sponson bins + ring-cage posts + the left stack — NOT rear-deck towers).
-    // side band: 2.16 (zW -0.45..+0.28) stepping 2.02..1.95 (+0.3..+1.0);
-    // front comb: bins ±(1.03..1.48) to 1.86-2.03, posts -0.83(2.32),
-    // -0.65(2.17), +0.30..+0.71(2.09-2.11) --------------------------------------
-    for (const s of [-1, 1]) {
-      const armorBucket = c2 ? 'turret' : 'hull';
-      const darkBucket = c2 ? 'turretDark' : 'hullDark';
-      const detailBucket = c2 ? 'turretDetail' : 'hullDetail';
-      const y = (value: number): number => c2 ? localY(value) : value;
-      const z = (value: number): number => c2 ? L(value) : value;
-      P.add(armorBucket, box(0.42, 0.49, 0.66), s * 1.25, y(1.745), z(-0.06));    // sponson bin aft (top 1.99; ref inner edge 2.02)
-      P.add(armorBucket, box(0.42, 0.40, 0.62), s * 1.25, y(1.70), z(0.62));      // sponson bin fore (top 1.90)
-      P.add(darkBucket, box(0.38, 0.02, 0.58), s * 1.25, y(2.00), z(-0.06));     // bin lids
-      P.add(darkBucket, box(0.38, 0.02, 0.54), s * 1.25, y(1.915), z(0.62));
-      P.add(detailBucket, box(0.43, 0.03, 0.03), s * 1.25, y(1.80), z(-0.06));   // strap lines
-      P.add(detailBucket, box(0.43, 0.03, 0.03), s * 1.25, y(1.78), z(0.62));
+    // The source groups mix fixed and rotating parts. Shoulder bins, roof
+    // furniture and the left cheek fairing belong to the turret on BOTH marks.
+    // Their source-space seats are preserved through localY/L; only the roof
+    // cover gains a shallow, seated lid above the crown that formerly hid it.
+    for (const side of [-1, 1]) {
+      P.addEquipment('turret', box(0.42, 0.49, 0.66), side * 1.25, localY(1.745), L(-0.06));
+      P.addEquipment('turret', box(0.42, 0.40, 0.62), side * 1.25, localY(1.70), L(0.62));
+      P.addEquipment('turretDark', box(0.38, 0.02, 0.58), side * 1.25, localY(1.99), L(-0.06));
+      P.addEquipment('turretDark', box(0.38, 0.02, 0.54), side * 1.25, localY(1.90), L(0.62));
+      P.addEquipment('turretDetail', box(0.43, 0.03, 0.03), side * 1.25, localY(1.80), L(-0.06));
+      P.addEquipment('turretDetail', box(0.43, 0.03, 0.03), side * 1.25, localY(1.78), L(0.62));
     }
-    P.add('hull', cylY(0.84, 0.86, 0.08, P.q ? 26 : 14), 0, 1.48, 0.02);         // low turret race ring (top 1.52 — the ref's inter-post line)
-    // LEFT equipment group (gate front comb: 2.32@-0.83, 2.17@-0.65..-0.55,
-    // 2.16@-0.48): stack + boxes + fairing wedge onto the glacis
-    P.add('hull', box(0.57, 0.72, 0.80), -0.565, 1.80, 0.02);                    // left group body (top 2.16, x -0.85..-0.28 per the gate front comb)
-    P.add('hull', box(0.08, 0.86, 0.22), -0.815, 1.90, 0.06);                    // LEFT stack to 2.32 (ref column x -0.855..-0.775 ONLY)
-    P.add('hullDark', box(0.06, 0.03, 0.18), -0.815, 2.345, 0.06);
-    P.add('hull', slab(                                                          // §5.299 fairing re-loft to the print's stepped band: crest 2.02@+0.42 ->
-      [-0.85, 1.44, 0.42], [-0.48, 1.44, 0.42], [-0.48, 1.42, 1.05], [-0.85, 1.42, 1.05],  // 1.95@+1.05 (gate side band "2.02..1.95 @ +0.3..+1.0")
-      [-0.85, 2.02, 0.42], [-0.48, 2.02, 0.42], [-0.48, 1.95, 1.05], [-0.85, 1.95, 1.05]));
-    P.add('hull', slab(                                                          // fairing ramp 1.95@+1.05 -> 1.475@+1.66 (K-frame print ramp 1.96@0.98 ->
-      [-0.85, 1.42, 1.05], [-0.48, 1.42, 1.05], [-0.48, 1.34, 1.78], [-0.85, 1.34, 1.78],  // 1.51@1.62 — the old single 2.10->1.36 plane read 0.12-0.20 LOW), nose
-      [-0.85, 1.95, 1.05], [-0.48, 1.95, 1.05], [-0.48, 1.475, 1.66], [-0.85, 1.475, 1.66]));  // landing buried under the glacis-A plate
-    // RIGHT side: the gate front comb is POSTS at +0.30/+0.51/+0.77 with the
-    // 1.49 valley floor between them (no solid group, no right wedge)
-    P.add('hull', box(0.58, 0.24, 0.72), 0.55, 1.57, -0.04);                     // low right chest (top 1.49)
-    for (const [px, pt] of [[0.30, 2.11], [0.51, 2.10], [0.77, 2.09]]) {
-      P.add('hull', box(0.10, pt - 1.49, 0.14), px, (pt + 1.49) / 2, 0.10);      // right comb posts
+    P.add('hull', cylY(0.84, 0.86, 0.08, P.q ? 26 : 14), 0, 1.48, 0.02); // fixed bearing race
+    P.addEquipment('turret', box(0.57, 0.76, 0.80), -0.565, localY(1.82), L(0.02));
+    P.addEquipment('turret', box(0.08, 0.86, 0.22), -0.815, localY(1.90), L(0.06));
+    P.addEquipment('turretDark', box(0.06, 0.03, 0.18), -0.815, localY(2.33), L(0.06));
+    // Structural fairing remains part of the cheek armor, not hull furniture.
+    P.add('turret', slab(
+      [-0.85, 1.44, 0.42], [-0.48, 1.44, 0.42], [-0.48, 1.42, 1.05], [-0.85, 1.42, 1.05],
+      [-0.85, 2.02, 0.42], [-0.48, 2.02, 0.42], [-0.48, 1.95, 1.05], [-0.85, 1.95, 1.05]),
+    0, localY(0), L(0));
+    P.add('turret', slab(
+      [-0.85, 1.42, 1.05], [-0.48, 1.42, 1.05], [-0.48, 1.34, 1.78], [-0.85, 1.34, 1.78],
+      [-0.85, 1.95, 1.05], [-0.48, 1.95, 1.05], [-0.48, 1.475, 1.66], [-0.85, 1.475, 1.66]),
+    0, localY(0), L(0));
+    P.addEquipment('turret', box(0.58, 0.24, 0.72), 0.55, localY(1.57), L(-0.04));
+    for (const [px, top] of [[0.30, 2.11], [0.51, 2.10], [0.77, 2.09]]) {
+      P.addEquipment('turret', box(0.10, top - 1.49, 0.14), px, localY((top + 1.49) / 2), L(0.10));
     }
-    P.add('hullDark', box(0.50, 0.02, 0.50), -0.565, 2.145, 0.02);               // left group lids
+    P.addEquipment('turretDark', box(0.50, 0.02, 0.50), -0.565, localY(2.205), L(0.02));
     // CENTER driver valley (gate front: 1.51-1.79 between the groups): plate,
     // flush hatch, episcope row, small center pod
     P.add('hull', box(0.76, 0.045, 1.66), -0.11, 1.485, 0.52);                   // driver plate 1.51 (x -0.49..+0.27)
@@ -838,7 +830,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       roofWeaponStations: 2,
       manualPintles: 2,
       remoteControlled: false,
-      rotatingShoulderModules: 0,
+      rotatingShoulderModules: 4,
       rotatingApuAssembly: false,
     });
 

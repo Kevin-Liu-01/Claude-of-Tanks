@@ -9,6 +9,8 @@ for (const quality of ['high', 'low']) for (const id of ids) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     const root = tank.root;
+    // Retain the original source witness coordinates after the exact uniform resize.
+    if (id === 'k21_x') root.scale.setScalar(1 / .90);
     root.updateMatrixWorld(true);
     const meshes = [];
     root.traverseVisible(o => {

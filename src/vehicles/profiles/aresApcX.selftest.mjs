@@ -9,6 +9,7 @@ import { FLEET_GROUP_BY_ID } from '../fleetManifest.ts';
 import { ARES_APC_X_DATUMS } from '../aresApcXFrame.ts';
 
 const ID = 'ares_apc_x';
+const OWNER_SIZE = .90;
 const source = readFileSync(new URL('./aresApcX.ts', import.meta.url), 'utf8');
 assert.ok(!/GLTFLoader|\.glb|community-candidates|loadReferenceGlb/.test(source),
   'playable profile contains no source model loading path');
@@ -26,7 +27,7 @@ assert.equal(tankTier(ID), 7);
 assert.equal(vehicleEraForId(ID), 'modern');
 assert.equal(FLEET_GROUP_BY_ID[ID], 'aresApcX');
 assert.equal(MODEL_SOURCE[ID].source, 'procedural');
-assert.deepEqual(spec.armor.turretPivot, [...ARES_APC_X_DATUMS.turretPivot]);
+assert.deepEqual(spec.armor.turretPivot, ARES_APC_X_DATUMS.turretPivot.map(v => v * OWNER_SIZE));
 assert.equal(record.canonicalOracle.sha256.length, 64);
 assert.deepEqual([...ARES_APC_X_DATUMS.wheelStations], record.runningGear.roadWheelStationsZ);
 
@@ -41,11 +42,11 @@ for (const geometryQuality of ['high', 'low']) {
     const turret = tank.root.getObjectByName('rig_turret');
     const gun = tank.root.getObjectByName('rig_gun');
     assert.ok(hull && turret && gun, 'real hull/yaw/pitch ownership chain exists');
-    assert.deepEqual(turret.position.toArray(), [...ARES_APC_X_DATUMS.turretPivot]);
+    assert.deepEqual(turret.position.toArray(), ARES_APC_X_DATUMS.turretPivot.map(v => v * OWNER_SIZE));
     assert.deepEqual(gun.position.toArray(), [
-      ARES_APC_X_DATUMS.trunnion[0] - ARES_APC_X_DATUMS.turretPivot[0],
-      ARES_APC_X_DATUMS.trunnion[1] - ARES_APC_X_DATUMS.turretPivot[1],
-      ARES_APC_X_DATUMS.trunnion[2] - ARES_APC_X_DATUMS.turretPivot[2],
+      (ARES_APC_X_DATUMS.trunnion[0] - ARES_APC_X_DATUMS.turretPivot[0]) * OWNER_SIZE,
+      (ARES_APC_X_DATUMS.trunnion[1] - ARES_APC_X_DATUMS.turretPivot[1]) * OWNER_SIZE,
+      (ARES_APC_X_DATUMS.trunnion[2] - ARES_APC_X_DATUMS.turretPivot[2]) * OWNER_SIZE,
     ]);
     const gear = hull.userData.runningGearReceipts.at(-1);
     assert.deepEqual(gear.wheelZs, [...ARES_APC_X_DATUMS.wheelStations]);
@@ -71,9 +72,9 @@ for (const geometryQuality of ['high', 'low']) {
 
     const bounds = new THREE.Box3().setFromObject(tank.root);
     const size = bounds.getSize(new THREE.Vector3());
-    assert.ok(Math.abs(size.x - record.canonicalOracle.bounds.size[0]) < 0.03);
-    assert.ok(Math.abs(size.y - record.canonicalOracle.bounds.size[1]) < 0.04);
-    assert.ok(Math.abs(size.z - record.canonicalOracle.bounds.size[2]) < 0.01);
+    assert.ok(Math.abs(size.x - record.canonicalOracle.bounds.size[0] * OWNER_SIZE) < 0.03);
+    assert.ok(Math.abs(size.y - record.canonicalOracle.bounds.size[1] * OWNER_SIZE) < 0.04);
+    assert.ok(Math.abs(size.z - record.canonicalOracle.bounds.size[2] * OWNER_SIZE) < 0.01);
     let triangles = 0;
     tank.root.traverse((object) => {
       if (!object.isMesh || !object.geometry) return;

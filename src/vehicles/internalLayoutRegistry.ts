@@ -517,7 +517,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
   amx10p: ['amx10p'],
   amx10pDragar: ['amx10p_25'],
-  ifvFrontTwoMan: ['dardo', 'lrmv_lynx', 'cv90_x', 'type89_x', 'ajax_x', 'kf41_lynx_x', 'bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
+  ifvFrontTwoMan: ['marder2', 'dardo', 'lrmv_lynx', 'cv90_x', 'type89_x', 'ajax_x', 'kf41_lynx_x', 'bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
   namerIfv: ['namer_ifv'],
   aresRemoteApc: ['ares_apc_x'],
   bmp1: ['bwp1'],

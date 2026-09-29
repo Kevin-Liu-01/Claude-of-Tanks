@@ -10,6 +10,7 @@ const EXPECTED = Object.freeze({
   m2a2_bradley:       { hp: 1650, speed: 61, reverse: 20, traverse: 44.5, damage: 58, pen: [130, 118, 106], reload: 0.42, sound: 'm242-bushmaster', missile: [540, 'tow-launch'] },
   bmp2:               { hp: 1050, speed: 65, reverse: 12, traverse: 53, damage: 42, pen: [74, 66, 58], reload: 0.28, sound: '2a42', missile: [430, 'konkurs-launch'] },
   spz_puma:           { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 64, pen: [165, 150, 135], reload: 0.40, sound: 'mk30-2', missile: [520, 'spike-launch'] },
+  marder2: { hp:2750,speed:60,reverse:27,traverse:42,damage:135,pen:[185,170,155],reload:.55,sound:'xm913-50',missile:null },
   spz_puma_s1:        { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
   type89_light_tiger: { hp: 2700, speed: 78, reverse: 32, traverse: 57.2, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
   cv90:               { hp: 2425, speed: 70, reverse: 40, traverse: 51.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
@@ -39,7 +40,7 @@ const EXPECTED = Object.freeze({
   object695_x:      { hp: 2150, speed: 84, reverse: 36, traverse: 63.6, damage: 320, pen: [880, 880, 880], reload: 14, sound: 'konkurs-launch', missile: [320, 'konkurs-launch'] },
   griffin_viper:    { hp: 2050, speed: 68, reverse: 30, traverse: 48.8, damage: 140, pen: [650, 650, 650], reload: 1, sound: 'konkurs-launch', missile: [140, 'konkurs-launch'] },
   namer_ifv:           { hp: 2650, speed: 54, reverse: 20, traverse: 32, damage: 70, pen: [180, 164, 148], reload: 0.35, sound: 'mk30-2', missile: null },
-  ares_apc_x:          { hp: 1800, speed: 70, reverse: 30, traverse: 50.4, damage: 24, pen: [34, 24, 17], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
+  ares_apc_x:          { hp: 1800, speed: 70, reverse: 30, traverse: 50.4, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
   // 2026-09-25 IFV identity batch: the three X replicas inherit their kept originals' combat tuning
   // (docs/references/batches/ifv-replicas-20260925.md); the CV9040C carries no missile rack. The three
   // photographic additions are authored in europePhotoIfvSpecs.ts (docs/references/batches/europe-ifvs-20260925.md).
@@ -52,7 +53,7 @@ const EXPECTED = Object.freeze({
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 39, 'complete selectable IFV fleet'); // 31 + the six 2026-09-25 IFV identity additions
+assert.equal(ifvIds.length, 40, 'complete selectable IFV fleet'); // Includes the independent Marder 2; SPz Wotan remains selectable.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

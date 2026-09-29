@@ -453,7 +453,7 @@ const MODERN3_SPECS = {
   },
 
   spz_puma_s1: {
-    id: 'spz_puma_s1', name: 'SPz Puma S1', nation: 'Germany', era: 'modern', role: 'ifv',
+    id: 'spz_puma_s1', name: 'SPz Wotan', nation: 'Germany', era: 'modern', role: 'ifv',
     hp: 2750,
     enginePowerHp: 1088, weightTons: 43, topSpeedKmh: 70, reverseSpeedKmh: 30,
     hullTraverseDegS: 50,

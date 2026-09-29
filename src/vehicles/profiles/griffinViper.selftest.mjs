@@ -8,6 +8,7 @@ import { VIPER_MUZZLES } from '../griffinViperLayout.ts';
 import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_TURRET_SCALE as S } from './griffinProportions.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { verifyFixedLauncherSeats, verifyFixedLauncherNoRecoil, fixedLauncherNegatives } from '../fixedLauncherArticulation.test-support.mjs';
+const F=.90; // whole-vehicle reduction, independent of the earlier turret proportion
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
 const spec=getSpec('griffin_viper');
 assert.equal(spec.nation,'USA');assert.equal(spec.variantOf,'griffin50_x');
@@ -40,22 +41,22 @@ for(const quality of ['high','low']){
       verifyFixedLauncherSeats(tank,spec);
       for(const [index,tip]of VIPER_MUZZLES.entries()){
         const actual=tank.gunMuzzleWorld(new T.Vector3(),index,true);
-        assert(actual.distanceTo(gun.localToWorld(new T.Vector3(tip.x,tip.y,tip.z)))<1e-6,'physical articulated tube origin');
-        const origin=gun.localToWorld(new T.Vector3(tip.x,tip.y,tip.z+.01));
+        assert(actual.distanceTo(gun.localToWorld(new T.Vector3(tip.x*F,tip.y*F,tip.z*F)))<1e-6,'physical articulated tube origin');
+        const origin=gun.localToWorld(new T.Vector3(tip.x*F,tip.y*F,(tip.z+.01)*F));
         const direction=new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld);
         const hit=new T.Raycaster(origin,direction,0,4).intersectObjects(targets,false)[0];
-        assert(hit&&hit.distance>2.3*S&&hit.distance<2.8*S,`deep cell ${index} stays open at ${yaw}/${pitch}: ${hit?.distance}`);
+        assert(hit&&hit.distance>2.3*S*F&&hit.distance<2.8*S*F,`deep cell ${index} stays open at ${yaw}/${pitch}: ${hit?.distance}`);
       }
     }
     state.turretYaw=0;state.gunPitch=0;tank.syncFromState(state,0);tank.root.updateMatrixWorld(true);
     verifyFixedLauncherNoRecoil(tank,spec,0);
     fixedLauncherNegatives(tank,spec);
     const bounds=new T.Box3().setFromObject(tank.root),size=bounds.getSize(new T.Vector3());
-    assert(Math.abs(size.x-3.8106)<.03);assert(Math.abs(size.z-GRIFFIN_HULL_LENGTH_M)<.02);assert(Math.abs(bounds.max.y-(2.07+1.54*S))<.02);
+    assert(Math.abs(size.x-3.8106*F)<.03);assert(Math.abs(size.z-GRIFFIN_HULL_LENGTH_M*F)<.02);assert(Math.abs(bounds.max.y-(2.07+1.54*S)*F)<.02);
     // A blocked mouth fails the same complete-scene witness.
-    const plug=new T.Mesh(new T.BoxGeometry(.20,.20,.03),new T.MeshBasicMaterial());
-    plug.position.set(VIPER_MUZZLES[0].x,VIPER_MUZZLES[0].y,1.20*S);gun.add(plug);tank.root.updateMatrixWorld(true);
-    const ray=new T.Raycaster(gun.localToWorld(new T.Vector3(VIPER_MUZZLES[0].x,VIPER_MUZZLES[0].y,1.32*S+.01)),new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld),0,4);
+    const plug=new T.Mesh(new T.BoxGeometry(.20*F,.20*F,.03*F),new T.MeshBasicMaterial());
+    plug.position.set(VIPER_MUZZLES[0].x*F,VIPER_MUZZLES[0].y*F,1.20*S*F);gun.add(plug);tank.root.updateMatrixWorld(true);
+    const ray=new T.Raycaster(gun.localToWorld(new T.Vector3(VIPER_MUZZLES[0].x*F,VIPER_MUZZLES[0].y*F,(1.32*S+.01)*F)),new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld),0,4);
     assert(ray.intersectObjects([...targets,plug],false)[0].distance<.20,'cap negative must obstruct the true launch cell');
     plug.geometry.dispose();plug.material.dispose();plug.removeFromParent();
   }finally{tank.dispose();donor.dispose();}

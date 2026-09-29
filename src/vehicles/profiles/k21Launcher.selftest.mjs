@@ -5,6 +5,7 @@ import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 
 await ensureInteriorFills(['k21_x']);
 assert.ok(hasInteriorFills('k21_x'), 'test requires the real generated K21 fills loaded');
+const F=.90; // explicit owner size, no fitted registration
 const angle=Math.PI/9, sin=Math.sin(angle), cos=Math.cos(angle);
 const axis=new THREE.Vector3(0,sin,cos);
 const canonical=(x,v,n)=>new THREE.Vector3(x-.000015,v*cos+n*sin-.0138,-v*sin+n*cos);
@@ -22,14 +23,14 @@ for(const quality of ['high','low']) {
     function ray(x,v,n,direction,far) {
       tank.root.updateMatrixWorld(true);const surfaces=[];
       tank.root.traverseVisible(mesh=>{if(mesh.isMesh)surfaces.push(mesh)});
-      const origin=turret.localToWorld(canonical(x,v,n).sub(restPivot));
+      const origin=turret.localToWorld(canonical(x,v,n).multiplyScalar(F).sub(restPivot));
       const d=axis.clone().multiplyScalar(direction).transformDirection(turret.matrixWorld);
       const scale=turret.getWorldScale(new THREE.Vector3()).x;
-      const hit=new THREE.Raycaster(origin,d,0,far*scale).intersectObjects(surfaces,false)[0];
+      const hit=new THREE.Raycaster(origin,d,0,far*scale*F).intersectObjects(surfaces,false)[0];
       if(!hit)return null;
       const material=Array.isArray(hit.object.material)?hit.object.material[hit.face.materialIndex]:hit.object.material;
       assert.equal(material.side,THREE.FrontSide,'actual first-visible stock must retain FrontSide winding');
-      return {name:hit.object.name,n:rawN(turret.worldToLocal(hit.point.clone()).add(restPivot))};
+      return {name:hit.object.name,n:rawN(turret.worldToLocal(hit.point.clone()).add(restPivot).divideScalar(F))};
     }
     for(const [yaw,pitch]of[[0,0],[.73,-.32],[-.81,.25]]) {
       turret.rotation.y=yaw;gun.rotation.x=pitch;
@@ -54,9 +55,9 @@ for(const quality of ['high','low']) {
     // Negative control: a flat plate across either aperture must become the
     // first visible surface. A mesh-name-only or through-stock ray would miss it.
     turret.rotation.y=0;gun.rotation.x=0;
-    const badGeometry=new THREE.BoxGeometry(.16,.40,.008),badMaterial=new THREE.MeshBasicMaterial();
+    const badGeometry=new THREE.BoxGeometry(.16*F,.40*F,.008*F),badMaterial=new THREE.MeshBasicMaterial();
     const bad=new THREE.Mesh(badGeometry,badMaterial);bad.name='counterfactualFlatCover';
-    bad.position.copy(canonical(1.24239,2.81,.4283).sub(restPivot));bad.rotation.x=-angle;turret.add(bad);
+    bad.position.copy(canonical(1.24239,2.81,.4283).multiplyScalar(F).sub(restPivot));bad.rotation.x=-angle;turret.add(bad);
     for(const v of[2.71787735,2.90094968]) {
       const hit=ray(1.24239,v,.70,-1,.50);
       assert.equal(hit?.name,'counterfactualFlatCover','a plate blocking the real terminal must fail first-hit ownership');

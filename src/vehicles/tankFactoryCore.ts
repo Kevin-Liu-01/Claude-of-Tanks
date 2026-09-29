@@ -1,3 +1,5 @@
+import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
+import { resizeAuthoredVehicle } from './profiles/vehicleSize.ts';
 // src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
 // No top-level side effects; all randomness seeded; time arrives via
@@ -7700,7 +7702,21 @@ function* createTankOwnedSteps(
 
   const builder = resolveBuilder(specId, spec);
   const coreAuthoredStartedAt = performance.now();
-  if (builder) Reflect.apply(builder, undefined, [P]);
+  const sizeFactor = VEHICLE_SIZE_FACTORS[specId] ?? 1;
+  if (sizeFactor !== 1) {
+    const sourceSpec = vehicleAuthoringSpec(spec);
+    turretG.position.set(...sourceSpec.armor.turretPivot);
+    gunG.position.set(...sourceSpec.armor.gunPivot);
+    P.muzzleZ = sourceSpec.armor.gunBarrel.lengthM;
+    // A build-only view keeps writes (gear, anchors, callbacks) on P while
+    // profile geometry reads the unchanged source authoring frame.
+    const sourcePort = new Proxy(P, { get(target, key, receiver) {
+      return key === 'spec' ? sourceSpec : Reflect.get(target, key, receiver);
+    } });
+    if (builder) Reflect.apply(builder, undefined, [sourcePort]);
+    else buildCommunityPlaceholder(sourcePort);
+    resizeAuthoredVehicle(P, sizeFactor);
+  } else if (builder) Reflect.apply(builder, undefined, [P]);
   else buildCommunityPlaceholder(P);
   const coreAuthoredFinishedAt = performance.now();
 

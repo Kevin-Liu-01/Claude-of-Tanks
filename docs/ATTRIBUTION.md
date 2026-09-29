@@ -1045,3 +1045,15 @@ export of this repository's own authored model from commit
 first-party **preservation** instrument, not an external source or evidence
 of real-world fidelity. Its pinned SHA-256 is
 `ce63f41864d158627df7a89f0fc22e7f71ae753ded72e350206230bf2f417ff7`.
+
+
+## Marder 2 photographic authoring reference (2026-09-29)
+
+The separate Marder 2 roster addition uses
+[Bojoe’s original museum photograph](https://commons.wikimedia.org/wiki/File:Marder_2_Prototype.jpg),
+26 August 2009, licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+The photograph is a local authoring reference, not a shipped texture or mesh.
+All runtime vehicle geometry remains first-party procedural code. Individual
+fitting measurements are estimates; numerical 3D comparison is unverified.
+The target and physical qualification are recorded in
+[the photo reference packet](references/photos/ifvs-20260925.json).

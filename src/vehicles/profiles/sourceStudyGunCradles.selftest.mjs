@@ -23,7 +23,12 @@ const cases = [
 ];
 await ensureInteriorFills(cases.map(row=>row.id));
 
-for (const quality of ['high','low']) for (const row of cases) {
+for (const quality of ['high','low']) for (const sourceRow of cases) {
+  // These source witnesses predate the owner's uniform 90% vehicle sizing.
+  const factor = ['griffin50_x','k21_x','ajax_x'].includes(sourceRow.id) ? .90 : 1;
+  const row = {...sourceRow, origin:sourceRow.origin.map(v=>v*factor),
+    plane:sourceRow.plane*factor, seatZ:sourceRow.seatZ*factor,
+    ...(sourceRow.dark ? {dark:{...sourceRow.dark,origin:sourceRow.dark.origin.map(v=>v*factor)}} : {})};
   const label=`${row.id} ${quality}`,spec=getSpec(row.id);
   const tank=createTank(row.id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242,batchStatic:false});
   const disposed=new Map();

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 import { createTankState } from '../sim/movement.ts';
 import { verifyGunCradleSeats } from './gunCradleSeats.test-support.mjs';
 
@@ -48,7 +49,7 @@ export function verifyFixedLauncherSeats(tank, spec) {
   assert(spec.gun.shells.every(round => round.launcherTubes === axes.length), 'weapon census shares the actual fixed rack');
   if (!covered) assert.equal(visibleMeshes(recoil).length, 0, 'open battery has no fictitious recoiling cannon');
   else assert(!root.getObjectByName('muzzleBore'), 'closed launch covers do not acquire invented cannon bores');
-  const meshes = visibleMeshes(gun), radius = spec.gun.caliberMm / 2000;
+  const meshes = visibleMeshes(gun), radius = spec.gun.caliberMm / 2000 * (VEHICLE_SIZE_FACTORS[spec.id] ?? 1);
   axes.forEach((axis, index) => {
     const tip = root.getObjectByName(`rig_launcher_tip_${index}`);
     assert(tip && tip.parent === gun, 'each terminal anchor belongs directly to pitching gunG');

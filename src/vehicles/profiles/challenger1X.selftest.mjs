@@ -1,3 +1,5 @@
+// Source-space regression: undo only the owner-directed 1.10 uniform size.
+// Installed metre bounds/unit rigs are checked by vehicleSize.selftest.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank as createPlayableTank } from '../tankFactory.ts';
@@ -74,7 +76,7 @@ for (const quality of ['high', 'low']) {
       geometryReceipt: true, batchStatic: false });
   } finally { KIT.buildRunningGear = original; }
   try {
-    tank.root.updateMatrixWorld(true);
+    tank.root.scale.setScalar(1 / 1.10); tank.root.updateMatrixWorld(true);
     const meshes = [];
     tank.root.traverse(mesh => {
       if (mesh.isMesh && !mesh.name.startsWith('procShadow_') && !mesh.userData.vehicleMarking) meshes.push(mesh);
@@ -149,7 +151,7 @@ for (const quality of ['high', 'low']) {
       gun.rotation.x = elevation;
       tank.root.updateMatrixWorld(true);
       const before = muzzle.getWorldPosition(new THREE.Vector3());
-      recoil.position.z = -.10;
+      recoil.position.z = -.10 * 1.10;
       tank.root.updateMatrixWorld(true);
       near(before.distanceTo(muzzle.getWorldPosition(new THREE.Vector3())), .10, 1e-6,
         'actual muzzle follows recoil after legal yaw and pitch');

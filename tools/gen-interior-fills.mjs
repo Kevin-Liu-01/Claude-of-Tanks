@@ -13,6 +13,9 @@
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { stripTypeScriptTypes } from 'node:module';
+import { VEHICLE_SIZE_FACTORS } from '../src/vehicles/vehicleSizePolicy.ts';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { collectTriangles } from './tank-surface-collect.mjs';
@@ -111,9 +114,41 @@ function nodeWorldPosition(root, names) {
   return [0, 0, 0];
 }
 
+// A strictly uniform size edit preserves every existing finite air/stock
+// relationship. Re-voxelising on a different lattice can fill a real launcher
+// recess. Replay the prior generated lattice at the explicit size instead.
+// All ordinary watertight/track/source gates still run against these solids.
+const uniformRevision = opt('uniform-from', null);
+const uniformCommit = uniformRevision ? execFileSync('git',
+  ['rev-parse', '--verify', '--end-of-options', `${uniformRevision}^{commit}`],
+  { encoding: 'utf8' }).trim() : null;
+const sourceGroups = new Map();
+async function uniformRecord(id) {
+  const group = FLEET_GROUP_BY_ID[id], factor = VEHICLE_SIZE_FACTORS[id];
+  if (!(factor > 0)) throw new Error(`${id}: no explicit owner size prescription`);
+  if (!sourceGroups.has(group)) {
+    const source = execFileSync('git', ['show', `${uniformCommit}:src/vehicles/interiorFillGroups/${group}.generated.ts`], { encoding: 'utf8' });
+    const js = stripTypeScriptTypes(source);
+    sourceGroups.set(group, (await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`)).INTERIOR_FILLS);
+  }
+  const prior = sourceGroups.get(group)[id];
+  if (!prior) throw new Error(`${id}: no prior fill record at ${uniformCommit}`);
+  const record = { ...prior, v: prior.v * factor,
+    o: prior.o.map(v => v * factor), t: prior.t.map(v => v * factor),
+    ...(prior.g ? { g: prior.g.map(v => v * factor) } : {}) };
+  return { record, factor };
+}
 const out = {}; const stats = [];
 for (const id of ids) {
   const t0 = performance.now();
+  if (uniformCommit) {
+    const { record, factor } = await uniformRecord(id);
+    out[id] = record;
+    const boxes = ['hull','turret','gun'].reduce((n,key) => n + (record[key] ? Buffer.from(record[key], 'base64').length / 12 : 0), 0);
+    stats.push({ id, boxes, tris: boxes * 12, leakL: 0, residualL: 0, residualUnmeasured: true });
+    console.log(`${id}: preserved ${boxes} fill solids at ${factor} of ${uniformCommit}; residual requires watertight check`);
+    continue;
+  }
   // Output is written only after every requested model has been measured.
   // Continuing after a failed build would preserve a stale selected record
   // and publish successful siblings as though the entire request succeeded.
@@ -290,5 +325,6 @@ if (!flag('stats')) {
   }
   console.log(`wrote ${groupNames.length} group module(s) to ${groupDir} (${(bytes / 1024).toFixed(0)} kB) and the loader map`);
 }
+if (uniformCommit) console.log('Uniform replay does not measure residual leakage; run tank-watertight-check.');
 const totalTris = stats.reduce((s, r) => s + r.tris, 0);
-console.log(`fills: ${stats.length} tanks, ${stats.reduce((s, r) => s + r.boxes, 0)} boxes, ${totalTris} tris, residual ${stats.reduce((s, r) => s + r.residualL, 0).toFixed(0)} L of ${stats.reduce((s, r) => s + r.leakL, 0).toFixed(0)} L`);
+if (!uniformCommit) console.log(`fills: ${stats.length} tanks, ${stats.reduce((s, r) => s + r.boxes, 0)} boxes, ${totalTris} tris, residual ${stats.reduce((s, r) => s + r.residualL, 0).toFixed(0)} L of ${stats.reduce((s, r) => s + r.leakL, 0).toFixed(0)} L`);

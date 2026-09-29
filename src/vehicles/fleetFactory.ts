@@ -1,4 +1,5 @@
 import { applyTacticalRoleBalance } from './tacticalRoleBalance.ts';
+import { applyVehicleSizePolicy } from './vehicleSizePolicy.ts';
 import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
 // Browser-facing procedural fleet facade. The roster registry remains eager;
 // authored visual families and canonical packs that do not participate in the
@@ -60,6 +61,7 @@ import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import './europePhotoIfvSpecs.ts';
 import './amx10pSpecs.ts';
+import './marder2Specs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -104,6 +106,7 @@ synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
 applyTacticalRoleBalance(TANK_SPECS);
 finalizeFirstPartyRoster();
+applyVehicleSizePolicy(TANK_SPECS);
 applyNativeFamilyOrderToCatalogs();
 
 let profileKit: ProfileBuildFunctions | null = null;
@@ -178,6 +181,7 @@ const GROUP_LOADERS = Object.freeze({
   k21X: () => import('./profiles/k21X.ts').then(mod => registerProfiles({ k21_x: { build: mod.buildK21X } })),
   type96bX: () => import('./profiles/type96bX.ts').then(mod => registerProfiles({ type96b_x: { build: mod.buildType96bX } })),
   kf41LynxSourceX: () => import('./profiles/kf41LynxSourceX.ts').then(mod => registerProfiles({ kf41_lynx_x: { build: mod.buildKf41LynxX } })),
+  marder2: () => import('./profiles/marder2.ts').then(mod => registerProfiles({ marder2: { build: mod.buildMarder2 } })),
   amx10p: () => import('./profiles/amx10p.ts').then(mod => registerProfiles({ amx10p: { build: mod.buildAmx10p }, amx10p_25: { build: mod.buildAmx10p } })),
   dardo: () => import('./profiles/dardo.ts').then(mod => registerProfiles({ dardo: { build: mod.buildDardo } })),
   lrmvLynx: () => import('./profiles/lrmvLynx.ts').then(mod => registerProfiles({ lrmv_lynx: { build: mod.buildLrmvLynx } })),

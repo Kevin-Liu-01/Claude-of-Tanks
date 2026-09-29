@@ -33,7 +33,7 @@ export const EASTERN_SOURCE_STUDIES = {
     limitation: 'Object_11 is a detached suspension-like object below the actual track ground; retained in the full oracle.',
   },
   k21_x: {
-    name: 'K21 X', donor: 'cv90', nation: 'South Korea', role: 'ifv', tier: 9,
+    name: 'K21', donor: 'cv90', nation: 'South Korea', role: 'ifv', tier: 9,
     sourceFile: 'k21_armored_warfare.glb',
     sourceSha256: 'bacb27e883dfddb929d8de820bbebb31dec4d161ba2b25ac0afdc539b35883a1',
     canonicalSha256: 'ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8',

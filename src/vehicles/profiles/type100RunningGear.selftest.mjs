@@ -102,6 +102,8 @@ const results = [];
 for (const quality of ['high', 'low']) {
   const tank = createTank('type100', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   try {
+// Restore only the owner's uniform 0.90 for the original world-space contact witnesses.
+    tank.root.scale.setScalar(1/.90);
     near(tank.root); const hull = tank.root.getObjectByName('rig_hull'), rec = hull.userData.runningGearReceipts.at(-1);
     assert.deepEqual(rec.sprocket, { z: 3.02, y: .86, r: .34 }); assert.deepEqual(rec.idler, { z: -3.02, y: .70, r: .28 });
     assert.equal(hull.userData.wheelPatternReceipts.at(-1).id, 'pressed-six');

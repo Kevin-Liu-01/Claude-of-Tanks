@@ -134,8 +134,10 @@ function buildTmlMantlet(P: TankBuilderPort): void {
   P.add('gunMount',gunPrism(-.581,-.203,[
     [1.691,.645],[2.127,.645],[2.09,.901],[1.731,.901],
   ]));
-  // Soft mantlet boot is authored as a few folded elliptical sections.
-  const boot=[{z:.28,rx:.185,ry:.186},{z:.46,rx:.170,ry:.176},{z:.69,rx:.145,ry:.166},{z:.89,rx:.142,ry:.160},{z:1.215,rx:.125,ry:.137}];
+  // The boot must overlap the receiving shell behind its front lip. Starting
+  // at z=.28 left a 166 mm air gap to the shell; whole-mount bounds hid it.
+  // Extend the existing boot rearward without moving the barrel or optics.
+  const boot=[{z:-.06,rx:.185,ry:.186},{z:.28,rx:.185,ry:.186},{z:.46,rx:.170,ry:.176},{z:.69,rx:.145,ry:.166},{z:.89,rx:.142,ry:.160},{z:1.215,rx:.125,ry:.137}];
   P.add('gunMount',sectionSolid(boot.map(({z,rx,ry})=>({z,ring:Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return [Math.cos(a)*rx,Math.sin(a)*ry-.008] as [number,number];})}))));
   for(const z of [.45,.68,.91])P.add('gunMount',cylZ(.148,.022,P.q?24:12).scale(1,1.10,1),0,-.005,z);
   // The left armored hood surrounds a recessed circular optical receiver.

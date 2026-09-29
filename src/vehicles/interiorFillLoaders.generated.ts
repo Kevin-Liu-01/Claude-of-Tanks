@@ -47,6 +47,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "leopardA6X": () => import('./interiorFillGroups/leopardA6X.generated.ts'),
   "leopardX": () => import('./interiorFillGroups/leopardX.generated.ts'),
   "lrmvLynx": () => import('./interiorFillGroups/lrmvLynx.generated.ts'),
+  "marder2": () => import('./interiorFillGroups/marder2.generated.ts'),
   "merkava": () => import('./interiorFillGroups/merkava.generated.ts'),
   "merkavaX": () => import('./interiorFillGroups/merkavaX.generated.ts'),
   "misc": () => import('./interiorFillGroups/misc.generated.ts'),

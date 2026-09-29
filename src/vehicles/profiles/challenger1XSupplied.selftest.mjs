@@ -1,3 +1,5 @@
+// Source-space regression: undo only the owner-directed 1.10 uniform size.
+// Installed metre bounds/unit rigs are checked by vehicleSize.selftest.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -79,7 +81,7 @@ function framesAndBore(t,ms){
   near(.15-h?.distance,radius*scale,tolerance,'source polygon mouth section');
  }
  const yaw=t.root.getObjectByName('rig_turret'),gun=t.root.getObjectByName('rig_gun');
- yaw.rotation.y=.63;gun.rotation.x=-.11;t.root.updateMatrixWorld(true);
+ yaw.rotation.y=.63;gun.rotation.x=-.11;t.root.scale.setScalar(1 / 1.10); t.root.updateMatrixWorld(true);
  const expected=new THREE.Vector3(0,0,source.muzzle-source.gun[2]).applyAxisAngle(new THREE.Vector3(1,0,0),-.11)
   .add(new THREE.Vector3(...source.gun).sub(new THREE.Vector3(...source.yaw)))
   .applyAxisAngle(new THREE.Vector3(0,1,0),.63).add(new THREE.Vector3(...source.yaw));
@@ -206,7 +208,7 @@ primitiveChecks();
 for(const quality of['high','low']){
  const t=createTank('challenger1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try{
-  t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(n=>{if(n.isMesh&&!n.userData.shadowOnly)ms.push(n);});
+  t.root.scale.setScalar(1 / 1.10); t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(n=>{if(n.isMesh&&!n.userData.shadowOnly)ms.push(n);});
   framesAndBore(t,ms);gear(t);surfacesAndAir(t,ms);sideCourses(t,ms);
  }finally{t.dispose();}
 }

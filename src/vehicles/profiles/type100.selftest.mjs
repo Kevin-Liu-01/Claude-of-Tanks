@@ -10,11 +10,13 @@ import { createTankState } from '../../sim/movement.ts';
 import { internalLayoutFor } from '../internalLayoutRegistry.ts';
 
 const spec = TANK_SPECS.type100;
+// Preserve native physical witnesses under the owner's explicit 0.90 resize.
+const sizeFactor = .90;
 assert.equal(spec.name, 'Type 100 IFV'); assert.equal(spec.nation, 'China');
 assert.equal(spec.role, 'ifv'); assert.equal(tankTier('type100'), 10);
 assert.equal(spec.visual.scheme, 'digital'); assert.equal(spec.visual.number, 'LZ83');
-assert.deepEqual(spec.armor.turretPivot, [0, 2.02, -.15]);
-assert.deepEqual(spec.armor.gunPivot, [0, .53, .65]);
+assert.deepEqual(spec.armor.turretPivot, [0, 2.02, -.15].map(v=>v*sizeFactor));
+assert.deepEqual(spec.armor.gunPivot, [0, .53, .65].map(v=>v*sizeFactor));
 assert.equal(spec.gun.caliberMm, 30); assert.equal(spec.gun.shells[1].launcherTubes, 4);
 assert.equal(spec.gun.shells[1].count, 8); assert.equal(spec.gun.launcherMuzzles.length, 4);
 assert.deepEqual([spec.hp, spec.topSpeedKmh, spec.gun.shells[0].dmg], [2700, 76, 92]);
@@ -34,7 +36,7 @@ function separatedInternals(volumes) {
   const bounds=volumes.map(v=>{
     assert.ok(!v.turretLocal&&v.shapes.length,'hull crew/powerpack/storage have actual finite shapes');
     const parts=v.shapes.map(damageBounds);
-    return {name:v.module??v.crew,min:[0,1,2].map(i=>Math.min(...parts.map(b=>b.min[i]))),max:[0,1,2].map(i=>Math.max(...parts.map(b=>b.max[i])))};
+    return {name:v.module??v.crew,min:[0,1,2].map(i=>Math.min(...parts.map(b=>b.min[i]))/sizeFactor),max:[0,1,2].map(i=>Math.max(...parts.map(b=>b.max[i]))/sizeFactor)};
   });
   for(const b of bounds){
     assert.ok(b.min[0]>-1.05&&b.max[0]<1.05&&b.min[1]>.40&&b.max[1]<2&&b.min[2]>-3.3&&b.max[2]<2.52,`${b.name} inside closed hull prism`);
@@ -78,24 +80,24 @@ function inside(mesh,p) {
 function joint(a,b,p,label) {assert.ok(stock(a).some(s=>inside(s.mesh,p))&&stock(b).some(s=>inside(s.mesh,p)),label);}
 function visible(hit) { for(let n=hit.object;n;n=n.parent)if(!n.visible||n.userData.shadowOnly||n.userData.authoredShadowProxy)return false;return true; }
 function cast(root,frame,o,d,far=4) {
-  const ray=new T.Raycaster(frame.localToWorld(new T.Vector3(...o)),new T.Vector3(...d).transformDirection(frame.matrixWorld),0,far);
+  const ray=new T.Raycaster(frame.localToWorld(new T.Vector3(...o).multiplyScalar(sizeFactor)),new T.Vector3(...d).transformDirection(frame.matrixWorld),0,far*sizeFactor);
   return ray.intersectObject(root,true).find(visible);
 }
 function mouths(root,gun,recoil) {
   for(const x of D.launcherColumns)for(const y of D.launcherRows){
     const back=cast(root,gun,[x,y,1.025],[0,0,-1]);assert.ok(back,'physical cell backplate');
-    near(gun.worldToLocal(back.point.clone()).z,-.5175,.001,'cell air to real rear plate');
+    near(gun.worldToLocal(back.point.clone()).z/sizeFactor,-.5175,.001,'cell air to real rear plate');
     for(let i=0;i<8;i++){
       const a=(i+.173)*Math.PI/4;
       const rim=cast(root,gun,[x+Math.cos(a)*.128,y+Math.sin(a)*.128,1.02],[0,0,-1],.03);
-      assert.ok(rim,'finite missile mouth annulus');near(gun.worldToLocal(rim.point.clone()).z,1,.001,'terminal plane');
+      assert.ok(rim,'finite missile mouth annulus');near(gun.worldToLocal(rim.point.clone()).z/sizeFactor,1,.001,'terminal plane');
       const side=cast(root,gun,[x,y,.1],[Math.cos(a),Math.sin(a),0],.15);
-      assert.ok(side,'actual inward canister walls');const v=gun.worldToLocal(side.point.clone());
+      assert.ok(side,'actual inward canister walls');const v=gun.worldToLocal(side.point.clone()).divideScalar(sizeFactor);
       near(Math.hypot(v.x-x,v.y-y),.115,.005,'canister bore including LOW chord');
     }
   }
   const bore=cast(root,recoil,[0,0,2.365],[0,0,-1],.3);assert.ok(bore);
-  near(recoil.worldToLocal(bore.point.clone()).z,2.15,.001,'open 30 mm muzzle depth');
+  near(recoil.worldToLocal(bore.point.clone()).z/sizeFactor,2.15,.001,'open 30 mm muzzle depth');
   // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback no longer lays a barrel-paint
   // duplicate annulus 0.5 mm ahead of a verified physical mouth, so this probe reads the authored openTube ring itself.
   // It is sampled off the ring's radial seam (angle .173, as physicalMuzzleBore.ts samples): a ray exactly on the
@@ -128,8 +130,8 @@ function movingClearance(gun) {
   for(const p of pieces.filter(p=>p.bucket==='gunMount' && !['launcher-journal','launcher-saddle'].includes(p.name))) {
     const a=p.mesh.geometry.attributes.position;
     for(let i=0;i<a.count;i++){
-      const world=new T.Vector3().fromBufferAttribute(a,i).applyMatrix4(p.mesh.matrixWorld).applyMatrix4(gun.matrixWorld);
-      assert.ok(world.y>2.085,`${p.name} clears highest deck furniture over full yaw: ${world.y}`);
+      const world=new T.Vector3().fromBufferAttribute(a,i).applyMatrix4(p.mesh.matrixWorld).multiplyScalar(sizeFactor).applyMatrix4(gun.matrixWorld);
+      assert.ok(world.y>2.085*sizeFactor,`${p.name} clears highest deck furniture over full yaw: ${world.y}`);
     }
   }
 }
@@ -162,7 +164,7 @@ for(const quality of ['high','low']) {
   assert.throws(seats,assert.AssertionError,'detached mudflap negative');flap.position.y=flapY;flap.updateMatrixWorld(true);
   const mount=tank.root.getObjectByName('gunMount');mount.visible=false;
   assert.throws(()=>mouths(tank.root,gun,recoil),assert.AssertionError,'missing canister stock negative');mount.visible=true;
-  const plug=new T.Mesh(new T.BoxGeometry(.28,.28,.03),double);plug.position.set(-1.18,.12,.98);gun.add(plug);tank.root.updateMatrixWorld(true);
+  const plug=new T.Mesh(new T.BoxGeometry(.28*sizeFactor,.28*sizeFactor,.03*sizeFactor),double);plug.position.set(-1.18,.12,.98).multiplyScalar(sizeFactor);gun.add(plug);tank.root.updateMatrixWorld(true);
   assert.throws(()=>mouths(tank.root,gun,recoil),assert.AssertionError,'capped launcher negative');gun.remove(plug);plug.geometry.dispose();
   let poses=0;
   for(const yaw of [-180,-90,0,90])for(const pitch of [-10,0,45]){

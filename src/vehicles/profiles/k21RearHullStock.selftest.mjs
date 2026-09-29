@@ -1,3 +1,5 @@
+// Measure historical source witnesses in their original metre frame.
+// Installed 0.90 size and unit-scale rigs are checked by vehicleSize.selftest.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -135,6 +137,7 @@ function buildCaptured(quality,mutation=null) {
   let tank;
   try {tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,deferStaticBatch:true});}
   finally {registerProfiledBuilders({[id]:buildK21X});}
+  tank.root.scale.setScalar(1 / .90);
   tank.root.traverse(object=>{
     if(object.isLOD){object.autoUpdate=false;object.levels.forEach((level,i)=>level.object.visible=i===0);}
     if(object.isMesh) {

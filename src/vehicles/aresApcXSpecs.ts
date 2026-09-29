@@ -64,13 +64,14 @@ spec.gun = {
   shells: [
     {
       name: 'L111A1 AP-T', type: 'AP', caliberMm: 12.7,
-      pen100Mm: 34, pen1000Mm: 24, pen2000Mm: 17,
+      // Gameplay-only flanking buff: retain HMG damage and cadence.
+      pen100Mm: 80, pen1000Mm: 70, pen2000Mm: 55,
       dmg: 24, velocityMps: 890, moduleDmg: 10, tracer: 'AP',
       reloadS: 0.14, count: 400,
     },
     {
       name: 'L111A1 API-T', type: 'AP', caliberMm: 12.7,
-      pen100Mm: 30, pen1000Mm: 21, pen2000Mm: 15,
+      pen100Mm: 68, pen1000Mm: 56, pen2000Mm: 42,
       dmg: 27, velocityMps: 860, moduleDmg: 12, tracer: 'AP',
       reloadS: 0.14, count: 300,
     },

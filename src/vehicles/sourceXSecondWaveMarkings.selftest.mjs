@@ -22,7 +22,7 @@ const laterIds=new Set([...laterAbramsIds,'type100','ztz100_x','ztz100_prototype
   // 2026-09-25 IFV identity batch: three X replicas and three photographic additions with their own anchors.
   'spz_puma_s1_x','cv90_x','type89_x','dardo','lrmv_lynx','borsuk',
   // 2026-09-28 French IFVs are additions, not changes to the historical anchors.
-  'amx10p','amx10p_25',...SUPPLIED_SOURCE_IDS]);
+  'amx10p','amx10p_25','marder2',...SUPPLIED_SOURCE_IDS]);
 assert.equal(newIds.size,23,'the C2 addition does not change the original second-wave batch');
 assert.equal(newIds.has('ariete_c2_x'),false);
 assert.deepEqual(VEHICLE_MARKING_ANCHORS.ariete_c2_x,{

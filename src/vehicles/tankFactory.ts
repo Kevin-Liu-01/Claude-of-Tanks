@@ -1,4 +1,5 @@
 import { applyTacticalRoleBalance } from './tacticalRoleBalance.ts';
+import { applyVehicleSizePolicy } from './vehicleSizePolicy.ts';
 import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
 // Typed eager fleet factory facade for release tools and headless audits. It
 // evaluates spec packs in donor order, seals the selectable roster, and
@@ -50,6 +51,7 @@ import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import './europePhotoIfvSpecs.ts';
 import './amx10pSpecs.ts';
+import './marder2Specs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -69,6 +71,7 @@ synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
 applyTacticalRoleBalance(TANK_SPECS);
 finalizeFirstPartyRoster();
+applyVehicleSizePolicy(TANK_SPECS);
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
 applyNativeFamilyOrderToCatalogs();

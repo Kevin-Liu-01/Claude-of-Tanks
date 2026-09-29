@@ -1,3 +1,5 @@
+// Source-space regression: undo only the owner-directed 1.10 uniform size.
+// Installed metre bounds/unit rigs are checked by vehicleSize.selftest.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
@@ -113,6 +115,7 @@ for (const quality of ['high', 'low']) {
     // tip, and its dark stock disc at floor+.025 is gone (challenger1XSuppliedGun); every other
     // pre-existing primitive is the same. Superseded: e456a8f4009c749032ffbf23adb3f2d5b0a299e2308e0475c4479f7ece7747c8.
     assert.equal(h.digest('hex'), '777742006e4ac88c1fe348409aeb7353142a5e9a4b2610dc8719c31bb2b89b5e', 'every pre-existing authored primitive buffer, placement and ownership is immutable');
+    actual.root.scale.setScalar(1 / 1.10); before.root.scale.setScalar(1 / 1.10);
     actual.root.updateMatrixWorld(true); before.root.updateMatrixWorld(true);
     const all = meshes(actual.root), base = meshes(before.root);
     checkSurfaces(all); checkReturns(all); checkAir(all); checkAir(base);
@@ -127,7 +130,7 @@ for (const quality of ['high', 'low']) {
     for (const yaw of [-.6, .7]) {
       turret.rotation.y = yaw; gun.rotation.x = -.15; actual.root.updateMatrixWorld(true);
       const [x, z, top] = SURFACES[0], local = new THREE.Vector3(x - D.turretPivot[0], top - D.turretPivot[1], z - D.turretPivot[2]);
-      const world = turret.localToWorld(local), up = new THREE.Vector3(0, 1, 0).transformDirection(turret.matrixWorld);
+      const world = turret.localToWorld(local.multiplyScalar(1.10)), up = new THREE.Vector3(0, 1, 0).transformDirection(turret.matrixWorld);
       const hit = ray(all, world.clone().addScaledVector(up, .08).toArray(), up.clone().negate().toArray(), .16);
       close(hit?.point.distanceTo(world), 0, 'hood follows turret yaw independently of gun pitch');
     }
