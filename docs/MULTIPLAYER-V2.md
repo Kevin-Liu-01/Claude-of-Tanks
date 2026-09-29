@@ -1016,11 +1016,35 @@ while hosting when it is leaving the match — its actor is already gone), so th
 the deployed site (stamp `de5322e7d`, 2026-09-28 22:48): PASS in 87 s — A hosting two peers on `rtc://`, C saw B move 17.4 m
 over 364 snapshots in 12 s, A closed → B elected after 8,337 ms (generation 2), C live on B with +120 snapshots in 4 s, B's hull
 2.12 m from where C saw it, A back as a peer on the auto path in one attempt (compile 2,572 ms), 0 browser errors. The
-`host_only` step-down and the report cadence against the real Worker: STEPDOWN_PLACEHOLDER
+`host_only` step-down and the report cadence: the deployed run's reports are not observable from outside the Worker; the
+cadence is receipted against the real actor's rules (`matchSessionP2p.selftest`: `loading`, every phase, every 10 s; one
+`ended`), and the step-down is proven end to end on the real actor by `tools/mp-p2p-stepdown.selftest.mjs` — which found a
+client bug first: a host whose ROOM socket dropped past the grace (its tab and actor alive) came back to a re-sent
+`match_start` naming the successor at generation 2, but `RoomClient.generation` / `hostId` answered from the stale start
+election it still held, so it offered to itself at generation 1 forever (the soak's `--migrate-mode=stepdown` run: 5
+reconnects, never live). Fixed in this lane: a newer generation in a re-sent `match_start` supersedes the held election,
+and the session's same-match re-entry steps a replaced host down at once (the `host_only` refusal of its next report stays
+the fallback). On the real actor: p2 elected 8,030 ms after the blip, p3 followed, p1 back received `rtc://…/2` with host p2,
+stepped down and was live as a peer of p2 within milliseconds of re-joining, p2 serving both. STEPDOWN_SOAK_PLACEHOLDER
 
-**TURN entry soak.** RELAY_PLACEHOLDER
+**TURN entry soak.** `--ice=relay` (`iceTransportPolicy: 'relay'` on every peer connection, both ends, the credentials
+from `https://cot.kevinliu.studio/api/ice` fetched with the site origin — 1 STUN + 6 TURN urls, TTL 28,800 s) at 2v2 for 3
+minutes with two migrations: every candidate pair `relay` (12 relay candidates gathered per connection, 171 ms median; one
+connection hit the 2.5 s gathering cap), joins 1.08–1.09 s (2.95 s for the capped one), wire RTT through Cloudflare's TURN
+18.8 ms min / 21.2 median / 61 p95 (max 324 during a migration), host uplink 228 kbit/s at 3 peers, no lost frames,
+migrations 9.29 s and 10.86 s to the first snapshot on every seat (host_changed 8.01 s, the new host live 9.24 / 9.12 s; one
+relayed re-offer took 1.7 s longer than the others), the old host back as a relay peer in 755 / 763 ms, ICE resolved 26
+times (once per connection — the renewal path `webRtcTransport.selftest` / `rtcClientLink.selftest` receipt: a renewed
+credential reaches the next offer / answer). The credential TTL is 28,800 s on production (`expiresInSeconds`), so no match
+of this certification crosses it; RELAY_HOLD_PLACEHOLDER
 
-**Realism run (the real game page as host).** REALISM_PLACEHOLDER
+**Realism run (the real game page as host).** `--host=game`: the game page itself (`?mp=v2`, the Play menu's LAN room,
+the renderer, the HUD, its own client) hosting three harness seats for 2 minutes with one migration away from it: the game
+host entered its battle in 8.07 s and its peers were welcomed 8.5 s after the start (they wait for the host's actor, which
+boots after the page's battle load); host uplink 136 kbit/s at 3 peers; host tick p95 0.3 ms; the game host's tab closed →
+host_changed 8.04 s → a harness seat live 9.25 s → every remaining seat on it within 9.25 s, tick continuous; jumps allies
+1.42 m (rows 0.08 m), enemies 0.45 m, the new host 0.26 m; desync at the end 0.001 m; 0 console errors on the game page;
+room messages 52 in + 94 out.
 
 **Open for P3b / P1 / P4 (each named above):** P3b — the host uplink at 14v14 (interest tiers, the unreliable channel, or
 per-peer rate adaptation), the WebRTC re-offer timeout / retry on `failed`, the migration seed for unseen hulls (a shorter

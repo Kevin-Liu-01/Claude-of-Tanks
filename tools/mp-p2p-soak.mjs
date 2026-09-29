@@ -253,6 +253,9 @@ function rendererMemory() {
 
 const series = report.series;
 const memorySeries = [];
+// A stop from outside (the wrapper's trap, ctrl-c) still ends with a report and no browser left behind.
+let stopping = false;
+for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => { if (stopping) return; stopping = true; failures.push(`stopped by ${signal} at ${elapsedMs()} ms`); log(`${signal}: ending the run`); });
 let origin = '';
 let roomCode = '';
 let generation = 0;
@@ -394,7 +397,7 @@ try {
     return { current, statuses, row };
   };
   await sampleAll();
-  while (performance.now() - playStartedAt < playMs) {
+  while (performance.now() - playStartedAt < playMs && !stopping) {
     await sleep(sampleS * 1000);
     const { row } = await sampleAll();
     const hostRow = row.peers.find((entry) => entry.role === 'host');
@@ -420,6 +423,8 @@ try {
   const endStatuses = await Promise.all(live().map(statusOf));
   const endTimelines = await Promise.all(live().map((peer) => timelineOf(peer)));
   live().forEach((peer, index) => finalStatus.set(peer.id, { status: endStatuses[index], timeline: endTimelines[index] }));
+  // every seat's timeline tail (the link, the room socket, the elections, the host) — what a dropped peer's last minutes looked like
+  report.timelines = Object.fromEntries([...finalStatus].map(([id, entry]) => [id, (entry.timeline ?? []).filter((event) => !/^(?:pc:ice|ice:resolved|pc:gathered|pc:new|frame:first)$/.test(event.kind) || event.kind === 'frame:first').slice(-160).map((event) => ({ atS: Math.round(event.atMs / 100) / 10, kind: event.kind, ...(event.state ? { state: event.state } : {}), ...(event.phase ? { phase: event.phase } : {}), ...(event.previous ? { previous: event.previous } : {}), ...(event.reconnects !== undefined ? { reconnects: event.reconnects } : {}), ...(event.generation !== undefined ? { generation: event.generation } : {}), ...(event.detail ? { detail: event.detail } : {}), ...(event.message ? { message: event.message } : {}), ...(event.reason !== undefined ? { reason: event.reason } : {}), ...(event.code !== undefined ? { code: event.code } : {}), ...(event.id !== undefined ? { id: event.id } : {}), ...(event.sinceMs !== undefined ? { sinceMs: event.sinceMs } : {}) }))]));
   report.memory = { renderers: rendererMemory(), series: memorySeries, jsHeapMB: Object.fromEntries([...finalStatus].map(([id, entry]) => [id, round((entry.status.memory?.jsHeapUsed ?? 0) / 1048576, 1)])) };
   summarize();
 } catch (error) {
