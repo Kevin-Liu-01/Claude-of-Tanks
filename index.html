@@ -1191,6 +1191,10 @@
       const open = document.getElementById('cot-credits-open');
       const close = document.getElementById('cot-credits-close');
       if (!dialog || !open || !close) return;
+      // Preserve native dialog keys without sending them to game shortcuts.
+      for (const type of ['keydown', 'keyup']) {
+        dialog.addEventListener(type, (event) => event.stopPropagation());
+      }
       open.addEventListener('click', (event) => {
         event.stopPropagation();
         if (!dialog.open) dialog.showModal();
