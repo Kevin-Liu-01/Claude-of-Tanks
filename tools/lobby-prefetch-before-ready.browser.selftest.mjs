@@ -337,8 +337,7 @@ export async function runLobbyPrefetchRegression({ dist, out, expectedBuildIndex
     });
     const [host, guest] = owners.pages;
     await run('create_owned_room', async () => {
-      await click(host, '.cot-battle-mode'); await click(host, '.cot-battle-choice[data-mode="private"]');
-      await click(host, '.cot-battle');
+      await click(host, '.cot-multiplayer-entry');
       const endpoint = await host.$eval('.cot-play [data-field="signal"]', element => element.value);
       report.signalingTransport = validateProductionRoomEndpoint(endpoint, options);
       await select(host, '.cot-play [data-field="create-size"]', '1');

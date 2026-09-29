@@ -846,10 +846,8 @@ async function nativeClick(page, selector, timeoutMs) {
   await page.click(selector);
 }
 
-async function openPrivateMenu(page, timeoutMs) {
-  await nativeClick(page, '.cot-battle-mode', timeoutMs);
-  await nativeClick(page, '.cot-battle-choice[data-mode="private"]', timeoutMs);
-  await nativeClick(page, '.cot-battle', timeoutMs);
+export async function openPrivateMenu(page, timeoutMs) {
+  await nativeClick(page, '.cot-multiplayer-entry', timeoutMs);
   await page.waitForSelector('.cot-play.show [data-action="create"]', { visible: true, timeout: timeoutMs });
 }
 
@@ -1045,8 +1043,8 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     }
     const [host, guest] = owners.pages;
     await run('private_controls', () => openPrivateMenu(host, left()));
-    const modes = await host.$$eval('.cot-play [data-mode]', (elements) => elements.map((el) => el.dataset.mode));
-    if (modes.join(',') !== 'solo,private,lan') throw failure('private_controls');
+    const modes = await host.$$eval('.cot-play .modes [data-mode]', (elements) => elements.map((el) => el.dataset.mode));
+    if (modes.join(',') !== 'private,lan') throw failure('private_controls');
     // The explicit local-build mode validates the built loopback default; it
     // never substitutes endpoints or changes the browser's Origin policy.
     const endpoint = await host.$eval('.cot-play [data-field="signal"]', (el) => el.value);

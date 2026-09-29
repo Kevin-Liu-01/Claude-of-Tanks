@@ -1181,7 +1181,7 @@ for (const failedStage of ['guest_invite_navigation', 'guest_invite_membership',
           if (stages.at(-1) === failedStage) throw failure;
           assert.equal(role, 'guest', 'guest membership succeeds before the host membership wait');
         },
-        async $$eval() { return ['solo', 'private', 'lan']; },
+        async $$eval() { return ['private', 'lan']; },
         async $eval(selector, read) {
           return read({ value: 'wss://signal.example.test/rooms', textContent: 'ABCD12' });
         },
@@ -1342,3 +1342,11 @@ for (const args of [['--ammo-slot=2'], ...['0', '4', '2.0', '02', '', 'PRIVATE_T
   assert.doesNotMatch(invalid.stderr, /PRIVATE_TOKEN/);
 }
 console.log('production private-room UI smoke selftest passed (deterministic guards and cleanup; not a live receipt)');
+
+// The release probe uses the same explicit setup entry as players; it must
+// never launch a battle just to reach the room configuration screen.
+{
+  const clicks=[];
+  await relayProbe.openPrivateMenu({bringToFront:async()=>{},waitForSelector:async()=>{},click:async selector=>clicks.push(selector)},1000);
+  assert.deepEqual(clicks,['.cot-multiplayer-entry']);
+}
