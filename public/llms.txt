@@ -22,7 +22,7 @@ Use the official pages below as the primary public sources. Current runtime docu
 - [Performance and loading](https://cot.kevinliu.studio/docs/performance): Cold boot, staged battle warmup, first-combat frames, frame-gap attribution, constrained devices, and release budgets.
 - [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): Thirty maps, terrain, routes, structures, collision, vegetation, props, destructibles, wrecks, and world verification.
 - [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Shared deterministic perception, route planning, weapon-aware fire control, friendly-fire safety, survival, and authority tests.
-- [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, authoritative state, input intent, filtered snapshots, prediction, spotting, bots, reconnection, and ranked services.
+- [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, authoritative state, input intent, filtered snapshots, prediction, spotting, bots, reconnection, and host migration.
 - [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Event-driven weapons, engines, impacts, spatial listening, bounded mixing, crew radio, and time-scaled killcam sound.
 - [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, dual reticle, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch controls.
 - [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene format, placement, cameras, timelines, effects, capture output, and review workflow.

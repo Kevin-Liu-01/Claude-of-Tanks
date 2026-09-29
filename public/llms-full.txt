@@ -51,7 +51,7 @@ Map configurations provide terrain and simulation descriptors without requiring 
 
 Multiplayer separates client intent and presentation from authority. Clients request movement, aim, fire, ammunition, consumable, and interaction actions. The authoritative side resolves movement rules, reloads, projectile outcomes, hits, damage, visibility, bots, destruction, and match results. Local prediction and reconciliation make the controlled vehicle responsive; filtered snapshots prevent hidden enemy coordinates from being serialized to clients that are not allowed to see them.
 
-The documented runtime includes private and LAN room paths and a renderer-free dedicated service path for ranked authority. Details, availability, and deployment requirements should be sourced from https://cot.kevinliu.studio/docs/multiplayer and the repository's `docs/MULTIPLAYER-V2.md` rather than inferred from marketing screenshots.
+The documented runtime includes private and LAN rooms hosted peer-to-peer by the elected commander's browser. Details, availability, and deployment requirements should be sourced from https://cot.kevinliu.studio/docs/multiplayer and the repository's `docs/MULTIPLAYER-V2.md` rather than inferred from marketing screenshots.
 
 ## Renderer, performance, and mobile behavior
 

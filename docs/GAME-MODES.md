@@ -184,13 +184,13 @@ button, which re-enters through the Battle Again transaction with the ladder
 sortie as its trigger (`ui:campaignNext`).
 
 Frontline Assault also plays in rooms (batch 27, 2026-09-15): the room carries the
-mode on the wire like every registered mode (`GAME_MODE_IDS` is the coordinator's
+mode on the wire like every registered mode (`GAME_MODE_IDS` is the room protocol's
 envelope check), every human deploys on Alpha as the attacking side (`isCoopGameMode`
-in `net/lobby.ts` covers Endless Horde and Frontline Assault: no team select, seven
+in `src/mp/room/roomPolicy.ts` covers Endless Horde and Frontline Assault: no team select, seven
 seats), the authority bakes the `assault-trenches` terrain variant as its own shared
-terrain entry and seats the sectors on the carved lines, the presentation runtime
-loads the same variant in the browser, and the private-match handoff fills Bravo with
-the formation's defender bots and Alpha with the arranged allied bots (the room's
+terrain entry and seats the sectors on the carved lines, the battle presentation
+loads the same variant in the browser, and the mode controller draws Bravo's
+defenders from the formation while every human deploys on Alpha (the room's
 campaign operation names the map, the nation and the difficulty). Campaign progress stays a solo record: a network `battle:ended`
 (`network: true`) never records an operation.
 

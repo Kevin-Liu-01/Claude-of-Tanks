@@ -20,7 +20,9 @@ structure, full-detail instanced vegetation/ground-cover, generated wreck, PBR,
 and biome-specific layered-horizon packs; the shared engine sky owns every
 outdoor Garage atmosphere;
 `playMenu.ts` owns direct Solo,
-Private, LAN, and Ranked deployment; `networkStatus.ts` owns reconnect feedback;
+Private and LAN deployment over `src/mp/session/playMenuAdapter.ts`;
+`multiplayerStatus.ts` owns the network strip, panel and banner over
+`src/mp/session/networkStatus.ts`;
 `hud.ts` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
 coalescing, stale-world rejection, and the procedural cartography fallback;
 `damagePanel.ts` owns the battle-only camera-up tank schematic and its

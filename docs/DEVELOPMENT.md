@@ -231,9 +231,10 @@ writes `src/ui/mapThumbs.ts` so regeneration cannot restore a deleted `.js`
 owner.
 
 This covers performance instrumentation, renderer recovery helpers, audio,
-protocol validation, browser bridge behavior, reliable presentation events,
-room invites and reconnect, local prediction, adverse delivery, ranked
-clients/services, signaling, world collision, match pacing, movement, combat,
+the wire codecs, the room protocol, the match client and its presentation,
+reliable events, room invites and reconnect, local prediction, adverse
+delivery, the browser host and host migration, world collision, match pacing,
+movement, combat,
 spotting, bots, game state, equipment, consumables, mobile aim, vehicle
 contracts, world destruction, interface contracts, and track geometry.
 The ordered inventory lives in `tools/selftest-suites.mjs`; package scripts

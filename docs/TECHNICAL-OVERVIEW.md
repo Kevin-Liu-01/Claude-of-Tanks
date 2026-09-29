@@ -103,13 +103,12 @@ flowchart LR
     Bridge --> UI[HUD, audio, killcam, and reports]
 ```
 
-The `Delivery` boundary has three implementations:
+The `Delivery` boundary has two implementations:
 
 1. Solo: direct in-page composition with no network transport.
-2. Private or LAN: browser-hosted authority with WebRTC control/event and state
-   channels.
-3. Ranked: renderer-free dedicated authority with an ordered WebSocket
-   service.
+2. Private or LAN: the match actor in the elected commander's browser (a
+   Worker), every seat on one reliable ordered WebRTC data channel; the Room
+   Durable Object carries rooms, signaling and host migration.
 
 The authority rules remain the same. Only authority location and delivery
 adapter change.
@@ -170,11 +169,11 @@ Packaged tank portraits and battle-only top-down damage masks are strict too:
 DOM fallbacks, lazy fleet builds, offscreen targets, pixel readback, Canvas2D
 downsampling, layer metadata, and bounded cache states have one explicit owner.
 The private-room operation surface is strict TypeScript end to end: mode and
-map selection, signaling acquisition, ICE, named invites, lobby snapshots,
-readiness, retained-room reattachment, and ranked queues cross explicit ports
-before any session can hand off into battle. The loader, room coordinator, and
-ranked client share those canonical contracts; incomplete match-room packets
-cannot enter the complete lobby presentation surface.
+map selection, the room connection, ICE, named invites, lobby snapshots,
+readiness and retained-room reattachment cross explicit ports before any
+session can hand off into battle. The loader, the lobby intent and the browser
+composition share those canonical contracts; incomplete room packets cannot
+enter the lobby presentation surface.
 Pure keyboard, flag, glyph, minimap, drive-readout, spectator, map-preview, and
 Garage-order policy is also typed and remains directly Node-testable.
 The browser input layer now exports strict action, binding, settings, gamepad,
@@ -185,8 +184,8 @@ roster records and active simulation entities are separate types, while world,
 collision, AI, shell, match-mode, event, and camera seams are explicit. This
 keeps combat out of first-paint evaluation without leaving the fixed-step owner
 unchecked.
-The shared bot controller is strict TypeScript and renderer-free. Solo,
-browser-hosted, and dedicated matches inject the same typed entity, terrain,
+The shared bot controller is strict TypeScript and renderer-free. Solo and
+browser-hosted matches inject the same typed entity, terrain,
 obstacle, spotting, and random-source ports, so target selection, routing,
 articulated gun laying, friendly-fire discipline, and stuck recovery remain one
 deterministic policy instead of drifting across authority modes.
@@ -429,9 +428,9 @@ rotation blending, and bounded extrapolation.
 ### 8.4 Rooms and services
 
 Private and LAN rooms retain roster, team, spectator, readiness, and rematch
-state around an active match. Signaling coordinates peers but does not become
-combat authority. Ranked services own dedicated match creation, rating, and
-matchmaking.
+state around an active match. The room coordinates peers, elects and migrates
+the host and relays their signaling, but never becomes combat authority. There
+is no ranked service.
 
 See [MULTIPLAYER-V2.md](MULTIPLAYER-V2.md) for the complete
 protocol and service contract.

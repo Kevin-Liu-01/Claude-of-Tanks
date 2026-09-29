@@ -355,14 +355,13 @@ receipt `src/vehicles/camoWorldScale.selftest.mjs`).
 
 ## Multiplayer and persistent rooms
 
-### Four authority arrangements
+### Three authority arrangements
 
 | Mode | Authority | Delivery |
 | --- | --- | --- |
 | Solo bots | Local browser, direct composition | No network layer |
-| LAN | Trusted browser host | Direct WebRTC data channels |
-| Private room | Trusted browser host | WebRTC with configured ICE fallback |
-| Ranked | Dedicated Node service | Authenticated WebSocket |
+| LAN | The elected commander's browser (the match actor in a Worker) | One reliable WebRTC data channel per seat; rooms and signaling from the LAN helper |
+| Private room | The elected commander's browser (the match actor in a Worker) | One reliable WebRTC data channel per seat; rooms, signaling and host migration from the Room Durable Object, TURN when needed |
 
 Network clients send control intent, not trusted outcomes. Position, spotting,
 hits, damage, reload completion, destructibles, and victory are resolved by

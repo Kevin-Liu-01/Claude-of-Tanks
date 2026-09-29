@@ -151,7 +151,7 @@ Historical counts and architecture claims may differ from the current runtime.
 | src/ui/ | Garage, battle HUD, lobbies, results, settings, icons, and touch controls |
 | src/fx/ | Particles, impacts, decals, explosions, and presentation clock |
 | src/audio/ | Audio engine and voices |
-| server/ | Signaling, distributed room storage, dedicated matches, matchmaking, and rating |
+| server/ | The match actor (loop, publisher, interest tiers, seat tokens), the LAN room helper, collision manifests, pacing and telemetry receipts |
 | tools/ | Generators, probes, browser tests, captures, and release checks |
 
 ## Common commands
