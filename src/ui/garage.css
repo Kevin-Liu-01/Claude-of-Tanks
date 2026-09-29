@@ -355,19 +355,16 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-battle-galaxy>svg{flex:0 0 24px;}
 .cot-battle-galaxy strong{display:block;font-size:12px;color:#dce5fa;}
 .cot-battle-galaxy p{margin-top:3px;font-size:10px;line-height:1.5;}
-@media (max-width:600px){
-  .cot-battle-menu{width:calc(100vw - 24px);max-height:calc(var(--cot-viewport-height,100dvh) - 132px);}
-  .cot-battle-menu-scroll{grid-template-columns:minmax(0,1fr);}
-  .cot-battle-mode-list,.cot-battle-details{padding:12px;}
-  .cot-battle-details{border-left:0;border-top:1px solid #a0b4c322;}
-  .cot-battle-preview{margin-bottom:16px;}
-}
-@media (max-height:500px){
-  .cot-battle-menu{max-height:calc(var(--cot-viewport-height,100dvh) - 94px);}
-  .cot-battle-menu-head{padding-block:4px;}
-  .cot-battle-menu-head p{display:none;}
-  .cot-battle-menu-foot{padding-block:6px;}
-}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-battle-menu{
+  width:calc(100vw - 24px);max-height:calc(var(--cot-viewport-height,100dvh) - 132px);}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-battle-menu-scroll{grid-template-columns:minmax(0,1fr);}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.cot-battle-mode-list,.cot-battle-details){padding:12px;}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-battle-details{border-left:0;border-top:1px solid #a0b4c322;}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-battle-preview{margin-bottom:16px;}
+body[data-cot-height='short'] .cot-battle-menu{max-height:calc(var(--cot-viewport-height,100dvh) - 94px);}
+body[data-cot-height='short'] .cot-battle-menu-head{padding-block:4px;}
+body[data-cot-height='short'] .cot-battle-menu-head p{display:none;}
+body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 @media (hover:hover) and (pointer:fine){
   .cot-battle-menu-head button:hover{color:#fff;background:#24313d;border-color:#5f7483;}
   .cot-battle-menu-foot button:hover{background:#ffad36;}
