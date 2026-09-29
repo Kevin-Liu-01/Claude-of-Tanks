@@ -82,6 +82,8 @@ export interface MatchSessionP2pOptions {
   maxPeers?: number;
   /** The countdown a fresh match starts with (5 s; the proofs shorten it). */
   countdownS?: number;
+  /** The snapshot rate the host publishes at for the near tier (SNAPSHOT_HZ by default; a divisor of the tick rate — the soak compares 20 and 30). */
+  snapshotHz?: number;
   /**
    * A seat re-named host for a match already under way (its tab reloaded inside the host grace) holds nothing to resume
    * from: it declines so a peer resumes from its sealed keyframe, and boots afresh only when no election follows within
@@ -111,6 +113,8 @@ export interface SessionP2pStatus {
   relayed: number;
   uplinkBytesPerS: number;
   hostState: string | null;
+  /** Snapshots the host skipped for slow peers (P3b; 0 as a peer). */
+  snapshotSkips: number;
 }
 
 export interface MatchSessionOptions {
@@ -183,7 +187,7 @@ export class MatchSession {
   private runningGeneration = 0;
   private readonly p2pStatus: SessionP2pStatus = {
     role: null, generation: 0, hostId: null, migrating: false, migrationHostId: null, candidateType: null, viaTurn: false,
-    peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null,
+    peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null, snapshotSkips: 0,
   };
 
   constructor({
@@ -236,6 +240,7 @@ export class MatchSession {
     status.relayed = this.host?.relayed ?? 0;
     status.uplinkBytesPerS = this.host?.uplinkBytesPerS ?? 0;
     status.hostState = this.host?.state ?? null;
+    status.snapshotSkips = this.host?.snapshotSkips ?? 0;
     return status;
   }
   /** True when this seat may host (a host thread is available, the tier is not mobile, the switch is off). */
@@ -450,6 +455,7 @@ export class MatchSession {
       const config: HostBootConfig = {
         roomId: round.room.roomCode, matchId: payload.matchId, generation: this.room.generation, mapId: payload.mapId, mode: payload.mode, seed: payload.seed,
         seats: plan.seats, bots: plan.bots, countdownS: p2p.countdownS ?? 5, battleLimitS: null, hostSecret: this.hostSecret, manifestBase: p2p.manifestBase ?? null, resume: null,
+        ...(p2p.snapshotHz !== undefined ? { snapshotHz: p2p.snapshotHz } : {}),
       };
       const host = this.createHost();
       this.host = host;
@@ -595,6 +601,7 @@ export class MatchSession {
       roomId: round.room.roomCode, matchId: round.matchStart.matchId, generation: change.generation, mapId: round.matchStart.mapId, mode: round.matchStart.mode,
       seed: welcome ? welcome.seed : round.matchStart.seed, seats: plan.seats, bots: plan.bots, countdownS: resume ? 0 : this.p2pOptions?.countdownS ?? 5, battleLimitS, hostSecret: secret,
       manifestBase: this.p2pOptions?.manifestBase ?? null, resume,
+      ...(this.p2pOptions?.snapshotHz !== undefined ? { snapshotHz: this.p2pOptions.snapshotHz } : {}),
     };
     try {
       await host.start(config);

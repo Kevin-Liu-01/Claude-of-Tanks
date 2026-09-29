@@ -45,6 +45,8 @@ const countdownS = Number(param('countdown', '3')) || 3;
 const stepHz = Math.max(10, Math.min(120, Number(param('hz', '60')) || 60));
 /** fire=0: drive but never fire (a hold run must not end on a verdict). */
 const firing = param('fire', '1') !== '0';
+/** snapshotHz=20|30: the rate this seat publishes at when it hosts (P3b's comparison; the actor's default otherwise). */
+const snapshotHzParam = Number(param('snapshotHz', '0')) || 0;
 const TIMELINE_LIMIT = 4000;
 
 interface TimelineEntry { atMs: number; wall: number; kind: string; [key: string]: unknown }
@@ -294,6 +296,7 @@ function boot(): void {
         manifestBase: COLLISION_MANIFEST_ROUTE,
         tier: 'desktop',
         countdownS,
+        ...(snapshotHzParam > 0 ? { snapshotHz: snapshotHzParam } : {}),
         onLog: (level, message, fields) => { record(`host-log:${level}`, { message, ...(fields ?? {}) }); },
       },
     },
@@ -334,7 +337,7 @@ function boot(): void {
     return matchClient;
   };
   title.textContent = `peer harness · ${playerId} · ${canHost ? 'can host' : 'never hosts'} · ice=${iceMode}`;
-  record('booted', { playerId, canHost, iceMode, predict, countdownS, stepHz, firing });
+  record('booted', { playerId, canHost, iceMode, predict, countdownS, stepHz, firing, snapshotHz: snapshotHzParam || null });
 }
 
 // ------------------------------------------------------------ the frame loop and the samplers
@@ -400,6 +403,7 @@ function status(): Record<string, unknown> {
       serverOffsetMs: stats.serverOffsetMs, clockSamples: stats.clockSamples, arrivalJitterMs: stats.arrivalJitterMs, lossRate: stats.lossRate, interpolationDelayMs: stats.interpolationDelayMs,
       bytesIn: stats.bytesIn, bytesOut: stats.bytesOut, bytesInPerS: stats.bytesInPerS, bytesOutPerS: stats.bytesOutPerS, framesIn: stats.framesIn, framesOut: stats.framesOut,
       snapshotsAccepted: stats.snapshotsAccepted, keyframes: stats.keyframes, missingBaselines: stats.missingBaselines, keyframeRequests: stats.keyframeRequests, staleSnapshots: stats.staleSnapshots,
+      snapshotRateHz: client?.snapshotRateHz ?? null, maxRowExtrapolatedMs: stats.maxRowExtrapolatedMs, snappedSamples: stats.snappedSamples,
       inputAckLagTicks: stats.inputAckLagTicks, inputLeadTicks: stats.inputLeadTicks, inputMarginTicks: stats.inputMarginTicks, reconnects: stats.reconnects, stalls: stats.stalls, outageMs: stats.outageMs,
       decodeErrors: stats.decodeErrors, serverErrors: stats.serverErrors, closeReason: stats.closeReason, bufferedBytes: stats.bufferedBytes, framesDropped: stats.transport.framesDropped,
       prediction: stats.prediction ? { lastPositionErrorM: stats.prediction.lastPositionErrorM, maxPositionErrorM: stats.prediction.maxPositionErrorM, maxFreePositionErrorM: stats.prediction.maxFreePositionErrorM, maxContactPositionErrorM: stats.prediction.maxContactPositionErrorM, hardSnaps: stats.prediction.hardSnaps, reconciliations: stats.prediction.reconciliations, maxCorrectionStepM: stats.prediction.maxCorrectionStepM } : null,

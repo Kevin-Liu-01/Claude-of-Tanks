@@ -68,6 +68,8 @@ export interface NetworkStatusMatchSource {
   };
   readonly phase: ConnectionPhase;
   readonly welcome: unknown;
+  /** The authority's snapshot rate as the WELCOME named it (P3b); a scripted source may omit it and the configured rate stands. */
+  readonly snapshotRateHz?: number;
   readonly serverClock: {
     readonly rttMs: number | null;
     readonly rttJitterMs: number;
@@ -173,6 +175,8 @@ export interface NetworkStatusSnapshot {
   hostUplinkKbps: number;
   /** Peers this host serves (0 as a peer). */
   peersConnected: number;
+  /** Snapshots this host skipped for slow peers (their channel over the skip bound; never delayed) — 0 as a peer (P3b). */
+  hostSnapshotSkips: number;
   /** An election is under way: the new host boots or the link moves to it. */
   migrating: boolean;
   migrationHostId: string | null;
@@ -311,7 +315,7 @@ function createSnapshot(expectedSnapshotHz: number, rosterCapacity: number): Net
     lossRate: 0, correctionsPerS: 0, bytesInPerS: 0, bytesOutPerS: 0, closeReason: null, seatDropped: false,
     room: 'idle', roomReconnectAttempt: 0, roomRetryAtMs: null, roomReconnects: 0, roomRttMs: null, roomRegion: null, seat: null,
     rosterCount: 0, rosterCapacity, roomPhase: null, matchStatus: null,
-    role: null, generation: 0, hostId: null, candidateType: null, viaTurn: false, hostUplinkKbps: 0, peersConnected: 0, migrating: false, migrationHostId: null,
+    role: null, generation: 0, hostId: null, candidateType: null, viaTurn: false, hostUplinkKbps: 0, peersConnected: 0, hostSnapshotSkips: 0, migrating: false, migrationHostId: null,
     health: 'unknown', healthReason: 'idle',
   };
 }
@@ -424,7 +428,7 @@ export class NetworkStatusModel {
     if (!this.p2p) return;
     this.p2p = null;
     const s = this.snapshot;
-    s.role = null; s.generation = 0; s.hostId = null; s.candidateType = null; s.viaTurn = false; s.hostUplinkKbps = 0; s.peersConnected = 0;
+    s.role = null; s.generation = 0; s.hostId = null; s.candidateType = null; s.viaTurn = false; s.hostUplinkKbps = 0; s.peersConnected = 0; s.hostSnapshotSkips = 0;
     s.migrating = false; s.migrationHostId = null;
   }
 
@@ -546,7 +550,7 @@ export class NetworkStatusModel {
     const p2p = this.p2p?.p2p ?? null;
     if (p2p) {
       s.role = p2p.role; s.generation = p2p.generation; s.hostId = p2p.hostId; s.candidateType = p2p.candidateType; s.viaTurn = p2p.viaTurn;
-      s.hostUplinkKbps = p2p.uplinkBytesPerS * 8 / 1000; s.peersConnected = p2p.peersConnected; s.migrating = p2p.migrating; s.migrationHostId = p2p.migrationHostId;
+      s.hostUplinkKbps = p2p.uplinkBytesPerS * 8 / 1000; s.peersConnected = p2p.peersConnected; s.hostSnapshotSkips = p2p.snapshotSkips; s.migrating = p2p.migrating; s.migrationHostId = p2p.migrationHostId;
     } else if (this.p2p) {
       s.role = null; s.migrating = false; s.migrationHostId = null;
     }
@@ -555,6 +559,8 @@ export class NetworkStatusModel {
       s.transport = match.transport.state;
       s.link = match.phase;
       s.welcomed = match.welcome !== null && match.welcome !== undefined;
+      // the authority's rate as the WELCOME named it (P3b: 20 or 30 Hz): the cadence health compares against it
+      if (typeof match.snapshotRateHz === 'number' && match.snapshotRateHz > 0) s.expectedSnapshotHz = match.snapshotRateHz;
       const clock = match.serverClock;
       s.rttMs = clock.minRttMs ?? clock.rttMs;
       s.rttMedianMs = clock.medianRttMs ?? clock.rttMs;

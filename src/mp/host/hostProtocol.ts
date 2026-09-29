@@ -62,6 +62,8 @@ export interface HostBootConfig {
   manifestBase: string | null;
   /** A migration: boot at this state, at the tick the main thread computed (the keyframe's plus the wall time since). */
   resume: (HostResumeState & { resumeTick: number }) | null;
+  /** The snapshot rate for the near tier (SNAPSHOT_HZ when absent; a divisor of the tick rate). */
+  snapshotHz?: number;
 }
 
 export interface HostMatchReport {

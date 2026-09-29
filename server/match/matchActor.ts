@@ -218,6 +218,13 @@ interface ActorClient {
   closing: boolean;
 }
 
+/**
+ * Per-peer rate adaptation (P3b, 2026-09-29; docs/MULTIPLAYER-V2.md §13.9.3): a viewer whose link holds more than
+ * SNAPSHOT_SKIP_BYTES unsent (≈ 0.7 s of snapshots at 14v14) has this snapshot skipped — never delayed, never queued
+ * behind — so a slow peer only ever falls a snapshot behind and never slows the others; above the soft bound for
+ * BACKPRESSURE_SUSTAINED_MS, or the hard bound at once, the link closes as BACKPRESSURE.
+ */
+export const SNAPSHOT_SKIP_BYTES = 16 * 1024;
 const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
 const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
@@ -617,6 +624,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         continue;
       }
       client.pressureSinceMs = null;
+      if (buffered > SNAPSHOT_SKIP_BYTES) {
+        // a slow peer: this snapshot is skipped (the next one is fresher than a queued copy of this one would be)
+        client.droppedSnapshots++;
+        totals.droppedSnapshots++;
+        continue;
+      }
       const { bytes, keyframe } = client.publisher.publish(buildFrame(client, tick), nowMs);
       if (send(client, bytes)) {
         totals.snapshots++;

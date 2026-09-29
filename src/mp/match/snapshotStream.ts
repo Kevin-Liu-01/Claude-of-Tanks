@@ -36,7 +36,7 @@ export interface SnapshotStreamStats {
 
 export class SnapshotStream {
   readonly ringSize: number;
-  readonly ticksPerSnapshot: number;
+  ticksPerSnapshot: number;
   private readonly ring = new Map<number, SnapshotFrame>();
   private readonly order: number[] = [];
   private latestFrame: SnapshotFrame | null = null;
@@ -65,6 +65,12 @@ export class SnapshotStream {
 
   /** Baseline lookup for `decodeMessage({ resolveBaseline })`. */
   readonly resolveBaseline = (tick: number): SnapshotFrame | null => this.ring.get(tick) ?? null;
+
+  /** The authority's cadence as the WELCOME names it (the loss estimate counts gaps in it). */
+  setTicksPerSnapshot(ticksPerSnapshot: number): void {
+    if (!Number.isInteger(ticksPerSnapshot) || ticksPerSnapshot < 1) throw new TypeError('ticks per snapshot must be a positive integer');
+    this.ticksPerSnapshot = ticksPerSnapshot;
+  }
 
   accept(packet: SnapshotPacket): SnapshotAccept {
     if (this.latestFrame && packet.tick <= this.latestFrame.tick) {

@@ -70,6 +70,8 @@ const countdownS = Number(argValue('countdown', 3));
 const sampleS = Math.max(1, Number(argValue('sample', 2)));
 const rejoin = argValue('rejoin', '1') !== '0';
 const graceMs = Number(argValue('grace', 8000));
+/** --snapshot-hz=20|30: the rate the host publishes at (P3b's comparison; 0 = the actor's default). */
+const snapshotHz = Number(argValue('snapshot-hz', 0)) | 0;
 /** close: the host's tab dies. stepdown: the host's ROOM socket drops past the grace (a network blip) while its tab and actor live on; it re-joins after the election and its next report is refused host_only, so it steps down to a peer of the new host. */
 const migrateMode = argValue('migrate-mode', 'close');
 const outputDir = resolve(argValue('out', join(root, '.qa-dev', 'mp-p2p-soak')));
@@ -117,7 +119,7 @@ function freePort() {
 }
 
 const report = {
-  label, seats, teamSize, hosts, pass: false, failures: [], verdicts: [], parameters: { roomsUrl, playMin, migrateEveryMin, iceMode, iceUrl: iceMode === 'none' ? null : iceUrl, hosts, mapId, mode, gameMode, predict, countdownS, sampleS, rejoin, graceMs },
+  label, seats, teamSize, hosts, pass: false, failures: [], verdicts: [], parameters: { roomsUrl, playMin, migrateEveryMin, iceMode, iceUrl: iceMode === 'none' ? null : iceUrl, hosts, mapId, mode, gameMode, predict, countdownS, sampleS, rejoin, graceMs, snapshotHz: snapshotHz || null },
   machine: { loadStart: loadAverage(), loadEnd: null, node: process.version },
   room: null, entry: null, steady: null, migrations: [], memory: null, roomMessages: null, errors: [], peers: [], series: [], wallMs: 0,
 };
@@ -150,7 +152,7 @@ function observe(page, id) {
 const relevantErrors = () => errors.filter((entry) => !/favicon|ERR_ABORTED/i.test(entry.text));
 
 function peerUrl(origin, peer) {
-  const params = new URLSearchParams({ rooms: roomsUrl, id: peer.id, name: peer.name, index: String(peer.index), host: peer.canHost ? '1' : '0', ice: iceMode, predict, countdown: String(countdownS), fire });
+  const params = new URLSearchParams({ rooms: roomsUrl, id: peer.id, name: peer.name, index: String(peer.index), host: peer.canHost ? '1' : '0', ice: iceMode, predict, countdown: String(countdownS), fire, ...(snapshotHz > 0 ? { snapshotHz: String(snapshotHz) } : {}) });
   return `${origin}/mp-p2p-peer/?${params}`;
 }
 
@@ -390,6 +392,10 @@ try {
     snap: status.match?.snapshotsAccepted ?? null, rtt: status.match?.rttMs ?? null, off: status.match?.serverOffsetMs ?? null, bIn: status.match?.bytesIn ?? null, bOut: status.match?.bytesOut ?? null,
     loss: status.match?.lossRate ?? null, stale: status.match?.staleSnapshots ?? null, missing: status.match?.missingBaselines ?? null, dropped: status.match?.framesDropped ?? null, stalls: status.match?.stalls ?? null, reconnects: status.match?.reconnects ?? null,
     heap: status.memory?.jsHeapUsed ?? null, hostUp: status.host?.uplinkBytesPerS ?? null, peers: status.host?.peersConnected ?? null, tickP95: status.host?.core?.tickP95Ms ?? null, tickP50: status.host?.core?.tickP50Ms ?? null, tickMax: status.host?.core?.tickMaxMs ?? null,
+    // P3b: the host's snapshot rate, its skips for slow peers and the interest tiers (rows published per tier, held, populations); the peer's interpolation facts
+    hz: status.host?.core?.snapshotHz ?? status.match?.snapshotRateHz ?? null, skips: status.host?.core?.snapshotSkips ?? null,
+    tierPub: status.host?.core?.interest?.published ?? null, tierHeld: status.host?.core?.interest?.held ?? null, tierPop: status.host?.core?.interest?.population ?? null,
+    rowExtra: status.match?.maxRowExtrapolatedMs ?? null, snapped: status.match?.snappedSamples ?? null, delay: status.match?.interpolationDelayMs ?? null,
     rtcSent: status.rtc?.totals?.bytesSent ?? null, rtcRecv: status.rtc?.totals?.bytesReceived ?? null, pcRtt: median((status.rtc?.samples ?? []).map((sample) => sample.rttMs)), viaTurn: (status.rtc?.samples ?? []).some((sample) => sample.viaTurn),
     pred: status.match?.prediction?.lastPositionErrorM ?? null, predMax: status.match?.prediction?.maxFreePositionErrorM ?? null, tick: status.lastSnapshotTick ?? null,
   });
@@ -603,6 +609,29 @@ function summarize() {
   const snapshotRates = rateSeries('snap', 'peer');
   const hostUplink = rateSeries('rtcSent', 'host').map((value) => value * 8 / 1000);
   const hostDownlink = rateSeries('rtcRecv', 'host').map((value) => value * 8 / 1000);
+  // P3b: rows the interest tiers refreshed per tier per second over the populations → the refresh rate per tier (Hz per entity);
+  // the skips; the peers' interpolation delay and the furthest any entity was continued past its own sample
+  const tierRates = [0, 1, 2].map((tier) => {
+    const rates = [];
+    for (let index = 1; index < series.length; index++) {
+      const previous = series[index - 1];
+      const current = series[index];
+      const dtS = (current.atMs - previous.atMs) / 1000;
+      if (dtS <= 0) continue;
+      for (const entry of current.peers) {
+        if (entry.role !== 'host' || !entry.tierPub || !entry.tierPop) continue;
+        const earlier = previous.peers.find((candidate) => candidate.id === entry.id && candidate.role === 'host' && candidate.gen === entry.gen && candidate.tierPub);
+        if (!earlier || entry.tierPop[tier] <= 0) continue;
+        rates.push((entry.tierPub[tier] - earlier.tierPub[tier]) / dtS / entry.tierPop[tier]);
+      }
+    }
+    return rates;
+  });
+  const tierPopulations = [0, 1, 2].map((tier) => series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host' && entry.tierPop).map((entry) => entry.tierPop[tier])));
+  const hostSkips = max(series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.skips)));
+  const hostHz = median(series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.hz)));
+  const rowExtra = max(series.flatMap((row) => row.peers.filter((entry) => entry.role === 'peer').map((entry) => entry.rowExtra)));
+  const delays = series.flatMap((row) => row.peers.filter((entry) => entry.role === 'peer').map((entry) => entry.delay));
   const peerDownlink = rateSeries('bIn', 'peer').map((value) => value * 8 / 1000);
   const peerUplink = rateSeries('bOut', 'peer').map((value) => value * 8 / 1000);
   const tickP95 = series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.tickP95));
@@ -648,6 +677,12 @@ function summarize() {
     snapshotRateHz: { min: round(min(snapshotRates), 1), p05: round(percentile(snapshotRates, 0.05), 1), median: round(median(snapshotRates), 1), max: round(max(snapshotRates), 1) },
     hostTickMs: { p50: round(median(tickP50), 3), p95: round(median(tickP95), 3), p95Max: round(max(tickP95), 3), max: round(max(tickMax), 3), final: hostCores.map((core) => ({ tick: core.tick, p50: round(core.tickP50Ms, 3), p95: round(core.tickP95Ms, 3), max: round(core.tickMaxMs, 3), mean: round(core.tickMeanMs, 3), count: core.tickCount, droppedTicks: core.droppedTicks, stalls: core.stalls, lateWakeupMaxMs: round(core.lateWakeupMaxMs, 1), clients: core.clients })) },
     hostUplinkKbit: { median: round(median(hostUplink), 0), p95: round(percentile(hostUplink, 0.95), 0), max: round(max(hostUplink), 0), acceptorSampleMedian: round(median(series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.hostUp))) * 8 / 1000, 0) },
+    hostSnapshotHz: hostHz, hostSnapshotSkips: hostSkips,
+    tiers: {
+      refreshHz: tierRates.map((rates) => round(median(rates), 1)), refreshHzMin: tierRates.map((rates) => round(min(rates), 1)),
+      population: tierPopulations.map((values) => round(median(values), 1)), populationMax: tierPopulations.map((values) => max(values)),
+    },
+    interpolation: { delayMsMedian: round(median(delays), 1), delayMsMax: round(max(delays), 1), rowExtrapolatedMsMax: round(rowExtra, 1), snappedSamples: peerRows.reduce((sum, status) => sum + (status.match?.snappedSamples ?? 0), 0) },
     hostDownlinkKbit: { median: round(median(hostDownlink), 0), max: round(max(hostDownlink), 0) },
     peerDownlinkKbit: { median: round(median(peerDownlink), 0), max: round(max(peerDownlink), 0) }, peerUplinkKbit: { median: round(median(peerUplink), 0), max: round(max(peerUplink), 0) },
     rttMs: { min: round(min(rtt), 1), median: round(median(rtt), 1), p95: round(percentile(rtt, 0.95), 1), max: round(max(rtt), 1) }, pcRttMs: { median: round(median(pcRtt), 1), max: round(max(pcRtt), 1) },
@@ -675,7 +710,8 @@ function summarize() {
   verdict('console errors (every tab)', consoleErrors, consoleErrors === BUDGET.consoleErrors, '0', consoleErrors ? relevantErrors().slice(0, 3).map((entry) => `${entry.page}: ${entry.text.slice(0, 160)}`).join(' | ') : '');
   verdict('room messages per match (client→room + room→client)', report.roomMessages.total, true, 'reported', `client→room ${report.roomMessages.clientToRoom}, room→client ${report.roomMessages.roomToClient}; start burst ${report.roomMessages.startBurst?.out ?? '-'} + ${report.roomMessages.startBurst?.in ?? '-'}; ${report.roomMessages.perMinuteSteady} / min over the run`);
   verdict('room messages at the start (client→room + room→client)', (report.roomMessages.startBurst?.out ?? 0) + (report.roomMessages.startBurst?.in ?? 0), (report.roomMessages.startBurst?.out ?? 0) + (report.roomMessages.startBurst?.in ?? 0) <= BUDGET.roomMessagesPerStart, `≤ ${BUDGET.roomMessagesPerStart} (else batch ICE)`, `room sockets closed by the service: ${report.entry?.roomSocketCloses?.length ? report.entry.roomSocketCloses.join(', ') : 'none'}`);
-  verdict('snapshot rate per peer (Hz, median of the samples)', report.steady.snapshotRateHz.median, report.steady.snapshotRateHz.median !== null && report.steady.snapshotRateHz.median >= 24, '≥ 24 (30 Hz authority, ≥ 80 %)', `min ${report.steady.snapshotRateHz.min}, p05 ${report.steady.snapshotRateHz.p05}`);
+  const authorityHz = report.steady.hostSnapshotHz ?? 30;
+  verdict('snapshot rate per peer (Hz, median of the samples)', report.steady.snapshotRateHz.median, report.steady.snapshotRateHz.median !== null && report.steady.snapshotRateHz.median >= authorityHz * 0.8, `≥ ${round(authorityHz * 0.8, 0)} (${authorityHz} Hz authority, ≥ 80 %)`, `min ${report.steady.snapshotRateHz.min}, p05 ${report.steady.snapshotRateHz.p05}; skips for slow peers ${report.steady.hostSnapshotSkips ?? '–'}`);
 }
 
 function markdown() {
@@ -698,6 +734,9 @@ function markdown() {
       `| Host tick cost (ms) | p50 ${s.hostTickMs.p50}, p95 ${s.hostTickMs.p95} (worst sample ${s.hostTickMs.p95Max}), max ${s.hostTickMs.max} |`,
       `| Host loop | dropped ticks ${s.lost.hostDroppedTicks}, stalls ${s.lost.hostStalls}${s.hostTickMs.final.length ? `, late wake-up max ${s.hostTickMs.final.map((core) => core.lateWakeupMaxMs).join(' / ')} ms` : ''} |`,
       `| Host uplink (kbit/s) | median ${s.hostUplinkKbit.median}, p95 ${s.hostUplinkKbit.p95}, max ${s.hostUplinkKbit.max} (acceptor's own sample median ${s.hostUplinkKbit.acceptorSampleMedian}) |`,
+      `| Host snapshot rate / skips for slow peers | ${s.hostSnapshotHz ?? '–'} Hz / ${s.hostSnapshotSkips ?? '–'} |`,
+      `| Interest tiers (near / mid / far) | refresh Hz per entity median ${s.tiers.refreshHz.join(' / ')} (min ${s.tiers.refreshHzMin.join(' / ')}); entity-viewer pairs median ${s.tiers.population.join(' / ')} (max ${s.tiers.populationMax.join(' / ')}) |`,
+      `| Peer interpolation | delay median ${s.interpolation.delayMsMedian} ms (max ${s.interpolation.delayMsMax}); furthest an entity was continued past its own sample ${s.interpolation.rowExtrapolatedMsMax} ms; snapped samples ${s.interpolation.snappedSamples} |`,
       `| Host downlink (kbit/s) | median ${s.hostDownlinkKbit.median}, max ${s.hostDownlinkKbit.max} |`,
       `| Peer downlink / uplink (kbit/s) | median ${s.peerDownlinkKbit.median} / ${s.peerUplinkKbit.median}, max ${s.peerDownlinkKbit.max} / ${s.peerUplinkKbit.max} |`,
       `| RTT (ms, wire pings) | min ${s.rttMs.min}, median ${s.rttMs.median}, p95 ${s.rttMs.p95}, max ${s.rttMs.max}; candidate-pair RTT median ${s.pcRttMs.median}, max ${s.pcRttMs.max} |`,

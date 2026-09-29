@@ -759,6 +759,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
     'src/mp/match/matchClient.selftest.mjs',
+    'src/mp/match/snapshotRate.selftest.mjs',
     'src/mp/match/rtcClientLink.selftest.mjs',
     'src/mp/host/seatTokenWeb.selftest.mjs',
     'src/mp/host/hostPlan.selftest.mjs',

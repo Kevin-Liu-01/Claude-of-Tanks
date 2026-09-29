@@ -133,6 +133,9 @@ export interface MatchClientStats {
   targetDelayMs: number;
   extrapolatedSamples: number;
   maxExtrapolatedMs: number;
+  /** Samples where an entity snapped (a teleport, a first sight) and the furthest an entity was continued past its own sample (P3b interest tiers). */
+  snappedSamples: number;
+  maxRowExtrapolatedMs: number;
   bytesIn: number;
   bytesOut: number;
   bytesInPerS: number;
@@ -221,6 +224,8 @@ export class MatchClient {
   private readonly phaseListeners = new Set<(phase: ConnectionPhase, detail: string) => void>();
   readonly errors: ErrorMessage[] = [];
   private welcomeMessage: WelcomeMessage | null = null;
+  /** The authority's snapshot rate as the newest WELCOME named it (SNAPSHOT_HZ before the first). */
+  private snapshotHz = SNAPSHOT_HZ;
   private ownPlayerId = '';
   private ownRow: EntityRow | null = null;
   private ownViewer: ViewerState | null = null;
@@ -315,6 +320,8 @@ export class MatchClient {
   get phase(): ConnectionPhase { return this.recovery.current; }
   get isSeated(): boolean { return !!this.welcomeMessage && this.welcomeMessage.entityId !== NO_ENTITY; }
   get ownEntityId(): number { return this.welcomeMessage?.entityId ?? NO_ENTITY; }
+  /** The authority's snapshot rate (Hz) this client runs at: the WELCOME's, SNAPSHOT_HZ before one arrives. */
+  get snapshotRateHz(): number { return this.snapshotHz; }
   /** The presented state of the viewer's tank (null without prediction). */
   get localTank(): TankState | null { return this.predictor?.presented ?? null; }
   /** The prediction's simulation state at the newest sampled tick (collision framing, diagnostics). */
@@ -453,6 +460,8 @@ export class MatchClient {
       targetDelayMs: interp.targetDelayMs,
       extrapolatedSamples: interp.extrapolatedSamples,
       maxExtrapolatedMs: interp.maxExtrapolatedMs,
+      snappedSamples: interp.snappedSamples,
+      maxRowExtrapolatedMs: interp.maxRowExtrapolatedMs,
       bytesIn: this.transport.stats.bytesReceived,
       bytesOut: this.transport.stats.bytesSent,
       bytesInPerS: this.bytesInPerS,
@@ -596,13 +605,20 @@ export class MatchClient {
       this.notifyPhase('closed', this.closeDetail);
       return;
     }
-    if (welcome.tickHz !== TICK_HZ || welcome.snapshotHz !== SNAPSHOT_HZ) {
+    // The tick rate is the simulation's; the snapshot rate is the host's choice (P3b: 20 or 30 Hz, any divisor of the
+    // tick rate) and the interpolation delay, the extrapolation cap and the loss estimate follow it in intervals.
+    if (welcome.tickHz !== TICK_HZ || welcome.snapshotHz < 1 || TICK_HZ % welcome.snapshotHz !== 0) {
       this.closeReason = CLOSE_REASON.PROTOCOL_VERSION;
       this.closeDetail = `unsupported rates ${welcome.tickHz}/${welcome.snapshotHz} Hz`;
       this.recovery.end('closed');
       this.transport.close(TRANSPORT_CLOSE.PROTOCOL, this.closeDetail);
       this.notifyPhase('closed', this.closeDetail);
       return;
+    }
+    if (welcome.snapshotHz !== this.snapshotHz) {
+      this.snapshotHz = welcome.snapshotHz;
+      this.interpolator.setSnapshotInterval(1000 / welcome.snapshotHz);
+      this.snapshots.setTicksPerSnapshot(TICK_HZ / welcome.snapshotHz);
     }
     this.welcomeMessage = welcome;
     this.timeUnwrap.reset();

@@ -66,6 +66,8 @@ export interface MatchHost {
   readonly peersConnected: number;
   readonly relayed: number;
   readonly uplinkBytesPerS: number;
+  /** Snapshots the actor skipped for slow peers, as of the newest core stats (P3b). */
+  readonly snapshotSkips: number;
   readonly lastReport: HostMatchReport | null;
   readonly acceptor: RtcHostAcceptor | null;
   /**
@@ -308,6 +310,7 @@ export function createMatchHost({
     get peersConnected() { return acceptor?.connected ?? 0; },
     get relayed() { return acceptor?.relayed ?? 0; },
     get uplinkBytesPerS() { return uplinkBytesPerS; },
+    get snapshotSkips() { return coreStats?.snapshotSkips ?? 0; },
     get lastReport() { return lastReport; },
     get acceptor() { return acceptor; },
     start,

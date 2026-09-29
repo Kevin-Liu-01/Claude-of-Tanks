@@ -6,7 +6,7 @@ import {
 import { applySnapshotPacket, decodeMessage, encodeMessage } from '../../src/mp/wire/codec.ts';
 import { quantizeAimDistance, quantizeAngle } from '../../src/mp/wire/quantize.ts';
 import { createLoopbackLink } from './link.ts';
-import { createMatchActor } from './matchActor.ts';
+import { SNAPSHOT_SKIP_BYTES, createMatchActor } from './matchActor.ts';
 
 const TICK_MS = 1000 / 60;
 let nowMs = 10_000;
@@ -220,6 +220,25 @@ await flush();
 assert.ok(p2.pongs.some((pong) => pong.clientTimeMs === 1234 && pong.serverTick === actor.tick), 'ping is answered with the server tick');
 assert.ok(!p1.closed && !p2.closed && !s1.closed, 'rejections never close the link');
 console.log('matchActor.selftest: chat normalized and rate-limited; malformed, spectator and far-ahead inputs rejected without closing');
+
+// ---------------------------------------------------------------- per-peer rate adaptation (P3b): a slow peer's snapshot is skipped, never delayed; the others flow; it resumes on deltas
+{
+  const skipped = actor.clientStats().find((entry) => entry.playerId === 'p2').droppedSnapshots;
+  p2.link.client.pressure = SNAPSHOT_SKIP_BYTES + 1;
+  const p2Before = p2.frames.length;
+  const p3Before = p3.frames.length;
+  await advanceTicks(actor, 30, driveP1);
+  assert.equal(p2.frames.length, p2Before, 'a peer over the skip bound receives no snapshot');
+  assert.equal(actor.clientStats().find((entry) => entry.playerId === 'p2').droppedSnapshots - skipped, 15, 'every skipped snapshot is counted');
+  assert.ok(p3.frames.length - p3Before >= 14, `the other peers keep their cadence (${p3.frames.length - p3Before} in 30 ticks)`);
+  assert.ok(!p2.closed, 'a skip never closes the link');
+  p2.link.client.pressure = 0;
+  await advanceTicks(actor, 4, driveP1);
+  const resumed = p2.packets.at(-1);
+  assert.ok(p2.frames.length > p2Before && !resumed.keyframe, 'the drained peer resumes on a delta against its acknowledged baseline');
+  assert.equal(p2.missingBaselines, 0);
+  console.log('matchActor.selftest: a peer over the skip bound is skipped and counted, the others unaffected, deltas resume when it drains');
+}
 
 // ---------------------------------------------------------------- backpressure: drop the stale snapshot, then close when sustained
 p4.link.client.pressure = 100 * 1024;

@@ -242,10 +242,13 @@ interface BufferedFrame {
 }
 
 export class RemoteInterpolator {
-  readonly snapshotIntervalMs: number;
-  readonly minDelayMs: number;
-  readonly maxDelayMs: number;
-  readonly maxExtrapolationMs: number;
+  snapshotIntervalMs: number;
+  minDelayMs: number;
+  maxDelayMs: number;
+  maxExtrapolationMs: number;
+  private readonly minDelayIntervals: number;
+  private readonly maxDelayIntervals: number;
+  private readonly maxExtrapolationIntervals: number;
   readonly capacity: number;
   readonly jitterAttack: number;
   readonly jitterRelease: number;
@@ -292,6 +295,9 @@ export class RemoteInterpolator {
     maxStallMs = 400,
   }: InterpolatorOptions = {}) {
     this.snapshotIntervalMs = snapshotIntervalMs;
+    this.minDelayIntervals = minDelayIntervals;
+    this.maxDelayIntervals = maxDelayIntervals;
+    this.maxExtrapolationIntervals = maxExtrapolationIntervals;
     this.minDelayMs = minDelayIntervals * snapshotIntervalMs;
     this.maxDelayMs = maxDelayIntervals * snapshotIntervalMs;
     this.maxExtrapolationMs = maxExtrapolationIntervals * snapshotIntervalMs;
@@ -313,6 +319,18 @@ export class RemoteInterpolator {
 
   get delay(): number { return this.delayMs; }
   get bufferedFrames(): number { return this.frames.length; }
+
+  /** The authority's snapshot interval as the WELCOME names it (P3b): the delay bounds and the extrapolation cap follow in intervals. */
+  setSnapshotInterval(snapshotIntervalMs: number): void {
+    if (!(snapshotIntervalMs > 0) || !Number.isFinite(snapshotIntervalMs)) throw new TypeError('the snapshot interval must be positive');
+    if (snapshotIntervalMs === this.snapshotIntervalMs) return;
+    this.snapshotIntervalMs = snapshotIntervalMs;
+    this.minDelayMs = this.minDelayIntervals * snapshotIntervalMs;
+    this.maxDelayMs = this.maxDelayIntervals * snapshotIntervalMs;
+    this.maxExtrapolationMs = this.maxExtrapolationIntervals * snapshotIntervalMs;
+    this.targetDelayMs = Math.max(this.minDelayMs, Math.min(this.maxDelayMs, this.targetDelayMs));
+    this.delayMs = Math.max(this.minDelayMs, Math.min(this.maxDelayMs, this.delayMs));
+  }
   get newest(): SnapshotFrame | null { return this.frames.length ? this.frames[this.frames.length - 1]!.frame : null; }
 
   /** A newly assembled frame; `serverTimeMs` is the unwrapped stamp, `receivedAtMs` the local clock. */

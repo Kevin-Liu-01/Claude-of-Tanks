@@ -321,6 +321,7 @@ export function createMatchHostCore({
       world, now, ...(schedule ? { schedule } : {}), autoStart: false,
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),
       resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs } : null,
+      ...(next.snapshotHz !== undefined ? { snapshotHz: next.snapshotHz } : {}),
       onVerdict: () => { const live = actor; if (live) report(live, now()); },
     });
     let restored = 0;
