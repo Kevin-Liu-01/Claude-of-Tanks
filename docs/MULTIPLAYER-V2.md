@@ -1028,7 +1028,10 @@ election it still held, so it offered to itself at generation 1 forever (the soa
 reconnects, never live). Fixed in this lane: a newer generation in a re-sent `match_start` supersedes the held election,
 and the session's same-match re-entry steps a replaced host down at once (the `host_only` refusal of its next report stays
 the fallback). On the real actor: p2 elected 8,030 ms after the blip, p3 followed, p1 back received `rtc://…/2` with host p2,
-stepped down and was live as a peer of p2 within milliseconds of re-joining, p2 serving both. STEPDOWN_SOAK_PLACEHOLDER
+stepped down and was live as a peer of p2 within milliseconds of re-joining, p2 serving both. On the real Worker code
+(`wrangler dev`, the soak's `--migrate-mode=stepdown` at 2v2): host_changed 8.01 s after the blip, the successor live at 9.19 s,
+every seat on it by 9.23 s, and the old host — its actor still running until then — stepped down 7 ms after re-joining
+(`match_start re-sent`) and played on as a peer of the new host.
 
 **TURN entry soak.** `--ice=relay` (`iceTransportPolicy: 'relay'` on every peer connection, both ends, the credentials
 from `https://cot.kevinliu.studio/api/ice` fetched with the site origin — 1 STUN + 6 TURN urls, TTL 28,800 s) at 2v2 for 3
@@ -1038,8 +1041,14 @@ connection hit the 2.5 s gathering cap), joins 1.08–1.09 s (2.95 s for the cap
 migrations 9.29 s and 10.86 s to the first snapshot on every seat (host_changed 8.01 s, the new host live 9.24 / 9.12 s; one
 relayed re-offer took 1.7 s longer than the others), the old host back as a relay peer in 755 / 763 ms, ICE resolved 26
 times (once per connection — the renewal path `webRtcTransport.selftest` / `rtcClientLink.selftest` receipt: a renewed
-credential reaches the next offer / answer). The credential TTL is 28,800 s on production (`expiresInSeconds`), so no match
-of this certification crosses it; RELAY_HOLD_PLACEHOLDER
+credential reaches the next offer / answer). The credential TTL is 28,800 s on production (`expiresInSeconds`) and the standard ruleset's clock is 900 s
+(`src/sim/matchRuleset.ts` — every mode's clock is at most 15 minutes): **no match can outlive a credential**, so the renewal
+path matters only for re-offers, where it is receipted. The hold: a second relay-only 2v2 played until its own verdict at
+t+453 s (every seat driving and firing; 13,758 snapshots per seat) with every relayed link up the whole way — RTT through
+TURN 19.3 min / 21.5 median / 33 p95 ms, host uplink 231 kbit/s median, 0 lost frames, 0 stale snapshots, 0 reconnects, desync
+0.007 m at the end. The 65-minute run the brief asked for was started and stopped after 6 minutes once the clock cap made it
+moot (a match cannot last 65 minutes); the soak now ends a run on the match's own end and `--fire=0` keeps a hold from
+ending on a verdict.
 
 **Realism run (the real game page as host).** `--host=game`: the game page itself (`?mp=v2`, the Play menu's LAN room,
 the renderer, the HUD, its own client) hosting three harness seats for 2 minutes with one migration away from it: the game

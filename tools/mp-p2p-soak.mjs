@@ -64,6 +64,8 @@ const mapId = argValue('map', 'verdant');
 const mode = argValue('mode', 'lan');
 const gameMode = argValue('game-mode', 'standard');
 const predict = argValue('predict', '1');
+/** --fire=0: the seats drive but never fire, so a hold run ends on the clock, not on a verdict. */
+const fire = argValue('fire', '1');
 const countdownS = Number(argValue('countdown', 3));
 const sampleS = Math.max(1, Number(argValue('sample', 2)));
 const rejoin = argValue('rejoin', '1') !== '0';
@@ -148,7 +150,7 @@ function observe(page, id) {
 const relevantErrors = () => errors.filter((entry) => !/favicon|ERR_ABORTED/i.test(entry.text));
 
 function peerUrl(origin, peer) {
-  const params = new URLSearchParams({ rooms: roomsUrl, id: peer.id, name: peer.name, index: String(peer.index), host: peer.canHost ? '1' : '0', ice: iceMode, predict, countdown: String(countdownS) });
+  const params = new URLSearchParams({ rooms: roomsUrl, id: peer.id, name: peer.name, index: String(peer.index), host: peer.canHost ? '1' : '0', ice: iceMode, predict, countdown: String(countdownS), fire });
   return `${origin}/mp-p2p-peer/?${params}`;
 }
 
@@ -401,6 +403,13 @@ try {
     await sleep(sampleS * 1000);
     const { row } = await sampleAll();
     const hostRow = row.peers.find((entry) => entry.role === 'host');
+    if (row.peers.length && row.peers.every((entry) => entry.phase === 'closed' || entry.phase === 'ended' || entry.phase === 'failed')) {
+      // the match ended on its own (a verdict, the clock): the run's play is over
+      const statuses = await Promise.all(live().map(statusOf));
+      report.matchEnded = { atMs: row.atMs, phases: statuses.map((status) => [status.playerId, status.match?.phase ?? null, status.match?.closeReason ?? null, status.session?.phase ?? null]) };
+      step('match-ended', report.matchEnded);
+      break;
+    }
     if (performance.now() - lastMemoryAt >= 10_000) { lastMemoryAt = performance.now(); const memory = rendererMemory(); if (memory) memorySeries.push({ atMs: row.atMs, ...memory, all: undefined }); }
     if (series.length % Math.max(1, Math.round(30 / sampleS)) === 0) log(`t+${Math.round(row.atMs / 1000)} s: host ${hostRow?.id ?? '-'} gen ${hostRow?.gen ?? '-'} peers ${hostRow?.peers ?? '-'} up ${round((hostRow?.hostUp ?? 0) * 8 / 1000, 0)} kbit/s tick p95 ${round(hostRow?.tickP95, 2)} ms; seats ${row.peers.length}, rtt median ${round(median(row.peers.map((entry) => entry.rtt)), 1)} ms, load ${loadAverage()}`);
     const elapsed = performance.now() - playStartedAt;
@@ -658,7 +667,7 @@ function markdown() {
   const lines = [];
   const p = report.parameters;
   lines.push(`# Peer-to-peer soak — ${label} (${seats} seats)`, '');
-  lines.push(`Run ${new Date().toISOString()} · rooms \`${roomsUrl}\` · ${p.playMin} min of play · migrate every ${p.migrateEveryMin || '–'} min · ice=${p.iceMode}${p.ice ? ` (${p.ice.turn} TURN urls, TTL ${p.ice.expiresInSeconds} s)` : ''} · map ${p.mapId} · ${hosts} seats able to host · load ${report.machine.loadStart} → ${report.machine.loadEnd} · ${Math.round(report.wallMs / 1000)} s wall · ${report.completed ? 'completed' : 'INCOMPLETE'}`, '');
+  lines.push(`Run ${new Date().toISOString()} · rooms \`${roomsUrl}\` · ${p.playMin} min of play · migrate every ${p.migrateEveryMin || '–'} min · ice=${p.iceMode}${p.ice ? ` (${p.ice.turn} TURN urls, TTL ${p.ice.expiresInSeconds} s)` : ''} · map ${p.mapId} · ${hosts} seats able to host · firing ${fire !== '0' ? 'on' : 'off'} · load ${report.machine.loadStart} → ${report.machine.loadEnd} · ${Math.round(report.wallMs / 1000)} s wall · ${report.completed ? 'completed' : 'INCOMPLETE'}${report.matchEnded ? ` · the match ended on its own at t+${Math.round(report.matchEnded.atMs / 1000)} s (${report.matchEnded.phases.map((entry) => `${entry[0]} ${entry[1]}/${entry[2] ?? '–'}`).join(', ')})` : ''}`, '');
   if (report.failures.length) { lines.push('## Failures', '', ...report.failures.map((failure) => `- ${failure.split('\n')[0]}`), ''); }
   lines.push('## Verdicts', '', '| Check | Value | Budget | Verdict | Note |', '|---|---|---|---|---|');
   for (const verdict of report.verdicts) lines.push(`| ${verdict.name} | ${verdict.value ?? '–'} | ${verdict.budget} | ${verdict.pass === null ? 'n/a' : verdict.pass ? 'PASS' : 'FAIL'} | ${verdict.note} |`);

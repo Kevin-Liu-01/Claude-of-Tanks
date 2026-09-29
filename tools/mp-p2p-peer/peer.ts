@@ -42,6 +42,8 @@ const iceMode = param('ice', 'none') as 'none' | 'all' | 'relay';
 const predict = param('predict', '1') !== '0';
 const countdownS = Number(param('countdown', '3')) || 3;
 const stepHz = Math.max(10, Math.min(120, Number(param('hz', '60')) || 60));
+/** fire=0: drive but never fire (a hold run must not end on a verdict). */
+const firing = param('fire', '1') !== '0';
 const TIMELINE_LIMIT = 4000;
 
 interface TimelineEntry { atMs: number; wall: number; kind: string; [key: string]: unknown }
@@ -273,7 +275,7 @@ function boot(): void {
     player: { id: playerId, name: playerName },
     createSocket: countingSocket,
     storage: localStorage,
-    controls: scriptedControls(controlIndex),
+    controls: (() => { const scripted = scriptedControls(controlIndex); return firing ? scripted : (tick: number) => ({ ...scripted(tick), fire: false }); })(),
     clientBuild: 'p2p-peer-harness',
     recordedFrames: 64,
     session: {
@@ -324,7 +326,7 @@ function boot(): void {
     return matchClient;
   };
   title.textContent = `peer harness · ${playerId} · ${canHost ? 'can host' : 'never hosts'} · ice=${iceMode}`;
-  record('booted', { playerId, canHost, iceMode, predict, countdownS, stepHz });
+  record('booted', { playerId, canHost, iceMode, predict, countdownS, stepHz, firing });
 }
 
 // ------------------------------------------------------------ the frame loop and the samplers
