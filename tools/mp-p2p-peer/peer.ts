@@ -395,7 +395,7 @@ function status(): Record<string, unknown> {
   for (const entry of pcs.values()) for (const channel of entry.sample.channels) { bytesSent += channel.bytesSent; bytesReceived += channel.bytesReceived; messagesSent += channel.messagesSent; messagesReceived += channel.messagesReceived; }
   return {
     playerId, playerName, canHost, iceMode, predict, stepHz, uptimeMs: Math.round(now() - bootedAtMs), nowMs: Math.round(now()), wall: Date.now(),
-    room: room ? { ...room.stats(), isHost: room.isHost, adminId: room.room?.adminId ?? null, matchStatus: room.room?.match?.status ?? null, seat: room.seat, me: room.me ? { team: room.me.team, ready: room.me.ready, hostDeclined: room.me.hostDeclined } : null } : null,
+    room: room ? { ...room.stats(), isHost: room.isHost, adminId: room.room?.adminId ?? null, matchStatus: room.room?.match?.status ?? null, seat: room.seat, me: room.me ? { team: room.me.team, ready: room.me.ready, hostDeclined: room.me.hostDeclined } : null, generation: room.generation, hostId: room.hostId } : null,
     session: session ? { phase: session.phase, role: session.role, migrations: session.stats().migrations, rounds: session.stats().rounds, matchUrl: session.round?.matchStart.matchUrl ?? null, p2p: session.p2p ? { ...session.p2p } : null } : null,
     host: hostStats,
     match: stats ? {

@@ -229,7 +229,8 @@ interface ActorClient {
   droppedSnapshots: number;
   malformed: number;
   pressureSinceMs: number | null;
-  rate: { windowStartMs: number; count: number };
+  /** The message-rate token bucket: `tokens` refill at MAX_MESSAGES_PER_SECOND up to MESSAGE_BURST. */
+  rate: { tokens: number; lastMs: number };
   closing: boolean;
 }
 
@@ -252,6 +253,15 @@ const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
 const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
 const MAX_MESSAGES_PER_SECOND = 150;
+/**
+ * The message-rate limit is a token bucket (P3b, 2026-09-29): a client sends ≈ 65 messages a second (inputs at 60 Hz
+ * and pings), and the old fixed one-second window closed every peer of a browser host whose main thread stalled for two
+ * seconds — the game page's battle reveal compiled shaders while its actor already ran, the peers' frames queued on the
+ * main thread and reached the Worker in one burst (the realism soak, 2026-09-29). A backlog of a few seconds of honest
+ * traffic now passes; a flood still trips within seconds (900 tokens at 150 a second: a 1,000 messages/s sender is
+ * closed in about a second).
+ */
+const MESSAGE_BURST = 900;
 const MAX_MALFORMED = 20;
 const TICK_MS = SIM_DT * 1000;
 
@@ -427,9 +437,13 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   }
 
   function rateLimited(client: ActorClient, nowMs: number): boolean {
-    if (nowMs - client.rate.windowStartMs >= 1000) { client.rate.windowStartMs = nowMs; client.rate.count = 0; }
-    client.rate.count++;
-    return client.rate.count > MAX_MESSAGES_PER_SECOND;
+    const rate = client.rate;
+    const elapsedMs = Math.max(0, nowMs - rate.lastMs);
+    rate.lastMs = nowMs;
+    rate.tokens = Math.min(MESSAGE_BURST, rate.tokens + elapsedMs * MAX_MESSAGES_PER_SECOND / 1000);
+    if (rate.tokens < 1) return true;
+    rate.tokens -= 1;
+    return false;
   }
 
   function receive(client: ActorClient, bytes: Uint8Array): void {
@@ -795,7 +809,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       capabilities: hello.capabilities & HELLO_CAPABILITY.SHOT_FEEDBACK,
       input: createSeatInputBuffer(), publisher: createViewerPublisher(), interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
       bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null,
-      rate: { windowStartMs: now(), count: 0 }, closing: false,
+      rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
     };
     clients.set(client, true);
     clientBySeat.set(client.seat, client);

@@ -536,7 +536,7 @@ async function migrate() {
     await sleep(250);
   }
   const statuses = await Promise.all(remaining.map(statusOf));
-  remaining.forEach((peer, index) => { const entry = perPeer.get(peer.id); entry.team = statuses[index].room?.me?.team ?? null; entry.allyOfNewHost = entry.team !== null && entry.team === newTeam; entry.reconnects = statuses[index].match?.reconnects ?? null; entry.phase = statuses[index].match?.phase ?? null; entry.snapshotsAfter = statuses[index].match?.snapshotsAccepted ?? null; entry.hintSent = statuses[index].match?.resumeHintsSent ?? null; });
+  remaining.forEach((peer, index) => { const entry = perPeer.get(peer.id); const status = statuses[index]; entry.team = status.room?.me?.team ?? null; entry.allyOfNewHost = entry.team !== null && entry.team === newTeam; entry.reconnects = status.match?.reconnects ?? null; entry.phase = status.match?.phase ?? null; entry.snapshotsAfter = status.match?.snapshotsAccepted ?? null; entry.hintSent = status.match?.resumeHintsSent ?? null; entry.staleSignals = status.session?.p2p?.staleSignals ?? null; entry.offersSent = status.session?.p2p?.offersSent ?? null; entry.signalsReceived = status.room?.signalsReceived ?? null; entry.roomGeneration = status.room?.generation ?? null; });
   const rows = [...perPeer.values()];
   // P3b: the own-row hints the new host applied (the migration seed for the hulls it could not see) and refused; its acceptor's
   // counters (answers the room socket refused, offers recovered from the buffer, channels that never opened) and its room socket's refusals
@@ -768,7 +768,7 @@ function markdown() {
     }
     for (const m of report.migrations.filter((migration) => !migration.failed)) {
       lines.push(`### Migration ${m.k}: seats`, '', '| Seat | Role | Team | Ally of new host | Loss seen (ms) | host_changed (ms) | WELCOME (ms) | First frame (ms) | Jump, presented (m) | Jump, authority rows (m) | Lead at loss (m) | Ticks before → after | Phase at the end |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|');
-      for (const peer of m.peers) lines.push(`| ${peer.id} | ${peer.role} | ${peer.team ?? '–'} | ${peer.allyOfNewHost === null ? '–' : peer.allyOfNewHost ? 'yes' : 'no'} | ${round(peer.lossAfterMs, 0) ?? '–'} | ${round(peer.hostChangedAfterMs, 0) ?? '–'} | ${round(peer.welcomeAfterMs, 0) ?? '–'} | ${round(peer.firstFrameAfterMs, 0) ?? '–'} | ${round(peer.jumpM, 3) ?? '–'} | ${round(peer.rowJumpM, 3) ?? '–'} | ${round(peer.leadAtLossM, 3) ?? '–'} | ${peer.beforeTick ?? '–'} → ${peer.afterTick ?? '–'} | ${peer.phase ?? '–'} |`);
+      for (const peer of m.peers) lines.push(`| ${peer.id} | ${peer.role} | ${peer.team ?? '–'} | ${peer.allyOfNewHost === null ? '–' : peer.allyOfNewHost ? 'yes' : 'no'} | ${round(peer.lossAfterMs, 0) ?? '–'} | ${round(peer.hostChangedAfterMs, 0) ?? '–'} | ${round(peer.welcomeAfterMs, 0) ?? '–'} | ${round(peer.firstFrameAfterMs, 0) ?? '–'} | ${round(peer.jumpM, 3) ?? '–'} | ${round(peer.rowJumpM, 3) ?? '–'} | ${round(peer.leadAtLossM, 3) ?? '–'} | ${peer.beforeTick ?? '–'} → ${peer.afterTick ?? '–'} | ${peer.phase ?? '–'}${peer.reconnects !== null ? ` (${peer.reconnects} reconnects, ${peer.offersSent ?? '–'} offers, ${peer.staleSignals ?? '–'} stale signals, ${peer.signalsReceived ?? '–'} signals received)` : ''} |`);
       lines.push('');
     }
   }

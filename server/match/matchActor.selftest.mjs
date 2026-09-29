@@ -223,6 +223,26 @@ assert.ok(p2.pongs.some((pong) => pong.clientTimeMs === 1234 && pong.serverTick 
 assert.ok(!p1.closed && !p2.closed && !s1.closed, 'rejections never close the link');
 console.log('matchActor.selftest: chat normalized and rate-limited; malformed, spectator and far-ahead inputs rejected without closing');
 
+// ---------------------------------------------------------------- the message-rate bucket (P3b): a stalled host's backlog passes, a flood trips
+{
+  // a browser host's main thread stalled three seconds: 200 queued input frames land in one instant — honest traffic, admitted
+  const before = p4.errors.length;
+  for (let n = 0; n < 200; n++) p4.send({ type: MESSAGE_TYPE.INPUT, clientTick: actor.tick + 2, snapshotAckTick: p4.ackTick(), interpDelayMs: 67, controls: [control({ flags: CONTROL_FLAGS.BRAKE })] });
+  await flush();
+  assert.ok(!p4.closed, 'a backlog of a few seconds never closes the link');
+  assert.equal(p4.errors.length, before, 'and answers no error');
+  // a flood: 400 messages a second for four seconds trips the bucket (900 tokens refilled at 150/s) inside three seconds
+  const flood = async () => { for (let n = 0; n < 4 * 60 && !p4.closed; n++) { nowMs += TICK_MS; for (let m = 0; m < 7; m++) p4.send({ type: MESSAGE_TYPE.PING, clientTimeMs: n * 7 + m, snapshotAckTick: p4.ackTick() }); actor.advance(nowMs); await flush(); } };
+  const floodStarted = nowMs;
+  await flood();
+  assert.ok(p4.closed && p4.closed.reason === CLOSE_REASON.RATE_LIMITED, `a sustained flood is closed as RATE_LIMITED (${p4.closed?.reason})`);
+  assert.ok(nowMs - floodStarted < 3500, `within a few seconds (${Math.round(nowMs - floodStarted)} ms)`);
+  console.log(`matchActor.selftest: a 200-frame backlog passed the message bucket, a 420/s flood was closed after ${Math.round(nowMs - floodStarted)} ms`);
+}
+const p4b = createHeadlessClient(actor, 3, 'p4');
+await flush();
+assert.ok(p4b.welcome, 'p4 re-attached after the flood');
+
 // ---------------------------------------------------------------- per-peer rate adaptation (P3b): a slow peer's snapshot is skipped, never delayed; the others flow; it resumes on deltas
 {
   const skipped = actor.clientStats().find((entry) => entry.playerId === 'p2').droppedSnapshots;
@@ -243,14 +263,14 @@ console.log('matchActor.selftest: chat normalized and rate-limited; malformed, s
 }
 
 // ---------------------------------------------------------------- backpressure: drop the stale snapshot, then close when sustained
-p4.link.client.pressure = 100 * 1024;
-const p4Before = p4.frames.length;
+p4b.link.client.pressure = 100 * 1024;
+const p4Before = p4b.frames.length;
 await advanceTicks(actor, 30, driveP1);
-assert.equal(p4.frames.length, p4Before, 'a congested client receives no queued-behind snapshots');
+assert.equal(p4b.frames.length, p4Before, 'a congested client receives no queued-behind snapshots');
 assert.ok(actor.clientStats().find((entry) => entry.playerId === 'p4').droppedSnapshots >= 10, 'dropped snapshots are counted');
-assert.ok(p3.frames.length > p4.frames.length, 'other clients are unaffected');
+assert.ok(p3.frames.length > p4b.frames.length, 'other clients are unaffected');
 await advanceTicks(actor, 150, driveP1);
-assert.ok(p4.closed && p4.closed.reason === CLOSE_REASON.BACKPRESSURE, `sustained pressure closes with a typed reason (${p4.closed?.reason})`);
+assert.ok(p4b.closed && p4b.closed.reason === CLOSE_REASON.BACKPRESSURE, `sustained pressure closes with a typed reason (${p4b.closed?.reason})`);
 p3.link.client.pressure = 600 * 1024;
 await advanceTicks(actor, 4, driveP1);
 assert.ok(p3.closed && p3.closed.reason === CLOSE_REASON.BACKPRESSURE, 'the hard bound closes immediately');

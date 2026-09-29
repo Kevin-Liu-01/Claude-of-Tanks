@@ -115,6 +115,9 @@ export interface SessionP2pStatus {
   hostState: string | null;
   /** Snapshots the host skipped for slow peers (P3b; 0 as a peer). */
   snapshotSkips: number;
+  /** Signals the peer transport refused as stale (another host's or generation's) and offers it sent (P3b diagnostics; 0 as a host). */
+  staleSignals: number;
+  offersSent: number;
 }
 
 export interface MatchSessionOptions {
@@ -187,7 +190,7 @@ export class MatchSession {
   private runningGeneration = 0;
   private readonly p2pStatus: SessionP2pStatus = {
     role: null, generation: 0, hostId: null, migrating: false, migrationHostId: null, candidateType: null, viaTurn: false,
-    peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null, snapshotSkips: 0,
+    peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null, snapshotSkips: 0, staleSignals: 0, offersSent: 0,
   };
 
   constructor({
@@ -241,6 +244,8 @@ export class MatchSession {
     status.uplinkBytesPerS = this.host?.uplinkBytesPerS ?? 0;
     status.hostState = this.host?.state ?? null;
     status.snapshotSkips = this.host?.snapshotSkips ?? 0;
+    status.staleSignals = this.peerTransport?.staleSignals ?? 0;
+    status.offersSent = this.peerTransport?.signalStats.sent ?? 0;
     return status;
   }
   /** True when this seat may host (a host thread is available, the tier is not mobile, the switch is off). */
