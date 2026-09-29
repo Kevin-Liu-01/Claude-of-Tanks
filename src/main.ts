@@ -64,7 +64,7 @@ import {
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
-  noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu,
+  noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery,
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
@@ -1575,7 +1575,7 @@ const {
 const cancelDeferredCombatWarm = combatWarmComposition.cancelDeferred;
 const scheduleDeferredCombatWarm = combatWarmComposition.scheduleDeferred;
 // WebGL context restoration is recoverable in place. Three rebuilds its GL
-// state first; we then step mobile down to the safe preset, trim optional
+// state first; we then apply temporary device-appropriate relief, trim optional
 // residents, resize the post targets and redraw the shadow set. The sim stays
 // frozen while the graphics device is unavailable instead of racing ahead
 // behind a blocking warning or throwing away the battle with a page reload.
@@ -1593,11 +1593,9 @@ renderer.userData.contextRecovery = {
     // renderer-lifetime combat latch so the next covered transition rebuilds
     // the exact production variants instead of trusting stale GPU state.
     combatWarmComposition.resetRendererWarmState();
-    if (getDeviceTier() === 'mobile') {
-      setMobilePresetName('mobile-low');
-      pedestal.trim(1);
-      worldRuntime.enforceCacheBudget();
-    }
+    applyGraphicsRecovery();
+    pedestal.trim(1);
+    worldRuntime.enforceCacheBudget();
     await nextFrame();
     if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
     viewport.apply();
@@ -1612,6 +1610,9 @@ renderer.userData.contextRecovery = {
         garagePresentationDirty = false;
       }
     }
+    if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
+    // Confirm a complete scene before removing the cover or advancing the sim.
+    post.render(0);
     if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
     graphicsContextLost = false;
     post.setAdaptiveSuspended(false);

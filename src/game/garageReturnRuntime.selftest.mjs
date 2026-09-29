@@ -413,7 +413,10 @@ function contextRecoveryFixture(fixture) {
     const getDeviceTier = () => 'desktop';
     const nextFrame = async () => {};
     const viewport = { apply() {} };
-    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {} };
+    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, render() {} };
+    const applyGraphicsRecovery = () => {};
+    const pedestal = { trim() {} };
+    const worldRuntime = { enforceCacheBudget() {} };
     const lighting = { update() {} };
     const rearmRafAfterContext = ports.rearm;
     let graphicsContextLost = true;

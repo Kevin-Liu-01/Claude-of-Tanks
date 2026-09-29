@@ -1,4 +1,13 @@
 {
+  "graphics.recovery.waiting": "Reconnecting graphics",
+  "graphics.recovery.restoring": "Restoring the scene",
+  "graphics.recovery.delayed": "Graphics are taking longer to reconnect",
+  "graphics.recovery.failed": "Graphics could not reconnect",
+  "graphics.recovery.workingCopy": "Your view will return automatically. There’s no need to reload.",
+  "graphics.recovery.delayedCopy": "You can keep waiting for automatic recovery, or reload with a lighter graphics profile.",
+  "graphics.recovery.failedCopy": "Reload to restart the game with a lighter graphics profile. Your saved garage settings are kept.",
+  "graphics.recovery.reload": "Reload game",
+
   "boot.tip.angling.heading": "Angling",
   "boot.tip.angling.body": "Turn your hull 20-30° away from the shooter. Side plates presented at an angle gain effective thickness — flat-on armour is the easiest armour to punch through.",
   "boot.tip.weakspots.heading": "Weak spots",

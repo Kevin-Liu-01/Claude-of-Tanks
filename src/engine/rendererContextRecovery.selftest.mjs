@@ -1,15 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { createContextRecovery } from './contextRecovery.ts';
 import { Layers } from 'three';
 import { routeShadowOnlyLayer, SHADOW_ONLY_LAYER } from './renderLayers.ts';
-
-// Execute the actual installed listeners without constructing a GPU. Keeping
-// the source boundary explicit catches omissions in success, false and catch.
-const source = await readFile(new URL('./renderer.ts', import.meta.url), 'utf8');
-const listenersSource = source.match(/  let contextRecoveryGeneration = 0;([\s\S]*?)\n\n  const width =/)?.[0];
-assert.ok(listenersSource, 'production renderer context listeners remain directly exercised');
-const install = new Function('renderer', 'window', 'document', 'showContextLossOverlay', 'routeShadowOnlyLayer',
-  listenersSource.slice(0, listenersSource.lastIndexOf('\n\n  const width =')));
 
 function deferred() {
   let resolve;
@@ -19,22 +11,28 @@ function deferred() {
 }
 
 function fixture(onRestored) {
-  const listeners = new Map();
+  let timeout;
   const notices = [];
   let reloads = 0;
   let removals = 0;
   let prevented = 0;
   let losses = 0;
-  const renderer = { domElement: { addEventListener(name, callback) { listeners.set(name, callback); } },
-    shadowMap: { render() {} },
+  const renderer = { shadowMap: { render() {} },
     userData: { contextRecovery: { onLost() { losses += 1; }, onRestored } } };
-  routeShadowOnlyLayer(renderer); // Match the initially installed renderer adapter.
-  install(renderer, { location: { reload() { reloads += 1; } } },
-    { getElementById(id) { assert.equal(id, 'cot-ctxlost'); return { remove() { removals += 1; } }; } },
-    (recovering) => notices.push(recovering), routeShadowOnlyLayer);
+  routeShadowOnlyLayer(renderer);
+  const controller = createContextRecovery({
+    owner: () => renderer.userData.contextRecovery,
+    beforeRestore: () => routeShadowOnlyLayer(renderer),
+    recordLoss() {},
+    notice(state) { notices.push(state); if (state === 'ready') removals++; },
+    schedule(callback) { timeout = callback; return 1; },
+    cancel() { timeout = undefined; },
+  });
   return {
-    lost() { listeners.get('webglcontextlost')({ preventDefault() { prevented += 1; } }); },
-    restored() { listeners.get('webglcontextrestored')(); },
+    lost() { controller.lost({ preventDefault() { prevented += 1; } }); },
+    restored() { controller.restored(); },
+    expire() { timeout?.(); },
+    dispose() { controller.dispose(); },
     renderer, notices,
     get reloads() { return reloads; }, get removals() { return removals; },
     get prevented() { return prevented; }, get losses() { return losses; },
@@ -60,7 +58,7 @@ for (const oldResult of ['reject', 'false', 'success']) {
   assert.equal(f.reloads, 0);
   assert.equal(f.prevented, 2);
   assert.equal(f.losses, 2);
-  assert.deepEqual(f.notices, [true, true]);
+  assert.equal(f.notices.filter(state => state === 'waiting').length, 2);
 }
 
 {
@@ -80,7 +78,8 @@ for (const onRestored of [undefined, () => false, () => { throw new Error('fresh
   () => Promise.reject(new Error('fresh asynchronous failure'))]) {
   const f = fixture(onRestored);
   f.lost(); f.restored(); await flush();
-  assert.equal(f.reloads, 1, 'current-generation failures preserve the existing reload fallback');
+  assert.equal(f.reloads, 0, 'recovery failures never automatically discard the match');
+  assert.equal(f.notices.at(-1), 'failed', 'offer a manual reload after failure');
   assert.equal(f.removals, 0);
 }
 
@@ -132,7 +131,7 @@ for (const onRestored of [undefined, () => false, () => { throw new Error('fresh
   f.restored();
   assert.equal(map.render, replacementRoute, 'repeated restore notification never stacks wrappers');
   await flush();
-  assert.deepEqual(order, ['application', 'native-shadow', 'application', 'native-shadow']);
+  assert.deepEqual(order, ['application', 'native-shadow'], 'duplicate restore notifications share one recovery');
   assert.equal(f.reloads, 0);
   fail = true;
   assert.throws(() => map.render(lights, scene, camera), error => error === nativeError);
@@ -143,8 +142,27 @@ for (const onRestored of [undefined, () => false, () => { throw new Error('fresh
   f.lost(); f.restored();
   assert.notEqual(map.render, nativeRender, 'a subsequent fresh map receives its own route');
   await flush();
-  assert.equal(f.reloads, 1, 'current shadow failure retains the existing application-recovery fallback');
+  assert.equal(f.reloads, 0);
+  assert.equal(f.notices.at(-1), 'failed', 'shadow failure offers explicit fallback');
   assert.equal(camera.layers.mask, mask);
 }
 
 console.log('rendererContextRecovery.selftest: actual listener generation, replacement shadow routing, order, masks and fallback passed');
+
+{
+  const work = deferred();
+  const f = fixture(() => work.promise);
+  f.lost(); f.expire();
+  assert.equal(f.notices.at(-1), 'delayed', 'a missing browser restoration gets a bounded fallback');
+  f.restored(); await flush(); f.expire();
+  assert.equal(f.notices.at(-1), 'delayed', 'a hung scene restore also offers a fallback');
+  work.resolve(true); await flush();
+  assert.equal(f.notices.at(-1), 'ready', 'slow recovery can still finish without a reload');
+  const count = f.notices.length; f.expire();
+  assert.equal(f.notices.length, count, 'completed recovery cancels its fallback timer');
+}
+{
+  const work = deferred(); const f = fixture(() => work.promise);
+  f.lost(); f.restored(); await flush(); f.dispose(); work.resolve(true); await flush();
+  assert.equal(f.removals, 0, 'disposed renderer cannot finish stale recovery');
+}

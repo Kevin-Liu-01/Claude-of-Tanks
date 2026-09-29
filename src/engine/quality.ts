@@ -179,13 +179,43 @@ export function resolveDeviceTier(renderer?: WebGLRenderer): DeviceTier {
 /** @returns {'mobile'|'desktop'} resolved tier ('desktop' until resolved) */
 export function getDeviceTier(): DeviceTier { return _deviceTier || 'desktop'; }
 
+// A reset is stronger evidence than a frame-rate dip. Keep the relief through
+// a same-tab reload, without overwriting the player's saved quality choice.
+const RECOVERY_KEY = 'cot.graphicsRecovery.v1';
+let recoveryPreset: PresetName | null | undefined;
+function graphicsRecoveryPreset(): PresetName | null {
+  if (recoveryPreset !== undefined) return recoveryPreset;
+  let saved: string | null = null;
+  try {
+    if (new URLSearchParams(window.location.search).has('gfxreset')) window.sessionStorage.removeItem(RECOVERY_KEY);
+    saved = window.sessionStorage.getItem(RECOVERY_KEY);
+  } catch { /* session-only fallback */ }
+  recoveryPreset = saved && Object.prototype.hasOwnProperty.call(PRESETS, saved) ? saved as PresetName : null;
+  return recoveryPreset;
+}
+function clearGraphicsRecovery(): void {
+  recoveryPreset = null;
+  try { window.sessionStorage.removeItem(RECOVERY_KEY); } catch { /* storage unavailable */ }
+}
+export function noteGraphicsContextLoss(): void {
+  const current = resolvePresetName();
+  const ladder: readonly PresetName[] = getDeviceTier() === 'mobile' ? MOBILE_PRESET_ORDER : PRESET_ORDER;
+  recoveryPreset = ladder[Math.max(0, ladder.indexOf(current) - 1)];
+  try { window.sessionStorage.setItem(RECOVERY_KEY, recoveryPreset); } catch { /* retain in memory */ }
+}
+/** Apply relief only once the context is usable; loss handlers must not upload. */
+export function applyGraphicsRecovery(): void {
+  const preset = getPreset();
+  for (const fn of listeners) fn(preset);
+}
+
 /**
  * Detached phase roots have no draw cost, so normal desktops retain their GPU
  * allocations for fast transitions. Phones, tablets, and low-memory desktops
  * release them to stay within the browser's smaller graphics-memory budget.
  */
 export function shouldReleaseInactivePhaseGpu(): boolean {
-  if (getDeviceTier() === 'mobile') return true;
+  if (getDeviceTier() === 'mobile' || graphicsRecoveryPreset()) return true;
   try {
     const memoryGb = (navigator as DeviceNavigator).deviceMemory;
     return typeof memoryGb === 'number' && Number.isFinite(memoryGb) && memoryGb <= 4;
@@ -554,15 +584,18 @@ export function resolvePresetName(choice: PresetChoice = getStoredChoice()): Pre
   // desktop texture/shadow footprint on a device that OOMs under it — that is
   // exactly the deployed-build brick this tier exists to fix. ?tier=desktop
   // remains the explicit test/escape hatch (resolveDeviceTier).
-  if (getDeviceTier() === 'mobile') return getMobilePresetChoice();
-  if (choice !== 'auto') return choice;
-  // perf-r2e: 'auto' adapts to the hardware (see ADAPTIVE AUTO TIER above).
-  return resolveAutoTier();
+  const mobile = getDeviceTier() === 'mobile';
+  const desired = mobile ? getMobilePresetChoice() : choice === 'auto' ? resolveAutoTier() : choice;
+  const recovery = graphicsRecoveryPreset();
+  const ladder: readonly PresetName[] = mobile ? MOBILE_PRESET_ORDER : PRESET_ORDER;
+  return recovery && ladder.includes(recovery) && ladder.indexOf(recovery) < ladder.indexOf(desired)
+    ? recovery : desired;
 }
 
 /** Apply one of the three mobile-safe live presets. */
 export function setMobilePresetName(name: string): void {
   if (name !== 'mobile-low' && name !== 'mobile' && name !== 'mobile-high') return;
+  clearGraphicsRecovery();
   try { window.localStorage.setItem(LS_MOBILE_KEY, name); } catch (_) { /* ok */ }
   const preset = getPreset();
   for (const fn of listeners) fn(preset);
@@ -583,6 +616,7 @@ export function getPreset(): QualityPreset {
 export function setPresetName(name: string): void {
   if (name !== 'auto' && name !== 'low' && name !== 'medium'
     && name !== 'high' && name !== 'ultra') return;
+  clearGraphicsRecovery();
   try { window.localStorage.setItem(LS_KEY, name); } catch (_) { /* ok */ }
   // Every user choice starts a fresh auto-policy session. Explicit presets
   // take control immediately; choosing Auto asks the hardware classifier and

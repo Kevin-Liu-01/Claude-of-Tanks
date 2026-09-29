@@ -1,4 +1,13 @@
 {
+  "graphics.recovery.waiting": "正在重新连接图形设备",
+  "graphics.recovery.restoring": "正在恢复画面",
+  "graphics.recovery.delayed": "图形设备重新连接需要更多时间",
+  "graphics.recovery.failed": "无法重新连接图形设备",
+  "graphics.recovery.workingCopy": "画面将自动恢复，无需重新加载。",
+  "graphics.recovery.delayedCopy": "你可以继续等待自动恢复，也可以重新加载，以更轻量的画质配置启动游戏。",
+  "graphics.recovery.failedCopy": "请重新加载，以更轻量的画质配置重启游戏。已保存的车库设置将会保留。",
+  "graphics.recovery.reload": "重新加载游戏",
+
   "boot.tip.angling.heading": "车身斜置",
   "boot.tip.angling.body": "将车身斜置 20°–30° 面对敌方射手。倾斜呈现的侧装甲会获得等效厚度加成——正面平贴的装甲最容易被打穿。",
   "boot.tip.weakspots.heading": "弱点",

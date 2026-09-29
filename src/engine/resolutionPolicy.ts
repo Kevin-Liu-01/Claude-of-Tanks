@@ -10,6 +10,8 @@ const MOBILE_OUTPUT_DPR_CAP = 3;
 // preventing large tablets/foldables from silently allocating a 5-10 MP
 // default framebuffer plus equally large reconstruction targets.
 export const MOBILE_OUTPUT_PIXEL_BUDGET = 4_000_000;
+// Bound very large Retina windows to 4K output instead of 16–33 MP buffers.
+export const DESKTOP_OUTPUT_PIXEL_BUDGET = 8_294_400;
 
 type NumericInput = number | null | undefined;
 
@@ -49,10 +51,9 @@ export function outputPixelRatio({
   const dpr = finitePositive(devicePixelRatio, 1);
   const cap = mobile ? MOBILE_OUTPUT_DPR_CAP : DESKTOP_OUTPUT_DPR_CAP;
   const desired = Math.min(dpr, cap);
-  if (!mobile) return desired;
   const area = Math.max(1, finitePositive(width, 1) * finitePositive(height, 1));
-  const budgetRatio = Math.sqrt(finitePositive(mobilePixelBudget, MOBILE_OUTPUT_PIXEL_BUDGET) / area);
-  return Math.min(desired, Math.max(1, budgetRatio));
+  const budgetRatio = Math.sqrt((mobile ? finitePositive(mobilePixelBudget, MOBILE_OUTPUT_PIXEL_BUDGET) : DESKTOP_OUTPUT_PIXEL_BUDGET) / area);
+  return Math.min(desired, mobile ? Math.max(1, budgetRatio) : budgetRatio);
 }
 
 /** Full diagnostic record used by renderer.userData and browser QA. */
@@ -77,7 +78,7 @@ export function outputResolution(
     // IEEE-754 spacing cannot make a subtraction equal the non-dyadic 0.001
     // literal exactly, so < and <= have no observable input distinction.
     native: Math.abs(pixelRatio - devicePixelRatio) < 0.001,
-    budgetLimited: !!options.mobile && pixelRatio + 0.001 < Math.min(devicePixelRatio, MOBILE_OUTPUT_DPR_CAP),
+    budgetLimited: pixelRatio + 0.001 < Math.min(devicePixelRatio, options.mobile ? MOBILE_OUTPUT_DPR_CAP : DESKTOP_OUTPUT_DPR_CAP),
   };
 }
 

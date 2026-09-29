@@ -13,14 +13,12 @@
  * resolution governor.
  */
 import * as THREE from 'three';
-import { getDeviceTier, resolveDeviceTier, noteGpuRenderer } from './quality.ts';
+import { t } from '../ui/i18n.ts';
+import { getDeviceTier, resolveDeviceTier, noteGpuRenderer, noteGraphicsContextLoss } from './quality.ts';
 import { outputResolution, type OutputResolution } from './resolutionPolicy.ts';
 import { routeShadowOnlyLayer } from './renderLayers.ts';
 
-interface ContextRecoveryOwner {
-  onLost?(): void;
-  onRestored?(): boolean | void | Promise<boolean | void>;
-}
+import { createContextRecovery, type ContextRecoveryOwner, type RecoveryNotice } from './contextRecovery.ts';
 
 type GameRenderer = THREE.WebGLRenderer & {
   userData: {
@@ -82,54 +80,22 @@ export function createRenderer(container: HTMLElement): GameRenderer {
       : gl.getParameter(gl.RENDERER);
     noteGpuRenderer(typeof reportedRenderer === 'string' ? reportedRenderer : '');
   } catch (_) { noteGpuRenderer(''); }
-  // MOBILE r1: a lost WebGL context used to be a SILENT PERMANENT black
-  // screen (no handler anywhere) — on phones, where the OS reclaims the GPU
-  // under memory pressure, that was indistinguishable from a crash. Keep the
-  // context restorable (preventDefault) and give the player a branded
-  // explanation + reload path. Once main.ts has installed its recovery
-  // hooks, a successful restore keeps the current battle and rebuilds at a
-  // safer preset; an early-boot loss still reloads through the fallback.
-  let contextRecoveryGeneration = 0;
-  renderer.domElement.addEventListener('webglcontextlost', (e) => {
-    contextRecoveryGeneration += 1;
-    e.preventDefault();
-    let recovering = false;
-    try {
-      const handler = renderer.userData.contextRecovery?.onLost;
-      if (typeof handler === 'function') {
-        handler();
-        recovering = true;
-      }
-    } catch (_) { /* reload button remains the safe fallback */ }
-    showContextLossOverlay(recovering);
-  }, false);
-  renderer.domElement.addEventListener('webglcontextrestored', () => {
-    // Three's earlier listener replaces shadowMap along with its GL caches.
-    // Restore proxy routing before any application recovery can render.
-    routeShadowOnlyLayer(renderer);
-    const restoredGeneration = contextRecoveryGeneration;
-    const handler = renderer.userData.contextRecovery?.onRestored;
-    if (typeof handler !== 'function') {
-      try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
-      return;
-    }
-    Promise.resolve().then(() => {
-      if (restoredGeneration !== contextRecoveryGeneration) return;
-      return handler();
-    }).then((handled) => {
-      // A newer loss owns its own overlay and recovery. An older asynchronous
-      // completion (including rejection) cannot dismiss it or reload the page.
-      if (restoredGeneration !== contextRecoveryGeneration) return;
-      if (handled === false) {
-        try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
-        return;
-      }
-      document.getElementById('cot-ctxlost')?.remove();
-    }).catch(() => {
-      if (restoredGeneration !== contextRecoveryGeneration) return;
-      try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
-    });
-  }, false);
+  const recovery = createContextRecovery({
+    owner: () => renderer.userData.contextRecovery,
+    // Three replaces shadowMap before dispatching our restoration listener.
+    beforeRestore: () => routeShadowOnlyLayer(renderer),
+    recordLoss: noteGraphicsContextLoss,
+    notice: showContextLossOverlay,
+  });
+  renderer.domElement.addEventListener('webglcontextlost', recovery.lost, false);
+  renderer.domElement.addEventListener('webglcontextrestored', recovery.restored, false);
+  const dispose = renderer.dispose.bind(renderer);
+  renderer.dispose = () => {
+    recovery.dispose();
+    renderer.domElement.removeEventListener('webglcontextlost', recovery.lost);
+    renderer.domElement.removeEventListener('webglcontextrestored', recovery.restored);
+    dispose();
+  };
 
   const width = container.clientWidth || window.innerWidth;
   const height = container.clientHeight || window.innerHeight;
@@ -163,39 +129,48 @@ export function createRenderer(container: HTMLElement): GameRenderer {
 }
 
 /**
- * MOBILE r1: branded context-loss overlay. Built lazily from JS (no index.html
- * dependency), idempotent, sits above every game surface. The message keeps to
- * the boot splash's visual language (dark steel, orange accent, Inter stack).
+ * Automatic recovery owns the compact cover. Offer a manual reload only after
+ * a delay/failure; never assume a device reset was caused by memory exhaustion.
  */
-function showContextLossOverlay(recovering = false): void {
+function showContextLossOverlay(state: RecoveryNotice): void {
+  if (state === 'ready') { document.getElementById('cot-ctxlost')?.remove(); return; }
   try {
-    if (document.getElementById('cot-ctxlost')) return;
-    const el = document.createElement('div');
-    el.id = 'cot-ctxlost';
-    el.setAttribute('style', [
-      'position:fixed', 'inset:0', 'z-index:100000',
-      'display:flex', 'align-items:center', 'justify-content:center',
-      'background:#05080b', 'color:#eef4f9',
-      "font-family:'Inter',system-ui,sans-serif", 'text-align:center',
-    ].join(';'));
-    el.innerHTML = [
-      '<div style="max-width:min(520px,86vw)">',
-      '<div style="font-size:22px;font-weight:800;letter-spacing:.34em;color:#f0ad45">CLAUDE&nbsp;OF&nbsp;TANKS</div>',
-      `<div style="margin-top:18px;font-size:15px;font-weight:600">${recovering ? 'Restoring graphics' : 'Graphics device was reset'}</div>`,
-      '<div style="margin-top:10px;font-size:12.5px;line-height:1.6;color:#9fb0bf">',
-      recovering
-        ? 'The browser briefly reclaimed graphics memory. The battle is paused while the renderer restores at a safer mobile quality.'
-        : 'The browser reclaimed the game’s graphics memory (this can happen on phones and tablets under memory pressure). Reload to jump back in — your garage and progress are saved.',
-      '</div>',
-      '<button id="cot-ctxlost-btn" style="margin-top:22px;padding:12px 34px;border:1px solid rgba(240,173,69,.6);',
-      'border-left:3px solid #f0ad45;background:rgba(240,173,69,.12);color:#ffd27a;font:800 12px/1 \'Inter\',system-ui,sans-serif;',
-      `letter-spacing:.22em;text-transform:uppercase;cursor:pointer">${recovering ? 'Reload now' : 'Reload'}</button>`,
-      '</div>',
-    ].join('');
-    (document.body || document.documentElement).appendChild(el);
-    const btn = el.querySelector('#cot-ctxlost-btn');
-    if (btn) btn.addEventListener('click', () => { try { window.location.reload(); } catch (_) { /* ignore */ } });
-  } catch (_) { /* overlay is best-effort — never throw from a GL event */ }
+    let el = document.getElementById('cot-ctxlost');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'cot-ctxlost';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.setAttribute('aria-labelledby', 'cot-ctxlost-title');
+      el.tabIndex = -1;
+      el.style.cssText = "position:fixed;inset:0;z-index:100000;display:grid;place-items:center;background:#080d13;color:#eef4f9;font-family:Inter,system-ui,sans-serif;text-align:center;padding:24px;box-sizing:border-box";
+      el.innerHTML = `<div style="width:min(420px,100%)">
+        <div style="color:#f0ad45;font-size:11px;font-weight:700;letter-spacing:.2em;margin-bottom:20px">CLAUDE OF TANKS</div>
+        <h2 id="cot-ctxlost-title" style="font-size:22px;margin:0 0 12px"></h2>
+        <p data-recovery-copy role="status" aria-live="polite" style="font-size:14px;line-height:1.6;color:#9fb0bf;margin:0"></p>
+        <button id="cot-ctxlost-btn" hidden style="margin-top:24px;padding:12px 24px;background:#f0ad45;color:#101820;border:0;font:700 14px Inter,system-ui,sans-serif;cursor:pointer"></button>
+      </div>`;
+      (document.body || document.documentElement).appendChild(el);
+      el.focus({ preventScroll: true });
+      el.addEventListener('keydown', (event) => {
+        event.stopPropagation();
+        if (event.key === 'Tab') {
+          event.preventDefault();
+          const reload = el?.querySelector<HTMLButtonElement>('#cot-ctxlost-btn');
+          if (reload && !reload.hidden) reload.focus();
+        }
+      });
+      el.querySelector('#cot-ctxlost-btn')?.addEventListener('click', () => window.location.reload());
+    }
+    const title = el.querySelector('#cot-ctxlost-title');
+    const copy = el.querySelector('[data-recovery-copy]');
+    const button = el.querySelector<HTMLButtonElement>('#cot-ctxlost-btn');
+    const fallback = state === 'failed' || state === 'delayed';
+    if (title) title.textContent = t(`graphics.recovery.${state}`);
+    if (copy) copy.textContent = t(`graphics.recovery.${state === 'failed' ? 'failedCopy' : state === 'delayed' ? 'delayedCopy' : 'workingCopy'}`);
+    if (button) { button.hidden = !fallback; button.textContent = t('graphics.recovery.reload'); }
+    el.dataset.recoveryState = state;
+  } catch { /* recovery must remain possible even if presentation fails */ }
 }
 
 /**

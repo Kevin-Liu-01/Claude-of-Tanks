@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  MOBILE_OUTPUT_PIXEL_BUDGET,
+  MOBILE_OUTPUT_PIXEL_BUDGET, DESKTOP_OUTPUT_PIXEL_BUDGET,
   outputPixelRatio,
   outputResolution,
   uiPixelRatio,
@@ -12,8 +12,8 @@ assert.equal(outputPixelRatio({ width: 430, height: 932, devicePixelRatio: 3, mo
   'representative DPR-3 phone portraits remain below the pixel budget');
 assert.equal(outputPixelRatio({ width: 1440, height: 900, devicePixelRatio: 3, mobile: false }), 2,
   'desktop output retains its established DPR-2 cap');
-assert.equal(outputPixelRatio({ width: 2000, height: 2000, devicePixelRatio: 3 }), 2,
-  'omitting the mobile flag remains a desktop decision');
+assert.equal(outputPixelRatio({ width: 2000, height: 2000, devicePixelRatio: 3 }), 1.44,
+  'large desktop windows respect the output-pixel budget');
 
 const tablet = outputResolution({ width: 1024, height: 1366, devicePixelRatio: 2, mobile: true });
 assert.equal(tablet.native, false, 'large tablet output is budget limited');
@@ -100,3 +100,11 @@ assert.equal(uiPixelRatio(220, 220), 2,
 delete globalThis.window;
 
 console.log('resolutionPolicy self-test passed');
+
+for (const [width, height] of [[2560, 1440], [3840, 2160], [5120, 2880]]) {
+  const r = outputResolution({ width, height, devicePixelRatio: 2 });
+  assert.ok(r.outputPixels <= DESKTOP_OUTPUT_PIXEL_BUDGET + r.bufferWidth + r.bufferHeight);
+  assert.equal(r.budgetLimited, true);
+}
+assert.equal(outputResolution({ width: 1920, height: 1080, devicePixelRatio: 2 }).pixelRatio, 2,
+  'ordinary Retina output keeps the same crisp native pixels');

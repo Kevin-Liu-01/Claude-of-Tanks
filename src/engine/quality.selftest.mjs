@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 function installBrowser(search, { memory = 8, cores = 8 } = {}) {
   const storage = new Map();
+  const session = new Map();
   const localStorage = {
     getItem: (key) => storage.get(key) ?? null,
     setItem: (key, value) => storage.set(key, String(value)),
@@ -11,6 +12,7 @@ function installBrowser(search, { memory = 8, cores = 8 } = {}) {
     configurable: true,
     value: {
       location: { search }, localStorage,
+      sessionStorage: { getItem: key => session.get(key) ?? null, setItem: (key, value) => session.set(key, String(value)), removeItem: key => session.delete(key) },
       matchMedia: () => ({ matches: false }),
     },
   });
@@ -107,3 +109,32 @@ assert.equal(freshDesktop.resolvePresetName(), 'high',
   'a new session re-runs stable hardware policy instead of inheriting load');
 
 console.log('quality.selftest: device, texture, preset, and subscription contracts passed');
+
+{
+  const browser = installBrowser('?tier=desktop');
+  const q = await import('./quality.ts?context-pressure');
+  q.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } });
+  q.setPresetName('high');
+  let changes = 0; q.onPresetChange(() => changes++);
+  const saved = [...browser.storage];
+  q.noteGraphicsContextLoss();
+  assert.equal(changes, 0, 'loss does not allocate GPU resources through preset listeners');
+  assert.equal(q.resolvePresetName(), 'medium');
+  assert.equal(q.shouldReleaseInactivePhaseGpu(), true, 'a reset desktop stops retaining inactive GPU phases');
+  assert.deepEqual([...browser.storage], saved, 'recovery preserves the chosen quality setting');
+  q.applyGraphicsRecovery(); assert.equal(changes, 1, 'restoration publishes the temporary preset');
+  const reload = await import('./quality.ts?context-pressure-reload');
+  reload.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } });
+  assert.equal(reload.resolvePresetName(), 'medium', 'same-tab reload must not recreate the failing footprint');
+  reload.noteGraphicsContextLoss(); assert.equal(reload.resolvePresetName(), 'low', 'repeated resets tighten the cap');
+  reload.noteGraphicsContextLoss(); assert.equal(reload.resolvePresetName(), 'low', 'relief has a floor');
+  reload.setPresetName('high'); assert.equal(reload.resolvePresetName(), 'high', 'explicit choice clears recovery relief');
+}
+{
+  installBrowser('?tier=mobile');
+  const q = await import('./quality.ts?mobile-context-pressure');
+  q.resolveDeviceTier({ capabilities: { maxTextureSize: 8192 } });
+  q.noteGraphicsContextLoss(); assert.equal(q.resolvePresetName(), 'mobile-low');
+  assert.equal(q.getMobilePresetChoice(), 'mobile', 'saved phone quality is not overwritten');
+  q.setMobilePresetName('mobile-high'); assert.equal(q.resolvePresetName(), 'mobile-high');
+}
