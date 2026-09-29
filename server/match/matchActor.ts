@@ -22,8 +22,9 @@ import {
 import type { CloseReasonId, TeamId } from '../../src/mp/wire/constants.ts';
 import { decodeMessage, encodeMessage, shellTypeIndex } from '../../src/mp/wire/codec.ts';
 import type {
-  EntityRow, EventMessage, HelloMessage, InputMessage, RosterEntry, ShellRow, SnapshotFrame, WireEvent, WireMessage,
+  EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
+import { dequantizeAngle, dequantizePosition, dequantizeVelocity } from '../../src/mp/wire/quantize.ts';
 import { captureEntityRow, captureMeta, captureViewerState, createEraIndexer } from './entityRows.ts';
 import {
   INTEREST_ENGAGED_TICKS, INTEREST_NEAR_MISS_M, beginSnapshot, createViewerInterest, engageEntity, needsFreshRow, recordRow, viewerTierFor,
@@ -165,6 +166,14 @@ export interface MatchActorStats {
   lagComp: { rewoundShots: number; rewoundSweeps: number; mismatchMeanM: number; mismatchMaxM: number; historyMisses: number };
   verdict: string | null;
   interest: InterestStats;
+  resumeHints: ResumeHintStats;
+}
+
+/** The migration seed for unseen hulls (P3b, 2026-09-29; docs/MULTIPLAYER-V2.md §13.9.5): resume hints applied and refused, by reason. */
+export interface ResumeHintStats {
+  applied: number;
+  rejected: number;
+  reasons: { noResume: number; notRestored: number; repeated: number; older: number; future: number; tooFar: number; noSeat: number };
 }
 
 export interface MatchActor {
@@ -183,6 +192,12 @@ export interface MatchActor {
   wireIdOf(playerId: string): number | null;
   /** Battle time the actor resumed at (0 for a fresh match): every published battle clock adds it. */
   readonly resumedBattleTimeMs: number;
+  /**
+   * The row an entity was restored from at a migration (`applyResumeState` names it): a later RESUME_HINT from that
+   * entity's own seat is applied only when it is newer than this row and within the distance the hull could have driven
+   * since — the migration seed for a hull the new host could not see (P3b).
+   */
+  noteRestoredRow(entityId: number, tick: number, x: number, z: number): void;
   /** Inject a server-side reliable event to every viewer (roster/admin changes from the room service). */
   broadcastEvent(event: WireEvent): void;
   advance(nowMs?: number): number;
@@ -333,6 +348,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   let sortedDestroyed: number[] = [];
   let destroyedRevision = -1;
   const totals = { bytesOut: 0, bytesIn: 0, snapshots: 0, keyframes: 0, droppedSnapshots: 0, backpressureCloses: 0, events: 0, malformed: 0, rejectedInputs: 0 };
+  // the migration seed (P3b): what each entity was restored from, and whether its own seat's hint was taken
+  const restoredTicks = new Int32Array(MAX_ENTITIES + 1).fill(-1);
+  const restoredX = new Float64Array(MAX_ENTITIES + 1);
+  const restoredZ = new Float64Array(MAX_ENTITIES + 1);
+  const hinted = new Uint8Array(MAX_ENTITIES + 1);
+  const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0 } };
   let ended = false;
   let stopped = false;
   let verdict: MatchVerdict | null = null;
@@ -426,9 +447,55 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         return;
       case MESSAGE_TYPE.CHAT: receiveChat(client, message.text, nowMs); return;
       case MESSAGE_TYPE.LEAVE: detach(client, CLOSE_REASON.CLIENT_LEAVE); return;
+      case MESSAGE_TYPE.RESUME_HINT: receiveResumeHint(client, message); return;
       default:
         sendError(client, CLOSE_REASON.UNEXPECTED_MESSAGE, `type ${message.type}`);
     }
+  }
+
+  /** The hull's top speed (m/s) for the hint's distance bound; the fleet's fastest hull is the floor so a mode multiplier never refuses a true row. */
+  function topSpeedMps(entity: AuthoritativeEntity): number {
+    const kmh = (entity.spec as { topSpeedKmh?: number }).topSpeedKmh;
+    return Math.max(25, typeof kmh === 'number' && Number.isFinite(kmh) ? kmh / 3.6 : 0);
+  }
+
+  /**
+   * A viewer's own newest authority row from the host it lost (P3b): applied to its entity only when this actor resumed
+   * a migration, the entity was restored from the migration state, no hint was taken for it yet, the row is newer than
+   * the restored one and older than the resume tick, and it lies within the distance the hull could have driven since
+   * the restored row (top speed × the ticks between, with a margin) — pose fields only, never combat state. A client
+   * never places itself: outside those bounds the hint is refused and counted.
+   */
+  function receiveResumeHint(client: ActorClient, hint: ResumeHintMessage): void {
+    const entity = client.entity;
+    const refuse = (reason: keyof ResumeHintStats['reasons']): void => { resumeHints.rejected++; resumeHints.reasons[reason]++; };
+    if (!entity) { refuse('noSeat'); return; }
+    const entityId = client.entityId;
+    if (!resume) { refuse('noResume'); return; }
+    const restoredTick = restoredTicks[entityId]!;
+    if (restoredTick < 0) { refuse('notRestored'); return; }
+    if (hinted[entityId]) { refuse('repeated'); return; }
+    if (!(hint.tick > restoredTick)) { refuse('older'); return; }
+    if (hint.tick >= resume.tick) { refuse('future'); return; }
+    const x = dequantizePosition(hint.x);
+    const z = dequantizePosition(hint.z);
+    const allowedM = (hint.tick - restoredTick) * SIM_DT * topSpeedMps(entity) * 1.25 + 3;
+    const movedM = Math.hypot(x - restoredX[entityId]!, z - restoredZ[entityId]!);
+    if (movedM > allowedM) { refuse('tooFar'); actorLog.warn('resume hint refused', { player: client.playerId, movedM: Math.round(movedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
+    const tank = entity.state;
+    tank.pos.x = x;
+    tank.pos.y = dequantizePosition(hint.y);
+    tank.pos.z = z;
+    tank.yaw = dequantizeAngle(hint.yaw);
+    tank.speed = dequantizeVelocity(hint.speed);
+    tank.verticalSpeed = dequantizeVelocity(hint.verticalSpeed);
+    tank.turretYaw = dequantizeAngle(hint.turretYaw);
+    tank.gunPitch = dequantizeAngle(hint.gunPitch);
+    tank.visualPitch = dequantizeAngle(hint.pitch);
+    tank.visualRoll = dequantizeAngle(hint.roll);
+    hinted[entityId] = 1;
+    resumeHints.applied++;
+    actorLog.info('resume hint applied', { player: client.playerId, tick: hint.tick, restoredTick, movedM: Math.round(movedM * 100) / 100 });
   }
 
   function acknowledge(client: ActorClient, tick: number, nowMs: number): void {
@@ -784,6 +851,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       },
       verdict: verdict ? verdict.result : null,
       interest: interestTotals(),
+      resumeHints: { applied: resumeHints.applied, rejected: resumeHints.rejected, reasons: { ...resumeHints.reasons } },
     };
   }
 
@@ -801,6 +869,13 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     entityForWireId: (entityId) => entityByWireId.get(entityId) ?? null,
     wireIdOf: (playerId) => entityIdOf.get(playerId) ?? null,
     resumedBattleTimeMs,
+    noteRestoredRow(entityId, tick, x, z) {
+      if (!Number.isInteger(entityId) || entityId < 1 || entityId > MAX_ENTITIES || !Number.isInteger(tick) || tick < 0) return;
+      restoredTicks[entityId] = tick;
+      restoredX[entityId] = x;
+      restoredZ[entityId] = z;
+      hinted[entityId] = 0;
+    },
     broadcastEvent,
     advance: (nowMs) => loop.advance(nowMs),
     start,

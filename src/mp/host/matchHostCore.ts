@@ -356,6 +356,7 @@ export function createMatchHostCore({
       tickP50Ms: summary.tickMs.p50, tickMeanMs: summary.tickMs.mean, tickMaxMs: summary.tickMs.max, tickCount: summary.tickMs.count,
       droppedTicks: summary.loop.droppedTicks, stalls: summary.loop.stalls, lateWakeupMaxMs: summary.loop.lateWakeupMaxMs, verdict: summary.verdict,
       snapshotHz: summary.snapshotHz, snapshotSkips: summary.droppedSnapshots, interest: summary.interest,
+      resumeHints: { applied: summary.resumeHints.applied, rejected: summary.resumeHints.rejected },
     };
   }
 

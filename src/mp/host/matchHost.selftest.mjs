@@ -68,10 +68,11 @@ const SEAT_SECRET = 'room-seat-secret-0123456789abcdef';
 const matchId = 'm1-00c0ffee';
 const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
 const tokenFor = (seat, playerId, team, specId, secret = hostSecret) => signSeatToken(secret, { v: 1, roomId: 'ROOM01', seat, playerId, name: playerId, team, specId, iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+// the host spawns 700 m from bob's team: beyond every spotting range, so bob never sees its hull (the migration seed's premise)
 const seats = [
-  { seat: 0, playerId: 'host', name: 'Host', team: 'alpha', specId: 'm1a2' },
-  { seat: 1, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90m' },
-  { seat: 2, playerId: 'eve', name: 'Eve', team: 'bravo', specId: 't90m' },
+  { seat: 0, playerId: 'host', name: 'Host', team: 'alpha', specId: 'm1a2', spawn: { x: -250, z: -250, yaw: 0 } },
+  { seat: 1, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90m', spawn: { x: 250, z: 250, yaw: Math.PI } },
+  { seat: 2, playerId: 'eve', name: 'Eve', team: 'bravo', specId: 't90m', spawn: { x: 260, z: 250, yaw: Math.PI } },
 ];
 const config = { roomId: 'ROOM01', matchId, generation: 1, mapId: 'verdant', mode: 'standard', seed: 5, seats, bots: [], countdownS: 0, battleLimitS: 600, hostSecret, manifestBase: null, resume: null };
 
@@ -108,8 +109,12 @@ assert.equal(reports[0].phase, 'loading');
 assert.ok(['countdown', 'playing'].includes(reports[1].phase), `the phase report (${reports[1].phase})`);
 assert.equal(reports[0].verdict, undefined);
 
-// ---- the host's own seat over the loopback pair
-const hostClient = new MatchClient({ transport: host.transport, token: tokenFor(0, 'host', 'alpha', 'm1a2'), clock: time.clock });
+// ---- the host's own seat over the loopback pair (behind the migrating transport, driving: its hull is the unseen one the migration seed is for)
+const hostMigrating = new MigratingTransport(host.transport);
+const hostClient = new MatchClient({
+  transport: hostMigrating, token: tokenFor(0, 'host', 'alpha', 'm1a2'), clock: time.clock,
+  controls: () => ({ throttle: 1, steer: 0, brake: false, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 }),
+});
 clients.push(hostClient);
 hostClient.connect();
 await advance(TICK_MS * 6);
@@ -174,13 +179,19 @@ assert.ok(Math.abs(dequantizePosition(hostRow.x) - hostEntity.state.pos.x) < 2, 
 
 // ---- migration: the old host goes; bob (elected) boots a second core from the retained state and moves his own seat onto it
 const oldTick = cores[0].actor.tick;
+// the premise of the migration seed: bob never saw the enemy host's hull, so bob's actor can only restore it from the sealed keyframe
+const bobLatest = bobClient.retainedMigration().latestFrame;
+assert.ok(bobLatest && !bobLatest.entities.some((row) => row.entityId === 1), 'the host\'s hull is hidden from bob');
+const hostLastOwnRow = hostClient.retainedMigration().latestFrame.entities.find((row) => row.entityId === 1);
+assert.ok(hostLastOwnRow && hostLastOwnRow.speed > 100, `the host's hull is driving (${hostLastOwnRow?.speed} cm/s)`);
 host.stop(CLOSE_REASON.ROOM_CLOSED, 'host left');
 await settle(4);
 assert.equal(host.state, 'stopped');
 assert.ok(cores[0].stopped, 'the core stopped');
 assert.equal(bobRtc.state, 'reconnecting', 'the peer lost its channel and would re-offer');
 relay.elect('bob');
-const elapsedTicks = 30;
+// the room's grace puts the resume tick ≥ 480 ticks past the keyframe in production; 120 here keeps it past every row the old actor published after this keyframe
+const elapsedTicks = 120;
 const resumeTick = keyframe.tick + elapsedTicks;
 const config2 = { ...bootConfig, generation: relay.generation, hostSecret, manifestBase: null, resume: { ...keyframe, resumeTick } };
 const reports2 = [];
@@ -224,6 +235,33 @@ assert.ok(host2.uplinkBytesPerS >= 0);
 assert.equal(bobTransport.replacementCount, 1);
 assert.ok(bobTransport.stats.bytesReceived > 0);
 assert.ok(cores[1].actor.tick > oldTick, 'the timeline moved on past the old host');
+
+// ---- the migration seed (P3b): the old host comes back as a peer of bob; its own newest row from its own actor seeds the hull bob restored from the keyframe
+const restoredRow = keyframe.frame.entities.find((row) => row.entityId === 1);
+const keyframeGapM = Math.hypot(dequantizePosition(hostLastOwnRow.x - restoredRow.x), dequantizePosition(hostLastOwnRow.z - restoredRow.z));
+const hostEntityOnBob = cores[1].actor.entityForWireId(1);
+const beforeHintM = Math.hypot(hostEntityOnBob.state.pos.x - dequantizePosition(hostLastOwnRow.x), hostEntityOnBob.state.pos.z - dequantizePosition(hostLastOwnRow.z));
+assert.equal(cores[1].actor.stats().resumeHints.applied, 0, 'no hint before the old host is back');
+const hostRtc = new WebRtcTransport({ signaler: relay.signalerFor('host'), createPeerConnection: world.createPeerConnection, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer, random: () => 0.5 });
+const hostWelcomes = [];
+hostClient.onWelcome((welcome) => hostWelcomes.push(welcome));
+const hostSnapshotsBefore = hostClient.snapshotsAcceptedCount;
+hostMigrating.replace(hostRtc, 'host migration');
+// the first frame from bob's actor (the soak's measure: the last row from the old host against the first from the new)
+for (let n = 0; n < 40 && hostClient.snapshotsAcceptedCount === hostSnapshotsBefore; n++) await advance(TICK_MS);
+assert.equal(hostWelcomes.length, 1, 'the old host was welcomed by bob\'s actor as a peer');
+assert.ok(hostWelcomes[0].serverTick >= resumeTick);
+assert.ok(hostClient.snapshotsAcceptedCount > hostSnapshotsBefore, 'snapshots flow from bob to the old host');
+const hostFirstRowFromBob = hostClient.retainedMigration().latestFrame.entities.find((row) => row.entityId === 1);
+const hintStats = cores[1].actor.stats().resumeHints;
+assert.equal(hintStats.applied, 1, `the old host's own row was applied to its hull on bob's actor (applied ${hintStats.applied}, rejected ${JSON.stringify(hintStats.reasons)})`);
+assert.equal(hintStats.reasons.older, 1, 'bob\'s own hint (its row was the overlay) was refused as no newer');
+assert.equal(hostClient.stats().resumeHintsSent, 1);
+const rowJumpM = Math.hypot(dequantizePosition(hostFirstRowFromBob.x - hostLastOwnRow.x), dequantizePosition(hostFirstRowFromBob.z - hostLastOwnRow.z));
+assert.ok(rowJumpM <= 1.0, `the old host's hull resumes where its own last row was, within a metre on the authority rows (${rowJumpM.toFixed(2)} m; the keyframe alone was ${keyframeGapM.toFixed(2)} m behind that row, ${beforeHintM.toFixed(2)} m before the hint)`);
+assert.ok(beforeHintM > rowJumpM || keyframeGapM < 0.5, 'the hint brought the hull closer than the keyframe had it (or the keyframe was already fresh)');
+console.log(`matchHost.selftest: the migration seed — the keyframe had the unseen hull ${keyframeGapM.toFixed(2)} m behind its own last row, the hint put it within ${rowJumpM.toFixed(2)} m`);
+hostRtc.close();
 host2.stop();
 await settle(4);
 for (const client of clients) client.dispose();

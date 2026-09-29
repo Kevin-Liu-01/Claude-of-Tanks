@@ -99,6 +99,8 @@ export interface HostCoreStats {
   snapshotSkips: number;
   /** Rows the interest tiers refreshed per tier (near, mid, far) and held over, and the tier populations of the newest snapshot summed over the viewers (P3b). */
   interest: { published: [number, number, number]; held: number; population: [number, number, number] };
+  /** Own-row hints applied and refused after a migration (P3b: the migration seed for hulls this host could not see). */
+  resumeHints: { applied: number; rejected: number };
 }
 
 export type HostToWorkerMessage =

@@ -169,6 +169,8 @@ export interface MatchClientStats {
   stalls: number;
   outageMs: number;
   closeReason: CloseReasonId | null;
+  /** Own-row hints sent after a resumed link (P3b: the migration seed for a hull the new host could not see). */
+  resumeHintsSent: number;
 }
 
 interface PendingPing {
@@ -252,6 +254,7 @@ export class MatchClient {
   private serverErrors = 0;
   private keyframeRequests = 0;
   private inputFramesSent = 0;
+  private resumeHintsSent = 0;
   private snapshotsAccepted = 0;
   private rateWindowStartMs: number | null = null;
   private rateWindowBytesIn = 0;
@@ -495,6 +498,7 @@ export class MatchClient {
       stalls: this.recovery.stallCount,
       outageMs: this.recovery.outageStartedAtMs === null ? 0 : Math.max(0, this.clock() - this.recovery.outageStartedAtMs),
       closeReason: this.closeReason,
+      resumeHintsSent: this.resumeHintsSent,
     };
   }
 
@@ -504,8 +508,12 @@ export class MatchClient {
     if (this.disposed) return;
     if (change.state === 'open') {
       this.openedAtMs = this.clock();
+      // A resumed link may be a new host (a migration): the own newest authority row from the host we lost is the seed
+      // for our hull if the new host could not see it (P3b); the actor bounds it and ignores it on a plain reconnect.
+      const hint = change.resumed ? this.ownRow : null;
       if (change.resumed) this.resetForNewSocket();
       this.sendHello();
+      if (hint) this.sendResumeHint(hint);
     } else if (change.state === 'reconnecting') {
       this.welcomeMessage = null;
       this.inputStream.clearPendingEdges();
@@ -557,6 +565,14 @@ export class MatchClient {
 
   private send(bytes: Uint8Array): boolean {
     return this.transport.send(bytes);
+  }
+
+  private sendResumeHint(row: EntityRow): void {
+    const sent = this.send(encodeMessage({
+      type: MESSAGE_TYPE.RESUME_HINT, tick: row.tick, x: row.x, y: row.y, z: row.z, speed: row.speed, verticalSpeed: row.verticalSpeed,
+      yaw: row.yaw, pitch: row.pitch, roll: row.roll, turretYaw: row.turretYaw, gunPitch: row.gunPitch,
+    }));
+    if (sent) this.resumeHintsSent++;
   }
 
   private receive(bytes: Uint8Array): void {

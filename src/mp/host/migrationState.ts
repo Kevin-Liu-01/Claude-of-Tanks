@@ -201,6 +201,8 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
       combat.eraSpent ??= new Set();
       for (const index of row.eraSpent) { const name = byIndex.get(index); if (name) combat.eraSpent.add(name); }
     }
+    // the migration seed (P3b): the actor remembers what each entity was restored from, so its own seat's hint can be bounded
+    actor.noteRestoredRow(row.entityId, row.tick, tank.pos.x, tank.pos.z);
     const extras = extrasById.get(row.entityId);
     if (extras) {
       entity.kills = extras.kills;

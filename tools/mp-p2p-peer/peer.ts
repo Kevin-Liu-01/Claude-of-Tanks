@@ -407,7 +407,7 @@ function status(): Record<string, unknown> {
       inputAckLagTicks: stats.inputAckLagTicks, inputLeadTicks: stats.inputLeadTicks, inputMarginTicks: stats.inputMarginTicks, reconnects: stats.reconnects, stalls: stats.stalls, outageMs: stats.outageMs,
       decodeErrors: stats.decodeErrors, serverErrors: stats.serverErrors, closeReason: stats.closeReason, bufferedBytes: stats.bufferedBytes, framesDropped: stats.transport.framesDropped,
       prediction: stats.prediction ? { lastPositionErrorM: stats.prediction.lastPositionErrorM, maxPositionErrorM: stats.prediction.maxPositionErrorM, maxFreePositionErrorM: stats.prediction.maxFreePositionErrorM, maxContactPositionErrorM: stats.prediction.maxContactPositionErrorM, hardSnaps: stats.prediction.hardSnaps, reconciliations: stats.prediction.reconciliations, maxCorrectionStepM: stats.prediction.maxCorrectionStepM } : null,
-      ownShotsPredicted: stats.ownShotsPredicted, ownShotsConfirmed: stats.ownShotsConfirmed,
+      ownShotsPredicted: stats.ownShotsPredicted, ownShotsConfirmed: stats.ownShotsConfirmed, resumeHintsSent: stats.resumeHintsSent,
     } : null,
     own: lastOwn, lastSnapshotTick, framesSeen, welcomes, predictionReady, predictionError, mapId: lastMapId, iceResolves,
     rtc: { ...rtc, totals: { bytesSent, bytesReceived, messagesSent, messagesReceived } },

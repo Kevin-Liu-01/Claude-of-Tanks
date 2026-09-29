@@ -1219,6 +1219,26 @@ the backoff; the never-opens window exhausts on 3.5 s attempts), `rtcClientLink.
 acceptor existed is answered at construction, the peer never re-offers), `roomClientSignals.selftest` (one offer per
 sender, the running generation only, drained on read, gone past the window).
 
+**13.9.5 The migration seed for unseen hulls.** Three candidates were costed by uplink: sealed keyframes every 500 ms
+(4× today's sealed traffic — ≈ 20 → 80 kbit/s per viewer, ≈ 2 Mbit/s more at 27 viewers), sealed deltas every 500 ms
+on top of the 2 s keyframes (≈ 16 kbit/s more per viewer, ≈ 0.4 Mbit/s at 27), or **a bounded own-row hint** — nothing
+in the steady state: one 32-byte message per seat per migration. The hint is the seat's own newest authority row from
+the host it lost (the same authority's row, never the client's prediction), sent as `RESUME_HINT` right after the HELLO
+of a resumed link (`MatchClient`: a migrated `MigratingTransport` opens with `resumed`; a plain reconnect sends it too
+and the actor ignores it). The elected host's actor (`receiveResumeHint`) applies it to the seat's entity only when it
+resumed a migration, the entity was restored from the migration state (`applyResumeState` names each restored row's
+tick and position through `MatchActor.noteRestoredRow`), no hint was taken for it yet, the row is newer than the
+restored one and older than the resume tick, and it lies within the distance the hull could have driven since the
+restored row — (ticks between) × top speed × 1.25 + 3 m, the fleet's fastest hull as the floor — pose fields only,
+never combat state. A client never places itself: a claim outside those bounds is refused and counted
+(`ResumeHintStats.reasons`). Bots, disconnected seats and hulls nobody re-offers still resume from the sealed keyframe
+(≤ 2 s old); the seed covers every hull whose own seat comes back, which is what the certification's own-hull gate
+measures. Receipts: `matchActorResume.selftest` (older / future / too far / unrestored / spectator / repeated refused, one
+bounded hint applied, none on an actor that did not resume), `matchHost.selftest` (the old host's driving hull, hidden
+from bob, restored by bob's actor from the sealed keyframe metres behind its own last row, then the old host back as a
+WebRTC peer: its hint applied, bob's own refused as no newer, the hull within a metre of its last row on the authority
+rows — the "no reset" contract), the soak's migration table (hints applied / refused per migration).
+
 **Receipts.** `server/match/interestTiers.selftest.mjs` (core): the radii, the phased cadences, the fresh-row rules and
 engagement on the pure module; then the real actor on the bare height field with hulls placed at 40 / 60 / 200 / 400 /
 420 m from the viewer — the own row, the near ally and the near enemy refreshed every snapshot, the middle ally every
