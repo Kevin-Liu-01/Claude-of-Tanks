@@ -6,7 +6,7 @@ import { getSpec } from '../vehicles/specs.ts';
 
 // matchmaking diversity (owner 2026-09-17: "teams arent actually randomly taking tanks … far greater diversity"):
 // (1) the seeded roster shuffle's battle ordinal starts from the profile's lifetime match count instead of 0 on every
-// page load, so the first battle of a session is a different draw each time the record grows; (2) the era-band
+// page load; independent session entropy also varies draws when the record does not grow. (2) the era-band
 // rotation remembers the bots of the last TWO battles, so a vehicle only returns when the same-era and contemporary
 // catalogs are used up (diversity r2: fresh contemporaries rank ahead of recent same-era vehicles).
 
@@ -15,6 +15,7 @@ const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const created = main.indexOf('const game: MainGameState = createGameState<');
 const seeded = main.indexOf('game.battleCount = battleOrdinalBase();');
 assert.ok(created > 0 && seeded > created && seeded - created < 400, 'the battle ordinal is seeded from the profile immediately after the game state is created');
+assert.match(main, /rosterSeed: crypto\.getRandomValues\(new Uint32Array\(1\)\)\[0\]/, 'app entry supplies entropy independently of completed matches');
 assert.match(main, /import \{ battleOrdinalBase, installBattleRecords \} from '\.\/game\/profile\.ts';/);
 
 // the profile base reads the persisted record and falls back to 0 without storage

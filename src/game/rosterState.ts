@@ -73,6 +73,7 @@ export interface RosterGameState<Entity extends RosterEntity = RosterEntity> {
   tankById: Map<string, Entity>;
   tanks: Entity[];
   battleCount: number;
+  rosterSeed?: number;
   /** Spec ids of the bots that fought the previous battle (matchmaking diversity, 2026-09-17). */
   recentBotSpecIds?: ReadonlySet<string> | null;
   /** The battle before that (matchmaking diversity 2026-09-17: two battles of memory rotate the era band). */
@@ -386,8 +387,9 @@ const BATTLE_ROSTER_SEED = 0x51e57;
 function shuffleBattleCandidates(
   candidates: RosterEntity[],
   battleOrdinal: number,
+  sessionSeed: number,
 ): RosterEntity[] {
-  const rng = mulberry32(BATTLE_ROSTER_SEED ^ (battleOrdinal * 2654435761));
+  const rng = mulberry32(BATTLE_ROSTER_SEED ^ sessionSeed ^ Math.imul(battleOrdinal, 2654435761));
   for (let index = candidates.length - 1; index > 0; index--) {
     const swapIndex = (rng() * (index + 1)) | 0;
     [candidates[index], candidates[swapIndex]] =
@@ -404,7 +406,7 @@ function shuffledBotPool(
 ): RosterEntity[] {
   const candidates = game.allTanks.filter((entity) =>
     entity !== player && !excluded.includes(entity) && isBotTankId(entity.specId));
-  return shuffleBattleCandidates(candidates, battleOrdinal);
+  return shuffleBattleCandidates(candidates, battleOrdinal, game.rosterSeed ?? 0);
 }
 
 function topUpForcedRoster(
@@ -531,7 +533,8 @@ function defaultWaveNations(
   if (best <= 0) return [];
   const needed = Math.min(Math.max(1, Math.floor(formationLead)), best);
   const eligible = counts.filter((row) => row.count >= needed);
-  return eligible[Math.abs(Math.floor(battleOrdinal) * 7) % eligible.length].option.specNations;
+  const offset = (game.rosterSeed ?? 0) >>> 0;
+  return eligible[(offset + Math.abs(Math.floor(battleOrdinal) * 7)) % eligible.length].option.specNations;
 }
 
 export function pickBattleParticipants(

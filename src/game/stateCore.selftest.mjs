@@ -33,6 +33,8 @@ assert.equal(survived, true, 'diagnostic failures must not stop gameplay deliver
 
 const a = createGameState();
 const b = createGameState();
+assert.equal(a.rosterSeed, 0, 'headless fixtures keep the canonical deterministic roster seed');
+assert.equal(createGameState({ rosterSeed: 0xfedcba98 }).rosterSeed, 0xfedcba98, 'browser entropy is injected without changing the match ordinal');
 assert.equal(a.phase, 'garage');
 assert.equal(a.mapId, 'verdant');
 assert.notEqual(a.tanks, b.tanks);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createGameState, setupBattle } from './state.ts';
-import { spawnTanks } from './rosterState.ts';
+import { planBattleParticipantIds, spawnTanks } from './rosterState.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
@@ -15,17 +15,19 @@ const world = createDedicatedWorldCollision('ruinspires');
 const authored = world.heightField._layout.spawns;
 const spawn = (p) => ({ pos: [p.x, world.heightField.getHeightAt(p.x, p.z), p.z], yaw: p.yaw ?? 0 });
 world.spawnPoints = { player: spawn(authored.player), enemies: authored.enemies.map(spawn) };
-const play = (gameMode, playerSpecId, ordinal, arrangement) => {
-  const game = createGameState(); game.mapId = 'ruinspires';
+const play = (gameMode, playerSpecId, ordinal, arrangement, rosterSeed = 0) => {
+  const game = createGameState({ rosterSeed }); game.mapId = 'ruinspires';
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = { root: {}, setVisible() {}, syncFromState() {}, dispose() {} };
   game.battleCount = ordinal;
+  const planned = planBattleParticipantIds(game, playerSpecId, true, [], arrangement ? arrangement.allies + arrangement.enemies : null);
   setupBattle(game, playerSpecId, world, { gameMode, random: true, arrangement, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
   const fielded = game.tanks.map((entity) => ({ id: entity.specId, team: entity.team, x: entity.state.pos.x, z: entity.state.pos.z }));
   return {
     allies: fielded.filter((entry) => entry.id !== playerSpecId && entry.team === 'player'),
     enemies: fielded.filter((entry) => entry.team === 'enemy'),
     fielded,
+    planned,
   };
 };
 const seated = (battle, label) => {
@@ -51,6 +53,26 @@ try {
   assert.equal(fourteen.allies.length, 13, '14 v 14 fields thirteen allied bots');
   assert.equal(fourteen.enemies.length, 14, '14 v 14 fields fourteen hostiles');
   seated(fourteen, '14 v 14');
+  // Actual setup, not a replica of the balancing algorithm: fresh sessions with
+  // an unchanged profile must vary both sides and preload exactly their roster.
+  const lineups = new Set();
+  const sidesByVehicle = new Map();
+  for (let seed = 1; seed <= 16; seed++) {
+    const battle = play('standard', 'm1a3', 37, SIDES_PRESETS['14v14'], seed);
+    assert.deepEqual(battle.fielded.map(entry => entry.id), battle.planned);
+    if (seed === 1) assert.deepEqual(play('standard', 'm1a3', 37, SIDES_PRESETS['14v14'], seed), battle,
+      'explicitly seeded sessions reproduce both team assignments and spawn positions');
+    assert.equal(battle.allies.length, 13);
+    assert.equal(battle.enemies.length, 14);
+    lineups.add(battle.allies.map(entry => entry.id).sort().join(','));
+    for (const entry of [...battle.allies, ...battle.enemies]) {
+      const sides = sidesByVehicle.get(entry.id) ?? new Set();
+      sides.add(entry.team); sidesByVehicle.set(entry.id, sides);
+    }
+  }
+  assert.equal(lineups.size, 16, 'different session seeds field different allied teams');
+  assert.ok([...sidesByVehicle.values()].filter(sides => sides.size === 2).length >= 15,
+    'vehicles rotate between allies and enemies rather than being assigned a permanent side');
   const lone = play('turbo_ball', 't90m_x', 3, { allies: 0, enemies: BATTLE_FIELD_LIMIT - 1 });
   assert.equal(lone.allies.length, 0, 'a lone player fields no allied bots');
   assert.equal(lone.enemies.length, BATTLE_FIELD_LIMIT - 1, `1 v ${BATTLE_FIELD_LIMIT - 1} fields the whole limit against the player`);

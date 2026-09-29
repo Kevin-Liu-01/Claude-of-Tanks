@@ -142,9 +142,8 @@ function clone<T>(value: T): T {
   return value == null ? value : JSON.parse(JSON.stringify(value)) as T;
 }
 
-/** Lifetime matches recorded locally — the base of the seeded battle ordinal, so the roster shuffle keeps
- * advancing across sessions instead of restarting at the same first draw on every page load
- * (owner 2026-09-17: "teams arent actually randomly taking tanks"). 0 without a stored profile. */
+/** Lifetime completed matches provide the battle ordinal base, not randomness.
+ * App entry injects an independent roster seed so reloads also get fresh draws. */
 export function battleOrdinalBase(): number {
   return loadProfile().matches;
 }

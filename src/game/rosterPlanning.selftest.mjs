@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createGameState } from './stateCore.ts';
 import {
-  planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
+  pickBattleParticipants, planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
 } from './rosterState.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
@@ -119,4 +119,28 @@ for (const [era, ids] of catalogByEra) {
   game.battleCount = 0;
 }
 
-console.log('rosterPlanning.selftest: deterministic next-roster preload plan, recent-roster rotation, and same-nation waves passed');
+
+// Reloading before finishing a match keeps the same profile ordinal. Fresh
+// session entropy must change both vehicle membership and order at that ordinal,
+// while preloading and actual battle entry consume the exact same draw.
+{
+  const rosters = new Set();
+  const waveNations = new Set();
+  for (let seed = 0; seed < 64; seed++) {
+    game.rosterSeed = seed;
+    game.battleCount = 37;
+    const planned = planBattleParticipantIds(game, 'm1a3');
+    assert.deepEqual(planBattleParticipantIds(game, 'm1a3'), planned, 'hover/preload must not reroll');
+    const entered = pickBattleParticipants(game, 'm1a3', true, 38).map(entity => entity.specId);
+    assert.deepEqual(entered, planned, 'entry matches preloaded vehicles for every session seed');
+    rosters.add(planned.slice(1).sort().join(','));
+    const wave = planBattleParticipantIds(game, 'm1a3', true, [], 16, 14);
+    waveNations.add(getSpec(wave[1]).nation);
+    assert.deepEqual(planBattleParticipantIds(game, 'm1a2', false), staged, 'staged captures ignore session entropy');
+  }
+  assert.equal(rosters.size, 64, '64 independent sessions yield 64 different sets, not just permutations of the same team');
+  assert.ok(waveNations.size >= 3, 'fresh sessions do not always open against the same wave nation');
+  game.rosterSeed = 0;
+}
+
+console.log('rosterPlanning.selftest: session diversity, deterministic preload/entry, recent-roster rotation and same-nation waves passed');

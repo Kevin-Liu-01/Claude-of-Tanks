@@ -596,9 +596,9 @@ const game: MainGameState = createGameState<
   MainEntity,
   NonNullable<MainGameState['spotting']>,
   HudMatchModeState
->();
-// matchmaking diversity (owner 2026-09-17): the seeded roster shuffle advances from the profile's lifetime match count,
-// so a fresh page load never re-draws the same first battle
+>({ rosterSeed: crypto.getRandomValues(new Uint32Array(1))[0] });
+// Completed matches remain the ordinal base. Independent session entropy keeps
+// reloads/abandoned battles from replaying the same roster at that ordinal.
 game.battleCount = battleOrdinalBase();
 const rosterPresentation = createRosterPresentation({
   getVehicleName: (specId) => getSpec(specId)?.name,

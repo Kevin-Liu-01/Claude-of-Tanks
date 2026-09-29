@@ -25,6 +25,8 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   tanks: Entity[];
   allTanks: Entity[];
   battleCount: number;
+  /** Injected once at app entry; roster planning stays deterministic within a session. */
+  rosterSeed: number;
   tankById: Map<string, Entity>;
   player: Entity | null;
   shells: RuntimeValue[];
@@ -103,7 +105,7 @@ export function createGameState<
   Entity = RuntimeValue,
   Spotting = RuntimeValue,
   MatchModeState = RuntimeValue,
->(): GameState<Entity, Spotting, MatchModeState> {
+>({ rosterSeed = 0 }: { rosterSeed?: number } = {}): GameState<Entity, Spotting, MatchModeState> {
   return {
     phase: 'garage',
     preBattleS: 0,
@@ -111,6 +113,7 @@ export function createGameState<
     tanks: [],
     allTanks: [],
     battleCount: 0,
+    rosterSeed: rosterSeed >>> 0,
     tankById: new Map(),
     player: null,
     shells: [],
