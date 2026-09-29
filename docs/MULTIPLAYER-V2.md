@@ -1019,6 +1019,36 @@ message as one request as the brief instructed. **Done in P1b (2026-09-28):** th
 text frame, answered by the Durable Object's auto-response without waking it (not a handled message at all), and `room_state`
 is coalesced — the measurements are in "Room cost after P1b" below.
 
+**Room cost after P1b (2026-09-29, lane `mp/p2p-rooms-cost` at `4902f2394` under `wrangler dev`, the same soak arguments
+as the rows above — 7v7: 5 min, 2 migrations; 14v14: 6 min, 1 migration — Chrome at nice 19 under the probe mutex, machine
+load 11–25 from other sessions; reports in the lane's scratchpad `p1b/soak-7v7/soak-14.md` and `p1b/soak-14v14/soak-28.md`).**
+The peer harness now counts the keepalive frames apart (`keepalive:ping` / `keepalive:pong`): they are answered by the
+runtime's auto-response and never reach the object, so the billed column excludes them; the "before" rows are the
+certification's own runs on the P3 tip (whose 7v7 predates the ICE batching, hence its candidates and refusals).
+
+| Run | client→room, total | of which keepalive frames (unbilled) | handled client→room (billed 1:1) | room→client | `room_state` | Headroom on 100,000 / day: handled 1:1 / both directions / Cloudflare's published rule (outgoing free, incoming 20:1, + 1 per socket) |
+|---|---|---|---|---|---|---|
+| 7v7 before (P3) | 672 | 0 — 278 `room_ping` envelopes, handled and billed | 672 | 1,235 | 507 | 148 / 52 / – |
+| 7v7 after (P1b) | 460 | 278 | **182** | **727** | **211** | **549** / 110 / 3,846 (26 requests per match) |
+| 14v14 before (P3, 6 min) | 1,206 | 0 — 670 envelopes | 1,206 | 3,018 | 1,728 | 82 / 23 / – |
+| 14v14 before (P3, ICE batched, 2 min) | 457 | 0 — 223 envelopes | 457 | 2,269 | 1,728 | 218 / 36 / – |
+| 14v14 after (P1b, 6 min) | 929 | 671 | **258** | **1,556** | **543** | **387** / 55 / 2,380 (42 requests per match) |
+
+By type at 14v14, before (the 6-minute P3 run) → after: `room_ping` 670 handled → 0 (671 `keepalive:ping` frames, unbilled);
+`room_signal:candidate` 276 → 0 and its 220 relays and 84 `signal_target` refusals → 0 / 28 (P3's own ICE batching, already
+on the tip); offers 83 → 82, answers 55 → 54, `match_report` 38 → 38, `set_ready` 28 → 28, `room_join` 28 → 28,
+`host_decline` 25 → 25, create / team / start 1 each; `room_state` 1,728 → 543 (the 28 sequential joins, instant by the rule,
+still fan out to every seat already present — 378 of the 543; the readies and declines that used to fan out 28 times each
+now ride one broadcast per 300 ms window); `room_ack` 93 → 93, `host_changed` 55 → 55, `match_start` 29 → 29. The steady
+state of a running match is now the host's report every 10 s and nothing else: a 30-minute 14v14 costs ≈ 220 handled
+messages at the start and per migration plus 180 reports ≈ 400 requests on the conservative rule — **≈ 250 matches a day of
+headroom (the certification's figure was 26), ≈ 2,000 on the published rule** — and a keepalive that is free at any cadence.
+Nothing else moved: 7v7 snapshot rate 30 Hz (min 29.5), host tick p50 0.4 / p95 1.1 ms, uplink 1,596 kbit/s median, 0 lost
+frames, migrations 9,648 ms worst (P3: 9,970 / 10,180); 14v14 snapshot 29.9 Hz (min 29.5), host tick p50 1.1 / p95 2.4 ms,
+uplink 4,937 kbit/s median (P3b's line, as before), 0 lost frames, entry 1.73–1.78 s (P3: 2.02–2.07 s), the migration 11,339 ms
+on the worst seat with no seat missing (P3: 17,290 ms on one seat — the WebRTC re-offer timeout P3b names), `host_changed`
+8,020 ms, desync 0.095 m, 0 console errors; the hull jump and the peer tab RSS fail as in the certification (P3b / P4).
+
 **Migration timing (where the 12 s go).** The 8.0 s socket grace, 1.1–2.6 s for the elected seat to boot (the Worker chunk,
 the manifest, the actor restored from the sealed keyframe: 1.1 s at 4 entities, 1.9 s at 14, 2.6 s at 28), and 30–50 ms
 to the first snapshot on every seat. The 17.3 s outlier at 14v14 (seat p3s20, 3 reconnects instead of 2) is one peer whose
@@ -1105,9 +1135,12 @@ room messages 52 in + 94 out.
 
 **Open for P3b / P1 / P4 (each named above):** P3b — the host uplink at 14v14 (interest tiers, the unreliable channel, or
 per-peer rate adaptation), the WebRTC re-offer timeout / retry on `failed`, the migration seed for unseen hulls (a shorter
-sealed keyframe cadence, sealed deltas, or a bounded own-row hint). P1 — the in-match keepalive interval, coalesced
-`room_state` broadcasts, a running host's decline treated as `left`. P4 — the peer tab RSS on the built site, the credential
-TTL (28,800 s on production: no match in this certification crossed it; the per-connection renewal is receipted).
+sealed keyframe cadence, sealed deltas, or a bounded own-row hint). ~~P1 — the in-match keepalive interval, coalesced
+`room_state` broadcasts, a running host's decline treated as `left`.~~ Done in P1b (2026-09-28/29: the unbilled keepalive
+frame, the 300 ms broadcast window, the decline as a departure — "Room cost after P1b" above); what remains on the room's
+cost is the join fan-out (instant by the rule: 378 of the 543 `room_state` at 14v14) if it ever matters. P4 — the peer tab RSS
+on the built site, the credential TTL (28,800 s on production: no match in this certification crossed it; the per-connection
+renewal is receipted).
 
 ## 10. Decisions for the owner
 
