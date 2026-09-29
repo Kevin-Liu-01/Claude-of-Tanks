@@ -7,8 +7,13 @@
  * shortest arc, extrapolation past the newest frame is capped at one
  * interval, and the render clock never runs backward. Every sample object is
  * reused so a 120 Hz render loop allocates nothing here.
+ *
+ * Per-entity samples (P3b interest tiers, 2026-09-29; docs/MULTIPLAYER-V2.md §13.9): a row carries the authority tick
+ * it was captured at, and the host holds a far entity's row over several snapshots (the delta codec then sends nothing
+ * for it). Each entity is therefore presented between its own two nearest distinct samples — never between two frames
+ * as if a held row were a fresh pose — and continued from its own newest sample when the render time has passed it.
  */
-import { ENTITY_FLAGS, RELOAD_KIND_NAMES, dequantizeAngle, dequantizePosition, dequantizeReloadS,
+import { ENTITY_FLAGS, RELOAD_KIND_NAMES, TICK_MS, dequantizeAngle, dequantizePosition, dequantizeReloadS,
   dequantizeShellVelocity, dequantizeVelocity, shellTypeName } from '../wire/index.ts';
 import type { EntityRow, PhaseId, ShellRow, SnapshotFrame, VerdictId } from '../wire/index.ts';
 
@@ -116,6 +121,8 @@ export interface InterpolatorStats {
   maxStallMs: number;
   /** Outages longer than the buffer: the timeline jumped forward once. */
   resyncs: number;
+  /** The furthest any entity was continued past its own newest sample (a held row's age adds to the frame's extrapolation). */
+  maxRowExtrapolatedMs: number;
 }
 
 const TELEPORT_FLOOR_M = 8;
@@ -269,6 +276,7 @@ export class RemoteInterpolator {
   private stalledSamples = 0;
   private maxObservedStallMs = 0;
   private resyncs = 0;
+  private maxRowExtrapolatedMs = 0;
 
   constructor({
     snapshotIntervalMs = 1000 / 30,
@@ -383,22 +391,23 @@ export class RemoteInterpolator {
     }
     this.lastRenderTimeMs = renderTime;
 
-    let older = this.frames[0]!;
-    let newer = this.frames[this.frames.length - 1]!;
-    for (const buffered of this.frames) {
-      if (buffered.serverTimeMs <= renderTime) older = buffered;
-      if (buffered.serverTimeMs >= renderTime) { newer = buffered; break; }
+    let olderIndex = 0;
+    let newerIndex = this.frames.length - 1;
+    for (let index = 0; index < this.frames.length; index++) {
+      const buffered = this.frames[index]!;
+      if (buffered.serverTimeMs <= renderTime) olderIndex = index;
+      if (buffered.serverTimeMs >= renderTime) { newerIndex = index; break; }
     }
+    const older = this.frames[olderIndex]!;
+    const newer = this.frames[newerIndex]!;
     const out = this.output;
     out.entities.length = 0;
     this.present.clear();
     let extrapolatedMs = 0;
     if (older === newer || newer.serverTimeMs <= older.serverTimeMs) {
       extrapolatedMs = Math.max(0, Math.min(this.maxExtrapolationMs, renderTime - newer.serverTimeMs));
-      this.extrapolate(newer, extrapolatedMs, out.entities);
-    } else {
-      this.interpolate(older, newer, renderTime, out.entities);
     }
+    this.sampleEntities(newerIndex, renderTime, out.entities);
     for (const entityId of this.samples.keys()) {
       if (!this.present.has(entityId)) this.samples.delete(entityId);
     }
@@ -417,73 +426,134 @@ export class RemoteInterpolator {
     return out;
   }
 
-  private interpolate(older: BufferedFrame, newer: BufferedFrame, renderTime: number, entities: EntitySample[]): void {
-    const durationMs = newer.serverTimeMs - older.serverTimeMs;
-    const durationS = durationMs / 1000;
-    const t = Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs));
+  /** The server time of a row's own sample: the frame's stamp less the ticks the row predates its frame by. */
+  private static rowTimeMs(buffered: BufferedFrame, row: EntityRow): number {
+    const frameTick = buffered.frame.tick;
+    return row.tick < frameTick
+      ? buffered.serverTimeMs - (Math.round(frameTick * TICK_MS) - Math.round(row.tick * TICK_MS))
+      : buffered.serverTimeMs;
+  }
+
+  /**
+   * Present every entity of the frame at `index` (the first frame at or after the render time — its entity set is
+   * what is visible at that time) between its own two nearest distinct samples: `a` is the entity's newest sample at
+   * or before the render time, `b` the oldest after it. Both → blend; `a` alone → continue it from its own time (the
+   * render clock is already held at the frame horizon, so this is at most the frame cap plus the entity's cadence);
+   * `b` alone → the entity just appeared, snap. Rows of the same tick are one sample however many frames carry them.
+   */
+  private sampleEntities(index: number, renderTime: number, entities: EntitySample[]): void {
+    const frames = this.frames;
+    const newer = frames[index]!;
     for (const row of newer.frame.entities) {
-      const previous = older.rows.get(row.entityId);
-      const out = this.sampleFor(row.entityId);
-      if (!previous || !continuousPose(previous, row, durationS)) {
-        decodeRow(row, out);
+      const id = row.entityId;
+      const out = this.sampleFor(id);
+      const rowTime = RemoteInterpolator.rowTimeMs(newer, row);
+      let a: EntityRow | null = null;
+      let aTime = 0;
+      let aIndex = index;
+      let b: EntityRow | null = null;
+      let bTime = 0;
+      if (rowTime > renderTime) {
+        b = row; bTime = rowTime;
+        for (let i = index - 1; i >= 0; i--) {
+          const held = frames[i]!;
+          const r = held.rows.get(id);
+          if (!r) break;
+          if (r.tick === b.tick) continue;
+          const t = RemoteInterpolator.rowTimeMs(held, r);
+          if (t > renderTime) { b = r; bTime = t; continue; }
+          a = r; aTime = t; aIndex = i;
+          break;
+        }
+      } else {
+        a = row; aTime = rowTime;
+        for (let i = index + 1; i < frames.length; i++) {
+          const later = frames[i]!;
+          const r = later.rows.get(id);
+          if (!r) break;
+          if (r.tick !== a.tick) { b = r; bTime = RemoteInterpolator.rowTimeMs(later, r); break; }
+        }
+      }
+      if (a && b) {
+        const durationMs = bTime - aTime;
+        const durationS = durationMs / 1000;
+        if (!continuousPose(a, b, durationS)) {
+          decodeRow(b, out);
+          this.snappedSamples++;
+        } else this.blend(a, b, Math.max(0, Math.min(1, (renderTime - aTime) / durationMs)), durationS, out);
+        entities.push(out);
+        continue;
+      }
+      if (!a) {
+        decodeRow(b!, out);
         this.snappedSamples++;
         entities.push(out);
         continue;
       }
-      const a = decodeRow(previous, this.scratchA);
-      const b = decodeRow(row, this.scratchB);
-      decodeRow(row, out);
-      const grounded = !(a.flags & ENTITY_FLAGS.AIRBORNE) && !(b.flags & ENTITY_FLAGS.AIRBORNE);
-      out.x = monotoneHermite(a.x, a.vx, b.x, b.vx, t, durationS);
-      out.y = grounded ? monotoneHermite(a.y, a.vy, b.y, b.vy, t, durationS) : hermite(a.y, a.vy, b.y, b.vy, t, durationS);
-      out.z = monotoneHermite(a.z, a.vz, b.z, b.vz, t, durationS);
-      out.vx = a.vx + (b.vx - a.vx) * t;
-      out.vy = a.vy + (b.vy - a.vy) * t;
-      out.vz = a.vz + (b.vz - a.vz) * t;
-      out.yaw = lerpAngle(a.yaw, b.yaw, t);
-      out.pitch = lerpAngle(a.pitch, b.pitch, t);
-      out.roll = lerpAngle(a.roll, b.roll, t);
-      out.turretYaw = lerpAngle(a.turretYaw, b.turretYaw, t);
-      out.gunPitch = lerpAngle(a.gunPitch, b.gunPitch, t);
-      out.reloadS = a.reloadS + (b.reloadS - a.reloadS) * t;
-      out.gunReloadS = a.gunReloadS + (b.gunReloadS - a.gunReloadS) * t;
-      out.snapped = false;
+      let previous: EntityRow | null = null;
+      let previousTime = 0;
+      for (let i = aIndex - 1; i >= 0; i--) {
+        const held = frames[i]!;
+        const r = held.rows.get(id);
+        if (!r) break;
+        if (r.tick === a.tick) continue;
+        previous = r; previousTime = RemoteInterpolator.rowTimeMs(held, r);
+        break;
+      }
+      const extraMs = Math.max(0, renderTime - aTime);
+      if (extraMs > this.maxRowExtrapolatedMs) this.maxRowExtrapolatedMs = extraMs;
+      this.continueRow(a, previous, previous ? (aTime - previousTime) / 1000 : 0, extraMs / 1000, out);
       entities.push(out);
     }
   }
 
-  private extrapolate(newest: BufferedFrame, extraMs: number, entities: EntitySample[]): void {
-    const index = this.frames.indexOf(newest);
-    const previous = index > 0 ? this.frames[index - 1]! : null;
-    const durationS = previous ? (newest.serverTimeMs - previous.serverTimeMs) / 1000 : 0;
-    const extraS = extraMs / 1000;
-    for (const row of newest.frame.entities) {
-      const out = decodeRow(row, this.sampleFor(row.entityId));
-      entities.push(out);
-      const previousRow = previous?.rows.get(row.entityId);
-      const continuous = !!previousRow && durationS > 0 && continuousPose(previousRow, row, durationS);
-      out.snapped = !continuous;
-      if (extraS <= 0) { if (!continuous) this.snappedSamples++; continue; }
-      if (row.flags & ENTITY_FLAGS.DESTROYED) { out.vx = out.vy = out.vz = 0; continue; }
-      out.x += out.vx * extraS;
-      out.z += out.vz * extraS;
-      // A grounded chassis follows its support: continue the height only along the observed secant.
-      if (row.flags & ENTITY_FLAGS.AIRBORNE) out.y += out.vy * extraS;
-      else if (continuous && previousRow) {
-        const slope = (row.y - previousRow.y) / 1000 / durationS;
-        const vy = slope * out.vy > 0 ? Math.sign(slope) * Math.min(Math.abs(out.vy), 3 * Math.abs(slope)) : 0;
-        out.vy = vy;
-        out.y += vy * extraS;
-      } else out.vy = 0;
-      out.reloadS = Math.max(0, out.reloadS - extraS);
-      out.gunReloadS = Math.max(0, out.gunReloadS - extraS);
-      // Continue the last short-arc angular motion for at most one observed interval.
-      if (continuous && previousRow && !(row.flags & (ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING)) &&
-          !((previousRow.flags ^ row.flags) & (ENTITY_FLAGS.AIRBORNE | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING))) {
-        const fraction = Math.min(1, extraS / durationS);
-        const a = decodeRow(previousRow, this.scratchA);
-        for (const key of CONTINUED_ANGLES) out[key] += shortestAngleDelta(a[key], out[key]) * fraction;
-      }
+  /** Hermite blend between two samples `durationS` apart at fraction `t`. */
+  private blend(previous: EntityRow, current: EntityRow, t: number, durationS: number, out: EntitySample): void {
+    const a = decodeRow(previous, this.scratchA);
+    const b = decodeRow(current, this.scratchB);
+    decodeRow(current, out);
+    const grounded = !(a.flags & ENTITY_FLAGS.AIRBORNE) && !(b.flags & ENTITY_FLAGS.AIRBORNE);
+    out.x = monotoneHermite(a.x, a.vx, b.x, b.vx, t, durationS);
+    out.y = grounded ? monotoneHermite(a.y, a.vy, b.y, b.vy, t, durationS) : hermite(a.y, a.vy, b.y, b.vy, t, durationS);
+    out.z = monotoneHermite(a.z, a.vz, b.z, b.vz, t, durationS);
+    out.vx = a.vx + (b.vx - a.vx) * t;
+    out.vy = a.vy + (b.vy - a.vy) * t;
+    out.vz = a.vz + (b.vz - a.vz) * t;
+    out.yaw = lerpAngle(a.yaw, b.yaw, t);
+    out.pitch = lerpAngle(a.pitch, b.pitch, t);
+    out.roll = lerpAngle(a.roll, b.roll, t);
+    out.turretYaw = lerpAngle(a.turretYaw, b.turretYaw, t);
+    out.gunPitch = lerpAngle(a.gunPitch, b.gunPitch, t);
+    out.reloadS = a.reloadS + (b.reloadS - a.reloadS) * t;
+    out.gunReloadS = a.gunReloadS + (b.gunReloadS - a.gunReloadS) * t;
+    out.snapped = false;
+  }
+
+  /** Continue a sample `extraS` past its own time along its velocity (its predecessor `durationS` earlier gives continuity, the ground secant and the angular motion). */
+  private continueRow(row: EntityRow, previousRow: EntityRow | null, durationS: number, extraS: number, out: EntitySample): void {
+    decodeRow(row, out);
+    const continuous = !!previousRow && durationS > 0 && continuousPose(previousRow, row, durationS);
+    out.snapped = !continuous;
+    if (extraS <= 0) { if (!continuous) this.snappedSamples++; return; }
+    if (row.flags & ENTITY_FLAGS.DESTROYED) { out.vx = out.vy = out.vz = 0; return; }
+    out.x += out.vx * extraS;
+    out.z += out.vz * extraS;
+    // A grounded chassis follows its support: continue the height only along the observed secant.
+    if (row.flags & ENTITY_FLAGS.AIRBORNE) out.y += out.vy * extraS;
+    else if (continuous && previousRow) {
+      const slope = (row.y - previousRow.y) / 1000 / durationS;
+      const vy = slope * out.vy > 0 ? Math.sign(slope) * Math.min(Math.abs(out.vy), 3 * Math.abs(slope)) : 0;
+      out.vy = vy;
+      out.y += vy * extraS;
+    } else out.vy = 0;
+    out.reloadS = Math.max(0, out.reloadS - extraS);
+    out.gunReloadS = Math.max(0, out.gunReloadS - extraS);
+    // Continue the last short-arc angular motion for at most one observed interval.
+    if (continuous && previousRow && !(row.flags & (ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING)) &&
+        !((previousRow.flags ^ row.flags) & (ENTITY_FLAGS.AIRBORNE | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING))) {
+      const fraction = Math.min(1, extraS / durationS);
+      const a = decodeRow(previousRow, this.scratchA);
+      for (const key of CONTINUED_ANGLES) out[key] += shortestAngleDelta(a[key], out[key]) * fraction;
     }
   }
 
@@ -575,6 +645,7 @@ export class RemoteInterpolator {
       stalledSamples: this.stalledSamples,
       maxStallMs: this.maxObservedStallMs,
       resyncs: this.resyncs,
+      maxRowExtrapolatedMs: this.maxRowExtrapolatedMs,
     };
   }
 }

@@ -41,8 +41,11 @@ function randomControl() {
 function randomRow(entityId, options = {}) {
   const reload = int(0, 3000), reloadTotal = int(reload, 4000), reloadKind = int(0, 3);
   const distinct = options.distinctGunChannel ?? rng() < 0.2;
+  // the row's capture tick: the packet's, or (a held row of the interest tiers) up to 12 ticks before it
+  const packetTick = options.tick ?? 1000;
   const row = {
     entityId,
+    tick: rng() < 0.35 ? Math.max(0, packetTick - int(1, 12)) : packetTick,
     x: int(-500000, 500000), y: int(-20000, 90000), z: int(-500000, 500000),
     speed: int(-2000, 2000), verticalSpeed: int(-800, 800),
     yaw: int(0, 65535), pitch: int(0, 65535), roll: int(0, 65535), turretYaw: int(0, 65535), gunPitch: int(0, 65535),
@@ -89,7 +92,7 @@ function randomViewer(entityId) {
 function randomFrame(tick, entityCount, options = {}) {
   const ids = new Set();
   while (ids.size < entityCount) ids.add(int(1, MAX_ENTITIES));
-  const entities = [...ids].sort((a, b) => a - b).map((id) => randomRow(id, options));
+  const entities = [...ids].sort((a, b) => a - b).map((id) => randomRow(id, { ...options, tick }));
   const verdict = rng() < 0.15 ? int(1, 3) : 0;
   const destroyed = new Set();
   for (let n = int(0, 30); n > 0; n--) destroyed.add(int(0, 5000));
@@ -120,6 +123,8 @@ function evolveFrame(frame, tick) {
       next.speed = int(-2000, 2000); next.yaw = (next.yaw + int(-300, 300) + 65536) & 0xffff;
       next.pitch = (next.pitch + int(-100, 100) + 65536) & 0xffff; next.roll = (next.roll + int(-100, 100) + 65536) & 0xffff;
       next.turretYaw = int(0, 65535);
+      // a refreshed row is captured at the new tick, or (held by a tier, refreshed a few ticks ago) just before it
+      next.tick = rng() < 0.7 ? tick : Math.max(row.tick, tick - int(1, 4));
     }
     if (rng() < 0.1) { next.x += 40000; }
     if (rng() < 0.2) { next.hp = int(0, next.maxHp); next.flags ^= 1 << int(0, 8); }
@@ -133,7 +138,7 @@ function evolveFrame(frame, tick) {
   if (rng() < 0.3) {
     let id = int(1, MAX_ENTITIES);
     while (entities.some((row) => row.entityId === id)) id = int(1, MAX_ENTITIES);
-    entities.push(randomRow(id));
+    entities.push(randomRow(id, { tick }));
   }
   entities.sort((a, b) => a.entityId - b.entityId);
   const destroyed = new Set(frame.destroyed);
@@ -232,7 +237,7 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
 
 // ------------------------------------------------------------ 2. mirror-bit regressions
 {
-  const base = randomRow(5, { distinctGunChannel: true });
+  const base = randomRow(5, { distinctGunChannel: true, tick: 10 });
   base.reloadKind = 0; base.gunReloadKind = 0; base.reload = 100; base.gunReload = 900; base.reloadTotal = 1000; base.gunReloadTotal = 2000;
   const flagsOnly = { ...base, eraSpent: [], flags: base.flags ^ ENTITY_FLAGS.BURNING };
   base.eraSpent = [];
@@ -274,7 +279,7 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
       const speed = 500 + ((id * 37) % 1000);
       const reload = 300 + ((id * 131) % 2500), reloadTotal = 3000 + ((id * 17) % 2000);
       entities.push({
-        entityId: id, x: (id - 14) * 30000 + tick * (speed / 60 * 10 | 0), y: 12000 + (id % 5) * 300, z: (id % 2 ? 1 : -1) * 150000 + tick * 100,
+        entityId: id, tick, x: (id - 14) * 30000 + tick * (speed / 60 * 10 | 0), y: 12000 + (id % 5) * 300, z: (id % 2 ? 1 : -1) * 150000 + tick * 100,
         speed, verticalSpeed: 0, yaw: (id * 2000 + tick * 20) & 0xffff, pitch: (65536 - 200 + (tick * 7 + id) % 400) & 0xffff,
         roll: (200 + (tick * 5 + id * 3) % 300) & 0xffff, turretYaw: (id * 3000 + tick * 60) & 0xffff, gunPitch: (400 + tick) & 0xffff,
         hp: 1800 - id * 20, maxHp: 2000, reload, reloadTotal, reloadKind: 1, gunReload: reload, gunReloadTotal: reloadTotal, gunReloadKind: 1,
@@ -379,7 +384,60 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   console.log(`wire.selftest: ${rejected} truncated prefixes and every malformed class rejected with typed WireError codes`);
 }
 
-// ------------------------------------------------------------ 5. quantization and helpers
+// ------------------------------------------------------------ 5. held rows: the AGE group (P3b interest tiers, 2026-09-29)
+{
+  const plain = (entityId, tick, x) => ({ ...randomRow(entityId, { tick }), tick, x, eraSpent: [] });
+  const meta = { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: 1000, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 };
+  const held = plain(3, 100, 5000);      // captured at tick 100 and carried by the viewer since
+  const fresh = plain(4, 106, 9000);     // captured in this packet
+  const key = { tick: 106, serverTimeMs: 1767, ackedInputTick: 105, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 2, meta, destroyed: [], entities: [held, fresh], shells: [], viewer: null, modeStateJson: null };
+  const keyPacket = buildSnapshotPacket(key, null);
+  assert.ok(keyPacket.entities.find((patch) => patch.entityId === 3).mask & ROW_GROUP.AGE, 'a keyframe row captured before the packet carries its age');
+  assert.ok(!(keyPacket.entities.find((patch) => patch.entityId === 4).mask & ROW_GROUP.AGE), 'a row captured at the packet tick carries none');
+  const keyBytes = encodeMessage(keyPacket);
+  const decodedKey = decodeMessage(keyBytes);
+  assert.ok(decodedKey.ok, decodedKey.ok ? '' : decodedKey.error.message);
+  const resolvedKey = applySnapshotPacket(decodedKey.message, null);
+  assert.deepEqual(resolvedKey.entities, [held, fresh], 'the held row keeps its capture tick across the wire, the fresh one the packet tick');
+  // the age costs the mask's third varint byte plus one byte of age
+  const freshBytes = encodeMessage(buildSnapshotPacket({ ...key, entities: [fresh] }, null)).byteLength;
+  const heldBytes = encodeMessage(buildSnapshotPacket({ ...key, entities: [{ ...fresh, tick: 100 }] }, null)).byteLength;
+  assert.equal(heldBytes - freshBytes, 2, `a held keyframe row costs two bytes more (${heldBytes - freshBytes})`);
+  // a delta: the untouched held row is no patch at all and the viewer keeps its tick; the fresh row moved
+  const next = { ...key, tick: 108, serverTimeMs: 1800, entities: [held, { ...fresh, tick: 108, x: fresh.x + 500 }] };
+  const delta = buildSnapshotPacket(next, key);
+  assert.equal(delta.entities.length, 1);
+  assert.equal(delta.entities[0].entityId, 4);
+  assert.ok(!(delta.entities[0].mask & ROW_GROUP.AGE), 'a row captured at the packet tick carries no age on a delta either');
+  const resolved = applySnapshotPacket(decodeMessage(encodeMessage(delta, key), { resolveBaseline: () => key }).message, key);
+  assert.deepEqual(resolved.entities, next.entities, 'the untouched row keeps the baseline tick, the moved row takes the packet tick');
+  assert.equal(encodeMessage(delta, key).byteLength, encodeMessage(buildSnapshotPacket({ ...next, entities: [next.entities[1]] }, { ...key, entities: [fresh] }), { ...key, entities: [fresh] }).byteLength, 'a held row costs nothing on a delta');
+  // the held row was refreshed at tick 104 and rides a packet at 110: its age is 6
+  const refreshed = { ...held, tick: 104, z: held.z + 700 };
+  const later = { ...next, tick: 110, serverTimeMs: 1833, entities: [refreshed, next.entities[1]] };
+  const delta2 = buildSnapshotPacket(later, next);
+  const patch = delta2.entities.find((entry) => entry.entityId === 3);
+  assert.ok(patch && (patch.mask & ROW_GROUP.AGE), 'a refreshed held row carries its age against a later packet');
+  const resolved2 = applySnapshotPacket(decodeMessage(encodeMessage(delta2, next), { resolveBaseline: () => next }).message, next);
+  assert.deepEqual(resolved2.entities, later.entities);
+  assert.equal(resolved2.entities[0].tick, 104);
+  // a row from the future is a producer error; a mask past 17 bits is rejected on decode
+  assert.throws(() => buildSnapshotPacket({ ...key, entities: [{ ...fresh, tick: 107 }] }, null), (error) => error instanceof WireError && error.code === 'range');
+  const oneRow = encodeMessage(buildSnapshotPacket({ ...key, entities: [fresh] }, null));
+  // header 2 + snapshot fields 22 + meta 12 + destroyed varint 1 + entity count 1 + entity id 1 = 39: the mask varint starts here
+  assert.equal(oneRow[37], 1, 'one entity');
+  assert.equal(oneRow[38], 4, 'entity 4');
+  const wideMask = new Uint8Array([...oneRow.slice(0, 39), 0x80, 0x80, 0x08, ...oneRow.slice(41)]);
+  const rejected = decodeMessage(wideMask);
+  assert.ok(!rejected.ok && rejected.error.code === 'range', `an 18-bit row mask is rejected (${rejected.ok ? 'accepted' : rejected.error.code})`);
+  // the resume hint round-trips
+  const hint = { type: MESSAGE_TYPE.RESUME_HINT, tick: 12345, x: -120000, y: 3400, z: 98765, speed: -450, verticalSpeed: 12, yaw: 65000, pitch: 5, roll: 65530, turretYaw: 30000, gunPitch: 200 };
+  assert.deepEqual(roundTrip(hint).message, hint);
+  assert.throws(() => encodeMessage({ ...hint, tick: NO_TICK + 1 }), (error) => error instanceof WireError);
+  console.log('wire.selftest: held rows carry their capture tick (AGE), cost nothing on a delta and two bytes on a keyframe; the resume hint round-trips');
+}
+
+// ------------------------------------------------------------ 6. quantization and helpers
 {
   for (let n = 0; n < 2000; n++) {
     const meters = (rng() - 0.5) * 2000;

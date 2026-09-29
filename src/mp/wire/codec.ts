@@ -15,7 +15,7 @@ import {
 import type { CloseReasonId, PhaseId, TeamId, VerdictId } from './constants.ts';
 import type {
   ChatMessage, CloseMessage, ControlFrame, EntityRow, EntityRowPatch, ErrorMessage, EventMessage,
-  HelloMessage, InputMessage, LeaveMessage, PingMessage, PongMessage, RosterEntry, ShellRow,
+  HelloMessage, InputMessage, LeaveMessage, PingMessage, PongMessage, ResumeHintMessage, RosterEntry, ShellRow,
   SnapshotAckMessage, SnapshotFrame, SnapshotMeta, SnapshotPacket, ViewerState, WelcomeMessage,
   WireEvent, WireMessage,
 } from './messages.ts';
@@ -192,7 +192,7 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   writer.u8(packet.entities.length);
   const baseRows = baseline ? new Map(baseline.entities.map((row) => [row.entityId, row])) : null;
   for (const patch of packet.entities) {
-    writeEntityRowPatch(writer, patch, baseRows?.get(patch.entityId) ?? null);
+    writeEntityRowPatch(writer, patch, baseRows?.get(patch.entityId) ?? null, packet.tick);
   }
   if (packet.removed.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot removals');
   writer.u8(packet.removed.length);
@@ -202,6 +202,25 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   for (const shell of packet.shells) writeShell(writer, shell);
   if (packet.viewer) writeViewer(writer, packet.viewer);
   if (packet.modeStateJson != null) writer.string(packet.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
+}
+
+function writeResumeHint(writer: ByteWriter, message: ResumeHintMessage): void {
+  writer.u32(tickOrNone(message.tick));
+  writer.i32(message.x); writer.i32(message.y); writer.i32(message.z);
+  writer.i16(message.speed); writer.i16(message.verticalSpeed);
+  writer.u16(message.yaw); writer.u16(message.pitch); writer.u16(message.roll);
+  writer.u16(message.turretYaw); writer.u16(message.gunPitch);
+}
+
+function readResumeHint(reader: ByteReader): ResumeHintMessage {
+  const tick = tickOrNone(reader.u32());
+  if (tick === NO_TICK) throw new WireError('range', 'resume hint tick is required');
+  return {
+    type: MESSAGE_TYPE.RESUME_HINT, tick,
+    x: reader.i32(), y: reader.i32(), z: reader.i32(),
+    speed: reader.i16(), verticalSpeed: reader.i16(),
+    yaw: reader.u16(), pitch: reader.u16(), roll: reader.u16(), turretYaw: reader.u16(), gunPitch: reader.u16(),
+  };
 }
 
 function writeEvents(writer: ByteWriter, message: EventMessage): void {
@@ -232,6 +251,7 @@ export function encodeMessage(message: WireMessage, baseline: SnapshotFrame | nu
     case MESSAGE_TYPE.PING: writer.u32(message.clientTimeMs); writer.u32(tickOrNone(message.snapshotAckTick)); break;
     case MESSAGE_TYPE.CHAT: writer.string(message.text, MAX_CHAT_BYTES); break;
     case MESSAGE_TYPE.LEAVE: writer.u8(reason(message.reason)); break;
+    case MESSAGE_TYPE.RESUME_HINT: writeResumeHint(writer, message); break;
     case MESSAGE_TYPE.WELCOME: writeWelcome(writer, message); break;
     case MESSAGE_TYPE.SNAPSHOT: writeSnapshot(writer, message, baseline); break;
     case MESSAGE_TYPE.EVENT: writeEvents(writer, message); break;
@@ -421,7 +441,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   const entities: EntityRowPatch[] = [];
   const seen = new Set<number>();
   for (let index = 0; index < entityCount; index++) {
-    const patch = readEntityRowPatch(reader, (entityId) => baseRows?.get(entityId) ?? null);
+    const patch = readEntityRowPatch(reader, (entityId) => baseRows?.get(entityId) ?? null, tick);
     if (seen.has(patch.entityId)) throw new WireError('invalid_message', `duplicate entity row ${patch.entityId}`);
     seen.add(patch.entityId);
     entities.push(patch);
@@ -499,6 +519,7 @@ export function decodeMessage(input: unknown, options: DecodeOptions = {}): Deco
         break;
       case MESSAGE_TYPE.CHAT: message = { type: MESSAGE_TYPE.CHAT, text: reader.string(MAX_CHAT_BYTES) } satisfies ChatMessage; break;
       case MESSAGE_TYPE.LEAVE: message = { type: MESSAGE_TYPE.LEAVE, reason: reason(reader.u8()) } satisfies LeaveMessage; break;
+      case MESSAGE_TYPE.RESUME_HINT: message = readResumeHint(reader); break;
       case MESSAGE_TYPE.WELCOME: message = readWelcome(reader); break;
       case MESSAGE_TYPE.SNAPSHOT: message = readSnapshot(reader, options.resolveBaseline ?? (() => null)); break;
       case MESSAGE_TYPE.EVENT: message = readEvents(reader); break;
@@ -555,7 +576,7 @@ export function buildSnapshotPacket(frame: SnapshotFrame, baseline: SnapshotFram
   for (const row of frame.entities) {
     present.add(row.entityId);
     const base = baseRows.get(row.entityId) ?? null;
-    const patch = diffEntityRow(row, base);
+    const patch = diffEntityRow(row, base, frame.tick);
     if (!base || patch.mask !== 0) entities.push(patch);
   }
   const removed = baseline ? baseline.entities.filter((row) => !present.has(row.entityId)).map((row) => row.entityId) : [];

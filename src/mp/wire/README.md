@@ -4,7 +4,8 @@ The one binary schema the browser client (`src/mp/*`) and the match server
 (`server/match/*`) share. Pure TypeScript: no DOM, no `three`, no Node
 built-ins; it runs unchanged in both. Import from `src/mp/wire/index.ts`.
 
-Every frame is one binary WebSocket message: `u8 WIRE_VERSION`, `u8 type`,
+Every frame is one binary message (a WebSocket frame or an RTCDataChannel
+message): `u8 WIRE_VERSION`, `u8 type`,
 then the fixed layout below. Integers are little-endian; `varint` is unsigned
 LEB128 (≤ 5 bytes); `string` is `varint byteLength` + UTF-8 bytes with a
 per-field bound. Angles are `u16` turns (1/65536 of a revolution), positions
@@ -45,6 +46,7 @@ Client → server
 | `PING` (4) | `u32 clientTimeMs`, `u32 snapshotAckTick` |
 | `CHAT` (5) | `string text ≤ 960 B` (≤ 240 chars after the server's normalization) |
 | `LEAVE` (6) | `u8 reason` (`CLOSE_REASON`) |
+| `RESUME_HINT` (7) | `u32 tick`, `3 × i32` position mm, `2 × i16` speed / vertical speed cm/s, `5 × u16` yaw, pitch, roll, turretYaw, gunPitch (turns). Sent once after the HELLO of a resumed link (a host migration): the viewer's own newest authority row from the host it lost. The actor applies it only to a hull it restored from the sealed migration keyframe, only when the row is newer than the restored one, and only within the distance the hull could have driven since — pose fields alone, never combat state; a client never places itself (protocol 2, P3b). |
 
 Server → client
 
@@ -94,6 +96,7 @@ present groups in bit order:
 | 13 | STATUS | 2 | `u16`: bits 0–1 reloadKind, 2–3 gunReloadKind, 4–5 shellSlot, 6 gunReloadMirrors, 7–15 `ENTITY_FLAGS` |
 | 14 | ERA_ADD | var | index list of ERA cassettes spent since the baseline |
 | 15 | ERA_RESET | var | index list replacing the spent set (keyframes; a revive) |
+| 16 | AGE | var | `varint` packet tick − the tick the row was captured at; present only when the row predates its packet (protocol 2, P3b interest tiers) |
 
 A keyframe row carries groups 0, 2, 3, 4, 6–9, 11–13 (44 B for a typical
 tank), plus GUN_RELOAD when the gun channel differs from the main reload
@@ -118,6 +121,22 @@ prediction replay restores before re-applying unacknowledged inputs.
 team and for enemies while they are spotted; a hidden enemy is simply absent
 (and listed in `removed` when it was in the baseline). Hidden coordinates never
 leave the server.
+
+**Interest tiers and the row tick (protocol 2, P3b, 2026-09-29;
+`server/match/interestTiers.ts`, docs/MULTIPLAYER-V2.md §13.9).** Every row
+carries `EntityRow.tick`, the authority tick it was captured at. The host
+refreshes a visible entity's row for a viewer every snapshot when it is within
+100 m of the viewer's hull, engaged with it (a hit either way, a shell landing
+within 15 m, a ram — for 4 s) or the viewer's own; every second snapshot out to
+300 m; every third beyond. A row that is not refreshed is the one the viewer
+already holds: on a delta it is no patch at all (the viewer keeps the row and
+its tick), on a keyframe it carries AGE. A patched row without AGE was captured
+at the packet's tick; a row a delta leaves untouched keeps its baseline tick —
+including a fresh capture whose fields did not change, whose older tick is
+then still an exact pose. The client interpolates each entity between its own
+distinct samples (`src/mp/match/interpolation.ts`) and never reads a held row
+as a fresh pose. Spectators, who have no hull to measure from, receive every
+entity at full rate. Events are never tiered.
 
 **Baselines.** Deltas are built against the viewer's last acknowledged
 snapshot (`snapshotAckTick` in INPUT/PING/SNAPSHOT_ACK). A keyframe goes every
@@ -152,13 +171,22 @@ followed by `armor.turretPlates`, in authored order (`eraPlateNames`). Both
 sides own the same first-party spec, so names never travel. Duplicate names
 share the first index (the armor model keys `eraSpent` by name).
 
+## Versions
+
+`WIRE_VERSION` 1 is the frame layout; `PROTOCOL_VERSION` 2 (P3b, 2026-09-29)
+adds the row tick / AGE group and `RESUME_HINT`. The layout of every frame a
+protocol-1 peer could send is unchanged, so a mismatch between builds is caught
+at the handshake (`CLOSE_REASON.PROTOCOL_VERSION`), never as a malformed frame.
+
 ## Receipts
 
 `node src/mp/wire/wire.selftest.mjs` — round trips of every message type and
 2,400 delta snapshots (bit-exact), the gun-reload mirror transitions, the §4
 size budget (full row mean ≤ 48 B, typical moving delta row ≤ 20 B, 28-entity
 keyframe with the viewer section ≤ 1.5 KB), every truncated prefix and
-malformed class rejected with typed `WireError` codes, quantization
+malformed class rejected with typed `WireError` codes, held rows (AGE on a
+keyframe at two bytes, nothing on a delta, the tick preserved, a row from the
+future refused, an 18-bit mask rejected), the resume hint, quantization
 resolutions. `node src/mp/wire/wireFuzz.selftest.mjs` — 10,000 random byte
 strings and 10,000 mutated valid frames decode to a typed result, never throw,
 never reach the `internal` code.

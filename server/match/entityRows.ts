@@ -80,7 +80,8 @@ function entityFlags(entity: AuthoritativeEntity): number {
   return flags;
 }
 
-export function captureEntityRow(entity: AuthoritativeEntity, entityId: number, era: EraIndexer): EntityRow {
+/** Capture an entity's row as of authority tick `tick` (the row remembers it: a viewer's held row is dated by it). */
+export function captureEntityRow(entity: AuthoritativeEntity, entityId: number, era: EraIndexer, tick: number): EntityRow {
   const state = entity.state;
   const combat = entity.combat;
   const reload = combat.reload;
@@ -99,6 +100,7 @@ export function captureEntityRow(entity: AuthoritativeEntity, entityId: number, 
   const verticalSpeed = Number.isFinite(state.verticalSpeed) ? state.verticalSpeed : (state._ride?.v ?? 0);
   return {
     entityId,
+    tick,
     x: quantizePosition(state.pos.x), y: quantizePosition(state.pos.y), z: quantizePosition(state.pos.z),
     speed: quantizeVelocity(state.speed), verticalSpeed: quantizeVelocity(verticalSpeed),
     yaw: quantizeAngle(state.yaw), pitch: quantizeAngle(state.visualPitch), roll: quantizeAngle(state.visualRoll),

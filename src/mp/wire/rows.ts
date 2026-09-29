@@ -7,7 +7,7 @@
 import type { ByteReader, ByteWriter } from './bytes.ts';
 import { WireError } from './bytes.ts';
 import {
-  ENTITY_FLAG_BITS, MAX_ENTITIES, MAX_ERA_PER_ROW, MAX_POS_REL_MM, MAX_TILT_REL_UNITS, ROW_GROUP,
+  ENTITY_FLAG_BITS, MAX_ENTITIES, MAX_ERA_PER_ROW, MAX_POS_REL_MM, MAX_TILT_REL_UNITS, ROW_GROUP, ROW_GROUP_MASK_MAX,
   STATUS_FLAGS_SHIFT, STATUS_GUN_RELOAD_KIND_SHIFT, STATUS_GUN_RELOAD_MIRRORS, STATUS_RELOAD_KIND_SHIFT,
   STATUS_SHELL_SLOT_SHIFT,
 } from './constants.ts';
@@ -21,7 +21,7 @@ const KEYFRAME_GROUPS = ROW_GROUP.POS_ABS | ROW_GROUP.VEL | ROW_GROUP.YAW | ROW_
 
 export function zeroEntityRow(entityId: number): EntityRow {
   return {
-    entityId, x: 0, y: 0, z: 0, speed: 0, verticalSpeed: 0,
+    entityId, tick: 0, x: 0, y: 0, z: 0, speed: 0, verticalSpeed: 0,
     yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
     hp: 0, maxHp: 1, reload: 0, reloadTotal: 0, reloadKind: 0,
     gunReload: 0, gunReloadTotal: 0, gunReloadKind: 0,
@@ -65,14 +65,30 @@ function eraAdditions(base: readonly number[], next: readonly number[]): number[
   return cursor === base.length ? added : null;
 }
 
-/** Decide the groups a row needs against its baseline (null = keyframe). */
-export function diffEntityRow(row: EntityRow, base: EntityRow | null): EntityRowPatch {
+/**
+ * The AGE group a row needs in a packet at `packetTick`: none for a row captured at that tick (or one with no tick,
+ * a fixture), the age otherwise. A row from the future is a producer error.
+ */
+function ageGroup(row: EntityRow, packetTick: number): number {
+  const tick = row.tick;
+  if (tick === undefined || tick === packetTick) return 0;
+  if (!(tick < packetTick)) throw new WireError('range', `row ${row.entityId} captured at tick ${tick} after packet tick ${packetTick}`);
+  return ROW_GROUP.AGE;
+}
+
+/**
+ * Decide the groups a row needs against its baseline (null = keyframe) in a packet at `packetTick`. A delta row whose
+ * fields equal the baseline's is empty (mask 0) whatever its tick: the viewer keeps the baseline row and its tick — the
+ * pose is unchanged, so the older sample time is exact for it.
+ */
+export function diffEntityRow(row: EntityRow, base: EntityRow | null, packetTick: number): EntityRowPatch {
   const fields: EntityRowPatch['fields'] = {};
   let mask = 0;
   let era: number[] | null = null;
   const status = packStatus(row);
+  if (row.tick !== undefined) fields.tick = row.tick;
   if (!base) {
-    mask = KEYFRAME_GROUPS;
+    mask = KEYFRAME_GROUPS | ageGroup(row, packetTick);
     fields.x = row.x; fields.y = row.y; fields.z = row.z;
     fields.speed = row.speed; fields.verticalSpeed = row.verticalSpeed;
     fields.yaw = row.yaw; fields.pitch = row.pitch; fields.roll = row.roll;
@@ -137,6 +153,7 @@ export function diffEntityRow(row: EntityRow, base: EntityRow | null): EntityRow
     if (added) { mask |= ROW_GROUP.ERA_ADD; era = added; }
     else { mask |= ROW_GROUP.ERA_RESET; era = row.eraSpent.slice(); }
   }
+  if (mask !== 0) mask |= ageGroup(row, packetTick);
   return { entityId: row.entityId, mask, fields, mirrors, era };
 }
 
@@ -189,11 +206,13 @@ export function readIndexList(reader: ByteReader, max: number): number[] {
   return out;
 }
 
-export function writeEntityRowPatch(writer: ByteWriter, patch: EntityRowPatch, base: EntityRow | null): void {
+/** Write one patch for a packet at `packetTick` (the AGE group is the row's distance behind it). */
+export function writeEntityRowPatch(writer: ByteWriter, patch: EntityRowPatch, base: EntityRow | null, packetTick: number): void {
   const { mask, fields } = patch;
   if (!Number.isInteger(patch.entityId) || patch.entityId < 1 || patch.entityId > MAX_ENTITIES) {
     throw new WireError('range', `entity id out of range: ${patch.entityId}`);
   }
+  if (mask > ROW_GROUP_MASK_MAX) throw new WireError('range', 'row mask exceeds 17 bits');
   if ((mask & ROW_GROUP.POS_ABS) && (mask & ROW_GROUP.POS_REL)) throw new WireError('invalid_message', 'both position groups set');
   if ((mask & ROW_GROUP.TILT_ABS) && (mask & ROW_GROUP.TILT_REL)) throw new WireError('invalid_message', 'both tilt groups set');
   if ((mask & ROW_GROUP.ERA_ADD) && (mask & ROW_GROUP.ERA_RESET)) throw new WireError('invalid_message', 'both era groups set');
@@ -220,18 +239,25 @@ export function writeEntityRowPatch(writer: ByteWriter, patch: EntityRowPatch, b
   if (mask & ROW_GROUP.AMMO) { writer.varint(fields.ammo0!); writer.varint(fields.ammo1!); writer.varint(fields.ammo2!); }
   if (mask & ROW_GROUP.STATUS) writer.u16(statusFromPatch(patch));
   if (mask & (ROW_GROUP.ERA_ADD | ROW_GROUP.ERA_RESET)) writeIndexList(writer, patch.era || [], MAX_ERA_PER_ROW);
+  if (mask & ROW_GROUP.AGE) {
+    const tick = fields.tick;
+    if (tick === undefined || !Number.isInteger(tick) || tick >= packetTick || tick < 0) throw new WireError('range', 'age group needs a row tick before the packet tick');
+    writer.varint(packetTick - tick);
+  }
 }
 
 /**
- * Read one patch. Relative groups are resolved against `base` here so the
- * decoded patch already carries absolute field values; the caller supplies
- * the baseline row (or null for a keyframe, which never uses relative groups).
+ * Read one patch of a packet at `packetTick`. Relative groups are resolved
+ * against `base` here so the decoded patch already carries absolute field
+ * values; the caller supplies the baseline row (or null for a keyframe, which
+ * never uses relative groups). The patch's `tick` is the packet's unless the
+ * AGE group says the row is older.
  */
-export function readEntityRowPatch(reader: ByteReader, resolveBase: (entityId: number) => EntityRow | null): EntityRowPatch {
+export function readEntityRowPatch(reader: ByteReader, resolveBase: (entityId: number) => EntityRow | null, packetTick: number): EntityRowPatch {
   const entityId = reader.u8();
   if (entityId < 1 || entityId > MAX_ENTITIES) throw new WireError('range', `entity id out of range: ${entityId}`);
   const mask = reader.varint();
-  if (mask > 0xffff) throw new WireError('range', 'row mask exceeds 16 bits');
+  if (mask > ROW_GROUP_MASK_MAX) throw new WireError('range', 'row mask exceeds 17 bits');
   if ((mask & ROW_GROUP.POS_ABS) && (mask & ROW_GROUP.POS_REL)) throw new WireError('invalid_message', 'both position groups set');
   if ((mask & ROW_GROUP.TILT_ABS) && (mask & ROW_GROUP.TILT_REL)) throw new WireError('invalid_message', 'both tilt groups set');
   if ((mask & ROW_GROUP.ERA_ADD) && (mask & ROW_GROUP.ERA_RESET)) throw new WireError('invalid_message', 'both era groups set');
@@ -266,6 +292,11 @@ export function readEntityRowPatch(reader: ByteReader, resolveBase: (entityId: n
     mirrors = (status & STATUS_GUN_RELOAD_MIRRORS) !== 0;
   }
   if (mask & (ROW_GROUP.ERA_ADD | ROW_GROUP.ERA_RESET)) era = readIndexList(reader, MAX_ERA_PER_ROW);
+  if (mask & ROW_GROUP.AGE) {
+    const age = reader.varint();
+    if (age < 1 || age > packetTick) throw new WireError('range', `row age out of range: ${age}`);
+    fields.tick = packetTick - age;
+  } else fields.tick = packetTick;
   return { entityId, mask, fields, mirrors, era };
 }
 

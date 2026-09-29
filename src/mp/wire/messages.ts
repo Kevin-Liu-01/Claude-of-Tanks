@@ -71,6 +71,32 @@ export interface LeaveMessage {
   reason: CloseReasonId;
 }
 
+/**
+ * The viewer's own newest authority row from the host it lost, sent once after the HELLO of a resumed link (P3b,
+ * 2026-09-29; docs/MULTIPLAYER-V2.md §13.9): the elected host restored a hull it could not see from a sealed keyframe up
+ * to a keyframe interval old, and this is the same authority's fresher row for that one hull. The actor applies it only
+ * to an entity it restored from the migration state, only when it is newer than the restored row, and only within the
+ * distance the hull could have driven since — a client never places itself; pose fields alone, never combat state.
+ */
+export interface ResumeHintMessage {
+  type: typeof MESSAGE_TYPE.RESUME_HINT;
+  /** The tick of the row (the old host's timeline). */
+  tick: number;
+  /** mm */
+  x: number;
+  y: number;
+  z: number;
+  /** cm/s */
+  speed: number;
+  verticalSpeed: number;
+  /** u16 turns */
+  yaw: number;
+  pitch: number;
+  roll: number;
+  turretYaw: number;
+  gunPitch: number;
+}
+
 export interface RosterEntry {
   entityId: number;
   /** NO_SEAT for bots. */
@@ -108,6 +134,13 @@ export interface WelcomeMessage {
 /** Full quantized state of one entity as the wire carries it. */
 export interface EntityRow {
   entityId: number;
+  /**
+   * The authority tick this row was captured at (P3b, 2026-09-29). Equal to the frame's tick for a row refreshed in that
+   * snapshot; older for a row the host's interest tiers held over (the entity was far from the viewer) or that a delta
+   * left untouched — the client interpolates each entity between its own distinct samples, never treating a held row as
+   * a fresh pose.
+   */
+  tick: number;
   /** mm */
   x: number;
   y: number;
@@ -270,7 +303,7 @@ export interface ErrorMessage {
 }
 
 export type ClientMessage =
-  | HelloMessage | InputMessage | SnapshotAckMessage | PingMessage | ChatMessage | LeaveMessage;
+  | HelloMessage | InputMessage | SnapshotAckMessage | PingMessage | ChatMessage | LeaveMessage | ResumeHintMessage;
 export type ServerMessage =
   | WelcomeMessage | SnapshotPacket | EventMessage | PongMessage | CloseMessage | ErrorMessage;
 export type WireMessage = ClientMessage | ServerMessage;

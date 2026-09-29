@@ -91,6 +91,12 @@ export interface HostCoreStats {
   stalls: number;
   lateWakeupMaxMs: number;
   verdict: string | null;
+  /** The snapshot rate the actor publishes at (Hz). */
+  snapshotHz: number;
+  /** Snapshots skipped for a slow peer (its channel's bufferedAmount over the skip bound): never delayed, never queued (P3b). */
+  snapshotSkips: number;
+  /** Rows the interest tiers refreshed per tier (near, mid, far) and held over, and the tier populations of the newest snapshot summed over the viewers (P3b). */
+  interest: { published: [number, number, number]; held: number; population: [number, number, number] };
 }
 
 export type HostToWorkerMessage =

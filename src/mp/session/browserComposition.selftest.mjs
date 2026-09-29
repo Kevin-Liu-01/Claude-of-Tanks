@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { createBrowserComposition, createControlSampler } from './browserComposition.ts';
 import { MULTIPLAYER_V2_SESSION } from './playMenuAdapter.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
-import { ACTION_BITS, CLOSE_REASON, TEAM, VERDICT } from '../wire/index.ts';
+import { ACTION_BITS, CLOSE_REASON, PROTOCOL_VERSION, TEAM, VERDICT } from '../wire/index.ts';
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 const settle = async (times = 6) => { for (let index = 0; index < times; index++) await tick(); };
@@ -74,7 +74,7 @@ function matchStart(round = 1, mapId = 'alpine') {
 
 function welcomeMessage() {
   return {
-    type: 3, protocolVersion: 1, tickHz: 60, snapshotHz: 30, seat: 0, entityId: 1, team: TEAM.ALPHA, serverTick: 0, serverTimeMs: 0, seed: 99,
+    type: 3, protocolVersion: PROTOCOL_VERSION, tickHz: 60, snapshotHz: 30, seat: 0, entityId: 1, team: TEAM.ALPHA, serverTick: 0, serverTimeMs: 0, seed: 99,
     capabilities: 0, roomId: 'ABC123', mapId: 'alpine', mode: 'standard', rulesetJson: '{}',
     roster: [
       { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a2' },

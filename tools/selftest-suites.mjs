@@ -869,6 +869,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/inputBuffer.selftest.mjs',
     'server/match/seatToken.selftest.mjs',
     'server/match/matchActor.selftest.mjs',
+    'server/match/interestTiers.selftest.mjs',
     'server/match/matchActorResume.selftest.mjs',
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',

@@ -7,7 +7,13 @@
  */
 
 export const WIRE_VERSION = 1;
-export const PROTOCOL_VERSION = 1;
+/**
+ * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
+ * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
+ * client interpolates it at its own cadence; the client sends RESUME_HINT after a migration. The frame layout is
+ * otherwise unchanged (WIRE_VERSION stays 1: the handshake is where a mismatch is caught, cleanly, as PROTOCOL_VERSION).
+ */
+export const PROTOCOL_VERSION = 2;
 
 export const TICK_HZ = 60;
 export const SNAPSHOT_HZ = 30;
@@ -52,6 +58,8 @@ export const MESSAGE_TYPE = Object.freeze({
   PING: 4,
   CHAT: 5,
   LEAVE: 6,
+  /** After a host migration: the viewer's own newest authority row from the old host (P3b; the actor bounds it). */
+  RESUME_HINT: 7,
   // server -> client
   WELCOME: 16,
   SNAPSHOT: 17,
@@ -178,7 +186,15 @@ export const ROW_GROUP = Object.freeze({
   STATUS: 1 << 13,     // u16 status word (kinds, slot, mirror bit, flags)
   ERA_ADD: 1 << 14,    // varint count + gap-coded plate indices added to the baseline set
   ERA_RESET: 1 << 15,  // varint count + gap-coded plate indices replacing the set
+  /**
+   * varint age = packet tick − the tick the row was captured at (P3b interest tiers, 2026-09-29): present only when
+   * the row predates its packet (a keyframe carrying a held row, or a delta whose row was refreshed before this packet);
+   * a patched row without it was captured at the packet's tick. A row a delta leaves untouched keeps its baseline tick.
+   */
+  AGE: 1 << 16,
 } as const);
+/** The widest row mask the decoder admits (17 groups). */
+export const ROW_GROUP_MASK_MAX = (1 << 17) - 1;
 
 /** Status word layout. */
 export const STATUS_RELOAD_KIND_SHIFT = 0;

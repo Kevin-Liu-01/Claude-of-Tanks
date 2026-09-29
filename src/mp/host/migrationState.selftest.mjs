@@ -58,7 +58,7 @@ const bot = a.entityForWireId(3);
 bot.combat.hp = 0; bot.combat.destroyed = true;
 
 const era = createEraIndexer();
-const rows = a.authority.entities.map((entity) => captureEntityRow(entity, a.wireIdOf(entity.id), era)).sort((x, y) => x.entityId - y.entityId);
+const rows = a.authority.entities.map((entity) => captureEntityRow(entity, a.wireIdOf(entity.id), era, a.tick)).sort((x, y) => x.entityId - y.entityId);
 const snapshot = a.authority.snapshot({ tick: a.tick, serverTimeMs: Math.round(a.tick * TICK_MS), viewerId: 'migration', ackInputSeq: null });
 assert.equal(snapshot.entities.length, 4, 'an unknown viewer sees every entity');
 const keyframe = {

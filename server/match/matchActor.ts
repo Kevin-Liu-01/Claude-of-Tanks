@@ -25,6 +25,10 @@ import type {
   EntityRow, EventMessage, HelloMessage, InputMessage, RosterEntry, ShellRow, SnapshotFrame, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
 import { captureEntityRow, captureMeta, captureViewerState, createEraIndexer } from './entityRows.ts';
+import {
+  INTEREST_ENGAGED_TICKS, INTEREST_NEAR_MISS_M, beginSnapshot, createViewerInterest, engageEntity, needsFreshRow, recordRow, viewerTierFor,
+} from './interestTiers.ts';
+import type { InterestTier, ViewerInterest } from './interestTiers.ts';
 import { createSeatInputBuffer, type SeatInputBuffer } from './inputBuffer.ts';
 import { createLagCompensation, createLatencyTracker, type LagCompensation, type LatencyTracker } from './lagCompensation.ts';
 import { createFixedStepLoop, type FixedStepLoop } from './loop.ts';
@@ -43,6 +47,8 @@ export interface ActorSeatSpec {
   team: SeatTeam;
   specId: string;
   equipment?: readonly string[] | null;
+  /** A spawn override (the receipts place hulls at known distances); the layout's spawn otherwise. */
+  spawn?: { x: number; z: number; yaw?: number };
 }
 
 export interface ActorBotSpec {
@@ -102,6 +108,18 @@ export interface MatchActorOptions {
   autoStart?: boolean;
   /** Ticks the actor keeps publishing after the verdict before it stops (default: the ruleset's ending hold + 2 s, at least 5 s). */
   endedLingerTicks?: number;
+  /** Snapshots per second for the near tier (SNAPSHOT_HZ by default; must divide TICK_HZ). The WELCOME names it; the tiers halve and third it. */
+  snapshotHz?: number;
+}
+
+/** Rows the interest tiers published (refreshed) and held per tier (P3b, 2026-09-29). */
+export interface InterestStats {
+  /** Rows refreshed per tier (near, mid, far), cumulative. */
+  published: [number, number, number];
+  /** Rows carried over unchanged, cumulative. */
+  held: number;
+  /** Entities per tier in the newest snapshot (summed over viewers on the actor total). */
+  population: [number, number, number];
 }
 
 export interface ActorClientStats {
@@ -119,6 +137,7 @@ export interface ActorClientStats {
   rewindTicks: number;
   inputMargin: number | null;
   bufferTicks: number;
+  interest: InterestStats;
 }
 
 export interface MatchActorStats {
@@ -142,8 +161,10 @@ export interface MatchActorStats {
   rejectedInputs: number;
   tickMs: { p50: number; p95: number; max: number; mean: number; count: number };
   loop: { droppedTicks: number; stalls: number; lateWakeupMaxMs: number };
+  snapshotHz: number;
   lagComp: { rewoundShots: number; rewoundSweeps: number; mismatchMeanM: number; mismatchMaxM: number; historyMisses: number };
   verdict: string | null;
+  interest: InterestStats;
 }
 
 export interface MatchActor {
@@ -184,6 +205,7 @@ interface ActorClient {
   capabilities: number;
   input: SeatInputBuffer;
   publisher: ViewerPublisher;
+  interest: ViewerInterest;
   latency: LatencyTracker;
   chat: ChatLimiter;
   bytesOut: number;
@@ -201,7 +223,6 @@ const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
 const MAX_MESSAGES_PER_SECOND = 150;
 const MAX_MALFORMED = 20;
-const SNAPSHOT_EVERY_TICKS = TICK_HZ / SNAPSHOT_HZ;
 const TICK_MS = SIM_DT * 1000;
 
 const TEAM_ID: Record<SeatTeam, TeamId> = { alpha: TEAM.ALPHA, bravo: TEAM.BRAVO, spectator: TEAM.SPECTATOR };
@@ -226,6 +247,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   }
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
   const ruleset = options.ruleset && options.ruleset.mode === mode ? options.ruleset : matchRulesetFor(mode);
+  const snapshotHz = options.snapshotHz ?? SNAPSHOT_HZ;
+  if (!Number.isInteger(snapshotHz) || snapshotHz < 1 || snapshotHz > TICK_HZ || TICK_HZ % snapshotHz !== 0) {
+    throw new TypeError(`snapshotHz must be an integer divisor of ${TICK_HZ} (${snapshotHz})`);
+  }
+  const snapshotEveryTicks = TICK_HZ / snapshotHz;
   const actorLog = log.child({ room: roomId, map: mapId });
   // A resumed match skips the countdown and its clock limit counts from where the old host left it.
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
@@ -251,7 +277,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     if (spec.team === 'spectator') continue;
     const entityId = nextEntityId++;
     entityIdOf.set(spec.playerId, entityId);
-    players.push({ id: spec.playerId, specId: spec.specId, team: spec.team, equipment: spec.equipment ?? null });
+    players.push({ id: spec.playerId, specId: spec.specId, team: spec.team, equipment: spec.equipment ?? null, ...(spec.spawn ? { spawn: spec.spawn } : {}) });
     rosterEntries.push({ entityId, seat: spec.seat, team: TEAM_ID[spec.team], bot: false, connected: false, playerId: spec.playerId, name: spec.name, specId: spec.specId });
   }
   for (const bot of bots) {
@@ -437,11 +463,47 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     return inputs;
   }
 
+  /**
+   * Engagement for the interest tiers (P3b): a hit either way, a shell landing beside the viewer or a ram puts the
+   * other party on the near tier for INTEREST_ENGAGED_TICKS. Read from the events the viewer receives — its own
+   * involvement is always among them (the authority's reveal rule names the viewer).
+   */
+  function engageFromEvent(client: ActorClient, event: Record<string, unknown>, tick: number): void {
+    const viewer = client.entity;
+    if (!viewer) return;
+    const until = tick + INTEREST_ENGAGED_TICKS;
+    const engage = (playerId: unknown): void => {
+      if (typeof playerId !== 'string' || playerId === viewer.id) return;
+      const entityId = entityIdOf.get(playerId);
+      if (entityId !== undefined) engageEntity(client.interest, entityId, until);
+    };
+    switch (event.type) {
+      case 'shell_hit':
+        if (event.shooterId === viewer.id) engage(event.targetId);
+        else if (event.targetId === viewer.id) engage(event.shooterId);
+        return;
+      case 'shell_impact': {
+        if (event.shooterId === viewer.id) return;
+        const dx = Number(event.x) - viewer.state.pos.x;
+        const dz = Number(event.z) - viewer.state.pos.z;
+        if (dx * dx + dz * dz <= INTEREST_NEAR_MISS_M * INTEREST_NEAR_MISS_M) engage(event.shooterId);
+        return;
+      }
+      case 'tank_ram':
+        if (event.aId === viewer.id) engage(event.bId);
+        else if (event.bId === viewer.id) engage(event.aId);
+        return;
+      default:
+        return;
+    }
+  }
+
   function deliverEvents(tick: number): void {
     if (authority.pendingEventCount === 0) return;
     for (const client of clients.keys()) {
       const events = authority.eventsForViewer(client.viewerId);
       if (!events.length) continue;
+      for (const event of events) engageFromEvent(client, event as unknown as Record<string, unknown>, tick);
       const message: EventMessage = {
         type: MESSAGE_TYPE.EVENT, tick,
         events: events.map((event) => ({ kind: String(event.type), payload: event as Record<string, unknown> })),
@@ -459,7 +521,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   function rowFor(entity: AuthoritativeEntity, entityId: number, tick: number): EntityRow {
     if (rowCacheTick !== tick) { rowCache.clear(); rowCacheTick = tick; }
     let row = rowCache.get(entityId);
-    if (!row) { row = captureEntityRow(entity, entityId, era); rowCache.set(entityId, row); }
+    if (!row) { row = captureEntityRow(entity, entityId, era, tick); rowCache.set(entityId, row); }
     return row;
   }
 
@@ -473,14 +535,37 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     return sortedDestroyed;
   }
 
+  /**
+   * The viewer's frame at `tick`. The authority's viewer snapshot is the spotting filter (a hidden enemy is absent
+   * before any tier applies); each visible entity's row is then refreshed on its interest tier's cadence for this
+   * viewer or carried over from what the viewer holds (P3b, 2026-09-29; interestTiers.ts). Spectators have no hull
+   * to measure from and see every entity at full rate.
+   */
   function buildFrame(client: ActorClient, tick: number): SnapshotFrame {
     const snapshot = authority.snapshot({ tick, serverTimeMs: serverTimeMs(tick), viewerId: client.viewerId, ackInputSeq: null });
     const entities: EntityRow[] = [];
+    const interest = client.interest;
+    const snapshotIndex = (tick / snapshotEveryTicks) | 0;
+    const viewer = client.entity;
+    const vx = viewer ? viewer.state.pos.x : 0;
+    const vy = viewer ? viewer.state.pos.y : 0;
+    const vz = viewer ? viewer.state.pos.z : 0;
+    beginSnapshot(interest);
     for (const row of snapshot.entities) {
       const entityId = entityIdOf.get(row.id);
       const entity = entityId == null ? null : entityByWireId.get(entityId);
       if (!entity || entityId == null) continue;
-      entities.push(rowFor(entity, entityId, tick));
+      let tier: InterestTier = 0;
+      if (viewer && entity !== viewer) {
+        const dx = entity.state.pos.x - vx;
+        const dy = entity.state.pos.y - vy;
+        const dz = entity.state.pos.z - vz;
+        tier = viewerTierFor(interest, entityId, tick, dx * dx + dy * dy + dz * dz);
+      }
+      const fresh = needsFreshRow(interest, entityId, tier, snapshotIndex);
+      const captured = fresh ? rowFor(entity, entityId, tick) : interest.rows[entityId]!;
+      recordRow(interest, entityId, tier, snapshotIndex, captured, fresh);
+      entities.push(captured);
     }
     entities.sort((a, b) => a.entityId - b.entityId);
     const shells: ShellRow[] = [];
@@ -576,7 +661,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     if (!ended) lagComp.record(tick);
     deliverEvents(tick);
     settleVerdict(tick);
-    if (tick % SNAPSHOT_EVERY_TICKS === 0) publishSnapshots(tick);
+    if (tick % snapshotEveryTicks === 0) publishSnapshots(tick);
     if (ended && tick - verdictTick >= lingerTicks()) stop(CLOSE_REASON.MATCH_ENDED, verdict?.result ?? '');
   }
 
@@ -619,7 +704,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       link, seat: claims.seat, entityId, entity, playerId: seatSpec.playerId, name: seatSpec.name, team: seatSpec.team,
       viewerId: spectator ? `spectator:${seatSpec.playerId}` : seatSpec.playerId, spectator,
       capabilities: hello.capabilities & HELLO_CAPABILITY.SHOT_FEEDBACK,
-      input: createSeatInputBuffer(), publisher: createViewerPublisher(), latency: createLatencyTracker(), chat: createChatLimiter(),
+      input: createSeatInputBuffer(), publisher: createViewerPublisher(), interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
       bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null,
       rate: { windowStartMs: now(), count: 0 }, closing: false,
     };
@@ -634,7 +719,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     }
     const welcomed = sendMessage(client, {
       type: MESSAGE_TYPE.WELCOME,
-      protocolVersion: PROTOCOL_VERSION, tickHz: TICK_HZ, snapshotHz: SNAPSHOT_HZ,
+      protocolVersion: PROTOCOL_VERSION, tickHz: TICK_HZ, snapshotHz,
       seat: client.seat, entityId, team: TEAM_ID[seatSpec.team],
       serverTick: loop.tick, serverTimeMs: serverTimeMs(loop.tick), seed: seed >>> 0, capabilities: client.capabilities,
       roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })),
@@ -652,7 +737,21 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       keyframes: client.publisher.stats.keyframes, droppedSnapshots: client.droppedSnapshots, events: client.events,
       rttMs: client.latency.owdMs * 2, rewindTicks: client.latency.rewindTicks(TICK_MS),
       inputMargin: client.input.marginTicks, bufferTicks: client.input.bufferTicks,
+      interest: { published: [...client.interest.published], held: client.interest.held, population: [...client.interest.population] },
     }));
+  }
+
+  function interestTotals(): InterestStats {
+    const totals: InterestStats = { published: [0, 0, 0], held: 0, population: [0, 0, 0] };
+    for (const client of clients.keys()) {
+      const interest = client.interest;
+      for (let tier = 0; tier < 3; tier++) {
+        totals.published[tier] += interest.published[tier]!;
+        totals.population[tier] += interest.population[tier]!;
+      }
+      totals.held += interest.held;
+    }
+    return totals;
   }
 
   function stats(): MatchActorStats {
@@ -665,11 +764,13 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       ...totals,
       tickMs: loop.tickCost.summary(),
       loop: { droppedTicks: loop.stats.droppedTicks, stalls: loop.stats.stalls, lateWakeupMaxMs: loop.stats.lateWakeupMaxMs },
+      snapshotHz,
       lagComp: {
         rewoundShots: lag.rewoundShots, rewoundSweeps: lag.rewoundSweeps,
         mismatchMeanM: lag.rewoundShots ? lag.mismatchSumM / lag.rewoundShots : 0, mismatchMaxM: lag.mismatchMaxM, historyMisses: lag.historyMisses,
       },
       verdict: verdict ? verdict.result : null,
+      interest: interestTotals(),
     };
   }
 

@@ -8,11 +8,12 @@ function row(entityId, { x = 0, y = 0, z = 0, speed = 0, verticalSpeed = 0, yaw 
   return { ...zeroEntityRow(entityId), x, y, z, speed, verticalSpeed, yaw, turretYaw, flags, hp: 100, maxHp: 100 };
 }
 
+/** A frame at `tick`; a row without a capture tick of its own was captured in this frame (a held row keeps the tick it was given). */
 function frame(tick, entities, extra = {}) {
   return {
     tick, serverTimeMs: Math.round(tick * 1000 / 60), ackedInputTick: tick, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 2,
     meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: Math.round(tick * 1000 / 60), verdict: 0, verdictReason: '', destructibleRevision: 0 },
-    destroyed: [], entities, shells: [], viewer: null, modeStateJson: null, ...extra,
+    destroyed: [], entities: entities.map((row) => (row.held ? row : { ...row, tick })), shells: [], viewer: null, modeStateJson: null, ...extra,
   };
 }
 
@@ -208,6 +209,85 @@ assert.equal(monotoneHermite(3, 5, 3, -5, 0.4, 1), 3, 'a flat segment stays flat
   interp.clear();
   assert.equal(interp.sample(0), null, 'cleared: nothing to sample');
   assert.equal(interp.bufferedFrames, 0);
+}
+
+// ------------------------------------------------------------ mixed cadences (P3b interest tiers): a held row is one sample, never a fresh pose
+{
+  const interp = new RemoteInterpolator();
+  const speedMps = 10;
+  const arrival = (serverTimeMs) => serverTimeMs + 50;
+  let tick = 0;
+  let farRow = null;
+  let midRow = null;
+  let refreshes = 0;
+  const pushFrame = () => {
+    const serverTimeMs = Math.round(tick * 1000 / 60);
+    const near = row(1, { z: Math.round(speedMps * serverTimeMs), speed: speedMps * 100 });
+    const snapshotIndex = tick / 2;
+    // entity 2 is on the far tier (every third snapshot), entity 3 on the middle one (every second): the frames between
+    // refreshes carry the row the viewer holds, its capture tick included — exactly what the delta codec reconstructs
+    if (farRow === null || snapshotIndex % 3 === 0) { farRow = { ...row(2, { x: Math.round(speedMps * serverTimeMs), speed: speedMps * 100, yaw: quantizeAngle(Math.PI / 2) }), tick, held: true }; refreshes++; }
+    if (midRow === null || snapshotIndex % 2 === 0) midRow = { ...row(3, { x: -Math.round(speedMps * serverTimeMs), speed: speedMps * 100, yaw: quantizeAngle(-Math.PI / 2) }), tick, held: true };
+    interp.push(frame(tick, [near, farRow, midRow]), serverTimeMs, arrival(serverTimeMs));
+    tick += 2;
+  };
+  for (let n = 0; n < 8; n++) pushFrame();
+  let serverNow = arrival(Math.round((tick - 2) * 1000 / 60)) - 50;
+  const steps = { 1: [], 2: [], 3: [] };
+  const last = { 1: null, 2: null, 3: null };
+  for (let f = 0; f < 240; f++) {
+    serverNow += 1000 / 60;
+    while (Math.round(tick * 1000 / 60) <= serverNow) pushFrame();
+    const sample = interp.sample(serverNow);
+    assert.equal(sample.extrapolatedMs, 0, 'a filled buffer never extrapolates the frames');
+    assert.equal(sample.entities.length, 3);
+    for (const entity of sample.entities) {
+      const along = entity.entityId === 1 ? entity.z : entity.entityId === 2 ? entity.x : -entity.x;
+      if (last[entity.entityId] !== null) steps[entity.entityId].push(along - last[entity.entityId]);
+      last[entity.entityId] = along;
+      assert.equal(entity.snapped, false, `entity ${entity.entityId} blends between its own samples`);
+    }
+  }
+  for (const id of [1, 2, 3]) {
+    const minStep = Math.min(...steps[id]);
+    const maxStep = Math.max(...steps[id]);
+    assert.ok(maxStep < speedMps / 60 * 1.02 && minStep > speedMps / 60 * 0.98, `entity ${id} steps are v·dt at its own cadence (${minStep.toFixed(4)}..${maxStep.toFixed(4)}); a held row read as a fresh pose would step 0, 0, 3·v·dt`);
+  }
+  assert.ok(refreshes <= Math.ceil(tick / 2 / 3) + 1, `the far entity was refreshed on a third of the ${tick / 2} frames (${refreshes})`);
+  assert.equal(interp.stats().snappedSamples, 0);
+  // The delay is two intervals behind the server's now and the newest frame itself is up to one interval old, so a
+  // third-snapshot entity at its worst phase is continued at most one interval past its own sample — the frame cap —
+  // and a second-snapshot one never is.
+  assert.ok(interp.stats().maxRowExtrapolatedMs <= INTERVAL + 1e-6, `a third-snapshot cadence is continued at most one interval past its sample (${interp.stats().maxRowExtrapolatedMs.toFixed(3)} ms)`);
+  // the buffer runs dry: the far entity continues from its own newest sample, at most its cadence past the frame cap, without stepping back
+  const dryFrom = serverNow;
+  let previousX = last[2];
+  let farthestMs = 0;
+  for (let f = 0; f < 12; f++) {
+    serverNow += 1000 / 60;
+    const sample = interp.sample(serverNow);
+    const far = sample.entities.find((entity) => entity.entityId === 2);
+    assert.ok(far.x >= previousX - 1e-9, 'the continued entity never steps back');
+    previousX = far.x;
+    farthestMs = Math.max(farthestMs, interp.stats().maxRowExtrapolatedMs);
+  }
+  // the frame cap (one interval past the newest frame) plus the far sample's age at that frame: one, two or three intervals by phase
+  assert.ok(farthestMs <= INTERVAL * 3 + 1e-6 && farthestMs >= INTERVAL - 1e-6, `continued at most the frame cap plus two held intervals past its own sample (${farthestMs.toFixed(1)} ms after ${(serverNow - dryFrom).toFixed(0)} ms dry)`);
+  // an entity at rest whose row is held for seconds, then moves: the old sample is a true pose, the first motion blends
+  const still = new RemoteInterpolator();
+  let restTick = 0;
+  const restRow = { ...row(4, { x: 1000 }), tick: 0, held: true };
+  for (; restTick < 180; restTick += 2) still.push(frame(restTick, [restRow]), Math.round(restTick * 1000 / 60), Math.round(restTick * 1000 / 60) + 40);
+  for (let n = 0; n < 6; n++, restTick += 2) still.push(frame(restTick, [row(4, { x: 1000 + n * 300, speed: 900 })]), Math.round(restTick * 1000 / 60), Math.round(restTick * 1000 / 60) + 40);
+  let previous = null;
+  for (let f = 0; f < 12; f++) {
+    const sample = still.sample(Math.round(182 * 1000 / 60) + f * (1000 / 60));
+    const entity = sample.entities[0];
+    assert.equal(entity.snapped, false, 'no snap when a long-held row starts moving');
+    if (previous !== null) assert.ok(entity.x >= previous - 1e-9 && entity.x - previous < 0.2, `monotone, bounded steps (${(entity.x - previous).toFixed(3)} m)`);
+    previous = entity.x;
+  }
+  console.log('mp interpolation: mixed cadences — a far entity refreshed every third snapshot and a middle one every second present at v·dt like the near one, continue from their own samples on a dry buffer, and a long-held resting row blends into motion');
 }
 
 console.log('mp interpolation: v·dt steps at two intervals of delay, jitter/loss adaptation bounded at four, one-interval extrapolation cap, shortest-arc angles, teleports snap, hidden entities leave, monotone ground / ballistic air, shells + meta pass');

@@ -240,7 +240,7 @@ export function createMatchHostCore({
     const entities: EntityRow[] = [];
     for (const entity of live.authority.entities) {
       const entityId = live.wireIdOf(entity.id);
-      if (entityId !== null) entities.push(captureEntityRow(entity, entityId, era));
+      if (entityId !== null) entities.push(captureEntityRow(entity, entityId, era, tick));
     }
     entities.sort((a, b) => a.entityId - b.entityId);
     const destroyed = Array.isArray(meta.destroyedObstacleIndices)
@@ -354,6 +354,7 @@ export function createMatchHostCore({
       snapshots: summary.snapshots, keyframes: summary.keyframes, migrationKeyframes, tickP95Ms: summary.tickMs.p95,
       tickP50Ms: summary.tickMs.p50, tickMeanMs: summary.tickMs.mean, tickMaxMs: summary.tickMs.max, tickCount: summary.tickMs.count,
       droppedTicks: summary.loop.droppedTicks, stalls: summary.loop.stalls, lateWakeupMaxMs: summary.loop.lateWakeupMaxMs, verdict: summary.verdict,
+      snapshotHz: summary.snapshotHz, snapshotSkips: summary.droppedSnapshots, interest: summary.interest,
     };
   }
 

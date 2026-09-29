@@ -1142,6 +1142,59 @@ cost is the join fan-out (instant by the rule: 378 of the 543 `room_state` at 14
 on the built site, the credential TTL (28,800 s on production: no match in this certification crossed it; the per-connection
 renewal is receipted).
 
+### 13.9 Host bandwidth, re-offers and the migration seed (P3b, lane `mp/p2p-bandwidth`, 2026-09-29)
+
+The certification's line: a 14v14 host uplink ≤ 4 Mbit/s median (aim ≈ 3) and p95 ≤ 5.5 Mbit/s from a home connection,
+with §13.8's gates unchanged (desync ≤ 0.5 m, migration ≤ 12 s on every seat, 0 console errors, no reset). P3 measured
+4,853 kbit/s median (p95 7,113) at 30 Hz to every viewer: ≈ 180 kbit/s per viewer for 28 rows plus the sealed keyframe.
+
+**13.9.1 Interest tiers (§13.3, built here).** The spotting filter stays upstream and unchanged: the authority's viewer
+snapshot decides WHICH entities a viewer receives, and a hidden enemy is never sent at any tier. The publisher
+(`server/match/matchActor.ts` `buildFrame`, the rules in `server/match/interestTiers.ts`) then decides HOW OFTEN each
+visible entity's row is refreshed for that viewer:
+
+| Tier | Who | Cadence |
+|---|---|---|
+| near | the viewer's own vehicle; any visible entity within **100 m** of the viewer's hull; any entity **engaged** with the viewer in the last **4 s** (a hit either way, a shell of its landing within 15 m of the viewer, a ram — read from the events the viewer receives) | every snapshot |
+| mid | 100–**300 m** | every second snapshot |
+| far | beyond 300 m | every third snapshot |
+
+The radii are the fleet's engagement ranges: spotting is unconditional inside 50 m and reaches 445 m at most
+(`src/sim/spotting.ts`), the guns engage at 100–400 m, the battlefields span 600–1,000 m. Inside 100 m a hull can ram,
+flank or be aimed at within a second; out to 300 m every second sample still places a hull at 15 m/s within 0.5 m of
+its true pose at the client's interpolation delay; beyond it every third sample keeps a distant hull to a metre.
+Refreshes are phased by entity id ((snapshot index + id) mod cadence), so the far rows never all land on one
+snapshot; a row that is not refreshed is the one the viewer already holds, which the delta codec sends as nothing at
+all. Spectators have no hull to measure from and receive every entity at full rate. Events (shots, hits, deaths, chat)
+are never tiered. A tier change from far to near refreshes on the next snapshot (the near cadence is 1).
+
+**The wire (protocol 2).** Every `EntityRow` carries `tick`, the authority tick it was captured at, and the row codec
+gained group 16 `AGE` — a varint `packet tick − row tick`, present only when a row predates its packet: on a keyframe
+carrying a held row, or a delta whose row was refreshed before the packet (an ack lagging). A patched row without AGE
+was captured at the packet's tick; a row a delta leaves untouched keeps its baseline tick — including a fresh capture
+whose fields did not change (a hull at rest), whose older tick is then still an exact pose. The frame layout of
+protocol 1 is unchanged (`WIRE_VERSION` stays 1): a mismatch between builds is caught at the handshake as
+`PROTOCOL_VERSION`. A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
+
+**The client.** `RemoteInterpolator` presents each entity between its own two nearest distinct samples (rows of the
+same tick are one sample however many frames carry them) and continues an entity from its own newest sample when the
+render time has passed it — never a held row read as a fresh pose. With the delay at two snapshot intervals behind the
+server's now, a mid-tier entity is always bracketed; a far-tier one is continued at most one interval past its sample at
+its worst phase (the frame cap), and on a dry buffer at most the frame cap plus its cadence. `interpolation.selftest`
+drives a near, a mid and a far entity at 10 m/s and holds every one to v·dt per frame; a held row read as fresh would
+step 0, 0, 3·v·dt.
+
+**Receipts.** `server/match/interestTiers.selftest.mjs` (core): the radii, the phased cadences, the fresh-row rules and
+engagement on the pure module; then the real actor on the bare height field with hulls placed at 40 / 60 / 200 / 400 /
+420 m from the viewer — the own row, the near ally and the near enemy refreshed every snapshot, the middle ally every
+second (samples 4 ticks apart), the far ally every third (6 ticks apart) on the viewer's decoded frames; the spotting
+invariant on every frame (the entity set equals the authority's visibility set for the viewer, the oracle); a
+spectator's moving hulls all fresh and its braking hull's unchanged rows carried forward field for field; a hit from the
+near enemy that then leaps 380 m away keeping it on the near tier for 4 s and back on the far cadence after; the
+per-viewer and actor counters (`ActorClientStats.interest`, `HostCoreStats.interest`: rows published per tier, rows
+held, tier populations). `wire.selftest` (the AGE group, the resume hint), `interpolation.selftest` (mixed cadences),
+and every existing multiplayer receipt on the new row tick.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

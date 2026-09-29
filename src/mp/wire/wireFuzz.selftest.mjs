@@ -33,7 +33,7 @@ const valid = [
     tick: 40, serverTimeMs: 666, ackedInputTick: 38, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 2,
     meta: { phase: 2, countdownMs: 0, battleTimeMs: 500, verdict: 0, verdictReason: '', destructibleRevision: 1 },
     destroyed: [4, 9], entities: [{
-      entityId: 1, x: 1000, y: 2000, z: -3000, speed: 500, verticalSpeed: 0, yaw: 10, pitch: 0, roll: 65530, turretYaw: 20, gunPitch: 30,
+      entityId: 1, tick: 37, x: 1000, y: 2000, z: -3000, speed: 500, verticalSpeed: 0, yaw: 10, pitch: 0, roll: 65530, turretYaw: 20, gunPitch: 30,
       hp: 100, maxHp: 200, reload: 10, reloadTotal: 20, reloadKind: 1, gunReload: 10, gunReloadTotal: 20, gunReloadKind: 1,
       magazineRounds: 0, magazineCapacity: 0, shellSlot: 0, ammo0: 30, ammo1: 300, ammo2: 0, flags: 4, eraSpent: [1, 5, 9],
     }],
@@ -69,7 +69,7 @@ for (let n = 0; n < 10_000; n++) {
   const length = int(0, 300);
   const bytes = new Uint8Array(length);
   for (let index = 0; index < length; index++) bytes[index] = int(0, 255);
-  if (length > 1 && rng() < 0.5) { bytes[0] = WIRE_VERSION; bytes[1] = [1, 2, 3, 4, 5, 6, 16, 17, 18, 19, 20, 21][int(0, 11)]; }
+  if (length > 1 && rng() < 0.5) { bytes[0] = WIRE_VERSION; bytes[1] = [1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21][int(0, 12)]; }
   observe(bytes);
 }
 for (let n = 0; n < 10_000; n++) {

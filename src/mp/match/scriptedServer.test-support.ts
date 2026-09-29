@@ -556,6 +556,7 @@ export class ScriptedMatchServer {
     const reload = quantizeReloadS(entity.reloadS);
     return {
       entityId: entity.entityId,
+      tick: this.tick,
       x: quantizePosition(state.pos.x), y: quantizePosition(state.pos.y), z: quantizePosition(state.pos.z),
       speed: quantizeVelocity(state.speed), verticalSpeed: quantizeVelocity(state.verticalSpeed),
       yaw: quantizeAngle(state.yaw), pitch: quantizeAngle(state.visualPitch), roll: quantizeAngle(state.visualRoll),

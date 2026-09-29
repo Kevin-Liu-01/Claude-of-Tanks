@@ -693,12 +693,13 @@ export class MatchClient {
     if (!row) return;
     this.ownRow = row;
     this.ownViewer = frame.viewer && frame.viewer.entityId === entityId ? frame.viewer : null;
-    this.ownAuthorityTick = frame.tick;
+    // The own row is refreshed every snapshot (the near tier), so its tick is the frame's; read the row's own all the same.
+    this.ownAuthorityTick = row.tick;
     this.ownAuthorityAtMs = nowMs;
     const viewer = this.ownViewer;
     const gunRed = viewer ? viewer.modules[VIEWER_GUN_INDEX] === 2 || viewer.modules[VIEWER_GUN_MOUNT_INDEX] === 2 : true;
     this.ownShots.observe({
-      tick: frame.tick,
+      tick: row.tick,
       alive: row.hp > 0 && (row.flags & ENTITY_FLAGS.DESTROYED) === 0,
       shellSlot: row.shellSlot,
       reloadS: dequantizeReloadS(row.reload),
@@ -710,7 +711,7 @@ export class MatchClient {
     }, nowMs);
     this.ensurePredictor();
     this.predictor?.reconcile(
-      { tick: frame.tick, row, viewer: this.ownViewer },
+      { tick: row.tick, row, viewer: this.ownViewer },
       this.controlAt,
       this.inputStream.lastSampledTick,
     );
