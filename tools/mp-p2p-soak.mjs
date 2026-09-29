@@ -538,9 +538,13 @@ async function migrate() {
   const statuses = await Promise.all(remaining.map(statusOf));
   remaining.forEach((peer, index) => { const entry = perPeer.get(peer.id); entry.team = statuses[index].room?.me?.team ?? null; entry.allyOfNewHost = entry.team !== null && entry.team === newTeam; entry.reconnects = statuses[index].match?.reconnects ?? null; entry.phase = statuses[index].match?.phase ?? null; entry.snapshotsAfter = statuses[index].match?.snapshotsAccepted ?? null; entry.hintSent = statuses[index].match?.resumeHintsSent ?? null; });
   const rows = [...perPeer.values()];
-  // P3b: the own-row hints the new host applied (the migration seed for the hulls it could not see) and refused
-  const newHostCore = statuses[remaining.indexOf(newHost)]?.host?.core ?? null;
+  // P3b: the own-row hints the new host applied (the migration seed for the hulls it could not see) and refused; its acceptor's
+  // counters (answers the room socket refused, offers recovered from the buffer, channels that never opened) and its room socket's refusals
+  const newHostStatus = statuses[remaining.indexOf(newHost)] ?? null;
+  const newHostCore = newHostStatus?.host?.core ?? null;
   const hints = newHostCore?.resumeHints ? { applied: newHostCore.resumeHints.applied, rejected: newHostCore.resumeHints.rejected } : null;
+  const acceptorStats = newHostStatus?.host?.acceptor ?? null;
+  const acceptor = acceptorStats ? { offers: acceptorStats.offers, answers: acceptorStats.answers, refusedAnswers: acceptorStats.refusedAnswers, recoveredOffers: acceptorStats.recoveredOffers, timeouts: acceptorStats.timeouts, roomSignalsRefused: newHostStatus?.room?.signalsRefused ?? null } : null;
   const migration = {
     k, oldHost: oldHost.id, oldGeneration, oldTeam, newHost: newHost.id, newGeneration, newTeam, closedWall, reason: rows.find((row) => row.hostChangedReason)?.hostChangedReason ?? null,
     hostChangedAfterMs: median(rows.map((row) => row.hostChangedAfterMs)), newHostLiveAfterMs: rows.find((row) => row.role === 'new host')?.hostLiveAfterMs ?? null,
@@ -549,10 +553,10 @@ async function migrate() {
     // the same jump measured on the authority rows alone (the host's last row before the loss → the new host's first): the prediction's lead removed
     rowJump: { max: max(rows.map((row) => row.rowJumpM)), median: median(rows.map((row) => row.rowJumpM)), allies: max(rows.filter((row) => row.allyOfNewHost && row.role === 'peer').map((row) => row.rowJumpM)), enemies: max(rows.filter((row) => !row.allyOfNewHost && row.role === 'peer').map((row) => row.rowJumpM)), newHost: rows.find((row) => row.role === 'new host')?.rowJumpM ?? null, leadAtLossMax: max(rows.map((row) => row.leadAtLossM)) },
     tickContinuous: rows.every((row) => row.tickContinuous !== false), oldHostTick: oldStatus.host?.core?.tick ?? null, resumeTick: rows.find((row) => row.resumeTick !== null)?.resumeTick ?? null,
-    peersServed: newStatus.host?.peersConnected ?? null, peers: rows, rejoin: null, hints,
+    peersServed: newStatus.host?.peersConnected ?? null, peers: rows, rejoin: null, hints, acceptor,
   };
   report.migrations.push(migration);
-  step(`migration-${k}`, { newHost: newHost.id, generation: newGeneration, hostChangedAfterMs: migration.hostChangedAfterMs, newHostLiveAfterMs: migration.newHostLiveAfterMs, firstFrame: migration.firstFrame, hullJump: migration.hullJump, tickContinuous: migration.tickContinuous });
+  step(`migration-${k}`, { newHost: newHost.id, generation: newGeneration, hostChangedAfterMs: migration.hostChangedAfterMs, newHostLiveAfterMs: migration.newHostLiveAfterMs, firstFrame: migration.firstFrame, hullJump: migration.hullJump, tickContinuous: migration.tickContinuous, hints, acceptor });
   if (stepDown) {
     // the old host's room socket comes back: the room re-sends match_start with the new host; its next report is refused host_only; it steps down
     const rejoinWall = Date.now();
@@ -758,6 +762,10 @@ function markdown() {
       lines.push(`| ${m.k} | ${m.oldHost} (gen ${m.oldGeneration}) → ${m.newHost} (gen ${m.newGeneration}) | ${m.reason ?? '–'} | ${round(m.hostChangedAfterMs, 0)} | ${round(m.newHostLiveAfterMs, 0)} | ${round(m.firstFrame.min, 0)} / ${round(m.firstFrame.median, 0)} / ${round(m.firstFrame.max, 0)}${m.firstFrame.missing.length ? ` (missing: ${m.firstFrame.missing.join(', ')})` : ''} | ${round(m.hullJump.allies, 2)} / ${round(m.hullJump.enemies, 2)} / ${round(m.hullJump.newHost, 2)} (rows: ${round(m.rowJump?.allies, 2)} / ${round(m.rowJump?.enemies, 2)} / ${round(m.rowJump?.newHost, 2)}) | ${m.hints ? `${m.hints.applied} / ${m.hints.rejected}` : '–'} | ${m.tickContinuous ? 'yes' : 'NO'} | ${m.peersServed} | ${m.rejoin ? (m.rejoin.failed ? `FAILED: ${m.rejoin.failed}` : `${m.rejoin.afterMs} (${m.rejoin.role} of ${m.rejoin.hostId})`) : '–'} |`);
     }
     lines.push('');
+    for (const m of report.migrations.filter((migration) => migration.acceptor)) {
+      const a = m.acceptor;
+      lines.push(`New host ${m.newHost}'s acceptor: ${a.offers} offers, ${a.answers} answers, ${a.refusedAnswers} answers refused by its room socket, ${a.recoveredOffers} offers recovered from the buffer, ${a.timeouts} channels never opened; its room socket refused ${a.roomSignalsRefused ?? '–'} signals.`, '');
+    }
     for (const m of report.migrations.filter((migration) => !migration.failed)) {
       lines.push(`### Migration ${m.k}: seats`, '', '| Seat | Role | Team | Ally of new host | Loss seen (ms) | host_changed (ms) | WELCOME (ms) | First frame (ms) | Jump, presented (m) | Jump, authority rows (m) | Lead at loss (m) | Ticks before → after | Phase at the end |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|');
       for (const peer of m.peers) lines.push(`| ${peer.id} | ${peer.role} | ${peer.team ?? '–'} | ${peer.allyOfNewHost === null ? '–' : peer.allyOfNewHost ? 'yes' : 'no'} | ${round(peer.lossAfterMs, 0) ?? '–'} | ${round(peer.hostChangedAfterMs, 0) ?? '–'} | ${round(peer.welcomeAfterMs, 0) ?? '–'} | ${round(peer.firstFrameAfterMs, 0) ?? '–'} | ${round(peer.jumpM, 3) ?? '–'} | ${round(peer.rowJumpM, 3) ?? '–'} | ${round(peer.leadAtLossM, 3) ?? '–'} | ${peer.beforeTick ?? '–'} → ${peer.afterTick ?? '–'} | ${peer.phase ?? '–'} |`);

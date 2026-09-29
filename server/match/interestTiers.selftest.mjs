@@ -107,7 +107,8 @@ const seats = [
   { seat: 5, playerId: 'p4', name: 'FarEnemy', team: 'bravo', specId: 't90m', spawn: { x: X0 + 420, z: 0, yaw: 0 } },
   { seat: 9, playerId: 's1', name: 'Watcher', team: 'spectator', specId: '' },
 ];
-const actor = createMatchActor({ roomId: 'room-tiers', mapId: 'verdant', seed: 77, countdownS: 0, world: 'terrain', now, schedule, seats });
+// at an explicit 30 Hz: the cadences below are written in ticks (4 = every second snapshot, 6 = every third)
+const actor = createMatchActor({ roomId: 'room-tiers', mapId: 'verdant', seed: 77, countdownS: 0, world: 'terrain', now, schedule, seats, snapshotHz: 30 });
 const ids = Object.fromEntries(seats.filter((seat) => seat.team !== 'spectator').map((seat) => [seat.playerId, actor.wireIdOf(seat.playerId)]));
 const p1 = createHeadlessClient(actor, 0, 'p1', 'alpha');
 const p2 = createHeadlessClient(actor, 1, 'p2', 'alpha');

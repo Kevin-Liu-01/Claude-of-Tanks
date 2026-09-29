@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { CLOSE_REASON, MESSAGE_TYPE, NO_TICK, PROTOCOL_VERSION } from '../../src/mp/wire/constants.ts';
+import { CLOSE_REASON, MESSAGE_TYPE, NO_TICK, PROTOCOL_VERSION, SNAPSHOT_HZ } from '../../src/mp/wire/constants.ts';
 import { applySnapshotPacket, decodeMessage, encodeMessage } from '../../src/mp/wire/codec.ts';
 import { createLocalRoomService } from './localRoomService.ts';
 import { silentLogger } from './log.ts';
@@ -64,7 +64,7 @@ const eve = await connect({ token: room.tokens.get('eve') });
 await sleep(1100);
 assert.ok(alice.welcome && alice.welcome.entityId === 1 && alice.welcome.roomId === 'svc-room', 'alice is welcomed into her seat');
 assert.ok(eve.welcome && eve.welcome.entityId === 0, 'eve spectates');
-assert.ok(alice.frames.length >= 26 && alice.frames.length <= 36, `alice received ${alice.frames.length} snapshots in ~1 s`);
+assert.ok(alice.frames.length >= SNAPSHOT_HZ * 0.85 && alice.frames.length <= SNAPSHOT_HZ * 1.2, `alice received ${alice.frames.length} snapshots in ~1 s at ${SNAPSHOT_HZ} Hz`);
 assert.equal(alice.missing, 0);
 assert.ok(alice.messages.filter((m) => m.type === MESSAGE_TYPE.SNAPSHOT && !m.keyframe).length >= 20, 'acknowledged baselines turn snapshots into deltas');
 alice.socket.send(encodeMessage({ type: MESSAGE_TYPE.PING, clientTimeMs: 4321, snapshotAckTick: NO_TICK }));

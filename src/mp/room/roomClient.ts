@@ -12,7 +12,7 @@ import type { WebSocketTransportOptions } from '../transport/webSocketTransport.
 import { Listeners } from '../transport/transport.ts';
 import type { Transport, TransportStateChange, Unsubscribe } from '../transport/transport.ts';
 import {
-  ROOM_CLIENT_MESSAGE, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE,
+  ROOM_CLIENT_MESSAGE, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_PLAYERS, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE,
   ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, RoomError, isRecord,
   isRelayedRoomSignal, isRoomChatEntry, isRoomErrorCode, isRoomHostChangedPayload, isRoomMatchStartPayload, isRoomMatchStatusPayload, normalizeRoomCode,
   parseP2pMatchUrl, parseRoomEnvelope, randomRoomCode, readRoomSignalPayload, readRoomSnapshot, roomSocketPath, utf8ByteLength,
@@ -114,6 +114,14 @@ const START_REQUEST_TIMEOUT_MS = 45_000;
 /** Offers kept for an acceptor made after they arrived (P3b): the window and the bound. */
 const ROOM_RECENT_OFFER_MS = 5_000;
 const ROOM_RECENT_OFFER_LIMIT = 64;
+/**
+ * The room socket's unsent-byte ceiling (P3b, 2026-09-29): an elected host answers every peer's offer in one burst —
+ * at 14v14, 27 answers of 2–3 KB of SDP in their envelopes plus the trickled candidates, ≈ 80 KB queued within a
+ * second — and the transport's default 64 KB match-link policy refused the last answers of the burst (the peer then
+ * waited out its offer timer: the certification's 17 s seat and this lane's 12.0 s seats). The largest legitimate
+ * burst is every seat's answer at the room's own signal bound.
+ */
+export const ROOM_SOCKET_MAX_BUFFERED_BYTES = ROOM_MAX_PLAYERS * ROOM_SIGNAL_MAX_BYTES;
 
 export class RoomClient {
   readonly endpoint: string;
@@ -342,6 +350,7 @@ export class RoomClient {
       url: `${this.endpoint}${roomSocketPath(code)}`,
       resumeToken: null,
       maxFrameBytes: ROOM_MAX_PAYLOAD_BYTES * 2,
+      backpressure: { maxBufferedBytes: ROOM_SOCKET_MAX_BUFFERED_BYTES, sustainedMs: 5_000 },
       clock: this.clock,
       keepalive: { request: ROOM_KEEPALIVE_REQUEST, response: ROOM_KEEPALIVE_RESPONSE },
       ...this.transportOptions,

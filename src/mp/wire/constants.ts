@@ -16,7 +16,13 @@ export const WIRE_VERSION = 1;
 export const PROTOCOL_VERSION = 2;
 
 export const TICK_HZ = 60;
-export const SNAPSHOT_HZ = 30;
+/**
+ * The near tier's snapshot rate (P3b, 2026-09-29; docs/MULTIPLAYER-V2.md §13.9): 20 Hz, as §13.3 designed — the 14v14
+ * soak at 30 Hz stayed over the host's 4 Mbit/s line with the interest tiers (4,201 kbit/s median) and at 20 Hz landed
+ * at 3,114 with the same desync and migration figures; the interpolation delay (two intervals) is the one measurable
+ * cost. A host may name another divisor of TICK_HZ in its WELCOME; the client adopts it.
+ */
+export const SNAPSHOT_HZ = 20;
 export const TICK_MS = 1000 / TICK_HZ;
 
 export const MAX_ENTITIES = 64;

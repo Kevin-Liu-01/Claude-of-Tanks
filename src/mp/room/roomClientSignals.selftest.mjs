@@ -4,8 +4,8 @@
 // rtc:// URL names the host and the generation; `host_changed` overrides both and `isHost` follows; a new match or the
 // match's end clears the election; the report and decline commands are room commands.
 import assert from 'node:assert/strict';
-import { RoomClient } from './roomClient.ts';
-import { ROOM_SIGNAL_MAX_BYTES, p2pMatchUrl } from './protocol.ts';
+import { ROOM_SOCKET_MAX_BUFFERED_BYTES, RoomClient } from './roomClient.ts';
+import { ROOM_MAX_PLAYERS, ROOM_SIGNAL_MAX_BYTES, p2pMatchUrl } from './protocol.ts';
 import { createRoom, serializeRoom, joinRoom } from './roomPolicy.ts';
 import { Listeners } from '../transport/transport.ts';
 
@@ -32,9 +32,10 @@ function scriptedTransport() {
 const room = createRoom({ roomCode: 'ABC123', mode: 'lan', creator: { id: 'alice', name: 'Alice' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2 }, now: 1000 });
 joinRoom(room, { player: { id: 'bob', name: 'Bob' }, selection: { specId: 't90m' }, team: null, now: 1001 });
 let transport = null;
+let transportOptions = null;
 const client = new RoomClient({
   endpoint: 'ws://rooms.test', player: { id: 'bob', name: 'Bob' }, pingIntervalMs: 0, requestTimeoutMs: 1000,
-  createTransport: () => { transport = scriptedTransport(); return transport; },
+  createTransport: (options) => { transportOptions = options; transport = scriptedTransport(); return transport; },
   setTimer: (callback, delayMs) => setTimeout(callback, delayMs), clearTimer: (handle) => clearTimeout(handle),
 });
 const signals = [];
@@ -57,6 +58,10 @@ transport.deliver({ type: 'room_joined', requestId: joinRequest.requestId, paylo
 await joining;
 assert.equal(client.phase, 'joined');
 assert.equal(client.hostId, null, 'no host before a match (the room record has none)');
+
+// ---- P3b: the room socket admits a whole election's answers in one burst (64 KB refused the last of 27 at 14v14)
+assert.ok(transportOptions && transportOptions.backpressure.maxBufferedBytes >= ROOM_MAX_PLAYERS * ROOM_SIGNAL_MAX_BYTES, `the room socket's unsent ceiling covers every seat's answer at the signal bound (${transportOptions?.backpressure?.maxBufferedBytes})`);
+assert.equal(transportOptions.backpressure.maxBufferedBytes, ROOM_SOCKET_MAX_BUFFERED_BYTES);
 
 // ---- sendSignal: the room's own checks applied client-side
 assert.equal(client.sendSignal({ to: 'alice', generation: 1, kind: 'offer', sdp: 'v=0 offer' }), true);

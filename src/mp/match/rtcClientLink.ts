@@ -149,6 +149,8 @@ export interface RtcHostAcceptorStats {
   /** Offers relayed before this acceptor existed, taken from the signaler's recent buffer at construction (P3b). */
   recoveredOffers: number;
   answers: number;
+  /** Answers the signaler refused to send (the room socket's ceiling, a closed socket): the peer re-offers on its timer (P3b). */
+  refusedAnswers: number;
   candidatesSent: number;
   candidatesReceived: number;
   links: number;
@@ -205,7 +207,7 @@ export function createRtcHostAcceptor({
   const internals = new Map<RtcHostPeer, Internal>();
   let ordinal = 0;
   let closed = false;
-  const counters: RtcHostAcceptorStats = { offers: 0, staleOffers: 0, refusedOffers: 0, recoveredOffers: 0, answers: 0, candidatesSent: 0, candidatesReceived: 0, links: 0, timeouts: 0, bytesSent: 0, bytesReceived: 0 };
+  const counters: RtcHostAcceptorStats = { offers: 0, staleOffers: 0, refusedOffers: 0, recoveredOffers: 0, answers: 0, refusedAnswers: 0, candidatesSent: 0, candidatesReceived: 0, links: 0, timeouts: 0, bytesSent: 0, bytesReceived: 0 };
 
   const setState = (peer: RtcHostPeer, state: RtcHostPeerState): void => {
     if (peer.state === state) return;
@@ -302,7 +304,7 @@ export function createRtcHostAcceptor({
         const send = (): void => {
           if (!live()) return;
           const sdp = pc.localDescription?.sdp ?? answer.sdp ?? '';
-          if (!sdp || !signaler.sendSignal({ to: peer.playerId, generation: peer.generation, kind: 'answer', sdp })) throw new Error('the room refused the answer');
+          if (!sdp || !signaler.sendSignal({ to: peer.playerId, generation: peer.generation, kind: 'answer', sdp })) { counters.refusedAnswers++; throw new Error('the room refused the answer'); }
           internal.answered = true;
           counters.answers++;
           setState(peer, 'connecting');

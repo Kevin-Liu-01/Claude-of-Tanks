@@ -1,8 +1,8 @@
 /**
  * MatchActor: one room's match. Owns the renderer-free authority, the 60 Hz
  * fixed-step loop, seat admission, input admission with the per-seat jitter
- * buffer, the pose history and lag-compensation hook, the 30 Hz per-viewer
- * snapshot publisher with interest management and backpressure, reliable
+ * buffer, the pose history and lag-compensation hook, the per-viewer
+ * snapshot publisher (20 Hz by default; interest tiers, per-peer skips), reliable
  * event delivery under the authority's reveal rules, chat, the verdict
  * callback and a graceful stop. Transport-agnostic (ClientLink).
  */
@@ -240,6 +240,14 @@ interface ActorClient {
  * BACKPRESSURE_SUSTAINED_MS, or the hard bound at once, the link closes as BACKPRESSURE.
  */
 export const SNAPSHOT_SKIP_BYTES = 16 * 1024;
+/**
+ * How many snapshots apart the viewer's movement checkpoint (the 44-float integrator state its prediction rewinds to)
+ * rides: every one. It is 48 of ≈ 206 kbit/s per viewer at 30 Hz (P3b's attribution, 2026-09-29) and a 10 Hz cadence
+ * was tried: 3 cm of own misprediction in `snapshotRate.selftest`, but at 14v14 in the soak 257 hard snaps and 1.19 m
+ * of end desync against 60 and 0.15 m with a checkpoint every snapshot — the predictor replaying from the row alone
+ * between checkpoints diverges under contact. Not taken; the knob stays for a later measured cut.
+ */
+export const VIEWER_CHECKPOINT_EVERY_SNAPSHOTS = 1;
 const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
 const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
@@ -274,6 +282,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     throw new TypeError(`snapshotHz must be an integer divisor of ${TICK_HZ} (${snapshotHz})`);
   }
   const snapshotEveryTicks = TICK_HZ / snapshotHz;
+  const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
   // A resumed match skips the countdown and its clock limit counts from where the old host left it.
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
@@ -665,7 +674,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       destroyed: destroyedList(meta),
       entities,
       shells,
-      viewer: client.entity ? captureViewerState(client.entityId, meta?.localPrediction) : null,
+      viewer: client.entity ? captureViewerState(client.entityId, meta?.localPrediction, snapshotIndex % checkpointEverySnapshots === 0) : null,
       modeStateJson: meta?.modeState ? JSON.stringify(meta.modeState) : null,
     };
   }

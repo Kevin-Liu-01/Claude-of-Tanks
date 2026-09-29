@@ -14,7 +14,7 @@ import { Listeners } from '../transport/transport.ts';
 import type { Transport, Unsubscribe } from '../transport/transport.ts';
 import type { RtcIceConfig, RtcPeerConnectionFactory, Signaler } from '../transport/webRtcTransport.ts';
 import { createRtcHostAcceptor } from '../match/rtcClientLink.ts';
-import type { RtcClientLink, RtcHostAcceptor } from '../match/rtcClientLink.ts';
+import type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorStats } from '../match/rtcClientLink.ts';
 import { CLOSE_REASON } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
@@ -56,6 +56,8 @@ export interface MatchHostStats {
   phase: string;
   reports: number;
   core: HostCoreStats | null;
+  /** The acceptor's counters (offers, answers, refusals, recoveries, timeouts); null once the host stopped (P3b). */
+  acceptor: RtcHostAcceptorStats | null;
 }
 
 export interface MatchHost {
@@ -318,7 +320,7 @@ export function createMatchHost({
     requestStats: () => post({ type: 'stats' }),
     stats: () => ({
       state, generation: config?.generation ?? generation(), peersConnected: acceptor?.connected ?? 0, relayed: acceptor?.relayed ?? 0, uplinkBytesPerS,
-      tick: lastReport?.tick ?? 0, phase: lastReport?.phase ?? 'loading', reports, core: coreStats,
+      tick: lastReport?.tick ?? 0, phase: lastReport?.phase ?? 'loading', reports, core: coreStats, acceptor: acceptor?.stats() ?? null,
     }),
     stop,
     onState: (listener) => stateListeners.add(({ state: next, detail }) => listener(next, detail)),

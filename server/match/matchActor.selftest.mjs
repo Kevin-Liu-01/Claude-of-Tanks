@@ -79,8 +79,10 @@ async function advanceTicks(actor, ticks, perTick = null) {
 
 // ---------------------------------------------------------------- the room
 const verdicts = [];
+// This receipt's cadence arithmetic (90 snapshots in 3 s, 15 skipped in 30 ticks) is written at 30 Hz: the rate is the
+// actor's option (P3b; the default is SNAPSHOT_HZ = 20, covered by snapshotRate.selftest).
 const actor = createMatchActor({
-  roomId: 'room-actor-test', mapId: 'verdant', seed: 4242, countdownS: 0.5, world: 'terrain', now, schedule,
+  roomId: 'room-actor-test', mapId: 'verdant', seed: 4242, countdownS: 0.5, world: 'terrain', now, schedule, snapshotHz: 30,
   seats: [
     { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' },
     { seat: 1, playerId: 'p2', name: 'Two', team: 'alpha', specId: 'm1a2' },

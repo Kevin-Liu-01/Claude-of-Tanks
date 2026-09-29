@@ -297,8 +297,9 @@ export class MatchClient {
     this.serverClock = new ServerClock();
     this.tickClock = new TickClock(TICK_HZ);
     this.inputStream = new InputStream(input);
-    this.snapshots = new SnapshotStream({ ringSize: snapshotRing });
-    this.interpolator = new RemoteInterpolator(interpolation);
+    // both start at the default rate (SNAPSHOT_HZ) and follow the WELCOME's rate from the handshake on
+    this.snapshots = new SnapshotStream({ ringSize: snapshotRing, ticksPerSnapshot: TICK_HZ / SNAPSHOT_HZ });
+    this.interpolator = new RemoteInterpolator({ snapshotIntervalMs: 1000 / SNAPSHOT_HZ, ...interpolation });
     this.events = new ReliableEventQueue();
     this.ownShots = new OwnShotPredictor();
     this.recovery = new ConnectionRecovery(recovery);

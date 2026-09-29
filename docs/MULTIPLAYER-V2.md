@@ -1239,6 +1239,22 @@ from bob, restored by bob's actor from the sealed keyframe metres behind its own
 WebRTC peer: its hint applied, bob's own refused as no newer, the hull within a metre of its last row on the authority
 rows — the "no reset" contract), the soak's migration table (hints applied / refused per migration).
 
+**13.9.6 Where a 14v14 host's bytes go, and the rate decision.** Attribution on the actor in Node (28 hulls driving and
+firing on the soak's scripted controls, dedicated collision, 30 Hz, `$SP/p3b/attribution.mjs`): per viewer ≈ 206 kbit/s
+= rows 85 + the own-vehicle viewer section 48 (the 44-float movement checkpoint, 180 B every snapshot) + events 25
+(JSON payloads fanned out to every viewer that may observe them) + the sealed migration keyframe 20 + snapshot header
+11 + SCTP/DTLS/UDP framing 14 + shells 3. The tiers only reach the rows: in the 14v14 soak the far tier held 47 % of the
+entity-viewer pairs (median pairs near / mid / far 53 / 100 / 381) and the rows fell by more than half, yet the median
+uplink went from 4,937 to 4,201 kbit/s — the floor under the rows is ≈ 120 kbit/s per viewer. Two cuts beside the tiers:
+**20 Hz** for the near tier (§13.3's design; every per-snapshot cost falls by a third) and **the movement checkpoint at
+10 Hz** (`VIEWER_CHECKPOINT_HZ`: the viewer section rides every snapshot, the 44 floats every second or third one; the
+predictor replays from the row alone between and re-seats the integrator on the next — `snapshotRate.selftest` measures
+the own misprediction at 3 cm against 2 mm with a checkpoint every snapshot, inside the 5 cm gate and released by the
+110 ms envelope; no wire change, `movementVersion 0` was always a legal section). The 30 Hz / 20 Hz comparison on the same
+tree (14v14, P3's arguments, one migration each; the table in 13.9.7) showed 20 Hz costing nothing measurable but the
+interpolation delay — two intervals, 107 against 74 ms — with the uplink at 3,114 against 4,201 kbit/s, the desync,
+hard snaps, migration and console figures alike; `SNAPSHOT_HZ` is 20 from this lane on, and the WELCOME names it.
+
 **Receipts.** `server/match/interestTiers.selftest.mjs` (core): the radii, the phased cadences, the fresh-row rules and
 engagement on the pure module; then the real actor on the bare height field with hulls placed at 40 / 60 / 200 / 400 /
 420 m from the viewer — the own row, the near ally and the near enemy refreshed every snapshot, the middle ally every

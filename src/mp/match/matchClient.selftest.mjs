@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createLoopbackPair } from '../transport/index.ts';
-import { CLOSE_REASON, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PHASE, TEAM, TICK_HZ } from '../wire/index.ts';
+import { CLOSE_REASON, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PHASE, SNAPSHOT_HZ, TEAM, TICK_HZ } from '../wire/index.ts';
 import { HeadlessMatchClientDriver, MatchClient } from './index.ts';
 import { ScriptedMatchServer } from './scriptedServer.test-support.ts';
 
@@ -117,7 +117,7 @@ function mulberry(seed) {
   assert.ok(stats.rttMs > 90 && stats.rttMs < 160, `RTT measured ${stats.rttMs}`);
   assert.ok(stats.clockSamples >= 16, 'the sample window filled');
   assert.ok(stats.lossRate > 0.01 && stats.lossRate < 0.06, `loss estimated ${stats.lossRate}`);
-  assert.ok(stats.interpolationDelayMs >= 2 * 1000 / 30 - 1e-6 && stats.interpolationDelayMs <= 4 * 1000 / 30 + 1e-6,
+  assert.ok(stats.interpolationDelayMs >= 2 * 1000 / SNAPSHOT_HZ - 1e-6 && stats.interpolationDelayMs <= 4 * 1000 / SNAPSHOT_HZ + 1e-6,
     `delay inside 2..4 intervals: ${stats.interpolationDelayMs}`);
   assert.equal(stats.matchPhase, PHASE.PLAYING);
   assert.equal(stats.decodeErrors, 0);
@@ -137,7 +137,7 @@ function mulberry(seed) {
     assert.ok(gates.intrinsicAckLagP95 <= rttTicks + 4, `${label}: p95 ${gates.intrinsicAckLagP95}`);
     assert.ok(gates.ackLagP50 <= gates.intrinsicAckLagP50 + one.client.stats().inputLeadTicks + 1, `${label}: raw ${gates.ackLagP50} = intrinsic + lead`);
     assert.ok(gates.keyframes >= Math.floor(seconds / 2) - 1, `${label}: a keyframe every 2 s (${gates.keyframes})`);
-    assert.ok(gates.maxExtrapolatedMs <= 1000 / 30 + 1e-6, `${label}: extrapolation capped at one interval`);
+    assert.ok(gates.maxExtrapolatedMs <= 1000 / SNAPSHOT_HZ + 1e-6, `${label}: extrapolation capped at one interval`);
     assert.ok(gates.framesWithSample > seconds * 60 - 40, `${label}: frames rendered`);
     assert.ok(gates.eventsDelivered > 0 && gates.ownShotsDelivered >= 3, `${label}: events ${gates.eventsDelivered}, own shots ${gates.ownShotsDelivered}`);
     assert.ok(gates.predictedShots >= 3, `${label}: fire edges predicted immediately (${gates.predictedShots})`);
@@ -145,9 +145,13 @@ function mulberry(seed) {
     assert.ok(gates.bytesOut / seconds < 4 * 1024, `${label}: ${(gates.bytesOut / seconds / 1024).toFixed(2)} KB/s up`);
   }
   const prediction = one.client.stats().prediction;
-  assert.ok(prediction.maxPositionErrorM < 0.05, `own misprediction stays under 5 cm (${prediction.maxPositionErrorM.toFixed(4)})`);
+  // Under this link's 3 % loss a lost snapshot spans two intervals of unacknowledged ticks before the next rewind: under
+  // 5 cm at 30 Hz, up to a decimetre at 20 (P3b's rate; measured 9.5 cm) — released by the 110 ms envelope, under the
+  // 0.2 m visible-correction threshold, and the real soak's own-hull desync did not move (§13.9.7).
+  const mispredictionBoundM = 0.05 * (30 / SNAPSHOT_HZ) ** 2;
+  assert.ok(prediction.maxPositionErrorM < mispredictionBoundM, `own misprediction stays under ${(mispredictionBoundM * 100).toFixed(0)} cm at ${SNAPSHOT_HZ} Hz (${prediction.maxPositionErrorM.toFixed(4)})`);
   assert.equal(prediction.checkpointsRejected, 0);
-  assert.ok(prediction.checkpointsApplied > 500);
+  assert.ok(prediction.checkpointsApplied > seconds * SNAPSHOT_HZ * 0.8, `a checkpoint with nearly every snapshot (${prediction.checkpointsApplied} of ${seconds * SNAPSHOT_HZ})`);
   assert.ok(one.client.localTank.pos.distanceTo(world.server.entity(1).state.pos) < 3, 'the local tank runs just ahead of the authority');
   assert.ok(one.client.stats().ownShotsConfirmed >= 3, 'the authority confirmed the predicted shots');
   assert.equal(one.client.stats().pendingActionBits, 0, 'the action press was acknowledged');
@@ -198,8 +202,8 @@ function mulberry(seed) {
 // ------------------------------------------------------------ keyframe recovery after a dropped baseline
 {
   const world = createWorld({ botList: bots().slice(0, 1) });
-  // A three-frame ring evicts the baseline the server still builds against at 100 ms RTT.
-  const player = world.addClient({ token: 'tok-1', seed: 44, clientOptions: { snapshotRing: 3 } });
+  // A ring of 100 ms (three frames at 30 Hz, two at 20) evicts the baseline the server still builds against at 100 ms RTT.
+  const player = world.addClient({ token: 'tok-1', seed: 44, clientOptions: { snapshotRing: Math.max(2, Math.round(SNAPSHOT_HZ / 10)) } });
   player.client.connect();
   player.driver.run(12_000);
   const stats = player.client.stats();
@@ -208,7 +212,7 @@ function mulberry(seed) {
   assert.ok(stats.keyframeRequests > 0, `keyframes were requested (${stats.keyframeRequests})`);
   assert.ok(stats.keyframes > 6, `recovering keyframes arrived beyond the 2 s cadence (${stats.keyframes})`);
   assert.ok(gates.keyframeRecoveries > 0, `every gap recovered (${gates.keyframeRecoveries})`);
-  assert.ok(stats.snapshotsAccepted > 200, `assembly kept going (${stats.snapshotsAccepted})`);
+  assert.ok(stats.snapshotsAccepted > 12 * SNAPSHOT_HZ * 0.75, `assembly kept going (${stats.snapshotsAccepted} of ${12 * SNAPSHOT_HZ})`);
   assert.equal(stats.decodeErrors, 0, 'a missing baseline is not a decode error');
   assert.equal(gates.hardSnaps, 0);
   assert.equal(gates.remoteStepsOver, 0);

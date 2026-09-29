@@ -296,4 +296,32 @@ bob.transport.close();
   console.log('rtcClientLink.selftest: an offer that raced the election is answered by the acceptor at construction');
 }
 
+// ---- P3b: an answer the room socket refuses (a signaling burst over its ceiling) is counted; the peer's offer timer re-offers and the second answer goes through
+{
+  const time3 = createVirtualTime();
+  const world3 = new RtcWorld();
+  const relay3 = new FakeSignalRelay('host3', 1);
+  const inner = relay3.signalerFor('host3');
+  let refuseAnswers = 1;
+  const flaky = { target: inner.target, onSignal: inner.onSignal, recentOffers: inner.recentOffers, sendSignal: (payload) => { if (payload.kind === 'answer' && refuseAnswers > 0) { refuseAnswers--; return false; } return inner.sendSignal(payload); } };
+  const links3 = [];
+  const acceptor3 = createRtcHostAcceptor({ signaler: flaky, hostId: 'host3', generation: () => relay3.generation, createPeerConnection: world3.createPeerConnection, onLink: (link, peer) => links3.push(peer.playerId), clock: time3.clock, setTimer: time3.setTimer, clearTimer: time3.clearTimer });
+  const late = new WebRtcTransport({ signaler: relay3.signalerFor('late'), createPeerConnection: world3.createPeerConnection, clock: time3.clock, setTimer: time3.setTimer, clearTimer: time3.clearTimer, random: () => 0.5 });
+  const lateChanges = [];
+  late.onState((change) => lateChanges.push(change));
+  late.open();
+  await settle(world3, relay3);
+  assert.equal(acceptor3.stats().refusedAnswers, 1, 'the refused answer is counted');
+  assert.equal(late.state, 'connecting', 'the peer heard nothing');
+  time3.advance(3500);
+  await settle(world3, relay3);
+  assert.equal(late.state, 'open', 'the re-offer after the offer timer was answered');
+  assert.equal(lateChanges.find((change) => change.state === 'reconnecting')?.retryDelayMs, 0);
+  assert.deepEqual(links3, ['late']);
+  assert.equal(acceptor3.stats().answers, 1);
+  acceptor3.close();
+  late.close();
+  console.log('rtcClientLink.selftest: a refused answer is counted and the peer\'s offer timer recovers it');
+}
+
 console.log('rtcClientLink.selftest: acceptor offers/answers/candidates, links, CLOSE-before-close, replacement, stale offers, timeouts, closure and per-offer ICE renewal verified');

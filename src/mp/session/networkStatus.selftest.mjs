@@ -12,7 +12,7 @@ import {
   NETWORK_HEALTH_THRESHOLDS, NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName, networkBannerFor, resolveNetworkHealth,
 } from './networkStatus.ts';
 import { createLoopbackPair } from '../transport/index.ts';
-import { CLOSE_REASON, MESSAGE_TYPE, TEAM } from '../wire/index.ts';
+import { CLOSE_REASON, MESSAGE_TYPE, SNAPSHOT_HZ, TEAM } from '../wire/index.ts';
 import { HeadlessMatchClientDriver, MatchClient } from '../match/index.ts';
 import { ScriptedMatchServer } from '../match/scriptedServer.test-support.ts';
 
@@ -71,7 +71,8 @@ const player = (id, team, seat) => ({ id, name: id, team, seat, specId: 'm1a2', 
 {
   let nowMs = 100_000;
   const clock = () => nowMs;
-  const model = new NetworkStatusModel({ clock, sampleIntervalMs: 250, windowMs: 1000, lossWindowMs: 2000 });
+  // the scripted source below emulates a 30 Hz authority (the cadence table is written against it); the default is SNAPSHOT_HZ
+  const model = new NetworkStatusModel({ clock, sampleIntervalMs: 250, windowMs: 1000, lossWindowMs: 2000, expectedSnapshotHz: 30 });
   const events = [];
   model.onEvent((event) => events.push(event));
   const seen = [];
@@ -381,11 +382,12 @@ function mulberry(seed) {
   assert.ok(s.rttMedianMs >= s.rttMs && s.rttMedianMs < 160, `median RTT ${s.rttMedianMs} (pings and pongs land on frame boundaries, so it may equal the floor)`);
   assert.ok(s.rttJitterMs < NETWORK_HEALTH_THRESHOLDS.degraded.jitterMs, `spread ${s.rttJitterMs}`);
   assert.ok(s.localStallMs < 250, `a 60 Hz loop carries only frame gaps (${s.localStallMs} ms)`);
-  assert.ok(s.snapshotHz > 26 && s.snapshotHz <= 31, `cadence ${s.snapshotHz} Hz at 3 % loss`);
+  assert.ok(s.snapshotHz > SNAPSHOT_HZ * 0.87 && s.snapshotHz <= SNAPSHOT_HZ + 1, `cadence ${s.snapshotHz} Hz at 3 % loss (the authority's ${SNAPSHOT_HZ})`);
+  assert.equal(s.expectedSnapshotHz, SNAPSHOT_HZ, 'the expected rate is the WELCOME\'s');
   assert.ok(s.lossRate >= 0 && s.lossRate < 0.06, `loss ${s.lossRate}`);
   assert.ok(client.snapshots.estimatedMissingCount > 0, 'the impaired link did lose snapshots');
   assert.ok(s.snapshotAgeMs < 250, `age ${s.snapshotAgeMs}`);
-  assert.ok(s.interpolationDelayMs >= 2 * 1000 / 30 - 1e-6 && s.interpolationDelayMs <= 4 * 1000 / 30 + 1e-6, `delay ${s.interpolationDelayMs}`);
+  assert.ok(s.interpolationDelayMs >= 2 * 1000 / SNAPSHOT_HZ - 1e-6 && s.interpolationDelayMs <= 4 * 1000 / SNAPSHOT_HZ + 1e-6, `delay ${s.interpolationDelayMs}`);
   assert.ok(s.bufferedFrames >= 1, `buffer ${s.bufferedFrames}`);
   assert.ok(s.bytesInPerS > 500 && s.bytesOutPerS > 500, `rates ${s.bytesInPerS} / ${s.bytesOutPerS}`);
   assert.equal(s.correctionsPerS, 0, 'a straight drive on a smooth field stages no visible correction');
@@ -415,7 +417,8 @@ function mulberry(seed) {
   assert.deepEqual([s.health, s.healthReason], ['good', 'live']);
   assert.equal(s.reconnectAttempt, 0);
   assert.ok(events.some((event) => event.kind === 'recovered' && event.scope === 'match'), 'the recovery is an event');
-  assert.ok(model.summary().impairedMs >= 5000, `the outage counts as impaired time (${model.summary().impairedMs} ms)`);
+  // the stall's 5 s, less the stale threshold (250 ms) and one 250 ms sample of phase on either end
+  assert.ok(model.summary().impairedMs >= 4500, `the outage counts as impaired time (${model.summary().impairedMs} ms)`);
 
   // A server-side seat drop: the wire CLOSE names it; the model reads it as dropped.
   server.kick(pair.server, CLOSE_REASON.REPLACED, 'seat reconnected');

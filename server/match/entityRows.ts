@@ -135,8 +135,13 @@ interface PredictionMeta {
   modeGravityScale?: number;
 }
 
-/** Map the authority's viewer prediction meta (src/net/predictionAuthorityState) onto the wire section. */
-export function captureViewerState(entityId: number, meta: unknown): ViewerState | null {
+/**
+ * Map the authority's viewer prediction meta (src/net/predictionAuthorityState) onto the wire section. The movement
+ * integrator checkpoint (44 floats, 180 B — a third of a 14v14 viewer's snapshot bytes, P3b's attribution) rides only
+ * when `withCheckpoint` is set: the publisher includes it at VIEWER_CHECKPOINT_HZ, and the predictor replays from the
+ * row alone between (a missing checkpoint is a counted, tolerated case there).
+ */
+export function captureViewerState(entityId: number, meta: unknown, withCheckpoint = true): ViewerState | null {
   if (!meta || typeof meta !== 'object') return null;
   const prediction = meta as PredictionMeta;
   const modules = VIEWER_MODULES.map((key) => {
@@ -146,7 +151,7 @@ export function captureViewerState(entityId: number, meta: unknown): ViewerState
   let crewBits = 0;
   VIEWER_CREW.forEach((key, index) => { if (prediction.crew?.[key] !== false) crewBits |= 1 << index; });
   const equipment = VIEWER_EQUIPMENT.map((key) => quantizeMultiplier(prediction.equipment?.[key] ?? 1));
-  const movement = prediction.movement;
+  const movement = withCheckpoint ? prediction.movement : null;
   const values = Array.isArray(movement?.values) ? movement.values.filter((value) => Number.isFinite(value)) : [];
   const valid = movement && movement.version === MOVEMENT_CHECKPOINT_VERSION && Array.isArray(movement.values) && values.length === movement.values.length && values.length <= 64;
   return {
