@@ -272,12 +272,15 @@ for (const edge of [18, 64]) {
 }
 const constraintSource = terrainSource.slice(terrainSource.indexOf('  function applyHeightConstraints('),
   terrainSource.indexOf('  function heightAt(', terrainSource.indexOf('  function applyHeightConstraints(')));
+const roadBankPolicy = terrainSource.match(/const roadBankWidth = [^;]+;/)?.[0];
+assert.ok(roadBankPolicy, 'production road-bank width policy is present');
 const constraintFactory = new Function('fixture', `
-  const { GN, gRoadDist, gRoadElev, sampleHeightGridCell, composeLakeHeight,
+  const { cfg = { id: 'alpine' }, GN, gRoadDist, gRoadElev, sampleHeightGridCell, composeLakeHeight,
     _LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons, lakeHeightResult,
     padPts, padYs, smoothstep, waterRampStart, waterRampEnd, noi,
     // round 61: the road-plane blend yields under a bridge deck (bridgeTermsAt); this fixture authors none
     bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }) } = fixture;
+  ${roadBankPolicy}
   ${stripTypeScriptTypes(constraintSource)}
   return applyHeightConstraints;
 `);
