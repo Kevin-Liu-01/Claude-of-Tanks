@@ -2,9 +2,13 @@
  * LocalRoomService: the v2 room protocol served in-process by Node — the LAN
  * helper, the receipts and the headless end-to-end runs. It hosts one
  * `RoomActor` per room code over plain WebSockets (`/rooms/<CODE>`), keeps
- * everything in memory, signs seat tokens with the shared secret and starts
- * each match as a `MatchActor` in the same `MatchService`, so a `RoomClient`
- * cannot tell it from the Cloudflare Durable Object.
+ * everything in memory, signs seat tokens with the shared secret and runs
+ * each match either as a `MatchActor` in the same `MatchService`
+ * (`matchTransport: 'service'`, the LAN helper's dedicated authority) or
+ * peer-to-peer in the host commander's browser (`matchTransport: 'p2p'`, the
+ * same relay, election and migration as the Durable Object — the browser
+ * proofs and `tools/mp-rooms-e2e.mjs --p2p`), so a `RoomClient` cannot tell
+ * it from the Cloudflare Durable Object.
  *
  * Mount it on the match service's HTTP server (one port, `server/rooms/main.ts`)
  * or on its own; `handleRequest` / `handleUpgrade` return false for paths that
@@ -15,7 +19,8 @@ import type http from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { RoomActor } from '../../src/mp/room/roomActor.ts';
-import type { MatchHost, MatchHostStartConfig, MatchHostStatus, RoomActorPorts } from '../../src/mp/room/roomActor.ts';
+import type { MatchHost, MatchHostStartConfig, MatchHostStatus, RoomActorPorts, ServiceMatchHost } from '../../src/mp/room/roomActor.ts';
+import { createP2pMatchHost } from '../../src/mp/room/p2pMatchHost.ts';
 import { ROOM_MAX_PAYLOAD_BYTES, parseRoomRoute } from '../../src/mp/room/protocol.ts';
 import type { RoomEnvelope } from '../../src/mp/room/protocol.ts';
 import type { RoomPolicyGuards } from '../../src/mp/room/roomPolicy.ts';
@@ -33,6 +38,8 @@ export interface LocalRoomServiceOptions {
   matchUrl?: string;
   /** Actor world: 'dedicated' loads the map's collision shard (production); 'terrain' for fast receipts. */
   world?: 'dedicated' | 'terrain';
+  /** Where matches run: in this process (`service`, default — the LAN helper's authority) or in the host's browser (`p2p`). */
+  matchTransport?: 'service' | 'p2p';
   countdownS?: number;
   battleLimitS?: number;
   guards?: Partial<RoomPolicyGuards>;
@@ -67,9 +74,10 @@ export function createInProcessMatchHost({
   countdownS?: number;
   battleLimitS?: number;
   onVerdict?: (roomId: string) => void;
-}): MatchHost {
+}): ServiceMatchHost {
   const matchIds = new Map<string, string>();
   return {
+    transport: 'service',
     async start(config: MatchHostStartConfig) {
       const existing = matchService.actors.get(config.roomId);
       if (existing && !existing.stopped && !existing.ended) throw new Error('a match is already running for this room');
@@ -121,6 +129,7 @@ export function createLocalRoomService({
   allowedOrigins = null,
   matchUrl = '/match',
   world = 'dedicated',
+  matchTransport = 'service',
   countdownS,
   battleLimitS,
   guards,
@@ -138,19 +147,23 @@ export function createLocalRoomService({
   let closed = false;
   const roomLog = log.child({ service: 'rooms' });
 
-  const matchHost = createInProcessMatchHost({
+  const serviceHost = matchTransport === 'service' ? createInProcessMatchHost({
     matchService, matchUrl, world, countdownS, battleLimitS,
     // The verdict callback lands on the actor's tick: poll the room right away instead of waiting 10 s.
     onVerdict: (roomId) => { const room = rooms.get(roomId); if (room) queueMicrotask(() => { void room.observeMatchNow(); }); },
-  });
+  }) : null;
+  // A p2p host is bound to one room (the actor binds it), so every room gets its own.
+  const matchHostFor = (): MatchHost => serviceHost ?? createP2pMatchHost();
+  const matchHost = matchHostFor();
 
-  function ports(code: string): RoomActorPorts {
+  function ports(code: string, host: MatchHost): RoomActorPorts {
     return {
       now: wallClock,
       random,
       sha256Hex,
-      signSeatToken: (claims) => signSeatToken(seatSecret, claims),
-      matchHost,
+      seatSecret,
+      signSeatToken,
+      matchHost: host,
       region,
       send(socketId, message: RoomEnvelope) {
         const socket = sockets.get(socketId);
@@ -185,7 +198,7 @@ export function createLocalRoomService({
   function room(code: string): RoomActor {
     let actor = rooms.get(code);
     if (!actor) {
-      actor = new RoomActor(code, ports(code));
+      actor = new RoomActor(code, ports(code, rooms.size === 0 ? matchHost : matchHostFor()));
       rooms.set(code, actor);
     }
     return actor;

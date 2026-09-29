@@ -11,20 +11,32 @@
  * (only their SHA-256 is kept), the policy commands, chat with a bounded
  * history, reconnect leases and admin migration (explicit leave → at once;
  * disconnect → after the grace), 24 h expiry, and the match lifecycle — seat
- * tokens, the host's start, per-seat `match_start`, status polls, the verdict,
- * a lost container, rematch in the same room.
+ * tokens, the host's start, per-seat `match_start`, the verdict, a lost
+ * match, rematch in the same room.
+ *
+ * Peer-to-peer matches (§13, owner 2026-09-28): with a `p2p` match host the
+ * actor also relays WebRTC signals between the host seat and its peers
+ * (`room_signal`), signs the match's seat tokens with a per-match secret it
+ * hands only to the host, accepts the host's `match_report` commands in place
+ * of status polls, and migrates the host — after `ROOM_HOST_DISCONNECT_GRACE_MS`
+ * without its socket, at once when it leaves or declines, and when its reports
+ * stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` — with `host_changed`. With a
+ * `service` host (the parked container backend) the match is polled as before.
  */
 import type { SeatClaims } from '../../../server/match/seatToken.ts';
 import {
-  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_IDLE_TTL_MS, ROOM_MATCH_LOST_AFTER_POLLS, ROOM_MAX_REGION_CHARS,
-  ROOM_MATCH_POLL_MS, ROOM_RATE_MAX_MESSAGES, ROOM_RATE_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_TOKEN_TTL_MS,
-  ROOM_SERVER_MESSAGE, ROOM_UNAUTHENTICATED_TIMEOUT_MS, RoomError, cleanId, isRecord, isRoomTeam, normalizeRoomChat,
-  parseRoomEnvelope, publicRoomError,
+  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS,
+  ROOM_MATCH_LOST_AFTER_POLLS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_REGION_CHARS, ROOM_RATE_MAX_MESSAGES,
+  ROOM_RATE_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES,
+  ROOM_UNAUTHENTICATED_TIMEOUT_MS, RoomError, cleanId, isRecord, isRoomTeam, noElection, normalizeRoomChat, p2pMatchUrl,
+  parseRoomEnvelope, publicRoomError, readRoomMatchReport, readRoomSignalPayload, utf8ByteLength,
 } from './protocol.ts';
 import type {
-  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode, RoomResult,
-  RoomSelection, RoomSnapshot, RoomTeam,
+  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode,
+  RoomResult, RoomSelection, RoomSnapshot, RoomTeam,
 } from './protocol.ts';
+import { electHost } from './p2pMatchHost.ts';
+import type { P2pHostReport, P2pMatchHost } from './p2pMatchHost.ts';
 import {
   abortStart, applyRoomCommand, finishMatch, joinRoom, markMatchPlaying, migrateAdminIfAbsent, planStart, recordMatch,
   removePlayer, serializeRoom, setPlayerConnected,
@@ -52,23 +64,38 @@ export interface MatchHostStatus {
   /** The actor's phase; `stopped` once it released the room, `unknown` when the host cannot say. */
   phase: 'loading' | 'countdown' | 'playing' | 'ended' | 'stopped' | 'unknown';
   verdict: { result: RoomResult; reason: string } | null;
+  /** The authority tick reached, when the host reports one (a p2p host's last `match_report`). */
+  tick?: number;
 }
 
-/** Where matches run: a Cloudflare Container, an HTTP shim, or the in-process service. */
-export interface MatchHost {
-  /** Start a match; resolves with the WebSocket URL clients connect to (absolute, or relative to the room endpoint). */
+/** What every match host answers: a start, a status, a stop. */
+export interface MatchHostBase {
+  /** Start a match; resolves with the URL clients connect to (a `/match` socket path, or `rtc://<roomId>/<generation>`). */
   start(config: MatchHostStartConfig): Promise<{ matchUrl: string }>;
   /** Null when the host has no match for the room; throws when the host cannot be reached. */
   status(roomId: string): Promise<MatchHostStatus | null>;
   stop(roomId: string): Promise<void>;
 }
 
+/** A dedicated match service: a Cloudflare Container, an HTTP shim, or the in-process service (polled by alarm). */
+export interface ServiceMatchHost extends MatchHostBase {
+  readonly transport: 'service';
+}
+
+/** Where matches run: the host commander's browser (`p2p`, `src/mp/room/p2pMatchHost.ts`) or a dedicated service. */
+export type MatchHost = ServiceMatchHost | P2pMatchHost;
+
 export interface RoomActorPorts {
   now(): number;
   /** [0, 1): match seeds and ids. */
   random(): number;
   sha256Hex(text: string): string;
-  signSeatToken(claims: SeatClaims): string;
+  /**
+   * The room's seat-token secret (`MATCH_SEAT_SECRET`). A service match signs with it directly; a p2p match signs
+   * with the per-match secret the actor derives from it (`sha256Hex(seatSecret + ':' + matchId)`) and hands only to the host.
+   */
+  seatSecret: string;
+  signSeatToken(secret: string, claims: SeatClaims): string;
   matchHost: MatchHost;
   send(socketId: string, message: RoomEnvelope): void;
   closeSocket(socketId: string, reason: string): void;
@@ -113,12 +140,22 @@ export interface RoomActorState {
   expiresAt: number | null;
   matchTokens: Record<string, IssuedToken>;
   startInFlight: boolean;
+  /** The running match's URL (a service path; a p2p match derives it from the room's host record instead). */
+  matchUrl: string;
+  /** P2p: the host's socket has been absent since the lease was set (migrate at the deadline). */
+  hostLeaseAt: number | null;
+  /** P2p: the host's last accepted `match_report`; its `tick` is the successor's resume point. */
+  hostReport: P2pHostReport | null;
+  /** P2p: when the host's silence becomes a dropped host. */
+  hostReportDueAt: number | null;
 }
 
 function matchIdFrom(random: () => number, round: number): string {
   const hex = Math.floor(random() * 0xffffffff).toString(16).padStart(8, '0');
   return `m${round}-${hex}`;
 }
+
+const RUNNING: ReadonlySet<string> = new Set(['starting', 'playing']);
 
 export class RoomActor {
   readonly roomCode: string;
@@ -132,6 +169,10 @@ export class RoomActor {
   private pollMisses = 0;
   private matchTokens = new Map<string, IssuedToken>();
   private startInFlight = false;
+  private matchUrl = '';
+  private hostLeaseAt: number | null = null;
+  private hostReport: P2pHostReport | null = null;
+  private hostReportDueAt: number | null = null;
   private readonly sockets = new Map<string, RoomSocketRecord>();
   private readonly socketOfPlayer = new Map<string, string>();
   private polling: Promise<void> | null = null;
@@ -139,6 +180,14 @@ export class RoomActor {
   constructor(roomCode: string, ports: RoomActorPorts) {
     this.roomCode = roomCode;
     this.ports = ports;
+    if (ports.matchHost.transport === 'p2p') {
+      ports.matchHost.bind({
+        room: () => this.room,
+        isConnected: (playerId) => this.socketOfPlayer.has(playerId),
+        lastReport: () => this.hostReport,
+        now: () => this.ports.now(),
+      });
+    }
   }
 
   // ------------------------------------------------------------ state
@@ -147,6 +196,13 @@ export class RoomActor {
   get empty(): boolean { return this.room === null && this.sockets.size === 0; }
   get socketCount(): number { return this.sockets.size; }
   socketRecord(socketId: string): RoomSocketRecord | null { return this.sockets.get(socketId) ?? null; }
+  /** The host's last accepted `match_report` (p2p), for the hosts' diagnostics and receipts. */
+  get lastHostReport(): P2pHostReport | null { return this.hostReport; }
+
+  /** The p2p match host, or null with a service host. */
+  private get p2p(): P2pMatchHost | null {
+    return this.ports.matchHost.transport === 'p2p' ? this.ports.matchHost : null;
+  }
 
   exportState(): RoomActorState {
     return {
@@ -162,6 +218,10 @@ export class RoomActor {
       expiresAt: this.expiresAt,
       matchTokens: Object.fromEntries(this.matchTokens),
       startInFlight: this.startInFlight,
+      matchUrl: this.matchUrl,
+      hostLeaseAt: this.hostLeaseAt,
+      hostReport: this.hostReport ? { ...this.hostReport, verdict: this.hostReport.verdict ? { ...this.hostReport.verdict } : null } : null,
+      hostReportDueAt: this.hostReportDueAt,
     };
   }
 
@@ -175,10 +235,23 @@ export class RoomActor {
     this.nextPollAt = state.nextPollAt ?? null;
     this.pollMisses = state.pollMisses ?? 0;
     this.matchTokens = new Map(Object.entries(state.matchTokens ?? {}));
+    this.matchUrl = state.matchUrl ?? '';
+    this.hostLeaseAt = state.hostLeaseAt ?? null;
+    this.hostReport = state.hostReport ?? null;
+    this.hostReportDueAt = state.hostReportDueAt ?? null;
     // A start that was in flight when the host restarted never completed: the room returns to waiting.
     if (state.startInFlight && this.room) abortStart(this.room, this.ports.now());
     this.startInFlight = false;
-    if (this.room) for (const player of this.room.players) player.connected = false;
+    if (this.room) {
+      // State written before the host record and the decline flag (2026-09-28) reads as "no election, nobody declined";
+      // the transport is the running host's.
+      const host = (this.room as { host?: RoomSnapshot['host'] }).host;
+      this.room.host = host ? { ...host, transport: this.ports.matchHost.transport } : noElection(this.room.createdAt, this.ports.matchHost.transport);
+      for (const player of this.room.players) {
+        player.connected = false;
+        (player as { hostDeclined?: boolean }).hostDeclined ??= false;
+      }
+    }
   }
 
   /** Re-attach a socket the host kept across a restart (`playerId` from its attachment). */
@@ -194,13 +267,16 @@ export class RoomActor {
     }
   }
 
-  /** After every attachment has been replayed: reconcile the admin lease and schedule. */
+  /** After every attachment has been replayed: reconcile the admin and host leases and schedule. */
   settleAfterRestore(): void {
     const now = this.ports.now();
     if (this.room) {
       const admin = this.room.players.find((player) => player.id === this.room!.adminId);
       if (admin && !admin.connected && this.adminLeaseAt === null) this.adminLeaseAt = now + ROOM_ADMIN_DISCONNECT_GRACE_MS;
       if (admin && admin.connected) this.adminLeaseAt = null;
+      const hostId = this.runningP2pHostId();
+      if (hostId && !this.socketOfPlayer.has(hostId) && this.hostLeaseAt === null) this.hostLeaseAt = now + ROOM_HOST_DISCONNECT_GRACE_MS;
+      if (hostId && this.socketOfPlayer.has(hostId)) this.hostLeaseAt = null;
     }
     this.reschedule();
   }
@@ -216,6 +292,8 @@ export class RoomActor {
     consider(this.expiresAt);
     consider(this.adminLeaseAt);
     consider(this.nextPollAt);
+    consider(this.hostLeaseAt);
+    consider(this.hostReportDueAt);
     for (const socket of this.sockets.values()) if (!socket.playerId) consider(socket.acceptedAt + ROOM_UNAUTHENTICATED_TIMEOUT_MS);
     return next;
   }
@@ -230,6 +308,13 @@ export class RoomActor {
 
   private log(level: 'info' | 'warn' | 'error', message: string, fields: Record<string, unknown> = {}): void {
     this.ports.log?.(level, message, { room: this.roomCode, ...fields });
+  }
+
+  /** The p2p host's id while its match is starting or playing, else null. */
+  private runningP2pHostId(): string | null {
+    const room = this.room;
+    if (!this.p2p || !room || !room.match || !RUNNING.has(room.match.status)) return null;
+    return room.host.hostId;
   }
 
   // ------------------------------------------------------------ sockets
@@ -250,6 +335,8 @@ export class RoomActor {
         const now = this.ports.now();
         setPlayerConnected(this.room, socket.playerId, false, now);
         if (this.room.adminId === socket.playerId) this.adminLeaseAt = now + ROOM_ADMIN_DISCONNECT_GRACE_MS;
+        // The p2p host's socket is gone: its peers stall until it returns or the grace elects a successor.
+        if (this.runningP2pHostId() === socket.playerId) this.hostLeaseAt = now + ROOM_HOST_DISCONNECT_GRACE_MS;
         this.broadcastState();
         this.persist();
       }
@@ -327,6 +414,7 @@ export class RoomActor {
         case ROOM_CLIENT_MESSAGE.COMMAND: await this.command(socket, message); break;
         case ROOM_CLIENT_MESSAGE.CHAT: this.chatMessage(socket, message); break;
         case ROOM_CLIENT_MESSAGE.LEAVE: this.leave(socket, message); break;
+        case ROOM_CLIENT_MESSAGE.SIGNAL: this.signal(socket, message); break;
         case ROOM_CLIENT_MESSAGE.PING:
           this.requirePlayer(socket);
           this.touch(now);
@@ -398,7 +486,9 @@ export class RoomActor {
       if (this.room) throw new RoomError('room_code_exhausted');
       const mode: RoomMode = payload.mode === 'lan' ? 'lan' : 'private';
       const settings = isRecord(payload.settings) ? payload.settings as RoomCreateSettings : null;
-      this.room = createRoom({ roomCode: this.roomCode, mode, creator: { id: playerId, name }, selection, settings, now });
+      this.room = createRoom({
+        roomCode: this.roomCode, mode, creator: { id: playerId, name }, selection, settings, hostTransport: this.ports.matchHost.transport, now,
+      });
       this.chat = [];
       this.chatSeq = 0;
       this.matchTokens.clear();
@@ -416,6 +506,8 @@ export class RoomActor {
     this.socketOfPlayer.set(playerId, socket.id);
     setPlayerConnected(room, playerId, true, now);
     if (room.adminId === playerId) this.adminLeaseAt = null;
+    // The p2p host is back inside its grace: it stays the host (and receives its match_start, with the secret, below).
+    if (this.runningP2pHostId() === playerId) this.hostLeaseAt = null;
     this.touch(now);
     this.persist();
     const type = kind === 'create' ? ROOM_SERVER_MESSAGE.CREATED : ROOM_SERVER_MESSAGE.JOINED;
@@ -427,8 +519,8 @@ export class RoomActor {
       },
     });
     const issued = this.matchTokens.get(playerId);
-    if (issued && room.match && issued.matchId === room.match.id && (room.match.status === 'starting' || room.match.status === 'playing')) {
-      this.send(socket.id, { type: ROOM_SERVER_MESSAGE.MATCH_START, payload: { ...this.matchStartPayload(issued) } });
+    if (issued && room.match && issued.matchId === room.match.id && RUNNING.has(room.match.status)) {
+      this.send(socket.id, { type: ROOM_SERVER_MESSAGE.MATCH_START, payload: { ...this.matchStartPayload(playerId, issued) } });
     }
     this.broadcastState(socket.id);
   }
@@ -443,6 +535,10 @@ export class RoomActor {
       if (this.startInFlight) throw new RoomError('match_running');
       applyRoomCommand(room, playerId, command, now, this.ports.guards);
       await this.startMatch(socket, message.requestId);
+      return;
+    }
+    if (command.type === 'match_report') {
+      this.matchReport(socket, message, playerId, command);
       return;
     }
     const kicked = command.type === 'kick' ? cleanId(command.playerId, 'unknown_player') : null;
@@ -460,6 +556,9 @@ export class RoomActor {
     this.persist();
     this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, ...(message.requestId ? { requestId: message.requestId } : {}), payload: { revision: room.revision } });
     this.broadcastState();
+    // The running p2p host was kicked, or declined while hosting: its peers move to a successor at once.
+    if (kicked && this.runningP2pHostId() === kicked) this.migrateHost(now, 'left');
+    else if (command.type === 'host_decline' && command.declined === true && this.runningP2pHostId() === playerId) this.migrateHost(now, 'declined');
   }
 
   private chatMessage(socket: RoomSocketRecord, message: RoomEnvelope): void {
@@ -478,11 +577,16 @@ export class RoomActor {
     if (message.requestId) this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, requestId: message.requestId, payload: { id: entry.id } });
   }
 
-  /** Explicit leave: the seat goes and an admin migrates at once; the room stays. */
+  /**
+   * Explicit leave: the seat goes and an admin migrates at once; the room stays. A leaving p2p host migrates at once
+   * too — synchronously: the handler has closed the delivering socket and must finish its sends without yielding
+   * (a yield between that close and further sends crashed the Workers runtime, 2026-09-28).
+   */
   private leave(socket: RoomSocketRecord, message: RoomEnvelope): void {
     const playerId = this.requirePlayer(socket);
     const room = this.room!;
     const now = this.ports.now();
+    const hosting = this.runningP2pHostId() === playerId;
     removePlayer(room, playerId, now);
     this.resumeHashes.delete(playerId);
     this.matchTokens.delete(playerId);
@@ -493,20 +597,57 @@ export class RoomActor {
     this.retire(socket.id, 'client_leave');
     this.log('info', 'player left', { player: playerId, admin: room.adminId, players: room.players.length });
     this.broadcastState();
+    if (hosting) this.migrateHost(now, 'left');
+  }
+
+  // ------------------------------------------------------------ peer-to-peer signaling
+
+  /**
+   * `room_signal`: relay one WebRTC signal from a seat to another (§13.2). Refused — with a code the sender can act
+   * on — unless the match is starting or playing (`signal_phase`), the generation is the current one
+   * (`signal_generation`), the target is another connected seat of this room and one of the two is the host
+   * (`signal_target`), and the relayed payload fits `ROOM_SIGNAL_MAX_BYTES` (`signal_size`). The room never parses SDP.
+   */
+  private signal(socket: RoomSocketRecord, message: RoomEnvelope): void {
+    const from = this.requirePlayer(socket);
+    const room = this.room!;
+    const signal = readRoomSignalPayload(message.payload);
+    const hostId = this.runningP2pHostId();
+    if (!hostId) throw new RoomError('signal_phase');
+    if (signal.generation !== room.host.generation) throw new RoomError('signal_generation');
+    if (signal.to === from || !room.players.some((player) => player.id === signal.to)) throw new RoomError('signal_target');
+    if (from !== hostId && signal.to !== hostId) throw new RoomError('signal_target');
+    const target = this.socketOfPlayer.get(signal.to);
+    if (!target) throw new RoomError('signal_target');
+    const relayed = { ...signal, from };
+    if (utf8ByteLength(JSON.stringify(relayed)) > ROOM_SIGNAL_MAX_BYTES) throw new RoomError('signal_size');
+    this.touch(this.ports.now());
+    this.send(target, { type: ROOM_SERVER_MESSAGE.SIGNAL, payload: relayed });
+    if (message.requestId) this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, requestId: message.requestId, payload: { relayed: true } });
   }
 
   // ------------------------------------------------------------ match lifecycle
 
-  private matchStartPayload(issued: IssuedToken): RoomMatchStartPayload {
+  /** The per-match secret a p2p match's seat tokens are signed with: derived, never stored, handed only to the host. */
+  private hostSecretFor(matchId: string): string {
+    return this.ports.sha256Hex(`${this.ports.seatSecret}:${matchId}`);
+  }
+
+  private matchStartPayload(playerId: string, issued: IssuedToken): RoomMatchStartPayload {
     const room = this.room!;
     const match = room.match!;
-    return {
+    const payload: RoomMatchStartPayload = {
       matchId: match.id, round: match.round, mapId: match.mapId, mode: room.settings.gameMode, seed: match.seed,
       seat: issued.seat, team: issued.team, seatToken: issued.token, matchUrl: this.matchUrl, expiresAt: issued.expiresAt,
     };
+    if (this.p2p && room.host.hostId) {
+      // The URL names the current generation: a seat admitted after a migration connects to the current host.
+      payload.matchUrl = p2pMatchUrl(this.roomCode, room.host.generation);
+      payload.hostId = room.host.hostId;
+      if (playerId === room.host.hostId) payload.hostSecret = this.hostSecretFor(match.id);
+    }
+    return payload;
   }
-
-  private matchUrl = '';
 
   private async startMatch(socket: RoomSocketRecord, requestId: string | undefined): Promise<void> {
     const room = this.room!;
@@ -540,23 +681,38 @@ export class RoomActor {
     recordMatch(room, { id: matchId, round: plan.round, mapId: plan.mapId, seed: plan.seed, startedAt }, startedAt);
     this.matchTokens.clear();
     const expiresAt = startedAt + ROOM_SEAT_TOKEN_TTL_MS;
+    // A p2p match's tokens are signed with the per-match secret only its host receives; a service verifies with the room's.
+    const signingSecret = this.p2p ? this.hostSecretFor(matchId) : this.ports.seatSecret;
     for (const seat of plan.seats) {
       const claims: SeatClaims = {
         v: 1, roomId: this.roomCode, seat: seat.seat, playerId: seat.playerId, name: seat.name.slice(0, 32) || seat.playerId,
         team: seat.team, specId: seat.specId, iat: startedAt, exp: expiresAt,
       };
-      this.matchTokens.set(seat.playerId, { token: this.ports.signSeatToken(claims), expiresAt, seat: seat.seat, team: seat.team, matchId });
+      this.matchTokens.set(seat.playerId, { token: this.ports.signSeatToken(signingSecret, claims), expiresAt, seat: seat.seat, team: seat.team, matchId });
     }
-    this.nextPollAt = startedAt + ROOM_MATCH_POLL_MS;
+    if (this.p2p) {
+      // No polls: the host reports; its silence past the budget, or its socket's absence past the grace, migrates.
+      this.nextPollAt = null;
+      this.hostReport = null;
+      this.hostReportDueAt = startedAt + ROOM_MATCH_REPORT_STALE_AFTER_MS;
+      this.hostLeaseAt = null;
+    } else {
+      this.nextPollAt = startedAt + ROOM_MATCH_POLL_MS;
+    }
     this.pollMisses = 0;
     this.touch(startedAt);
     this.persist();
-    this.log('info', 'match started', { match: matchId, round: plan.round, seats: plan.seats.length, bots: plan.bots.length, map: plan.mapId });
+    this.log('info', 'match started', {
+      match: matchId, round: plan.round, seats: plan.seats.length, bots: plan.bots.length, map: plan.mapId,
+      transport: this.ports.matchHost.transport, host: room.host.hostId, generation: room.host.generation,
+    });
     this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, ...(requestId ? { requestId } : {}), payload: { matchId } });
     this.broadcastState();
     for (const [playerId, issued] of this.matchTokens) {
-      this.sendToPlayer(playerId, { type: ROOM_SERVER_MESSAGE.MATCH_START, payload: { ...this.matchStartPayload(issued) } });
+      this.sendToPlayer(playerId, { type: ROOM_SERVER_MESSAGE.MATCH_START, payload: { ...this.matchStartPayload(playerId, issued) } });
     }
+    // The election itself, after every seat holds its match_start: a host_changed whose generation a seat already runs is a no-op.
+    if (this.p2p) this.sendHostChanged('start', 0);
     this.reschedule();
   }
 
@@ -568,9 +724,104 @@ export class RoomActor {
     return { type: ROOM_SERVER_MESSAGE.MATCH_STATUS, payload: { ...payload } };
   }
 
+  /** `host_changed` to every seat; the host's own copy carries the per-match secret. */
+  private sendHostChanged(reason: RoomHostChangedPayload['reason'], resumeTick: number): void {
+    const room = this.room;
+    if (!room || !room.match || !room.host.hostId) return;
+    const payload: RoomHostChangedPayload = { hostId: room.host.hostId, generation: room.host.generation, resumeTick, reason };
+    const hostSocket = this.socketOfPlayer.get(room.host.hostId) ?? null;
+    for (const [socketId, socket] of this.sockets) {
+      if (!socket.playerId) continue;
+      this.send(socketId, {
+        type: ROOM_SERVER_MESSAGE.HOST_CHANGED,
+        payload: socketId === hostSocket ? { ...payload, hostSecret: this.hostSecretFor(room.match.id) } : { ...payload },
+      });
+    }
+  }
+
+  /** The running p2p match is over (verdict, or nobody left to host): tokens, report and leases go; the election clears. */
+  private endP2pMatch(): void {
+    this.matchTokens.clear();
+    this.hostReport = null;
+    this.hostReportDueAt = null;
+    this.hostLeaseAt = null;
+    this.nextPollAt = null;
+    this.p2p?.clearElection();
+  }
+
+  /**
+   * `match_report` from the p2p host: the room's match status and verdict follow it. Only the host of the current
+   * generation may report (`host_only`); a report names the running match (`invalid_command` otherwise).
+   */
+  private matchReport(socket: RoomSocketRecord, message: RoomEnvelope, playerId: string, command: Record<string, unknown>): void {
+    const room = this.room!;
+    if (!this.p2p) throw new RoomError('invalid_command', 'match_report is a p2p host command');
+    const report = readRoomMatchReport(command);
+    if (!room.match || !RUNNING.has(room.match.status) || room.match.id !== report.matchId) throw new RoomError('invalid_command', 'no such running match');
+    if (room.host.hostId !== playerId || room.host.generation !== report.generation) throw new RoomError('host_only');
+    const now = this.ports.now();
+    this.hostReport = { generation: report.generation, phase: report.phase, tick: report.tick, verdict: report.verdict, at: now };
+    this.hostReportDueAt = now + ROOM_MATCH_REPORT_STALE_AFTER_MS;
+    this.hostLeaseAt = null;
+    let changed = false;
+    if (report.phase === 'playing') changed = markMatchPlaying(room, now);
+    if (report.phase === 'ended') {
+      finishMatch(room, report.verdict ? { status: 'ended', result: report.verdict.result, reason: report.verdict.reason } : { status: 'lost', reason: 'host_ended' }, now);
+      this.log('info', 'match ended', { match: report.matchId, result: report.verdict?.result ?? null, reason: report.verdict?.reason ?? 'host_ended', tick: report.tick });
+      this.endP2pMatch();
+      changed = true;
+    }
+    this.touch(now);
+    this.persist();
+    this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, ...(message.requestId ? { requestId: message.requestId } : {}), payload: { revision: room.revision } });
+    if (report.phase === 'ended') this.broadcast(this.matchStatusMessage());
+    if (changed) this.broadcastState();
+  }
+
+  /**
+   * The p2p host is gone (`timeout`: socket absent past the grace or reports stopped; `left`: leave or kick;
+   * `declined`: it asked not to host): elect the next connected commander, `generation + 1`, `host_changed` with the
+   * departing host's last reported tick as the resume point (the secret only on the new host's copy). A decline
+   * migrates only to a willing successor — with every other commander declined too, the host stays (a move to
+   * another unwilling seat costs a resume and gains nothing); a drop with nobody left ends the match as lost.
+   */
+  private migrateHost(now: number, reason: RoomHostChangedPayload['reason']): void {
+    const room = this.room;
+    const p2p = this.p2p;
+    const old = this.runningP2pHostId();
+    if (!room || !p2p || !old || !room.match) return;
+    if (reason === 'declined') {
+      const successor = electHost(room, old);
+      if (!successor || successor.hostDeclined) {
+        this.log('info', 'host declined with no willing successor; it keeps hosting', { host: old });
+        return;
+      }
+    }
+    const resumeTick = this.hostReport && this.hostReport.generation === room.host.generation ? this.hostReport.tick : 0;
+    const next = p2p.migrate(old);
+    if (!next) {
+      finishMatch(room, { status: 'lost', reason: 'match_lost' }, now);
+      this.log('warn', 'match lost: no commander left to host', { match: room.match.id, host: old, reason });
+      this.endP2pMatch();
+      this.persist();
+      this.broadcast(this.matchStatusMessage());
+      this.broadcastState();
+      return;
+    }
+    this.hostReport = null;
+    this.hostReportDueAt = now + ROOM_MATCH_REPORT_STALE_AFTER_MS;
+    this.hostLeaseAt = null;
+    room.revision++;
+    this.touch(now);
+    this.persist();
+    this.log('info', 'host migrated', { from: old, to: next.hostId, generation: next.generation, resumeTick, reason });
+    this.sendHostChanged(reason, resumeTick);
+    this.broadcastState();
+  }
+
   private async pollMatch(): Promise<void> {
     const room = this.room;
-    if (!room || !room.match || (room.match.status !== 'starting' && room.match.status !== 'playing')) {
+    if (!room || !room.match || !RUNNING.has(room.match.status)) {
       this.nextPollAt = null;
       return;
     }
@@ -628,6 +879,9 @@ export class RoomActor {
     this.chat = [];
     this.adminLeaseAt = null;
     this.nextPollAt = null;
+    this.hostLeaseAt = null;
+    this.hostReport = null;
+    this.hostReportDueAt = null;
     this.persist();
   }
 
@@ -650,7 +904,16 @@ export class RoomActor {
         if (admin && !admin.connected) this.adminLeaseAt = now + ROOM_ADMIN_DISCONNECT_GRACE_MS;
       }
     }
-    if (this.room && this.nextPollAt !== null && now >= this.nextPollAt) {
+    if (this.room && this.hostLeaseAt !== null && now >= this.hostLeaseAt) {
+      this.hostLeaseAt = null;
+      const hostId = this.runningP2pHostId();
+      if (hostId && !this.socketOfPlayer.has(hostId)) this.migrateHost(now, 'timeout');
+    }
+    if (this.room && this.hostReportDueAt !== null && now >= this.hostReportDueAt) {
+      this.hostReportDueAt = null;
+      if (this.runningP2pHostId()) this.migrateHost(now, 'timeout');
+    }
+    if (this.room && !this.p2p && this.nextPollAt !== null && now >= this.nextPollAt) {
       this.nextPollAt = null;
       this.polling ??= this.pollMatch().finally(() => { this.polling = null; });
       await this.polling;
@@ -658,9 +921,9 @@ export class RoomActor {
     this.reschedule();
   }
 
-  /** Force a poll now (receipts, the LAN service's verdict callback). */
+  /** Force a poll now (receipts, the LAN service's verdict callback); a p2p room runs its due deadlines instead. */
   async observeMatchNow(): Promise<void> {
-    this.nextPollAt = this.ports.now();
+    if (!this.p2p) this.nextPollAt = this.ports.now();
     await this.tick();
   }
 }

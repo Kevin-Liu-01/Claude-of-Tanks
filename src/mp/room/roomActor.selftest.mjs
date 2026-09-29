@@ -2,36 +2,48 @@
 // capabilities (hashes only), replacement of an old socket, admin migration
 // (explicit leave at once, disconnect after the 30 s grace), the match
 // lifecycle (seat tokens, host start, per-seat match_start, polls, verdict,
-// rematch, lost host), expiry, hibernation round trips, rate and auth limits.
+// rematch, lost host), expiry, hibernation round trips, rate and auth limits;
+// and, with the peer-to-peer match host (§13, 2026-09-28): the election and
+// the rtc:// URL, the per-match secret only on the host's copies, the relay
+// rules, the host's reports, host migration on a dropped socket (8 s grace,
+// fake clock), a leave, a kick, a decline and silence past three polls, the
+// old host back as a peer, the lost end, hibernation with the host state.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomActor } from './roomActor.ts';
+import { createP2pMatchHost } from './p2pMatchHost.ts';
 import {
-  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_RATE_MAX_MESSAGES, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
+  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS,
+  ROOM_RATE_MAX_MESSAGES, ROOM_SIGNAL_MAX_BYTES, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
 } from './protocol.ts';
 import { signSeatToken, verifySeatToken } from '../../../server/match/seatToken.ts';
 
 const SECRET = 'room-actor-receipt-secret-0123456789';
 const T0 = 1_700_000_000_000;
+const sha256 = (text) => createHash('sha256').update(text).digest('hex');
+/** The per-match host secret the contract names: sha256Hex(MATCH_SEAT_SECRET + ':' + matchId). */
+const hostSecretOf = (matchId) => sha256(`${SECRET}:${matchId}`);
 
-function createHarness({ code = 'ROOM01', host = null, region = undefined } = {}) {
+function createHarness({ code = 'ROOM01', host = null, region = undefined, transport = 'service' } = {}) {
   let now = T0;
   const sent = new Map();          // socketId -> envelopes
   const closed = new Map();        // socketId -> reason
   let scheduledAt = null;
   let persists = 0;
   let seedTick = 0;
-  const matchHost = host ?? {
+  const matchHost = host ?? (transport === 'p2p' ? createP2pMatchHost() : {
+    transport: 'service',
     calls: [], statusValue: { phase: 'countdown', verdict: null }, fail: false,
     async start(config) { this.calls.push(config); if (this.fail) throw new Error('host down'); return { matchUrl: `/rooms/${config.roomId}/match` }; },
     async status(roomId) { if (this.statusValue === 'throw') throw new Error('unreachable'); return this.statusValue ? { roomId, matchId: 'x', ...this.statusValue } : null; },
     async stop() {},
-  };
+  });
   const ports = {
     now: () => now,
     random: () => ((seedTick = (seedTick * 1103515245 + 12345) >>> 0) % 1000) / 1000,
-    sha256Hex: (text) => createHash('sha256').update(text).digest('hex'),
-    signSeatToken: (claims) => signSeatToken(SECRET, claims),
+    sha256Hex: sha256,
+    seatSecret: SECRET,
+    signSeatToken,
     matchHost,
     send(socketId, message) { if (!sent.has(socketId)) sent.set(socketId, []); sent.get(socketId).push(message); },
     closeSocket(socketId, reason) { closed.set(socketId, reason); },
@@ -42,9 +54,11 @@ function createHarness({ code = 'ROOM01', host = null, region = undefined } = {}
   const actor = new RoomActor(code, ports);
   const drain = (socketId) => { const list = sent.get(socketId) ?? []; sent.set(socketId, []); return list; };
   const last = (socketId, type) => (sent.get(socketId) ?? []).filter((m) => m.type === type).at(-1) ?? null;
+  const all = (socketId, type) => (sent.get(socketId) ?? []).filter((m) => m.type === type);
   const send = async (socketId, type, payload = {}, requestId) => { await actor.handleMessage(socketId, JSON.stringify({ type, requestId, payload })); };
+  const command = async (socketId, command, requestId = `r${++seedTick}`) => { await send(socketId, 'room_command', { command }, requestId); return (sent.get(socketId) ?? []).findLast((m) => m.requestId === requestId) ?? null; };
   const advance = async (ms) => { now += ms; await actor.tick(); };
-  return { actor, ports, matchHost, sent, closed, drain, last, send, advance, get now() { return now; }, set now(v) { now = v; }, get scheduledAt() { return scheduledAt; }, get persists() { return persists; } };
+  return { actor, ports, matchHost, sent, closed, drain, last, all, send, command, advance, get now() { return now; }, set now(v) { now = v; }, get scheduledAt() { return scheduledAt; }, get persists() { return persists; } };
 }
 
 const token = (seed) => seed.repeat(64).slice(0, 64);
@@ -302,6 +316,350 @@ const identity = (id, resume = token('a'), next = token('b')) => ({ roomCode: 'R
   await h.send('s2', 'room_join', identity('guest', token('c'), token('d')), 'q2');
   assert.equal(h.last('s2', 'room_joined').payload.region, 'iad');
   assert.equal(h.last('s1', 'room_state').payload.room.region, undefined, 'the region is the reply\'s, never part of the room snapshot');
+}
+
+
+// ============================================================ peer-to-peer match host (§13, 2026-09-28)
+
+/** Admin + guest (commanders) + a spectator, ready, started by the admin; sockets a / g / w. */
+async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
+  const h = createHarness({ transport: 'p2p' });
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 2, mapId: 'verdant' } }, 'c');
+  h.actor.handleOpen('g'); await h.send('g', 'room_join', identity('guest', token('c'), token('d')), 'j');
+  if (third) { h.actor.handleOpen('t'); await h.send('t', 'room_join', identity('third', token('1'), token('2')), 't'); }
+  h.actor.handleOpen('w'); await h.send('w', 'room_join', { ...identity('watcher', token('e'), token('f')), team: 'spectator' }, 'w');
+  if (adminDeclines) assert.equal((await h.command('a', { type: 'host_decline', declined: true })).type, 'room_ack');
+  await h.command('a', { type: 'set_ready', ready: true });
+  await h.command('g', { type: 'set_ready', ready: true });
+  if (third) await h.command('t', { type: 'set_ready', ready: true });
+  h.drain('a'); h.drain('g'); h.drain('w'); h.drain('t');
+  const ack = await h.command('a', { type: 'start' }, 'start');
+  assert.equal(ack.type, 'room_ack', `the start is acknowledged: ${JSON.stringify(ack)}`);
+  return { h, matchId: ack.payload.matchId };
+}
+
+// ---- start: the election, the rtc:// URL, the per-match secret only on the host's copies, tokens under it, no polls
+{
+  const { h, matchId } = await startedP2pRoom();
+  const room = h.actor.snapshot;
+  assert.deepEqual(room.host, { transport: 'p2p', hostId: 'admin', generation: 1, since: h.now });
+  assert.equal(room.phase, 'starting');
+  const hostSecret = hostSecretOf(matchId);
+  for (const [socket, playerId, team] of [['a', 'admin', 'alpha'], ['g', 'guest', 'bravo'], ['w', 'watcher', 'spectator']]) {
+    const start = h.last(socket, 'match_start');
+    assert.ok(start, `${playerId} receives match_start`);
+    assert.equal(start.payload.matchUrl, 'rtc://ROOM01/1');
+    assert.equal(start.payload.hostId, 'admin');
+    assert.equal(start.payload.team, team);
+    assert.equal(start.payload.hostSecret, playerId === 'admin' ? hostSecret : undefined, 'the secret only in the host\'s own payload');
+    const verified = verifySeatToken(hostSecret, start.payload.seatToken, h.now);
+    assert.equal(verified.ok, true, 'every seat token of the match verifies with the per-match secret');
+    assert.equal(verified.claims.playerId, playerId);
+    assert.equal(verifySeatToken(SECRET, start.payload.seatToken, h.now).reason, 'bad_signature', 'never with the room\'s own secret');
+    const changed = h.last(socket, 'host_changed');
+    assert.deepEqual(changed.payload, { hostId: 'admin', generation: 1, resumeTick: 0, reason: 'start', ...(playerId === 'admin' ? { hostSecret } : {}) });
+    const order = h.sent.get(socket).map((m) => m.type);
+    assert.ok(order.indexOf('match_start') < order.indexOf('host_changed'), 'match_start precedes host_changed(start)');
+  }
+  for (const socket of ['a', 'g', 'w']) {
+    assert.ok(!JSON.stringify(h.all(socket, 'room_state')).includes(hostSecret), 'room_state never carries the secret');
+    assert.ok(!JSON.stringify(h.all(socket, 'room_state')).includes(SECRET));
+  }
+  const state = h.actor.exportState();
+  assert.ok(!JSON.stringify(state).includes(hostSecret) && !JSON.stringify(state).includes('hostSecret'), 'the secret is derived, never stored');
+  assert.equal(state.matchUrl, 'rtc://ROOM01/1');
+  assert.equal(state.nextPollAt, null, 'a p2p match is never polled');
+  assert.equal(state.hostReportDueAt, h.now + ROOM_MATCH_REPORT_STALE_AFTER_MS);
+  assert.equal(h.scheduledAt, h.now + ROOM_MATCH_REPORT_STALE_AFTER_MS, 'the next deadline is the report budget');
+  assert.equal(h.actor.snapshot.players.find((p) => p.id === 'admin').hostDeclined, false);
+  // the p2p host's status derives from presence and reports
+  assert.deepEqual(await h.matchHost.status('ROOM01'), { roomId: 'ROOM01', matchId, phase: 'loading', verdict: null, tick: 0 });
+}
+
+// ---- the relay: from added, the rules, the codes
+{
+  const { h } = await startedP2pRoom();
+  h.drain('a'); h.drain('g'); h.drain('w');
+  const offer = { to: 'admin', generation: 1, kind: 'offer', sdp: 'v=0 offer' };
+  await h.send('g', 'room_signal', offer, 'sig1');
+  assert.deepEqual(h.last('a', 'room_signal').payload, { ...offer, from: 'guest' });
+  assert.deepEqual(h.last('g', 'room_ack').payload, { relayed: true });
+  await h.send('a', 'room_signal', { to: 'guest', generation: 1, kind: 'answer', sdp: 'v=0 answer' });
+  assert.deepEqual(h.last('g', 'room_signal').payload, { to: 'guest', generation: 1, kind: 'answer', sdp: 'v=0 answer', from: 'admin' });
+  assert.equal(h.last('a', 'room_ack'), null, 'no requestId, no ack');
+  const candidate = { to: 'admin', generation: 1, kind: 'candidate', candidate: { candidate: 'candidate:1 1 udp 1 203.0.113.1 5000 typ host', sdpMid: null, sdpMLineIndex: 0 } };
+  await h.send('w', 'room_signal', candidate);
+  assert.deepEqual(h.last('a', 'room_signal').payload, { ...candidate, from: 'watcher' }, 'a spectator signals the host like any peer');
+  await h.send('g', 'room_signal', { ...offer, generation: 0 }, 'e1');
+  assert.equal(h.last('g', 'error').payload.code, 'signal_generation');
+  await h.send('g', 'room_signal', { ...offer, generation: 2 }, 'e2');
+  assert.equal(h.last('g', 'error').payload.code, 'signal_generation');
+  await h.send('g', 'room_signal', { to: 'watcher', generation: 1, kind: 'offer', sdp: 'x' }, 'e3');
+  assert.equal(h.last('g', 'error').payload.code, 'signal_target', 'neither seat is the host');
+  await h.send('g', 'room_signal', { to: 'guest', generation: 1, kind: 'offer', sdp: 'x' }, 'e4');
+  assert.equal(h.last('g', 'error').payload.code, 'signal_target', 'not to oneself');
+  await h.send('g', 'room_signal', { to: 'ghost', generation: 1, kind: 'offer', sdp: 'x' }, 'e5');
+  assert.equal(h.last('g', 'error').payload.code, 'signal_target', 'not to a stranger');
+  await h.send('g', 'room_signal', { to: 'bad id!', generation: 1, kind: 'offer', sdp: 'x' }, 'e6');
+  assert.equal(h.last('g', 'error').payload.code, 'signal_target');
+  await h.send('g', 'room_signal', { ...offer, sdp: 'v'.repeat(ROOM_SIGNAL_MAX_BYTES) }, 'e7');
+  assert.equal(h.last('g', 'error').payload.code, 'signal_size');
+  await h.send('g', 'room_signal', { ...offer, sdp: 'é'.repeat(ROOM_SIGNAL_MAX_BYTES / 2) }, 'e8');
+  assert.equal(h.last('g', 'error').payload.code, 'signal_size', 'measured in UTF-8 bytes, not characters');
+  await h.send('g', 'room_signal', { ...offer, kind: 'renegotiate' }, 'e9');
+  assert.equal(h.last('g', 'error').payload.code, 'invalid_payload');
+  await h.send('g', 'room_signal', { ...offer, candidate: 'not a record' }, 'e10');
+  assert.equal(h.last('g', 'error').payload.code, 'invalid_payload');
+  // a disconnected target is refused rather than silently dropped
+  h.actor.handleClose('w');
+  await h.send('a', 'room_signal', { to: 'watcher', generation: 1, kind: 'offer', sdp: 'x' }, 'e11');
+  assert.equal(h.last('a', 'error').payload.code, 'signal_target');
+  // an unseated socket is not in the room
+  h.actor.handleOpen('z');
+  await h.send('z', 'room_signal', offer, 'e12');
+  assert.equal(h.last('z', 'error').payload.code, 'not_in_room');
+  assert.equal(h.all('a', 'room_signal').length, 2);
+  // out of phase: before any match
+  const idle = createHarness({ transport: 'p2p' });
+  idle.actor.handleOpen('a'); await idle.send('a', 'room_create', { ...identity('admin'), mode: 'private' });
+  idle.actor.handleOpen('g'); await idle.send('g', 'room_join', identity('guest', token('c'), token('d')));
+  await idle.send('g', 'room_signal', { to: 'admin', generation: 0, kind: 'offer', sdp: 'x' }, 'p1');
+  assert.equal(idle.last('g', 'error').payload.code, 'signal_phase');
+}
+
+// ---- reports: identity, phases, the verdict, an ended without a verdict
+{
+  const { h, matchId } = await startedP2pRoom();
+  const oldToken = h.last('g', 'match_start').payload.seatToken;
+  h.drain('a'); h.drain('g'); h.drain('w');
+  assert.equal((await h.command('g', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 1 })).payload.code, 'host_only');
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 2, phase: 'playing', tick: 1 })).payload.code, 'host_only');
+  assert.equal((await h.command('a', { type: 'match_report', matchId: 'm1-deadbeef', generation: 1, phase: 'playing' })).payload.code, 'invalid_command');
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'live' })).payload.code, 'invalid_payload');
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: -1 })).payload.code, 'invalid_payload');
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'ended', verdict: { result: 'nobody', reason: 'x' } })).payload.code, 'invalid_payload');
+  assert.equal(h.all('g', 'room_state').length, 0, 'refused reports change nothing');
+  h.now += 1000;
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'loading' })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.match.status, 'starting');
+  assert.deepEqual(h.actor.lastHostReport, { generation: 1, phase: 'loading', tick: 0, verdict: null, at: h.now });
+  assert.equal(h.actor.exportState().hostReportDueAt, h.now + ROOM_MATCH_REPORT_STALE_AFTER_MS, 'every report renews the budget');
+  assert.equal(h.all('g', 'room_state').length, 0, 'a report without a phase change broadcasts nothing');
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'countdown', tick: 0 })).type, 'room_ack');
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 240 })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.match.status, 'playing');
+  assert.equal(h.last('g', 'room_state').payload.room.phase, 'playing');
+  assert.deepEqual(await h.matchHost.status('ROOM01'), { roomId: 'ROOM01', matchId, phase: 'playing', verdict: null, tick: 240 });
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 300 })).type, 'room_ack');
+  assert.equal(h.all('g', 'room_state').length, 1, 'a heartbeat broadcasts nothing');
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'ended', tick: 900, verdict: { result: 'alpha', reason: 'elimination' } })).type, 'room_ack');
+  const room = h.actor.snapshot;
+  assert.equal(room.phase, 'waiting');
+  assert.equal(room.match.status, 'ended');
+  assert.deepEqual(room.lastResult, { round: 1, result: 'alpha', reason: 'elimination' });
+  assert.deepEqual(room.host, { transport: 'p2p', hostId: null, generation: 1, since: h.now }, 'the election clears, the generation stays');
+  for (const socket of ['a', 'g', 'w']) {
+    assert.equal(h.last(socket, 'match_status').payload.status, 'ended');
+    assert.deepEqual(h.last(socket, 'match_status').payload.verdict, { result: 'alpha', reason: 'elimination' });
+  }
+  const state = h.actor.exportState();
+  assert.equal(state.hostReport, null);
+  assert.equal(state.hostReportDueAt, null);
+  assert.deepEqual(state.matchTokens, {});
+  assert.equal(h.scheduledAt, room.touchedAt + ROOM_IDLE_TTL_MS, 'only the expiry remains');
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing' })).payload.code, 'invalid_command', 'no running match');
+  // rematch: generation 2, a new match secret, the old tokens dead
+  await h.command('a', { type: 'set_ready', ready: true });
+  await h.command('g', { type: 'set_ready', ready: true });
+  const ack = await h.command('a', { type: 'start' });
+  assert.equal(ack.type, 'room_ack');
+  assert.equal(h.last('g', 'match_start').payload.matchUrl, 'rtc://ROOM01/2');
+  assert.equal(h.actor.snapshot.host.generation, 2);
+  assert.equal(verifySeatToken(hostSecretOf(ack.payload.matchId), h.last('g', 'match_start').payload.seatToken, h.now).ok, true);
+  assert.equal(verifySeatToken(hostSecretOf(ack.payload.matchId), oldToken, h.now).reason, 'bad_signature', 'a rematch has its own secret');
+  // an ended without a verdict is a lost match
+  assert.equal((await h.command('a', { type: 'match_report', matchId: ack.payload.matchId, generation: 2, phase: 'ended', tick: 50 })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.match.status, 'lost');
+  assert.deepEqual(h.actor.snapshot.lastResult, { round: 2, result: null, reason: 'host_ended' });
+  assert.equal(h.last('g', 'match_status').payload.status, 'lost');
+}
+
+// ---- migration: the host's socket drops, the 8 s grace, host_changed with the resume tick, the old host back as a peer
+{
+  const { h, matchId } = await startedP2pRoom();
+  const oldToken = h.last('a', 'match_start').payload.seatToken;
+  await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 420 });
+  h.drain('a'); h.drain('g'); h.drain('w');
+  h.actor.handleClose('a');
+  assert.equal(h.last('g', 'room_state').payload.room.players.find((p) => p.id === 'admin').connected, false);
+  assert.equal(h.scheduledAt, h.now + ROOM_HOST_DISCONNECT_GRACE_MS, 'the host lease is the nearest deadline (the admin lease is 30 s)');
+  assert.equal(h.actor.exportState().hostLeaseAt, h.now + ROOM_HOST_DISCONNECT_GRACE_MS);
+  await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS - 1);
+  assert.equal(h.actor.snapshot.host.hostId, 'admin', 'inside the grace nothing moves');
+  assert.equal(h.last('g', 'host_changed'), null);
+  await h.advance(1);
+  const room = h.actor.snapshot;
+  assert.deepEqual(room.host, { transport: 'p2p', hostId: 'guest', generation: 2, since: h.now });
+  assert.equal(room.phase, 'playing', 'the match runs on');
+  assert.equal(room.adminId, 'admin', 'the admin lease (30 s) is a separate matter');
+  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 420, reason: 'timeout', hostSecret: hostSecretOf(matchId) });
+  assert.deepEqual(h.last('w', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 420, reason: 'timeout' });
+  assert.equal(h.last('g', 'room_state').payload.room.host.generation, 2);
+  assert.equal(h.actor.exportState().hostReport, null, 'the successor starts without a report');
+  assert.equal(h.actor.exportState().hostReportDueAt, h.now + ROOM_MATCH_REPORT_STALE_AFTER_MS);
+  // stale signals of generation 1 are refused; generation 2 flows between the new host and its peers
+  await h.send('w', 'room_signal', { to: 'guest', generation: 1, kind: 'offer', sdp: 'x' }, 's1');
+  assert.equal(h.last('w', 'error').payload.code, 'signal_generation');
+  await h.send('w', 'room_signal', { to: 'guest', generation: 2, kind: 'offer', sdp: 'v=0' }, 's2');
+  assert.equal(h.last('g', 'room_signal').payload.from, 'watcher');
+  // the old host returns: a peer with the current URL, no secret, its reports refused, its old token still its own
+  h.drain('a');
+  h.actor.handleOpen('a2'); await h.send('a2', 'room_join', identity('admin', token('b'), token('9')), 'rj');
+  const again = h.last('a2', 'match_start').payload;
+  assert.equal(again.matchUrl, 'rtc://ROOM01/2');
+  assert.equal(again.hostId, 'guest');
+  assert.equal(again.hostSecret, undefined);
+  assert.equal(again.seatToken, oldToken);
+  assert.equal(h.actor.snapshot.players.find((p) => p.id === 'admin').isAdmin, true, 'back inside the admin grace: still the admin, no longer the host');
+  assert.equal((await h.command('a2', { type: 'match_report', matchId, generation: 2, phase: 'playing', tick: 500 })).payload.code, 'host_only');
+  assert.equal((await h.command('a2', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 500 })).payload.code, 'host_only');
+  await h.send('a2', 'room_signal', { to: 'guest', generation: 2, kind: 'offer', sdp: 'v=0 rejoin' }, 's3');
+  assert.equal(h.last('g', 'room_signal').payload.from, 'admin');
+  assert.equal((await h.command('g', { type: 'match_report', matchId, generation: 2, phase: 'playing', tick: 600 })).type, 'room_ack');
+  // the successor's verdict
+  await h.command('g', { type: 'match_report', matchId, generation: 2, phase: 'ended', tick: 1200, verdict: { result: 'bravo', reason: 'time_limit' } });
+  assert.deepEqual(h.actor.snapshot.lastResult, { round: 1, result: 'bravo', reason: 'time_limit' });
+  assert.equal(h.last('a2', 'match_status').payload.status, 'ended');
+}
+
+// ---- the host returns inside the grace: no migration, the secret again; then silence past three polls migrates
+{
+  const { h, matchId } = await startedP2pRoom();
+  await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 100 });
+  h.actor.handleClose('a');
+  await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS / 2);
+  h.actor.handleOpen('a2'); await h.send('a2', 'room_join', identity('admin', token('b'), token('9')));
+  assert.equal(h.actor.exportState().hostLeaseAt, null, 'the lease clears when the host is back');
+  assert.equal(h.last('a2', 'match_start').payload.hostSecret, hostSecretOf(matchId), 'the host receives its secret again');
+  assert.equal(h.last('a2', 'match_start').payload.matchUrl, 'rtc://ROOM01/1');
+  await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS);
+  assert.equal(h.actor.snapshot.host.hostId, 'admin', 'no migration');
+  assert.equal(h.last('g', 'host_changed').payload.generation, 1);
+  // connected but silent: the report budget runs out three polls after the last report
+  const lastReportAt = h.actor.lastHostReport.at;
+  h.now = lastReportAt + ROOM_MATCH_REPORT_STALE_AFTER_MS - 1;
+  await h.actor.tick();
+  assert.equal(h.actor.snapshot.host.hostId, 'admin');
+  await h.advance(1);
+  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 100, reason: 'timeout', hostSecret: hostSecretOf(matchId) });
+  assert.equal(h.last('a2', 'host_changed').payload.hostSecret, undefined, 'the silent host, still seated, is a peer now');
+  assert.equal(h.actor.snapshot.host.hostId, 'guest');
+}
+
+// ---- declines (a willing successor only), a leave, a kick, and the lost end
+{
+  const { h, matchId } = await startedP2pRoom({ adminDeclines: true, third: true });
+  assert.equal(h.actor.snapshot.host.hostId, 'guest', 'a declined admin yields the election to the lowest joinedAt willing commander');
+  assert.equal(h.last('g', 'match_start').payload.hostSecret, hostSecretOf(matchId));
+  assert.equal(h.last('a', 'match_start').payload.hostSecret, undefined);
+  assert.equal(h.last('t', 'match_start').payload.hostId, 'guest');
+  await h.command('g', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 75 });
+  // the host declines mid-match: the third seat is the willing successor
+  assert.equal((await h.command('g', { type: 'host_decline', declined: true })).type, 'room_ack');
+  assert.deepEqual(h.last('t', 'host_changed').payload, { hostId: 'third', generation: 2, resumeTick: 75, reason: 'declined', hostSecret: hostSecretOf(matchId) });
+  assert.equal(h.last('a', 'host_changed').payload.hostSecret, undefined);
+  assert.equal(h.last('w', 'host_changed').payload.generation, 2);
+  // no willing successor left: the host declining keeps hosting
+  assert.equal((await h.command('t', { type: 'host_decline', declined: true })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.host.hostId, 'third');
+  assert.equal(h.actor.snapshot.host.generation, 2);
+  assert.equal(h.all('t', 'host_changed').length, 2);
+  // the host leaves: at once, to the admin — declined, but first among the last resorts
+  await h.send('t', 'room_leave', {}, 'leave');
+  assert.deepEqual(h.last('a', 'host_changed').payload, { hostId: 'admin', generation: 3, resumeTick: 0, reason: 'left', hostSecret: hostSecretOf(matchId) });
+  assert.equal(h.actor.snapshot.phase, 'playing');
+  // the admin leaves: the guest, the last commander, hosts and is the admin now
+  await h.send('a', 'room_leave', {}, 'leave2');
+  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 4, resumeTick: 0, reason: 'left', hostSecret: hostSecretOf(matchId) });
+  assert.equal(h.actor.snapshot.adminId, 'guest');
+  // the last commander leaves: lost
+  await h.send('g', 'room_leave', {}, 'leave3');
+  assert.equal(h.actor.snapshot.match.status, 'lost');
+  assert.equal(h.actor.snapshot.phase, 'waiting');
+  assert.deepEqual(h.actor.snapshot.lastResult, { round: 1, result: null, reason: 'match_lost' });
+  assert.equal(h.last('w', 'match_status').payload.status, 'lost');
+  assert.deepEqual(h.actor.snapshot.host, { transport: 'p2p', hostId: null, generation: 4, since: h.now });
+  assert.equal(h.actor.exportState().hostLeaseAt, null);
+}
+{
+  // a kicked host migrates at once; a kick of a peer does not
+  const { h, matchId } = await startedP2pRoom({ adminDeclines: true });
+  assert.equal(h.actor.snapshot.host.hostId, 'guest');
+  await h.command('g', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 33 });
+  h.actor.handleOpen('t'); await h.send('t', 'room_join', identity('third', token('1'), token('2')));
+  assert.equal(h.last('t', 'error').payload.code, 'room_locked', 'a fresh join waits for the round');
+  assert.equal((await h.command('a', { type: 'kick', playerId: 'watcher' })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.host.generation, 1, 'kicking a peer changes no host');
+  assert.equal((await h.command('a', { type: 'kick', playerId: 'guest' })).type, 'room_ack');
+  assert.deepEqual(h.last('a', 'host_changed').payload, { hostId: 'admin', generation: 2, resumeTick: 33, reason: 'left', hostSecret: hostSecretOf(matchId) });
+  assert.equal(h.closed.get('g'), 'kicked');
+}
+{
+  // the only commander's socket drops: after the grace the match is lost (spectators never host)
+  const { h } = await startedP2pRoom();
+  await h.send('g', 'room_leave', {}, 'leave');
+  assert.equal(h.actor.snapshot.host.hostId, 'admin');
+  h.actor.handleClose('a');
+  await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS);
+  assert.equal(h.actor.snapshot.match.status, 'lost');
+  assert.equal(h.last('w', 'match_status').payload.status, 'lost');
+  assert.equal(h.actor.snapshot.host.hostId, null);
+  // no connected commander at start is impossible (the start needs one), so a start never lacks a host
+}
+
+// ---- hibernation with the host state: the lease, the report and the election come back; a legacy state normalizes
+{
+  const { h, matchId } = await startedP2pRoom();
+  await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 800 });
+  h.actor.handleClose('a');
+  const state = JSON.parse(JSON.stringify(h.actor.exportState()));
+  // `restore` takes ownership of the state it is given (the hosts hand it a fresh JSON.parse): copy per restore
+  const copy = () => JSON.parse(JSON.stringify(state));
+  const h2 = createHarness({ transport: 'p2p' });
+  h2.now = h.now + 1000;
+  h2.actor.restore(copy());
+  h2.actor.attachSocket({ ...h.actor.socketRecord('g') });
+  h2.actor.attachSocket({ ...h.actor.socketRecord('w') });
+  h2.actor.settleAfterRestore();
+  assert.deepEqual(h2.actor.snapshot.host, { transport: 'p2p', hostId: 'admin', generation: 1, since: state.room.host.since });
+  assert.deepEqual(h2.actor.lastHostReport, { generation: 1, phase: 'playing', tick: 800, verdict: null, at: state.hostReport.at });
+  assert.equal(h2.actor.exportState().hostLeaseAt, state.hostLeaseAt, 'the lease set before the restart stands');
+  assert.equal(h2.actor.exportState().matchUrl, 'rtc://ROOM01/1');
+  h2.now = state.hostLeaseAt;
+  await h2.actor.tick();
+  assert.deepEqual(h2.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 800, reason: 'timeout', hostSecret: hostSecretOf(matchId) });
+  // a restore without a lease (the host was connected when the state was written) starts one when the host is absent
+  const h3 = createHarness({ transport: 'p2p' });
+  h3.now = h.now + 5000;
+  h3.actor.restore({ ...copy(), hostLeaseAt: null });
+  h3.actor.attachSocket({ ...h.actor.socketRecord('g') });
+  h3.actor.settleAfterRestore();
+  assert.equal(h3.actor.exportState().hostLeaseAt, h3.now + ROOM_HOST_DISCONNECT_GRACE_MS);
+  // a state written before the host record, the decline flag and the persisted URL reads as no election / nobody declined
+  const legacy = copy();
+  delete legacy.room.host;
+  for (const player of legacy.room.players) delete player.hostDeclined;
+  delete legacy.matchUrl; delete legacy.hostLeaseAt; delete legacy.hostReport; delete legacy.hostReportDueAt;
+  const h4 = createHarness({ transport: 'p2p' });
+  h4.actor.restore(legacy);
+  assert.deepEqual(h4.actor.snapshot.host, { transport: 'p2p', hostId: null, generation: 0, since: legacy.room.createdAt });
+  assert.ok(h4.actor.snapshot.players.every((p) => p.hostDeclined === false));
+  assert.equal(h4.actor.exportState().matchUrl, '');
+  assert.equal(h4.actor.lastHostReport, null);
+  // a service host restoring the same state keeps the service transport on the record
+  const h5 = createHarness();
+  h5.actor.restore(legacy);
+  assert.equal(h5.actor.snapshot.host.transport, 'service');
 }
 
 console.log('roomActor: PASS');

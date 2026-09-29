@@ -15,24 +15,24 @@
   }],
   "vars": {
     "ALLOWED_ORIGINS": "https://cot.kevinliu.studio",
-    // Local development without a container runtime: the URL of a `node server/match/main.ts`
-    // (or the LAN helper) the Worker calls instead of the MATCH binding. Empty in production.
+    // The parked dedicated-service backend (docs/MULTIPLAYER-V2.md §13): the URL of a `node server/match/main.ts`
+    // the Room object calls instead of hosting the match peer-to-peer. Empty in production — every match runs in
+    // the host commander's browser and this Worker only carries rooms, signaling and host migration.
     "MATCH_SHIM_URL": ""
   },
-  // The match service image (server/match/Dockerfile, built from the repository root) on a
-  // one-vCPU instance; one container per room code, started by the Room object at match start.
-  "containers": [{
-    "class_name": "MatchContainer",
-    "image": "../../server/match/Dockerfile",
-    "image_build_context": "../..",
-    "instance_type": "standard-2",
-    "max_instances": 20
-  }],
+  // Free plan (owner 2026-09-28): no `containers` block and no MATCH namespace — a container class cannot deploy
+  // here. A paid account restores `{ "class_name": "MatchContainer", "image": "../../server/match/Dockerfile",
+  // "image_build_context": "../..", "instance_type": "standard-2", "max_instances": 20 }`, binds MATCH to
+  // MatchContainer, re-exports the class from src/index.ts and adds it to a new migration tag.
   "durable_objects": {
     "bindings": [
-      { "name": "ROOMS", "class_name": "Room" },
-      { "name": "MATCH", "class_name": "MatchContainer" }
+      { "name": "ROOMS", "class_name": "Room" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room", "MatchContainer"] }]
+  // v1 is the deployed history (Room and the now-parked MatchContainer); v2 deletes the container's class — a Worker version
+  // may not stop exporting a class existing Durable Objects depend on, and the chain must create what it deletes (2026-09-28).
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room", "MatchContainer"] },
+    { "tag": "v2", "deleted_classes": ["MatchContainer"] }
+  ]
 }

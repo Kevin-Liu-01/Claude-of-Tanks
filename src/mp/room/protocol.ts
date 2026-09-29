@@ -85,6 +85,8 @@ export interface RoomPlayer {
   isAdmin: boolean;
   /** Seniority ordinal (monotonic per room): admin migrates to the lowest connected one. */
   joinedAt: number;
+  /** P1 rooms lane (2026-09-28): the seat asked not to host p2p matches (`host_decline`); it hosts only as the last commander. */
+  hostDeclined: boolean;
 }
 
 export interface RoomSettings {
@@ -130,8 +132,11 @@ export interface RoomSnapshot {
   players: RoomPlayer[];
   match: RoomMatchInfo | null;
   lastResult: RoomLastResult | null;
-  /** Who runs the authority (peer-to-peer: a seated commander's browser; service: a dedicated match service). */
-  host?: RoomHostInfo;
+  /**
+   * Who runs the authority (peer-to-peer: a seated commander's browser; service: a dedicated match service).
+   * Required since the P1 rooms lane (2026-09-28); `readRoomSnapshot` normalizes a snapshot from an older host.
+   */
+  host: RoomHostInfo;
   createdAt: number;
   touchedAt: number;
 }
@@ -236,6 +241,8 @@ export interface RoomHostChangedPayload {
   /** The authority tick the new host resumes from (the keyframe it holds), 0 for a fresh match. */
   resumeTick: number;
   reason: 'left' | 'timeout' | 'declined' | 'start';
+  /** P1 rooms lane (2026-09-28): the per-match host secret — present only on the elected host's own copy. */
+  hostSecret?: string;
 }
 
 /** The `match_start` payload one seat receives: its own token, never another seat's. */
@@ -256,6 +263,11 @@ export interface RoomMatchStartPayload {
   matchUrl: string;
   /** Peer-to-peer matches: the hosting seat's player id (the host receives its own id and runs the authority). */
   hostId?: string;
+  /**
+   * P1 rooms lane (2026-09-28): the per-match host secret every seat token of THIS match is signed with — present only
+   * in the host's own payload; the host verifies its peers' tokens with it and never holds the room's secret.
+   */
+  hostSecret?: string;
   /** Wall-clock expiry of the seat token. */
   expiresAt: number;
 }
@@ -277,6 +289,9 @@ export const ROOM_ERROR_CODES = Object.freeze([
   'cooperative_team', 'coop_capacity', 'invalid_name', 'invalid_vehicle', 'invalid_camo',
   'invalid_arrangement', 'lobby_locked', 'unknown_player', 'match_host_unavailable', 'match_running',
   'chat_rejected', 'rate_limit', 'expired', 'kicked', 'internal',
+  // P1 rooms lane (2026-09-28): a refused room_signal (target, generation, size, phase) and a match_report from a seat
+  // that is not the host of the current generation.
+  'signal_target', 'signal_generation', 'signal_size', 'signal_phase', 'host_only',
 ] as const);
 export type RoomErrorCode = typeof ROOM_ERROR_CODES[number];
 const ROOM_ERROR_SET: ReadonlySet<string> = new Set(ROOM_ERROR_CODES);
@@ -378,7 +393,8 @@ function isRoomPlayer(value: unknown): value is RoomPlayer {
     (value.specId === null || (typeof value.specId === 'string' && ROOM_SPEC_RE.test(value.specId))) &&
     Array.isArray(value.equipment) && value.equipment.every((entry) => typeof entry === 'string') &&
     typeof value.camo === 'string' && typeof value.ready === 'boolean' && typeof value.connected === 'boolean' &&
-    typeof value.isAdmin === 'boolean' && isSafeUnsigned(value.joinedAt);
+    typeof value.isAdmin === 'boolean' && isSafeUnsigned(value.joinedAt) &&
+    (value.hostDeclined === undefined || typeof value.hostDeclined === 'boolean');
 }
 
 function isRoomSettings(value: unknown): value is RoomSettings {
@@ -405,6 +421,7 @@ function isRoomMatchInfo(value: unknown): value is RoomMatchInfo {
 export function readRoomSnapshot(value: unknown): RoomSnapshot {
   if (!isRecord(value) || value.v !== ROOM_PROTOCOL_VERSION) throw new RoomError('invalid_payload', 'room snapshot version');
   const players = value.players;
+  const host = value.host;
   if (typeof value.roomCode !== 'string' || !ROOM_CODE_RE.test(value.roomCode) ||
       (value.mode !== 'private' && value.mode !== 'lan') ||
       typeof value.phase !== 'string' || !PHASE_SET.has(value.phase) ||
@@ -414,13 +431,21 @@ export function readRoomSnapshot(value: unknown): RoomSnapshot {
       (value.lastResult !== null && !(isRecord(value.lastResult) && isSafeUnsigned(value.lastResult.round) &&
         (value.lastResult.result === null || (typeof value.lastResult.result === 'string' && RESULT_SET.has(value.lastResult.result))) &&
         (value.lastResult.reason === null || typeof value.lastResult.reason === 'string'))) ||
-      !isSafeUnsigned(value.createdAt) || !isSafeUnsigned(value.touchedAt)) {
+      !isSafeUnsigned(value.createdAt) || !isSafeUnsigned(value.touchedAt) ||
+      (host !== undefined && !isRoomHostInfo(host))) {
     throw new RoomError('invalid_payload', 'room snapshot fields');
   }
   const ids = new Set(players.map((player) => player.id));
   if (ids.size !== players.length || (players.length > 0 && !ids.has(value.adminId))) {
     throw new RoomError('invalid_payload', 'room snapshot identity');
   }
+  if (host !== undefined && host.hostId !== null && !ids.has(host.hostId)) {
+    throw new RoomError('invalid_payload', 'room snapshot host');
+  }
+  // P1 rooms lane (2026-09-28): every host this lane ships sends `host` and `hostDeclined`; a snapshot from an older
+  // host (or a fixture written before them) reads as "no election yet, nobody declined" so the type stays required.
+  if (host === undefined) value.host = noElection(value.createdAt);
+  for (const player of players) (player as { hostDeclined?: boolean }).hostDeclined ??= false;
   return value as unknown as RoomSnapshot;
 }
 
@@ -471,4 +496,138 @@ export function matchSocketPath(roomCode: string): string {
 export function parseRoomRoute(pathname: string): { code: string; match: boolean } | null {
   const parsed = /^\/rooms\/([A-Z0-9]{6})(\/match)?$/.exec(pathname);
   return parsed ? { code: parsed[1]!, match: !!parsed[2] } : null;
+}
+
+// ---- P1 rooms lane (2026-09-28): the peer-to-peer match host's commands, URL, validators and limits
+// (docs/MULTIPLAYER-V2.md §13.2 and its addendum). Everything below is shared by the room hosts and the client.
+
+/**
+ * A p2p host reports its match to the room (`room_command` with `match_report`) instead of the room polling a
+ * service; a host silent for this long without leaving is treated like a dropped host (three poll intervals).
+ */
+export const ROOM_MATCH_REPORT_STALE_AFTER_MS = 3 * ROOM_MATCH_POLL_MS;
+/** The host reports at least this often (every phase change too); half the staleness budget stays for a slow tab. */
+export const ROOM_MATCH_REPORT_INTERVAL_MS = ROOM_MATCH_POLL_MS;
+/** A verdict reason in a report is one short token (`elimination`, `time_limit`, …). */
+export const ROOM_MAX_VERDICT_REASON_CHARS = 64;
+
+export type RoomMatchReportPhase = 'loading' | 'countdown' | 'playing' | 'ended';
+
+/** `room_command { command: RoomMatchReportCommand }` — accepted only from the host of the current generation. */
+export interface RoomMatchReportCommand {
+  type: 'match_report';
+  matchId: string;
+  generation: number;
+  phase: RoomMatchReportPhase;
+  /** The authority tick reached (the resume point a successor boots from); 0 while loading. */
+  tick?: number;
+  /** Required with `ended`; an `ended` without a verdict records the match as lost. */
+  verdict?: { result: RoomResult; reason: string };
+}
+
+/** `room_command { command: RoomHostDeclineCommand }` — any seat, any phase; the current host declining mid-match migrates. */
+export interface RoomHostDeclineCommand {
+  type: 'host_decline';
+  declined: boolean;
+}
+
+/** The p2p match URL: `rtc://<roomId>/<generation>`; the client opens a data channel to `hostId` through `room_signal`. */
+export function p2pMatchUrl(roomId: string, generation: number): string {
+  return `rtc://${roomId}/${generation}`;
+}
+
+export function parseP2pMatchUrl(url: unknown): { roomId: string; generation: number } | null {
+  if (typeof url !== 'string') return null;
+  const parsed = /^rtc:\/\/([a-zA-Z0-9_-]{1,48})\/(\d{1,9})$/.exec(url);
+  return parsed ? { roomId: parsed[1]!, generation: Number(parsed[2]) } : null;
+}
+
+const HOST_TRANSPORT_SET: ReadonlySet<string> = new Set(['p2p', 'service']);
+const SIGNAL_KIND_SET: ReadonlySet<string> = new Set(['offer', 'answer', 'candidate']);
+const HOST_CHANGED_REASON_SET: ReadonlySet<string> = new Set(['left', 'timeout', 'declined', 'start']);
+const REPORT_PHASE_SET: ReadonlySet<string> = new Set(['loading', 'countdown', 'playing', 'ended']);
+
+/** The record of a room before any election (also what `readRoomSnapshot` gives an older host's snapshot). */
+export function noElection(since: number, transport: RoomHostInfo['transport'] = 'p2p'): RoomHostInfo {
+  return { transport, hostId: null, generation: 0, since };
+}
+
+export function isRoomHostInfo(value: unknown): value is RoomHostInfo {
+  if (!isRecord(value)) return false;
+  return typeof value.transport === 'string' && HOST_TRANSPORT_SET.has(value.transport) &&
+    (value.hostId === null || (typeof value.hostId === 'string' && ROOM_ID_RE.test(value.hostId))) &&
+    isSafeUnsigned(value.generation) && isSafeUnsigned(value.since);
+}
+
+/** UTF-8 byte length without a TextEncoder (the actor runs where neither DOM nor Node globals are assumed). */
+export function utf8ByteLength(text: string): number {
+  let bytes = 0;
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff) { bytes += 4; index++; }
+    else bytes += 3;
+  }
+  return bytes;
+}
+
+/**
+ * The client's `room_signal` payload, validated field by field (the room never parses SDP): `to`, `generation`, `kind`,
+ * an optional `sdp` string and an optional `candidate` record. Anything else is `invalid_payload`; the size rule
+ * (`ROOM_SIGNAL_MAX_BYTES`, `signal_size`) is the room's, measured on the validated fields.
+ */
+export function readRoomSignalPayload(value: unknown): RoomSignalPayload {
+  if (!isRecord(value) || typeof value.kind !== 'string' || !SIGNAL_KIND_SET.has(value.kind) || !isSafeUnsigned(value.generation) ||
+      (value.sdp !== undefined && typeof value.sdp !== 'string') ||
+      (value.candidate !== undefined && !(isRecord(value.candidate) && typeof value.candidate.candidate === 'string' &&
+        (value.candidate.sdpMid === null || typeof value.candidate.sdpMid === 'string') &&
+        (value.candidate.sdpMLineIndex === null || isSafeUnsigned(value.candidate.sdpMLineIndex))))) {
+    throw new RoomError('invalid_payload', 'room signal fields');
+  }
+  const to = cleanId(value.to, 'signal_target');
+  const signal: RoomSignalPayload = { to, generation: value.generation, kind: value.kind as RoomSignalPayload['kind'] };
+  if (typeof value.sdp === 'string') signal.sdp = value.sdp;
+  if (value.candidate !== undefined) {
+    const candidate = value.candidate as { candidate: string; sdpMid: string | null; sdpMLineIndex: number | null };
+    signal.candidate = { candidate: candidate.candidate, sdpMid: candidate.sdpMid ?? null, sdpMLineIndex: candidate.sdpMLineIndex ?? null };
+  }
+  return signal;
+}
+
+/** A relayed `room_signal` as the target receives it: the sender's validated fields plus `from`. */
+export function isRelayedRoomSignal(value: unknown): value is RoomSignalPayload & { from: string } {
+  if (!isRecord(value) || typeof value.from !== 'string' || !ROOM_ID_RE.test(value.from)) return false;
+  try { readRoomSignalPayload(value); return true; } catch { return false; }
+}
+
+export function isRoomHostChangedPayload(value: unknown): value is RoomHostChangedPayload {
+  if (!isRecord(value)) return false;
+  return typeof value.hostId === 'string' && ROOM_ID_RE.test(value.hostId) && isSafeUnsigned(value.generation) &&
+    isSafeUnsigned(value.resumeTick) && typeof value.reason === 'string' && HOST_CHANGED_REASON_SET.has(value.reason) &&
+    (value.hostSecret === undefined || typeof value.hostSecret === 'string');
+}
+
+/** A validated `match_report` (identity against the room is the actor's check). */
+export interface RoomMatchReport {
+  matchId: string;
+  generation: number;
+  phase: RoomMatchReportPhase;
+  tick: number;
+  verdict: { result: RoomResult; reason: string } | null;
+}
+
+export function readRoomMatchReport(value: unknown): RoomMatchReport {
+  if (!isRecord(value) || typeof value.matchId !== 'string' || value.matchId.length === 0 || value.matchId.length > 64 ||
+      !isSafeUnsigned(value.generation) || typeof value.phase !== 'string' || !REPORT_PHASE_SET.has(value.phase) ||
+      (value.tick !== undefined && !isSafeUnsigned(value.tick)) ||
+      (value.verdict !== undefined && value.verdict !== null && !(isRecord(value.verdict) && typeof value.verdict.result === 'string' &&
+        RESULT_SET.has(value.verdict.result) && typeof value.verdict.reason === 'string' && value.verdict.reason.length <= ROOM_MAX_VERDICT_REASON_CHARS))) {
+    throw new RoomError('invalid_payload', 'match report fields');
+  }
+  const verdict = value.verdict ? value.verdict as { result: RoomResult; reason: string } : null;
+  return {
+    matchId: value.matchId, generation: value.generation, phase: value.phase as RoomMatchReportPhase, tick: value.tick ?? 0,
+    verdict: verdict ? { result: verdict.result, reason: verdict.reason } : null,
+  };
 }

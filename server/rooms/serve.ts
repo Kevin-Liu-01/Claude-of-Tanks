@@ -19,6 +19,8 @@ export interface RoomsServerOptions {
   controlSecret?: string;
   allowedOrigins?: readonly string[] | null;
   world?: 'dedicated' | 'terrain';
+  /** Where matches run: in this process (`service`, default) or peer-to-peer in the host's browser (`p2p`). */
+  matchTransport?: 'service' | 'p2p';
   countdownS?: number;
   battleLimitS?: number;
   maxActors?: number;
@@ -44,6 +46,7 @@ export async function createRoomsServer({
   controlSecret = seatSecret,
   allowedOrigins = null,
   world = 'dedicated',
+  matchTransport = 'service',
   countdownS,
   battleLimitS,
   maxActors = 64,
@@ -55,7 +58,7 @@ export async function createRoomsServer({
   const server = http.createServer();
   const matchService = await createMatchService({ server, host, port, allowedOrigins, seatSecret, controlSecret, maxActors, log, wallClock });
   const roomService = createLocalRoomService({
-    matchService, seatSecret, allowedOrigins, matchUrl: '/match', world, countdownS, battleLimitS, guards, log, wallClock, random,
+    matchService, seatSecret, allowedOrigins, matchUrl: '/match', world, matchTransport, countdownS, battleLimitS, guards, log, wallClock, random,
   });
   server.on('request', (request, response) => {
     if (matchService.handleRequest(request, response) || roomService.handleRequest(request, response)) return;

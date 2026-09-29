@@ -8,90 +8,20 @@ import {
 import type { RoomSnapshot } from '../../../src/mp/room/protocol.ts';
 import { verifySeatToken } from '../../../server/match/seatToken.ts';
 import type { MatchContainerStub, StubState } from './matchContainerStub.ts';
+import { closeClients, connect, create, identity, origin, token } from './client.ts';
 
-interface Message { type: string; requestId?: string; payload: Record<string, unknown> }
-const origin = 'https://cot.kevinliu.studio';
-const clients: Client[] = [];
-let requestSequence = 0;
-const token = (seed: string): string => seed.repeat(64).slice(0, 64);
-
-class Client {
-  readonly messages: Message[] = [];
-  readonly closed: Promise<CloseEvent>;
-  private readonly waiters = new Set<() => void>();
-  private queue: Promise<void> = Promise.resolve();
-  constructor(readonly socket: WebSocket, readonly code: string) {
-    socket.accept();
-    // The room sends binary UTF-8 JSON; this runtime hands it to the client as a Blob, decoded in order.
-    socket.addEventListener('message', (event) => {
-      const data = event.data as string | Blob | ArrayBuffer;
-      this.queue = this.queue.then(async () => {
-        const text = typeof data === 'string' ? data : data instanceof Blob ? await data.text() : new TextDecoder().decode(data);
-        this.messages.push(JSON.parse(text));
-        for (const waiter of [...this.waiters]) waiter();
-      });
-    });
-    this.closed = new Promise((resolve) => socket.addEventListener('close', resolve, { once: true }));
-    clients.push(this);
-  }
-  next(predicate: (message: Message) => boolean, timeoutMs = 3_000): Promise<Message> {
-    const existing = this.messages.find(predicate);
-    if (existing) return Promise.resolve(existing);
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.waiters.delete(waiter);
-        reject(new Error(`Expected room receipt did not arrive: ${predicate.toString().slice(0, 160)}; received ${
-          this.messages.map((message) => `${message.type}${message.payload.code ? `:${String(message.payload.code)}` : ''}`).join(',')}`));
-      }, timeoutMs);
-      const waiter = () => {
-        const message = this.messages.find(predicate);
-        if (!message) return;
-        clearTimeout(timer);
-        this.waiters.delete(waiter);
-        resolve(message);
-      };
-      this.waiters.add(waiter);
-    });
-  }
-  last(type: string): Message | undefined { return this.messages.filter((message) => message.type === type).at(-1); }
-  send(type: string, payload: Record<string, unknown> = {}, requestId?: string, binary = true): void {
-    const text = JSON.stringify({ type, requestId, payload: { roomCode: this.code, ...payload } });
-    this.socket.send(binary ? new TextEncoder().encode(text) : text);
-  }
-  request(type: string, payload: Record<string, unknown> = {}, binary = true): Promise<Message> {
-    const requestId = String(++requestSequence);
-    const result = this.next((message) => message.requestId === requestId);
-    this.send(type, payload, requestId, binary);
-    return result;
-  }
-}
-
-async function connect(code: string, ip = `test-${code}`): Promise<Client> {
-  const response = await exports.default.fetch(`https://room.test/rooms/${code}`, {
-    headers: { Upgrade: 'websocket', Origin: origin, 'CF-Connecting-IP': ip },
-  });
-  expect(response.status).toBe(101);
-  if (!response.webSocket) throw new Error('Worker did not upgrade WebSocket');
-  return new Client(response.webSocket, code);
-}
-
-function identity(id: string, resume = token('a'), next = token('b'), extra: Record<string, unknown> = {}): Record<string, unknown> {
-  return { player: { id, name: id }, resumeToken: resume, nextResumeToken: next, selection: { specId: 'm1a2' }, ...extra };
-}
-
-async function create(code: string, settings: Record<string, unknown> = { teamSize: 2, mapId: 'verdant' }): Promise<Client> {
-  const admin = await connect(code);
-  const response = await admin.request('room_create', { ...identity('admin'), mode: 'private', settings });
-  expect(response.type).toBe('room_created');
-  return admin;
+/** The parked backend's binding: this project (wrangler.test.jsonc) binds the stub as MATCH; the p2p project has none. */
+function matchNamespace(): DurableObjectNamespace {
+  if (!env.MATCH) throw new Error('this suite runs with the MATCH stub bound (wrangler.test.jsonc)');
+  return env.MATCH as unknown as DurableObjectNamespace;
 }
 
 function stubState(code: string): Promise<StubState> {
-  return runInDurableObject(env.MATCH.getByName(code), (instance) => (instance as unknown as MatchContainerStub).state);
+  return runInDurableObject(matchNamespace().getByName(code), (instance) => (instance as unknown as MatchContainerStub).state);
 }
 
 function setStub(code: string, patch: Partial<StubState>): Promise<void> {
-  return runInDurableObject(env.MATCH.getByName(code), (instance) => { Object.assign((instance as unknown as MatchContainerStub).state, patch); });
+  return runInDurableObject(matchNamespace().getByName(code), (instance) => { Object.assign((instance as unknown as MatchContainerStub).state, patch); });
 }
 
 /** Fake time accumulates across polls: each poll schedules the next one on the clock it saw. */
@@ -115,13 +45,11 @@ afterEach(async () => {
   vi.restoreAllMocks();
   vi.useRealTimers();
   clockOffsetMs = 0;
-  for (const client of clients.splice(0)) {
-    try { client.socket.close(); } catch { /* already closed */ }
-  }
+  closeClients();
   await reset();
 });
 
-describe('cot-rooms Worker', () => {
+describe('cot-rooms Worker (the parked dedicated-service backend: MATCH bound to the container stub)', () => {
   it('serves health, exact routes and origins, and upgrades only WebSockets', async () => {
     const health = await exports.default.fetch('https://room.test/healthz');
     expect(await health.json()).toEqual({ ok: true, service: 'cot-rooms', backend: 'durable-object', matchHost: 'container' });

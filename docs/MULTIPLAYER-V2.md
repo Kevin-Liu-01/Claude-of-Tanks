@@ -672,6 +672,78 @@ at 20 Hz would exhaust a day's allowance in minutes. It relays a few dozen signa
   EVENT / PONG / CLOSE / ERROR down, one reliable ordered data channel `match` first; an unreliable unordered channel for
   snapshots is a measured follow-up, never the default until it beats the reliable one on the soak.
 
+#### 13.2.1 Addendum — what the rooms lane implemented (P1, `mp/p2p-rooms`, 2026-09-28)
+
+The exact shapes below are what the room hosts send and accept; the client lane builds against them. Everything is in
+`src/mp/room/protocol.ts` (the block `// ---- P1 rooms lane (2026-09-28)`) and enforced by `src/mp/room/roomActor.ts`
+with `src/mp/room/p2pMatchHost.ts`, shared by the Durable Object and the local room service.
+
+- **The per-match host secret.** The browser host verifies its peers' seat tokens without ever holding the room's
+  `MATCH_SEAT_SECRET`. For each match the room derives `hostSecret = sha256Hex(MATCH_SEAT_SECRET + ':' + matchId)`
+  (64 hex characters; the room's `sha256Hex` port), signs **that match's** seat tokens with it
+  (`server/match/seatToken.ts`, `signSeatToken(hostSecret, claims)` — a token from an earlier match of the same room does
+  not verify), and sends it only on the host's own copies: `RoomMatchStartPayload.hostSecret?: string` in the host's
+  `match_start` (again on every resume while it hosts) and `RoomHostChangedPayload.hostSecret?: string` on the host's
+  own copy of every `host_changed` (the start included). Never in `room_state`, never to a peer, never stored: the
+  actor's persisted state holds no secret (it re-derives). The parked `service` backend keeps signing with the room's
+  secret, which the container holds.
+- **Match reports** replace the status polls: `room_command { command: { type: 'match_report', matchId, generation,
+  phase: 'loading' | 'countdown' | 'playing' | 'ended', tick?, verdict?: { result, reason } } }`, accepted only from the
+  host of the current generation (`host_only` otherwise — a stale generation is the old host talking; an unknown or
+  finished match is `invalid_command`; a malformed report `invalid_payload`). `playing` moves the room to `playing`;
+  `ended` with a verdict records it (`match_status ended`, the room back to `waiting`); `ended` without a verdict records
+  the match as lost with reason `host_ended`. `tick` (default 0) is the authority tick the host has reached: the last
+  reported one is the `resumeTick` a successor receives. The host reports every `ROOM_MATCH_REPORT_INTERVAL_MS` (10 s)
+  and on every phase change; silence for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (3 × the poll interval, 30 s — counted from
+  the election until the first report) is a dropped host. The ack is `room_ack { revision }`; a report that changes
+  nothing broadcasts nothing.
+- **`host_decline`**: `room_command { command: { type: 'host_decline', declined: boolean } }` from any seat in any
+  phase sets `RoomPlayer.hostDeclined` (a new required boolean on every player; `room_state` carries it). The election
+  (`electHost`): connected commanders only (spectators never host, disconnected seats never host); the admin first
+  unless it declined; else the lowest `joinedAt` that has not declined; **declined commanders host only when no other
+  connected commander exists** (the last commander hosts, declined or not — §13.3's mobile rule). A running host that
+  declines migrates at once (`reason: 'declined'`) **only to a willing successor**: with every other commander declined
+  too it keeps hosting.
+- **The relay (`room_signal`)**, checked in this order, each with its own code: a seated sender (`not_in_room`); a
+  well-formed payload — `to` (a seat id), `generation` (an unsigned integer), `kind` in `offer | answer | candidate`, an
+  optional `sdp` string, an optional `candidate` record `{ candidate, sdpMid: string | null, sdpMLineIndex: number |
+  null }` (`invalid_payload`); a match starting or playing with an elected host (`signal_phase`); the current generation
+  (`signal_generation`); a target that is another seat of this room, **connected**, and either the sender or the target
+  is the host (`signal_target` — a spectator may signal the host like any peer, two spectators may not, a disconnected
+  target is refused rather than dropped); the relayed payload within `ROOM_SIGNAL_MAX_BYTES` (8 KB of UTF-8, measured
+  on the relayed JSON — `signal_size`). The target receives `room_signal { to, generation, kind, sdp?, candidate?,
+  from }` — the validated fields and `from`, nothing else. A signal with a `requestId` is acknowledged
+  `room_ack { relayed: true }`; the existing rate window (120 messages / 10 s per socket) is the only rate rule.
+- **`host_changed`** goes to every seated socket: `{ hostId, generation, resumeTick, reason }` — plus `hostSecret` on
+  the new host's copy. At start it follows the per-seat `match_start`s (`reason: 'start'`, `resumeTick: 0`, the same
+  generation as the URL): a `host_changed` whose generation the seat already runs is a no-op. Migration reasons:
+  `timeout` (the host's room socket absent for `ROOM_HOST_DISCONNECT_GRACE_MS` = 8 s, or its reports stale), `left` (the
+  host left the room or was kicked — at once), `declined` (above). `resumeTick` is the departing host's last reported
+  tick (0 if it never reported). No commander left to elect: the match ends `lost` (`reason: 'match_lost'`, `match_status
+  lost`, the room `waiting`). The admin lease (30 s) and the host lease (8 s) are independent: the admin usually hosts,
+  and its seat migrates as before while the match has moved on.
+- **A returning seat** (`room_join` with its capability) receives its `match_start` again with the **current**
+  generation's URL and `hostId` — the old host, back after a migration, is a peer with no secret; back inside the grace,
+  it is still the host (the lease clears) and receives the secret again.
+- **`RoomSnapshot.host` is required**; `createRoom` writes `{ transport, hostId: null, generation: 0, since }`; `start`
+  writes the election; the match's end (verdict, lost) clears `hostId` and keeps `generation` monotonic (the next start
+  elects at `generation + 1`, so a URL never repeats within a room). `readRoomSnapshot` normalizes a snapshot from an
+  older host (or a fixture written before this lane) to the no-election record with `hostDeclined: false`, so the
+  client's types stay required without a wire break.
+- **Error codes added**: `signal_target`, `signal_generation`, `signal_size`, `signal_phase`, `host_only`.
+- **Shared helpers for the client** (import, do not duplicate): `p2pMatchUrl(roomId, generation)` /
+  `parseP2pMatchUrl(url)`, `isRoomHostInfo`, `isRelayedRoomSignal` (a received `room_signal`),
+  `isRoomHostChangedPayload`, `readRoomSignalPayload`, `readRoomMatchReport`, `noElection`, `utf8ByteLength`, the
+  constants `ROOM_MATCH_REPORT_INTERVAL_MS`, `ROOM_MATCH_REPORT_STALE_AFTER_MS`, `ROOM_MAX_VERDICT_REASON_CHARS`, and the
+  types `RoomMatchReportCommand`, `RoomMatchReport`, `RoomHostDeclineCommand`, `RoomMatchReportPhase`.
+- **Requests to the client lane (P2)** — nothing on the room side depends on them, they are what the room expects: the
+  host sends `match_report` (`loading` as soon as it boots, `countdown`, `playing` with its tick, then every 10 s with the
+  current tick, `ended` with the verdict); a `host_only` on a report means the seat is no longer the host and should
+  keep the last keyframe as a peer; a `host_changed` with a new generation is the migration (compare the generation,
+  never the reason); the mobile tier and the "never host" switch send `host_decline { declined: true }` before the start
+  (and may at any time); `src/mp/session/exitFlow.selftest.mjs`'s snapshot fixture may add `host` (not required: the
+  validator normalizes).
+
 ### 13.3 Host capacity — the honest limit
 
 One browser serves N−1 viewer-specific snapshot streams at 20 Hz. The soak measures bytes per viewer per second
@@ -708,6 +780,40 @@ non-host peers are never authoritative for hits, damage, reloads or the result (
 Worker's program stays DOM-free), a `webRtcTransport.selftest` on a scripted data-channel double, an
 `rtcClientLink.selftest`, `matchClient` migration cases (keyframe retention, resume tick), the browser proofs above,
 and the tickCost egress table extended with the per-viewer bytes the host-capacity rule reads.
+
+### 13.6 P1 rooms — what landed, what stays open (2026-09-28, branch `mp/p2p-rooms`)
+
+**Landed.** The relay, the election, the reports and the migration in `roomActor.ts`; the `p2p` `MatchHost`
+(`src/mp/room/p2pMatchHost.ts`: `start()` elects and writes the room's `host`, `status()` reads the host's presence and
+its last report, `migrate()` re-elects with `generation + 1`, `stop()` clears the election — bound by the actor to the
+room it serves); the ports now take `seatSecret` and `signSeatToken(secret, claims)`; the persisted state gains the
+host lease, the last report, its deadline and — a fix on the way — the match URL, which was never persisted (a seat
+resuming after a Durable Object restart received `matchUrl: ''`). The Worker deploys on the Free plan: no `containers`
+block, no `MATCH` namespace, `MatchContainer` no longer exported (`matchContainer.ts` and the service `MatchHost` stay in
+the tree; `createMatchHost` selects them only when `MATCH_SHIM_URL` or a `MATCH` binding exists), `worker-configuration.d.ts`
+regenerated, `wrangler deploy --dry-run` green (96 KiB, bindings ROOMS / ROOM_CONNECT_LIMITER / ALLOWED_ORIGINS /
+MATCH_SHIM_URL). The local room service takes `matchTransport: 'service' | 'p2p'` (`COT_ROOMS_MATCH_TRANSPORT` on the
+LAN helper; `service` stays its default — a Node process on the LAN is a better authority than a browser, and the
+headless service receipts keep running on it). Receipts: `roomActor.selftest` (relay rules, election, decline,
+migration timing on a fake clock, generations, secrets never in `room_state` or the state, hibernation with the host
+state, legacy state), `p2pMatchHost.selftest`, `roomPolicy.selftest` (the host record, `host_decline`, normalization),
+the Workers-runtime suite in two projects (`p2p` = the deployed shape, `service` = the parked backend with the container
+stub; `npm run test:net:v2:rooms`), `tools/mp-rooms-p2p-e2e.mjs` with its receipt (five raw room sockets on the
+in-process service: election, secret, relay, reports, an 8 s real-time migration, the old host as a peer, the verdict),
+`roomWorkerProgram.selftest` still DOM-free.
+
+**Found on the way.** The Workers runtime crashed (`kj/async.c++:2217: Promise callback destroyed itself`) on the
+last commander's `room_leave` — bisected to one event that sends to the delivering socket (the ack), awaits storage
+(the lost end re-arms the alarm from 30 s to 24 h) and closes that socket; any two of the three are fine. `Room.#close`
+now detaches a retired socket at once and closes it from a zero-delay timer after the event (`cloudflare/rooms/README.md`
+records it); the actor is unchanged.
+
+**Open.** (1) The integrator deploys the Worker (`wrangler secret put MATCH_SEAT_SECRET`, `wrangler deploy`) and sets
+`VITE_ROOMS_URL`; the room's `ALLOWED_ORIGINS` stays the site origin. (2) The client lane's items in §13.2.1's last
+bullet. (3) The 28-peer soak and the host-capacity table (P3). (4) `RoomActorState` keeps `v: 1` with the new fields
+optional on restore; a later schema bump can make them required once no pre-lane state can exist (the 24 h TTL).
+(5) The LAN helper's default transport stays `service`; flipping it to `p2p` is a one-line decision for the owner once
+the browser host (P2) lands.
 
 ## 10. Decisions for the owner
 
