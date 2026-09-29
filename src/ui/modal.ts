@@ -82,6 +82,7 @@ export function normalizeModalSize(value: RuntimeValue): ModalSize {
 }
 
 const CSS = `
+.cot-modal-root,.cot-modal{box-sizing:border-box;min-width:0}
 .cot-modal-root{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:clamp(12px,3vw,38px);
   font-family:${FONT_STACK};color:#e9eff4;opacity:0;pointer-events:none;
   transition:opacity var(--cot-motion-base) var(--cot-ease-out)}
