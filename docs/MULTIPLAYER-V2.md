@@ -1301,12 +1301,16 @@ host's room client refused exactly one outgoing signal that was not an answer (`
 connections left at the 2.5 s `ICE_GATHER_CAP_MS` without its candidates, and the candidate that followed was refused on
 the way out. Next: count answers sent at the cap and their embedded candidates, count trickle refusals by reason
 (`readRoomSignalPayload`, the socket), and — the fix that needs no diagnosis — re-answer a peer whose channel has not
-opened within a few seconds of a capped answer. (2) The desync gate reads one sample — the worst seat's newest reconcile error at the run's end — and
-it lands on a contact reconcile once in a while: 0.957 and 0.771 m on one seat with the next seat at 0.155 / 0.073 and
-the median at 0.001, against 0.15 / 0.31 m in the other two 14v14 runs; the harness predicts without the other hulls
-(`others: () => []`), so every ram is a free misprediction and a hard snap (36–60 per run here, 34–51 in the
-certification; the real game's prediction has the disclosed hulls in its collision world). The rate is not the cause:
-the 30 Hz tiers run read 0.311 the same way.
+opened within a few seconds of a capped answer. (2) The desync outliers in the table — 0.957 and 0.771 m on one seat
+with the next seat at 0.155 / 0.073 and the median at 0.001 — were a bug of this lane's first tree, found by the landing's
+core suite (`tools/mp-client-soak.selftest.mjs`: 3.6 m of misprediction against 0.3 on the base tree at the same rate and
+seed): the client reconciled its own hull at the row's capture tick, and a hull held still against a hull the client
+cannot see has an *unchanged* row — carried through the deltas with its old tick — so every such frame was refused as
+"no newer authority" and the prediction drove on through the obstacle until the row changed. The own row is on the near
+tier, so a carried row is the authority's exact pose at the frame's tick: the client reconciles there again
+(`observeOwnRow`, `snapshotRate.selftest`: a parked hull's carried rows reconcile every snapshot), and the client soak
+reads 0.03–0.74 m at 20 Hz on three seeds against 0.03–0.56 at 30. The table's desync column predates the fix; the
+tiers, the rate and the migration figures are unaffected by it (the own row was never tiered).
 
 **Open (P3b → the integrator / P4).** The lost first offer at 14v14 (above: the capped answer, diagnostics landed, the
 re-answer to build); the hull-jump

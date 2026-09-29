@@ -511,10 +511,13 @@ export class MatchClient {
       this.openedAtMs = this.clock();
       // A resumed link may be a new host (a migration): the own newest authority row from the host we lost is the seed
       // for our hull if the new host could not see it (P3b); the actor bounds it and ignores it on a plain reconnect.
+      // The hint is dated by the row's capture tick (the last time the authority captured the pose fresh), never the
+      // frame's: the actor compares it with the restored row's capture tick, so its own host's carried row reads as no
+      // newer and a hull that moved since the keyframe as newer.
       const hint = change.resumed ? this.ownRow : null;
       if (change.resumed) this.resetForNewSocket();
       this.sendHello();
-      if (hint) this.sendResumeHint(hint);
+      if (hint) this.sendResumeHint(hint.tick, hint);
     } else if (change.state === 'reconnecting') {
       this.welcomeMessage = null;
       this.inputStream.clearPendingEdges();
@@ -568,9 +571,10 @@ export class MatchClient {
     return this.transport.send(bytes);
   }
 
-  private sendResumeHint(row: EntityRow): void {
+  /** The own row as of its capture tick `tick`. */
+  private sendResumeHint(tick: number, row: EntityRow): void {
     const sent = this.send(encodeMessage({
-      type: MESSAGE_TYPE.RESUME_HINT, tick: row.tick, x: row.x, y: row.y, z: row.z, speed: row.speed, verticalSpeed: row.verticalSpeed,
+      type: MESSAGE_TYPE.RESUME_HINT, tick, x: row.x, y: row.y, z: row.z, speed: row.speed, verticalSpeed: row.verticalSpeed,
       yaw: row.yaw, pitch: row.pitch, roll: row.roll, turretYaw: row.turretYaw, gunPitch: row.gunPitch,
     }));
     if (sent) this.resumeHintsSent++;
@@ -726,13 +730,17 @@ export class MatchClient {
     if (!row) return;
     this.ownRow = row;
     this.ownViewer = frame.viewer && frame.viewer.entityId === entityId ? frame.viewer : null;
-    // The own row is refreshed every snapshot (the near tier), so its tick is the frame's; read the row's own all the same.
-    this.ownAuthorityTick = row.tick;
+    // The own row is on the near tier: captured every snapshot and omitted from a delta only when identical, so a
+    // carried row (its capture tick older than the frame's) is the authority's exact pose AT THE FRAME'S TICK — reconcile
+    // there. Reconciling at the row's own tick refused every frame of a hull held still against a hull this client
+    // cannot see (an unchanged row, an older tick, "no newer authority") and the prediction drove on through it: 3.6 m
+    // of misprediction in the client soak against 0.3 (P3b, 2026-09-29).
+    this.ownAuthorityTick = frame.tick;
     this.ownAuthorityAtMs = nowMs;
     const viewer = this.ownViewer;
     const gunRed = viewer ? viewer.modules[VIEWER_GUN_INDEX] === 2 || viewer.modules[VIEWER_GUN_MOUNT_INDEX] === 2 : true;
     this.ownShots.observe({
-      tick: row.tick,
+      tick: frame.tick,
       alive: row.hp > 0 && (row.flags & ENTITY_FLAGS.DESTROYED) === 0,
       shellSlot: row.shellSlot,
       reloadS: dequantizeReloadS(row.reload),
@@ -744,7 +752,7 @@ export class MatchClient {
     }, nowMs);
     this.ensurePredictor();
     this.predictor?.reconcile(
-      { tick: row.tick, row, viewer: this.ownViewer },
+      { tick: frame.tick, row, viewer: this.ownViewer },
       this.controlAt,
       this.inputStream.lastSampledTick,
     );

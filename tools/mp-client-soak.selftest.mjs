@@ -8,13 +8,13 @@ const report = await runClientSoak({ clients: 4, seconds: 20, rttMs: 100, jitter
 for (const row of report.rows) {
   assert.deepEqual(row.failures, [], `${row.player}: ${row.failures.join('; ')}`);
   assert.equal(row.phase, 'live');
-  assert.ok(row.snapshots > 400, `${row.player}: ${row.snapshots} snapshots assembled`);
+  assert.ok(row.snapshots > 20 * row.snapshotHz * 0.75, `${row.player}: ${row.snapshots} snapshots assembled in 20 s at ${row.snapshotHz} Hz`);
   assert.ok(row.keyframes >= 8, `${row.player}: keyframes every 2 s (${row.keyframes})`);
   assert.equal(row.hardSnaps, 0);
   assert.ok(row.maxRemoteStepM <= 0.5 && row.maxOwnStepM <= 0.5, `${row.player}: pose steps ${row.maxRemoteStepM} / ${row.maxOwnStepM}`);
   assert.ok(row.maxCorrectionStepM <= 0.25, `${row.player}: release ${row.maxCorrectionStepM}`);
   assert.ok(row.maxMispredictionM < 1, `${row.player}: misprediction ${row.maxMispredictionM} m (hulls and shells the client cannot see)`);
-  assert.ok(row.ackLagP50 <= row.rttTicks + 2, `${row.player}: ack lag ${row.ackLagP50} ≤ RTT ${row.rttTicks} + 2`);
+  assert.ok(row.ackLagP50 <= row.rttTicks + row.intervalTicks, `${row.player}: ack lag ${row.ackLagP50} ≤ RTT ${row.rttTicks} + one snapshot interval (${row.intervalTicks} ticks at ${row.snapshotHz} Hz)`);
   assert.ok(row.events > 0 && row.presentationEvents > 0, `${row.player}: events reached the presentation`);
   assert.ok(row.ownShots > 0 && row.predictedShots > 0, `${row.player}: own shots ${row.ownShots}, predicted ${row.predictedShots}`);
   assert.ok(row.bytesInPerS < 18 * 1024, `${row.player}: ${row.bytesInPerS} B/s down`);

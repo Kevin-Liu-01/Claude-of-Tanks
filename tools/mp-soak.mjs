@@ -11,8 +11,9 @@
  *   node tools/mp-soak.mjs --clients=28 --duration=300 --map=monsoon --latency=60 --jitter=20 --loss=3
  *
  * Gates (exit 1 on any): every client welcomed and spawned; snapshot cadence per
- * client (30 Hz +- jitter); input acknowledgement lag p95 (the lead the client chose at send
- * time subtracted) <= RTT p95 + 2 ticks (+ the server's jitter buffer growth beyond one tick);
+ * client (the rate its WELCOME names — SNAPSHOT_HZ by default, P3b: 20 — +- jitter); input acknowledgement lag p95
+ * (the lead the client chose at send time subtracted) <= RTT p95 + one tick + one snapshot interval (+ the server's
+ * jitter buffer growth beyond one tick);
  * pose continuity of interpolated remote samples at a 2..4-interval delay (no
  * sampler-introduced step > 0.5 m beyond the motion the wire carries, no backwards
  * step > 0.3 m the wire does not carry); an EVENT delivered to every client; no
@@ -29,7 +30,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import {
-  CLOSE_REASON, CONTROL_FLAGS, MESSAGE_TYPE, NO_TICK, PROTOCOL_VERSION, TEAM, TICK_MS,
+  CLOSE_REASON, CONTROL_FLAGS, MESSAGE_TYPE, NO_TICK, PROTOCOL_VERSION, SNAPSHOT_HZ, TEAM, TICK_HZ, TICK_MS,
 } from '../src/mp/wire/constants.ts';
 import { applySnapshotPacket, decodeMessage, encodeMessage, peekMessageType } from '../src/mp/wire/codec.ts';
 import { dequantizePosition, quantizeAimDistance, quantizeAngle } from '../src/mp/wire/quantize.ts';
@@ -63,7 +64,9 @@ const runTickCost = !short && !process.argv.includes('--no-tick-cost');
 const diag = process.argv.includes('--diag');
 const secret = 'mp-soak-seat-secret-0123456789abcdef';
 const TICK_BUDGET_MS = 6;
-const SNAPSHOT_INTERVAL_TICKS = 2;
+// The snapshot interval is the server's choice and rides the WELCOME (P3b, 2026-09-29): every client reads its own
+// (`client.intervalTicks`, this default until it is welcomed) for its sampler, its gap counting and the gates.
+const DEFAULT_SNAPSHOT_INTERVAL_TICKS = TICK_HZ / SNAPSHOT_HZ;
 const INTERP_DELAY_MIN_INTERVALS = 2;
 const INTERP_DELAY_MAX_INTERVALS = 4;
 
@@ -148,7 +151,7 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
   const client = {
     index, creator, welcome: null, entityId: 0, team: null, closed: null, closeReason: null,
     frames: [], history: new Map(), missingBaselines: 0,
-    snapshotGaps: createReservoir(), lastSnapshotTick: null, snapshotsReceived: 0,
+    snapshotGaps: createReservoir(), lastSnapshotTick: null, snapshotsReceived: 0, snapshotHz: SNAPSHOT_HZ, intervalTicks: DEFAULT_SNAPSHOT_INTERVAL_TICKS,
     sentTicks: new Map(), ackLags: createReservoir(), intrinsicAckLags: createReservoir(), acked: -1, minMargin: Infinity, leadAdjustedAt: 0,
     rttSamples: [], serverOffsetMs: 0, serverTickAt: null, clockOffsetTicks: null, clockTargetTicks: null,
     events: 0, eventMessages: 0, chatSeen: false, errors: [],
@@ -197,6 +200,9 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
         target.welcome = message;
         target.entityId = message.entityId;
         target.team = message.team;
+        // the server's rate (P3b): the sampler, the gap counting and the gates follow it
+        target.snapshotHz = message.snapshotHz;
+        target.intervalTicks = Math.max(1, Math.round(TICK_HZ / message.snapshotHz));
         observeServerTick(message.serverTick);
         startTimers();
         break;
@@ -210,7 +216,7 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
         }
         target.snapshotsReceived++;
         frame.byId = new Map(frame.entities.map((row) => [row.entityId, row]));
-        if (target.lastSnapshotTick != null && frame.tick > target.lastSnapshotTick) target.snapshotGaps.push((frame.tick - target.lastSnapshotTick) / SNAPSHOT_INTERVAL_TICKS);
+        if (target.lastSnapshotTick != null && frame.tick > target.lastSnapshotTick) target.snapshotGaps.push((frame.tick - target.lastSnapshotTick) / target.intervalTicks);
         if (target.lastSnapshotTick == null || frame.tick > target.lastSnapshotTick) {
           const previous = target.frames.at(-1);
           if (previous) {
@@ -324,7 +330,7 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
       if (client.sentTicks.size > 120) client.sentTicks.delete(client.sentTicks.keys().next().value);
       socket.send(encodeMessage({
         type: MESSAGE_TYPE.INPUT, clientTick, snapshotAckTick: client.lastSnapshotTick ?? NO_TICK,
-        interpDelayMs: Math.round(client.interpDelayIntervals * SNAPSHOT_INTERVAL_TICKS * TICK_MS), controls: client.controls.slice(),
+        interpDelayMs: Math.round(client.interpDelayIntervals * client.intervalTicks * TICK_MS), controls: client.controls.slice(),
       }));
     }, TICK_MS));
     client.timers.push(setInterval(() => {
@@ -339,7 +345,7 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
       const sampleScale = client.lastSampleAt ? TICK_MS / Math.max(TICK_MS, sampleNow - client.lastSampleAt) : 1;
       client.lastSampleAt = sampleNow;
       if (frames.length < 2) return;
-      const renderTick = serverTickNow() - client.interpDelayIntervals * SNAPSHOT_INTERVAL_TICKS;
+      const renderTick = serverTickNow() - client.interpDelayIntervals * client.intervalTicks;
       let older = null, newer = null;
       for (let i = frames.length - 1; i >= 0; i--) {
         if (frames[i].tick <= renderTick) { older = frames[i]; newer = frames[i + 1] ?? null; break; }
@@ -355,7 +361,7 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
         client.delayRelaxedAt = sampleNow;
       }
       if (!older) return;
-      const extrapolateTicks = newer ? 0 : Math.min(SNAPSHOT_INTERVAL_TICKS, renderTick - older.tick);
+      const extrapolateTicks = newer ? 0 : Math.min(client.intervalTicks, renderTick - older.tick);
       const t = newer ? Math.max(0, Math.min(1, (renderTick - older.tick) / (newer.tick - older.tick))) : 0;
       const renderAdvance = client.lastRenderTick == null ? 1 : Math.max(0, renderTick - client.lastRenderTick);
       client.lastRenderTick = renderTick;
@@ -547,20 +553,22 @@ async function main() {
   else fail('welcomed+spawned', `${welcomed.length}/${clientCount}`);
   const survivors = clients.filter((client) => !client.left && !client.killed);
   const cadenceBad = survivors.filter((client) => {
-    const expected = 30 * (durationS - 2);
+    const expected = client.snapshotHz * (durationS - 2);
     return client.snapshotsReceived < expected * (1 - lossPercent / 100) * 0.85 || quantile(client.snapshotGaps.values, 0.95) > 3;
   });
-  const cadenceDetail = `min ${Math.min(...survivors.map((c) => c.snapshotsReceived))} snapshots, gap p95 ${Math.max(...survivors.map((c) => quantile(c.snapshotGaps.values, 0.95)))} intervals, missing baselines ${survivors.reduce((sum, c) => sum + c.missingBaselines, 0)}`;
+  const cadenceDetail = `min ${Math.min(...survivors.map((c) => c.snapshotsReceived))} snapshots at ${Math.max(...survivors.map((c) => c.snapshotHz))} Hz, gap p95 ${Math.max(...survivors.map((c) => quantile(c.snapshotGaps.values, 0.95)))} intervals, missing baselines ${survivors.reduce((sum, c) => sum + c.missingBaselines, 0)}`;
   if (!cadenceBad.length) pass('snapshot cadence', cadenceDetail); else fail('snapshot cadence', `${cadenceBad.length} clients: ${cadenceDetail}`);
   const rttP95 = quantile(survivors.flatMap((client) => client.rttSamples), 0.95);
   const ackP95 = quantile(survivors.flatMap((client) => client.ackLags.values), 0.95);
   const intrinsicP95 = quantile(survivors.flatMap((client) => client.intrinsicAckLags.values), 0.95);
-  // RTT + 2 ticks: applied on the next tick, acknowledged by the next 30 Hz snapshot; plus the jitter buffer beyond one tick
+  // RTT + one tick + one snapshot interval: applied on the next tick, acknowledged by the next snapshot at the rate the WELCOME
+  // named (two ticks at 30 Hz, three at 20); plus the jitter buffer beyond one tick
   const bufferTicks = Math.max(1, ...final.clients.map((entry) => entry.bufferTicks));
-  const ackBound = rttP95 + (2 + bufferTicks - 1) * TICK_MS;
+  const intervalTicks = Math.max(...survivors.map((client) => client.intervalTicks));
+  const ackBound = rttP95 + (1 + intervalTicks + bufferTicks - 1) * TICK_MS;
   const rttP50 = quantile(survivors.flatMap((client) => client.rttSamples), 0.5);
   const intrinsicP50 = quantile(survivors.flatMap((client) => client.intrinsicAckLags.values), 0.5);
-  if (intrinsicP95 <= ackBound && survivors.every((client) => client.ackLags.length > 0)) pass('input ack lag', `p50 ${intrinsicP50.toFixed(0)} / p95 ${intrinsicP95.toFixed(0)} ms (raw p95 ${ackP95.toFixed(0)} incl. lead) <= rtt p95 ${rttP95.toFixed(0)} (p50 ${rttP50.toFixed(0)}) + ${1 + bufferTicks} ticks`);
+  if (intrinsicP95 <= ackBound && survivors.every((client) => client.ackLags.length > 0)) pass('input ack lag', `p50 ${intrinsicP50.toFixed(0)} / p95 ${intrinsicP95.toFixed(0)} ms (raw p95 ${ackP95.toFixed(0)} incl. lead) <= rtt p95 ${rttP95.toFixed(0)} (p50 ${rttP50.toFixed(0)}) + ${1 + intervalTicks + bufferTicks - 1} ticks (one tick + one snapshot at ${Math.max(...survivors.map((c) => c.snapshotHz))} Hz + the buffer beyond one)`);
   else fail('input ack lag', `p50 ${intrinsicP50.toFixed(0)} / p95 ${intrinsicP95.toFixed(0)} ms (raw ${ackP95.toFixed(0)}) vs bound ${ackBound.toFixed(0)} ms (rtt p95 ${rttP95.toFixed(0)}, buffer ${bufferTicks})`);
   const maxStep = Math.max(...survivors.map((client) => client.maxStep));
   const maxExcess = Math.max(...survivors.map((client) => client.maxExcess));

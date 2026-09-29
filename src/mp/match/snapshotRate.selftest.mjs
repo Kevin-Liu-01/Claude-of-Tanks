@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
-import { MESSAGE_TYPE, PROTOCOL_VERSION, TICK_HZ, decodeMessage } from '../wire/index.ts';
+import { INPUT_MARGIN_UNKNOWN, MESSAGE_TYPE, NO_TICK, PHASE, PROTOCOL_VERSION, TEAM, TICK_HZ, VERDICT, buildSnapshotPacket, decodeMessage, encodeMessage, zeroEntityRow } from '../wire/index.ts';
 import { createLoopbackPair } from '../transport/loopbackTransport.ts';
 import { MatchClient } from './matchClient.ts';
 import { NetworkStatusModel } from '../session/networkStatus.ts';
@@ -106,8 +106,70 @@ async function run(snapshotHz) {
   return { delayMs: stats.interpolationDelayMs, snapshots: stats.snapshotsAccepted, predictionErrorM: stats.prediction.maxPositionErrorM, remoteSteps: stats.snappedSamples };
 }
 
+// ------------------------------------------------------------ a carried own row (P3b): the authority's exact pose at the frame's tick
+// The own row is on the near tier — captured every snapshot and omitted from a delta only when identical — so a row a
+// delta leaves untouched (carried with its older capture tick) is the authority's pose AT THE FRAME'S TICK, and the
+// client reconciles there every frame. Reconciling at the row's own tick refused every frame of a hull held still against
+// a hull the client cannot see and let the prediction drive on through it (3.6 m of misprediction in the client soak
+// against 0.3 on the tree before: found by the landing's core suite, 2026-09-29). A hand-fed authority makes it exact.
+{
+  const pair = createLoopbackPair({ clock: now, connectDelayMs: 0 });
+  pair.server.open();
+  const world = createDedicatedWorldCollision('verdant', { retain: true });
+  const spec = getSpec('m1a2');
+  let live = null;
+  const predictionWorld = createPredictionWorld({ worldCollision: world, ownSpec: spec, ownState: () => live?.predictionState ?? null, others: () => [], mode: 'standard' });
+  const client = new MatchClient({ transport: pair.client, token: 'issued-elsewhere', clock: now, prediction: { world: predictionWorld, specFor: () => spec }, controls: () => ({ throttle: 1, steer: 0, brake: false, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 }) });
+  live = client;
+  const frames = [];
+  let welcomed = false;
+  pair.server.onFrame((bytes) => {
+    const decoded = decodeMessage(bytes);
+    if (decoded.ok && decoded.message.type === MESSAGE_TYPE.HELLO && !welcomed) {
+      welcomed = true;
+      pair.server.send(encodeMessage({
+        type: MESSAGE_TYPE.WELCOME, protocolVersion: PROTOCOL_VERSION, tickHz: TICK_HZ, snapshotHz: 20, seat: 0, entityId: 1, team: TEAM.ALPHA,
+        serverTick: 300, serverTimeMs: Math.round(300 * TICK_MS), seed: 1, capabilities: 1, roomId: 'carried', mapId: 'verdant', mode: 'standard', rulesetJson: '{"mode":"standard"}',
+        roster: [{ entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'p1', name: 'One', specId: 'm1a2' }],
+      }));
+    }
+  });
+  client.connect();
+  for (let n = 0; n < 6; n++) { nowMs += TICK_MS; pair.pump(nowMs); client.update(nowMs, 1 / TICK_HZ); pair.pump(nowMs); await flush(); }
+  assert.ok(client.welcome, 'welcomed by the hand-fed authority');
+  // one own row, captured at tick 303, then held: the hull is blocked by something the client cannot see
+  const ownRow = { ...zeroEntityRow(1), tick: 303, x: 12_000, y: 8_000, z: -40_000, hp: 100, maxHp: 100, speed: 0 };
+  const meta = { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: 5000, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 };
+  let baseline = null;
+  const sent = [];
+  for (let tick = 303; tick <= 303 + 3 * 20; tick += 3) {
+    const frame = { tick, serverTimeMs: Math.round(tick * TICK_MS), ackedInputTick: NO_TICK, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: INPUT_MARGIN_UNKNOWN, meta, destroyed: [], entities: [ownRow], shells: [], viewer: null, modeStateJson: null };
+    const packet = buildSnapshotPacket(frame, baseline);
+    if (baseline) assert.equal(packet.entities.length, 0, 'the held row is no patch at all on a delta');
+    pair.server.send(encodeMessage(packet, baseline));
+    sent.push(frame);
+    baseline = frame;
+    for (let n = 0; n < 3; n++) { nowMs += TICK_MS; pair.pump(nowMs); frames.push(client.update(nowMs, 1 / TICK_HZ)); pair.pump(nowMs); await flush(); }
+  }
+  const stats = client.stats();
+  assert.equal(stats.snapshotsAccepted, sent.length, `every frame assembled (${stats.snapshotsAccepted})`);
+  assert.equal(stats.missingBaselines, 0);
+  const latest = client.retainedMigration().latestFrame;
+  assert.equal(latest.tick, 303 + 3 * 20);
+  assert.equal(latest.entities[0].tick, 303, 'the own row rode every delta carried, with its capture tick');
+  // the first frame initializes the predictor (no reconciliation to count); every carried frame after it reconciles — a refusal would leave 0
+  assert.equal(stats.prediction.reconciliations, sent.length - 1, `the client reconciled at every frame's tick on the carried row (${stats.prediction.reconciliations} of ${sent.length - 1})`);
+  const presented = frames.at(-1);
+  assert.equal(presented.viewer.authorityTick, latest.tick, 'the presented authority tick is the newest frame\'s');
+  assert.equal(presented.viewer.row.tick, 303, 'and its row the carried one');
+  assert.ok(Math.hypot(presented.viewer.state.pos.x - 12, presented.viewer.state.pos.z + 40) < 3, `the prediction is held at the authority's pose (${presented.viewer.state.pos.x.toFixed(2)}, ${presented.viewer.state.pos.z.toFixed(2)}), not driven on through it`);
+  client.dispose();
+  world.release();
+  console.log('snapshotRate.selftest: a carried own row reconciles at every frame\'s tick and holds the prediction at the authority\'s pose');
+}
+
 const at20 = await run(20);
 const at30 = await run(30);
 assert.ok(at20.delayMs > at30.delayMs, `the delay is longer at 20 Hz (${at20.delayMs.toFixed(1)} vs ${at30.delayMs.toFixed(1)} ms)`);
 assert.throws(() => createMatchActor({ roomId: 'rate-bad', mapId: 'verdant', seed: 1, seats: [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' }], world: 'terrain', now, schedule, autoStart: false, snapshotHz: 25 }), /divisor/);
-console.log(`snapshotRate.selftest: 20 Hz — ${at20.snapshots} snapshots in 4 s, delay ${at20.delayMs.toFixed(1)} ms, misprediction ${at20.predictionErrorM.toFixed(4)} m; 30 Hz — ${at30.snapshots}, delay ${at30.delayMs.toFixed(1)} ms, misprediction ${at30.predictionErrorM.toFixed(4)} m; the client adopts the WELCOME's rate, no false gaps, the status model expects it, 25 Hz refused`);
+console.log(`snapshotRate.selftest: 20 Hz — ${at20.snapshots} snapshots in 4 s, delay ${at20.delayMs.toFixed(1)} ms, misprediction ${at20.predictionErrorM.toFixed(4)} m; 30 Hz — ${at30.snapshots}, delay ${at30.delayMs.toFixed(1)} ms, misprediction ${at30.predictionErrorM.toFixed(4)} m; the client adopts the WELCOME's rate, no false gaps, the status model expects it, a carried own row reconciles at its frame's tick, 25 Hz refused`);

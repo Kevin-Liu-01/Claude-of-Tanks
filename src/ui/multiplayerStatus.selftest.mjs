@@ -54,8 +54,10 @@ const {
 const { NetworkStatusModel } = await import('../mp/session/networkStatus.ts');
 
 const base = () => ({ ...new NetworkStatusModel().snapshot });
+// A live snapshot names the rate its WELCOME carried (P3b, 2026-09-29: the host's rate rides the WELCOME and the surface
+// prints it; the model's default is SNAPSHOT_HZ, 20 from that lane on) — this fixture is a 30 Hz match.
 const live = (patch = {}) => ({
-  ...base(), attached: true, transport: 'open', link: 'live', welcomed: true, rttMs: 64.4, rttMedianMs: 71.6, rttJitterMs: 3.6, localStallMs: 0, snapshotHz: 29.7, snapshotAgeMs: 41,
+  ...base(), attached: true, transport: 'open', link: 'live', welcomed: true, rttMs: 64.4, rttMedianMs: 71.6, rttJitterMs: 3.6, localStallMs: 0, snapshotHz: 29.7, expectedSnapshotHz: 30, snapshotAgeMs: 41,
   interpolationDelayMs: 100.2, bufferedFrames: 3, lossRate: 0.012, correctionsPerS: 0.4, bytesInPerS: 12_400, bytesOutPerS: 3_380,
   room: 'joined', roomRttMs: 22, roomRegion: 'lan', seat: 4, rosterCount: 12, rosterCapacity: 28, roomPhase: 'playing', matchStatus: 'playing',
   health: 'good', healthReason: 'live', ...patch,
@@ -91,13 +93,14 @@ const live = (patch = {}) => ({
 }
 
 {
-  const rows = formatPanelRows(live());
+  const snapshot = live();
+  const rows = formatPanelRows(snapshot);
   assert.equal(rows.length, 13);
   assert.deepEqual(rows.map(([label]) => label), ['Link', 'Round trip', 'Updates', 'Last update', 'Buffer', 'Loss', 'Corrections', 'Traffic', 'Reconnects', 'Room', 'Region', 'Seat', 'Seated']);
   const value = (label) => rows.find(([name]) => name === label)[1];
   assert.equal(value('Link'), 'Live');
   assert.equal(value('Round trip'), '64 ms (median 72) ± 4');
-  assert.equal(value('Updates'), '29.7 of 30 Hz');
+  assert.equal(value('Updates'), `29.7 of ${snapshot.expectedSnapshotHz} Hz`, 'the measured rate against the rate the WELCOME named');
   assert.equal(value('Last update'), '41 ms ago');
   assert.equal(value('Buffer'), '100 ms · 3 frames');
   assert.equal(value('Loss'), '1.2 %');

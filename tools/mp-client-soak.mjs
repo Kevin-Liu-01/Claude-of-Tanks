@@ -12,7 +12,8 @@
  *
  * Gates (exit 1 when any fails): no hard snaps; remote and own presented pose
  * steps ≤ 0.5 m per frame; correction release ≤ 0.25 m per frame; input ack
- * lag p50 ≤ RTT + 2 ticks; every missing baseline recovered by a keyframe; the
+ * lag p50 ≤ RTT + one snapshot interval (the ticks per snapshot the WELCOME names: 2 at 30 Hz, 3 at 20 — P3b);
+ * every missing baseline recovered by a keyframe; the
  * client still live at the end; the presentation adapter saw frames. Bytes per
  * client per second are reported against the charter's 12–18 KB/s budget
  * (sized for 28 players; a small roster reads low).
@@ -108,7 +109,7 @@ async function createFixtureServer({ clock, clientCount, seats }) {
 }
 
 /** The real MatchActor on the virtual clock; seats admitted through signed tokens like the service does. */
-async function createActorServer({ clock, clientCount, seats, mapId, seed }) {
+async function createActorServer({ clock, clientCount, seats, mapId, seed, snapshotHz }) {
   const [{ createMatchActor }, { signSeatToken, verifySeatToken }, { getSpec }] = await Promise.all([
     import('../server/match/matchActor.ts'),
     import('../server/match/seatToken.ts'),
@@ -130,6 +131,7 @@ async function createActorServer({ clock, clientCount, seats, mapId, seed }) {
   const actor = createMatchActor({
     roomId: 'soak', mapId, seed, seats: actorSeats, bots, world: 'terrain', countdownS: 2,
     now: clock, schedule: () => () => {}, autoStart: true, endedLingerTicks: 600,
+    ...(snapshotHz !== undefined ? { snapshotHz } : {}),
   });
   const entityIdOf = new Map(actor.authority.entities.map((entity, index) => [index + 1, entity]));
   return {
@@ -216,6 +218,8 @@ export async function runClientSoak({
   server: serverKind = 'actor',
   mapId = 'verdant',
   seed = 0x50ac,
+  /** The actor's snapshot rate (its default, SNAPSHOT_HZ, when unset); the clients follow the WELCOME. */
+  snapshotHz = undefined,
   onProgress = null,
 } = {}) {
   let nowMs = 100_000;
@@ -223,7 +227,7 @@ export async function runClientSoak({
   const seats = seatList(clientCount);
   const world = serverKind === 'fixture'
     ? await createFixtureServer({ clock, clientCount, seats })
-    : await createActorServer({ clock, clientCount, seats, mapId, seed });
+    : await createActorServer({ clock, clientCount, seats, mapId, seed, snapshotHz });
   const link = { latencyMs: rttMs / 2, jitterMs: jitterMs / 2, loss, lossFilter: (frame) => LOSSY_TYPES.has(frame[1]) };
   const pairs = [];
   const pump = (t) => { for (const pair of pairs) pair.pump(t); world.advance(t); for (const pair of pairs) pair.pump(t); };
@@ -272,12 +276,15 @@ export async function runClientSoak({
     const gates = entry.driver.gates();
     const stats = entry.client.stats();
     const rttTicks = Math.ceil((gates.rttMs ?? 0) / TICK_MS);
+    // the rate the WELCOME named: an input is applied on the next tick and acknowledged by the next snapshot
+    const snapshotHz = entry.client.snapshotRateHz;
+    const intervalTicks = Math.max(1, Math.round(TICK_HZ / snapshotHz));
     const failures = [];
     if (gates.hardSnaps > 0) failures.push(`hard snaps ${gates.hardSnaps}`);
     if (gates.remoteStepsOver > 0) failures.push(`remote steps over 0.5 m: ${gates.remoteStepsOver} (max ${gates.maxRemoteStepM.toFixed(3)})`);
     if (gates.ownStepsOver > 0) failures.push(`own steps over 0.5 m: ${gates.ownStepsOver} (max ${gates.maxOwnStepM.toFixed(3)})`);
     if (gates.maxCorrectionStepM > 0.25) failures.push(`correction release ${gates.maxCorrectionStepM.toFixed(3)} m`);
-    if (gates.intrinsicAckLagP50 > rttTicks + 2) failures.push(`ack lag p50 ${gates.intrinsicAckLagP50} (raw ${gates.ackLagP50}) > RTT ${rttTicks} + 2 ticks`);
+    if (gates.intrinsicAckLagP50 > rttTicks + intervalTicks) failures.push(`ack lag p50 ${gates.intrinsicAckLagP50} (raw ${gates.ackLagP50}) > RTT ${rttTicks} + ${intervalTicks} ticks (one snapshot at ${snapshotHz} Hz)`);
     if (gates.missingBaselines > gates.keyframeRecoveries) failures.push(`missing baselines ${gates.missingBaselines} > recoveries ${gates.keyframeRecoveries}`);
     if (stats.phase !== 'live') failures.push(`phase ${stats.phase}`);
     if (entry.presentation.frames.length === 0) failures.push('the presentation adapter saw no frames');
@@ -306,6 +313,8 @@ export async function runClientSoak({
       rawAckLagP50: gates.ackLagP50,
       rawAckLagP95: gates.ackLagP95,
       rttTicks,
+      snapshotHz,
+      intervalTicks,
       leadTicks: stats.inputLeadTicks,
       events: gates.eventsDelivered,
       ownShots: gates.ownShotsDelivered,
@@ -351,6 +360,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const json = args.has('json');
   const report = await runClientSoak({
     clients: number('clients', 4), seconds: number('seconds', 120), rttMs: number('rtt', 100), jitterMs: number('jitter', 30),
+    ...(process.argv.some((entry) => entry.startsWith('--snapshot-hz=')) ? { snapshotHz: number('snapshot-hz', 20) } : {}),
     loss: number('loss', 0.03), server: args.get('server') ?? 'actor', mapId: args.get('map') ?? 'verdant', seed: number('seed', 0x50ac),
     onProgress: json ? null : (elapsed) => process.stderr.write(`  ${elapsed.toFixed(0)} s\r`),
   });
