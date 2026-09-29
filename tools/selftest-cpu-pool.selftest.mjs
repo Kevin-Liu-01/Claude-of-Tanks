@@ -73,7 +73,6 @@ assert.equal(normal.refreshes, stoppedRefreshes, 'finished pool clears its heart
 assert.deepEqual(SELFTEST_EXCLUSIVE_CPU_FILES, [
   'src/vehicles/fleetLazy.selftest.mjs',
   'src/ui/garageArchitecture.selftest.mjs',
-  'tools/production-room-abandonment.selftest.mjs',
   'server/dedicatedWorldCollisionMemory.selftest.mjs',
   'tools/garage-switch-probe.selftest.mjs',
   'server/match/tickCost.selftest.mjs',
