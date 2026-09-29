@@ -1,0 +1,4072 @@
+{
+  "version": 1,
+  "created": "2026-09-28T05:25:26.495Z",
+  "sourceDigest": "c70ec49896ad2fea05faf7d043ffc5b9258f3f87afa00ad408f76bd8135b4ff8",
+  "revision": "c12e4babf7bc4f33861c893b7238b406961058e7",
+  "shots": [
+    {
+      "src": "/maps/verdant.webp",
+      "previewSrc": "/maps/cards/verdant.webp",
+      "alt": "verdant battlefield overview",
+      "title": "verdant",
+      "map": "verdant",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 1
+    },
+    {
+      "src": "/maps/desert.webp",
+      "previewSrc": "/maps/cards/desert.webp",
+      "alt": "desert battlefield overview",
+      "title": "desert",
+      "map": "desert",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 2
+    },
+    {
+      "src": "/maps/winter.webp",
+      "previewSrc": "/maps/cards/winter.webp",
+      "alt": "winter battlefield overview",
+      "title": "winter",
+      "map": "winter",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 3
+    },
+    {
+      "src": "/maps/urban.webp",
+      "previewSrc": "/maps/cards/urban.webp",
+      "alt": "urban battlefield overview",
+      "title": "urban",
+      "map": "urban",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 4
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "previewSrc": "/maps/cards/coastal.webp",
+      "alt": "coastal battlefield overview",
+      "title": "coastal",
+      "map": "coastal",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 5
+    },
+    {
+      "src": "/maps/autumn.webp",
+      "previewSrc": "/maps/cards/autumn.webp",
+      "alt": "autumn battlefield overview",
+      "title": "autumn",
+      "map": "autumn",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 6
+    },
+    {
+      "src": "/maps/steppe.webp",
+      "previewSrc": "/maps/cards/steppe.webp",
+      "alt": "steppe battlefield overview",
+      "title": "steppe",
+      "map": "steppe",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 7
+    },
+    {
+      "src": "/maps/railyard.webp",
+      "previewSrc": "/maps/cards/railyard.webp",
+      "alt": "railyard battlefield overview",
+      "title": "railyard",
+      "map": "railyard",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 8
+    },
+    {
+      "src": "/maps/frontier.webp",
+      "previewSrc": "/maps/cards/frontier.webp",
+      "alt": "frontier battlefield overview",
+      "title": "frontier",
+      "map": "frontier",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 9
+    },
+    {
+      "src": "/maps/fjord.webp",
+      "previewSrc": "/maps/cards/fjord.webp",
+      "alt": "fjord battlefield overview",
+      "title": "fjord",
+      "map": "fjord",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 10
+    },
+    {
+      "src": "/maps/delta.webp",
+      "previewSrc": "/maps/cards/delta.webp",
+      "alt": "delta battlefield overview",
+      "title": "delta",
+      "map": "delta",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 11
+    },
+    {
+      "src": "/maps/badlands.webp",
+      "previewSrc": "/maps/cards/badlands.webp",
+      "alt": "badlands battlefield overview",
+      "title": "badlands",
+      "map": "badlands",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 12
+    },
+    {
+      "src": "/maps/monsoon.webp",
+      "previewSrc": "/maps/cards/monsoon.webp",
+      "alt": "monsoon battlefield overview",
+      "title": "monsoon",
+      "map": "monsoon",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 13
+    },
+    {
+      "src": "/maps/alpine.webp",
+      "previewSrc": "/maps/cards/alpine.webp",
+      "alt": "alpine battlefield overview",
+      "title": "alpine",
+      "map": "alpine",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 14
+    },
+    {
+      "src": "/maps/caldera.webp",
+      "previewSrc": "/maps/cards/caldera.webp",
+      "alt": "caldera battlefield overview",
+      "title": "caldera",
+      "map": "caldera",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 15
+    },
+    {
+      "src": "/maps/foundry.webp",
+      "previewSrc": "/maps/cards/foundry.webp",
+      "alt": "foundry battlefield overview",
+      "title": "foundry",
+      "map": "foundry",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 16
+    },
+    {
+      "src": "/maps/ruinspires.webp",
+      "previewSrc": "/maps/cards/ruinspires.webp",
+      "alt": "ruinspires battlefield overview",
+      "title": "ruinspires",
+      "map": "ruinspires",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 17
+    },
+    {
+      "src": "/maps/blackglass.webp",
+      "previewSrc": "/maps/cards/blackglass.webp",
+      "alt": "blackglass battlefield overview",
+      "title": "blackglass",
+      "map": "blackglass",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 18
+    },
+    {
+      "src": "/maps/titan_gorge.webp",
+      "previewSrc": "/maps/cards/titan_gorge.webp",
+      "alt": "titan gorge battlefield overview",
+      "title": "titan gorge",
+      "map": "titan_gorge",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 19
+    },
+    {
+      "src": "/maps/skybridge.webp",
+      "previewSrc": "/maps/cards/skybridge.webp",
+      "alt": "skybridge battlefield overview",
+      "title": "skybridge",
+      "map": "skybridge",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 20
+    },
+    {
+      "src": "/maps/polders.webp",
+      "previewSrc": "/maps/cards/polders.webp",
+      "alt": "polders battlefield overview",
+      "title": "polders",
+      "map": "polders",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 21
+    },
+    {
+      "src": "/maps/copper_mesa.webp",
+      "previewSrc": "/maps/cards/copper_mesa.webp",
+      "alt": "copper mesa battlefield overview",
+      "title": "copper mesa",
+      "map": "copper_mesa",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 22
+    },
+    {
+      "src": "/maps/airfield.webp",
+      "previewSrc": "/maps/cards/airfield.webp",
+      "alt": "airfield battlefield overview",
+      "title": "airfield",
+      "map": "airfield",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 23
+    },
+    {
+      "src": "/maps/oasis.webp",
+      "previewSrc": "/maps/cards/oasis.webp",
+      "alt": "oasis battlefield overview",
+      "title": "oasis",
+      "map": "oasis",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 24
+    },
+    {
+      "src": "/maps/whiteout.webp",
+      "previewSrc": "/maps/cards/whiteout.webp",
+      "alt": "whiteout battlefield overview",
+      "title": "whiteout",
+      "map": "whiteout",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 25
+    },
+    {
+      "src": "/maps/orchard.webp",
+      "previewSrc": "/maps/cards/orchard.webp",
+      "alt": "orchard battlefield overview",
+      "title": "orchard",
+      "map": "orchard",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 26
+    },
+    {
+      "src": "/maps/longleaf.webp",
+      "previewSrc": "/maps/cards/longleaf.webp",
+      "alt": "longleaf battlefield overview",
+      "title": "longleaf",
+      "map": "longleaf",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 27
+    },
+    {
+      "src": "/maps/mangrove.webp",
+      "previewSrc": "/maps/cards/mangrove.webp",
+      "alt": "mangrove battlefield overview",
+      "title": "mangrove",
+      "map": "mangrove",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 28
+    },
+    {
+      "src": "/maps/saltwind.webp",
+      "previewSrc": "/maps/cards/saltwind.webp",
+      "alt": "saltwind battlefield overview",
+      "title": "saltwind",
+      "map": "saltwind",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 29
+    },
+    {
+      "src": "/maps/reservoir.webp",
+      "previewSrc": "/maps/cards/reservoir.webp",
+      "alt": "reservoir battlefield overview",
+      "title": "reservoir",
+      "map": "reservoir",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 30
+    },
+    {
+      "src": "/maps/mars.webp",
+      "previewSrc": "/maps/cards/mars.webp",
+      "alt": "mars battlefield overview",
+      "title": "mars",
+      "map": "mars",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 31
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-day-landscape.webp",
+      "alt": "A tank crossing water at day",
+      "title": "Water in motion · day",
+      "map": "reservoir",
+      "feature": "battlefield atmosphere",
+      "kind": "studio",
+      "effects": [
+        "day",
+        "water"
+      ],
+      "sequence": 32
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-sunset-landscape.webp",
+      "alt": "A tank crossing water at sunset",
+      "title": "Water in motion · sunset",
+      "map": "reservoir",
+      "feature": "battlefield atmosphere",
+      "kind": "studio",
+      "effects": [
+        "sunset",
+        "water"
+      ],
+      "sequence": 33
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-night-landscape.webp",
+      "alt": "A tank crossing water at night",
+      "title": "Water in motion · night",
+      "map": "reservoir",
+      "feature": "battlefield atmosphere",
+      "kind": "studio",
+      "effects": [
+        "night",
+        "water"
+      ],
+      "sequence": 34
+    }
+  ],
+  "films": [
+    {
+      "src": "/media/production-r1/reservoir-day.mp4",
+      "poster": "/media/production-r1/posters/reservoir-day-landscape.webp",
+      "map": "reservoir",
+      "timeOfDay": "day",
+      "format": "landscape",
+      "fps": 30,
+      "frames": 180,
+      "width": 1920,
+      "height": 1080,
+      "silent": true
+    },
+    {
+      "src": "/media/production-r1/reservoir-sunset.mp4",
+      "poster": "/media/production-r1/posters/reservoir-sunset-landscape.webp",
+      "map": "reservoir",
+      "timeOfDay": "sunset",
+      "format": "landscape",
+      "fps": 30,
+      "frames": 180,
+      "width": 1920,
+      "height": 1080,
+      "silent": true
+    },
+    {
+      "src": "/media/production-r1/reservoir-night.mp4",
+      "poster": "/media/production-r1/posters/reservoir-night-landscape.webp",
+      "map": "reservoir",
+      "timeOfDay": "night",
+      "format": "landscape",
+      "fps": 30,
+      "frames": 180,
+      "width": 1920,
+      "height": 1080,
+      "silent": true
+    }
+  ],
+  "media": {
+    "/maps/verdant.webp": "production-map-verdant",
+    "/maps/cards/verdant.webp": "production-map-verdant",
+    "/maps/thumbs/verdant.webp": "production-map-verdant",
+    "/maps/desert.webp": "production-map-desert",
+    "/maps/cards/desert.webp": "production-map-desert",
+    "/maps/thumbs/desert.webp": "production-map-desert",
+    "/maps/winter.webp": "production-map-winter",
+    "/maps/cards/winter.webp": "production-map-winter",
+    "/maps/thumbs/winter.webp": "production-map-winter",
+    "/maps/urban.webp": "production-map-urban",
+    "/maps/cards/urban.webp": "production-map-urban",
+    "/maps/thumbs/urban.webp": "production-map-urban",
+    "/maps/coastal.webp": "production-map-coastal",
+    "/maps/cards/coastal.webp": "production-map-coastal",
+    "/maps/thumbs/coastal.webp": "production-map-coastal",
+    "/maps/autumn.webp": "production-map-autumn",
+    "/maps/cards/autumn.webp": "production-map-autumn",
+    "/maps/thumbs/autumn.webp": "production-map-autumn",
+    "/maps/steppe.webp": "production-map-steppe",
+    "/maps/cards/steppe.webp": "production-map-steppe",
+    "/maps/thumbs/steppe.webp": "production-map-steppe",
+    "/maps/railyard.webp": "production-map-railyard",
+    "/maps/cards/railyard.webp": "production-map-railyard",
+    "/maps/thumbs/railyard.webp": "production-map-railyard",
+    "/maps/frontier.webp": "production-map-frontier",
+    "/maps/cards/frontier.webp": "production-map-frontier",
+    "/maps/thumbs/frontier.webp": "production-map-frontier",
+    "/maps/fjord.webp": "production-map-fjord",
+    "/maps/cards/fjord.webp": "production-map-fjord",
+    "/maps/thumbs/fjord.webp": "production-map-fjord",
+    "/maps/delta.webp": "production-map-delta",
+    "/maps/cards/delta.webp": "production-map-delta",
+    "/maps/thumbs/delta.webp": "production-map-delta",
+    "/maps/badlands.webp": "production-map-badlands",
+    "/maps/cards/badlands.webp": "production-map-badlands",
+    "/maps/thumbs/badlands.webp": "production-map-badlands",
+    "/maps/monsoon.webp": "production-map-monsoon",
+    "/maps/cards/monsoon.webp": "production-map-monsoon",
+    "/maps/thumbs/monsoon.webp": "production-map-monsoon",
+    "/maps/alpine.webp": "production-map-alpine",
+    "/maps/cards/alpine.webp": "production-map-alpine",
+    "/maps/thumbs/alpine.webp": "production-map-alpine",
+    "/maps/caldera.webp": "production-map-caldera",
+    "/maps/cards/caldera.webp": "production-map-caldera",
+    "/maps/thumbs/caldera.webp": "production-map-caldera",
+    "/maps/foundry.webp": "production-map-foundry",
+    "/maps/cards/foundry.webp": "production-map-foundry",
+    "/maps/thumbs/foundry.webp": "production-map-foundry",
+    "/maps/ruinspires.webp": "production-map-ruinspires",
+    "/maps/cards/ruinspires.webp": "production-map-ruinspires",
+    "/maps/thumbs/ruinspires.webp": "production-map-ruinspires",
+    "/maps/blackglass.webp": "production-map-blackglass",
+    "/maps/cards/blackglass.webp": "production-map-blackglass",
+    "/maps/thumbs/blackglass.webp": "production-map-blackglass",
+    "/maps/titan_gorge.webp": "production-map-titan_gorge",
+    "/maps/cards/titan_gorge.webp": "production-map-titan_gorge",
+    "/maps/thumbs/titan_gorge.webp": "production-map-titan_gorge",
+    "/maps/skybridge.webp": "production-map-skybridge",
+    "/maps/cards/skybridge.webp": "production-map-skybridge",
+    "/maps/thumbs/skybridge.webp": "production-map-skybridge",
+    "/maps/polders.webp": "production-map-polders",
+    "/maps/cards/polders.webp": "production-map-polders",
+    "/maps/thumbs/polders.webp": "production-map-polders",
+    "/maps/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/cards/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/thumbs/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/airfield.webp": "production-map-airfield",
+    "/maps/cards/airfield.webp": "production-map-airfield",
+    "/maps/thumbs/airfield.webp": "production-map-airfield",
+    "/maps/oasis.webp": "production-map-oasis",
+    "/maps/cards/oasis.webp": "production-map-oasis",
+    "/maps/thumbs/oasis.webp": "production-map-oasis",
+    "/maps/whiteout.webp": "production-map-whiteout",
+    "/maps/cards/whiteout.webp": "production-map-whiteout",
+    "/maps/thumbs/whiteout.webp": "production-map-whiteout",
+    "/maps/orchard.webp": "production-map-orchard",
+    "/maps/cards/orchard.webp": "production-map-orchard",
+    "/maps/thumbs/orchard.webp": "production-map-orchard",
+    "/maps/longleaf.webp": "production-map-longleaf",
+    "/maps/cards/longleaf.webp": "production-map-longleaf",
+    "/maps/thumbs/longleaf.webp": "production-map-longleaf",
+    "/maps/mangrove.webp": "production-map-mangrove",
+    "/maps/cards/mangrove.webp": "production-map-mangrove",
+    "/maps/thumbs/mangrove.webp": "production-map-mangrove",
+    "/maps/saltwind.webp": "production-map-saltwind",
+    "/maps/cards/saltwind.webp": "production-map-saltwind",
+    "/maps/thumbs/saltwind.webp": "production-map-saltwind",
+    "/maps/reservoir.webp": "production-map-reservoir",
+    "/maps/cards/reservoir.webp": "production-map-reservoir",
+    "/maps/thumbs/reservoir.webp": "production-map-reservoir",
+    "/maps/mars.webp": "production-map-mars",
+    "/maps/cards/mars.webp": "production-map-mars",
+    "/maps/thumbs/mars.webp": "production-map-mars",
+    "/media/production-r1/posters/reservoir-day-landscape.webp": "production-reservoir-day-landscape",
+    "/media/production-r1/reservoir-day.jpg": "production-reservoir-day-landscape",
+    "/media/production-r1/posters/reservoir-day-portrait.webp": "production-reservoir-day-portrait",
+    "/media/production-r1/posters/reservoir-day-square.webp": "production-reservoir-day-square",
+    "/media/production-r1/posters/reservoir-sunset-landscape.webp": "production-reservoir-sunset-landscape",
+    "/media/production-r1/reservoir-sunset.jpg": "production-reservoir-sunset-landscape",
+    "/media/production-r1/posters/reservoir-sunset-portrait.webp": "production-reservoir-sunset-portrait",
+    "/media/production-r1/posters/reservoir-sunset-square.webp": "production-reservoir-sunset-square",
+    "/media/production-r1/posters/reservoir-night-landscape.webp": "production-reservoir-night-landscape",
+    "/media/production-r1/reservoir-night.jpg": "production-reservoir-night-landscape",
+    "/media/production-r1/posters/reservoir-night-portrait.webp": "production-reservoir-night-portrait",
+    "/media/production-r1/posters/reservoir-night-square.webp": "production-reservoir-night-square",
+    "/media/production-r1/reservoir-day.mp4": "production-film-reservoir-day",
+    "/media/production-r1/reservoir-sunset.mp4": "production-film-reservoir-sunset",
+    "/media/production-r1/reservoir-night.mp4": "production-film-reservoir-night"
+  },
+  "recipes": {
+    "production-map-verdant": {
+      "map": "verdant",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -64,
+          55.68320319870119,
+          -148
+        ],
+        "lookAt": [
+          80,
+          2.24218078939004,
+          156
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-desert": {
+      "map": "desert",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -85,
+          116.50546548147682,
+          -162
+        ],
+        "lookAt": [
+          60,
+          18.211138611066588,
+          172
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-winter": {
+      "map": "winter",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -236,
+          75.71023250197422,
+          -318
+        ],
+        "lookAt": [
+          46,
+          -3.1783953524814694,
+          40
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-urban": {
+      "map": "urban",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -48,
+          58.426784411626805,
+          -208
+        ],
+        "lookAt": [
+          46,
+          4.537460960569614,
+          20
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-coastal": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          356,
+          60,
+          -300
+        ],
+        "lookAt": [
+          96,
+          -5.354913259358972,
+          190
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-autumn": {
+      "map": "autumn",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          388,
+          67.6917330432987,
+          -478
+        ],
+        "lookAt": [
+          -60,
+          9.039659165792045,
+          60
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-steppe": {
+      "map": "steppe",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -330,
+          65.51481602301067,
+          -470
+        ],
+        "lookAt": [
+          60,
+          8.200000047683716,
+          60
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-railyard": {
+      "map": "railyard",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -170,
+          65.95460286613113,
+          -240
+        ],
+        "lookAt": [
+          60,
+          1.2913503169060945,
+          60
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-frontier": {
+      "map": "frontier",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -132,
+          65.06969278089898,
+          -220
+        ],
+        "lookAt": [
+          36,
+          4.841559436349598,
+          116
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-fjord": {
+      "map": "fjord",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -226,
+          74.04572482919042,
+          -238
+        ],
+        "lookAt": [
+          218,
+          -4.4655479192733765,
+          38
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-delta": {
+      "map": "delta",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          248,
+          70.59819386983571,
+          -274
+        ],
+        "lookAt": [
+          -34,
+          3.3591692899531145,
+          72
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-badlands": {
+      "map": "badlands",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -236,
+          78.18568706512451,
+          -226
+        ],
+        "lookAt": [
+          38,
+          10.678703044751567,
+          54
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-monsoon": {
+      "map": "monsoon",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -176,
+          71.96304362666649,
+          -232
+        ],
+        "lookAt": [
+          44,
+          7.453932821718909,
+          92
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-alpine": {
+      "map": "alpine",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -238,
+          94.97565783504723,
+          -252
+        ],
+        "lookAt": [
+          62,
+          -9.123679069577472,
+          54
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-caldera": {
+      "map": "caldera",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -238,
+          84.7500664281491,
+          -230
+        ],
+        "lookAt": [
+          42,
+          9.361567330069732,
+          66
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-foundry": {
+      "map": "foundry",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          73.55482349750929,
+          -248
+        ],
+        "lookAt": [
+          54,
+          3.7985646320948696,
+          72
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-ruinspires": {
+      "map": "ruinspires",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          57.33816751595994,
+          -274
+        ],
+        "lookAt": [
+          36,
+          15.255523702260867,
+          46
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-blackglass": {
+      "map": "blackglass",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -344,
+          71.72204410413012,
+          -308
+        ],
+        "lookAt": [
+          18,
+          11.590551247565797,
+          46
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-titan_gorge": {
+      "map": "titan_gorge",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -286,
+          89.24861361585899,
+          -246
+        ],
+        "lookAt": [
+          38,
+          12.388159803463832,
+          68
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-skybridge": {
+      "map": "skybridge",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -280,
+          92.37026394058174,
+          -236
+        ],
+        "lookAt": [
+          22,
+          1.0067848217117694,
+          92
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-polders": {
+      "map": "polders",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -268,
+          76.71027707364078,
+          -256
+        ],
+        "lookAt": [
+          28,
+          -0.11077350589538204,
+          112
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-copper_mesa": {
+      "map": "copper_mesa",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -284,
+          98.69100214951693,
+          -282
+        ],
+        "lookAt": [
+          -30,
+          -7.935553142419364,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-airfield": {
+      "map": "airfield",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -294,
+          78.14621353782931,
+          -310
+        ],
+        "lookAt": [
+          80,
+          2.4720795276440617,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-oasis": {
+      "map": "oasis",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -252,
+          85.50761737873225,
+          -246
+        ],
+        "lookAt": [
+          86,
+          1.8519930397024273,
+          80
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-whiteout": {
+      "map": "whiteout",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -256,
+          81.43021650704293,
+          -262
+        ],
+        "lookAt": [
+          68,
+          -1.4053230451260046,
+          82
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-orchard": {
+      "map": "orchard",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          91.22122981806643,
+          -256
+        ],
+        "lookAt": [
+          60,
+          1.468021311163469,
+          98
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-longleaf": {
+      "map": "longleaf",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          85.34420436452615,
+          -250
+        ],
+        "lookAt": [
+          50,
+          2.4444216812417734,
+          100
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-mangrove": {
+      "map": "mangrove",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -260,
+          80.85130807780789,
+          -260
+        ],
+        "lookAt": [
+          52,
+          -0.4222072958946228,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-saltwind": {
+      "map": "saltwind",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -252,
+          90.35690385865054,
+          -248
+        ],
+        "lookAt": [
+          -52,
+          4.558628904407824,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-reservoir": {
+      "map": "reservoir",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -248,
+          92.38983627607729,
+          -248
+        ],
+        "lookAt": [
+          108,
+          -9,
+          74
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-mars": {
+      "map": "mars",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -90,
+          104.95581557754039,
+          -170
+        ],
+        "lookAt": [
+          50,
+          19.385132616253095,
+          160
+        ],
+        "fov": 55
+      }
+    },
+    "production-reservoir-day-landscape": {
+      "map": "reservoir",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              103,
+              -0.5,
+              -13
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              139,
+              0,
+              -13
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-reservoir-day-portrait": {
+      "map": "reservoir",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              114,
+              4.8,
+              0
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              150,
+              5.8,
+              0
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-reservoir-day-square": {
+      "map": "reservoir",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              105.75,
+              0.8250000000000002,
+              -9.75
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              141.75,
+              1.4500000000000002,
+              -9.75
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-reservoir-sunset-landscape": {
+      "map": "reservoir",
+      "timeOfDay": "sunset",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              103,
+              -0.5,
+              -13
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              139,
+              0,
+              -13
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-reservoir-sunset-portrait": {
+      "map": "reservoir",
+      "timeOfDay": "sunset",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              114,
+              4.8,
+              0
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              150,
+              5.8,
+              0
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-reservoir-sunset-square": {
+      "map": "reservoir",
+      "timeOfDay": "sunset",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              105.75,
+              0.8250000000000002,
+              -9.75
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              141.75,
+              1.4500000000000002,
+              -9.75
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-reservoir-night-landscape": {
+      "map": "reservoir",
+      "timeOfDay": "night",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              103,
+              -0.5,
+              -13
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              139,
+              0,
+              -13
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-reservoir-night-portrait": {
+      "map": "reservoir",
+      "timeOfDay": "night",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              114,
+              4.8,
+              0
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              150,
+              5.8,
+              0
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-reservoir-night-square": {
+      "map": "reservoir",
+      "timeOfDay": "night",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 3000,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              105.75,
+              0.8250000000000002,
+              -9.75
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              141.75,
+              1.4500000000000002,
+              -9.75
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-film-reservoir-day": {
+      "map": "reservoir",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 0,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              103,
+              -0.5,
+              -13
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              139,
+              0,
+              -13
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-film-reservoir-sunset": {
+      "map": "reservoir",
+      "timeOfDay": "sunset",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 0,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              103,
+              -0.5,
+              -13
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              139,
+              0,
+              -13
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "production-film-reservoir-night": {
+      "map": "reservoir",
+      "timeOfDay": "night",
+      "seed": 5000,
+      "actors": [
+        {
+          "id": "t90m_x",
+          "name": "lead",
+          "pos": [
+            92,
+            -26
+          ],
+          "facingDeg": 90
+        }
+      ],
+      "effects": [],
+      "fxTime": 0,
+      "timeScale": 0,
+      "storyboard": {
+        "durationMs": 6000,
+        "shots": [
+          {
+            "id": "start",
+            "tMs": 0,
+            "pos": [
+              103,
+              -0.5,
+              -13
+            ],
+            "lookAt": [
+              92,
+              -5.8,
+              -26
+            ],
+            "fov": 48,
+            "transition": "linear"
+          },
+          {
+            "id": "end",
+            "tMs": 6000,
+            "pos": [
+              139,
+              0,
+              -13
+            ],
+            "lookAt": [
+              128,
+              -5.8,
+              -26
+            ],
+            "fov": 45
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "a",
+                "tMs": 0,
+                "pos": [
+                  92,
+                  -26
+                ],
+                "facingDeg": 90,
+                "transition": "drive"
+              },
+              {
+                "id": "b",
+                "tMs": 6000,
+                "pos": [
+                  128,
+                  -26
+                ],
+                "facingDeg": 90
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "assets": [
+    {
+      "src": "/maps/verdant.webp",
+      "sha256": "67a6478bdbed52e91255f19913c60f189a15ec4e37f6f12f55d3dbc71424ccb3"
+    },
+    {
+      "src": "/maps/cards/verdant.webp",
+      "sha256": "bc4d8fa26273b3d28b6ae0ce2f145b2768c17c13e1b9ab2606b77334b8a492c1"
+    },
+    {
+      "src": "/maps/thumbs/verdant.webp",
+      "sha256": "63df068d1077cb5900d258830d82bee25ed9fb7bedc7dc0ccc945d0e8aa05692"
+    },
+    {
+      "src": "/maps/desert.webp",
+      "sha256": "47a8df903c8dc5a16d4b370dc2153d89247ffbc5a4c9e91149ac2e6294eb8fc5"
+    },
+    {
+      "src": "/maps/cards/desert.webp",
+      "sha256": "f9e67295d28333825eacb3574588bf5c28c7768584f080461bcffe62d4ac012b"
+    },
+    {
+      "src": "/maps/thumbs/desert.webp",
+      "sha256": "eebc7f84ff6725d351449bb33ab89455455ce0a48e313a61a7e72176bc648da7"
+    },
+    {
+      "src": "/maps/winter.webp",
+      "sha256": "8c121d3827af11ce31d22b958d524896c594d32f38a702ca0cf78de482ee2f94"
+    },
+    {
+      "src": "/maps/cards/winter.webp",
+      "sha256": "5881ecbf2eeb0c095a10b3f9784c4bfa370533fef0a9e7b8d551e70ceab6a7a6"
+    },
+    {
+      "src": "/maps/thumbs/winter.webp",
+      "sha256": "ddc96c60f2d23403b1ba46c9e685e296ef430c147617b54d8a724c7889997fa8"
+    },
+    {
+      "src": "/maps/urban.webp",
+      "sha256": "2add30444074d6ac37ee9664836203424cc18b75f24d4309c5cfe513cb45269d"
+    },
+    {
+      "src": "/maps/cards/urban.webp",
+      "sha256": "b043c3878758ae131513d97a3c9f72bcd97d553e919e1c2f347d1561154f3bea"
+    },
+    {
+      "src": "/maps/thumbs/urban.webp",
+      "sha256": "1306cd15080503a5394d86202e658607463312761d5f5264b207190075868c11"
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "sha256": "6be70383213007b6ef3fce189d44a9cb0eab68e52c284ab37283457aeef7d9fd"
+    },
+    {
+      "src": "/maps/cards/coastal.webp",
+      "sha256": "09ff0241c898f9065f768b40224e51847e080c426186e797c47c0fb70f167975"
+    },
+    {
+      "src": "/maps/thumbs/coastal.webp",
+      "sha256": "5d9daa65df232fdd9d740fee3a55a079b60e831f376f0864dbc0f5d7adf35a9c"
+    },
+    {
+      "src": "/maps/autumn.webp",
+      "sha256": "ab3b5cf3d5857c67edf20c4173e98bcdaf6e4235e78bbf52171deff2e6519349"
+    },
+    {
+      "src": "/maps/cards/autumn.webp",
+      "sha256": "5fe9413386a353ec291407dc005f8868a428d745f8a7351be31faaa900d109a8"
+    },
+    {
+      "src": "/maps/thumbs/autumn.webp",
+      "sha256": "3aaefbd569f65a8dad7bfc883ec760eb9ca7116a4c0d238254a68a886fe30fd9"
+    },
+    {
+      "src": "/maps/steppe.webp",
+      "sha256": "a2586918dc28878846874cebbb92f23eeca1f59efb87c5de1e2553b1731bf683"
+    },
+    {
+      "src": "/maps/cards/steppe.webp",
+      "sha256": "f31e6bbfc73337818c06f687b484d0777c86b33c2b6c3125e269127fea728f1a"
+    },
+    {
+      "src": "/maps/thumbs/steppe.webp",
+      "sha256": "edaf4b6112be27b1cd273505df97e31a0d054dc194b867b96d34db3380e7a208"
+    },
+    {
+      "src": "/maps/railyard.webp",
+      "sha256": "97848e3ad3439becb4dd5c188ef129f4908e793b455721f09725a29cdfed8648"
+    },
+    {
+      "src": "/maps/cards/railyard.webp",
+      "sha256": "5fd029127780cf132265ce9139ba94511dbbd0c95a896cacd41f9d865b986090"
+    },
+    {
+      "src": "/maps/thumbs/railyard.webp",
+      "sha256": "00dfc4de5c81fd56374bcc991d4be50abcfd57391e7eaae5e69f6450737c8e95"
+    },
+    {
+      "src": "/maps/frontier.webp",
+      "sha256": "cfde2316eb482530f09924234eca18cf7eac88eeda57d7fc575441ee345d9790"
+    },
+    {
+      "src": "/maps/cards/frontier.webp",
+      "sha256": "46ae9b88d8089160d5f05cd5d223ff8f61b45c3ff4f62b93fd7ea2fa1709e7cb"
+    },
+    {
+      "src": "/maps/thumbs/frontier.webp",
+      "sha256": "a76a337ae1eac3dedd421b8a672326f874d266f3f5902b8e97bc772ca3a934f3"
+    },
+    {
+      "src": "/maps/fjord.webp",
+      "sha256": "ca03d907be19fc8f67ec1468a4ff2d09c7a34e0890128e4f250ff8ef4a6a5d06"
+    },
+    {
+      "src": "/maps/cards/fjord.webp",
+      "sha256": "db5db62378311d48162778288c8cb12a0bccadba2ae7b4e6948085e8b5d8a08f"
+    },
+    {
+      "src": "/maps/thumbs/fjord.webp",
+      "sha256": "84ae11308fc1ca6d202772c193594ee762cec3a650b6a65e2bc708f007de4d78"
+    },
+    {
+      "src": "/maps/delta.webp",
+      "sha256": "fed32c19cd9bf04c611f34d4089e7508d23319873f8fb4efd989e461fc13605a"
+    },
+    {
+      "src": "/maps/cards/delta.webp",
+      "sha256": "6a5ecc5cda05c4d1dbe121b6258fee62bcd1fa2e078fe000f37e1a077fe18043"
+    },
+    {
+      "src": "/maps/thumbs/delta.webp",
+      "sha256": "ca95c16e15ddf6ffee1514258b326471699ff342295eec70e4c992b952ab88a2"
+    },
+    {
+      "src": "/maps/badlands.webp",
+      "sha256": "78d4783f59a97c1a67b4b67e92ae88de4944be7dc44b21c2663882f56c5f0c66"
+    },
+    {
+      "src": "/maps/cards/badlands.webp",
+      "sha256": "43074e584221ea330cf4df70a37f5bc3c0d07218ba9b692101920d23f9b32604"
+    },
+    {
+      "src": "/maps/thumbs/badlands.webp",
+      "sha256": "868e6f8a1b8fb5e40e956e8af0d6d483e6930e7085bdab7cecc49b168c764ca4"
+    },
+    {
+      "src": "/maps/monsoon.webp",
+      "sha256": "5fbe473dccfc369f7acc7d56f22d8e4e8af09a5c2dee03464ed223402b222662"
+    },
+    {
+      "src": "/maps/cards/monsoon.webp",
+      "sha256": "0c83a80c1f880c8b9e56687c30a90f5843bf9df6d8216aaa54de1767ec140dd5"
+    },
+    {
+      "src": "/maps/thumbs/monsoon.webp",
+      "sha256": "2f94cb5bac6d15362b0debf4373dbe71cb11de6ebe1f2436bb07dcad307877c5"
+    },
+    {
+      "src": "/maps/alpine.webp",
+      "sha256": "c8abb32aacbdcc917bec9e72275dd5b0eea13510002be517ccbf80704dea9b76"
+    },
+    {
+      "src": "/maps/cards/alpine.webp",
+      "sha256": "7e7f356ffd9e4b3e1c705e1ab1e3c1b05d04dd3744cc6f3944ef931f37db2019"
+    },
+    {
+      "src": "/maps/thumbs/alpine.webp",
+      "sha256": "ad20363c66f4000e6d6980d95b062b5ddb5e957320b693b862a13caaa5df0953"
+    },
+    {
+      "src": "/maps/caldera.webp",
+      "sha256": "869aa5ce2028ed57de6a5ed8f5451720c4a8ab80f10304d55e264ba78d6128c4"
+    },
+    {
+      "src": "/maps/cards/caldera.webp",
+      "sha256": "a851fd167dcdd5333c1f9e6ab8a7a207a4c8cc44d7bb1ddb361d2c0d0063acd6"
+    },
+    {
+      "src": "/maps/thumbs/caldera.webp",
+      "sha256": "a7dd3657fce7af36f5728b74e8f741f179d327ae4af2cf24ae0bf132033c87ff"
+    },
+    {
+      "src": "/maps/foundry.webp",
+      "sha256": "a0dacca3b077f1d87dbf2f7763abddba04a5aac3caefbdc19d01467464356a77"
+    },
+    {
+      "src": "/maps/cards/foundry.webp",
+      "sha256": "af91430f4fd25c5f7c42c240496063ce01ab181d60b94da3242cb67f961ee79e"
+    },
+    {
+      "src": "/maps/thumbs/foundry.webp",
+      "sha256": "ba7722256537d9c32bbb50393218c2b646dafa92c50fcf75908765dc4b7f45ab"
+    },
+    {
+      "src": "/maps/ruinspires.webp",
+      "sha256": "d54f966b02be4dafa7e76f6ac47d474029539a6c08809f01d1248c610d974485"
+    },
+    {
+      "src": "/maps/cards/ruinspires.webp",
+      "sha256": "f7263838600cb9236c9a2d92ea5eeff688f7b789cb56ef8bdc4345f3336d4e16"
+    },
+    {
+      "src": "/maps/thumbs/ruinspires.webp",
+      "sha256": "275211cc8478a492691533788694b8ff89035903227ced1f79cf92035d301adf"
+    },
+    {
+      "src": "/maps/blackglass.webp",
+      "sha256": "494dd54fff1939ea9c81dc8146fb6e1156c45cb18a40d89a65b5088faea7d040"
+    },
+    {
+      "src": "/maps/cards/blackglass.webp",
+      "sha256": "2515701746adef5bd0de48e3448a273705f8bf18a3f0f078342441a708bb8c3a"
+    },
+    {
+      "src": "/maps/thumbs/blackglass.webp",
+      "sha256": "30cc70d2adbec1f5521874b3a7a0880c85cc1bca5b4e899c8eb2cb79d6ef3e82"
+    },
+    {
+      "src": "/maps/titan_gorge.webp",
+      "sha256": "97de4851c2f492f448d991c8852e3622599b9288e0fa130f3e572ec60c38a6fa"
+    },
+    {
+      "src": "/maps/cards/titan_gorge.webp",
+      "sha256": "c9de05b8e43da49fbe1dc440fd1b6d78dff5f7a55bf1df0cd47c9657317c9e13"
+    },
+    {
+      "src": "/maps/thumbs/titan_gorge.webp",
+      "sha256": "ed511f72510f1814a7b95f802ab8d025019797ba6473b9aeaeb1442001a5b0ab"
+    },
+    {
+      "src": "/maps/skybridge.webp",
+      "sha256": "fe027aa4a197cbe53bae96f8139203129d72978c80e772be340fb054ad7da913"
+    },
+    {
+      "src": "/maps/cards/skybridge.webp",
+      "sha256": "cbfb8e168cfacb7291c617c8941accd55567a33d3183a391482fcda401787b17"
+    },
+    {
+      "src": "/maps/thumbs/skybridge.webp",
+      "sha256": "4286463d22cf960f7e01e2655ddaeac35ea1c9d894b43719a432eeea73a4bd4c"
+    },
+    {
+      "src": "/maps/polders.webp",
+      "sha256": "78a5c34303224fc9a6d992d6c616dd225d77db50064cf7253ef5897a6bf9002a"
+    },
+    {
+      "src": "/maps/cards/polders.webp",
+      "sha256": "7be39505980812623b9c2be8f62f0c8a6e46d93aab7caf5dc8e6bd92a79c2fa5"
+    },
+    {
+      "src": "/maps/thumbs/polders.webp",
+      "sha256": "d310367cbb6c5e2d77778b5f48c94ffcc51a17d26c61b4199e17c9aa48848863"
+    },
+    {
+      "src": "/maps/copper_mesa.webp",
+      "sha256": "bc0a748119b5da19c2af0120044be1ec53ca6a9822c93f2e7c1cd208ca752403"
+    },
+    {
+      "src": "/maps/cards/copper_mesa.webp",
+      "sha256": "fc10dbc8205afb5357f7f2445103e4994c72ca1cf889016fd80ad846b16a07bf"
+    },
+    {
+      "src": "/maps/thumbs/copper_mesa.webp",
+      "sha256": "0dbb210856e13d75496378739675f9040d9b533d52bccaec9386b1bbdadcd18a"
+    },
+    {
+      "src": "/maps/airfield.webp",
+      "sha256": "844394e06ac97d07b4a881eac18e13ea9b6830460eff30401626b064f05452a5"
+    },
+    {
+      "src": "/maps/cards/airfield.webp",
+      "sha256": "b762ea5d64eaa80195ba802a91786e8fcb10047526ea556b27aaccfc0c78df8b"
+    },
+    {
+      "src": "/maps/thumbs/airfield.webp",
+      "sha256": "e216262560253162f64b5b02044bb8257de30d792cc957874424df42fa5cf0bf"
+    },
+    {
+      "src": "/maps/oasis.webp",
+      "sha256": "0e25b4da0939631498d7442a7577602d2ac97613e11808a1bae182c88a4d126b"
+    },
+    {
+      "src": "/maps/cards/oasis.webp",
+      "sha256": "aee3503dd4b591e029b1a18d58d2e10be52830ae46ae2153639764c4fe790e1f"
+    },
+    {
+      "src": "/maps/thumbs/oasis.webp",
+      "sha256": "8a0191f6d7279da97c3aa4c43c9521d48798951737ae9861c590e7329c5beffa"
+    },
+    {
+      "src": "/maps/whiteout.webp",
+      "sha256": "994845aee16e07b31614d7a7bd6ca98ee191fb2896216d2996fd8ee492c0f789"
+    },
+    {
+      "src": "/maps/cards/whiteout.webp",
+      "sha256": "f7919dfa4f0fec7c1ff817f2f36d70fad8bb4e144a496f758bd36b719a5494c7"
+    },
+    {
+      "src": "/maps/thumbs/whiteout.webp",
+      "sha256": "f6459bc775ab9606fd0b333829ad1fa95fbe8a7f177d18d4b0b50af6d7b107c4"
+    },
+    {
+      "src": "/maps/orchard.webp",
+      "sha256": "937a8d1d8af350cf71538708d557e4f93d6c348f8a61570719bad1e6cfdad673"
+    },
+    {
+      "src": "/maps/cards/orchard.webp",
+      "sha256": "a255896dfac6fb0dd99fb42dae603476f47175d51e8ce9fabb4866055ec9338b"
+    },
+    {
+      "src": "/maps/thumbs/orchard.webp",
+      "sha256": "8b8b843300d77b2ffb51bd43c22e1c4739beebfdda56fff82c8c0aa343fe1543"
+    },
+    {
+      "src": "/maps/longleaf.webp",
+      "sha256": "ddba8c0735cd8be2823a099f779ff6abc877ca0c6ddbde79a27ad6aae03f8461"
+    },
+    {
+      "src": "/maps/cards/longleaf.webp",
+      "sha256": "7e09af5958ab6bec4850ed259a5d178c09af3248e964f67374db3140ec5b6740"
+    },
+    {
+      "src": "/maps/thumbs/longleaf.webp",
+      "sha256": "93bbb048eaf2a39c2b32b103693edee368edc5f04669f15a8a3a9c5319a71434"
+    },
+    {
+      "src": "/maps/mangrove.webp",
+      "sha256": "18071f0a62e689c50211ca2e3de6a27b70d3dc248e355fe0cee7b0a3d5782f14"
+    },
+    {
+      "src": "/maps/cards/mangrove.webp",
+      "sha256": "464bcf65c3fb93cf4e02e233aac1c45f46560c057817a7b8cb2358ff605c3ecc"
+    },
+    {
+      "src": "/maps/thumbs/mangrove.webp",
+      "sha256": "721cf2bca748b0ea44a39a3d750d2ca44fa3ac0a01d759b2b08e4b9e3284496f"
+    },
+    {
+      "src": "/maps/saltwind.webp",
+      "sha256": "d9074e8260d3cfd79809d39427e4612f97b487c10515cb4783b624642c385cb3"
+    },
+    {
+      "src": "/maps/cards/saltwind.webp",
+      "sha256": "3c212df9bd8340e49d202de64b8964e7d89b0490b4ff82a540f0184c13ce59cc"
+    },
+    {
+      "src": "/maps/thumbs/saltwind.webp",
+      "sha256": "4b451bd09f89f573b6bc7e410b4e7f490ca5111fbc59642467a4e190688dfe22"
+    },
+    {
+      "src": "/maps/reservoir.webp",
+      "sha256": "4769e9cbcab3cb7e95b938e63949c51691356fa516ef01cceca75e3bceb926a5"
+    },
+    {
+      "src": "/maps/cards/reservoir.webp",
+      "sha256": "18acc6453d6ecc28aead4f313d3846d337c322a8bbbce54fe86ae466c070b341"
+    },
+    {
+      "src": "/maps/thumbs/reservoir.webp",
+      "sha256": "6dabbd63aea1d11491abd78d1fabc9bd69e599d4c12dadfefc1d1b6994a3f051"
+    },
+    {
+      "src": "/maps/mars.webp",
+      "sha256": "81c831d3a4e4c8ff2811fe19ea55bf5a771615ba92cca216968e0a070a0b1549"
+    },
+    {
+      "src": "/maps/cards/mars.webp",
+      "sha256": "2d9da7467837f22d642b8901dc4bbe3b067b2334ae6ee8762e2315a80a1d4b1d"
+    },
+    {
+      "src": "/maps/thumbs/mars.webp",
+      "sha256": "8d3400bdc45e06b1a314fb984a12932f0359970cd15ba71a54907ef4b8781aeb"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-day-landscape.webp",
+      "sha256": "6bba45ac32e366728bf241ad47e22d9fe2c3d2d372ef80db5c13d6edd3c0df83"
+    },
+    {
+      "src": "/media/production-r1/reservoir-day.jpg",
+      "sha256": "020a2cb6ca9eaf1e1c0502283a40e5f93df80af95d5062b324888c5eb88b6b9a"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-day-landscape.webp",
+      "sha256": "7e495f4142ac7aacc6f5c5c6e83c57de9631751f34a96fa139e6d61690384174"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-day-portrait.webp",
+      "sha256": "eec241f22e1e46f110999f9550c6e3eb71df95ca43c7edd4928f314d74ba7602"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-day-portrait.webp",
+      "sha256": "10f8a441f541eb4e0b56a8f4bcf6461d8f2dc731c7149b5cbe0d16627d6c600a"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-day-square.webp",
+      "sha256": "aff103a6ebb3f74d604f5d1f423f8a8914eb228888ae7b3498e5fe26a3f2e1f9"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-day-square.webp",
+      "sha256": "1183ef49799390a685bde1b472689685e8816b78a7800828cdfe34dd08265075"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-sunset-landscape.webp",
+      "sha256": "4c599e96d4c98d11fbc95a3e2ec78a4b58f16fe145b549e3638064f217086768"
+    },
+    {
+      "src": "/media/production-r1/reservoir-sunset.jpg",
+      "sha256": "202e52916bbae7fc00666390b8bf6539497f4b72a40bbfee6bca555c45328e06"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-sunset-landscape.webp",
+      "sha256": "fd58a24f5524baaad0b8c281745bbc55bfd507e4e7fdd33be1ad61af2c950923"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-sunset-portrait.webp",
+      "sha256": "0a64458224435a4cc42b80aba585c009022a0c0bb36f9851d7a041161d95dc72"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-sunset-portrait.webp",
+      "sha256": "2551ae648ca88bb1145fb96feff564250e7b0b209920b08bc2e34b0245c77592"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-sunset-square.webp",
+      "sha256": "293791283ba2876ae46f50c9bc396361e13f6a5761bd89d572a35b85a9784a0b"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-sunset-square.webp",
+      "sha256": "532188f6ec85ae2e1ca4ef824a564ba5990a3f4924207f23ff58fc77dae4ede1"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-night-landscape.webp",
+      "sha256": "155ed6aa5582907d5b2f347d3818404320c5c4bfc01c2817a9b8efeeb31474be"
+    },
+    {
+      "src": "/media/production-r1/reservoir-night.jpg",
+      "sha256": "c5743681935e2a6000abc030f71f7df17b5e70f79101e84a5b935b66e5904cff"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-night-landscape.webp",
+      "sha256": "6d29552a8c0a93341ad01eb12d0df4db436557949ef7d04b2c23b76c7a36e9dd"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-night-portrait.webp",
+      "sha256": "95d567d2a5f3e9e813d855becffccc9b68cb6311054417fd765be347e0a552a9"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-night-portrait.webp",
+      "sha256": "4d0e37730ebfd928a39f481bf474bef7e7c99ebdced81ea9eb730562befc15a4"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-night-square.webp",
+      "sha256": "6429f00a267f7add8135cd3e02706ccd8a5934972db5360e93f9a1d4726114ed"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-night-square.webp",
+      "sha256": "82f38f904ac8d5936d271783f07f47b31e5b198566c7bd31dd1394806cf215f9"
+    },
+    {
+      "src": "/media/production-r1/reservoir-day.mp4",
+      "sha256": "e5b5b2f400803ef5ff529e23fb7cf527c87a98b5b1339e3e6835bcc611b9aa80"
+    },
+    {
+      "src": "/media/production-r1/reservoir-sunset.mp4",
+      "sha256": "4422d54cd35aedd3bc9a6309b91c972a95990ce679ca90fb48bcc1fd3b9fb73d"
+    },
+    {
+      "src": "/media/production-r1/reservoir-night.mp4",
+      "sha256": "1ff07c8da9e2c41e10506f31a47d463cc798cc2aaa81c8b73aae13d78103b702"
+    }
+  ],
+  "review": {
+    "reviewedAt": "2026-09-28T05:23:47.553Z",
+    "notes": "Personal inspection of final captures at the receipt's source state. Complete boundary and liquid-shore coverage at the authored capture seed; not all possible seeds or camera positions. Reviewed 31 masters, 558 boundary frames, 546 shoreline frames, 21 sampled video frames and 18 posters. Films are staged, silent, fixed-step exports; sampling does not certify every video frame or live gameplay frame pacing.",
+    "maps": {
+      "verdant": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 edge/corner/whole views. Turf, exposed rock and road approaches remain continuous through the boundary; distant forest and ridges share the ground tone, with gradual atmospheric depth.",
+        "hashes": [
+          "a8b3e47a4fff501c18560b557472ea0ef2c91da572587b733ce8003aa5328a9c",
+          "9377abdfa5aaa7a65adc6b36cb54166db003f59e87bdf2f7a8c0ba02f75b8f83",
+          "07f83f86c1827ff5f7e792b2e0f8d9029962f9c555032ab73a6269473a25a149",
+          "33c5ecd9a5592f40b12deccd98b1a276c19d8eff53a737bed6dcfa8985b9f84c",
+          "ef7d7710f9db04337f426dfd874bc7337976683325d395dc5e9ce0eee386764f",
+          "78c73ce85f86e4335c45900d33546fefce4c552eee821aeee9e82eed2845316d",
+          "76ce1fad5904ffa87ed234b6de8667a40119372d0fee36933975cb947a263280",
+          "962f8c7757fafebca630b7686fa50b166881c614fd52e146237f0ce04bbd97e2",
+          "b6945b89313244c7160b1f7cf95d0ef2e473a5d5a28bf465cec8342ad7077c6d",
+          "82d0856aea403fbb7ede5b9350179215d33b92fe9cc36a5fd3fd209935cda685",
+          "f3e0e154897c9bbddbd55c48f0720947e77d1f5e87f44ae5d41c321ba21f5f02",
+          "a9ccd869478df4444aafd32cce8485553982986e6f80a53a5794e79ec7182415",
+          "7cabd3b2e374af37551f9710098e3733e134e46ddedc18ae55a148f42007989d",
+          "ad2017c0662acf5ed6018adc5732c6aa75f624f5f60f998416a7aaf12ae00fda",
+          "b926b6ec2fd9890d9c89e7c4ad7276a245ad7ddb83143a655db992988ab49c16",
+          "5e68f0c1054ebc744018c8ef4f116c4149d981948d91f4468f48452823e64ce6",
+          "52e56b0d91ce39ef858002e0a79cf849a7d4123d80cd6920dd558a5fff10b547",
+          "48c22273269993c8f9fcf378fc9b5872775152748d500ec1c8e42bbafa29fb24",
+          "61946aee1d28b4a72aa730399caa3702a136eef292c0c485daecaf49f83690e3"
+        ]
+      },
+      "desert": {
+        "accepted": true,
+        "notes": "Inspected master and 18 boundary views. Dune/rock layers remain continuous across corners and road exits; sand coloration carries through the outer ridges without a separate palette band.",
+        "hashes": [
+          "e04fc2f130df64dcd1c6e7667ed8ad690c74d429b6647b32fd62187c82ef0099",
+          "d2e64d0615785f9d1d13d484010402de947400535243e66e43485df29cf39c97",
+          "3d5f7a644d17c79d212a0cecb3baa81c4f515874ed7d7fabb6eeac1d945022a2",
+          "f6cc8f30424fde2a70c371078b830e27397fe769f1910281954986270ed0c7d0",
+          "deb01c9790bf44194a627ee20c80b55edc05613e4a7a28f029db46c1e3928836",
+          "dd76fed789508b0c2489bf4cc3765f6cbc54c23d9be3dc9d88e6800624b18519",
+          "cf9ef5920cba453d15e78844fc2ad22465f673af030f27cc36bfa9e499fabeb7",
+          "ff23d846300c05a73bf1d1bf71fafaf3e733a6442a96f9d2787c244b89bd1fbb",
+          "3b6e467bf7635a921e2c6e7e5624f29a7018cfe0f93aa353296e9cfaf5b04e60",
+          "052fa82f0e01ab35223c04ee77ab7238b46027abe66f713c02043029f1d3178b",
+          "84387d5692c6a02fa55d6695fd6ea98cfdcb6b659444df1e4df9bf390efbadbd",
+          "d5b518f0713fda84dbbaff74b3911df24db94d271715289ddf72d39b4fdabafd",
+          "0553855c1dba0165784d7de7c38c9b51e0c22102ed1e0f56059204dac4ee541c",
+          "f260f278a47a45cd2f2c6f366db9251366e1843e1d22b6bb3fc0378e5c7f3eb1",
+          "db83743cce3f10c2a4e6473f28769e9829a98f7a46031a0a4168cc4c267d0bf8",
+          "17ddabf64988a018311315ca9332d87dcda536e0a28bf0d835b47eb1870070d0",
+          "04ed1694a435422bb3863a9fc7dde9661ff9412d6b373bb0a1503006c1cb66d7",
+          "7c95f6ac91e8df53a0baf62519c9e6a8ad7cbe4040b3d1c30356528b788395d6",
+          "493c7ea85d7d8299ed886ab4c3223e48aba655f20ba0136ba0579adb1f033b5a"
+        ]
+      },
+      "winter": {
+        "accepted": true,
+        "notes": "Inspected master (including frozen lake banks) and 18 boundary views. Snow, dark rock exposures, ridges and the road exits join continuously; no exposed skirt, square lip or mismatched outer lighting.",
+        "hashes": [
+          "e83c930d54fb19a90e9738d43c68599c189f1e8e3284f0b69d3a69b8f370564e",
+          "f468dec4e96beda973be3bae7fa1bd3f439bf879ee9f35310331f886c2b3dd44",
+          "01b1c2a4a39165acce119cbe0a8511b478a368c5876ba776bf0f3bab7ded0085",
+          "c48ad2a13abb7f093cdcbfa1009e48ff042bdf534dc0cf19d00f886c78151914",
+          "39aac8227f2be17e4169525a38796a8770539b373e7e9228b652e602ad2f32a4",
+          "93216d3a5e7cbe8911c0ef954dd290debb76dff2f11c7c1b256827a0aca0f6d6",
+          "2c753c4de24ae936d2214d98efb333f2f5b5831c6924e5f0679f7eb5a82e9868",
+          "2160da59878b8a65b0dd9b4f31d49d68af0f950e9b82875e4f3cb8c402f9f4d8",
+          "59d66cd581abc661ec0398c86a7ea7a3dcfa07330f6874e15bc25ce2ad3d490c",
+          "edba8892638d9658cc49290803d874c8224f632ee98198389a422a79c3adda1d",
+          "5d6ceef653a37179577d77a3175b2e3ff9043a5b0cde0393d5e3a47dab994496",
+          "f8d19c4d91edfe1ba9f6a22216535f3cefffc08167112c3495ee646724d27b67",
+          "79909f8b6984becda7121db49c83eceef0fd09e646f1d3a4e251325e62e18ae1",
+          "b8d3b677bfb2db8248c3686fb88abdb567b83f7372e51bed2d89deeff5e8e9aa",
+          "d70f2a09da85c1dcf72449ecba96abd6dc04dd2197f0b3787bae6e461e88940a",
+          "0fdf91fcf35bacc25127f67da1fe2b6a47f7a4882e8bc85d8ac513f409393861",
+          "9ebd3057c5c081c4daadd3a29b17fc76fc1fb69e188821f5957cba4af756d0b7",
+          "f28d1eed0bc3125366b55a5a4245c94117088f7d26f6a2819910361dfac0fa24",
+          "040b1b253a129a8e204d652e3029d159862313be4cf03951bfe417dab69cd935"
+        ]
+      },
+      "urban": {
+        "accepted": true,
+        "notes": "Inspected master and 18 boundary views. Paved ground, turf and road approaches carry into the wooded outskirts; no visible square ground join or abrupt lighting change.",
+        "hashes": [
+          "e3bbbc19d92e19f9ae2d75207f38859bae2cc979ce19d8e471efa015f73c8fce",
+          "604870418d0aea8ddb78d1adc61b1489fa289e2fd1f355b3ef16523b6d6d55cd",
+          "1557158ff07c9f42a59085494127e48d586d0790dc2e6ce2b4f9a1178c54cb01",
+          "cf72be0b5727d2385cda0d1918a3e055e3515c06b6a468b7084c039e28356300",
+          "4399d49d3abee0b9c34acd60753212bfb500ddcadb8e9247b1202611a92583d4",
+          "378f2f545a99036de5d7b78c99127cf31be4ba0ccd1cf934aaaaf58737d94ee7",
+          "e518be9eb1339a6930d0397fb76bdd18690ac89f7cb05470d8dcd1ad39450550",
+          "f2dfdea77b2da44622acb52ed80c1b091f102403485c42a070adeeeda374e3c5",
+          "9706e923218e09424dd218e285b8a30f64cebe5fca788ff3f9bc97c99cfc5f42",
+          "2fc9acbf9fb04fc7ee268d2de9b2c34027d49ee9df1790bd05e1bc1207d49aa2",
+          "67f7cfbde183b78a08741405e197903d4a523081ed3bc81a1de79ecd1f4d758a",
+          "1c926ad6395aa0c18a11638e9602872a51282ea341e24aca31fb26fc87c6a266",
+          "1bf914bbb9601c6603e02a2f1dab550be97e5e40948607cb313c0830e6505606",
+          "ac62a82a21f8be79481c1be09f5021d20d480bd33ecdf33315adfdc9059cacbf",
+          "fbf58869eb394e5a20a63454f62542b5ad9820919d01158c0d08dceb8f05fbb6",
+          "9e6762f9641b53c6fa9d9202abb0913ba272b16bbf3d57028b43e6f35a0cd7b2",
+          "b26b146a2f1405d90698556170d90b933cb3ccbf7f80bb8e9916a771d9ddb087",
+          "01a0d6ca9feb5f5af6443e57e7daf3ae55e24bb0c736b4532b6693d5a49c43a8",
+          "2c005a705b66c82cdce4319e8641216d05047e2efdba0d9e726582463e4f54d5"
+        ]
+      },
+      "coastal": {
+        "accepted": true,
+        "notes": "Inspected master, all 18 boundary views and all 110 shoreline views. Three unequal coves retain headlands and consistent beach contact; extended shores bend smoothly into the sea apron without exposed dry seabed triangles or a square join.",
+        "hashes": [
+          "cc4b27a5e60d0c92debdd5f010d75f0ebe13c50e1820c7443893bf18f5e24e1d",
+          "a8dc976f7a2f1273fa768c6da328cd6f0208a2913b5dbb069acd4cc6e0059326",
+          "e00f5b3c482f3d17e885ec72955a9ae3da5b33642dbb16474a87ffe3f4237d58",
+          "7daa2b17d037e67bb0b244279c20ee93641afe03bc553faba605a0eb9aee3be6",
+          "396c047db09491697724049c88c9e119d255fa0918270bf388c8de79a9ef0c18",
+          "8cc4c233ba426b13874ebacd8b35c2cb1dcca5547956dfc0ed5d23429d539c66",
+          "166c064bd3630b3e736b0f9ac5191854d12bb715cee3eb401062399ca620a734",
+          "8af64e2ef1933f2012757449be1bcdcdedc12d08e92a4df6d9fb76d89708854e",
+          "27915b6dd79051a8e4ac95ed65cc52932cf2ae1a2aad8922b3b78bfac2d3f35d",
+          "b5f99ea9ae3b684e16a81260c92f82fe753f7a01504238c8209c319c80e84e83",
+          "85187f6930da167ca13bcb285d3f5f0bdcd7f1c5684321e7e69ad356012f499a",
+          "1f073067dedc88571112a0f1628dbf5f4f475f7d9a180defcbb5648c2d53f5e2",
+          "d008f096f094f15afba724e4eabb38ea87348fcee79177e203d29bd25bfecce3",
+          "89d5abce4f17ccb2c52921471be63b99e153bf3bf2de222ab4b6fcce0e0aab03",
+          "b62ff489279653390c21d79019878db371df46458fac2762ac4c51cd91b98f62",
+          "eeaca6a01ebd9b4189df653ce4dcd6efa36ae1311e954b91ca09415b29e5a8fa",
+          "5344fb4d96ffc762d5a8ce52c957b1ad7dc2689275389c79f25c7ebaf39d7435",
+          "df17e96bfa2e273155f3c6c1d55c62c8493973d22629a64252da6bc755728f31",
+          "5d600f1a40111e94df0c0c441e66f4e651c013acd9c1517cf8a400fe1b853cf6",
+          "c77bcad8f3b1185c0444694a72ece8867da61ec7dc33cb026efe367e4b2181a2",
+          "bad528774e0f997320714f1897a7acf26ec1f2582f68a5abb390ceacc1545f63",
+          "8df794b74409c3a00e81ace626bc2636720d06b505125fb10cda86bb7d171bba",
+          "a72a7610bd78ab26d9475d3474cebb7dbc611674c9092d381a087d481abded0c",
+          "e54a04cf190952e77c23aed3d3ce558884d578f654d5c3a51b68c4f92167c12e",
+          "803b6db6e8b498de6b5ca5bf2080d5751aed70c52dfebecf24714abf20d1e307",
+          "74b12259c274a0329d04acd415b0e74e2603045de6178c1455daad8a88192adf",
+          "96c8b5a47c514d2c0d9d55adccd2d4f586bef7c99fe8afd89dfd7a00fe15c07f",
+          "e8e0829180a0f943134d4f9313a8b4725b21bfee56a43a3a6b4952e24e3482f3",
+          "6bbedd81e1c5dcd612c51c70704dd9dbfc86731ffc9649fd553c9f5cfe0a7086",
+          "e0ea55349c12a776a242f6698eb86a84fbcf77ab7b720f03cd5a66ef3a1fb668",
+          "c585d3a016fb263d03cf2186a771ff7be1e70a9c6d18bc5bbc939f1e55d1f3f2",
+          "7fc95fba795eac77f2f727cae2496236f049c889f7524f63b61cf2c1886e680a",
+          "9a1ae2e70b1a6e59de05d51bf206f27b337bb4aa1da00d2bd77722b6055a3c02",
+          "9b3708d2ef5058e02f6877d5e97af852f6ea2bbb9720efd42d12dba472c412ff",
+          "f8f6f6db0272e548f55915636b53dc8a0ea0816efb80810412fb09b384ada423",
+          "cc955a9ad1d0209d0afb4165ee220ca13a7a2613fde9b7552f8b1b6a874cdc54",
+          "6cf33eafaf90790f9f42aebcaa919edfc458d5a67ab5b1928045fed64c0efc42",
+          "2971b4bb11fdbb63eb1e4d2171ce66e592da80e101c9c50e53fddb93f6bb7a46",
+          "98d4055b8c195d03229bd1af55fbd2ac1ff0a542ed4c09967b85032478f1076c",
+          "73ba5e74cc3752f451ce57854170a9d3a243fd7b513f9e1c93794ea9b3152ac3",
+          "9487a9f35448a9333b86551aac4a4fa04f36efa8a7e71a7c76a6c1c8f414df8b",
+          "48b3cc9f013a6022571d0170bb1d6fdbb26205d7ff6a390caf5ef4f29ea98007",
+          "cf31927a093bd46e7afeededfd1a4a1aa39919c2668ffe7d2e50e3bd980f1b2e",
+          "236844894174528b06743a152591ac138dc8d876d874e4059c23d088b4ae07d6",
+          "e5ccdd85ad149a52c352cc065b182f2695888a3ebe124f28f3be604f619ee53c",
+          "f1eee5595972fa33250cec2a7076611c52210483b94cfee48d891c605653740f",
+          "ff20e32e8305890548728f37ac7f70c3432ceac7bb484608af0f29b9c1ac14c6",
+          "eb6fbae00fe2a86669f8affd8c81fed3db7714e2d2218eb7d8293dadedee8c1a",
+          "31c991355a3e74018440f70a014de83b65958c20905bb859f4e14c6820e07396",
+          "c1ad2e721efe8934c1a16fbe04adc0a8e28068cc8c10b385180aa32c7ae7f5cc",
+          "5a7f04ee1a7ebe957b5576ca55c90af65875cf57e62a12a97005da7a509c83b2",
+          "4d3809525da3cc1dcc7856359018a1a8bc2ea3f45fe4b567a7c287cd52508356",
+          "61f6405b1d3bcdb71f0c2544d3e2aa65fadabfab822027791eaa22a3b47f7620",
+          "b5061d91c1755709c08d91df6c434f92372033b7b7336fa3d45c8d19b628ebcf",
+          "fb84800efdda0b7e72e37a6d4950df4cc587cb6ba94666ac7737dd898941f08d",
+          "44e8b6c639306d19ab2565cfa693eec8a67689d0e3f3acccb27862c7e4637f31",
+          "c802ff9616cca04b97eb50bd435dfb159797d597eb086f96b1c2f2a0839ca42c",
+          "ffe076312081b55812d0d0c5197d2f93da5258e56ba84b958d8010e9af7bb44c",
+          "8bf038d0aca98ec9caf99ad7eda98b12015d0a5d501d3a0f53d9a9821eceaecd",
+          "1778f9bc900ae391dbb5ec2dcc4ff7dc7629bc0f0160211ec31ca70159bdefd3",
+          "b2fb21d67130b7d487cf9425ba36afedb0fc762358c9ee84b2bb7a3136896fe2",
+          "c189e5202054e114a92b595d539d101d22a2c8383d18cd1050a8115bc4e82bf9",
+          "4e1413180eb2dc04437e6c6ca2d7d950c682668a178345fc82a58204aa629c13",
+          "e23a5ab7a4e9837439286745594f3ee5b4c696091afb5e01b66144e8fa605945",
+          "8414f79d3f9d542ccfb4fba830a370afbffee77fc79dc36ff1413f3b13b9a12d",
+          "7cd91f27768948c16f7e4e24d6b3f31fdc314c05fbdcc77397c6fc2d1c2a2f84",
+          "5ab0e6048c0ac064784d202975451c23a80308d0158e75b79d2754b75f2e6b11",
+          "d5ad0d3cdb057e8a274c2277a883978d2ded146d2a98fb802917bd27b653ae07",
+          "8f065768e32845d3e21de2ce19a0389f18561f5dbc77a926a24f05dbcbfb0361",
+          "0d823758d0093a94566edf1ea736e8f542d3dc6b4356a9b77a0125512e4f5dc4",
+          "e1b21fa19ac7690fe1b79c9252b8f7468e34a6b20fd2d65362333c6f00c5d81c",
+          "d48b71bc16be12b992ebac363d03dc808486575fed49562876e7ee7f726214d8",
+          "44be8cd68d1ca44f26e3434b2b76e35b07a2dde8a7f95d50c518e73e9473010b",
+          "3a0eec3c233ea90a3f96495808242770c0c4bd60fd037f3f9db5d7b701485f5a",
+          "2028bf7cff5f5cc9df36d5197aad4000a7f734c99e8ebf957a8ba9662448851c",
+          "d64ff06b973d0093bb65e20894a67bf7afba46116b01462a86f39b10b5d10c9d",
+          "6b6d49ad5bb2fd4200fdaffdf1f72b85bf5ea094dbe291a1d5cb92a998c3502b",
+          "0c2ff4645f1a22aa1297e5012199aefe96d5ff2db26ae54e2f2e42a583a9b8e9",
+          "97e1a8ba602ca73baccbb63a35cc74918703bc6bbd701cb040e3bb5085257520",
+          "7424b16403724c602c68104d00ad5b91abb551194f9cd13ff775d5bbdc42183a",
+          "988f2662fc5dfbc4af820c6721f06bccb4424832fdb8b5e3e4663576b2d803a3",
+          "c28a7a0dfd660c4da5c8966b78b11d644123ecf18119d5c478a9d73b6333d29e",
+          "2af554da032235e5409212bfbf7a02745bb78a05bb77b8251f631cd622b98057",
+          "6a073d595ba1b970f151c7df2a3ed0946af34ff1e69c44ff3721dc81e9dab71a",
+          "f40d218e93820a7e75fc37d4d7901198018378893255109c38e131c470992904",
+          "944b509724bbb100ecbe7cef21b90aab5bd33f050f9dd1d954044e0968dc679b",
+          "4cac8a0387924327a83158d66893f376f6c5cc19d63293ecb241790253759c7d",
+          "06f566f94d6aa46edcf956d75d9b651d08c9b3712a99792506306b31e40024b4",
+          "0377c993ff436e61b214a329e4b976e55e1d2711663200f547eca601c322e16b",
+          "497a5694e1f39941b9054d252f1f8fad02af4003b6110532ba4ae8e159f0c42b",
+          "41b4432e0ded74b864ab036d9b6c5cb74cd6dfd2e6d6d5d208a01051722bc218",
+          "abc5f104e5838f079ff229188b93f4bfbad9af839dba689e42af0a5ce626dfdd",
+          "2f73d7a4a50f8d369440417c99845d7bb6b61d81fc2705c790b2bb3c7ca7009c",
+          "f780541e70abc83f60e21080cd0e2790ee3a25c8c6ca85da4ccdf6e64649e89c",
+          "d4497353a61c6e83e972465000cd3bfc21018dadb6a8a0674213577682dfb13b",
+          "803e8184dd0fb9daeb241b4a09864fcbe0862eb5e1ab7983c90288dcf5b9db4d",
+          "459c4f9e545cb09bdcb9b7095b34ac22d415c256c75c22408b78fda0a053b0c5",
+          "67604eacc990668b25aeb8710841af45deb07f2152fb2f022803a52becd93275",
+          "a5e1dcb3e98619f611f2cddd6adacda34f98e06aaf29e046a094250da4c1f943",
+          "23f8efd1a7e1328c90287e792be12a13be3530f64ed428dbbaf455036eda11f4",
+          "ccd78227e8700766f2fcdd09963289107254a6ae15841c37cebc4f4fa3a51e03",
+          "f6753f072d874eca37bf548e9f4062106855e7fbbb81eba1151b8dd9acc38e37",
+          "eb1b4cad39d4ae48f601ba10f6671de56887b9687ae152783ab4e7961df1ef6e",
+          "c3fefe64b73303a8e6536ed5df856c91d78002881f4627d666e27c4f0461bff3",
+          "73ae7fa0f584a43ceaa28e9512c7686e1cedb102cb08e199449f9a20f113296d",
+          "4058b4cba4a1c9ffd70b749ac16fade0af655c3fabe68d87dfa4af27acb98434",
+          "d2745b5e015b353f0570c390b8a80cdd74177b66e1e2176ac7402f6d8ed1d91a",
+          "a9eb14c92c54497044528a2ef30b557cec574effb13b0716a3495569bcdf3f2e",
+          "80b52d1d08c36cd8bbc520d756dc43c595e77716efc3415bf274d8658de09169",
+          "16b419eb8839df4c0274dee0094e1bd72cd4036be19dab6bd7cb582c7a8e4a1d",
+          "5530e1766c13d8352688ba89d88138953f6b4522321d06aa88be67498cef9e54",
+          "d8e65f51e01c8c680d00a5bcb9c94bf753e306f75038b3776704ed4b467700d7",
+          "5080383abe9e774a5913aed0e342aabc9090a88aef253342887a20fb07296dab",
+          "2581838583f83dd06bad8faeed3764bf99833ee39089d14f3c26e1685a07dee3",
+          "92926015137c8d517448190975863373bb38d642a297d2934b6f98bd94cad06e",
+          "02f047580ad0d1f130449a26fe39b3fc88af2a88e5a8bda85ed244620bc39cd8",
+          "4c26b251b8ec3e53467212b3ad5b3241ab0fb13afdaaa871537ceb31960aa749",
+          "ca37e7450192b2ed5975a33ab2195f190fa1204802ba3ce532c99dd92394f776",
+          "4e85aadf6e59633d29b54dffd5231f1b2a45b0c450bb4e9a16e3c601e3b75f79",
+          "7c2e6569aadc8215a4b73684e98de6773da3ebe56d835256056414685368f3b9",
+          "412e372b35af36a86030ee6a1b739fdf8cc0439fbac798bb7ab70955ef3f71f7",
+          "a9be37a55279b3c75c1343b71f377ff45417fcf8ec53b5dad222185c0183004e",
+          "2e12e897a8fec4712a3a0009437de6aaff883f3a6eca842daa2a63b5baf64777",
+          "46a99e9e15e50a4e70c3734bf18a5438f6f7034310e49bc1b8cd9f5007d02424",
+          "ed97bedd0b6bbc924cb5d181c69d09d1be3011033bfdc8d6c96cae3c657ac80f",
+          "d31a8083f95e62e2c5647f58b23ea1c38cc2445ae3a9d406eab62113bb95c210",
+          "694429dafbc8009505c558f681ebdff9ae3fcdb63f610b5360d8026f9d82368a",
+          "01b9f7363b2948e790955f4e66b58d612c887d36b6a580795a048a4ea514aed2",
+          "c792404111f38af083821ea5547a441688e21d2c11fbdad27d009d6019d01e9c"
+        ]
+      },
+      "autumn": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary and 18 shoreline views. River, bridge banks and small pond retain irregular curved contours; wooded hill textures and rock exposures continue across corners without a separate ground band.",
+        "hashes": [
+          "416cd75b265598a7b7457c1e9059e986395e1d686f5671aed49d7bcf3c9ce64b",
+          "88e506a301ff163c5c3ecfcf18353d7467e77221977b247fcc739260dc4b5a84",
+          "698fc022223cb23929dad4b99c94fb3391f4e733a90991b10c0271549354f019",
+          "fb9b50e13ca9705a62a30061a62538ab841d406b877a11b838cadd28c9d53608",
+          "c761a13bae3fd0abe9ee4c396dfdba58336cfc39234c6c746e071d38cd7d200a",
+          "da15b5bc1751f54458ab1488ce2b35d4fafee2aee6f83493607ba91931e29f85",
+          "9758be15541fca86525e502f11ade901ef9c325d62814703721d5d0498ceeae7",
+          "a5f36ddffaeac7fbd9b2959ed76ebfa292244150dc8b2b1a94d217f32800d719",
+          "2c76ae4b2220ad22248684026999ff9972b3ca343357a1ea4dfc33802e50c739",
+          "57d02b65cedd509a82a644163625a9d9304e7a498082212a2a64d0fec9c1b0db",
+          "989ae5bdd4f1d84eabb6ff456ce0f30b5587251237997d6a8dbc1a05bbe773b9",
+          "ad3ac8617ee8a8b54f86cb31dc28b57f848d362a9b3c7217e9663eaf2ea4f8f3",
+          "0c2f270d040444768b0907e011a79cf83b9dfa4c7f9c907c22183178e4539fb3",
+          "91d50989fcc39fe4ca07922de5b05ca5836548f38a4d839a59e1575028b07e55",
+          "99dd20ef7b3a1bb6f6522e798b1103b454371e4ecf96fb95bc132688123a60c2",
+          "9b8291ba506c7fcb789b4409474eaad5e9cf48adca221f5db10da3719ff7e75b",
+          "55fcfca6b47bde6557bfe0087bc514690a9ebcfb1cac73a3b0c46df026b4e25e",
+          "9fae32ab6a57b82f1cac5eef205a05f5b432680cca7056058795c81385d2de08",
+          "fe4ff48432de728caace2f9fb28b9e214fcb40b67cef7afba42baf6c682945d5",
+          "3a1696eb35d29a45f05a683a3b855f4131bd623957356ef5ce723888794da721",
+          "59527371fe689623f2f008908c3aa8312b606f4d9b64b013d0062b4c14cd163b",
+          "04c2aebd1565b9f1a4148a7b68bd772ede57fc4330043ddb9c475ba5152b6b50",
+          "74a388d77840fbfc673a6b57926a19d1fc70adf33ffb99033312f0d77beeceb7",
+          "df84a7690b594a5c3857fffe68045e8593987e3cc9382f45f1edab6068e003ee",
+          "563c0ae74634a88279e83b8b0da40953dd189180f677637deaa5c81fd41305be",
+          "e97310135879580960276b685592c069a0b56378dae425f2783ecb4da2a82a6d",
+          "df810a815aacd46646f108aeccca7045f9553b95c75b0947bfc99a4e1212c247",
+          "6c04604bb1afddb88d92b8506403757cea205b8c5306aa2b64f7267750d4d07e",
+          "12954173d1034d090e5de78afc4222b4cf7233474556d38983780c3879617e5e",
+          "8a2cef17a856a253b4299d9be14ea2081120bcb663cfa19958336cf96a70fe19",
+          "9bc924d2d09f650faea284dd7d4ed6f449ca448187789d1d615b162421ce2855",
+          "32049b3df96d7ab5b5782a34a76046a14b316ae690301226ba2a0cf0d50fade4",
+          "f1c115f4d1244ffc87fda2188a56297a55cfa633cf4771cd927cdfd609ab8e41",
+          "22846692def653c43f89961b14f4b30335bd4e3f68c20af7903699bbdd63dc11",
+          "8d064d6c5d0e856ff614913943c81d5ed0eb865ad65b2429a6bb06572803e536",
+          "c417ac0cb0eb063c66a1d0ef5ad074edaf626eec79dda2b03d248dcdb3efbc2b",
+          "7acc21d1ac5cb0597fcb7e07451ea3d8920b953339d1c7046a12249c619d0bb3"
+        ]
+      },
+      "steppe": {
+        "accepted": true,
+        "notes": "Inspected master and 18 boundary views. Dry grass, brown worn ground and small rock folds retain consistent scale and lighting into the outer woodland and low hills; no surface lip at the sampled joins.",
+        "hashes": [
+          "9296682ae2361a414980745f4efb1a69f36c9ca31012aa693281366ee1f0c9ac",
+          "07dd178ba5bbfbf598d05299018a45ea415d9471d50756c487081163843ed167",
+          "ae68b0b9c48890cfc4cfb9d07fe345f52e58806f1c4ce12251dc7c86d44a02ae",
+          "af9757ba99d8edbf158347728c712aec003ca0b158a95608720d5a29ffc478b6",
+          "421cbab6aacf5b7b716239677027bc436ad5f1fc5df3908c32e075c07ec7d28b",
+          "5d8973a2f2862fad5b13454e56ff46bd6a4c9eed04153d67504076af10cdd45f",
+          "069c383f8caf7e6e0af90a32f579345c8fba588dbc7f37d462a61af56327d737",
+          "a8c7a65f3122f8e1b7b1429e70c526a50ff1164e0af1ac34c4ae53a7c827df1b",
+          "c93616e9f0412d8e964027365bb1db5127111054e7eeebf84065e8ca9357c618",
+          "4ed1f1903beb22bb0f2ab3937d0aa382ae2fbde9a961868dd0a259a355a20961",
+          "60f313debf4811f6eaa237ae684b938fba2e05055a419ea713ce1ac651ee779e",
+          "60b82434a495c58bd1b11fc3a4fd9aa7d95dc15fad702c0a2ee80c9fcbea9aa7",
+          "f37133f6dd725bbd930b355b67d042e0a3f0baabb7639ffe5f2743268a821775",
+          "b0f6d577d8e9a5bc32f2297aa3a21cc4f5c5782ab660ec6ea9a33e19f37a659b",
+          "7e29cd867bb00726ce78ea05d3b2581d622f7ad4c4e66bb86ca67ddf5b692671",
+          "8b2669cd3cc819f264a119bec7c4727ce54204a978165196e8a310e8db31419d",
+          "206bc292d0a784ca08fa187ad7b4897f160c93ad140967a6351f9a3e1a369d11",
+          "afb0d4fda0ce68acc32ca38df5856bc769d2108febe2be2021356e1d53942ddb",
+          "9128aa5e509c034164784d9b51efb71dce0a3ff6f7636392e1780a50162c760c"
+        ]
+      },
+      "railyard": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Industrial terrain, paving and green outskirts carry the same wet overcast lighting into the distant hills; sampled road exits are seated with no exposed boundary skirt.",
+        "hashes": [
+          "c53299bc5015328fee05b8cba1da4c04e869f917617928a925bd3998eaaaec1a",
+          "0f5f39e79747458535bd12c9bd8fc8ea82e399f7b49827a52016e497325abafb",
+          "9c7cbcc8df03618b883619f5caa6b371268fefb952d31b78b1c948ef392af2fd",
+          "c54cc8e04ed3cf6a572f043498e584332776a553818284680d3ba559930d884c",
+          "ac8087f091a24698097837129be326abe016b9e8dfd02a11901e71d6975e3d20",
+          "0e300a5a5d129243e0bdf01620bd14729bbf7f571ca66729248f3018b9c8c3c8",
+          "dda2715313715df8d4fff072030221a5468fa4f6582f2437a1ff45f0f48a8fe3",
+          "1ffd29a4217948707f4cfe696b6162c170c3c9d91346d76f74643070091af13f",
+          "1c05b40825a8a3017a549d6fc3c800854863d07224e9450d40b4d2e9643988f3",
+          "6c956ac55872801c23dc62bcfcf216c87667a22d5fae92bd0eccea1e9a9ac62f",
+          "5a3f355616c8d1dbbb2338d4260b86d1e959c8911a0c80c825b0ab12b6f912fd",
+          "8255c041ba180434dc23ab9bf86b8cbf0d84759d32e5e5225014340242be14a7",
+          "133cb1c5fc6b74053afcfa2b522815d977d4001a6956c6151aec5c0fa3dc0464",
+          "347695d27112e573fd711a7b35e511392b87c96c81f963514118f6e666937366",
+          "c8dca09fdd5a8b805394e808beb3f0d0f3b5282fa7011b2aa3e95254e1bc6e0d",
+          "873f8122cec85c03f3c3e26174a7759478109d73b514af82363552f8b38d2096",
+          "c3ca05904912756cf5289074b6578f1e082975d2cc995dd9e687b79f6e160b7d",
+          "827d09ef3a3507c90e66ca8dabed274e8af70fa4b9167aea5b20fd27247b71a4",
+          "aa2e3cb6079f2a78315645fad6f055cb6b0103b818907c8656e04214ffa66d87"
+        ]
+      },
+      "frontier": {
+        "accepted": true,
+        "notes": "Inspected master and 18 boundary views. Mixed forest, turf and craggy slopes continue beyond the village without a sharp material or height discontinuity at edges/corners.",
+        "hashes": [
+          "3fbf7ef17cf4b78bb30b932fa01ed697809b50ecaa15197eda83ab1c9cf318a6",
+          "6d7a743c922c48372e824a52e8897b99ad5d1a230223301a48dd3bd49dacb5da",
+          "b42507650eadd1af7cef3ca5f81087f21eb748b9de7fe5d0de4416a26e77e149",
+          "8dba755482dd3e20cf8a1d62c3bf5fdb8fcec184e3395b25db23cd852b201c08",
+          "1d127c0db40661da1c4e4936a231925df21cac37cb9d5f26d2ebc0777a54f60b",
+          "3b64a03ba28fb8e782f8d42bd7e36ae084e6067ce8b2029ca9669cf86f62b9df",
+          "99b959fc4c0e4d62e24e0fd9de9c5b1e7af0a0b5f8a55d218dd015fc95567904",
+          "75990c4e767b3706254489d221c2b35cd3f08641bba804c51824ac0b953f3e20",
+          "c1bb1d50fd26bb19215127c14237e5f60bb34e085b8e7f3d2bef5e451cda6220",
+          "45d89b8ece5d10fc4653932b86a7ef32ea1c60a21135a5dc0a647ef7f532f7bc",
+          "ca81ee589e6962d77c250c338b51d1ac85fd63666d22d42ed4006a26ee3cb7f7",
+          "d94ad206cbfcdae5008993f822146d4645039b4e0ad7c20c6c605806f95ccc7b",
+          "7feb8e657864d1fb9ef5883d191679d9701b986a52036d523d9c1ccde989618e",
+          "92ae49dfa73ee2d4afc0f5a5ec8dd291373f701a1c024a80f39d703728761eb4",
+          "45b47d8c79e889be674cafbafc99c3df69c1e9bf624d7d42700d0a2ae67eb28e",
+          "91771166681bae774a7276253e2ac8b370d777e8c72eb59f7d15d3d16d3c2452",
+          "d8803cd673d85f1d8a46268c264ba8e483ed28430615e3fb188bfd77f62f4ac8",
+          "2b13526959e9e59a89f1a733de632543965e46aed6185d2077bbbd316ada367c",
+          "ae1f9d4c6d1f7afb9615d426f37aa57fb98aad89b86b526afa76161c88a335de"
+        ]
+      },
+      "fjord": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary views and all 213 shoreline views. Rounded inlet heads and narrow dividing headlands meet the water continuously; both outward channels retain shore tangents, fine contact foam and consistent ground shading. Far apron is finite, outside normal gameplay.",
+        "hashes": [
+          "5a0736d775a886a29d1cfc1776e7fb1e2bd1a8d7430216209eacf8128e016444",
+          "e3e4b2c1ceeb2aed10f954e01a2ac5feda4bfda4c4c4e906aece83e57b884383",
+          "5fbdb21f22fef8ba49bd527732a4b98dddd506656a688bcadd239d66411559d0",
+          "1d5993325e1c43470caa9d617375a84fe5fbb846f1f56a4f02243a67e2a5b064",
+          "269d9078b165e18213a8881feeb2fc768353ce66aecd7d83fa5be3712522b7f6",
+          "acb0723601704b1998cadf7c2c0d344fe2a408181b21f6d3a3c4b21ae1d7a627",
+          "130cd40b40310b70e6afdde4f1b550b9b9b29c4074c527e8b5130f36fbfb0920",
+          "7adad7f5f6d313b36270610cc7398757bea4dcde588473db5b79a0e2690bb9df",
+          "6a01180ccc3b7ff98777d9330fb3476665a9b8aef94a88c1f7e5be79b475aedc",
+          "578698c492fd8539fd5c0653360dc359db4ebc5044f40c75a5d16f73dba688e2",
+          "cf596321b0512680d9338940b1677d474fcdda4ba400e9cac6257edd53d15087",
+          "a25c86197bdcea461e5b25b0ebac00cbbc5aa23dc844ec63378867137bd870c4",
+          "d3346cc7637f2d9b4a7cb681c91a748ea30b74b636055a60f6f2fd9d0f4e1451",
+          "d728cf6aad73643d81c8b7cf420eab721b6fa5b76065cf302ba8f5f71360aa52",
+          "ed76173d032d05237f00298061cb9b99b50af27bb9bcb5b562417688575594d8",
+          "b7116001bdef4d1c192d64a5a0ec81464e3dd3534aa50d4b542341d1c82ab97c",
+          "b850931e6025cc540c70477a55aa9ca4657e5e7733f0a13cf779c957bb1413d5",
+          "1c6c10bd645f8b06efdddb2c57cbb700d6048b348deb0de6ae296c9fc8d848c7",
+          "bf1667410e7db9703b907d90464ad54ec2350d6897b36684739f7981b6763ed4",
+          "21571a5b72d4701b52cfbcbf836f27fc3673c5f7abc3fcf3a147b0c0896463d9",
+          "f4f3a7a5899be683a82a1c844528966c1416e0c54274f8c77bdb5a570b2dcbe5",
+          "d3e61724a9d798730c43c599f965c677fc4dc8a83831ae51464a885508b77efa",
+          "7c5ae54d5dc5c05a80205bae139d247caa923051ce4a6f45b0ffeeca4e08d452",
+          "e9f65916deac9942727114876f58e360768f4996261c8827b339be5b53e5bb16",
+          "94767c28e186fa8826034f2beba3da56024a29f68bb4690cba86911b345d6155",
+          "d7dd6edd46630be0f7c221a2998fc42743fb77136761c7fd2e845632951aae4a",
+          "6a3b01ffe927d6609ce86128b3b496c84d592edb141be8a1ab6ac97637ead332",
+          "61a0c08de973e1710dfc67f4a2b06497d06c8f2e047674c9fe110d3fa5715b11",
+          "7cb6911ebf5b0edb93d260348124047cc04d17dd022f816f599ca1f7eb8b0726",
+          "29ba54a30fc13efb7ea9a8dc8f8a981e7d618a69cda0e697ad949d16b6256699",
+          "f5c6f976f6ba3a8e3566f8c1be3d8b2eed1911d6caabcd45449f3e2461abe2fa",
+          "801ae46f8dff09008f9fcc1f57fb7de06e1eab2340fe421a8ee012e9a10fbeb1",
+          "77d0665d93df20cf59d89cb8d5e42decae74b2430d7ed12d767857c2f368d4ad",
+          "9b12ee809c2c4f243e0f51ba0554ebc480a5a3671c842ab6b3c90f920663ce76",
+          "be9be2f96ec746aab901289bab12f73f6b9d163974868c4baa5119c654897fcd",
+          "998ad765a1dd893df40b26a30f9dd39cd0fc9bd08a6660252a53c589323fcc29",
+          "2950207a4c46de84603e7fd0486c40b918ab1508b5de523bb68b65b28d342680",
+          "0304b05c38555cbb2447f491ad479dedb8a44bb375d5de39c952b5198311e912",
+          "c7fab5b20f424cfb85ebc959f6d6add6e448beab3c1cda15f8dd0dff0e1d98ee",
+          "fe11e95dca999623b7c9f695a7df11796791dce189bcebbabc39e81c44273077",
+          "7399e52bc2b4ab27daf26dc38c4252c38cceda00120ce381aa5122c5d491462c",
+          "c2fb269a91b66e8e0404b78b0fa4114a21fddccf9b14d9df8a36a1470842b46e",
+          "6a0abe7480a56725d812945eb918159bc1ffd996f799d28f51e6fc7cc08a4af8",
+          "cdec71c39f3628db07b7a74cb24dcda76e8d472f8640b92f8a53013d9e5344e5",
+          "7406cf46c549f1bc1c4d018ea0c85c9422af9d2b57bfc91571a9b918c9865038",
+          "b7df548d40344314d7425e5063c66f6b2879406f6a022128aaf1ed11aca49cca",
+          "e528c8ec249f84016d20e9742e2943bc3614704e9e93ea00139ac3eec9085b48",
+          "ed26fd68b6ec888e6f69bfb487c2efa719fa6eff0e736ccf42856b6cba16835a",
+          "a2776a9aeee7cdce74c21c734ee64e2dd4afa7b2c422a1bf7fc840855e25c6b8",
+          "85b9a4055486f8e599dd3a3b86b2359a09bccaa23c08234ae9188e4b956c3ef8",
+          "8423fe12a7ffdebf5789b61a3be2b3344544684cade13c877bb32a3e5c2ca17f",
+          "cf4cd6094f456e501520a91a847d4ee8147bc752d54513db5d9b04733aced42c",
+          "55046db81824e7b8f0c3b41ff4be8cd612f3ecea8abdd0308cbe60126d4ca961",
+          "82a996a9f7d8099aefbd37d93fb6179b5bcf3ce6ed20c14bbb53859a760acf9e",
+          "37db1847071978a009cb4c8fc39fa77c8150dfd66a79199fba5812a6845f9485",
+          "de20de1922f2fda0e039fe2d21705a892bb5aebe516f572566147750f48f7b16",
+          "3837fbcffa92e0b893653f8b65708214e795c811cf5ac0604231c670e75dd29b",
+          "ea76cfe241f49db80800646c44cd99de20c5a1d902c0559c2ef8fefa6e8ae601",
+          "51cd8b5c0dd43c7afe23f319c539dcb187dc8afbd29ae9d7d288b41aa834441b",
+          "04f201ceb725bc88e08b77d1111adeff7d9c6335d867defc73e9db0b94e83cff",
+          "5057e66179249bb126e97a7d55474e3768d63f4d146ee9289155796d24a52fb6",
+          "4df8c9aaaced48b0b5b1190a37411e0d69c8b3f27b8bc9c3b555bc27daa6c13d",
+          "2369ba73796faf4c0037957d78779d648f7aa852b675a3a645432a7329950373",
+          "b40a3e7e2426b3378d846a4669ff0a248d87c1889e1c8fd9a1259b308dca863f",
+          "8351868edd8b9fab792e8b96376336dbe84941b2936bdab91caf6e323a0f1a19",
+          "7fad4052c94cd4337592e71991031522d271b41cecbc7d801e7c62819d3f39ae",
+          "483032f6c361932fe96e96d10d024954b92fedb81b815d1f4f885ad7ca70821b",
+          "02e1ef51cf2fcad393304334da2f906c649fb1fc6111ca02ae063b22daff55d5",
+          "f96ce2e4973d5ff184851361a8ca6f2dfed1a1fee0f48a2329dabdafc8855566",
+          "1874798296f136132fc73bfd8c43b39b127dded2c229e911462fab24e45a92cf",
+          "8b1fc8f326ae111f9dde66f7c129e8bbe1f009bb6e9cf821e49ecb5ce862e963",
+          "144e8b5e34bf6b8cf35fdaa07d80307879d4fe7878be8419c8f40cc497e7f7a0",
+          "3a93074d8ca3f656cfad1c957c090efb9284be3cdc4a28f851fe24401faedbd7",
+          "515b18490df5acbe748fe7a18342e8fc6e1ab950c68fe84ccff2c9ec9304959d",
+          "5491bea680dce2ef1897253ddad14c09ce5f2229d435546560e55dd82dc27481",
+          "5d74359f0f66ad836eb0189f05342d1961ea57774663104d2f4c02b0a346abce",
+          "0f6b03136ebaf964cca595823e157141084f8bb8401cb5ef0f07572cd595ea7a",
+          "78a4bea2acfa7df029e1e7e0ba56bf7cc6a549c9e025fcddf94926cd4167a66c",
+          "e90814b6e377bbc0ba3eb5e3e1639762e0f9b7439b5320f0775c543c2df57349",
+          "f4959e97499727472ded87651b84400d9c9cd2650f0f47074428d73e4313d7af",
+          "1f3f383c7800192388be887a455df0edbe2788778650016232f7721cd94b6263",
+          "dbfa9c33867ba8aa3f01a78e6800e85837d58289ca5f765e8ed182bbf4ab428f",
+          "2670b8d33d013a1d9d1c0d9b62df6572f9c307dc6d69549e5b7b4ef2e342637c",
+          "bd3327c77bb0d382a436fe48ef08c200beb4e21f14657daecc819e2f133bac61",
+          "5b84fe6ec84d52782d7f03aadb245bead7d18abbe8eb56240116e97eb167bbe7",
+          "f37ad653591b1a4a315374981f48129ed329107b9b59524a7ce858d58eb044cd",
+          "204f8c755cff6bc59b269c6eabbbf1ef6c6e7b02da6fc8e0030cc38bd00afd3c",
+          "344bfccdc142bcc2f8616e2952132fe1f763151aa2b5b070eb4ab21846aff5ea",
+          "34bae2ca8bdf6012cd00fe6350768a6c5b33dc109c577f83b65fb0097e416cf2",
+          "5e41ecfc437f1309f1b9692336ec5848bc7f4e8400602a0fbac13f2d0021c24d",
+          "84407efa5d6baa51f91782f7fc9648a193f77a1a8cc17aed835472873e2118cf",
+          "a38bc46687ef118121afbef94286655fbed63aa90b62762db0bdbf262c52dc3f",
+          "18d58505beee7e20887703b39234c0f34a97bd50df986810d6dfa02426f7dd34",
+          "8b65434b6e3e95b5354c8cdb5e30b7b89a884e65128f7c5c220a25901f4dc9e0",
+          "8627b38b7d3c021dfca0f909b3b53efc1c29f1e73eb0231d51bdc491b8894552",
+          "95cbab8f6c97ca5b35290102d9137726174280c8a2d6751b20bc0ab6a10698b0",
+          "aa9ee948940f5a296df86a4356767c67d3916155ca885910e7453bbc6fa9ea83",
+          "8f7e6cbead7c4f6a548ab3599875f7e5e66531f39d3b9b8cb268bd235fc098d2",
+          "571228004e6b47dd2a00dc44e46c5cc985c044c89d35bf6e918b79dccb5a52c1",
+          "f8abc080f7d66a7672c019cc6c10cb1785a7cdec414aabd1b384fde6290e24bd",
+          "7aa2558e85e7dac5611e7c65c306ff39e8c7890b9b6fe4bb9bdb48f6bf34ba1e",
+          "1e392134fd9b3768702510979cfa12a46c59fc7573b66ede0ab977d08d0639b5",
+          "fcb8d81ecd68faec56a9989395f41b55f70b8792fdaffb7f14fe567c4dad8e80",
+          "33a5aa1b80b275d213812a817829b8360573459e8b86e1696fd93029ce32b031",
+          "f672d4a343babfc7f3d521320022f38bb8cd73905beda63653640654c874d04a",
+          "661633e2b8950e5807d102e52a29a0d7d186822b0db0a83b42d49aad02f3977b",
+          "c66ecd48ca0ef3e850f7da429ec277713168dabdd0813115255a0f20e059abf3",
+          "274a92a59181ecb2e5bad2d41d9646b137fd0beacfdae9e7b9732de35b09ece6",
+          "ca862dde191696bfa9ccb79326261a86467549c816109ab71a6579ccdfdeb7c0",
+          "7c9f5781aab71068cf113a7343be5461f9422c56efdd62e909102ac9653a1599",
+          "5ea0e13803857198cf19cb8d88210234c11023ccce2a22f3d195c03a3d6a27fb",
+          "7697e4921374f2c83277305dd91a86ffcf1cd0d02dea24e4ad8b5fd45023793f",
+          "3afd2edefea5700b6cf610b3b3444876835613b270326caa0e2e9ecf04663060",
+          "d6510e8ce0ac8e43bd3aa7c5c70cbd950fba9124f06143e0398642e364e26240",
+          "09a39a639c573e5e70405f1424c6fb40b3e2f99bf4bbec03dd58c84c304cbf0d",
+          "1a62cda2253ca1c92b0b4f9d28cf3b3bac3831520c11f45b718a48ec61eb859f",
+          "e87314f110cfc0810ae6d99843607ef5c170b611cfe8eac1f1c7c34325b72dfb",
+          "4de52c4db826e699b601cc76fa35bd4debe764862a9e108bd1b35c3e0b1d40b5",
+          "425f540e564655b6e36a319073476c82358cd755e55787f1575995055755455c",
+          "0752af862030f5e35f9744307502a1ab3c50b31e6d52fb790174c43fa8448a10",
+          "0b6c25acc62f52456caae78b93f7ad24f74403a51aba5cb94df3513bb25917fc",
+          "fa97e468b92f2a72018cb21bef76566622b49f3120585021eeffc4ed81e3a9d9",
+          "954b10acc24b99d9731ca86b11805d2943692d4aca6cfc0f1695efdaa7cee730",
+          "8a55403951eaaf1f2c210a6d949b67f78f4e0272af01c2ffd6fdab2ec708240d",
+          "3c5c4598598f7d48ecb08dc667c2afa7fda108aac86fdec203626deb57f98b7e",
+          "9e30911e97d227fe797a842e0f55b8234b9d2f19977d396151f54bebcdc65944",
+          "2297d6a35de4df8b4b9cdf82d46cf176c1e9e1632f28f156c34e4977788ed7b2",
+          "dd26370a3465eb887c291bb73cdde20cf3fb3ec8e9573bf4de2aeb0e809ae878",
+          "f6368ea5d10e78e5b12be15d79d4d1f6526d4f884a8226ba8e00ffa28048352b",
+          "ecfdd33e109278cca8e08cb2443cda97538bad36bf6bf6b825dc28bd3004863c",
+          "9cbe0ea4ea3540b5e30daa56b417285cccaa7a76e8bcc23efa65c42323f7ec58",
+          "a49a7ed5ad7e0be30f65ece16785bc0c05860a65128bab93b903006d2f73b9de",
+          "8c40a2e994524633530724a3370c250e076d0b28ada6b7b6b918de6cd02fe80a",
+          "4058a4c6ac37391953f4833a3d27bfacc59e327b8704f92120e9abceee865b33",
+          "644f89ddd84f76edb10d827ab3b928300a5666e3fe73698a8b08bbecc9713780",
+          "445f090ba1c9955d57b75e3f97a8eeed3a4f6206bff935e88b2714acd161b02c",
+          "2417d5883f1e11eaf579ba57b3955250800e5fc26402d44a077ff74b5159768b",
+          "087679030eaa2f10d11e82a75f131ea8a621da2db24d22dcfd5e7c633f7f39fe",
+          "01789ee84cfba0df63a65b2b605267d47ae9eb3e3f2eeb1b7a7162f9630a07eb",
+          "3da42c8bc982cd0ad19f20b6aa4bff442a5d55bc368d7c886fe908ffe4e2fba4",
+          "e3fb0154240da6c4f6d17441f194be474102e415e7b6a3389039d79b6bde9b95",
+          "f97ab36969dd582b9dbbce72ff4118d3f572c9feceaa4e7135beec75dcd5b69c",
+          "28c39a7039c7a527fe27eb11e0b2f615dda176facff7fb87d5142907d1bf8bcf",
+          "27823584a978e2e175990944ccee14d10a2eb98108f956785e53a6ebbd986c62",
+          "67eb9ed1a2e60fa30f140c5e21b315a53339e0292e27077e510f5f336cea769d",
+          "59ae91e6ef42bfa8a013e527ec31f099677c21bdcd16c54f3e3407710fef4a86",
+          "558edd5f507f296a5b430964ef78ed90ec0852e71bd8b22dfe1d584430a1fe7c",
+          "65b646b67714e4160dfa7b9f4d9837632526aaeb6bf4116a861134d86259b805",
+          "0e47919113a37a8a462d0547a999ea5c88bbd4fc27433eaac7047aab32428e8d",
+          "904bee957edc653c0098ecac9cae244c7113d42ce3172aefc35bd9f3e10acc7c",
+          "5656f0921dfd7e928e50e76a1eb73574989315269e4cc4bf674b0f8d6abc2ccc",
+          "1436be0cfe6bc2c0cca242ca5a446680477ab162dcff1ccb982e67157e3b6429",
+          "ac8d6380cf5957b203487a79fe7067fddb8c8dac45eab77f66b7d4ff72618530",
+          "5c46dd51307d64bb5d9b7a1898c37aef765bdc66f240f4f3ff2b3c444ae3da33",
+          "116156e0dc2af2cbac28928c0a55093a7060865d0ddf3b5362a61a6b88593dc1",
+          "99654cc49b552121d2df09cfe70f7e92fd538538150f1537a08031174b05d238",
+          "a518cc5666eed9485fc130e0899e94fbff44c6a54dd8631be21f973909d66b8e",
+          "4e97569aca4026346c8b229910d9c1e693499549bb46b9900d42674a05c7b2c4",
+          "a71dfc07a07ec34750b58782cdb5a4c5de675063751394b08541a9ee3a1195b5",
+          "f7dd83981d9bd31e4471c9b5e82bb2d5651cb29510a0b011b560d9cc225bb660",
+          "7fd3c82b9d570c9300505df390876ba8b9c73c92c5a41f8cc892e73702c6d603",
+          "0d074f997c32c66b3086a8219c0b6ae6f62a6e9d64a4d02fd773e9e4fb86dd9d",
+          "a5fcc70596717d0c2f4fc3554a27806d41c0f6c8f4cc83af699c035b62e5bcc3",
+          "ecb78b7a3c2678ae5d22ed20dd08eec36823208b36c49dff216451d2ac25c78d",
+          "0d681bda4c1087ad7edf94b96c3240641fe25782c0e86518703590902df4cd6d",
+          "cbbfa0edbbdfa4f1890c0be169ecfb0b7ba7d140d6fdd449eee1d80b653a1ffd",
+          "987055a5d19a500044a73ea1a31dda0978309c8a20fa7d3d3c8a31e1062b02be",
+          "58c738e94be4e40dd4bb1d144dacb03635ed861657f3716ea7057b09f95d6147",
+          "5344e60a5c44d0d9a63ee8d130b3f5e55eb7426651b640f722ec83c30b589bc9",
+          "77508070801e88ea36ab50e28adbc233865f65a342d847b7b737c9852ace8478",
+          "837cd7f326190a61ec097e06c451385ec0312217f04c12d223e9890233519ba6",
+          "176a9f0e3fcb8f84429a2c2f53e95d5e3883fd9953c1dd2e1fbccab6b78ed194",
+          "24802809d3b595265a0874eb1832e986f03d105beded9966f673d944ba1748fe",
+          "248cc78f0c9332ca8efa22cf16aeb90539eb8f5d4303da9f93abe603477de8be",
+          "9b8e090df279622edfcbc247535f051652c9a496debc0fcece77e6f808560364",
+          "ee79e0e71a4176d31abee5c39d025a80edea293bd0749baa863180e60b32535f",
+          "eabe03fba1d4744e48c2dd04969110770cada8375a870a6fb418bbe927f94a7e",
+          "cea1e67cd5cc8896a1f244dcb6d8aa39c3fa8216758ebb3710a0aa752dc3d600",
+          "2b2b1f419f09a6e4193457f199517a7ed7de4316c4b2a768e69fa9586814e180",
+          "7dde67a9f6fd66025377fd98f17d7140bdaefb9676b609ad049b77926c6f0821",
+          "6b8273febef826bc8882bb9456f44067a12cfb3ae1b4b12478cc0417df7cc42f",
+          "15937beb5d93b43404beecd7a10a3e1b15318cfb8d7203c2a314e0d00e5bbbd4",
+          "f8950240843a58963b04812527587a981286e578dbd38e13a8fdb6e5e350c04f",
+          "153ea399d3606a31c69ae4c397ec8681260ba18a4394d341dd837809ded98b12",
+          "badb98c290fe0f06c85d761b96eb5b7b652dd581ccd1d528e6c8c6251f8dd4fc",
+          "49f467bb980155b4ae3bc6001150414a92da0c647dad20bb3f68d05b362c5335",
+          "afd56b154b942b653763c2bd5f47f9fd384e65b952e7c70fa43ed444f9e6b6f5",
+          "f69b1c4a2dfd77674510cb68526fdeead870ab5ac0784f572f695ec0b43d90e2",
+          "574809ac2a43a206231eaf7160e6e2595ef3a9d35b775496f4a04bf710908aaf",
+          "5b9e719bd0852b238941a736032ff11afaf48de4c0d4629ab5a854ea6a4f1ec3",
+          "821c0a826b0339591759206bb176854007127bd2d1118d0216939ea368d4285f",
+          "0f0ceeb61be48f4090a3684834f1f67db9f99ba3691c06ea02ce427bfdb5831b",
+          "6bf7e917969c5951fd6a8ab7ebd6095548109e943d6286dcedb22251a67b52c3",
+          "c752e932f03992e80c578f703aa797a4ddec906f95f70d3ebe6f8e25d55d1f45",
+          "9210f6fd1329cced654ded44c168cdda101971cb300af08d84ca4c736226f10c",
+          "174cc58251c2ffb3ae7ee388ef951b4c4717d7577d61b8bb93e36aafd18ed5a6",
+          "ba8843b64173244e5eae60bafcff526bdd0acf1b38fb6e8d7e0bab9fe4713102",
+          "7df2c9c7bbbeeaabd38763ba233837bbffcab1730300ad6cfdb89b3ef7e510e1",
+          "5830f0248a9b2010f9b7cde31b864cbd425e65d7cc51d3f31b61118ded28b14f",
+          "90c28b5ffccc8b5e838a02d964f1e79ff7d71830aa430f077e27ed0ea077f244",
+          "414ad63754b6e6ab6c5519af6bfacc732d958e9986b5683638eed7e104cf938c",
+          "ae43026fed00e0466b7458e803deabe2b23f8c563e9b3311d938084edc76167e",
+          "e6f92df92b48f39c53877caead3ed1109c89e60f50a899398576ee46e1f989ba",
+          "fff04c7f66cf8972699081f13a008324605db36346762abdbe6064ce9dc1c97c",
+          "8765449d688e06530da6fa22ab3af8e505d5c55f9b9501018b4c62d720c233d6",
+          "8d0f31aa1a563cf7f57f7044d4c288a830f1ed4351e92148d73a29926c540339",
+          "810b8a4eafb032f3218a721ffa49cf48fe5446beaeeeaf71bea8ae5ae0f815c5",
+          "89967fc0b0a7927db416826d8bd580201ec7c6c8afa4005e0d90b7dcc9e559e4",
+          "c1146704ea3c6ab37c09f589fdefc822458cf5d6a5233345c3e61117ddb756ee",
+          "9d69ab183ea1674760f145a5d4d18640b08306296432b8f62fa8e469358cdb13",
+          "bf6e245afb68bc8fb7ca5262c8a57514fabd4d46e5cf70a78c06054b7e194280",
+          "fdf9cb651c294c5dadf454e360df2feaac9fd578c0cd98a66f904b52b1fa0134",
+          "2d86cd1ed6bded29b7be044745fbe8b18766d2338564855ec617e287fe86995c",
+          "65ccfafc68df2bfdb9d5ddf57f702e059718cc639865a74d4f0e8a55d5acfb50",
+          "d74e2ace090fc9eed5a84365e5c69c21b29ff7ac3a87fe66ed0de98df802b617",
+          "9c15c9ef7dcf2ce3c3eaa7f779c39155332eb276e1e439f64e01e40c6a01d680",
+          "3fe8fe6c80b7574bfa36358af1810a3a5cf4b76c03fca2f4742f61bf3dc48abd",
+          "35520aa1a3fb2f9044436d13b10eb13603427bade6a5c15a32d7019d5fe72ef9",
+          "c66645dc5402140d84a7d5c2d85096d9279b198e330099303a93236119f65d63",
+          "904d24775bc562bb44fe4cc3ebd80541338eb16776c51fa79517c6660c4715e6",
+          "9be96bcf08cf1454b833cda3023925e61e7fdb99f4d1727394dbb7812c443104",
+          "42dcb19d09bba0dc3f074ce6712f9479501fe7b39036854a86a0641d2e4cb224",
+          "165f2adb8f2c4ceb2566cc9e33c056af505c90f7339f353dcc8612b96045e776",
+          "9c4a57987b05f60c3d0a78dfe04d8edf20caa5fde1152bf83dad4da1d01d938e",
+          "cad478be292518f792b43f2d5e893dc707d7853dcb6bbe5043f279ec88256626",
+          "bc63c2cc12b10650f032a4edf259e72cffa7061b0c32e2eb7469ca429de34262",
+          "f0a2bd2986e9ba25c76fa497ec781e8cba051745ad110169555f0917e67bacb6",
+          "d00dffac899a340d62716ddaa31e14251d61ec25534c7e13a5bfd3447f3f1822",
+          "4ab26db87bebfc211cf22771faf164ccea2cfb5487998516acf962c64966b14e",
+          "2bb3efb9abb918e165b598d88a29bc87a3513a7586d49f1702ad4c3ff57f8da8",
+          "c9e2731e698cdf6e9afb598b74bd688a08df67fa76e61e516d056eb06812d761",
+          "007449cd02a2d1b25f22786c788b168767d38b9c680155a5b77284bd55567405"
+        ]
+      },
+      "badlands": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Layered unequal canyon walls, benches and side washes extend into the outer landscape; canyon mouths remain open and graded, with no old straight enclosing dam or visible material swap.",
+        "hashes": [
+          "430f252035e224225bd78af02e84e4aa3a5882226a960677339fe222e0cc9b4c",
+          "5986dd386d1e2e6c67d79df28f3282f7922cb2a3948141b836504d9d448f8bf1",
+          "2c7061f4f7bb01395bd8d52201286ac7227e1fddf4ee0e984ac6da14c8dd8d17",
+          "ee022850872bb0cb9d08764f4fa96a91be2867d88883c6584eacda1a209f5383",
+          "7d4bb4c4a155472e3af6dbbbabe39e7d1a616d7fd841ba2739b39e63941d0c04",
+          "ec132c2a6fb6c8a3d75ba48ea60d0af2636f20ef9df6f1ca4c9cac883f62aa66",
+          "be4e846df630c65914cd7ae2c4e497c18c7ab18fd41d90887f6a7ae6fa52a8b6",
+          "a5e9c7174fd36b1727f8bace1453370a43a997064f083415757d862fb30c8d0b",
+          "19db110dac73910fd96db0a24efb10713fae60de70733dbbfb4a0f4c1ef92ae4",
+          "1d8b5261a4666dcba2a6bbd727e63a1cc46d68c8de8f1790d54cc926ceacae7b",
+          "f596ed8855a9742969e21f883b135b307dbc09b278ef75ed7a97e17d8a1fb873",
+          "39042022c901b52caf3fb6fd3e418e8b82131beffb32214b7498b70b2e838d8b",
+          "ce05a629b501d512671bc21aa496b27cefc4f2a020f1210fb40b0f68619f25f8",
+          "6f12236e686ad33901e8f77911ad5676b1d9a16c560128e4b2deed0ea525b2c2",
+          "921a1290857cf433fac8b537ab228f9ceb7aef9619beb6c3d2be44807f4be118",
+          "7140076bd91ed82e9feb3a9cbaaf1e69bbec19726641ce8e52d75a288d24648f",
+          "188a2322897de7c5ef0eac5c0a9d1d37e609325b19d2ec838d078feee2fb3a57",
+          "3c2d398f258100e1fb2995b3558810d4c47bdf555660326194b30164b7b811f7",
+          "b04f051c33e0c9bb148e6b191c191934a218e298f8186ff366a435a57287e68c"
+        ]
+      },
+      "alpine": {
+        "accepted": true,
+        "notes": "Inspected master, frozen lake contour and all 18 boundary views. Snow/rock folds carry into the surrounding alpine cliffs and forest with consistent material scale and no exposed map skirt.",
+        "hashes": [
+          "f8a5210d8161ad82d45a71acb671db264ff335be72e4e17d66a95b0da97a761a",
+          "fe946a2cc8b02af8a52828fe366cae982a9dec96fb19644c522b1ac30b3b96e0",
+          "86e927bdb1f347e464b3cc5cd9525eb3f01da79ed1b25e4c5e2dce4303a4839f",
+          "b5515c4dd7582d8d921fc2a4929699b1d730d7b7432490021ed743d6cc9719b8",
+          "54ea046a1ac93f6a79df4bd5b71e6bc68e9e606deb097ea234d27612a16b6873",
+          "e650412e6f30e23202e7e156bd1d41c4a1431162fa2e2847b45d89ac9f4b9111",
+          "455447bab9d77f6aef620a9520f229bb289e629073cb0c3ceff956e1abd1efea",
+          "a6faf0c9e89c66597a1e0b756136ab747e84b9b03d8a384d42232c1fd61d4878",
+          "65b3b9dbb767424b5989af5ea950e557334660b9d153c64c3b819e84c675cf3a",
+          "b2f4afb53075c631da3293016fb1a86dbdbb00fddaad98745fdd281d051f6ed1",
+          "c4dcb41e714e64246852f0f81cb9c92a0f97b3b10db394d0f8eac66cb2064d7e",
+          "2166eaeea36388d711da8830eb2acd220c985cdeabbb3ff320e5628b47bae02b",
+          "932424bf35293ac26bce025ab3e3fb914941f868246a97a3b8bbad01de606d2f",
+          "df16731e782f8e338c3447287f9fffee2ce09560849af046ada358e37051c917",
+          "721b477028cdc8027bbdfff13cafd653b0ebb6572ce1092f14bc2211cd14b943",
+          "561d663c29fd0aa4288570f45ce4b4f748b06a9d639db8e83579c1c39ac76ca7",
+          "4016062f914ab2f3b0f4d763d26c60034bc9cb98ed663597c1483133ec0a4563",
+          "a57e9633d5948250697106fbdcff879ee72d2de4bd5946c3579650958dd0a4ce",
+          "1857e03d6498764cba77b3ac8155a6e95d7c7a697464b11a7322a3f593fc8d0f"
+        ]
+      },
+      "delta": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary views and all 14 river views. Irregular river margins meet the banks continuously; road causeways retain their deliberately straight engineered edges. Tropical ground and forest tone continue through the outer hills.",
+        "hashes": [
+          "af5603cf56fa7da48796d21d0704c8cf998f6dd6986e7b951e4d669694fa5201",
+          "a8dd8140f647f76696d33af5c35008b19b9890a6da9c6226a0dbdd1cd0324d8d",
+          "56d91d5b49f2d726cb49b7cb54e2c2d67bfec160bd82c288a4f5d9e4429b0f09",
+          "b633b04d8b8d1721208fe2160903fd2c6b7a003a3924243ae90c17c7be29d2ea",
+          "136f63918fa40d9d9c38bacf9869171deedbbf2c469bdc13e4a02558e0fc72cf",
+          "884b4bbdfa91ee54bf53b19d68bedb8706be4989d5be17ec7a11608350664ab8",
+          "ab5d0791f7601181dc63cbbef3fe85b0751bfcb8cf77481cf3201d055de0fd19",
+          "633f020b12e6581fc9f98d7feadbc2eeaaeda63fe68699686208f0bff895cb0d",
+          "156c0d9336f744ddd90ad3c4f73aeb16314176b5f15aaa58095f4572ef26a44b",
+          "ff858d32c843cb84494d07f860f05eefd1bd349108d987d8dbe5c1c44484a10b",
+          "0de8f87f713000b8737112e24db3fecf75ef810e137ff1925a5245dc47437224",
+          "366c61b801182761af7e3096a99c1bc1880220a5ae69eb860cb37efce007bf09",
+          "31189832312149c424f132bc17aa4a8e0aebff67bef2235a39aae384aa2755d8",
+          "701ab552895487c6972e966baf36b4068d9576ec30cd26bee0bc6a39ee0887c7",
+          "9e91aa5cf61782c13c024b3770e2b9d7a553a14c42a69356a59fc6c1f55af8a3",
+          "5b648363990c1427739aebd95c289674a2a29994043172cef3fb7c4ae1acdf9a",
+          "3f740f14cebc097e55123082c97709d6713d348169b97661c82fedbbc5e75bc7",
+          "55b5b8c232212b00dd24a33b9fe33699f9b167819f251928bcfa7a06840ed6b4",
+          "72a0d776cba4224cdd9addc8c70e070f6f8305cbcc345cc74e70bb2050984c36",
+          "0e462af79c330a9f04583d5c135657f1b7b3ba0d0bda19db32537e0ad8d0044b",
+          "314ebedc0908e6ba9d63bce28ba08a4dccae924c3670b2f5e9b3e3ce0602f7fe",
+          "ba53fa107bc71cda51572af49fe2c273b9ced678d62e0f8c80999efbb4776fd0",
+          "983193e33253f0a19dff920becf8df31772ae04d06672e3e0b21caa279c5dffd",
+          "9d369f8199f8f31263f22a51209cd769a34f3264ca3b02a29b2c62bcabfbcf73",
+          "5b2bfcf1a8745c4df528a90f57571945f5165b3d1645640a856ab5fef0038e08",
+          "5ebe095fec0b537b049ae848b4105c142ed0862f0a1e5d15d0244462cd51e11b",
+          "57ca0b501819b750d8d391938a1ccc922b2ccd2a0c6420fe2325ae0ac7463880",
+          "d4e61e326b774ba5ccaf8a59bd7d72d4a49bc3d4759cb811d20778842da2ed0f",
+          "1e818d67c4c49670465860557e4e4689c5f214e7a31168fff51c2beaa819cda3",
+          "ba39cbcda33d192ab1aa0ebcb187766b55d1b7103a83e564589669951e11e581",
+          "f33cef4dbaa4636f22880271397c1c2aac85e898b5910c624d55d3567c0d1a91",
+          "f7dc1228571c938863af4e117601649b52ca4aeb35ddb148546e6933b8b482f9",
+          "7a2e5007f76dd7e3339feac54f34c7cfa7999251b13598ed65112f2b3cd643ef"
+        ]
+      },
+      "monsoon": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary and 20 shoreline views. Muddy channels, road crossings and enclosed pools retain continuous banks and consistent water contact; wet ground and forest continue into the outer terrain under the same overcast lighting.",
+        "hashes": [
+          "8992eb43e841a4453e0e0c0b87483c42efcf3db2ee7fd63a5807706b58953c68",
+          "eb9c5186975a10aa0e84e369524d41e4b8a21eec087fff1c5f255d43343cd9a1",
+          "b074771837b6f033cc9af51757af2307a7ea46ed206fe434acc8c312e9d80243",
+          "cdde179e7d819cd9f69872fffea9fb56d0cda4cddc6dccf8a24ff6cbd0f77c05",
+          "e0f95e37fdaf23c6f3a330c69251ee6ec7b935458710c77904d8a26fbe87b735",
+          "f4d1c13efd3ef5ec06239f4f840cb9f1803c8bcb8b6caba2888ebeed1280df2a",
+          "75d815d13a32ca6e8bdba53a498d878eb81a480bd9825852f2ab9f7e07393a9c",
+          "91938ee6ce857e207caff8e49dde425e82da9f3549f336538064a4ea7c852c48",
+          "ce94e36fac0c2292e7210e24d47408406830b0fbda507b267daf3d76c0eb212a",
+          "0276b2b8800eaac871026a8a20b9bc551067571e97feb60b3b43976f1c624857",
+          "1e60526794893c155aa243618e0c8ccd93be892eae09689e04ba29c0563a0ad5",
+          "de9127a7a5a341a00b968e39158746ba50bda90c8286f32dfbd9a034f2533168",
+          "f664808a69deecc5ebb671d6924eaab9a255db8ce7a6d4f4b117790e5f574a84",
+          "f01342866cde70f50b7e7c6362a0909f86409fe39076610b470d686302bca03e",
+          "c9163395cd7496dad53d8bab521aa3caaa217ceea13d53c8cdef3fd8607eeaa6",
+          "b56c265ae93c99e3378535dbc3cd25db384cda1749e31743fb30eed2a53e4e85",
+          "7088163b1a1e215a54abb7b17b81898c05c931e2b53da4cfddaf265ce211ed9f",
+          "34fa5391f6dbee108d1646c9ec476e8921ce7757e9ed5ccf00318d43baac5a5c",
+          "22ea32a989ed49f41a172a8f20cbff3a28db2fcac0e861f8e0f77481c09fb359",
+          "52e9eb82c934c8c29b4a98aa6d896713a324459a959282e888dd275ea3076907",
+          "ceaff7dcdc0ac20019f549bce6939af57ac2ea33cc2fe427a19a4081b96f31b0",
+          "6a06f3a52e657afea8b0438ee9b8a7dcf4dfd0e402758a2af502a9d00c7f7875",
+          "44a30fd6aaa8d0fd21bd10f0abefa748984e1c14b5e8cea5ac1fcacd95654de7",
+          "363307bcc4db8c45d7e93f23eb24f9670f7ee6814e846a77c4ea84dd527e67e9",
+          "5adce1e5007a35943682b2d2add07c6c87f503696a89c8c124140688db89f421",
+          "c2e82ef3e36dc2450c46d636682d3d541a77178103635a014c27e3b49fd33dfb",
+          "352b1e532a94d202f39841ec1363cdea6598aa9fab74d6e67e57e9fd636e4941",
+          "e3e3a4e5411703ecc381ac5821de4c29dfda3a6e57ca3fb3d76b20a326c6b7a1",
+          "5b5d06f2793e549f46f0ddfb754b1f312fbfeae5adbbcd0ff00699c27427f354",
+          "be5a72726fa8fd5fef7a8680970a24774b7c7934fd45951679681c449e5d61f4",
+          "952386524ae7868f756349954262b09e0f9ada6ae15af2a698775b10b28babbf",
+          "42f66f06179bd4ae212f4e1151d747eb044849a20f5d28635ea9adce4415107f",
+          "692dd602f417b76b07063c879ebc727f078d97f321c39e794d66d75460b6f171",
+          "ae8c5a2688b519246f637355a0d7fcb6a78d91b6969b76f0f487811677b423dc",
+          "e3afead05cec90f064044bba8b7ae02743cb9384f51410788eca97e230e139d7",
+          "e173a5131ab4f5600f561590901cefe76925fb8f3854af3be390ff7d8adcb6ff",
+          "d1452bf26f6f8cd9bc5248be4140f36dc399ca0ba8a11f31ff95adaadd619afb",
+          "0e4884b5f781c184ccabdf22287745c70ec5cf04e32cac4d3306da5442d9294f",
+          "6fdfbb0d78e8cc2514d1cd2ec93afe212ca2e032c9fe02e367ddff7776a4a08b"
+        ]
+      },
+      "saltwind": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary and all 107 shore views. Bay lobes and the small inner cove retain smooth joins; the beach continues through both border crossings into the offshore coast without grid cuts, exposed seabed or lighting seams.",
+        "hashes": [
+          "b9a9764eb359203fe4272162ad8271e3a4ec9fd4c9cb083f2e23be0638528da7",
+          "8e26cb09b841e041598a6aff58b56efe63e802237cb57c5ea8f74add3d20cee7",
+          "979298974c975012bbf32babfa30d74dbfc7b2e669c68c074a6733fe74d6642f",
+          "8fcafeca006a615ee499c77f81a846b1bf7a647bf1631cf68d00bc4396220803",
+          "18b864df1cb8830e4a0f491353b6b2f43fa9b8b994a31d203eb1b302bb9bcaab",
+          "bf6b6bd6b07d9498994443faee29d8a6cc529f53955dc2a66b61d03a8ec895b7",
+          "35f214e235e93549181d491d892e7fbd75baa647a4cc955d7386917886cc5c74",
+          "4454e5c5a9c4c5aafdecd21f746f3c8a4dc0a02351d6b88bd668d47c8bb7cea2",
+          "8cfaaadd56018c40dfaaacd44c9657110fa73011bb77180fe377bb0bba7e0640",
+          "d13f238a29a86c0706fa815104b65a9a5727bfec21036afa581be352cafd6d79",
+          "523e1830432f66ee1fb31be21d98a6b3b33068d4e14132f9fb274b728f6b6691",
+          "25c86257b7f8c4ba9569f483c832c5b4629363cac2b99fad4848198ded578348",
+          "7e115e3650c38335834e7fc74cbbf4755d410f9baf8a9bc39ae95ecf5d857cc2",
+          "bcf60b93476edb5aa2553c7dddcfa8cdcacc20fbc377a2fc6172748948633161",
+          "9535ee44a7e614ed3d3f60319a05a9b8c6f544242a9989327825547f35323935",
+          "d3a737fff62bdd4ed1bf6683a6e836c8aeb7549d4c3cec0c9343930ce745a0fe",
+          "1e96fd2a3e2ac879cab3941caa8f20463da268ebbb2933cc38b3551bc144b22f",
+          "69a239f08c84ff78aa5a5c1dada63d6edf091a31f19f3813ac15d6491799fe48",
+          "8255228d3483029902a6a584c99708c2265d94b41d6f4834448f3903e8ca6607",
+          "13a33d90274c569de39b4d7f885fd8db1439f3e19b9f34c8495448732c4ce9d4",
+          "30bdf2839934d3a429bc9dca4cfffba44189d56fb814f8c40a6ac74885e1ef6c",
+          "6f6526c8bd41253dec2d972e1532a927e8a2332f6f1bef51312c0d1674e0fb4e",
+          "0f36af6fa8c22fbdcc8cfa367d325f1ec27734ab3f4508d38d43bdfc1fa1312b",
+          "c578ee5ddedeec836a2d462a5677c8f72058dd51fbdf97ac012827b43a73afdd",
+          "4d3e308164b433f8c5e4e9249ecfdaf0e75102a3bd311134f148a2c03c266ea7",
+          "e325c397877d0a223799c33b49d198ed056178152413418bda14d8215b8b932e",
+          "04c4cc7b8cdc4b89c07890bf499cceb4392a050e5d59599484f4f9c500db12b8",
+          "e3af010474faa387ff90328e6c113bb5ebdc044467c1beefc61072692b72d8a7",
+          "f92c972f38301a1c88e1e3dbd9db01a564e5f4c339dd8b4fcfb519808924ca0c",
+          "4ce94a7a209da962acd18eda45cd26741fd44d2e5abde54a9ea18293a583e386",
+          "32f3c53dc4b27d89e305c33e01f38ee4224386bc72d5f2a0c49afa421ea3ca77",
+          "b9e972ce9f5f858b19c2e3a37b432567d95fd69f88f632be8a9a1138a39a3d3a",
+          "626b037b512cfe79491c981fde41cff1d02266ec76037ec5761aeea6ac371736",
+          "9125c5693224d66901545a01881a3cd159abf5c0394b733f58743fabc2459c52",
+          "44f153b7dadf0e3af88dd79c32180f13745cd6dd0dcb3d39a5da6d38f432d52f",
+          "8bdab5561d8cbfc96664b3cb9eb4044b810d2405826f01363731ef8b1605b080",
+          "5d48f1f246b351815f51374d44642dd77af20cb8266421b65ec1aa9393c64f44",
+          "9dcbd749fde207b86090dc460e93f468537fb0c9ce316b5db876f4ca0eeb6dd8",
+          "abd4c6dc3396c4cb12c84179a0d77637dbec6178616b0ab6b8b233289ada3c17",
+          "46bc259f1b47d0b1d240d5463ea867fe2171f288928d2e4d879ab34dac5341f5",
+          "3fbba0c90946b9f1976ea4f899cdce9bf1975c94a2f103b09eaf2f0f86134299",
+          "20886ddc3cee4380eb71c2144139b452b496c76a3ce051d4b9d74119f3816b4d",
+          "ff64242f7975fa12a8d0e508e8923f50f1e5e6ff2b05e63b3f5726d80ddf85e0",
+          "af482d8497c9c219930961a4432c0ccd6e19fc7649a36f49a653b5e6871147a1",
+          "adc23825c5f1abac33049ca6c8c7d65b61e8da527f1977ddf48954627ce2fb7a",
+          "e23bcb8988d3601b8ccffb460bb5ae76d53f36aa7b58371be8556745ad41b3d3",
+          "822dcf6193f6ef792a3ece7df16a6ac3d96ec6833a094ac5c45c63828d6f6387",
+          "a3e1dc7c7af3b28368a1f941b73209bb6b582f2ab49025984b44d9cd20273599",
+          "02b220f3f89164fcc5acd46d3dce377db3b6342391dc66b00d82ccd15573583d",
+          "2addbc0682c9b85109fd579f0c7c31f9524e713d171e4cc1d82a87e328c71752",
+          "8ec15d8641c734b2adae940c8069a5e33641223510eb90b3d961e5de0e24421a",
+          "662198519a62699256682c9c4339462b735969e4d8e951eb5c32b8134e94ff8d",
+          "b10c43cb0188283cd5b3411133c7004dccf2bb6807138a4c30e1715f39163d0a",
+          "1db087353e23c6e474883b544001d39cdede5972594352510f03f69425b4e454",
+          "29704aa8e0fbfe98e5775332b0e5dddcae2ca3f7711f0912423aa9a382843e4f",
+          "84e51f3f880d6672b6ee1bb0d83a67322b3709e4b3822b42cce3e212915fed47",
+          "9c61ee7bc0538baf8cb71b789693b188964ef87fdf83ae74969a9b6a3f003221",
+          "5b25da93ce58a7e0a24244627827c46ae992565fe8999b61f5a60100ffd84298",
+          "6e4b8e1d51530017bf89843946e22129b6f94f1cacd0ea5a041f812c4992c38a",
+          "961cbefc72d4058902b3e6608ba1cbd186cd801302359f6e3a5dc76224db1e23",
+          "6afed842b2d521bd2b7374447bb62190fdc3bca21b538196e35e8307603be571",
+          "ef8dfe3f997a61aa92a67ed6b82ba013839a58ee37fe4327daf0f519b6ea10ff",
+          "f3f4f8384c3a0de08570ba1c38ab9a0d65e0d1ba62a75e323961b1f9336e2c9b",
+          "2829c15780738ba6c58d97153959068b55a4ef6c36bbbaa3eca7f84971af75e1",
+          "a1a88c82b564a203911b3ceb096dd5c6bf424895b9c09ac4d16484acc4fa80c1",
+          "e1d7ebada9d5e193dfb9a6f3c90033520a222f73be3892ffd0bc08d88ebf6659",
+          "af99ef3d62bdf36422ed12ec4137ffa942db5db10dc512de9a1ea4087303b4d3",
+          "e3878a6c55b8a0ccfc7e716a7175a3e005b34fe03fc2e9bd9645bb3f34db18ae",
+          "7d480eb12a7842d1b7c7c3c4778ad7ac49bf7cec3b7dd1f149bf2779d53f5ccf",
+          "b0575c354f9dc3db26eb82f3d6223a835c8f2337f865e3b569d44e55affa1301",
+          "81791e9dfb8859244ebf40f9950f23d1c7e34eac2b588aa677df0100e721d153",
+          "ac37d39dd9360890a5502b4b4b2b3c594c01e0ebda75e75c7dbea039bfe5aeb5",
+          "ccd10324153fb7d2af415e29a157c560ed8ae74bdef06117be9de275bf57f76d",
+          "56f2d80952191641c028f53bed3fab8c1cb8f26d8e32380f091f0a10c643a593",
+          "86f363bc3a373cbc33fef4c4098a0533b18667a0ff178578e69693ca771d2c5c",
+          "93f6f8af93469ef799d3cc36cf578cdd84c47d3f74ef1d868dabb5d04404faf2",
+          "cab4b1385e40d90e4f8913366cb670755d76568bde79141243eda89cefc05c6c",
+          "aac78275ddf0a9355dff7a0ddd642c3892e3f20c1239ee0bcc7f0a0234ea211b",
+          "8cfd4e952141d71291c34c81ec22900b6f4687eec2fdf3c02642768d02e0efdc",
+          "85a39ec134ab871415cf8bd9e51661b5e0536fb7cf540bc2bf18909efab64e36",
+          "a885d78fedd02a6482a016e48fab802cf83c4121ab0f55f7a5b11be1ee5b2d75",
+          "066db66b917367b4426410913f7700bd252a11b3d363816d73b7401c97f1ecd7",
+          "96943c84dea1438be7d23839419cade1cf2abc26fa449e15052ff1d0b7d993ba",
+          "9b1f5b893c124d02aba7cfd6b3d6e0454cf847ddff6c7d56c6aad88201f1cf47",
+          "0ff083e6e96f44b83e982320d8d8f2c173094da3a9a98eb408ba12a4fa49f99b",
+          "12f5020c159bcb18b22a6ab9633832b49d0d64f060d08d0f7c03707bdcd5ec2d",
+          "8c6fde79c91622ff7821c9bfcb45d1229d8d38861c084c1354afca4a2b8b9cc3",
+          "83422cdd473a949dc0bff3b1223eaa05ff6f5d8daff62252cc7353940d6fbcfa",
+          "a15c0d1ec41e5b429e1acf3113fb60034c7c9998c7c593456e46be66c2e0ecb3",
+          "bbf7dfda258112ab69a77c12c5b15b30e1803d63b81b9e11d096dc6bdecad3c5",
+          "248ebf42ebc75dd73b95070b1b3950e9495291e1b4d3ee74e4991cb5245a216f",
+          "9d8f1a414aa07275744adba0523060e196ddf0814de250f44ca8b365d2ddf3bd",
+          "c47a0e97dbd33d23dfeb1df7b6eae7a3783eb7ae8c4b05606c519d7f4db9f5cb",
+          "113fa20e4e07d82c4322b303fa1c202133f7b47e63580f79d105073df564305b",
+          "209f333130502bb2cbcc4f37ebb63b5db611ed8b30df21dcee0a23eb590b08e1",
+          "9a3f6ef392c1c78d41a3238a4ad6b9af4d0432b6537fb9f53e01f2a2fa595892",
+          "418bfabc7ff16f37c8b890f5bc39d99c47ad1563ae4378dddf37b86602a94dc0",
+          "c9165bb34eaae43bead969f3dc7080d07be1ac372a412de4bd01572718f1e8a6",
+          "9285567728f58dd3e58490c13db92b4f9a870b01ed8949d6a2184449c2b6cce1",
+          "2206d343a80b768a67b347448678a0c5e46e44d64d9a6cb97122483b23a526bc",
+          "e860fb72d80913a39664ba5474b1544e1ecfe4f6c2bb00dd109efd2c7ff7b51c",
+          "1ca588d34933c16a58d4f4915643cd1a7094f188c83458b0e53d69a703ac5d2a",
+          "76c72c6ac429568e156043f025aa65ce549672a2c5b2299a19f2a769d3a3bca9",
+          "4cf5d5dd929c82ad15d2bd0881ff9e213dc6203493c5503142ce6ecd77f1017b",
+          "4a9633e95b1aa9d89adf12e019073e8d4d11a1aa5e5e7a99611a0cba9f621802",
+          "e2f62c102b768506e825d6db0d19b15adcf23155b39f2e76376c46da9e2e4641",
+          "a6dd3ddb1b3047dc9c8f411d5231d653006f44ecec6ccd3ef4704de67192b0b8",
+          "6f7adc82be1ab466a05f5e08abe2e3d18f48bacdcb070e98d3983976ec9e0081",
+          "3b7583fae035d80ba1adf21868107fbaec1ce32206b1b4d6514759e40cb4bc9f",
+          "61931e533da409d05caf88049f7e7bdd5867017c621f416b77e229a0338699db",
+          "88229eebd0081aa552002c5d5685b564ab65138aa759006a4c073dc534ae6d0f",
+          "01c72b20868d6a8402908072fda568e39e32d85f43dd6813155b4e43d2ba9ebc",
+          "5a17053c8a7071032e8ed3a2c122ba0408f8a237f84e580ea78cf3e1a4ba8100",
+          "1633c9317bf9edaad62c6ca24ce85d888b01a381c04e3e0dbae004e6ed52e017",
+          "316047d0face79f04f2758c6ce1ae79b1ae55ddba3442b1fa608834d19d91801",
+          "ef0fb80f6a34d17c00efd8c0a0faeef1622cb1b72f675f74cfc7524d360d8519",
+          "9f6cf061dc93efa12094aed6d6149fa35df58b3406293cefe606037b67f2ae19",
+          "76e2105ec9896008b0c856b8f76b8936f10cf7340389a7df62c5d7a2a7808986",
+          "a08a812855de8dcaa288a9c7a1d89bf664e6c123bfb9f0ad1d3e8ee01f0a192f",
+          "fe47a962168caaa6d5695981881febbc046c48b16e92608457907948128a78c1",
+          "1bf6a7d23775e4d889b91e02f36fd99fd5bfcf7b36985420acdf0574482fffbb",
+          "436a0749cba31cda09dd9f767d98de837e2a155598f6c7a14880654a361a1e0c",
+          "2bd2d03c396be1044123f1cbfe00df361f1079750608ad6cffe29391f18444ee",
+          "ab4998abb50c47a5fe446e195390bab29da0a0e348754dd4791e535a95abcaa0",
+          "12a66e5aaae11b3bb150402986d2895194840ab7f6cdc3257dbd29f9ead03024",
+          "923ece1ea6d4c4e7ab3285415307783edeaaf0fd931df56993eb3767e3f457b9"
+        ]
+      },
+      "orchard": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Orchard slopes, rock folds and grass remain continuous into surrounding forest and mountain faces; no bright boundary strip or disconnected ground.",
+        "hashes": [
+          "2d4777c7d3956e57254fd6a1f40bba818af194bd5d79ba7235b54eff0d371f8a",
+          "2e4af475fbf689983df9b0348e36acbfe9e6ab81590e35978d38386e62a5b401",
+          "f53e7765c1a91f9110f29084a8425c7dcf7727ed1ddfe76fe4da2a1028f29ba8",
+          "2b6d73e096a4f2b5a2f37d5ca0a3cc475ba7eb57cee014d833ecf95f61019ab7",
+          "b4dacb6aea9bffc66652e0e83e6a7e2db570afa44cb8869f3b0f870d74852d6b",
+          "3eafe6d9ac690b80dd93015fba45b430f7c0db3448465c5212472b496aa4833a",
+          "23ca228f508d8b6de36b930afee023d26c1d48bed156a7894e4c7e9d7b5f4729",
+          "352882fe8122bfab714f7190ac30ebef56161145e4a0d4d877e710f8fb157810",
+          "4c3e32c1889247f947565a206022978189b7b4b7ca9fa192128070e24ebb52ab",
+          "e3dcd9a066db101e9112a61b465cf1d9bb9c9123938b982304e2b60cb0710e36",
+          "0e42973e697cc5fa5d0c29d8ef3ce03af9f382288218535d56770b111efc8bd5",
+          "c6f5c96341c39582a2ec4c0b4a267411e725929abb33e2fb41683bb4a12ae396",
+          "b524c4593dc18173eee2c0cf14e59c574de24a25232d8209674e4986232d0de4",
+          "40891028e562555fa0e005f54e51bb6b783852fec4b88f54033cb10dab6ca576",
+          "92153dbb95ab88fc379fbb07f2bbc23679dcde813568276a6653962084a7b4d3",
+          "fef1b4cede23014ee01b7a4dcf944b912c281c40781e32a14d3d2e4360376c14",
+          "6f0aae113447bc369a157bdd19398808239777b398b141b9f4c5bdc5a70e64ab",
+          "6d47a18978349d188f0e293541f619bf21738e56993a623e28828dc10e6b20f9",
+          "e92fe97557c7a6cf1d49b55f47cb729665e8b1135380021d518eb02d05021408"
+        ]
+      },
+      "longleaf": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Forest, green rock folds and worn ground continue into the surrounding hills without a height or material lip at the sampled edges and corners.",
+        "hashes": [
+          "0fd0ee757fb59d690ab4aecd622d94af6e6c020c4f714ff8b8d70375e59da889",
+          "86db2a6bb9e316643983a0736bad6785b82bf0a70d2fb368ee73a091974997bc",
+          "3e123d36a2eb19b3fa05ebaa868a67b1ab54303b4be1fb86d78c7955217d6502",
+          "9b7cec30abb1538d6688ed2ce24cff3e7f8129f849a5bd153feda96758106f9f",
+          "397ba718ff4c1dfc502888004aafdbcd13e9f62f2e9b1b3393e93ec8977f3fa3",
+          "bd4906398362413ddb4227689b3429a7be037f078062d2a9eccd0c352d48e000",
+          "c8a15e9dfd5bf1c3e23154401db0428b97d79eb0800d83a35f5771d1b28c380d",
+          "dcc702eb9c70aa5646bacc3fa0f54b3f0d9a7aed12b80e23695cc12522a07fee",
+          "7d3fcea032c1a736abb1fa92577b226d617b31ade01424d31706b6f4d2c6f933",
+          "fa5f33bdcd4e6a6c93af9112a2ed023e7827ca4a5943d1326065b718695ebf5f",
+          "bde4f9ae785def19595aa7cb23a1434f46f36aede339e52b077250dc096c2fc1",
+          "f8c83574cd13e8344d0f8c8d214e59423e6c031be8d34747b30a1a3742226a96",
+          "7295ac54d4e4ae3756d71086a9699aca14a94820aaf9e75c533753b4f4931bdf",
+          "825ece0fcdc5933155c789b36cc9aa616b6516b55fe4a14c3dcb103e75a3ad73",
+          "da21be01fb045d3cd9f705b459dcce61fe7cd321fdea4262e9bbce456214c955",
+          "c2e04d34044cc212094b54d96e4e1a4a1aaf719847a290f07b01dd4871d8e2d9",
+          "36e6401832a1fae9e1251e503f644828e374073469ff1b8c749d2e267b477efc",
+          "fceec7c4f73e9c7f7fffc628ef89b9af316ccd9e2da502b4df2fc918441ef63c",
+          "b8b2f248e2f45ca03239fc85a2ee10b934d72c2954e88b784b9cbf6795cc018c"
+        ]
+      },
+      "whiteout": {
+        "accepted": true,
+        "notes": "Inspected master, frozen lake margins and all 18 boundary views. Snow coverage, exposed rock and terrain folds continue into the outer mountains; no raised map rim or material cut at the sampled edges.",
+        "hashes": [
+          "cedcd878d619d0a8e3fdfb7051fbdd4c3e480d956fc2a9ed43a113324e1676c0",
+          "0fa920d976a383f190657c7d7739efdc9d646dc9d4d32b2d070823b80936e463",
+          "37d673eb1bfa80eac2de50792038748884eabd7825ecaa472edb8321acf59f4f",
+          "bf3c1220c58e2a8015f1e521ce268bb0e8209eba7eea82f23a59c3199bc95fcf",
+          "af0d107dbe2bb125c29839b4e0498999415d33f781cc91c0f470b4a7d4d0a8fa",
+          "c5130cdb9b4cd9a993348a8970ba44151dc4abae70d644d9fcd04dc8924e4722",
+          "fc369b55e4e7dc2cd62da8b964e0fcd23bd3e13ad231367afd0a4f7d54594620",
+          "11f2483b98d0c470bbc48a72ebcade4addfe6a546a8122848d54e96fe577527a",
+          "c8ff7bdbe4b8319ecc8b88ac7a80c33d52c1a02e3cb2cc66c8ee2173ea79117f",
+          "301baaefafc47384ef0d9084a333ffebc635070f50ce054c740a934cd36cb639",
+          "5f2f873a186d3fcd2a457dc5388f248799b6ff3f1bf207bd8d0aa69699e27bbe",
+          "95330e8f5005b01dba43a091f41090d651dc1915781e732c192dad138f18ea59",
+          "f0bfae7b78c52038c892ad9e37a0c83558762c79ec4a3fd1726b499331c645cc",
+          "1cd7803ec1beb58430b594640bef309130662a58455f656e74d5f3e71a9039c7",
+          "edc785990213527e6975d750ae1531a123e4f4a883bd64f0d8aebfb943b6c4ec",
+          "54e87fc9e01be32a37636cf2c901927b77481ed32f6cda44f8b4be618e714b6d",
+          "b00064a2577cded044697bdf8139bc0fb0a1cb1b109af421552d626310f375e2",
+          "5780b85aec8c76d84406035512bde28a8dbc2d3a4b772225722a72713bcadebd",
+          "7e19aba2bc00c173e60f31ebbb80a4835ce6657bb041d2b711bf7310db4ed304"
+        ]
+      },
+      "blackglass": {
+        "accepted": true,
+        "notes": "Inspected master and 18 boundary views. Rock, woodland and brown ground share continuous slopes and lighting beyond the city; no abrupt square edge or separately colored outer terrain.",
+        "hashes": [
+          "6a52b1c8b56efd2c5cd48e292a910eb5c0ac9cc7454d618c71d2161f31257e45",
+          "0e755e81f2654e7fb54100bbbc22ee8a4490651924309e1bd5917dd1fa73b66a",
+          "37f9ca86067203577744bf7a026d623e430e289a60dc7b6f694054fd3f9774d1",
+          "65685ee229f5130575b3df375df9603cb424e8c462cccf983436850858a0963c",
+          "6961169b97cd99eb5d978d1d7711b836a8bace832c0f27843eb0f273c9e0df34",
+          "1ce3bf9cc4ad43569833cf87c18f74e4706b43f3fe2387d4e5884b7fb8bf859e",
+          "9113025c44d49dc92449fd8eacb63d8ed506511a7563824a83b7fe50253b5c6c",
+          "559aade2356f7b54b1fc5aa80db3b70577e3171422efd70cb4ce89b75410715e",
+          "383097ab73511c437c7937bfca8c023813eec0b65c75b97106d06e97ee55a0cd",
+          "f45523b61d308d3b156a84e45bbe9536e3509fec5015bf2d9952955d559caf07",
+          "9bd5cf44907d2932f4d9de247de9c46f3d01a6ccfdc19d49a12e14ab365a3224",
+          "81bdbfbd9a3aefbd4bcd0662462e9b84802b35eb0a24547f02b2a2d61a833370",
+          "418d2b1a20462b7ec17fb7f62b953cc727a563c39d629a2b5953474571f5726a",
+          "cb924a1e17346978a8e49b16914fecbad43b54cea0852f335625380660d1497d",
+          "33a40fb2c9510f8caf1a91539b4a19eae444a193bd371978cda66c39f93eb4b0",
+          "5a370ffc4931a83bd4117bd3d45e72050f85fa2c23b7061e9d233c7915b025bd",
+          "4500be79abde24bf99c6417631e21f0d8eb780151c45e458c14f4a17839d2f9a",
+          "9bc6f7e7acd2726fbaf69912f116ad7ea552e8cbfca96a7bf3ee60af6d8dbce9",
+          "c355be09c0b7badc5ddc183b872211ff9ed50d497910fa5ff3863a7d4744a887"
+        ]
+      },
+      "caldera": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Dark volcanic ground and rock continue up the surrounding ridges under consistent lighting; sampled joins and forest bases remain seated with no detached strip.",
+        "hashes": [
+          "f470bfb0fafd2ee8d47796d2d64e62459db70f30358d6b41624d78f104e29fb1",
+          "b091e8dab772818f255783721ed943ef6c303b8f1f70dc4ac469d6b8a30bc320",
+          "a7a134b0f920edda6c489d15f8c228f3c10c5606e52dd815002135b9dfd2e302",
+          "bce31606c023a4ade6f0ecc6fb8b666fc7a7f97f131fd0657660cec264190d75",
+          "3cb5ea1cde89dcca9e7058b6c3fcfbf58e8486ac81d24b9579896bce96686c28",
+          "ae8f273c264f6eb5a8bb77555120fff172bafa0f8f9fddb1f9e85af4efce796a",
+          "7b0fcf2cb1e144b68f9b828dea6a2334639466c96067b2190b30233aec01ee52",
+          "3bb928a959deb6ac7d5a76152deaaae7e3b0727308bf5a076ea261e53efff54e",
+          "2c90a8d228bdeaa9fa66234e79873f41ab6f9e9c6e8ab474a089abf4b48dffe9",
+          "a232855dc3fee9adb14a9f431b05b31594bfcd9407a8e13167e0196e90f9240d",
+          "558babc68cc72e936954e422464003e6c9264c00a30980c260e9ebc17fdec7f8",
+          "0d2edece5e8979ace712997f69efd2ced92afbfd94586ac2b719be4d3da224a8",
+          "8468cc1c4f07bc2a3d98fb90133768caf9c307e4ba160bdc8b97a0503b2375d5",
+          "ffcc41880c46f3c58b64091fd3dd200f082ea32685f8ae345d2ae66fe757c9ce",
+          "9a89d7753b267714cf77e977ca528255b0e293fa92542c6c652eb7db626a6cdf",
+          "baf624fe7a1d94702b4ab3bcef715b52443908cddd9ee71040a4bc5283ef0c81",
+          "79ca15bdc86d13d3fc3e0cc7d345fb72b9671b07e842d3c6b5bb80e677075b0a",
+          "216ad67877a0dde9858b69dff1db84afdd2006e766ff5424fb6dbd32a6f14fe9",
+          "a88c6836fd7ef7a4a9e3790e6777c3162ce09adeacd6ff11bcf196c1a1dd9cf2"
+        ]
+      },
+      "ruinspires": {
+        "accepted": true,
+        "notes": "Inspected master and 18 boundary views. Grass, rock faces and tree-covered slopes blend into outer hills with shared material scale and lighting; city road exits remain grounded without a visible mesh lip.",
+        "hashes": [
+          "111cf4597962c7094748801b8056adf99401eb7ca1fa1e9c24dba238c398d061",
+          "51bbd6fa01682ed6aa640962eaa32184dc110880dd775f5e464a2b65d80707bc",
+          "077aa702d7e332ecfe1395fb05420146d348836756603e1aba4b82d50897f386",
+          "0a377b2a09fabc547cf5b933c7dd1aac519e8b450d6aa9594def73f1afe0e78d",
+          "8f9db79218dcb48c2a69be432479515a4f8e8dd103806e3366e6292d3b41727d",
+          "1bcea65d06b4cfd2728205f669d8e8f4b37162fd282c6d71ccd1a63a06cc8ea8",
+          "850b505a3a4d59604f1994e999e6dba8ed2720ffdc2e4a1b635a98044bf8717a",
+          "c66773662550337fc074ec108ec29836ea3b2a1d61e9bf50f105a2a0670ad96f",
+          "9960a8d64201dfad6ca3bc6fae9f4a570b1e84ec1c4f199839120597412f87b0",
+          "8df6969c3d90dfe5ba6f203b6d609176dcabb5366e81abf36dfd5299378cdc2c",
+          "c37683d134393628159f6307950544286f5e690e308f772d4414fe2ef47d07c7",
+          "a714c332b14f3c561f7374bee2a8c9c4e8f1421182e1fb9e528e82e5e5baafc1",
+          "a3298e05426f5b6abf5ae05b99a66ec6d7ae668e97553c18f3a125f208254f80",
+          "990861aa3713cd2741933f2992190a1fc816be63c0b446a6812f695151a34e07",
+          "b5d8bb6ac57f2b6a30ed8889729de80212f477af071dcf98e021e2bb5aa8696d",
+          "e3d1a559bfede591557faf313d6e9b23b0205d315f205f5f5621f54b13dde045",
+          "30d194ce4df9267d678766c0e736ebac0d7e86ad23163321b6618de56ba3760d",
+          "9eeacb189c92f447ba9615cf61b3ff8a9c250bc610ee0f7de60cc03999fd0117",
+          "29bf9ad3cfd5d02e08f45e6b1b6f5d18287f5e5018c83c340946098f25557111"
+        ]
+      },
+      "foundry": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Industrial grass, paving and road approaches continue through wooded outskirts and distant hills; no separate ground palette or exposed boundary skirt.",
+        "hashes": [
+          "e8e94ea7208fddbac8c9cdf74250fda1c2a37de95bcff0c96434130b7da51c72",
+          "e16f4252df1ad1b405fe43aec69cdde3041cf73b5d76b0b44954f2a7a74dede1",
+          "56cde7a3244c741f83dd4fc4ea5a84b1de5a0d6cbd1b0e8a782f4abe486fa5d8",
+          "0769680517ab7738e8e3b456cce27096ed30aa2d56d74fd21e7d7cc79ee50e62",
+          "f60cf4b879a0dfe274cb42b0b1932e5f384c0a1d5eea9bca9ec8fba1cb1a4fc5",
+          "5135a7eedeca630e4f3b7144e564b96d7efff49d1fd28543d6e3c63ebbb37f4a",
+          "ee6b17248219cb163d0ef770ab672e15756b0ae35089cb0dde6af5923c7c32e9",
+          "0ded7489ad92bd4800c28cb4a2a5f813ec40d7a975e8cc74146e8ecf38444904",
+          "643cb0c4648c19767d7608aaec2c948f08928012da9d97465f280b3f48aa4c2a",
+          "eb790cd38a9cf627431c3b24126f76c57cd17d92fa3930139f9e515b23d90981",
+          "7d8152ccd86a070602672d88580bb3dfeb1efdf48451a5d77477b86689177952",
+          "8ec0c624b5818326185130fd9658b2599da8ad78f5a8f3db85fe62a31f97e056",
+          "b65434551804245288614278a5a8f1805b9df6f80c006561a2072378a18044a8",
+          "b3bb94e2bff216618dce0f7b1c326e14c55210476c9870673630c5b0ec4d67e9",
+          "c99d8567d3e8d4edc49380784741a60a2e821d4d275af3631d246207ebcf3f51",
+          "96cbd3e0e1a4f723e3ea593273c28699ee56d1fe5dbba83f38cd62a6546cc17b",
+          "ef6e72183fb3173c194bdf088bc570dbc1a881001e228370295a3d9499cc2750",
+          "068642d48a5687946d18b06c3af0fa3dfa89e13eba1206dadc8b969ad53f703a",
+          "8abc4330f8d9cb12207908dbaba477f312eb957e8b9540c6ca4886be642a8cc0"
+        ]
+      },
+      "titan_gorge": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Sandstone bands and sand continue from the playable slopes to the outer mesas; the sampled joins have no height lip or abrupt shading swap.",
+        "hashes": [
+          "99f9f82cf5b341db2b86ea1b87001db96fa5ac94562b59181a4326aa7320839c",
+          "15b54c22be58a146d1afdf68998461a61c99ca3d7374e303ca945b869d55eb9b",
+          "193fc7a17dec1efa085fb06bfcffc1380d5024b28cf7cdb4802ed6ea2a9e6bcc",
+          "699afdbceb31a7379a02f5fdb5f19eeb8d9d354a98ad3554ee1d036bb6426fb4",
+          "fc090019c3fefc3eca875d94026cafb946403ad631a7a3efce89de284c815088",
+          "86b7a5d53e04d1711834bfeb5a77bbe5d934e3aca2a291dae40d0a038e1ab75a",
+          "7eef8835858713ea057cf5a8a00a035ce84e9940cc75901a42e51718291feda4",
+          "1a6a7bdde9d1600c7bc60e730346a6ef21d96468dfa644c07f82178952c663cd",
+          "19a6b407d98ea05b5d0f4d4fc50c90f086f6276a38b32fdd568e8c1b41adc589",
+          "4122dcf0c031e60232396d00873c27f430c5fa7527f970fce67e5184fec7caed",
+          "3c4b85ed5bb86eeaaad4441605df673b757fa9d8e48772e9476d5977fa280e73",
+          "7d650f778d07282de49956bd9e53cb7a7768eb68e4947ae6e887d032bae0c19f",
+          "c656dbc7653514c9bc2c9a6a9798df8d8d61db477cad797784e2d69059378765",
+          "041430dd07d6e976310b8ec6bd1a45513aaa3cba261eb8c3d93f231d6c702a2a",
+          "59d3a63bb633c98db880e8e30fe851e3c5267a19e2f865436f7e729f80081407",
+          "1a0470b789376521000873cb4863daa76986d4fc9bd89a16c4db3d4d18afc064",
+          "fd022711411a92d4e7452a74896c83a8ee60fc148448f861b53a822b076defc1",
+          "76c57a176220927449ef0114a4e978c07e4d129823b8bf062637324c5f290992",
+          "183d52274c9f0f2e31916271a0823c3512c96229a8c0ca58dc043ee247ccc35b"
+        ]
+      },
+      "skybridge": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary and all 9 lake views. Irregular lake contours and the causeway contacts remain closed and continuous; sandstone ground carries through the outer mesa terrain without a map-edge material seam.",
+        "hashes": [
+          "8b72cfe4ec38cc26896d9f1b147074f4b90033b19e4a85d6f3eb27509ca24021",
+          "b1ad53b33985dfeec4f1f1954914bde64dd6bcbc7a2458bc91195401ed78989e",
+          "0dddbe4a3f9191fbc406b997ddad36ee910ba4b6806e2373b9ec3eaebf496e8d",
+          "6b9c11b48fe52e9d6b569316b8175e6820d996a3ab2d415edb766cf0efae765e",
+          "f6c7429e9283afebdd25ba74e79c99d613126b13bcec8b9e390576d0b15d67e4",
+          "ff195e5ef33d4073138e0ab4455b757b369e6cefa214e8bfe12aa720eb7c4f44",
+          "900ad82b102e00c56ac880148b7ebe36a08f5ae9f9c06b543f77728b084b9d2a",
+          "4af9158afcf1eace460fb4d474532247ba382e3331bb16bdda79e329b02fdde8",
+          "c7b241d3edfb796a4d66f634d8fbbaccc72d0ca3ceff61843e6cf75229b7f844",
+          "d2d9dac92eb7c587ae8e3c59aa5aa038b28f081e44d004472d148215a578a39c",
+          "eb67b6986f0859e9b8f49bfdda7e5537e56ec75dfbfbad5120ad1f5dda9f9c2f",
+          "fdf4899b2347df768c49c42bbbe618f11faf36fada507c4e0d38f04e6f0c47f8",
+          "a24d2407cbacf0aca51ab1939523a1c7a0dd8abe5e6d8fc9836c8ccd388bb9c0",
+          "3fc466ba2af01b8bd564cf1f4ced9e42202a2940b918d781ae7095c696c54e27",
+          "46115b688610fb03b87676ef4b334e87d626404704ba71006e3dbce35cc9ea12",
+          "72dfbaa2e7c3a663160109af2098ef2a61fc65da3493c03d6e1d515b71164709",
+          "851bf25e45dbf86d02c5bc0022046132f8afe157888b5b2a6463f909604ed134",
+          "ec6e35ee7ff4149febcb8a17b1eaa698f7e3810ad6e4a624b472288fbb54447c",
+          "db9a75804106c762e6f3497a8da290023ea74e10a2fb95909a04bf6d4d166ac1",
+          "b342bfab651c671be55035d83acc7d5f474acf020f3e6a3fed1903937029094a",
+          "62d612beea49066e3b89d4139709bbe02d2a57bc8627816aba0ba64a0ceacbc3",
+          "cbee89f0621e404b4ee2be0c76b09f8deabfa698fda27d4b764b5cd83aa9b910",
+          "7ead7caa6b5c4c1c56b12c9c31ff7561c5ff0b6a1e2b4f3378ca464fb76ea774",
+          "ab48d606d864d146bb972b93cb51431fe1725842c6c4c4ad692d6401874e1bd7",
+          "c4016bf5406c9a14c246733e60c487dc042cac05a5e53656f08ff7620b93b403",
+          "973b01c3ca19c467bbc919361b7c32bec140594ab17652a1df2348e355896bcb",
+          "64f71d554d9a1c5c35baa6223a606bff8bdfb9c8fe336ec6af7d17adc8ee2588",
+          "ca989ce14a1e11b1fa5c3136d598c68d56ed7e1f5c4c3c2d7aae574923d5aff5"
+        ]
+      },
+      "polders": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary and all 14 shoreline views. Pond lobes and narrow drains retain continuous brown/grass banks without water spikes or openings; low grassy folds and scattered rocks carry out of the map with matching materials.",
+        "hashes": [
+          "b0617f64ba32ebdec117de012800db3bbcc55d011ea29fad7e146e3417b5e5e8",
+          "85b8eb1fbc69fadeecb2481dc47e857e6feca25621f1324c9428aed1c830477f",
+          "533048635de5f1c0736f6ea8b1c594eec4b1d3be04f5bb6d4ee52b609cf48e7a",
+          "df3a62b5bb888106489e0e497eece92099559a7d60a74f0b9e8c4130cb2629c2",
+          "a4e1934aac55e827ea469e6fc6e03a102ea69c79d25574a45b6cf117dfaccfa3",
+          "40a6dfedb75e5b6a32b04a8635881aa766a0683e2daec23675393b7d2245c387",
+          "d95516faccc291d9d07dc16625c85d842b2a78059539291784c0da4ae63654fa",
+          "959101ffac02e0a8cd48c2457e96b988110bc7ee02a5efcc4cc79936c840674f",
+          "0b3f7f676c22fe29a487ef1c65b52f3f4f46363dec4c35525ac0606641970081",
+          "30792827c25a96f878688c812eab55623444857d4d34107efab72506c2140013",
+          "a40999d32cc474a234cace8105222d3054a7cc015b77d64697dd4484e2833bb5",
+          "230abfcc8c2fc5636210d52f85f2a877cc88b6d51dedb0ac7c57d2a82534dc52",
+          "e705dbc21a35abe62cfdfcebb5a312cee9ae684ec6b83da69dcbf7499752c1a7",
+          "7bcb9f55e71d8f3dbe6668da9ed768b12ffcb8c6c4f6506c28653fa9316b734f",
+          "460f5ec2f0bf231696f529587a56df05d6b6292ab59ebd48c29f586cf8384dd1",
+          "3b293cdcd865749eafd04d59f4f4eb8d9d4442294b8f0030b7d70a7470f75843",
+          "202adb62f53505943933d5527641726334d781856436bc0d2942e09d6ff55eea",
+          "2105669da9b0a90709e5eb3970a95c104eb6953cba21fb0581ee4f10edd8aa4c",
+          "3d5ee90b6457539b54d77450ce533ec4f371dbe8dad11eca11261023ea4f7d1f",
+          "e3ed0017d663d722640e406e86b5171b25d190051ac785b2010c06bdba13455a",
+          "b43ab13fd69c58019278ac370d638333881f54e7c222ceed96680b9ea7c991f2",
+          "46038c50d0696e166353d39cc21826e2b57d99239b9cdd660cb2ea357cd9f6ff",
+          "f0000ab6096ac66a7433ed7d04f75dee19d368216bbf9f62805a434e5574a48f",
+          "7de598c0cdf1a13e435ee608417a4dd9aefde9d1d259b3bfbf4d3eca85a87dea",
+          "f6d4f07387ca52797b6c3adc2eb772bdc8645da137d812b9ed72a3711b55bbe0",
+          "8ec3984ef1228ad0537333a9234a27ba7ca671000cebde903b81e40e5a314c72",
+          "f316b90ec822cc7e37b0b82b4ca8923b4b8ee760b31daf63f860d4e911d4527e",
+          "5bd34e78ce785b3f7cf4b222aa4f44ee9240d907aafddf3011e7eeb102cfa02c",
+          "6b66db57ac9028c8165383f5f8797459f610cb552ff606b879bac9961d9bc2c4",
+          "f4500b693da50ad4698a2aa96f1c62d58a3aaf9f615ea418ce1f6de20f1cfef5",
+          "7aa171ec17fa4b7a5848a81c272065d25201c8b231c0c15656b6f809148641cb",
+          "ca4086782df901d1e90c046fe5dcae14b3a5fb5bb19141238bcaccf4dd01d0e8",
+          "90a071ce6ff83445c875b9a6d5e34bf438db7b5e885122a0b3e92cc19600027c"
+        ]
+      },
+      "copper_mesa": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Sand, exposed strata and road cuts carry through the outer mesas with consistent shading; no open join, square lip or detached surface band.",
+        "hashes": [
+          "4f5893c84b2463a52ae984c9d2bcf59e858428c3916eb87c61275391175d7303",
+          "182f3753c812e8191d98528de672fcd05e61389dd51cdf3251296d7905c44652",
+          "81839e1af50b49ddffdd6ef553ad1d7c191bbd39a9c3e6f7659b78a5e1c9ad8e",
+          "5c8edc7d23a3581103fdb7bbe1c667242d40079dc472175c227e96a79825c702",
+          "0ddbbabc1136f32a9a21cead57a021f1bd2d74f730badbf08018c04744b22c2c",
+          "630d6166edc8d76a302f4701a6a0a546d4e8fbaa7b535bc1673ae7e316d84d69",
+          "3b2d8b6215642c376027070877bbca522233564d869d2dfbb8e24506be792131",
+          "4e7a45ee571ca6369eed16ad2dadea6b2ddcfb0767148623c42fe1c288c9a37b",
+          "74595298dac00f8581e0ca771907ca25a5f21d5a435a07692daf1100268e0d53",
+          "9000eca519195ef79cac053f4058d86690c52a8a4f1c36d9d14c1c02df4643f7",
+          "cbb9dcb637cacda67033dd1352167829857f872bb7c03e34e2a4aad4ad741ada",
+          "ac721a418df7678df8a6d2318148f8e2ea0a54e1eab2ece67c2f0b2b8193214e",
+          "a7c9a8f6a9ae62f69dfe4a1f0af81cc12651af4de00a0fcea96f6dd14943e2ab",
+          "a9d5effbfc59216de8b98c07e63ed1808b9ef67fafaf8d92cdfa0cf8722923c6",
+          "fb0a80ba136c3d2959c50dc217fed922cadb53373af4fbb56705f689c76b2a1c",
+          "0c11319d6f1123983d2f31b694eccaa30451abecc1d15507d6def8335124132b",
+          "705b98ea9cc4d3ea88e9b20ff44a2194896673ac273812aea5a2a50de1b253ad",
+          "6f7a8a43c2b891666cb0cbf69fa8aeb8abc6713a2f40c8115885519d4cdab365",
+          "66a77868a8da92f18833deaf5f1c68c355bc858cfb29cfc5e980aa07d9ccc2b4"
+        ]
+      },
+      "airfield": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Grass and worn ground continue around the runway into forested hills; road exits and rock exposures are joined without a height step or sudden material change.",
+        "hashes": [
+          "6e49c5999ebc6e0b03c845e9496a5cdd62742983b11c7919d1fb7581aebfc832",
+          "41ac649d3b107642adc4334d07fd63739662dd68d15d46c8887b007c7598da2a",
+          "d0e70aef9253ba602ee04ea9ad71be319efbf94a8bd4c4a88d9672e2d05c497f",
+          "b6fa0b7f7d94f89f1aeef18e993d1953e2e98daa8390a21ea4233f3ddb92fca7",
+          "33e534f9f9595184f2da95108eb1be5ebe487676e48283aabfec2ac1124be9a8",
+          "9a4920f39b5c4c58796214c6d62eab0ffdd6a5963d764c6d2767b2c3afb85073",
+          "727fae094310b7c83ab7cc014aa4b2c7eedf3307e9c2778e9b844d00ce72d8f3",
+          "3e3e7f5cd9904d681f1d319137a0f9a580f023260e6097a414db1394dba70713",
+          "fc39ec9e996fa44640e8bf687998dfbe6548db6071f3636922951acc705d6432",
+          "46a838d60666205fda112b293bd998a85629b12a424ee7ae02a5790ad1771407",
+          "3fbdefa6a3a199782780f663a9d790c3ee4e7c467ff92fe2d0c5aec5308fa38c",
+          "2c6958ac40c33485cf31023e49c7df560dc552d6a8796ea82fbd189ae7647653",
+          "34fd20afd133151158f88a9e5efe879e3c4eeb9cf1a52b4dc2a61a00abeed789",
+          "a954b6bf40d81d72c852c5c4f62a173cfd87bf91f4a6ac5aff5405091039efa6",
+          "ac43f1cd94b2ddf1b9a4ecc87abcf1166b8ae6d91f87947c2526b9012dbbed13",
+          "3fd3ef192b555ce38766611809bae7fd0af1c7d466251afb169baafe10e2eb94",
+          "69ab6e0a2a8c441c2a78d4e5f440bbcf982810fe3f12875102942d39d3de9d67",
+          "ffc517d631cea6bc505c0a9bec8e0eead6b0436aefddb377afc420d58c9a78e0",
+          "abd3230b28a9a2bee9954d166fca369268d2fdfe9c362af10f3ff08efdda6817"
+        ]
+      },
+      "oasis": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary and all 6 lake views. Sandy lake contour has rounded natural lobes and uninterrupted bank contact; sand texture, rock exposures and hills continue through the border without a visible material seam.",
+        "hashes": [
+          "1d85d5b4af8fcfb113e13852be81413e3f5477d5c6d324e545adb85c3de354a3",
+          "464c96e27519d38bb7d629db18cfefcf9aa13fda01ce4beeb8c4dd206804c2f2",
+          "d92cf069e9522b84ca818138252fbcbdacaef14f5773ca99e51da2262af6bb4c",
+          "e69a228fca2f3e905ab002f4c59ffa1e79aeb14ec0582187757a14d4c3506013",
+          "4aa76494146837090476f214b5429b343c18332df2d6128441db4abbe62201de",
+          "04ba2e5936d426b17a033af28c7c4d05079a2aed85c8b1ab160458af422bbcd5",
+          "da11de51b4b0378410c3ad6fc68c0cf216acc5d864cbd0392b73c2ff800650ae",
+          "2a2690389542ab1264569f218a676d99972533b5c2e91926c8ac7d705b6e05be",
+          "2bf87becc2294ad2ca1a712c74c074b000c48ef3cd8f098b0d0129b960c711b2",
+          "bb582f8a0fb56c358d57ccb339a8e3dac76cbb71b3a0cab9fbb4f280283d1da8",
+          "c0122b34bc6e813f9565e9c454fe3b2c558894948f2b5b39d090617d0dcfb768",
+          "89ecf693c22cdf5ec12205c04ec02e10291090f5762cf53da7cf255b00d1acba",
+          "3fddea1d5bf4477d3840bb331c5bce78490ca6f75715d5ec4b9c736737e1fecb",
+          "c06a0ff0c548886f7ba1ab50120e24bb88337b42a668e92e31f38ef75878b5ac",
+          "1ce41fcbe6e40edb1cd4b98ef60fe0f385a501976667ac3c9b95ec0ac0d8d3e5",
+          "7eb4d50f3d724b2cea667f8e61c64eeb00aacae2ee30690ed31136a24a81cf78",
+          "76d28005edf82823f0eb84f99ae434ae854f1130cefa891047f66c371c1f9e26",
+          "03b398a25eb4e07ba38a21afdaad4f4fa0ea48774e27eb29e4aff6fe98171005",
+          "a41fc81e44a5adb3f262ad693549eea51c509929f00533dd383f3151bc07d8cd",
+          "088c2a96d6df679e6b27de7f68a305d93976ebf981c73bb8cb6cc00f447ffbd2",
+          "16eddf91f0b61c1747552e1e0c8ac420e92ce47dbfec6df272d64242351a32b5",
+          "9826f492a730ac659042de78e77c5b4dae50bd82a3d30f2f182a1f9d0e54b2f3",
+          "74785ea1fdbbac0db5175c97a13394775ed426ffa15a02dff82ba3e8aebf868b",
+          "debc7fe575a2686dd68778b0474adb896bc81c4ecf13a6dfee71c097add91f12",
+          "cf77df6f83e37cdbd3bd4ff7aef885844723a7af221360cc49dd6a0f22b600fe"
+        ]
+      },
+      "mangrove": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary and all 24 shoreline views. Branching muddy channels, small pools and causeways have continuous banks and no water wedges at their junctions; green terrain and forest shading continue beyond the map.",
+        "hashes": [
+          "2ea8a8e413acc2f4006081f30e67b3298fc60ec0644ddde1a030a107683a6d74",
+          "304cfafb1838c7c03fc7602f656771ec6ce6b7f3c64f43e0176d61f13de57140",
+          "da90be17c26215ebe13644d5f9e7809935105c9f119bf36a7b268fc509915c78",
+          "10c4b2dde5956458674c2eb3f81cb2462e97ef34110fb9cb5b38c615910ba24c",
+          "b3a9d77b00b18556ced67ad2a2c854af9f5fb76fbb78826900e9b2132118a142",
+          "246849019e27849a9d976cd414b426b8afdc75637b14899c86b2f0e07eec9d69",
+          "59a58881d6987df24155c853b06772ffd54c35de42706ef3538a46953bd5867a",
+          "c50c17bb9adf91b579c607b3833134bdcbae0a050129643b4c5b1e91385f696a",
+          "202308c9f1d65a8f214d6ef5ce1a2de83fd3066d5098433ed02b881e019713e3",
+          "878d7a6399068bbd276a6293333afa2e8b0519609c25edfda7fcc98ddeb1e7b0",
+          "0eeff726023f2d593fe6cb497b7d14cb836ef7357ba2322dc0a2e15a0b022612",
+          "2cc2ccd556cab2ef273d5c2943e4611bb3a21a9e1a266f7549ec864926a1cf36",
+          "2e2da60a6713f3d043b5a0534a38669d012b019d39a90683845a9ec74d1a700b",
+          "959514371c8b277f693cb7f7dd496d4e28d1867e37d1e19485af2616536e0663",
+          "76d56c463fcc53f6ebcdaf0aaa29123b60e4a412e01e00ae68e63759db905fde",
+          "45c1fcbdb6e184b3d7da5df6666b1ce2993b50f4f9d72eaebb162081d7a1b558",
+          "c625015ebc11b8ef56611bc8b74fa7172bbaff6d78903286354a90a65445aeac",
+          "6aa1a169cc3b60ccbf274ad44fd9cb239245932318066ef30b7e00eca21f17f7",
+          "eba3afe586cf15fbba3e1da4cf8a89c607614495bd9f851f24216cc8435a41b9",
+          "3c05d4a534b9648c24167fc7da6cba74cb36c3988454d66d7102fe252bd99414",
+          "285a8944b19d0efbf99b52feb528cd9feca237937902c926e84f4f945a83a237",
+          "1b9f692d0f1ced06e2d959109e8af21ba271c0e6ad7cadb87c253f165f757df5",
+          "5a20899d437c7a72de8e4d8c016e72fe6f86434bb3f8cd8c2eb1d87f29feaf94",
+          "90c93b813ef7cf58b452c77f2bd9df088da9daa61dd8b19cdc0b9ab6e1df529f",
+          "3859cfd86f544a537f4a0000dcd3140084b3ccba71a1de195b7f000b3d1f204f",
+          "6d13796cd916dc9072f441c04ddbc833595563a7ec37f481e7dae381c046dd65",
+          "e06405406f4c9cfb2b005fae6236b8c3f4636b11a3c3891769b810d81a064b84",
+          "682254408f088091e40182d7b15e3f8fd43d7d2a60f9bab335f9985c7547d62b",
+          "34ccd4b1dca9053617b4479d7a71ac1bb0c63d5f247e351f10e52054e1553aa8",
+          "0aba30388f6a92575994f2bd852cfbbffe943ff51a9d3e97174b689bb70c44d9",
+          "7a8074a4a61032031dbc437b4172c8c796a806dc07cd22ac61d0cc7670c9679b",
+          "2a50f4d008301ba125d163ca8277bb0c488dd4f3466e8075290de83f77e763a0",
+          "ee9c869e9f5123540c6829551040ef73a1da477f8649d24272b3bfd4208ea47f",
+          "6a4636672e2861a1bcac38a1321150ee82f7a51332ddcbda54ac534cd409af76",
+          "f36022c59323ec67757a64a9176eedab92a5dc8224ca0e488894c150ac6e2d36",
+          "8665733edc2e74cc69bd04c8a32268300ad76a050d61f12a516617170f81e704",
+          "9ff10ed0e95288903216eadc50666ce7a97b8c2b36d2470e3b9a49338965faaf",
+          "b78799aa59ad2e00fd97750f0359fa5101a9bbc9f4801f43910a4cf9319b7c22",
+          "cd99b588907195a6968b5761e8809da66645a229eff12412e00d94c8513dec50",
+          "cb29541a02baabb18d03f28d5a8ae4c9096fc73faf5d7388af3aba57e45272eb",
+          "8af2c5a635932beef8f428a1618efbb51877df70068ca50fc7bbe799cd1dc884",
+          "a858800a1f99b89ef3333a3cb1ce0490ffaa3f796b913fa3a32635ec14cc600a",
+          "7f48203424e87e285a25494beb658a832ced22bf733255829509224aa657ea7c"
+        ]
+      },
+      "reservoir": {
+        "accepted": true,
+        "notes": "Inspected master, 18 boundary and all 11 lake views. Inlets, broad shoreline lobes and pump-house edge remain connected with consistent foam contact; grass and rock slopes carry into the outer mountain forest without a material cut. Also inspected all 21 sampled film frames (seven per six-second Day/Sunset/Night film) and all 18 clean/branded posters. Tank and barrel stay framed; wake builds, spreads and fades without a fixed rectangular contact patch. Night is intentionally dark.",
+        "hashes": [
+          "e7941959e4c218d97b7b71f74b0e46d0abd898c2103a1ac7ae98db95a3a1b6e6",
+          "19068f155aa8b99eddebf3498f644f41b791648a82a7303aab3f61b0738e63ab",
+          "6a12099685d7983af6ec5e65d97403c883921bbfed3a6e41eae2dfc3bc93bcb3",
+          "8654ffa7f5566e27ea766a0c311e768474b907709a344621f832ad4a4d999fe6",
+          "d5cd15d17d963e53b51c524ac570662ff59c95d557af320405e89ed6ac584848",
+          "f9d3aeb2b547f540916abc1cc5cff117983db165aa91eecb4747a9b165d5fde2",
+          "018d73cac528e0e24470b79a6e27ef812c21f8067ff414c1965ccab91fffc650",
+          "f06b5c66030e12a3ddb31e3e80eb78e07833fe6ab589682e0561c9b24ef7248c",
+          "dcfe7b3ee339a5e533cbae9ad864323c2bb5c6cc0c1312b605cda5b250888ffc",
+          "80a7f4e347704e1507b7ce31f02c19c8a788ce1311f2718e052638e45ab5040f",
+          "36e190265c7f4968399a5b010961980fd10eaeed3f328cb8b98ef67d55d3a50b",
+          "6e748d1070d0f7fb65fffcccb1ee29cadca214c2193f7922b564b0ebe92c7569",
+          "ce7e22930946faa3b21149a118b7491f4cbd7e3b09dc594dbb55b29bc45d3ef8",
+          "dff2f2ae197572333cf7d7ab3993ceb095e67b303123aef752c3007e9371a1be",
+          "1cb4b575ed039035dfa03a37f9c4f724a4806fcd8470a07c98ca0f8addaca09b",
+          "2c8d978c216ce84562cc8b02fa9cd1e96052fe46284d9b69a58bcdb4db949b77",
+          "397dfd0d64b2851d8e1dcdfcbabcf4a10435fd3c451ef202e3d8cff5799ce6e3",
+          "00a6d32f1824ba3f5f057755193f2c239b88bc79ca49d0244c33ace9f5fce972",
+          "be7eef5635371f10b4098f5983fcbafc0a6d59dd119a99cbeaab66ae6ff638aa",
+          "96b728bffa41097f103185bc28c78784d8680f45b902d754f44817d917ad2782",
+          "6a2975a24923fbbd8fbbafc52038d15312ad9766c388453638cad03a2cae94b0",
+          "fdf339b5f75b189bea1045c214176b2fff22c5ff21362e962d0553d73166434a",
+          "4a1d64ca0cae4d2cdc754d1ed4cc6b3ed11a95f25958257d110df225ff6f2674",
+          "211b45ccc6ddbfb83833195c50a7ed8cb5e1a5f4b516815ee4eb782a4532c707",
+          "b92fac1d409eaa025af1ff0efd5eb07aa02681dc6fe23f1d6414648487e6a02f",
+          "faf3d8e2250bc3db7aac811a22ba704a981e8b2921fd5b7b998185ee47945e14",
+          "d3d9e0fd4870fb0a08a34ad039d3bd769a568caa63a3c082db8b85359f2d78c6",
+          "61ffd8b4679b45041afdacd10af066f00a28d4e2e6e717dfad4e7c2c2c5eba4d",
+          "ba5775342a84733d3d305e815c5b0bd0c004bac1f212d5bf68fa794778070ec7",
+          "40fcd9759c6eb76bb1342554bb8f8c4d3d24f15b14dad79f318f560fe1f71f7f",
+          "e5b5b2f400803ef5ff529e23fb7cf527c87a98b5b1339e3e6835bcc611b9aa80",
+          "4422d54cd35aedd3bc9a6309b91c972a95990ce679ca90fb48bcc1fd3b9fb73d",
+          "1ff07c8da9e2c41e10506f31a47d463cc798cc2aaa81c8b73aae13d78103b702",
+          "d6f4d7fdbc2647d94dd4794cc9b09e4a77056d476bec7eb1f12084aa8ff5fd26",
+          "617eed79820ec7abdadce2a8ed0bdcb3098b3a6135174c03c69866d313327f04",
+          "86c36b2ba97133195bdd68959f03b417065780b2b803ba6296b30789540f5abf",
+          "fc83fcf9bf90bfc6b96de57baae9e592b13146818eff3bf590086bf38754752c",
+          "1d38a608d9c1832d9f03c2214fa57525ddd4487e09cfd222eae5b17989dcfd03",
+          "1fa4cce5d011efde53c2831555b7021fd7f7fbea615e279c135764093b293b07",
+          "068ccf4b99ce49742603afe28eaff34bc46601235f80224470ef36da20bf3a93",
+          "049ad8c376d25a2b488b67d227144aad19667ca053588c0f473aa455d3a7a35f",
+          "313bd194691b5ade4a378d93e509fe429709dfbd4f673a6ddaad340b54b7094e",
+          "4a27298efdf9b9d6365bea95254387bc23eb292a7db27b577487e3bb62f705cb",
+          "f50cb58d884cd9b193e73cc5ea5efb81186798402899485d84621296790787ba",
+          "c2fe37d432476d84496260044ffd9dfd1d591520163a119805fccc941aba5bb0",
+          "d42329c4166b08293e20ff469caecf3ffcb31cc463a61c88705f049437eb1307",
+          "f10b7d9bd09407c92d52b1d60939004427c6383d54a057dc7c85bf7f567aacc7",
+          "7b3b8cca593d95744bfd5e8000e2c6e618766cd7628348cac6e33f24c9e09854",
+          "6b16cba9bd15b67a310d8c53c4af7f64427db0a2bafd4d8d1bebfe676547bc36",
+          "a3329be85ad08e8d2a1094347af9b54235baaa97a55490f46ba94a4dbb48a74a",
+          "addd3ef5b47a62b87467a93916142106764b665fab3753389865a59c51611ce8"
+        ]
+      },
+      "mars": {
+        "accepted": true,
+        "notes": "Inspected master and all 18 boundary views. Red regolith and rock strata continue into the outer terrain with matching surface response; sampled road approaches and corners have no detached map skirt.",
+        "hashes": [
+          "69527e00dcf86a0a4b8100fc2fdb13a0889d189482f1f1d56796242db09dd7f7",
+          "ed5ca28b02a9987296bd0e8bc914660e45a60438d765ee5f621ff5082187333b",
+          "8e7c9e2b3e6136d409d5db6e784c9c395084ad78f35c299df9aa121a8cd975f2",
+          "4861fbeff90647679aaef18189daa7f9f70d3db12d08d295ab4f8248d00548e2",
+          "d8a69685af2010833995623455969d5729edc41ef43cd2bca6dbfc2b6731dfad",
+          "25477a4b5e64701fd74a17de6221a25a7bec555d1145fde210c2bf60e734dbfd",
+          "47d743cc5097b0c7de40c63c93286e16e159d07a769a4033e7a961b9c53f8fb5",
+          "a3cc3235af4c3423717223bc00cfa71d0ab6d01fcee6ad48f36d1dc6bfc14e07",
+          "4e440c75f5204247cdaca2ea56ff212d1e5a3645a17c7ba833801db5929b6314",
+          "a8b1ce05b7ee1c6b989c1d86408292012cb8e8269cbe6b815b243cb2753c8209",
+          "b8cdab68648153358c85d053f4652aaf1b48c01124c6f741ae193179181125ec",
+          "5e6798160c26405471f02648c9747aadf7dabbbcac0dcec441bc76cd61dc6689",
+          "b400d8f52a0b5b1f4fe6f9c96b33bea8888f0ff159cd6050d1aca53afcdb3d1b",
+          "764dd3e2239de21dc0858e909219ca4b60873ae10a4803c703f1b3ba6235e8f4",
+          "09be715b2975fadff50eda3fee17c3c964d787639793187e62c99b3c455f1405",
+          "2829e1f36b0981a84cd7ffbbcedcdf426a2c6ead9b33c166482aedca61b0da35",
+          "81d7deefa954f82334ce95814aba2feec865ebf8d04213097a1b81419b3cb672",
+          "a6648b14cc6f2904d3b10997855f40b44060b1c8b34380d38c38746cf167520f",
+          "186b463c741acb8bfd372460ce26debf5a3bdfb1cb6581a7f8847556632152b5"
+        ]
+      }
+    }
+  }
+}
