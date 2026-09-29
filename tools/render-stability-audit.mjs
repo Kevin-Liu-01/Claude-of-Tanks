@@ -980,6 +980,8 @@ const liveDrive = evaluate(`(() => {
   let canopyShadowProxyVertices = 0;
   let treeFoliageShadowCasters = 0;
   let treeTrunkShadowCasters = 0;
+  let treeMergedShadowCasters = 0;
+  let treeMergedShadowForwardLeaks = 0;
   let treeTrunkShadowReceivers = 0;
   let treeShadowLodFadeCasters = 0;
   let treeShadowLodFadeMissing = 0;
@@ -1008,7 +1010,18 @@ const liveDrive = evaluate(`(() => {
       if (object.castShadow) treeTrunkShadowCasters++;
       if (object.receiveShadow) treeTrunkShadowReceivers++;
     }
-    if ((object.userData?.canopyShadowProxy || object.userData?.treeTrunk)
+    // Desktop near pools carry crown and trunk positions in one shadow-only
+    // draw. Mobile retains the visible trunk caster. The geometry union is
+    // checked byte-for-byte by treePoolCapacity.selftest; observe its actual
+    // render owner here rather than requiring the retired separate draw.
+    if (object.userData?.treeCanopyShadowProxy && object.castShadow) {
+      treeMergedShadowCasters++;
+      if (!object.userData.shadowOnly || object.layers.test(D.camera.layers)) {
+        treeMergedShadowForwardLeaks++;
+      }
+    }
+    if ((object.userData?.canopyShadowProxy || object.userData?.treeTrunk
+          || object.userData?.treeCanopyShadowProxy)
         && object.castShadow) {
       if (object.customDepthMaterial?.userData?.lodShadowFade
           && object.userData?.lodShadowFadeCaster
@@ -1056,6 +1069,8 @@ const liveDrive = evaluate(`(() => {
     canopyShadowProxyVertices,
     treeFoliageShadowCasters,
     treeTrunkShadowCasters,
+    treeMergedShadowCasters,
+    treeMergedShadowForwardLeaks,
     treeTrunkShadowReceivers,
     treeShadowLodFadeCasters,
     treeShadowLodFadeMissing,
@@ -1079,7 +1094,7 @@ const liveDrive = evaluate(`(() => {
 // observer far enough to demote a dense ring of trees. This turns the user's
 // intermittent forest-light flash into a deterministic frame boundary. All
 // cascades are current and instance culling is disabled, so the first frame
-// whose trunk-caster population drops measures only the near-tree handoff.
+// whose near-tree caster population drops measures only the LOD handoff.
 const treeLodShadowTransition = evaluate(`(() => {
   const D = window.__DEBUG;
   const renderer = D.renderer;
@@ -1113,7 +1128,8 @@ const treeLodShadowTransition = evaluate(`(() => {
   const casterCount = () => {
     let count = 0;
     D.scene.traverse((object) => {
-      if (object.userData?.treeTrunk && object.castShadow) count += object.count || 1;
+      if ((object.userData?.treeTrunk || object.userData?.treeCanopyShadowProxy)
+          && object.castShadow) count += object.count ?? 1;
     });
     return count;
   };
@@ -1127,7 +1143,31 @@ const treeLodShadowTransition = evaluate(`(() => {
     renderer.render(D.scene, camera);
     const pixels = new Uint8Array(bytes);
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-    return pixels;
+    // The same LOD update also changes visible crowns and wind. Measure sun
+    // shadow contribution against an otherwise identical unshadowed render,
+    // so those color/geometry changes cannot masquerade as a shadow flash.
+    const lights = D.lighting.csm.lights;
+    const intensities = lights.map((light) => light.shadow.intensity);
+    const unshadowed = new Uint8Array(bytes);
+    try {
+      lights.forEach((light) => { light.shadow.intensity = 0; });
+      renderer.clear(true, true, false);
+      renderer.render(D.scene, camera);
+      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, unshadowed);
+    } finally {
+      lights.forEach((light, index) => { light.shadow.intensity = intensities[index]; });
+    }
+    const shadow = new Int16Array(bytes);
+    let affectedSamples = 0;
+    for (let i = 0; i < bytes; i += 4) {
+      let delta = 0;
+      for (let channel = 0; channel < 3; channel++) {
+        shadow[i + channel] = pixels[i + channel] - unshadowed[i + channel];
+        delta += Math.abs(shadow[i + channel]);
+      }
+      if (delta > 12) affectedSamples++;
+    }
+    return { pixels, shadow, affectedSamples };
   };
   const diff = (previous, current) => {
     let changedSamples = 0;
@@ -1151,24 +1191,29 @@ const treeLodShadowTransition = evaluate(`(() => {
   let removalChangedSamples = 0;
   let removalVisiblyChangedSamples = 0;
   let removalMaxRgbDelta = 0;
+  let removalWholeFrameVisiblyChangedSamples = 0;
+  let shadowComparedVisibleSamples = 0;
   try {
     D.world.update(0, base, forward, null);
     D.world.update(0, base, forward, null);
     let previousPixels = capture();
+    shadowComparedVisibleSamples = previousPixels.affectedSamples;
     let previousCasterCount = casterCount();
     casterCountBefore = previousCasterCount;
     casterCountPeak = previousCasterCount;
     for (let frame = 0; frame < 30; frame++) {
       D.world.update(1 / 60, shifted, forward, null);
       const currentPixels = capture();
+      shadowComparedVisibleSamples = Math.max(shadowComparedVisibleSamples, currentPixels.affectedSamples);
       const currentCasterCount = casterCount();
       casterCountPeak = Math.max(casterCountPeak, currentCasterCount);
       if (removalFrame < 0 && currentCasterCount < previousCasterCount) {
-        const frameDiff = diff(previousPixels, currentPixels);
+        const frameDiff = diff(previousPixels.shadow, currentPixels.shadow);
         removalFrame = frame;
         removalChangedSamples = frameDiff.changedSamples;
         removalVisiblyChangedSamples = frameDiff.visiblyChangedSamples;
         removalMaxRgbDelta = frameDiff.maxRgbDelta;
+        removalWholeFrameVisiblyChangedSamples = diff(previousPixels.pixels, currentPixels.pixels).visiblyChangedSamples;
       }
       previousPixels = currentPixels;
       previousCasterCount = currentCasterCount;
@@ -1196,6 +1241,8 @@ const treeLodShadowTransition = evaluate(`(() => {
     removalChangedSamples,
     removalVisiblyChangedSamples,
     removalMaxRgbDelta,
+    removalWholeFrameVisiblyChangedSamples,
+    shadowComparedVisibleSamples,
   };
 })()`);
 
@@ -1230,8 +1277,11 @@ if (liveDrive.treeFoliageShadowCasters !== 0) {
     `${liveDrive.treeFoliageShadowCasters} alpha-tested tree-card shadow casters remain`,
   );
 }
-if (liveDrive.treeTrunkShadowCasters < 1) {
+if (liveDrive.treeTrunkShadowCasters + liveDrive.treeMergedShadowCasters < 1) {
   liveDriveReasons.push('live world has no tree-trunk ground-shadow casters');
+}
+if (liveDrive.treeMergedShadowForwardLeaks !== 0) {
+  liveDriveReasons.push('merged tree-shadow geometry is visible in the forward pass');
 }
 if (liveDrive.treeTrunkShadowReceivers !== 0) {
   liveDriveReasons.push(
@@ -1271,11 +1321,14 @@ if (liveDrive.groundContactDecalReceivers !== 0) {
   );
 }
 if (treeLodShadowTransition.removalFrame < 0) {
-  liveDriveReasons.push('tree LOD stress did not exercise a trunk-caster removal');
+  liveDriveReasons.push('tree LOD stress did not exercise a near-tree caster removal');
 } else if (treeLodShadowTransition.removalVisiblyChangedSamples > 800) {
   liveDriveReasons.push(
     `tree LOD caster removal changed ${treeLodShadowTransition.removalVisiblyChangedSamples} visible samples`,
   );
+}
+if (treeLodShadowTransition.shadowComparedVisibleSamples <= 800) {
+  liveDriveReasons.push('tree LOD shadow control did not cover enough visibly shadowed samples');
 }
 if (liveDriveReasons.length) failures.push({ preset: 'live-drive', reasons: liveDriveReasons });
 console.log(
