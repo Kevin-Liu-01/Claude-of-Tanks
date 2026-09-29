@@ -175,14 +175,17 @@ assert.match(battleLoad,
 assert.match(responsiveSurfaces,
   /data-cot-width='phone'\] \.cot-bl \.briefing\{[\s\S]*height:calc\(var\(--cot-viewport-height,100dvh\)/,
   'phone loading briefings must consume the measured visual viewport instead of a fixed hero split');
+assert.match(battleLoad,
+  /\.cot-bl \.briefing\{[^}]*background:transparent;border:0;box-shadow:none/,
+  'every viewport must show full-bleed loading art without the gray briefing panel');
+assert.match(battleLoad,
+  /\.cot-bl \.rows\{[^}]*grid-template-rows:repeat\(14,minmax\(20px,1fr\)\)/,
+  'team sheets must reserve all 14 positions before roster data arrives');
 assert.match(responsiveSurfaces,
-  /data-cot-width='compact'\] \.cot-bl \.briefing,[\s\S]*data-cot-width='phone'\] \.cot-bl \.briefing,[\s\S]*data-cot-height='short'\] \.cot-bl \.briefing\{[\s\S]*background:transparent;border-color:transparent;box-shadow:none/,
-  'compact, phone, and short battle loading must drop the viewport-sized briefing card shell');
-assert.match(responsiveSurfaces,
-  /body\[data-cot-height='short'\] \.cot-bl \.team\{justify-content:center/,
-  'short battle rosters need a height-aware vertical composition');
-assert.match(responsiveSurfaces, /\.cot-bl \.count:empty\{display:none/,
-  'an empty countdown must not reserve footer height over the final roster row');
+  /body\[data-cot-height='short'\] \.cot-bl \.rows\{grid-template-rows:repeat\(14,minmax\(16px,1fr\)\)/,
+  'short battle rosters must retain 14 compact positions');
+assert.doesNotMatch(responsiveSurfaces, /\.cot-bl \.count:empty\{display:none/,
+  'starting the countdown must not resize the team sheets');
 
 assert.doesNotMatch(hud, /cot-dlog|pushDamageLog/,
   'incoming hits must have one canonical combat-intelligence feed, not a duplicate HUD log');
