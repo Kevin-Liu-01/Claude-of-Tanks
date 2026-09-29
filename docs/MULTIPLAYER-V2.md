@@ -893,14 +893,17 @@ tab the compile takes 1–2 s; the second window covers a starved GPU process or
 `browserComposition.selftest` proves budget → complete proceeds (two compiles, one beacon, the loader's "still
 preparing"), budget twice fails with the message and no third attempt, invalidated never retries.
 
-**Open.** (1) Two of P1's requests are honoured by design but wait for the merge to be proven against the real
-service: `host_only` step-down and the report cadence are exercised only against the double. (2) A host_decline from a
+**Open.** (1) ~~Two of P1's requests are honoured by design but wait for the merge to be proven against the real
+service: `host_only` step-down and the report cadence are exercised only against the double.~~ P3 (§13.8): the step-down
+is proven on the real actor by `tools/mp-p2p-stepdown.selftest.mjs` — and found the room client reading a stale election
+on a re-sent `match_start`, fixed. (2) ~~A host_decline from a
 running host is honoured by the double as "elect the next willing seat"; P1 keeps a host without a willing successor,
-the client then simply stays. (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
+the client then simply stays.~~ P3: the double now applies P1's rule and `tools/mp-p2p-decline.selftest.mjs` proves the
+client under it on the real actor (the match resumes on the last resort after the 30 s report budget). (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
 stream is the follow-up if the soak shows it matters. (4) The Worker chunk is heavy (10.4 MB raw): the fleet builders
 ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. (5) The
 three-browser proof against the real room service needs the Worker to allow a development origin (`ALLOWED_ORIGINS`)
-or a run from the site origin. (6) The old host's return in the headless proof is at the mercy of the host's GPU: the
+or a run from the site origin — done from the site origin (`--site`, §13.8). (6) The old host's return in the headless proof is at the mercy of the host's GPU: the
 compile budget (5 s, extended once) is a production constant; a green rejoin needs a quiet host.
 (5) The e2e's `--grace` is 3 s (the contract's 8 s makes the proof slower, not different). (6) The unreliable snapshot
 channel of §13.2 stays a measured follow-up.
