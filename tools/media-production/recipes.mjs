@@ -2,7 +2,11 @@ import { resolveSeaOpenings, seaSectorWeightAt, seaSectorBlend, SEA_APRON_OUTER_
 
 /** Capture plans use the live authored world. Saved absolute cameras are the review/reproduction contract. */
 export function mapScene(world, timeOfDay = 'day') {
-  const { pos, look } = world.config.shot;
+  // Saltwind's old inland-facing overview cropped its defining bay out of the
+  // picture. Look seaward from the village ridge for public map artwork.
+  const { pos, look } = world.mapId === 'saltwind'
+    ? { pos: [120, 170, 280], look: [-260, 2, -15] }
+    : world.config.shot;
   const seat = ([x, y, z]) => [x, world.heightField.getHeightAt(x, z) + y, z];
   return { map: world.mapId, timeOfDay, seed: 5000, actors: [], effects: [], fxTime: 2000, timeScale: 0,
     camera: { pos: seat([pos[0],pos[1]+24,pos[2]]), lookAt: seat(look), fov: 55 } };

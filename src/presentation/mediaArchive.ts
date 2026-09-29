@@ -40,9 +40,12 @@ function loadPresentationManifest(): Promise<PresentationManifest> {
     const production = fetch('/media/production-r1/manifest.json').then((response) =>
       response.ok ? response.json() as Promise<PresentationManifest> : null,
     ).catch(() => null);
-    manifestPromise = Promise.all([archive, production]).then(([base, fresh]) => ({
-      shots: [...(fresh?.shots ?? []), ...base.shots],
-    }));
+    manifestPromise = Promise.all([archive, production]).then(([base, fresh]) => {
+      const refreshedMaps = new Set((fresh?.shots ?? [])
+        .filter(shot => shot.kind === 'battlefield').map(shot => shot.map));
+      return { shots: [...(fresh?.shots ?? []), ...base.shots.filter(shot =>
+        shot.kind !== 'battlefield' || !refreshedMaps.has(shot.map))] };
+    });
   }
   return manifestPromise;
 }

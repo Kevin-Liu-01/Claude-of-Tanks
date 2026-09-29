@@ -4,6 +4,23 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { digest, requireReview } from './pipeline.mjs';
 import { shorelineSurvey, landscapeSurvey } from './recipes.mjs';
+import { mergePublication } from './mergePublication.mjs';
+
+const previous={created:'yesterday',revision:'old',sourceDigest:'old-inputs',review:{notes:'old review'},
+  assets:[{src:'/map',sha256:'old-map'},{src:'/film',sha256:'film'}],
+  shots:[{src:'/map'}],films:[{src:'/film'}],
+  media:{'/map':'map','/film':'film'},recipes:{map:{seed:1},film:{seed:2}}};
+const fresh={revision:'new',sourceDigest:'new-inputs',assets:[{src:'/map',sha256:'new-map'}],
+  shots:[{src:'/map',title:'Fresh'}],films:[],media:{'/map':'map'},recipes:{map:{seed:3}}};
+const merged=mergePublication(previous,fresh);
+assert.deepEqual(merged.films,previous.films,'map refresh retains films');
+assert.deepEqual(merged.shots,fresh.shots,'replaced map is not duplicated');
+assert.equal(merged.recipes.map.seed,3);
+assert.equal(merged.recipes.film.seed,2);
+assert.equal(merged.retainedBatches[0].revision,'old','retained film keeps its source revision');
+assert.deepEqual(merged.retainedBatches[0].assets,[previous.assets[1]]);
+assert.deepEqual(mergePublication(merged,fresh).retainedBatches,merged.retainedBatches,'repeat refresh does not reattribute old footage');
+assert.deepEqual(mergePublication(null,fresh),fresh);
 const dir=mkdtempSync(join(tmpdir(),'cot-media-test-'));
 try {
   const path=join(dir,'frame.png');writeFileSync(path,'original');

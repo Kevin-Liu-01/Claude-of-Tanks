@@ -22,7 +22,7 @@ export const OG_IMAGE_CARDS = [
   ['docs-models', 'MODEL & ICON PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
   ['docs-simulation', 'COMBAT SIMULATION', 'public/media/showcase-r2/24_live_killcam_impact.webp', '50% 46%'],
   ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/showcase-r1/118_foreground_verdant_meadow_duel.webp', '50% 50%'],
-  ['docs-rendering', 'RENDERING & LIGHTING', 'public/media/showcase-r1/101_foreground_urban_street_duel.webp', '50% 48%'],
+  ['docs-rendering', 'RENDERING & LIGHTING', 'public/maps/saltwind.webp', '50% 48%'],
   ['docs-performance', 'PERFORMANCE ENGINEERING', 'public/media/showcase-r2/18_live_spectator.webp', '50% 46%'],
   ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/maps/fjord.webp', '50% 48%'],
   ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp', '50% 50%'],

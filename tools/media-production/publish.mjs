@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { requireReview, sourceDigest, digest } from './pipeline.mjs';
 import { requireNative4kPng } from '../map-art-guards.mjs';
+import { mergePublication } from './mergePublication.mjs';
 
 const args=Object.fromEntries(process.argv.slice(2).map(value=>{
   const match=/^--(receipt|review)=(.+)$/.exec(value);
@@ -59,7 +60,15 @@ try{
   for(const path of paths)manifest.assets.push({src:`/${path}`,sha256:digest(readFileSync(join(stage,path)))});
   // The public record contains review notes and hashes, never private absolute workspace paths.
   for(const value of Object.values(manifest.review.maps)) delete value.paths;
-  writeFileSync(target('media/production-r1/manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+  const previousPath=join(process.cwd(),'public/media/production-r1/manifest.json');
+  const previous=existsSync(previousPath)?JSON.parse(readFileSync(previousPath,'utf8')):null;
+  const publication=mergePublication(previous,manifest);
+  for(const batch of publication.retainedBatches??[]) for(const asset of batch.assets) {
+    if(digest(readFileSync(join(process.cwd(),'public',asset.src.slice(1))))!==asset.sha256) {
+      throw Error(`Retained media changed: ${asset.src}`);
+    }
+  }
+  writeFileSync(target('media/production-r1/manifest.json'),JSON.stringify(publication,null,2)+'\n');
   for(const path of paths){const dest=join(process.cwd(),'public',path);mkdirSync(dirname(dest),{recursive:true});copyFileSync(join(stage,path),dest);}
   console.log(`[media] published ${mapStills.length} map sets, ${manifest.films.length} films, ${manifest.shots.length} archive images to public/`);
 }finally{rmSync(stage,{recursive:true,force:true});}

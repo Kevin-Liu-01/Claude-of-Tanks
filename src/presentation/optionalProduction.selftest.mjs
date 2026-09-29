@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
-const archiveShot = { src: '/archive.webp', title: 'Archive', alt: 'Archive', map: 'coastal', feature: 'world system' };
+const archiveShot = { src: '/archive.webp', title: 'Archive', alt: 'Archive', map: 'coastal', feature: 'world system', kind: 'battlefield' };
+const actionShot = { ...archiveShot, src: '/action.webp', kind: 'studio' };
 const freshShot = { ...archiveShot, src: '/fresh.webp', previewSrc: '/fresh-preview.webp', title: 'Fresh' };
 const baseRecipes = { media: { '/archive.webp': 'old' }, recipes: { old: { map: 'coastal' } } };
 const production = { shots: [freshShot], media: { '/fresh.webp': 'new' }, recipes: { new: { map: 'reservoir' } } };
@@ -48,15 +49,15 @@ try {
   for (const [name, freshResponse, published] of scenarios) {
     globalThis.fetch = async (url) => {
       if (url.includes('production-r1')) return freshResponse();
-      return response(url.includes('capture-recipes') ? { media: {}, recipes: {} } : { shots: [archiveShot] });
+      return response(url.includes('capture-recipes') ? { media: {}, recipes: {} } : { shots: [archiveShot, actionShot] });
     };
     globalThis.document = { createElement: (tag) => new Element(tag) };
     const { mountMediaArchive } = await import(`./mediaArchive.ts?archive=${encodeURIComponent(name)}`);
     const root = new Element();
     const result = await mountMediaArchive(root, { filters: false });
-    assert.deepEqual(result.manifest.shots, published ? [freshShot, archiveShot] : [archiveShot], `${name}: render usable archive`);
+    assert.deepEqual(result.manifest.shots, published ? [freshShot, actionShot] : [archiveShot, actionShot], `${name}: replace old overviews, preserve staged action`);
     const images = root.querySelectorAll('img');
-    assert.deepEqual(images.map((image) => image.src), published ? ['/fresh-preview.webp', '/archive.webp'] : ['/archive.webp']);
+    assert.deepEqual(images.map((image) => image.src), published ? ['/fresh-preview.webp', '/action.webp'] : ['/archive.webp', '/action.webp']);
   }
 
   globalThis.fetch = async () => ({ ok: false, status: 503 });
