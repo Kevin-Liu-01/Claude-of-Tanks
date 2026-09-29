@@ -891,8 +891,6 @@ body[data-cot-panels='persistent'] .cot-maps{flex-basis:calc(var(--cot-sidebar-p
 .cot-camo-collection .cot-flag{width:20px;height:14px;object-fit:cover}
 .cot-camo-collection[aria-pressed='true']{background:#49351c;border-color:#f0a030;color:#ffd27a}
 .cot-camo-collection:focus-visible,.cot-camo-card:focus-visible{outline:2px solid #ffd27a;outline-offset:-2px}
-.cot-camo-card .cs{font-size:8px;line-height:1.3;color:#899ba7;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cot-camo-card .cs:empty{display:none}
 .cot-camo-card[hidden],.cot-camo-tag[hidden]{display:none}
 .cot-camo-tag{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;min-height:24px;padding:0 6px;border:1px solid rgba(146,164,180,.24);
   background:rgba(9,13,17,.72);color:#8293a1;cursor:pointer;scroll-snap-align:start;

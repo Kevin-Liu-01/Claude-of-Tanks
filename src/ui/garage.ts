@@ -16,7 +16,7 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {
   CAMO_TAG_IDS, CAMO_TAG_LABEL, CAMO_COUNTRY_TAG_IDS, CUSTOM_CAMO_ID,
   camoMatchesTag, camoPatternTags, customCamoPatternId, camoInCollection,
-  camoCollectionFor, sharedCamoPreset, stockCamoPatternIdFor,
+  camoCollectionFor,
 } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 import { createModal } from './modal.ts';
@@ -1487,11 +1487,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const camoCollectionButtons = new Map<CamoCollectionId, HTMLButtonElement>();
   let activeCamoCollection: CamoCollectionId = 'default';
   let activeCamoTag: CamoTagId = 'all';
-  const stockSources = new Map<string, GarageTankSpec[]>();
-  for (const spec of specById.values()) {
-    const pattern = stockCamoPatternIdFor(spec.id, spec.nation, spec.era);
-    if (pattern) stockSources.set(pattern, [...(stockSources.get(pattern) || []), spec]);
-  }
   let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
   function initializeCamoPicker(): void {
     if (!camoOpts?.patterns?.length) return;
@@ -1603,8 +1598,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.className = 'cot-camo-card';
       card.dataset.pid = pid; // camo r8: stable hook for tools + tests
       card.innerHTML = pid === 'auto'
-        ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div><div class="cs"></div>`
-        : `<div class="sw"><canvas></canvas></div><div class="cl"></div><div class="cs"></div>`;
+        ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div>`
+        : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
       requiredElement<HTMLElement>(card, '.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
       card.title = (camoOpts.label && camoOpts.label[pid]) || pid;
@@ -2055,21 +2050,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const tags = camoPatternTags(pid, spec.nation);
       card.hidden = !camoInCollection(pid, activeCamoCollection) || !camoMatchesTag(pid, spec.nation, activeCamoTag);
       card.dataset.tags = tags.join(' ');
-      const preset = sharedCamoPreset(pid);
-      const source = (preset?.sourceTankId ? specById.get(preset.sourceTankId) : null) || stockSources.get(pid)?.[0];
       const originalLabel = camoOpts.label?.[pid] || pid;
       const genericKey = `garage.camo.generic.${pid}`;
       const genericLabel = t(genericKey);
-      const label = activeCamoCollection !== 'default' && source
-        ? source.label?.displayName || source.name
-        : genericLabel !== genericKey ? genericLabel : originalLabel;
+      const label = genericLabel !== genericKey ? genericLabel : originalLabel;
       requiredElement<HTMLElement>(card, '.cl').textContent = label;
-      const subtitle = pid === 'factory' ? spec.label?.displayName || spec.name
-        : activeCamoCollection !== 'default' && source ? originalLabel : '';
-      requiredElement<HTMLElement>(card, '.cs').textContent = subtitle;
-      card.setAttribute('aria-label', subtitle ? `${label} · ${subtitle}` : label);
-      const owners = (stockSources.get(pid) || []).map(tank => tank.label?.displayName || tank.name);
-      card.title = `${label} · ${owners.length ? owners.join(', ') : tags.map((tagId) => t(`camoTag.${tagId}`) || CAMO_TAG_LABEL[tagId]).join(', ')}`;
+      card.setAttribute('aria-label', label);
+      // Keep the complete pattern name available when the single line truncates.
+      card.title = label;
     }
     requestAnimationFrame(syncScrollFades);
   }
@@ -2097,7 +2085,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   function refreshCompactCamoPreview(spec: GarageTankSpec, selectedPatternId: string): void {
-    compactCamoName.textContent = camoOpts?.label?.[selectedPatternId] || selectedPatternId || 'Factory';
+    const genericKey = `garage.camo.generic.${selectedPatternId}`;
+    const genericLabel = t(genericKey);
+    compactCamoName.textContent = genericLabel !== genericKey ? genericLabel
+      : camoOpts?.label?.[selectedPatternId] || selectedPatternId || 'Factory';
     const patternIds = [selectedPatternId, ...(camoOpts?.patterns || [])]
       .filter((patternId, index, ids) => ids.indexOf(patternId) === index);
     while (patternIds.length < compactCamoPreviews.length) patternIds.push(selectedPatternId);
