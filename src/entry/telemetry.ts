@@ -170,10 +170,18 @@ export function telemetryBuild(value: unknown): string {
   return String(value ?? '').replace(/[^A-Za-z0-9+._-]+/g, '_').slice(0, 64) || 'unknown';
 }
 
-/** The sink's two routes from `VITE_TELEMETRY_URL`, or the Vercel fallback for both when unset. */
-export function telemetryEndpoints(base: unknown): TelemetryEndpoints {
-  const url = String(base ?? '').trim().replace(/\/+$/, '');
-  if (!/^https?:\/\//.test(url)) return { session: TELEMETRY_ENDPOINT, error: TELEMETRY_ENDPOINT };
+/** The deployed site and its telemetry sink — the same values as `src/officialHost.ts`, repeated here because this module
+ * imports nothing (the receipt pins both): Vercel stores the project's variables as sensitive, so the CLI build inlines
+ * the literal `[SENSITIVE]` for `VITE_TELEMETRY_URL` (2026-09-28) and the site had silently fallen back to the Vercel route. */
+export const OFFICIAL_SITE_HOST = 'cot.kevinliu.studio';
+export const OFFICIAL_TELEMETRY_URL = 'https://cot-telemetry.kk23907751.workers.dev';
+
+/** The sink's two routes from `VITE_TELEMETRY_URL`; the official site's sink when the build carries no usable value;
+ * the Vercel fallback for both elsewhere. */
+export function telemetryEndpoints(base: unknown, hostname: unknown = ''): TelemetryEndpoints {
+  let url = String(base ?? '').trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//.test(url)) url = String(hostname ?? '').trim().toLowerCase() === OFFICIAL_SITE_HOST ? OFFICIAL_TELEMETRY_URL : '';
+  if (!url) return { session: TELEMETRY_ENDPOINT, error: TELEMETRY_ENDPOINT };
   return { session: `${url}/v1/session`, error: `${url}/v1/error` };
 }
 
@@ -632,7 +640,7 @@ export function getEntryTelemetry(): EntryTelemetry {
   const build = document.querySelector('meta[name="application-version"]')?.getAttribute('content') || 'unknown';
   const telemetry = createEntryTelemetry({
     enabled: reason === null,
-    endpoints: telemetryEndpoints(import.meta.env.VITE_TELEMETRY_URL),
+    endpoints: telemetryEndpoints(import.meta.env.VITE_TELEMETRY_URL, location.hostname),
     sample: telemetrySampleRate(import.meta.env.VITE_TELEMETRY_SAMPLE),
     build: telemetryBuild(build),
     sessionId: window.__COT_TELEMETRY_SID || randomSessionId(),

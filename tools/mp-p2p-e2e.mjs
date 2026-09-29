@@ -17,6 +17,10 @@
  *   node tools/mp-p2p-e2e.mjs                     # out: .qa-dev/mp-p2p-e2e (gitignored), ~3 min wall
  *   node tools/mp-p2p-e2e.mjs --grace=8000 --play=20 --json
  *   node tools/mp-p2p-e2e.mjs --rooms=wss://<the rooms Worker>   # the real room service: no double, so the gates that read
+ *   node tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio  # the deployed site itself: no vite, no double; the pages use the
+ *                                                                # room host the build was made with (the deployed Worker allows the
+ *                                                                # site origin alone, so this is the only way to prove it); the
+ *                                                                # diagnostics hook is up because puppeteer sets navigator.webdriver
  *                                                                # its log (the election record, the host's reports) take the pages' facts
  *
  * During A's return the two tabs still rendering (B hosting, C playing) draw at 320×200: two full battle frames starve the
@@ -45,7 +49,8 @@ const cacheDir = resolve(argValue('cache-dir', join(outputDir, 'vite-cache')));
 const playS = Number(argValue('play', 12));
 const graceMs = Number(argValue('grace', 3000));
 const roomsUrl = argValue('rooms', '');
-const live = roomsUrl !== '';
+const siteUrl = argValue('site', '').replace(/\/+$/, '');
+const live = roomsUrl !== '' || siteUrl !== '';
 const requestedVitePort = Number(argValue('port', 0));
 
 function freePort() {
@@ -145,7 +150,10 @@ const pages = { a: null, b: null, c: null, a2: null };
 let contextA = null;
 try {
   await mkdir(outputDir, { recursive: true });
-  if (live) {
+  if (siteUrl) {
+    // The deployed site: its pages carry the room host they were built with; the room's events are not observed here.
+    step('site-live', { url: siteUrl, graceMs });
+  } else if (live) {
     // The real room service: the pages reach it through VITE_ROOMS_URL; its events are not observed here.
     process.env.VITE_ROOMS_URL = roomsUrl;
     step('rooms-live', { url: roomsUrl, graceMs });
@@ -154,11 +162,14 @@ try {
     process.env.VITE_ROOMS_URL = rooms.url;
     step('rooms-double', { url: rooms.url, graceMs });
   }
-  const vitePort = requestedVitePort > 0 ? requestedVitePort : await freePort();
-  vite = await createViteServer({ root, cacheDir, logLevel: 'error', server: { host: '127.0.0.1', port: vitePort, strictPort: true, hmr: false } });
-  await vite.listen();
-  const origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
-  step('vite', { origin, cacheDir });
+  let origin = siteUrl;
+  if (!siteUrl) {
+    const vitePort = requestedVitePort > 0 ? requestedVitePort : await freePort();
+    vite = await createViteServer({ root, cacheDir, logLevel: 'error', server: { host: '127.0.0.1', port: vitePort, strictPort: true, hmr: false } });
+    await vite.listen();
+    origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
+    step('vite', { origin, cacheDir });
+  }
 
   browser = await puppeteer.launch({
     headless: !headful, protocolTimeout: 360_000,
@@ -396,7 +407,7 @@ try {
 
 if (json) console.log(JSON.stringify(report, null, 2));
 else {
-  console.log(`mp p2p e2e${live ? ' (live rooms)' : ''}: room ${report.room?.code ?? '-'} started ${report.start?.matchUrl ?? '-'} (A ${report.start?.a?.role ?? '-'} serving ${report.start?.a?.peers ?? '-'}, B/C ${report.start?.b?.role ?? '-'}/${report.start?.c?.role ?? '-'} on ${report.start?.b?.candidate ?? '-'} candidates); ` +
+  console.log(`mp p2p e2e${siteUrl ? ' (live site)' : live ? ' (live rooms)' : ''}: room ${report.room?.code ?? '-'} started ${report.start?.matchUrl ?? '-'} (A ${report.start?.a?.role ?? '-'} serving ${report.start?.a?.peers ?? '-'}, B/C ${report.start?.b?.role ?? '-'}/${report.start?.c?.role ?? '-'} on ${report.start?.b?.candidate ?? '-'} candidates); ` +
     `play ${playS} s: C saw B move ${report.play?.movedBAsCSaw?.toFixed?.(1) ?? '-'} m, ${report.play?.snapshotsC ?? '-'} snapshots; ` +
     `A closed → B hosted after ${report.migration?.electedAfterMs ?? '-'} ms (generation ${report.migration?.election?.generation ?? '-'}), C live on B with +${report.migration?.cSnapshotsAfterMigration ?? '-'} snapshots in 4 s, B's hull ${report.migration?.bHullJumpAsCSaw?.toFixed?.(2) ?? '-'} m from where C saw it, ${report.migration?.reportsFromB ?? '-'} reports from B; ` +
     `A rejoined as ${report.rejoin?.p2p?.role ?? '-'} of ${report.rejoin?.p2p?.hostId ?? '-'} (B serving ${report.rejoin?.peersOnB ?? '-'}; ${report.rejoin?.path ?? '-'} path, ${report.rejoin?.attempts ?? '-'} attempt(s), compile ${report.rejoin?.entry?.stages?.compile ?? '-'} ms${report.rejoin?.entry?.stages?.compileRetry !== undefined ? ` + retry ${report.rejoin.entry.stages.compileRetry} ms` : ''}); ${report.errors.length} browser errors; ${report.wallMs} ms wall`);

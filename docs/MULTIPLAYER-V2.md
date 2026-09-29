@@ -905,6 +905,11 @@ compile budget (5 s, extended once) is a production constant; a green rejoin nee
 (5) The e2e's `--grace` is 3 s (the contract's 8 s makes the proof slower, not different). (6) The unreliable snapshot
 channel of §13.2 stays a measured follow-up.
 
+**Landing note (deploy 114 → 115, 2026-09-28).** Deploy 114's build inlined Vercel's sensitive placeholder for
+`VITE_ROOMS_URL`, so the served client resolved no room host; `src/officialHost.ts` now names the Workers for the official
+site (`resolveRoomsUrl` treats an unusable value as unset), and `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio`
+runs the three-browser proof against the deployed site — the only origin the Worker admits.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

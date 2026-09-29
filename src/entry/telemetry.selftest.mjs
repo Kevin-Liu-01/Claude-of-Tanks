@@ -368,6 +368,13 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
     assert.match(id, /^s[a-z0-9]{13,}$/, 'session ids fit the server alphabet');
     accepted({ v: 2, sid: id, build: 'dev', kind: 'session', outcome: 'ready' });
   }
+  assert.deepEqual(telemetryEndpoints('[SENSITIVE]', 'cot.kevinliu.studio'),
+    { session: 'https://cot-telemetry.kk23907751.workers.dev/v1/session', error: 'https://cot-telemetry.kk23907751.workers.dev/v1/error' },
+    'the sensitive placeholder on the official site → its sink (2026-09-28)');
+  assert.deepEqual(telemetryEndpoints('[SENSITIVE]', 'claude-of-tanks-abc.vercel.app'), { session: TELEMETRY_ENDPOINT, error: TELEMETRY_ENDPOINT },
+    'the placeholder elsewhere → the Vercel fallback');
+  assert.deepEqual(telemetryEndpoints('https://sink.example.test/', 'cot.kevinliu.studio'),
+    { session: 'https://sink.example.test/v1/session', error: 'https://sink.example.test/v1/error' }, 'a configured sink wins on the site too');
   assert.deepEqual(telemetryEndpoints(undefined), { session: TELEMETRY_ENDPOINT, error: TELEMETRY_ENDPOINT },
     'without VITE_TELEMETRY_URL both records go to the Vercel fallback');
   assert.deepEqual(telemetryEndpoints(' https://cot-telemetry.kk23907751.workers.dev// '),

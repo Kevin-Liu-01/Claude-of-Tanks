@@ -647,3 +647,13 @@ Before a production release:
 - STUDIO.md: Scene Studio API and determinism
 - TANK-ASSET-PIPELINE.md: generated vehicle asset contract
 - INDEX.md: complete documentation map
+
+### Build-time constants and Vercel's sensitive variables (2026-09-28)
+
+Vercel stores this project's environment variables as *sensitive*: `vercel pull` writes them as the literal
+`[SENSITIVE]`, so the once-per-round CLI build inlines that placeholder wherever `import.meta.env.VITE_*` is read
+(deploy 114 shipped `resolveRoomsUrl({ configured: '[SENSITIVE]' })`; telemetry had silently fallen back to
+`/api/telemetry` for the same reason). Public deployment facts therefore live in `src/officialHost.ts`: a page
+served from `cot.kevinliu.studio` resolves its rooms Worker and telemetry sink by name; a configured `VITE_ROOMS_URL`
+/ `VITE_TELEMETRY_URL` still overrides them, an unusable value counts as unset, and other hosts keep their local
+defaults (`src/mp/session/endpoint.selftest.mjs`, `src/entry/telemetry.selftest.mjs`). Secrets never take this route.
