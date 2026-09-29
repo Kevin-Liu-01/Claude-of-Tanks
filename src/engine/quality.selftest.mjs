@@ -76,8 +76,20 @@ desktop.setPresetName('invalid');
 assert.equal(desktop.resolvePresetName(), 'medium', 'invalid choices do not mutate quality');
 
 const resetBrowser = installBrowser('?tier=desktop&gfxreset=1');
+resetBrowser.localStorage.setItem('cot.gfxPreset', 'low');
+resetBrowser.localStorage.setItem('cot.gfxMobilePreset', 'mobile-low');
+resetBrowser.localStorage.setItem('cot.gfxAutoTier', 'low');
+resetBrowser.localStorage.setItem('cot.profile', 'keep-player-progress');
+window.sessionStorage.setItem('cot.graphicsRecovery.v1', 'low');
 const resetDesktop = await import('./quality.ts?quality-reset-contract');
 assert.equal(resetDesktop.resolvePresetName(), 'high');
+assert.equal(resetDesktop.getStoredChoice(), 'auto', 'repair link resets a persisted desktop choice');
+assert.equal(resetBrowser.storage.get('cot.gfxMobilePreset'), undefined);
+assert.equal(window.sessionStorage.getItem('cot.graphicsRecovery.v1'), null);
+assert.equal(resetBrowser.storage.get('cot.profile'), 'keep-player-progress', 'repair preserves other saved state');
+resetDesktop.setPresetName('medium');
+assert.equal(resetDesktop.resolvePresetName(), 'medium', 'repair is consumed once, allowing later choices');
+resetDesktop.setPresetName('auto');
 assert.equal(resetDesktop.reportSustainedOverload(), true);
 assert.equal(resetDesktop.resolvePresetName(), 'medium',
   'gfxreset is consumed once instead of erasing the live governor decision');

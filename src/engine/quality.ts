@@ -98,7 +98,20 @@ type DeviceNavigator = Navigator & { deviceMemory?: number };
 
 const LS_KEY = 'cot.gfxPreset';
 const LS_MOBILE_KEY = 'cot.gfxMobilePreset';
-let _mobileResetHandled = false;
+let _graphicsResetHandled = false;
+
+/** Explicit repair link: reset graphics only, retaining progression and controls. */
+function resetSavedGraphicsIfRequested(): void {
+  if (_graphicsResetHandled) return;
+  _graphicsResetHandled = true;
+  try {
+    if (!new URLSearchParams(window.location.search).has('gfxreset')) return;
+    window.localStorage.removeItem(LS_KEY);
+    window.localStorage.removeItem(LS_MOBILE_KEY);
+    window.localStorage.removeItem(LS_AUTO_TIER);
+    clearGraphicsRecovery();
+  } catch { /* blocked storage still uses the normal safe defaults */ }
+}
 
 // ---------------------------------------------------------------------------
 // MOBILE r1: DEVICE TIER (mobile/tablet vs desktop), resolved ONCE at boot by
@@ -187,7 +200,6 @@ function graphicsRecoveryPreset(): PresetName | null {
   if (recoveryPreset !== undefined) return recoveryPreset;
   let saved: string | null = null;
   try {
-    if (new URLSearchParams(window.location.search).has('gfxreset')) window.sessionStorage.removeItem(RECOVERY_KEY);
     saved = window.sessionStorage.getItem(RECOVERY_KEY);
   } catch { /* session-only fallback */ }
   recoveryPreset = saved && Object.prototype.hasOwnProperty.call(PRESETS, saved) ? saved as PresetName : null;
@@ -543,6 +555,7 @@ export function reportSustainedRecovery(): boolean {
 
 /** The user's stored choice: a preset name or 'auto' (default). */
 export function getStoredChoice(): PresetChoice {
+  resetSavedGraphicsIfRequested();
   try {
     const v = window.localStorage.getItem(LS_KEY);
     if (v === 'auto' || v === 'low' || v === 'medium' || v === 'high' || v === 'ultra') return v;
@@ -552,14 +565,8 @@ export function getStoredChoice(): PresetChoice {
 
 /** Mobile-safe quick quality choice, separate from the desktop picker. */
 export function getMobilePresetChoice(): MobilePresetName {
+  resetSavedGraphicsIfRequested();
   try {
-    if (!_mobileResetHandled) {
-      _mobileResetHandled = true;
-      if (new URLSearchParams(window.location.search).has('gfxreset')) {
-        window.localStorage.removeItem(LS_MOBILE_KEY);
-        return 'mobile';
-      }
-    }
     const v = window.localStorage.getItem(LS_MOBILE_KEY);
     if (v === 'mobile-low' || v === 'mobile' || v === 'mobile-high') return v;
   } catch (_) { /* storage blocked — balanced is the safe default */ }

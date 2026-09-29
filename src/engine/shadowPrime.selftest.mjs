@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { primeShadowCascades } from './shadowPrime.ts';
 import { createLighting } from './lighting.ts';
+import { setPresetName } from './quality.ts';
 
 function fixture() {
   const scene = new THREE.Scene();
@@ -560,6 +561,35 @@ await withFixture(async (f) => {
   } finally {
     lighting.csm.remove();
     lighting.csm.dispose();
+  }
+});
+
+// Changing the split range must not sample a static Garage's old depth maps.
+await withFixture(async (f) => {
+  const storage = new Map();
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: {
+    location: { search: '' },
+    localStorage: { getItem: key => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
+  } });
+  setPresetName('low');
+  const lighting = createLighting(f.scene, f.camera, new THREE.Vector3(1, 1, 1).normalize());
+  try {
+    lighting.update(true);
+    lighting.update();
+    lighting.setStaticPresentationDormant(true);
+    lighting.update();
+    assert.equal(lighting.scheduledMask, 0, 'settled Garage reuses its maps');
+    setPresetName('medium');
+    lighting.update();
+    assert.equal(lighting.scheduledMask & 3, 3,
+      'range change refreshes both near cascades before sampling the new projection');
+    assert.ok(lighting.csm.lights.slice(0, 2).every(light => light.shadow.needsUpdate));
+  } finally {
+    lighting.csm.remove(); lighting.csm.dispose();
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else delete globalThis.window;
   }
 });
 

@@ -1123,6 +1123,11 @@ export function createLighting(
       shadowFitCache.invalidate();
       applyShadowNormalBiases();
     }
+    // A new projection cannot sample the previous static Garage depth maps.
+    // Wake the cache even when this choice keeps identical map dimensions.
+    staticPresentationDormant = false;
+    preservePrimedFrame = false;
+    forceAllCascades();
   });
   const shadowScheduler = createShadowRefreshScheduler(csm.lights.length);
   const allCascadeMask = (2 ** csm.lights.length) - 1;

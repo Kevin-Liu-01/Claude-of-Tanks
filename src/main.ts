@@ -64,7 +64,7 @@ import {
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
-  noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery,
+  noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery, onPresetChange,
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
@@ -3194,6 +3194,8 @@ invalidateGaragePresentation = () => {
   lighting.setStaticPresentationDormant(false);
   frameLoop.restart();
 };
+// Quality changes mutate shadow projections and post targets even in a sleeping Garage.
+onPresetChange(() => invalidateGaragePresentation());
 bus.on('phase:change', () => {
   if (game.phase === 'garage') {
     pendingTerrainVariant = null;
