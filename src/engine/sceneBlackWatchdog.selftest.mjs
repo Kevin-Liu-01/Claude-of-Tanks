@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createBus } from '../game/stateCore.ts';
 
@@ -492,12 +494,20 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   assert.equal(draws.length, 1, 'webdriver keeps its explicit existing opt-out');
   nav.webdriver = false;
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
-  const launchBody = garage.match(/function launchBattle\([\s\S]+?\): void \{([\s\S]+?)\n  \}\n\n  function battle\(/)[1];
+  const garageTree = ts.createSourceFile('garage.ts', garage, ts.ScriptTarget.Latest, true);
+  const launches = [];
+  function findLaunch(node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === 'launchBattle') launches.push(node);
+    ts.forEachChild(node, findLaunch);
+  }
+  findLaunch(garageTree);
+  assert.equal(launches.length, 1, 'extract only launchBattle, independent of its neighboring functions');
+  const launchCode = stripTypeScriptTypes(launches[0].getText(garageTree));
   const bus = createBus();
   bus.on('ui:battleStart', h.invalidate);
-  const launch = new Function('emit', 'onBattle', `return (specId, mapId) => {
-    const emitClick = true, gameMode = 'standard'; ${launchBody}
-  };`)(bus.emit, () => h.arm(true));
+  const launch = new Function('emit', 'onBattle', `
+    const battleGameMode = 'standard'; ${launchCode}; return launchBattle;
+  `)(bus.emit, () => h.arm(true));
   launch('m1a1', 'urban');
   assert.equal(typeof h.pending(), 'function', 'actual Garage launch invalidates BEFORE onBattle arms the new request');
   await h.consume(() => {});

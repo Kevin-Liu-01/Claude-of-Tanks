@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripTypeScriptTypes } from 'node:module';
+import ts from 'typescript-compiler-api';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const main = fs.readFileSync(path.join(here, '..', 'main.ts'), 'utf8');
@@ -48,14 +50,35 @@ assert.ok(
   'adjacent family chunks must transfer before their texture pre-bakes',
 );
 
-const battleIntent = garage.slice(
-  garage.indexOf('const signalBattleIntent = () =>'),
-  garage.indexOf("roomReminder.addEventListener('click'"),
-);
+const garageTree = ts.createSourceFile('garage.ts', garage, ts.ScriptTarget.Latest, true);
+const intentNodes = [];
+function findIntent(node) {
+  if (ts.isVariableDeclaration(node) && node.name.getText(garageTree) === 'signalBattleIntent') {
+    intentNodes.push(node.initializer);
+  }
+  ts.forEachChild(node, findIntent);
+}
+findIntent(garageTree);
+assert.equal(intentNodes.length, 1, 'find the actual intent callback independently of its typed signature');
+const battleIntent = intentNodes[0].getText(garageTree);
 assert.match(battleIntent, /battleMode === 'solo'/,
   'only solo mode may start the solo roster/world warm');
 assert.match(battleIntent, /onPlayModeIntent\?\.\(battleMode\)/,
   'network modes should warm their own selected path');
+class IntentNode {}
+for (const mode of ['solo', 'private', 'lan']) {
+  const calls = [], multiplayerTarget = new IntentNode();
+  const intent = new Function('opts', 'battleMode', 'Node', 'multiplayerEntry', 'selectedId', 'selectedMapId',
+    `return ${stripTypeScriptTypes(battleIntent)};`)(
+    { onBattleIntent: value => calls.push(['solo', value]), onPlayModeIntent: value => calls.push(['network', value]) },
+    mode, IntentNode, { contains: target => target === multiplayerTarget }, 'm1a1', 'coastal');
+  intent({ target: multiplayerTarget });
+  assert.deepEqual(calls, [], 'multiplayer configuration must not warm a solo battle');
+  intent({ target: new IntentNode() });
+  assert.deepEqual(calls, mode === 'solo'
+    ? [['solo', { specId: 'm1a1', mapId: 'coastal' }]] : [['network', mode]],
+  `${mode}: actual callback warms only its selected path`);
+}
 
 assert.match(garage,
   /pointerenter[\s\S]{0,120}signalTankIntent\(spec\.id\)[\s\S]{0,500}pointerdown[\s\S]{0,120}signalTankIntent\(spec\.id, true\)/,
