@@ -1217,6 +1217,7 @@
   "settings.aim.touch": "Touch aim",
   "settings.battle.title": "Battle",
   "settings.gameplay.difficulty": "AI difficulty",
+  "settings.gameplay.brainNext": "Opponent brain (next battle)",
   "settings.gameplay.difficultyNext": "AI difficulty (next battle)",
   "settings.difficulty.easy": "Easy",
   "settings.difficulty.normal": "Normal",

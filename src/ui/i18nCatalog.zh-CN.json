@@ -1217,6 +1217,7 @@
   "settings.aim.touch": "触屏瞄准",
   "settings.battle.title": "战斗",
   "settings.gameplay.difficulty": "AI 难度",
+  "settings.gameplay.brainNext": "对手 AI（下一场战斗）",
   "settings.gameplay.difficultyNext": "AI 难度（下一场）",
   "settings.difficulty.easy": "简单",
   "settings.difficulty.normal": "普通",

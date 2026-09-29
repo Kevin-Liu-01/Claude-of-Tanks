@@ -32,6 +32,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
 import {
   SETTINGS_ACTION_ICONS,
@@ -397,6 +398,7 @@ const SETTINGS_CSS = `
 .cot-set-slider input[type=number]:focus{outline:none;border-color:rgba(240,176,74,.65);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 .cot-set-slider .unit{width:16px;font-size:11px;font-weight:700;color:#8a97a3;}
+.cot-set-seg button:disabled{opacity:.4;cursor:not-allowed;}
 /* segmented pickers (difficulty / RMB mode / quality) + ON/OFF toggles —
    keycap plates, amber selected (era-chip sel treatment) */
 .cot-set-seg{display:flex;gap:4px;}
@@ -944,6 +946,61 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     for (const x of diffBtns) x.classList.toggle('sel', x.dataset.tier === input.getSettings().aiDifficulty);
     const diffNote = el('div', 'cot-set-note', battle);
     diffNote.textContent = t('settings.difficulty.note');
+
+    const brainRow = el('div', 'cot-set-row', battle);
+    const brainLabel = t('settings.gameplay.brainNext');
+    settingLabel(brainRow, brainLabel, SETTINGS_OPTION_ICONS.aiDifficulty);
+    const brainSeg = el('div', 'cot-set-seg', brainRow);
+    brainSeg.setAttribute('role', 'group');
+    brainSeg.setAttribute('aria-label', brainLabel);
+    const brainButtons: HTMLButtonElement[] = [];
+    const alliesRow = el('div', 'cot-set-row', battle);
+    settingLabel(alliesRow, t('playMenu.brain.allies'), SETTINGS_OPTION_ICONS.aiDifficulty);
+    const alliesSeg = el('div', 'cot-set-seg onoff', alliesRow);
+    const alliesButtons: HTMLButtonElement[] = [];
+    const brainNote = el('div', 'cot-set-note', battle);
+    const syncBrain = () => {
+      const current = readBrainSettings();
+      for (const b of brainButtons) {
+        const selected = b.dataset.brainOpponent === current.opponent;
+        b.classList.toggle('sel', selected);
+        b.setAttribute('aria-pressed', String(selected));
+      }
+      for (const b of alliesButtons) {
+        const selected = (b.dataset.brainAllies === 'true') === current.allies;
+        b.disabled = current.opponent !== 'jev';
+        b.classList.toggle('sel', selected);
+        b.setAttribute('aria-pressed', String(selected));
+      }
+      brainNote.textContent = t('playMenu.brain.sub')
+        + (current.opponent === 'jev' ? ' ' + t('playMenu.brain.note') : '');
+    };
+    for (const opponent of ['classic', 'jev'] as const) {
+      const b = el('button', '', brainSeg);
+      b.type = 'button';
+      b.dataset.brainOpponent = opponent;
+      b.textContent = t(`playMenu.brain.${opponent}`);
+      b.addEventListener('click', () => {
+        writeBrainSettings({ opponent });
+        syncBrain();
+        emit('ui:click', {});
+      });
+      brainButtons.push(b);
+    }
+    for (const on of [false, true]) {
+      const b = el('button', '', alliesSeg);
+      b.type = 'button';
+      b.dataset.brainAllies = String(on);
+      b.textContent = t(on ? 'settings.on' : 'settings.off');
+      b.setAttribute('aria-label', `${t('playMenu.brain.allies')}: ${b.textContent}`);
+      b.addEventListener('click', () => {
+        writeBrainSettings({ allies: on });
+        syncBrain();
+        emit('ui:click', {});
+      });
+      alliesButtons.push(b);
+    }
+    syncBrain();
 
     const times = el('fieldset', 'cot-battle-times', battle);
     times.innerHTML = battleTimeChoicesMarkup('cot-settings-time-hint', 'settings.battle.timeHint');
