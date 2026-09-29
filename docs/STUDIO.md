@@ -1,5 +1,20 @@
 # Scene Studio
 
+The **Director** workspace is the starting point for new productions. Choose Steel
+pursuit, Desert crossfire, or Coastal reconnaissance, select a featured tank and
+frame, then **Stage sequence**. Each eight-second sequence contains three authored
+camera segments, animated vehicles and timed effects. Preview the shot list or
+scrub before capturing. Rig and lens changes save a camera key at the playhead;
+switching image formats reframes existing camera positions while preserving cuts
+and timings. The frame format is saved in scene JSON and restored without
+reframing it a second time. Scene, Tanks, Effects, Timeline and Export tabs retain the detailed
+authoring controls. Guides stay out of exported images.
+
+PNG exports use the selected native frame dimensions. Browser video recording
+uses the current canvas ratio and is silent. For deterministic HD films, native
+portrait/square artwork, synchronized original sound design and reviewed public
+campaigns, follow [Campaign production](MEDIA-PRODUCTION-CAMPAIGNS.md).
+
 Scene Studio is a game mode for composing and recording scenes with the current
 renderer. It loads the selected battlefield, including terrain, vegetation,
 props, sky, lighting, and post-processing, without running combat AI, spotting,
@@ -95,6 +110,9 @@ __STUDIO.getStoryboard() / .setStoryboard(board) / .setStoryboardDuration(ms)
 __STUDIO.addCameraShot(cfg?) / .updateCameraShot(id, patch) / .removeCameraShot(id)
 __STUDIO.keyActor(ref, cfg?) / .clearActorTrack(ref)
 __STUDIO.setRailVisible(on) / .directDuel()
+await __STUDIO.directProduction({presetId, tankId, format}) // authored eight-second scene
+__STUDIO.applyProductionCamera(rig) // hero, track, rear, overhead, detail
+__STUDIO.setProductionFormat(format) / .productionFormat // landscape, portrait, square
 __STUDIO.recordVideo(opts) / .stopRecording() / .recordingStatus()
 __STUDIO.setCamera(cfg) / .getCamera()
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS

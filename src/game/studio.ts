@@ -76,6 +76,8 @@ import type {
   StoryboardInput,
 } from './studioTimeline.ts';
 import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
+import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
+import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import {
   applySiteMetadataToDocument,
   localizedGameMetadata,
@@ -373,6 +375,7 @@ interface RecordingSession {
 
 interface StudioSceneInput {
   map?: string;
+  productionFormat?: ProductionFormat;
   timeOfDay?: BattleTimeOfDay;
   seed?: number;
   actors?: readonly StudioActorInput[];
@@ -1355,6 +1358,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   window.addEventListener('wheel', onWheel, { passive: false, capture: true });
   window.addEventListener('blur', () => keys.clear());
   window.addEventListener('resize', invalidate, { passive: true });
+  window.addEventListener('cot:layoutchange', invalidate, { passive: true });
 
   // --- effects ---------------------------------------------------------------
   /** Resolve an effect anchor to a world position (actor anchors are live). */
@@ -2329,6 +2333,57 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return Math.atan2(toX - fromX, toZ - fromZ) / DEG;
   }
 
+  let productionLoading = false;
+  let productionFormat: ProductionFormat = 'landscape';
+
+  function setProductionFormat(format: ProductionFormat): void {
+    productionAspect(format);
+    if (recording || loading || productionLoading || format === productionFormat) return;
+    pauseTimeline();
+    const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
+    const live = getCamera();
+    const shots = storyboard.shots.map(shot => ({ ...shot,
+      fov: reframeProductionFov(shot.fov, productionFormat, format),
+      pos: reframeProductionPoint(shot.pos, shot.lookAt, productionFormat, format, ground),
+      handleIn: shot.handleIn && reframeProductionPoint(shot.handleIn, shot.lookAt, productionFormat, format, ground),
+      handleOut: shot.handleOut && reframeProductionPoint(shot.handleOut, shot.lookAt, productionFormat, format, ground),
+    }));
+    const pos = reframeProductionPoint([live.pos[0], live.pos[1], live.pos[2]],
+      [live.lookAt[0], live.lookAt[1], live.lookAt[2]], productionFormat, format, ground);
+    const fov = reframeProductionFov(live.fov, productionFormat, format);
+    setStoryboard({ ...storyboard, shots });
+    productionFormat = format;
+    applyCamera({ pos, lookAt: live.lookAt, fov, rollDeg: live.rollDeg });
+    panel.refreshAll();
+    invalidate();
+  }
+
+  async function directProduction(options: ProductionOptions): Promise<ReturnType<typeof stateJson>> {
+    if (recording || loading || productionLoading) throw new Error('Finish the current Studio operation first');
+    const preset = productionPreset(options.presetId);
+    productionLoading = true;
+    try {
+      await setMap(preset.map);
+      const recipe = createProductionScene(options, (x, z) => hfProxy.getHeightAt(x, z));
+      const result = await load(recipe);
+      selectActor('lead');
+      setRailVisible(false);
+      return result;
+    } finally { productionLoading = false; }
+  }
+
+  function applyProductionCamera(rig: ProductionRigId): void {
+    if (recording || loading) return;
+    const actor = selected ?? actors[0];
+    if (!actor) throw new Error('Stage or select a tank first');
+    pauseTimeline();
+    const p = actor.state.pos;
+    applyCamera(productionCamera(rig, [p.x, p.y + 1.7, p.z], actor.state.yaw / DEG,
+      (x, z) => hfProxy.getHeightAt(x, z), productionFormat));
+    panel.refreshCamera();
+    invalidate();
+  }
+
   /** Build an immediately recordable 15-second battle from the first two actors. */
   function directDuel(opts: { variant?: number } = {}) {
     if (recording) throw new Error('Stop recording before replacing the storyboard');
@@ -2868,6 +2923,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return {
       map: w ? w.mapId : 'verdant',
       timeOfDay,
+      productionFormat,
       seed: sceneMeta.seed || 5000,
       actors: actors.map((a) => ({
         id: a.specId,
@@ -2975,6 +3031,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     json: StudioSceneInput = {},
     _opts: Readonly<Record<string, RuntimeValue>> = {},
   ): Promise<ReturnType<typeof stateJson>> {
+    const loadedFormat = json.productionFormat ?? 'landscape';
+    productionAspect(loadedFormat); // Validate before replacing any scene state.
     if (json.timeOfDay !== undefined && !BATTLE_TIMES.includes(json.timeOfDay)) throw new RangeError('Unknown time of day');
     if (recording) throw new Error('Stop recording before loading a scene');
     if (loading) throw new Error('studio.load already in flight');
@@ -2996,6 +3054,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const fxMs = clampStudioTime(json.fxTime || 0, storyboard.durationMs);
       replaceLoadEffects(json, fxMs);
       await yieldForFrameBudget();
+      productionFormat = loadedFormat; // Camera keys already carry this framing; never reframe on load.
       restoreLoadedPresentation(json, fxMs);
       return stateJson();
     } finally {
@@ -3485,6 +3544,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     clearActorTrack,
     setRailVisible,
     directDuel,
+    directProduction,
+    applyProductionCamera,
+    setProductionFormat,
+    get productionFormat() { return productionFormat; },
     seek: seekTimeline,
     play: playTimeline,
     pause: pauseTimeline,

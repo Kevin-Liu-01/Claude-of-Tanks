@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "created": "2026-09-29T12:44:34.345Z",
+  "sourceDigest": "03522a8020b48a9ff9879c325fb917f9a5a1cd801628b108fa3db330431c9e59",
+  "revision": "c1ade6e0e9d70cb88812028f1d3d75e0bde0e451",
+  "shots": [
+    {
+      "src": "/media/director-r4/gameplay/battle-opening.webp",
+      "title": "Before contact",
+      "alt": "Live battle HUD in a controlled formation demonstration.",
+      "kind": "gameplay",
+      "sequence": 1
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-impact.webp",
+      "title": "After contact",
+      "alt": "Live scope, module-hit indicators and a destroyed target in a controlled battle demonstration.",
+      "kind": "gameplay",
+      "sequence": 2
+    }
+  ],
+  "films": [
+    {
+      "src": "/media/director-r4/gameplay/battle-live.mp4",
+      "mobileSrc": "/media/director-r4/gameplay/battle-live-mobile.mp4",
+      "poster": "/media/director-r4/gameplay/battle-opening.webp",
+      "captions": "/media/director-r4/gameplay/battle-live.vtt",
+      "title": "Scope and fire — controlled gameplay",
+      "kind": "gameplay",
+      "controlled": true,
+      "staged": true,
+      "silent": true,
+      "width": 1920,
+      "height": 1080,
+      "fps": 60,
+      "frames": 265,
+      "duration": 4.416667,
+      "notice": "Controlled demonstration using the real battle simulation and live HUD. Vehicle positions, target health, movement and scope are staged; firing includes a 0.20-second simulation step. Silent. Encoded frame rate is not a gameplay performance measurement."
+    }
+  ],
+  "assets": [
+    {
+      "src": "/media/director-r4/gameplay/battle-live.mp4",
+      "sha256": "fd97273e6a42b4b6054bfd50d582f78c8098a5ecf1ef0d6651c165f1319a9b2b",
+      "bytes": 3871118
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-live-mobile.mp4",
+      "sha256": "73ca12ad53c66d921226d00054caf8afc3c63fc5e73049dca5dac749398a3119",
+      "bytes": 1134816
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-opening.webp",
+      "sha256": "6d5f0da8af7cfe32a4eccef2a415b2f32fff8b27adac76c7fdb9490a95891e7a",
+      "bytes": 677602
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-impact.webp",
+      "sha256": "052e373d27bb54c0ad0f718113c792591a99718975c874e10a6b2b017ce0b2be",
+      "bytes": 680208
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-live.vtt",
+      "sha256": "7637c67383f38ecfabd82966103afb4c021e26ceebbcf4fda03e1c08acb9ed21",
+      "bytes": 164
+    }
+  ],
+  "media": {},
+  "recipes": {},
+  "review": {
+    "reviewedAt": "2026-09-29T12:29:11.273441+00:00",
+    "notes": "Inspected both native 1920×1080 screenshots: live team lists, HP, ammo, scope and module-hit feedback remain visible; opening includes the real rollout title. The player shell receipt records ricochet with zero damage. Later target destruction is not attributed to this player shot. Encoded motion review is recorded separately. Reviewed nine motion samples across the whole 4.416-second take: convoy advance, scope entry and ricochet card remain legible; no frozen HUD composite or black frames in these samples. The later destroyed-target screenshot is an aftermath image, not a claim that destruction occurs inside the short clip.",
+    "hashes": [
+      "2a656bdee53eb3fdd810c525e68e234aba2c3b2131cd2f1ef115cbfd804fd95b",
+      "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
+      "0f22f1fbc0fd90294762e6a9b571ecfaf094c90a90667a561cf82fc97e187a95",
+      "90192dfe822d2fdcedc8bb303d84b35323b2e6e849c4e698446bfb0e039942f9"
+    ]
+  },
+  "provenance": {
+    "notice": "Controlled demonstration using the real battle simulation and live HUD. Vehicle positions, target health, movement and scope are staged; firing includes a 0.20-second simulation step. Silent. Encoded frame rate is not a gameplay performance measurement.",
+    "captureSource": {
+      "sourceDigest": "03522a8020b48a9ff9879c325fb917f9a5a1cd801628b108fa3db330431c9e59",
+      "revision": "c1ade6e0e9d70cb88812028f1d3d75e0bde0e451",
+      "sourceReceiptSha256": "7017aae3146f6441b58466dfb2d6ec9a6cfaeca2948222ee39f409be2ce4aa00",
+      "binding": "Reviewer attests the battle and referenced Studio capture shared the same frozen runtime. The battle report itself records the capture-tool hash, not the runtime digest.",
+      "attestation": "The native capture and ship-steel receipt were acquired sequentially from the same frozen source state before the subsequent Studio-only production-format persistence repair. No runtime source edits occurred between them. This binds the older digest without claiming the capture report itself recorded it."
+    },
+    "sourceFiles": [
+      {
+        "name": "capture-report.json",
+        "sha256": "2a656bdee53eb3fdd810c525e68e234aba2c3b2131cd2f1ef115cbfd804fd95b",
+        "bytes": 1060
+      },
+      {
+        "name": "battle-live.webm",
+        "sha256": "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
+        "bytes": 128756911
+      },
+      {
+        "name": "battle-opening.png",
+        "sha256": "0f22f1fbc0fd90294762e6a9b571ecfaf094c90a90667a561cf82fc97e187a95",
+        "bytes": 3772006
+      },
+      {
+        "name": "battle-impact.png",
+        "sha256": "90192dfe822d2fdcedc8bb303d84b35323b2e6e849c4e698446bfb0e039942f9",
+        "bytes": 3995236
+      }
+    ],
+    "captureTool": {
+      "path": "tools/feature-promo-capture.mjs",
+      "sha256": "8829abd82696070c8717bb6c19d0b9500f1140aa2087fa10434b99cda9048ebb"
+    },
+    "publicationTools": [
+      {
+        "path": "tools/publish-gameplay-capture.mjs",
+        "sha256": "7c484e4f41d4325adbdbb55e1de7ef6dc6fc7f1b435efea70ad1f5c9a82959c5"
+      },
+      {
+        "path": "tools/media-production/campaignPublication.mjs",
+        "sha256": "06b94098e9a92cb43d826211d79d7e384d036449f8e4a8137e5b90cd430a7c40"
+      },
+      {
+        "path": "tools/media-production/mergePublication.mjs",
+        "sha256": "98b35a28a008ed4bc5721ee39f939e2fea13bf8feddd9b4a1a74f24aa0723fe9"
+      },
+      {
+        "path": "tools/media-production/pipeline.mjs",
+        "sha256": "7cf549560ab2097f45e28511eccd0abd9d3b2fca96d8fd32be0659e589cf1ff2"
+      }
+    ],
+    "shellResult": {
+      "targetHp": 0,
+      "targetDestroyed": true,
+      "lastShell": {
+        "shellId": 1,
+        "t": 24.07,
+        "targetId": "m1a2_sepv2_x",
+        "targetDistM": 105,
+        "targetSpeed": 0,
+        "blockedDistM": null,
+        "terminal": "tank",
+        "hitKind": "ricochet",
+        "damage": 0,
+        "missM": 2.18,
+        "hitTankId": "m1a2_sepv2_x"
+      }
+    },
+    "consoleErrors": [],
+    "optionalAnalyticsErrors": [],
+    "outcomeNotice": "The recorded player shell resolved as ricochet for 0 damage. A later target destruction is not independently attributed by this receipt.",
+    "webEncodes": [
+      {
+        "src": "/media/director-r4/gameplay/battle-live.mp4",
+        "sha256": "fd97273e6a42b4b6054bfd50d582f78c8098a5ecf1ef0d6651c165f1319a9b2b",
+        "bytes": 3871118,
+        "sourceSha256": "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
+        "profile": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 60,
+          "frames": 265,
+          "duration": 4.416666666666667,
+          "audio": false,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 6000,
+          "bufferKbits": 12000,
+          "audioKbps": 0
+        },
+        "result": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 60,
+          "frames": 265,
+          "duration": 4.416667,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": null,
+          "bytes": 3871118,
+          "byteBudget": 4908750
+        }
+      },
+      {
+        "src": "/media/director-r4/gameplay/battle-live-mobile.mp4",
+        "sha256": "73ca12ad53c66d921226d00054caf8afc3c63fc5e73049dca5dac749398a3119",
+        "bytes": 1134816,
+        "sourceSha256": "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
+        "profile": {
+          "width": 960,
+          "height": 540,
+          "fps": 60,
+          "frames": 265,
+          "duration": 4.416666666666667,
+          "audio": false,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 1800,
+          "bufferKbits": 3600,
+          "audioKbps": 0
+        },
+        "result": {
+          "width": 960,
+          "height": 540,
+          "fps": 60,
+          "frames": 265,
+          "duration": 4.416667,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": null,
+          "bytes": 1134816,
+          "byteBudget": 1472625
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { campaignPlan, validateCapture, soundEvents, rate, sha256 } from './campaignPlan.mjs';
+import { synthesizeSoundtrack } from './campaignAudio.mjs';
+
+const capture = { finished: '2026-09-29', errors: [], maps: [{ complete: true }], sourceDigest: 'a'.repeat(64), revision: 'abc123' };
+const video = { fps: 30, frames: 240, format: 'landscape' };
+const probe = { streams: [{ codec_type: 'video', width: 1920, height: 1080, r_frame_rate: '30/1', nb_frames: '240' }], format: { duration: '8.000' } };
+const input = validateCapture(capture, video, probe);
+assert.deepEqual(input, { width: 1920, height: 1080, fps: 30, duration: 8 });
+assert.equal(rate('60000/1001'), 60000 / 1001);
+for (const patch of [{ finished: null }, { errors: undefined }, { errors: ['GL error'] }, { maps: [{ complete: false }] }, { sourceDigest: '' }]) assert.throws(() => validateCapture({ ...capture, ...patch }, video, probe));
+for (const patch of [{ width: 1280 }, { height: 1920 }, { r_frame_rate: '24/1' }, { nb_frames: '239' }]) assert.throws(() => validateCapture(capture, video, { ...probe, streams: [{ ...probe.streams[0], ...patch }] }));
+assert.throws(() => validateCapture(capture, video, { ...probe, format: { duration: '7.5' } }));
+const scenes = ['steel', 'wake', 'duel'].map(id => ({ id, title: id, description: `${id} camera`, receipt: `${id}.json` }));
+const job = { title: 'Armor in motion', scenes };
+const plan = campaignPlan(job, [input, input, input]);
+assert.equal(plan.duration, 26); assert.deepEqual(plan.scenes.map(row => row.offset), [0, 8, 16]);
+assert.throws(() => campaignPlan({ ...job, scenes: [scenes[0], scenes[0], scenes[2]] }, [input, input, input]), /Duplicate/);
+assert.throws(() => campaignPlan(job, [input, { ...input, fps: 24 }, input]), /share/);
+assert.throws(() => campaignPlan({ ...job, scenes: scenes.map(row => ({ ...row, durationSeconds: 4 })) }, [input, input, input]), /20–30/);
+assert.throws(() => campaignPlan({ ...job, scenes: [{ ...scenes[0], inSeconds: .01 }, ...scenes.slice(1)] }, [input, input, input]), /Trim/);
+const trimmed = campaignPlan({ ...job, scenes: scenes.map(row => ({ ...row, inSeconds: 1, durationSeconds: 7 })) }, [input, input, input]);
+const effects = { scene: { effects: [{ type: 'fire', tMs: 500 }, { type: 'fire', tMs: 2000 }, { type: 'fire', tMs: 2000 }, { type: 'impact', tMs: 2500 }, { type: 'dust', tMs: 3000 }, { type: 'fire', tMs: 8000 }] } };
+const events = soundEvents(trimmed, [effects, effects, effects]);
+assert.deepEqual(events.map(row => row.at), [1, 1.5, 8, 8.5, 15, 15.5]);
+assert.deepEqual(events.map(row => row.end), [7, 7, 14, 14, 21, 21]);
+const audioEvents = [{ at: .1, end: 1.5, type: 'fire' }, { at: .5, end: 1.5, type: 'impact' }];
+const a = synthesizeSoundtrack(2, audioEvents), b = synthesizeSoundtrack(2, audioEvents);
+assert.equal(sha256(a.wav), sha256(b.wav)); assert.notEqual(sha256(a.wav), sha256(synthesizeSoundtrack(2, []).wav));
+assert.equal(a.wav.toString('ascii', 0, 4), 'RIFF'); assert.equal(a.wav.readUInt32LE(24), 48000);
+assert.equal(a.wav.length, 44 + 2 * 48000 * 4); assert.ok(a.metrics.peak < .89 && a.metrics.peak > .1);
+assert.ok(a.metrics.rms > .005); assert.ok(Number.isFinite(a.metrics.rms));
+console.log('campaign.selftest: receipt/probe validation, edit boundaries, synchronized cues and deterministic bounded audio passed');
+
+const offsetCaptures = [effects, effects, effects].map(capture => ({ ...capture, startMs: 1500 }));
+const offsetEvents = soundEvents(trimmed, offsetCaptures);
+assert.deepEqual(offsetEvents.map(row => row.at), [0, 5.5, 7, 12.5, 14, 19.5], 'capture-start offset combines with edit trim without shifting sound twice');

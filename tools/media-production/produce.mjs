@@ -7,34 +7,39 @@ import { execFileSync } from 'node:child_process';
 import { createCaptureLock } from '../capture-lock.mjs';
 import { MAP_IDS } from '../../src/world/maps/catalog.ts';
 import { waterScene, frameScene } from './recipes.mjs';
+import { productionPreset } from '../../src/game/studioProduction.ts';
 import { digest, sourceDigest, verifyFile, contactSheet, writeReviewPage, promoCard, saveReviewCapture } from './pipeline.mjs';
 
-const help = 'npm run media:capture -- --task=all|maps|shore|landscape|video --maps=id,id --times=day,sunset,night --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json --fps=24|30|60 --frames=180 --width=1920';
+const help = 'npm run media:capture -- --task=all|maps|shore|landscape|video --maps=id,id --times=day,sunset,night --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json OR --preset=steel-pursuit|desert-crossfire|coast-recon --fps=24|30|60 --frames=240 --width=1920 --start-ms=0';
 if (process.argv.includes('--help')) { console.log(help); process.exit(0); }
 const args = Object.fromEntries(process.argv.slice(2).map(arg => {
   const match = /^--([a-z-]+)=(.+)$/.exec(arg);
-  if (!match || !['task','maps','out','times','width','fps','frames','resume','scene','formats'].includes(match[1])) throw Error(help);
+  if (!match || !['task','maps','out','times','width','fps','frames','resume','scene','formats','preset','start-ms'].includes(match[1])) throw Error(help);
   return [match[1], match[2]];
 }));
 const task = args.task ?? 'all';
 const customScene = args.scene ? JSON.parse(readFileSync(resolve(args.scene), 'utf8')) : null;
-const maps = args.maps?.split(',') ?? (task === 'video' ? [customScene?.map ?? 'reservoir'] : [...MAP_IDS]);
+const preset = args.preset ? productionPreset(args.preset) : null;
+if (preset && (customScene || task !== 'video')) throw Error('Production presets require video task and no scene override');
+const maps = args.maps?.split(',') ?? (task === 'video' ? [preset?.map ?? customScene?.map ?? 'reservoir'] : [...MAP_IDS]);
 const times = args.times?.split(',') ?? ['day'];
-const filmTimes = args.times?.split(',') ?? ['day','sunset','night'];
+const filmTimes = args.times?.split(',') ?? (preset ? [preset.timeOfDay] : ['day','sunset','night']);
 const formats = args.formats?.split(',') ?? ['landscape'];
 const out = resolve(args.out ?? 'shots/production-current');
 const fps = Number(args.fps ?? 30), width = Number(args.width ?? 1920), frames = Number(args.frames ?? 6 * fps);
+const startMs = Number(args['start-ms'] ?? 0);
+if (!Number.isFinite(startMs) || startMs < 0 || startMs + (frames - 1) * 1000 / fps > (preset?.durationMs ?? 20000)) throw Error('Capture range exceeds the production timeline');
 const validList = (list, allowed) => list.length && new Set(list).size === list.length && list.every(id => allowed.includes(id));
 if (!['all','maps','shore','landscape','video'].includes(task) || !validList(maps, MAP_IDS) || !validList(times,['day','sunset','night'])
     || !validList(formats,['landscape','portrait','square'])) throw Error('Invalid or duplicate capture selection');
 if (![24,30,60].includes(fps) || !Number.isInteger(width) || width < 640 || width > 3840 || width % 32
     || !Number.isInteger(frames) || frames < 1 || frames > 20 * fps) throw Error('Invalid dimensions, frame rate or frame count');
 if (customScene && (task !== 'video' || maps.length !== 1 || maps[0] !== customScene.map)) throw Error('A custom scene requires --task=video and its own map');
-if (task === 'video' && !customScene && (maps.length !== 1 || maps[0] !== 'reservoir')) throw Error('Supply --scene for a video on another map');
+if (task === 'video' && !customScene && (maps.length !== 1 || maps[0] !== (preset?.map ?? 'reservoir'))) throw Error('Select the production preset map or supply --scene');
 mkdirSync(out, { recursive:true });
 const receiptFile = join(out, `${task}-receipt.json`);
 const fingerprint = sourceDigest();
-const config = { task, maps, times, filmTimes, formats, fps, width, frames, scene:customScene };
+const config = { task, maps, times, filmTimes, formats, fps, width, frames, scene:customScene, preset: preset?.id ?? null, startMs };
 let receipt;
 if (args.resume === 'true' && existsSync(receiptFile)) {
   receipt = JSON.parse(readFileSync(receiptFile, 'utf8'));
@@ -76,7 +81,10 @@ const capture = (page,width,height) => page.evaluate(size => {
 const dimensions = format => format === 'portrait' ? [width*9/16,width] : format === 'square' ? [width,width] : [width,width*9/16];
 async function films(page, row) {
   for (const time of filmTimes) for (const format of [...new Set([...formats,'landscape','portrait','square'])]) {
-    const scene = frameScene({ ...(customScene ?? waterScene(time)), timeOfDay:time },format);
+    const scene = preset ? await page.evaluate(async ({id,format,time}) => {
+      const {createProductionScene}=await import('/src/game/studioProduction.ts');
+      return {...createProductionScene({presetId:id,format},(x,z)=>window.__DEBUG.world.heightField.getHeightAt(x,z)),timeOfDay:time};
+    },{id:preset.id,format,time}) : frameScene({ ...(customScene ?? waterScene(time)), timeOfDay:time },format);
     const filmRequested=formats.includes(format), posterFrame=Math.floor(frames/2);
     const stem = `${row.map}-${time}${format === 'landscape' ? '' : `-${format}`}`;
     const dir = join(out,'films',stem), [w,h] = dimensions(format);
@@ -84,19 +92,22 @@ async function films(page, row) {
     // Keep the live and encoded sizes equal so each movie frame retains its
     // temporal history; larger posters still restore this viewport afterward.
     await page.setViewport({width:w,height:h,deviceScaleFactor:1});
-    await page.evaluate(scene => window.__STUDIO.load(scene),{...scene,fxTime:filmRequested?0:posterFrame/fps*1000}); await settle(page);
+    await page.evaluate(scene => window.__STUDIO.load(scene),{...scene,fxTime:startMs+(filmRequested?0:posterFrame/fps*1000)}); await prepareView(page); await settle(page);
     writeFileSync(join(dir,'scene.json'), JSON.stringify(scene,null,2)+'\n');
     const samples=[];
     for (let frame=0; frame<(filmRequested?frames:1); frame++) {
-      if (frame) await page.evaluate(ms=>window.__STUDIO.advanceFrame(ms),1000/fps);
+      // Target the absolute frame clock: rounding each 1/fps increment drifts.
+      if (frame) await page.evaluate(target=>window.__STUDIO.advanceFrame(target-window.__STUDIO.fxTimeMs),startMs+frame*1000/fps);
+      const actualMs=await page.evaluate(()=>window.__STUDIO.fxTimeMs);
+      if(Math.abs(actualMs-(startMs+frame*1000/fps))>.51 && filmRequested) throw Error('Captured timeline drifted from the output frame clock');
       const file=filmRequested ? savePng(join(dir,`frame-${String(frame).padStart(5,'0')}.png`),await capture(page,w,h)) : null;
-      if (file && (frame % fps === 0 || frame === frames-1)) samples.push({...file,label:`${time} · ${format} · ${(frame/fps).toFixed(2)}s`});
+      if (file && (frame % fps === 0 || frame === frames-1)) samples.push({...file,fxTimeMs:actualMs,label:`${time} · ${format} · ${(actualMs/1000).toFixed(2)}s`});
       if (!filmRequested || frame === posterFrame) {
         const posterFormats = [format];
         for (const posterFormat of posterFormats) {
           const [pw,ph] = posterFormat === 'portrait' ? [1080,1920] : posterFormat === 'square' ? [1920,1920] : [3840,2160];
           const poster=savePng(join(out,'posters',`${row.map}-${time}-${posterFormat}.png`),await capture(page,pw,ph));
-          Object.assign(poster,{scene,format:posterFormat,timeOfDay:time,frame:posterFrame, label:`${row.map} · ${time} · ${posterFormat}`});
+          Object.assign(poster,{scene,format:posterFormat,timeOfDay:time,frame:posterFrame,fxTimeMs:startMs+posterFrame/fps*1000, label:`${row.map} · ${time} · ${posterFormat}`});
           row.posters.push(poster);
           const promo=await promoCard(poster,join(out,'promo',`${row.map}-${time}-${posterFormat}.png`),time);
           row.posters.push({...promo,scene,format:posterFormat,timeOfDay:time,branded:true,label:`Promo · ${time} · ${posterFormat}`});
@@ -109,7 +120,7 @@ async function films(page, row) {
     execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-framerate',String(fps),'-i',join(dir,'frame-%05d.png'),'-frames:v',String(frames),'-c:v','libx264','-preset','slow','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',video]);
     const probe=JSON.parse(execFileSync('ffprobe',['-v','error','-show_entries','stream=width,height,nb_frames,r_frame_rate:format=duration','-of','json',video],{encoding:'utf8'}));
     if (Number(probe.streams[0].nb_frames)!==frames || probe.streams[0].width!==w || probe.streams[0].height!==h) throw Error('Encoded video dimensions/frame count mismatch');
-    row.videos.push({path:video,scene,format,timeOfDay:time,fps,frames,probe,samples,label:`${row.map} · ${time} · ${format}`,sha256:digest(readFileSync(video))});
+    row.videos.push({path:video,scene,format,timeOfDay:time,fps,frames,startMs,probe,samples,label:`${row.map} · ${time} · ${format}`,sha256:digest(readFileSync(video))});
     await contactSheet(samples,join(dir,'motion-sheet.jpg'),`${row.map.toUpperCase()} / ${time.toUpperCase()} / ${fps} FPS`);
     save();
     // Retain the verified film and review frames; a nine-format run otherwise

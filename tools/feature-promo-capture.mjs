@@ -16,22 +16,25 @@ captureLeaseRefresh.unref();
 //   npm run dev -- --host 127.0.0.1 --port 8129
 //   node tools/feature-promo-capture.mjs --base http://127.0.0.1:8129
 //   node tools/feature-promo-capture.mjs --battle-only --base http://127.0.0.1:8129
+//   node tools/feature-promo-capture.mjs --native-battle --base http://127.0.0.1:8129 --out shots/native-gameplay
 //   node tools/feature-promo-capture.mjs --garage-only --base http://127.0.0.1:8129
 
 
 import {
-  mkdirSync, renameSync, unlinkSync, writeFileSync,
+  mkdirSync, renameSync, unlinkSync, writeFileSync, readFileSync,
 } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import puppeteer from 'puppeteer';
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
 const args = process.argv.slice(2);
-const BATTLE_ONLY = args.includes('--battle-only');
+const NATIVE_BATTLE = args.includes('--native-battle');
+const BATTLE_ONLY = args.includes('--battle-only') || NATIVE_BATTLE;
 const GARAGE_ONLY = args.includes('--garage-only');
 const opt = (name, fallback) => {
   const index = args.indexOf(`--${name}`);
@@ -46,6 +49,7 @@ const FPS = 60;
 const consoleErrors = [];
 const optionalAnalyticsErrors = [];
 let battleReceipt = null;
+let nativeVideoProbe = null;
 const delay = (ms) => new Promise((done) => setTimeout(done, ms));
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -186,6 +190,20 @@ async function recordStudioCanvas(page, name) {
 }
 
 async function recordBattleCanvas(page, name, durationMs, action = null) {
+  // Native campaign footage records the complete live page, including changing
+  // HUD values and scope overlays. No low-resolution upscale or frozen HUD.
+  if (NATIVE_BATTLE) {
+    const viewport = page.viewport();
+    if (viewport.width !== WIDTH || viewport.height !== HEIGHT) throw new Error('Native battle requires a 1920×1080 viewport');
+    await page.screenshot({ path: join(OUT_DIR, 'battle-opening.png') });
+    const path = await record(page, name, durationMs, action);
+    await page.screenshot({ path: join(OUT_DIR, 'battle-impact.png') });
+    const probe = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height,avg_frame_rate,nb_frames:format=duration', '-of', 'json', path], { encoding: 'utf8' });
+    if (probe.status !== 0) throw new Error('Native battle video could not be probed');
+    nativeVideoProbe = JSON.parse(probe.stdout);
+    if (nativeVideoProbe.streams?.[0]?.width !== WIDTH || nativeVideoProbe.streams?.[0]?.height !== HEIGHT) throw new Error('Native battle recording changed resolution');
+    return { path };
+  }
   const path = join(OUT_DIR, `${name}.webm`);
   const reticlePath = join(OUT_DIR, `${name}-reticle.webm`);
   const hudPath = join(OUT_DIR, `${name}-hud.png`);
@@ -307,7 +325,11 @@ try {
   await waitForGame(page);
   await page.evaluate(() => window.__DEBUG?.selectGarageTank?.('m1a2_sepv2'));
   await delay(1_000);
-  await page.setViewport({ width: 800, height: 450, deviceScaleFactor: 1 });
+  await page.setViewport({ width: NATIVE_BATTLE ? WIDTH : 800, height: NATIVE_BATTLE ? HEIGHT : 450, deviceScaleFactor: 1 });
+  if (NATIVE_BATTLE) await page.evaluate(() => {
+    const post = window.__DEBUG.post;
+    post.pinDynScale(1); post.resetPerfTrims(); post.setAdaptiveSuspended(true);
+  });
   await delay(900);
   if (!BATTLE_ONLY) {
     // The interactive garage normally centers its hero in the UI-free stage
@@ -353,8 +375,8 @@ try {
   await page.evaluate(() => window.__DEBUG?.garage?.setSelectedMap?.('steppe'));
   await delay(800);
   const startBattle = async () => {
-    const start = await page.$('button[aria-label="Start Bots battle"]');
-    if (!start) throw new Error('Start Bots battle button was not found');
+    const start = await page.$('button.cot-battle');
+    if (!start) throw new Error('Garage Battle action was not found');
     await start.click();
   };
   if (BATTLE_ONLY) await startBattle();
@@ -367,10 +389,9 @@ try {
     { timeout: 180_000 },
   );
   await delay(2_000);
-  // Garage and battle are the heaviest live surfaces. Capture them at 450p so
-  // Chromium can sustain real frame pacing; the compositor performs the only
-  // Lanczos upscale to the 1080p master.
-  await page.setViewport({ width: 800, height: 450, deviceScaleFactor: 1 });
+  // Native mode preserves full-resolution world and live HUD throughout capture.
+  // The legacy compositor retains its lower-resolution performance path.
+  await page.setViewport({ width: NATIVE_BATTLE ? WIDTH : 800, height: NATIVE_BATTLE ? HEIGHT : 450, deviceScaleFactor: 1 });
   await delay(1_500);
   const battleStage = await page.evaluate(() => {
     const D = window.__DEBUG;
@@ -718,7 +739,11 @@ try {
   }
   }
 
-  writeFileSync(join(OUT_DIR,'capture-report.json'),JSON.stringify({consoleErrors,optionalAnalyticsErrors,battleReceipt},null,2));
+  writeFileSync(join(OUT_DIR,'capture-report.json'),JSON.stringify({consoleErrors,optionalAnalyticsErrors,battleReceipt,
+    capture: { nativeComposite: NATIVE_BATTLE, requestedFps: FPS, nativeVideoProbe,
+      width: NATIVE_BATTLE ? WIDTH : 800, height: NATIVE_BATTLE ? HEIGHT : 450,
+      notice: 'Controlled combat demonstration using the real battle simulation. Native mode records the live HUD; vehicles and firing lane are staged.',
+      toolSha256: createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).digest('hex') } },null,2));
   if (consoleErrors.length) {
     throw new Error(
       `captured pages emitted ${consoleErrors.length} console error(s): ` +

@@ -1,5 +1,7 @@
 import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
+import { mountStudioProductionPanel, STUDIO_PRODUCTION_CSS } from './studioProductionPanel.ts';
 /**
  * studioPanel.ts — SCENE STUDIO control panel (src/game/studio.ts's UI).
  *
@@ -193,10 +195,14 @@ export interface StudioPanelApi {
   setRailVisible(visible: boolean): RuntimeValue;
   clearActorTrack(actor: StudioActor): RuntimeValue;
   directDuel(options?: { variant?: number }): RuntimeValue;
+  directProduction(options: { presetId: string; format?: ProductionFormat; vehicleId?: string }): Promise<RuntimeValue>;
+  applyProductionCamera(rig: ProductionRigId): void;
+  setProductionFormat(format: ProductionFormat): void;
+  readonly productionFormat: ProductionFormat;
   setCamera(config: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   recordVideo(options: { readonly fps: number; readonly download: boolean }): Promise<{ size: number }>;
   stopRecording(): RuntimeValue;
-  capture(options: { readonly width: number; readonly download: boolean }): RuntimeValue;
+  capture(options: { readonly width: number; readonly height?: number; readonly download: boolean }): RuntimeValue;
   load(state: RuntimeValue): Promise<RuntimeValue>;
   updateEffect(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   removeEffect(id: string): RuntimeValue;
@@ -527,7 +533,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   if (!document.getElementById('cot-studio-css')) {
     const st = document.createElement('style');
     st.id = 'cot-studio-css';
-    st.textContent = CSS;
+    st.textContent = CSS + STUDIO_PRODUCTION_CSS;
     document.head.appendChild(st);
   }
 
@@ -1236,6 +1242,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secArchive.append(archiveCopy, archiveBtn);
   outputGroup.body.appendChild(secArchive);
 
+  const productionPanel = mountStudioProductionPanel(S, root, dock, () => api.refreshAll());
+
   // --- footer hints ------------------------------------------------------------
   const foot = el('div', 'foot');
   const footCam = el('div', 'cam', '');
@@ -1523,8 +1531,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   let refreshAcc = 0;
   const api: StudioPanelRuntime = {
     root,
-    show() { root.style.display = 'block'; api.refreshAll(); },
-    hide() { root.style.display = 'none'; togglePick(false); toggleMapPick(false); },
+    show() { root.style.display = 'block'; productionPanel.setVisible(true); api.refreshAll(); },
+    hide() { root.style.display = 'none'; productionPanel.setVisible(false); togglePick(false); toggleMapPick(false); },
     setBusy(text) {
       busy.style.display = text ? 'block' : 'none';
       if (text) busy.textContent = text;
@@ -1595,6 +1603,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       orbBtn.classList.toggle('on', c.mode === 'orbit');
     },
     refreshTime() {
+      productionPanel.refresh();
       const scale = S.timeScale;
       if (scale > 0 && Number(ts.input.value) !== scale) ts.set(scale);
       const pauseLabel = scale === 0 ? t('studio.play') : t('studio.pause');

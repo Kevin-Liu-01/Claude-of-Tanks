@@ -35,6 +35,13 @@ for (const reel of BATTLE_REELS) {
 const library = /<div class="battle-reels"[\s\S]*?<\/div>\s*<h3[^>]*data-i18n="docs\.studio\.contactTitle"[^>]*>Contact-sheet review<\/h3>/.exec(docs)?.[0];
 assert.ok(library, 'Docs Studio chapter must contain the reel library before the review process');
 assert.equal((library.match(/<video\b/g) || []).length, 1, 'Docs must load reels through one shared player');
-assert.match(home, /href="\/docs#battle-reels"[^>]*>[\s\S]*?Watch 20 modern tank duels/);
+assert.match(home, /href="\/docs#campaign-film"[^>]*>[\s\S]*?Watch the film with sound/);
+const campaignPlayer = /<figure class="doc-hero-reel"[^>]*id="campaign-film"[\s\S]*?<\/figure>/.exec(docs)?.[0];
+assert.ok(campaignPlayer, 'the new film CTA targets a real Docs player');
+assert.match(campaignPlayer, /<video\b[^>]*controls/);
+assert.match(campaignPlayer, /\/media\/director-r4\/hero-trailer\.mp4/);
+assert.match(campaignPlayer, /\/media\/director-r4\/hero-trailer\.vtt/);
+assert.match(docs, /id="battle-reels"/, 'the twenty-scene archive remains directly addressable');
+assert.match(docs, /id="gameplay-film"[\s\S]*?<video\b[^>]*controls[\s\S]*?\/media\/director-r4\/gameplay\/battle-live\.mp4/, 'controlled real-simulation footage has an independent playable presentation');
 
 console.log('battle reels selftest passed');

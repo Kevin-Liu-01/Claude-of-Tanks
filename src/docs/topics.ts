@@ -240,7 +240,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.studio.label'),
     title: t('docs.topic.studio.title'),
     lede: t('docs.topic.studio.lede'),
-    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
+    hero: '/media/director-r4/silent-loop.mp4',
     icon: 'studio',
     sectionIcons: ['specification', 'workflow', 'weapons', 'studio', 'critique'],
     sections: [

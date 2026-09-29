@@ -249,9 +249,42 @@ assert.match(battleWarmSource,
 assert.match(studioSource,
   /async function replaceLoadActors\([\s\S]{0,500}await yieldForFrameBudget\(\)[\s\S]{0,300}for \(const cfg of json\.actors \|\| \[\]\)[\s\S]{0,120}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
   'Studio actor replacement must yield before and between full-quality procedural actors');
-assert.match(studioSource,
-  /async function load\([\s\S]{0,500}createFrameBudgetYielder\(10\)[\s\S]{0,300}await replaceLoadActors\(json, yieldForFrameBudget\)/,
-  'Studio scene JSON loads must wire actor replacement to the frame-budget scheduler');
+// Validate the scheduler binding and awaited call in the actual load function.
+// Input validation and comments may grow without changing the scheduling contract.
+const studioLoadAst = ts.createSourceFile('studio.ts', studioSource, ts.ScriptTarget.Latest, true);
+const studioLoadFunctions = [];
+function visitStudioLoad(node) {
+  if (ts.isFunctionDeclaration(node) && node.name?.text === 'load') studioLoadFunctions.push(node);
+  ts.forEachChild(node, visitStudioLoad);
+}
+visitStudioLoad(studioLoadAst);
+assert.equal(studioLoadFunctions.length, 1, 'Studio must expose one scene JSON load owner');
+const schedulerBindings = [], replacementCalls = [];
+function visitStudioLoadBody(node) {
+  if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)
+    && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === 'createFrameBudgetYielder') {
+    schedulerBindings.push(node);
+  }
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'replaceLoadActors') {
+    replacementCalls.push(node);
+  }
+  ts.forEachChild(node, visitStudioLoadBody);
+}
+visitStudioLoadBody(studioLoadFunctions[0].body);
+assert.equal(schedulerBindings.length, 1, 'each scene load owns one frame-budget scheduler');
+assert.equal(replacementCalls.length, 1, 'scene loading has one batched actor replacement');
+const schedulerBinding = schedulerBindings[0], replacementCall = replacementCalls[0];
+assert.ok(ts.isIdentifier(schedulerBinding.name));
+assert.equal(schedulerBinding.initializer.arguments.length, 1);
+assert.equal(schedulerBinding.initializer.arguments[0].getText(studioLoadAst), '10',
+  'Studio loading retains its 10 ms per-frame work budget');
+assert.equal(replacementCall.arguments[0].getText(studioLoadAst), studioLoadFunctions[0].parameters[0].name.getText(studioLoadAst));
+assert.equal(replacementCall.arguments[1].getText(studioLoadAst), schedulerBinding.name.text,
+  'actor replacement receives the scheduler created by this scene load');
+assert.ok(ts.isAwaitExpression(replacementCall.parent),
+  'scene loading waits for actor replacement and its cooperative yields');
+assert.ok(schedulerBinding.pos < replacementCall.pos,
+  'the frame-budget scheduler is created before actor replacement');
 assert.match(studioSource, /hud\?\.setMode\?\.\('hidden'\)/,
   'a pristine direct Studio visit must not require the battle-only HUD runtime');
 assert.match(mainSource,

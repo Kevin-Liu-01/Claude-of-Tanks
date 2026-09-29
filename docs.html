@@ -48,9 +48,9 @@
         </div>
         <p class="docs-hero-route"><span data-i18n="docs.hero.badgeManuals" data-i18n-vars='{"count":"12"}'>12 focused manuals</span><span data-i18n="docs.hero.badgeRendererFree">Renderer-free public pages</span><span data-i18n="docs.hero.badgeVerification">Executable verification</span></p>
       </div>
-      <figure class="doc-hero-reel">
-        <video controls playsinline preload="metadata" poster="/media/promo-v13/claude-of-tanks-promo-badged.jpg" aria-label="Claude of Tanks feature reel with chapter labels and synchronized score" data-i18n-aria-label="aria.claudeoftanksfeaturereelwithchapterlabelsandsynchronizedscore"><source src="/media/promo-v13/claude-of-tanks-promo-badged.mp4" type="video/mp4"><track kind="captions" src="/media/promo-v13/claude-of-tanks-promo-v13.vtt" srclang="en" label="English" default></video>
-        <figcaption><span data-i18n="docs.hero.reelCaption">Current in-engine feature reel</span><strong data-i18n="docs.hero.reelApproved" data-i18n-vars='{"version":"v13","seconds":"24"}'>Approved v13 // 24 seconds</strong></figcaption>
+      <figure class="doc-hero-reel" id="campaign-film">
+        <video controls playsinline preload="metadata" poster="/media/director-r4/hero-trailer.jpg" aria-label="Claude of Tanks staged cinematic film with synchronized original sound effects" data-i18n-aria-label="aria.claudeoftanksfeaturereelwithchapterlabelsandsynchronizedscore"><source src="/media/director-r4/hero-trailer.mp4" type="video/mp4"><track kind="captions" src="/media/director-r4/hero-trailer.vtt" srclang="en" label="English" default></video>
+        <figcaption><span data-i18n="docs.hero.reelCaption">In-engine staged cinematic film</span><strong data-i18n="docs.hero.reelApproved" data-i18n-vars='{"version":"Director R4","seconds":"26"}'>Director R4 // 26 seconds</strong></figcaption>
       </figure>
     </div>
   </header>
@@ -117,6 +117,14 @@
       <section class="doc-section" id="combat">
         <p class="section-index" data-i18n="docs.section.combatIdx">04 // Combat + killcam</p><h2><span class="doc-section-icon" data-doc-icon="combat"></span><span data-i18n="docs.section.combatTitle">Projectile and damage resolution</span></h2>
         <div class="doc-image-pair doc-image-pair--hero"><figure><img src="/media/showcase-r2/25_live_killcam_xray.webp" alt="Current X-ray killcam showing a resolved shell path through armor and modules" data-i18n-alt="docs.media.alt.currentxraykillcamshowingaresolvedshellpaththrougharmorandmodules" loading="lazy"><figcaption data-i18n="docs.combat.figKillcam">X-ray killcam // authoritative armor and module resolution</figcaption></figure><figure><img src="/media/presentation-r1/04_desert_last_stand.webp" alt="Multiple tanks firing and producing impact sparks" data-i18n-alt="docs.media.alt.multipletanksfiringandproducingimpactsparks" loading="lazy"><figcaption data-i18n="docs.combat.figEffects">Effects // muzzle flash, tracer, impact, dust, armor sparks</figcaption></figure></div>
+        <figure class="doc-hero-reel" id="gameplay-film">
+          <video controls playsinline preload="none" poster="/media/director-r4/gameplay/battle-opening.webp" aria-label="Controlled battle demonstration with live HUD and a real simulation-resolved shot">
+            <source src="/media/director-r4/gameplay/battle-live-mobile.mp4" type="video/mp4" media="(max-width: 700px)">
+            <source src="/media/director-r4/gameplay/battle-live.mp4" type="video/mp4">
+            <track kind="captions" src="/media/director-r4/gameplay/battle-live.vtt" srclang="en" label="English" default>
+          </video>
+          <figcaption><span data-i18n="docs.uiBattle.caption">Battle // reticles, ammo, team state, minimap</span><br>Controlled gameplay demonstration with staged vehicle positions and target health. The live HUD follows scope entry and a real simulation-resolved shot; the player shell ricochets for zero damage. Silent capture, including a stepped firing sequence.</figcaption>
+        </figure>
         <ol><li data-i18n="docs.combat.step1">The center reticle requests a finite world-space point.</li><li data-i18n="docs.combat.step2">Authority bounds turret yaw, gun pitch, traverse rate, and dispersion.</li><li data-i18n="docs.combat.step3">The articulated muzzle transform spawns AP, APCR, APFSDS, HEAT, or HE.</li><li data-i18n="docs.combat.step4">Projectile travel and gravity determine the first eligible world or vehicle contact.</li><li data-i18n="docs.combat.step5">Armor evaluates the struck plate, impact angle, slope, normalization, ricochet, overmatch, spaced layers, ERA, and ammunition behavior.</li><li data-i18n="docs.combat.step6">Damage updates hit points, modules, crew, fire, repair, tracks, and destruction state.</li><li data-i18n="docs.combat.step7">The HUD and X-ray killcam present the completed result.</li></ol>
         <div class="callout"><strong data-i18n="docs.combat.invariantTitle">Killcam invariant</strong><span data-i18n="docs.combat.invariantBody">The X-ray view is a presentation of authority data. It cannot generate a second penetration or damage outcome.</span></div>
       </section>

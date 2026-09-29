@@ -1,0 +1,5448 @@
+{
+  "version": 1,
+  "created": "2026-09-29T12:42:29.136Z",
+  "sourceDigest": "aba85ba95062db31f9f0fba78045d8ab3b6570f7fc843f956d3442b29a3a53b0",
+  "revision": "c1ade6e0e9d70cb88812028f1d3d75e0bde0e451",
+  "shots": [
+    {
+      "src": "/media/director-r4/stills/steel-pursuit-landscape.webp",
+      "previewSrc": "/media/director-r4/previews/steel-pursuit.webp",
+      "alt": "A road convoy, filmed from track level and a rising overhead camera. In-engine staged scene.",
+      "title": "Steel pursuit",
+      "map": "verdant",
+      "feature": "scene studio",
+      "kind": "studio",
+      "effects": [
+        "day",
+        "cinematic camera"
+      ],
+      "sequence": 1
+    },
+    {
+      "src": "/media/director-r4/stills/desert-crossfire-landscape.webp",
+      "previewSrc": "/media/director-r4/previews/desert-crossfire.webp",
+      "alt": "A sunset engagement, return fire and an ammunition explosion. In-engine staged scene.",
+      "title": "Desert crossfire",
+      "map": "desert",
+      "feature": "scene studio",
+      "kind": "studio",
+      "effects": [
+        "sunset",
+        "cinematic camera"
+      ],
+      "sequence": 2
+    },
+    {
+      "src": "/media/director-r4/stills/coast-recon-landscape.webp",
+      "previewSrc": "/media/director-r4/previews/coast-recon.webp",
+      "alt": "A coastal patrol with a low side portrait and a bay reveal. In-engine staged scene.",
+      "title": "Coastal reconnaissance",
+      "map": "coastal",
+      "feature": "scene studio",
+      "kind": "studio",
+      "effects": [
+        "day",
+        "cinematic camera"
+      ],
+      "sequence": 3
+    }
+  ],
+  "films": [
+    {
+      "src": "/media/director-r4/hero-trailer.mp4",
+      "poster": "/media/director-r4/hero-trailer.jpg",
+      "title": "Built for the battlefield",
+      "format": "landscape",
+      "fps": 30,
+      "frames": 780,
+      "width": 1920,
+      "height": 1080,
+      "silent": false,
+      "staged": true,
+      "edited": true,
+      "captions": "/media/director-r4/hero-trailer.vtt"
+    },
+    {
+      "src": "/media/director-r4/films/steel-pursuit.mp4",
+      "poster": "/media/director-r4/previews/steel-pursuit.webp",
+      "title": "Steel pursuit",
+      "map": "verdant",
+      "timeOfDay": "day",
+      "format": "landscape",
+      "fps": 30,
+      "frames": 240,
+      "width": 1920,
+      "height": 1080,
+      "silent": true,
+      "staged": true
+    },
+    {
+      "src": "/media/director-r4/films/desert-crossfire.mp4",
+      "poster": "/media/director-r4/previews/desert-crossfire.webp",
+      "title": "Desert crossfire",
+      "map": "desert",
+      "timeOfDay": "sunset",
+      "format": "landscape",
+      "fps": 30,
+      "frames": 240,
+      "width": 1920,
+      "height": 1080,
+      "silent": true,
+      "staged": true
+    },
+    {
+      "src": "/media/director-r4/films/coast-recon.mp4",
+      "poster": "/media/director-r4/previews/coast-recon.webp",
+      "title": "Coastal reconnaissance",
+      "map": "coastal",
+      "timeOfDay": "day",
+      "format": "landscape",
+      "fps": 30,
+      "frames": 240,
+      "width": 1920,
+      "height": 1080,
+      "silent": true,
+      "staged": true
+    }
+  ],
+  "media": {
+    "/media/director-r4/stills/steel-pursuit-landscape.webp": "director-steel-pursuit-landscape",
+    "/media/director-r4/promo/steel-pursuit-landscape.webp": "director-steel-pursuit-landscape",
+    "/media/director-r4/previews/steel-pursuit.webp": "director-steel-pursuit-landscape",
+    "/media/director-r4/films/steel-pursuit.jpg": "director-steel-pursuit-landscape",
+    "/media/director-r4/stills/steel-pursuit-portrait.webp": "director-steel-pursuit-portrait",
+    "/media/director-r4/promo/steel-pursuit-portrait.webp": "director-steel-pursuit-portrait",
+    "/media/director-r4/stills/steel-pursuit-square.webp": "director-steel-pursuit-square",
+    "/media/director-r4/promo/steel-pursuit-square.webp": "director-steel-pursuit-square",
+    "/media/director-r4/films/steel-pursuit.mp4": "director-film-steel-pursuit",
+    "/media/director-r4/stills/desert-crossfire-landscape.webp": "director-desert-crossfire-landscape",
+    "/media/director-r4/promo/desert-crossfire-landscape.webp": "director-desert-crossfire-landscape",
+    "/media/director-r4/previews/desert-crossfire.webp": "director-desert-crossfire-landscape",
+    "/media/director-r4/films/desert-crossfire.jpg": "director-desert-crossfire-landscape",
+    "/media/director-r4/stills/desert-crossfire-portrait.webp": "director-desert-crossfire-portrait",
+    "/media/director-r4/promo/desert-crossfire-portrait.webp": "director-desert-crossfire-portrait",
+    "/media/director-r4/stills/desert-crossfire-square.webp": "director-desert-crossfire-square",
+    "/media/director-r4/promo/desert-crossfire-square.webp": "director-desert-crossfire-square",
+    "/media/director-r4/films/desert-crossfire.mp4": "director-film-desert-crossfire",
+    "/media/director-r4/stills/coast-recon-landscape.webp": "director-coast-recon-landscape",
+    "/media/director-r4/promo/coast-recon-landscape.webp": "director-coast-recon-landscape",
+    "/media/director-r4/previews/coast-recon.webp": "director-coast-recon-landscape",
+    "/media/director-r4/films/coast-recon.jpg": "director-coast-recon-landscape",
+    "/media/director-r4/stills/coast-recon-portrait.webp": "director-coast-recon-portrait",
+    "/media/director-r4/promo/coast-recon-portrait.webp": "director-coast-recon-portrait",
+    "/media/director-r4/stills/coast-recon-square.webp": "director-coast-recon-square",
+    "/media/director-r4/promo/coast-recon-square.webp": "director-coast-recon-square",
+    "/media/director-r4/films/coast-recon.mp4": "director-film-coast-recon"
+  },
+  "recipes": {
+    "director-steel-pursuit-landscape": {
+      "map": "verdant",
+      "timeOfDay": "day",
+      "productionFormat": "landscape",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "lead",
+          "pos": [
+            2,
+            -95
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        },
+        {
+          "id": "k2",
+          "name": "wing",
+          "pos": [
+            2,
+            -112
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Track-level escort",
+            "tMs": 0,
+            "pos": [
+              -11,
+              4.8730510711669925,
+              -97
+            ],
+            "lookAt": [
+              2,
+              4.673051071166992,
+              -95
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Track-level escort",
+            "tMs": 2633,
+            "pos": [
+              -11,
+              4.94065777399683,
+              -89.100001
+            ],
+            "lookAt": [
+              2,
+              4.74065777399683,
+              -87.100001
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Gunline portrait",
+            "tMs": 2667,
+            "pos": [
+              -10,
+              7.34151357076025,
+              -69.999999
+            ],
+            "lookAt": [
+              2,
+              4.74151357076025,
+              -86.999999
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Gunline portrait",
+            "tMs": 5300,
+            "pos": [
+              -10,
+              7.409120154380798,
+              -62.099999999999994
+            ],
+            "lookAt": [
+              2,
+              4.809120154380798,
+              -79.1
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Formation reveal",
+            "tMs": 5333,
+            "pos": [
+              -10,
+              7.409975925470829,
+              -62.000001
+            ],
+            "lookAt": [
+              2,
+              4.809975925470829,
+              -79.000001
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Formation reveal",
+            "tMs": 8000,
+            "pos": [
+              -18,
+              29.178438305854797,
+              -94
+            ],
+            "lookAt": [
+              2,
+              4.8784383058547975,
+              -71
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  2,
+                  -95
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  2,
+                  -71
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  2,
+                  -112
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  2,
+                  -88
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -11,
+          4.8730510711669925,
+          -97
+        ],
+        "lookAt": [
+          2,
+          4.673051071166992,
+          -95
+        ],
+        "fov": 46
+      }
+    },
+    "director-steel-pursuit-portrait": {
+      "map": "verdant",
+      "timeOfDay": "day",
+      "productionFormat": "portrait",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "lead",
+          "pos": [
+            2,
+            -95
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        },
+        {
+          "id": "k2",
+          "name": "wing",
+          "pos": [
+            2,
+            -112
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Track-level escort",
+            "tMs": 0,
+            "pos": [
+              -21.11111111111111,
+              5.0286066267225475,
+              -98.55555555555556
+            ],
+            "lookAt": [
+              2,
+              4.673051071166992,
+              -95
+            ],
+            "fov": 74.07800731459014,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Track-level escort",
+            "tMs": 2633,
+            "pos": [
+              -21.11111111111111,
+              5.096213329552385,
+              -90.65555655555556
+            ],
+            "lookAt": [
+              2,
+              4.74065777399683,
+              -87.100001
+            ],
+            "fov": 74.07800731459014,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Gunline portrait",
+            "tMs": 2667,
+            "pos": [
+              -19.333333333333332,
+              9.363735792982471,
+              -56.77777677777778
+            ],
+            "lookAt": [
+              2,
+              4.74151357076025,
+              -86.999999
+            ],
+            "fov": 65.81043501721129,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Gunline portrait",
+            "tMs": 5300,
+            "pos": [
+              -19.333333333333332,
+              9.43134237660302,
+              -48.87777777777777
+            ],
+            "lookAt": [
+              2,
+              4.809120154380798,
+              -79.1
+            ],
+            "fov": 65.81043501721129,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Formation reveal",
+            "tMs": 5333,
+            "pos": [
+              -19.333333333333332,
+              9.43219814769305,
+              -48.777778777777776
+            ],
+            "lookAt": [
+              2,
+              4.809975925470829,
+              -79.000001
+            ],
+            "fov": 65.81043501721129,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Formation reveal",
+            "tMs": 8000,
+            "pos": [
+              -33.55555555555556,
+              48.078438305854796,
+              -111.88888888888889
+            ],
+            "lookAt": [
+              2,
+              4.8784383058547975,
+              -71
+            ],
+            "fov": 81.8558194680877,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  2,
+                  -95
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  2,
+                  -71
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  2,
+                  -112
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  2,
+                  -88
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -21.11111111111111,
+          5.0286066267225475,
+          -98.55555555555556
+        ],
+        "lookAt": [
+          2,
+          4.673051071166992,
+          -95
+        ],
+        "fov": 74.07800731459014
+      }
+    },
+    "director-steel-pursuit-square": {
+      "map": "verdant",
+      "timeOfDay": "day",
+      "productionFormat": "square",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "lead",
+          "pos": [
+            2,
+            -95
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        },
+        {
+          "id": "k2",
+          "name": "wing",
+          "pos": [
+            2,
+            -112
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Track-level escort",
+            "tMs": 0,
+            "pos": [
+              -21.11111111111111,
+              5.0286066267225475,
+              -98.55555555555556
+            ],
+            "lookAt": [
+              2,
+              4.673051071166992,
+              -95
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Track-level escort",
+            "tMs": 2633,
+            "pos": [
+              -21.11111111111111,
+              5.096213329552385,
+              -90.65555655555556
+            ],
+            "lookAt": [
+              2,
+              4.74065777399683,
+              -87.100001
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Gunline portrait",
+            "tMs": 2667,
+            "pos": [
+              -19.333333333333332,
+              9.363735792982471,
+              -56.77777677777778
+            ],
+            "lookAt": [
+              2,
+              4.74151357076025,
+              -86.999999
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Gunline portrait",
+            "tMs": 5300,
+            "pos": [
+              -19.333333333333332,
+              9.43134237660302,
+              -48.87777777777777
+            ],
+            "lookAt": [
+              2,
+              4.809120154380798,
+              -79.1
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Formation reveal",
+            "tMs": 5333,
+            "pos": [
+              -19.333333333333332,
+              9.43219814769305,
+              -48.777778777777776
+            ],
+            "lookAt": [
+              2,
+              4.809975925470829,
+              -79.000001
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Formation reveal",
+            "tMs": 8000,
+            "pos": [
+              -33.55555555555556,
+              48.078438305854796,
+              -111.88888888888889
+            ],
+            "lookAt": [
+              2,
+              4.8784383058547975,
+              -71
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  2,
+                  -95
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  2,
+                  -71
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  2,
+                  -112
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  2,
+                  -88
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -21.11111111111111,
+          5.0286066267225475,
+          -98.55555555555556
+        ],
+        "lookAt": [
+          2,
+          4.673051071166992,
+          -95
+        ],
+        "fov": 46
+      }
+    },
+    "director-film-steel-pursuit": {
+      "map": "verdant",
+      "timeOfDay": "day",
+      "productionFormat": "landscape",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "lead",
+          "pos": [
+            2,
+            -95
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        },
+        {
+          "id": "k2",
+          "name": "wing",
+          "pos": [
+            2,
+            -112
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Track-level escort",
+            "tMs": 0,
+            "pos": [
+              -11,
+              4.8730510711669925,
+              -97
+            ],
+            "lookAt": [
+              2,
+              4.673051071166992,
+              -95
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Track-level escort",
+            "tMs": 2633,
+            "pos": [
+              -11,
+              4.94065777399683,
+              -89.100001
+            ],
+            "lookAt": [
+              2,
+              4.74065777399683,
+              -87.100001
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Gunline portrait",
+            "tMs": 2667,
+            "pos": [
+              -10,
+              7.34151357076025,
+              -69.999999
+            ],
+            "lookAt": [
+              2,
+              4.74151357076025,
+              -86.999999
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Gunline portrait",
+            "tMs": 5300,
+            "pos": [
+              -10,
+              7.409120154380798,
+              -62.099999999999994
+            ],
+            "lookAt": [
+              2,
+              4.809120154380798,
+              -79.1
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Formation reveal",
+            "tMs": 5333,
+            "pos": [
+              -10,
+              7.409975925470829,
+              -62.000001
+            ],
+            "lookAt": [
+              2,
+              4.809975925470829,
+              -79.000001
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Formation reveal",
+            "tMs": 8000,
+            "pos": [
+              -18,
+              29.178438305854797,
+              -94
+            ],
+            "lookAt": [
+              2,
+              4.8784383058547975,
+              -71
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  2,
+                  -95
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  2,
+                  -71
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  2,
+                  -112
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  2,
+                  -88
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 0,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -11,
+          4.8730510711669925,
+          -97
+        ],
+        "lookAt": [
+          2,
+          4.673051071166992,
+          -95
+        ],
+        "fov": 46
+      }
+    },
+    "director-desert-crossfire-landscape": {
+      "map": "desert",
+      "timeOfDay": "sunset",
+      "productionFormat": "landscape",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "lead",
+          "pos": [
+            68,
+            -82
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "desert",
+          "camoSeed": 29101
+        },
+        {
+          "id": "t90m",
+          "name": "wing",
+          "pos": [
+            90,
+            -39
+          ],
+          "facingDeg": 180,
+          "turretDeg": 0,
+          "camo": "desert",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "lead-fire",
+          "type": "fire",
+          "actor": "lead",
+          "tMs": 1866.667,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "wing-fire",
+          "type": "fire",
+          "actor": "wing",
+          "tMs": 3966.667,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "lead-fire-two",
+          "type": "fire",
+          "actor": "lead",
+          "tMs": 5600,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "armor-hit",
+          "type": "impact",
+          "actor": "wing",
+          "tMs": 6066.667,
+          "params": {
+            "kind": "pen",
+            "caliberMm": 120
+          }
+        },
+        {
+          "id": "knockout",
+          "type": "tank_kill",
+          "actor": "wing",
+          "tMs": 6200,
+          "params": {
+            "cause": "ammorack",
+            "pop": true
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Armored approach",
+            "tMs": 0,
+            "pos": [
+              55,
+              4.693935620446694,
+              -84
+            ],
+            "lookAt": [
+              68,
+              4.493935620446694,
+              -82
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Armored approach",
+            "tMs": 2633,
+            "pos": [
+              55,
+              4.693935620446694,
+              -80.0500005
+            ],
+            "lookAt": [
+              68,
+              4.493935620446694,
+              -78.0500005
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Return fire",
+            "tMs": 2667,
+            "pos": [
+              102,
+              7.740370207292597,
+              -57.000000125
+            ],
+            "lookAt": [
+              90,
+              5.140370207292597,
+              -40.000000125
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Return fire",
+            "tMs": 5300,
+            "pos": [
+              102,
+              7.701624323303946,
+              -57.9875
+            ],
+            "lookAt": [
+              90,
+              5.101624323303946,
+              -40.9875
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Impact and pullback",
+            "tMs": 5333,
+            "pos": [
+              102,
+              7.701151344455234,
+              -57.999999875
+            ],
+            "lookAt": [
+              90,
+              5.101151344455235,
+              -40.999999875
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Impact and pullback",
+            "tMs": 8000,
+            "pos": [
+              110,
+              29.367163173627574,
+              -18.999999999999996
+            ],
+            "lookAt": [
+              90,
+              5.0671631736275735,
+              -42
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [
+          {
+            "id": "report-0",
+            "label": "Recoil impulse",
+            "tMs": 1867,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29100
+          },
+          {
+            "id": "report-1",
+            "label": "Recoil impulse",
+            "tMs": 3967,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29101
+          },
+          {
+            "id": "report-2",
+            "label": "Recoil impulse",
+            "tMs": 5600,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29102
+          },
+          {
+            "id": "report-3",
+            "label": "Recoil impulse",
+            "tMs": 6200,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29103
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  68,
+                  -82
+                ],
+                "facingDeg": 0,
+                "turretDeg": 32,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  68,
+                  -70
+                ],
+                "facingDeg": 0,
+                "turretDeg": 32,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  90,
+                  -39
+                ],
+                "facingDeg": 180,
+                "turretDeg": 24,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  90,
+                  -42
+                ],
+                "facingDeg": 180,
+                "turretDeg": 24,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          55,
+          4.693935620446694,
+          -84
+        ],
+        "lookAt": [
+          68,
+          4.493935620446694,
+          -82
+        ],
+        "fov": 46
+      }
+    },
+    "director-desert-crossfire-portrait": {
+      "map": "desert",
+      "timeOfDay": "sunset",
+      "productionFormat": "portrait",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "lead",
+          "pos": [
+            68,
+            -82
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "desert",
+          "camoSeed": 29101
+        },
+        {
+          "id": "t90m",
+          "name": "wing",
+          "pos": [
+            90,
+            -39
+          ],
+          "facingDeg": 180,
+          "turretDeg": 0,
+          "camo": "desert",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "lead-fire",
+          "type": "fire",
+          "actor": "lead",
+          "tMs": 1866.667,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "wing-fire",
+          "type": "fire",
+          "actor": "wing",
+          "tMs": 3966.667,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "lead-fire-two",
+          "type": "fire",
+          "actor": "lead",
+          "tMs": 5600,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "armor-hit",
+          "type": "impact",
+          "actor": "wing",
+          "tMs": 6066.667,
+          "params": {
+            "kind": "pen",
+            "caliberMm": 120
+          }
+        },
+        {
+          "id": "knockout",
+          "type": "tank_kill",
+          "actor": "wing",
+          "tMs": 6200,
+          "params": {
+            "cause": "ammorack",
+            "pop": true
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Armored approach",
+            "tMs": 0,
+            "pos": [
+              44.888888888888886,
+              5.169445870760894,
+              -85.55555555555556
+            ],
+            "lookAt": [
+              68,
+              4.493935620446694,
+              -82
+            ],
+            "fov": 74.07800731459014,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Armored approach",
+            "tMs": 2633,
+            "pos": [
+              44.888888888888886,
+              5.084043863946059,
+              -81.60555605555555
+            ],
+            "lookAt": [
+              68,
+              4.493935620446694,
+              -78.0500005
+            ],
+            "fov": 74.07800731459014,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Return fire",
+            "tMs": 2667,
+            "pos": [
+              111.33333333333334,
+              9.762592429514818,
+              -70.22222234722221
+            ],
+            "lookAt": [
+              90,
+              5.140370207292597,
+              -40.000000125
+            ],
+            "fov": 65.81043501721129,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Return fire",
+            "tMs": 5300,
+            "pos": [
+              111.33333333333334,
+              9.723846545526168,
+              -71.20972222222221
+            ],
+            "lookAt": [
+              90,
+              5.101624323303946,
+              -40.9875
+            ],
+            "fov": 65.81043501721129,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Impact and pullback",
+            "tMs": 5333,
+            "pos": [
+              111.33333333333334,
+              9.723373566677456,
+              -71.22222209722221
+            ],
+            "lookAt": [
+              90,
+              5.101151344455235,
+              -40.999999875
+            ],
+            "fov": 65.81043501721129,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Impact and pullback",
+            "tMs": 8000,
+            "pos": [
+              125.55555555555554,
+              48.267163173627566,
+              -1.1111111111111072
+            ],
+            "lookAt": [
+              90,
+              5.0671631736275735,
+              -42
+            ],
+            "fov": 81.8558194680877,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [
+          {
+            "id": "report-0",
+            "label": "Recoil impulse",
+            "tMs": 1867,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29100
+          },
+          {
+            "id": "report-1",
+            "label": "Recoil impulse",
+            "tMs": 3967,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29101
+          },
+          {
+            "id": "report-2",
+            "label": "Recoil impulse",
+            "tMs": 5600,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29102
+          },
+          {
+            "id": "report-3",
+            "label": "Recoil impulse",
+            "tMs": 6200,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29103
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  68,
+                  -82
+                ],
+                "facingDeg": 0,
+                "turretDeg": 32,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  68,
+                  -70
+                ],
+                "facingDeg": 0,
+                "turretDeg": 32,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  90,
+                  -39
+                ],
+                "facingDeg": 180,
+                "turretDeg": 24,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  90,
+                  -42
+                ],
+                "facingDeg": 180,
+                "turretDeg": 24,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          44.888888888888886,
+          5.169445870760894,
+          -85.55555555555556
+        ],
+        "lookAt": [
+          68,
+          4.493935620446694,
+          -82
+        ],
+        "fov": 74.07800731459014
+      }
+    },
+    "director-desert-crossfire-square": {
+      "map": "desert",
+      "timeOfDay": "sunset",
+      "productionFormat": "square",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "lead",
+          "pos": [
+            68,
+            -82
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "desert",
+          "camoSeed": 29101
+        },
+        {
+          "id": "t90m",
+          "name": "wing",
+          "pos": [
+            90,
+            -39
+          ],
+          "facingDeg": 180,
+          "turretDeg": 0,
+          "camo": "desert",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "lead-fire",
+          "type": "fire",
+          "actor": "lead",
+          "tMs": 1866.667,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "wing-fire",
+          "type": "fire",
+          "actor": "wing",
+          "tMs": 3966.667,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "lead-fire-two",
+          "type": "fire",
+          "actor": "lead",
+          "tMs": 5600,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "armor-hit",
+          "type": "impact",
+          "actor": "wing",
+          "tMs": 6066.667,
+          "params": {
+            "kind": "pen",
+            "caliberMm": 120
+          }
+        },
+        {
+          "id": "knockout",
+          "type": "tank_kill",
+          "actor": "wing",
+          "tMs": 6200,
+          "params": {
+            "cause": "ammorack",
+            "pop": true
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Armored approach",
+            "tMs": 0,
+            "pos": [
+              44.888888888888886,
+              5.169445870760894,
+              -85.55555555555556
+            ],
+            "lookAt": [
+              68,
+              4.493935620446694,
+              -82
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Armored approach",
+            "tMs": 2633,
+            "pos": [
+              44.888888888888886,
+              5.084043863946059,
+              -81.60555605555555
+            ],
+            "lookAt": [
+              68,
+              4.493935620446694,
+              -78.0500005
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Return fire",
+            "tMs": 2667,
+            "pos": [
+              111.33333333333334,
+              9.762592429514818,
+              -70.22222234722221
+            ],
+            "lookAt": [
+              90,
+              5.140370207292597,
+              -40.000000125
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Return fire",
+            "tMs": 5300,
+            "pos": [
+              111.33333333333334,
+              9.723846545526168,
+              -71.20972222222221
+            ],
+            "lookAt": [
+              90,
+              5.101624323303946,
+              -40.9875
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Impact and pullback",
+            "tMs": 5333,
+            "pos": [
+              111.33333333333334,
+              9.723373566677456,
+              -71.22222209722221
+            ],
+            "lookAt": [
+              90,
+              5.101151344455235,
+              -40.999999875
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Impact and pullback",
+            "tMs": 8000,
+            "pos": [
+              125.55555555555554,
+              48.267163173627566,
+              -1.1111111111111072
+            ],
+            "lookAt": [
+              90,
+              5.0671631736275735,
+              -42
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [
+          {
+            "id": "report-0",
+            "label": "Recoil impulse",
+            "tMs": 1867,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29100
+          },
+          {
+            "id": "report-1",
+            "label": "Recoil impulse",
+            "tMs": 3967,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29101
+          },
+          {
+            "id": "report-2",
+            "label": "Recoil impulse",
+            "tMs": 5600,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29102
+          },
+          {
+            "id": "report-3",
+            "label": "Recoil impulse",
+            "tMs": 6200,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29103
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  68,
+                  -82
+                ],
+                "facingDeg": 0,
+                "turretDeg": 32,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  68,
+                  -70
+                ],
+                "facingDeg": 0,
+                "turretDeg": 32,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  90,
+                  -39
+                ],
+                "facingDeg": 180,
+                "turretDeg": 24,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  90,
+                  -42
+                ],
+                "facingDeg": 180,
+                "turretDeg": 24,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          44.888888888888886,
+          5.169445870760894,
+          -85.55555555555556
+        ],
+        "lookAt": [
+          68,
+          4.493935620446694,
+          -82
+        ],
+        "fov": 46
+      }
+    },
+    "director-film-desert-crossfire": {
+      "map": "desert",
+      "timeOfDay": "sunset",
+      "productionFormat": "landscape",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "lead",
+          "pos": [
+            68,
+            -82
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "desert",
+          "camoSeed": 29101
+        },
+        {
+          "id": "t90m",
+          "name": "wing",
+          "pos": [
+            90,
+            -39
+          ],
+          "facingDeg": 180,
+          "turretDeg": 0,
+          "camo": "desert",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.58
+          }
+        },
+        {
+          "id": "lead-fire",
+          "type": "fire",
+          "actor": "lead",
+          "tMs": 1866.667,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "wing-fire",
+          "type": "fire",
+          "actor": "wing",
+          "tMs": 3966.667,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "lead-fire-two",
+          "type": "fire",
+          "actor": "lead",
+          "tMs": 5600,
+          "params": {
+            "slot": 0,
+            "recoil": true,
+            "tracer": true
+          }
+        },
+        {
+          "id": "armor-hit",
+          "type": "impact",
+          "actor": "wing",
+          "tMs": 6066.667,
+          "params": {
+            "kind": "pen",
+            "caliberMm": 120
+          }
+        },
+        {
+          "id": "knockout",
+          "type": "tank_kill",
+          "actor": "wing",
+          "tMs": 6200,
+          "params": {
+            "cause": "ammorack",
+            "pop": true
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Armored approach",
+            "tMs": 0,
+            "pos": [
+              55,
+              4.693935620446694,
+              -84
+            ],
+            "lookAt": [
+              68,
+              4.493935620446694,
+              -82
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Armored approach",
+            "tMs": 2633,
+            "pos": [
+              55,
+              4.693935620446694,
+              -80.0500005
+            ],
+            "lookAt": [
+              68,
+              4.493935620446694,
+              -78.0500005
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Return fire",
+            "tMs": 2667,
+            "pos": [
+              102,
+              7.740370207292597,
+              -57.000000125
+            ],
+            "lookAt": [
+              90,
+              5.140370207292597,
+              -40.000000125
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Return fire",
+            "tMs": 5300,
+            "pos": [
+              102,
+              7.701624323303946,
+              -57.9875
+            ],
+            "lookAt": [
+              90,
+              5.101624323303946,
+              -40.9875
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Impact and pullback",
+            "tMs": 5333,
+            "pos": [
+              102,
+              7.701151344455234,
+              -57.999999875
+            ],
+            "lookAt": [
+              90,
+              5.101151344455235,
+              -40.999999875
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Impact and pullback",
+            "tMs": 8000,
+            "pos": [
+              110,
+              29.367163173627574,
+              -18.999999999999996
+            ],
+            "lookAt": [
+              90,
+              5.0671631736275735,
+              -42
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [
+          {
+            "id": "report-0",
+            "label": "Recoil impulse",
+            "tMs": 1867,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29100
+          },
+          {
+            "id": "report-1",
+            "label": "Recoil impulse",
+            "tMs": 3967,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29101
+          },
+          {
+            "id": "report-2",
+            "label": "Recoil impulse",
+            "tMs": 5600,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29102
+          },
+          {
+            "id": "report-3",
+            "label": "Recoil impulse",
+            "tMs": 6200,
+            "durationMs": 320,
+            "amplitudeM": 0.06,
+            "rollDeg": 0.22,
+            "fovKickDeg": 0.35,
+            "frequencyHz": 11,
+            "seed": 29103
+          }
+        ],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  68,
+                  -82
+                ],
+                "facingDeg": 0,
+                "turretDeg": 32,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  68,
+                  -70
+                ],
+                "facingDeg": 0,
+                "turretDeg": 32,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  90,
+                  -39
+                ],
+                "facingDeg": 180,
+                "turretDeg": 24,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  90,
+                  -42
+                ],
+                "facingDeg": 180,
+                "turretDeg": 24,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 0,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          55,
+          4.693935620446694,
+          -84
+        ],
+        "lookAt": [
+          68,
+          4.493935620446694,
+          -82
+        ],
+        "fov": 46
+      }
+    },
+    "director-coast-recon-landscape": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "productionFormat": "landscape",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "leo2a7v",
+          "name": "lead",
+          "pos": [
+            232,
+            -352
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        },
+        {
+          "id": "k2",
+          "name": "wing",
+          "pos": [
+            232,
+            -369
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Patrol follow",
+            "tMs": 0,
+            "pos": [
+              222,
+              8.393940289774338,
+              -371
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -352
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Patrol follow",
+            "tMs": 2633,
+            "pos": [
+              222,
+              8.393940289774338,
+              -363.100001
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -344.100001
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Low side portrait",
+            "tMs": 2667,
+            "pos": [
+              219,
+              5.293940289774338,
+              -345.999999
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -343.999999
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Low side portrait",
+            "tMs": 5300,
+            "pos": [
+              219,
+              4.594075761407001,
+              -338.1
+            ],
+            "lookAt": [
+              232,
+              4.3940757614070005,
+              -336.1
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Bay reveal",
+            "tMs": 5333,
+            "pos": [
+              220,
+              6.9764402905639376,
+              -319.000001
+            ],
+            "lookAt": [
+              232,
+              4.376440290563938,
+              -336.000001
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Bay reveal",
+            "tMs": 8000,
+            "pos": [
+              212,
+              27.85246146219932,
+              -351
+            ],
+            "lookAt": [
+              232,
+              3.552461462199319,
+              -328
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  232,
+                  -352
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  232,
+                  -328
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  232,
+                  -369
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  232,
+                  -345
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          222,
+          8.393940289774338,
+          -371
+        ],
+        "lookAt": [
+          232,
+          5.093940289774338,
+          -352
+        ],
+        "fov": 46
+      }
+    },
+    "director-coast-recon-portrait": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "productionFormat": "portrait",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "leo2a7v",
+          "name": "lead",
+          "pos": [
+            232,
+            -352
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        },
+        {
+          "id": "k2",
+          "name": "wing",
+          "pos": [
+            232,
+            -369
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Patrol follow",
+            "tMs": 0,
+            "pos": [
+              214.22222222222223,
+              10.960606956441005,
+              -385.77777777777777
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -352
+            ],
+            "fov": 74.07800731459014,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Patrol follow",
+            "tMs": 2633,
+            "pos": [
+              214.22222222222223,
+              10.960606956441005,
+              -377.8777787777778
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -344.100001
+            ],
+            "fov": 74.07800731459014,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Low side portrait",
+            "tMs": 2667,
+            "pos": [
+              208.88888888888889,
+              5.661880112895781,
+              -347.55555455555555
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -343.999999
+            ],
+            "fov": 74.07800731459014,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Low side portrait",
+            "tMs": 5300,
+            "pos": [
+              208.88888888888889,
+              5.594974103109112,
+              -339.65555555555557
+            ],
+            "lookAt": [
+              232,
+              4.3940757614070005,
+              -336.1
+            ],
+            "fov": 74.07800731459014,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Bay reveal",
+            "tMs": 5333,
+            "pos": [
+              210.66666666666666,
+              8.998662512786158,
+              -305.77777877777777
+            ],
+            "lookAt": [
+              232,
+              4.376440290563938,
+              -336.000001
+            ],
+            "fov": 65.81043501721129,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Bay reveal",
+            "tMs": 8000,
+            "pos": [
+              196.44444444444446,
+              46.752461462199314,
+              -368.8888888888889
+            ],
+            "lookAt": [
+              232,
+              3.552461462199319,
+              -328
+            ],
+            "fov": 81.8558194680877,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  232,
+                  -352
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  232,
+                  -328
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  232,
+                  -369
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  232,
+                  -345
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          214.22222222222223,
+          10.960606956441005,
+          -385.77777777777777
+        ],
+        "lookAt": [
+          232,
+          5.093940289774338,
+          -352
+        ],
+        "fov": 74.07800731459014
+      }
+    },
+    "director-coast-recon-square": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "productionFormat": "square",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "leo2a7v",
+          "name": "lead",
+          "pos": [
+            232,
+            -352
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        },
+        {
+          "id": "k2",
+          "name": "wing",
+          "pos": [
+            232,
+            -369
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Patrol follow",
+            "tMs": 0,
+            "pos": [
+              214.22222222222223,
+              10.960606956441005,
+              -385.77777777777777
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -352
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Patrol follow",
+            "tMs": 2633,
+            "pos": [
+              214.22222222222223,
+              10.960606956441005,
+              -377.8777787777778
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -344.100001
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Low side portrait",
+            "tMs": 2667,
+            "pos": [
+              208.88888888888889,
+              5.661880112895781,
+              -347.55555455555555
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -343.999999
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Low side portrait",
+            "tMs": 5300,
+            "pos": [
+              208.88888888888889,
+              5.594974103109112,
+              -339.65555555555557
+            ],
+            "lookAt": [
+              232,
+              4.3940757614070005,
+              -336.1
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Bay reveal",
+            "tMs": 5333,
+            "pos": [
+              210.66666666666666,
+              8.998662512786158,
+              -305.77777877777777
+            ],
+            "lookAt": [
+              232,
+              4.376440290563938,
+              -336.000001
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Bay reveal",
+            "tMs": 8000,
+            "pos": [
+              196.44444444444446,
+              46.752461462199314,
+              -368.8888888888889
+            ],
+            "lookAt": [
+              232,
+              3.552461462199319,
+              -328
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  232,
+                  -352
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  232,
+                  -328
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  232,
+                  -369
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  232,
+                  -345
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 4000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          214.22222222222223,
+          10.960606956441005,
+          -385.77777777777777
+        ],
+        "lookAt": [
+          232,
+          5.093940289774338,
+          -352
+        ],
+        "fov": 46
+      }
+    },
+    "director-film-coast-recon": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "productionFormat": "landscape",
+      "seed": 29101,
+      "actors": [
+        {
+          "id": "leo2a7v",
+          "name": "lead",
+          "pos": [
+            232,
+            -352
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        },
+        {
+          "id": "k2",
+          "name": "wing",
+          "pos": [
+            232,
+            -369
+          ],
+          "facingDeg": 0,
+          "turretDeg": 0,
+          "camo": "summer",
+          "camoSeed": 29101
+        }
+      ],
+      "effects": [
+        {
+          "id": "dust-lead-0",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-0",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 0,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-1",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-1",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 1000,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-2",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-2",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 2200,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-3",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-3",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 3600,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-4",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-4",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 4700,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-lead-5",
+          "type": "dust",
+          "actor": "lead",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "dust-wing-5",
+          "type": "dust",
+          "actor": "wing",
+          "tMs": 6500,
+          "params": {
+            "count": 5,
+            "intensity": 0.3
+          }
+        }
+      ],
+      "storyboard": {
+        "version": 2,
+        "durationMs": 8000,
+        "shots": [
+          {
+            "id": "production-0",
+            "label": "Patrol follow",
+            "tMs": 0,
+            "pos": [
+              222,
+              8.393940289774338,
+              -371
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -352
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2633.333",
+            "label": "Patrol follow",
+            "tMs": 2633,
+            "pos": [
+              222,
+              8.393940289774338,
+              -363.100001
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -344.100001
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-2666.667",
+            "label": "Low side portrait",
+            "tMs": 2667,
+            "pos": [
+              219,
+              5.293940289774338,
+              -345.999999
+            ],
+            "lookAt": [
+              232,
+              5.093940289774338,
+              -343.999999
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-5300",
+            "label": "Low side portrait",
+            "tMs": 5300,
+            "pos": [
+              219,
+              4.594075761407001,
+              -338.1
+            ],
+            "lookAt": [
+              232,
+              4.3940757614070005,
+              -336.1
+            ],
+            "fov": 46,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          },
+          {
+            "id": "production-5333.333",
+            "label": "Bay reveal",
+            "tMs": 5333,
+            "pos": [
+              220,
+              6.9764402905639376,
+              -319.000001
+            ],
+            "lookAt": [
+              232,
+              4.376440290563938,
+              -336.000001
+            ],
+            "fov": 40,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "cut"
+          },
+          {
+            "id": "production-8000",
+            "label": "Bay reveal",
+            "tMs": 8000,
+            "pos": [
+              212,
+              27.85246146219932,
+              -351
+            ],
+            "lookAt": [
+              232,
+              3.552461462199319,
+              -328
+            ],
+            "fov": 52.00000000000001,
+            "rollDeg": 0,
+            "handleIn": null,
+            "handleOut": null,
+            "transition": "linear"
+          }
+        ],
+        "cameraCues": [],
+        "actorTracks": [
+          {
+            "actor": "lead",
+            "keys": [
+              {
+                "id": "lead-0",
+                "tMs": 0,
+                "pos": [
+                  232,
+                  -352
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "lead-8000",
+                "tMs": 8000,
+                "pos": [
+                  232,
+                  -328
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          },
+          {
+            "actor": "wing",
+            "keys": [
+              {
+                "id": "wing-0",
+                "tMs": 0,
+                "pos": [
+                  232,
+                  -369
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              },
+              {
+                "id": "wing-8000",
+                "tMs": 8000,
+                "pos": [
+                  232,
+                  -345
+                ],
+                "facingDeg": 0,
+                "turretDeg": 0,
+                "gunDeg": 0,
+                "transition": "drive"
+              }
+            ]
+          }
+        ]
+      },
+      "fxTime": 0,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          222,
+          8.393940289774338,
+          -371
+        ],
+        "lookAt": [
+          232,
+          5.093940289774338,
+          -352
+        ],
+        "fov": 46
+      }
+    }
+  },
+  "assets": [
+    {
+      "src": "/media/director-r4/films/steel-pursuit.mp4",
+      "sha256": "b0a258a4ec5ecc3667cf3cd81351de186a6f3cd8eaeac4fcda0a33f8cd052aa3"
+    },
+    {
+      "src": "/media/director-r4/stills/steel-pursuit-landscape.webp",
+      "sha256": "89db97432faf20913a71bedba96dd0b86e4813f5486ad85e20af229120dcde25"
+    },
+    {
+      "src": "/media/director-r4/promo/steel-pursuit-landscape.webp",
+      "sha256": "6e42c88952b8098d21b34d274559d3b0699cad7735c49d4464bcbea50ba8ddeb"
+    },
+    {
+      "src": "/media/director-r4/previews/steel-pursuit.webp",
+      "sha256": "7397b000b06594a8b86abda438ad97340ad3ef5a6a94926de27f1a38dc06abfe"
+    },
+    {
+      "src": "/media/director-r4/films/steel-pursuit.jpg",
+      "sha256": "bb25ab138d7ee3593c69e829f602655747c057d3e08481ae2f8d676cb47179a7"
+    },
+    {
+      "src": "/media/director-r4/stills/steel-pursuit-portrait.webp",
+      "sha256": "948f7fff2d1cf6e495b445852216564fdf13b1aaa145bb8443ded1263350c12f"
+    },
+    {
+      "src": "/media/director-r4/promo/steel-pursuit-portrait.webp",
+      "sha256": "443b846da84bcd0c54c01b1f74365686aacc8541bac0d350f242af79accbf707"
+    },
+    {
+      "src": "/media/director-r4/stills/steel-pursuit-square.webp",
+      "sha256": "a31b4d9be4234adb6d36f05f05d0417fa405ff0904581d5511cfb68c5b7cd855"
+    },
+    {
+      "src": "/media/director-r4/promo/steel-pursuit-square.webp",
+      "sha256": "901e2dc7fabad5b00c0832b3ba8d84f2f344e0158338d1356e9ac8fb9c2d7446"
+    },
+    {
+      "src": "/media/director-r4/films/desert-crossfire.mp4",
+      "sha256": "7b7e082b73c0a8215a294497dd6574c720529625c8383f1d40b09b3374cf6bbb"
+    },
+    {
+      "src": "/media/director-r4/stills/desert-crossfire-landscape.webp",
+      "sha256": "e4bb0dfc4e62106602c01bec0a277ec2b5a5916d72bed2909b41fc256f1f67f8"
+    },
+    {
+      "src": "/media/director-r4/promo/desert-crossfire-landscape.webp",
+      "sha256": "704057fd847e47092c2542d991177ad15854bb97202439896db4787b7967104b"
+    },
+    {
+      "src": "/media/director-r4/previews/desert-crossfire.webp",
+      "sha256": "95972c35df5805dcf6bd81c252d3a4679a4bc12cfcc418396c8aeda87d7ea36c"
+    },
+    {
+      "src": "/media/director-r4/films/desert-crossfire.jpg",
+      "sha256": "21421846231da3565cd6df4ed90ddba76a2ccf6c4f165425ba391396c72ab12b"
+    },
+    {
+      "src": "/media/director-r4/stills/desert-crossfire-portrait.webp",
+      "sha256": "1a511a4f793f2b06853cb45faec1f8981d9982bf595f149c963c27887ce914d8"
+    },
+    {
+      "src": "/media/director-r4/promo/desert-crossfire-portrait.webp",
+      "sha256": "01e3cc0479a5204f597cea4de871bb730a4619d3cfcc0549bd8e4b2e67ecae09"
+    },
+    {
+      "src": "/media/director-r4/stills/desert-crossfire-square.webp",
+      "sha256": "1cfb9368a7c2777af2d776e5e3036c4b01788a5f196f330e0988e93b8c61f0ca"
+    },
+    {
+      "src": "/media/director-r4/promo/desert-crossfire-square.webp",
+      "sha256": "3d98c9b811eed00cf7371dccef85fafc337898e6a01143c33a2af275b5b16b25"
+    },
+    {
+      "src": "/media/director-r4/films/coast-recon.mp4",
+      "sha256": "ded2c10edf2ccba1ebc93ebe348992c5c41112c88004ab458da05c02a35933ed"
+    },
+    {
+      "src": "/media/director-r4/stills/coast-recon-landscape.webp",
+      "sha256": "99a35431cd75854031c9aae6d193bdfc09c47771398ca931e59acd682d7a57a9"
+    },
+    {
+      "src": "/media/director-r4/promo/coast-recon-landscape.webp",
+      "sha256": "c3830b265f495a2c2236910e08ca9ef390ee8c8cbf4a74acf90023d758ece459"
+    },
+    {
+      "src": "/media/director-r4/previews/coast-recon.webp",
+      "sha256": "fbf7bde711aacc1b81a619cff1bca5ce9c9496f8e1bc7ffb73730459b7e1122a"
+    },
+    {
+      "src": "/media/director-r4/films/coast-recon.jpg",
+      "sha256": "9e6d84f5902bb1b35b9e908ec4e67c49e5159bfc96be671dfffef3cdc1336173"
+    },
+    {
+      "src": "/media/director-r4/stills/coast-recon-portrait.webp",
+      "sha256": "96923e5231b3174100cb13df1b10a3e5a31d9eb0d436ae28bac2b96ffa92b50e"
+    },
+    {
+      "src": "/media/director-r4/promo/coast-recon-portrait.webp",
+      "sha256": "4d418232d0d7a2800b63961629f78e4e007261595d18170103112c91507b36c8"
+    },
+    {
+      "src": "/media/director-r4/stills/coast-recon-square.webp",
+      "sha256": "467c0b4b887ba7e55f05c545dfd355817fd639ec7aeefeac1685d10dff6071b0"
+    },
+    {
+      "src": "/media/director-r4/promo/coast-recon-square.webp",
+      "sha256": "e0ebcc0086c6538fdc0b675c5d01ff0b5690ebc2280c174d9385d3d1a56c1748"
+    },
+    {
+      "src": "/media/director-r4/hero-trailer.mp4",
+      "sha256": "f6f63e4318263bd246fb6bc1f2061a362934f8536fa4cee2b726d7a5d10070af"
+    },
+    {
+      "src": "/media/director-r4/silent-loop.mp4",
+      "sha256": "a4371c9b6b8d34ef172699dac4696742a26283c029d6f6b15a0bb00458607388"
+    },
+    {
+      "src": "/media/director-r4/hero-trailer-mobile.mp4",
+      "sha256": "33231efbd329d72fa7b5f60b6a203eab1b772142eb581507ad884a5ee6de142a"
+    },
+    {
+      "src": "/media/director-r4/silent-loop-mobile.mp4",
+      "sha256": "de22a2f7cee80c35acc5f34a336a97f1699d58f19305f841ea45d98fddcad68d"
+    },
+    {
+      "src": "/media/director-r4/hero-trailer.jpg",
+      "sha256": "58d90d6e35dc71bc89cf60bb7fe9d3edf538b9fa870b8bba325fc3d765e750d6"
+    },
+    {
+      "src": "/media/director-r4/silent-loop.jpg",
+      "sha256": "58d90d6e35dc71bc89cf60bb7fe9d3edf538b9fa870b8bba325fc3d765e750d6"
+    },
+    {
+      "src": "/media/director-r4/hero-trailer.vtt",
+      "sha256": "35d11c929b20379006d168652c537d28b59ba428702c5a06db71a8f7448f5259"
+    },
+    {
+      "src": "/media/director-r4/contact-sheet.jpg",
+      "sha256": "05ff8c6294eaccdbeea740a206059b355c7667fe2f0d0eb3f24e87f005289d6d"
+    }
+  ],
+  "review": {
+    "reviewedAt": "2026-09-29T12:42:28.783827+00:00",
+    "notes": "All nine clean compositions and the nine branded poster contact sheet reviewed. Individual scene motion sheets and all 26 one-second trailer samples reviewed with filter reinitialization disabled (end-card color metadata otherwise resets the contact-sheet filter). Full 780-frame decode passed. Titles are legible without overlap, planned cuts and desert fire/knockout appear in samples; coast portrait no longer intersects the foreground tree. Existing terrain texture patterns and cropped roadside wreck remain visible; no claim of flawless renderer output or continuous human playback.",
+    "audioNotes": "Technical review only: complete AAC decode succeeded; 26-second original synthesized soundtrack, mean -26.5 dBFS and peak -3.6 dBFS without clipping. Fire/impact cues at9.867,11.967,13.600,14.067,14.200 seconds match authored visual-event times after scene offsets. Audio listening unavailable in this environment; no subjective listening claim.",
+    "scenes": {
+      "steel-pursuit": {
+        "accepted": true,
+        "notes": "Low escort, front-side pass and overhead follow keep both tanks on the road. Foreground poles pass through the shot; portrait/square retain a cropped roadside wreck."
+      },
+      "desert-crossfire": {
+        "accepted": true,
+        "notes": "Sunset engagement retains both vehicle tracks and three camera segments. Return fire and knockout are visible; high-contrast ground material is an existing renderer feature."
+      },
+      "coast-recon": {
+        "accepted": true,
+        "notes": "Clear coastal patrol and low tank silhouette with sea in the first segment; full tank remains visible in portrait. Final overhead moves through the clearing."
+      }
+    },
+    "hashes": [
+      "8bc07afdbc8d229b2eaa03eaa73ed26de2f8728e3b1a9defbf89bd330c9affae",
+      "4ca77cbbac352bc56988a2540532cd0f7d5e371777e1fb944f3e4047c0bd8a88",
+      "6e42c88952b8098d21b34d274559d3b0699cad7735c49d4464bcbea50ba8ddeb",
+      "443b846da84bcd0c54c01b1f74365686aacc8541bac0d350f242af79accbf707",
+      "901e2dc7fabad5b00c0832b3ba8d84f2f344e0158338d1356e9ac8fb9c2d7446",
+      "704057fd847e47092c2542d991177ad15854bb97202439896db4787b7967104b",
+      "01e3cc0479a5204f597cea4de871bb730a4619d3cfcc0549bd8e4b2e67ecae09",
+      "3d98c9b811eed00cf7371dccef85fafc337898e6a01143c33a2af275b5b16b25",
+      "c3830b265f495a2c2236910e08ca9ef390ee8c8cbf4a74acf90023d758ece459",
+      "4d418232d0d7a2800b63961629f78e4e007261595d18170103112c91507b36c8",
+      "e0ebcc0086c6538fdc0b675c5d01ff0b5690ebc2280c174d9385d3d1a56c1748",
+      "05ff8c6294eaccdbeea740a206059b355c7667fe2f0d0eb3f24e87f005289d6d",
+      "343730c2aa3874921582ee9af8b780a91e7b3369d78da1cf43cae918007823a5",
+      "52be380748a9a190d8745d6a91bc3b6b24914b4cb185fd52791ee3f420b00b75",
+      "478a2c9d33d43454e5589dd735e7f41cd115b8ea35eb186f4c77ff4a10801ad9",
+      "71cda403f94878293b193fd16ed921eefbeaba5535a29694db224125df37973c",
+      "689a03a09e0fd7d5ee6ae85057c3e7228755ebc0c99f463c5bf31787728db0e1",
+      "fae0382434b865440b8b737c43f8b4ef0a0cd123dff415581212579b9475e7c8",
+      "4b739eac0ac575a3f0b2bbb8292040c3266e9921e974dd11ec264938ae9aeb2e",
+      "eb0b7f2c4b23610476f428b385f00afcf015a467039183254739c0d4f17364b4",
+      "2f8673054ee2c0b24db0b8acd12f32575401cc1bba5d8f1ab3eac1aa7807acf9",
+      "c2259a2cd8729175a59eb4a241d20942a0cc5b8e004bb8e36ce16bad465568ef",
+      "d6d89e8c3bc51c58317cb8ce161d46f41b212910a8e0ba8285d368a40613c3d9",
+      "1d31c3c6e007290f79cdaa9624e7d18dd8b9f834f1592fdf5b8be8c2aaf20dba"
+    ]
+  },
+  "provenance": {
+    "title": "Built for the battlefield",
+    "notice": "In-engine staged scenes · Original game models and effects",
+    "receiptSha256": "942b526feccc89d252da8e971bea2248565c78be6cb4871d4811f12dbbf384a4",
+    "sourceDigest": "aba85ba95062db31f9f0fba78045d8ab3b6570f7fc843f956d3442b29a3a53b0",
+    "encoderVersion": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers",
+    "toolFiles": [
+      {
+        "path": "tools/media-production/campaign.mjs",
+        "sha256": "3436b1bcc9fa5b44b62ab67b236f009a62cbf592b3619273698a75905f68f6e5"
+      },
+      {
+        "path": "tools/media-production/campaignPlan.mjs",
+        "sha256": "45d3382f757e0b148bee051799d62033f9e27c013c669e9f9853e69740c33202"
+      },
+      {
+        "path": "tools/media-production/campaignArtwork.mjs",
+        "sha256": "ac57662ea7549e7b4ecd5d71cdf650df9cd6fc9d68d19bdd4fafa24771b9f9e5"
+      },
+      {
+        "path": "tools/media-production/campaignAudio.mjs",
+        "sha256": "c36888f8a5a18358e17cb7f6779c7104036c94252327b8cb3f8f8d10018d1042"
+      },
+      {
+        "path": "tools/media-production/pipeline.mjs",
+        "sha256": "7cf549560ab2097f45e28511eccd0abd9d3b2fca96d8fd32be0659e589cf1ff2"
+      }
+    ],
+    "plan": {
+      "title": "Built for the battlefield",
+      "subtitle": "ARMOR. ATMOSPHERE. IMPACT.",
+      "cta": "PLAY FREE IN YOUR BROWSER",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "scenes": [
+        {
+          "id": "steel-pursuit",
+          "title": "Steel pursuit",
+          "description": "A road convoy, filmed from track level and a rising overhead camera.",
+          "index": 0,
+          "start": 0,
+          "duration": 8,
+          "offset": 0,
+          "fps": 30
+        },
+        {
+          "id": "desert-crossfire",
+          "title": "Desert crossfire",
+          "description": "A sunset engagement, return fire and an ammunition explosion.",
+          "index": 1,
+          "start": 0,
+          "duration": 8,
+          "offset": 8,
+          "fps": 30
+        },
+        {
+          "id": "coast-recon",
+          "title": "Coastal reconnaissance",
+          "description": "A coastal patrol with a low side portrait and a bay reveal.",
+          "index": 2,
+          "start": 0,
+          "duration": 8,
+          "offset": 16,
+          "fps": 30
+        }
+      ],
+      "endDuration": 2,
+      "endOffset": 24,
+      "duration": 26
+    },
+    "sources": [
+      {
+        "id": "steel-pursuit",
+        "revision": "c1ade6e0e9d70cb88812028f1d3d75e0bde0e451",
+        "sourceDigest": "aba85ba95062db31f9f0fba78045d8ab3b6570f7fc843f956d3442b29a3a53b0",
+        "receiptSha256": "d1ed3e81aca450ab2ca21209a41a1d6e23e865bb253ff261afad3eb99b8e383f",
+        "renderer": [
+          {
+            "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+            "maxTextureSize": 16384
+          }
+        ],
+        "videoSha256": "343730c2aa3874921582ee9af8b780a91e7b3369d78da1cf43cae918007823a5",
+        "posterHashes": [
+          {
+            "format": "landscape",
+            "sha256": "52be380748a9a190d8745d6a91bc3b6b24914b4cb185fd52791ee3f420b00b75"
+          },
+          {
+            "format": "portrait",
+            "sha256": "478a2c9d33d43454e5589dd735e7f41cd115b8ea35eb186f4c77ff4a10801ad9"
+          },
+          {
+            "format": "square",
+            "sha256": "71cda403f94878293b193fd16ed921eefbeaba5535a29694db224125df37973c"
+          }
+        ]
+      },
+      {
+        "id": "desert-crossfire",
+        "revision": "9b93b43e93118b9bbc4cafd37192f15d44ed275d",
+        "sourceDigest": "aba85ba95062db31f9f0fba78045d8ab3b6570f7fc843f956d3442b29a3a53b0",
+        "receiptSha256": "f8920a845f603d93f361ef68ab249bb5877db2824d2bb050eb7cb2dccbd975a1",
+        "renderer": [
+          {
+            "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+            "maxTextureSize": 16384
+          }
+        ],
+        "videoSha256": "689a03a09e0fd7d5ee6ae85057c3e7228755ebc0c99f463c5bf31787728db0e1",
+        "posterHashes": [
+          {
+            "format": "landscape",
+            "sha256": "fae0382434b865440b8b737c43f8b4ef0a0cd123dff415581212579b9475e7c8"
+          },
+          {
+            "format": "portrait",
+            "sha256": "4b739eac0ac575a3f0b2bbb8292040c3266e9921e974dd11ec264938ae9aeb2e"
+          },
+          {
+            "format": "square",
+            "sha256": "eb0b7f2c4b23610476f428b385f00afcf015a467039183254739c0d4f17364b4"
+          }
+        ]
+      },
+      {
+        "id": "coast-recon",
+        "revision": "9b93b43e93118b9bbc4cafd37192f15d44ed275d",
+        "sourceDigest": "aba85ba95062db31f9f0fba78045d8ab3b6570f7fc843f956d3442b29a3a53b0",
+        "receiptSha256": "ec49c5046c7f5e315bf11bac1501a733bc319dfc221f97376cf4a0869ee2a5a6",
+        "renderer": [
+          {
+            "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+            "maxTextureSize": 16384
+          }
+        ],
+        "videoSha256": "2f8673054ee2c0b24db0b8acd12f32575401cc1bba5d8f1ab3eac1aa7807acf9",
+        "posterHashes": [
+          {
+            "format": "landscape",
+            "sha256": "c2259a2cd8729175a59eb4a241d20942a0cc5b8e004bb8e36ce16bad465568ef"
+          },
+          {
+            "format": "portrait",
+            "sha256": "d6d89e8c3bc51c58317cb8ce161d46f41b212910a8e0ba8285d368a40613c3d9"
+          },
+          {
+            "format": "square",
+            "sha256": "1d31c3c6e007290f79cdaa9624e7d18dd8b9f834f1592fdf5b8be8c2aaf20dba"
+          }
+        ]
+      }
+    ],
+    "sound": {
+      "provenance": "Original deterministic engine harmonics, filtered noise, impact transients and decaying reports synthesized by campaignAudio.mjs. No external recordings or music.",
+      "note": "Postproduction sound design synchronized to captured scene event timestamps; not a recording of the live game mix.",
+      "events": [
+        {
+          "type": "fire",
+          "at": 9.866667,
+          "end": 16,
+          "actor": "lead"
+        },
+        {
+          "type": "fire",
+          "at": 11.966667,
+          "end": 16,
+          "actor": "wing"
+        },
+        {
+          "type": "fire",
+          "at": 13.6,
+          "end": 16,
+          "actor": "lead"
+        },
+        {
+          "type": "impact",
+          "at": 14.066667,
+          "end": 16,
+          "actor": "wing"
+        },
+        {
+          "type": "tank_kill",
+          "at": 14.2,
+          "end": 16,
+          "actor": "wing"
+        }
+      ],
+      "sampleRate": 48000,
+      "peak": 0.6525180339813232,
+      "rms": 0.04768323103190277
+    },
+    "review": {
+      "reviewedAt": "2026-09-29T12:42:28.783827+00:00",
+      "notes": "All nine clean compositions and the nine branded poster contact sheet reviewed. Individual scene motion sheets and all 26 one-second trailer samples reviewed with filter reinitialization disabled (end-card color metadata otherwise resets the contact-sheet filter). Full 780-frame decode passed. Titles are legible without overlap, planned cuts and desert fire/knockout appear in samples; coast portrait no longer intersects the foreground tree. Existing terrain texture patterns and cropped roadside wreck remain visible; no claim of flawless renderer output or continuous human playback.",
+      "audioNotes": "Technical review only: complete AAC decode succeeded; 26-second original synthesized soundtrack, mean -26.5 dBFS and peak -3.6 dBFS without clipping. Fire/impact cues at9.867,11.967,13.600,14.067,14.200 seconds match authored visual-event times after scene offsets. Audio listening unavailable in this environment; no subjective listening claim.",
+      "scenes": {
+        "steel-pursuit": {
+          "accepted": true,
+          "notes": "Low escort, front-side pass and overhead follow keep both tanks on the road. Foreground poles pass through the shot; portrait/square retain a cropped roadside wreck."
+        },
+        "desert-crossfire": {
+          "accepted": true,
+          "notes": "Sunset engagement retains both vehicle tracks and three camera segments. Return fire and knockout are visible; high-contrast ground material is an existing renderer feature."
+        },
+        "coast-recon": {
+          "accepted": true,
+          "notes": "Clear coastal patrol and low tank silhouette with sea in the first segment; full tank remains visible in portrait. Final overhead moves through the clearing."
+        }
+      },
+      "hashes": [
+        "8bc07afdbc8d229b2eaa03eaa73ed26de2f8728e3b1a9defbf89bd330c9affae",
+        "4ca77cbbac352bc56988a2540532cd0f7d5e371777e1fb944f3e4047c0bd8a88",
+        "6e42c88952b8098d21b34d274559d3b0699cad7735c49d4464bcbea50ba8ddeb",
+        "443b846da84bcd0c54c01b1f74365686aacc8541bac0d350f242af79accbf707",
+        "901e2dc7fabad5b00c0832b3ba8d84f2f344e0158338d1356e9ac8fb9c2d7446",
+        "704057fd847e47092c2542d991177ad15854bb97202439896db4787b7967104b",
+        "01e3cc0479a5204f597cea4de871bb730a4619d3cfcc0549bd8e4b2e67ecae09",
+        "3d98c9b811eed00cf7371dccef85fafc337898e6a01143c33a2af275b5b16b25",
+        "c3830b265f495a2c2236910e08ca9ef390ee8c8cbf4a74acf90023d758ece459",
+        "4d418232d0d7a2800b63961629f78e4e007261595d18170103112c91507b36c8",
+        "e0ebcc0086c6538fdc0b675c5d01ff0b5690ebc2280c174d9385d3d1a56c1748",
+        "05ff8c6294eaccdbeea740a206059b355c7667fe2f0d0eb3f24e87f005289d6d",
+        "343730c2aa3874921582ee9af8b780a91e7b3369d78da1cf43cae918007823a5",
+        "52be380748a9a190d8745d6a91bc3b6b24914b4cb185fd52791ee3f420b00b75",
+        "478a2c9d33d43454e5589dd735e7f41cd115b8ea35eb186f4c77ff4a10801ad9",
+        "71cda403f94878293b193fd16ed921eefbeaba5535a29694db224125df37973c",
+        "689a03a09e0fd7d5ee6ae85057c3e7228755ebc0c99f463c5bf31787728db0e1",
+        "fae0382434b865440b8b737c43f8b4ef0a0cd123dff415581212579b9475e7c8",
+        "4b739eac0ac575a3f0b2bbb8292040c3266e9921e974dd11ec264938ae9aeb2e",
+        "eb0b7f2c4b23610476f428b385f00afcf015a467039183254739c0d4f17364b4",
+        "2f8673054ee2c0b24db0b8acd12f32575401cc1bba5d8f1ab3eac1aa7807acf9",
+        "c2259a2cd8729175a59eb4a241d20942a0cc5b8e004bb8e36ce16bad465568ef",
+        "d6d89e8c3bc51c58317cb8ce161d46f41b212910a8e0ba8285d368a40613c3d9",
+        "1d31c3c6e007290f79cdaa9624e7d18dd8b9f834f1592fdf5b8be8c2aaf20dba"
+      ]
+    },
+    "webEncodes": [
+      {
+        "src": "/media/director-r4/films/steel-pursuit.mp4",
+        "sourceSha256": "343730c2aa3874921582ee9af8b780a91e7b3369d78da1cf43cae918007823a5",
+        "sha256": "b0a258a4ec5ecc3667cf3cd81351de186a6f3cd8eaeac4fcda0a33f8cd052aa3",
+        "profile": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 240,
+          "duration": 8,
+          "audio": false,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 6000,
+          "bufferKbits": 12000,
+          "audioKbps": 0
+        },
+        "result": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 240,
+          "duration": 8,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": null,
+          "bytes": 6564694,
+          "byteBudget": 7650000
+        }
+      },
+      {
+        "src": "/media/director-r4/films/desert-crossfire.mp4",
+        "sourceSha256": "689a03a09e0fd7d5ee6ae85057c3e7228755ebc0c99f463c5bf31787728db0e1",
+        "sha256": "7b7e082b73c0a8215a294497dd6574c720529625c8383f1d40b09b3374cf6bbb",
+        "profile": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 240,
+          "duration": 8,
+          "audio": false,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 6000,
+          "bufferKbits": 12000,
+          "audioKbps": 0
+        },
+        "result": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 240,
+          "duration": 8,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": null,
+          "bytes": 6557049,
+          "byteBudget": 7650000
+        }
+      },
+      {
+        "src": "/media/director-r4/films/coast-recon.mp4",
+        "sourceSha256": "2f8673054ee2c0b24db0b8acd12f32575401cc1bba5d8f1ab3eac1aa7807acf9",
+        "sha256": "ded2c10edf2ccba1ebc93ebe348992c5c41112c88004ab458da05c02a35933ed",
+        "profile": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 240,
+          "duration": 8,
+          "audio": false,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 6000,
+          "bufferKbits": 12000,
+          "audioKbps": 0
+        },
+        "result": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 240,
+          "duration": 8,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": null,
+          "bytes": 6570829,
+          "byteBudget": 7650000
+        }
+      },
+      {
+        "src": "/media/director-r4/hero-trailer.mp4",
+        "sourceSha256": "8bc07afdbc8d229b2eaa03eaa73ed26de2f8728e3b1a9defbf89bd330c9affae",
+        "sha256": "f6f63e4318263bd246fb6bc1f2061a362934f8536fa4cee2b726d7a5d10070af",
+        "profile": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 780,
+          "duration": 26,
+          "audio": true,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 6000,
+          "bufferKbits": 12000,
+          "audioKbps": 192
+        },
+        "result": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 780,
+          "duration": 26,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": "aac",
+          "bytes": 19774745,
+          "byteBudget": 22056480
+        }
+      },
+      {
+        "src": "/media/director-r4/silent-loop.mp4",
+        "sourceSha256": "4ca77cbbac352bc56988a2540532cd0f7d5e371777e1fb944f3e4047c0bd8a88",
+        "sha256": "a4371c9b6b8d34ef172699dac4696742a26283c029d6f6b15a0bb00458607388",
+        "profile": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 180,
+          "duration": 6,
+          "audio": false,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 6000,
+          "bufferKbits": 12000,
+          "audioKbps": 0
+        },
+        "result": {
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "frames": 180,
+          "duration": 6,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": null,
+          "bytes": 5041547,
+          "byteBudget": 6120000
+        }
+      },
+      {
+        "src": "/media/director-r4/hero-trailer-mobile.mp4",
+        "sourceSha256": "8bc07afdbc8d229b2eaa03eaa73ed26de2f8728e3b1a9defbf89bd330c9affae",
+        "sha256": "33231efbd329d72fa7b5f60b6a203eab1b772142eb581507ad884a5ee6de142a",
+        "profile": {
+          "width": 960,
+          "height": 540,
+          "fps": 30,
+          "frames": 780,
+          "duration": 26,
+          "audio": false,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 1800,
+          "bufferKbits": 3600,
+          "audioKbps": 0
+        },
+        "result": {
+          "width": 960,
+          "height": 540,
+          "fps": 30,
+          "frames": 780,
+          "duration": 26,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": null,
+          "bytes": 5759072,
+          "byteBudget": 6426000
+        }
+      },
+      {
+        "src": "/media/director-r4/silent-loop-mobile.mp4",
+        "sourceSha256": "4ca77cbbac352bc56988a2540532cd0f7d5e371777e1fb944f3e4047c0bd8a88",
+        "sha256": "de22a2f7cee80c35acc5f34a336a97f1699d58f19305f841ea45d98fddcad68d",
+        "profile": {
+          "width": 960,
+          "height": 540,
+          "fps": 30,
+          "frames": 180,
+          "duration": 6,
+          "audio": false,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "crf": 21,
+          "maxrateKbps": 1800,
+          "bufferKbits": 3600,
+          "audioKbps": 0
+        },
+        "result": {
+          "width": 960,
+          "height": 540,
+          "fps": 30,
+          "frames": 180,
+          "duration": 6,
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "audioCodec": null,
+          "bytes": 1519023,
+          "byteBudget": 1836000
+        }
+      }
+    ]
+  }
+}
