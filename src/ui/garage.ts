@@ -613,8 +613,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
     `<span>${t('garage.battle.typeBots')}</span></button>` +
     `<div class="cot-battle-menu" id="cot-battle-menu" role="dialog" aria-label="${t('garage.battle.menuAria')}">` +
-    `<div class="cot-battle-menu-head"><strong>${t('garage.battle.menuAria')}</strong>` +
+    `<div class="cot-battle-menu-head"><div><strong>${t('garage.battle.menuAria')}</strong>` +
+    `<p>${t('garage.battle.setupDescription')}</p></div>` +
     `<button type="button" data-battle-close aria-label="${t('garage.battle.closeSetup')}">&times;</button></div>` +
+    `<div class="cot-battle-menu-scroll"><div class="cot-battle-mode-list">` +
     `<button class="cot-battle-choice cot-battle-regular" type="button" data-mode="solo" aria-pressed="true">` +
     `<span class="choice-icon">${uiIconSVG('battleBots', 17)}</span>` +
     `<span><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
@@ -649,6 +651,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="choice-icon">${uiIconSVG('battleLan', 17)}</span>` +
     `<span><span class="choice-name">${t('garage.battle.typeLan')}</span>` +
     `<span class="choice-description">${t('garage.battle.lanDescription')}</span></span></button></div>` +
+    `</div><div class="cot-battle-details">` +
+    `<div class="cot-battle-preview"><span class="cot-battle-preview-icon" data-setup-icon aria-hidden="true"></span>` +
+    `<div><small>${t('garage.setup.selected')}</small><h3 data-setup-title></h3></div>` +
+    `<p data-setup-description></p></div>` +
     `<div class="cot-battle-solo-options" data-solo-options>` +
     `<div data-team-options>` +
     // sides (owner 2026-09-18): "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
@@ -666,8 +672,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<b class="cot-sides-readout" data-sides-readout></b>` +
     `<small>${t('garage.battle.sidesNote', { max: String(BATTLE_FIELD_LIMIT) })}</small>` +
     `</div>` +
-    `</div><fieldset class="cot-battle-times" aria-describedby="cot-time-hint">` +
+    `</div><fieldset class="cot-battle-times" data-time-options aria-describedby="cot-time-hint">` +
     battleTimeChoicesMarkup('cot-time-hint') + `</fieldset>` +
+    `<div class="cot-battle-galaxy" data-galaxy-sky hidden>${uiIconSVG('regionNight', 24)}` +
+    `<div><strong>${t('garage.battle.galaxySky')}</strong><p>${t('garage.battle.nightGalaxy')}</p></div></div>` +
     // Mars settings (owner 2026-09-18 "give it a bunch of boosts and settings"): the gravity world and the
     // boost-cache cadence, shown while Mars is the selected rule (game/teamArrangement.ts readMarsSettings)
     `<div class="cot-battle-menu-label" data-mars-label hidden>${t('garage.battle.marsSettings')}</div>` +
@@ -677,7 +685,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<label><span>${t('garage.battle.marsCaches')}</span><select data-mars-field="caches">` +
     MARS_CACHE_IDS.map((id) => `<option value="${id}">${t(`mars.caches.${id}`)}</option>`).join('') + `</select></label>` +
     `<small>${t('garage.battle.marsNote')}</small></div>` +
-    `</div></div><div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
+    `</div></div></div><div class="cot-battle-menu-foot">` +
+    `<span data-setup-selection></span><button type="button" data-battle-launch>` +
+    `${t('garage.battle')}${uiIconSVG('chevronRight', 14)}</button></div></div>` +
+    `<div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
     `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
@@ -2859,7 +2870,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleModeBtn.setAttribute('aria-expanded', 'true');
     const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
       : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
-    (activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode))?.focus();
+    const scroller = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
+    scroller.scrollTop = 0;
+    const selectedChoice = activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode);
+    const scrollBounds = scroller.getBoundingClientRect();
+    const selectedBounds = selectedChoice?.getBoundingClientRect();
+    const visibleChoice = selectedBounds && selectedBounds.top >= scrollBounds.top
+      && selectedBounds.bottom <= scrollBounds.bottom ? selectedChoice : null;
+    (visibleChoice || requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]'))
+      .focus({ preventScroll: true });
   }
   function setBattleMode(nextMode: string | undefined): void {
     if (!nextMode || !(nextMode in battleModeMeta)) return;
@@ -2876,7 +2895,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.typeAria', { label: meta.label }));
-    battleBtn.setAttribute('aria-label', t('garage.battle.startBattleAria', { label: meta.label }));
+    battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
     for (const choice of battleChoices) {
       choice.setAttribute('aria-pressed', String(choice.dataset.mode === mode));
     }
@@ -2909,6 +2928,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (event.relatedTarget instanceof Node && !battleControl.contains(event.relatedTarget)) closeBattleMenu();
   });
   battleBtn.addEventListener('click', battle);
+  requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]').addEventListener('click', battle);
   const signalBattleIntent = () => {
     if (!selectedId) return;
     try {
@@ -2986,9 +3006,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const teamOptions = requiredElement<HTMLElement>(battleMenu, '[data-team-options]');
   const refreshBattleTimes = bindBattleTimeChoices(battleMenu, () => emit('ui:click', {}));
   const timeHint = requiredElement<HTMLElement>(battleMenu, '[data-time-hint]');
+  const timeOptions = requiredElement<HTMLElement>(battleMenu, '[data-time-options]');
+  const galaxySky = requiredElement<HTMLElement>(battleMenu, '[data-galaxy-sky]');
+  const setupTitle = requiredElement<HTMLElement>(battleMenu, '[data-setup-title]');
+  const setupDescription = requiredElement<HTMLElement>(battleMenu, '[data-setup-description]');
+  const setupIcon = requiredElement<HTMLElement>(battleMenu, '[data-setup-icon]');
+  const setupSelection = requiredElement<HTMLElement>(battleMenu, '[data-setup-selection]');
+  const setupLaunch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]');
   renderBattleOptions = () => {
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';
+    const meta = (solo && battleRuleMeta[battleGameMode]) || battleModeMeta[battleMode];
+    setupTitle.textContent = meta.label;
+    setupSelection.textContent = meta.label;
+    setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+    setupDescription.textContent = t(shown ? 'garage.battle.marsSetupDescription'
+      : solo ? `playMenu.matchMode.${battleGameMode}.desc`
+      : `garage.battle.${battleMode}SetupDescription`);
+    setupLaunch.setAttribute('aria-label', battleBtn.getAttribute('aria-label') || meta.label);
+    timeOptions.hidden = shown;
+    galaxySky.hidden = !shown;
     soloOptions.hidden = !solo;
     teamOptions.hidden = isWaveMode(battleGameMode);
     refreshBattleTimes(shown);
