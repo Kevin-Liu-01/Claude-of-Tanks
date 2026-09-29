@@ -19,7 +19,8 @@
 //
 // Build output is unaffected: the plugin only applies to `vite dev`/`serve`,
 // and every headless tool that calls createServer() inherits this config.
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { ServerResponse } from 'node:http';
 import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -107,6 +108,53 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
   next();
 };
 
+/**
+ * The peer-to-peer host's collision manifests (Multiplayer v2 §13, P2 client lane 2026-09-28): the browser host builds
+ * its world from the same `server/world-collision-manifests/<map>.json` the match container loads, served under
+ * `/mp-collision/` — the index as `index.json` and every map as `<map>.<sha256[0..12]>.json` (content-addressed: the
+ * host reads the index, then fetches the map's file by its hash; `src/mp/host/worldCollision.ts`). Dev serves them
+ * from the source directory; the build emits them beside the page (never through the boot chunk, never under
+ * `/assets/`: the immutable routes stay the bundle's). 56 MB of JSON, fetched one map at a time and only when hosting.
+ */
+const COLLISION_MANIFEST_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests');
+const COLLISION_MANIFEST_ROUTE = '/mp-collision';
+
+function collisionManifestFiles(): Array<{ name: string; path: string }> {
+  if (!existsSync(COLLISION_MANIFEST_DIR)) return [];
+  const out: Array<{ name: string; path: string }> = [];
+  for (const file of readdirSync(COLLISION_MANIFEST_DIR)) {
+    if (!file.endsWith('.json')) continue;
+    const path = resolve(COLLISION_MANIFEST_DIR, file);
+    if (file === 'index.json') { out.push({ name: 'index.json', path }); continue; }
+    const hash = createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 12);
+    out.push({ name: `${file.slice(0, -5)}.${hash}.json`, path });
+  }
+  return out;
+}
+
+const collisionManifestPlugin = () => ({
+  name: 'cot-mp-collision-manifests',
+  configureServer(server: { middlewares: { use(handler: Connect.NextHandleFunction): void } }) {
+    let files: Map<string, string> | null = null;
+    server.middlewares.use((req, res, next) => {
+      const url = req.url || '';
+      if (!url.startsWith(`${COLLISION_MANIFEST_ROUTE}/`)) { next(); return; }
+      files ??= new Map(collisionManifestFiles().map((entry) => [entry.name, entry.path]));
+      const name = url.slice(COLLISION_MANIFEST_ROUTE.length + 1).split('?', 1)[0]!;
+      const path = files.get(name);
+      if (!path) { res.statusCode = 404; res.end(); return; }
+      res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.setHeader('cache-control', name === 'index.json' ? 'no-cache' : 'public, max-age=31536000, immutable');
+      res.end(readFileSync(path));
+    });
+  },
+  generateBundle(this: { emitFile(file: { type: 'asset'; fileName: string; source: Buffer }): void }) {
+    for (const entry of collisionManifestFiles()) {
+      this.emitFile({ type: 'asset', fileName: `${COLLISION_MANIFEST_ROUTE.slice(1)}/${entry.name}`, source: readFileSync(entry.path) });
+    }
+  },
+});
+
 /** Keep Vite's static-file layer from replacing an intentional 404 with 200. */
 function forceNotFoundStatus(res: ServerResponse): void {
   res.statusCode = 404;
@@ -166,6 +214,7 @@ export default defineConfig({
         server.middlewares.use(rewriteRoutes(resolve(server.config.root,server.config.build.outDir)));
       },
     },
+    collisionManifestPlugin(),
     {
       name: 'cot-dev-modulepreload',
       apply: 'serve',

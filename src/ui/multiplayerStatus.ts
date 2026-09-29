@@ -75,6 +75,8 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:38px;
 .cot-mp-strip .unit b{font-size:11px;font-weight:800;line-height:1}
 .cot-mp-strip .unit i{font-style:normal;font-size:6.5px;font-weight:800;line-height:1;letter-spacing:.13em;color:#8494a0}
 .cot-mp-strip.good .ping b{color:#b9e7c0}.cot-mp-strip.degraded .ping b{color:#ffd27a}.cot-mp-strip.bad .ping b,.cot-mp-strip.offline .ping b{color:#ff8c82}
+.cot-mp-strip .unit.host b{color:#ffd27a;letter-spacing:.12em}
+.cot-mp-banner.migrating{color:#cbeaff;border-color:rgba(174,193,207,.55)}
 .cot-mp-banner{position:fixed;left:50%;top:88px;transform:translate(-50%,0);z-index:91;min-width:220px;max-width:calc(100vw - 32px);box-sizing:border-box;
   padding:8px 16px;border:1px solid rgba(238,166,67,.62);background:rgba(9,13,18,.94);box-shadow:0 12px 36px rgba(0,0,0,.52);color:#f2bd73;
   font:800 11px ${FONT_COND};letter-spacing:.12em;text-align:center;text-transform:uppercase;pointer-events:none}
@@ -132,6 +134,8 @@ export interface StripText {
   pingUnit: string;
   seat: string;
   roster: string;
+  /** The host badge ("HOST") when this seat runs the authority, else empty. */
+  host: string;
   aria: string;
 }
 
@@ -141,13 +145,16 @@ export function formatStrip(s: Readonly<NetworkStatusSnapshot>): StripText {
   const pingText = ping === null ? '—' : String(Math.max(0, Math.min(999, round(ping))));
   const seat = s.seat === null ? '' : t('mpStatus.seat', { seat: s.seat });
   const roster = `${s.rosterCount}/${s.rosterCapacity}`;
+  const host = s.role === 'host' ? t('mpStatus.hostBadge') : '';
   return {
     health: s.health,
     ping: pingText,
     pingUnit: ping === null ? '' : t('hud.net.ms'),
     seat,
     roster,
-    aria: t('mpStatus.stripAria', { health: healthLabel(s.health), ping: pingText, seat: s.seat === null ? '—' : s.seat, count: s.rosterCount, capacity: s.rosterCapacity }),
+    host,
+    aria: (host ? `${t('mpStatus.hostingAria', { count: s.peersConnected })} · ` : '') +
+      t('mpStatus.stripAria', { health: healthLabel(s.health), ping: pingText, seat: s.seat === null ? '—' : s.seat, count: s.rosterCount, capacity: s.rosterCapacity }),
   };
 }
 
@@ -164,6 +171,7 @@ export function formatBanner(banner: NetworkBanner): string {
       return banner.nextRetryS > 0
         ? t('mpStatus.banner.reconnecting', { attempt: banner.attempt, seconds: banner.nextRetryS })
         : t('mpStatus.banner.reconnectingNow', { attempt: banner.attempt });
+    case 'migrating': return banner.self ? t('mpStatus.banner.migratingSelf') : t('mpStatus.banner.migrating', { host: banner.host });
     case 'stalled': return t('mpStatus.banner.stalled');
     case 'dropped': return t('mpStatus.banner.dropped', { reason: dropReasonLabel(banner.reason) });
     case 'failed': return t('mpStatus.banner.failed');
@@ -186,6 +194,14 @@ export function formatPanelRows(s: Readonly<NetworkStatusSnapshot>): Array<[stri
     rows.push([t('mpStatus.row.corrections'), t('mpStatus.value.perSecond', { value: s.correctionsPerS.toFixed(1) })]);
     rows.push([t('mpStatus.row.traffic'), t('mpStatus.value.traffic', { down: kb(s.bytesInPerS), up: kb(s.bytesOutPerS) })]);
     rows.push([t('mpStatus.row.reconnects'), String(s.reconnects)]);
+    if (s.role) {
+      // Peer-to-peer (P2 client lane): who runs the authority, how the traffic gets there, what the host's uplink carries.
+      rows.push([t('mpStatus.row.role'), s.role === 'host' ? t('mpStatus.value.hosting', { count: s.peersConnected }) : t('mpStatus.role.peer')]);
+      const path = s.candidateType ? t(`mpStatus.path.${s.candidateType}`) : s.role === 'host' ? t('mpStatus.path.local') : '—';
+      rows.push([t('mpStatus.row.path'), s.viaTurn ? `${path} · ${t('mpStatus.value.viaTurn')}` : path]);
+      if (s.role === 'host') rows.push([t('mpStatus.row.uplink'), t('mpStatus.value.uplink', { kbps: round(s.hostUplinkKbps) })]);
+      rows.push([t('mpStatus.row.generation'), String(s.generation)]);
+    }
   }
   const room = t(`mpStatus.room.${s.room}`);
   const roomPhase = s.roomPhase ? ` · ${t(`mpStatus.roomPhase.${s.roomPhase}`)}` : '';
@@ -238,6 +254,9 @@ export function createMultiplayerStatusSurface({
   const pingValue = createElement('b', '', pingUnitNode);
   pingValue.textContent = '—';
   const pingUnit = createElement('i', '', pingUnitNode);
+  const hostUnit = createElement('span', 'unit host', strip);
+  hostUnit.hidden = true;
+  const hostValue = createElement('b', '', hostUnit);
   const seatUnit = createElement('span', 'unit seat', strip);
   seatUnit.hidden = true;
   const seatValue = createElement('b', '', seatUnit);
@@ -308,7 +327,8 @@ export function createMultiplayerStatusSurface({
     if (!shown) { lastBannerText = ''; return; }
     if (text !== lastBannerText) { lastBannerText = text; bannerText.textContent = text; }
     const severe = armed || s.health === 'bad' || s.health === 'offline';
-    const className = `cot-mp-banner ${host} ${s.health}${severe && onLeave ? ' leaving' : ''}`;
+    const migrating = fact?.kind === 'migrating' && !armed;
+    const className = `cot-mp-banner ${host} ${s.health}${migrating ? ' migrating' : ''}${severe && onLeave && !migrating ? ' leaving' : ''}`;
     if (banner.className !== className) banner.className = className;
   }
 
@@ -324,6 +344,8 @@ export function createMultiplayerStatusSurface({
     }
     write(pingValue, text.ping);
     write(pingUnit, text.pingUnit);
+    if (hostUnit.hidden !== !text.host) hostUnit.hidden = !text.host;
+    write(hostValue, text.host);
     if (seatUnit.hidden !== !text.seat) seatUnit.hidden = !text.seat;
     write(seatValue, text.seat);
     write(rosterValue, text.roster);

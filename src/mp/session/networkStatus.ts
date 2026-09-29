@@ -19,6 +19,8 @@ import { Listeners } from '../transport/transport.ts';
 import type { TransportCloseReason, TransportState, TransportStateChange, TransportStats, Unsubscribe } from '../transport/transport.ts';
 import { CLOSE_REASON, CLOSE_REASON_NAMES, SNAPSHOT_HZ } from '../wire/index.ts';
 import type { CloseReasonId } from '../wire/index.ts';
+import type { RtcCandidateType } from '../transport/webRtcTransport.ts';
+import type { SessionP2pEvent, SessionP2pStatus, SessionRole } from './matchSession.ts';
 
 export type NetworkHealth = 'unknown' | 'good' | 'degraded' | 'bad' | 'offline';
 
@@ -82,6 +84,12 @@ export interface NetworkStatusMatchSource {
   readonly bytesOutPerSecond: number;
   readonly lastCloseReason: CloseReasonId | null;
   onPhase(listener: (phase: ConnectionPhase, detail: string) => void): Unsubscribe;
+}
+
+/** The peer-to-peer facts (P2 client lane): the session's in-place status object and its events. */
+export interface NetworkStatusP2pSource {
+  readonly p2p: Readonly<SessionP2pStatus> | null;
+  onP2p(listener: (event: SessionP2pEvent) => void): Unsubscribe;
 }
 
 /** The subset of RoomClient the model reads. */
@@ -151,6 +159,23 @@ export interface NetworkStatusSnapshot {
   rosterCapacity: number;
   roomPhase: RoomPhase | null;
   matchStatus: RoomMatchStatus | null;
+  // ---- peer-to-peer (P2 client lane): null / 0 on the WebSocket path
+  /** This seat hosts the match (the authority runs in its browser) or plays as a peer of another seat's. */
+  role: SessionRole;
+  /** The host generation this seat runs (increments on every election). */
+  generation: number;
+  hostId: string | null;
+  /** The peer's selected local candidate type (host / srflx / prflx / relay). */
+  candidateType: RtcCandidateType | null;
+  /** The traffic crosses a TURN relay (the peer's pair, or any of the host's peers). */
+  viaTurn: boolean;
+  /** The host's uplink across every peer link, kilobits per second (0 as a peer). */
+  hostUplinkKbps: number;
+  /** Peers this host serves (0 as a peer). */
+  peersConnected: number;
+  /** An election is under way: the new host boots or the link moves to it. */
+  migrating: boolean;
+  migrationHostId: string | null;
   health: NetworkHealth;
   healthReason: NetworkHealthReason;
 }
@@ -159,7 +184,11 @@ export type NetworkStatusEvent =
   | { kind: 'reconnect'; scope: 'match' | 'room'; attempt: number }
   | { kind: 'recovered'; scope: 'match' | 'room'; attempts: number }
   | { kind: 'dropped'; scope: 'match'; reason: string }
-  | { kind: 'health'; health: NetworkHealth; reason: NetworkHealthReason; previous: NetworkHealth };
+  | { kind: 'health'; health: NetworkHealth; reason: NetworkHealthReason; previous: NetworkHealth }
+  /** This seat started (or stopped) hosting; `migrated` when an election put it there. */
+  | { kind: 'host'; role: SessionRole; migrated: boolean }
+  /** An election reached this seat: it boots as host, follows the new host, or the migration failed. */
+  | { kind: 'migration'; phase: 'begin' | 'end' | 'failed'; role: SessionRole; hostId: string; reason: string };
 
 /** What telemetry keeps of a battle's link (a few bytes at exit, never per tick). */
 export interface NetworkStatusSummary {
@@ -171,11 +200,16 @@ export interface NetworkStatusSummary {
   lastDrop: string | null;
   /** Milliseconds the link spent below `good` while attached. */
   impairedMs: number;
+  /** Peer-to-peer: rounds this seat hosted (a migration onto it counts), elections it lived through. */
+  hosted: number;
+  migrations: number;
 }
 
 /** The banner the surface shows for a snapshot (copy is the surface's; this is the fact). */
 export type NetworkBanner =
   | { kind: 'reconnecting'; scope: 'match' | 'room'; attempt: number; nextRetryS: number }
+  /** A host election: `host` is the new host's name (the id when the room names none), `self` when this seat is it. */
+  | { kind: 'migrating'; host: string; self: boolean }
   | { kind: 'stalled' }
   | { kind: 'dropped'; reason: string }
   | { kind: 'failed' }
@@ -234,8 +268,10 @@ export function resolveNetworkHealth(
 }
 
 /** The banner for a snapshot, or null when nothing needs saying. Pure. */
-export function networkBannerFor(s: Readonly<NetworkStatusSnapshot>, nowMs: number = s.sampledAtMs): NetworkBanner {
+export function networkBannerFor(s: Readonly<NetworkStatusSnapshot>, nowMs: number = s.sampledAtMs, hostName: (id: string) => string = (id) => id): NetworkBanner {
   const seconds = (retryAtMs: number | null) => (retryAtMs === null ? 0 : Math.max(0, Math.ceil((retryAtMs - nowMs) / 1000)));
+  // A host election outranks every link fact: the link is moving to the new host (or this seat is becoming it).
+  if (s.migrating && s.migrationHostId && s.link !== 'left') return { kind: 'migrating', host: hostName(s.migrationHostId), self: s.role === 'host' };
   if (s.attached) {
     if (s.link === 'left') return null;
     if (s.link === 'closed') {
@@ -274,7 +310,9 @@ function createSnapshot(expectedSnapshotHz: number, rosterCapacity: number): Net
     localStallMs: 0, snapshotHz: expectedSnapshotHz, expectedSnapshotHz, snapshotAgeMs: 0, interpolationDelayMs: 0, bufferedFrames: 0,
     lossRate: 0, correctionsPerS: 0, bytesInPerS: 0, bytesOutPerS: 0, closeReason: null, seatDropped: false,
     room: 'idle', roomReconnectAttempt: 0, roomRetryAtMs: null, roomReconnects: 0, roomRttMs: null, roomRegion: null, seat: null,
-    rosterCount: 0, rosterCapacity, roomPhase: null, matchStatus: null, health: 'unknown', healthReason: 'idle',
+    rosterCount: 0, rosterCapacity, roomPhase: null, matchStatus: null,
+    role: null, generation: 0, hostId: null, candidateType: null, viaTurn: false, hostUplinkKbps: 0, peersConnected: 0, migrating: false, migrationHostId: null,
+    health: 'unknown', healthReason: 'idle',
   };
 }
 
@@ -289,8 +327,12 @@ export class NetworkStatusModel {
   private readonly eventListeners = new Listeners<NetworkStatusEvent>();
   private match: NetworkStatusMatchSource | null = null;
   private room: NetworkStatusRoomSource | null = null;
+  private p2p: NetworkStatusP2pSource | null = null;
   private readonly matchSubscriptions: Unsubscribe[] = [];
   private readonly roomSubscriptions: Unsubscribe[] = [];
+  private readonly p2pSubscriptions: Unsubscribe[] = [];
+  private hosted = 0;
+  private migrations = 0;
   private lastSampleMs = -Infinity;
   private lastUpdateMs: number | null = null;
   private windowStallMs = 0;
@@ -358,6 +400,34 @@ export class NetworkStatusModel {
     this.room = null;
   }
 
+  /** The session's peer-to-peer facts (attached with the match, detached with it). */
+  attachP2p(source: NetworkStatusP2pSource): void {
+    this.detachP2p();
+    this.p2p = source;
+    const s = this.snapshot;
+    this.p2pSubscriptions.push(source.onP2p((event) => {
+      if (event.kind === 'role') {
+        const migrated = s.migrating;
+        if (event.role === 'host') this.hosted++;
+        this.eventListeners.emit({ kind: 'host', role: event.role, migrated });
+      } else if (event.kind === 'migration') {
+        if (event.phase === 'begin') this.migrations++;
+        this.eventListeners.emit({ kind: 'migration', phase: event.phase, role: event.role, hostId: event.hostId, reason: event.detail });
+      }
+      this.sample(this.clock(), true);
+    }));
+    this.sample(this.clock(), true);
+  }
+
+  detachP2p(): void {
+    for (const unsubscribe of this.p2pSubscriptions.splice(0)) unsubscribe();
+    if (!this.p2p) return;
+    this.p2p = null;
+    const s = this.snapshot;
+    s.role = null; s.generation = 0; s.hostId = null; s.candidateType = null; s.viaTurn = false; s.hostUplinkKbps = 0; s.peersConnected = 0;
+    s.migrating = false; s.migrationHostId = null;
+  }
+
   attachMatch(match: NetworkStatusMatchSource): void {
     this.detachMatch();
     this.match = match;
@@ -414,6 +484,7 @@ export class NetworkStatusModel {
   dispose(): void {
     this.detachMatch();
     this.detachRoom();
+    this.detachP2p();
     this.changeListeners.clear();
     this.eventListeners.clear();
   }
@@ -471,6 +542,13 @@ export class NetworkStatusModel {
         s.roomPhase = null;
         s.matchStatus = null;
       }
+    }
+    const p2p = this.p2p?.p2p ?? null;
+    if (p2p) {
+      s.role = p2p.role; s.generation = p2p.generation; s.hostId = p2p.hostId; s.candidateType = p2p.candidateType; s.viaTurn = p2p.viaTurn;
+      s.hostUplinkKbps = p2p.uplinkBytesPerS * 8 / 1000; s.peersConnected = p2p.peersConnected; s.migrating = p2p.migrating; s.migrationHostId = p2p.migrationHostId;
+    } else if (this.p2p) {
+      s.role = null; s.migrating = false; s.migrationHostId = null;
     }
     const match = this.match;
     if (match) {
@@ -543,9 +621,9 @@ export class NetworkStatusModel {
     this.impairedSinceMs = null;
   }
 
-  /** The banner for the current snapshot at `nowMs` (the countdown keeps moving between samples). */
+  /** The banner for the current snapshot at `nowMs` (the countdown keeps moving between samples); a host id reads as the seat's name. */
   banner(nowMs: number = this.clock()): NetworkBanner {
-    return networkBannerFor(this.snapshot, nowMs);
+    return networkBannerFor(this.snapshot, nowMs, (id) => this.room?.room?.players.find((player) => player.id === id)?.name ?? id);
   }
 
   summary(): NetworkStatusSummary {
@@ -554,6 +632,7 @@ export class NetworkStatusModel {
     return {
       health: this.snapshot.health, worst: this.worst, reconnects: this.snapshot.reconnects, roomReconnects: this.snapshot.roomReconnects,
       drops: this.drops, lastDrop: this.lastDrop, impairedMs: Math.round(this.impairedMs + open),
+      hosted: this.hosted, migrations: this.migrations,
     };
   }
 }

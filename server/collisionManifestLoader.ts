@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
 import {
   collisionManifestEntry,
   readCollisionManifestIndex,
@@ -9,10 +7,24 @@ import {
 import { createMapResourceCache } from './mapResourceCache.ts';
 import { decodeCollisionManifest } from './collisionManifestCodec.ts';
 
+/**
+ * The Node built-ins, resolved at call time (`process.getBuiltinModule`, Node >= 22.3) so this module carries no static
+ * `node:` import: the browser host's Worker bundle (src/mp/host) reaches the match actor through the same module graph
+ * and never calls the loader (it builds its world from a fetched manifest).
+ */
+function nodeIo(): { createHash: typeof import('node:crypto').createHash; readFileSync: typeof import('node:fs').readFileSync; statSync: typeof import('node:fs').statSync } {
+  const builtin = (globalThis as { process?: { getBuiltinModule?: (id: string) => unknown } }).process?.getBuiltinModule;
+  if (typeof builtin !== 'function') throw new Error('collision manifests are read by the Node loader only');
+  const crypto = builtin('node:crypto') as typeof import('node:crypto');
+  const fs = builtin('node:fs') as typeof import('node:fs');
+  return { createHash: crypto.createHash, readFileSync: fs.readFileSync, statSync: fs.statSync };
+}
+
 /** Node-only I/O seam. JSON is parsed on demand, never retained by the ESM cache. */
 export function createCollisionManifestLoader(
   directory = new URL('./world-collision-manifests/', import.meta.url),
 ) {
+  const { createHash, readFileSync, statSync } = nodeIo();
   const indexUrl = new URL('index.json', directory);
   if (statSync(indexUrl).size > 64 * 1024) throw new Error('collision manifest index is too large');
   const index = readCollisionManifestIndex(JSON.parse(readFileSync(indexUrl, 'utf8')));

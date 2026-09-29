@@ -433,3 +433,21 @@ assert.match(source, /'pagehide', \(\) => telemetry\.flush\(\)/, 'pagehide sends
 }
 
 console.log('entry telemetry client: one session record, coalesced errors, follow-ups, the request budget, sampling, opt-outs and server acceptance pass');
+
+// ------------------------------------------------------------ peer-to-peer (P2 client lane): hosting and elections count into the exit note
+{
+  const f = fixture({ sessionId: 'p2p-note-1' });
+  f.telemetry.send({ kind: 'boot_ready', ms: 1000, mode: 'network' });
+  assert.equal(f.telemetry.send({ kind: 'mp_host', reason: 'start' }), true);
+  assert.equal(f.telemetry.send({ kind: 'mp_migrate', code: 'peer', reason: 'timeout' }), true);
+  assert.equal(f.telemetry.send({ kind: 'mp_migrate', code: 'host', reason: 'left' }), true);
+  assert.equal(f.telemetry.send({ kind: 'mp_host', reason: 'migrate' }), true);
+  f.telemetry.send({ kind: 'mp_exit', mode: 'network', code: 'left', reason: 'good' });
+  const exit = f.bodies.at(-1).body;
+  assert.deepEqual(exit.notes, ['mp:left:good:r0:d0:none:i0:h2:m2'], 'the note carries hosted rounds and elections when there were any');
+  const g = fixture({ sessionId: 'p2p-note-2' });
+  g.telemetry.send({ kind: 'boot_ready', ms: 1000, mode: 'network' });
+  g.telemetry.send({ kind: 'mp_exit', mode: 'network', code: 'left', reason: 'good', link: { health: 'good', reconnects: 0, roomReconnects: 0, drops: 0, lastDrop: null, impairedMs: 0, hosted: 1, migrations: 0 } });
+  assert.deepEqual(g.bodies.at(-1).body.notes, ['mp:left:good:r0:d0:none:i0:h1:m0'], 'a summary that names them wins over the counters');
+  console.log('telemetry.selftest: mp_host and mp_migrate fold into the exit note');
+}

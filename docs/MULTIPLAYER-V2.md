@@ -815,6 +815,96 @@ optional on restore; a later schema bump can make them required once no pre-lane
 (5) The LAN helper's default transport stays `service`; flipping it to `p2p` is a one-line decision for the owner once
 the browser host (P2) lands.
 
+### 13.7 The client (P2, lane `mp/p2p-client`, 2026-09-28) — what landed
+
+Built against §13.2 and P1's §13.2.1 shapes (P1's `protocol.ts` and `roomPolicy.ts` adopted verbatim: the client
+imports P1's helpers, defines none of its own). Every module is Node-runnable and receipted in the core group.
+
+| Piece | Where | What it does |
+|---|---|---|
+| `WebRtcTransport` | `src/mp/transport/webRtcTransport.ts` | the Transport contract over one reliable ordered RTCDataChannel `match`: offers to the signaler's current host with its generation through the room relay, trickle ICE both ways, `bufferedAmount` as backpressure under the shared policy, `reconnect()` = a fresh offer with the shared backoff, `retarget()` = an immediate offer to a newly elected host, stale-generation / wrong-sender signals ignored, close reasons on `TRANSPORT_CLOSE`, the selected candidate pair's types (host / srflx / prflx / relay → TURN) from the stats, ICE from v1's `loadIceConfiguration` resolved per connection with a host-candidates fallback |
+| `MigratingTransport` | `src/mp/transport/migratingTransport.ts` | swaps a running client's link (peer ↔ host loopback) as `reconnecting` → `open { resumed }`, so the MatchClient re-runs its handshake and keeps its prediction, events and retained state |
+| `rtcClientLink` | `src/mp/match/rtcClientLink.ts` | the actor's `ClientLink` over a data channel (the wire CLOSE before the channel closes; `abandon()` drops a channel silently) and the host acceptor: one peer connection per offer of the current generation, answered through the room, the opened channel handed over labelled by ordinal; re-offers replace (REPLACED), stale / over-capacity offers refused, a channel that never opens dropped after 15 s |
+| the browser host | `src/mp/host/` | `matchHost` (main thread: the Worker port and the acceptor up from construction, channels bridged as numbered links with transferred frames and pressure, the host's own seat through the loopback pair, reports forwarded, uplink and peers sampled), `matchHostCore` (in the Worker: the unchanged `server/match/matchActor.ts` on a manifest world, a HELLO gate verifying seat tokens with the per-match host secret through Web Crypto, `match_report` at `loading` / every phase / every `ROOM_MATCH_POLL_MS` and one `ended` report carrying the verdict, nothing after it (the room closes the match on that report and refuses anything later as `invalid_command`), a sealed keyframe of every entity every `ROOM_MATCH_KEYFRAME_INTERVAL_MS` and the boot configuration every 10 s, links opened before the boot held), `migrationState` (AES-GCM under SHA-256(hostSecret ':migration'); the keyframe codec + extras; chunking under the event limit; the actor restore), `hostPlan` (the roster as `planStart` froze it, the WELCOME roster as the migration fallback), `seatTokenWeb`, `worldCollision` (below), `browserHostPort` (the Worker chunk), `inProcessHost` (Node) |
+| the session | `src/mp/session/matchSession.ts` | an `rtc://` `match_start` opens no socket: the named host boots the browser host and plays through its loopback, every other seat opens a `WebRtcTransport`, both behind a `MigratingTransport`; a `host_changed` with a NEWER generation is the migration (the start election and older ones are no-ops, the reason never decides); seats that cannot host (no Worker, the mobile tier, the never-host switch) send `host_decline` on join; a leaving host declines so the room elects the next; `host_only` on a report steps a stale host down to a peer; `ws(s)://` keeps the WebSocket path unchanged |
+| status + surface | `networkStatus.ts`, `src/ui/multiplayerStatus.ts` | role, generation, host, candidate type, TURN, host uplink (kbit/s), peers served, migration in progress; the HOST badge, four rows behind the role, the migration banner ("New host: X · resuming…"); 18 keys in both catalogs; telemetry kinds `mp_host` / `mp_migrate` fold into the exit note as `:h<n>:m<n>` |
+
+**Migration, both sides.** Keyframes are viewer-filtered (hidden enemy coordinates never reach a client — the AGENTS
+invariant), so the plain snapshot stream cannot seed a new host. The host therefore broadcasts, inside wire EVENT
+messages (`mp:keyframe`, `mp:config`, base64url chunks under `MAX_EVENT_JSON_BYTES`), a keyframe of EVERY entity
+sealed with AES-GCM under a key derived from the per-match host secret: every peer keeps the newest blob without being
+able to read it; only the seat the room elects — which receives `hostSecret` in its `host_changed` — opens it. The
+elected seat overlays what it saw itself (its own newest assembled frame: exact for its allies and spotted enemies),
+restores the actor (poses, health, ammo, reload, ERA, kills, damage, modules, crew, fires) and boots at
+`max(resumeTick, keyframeTick + ticks elapsed since it arrived)`: the tick timeline stays continuous with the old host's,
+so every client's server clock and input lead still fit; the actor skips the countdown and its battle clock and clock
+limit continue (`MatchActorResume`). Entities hidden from the new host resume from the sealed keyframe, at most
+`ROOM_MATCH_KEYFRAME_INTERVAL_MS` old. The old host's own leave drops its peers' channels without a wire CLOSE so their
+clients read a lost link and wait for the election; a match that ended still closes with `MATCH_ENDED`.
+
+**The collision source (decision).** The host fetches the same manifest the match container loads:
+`vite.config.ts` emits `server/world-collision-manifests` under `/mp-collision` (`index.json` revalidated; every map
+content-addressed as `<map>.<sha256[0..12]>.json`, cacheable; dev serves the source directory), and
+`src/mp/host/worldCollision.ts` verifies the index's byte count and SHA-256 with Web Crypto, decodes with the server's
+codec and builds `createHeadlessCollisionWorld` over the map's height field — the container's
+`createDedicatedWorldCollision` step for step minus the disk. `worldCollision.selftest` proves the fetched world equals
+the disk-loaded one (verdant: 6977 obstacles, the same concealers and heights). The alternative — the host's own
+`WorldCollision` — was not taken: proving byte-identical simulation across the two collision structures would need a
+soak of its own, while the manifest path is the one P3 certifies for the container. Cost: 56 MB of JSON in the build,
+one map fetched per hosted match, nothing on the boot path.
+
+**Bundle.** `vite build` at the base (a2b660786) and this tip: `main-*.js` 763,135 → 764,155 B raw (+1,020),
+228,927 → 229,059 B brotli (+132). The host Worker chunk `matchHostWorker-*.js` is 10.4 MB raw / 2.1 MB brotli
+(the actor, the simulation, the fleet builders) and loads only when a seat hosts.
+
+**Receipts and proofs.** `roomClientSignals`, `webRtcTransport` (on the scripted WebRTC world
+`rtcDouble.test-support.ts`), `rtcClientLink`, `matchActorResume`, `seatTokenWeb`, `hostPlan`, `migrationState`
+(a real actor restored within 1 mm), `matchHost` (boot, loopback seat, WebRTC peer, bad token, reports, sealed
+keyframes with the hidden enemy, migration to a second host at the continued tick, 0.00 m own-hull jump),
+`worldCollision`, the extended `networkStatus` / `multiplayerStatus` / `telemetry` / `browserComposition` receipts,
+and `tools/mp-p2p-headless.mjs` (core group): three real sessions with in-process hosts on the scripted WebRTC world
+against `tools/mp-p2p-room-double.ts` (P1's relay order, election, secrets) — the rtc:// start, channels through
+the relay, motion on every seat, sealed keyframes retained, the host's tab closing → the election after the grace →
+the elected peer resumes at the continued tick (an ally's hull 0.38 m from where it was last seen, one tick of driving)
+and the other peer follows, the old host back as a peer. `tools/mp-p2p-e2e.mjs` (`npm run test:net:v2:p2p`) is the
+same flow in three headless Chromes with real WebRTC on localhost; `--rooms=wss://…` points it at the real room
+service (no double: the election and the seats' ids come from the sessions' own facts, the host's reports are not
+gated). While the old host re-enters, the two tabs still rendering draw at 320×200: two full battle frames starve the
+shared headless GPU process during its program compile (four runs at host loads 19–40 lost that step to the
+preparation budget before the law below and the shrink; the first entry passes because every tab compiles before any
+renders). The existing `mp-exit-e2e` and `mp-browser-e2e` proofs keep the WebSocket path and stay green.
+Runs 5–10 (2026-09-28 19:55–20:19, a foreign 700 % GPU load on the host, load 33–60): the start, the channels, the play
+and the migration green every time steps A–C ran (B elected 3.4–3.8 s after A's tab closed, generation 2, C +120
+snapshots in 4 s on B, B's hull 0.14–4.27 m from where C saw it, two reports from B, none refused); the old host's
+return re-entered on its own 5.9 s after its page booted (the recorded timeline: runtime at 0.3 s, session `match` at
+5.9 s) and its compile missed both windows — trace `compile` 5010 ms, `compileRetry` 5012 ms — the environment limit
+the law is for, in `report.json`; one run lost even the first entry the same way (`compile` 5006 + `compileRetry`
+5018 ms). Against the real service (`--rooms=wss://cot-rooms.kk23907751.workers.dev`) the Worker answers 403 to a
+`http://127.0.0.1` page: its `ALLOWED_ORIGINS` is the site origin alone (cloudflare/rooms/wrangler.jsonc), so the
+live run waits for a dev-origin allowance from P1 or a run from the site itself.
+
+**Entry resilience (2026-09-28).** The strict shader preparation is a wall-clock-bounded operation
+(`src/engine/programWarm.ts`, 5 s — unchanged). The v2 entry now treats a preparation that ran out of that budget the
+way the reveal and paint budgets are treated (the 2026-09-25 law: extend once, then wait): `warm.compile` runs once
+more with a fresh deadline before the entry fails with the same message; any other incomplete reason fails at once;
+the extension is a `slow_reveal` beacon (`stage: compile`, `code: compile_extended`, the first attempt's ms, the
+programs still pending — `src/main.ts` sends it) and a `compileRetry` stage in the load trace. On a real GPU with one
+tab the compile takes 1–2 s; the second window covers a starved GPU process or a cold shader cache.
+`browserComposition.selftest` proves budget → complete proceeds (two compiles, one beacon, the loader's "still
+preparing"), budget twice fails with the message and no third attempt, invalidated never retries.
+
+**Open.** (1) Two of P1's requests are honoured by design but wait for the merge to be proven against the real
+service: `host_only` step-down and the report cadence are exercised only against the double. (2) A host_decline from a
+running host is honoured by the double as "elect the next willing seat"; P1 keeps a host without a willing successor,
+the client then simply stays. (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
+stream is the follow-up if the soak shows it matters. (4) The Worker chunk is heavy (10.4 MB raw): the fleet builders
+ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. (5) The
+three-browser proof against the real room service needs the Worker to allow a development origin (`ALLOWED_ORIGINS`)
+or a run from the site origin. (6) The old host's return in the headless proof is at the mercy of the host's GPU: the
+compile budget (5 s, extended once) is a production constant; a green rejoin needs a quiet host.
+(5) The e2e's `--grace` is 3 s (the contract's 8 s makes the proof slower, not different). (6) The unreliable snapshot
+channel of §13.2 stays a measured follow-up.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

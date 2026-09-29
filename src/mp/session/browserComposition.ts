@@ -25,7 +25,7 @@
  * a scripted session and a recorded presentation).
  */
 import { MatchSession } from './matchSession.ts';
-import type { MatchSessionOptions, MatchSessionStats, SessionPhase, SessionPresentation, SessionRound } from './matchSession.ts';
+import type { MatchSessionOptions, MatchSessionP2pOptions, MatchSessionStats, SessionP2pEvent, SessionP2pStatus, SessionPhase, SessionPresentation, SessionRound } from './matchSession.ts';
 import { NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName } from './networkStatus.ts';
 import type { NetworkBanner, NetworkStatusEvent, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
 import { isMultiplayerV2Session } from './playMenuAdapter.ts';
@@ -104,6 +104,16 @@ export interface BrowserEntryFailure {
   reason: string;
 }
 
+/** A budget the entry extended once (the same beacon kind the reveal and paint budgets report). */
+export interface BrowserSlowEntry {
+  stage: 'compile';
+  code: 'extended';
+  /** The first attempt's duration. */
+  ms: number;
+  /** Programs still unprepared when the first attempt ran out. */
+  pending: number | null;
+}
+
 export interface BrowserLoadPorts {
   battleLoad: BrowserLoadScreen;
   audio: { resume(): RuntimeValue; loadingOn(active: boolean): RuntimeValue; ambientOn(active: boolean): RuntimeValue };
@@ -117,6 +127,7 @@ export interface BrowserLoadPorts {
   now?(): number;
   recordTrace?(trace: BrowserLoadTrace): void;
   recordEntryFailure?(failure: BrowserEntryFailure | null): void;
+  recordSlowEntry?(beacon: BrowserSlowEntry): void;
 }
 
 export interface BrowserRosterPorts {
@@ -149,12 +160,25 @@ export interface BrowserWarmPorts {
   terrain?(view: BrowserWarmView): MaybePromise<RuntimeValue>;
   wrecks?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   playerPanel?(view: BrowserWarmView, viewerId: string): MaybePromise<RuntimeValue>;
-  compile?(signal?: AbortSignal): MaybePromise<{ preparation?: { status?: string; pending?: number | null } | null } | null | undefined>;
+  compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation } | null | undefined>;
   openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
   presentation?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   finalShadows?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
+}
+
+/** The strict program preparation's verdict (src/engine/programWarm.ts ProgramPreparationResult, structurally). */
+export type BrowserWarmPreparation = { status?: string; pending?: number | null; reason?: string } | null | undefined;
+
+/** Exhausting the cooperative generator is not proof the programs are ready: only a complete result with nothing pending is. */
+function preparationIncomplete(preparation: BrowserWarmPreparation): boolean {
+  return !!preparation && (preparation.status !== 'complete' || (preparation.pending ?? 0) !== 0);
+}
+
+/** The preparation itself was sound but its wall-clock deadline passed first (a starved GPU process, a cold shader cache). */
+function preparationOutOfBudget(preparation: BrowserWarmPreparation): boolean {
+  return !!preparation && preparation.status === 'incomplete' && preparation.reason === 'budget';
 }
 
 export interface BrowserScenePorts {
@@ -247,6 +271,15 @@ export interface BrowserStatusPorts {
   report?(summary: NetworkStatusSummary, reason: BrowserLinkExit): void;
 }
 
+/**
+ * The peer-to-peer surfaces (P2 client lane, 2026-09-28): ICE from v1's credential source per room mode, the host
+ * actor's Worker, where the collision manifests are served, the device tier (the mobile tier never hosts).
+ */
+export interface BrowserP2pPorts extends Omit<MatchSessionP2pOptions, 'ice' | 'onLog'> {
+  /** ICE servers for a room mode (`lan` needs none; `private` asks the credential service). */
+  loadIce?(mode: RoomMode): Promise<MatchSessionP2pOptions['ice'] extends infer T ? Exclude<T, undefined | (() => unknown)> : never>;
+}
+
 export interface BrowserCompositionPorts {
   lifecycle: BrowserEntryLifecycle;
   load: BrowserLoadPorts;
@@ -256,6 +289,7 @@ export interface BrowserCompositionPorts {
   presentation: BrowserPresentationPorts;
   room: BrowserRoomPorts;
   status?: BrowserStatusPorts;
+  p2p?: BrowserP2pPorts;
 }
 
 /** The session owner as the composition drives it (MatchSession, or the receipt's scripted one). */
@@ -264,6 +298,9 @@ export interface SessionOwner {
   readonly round: SessionRound | null;
   /** The live match client (the network status model attaches to it on the `match` phase). */
   readonly match?: NetworkStatusMatchSource | null;
+  /** The peer-to-peer facts and events (the status model attaches with the match). */
+  readonly p2p?: Readonly<SessionP2pStatus> | null;
+  onP2p?(listener: (event: SessionP2pEvent) => void): Unsubscribe;
   /** Re-enter a match this seat still holds a `match_start` for (a Garage return kept the room). */
   enterMatch?(payload: RoomMatchStartPayload): Promise<unknown>;
   start(): void;
@@ -778,11 +815,19 @@ export function createBrowserComposition({
     status.attachRoom(next.client);
     subscriptions.push(next.onLobby(handleLobby));
     subscriptions.push(next.onClosed(handleRoomClosed));
+    const p2pPorts = ports.p2p;
     const owner = createSession({
       room: next.client,
       createPresentation: createRoundPresentation,
       clock,
       clientBuild,
+      ...(p2pPorts ? {
+        p2p: {
+          ...p2pPorts,
+          ice: p2pPorts.loadIce ? () => p2pPorts.loadIce!(roomMode()) : undefined,
+          onLog: (level, message, fields) => { if (level !== 'info') reportError(`multiplayer v2 host ${level}`, fields ? `${message} ${JSON.stringify(fields)}` : message); },
+        },
+      } : {}),
     });
     session = owner;
     subscriptions.push(owner.onPhase(handlePhase));
@@ -1000,13 +1045,29 @@ export function createBrowserComposition({
       load.battleLoad.progress(0.87, 'Compiling combat shaders');
       await load.nextFrame();
       check('compile');
-      const compiled = await warm.compile?.(signal);
+      let compiled = await warm.compile?.(signal);
       check('compile');
-      const preparation = compiled?.preparation;
-      if (preparation && (preparation.status !== 'complete' || (preparation.pending ?? 0) !== 0)) {
-        throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
+      let preparation = compiled?.preparation;
+      if (preparationOutOfBudget(preparation)) {
+        // Entry resilience (2026-09-28): the strict preparation is a bounded wall-clock operation (programWarm.ts) and a
+        // starved GPU process — other tabs rendering, a cold shader cache — can outrun it once. Like the reveal budget
+        // (extends once, then waits) the compile runs once more with a fresh deadline before the entry fails; the
+        // extension is a beacon, the second verdict is final.
+        const firstAttemptMs = Math.round(now() - active.stageAt);
+        markStage(active, 'compile');
+        load.recordSlowEntry?.({ stage: 'compile', code: 'extended', ms: firstAttemptMs, pending: preparation?.pending ?? null });
+        load.battleLoad.progress(0.87, 'Compiling combat shaders (still preparing)');
+        await load.nextFrame();
+        check('compileRetry');
+        compiled = await warm.compile?.(signal);
+        check('compileRetry');
+        preparation = compiled?.preparation;
+        markStage(active, 'compileRetry'); // the trace keeps the second attempt's duration whichever way it ends
+        if (preparationIncomplete(preparation)) throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
+      } else {
+        if (preparationIncomplete(preparation)) throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
+        markStage(active, 'compile');
       }
-      markStage(active, 'compile');
       load.battleLoad.progress(0.88, 'Priming combat effects');
       const fx = scene.getFx();
       await warm.openingEffects?.(fx, view, signal);
@@ -1100,8 +1161,11 @@ export function createBrowserComposition({
     if (phase === 'match') {
       const client = session?.match;
       if (client) status.attachMatch(client);
+      const owner = session;
+      if (owner && typeof owner.onP2p === 'function') status.attachP2p({ get p2p() { return owner.p2p ?? null; }, onP2p: (listener) => owner.onP2p!(listener) });
     } else if (phase === 'lobby') {
       status.detachMatch();
+      status.detachP2p();
     }
     if (phase !== 'lost') return;
     const active = round;

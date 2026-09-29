@@ -13,8 +13,9 @@ under `src/mp` is imported by the solo boot path.
 | Directory | Owns | Node-runnable |
 |---|---|---|
 | `wire/` (server lane) | The binary schema and codecs both sides share. Import it; never edit it from the client lane. | yes |
-| `transport/` | `Transport` contract (`open/send/reconnect/close`, `onFrame/onState`, `bufferedBytes`, typed close reasons), `WebSocketTransport`, `LoopbackTransport` pair. | yes |
-| `match/` | `MatchClient` and its parts: `clock.ts`, `inputStream.ts`, `snapshotStream.ts`, `interpolation.ts`, `prediction.ts` (+ `movementCheckpoint.ts`), `events.ts`, `recovery.ts`, `headlessDriver.ts`; `scriptedServer.test-support.ts` is the fixture server the receipts use. | yes |
+| `transport/` | `Transport` contract (`open/send/reconnect/close`, `onFrame/onState`, `bufferedBytes`, typed close reasons), `WebSocketTransport`, `LoopbackTransport` pair, `WebRtcTransport` (one reliable ordered data channel to the hosting browser through the room's signaling relay; ICE from v1's credential source), `MigratingTransport` (swaps a running client's link across a host migration); `rtcDouble.test-support.ts` is the scripted WebRTC world the receipts run on. | yes |
+| `match/` | `MatchClient` and its parts: `clock.ts`, `inputStream.ts`, `snapshotStream.ts`, `interpolation.ts`, `prediction.ts` (+ `movementCheckpoint.ts`), `events.ts`, `recovery.ts`, `headlessDriver.ts`, `migrationStore.ts` (the sealed keyframes a client keeps for a host migration), `rtcClientLink.ts` (the actor's link over a data channel and the host acceptor); `scriptedServer.test-support.ts` is the fixture server the receipts use. | yes |
+| `host/` | The browser host (docs/MULTIPLAYER-V2.md §13.6): `matchHost` (main thread: the Worker port, the WebRTC acceptor, the loopback seat, the room reports), `matchHostCore` (in the Worker: the unchanged `server/match` actor, the Web Crypto HELLO gate, sealed migration keyframes), `migrationState`, `hostPlan`, `seatTokenWeb`, `worldCollision` (the container's manifest, fetched and verified), `browserHostPort` (the Worker chunk) / `inProcessHost` (Node). | yes (the Worker chunk is browser-only) |
 | `presentation/` | `PresentationAdapter` + `bindMatchPresentation`, `RecordingPresentation` (headless), `createBattlePresentation` (the renderer/HUD/FX/audio bridge), `createPredictionWorld` (the collision the prediction integrates against). | adapter + recorder yes; the battle presentation needs the fleet and `three` |
 | `room/` | The room protocol and policy both sides share, `RoomActor` (the room state machine the LAN helper and the Worker run), `RoomClient` (create/join/resume, commands, chat, `match_start`). | yes |
 | `session/` | `MatchSession` (one room's session owner: a `MatchClient` and a presentation per round), `createHeadlessSession` (receipts, `tools/mp-rooms-e2e.mjs`, `tools/mp-exit-e2e.mjs`), `createRoomConnectionAdapter` (the Play menu's v2 room connection), `resolveRoomsUrl` (the rooms endpoint policy), `NetworkStatusModel` (`networkStatus.ts`: the link's status snapshot, threshold table, banner facts and telemetry summary — below), `createBrowserComposition` (the browser launch, below). | yes; the browser composition's default presentation factory needs the fleet and `three` |
@@ -86,6 +87,25 @@ predictor's state object directly, effects are the authority's events.
 | Events | released once the presented tick reaches theirs, ≤ 3 per frame, a heavy one (shot, hit, impact, destruction, prop) ends the flush; own shots bypass | v1's volley budget |
 | Recovery | stalled after 5 s without accepted authority (one reconnect request), live only after a snapshot on the socket, failed 60 s after the loss, explicit leave | v1's watchdog and grace; WELCOME alone never ends an outage |
 | Status verdict | `good` / `degraded` / `bad` / `offline` from one table (round-trip floor 160 / 300 ms, spread 40 / 100 ms, 4 s loss 6 / 15 %, snapshot age 250 / 1000 ms, cadence 80 / 50 % of 30 Hz, visible corrections 2 / 6 per s) after the transport and link states; sampled at 4 Hz | `docs/MULTIPLAYER-V2.md` §12; the round trip is the 16-sample window minimum (a busy main thread can only inflate a pong), a window with a ≥ 250 ms self-stall judges neither cadence nor freshness |
+
+## Peer-to-peer (`?mp=v2`, owner decision 2026-09-28)
+
+A `match_start` whose URL is `rtc://<room>/<generation>` opens no socket (docs/MULTIPLAYER-V2.md §13). The seat the
+room names as host boots `src/mp/host` — the match actor in a Worker on the map's collision manifest fetched from
+`/mp-collision`, seat tokens verified with the per-match host secret, reports to the room (one `ended` report closes the match, nothing after it), a sealed keyframe of every
+entity every 2 s — and plays through the host's loopback pair; every other seat opens a `WebRtcTransport` to the host
+through `room_signal`. Both ride a `MigratingTransport`: a `host_changed` with a newer generation makes the elected
+peer open its retained keyframe (only its `host_changed` carries the secret), boot a host at the continued tick and
+swap its link onto it; the other peers re-offer to the new host; a replaced host steps down. Seats that cannot host
+(no Worker, the mobile tier, the never-host switch) send `host_decline` on join. The status model shows the role,
+the generation, the candidate path (TURN), the host uplink and the migration banner. Receipts: `transport/webRtcTransport`,
+`match/rtcClientLink`, `host/*`, `room/roomClientSignals`, the extended session / status / surface / telemetry ones,
+and the headless three-seat proof `tools/mp-p2p-headless.mjs` (core group) on `tools/mp-p2p-room-double.ts`;
+`npm run test:net:v2:p2p` runs the same flow in three headless Chromes with real WebRTC (`--rooms=wss://…` for the real
+room service; the two tabs still rendering draw at 320×200 while the old host re-enters, so its program compile is not
+starved by two full battle frames on the shared headless GPU). The v2 entry itself extends a shader preparation that ran
+out of its wall-clock budget once (a fresh deadline, a `slow_reveal` beacon `compile_extended`, a `compileRetry` stage)
+before failing — docs/MULTIPLAYER-V2.md §13.6 "Entry resilience".
 
 ## Network status and the exit flow
 

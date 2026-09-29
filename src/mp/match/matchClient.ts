@@ -30,6 +30,8 @@ import { LocalPredictor } from './prediction.ts';
 import type { CorrectionPolicy, PredictionStats, PredictionWorld } from './prediction.ts';
 import { ConnectionRecovery } from './recovery.ts';
 import type { ConnectionPhase, RecoveryOptions } from './recovery.ts';
+import { MigrationStore } from './migrationStore.ts';
+import type { RetainedBlob } from './migrationStore.ts';
 import { SnapshotStream } from './snapshotStream.ts';
 import type { TankState } from '../../sim/movement.ts';
 
@@ -104,6 +106,15 @@ export interface MatchFrame {
   ownShots: OwnShotEvent[];
   extrapolatedMs: number;
   phase: ConnectionPhase;
+}
+
+/** What this client holds for a host migration (P2 client lane): the sealed blobs and the newest assembled frame. */
+export interface RetainedMigrationState {
+  keyframe: RetainedBlob | null;
+  config: RetainedBlob | null;
+  /** The newest assembled (viewer-filtered) frame and when it arrived: exact for what this viewer could see. */
+  latestFrame: SnapshotFrame | null;
+  latestFrameAtMs: number | null;
 }
 
 export interface MatchClientStats {
@@ -185,6 +196,8 @@ export class MatchClient {
   readonly events: ReliableEventQueue;
   readonly ownShots: OwnShotPredictor;
   readonly recovery: ConnectionRecovery;
+  /** Migration blobs the host rides inside EVENT messages (kept, never presented). */
+  readonly migration = new MigrationStore();
   private readonly token: string;
   private readonly clientBuild: string;
   private readonly capabilities: number;
@@ -314,6 +327,11 @@ export class MatchClient {
   get predictorStats(): Readonly<PredictionStats> | null { return this.predictor?.liveStats ?? null; }
   get bytesInPerSecond(): number { return this.bytesInPerS; }
   get bytesOutPerSecond(): number { return this.bytesOutPerS; }
+
+  /** The state a newly elected host boots from (the sealed keyframe and config, the newest frame this viewer assembled). */
+  retainedMigration(): RetainedMigrationState {
+    return { keyframe: this.migration.keyframe, config: this.migration.config, latestFrame: this.snapshots.latest, latestFrameAtMs: this.lastAuthorityAtMs };
+  }
 
   connect(): void {
     if (this.disposed) throw new Error('match client disposed');
@@ -701,6 +719,14 @@ export class MatchClient {
   private readonly controlAt = (tick: number): PredictionControl | null => this.inputStream.controlAt(tick);
 
   private receiveEvents(message: EventMessage): void {
+    // Migration chunks are retained here and never reach the presentation or the budgeted queue.
+    let game: WireEvent[] | null = null;
+    const nowMs = this.clock();
+    for (const event of message.events) {
+      if (!this.migration.receive(event, nowMs)) (game ??= []).push(event);
+    }
+    if (!game) return;
+    if (game.length !== message.events.length) message = { type: MESSAGE_TYPE.EVENT, tick: message.tick, events: game };
     if (!this.ownPlayerId) { this.events.push(message); return; }
     let own: WireEvent[] | null = null;
     let rest: WireEvent[] | null = null;
