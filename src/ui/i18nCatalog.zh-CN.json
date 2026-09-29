@@ -3518,5 +3518,7 @@
   "fieldGuide.recipeTitle": "重现 {name}",
   "fieldGuide.recipeLabel": "关于场景配方：{name}",
   "fieldGuide.videoTitle": "重现此工作室视频",
-  "fieldGuide.videoFrame": "游戏渲染的工作室画面"
+  "fieldGuide.videoFrame": "游戏渲染的工作室画面",
+  "credits.portraitAlt": "Kevin B. Liu 的肖像",
+  "credits.originalGame": "原创浏览器游戏"
 }

@@ -3518,5 +3518,7 @@
   "fieldGuide.recipeTitle": "Recreate {name}",
   "fieldGuide.recipeLabel": "About this scene recipe: {name}",
   "fieldGuide.videoTitle": "Recreate this Studio video",
-  "fieldGuide.videoFrame": "Game-rendered Studio frame"
+  "fieldGuide.videoFrame": "Game-rendered Studio frame",
+  "credits.portraitAlt": "Kevin B. Liu",
+  "credits.originalGame": "An original browser game"
 }
