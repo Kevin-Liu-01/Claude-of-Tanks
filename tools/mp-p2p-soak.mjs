@@ -302,9 +302,11 @@ try {
   if (gameHost) {
     // the game page creates the LAN room through its Play menu (the menu's size; bots fill by the menu's rule); the code rides the URL
     const page = peers[0].page;
-    await page.click('.cot-battle-mode');
-    await page.click('.cot-battle-choice[data-mode="lan"]');
-    await page.click('.cot-battle');
+    // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
+    await page.click('.cot-multiplayer-entry');
+    await page.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
+    await page.click('.cot-play .modes [data-mode="lan"]');
+    await page.waitForFunction(() => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), { timeout: 10_000 });
     await waitFor(page, () => document.querySelector('.cot-play')?.classList.contains('show'), 'game host play menu', 30_000);
     await page.evaluate(() => { const name = document.querySelector('.cot-play [data-field="name"]'); if (name) name.value = 'Game Host'; });
     await page.click('.cot-play [data-action="create"]');

@@ -188,10 +188,11 @@ try {
   await pages.a.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A garage ready', 240_000);
   step('a-garage-ready');
-  await pages.a.click('.cot-battle-mode');
-  await pages.a.click('.cot-battle-choice[data-mode="lan"]');
-  await pages.a.click('.cot-battle');
+  // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
+  await pages.a.click('.cot-multiplayer-entry');
   await waitFor(pages.a, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
+  await pages.a.click('.cot-play .modes [data-mode="lan"]');
+  await waitFor(pages.a, () => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), 'A LAN mode', 10_000);
   await pages.a.evaluate(() => {
     const name = document.querySelector('.cot-play [data-field="name"]');
     if (name) name.value = 'Alpha Lead';

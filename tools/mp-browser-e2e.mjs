@@ -209,9 +209,11 @@ try {
   await pageA.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pageA, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A garage ready', 240_000);
   step('a-garage-ready');
-  await pageA.click('.cot-battle-mode');
-  await pageA.click('.cot-battle-choice[data-mode="lan"]');
-  await pageA.click('.cot-battle');
+  // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
+  await pageA.click('.cot-multiplayer-entry');
+  await pageA.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
+  await pageA.click('.cot-play .modes [data-mode="lan"]');
+  await pageA.waitForFunction(() => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), { timeout: 10_000 });
   await waitFor(pageA, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
   const signalUrl = await pageA.$eval('.cot-play [data-field="signal"]', (input) => input.value);
   if (signalUrl !== rooms.url) failures.push(`A's room host field reads ${signalUrl}, expected ${rooms.url}`);
@@ -385,7 +387,7 @@ try {
   const garageStats = await stats(pageB);
   report.leave.roomKeptInGarage = !!garageStats?.room;
   if (!garageStats?.room) failures.push('B lost the room on the Garage return');
-  await pageB.click('.cot-battle');
+  await pageB.click('.cot-multiplayer-entry'); // 2026-09-29: the play dialog (with the kept room's lobby) opens from the multiplayer entry
   await waitFor(pageB, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B reopened the room', 30_000);
   await screenshot(pageB, 'b-room-after-battle.png');
 
@@ -408,7 +410,7 @@ try {
   if (!report.rejoin.strip?.visible) failures.push('B has no network strip after the rejoin');
   await pageB.evaluate(() => window.__DEBUG.leaveBattleToGarage());
   await waitFor(pageB, () => window.__DEBUG?.game?.phase === 'garage' && window.__MULTIPLAYER_V2?.stats?.().active === false, 'B back in the Garage after the rejoin', 60_000);
-  await pageB.click('.cot-battle');
+  await pageB.click('.cot-multiplayer-entry'); // 2026-09-29: the play dialog (with the kept room's lobby) opens from the multiplayer entry
   await waitFor(pageB, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B reopened the room again', 30_000);
   await pageB.click('.cot-play [data-action="leave"]');
   await waitFor(pageB, () => window.__MULTIPLAYER_V2?.stats?.().room === null && !document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B left the room', 30_000);
