@@ -1,30 +1,24 @@
 /**
- * The Play menu's Multiplayer v2 room connection (charter §8: v2 ships behind
- * `?mp=v2` on the same site). `src/ui/playMenu.ts` stays the entry boundary
- * and keeps driving v1's `PrivateRoomConnectionRuntime` contract — connect,
- * observe, close, forget, current, connecting — so this module implements
- * that contract over a `RoomClient`: the menu renders the v1 `SerializedLobby`
- * shape (`roomToLobby`), sends the same commands (`set_ready`, `set_team`,
- * `select_vehicle`, `set_map`, `start`, …), and hands the match off through
- * `onHostStart` for every seat once the room's `match_start` arrives. The
- * connection carries `inviteVersion: 2`, so invite links stamp `v=2` and the
- * start reaches the v2 session owner instead of v1. Node-runnable: no DOM; the
- * v1 modules are imported for their types only.
+ * The Play menu's room connection (Multiplayer v2, the only multiplayer since the
+ * cutover of 2026-09-29 — docs/MULTIPLAYER-V2.md §13.10). `src/ui/playMenu.ts`
+ * stays the entry boundary and drives this contract — connect, observe, close,
+ * forget, current, connecting — over a `RoomClient`: the menu renders the
+ * lobby shape `roomToLobby` produces, sends the room's commands (`set_ready`,
+ * `set_team`, `select_vehicle`, `set_map`, `start`, …), and hands the match off
+ * through `onHostStart` for every seat once the room's `match_start` arrives.
+ * Node-runnable: no DOM.
  */
 import { RoomClient } from '../room/roomClient.ts';
 import type { RoomClientOptions, StorageLike } from '../room/roomClient.ts';
-import { RoomError, normalizeRoomCode } from '../room/protocol.ts';
+import { normalizeRoomCode } from '../room/protocol.ts';
 import type { RoomChatEntry, RoomMatchStartPayload, RoomMode, RoomSnapshot } from '../room/protocol.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
-import type {
-  PrivateRoomConnection, PrivateRoomConnectionOptions, PrivateRoomConnectionRuntime, PrivateRoomConnectRequest,
-} from '../../net/privateRoomConnectionRuntime.ts';
 import type { SerializedLobby } from '../../net/lobby.ts';
 
 type Unsubscribe = () => void;
 type RoomCommand = Record<string, unknown>;
 
-/** Marks a menu session object as a v2 one (main.ts routes the start on it). */
+/** Marks a menu session object as a room session (main.ts routes the start on it). */
 export const MULTIPLAYER_V2_SESSION: unique symbol = Symbol.for('cot.mp.v2.session');
 
 /** What the menu (and the browser session owner) receives as `connection.session`. */
@@ -32,12 +26,12 @@ export interface V2RoomSession {
   readonly [MULTIPLAYER_V2_SESSION]: true;
   readonly roomInfo: { roomCode: string; peerId: string; hostId: string; hostName: string; mode: RoomMode };
   readonly client: RoomClient;
-  /** The newest lobby the room published, in the v1 shape the menu renders. */
+  /** The newest lobby the room published, in the shape the menu renders. */
   readonly lobby: SerializedLobby;
   readonly lastMatchStart: RoomMatchStartPayload | null;
   /** A policy command; rejections carry the room's code (`RoomError`). */
   command(command: RoomCommand): Promise<Record<string, unknown>>;
-  /** The same as `command` (v1 clients submit, hosts command; a v2 seat does both). */
+  /** The same as `command` (kept for callers that distinguish a host's command from a seat's submission). */
   submit(command: RoomCommand): Promise<Record<string, unknown>>;
   chat(text: string): Promise<void>;
   onLobby(listener: (lobby: SerializedLobby, room: RoomSnapshot) => void): Unsubscribe;
@@ -48,36 +42,55 @@ export interface V2RoomSession {
   close(reason?: string): void;
 }
 
-export interface V2RoomConnection {
+export interface RoomConnection {
   readonly generation: number;
+  /** The admin seat is the room's host for the menu's controls; it follows the room's `adminId` (a migration moves it). */
   readonly role: 'host' | 'client';
   readonly mode: RoomMode;
   readonly roomInfo: V2RoomSession['roomInfo'];
   readonly session: V2RoomSession;
-  readonly inviteVersion: 2;
-  /** v1's ICE surface the menu reads for its "direct only" note: a v2 room never relays. */
-  readonly ice: { iceServers: never[]; relayOnly: false; relayAvailable: true; source: 'lan' };
   readonly runtime: { onState(listener: (state: SerializedLobby) => void): Unsubscribe };
 }
 
-export interface RoomConnectionAdapterOptions extends PrivateRoomConnectionOptions {
+export interface RoomConnectRequest {
+  kind: 'create' | 'join';
+  mode: 'private' | 'lan';
+  /** The room host's ws:// or wss:// origin (src/mp/session/endpoint.ts). */
+  roomsUrl: string;
+  roomCode?: string;
+  player: { id: string; name: string };
+  selection: { specId: string; mapId: string; gameMode?: string; equipment: string[]; camo: string };
+  teamSize: number;
+}
+
+export interface RoomConnectionOptions {
   /** Private capabilities (localStorage in the browser, a memory map headless). */
   storage?: StorageLike | null;
   clientBuild?: string;
   /** Receipts inject a client bound to an in-process host or a scripted transport. */
   createRoomClient?: (options: RoomClientOptions) => RoomClient;
+  /** The room's `match_start` reached this seat: enter the match (every seat, the host included). */
+  onHostStart?(state: SerializedLobby, connection: RoomConnection): void;
+  /** The room is gone for the menu-owned seat (never after `forget()`: the session owner holds it then). */
+  onClose?(reason: string): void;
+  onStatus?(status: { state: 'connecting' | 'reconnecting' | 'connected' }): void;
+  onError?(error: unknown): void;
 }
 
-export interface RoomConnectionAdapter extends PrivateRoomConnectionRuntime {
-  /** The v2 view of `current` (same object, typed). */
-  readonly currentV2: V2RoomConnection | null;
+export interface RoomConnectionRuntime {
+  connect(request: RoomConnectRequest): Promise<RoomConnection | null>;
+  observe(listener: (state: SerializedLobby) => void): Unsubscribe;
+  close(reason?: string, options?: { transportAlreadyClosed?: boolean }): void;
+  forget(): void;
+  readonly current: RoomConnection | null;
+  readonly connecting: boolean;
 }
 
 export function isMultiplayerV2Session(value: unknown): value is V2RoomSession {
   return !!value && typeof value === 'object' && (value as Record<PropertyKey, unknown>)[MULTIPLAYER_V2_SESSION] === true;
 }
 
-/** `roomToLobby` produces the v1 wire shape; the menu renders it without a second validation. */
+/** `roomToLobby` produces the lobby wire shape; the menu renders it without a second validation. */
 export function lobbyOf(room: RoomSnapshot): SerializedLobby {
   return roomToLobby(room) as unknown as SerializedLobby;
 }
@@ -86,53 +99,45 @@ function connectFailure(code: string, message: string): Error & { code: string }
   return Object.assign(new Error(message), { code });
 }
 
-function validateConnectRequest(request: PrivateRoomConnectRequest): void {
+function validateConnectRequest(request: RoomConnectRequest): void {
   const validKind = request?.kind === 'create' || request?.kind === 'join';
   const validTeamSize = Number.isSafeInteger(request?.teamSize) && request.teamSize >= 1 && request.teamSize <= 14;
   const complete = validKind && Boolean(request.mode) && Boolean(request.player?.id) && Boolean(request.player?.name)
     && Boolean(request.selection?.specId) && Boolean(request.selection?.mapId) && validTeamSize;
   if (!complete) throw new TypeError('room connect request is incomplete');
-  if (!String(request.signalUrl ?? '').trim()) throw connectFailure('signaling_unavailable', 'no room host is configured for this deployment');
+  if (!String(request.roomsUrl ?? '').trim()) throw connectFailure('room_unconfigured', 'no room host is configured for this deployment');
   if (request.kind === 'join' && normalizeRoomCode(request.roomCode).length !== 6) throw connectFailure('invalid_room_code', 'Enter a six-character room code');
 }
 
 /**
- * Own one room acquisition for the Play menu, v2 style. A superseded attempt
- * (the menu closed or switched modes while connecting) disposes its client
- * instead of publishing a stale lobby; a connected room keeps one state
- * observation, hands the match off, and survives `forget()` unchanged so the
- * session owner that took the connection keeps the seat, the capability and
- * the socket.
+ * Own one room acquisition for the Play menu. A superseded attempt (the menu
+ * closed or switched modes while connecting) disposes its client instead of
+ * publishing a stale lobby; a connected room keeps one state observation,
+ * hands the match off, and survives `forget()` unchanged so the session owner
+ * that took the connection keeps the seat, the capability and the socket.
  */
 export function createRoomConnectionAdapter({
   storage = null,
   clientBuild = 'dev',
   createRoomClient = (options) => new RoomClient(options),
-  loadIce,
-  isVehicleAllowed,
-  isCamoAllowed,
-  isMapAllowed,
   onHostStart = () => {},
-  onClientClose = () => {},
-  onClose,
+  onClose = () => {},
   onStatus = () => {},
   onError = () => {},
-}: RoomConnectionAdapterOptions): RoomConnectionAdapter {
-  void loadIce; void isVehicleAllowed; void isCamoAllowed; void isMapAllowed; // the room host applies the policy guards
-  const required = [onHostStart, onClientClose, onStatus, onError, createRoomClient];
+}: RoomConnectionOptions = {}): RoomConnectionRuntime {
+  const required = [onHostStart, onClose, onStatus, onError, createRoomClient];
   if (required.some((entry) => typeof entry !== 'function')) throw new TypeError('room connection adapter requires every lifecycle port');
-  if (onClose !== undefined && typeof onClose !== 'function') throw new TypeError('onClose must be a function');
 
   let generation = 0;
   let pending: { generation: number; client: RoomClient } | null = null;
-  let current: V2RoomConnection | null = null;
+  let current: RoomConnection | null = null;
   /** After `forget()` the session owner holds the room; the menu's onClose stays silent. */
-  let released: V2RoomConnection | null = null;
+  let released: RoomConnection | null = null;
   let unsubscribeObservation: Unsubscribe | null = null;
 
   const clearObservation = () => { unsubscribeObservation?.(); unsubscribeObservation = null; };
 
-  const buildConnection = (client: RoomClient, room: RoomSnapshot, mode: RoomMode, attemptGeneration: number): V2RoomConnection => {
+  const buildConnection = (client: RoomClient, room: RoomSnapshot, mode: RoomMode, attemptGeneration: number): RoomConnection => {
     let lobby = lobbyOf(room);
     let lastMatchStart: RoomMatchStartPayload | null = client.matchStart;
     const lobbyListeners = new Set<(lobby: SerializedLobby, room: RoomSnapshot) => void>();
@@ -158,16 +163,20 @@ export function createRoomConnectionAdapter({
       onLobby: (listener) => { lobbyListeners.add(listener); return () => { lobbyListeners.delete(listener); }; },
       onChat: (listener) => client.onChat(listener),
       onClosed: (listener) => { closedListeners.add(listener); return () => { closedListeners.delete(listener); }; },
-      close: (reason = 'room_connection_closed') => close(reason),
+      close: (reason = 'room_connection_closed') => {
+        void reason;
+        // The menu's own seat closes through the menu; a released seat (the session owner's) leaves on its own.
+        if (current === connection) { close(); return; }
+        if (released === connection) released = null;
+        leave(connection, false);
+      },
     };
-    const connection: V2RoomConnection = {
+    const connection: RoomConnection = {
       generation: attemptGeneration,
       get role() { return room.adminId === client.playerId ? 'host' : 'client'; },
       mode,
       roomInfo,
       session,
-      inviteVersion: 2,
-      ice: { iceServers: [], relayOnly: false, relayAvailable: true, source: 'lan' },
       runtime: { onState: (listener) => session.onLobby((next) => listener(next)) },
     };
     subscriptions.push(client.onState((next) => {
@@ -177,7 +186,7 @@ export function createRoomConnectionAdapter({
     }));
     subscriptions.push(client.onMatchStart((payload) => {
       lastMatchStart = payload;
-      if (current === connection || released === connection) onHostStart(lobby, connection as unknown as PrivateRoomConnection);
+      if (current === connection || released === connection) onHostStart(lobby, connection);
     }));
     subscriptions.push(client.onPhase(({ phase }) => {
       if (phase === 'reconnecting') onStatus({ state: 'reconnecting' });
@@ -191,14 +200,20 @@ export function createRoomConnectionAdapter({
       generation++;
       clearObservation();
       current = null;
-      if (onClose) onClose(reason);
-      else onClientClose(reason);
+      onClose(reason);
     }));
     return connection;
   };
 
+  /** Leave the room on this connection's socket and release the client (or only release it when the socket is gone). */
+  const leave = (connection: RoomConnection, transportAlreadyClosed: boolean) => {
+    const client = connection.session.client;
+    if (transportAlreadyClosed) { client.dispose(); return; }
+    void client.leave().finally(() => client.dispose());
+  };
+
   const close = (reason = 'room_connection_closed', { transportAlreadyClosed = false }: { transportAlreadyClosed?: boolean } = {}) => {
-    void reason; // v1's contract names a reason for its presentation; a v2 leave is the seat's explicit departure
+    void reason; // the menu names a reason for its presentation; a leave is the seat's explicit departure
     generation++;
     clearObservation();
     const attempt = pending;
@@ -207,18 +222,15 @@ export function createRoomConnectionAdapter({
     const connected = current;
     current = null;
     released = null;
-    if (!connected) return;
-    const client = connected.session.client;
-    if (transportAlreadyClosed) { client.dispose(); return; }
-    void client.leave().finally(() => client.dispose());
+    if (connected) leave(connected, transportAlreadyClosed);
   };
 
-  const connect = async (request: PrivateRoomConnectRequest): Promise<PrivateRoomConnection | null> => {
+  const connect = async (request: RoomConnectRequest): Promise<RoomConnection | null> => {
     validateConnectRequest(request);
     if (pending || current) throw new Error('a room connection already owns this menu');
     const attemptGeneration = ++generation;
     const client = createRoomClient({
-      endpoint: String(request.signalUrl).trim(),
+      endpoint: String(request.roomsUrl).trim(),
       player: { id: request.player.id, name: request.player.name },
       storage,
       clientBuild,
@@ -240,14 +252,16 @@ export function createRoomConnectionAdapter({
       current = connection;
       pending = null;
       onStatus({ state: 'connected' });
-      return connection as unknown as PrivateRoomConnection;
+      return connection;
     } catch (error) {
       const canceled = pending !== attempt || generation !== attemptGeneration;
       if (pending === attempt) pending = null;
       client.dispose();
       if (canceled) return null;
       onError(error);
-      throw error instanceof RoomError ? Object.assign(error, { code: error.code }) : error;
+      // The room's own refusal carries the room's code (RoomError); an unreachable host carries `room_unreachable`
+      // (RoomConnectError): both reach the menu's classifier as `error.code`.
+      throw error;
     }
   };
 
@@ -274,8 +288,7 @@ export function createRoomConnectionAdapter({
       if (attempt) attempt.client.dispose();
       current = null;
     },
-    get current() { return current as unknown as PrivateRoomConnection | null; },
-    get currentV2() { return current; },
+    get current() { return current; },
     get connecting() { return pending !== null; },
   };
 }

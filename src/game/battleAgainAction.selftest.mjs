@@ -11,7 +11,7 @@ const wiring = source.slice(start, end);
 assert.equal(wiring.split("import('./ui/garageReturnFailure.ts')").length, 2,
   'exactly one lazy failure import, replaced only with a controlled deferred transfer');
 const compose = new Function('createBattleAgainAction', 'garageReturn', 'game',
-  'networkSession', 'bus', 'console', 'loadFailure', `
+  'multiplayerV2', 'bus', 'console', 'loadFailure', `
   let sceneWatchdogEntryGeneration = 0;
   ${wiring.replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()')}
   return { run: battleAgainAction.run, advanceEntry() { sceneWatchdogEntryGeneration++; } };
@@ -24,7 +24,7 @@ function deferred() {
 async function flush() { for (let index = 0; index < 6; index++) await Promise.resolve(); }
 function fixture() {
   const events = new Map(), logs = [], notices = [], closes = [], imports = [];
-  const game = { phase: 'ended' }, networkSession = { match: null };
+  const game = { phase: 'ended' }, multiplayerV2 = { current: null };
   let actionCalls = 0, nextAction = () => Promise.resolve();
   const show = createGarageReturnFailurePresenter(() => ({
     body: { textContent: '' }, setTitle() {},
@@ -38,10 +38,10 @@ function fixture() {
   };
   const owner = compose(createBattleAgainAction, {
     battleAgain() { actionCalls++; return nextAction(); },
-  }, game, networkSession, bus, { error: (...args) => logs.push(args) }, () => {
+  }, game, multiplayerV2, bus, { error: (...args) => logs.push(args) }, () => {
     const transfer = deferred(); imports.push(transfer); return transfer.promise;
   });
-  return { ...owner, game, networkSession, bus, module, imports, notices, closes, logs,
+  return { ...owner, game, multiplayerV2, bus, module, imports, notices, closes, logs,
     setAction(value) { nextAction = value; }, get actionCalls() { return actionCalls; } };
 }
 
@@ -75,7 +75,7 @@ for (const event of ['ui:battleAgain', 'ui:battleStart', 'phase:change', 'ui:roo
   f.setAction(async () => { throw new Error('old failure'); });
   const old = f.run(); await flush();
   if (event === 'ui:battleAgain') f.setAction(async () => {});
-  if (event === 'network:roomState') f.networkSession.match = {};
+  if (event === 'network:roomState') f.multiplayerV2.current = { room: {} };
   f.bus.emit(event); await flush();
   f.imports[0].resolve(f.module); await old;
   assert.equal(f.notices.length, 0, `${event}: stale failure cannot cover the newer owner`);
@@ -88,7 +88,7 @@ for (const change of ['phase', 'epoch', 'room']) {
   const old = f.run(); await flush();
   if (change === 'phase') f.game.phase = 'battle';
   if (change === 'epoch') f.advanceEntry();
-  if (change === 'room') f.networkSession.match = {};
+  if (change === 'room') f.multiplayerV2.current = { room: {} };
   f.imports[0].resolve(f.module); await old;
   assert.equal(f.notices.length, 0, `${change}: post-import ownership check`);
 }

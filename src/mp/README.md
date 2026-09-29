@@ -89,7 +89,7 @@ predictor's state object directly, effects are the authority's events.
 | Recovery | stalled after 5 s without accepted authority (one reconnect request), live only after a snapshot on the socket, failed 60 s after the loss, explicit leave | v1's watchdog and grace; WELCOME alone never ends an outage |
 | Status verdict | `good` / `degraded` / `bad` / `offline` from one table (round-trip floor 160 / 300 ms, spread 40 / 100 ms, 4 s loss 6 / 15 %, snapshot age 250 / 1000 ms, cadence 80 / 50 % of 30 Hz, visible corrections 2 / 6 per s) after the transport and link states; sampled at 4 Hz | `docs/MULTIPLAYER-V2.md` §12; the round trip is the 16-sample window minimum (a busy main thread can only inflate a pong), a window with a ≥ 250 ms self-stall judges neither cadence nor freshness |
 
-## Peer-to-peer (`?mp=v2`, owner decision 2026-09-28)
+## Peer-to-peer (owner decision 2026-09-28)
 
 A `match_start` whose URL is `rtc://<room>/<generation>` opens no socket (docs/MULTIPLAYER-V2.md §13). The seat the
 room names as host boots `src/mp/host` — the match actor in a Worker on the map's collision manifest fetched from
@@ -184,32 +184,39 @@ and shell knocks the client cannot see; 0.03–0.3 m otherwise), intrinsic ack
 lag p50 6 / p95 7 ticks against 7–8 ticks of RTT, every own shot predicted and
 confirmed, 0 rejected inputs, 0 dropped snapshots, server tick p95 0.17 ms.
 
-## Browser launch (`?mp=v2`)
+## Browser launch
 
-`src/app/multiplayerFlag.ts` reads the switch (`?mp=v2` on the URL or
-`localStorage["cot.mp.v2"] = "1"`; `?mp=v1` clears it). Behind it `src/main.ts`
-imports two modules dynamically — nothing under `src/mp` is on the solo boot
-path — and hands them to the Play menu:
+Since the cutover of 2026-09-29 (docs/MULTIPLAYER-V2.md §13.10) this is the
+only multiplayer path: no switch, no v1 fallback. The Play menu
+(`src/ui/playMenu.ts`, loaded behind explicit multiplayer intent — nothing
+under `src/mp` is on the solo boot path) imports its room connection directly:
 
-- `session/playMenuAdapter.ts` — `createRoomConnectionAdapter` implements v1's
-  `PrivateRoomConnectionRuntime` contract (connect / observe / close / forget)
-  over a `RoomClient`, so `src/ui/playMenu.ts` renders the v1 `SerializedLobby`
-  shape (`roomToLobby`) and sends the same commands. The connection carries
-  `inviteVersion: 2` (invite links stamp `v=2`) and a `session` recognised by
+- `session/playMenuAdapter.ts` — `createRoomConnectionAdapter` owns one room
+  acquisition for the menu (connect / observe / close / forget) over a
+  `RoomClient`; the menu renders the lobby shape `roomToLobby` produces and
+  sends the room's commands. The connection's `session` is recognised by
   `isMultiplayerV2Session`; the room's `match_start` reaches the menu's
-  `onHostStart` for every seat.
-- `session/endpoint.ts` — `resolveRoomsUrl` fills the menu's room-host field:
-  `VITE_ROOMS_URL` (a `wss://` origin) in production, the LAN helper
-  (`npm run server:mp`, port 8792) on local and RFC1918 hosts.
+  `onHostStart` for every seat. An unreachable room host is a
+  `RoomConnectError` (`room_unreachable`), a deployment without one
+  `room_unconfigured`: both present as "Room service unavailable" with a retry.
+- `session/endpoint.ts` — `resolveRoomsUrl` names the room host the menu
+  connects to: `VITE_ROOMS_URL` (a `wss://` origin), the official site's Worker
+  (`src/officialHost.ts`), or the LAN helper (`npm run server:mp`, port 8792)
+  on local and RFC1918 hosts. There is no connection-settings field.
+- `session/lobbyIntent.ts` — loaded with the menu by `src/main.ts`: the
+  pending lobby (the menu's seat while the player browses the Garage) and the
+  composition's owned room (its `network:roomState` event) paint the Garage's
+  room strip, warm the room's battlefield and roster builders through v1's
+  lobby preloader, and relay the strip's Ready, the vehicle pick and the end
+  screen's Start back into the menu, which sends the commands.
 
-The menu's `onNetworkStart` routes a v2 session to `beginMultiplayerV2Battle`
-(v1 otherwise), which mounts the same synchronous intent cover as v1 and loads
-`session/browserComposition.ts` — the v2 counterpart of
-`src/net/networkBattleComposition.ts`, built from the same app-port object
-(`networkCompositionOptions()` in main: the loader cover, `ensureBattleVisuals`,
-the battle-only modules, `ensureWorld`, the roster labels, the warm owners,
-v1's activation runtime, the Garage return). Per room it owns one
-`MatchSession`; per `match_start` the session asks it for a presentation:
+The menu's `onNetworkStart` calls `beginMultiplayerV2Battle` in main, which
+mounts the synchronous intent cover and loads `session/browserComposition.ts`,
+built from the app's ports (`multiplayerAppPorts()` in main: the loader cover,
+`ensureBattleVisuals`, the battle-only modules, `ensureWorld`, the roster
+labels, the warm owners, the activation runtime, the Garage return). Per room
+it owns one `MatchSession`; per `match_start` the session asks it for a
+presentation:
 
 1. cover, reset the round state, show the concrete battlefield of `match_start`
    with the room's roster; load the modules, the visuals and the world together;
@@ -239,8 +246,8 @@ and settle the entry `false`; `lost` in a live round ends it once as
 `network_disconnect`; the room vanishing (kicked, expired, resume denied,
 transport exhausted) clears input, returns to the Garage and opens the menu's
 room failure panel with the reason. The composition's frame hooks (`pump`,
-`pumpBackground`, `queueConsumable`, `queueAction`, `active`) ride main's
-existing network predicate and pumps beside v1's. Diagnostics builds publish
+`pumpBackground`, `queueConsumable`, `queueAction`, `active`) are main's
+network predicate and pumps. Diagnostics builds publish
 it as `window.__MULTIPLAYER_V2` (`stats()`: room, session, round, events by
 kind and shots by shooter, the last failure).
 
@@ -258,7 +265,7 @@ explicit leave mid-load and from the lobby, the start timeout.
 `npm run test:net:v2:browser` (`tools/mp-browser-e2e.mjs`): one in-process room
 host (`server/rooms/serve.ts`, the LAN helper's composition), one Vite dev
 server of the checkout with its own `--cache-dir`, two pristine Puppeteer
-contexts on the real site with `?mp=v2`. A creates a LAN room from the
+contexts on the real site. A creates a LAN room from the
 Garage's battle menu; the invite link comes from the address bar (`v=2`); B
 opens it, joins and takes A's side; both ready; A starts; both reach the
 battle (first battle frames screenshot); the network strip shows a ping on

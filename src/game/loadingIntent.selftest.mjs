@@ -18,23 +18,17 @@ const studioAccess = fs.readFileSync(path.join(here, 'studioAccess.ts'), 'utf8')
 const soloLoading = fs.readFileSync(path.join(here, 'soloBattleLoadingRuntime.ts'), 'utf8');
 const soloStartAccess = fs.readFileSync(path.join(here, 'soloBattleStartAccess.ts'), 'utf8');
 const playSurface = fs.readFileSync(path.join(here, 'playSurfaceRuntime.ts'), 'utf8');
-const networkLaunch = fs.readFileSync(
-  path.join(here, '..', 'net', 'networkBattleLaunchRuntime.ts'), 'utf8',
-);
 const networkLobbyPreloader = fs.readFileSync(
   path.join(here, '..', 'net', 'networkLobbyPreloader.ts'), 'utf8',
-);
-const networkPresentationAccess = fs.readFileSync(
-  path.join(here, '..', 'net', 'networkBattlePresentationAccess.ts'), 'utf8',
 );
 const networkCompositionAccess = fs.readFileSync(
   path.join(here, '..', 'net', 'networkCompositionAccess.ts'), 'utf8',
 );
-const networkBattleComposition = fs.readFileSync(
-  path.join(here, '..', 'net', 'networkBattleComposition.ts'), 'utf8',
+const lobbyIntent = fs.readFileSync(
+  path.join(here, '..', 'mp', 'session', 'lobbyIntent.ts'), 'utf8',
 );
-const networkPresentation = fs.readFileSync(
-  path.join(here, '..', 'net', 'networkBattlePresentationRuntime.ts'), 'utf8',
+const browserComposition = fs.readFileSync(
+  path.join(here, '..', 'mp', 'session', 'browserComposition.ts'), 'utf8',
 );
 const debugBattleEntry = fs.readFileSync(
   path.join(here, '..', 'dev', 'debugBattleEntryRuntime.ts'), 'utf8',
@@ -110,19 +104,23 @@ const activationHandoff = soloLoading.indexOf('startBattle(specId, resolved');
 assert.ok(activationPreload >= 0 && activationHandoff > activationPreload,
   'covered loading must acquire the activation owner before its synchronous handoff');
 
-assert.match(networkBattleComposition, /createLobby\(\{/,
-  'joined rooms need one typed lobby-intent owner');
+// Multiplayer (the cutover of 2026-09-29, docs/MULTIPLAYER-V2.md §13.10): the lobby's Garage presence loads with
+// the Play menu and the browser composition loads behind explicit room intent; the solo boot path evaluates
+// nothing under src/mp.
+assert.match(lobbyIntent, /createNetworkLobbyPreloader\(\{ \.\.\.preloader, preloadChat/,
+  'joined rooms need one typed lobby-intent owner over the room preloader');
 assert.match(networkLobbyPreloader, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,260}missingBuilders\.push\(specId\)[\s\S]{0,280}ensureTankBuilders\(missingBuilders\)/,
   'joined rooms should transfer only missing roster builders');
 assert.match(networkLobbyPreloader, /if \(nextMapId\) prefetchWorld\(nextMapId, \{ intent: true \}\);/,
   'joined-room fixed maps should use explicit-intent background preparation, not passive Garage construction');
-assert.match(networkBattleComposition, /createPresentation\(\{/,
-  'main should compose one intent-loaded network presentation owner');
-assert.doesNotMatch(main, /async function presentNetworkBattle\(/,
-  'the cold network lifecycle must not return to the composition root');
-assert.match(networkPresentationAccess,
-  /load = \(\) => import\('\.\/networkBattlePresentationRuntime\.ts'\)/,
-  'Garage boot must not evaluate the multiplayer-only presentation runtime');
+assert.match(main, /import\('\.\/mp\/session\/lobbyIntent\.ts'\)/,
+  'the lobby owner loads with the menu, never on the boot path');
+assert.match(main, /import\('\.\/mp\/session\/browserComposition\.ts'\)/,
+  'the complete multiplayer composition must remain behind explicit network intent');
+assert.doesNotMatch(main, /^import (?!type)[^\n]* from '\.\/mp\//m,
+  'the solo boot path imports nothing under src/mp at module evaluation (types only)');
+assert.doesNotMatch(main, /import\('\.\/net\/networkBattleComposition\.ts'\)|createNetworkBrowserSessionRuntime|readMultiplayerV2Flag|mp=v2/,
+  'the v1 composition, its session runtime and the opt-in switch left main with the cutover');
 assert.match(main, /createPlaySurfaceRuntime\(\{/,
   'main should compose one typed play-surface lifecycle owner');
 const playSurfaceComposition = main.slice(
@@ -133,18 +131,13 @@ const commonPlayPreload = playSurfaceComposition.slice(
   playSurfaceComposition.indexOf('preloadCommon:'),
   playSurfaceComposition.indexOf('preloadNetworkPresentation:'),
 );
-assert.doesNotMatch(commonPlayPreload, /preloadNetworkBattleModules|preloadNetworkRoomChatModule/,
-  'solo intent must never transfer multiplayer battle or room-chat modules');
-const networkPlayPreload = playSurfaceComposition.slice(
-  playSurfaceComposition.indexOf('preloadNetworkPresentation:'),
-  playSurfaceComposition.indexOf('preloadPrivateMatch:'),
-);
-assert.match(networkPlayPreload, /ensureNetworkComposition\(\)/,
+assert.doesNotMatch(commonPlayPreload, /multiplayerV2\.preload|preloadBattleClientRuntime/,
+  'solo intent must never transfer the multiplayer composition or the battle client runtime');
+const networkPlayPreload = playSurfaceComposition.slice(playSurfaceComposition.indexOf('preloadNetworkPresentation:'));
+assert.match(networkPlayPreload, /multiplayerV2\.preload\(\)/,
   'network intent must acquire its isolated orchestration graph');
-assert.match(networkPlayPreload, /preloadNetworkBattleModules\(\)/,
-  'network intent should still overlap the shared battle bridge transfer');
-assert.match(networkPlayPreload, /preloadNetworkRoomChatModule\(\)/,
-  'network intent should still overlap room-chat transfer');
+assert.match(networkPlayPreload, /preloadBattleClientRuntime\(\)/,
+  'network intent should still overlap the shared battle client transfer');
 for (const runtime of [
   'networkRoundLifecycle',
   'networkBattlePresentationAccess',
@@ -152,14 +145,11 @@ for (const runtime of [
   'networkLobbyPreloader',
   'networkRoomCoordinator',
   'networkBattleActivationRuntime',
+  'networkBattleComposition',
 ]) {
   assert.doesNotMatch(main, new RegExp(`import \\{[^}]*create[^}]*\\} from './net/${runtime}\\.ts'`),
     `${runtime} must stay out of the pristine Garage graph`);
-  assert.match(networkBattleComposition, new RegExp(`from './${runtime}\\.ts'`),
-    `${runtime} must remain owned by the isolated network composition`);
 }
-assert.match(main, /import\('\.\/net\/networkBattleComposition\.ts'\)/,
-  'the complete network composition must remain behind explicit network intent');
 assert.match(networkCompositionAccess,
   /pending = request[\s\S]{0,180}pending === request[\s\S]{0,80}pending = null/,
   'a failed first-visit network composition transfer must remain retryable');
@@ -171,17 +161,13 @@ assert.doesNotMatch(main, /function preloadPlayMode\(/,
   'mode preload and retry policy must not return to the composition root');
 assert.match(playSurface, /export interface PlaySurfaceRuntime/,
   'play intent should cross a stable typed interface');
-assert.match(networkBattleComposition,
-  /preloadPresentation: presentation\.preload/,
-  'a joined waiting room should keep the presentation runtime warm');
-assert.match(networkPresentation,
-  /entry\.acquire\(\{[\s\S]{0,180}loadModules: async \(\) => \{[\s\S]{0,120}Promise\.all\(\[entry\.loadModules\(\), load\.ensureBattleVisuals\(\)\]\)/,
-  'network entry should join visual initialization with modules inside parallel acquisition');
-assert.match(networkPresentation,
-  /loadWorld:[\s\S]{0,180}entry\.loadWorld\(mapId[\s\S]{0,300}connect: async \(\) =>/,
-  'network entry should delegate modules, battlefield construction, and connection setup');
+assert.match(main, /preloadPresentation: \(\) => multiplayerV2\.preload\(\)/,
+  'a joined waiting room should keep the composition warm');
+assert.match(browserComposition,
+  /await Promise\.all\(\[\s*load\.loadModules\(\),\s*load\.ensureBattleVisuals\(\),\s*load\.loadWorld\(active\.mapId/,
+  'network entry should join modules, visual initialization and battlefield construction inside one parallel acquisition');
 const networkWorldAdapter = main.slice(main.indexOf('loadWorld: (mapId: string'),
-  main.indexOf('publishMatch: (match) => networkSession.publishMatch(match)'));
+  main.indexOf('recordTrace: (trace) => { window.__NETWORK_LOAD = trace; }'));
 // batch 27 (2026-09-15): a Frontline Assault room also hands the trench terrain variant through
 const coveredWorldOptions = /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle', \.\.\.\(terrainVariant \? \{ terrainVariant \} : \{\}\) \}\)/;
 assert.match(networkWorldAdapter, coveredWorldOptions,
@@ -190,18 +176,9 @@ assert.doesNotMatch(networkWorldAdapter.replace("atmosphere: 'covered-battle'", 
   coveredWorldOptions, 'a Garage-atmosphere regression must fail the loading contract');
 assert.doesNotMatch(networkWorldAdapter.replace('precompile: false', 'precompile: true'),
   coveredWorldOptions, 'an eager-compilation regression must fail the loading contract');
-assert.match(networkPresentation,
-  /connect: async \(\) => \{[\s\S]{0,160}await connectMatch\(\)[\s\S]{0,240}match\.close\?\.\('network_entry_cancelled'\)/,
-  'a transport resolving after room closure must be retired before publication');
-assert.match(networkLaunch, /connectAfterWorld: role === 'host'/,
-  'browser authority must wait for world collision while cold clients connect concurrently');
 assert.match(main,
   /Promise\.all\(\[[\s\S]{0,500}armorAimOverlay\.preload\(\)\.catch/,
   'network entry must acquire the optional armor overlay under its loading veil');
-assert.match(networkLaunch, /await loadPrivateMatch\(\)/,
-  'private handoff should join the mode-intent preload');
-assert.match(networkLaunch, /await loadDedicatedMatch\(\)/,
-  'ranked entry should join the mode-intent preload');
 assert.match(main,
   /async function debugStartBattle[\s\S]{0,240}import\('\.\/dev\/debugBattleEntryRuntime\.ts'\)/,
   'cold QA entry policy must stay demand-loaded outside the composition root');

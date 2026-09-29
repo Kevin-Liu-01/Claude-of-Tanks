@@ -16,16 +16,17 @@ import {
  * Battle-mode picker and private/LAN lobby presentation.
  *
  * This module owns the room-entry interface and translates user actions into
- * signaling/lobby commands. Canonical lobby and match state remain in src/net;
- * the menu renders that state and hands established sessions to main.ts.
+ * room commands. Canonical room and match state live in the room host
+ * (src/mp/room) and the match session (src/mp/session); the menu renders the
+ * lobby the room publishes and hands established sessions to main.ts.
  */
 import {
-  createPrivateRoomConnectionRuntime,
-  type PrivateRoomConnection,
-  type PrivateRoomConnectionOptions,
-  type PrivateRoomConnectionRuntime,
-} from '../net/privateRoomConnectionRuntime.ts';
-import { resolveIceConfigUrl, resolveSignalUrl } from '../net/signalEndpoint.ts';
+  createRoomConnectionAdapter,
+  type RoomConnection,
+  type RoomConnectionOptions,
+  type RoomConnectionRuntime,
+} from '../mp/session/playMenuAdapter.ts';
+import { resolveRoomsUrl } from '../mp/session/endpoint.ts';
 import { normalizePlayMode, type PlayMode } from '../net/playMode.ts';
 import { isIntentionalRoomCloseReason } from '../net/roomFailure.ts';
 // entry resilience (2026-09-25): room failure codes and ICE degradation are beaconed (never prose or codes of rooms)
@@ -33,7 +34,7 @@ import { getEntryTelemetry } from '../entry/telemetry.ts';
 import { privateRoomFailurePresentation } from './privateRoomFailurePresentation.ts';
 export type { PlayMode } from '../net/playMode.ts';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.ts';
-import { normalizeRoomCode } from '../net/protocol.ts';
+import { normalizeRoomCode } from '../mp/room/protocol.ts';
 import { createRoomInviteUrl } from '../net/roomInvite.ts';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
@@ -46,7 +47,6 @@ import {
   localizedGameMetadata,
   privateRoomMetadata,
 } from '../presentation/siteMetadata.ts';
-import { loadIceConfiguration, type IceConfiguration } from '../net/iceConfig.ts';
 import {
   GAME_MODE_DEFINITIONS,
   normalizeGameMode,
@@ -61,8 +61,8 @@ const PLAYER_ID_KEY = 'cot.player.id.v1';
 const PLAYER_NAME_KEY = 'cot.player.name.v1';
 const ROOM_SIZE_KEY = 'cot.room.size.v1';
 const GAME_MODE_KEY = 'cot.game.mode.v1';
-type RoomSession = PrivateRoomConnection['session'];
-type RoomRole = PrivateRoomConnection['role'];
+type RoomSession = RoomConnection['session'];
+type RoomRole = RoomConnection['role'];
 type MaybePromise<T> = T | PromiseLike<T>;
 
 interface PlayMenuMap {
@@ -95,9 +95,7 @@ export interface ActiveRoomAdapter {
   state: SerializedLobby;
   playerId: string;
   role: RoomRole;
-  /** 2 for a Multiplayer v2 room (invite links stamp `v=2`, the admin role follows the room's hostId). */
-  version?: 1 | 2;
-  /** A v2 room's session (the object `onNetworkStart` routes on): Rejoin battle hands it back while its match runs. */
+  /** The room's session (the object `onNetworkStart` routes on): Rejoin battle hands it back while its match runs. */
   session?: RuntimeValue;
   command(command: Record<string, RuntimeValue>): RuntimeValue;
   leave(reason?: string): RuntimeValue;
@@ -116,19 +114,10 @@ export interface PlayMenuOptions {
     session: RoomSession;
     lobbyState: SerializedLobby;
   }): MaybePromise<RuntimeValue>;
-  onNetworkClose?(reason: string): void;
   onLobbyChange?(context: PlayMenuLobbyContext | null): void;
   isVehicleAllowed?(specId: string): boolean;
-  isCamoAllowed?(camo: string): boolean;
   getCamoName?(camo: string): string;
   getVehicleName?(specId: string): string;
-  /**
-   * Multiplayer v2 (`?mp=v2`): the room connection the menu drives instead of the v1 signaling
-   * runtime, and the room host the connection settings default to (src/mp/session/endpoint.ts).
-   * Both absent: v1.
-   */
-  createConnectionRuntime?(options: PrivateRoomConnectionOptions): PrivateRoomConnectionRuntime;
-  resolveSignalUrl?(): string;
 }
 
 export interface PlayMenuInvite {
@@ -150,6 +139,8 @@ export interface PlayMenuRuntime {
   showRoomFailure(reason: string, mode?: PlayMode): void;
   syncGarageSelection(): boolean;
   setReady(ready: boolean): boolean;
+  /** The admin starts the waiting room's round (the lobby's Start, the end screen's Start next). */
+  startRound(): boolean;
 }
 
 interface MenuSelectElement extends HTMLDivElement {
@@ -321,9 +312,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .menu-select-trigger:focus-visible,.cot-play .menu-select-option:focus-visible,.cot-play .mode:focus-visible,
 .cot-play .close:focus-visible,.cot-play button.action:focus-visible{outline:2px solid #ffb452;outline-offset:2px}
 .cot-play .code-input{font:900 17px ${FONT_COND}!important;letter-spacing:.16em;text-transform:uppercase}
-.cot-play .advanced{border-top:1px solid rgba(160,180,195,.16);padding-top:8px;color:#80929f}
-.cot-play .advanced summary{cursor:pointer;font:800 9px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase}
-.cot-play .advanced label{margin-top:9px}.cot-play label{display:grid;gap:5px;
+.cot-play label{display:grid;gap:5px;
   font:800 9px ${FONT_COND};letter-spacing:.16em;text-transform:uppercase;color:#8fa1ae}
 .cot-play input,.cot-play select{height:40px;padding:0 11px;color:#edf3f7;background:#090d12;
   border:1px solid rgba(161,180,195,.3);font:700 12px ${FONT_STACK};outline:none}.cot-play input:focus,
@@ -495,11 +484,10 @@ function rememberRoomUrl(
   roomCode: RuntimeValue,
   mode: RuntimeValue,
   hostName: RuntimeValue = null,
-  version: 1 | 2 = 1,
 ): void {
   if (typeof location === 'undefined' || typeof history === 'undefined') return;
   try {
-    const invite = createRoomInviteUrl({ roomCode, mode, hostName, baseUrl: location.href, version });
+    const invite = createRoomInviteUrl({ roomCode, mode, hostName, baseUrl: location.href, version: 2 });
     history.replaceState(history.state, '', invite);
   } catch { /* URL persistence is a convenience, never a room dependency */ }
 }
@@ -678,21 +666,19 @@ function bindMenuSelect(
   return { close, positionList };
 }
 
-function defaultSignalUrl(): string {
-  return resolveSignalUrl({
-    configured: import.meta.env.VITE_SIGNAL_URL,
-    protocol: location.protocol,
-    hostname: location.hostname,
-  });
-}
-
-async function iceServers(mode: string): Promise<IceConfiguration> {
-  if (mode === 'lan') return loadIceConfiguration({ mode });
-  const endpoint = resolveIceConfigUrl({
-    configured: import.meta.env.VITE_ICE_CONFIG_URL,
-    protocol: location.protocol,
-  });
-  return loadIceConfiguration({ mode, endpoint });
+/**
+ * The room host of this deployment (src/mp/session/endpoint.ts): the rooms Worker named by the build or the
+ * official site, the LAN helper on a local host, null when this origin names none (a misconfigured value counts
+ * as none: the failure panel says the room service is unavailable rather than presenting a URL error).
+ */
+function menuRoomsUrl(): string | null {
+  try {
+    return resolveRoomsUrl({
+      configured: import.meta.env.VITE_ROOMS_URL,
+      protocol: location.protocol,
+      hostname: location.hostname,
+    });
+  } catch { return null; }
 }
 
 export function createPlayMenu({
@@ -708,14 +694,10 @@ export function createPlayMenu({
   onSolo,
   onReadyIntent,
   onNetworkStart,
-  onNetworkClose = () => {},
   onLobbyChange,
   isVehicleAllowed = () => true,
-  isCamoAllowed = () => true,
   getCamoName = (camo) => camo || t('camoPattern.factory'),
   getVehicleName = (specId) => specId,
-  createConnectionRuntime,
-  resolveSignalUrl: resolveMenuSignalUrl = defaultSignalUrl,
 }: PlayMenuOptions): PlayMenuRuntime {
   ensureFonts();
   ensureStyle(STYLE_ID, CSS);
@@ -799,8 +781,6 @@ export function createPlayMenu({
             autocomplete="off" spellcheck="false" placeholder="ABC123"></label>
             <button class="action alt" data-action="join" type="button">${t('playMenu.join.action')}</button></div></div>
       </div>
-      <details class="advanced"><summary>${t('playMenu.advanced.summary')}</summary>
-        <label>${t('playMenu.advanced.signal')}<input data-field="signal" spellcheck="false"></label></details>
     </div><div class="status" role="status" aria-live="polite" aria-atomic="true"></div>
     <section class="room-failure" hidden role="alert" aria-atomic="true" tabindex="-1"
       aria-labelledby="cot-room-failure-title" aria-describedby="cot-room-failure-detail">
@@ -808,7 +788,6 @@ export function createPlayMenu({
       <div class="room-failure-actions">
         <button class="action" data-room-failure="retry" type="button">${t('playMenu.failure.retry')}</button>
         <button class="action alt" data-room-failure="code" type="button">${t('playMenu.failure.editCode')}</button>
-        <button class="action alt" data-room-failure="settings" type="button">${t('playMenu.failure.settings')}</button>
         <button class="action alt" data-room-failure="garage" type="button">${t('playMenu.failure.returnGarage')}</button>
       </div>
     </section><div class="lobby">
@@ -921,10 +900,8 @@ export function createPlayMenu({
   const failureDetail = requiredElement<HTMLElement>(root, '#cot-room-failure-detail');
   const retryBtn = requiredElement<HTMLButtonElement>(root, '[data-room-failure="retry"]');
   const editCodeBtn = requiredElement<HTMLButtonElement>(root, '[data-room-failure="code"]');
-  const settingsBtn = requiredElement<HTMLButtonElement>(root, '[data-room-failure="settings"]');
   const garageBtn = requiredElement<HTMLButtonElement>(root, '[data-room-failure="garage"]');
   const nameInput = requiredElement<HTMLInputElement>(root, '[data-field="name"]');
-  const signalInput = requiredElement<HTMLInputElement>(root, '[data-field="signal"]');
   const codeInput = requiredElement<HTMLInputElement>(root, '[data-field="code"]');
   const createSizeSelect = requiredElement<MenuSelectElement>(root, '[data-field="create-size"]');
   const vehicleSelect = requiredElement<MenuSelectElement>(root, '[data-control="vehicle"]');
@@ -1049,7 +1026,6 @@ export function createPlayMenu({
 
   let mode: PlayMode | null = null;
   let session: RoomSession | null = null;
-  let roomIce: IceConfiguration | null = null;
   let state: SerializedLobby | null = null;
   let role: RoomRole | null = null;
   let unsubscribeState: (() => void) | null = null;
@@ -1060,8 +1036,6 @@ export function createPlayMenu({
   let requestGeneration = 0;
   let returnFocus: HTMLElement | null = null;
   let invitedHostName: string | null = null;
-  /** 2 while the room in this menu is a Multiplayer v2 one: invite links stamp `v=2`, the admin role follows hostId. */
-  let connectionVersion: 1 | 2 = 1;
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
 
   // ---- team arrangement (owner 2026-09-15) --------------------------------------------------
@@ -1230,25 +1204,16 @@ export function createPlayMenu({
   }
   showSelectedGameMode();
 
-  function adoptRoomConnection(connection: PrivateRoomConnection): void {
+  function adoptRoomConnection(connection: RoomConnection): void {
     session = connection.session;
     role = connection.role;
-    roomIce = connection.ice;
-    connectionVersion = connection.inviteVersion === 2 ? 2 : 1;
-    // A room that fell back to host candidates is visible in the lobby note
-    // (renderLobbyNote) and in the funnel: the degraded reason code, nothing else.
-    if (connection.ice.source === 'host-fallback') {
-      getEntryTelemetry().send({ kind: 'ice_degraded', reason: connection.ice.degradedReason || 'host_fallback',
-        mode: mode === 'lan' ? 'lan' : 'private' });
-    }
     clearFailure();
   }
 
-  const connectionOptions: PrivateRoomConnectionOptions = {
-    loadIce: iceServers,
-    isVehicleAllowed,
-    isCamoAllowed,
-    isMapAllowed: (mapId) => maps.some((map) => map.id === mapId),
+  // The room host applies the vehicle / camo / map policy; the menu carries the seat's lifecycle only.
+  const connectionOptions: RoomConnectionOptions = {
+    storage: localStorage,
+    clientBuild: import.meta.env.MODE,
     onHostStart: (lobbyState, connection) => {
       adoptRoomConnection(connection);
       beginNetworkHandoff(lobbyState, 'host');
@@ -1258,7 +1223,6 @@ export function createPlayMenu({
       closeCurrentSession(reason, { skipTransportClose: true });
       if (isIntentionalRoomCloseReason(reason)) return;
       if (!wasHandedOff) showRoomFailure(reason);
-      onNetworkClose(reason);
     },
     onStatus: ({ state: connectionState }) => {
       if (handedOff) return;
@@ -1276,10 +1240,7 @@ export function createPlayMenu({
       else setStatus(privateRoomFailurePresentation(error).title, true);
     },
   };
-  // Multiplayer v2 supplies its room connection through the same lifecycle contract; v1 owns the default.
-  const privateRoomConnection: PrivateRoomConnectionRuntime = createConnectionRuntime
-    ? createConnectionRuntime(connectionOptions)
-    : createPrivateRoomConnectionRuntime({ ...connectionOptions });
+  const roomConnection: RoomConnectionRuntime = createRoomConnectionAdapter(connectionOptions);
 
   function hostNameFromRoom(value: RuntimeValue): string {
     if (!isRecord(value)) return '';
@@ -1313,8 +1274,7 @@ export function createPlayMenu({
     metadataUrl.searchParams.set('mode', mode === 'lan' ? 'lan' : 'private');
     if (invitedHostName) metadataUrl.searchParams.set('host', invitedHostName);
     else metadataUrl.searchParams.delete('host');
-    if (connectionVersion === 2) metadataUrl.searchParams.set('v', '2');
-    else metadataUrl.searchParams.delete('v');
+    metadataUrl.searchParams.set('v', '2');
     const metadata = privateRoomMetadata(metadataUrl, getLocale());
     if (metadata) applySiteMetadataToDocument(document, metadata);
   }
@@ -1340,16 +1300,11 @@ export function createPlayMenu({
     failurePanel.hidden = true;
     codeInput.removeAttribute('aria-invalid');
     codeInput.removeAttribute('aria-describedby');
-    signalInput.removeAttribute('aria-invalid');
-    signalInput.removeAttribute('aria-describedby');
   }
 
   function showFailure(error: RuntimeValue): void {
-    // A 60 s WebRTC timeout in a direct-only room names the missing relay (entry resilience 2026-09-25).
-    const iceDegraded = mode === 'private' && !!roomIce && !roomIce.relayAvailable;
-    const failure = privateRoomFailurePresentation(error, { iceDegraded });
-    getEntryTelemetry().send({ kind: 'room_failure', code: failure.code, mode: mode === 'lan' ? 'lan' : 'private',
-      ...(iceDegraded ? { reason: roomIce?.degradedReason || 'host_fallback' } : {}) });
+    const failure = privateRoomFailurePresentation(error);
+    getEntryTelemetry().send({ kind: 'room_failure', code: failure.code, mode: mode === 'lan' ? 'lan' : 'private' });
     failurePanel.dataset.reason = failure.code;
     failureTitle.textContent = failure.title;
     failureDetail.textContent = failure.detail;
@@ -1358,10 +1313,8 @@ export function createPlayMenu({
     editCodeBtn.textContent = failure.roomEnded
       ? t('playMenu.failure.joinAnotherRoom')
       : t('playMenu.failure.editCode');
-    settingsBtn.hidden = !failure.editSettings;
     clearFailure();
-    const invalidInput = failure.code === 'invalid_room_code' ? codeInput
-      : failure.code === 'signaling_unavailable' ? signalInput : null;
+    const invalidInput = failure.code === 'invalid_room_code' ? codeInput : null;
     invalidInput?.setAttribute('aria-invalid', 'true');
     invalidInput?.setAttribute('aria-describedby', 'cot-room-failure-detail');
     failurePanel.hidden = false;
@@ -1373,31 +1326,19 @@ export function createPlayMenu({
     if (isIntentionalRoomCloseReason(reason)) return;
     // Garage restoration is asynchronous: an older room's failure must not
     // overwrite a newer lobby or an acquisition that has not handed off yet.
-    if (session || activeRoom || connecting || privateRoomConnection.current
-        || privateRoomConnection.connecting) return;
+    if (session || activeRoom || connecting || roomConnection.current
+        || roomConnection.connecting) return;
     mode = normalizePlayMode(requestedMode) === 'lan' ? 'lan' : 'private';
     revealMenu();
     room.classList.add('show');
     for (const item of root.querySelectorAll<HTMLButtonElement>('.mode')) {
       item.classList.toggle('on', item.dataset.mode === mode);
     }
-    if (!signalInput.value) {
-      try { signalInput.value = resolveMenuSignalUrl(); } catch { /* failure panel remains usable */ }
-    }
     setConnecting(false);
     showFailure(reason);
   }
 
   function roomConnectionStatus(action: 'created' | 'joined'): string {
-    if (mode === 'private' && roomIce && !roomIce.relayAvailable) {
-      const reason = roomIce.degradedReason === 'turn_service_unconfigured'
-        ? t('playMenu.room.turnUnconfigured')
-        : t('playMenu.room.turnUnavailable');
-      const actionLabel = t(action === 'created'
-        ? 'playMenu.room.actionCreated'
-        : 'playMenu.room.actionJoined');
-      return t('playMenu.room.directOnly', { action: actionLabel, reason });
-    }
     return action === 'created'
       ? t('playMenu.room.readyCopy')
       : t('playMenu.room.connectedChooseTeam');
@@ -1449,9 +1390,8 @@ export function createPlayMenu({
   function setConnecting(next: boolean): void {
     connecting = next;
     room.setAttribute('aria-busy', String(next));
-    const unavailable = !signalInput.value.trim();
-    createBtn.disabled = next || unavailable;
-    joinBtn.disabled = next || unavailable || codeInput.value.length !== 6;
+    createBtn.disabled = next;
+    joinBtn.disabled = next || codeInput.value.length !== 6;
   }
 
   function closeCurrentSession(
@@ -1464,12 +1404,10 @@ export function createPlayMenu({
     if (unsubscribeState) unsubscribeState();
     unsubscribeState = null;
     if (activeRoom && !skipTransportClose) activeRoom.leave(reason);
-    else privateRoomConnection.close(reason, {
+    else roomConnection.close(reason, {
       transportAlreadyClosed: skipTransportClose,
     });
     session = null;
-    roomIce = null;
-    connectionVersion = 1;
     activeRoom = null;
     state = null;
     role = null;
@@ -1529,24 +1467,23 @@ export function createPlayMenu({
   function rememberLiveRoom(next: SerializedLobby): void {
     if (!next.roomCode) return;
     const roomHostName = hostNameFromRoom(next);
-    rememberRoomUrl(next.roomCode, next.mode || mode, roomHostName, connectionVersion);
+    rememberRoomUrl(next.roomCode, next.mode || mode, roomHostName);
     if (role === 'client') presentInvitation(roomHostName, next.roomCode, true);
   }
 
-  /** A v2 seat may enter a running match only with the `match_start` the room sent it (a fresh joiner waits for the next round). */
+  /** A seat may enter a running match only with the `match_start` the room sent it (a fresh joiner waits for the next round). */
   function hasMatchStart(candidate: RuntimeValue): boolean {
     return !!candidate && typeof candidate === 'object' && 'lastMatchStart' in candidate && !!(candidate as { lastMatchStart?: RuntimeValue }).lastMatchStart;
   }
 
   function shouldBeginClientHandoff(next: SerializedLobby): boolean {
     return (next.phase === 'starting' || next.phase === 'playing') &&
-      role === 'client' && !handedOff && !activeRoom &&
-      (connectionVersion !== 2 || hasMatchStart(session));
+      role === 'client' && !handedOff && !activeRoom && hasMatchStart(session);
   }
 
-  /** Multiplayer v2 (charter §5): a seat back in the Garage with the room kept may rejoin the match the room still runs. */
+  /** Charter §5: a seat back in the Garage with the room kept may rejoin the match the room still runs. */
   function canRejoinBattle(next: SerializedLobby): boolean {
-    return connectionVersion === 2 && !handedOff && (next.phase === 'starting' || next.phase === 'playing') && hasMatchStart(activeRoom?.session ?? session);
+    return !handedOff && (next.phase === 'starting' || next.phase === 'playing') && hasMatchStart(activeRoom?.session ?? session);
   }
 
   function renderLobbyBattlefield(next: SerializedLobby): void {
@@ -1692,17 +1629,13 @@ export function createPlayMenu({
       : next.gameMode === 'frontline_assault'
         ? t('playMenu.note.frontlineFill', { size: next.teamSize || 1 })
         : t('playMenu.note.botFill', { size: next.teamSize || 1 });
-    const relayNote = mode === 'private' && roomIce && !roomIce.relayAvailable
-      ? t('playMenu.note.relayUnavailable')
-      : '';
-    note.textContent = `${t(mode === 'lan' ? 'playMenu.note.lan' : 'playMenu.note.private')} ${fillNote}${
-      relayNote ? ` ${relayNote}` : ''}`;
+    note.textContent = `${t(mode === 'lan' ? 'playMenu.note.lan' : 'playMenu.note.private')} ${fillNote}`;
   }
 
   function renderLobby(next: SerializedLobby): void {
     state = next;
-    // A v2 room's admin migrates (charter §5): the role that gates the host controls follows the room's hostId.
-    if (connectionVersion === 2 && (session || activeRoom)) role = next.hostId === ownId() ? 'host' : 'client';
+    // The room's admin migrates (charter §5): the role that gates the host controls follows the room's hostId.
+    if (session || activeRoom) role = next.hostId === ownId() ? 'host' : 'client';
     // Every browser carries the live room in its canonical URL. A guest can
     // reattach to the current authority, while a reloaded browser host
     // reconstructs the waiting room and lets guests resubmit their retained
@@ -1733,7 +1666,7 @@ export function createPlayMenu({
     renderLobbyNote(next);
   }
 
-  function observeConnectedRoom(connection: PrivateRoomConnection, kind: 'create' | 'join'): void {
+  function observeConnectedRoom(connection: RoomConnection, kind: 'create' | 'join'): void {
     if (kind === 'join' && role === 'host') resetInvitation();
     else if (role === 'client') {
       presentInvitation(
@@ -1742,22 +1675,20 @@ export function createPlayMenu({
         false,
       );
     }
-    unsubscribeState = privateRoomConnection.observe(renderLobby);
+    unsubscribeState = roomConnection.observe(renderLobby);
   }
 
   async function connectRoom(kind: 'create' | 'join', generation: number): Promise<boolean> {
-    if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return false;
+    if (connecting || session || roomConnection.connecting || roomConnection.current) return false;
     const selection = { ...getSelection(), gameMode: selectedGameMode,
       arrangement: kind === 'create' ? currentArrangement(selectedGameMode) : null };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
     if (!name) throw new Error('Enter a player name');
     nameInput.value = name;
     remember(PLAYER_NAME_KEY, name);
-    const signalUrl = signalInput.value.trim();
-    if (!signalUrl) {
-      throw Object.assign(new Error(mode === 'lan'
-        ? 'Automatic LAN signaling is unavailable. Open connection settings to enter a fallback address.'
-        : 'Private lobby signaling is unavailable on this deployment.'), { code: 'signaling_unavailable' });
+    const roomsUrl = menuRoomsUrl();
+    if (!roomsUrl) {
+      throw Object.assign(new Error('No room service is reachable from this deployment.'), { code: 'room_unconfigured' });
     }
     if (kind === 'join' && normalizeRoomCode(codeInput.value).length !== 6) {
       throw Object.assign(new Error('Enter a six-character room code'), { code: 'invalid_room_code' });
@@ -1769,15 +1700,14 @@ export function createPlayMenu({
       if (kind === 'create') {
         remember(ROOM_SIZE_KEY, String(teamSize));
       }
-      const connection = await privateRoomConnection.connect({
+      const connection = await roomConnection.connect({
         kind,
         mode: mode === 'lan' ? 'lan' : 'private',
-        signalUrl,
+        roomsUrl,
         roomCode: kind === 'join' ? codeInput.value : undefined,
         player,
         selection,
         teamSize,
-        maxPlayers: 14,
       });
       if (!connection || generation !== requestGeneration) return false;
       adoptRoomConnection(connection);
@@ -1848,14 +1778,9 @@ export function createPlayMenu({
     mode = nextMode;
     for (const item of root.querySelectorAll('.mode')) item.classList.toggle('on', item === button);
     room.classList.add('show');
-    try { signalInput.value = resolveMenuSignalUrl(); }
-    catch { signalInput.value = ''; }
     setConnecting(false);
-    if (!signalInput.value) {
-      showFailure('signaling_unavailable');
-    } else {
-      setStatus('');
-    }
+    if (!menuRoomsUrl()) showFailure('room_unconfigured');
+    else setStatus('');
   }
   root.querySelectorAll<HTMLButtonElement>('.mode').forEach((button) => button.addEventListener('click', () => {
     const requested = button.dataset.mode;
@@ -1883,11 +1808,6 @@ export function createPlayMenu({
     codeInput.focus();
     codeInput.select();
   });
-  settingsBtn.addEventListener('click', () => {
-    requiredElement<HTMLDetailsElement>(root, '.advanced').open = true;
-    signalInput.focus();
-    signalInput.select();
-  });
   garageBtn.addEventListener('click', () => {
     closeCurrentSession('back_to_menu');
     clearFailure();
@@ -1900,7 +1820,7 @@ export function createPlayMenu({
       mode,
       hostName: hostNameFromRoom(state),
       baseUrl: location.href,
-      version: connectionVersion,
+      version: 2,
     });
     try {
       await navigator.clipboard.writeText(inviteUrl);
@@ -1937,12 +1857,15 @@ export function createPlayMenu({
   rejoinBtn.addEventListener('click', () => {
     if (state && canRejoinBattle(state)) beginNetworkHandoff(state, role);
   });
-  startBtn.addEventListener('click', () => {
+  function startRound(): boolean {
+    if (!state || role !== 'host' || state.phase !== 'waiting') return false;
     const words = new Uint32Array(1);
     if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(words);
     else words[0] = (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
     command({ type: 'start', matchSeed: words[0] });
-  });
+    return true;
+  }
+  startBtn.addEventListener('click', () => { startRound(); });
   codeInput.addEventListener('input', () => {
     codeInput.value = normalizeRoomCode(codeInput.value).slice(0, 6);
     setConnecting(connecting);
@@ -1962,7 +1885,6 @@ export function createPlayMenu({
   createSizeSelect.addEventListener('change', () => {
     remember(ROOM_SIZE_KEY, createSizeSelect.value);
   });
-  signalInput.addEventListener('input', () => setConnecting(connecting));
   closeBtn.addEventListener('click', () => hide());
   root.addEventListener('keydown', (event) => {
     if (event.defaultPrevented) { event.stopPropagation(); return; }
@@ -2038,14 +1960,13 @@ export function createPlayMenu({
         typeof adapter.command !== 'function' || typeof adapter.leave !== 'function') {
       throw new TypeError('active room adapter is incomplete');
     }
-    // The network room coordinator now owns this transport. Relinquish the
+    // The battle composition now owns this transport. Relinquish the
     // menu acquisition generation without closing the handed-off session.
-    privateRoomConnection.forget();
+    roomConnection.forget();
     session = null;
     activeRoom = adapter;
     role = adapter.role;
     mode = adapter.state.mode === 'lan' ? 'lan' : 'private';
-    if (adapter.version === 2) connectionVersion = 2;
     handedOff = false;
     renderLobby(adapter.state);
   }
@@ -2058,20 +1979,18 @@ export function createPlayMenu({
   function detachActiveRoom(): void {
     // A delayed coordinator cleanup must not retire a replacement lobby or
     // an acquisition which has not handed its session to the battle owner.
-    if (connecting || privateRoomConnection.connecting || (!handedOff && !activeRoom)) return;
-    const connection = privateRoomConnection.current;
+    if (connecting || roomConnection.connecting || (!handedOff && !activeRoom)) return;
+    const connection = roomConnection.current;
     if (connection && (!handedOff || connection.session !== session)) return;
     // Initial battle entry can defer attachActiveRoom, leaving the exact
     // handed-off acquisition here. Frame-driven teardown closes its transport
     // intentionally (without onClose), so retire the owner without closing it
     // twice before the parent presents the terminal error.
-    privateRoomConnection.close('room_connection_closed', { transportAlreadyClosed: true });
+    roomConnection.close('room_connection_closed', { transportAlreadyClosed: true });
     if (unsubscribeState) unsubscribeState();
     unsubscribeState = null;
     activeRoom = null;
     session = null;
-    roomIce = null;
-    connectionVersion = 1;
     state = null;
     role = null;
     handedOff = false;
@@ -2092,7 +2011,8 @@ export function createPlayMenu({
     return true;
   }
   function syncGarageSelection(): boolean {
-    if (!session || activeRoom || handedOff || state?.phase !== 'waiting') return false;
+    // A pending lobby (the menu's seat) and an owned room (the composition's, attached here) both take the Garage pick.
+    if ((!session && !activeRoom) || handedOff || state?.phase !== 'waiting') return false;
     const me = state.players?.find((player) => player.id === ownId());
     if (!me || me.ready) return false;
     const selection = getSelection();
@@ -2117,6 +2037,6 @@ export function createPlayMenu({
   return {
     root, show, hide, dispose,
     attachActiveRoom, updateActiveRoom, detachActiveRoom, showRoomFailure,
-    showActiveRoom, showCurrentRoom, syncGarageSelection, setReady,
+    showActiveRoom, showCurrentRoom, syncGarageSelection, setReady, startRound,
   };
 }

@@ -256,7 +256,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
   const presentations = [];
   const menu = {
     attached: null, updates: 0, detached: 0, failures: [],
-    attachActiveRoom(adapter) { menu.attached = adapter; calls.push(`menu.attach:${adapter.role}:${adapter.version}`); },
+    attachActiveRoom(adapter) { menu.attached = adapter; calls.push(`menu.attach:${adapter.role}`); },
     updateActiveRoom(state) { menu.updates++; calls.push(`menu.update:${state.phase}`); return true; },
     detachActiveRoom() { menu.detached++; menu.attached = null; calls.push('menu.detach'); },
     showRoomFailure(reason, mode) { menu.failures.push([reason, mode]); calls.push(`menu.failure:${reason}:${mode}`); },
@@ -498,7 +498,6 @@ assert.equal(harness.bus.at(-1).type, 'battle:ended');
 roomSession.publish(snapshot({ phase: 'waiting', round: 1, lastResult: { round: 1, result: 'alpha', reason: 'elimination' } }));
 await settle();
 assert.ok(harness.menu.attached, 'with the result up, the lobby attaches to the Play menu');
-assert.equal(harness.menu.attached.version, 2);
 assert.equal(harness.menu.attached.role, 'host');
 assert.equal(harness.menu.attached.state.lastResult.result, 'alpha');
 assert.equal(harness.roomStates.at(-1).role, 'host');

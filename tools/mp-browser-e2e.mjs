@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Multiplayer v2 browser end-to-end: two pristine browsers on the real site
- * with `?mp=v2`, one in-process room host (server/rooms/serve.ts: rooms +
+ * (the only multiplayer since the cutover of 2026-09-29), one in-process room host (server/rooms/serve.ts: rooms +
  * match on one port, the LAN helper's composition) and one Vite dev server of
  * this checkout with its own cache directory.
  *
@@ -78,7 +78,7 @@ function observe(page, label) {
   });
 }
 
-const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1&mp=v2';
+const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 
 async function waitFor(page, predicate, label, timeoutMs, options = {}) {
   try {

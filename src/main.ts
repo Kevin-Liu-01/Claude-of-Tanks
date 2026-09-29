@@ -35,8 +35,6 @@ import type {
   WorldActivationRuntime,
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
-import type { NetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
-import type { NetworkBattleCompositionRuntime } from './net/networkBattleComposition.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type {
@@ -118,7 +116,6 @@ import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
   createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
 } from './vehicles/fleetFactory.ts';
-import { isBuiltInCamoId } from './vehicles/camoPolicy.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
@@ -204,16 +201,13 @@ import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createPlaySurfaceRuntime } from './game/playSurfaceRuntime.ts';
-import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionRuntime.ts';
-import { createNetworkRoomFailureRuntime } from './net/networkRoomFailureRuntime.ts';
-import { isIntentionalRoomCloseReason } from './net/roomFailure.ts';
 import { createNetworkCompositionAccess } from './net/networkCompositionAccess.ts';
 import { resetNetworkRoundState } from './net/networkRoundState.ts';
-import type { NetworkBattleCompositionOptions } from './net/networkBattleComposition.ts';
-import { readMultiplayerV2Flag } from './app/multiplayerFlag.ts';
-import type { BrowserComposition } from './mp/session/browserComposition.ts';
+import type { NetworkBattleActivationOptions } from './net/networkBattleActivationRuntime.ts';
+import type { BrowserComposition, BrowserCompositionPorts, BrowserLaunchRequest } from './mp/session/browserComposition.ts';
+import type { MatchActor } from './mp/presentation/battlePresentation.ts';
+import type { LobbyIntent } from './mp/session/lobbyIntent.ts';
 import { createNetworkBattleIntentCover } from './net/networkBattleIntentCover.ts';
-import type { PrivateBattleLaunchRequest } from './net/networkBattleLaunchRuntime.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
@@ -743,7 +737,10 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     post,
     game,
     getWorld: currentWorld,
-    getNetworkTelemetry: () => networkSession.diagnostics(),
+    getNetworkTelemetry: () => {
+      const v2 = multiplayerV2.current;
+      return v2?.active ? { connected: v2.inMatch, rttMs: v2.networkStatus.rttMs ?? undefined } : null;
+    },
     resolvePresetName,
     getDeviceTier,
   });
@@ -1068,56 +1065,45 @@ const garageMaps = [
     hero: MAP_HEROES[id] || '',
   })),
 ];
-const networkComposition = createNetworkCompositionAccess(loadNetworkComposition);
-const currentNetworkRoom = (): NetworkRoomCoordinator | null => (
-  networkComposition.current?.room || null
-);
-// Multiplayer v2 (`?mp=v2`, charter §8): the Play menu drives the v2 room connection and a v2 room's
-// start reaches the v2 browser composition. Both load only behind the switch, so the solo boot path
-// never imports src/mp.
-const multiplayerV2Requested = readMultiplayerV2Flag({ search: location.search, storage: localStorage });
-interface MultiplayerV2MenuModules {
-  createRoomConnectionAdapter: typeof import('./mp/session/playMenuAdapter.ts')['createRoomConnectionAdapter'];
-  isMultiplayerV2Session: typeof import('./mp/session/playMenuAdapter.ts')['isMultiplayerV2Session'];
-  resolveRoomsUrl: typeof import('./mp/session/endpoint.ts')['resolveRoomsUrl'];
-}
-let multiplayerV2Menu: MultiplayerV2MenuModules | null = null;
-const loadMultiplayerV2Menu = (): Promise<MultiplayerV2MenuModules> => Promise.all([
-  import('./mp/session/playMenuAdapter.ts'),
-  import('./mp/session/endpoint.ts'),
-]).then(([adapter, endpoint]) => {
-  multiplayerV2Menu = {
-    createRoomConnectionAdapter: adapter.createRoomConnectionAdapter,
-    isMultiplayerV2Session: adapter.isMultiplayerV2Session,
-    resolveRoomsUrl: endpoint.resolveRoomsUrl,
-  };
-  return multiplayerV2Menu;
+// Multiplayer (docs/MULTIPLAYER-V2.md §13.10, the cutover of 2026-09-29): the Play menu drives the room
+// connection itself (src/mp/session/playMenuAdapter.ts, the room host from src/mp/session/endpoint.ts);
+// the lobby's Garage presence loads with the menu and the battle composition loads on the first start,
+// both behind explicit multiplayer intent, so the solo boot path never imports src/mp.
+let multiplayerLobby: LobbyIntent | null = null;
+const loadMultiplayerLobby = (): Promise<LobbyIntent> => import('./mp/session/lobbyIntent.ts').then(({ createLobbyIntent }) => {
+  multiplayerLobby ??= createLobbyIntent({
+    getMenu: () => playSurface.getMenuPromise(),
+    setGarageStatus: (status) => garage.setRoomStatus(status),
+    // Joined-room intent is stronger than browsing the picker but weaker than a round start: the
+    // composition, the battle client, the visuals, the missing roster builders and the fixed map warm.
+    preloader: {
+      getGamePhase: () => game.phase,
+      preloadPresentation: () => multiplayerV2.preload(),
+      preloadVisuals: () => battleVisualStreamerAccess.preload(),
+      preloadBattleModules: () => preloadBattleClientRuntime(),
+      ensureTankBuilders,
+      loadWorldModule,
+      cancelBackgroundWorldBuildsExcept,
+      prefetchWorld,
+    },
+  });
+  return multiplayerLobby;
 });
 const multiplayerV2 = createNetworkCompositionAccess(loadMultiplayerV2Composition);
-/** A network match owns the battle frame: v1's browser session or a v2 round (loading or live). */
-const networkMatchActive = (): boolean => !!networkSession.match || !!multiplayerV2.current?.active;
-/** The one network pump every phase shares: v1's frame pump and the v2 session owner. */
+/** A network match owns the battle frame: a round loading or live. */
+const networkMatchActive = (): boolean => !!multiplayerV2.current?.active;
+/** The one network pump every phase shares. */
 const networkPump = {
   pump(dtSeconds: number, nowMs: number): void {
-    networkSession.pump(dtSeconds, nowMs);
     multiplayerV2.current?.pump(dtSeconds, nowMs);
   },
 };
-const {
-  loadPlayMenuModule,
-  preloadNetworkBattleModules,
-  preloadPrivateMatchHandoffModule,
-  preloadDedicatedClientModule,
-  preloadNetworkRoomChatModule,
-} = createBattleModuleAccess();
+const { loadPlayMenuModule } = createBattleModuleAccess();
 
 const playSurface = createPlaySurfaceRuntime({
-  loadMenuModule: multiplayerV2Requested
-    ? () => Promise.all([loadPlayMenuModule(), loadMultiplayerV2Menu()]).then(([menu]) => menu)
-    : loadPlayMenuModule,
+  // The lobby's Garage presence loads with the menu (both behind explicit multiplayer intent).
+  loadMenuModule: () => Promise.all([loadPlayMenuModule(), loadMultiplayerLobby()]).then(([menu]) => menu),
   createMenuOptions: () => ({
-      // the v2 room connection and the room host the menu's connection settings default to (v1 owns both otherwise)
-      ...(multiplayerV2Menu ? multiplayerV2MenuOptions(multiplayerV2Menu) : {}),
       maps: garageMaps,
       vehicles: VISIBLE_TANK_IDS.map((id) => {
         const spec = getSpec(id);
@@ -1134,38 +1120,15 @@ const playSurface = createPlaySurfaceRuntime({
         camo: getMultiplayerCamoSelection(specId),
       }),
       isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
-      isCamoAllowed: (camo: string) => isBuiltInCamoId(camo),
       getCamoName: (camo: string) => t(`camoPattern.${camo}`) || t('camoPattern.factory'),
       getVehicleName: (specId: string) => getSpec(specId).name,
       onReadyIntent: () => audio.prepare(),
-      onNetworkStart: (request) => (multiplayerV2Menu?.isMultiplayerV2Session(request.session)
-        ? beginMultiplayerV2Battle(request)
-        : beginNetworkBattle(request)),
-      onNetworkClose: (reason: string) => {
-        if (networkSession.match && !battleEntryLifecycle.pending && !isIntentionalRoomCloseReason(reason)) {
-          void networkRoomFailure.fail(reason).catch((error) => {
-            console.error('[network] room recovery presentation failed', error);
-          });
-          return;
-        }
-        const current = networkComposition.current;
-        if (current) current.round.close(reason || 'room_closed');
-        else networkSession.close(reason || 'room_closed');
-      },
-      onLobbyChange: (context) => {
-        const current = currentNetworkRoom();
-        if (current) current.handleLobbyChange(context);
-        else if (context) {
-          void ensureNetworkComposition().then((runtime) => (
-            runtime.room.handleLobbyChange(context)
-          ));
-        }
-      },
+      onNetworkStart: (request) => beginMultiplayerV2Battle(request),
+      onLobbyChange: (context) => { multiplayerLobby?.handleLobbyChange(context); },
   }),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),
   startSolo: (request) => beginSoloBattle(request),
-  showActiveRoom: () => currentNetworkRoom()?.showActiveRoom() || false,
   preloadCommon: [
     ensureBattleHud,
     preloadFxModule,
@@ -1175,11 +1138,9 @@ const playSurface = createPlaySurfaceRuntime({
     () => preloadKillcamModule(),
   ],
   preloadNetworkPresentation: () => Promise.all([
-    ensureNetworkComposition().then((runtime) => runtime.presentation.preload()),
-    preloadNetworkBattleModules(),
-    preloadNetworkRoomChatModule(),
+    multiplayerV2.preload(),
+    preloadBattleClientRuntime(),
   ]),
-  preloadPrivateMatch: preloadPrivateMatchHandoffModule,
 });
 
 // Battle entry owns the play modal's visibility. Every player-facing entry
@@ -1200,8 +1161,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     pedestal.set(specId);
     applyCamoPatternsChunked({ priorityIds: [specId], onlySpecIds: [specId] })
       .then(() => invalidateGaragePresentation());
-    currentNetworkRoom()?.syncVehicle(specId);
-    currentNetworkRoom()?.syncPendingLobbySelection();
+    multiplayerLobby?.syncSelection();
   },
   onBattle: (specId, mapId, options) => (
     beginBattleEntry(specId, mapId, options)
@@ -1213,7 +1173,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onBattleIntent: (options) => {
     // A retained Solo button must not start competing map/roster preparation
     // while this player is already preparing an authoritative room.
-    if (!currentNetworkRoom()?.prepareLobby()) battleIntent.preload(options);
+    if (!multiplayerLobby?.prepareLobby()) battleIntent.preload(options);
   },
   onTankIntent: pedestal.preloadIntent,
   onStudioIntent: preloadStudioIntent,
@@ -1273,8 +1233,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
       }).then(() => invalidateGaragePresentation());
-      currentNetworkRoom()?.syncCamo(specId);
-      currentNetworkRoom()?.syncPendingLobbySelection();
+      multiplayerLobby?.syncSelection();
     },
     setCustom: (specId, value) => {
       setCustomCamoSelection(specId, value);
@@ -1282,8 +1241,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
         priorityIds: [specId], onlySpecIds: [specId],
       }).then(() => invalidateGaragePresentation());
       // Deliberately sends Factory: custom paint is local single-player only.
-      currentNetworkRoom()?.syncCamo(specId);
-      currentNetworkRoom()?.syncPendingLobbySelection();
+      multiplayerLobby?.syncSelection();
     },
   },
   // CAMO WIRING (r8): AUTO(map) tanks preview the pattern they will actually
@@ -1295,7 +1253,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     if (mapId !== 'random') worldRuntime.setPendingMapId(mapId);
     // Guests can browse locally without changing the host's room map. Keep
     // that build alive until canonical room state accepts another map.
-    if (!currentNetworkRoom()?.prepareLobby()) {
+    if (!multiplayerLobby?.prepareLobby()) {
       cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
     }
     setCamoBiome(mapId);
@@ -1305,7 +1263,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     applyCamoPatternsChunked({
       priorityIds: [selectedVehicle.id], onlySpecIds: [selectedVehicle.id],
     }).then(() => invalidateGaragePresentation());
-    currentNetworkRoom()?.syncPendingLobbySelection();
+    multiplayerLobby?.syncSelection();
   },
 }));
 
@@ -1515,9 +1473,9 @@ const nightLighting = createNightLightingAccess({
   // the two-spot / one-point budget (owner 2026-09-18: "lights seem to only come from one headlight")
   getBudget: () => getDeviceTier() === 'mobile' ? { spotLights: 2, pointLights: 1 } : { spotLights: 4, pointLights: 2 },
   getWorldRoot: () => currentWorld()?.group ?? null,
-  // The bridge publishes its complete typed registry here, including hidden
+  // A network round publishes its complete actor registry here, including hidden
   // actors; game.tanks alone is only the currently visible network roster.
-  getEntities: () => networkSession.bridge ? game.tankById.values() : game.tanks,
+  getEntities: () => multiplayerV2.current?.active ? game.tankById.values() : game.tanks,
   getCameraPosition: () => camera.position,
   isNight: () => battleAtmosphere.current?.weather?.timeOfDay === 'night',
   isBattlePresentation: () => game.phase !== 'garage' && !studio.active,
@@ -1819,8 +1777,8 @@ playerBattleActions = createPlayerBattleActions({
   isSettingsOpen: () => settings.isOpen(),
   network: {
     isActive: networkMatchActive,
-    queueConsumable: (slot) => { networkSession.queueConsumable(slot); multiplayerV2.current?.queueConsumable(slot); },
-    queueAction: (action) => { networkSession.queueAction(action); multiplayerV2.current?.queueAction(action); },
+    queueConsumable: (slot) => { multiplayerV2.current?.queueConsumable(slot); },
+    queueAction: (action) => { multiplayerV2.current?.queueAction(action); },
   },
   rules: {
     selectShell: battleClientAccess.selectShell,
@@ -1972,7 +1930,7 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
     // The first presented battle frame is the successful end of every entry path.
     entryTelemetry.send({
-      kind: 'entry_result', mode: networkSession.match || multiplayerV2.current?.active ? 'network' : 'solo', outcome: 'ok',
+      kind: 'entry_result', mode: multiplayerV2.current?.active ? 'network' : 'solo', outcome: 'ok',
       ms: receipt.waitMs, ...(receipt.slow ? { code: `slow_${receipt.slow}` } : {}),
     });
   },
@@ -1980,7 +1938,7 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   // beacon, not a failed entry; the lifecycle extends once and then waits.
   onSlowReveal: ({ phase, waitedMs, budgetMs }) => entryTelemetry.send({
     kind: 'slow_reveal', stage: 'primeReveal', code: phase, ms: waitedMs,
-    mode: networkSession.match ? 'network' : 'solo', timings: { budgetMs },
+    mode: multiplayerV2.current?.active ? 'network' : 'solo', timings: { budgetMs },
   }),
 });
 const networkBattleIntentCover = createNetworkBattleIntentCover({
@@ -2162,77 +2120,21 @@ function prepareBattleRevealCamera() {
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
 }
-const networkSession = createNetworkBrowserSessionRuntime({
-  getPlayer: () => game.player,
-  isBattleActive: battlePhase.isBattle,
-  shouldPresentDisconnect: battlePhase.shouldPresentDisconnect,
-  nextFrame,
-  onBackgroundActivity: () => { frameLoop.wakeBackground(); },
-  onDisconnect: (reason) => {
-    if (battleEntryLifecycle.pending) {
-      networkComposition.current?.round.close(reason);
-      return;
-    }
-    void networkRoomFailure.fail(reason).catch((error) => {
-      console.error('[network] room recovery presentation failed', error);
-    });
-  },
-});
-const networkRoomFailure = createNetworkRoomFailureRuntime({
-  hasMatch: () => !!networkSession.match,
-  getMode: () => (currentNetworkRoom()?.activeRoom?.mode
-    ?? currentNetworkRoom()?.pendingLobby?.state.mode) === 'lan' ? 'lan' : 'private',
-  shouldReturnToGarage: () => game.phase !== 'garage',
-  clearInput: () => input.setEnabled(false),
-  closeRoom: (reason) => {
-    const current = networkComposition.current;
-    if (current) current.round.close(reason);
-    else networkSession.close(reason);
-  },
-  returnToGarage: () => garageReturn.leave(),
-  getMenu: playSurface.getMenuPromise,
-});
-
 // Persistent subject-owned FX resolve against the presentation entity the
-// player actually sees. Network entities take priority during online battles;
-// solo falls back to the fixed-step roster.
+// player actually sees: a network round's actors and the solo roster both
+// publish into the registry.
 function resolveFxSubject(id: string) {
-  return networkSession.resolveEntity(id) || game.tankById.get(id) || null;
+  return game.tankById.get(id) || null;
 }
 
 /**
- * Acquire the room/lobby/entry policy only after explicit multiplayer intent.
- * Solo hover and entry stay on the original local path without transferring or
- * evaluating network orchestration. A failed cold import is retryable, which is
- * essential for first-visit clients on unstable mobile connections.
+ * The Play menu's start for a room: the same synchronous intent cover on the first start (the
+ * composition chunk is still loading), then the browser composition (src/mp/session/browserComposition.ts)
+ * enters the room's match. Avoiding an `async` wrapper is deliberate: even awaiting an already-resolved
+ * promise would defer the loading veil by one microtask and expose a Garage frame. A failed cold
+ * import is retryable, which is essential for first-visit clients on unstable mobile connections.
  */
-function ensureNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
-  return networkComposition.preload();
-}
-
-/**
- * Preserve the launcher's synchronous cover-before-first-await contract when
- * the composition was already acquired by room intent. Avoiding an `async`
- * wrapper here is deliberate: even awaiting an already-resolved promise would
- * defer the loading veil by one microtask and expose a Garage frame.
- */
-function beginNetworkBattle(request?: PrivateBattleLaunchRequest): Promise<boolean> {
-  const current = networkComposition.current;
-  if (current) return current.launcher.beginPrivate(request);
-  networkBattleIntentCover.show(request);
-  return ensureNetworkComposition()
-    .then((runtime) => runtime.launcher.beginPrivate(request))
-    .catch(async (error) => {
-      await networkBattleIntentCover.releaseAfterFailure();
-      throw error;
-    });
-}
-
-/**
- * The v2 counterpart of beginNetworkBattle: the same synchronous cover, then the v2 browser
- * composition (src/mp/session/browserComposition.ts) enters the room's match.
- */
-function beginMultiplayerV2Battle(request: PrivateBattleLaunchRequest): Promise<boolean> {
+function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolean> {
   const current = multiplayerV2.current;
   if (current) return current.beginRoom(request);
   networkBattleIntentCover.show(request);
@@ -2244,17 +2146,6 @@ function beginMultiplayerV2Battle(request: PrivateBattleLaunchRequest): Promise<
     });
 }
 
-/** The Play menu options a v2 deployment adds: the room connection over RoomClient and the room host. */
-function multiplayerV2MenuOptions(modules: MultiplayerV2MenuModules) {
-  return {
-    createConnectionRuntime: (options: Parameters<MultiplayerV2MenuModules['createRoomConnectionAdapter']>[0]) =>
-      modules.createRoomConnectionAdapter({ ...options, storage: localStorage, clientBuild: import.meta.env.MODE }),
-    resolveSignalUrl: () => modules.resolveRoomsUrl({
-      configured: import.meta.env.VITE_ROOMS_URL, protocol: location.protocol, hostname: location.hostname,
-    }) ?? '',
-  };
-}
-
 function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
   return Promise.all([
     import('./mp/session/browserComposition.ts'),
@@ -2264,26 +2155,15 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     import('./net/iceConfig.ts'),
     import('./net/signalEndpoint.ts'),
   ]).then(([{ createBrowserComposition }, { createNetworkBattleActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { loadIceConfiguration }, { resolveIceConfigUrl }]) => {
-    // The v2 launch runs on the same app ports as v1: the loader, the world, the warm owners, the activation.
-    const options = networkCompositionOptions();
+    // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
+    const options = multiplayerAppPorts();
     const activation = createNetworkBattleActivationRuntime(options.activation);
     const runtime = createBrowserComposition({
       clientBuild: import.meta.env.MODE,
       ports: {
         lifecycle: battleEntryLifecycle,
-        load: {
-          ...options.presentation.load,
-          loadModules: options.presentation.entry.loadModules,
-          loadWorld: options.presentation.entry.loadWorld,
-          recordTrace: (trace) => { window.__NETWORK_LOAD = trace; },
-          recordEntryFailure: (failure) => { window.__NETWORK_ENTRY_FAILURE = failure; },
-          // Entry resilience: a strict shader preparation that outran its budget once is a beacon, not a failed entry
-          // (the compile ran again with a fresh deadline) — the kind the reveal and paint budgets report.
-          recordSlowEntry: ({ stage, code, ms, pending }) => entryTelemetry.send({
-            kind: 'slow_reveal', stage, code: `${stage}_${code}`, ms, mode: 'network', ...(pending !== null ? { timings: { pending } } : {}),
-          }),
-        },
-        roster: options.presentation.roster,
+        load: options.load,
+        roster: options.roster,
         scene: {
           engineCtx,
           game,
@@ -2295,13 +2175,8 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
           onVisualReady: (actor) => nightLighting.appendEntity(actor),
         },
-        warm: options.presentation.warm,
-        presentation: {
-          activate: activation.activate,
-          setWaitingForPeers: options.presentation.presentation.setWaitingForPeers,
-          setGarageLighting: options.presentation.presentation.setGarageLighting,
-          runBlackWatchdog: options.presentation.presentation.runBlackWatchdog,
-        },
+        warm: options.warm,
+        presentation: { activate: activation.activate, ...options.presentation },
         room: {
           getMenu: playSurface.getMenuPromise,
           setGarageStatus: (status) => garage.setRoomStatus(status),
@@ -2348,53 +2223,31 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
   });
 }
 
-function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
-  return import('./net/networkBattleComposition.ts').then(({
-    createNetworkBattleComposition,
-  }) => createNetworkBattleComposition(networkCompositionOptions()));
+/** The roster as the warm owners read it: the composition's actors (the shape of a solo TankEntity). */
+interface MultiplayerWarmView { entities: Map<string, MatchActor> }
+
+/** The app ports the multiplayer composition is built from. */
+interface MultiplayerAppPorts {
+  load: BrowserCompositionPorts['load'];
+  roster: BrowserCompositionPorts['roster'];
+  warm: NonNullable<BrowserCompositionPorts['warm']>;
+  presentation: Omit<BrowserCompositionPorts['presentation'], 'activate'>;
+  activation: NetworkBattleActivationOptions;
 }
 
-/** The app ports both browser multiplayer compositions are built from (v1 in src/net, v2 in src/mp). */
-function networkCompositionOptions(): NetworkBattleCompositionOptions {
+function multiplayerAppPorts(): MultiplayerAppPorts {
     if (!playerBattleActions) {
       throw new Error('Network composition requires player battle actions.');
     }
     return {
-      round: {
-        game,
-        session: networkSession,
-      },
-      presentation: {
         load: {
           battleLoad,
           audio,
           lighting,
           ensureBattleVisuals: ensureBattleVisualStreamer,
           nextFrame,
-          recordTrace: (trace: RuntimeValue) => {
-            if (typeof window !== 'undefined') window.__NETWORK_LOAD = trace;
-          },
           setAdaptiveSuspended: (value: boolean) => post.setAdaptiveSuspended(value),
-        },
-        roster: {
-          getMap: (mapId: string) => {
-            return {
-              name: getMapName(mapId),
-              thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
-              biome: mapId,
-            };
-          },
-          rows: (players, team, viewerId) => (
-            rosterPresentation.lobbyRows({ players }, team, viewerId)
-          ),
-          vehicleName: (specId: string) => getSpec(specId)?.name || specId,
-          emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
-          setCamoBiome,
-        },
-        entry: {
-          acquire: (options) => battleEntryAcquisition.acquireNetwork(options),
           loadModules: () => Promise.all([
-            preloadNetworkBattleModules(),
             preloadBattleClientRuntime(),
             ensureBattleHud(),
             ensureTouchControls(),
@@ -2415,7 +2268,7 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
             ensureKillcamRuntime(),
             battleWarm.preload(),
             audio.warmBattleEvents(),
-          ]).then(([modules]) => modules),
+          ]),
           // Final combat warming follows Garage-light removal and authority
           // weather. Early world warming compiles a different light variant;
           // retain world/services here and the covered real-frame gates below.
@@ -2423,46 +2276,37 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
           loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void, terrainVariant: 'assault-trenches' | null = null) => (
             ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle', ...(terrainVariant ? { terrainVariant } : {}) })
           ),
-          publishMatch: (match) => networkSession.publishMatch(match),
-          getMatch: () => networkSession.match,
-        },
-        bridge: {
-          prepareRosterAssets: (factory, request, spectator) => factory({
-            players: request.matchPlayers,
-            viewerId: request.viewerId,
-            spectator,
-            mapId: request.mapId,
-            anisotropy: engineCtx.anisotropy ?? 4,
-            signal: request.signal,
-          }),
-          installInputRuntime: (factory) => { networkSession.ensureInputRuntime(factory); },
-          createStatus: (factory) => factory({
-            onExit: () => {
-              const entryPending = battleEntryLifecycle.pending;
-              input.setEnabled(false);
-              networkComposition.current?.round.close('explicit_leave');
-              if (entryPending) return; // The cancelled launcher owns covered Garage restoration.
-              void garageReturn.leave().catch((error) => {
-                console.error('[network] room exit failed', error);
+          recordTrace: (trace) => { window.__NETWORK_LOAD = trace; },
+          recordEntryFailure: (failure) => {
+            window.__NETWORK_ENTRY_FAILURE = failure;
+            // A null clears the diagnostic at entry start; a diagnostic is a failed network entry (the funnel's beacon).
+            if (failure) {
+              entryTelemetry.send({
+                kind: 'entry_result', mode: 'network', outcome: 'failed', code: `entry_failed_${failure.stage}`,
+                error: describeError(failure.message, location.origin),
               });
-            },
+            }
+          },
+          // Entry resilience: a strict shader preparation that outran its budget once is a beacon, not a failed entry
+          // (the compile ran again with a fresh deadline) — the kind the reveal and paint budgets report.
+          recordSlowEntry: ({ stage, code, ms, pending }) => entryTelemetry.send({
+            kind: 'slow_reveal', stage, code: `${stage}_${code}`, ms, mode: 'network', ...(pending !== null ? { timings: { pending } } : {}),
           }),
-          publishStatus: (status) => networkSession.publishStatus(status),
-          attachRecovery: () => networkSession.attachRecovery(),
-          create: (factory, request, spectator) => factory({
-            engineCtx,
-            game,
-            bus,
-            viewerId: request.viewerId,
-            spectator,
-            worldCollision: currentWorld(),
-            clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
-            onVisualReady: (entity) => nightLighting.appendEntity(entity),
-          }),
-          publish: (bridge) => networkSession.publishBridge(bridge),
-          groundSampler,
-          waitForInitialSnapshot: (request) => networkSession.waitForInitialSnapshot(request),
-          waitForPeerReadiness: () => networkSession.waitForPeerReadiness(),
+        },
+        roster: {
+          getMap: (mapId: string) => {
+            return {
+              name: getMapName(mapId),
+              thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
+              biome: mapId,
+            };
+          },
+          rows: (players, team, viewerId) => (
+            rosterPresentation.lobbyRows({ players }, team, viewerId)
+          ),
+          vehicleName: (specId: string) => getSpec(specId)?.name || specId,
+          emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
+          setCamoBiome,
         },
         warm: {
           nightLighting: () => nightLighting.prepare(),
@@ -2472,7 +2316,6 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
             await battleAtmosphere.prepare(seed, mapId);
             await frontline.prepare(seed, mapId);
           },
-          getFx: requireFxRuntime,
           terrain: () => {
             const world = currentWorld();
             if (!world) throw new Error('network terrain warm requires an active world');
@@ -2485,7 +2328,7 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
             focusEntity: rig.spectateTargetEnt ?? game.player,
             yieldForBudget: createFrameBudgetYielder(16),
           }),
-          wrecks: (bridge, signal) => battleWarm.warmNetworkWrecks({
+          wrecks: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmNetworkWrecks({
             entities: bridge.entities.values(),
             signal,
             prebakeBurntSteps,
@@ -2496,7 +2339,7 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
             compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
             warmRender,
           }),
-          playerPanel: async (bridge, viewerId) => {
+          playerPanel: async (bridge: MultiplayerWarmView, viewerId: string) => {
             const entity = bridge.entities.get(viewerId);
             if (!entity) return;
             const panel = currentDamagePanel();
@@ -2505,7 +2348,7 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
               throw new Error('Player top-down view could not be prepared');
             }
           },
-          openingEffects: async (fx, bridge, signal) => {
+          openingEffects: async (fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming & {
               openingRenderMs?: number; openingPasses?: CoveredComposerWarmTiming['passes'];
             } = {
@@ -2619,70 +2462,6 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
             renderer, scene, camera, { signal, measureTimings: true, ...currentSceneWatchdogOptions() },
           ),
         },
-      },
-      launcher: {
-        lifecycle: battleEntryLifecycle,
-        nextFrame,
-        battleLoad,
-        audio,
-        getMatch: () => networkSession.match,
-        getWorldCollision: currentWorld,
-        getMapPresentation: (mapId: string | null, fallback: string) => {
-          if (!mapId) return { name: fallback, thumb: '', biome: 'none' };
-          return {
-            name: getMapName(mapId) || fallback,
-            thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
-            biome: mapId,
-          };
-        },
-        rosterRows: rosterPresentation.lobbyRows,
-        emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
-        loadPrivateMatch: preloadPrivateMatchHandoffModule,
-        loadDedicatedMatch: preloadDedicatedClientModule,
-        enterGarage: () => garageReturn.enter(),
-        onPrivateEntryFailure: async (reason, mode) => {
-          const menu = await playSurface.getMenuPromise();
-          if (!networkSession.match) menu?.showRoomFailure(reason, mode);
-        },
-        setNetworkStatus: (status) => networkSession.status?.set(status),
-        recordEntryFailure: (failure) => {
-          if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
-          // A null clears the diagnostic at entry start; a diagnostic is a failed network entry.
-          if (failure) {
-            entryTelemetry.send({
-              kind: 'entry_result', mode: 'network', outcome: 'failed', code: `entry_failed_${failure.role || 'peer'}`,
-              error: describeError(failure.message, location.origin),
-            });
-          }
-        },
-      },
-      // Joined-room intent is stronger than browsing the picker but weaker than
-      // a round start. Only new roster builders and a fixed selected map warm.
-      lobby: {
-        getGamePhase: () => game.phase,
-        preloadVisuals: () => battleVisualStreamerAccess.preload(),
-        preloadBattleModules: preloadNetworkBattleModules,
-        preloadChat: preloadNetworkRoomChatModule,
-        ensureTankBuilders,
-        loadWorldModule,
-        cancelBackgroundWorldBuildsExcept,
-        prefetchWorld,
-      },
-      room: {
-        getMatch: () => networkSession.match,
-        getPlayMenu: playSurface.getMenuPromise,
-        loadRoomChat: preloadNetworkRoomChatModule,
-        getPhase: () => game.phase,
-        isSettingsOpen: () => settings.isOpen(),
-        hasResult: () => !!game.result,
-        isKillcamActive: () => killcam.isActive(),
-        isSpectator: () => networkSession.spectator,
-        input,
-        setGarageStatus: (status) => garage.setRoomStatus(status),
-        emitRoomState: (payload) => bus.emit('network:roomState', payload),
-        equipmentFor: (specId: string) => loadSelectedEquipment(specId, getSpec(specId)),
-        camoFor: getMultiplayerCamoSelection,
-      },
       activation: {
         game,
         settings,
@@ -2698,9 +2477,9 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
           setShotMode: (value: boolean) => { shotMode = value; },
           setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
           setNetworkSpectator: (value: boolean) => {
+            void value; // the round's presentation carries the spectator's perspective itself
             sceneWatchdogEntryGeneration++;
             coveredBattleWatchdog = null;
-            networkSession.setSpectator(value);
           },
           setSelectedSpecId: selectedVehicle.set,
           rememberSpecId: selectedVehicle.remember,
@@ -2719,8 +2498,6 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
       },
     };
 }
-
-bus.on('phase:change', () => currentNetworkRoom()?.syncChatVisibility());
 
 function beginBattleEntry(
   specId: string,
@@ -2817,18 +2594,9 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     resetHudFrame: () => battleHudFrame.reset(),
   },
   network: {
-    shouldPreserveRoom: () => (currentNetworkRoom()?.shouldPreserveOnBattleExit() ?? false)
-      || (multiplayerV2.current?.shouldPreserveRoom() ?? false),
-    disposePresentation: () => {
-      networkComposition.current?.round.disposePresentation();
-      multiplayerV2.current?.disposePresentation();
-    },
-    closeMatch: (reason: string) => {
-      const current = networkComposition.current;
-      if (current) current.round.close(reason);
-      else networkSession.close(reason);
-      multiplayerV2.current?.closeMatch(reason);
-    },
+    shouldPreserveRoom: () => multiplayerV2.current?.shouldPreserveRoom() ?? false,
+    disposePresentation: () => { multiplayerV2.current?.disposePresentation(); },
+    closeMatch: (reason: string) => { multiplayerV2.current?.closeMatch(reason); },
   },
   warm: {
     invalidate: () => { battleWarmGeneration += 1; sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
@@ -2904,17 +2672,9 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
 });
 const enterGarage = garageReturn.enter;
 const leaveBattleToGarage = (): Promise<void> => {
-  const network = networkComposition.current;
-  if (network?.launcher.pending) {
-    // A retained-room rematch may still own unpublished or warming state.
-    // Cancel it before disposal; its launcher owns the one covered restore.
-    input.setEnabled(false);
-    network.round.close('explicit_leave');
-    return Promise.resolve();
-  }
   const v2 = multiplayerV2.current;
   if (v2?.active && battleEntryLifecycle.pending) {
-    // A v2 round still loading: leaving the room ends the entry under its own covered restore.
+    // A round still loading: leaving the room ends the entry under its own covered restore.
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
   }
@@ -2943,7 +2703,7 @@ const battleAgainAction = createBattleAgainAction({
   loadFailure: () => import('./ui/garageReturnFailure.ts'),
   getPhase: () => game.phase,
   getEntryGeneration: () => sceneWatchdogEntryGeneration,
-  getRoom: () => networkSession.match,
+  getRoom: () => multiplayerV2.current?.room ?? null,
   reportError: (message, error) => console.error(message, error),
 });
 bus.on('ui:battleAgain', () => { void battleAgainAction.run(); });
@@ -2959,13 +2719,14 @@ bus.on('ui:roomOpen', async () => {
 bus.on('ui:roomReady', (payload) => {
   const ready = typeof payload === 'object' && payload !== null
     && Reflect.get(payload, 'ready') === true;
-  const accepted = currentNetworkRoom()?.setReady(ready);
+  const accepted = multiplayerLobby?.setReady(ready) ?? false;
   // Keep device unlock in the Garage gesture; the pending-room command may
   // resolve its menu asynchronously and would otherwise lose that boundary.
   if (accepted && ready) audio.prepare();
 });
-
-bus.on('ui:roomStart', () => currentNetworkRoom()?.startRound());
+bus.on('ui:roomStart', () => { multiplayerLobby?.startRound(); });
+// The composition's room (after a handoff) reaches the lobby owner through its state event.
+bus.on('network:roomState', (payload) => { multiplayerLobby?.handleRoomState(payload); });
 
 // batch 19 (2026-09-14): the end screen's NEXT / RETRY OPERATION button — the covered return owns the
 // dismissal exactly like Battle Again, then the ladder sortie starts in place of the Garage's BATTLE click
@@ -2999,7 +2760,8 @@ const battleHudFrame = createBattleHudFrameRuntime({
   input,
   aimController,
   armorAimOverlay,
-  networkSession,
+  // The round's presentation carries its own perspective; the HUD frame's v1 session view stays empty.
+  networkSession: { match: null, spectator: false, bridge: null },
   killcam,
   muzzleScratch: _rayO,
   getHud: currentHud,
@@ -3022,8 +2784,7 @@ const baseWorldFramePresentation = createWorldFramePresentationRuntime({
   rig,
   getWorld: currentWorld,
   isWorldDormant: () => worldRuntime.dormant,
-  getCameraFocus: () => game.player ||
-    (networkSession.spectator ? rig.spectateTargetEnt : null),
+  getCameraFocus: () => game.player ?? null,
 });
 // The frontline ticks with the world presentation: live battle frames only,
 // never the Garage, a paused battle, or a dormant world.
@@ -3041,7 +2802,7 @@ const worldFramePresentation = {
         const field = wakeWorld.heightField;
         wakeSources.length = 0;
         groundSources.length = 0;
-        const entities = networkSession.bridge ? game.tankById.values() : game.tanks;
+        const entities = multiplayerV2.current?.active ? game.tankById.values() : game.tanks;
         for (const ent of entities) {
           const st = ent?.state; const p = st?.pos;
           if (!p) continue;
@@ -3190,10 +2951,7 @@ const frameLoop = createFrameLoopScheduler({
   tick: mainFrame.tick,
   isBootComplete: () => bootComplete,
   hasBackgroundWork: networkMatchActive,
-  backgroundTick: (nowMs) => {
-    networkSession.pumpBackground(nowMs);
-    multiplayerV2.current?.pumpBackground(nowMs);
-  },
+  backgroundTick: (nowMs) => { multiplayerV2.current?.pumpBackground(nowMs); },
   // The authoritative simulation is fixed at 60 Hz. Presenting the complete
   // post/shadow pipeline above that rate only doubles GPU work on 120 Hz /
   // ProMotion displays without creating additional simulation states.
@@ -3205,7 +2963,7 @@ const frameLoop = createFrameLoopScheduler({
   shouldUseIdleCadence: () => bootComplete && battlePhase.isGarage() &&
     !battleEntryLifecycle.renderingCovered && !transition.active &&
     !studio.active && !shotMode && !showroom.moving &&
-    !pedestal.switchPending && !networkSession.match,
+    !pedestal.switchPending,
   idleIntervalMs: 5000,
 });
 rearmRafAfterContext = frameLoop.restart;
@@ -3533,7 +3291,7 @@ if (diagnosticsRequested) {
       },
       beginBattleEntry,
       beginSoloBattle,
-      beginNetworkBattle,
+      beginNetworkBattle: beginMultiplayerV2Battle,
       enterGarage,
       leaveBattleToGarage,
       spawnKillShell: driveTestController.spawnKillShell,
@@ -3544,24 +3302,12 @@ if (diagnosticsRequested) {
         currentHud()?.forceHitMark(!!bounced);
       },
       getDamagePanel: currentDamagePanel,
-      getNetworkDiagnostics: () => networkSession.diagnostics(),
-      getNetworkPresentationStats: () => (
-        networkSession.bridge?.getPresentationEventStats?.() || null
-      ),
+      getNetworkDiagnostics: () => multiplayerV2.current?.stats() ?? null,
+      getNetworkPresentationStats: () => multiplayerV2.current?.stats().round ?? null,
       collectTelemetry: () => perfHud.collectTelemetry(),
       sampleShadowContribution: () => perfHud.sampleShadowContribution(),
-      injectNetworkEvents: (events: RuntimeValue) => {
-        const latestNetworkSnapshot = networkSession.latestSnapshot;
-        if (!import.meta.env.DEV || !networkSession.bridge || !latestNetworkSnapshot) return false;
-        const batch = Array.isArray(events) ? events : [];
-        const matchEnded = batch.find((event) => event?.type === 'match_ended');
-        const snapshot = matchEnded
-          ? { ...latestNetworkSnapshot,
-            meta: { ...latestNetworkSnapshot.meta, result: matchEnded.result } }
-          : latestNetworkSnapshot;
-        networkSession.bridge.apply(snapshot, 1 / 60, batch);
-        return true;
-      },
+      // The authority runs in the host's browser or over the wire: no client-side event injection.
+      injectNetworkEvents: () => false,
     } satisfies DebugSurfaceDependencies,
   });
 }

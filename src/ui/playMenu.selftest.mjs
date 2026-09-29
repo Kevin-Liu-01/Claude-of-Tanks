@@ -12,42 +12,56 @@ assert.doesNotMatch(source, /rankedServiceClient|rankedQueueLifecycle|onRankedSt
 assert.match(source, /showRoomFailure\(reason: string, mode\?: PlayMode\): void/);
 assert.match(source, /class="room-failure" hidden role="alert" aria-atomic="true" tabindex="-1"/);
 assert.match(source, /aria-labelledby="cot-room-failure-title" aria-describedby="cot-room-failure-detail"/);
-for (const action of ['retry', 'code', 'settings', 'garage']) {
+for (const action of ['retry', 'code', 'garage']) {
   assert.match(source, new RegExp(`<button[^>]+data-room-failure="${action}"[^>]+type="button"`));
 }
+// The cutover of 2026-09-29 (docs/MULTIPLAYER-V2.md §13.10): the room host comes from src/mp/session/endpoint.ts;
+// there is no signaling-server field, no settings action and no v1 connection runtime behind the menu.
+assert.doesNotMatch(source, /data-room-failure="settings"|data-field="signal"|advanced\.signal|advanced\.summary|failure\.settings/,
+  'the connection-settings field and its failure action are gone');
+assert.doesNotMatch(source, /resolveSignalUrl|VITE_SIGNAL_URL|VITE_ICE_CONFIG_URL|createPrivateRoomConnectionRuntime|privateRoomConnectionRuntime|net\/signalEndpoint|net\/iceConfig|roomIce|connectionVersion|onNetworkClose/,
+  'nothing of the v1 signaling path remains in the menu');
+assert.match(source, /import \{ resolveRoomsUrl \} from '\.\.\/mp\/session\/endpoint\.ts';/);
+assert.match(source, /const roomConnection: RoomConnectionRuntime = createRoomConnectionAdapter\(connectionOptions\);/,
+  'the menu drives the room connection adapter directly');
+assert.match(source, /const roomsUrl = menuRoomsUrl\(\);\s*if \(!roomsUrl\) \{\s*throw Object\.assign\(new Error\([^)]*\), \{ code: 'room_unconfigured' \}\);/,
+  'a deployment without a room host fails as the room service being unavailable');
+assert.match(source, /if \(!menuRoomsUrl\(\)\) showFailure\('room_unconfigured'\);/,
+  'selecting a multiplayer mode without a room host presents the failure at once');
+assert.match(source, /version: 2,/, 'invite links stamp the room version the composition reads');
 assert.match(source, /failureTitle\.textContent = failure\.title/);
 assert.match(source, /failureDetail\.textContent = failure\.detail/);
 assert.match(source, /retryBtn\.hidden = !failure\.canRetry \|\| !lastConnectionKind/);
 assert.match(source, /generation === requestGeneration\) showFailure\(error\)/,
   'a retired request must not repaint a closed or replacement menu');
-assert.match(source, /if \(session \|\| activeRoom \|\| connecting \|\| privateRoomConnection\.current\s*\|\| privateRoomConnection\.connecting\) return/,
+assert.match(source, /if \(session \|\| activeRoom \|\| connecting \|\| roomConnection\.current\s*\|\| roomConnection\.connecting\) return/,
   'late external failure presentation cannot cancel a newer lobby acquisition');
-assert.match(source, /onClose: \(reason\) => \{\s*const wasHandedOff = handedOff \|\| !!activeRoom;\s*closeCurrentSession\(reason, \{ skipTransportClose: true \}\);[\s\S]*?if \(!wasHandedOff\) showRoomFailure\(reason\);\s*onNetworkClose\(reason\)/,
-  'retained room ownership is captured before teardown so only parent cleanup presents its failure');
+assert.match(source, /onClose: \(reason\) => \{\s*const wasHandedOff = handedOff \|\| !!activeRoom;\s*closeCurrentSession\(reason, \{ skipTransportClose: true \}\);[\s\S]*?if \(!wasHandedOff\) showRoomFailure\(reason\);/,
+  'retained room ownership is captured before teardown so only the menu\'s own seat presents its failure');
 const detach = source.slice(source.indexOf('  function detachActiveRoom()'), source.indexOf('  function showCurrentRoom()'));
-assert.match(detach, /if \(connecting \|\| privateRoomConnection\.connecting \|\| \(!handedOff && !activeRoom\)\) return/,
+assert.match(detach, /if \(connecting \|\| roomConnection\.connecting \|\| \(!handedOff && !activeRoom\)\) return/,
   'delayed room teardown cannot retire an in-flight or waiting replacement');
 assert.match(detach, /if \(connection && \(!handedOff \|\| connection\.session !== session\)\) return/,
   'only the exact handed-off acquisition can be retired by frame cleanup');
-assert.match(detach, /privateRoomConnection\.close\('room_connection_closed', \{ transportAlreadyClosed: true \}\)/,
+assert.match(detach, /roomConnection\.close\('room_connection_closed', \{ transportAlreadyClosed: true \}\)/,
   'intentional frame teardown retires the stale acquisition without closing its session twice');
-assert.match(detach, /unsubscribeState = null;[\s\S]*roomIce = null/);
+assert.match(detach, /unsubscribeState = null;[\s\S]*session = null;[\s\S]*state = null/);
 assert.match(detach, /clearRoomUrl\(\);\s*resetInvitation\(\)/,
   'retired room cleanup removes its durable invite only after the ownership guards pass');
 // Multiplayer v2 exit flow (2026-09-26): a seat back in the Garage with the room kept may rejoin the match the room still
 // runs; a fresh v2 joiner never auto-hands off into a running match without its own match_start.
 assert.match(source, /<button class="action" data-action="rejoin" type="button" hidden>\$\{t\('playMenu\.rejoin'\)\}<\/button>/,
   'the lobby carries a Rejoin battle control, hidden until a running match can be re-entered');
-assert.match(source, /function canRejoinBattle\(next: SerializedLobby\): boolean \{\s*return connectionVersion === 2 && !handedOff && \(next\.phase === 'starting' \|\| next\.phase === 'playing'\) && hasMatchStart\(activeRoom\?\.session \?\? session\);/,
-  'rejoin needs a v2 room in a match and a match_start for this seat');
+assert.match(source, /function canRejoinBattle\(next: SerializedLobby\): boolean \{\s*return !handedOff && \(next\.phase === 'starting' \|\| next\.phase === 'playing'\) && hasMatchStart\(activeRoom\?\.session \?\? session\);/,
+  'rejoin needs a room in a match and a match_start for this seat');
 assert.match(source, /rejoinBtn\.hidden = !canRejoinBattle\(next\);/, 'the control follows every lobby render');
 assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(state && canRejoinBattle\(state\)\) beginNetworkHandoff\(state, role\);/,
   'rejoin hands the room back through the same network start');
 assert.match(source, /const activeSession = session \?\? \(activeRoom\?\.session as RoomSession \| undefined\) \?\? null;/,
   'a composition-held room hands its own session back for the rejoin');
 assert.match(source, /if \(activeSession === session\) handedOff = true;/, 'the handoff flag guards the menu\'s own session only');
-assert.match(source, /!handedOff && !activeRoom &&\s*\(connectionVersion !== 2 \|\| hasMatchStart\(session\)\);/,
-  'a v2 client auto-hands off into a running match only with its own match_start');
+assert.match(source, /!handedOff && !activeRoom && hasMatchStart\(session\);/,
+  'a client auto-hands off into a running match only with its own match_start');
 assert.match(source, /room\.setAttribute\('aria-busy', String\(next\)\)/);
 assert.match(source, /invalidInput\?\.setAttribute\('aria-describedby', 'cot-room-failure-detail'\)/);
 assert.match(source, /\.room-failure button\.action\{min-height:44px/);
@@ -62,8 +76,8 @@ assert.equal([...source.matchAll(/onReadyIntent\?\.\(/g)].length, 1,
   'automatic join, replicated state and programmatic setReady never unlock audio');
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(main, /onReadyIntent: \(\) => audio\.prepare\(\)/);
-assert.match(main, /const accepted = currentNetworkRoom\(\)\?\.setReady\(ready\);[\s\S]{0,230}if \(accepted && ready\) audio\.prepare\(\);/,
-  'Garage prepares in the same gesture only after the coordinator accepts Ready');
+assert.match(main, /const accepted = multiplayerLobby\?\.setReady\(ready\) \?\? false;[\s\S]{0,230}if \(accepted && ready\) audio\.prepare\(\);/,
+  'Garage prepares in the same gesture only after the lobby owner accepts Ready');
 // Execute the actual small event bindings, without constructing the menu or
 // importing the render graph. The command owners retain their own guard tests.
 const readyBinding = source.slice(source.indexOf("  readyBtn.addEventListener('click'"),
@@ -91,11 +105,11 @@ for (const [ready, accepted] of [[true, true], [false, true], [true, false]]) {
   let receive;
   runInNewContext(garageReadyBinding, {
     bus: { on(type, callback) { assert.equal(type, 'ui:roomReady'); receive = callback; } },
-    currentNetworkRoom: () => ({ setReady(value) {
+    multiplayerLobby: { setReady(value) {
       calls.push(['command', value]);
       if (accepted) Promise.resolve().then(() => calls.push(['deferred-menu']));
       return accepted;
-    } }),
+    } },
     audio: { prepare() { calls.push(['prepare']); } },
   });
   receive({ ready });
@@ -133,17 +147,15 @@ for (const [optionTop, optionBottom, initialScroll, expected] of [
 assert.equal((source.match(/revealMenuSelectOption\(list, /g)||[]).length,2,
   'opening and keyboard navigation share the same list-only reveal');
 
-// entry resilience (2026-09-25): a direct-only room is visible in the lobby note and in the beacon, and the 60 s
-// WebRTC timeout names the degraded ICE when that was the room's state.
-assert.match(source, /if \(connection\.ice\.source === 'host-fallback'\) \{[\s\S]{0,200}kind: 'ice_degraded', reason: connection\.ice\.degradedReason \|\| 'host_fallback'/,
-  'adopting a host-fallback room beacons the degraded reason code');
-assert.match(source, /const iceDegraded = mode === 'private' && !!roomIce && !roomIce\.relayAvailable;\s*const failure = privateRoomFailurePresentation\(error, \{ iceDegraded \}\);/,
-  'the failure panel tells the presentation whether the room was direct-only');
+// entry resilience (2026-09-25): every failure panel beacons its classified code. The room-level ICE note of v1
+// (a direct-only room) left with the cutover: ICE is negotiated per peer link by the match session, whose status
+// surface reports it (src/ui/multiplayerStatus.ts).
+assert.match(source, /const failure = privateRoomFailurePresentation\(error\);/,
+  'the failure panel classifies the room error; the room-level relay note of v1 is gone');
 assert.match(source, /kind: 'room_failure', code: failure\.code/, 'every failure panel beacons its classified code');
 assert.doesNotMatch(source, /kind: 'room_failure'[^\n]*(?:roomCode|hostName|codeInput\.value)/, 'the beacon never carries the room code or host name');
-assert.match(source, /relayNote = mode === 'private' && roomIce && !roomIce\.relayAvailable\s*\? t\('playMenu\.note\.relayUnavailable'\)/,
-  'the lobby note keeps the direct-only sentence');
-console.log('playMenu.selftest: ICE degradation is visible in the note, the timeout detail and the beacon');
+assert.doesNotMatch(source, /ice_degraded|relayUnavailable|relayAvailable|degradedReason/, 'no room-level ICE presentation remains');
+console.log('playMenu.selftest: the failure panel classifies and beacons every room error');
 
 // Room setup is a separate intent and cannot emit a battle-start or mutate the solo rule.
 const openMultiplayer = garage.slice(garage.indexOf('  function openMultiplayer('), garage.indexOf('  function battle()'))

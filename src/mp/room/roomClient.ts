@@ -27,6 +27,22 @@ export type RoomRelayedSignal = RoomSignalPayload & { from: string };
 
 export type RoomClientPhase = 'idle' | 'connecting' | 'joined' | 'reconnecting' | 'closed';
 
+/**
+ * The room host could not be reached: the socket closed (or timed out) before the room admitted the client. The Play
+ * menu classifies it as the room service being unavailable (src/net/roomFailure.ts), retryable; a refusal the room
+ * itself sent is a `RoomError` with the room's code instead.
+ */
+export class RoomConnectError extends Error {
+  readonly code: 'room_unreachable' = 'room_unreachable';
+  /** The transport's close reason (`timeout`, `network`, `exhausted`, …). */
+  readonly transportReason: string;
+  constructor(transportReason: string) {
+    super(`room host unreachable (${transportReason})`);
+    this.name = 'RoomConnectError';
+    this.transportReason = transportReason;
+  }
+}
+
 /** A phase change; `reconnecting` repeats per attempt with the attempt ordinal and the delay before it. */
 export interface RoomClientPhaseChange {
   phase: RoomClientPhase;
@@ -612,7 +628,7 @@ export class RoomClient {
     return new Promise((resolve, reject) => {
       const off = transport.onState((change) => {
         if (change.state === 'open') { off(); resolve(); }
-        else if (change.state === 'closed') { off(); reject(new RoomError('internal', `connect failed (${change.reason ?? 'closed'})`)); }
+        else if (change.state === 'closed') { off(); reject(new RoomConnectError(change.reason ?? 'closed')); }
       });
     });
   }

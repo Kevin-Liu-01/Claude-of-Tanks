@@ -22,7 +22,7 @@
  *
  * --migrate-mode=stepdown replaces the tab close with a room-socket blip past the grace: the host keeps its actor, the
  * room elects a successor, the old host re-joins and its next report is refused `host_only` — the step-down to a peer
- * (P1's request, proven here against the real service). --host=game (the "realism" run): seat 1 is the real game page (`?mp=v2`, the Play menu's LAN room, its size), the
+ * (P1's request, proven here against the real service). --host=game (the "realism" run): seat 1 is the real game page (the Play menu's LAN room, its size), the
  * harness seats join its room by code; the game host plays through the game's own client and the HUD, the migration
  * closes its tab and a harness seat takes over. --rooms is required (the harness pages run on http://127.0.0.1:<port>:
  * the room service must allow that origin —
@@ -81,7 +81,7 @@ const json = flag('--json');
 const strict = flag('--strict');
 const headful = flag('--headful');
 const gameHost = argValue('host', 'harness') === 'game';
-const GAME_BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1&mp=v2';
+const GAME_BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 // The harness's prediction reads `getSpec` from the saved registry (src/vehicles/specs.ts without the fleet's lazy
 // finalization): these ids exist there and in the host's fleet alike.
 const SPEC_IDS = ['m1a2', 't90m', 'strv103', 'kv2', 't90m_proryv'];

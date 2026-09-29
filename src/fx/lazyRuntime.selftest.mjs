@@ -52,8 +52,8 @@ const playerFrameInput = await readFile(
 const battlePresentation = await readFile(
   new URL('../game/battlePresentationRuntime.ts', import.meta.url), 'utf8',
 );
-const networkBattlePresentation = await readFile(
-  new URL('../net/networkBattlePresentationRuntime.ts', import.meta.url), 'utf8',
+const browserComposition = await readFile(
+  new URL('../mp/session/browserComposition.ts', import.meta.url), 'utf8',
 );
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.ts['"]/.test(main)) {
@@ -126,28 +126,28 @@ if (/from\s+['"]three['"]/.test(playerFrameInput)
     || /document\.|window\.|setTimeout\(/.test(playerFrameInput)) {
   throw new Error('frame input must remain allocation-free and independent from browser presentation');
 }
-const networkCompositionAt = main.indexOf('function loadNetworkComposition()');
+const networkCompositionAt = main.indexOf('function loadMultiplayerV2Composition()');
 const networkBattleAdapters = main.slice(
   networkCompositionAt,
-  main.indexOf("bus.on('phase:change'", networkCompositionAt),
+  main.indexOf('function beginBattleEntry(', networkCompositionAt),
 );
 if (!/loadModules:[\s\S]{0,700}ensureFxRuntime\(\)/.test(networkBattleAdapters)
-    || !/entry\.acquire\(\{[\s\S]{0,220}Promise\.all\(\[entry\.loadModules\(\), load\.ensureBattleVisuals\(\)\]\)/.test(networkBattlePresentation)) {
+    || !/await Promise\.all\(\[\s*load\.loadModules\(\),\s*load\.ensureBattleVisuals\(\),/.test(browserComposition)) {
   throw new Error('network battle can enter without the live effects runtime');
 }
 // Execute the network-only acquisition callback from the composition root.
 // Optional image work overlaps world construction but never owns entry success.
 const loadModulesBody = networkBattleAdapters.match(
-  /loadModules: \(\) => (Promise\.all\(\[[\s\S]*?\]\)\.then\(\(\[modules\]\) => modules\)),/,
+  /loadModules: \(\) => (Promise\.all\(\[[\s\S]*?audio\.warmBattleEvents\(\),\s*\]\)),/,
 )?.[1];
 assert.ok(loadModulesBody, 'network entry retains its explicit module acquisition barrier');
 const acquireNetworkModules = new Function(
-  'preloadNetworkBattleModules', 'preloadBattleClientRuntime', 'ensureBattleHud',
+  'preloadBattleClientRuntime', 'ensureBattleHud',
   'ensureTouchControls', 'garageReturn', 'armorAimOverlay', 'ensureFxRuntime', 'ensureKillcamRuntime',
   'battleWarm', 'audio', `return ${loadModulesBody};`,
 );
 const acquireWithFx = (ensureFx, preloadGarageReturn = () => Promise.resolve()) => acquireNetworkModules(
-  () => Promise.resolve('network-modules'), () => Promise.resolve(),
+  () => Promise.resolve('battle-client'),
   () => Promise.resolve(), () => Promise.resolve(),
   { preload: preloadGarageReturn },
   { preload: () => Promise.resolve() }, ensureFx, () => Promise.resolve(),
@@ -182,7 +182,7 @@ for (const preloadResult of ['pending', 'throw', 'reject', 'ready']) {
     'the real network callback starts the optional download before world completion');
   assert.equal(modulesReady, true, `${preloadResult} optional atlas must not delay modules`);
   releaseWorld('world');
-  assert.equal((await entry).modules, 'network-modules');
+  assert.equal((await entry).modules[0], 'battle-client', 'the barrier resolves with every acquired module');
   releaseDownload();
 }
 // The demand-loaded return owner is essential, unlike optional image work.
@@ -220,7 +220,7 @@ for (const returnResult of ['pending', 'reject', 'throw']) {
   assert.equal(modulesReady, false, `${returnResult} return owner must not release the essential barrier`);
   if (returnResult === 'pending') {
     releaseReturn();
-    assert.equal(await modules, 'network-modules');
+    assert.equal((await modules)[0], 'battle-client');
     assert.equal(modulesReady, true, 'return readiness releases the original module result');
   }
 }
@@ -241,8 +241,8 @@ if (!(plannedRosterAt >= 0
   throw new Error('explicit Battle intent must transfer the exact next roster and FX atlases');
 }
 assert.match(main,
-  /onBattleIntent:\s*\(options\)\s*=>\s*\{\s*(?:\/\/[^\n]*\n\s*)*if \(!currentNetworkRoom\(\)\?\.prepareLobby\(\)\) battleIntent\.preload\(options\);\s*\},\s*onTankIntent:/,
-  'Garage intent keeps its existing room-aware adapter: prepare the authoritative lobby or forward exact Solo options');
+  /onBattleIntent:\s*\(options\)\s*=>\s*\{\s*(?:\/\/[^\n]*\n\s*)*if \(!multiplayerLobby\?\.prepareLobby\(\)\) battleIntent\.preload\(options\);\s*\},\s*onTankIntent:/,
+  'Garage intent keeps its existing room-aware adapter: prepare the joined room or forward exact Solo options');
 if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
   throw new Error('particle preload must finish PNG decode before texture upload');
 }

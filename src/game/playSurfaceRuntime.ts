@@ -37,10 +37,9 @@ interface PlaySurfaceRuntimeOptions {
     gameMode?: GameModeId;
     campaignOperationId?: string;
   }): MaybePromise<RuntimeValue>;
-  showActiveRoom(): MaybePromise<boolean>;
   preloadCommon: Array<() => MaybePromise<RuntimeValue>>;
+  /** The multiplayer composition and the battle client runtime, behind explicit room intent. */
   preloadNetworkPresentation(): MaybePromise<RuntimeValue>;
-  preloadPrivateMatch(): MaybePromise<RuntimeValue>;
   reportError?(scope: string, error: RuntimeValue): void;
 }
 
@@ -76,15 +75,12 @@ export function createPlaySurfaceRuntime({
   getSelectedSpecId,
   getSelectedMapId,
   startSolo,
-  showActiveRoom,
   preloadCommon,
   preloadNetworkPresentation,
-  preloadPrivateMatch,
   reportError = (scope, error) => console.error(`[${scope}]`, error),
 }: PlaySurfaceRuntimeOptions): PlaySurfaceRuntime {
   const required = [loadMenuModule, createMenuOptions, getSelectedSpecId,
-    getSelectedMapId, startSolo, showActiveRoom, preloadNetworkPresentation,
-    preloadPrivateMatch, reportError];
+    getSelectedMapId, startSolo, preloadNetworkPresentation, reportError];
   if (required.some((entry) => typeof entry !== 'function')
       || !Array.isArray(preloadCommon)
       || preloadCommon.some((entry) => typeof entry !== 'function')) {
@@ -143,9 +139,6 @@ export function createPlaySurfaceRuntime({
     if (mode !== 'solo') {
       observe(preloadNetworkPresentation, 'network presentation preload failed', reportError);
     }
-    if (mode === 'private' || mode === 'lan') {
-      observe(preloadPrivateMatch, 'private match preload failed', reportError);
-    }
     observe(async () => {
       const module = await loadMenuModule();
       if (typeof module.preloadPlayMode === 'function') {
@@ -158,7 +151,7 @@ export function createPlaySurfaceRuntime({
     preload,
 
     async open(request = {}) {
-      if (await showActiveRoom()) return;
+      // A room the menu holds or the battle composition attached to it shows itself instead of the picker.
       if (menuPromise && (await menuPromise).showCurrentRoom()) return;
 
       const mode = normalizePlayMode(request.mode);

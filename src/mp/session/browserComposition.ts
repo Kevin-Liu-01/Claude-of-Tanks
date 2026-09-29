@@ -215,7 +215,6 @@ export interface BrowserActiveRoomAdapter {
   state: SerializedLobby;
   playerId: string;
   role: 'host' | 'client';
-  version: 2;
   /** The room session (`isMultiplayerV2Session`): the menu's Rejoin battle hands it back through `onNetworkStart`. */
   session: RuntimeValue;
   command(command: Record<string, RuntimeValue>): RuntimeValue;
@@ -700,7 +699,6 @@ export function createBrowserComposition({
         state: latestLobby,
         playerId: playerId(),
         role: roleOf(),
-        version: 2,
         session: current,
         command: (command) => (roomSession === current ? current.command(command) : false),
         leave: (reason) => { if (roomSession === current) leaveRoom(reason || 'left_room'); },

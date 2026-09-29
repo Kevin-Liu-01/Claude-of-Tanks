@@ -23,12 +23,20 @@ for (const code of ['rtc_connect_timeout', 'rtc_recovery_exhausted', 'signaling_
   assert.equal(JSON.stringify(view).includes('secret-token'), false);
 }
 assert.equal(privateRoomFailurePresentation('room_not_found').code, 'expired');
-assert.equal(privateRoomFailurePresentation('signaling_unavailable').editSettings, true);
 assert.equal(privateRoomFailurePresentation('signaling_unavailable').editCode, false);
-for (const code of ['signaling_capacity_exhausted', 'signaling_store_unavailable', 'signaling_connection_failed']) {
-  assert.equal(privateRoomFailurePresentation({ code }).code, 'signaling_unavailable',
-    'actual server and native socket error codes use the unavailable-service actions');
+assert.equal('editSettings' in privateRoomFailurePresentation('signaling_unavailable'), false,
+  'the cutover removed the connection-settings field: no failure offers to edit it');
+// The room host (the rooms Worker, the LAN helper) unreachable, or none configured for this origin: the room service
+// is unavailable, retryable, with no code to edit (src/mp/room/roomClient.ts RoomConnectError, playMenuAdapter.ts).
+for (const code of ['room_unreachable', 'room_unconfigured']) {
+  const view = privateRoomFailurePresentation({ code, message: 'room host unreachable (timeout)' });
+  assert.equal(view.code, 'signaling_unavailable');
+  assert.equal(view.canRetry, true);
+  assert.equal(view.editCode, false);
+  assert.match(view.title, /Room service unavailable/);
+  assert.doesNotMatch(view.detail, /signaling/i, 'the copy names the room service, never a signaling address');
 }
+assert.doesNotMatch(privateRoomFailurePresentation('access_denied').detail, /signaling|connection settings/i);
 assert.match(privateRoomFailurePresentation('rtc_recovery_exhausted').detail, /stopped waiting/);
 assert.match(privateRoomFailurePresentation('resume_denied').detail, /not take the seat back automatically/);
 assert.match(privateRoomFailurePresentation('kicked').title, /Removed/,
@@ -43,6 +51,5 @@ assert.doesNotMatch(privateRoomFailurePresentation('rtc_connect_timeout', { iceD
   'a room with a relay keeps the generic timeout detail');
 assert.doesNotMatch(privateRoomFailurePresentation('connection_failed', { iceDegraded: true }).detail, /direct connections only/i,
   'only the WebRTC timeout carries the direct-only detail');
-assert.equal(degraded.editSettings, true);
 
 console.log('privateRoomFailurePresentation.selftest: every failure has safe actionable copy and terminal retry policy');

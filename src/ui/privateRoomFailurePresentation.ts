@@ -83,7 +83,5 @@ export function privateRoomFailurePresentation(error: RuntimeValue, context: Roo
   const failure = classifyPrivateRoomFailure(error);
   return { ...failure, ...resolveCopy(failure.code, context),
     editCode: failure.code !== 'signaling_unavailable',
-    editSettings: failure.code === 'signaling_unavailable' || failure.code === 'access_denied'
-      || failure.code === 'rtc_connect_timeout' || failure.code === 'connection_failed',
   };
 }

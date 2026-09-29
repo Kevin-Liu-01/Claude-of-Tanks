@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Multiplayer v2 peer-to-peer browser end-to-end (P2 client lane, 2026-09-28): three pristine headless Chromes on
- * the real site with `?mp=v2`, one Vite dev server of this checkout, and the room signaling double
+ * the real site (the only multiplayer since the cutover of 2026-09-29), one Vite dev server of this checkout, and the room signaling double
  * (tools/mp-p2p-room-double.ts — P1's relay rules and election; the same proof runs against the real room service
  * once the rooms lane is merged: point --rooms at it). Real WebRTC on localhost (host candidates, no TURN).
  *
@@ -73,7 +73,7 @@ function observe(page, label) {
   page.on('pageerror', (error) => errors.push({ page: label, kind: 'pageerror', text: error.stack || error.message }));
   page.on('console', (message) => { if (message.type() === 'error') errors.push({ page: label, kind: 'console', text: message.text() }); });
 }
-const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1&mp=v2';
+const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 
 /** The entry pipeline's own failure on a page (it returns the player to the Garage): the wait ends at once, with its reason. */
 const entryFailureOf = (label, since) => errors.slice(since).find((entry) => entry.page === label && /\[multiplayer v2 entry\]/.test(entry.text)) ?? null;

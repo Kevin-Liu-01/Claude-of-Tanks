@@ -1,6 +1,6 @@
 import type { RosterPresentation } from '../game/rosterPresentation.ts';
 import type { BattleLoadScreen } from '../ui/battleLoad.ts';
-import type { PrivateBattleLaunchRequest } from './networkBattleLaunchRuntime.ts';
+import type { BrowserLaunchRequest } from '../mp/session/browserComposition.ts';
 import { resetNetworkRoundState, type NetworkRoundState } from './networkRoundState.ts';
 
 interface MapPresentation {
@@ -19,8 +19,17 @@ interface NetworkBattleIntentCoverOptions {
 }
 
 interface NetworkBattleIntentCover {
-  show(request?: PrivateBattleLaunchRequest): void;
+  show(request?: BrowserLaunchRequest): void;
   releaseAfterFailure(): Promise<void>;
+}
+
+/** The seat's own id from the room session the menu hands over (an untyped handle at this boundary). */
+function readPeerId(session: unknown): string {
+  if (!session || typeof session !== 'object') return '';
+  const roomInfo = (session as { roomInfo?: unknown }).roomInfo;
+  if (!roomInfo || typeof roomInfo !== 'object') return '';
+  const peerId = (roomInfo as { peerId?: unknown }).peerId;
+  return typeof peerId === 'string' ? peerId : '';
 }
 
 /**
@@ -46,7 +55,7 @@ export function createNetworkBattleIntentCover({
   return {
     show(request = {}) {
       const state = request.lobbyState;
-      const viewerId = String(request.session?.roomInfo?.peerId || '');
+      const viewerId = readPeerId(request.session);
       const own = state?.players?.find((player) => player.id === viewerId);
       const requestedMapId = String(state?.mapId || 'random');
       const fixedMapId = requestedMapId === 'random' ? null : requestedMapId;
@@ -54,7 +63,7 @@ export function createNetworkBattleIntentCover({
       const displayTeam = own?.team === 'spectator'
         ? 'alpha'
         : String(own?.team || 'alpha');
-      const lobby = state || { players: [] };
+      const lobby = { players: state?.players ?? [] };
 
       coverRendering();
       resetNetworkRoundState(game);

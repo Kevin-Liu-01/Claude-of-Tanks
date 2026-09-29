@@ -1331,6 +1331,56 @@ per-viewer and actor counters (`ActorClientStats.interest`, `HostCoreStats.inter
 held, tier populations). `wire.selftest` (the AGE group, the resume hint), `interpolation.selftest` (mixed cadences),
 and every existing multiplayer receipt on the new row tick.
 
+### 13.10 Cutover (2026-09-29, lane `mp/v2-only`)
+
+**The owner's instruction.** After the v1 path failed on production ("Room service unavailable" from the signaling
+function behind `wss://cot.kevinliu.studio/api/signal`): "use the new stuff, get rid of all old in codebase. time to
+clean up." So the peer-to-peer match over the rooms Worker (§13) is the only multiplayer, with no `?mp=` switch and no
+v1 fallback, and the v1 stack leaves the tree. Two landings: this section's (the switch and the v1 entry gone from the
+client), then the removal branch `mp/v1-removal` (src/net's browser-host stack, `api/signal.ts`, `cloudflare/signaling`,
+the v1 tools and their receipts, the dedicated/container match pieces).
+
+**What changed (stage A).**
+
+- `src/app/multiplayerFlag.ts` is deleted: no `?mp=v2` / `?mp=v1`, no `localStorage["cot.mp.v2"]`. `src/main.ts` no
+  longer constructs v1's browser session (`createNetworkBrowserSessionRuntime`), its room-failure runtime or the
+  lazy v1 composition (`import('./net/networkBattleComposition.ts')`): the Play menu's `onNetworkStart` always enters
+  through `beginMultiplayerV2Battle` and the composition of §13.7, built from `multiplayerAppPorts()` (the loader
+  cover, the world, the warm owners, the activation runtime — the ports v2 read from v1's option object, now typed
+  by `BrowserCompositionPorts`). `vite build` carries no v1 chunk: `battleModuleAccess` keeps the Play menu's import
+  alone; the bridge / network-status / input-runtime / private-handoff / dedicated-client / room-chat dynamic imports are
+  gone.
+- The Play menu (`src/ui/playMenu.ts`) imports `createRoomConnectionAdapter` and `resolveRoomsUrl` itself. The
+  "Connection settings / Signaling server" field, its failure action and the room-level ICE note ("direct-only room",
+  `ice_degraded`) are gone; the room host is `VITE_ROOMS_URL`, the official site's Worker or the LAN helper. A
+  deployment that names none fails at mode selection as `room_unconfigured`; a room host that does not answer is
+  `RoomConnectError` (`room_unreachable`, `src/mp/room/roomClient.ts`) — both classify as the room service being
+  unavailable ("Room service unavailable", retryable, no code to edit; the copy no longer mentions a signaling address).
+  Invite links always stamp `v=2`; the adapter's contract (`RoomConnectRequest.roomsUrl`, `RoomConnectionOptions`,
+  `RoomConnectionRuntime`) is its own, no longer v1's `PrivateRoomConnectionRuntime`.
+- The room's Garage presence has its own owner, `src/mp/session/lobbyIntent.ts`, loaded with the menu: the pending
+  lobby (menu-owned) and the composition's owned room (`network:roomState`) paint the Garage strip, warm the room's
+  battlefield and builders through the lobby preloader, and relay Ready, the vehicle pick and the end screen's Start
+  into the menu (`setReady`, `syncGarageSelection`, the new `startRound`). v1's room coordinator did this inside the
+  network composition; nothing of it is loaded now.
+- i18n: `playMenu.advanced.summary` / `.signal`, `playMenu.failure.settings`, the `playMenu.room.turn*` /
+  `.directOnly` / `.action*` and `playMenu.note.relayUnavailable` keys are gone from both catalogs;
+  `roomFailure.signalingUnavailable.detail` and `roomFailure.accessDenied.detail` no longer mention a signaling server.
+- Receipts: `playMenuAdapter.selftest` (new: create / join / the lobby shape / the start handoff / forget / a
+  superseded attempt / validation / an unreachable host over real sockets), `lobbyIntent.selftest` (new),
+  `playMenu`, `privateRoomFailurePresentation`, `playSurfaceRuntime`, `battleModuleAccess`, `browserComposition`,
+  `loadingIntent`, `fx/lazyRuntime`, `battleAgainAction`, `loadingScreens` and the v1 launch receipt (its main seam
+  replaced by the callback it exercised) updated to the v2-only composition; `tools/mp-p2p-e2e.mjs`,
+  `mp-browser-e2e.mjs` and `mp-p2p-soak.mjs` boot without `mp=v2`.
+
+**Still in the tree until stage B (unreachable from the client).** `src/net` in full — the modules v2 still imports
+(`playMode`, `roomInvite`, `roomFailure`, `lobby`'s types, `playerNames`, `iceConfig`, `networkCompositionAccess`,
+`networkRoundState`, `networkBattleIntentCover`, `networkBattleActivationRuntime`, `networkLobbyPreloader`,
+`movementPredictionState`) move into `src/mp` there; `api/signal.ts`, `cloudflare/signaling`, `server/signalingServer.ts`,
+the dedicated match server, the v1 tools (`test:net:*` other than `v2`), `docs/MULTIPLAYER-ARCHITECTURE.md` and
+`docs/MULTIPLAYER-HOSTING.md`. The HUD frame runtime keeps its v1 session view (main passes an empty one); the v2
+spectator's observer focus is a follow-up of the removal.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

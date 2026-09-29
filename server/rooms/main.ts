@@ -3,7 +3,7 @@
  *
  * One process, one port: the v2 room service (`/rooms/<CODE>`) and the match
  * service (`/match`, `/healthz`, `/metrics`) from `server/rooms/serve.ts`.
- * Browsers on the local network open the game with `?mp=v2`, choose LAN, and
+ * Browsers on the local network open the game, choose LAN in the Play menu, and
  * the client resolves the room endpoint to this port (src/mp/session/endpoint.ts).
  *
  * Environment (names only):

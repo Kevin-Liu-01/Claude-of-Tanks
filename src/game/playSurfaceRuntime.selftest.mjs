@@ -29,10 +29,8 @@ for (const outcome of ['ready', 'deferred', 'reject', 'throw']) {
     getSelectedSpecId: () => 'm1a2',
     getSelectedMapId: () => 'winter',
     startSolo: () => assert.fail('an invite must not start solo'),
-    showActiveRoom: () => false,
     preloadCommon: [() => startPreload('hud'), () => startPreload('fx')],
     preloadNetworkPresentation: () => startPreload('network'),
-    preloadPrivateMatch: () => startPreload('private'),
     reportError: (scope, error) => failures.push({ scope, error }),
   });
   assert.deepEqual(preloads, [], 'constructing the owner does not start passive Garage preparation');
@@ -43,12 +41,12 @@ for (const outcome of ['ready', 'deferred', 'reject', 'throw']) {
       new Promise((resolve) => setImmediate(() => resolve(false))),
     ]);
     assert.equal(opened, true, `${mode}/${outcome}: optional preparation never gates room opening`);
-    assert.deepEqual(preloads, ['hud', 'fx', 'network', 'private', `mode:${mode}`],
+    assert.deepEqual(preloads, ['hud', 'fx', 'network', `mode:${mode}`],
       `${mode}: a fresh no-hover invite starts the existing explicit preload policy`);
     assert.deepEqual(shown, [[mode, invite]], 'native mode and invite pass through unchanged');
     if (outcome === 'reject' || outcome === 'throw') {
       await new Promise((resolve) => setImmediate(resolve));
-      assert.equal(failures.length, 5, 'every failed optional task is observed without blocking the others');
+      assert.equal(failures.length, 4, 'every failed optional task is observed without blocking the others');
       assert.ok(failures.every((entry) => entry.error === failure), 'optional failures retain their identity');
     } else assert.deepEqual(failures, []);
   } finally {
@@ -60,7 +58,6 @@ for (const outcome of ['ready', 'deferred', 'reject', 'throw']) {
 
 const events = [];
 let createCalls = 0;
-let activeRoom = false;
 let menuShowsRoom = false;
 let failCreate = false;
 let capturedOptions = null;
@@ -71,7 +68,6 @@ const menu = {
   attachActiveRoom() {},
   updateActiveRoom() {},
   detachActiveRoom() {},
-  showActiveRoom: () => menuShowsRoom,
   syncGarageSelection() {},
 };
 const module = {
@@ -91,24 +87,21 @@ const runtime = createPlaySurfaceRuntime({
   getSelectedSpecId: () => 'm1a2',
   getSelectedMapId: () => 'winter',
   startSolo: (request) => soloStarts.push(request),
-  showActiveRoom: async () => activeRoom,
   preloadCommon: [
     () => events.push(['common', 'hud']),
     () => events.push(['common', 'fx']),
   ],
   preloadNetworkPresentation: () => events.push(['preload', 'network']),
-  preloadPrivateMatch: () => events.push(['preload', 'private']),
   reportError: (scope, error) => errors.push([scope, error.message]),
 });
 
 runtime.preload('private');
 await Promise.resolve();
 await Promise.resolve();
-assert.deepEqual(events.slice(0, 5), [
+assert.deepEqual(events.slice(0, 4), [
   ['common', 'hud'],
   ['common', 'fx'],
   ['preload', 'network'],
-  ['preload', 'private'],
   ['mode-preload', 'private'],
 ]);
 assert.ok(!events.some((event) => event[1] === 'dedicated'),
@@ -123,13 +116,6 @@ assert.deepEqual(soloStarts.at(-1), {
   specId: 'm1a2', mapId: 'winter', gameMode: 'zone_control',
 }, 'solo objective selection reaches the battle-loading boundary');
 assert.deepEqual(events, beforeSolo, 'direct solo entry adds no common or multiplayer preload');
-
-activeRoom = true;
-const beforeActiveRoom = events.slice();
-await runtime.open({ mode: 'private' });
-assert.equal(createCalls, 0, 'an active room wins before menu acquisition');
-assert.deepEqual(events, beforeActiveRoom, 'the active-room guard starts no extra preload');
-activeRoom = false;
 
 const customStarts = [];
 await Promise.all([
@@ -187,10 +173,8 @@ const retryRuntime = createPlaySurfaceRuntime({
   getSelectedSpecId: () => 'm1a2',
   getSelectedMapId: () => 'winter',
   startSolo: () => {},
-  showActiveRoom: () => false,
   preloadCommon: [],
   preloadNetworkPresentation: () => {},
-  preloadPrivateMatch: () => {},
   reportError: (scope, error) => errors.push([scope, error.message]),
 });
 await assert.rejects(() => retryRuntime.open({ mode: 'private' }), /cold evaluation failed/);
@@ -202,7 +186,7 @@ events.length = 0;
 runtime.preload('ranked');
 await Promise.resolve();
 await Promise.resolve();
-assert.ok(events.some((event) => event[0] === 'preload' && event[1] === 'private'),
+assert.ok(events.some((event) => event[0] === 'preload' && event[1] === 'network'),
   'stale Ranked intent warms the supported private path');
 assert.ok(!events.some((event) => event.includes('ranked') || event.includes('dedicated')),
   'retired Ranked intent never acquires a ranked or dedicated dependency');

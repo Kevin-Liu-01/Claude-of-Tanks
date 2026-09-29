@@ -38,6 +38,10 @@ const ALIASES: ReadonlyMap<string, PrivateRoomFailureCode> = new Map([
   ['rtc_connect_timeout', 'rtc_connect_timeout'], ['rtc_connection_timeout', 'rtc_connect_timeout'],
   ['rtc_recovery_exhausted', 'rtc_recovery_exhausted'], ['authority_stalled', 'rtc_recovery_exhausted'],
   ['signaling_unavailable', 'signaling_unavailable'],
+  // Multiplayer v2: the room host (the rooms Worker or the LAN helper) could not be reached, or this deployment
+  // names none (src/mp/session/playMenuAdapter.ts, src/mp/room/roomClient.ts RoomConnectError).
+  ['room_unreachable', 'signaling_unavailable'],
+  ['room_unconfigured', 'signaling_unavailable'],
   ['room_store_unavailable', 'signaling_unavailable'],
   ['room_store_capacity_exceeded', 'signaling_unavailable'],
   ['signaling_timeout', 'signaling_unavailable'],

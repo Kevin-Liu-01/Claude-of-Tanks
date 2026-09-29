@@ -639,8 +639,8 @@ assert.match(soloLoadingSource,
   /const resolved = battleIntent\.consumeMap\(specId, requestedMapId\)/,
   'the Battle click must consume the exact Random world chosen during intent');
 assert.match(mainSource,
-  /onBattleIntent: \(options\) => \{[\s\S]{0,240}if \(!currentNetworkRoom\(\)\?\.prepareLobby\(\)\) battleIntent\.preload\(options\);/,
-  'explicit Solo intent must yield to an existing authoritative room preparation');
+  /onBattleIntent: \(options\) => \{[\s\S]{0,240}if \(!multiplayerLobby\?\.prepareLobby\(\)\) battleIntent\.preload\(options\);/,
+  'explicit Solo intent must yield to an existing room preparation');
 const soloLoaderBody = soloLoadingSource.slice(soloLoadingSource.indexOf('async begin(specId'));
 const loaderShowAt = soloLoaderBody.indexOf('battleLoad.show({');
 const visualStreamerAwaitAt = soloLoaderBody.indexOf('await ensureBattleVisuals();');

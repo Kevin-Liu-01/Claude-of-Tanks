@@ -9,7 +9,7 @@ import type { FrameLoopDecisionObserver, FrameLoopObservation } from '../engine/
  * engineering API, while probes keep the same live getters and actions.
  */
 
-import type { PrivateBattleLaunchRequest } from '../net/networkBattleLaunchRuntime.ts';
+import type { BrowserLaunchRequest } from '../mp/session/browserComposition.ts';
 import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
 import { inspectNightHeadlight, inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
 import { inspectNightWorldFixture, type NightWorldFixtureKind } from './nightWorldFixtureInspection.ts';
@@ -68,7 +68,7 @@ export interface DebugSurfaceDependencies {
   bakeMinimapForMap(mapId: string): Promise<RuntimeValue>;
   beginBattleEntry: UnknownAction;
   beginSoloBattle: UnknownAction;
-  beginNetworkBattle(request?: PrivateBattleLaunchRequest): RuntimeValue;
+  beginNetworkBattle(request?: BrowserLaunchRequest): RuntimeValue;
   enterGarage: UnknownAction;
   leaveBattleToGarage: UnknownAction;
   killcam: RuntimeValue;

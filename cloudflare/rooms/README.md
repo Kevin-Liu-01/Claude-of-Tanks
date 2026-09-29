@@ -104,8 +104,9 @@ printf 'MATCH_SEAT_SECRET=%s\n' "$(openssl rand -hex 24)" > .dev.vars   # never 
 npx wrangler dev --ip 127.0.0.1 --port 8787
 ```
 
-The browser reaches it through `?mp=v2` with `VITE_ROOMS_URL=ws://127.0.0.1:8787`
-(see `src/mp/session/endpoint.ts`). The LAN helper (`npm run server:mp`) needs no
+The browser reaches it with `VITE_ROOMS_URL=ws://127.0.0.1:8787` (see
+`src/mp/session/endpoint.ts`; since the cutover of 2026-09-29 the rooms Worker is
+the only multiplayer path, no switch). The LAN helper (`npm run server:mp`) needs no
 Worker at all: `server/rooms/main.ts` serves rooms on one port and runs the match
 in-process by default (`COT_ROOMS_MATCH_TRANSPORT=p2p` selects the browser-hosted
 match instead).
@@ -134,9 +135,11 @@ npx wrangler deploy
 ```
 
 Then set `VITE_ROOMS_URL=wss://cot-rooms.<subdomain>.workers.dev` on the site
-build so `?mp=v2` routes production rooms here (`ALLOWED_ORIGINS` in
-`wrangler.jsonc` must list the site origin exactly). The v1 Worker
-(`cot-private-rooms`) keeps serving v1 rooms until cutover (charter §8).
+build so production rooms route here (`ALLOWED_ORIGINS` in `wrangler.jsonc`
+must list the site origin exactly); the official site also resolves this Worker
+by name (`src/officialHost.ts`) when the variable is unset. Since the cutover of
+2026-09-29 (docs/MULTIPLAYER-V2.md §13.10) this is the only multiplayer path:
+the v1 Worker (`cot-private-rooms`) serves nothing the client asks for.
 
 Configuration in `wrangler.jsonc`: `nodejs_compat` (the actor hashes and signs
 with `node:crypto`), the `ROOM_CONNECT_LIMITER` rate limit (120 upgrades per IP

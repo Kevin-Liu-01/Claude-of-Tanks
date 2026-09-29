@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { createBattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
 import { createBattleEntryAcquisition } from '../game/battleEntryAcquisition.ts';
 import { createGarageReturnRuntime } from '../game/garageReturnRuntime.ts';
@@ -448,16 +447,18 @@ for (const entryKind of ['private', 'rematch']) {
     [['roomFailure', 'host_left', 'private']]);
 }
 
-// Exercise the actual main callback with real entry, round, and Garage owners.
-// Importing all of main would require WebGL; only this synchronous wiring seam
-// is extracted, so a future direct garageReturn.leave alias regresses this test.
-const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-const returnCallbackSource = mainSource.split('const leaveBattleToGarage = ')[1]
-  .split('\nconst soloBattleEntry =')[0];
-// Multiplayer v2 (2026-09-25): the callback also reads the v2 composition access and the entry lifecycle;
-// the v1 seam under test hands it an idle v2 access so the v1 branches run unchanged.
-const createReturnCallback = new Function('networkComposition', 'input', 'garageReturn', 'multiplayerV2', 'battleEntryLifecycle',
-  `return ${returnCallbackSource.replace('(): Promise<void> =>', '() =>')}`);
+// The Return callback as main.ts wired it for this launcher until the cutover of 2026-09-29 (the v1 seam left
+// main with that cutover; the launcher's own cancellation contract is what this exercises): a pending private entry
+// is cancelled through its round, never by a second Garage restore.
+const createReturnCallback = (networkComposition, input, garageReturn) => () => {
+  const network = networkComposition.current;
+  if (network?.launcher.pending) {
+    input.setEnabled(false);
+    network.round.close('explicit_leave');
+    return Promise.resolve();
+  }
+  return garageReturn.leave();
+};
 
 function createEntryGarage(game, lifecycle, round, getMatch, calls) {
   const noop = () => {};
@@ -529,7 +530,7 @@ for (const entryKind of ['private', 'rematch']) {
       session: { roomInfo: { peerId: 'host' }, takeMatchChannels: () => [] } });
   assert.equal(launcher.pending, true);
   const returnToGarage = createReturnCallback({ current: { launcher, round } },
-    { setEnabled: (value) => entry.calls.push(['input', value]) }, garage, { current: null }, { pending: false });
+    { setEnabled: (value) => entry.calls.push(['input', value]) }, garage);
   await returnToGarage();
   assert.equal(launcher.pending, true, 'cancellation retains entry ownership until cleanup finishes');
   assert.equal(entry.calls.filter(([name]) => name === 'garage').length, 0,
