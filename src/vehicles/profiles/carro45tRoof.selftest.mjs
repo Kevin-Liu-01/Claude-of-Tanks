@@ -1,86 +1,140 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { ensureInteriorFills } from '../interiorFills.ts';
 
-const tank = createTank('carro45t', null, {
-  proceduralOnly: true,
-  geometryReceipt: true,
-  quality: 'high',
-});
+await ensureInteriorFills(['carro45t']);
 
-try {
-  tank.root.updateMatrixWorld(true);
-  const turretArmor = [];
-  tank.root.traverse((object) => {
-    if (object.name === 'turret' && object.geometry) turretArmor.push(object);
+for (const quality of ['high', 'low']) {
+  const tank = createTank('carro45t', null, {
+    proceduralOnly: true,
+    geometryReceipt: true,
+    quality,
   });
-  assert(turretArmor.length > 0, 'Carro 45t exposes structural turret geometry');
 
-  const roofHeight = (x, z) => {
-    const ray = new THREE.Raycaster(
-      new THREE.Vector3(x, 4, z),
-      new THREE.Vector3(0, -1, 0),
-    );
-    return ray.intersectObjects(turretArmor, false)[0]?.point.y ?? -Infinity;
-  };
+  try {
+    tank.root.updateMatrixWorld(true);
+    const turretArmor = [];
+    tank.root.traverse((object) => {
+      if (object.name === 'turret' && object.geometry) turretArmor.push(object);
+    });
+    assert(turretArmor.length > 0, 'Carro 45t exposes structural turret geometry');
 
-  for (const z of [-1.10, -0.40, 0.30]) {
-    const crossRoof = [0.45, 0.60, 0.75, 0.90].map((x) => roofHeight(x, z));
-    assert(Math.min(...crossRoof) > 2.20,
-      `vehicle-right roof remains structurally closed at z=${z}`);
-    for (let index = 1; index < crossRoof.length; index++) {
-      assert(Math.abs(crossRoof[index] - crossRoof[index - 1]) < 0.06,
-        `vehicle-right crown joins continuously at z=${z}`);
+    const roofHeight = (x, z) => {
+      const ray = new THREE.Raycaster(
+        new THREE.Vector3(x, 4, z),
+        new THREE.Vector3(0, -1, 0),
+      );
+      return ray.intersectObjects(turretArmor, false)[0]?.point.y ?? -Infinity;
+    };
+
+    for (const z of [-1.10, -0.40, 0.30]) {
+      const crossRoof = [0.45, 0.60, 0.75, 0.90].map((x) => roofHeight(x, z));
+      assert(Math.min(...crossRoof) > 2.20,
+        `vehicle-right roof remains structurally closed at z=${z}`);
+      for (let index = 1; index < crossRoof.length; index++) {
+        assert(Math.abs(crossRoof[index] - crossRoof[index - 1]) < 0.06,
+          `vehicle-right crown joins continuously at z=${z}`);
+      }
     }
-  }
 
-  assert(roofHeight(0.75, 0.70) > 2.19,
-    'raked forward closure reaches the turret shoulder');
-  for (const [x, z] of [[0.55, 1.20], [0.45, 1.40]]) {
-    const left = roofHeight(-x, z);
-    const right = roofHeight(x, z);
-    assert(Math.min(left, right) > 2.08,
-      `both cheek-aligned crown courses remain structural at z=${z}`);
-    assert(Math.abs(left - right) < 0.08,
-      `crown outer edges follow the paired cheek sweep at z=${z}`);
-  }
-  assert(roofHeight(1.35, -0.40) < 2.05,
-    'retired outboard shelf no longer floats above the turret wall');
+    assert(roofHeight(0.75, 0.70) > 2.19,
+      'raked forward closure reaches the turret shoulder');
+    for (const [x, z] of [[0.55, 1.20], [0.45, 1.40]]) {
+      const left = roofHeight(-x, z);
+      const right = roofHeight(x, z);
+      assert(Math.min(left, right) > 2.08,
+        `both cheek-aligned crown courses remain structural at z=${z}`);
+      assert(Math.abs(left - right) < 0.08,
+        `crown outer edges follow the paired cheek sweep at z=${z}`);
+    }
+    assert(roofHeight(1.35, -0.40) < 2.05,
+      'retired outboard shelf no longer floats above the turret wall');
 
-  const fitReceipt = tank.root.getObjectByName('rig_turret')?.userData.carro45tFitReceipt;
-  assert.deepEqual(fitReceipt, {
-    frontCrownJoiners: 2,
-    crownCourseOverlapM: 0.01,
-    rearPlateauSeat: true,
-    rearPlateauOverlapM: 0.0075,
-  }, 'Carro 45t records its paired crown joiners and seated rear plateau');
-  for (const [x, z] of [[-0.95, 0.90], [0.95, 0.90]]) {
-    assert(roofHeight(x, z) > 2.05,
-      `crown shoulder remains covered at x=${x}, z=${z}`);
-  }
-  for (const [x, z] of [[-0.90, -0.80], [0, -0.80], [0.40, -0.50]]) {
-    assert(roofHeight(x, z) > 2.34,
-      `raised rear plateau stays continuously seated at x=${x}, z=${z}`);
-  }
+    // The old overlapping crown slabs passed height probes but still had multiple
+    // skins and a projecting lip. Count actual surface crossings, not a builder
+    // receipt claiming that the parts overlap.
+    const armor = tank.root.getObjectByName('turret');
+    const rig = tank.root.getObjectByName('rig_turret');
+    const doubleSided = armor.clone();
+    doubleSided.material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+    doubleSided.matrixWorld.copy(armor.matrixWorld);
+    const verticalCrossings = (x, z) => {
+      const hits = new THREE.Raycaster(rig.localToWorld(new THREE.Vector3(x, 1.5, z)),
+        new THREE.Vector3(0, -1, 0).transformDirection(rig.matrixWorld)).intersectObject(doubleSided);
+      return hits.map(hit => rig.worldToLocal(hit.point).y)
+        .filter((height, i, heights) => i === 0 || Math.abs(height - heights[i - 1]) > 0.002);
+    };
+    for (const side of [-1, 1]) {
+      for (const z of [0.85, 1.05, 1.25, 1.5, 1.7, 1.9]) {
+        // Follow the cheek inwards as the nose narrows, avoiding roof furniture.
+        const x = side * (z < 1.4 ? 0.70 : 0.46);
+        const hits = verticalCrossings(x, z);
+        assert.equal(hits.length, 2, `one closed roof skin at x=${x}, z=${z}: ${hits}`);
+        assert(hits[0] > hits[1], 'outward upper skin, closed lower skin');
+      }
+    }
+    for (const z of [1.50, 1.70, 1.95]) {
+      assert.equal(verticalCrossings(0, z).length, 0,
+        `mantlet bay has real clearance without a fixed overhanging roof at z=${z}`);
+    }
+    const fill = tank.root.getObjectByName('turretInteriorFill');
+    if (fill) {
+      for (const z of [1.50, 1.70, 1.95]) {
+        const ray = new THREE.Raycaster(rig.localToWorld(new THREE.Vector3(0, 1.5, z)), new THREE.Vector3(0, -1, 0));
+        assert.equal(ray.intersectObject(fill).length, 0, 'generated static fill must not reoccupy the gun bay');
+      }
+    }
+    doubleSided.material.dispose();
 
-  const rack = tank.root.getObjectByName('fitting_stowageRack');
-  assert(rack, 'Carro 45t exposes its rear stowage rack fitting');
-  const rackOutward = new THREE.Vector3(0, 0, 1).applyQuaternion(rack.getWorldQuaternion(new THREE.Quaternion()));
-  assert(rackOutward.dot(new THREE.Vector3(0, 0, -1)) > 0.99,
-    'rear rack open face points outside the bustle');
-  const rackOrigin = rack.getWorldPosition(new THREE.Vector3());
-  assert(rackOrigin.z < -2.05,
-    'rear rack is seated on the bustle rear instead of inside its forward face');
+    const gun = tank.root.getObjectByName('rig_gun');
+    const mount = tank.root.getObjectByName('gunMount');
+    for (const yaw of [0, Math.PI / 2, Math.PI]) {
+      for (const pitch of [-8, 0, 18]) {
+        rig.rotation.y = yaw; gun.rotation.x = -THREE.MathUtils.degToRad(pitch);
+        tank.root.updateMatrixWorld(true);
+        const positions = mount.geometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+          const point = rig.worldToLocal(mount.localToWorld(new THREE.Vector3().fromBufferAttribute(positions, i)));
+          if (point.z > 1.40 && point.z < 2.08) {
+            assert(Math.abs(point.x) < 0.42, 'moving mantlet stays inside the cheek aperture with lateral clearance');
+          }
+        }
+        for (const fitting of rig.children.filter(o => o.name === 'fitting_smokeBank' || o.name === 'fitting_pintleMG')) {
+          const point = fitting.position;
+          const hit = new THREE.Raycaster(rig.localToWorld(new THREE.Vector3(point.x, 1.5, point.z)),
+            new THREE.Vector3(0, -1, 0).transformDirection(rig.matrixWorld)).intersectObject(armor)[0];
+          assert(hit, 'roof equipment has supporting armor at every yaw');
+          const gap = point.y - rig.worldToLocal(hit.point).y;
+          assert(gap >= -0.025 && gap <= 0.025, `fitting origin follows the local roof: ${fitting.name}, ${gap}`);
+        }
+      }
+    }
+    rig.rotation.y = 0; gun.rotation.x = 0; tank.root.updateMatrixWorld(true);
+    for (const [x, z] of [[-0.95, 0.90], [0.95, 0.90]]) {
+      assert(roofHeight(x, z) > 2.05,
+        `crown shoulder remains covered at x=${x}, z=${z}`);
+    }
+    for (const [x, z] of [[-0.90, -0.80], [0, -0.80], [0.40, -0.50]]) {
+      assert(roofHeight(x, z) > 2.34,
+        `raised rear plateau stays continuously seated at x=${x}, z=${z}`);
+    }
 
-  const bridgeRay = new THREE.Raycaster(
-    new THREE.Vector3(0, 2.05, 4),
-    new THREE.Vector3(0, 0, -1),
-  );
-  const rearHits = bridgeRay.intersectObjects(turretArmor, false).map(({ point }) => point.z);
-  assert(rearHits.some((z) => z > -1.75 && z < -1.40),
-    'structural transition closes the raked turret-to-bustle seam');
-} finally {
-  tank.dispose();
+    const rack = tank.root.getObjectByName('fitting_stowageRack');
+    assert(rack, 'Carro 45t exposes its rear stowage rack fitting');
+    const rackOutward = new THREE.Vector3(0, 0, 1).applyQuaternion(rack.getWorldQuaternion(new THREE.Quaternion()));
+    assert(rackOutward.dot(new THREE.Vector3(0, 0, -1)) > 0.99,
+      'rear rack open face points outside the bustle');
+    const rackOrigin = rack.getWorldPosition(new THREE.Vector3());
+    assert(rackOrigin.z < -2.05,
+      'rear rack is seated on the bustle rear instead of inside its forward face');
+
+    const rearRay = new THREE.Raycaster(new THREE.Vector3(0, 2.05, -4), new THREE.Vector3(0, 0, 1));
+    assert(rearRay.intersectObjects(turretArmor, false).some(hit => hit.point.z < -2.1),
+      'integral bustle closes the back below the roof');
+  } finally {
+    tank.dispose();
+  }
 }
 
-console.log('carro45tRoof.selftest: joined crown, seated plateau, closed bustle seam, outward rack');
+console.log('carro45tRoof.selftest: continuous crown, open gun bay, articulated mantlet, seated fittings, closed bustle');

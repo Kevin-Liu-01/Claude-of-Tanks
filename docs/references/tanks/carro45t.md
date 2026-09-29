@@ -1,4 +1,58 @@
-# Carro 45t (`carro45t`) — §5.248 ground-up rebuild (italy wave)
+# Carro 45t — continuous turret redesign, 2026-09-29
+
+## Current target
+
+Owner explicitly authorized redesign after marking the projecting front crown,
+paired cheek joiners, and gun-bay lip. The target is a coherent first-party
+Carro turret on the unchanged hull and running gear. The exact decision and
+physical envelope are pinned in
+[the design record](../concepts/carro45t-roof-20260929.json).
+
+The main crown and bustle are now one closed longitudinal solid. Two tapered
+cheeks share its front station and leave a real 0.88 m mantlet bay. The former
+stacked roof slabs, shoulder patches and nose overhang are removed. Front
+periscopes, hatches, sights, smoke banks, roof weapon, antennas and the rear
+rack are seated on the resulting surfaces. Gun geometry, trunnion, ammunition,
+tier and hull geometry are retained.
+
+The focused regression measures actual HIGH/LOW surface crossings, the open
+mantlet bay, fitting support at 0/90/180-degree yaw, and mantlet clearance at
+−8/0/+18-degree pitch. It replaces the old self-reported joiner-count assertion.
+The old Hlebov registration no longer qualifies this owner-authored turret;
+no 3D parity score is claimed. Its last committed result was **82.9, FAIL**,
+not the historical pass described below. That receipt is retained unchanged.
+No comparison threshold or physical check is reduced.
+
+## Redesign validation
+
+- HIGH/LOW focused roof regression: single roof skin, empty static gun bay,
+  moving mantlet clearance and supporting armor beneath the roof fittings.
+- Strict standard: zero static/animated track clips and zero disconnected
+  structural components; owner-authored physical design passes.
+- Sealed-body census: zero opening pixels in all 33 views, replacing the former
+  425-pixel/19-view allowance. Voxel audit: zero deep-interior leak litres.
+- Full anatomy refresh/check: 200 current records, 600 technical diagrams,
+  zero module-hit failures or modules outside their envelopes. Existing fleet
+  dimension warnings remain separate from those checks.
+- Actual garage selection and cached return verified on HIGH; the same root
+  remains correct after switching to Ariete and back. Gallery captures inspect
+  neutral, +18-degree elevation and 90-degree yaw/−8-degree depression.
+- Authored geometry excluding generated interior fills: 382 fewer triangles
+  on HIGH and LOW, with unchanged mesh counts (56/54). Final filled geometry
+  totals 75,852/64,670 triangles and 58/56 meshes. These are geometry counts,
+  not an FPS benchmark.
+
+The complete targeted `tank:release:check -- --ids=carro45t --gate` passed,
+including the private build and all 1,264 suite entries: 680 freshly executed
+checks and 584 unchanged-input PASS receipts, with zero failures. Type checking,
+the public build and attribution audit also passed. The public build resolves
+all 200 playables to procedural models. No deployment is included.
+
+Local command logs are under `.qa-dev/carro45t`; captures are in the dated Carro visualization folder
+(`2026/09/29/carro45t/after-garage.png`, `after-roof.png`,
+`after-elevated.png`, `after-yaw90.png`).
+
+## Historical source reconstruction (superseded for the turret)
 
 **Exact variant modeled:** OTO Melara 45-tonne medium project ("Carro da
 Combattimento 45 t") — the WoT-style paper vehicle. NO real vehicle exists;

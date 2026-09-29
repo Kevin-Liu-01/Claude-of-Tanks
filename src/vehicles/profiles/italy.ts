@@ -22,9 +22,9 @@
 // The gate measures the UNWARPED print, so length-coupled curve rows carry a
 // structural residual until the §E z-warp lands (recipe banked in the
 // packet); dims/stations/floaters and all y/x-driven reads are exact.
-// carro45t is print-true at K=1 (spec row anchors: 6.98/10.60/3.43 all match
-// the print within 0.3%; heightM 2.95 stays the gameplay anchor while the
-// gate compares the print's own p95 body envelope via silhouetteHeightM).
+// Carro's chassis retains its source dimensions (6.98/10.60/3.43 m).
+// Its turret is the owner-approved continuous-roof redesign of 2026-09-29;
+// the dated concept packet governs that shape, not the historical print gate.
 // The base `ariete` (Preserie) stays its own graduated tank in misc.ts —
 // UNTOUCHED donor, byte-held.
 
@@ -35,6 +35,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { mount as addFitting } from './fittingMount.ts';
 import { sampleArmorFace } from './armorFaceSampling.ts';
+import { sectionSolid } from './sectionSolid.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -1091,99 +1092,56 @@ function buildCarro45T(P: ItalyBuilderPort): void {
   };
   buildCarro45TRunningGearStage1();
   const L = (zWorld: number): number => zWorld + 0.30;
-  const CARRO_SHELL = [
-    [-0.50, L(1.81)], [-0.31, L(1.81)], [-0.30, L(1.55)], [0.30, L(1.55)],
-    [0.31, L(1.81)], [0.50, L(1.81)], [1.50, L(0.64)], [1.51, L(0.40)],
-    [1.55, L(-1.01)], [1.53, L(-1.44)], [1.50, L(-1.60)], [1.26, L(-1.74)],
-    [-1.26, L(-1.74)], [-1.50, L(-1.60)], [-1.53, L(-1.44)], [-1.55, L(-1.01)],
-    [-1.51, L(0.40)], [-1.50, L(0.64)],
+  // One closed crown replaces the stacked fan cap, plateau and shoulder patches.
+  // Each station owns the wall AND roof edge, so no plate can extend through its
+  // neighbour. The asymmetric plateau is retained; the front ends at the gun bay.
+  const crownStations = [
+    { z: -1.84, w: 1.20, bottom: 0.14, belt: 0.24, roofW: 1.04, left: 0.66, right: 0.66, crown: 0.66 },
+    { z: -1.10, w: 1.53, bottom: 0.03, belt: 0.11, roofW: 1.12, left: 0.85, right: 0.70, crown: 0.85 },
+    { z: -0.14, w: 1.55, bottom: 0.03, belt: 0.10, roofW: 1.14, left: 0.85, right: 0.70, crown: 0.85 },
+    { z:  0.72, w: 1.51, bottom: 0.03, belt: 0.11, roofW: 1.12, left: 0.79, right: 0.69, crown: 0.79 },
+    { z:  1.40, w: 1.10, bottom: 0.03, belt: 0.22, roofW: 0.88, left: 0.74, right: 0.69, crown: 0.74 },
   ];
+  const crown = sectionSolid(crownStations.map(({ z, w, bottom, belt, roofW, left, right, crown }) => ({
+    z,
+    ring: [[-w, bottom], [w, bottom], [w, belt], [roofW, right],
+      [0.44, crown], [-0.44, crown], [-roofW, left], [-w, belt]],
+  })));
+  // Use the actual triangulated surface to seat roof fittings, including the
+  // lower right shoulder. This is construction-time work, never a frame update.
+  const roofProbe = new THREE.Mesh(crown, new THREE.MeshBasicMaterial());
+  const roofRay = new THREE.Raycaster();
+  const roofY = (x: number, z: number): number => {
+    roofRay.set(new THREE.Vector3(x, 2, z), new THREE.Vector3(0, -1, 0));
+    const hit = roofRay.intersectObject(roofProbe, false)[0];
+    if (!hit) throw new Error(`Carro roof fitting outside shell: ${x}, ${z}`);
+    return hit.point.y;
+  };
   const buildCarro45TTurretStage1 = (): void => {
-    P.add('turret', polyMultiLoft(CARRO_SHELL, [
-      { height: 0.03, inset: 1.0 },
-      // mid ring: the wall OUTER top line (gate front: 1.60 @ ±1.54)
-      { height: [0.27, 0.26, 0.25, 0.25, 0.26, 0.27, 0.11, 0.11, 0.10, 0.11, 0.14, 0.26, 0.26, 0.14, 0.11, 0.10, 0.11, 0.11], inset: 0.998 },
-      // crown ring: steep inward cant — LEFT crown 2.33 @ ±1.14, RIGHT crown
-      // 2.19 under the shelf rim, rear 2.16, nose 1.79-1.82
-      { height: [0.31, 0.29, 0.28, 0.28, 0.29, 0.31, 0.68, 0.69, 0.69, 0.68, 0.67, 0.66, 0.66, 0.67, 0.82, 0.83, 0.83, 0.82],
-        inset: [0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.80, 0.79, 0.77, 0.79, 0.81, 0.84, 0.84, 0.81, 0.75, 0.74, 0.74, 0.75] },
-    ]));
-    // bustle underplate: rear body rides 1.545-1.575 (side_turret bottoms)
-    P.add('turret', polyMultiLoft([
-      [-1.24, L(-1.00)], [1.24, L(-1.00)], [1.24, L(-1.72)], [-1.24, L(-1.72)],
-    ], [
-      { height: 0.02, inset: 1.0 },
-      { height: 0.10, inset: 0.99 },
-    ]), 0, 0.045, 0);
-    // LEFT raised roof plateau 2.353 (x -1.14..+0.48) — extends aft to -1.40
-    // (gate: 2.35@-1.40 before the rear slope)
-    // The plateau used to be a shallow box resting above the shell's fan cap.
-    // Give it a conforming armored seat whose upper ring overlaps that box by
-    // 7.5 mm and whose lower ring sinks into the shell. This removes the dark
-    // horizontal air seam without flattening either neighboring roof course.
-    P.add('turret', slab(
-      [-1.12, 0.64, L(-1.42)], [0.46, 0.64, L(-1.42)], [0.46, 0.61, L(-0.42)], [-1.12, 0.68, L(-0.42)],
-      [-1.12, 0.785, L(-1.40)], [0.46, 0.785, L(-1.40)], [0.46, 0.785, L(-0.44)], [-1.12, 0.785, L(-0.44)]));
-    P.add('turret', box(1.62, 0.075, 0.96), -0.33, 0.815, L(-0.92));            // plateau rear flat 2.353 (z -1.40..-0.44)
-    P.add('turret', slab(                                                        // plateau front sloping 2.35@-0.44 -> 2.25@+0.99 (gate 2.283@+0.25)
-      [-1.14, 0.70, L(-0.44)], [0.48, 0.70, L(-0.44)], [0.48, 0.64, L(0.99)], [-1.14, 0.64, L(0.99)],
-      [-1.14, 0.85, L(-0.44)], [0.48, 0.85, L(-0.44)], [0.48, 0.75, L(0.99)], [-1.14, 0.75, L(0.99)]));
-    // Cheek-aligned crown transition. The former single skewed patch tapered
-    // only on vehicle-left, so its vehicle-right edge cut across the cheek
-    // sweep instead of following it. Two joined courses now inherit the left
-    // plateau and right closure heights independently, while their outer edges
-    // converge symmetrically on the mantlet throat.
-    P.add('turret', slab(                                                        // left crown course
-      [-1.10, 0.62, L(0.99)], [0.44, 0.62, L(0.99)], [0, 0.52, L(1.70)], [-0.31, 0.52, L(1.70)],
-      [-1.10, 0.71, L(0.97)], [0.44, 0.75, L(0.99)], [0, 0.62, L(1.72)], [-0.31, 0.62, L(1.72)]));
-    P.add('turret', slab(                                                        // right crown course
-      [0.44, 0.62, L(0.99)], [1.02, 0.53, L(0.99)], [0.31, 0.52, L(1.70)], [0, 0.52, L(1.70)],
-      [0.44, 0.75, L(0.99)], [1.02, 0.63, L(0.99)], [0.31, 0.62, L(1.72)], [0, 0.62, L(1.72)]));
-    // Paired crown-to-cheek joiners. Their outer vertices are the shell loft's
-    // exact crown-ring stations, while the inner vertices overlap the two crown
-    // courses by 5-10 mm. The former arrangement merely projected those courses
-    // over the fan cap, leaving shadowed triangular slots at both shoulders.
-    P.add('turret', slab(                                                        // vehicle-left crown shoulder
-      [-0.49, 0.29, 2.045], [-0.30, 0.49, L(1.70)], [-1.105, 0.58, L(0.99)], [-1.135, 0.64, 0.78],
-      [-0.48, 0.32, 2.03947], [-0.31, 0.625, L(1.72)], [-1.105, 0.715, L(0.975)], [-1.125, 0.825, 0.79167]));
-    P.add('turret', slab(                                                        // vehicle-right crown shoulder
-      [0.30, 0.49, L(1.70)], [0.49, 0.29, 2.045], [1.21, 0.58, 0.81], [1.015, 0.48, L(0.99)],
-      [0.31, 0.625, L(1.72)], [0.48, 0.32, 2.03947], [1.20, 0.685, 0.82133], [1.025, 0.635, L(0.985)]));
-    if (P.geometryReceipt) {
-      P.turretG.userData.carro45tFitReceipt = Object.freeze({
-        frontCrownJoiners: 2,
-        crownCourseOverlapM: 0.01,
-        rearPlateauSeat: true,
-        rearPlateauOverlapM: 0.0075,
-      });
+    P.add('turret', crown);
+    // Closed cheeks meet the crown at z=1.40. Their inner walls form an open
+    // 0.88 m gun bay; the mantlet moves in this space instead of through a lip.
+    for (const side of [-1, 1]) {
+      P.add('turret', sectionSolid([
+        { z: 1.40, w: 1.10, roofW: 0.88, top: side < 0 ? 0.74 : 0.69, innerTop: 0.74, belt: 0.22 },
+        { z: 2.08, w: 0.52, roofW: 0.49, top: 0.38, innerTop: 0.41, belt: 0.25 },
+      ].map(({ z, w, roofW, top, innerTop, belt }) => {
+        const ring: [number, number][] = [[0.44, 0.03], [w, 0.03], [w, belt], [roofW, top], [0.44, innerTop]];
+        return { z, ring: side > 0 ? ring : ring.map(([x, y]): [number, number] => [-x, y]).reverse() };
+      })));
     }
-    P.add('turret', slab(                                                        // crest chin: closes the fairing underside to the shell nose (bottom
-      [-0.31, 0.08, L(1.68)], [0.31, 0.08, L(1.68)], [0.28, 0.05, L(1.30)], [-0.28, 0.05, L(1.30)],  // rises like the ref's 1.58@+1.71 step)
-      [-0.31, 0.52, L(1.70)], [0.31, 0.52, L(1.70)], [0.28, 0.30, L(1.32)], [-0.28, 0.30, L(1.32)]));
-    P.add('turretDark', box(0.36, 0.014, 0.30), -0.16, 0.795, L(1.18));          // driver hatch seam on the nose (print: hatch rides the turret crest)
-    for (let k = -1; k <= 1; k++) periscope(P, 'turretDetail', 0.16 * k, 0.73, L(1.52), k * 0.10);
-    P.add('turret', slab(                                                        // rear slope 2.35@-1.40 -> 2.16@-2.24 (gate line; aft corners taper to
-      [-1.10, 0.66, L(-1.38)], [0.44, 0.66, L(-1.38)], [0.40, 0.64, L(-2.20)], [-1.06, 0.64, L(-2.20)],  // the ref's narrower rear edge)
-      [-1.10, 0.853, L(-1.40)], [0.44, 0.853, L(-1.40)], [0.40, 0.66, L(-2.22)], [-1.06, 0.66, L(-2.22)]));
-    // Vehicle-right roof closure. The former 0.36 x 2.10 m horizontal shelf
-    // started at x=1.215, leaving an open trough between it and the x=0.48
-    // crown. From head-on it read as a floating plank over an unfinished roof.
-    // These two structural courses continue the crown into the shell instead:
-    // their inboard edges share the plateau heights, their outboard edges meet
-    // the canted wall, and the fore course follows the roof's falling rake.
-    P.add('turret', slab(                                                        // rear roof closure, z -1.40..-0.44
-      [0.44, 0.66, L(-1.40)], [1.12, 0.61, L(-1.40)], [1.18, 0.61, L(-0.44)], [0.44, 0.66, L(-0.44)],
-      [0.44, 0.853, L(-1.40)], [1.12, 0.70, L(-1.40)], [1.18, 0.70, L(-0.44)], [0.44, 0.853, L(-0.44)]));
-    P.add('turret', slab(                                                        // fore roof closure, z -0.44..+0.99
-      [0.44, 0.66, L(-0.44)], [1.18, 0.61, L(-0.44)], [1.02, 0.53, L(0.99)], [0.44, 0.58, L(0.99)],
-      [0.48, 0.85, L(-0.44)], [1.18, 0.70, L(-0.44)], [1.02, 0.63, L(0.99)], [0.44, 0.75, L(0.99)]));
+    // The former driver seam/periscopes hovered over the nose and gun bay.
+    // Seat them behind its opening on the continuous front roof instead.
+    P.add('turretDark', box(0.36, 0.012, 0.26), -0.16, roofY(-0.16, 1.01) + 0.004, 1.01, 0.0734, 0, 0);
+    for (let k = -1; k <= 1; k++) periscope(P, 'turretDetail', 0.16 * k,
+      roofY(0.16 * k, 1.22) + 0.015, 1.22, k * 0.10);
     // Compact commander's sight is seated through the new roof skin rather
     // than suspended under the retired shelf.
-    P.addEquipment('turret', box(0.32, 0.14, 0.42), 0.94, 0.80, L(-0.35));
-    P.add('turretGlass', box(0.026, 0.10, 0.28), 1.105, 0.80, L(-0.30));
-    P.add('turretDark', box(0.28, 0.02, 0.36), 0.94, 0.875, L(-0.35));
+    P.addEquipment('turret', box(0.32, 0.14, 0.42), 0.94, roofY(0.94, L(-0.35)) + 0.065, L(-0.35));
+    P.add('turretGlass', box(0.026, 0.10, 0.28), 1.105, roofY(0.94, L(-0.35)) + 0.065, L(-0.30));
+    P.add('turretDark', box(0.28, 0.02, 0.36), 0.94, roofY(0.94, L(-0.35)) + 0.14, L(-0.35));
     // cupola (x 0, z -0.78, top 2.421) + loader ring + periscopes
-    P.add('turret', cylY(0.20, 0.28, 0.036, P.q ? 20 : 12), -0.01, 0.872, L(-0.78)); // cupola base cone (tapered: the station slab edge reads the low rim)
+    P.add('turret', cylY(0.20, 0.28, 0.060, P.q ? 20 : 12), -0.01, 0.877, L(-0.78)); // connected cupola seat: roof through upper lid
     P.add('turret', cylY(0.155, 0.195, 0.022, P.q ? 20 : 12), -0.01, 0.910, L(-0.78)); // dome step to 2.421
     P.add('turretDark', torus(0.175, 0.012, 18), -0.01, 0.898, L(-0.78));
     P.add('turret', box(0.22, 0.012, 0.20), -0.01, 0.912, L(-0.78), 0, 0.10, 0); // split hatch lid FLAT (owner cadence; inside the 2.42 cupola datum)
@@ -1201,40 +1159,27 @@ function buildCarro45T(P: ItalyBuilderPort): void {
       periscope(P, 'turretDetail', -0.55 + Math.sin(a) * 0.22, 0.835,
         L(0.10) + Math.cos(a) * 0.22, a);
     }
-    P.addEquipment('turret', box(0.22, 0.155, 0.20), 0.73, 0.775, L(0.70));               // gunner periscope hood (side 2.387 @ +0.73; ref top 2.38-2.39)
-    P.add('turretGlass', box(0.14, 0.05, 0.02), 0.73, 0.83, L(0.805));
+    P.addEquipment('turret', box(0.22, 0.155, 0.20), 0.73, roofY(0.73, L(0.70)) + 0.065, L(0.70));               // gunner periscope hood (side 2.387 @ +0.73; ref top 2.38-2.39)
+    P.add('turretGlass', box(0.14, 0.05, 0.02), 0.73, roofY(0.73, L(0.70)) + 0.12, L(0.805));
   };
   buildCarro45TTurretStage1();
-  // rear: underside closure + backed service wall (owner c425f495 cadence
-  // absorbed onto the measured rear: plan rear -2.13 at |x|<=1.26, face
-  // bottoms 1.57@-1.88 -> 1.64@-2.12)
+  // Rear service grille and fittings follow the integral bustle.
   const buildCarro45TTurretStage2 = (): void => {
-    P.add('turret', slab(                                                        // bustle underside closure to the rear face
-      [-1.24, 0.045, L(-1.70)], [1.24, 0.045, L(-1.70)], [1.20, 0.14, L(-2.12)], [-1.20, 0.14, L(-2.12)],
-      [-1.24, 0.145, L(-1.70)], [1.24, 0.145, L(-1.70)], [1.20, 0.24, L(-2.12)], [-1.20, 0.24, L(-2.12)]));
-    // Structural transition between the shell's raked rear and the vertical
-    // bustle wall. This fills the 5-30 cm wedge that was previously open above
-    // the underplate, without flattening the shell's rear armor angle.
-    P.add('turret', slab(
-      [-1.24, 0.24, L(-1.74)], [1.24, 0.24, L(-1.74)], [1.06, 0.66, L(-1.44)], [-1.06, 0.66, L(-1.44)],
-      [-1.18, 0.24, L(-1.79)], [1.18, 0.24, L(-1.79)], [1.18, 0.60, L(-1.79)], [-1.18, 0.60, L(-1.79)]));
-    P.add('turret', box(2.40, 0.40, 0.30), 0, 0.42, L(-1.94));                   // backed rear service wall (to -2.09; face pairs the print's -2.13..-2.24 read)
-    P.add('turretDark', box(2.28, 0.30, 0.04), 0, 0.42, L(-2.10));               // rear louvre field
-    for (let i = 0; i < 9; i++) P.add('turretDetail', box(0.028, 0.34, 0.05), -1.12 + i * 0.28, 0.42, L(-2.11)); // rib cadence (owner)
+    // The shell itself now closes the bustle; only its external service grille remains.
+    P.add('turretDark', box(2.28, 0.30, 0.04), 0, 0.42, -1.855);                     // rear louvre field
+    for (let i = 0; i < 9; i++) P.add('turretDetail', box(0.028, 0.34, 0.05), -1.12 + i * 0.28, 0.42, -1.875); // rib cadence (owner)
     for (const s2 of [-1, 1]) P.add('turretDetail', box(0.032, 0.34, 0.42), s2 * 1.19, 0.42, L(-1.92)); // corner stanchions
     addFitting(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.30, d: 0.14,
-      h: 0.24, fill: 0.35, rails: 2, seed: 76 }), -0.05, 0.44, L(-2.10),
+      h: 0.24, fill: 0.35, rails: 2, seed: 76 }), -0.05, 0.44, -1.86,
       [0, Math.PI, 0]);                                                          // rear rack: embedded feet, open face points outboard (-Z)
     addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.50, seed: 72 }), 0.30, 0.72, L(-0.62), [0, 2.85, 0]); // commander's Breda stowed LOW at the cupola (top under the 2.42 p95 datum; owner c425f495 carried one)
-    // The print carries canted corner launchers rather than a featureless rear
-    // roof edge.  Both banks have broad fitting-library shoes and remain under
-    // the existing commander-cupola height datum.
+      elev: 0, shield: false, scale: 0.50, seed: 72 }), 0.30, roofY(0.30, L(-0.62)) - 0.015, L(-0.62), [0, 2.85, 0]); // commander's Breda, with its pedestal embedded in the roof
+    // Canted corner launchers retain broad shoes seated on each roof shoulder.
     for (const s of [-1, 1]) addFitting(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 5, r: 0.040, len: 0.24, splay: s * 0.95,
       pitch: -0.34, arc: 0.62, spacing: 0.085, slot: 'detail',
       rotation: [0, 0, -s * 0.10], seed: 78 + (s > 0 ? 1 : 0),
-    }), s * 1.02, 0.89, L(-0.92));
+    }), s * 1.02, roofY(s * 1.02, L(-0.92)) + 0.018, L(-0.92));
 
     // Low supported crown rail follows the source roof lattice.  Each rail is
     // returned into the plateau by short uprights; there are no sky-supported
@@ -1247,7 +1192,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     }
     for (const z of [-1.34, -0.54]) P.add('turretDark', box(1.35, 0.025, 0.025),
       -0.315, 0.910, L(z));
-    for (const [wx, wy, wz, wh] of [[-0.385, 0.822, -1.535, 1.63], [0.385, 0.817, -1.565, 1.64]]) {
+    for (const [wx, wy, wz, wh] of [[-0.385, roofY(-0.385, L(-1.590)) - 0.01, -1.535, 1.63], [0.385, roofY(0.385, L(-1.620)) - 0.01, -1.565, 1.64]]) {
       P.add('turretDark', cylY(0.035, 0.045, 0.08, 10), wx, wy + 0.04, L(wz - 0.055)); // offset-mount whips: pot clear of the st4 window, VERTICAL rod in
       P.add('turretDark', box(0.024, 0.05, 0.075), wx, wy + 0.10, L(wz - 0.028)); // the print's own trace column (tips ~4.10; the fitting's inline pot
       P.add('turretDetail', box(0.038, wh, 0.038), wx, wy + 0.125 + wh / 2, L(wz)); // could not satisfy both station windows at once)
@@ -1271,8 +1216,8 @@ function buildCarro45T(P: ItalyBuilderPort): void {
   const buildCarro45TMarkingsStage2 = (): void => {
     for (const [lx, lz, w, dd] of [[-0.74, -0.30, 0.44, 0.38], [-0.20, -0.34, 0.42, 0.36],
       [0.30, -0.32, 0.40, 0.36]]) {
-      P.add('turretDark', box(w, 0.016, dd), lx, 0.845, L(lz));                  // rear service lids, FLUSH (st-window roof-height law)
-      P.add('turretDetail', box(w * 0.78, 0.012, 0.026), lx, 0.855, L(lz + dd * 0.38));
+      P.add('turretDark', box(w, 0.016, dd), lx, roofY(lx, L(lz)) + 0.003, L(lz), 0.06965, 0, 0);                  // rear service lids, FLUSH (st-window roof-height law)
+      P.add('turretDetail', box(w * 0.78, 0.012, 0.026), lx, roofY(lx, L(lz + dd * 0.38)) + 0.016, L(lz + dd * 0.38), 0.06965, 0, 0);
     }
     P.decal('turret', 'number', '45T', 0.25, [-1.53, 0.38, L(-0.55)], -Math.PI / 2, 0, 0);
 
@@ -1290,6 +1235,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     P.topY = 2.45;
   };
   buildCarro45TMarkingsStage2();
+  roofProbe.material.dispose();
 }
 
 export const ITALY_PROFILES = {

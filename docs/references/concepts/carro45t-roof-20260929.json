@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-29",
+    "request": "fix this part of turret roof ... honestly u have permission to redesign if itll fix it ... i want all parts of this turret to line up and not overextend and look glitching through. fix/redesign this carro turret",
+    "scope": "Carro 45t turret shell and fitting seats only; hull, running gear, gun, stats and tier remain unchanged."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "historicalReference": {
+    "path": "public/models/community-candidates/carro45t_hlebov.glb",
+    "purpose": "Historical silhouette guidance for the retained chassis; the owner-authorized continuous turret is no longer an exact copy of this paper model.",
+    "previousReceipt": "docs/geometry-gate/carro45t.json",
+    "previousGeoMin": 82.9,
+    "previousGatePassed": false,
+    "note": "Retain the failed historical receipt. This redesign does not establish source-model parity or change any comparison threshold."
+  },
+  "designs": {
+    "carro45t": {
+      "id": "carro45t",
+      "test": "src/vehicles/profiles/carro45tRoof.selftest.mjs",
+      "ring": [
+        0,
+        1.5,
+        -0.3
+      ],
+      "gunLocal": [
+        0,
+        0.4,
+        1.3
+      ],
+      "barrelLengthM": 6.13,
+      "barrelRadiusM": 0.1,
+      "pitchDeg": [
+        -8,
+        18
+      ],
+      "mainCaliberMm": 105,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.98,
+      "hullWidthM": 3.43,
+      "widthM": 3.43,
+      "overallLengthM": 10.6,
+      "tallestM": 4.05,
+      "silhouette": "Retained Carro 45t hull and running gear with a continuous asymmetric turret crown, integral bustle and two tapered cheeks flanking an open elevating mantlet bay"
+    }
+  },
+  "preservedGeometry": {
+    "baseRevision": "602b406df",
+    "hullAndRunningGearSha256": "26ff5258fd476ec3b658e346046beaffe5fcc9c6c41f13eeeab690b44df58111",
+    "gunAssemblySha256": "2bbfe19332f316a01cd10613a36f63428c49fa067245bdf8e052f9f13111fa3f",
+    "hashMethod": "SHA-256 of authored buildCarro45T hull/running-gear and gun source sections; diff confirmed unchanged."
+  }
+}

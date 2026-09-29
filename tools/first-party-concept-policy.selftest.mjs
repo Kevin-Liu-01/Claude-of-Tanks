@@ -9,7 +9,7 @@ import {readConceptDesign} from './first-party-concept-record.mjs';
 import {assertConceptDatums,assertConceptWeapons} from './first-party-concept-datums.mjs';
 const oldPath='docs/references/concepts/missile-turrets-20260919.json';
 const typePath='docs/references/concepts/type100-ifv-20260919.json';
-assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['spz_puma_s1','cv90','cv90_mkiv','type89_light_tiger','k2','griffin_viper','ariete_c2_x','tos1a_tagil','ztz100_prototype','object695_x','type100']);
+assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['carro45t','spz_puma_s1','cv90','cv90_mkiv','type89_light_tiger','k2','griffin_viper','ariete_c2_x','tos1a_tagil','ztz100_prototype','object695_x','type100']);
 assert.equal(conceptDesignPath('ztz100_prototype'),oldPath);
 assert.equal(conceptDesignPath('object695_x'),oldPath);
 assert.equal(conceptDesignPath('type100'),typePath);
@@ -77,18 +77,18 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
     continue;
   }
   if (design.weaponSystem === 'conventional-cannon') {
-    const shell={type:'APFSDS',caliberMm:120,count:24};
+    const shell={type:'APFSDS',caliberMm:design.mainCaliberMm,count:24};
     spec.gun={shells:[shell]};
     assertConceptDatums(spec,design);
-    const inheritedShells=['APFSDS','HEAT','HE'].map(type=>({type,caliberMm:120}));
+    const inheritedShells=['APFSDS','HEAT','HE'].map(type=>({type,caliberMm:design.mainCaliberMm}));
     assertConceptDatums({...spec,gun:{shells:inheritedShells}},design);
     assertConceptWeapons([{...shell,count:null}],design);
-    for(const patch of [{guided:true},{launcherTubes:1},{caliberMm:125},
+    for(const patch of [{guided:true},{launcherTubes:1},{caliberMm:design.mainCaliberMm+5},
       {count:0},{count:-1},{count:Infinity},{count:NaN},{count:1.5},{count:'24'}])
       assert.throws(()=>assertConceptWeapons([{...shell,...patch}],design));
     assert.throws(()=>assertConceptWeapons([...inheritedShells,{...shell,count:-1}],design));
     assert.throws(()=>assertConceptWeapons([],design));
-    assert.throws(()=>assertConceptWeapons([shell,{...shell,caliberMm:125}],design));
+    assert.throws(()=>assertConceptWeapons([shell,{...shell,caliberMm:design.mainCaliberMm+5}],design));
     assert.throws(()=>assertConceptDatums({...spec,gunElevationDeg:21},design));
     continue;
   }
