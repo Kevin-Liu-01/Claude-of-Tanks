@@ -772,6 +772,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-p2p-headless.selftest.mjs',
     'tools/mp-p2p-peer.selftest.mjs',
     'tools/mp-p2p-decline.selftest.mjs',
+    'tools/mp-p2p-stepdown.selftest.mjs',
     'src/mp/session/browserComposition.selftest.mjs',
     'src/mp/session/networkStatus.selftest.mjs',
     'src/mp/session/exitFlow.selftest.mjs',

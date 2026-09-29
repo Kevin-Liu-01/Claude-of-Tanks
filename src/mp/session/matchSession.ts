@@ -288,7 +288,18 @@ export class MatchSession {
   /** Enter (or re-enter) the announced match: presentation, transport on the seat token, client. */
   async enterMatch(payload: RoomMatchStartPayload): Promise<MatchClient> {
     if (this.disposed) throw new Error('session disposed');
-    if (this.currentRound?.matchStart.matchId === payload.matchId && this.matchClient) return this.matchClient;
+    if (this.currentRound?.matchStart.matchId === payload.matchId && this.matchClient) {
+      // The same match re-sent to a seat back from a room-socket blip (P3, 2026-09-28): the room may have elected another host
+      // meanwhile and this seat missed the host_changed. The room client now reads the current generation from the URL: a host
+      // the room replaced steps down at once (its next report would be host_only anyway), a peer re-offers to the current host.
+      const generation = this.room.generation;
+      if (parseP2pMatchUrl(payload.matchUrl) && generation > this.runningGeneration && this.migrating) {
+        const me = this.room.playerId;
+        if (this.host && this.room.hostId !== me) this.stepDown('match_start re-sent');
+        else if (this.peerTransport) { this.runningGeneration = generation; this.peerTransport.retarget('match_start re-sent'); }
+      }
+      return this.matchClient;
+    }
     await this.leaveMatch('rematch');
     const generation = ++this.generation;
     const room = this.room.room;

@@ -446,8 +446,12 @@ export class RoomClient {
         break;
       case ROOM_SERVER_MESSAGE.MATCH_START:
         if (isRoomMatchStartPayload(payload)) {
-          // A new match (or the same one re-sent after a resume): the URL's generation is current until an election says otherwise.
-          if (this.lastMatchStart?.matchId !== payload.matchId) this.lastHostChange = null;
+          // A new match: the URL's generation is current until an election says otherwise. The same match re-sent after a
+          // resume carries the CURRENT generation's URL and host (P1): a seat back from a socket blip may have missed the
+          // election since the one it heard, so a newer generation in the URL supersedes the election it holds (P3, 2026-09-28:
+          // a returning host otherwise read itself as host at the old generation and offered to itself forever).
+          const parsed = parseP2pMatchUrl(payload.matchUrl);
+          if (this.lastMatchStart?.matchId !== payload.matchId || (parsed !== null && this.lastHostChange !== null && parsed.generation > this.lastHostChange.generation)) this.lastHostChange = null;
           this.lastMatchStart = payload;
           this.matchStartListeners.emit(payload);
         }

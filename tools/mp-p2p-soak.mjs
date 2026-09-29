@@ -20,7 +20,9 @@
  *                                                                              # /api/ice hands out (fetched with the site
  *                                                                              # Origin; the credential never leaves memory)
  *
- * --host=game (the "realism" run): seat 1 is the real game page (`?mp=v2`, the Play menu's LAN room, its size), the
+ * --migrate-mode=stepdown replaces the tab close with a room-socket blip past the grace: the host keeps its actor, the
+ * room elects a successor, the old host re-joins and its next report is refused `host_only` — the step-down to a peer
+ * (P1's request, proven here against the real service). --host=game (the "realism" run): seat 1 is the real game page (`?mp=v2`, the Play menu's LAN room, its size), the
  * harness seats join its room by code; the game host plays through the game's own client and the HUD, the migration
  * closes its tab and a harness seat takes over. --rooms is required (the harness pages run on http://127.0.0.1:<port>:
  * the room service must allow that origin —
@@ -66,6 +68,8 @@ const countdownS = Number(argValue('countdown', 3));
 const sampleS = Math.max(1, Number(argValue('sample', 2)));
 const rejoin = argValue('rejoin', '1') !== '0';
 const graceMs = Number(argValue('grace', 8000));
+/** close: the host's tab dies. stepdown: the host's ROOM socket drops past the grace (a network blip) while its tab and actor live on; it re-joins after the election and its next report is refused host_only, so it steps down to a peer of the new host. */
+const migrateMode = argValue('migrate-mode', 'close');
 const outputDir = resolve(argValue('out', join(root, '.qa-dev', 'mp-p2p-soak')));
 const cacheDir = resolve(argValue('cache-dir', join(outputDir, 'vite-cache')));
 const requestedVitePort = Number(argValue('port', 0));
@@ -264,6 +268,9 @@ try {
     step('ice', fetched.facts);
   }
   const vitePort = requestedVitePort > 0 ? requestedVitePort : await freePort();
+  // The harness pages take the room service from their URL; the real game page (--host=game) resolves it from the build's
+  // VITE_ROOMS_URL, inlined by the dev server from the environment (the e2e's way).
+  process.env.VITE_ROOMS_URL = roomsUrl;
   vite = await createViteServer({ root, cacheDir, logLevel: 'error', server: { host: '127.0.0.1', port: vitePort, strictPort: true, hmr: false } });
   await vite.listen();
   origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
@@ -446,11 +453,17 @@ async function migrate() {
   const preClose = { status: oldStatus, timeline: await timelineOf(oldHost) };
   finalStatus.set(`${oldHost.id}#gen${oldGeneration}`, preClose);
   const closedWall = Date.now();
-  await oldHost.page.close();
-  oldHost.page = null;
-  oldHost.closedWall = closedWall;
-  step(`migration-${k}-host-closed`, { host: oldHost.id, generation: oldGeneration, tick: oldStatus.host?.core?.tick ?? null });
-  const remaining = live();
+  const stepDown = migrateMode === 'stepdown' && !oldHost.game;
+  if (stepDown) {
+    await oldHost.page.evaluate(() => window.__peer.disconnectRoom('blip'));
+    step(`migration-${k}-host-room-socket-dropped`, { host: oldHost.id, generation: oldGeneration, tick: oldStatus.host?.core?.tick ?? null });
+  } else {
+    await oldHost.page.close();
+    oldHost.page = null;
+    oldHost.closedWall = closedWall;
+    step(`migration-${k}-host-closed`, { host: oldHost.id, generation: oldGeneration, tick: oldStatus.host?.core?.tick ?? null });
+  }
+  const remaining = live().filter((peer) => peer !== oldHost);
   let newHost = null;
   let newStatus = null;
   try {
@@ -515,7 +528,24 @@ async function migrate() {
   };
   report.migrations.push(migration);
   step(`migration-${k}`, { newHost: newHost.id, generation: newGeneration, hostChangedAfterMs: migration.hostChangedAfterMs, newHostLiveAfterMs: migration.newHostLiveAfterMs, firstFrame: migration.firstFrame, hullJump: migration.hullJump, tickContinuous: migration.tickContinuous });
-  if (rejoin && !oldHost.game) {
+  if (stepDown) {
+    // the old host's room socket comes back: the room re-sends match_start with the new host; its next report is refused host_only; it steps down
+    const rejoinWall = Date.now();
+    const since = (await timelineOf(oldHost)).length;
+    try {
+      await oldHost.page.evaluate((code) => window.__peer.join({ code }), roomCode);
+      await waitUntil(async () => { const status = await statusOf(oldHost); return status.session?.role === 'peer' && status.session?.p2p?.hostId === newHost.id && status.match?.phase === 'live'; }, `migration ${k}: the old host stepped down to a live peer of ${newHost.id}`, 60_000, 250);
+      const status = await statusOf(oldHost);
+      const events = (await timelineOf(oldHost, since)).filter((entry) => /^(?:host-log:|p2p:|transport:|welcome|host:|match_start|room:)/.test(entry.kind)).slice(0, 40).map((entry) => ({ ms: entry.wall - rejoinWall, kind: entry.kind, ...(entry.message ? { message: entry.message } : {}), ...(entry.detail ? { detail: entry.detail } : {}), ...(entry.role ? { role: entry.role } : {}), ...(entry.hostId ? { hostId: entry.hostId } : {}) }));
+      const stepped = events.find((entry) => entry.kind === 'host-log:warn' && entry.message === 'stepping down');
+      migration.stepDown = { rejoinAfterLossMs: rejoinWall - closedWall, steppedDownAfterRejoinMs: stepped ? stepped.ms : null, detail: stepped?.detail ?? null, role: status.session.role, hostId: status.session.p2p.hostId, generation: status.session.p2p.generation, phase: status.match.phase, events };
+      step(`migration-${k}-stepped-down`, { steppedDownAfterRejoinMs: migration.stepDown.steppedDownAfterRejoinMs, detail: migration.stepDown.detail, role: migration.stepDown.role, hostId: migration.stepDown.hostId });
+    } catch (error) {
+      migration.stepDown = { failed: error.message };
+      failures.push(`migration ${k}: ${error.message}`);
+    }
+  }
+  if (rejoin && !oldHost.game && !stepDown) {
     const rejoinStartedWall = Date.now();
     try {
       await openPage(origin, oldHost);
@@ -653,6 +683,7 @@ function markdown() {
     lines.push('## Migrations', '', '| # | Old host → new host | Reason | host_changed after (ms) | New host live (ms) | First snapshot on every seat (min / median / max ms) | Own-hull jump max (allies / enemies / new host, m) | Tick continuous | Peers served | Old host back as peer (ms) |', '|---|---|---|---|---|---|---|---|---|---|');
     for (const m of report.migrations) {
       if (m.failed) { lines.push(`| ${m.k} | ${m.oldHost} → – | – | – | – | FAILED: ${m.failed} | – | – | – | – |`); continue; }
+      if (m.stepDown) m.rejoin = m.stepDown.failed ? { failed: m.stepDown.failed } : { afterMs: m.stepDown.rejoinAfterLossMs + (m.stepDown.steppedDownAfterRejoinMs ?? 0), role: `${m.stepDown.role} after ${m.stepDown.detail}`, hostId: m.stepDown.hostId };
       lines.push(`| ${m.k} | ${m.oldHost} (gen ${m.oldGeneration}) → ${m.newHost} (gen ${m.newGeneration}) | ${m.reason ?? '–'} | ${round(m.hostChangedAfterMs, 0)} | ${round(m.newHostLiveAfterMs, 0)} | ${round(m.firstFrame.min, 0)} / ${round(m.firstFrame.median, 0)} / ${round(m.firstFrame.max, 0)}${m.firstFrame.missing.length ? ` (missing: ${m.firstFrame.missing.join(', ')})` : ''} | ${round(m.hullJump.allies, 2)} / ${round(m.hullJump.enemies, 2)} / ${round(m.hullJump.newHost, 2)} (rows: ${round(m.rowJump?.allies, 2)} / ${round(m.rowJump?.enemies, 2)} / ${round(m.rowJump?.newHost, 2)}) | ${m.tickContinuous ? 'yes' : 'NO'} | ${m.peersServed} | ${m.rejoin ? (m.rejoin.failed ? `FAILED: ${m.rejoin.failed}` : `${m.rejoin.afterMs} (${m.rejoin.role} of ${m.rejoin.hostId})`) : '–'} |`);
     }
     lines.push('');
