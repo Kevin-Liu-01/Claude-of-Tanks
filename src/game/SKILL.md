@@ -227,9 +227,9 @@ composition root.
 Route post-acquisition solo round reset and phase activation through
 `soloBattleStartRuntime.ts`; preload its access owner before the synchronous
 handoff and do not rebuild that transaction in `main.ts`.
-Route cold network entry changes through `networkBattlePresentationRuntime.ts`;
-keep partial bridges private until roster preparation and initial authority
-succeed.
+Route cold network entry changes through `src/mp/session/browserComposition.ts`
+(`beginRoom`); keep a new presentation private until the roster and the first
+authority frame succeed.
 Route result, death-beat, and replay-handoff changes through
 `battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
 Garage scene-pack changes must pass the architecture, terrain-generation,

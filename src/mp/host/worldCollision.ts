@@ -1,8 +1,8 @@
 /**
- * The browser host's collision world (P2 client lane): the same manifest the match container loads from
- * `server/world-collision-manifests/<map>.json`, fetched from the build's static copy (`<base>/index.json`, then
+ * The browser host's collision world (P2 client lane): the manifest `server/dedicatedWorldCollision.ts` reads from
+ * `server/world-collision-manifests/<map>.json` on disk, here fetched from the build's static copy (`<base>/index.json`, then
  * `<base>/<map>.json`), verified against the index's byte count and SHA-256 with Web Crypto, decoded and validated by
- * the server's own codec, and built into the headless collision world over the map's height field — the container's
+ * the server's own codec, and built into the headless collision world over the map's height field —
  * `createDedicatedWorldCollision` step for step, minus the disk. Runs in the Worker (and in Node for the receipt).
  */
 import { createHeadlessCollisionWorld } from '../../world/headlessCollisionWorld.ts';

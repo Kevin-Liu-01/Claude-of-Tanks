@@ -174,8 +174,14 @@ function sourceFunction(path, name, next) {
 }
 const soloCaller = sourceFunction('../game/state.ts', 'crushWorldPropFromShell',
   'const MAX_SHELL_PASS_THROUGH_HITS_PER_STEP');
-const netCaller = sourceFunction('../net/browserBattleBridge.ts', 'emitWorldPropDestroyed',
-  'function emitLocalPlayerEvent(');
+// The multiplayer caller is the battle presentation's `world_prop_destroyed` event case
+// (src/mp/presentation/battlePresentation.ts), sliced into a function over the same two closure ports.
+const netCaller = (() => {
+  const text = readFileSync(new URL('../mp/presentation/battlePresentation.ts', import.meta.url), 'utf8');
+  const from = text.indexOf("case 'world_prop_destroyed': {"), to = text.indexOf("case 'module_state':", from);
+  assert.ok(from >= 0 && to > from, 'world_prop_destroyed: actual caller exists');
+  return stripTypeScriptTypes(`function emitWorldPropDestroyed(payload) { switch ('world_prop_destroyed') { ${text.slice(from, to)} } }`);
+})();
 
 function exerciseAuthority(mode, f) {
   const world = {

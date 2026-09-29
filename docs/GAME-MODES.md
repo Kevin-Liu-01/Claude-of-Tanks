@@ -89,8 +89,8 @@ the rule-card lines (`rules.line.marsCaches` / `marsCachesOff`).
 - **Movement** — the controller stamps `modeSpeedMultiplier` and `modeGravityScale`
   on every entity at start, at every revive and when a flag changes hands;
   `src/sim/movement.ts` scales top/reverse speed, the airborne hull and the slope
-  pull by them. The prediction state (`src/net/predictionAuthorityState.ts`,
-  `localTankPrediction.ts`) mirrors both to the client.
+  pull by them. The prediction state (`src/sim/predictionAuthorityState.ts`,
+  `src/mp/match/prediction.ts`) mirrors both to the client.
 - **Physics** (2026-09-25) — the controller stamps `modePhysics` (the ruleset's
   `physics` block) beside the gravity scale; `src/sim/movement.ts` reads its
   restitution and rebound floor at every landing, and the integrations

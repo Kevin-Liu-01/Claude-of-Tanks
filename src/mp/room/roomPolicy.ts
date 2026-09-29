@@ -599,7 +599,7 @@ export function abortStart(room: RoomSnapshot, now: number): RoomSnapshot {
   return touch(room, now);
 }
 
-/** The verdict (or the loss of the container): the room returns to `waiting` with the result on record. */
+/** The verdict (or the loss of the host): the room returns to `waiting` with the result on record. */
 export function finishMatch(
   room: RoomSnapshot,
   outcome: { status: 'ended'; result: RoomResult; reason: string } | { status: 'lost'; reason: string },

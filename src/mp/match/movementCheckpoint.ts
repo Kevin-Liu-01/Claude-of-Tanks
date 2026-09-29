@@ -4,7 +4,7 @@
  * the dynamic state a pose alone cannot reconstruct — springs, ride, spool,
  * retained support — before the unacknowledged ticks are replayed, so the
  * replay forces the suspension exactly as the authority did. The layout is
- * version 2 of the checkpoint `src/net/movementPredictionState.ts`
+ * version 2 of the checkpoint `src/sim/movementPredictionState.ts`
  * established (the server captures with either; the receipt proves parity),
  * with the same field order so a sim change moves both sides together.
  * Version 2 (impact physics, 2026-09-25) adds the terrain fit's pure

@@ -138,7 +138,7 @@ interface PredictionMeta {
 }
 
 /**
- * Map the authority's viewer prediction meta (src/net/predictionAuthorityState) onto the wire section. The movement
+ * Map the authority's viewer prediction meta (src/sim/predictionAuthorityState) onto the wire section. The movement
  * integrator checkpoint (44 floats, 180 B — a third of a 14v14 viewer's snapshot bytes, P3b's attribution) rides only
  * when `withCheckpoint` is set: the publisher includes it at VIEWER_CHECKPOINT_HZ, and the predictor replays from the
  * row alone between (a missing checkpoint is a counted, tolerated case there).

@@ -1,7 +1,8 @@
 /**
- * The match service's control surface: how a room host (the Room Durable
- * Object through its container binding, or the LAN room service in the same
- * process) starts, observes and stops the one match a container runs.
+ * The match service's control surface: how a room host (the LAN room
+ * service in the same process; the Room Durable Object's container binding of
+ * the first design left the tree) starts, observes and stops the one match a
+ * service runs.
  *
  *   POST   /control/matches            start (JSON MatchStartRequest) → 201 { roomId, matchId, matchPath }
  *   GET    /control/matches/<roomId>   → 200 { roomId, matchId, phase, tick, verdict } | 404

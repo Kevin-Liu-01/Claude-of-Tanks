@@ -420,16 +420,19 @@ does not require paying for a network boundary when no boundary exists.
 
 ## Network delivery cost
 
-Authority runs at 60 Hz and sends state at 20 Hz. The state channel is
-replaceable: old snapshots should not queue behind newer snapshots. Ordered
-control and reliable one-shot events use a separate lane.
+Authority runs at 60 Hz and publishes state at 20 Hz over one reliable ordered
+channel per seat: snapshots are deltas against the viewer's acknowledged
+baseline with a keyframe every two seconds, and a visible entity's row refreshes
+every snapshot when near or engaged, every second in the middle band, every
+third far away (`server/match/interestTiers.ts`).
 
 The browser samples a bounded snapshot buffer. Remote tanks interpolate.
 The local tank predicts shared movement and reconciles. Snapshot decoding,
 sampling, and presentation reuse storage where practical.
 
-Ranked WebSocket delivery coalesces pending state even though the transport is
-ordered, preventing obsolete frames from consuming the reliable queue.
+The transport counts a drop instead of queueing a frame that would leave more
+than 64 KB unsent, and a refusal sustained for 5 s closes the link as
+`backpressure` rather than letting obsolete state pile up behind control traffic.
 
 ## Effects burst control
 
@@ -437,15 +440,16 @@ Network events can arrive in a batch even when the original actions were
 spread across authority ticks. Running every explosion, wreck swap, debris
 emitter, smoke column, and audio effect synchronously can create a long task.
 
-src/net/presentationEventQueue.ts classifies work:
+`src/mp/match/events.ts` bounds the release:
 
-- durable and critical state applies immediately;
-- inexpensive presentation may run immediately;
-- heavy cosmetic effects enter a bounded per-frame admission queue.
+- a reliable event is released only once the presentation renders the tick it
+  belongs to; the viewer's own accepted shots bypass that delay;
+- at most three events per rendered frame, and a heavy one (shot, hit, impact,
+  destruction, prop) ends the flush.
 
-This changes presentation scheduling, not chronology or outcome. The queue
-retains event identity and cause so destruction remains correct while the
-expensive visual layers are spread across frames.
+This changes presentation scheduling, not chronology or outcome. The events
+keep their order and cause, so destruction remains correct while the expensive
+visual layers are spread across frames.
 
 ## Canvas readback
 

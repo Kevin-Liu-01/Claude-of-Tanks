@@ -25,7 +25,7 @@ const fetchImpl = async (url, init) => {
   return { ok: true, status: 200, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), json: async () => JSON.parse(bytes.toString('utf8')) };
 };
 
-// ---- the fetched world equals the container's disk-loaded one
+// ---- the fetched world equals the Node loader's disk-loaded one
 const fetched = await loadCollisionWorld('verdant', COLLISION_MANIFEST_ROUTE, { fetchImpl });
 const container = createDedicatedWorldCollision('verdant');
 assert.deepEqual(requests.map((request) => request.url.replace(/\.[0-9a-f]{12}\.json$/, '.<hash>.json')), [`${COLLISION_MANIFEST_ROUTE}/index.json`, `${COLLISION_MANIFEST_ROUTE}/verdant.<hash>.json`]);
@@ -67,4 +67,4 @@ truncated.set(verdantName, bytes.subarray(0, bytes.length - 10));
 await assert.rejects(loadCollisionWorld('verdant', COLLISION_MANIFEST_ROUTE, { fetchImpl: async (url, init) => { const hit = truncated.get(url); return hit ? { ok: true, status: 200, arrayBuffer: async () => hit.buffer.slice(hit.byteOffset, hit.byteOffset + hit.byteLength), json: async () => JSON.parse(hit.toString('utf8')) } : fetchImpl(url, init); } }), /size mismatch/);
 await assert.rejects(loadCollisionWorld('no_such_map', COLLISION_MANIFEST_ROUTE, { fetchImpl }), /manifest|map/i);
 assert.ok(Object.keys(index.maps).length >= 31, 'the index names every map');
-console.log(`worldCollision.selftest: the fetched world equals the container's for verdant (${fetched.getObstacles().length} obstacles), checksum/size/missing refused`);
+console.log(`worldCollision.selftest: the fetched world equals the Node loader's for verdant (${fetched.getObstacles().length} obstacles), checksum/size/missing refused`);

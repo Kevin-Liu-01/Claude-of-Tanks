@@ -125,7 +125,7 @@ export function resolveRoomRelativeUrl(endpoint: string, url: string): string {
   return `${base}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
-/** The `start` command's wait: a cold match container may take the Room DO's full 30 s port wait plus the match start. */
+/** The `start` command's wait: the room elects the host and hands out `match_start`; the budget keeps the first design's 30 s cold start plus the match start. */
 const START_REQUEST_TIMEOUT_MS = 45_000;
 /** Offers kept for an acceptor made after they arrived (P3b): the window and the bound. */
 const ROOM_RECENT_OFFER_MS = 5_000;
@@ -459,9 +459,9 @@ export class RoomClient {
 
   private request(type: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
     const requestId = `r${++this.requestSeq}`;
-    // A `start` command waits for the room to bring its match container up (the Room DO gives
-    // `startAndWaitForPorts` 30 s on a cold start), so it gets the longer budget; every other
-    // request keeps the ordinary timeout (2026-09-25, the local container run's finding).
+    // A `start` command waits for the room to elect the host and hand out `match_start` (its budget
+    // keeps the first design's 30 s cold container start), so it gets the longer budget; every other
+    // request keeps the ordinary timeout (2026-09-25).
     const command = (payload as { command?: { type?: unknown } }).command;
     const timeoutMs = type === ROOM_CLIENT_MESSAGE.COMMAND && command?.type === 'start'
       ? Math.max(this.requestTimeoutMs, START_REQUEST_TIMEOUT_MS) : this.requestTimeoutMs;

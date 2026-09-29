@@ -4,7 +4,7 @@
  * a `Signaler` the room client fulfils (`room_signal` offer / answer / candidates relayed by the Room Durable Object,
  * addressed to the signaler's CURRENT host with its generation; the candidates gathered before the offer ride inside
  * its SDP — `awaitIceGathering` below — and only a late one trickles); ICE servers come from the same credential source v1
- * uses (`src/net/iceConfig.ts` over `api/ice.ts`), resolved lazily per connection; `bufferedBytes` is the channel's
+ * uses (`src/mp/transport/iceConfig.ts` over `api/ice.ts`), resolved lazily per connection; `bufferedBytes` is the channel's
  * bufferedAmount under the shared backpressure policy; `reconnect()` is a fresh offer to the current host, so a host
  * migration only changes the target (`retarget()` fires the pending attempt at once instead of waiting out the backoff);
  * close reasons map to TRANSPORT_CLOSE; the selected candidate pair's types (host / srflx / prflx / relay) are read from
@@ -30,7 +30,7 @@ export interface RtcIceServerLike {
   credential?: string;
 }
 
-/** What v1's `loadIceConfiguration` resolves: the servers and whether only relays may be used. */
+/** What `loadIceConfiguration` (iceConfig.ts) resolves: the servers and whether only relays may be used. */
 export interface RtcIceConfig {
   iceServers: RtcIceServerLike[];
   relayOnly: boolean;
@@ -247,7 +247,7 @@ const MAX_PENDING_CANDIDATES = 64;
 
 export interface WebRtcTransportOptions {
   signaler: Signaler;
-  /** ICE servers, resolved per connection (v1's `loadIceConfiguration` with its credential lease) or given once. */
+  /** ICE servers, resolved per connection (`loadIceConfiguration` with its credential lease) or given once. */
   ice?: RtcIceConfig | (() => Promise<RtcIceConfig> | RtcIceConfig);
   createPeerConnection?: RtcPeerConnectionFactory;
   backpressure?: Partial<BackpressurePolicy>;

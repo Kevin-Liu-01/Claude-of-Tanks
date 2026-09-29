@@ -28,7 +28,7 @@ ARCHITECTURE.md wherever the two disagree.
       +---- reliable one-shot events ----------------+ |
                                                      | |
                                                      v v
-                                      browser presentation bridge
+                                      browser battle presentation
                                                      |
                          +---------------------------+------------------+
                          |                           |                  |
@@ -40,10 +40,10 @@ in src/game/stateCore.ts. Typed roster records, battle-visual policy, and
 deterministic participant/camouflage planning live in src/game/rosterState.ts,
 so garage and battle-intent loading can use them without owning the solo combat
 graph. src/game/soloBattleRuntime.ts is the typed lazy boundary that acquires
-the legacy solo authority only on Battle or capture intent. LAN, private, and
-ranked modes use
-src/sim/authoritativeMatch.ts behind the protocol and browser presentation
-bridge. These compositions share movement, aiming, ballistics, armor, damage,
+the legacy solo authority only on Battle or capture intent. LAN and private
+modes use src/sim/authoritativeMatch.ts behind the wire schema and the battle
+presentation (`src/mp`).
+These compositions share movement, aiming, ballistics, armor, damage,
 spotting, bot, destructible, and result rules.
 
 `src/sim/matchModes.ts` overlays deterministic objective policy on those shared
@@ -148,26 +148,32 @@ strict TypeScript owners:
 - `src/world/worldActivationRuntime.ts` owns the one active browser world,
   atmosphere/collider/minimap readiness, covered program and shadow warming,
   dormancy, and activation telemetry;
-- `src/net/networkFramePump.ts` owns host/client frame cadence and snapshots;
-- `src/net/networkBattleBarrier.ts` owns initial-snapshot and peer-ready
-  predicates plus the identity-bound READY retry lease;
-- `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;
-- `src/net/networkRoundLifecycle.ts` owns the distinction between rematch-safe
-  presentation cleanup and full room teardown, plus the synchronous result and
-  clock reset required before a new network frame can render;
-- `src/net/networkBattleLaunchRuntime.ts` owns private/LAN, retained-room
-  rematch, and ranked launch policy plus cold-entry failure cleanup;
-- `src/net/networkBattlePresentationRuntime.ts` owns the shared cold-client
-  preparation path: parallel dependencies, private bridge preparation, first
-  authority, covered warmup, peer readiness, activation, validation, and reveal;
-- `src/net/networkBattlePresentationAccess.ts` keeps that multiplayer-only
-  policy and adapter graph out of Garage and solo startup, with retryable
-  acquisition on network-mode or joined-room intent;
-- `src/net/networkBattleActivationRuntime.ts` owns the atomic prepared-bridge
-  transition into live player or spectator presentation, including prior-round
-  reset, world/HUD/FX state, phase publication, camera ownership, and Garage
-  shutdown;
-- `src/net/connectionRecovery.ts` owns the single reconnect presentation edge;
+- `src/mp/session/browserComposition.ts` owns the browser's multiplayer launch
+  (`beginRoom`): one `MatchSession` per room and, per `match_start`, the covered
+  load of modules, visuals and world together, the battle presentation on the
+  world's collision, prediction, the covered warm order, activation, black-frame
+  validation, the reveal, the verdict, the lobby's return to the Play menu, the
+  Garage return with the room kept or closed, and the frame hooks (`pump`,
+  `pumpBackground`, `active`) the frame loop calls;
+- `src/mp/session/matchSession.ts` owns one room's session: a `MatchClient` and
+  a presentation per round, the `match_start` handoff, the rematch and the
+  rejoin on the same seat;
+- `src/mp/session/compositionAccess.ts` keeps that multiplayer-only graph out
+  of Garage and solo startup, with retryable acquisition on multiplayer intent;
+- `src/mp/session/lobbyIntent.ts` owns the room's Garage presence: the pending
+  lobby and the owned room paint the room strip, warm the room's battlefield
+  and roster builders through `lobbyPreloader.ts`, and relay Ready, the vehicle
+  pick and Start back into the Play menu;
+- `src/mp/session/intentCover.ts` and `roundState.ts` own the synchronous
+  intent cover and the result and clock reset required before a new network
+  frame can render;
+- `src/mp/session/activationRuntime.ts` owns the atomic transition of a
+  prepared presentation into live player or spectator play, including
+  prior-round reset, world/HUD/FX state, phase publication, camera ownership,
+  and Garage shutdown;
+- `src/mp/session/networkStatus.ts` owns the link's status model: one snapshot
+  and one threshold table behind the HUD strip, the lobby strip, the banner
+  and the telemetry summary;
 - `src/dev/debugTelemetry.ts` owns read-only diagnostics;
 - `src/dev/driveTestController.ts` owns deterministic rendered-battle QA input.
 - `src/dev/debugBattleEntryRuntime.ts` owns the exhaustive full-fleet cold
@@ -193,11 +199,11 @@ does not reimplement their state machines.
 | src/vehicles | Specs, geometry, materials, running gear, labels, generated asset contracts | Match lifecycle |
 | src/sim | Renderer-free movement, aiming, shells, armor, damage, spotting, bots, match state | DOM or Three.js presentation |
 | src/game | Local composition, input, equipment, consumables, profile, killcam, Studio | Network protocol validation |
-| src/net | Protocol, rooms, transport, snapshots, prediction, presentation bridge | Authoring combat rules twice |
+| src/mp | Wire schema, transport, match client, prediction, presentation adapter, rooms, session | Authoring combat rules twice |
 | src/ui | Garage, HUD, rooms, reports, settings, touch controls, icons | Resolving gameplay truth |
 | src/fx | Presentation clock, particles, impacts, decals, destruction effects | Authority state |
 | src/audio | Audio graph and voice/effect playback | Match state |
-| server | Signaling, distributed rooms, dedicated matches, ranked queue and rating | Browser rendering |
+| server | The match actor with its loop, publisher, interest tiers and seat tokens; the LAN room helper; collision manifests | Browser rendering |
 | tools | Generation, probes, browser rigs, release checks, captures | Shipped gameplay behavior |
 
 ## Application lifecycle
@@ -268,12 +274,13 @@ HUD/camera handoff, and battle phase publication. Its retryable access owner is
 acquired alongside the other solo dependencies, so Garage and multiplayer boot
 do not evaluate it.
 
-`src/net/networkBattlePresentationRuntime.ts` owns the equivalent cold network
-transition for private/LAN and dedicated play. It overlaps modules, battlefield,
-and transport; keeps a newly created bridge private until its roster and
-viewer-bearing first snapshot succeed; performs warmup and the all-peer barrier
-under the loader; then delegates one atomic activation and hides the loader only
-after black-frame validation. `src/main.ts` supplies concrete adapters only.
+`src/mp/session/browserComposition.ts` owns the equivalent cold network
+transition for private and LAN play. Per `match_start` it covers and resets the
+round, loads modules, battlefield and visuals together, keeps the new
+presentation private until the roster and the first authority frame succeed,
+performs the covered warmup, then delegates one atomic activation and hides the
+loader only after black-frame validation. `src/main.ts` supplies concrete
+adapters only (`multiplayerAppPorts()`).
 
 `src/game/battleResultPresentationRuntime.ts` is the post-simulation result
 owner. The frame loop invokes it once after authority advances and does not own
@@ -322,7 +329,7 @@ portraits and cards are generated from the same roster used by battle.
 
 `playSurfaceRuntime.ts` keeps the operation picker behind one retryable typed
 interface. Solo play bypasses menu construction, active-room state wins over a
-new operation request, private/LAN/ranked intent preloads only its required
+new operation request, private/LAN intent preloads only its required
 network owner, and battle entry hides the surface without closing a retained
 session. Ports declared later in the composition root are passed as closures;
 a pristine browser can therefore complete module evaluation before any
@@ -427,26 +434,24 @@ this document.
 Solo Battle intent begins downloading the solo authority chunk and the exact
 next roster/map through `battleIntentRuntime.ts`; the covered battle barrier
 joins that work in parallel with independent world construction. A
-network battle first establishes a room or ranked session, then loads the
-selected map and roster behind an opaque transition without importing solo
-authority. The browser bridge mounts visuals only after authority has a valid
-initial state.
+network battle first holds a seat in a room, then, on the room's
+`match_start`, loads the named map and the room's roster behind an opaque
+transition without importing solo authority. The battle presentation mounts
+visuals only after the match client's WELCOME and the roster.
 
-`networkBattleLaunchRuntime.ts` is the common mode-launch owner above that
-presentation seam. Private/LAN first entry, retained-room rematch, and ranked
-handoff share identity validation, loader presentation, cleanup, and typed
-failure diagnostics instead of implementing parallel policies in `main.ts`.
-
-`networkBattlePresentationRuntime.ts` is the deep presentation module below
-that launcher. Its single `present()` interface owns the ordering shared by
-browser-hosted and dedicated adapters. An unpublished bridge is disposed if
-roster preparation or initial authority fails; it becomes render-visible only
-after both gates pass.
+`src/mp/session/browserComposition.ts` (`beginRoom`) is the one network launch
+owner above that seam. First entry, the rematch on the same room and the rejoin
+of a running match share identity validation, loader presentation, cleanup, and
+typed failure diagnostics instead of implementing parallel policies in
+`main.ts`; `src/mp/session/matchSession.ts` below it opens the match client on
+the seat token per round and asks the composition for a presentation. A
+presentation whose load, roster or first authority frame fails is disposed
+unpublished; it becomes render-visible only after both gates pass.
 
 Every new battle resets result and presentation state. A previous verdict must
-not survive into a new network round. Rematches call the narrower round cleanup
-and retain their room transport; a full close aborts any in-flight entry before
-closing the match and clearing room presentation.
+not survive into a new network round. Rematches re-enter through the same
+`beginRoom` and retain their room seat; a full close aborts any in-flight entry
+before leaving the match and clearing room presentation.
 
 ### Battle exit
 
@@ -592,8 +597,8 @@ fleet-wide cutoff. A sustained block still enters deterministic reverse/detour
 recovery. The richer local height probes remain dormant during ordinary
 traversal, so terrain-aware correction does not become a per-frame AI cost.
 
-The movement module is used by solo, browser-hosted authority, dedicated
-authority, local network prediction, bots, and Studio terrain settlement.
+The movement module is used by solo, the match actor the hosting browser runs,
+local network prediction, bots, and Studio terrain settlement.
 
 Presentation consumes support and travel but does not feed cosmetic wheel or
 track placement back into authority.
@@ -693,9 +698,11 @@ The browser world exposes:
 - destructible registration and revision;
 - map dressing, sky, lighting, and minimap data.
 
-The dedicated service inflates per-map shards from server/world-collision-manifests/ so it can
-run collision without WebGL or DOM dependencies. The manifest and browser
-world must describe matching obstacles and destructible identifiers.
+The hosting browser's Worker (`src/mp/host/worldCollision.ts`) and the Node
+receipts (`server/dedicatedWorldCollision.ts`) inflate per-map shards from
+server/world-collision-manifests/ so the match actor runs collision without
+WebGL or DOM dependencies. The manifest and browser world must describe
+matching obstacles and destructible identifiers.
 
 Structure collision heights (2026-09-19, owner: "building hitboxes extend into empty
 air and they will just block shots … you just hit an invisible wall"): every part of a
@@ -742,7 +749,7 @@ derives convex contact footprints and height-banded shell volumes, and preserves
 recesses, courtyards, bays, and underpasses as exact compound shapes. One compound
 remains one broad-phase record; the allocation-free movement, navigation,
 raycast, loose-prop, and headless paths inspect its authored parts only in the
-narrow phase. Dedicated authority consumes the identical version-2 nested shape
+narrow phase. The match actor consumes the identical version-2 nested shape
 format from the packed 30-map collision manifest.
 
 `structureCollision.selftest.mjs` builds all 111 heavyweight, site, small-building,
@@ -791,16 +798,20 @@ state-restoring shadow A/B probe.
 
 ## Presentation bridge and effects
 
-src/net/browserBattleBridge.ts applies sampled authority state to browser game
-state. The main render loop owns the final visual synchronization, avoiding a
-second full tank sync in the same frame.
+`src/mp/presentation/battlePresentation.ts` applies the match client's frame
+(the interpolated remote samples, the shells, the viewer's predicted state and
+newest authority row) to browser game state. The main render loop owns the
+final visual synchronization, avoiding a second full tank sync in the same
+frame.
 
-src/net/presentationEventQueue.ts separates critical and cosmetic work:
+`src/mp/match/events.ts` separates critical and cosmetic work:
 
-- critical state and report transitions apply immediately;
-- heavy remote smoke, debris, sparks, and destruction work is admitted within
-  a per-frame budget;
-- reliable event identifiers prevent duplicate presentation;
+- a reliable event is released only once the presentation renders the tick it
+  belongs to; the viewer's own accepted shots bypass that delay;
+- at most three events per rendered frame, and a heavy one (shot, hit, impact,
+  destruction, prop) ends the flush, so a synchronized volley never becomes
+  one CPU burst;
+- events arrive in order on the one reliable channel, so none presents twice;
 - snapshot interpolation remains independent from event delivery.
 
 Destruction causes are known before a visual crosses into its destroyed state
@@ -808,117 +819,135 @@ so ammo-rack and ordinary destruction can produce the correct first effect.
 
 ## Multiplayer protocol
 
-`src/net/protocol.ts` defines strict protocol-version-7 envelopes, sequence
-arithmetic, and untrusted player-input validation.
-src/net/matchRuntime.ts owns authority ticking, input ordering, readiness,
-viewer snapshots, acknowledgements, and catch-up bounds.
+`src/mp/wire/` is the binary schema both sides share: `messages.ts` the message
+set, `codec.ts` the encoders and decoders, `rows.ts` and `quantize.ts` the
+quantized entity rows, `constants.ts` the caps and the action bits (the
+simulation's table in `src/sim/playerActions.ts`), `era.ts` the ERA cassettes.
+`server/match/matchActor.ts` owns authority ticking, seat admission, input
+admission with the per-seat jitter buffer, readiness, viewer snapshots,
+acknowledgements, reliable event delivery under the authority's reveal rules
+and the verdict; `loop.ts` its fixed-step budget, `publisher.ts` the per-viewer
+keyframe/delta choice, `interestTiers.ts` how often a visible entity's row
+refreshes by distance.
 
-LAN/private WebRTC uses:
+The room protocol (`src/mp/room/protocol.ts`, version 2) is one JSON vocabulary
+shared by the Room Durable Object, the LAN helper and `RoomClient`, so a client
+cannot tell the hosts apart. The match runs peer-to-peer: the room elects a
+seated commander as host (`src/mp/room/p2pMatchHost.ts`), the host runs the
+unchanged match actor in a Worker (`src/mp/host/`), and every other seat reaches
+it through `src/mp/transport/webRtcTransport.ts` — one reliable ordered
+`RTCDataChannel`, negotiated through the room's signaling relay, ICE from
+`src/mp/transport/iceConfig.ts` over `api/ice.ts`; the host's own seat rides the
+loopback pair. `migratingTransport.ts` swaps a running client's link across a
+host migration, and the sealed keyframes a client keeps
+(`src/mp/match/migrationStore.ts`) let the next host resume the match.
 
-- cot-match-v1: ordered reliable control and events;
-- cot-state-v1: unordered, zero-retransmit snapshots and live input.
+Snapshots use a compact binary codec, per-peer acknowledged baselines, deltas,
+and a keyframe every two seconds or whenever the baseline is gone. A client
+missing a delta baseline requests a keyframe instead of applying undefined
+state; the destroyed-prop list, its revision and the verdict ride every frame,
+so a recovering client converges without replaying history.
 
-`src/net/webrtcPeer.ts` owns typed SDP/ICE negotiation. A slow fresh join first
-replays its exact pending description, duplicate descriptions are idempotent,
-and only a later bounded attempt performs ICE restart. This keeps the initial
-handshake stable while retaining route-change recovery.
-
-Rendezvous messages are additionally addressed to sender and receiver
-page-session IDs. The room store rejects stale receiver generations, and the
-browser discards stale mailbox deliveries before they reach `RTCPeerConnection`.
-Player IDs remain stable for seat recovery; page-session IDs identify only the
-current negotiation generation.
-
-Snapshots use a compact binary codec, per-peer baselines, deltas,
-acknowledgements, and periodic keyframes. A client missing a delta baseline
-waits for a keyframe instead of applying undefined state.
-
-Ranked WebSocket is ordered, but pending snapshot and input state is coalesced
-so obsolete frames cannot block control traffic. Fire and consumable edges are
-repeated until acknowledged and deduplicated by authority.
+Controls are sampled once per simulation tick and every INPUT frame carries the
+newest three ticks, so one lost frame loses nothing. Fire and action edges are
+sequence numbers repeated until the snapshot acknowledges them, so a press is
+never lost and never applied twice.
 
 ## Prediction and reconciliation
 
-Remote entities use an adaptive interpolation delay, Hermite position
-interpolation, shortest-angle rotation blending, and bounded extrapolation.
+Remote entities (`src/mp/match/interpolation.ts`) render at `serverNow − delay`,
+where the delay adapts between two and four snapshot intervals from the
+measured arrival jitter and recent loss; positions blend with Hermite curves
+from the rows' velocities, angles take the shortest arc, extrapolation past the
+newest frame is capped at one interval, and an entity the host refreshes at a
+far interest tier is presented between its own two nearest samples.
 
-The local entity predicts the same movement code as authority, including
-terrain contact, map bounds, and nearby static collision. On snapshot:
+The local entity (`src/mp/match/prediction.ts`) runs the same movement module
+as authority one fixed step per sampled input tick, ahead of the server,
+including terrain contact, map bounds, and nearby static collision. On every
+own authority row:
 
-1. accept the latest authoritative local state;
-2. remove acknowledged inputs;
-3. replay remaining inputs through shared movement;
-4. ease normal visual error through separate horizontal, terrain-support, and
-   live-aim presentation channels;
-5. snap only beyond the safety threshold; a terminal wreck pose remains
+1. rewind to that tick: pose, flags, the integrator checkpoint, module and
+   crew state from the viewer section;
+2. replay the ticks the server has not simulated yet through shared movement;
+3. turn the difference between what was on screen and the re-predicted pose
+   into a presentation-only correction on separate hull, attitude/support and
+   live-aim envelopes;
+4. snap only beyond the safety threshold; a terminal wreck pose remains
    authoritative but settles through bounded presentation correction.
 
 Prediction never resolves local damage, spotting, destructibles, or match
-result. Terrain and dynamic contact keep support height and hull attitude on a
-heavier 300 ms correction envelope, while turret and gun aim converge faster.
-Presentation additionally caps a rendered frame to 0.20 m of horizontal and
-0.10 m of support-height correction. Browser gates retain wider 0.25 m and
-0.15 m safety ceilings; authority and shared movement are unchanged.
+result. The correction decays on 110 ms (hull), 160 ms (attitude and support)
+and 75 ms (live aim) envelopes, 180/240 ms for 300 ms after a contact, and
+releases at most 0.2 m of horizontal and 0.1 m of vertical error per rendered
+frame; only an error above 7 m snaps. Authority and shared movement are
+unchanged.
 
 ## Lobby and room lifecycle
 
-src/net/lobby.ts is the canonical owner of team capacity, spectators,
-readiness, selections, map, format, host permissions, lock policy, and start
-policy. UI submits commands and renders room state; it does not mutate the
-canonical roster locally.
+`src/mp/room/roomActor.ts` with `roomPolicy.ts` is the canonical owner of team
+capacity, spectators, readiness, selections, map, format, admin permissions,
+lock policy, and start policy; `lobbyShape.ts` is the lobby the UI renders
+(`roomToLobby`). UI submits commands and renders room state; it does not
+mutate the canonical roster locally.
 
-`src/net/lobbyRuntime.ts` validates lobby envelopes and serialized state,
-orders revisions, bounds lobby-to-match handoff traffic, and exposes typed
-host/client transport lifecycles. Untrusted room packets never enter UI state
-until their player identities, phase, mode, and revision fields are valid.
+`src/mp/room/protocol.ts` validates room envelopes and serialized state and
+orders revisions. Untrusted room packets never enter UI state until their
+player identities, phase, mode, and revision fields are valid.
 
-`src/net/networkRoomCoordinator.ts` owns the browser lifetime around that
-canonical state: lobby intent, room subscriptions, garage reminder state,
-ready/start commands, selection locks, bounded chat buffering, menu attachment,
-and one rematch claim per new round. It receives UI and match ports and imports
-neither DOM nor Three.js. `src/net/networkFramePump.ts` separately owns the
-per-frame match path; room lifecycle never advances simulation itself.
+`src/mp/session/playMenuAdapter.ts` owns the Play menu's room acquisition
+(connect / observe / close / forget) over a `RoomClient`; `lobbyIntent.ts`
+owns the Garage's view of the room: the strip, the joined-room preparation and
+the Ready / selection / Start relays; `browserComposition.ts` owns the room
+between rounds (the lobby back on the menu for the rematch, the seat kept
+across a Garage return). Its `pump` is the per-frame match path; room
+lifecycle never advances simulation itself.
 
 The lifecycle is:
 
     waiting -> starting -> playing -> waiting
 
-ROOM_COMMAND carries intent. ROOM_STATE carries the canonical round, last
+Room commands carry intent. The room snapshot carries the canonical round, last
 result, roster, team, selection, and readiness.
 
 Shareable URLs carry the room code plus an optional host callsign used for
-first-paint invitation text. Signaling returns canonical host identity during
-join, so URL text never grants authority or overrides room state.
+first-paint invitation text (`src/mp/session/roomInvite.ts`). The room returns
+the canonical admin identity during join, so URL text never grants authority or
+overrides room state.
 
-The room controller outlives the match runtime. At result:
+The room outlives the match. At result (`finishMatch` in `roomPolicy.ts`):
 
-- publish the final durable state;
-- return the room to waiting;
-- clear all ready flags;
-- retain connected peers and transports;
-- fan reliable waiting state in bounded browser-host batches, cancelling any
-  unsent stale revision if a newer room command arrives;
-- allow a new match runtime for the next round.
+- the host's `match_report` carries the verdict; the room records it as the
+  last result, returns to waiting, unlocks its settings and clears all ready
+  flags;
+- seats and their sockets stay; a seat keeps its `match_start`, so a commander
+  back in the Garage can rejoin a running match;
+- the next `start` elects the host again and every seat re-enters through the
+  same `beginRoom`.
 
-## Signaling and dedicated services
+## Rooms, signaling and hosting
 
-server/signalingServer.ts relays membership, Session Description Protocol
-offers and answers, and Interactive Connectivity Establishment candidates. It
-does not carry gameplay. Correlated mailbox-poll acknowledgements provide the
-browser-visible liveness signal that native WebSocket ping/pong cannot expose;
-the client replaces a half-open signaling socket and resumes the same durable
-room seat after a bounded missed acknowledgement.
+`cloudflare/rooms` is the Room Durable Object (Workers Free plan): one object
+per room code owns membership with private resume capabilities, the lobby, a
+bounded chat history, the signaling relay for the WebRTC offers, answers and
+ICE candidates, host election and migration, the seat tokens and the match
+lifecycle (`src/mp/room/roomActor.ts` is the state machine; everything durable
+is in its exported state, so a hibernating object restores byte-for-byte). It
+does not carry gameplay. A client whose socket drops resumes the same seat
+with its resume token; an admin who leaves is replaced at once, one who
+disconnects after the grace; a room expires after 24 h.
 
-Production signaling can use server/distributedRoomStore.ts for Redis-backed
-membership and publish/subscribe notifications across function instances.
-Redis connectivity is deployment-critical for distributed room lookup and
-must be monitored separately from WebRTC gameplay.
+`server/rooms` runs the same room actor as the LAN helper (`npm run
+server:mp`) for local play and the receipts; `server/match` is the match actor
+the host's browser runs in its Worker and the receipts run in-process
+(`service.ts`, `localRoomService.ts`); `server/world-collision-manifests/`
+holds the per-map collision shards the host inflates
+(`src/mp/host/worldCollision.ts`). `api/ice.ts` mints the TURN credential
+lease.
 
-server/dedicatedMatchServer.ts owns ranked WebSocket sessions.
-server/rankedMatchmaker.ts owns queue grouping.
-server/ratingStore.ts owns idempotent rating settlement.
-
-Private browser hosts are trusted. Ranked moves authority to the service.
+The room, not a client, decides who hosts; the hosting browser is trusted for
+the match it runs, and a seat token (`server/match/seatToken.ts`) binds every
+connection to its room seat. There is no dedicated or ranked service.
 
 ## User interface
 
@@ -951,10 +980,10 @@ Marketing captures are produced by tools/marketing-shots.
 
 Local browser storage may contain preferences, bindings, garage selections,
 anonymous player identity, and local battle record. It is not trusted for
-ranked rating or match settlement.
+match settlement.
 
-Room state belongs to room authority. Ranked identity, tickets, and rating
-belong to the dedicated service.
+Room state belongs to the room. There is no ranked identity, ticket or rating
+store.
 
 ## Required invariants
 

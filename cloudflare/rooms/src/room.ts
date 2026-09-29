@@ -2,8 +2,8 @@
  * Room: one Durable Object per six-character room code. It hosts the shared
  * `RoomActor` (src/mp/room/roomActor.ts) behind hibernatable WebSockets, the
  * SQLite-backed state blob, socket attachments and alarms — the patterns the
- * v1 `PrivateRoom` object proves in production — and a match host that starts
- * the room's container (or a shim in local development).
+ * v1 `PrivateRoom` object proves in production — and the peer-to-peer match host
+ * (`src/mp/room/p2pMatchHost.ts`: the elected commander's browser).
  *
  * Every room message is one text or binary UTF-8 JSON frame; replies go out
  * as binary so the v2 transport carries them. Resume capabilities are never

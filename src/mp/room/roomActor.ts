@@ -21,7 +21,7 @@
  * of status polls, and migrates the host — after `ROOM_HOST_DISCONNECT_GRACE_MS`
  * without its socket, at once when it leaves or declines, and when its reports
  * stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` — with `host_changed`. With a
- * `service` host (the parked container backend) the match is polled as before.
+ * `service` host (the in-process match service the receipts run) the match is polled by alarm.
  */
 import type { SeatClaims } from '../../../server/match/seatToken.ts';
 import {
@@ -77,7 +77,7 @@ export interface MatchHostBase {
   stop(roomId: string): Promise<void>;
 }
 
-/** A dedicated match service: a Cloudflare Container, an HTTP shim, or the in-process service (polled by alarm). */
+/** An in-process match service (`server/match/service.ts`, the receipts' and the LAN helper's host), polled by alarm. */
 export interface ServiceMatchHost extends MatchHostBase {
   readonly transport: 'service';
 }
