@@ -173,7 +173,7 @@ import { createSoloBattleLoadingAccess } from './soloBattleLoadingAccess.ts';
   assert.match(mainSource, /preloadGarageReturn: \(\) => garageReturn\.preload\(\)/,
     'solo entry acquires the return owner under its loading cover');
   const networkLoadStart = mainSource.indexOf('loadModules: () => Promise.all([');
-  const networkLoadEnd = mainSource.indexOf(']).then(([modules]) => modules)', networkLoadStart);
+  const networkLoadEnd = mainSource.indexOf('audio.warmBattleEvents(),\n          ]),', networkLoadStart);
   assert.ok(networkLoadStart >= 0 && networkLoadEnd > networkLoadStart);
   assert.match(mainSource.slice(networkLoadStart, networkLoadEnd), /garageReturn\.preload\(\)/,
     'private/LAN acquisition also warms return code under its existing cover');

@@ -721,7 +721,7 @@ async function completedCamoWakes(method,legacy=false){
     .replaceAll(': string','');
   const camo=runInNewContext(`(() => {let camoSweepP;const api={${body}};
     return {...api,completed:()=>camoSweepP};})()`,{
-    setCamoSelection(){},setCustomCamoSelection(){},currentNetworkRoom:()=>null,
+    setCamoSelection(){},setCustomCamoSelection(){},multiplayerLobby:null,
     applyCamoPatternsChunked:()=>new Promise(resolve=>{finishPaint=resolve;}),
     invalidateGaragePresentation:activity.invalidate,
   });

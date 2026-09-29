@@ -292,11 +292,15 @@ for (const kind of ['create', 'join']) {
 }
 
 const playMenuSource = await readFile(new URL('../ui/playMenu.ts', import.meta.url), 'utf8');
-assert.match(playMenuSource, /createPrivateRoomConnectionRuntime\(\{/,
-  'the play menu delegates private and LAN acquisition to the typed lifecycle owner');
+// Since the cutover of 2026-09-29 the Play menu drives the room connection adapter (src/mp/session/playMenuAdapter.ts),
+// which implements this lifecycle contract over a RoomClient; this runtime is no longer behind the menu.
+assert.doesNotMatch(playMenuSource, /createPrivateRoomConnectionRuntime\(/,
+  'the play menu no longer constructs the v1 private room connection');
+assert.match(playMenuSource, /createRoomConnectionAdapter\(connectionOptions\)/,
+  'the play menu delegates private and LAN acquisition to the room connection adapter');
 assert.doesNotMatch(playMenuSource, /new RoomSignalingClient|new PrivateRoom(?:Host|Client)Session/,
   'the UI cannot reconstruct the signaling/session lifecycle in parallel');
-assert.match(playMenuSource, /privateRoomConnection\.forget\(\);[\s\S]{0,80}activeRoom = adapter/,
+assert.match(playMenuSource, /roomConnection\.forget\(\);[\s\S]{0,80}activeRoom = adapter/,
   'battle handoff relinquishes menu ownership without closing the live transport');
 assert.match(playMenuSource,
   /function shouldBeginClientHandoff\(next: SerializedLobby\)[\s\S]{0,220}next\.phase === 'starting' \|\| next\.phase === 'playing'[\s\S]{0,180}role === 'client'[\s\S]{0,120}!handedOff[\s\S]{0,80}!activeRoom/,
@@ -304,9 +308,8 @@ assert.match(playMenuSource,
 assert.match(playMenuSource,
   /if \(shouldBeginClientHandoff\(next\)\)[\s\S]{0,120}beginNetworkHandoff\(next, 'client'\)/,
   'the real invite UI resumes a refreshed guest into an already-playing room');
-assert.match(playMenuSource,
-  /roomIce && !roomIce\.relayAvailable[\s\S]{0,300}playMenu\.room\.turnUnconfigured/,
-  'the real room UI cannot label an uncertified direct-only deployment universally ready');
+// The room-level ICE label of the first multiplayer (a direct-only room) left with the cutover: a room never relays.
+assert.doesNotMatch(playMenuSource, /roomIce|turnUnconfigured/, 'the room UI carries no room-level ICE state');
 assert.match(playMenuSource,
   /eyebrow\.textContent = t\(mode === 'lan' \? 'playMenu\.eyebrow\.lan' : 'playMenu\.eyebrow\.private'\)/,
   'private and LAN invite entry must render its eyebrow through the active locale');

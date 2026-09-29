@@ -2204,7 +2204,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           report: (summary, reason) => entryTelemetry.send({ kind: 'mp_exit', mode: 'network', code: reason, reason: summary.health, link: summary }),
         },
         // Peer-to-peer (docs/MULTIPLAYER-V2.md §13): the host actor's Worker chunk, the collision manifests the build serves,
-        // ICE from the same credential source v1 uses, the device tier (the mobile tier never hosts).
+        // ICE from the credential service (api/ice.ts through src/net/iceConfig.ts), the device tier (the mobile tier never hosts).
         p2p: {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,

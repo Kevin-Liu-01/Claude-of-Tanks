@@ -345,9 +345,9 @@ test('battle and nonwaiting room states neither build nor cancel Garage worlds',
 test('the production Garage callbacks route competing work through room intent', () => {
   const source = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
   assert.match(source,
-    /onBattleIntent:\s*\(options\)\s*=>\s*\{[^]*?if\s*\(!currentNetworkRoom\(\)\?\.prepareLobby\(\)\)\s*battleIntent\.preload\(options\);/,
+    /onBattleIntent:\s*\(options\)\s*=>\s*\{[^]*?if\s*\(!multiplayerLobby\?\.prepareLobby\(\)\)\s*battleIntent\.preload\(options\);/,
     'the live Solo-intent callback must honor joined-room preparation before local preload');
   assert.match(source,
-    /onMapSelect:\s*\(mapId:\s*string\)\s*=>\s*\{[^]*?if\s*\(!currentNetworkRoom\(\)\?\.prepareLobby\(\)\)\s*\{\s*cancelBackgroundWorldBuildsExcept\(mapId === 'random' \? null : mapId\);\s*\}/,
+    /onMapSelect:\s*\(mapId:\s*string\)\s*=>\s*\{[^]*?if\s*\(!multiplayerLobby\?\.prepareLobby\(\)\)\s*\{\s*cancelBackgroundWorldBuildsExcept\(mapId === 'random' \? null : mapId\);\s*\}/,
     'the live map-selection callback must preserve room intent before cancelling local maps');
 });

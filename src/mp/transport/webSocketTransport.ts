@@ -363,9 +363,6 @@ export class WebSocketTransport implements Transport {
     const socket = this.socket;
     this.releaseSocket();
     if (!socket) return;
-    // A socket dropped while still connecting reports its abandoned handshake to nobody: under Node's `ws` an
-    // unobserved 'error' event throws (the Play menu cancelling an attempt in a receipt), in a browser it is noise.
-    try { socket.addEventListener('error', () => {}); } catch { /* a double without listeners */ }
     try { socket.close(code, reason.slice(0, 120)); } catch { /* already closed */ }
   }
 

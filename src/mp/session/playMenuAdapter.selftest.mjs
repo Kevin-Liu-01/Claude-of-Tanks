@@ -28,11 +28,14 @@ const freePort = () => new Promise((resolve, reject) => {
 });
 const selection = { specId: 'm1a2', mapId: 'verdant', equipment: [], camo: 'factory' };
 const clients = [];
+/** Node's `ws` reports a socket closed before its handshake completed as an 'error' nobody may own (the transport drops
+ * its listeners with the socket, as the exit flow's receipt requires); a browser socket never throws for it. */
+const socket = (url) => { const ws = new WebSocket(url); ws.on('error', () => {}); return ws; };
 function adapter(events, over = {}) {
   return createRoomConnectionAdapter({
     storage: memory(), clientBuild: 'receipt',
     createRoomClient: (options) => {
-      const client = new RoomClient({ ...options, pingIntervalMs: 0, transport: { createSocket: (url) => new WebSocket(url) } });
+      const client = new RoomClient({ ...options, pingIntervalMs: 0, transport: { createSocket: socket } });
       clients.push(client);
       return client;
     },
@@ -79,8 +82,8 @@ try {
   assert.equal(joined.roomInfo.hostName, 'Alice');
   await until(() => observed.length >= 2 && created.session.lobby.players.length === 2, 'the host sees the guest');
   await joined.session.command({ type: 'set_ready', ready: true });
-  await until(() => created.session.lobby.players.find((player) => player.id === 'bob')?.ready === true, 'the guest readied');
-  assert.equal(joined.session.lobby.players.find((player) => player.id === 'bob').ready, true);
+  await until(() => created.session.lobby.players.find((player) => player.id === 'bob')?.ready === true
+    && joined.session.lobby.players.find((player) => player.id === 'bob')?.ready === true, 'both seats see the guest ready');
   stop();
 
   // ---- the start reaches both seats through onHostStart (the host's admin command)
@@ -128,7 +131,7 @@ try {
   // ---- an unreachable room host: RoomConnectError, classified as the room service being unavailable, retryable
   const unreachable = [];
   const nobody = adapter(unreachable, { createRoomClient: (options) => {
-    const client = new RoomClient({ ...options, pingIntervalMs: 0, transport: { createSocket: (url) => new WebSocket(url), reconnect: { initialDelayMs: 10, maxDelayMs: 20, factor: 1, jitterFraction: 0, windowMs: 200, attemptTimeoutMs: 500 } } });
+    const client = new RoomClient({ ...options, pingIntervalMs: 0, transport: { createSocket: socket, reconnect: { initialDelayMs: 10, maxDelayMs: 20, factor: 1, jitterFraction: 0, windowMs: 200, attemptTimeoutMs: 500 } } });
     clients.push(client);
     return client;
   } });
