@@ -2754,7 +2754,7 @@
   "docs.topic.multiplayer.s4.p2": "Duplicate vehicle selections remain safe because events use entity and owner identities separately from vehicle specs.",
   "docs.topic.multiplayer.s5.t": "Live verification",
   "docs.topic.multiplayer.s5.p1": "Browser soaks cover guest entry, four-player rooms, 7v7 rosters, adverse transport, reconnect handoff, rendering, and both teams dealing live damage. Headless authority tests cover bots, pacing, results, rankings, and persistence.",
-  "docs.topic.multiplayer.s5.p2": "Run `npm run test:net:seven:live` for the complete moving-and-firing gate.",
+  "docs.topic.multiplayer.s5.p2": "Run `npm run test:net:v2:p2p` for the three-browser peer-to-peer gate: a room, a host, two peers, moving and firing, a host migration.",
   "docs.topic.multiplayer.media1": "Allied chase camera with the compact target switcher",
   "docs.topic.multiplayer.media2": "Team roster and room state before authoritative handoff",
   "docs.topic.interface.label": "Interface and controls",

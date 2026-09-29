@@ -154,7 +154,7 @@
         <table class="ownership-table"><thead><tr><th data-i18n="docs.perf.colName">Budget</th><th data-i18n="docs.perf.colMech">Mechanism</th><th data-i18n="docs.perf.colInvariant">Invariant</th></tr></thead><tbody><tr><td data-i18n="docs.perf.simName">Simulation</td><td data-i18n="docs.perf.simMech">Bounded fixed-step accumulator at 60 Hz.</td><td data-i18n="docs.perf.simInvariant">Graphics quality cannot change combat.</td></tr><tr><td data-i18n="docs.perf.renderName">Rendering</td><td data-i18n="docs.perf.renderMech">High-refresh frame scheduler, adaptive scale, quality tiers, fused post output.</td><td data-i18n="docs.perf.renderInvariant">Certified test runs reached the native 120 FPS refresh rate on measured hardware.</td></tr><tr><td data-i18n="docs.perf.drawName">Draw/GPU</td><td data-i18n="docs.perf.drawMech">Instancing/merging, LOD cadence, shadow proxies, cached worlds, resource disposal.</td><td data-i18n="docs.perf.drawInvariant">Cosmetic work is reduced before simulation work.</td></tr><tr><td data-i18n="docs.perf.loadName">Loading</td><td data-i18n="docs.perf.loadMech">Garage-first boot, lazy battle graph, shader/material warmup, staged world activation.</td><td data-i18n="docs.perf.loadInvariant">Required battle work finishes before countdown.</td></tr><tr><td data-i18n="docs.perf.netName">Network</td><td data-i18n="docs.perf.netMech">20 Hz viewer-filtered snapshots, deltas, keyframes, event channel, bounded prediction.</td><td data-i18n="docs.perf.netInvariant">Hidden transforms never reach unauthorized viewers.</td></tr></tbody></table>
         <div class="code-sample"><div class="code-head"><span data-i18n="docs.perf.codeTitle">verification // focused paths</span><button type="button" data-copy="#perfCommands" data-i18n="docs.perf.codeCopy">Copy</button></div><pre id="perfCommands"><code>npm run perf:dev
 npm run perf:loading
-npm run test:net:render
+npm run test:net:v2:p2p
 node src/engine/renderScalePolicy.selftest.mjs
 node src/engine/shadowStability.selftest.mjs</code></pre></div>
       </section>
@@ -213,7 +213,7 @@ node src/engine/shadowStability.selftest.mjs</code></pre></div>
 npx vite
 npm test
 npm run tank:native:check
-npm run test:net:seven:live
+npm run test:net:v2:p2p
 npm run build</code></pre></div>
         <p data-i18n-html="docs.verification.tail">Continue with <a class="inline-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/ARCHITECTURE.md">architecture</a>, <a class="inline-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/PERFORMANCE.md">performance</a>, <a class="inline-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/MULTIPLAYER-ARCHITECTURE.md">multiplayer</a>, <a class="inline-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/STUDIO.md">Studio</a>, <a class="inline-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/GALLERY.md">Gallery</a>, and the maintained <a class="inline-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/DECISIONS.md">architecture decisions</a>.</p>
       </section>

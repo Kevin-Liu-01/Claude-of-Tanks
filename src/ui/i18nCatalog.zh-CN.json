@@ -2712,7 +2712,7 @@
   "docs.topic.multiplayer.s4.p2": "重复的车辆选择依然安全，因为事件使用的实体与所有者身份与车辆规格相互独立。",
   "docs.topic.multiplayer.s5.t": "实景验证",
   "docs.topic.multiplayer.s5.p1": "浏览器浸泡测试覆盖访客进入、四人房、7v7 阵容、不利传输、断线重连交接、渲染以及双方实时造成伤害。无头权威测试覆盖机器人、节奏、结果、排名与持久化。",
-  "docs.topic.multiplayer.s5.p2": "完整的“能跑能打”关卡请运行 `npm run test:net:seven:live`。",
+  "docs.topic.multiplayer.s5.p2": "三个浏览器的点对点关卡请运行 `npm run test:net:v2:p2p`：一个房间、一名主机、两名对等玩家，移动并开火，并完成一次主机迁移。",
   "docs.topic.multiplayer.media1": "紧凑目标切换器下的友军追击相机",
   "docs.topic.multiplayer.media2": "权威交接前的队伍名册与房间状态",
   "docs.topic.interface.label": "界面与控制",
