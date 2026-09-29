@@ -1592,28 +1592,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       collections.appendChild(button);
       camoCollectionButtons.set(id, button);
     }
-    const collectionNav = document.createElement('div');
-    collectionNav.className = 'cot-camo-collection-nav';
-    const previousCollection = document.createElement('button');
-    const nextCollection = document.createElement('button');
-    for (const [button, direction] of [[previousCollection, -1], [nextCollection, 1]] as const) {
-      button.type = 'button';
-      button.className = 'cot-camo-collection-scroll';
-      button.innerHTML = uiIconSVG(direction < 0 ? 'chevronLeft' : 'chevronRight', 12);
-      button.setAttribute('aria-label', t(direction < 0 ? 'garage.country.scrollLeft' : 'garage.country.scrollRight'));
-      button.addEventListener('click', () => collections.scrollBy({ left: direction * collections.clientWidth * .8 }));
-    }
-    collectionNav.append(previousCollection, collections, nextCollection);
-    camosEl.appendChild(collectionNav);
-    const updateCollectionScroll = () => {
-      previousCollection.disabled = collections.scrollLeft <= 1;
-      nextCollection.disabled = collections.scrollLeft >= collections.scrollWidth - collections.clientWidth - 1;
-    };
-    collections.addEventListener('scroll', updateCollectionScroll, { passive: true });
-    // The mobile picker is hidden at boot; measure again when it opens or
-    // changes width so offscreen countries never get stuck behind disabled arrows.
-    if (typeof ResizeObserver === 'function') new ResizeObserver(updateCollectionScroll).observe(collections);
-    requestAnimationFrame(updateCollectionScroll);
+    camosEl.appendChild(collections);
     const tagBar = document.createElement('div');
     tagBar.className = 'cot-camo-tags';
     tagBar.setAttribute('role', 'toolbar');
