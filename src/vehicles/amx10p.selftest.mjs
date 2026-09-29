@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { Box3, Vector3 } from 'three';
+import { Box3, Raycaster, Vector3 } from 'three';
 import { createTank } from './tankFactory.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from './specs.ts';
 import { tierNumeral } from './tier.ts';
@@ -18,7 +18,19 @@ for (const [id, tier, caliber, turretCrew] of [['amx10p','IX',20,2],['amx10p_25'
   assert.equal(spec.armor.crew.length,3);
   assert.equal(spec.armor.crew.filter(member=>member.turretLocal).length,turretCrew,'Toucan two-man / Dragar one-man topology');
   for (const quality of ['high','low']) {
-    const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,decor:false});
+    const mounts=[];
+    const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,decor:false,
+      partCensus:(bucket,geometry)=>{
+        if(id!=='amx10p'||bucket!=='turretDetail') return;
+        geometry.computeBoundingBox();
+        const bounds=geometry.boundingBox, size=bounds.getSize(new Vector3());
+        // Identify actual assembled stock before material batching erases part
+        // boundaries; these are the smoke-bank brackets and whip footing.
+        if(Math.abs(size.x-.14)<.001 && Math.abs(size.y-.16)<.001 && Math.abs(size.z-.32)<.001)
+          mounts.push({kind:'smoke',bounds:bounds.clone()});
+        if(Math.abs(size.x-.11)<.003 && Math.abs(size.y-.11)<.001 && Math.abs(size.z-.11)<.003)
+          mounts.push({kind:'antenna',bounds:bounds.clone()});
+      }});
     try {
       tank.root.updateMatrixWorld(true);
       const box=new Box3().setFromObject(tank.root), size=box.getSize(new Vector3());
@@ -30,6 +42,30 @@ for (const [id, tier, caliber, turretCrew] of [['amx10p','IX',20,2],['amx10p_25'
       assert.equal(wheels[0].nationStandard.donor,'amx40','French wheel stock; own axle positions');
       assert.equal(censusEquipment(tank.root).mg,0,'French turret/coax configuration');
       const gun=tank.root.getObjectByName('rig_gun');
+      if(id==='amx10p') {
+        assert.equal(mounts.filter(m=>m.kind==='smoke').length,2,'both smoke brackets measured');
+        assert.equal(mounts.filter(m=>m.kind==='antenna').length,1,'antenna footing measured');
+        const rig=tank.root.getObjectByName('rig_turret'), shell=tank.root.getObjectByName('turret');
+        const detail=tank.root.getObjectByName('turretDetail');
+        assert(detail && rig.getObjectById(detail.id),'fittings remain on the turret yaw rig');
+        assert(!gun.getObjectById(detail.id),'smoke and antenna must not elevate with the gun');
+        for(const yaw of [0,Math.PI/3,Math.PI]) {
+          rig.rotation.y=yaw; gun.rotation.x=-.30; tank.root.updateMatrixWorld(true);
+          for(const {kind,bounds} of mounts) {
+            const center=bounds.getCenter(new Vector3()), side=Math.sign(center.x);
+            const origin=kind==='smoke'?new Vector3(side*2,center.y,center.z):new Vector3(center.x,2,center.z);
+            const direction=kind==='smoke'?new Vector3(-side,0,0):new Vector3(0,-1,0);
+            const hit=new Raycaster(rig.localToWorld(origin),direction.transformDirection(rig.matrixWorld))
+              .intersectObject(shell)[0];
+            assert(hit,`${quality}: ${kind} has supporting turret armor`);
+            const surface=rig.worldToLocal(hit.point);
+            const gap=kind==='antenna'?bounds.min.y-surface.y
+              :side>0?bounds.min.x-surface.x:surface.x-bounds.max.x;
+            assert(gap<=.001 && gap>=-.06,`${quality}: ${kind} seats on armor, gap ${gap.toFixed(4)} m`);
+          }
+        }
+        rig.rotation.y=0; gun.rotation.x=0; tank.root.updateMatrixWorld(true);
+      }
       if (id === 'amx10p_25') {
         const skirts=tank.root.getObjectByName('hullExternalArmor');
         const cage=tank.root.getObjectByName('hullOpenLattice');
