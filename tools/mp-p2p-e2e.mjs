@@ -85,7 +85,10 @@ async function waitFor(page, predicate, label, timeoutMs, options = {}) {
     }
     await waiting;
   } catch (error) {
-    if (entryFailure) throw new Error(`${label}: the entry pipeline failed on ${options.entryOf}: ${entryFailure.text}`);
+    if (entryFailure) {
+      const trace = await page.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, status: window.__NETWORK_LOAD?.status ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null })).catch(() => null);
+      throw new Error(`${label}: the entry pipeline failed on ${options.entryOf}: ${entryFailure.text}; load trace ${JSON.stringify(trace)}`);
+    }
     const diagnostics = await page.evaluate(() => ({
       url: location.href, phase: window.__DEBUG?.game?.phase ?? null,
       lobbyVisible: document.querySelector('.cot-play .lobby')?.classList.contains('show') ?? false,
@@ -332,12 +335,24 @@ try {
   const returned = await pages.a2.evaluate(returnState);
   if (returned === 'rejoin') await pages.a2.click('.cot-play [data-action="rejoin"]');
   step('a2-returned', { path: returned });
-  await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000, { entryOf: 'A2' });
+  let a2Attempts = 1;
+  try {
+    await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000, { entryOf: 'A2' });
+  } catch (error) {
+    // The product's own recovery ("Please retry from the Garage"): one Rejoin from the lobby, recorded — the console error
+    // of the failed entry still fails the run; the second attempt only tells whether the return works at all under this load.
+    failures.push(error instanceof Error ? error.message : String(error));
+    await waitFor(pages.a2, () => { const button = document.querySelector('.cot-play [data-action="rejoin"]'); return document.querySelector('.cot-play')?.classList.contains('show') && !!button && !button.hidden; }, 'A2 offered Rejoin battle after the failed entry', 60_000);
+    a2Attempts = 2;
+    await pages.a2.click('.cot-play [data-action="rejoin"]');
+    step('a2-garage-retry');
+    await waitFor(pages.a2, inBattle, 'A2 rejoined the battle (Garage retry)', 240_000, { entryOf: 'A2' });
+  }
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 })));
   const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null }));
   step('b-c-restored', { viewport: '1024x640', a2Entry });
-  report.rejoin = { a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null, path: returned, entry: a2Entry };
+  report.rejoin = { a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null, path: returned, attempts: a2Attempts, entry: a2Entry };
   step('a-rejoined', report.rejoin);
   if (report.rejoin.p2p?.role !== 'peer' || report.rejoin.p2p?.hostId !== ids.b) failures.push(`A2 ${JSON.stringify(report.rejoin.p2p)}`);
   if (report.rejoin.peersOnB !== 2) failures.push(`B serves ${report.rejoin.peersOnB} peers after A's return`);
@@ -363,7 +378,7 @@ else {
   console.log(`mp p2p e2e${live ? ' (live rooms)' : ''}: room ${report.room?.code ?? '-'} started ${report.start?.matchUrl ?? '-'} (A ${report.start?.a?.role ?? '-'} serving ${report.start?.a?.peers ?? '-'}, B/C ${report.start?.b?.role ?? '-'}/${report.start?.c?.role ?? '-'} on ${report.start?.b?.candidate ?? '-'} candidates); ` +
     `play ${playS} s: C saw B move ${report.play?.movedBAsCSaw?.toFixed?.(1) ?? '-'} m, ${report.play?.snapshotsC ?? '-'} snapshots; ` +
     `A closed → B hosted after ${report.migration?.electedAfterMs ?? '-'} ms (generation ${report.migration?.election?.generation ?? '-'}), C live on B with +${report.migration?.cSnapshotsAfterMigration ?? '-'} snapshots in 4 s, B's hull ${report.migration?.bHullJumpAsCSaw?.toFixed?.(2) ?? '-'} m from where C saw it, ${report.migration?.reportsFromB ?? '-'} reports from B; ` +
-    `A rejoined as ${report.rejoin?.p2p?.role ?? '-'} of ${report.rejoin?.p2p?.hostId ?? '-'} (B serving ${report.rejoin?.peersOnB ?? '-'}; ${report.rejoin?.path ?? '-'} path, compile ${report.rejoin?.entry?.stages?.compile ?? '-'} ms${report.rejoin?.entry?.stages?.compileRetry !== undefined ? ` + retry ${report.rejoin.entry.stages.compileRetry} ms` : ''}); ${report.errors.length} browser errors; ${report.wallMs} ms wall`);
+    `A rejoined as ${report.rejoin?.p2p?.role ?? '-'} of ${report.rejoin?.p2p?.hostId ?? '-'} (B serving ${report.rejoin?.peersOnB ?? '-'}; ${report.rejoin?.path ?? '-'} path, ${report.rejoin?.attempts ?? '-'} attempt(s), compile ${report.rejoin?.entry?.stages?.compile ?? '-'} ms${report.rejoin?.entry?.stages?.compileRetry !== undefined ? ` + retry ${report.rejoin.entry.stages.compileRetry} ms` : ''}); ${report.errors.length} browser errors; ${report.wallMs} ms wall`);
   for (const failure of failures) console.log(`  FAIL: ${failure}`);
   console.log(`  screenshots: ${report.screenshots.join(', ')}`);
   console.log(report.pass ? 'mp p2p e2e: PASS' : 'mp p2p e2e: FAIL');
